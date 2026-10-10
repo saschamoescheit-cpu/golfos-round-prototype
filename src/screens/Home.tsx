@@ -1,6 +1,8 @@
+import { useRef, useState } from 'react';
 import type { Round } from '../types';
 import { playerTotals } from '../lib/scoring';
 import { Attribution, formatToPar } from '../components/ui';
+import { restoreBackup, shareBackup } from '../lib/backup';
 
 export function Home(props: {
   rounds: Round[];
@@ -10,6 +12,8 @@ export function Home(props: {
   onChanged: () => void;
 }) {
   const open = props.rounds.find((r) => !r.finishedAt);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const finished = props.rounds.filter((r) => r.finishedAt);
 
   return (
@@ -68,6 +72,40 @@ export function Home(props: {
           })}
         </ul>
       </section>
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <h2>Backup</h2>
+        <p className="muted small" style={{ margin: 0 }}>
+          Your rounds live only on this phone. Safari and the home-screen app keep separate data – use a backup to move or save it.
+        </p>
+        <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <button type="button" className="btn-secondary" onClick={() => shareBackup().catch(() => setBackupMsg('Backup cancelled.'))}>
+            Save backup
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => fileInput.current?.click()}>
+            Restore backup
+          </button>
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file) return;
+            try {
+              const { rounds } = restoreBackup(JSON.parse(await file.text()));
+              setBackupMsg(`Backup restored · ${rounds} ${rounds === 1 ? 'round' : 'rounds'} added.`);
+              props.onChanged();
+            } catch (err) {
+              setBackupMsg(err instanceof Error ? err.message : 'This file could not be read.');
+            }
+          }}
+        />
+        {backupMsg && <p className="small" style={{ margin: 0 }}>{backupMsg}</p>}
+      </section>
+
       <span className="spacer" />
       <Attribution />
     </main>

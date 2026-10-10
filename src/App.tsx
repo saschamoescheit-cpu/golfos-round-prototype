@@ -6,6 +6,7 @@ import { CoursePicker } from './screens/CoursePicker';
 import { RoundSetup } from './screens/RoundSetup';
 import { HoleScreen } from './screens/HoleScreen';
 import { Scorecard } from './screens/Scorecard';
+import { NO_RESUME } from './components/ErrorBoundary';
 
 type Screen =
   | { name: 'home' }
@@ -19,10 +20,14 @@ function roundInPlay(rounds: Round[]): Round | undefined {
   return rounds.find((r) => !r.finishedAt && Date.now() - Date.parse(r.createdAt) < 8 * 3600 * 1000);
 }
 
+// After a crash the player can ask for the start page instead of the round (read once per page load).
+const SKIP_RESUME = sessionStorage.getItem(NO_RESUME) != null;
+sessionStorage.removeItem(NO_RESUME);
+
 export function App() {
   const [rounds, setRounds] = useState<Round[]>(() => loadRounds());
   const [screen, setScreen] = useState<Screen>(() => {
-    const r = roundInPlay(rounds);
+    const r = SKIP_RESUME ? undefined : roundInPlay(rounds);
     return r ? { name: 'hole', round: r } : { name: 'home' };
   });
 
