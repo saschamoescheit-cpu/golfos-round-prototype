@@ -3,7 +3,8 @@ import type { DetailEntry, FairwayResult, HoleEntry, LngLat, Round } from '../ty
 import { deriveFromShots, emptyDetail, firstPuttM, lieAt, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
-import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp, saveUnit } from '../lib/storage';
+import { playerBag } from '../lib/stats';
+import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp, saveUnit } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
 import { detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
@@ -181,6 +182,8 @@ export function HoleScreen(props: {
   const [placing, setPlacing] = useState<'shot' | 'green' | null>(null);
   const fmtU = (m: number) => formatDistance(m, unit);
   const lengths = shotLengths(detail);
+  // Club suggestions use the player's own distances from finished detailed rounds (≥ 3 shots per club).
+  const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt)), []);
   const hasShots = detail.shots.length > 0;
   const holeDone = detail.holedOut || (detail.onGreen != null && myEntry.putts != null);
   const saveDetail = (d: DetailEntry, putts: number | null = myEntry.putts) =>
@@ -206,7 +209,8 @@ export function HoleScreen(props: {
       <ShotSheet
         title={`Shot ${n}${toPin != null ? ` · ${fmtU(toPin)} ${unit} to pin` : ''}`}
         lie={existing?.lie ?? (pos && mapData ? lieAt(pos, mapData, n === 1) : n === 1 ? 'tee' : 'fairway')}
-        club={existing ? existing.club : suggestClub(hole.par || 4, n === 1, toPin ?? (hole.par >= 4 ? 300 : 150))}
+        club={existing ? existing.club : suggestClub(hole.par || 4, n === 1, toPin ?? (hole.par >= 4 ? 300 : 150), bag)}
+        bag={bag}
         penalty={existing?.penalty ?? false}
         editing={editing}
         onCancel={() => setSheet(null)}

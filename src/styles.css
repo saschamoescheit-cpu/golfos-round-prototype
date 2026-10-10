@@ -259,3 +259,23 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .shot-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .shot-list li { display: grid; grid-template-columns: 28px 1fr auto auto; align-items: center; gap: 8px; min-height: 44px; }
 .shot-list .n { width: 24px; height: 24px; border-radius: 12px; background: #ffd54a; color: #0e1418; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+
+/* ---------- Stats (feature 005) ---------- */
+.stats-card { display: flex; flex-direction: column; gap: 10px; }
+.stats-card h2 { margin: 0; }
+.stat-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.focus-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.focus-list li { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+.focus-list .grow { flex: 1; min-width: 0; }
+.focus-area { display: block; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: 0.4px; color: var(--brand-text); }
+.focus-list li > span:last-child { white-space: nowrap; }
+.bad-text { color: #ff8a7f; }
+.tee-bar, .mix-bar { display: flex; height: 34px; border-radius: 10px; overflow: hidden; font: 600 12px/34px var(--body); }
+.tee-bar span, .mix-bar span { text-align: center; white-space: nowrap; overflow: hidden; color: #0e1418; flex-basis: 0; }
+.tee-bar .hit { background: var(--brand-text); }
+.tee-bar .miss { background: #f6d48a; }
+.mini-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mini-table th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 4px 0; }
+.mini-table td { padding: 6px 0; border-top: 1px solid var(--line); }
+.club-grid button small { display: block; font: 500 11px var(--body); color: var(--muted); }
+.club-grid button[aria-pressed='true'] small { color: var(--bg); }

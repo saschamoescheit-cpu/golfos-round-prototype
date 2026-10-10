@@ -12,6 +12,7 @@ export function ShotSheet(props: {
   club: Club | null; // suggestion or the saved club when editing
   penalty: boolean;
   editing: boolean;
+  bag?: { club: Club; m: number }[]; // the player's distances (own data or standard)
   onSave: (v: { lie: Lie; club: Club | null; penalty: boolean }) => void;
   onDelete?: () => void;
   onHoledOut?: () => void; // "holed from here" (chip-in) – only for a new shot
@@ -36,7 +37,7 @@ export function ShotSheet(props: {
         <div className="field">
           <label>Club {props.editing ? '' : '– tap to save'}</label>
           <div className="club-grid" role="group" aria-label="Club">
-            {BAG.map((b) => (
+            {(props.bag ?? BAG).map((b) => (
               <button
                 key={b.club}
                 type="button"
@@ -48,6 +49,7 @@ export function ShotSheet(props: {
                 }}
               >
                 {b.club}
+                <small>{b.m} m</small>
               </button>
             ))}
           </div>

@@ -9,6 +9,7 @@ export function Home(props: {
   onNewRound: () => void;
   onContinue: (r: Round) => void;
   onOpen: (r: Round) => void;
+  onStats: () => void;
   onChanged: () => void;
 }) {
   const open = props.rounds.find((r) => !r.finishedAt);
@@ -44,6 +45,12 @@ export function Home(props: {
       <button type="button" className={open ? 'btn-secondary' : 'btn-primary'} onClick={props.onNewRound}>
         New round
       </button>
+
+      {finished.length > 0 && (
+        <button type="button" className="btn-secondary" onClick={props.onStats}>
+          Your stats
+        </button>
+      )}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <h2>Your rounds</h2>
