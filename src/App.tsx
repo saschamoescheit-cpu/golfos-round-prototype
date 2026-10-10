@@ -14,9 +14,9 @@ type Screen =
   | { name: 'hole'; round: Round }
   | { name: 'scorecard'; round: Round };
 
-/** A round started in the last 14 hours and not finished: the app reopens straight on its hole (iOS may reload the page while the phone is in the pocket). */
+/** A round started in the last 8 hours (a round takes at most ~6) and not finished: the app reopens straight on its hole (iOS may reload the page while the phone is in the pocket). */
 function roundInPlay(rounds: Round[]): Round | undefined {
-  return rounds.find((r) => !r.finishedAt && Date.now() - Date.parse(r.createdAt) < 14 * 3600 * 1000);
+  return rounds.find((r) => !r.finishedAt && Date.now() - Date.parse(r.createdAt) < 8 * 3600 * 1000);
 }
 
 export function App() {
