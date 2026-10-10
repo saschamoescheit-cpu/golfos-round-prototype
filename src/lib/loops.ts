@@ -1,0 +1,103 @@
+import type { CourseHole, RoundHole } from '../types';
+
+/**
+ * Parses a hole label from the data source into loop + number.
+ * Handles "4A", "A4", "12", "Kurzplatz - Loch 3".
+ */
+export function parseHoleRef(ref: string): { loop: string; number: number } | null {
+  const r = ref.trim();
+  let m = r.match(/^(\d{1,2})\s*([A-Za-z])$/);
+  if (m) return { loop: m[2].toUpperCase(), number: Number(m[1]) };
+  m = r.match(/^([A-Za-z])\s*-?\s*(\d{1,2})$/);
+  if (m) return { loop: m[1].toUpperCase(), number: Number(m[2]) };
+  m = r.match(/^(\d{1,2})$/);
+  if (m) return { loop: 'Main', number: Number(m[1]) };
+  m = r.match(/^(.*?)[\s\-–:]*(?:Loch|Hole|Bahn)?\s*(\d{1,2})$/i);
+  if (m && m[1].trim()) return { loop: m[1].trim(), number: Number(m[2]) };
+  return null;
+}
+
+/** "11/12" → [11, 12]; "7" → [7]; anything else → []. */
+export function parseStrokeIndex(value: string | undefined): number[] {
+  if (!value) return [];
+  return value
+    .split(/[\/,;]/)
+    .map((v) => Number(v.trim()))
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 18)
+    .sort((a, b) => a - b);
+}
+
+export interface LoopOption {
+  id: string; // "A+B", "Main", "Main:front"
+  label: string;
+  loops: string[]; // loop order
+  part?: 'front' | 'back'; // for single 18-hole loops
+}
+
+/** Which rounds can be played: loop combinations for 9-hole loops, full/front/back for 18. */
+export function loopOptions(holes: CourseHole[]): LoopOption[] {
+  const byLoop = groupByLoop(holes);
+  // Main first, then single-letter loops (A, B, C …), then named loops such as a short course.
+  const rank = (l: string) => (l === 'Main' ? 0 : l.length === 1 ? 1 : 2);
+  const loops = Object.keys(byLoop).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  const nineHoleLoops = loops.filter((l) => byLoop[l].length === 9 && byLoop[l].every((h) => h.par != null));
+  const options: LoopOption[] = [];
+
+  for (const l of loops) {
+    if (byLoop[l].length >= 18) {
+      options.push({ id: l, label: loopLabel(l, '18 holes'), loops: [l] });
+      options.push({ id: `${l}:front`, label: loopLabel(l, 'Front 9'), loops: [l], part: 'front' });
+      options.push({ id: `${l}:back`, label: loopLabel(l, 'Back 9'), loops: [l], part: 'back' });
+    }
+  }
+  for (const a of nineHoleLoops) {
+    for (const b of nineHoleLoops) {
+      if (a !== b) options.push({ id: `${a}+${b}`, label: `${a} + ${b} · 18 holes`, loops: [a, b] });
+    }
+  }
+  for (const l of loops) {
+    if (byLoop[l].length < 18) options.push({ id: l, label: `${l} · ${byLoop[l].length} holes`, loops: [l] });
+  }
+  return options;
+}
+
+function loopLabel(loop: string, text: string): string {
+  return loop === 'Main' ? text : `${loop} · ${text}`;
+}
+
+export function groupByLoop(holes: CourseHole[]): Record<string, CourseHole[]> {
+  const out: Record<string, CourseHole[]> = {};
+  for (const h of holes) (out[h.loop] ??= []).push(h);
+  for (const l of Object.keys(out)) out[l].sort((a, b) => a.number - b.number);
+  return out;
+}
+
+/**
+ * Builds the playing order for a round.
+ * Stroke index with two candidates ("11/12"): first nine takes the lower, second nine the higher value
+ * (decision Sascha, 10.10.2026 – verify against the club's scorecard).
+ * Missing par / stroke index stay 0 and must be completed by the player.
+ */
+export function buildRoundHoles(holes: CourseHole[], option: LoopOption): RoundHole[] {
+  const byLoop = groupByLoop(holes);
+  let sequence: { hole: CourseHole; nine: 0 | 1 }[] = [];
+  option.loops.forEach((loop, pos) => {
+    const list = byLoop[loop] ?? [];
+    list.forEach((hole) => sequence.push({ hole, nine: pos === 0 ? 0 : 1 }));
+  });
+  if (option.part === 'front') sequence = sequence.slice(0, 9);
+  if (option.part === 'back') sequence = sequence.slice(9, 18);
+
+  return sequence.map(({ hole, nine }, index) => {
+    const si = hole.strokeIndex;
+    const strokeIndex = si.length === 0 ? 0 : si.length === 1 ? si[0] : nine === 0 ? si[0] : si[si.length - 1];
+    return {
+      index,
+      label: hole.loop === 'Main' ? String(hole.number) : `${hole.number}${hole.loop.length === 1 ? hole.loop : ` ${hole.loop}`}`,
+      loop: hole.loop,
+      number: hole.number,
+      par: hole.par ?? 0,
+      strokeIndex,
+    };
+  });
+}

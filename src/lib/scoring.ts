@@ -1,0 +1,117 @@
+import type { HoleEntry, RoundHole } from '../types';
+
+/**
+ * Handicap strokes per hole: sort the round's holes by stroke index (ascending)
+ * and hand out the playing handicap one stroke at a time, round-robin.
+ * Example: 18 holes, handicap 20 → every hole 1, stroke index 1 and 2 get a second.
+ */
+export function handicapStrokes(holes: RoundHole[], playingHandicap: number | null): number[] {
+  const result = holes.map(() => 0);
+  if (playingHandicap == null || playingHandicap <= 0 || holes.length === 0) return result;
+  const order = holes
+    .map((h, i) => ({ i, si: h.strokeIndex }))
+    .sort((a, b) => a.si - b.si || a.i - b.i)
+    .map((x) => x.i);
+  for (let s = 0; s < playingHandicap; s++) result[order[s % order.length]] += 1;
+  return result;
+}
+
+/** Gross value written for a picked-up hole: net double bogey. */
+export function netDoubleBogey(par: number, strokesReceived: number): number {
+  return par + 2 + strokesReceived;
+}
+
+export function grossForHole(entry: HoleEntry, par: number, strokesReceived: number): number | null {
+  if (entry.pickedUp) return netDoubleBogey(par, strokesReceived);
+  return entry.strokes;
+}
+
+/** Stableford points: net par = 2, one more per stroke better, minimum 0. */
+export function stablefordPoints(entry: HoleEntry, par: number, strokesReceived: number): number | null {
+  if (entry.pickedUp) return 0;
+  if (entry.strokes == null) return null;
+  return Math.max(0, par + strokesReceived - entry.strokes + 2);
+}
+
+/** Green in regulation: on the green in par − 2 strokes. Needs strokes and putts. */
+export function greenInRegulation(entry: HoleEntry, par: number): boolean | null {
+  if (entry.pickedUp || entry.strokes == null || entry.putts == null) return null;
+  return entry.strokes - entry.putts <= par - 2;
+}
+
+export interface PlayerTotals {
+  gross: number;
+  stableford: number | null; // null when the player has no playing handicap
+  toPar: number; // gross minus par of played holes
+  holesPlayed: number;
+}
+
+export function playerTotals(
+  holes: RoundHole[],
+  entries: HoleEntry[],
+  playingHandicap: number | null,
+): PlayerTotals {
+  const received = handicapStrokes(holes, playingHandicap);
+  let gross = 0;
+  let points = 0;
+  let parPlayed = 0;
+  let played = 0;
+  holes.forEach((h, i) => {
+    const g = grossForHole(entries[i], h.par, received[i]);
+    if (g == null) return;
+    played += 1;
+    gross += g;
+    parPlayed += h.par;
+    points += stablefordPoints(entries[i], h.par, received[i]) ?? 0;
+  });
+  return {
+    gross,
+    stableford: playingHandicap == null ? null : points,
+    toPar: gross - parPlayed,
+    holesPlayed: played,
+  };
+}
+
+export interface RoundStats {
+  putts: number;
+  fairwaysHit: number;
+  fairwaysPossible: number; // par 4 and 5 with a fairway entry
+  gir: number;
+  girPossible: number;
+  penalties: number;
+  sandSaves: number;
+  bunkerHoles: number;
+}
+
+export function roundStats(holes: RoundHole[], entries: HoleEntry[]): RoundStats {
+  const s: RoundStats = {
+    putts: 0, fairwaysHit: 0, fairwaysPossible: 0, gir: 0, girPossible: 0,
+    penalties: 0, sandSaves: 0, bunkerHoles: 0,
+  };
+  holes.forEach((h, i) => {
+    const e = entries[i];
+    if (e.putts != null) s.putts += e.putts;
+    if (h.par >= 4 && e.fairway != null) {
+      s.fairwaysPossible += 1;
+      if (e.fairway === 'hit') s.fairwaysHit += 1;
+    }
+    const gir = greenInRegulation(e, h.par);
+    if (gir != null) {
+      s.girPossible += 1;
+      if (gir) s.gir += 1;
+    }
+    s.penalties += e.penalties;
+    if (e.greensideBunker) {
+      s.bunkerHoles += 1;
+      if (e.upAndDown) s.sandSaves += 1;
+    }
+  });
+  return s;
+}
+
+export function emptyEntry(): HoleEntry {
+  return {
+    strokes: null, pickedUp: false, putts: null, fairway: null,
+    penalties: 0, greensideBunker: false, upAndDown: null,
+  };
+}
