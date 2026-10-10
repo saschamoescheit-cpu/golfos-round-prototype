@@ -58,7 +58,8 @@ export function saveHoleCorrection(courseId: string, loop: string, number: numbe
 
 const GEO = 'golfos.geo.v1.';
 
-const LINES = 'golfos.holelines.v1.';
+// v2 (2026-10-10): Son Quint now ships with all 18 holes; hand-made v1 lines from the course test are dropped.
+const LINES = 'golfos.holelines.v2.';
 
 /** Hole lines the player set up on the course (tee → green), keyed "loop#number". */
 export function loadHoleLines(courseId: string): Record<string, LngLat[]> {

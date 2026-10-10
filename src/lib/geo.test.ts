@@ -92,3 +92,17 @@ describe('hole detection after taking the phone out of the pocket', () => {
     expect(detectHole([9.0, 48.0], holes, 0)).toBeNull();
   });
 });
+
+describe('Son Quint geometry (course guide 2026 + PNOA)', () => {
+  const geo = SEED_GEOMETRY['osm:relation/1654444'];
+  // Official lengths from the yellow tees (course guide 2026).
+  const yellow = [307, 316, 151, 333, 318, 290, 410, 330, 131, 290, 303, 166, 423, 113, 324, 339, 435, 346];
+  it('all 18 holes have a line, a green outline and the official length', () => {
+    yellow.forEach((len, k) => {
+      const d = holeMapData(geo, 'Main', k + 1);
+      expect(d, `hole ${k + 1}`).not.toBeNull();
+      expect(d!.green, `green ${k + 1}`).not.toBeNull();
+      expect(Math.abs(lineLength(d!.line) - len), `length ${k + 1}`).toBeLessThan(len * 0.05);
+    });
+  });
+});
