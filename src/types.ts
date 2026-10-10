@@ -2,6 +2,20 @@
 
 export type CourseSource = 'osm' | 'opengolfapi';
 
+/** [longitude, latitude] – GeoJSON order. */
+export type LngLat = [number, number];
+export type Ring = LngLat[];
+
+/** Course map data from OpenStreetMap. Hole lines run from the tee to the pin (doglegs included). */
+export interface CourseGeometry {
+  holes: { ref: string; par?: string | null; handicap?: string | null; line: LngLat[] }[];
+  green: Ring[];
+  tee: Ring[];
+  bunker: Ring[];
+  fairway: Ring[];
+  water: Ring[];
+}
+
 /** One hole as delivered by the course database (before a round is set up). */
 export interface CourseHole {
   /** Original label from the data source, e.g. "4A" or "12". */

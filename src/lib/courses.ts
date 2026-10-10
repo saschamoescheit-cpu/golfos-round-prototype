@@ -1,6 +1,6 @@
-import type { Course, CourseHole, CourseSummary } from '../types';
+import type { Course, CourseGeometry, CourseHole, CourseSummary, LngLat } from '../types';
 import { parseHoleRef, parseStrokeIndex } from './loops';
-import { loadCachedCourse, saveCachedCourse } from './storage';
+import { loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
 import { SEED_COURSES } from '../data/seedCourses';
 
 // Course data sources (all ODbL – attribution in the app footer):
@@ -110,7 +110,7 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
   const holes = seed
     ? holesFromTags(seed.holeTags)
     : summary.source === 'osm'
-      ? await osmHoles(summary)
+      ? await osmHoles(summary, (geo) => saveGeometry(summary.id, geo))
       : await ogaHoles(summary.id);
   const loops = [...new Set(holes.map((h) => h.loop))];
   const course: Course = { id: summary.id, source: summary.source, name: summary.name, lat: summary.lat, lon: summary.lon, holes, loops };
@@ -118,39 +118,113 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
   return course;
 }
 
-async function osmHoles(summary: CourseSummary): Promise<CourseHole[]> {
+async function osmHoles(summary: CourseSummary, onGeometry: (g: CourseGeometry) => void): Promise<CourseHole[]> {
   if (summary.bbox) {
     try {
-      return await osmApiHoles(summary.bbox);
+      const pad = 0.002; // ~150 m, so holes at the edge of the course area are included
+      const b = summary.bbox;
+      const box = [b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad].map((n) => n.toFixed(5)).join(',');
+      const res = await fetch(`${OSM_API}?bbox=${box}`, { signal: AbortSignal.timeout(45000) });
+      if (!res.ok) throw new Error(`OSM API ${res.status}`);
+      const osm = parseOsmXml(await res.text());
+      onGeometry(geometryFromOsm(osm));
+      return holesFromTags(osm.ways.filter((w) => w.tags.golf === 'hole').map((w) => w.tags));
     } catch {
-      // fall through to Overpass
+      // fall through to Overpass (holes only, no map)
     }
   }
   return overpassHoles(summary.id);
 }
 
-/** All golf=hole ways in the course area, via the main OSM API (returns OSM XML). */
-async function osmApiHoles(bbox: [number, number, number, number]): Promise<CourseHole[]> {
-  const pad = 0.002; // ~150 m, so holes at the edge of the course area are included
-  const b = [bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad].map((n) => n.toFixed(5)).join(',');
-  const res = await fetch(`${OSM_API}?bbox=${b}`, { signal: AbortSignal.timeout(45000) });
-  if (!res.ok) throw new Error(`OSM API ${res.status}`);
-  return holesFromTags(parseOsmXmlWays(await res.text()).filter((t) => t.golf === 'hole'));
+interface OsmWay {
+  id: string;
+  tags: Record<string, string>;
+  nodes: string[];
+}
+interface OsmRelation {
+  tags: Record<string, string>;
+  members: { type: string; ref: string; role: string }[];
 }
 
-/** Minimal OSM-XML reader: returns the tag map of every <way>. Works in browser and tests (no DOMParser needed). */
-export function parseOsmXmlWays(xml: string): Record<string, string>[] {
-  const ways: Record<string, string>[] = [];
-  const wayRe = /<way\b[^>]*>([\s\S]*?)<\/way>/g;
-  const tagRe = /<tag k="([^"]*)" v="([^"]*)"\s*\/>/g;
-  let w: RegExpExecArray | null;
-  while ((w = wayRe.exec(xml))) {
+/** Minimal OSM-XML reader (nodes, ways, relations). Works in browser and tests – no DOMParser needed. */
+export function parseOsmXml(xml: string): { nodes: Map<string, LngLat>; ways: OsmWay[]; relations: OsmRelation[] } {
+  const attr = (s: string, name: string) => s.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] ?? '';
+  const tagsOf = (body: string) => {
     const tags: Record<string, string> = {};
-    let t: RegExpExecArray | null;
-    while ((t = tagRe.exec(w[1]))) tags[decodeXml(t[1])] = decodeXml(t[2]);
-    ways.push(tags);
+    for (const t of body.matchAll(/<tag k="([^"]*)" v="([^"]*)"\s*\/>/g)) tags[decodeXml(t[1])] = decodeXml(t[2]);
+    return tags;
+  };
+  const nodes = new Map<string, LngLat>();
+  for (const n of xml.matchAll(/<node\b([^>]*?)\/?>/g)) {
+    nodes.set(attr(n[1], 'id'), [Number(attr(n[1], 'lon')), Number(attr(n[1], 'lat'))]);
   }
-  return ways;
+  const ways: OsmWay[] = [];
+  for (const w of xml.matchAll(/<way\b([^>]*)>([\s\S]*?)<\/way>/g)) {
+    ways.push({ id: attr(w[1], 'id'), tags: tagsOf(w[2]), nodes: [...w[2].matchAll(/<nd ref="([^"]+)"/g)].map((m) => m[1]) });
+  }
+  const relations: OsmRelation[] = [];
+  for (const r of xml.matchAll(/<relation\b([^>]*)>([\s\S]*?)<\/relation>/g)) {
+    relations.push({
+      tags: tagsOf(r[2]),
+      members: [...r[2].matchAll(/<member\b([^>]*)\/>/g)].map((m) => ({ type: attr(m[1], 'type'), ref: attr(m[1], 'ref'), role: attr(m[1], 'role') })),
+    });
+  }
+  return { nodes, ways, relations };
+}
+
+type Kind = 'green' | 'tee' | 'bunker' | 'fairway' | 'water';
+function featureKind(tags: Record<string, string>): Kind | null {
+  const g = tags.golf;
+  if (g === 'green' || g === 'tee' || g === 'bunker' || g === 'fairway') return g;
+  if (g === 'water_hazard' || g === 'lateral_water_hazard' || tags.natural === 'water') return 'water';
+  return null;
+}
+
+/** Same extraction as the script that built the bundled Hetzenhof snapshot. */
+export function geometryFromOsm(osm: ReturnType<typeof parseOsmXml>): CourseGeometry {
+  const geo: CourseGeometry = { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] };
+  const coords = (ids: string[]) => ids.map((id) => osm.nodes.get(id)).filter((p): p is LngLat => p != null);
+  const byId = new Map(osm.ways.map((w) => [w.id, w]));
+  for (const w of osm.ways) {
+    const line = coords(w.nodes);
+    if (w.tags.golf === 'hole' && line.length >= 2) {
+      geo.holes.push({ ref: w.tags.ref ?? w.tags.name ?? '', par: w.tags.par ?? null, handicap: w.tags.handicap ?? null, line });
+      continue;
+    }
+    const k = featureKind(w.tags);
+    if (k && line.length >= 4 && w.nodes[0] === w.nodes[w.nodes.length - 1]) geo[k].push(line);
+  }
+  for (const r of osm.relations) {
+    if (r.tags.type !== 'multipolygon') continue;
+    const k = featureKind(r.tags);
+    if (!k) continue;
+    const outer = r.members.filter((m) => m.type === 'way' && (m.role === 'outer' || m.role === '')).map((m) => byId.get(m.ref)?.nodes ?? []);
+    for (const ring of joinRings(outer)) geo[k].push(coords(ring));
+  }
+  return geo;
+}
+
+function joinRings(segments: string[][]): string[][] {
+  const segs = segments.filter((s) => s.length >= 2).map((s) => s.slice());
+  const rings: string[][] = [];
+  while (segs.length) {
+    const ring = segs.shift()!;
+    let changed = true;
+    while (ring[0] !== ring[ring.length - 1] && changed) {
+      changed = false;
+      for (let i = 0; i < segs.length; i++) {
+        const s = segs[i];
+        if (s[0] === ring[ring.length - 1]) ring.push(...s.slice(1));
+        else if (s[s.length - 1] === ring[ring.length - 1]) ring.push(...s.slice().reverse().slice(1));
+        else continue;
+        segs.splice(i, 1);
+        changed = true;
+        break;
+      }
+    }
+    if (ring[0] === ring[ring.length - 1] && ring.length >= 4) rings.push(ring);
+  }
+  return rings;
 }
 
 function decodeXml(s: string): string {

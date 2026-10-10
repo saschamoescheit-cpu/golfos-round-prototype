@@ -1,8 +1,13 @@
-import { useRef } from 'react';
-import type { FairwayResult, HoleEntry, Round } from '../types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { FairwayResult, HoleEntry, LngLat, Round } from '../types';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
-import { saveHoleCorrection } from '../lib/storage';
+import { loadGeometry, loadUnit, saveHoleCorrection, saveUnit } from '../lib/storage';
+import { distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
+import { HoleMap } from '../components/HoleMap';
+
+/** Beyond this distance from the hole the app measures from the tee (planning at home or on another hole). */
+const ON_HOLE_M = 1500;
 
 export function HoleScreen(props: {
   round: Round;
@@ -62,6 +67,150 @@ export function HoleScreen(props: {
   const gir = greenInRegulation({ ...myEntry, strokes: myEntry.strokes ?? hole.par }, hole.par);
   const needsData = !hole.par || !hole.strokeIndex;
 
+  // ---------- Map view ----------
+  const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId]);
+  const mapData = useMemo(() => (geometry ? holeMapData(geometry, hole.loop, hole.number) : null), [geometry, hole.loop, hole.number]);
+  const [view, setView] = useState<'map' | 'score'>(mapData ? 'map' : 'score');
+  const [unit, setUnit] = useState<Unit>(loadUnit);
+  const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [plans, setPlans] = useState<Record<number, { targets: LngLat[]; pin: LngLat | null }>>({});
+  const [shotStart, setShotStart] = useState<LngLat | null>(null);
+
+  useEffect(() => {
+    if (view !== 'map' || !('geolocation' in navigator)) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        setGpsError(null);
+        setPlayer({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy });
+      },
+      () => setGpsError('No GPS – distances are measured from the tee.'),
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [view]);
+
+  if (view === 'map' && mapData) {
+    const plan = plans[i] ?? { targets: [], pin: null };
+    const pin = plan.pin ?? mapData.greenCenter;
+    const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
+    const from = onHole ? player!.pos : mapData.tee;
+    const green = mapData.green ? greenFrontBack(from, mapData.green) : null;
+    const setPlan = (patch: Partial<{ targets: LngLat[]; pin: LngLat | null }>) => setPlans({ ...plans, [i]: { ...plan, ...patch } });
+    const fmt = (m: number) => formatDistance(m, unit);
+
+    const tapMap = (p: LngLat) => {
+      if (distanceM(p, pin) < 12 || plan.targets.some((t) => distanceM(p, t) < 12)) return; // tap on a marker
+      if (plan.targets.length < 2) {
+        // Keep targets in playing order: the one nearer to the player comes first.
+        const next = [...plan.targets, p].sort((a, b) => distanceM(from, a) - distanceM(from, b));
+        setPlan({ targets: next });
+      } else {
+        const d = plan.targets.map((t) => distanceM(t, p));
+        const next = plan.targets.slice();
+        next[d[0] <= d[1] ? 0 : 1] = p;
+        setPlan({ targets: next });
+      }
+    };
+    const addTarget = () => {
+      if (plan.targets.length >= 2) return;
+      const a = plan.targets[plan.targets.length - 1] ?? from;
+      tapMap([(a[0] + pin[0]) / 2, (a[1] + pin[1]) / 2]);
+    };
+    const toggleUnit = () => {
+      const u = unit === 'm' ? 'yd' : 'm';
+      setUnit(u);
+      saveUnit(u);
+    };
+    const strokesShown = myEntry.pickedUp ? 'PU' : String(myEntry.strokes ?? hole.par);
+
+    return (
+      <main className="map-screen">
+        <HoleMap
+          holeKey={`${round.id}-${i}`}
+          data={mapData}
+          player={player?.pos ?? null}
+          from={from}
+          pin={pin}
+          targets={plan.targets}
+          unit={unit}
+          onTargetsChange={(targets) => setPlan({ targets })}
+          onPinChange={(p) => setPlan({ pin: p })}
+          onMapTap={tapMap}
+        />
+
+        <div className="map-top">
+          <button type="button" className="map-btn round" aria-label="Pause round" onClick={props.onExit}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <div className="map-hole">
+            <span className="map-hole-no">{hole.label}</span>
+            <span>Par {hole.par || '?'} · Hcp {hole.strokeIndex || '?'}</span>
+          </div>
+          <button type="button" className="map-btn" onClick={toggleUnit} aria-label={`Unit: ${unit === 'm' ? 'metres' : 'yards'}, tap to switch`}>
+            {unit === 'm' ? 'm' : 'yd'}
+          </button>
+          <button type="button" className="map-btn round" aria-label="Scorecard" onClick={() => props.onShowScorecard(commitPar(round))}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+          </button>
+        </div>
+
+        {green && (
+          <div className="map-green" aria-label="Distance to the green">
+            <span className="small">Back</span>
+            <span className="map-green-num">{fmt(green.back)}</span>
+            <span className="small">Center</span>
+            <span className="map-green-num big">{fmt(green.center)}</span>
+            <span className="small">Front</span>
+            <span className="map-green-num">{fmt(green.front)}</span>
+            <span className="map-from">{onHole ? `GPS ±${Math.round(player!.accuracy)} m` : 'from tee'}</span>
+          </div>
+        )}
+
+        <div className="map-bottom">
+          {(gpsError || (player && !onHole)) && (
+            <div className="map-hint">{gpsError ?? 'You are not on this hole – distances from the tee.'}</div>
+          )}
+          {shotStart && player && (
+            <div className="map-shot">
+              Shot <strong>{fmt(distanceM(shotStart, player.pos))} {unit}</strong>
+            </div>
+          )}
+          <div className="map-actions">
+            <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= 2}>
+              + Target
+            </button>
+            <button type="button" className="map-btn" onClick={() => setPlan({ targets: [], pin: null })} disabled={plan.targets.length === 0 && !plan.pin}>
+              Clear
+            </button>
+            <button
+              type="button"
+              className="map-btn"
+              disabled={!player}
+              onClick={() => setShotStart(shotStart ? null : player!.pos)}
+              aria-pressed={shotStart != null}
+            >
+              {shotStart ? 'End shot' : 'Mark ball'}
+            </button>
+          </div>
+          <div className="map-nav">
+            <button type="button" className="map-btn round" aria-label="Previous hole" onClick={() => goTo(i - 1)} disabled={i === 0}>
+              ←
+            </button>
+            <button type="button" className="map-score" onClick={() => setView('score')}>
+              <span className="small">Score</span>
+              <strong>{strokesShown}</strong>
+              {myEntry.putts != null && <span className="small">{myEntry.putts} putts</span>}
+            </button>
+            <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? 'Finish round' : 'Next hole'} onClick={() => goTo(i + 1)}>
+              →
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main
       className="screen"
@@ -78,12 +227,22 @@ export function HoleScreen(props: {
         onBack={props.onExit}
         backLabel="Pause round"
         right={
-          <button type="button" className="icon-btn" aria-label="Scorecard" onClick={() => props.onShowScorecard(commitPar(round))}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <rect x="4" y="3" width="16" height="18" rx="2" />
-              <path d="M8 8h8M8 12h8M8 16h5" />
-            </svg>
-          </button>
+          <>
+            {mapData && (
+              <button type="button" className="icon-btn" aria-label="Hole map" onClick={() => setView('map')}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" />
+                  <path d="M9 4v14M15 6v14" />
+                </svg>
+              </button>
+            )}
+            <button type="button" className="icon-btn" aria-label="Scorecard" onClick={() => props.onShowScorecard(commitPar(round))}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <rect x="4" y="3" width="16" height="18" rx="2" />
+                <path d="M8 8h8M8 12h8M8 16h5" />
+              </svg>
+            </button>
+          </>
         }
       />
       <div className="progress" aria-hidden="true">

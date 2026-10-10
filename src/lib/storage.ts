@@ -1,4 +1,5 @@
-import type { Course, Round } from '../types';
+import type { Course, CourseGeometry, Round } from '../types';
+import { SEED_GEOMETRY } from '../data/seedGeometry';
 
 // Everything is stored on the device (localStorage). No account, no cloud – prototype only.
 
@@ -52,6 +53,25 @@ export function saveHoleCorrection(courseId: string, loop: string, number: numbe
   if (par > 0) hole.par = par;
   if (strokeIndex > 0 && !hole.strokeIndex.includes(strokeIndex)) hole.strokeIndex = [strokeIndex];
   saveCachedCourse(course);
+}
+
+const GEO = 'golfos.geo.v1.';
+
+/** Course map geometry: bundled snapshot first (test course), else the copy saved when the course was loaded. */
+export function loadGeometry(courseId: string): CourseGeometry | null {
+  return SEED_GEOMETRY[courseId] ?? read<CourseGeometry | null>(GEO + courseId, null);
+}
+
+export function saveGeometry(courseId: string, geometry: CourseGeometry): void {
+  write(GEO + courseId, geometry);
+}
+
+const UNIT = 'golfos.unit.v1';
+export function loadUnit(): 'm' | 'yd' {
+  return read<'m' | 'yd'>(UNIT, 'm');
+}
+export function saveUnit(unit: 'm' | 'yd'): void {
+  write(UNIT, unit);
 }
 
 export function newId(): string {

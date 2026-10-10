@@ -26,6 +26,19 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // map library is > 2 MB
+        runtimeCaching: [
+          {
+            // Satellite tiles: keep what the player has seen, so the map works with poor reception on the course.
+            urlPattern: /^https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'imagery',
+              expiration: { maxEntries: 3000, maxAgeSeconds: 60 * 60 * 24 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],
