@@ -33,6 +33,9 @@ export interface CourseSummary {
   lat: number;
   lon: number;
   distanceKm?: number;
+  /** Area of the course [minLon, minLat, maxLon, maxLat]; used to load the holes from the OSM API. */
+  bbox?: [number, number, number, number];
+  place?: string;
 }
 
 /** A hole as played in a concrete round (loop order resolved). */

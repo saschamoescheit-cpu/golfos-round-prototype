@@ -1,44 +1,21 @@
 import type { Course, CourseHole, CourseSummary } from '../types';
 import { parseHoleRef, parseStrokeIndex } from './loops';
 import { loadCachedCourse, saveCachedCourse } from './storage';
+import { SEED_COURSES } from '../data/seedCourses';
 
-// Course data: OpenStreetMap via Overpass (worldwide, incl. Germany) and OpenGolfAPI (USA).
-// Both are ODbL – attribution is shown in the app footer.
+// Course data sources (all ODbL – attribution in the app footer):
+//  - Photon (komoot): course search by name and courses nearby, filtered to leisure=golf_course.
+//  - OpenStreetMap API (/map?bbox): holes with par and stroke index inside the course area. Reliable, CORS-enabled.
+//  - Overpass: fallback for the holes when no course area is known or the OSM API fails.
+//  - OpenGolfAPI: US courses (par per hole, no stroke index).
 
+const PHOTON = 'https://photon.komoot.io/api/';
+const OSM_API = 'https://api.openstreetmap.org/api/0.6/map';
 const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
 ];
 const OGA = 'https://api.opengolfapi.org/v1';
-
-interface OverpassElement {
-  type: 'node' | 'way' | 'relation';
-  id: number;
-  tags?: Record<string, string>;
-  center?: { lat: number; lon: number };
-  lat?: number;
-  lon?: number;
-}
-
-async function overpass(query: string): Promise<OverpassElement[]> {
-  let lastError: unknown;
-  for (const url of OVERPASS) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        body: new URLSearchParams({ data: query }),
-        signal: AbortSignal.timeout(25000),
-      });
-      if (!res.ok) throw new Error(`Overpass ${res.status}`);
-      const json = await res.json();
-      return json.elements as OverpassElement[];
-    } catch (e) {
-      lastError = e; // try the next mirror
-    }
-  }
-  throw lastError ?? new Error('Overpass unavailable');
-}
 
 export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const r = 6371;
@@ -48,100 +25,171 @@ export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: numbe
   return 2 * r * Math.asin(Math.sqrt(a));
 }
 
-export async function nearbyCourses(lat: number, lon: number, radiusKm = 30): Promise<CourseSummary[]> {
-  const q = `[out:json][timeout:25];
-(way["leisure"="golf_course"](around:${radiusKm * 1000},${lat},${lon});
- relation["leisure"="golf_course"](around:${radiusKm * 1000},${lat},${lon}););
-out tags center;`;
-  const elements = await overpass(q);
-  return elements
-    .filter((e) => e.tags?.name && e.center)
-    .map((e) => ({
-      id: `osm:${e.type}/${e.id}`,
-      source: 'osm' as const,
-      name: e.tags!.name,
-      lat: e.center!.lat,
-      lon: e.center!.lon,
-      distanceKm: distanceKm(lat, lon, e.center!.lat, e.center!.lon),
-    }))
-    .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+// ---------- Search & nearby (Photon) ----------
+
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] };
+  properties: {
+    osm_type: 'N' | 'W' | 'R';
+    osm_id: number;
+    name?: string;
+    city?: string;
+    extent?: [number, number, number, number]; // [minLon, maxLat, maxLon, minLat]
+  };
 }
 
-/** Name search: OSM via Nominatim (worldwide) plus OpenGolfAPI (USA). */
-export async function searchCourses(text: string): Promise<CourseSummary[]> {
+async function photon(params: Record<string, string>): Promise<CourseSummary[]> {
+  const url = `${PHOTON}?${new URLSearchParams({ ...params, osm_tag: 'leisure:golf_course', limit: '20' })}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`Photon ${res.status}`);
+  const json = (await res.json()) as { features: PhotonFeature[] };
+  const seen = new Set<string>();
+  return json.features
+    .filter((f) => f.properties.name && f.properties.osm_type !== 'N')
+    .map((f) => {
+      const p = f.properties;
+      const [lon, lat] = f.geometry.coordinates;
+      const e = p.extent;
+      return {
+        id: `osm:${p.osm_type === 'R' ? 'relation' : 'way'}/${p.osm_id}`,
+        source: 'osm' as const,
+        name: p.name!,
+        place: p.city,
+        lat,
+        lon,
+        bbox: e ? ([e[0], e[3], e[2], e[1]] as [number, number, number, number]) : undefined,
+      };
+    })
+    .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+}
+
+export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Promise<CourseSummary[]> {
+  const list = await photon({ q: 'golf', lat: String(lat), lon: String(lon), location_bias_scale: '0.1' });
+  return list
+    .map((c) => ({ ...c, distanceKm: distanceKm(lat, lon, c.lat, c.lon) }))
+    .filter((c) => c.distanceKm <= radiusKm)
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+}
+
+/** Name search: OSM via Photon (worldwide) plus OpenGolfAPI (USA). */
+export async function searchCourses(text: string, near?: { lat: number; lon: number }): Promise<CourseSummary[]> {
   const q = text.trim();
   if (q.length < 3) return [];
-  const [osm, oga] = await Promise.allSettled([searchOsm(q), searchOga(q)]);
+  const bias = near ? { lat: String(near.lat), lon: String(near.lon) } : {};
+  const [osm, oga] = await Promise.allSettled([photon({ q, ...bias }), searchOga(q)]);
   return [
     ...(osm.status === 'fulfilled' ? osm.value : []),
     ...(oga.status === 'fulfilled' ? oga.value : []),
   ];
 }
 
-async function searchOsm(q: string): Promise<CourseSummary[]> {
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=15&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) return [];
-  const list = (await res.json()) as {
-    osm_type: string; osm_id: number; name: string; display_name: string; category: string; type: string; lat: string; lon: string;
-  }[];
-  return list
-    .filter((r) => r.type === 'golf_course' && (r.osm_type === 'way' || r.osm_type === 'relation'))
-    .map((r) => ({
-      id: `osm:${r.osm_type}/${r.osm_id}`,
-      source: 'osm' as const,
-      name: r.name || r.display_name.split(',')[0],
-      lat: Number(r.lat),
-      lon: Number(r.lon),
-    }));
-}
-
 async function searchOga(q: string): Promise<CourseSummary[]> {
   const res = await fetch(`${OGA}/courses/search?q=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) return [];
-  const json = (await res.json()) as { courses: { id: string; name: string; latitude: number; longitude: number; state?: string }[] };
+  const json = (await res.json()) as { courses: { id: string; name: string; latitude: number; longitude: number; state?: string; city?: string }[] };
   return json.courses.map((c) => ({
     id: `oga:${c.id}`,
     source: 'opengolfapi' as const,
-    name: c.state ? `${c.name} (${c.state}, USA)` : c.name,
+    name: c.name,
+    place: [c.city, c.state, 'USA'].filter(Boolean).join(', '),
     lat: c.latitude,
     lon: c.longitude,
   }));
 }
 
-/** Loads a course with its holes; uses the on-device copy first so it works offline on the course. */
+// ---------- Holes ----------
+
+/**
+ * Loads a course with its holes. Order: on-device copy (offline on the course) → bundled snapshot
+ * (test course) → live course databases.
+ */
 export async function loadCourse(summary: CourseSummary, forceRefresh = false): Promise<Course> {
   const cached = loadCachedCourse(summary.id);
-  if (cached && !forceRefresh) return cached;
-  const holes = summary.source === 'osm' ? await osmHoles(summary.id) : await ogaHoles(summary.id);
-  const loops = [...new Set(holes.map((h) => h.loop))].sort(loopSort);
+  if (cached && cached.holes.length > 0 && !forceRefresh) return cached;
+  const seed = SEED_COURSES[summary.id];
+  const holes = seed
+    ? holesFromTags(seed.holeTags)
+    : summary.source === 'osm'
+      ? await osmHoles(summary)
+      : await ogaHoles(summary.id);
+  const loops = [...new Set(holes.map((h) => h.loop))];
   const course: Course = { id: summary.id, source: summary.source, name: summary.name, lat: summary.lat, lon: summary.lon, holes, loops };
-  saveCachedCourse(course);
+  if (holes.length > 0) saveCachedCourse(course);
   return course;
 }
 
-function loopSort(a: string, b: string): number {
-  // Main first, then single letters A, B, C …, then named loops (e.g. short course).
-  const rank = (l: string) => (l === 'Main' ? 0 : l.length === 1 ? 1 : 2);
-  return rank(a) - rank(b) || a.localeCompare(b);
+async function osmHoles(summary: CourseSummary): Promise<CourseHole[]> {
+  if (summary.bbox) {
+    try {
+      return await osmApiHoles(summary.bbox);
+    } catch {
+      // fall through to Overpass
+    }
+  }
+  return overpassHoles(summary.id);
 }
 
-async function osmHoles(id: string): Promise<CourseHole[]> {
+/** All golf=hole ways in the course area, via the main OSM API (returns OSM XML). */
+async function osmApiHoles(bbox: [number, number, number, number]): Promise<CourseHole[]> {
+  const pad = 0.002; // ~150 m, so holes at the edge of the course area are included
+  const b = [bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad].map((n) => n.toFixed(5)).join(',');
+  const res = await fetch(`${OSM_API}?bbox=${b}`, { signal: AbortSignal.timeout(45000) });
+  if (!res.ok) throw new Error(`OSM API ${res.status}`);
+  return holesFromTags(parseOsmXmlWays(await res.text()).filter((t) => t.golf === 'hole'));
+}
+
+/** Minimal OSM-XML reader: returns the tag map of every <way>. Works in browser and tests (no DOMParser needed). */
+export function parseOsmXmlWays(xml: string): Record<string, string>[] {
+  const ways: Record<string, string>[] = [];
+  const wayRe = /<way\b[^>]*>([\s\S]*?)<\/way>/g;
+  const tagRe = /<tag k="([^"]*)" v="([^"]*)"\s*\/>/g;
+  let w: RegExpExecArray | null;
+  while ((w = wayRe.exec(xml))) {
+    const tags: Record<string, string> = {};
+    let t: RegExpExecArray | null;
+    while ((t = tagRe.exec(w[1]))) tags[decodeXml(t[1])] = decodeXml(t[2]);
+    ways.push(tags);
+  }
+  return ways;
+}
+
+function decodeXml(s: string): string {
+  return s
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+async function overpassHoles(id: string): Promise<CourseHole[]> {
   const [, type, num] = id.match(/^osm:(way|relation)\/(\d+)$/) ?? [];
   if (!type) throw new Error(`Invalid course id ${id}`);
-  const q = `[out:json][timeout:25];
-${type}(${num});
-map_to_area->.a;
-way["golf"="hole"](area.a);
-out tags;`;
-  const elements = await overpass(q);
+  const query = `[out:json][timeout:25];${type}(${num});map_to_area->.a;way["golf"="hole"](area.a);out tags;`;
+  let lastError: unknown;
+  for (const url of OVERPASS) {
+    try {
+      const res = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(25000) });
+      if (!res.ok) throw new Error(`Overpass ${res.status}`);
+      const json = (await res.json()) as { elements: { tags?: Record<string, string> }[] };
+      return holesFromTags(json.elements.map((e) => e.tags ?? {}));
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError ?? new Error('Overpass unavailable');
+}
+
+function holesFromTags(list: Record<string, string>[]): CourseHole[] {
   const holes: CourseHole[] = [];
-  for (const e of elements) {
-    const t = e.tags ?? {};
-    const parsed = parseHoleRef(t.ref ?? t.name ?? '');
+  for (const t of list) {
+    const label = t.ref ?? t.name ?? '';
+    const parsed = parseHoleRef(label);
     if (!parsed) continue;
     holes.push({
-      ref: t.ref ?? t.name ?? '',
+      ref: label,
       loop: parsed.loop,
       number: parsed.number,
       par: t.par && /^\d$/.test(t.par) ? Number(t.par) : null,
@@ -167,10 +215,10 @@ async function ogaHoles(id: string): Promise<CourseHole[]> {
 /** OSM sometimes has duplicate hole ways; keep the one with the most data. */
 function dedupe(holes: CourseHole[]): CourseHole[] {
   const map = new Map<string, CourseHole>();
+  const score = (x: CourseHole) => (x.par != null ? 1 : 0) + x.strokeIndex.length;
   for (const h of holes) {
     const key = `${h.loop}#${h.number}`;
     const prev = map.get(key);
-    const score = (x: CourseHole) => (x.par != null ? 1 : 0) + x.strokeIndex.length;
     if (!prev || score(h) > score(prev)) map.set(key, h);
   }
   return [...map.values()];

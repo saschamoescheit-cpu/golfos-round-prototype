@@ -17,6 +17,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const searchTimer = useRef<number>();
+  const position = useRef<{ lat: number; lon: number }>();
 
   useEffect(() => {
     if (!('geolocation' in navigator)) {
@@ -25,6 +26,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
     }
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        position.current = { lat: pos.coords.latitude, lon: pos.coords.longitude };
         try {
           const courses = await nearbyCourses(pos.coords.latitude, pos.coords.longitude);
           setNearby({ status: 'loaded', courses: courses.slice(0, 12) });
@@ -46,7 +48,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
     searchTimer.current = window.setTimeout(async () => {
       setSearching(true);
       try {
-        setResults(await searchCourses(query));
+        setResults(await searchCourses(query, position.current));
       } finally {
         setSearching(false);
       }
@@ -64,7 +66,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
         props.onPicked(course);
       }
     } catch {
-      setLoadError('Could not load the course. Check your connection and try again.');
+      setLoadError('The course servers are busy right now. Please try again in a minute.');
     } finally {
       setLoadingId(null);
     }
@@ -78,8 +80,8 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
             <span className="grow">
               <span className="title">{c.name}</span>
               <span className="muted small">
-                {c.distanceKm != null ? `${c.distanceKm.toFixed(1)} km · ` : ''}
-                {c.source === 'osm' ? 'OpenStreetMap' : 'OpenGolfAPI'}
+                {[c.distanceKm != null ? `${c.distanceKm.toFixed(1)} km` : null, c.place].filter(Boolean).join(' · ') ||
+                  (c.source === 'osm' ? 'OpenStreetMap' : 'OpenGolfAPI')}
               </span>
             </span>
             {loadingId === c.id ? <span className="spinner" aria-label="Loading" /> : <span aria-hidden="true">›</span>}
@@ -124,7 +126,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
           )}
           {nearby.status === 'denied' && <p className="muted">Location is off. Search for your course by name.</p>}
           {nearby.status === 'error' && <div className="error">{nearby.message}</div>}
-          {nearby.status === 'loaded' && nearby.courses.length === 0 && <p className="muted">No course within 30 km.</p>}
+          {nearby.status === 'loaded' && nearby.courses.length === 0 && <p className="muted">No course within 40 km. Search by name instead.</p>}
           {nearby.status === 'loaded' && renderList(nearby.courses)}
         </section>
       )}
