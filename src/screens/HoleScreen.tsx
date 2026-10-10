@@ -56,6 +56,7 @@ export function HoleScreen(props: {
     }
     if (target < 0) return;
     props.onChange({ ...committed, currentHole: target });
+    setView('map'); // every new hole starts on the map
   };
 
   const fixHole = (patch: { par?: number; strokeIndex?: number }) => {
@@ -75,7 +76,8 @@ export function HoleScreen(props: {
   const [geoVersion, setGeoVersion] = useState(0); // bumps after the player set up a hole
   const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId, geoVersion]);
   const mapData = useMemo(() => holeMapData(geometry, hole.loop, hole.number), [geometry, hole.loop, hole.number]);
-  const [view, setView] = useState<'map' | 'score'>(mapData ? 'map' : 'score');
+  // The map is the main view. A hole without a hole line opens the set-up on the map (Sascha 10.10.2026).
+  const [view, setView] = useState<'map' | 'score'>('map');
   const [setupOpen, setSetupOpen] = useState(false);
   const [editHole, setEditHole] = useState(false);
   const [unit, setUnit] = useState<Unit>(loadUnit);
@@ -84,7 +86,7 @@ export function HoleScreen(props: {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [plans, setPlans] = useState<Record<number, { targets: LngLat[]; pin: LngLat | null }>>({});
   const [shotStart, setShotStart] = useState<LngLat | null>(null);
-  const wantsGps = (view === 'map' && mapData != null) || setupOpen;
+  const wantsGps = view === 'map' || setupOpen;
 
   useEffect(() => {
     if (!wantsGps || !('geolocation' in navigator)) return;
@@ -110,10 +112,11 @@ export function HoleScreen(props: {
     saveImagery(next.id);
   };
 
-  if (setupOpen) {
+  if (setupOpen || (view === 'map' && !mapData)) {
     const nearCourse = player != null && distanceM(player.pos, courseCenter) < 5000;
     return (
       <HoleSetup
+        key={i}
         holeLabel={hole.label}
         par={hole.par}
         geometry={geometry}
@@ -121,7 +124,12 @@ export function HoleScreen(props: {
         nearPlayer={nearCourse}
         player={player?.pos ?? null}
         imagery={imagery}
-        onCancel={() => setSetupOpen(false)}
+        courseCenter={courseCenter}
+        onCancel={() => {
+          setSetupOpen(false);
+          if (!mapData) setView('score');
+        }}
+        onScoreOnly={mapData ? undefined : () => setView('score')}
         onSave={(line) => {
           saveHoleLine(round.courseId, hole.loop, hole.number, line);
           setGeoVersion((v) => v + 1);
@@ -291,14 +299,12 @@ export function HoleScreen(props: {
         backLabel="Pause round"
         right={
           <>
-            {mapData && (
-              <button type="button" className="icon-btn" aria-label="Hole map" onClick={() => setView('map')}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" />
-                  <path d="M9 4v14M15 6v14" />
-                </svg>
-              </button>
-            )}
+            <button type="button" className="icon-btn" aria-label={mapData ? 'Hole map' : 'Set up hole map'} onClick={() => setView('map')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" />
+                <path d="M9 4v14M15 6v14" />
+              </svg>
+            </button>
             <button type="button" className="icon-btn" aria-label="Scorecard" onClick={() => props.onShowScorecard(commitPar(round))}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <rect x="4" y="3" width="16" height="18" rx="2" />

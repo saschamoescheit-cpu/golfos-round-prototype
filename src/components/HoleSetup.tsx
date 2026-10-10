@@ -17,17 +17,21 @@ export function HoleSetup(props: {
   nearPlayer: boolean; // true when `center` is the player's position on the course
   player: LngLat | null;
   imagery: ImagerySource;
+  courseCenter: LngLat;
+  /** Shown when the set-up opened instead of the map (hole without line): go to the score entry. */
+  onScoreOnly?: () => void;
   onSave: (line: LngLat[]) => void;
   onCancel: () => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
-  const markers = useRef<{ tee?: maplibregl.Marker; green?: maplibregl.Marker }>({});
+  const markers = useRef<{ tee?: maplibregl.Marker; green?: maplibregl.Marker; player?: maplibregl.Marker }>({});
   const [tee, setTee] = useState<LngLat | null>(null);
   const [green, setGreen] = useState<LngLat | null>(null);
   const [snapped, setSnapped] = useState(false);
   const state = useRef({ tee, green });
   state.current = { tee, green };
+  const centeredOnPlayer = useRef(props.nearPlayer);
 
   useEffect(() => {
     const m = new maplibregl.Map({
@@ -64,6 +68,23 @@ export function HoleSetup(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // GPS often arrives after the map opened: jump to the player once, if he is on the course.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !props.player) return;
+    const mk = markers.current;
+    if (mk.player) mk.player.setLngLat(props.player);
+    else {
+      const el = document.createElement('div');
+      el.className = 'map-player';
+      mk.player = new maplibregl.Marker({ element: el }).setLngLat(props.player).addTo(m);
+    }
+    if (centeredOnPlayer.current || state.current.tee) return;
+    if (distanceM(props.player, props.courseCenter) > 5000) return;
+    centeredOnPlayer.current = true;
+    m.jumpTo({ center: props.player, zoom: 17 });
+  }, [props.player, props.courseCenter]);
+
   /** Snap a tap to the mapped green it hits (or one within 15 m), so front/back distances work. */
   const placeGreen = (p: LngLat) => {
     const hit =
@@ -99,7 +120,7 @@ export function HoleSetup(props: {
   const step = !tee ? 1 : !green ? 2 : 3;
 
   return (
-    <main className="map-screen">
+    <main className="map-screen setup">
       <div ref={container} className="hole-map" />
       <div className="map-top">
         <button type="button" className="map-btn round" aria-label="Cancel" onClick={props.onCancel}>
@@ -129,6 +150,11 @@ export function HoleSetup(props: {
                 Set tee again
               </button>
             </>
+          )}
+          {props.onScoreOnly && step < 3 && (
+            <button type="button" className="btn-ghost" onClick={props.onScoreOnly}>
+              Enter score only
+            </button>
           )}
           {step === 3 && (
             <>

@@ -64,6 +64,7 @@ h2 { margin: 0; font: 600 17px var(--display); }
 }
 .btn-primary { background: var(--brand); color: var(--bg); }
 .btn-secondary { background: transparent; border: 1px solid var(--line-strong); color: var(--text); font-size: 16px; min-height: 52px; }
+.btn-ghost { background: none; border: 0; color: var(--text-2); font: 600 15px var(--body); min-height: 44px; text-decoration: underline; text-underline-offset: 3px; }
 .btn-danger { color: var(--bad); border-color: #5a2a26; }
 
 .card { background: var(--surface); border-radius: 14px; padding: 14px 16px; }
@@ -221,6 +222,8 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .maplibregl-ctrl-attrib { font-size: 10px; }
 /* Keep the imagery credit (required for PNOA/Esri) above the bottom buttons. */
 .map-screen .maplibregl-ctrl-bottom-right { bottom: calc(env(safe-area-inset-bottom) + 190px); }
+/* Set-up: the card at the bottom is taller, so the credit goes top right under the header. */
+.map-screen.setup .maplibregl-ctrl-bottom-right { top: calc(env(safe-area-inset-top) + 72px); bottom: auto; }
 
 .notice { border-radius: 12px; padding: 12px 14px; background: #33290f; color: #f6d48a; font-size: 14px; }
 .error { border-radius: 12px; padding: 12px 14px; background: #3a1f1d; color: #ff8f84; font-size: 14px; }
