@@ -3,12 +3,16 @@ import type { Round } from '../types';
 import { grossForHole, handicapStrokes, playerTotals, roundStats, stablefordPoints } from '../lib/scoring';
 import { deleteRound } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
+import { SgCard } from '../components/SgCard';
+import { groupForHandicap, roundsSg } from '../lib/sg';
+import { loadTrack } from '../lib/track';
 
 export function Scorecard(props: {
   round: Round;
   onBackToHole: () => void;
   onFinish: (r: Round) => void;
   onClose: () => void;
+  onReview: (r: Round) => void;
   onDeleted: () => void;
 }) {
   const { round } = props;
@@ -17,6 +21,8 @@ export function Scorecard(props: {
   const finished = round.finishedAt != null;
   const received = Object.fromEntries(round.players.map((p) => [p.id, handicapStrokes(round.holes, p.playingHandicap)]));
   const stats = roundStats(round.holes, round.entries[me.id]);
+  const sg = roundsSg([round]);
+  const canReview = round.mode === 'detail' || round.entries[me.id].some((e) => e.detail) || loadTrack(round.id).length > 20;
   const nines = round.holes.length === 18 ? [round.holes.slice(0, 9), round.holes.slice(9)] : [round.holes];
 
   const sumGross = (pid: string, idx: number[]) =>
@@ -128,6 +134,13 @@ export function Scorecard(props: {
           <Stat label="Sand saves" value={`${stats.sandSaves} / ${stats.bunkerHoles}`} />
         </div>
       </section>
+
+      {canReview && (
+        <button type="button" className="btn-secondary" onClick={() => props.onReview(round)}>
+          Check your shots{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' · some to check' : ''}
+        </button>
+      )}
+      {sg && <SgCard title="Strokes gained this round" values={sg.per18} holes={sg.holes} defaultGroup={groupForHandicap(me.playingHandicap)} />}
 
       <span className="spacer" />
       {!finished && (

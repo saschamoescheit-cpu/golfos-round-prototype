@@ -279,3 +279,26 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .mini-table td { padding: 6px 0; border-top: 1px solid var(--line); }
 .club-grid button small { display: block; font: 500 11px var(--body); color: var(--muted); }
 .club-grid button[aria-pressed='true'] small { color: var(--bg); }
+
+/* ---------- Strokes gained and round check (feature 007) ---------- */
+.good-text { color: var(--brand-text); }
+.chip-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chip-row button {
+  flex: none; min-height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--line-strong);
+  background: var(--surface-2); color: var(--text); font: 600 13px var(--body);
+}
+.chip-row button[aria-pressed='true'] { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.sg-table td:nth-child(2), .sg-table td:nth-child(3) { font-variant-numeric: tabular-nums; }
+.sg-table tr.sum td { font-weight: 700; }
+.sg-diff { display: inline-block; min-width: 44px; border-radius: 6px; padding: 2px 6px; font: 700 12px var(--body); color: #0e1418; }
+.sg-diff.good { background: var(--brand-text); }
+.sg-diff.bad { background: #ff8a7f; }
+.sg-badge { font: 700 13px var(--body); font-variant-numeric: tabular-nums; }
+.sg-badge.good { color: var(--brand-text); }
+.sg-badge.bad { color: #ff8a7f; }
+.review-nav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; }
+.review-map { position: relative; height: 44vh; min-height: 260px; border-radius: 14px; overflow: hidden; }
+.review-map .hole-map { position: absolute; inset: 0; }
+.review-list li { grid-template-columns: 28px 1fr auto 0; }
+.review-list li.check { background: rgba(246, 212, 138, 0.12); border-radius: 10px; }
+.shot-row { background: none; border: 0; color: var(--text); text-align: left; font: inherit; padding: 6px 0; }

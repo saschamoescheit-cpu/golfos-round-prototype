@@ -1,19 +1,22 @@
 import { useState } from 'react';
-import type { Club, Lie } from '../types';
-import { BAG, LIES } from '../lib/shots';
+import type { Club, Lie, ShotKind } from '../types';
+import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
 import { Segmented } from './ui';
 
-// Bottom sheet for one shot of the detailed tracking: lie (suggested from the map), club (suggested
-// from the distance), penalty. One tap on a club saves the shot – the fastest path on the course.
+// Bottom sheet for one shot of the detailed tracking: lie (suggested from the map), shot type (suggested
+// from lie and distance), club (suggested from the distance), penalty. One tap on a club saves a new
+// shot – the fastest path on the course.
 
 export function ShotSheet(props: {
   title: string; // e.g. "Shot 2 · 148 m to pin"
   lie: Lie;
   club: Club | null; // suggestion or the saved club when editing
   penalty: boolean;
+  kind?: ShotKind; // saved shot type; missing = suggested from lie and distance
+  toPinM: number | null;
   editing: boolean;
   bag?: { club: Club; m: number }[]; // the player's distances (own data or standard)
-  onSave: (v: { lie: Lie; club: Club | null; penalty: boolean }) => void;
+  onSave: (v: { lie: Lie; club: Club | null; penalty: boolean; kind: ShotKind; review: false }) => void;
   onDelete?: () => void;
   onHoledOut?: () => void; // "holed from here" (chip-in) – only for a new shot
   onCancel: () => void;
@@ -21,6 +24,9 @@ export function ShotSheet(props: {
   const [lie, setLie] = useState<Lie>(props.lie);
   const [penalty, setPenalty] = useState(props.penalty);
   const [club, setClub] = useState<Club | null>(props.club);
+  const [kind, setKind] = useState<ShotKind | null>(props.kind ?? null); // null = follow the suggestion
+  const shownKind = kind ?? suggestKind(lie, props.toPinM);
+  const save = (c: Club | null) => props.onSave({ lie, club: c, penalty, kind: shownKind, review: false });
   return (
     <div className="sheet-backdrop" onClick={props.onCancel}>
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
@@ -35,6 +41,10 @@ export function ShotSheet(props: {
           <Segmented<Lie> label="Lie" value={lie} onChange={(v) => v && setLie(v)} options={LIES} />
         </div>
         <div className="field">
+          <label>Shot</label>
+          <Segmented<ShotKind> label="Shot type" value={shownKind} onChange={(v) => v && setKind(v)} options={KINDS} />
+        </div>
+        <div className="field">
           <label>Club {props.editing ? '' : '– tap to save'}</label>
           <div className="club-grid" role="group" aria-label="Club">
             {(props.bag ?? BAG).map((b) => (
@@ -45,7 +55,7 @@ export function ShotSheet(props: {
                 className={props.club === b.club && !props.editing ? 'suggested' : undefined}
                 onClick={() => {
                   setClub(b.club);
-                  if (!props.editing) props.onSave({ lie, club: b.club, penalty });
+                  if (!props.editing) save(b.club);
                 }}
               >
                 {b.club}
@@ -68,7 +78,7 @@ export function ShotSheet(props: {
               Holed it! (chip-in)
             </button>
           )}
-          <button type="button" className="btn-primary" onClick={() => props.onSave({ lie, club, penalty })}>
+          <button type="button" className="btn-primary" onClick={() => save(club)}>
             {props.editing ? 'Save' : club ? `Save · ${club}` : 'Save without club'}
           </button>
         </div>

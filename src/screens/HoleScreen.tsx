@@ -4,6 +4,7 @@ import { deriveFromShots, emptyDetail, firstPuttM, lieAt, onGreenAt, shotLengths
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
+import { recordFix } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp, saveUnit } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
@@ -102,6 +103,8 @@ export function HoleScreen(props: {
       (p) => {
         setGpsError(null);
         setPlayer({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy });
+        // Detailed rounds keep the GPS track for the shot detection after the round (only while the app is open).
+        if (round.mode === 'detail') recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy });
       },
       () => setGpsError('No GPS – distances are measured from the tee.'),
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
@@ -212,6 +215,8 @@ export function HoleScreen(props: {
         club={existing ? existing.club : suggestClub(hole.par || 4, n === 1, toPin ?? (hole.par >= 4 ? 300 : 150), bag)}
         bag={bag}
         penalty={existing?.penalty ?? false}
+        kind={existing?.kind}
+        toPinM={toPin}
         editing={editing}
         onCancel={() => setSheet(null)}
         onSave={(v) => {
@@ -226,7 +231,7 @@ export function HoleScreen(props: {
           editing
             ? undefined
             : () => {
-                saveDetail({ ...detail, shots: [...detail.shots, { pos: sheet.pos, lie: pos && mapData ? lieAt(pos, mapData, n === 1) : 'fairway', club: null, penalty: false }], holedOut: true, onGreen: null }, 0);
+                saveDetail({ ...detail, shots: [...detail.shots, { pos: sheet.pos, lie: pos && mapData ? lieAt(pos, mapData, n === 1) : 'fairway', club: null, penalty: false }], holedOut: true, onGreen: null, pin: pinPos }, 0);
                 setSheet(null);
               }
         }

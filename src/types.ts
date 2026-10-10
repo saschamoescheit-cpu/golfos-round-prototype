@@ -66,12 +66,16 @@ export type FairwayResult = 'left' | 'hit' | 'right';
 
 // ---- Detailed tracking (feature 003) ----
 export type Lie = 'tee' | 'fairway' | 'rough' | 'bunker' | 'recovery';
+/** How the shot was played (feature 007): full swing, punch (low, under trees), pitch, chip, bunker shot. */
+export type ShotKind = 'full' | 'punch' | 'pitch' | 'chip' | 'bunker';
 export type Club = 'Dr' | '3W' | '5W' | 'Hy' | '4i' | '5i' | '6i' | '7i' | '8i' | '9i' | 'PW' | 'GW' | 'SW' | 'LW';
 export interface Shot {
   pos: LngLat | null; // where the shot was hit from (GPS or tapped); null when entered without position
   lie: Lie;
   club: Club | null;
   penalty: boolean; // ball in water / out of bounds after this shot: +1 stroke
+  kind?: ShotKind; // missing = suggested from lie and distance
+  review?: boolean; // detected automatically from the GPS track – the player should check it
 }
 export interface DetailEntry {
   shots: Shot[]; // all shots before the green (putts are counted separately)

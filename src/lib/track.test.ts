@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'vitest';
+import { clubForLength, detectHoleShots, findStops, trackForHole, type TrackPoint } from './track';
+import { distanceM, holeMapData, pointAt } from './geo';
+import { SEED_GEOMETRY } from '../data/seedGeometry';
+import type { LngLat } from '../types';
+
+// Simulated rounds: the player walks at 1.3 m/s, one GPS fix every 5 s with ±2 m noise.
+const geo = SEED_GEOMETRY['osm:relation/1654444'];
+const hole1 = holeMapData(geo, 'Main', 1)!;
+const hole2 = holeMapData(geo, 'Main', 2)!;
+let seed = 11;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const shift = (p: LngLat, east: number, north: number): LngLat => [p[0] + east / (111320 * Math.cos((p[1] * Math.PI) / 180)), p[1] + north / 111320];
+const noisy = (p: LngLat, m = 2): LngLat => shift(p, (rnd() - 0.5) * 2 * m, (rnd() - 0.5) * 2 * m);
+
+class Walker {
+  t = 0;
+  pts: TrackPoint[] = [];
+  constructor(public at: LngLat) {}
+  stand(s: number) {
+    for (let k = 0; k <= s; k += 5) this.fix(this.at);
+  }
+  walk(to: LngLat) {
+    const d = distanceM(this.at, to);
+    const steps = Math.max(1, Math.round(d / 1.3 / 5));
+    const from = this.at;
+    for (let k = 1; k <= steps; k++) this.fix([from[0] + ((to[0] - from[0]) * k) / steps, from[1] + ((to[1] - from[1]) * k) / steps]);
+    this.at = to;
+  }
+  private fix(p: LngLat, acc = 5) {
+    this.t += 5000;
+    this.pts.push({ t: this.t, p: noisy(p), acc });
+  }
+}
+
+describe('shot detection from the GPS track', () => {
+  const ball2 = shift(pointAt(hole1.line, 225), 8, 0); // drive 225 m, a bit right
+  const onGreen = shift(hole1.greenCenter, 2, -4);
+
+  it('finds the stops of a walk', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    w.walk(ball2);
+    w.stand(30);
+    expect(findStops(w.pts).length).toBe(2);
+  });
+
+  it('par 4: tee shot and approach, ball on the green; waiting and a detour are ignored', () => {
+    const w = new Walker(shift(hole1.tee, -15, -10));
+    w.stand(200); // waiting next to the tee for the group in front
+    w.walk(hole1.tee);
+    w.stand(35); // tee shot
+    w.walk(shift(ball2, -90, 0)); // detour to the cart path, 90 m off the hole
+    w.stand(60);
+    w.walk(ball2);
+    w.stand(25); // practice swing next to the ball
+    w.walk(shift(ball2, 4, 3));
+    w.stand(20); // the approach
+    w.walk(onGreen);
+    w.stand(90); // putting
+    const d = detectHoleShots(w.pts, hole1, 4)!;
+    expect(d.shots.length).toBe(2);
+    expect(distanceM(d.shots[0].pos!, hole1.tee)).toBeLessThan(6);
+    expect(distanceM(d.shots[1].pos!, ball2)).toBeLessThan(8);
+    expect(d.shots[0].lie).toBe('tee');
+    expect(d.shots[0].club).toBe('Dr');
+    expect(d.shots.every((s) => s.review)).toBe(true);
+    expect(distanceM(d.onGreen!, onGreen)).toBeLessThan(6);
+  });
+
+  it('ignores fixes with poor accuracy', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    const bad = w.pts.length;
+    w.walk(ball2);
+    w.stand(30);
+    const pts = w.pts.map((x, k) => (k >= bad ? { ...x, acc: 40 } : x));
+    expect(findStops(pts).length).toBe(1);
+  });
+
+  it('cuts the round track into holes at the next tee', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    w.walk(onGreen);
+    w.stand(60);
+    w.walk(hole2.tee);
+    w.stand(30);
+    const part = trackForHole(w.pts, hole1, hole2);
+    expect(part.length).toBeGreaterThan(10);
+    expect(distanceM(part[part.length - 1].p, hole2.tee)).toBeGreaterThan(20);
+  });
+
+  it('club from the shot length', () => {
+    expect(clubForLength(228, true)).toBe('Dr');
+    expect(clubForLength(228, false)).toBe('3W');
+    expect(clubForLength(131, false)).toBe('7i');
+  });
+});

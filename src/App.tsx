@@ -8,6 +8,7 @@ import { HoleScreen } from './screens/HoleScreen';
 import { Scorecard } from './screens/Scorecard';
 import { NO_RESUME } from './components/ErrorBoundary';
 import { Stats } from './screens/Stats';
+import { RoundReview } from './screens/RoundReview';
 
 type Screen =
   | { name: 'home' }
@@ -15,7 +16,8 @@ type Screen =
   | { name: 'setup'; course: Course }
   | { name: 'hole'; round: Round }
   | { name: 'scorecard'; round: Round }
-  | { name: 'stats' };
+  | { name: 'stats' }
+  | { name: 'review'; round: Round };
 
 /** A round started in the last 8 hours (a round takes at most ~6) and not finished: the app reopens straight on its hole (iOS may reload the page while the phone is in the pocket). */
 function roundInPlay(rounds: Round[]): Round | undefined {
@@ -58,6 +60,17 @@ export function App() {
           onChanged={() => setRounds(loadRounds())}
         />
       );
+    case 'review':
+      return (
+        <RoundReview
+          round={screen.round}
+          onChange={(round) => {
+            persist(round);
+            setScreen({ name: 'review', round });
+          }}
+          onDone={() => setScreen({ name: 'scorecard', round: screen.round })}
+        />
+      );
     case 'stats':
       return <Stats rounds={rounds} onBack={() => setScreen({ name: 'home' })} />;
     case 'pickCourse':
@@ -98,6 +111,10 @@ export function App() {
             setScreen({ name: 'home' });
           }}
           onClose={() => setScreen({ name: 'home' })}
+          onReview={(round) => {
+            persist(round);
+            setScreen({ name: 'review', round });
+          }}
           onDeleted={() => {
             setRounds(loadRounds());
             setScreen({ name: 'home' });

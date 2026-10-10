@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import type { Round } from '../types';
 import { analyse, focusAreas, pct, type Rate } from '../lib/stats';
 import { Segmented, TopBar } from '../components/ui';
+import { SgCard } from '../components/SgCard';
+import { groupForHandicap, roundsSg } from '../lib/sg';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
 // and the focus areas that later feed the training plans (GOL-27).
@@ -17,6 +19,7 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
   const picked = range ? finished.slice(0, range) : finished;
   const a = useMemo(() => analyse(picked), [picked]);
   const f = focusAreas(a);
+  const sg = useMemo(() => roundsSg(picked), [picked]);
   const fmtPar = (v: number | null) => (v == null ? '–' : v > 0 ? `+${v}` : String(v));
 
   return (
@@ -44,6 +47,8 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
             <Big value={a.stablefordPer18 ?? '–'} label="Stableford" />
             <Big value={a.puttsPer18 ?? '–'} label="Putts" />
           </section>
+
+          {sg && <SgCard title="Strokes gained" values={sg.per18} holes={sg.holes} defaultGroup={groupForHandicap(a.handicap)} />}
 
           {f && f.focus.length > 0 && (
             <section className="card stats-card">

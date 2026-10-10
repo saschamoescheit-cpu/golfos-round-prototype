@@ -19,6 +19,8 @@ export interface HoleMapProps {
   imagery: ImagerySource;
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a yellow line with numbered dots. */
   track?: { pos: LngLat; label: string; green?: boolean }[];
+  /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
+  padding?: { top: number; bottom: number; left: number; right: number };
   onTargetsChange: (t: LngLat[]) => void;
   onTargetRemove: (index: number) => void;
   onPinChange: (p: LngLat) => void;
@@ -59,7 +61,7 @@ export function HoleMap(props: HoleMapProps) {
       ready.current = true;
       m.on('moveend', () => render()); // labels are spaced out for the current view
       collapseAttribution(m);
-      fit(m, latest.current.data);
+      fit(m, latest.current.data, latest.current.padding);
       render();
     });
     m.on('click', (e) => latest.current.onMapTap([e.lngLat.lng, e.lngLat.lat]));
@@ -77,7 +79,7 @@ export function HoleMap(props: HoleMapProps) {
     const m = map.current;
     if (!m || !ready.current) return;
     (m.getSource('shapes') as maplibregl.GeoJSONSource).setData(shapes(props.data));
-    fit(m, props.data);
+    fit(m, props.data, props.padding);
   }, [props.holeKey, props.data]);
 
   // Imagery switched by the player.
@@ -176,12 +178,14 @@ export function HoleMap(props: HoleMapProps) {
   return <div ref={container} className="hole-map" />;
 }
 
-function fit(m: maplibregl.Map, d: HoleMapData) {
+const FULL_SCREEN_PADDING = { top: 120, bottom: 170, left: 40, right: 110 };
+
+function fit(m: maplibregl.Map, d: HoleMapData, padding = FULL_SCREEN_PADDING) {
   const pts = [...d.line, ...(d.green ?? [])];
   const bounds = pts.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
   m.fitBounds(bounds, {
     bearing: bearingDeg(d.tee, d.greenCenter),
-    padding: { top: 120, bottom: 170, left: 40, right: 110 },
+    padding,
     maxZoom: 18.5,
     duration: 0,
   });

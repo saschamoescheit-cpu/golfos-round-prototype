@@ -1,5 +1,5 @@
-import type { Club, DetailEntry, FairwayResult, HoleEntry, Lie, LngLat, Ring } from '../types';
-export type { Club, DetailEntry, Lie, Shot } from '../types';
+import type { Club, DetailEntry, FairwayResult, HoleEntry, Lie, LngLat, Ring, ShotKind } from '../types';
+export type { Club, DetailEntry, Lie, Shot, ShotKind } from '../types';
 import { distanceM, distToLine, pointInRing, type HoleMapData } from './geo';
 
 // Detailed tracking (feature 003): shot by shot with club and lie. The quick values of the hole
@@ -13,6 +13,26 @@ export const LIES: { value: Lie; label: string }[] = [
   { value: 'bunker', label: 'Bunker' },
   { value: 'recovery', label: 'Trees' },
 ];
+
+export const KINDS: { value: ShotKind; label: string }[] = [
+  { value: 'full', label: 'Full' },
+  { value: 'punch', label: 'Punch' },
+  { value: 'pitch', label: 'Pitch' },
+  { value: 'chip', label: 'Chip' },
+  { value: 'bunker', label: 'Bunker' },
+];
+
+/**
+ * Shot type suggested from lie and distance to the pin: bunker shot from a greenside bunker, punch from the trees,
+ * chip up to 30 m, pitch up to 80 m, otherwise a full swing.
+ */
+export function suggestKind(lie: Lie, toPinM: number | null): ShotKind {
+  if (lie === 'bunker' && toPinM != null && toPinM <= 40) return 'bunker';
+  if (lie === 'recovery') return 'punch';
+  if (toPinM != null && toPinM <= 30) return 'chip';
+  if (toPinM != null && toPinM <= 80) return 'pitch';
+  return 'full';
+}
 
 /** Standard bag with typical total distances (m) of a mid-handicap male amateur – used until the player has own data. */
 export const BAG: { club: Club; m: number }[] = [
