@@ -105,8 +105,10 @@ async function searchOga(q: string): Promise<CourseSummary[]> {
  */
 export async function loadCourse(summary: CourseSummary, forceRefresh = false): Promise<Course> {
   const cached = loadCachedCourse(summary.id);
-  if (cached && cached.holes.length > 0 && !forceRefresh) return cached;
   const seed = SEED_COURSES[summary.id];
+  // A course first played without data (18 empty holes) gets the bundled data once it exists.
+  const emptyCache = cached != null && seed != null && cached.holes.every((h) => h.par == null);
+  if (cached && cached.holes.length > 0 && !forceRefresh && !emptyCache) return cached;
   const holes = seed
     ? holesFromTags(seed.holeTags)
     : summary.source === 'osm'

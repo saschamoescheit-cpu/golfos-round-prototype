@@ -106,3 +106,17 @@ describe('Son Quint geometry (course guide 2026 + PNOA)', () => {
     });
   });
 });
+
+describe('Son Vida geometry (course guide 2026 + PNOA)', () => {
+  const geo = SEED_GEOMETRY['osm:relation/1130271'];
+  // Official lengths from the yellow tees (course guide 2026).
+  const yellow = [258, 191, 332, 139, 362, 449, 298, 132, 309, 198, 483, 137, 502, 327, 368, 125, 400, 460];
+  it('all 18 holes have a line, a green outline and the official length', () => {
+    yellow.forEach((len, k) => {
+      const d = holeMapData(geo, 'Main', k + 1);
+      expect(d, `hole ${k + 1}`).not.toBeNull();
+      expect(d!.green, `green ${k + 1}`).not.toBeNull();
+      expect(Math.abs(lineLength(d!.line) - len), `length ${k + 1}`).toBeLessThan(len * 0.05);
+    });
+  });
+});
