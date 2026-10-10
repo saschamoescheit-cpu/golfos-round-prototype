@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Course, CourseSummary } from '../types';
+import { saveCachedCourse } from '../lib/storage';
 import { loadCourse, nearbyCourses, searchCourses } from '../lib/courses';
 import { Attribution, TopBar } from '../components/ui';
 
@@ -61,7 +62,12 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
     try {
       const course = await loadCourse(c);
       if (course.holes.length === 0) {
-        setLoadError(`${c.name} has no hole data in the course database yet.`);
+        // No hole data in the database yet: play 18 holes anyway. Par and stroke index are entered on the hole
+        // (remembered for the course), the hole map is set up on the satellite image.
+        const holes = Array.from({ length: 18 }, (_, k) => ({ ref: String(k + 1), loop: 'Main', number: k + 1, par: null, strokeIndex: [] }));
+        const playable = { ...course, holes, loops: ['Main'] };
+        saveCachedCourse(playable);
+        props.onPicked(playable);
       } else {
         props.onPicked(course);
       }

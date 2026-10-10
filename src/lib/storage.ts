@@ -128,6 +128,15 @@ export function saveLive(roundId: string, live: LiveState): void {
   write(LIVE + roundId, live);
 }
 
+/** When the course imagery was last saved for offline use (per course and imagery source). */
+const OFFLINE = 'golfos.offline.v1.';
+export function loadOfflineStamp(courseId: string, imageryId: string): number {
+  return read<number>(`${OFFLINE}${courseId}.${imageryId}`, 0);
+}
+export function saveOfflineStamp(courseId: string, imageryId: string): void {
+  write(`${OFFLINE}${courseId}.${imageryId}`, Date.now());
+}
+
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }

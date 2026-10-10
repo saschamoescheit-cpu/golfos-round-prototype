@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FairwayResult, HoleEntry, LngLat, Round } from '../types';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
-import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveUnit } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp, saveUnit } from '../lib/storage';
+import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
 import { detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
@@ -131,6 +132,30 @@ export function HoleScreen(props: {
   // Best imagery for the course's country (e.g. Spanish national orthophoto) unless the player picked another one.
   const imagery = pickImagery(courseCenter, imageryPref);
   const imageryChoices = imageryOptions(courseCenter);
+  // Offline map: save the imagery of all holes of the round once (again after 30 days, or for another imagery source).
+  const [offline, setOffline] = useState<{ done: number; total: number } | 'ready' | null>(null);
+  useEffect(() => {
+    const holes = allMaps.filter((m): m is NonNullable<typeof m> => m != null);
+    const fresh = Date.now() - loadOfflineStamp(round.courseId, imagery.id) < 30 * 24 * 3600 * 1000;
+    if (holes.length === 0 || fresh || !navigator.serviceWorker?.controller) return; // without service worker nothing is kept
+    const ctrl = new AbortController();
+    const urls = holeTileUrls(imagery, holes);
+    setOffline({ done: 0, total: urls.length });
+    prefetchTiles(urls, (done, total) => setOffline({ done, total }), ctrl.signal).then((failed) => {
+      if (ctrl.signal.aborted) return;
+      if (failed < urls.length * 0.05) saveOfflineStamp(round.courseId, imagery.id);
+      setOffline('ready');
+      setTimeout(() => setOffline(null), 4000);
+    });
+    return () => ctrl.abort();
+  }, [round.courseId, imagery, allMaps]);
+  const offlineHint =
+    offline === 'ready' ? (
+      <div className="map-shot">Map saved for offline ✓</div>
+    ) : offline ? (
+      <div className="map-shot">Saving map for offline · {Math.round((offline.done / offline.total) * 100)}%</div>
+    ) : null;
+
   const switchImagery = () => {
     const next = imageryChoices[(imageryChoices.indexOf(imagery) + 1) % imageryChoices.length];
     setImageryPref(next.id);
@@ -277,6 +302,7 @@ export function HoleScreen(props: {
             <div className="map-hint">{gpsError ?? 'You are not on this hole – distances from the tee.'}</div>
           )}
           {detectedBanner}
+          {offlineHint}
           {shotStart && player && (
             <div className="map-shot">
               Shot <strong>{fmt(distanceM(shotStart, player.pos))} {unit}</strong>
