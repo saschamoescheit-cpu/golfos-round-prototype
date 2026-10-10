@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FairwayResult, HoleEntry, LngLat, Round } from '../types';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
-import { loadCachedCourse, loadGeometry, loadUnit, saveHoleCorrection, saveHoleLine, saveUnit } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, loadImagery, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveUnit } from '../lib/storage';
+import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
 import { distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
@@ -78,6 +79,7 @@ export function HoleScreen(props: {
   const [setupOpen, setSetupOpen] = useState(false);
   const [editHole, setEditHole] = useState(false);
   const [unit, setUnit] = useState<Unit>(loadUnit);
+  const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [plans, setPlans] = useState<Record<number, { targets: LngLat[]; pin: LngLat | null }>>({});
@@ -97,9 +99,18 @@ export function HoleScreen(props: {
     return () => navigator.geolocation.clearWatch(id);
   }, [wantsGps]);
 
+  const course = loadCachedCourse(round.courseId);
+  const courseCenter: LngLat = course ? [course.lon, course.lat] : (mapData?.greenCenter ?? player?.pos ?? [0, 0]);
+  // Best imagery for the course's country (e.g. Spanish national orthophoto) unless the player picked another one.
+  const imagery = pickImagery(courseCenter, imageryPref);
+  const imageryChoices = imageryOptions(courseCenter);
+  const switchImagery = () => {
+    const next = imageryChoices[(imageryChoices.indexOf(imagery) + 1) % imageryChoices.length];
+    setImageryPref(next.id);
+    saveImagery(next.id);
+  };
+
   if (setupOpen) {
-    const course = loadCachedCourse(round.courseId);
-    const courseCenter: LngLat = course ? [course.lon, course.lat] : (player?.pos ?? [0, 0]);
     const nearCourse = player != null && distanceM(player.pos, courseCenter) < 5000;
     return (
       <HoleSetup
@@ -109,6 +120,7 @@ export function HoleScreen(props: {
         center={nearCourse ? player!.pos : courseCenter}
         nearPlayer={nearCourse}
         player={player?.pos ?? null}
+        imagery={imagery}
         onCancel={() => setSetupOpen(false)}
         onSave={(line) => {
           saveHoleLine(round.courseId, hole.loop, hole.number, line);
@@ -167,6 +179,7 @@ export function HoleScreen(props: {
           pin={pin}
           targets={plan.targets}
           unit={unit}
+          imagery={imagery}
           onTargetsChange={(targets) => setPlan({ targets })}
           onPinChange={(p) => setPlan({ pin: p })}
           onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((_, j) => j !== index) })}
@@ -191,6 +204,13 @@ export function HoleScreen(props: {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
           </button>
         </div>
+
+        {imageryChoices.length > 1 && (
+          <button type="button" className="map-btn map-imagery" onClick={switchImagery} aria-label={`Satellite image: ${imagery.label}, tap to switch`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
+            {imagery.label}
+          </button>
+        )}
 
         <div className="map-green" aria-label="Distance to the green">
           {green.back != null && (

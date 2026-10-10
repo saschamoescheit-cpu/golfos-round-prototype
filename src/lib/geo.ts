@@ -172,6 +172,7 @@ export interface HoleMapData {
   bunkers: Ring[];
   water: Ring[];
   fairways: Ring[];
+  tees: Ring[]; // tee boxes at the start of the hole
 }
 
 /** Picks the geometry that belongs to one hole: its line, green, and hazards along the corridor. */
@@ -202,6 +203,7 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
     bunkers: geo.bunker.filter(near),
     water: geo.water.filter((r) => r.some((p) => distToLine(p, line) <= corridorM * 1.5)),
     fairways: geo.fairway.filter((r) => r.some((p) => distToLine(p, line) <= 20)),
+    tees: geo.tee.filter((r) => r.some((p) => distanceM(p, line[0]) <= 60)),
   };
 }
 

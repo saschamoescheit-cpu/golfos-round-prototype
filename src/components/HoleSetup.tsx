@@ -3,11 +3,11 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { CourseGeometry, LngLat } from '../types';
 import { centroid, distanceM, pointInRing } from '../lib/geo';
+import type { ImagerySource } from '../lib/imagery';
+import { courseLayers, imageryStyle, OSM_ATTRIBUTION } from './mapStyle';
 
 // "Set up hole": for courses where OpenStreetMap has no hole lines (e.g. Son Quint).
 // The player marks the tee (own GPS position or a tap) and taps the green; the app stores tee → green.
-
-const IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
 export function HoleSetup(props: {
   holeLabel: string;
@@ -16,6 +16,7 @@ export function HoleSetup(props: {
   center: LngLat; // where to start the map (player or course)
   nearPlayer: boolean; // true when `center` is the player's position on the course
   player: LngLat | null;
+  imagery: ImagerySource;
   onSave: (line: LngLat[]) => void;
   onCancel: () => void;
 }) {
@@ -31,26 +32,27 @@ export function HoleSetup(props: {
   useEffect(() => {
     const m = new maplibregl.Map({
       container: container.current!,
-      style: {
-        version: 8,
-        sources: { sat: { type: 'raster', tiles: [IMAGERY], tileSize: 256, maxzoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' } },
-        layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
-      },
+      style: imageryStyle(props.imagery),
       center: props.center,
       // On the course: close-up around the player. Otherwise an overview of the course to find the hole.
       zoom: props.nearPlayer ? 17 : 15.3,
       attributionControl: { compact: true },
     });
     m.on('load', () => {
-      m.addSource('greens', {
+      // The whole course in course colours, so the player can find tee and green of the hole.
+      const g = props.geometry;
+      const kinds = { fairway: g.fairway, tee: g.tee, water: g.water, bunker: g.bunker, green: g.green };
+      m.addSource('course', {
         type: 'geojson',
+        attribution: OSM_ATTRIBUTION,
         data: {
           type: 'FeatureCollection',
-          features: props.geometry.green.map((ring) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } })),
+          features: Object.entries(kinds).flatMap(([kind, rings]) =>
+            rings.map((ring): GeoJSON.Feature => ({ type: 'Feature', properties: { kind }, geometry: { type: 'Polygon', coordinates: [ring] } })),
+          ),
         },
       });
-      m.addLayer({ id: 'greens', type: 'fill', source: 'greens', paint: { 'fill-color': '#9BC53D', 'fill-opacity': 0.3 } });
-      m.addLayer({ id: 'greens-line', type: 'line', source: 'greens', paint: { 'line-color': '#D7F28A', 'line-width': 1.5 } });
+      courseLayers('course').forEach((l) => m.addLayer(l));
     });
     m.on('click', (e) => {
       const p: LngLat = [e.lngLat.lng, e.lngLat.lat];

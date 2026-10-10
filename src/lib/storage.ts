@@ -1,5 +1,6 @@
 import type { Course, CourseGeometry, LngLat, Round } from '../types';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
+import type { ImageryId } from './imagery';
 
 // Everything is stored on the device (localStorage). No account, no cloud – prototype only.
 
@@ -101,6 +102,15 @@ export function loadUnit(): 'm' | 'yd' {
 }
 export function saveUnit(unit: 'm' | 'yd'): void {
   write(UNIT, unit);
+}
+
+/** Imagery the player picked on the map (null = best source for the place). */
+const IMAGERY = 'golfos.imagery.v1';
+export function loadImagery(): ImageryId | null {
+  return read<ImageryId | null>(IMAGERY, null);
+}
+export function saveImagery(id: ImageryId): void {
+  write(IMAGERY, id);
 }
 
 export function newId(): string {

@@ -30,7 +30,7 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Satellite tiles: keep what the player has seen, so the map works with poor reception on the course.
-            urlPattern: /^https:\/\/server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery\//,
+            urlPattern: /^https:\/\/(server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery|tms-pnoa-ma\.idee\.es\/1\.0\.0\/pnoa-ma)\//,
             handler: 'CacheFirst',
             options: {
               cacheName: 'imagery',

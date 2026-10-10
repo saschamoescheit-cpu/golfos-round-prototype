@@ -3,10 +3,10 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit } from '../lib/geo';
+import { courseLayers, imageryStyle, OSM_ATTRIBUTION, setImagery } from './mapStyle';
+import type { ImagerySource } from '../lib/imagery';
 
-// Satellite hole map. Imagery: Esri World Imagery (free for prototypes with attribution;
-// a production app needs a licensed imagery provider).
-const IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+// Satellite hole map: imagery (see lib/imagery.ts) with the hole drawn on top in course colours.
 
 export interface HoleMapProps {
   holeKey: string; // changes when the hole changes → camera refits
@@ -16,6 +16,7 @@ export interface HoleMapProps {
   pin: LngLat;
   targets: LngLat[]; // planned landing points (max 3), in playing order
   unit: Unit;
+  imagery: ImagerySource;
   onTargetsChange: (t: LngLat[]) => void;
   onTargetRemove: (index: number) => void;
   onPinChange: (p: LngLat) => void;
@@ -34,13 +35,7 @@ export function HoleMap(props: HoleMapProps) {
   useEffect(() => {
     const m = new maplibregl.Map({
       container: container.current!,
-      style: {
-        version: 8,
-        sources: {
-          sat: { type: 'raster', tiles: [IMAGERY], tileSize: 256, maxzoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' },
-        },
-        layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
-      },
+      style: imageryStyle(props.imagery),
       center: props.data.greenCenter,
       zoom: 16,
       dragRotate: false,
@@ -48,14 +43,11 @@ export function HoleMap(props: HoleMapProps) {
       touchPitch: false,
       attributionControl: { compact: true },
     });
-    m.touchZoomRotate.disableRotation();    m.on('load', () => {
-      m.addSource('shapes', { type: 'geojson', data: shapes(latest.current.data) });
+    m.touchZoomRotate.disableRotation();
+    m.on('load', () => {
+      m.addSource('shapes', { type: 'geojson', data: shapes(latest.current.data), attribution: OSM_ATTRIBUTION });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
-      m.addLayer({ id: 'fairway', type: 'fill', source: 'shapes', filter: ['==', 'kind', 'fairway'], paint: { 'fill-color': '#7FD36B', 'fill-opacity': 0.12 } });
-      m.addLayer({ id: 'water', type: 'fill', source: 'shapes', filter: ['==', 'kind', 'water'], paint: { 'fill-color': '#4AA3DF', 'fill-opacity': 0.35 } });
-      m.addLayer({ id: 'bunker', type: 'fill', source: 'shapes', filter: ['==', 'kind', 'bunker'], paint: { 'fill-color': '#F4E6B8', 'fill-opacity': 0.35 } });
-      m.addLayer({ id: 'green', type: 'fill', source: 'shapes', filter: ['==', 'kind', 'green'], paint: { 'fill-color': '#9BC53D', 'fill-opacity': 0.35 } });
-      m.addLayer({ id: 'outline', type: 'line', source: 'shapes', filter: ['!=', 'kind', 'hole'], paint: { 'line-color': ['match', ['get', 'kind'], 'green', '#D7F28A', 'bunker', '#F4E6B8', 'water', '#7CC4F2', '#B7E08A'], 'line-width': 1.5, 'line-opacity': 0.9 } });
+      courseLayers('shapes').forEach((l) => m.addLayer(l));
       m.addLayer({ id: 'hole', type: 'line', source: 'shapes', filter: ['==', 'kind', 'hole'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [3, 3] } });
       m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.6 } });
       m.addLayer({ id: 'plan', type: 'line', source: 'plan', paint: { 'line-color': '#FFFFFF', 'line-width': 2.5 } });
@@ -80,6 +72,12 @@ export function HoleMap(props: HoleMapProps) {
     (m.getSource('shapes') as maplibregl.GeoJSONSource).setData(shapes(props.data));
     fit(m, props.data);
   }, [props.holeKey, props.data]);
+
+  // Imagery switched by the player.
+  useEffect(() => {
+    const m = map.current;
+    if (m && ready.current) setImagery(m, props.imagery);
+  }, [props.imagery]);
 
   // Markers and labels follow every prop change.
   useEffect(() => {
@@ -176,6 +174,7 @@ function shapes(d: HoleMapData): GeoJSON.FeatureCollection {
     type: 'FeatureCollection',
     features: [
       ...d.fairways.map((r) => poly(r, 'fairway')),
+      ...d.tees.map((r) => poly(r, 'tee')),
       ...d.water.map((r) => poly(r, 'water')),
       ...d.bunkers.map((r) => poly(r, 'bunker')),
       ...(d.green ? [poly(d.green, 'green')] : []),

@@ -169,6 +169,10 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .map-green .small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
 .map-green-num { font: 700 22px/1.1 var(--display); font-variant-numeric: tabular-nums; }
 .map-green-num.big { font-size: 34px; color: var(--brand-text); }
+.map-imagery {
+  position: absolute; left: 10px; top: calc(env(safe-area-inset-top) + 76px); z-index: 2;
+  min-height: 36px; padding: 0 10px; font-size: 13px;
+}
 .map-from { margin-top: 4px; font-size: 10px; color: var(--muted); }
 .map-bottom {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
@@ -215,6 +219,8 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .map-label.hazard.bunker { color: #F4E6B8; }
 .map-label.hazard.water { color: #9AD3F7; }
 .maplibregl-ctrl-attrib { font-size: 10px; }
+/* Keep the imagery credit (required for PNOA/Esri) above the bottom buttons. */
+.map-screen .maplibregl-ctrl-bottom-right { bottom: calc(env(safe-area-inset-bottom) + 190px); }
 
 .notice { border-radius: 12px; padding: 12px 14px; background: #33290f; color: #f6d48a; font-size: 14px; }
 .error { border-radius: 12px; padding: 12px 14px; background: #3a1f1d; color: #ff8f84; font-size: 14px; }
