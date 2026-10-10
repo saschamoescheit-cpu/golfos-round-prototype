@@ -75,7 +75,7 @@ export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Pr
 export async function searchCourses(text: string, near?: { lat: number; lon: number }): Promise<CourseSummary[]> {
   const q = text.trim();
   if (q.length < 3) return [];
-  const bias = near ? { lat: String(near.lat), lon: String(near.lon) } : {};
+  const bias: Record<string, string> = near ? { lat: String(near.lat), lon: String(near.lon) } : {};
   const [osm, oga] = await Promise.allSettled([photon({ q, ...bias }), searchOga(q)]);
   return [
     ...(osm.status === 'fulfilled' ? osm.value : []),
