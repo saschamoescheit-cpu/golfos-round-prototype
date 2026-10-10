@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { FairwayResult, HoleEntry, LngLat, Round } from '../types';
+import type { DetailEntry, FairwayResult, HoleEntry, LngLat, Round } from '../types';
+import { deriveFromShots, emptyDetail, firstPuttM, lieAt, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
+import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp, saveUnit } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
@@ -171,6 +173,79 @@ export function HoleScreen(props: {
     </div>
   );
 
+  // ---------- Detailed tracking (feature 003) ----------
+  const detailMode = round.mode === 'detail';
+  const detail: DetailEntry = myEntry.detail ?? emptyDetail();
+  const pinPos: LngLat | null = plans[i]?.pin ?? mapData?.greenCenter ?? null;
+  const [sheet, setSheet] = useState<{ kind: 'shot'; index: number | null; pos: LngLat | null } | { kind: 'green'; pos: LngLat | null } | null>(null);
+  const [placing, setPlacing] = useState<'shot' | 'green' | null>(null);
+  const fmtU = (m: number) => formatDistance(m, unit);
+  const lengths = shotLengths(detail);
+  const hasShots = detail.shots.length > 0;
+  const holeDone = detail.holedOut || (detail.onGreen != null && myEntry.putts != null);
+  const saveDetail = (d: DetailEntry, putts: number | null = myEntry.putts) =>
+    update(me.id, { detail: d, putts, ...deriveFromShots(d, putts, hole.par, mapData) });
+  /** Opens the right sheet for a position: on the green → putts, else → next shot. */
+  const openAt = (kind: 'shot' | 'green', pos: LngLat | null) => {
+    if (kind === 'shot' && pos && mapData && onGreenAt(pos, mapData) && detail.shots.length > 0) setSheet({ kind: 'green', pos });
+    else setSheet(kind === 'shot' ? { kind, index: null, pos } : { kind, pos });
+  };
+  const track: { pos: LngLat; label: string; green?: boolean }[] = detail.shots
+    .map((s, k) => (s.pos ? { pos: s.pos, label: `${k + 1}${s.club ? ' ' + s.club : ''}${lengths[k] != null ? ' · ' + fmtU(lengths[k]!) : ''}${s.penalty ? ' +1' : ''}` } : null))
+    .filter((t): t is { pos: LngLat; label: string } => t != null);
+  if (detail.onGreen) track.push({ pos: detail.onGreen, label: myEntry.putts != null ? `${myEntry.putts} putt${myEntry.putts === 1 ? '' : 's'}` : 'green', green: true });
+
+  let sheetEl: JSX.Element | null = null;
+  if (sheet?.kind === 'shot') {
+    const editing = sheet.index != null;
+    const n = editing ? sheet.index! + 1 : detail.shots.length + 1;
+    const existing = editing ? detail.shots[sheet.index!] : null;
+    const pos = existing ? existing.pos : sheet.pos;
+    const toPin = pos && pinPos ? distanceM(pos, pinPos) : null;
+    sheetEl = (
+      <ShotSheet
+        title={`Shot ${n}${toPin != null ? ` · ${fmtU(toPin)} ${unit} to pin` : ''}`}
+        lie={existing?.lie ?? (pos && mapData ? lieAt(pos, mapData, n === 1) : n === 1 ? 'tee' : 'fairway')}
+        club={existing ? existing.club : suggestClub(hole.par || 4, n === 1, toPin ?? (hole.par >= 4 ? 300 : 150))}
+        penalty={existing?.penalty ?? false}
+        editing={editing}
+        onCancel={() => setSheet(null)}
+        onSave={(v) => {
+          const shots = detail.shots.slice();
+          if (editing) shots[sheet.index!] = { ...shots[sheet.index!], ...v };
+          else shots.push({ pos: sheet.pos, ...v });
+          saveDetail({ ...detail, shots });
+          setSheet(null);
+        }}
+        onDelete={editing ? () => { saveDetail({ ...detail, shots: detail.shots.filter((_, k) => k !== sheet.index) }); setSheet(null); } : undefined}
+        onHoledOut={
+          editing
+            ? undefined
+            : () => {
+                saveDetail({ ...detail, shots: [...detail.shots, { pos: sheet.pos, lie: pos && mapData ? lieAt(pos, mapData, n === 1) : 'fairway', club: null, penalty: false }], holedOut: true, onGreen: null }, 0);
+                setSheet(null);
+              }
+        }
+      />
+    );
+  } else if (sheet?.kind === 'green') {
+    const d = { ...detail, onGreen: sheet.pos ?? detail.onGreen, pin: pinPos };
+    sheetEl = (
+      <GreenSheet
+        title={`On the green · after ${detail.shots.length} shot${detail.shots.length === 1 ? '' : 's'}`}
+        firstPuttM={firstPuttM(d)}
+        unit={unit}
+        fmt={fmtU}
+        putts={myEntry.putts}
+        onCancel={() => setSheet(null)}
+        onSave={(putts) => {
+          saveDetail({ ...d, holedOut: false }, putts);
+          setSheet(null);
+        }}
+      />
+    );
+  }
+
   if (setupOpen || (view === 'map' && !mapData)) {
     const nearCourse = player != null && distanceM(player.pos, courseCenter) < 5000;
     return (
@@ -210,6 +285,11 @@ export function HoleScreen(props: {
     const fmt = (m: number) => formatDistance(m, unit);
 
     const tapMap = (p: LngLat) => {
+      if (placing) {
+        openAt(placing, p);
+        setPlacing(null);
+        return;
+      }
       if (distanceM(p, pin) < 12 || plan.targets.some((t) => distanceM(p, t) < 12)) return; // tap on a marker
       if (plan.targets.length < MAX_TARGETS) {
         // Keep targets in playing order: the one nearer to the player comes first.
@@ -247,6 +327,7 @@ export function HoleScreen(props: {
           targets={plan.targets}
           unit={unit}
           imagery={imagery}
+          track={detailMode ? track : undefined}
           onTargetsChange={(targets) => setPlan({ targets })}
           onPinChange={(p) => setPlan({ pin: p })}
           onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((_, j) => j !== index) })}
@@ -313,29 +394,62 @@ export function HoleScreen(props: {
               Last shot <strong>{fmt(live.lastShot)} {unit}</strong>
             </div>
           )}
-          <div className="map-actions">
-            <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
-              {plan.targets.length >= MAX_TARGETS ? `${MAX_TARGETS} targets` : `+ Target ${plan.targets.length + 1}`}
-            </button>
-            <button type="button" className="map-btn" onClick={() => setPlan({ targets: plan.targets.slice(0, -1) })} disabled={plan.targets.length === 0}>
-              − Target
-            </button>
-            <button
-              type="button"
-              className="map-btn"
-              disabled={!player}
-              onClick={() =>
-                setLive((l) =>
-                  l.shotStart
-                    ? { ...l, shotStart: null, lastShot: player ? distanceM(l.shotStart, player.pos) : null }
-                    : { ...l, shotStart: player!.pos, lastShot: null },
-                )
-              }
-              aria-pressed={shotStart != null}
-            >
-              {shotStart ? 'End shot' : 'Mark ball'}
-            </button>
-          </div>
+          {placing && (
+            <div className="map-hint detected">
+              <span>{placing === 'shot' ? `Tap where shot ${detail.shots.length + 1} was hit from` : 'Tap where your ball is on the green'}</span>
+              <button type="button" className="btn-ghost" onClick={() => setPlacing(null)}>
+                Cancel
+              </button>
+            </div>
+          )}
+          {detailMode ? (
+            <div className="map-actions detail">
+              <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
+                + Target
+              </button>
+              {holeDone ? (
+                <button type="button" className="map-btn primary" onClick={() => goTo(i + 1)}>
+                  Done · {myEntry.strokes} → {i === round.holes.length - 1 ? 'finish' : 'next'}
+                </button>
+              ) : (
+                <button type="button" className="map-btn primary" onClick={() => (onHole ? openAt('shot', player!.pos) : setPlacing('shot'))}>
+                  {detail.shots.length === 0 ? 'Tee shot' : `Shot ${detail.shots.length + 1}`} {onHole ? 'from here' : '· tap map'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="map-btn"
+                disabled={detail.shots.length === 0 || detail.holedOut}
+                onClick={() => (detail.onGreen ? openAt('green', detail.onGreen) : onHole ? openAt('green', player!.pos) : setPlacing('green'))}
+              >
+                {detail.onGreen ? 'Putts' : 'On green'}
+              </button>
+            </div>
+          ) : (
+            <div className="map-actions">
+              <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
+                {plan.targets.length >= MAX_TARGETS ? `${MAX_TARGETS} targets` : `+ Target ${plan.targets.length + 1}`}
+              </button>
+              <button type="button" className="map-btn" onClick={() => setPlan({ targets: plan.targets.slice(0, -1) })} disabled={plan.targets.length === 0}>
+                − Target
+              </button>
+              <button
+                type="button"
+                className="map-btn"
+                disabled={!player}
+                onClick={() =>
+                  setLive((l) =>
+                    l.shotStart
+                      ? { ...l, shotStart: null, lastShot: player ? distanceM(l.shotStart, player.pos) : null }
+                      : { ...l, shotStart: player!.pos, lastShot: null },
+                  )
+                }
+                aria-pressed={shotStart != null}
+              >
+                {shotStart ? 'End shot' : 'Mark ball'}
+              </button>
+            </div>
+          )}
           <div className="map-nav">
             <button type="button" className="map-btn round" aria-label="Previous hole" onClick={() => goTo(i - 1)} disabled={i === 0}>
               ←
@@ -350,6 +464,7 @@ export function HoleScreen(props: {
             </button>
           </div>
         </div>
+        {sheetEl}
       </main>
     );
   }
@@ -431,11 +546,49 @@ export function HoleScreen(props: {
         </section>
       )}
 
+      {detailMode && (
+        <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="row">
+            <span className="row-label">Shots</span>
+            <span className="muted small">{hasShots ? 'Strokes, fairway, penalties and bunker come from the shots' : 'Track shot by shot on the map, or enter the score below'}</span>
+          </div>
+          {hasShots && (
+            <ol className="shot-list">
+              {detail.shots.map((sh, k) => (
+                <li key={k}>
+                  <span className="n">{k + 1}</span>
+                  <span>
+                    <strong>{sh.club ?? '–'}</strong> <span className="muted">· {sh.lie}{sh.penalty ? ' · +1 penalty' : ''}</span>
+                  </span>
+                  <span className="muted">{lengths[k] != null ? `${fmtU(lengths[k]!)} ${unit}` : ''}</span>
+                  <button type="button" className="icon-btn" aria-label={`Edit shot ${k + 1}`} onClick={() => setSheet({ kind: 'shot', index: k, pos: sh.pos })}>
+                    ✎
+                  </button>
+                </li>
+              ))}
+              {detail.holedOut && <li><span className="n">⛳</span><span>Holed out</span><span /><span /></li>}
+            </ol>
+          )}
+          <div className="nav-bottom" style={{ gridTemplateColumns: hasShots ? '1fr 1fr' : '1fr' }}>
+            <button type="button" className="btn-secondary" onClick={() => setSheet({ kind: 'shot', index: null, pos: null })} disabled={detail.holedOut}>
+              + Add shot
+            </button>
+            {hasShots && (
+              <button type="button" className="btn-secondary btn-danger" onClick={() => update(me.id, { detail: undefined })}>
+                Clear shots
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
       <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="row">
           <span className="row-label">{me.name} · Strokes</span>
           {myEntry.pickedUp ? (
             <span className="badge warn">Picked up</span>
+          ) : hasShots ? (
+            <span className="num" style={{ font: '700 28px var(--display)' }}>{myEntry.strokes ?? '…'}</span>
           ) : (
             <Stepper label="Strokes" value={myEntry.strokes} placeholder={hole.par || 4} min={1} onChange={(v) => update(me.id, { strokes: v })} />
           )}
@@ -446,12 +599,19 @@ export function HoleScreen(props: {
           <Segmented<number>
             label="Putts"
             value={myEntry.putts}
-            onChange={(v) => update(me.id, { putts: v })}
+            onChange={(v) => (hasShots ? saveDetail(detail, v) : update(me.id, { putts: v }))}
             options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
           />
         </div>
 
-        {hole.par >= 4 && (
+        {hasShots && (
+          <p className="muted small" style={{ margin: 0 }}>
+            {hole.par >= 4 && `Fairway: ${myEntry.fairway ?? '–'} · `}Penalties: {myEntry.penalties}
+            {myEntry.greensideBunker && ` · Greenside bunker${myEntry.upAndDown ? ' – sand save ✓' : ''}`}
+          </p>
+        )}
+
+        {hole.par >= 4 && !hasShots && (
           <div className="field">
             <label>Fairway</label>
             <Segmented<FairwayResult>
@@ -467,35 +627,39 @@ export function HoleScreen(props: {
           </div>
         )}
 
-        <div className="row">
-          <span className="row-label">Penalties</span>
-          <Stepper compact label="Penalties" value={myEntry.penalties} min={0} onChange={(v) => update(me.id, { penalties: v })} />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button
-            type="button"
-            className="toggle"
-            aria-pressed={myEntry.greensideBunker}
-            onClick={() => update(me.id, { greensideBunker: !myEntry.greensideBunker, upAndDown: null })}
-          >
-            {myEntry.greensideBunker ? '✓' : '○'} Greenside bunker
-          </button>
-          {myEntry.greensideBunker && (
-            <div className="field">
-              <label>Up &amp; down from the bunker?</label>
-              <Segmented<string>
-                label="Up and down"
-                value={myEntry.upAndDown == null ? null : myEntry.upAndDown ? 'yes' : 'no'}
-                onChange={(v) => update(me.id, { upAndDown: v == null ? null : v === 'yes' })}
-                options={[
-                  { value: 'yes', label: 'Yes' },
-                  { value: 'no', label: 'No' },
-                ]}
-              />
+        {!hasShots && (
+          <>
+            <div className="row">
+              <span className="row-label">Penalties</span>
+              <Stepper compact label="Penalties" value={myEntry.penalties} min={0} onChange={(v) => update(me.id, { penalties: v })} />
             </div>
-          )}
-        </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                type="button"
+                className="toggle"
+                aria-pressed={myEntry.greensideBunker}
+                onClick={() => update(me.id, { greensideBunker: !myEntry.greensideBunker, upAndDown: null })}
+              >
+                {myEntry.greensideBunker ? '✓' : '○'} Greenside bunker
+              </button>
+              {myEntry.greensideBunker && (
+                <div className="field">
+                  <label>Up &amp; down from the bunker?</label>
+                  <Segmented<string>
+                    label="Up and down"
+                    value={myEntry.upAndDown == null ? null : myEntry.upAndDown ? 'yes' : 'no'}
+                    onChange={(v) => update(me.id, { upAndDown: v == null ? null : v === 'yes' })}
+                    options={[
+                      { value: 'yes', label: 'Yes' },
+                      { value: 'no', label: 'No' },
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         <button
           type="button"
@@ -562,6 +726,7 @@ export function HoleScreen(props: {
           {i === round.holes.length - 1 ? 'Finish round' : `Next · hole ${round.holes[i + 1].label}`}
         </button>
       </div>
+      {sheetEl}
     </main>
   );
 }

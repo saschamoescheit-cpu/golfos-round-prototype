@@ -17,6 +17,8 @@ export interface HoleMapProps {
   targets: LngLat[]; // planned landing points (max 3), in playing order
   unit: Unit;
   imagery: ImagerySource;
+  /** Detailed tracking: recorded shots (and the ball on the green), drawn as a yellow line with numbered dots. */
+  track?: { pos: LngLat; label: string; green?: boolean }[];
   onTargetsChange: (t: LngLat[]) => void;
   onTargetRemove: (index: number) => void;
   onPinChange: (p: LngLat) => void;
@@ -27,7 +29,7 @@ export function HoleMap(props: HoleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const ready = useRef(false);
-  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[] }>({ targets: [], labels: [] });
+  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[] }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
   latest.current = props;
 
@@ -49,6 +51,9 @@ export function HoleMap(props: HoleMapProps) {
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       courseLayers('shapes').forEach((l) => m.addLayer(l));
       m.addLayer({ id: 'hole', type: 'line', source: 'shapes', filter: ['==', 'kind', 'hole'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [3, 3] } });
+      m.addSource('track', { type: 'geojson', data: trackLine(latest.current) });
+      m.addLayer({ id: 'track-casing', type: 'line', source: 'track', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.5 } });
+      m.addLayer({ id: 'track', type: 'line', source: 'track', paint: { 'line-color': '#FFD54A', 'line-width': 2.5 } });
       m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.6 } });
       m.addLayer({ id: 'plan', type: 'line', source: 'plan', paint: { 'line-color': '#FFFFFF', 'line-width': 2.5 } });
       ready.current = true;
@@ -91,7 +96,13 @@ export function HoleMap(props: HoleMapProps) {
     if (!m) return;
     const p = latest.current;
     (m.getSource('plan') as maplibregl.GeoJSONSource | undefined)?.setData(planLine(p));
+    (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData(trackLine(p));
     const mk = markers.current;
+    mk.track.forEach((t) => t.remove());
+    mk.track = (p.track ?? []).map((t) => {
+      const d = labelEl(t.label, t.green ? 'map-shot-dot green' : 'map-shot-dot');
+      return new maplibregl.Marker({ element: d }).setLngLat(t.pos).addTo(m);
+    });
 
     // Player
     if (p.player) {
@@ -189,6 +200,11 @@ function shapes(d: HoleMapData): GeoJSON.FeatureCollection {
       { type: 'Feature', properties: { kind: 'hole' }, geometry: { type: 'LineString', coordinates: d.line } },
     ],
   };
+}
+
+function trackLine(p: HoleMapProps): GeoJSON.FeatureCollection {
+  const pts = (p.track ?? []).map((t) => t.pos);
+  return { type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] };
 }
 
 function planLine(p: HoleMapProps): GeoJSON.FeatureCollection {

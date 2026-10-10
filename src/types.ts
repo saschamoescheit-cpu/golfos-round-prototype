@@ -64,6 +64,22 @@ export interface RoundHole {
 
 export type FairwayResult = 'left' | 'hit' | 'right';
 
+// ---- Detailed tracking (feature 003) ----
+export type Lie = 'tee' | 'fairway' | 'rough' | 'bunker' | 'recovery';
+export type Club = 'Dr' | '3W' | '5W' | 'Hy' | '4i' | '5i' | '6i' | '7i' | '8i' | '9i' | 'PW' | 'GW' | 'SW' | 'LW';
+export interface Shot {
+  pos: LngLat | null; // where the shot was hit from (GPS or tapped); null when entered without position
+  lie: Lie;
+  club: Club | null;
+  penalty: boolean; // ball in water / out of bounds after this shot: +1 stroke
+}
+export interface DetailEntry {
+  shots: Shot[]; // all shots before the green (putts are counted separately)
+  onGreen: LngLat | null; // where the ball came to rest on the green (first putt position)
+  pin: LngLat | null; // pin position when the ball was marked on the green
+  holedOut: boolean; // holed from off the green (chip-in, hole in one): no putts
+}
+
 export interface HoleEntry {
   strokes: number | null; // null = not yet entered
   pickedUp: boolean;
@@ -73,6 +89,8 @@ export interface HoleEntry {
   penalties: number;
   greensideBunker: boolean;
   upAndDown: boolean | null;
+  /** Detailed tracking: shots of the hole. Absent = quick tracking for this hole. */
+  detail?: DetailEntry;
 }
 
 export interface Player {

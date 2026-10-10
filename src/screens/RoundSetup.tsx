@@ -94,9 +94,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
             Quick
             <small>Scorecard: strokes, putts, fairway, penalties, bunker</small>
           </button>
-          <button type="button" className="choice" disabled aria-pressed={false}>
+          <button type="button" className="choice" aria-pressed={mode === 'detail'} onClick={() => setMode('detail')}>
             Detailed
-            <small>Shot by shot with clubs · coming in v0.2</small>
+            <small>Shot by shot with club and lie on the map · you can switch per hole</small>
           </button>
         </div>
       </section>
