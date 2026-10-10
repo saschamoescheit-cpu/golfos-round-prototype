@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FairwayResult, HoleEntry, LngLat, Round } from '../types';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
-import { loadCachedCourse, loadGeometry, loadImagery, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveUnit } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveUnit } from '../lib/storage';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
-import { distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
+import { detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
@@ -49,6 +49,7 @@ export function HoleScreen(props: {
   };
 
   const goTo = (target: number) => {
+    setDetected(null);
     const committed = commitPar(round);
     if (target >= round.holes.length) {
       props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 });
@@ -84,12 +85,15 @@ export function HoleScreen(props: {
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [plans, setPlans] = useState<Record<number, { targets: LngLat[]; pin: LngLat | null }>>({});
-  const [shotStart, setShotStart] = useState<LngLat | null>(null);
-  const wantsGps = view === 'map' || setupOpen;
-
+  // Targets, pin and the marked ball survive a reload (iOS may drop the page while the phone is in the pocket).
+  const [live, setLive] = useState(() => loadLive(round.id));
+  useEffect(() => saveLive(round.id, live), [round.id, live]);
+  const plans = live.plans;
+  const setPlans = (p: typeof plans) => setLive((l) => ({ ...l, plans: p }));
+  const shotStart = live.shotStart;
+  // GPS runs while the hole screen is open (map or score), so the hole is recognised in both views.
   useEffect(() => {
-    if (!wantsGps || !('geolocation' in navigator)) return;
+    if (!('geolocation' in navigator)) return;
     const id = navigator.geolocation.watchPosition(
       (p) => {
         setGpsError(null);
@@ -99,7 +103,28 @@ export function HoleScreen(props: {
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [wantsGps]);
+  }, []);
+
+  // Phone back out of the pocket (or app opened): with the first good GPS fix, move to the hole the player is on.
+  const allMaps = useMemo(() => round.holes.map((h) => holeMapData(geometry, h.loop, h.number)), [geometry, round.holes]);
+  const [detected, setDetected] = useState<{ from: number; to: number } | null>(null);
+  const detectArmed = useRef(true);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') detectArmed.current = true;
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+  useEffect(() => {
+    if (!player || !detectArmed.current || player.accuracy > 30 || setupOpen) return;
+    detectArmed.current = false;
+    const k = detectHole(player.pos, allMaps, i);
+    if (k == null) return;
+    goTo(k);
+    setDetected({ from: i, to: k });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player]);
 
   const course = loadCachedCourse(round.courseId);
   const courseCenter: LngLat = course ? [course.lon, course.lat] : (mapData?.greenCenter ?? player?.pos ?? [0, 0]);
@@ -111,6 +136,15 @@ export function HoleScreen(props: {
     setImageryPref(next.id);
     saveImagery(next.id);
   };
+
+  const detectedBanner = detected && detected.to === i && (
+    <div className="map-hint detected">
+      <span>Hole {hole.label} detected by GPS</span>
+      <button type="button" className="btn-ghost" onClick={() => goTo(detected.from)}>
+        Undo
+      </button>
+    </div>
+  );
 
   if (setupOpen || (view === 'map' && !mapData)) {
     const nearCourse = player != null && distanceM(player.pos, courseCenter) < 5000;
@@ -242,9 +276,15 @@ export function HoleScreen(props: {
           {(gpsError || (player && !onHole)) && (
             <div className="map-hint">{gpsError ?? 'You are not on this hole – distances from the tee.'}</div>
           )}
+          {detectedBanner}
           {shotStart && player && (
             <div className="map-shot">
               Shot <strong>{fmt(distanceM(shotStart, player.pos))} {unit}</strong>
+            </div>
+          )}
+          {!shotStart && live.lastShot != null && (
+            <div className="map-shot">
+              Last shot <strong>{fmt(live.lastShot)} {unit}</strong>
             </div>
           )}
           <div className="map-actions">
@@ -258,7 +298,13 @@ export function HoleScreen(props: {
               type="button"
               className="map-btn"
               disabled={!player}
-              onClick={() => setShotStart(shotStart ? null : player!.pos)}
+              onClick={() =>
+                setLive((l) =>
+                  l.shotStart
+                    ? { ...l, shotStart: null, lastShot: player ? distanceM(l.shotStart, player.pos) : null }
+                    : { ...l, shotStart: player!.pos, lastShot: null },
+                )
+              }
               aria-pressed={shotStart != null}
             >
               {shotStart ? 'End shot' : 'Mark ball'}
@@ -317,6 +363,7 @@ export function HoleScreen(props: {
       <div className="progress" aria-hidden="true">
         <div style={{ width: `${((i + 1) / round.holes.length) * 100}%` }} />
       </div>
+      {detectedBanner}
 
       <div className="hole-header">
         <div>

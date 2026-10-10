@@ -19,6 +19,13 @@ export function imageryLayer(source: ImagerySource): maplibregl.RasterLayerSpeci
   return { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-fade-duration': 150, ...source.paint } };
 }
 
+/** Shows the credit as the (i) button (tap to read) instead of a wide banner over the hole. */
+export function collapseAttribution(m: maplibregl.Map): void {
+  const el = m.getContainer().querySelector('.maplibregl-ctrl-attrib.maplibregl-compact');
+  el?.classList.remove('maplibregl-compact-show');
+  el?.removeAttribute('open');
+}
+
 /** Swaps the imagery under the existing course layers. */
 export function setImagery(m: maplibregl.Map, source: ImagerySource): void {
   const below = m.getStyle().layers[1]?.id; // course layers stay on top

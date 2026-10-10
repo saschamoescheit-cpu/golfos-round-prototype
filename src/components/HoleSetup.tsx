@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { CourseGeometry, LngLat } from '../types';
 import { centroid, distanceM, pointInRing } from '../lib/geo';
 import type { ImagerySource } from '../lib/imagery';
-import { courseLayers, imageryStyle, OSM_ATTRIBUTION } from './mapStyle';
+import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION } from './mapStyle';
 
 // "Set up hole": for courses where OpenStreetMap has no hole lines (e.g. Son Quint).
 // The player marks the tee (own GPS position or a tap) and taps the green; the app stores tee → green.
@@ -57,6 +57,7 @@ export function HoleSetup(props: {
         },
       });
       courseLayers('course').forEach((l) => m.addLayer(l));
+      collapseAttribution(m);
     });
     m.on('click', (e) => {
       const p: LngLat = [e.lngLat.lng, e.lngLat.lat];

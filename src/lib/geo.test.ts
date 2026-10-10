@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alongLine, bearingDeg, distanceM, greenFrontBack, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, suggestTarget } from './geo';
+import { alongLine, bearingDeg, detectHole, distanceM, greenFrontBack, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, suggestTarget } from './geo';
 import type { LngLat, Ring } from '../types';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 
@@ -72,5 +72,23 @@ describe('Hetzenhof geometry', () => {
     const len = d.line.slice(1).reduce((s, p, i) => s + distanceM(d.line[i], p), 0);
     expect(len).toBeGreaterThan(380);
     expect(len).toBeLessThan(600);
+  });
+});
+
+describe('hole detection after taking the phone out of the pocket', () => {
+  const geo = SEED_GEOMETRY['osm:relation/1326323'];
+  const holes = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => holeMapData(geo, 'A', n));
+  const mid = (k: number) => pointAt(holes[k]!.line, lineLength(holes[k]!.line) / 2);
+  it('stays on the current hole while the player is on it', () => {
+    expect(detectHole(holes[0]!.tee, holes, 0)).toBeNull();
+    expect(detectHole(mid(0), holes, 0)).toBeNull();
+  });
+  it('switches to the next hole on its tee or fairway', () => {
+    expect(detectHole(holes[1]!.tee, holes, 0)).toBe(1);
+    expect(detectHole(mid(2), holes, 0)).toBe(2);
+  });
+  it('never jumps back and ignores positions off the course', () => {
+    expect(detectHole(mid(0), holes, 3)).toBeNull();
+    expect(detectHole([9.0, 48.0], holes, 0)).toBeNull();
   });
 });

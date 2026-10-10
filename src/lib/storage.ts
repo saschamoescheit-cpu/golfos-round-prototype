@@ -113,6 +113,20 @@ export function saveImagery(id: ImageryId): void {
   write(IMAGERY, id);
 }
 
+/** Live state of a round on the map, so nothing is lost when iOS reloads the page while the phone is in the pocket. */
+export interface LiveState {
+  plans: Record<number, { targets: LngLat[]; pin: LngLat | null }>; // per hole index
+  shotStart: LngLat | null; // "Mark ball" position
+  lastShot: number | null; // metres of the last measured shot
+}
+const LIVE = 'golfos.live.v1.';
+export function loadLive(roundId: string): LiveState {
+  return read<LiveState>(LIVE + roundId, { plans: {}, shotStart: null, lastShot: null });
+}
+export function saveLive(roundId: string, live: LiveState): void {
+  write(LIVE + roundId, live);
+}
+
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }

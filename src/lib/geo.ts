@@ -207,6 +207,26 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
   };
 }
 
+/**
+ * Which hole is the player on? Used when the app is opened again after the phone was in the pocket.
+ * Only looks forward (the next 3 holes), so walking past an earlier hole never jumps back.
+ * Returns the index of the hole to switch to, or null to stay on the current hole.
+ */
+export function detectHole(pos: LngLat, holes: (HoleMapData | null)[], current: number): number | null {
+  const TEE_M = 25; // standing on a tee
+  const ON_HOLE_M = 30; // inside the hole's corridor
+  const cur = holes[current];
+  const ahead: number[] = [];
+  for (let k = current + 1; k <= current + 3 && k < holes.length; k++) if (holes[k]) ahead.push(k);
+  const onTee = ahead.find((k) => distanceM(pos, holes[k]!.tee) <= TEE_M);
+  if (cur) {
+    // Next tee right behind the current green: switch only once the player has left the green.
+    if (onTee != null && distanceM(pos, cur.greenCenter) > 25) return onTee;
+    if (distToLine(pos, cur.line) <= ON_HOLE_M) return null;
+  } else if (onTee != null) return onTee;
+  return ahead.find((k) => distToLine(pos, holes[k]!.line) <= ON_HOLE_M) ?? null;
+}
+
 export type Unit = 'm' | 'yd';
 export function formatDistance(m: number, unit: Unit): string {
   return String(Math.round(unit === 'yd' ? m * 1.09361 : m));

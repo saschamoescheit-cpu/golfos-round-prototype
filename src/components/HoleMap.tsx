@@ -3,7 +3,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit } from '../lib/geo';
-import { courseLayers, imageryStyle, OSM_ATTRIBUTION, setImagery } from './mapStyle';
+import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, setImagery } from './mapStyle';
 import type { ImagerySource } from '../lib/imagery';
 
 // Satellite hole map: imagery (see lib/imagery.ts) with the hole drawn on top in course colours.
@@ -52,6 +52,7 @@ export function HoleMap(props: HoleMapProps) {
       m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.6 } });
       m.addLayer({ id: 'plan', type: 'line', source: 'plan', paint: { 'line-color': '#FFFFFF', 'line-width': 2.5 } });
       ready.current = true;
+      collapseAttribution(m);
       fit(m, latest.current.data);
       render();
     });

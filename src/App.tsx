@@ -14,9 +14,17 @@ type Screen =
   | { name: 'hole'; round: Round }
   | { name: 'scorecard'; round: Round };
 
+/** A round started in the last 14 hours and not finished: the app reopens straight on its hole (iOS may reload the page while the phone is in the pocket). */
+function roundInPlay(rounds: Round[]): Round | undefined {
+  return rounds.find((r) => !r.finishedAt && Date.now() - Date.parse(r.createdAt) < 14 * 3600 * 1000);
+}
+
 export function App() {
-  const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [rounds, setRounds] = useState<Round[]>(() => loadRounds());
+  const [screen, setScreen] = useState<Screen>(() => {
+    const r = roundInPlay(rounds);
+    return r ? { name: 'hole', round: r } : { name: 'home' };
+  });
 
   // Every change to a round is saved immediately, so closing the app never loses a hole.
   const persist = (round: Round) => {
