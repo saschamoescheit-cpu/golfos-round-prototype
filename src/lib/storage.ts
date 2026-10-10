@@ -1,4 +1,4 @@
-import type { Course, CourseGeometry, Round } from '../types';
+import type { Course, CourseGeometry, LngLat, Round } from '../types';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 
 // Everything is stored on the device (localStorage). No account, no cloud – prototype only.
@@ -57,9 +57,38 @@ export function saveHoleCorrection(courseId: string, loop: string, number: numbe
 
 const GEO = 'golfos.geo.v1.';
 
-/** Course map geometry: bundled snapshot first (test course), else the copy saved when the course was loaded. */
-export function loadGeometry(courseId: string): CourseGeometry | null {
-  return SEED_GEOMETRY[courseId] ?? read<CourseGeometry | null>(GEO + courseId, null);
+const LINES = 'golfos.holelines.v1.';
+
+/** Hole lines the player set up on the course (tee → green), keyed "loop#number". */
+export function loadHoleLines(courseId: string): Record<string, LngLat[]> {
+  return read<Record<string, LngLat[]>>(LINES + courseId, {});
+}
+
+export function saveHoleLine(courseId: string, loop: string, number: number, line: LngLat[]): void {
+  write(LINES + courseId, { ...loadHoleLines(courseId), [`${loop}#${number}`]: line });
+}
+
+function holeLabel(loop: string, number: number): string {
+  if (loop === 'Main') return String(number);
+  return loop.length === 1 ? `${number}${loop}` : `${loop} ${number}`;
+}
+
+/**
+ * Course map geometry: bundled snapshot (test courses) or the copy saved when the course was loaded,
+ * plus hole lines the player set up himself (these replace mapped lines of the same hole).
+ * Returns an empty geometry rather than null, so a hole can always be set up on the satellite map.
+ */
+export function loadGeometry(courseId: string): CourseGeometry {
+  const base: CourseGeometry =
+    SEED_GEOMETRY[courseId] ?? read<CourseGeometry | null>(GEO + courseId, null) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] };
+  const own = loadHoleLines(courseId);
+  if (Object.keys(own).length === 0) return base;
+  const ownHoles = Object.entries(own).map(([key, line]) => {
+    const [loop, num] = key.split('#');
+    return { ref: holeLabel(loop, Number(num)), line };
+  });
+  const ownRefs = new Set(ownHoles.map((h) => h.ref));
+  return { ...base, holes: [...base.holes.filter((h) => !ownRefs.has(h.ref)), ...ownHoles] };
 }
 
 export function saveGeometry(courseId: string, geometry: CourseGeometry): void {

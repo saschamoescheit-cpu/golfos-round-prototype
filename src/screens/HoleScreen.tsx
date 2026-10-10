@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FairwayResult, HoleEntry, LngLat, Round } from '../types';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
-import { loadGeometry, loadUnit, saveHoleCorrection, saveUnit } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, loadUnit, saveHoleCorrection, saveHoleLine, saveUnit } from '../lib/storage';
 import { distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
+import { HoleSetup } from '../components/HoleSetup';
 
 /** Beyond this distance from the hole the app measures from the tee (planning at home or on another hole). */
 const ON_HOLE_M = 1500;
@@ -70,17 +71,21 @@ export function HoleScreen(props: {
   const needsData = !hole.par || !hole.strokeIndex;
 
   // ---------- Map view ----------
-  const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId]);
-  const mapData = useMemo(() => (geometry ? holeMapData(geometry, hole.loop, hole.number) : null), [geometry, hole.loop, hole.number]);
+  const [geoVersion, setGeoVersion] = useState(0); // bumps after the player set up a hole
+  const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId, geoVersion]);
+  const mapData = useMemo(() => holeMapData(geometry, hole.loop, hole.number), [geometry, hole.loop, hole.number]);
   const [view, setView] = useState<'map' | 'score'>(mapData ? 'map' : 'score');
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [editHole, setEditHole] = useState(false);
   const [unit, setUnit] = useState<Unit>(loadUnit);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [plans, setPlans] = useState<Record<number, { targets: LngLat[]; pin: LngLat | null }>>({});
   const [shotStart, setShotStart] = useState<LngLat | null>(null);
+  const wantsGps = (view === 'map' && mapData != null) || setupOpen;
 
   useEffect(() => {
-    if (view !== 'map' || !('geolocation' in navigator)) return;
+    if (!wantsGps || !('geolocation' in navigator)) return;
     const id = navigator.geolocation.watchPosition(
       (p) => {
         setGpsError(null);
@@ -90,14 +95,38 @@ export function HoleScreen(props: {
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [view]);
+  }, [wantsGps]);
+
+  if (setupOpen) {
+    const course = loadCachedCourse(round.courseId);
+    const courseCenter: LngLat = course ? [course.lon, course.lat] : (player?.pos ?? [0, 0]);
+    const nearCourse = player != null && distanceM(player.pos, courseCenter) < 5000;
+    return (
+      <HoleSetup
+        holeLabel={hole.label}
+        par={hole.par}
+        geometry={geometry}
+        center={nearCourse ? player!.pos : courseCenter}
+        nearPlayer={nearCourse}
+        player={player?.pos ?? null}
+        onCancel={() => setSetupOpen(false)}
+        onSave={(line) => {
+          saveHoleLine(round.courseId, hole.loop, hole.number, line);
+          setGeoVersion((v) => v + 1);
+          setSetupOpen(false);
+          setView('map');
+        }}
+      />
+    );
+  }
 
   if (view === 'map' && mapData) {
     const plan = plans[i] ?? { targets: [], pin: null };
     const pin = plan.pin ?? mapData.greenCenter;
     const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
     const from = onHole ? player!.pos : mapData.tee;
-    const green = mapData.green ? greenFrontBack(from, mapData.green) : null;
+    // Without a mapped green outline (player-set green) only the centre distance is known.
+    const green = mapData.green ? greenFrontBack(from, mapData.green) : { front: null, center: distanceM(from, mapData.greenCenter), back: null };
     const setPlan = (patch: Partial<{ targets: LngLat[]; pin: LngLat | null }>) => setPlans({ ...plans, [i]: { ...plan, ...patch } });
     const fmt = (m: number) => formatDistance(m, unit);
 
@@ -140,6 +169,7 @@ export function HoleScreen(props: {
           unit={unit}
           onTargetsChange={(targets) => setPlan({ targets })}
           onPinChange={(p) => setPlan({ pin: p })}
+          onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((_, j) => j !== index) })}
           onMapTap={tapMap}
         />
 
@@ -151,6 +181,9 @@ export function HoleScreen(props: {
             <span className="map-hole-no">{hole.label}</span>
             <span>Par {hole.par || '?'} · Hcp {hole.strokeIndex || '?'}</span>
           </div>
+          <button type="button" className="map-btn round" aria-label="Set up this hole on the map again" onClick={() => setSetupOpen(true)}>
+            ✎
+          </button>
           <button type="button" className="map-btn" onClick={toggleUnit} aria-label={`Unit: ${unit === 'm' ? 'metres' : 'yards'}, tap to switch`}>
             {unit === 'm' ? 'm' : 'yd'}
           </button>
@@ -159,17 +192,23 @@ export function HoleScreen(props: {
           </button>
         </div>
 
-        {green && (
-          <div className="map-green" aria-label="Distance to the green">
-            <span className="small">Back</span>
-            <span className="map-green-num">{fmt(green.back)}</span>
-            <span className="small">Center</span>
-            <span className="map-green-num big">{fmt(green.center)}</span>
-            <span className="small">Front</span>
-            <span className="map-green-num">{fmt(green.front)}</span>
-            <span className="map-from">{onHole ? `GPS ±${Math.round(player!.accuracy)} m` : 'from tee'}</span>
-          </div>
-        )}
+        <div className="map-green" aria-label="Distance to the green">
+          {green.back != null && (
+            <>
+              <span className="small">Back</span>
+              <span className="map-green-num">{fmt(green.back)}</span>
+            </>
+          )}
+          <span className="small">Center</span>
+          <span className="map-green-num big">{fmt(green.center)}</span>
+          {green.front != null && (
+            <>
+              <span className="small">Front</span>
+              <span className="map-green-num">{fmt(green.front)}</span>
+            </>
+          )}
+          <span className="map-from">{onHole ? `GPS ±${Math.round(player!.accuracy)} m` : 'from tee'}</span>
+        </div>
 
         <div className="map-bottom">
           {(gpsError || (player && !onHole)) && (
@@ -258,16 +297,30 @@ export function HoleScreen(props: {
           <span className="eyebrow">Hole {i + 1} of {round.holes.length}</span>
           <div className="hole-no">{hole.label}</div>
         </div>
-        <div className="hole-meta">
+        <button
+          type="button"
+          className="hole-meta"
+          style={{ background: 'none', border: 0, padding: '6px 0', cursor: 'pointer' }}
+          aria-expanded={editHole}
+          aria-label="Edit par and stroke index of this hole"
+          onClick={() => setEditHole(!editHole)}
+        >
           <span>Par {hole.par || '?'}</span>
           <span>Hcp {hole.strokeIndex || '?'}</span>
           {received > 0 && <span style={{ color: 'var(--brand-text)' }}>+{received}</span>}
-        </div>
+          <span aria-hidden="true" style={{ color: 'var(--muted)' }}>✎</span>
+        </button>
       </div>
 
-      {needsData && (
+      {!mapData && (
+        <button type="button" className="btn-secondary" onClick={() => setSetupOpen(true)}>
+          Set up hole map (tee + green)
+        </button>
+      )}
+
+      {(needsData || editHole) && (
         <section className="notice" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <strong>Missing course data – please complete once:</strong>
+          <strong>{needsData ? 'Missing course data – please complete once:' : 'Correct par / stroke index (saved for this course):'}</strong>
           <div className="row">
             <span>Par</span>
             <Stepper compact label="Par" value={hole.par || null} placeholder={4} min={3} onChange={(v) => fixHole({ par: v })} />

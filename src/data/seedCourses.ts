@@ -41,4 +41,31 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
       {"handicap": "4", "par": "4", "ref": "9C"},
     ],
   },
+  'osm:relation/1654444': {
+    // Scorecard from allsquaregolf.com (white 6,021 m, par 71). Sources disagree on some stroke indexes –
+    // the player can correct par/hcp on each hole.
+    name: 'Golf de Son Quint',
+    lat: 39.5955,
+    lon: 2.6031,
+    holeTags: [
+      {"ref": "1", "par": "4", "handicap": "9"},
+      {"ref": "2", "par": "4", "handicap": "4"},
+      {"ref": "3", "par": "3", "handicap": "17"},
+      {"ref": "4", "par": "4", "handicap": "8"},
+      {"ref": "5", "par": "4", "handicap": "11"},
+      {"ref": "6", "par": "4", "handicap": "3"},
+      {"ref": "7", "par": "5", "handicap": "12"},
+      {"ref": "8", "par": "4", "handicap": "13"},
+      {"ref": "9", "par": "3", "handicap": "14"},
+      {"ref": "10", "par": "4", "handicap": "16"},
+      {"ref": "11", "par": "4", "handicap": "6"},
+      {"ref": "12", "par": "3", "handicap": "5"},
+      {"ref": "13", "par": "5", "handicap": "1"},
+      {"ref": "14", "par": "3", "handicap": "18"},
+      {"ref": "15", "par": "4", "handicap": "15"},
+      {"ref": "16", "par": "4", "handicap": "2"},
+      {"ref": "17", "par": "5", "handicap": "10"},
+      {"ref": "18", "par": "4", "handicap": "7"},
+    ],
+  },
 };

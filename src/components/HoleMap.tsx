@@ -17,6 +17,7 @@ export interface HoleMapProps {
   targets: LngLat[]; // planned landing points (max 3), in playing order
   unit: Unit;
   onTargetsChange: (t: LngLat[]) => void;
+  onTargetRemove: (index: number) => void;
   onPinChange: (p: LngLat) => void;
   onMapTap: (p: LngLat) => void;
 }
@@ -136,7 +137,9 @@ export function HoleMap(props: HoleMapProps) {
     }
     p.targets.forEach((t, i) => {
       const prev = i === 0 ? p.from : p.targets[i - 1];
-      const sign = targetSignEl(i + 1, formatDistance(distanceM(prev, t), p.unit), formatDistance(distanceM(t, p.pin), p.unit), p.unit);
+      const sign = targetSignEl(i + 1, formatDistance(distanceM(prev, t), p.unit), formatDistance(distanceM(t, p.pin), p.unit), p.unit, () =>
+        latest.current.onTargetRemove(i),
+      );
       mk.labels.push(new maplibregl.Marker({ element: sign, anchor: 'left', offset: [26, 0] }).setLngLat(t).addTo(m));
     });
     const hazards: { ring: Ring; kind: 'bunker' | 'water' }[] = [
@@ -204,15 +207,25 @@ function labelEl(text: string, className: string): HTMLDivElement {
   return d;
 }
 
-function targetSignEl(n: number, carry: string, rest: string, unit: Unit): HTMLDivElement {
-  const d = el('map-target-sign');
+function targetSignEl(n: number, carry: string, rest: string, unit: Unit, onRemove: () => void): HTMLDivElement {
+  const d = el('map-target-sign with-remove');
+  const text = document.createElement('div');
   const head = document.createElement('div');
   head.className = 'carry';
   head.textContent = `${n} · ${carry} ${unit}`;
   const tail = document.createElement('div');
   tail.className = 'rest';
   tail.textContent = `Pin ${rest} ${unit}`;
-  d.append(head, tail);
+  text.append(head, tail);
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'remove';
+  remove.textContent = '✕';
+  remove.setAttribute('aria-label', `Remove target ${n}`);
+  // Keep the tap from reaching the map (which would place a new target).
+  for (const ev of ['mousedown', 'touchstart', 'pointerdown', 'click'] as const) remove.addEventListener(ev, (e) => e.stopPropagation());
+  remove.addEventListener('click', onRemove);
+  d.append(text, remove);
   return d;
 }
 
