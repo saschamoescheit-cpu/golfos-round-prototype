@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bearingDeg, distanceM, greenFrontBack, hazardToCarry, holeMapData, isAhead } from './geo';
+import { alongLine, bearingDeg, distanceM, greenFrontBack, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, suggestTarget } from './geo';
 import type { LngLat, Ring } from '../types';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 
@@ -37,6 +37,22 @@ describe('hazards', () => {
   it('ahead / behind', () => {
     expect(isAhead(at(0, 0), at(0, 150), at(3, 100))).toBe(true);
     expect(isAhead(at(0, 0), at(0, 150), at(0, -30))).toBe(false);
+  });
+});
+
+describe('targets along a dogleg', () => {
+  // 200 m north, then 200 m east.
+  const line: LngLat[] = [at(0, 0), at(0, 200), at(200, 200)];
+  it('length, position along the line, point at distance', () => {
+    expect(lineLength(line)).toBeCloseTo(400, 0);
+    expect(alongLine(line, at(5, 100))).toBeCloseTo(100, 0);
+    expect(distanceM(pointAt(line, 300), at(100, 200))).toBeLessThan(0.5);
+  });
+  it('first target = 220 m along the line (round the corner), second ~55 % of the rest', () => {
+    const t1 = suggestTarget(line, line[0]);
+    expect(distanceM(t1, at(20, 200))).toBeLessThan(0.5);
+    const t2 = suggestTarget(line, t1);
+    expect(alongLine(line, t2)).toBeCloseTo(220 + 0.55 * 180, 0);
   });
 });
 

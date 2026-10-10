@@ -109,6 +109,61 @@ export function isAhead(from: LngLat, target: LngLat, p: LngLat): boolean {
   return tx * px + ty * py > 0;
 }
 
+/** Length of a polyline in metres. */
+export function lineLength(line: LngLat[]): number {
+  let s = 0;
+  for (let i = 1; i < line.length; i++) s += distanceM(line[i - 1], line[i]);
+  return s;
+}
+
+/** Position along the line (metres from its start) of the point on the line nearest to p. */
+export function alongLine(line: LngLat[], p: LngLat): number {
+  let best = Infinity;
+  let bestS = 0;
+  let s = 0;
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1];
+    const b = line[i];
+    const seg = distanceM(a, b);
+    const proj = projector(a);
+    const [bx, by] = proj(b);
+    const [px, py] = proj(p);
+    const t = seg === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / (seg * seg)));
+    const d = Math.hypot(px - t * bx, py - t * by);
+    if (d < best) {
+      best = d;
+      bestS = s + t * seg;
+    }
+    s += seg;
+  }
+  return bestS;
+}
+
+/** The point at `meters` from the start of the line (clamped to the line). */
+export function pointAt(line: LngLat[], meters: number): LngLat {
+  let left = Math.max(0, meters);
+  for (let i = 1; i < line.length; i++) {
+    const seg = distanceM(line[i - 1], line[i]);
+    if (left <= seg) {
+      const t = seg === 0 ? 0 : left / seg;
+      return [line[i - 1][0] + (line[i][0] - line[i - 1][0]) * t, line[i - 1][1] + (line[i][1] - line[i - 1][1]) * t];
+    }
+    left -= seg;
+  }
+  return line[line.length - 1];
+}
+
+/**
+ * Suggested next landing point along the hole's playing line: from the last planned point,
+ * a full shot (default 220 m) or a bit more than half of what is left, whichever is shorter.
+ */
+export function suggestTarget(line: LngLat[], lastPoint: LngLat, fullShotM = 220): LngLat {
+  const total = lineLength(line);
+  const s = alongLine(line, lastPoint);
+  const rest = total - s;
+  return pointAt(line, s + Math.min(fullShotM, rest * 0.55));
+}
+
 export interface HoleMapData {
   line: LngLat[]; // tee → pin
   tee: LngLat;

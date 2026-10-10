@@ -196,6 +196,12 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
   font: 700 14px var(--display); font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap;
 }
 .map-label.hazard { font-size: 12px; padding: 2px 6px; }
+.map-target-sign {
+  background: rgba(14, 20, 24, 0.92); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 10px;
+  padding: 4px 9px; pointer-events: none; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.map-target-sign .carry { font: 700 17px/1.2 var(--display); color: #fff; }
+.map-target-sign .rest { font: 600 13px/1.2 var(--body); color: var(--brand-text); }
 .map-label.hazard.bunker { color: #F4E6B8; }
 .map-label.hazard.water { color: #9AD3F7; }
 .maplibregl-ctrl-attrib { font-size: 10px; }

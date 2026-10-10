@@ -14,7 +14,7 @@ export interface HoleMapProps {
   player: LngLat | null; // GPS position, null when unknown
   from: LngLat; // measuring point: player on the course, else the tee
   pin: LngLat;
-  targets: LngLat[]; // planned landing points (max 2)
+  targets: LngLat[]; // planned landing points (max 3), in playing order
   unit: Unit;
   onTargetsChange: (t: LngLat[]) => void;
   onPinChange: (p: LngLat) => void;
@@ -47,8 +47,7 @@ export function HoleMap(props: HoleMapProps) {
       touchPitch: false,
       attributionControl: { compact: true },
     });
-    m.touchZoomRotate.disableRotation();
-    m.on('load', () => {
+    m.touchZoomRotate.disableRotation();    m.on('load', () => {
       m.addSource('shapes', { type: 'geojson', data: shapes(latest.current.data) });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       m.addLayer({ id: 'fairway', type: 'fill', source: 'shapes', filter: ['==', 'kind', 'fairway'], paint: { 'fill-color': '#7FD36B', 'fill-opacity': 0.12 } });
@@ -127,16 +126,19 @@ export function HoleMap(props: HoleMapProps) {
       } else if (!isDragging(marker)) marker.setLngLat(t);
     });
 
-    // Distance labels: each planned segment plus hazards ahead.
+    // Distance labels. Without targets: player → pin on the line. With targets: a sign next to each
+    // crosshair with the carry to it (from the player or the previous target) and the rest to the pin.
     mk.labels.forEach((l) => l.remove());
     mk.labels = [];
-    const pts = [p.from, ...p.targets, p.pin];
-    for (let i = 1; i < pts.length; i++) {
-      const a = pts[i - 1];
-      const b = pts[i];
-      const mid: LngLat = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-      mk.labels.push(new maplibregl.Marker({ element: labelEl(formatDistance(distanceM(a, b), p.unit), 'map-label') }).setLngLat(mid).addTo(m));
+    if (p.targets.length === 0) {
+      const mid: LngLat = [(p.from[0] + p.pin[0]) / 2, (p.from[1] + p.pin[1]) / 2];
+      mk.labels.push(new maplibregl.Marker({ element: labelEl(formatDistance(distanceM(p.from, p.pin), p.unit), 'map-label') }).setLngLat(mid).addTo(m));
     }
+    p.targets.forEach((t, i) => {
+      const prev = i === 0 ? p.from : p.targets[i - 1];
+      const sign = targetSignEl(i + 1, formatDistance(distanceM(prev, t), p.unit), formatDistance(distanceM(t, p.pin), p.unit), p.unit);
+      mk.labels.push(new maplibregl.Marker({ element: sign, anchor: 'left', offset: [26, 0] }).setLngLat(t).addTo(m));
+    });
     const hazards: { ring: Ring; kind: 'bunker' | 'water' }[] = [
       ...p.data.bunkers.map((ring) => ({ ring, kind: 'bunker' as const })),
       ...p.data.water.map((ring) => ({ ring, kind: 'water' as const })),
@@ -199,6 +201,18 @@ function el(className: string): HTMLDivElement {
 function labelEl(text: string, className: string): HTMLDivElement {
   const d = el(className);
   d.textContent = text;
+  return d;
+}
+
+function targetSignEl(n: number, carry: string, rest: string, unit: Unit): HTMLDivElement {
+  const d = el('map-target-sign');
+  const head = document.createElement('div');
+  head.className = 'carry';
+  head.textContent = `${n} · ${carry} ${unit}`;
+  const tail = document.createElement('div');
+  tail.className = 'rest';
+  tail.textContent = `Pin ${rest} ${unit}`;
+  d.append(head, tail);
   return d;
 }
 

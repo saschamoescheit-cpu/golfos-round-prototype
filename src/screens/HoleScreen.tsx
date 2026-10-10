@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FairwayResult, HoleEntry, LngLat, Round } from '../types';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { loadGeometry, loadUnit, saveHoleCorrection, saveUnit } from '../lib/storage';
-import { distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, type Unit } from '../lib/geo';
+import { distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 
 /** Beyond this distance from the hole the app measures from the tee (planning at home or on another hole). */
 const ON_HOLE_M = 1500;
+/** Landing points the player can plan per hole (e.g. drive, layup, approach). */
+const MAX_TARGETS = 3;
 
 export function HoleScreen(props: {
   round: Round;
@@ -101,21 +103,23 @@ export function HoleScreen(props: {
 
     const tapMap = (p: LngLat) => {
       if (distanceM(p, pin) < 12 || plan.targets.some((t) => distanceM(p, t) < 12)) return; // tap on a marker
-      if (plan.targets.length < 2) {
+      if (plan.targets.length < MAX_TARGETS) {
         // Keep targets in playing order: the one nearer to the player comes first.
         const next = [...plan.targets, p].sort((a, b) => distanceM(from, a) - distanceM(from, b));
         setPlan({ targets: next });
       } else {
+        // All targets set: the tap moves the nearest one.
         const d = plan.targets.map((t) => distanceM(t, p));
         const next = plan.targets.slice();
-        next[d[0] <= d[1] ? 0 : 1] = p;
+        next[d.indexOf(Math.min(...d))] = p;
         setPlan({ targets: next });
       }
     };
     const addTarget = () => {
-      if (plan.targets.length >= 2) return;
-      const a = plan.targets[plan.targets.length - 1] ?? from;
-      tapMap([(a[0] + pin[0]) / 2, (a[1] + pin[1]) / 2]);
+      if (plan.targets.length >= MAX_TARGETS) return;
+      // New target on the hole's playing line (follows doglegs), then drag it where you want.
+      const last = plan.targets[plan.targets.length - 1] ?? from;
+      setPlan({ targets: [...plan.targets, suggestTarget(mapData.line, last)] });
     };
     const toggleUnit = () => {
       const u = unit === 'm' ? 'yd' : 'm';
@@ -177,11 +181,11 @@ export function HoleScreen(props: {
             </div>
           )}
           <div className="map-actions">
-            <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= 2}>
-              + Target
+            <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
+              {plan.targets.length >= MAX_TARGETS ? `${MAX_TARGETS} targets` : `+ Target ${plan.targets.length + 1}`}
             </button>
-            <button type="button" className="map-btn" onClick={() => setPlan({ targets: [], pin: null })} disabled={plan.targets.length === 0 && !plan.pin}>
-              Clear
+            <button type="button" className="map-btn" onClick={() => setPlan({ targets: plan.targets.slice(0, -1) })} disabled={plan.targets.length === 0}>
+              − Target
             </button>
             <button
               type="button"
