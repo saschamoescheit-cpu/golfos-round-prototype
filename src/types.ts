@@ -73,6 +73,8 @@ export interface HoleEntry {
   penalties: number;
   greensideBunker: boolean;
   upAndDown: boolean | null;
+  /** Weather when the player was on the hole (GOL-26). */
+  weather?: { tempC: number; windKmh: number; windFromDeg: number };
 }
 
 export interface Player {
