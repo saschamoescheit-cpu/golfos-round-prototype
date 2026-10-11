@@ -9,8 +9,9 @@ import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, load
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
 import { loadWeather, weatherIcon, windOnHole, type Weather } from '../lib/weather';
-import { adviseClub, clubName, DEFAULT_CARRY, explain, playsLike } from '../lib/caddie';
+import { adviseClub, clubName, DEFAULT_CARRY, explain, playsLike, readGreen } from '../lib/caddie';
 import { heights } from '../lib/elevation';
+import { missMap } from '../lib/missmap';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
 import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
@@ -187,6 +188,8 @@ export function HoleScreen(props: {
 
   // ---------- AI caddie (feature 008) ----------
   const caddieOn = useMemo(() => loadCaddieSettings().caddie, []);
+  const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope, []);
+  const [showMiss, setShowMiss] = useState(() => loadCaddieSettings().missMap);
   const carryBag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
   const [caddieOpen, setCaddieOpen] = useState(true);
   useEffect(() => setCaddieOpen(true), [i]); // every new hole: the caddie speaks up
@@ -379,6 +382,11 @@ export function HoleScreen(props: {
     const advice = adviseClub(pl.playsLike, carryBag, teeShot && hole.par >= 4);
     const reasons = explain(pl, conditions);
     const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;
+    const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
+    // Green slope when the player is on or next to the green (or planning from the sofa).
+    const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
+    const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || round.preview === true;
+    const green_ = slope && nearGreen ? readGreen(slope, bearingDeg(from, pin)) : null;
 
     return (
       <main className="map-screen">
@@ -392,6 +400,8 @@ export function HoleScreen(props: {
           unit={unit}
           imagery={imagery}
           track={detailMode ? track : undefined}
+          missMap={miss}
+          greenSlope={slope && green_ ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: green_.level } : undefined}
           onTargetsChange={(targets) => setPlan({ targets })}
           onPinChange={(p) => setPlan({ pin: p })}
           onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((_, j) => j !== index) })}
@@ -453,10 +463,20 @@ export function HoleScreen(props: {
 
         <div className="map-bottom">
           {(gpsError || (player && !onHole)) && (
-            <div className="map-hint">{gpsError ?? 'You are not on this hole – distances from the tee.'}</div>
+            <div className="map-hint">{round.preview ? 'Preview · distances from the tee' : (gpsError ?? 'You are not on this hole – distances from the tee.')}</div>
           )}
           {detectedBanner}
           {offlineHint}
+          <button type="button" className="map-btn map-miss" aria-pressed={showMiss} onClick={() => setShowMiss(!showMiss)}>
+            ◎ {showMiss ? 'Hide' : 'Where not to miss'}
+          </button>
+          {green_ && (
+            <div className="map-hint detected" style={{ color: 'var(--text)' }}>
+              <span>
+                Green: {green_.level} slope · {green_.text} <span className="muted small">(approx.)</span>
+              </span>
+            </div>
+          )}
           {caddieOn && (
             <button type="button" className="caddie-card" onClick={() => setCaddieOpen(!caddieOpen)} aria-expanded={caddieOpen}>
               <span className="head">
@@ -550,11 +570,20 @@ export function HoleScreen(props: {
             <button type="button" className="map-btn round" aria-label="Previous hole" onClick={() => goTo(i - 1)} disabled={i === 0}>
               ←
             </button>
-            <button type="button" className="map-score" onClick={() => setView('score')}>
-              <span className="small">Score</span>
-              <strong>{strokesShown}</strong>
-              {myEntry.putts != null && <span className="small">{myEntry.putts} putts</span>}
-            </button>
+            {round.preview ? (
+              <span className="map-score">
+                <span className="small">Preview</span>
+                <strong>
+                  {i + 1}/{round.holes.length}
+                </strong>
+              </span>
+            ) : (
+              <button type="button" className="map-score" onClick={() => setView('score')}>
+                <span className="small">Score</span>
+                <strong>{strokesShown}</strong>
+                {myEntry.putts != null && <span className="small">{myEntry.putts} putts</span>}
+              </button>
+            )}
             <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? 'Finish round' : 'Next hole'} onClick={() => goTo(i + 1)}>
               →
             </button>

@@ -18,7 +18,11 @@ export interface HoleMapProps {
   unit: Unit;
   imagery: ImagerySource;
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a yellow line with numbered dots. */
-  track?: { pos: LngLat; label: string; green?: boolean }[];
+  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad' }[];
+  /** "Where not to miss": points with relative cost 0 (good miss) … 1 (expensive miss). */
+  missMap?: { pos: LngLat; cost: number }[];
+  /** Green slope: arrow on the green pointing where it falls (compass degrees). */
+  greenSlope?: { pos: LngLat; downDeg: number; label: string };
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
   padding?: { top: number; bottom: number; left: number; right: number };
   onTargetsChange: (t: LngLat[]) => void;
@@ -31,7 +35,7 @@ export function HoleMap(props: HoleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const ready = useRef(false);
-  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[] }>({ targets: [], labels: [], track: [] });
+  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
   latest.current = props;
 
@@ -52,6 +56,19 @@ export function HoleMap(props: HoleMapProps) {
       m.addSource('shapes', { type: 'geojson', data: shapes(latest.current.data), attribution: OSM_ATTRIBUTION });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       courseLayers('shapes').forEach((l) => m.addLayer(l));
+      m.addSource('miss', { type: 'geojson', data: missData(latest.current) });
+      m.addLayer({
+        id: 'miss',
+        type: 'circle',
+        source: 'miss',
+        paint: {
+          'circle-color': ['interpolate', ['linear'], ['get', 'cost'], 0, '#2ECC71', 0.25, '#FFE14D', 0.5, '#FF9F1A', 1, '#FF2D2D'],
+          'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 15, 1.5, 17, 4.5, 19, 16],
+          'circle-opacity': 0.8,
+          'circle-stroke-width': 0.5,
+          'circle-stroke-color': '#0E1418',
+        },
+      });
       m.addLayer({ id: 'hole', type: 'line', source: 'shapes', filter: ['==', 'kind', 'hole'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [3, 3] } });
       m.addSource('track', { type: 'geojson', data: trackLine(latest.current) });
       m.addLayer({ id: 'track-casing', type: 'line', source: 'track', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.5 } });
@@ -99,10 +116,19 @@ export function HoleMap(props: HoleMapProps) {
     const p = latest.current;
     (m.getSource('plan') as maplibregl.GeoJSONSource | undefined)?.setData(planLine(p));
     (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData(trackLine(p));
+    (m.getSource('miss') as maplibregl.GeoJSONSource | undefined)?.setData(missData(p));
     const mk = markers.current;
+    mk.slope?.remove();
+    mk.slope = undefined;
+    if (p.greenSlope) {
+      const d = el('map-slope');
+      // The map is turned (tee at the bottom): the arrow is drawn relative to the map bearing.
+      d.innerHTML = `<svg width="34" height="34" viewBox="0 0 24 24" style="transform:rotate(${p.greenSlope.downDeg - m.getBearing()}deg)" aria-hidden="true"><path d="M12 3v16M12 21l-6-6M12 21l6-6" stroke="#0E1418" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M12 3v16M12 21l-6-6M12 21l6-6" stroke="#FFFFFF" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><span>${p.greenSlope.label}</span>`;
+      mk.slope = new maplibregl.Marker({ element: d }).setLngLat(p.greenSlope.pos).addTo(m);
+    }
     mk.track.forEach((t) => t.remove());
     mk.track = (p.track ?? []).map((t) => {
-      const d = labelEl(t.label, t.green ? 'map-shot-dot green' : 'map-shot-dot');
+      const d = labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       return new maplibregl.Marker({ element: d }).setLngLat(t.pos).addTo(m);
     });
 
@@ -203,6 +229,13 @@ function shapes(d: HoleMapData): GeoJSON.FeatureCollection {
       ...(d.green ? [poly(d.green, 'green')] : []),
       { type: 'Feature', properties: { kind: 'hole' }, geometry: { type: 'LineString', coordinates: d.line } },
     ],
+  };
+}
+
+function missData(p: HoleMapProps): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: (p.missMap ?? []).map((x) => ({ type: 'Feature', properties: { cost: x.cost }, geometry: { type: 'Point', coordinates: x.pos } })),
   };
 }
 

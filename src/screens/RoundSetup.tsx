@@ -39,7 +39,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     return s.trim() === '' || !Number.isFinite(n) ? null : Math.round(n);
   };
 
-  const start = () => {
+  const start = (preview = false) => {
     if (!option) return;
     try {
       localStorage.setItem(ME_KEY, JSON.stringify({ name: me.name, handicap: me.handicap }));
@@ -64,6 +64,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       players,
       entries,
       currentHole: 0,
+      ...(preview ? { preview: true } : {}),
     });
   };
 
@@ -124,7 +125,10 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       </section>
 
       <span className="spacer" />
-      <button type="button" className="btn-primary" onClick={start} disabled={!option}>
+      <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>
+        Preview the holes (plan, nothing saved)
+      </button>
+      <button type="button" className="btn-primary" onClick={() => start()} disabled={!option}>
         Start round
       </button>
     </main>

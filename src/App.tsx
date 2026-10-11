@@ -86,7 +86,7 @@ export function App() {
           course={screen.course}
           onBack={() => setScreen({ name: 'pickCourse' })}
           onStart={(round) => {
-            persist(round);
+            if (!round.preview) persist(round);
             setScreen({ name: 'hole', round });
           }}
         />
@@ -96,11 +96,12 @@ export function App() {
         <HoleScreen
           round={screen.round}
           onChange={(round) => {
-            persist(round);
+            if (!round.preview) persist(round);
             setScreen({ name: 'hole', round });
           }}
           onExit={() => setScreen({ name: 'home' })}
           onShowScorecard={(round) => {
+            if (round.preview) return setScreen({ name: 'home' });
             persist(round);
             setScreen({ name: 'scorecard', round });
           }}

@@ -122,7 +122,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             unit={unit}
             imagery={imagery}
             track={[
-              ...(d?.shots ?? []).flatMap((s, n) => (s.pos ? [{ pos: s.pos, label: `${n + 1}${s.club ? ' ' + s.club : ''}${s.review ? ' ?' : ''}` }] : [])),
+              // Where strokes are won (green) and lost (red): every shot coloured by its strokes gained.
+              ...(d?.shots ?? []).flatMap((s, n) => {
+                const v = sg?.[n]?.sg;
+                const tone: 'good' | 'bad' | undefined = v == null ? undefined : v >= 0 ? 'good' : 'bad';
+                return s.pos ? [{ pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + s.club : ''}${v != null ? ` ${v >= 0 ? '+' : ''}${v.toFixed(1)}` : ''}${s.review ? ' ?' : ''}` }] : [];
+              }),
               ...(d?.onGreen ? [{ pos: d.onGreen, label: e.putts != null ? `${e.putts} putts` : 'green', green: true }] : []),
             ]}
             onTargetsChange={() => {}}
@@ -132,6 +137,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           />
         </div>
       )}
+
+      <p className="muted small" style={{ margin: 0 }}>
+        Each shot is coloured by strokes gained against a tour pro: <span className="good-text">green = gained</span>,{' '}
+        <span className="bad-text">red = lost</span>. The number is the strokes gained of the shot from there.
+      </p>
 
       {mismatch && (
         <div className="notice">

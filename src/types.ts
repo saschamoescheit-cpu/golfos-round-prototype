@@ -14,6 +14,8 @@ export interface CourseGeometry {
   bunker: Ring[];
   fairway: Ring[];
   water: Ring[];
+  /** Main slope per green (by hole ref): % and compass direction the green falls to. Approximation. */
+  greenSlopes?: Record<string, { pct: number; downDeg: number }>;
 }
 
 /** One hole as delivered by the course database (before a round is set up). */
@@ -121,4 +123,6 @@ export interface Round {
   /** entries[playerId][holeIndex] */
   entries: Record<string, HoleEntry[]>;
   currentHole: number;
+  /** Course preview from the sofa: browse the holes, nothing is saved. */
+  preview?: boolean;
 }

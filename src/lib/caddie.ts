@@ -106,3 +106,14 @@ export function explain(p: PlaysLike, c: Conditions | null): string[] {
   if (Math.abs(p.aimM) >= 2) out.push(`Crosswind ${Math.abs(p.crossKmh)} km/h from the ${p.crossKmh > 0 ? 'right' : 'left'}: aim ${Math.abs(p.aimM)} m ${p.aimM > 0 ? 'right' : 'left'}`);
   return out;
 }
+
+/** Green slope for the player: strength and how the putt behaves, seen from where he stands. */
+export function readGreen(slope: { pct: number; downDeg: number }, puttBearing: number): { level: string; text: string } {
+  const level = slope.pct < 1 ? 'flat' : slope.pct < 2 ? 'gentle' : slope.pct < 3.5 ? 'moderate' : 'strong';
+  if (level === 'flat') return { level, text: 'Green is almost flat' };
+  // Angle between the putt and the fall line: 0 = falls away (downhill putt), 180 = towards the player (uphill).
+  const rel = (((slope.downDeg - puttBearing) % 360) + 360) % 360;
+  const along = rel < 45 || rel > 315 ? 'downhill putt' : rel > 135 && rel < 225 ? 'uphill putt' : null;
+  const side = rel >= 45 && rel <= 135 ? 'breaks right' : rel >= 225 && rel <= 315 ? 'breaks left' : null;
+  return { level, text: [along, side].filter(Boolean).join(', ') || 'slope across' };
+}

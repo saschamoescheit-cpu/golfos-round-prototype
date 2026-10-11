@@ -37,3 +37,43 @@ describe('AI caddie', () => {
     expect(adviseClub(230, bag, true).club).toBe('Dr');
   });
 });
+
+import { missMap, strokesFrom } from './missmap';
+import type { HoleMapData } from './geo';
+import type { LngLat, Ring } from '../types';
+
+describe('where not to miss', () => {
+  const M = 1 / 111195;
+  const at = (east: number, north: number): LngLat => [9.69 + (east * M) / Math.cos((48.78 * Math.PI) / 180), 48.78 + north * M];
+  const sq = (cx: number, cy: number, r: number): Ring => [at(cx - r, cy - r), at(cx + r, cy - r), at(cx + r, cy + r), at(cx - r, cy + r), at(cx - r, cy - r)];
+  // Green at 150 m north; bunker short-left, water right of the green.
+  const hole: HoleMapData = { line: [at(0, 0), at(0, 150)], tee: at(0, 0), green: sq(0, 150, 12), greenCenter: at(0, 150), bunkers: [sq(-16, 138, 5)], water: [sq(25, 150, 8)], fairways: [], tees: [] };
+  const pin = at(0, 150);
+  it('on the green is best, bunker worse, water worst', () => {
+    const green = strokesFrom(at(4, 152), pin, hole);
+    const bunker = strokesFrom(at(-16, 138), pin, hole);
+    const water = strokesFrom(at(25, 150), pin, hole);
+    expect(green).toBeLessThan(bunker);
+    expect(bunker).toBeLessThan(water);
+  });
+  it('relative cost 0…1 around the pin', () => {
+    const pts = missMap(hole, pin, null);
+    expect(Math.min(...pts.map((p) => p.cost))).toBe(0);
+    expect(Math.max(...pts.map((p) => p.cost))).toBe(1);
+    const worst = pts.reduce((a, b) => (b.cost > a.cost ? b : a));
+    expect(pointInWater(worst.pos)).toBe(true);
+    function pointInWater(p: LngLat) {
+      return Math.abs(p[0] - at(25, 150)[0]) < 9 * M * 1.6 && Math.abs(p[1] - at(25, 150)[1]) < 9 * M;
+    }
+  });
+});
+
+import { readGreen } from './caddie';
+describe('green reading', () => {
+  it('slope falling away from the player = downhill putt; falling to the right = breaks right', () => {
+    expect(readGreen({ pct: 2.5, downDeg: 0 }, 0)).toEqual({ level: 'moderate', text: 'downhill putt' });
+    expect(readGreen({ pct: 2.5, downDeg: 180 }, 0).text).toBe('uphill putt');
+    expect(readGreen({ pct: 1.5, downDeg: 90 }, 0)).toEqual({ level: 'gentle', text: 'breaks right' });
+    expect(readGreen({ pct: 0.5, downDeg: 90 }, 0).level).toBe('flat');
+  });
+});
