@@ -1,15 +1,13 @@
-import { useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round } from './types';
-import { loadRounds, saveRound } from './lib/storage';
+import { ensureGeometry, geometryReady, loadRounds, saveRound } from './lib/storage';
 import { Home } from './screens/Home';
 import { CoursePicker } from './screens/CoursePicker';
 import { RoundSetup } from './screens/RoundSetup';
-import { HoleScreen } from './screens/HoleScreen';
 import { Scorecard } from './screens/Scorecard';
 import { NO_RESUME } from './components/ErrorBoundary';
 import { Stats } from './screens/Stats';
 import { MyBag } from './screens/MyBag';
-import { RoundReview } from './screens/RoundReview';
 
 type Screen =
   | { name: 'home' }
@@ -37,6 +35,15 @@ const SKIP_RESUME = (() => {
   }
 })();
 
+// The map screens bring the map library (the largest part of the app) – loaded when a hole is opened (feature 026).
+const HoleScreen = lazy(() => import('./screens/HoleScreen').then((m) => ({ default: m.HoleScreen })));
+const RoundReview = lazy(() => import('./screens/RoundReview').then((m) => ({ default: m.RoundReview })));
+const Waiting = () => (
+  <main className="screen" style={{ justifyContent: 'center', alignItems: 'center' }}>
+    <span className="spinner" aria-label="…" />
+  </main>
+);
+
 export function App() {
   const [rounds, setRounds] = useState<Round[]>(() => loadRounds());
   const [screen, setScreen] = useState<Screen>(() => {
@@ -49,6 +56,14 @@ export function App() {
     saveRound(round);
     setRounds(loadRounds());
   };
+
+  // Hole map and round check need the course geometry – bundled courses load it on demand (a moment, once).
+  const geoId = screen.name === 'hole' || screen.name === 'review' ? screen.round.courseId : null;
+  const [, setGeoTick] = useState(0);
+  useEffect(() => {
+    if (geoId && !geometryReady(geoId)) ensureGeometry(geoId).then(() => setGeoTick((t) => t + 1));
+  }, [geoId]);
+  if (geoId && !geometryReady(geoId)) return <Waiting />;
 
   switch (screen.name) {
     case 'home':
@@ -65,14 +80,16 @@ export function App() {
       );
     case 'review':
       return (
-        <RoundReview
-          round={screen.round}
-          onChange={(round) => {
-            persist(round);
-            setScreen({ name: 'review', round });
-          }}
-          onDone={() => setScreen({ name: 'scorecard', round: screen.round })}
-        />
+        <Suspense fallback={<Waiting />}>
+          <RoundReview
+            round={screen.round}
+            onChange={(round) => {
+              persist(round);
+              setScreen({ name: 'review', round });
+            }}
+            onDone={() => setScreen({ name: 'scorecard', round: screen.round })}
+          />
+        </Suspense>
       );
     case 'bag':
       return <MyBag rounds={rounds} onBack={() => setScreen({ name: 'home' })} />;
@@ -93,19 +110,21 @@ export function App() {
       );
     case 'hole':
       return (
-        <HoleScreen
-          round={screen.round}
-          onChange={(round) => {
-            if (!round.preview) persist(round);
-            setScreen({ name: 'hole', round });
-          }}
-          onExit={() => setScreen({ name: 'home' })}
-          onShowScorecard={(round) => {
-            if (round.preview) return setScreen({ name: 'home' });
-            persist(round);
-            setScreen({ name: 'scorecard', round });
-          }}
-        />
+        <Suspense fallback={<Waiting />}>
+          <HoleScreen
+            round={screen.round}
+            onChange={(round) => {
+              if (!round.preview) persist(round);
+              setScreen({ name: 'hole', round });
+            }}
+            onExit={() => setScreen({ name: 'home' })}
+            onShowScorecard={(round) => {
+              if (round.preview) return setScreen({ name: 'home' });
+              persist(round);
+              setScreen({ name: 'scorecard', round });
+            }}
+          />
+        </Suspense>
       );
     case 'scorecard':
       return (

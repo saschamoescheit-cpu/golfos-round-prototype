@@ -1,5 +1,5 @@
 import type { Course, CourseGeometry, LngLat, Round } from '../types';
-import { SEED_GEOMETRY } from '../data/seedGeometry';
+import { SEED_LOADERS } from '../data/seedLoaders';
 import type { ImageryId } from './imagery';
 import type { CarryBag } from './caddie';
 
@@ -81,9 +81,24 @@ function holeLabel(loop: string, number: number): string {
  * plus hole lines the player set up himself (these replace mapped lines of the same hole).
  * Returns an empty geometry rather than null, so a hole can always be set up on the satellite map.
  */
+// Bundled courses are loaded on demand (feature 026); ensureGeometry() before a screen that needs the map.
+const seeds = new Map<string, CourseGeometry>();
+const tried = new Set<string>();
+export const geometryReady = (courseId: string): boolean => !SEED_LOADERS[courseId] || seeds.has(courseId) || tried.has(courseId);
+export async function ensureGeometry(courseId: string): Promise<void> {
+  if (geometryReady(courseId)) return;
+  try {
+    seeds.set(courseId, await SEED_LOADERS[courseId]());
+  } catch {
+    // offline and not cached yet: the course plays with what the device has (or is set up on the map)
+  } finally {
+    tried.add(courseId);
+  }
+}
+
 export function loadGeometry(courseId: string): CourseGeometry {
   const base: CourseGeometry =
-    SEED_GEOMETRY[courseId] ?? read<CourseGeometry | null>(GEO + courseId, null) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] };
+    seeds.get(courseId) ?? read<CourseGeometry | null>(GEO + courseId, null) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] };
   const own = loadHoleLines(courseId);
   if (Object.keys(own).length === 0) return base;
   const ownHoles = Object.entries(own).map(([key, line]) => {
