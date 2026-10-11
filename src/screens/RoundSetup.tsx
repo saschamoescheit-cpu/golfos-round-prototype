@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CaptureMode, Course, Player, Round } from '../types';
+import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { emptyEntry } from '../lib/scoring';
 import { newId } from '../lib/storage';
@@ -25,7 +25,7 @@ function loadMe(): DraftPlayer {
   return { id: 'me', name: tr('Me', 'Ich'), handicap: '' };
 }
 
-export function RoundSetup(props: { course: Course; onBack: () => void; onStart: (r: Round) => void }) {
+export function RoundSetup(props: { course: Course; onBack: () => void; onStart: (r: Round) => void; onBook: (holes: RoundHole[], tee: string | null) => void }) {
   const options = useMemo(() => loopOptions(props.course.holes), [props.course]);
   const [optionId, setOptionId] = useState(options[0]?.id ?? '');
   const [mode, setMode] = useState<CaptureMode>('quick');
@@ -153,6 +153,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       </section>
 
       <span className="spacer" />
+      <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee)} disabled={!option}>
+        {tr('Course book – all holes at a glance', 'Lochbuch – alle Löcher auf einen Blick')}
+      </button>
       <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>
         {tr('Preview the holes (plan, nothing saved)', 'Löcher ansehen (planen, nichts wird gespeichert)')}
       </button>

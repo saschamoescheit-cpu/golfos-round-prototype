@@ -393,3 +393,22 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 /* Putt read on the green (feature 024) */
 .map-putt-ball { width: 14px; height: 14px; border-radius: 7px; background: #fff; border: 2px solid #0e1418; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
 .map-putt-aim { width: 16px; height: 16px; border-radius: 8px; border: 2.5px solid #ffd54a; box-shadow: 0 0 0 2px rgba(14, 20, 24, 0.6); }
+
+/* Course book (feature 027) */
+.book-hole { display: flex; flex-direction: column; gap: 10px; }
+.book-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.book-head h2 { margin: 0; font: 600 22px var(--display); }
+.book-body { display: grid; grid-template-columns: minmax(110px, 38%) 1fr; gap: 14px; align-items: start; }
+.book-sketch { margin: 0; }
+.sketch { width: 100%; height: auto; max-height: 420px; display: block; border-radius: 10px; }
+.book-text { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.book-club { margin: 0; }
+.book-club strong { font: 600 20px var(--display); color: var(--brand-text); margin-right: 4px; }
+.book-lines { margin: 0; padding-left: 16px; display: grid; gap: 4px; font-size: 14px; }
+.book-text .lbl { margin: 4px 0 0; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+.sk-rough { fill: #2c4a26; } .sk-trees { fill: #1b3317; } .sk-fw { fill: #4f8a36; } .sk-tee { fill: #6aa548; }
+.sk-water { fill: #2f6f9c; } .sk-bunker { fill: #d9c58b; } .sk-green { fill: #7ccf55; stroke: #e9f0e6; stroke-width: 0.8; }
+.sk-ob { fill: none; stroke: #ff6b5e; stroke-width: 2.2; stroke-dasharray: 6 4; }
+.sk-line { fill: none; stroke: #ffffff; stroke-width: 1.2; stroke-dasharray: 4 4; opacity: 0.7; }
+.sk-shot { stroke: #ffd54a; stroke-width: 1.6; } .sk-aim { fill: #ffd54a; stroke: #0e1418; stroke-width: 1.2; }
+.sk-dot { fill: #ffffff; } .sk-mark { font: 600 10px var(--body); fill: #ffffff; paint-order: stroke; stroke: #0e1418; stroke-width: 2.4px; }

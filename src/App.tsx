@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import type { Course, Round } from './types';
+import type { Course, Round, RoundHole } from './types';
 import { ensureGeometry, geometryReady, loadRounds, saveRound } from './lib/storage';
 import { Home } from './screens/Home';
 import { CoursePicker } from './screens/CoursePicker';
 import { RoundSetup } from './screens/RoundSetup';
+import { CourseBook } from './screens/CourseBook';
 import { Scorecard } from './screens/Scorecard';
 import { NO_RESUME } from './components/ErrorBoundary';
 import { Stats } from './screens/Stats';
@@ -17,7 +18,8 @@ type Screen =
   | { name: 'scorecard'; round: Round }
   | { name: 'stats' }
   | { name: 'bag' }
-  | { name: 'review'; round: Round };
+  | { name: 'review'; round: Round }
+  | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null };
 
 /** A round started in the last 8 hours (a round takes at most ~6) and not finished: the app reopens straight on its hole (iOS may reload the page while the phone is in the pocket). */
 function roundInPlay(rounds: Round[]): Round | undefined {
@@ -58,7 +60,7 @@ export function App() {
   };
 
   // Hole map and round check need the course geometry – bundled courses load it on demand (a moment, once).
-  const geoId = screen.name === 'hole' || screen.name === 'review' ? screen.round.courseId : null;
+  const geoId = screen.name === 'hole' || screen.name === 'review' ? screen.round.courseId : screen.name === 'book' ? screen.course.id : null;
   const [, setGeoTick] = useState(0);
   useEffect(() => {
     if (geoId && !geometryReady(geoId)) ensureGeometry(geoId).then(() => setGeoTick((t) => t + 1));
@@ -102,12 +104,15 @@ export function App() {
         <RoundSetup
           course={screen.course}
           onBack={() => setScreen({ name: 'pickCourse' })}
+          onBook={(holes, tee) => setScreen({ name: 'book', course: screen.course, holes, tee })}
           onStart={(round) => {
             if (!round.preview) persist(round);
             setScreen({ name: 'hole', round });
           }}
         />
       );
+    case 'book':
+      return <CourseBook course={screen.course} holes={screen.holes} tee={screen.tee} onBack={() => setScreen({ name: 'setup', course: screen.course })} />;
     case 'hole':
       return (
         <Suspense fallback={<Waiting />}>
