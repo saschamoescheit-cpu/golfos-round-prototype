@@ -24,6 +24,8 @@ interface Case {
   wind: string; // 'calm', 'head', 'tail', 'from left', 'from right'
   from: LngLat;
   aim: LngLat;
+  landing: LngLat;
+  reasons: string[];
   kind: string;
   club: string;
   distance: number;
@@ -136,7 +138,7 @@ for (const [courseId, seed] of Object.entries(SEED_COURSES)) {
           teeAim, ...terrain, bag, conditions: w.c, tendency: new Map(), note, lieChoice: null, unit: 'm',
         });
         cases.push({
-          spot, wind: w.name, from, aim: r.ap.pos, kind: r.ap.kind, club: r.advice.club, distance: Math.round(r.pl.distance), playsLike: Math.round(r.pl.playsLike),
+          spot, wind: w.name, from, aim: r.ap.pos, landing: r.ap.landing, reasons: r.ap.reasons, kind: r.ap.kind, club: r.advice.club, distance: Math.round(r.pl.distance), playsLike: Math.round(r.pl.playsLike),
           lines: r.lines.map((l) => (l.tone ? `[${l.tone}] ` : '') + l.text),
           findings: check({ r, d: d!, from, teeShot, par, conditions: w.c, boundary: geo.boundary, trees: geo.trees, obNote: note }),
         });
