@@ -12,6 +12,7 @@ import { loadWeather, weatherIcon, windOnHole, type Weather } from '../lib/weath
 import { adviseClub, clubName, DEFAULT_CARRY, explain, playsLike, readGreen } from '../lib/caddie';
 import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
+import { approachPlan, teePlan } from '../lib/holeplan';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
 import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
@@ -189,7 +190,8 @@ export function HoleScreen(props: {
   // ---------- AI caddie (feature 008) ----------
   const caddieOn = useMemo(() => loadCaddieSettings().caddie, []);
   const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope, []);
-  const [showMiss, setShowMiss] = useState(() => loadCaddieSettings().missMap);
+  const missMapOn = useMemo(() => loadCaddieSettings().missMap, []);
+  const [showMiss, setShowMiss] = useState(missMapOn);
   const carryBag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
   const [caddieOpen, setCaddieOpen] = useState(true);
   useEffect(() => setCaddieOpen(true), [i]); // every new hole: the caddie speaks up
@@ -383,6 +385,9 @@ export function HoleScreen(props: {
     const reasons = explain(pl, conditions);
     const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;
     const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
+    // Hole plan in one sentence: tee shot on par 4/5 → which side; otherwise → where to miss the green.
+    const driver = carryBag.find((b) => b.club === 'Dr')?.carry ?? 200;
+    const holePlan = teeShot && hole.par >= 4 && !plan.targets.length ? teePlan(mapData, driver) || approachPlan(mapData, from, pin).text : approachPlan(mapData, from, pin).text;
     // Green slope when the player is on or next to the green (or planning from the sofa).
     const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
     const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || round.preview === true;
@@ -401,7 +406,7 @@ export function HoleScreen(props: {
           imagery={imagery}
           track={detailMode ? track : undefined}
           missMap={miss}
-          greenSlope={slope && green_ ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: green_.level } : undefined}
+          greenSlope={slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: green_.level } : undefined}
           onTargetsChange={(targets) => setPlan({ targets })}
           onPinChange={(p) => setPlan({ pin: p })}
           onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((_, j) => j !== index) })}
@@ -467,13 +472,15 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
-          <button type="button" className="map-btn map-miss" aria-pressed={showMiss} onClick={() => setShowMiss(!showMiss)}>
-            ◎ {showMiss ? 'Hide' : 'Where not to miss'}
-          </button>
+          {missMapOn && (
+            <button type="button" className="map-btn map-miss" aria-pressed={showMiss} onClick={() => setShowMiss(!showMiss)}>
+              ◎ {showMiss ? 'Hide' : 'Where not to miss'}
+            </button>
+          )}
           {green_ && (
             <div className="map-hint detected" style={{ color: 'var(--text)' }}>
               <span>
-                Green: {green_.level} slope · {green_.text} <span className="muted small">(approx.)</span>
+                {green_.level === 'flat' ? 'Green: almost flat' : `Green: ${green_.level} slope · ${green_.text}`} <span className="muted small">(approx.)</span>
               </span>
             </div>
           )}
@@ -487,6 +494,7 @@ export function HoleScreen(props: {
               </span>
               {caddieOpen && (
                 <>
+                  <span className="plan">{holePlan}</span>
                   <span className="why">
                     {clubName(advice.club)} (carry {fmt(advice.carry)} {unit}){reasons.length ? ' · ' + reasons.join(' · ') : ' · calm, flat'}
                   </span>

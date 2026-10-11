@@ -77,3 +77,23 @@ describe('green reading', () => {
     expect(readGreen({ pct: 0.5, downDeg: 90 }, 0).level).toBe('flat');
   });
 });
+
+import { approachPlan, teePlan } from './holeplan';
+describe('hole plan in words', () => {
+  const M = 1 / 111195;
+  const at = (east: number, north: number): LngLat => [9.69 + (east * M) / Math.cos((48.78 * Math.PI) / 180), 48.78 + north * M];
+  const sq = (cx: number, cy: number, r: number): Ring => [at(cx - r, cy - r), at(cx + r, cy - r), at(cx + r, cy + r), at(cx - r, cy + r), at(cx - r, cy - r)];
+  // Par 3 to the north: water right of the green, bunker long, open front.
+  const par3: HoleMapData = { line: [at(0, 0), at(0, 150)], tee: at(0, 0), green: sq(0, 150, 12), greenCenter: at(0, 150), bunkers: [sq(0, 170, 6)], water: [sq(24, 150, 9)], fairways: [], tees: [] };
+  it('par 3 with water right and bunker long: miss short, avoid right and long', () => {
+    const p = approachPlan(par3, at(0, 0), at(0, 150));
+    expect(p.best).toBe('short');
+    expect(p.avoid.map((a) => a.side)).toEqual(['right', 'long']);
+    expect(p.text).toBe('Best miss: short. Avoid right (water), long (bunker).');
+  });
+  it('tee shot: water right of the landing zone → favour the left', () => {
+    const par4: HoleMapData = { ...par3, line: [at(0, 0), at(0, 380)], greenCenter: at(0, 380), green: sq(0, 380, 12), bunkers: [], water: [sq(20, 220, 8)] };
+    expect(teePlan(par4, 220)).toBe('Favour the left side – right: water.');
+    expect(teePlan({ ...par4, water: [] }, 220)).toBe('Landing zone is open on both sides.');
+  });
+});
