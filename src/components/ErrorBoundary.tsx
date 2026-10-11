@@ -37,7 +37,11 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
           type="button"
           className="btn-secondary"
           onClick={() => {
-            sessionStorage.setItem(NO_RESUME, '1');
+            try {
+              sessionStorage.setItem(NO_RESUME, '1');
+            } catch {
+              // storage blocked – the reload opens the round again
+            }
             location.reload();
           }}
         >

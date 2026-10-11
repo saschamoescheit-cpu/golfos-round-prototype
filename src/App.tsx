@@ -21,8 +21,15 @@ function roundInPlay(rounds: Round[]): Round | undefined {
 }
 
 // After a crash the player can ask for the start page instead of the round (read once per page load).
-const SKIP_RESUME = sessionStorage.getItem(NO_RESUME) != null;
-sessionStorage.removeItem(NO_RESUME);
+const SKIP_RESUME = (() => {
+  try {
+    const skip = sessionStorage.getItem(NO_RESUME) != null;
+    sessionStorage.removeItem(NO_RESUME);
+    return skip;
+  } catch {
+    return false; // storage blocked – resume as usual
+  }
+})();
 
 export function App() {
   const [rounds, setRounds] = useState<Round[]>(() => loadRounds());
