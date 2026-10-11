@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Club, Round } from '../types';
 import { clubName, DEFAULT_CARRY, type CarryBag } from '../lib/caddie';
-import { analyse } from '../lib/stats';
+import { trackedCarry } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
 import { Segmented, TopBar } from '../components/ui';
 
@@ -31,15 +31,22 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
     saveCarryBag(out);
     setNote(`Saved · ${out.length} clubs.`);
   };
-  /** Total distances from detailed rounds minus typical roll (≈ 7 %) as carry suggestion. */
-  const fromRounds = () => {
-    const clubs = analyse(props.rounds.filter((r) => r.finishedAt)).clubs.filter((c) => c.shots >= 3);
-    if (!clubs.length) {
-      setNote('No club has 3 tracked shots yet – track rounds in “Detailed” mode.');
-      return;
-    }
-    setBag({ ...bag, ...Object.fromEntries(clubs.map((c) => [c.club, String(Math.round((c.median * 0.93) / 5) * 5)])) });
-    setNote(`Filled from your tracked shots (${clubs.map((c) => c.club).join(', ')}) – check and save.`);
+  // Tracked carry from your detailed rounds – compared with what you entered; you decide per club, any time.
+  const tracked = trackedCarry(props.rounds);
+  const differs = (club: string) => {
+    const t = tracked.get(club as Club);
+    return t != null && (bag[club] === '' || Math.abs(Number(bag[club]) - t.carry) >= 5);
+  };
+  const toReview = DEFAULT_CARRY.filter((d) => differs(d.club)).length;
+  const persist = (next: Record<string, string>) => {
+    setBag(next);
+    saveCarryBag(DEFAULT_CARRY.map((d) => ({ club: d.club, carry: Number(next[d.club]) })).filter((b) => b.carry > 0));
+  };
+  const useTracked = (clubs: string[]) => {
+    const next = { ...bag };
+    for (const c of clubs) next[c] = String(tracked.get(c as Club)!.carry);
+    persist(next);
+    setNote(`Updated from your tracked shots: ${clubs.join(', ')}.`);
   };
 
   return (
@@ -97,13 +104,31 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
         <h2>Carry per club</h2>
         <p className="muted small" style={{ margin: 0 }}>
           Carry = how far the ball flies in the air on a normal day (no wind, 20 °C, flat). Leave empty if the club is not in your bag.
+          Next to it: what your tracked shots say (from 3 full shots per club). Keep your value or take the tracked one – check again after a few rounds.
         </p>
+        {toReview > 0 && (
+          <button type="button" className="btn-secondary" onClick={() => useTracked(DEFAULT_CARRY.filter((d) => differs(d.club)).map((d) => d.club))}>
+            Use tracked values for {toReview} {toReview === 1 ? 'club' : 'clubs'}
+          </button>
+        )}
         <div className="bag-grid">
           {DEFAULT_CARRY.map((d) => (
-            <label key={d.club} className="bag-row">
-              <span>
-                <strong>{d.club}</strong> <span className="muted small">{clubName(d.club as Club)}</span>
+            <div key={d.club} className="bag-row club">
+              <span className="bag-name">
+                <strong>{d.club}</strong>
+                <span className="muted small">{clubName(d.club as Club)}</span>
               </span>
+              {!tracked.get(d.club as Club) && <span className="bag-tracked muted">–</span>}
+              {tracked.get(d.club as Club) && (
+                <span className={`bag-tracked${differs(d.club) ? ' differs' : ''}`}>
+                  tracked {tracked.get(d.club as Club)!.carry} m <span className="muted">({tracked.get(d.club as Club)!.shots})</span>
+                  {differs(d.club) && (
+                    <button type="button" aria-label={`Use tracked ${tracked.get(d.club as Club)!.carry} m for ${clubName(d.club as Club)}`} onClick={() => useTracked([d.club])}>
+                      Use
+                    </button>
+                  )}
+                </span>
+              )}
               <span className="bag-input">
                 <input
                   className="input"
@@ -114,18 +139,13 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
                 />
                 m
               </span>
-            </label>
+            </div>
           ))}
         </div>
         {note && <p className="small" style={{ margin: 0 }}>{note}</p>}
-        <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <button type="button" className="btn-secondary" onClick={fromRounds}>
-            From my shots
-          </button>
-          <button type="button" className="btn-primary" onClick={save}>
-            Save
-          </button>
-        </div>
+        <button type="button" className="btn-primary" onClick={save}>
+          Save my values
+        </button>
       </section>
     </main>
   );

@@ -594,16 +594,46 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
-          {(slope || chart) && !nearGreen && (
-            <button type="button" className="map-btn map-miss" aria-pressed={showGreen} onClick={() => setShowGreen(!showGreen)}>
-              ⛳ {showGreen ? 'Hide green slope' : 'Green slope'}
-            </button>
-          )}
-          {missMapOn && (
-            <button type="button" className="map-btn map-miss" aria-pressed={showMiss} onClick={() => setShowMiss(!showMiss)}>
-              ◎ {showMiss ? 'Hide' : 'Where not to miss'}
-            </button>
-          )}
+          <div className="map-tools">
+            {(slope || chart) && !nearGreen && (
+              <button type="button" className="map-btn round tool" aria-pressed={showGreen} aria-label={showGreen ? 'Hide green slope' : 'Show green slope'} title="Green slope" onClick={() => setShowGreen(!showGreen)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <ellipse cx="12" cy="17" rx="9" ry="4" fill="currentColor" opacity="0.35" />
+                  <path d="M7 16.5l4-2.5 3 1.8 4-2.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M16 13.2l2 0-.6 1.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M10 15V3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <path d="M10.5 3.5h6l-1.8 2.2 1.8 2.2h-6z" fill="#FF6B5E" />
+                </svg>
+              </button>
+            )}
+            {missMapOn && (
+              <button type="button" className="map-btn round tool" aria-pressed={showMiss} aria-label={showMiss ? 'Hide where not to miss' : 'Show where not to miss'} title="Where not to miss" onClick={() => setShowMiss(!showMiss)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8.5" />
+                  <circle cx="12" cy="12" r="4.5" />
+                  <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+                </svg>
+              </button>
+            )}
+            {caddieOn && !greenFocus && (
+              <button
+                type="button"
+                className="map-btn round tool"
+                aria-pressed={caddieShown}
+                aria-label={caddieShown ? 'Hide caddie' : 'Show caddie'}
+                title="AI caddie"
+                onClick={() => setHiddenSig(caddieShown ? caddieSig : null)}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="8" y="9" width="8" height="12" rx="2.5" />
+                  <path d="M8 13h8" />
+                  <path d="M10 9V3.5M12.5 9V2.5M15 9V4" />
+                  <path d="M9 3.5h2M11.5 2.5h2.2M14 4h2" />
+                  <path d="M16 11c2.5 1 2.5 6 0 7" />
+                </svg>
+              </button>
+            )}
+          </div>
           {green_ && (
             <div className="map-hint detected" style={{ color: 'var(--text)' }}>
               <span>
@@ -625,11 +655,6 @@ export function HoleScreen(props: {
                 setNotes({ ...notes, [hole.label]: n });
               }}
             />
-          )}
-          {caddieOn && !caddieShown && !greenFocus && (
-            <button type="button" className="map-btn map-miss" onClick={() => setHiddenSig(null)}>
-              🧢 Caddie
-            </button>
           )}
           {shotStart && player && (
             <div className="map-shot">

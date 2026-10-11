@@ -141,6 +141,7 @@ export function analyse(rounds: Round[]): Analysis {
         d.shots.forEach((s, k) => {
           const len = lengths[k];
           if (!s.club || len == null || s.penalty || s.lie === 'recovery') return;
+          if (s.kind && s.kind !== 'full') return; // chips, pitches, punches are not the club's full distance
           clubLengths.set(s.club, [...(clubLengths.get(s.club) ?? []), len]);
         });
         const first = firstPuttM(d);
@@ -194,6 +195,24 @@ export function analyse(rounds: Round[]): Analysis {
     puttsByFirstPutt: PUTT_BUCKETS.map((b, k) => ({ label: b.label, holes: buckets[k].holes, avgPutts: buckets[k].holes ? Math.round((buckets[k].putts / buckets[k].holes) * 100) / 100 : null })),
     handicap,
   };
+}
+
+/** Carry per club from tracked full shots: median length minus typical roll (≈ 7 %), from 3 shots on. */
+export function trackedCarry(rounds: Round[], minShots = 3): Map<Club, { carry: number; shots: number }> {
+  return new Map(
+    analyse(rounds.filter((r) => r.finishedAt))
+      .clubs.filter((c) => c.shots >= minShots)
+      .map((c) => [c.club, { carry: Math.round(c.median * 0.93), shots: c.shots }]),
+  );
+}
+
+/** Clubs whose saved carry differs from the tracked one by ≥ 5 m (or has none) – to review in "My bag". */
+export function carryToReview(rounds: Round[], bag: { club: Club; carry: number }[] | null): Club[] {
+  const t = trackedCarry(rounds);
+  return [...t.entries()].filter(([club, v]) => {
+    const own = bag?.find((b) => b.club === club)?.carry;
+    return own == null || Math.abs(own - v.carry) >= 5;
+  }).map(([club]) => club);
 }
 
 /** The player's own club distances replace the standard bag once a club has enough shots. */

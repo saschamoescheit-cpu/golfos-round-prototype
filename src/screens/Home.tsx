@@ -3,6 +3,8 @@ import type { Round } from '../types';
 import { playerTotals } from '../lib/scoring';
 import { Attribution, formatToPar } from '../components/ui';
 import { restoreBackup, shareBackup } from '../lib/backup';
+import { carryToReview } from '../lib/stats';
+import { loadCarryBag } from '../lib/storage';
 
 export function Home(props: {
   rounds: Round[];
@@ -15,6 +17,7 @@ export function Home(props: {
 }) {
   const open = props.rounds.find((r) => !r.finishedAt);
   const fileInput = useRef<HTMLInputElement>(null);
+  const review = carryToReview(props.rounds, loadCarryBag()).length;
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const finished = props.rounds.filter((r) => r.finishedAt);
 
@@ -55,6 +58,7 @@ export function Home(props: {
         )}
         <button type="button" className="btn-secondary" onClick={props.onBag}>
           My bag &amp; caddie
+          {review > 0 && <span className="badge-dot">{review} to review</span>}
         </button>
       </div>
 

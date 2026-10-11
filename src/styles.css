@@ -346,3 +346,14 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .pin-chips { display: flex; gap: 4px; margin-top: 4px; }
 .pin-chips button { width: 26px; height: 24px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 700 11px var(--body); padding: 0; }
 .caddie-card .head { background: none; border: 0; padding: 0; color: var(--text); font: inherit; text-align: left; width: 100%; }
+.bag-tracked { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.bag-tracked.differs { color: #f6d48a; }
+.bag-tracked button { min-height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid #f6d48a; background: none; color: #f6d48a; font: 600 12px var(--body); }
+.badge-dot { margin-left: 8px; background: #f6d48a; color: #0e1418; border-radius: 10px; padding: 1px 8px; font: 700 11px var(--body); }
+.map-tools { align-self: flex-end; display: flex; gap: 8px; }
+.map-btn.round.tool { width: 46px; min-width: 46px; padding: 0; }
+.map-btn.round.tool[aria-pressed='true'] { background: var(--brand); color: var(--bg); }
+.bag-row.club { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.bag-name { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.bag-name .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bag-tracked { margin-left: 0; justify-content: flex-end; }
