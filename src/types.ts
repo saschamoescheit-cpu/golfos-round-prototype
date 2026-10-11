@@ -95,6 +95,8 @@ export interface HoleEntry {
   upAndDown: boolean | null;
   /** Detailed tracking: shots of the hole. Absent = quick tracking for this hole. */
   detail?: DetailEntry;
+  /** Weather when the player was on the hole (GOL-26). */
+  weather?: { tempC: number; windKmh: number; windFromDeg: number };
 }
 
 export interface Player {

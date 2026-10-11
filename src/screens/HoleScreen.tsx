@@ -8,7 +8,8 @@ import { recordFix } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp, saveUnit } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
-import { detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
+import { loadWeather, weatherIcon, windOnHole, type Weather } from '../lib/weather';
+import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
@@ -161,6 +162,25 @@ export function HoleScreen(props: {
     ) : offline ? (
       <div className="map-shot">Saving map for offline · {Math.round((offline.done / offline.total) * 100)}%</div>
     ) : null;
+
+  // Weather: on opening and every 10 minutes; saved with the hole when the player is on it.
+  const [weather, setWeather] = useState<Weather | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const get = () => loadWeather(courseCenter).then((w) => alive && w && setWeather(w));
+    get();
+    const t = window.setInterval(get, 10 * 60 * 1000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round.courseId]);
+  const onThisHole = player != null && mapData != null && distToLine(player.pos, mapData.line) < 150;
+  useEffect(() => {
+    if (weather && onThisHole && !myEntry.weather) update(me.id, { weather: { tempC: weather.tempC, windKmh: weather.windKmh, windFromDeg: weather.windFromDeg } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weather, onThisHole, i]);
 
   const switchImagery = () => {
     const next = imageryChoices[(imageryChoices.indexOf(imagery) + 1) % imageryChoices.length];
@@ -367,6 +387,10 @@ export function HoleScreen(props: {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
             {imagery.label}
           </button>
+        )}
+
+        {weather && (
+          <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={imageryChoices.length > 1} />
         )}
 
         <div className="map-green" aria-label="Distance to the green">
@@ -737,5 +761,28 @@ export function HoleScreen(props: {
       </div>
       {sheetEl}
     </main>
+  );
+}
+
+/** Temperature and wind on the hole map; the arrow shows where the wind blows, turned with the map (tee at the bottom). */
+function WeatherBadge(props: { weather: Weather; holeBearing: number; below: boolean }) {
+  const w = props.weather;
+  const rel = windOnHole(w, props.holeBearing);
+  const rotate = w.windFromDeg + 180 - props.holeBearing;
+  return (
+    <div className={`map-weather${props.below ? ' below' : ''}`} aria-label={`${Math.round(w.tempC)} degrees, wind ${Math.round(w.windKmh)} km/h, ${rel.label}`}>
+      <span className="temp">
+        {weatherIcon(w.code)} {Math.round(w.tempC)}°
+      </span>
+      <span className="wind">
+        {Math.round(w.windKmh) >= 5 && (
+          <svg width="16" height="16" viewBox="0 0 24 24" style={{ transform: `rotate(${rotate}deg)` }} aria-hidden="true">
+            <path d="M12 3v18M12 3l-6 6M12 3l6 6" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+          </svg>
+        )}
+        {Math.round(w.windKmh)} km/h
+      </span>
+      <span className="small">{rel.label}</span>
+    </div>
   );
 }

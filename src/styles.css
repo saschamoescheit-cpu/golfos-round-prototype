@@ -174,6 +174,15 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
   position: absolute; left: 10px; top: calc(env(safe-area-inset-top) + 76px); z-index: 2;
   min-height: 36px; padding: 0 10px; font-size: 13px;
 }
+.map-weather {
+  position: absolute; left: 10px; top: calc(env(safe-area-inset-top) + 76px); z-index: 2;
+  display: flex; flex-direction: column; gap: 1px; background: rgba(14, 20, 24, 0.86); border-radius: 12px; padding: 6px 10px;
+  font: 600 13px var(--body);
+}
+.map-weather.below { top: calc(env(safe-area-inset-top) + 120px); }
+.map-weather .temp { font: 700 16px var(--display); }
+.map-weather .wind { display: flex; align-items: center; gap: 4px; }
+.map-weather .small { color: var(--muted); font-size: 11px; font-weight: 500; }
 .map-from { margin-top: 4px; font-size: 10px; color: var(--muted); }
 .map-bottom {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
