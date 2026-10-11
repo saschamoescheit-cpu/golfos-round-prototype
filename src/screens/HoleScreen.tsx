@@ -453,7 +453,9 @@ export function HoleScreen(props: {
     const greenFocus = chart != null && greenVisible;
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
     const grid = grids?.[hole.label] ?? null;
-    const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos) ? player.pos : null;
+    const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos)
+        ? ([Math.round(player.pos[0] * 1e5) / 1e5, Math.round(player.pos[1] * 1e5) / 1e5] as LngLat) // ~1 m: GPS jitter does not re-roll the putt
+        : null;
     const ball = puttBall?.hole === i ? puttBall.pos : gpsBall;
     // Rolling a putt takes a moment – computed once per ball, pin and hole.
     const leaveFrom = !nearGreen && distanceM(from, pin) <= 230 ? from : null;

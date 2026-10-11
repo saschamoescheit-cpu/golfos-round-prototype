@@ -145,9 +145,11 @@ export function readPutt(g: GreenGrid, ball: LngLat, hole: LngLat): PuttRead | n
   if (D < 0.5 || D > 40) return null;
   const dir = Math.atan2(H[1] - by, H[0] - bx);
   // speed for an angle: the ball should stop 40 cm past the hole (measured along the line to the hole)
+  // first guess from the flat roll plus the height to climb (energy), then bisection in a narrow bracket
+  const guess = Math.sqrt(Math.max(0.05, 2 * (PUTT.decel * (D + PUTT.pastM) + PUTT.slopeFactor * (hh - hb))));
   const speedFor = (ang: number): number => {
-    let lo = 0.2, hi = 8;
-    for (let k = 0; k < 14; k++) {
+    let lo = guess * 0.55, hi = guess * 1.7;
+    for (let k = 0; k < 9; k++) {
       const mid = (lo + hi) / 2;
       const r = roll(g, bx, by, ang, mid, H);
       const along = (r.stop[0] - bx) * Math.cos(dir) + (r.stop[1] - by) * Math.sin(dir);
@@ -161,14 +163,15 @@ export function readPutt(g: GreenGrid, ball: LngLat, hole: LngLat): PuttRead | n
     const r = roll(g, bx, by, ang, v, H);
     return { ang, v, miss: r.holed ? 0 : r.closest };
   };
+  // coarse (3°), then finer around the best (0.5°, 0.1°)
   let best = tryAng(dir);
-  for (let d = -30; d <= 30; d += 1.5) {
-    const c = tryAng(dir + (d * Math.PI) / 180);
-    if (c.miss < best.miss) best = c;
-  }
-  for (let d = -1.4; d <= 1.4; d += 0.2) {
-    const c = tryAng(best.ang + (d * Math.PI) / 180);
-    if (c.miss < best.miss) best = c;
+  for (const [span, step] of [[30, 3], [2.5, 0.5], [0.4, 0.1]] as const) {
+    const centre = best.ang;
+    for (let d = -span; d <= span + 1e-9; d += step) {
+      if (Math.abs(d) < 1e-9) continue;
+      const c = tryAng(centre + (d * Math.PI) / 180);
+      if (c.miss < best.miss) best = c;
+    }
   }
   const r = roll(g, bx, by, best.ang, best.v, H, true);
   // aim point at the hole's distance, sideways offset (grid frame: + = right of the line ball → hole)
