@@ -36,6 +36,12 @@ export default defineConfig({
             options: { cacheName: 'greens', expiration: { maxEntries: 400 }, cacheableResponse: { statuses: [0, 200] } },
           },
           {
+            // green heights for the putt read (feature 024): offline on the course, refreshed when online
+            urlPattern: /\/greens\/.*\/heights\.json$/,
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'green-heights', expiration: { maxEntries: 40 }, cacheableResponse: { statuses: [0, 200] } },
+          },
+          {
             // Satellite tiles: keep what the player has seen, so the map works with poor reception on the course.
             urlPattern: /^https:\/\/(server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery|tms-pnoa-ma\.idee\.es\/1\.0\.0\/pnoa-ma)\//,
             handler: 'CacheFirst',

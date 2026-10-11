@@ -389,3 +389,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .intro li strong { display: block; }
 .home-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: center; }
 [hidden] { display: none !important; }
+
+/* Putt read on the green (feature 024) */
+.map-putt-ball { width: 14px; height: 14px; border-radius: 7px; background: #fff; border: 2px solid #0e1418; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.map-putt-aim { width: 16px; height: 16px; border-radius: 8px; border: 2.5px solid #ffd54a; box-shadow: 0 0 0 2px rgba(14, 20, 24, 0.6); }

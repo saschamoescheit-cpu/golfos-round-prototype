@@ -19,11 +19,12 @@ import { heightAt as terrainHeight } from '../lib/terrain';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard } from '../components/CaddieCard';
+import { bestLeave, loadGreenGrids, onThisGreen, readPutt, type GreenGrid, type PuttRead } from '../lib/greenread';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { sideOf } from '../lib/dispersion';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, lineLength, shiftTee, teeDelta, type Unit } from '../lib/geo';
+import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, suggestTarget, lineLength, shiftTee, teeDelta, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
@@ -226,6 +227,18 @@ export function HoleScreen(props: {
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   const [pinSheet, setPinSheet] = useState(false);
+  // Green heights for the putt read and the best leave (feature 024), loaded on demand per course.
+  const [grids, setGrids] = useState<Record<string, GreenGrid> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (loadCaddieSettings().greenSlope) loadGreenGrids(round.courseId).then((g) => alive && setGrids(g));
+    return () => {
+      alive = false;
+    };
+  }, [round.courseId]);
+  // The ball on the green: tapped by the player (per hole), else the GPS position when standing on the green.
+  const [puttBall, setPuttBall] = useState<{ hole: number; pos: LngLat } | null>(null);
+  const greenCache = useRef<{ key: string; putt: PuttRead | null; leave: string | null }>({ key: '', putt: null, leave: null });
   const [lieSet, setLieSet] = useState<{ sig: string; lie: LieKind } | null>(null);
   const spokenSig = useRef<string | null>(null);
   // Heights of tee, green and player (for "plays shorter, downhill"); rounded positions keep requests rare.
@@ -396,6 +409,11 @@ export function HoleScreen(props: {
         setPlacing(null);
         return;
       }
+      // Green shown: a tap on the green puts the ball there for the putt read.
+      if (greenVisible && grid && mapData.green && (pointInRing(p, mapData.green) || distanceM(p, mapData.greenCenter) < 15) && onThisGreen(grid, p)) {
+        setPuttBall({ hole: i, pos: p });
+        return;
+      }
       if (distanceM(p, pin) < 12 || plan.targets.some((t) => distanceM(p, t) < 12)) return; // tap on a marker
       if (plan.targets.length < MAX_TARGETS) {
         // Keep targets in playing order: the one nearer to the player comes first.
@@ -434,6 +452,21 @@ export function HoleScreen(props: {
     // Green chart on screen: keep the view free (caddie folded, no hint).
     const greenFocus = chart != null && greenVisible;
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
+    const grid = grids?.[hole.label] ?? null;
+    const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos) ? player.pos : null;
+    const ball = puttBall?.hole === i ? puttBall.pos : gpsBall;
+    // Rolling a putt takes a moment – computed once per ball, pin and hole.
+    const leaveFrom = !nearGreen && distanceM(from, pin) <= 230 ? from : null;
+    const gKey = `${i}|${grid ? 1 : 0}|${ball?.join(',')}|${pin.join(',')}|${leaveFrom ? Math.round(bearingDeg(leaveFrom, pin) / 15) : '-'}`;
+    if (greenCache.current.key !== gKey) {
+      greenCache.current = {
+        key: gKey,
+        putt: grid && ball && greenVisible ? readPutt(grid, ball, pin) : null,
+        leave: grid && leaveFrom ? (bestLeave(grid, pin, leaveFrom, mapData.green)?.text ?? null) : null,
+      };
+    }
+    const putt = greenVisible ? greenCache.current.putt : null;
+    const puttAim = putt && ball ? move(pin, bearingDeg(ball, pin) + 90, putt.aimCm / 100) : null;
     const prev = i > 0 ? round.entries[me.id][i - 1] : null;
     const prevHole = i > 0 ? round.holes[i - 1] : null;
     const cad = caddieOn
@@ -461,7 +494,8 @@ export function HoleScreen(props: {
           prev: prev && prevHole ? { toPar: prev.strokes != null ? prev.strokes - prevHole.par : null, pickedUp: !!prev.pickedUp } : null,
           forecast,
           wind: weather ? { gustKmh: weather.gustKmh, windKmh: weather.windKmh, label: windOnHole(weather, bearingDeg(from, pin)).label } : null,
-          greenText: green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
+          leave: greenCache.current.leave,
+          greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })
       : null;
     const ap = cad?.ap ?? null;
@@ -496,7 +530,8 @@ export function HoleScreen(props: {
           missMap={miss}
           aimPoint={ap && !plan.targets.some((t) => distanceM(t, ap.pos) < 15) && ap.kind !== 'approach' ? ap.pos : null}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners } : null}
-          greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: green_.level } : undefined}
+          putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
+          greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}
           onTargetsChange={(targets) => setPlan({ targets: [...passedTargets, ...targets] })}
           onPinChange={(p) => setPlan({ pin: p })}
           onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((t) => t !== shownTargets[index]) })}
@@ -650,12 +685,21 @@ export function HoleScreen(props: {
               </button>
             )}
           </div>
-          {green_ && (
-            <div className="map-hint detected" style={{ color: 'var(--text)' }}>
+          {putt ? (
+            <div className="map-hint detected putt-read" style={{ color: 'var(--text)' }}>
               <span>
-                {green_.level === 'flat' ? tr('Green: almost flat', 'Grün: fast flach') : tr(`Green: ${green_.level} slope · ${green_.text}`, `Grün: ${levelName(green_.level)} Neigung · ${green_.text}`)} <span className="muted small">{tr('(approx.)', '(ca.)')}</span>
+                {putt.text} <span className="muted small">{tr('(approx.)', '(ca.)')}</span>
               </span>
             </div>
+          ) : (
+            green_ && (
+              <div className="map-hint detected" style={{ color: 'var(--text)' }}>
+                <span>
+                  {green_.level === 'flat' ? tr('Green: almost flat', 'Grün: fast flach') : tr(`Green: ${green_.level} slope · ${green_.text}`, `Grün: ${levelName(green_.level)} Neigung · ${green_.text}`)}{' '}
+                  <span className="muted small">{grid ? tr('· tap your ball for the putt', '· tippe auf deinen Ball für den Putt') : tr('(approx.)', '(ca.)')}</span>
+                </span>
+              </div>
+            )
           )}
           {caddieShown && cad && (
             <CaddieCard

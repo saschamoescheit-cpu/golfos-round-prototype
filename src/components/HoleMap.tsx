@@ -30,6 +30,8 @@ export interface HoleMapProps {
   greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat] } | null;
   /** Green slope: arrow on the green pointing where it falls (compass degrees). */
   greenSlope?: { pos: LngLat; downDeg: number; label: string };
+  /** Putt read on the green: the ball, the rolling line and the point to aim at next to the hole. */
+  putt?: { ball: LngLat; line: LngLat[]; aim: LngLat | null } | null;
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
   padding?: { top: number; bottom: number; left: number; right: number };
   onTargetsChange: (t: LngLat[]) => void;
@@ -42,7 +44,7 @@ export function HoleMap(props: HoleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const ready = useRef(false);
-  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
+  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
   latest.current = props;
 
@@ -83,6 +85,9 @@ export function HoleMap(props: HoleMapProps) {
       m.addLayer({ id: 'track', type: 'line', source: 'track', paint: { 'line-color': '#FFD54A', 'line-width': 2.5 } });
       m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.6 } });
       m.addLayer({ id: 'plan', type: 'line', source: 'plan', paint: { 'line-color': '#FFFFFF', 'line-width': 2.5 } });
+      m.addSource('putt', { type: 'geojson', data: puttLine(latest.current) });
+      m.addLayer({ id: 'putt-casing', type: 'line', source: 'putt', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.55 }, layout: { 'line-cap': 'round' } });
+      m.addLayer({ id: 'putt', type: 'line', source: 'putt', paint: { 'line-color': '#FFD54A', 'line-width': 2.5 }, layout: { 'line-cap': 'round' } });
       ready.current = true;
       m.on('moveend', () => render()); // labels are spaced out for the current view
       collapseAttribution(m);
@@ -136,6 +141,25 @@ export function HoleMap(props: HoleMapProps) {
     if (!m) return;
     const p = latest.current;
     (m.getSource('plan') as maplibregl.GeoJSONSource | undefined)?.setData(planLine(p));
+    (m.getSource('putt') as maplibregl.GeoJSONSource | undefined)?.setData(puttLine(p));
+    // putt: white ball and a small ring where to aim
+    const pm = markers.current;
+    if (p.putt) {
+      if (!pm.puttBall) pm.puttBall = new maplibregl.Marker({ element: el('map-putt-ball') }).setLngLat(p.putt.ball).addTo(m);
+      else pm.puttBall.setLngLat(p.putt.ball);
+      if (p.putt.aim) {
+        if (!pm.puttAim) pm.puttAim = new maplibregl.Marker({ element: el('map-putt-aim') }).setLngLat(p.putt.aim).addTo(m);
+        else pm.puttAim.setLngLat(p.putt.aim);
+      } else {
+        pm.puttAim?.remove();
+        pm.puttAim = undefined;
+      }
+    } else {
+      pm.puttBall?.remove();
+      pm.puttAim?.remove();
+      pm.puttBall = undefined;
+      pm.puttAim = undefined;
+    }
     (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData(trackLine(p));
     (m.getSource('miss') as maplibregl.GeoJSONSource | undefined)?.setData(missData(p));
     syncGreenChart(m, p.greenChart ?? null);
@@ -209,7 +233,9 @@ export function HoleMap(props: HoleMapProps) {
     // crosshair with the carry to it (from the player or the previous target) and the rest to the pin.
     mk.labels.forEach((l) => l.remove());
     mk.labels = [];
-    if (p.targets.length === 0) {
+    if (p.putt) {
+      // putt read on screen: no player → pin label over the putt line
+    } else if (p.targets.length === 0) {
       const mid: LngLat = [(p.from[0] + p.pin[0]) / 2, (p.from[1] + p.pin[1]) / 2];
       mk.labels.push(new maplibregl.Marker({ element: labelEl(formatDistance(distanceM(p.from, p.pin), p.unit), 'map-label') }).setLngLat(mid).addTo(m));
     }
@@ -302,7 +328,14 @@ function trackLine(p: HoleMapProps): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] };
 }
 
+function puttLine(p: HoleMapProps): GeoJSON.FeatureCollection {
+  const pts = p.putt?.line ?? [];
+  return { type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] };
+}
+
 function planLine(p: HoleMapProps): GeoJSON.FeatureCollection {
+  // On the green with a putt read the putt line replaces the plan line.
+  if (p.putt) return { type: 'FeatureCollection', features: [] };
   // With a caddie aim point (and no own target before it) the line runs player → aim point → pin.
   const pts = p.aimPoint && p.targets.length === 0 ? [p.from, p.aimPoint, p.pin] : [p.from, ...p.targets, p.pin];
   return {

@@ -46,6 +46,7 @@ export interface CaddieInput {
   forecast?: Forecast | null;
   wind?: { gustKmh: number; label: string; windKmh: number } | null;
   greenText?: string | null;
+  leave?: string | null; // where the approach should finish on the green (green heights), e.g. "below the hole"
 }
 
 type TargetKey = 'pin' | 't1' | 'gold';
@@ -133,6 +134,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   if (note.text) lines.push({ text: note.text, tone: 'warn' });
   // The instruction first, the reasons (plan, hanging fairway) after it.
   if (aim) lines.push({ text: aim, tone: 'plan' });
+  if (o.leave && ap.kind === 'approach' && !ownTarget) lines.push({ text: o.leave, tone: 'plan' });
   // "Lay up to the gold marker" says the same as the aim line – only in the spoken summary.
   const layupLine = ap.kind === 'layup' && !ownTarget && aim != null;
   if (holePlan && !layupLine && !(warning && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan' });
