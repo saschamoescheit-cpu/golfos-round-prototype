@@ -338,6 +338,7 @@ export function HoleScreen(props: {
       <GreenSheet
         title={tr(`On the green · after ${detail.shots.length} shot${detail.shots.length === 1 ? '' : 's'}`, `Auf dem Grün · nach ${detail.shots.length} ${detail.shots.length === 1 ? 'Schlag' : 'Schlägen'}`)}
         firstPuttM={firstPuttM(d)}
+        read={grids?.[hole.label] && d.onGreen && pinPos ? (readPutt(grids[hole.label], d.onGreen, pinPos)?.text ?? null) : null}
         unit={unit}
         fmt={fmtU}
         putts={myEntry.putts}

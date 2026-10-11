@@ -94,6 +94,7 @@ export function GreenSheet(props: {
   unit: string;
   fmt: (m: number) => string;
   putts: number | null;
+  read?: string | null; // putt read from the green heights (feature 024)
   onSave: (putts: number) => void;
   onCancel: () => void;
 }) {
@@ -106,9 +107,14 @@ export function GreenSheet(props: {
             ✕
           </button>
         </div>
-        {props.firstPuttM != null && (
+        {props.firstPuttM != null && !props.read && (
           <p className="muted" style={{ margin: 0 }}>
             {tr('First putt from', 'Erster Putt aus')} <strong style={{ color: 'var(--text)' }}>{props.fmt(props.firstPuttM)} {props.unit}</strong> {tr('(ball → flag)', '(Ball → Fahne)')}
+          </p>
+        )}
+        {props.read && (
+          <p className="putt-read" style={{ margin: 0 }}>
+            {props.read} <span className="muted small">{tr('(approx.)', '(ca.)')}</span>
           </p>
         )}
         <div className="field">
