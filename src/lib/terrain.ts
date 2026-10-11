@@ -76,5 +76,5 @@ export function obAdvice(boundary: Ring[] | undefined, from: LngLat, target: Lng
     }
   }
   const parts = (Object.keys(near) as (keyof typeof near)[]).filter((k) => near[k] < Infinity).map((k) => `${Math.round(near[k])} m ${k}`);
-  return parts.length ? { text: `Out of bounds near your target: ${parts.join(', ')}`, left: near.left, right: near.right } : null;
+  return parts.length ? { text: `Out of bounds ${parts.join(', ')}`, left: near.left, right: near.right } : null;
 }

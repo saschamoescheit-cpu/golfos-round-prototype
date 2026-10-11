@@ -57,3 +57,26 @@ describe('caddie aim point', () => {
     expect(Math.round(distanceM(a.pos, at(0, 520)))).toBe(90);
   });
 });
+
+describe('safe landing (020)', () => {
+  it('drive landing in a pond moves out of the water', () => {
+    const pond = sq(0, 200, 15, 12);
+    const a = aimPoint({ ...base, data: { ...hole, water: [pond] }, from: at(0, 0), teeShot: true });
+    expect(a.landing).toBeDefined();
+    expect(distanceM(a.landing, at(0, 200))).toBeGreaterThanOrEqual(12);
+    expect(a.reasons.join(' ')).toMatch(/water/);
+  });
+  it('crosswind towards out of bounds: aim stays 20 m inside the boundary', () => {
+    // course boundary 25 m left of the line, wind from the left pushes the aim left
+    const boundary: Ring[] = [[at(-25, -20), at(80, -20), at(80, 420), at(-25, 420), at(-25, -20)]];
+    const conditions = { windKmh: 25, gustKmh: 35, windFromDeg: 270, tempC: 20 };
+    const a = aimPoint({ ...base, from: at(0, 0), teeShot: true, boundary, conditions });
+    expect(a.pos[0]).toBeGreaterThan(at(-6, 200)[0]); // not more than 5 m left of the line
+    expect(a.reasons.join(' ')).toMatch(/out of bounds/);
+  });
+  it('slope aim never points into a bunker', () => {
+    const bunker = sq(-8, 200, 5, 6);
+    const a = aimPoint({ ...base, data: { ...hole, bunkers: [bunker] }, from: at(0, 0), teeShot: true, slopes: [[200, -4]] });
+    expect(distanceM(a.pos, at(-8, 200))).toBeGreaterThan(5);
+  });
+});

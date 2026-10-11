@@ -285,7 +285,7 @@ async function overpassHoles(id: string): Promise<CourseHole[]> {
   throw lastError ?? new Error('Overpass unavailable');
 }
 
-function holesFromTags(list: Record<string, string>[]): CourseHole[] {
+export function holesFromTags(list: Record<string, string>[]): CourseHole[] {
   const holes: CourseHole[] = [];
   for (const t of list) {
     const label = t.ref ?? t.name ?? '';
