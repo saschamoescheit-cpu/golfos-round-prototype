@@ -27,6 +27,13 @@ describe('AI caddie', () => {
     expect(down.playsLike).toBe(140);
     expect(adviseClub(down.playsLike, bag).club).toBe('8i');
   });
+  it('aim: wind and own tendency combined', async () => {
+    const { aimAdvice } = await import('./caddie');
+    expect(aimAdvice(8, null, '7i')).toBe('Aim 8 m right (wind)');
+    expect(aimAdvice(0, 8, '7i')).toBe('Aim 8 m left (your 7-iron goes 8 m right on average)');
+    expect(aimAdvice(5, 8, '7i')).toBe('Aim 3 m left (wind + your 7-iron goes 8 m right on average)');
+    expect(aimAdvice(1, 2, '7i')).toBeNull();
+  });
   it('crosswind from the right: aim right', () => {
     const p = playsLike(150, 0, { windKmh: 20, gustKmh: 20, windFromDeg: 90, tempC: 20 }, 0);
     expect(p.crossKmh).toBe(20);

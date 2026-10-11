@@ -18,7 +18,9 @@ export interface HoleMapProps {
   unit: Unit;
   imagery: ImagerySource;
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a yellow line with numbered dots. */
-  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad' }[];
+  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string }[];
+  /** Track points can be dragged (round check); called on release with the point's id. */
+  onTrackMove?: (id: string, pos: LngLat) => void;
   /** "Where not to miss": points with relative cost 0 (good miss) … 1 (expensive miss). */
   missMap?: { pos: LngLat; cost: number }[];
   /** Green slope: arrow on the green pointing where it falls (compass degrees). */
@@ -129,7 +131,14 @@ export function HoleMap(props: HoleMapProps) {
     mk.track.forEach((t) => t.remove());
     mk.track = (p.track ?? []).map((t) => {
       const d = labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
-      return new maplibregl.Marker({ element: d }).setLngLat(t.pos).addTo(m);
+      const movable = p.onTrackMove != null && t.id != null;
+      const marker = new maplibregl.Marker({ element: d, draggable: movable }).setLngLat(t.pos).addTo(m);
+      if (movable)
+        marker.on('dragend', () => {
+          const ll = marker.getLngLat();
+          latest.current.onTrackMove?.(t.id!, [ll.lng, ll.lat]);
+        });
+      return marker;
     });
 
     // Player

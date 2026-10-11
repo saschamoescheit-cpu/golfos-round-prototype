@@ -103,8 +103,21 @@ export function explain(p: PlaysLike, c: Conditions | null): string[] {
   if (c && Math.abs(p.wind) >= 1) out.push(`${p.headKmh >= 0 ? 'Into the wind' : 'Downwind'} ${Math.abs(p.headKmh)} km/h${c.gustKmh > c.windKmh + 5 ? ' (gusty)' : ''}: ${m(p.wind)}`);
   if (c && Math.abs(p.temp) >= 1) out.push(`${Math.round(c.tempC)} °C: ${m(p.temp)}`);
   if (Math.abs(p.height) >= 1) out.push(`${p.height > 0 ? 'Uphill' : 'Downhill'} ${Math.abs(Math.round(p.height))} m: ${m(p.height)}`);
-  if (Math.abs(p.aimM) >= 2) out.push(`Crosswind ${Math.abs(p.crossKmh)} km/h from the ${p.crossKmh > 0 ? 'right' : 'left'}: aim ${Math.abs(p.aimM)} m ${p.aimM > 0 ? 'right' : 'left'}`);
+  if (Math.abs(p.aimM) >= 2) out.push(`Crosswind ${Math.abs(p.crossKmh)} km/h from the ${p.crossKmh > 0 ? 'right' : 'left'}`);
   return out;
+}
+
+/**
+ * Where to aim: into the crosswind, and against the player's own tendency with this club
+ * (`biasM` > 0 = the club goes right on average, known from ≥ 5 tracked shots).
+ */
+export function aimAdvice(windAimM: number, biasM: number | null, club: Club): string | null {
+  const total = Math.round(windAimM - (biasM ?? 0));
+  const parts: string[] = [];
+  if (Math.abs(windAimM) >= 2) parts.push('wind');
+  if (biasM != null && Math.abs(biasM) >= 3) parts.push(`your ${clubName(club)} goes ${Math.abs(biasM)} m ${biasM > 0 ? 'right' : 'left'} on average`);
+  if (Math.abs(total) < 2 || !parts.length) return null;
+  return `Aim ${Math.abs(total)} m ${total > 0 ? 'right' : 'left'} (${parts.join(' + ')})`;
 }
 
 /** Green slope for the player: strength and how the putt behaves, seen from where he stands. */

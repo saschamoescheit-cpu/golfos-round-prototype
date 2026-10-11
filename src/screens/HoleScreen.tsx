@@ -9,7 +9,8 @@ import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, load
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
 import { loadWeather, weatherIcon, windOnHole, type Weather } from '../lib/weather';
-import { adviseClub, clubName, DEFAULT_CARRY, explain, playsLike, readGreen } from '../lib/caddie';
+import { adviseClub, aimAdvice, clubName, DEFAULT_CARRY, explain, playsLike, readGreen } from '../lib/caddie';
+import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
 import { approachPlan, teePlan } from '../lib/holeplan';
@@ -193,6 +194,8 @@ export function HoleScreen(props: {
   const missMapOn = useMemo(() => loadCaddieSettings().missMap, []);
   const [showMiss, setShowMiss] = useState(missMapOn);
   const carryBag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
+  // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
+  const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
   const [caddieOpen, setCaddieOpen] = useState(true);
   useEffect(() => setCaddieOpen(true), [i]); // every new hole: the caddie speaks up
   // Heights of tee, green and player (for "plays shorter, downhill"); rounded positions keep requests rare.
@@ -383,6 +386,7 @@ export function HoleScreen(props: {
     const teeShot = !onHole || distanceM(from, mapData.tee) < 30;
     const advice = adviseClub(pl.playsLike, carryBag, teeShot && hole.par >= 4);
     const reasons = explain(pl, conditions);
+    const aim = aimAdvice(pl.aimM, tendency.get(advice.club) ?? null, advice.club);
     const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;
     const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
     // Hole plan in one sentence: tee shot on par 4/5 → which side; otherwise → where to miss the green.
@@ -495,6 +499,7 @@ export function HoleScreen(props: {
               {caddieOpen && (
                 <>
                   <span className="plan">{holePlan}</span>
+                  {aim && <span className="plan">{aim}</span>}
                   <span className="why">
                     {clubName(advice.club)} (carry {fmt(advice.carry)} {unit}){reasons.length ? ' · ' + reasons.join(' · ') : ' · calm, flat'}
                   </span>

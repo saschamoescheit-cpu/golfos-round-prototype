@@ -4,6 +4,7 @@ import { analyse, focusAreas, pct, type Rate } from '../lib/stats';
 import { Segmented, TopBar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { groupForHandicap, roundsSg } from '../lib/sg';
+import { clubDispersion } from '../lib/dispersion';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
 // and the focus areas that later feed the training plans (GOL-27).
@@ -20,6 +21,7 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
   const a = useMemo(() => analyse(picked), [picked]);
   const f = focusAreas(a);
   const sg = useMemo(() => roundsSg(picked), [picked]);
+  const tend = useMemo(() => new Map(clubDispersion(picked).map((d) => [d.club, d])), [picked]);
   const fmtPar = (v: number | null) => (v == null ? '–' : v > 0 ? `+${v}` : String(v));
 
   return (
@@ -164,6 +166,7 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
                     <th>Club</th>
                     <th>Typical</th>
                     <th>Range</th>
+                    <th>Tendency</th>
                     <th>Shots</th>
                   </tr>
                 </thead>
@@ -177,6 +180,7 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
                       <td className="muted">
                         {c.min}–{c.max} m
                       </td>
+                      <td>{tendencyText(tend.get(c.club))}</td>
                       <td className="muted">{c.shots}</td>
                     </tr>
                   ))}
@@ -230,4 +234,12 @@ function TeeBar(props: { left: Rate; hit: Rate; right: Rate }) {
       </p>
     </>
   );
+}
+
+/** e.g. "8 m R · 5 m short" from the approach shots with this club. */
+function tendencyText(d: { shots: number; sideMean: number; lengthMean: number } | undefined): string {
+  if (!d || d.shots < 3) return '–';
+  const side = Math.abs(d.sideMean) >= 3 ? `${Math.abs(d.sideMean)} m ${d.sideMean > 0 ? 'R' : 'L'}` : 'straight';
+  const len = Math.abs(d.lengthMean) >= 5 ? ` · ${Math.abs(d.lengthMean)} m ${d.lengthMean > 0 ? 'long' : 'short'}` : '';
+  return side + len;
 }

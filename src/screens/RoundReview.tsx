@@ -126,13 +126,24 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               ...(d?.shots ?? []).flatMap((s, n) => {
                 const v = sg?.[n]?.sg;
                 const tone: 'good' | 'bad' | undefined = v == null ? undefined : v >= 0 ? 'good' : 'bad';
-                return s.pos ? [{ pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + s.club : ''}${v != null ? ` ${v >= 0 ? '+' : ''}${v.toFixed(1)}` : ''}${s.review ? ' ?' : ''}` }] : [];
+                return s.pos ? [{ id: `shot-${n}`, pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + s.club : ''}${v != null ? ` ${v >= 0 ? '+' : ''}${v.toFixed(1)}` : ''}${s.review ? ' ?' : ''}` }] : [];
               }),
-              ...(d?.onGreen ? [{ pos: d.onGreen, label: e.putts != null ? `${e.putts} putts` : 'green', green: true }] : []),
+              ...(d?.onGreen ? [{ id: 'green', pos: d.onGreen, label: e.putts != null ? `${e.putts} putts` : 'green', green: true }] : []),
             ]}
             onTargetsChange={() => {}}
             onTargetRemove={() => {}}
             onPinChange={(p) => d && saveDetail(k, { ...d, pin: p })}
+            onTrackMove={(id, pos) => {
+              if (!d) return;
+              // Drag a shot (or the ball on the green) to where it really was; lengths and strokes gained follow.
+              if (id === 'green') saveDetail(k, { ...d, onGreen: pos });
+              else {
+                const n = Number(id.slice(5));
+                const shots = d.shots.slice();
+                shots[n] = { ...shots[n], pos, review: false };
+                saveDetail(k, { ...d, shots });
+              }
+            }}
             onMapTap={() => {}}
           />
         </div>
@@ -140,7 +151,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
 
       <p className="muted small" style={{ margin: 0 }}>
         Each shot is coloured by strokes gained against a tour pro: <span className="good-text">green = gained</span>,{' '}
-        <span className="bad-text">red = lost</span>. The number is the strokes gained of the shot from there.
+        <span className="bad-text">red = lost</span>. Drag a shot on the map to where it really was.
       </p>
 
       {mismatch && (
