@@ -9,6 +9,9 @@ import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, load
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
 import { loadWeather, weatherIcon, windOnHole, type Weather } from '../lib/weather';
+import { adviseClub, clubName, DEFAULT_CARRY, explain, playsLike } from '../lib/caddie';
+import { heights } from '../lib/elevation';
+import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
 import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
@@ -182,6 +185,27 @@ export function HoleScreen(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weather, onThisHole, i]);
 
+  // ---------- AI caddie (feature 008) ----------
+  const caddieOn = useMemo(() => loadCaddieSettings().caddie, []);
+  const carryBag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
+  const [caddieOpen, setCaddieOpen] = useState(true);
+  useEffect(() => setCaddieOpen(true), [i]); // every new hole: the caddie speaks up
+  // Heights of tee, green and player (for "plays shorter, downhill"); rounded positions keep requests rare.
+  const [hts, setHts] = useState<Record<string, number | null>>({});
+  const htKey = (p: LngLat) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`;
+  const playerKey = player ? htKey(player.pos) : '';
+  useEffect(() => {
+    if (!mapData) return;
+    const pts: LngLat[] = [mapData.tee, mapData.greenCenter, ...(player ? [player.pos] : [])];
+    let alive = true;
+    heights(pts).then((h) => alive && setHts((old) => ({ ...old, ...Object.fromEntries(pts.map((p, k) => [htKey(p), h[k]])) })));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapData, playerKey]);
+  const heightAt = (p: LngLat) => hts[htKey(p)] ?? null;
+
   const switchImagery = () => {
     const next = imageryChoices[(imageryChoices.indexOf(imagery) + 1) % imageryChoices.length];
     setImageryPref(next.id);
@@ -344,6 +368,17 @@ export function HoleScreen(props: {
       saveUnit(u);
     };
     const strokesShown = myEntry.pickedUp ? 'PU' : String(myEntry.strokes ?? hole.par);
+    // Caddie: from the player (or tee) to the first planned target, else to the pin.
+    const target = plan.targets[0] ?? pin;
+    const fromH = heightAt(from);
+    const greenH = heightAt(mapData.greenCenter);
+    const targetH = target === pin ? greenH : null;
+    const conditions = weather ? { windKmh: weather.windKmh, gustKmh: weather.gustKmh, windFromDeg: weather.windFromDeg, tempC: weather.tempC } : null;
+    const pl = playsLike(distanceM(from, target), bearingDeg(from, target), conditions, fromH != null && targetH != null ? targetH - fromH : null);
+    const teeShot = !onHole || distanceM(from, mapData.tee) < 30;
+    const advice = adviseClub(pl.playsLike, carryBag, teeShot && hole.par >= 4);
+    const reasons = explain(pl, conditions);
+    const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;
 
     return (
       <main className="map-screen">
@@ -408,6 +443,11 @@ export function HoleScreen(props: {
               <span className="map-green-num">{fmt(green.front)}</span>
             </>
           )}
+          {slopeToGreen != null && Math.abs(slopeToGreen) >= 2 && (
+            <span className="map-slope-chip">
+              {slopeToGreen < 0 ? '↓' : '↑'} {Math.abs(Math.round(slopeToGreen))} m · plays {Math.abs(Math.round(slopeToGreen))} {slopeToGreen < 0 ? 'shorter' : 'longer'}
+            </span>
+          )}
           <span className="map-from">{onHole ? `GPS ±${Math.round(player!.accuracy)} m` : 'from tee'}</span>
         </div>
 
@@ -417,6 +457,29 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
+          {caddieOn && (
+            <button type="button" className="caddie-card" onClick={() => setCaddieOpen(!caddieOpen)} aria-expanded={caddieOpen}>
+              <span className="head">
+                <span>
+                  Caddie · {target === pin ? 'to the pin' : 'to target 1'} {fmt(pl.distance)} {unit} → plays <strong>{fmt(pl.playsLike)} {unit}</strong>
+                </span>
+                <span className="club">{advice.club}</span>
+              </span>
+              {caddieOpen && (
+                <>
+                  <span className="why">
+                    {clubName(advice.club)} (carry {fmt(advice.carry)} {unit}){reasons.length ? ' · ' + reasons.join(' · ') : ' · calm, flat'}
+                  </span>
+                  <span className="alt">
+                    {advice.shorter && `Less: ${advice.shorter.club} ${fmt(advice.shorter.carry)}`}
+                    {advice.shorter && advice.longer && ' · '}
+                    {advice.longer && `More: ${advice.longer.club} ${fmt(advice.longer.carry)}`}
+                    {!weather && ' · no weather data'}
+                  </span>
+                </>
+              )}
+            </button>
+          )}
           {shotStart && player && (
             <div className="map-shot">
               Shot <strong>{fmt(distanceM(shotStart, player.pos))} {unit}</strong>

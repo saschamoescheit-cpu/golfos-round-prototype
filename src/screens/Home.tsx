@@ -10,6 +10,7 @@ export function Home(props: {
   onContinue: (r: Round) => void;
   onOpen: (r: Round) => void;
   onStats: () => void;
+  onBag: () => void;
   onChanged: () => void;
 }) {
   const open = props.rounds.find((r) => !r.finishedAt);
@@ -46,11 +47,16 @@ export function Home(props: {
         New round
       </button>
 
-      {finished.length > 0 && (
-        <button type="button" className="btn-secondary" onClick={props.onStats}>
-          Your stats
+      <div className="nav-bottom" style={{ gridTemplateColumns: finished.length > 0 ? '1fr 1fr' : '1fr' }}>
+        {finished.length > 0 && (
+          <button type="button" className="btn-secondary" onClick={props.onStats}>
+            Your stats
+          </button>
+        )}
+        <button type="button" className="btn-secondary" onClick={props.onBag}>
+          My bag &amp; caddie
         </button>
-      )}
+      </div>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <h2>Your rounds</h2>

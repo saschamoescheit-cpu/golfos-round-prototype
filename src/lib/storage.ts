@@ -1,6 +1,7 @@
 import type { Course, CourseGeometry, LngLat, Round } from '../types';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 import type { ImageryId } from './imagery';
+import type { CarryBag } from './caddie';
 
 // Everything is stored on the device (localStorage). No account, no cloud – prototype only.
 
@@ -135,6 +136,29 @@ export function loadOfflineStamp(courseId: string, imageryId: string): number {
 }
 export function saveOfflineStamp(courseId: string, imageryId: string): void {
   write(`${OFFLINE}${courseId}.${imageryId}`, Date.now());
+}
+
+/** The player's carry distances (AI caddie, "My bag"); null until he saved them. */
+const BAG = 'golfos.bag.v1';
+export function loadCarryBag(): CarryBag | null {
+  return read<CarryBag | null>(BAG, null);
+}
+export function saveCarryBag(bag: CarryBag): void {
+  write(BAG, bag);
+}
+
+/** AI caddie and green reading switched on/off by the player. */
+const CADDIE = 'golfos.caddie.v1';
+export interface CaddieSettings {
+  caddie: boolean;
+  greenSlope: boolean;
+  missMap: boolean;
+}
+export function loadCaddieSettings(): CaddieSettings {
+  return { caddie: true, greenSlope: true, missMap: false, ...read<Partial<CaddieSettings>>(CADDIE, {}) };
+}
+export function saveCaddieSettings(s: CaddieSettings): void {
+  write(CADDIE, s);
 }
 
 export function newId(): string {
