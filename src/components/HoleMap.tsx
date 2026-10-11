@@ -23,6 +23,8 @@ export interface HoleMapProps {
   onTrackMove?: (id: string, pos: LngLat) => void;
   /** "Where not to miss": points with relative cost 0 (good miss) … 1 (expensive miss). */
   missMap?: { pos: LngLat; cost: number }[];
+  /** Green chart image (slope colours, arrows, contours) placed by its corners. */
+  greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat] } | null;
   /** Green slope: arrow on the green pointing where it falls (compass degrees). */
   greenSlope?: { pos: LngLat; downDeg: number; label: string };
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
@@ -59,6 +61,7 @@ export function HoleMap(props: HoleMapProps) {
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       courseLayers('shapes').forEach((l) => m.addLayer(l));
       m.addSource('miss', { type: 'geojson', data: missData(latest.current) });
+      syncGreenChart(m, latest.current.greenChart ?? null);
       m.addLayer({
         id: 'miss',
         type: 'circle',
@@ -101,6 +104,19 @@ export function HoleMap(props: HoleMapProps) {
     fit(m, props.data, props.padding);
   }, [props.holeKey, props.data]);
 
+  // Green chart shown: zoom onto the green (keeping the playing direction); hidden again: back to the hole.
+  const chartKey = props.greenChart ? props.greenChart.url : '';
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready.current) return;
+    const c = latest.current.greenChart;
+    if (c) {
+      const b = c.corners.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(c.corners[0], c.corners[0]));
+      m.fitBounds(b, { bearing: m.getBearing(), padding: { top: 150, bottom: 260, left: 20, right: 20 }, maxZoom: 21, duration: 600 });
+    } else fit(m, latest.current.data, latest.current.padding);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartKey]);
+
   // Imagery switched by the player.
   useEffect(() => {
     const m = map.current;
@@ -119,6 +135,7 @@ export function HoleMap(props: HoleMapProps) {
     (m.getSource('plan') as maplibregl.GeoJSONSource | undefined)?.setData(planLine(p));
     (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData(trackLine(p));
     (m.getSource('miss') as maplibregl.GeoJSONSource | undefined)?.setData(missData(p));
+    syncGreenChart(m, p.greenChart ?? null);
     const mk = markers.current;
     mk.slope?.remove();
     mk.slope = undefined;
@@ -239,6 +256,25 @@ function shapes(d: HoleMapData): GeoJSON.FeatureCollection {
       { type: 'Feature', properties: { kind: 'hole' }, geometry: { type: 'LineString', coordinates: d.line } },
     ],
   };
+}
+
+/** Shows, moves or hides the green chart (an image source below the markers). */
+function syncGreenChart(m: maplibregl.Map, chart: HoleMapProps['greenChart']): void {
+  const src = m.getSource('green-chart') as maplibregl.ImageSource | undefined;
+  if (!chart) {
+    if (src) {
+      m.removeLayer('green-chart');
+      m.removeSource('green-chart');
+    }
+    return;
+  }
+  const url = new URL(chart.url, document.baseURI).href;
+  if (src) {
+    if ((src as unknown as { url: string }).url !== url) src.updateImage({ url, coordinates: chart.corners });
+    return;
+  }
+  m.addSource('green-chart', { type: 'image', url, coordinates: chart.corners });
+  m.addLayer({ id: 'green-chart', type: 'raster', source: 'green-chart', paint: { 'raster-opacity': 0.95, 'raster-fade-duration': 0 } }, 'hole');
 }
 
 function missData(p: HoleMapProps): GeoJSON.FeatureCollection {

@@ -27,8 +27,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        globIgnores: ['greens/**'], // green charts load on demand (runtime cache below)
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // map library is > 2 MB
         runtimeCaching: [
+          {
+            urlPattern: /\/greens\/.*\.webp$/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'greens', expiration: { maxEntries: 400 }, cacheableResponse: { statuses: [0, 200] } },
+          },
           {
             // Satellite tiles: keep what the player has seen, so the map works with poor reception on the course.
             urlPattern: /^https:\/\/(server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery|tms-pnoa-ma\.idee\.es\/1\.0\.0\/pnoa-ma)\//,

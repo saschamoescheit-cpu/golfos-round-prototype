@@ -13,6 +13,7 @@ import { adviseClub, aimAdvice, clubName, DEFAULT_CARRY, explain, playsLike, rea
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
+import { GREEN_CHARTS } from '../data/greenCharts';
 import { approachPlan, teePlan } from '../lib/holeplan';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
 import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, lineLength, pointAt, suggestTarget, type Unit } from '../lib/geo';
@@ -404,6 +405,9 @@ export function HoleScreen(props: {
     const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
     const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || (round.preview === true && hole.par === 3);
     const greenVisible = nearGreen || showGreen;
+    const chart = greenSlopeOn ? GREEN_CHARTS[round.courseId]?.[hole.label] : undefined;
+    // Green chart on screen: keep the view free (caddie folded, no hint).
+    const greenFocus = chart != null && greenVisible;
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
 
     return (
@@ -419,7 +423,8 @@ export function HoleScreen(props: {
           imagery={imagery}
           track={detailMode ? track : undefined}
           missMap={miss}
-          greenSlope={slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: green_.level } : undefined}
+          greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners } : null}
+          greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: green_.level } : undefined}
           onTargetsChange={(targets) => setPlan({ targets })}
           onPinChange={(p) => setPlan({ pin: p })}
           onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((_, j) => j !== index) })}
@@ -480,12 +485,12 @@ export function HoleScreen(props: {
         </div>
 
         <div className="map-bottom">
-          {(gpsError || (player && !onHole)) && (
+          {!greenFocus && (gpsError || (player && !onHole)) && (
             <div className="map-hint">{round.preview ? 'Preview · distances from the tee' : (gpsError ?? 'You are not on this hole – distances from the tee.')}</div>
           )}
           {detectedBanner}
           {offlineHint}
-          {slope && !nearGreen && (
+          {(slope || chart) && !nearGreen && (
             <button type="button" className="map-btn map-miss" aria-pressed={showGreen} onClick={() => setShowGreen(!showGreen)}>
               ⛳ {showGreen ? 'Hide green slope' : 'Green slope'}
             </button>
@@ -510,7 +515,7 @@ export function HoleScreen(props: {
                 </span>
                 <span className="club">{advice.club}</span>
               </span>
-              {caddieOpen && (
+              {caddieOpen && !greenFocus && (
                 <>
                   <span className="plan">{holePlan}</span>
                   {aim && <span className="plan">{aim}</span>}
