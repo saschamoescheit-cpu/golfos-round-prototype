@@ -4,7 +4,7 @@ import { deriveFromShots, emptyDetail, firstPuttM, lieAt, onGreenAt, shotLengths
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
-import { recordFix } from '../lib/track';
+import { autoShot, loadTrack, recordFix } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp, saveUnit } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
@@ -111,7 +111,8 @@ export function HoleScreen(props: {
         setGpsError(null);
         setPlayer({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy });
         // Detailed rounds keep the GPS track for the shot detection after the round (only while the app is open).
-        if (round.mode === 'detail') recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy });
+        // Every round keeps the GPS track (while the app is open): automatic shot length, shot detection.
+        if (!round.preview) recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy });
       },
       () => setGpsError('No GPS – distances are measured from the tee.'),
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
@@ -382,6 +383,8 @@ export function HoleScreen(props: {
       saveUnit(u);
     };
     const strokesShown = myEntry.pickedUp ? 'PU' : String(myEntry.strokes ?? hole.par);
+    // Automatic shot length: from the last place the player stood (or the tee) to here – no tapping needed.
+    const autoLen = onHole && player && !round.preview ? autoShot(loadTrack(round.id), mapData, player.pos) : null;
     // Caddie: from the player (or tee) to the first planned target still ahead of him, else to the pin.
     const target = plan.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15) ?? pin;
     const fromH = heightAt(from);
@@ -529,7 +532,12 @@ export function HoleScreen(props: {
               Shot <strong>{fmt(distanceM(shotStart, player.pos))} {unit}</strong>
             </div>
           )}
-          {!shotStart && live.lastShot != null && (
+          {!shotStart && autoLen && (
+            <div className="map-shot">
+              {autoLen.fromTee ? 'Tee shot' : 'Last shot'} <strong>{fmt(autoLen.length)} {unit}</strong>
+            </div>
+          )}
+          {!shotStart && !autoLen && live.lastShot != null && (
             <div className="map-shot">
               Last shot <strong>{fmt(live.lastShot)} {unit}</strong>
             </div>

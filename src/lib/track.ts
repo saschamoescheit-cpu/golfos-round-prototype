@@ -108,6 +108,28 @@ export function trackForHole(track: TrackPoint[], hole: HoleMapData, nextHole: H
   return track.slice(start, end);
 }
 
+// ---- Automatic shot length (feature 012) ----
+
+/**
+ * Length of the last shot without tapping anything: from the last place the player stood (a stop in the track,
+ * or the last fix before the app went to the background) to where he is now. On the first shot the tee is
+ * known anyway. Only places on this hole count; the player must have come ≥ 15 m closer to the green.
+ */
+export function autoShot(track: TrackPoint[], hole: HoleMapData, now: LngLat): { from: LngLat; length: number; fromTee: boolean } | null {
+  const toGreen = (p: LngLat) => distanceM(p, hole.greenCenter);
+  if (distToLine(now, hole.line) > DETECT.corridorM || toGreen(now) > toGreen(hole.tee) - 15) return null;
+  const pts = track.filter((x) => x.acc <= DETECT.maxAccuracyM);
+  // Anchors: stops, and the last fix before a gap of ≥ 30 s (phone put away).
+  const anchors: { t: number; p: LngLat }[] = findStops(pts).map((s) => ({ t: s.to, p: s.p }));
+  for (let k = 0; k + 1 < pts.length; k++) if (pts[k + 1].t - pts[k].t >= 30000) anchors.push({ t: pts[k].t, p: pts[k].p });
+  anchors.sort((a, b) => b.t - a.t); // newest first
+  const here = (p: LngLat) => distanceM(p, now) < 15;
+  const from = anchors.find((a) => !here(a.p) && distToLine(a.p, hole.line) <= DETECT.corridorM && toGreen(a.p) >= toGreen(now) + 15);
+  // Nothing recorded on this hole yet: the shot came from the tee.
+  if (!from || distanceM(from.p, hole.tee) < 25) return { from: hole.tee, length: distanceM(hole.tee, now), fromTee: true };
+  return { from: from.p, length: distanceM(from.p, now), fromTee: false };
+}
+
 // ---- Recording (web prototype: only while the app is open) ----
 
 const KEY = 'golfos.track.v1.';

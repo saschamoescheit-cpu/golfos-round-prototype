@@ -96,3 +96,28 @@ describe('shot detection from the GPS track', () => {
     expect(clubForLength(131, false)).toBe('7i');
   });
 });
+
+import { autoShot } from './track';
+describe('automatic shot length', () => {
+  const ball2 = shift(pointAt(hole1.line, 225), 8, 0);
+  const ball3 = shift(pointAt(hole1.line, 330), -4, 0);
+  it('app closed on the tee, opened at the ball: length from the tee', () => {
+    const r = autoShot([], hole1, ball2)!;
+    expect(r.fromTee).toBe(true);
+    expect(Math.abs(r.length - 225)).toBeLessThan(5);
+  });
+  it('app looked at by the ball, put away, opened at the next ball: length of that shot', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(20);
+    w.at = ball2; // walked with the phone in the pocket (no fixes)
+    w.t += 120000;
+    w.stand(10); // opened by the ball, checked the caddie
+    w.t += 90000; // phone away, shot, walked
+    const r = autoShot(w.pts, hole1, ball3)!;
+    expect(r.fromTee).toBe(false);
+    expect(Math.abs(r.length - distanceM(ball2, ball3))).toBeLessThan(5);
+  });
+  it('still on the tee: no shot', () => {
+    expect(autoShot([], hole1, hole1.tee)).toBeNull();
+  });
+});
