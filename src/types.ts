@@ -16,6 +16,8 @@ export interface CourseGeometry {
   water: Ring[];
   /** Main slope per green (by hole ref): % and compass direction the green falls to. Approximation. */
   greenSlopes?: Record<string, { pct: number; downDeg: number }>;
+  /** Woods and scrub (OSM natural=wood|scrub, landuse=forest) – trees that block shots. */
+  trees?: Ring[];
   /** Outline of the golf course (OSM leisure=golf_course) – beyond it is usually out of bounds. */
   boundary?: Ring[];
   /** Cross slope along each hole (by ref): [metres from the tee, % – positive = right side higher, ball rolls left]. */

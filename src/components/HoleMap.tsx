@@ -23,6 +23,8 @@ export interface HoleMapProps {
   onTrackMove?: (id: string, pos: LngLat) => void;
   /** "Where not to miss": points with relative cost 0 (good miss) … 1 (expensive miss). */
   missMap?: { pos: LngLat; cost: number }[];
+  /** The caddie's aim point (gold), with a dashed line from the player. */
+  aimPoint?: LngLat | null;
   /** Green chart image (slope colours, arrows, contours) placed by its corners. */
   greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat] } | null;
   /** Green slope: arrow on the green pointing where it falls (compass degrees). */
@@ -39,7 +41,7 @@ export function HoleMap(props: HoleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const ready = useRef(false);
-  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
+  const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
   latest.current = props;
 
@@ -137,6 +139,16 @@ export function HoleMap(props: HoleMapProps) {
     (m.getSource('miss') as maplibregl.GeoJSONSource | undefined)?.setData(missData(p));
     syncGreenChart(m, p.greenChart ?? null);
     const mk = markers.current;
+    if (p.aimPoint) {
+      if (!mk.aim) {
+        const d = el('map-aim');
+        d.innerHTML = '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="11" fill="none" stroke="#0E1418" stroke-width="5"/><circle cx="15" cy="15" r="11" fill="none" stroke="#FFD54A" stroke-width="2.5"/><circle cx="15" cy="15" r="3" fill="#FFD54A" stroke="#0E1418" stroke-width="1"/></svg><span>Aim</span>';
+        mk.aim = new maplibregl.Marker({ element: d }).setLngLat(p.aimPoint).addTo(m);
+      } else mk.aim.setLngLat(p.aimPoint);
+    } else if (mk.aim) {
+      mk.aim.remove();
+      mk.aim = undefined;
+    }
     mk.slope?.remove();
     mk.slope = undefined;
     if (p.greenSlope) {
@@ -290,9 +302,11 @@ function trackLine(p: HoleMapProps): GeoJSON.FeatureCollection {
 }
 
 function planLine(p: HoleMapProps): GeoJSON.FeatureCollection {
+  // With a caddie aim point (and no own target before it) the line runs player → aim point → pin.
+  const pts = p.aimPoint && p.targets.length === 0 ? [p.from, p.aimPoint, p.pin] : [p.from, ...p.targets, p.pin];
   return {
     type: 'FeatureCollection',
-    features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [p.from, ...p.targets, p.pin] } }],
+    features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }],
   };
 }
 

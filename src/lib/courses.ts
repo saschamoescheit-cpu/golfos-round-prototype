@@ -186,6 +186,10 @@ export function parseOsmXml(xml: string): { nodes: Map<string, LngLat>; ways: Os
 }
 
 type Kind = 'green' | 'tee' | 'bunker' | 'fairway' | 'water';
+function isTrees(tags: Record<string, string>): boolean {
+  return tags.natural === 'wood' || tags.natural === 'scrub' || tags.landuse === 'forest';
+}
+
 function featureKind(tags: Record<string, string>): Kind | null {
   const g = tags.golf;
   if (g === 'green' || g === 'tee' || g === 'bunker' || g === 'fairway') return g;
@@ -207,9 +211,15 @@ export function geometryFromOsm(osm: ReturnType<typeof parseOsmXml>): CourseGeom
     const k = featureKind(w.tags);
     if (k && line.length >= 4 && w.nodes[0] === w.nodes[w.nodes.length - 1]) geo[k].push(line);
     if (w.tags.leisure === 'golf_course' && line.length >= 4 && w.nodes[0] === w.nodes[w.nodes.length - 1]) (geo.boundary ??= []).push(line);
+    if (isTrees(w.tags) && line.length >= 4 && w.nodes[0] === w.nodes[w.nodes.length - 1]) (geo.trees ??= []).push(line);
   }
   for (const r of osm.relations) {
     if (r.tags.type !== 'multipolygon') continue;
+    if (isTrees(r.tags)) {
+      const outer = r.members.filter((m) => m.type === 'way' && (m.role === 'outer' || m.role === '')).map((m) => byId.get(m.ref)?.nodes ?? []);
+      for (const ring of joinRings(outer)) (geo.trees ??= []).push(coords(ring));
+      continue;
+    }
     if (r.tags.leisure === 'golf_course') {
       const outer = r.members.filter((m) => m.type === 'way' && (m.role === 'outer' || m.role === '')).map((m) => byId.get(m.ref)?.nodes ?? []);
       for (const ring of joinRings(outer)) (geo.boundary ??= []).push(coords(ring));
