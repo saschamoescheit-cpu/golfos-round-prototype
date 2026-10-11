@@ -231,3 +231,38 @@ export type Unit = 'm' | 'yd';
 export function formatDistance(m: number, unit: Unit): string {
   return String(Math.round(unit === 'yd' ? m * 1.09361 : m));
 }
+
+/**
+ * The hole from another tee: `delta` metres further forward (> 0) or back (< 0) than where the line starts.
+ * Forward cuts the line; back extends it straight behind the tee.
+ */
+export function shiftTee(d: HoleMapData, delta: number): HoleMapData {
+  if (Math.abs(delta) < 2) return d;
+  let line: LngLat[];
+  if (delta > 0) {
+    const total = lineLength(d.line);
+    const start = Math.min(delta, total - 30);
+    const rest: LngLat[] = [pointAt(d.line, start)];
+    let acc = 0;
+    for (let k = 0; k + 1 < d.line.length; k++) {
+      acc += distanceM(d.line[k], d.line[k + 1]);
+      if (acc > start) rest.push(d.line[k + 1]);
+    }
+    line = rest;
+  } else {
+    const b = bearingDeg(d.line[1], d.line[0]); // backwards from the tee
+    const r = (b * Math.PI) / 180;
+    const m = -delta;
+    const p0 = d.line[0];
+    line = [[p0[0] + (m * Math.sin(r)) / (111320 * Math.cos((p0[1] * Math.PI) / 180)), p0[1] + (m * Math.cos(r)) / 111320], ...d.line];
+  }
+  return { ...d, line, tee: line[0] };
+}
+
+/** Shift for the chosen tee: the line starts at the tee whose length is closest to the line's length. */
+export function teeDelta(lengths: (number | null)[] | undefined, teeIndex: number, lineM: number): number {
+  const want = lengths?.[teeIndex];
+  if (!lengths || want == null) return 0;
+  const ref = lengths.reduce<number | null>((best, l) => (l != null && (best == null || Math.abs(l - lineM) < Math.abs(best - lineM)) ? l : best), null);
+  return ref == null ? 0 : ref - want;
+}

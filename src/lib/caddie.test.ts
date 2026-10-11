@@ -106,3 +106,37 @@ describe('hole plan in words', () => {
     expect(teePlan({ ...par4, water: [] }, 220)).toBe('Landing zone is open on both sides.');
   });
 });
+
+import { adviseClubMax, lieEffect, scoreStrategy } from './caddie';
+import { forecastNote } from './weather';
+import { fairwayWidth } from './holeplan';
+
+describe('caddie extras (019)', () => {
+  it('lie: deep rough caps the club, downhill plays shorter and aims left', () => {
+    expect(adviseClubMax(170, DEFAULT_CARRY, false, lieEffect('heavyRough')!.maxClub).club).toBe('7i');
+    expect(lieEffect('downhill')!.factor).toBeLessThan(1);
+    expect(lieEffect('downhill')!.aimM).toBeLessThan(0);
+    expect(lieEffect('normal')).toBeNull();
+  });
+  it('stableford: strokes received and pick up', () => {
+    expect(scoreStrategy({ par: 4, received: 1, shotsSoFar: 0 })).toBe('You get 1 stroke here – a 5 still scores 2 points, no need to force it');
+    expect(scoreStrategy({ par: 4, received: 1, shotsSoFar: 6 })).toBe('No Stableford point left on this hole – pick up and keep the pace');
+    expect(scoreStrategy({ par: 4, received: 1, shotsSoFar: 5 })).toBeNull();
+    expect(scoreStrategy({ par: 4, received: 0, shotsSoFar: 0 })).toBeNull();
+    expect(scoreStrategy({ par: 4, received: 1, shotsSoFar: null })).toBeNull();
+  });
+  it('forecast: rain and wind coming', () => {
+    const f = { hours: [{ time: '2026-10-11T14:00', rainPct: 10, gustKmh: 20 }, { time: '2026-10-11T15:00', rainPct: 70, gustKmh: 38 }] };
+    expect(forecastNote(f, 20)).toBe('Coming up: rain likely from 15:00, gusts up to 38 km/h around 15:00');
+    expect(forecastNote({ hours: [] }, 20)).toBeNull();
+  });
+  it('fairway width at the landing zone', () => {
+    const M = 1 / 111320;
+    const at = (east: number, north: number): LngLat => [9.69 + (east * M) / Math.cos((48.78 * Math.PI) / 180), 48.78 + north * M];
+    const fw: Ring = [at(-12, 100), at(16, 100), at(16, 300), at(-12, 300), at(-12, 100)];
+    const d: HoleMapData = { line: [at(0, 0), at(0, 380)], tee: at(0, 0), green: null, greenCenter: at(0, 380), bunkers: [], water: [], fairways: [fw], tees: [] };
+    expect(fairwayWidth(d, 200)).toBeGreaterThanOrEqual(27);
+    expect(fairwayWidth(d, 200)).toBeLessThanOrEqual(29);
+    expect(fairwayWidth(d, 50)).toBeNull();
+  });
+});

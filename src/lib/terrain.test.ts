@@ -27,7 +27,7 @@ describe('caddie: ground', () => {
   it('course boundary 20 m right of the landing spot', () => {
     // boundary: a north–south line 20 m east of the hole line
     const boundary: Ring[] = [[at(20, 0), at(20, 400), at(200, 400), at(200, 0), at(20, 0)]];
-    expect(obAdvice(boundary, at(0, 0), at(0, 220))!.text).toBe('Out of bounds (likely) right 20 m from your target');
+    expect(obAdvice(boundary, at(0, 0), at(0, 220))!.text).toBe('Out of bounds near your target: 20 m right');
     expect(obAdvice(boundary, at(0, 0), at(-40, 220))).toBeNull();
   });
 });

@@ -2,11 +2,13 @@
 // reading aloud. Rule-based in the prototype; a language model can take over later (needs a backend).
 
 /** One short mental cue on the tee, from the last hole and the stage of the round. */
-export function mentalTip(o: { hole: number; holes: number; lastToPar: number | null; lastPickedUp: boolean }): string | null {
+export function mentalTip(o: { hole: number; holes: number; lastToPar: number | null; lastPickedUp: boolean; tempC?: number | null }): string | null {
   if (o.hole === 0) return 'First tee: one practice swing, pick a small target, commit to it.';
+  if (o.tempC != null && o.tempC >= 27 && o.hole % 3 === 0) return 'Hot today: drink at every tee and wait in the shade.';
   if (o.lastPickedUp || (o.lastToPar != null && o.lastToPar >= 2)) return 'Let the last hole go. Small target, smooth tempo – one shot at a time.';
   if (o.lastToPar != null && o.lastToPar <= -1) return 'Nice one. Same routine, same tempo – no extra speed now.';
   if (o.hole === Math.floor(o.holes / 2)) return 'Halfway: drink some water and have a bite.';
+  if (o.hole % 6 === 0) return 'Time for a sip of water – energy for the next holes.';
   if (o.hole >= o.holes - 3) return 'Closing holes: stay in your routine, play to your targets.';
   return null;
 }

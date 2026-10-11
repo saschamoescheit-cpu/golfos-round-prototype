@@ -134,3 +134,55 @@ export function readGreen(slope: { pct: number; downDeg: number }, puttBearing: 
   const side = rel >= 45 && rel <= 135 ? 'breaks right' : rel >= 225 && rel <= 315 ? 'breaks left' : null;
   return { level, text: [along, side].filter(Boolean).join(', ') || 'slope across' };
 }
+
+// ---- Lie of the ball (feature 019) – rules of thumb, to be confirmed by Chris ----
+export type LieKind = 'normal' | 'lightRough' | 'heavyRough' | 'fairwayBunker' | 'uphill' | 'downhill' | 'above' | 'below';
+export const LIE_OPTIONS: { value: LieKind; label: string }[] = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'lightRough', label: 'Light rough' },
+  { value: 'heavyRough', label: 'Deep rough' },
+  { value: 'fairwayBunker', label: 'Fairway bunker' },
+  { value: 'uphill', label: 'Uphill' },
+  { value: 'downhill', label: 'Downhill' },
+  { value: 'above', label: 'Ball above feet' },
+  { value: 'below', label: 'Ball below feet' },
+];
+
+/** How the lie changes the shot: plays-like factor, aim (m, + right, right-handed player), longest club, tip. */
+export function lieEffect(lie: LieKind): { factor: number; aimM: number; maxClub: Club | null; text: string } | null {
+  switch (lie) {
+    case 'lightRough':
+      return { factor: 0.95, aimM: 0, maxClub: null, text: 'Light rough: the ball can jump ("flyer") and fly further – land it short of the target' };
+    case 'heavyRough':
+      return { factor: 1.15, aimM: 0, maxClub: '7i', text: 'Deep rough: 7-iron at most, take loft' };
+    case 'fairwayBunker':
+      return { factor: 1.05, aimM: 0, maxClub: '5i', text: 'Fairway bunker: one club more, ball first – enough loft for the lip' };
+    case 'uphill':
+      return { factor: 1.06, aimM: 3, maxClub: null, text: 'Uphill lie: one club more, the ball goes higher and left – aim a little right' };
+    case 'downhill':
+      return { factor: 0.95, aimM: -3, maxClub: null, text: 'Downhill lie: one club less, the ball flies lower and right – aim a little left' };
+    case 'above':
+      return { factor: 1, aimM: 4, maxClub: null, text: 'Ball above your feet: it curves left – aim right, grip down' };
+    case 'below':
+      return { factor: 1, aimM: -4, maxClub: null, text: 'Ball below your feet: it curves right – aim left, flex the knees' };
+    default:
+      return null;
+  }
+}
+
+const CLUB_ORDER: Club[] = ['Dr', '3W', '5W', 'Hy', '4i', '5i', '6i', '7i', '8i', '9i', 'PW', 'GW', 'SW', 'LW'];
+/** Club advice limited to clubs not longer than `maxClub` (deep rough, fairway bunker). */
+export function adviseClubMax(target: number, bag: CarryBag, teeShot: boolean, maxClub: Club | null): ClubAdvice {
+  const allowed = maxClub ? bag.filter((b) => CLUB_ORDER.indexOf(b.club) >= CLUB_ORDER.indexOf(maxClub)) : bag;
+  return adviseClub(target, allowed.length ? allowed : bag, teeShot);
+}
+
+// ---- Stableford strategy (feature 019) ----
+/** One line about the score on this hole: strokes received on the tee, pick up when no point is left. */
+export function scoreStrategy(o: { par: number; received: number; shotsSoFar: number | null }): string | null {
+  const net2 = o.par + o.received; // gross score that still gives 2 Stableford points
+  if (o.shotsSoFar != null && o.shotsSoFar >= net2 + 1) return 'No Stableford point left on this hole – pick up and keep the pace';
+  if (o.shotsSoFar !== 0) return null; // the stroke reminder belongs on the tee
+  if (o.received >= 1) return `You get ${o.received} stroke${o.received > 1 ? 's' : ''} here – a ${net2} still scores 2 points, no need to force it`;
+  return null;
+}

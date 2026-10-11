@@ -145,3 +145,25 @@ describe('Son Gual geometry (OpenStreetMap snapshot, hole 5 corrected)', () => {
     }
   });
 });
+
+import { shiftTee, teeDelta, type HoleMapData } from './geo';
+describe('tee colour (019)', () => {
+  const M = 1 / 111320;
+  const at = (north: number): [number, number] => [2.6, 39.6 + north * M];
+  const d: HoleMapData = { line: [at(0), at(200), at(350)], tee: at(0), green: null, greenCenter: at(350), bunkers: [], water: [], fairways: [], tees: [] };
+  it('reference is the tee whose length matches the map line', () => {
+    // Son Quint hole 1: line starts at the blue tee (307 m) – yellow is 27 m further back.
+    expect(teeDelta([351, 334, 307, 284, 196], 1, 309)).toBe(-27);
+    expect(teeDelta([351, 334, 307, 284, 196], 3, 309)).toBe(23);
+    expect(teeDelta([139, 116, null], 2, 140)).toBe(0); // no tee of that colour: unchanged
+    expect(teeDelta(undefined, 0, 300)).toBe(0);
+  });
+  it('forward tee cuts the line, back tee extends it', () => {
+    const fwd = shiftTee(d, 50);
+    expect(lineLength(fwd.line)).toBeCloseTo(300, 0);
+    expect(fwd.tee).toEqual(fwd.line[0]);
+    const back = shiftTee(d, -27);
+    expect(lineLength(back.line)).toBeCloseTo(377, 0);
+    expect(shiftTee(d, 1)).toBe(d);
+  });
+});

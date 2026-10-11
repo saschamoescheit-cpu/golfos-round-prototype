@@ -72,3 +72,17 @@ export function teePlan(data: HoleMapData, driverCarry: number): string {
   if (Math.abs(left.cost - right.cost) < 0.2) return left.cost >= 0.5 ? `Tight landing zone (${left.why} both sides) – club down for the fairway.` : 'Landing zone is open on both sides.';
   return left.cost < right.cost ? `Favour the left side – right: ${right.why}.` : `Favour the right side – left: ${left.why}.`;
 }
+
+/** Width of the mapped fairway across the hole at `along` metres from the tee (null when no fairway there). */
+export function fairwayWidth(data: HoleMapData, along: number): number | null {
+  if (!data.fairways.length) return null;
+  const c = pointAt(data.line, along);
+  const b = bearingDeg(pointAt(data.line, Math.max(0, along - 10)), c);
+  const inFw = (p: LngLat) => data.fairways.some((r) => pointInRing(p, r));
+  if (!inFw(c)) return null;
+  let left = 0;
+  let right = 0;
+  for (let m = 1; m <= 60 && inFw(move(c, b - 90, m)); m++) left = m;
+  for (let m = 1; m <= 60 && inFw(move(c, b + 90, m)); m++) right = m;
+  return left + right + 1;
+}

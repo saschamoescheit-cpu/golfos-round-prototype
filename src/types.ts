@@ -129,6 +129,8 @@ export interface Round {
   /** entries[playerId][holeIndex] */
   entries: Record<string, HoleEntry[]>;
   currentHole: number;
+  /** Tee colour the player plays from (when the course has tee data). */
+  tee?: string;
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
 }

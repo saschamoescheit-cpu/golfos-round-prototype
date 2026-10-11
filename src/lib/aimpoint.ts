@@ -24,7 +24,7 @@ export interface AimPoint {
   note: string | null; // trees, out of bounds …
 }
 
-function move(p: LngLat, bearing: number, m: number): LngLat {
+export function move(p: LngLat, bearing: number, m: number): LngLat {
   const r = (bearing * Math.PI) / 180;
   return [p[0] + (m * Math.sin(r)) / (111320 * Math.cos((p[1] * Math.PI) / 180)), p[1] + (m * Math.cos(r)) / 111320];
 }

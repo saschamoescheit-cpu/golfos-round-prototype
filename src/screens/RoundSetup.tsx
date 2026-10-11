@@ -4,6 +4,7 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { emptyEntry } from '../lib/scoring';
 import { newId } from '../lib/storage';
 import { TopBar } from '../components/ui';
+import { TEE_COLOURS, TEES } from '../data/tees';
 
 const ME_KEY = 'golfos.me.v1';
 
@@ -27,6 +28,8 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   const options = useMemo(() => loopOptions(props.course.holes), [props.course]);
   const [optionId, setOptionId] = useState(options[0]?.id ?? '');
   const [mode, setMode] = useState<CaptureMode>('quick');
+  const teeData = TEES[props.course.id];
+  const [tee, setTee] = useState<string | null>(teeData ? (teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[0]) : null);
   const [me, setMe] = useState<DraftPlayer>(loadMe);
   const [others, setOthers] = useState<DraftPlayer[]>([]);
 
@@ -64,6 +67,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       players,
       entries,
       currentHole: 0,
+      ...(tee ? { tee } : {}),
       ...(preview ? { preview: true } : {}),
     });
   };
@@ -89,6 +93,23 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {teeData && (
+          <>
+            <span className="eyebrow">Tee</span>
+            <div className="tee-row" role="group" aria-label="Tee">
+              {teeData.tees.map((t) => {
+                const total = holes.reduce((sum, h) => sum + (teeData.holes[h.label]?.[teeData.tees.indexOf(t)] ?? 0), 0);
+                return (
+                  <button key={t} type="button" aria-pressed={tee === t} onClick={() => setTee(t)}>
+                    <span className="tee-dot" style={{ background: TEE_COLOURS[t] ?? '#999' }} />
+                    {t}
+                    {total > 0 && <small>{total} m</small>}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
         <span className="eyebrow">Tracking</span>
         <div className="choice-grid">
           <button type="button" className="choice" aria-pressed={mode === 'quick'} onClick={() => setMode('quick')}>

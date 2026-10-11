@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { answer, canListen, listen, RULES, speak, summary, type CaddieFacts } from '../lib/caddietalk';
 import type { HoleNote } from '../lib/holenotes';
+import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
 
 // The caddie on the hole map (feature 017): appears when he has something new to say, can be hidden completely.
 // Bottom row: read aloud, ask, rules, hole notes.
@@ -14,6 +15,8 @@ export function CaddieCard(props: {
   onNote: (n: HoleNote) => void;
   holeLabel: string;
   clubCode: string;
+  lie: LieKind | null; // null on the tee
+  onLie: (l: LieKind) => void;
 }) {
   const [details, setDetails] = useState(false);
   const [sheet, setSheet] = useState<'ask' | 'rules' | 'notes' | null>(null);
@@ -28,12 +31,24 @@ export function CaddieCard(props: {
           </span>
           <span className="club">{props.clubCode}</span>
         </button>
-        {props.lines.filter((l) => details || l.tone != null).map((l, k) => (
+        {(details ? props.lines : short(props.lines)).map((l, k) => (
           <span key={k} className={l.tone === 'warn' ? 'plan warn' : l.tone === 'plan' ? 'plan' : l.tone === 'mental' ? 'mental' : 'why'}>
             {l.text}
           </span>
         ))}
         {details && props.alt && <span className="alt">{props.alt}</span>}
+        {props.lie != null && (
+          <label className="caddie-lie">
+            <span>Lie</span>
+            <select value={props.lie} onChange={(e) => props.onLie(e.target.value as LieKind)}>
+              {LIE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="caddie-actions">
           <button type="button" onClick={() => speak(summary(f))} aria-label="Read aloud">
             🔊
@@ -57,6 +72,16 @@ export function CaddieCard(props: {
       {sheet === 'notes' && <NotesSheet hole={props.holeLabel} note={props.note} onSave={props.onNote} onClose={() => setSheet(null)} />}
     </>
   );
+}
+
+type Line = { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted' };
+/** Folded card: warnings, then the plan, one mental line – at most three lines (the rest under "why"). */
+function short(lines: Line[]): Line[] {
+  const warn = lines.filter((l) => l.tone === 'warn');
+  const plan = lines.filter((l) => l.tone === 'plan');
+  const mental = lines.filter((l) => l.tone === 'mental').slice(0, 1);
+  const keep = new Set([...warn, ...plan].slice(0, mental.length ? 2 : 3).concat(mental));
+  return lines.filter((l) => keep.has(l));
 }
 
 function Sheet(props: { title: string; onClose: () => void; children: React.ReactNode }) {

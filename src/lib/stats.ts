@@ -270,3 +270,19 @@ export function focusAreas(a: Analysis): { band: string; target: string; focus: 
   const focus = list.filter((f) => (seen.has(f.area) ? false : (seen.add(f.area), true))).slice(0, 3);
   return { band: own.label, target: goal.label, focus };
 }
+
+/**
+ * Practice plan (feature 019): one drill per focus area, about an hour in total.
+ * Placeholder drills – Chris replaces them with his own (GOL-27).
+ */
+export const DRILLS: Record<Focus['area'], { title: string; minutes: number; how: string }> = {
+  Driving: { title: 'Fairway gate', minutes: 15, how: 'Pick two targets 25 m apart on the range as your fairway. 20 drivers with your full routine – count how many land in between.' },
+  Approach: { title: 'Three distances', minutes: 15, how: 'Hit 5 balls each to 100, 130 and 150 m targets. Only a ball within 10 m of the target counts.' },
+  'Short game': { title: 'Up and down', minutes: 15, how: 'Chip 10 balls from 5 different lies around the green and putt them out. Goal: 4 of 10 in two.' },
+  Putting: { title: 'Lag ladder', minutes: 15, how: 'Putt from 6, 9 and 12 m – the ball must stop within one putter length of the hole. Then 20 putts from 1 m.' },
+  'Course management': { title: 'Safe target', minutes: 10, how: 'Before each range ball name the target and the miss you accept. On the course: play the caddie’s safe style for 9 holes.' },
+};
+
+export function practicePlan(focus: Focus[]): { area: Focus['area']; title: string; minutes: number; how: string }[] {
+  return focus.map((f) => ({ area: f.area, ...DRILLS[f.area] }));
+}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Round } from '../types';
-import { analyse, focusAreas, pct, type Rate } from '../lib/stats';
+import { analyse, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
 import { Segmented, TopBar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { groupForHandicap, roundsSg } from '../lib/sg';
@@ -56,7 +56,7 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
             <section className="card stats-card">
               <h2>Where you lose strokes</h2>
               <p className="muted small" style={{ margin: 0 }}>
-                Compared with players of {f.target} (you: {f.band}). Your training plan will focus on these areas.
+                Compared with players of {f.target} (you: {f.band}). Your practice plan below starts here.
               </p>
               <ol className="focus-list">
                 {f.focus.map((x) => (
@@ -67,6 +67,28 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
                     </span>
                     <span>
                       <strong className="bad-text">{x.yours}</strong> <span className="muted">→ {x.target}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {f && f.focus.length > 0 && (
+            <section className="card stats-card">
+              <h2>Practice plan</h2>
+              <p className="muted small" style={{ margin: 0 }}>
+                About {practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} minutes, built from the areas above.
+              </p>
+              <ol className="focus-list">
+                {practicePlan(f.focus).map((d) => (
+                  <li key={d.area} style={{ display: 'block' }}>
+                    <span className="focus-area">
+                      {d.area} · {d.minutes} min
+                    </span>
+                    <strong>{d.title}</strong>
+                    <span className="muted small" style={{ display: 'block' }}>
+                      {d.how}
                     </span>
                   </li>
                 ))}
