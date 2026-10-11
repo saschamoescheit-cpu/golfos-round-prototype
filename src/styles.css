@@ -336,3 +336,13 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .caddie-card .plan.warn { color: #ff9d8f; }
 .map-aim { display: flex; flex-direction: column; align-items: center; pointer-events: none; }
 .map-aim span { margin-top: -2px; background: #ffd54a; color: #0e1418; border-radius: 8px; padding: 0 6px; font: 700 11px var(--body); }
+.caddie-card .mental { color: #9ad3ff; font-style: italic; }
+.caddie-actions { display: grid; grid-template-columns: 44px 1fr 1fr 1.4fr 44px; gap: 6px; margin-top: 4px; }
+.caddie-actions button {
+  min-height: 36px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2);
+  color: var(--text); font: 600 13px var(--body);
+}
+.chip-row.wrap { flex-wrap: wrap; }
+.pin-chips { display: flex; gap: 4px; margin-top: 4px; }
+.pin-chips button { width: 26px; height: 24px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 700 11px var(--body); padding: 0; }
+.caddie-card .head { background: none; border: 0; padding: 0; color: var(--text); font: inherit; text-align: left; width: 100%; }

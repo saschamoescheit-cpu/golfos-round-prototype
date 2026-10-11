@@ -20,8 +20,8 @@ export interface CourseGeometry {
   trees?: Ring[];
   /** Outline of the golf course (OSM leisure=golf_course) – beyond it is usually out of bounds. */
   boundary?: Ring[];
-  /** Cross slope along each hole (by ref): [metres from the tee, % – positive = right side higher, ball rolls left]. */
-  fairwaySlopes?: Record<string, [number, number][]>;
+  /** Every 10 m along each hole (by ref): [metres from the tee, cross slope % (+ = right side higher, ball rolls left), height m]. */
+  fairwaySlopes?: Record<string, [number, number, number?][]>;
 }
 
 /** One hole as delivered by the course database (before a round is set up). */

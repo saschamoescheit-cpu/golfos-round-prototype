@@ -5,19 +5,35 @@ import { sideOf } from './dispersion';
 // What a caddie knows about the ground (feature 015): out of bounds next to the landing spot and fairways
 // that hang to one side. Rules of thumb – to be confirmed by Chris.
 
+export type Samples = [number, number, number?][]; // [m from tee, cross slope %, height m]
+
 export const TERRAIN = {
   slopeMinPct: 2, // below: no remark
-  aimPerPct: 2.5, // metres to aim up the slope per % cross slope (ball rolls ~20 m after landing)
-  aimMaxM: 15,
-  steepPct: 12, // above: probably a bank – no exact number
+  aimPerPct: 1.5, // metres to aim up the slope per % cross slope (conservative – Chris to confirm)
+  aimMaxM: 10,
+  steepPct: 8, // above: no exact number, just "favour the high side"
   obWithinM: 30, // remark when the course boundary is this close to the target
 };
 
 /** Cross slope at `along` metres from the tee (nearest sample within 15 m); + = right side higher. */
-export function crossSlopeAt(samples: [number, number][] | undefined, along: number): number | null {
+export function crossSlopeAt(samples: Samples | undefined, along: number): number | null {
   if (!samples?.length) return null;
   const best = samples.reduce((a, b) => (Math.abs(b[0] - along) < Math.abs(a[0] - along) ? b : a));
   return Math.abs(best[0] - along) <= 15 ? best[1] : null;
+}
+
+/** Ground height at `along` metres from the tee (linear between samples), from the terrain model. */
+export function heightAt(samples: Samples | undefined, along: number): number | null {
+  const pts = (samples ?? []).filter((x) => x[2] != null) as [number, number, number][];
+  if (!pts.length || along < pts[0][0] - 15 || along > pts[pts.length - 1][0] + 15) return null;
+  for (let k = 1; k < pts.length; k++) {
+    if (along <= pts[k][0]) {
+      const [a0, , h0] = pts[k - 1];
+      const [a1, , h1] = pts[k];
+      return h0 + ((h1 - h0) * (along - a0)) / (a1 - a0 || 1);
+    }
+  }
+  return along < pts[0][0] ? pts[0][2] : pts[pts.length - 1][2];
 }
 
 /** "Fairway falls from right to left (4 %) – the ball rolls left", aim metres (+ = right). */
@@ -27,7 +43,7 @@ export function slopeAdvice(pct: number | null): { text: string; aimM: number } 
   const low = pct > 0 ? 'left' : 'right';
   const sign = pct > 0 ? 1 : -1;
   if (Math.abs(pct) > TERRAIN.steepPct)
-    return { text: `Steep side slope (${Math.round(Math.abs(pct))} %) – balls run ${low}, favour the ${high} edge`, aimM: sign * TERRAIN.aimMaxM };
+    return { text: `Strong side slope (${Math.round(Math.abs(pct))} %) – balls run ${low}, favour the ${high} half`, aimM: sign * TERRAIN.aimMaxM };
   const aim = Math.min(TERRAIN.aimMaxM, Math.max(3, Math.round(Math.abs(pct) * TERRAIN.aimPerPct)));
   return { text: `Fairway falls from ${high} to ${low} (${Math.abs(pct).toFixed(0)} %) – the ball rolls ${low}`, aimM: sign * aim };
 }

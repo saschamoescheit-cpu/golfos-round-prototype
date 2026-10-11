@@ -9,7 +9,7 @@ const at = (east: number, north: number): LngLat => [9.69 + (east * M) / Math.co
 const sq = (cx: number, cy: number, w: number, h: number): Ring => [at(cx - w, cy - h), at(cx + w, cy - h), at(cx + w, cy + h), at(cx - w, cy + h), at(cx - w, cy - h)];
 // Straight par 4 to the north, 380 m.
 const hole: HoleMapData = { line: [at(0, 0), at(0, 380)], tee: at(0, 0), green: sq(0, 380, 12, 12), greenCenter: at(0, 380), bunkers: [], water: [], fairways: [], tees: [] };
-const base = { data: hole, pin: at(0, 380), par: 4, bag: DEFAULT_CARRY, conditions: null, heightDiff: null, tendency: new Map() };
+const base = { data: hole, pin: at(0, 380), par: 4, bag: DEFAULT_CARRY, conditions: null, tendency: new Map() };
 
 describe('caddie aim point', () => {
   it('tee shot: landing zone at driver carry on the line', () => {
@@ -20,7 +20,8 @@ describe('caddie aim point', () => {
   });
   it('fairway hangs right to left: aim point moves right', () => {
     const a = aimPoint({ ...base, from: at(0, 0), teeShot: true, slopes: [[200, 4]] });
-    expect(a.pos[0]).toBeGreaterThan(at(8, 200)[0]);
+    expect(a.reasons).toContain('slope 6 m right');
+    expect(a.pos[0]).toBeGreaterThan(at(5, 200)[0]);
   });
   it('second shot in reach: the pin', () => {
     const a = aimPoint({ ...base, from: at(0, 230), teeShot: false });
@@ -35,5 +36,24 @@ describe('caddie aim point', () => {
     expect(a.kind).toBe('recovery');
     expect(blocked(from, a.pos, trees)).toBe(false);
     expect(a.note).toMatch(/^Trees in the way – play \d+° left, \d+ m$/);
+  });
+  it('downhill tee shot: plays shorter by the height difference', () => {
+    const slopes: [number, number, number][] = [[0, 0, 446], [100, 0, 438], [200, 0, 429], [300, 0, 428], [380, 0, 427]];
+    const a = aimPoint({ ...base, from: at(0, 0), teeShot: true, slopes });
+    expect(Math.round(a.pl.height)).toBe(-17);
+  });
+  it('hole notes: out of bounds right – never aim right, note shown; safe style clubs down', () => {
+    const slopes: [number, number][] = [[200, 6]]; // slope would push the aim right
+    const a = aimPoint({ ...base, from: at(0, 0), teeShot: true, slopes, note: { obRight: true } });
+    expect(a.side).toBe(0);
+    expect(a.note).toBe('Out of bounds right');
+    const safe = aimPoint({ ...base, from: at(0, 0), teeShot: true, note: { obRight: true }, style: 'safe' });
+    expect(safe.club).toBe('3W');
+  });
+  it('layup leaves the favourite distance', () => {
+    const par5: HoleMapData = { ...hole, line: [at(0, 0), at(0, 520)], greenCenter: at(0, 520), green: sq(0, 520, 12, 12) };
+    const a = aimPoint({ ...base, data: par5, pin: at(0, 520), par: 5, from: at(0, 250), teeShot: false, favourite: 90 });
+    expect(a.kind).toBe('layup');
+    expect(Math.round(distanceM(a.pos, at(0, 520)))).toBe(90);
   });
 });

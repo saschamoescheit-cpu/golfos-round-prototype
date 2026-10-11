@@ -15,7 +15,10 @@ import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
 import { GREEN_CHARTS } from '../data/greenCharts';
 import { approachPlan, teePlan } from '../lib/holeplan';
-import { crossSlopeAt, obAdvice, slopeAdvice } from '../lib/terrain';
+import { crossSlopeAt, heightAt as terrainHeight, obAdvice, slopeAdvice } from '../lib/terrain';
+import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
+import { mentalTip, speak, summary, type CaddieFacts } from '../lib/caddietalk';
+import { CaddieCard } from '../components/CaddieCard';
 import { aimPoint } from '../lib/aimpoint';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
 import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
@@ -202,8 +205,11 @@ export function HoleScreen(props: {
   const carryBag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
-  const [caddieOpen, setCaddieOpen] = useState(true);
-  useEffect(() => setCaddieOpen(true), [i]); // every new hole: the caddie speaks up
+  const caddieSettings = useMemo(() => loadCaddieSettings(), []);
+  // Hidden by the player until the caddie has something new to say (new hole, new shot, new warning).
+  const [hiddenSig, setHiddenSig] = useState<string | null>(null);
+  const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
+  const spokenSig = useRef<string | null>(null);
   // Heights of tee, green and player (for "plays shorter, downhill"); rounded positions keep requests rare.
   const [hts, setHts] = useState<Record<string, number | null>>({});
   const htKey = (p: LngLat) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`;
@@ -348,7 +354,7 @@ export function HoleScreen(props: {
     // wind, slope and tendency, clear of trees). The player can drag or remove it; his own plan is kept then.
     const teeAim =
       hole.par >= 4
-        ? aimPoint({ data: mapData, from: mapData.tee, pin: plans[i]?.pin ?? mapData.greenCenter, par: hole.par, teeShot: true, bag: carryBag, conditions, heightDiff: null, tendency, ...terrain })
+        ? aimPoint({ data: mapData, from: mapData.tee, pin: plans[i]?.pin ?? mapData.greenCenter, par: hole.par, teeShot: true, bag: carryBag, conditions, tendency, ...terrain, note: notes[hole.label], style: caddieSettings.style, favourite: caddieSettings.favourite })
         : null;
     const plan = plans[i] ?? { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null };
     const pin = plan.pin ?? mapData.greenCenter;
@@ -358,6 +364,15 @@ export function HoleScreen(props: {
     const green = mapData.green ? greenFrontBack(from, mapData.green) : { front: null, center: distanceM(from, mapData.greenCenter), back: null };
     const setPlan = (patch: Partial<{ targets: LngLat[]; pin: LngLat | null }>) => setPlans({ ...plans, [i]: { ...plan, ...patch } });
     const fmt = (m: number) => formatDistance(m, unit);
+    /** Pin of the day: front / middle / back third of the green along the playing direction. */
+    const pinAt = (k: 'front' | 'middle' | 'back'): LngLat => {
+      const g = greenFrontBack(mapData.tee, mapData.green!);
+      const d = k === 'front' ? g.front + (g.center - g.front) * 0.35 : k === 'back' ? g.back - (g.back - g.center) * 0.35 : g.center;
+      const b = bearingDeg(mapData.tee, mapData.greenCenter);
+      const r = (b * Math.PI) / 180;
+      const off = d - g.center;
+      return [mapData.greenCenter[0] + (off * Math.sin(r)) / (111320 * Math.cos((mapData.greenCenter[1] * Math.PI) / 180)), mapData.greenCenter[1] + (off * Math.cos(r)) / 111320];
+    };
 
     const tapMap = (p: LngLat) => {
       if (placing) {
@@ -392,42 +407,49 @@ export function HoleScreen(props: {
     const strokesShown = myEntry.pickedUp ? 'PU' : String(myEntry.strokes ?? hole.par);
     // Automatic shot length: from the last place the player stood (or the tee) to here – no tapping needed.
     const autoLen = onHole && player && !round.preview ? autoShot(loadTrack(round.id), mapData, player.pos) : null;
-    // Caddie: from the player (or tee) to the first planned target still ahead of him, else to the pin.
-    const fromH = heightAt(from);
-    const greenH = heightAt(mapData.greenCenter);
+    // ---------- AI caddie ----------
     const teeShot = !onHole || distanceM(from, mapData.tee) < 30;
-    // The caddie's aim point from where the player is now (tee: landing zone; later: pin, layup or a way out of trees).
+    const note: HoleNote = notes[hole.label] ?? {};
     const ap = caddieOn
-      ? aimPoint({ data: mapData, from, pin, par: hole.par, teeShot, bag: carryBag, conditions, heightDiff: fromH != null && greenH != null ? greenH - fromH : null, tendency, ...terrain })
+      ? aimPoint({ data: mapData, from, pin, par: hole.par, teeShot, bag: carryBag, conditions, tendency, ...terrain, note, style: caddieSettings.style, favourite: caddieSettings.favourite })
       : null;
-    // Own planned target still ahead wins; else the caddie's aim point; else the pin.
-    const ownTarget = plan.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15);
+    // Own planned target still ahead (dragged or added by the player) wins over the caddie's point.
+    const ownTarget = plan.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15 && !(teeAim && distanceM(t, teeAim.pos) < 3));
     const target = ownTarget ?? ap?.pos ?? pin;
-    const targetH = target === pin || ap?.kind === 'approach' ? greenH : null;
-    const pl = playsLike(distanceM(from, target), bearingDeg(from, target), conditions, fromH != null && targetH != null ? targetH - fromH : null);
-    const advice = adviseClub(pl.playsLike, carryBag, teeShot && hole.par >= 4);
+    // The caddie's point is drawn as target 1 when that sits on it (tee), else as the gold marker.
+    const apName = ap && plan.targets.some((t) => distanceM(t, ap.pos) < 15) ? 'target 1' : 'the gold marker';
+    // Heights: terrain model along the hole; else the coarse elevation service for player and green.
+    const slopesHere = geometry.fairwaySlopes?.[hole.label];
+    const tH = (p: LngLat) => (distToLine(p, mapData.line) <= 40 ? terrainHeight(slopesHere, alongLine(mapData.line, p)) : null);
+    const fromH = tH(from) ?? heightAt(from);
+    const greenH = tH(mapData.greenCenter) ?? heightAt(mapData.greenCenter);
+    const targetH = target === pin || ap?.kind === 'approach' ? greenH : tH(target);
+    const pl = ownTarget || !ap ? playsLike(distanceM(from, target), bearingDeg(from, target), conditions, fromH != null && targetH != null ? targetH - fromH : null) : ap.pl;
+    const advice = adviseClub(pl.playsLike, carryBag, teeShot && hole.par >= 4 && (ap?.kind === 'drive' || !!ownTarget));
     const reasons = explain(pl, conditions);
-    // Ground at the landing spot: fairway hanging to one side (not for shots at the green) and out of bounds.
-    const hang = target !== pin ? slopeAdvice(crossSlopeAt(geometry.fairwaySlopes?.[hole.label], alongLine(mapData.line, target))) : null;
+    const hang = ownTarget ? slopeAdvice(crossSlopeAt(slopesHere, alongLine(mapData.line, target))) : null;
     const ob = obAdvice(geometry.boundary, from, target);
-    // The caddie's own aim point already contains wind, tendency and slope: then just "aim at the marker".
-    const atCaddiePoint = !ownTarget && ap != null && ap.kind !== 'approach';
-    const atTeeAim = ownTarget != null && teeAim != null && distanceM(ownTarget, teeAim.pos) < 3; // untouched target 1
-    let aim = atCaddiePoint ? 'Aim at the gold marker' : atTeeAim ? 'Aim at target 1 – wind and slope are already in it' : aimAdvice(pl.aimM, tendency.get(advice.club) ?? null, advice.club, hang?.aimM ?? 0);
-    // Never aim towards out of bounds that is close (≤ 25 m): stay in the middle instead.
-    const towardsOb = aim && ob && ((aim.includes(' left') && ob.left <= 25) || (aim.includes(' right') && ob.right <= 25));
-    if (towardsOb && !atCaddiePoint && !atTeeAim) aim = `Aim at the centre – out of bounds ${ob!.left <= 25 ? 'left' : 'right'}, accept the roll`;
+    let aim = ownTarget
+      ? aimAdvice(pl.aimM, tendency.get(advice.club) ?? null, advice.club, hang?.aimM ?? 0)
+      : ap && ap.kind !== 'approach'
+        ? `Aim at ${apName}${ap.reasons.length ? ' (' + ap.reasons.join(', ') + ')' : ''}`
+        : ap?.reasons.length
+          ? `Aim: ${ap.reasons.join(', ')}`
+          : null;
+    const obL = note.obLeft || (ob != null && ob.left <= 25);
+    const obR = note.obRight || (ob != null && ob.right <= 25);
+    if (ownTarget && aim && ((aim.includes(' left') && obL) || (aim.includes(' right') && obR))) aim = `Aim at the centre – out of bounds ${obL ? 'left' : 'right'}, accept the roll`;
     const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;
     const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
     // Hole plan in one sentence: tee shot on par 4/5 → which side; otherwise → where to miss the green.
     const driver = carryBag.find((b) => b.club === 'Dr')?.carry ?? 200;
     const holePlan =
       teeShot && hole.par >= 4
-        ? teePlan(mapData, driver) || approachPlan(mapData, from, pin).text
+        ? teePlan(mapData, driver) || ''
         : ap && ap.kind !== 'approach'
           ? ap.kind === 'recovery'
             ? ''
-            : 'Lay up to the gold marker – a full shot into the green next.'
+            : `Lay up to ${apName} – a full shot into the green next.`
           : approachPlan(mapData, from, pin).text;
     // Green slope when the player is on or next to the green (or planning from the sofa).
     const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
@@ -437,6 +459,48 @@ export function HoleScreen(props: {
     // Green chart on screen: keep the view free (caddie folded, no hint).
     const greenFocus = chart != null && greenVisible;
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
+
+    const prev = i > 0 ? round.entries[me.id][i - 1] : null;
+    const prevHole = i > 0 ? round.holes[i - 1] : null;
+    const mental = teeShot
+      ? mentalTip({ hole: i, holes: round.holes.length, lastToPar: prev?.strokes != null && prevHole ? prev.strokes - prevHole.par : null, lastPickedUp: !!prev?.pickedUp })
+      : null;
+    const warning = ap?.note ?? ob?.text ?? null;
+    const caddieLines: { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted' }[] = [];
+    if (warning) caddieLines.push({ text: warning, tone: 'warn' });
+    if (note.text) caddieLines.push({ text: note.text, tone: 'warn' });
+    if (holePlan && !(warning && holePlan.startsWith('Landing zone is open'))) caddieLines.push({ text: holePlan, tone: 'plan' });
+    if (hang) caddieLines.push({ text: hang.text, tone: 'plan' });
+    else if (!ownTarget && ap && ap.kind !== 'approach') {
+      const h = slopeAdvice(crossSlopeAt(slopesHere, alongLine(mapData.line, ap.pos)));
+      if (h) caddieLines.push({ text: h.text, tone: 'plan' });
+    }
+    if (aim) caddieLines.push({ text: aim, tone: 'plan' });
+    caddieLines.push({ text: `${clubName(advice.club)} (carry ${fmt(advice.carry)} ${unit})${reasons.length ? ' · ' + reasons.join(' · ') : ' · calm, flat'}` });
+    if (mental) caddieLines.push({ text: mental, tone: 'mental' });
+    const caddieAlt =
+      [advice.shorter && `Less: ${advice.shorter.club} ${fmt(advice.shorter.carry)}`, advice.longer && `More: ${advice.longer.club} ${fmt(advice.longer.carry)}`, !weather && 'no weather data']
+        .filter(Boolean)
+        .join(' · ') || null;
+    const facts: CaddieFacts = {
+      club: clubName(advice.club),
+      distance: Number(fmt(pl.distance)),
+      playsLike: Number(fmt(pl.playsLike)),
+      target: ownTarget ? 'target 1' : ap && ap.kind !== 'approach' ? apName : 'the pin',
+      aim,
+      plan: holePlan || null,
+      wind: weather ? `${Math.round(weather.windKmh)} km/h, ${windOnHole(weather, bearingDeg(from, pin)).label.toLowerCase()}` : null,
+      green: green_ ? (green_.level === 'flat' ? 'The green is almost flat.' : `${green_.level} slope, ${green_.text}.`) : null,
+      warning,
+      unit,
+    };
+    // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
+    const caddieSig = `${i}|${advice.club}|${warning ?? ''}|${ap?.kind ?? ''}|${Math.round(pl.distance / 25)}`;
+    const caddieShown = caddieOn && !greenFocus && hiddenSig !== caddieSig;
+    if (caddieSettings.voice && caddieShown && spokenSig.current !== caddieSig && !round.preview) {
+      spokenSig.current = caddieSig;
+      setTimeout(() => speak(summary(facts)), 300);
+    }
 
     return (
       <main className="map-screen">
@@ -507,10 +571,21 @@ export function HoleScreen(props: {
           )}
           {slopeToGreen != null && Math.abs(slopeToGreen) >= 2 && (
             <span className="map-slope-chip">
-              {slopeToGreen < 0 ? '↓' : '↑'} {Math.abs(Math.round(slopeToGreen))} m · plays {Math.abs(Math.round(slopeToGreen))} {slopeToGreen < 0 ? 'shorter' : 'longer'}
+              Green {Math.abs(Math.round(slopeToGreen))} m {slopeToGreen < 0 ? 'lower' : 'higher'}
+              <br />
+              plays like {fmt(green.center + slopeToGreen)}
             </span>
           )}
           <span className="map-from">{onHole ? `GPS ±${Math.round(player!.accuracy)} m` : 'from tee'}</span>
+          {mapData.green && (
+            <span className="pin-chips" role="group" aria-label="Pin position today">
+              {(['front', 'middle', 'back'] as const).map((k) => (
+                <button key={k} type="button" onClick={() => setPlan({ pin: pinAt(k) })}>
+                  {k === 'front' ? 'F' : k === 'middle' ? 'M' : 'B'}
+                </button>
+              ))}
+            </span>
+          )}
         </div>
 
         <div className="map-bottom">
@@ -536,32 +611,24 @@ export function HoleScreen(props: {
               </span>
             </div>
           )}
-          {caddieOn && (
-            <button type="button" className="caddie-card" onClick={() => setCaddieOpen(!caddieOpen)} aria-expanded={caddieOpen}>
-              <span className="head">
-                <span>
-                  Caddie · {ownTarget ? 'to target 1' : ap && ap.kind !== 'approach' ? 'to the aim point' : 'to the pin'} {fmt(pl.distance)} {unit} → plays <strong>{fmt(pl.playsLike)} {unit}</strong>
-                </span>
-                <span className="club">{advice.club}</span>
-              </span>
-              {caddieOpen && !greenFocus && (
-                <>
-                  {holePlan && !(ob && holePlan.startsWith('Landing zone is open')) && <span className="plan">{holePlan}</span>}
-                  {ap?.note && <span className="plan warn">{ap.note}</span>}
-                  {ob && <span className="plan warn">{ob.text}</span>}
-                  {hang && <span className="plan">{hang.text}</span>}
-                  {aim && <span className="plan">{aim}</span>}
-                  <span className="why">
-                    {clubName(advice.club)} (carry {fmt(advice.carry)} {unit}){reasons.length ? ' · ' + reasons.join(' · ') : ' · calm, flat'}
-                  </span>
-                  <span className="alt">
-                    {advice.shorter && `Less: ${advice.shorter.club} ${fmt(advice.shorter.carry)}`}
-                    {advice.shorter && advice.longer && ' · '}
-                    {advice.longer && `More: ${advice.longer.club} ${fmt(advice.longer.carry)}`}
-                    {!weather && ' · no weather data'}
-                  </span>
-                </>
-              )}
+          {caddieShown && (
+            <CaddieCard
+              facts={facts}
+              lines={caddieLines}
+              alt={caddieAlt}
+              onHide={() => setHiddenSig(caddieSig)}
+              note={note}
+              holeLabel={hole.label}
+              clubCode={advice.club}
+              onNote={(n) => {
+                saveHoleNote(round.courseId, hole.label, n);
+                setNotes({ ...notes, [hole.label]: n });
+              }}
+            />
+          )}
+          {caddieOn && !caddieShown && !greenFocus && (
+            <button type="button" className="map-btn map-miss" onClick={() => setHiddenSig(null)}>
+              🧢 Caddie
             </button>
           )}
           {shotStart && player && (

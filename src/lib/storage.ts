@@ -153,9 +153,12 @@ export interface CaddieSettings {
   caddie: boolean;
   greenSlope: boolean;
   missMap: boolean;
+  style: 'safe' | 'normal' | 'aggressive';
+  favourite: number; // favourite approach distance (m) for layups
+  voice: boolean; // read the caddie's advice aloud
 }
 export function loadCaddieSettings(): CaddieSettings {
-  return { caddie: true, greenSlope: true, missMap: false, ...read<Partial<CaddieSettings>>(CADDIE, {}) };
+  return { caddie: true, greenSlope: true, missMap: false, style: 'normal', favourite: 90, voice: false, ...read<Partial<CaddieSettings>>(CADDIE, {}) };
 }
 export function saveCaddieSettings(s: CaddieSettings): void {
   write(CADDIE, s);

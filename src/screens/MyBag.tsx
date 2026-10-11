@@ -3,7 +3,7 @@ import type { Club, Round } from '../types';
 import { clubName, DEFAULT_CARRY, type CarryBag } from '../lib/caddie';
 import { analyse } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
-import { TopBar } from '../components/ui';
+import { Segmented, TopBar } from '../components/ui';
 
 // "My bag & caddie" (feature 008): carry distance per club for the AI caddie, and the switches for
 // caddie, green slope and the miss map. An empty field = club not in the bag.
@@ -16,7 +16,12 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
   const [note, setNote] = useState<string | null>(loadCarryBag() ? null : 'Start values for a mid-handicap player – enter your own carry distances.');
 
-  const toggle = (k: keyof CaddieSettings) => {
+  const set = (patch: Partial<CaddieSettings>) => {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    saveCaddieSettings(next);
+  };
+  const toggle = (k: 'caddie' | 'greenSlope' | 'missMap' | 'voice') => {
     const next = { ...settings, [k]: !settings[k] };
     setSettings(next);
     saveCaddieSettings(next);
@@ -52,6 +57,40 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
         <button type="button" className="toggle" aria-pressed={settings.missMap} onClick={() => toggle('missMap')}>
           {settings.missMap ? '✓' : '○'} Show where not to miss on the hole map
         </button>
+        <button type="button" className="toggle" aria-pressed={settings.voice} onClick={() => toggle('voice')}>
+          {settings.voice ? '✓' : '○'} Caddie speaks (reads the advice aloud on every new shot)
+        </button>
+        <div className="field">
+          <label>How should the caddie plan?</label>
+          <Segmented<CaddieSettings['style']>
+            label="Play style"
+            value={settings.style}
+            onChange={(v) => v && set({ style: v })}
+            options={[
+              { value: 'safe', label: 'Safe' },
+              { value: 'normal', label: 'Normal' },
+              { value: 'aggressive', label: 'Aggressive' },
+            ]}
+          />
+          <span className="muted small">
+            Safe: one club less off the tee when out of bounds is close, middle of the green, lay up earlier. Aggressive: goes for the green sooner, at the flag.
+          </span>
+        </div>
+        <label className="bag-row">
+          <span>
+            <strong>Favourite approach</strong> <span className="muted small">layups leave this distance</span>
+          </span>
+          <span className="bag-input">
+            <input
+              className="input"
+              inputMode="numeric"
+              value={settings.favourite}
+              aria-label="Favourite approach distance in metres"
+              onChange={(e) => set({ favourite: Number(e.target.value.replace(/[^0-9]/g, '')) || 0 })}
+            />
+            m
+          </span>
+        </label>
       </section>
 
       <section className="card stats-card">
