@@ -61,8 +61,9 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
     setLoadError(null);
     try {
       const course = await loadCourse(c);
-      if (course.holes.length === 0) {
-        // No hole data in the database yet: play 18 holes anyway. Par and stroke index are entered on the hole
+      // Fewer than 9 numbered holes (e.g. Son Antem: 36 hole lines in OSM, but without numbers) is no usable round.
+      if (course.holes.length < 9) {
+        // No (usable) hole data in the database yet: play 18 holes anyway. Par and stroke index are entered on the hole
         // (remembered for the course), the hole map is set up on the satellite image.
         const holes = Array.from({ length: 18 }, (_, k) => ({ ref: String(k + 1), loop: 'Main', number: k + 1, par: null, strokeIndex: [] }));
         const playable = { ...course, holes, loops: ['Main'] };
