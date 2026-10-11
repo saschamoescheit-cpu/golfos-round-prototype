@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+// The map stylesheet first, our styles after it (they override map positioning) – also with the map loaded lazily.
+import 'maplibre-gl/dist/maplibre-gl.css';
 import './styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

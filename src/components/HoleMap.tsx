@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit } from '../lib/geo';
 import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, setImagery } from './mapStyle';

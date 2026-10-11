@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import type { CourseGeometry, LngLat } from '../types';
 import { centroid, distanceM, pointInRing } from '../lib/geo';
 import type { ImagerySource } from '../lib/imagery';
