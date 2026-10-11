@@ -49,7 +49,7 @@ export function SgCard(props: { values: SgValues; holes: number; defaultGroup: s
                 <td>{fmt(props.values[c])}</td>
                 <td className="muted">{fmt(g[c])}</td>
                 <td>
-                  <span className={`sg-diff ${d >= 0 ? 'good' : 'bad'}`} style={{ width: `${Math.min(100, Math.abs(d) * 20) + 18}%` }}>
+                  <span className={`sg-diff ${d >= 0 ? 'good' : 'bad'}`} style={{ width: `${Math.min(82, Math.abs(d) * 16) + 18}%` }}>
                     {fmt(d)}
                   </span>
                 </td>
