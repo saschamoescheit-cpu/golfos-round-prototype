@@ -4,6 +4,7 @@ import { clubName, DEFAULT_CARRY, type CarryBag } from '../lib/caddie';
 import { trackedCarry } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
 import { Segmented, TopBar } from '../components/ui';
+import { clubCode, tr } from '../lib/i18n';
 
 // "My bag & caddie" (feature 008): carry distance per club for the AI caddie, and the switches for
 // caddie, green slope and the miss map. An empty field = club not in the bag.
@@ -14,7 +15,7 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
     return Object.fromEntries(DEFAULT_CARRY.map((d) => [d.club, String(saved ? (saved.find((s) => s.club === d.club)?.carry ?? '') : d.carry)]));
   });
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
-  const [note, setNote] = useState<string | null>(loadCarryBag() ? null : 'Start values for a mid-handicap player – enter your own carry distances.');
+  const [note, setNote] = useState<string | null>(loadCarryBag() ? null : tr('Start values for a mid-handicap player – enter your own carry distances.', 'Startwerte für ein mittleres Handicap – trag deine eigenen Carry-Weiten ein.'));
 
   const set = (patch: Partial<CaddieSettings>) => {
     const next = { ...settings, ...patch };
@@ -29,7 +30,7 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
   const save = () => {
     const out: CarryBag = DEFAULT_CARRY.map((d) => ({ club: d.club, carry: Number(bag[d.club]) })).filter((b) => b.carry > 0);
     saveCarryBag(out);
-    setNote(`Saved · ${out.length} clubs.`);
+    setNote(tr(`Saved · ${out.length} clubs.`, `Gespeichert · ${out.length} Schläger.`));
   };
   // Tracked carry from your detailed rounds – compared with what you entered; you decide per club, any time.
   const tracked = trackedCarry(props.rounds);
@@ -46,53 +47,56 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
     const next = { ...bag };
     for (const c of clubs) next[c] = String(tracked.get(c as Club)!.carry);
     persist(next);
-    setNote(`Updated from your tracked shots: ${clubs.join(', ')}.`);
+    setNote(tr(`Updated from your tracked shots: ${clubs.join(', ')}.`, `Aus deinen gemessenen Schlägen übernommen: ${clubs.map((c) => clubCode(c as Club)).join(', ')}.`));
   };
 
   return (
     <main className="screen">
-      <TopBar title="My bag & caddie" onBack={props.onBack} />
+      <TopBar title={tr('My bag & caddie', 'Mein Bag & Caddie')} onBack={props.onBack} />
 
       <section className="card stats-card">
-        <h2>AI caddie</h2>
+        <h2>{tr('AI caddie', 'KI-Caddie')}</h2>
         <button type="button" className="toggle" aria-pressed={settings.caddie} onClick={() => toggle('caddie')}>
-          {settings.caddie ? '✓' : '○'} Club advice on every hole (wind, temperature, slope)
+          {settings.caddie ? '✓' : '○'} {tr('Club advice on every hole (wind, temperature, slope)', 'Schlägerempfehlung an jedem Loch (Wind, Temperatur, Höhe)')}
         </button>
         <button type="button" className="toggle" aria-pressed={settings.greenSlope} onClick={() => toggle('greenSlope')}>
-          {settings.greenSlope ? '✓' : '○'} Green slope when I am on the green
+          {settings.greenSlope ? '✓' : '○'} {tr('Green slope when I am on the green', 'Grün-Neigung, wenn ich auf dem Grün bin')}
         </button>
         <button type="button" className="toggle" aria-pressed={settings.missMap} onClick={() => toggle('missMap')}>
-          {settings.missMap ? '✓' : '○'} Show where not to miss on the hole map
+          {settings.missMap ? '✓' : '○'} {tr('Show where not to miss on the hole map', 'Auf der Lochkarte zeigen, wo ich nicht verfehlen darf')}
         </button>
         <button type="button" className="toggle" aria-pressed={settings.voice} onClick={() => toggle('voice')}>
-          {settings.voice ? '✓' : '○'} Caddie speaks (reads the advice aloud on every new shot)
+          {settings.voice ? '✓' : '○'} {tr('Caddie speaks (reads the advice aloud on every new shot)', 'Caddie spricht (liest die Empfehlung bei jedem neuen Schlag vor)')}
         </button>
         <div className="field">
-          <label>How should the caddie plan?</label>
+          <label>{tr('How should the caddie plan?', 'Wie soll der Caddie planen?')}</label>
           <Segmented<CaddieSettings['style']>
-            label="Play style"
+            label={tr('Play style', 'Spielweise')}
             value={settings.style}
             onChange={(v) => v && set({ style: v })}
             options={[
-              { value: 'safe', label: 'Safe' },
+              { value: 'safe', label: tr('Safe', 'Sicher') },
               { value: 'normal', label: 'Normal' },
-              { value: 'aggressive', label: 'Aggressive' },
+              { value: 'aggressive', label: tr('Aggressive', 'Offensiv') },
             ]}
           />
           <span className="muted small">
-            Safe: one club less off the tee when out of bounds is close, middle of the green, lay up earlier. Aggressive: goes for the green sooner, at the flag.
+            {tr(
+              'Safe: one club less off the tee when out of bounds is close, middle of the green, lay up earlier. Aggressive: goes for the green sooner, at the flag.',
+              'Sicher: ein Schläger weniger vom Abschlag, wenn Aus nah ist, Grünmitte, früher vorlegen. Offensiv: geht früher aufs Grün, auf die Fahne.',
+            )}
           </span>
         </div>
         <label className="bag-row">
           <span>
-            <strong>Favourite approach</strong> <span className="muted small">layups leave this distance</span>
+            <strong>{tr('Favourite approach', 'Lieblingsdistanz')}</strong> <span className="muted small">{tr('layups leave this distance', 'beim Vorlegen bleibt diese Distanz')}</span>
           </span>
           <span className="bag-input">
             <input
               className="input"
               inputMode="numeric"
               value={settings.favourite}
-              aria-label="Favourite approach distance in metres"
+              aria-label={tr('Favourite approach distance in metres', 'Lieblingsdistanz in Metern')}
               onChange={(e) => set({ favourite: Number(e.target.value.replace(/[^0-9]/g, '')) || 0 })}
             />
             m
@@ -101,30 +105,32 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
       </section>
 
       <section className="card stats-card">
-        <h2>Carry per club</h2>
+        <h2>{tr('Carry per club', 'Carry je Schläger')}</h2>
         <p className="muted small" style={{ margin: 0 }}>
-          Carry = how far the ball flies in the air on a normal day (no wind, 20 °C, flat). Leave empty if the club is not in your bag.
-          Next to it: what your tracked shots say (from 3 full shots per club). Keep your value or take the tracked one – check again after a few rounds.
+          {tr(
+            'Carry = how far the ball flies in the air on a normal day (no wind, 20 °C, flat). Leave empty if the club is not in your bag. Next to it: what your tracked shots say (from 3 full shots per club). Keep your value or take the tracked one – check again after a few rounds.',
+            'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben). Leer lassen, wenn der Schläger nicht im Bag ist. Daneben: was deine gemessenen Schläge sagen (ab 3 vollen Schlägen je Schläger). Behalte deinen Wert oder übernimm den gemessenen – schau nach ein paar Runden wieder rein.',
+          )}
         </p>
         {toReview > 0 && (
           <button type="button" className="btn-secondary" onClick={() => useTracked(DEFAULT_CARRY.filter((d) => differs(d.club)).map((d) => d.club))}>
-            Use tracked values for {toReview} {toReview === 1 ? 'club' : 'clubs'}
+            {tr(`Use tracked values for ${toReview} ${toReview === 1 ? 'club' : 'clubs'}`, `Gemessene Werte für ${toReview} ${toReview === 1 ? 'Schläger' : 'Schläger'} übernehmen`)}
           </button>
         )}
         <div className="bag-grid">
           {DEFAULT_CARRY.map((d) => (
             <div key={d.club} className="bag-row club">
               <span className="bag-name">
-                <strong>{d.club}</strong>
+                <strong>{clubCode(d.club as Club)}</strong>
                 <span className="muted small">{clubName(d.club as Club)}</span>
               </span>
               {!tracked.get(d.club as Club) && <span className="bag-tracked muted">–</span>}
               {tracked.get(d.club as Club) && (
                 <span className={`bag-tracked${differs(d.club) ? ' differs' : ''}`}>
-                  tracked {tracked.get(d.club as Club)!.carry} m <span className="muted">({tracked.get(d.club as Club)!.shots})</span>
+                  {tr('tracked', 'gemessen')} {tracked.get(d.club as Club)!.carry} m <span className="muted">({tracked.get(d.club as Club)!.shots})</span>
                   {differs(d.club) && (
-                    <button type="button" aria-label={`Use tracked ${tracked.get(d.club as Club)!.carry} m for ${clubName(d.club as Club)}`} onClick={() => useTracked([d.club])}>
-                      Use
+                    <button type="button" aria-label={tr(`Use tracked ${tracked.get(d.club as Club)!.carry} m for ${clubName(d.club as Club)}`, `Gemessene ${tracked.get(d.club as Club)!.carry} m für ${clubName(d.club as Club)} übernehmen`)} onClick={() => useTracked([d.club])}>
+                      {tr('Use', 'Übernehmen')}
                     </button>
                   )}
                 </span>
@@ -134,7 +140,7 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
                   className="input"
                   inputMode="numeric"
                   value={bag[d.club]}
-                  aria-label={`${clubName(d.club)} carry in metres`}
+                  aria-label={tr(`${clubName(d.club)} carry in metres`, `${clubName(d.club)} Carry in Metern`)}
                   onChange={(e) => setBag({ ...bag, [d.club]: e.target.value.replace(/[^0-9]/g, '') })}
                 />
                 m
@@ -144,7 +150,7 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
         </div>
         {note && <p className="small" style={{ margin: 0 }}>{note}</p>}
         <button type="button" className="btn-primary" onClick={save}>
-          Save my values
+          {tr('Save my values', 'Meine Werte speichern')}
         </button>
       </section>
     </main>

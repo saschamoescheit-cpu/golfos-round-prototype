@@ -3,6 +3,7 @@ import type { Course, CourseSummary } from '../types';
 import { saveCachedCourse } from '../lib/storage';
 import { loadCourse, nearbyCourses, searchCourses } from '../lib/courses';
 import { Attribution, TopBar } from '../components/ui';
+import { tr } from '../lib/i18n';
 
 type NearbyState =
   | { status: 'locating' }
@@ -32,7 +33,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
           const courses = await nearbyCourses(pos.coords.latitude, pos.coords.longitude);
           setNearby({ status: 'loaded', courses: courses.slice(0, 12) });
         } catch {
-          setNearby({ status: 'error', message: 'Could not load courses nearby. Check your connection or search by name.' });
+          setNearby({ status: 'error', message: tr('Could not load courses nearby. Check your connection or search by name.', 'Plätze in der Nähe konnten nicht geladen werden. Prüfe die Verbindung oder suche nach dem Namen.') });
         }
       },
       () => setNearby({ status: 'denied' }),
@@ -73,7 +74,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
         props.onPicked(course);
       }
     } catch {
-      setLoadError('The course servers are busy right now. Please try again in a minute.');
+      setLoadError(tr('The course servers are busy right now. Please try again in a minute.', 'Die Platz-Server sind gerade ausgelastet. Bitte versuche es in einer Minute noch einmal.'));
     } finally {
       setLoadingId(null);
     }
@@ -91,7 +92,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
                   (c.source === 'osm' ? 'OpenStreetMap' : 'OpenGolfAPI')}
               </span>
             </span>
-            {loadingId === c.id ? <span className="spinner" aria-label="Loading" /> : <span aria-hidden="true">›</span>}
+            {loadingId === c.id ? <span className="spinner" aria-label={tr('Loading', 'Lädt')} /> : <span aria-hidden="true">›</span>}
           </button>
         </li>
       ))}
@@ -100,14 +101,14 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
 
   return (
     <main className="screen">
-      <TopBar title="Choose course" onBack={props.onBack} />
+      <TopBar title={tr('Choose course', 'Platz wählen')} onBack={props.onBack} />
       <div className="field">
-        <label htmlFor="course-search">Search by name</label>
+        <label htmlFor="course-search">{tr('Search by name', 'Nach Namen suchen')}</label>
         <input
           id="course-search"
           className="input"
           type="search"
-          placeholder="e.g. Hetzenhof"
+          placeholder={tr('e.g. Hetzenhof', 'z. B. Hetzenhof')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoComplete="off"
@@ -117,23 +118,23 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
 
       {results != null ? (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h2>Results</h2>
-          {searching && <span className="spinner" aria-label="Searching" />}
-          {!searching && results.length === 0 && <p className="muted">No golf course found. Try another spelling.</p>}
+          <h2>{tr('Results', 'Ergebnisse')}</h2>
+          {searching && <span className="spinner" aria-label={tr('Searching', 'Sucht')} />}
+          {!searching && results.length === 0 && <p className="muted">{tr('No golf course found. Try another spelling.', 'Kein Golfplatz gefunden. Versuche eine andere Schreibweise.')}</p>}
           {renderList(results)}
         </section>
       ) : (
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h2>Nearby</h2>
+          <h2>{tr('Nearby', 'In der Nähe')}</h2>
           {nearby.status === 'locating' && (
             <div className="row" style={{ justifyContent: 'flex-start' }}>
               <span className="spinner" aria-hidden="true" />
-              <span className="muted">Finding courses near you …</span>
+              <span className="muted">{tr('Finding courses near you …', 'Suche Plätze in deiner Nähe …')}</span>
             </div>
           )}
-          {nearby.status === 'denied' && <p className="muted">Location is off. Search for your course by name.</p>}
+          {nearby.status === 'denied' && <p className="muted">{tr('Location is off. Search for your course by name.', 'Standort ist aus. Suche deinen Platz nach dem Namen.')}</p>}
           {nearby.status === 'error' && <div className="error">{nearby.message}</div>}
-          {nearby.status === 'loaded' && nearby.courses.length === 0 && <p className="muted">No course within 40 km. Search by name instead.</p>}
+          {nearby.status === 'loaded' && nearby.courses.length === 0 && <p className="muted">{tr('No course within 40 km. Search by name instead.', 'Kein Platz im Umkreis von 40 km. Suche stattdessen nach dem Namen.')}</p>}
           {nearby.status === 'loaded' && renderList(nearby.courses)}
         </section>
       )}

@@ -5,6 +5,8 @@ import { Attribution, formatToPar } from '../components/ui';
 import { restoreBackup, shareBackup } from '../lib/backup';
 import { carryToReview } from '../lib/stats';
 import { loadCarryBag } from '../lib/storage';
+import { getLang, setLang, tr } from '../lib/i18n';
+import { loopsText } from '../lib/loops';
 
 export function Home(props: {
   rounds: Round[];
@@ -20,6 +22,7 @@ export function Home(props: {
   const review = carryToReview(props.rounds, loadCarryBag()).length;
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const finished = props.rounds.filter((r) => r.finishedAt);
+  const locale = getLang() === 'de' ? 'de-DE' : undefined;
 
   return (
     <main className="screen">
@@ -29,42 +32,50 @@ export function Home(props: {
         </div>
         <span className="spacer" />
         <span className="muted small" title={__BUILD_TIME__}>
-          Version {new Date(__BUILD_TIME__).toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          Version {new Date(__BUILD_TIME__).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
         </span>
+        <button
+          type="button"
+          className="lang-btn"
+          aria-label={tr('Sprache: Deutsch', 'Language: English')}
+          onClick={() => setLang(getLang() === 'de' ? 'en' : 'de')}
+        >
+          {getLang() === 'de' ? 'EN' : 'DE'}
+        </button>
       </div>
 
       {open && (
         <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span className="eyebrow">Round in progress</span>
+          <span className="eyebrow">{tr('Round in progress', 'Laufende Runde')}</span>
           <div style={{ font: '600 19px var(--display)' }}>{open.courseName}</div>
           <span className="muted">
-            {open.loopOrder.join(' + ')} · hole {open.currentHole + 1} of {open.holes.length}
+            {loopsText(open.loopOrder)} · {tr(`hole ${open.currentHole + 1} of ${open.holes.length}`, `Loch ${open.currentHole + 1} von ${open.holes.length}`)}
           </span>
           <button type="button" className="btn-primary" onClick={() => props.onContinue(open)}>
-            Continue round
+            {tr('Continue round', 'Runde fortsetzen')}
           </button>
         </section>
       )}
 
       <button type="button" className={open ? 'btn-secondary' : 'btn-primary'} onClick={props.onNewRound}>
-        New round
+        {tr('New round', 'Neue Runde')}
       </button>
 
       <div className="nav-bottom" style={{ gridTemplateColumns: finished.length > 0 ? '1fr 1fr' : '1fr' }}>
         {finished.length > 0 && (
           <button type="button" className="btn-secondary" onClick={props.onStats}>
-            Your stats
+            {tr('Your stats', 'Deine Statistik')}
           </button>
         )}
         <button type="button" className="btn-secondary" onClick={props.onBag}>
-          My bag &amp; caddie
-          {review > 0 && <span className="badge-dot">{review} to review</span>}
+          {tr('My bag & caddie', 'Mein Bag & Caddie')}
+          {review > 0 && <span className="badge-dot">{tr(`${review} to review`, `${review} prüfen`)}</span>}
         </button>
       </div>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <h2>Your rounds</h2>
-        {finished.length === 0 && <p className="muted">No rounds yet. Your finished rounds will appear here.</p>}
+        <h2>{tr('Your rounds', 'Deine Runden')}</h2>
+        {finished.length === 0 && <p className="muted">{tr('No rounds yet. Your finished rounds will appear here.', 'Noch keine Runden. Deine beendeten Runden erscheinen hier.')}</p>}
         <ul className="list">
           {finished.map((r) => {
             const me = r.players.find((p) => p.isMe)!;
@@ -75,14 +86,14 @@ export function Home(props: {
                   <span className="grow">
                     <span className="title">{r.courseName}</span>
                     <span className="muted small">
-                      {new Date(r.createdAt).toLocaleDateString()} · {r.loopOrder.join(' + ')} · {r.holes.length} holes
+                      {new Date(r.createdAt).toLocaleDateString(locale)} · {loopsText(r.loopOrder)} · {r.holes.length} {tr('holes', 'Löcher')}
                     </span>
                   </span>
                   <span style={{ textAlign: 'right' }}>
                     <span style={{ font: '700 20px var(--display)' }}>{t.gross}</span>
                     <span className="muted small" style={{ display: 'block' }}>
                       {formatToPar(t.toPar)}
-                      {t.stableford != null ? ` · ${t.stableford} pts` : ''}
+                      {t.stableford != null ? ` · ${t.stableford} ${tr('pts', 'Pkt.')}` : ''}
                     </span>
                   </span>
                 </button>
@@ -92,16 +103,19 @@ export function Home(props: {
         </ul>
       </section>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h2>Backup</h2>
+        <h2>{tr('Backup', 'Sicherung')}</h2>
         <p className="muted small" style={{ margin: 0 }}>
-          Your rounds live only on this phone. Safari and the home-screen app keep separate data – use a backup to move or save it.
+          {tr(
+            'Your rounds live only on this phone. Safari and the home-screen app keep separate data – use a backup to move or save it.',
+            'Deine Runden liegen nur auf diesem Handy. Safari und die App auf dem Home-Bildschirm speichern getrennt – mit einer Sicherung kannst du sie übertragen oder aufbewahren.',
+          )}
         </p>
         <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <button type="button" className="btn-secondary" onClick={() => shareBackup().catch(() => setBackupMsg('Backup cancelled.'))}>
-            Save backup
+          <button type="button" className="btn-secondary" onClick={() => shareBackup().catch(() => setBackupMsg(tr('Backup cancelled.', 'Sicherung abgebrochen.')))}>
+            {tr('Save backup', 'Sichern')}
           </button>
           <button type="button" className="btn-secondary" onClick={() => fileInput.current?.click()}>
-            Restore backup
+            {tr('Restore backup', 'Wiederherstellen')}
           </button>
         </div>
         <input
@@ -115,10 +129,12 @@ export function Home(props: {
             if (!file) return;
             try {
               const { rounds } = restoreBackup(JSON.parse(await file.text()));
-              setBackupMsg(`Backup restored · ${rounds} ${rounds === 1 ? 'round' : 'rounds'} added.`);
+              setBackupMsg(
+                tr(`Backup restored · ${rounds} ${rounds === 1 ? 'round' : 'rounds'} added.`, `Sicherung wiederhergestellt · ${rounds} ${rounds === 1 ? 'Runde' : 'Runden'} hinzugefügt.`),
+              );
               props.onChanged();
             } catch (err) {
-              setBackupMsg(err instanceof Error ? err.message : 'This file could not be read.');
+              setBackupMsg(err instanceof Error ? err.message : tr('This file could not be read.', 'Diese Datei konnte nicht gelesen werden.'));
             }
           }}
         />

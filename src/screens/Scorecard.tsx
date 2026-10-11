@@ -6,6 +6,8 @@ import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { groupForHandicap, roundsSg } from '../lib/sg';
 import { loadTrack } from '../lib/track';
+import { loopsText } from '../lib/loops';
+import { getLang, tr } from '../lib/i18n';
 
 export function Scorecard(props: {
   round: Round;
@@ -32,11 +34,11 @@ export function Scorecard(props: {
 
   return (
     <main className="screen">
-      <TopBar title="Scorecard" onBack={finished ? props.onClose : props.onBackToHole} backLabel={finished ? 'Close' : 'Back to hole'} />
+      <TopBar title={tr('Scorecard', 'Scorekarte')} onBack={finished ? props.onClose : props.onBackToHole} backLabel={finished ? tr('Close', 'Schließen') : tr('Back to hole', 'Zurück zum Loch')} />
       <div>
         <div style={{ font: '600 19px var(--display)' }}>{round.courseName}</div>
         <span className="muted small">
-          {new Date(round.createdAt).toLocaleDateString()} · {round.loopOrder.join(' + ')}
+          {new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined)} · {loopsText(round.loopOrder)}
         </span>
       </div>
 
@@ -45,11 +47,11 @@ export function Scorecard(props: {
           const t = playerTotals(round.holes, round.entries[p.id], p.playingHandicap);
           return (
             <div key={p.id} className="stat">
-              <div className="muted small">{p.name}{p.playingHandicap != null ? ` · hcp ${p.playingHandicap}` : ''}</div>
+              <div className="muted small">{p.name}{p.playingHandicap != null ? ` · ${tr('hcp', 'SV')} ${p.playingHandicap}` : ''}</div>
               <div className="num">
                 {t.gross} <span className="muted small">{formatToPar(t.toPar)}</span>
               </div>
-              <div className="small">{t.stableford != null ? `${t.stableford} Stableford pts` : 'gross only'}</div>
+              <div className="small">{t.stableford != null ? tr(`${t.stableford} Stableford pts`, `${t.stableford} Stableford-Punkte`) : tr('gross only', 'nur brutto')}</div>
             </div>
           );
         })}
@@ -59,7 +61,7 @@ export function Scorecard(props: {
         <table className="scorecard">
           <thead>
             <tr>
-              <th>Hole</th>
+              <th>{tr('Hole', 'Loch')}</th>
               <th>Par</th>
               <th>Hcp</th>
               {round.players.map((p) => (
@@ -91,7 +93,7 @@ export function Scorecard(props: {
                   </tr>
                 )),
                 <tr key={`sum-${n}`} className="sum">
-                  <td>{nines.length === 2 ? (n === 0 ? 'Out' : 'In') : 'Total'}</td>
+                  <td>{nines.length === 2 ? (n === 0 ? tr('Out', 'Out') : tr('In', 'In')) : tr('Total', 'Gesamt')}</td>
                   <td>{nine.reduce((s, h) => s + h.par, 0)}</td>
                   <td />
                   {round.players.map((p) => (
@@ -105,7 +107,7 @@ export function Scorecard(props: {
             })}
             {nines.length === 2 && (
               <tr className="sum">
-                <td>Total</td>
+                <td>{tr('Total', 'Gesamt')}</td>
                 <td>{round.holes.reduce((s, h) => s + h.par, 0)}</td>
                 <td />
                 {round.players.map((p) => {
@@ -122,42 +124,42 @@ export function Scorecard(props: {
           </tbody>
         </table>
       </div>
-      <p className="muted small" style={{ margin: 0 }}>Small numbers: Stableford points. * picked up (net double bogey).</p>
+      <p className="muted small" style={{ margin: 0 }}>{tr('Small numbers: Stableford points. * picked up (net double bogey).', 'Kleine Zahlen: Stableford-Punkte. * aufgehoben (Netto-Doppelbogey).')}</p>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h2>Your stats</h2>
+        <h2>{tr('Your stats', 'Deine Statistik')}</h2>
         <div className="stat-grid">
           <Stat label="Putts" value={String(stats.putts)} />
-          <Stat label="Fairways hit" value={`${stats.fairwaysHit} / ${stats.fairwaysPossible}`} />
-          <Stat label="Greens in regulation" value={`${stats.gir} / ${stats.girPossible}`} />
-          <Stat label="Penalties" value={String(stats.penalties)} />
-          <Stat label="Sand saves" value={`${stats.sandSaves} / ${stats.bunkerHoles}`} />
+          <Stat label={tr('Fairways hit', 'Fairways getroffen')} value={`${stats.fairwaysHit} / ${stats.fairwaysPossible}`} />
+          <Stat label={tr('Greens in regulation', 'Grüns in Regulation')} value={`${stats.gir} / ${stats.girPossible}`} />
+          <Stat label={tr('Penalties', 'Strafschläge')} value={String(stats.penalties)} />
+          <Stat label={tr('Sand saves', 'Sand Saves')} value={`${stats.sandSaves} / ${stats.bunkerHoles}`} />
         </div>
       </section>
 
       {canReview && (
         <button type="button" className="btn-secondary" onClick={() => props.onReview(round)}>
-          Check your shots{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' · some to check' : ''}
+          {tr('Check your shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? tr(' · some to check', ' · einige offen') : ''}
         </button>
       )}
-      {sg && <SgCard title="Strokes gained this round" values={sg.per18} holes={sg.holes} defaultGroup={groupForHandicap(me.playingHandicap)} />}
+      {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} holes={sg.holes} defaultGroup={groupForHandicap(me.playingHandicap)} />}
 
       <span className="spacer" />
       {!finished && (
         <button type="button" className="btn-primary" onClick={() => props.onFinish({ ...round, finishedAt: new Date().toISOString() })}>
-          Save &amp; finish round
+          {tr('Save & finish round', 'Runde speichern & beenden')}
         </button>
       )}
       {!confirmDelete ? (
         <button type="button" className="btn-secondary btn-danger" onClick={() => setConfirmDelete(true)}>
-          Delete round
+          {tr('Delete round', 'Runde löschen')}
         </button>
       ) : (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span>Delete this round for good?</span>
+          <span>{tr('Delete this round for good?', 'Diese Runde endgültig löschen?')}</span>
           <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <button type="button" className="btn-secondary" onClick={() => setConfirmDelete(false)}>
-              Keep
+              {tr('Keep', 'Behalten')}
             </button>
             <button
               type="button"
@@ -167,7 +169,7 @@ export function Scorecard(props: {
                 props.onDeleted();
               }}
             >
-              Delete
+              {tr('Delete', 'Löschen')}
             </button>
           </div>
         </div>

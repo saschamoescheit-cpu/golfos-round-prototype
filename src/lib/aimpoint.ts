@@ -3,6 +3,7 @@ import { alongLine, bearingDeg, distanceM, distToLine, lineLength, pointAt, poin
 import { adviseClub, playsLike, type CarryBag, type Conditions, type PlaysLike } from './caddie';
 import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, type Samples } from './terrain';
 import type { HoleNote } from './holenotes';
+import { clubCode, sideWord, tr } from './i18n';
 
 // The caddie's aim point (features 016/017): where to hit this shot, from where the player is now.
 // Tee: the landing zone at the longest suitable carry. In reach of the green: the pin. Otherwise a layup that
@@ -93,14 +94,14 @@ export function aimPoint(o: AimInput): AimPoint {
     kind = 'approach';
     if (style === 'safe' && o.data.green && distanceM(pin, o.data.greenCenter) > 6) {
       base = o.data.greenCenter; // safe: middle of the green, not the flag
-      reasons.push('middle of the green');
+      reasons.push(tr('middle of the green', 'Grünmitte'));
     }
   } else {
     const dir = bearingDeg(from, pin);
     const ratio = 100 / playsLike(100, dir, o.conditions, null).playsLike;
     if (driverOk && style === 'safe' && (obNote.obLeft || obNote.obRight) && clubs.length > 1) {
       longest = clubs[1].carry; // safe: one club less off the tee when out of bounds is close
-      reasons.push(`${clubs[1].club} for safety`);
+      reasons.push(tr(`${clubs[1].club} for safety`, `${clubCode(clubs[1].club)} zur Sicherheit`));
     }
     const reach = longest * ratio;
     let along = Math.min(alongFrom + reach, total - 60);
@@ -108,7 +109,7 @@ export function aimPoint(o: AimInput): AimPoint {
     const fav = o.favourite ?? 90;
     if (!o.teeShot && total - fav > alongFrom + 30 && total - fav <= alongFrom + reach) {
       along = total - fav;
-      reasons.push(`leaves ${fav} m`);
+      reasons.push(tr(`leaves ${fav} m`, `lässt ${fav} m`));
     }
     base = pointAt(data.line, Math.max(along, alongFrom + 30));
     kind = o.teeShot ? 'drive' : 'layup';
@@ -121,30 +122,30 @@ export function aimPoint(o: AimInput): AimPoint {
   const hang = kind === 'approach' ? null : slopeAdvice(crossSlopeAt(o.slopes, alongLine(data.line, base)));
   const tend = o.tendency.get(club0) ?? 0;
   let side = Math.max(-15, Math.min(15, pl0.aimM - tend + (hang?.aimM ?? 0)));
-  if (Math.abs(pl0.aimM) >= 2) reasons.push(`wind ${Math.abs(Math.round(pl0.aimM))} m ${pl0.aimM > 0 ? 'right' : 'left'}`);
-  if (Math.abs(tend) >= 3) reasons.push(`your ${club0} goes ${Math.abs(tend)} m ${tend > 0 ? 'right' : 'left'}`);
-  if (hang) reasons.push(`slope ${Math.abs(hang.aimM)} m ${hang.aimM > 0 ? 'right' : 'left'}`);
+  if (Math.abs(pl0.aimM) >= 2) reasons.push(tr('wind', 'Wind') + ` ${Math.abs(Math.round(pl0.aimM))} m ${sideWord(pl0.aimM > 0 ? 'right' : 'left')}`);
+  if (Math.abs(tend) >= 3) reasons.push(tr(`your ${club0} goes`, `dein ${clubCode(club0)} geht`) + ` ${Math.abs(tend)} m ${sideWord(tend > 0 ? 'right' : 'left')}`);
+  if (hang) reasons.push(tr('slope', 'Hang') + ` ${Math.abs(hang.aimM)} m ${sideWord(hang.aimM > 0 ? 'right' : 'left')}`);
   const dropMoves = () => {
     // Only say why the shot stays in the middle; the moves that were dropped would confuse.
-    for (let k = reasons.length - 1; k >= 0; k--) if (/^(wind|your|slope) /.test(reasons[k])) reasons.splice(k, 1);
+    for (let k = reasons.length - 1; k >= 0; k--) if (/^(wind|your|slope|Wind|dein|Hang) /.test(reasons[k])) reasons.splice(k, 1);
   };
   // Hole notes (out of bounds the map does not know, no distance): never aim towards that side.
   if ((side < 0 && obNote.obLeft) || (side > 0 && obNote.obRight)) {
     const towards = side < 0 ? 'left' : 'right';
     side = 0;
     dropMoves();
-    reasons.push(`centre – out of bounds ${towards}`);
+    reasons.push(tr('centre – out of bounds', 'Mitte – Aus') + ` ${sideWord(towards)}`);
   }
 
   // Safety (feature 020, like a tour caddie): the landing spot is clear of water, bunkers and trees and stays
   // 20 m inside the course boundary – and so does the aim point, in case the wind does not bring the ball back.
   const zone = safeLanding({ from, base, side, kind, data, boundary: o.boundary, trees: o.trees });
-  if (zone.reason && !(zone.k < 1 && zone.reason === 'away from out of bounds')) reasons.push(zone.reason);
+  if (zone.reason && !(zone.k < 1 && zone.reason === 'ob')) reasons.push(zoneText(zone.reason));
   if (zone.k < 1 && Math.abs(side) >= 2) {
     const towards = side < 0 ? 'left' : 'right';
     dropMoves();
-    if (zone.k > 0) reasons.push(`only ${Math.round(Math.abs(side * zone.k))} m ${towards} – out of bounds`);
-    else reasons.push(`centre – out of bounds ${towards}`);
+    if (zone.k > 0) reasons.push(tr('only', 'nur') + ` ${Math.round(Math.abs(side * zone.k))} m ${sideWord(towards)} – ` + tr('out of bounds', 'Aus'));
+    else reasons.push(tr('centre – out of bounds', 'Mitte – Aus') + ` ${sideWord(towards)}`);
   }
   side *= zone.k;
   base = zone.landing;
@@ -172,9 +173,9 @@ export function aimPoint(o: AimInput): AimPoint {
     if (best) {
       pos = best.p;
       kind = 'recovery';
-      const dir = best.ang === 0 ? 'straight' : `${Math.abs(best.ang)}° ${best.ang > 0 ? 'right' : 'left'}`;
-      note = `Trees in the way – play ${dir}, ${Math.round(distanceM(from, pos))} m`;
-    } else note = 'Trees all around – punch out to the fairway';
+      const dir = best.ang === 0 ? tr('straight', 'gerade') : `${Math.abs(best.ang)}° ${sideWord(best.ang > 0 ? 'right' : 'left')}`;
+      note = tr(`Trees in the way – play ${dir}, ${Math.round(distanceM(from, pos))} m`, `Bäume im Weg – spiel ${dir}, ${Math.round(distanceM(from, pos))} m`);
+    } else note = tr('Trees all around – punch out to the fairway', 'Rundum Bäume – flach zurück aufs Fairway');
   }
   const ob = obAdvice(o.boundary, from, base);
   const obLeft = obNote.obLeft || (ob != null && ob.left <= 25);
@@ -183,11 +184,23 @@ export function aimPoint(o: AimInput): AimPoint {
   const pl = playsLike(distance, bearingDeg(from, pos), o.conditions, kind === 'approach' ? hd(pin) : hd(pos));
   const club = adviseClub(pl.playsLike, o.bag, driverOk && kind === 'drive').club;
   // One wording everywhere: "Out of bounds 18 m left and right" – distance from the map, side from the hole notes.
-  const sideText = (k: 'left' | 'right', known: boolean | undefined, m: number | undefined) => (known || m == null || !isFinite(m) ? k : `${Math.round(m)} m ${k}`);
-  const obSides = [obLeft && sideText('left', obNote.obLeft, ob?.left), obRight && sideText('right', obNote.obRight, ob?.right), obNote.obLong && 'long'].filter(Boolean);
-  if (!note && obSides.length) note = `Out of bounds ${obSides.join(' and ')}`;
+  const sideText = (k: 'left' | 'right', known: boolean | undefined, m: number | undefined) => (known || m == null || !isFinite(m) ? sideWord(k) : `${Math.round(m)} m ${sideWord(k)}`);
+  const obSides = [obLeft && sideText('left', obNote.obLeft, ob?.left), obRight && sideText('right', obNote.obRight, ob?.right), obNote.obLong && sideWord('long')].filter(Boolean);
+  if (!note && obSides.length) note = tr('Out of bounds', 'Aus') + ' ' + obSides.join(tr(' and ', ' und '));
   return { pos, landing: kind === 'recovery' ? pos : base, kind, club, distance, pl, side, reasons, note };
 }
+
+/** Why the landing spot moved. */
+export type ZoneReason = 'water' | 'waterPast' | 'ob' | 'trees' | 'bunker' | 'fairway';
+export const zoneText = (r: ZoneReason): string =>
+  ({
+    water: tr('clear of the water', 'weg vom Wasser'),
+    waterPast: tr('short of the water', 'vor dem Wasser'),
+    ob: tr('away from out of bounds', 'weg vom Aus'),
+    trees: tr('clear of the trees', 'weg von den Bäumen'),
+    bunker: tr('clear of the bunker', 'weg vom Bunker'),
+    fairway: tr('onto the fairway', 'aufs Fairway'),
+  })[r];
 
 /** Distances the caddie keeps from trouble (feature 020; Chris to confirm). */
 export const SAFETY = { obMarginM: 20, waterPastM: 15, waterShortM: 12 };
@@ -218,7 +231,7 @@ function nearRings(rings: Ring[] | undefined, p: LngLat, m: number): Ring[] {
  * on drives it prefers the fairway. Approaches keep the pin and only limit the aim towards out of bounds.
  * Returns the landing spot, how much of the sideways aim survives (k) and why the spot moved.
  */
-export function safeLanding(o: { from: LngLat; base: LngLat; side: number; kind: AimKind; data: HoleMapData; boundary?: Ring[]; trees?: Ring[] }): { landing: LngLat; k: number; reason: string | null } {
+export function safeLanding(o: { from: LngLat; base: LngLat; side: number; kind: AimKind; data: HoleMapData; boundary?: Ring[]; trees?: Ring[] }): { landing: LngLat; k: number; reason: ZoneReason | null } {
   const R = 90;
   const water = nearRings(o.data.water, o.base, R);
   const bunkers = nearRings(o.data.bunkers, o.base, R);
@@ -240,13 +253,13 @@ export function safeLanding(o: { from: LngLat; base: LngLat; side: number; kind:
     return { landing: o.base, k: 0, reason: null };
   }
 
-  const problem = (l: LngLat): string | null => {
+  const problem = (l: LngLat): ZoneReason | null => {
     const b = bearingDeg(o.from, l);
-    if (inAny(l, water)) return 'clear of the water';
-    if (inAny(move(l, b, SAFETY.waterPastM), water)) return 'short of the water';
-    if (obGap(l) < SAFETY.obMarginM) return 'away from out of bounds';
-    if (inAny(l, trees)) return 'clear of the trees';
-    if (inAny(l, bunkers)) return 'clear of the bunker';
+    if (inAny(l, water)) return 'water';
+    if (inAny(move(l, b, SAFETY.waterPastM), water)) return 'waterPast';
+    if (obGap(l) < SAFETY.obMarginM) return 'ob';
+    if (inAny(l, trees)) return 'trees';
+    if (inAny(l, bunkers)) return 'bunker';
     return null;
   };
   let best: { l: LngLat; k: number; cost: number } | null = null;
@@ -271,6 +284,6 @@ export function safeLanding(o: { from: LngLat; base: LngLat; side: number; kind:
   }
   if (!best) return { landing: o.base, k: obGap(aimAt(o.base, 1)) < SAFETY.obMarginM ? 0 : 1, reason: null };
   const moved = distanceM(best.l, o.base) >= 3;
-  const why = problem(o.base) ?? (fairways.length && o.kind === 'drive' && !inAny(o.base, fairways) ? 'onto the fairway' : null);
+  const why = problem(o.base) ?? (fairways.length && o.kind === 'drive' && !inAny(o.base, fairways) ? 'fairway' : null);
   return { landing: best.l, k: best.k, reason: moved ? why : null };
 }

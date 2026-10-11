@@ -1,4 +1,5 @@
 import type { CourseHole, RoundHole } from '../types';
+import { tr } from './i18n';
 
 /**
  * Parses a hole label from the data source into loop + number.
@@ -45,21 +46,24 @@ export function loopOptions(holes: CourseHole[]): LoopOption[] {
 
   for (const l of loops) {
     if (byLoop[l].length >= 18) {
-      options.push({ id: l, label: loopLabel(l, '18 holes'), loops: [l] });
-      options.push({ id: `${l}:front`, label: loopLabel(l, 'Front 9'), loops: [l], part: 'front' });
-      options.push({ id: `${l}:back`, label: loopLabel(l, 'Back 9'), loops: [l], part: 'back' });
+      options.push({ id: l, label: loopLabel(l, tr('18 holes', '18 Löcher')), loops: [l] });
+      options.push({ id: `${l}:front`, label: loopLabel(l, tr('Front 9', 'Vordere 9')), loops: [l], part: 'front' });
+      options.push({ id: `${l}:back`, label: loopLabel(l, tr('Back 9', 'Hintere 9')), loops: [l], part: 'back' });
     }
   }
   for (const a of nineHoleLoops) {
     for (const b of nineHoleLoops) {
-      if (a !== b) options.push({ id: `${a}+${b}`, label: `${a} + ${b} · 18 holes`, loops: [a, b] });
+      if (a !== b) options.push({ id: `${a}+${b}`, label: `${a} + ${b} · ${tr('18 holes', '18 Löcher')}`, loops: [a, b] });
     }
   }
   for (const l of loops) {
-    if (byLoop[l].length < 18) options.push({ id: l, label: `${l} · ${byLoop[l].length} holes`, loops: [l] });
+    if (byLoop[l].length < 18) options.push({ id: l, label: `${l} · ${byLoop[l].length} ${tr('holes', 'Löcher')}`, loops: [l] });
   }
   return options;
 }
+
+/** Loops of a round for display: "A + B", or "Main course" for an 18-hole course. */
+export const loopsText = (loops: string[]): string => loops.map((l) => (l === 'Main' ? tr('Main course', 'Hauptplatz') : l)).join(' + ');
 
 function loopLabel(loop: string, text: string): string {
   return loop === 'Main' ? text : `${loop} · ${text}`;

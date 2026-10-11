@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { DetailEntry, HoleEntry, Round, Shot } from '../types';
 import { distanceM, holeMapData } from '../lib/geo';
-import { deriveFromShots, firstPuttM, KINDS, shotLengths, suggestKind } from '../lib/shots';
+import { deriveFromShots, firstPuttM, KINDS, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { holeSg } from '../lib/sg';
 import { detectHoleShots, loadTrack, trackForHole } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadRounds, loadUnit } from '../lib/storage';
@@ -11,6 +11,7 @@ import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { ShotSheet } from '../components/ShotSheet';
 import { TopBar } from '../components/ui';
+import { clubCode, tr } from '../lib/i18n';
 
 // Round check after a detailed round (feature 007): every shot of every hole on the map, with club, shot type,
 // lie, length and strokes gained. Shots detected from the GPS track are marked "check"; the player corrects
@@ -69,7 +70,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       list[i] = { ...list[i], detail: { ...found, pin: m.greenCenter }, ...derived };
     });
     props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
-    setNotice(holes ? `Shots detected on ${holes} ${holes === 1 ? 'hole' : 'holes'} – please check them.` : 'No shots found in the GPS track.');
+    setNotice(
+      holes
+        ? tr(`Shots detected on ${holes} ${holes === 1 ? 'hole' : 'holes'} – please check them.`, `Schläge an ${holes} ${holes === 1 ? 'Loch' : 'Löchern'} erkannt – bitte prüfen.`)
+        : tr('No shots found in the GPS track.', 'Keine Schläge in der GPS-Spur gefunden.'),
+    );
   };
 
   const confirmHole = () => {
@@ -83,28 +88,28 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
 
   return (
     <main className="screen review">
-      <TopBar title="Check your shots" onBack={props.onDone} backLabel="Done" />
+      <TopBar title={tr('Check your shots', 'Schläge prüfen')} onBack={props.onDone} backLabel={tr('Done', 'Fertig')} />
       <div className="row">
-        <span className="muted small">{toCheck ? `${toCheck} ${toCheck === 1 ? 'shot' : 'shots'} to check` : 'All shots checked ✓'}</span>
+        <span className="muted small">{toCheck ? tr(`${toCheck} ${toCheck === 1 ? 'shot' : 'shots'} to check`, `${toCheck} ${toCheck === 1 ? 'Schlag' : 'Schläge'} zu prüfen`) : tr('All shots checked ✓', 'Alle Schläge geprüft ✓')}</span>
         {track.length > 20 && (
           <button type="button" className="btn-ghost" onClick={detectAll}>
-            Detect shots from GPS track
+            {tr('Detect shots from GPS track', 'Schläge aus der GPS-Spur erkennen')}
           </button>
         )}
       </div>
       {notice && <div className="notice">{notice}</div>}
 
       <div className="review-nav">
-        <button type="button" className="icon-btn" aria-label="Previous hole" disabled={k === 0} onClick={() => setK(k - 1)}>
+        <button type="button" className="icon-btn" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={k === 0} onClick={() => setK(k - 1)}>
           ←
         </button>
         <div style={{ textAlign: 'center' }}>
-          <strong>Hole {hole.label}</strong>
+          <strong>{tr('Hole', 'Loch')} {hole.label}</strong>
           <div className="muted small">
-            Par {hole.par} · {e.strokes ?? '–'} strokes{e.putts != null ? ` · ${e.putts} putts` : ''}
+            Par {hole.par} · {e.strokes ?? '–'} {tr('strokes', 'Schläge')}{e.putts != null ? ` · ${e.putts} Putt${e.putts === 1 ? '' : 's'}` : ''}
           </div>
         </div>
-        <button type="button" className="icon-btn" aria-label="Next hole" disabled={k === round.holes.length - 1} onClick={() => setK(k + 1)}>
+        <button type="button" className="icon-btn" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={k === round.holes.length - 1} onClick={() => setK(k + 1)}>
           →
         </button>
       </div>
@@ -126,9 +131,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               ...(d?.shots ?? []).flatMap((s, n) => {
                 const v = sg?.[n]?.sg;
                 const tone: 'good' | 'bad' | undefined = v == null ? undefined : v >= 0 ? 'good' : 'bad';
-                return s.pos ? [{ id: `shot-${n}`, pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + s.club : ''}${v != null ? ` ${v >= 0 ? '+' : ''}${v.toFixed(1)}` : ''}${s.review ? ' ?' : ''}` }] : [];
+                return s.pos ? [{ id: `shot-${n}`, pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${v != null ? ` ${v >= 0 ? '+' : ''}${v.toFixed(1)}` : ''}${s.review ? ' ?' : ''}` }] : [];
               }),
-              ...(d?.onGreen ? [{ id: 'green', pos: d.onGreen, label: e.putts != null ? `${e.putts} putts` : 'green', green: true }] : []),
+              ...(d?.onGreen ? [{ id: 'green', pos: d.onGreen, label: e.putts != null ? `${e.putts} Putt${e.putts === 1 ? '' : 's'}` : tr('green', 'Grün'), green: true }] : []),
             ]}
             onTargetsChange={() => {}}
             onTargetRemove={() => {}}
@@ -150,18 +155,22 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       )}
 
       <p className="muted small" style={{ margin: 0 }}>
-        Each shot is coloured by strokes gained against a tour pro: <span className="good-text">green = gained</span>,{' '}
-        <span className="bad-text">red = lost</span>. Drag a shot on the map to where it really was.
+        {tr('Each shot is coloured by strokes gained against a tour pro:', 'Jeder Schlag ist nach Strokes Gained gegen einen Tour-Profi eingefärbt:')}{' '}
+        <span className="good-text">{tr('green = gained', 'grün = gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.{' '}
+        {tr('Drag a shot on the map to where it really was.', 'Zieh einen Schlag auf der Karte dorthin, wo er wirklich war.')}
       </p>
 
       {mismatch && (
         <div className="notice">
-          Your score was {e.strokes}, the shots add up to {shotCount}. Please add or delete a shot, or correct the putts.
+          {tr(
+            `Your score was ${e.strokes}, the shots add up to ${shotCount}. Please add or delete a shot, or correct the putts.`,
+            `Dein Score war ${e.strokes}, die Schläge ergeben ${shotCount}. Bitte einen Schlag ergänzen oder löschen oder die Putts korrigieren.`,
+          )}
         </div>
       )}
 
       {!d || d.shots.length === 0 ? (
-        <p className="muted">No shots on this hole{track.length > 20 ? ' – try “Detect shots from GPS track”.' : '.'}</p>
+        <p className="muted">{tr('No shots on this hole', 'Keine Schläge an diesem Loch')}{track.length > 20 ? tr(' – try “Detect shots from GPS track”.', ' – versuche „Schläge aus der GPS-Spur erkennen“.') : '.'}</p>
       ) : (
         <ol className="shot-list review-list">
           {d.shots.map((s, n) => {
@@ -172,12 +181,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               <li key={n} className={s.review ? 'check' : undefined}>
                 <span className="n">{n + 1}</span>
                 <button type="button" className="shot-row" onClick={() => setEdit(n)}>
-                  <strong>{s.club ?? '–'}</strong> · {KINDS.find((x) => x.value === kind)!.label}
+                  <strong>{s.club ? clubCode(s.club) : '–'}</strong> · {KINDS.find((x) => x.value === kind)!.label}
                   <span className="muted small" style={{ display: 'block' }}>
-                    {s.lie}
+                    {lieName(s.lie)}
                     {lengths[n] != null ? ` · ${fmt(lengths[n]!)}` : ''}
-                    {s.penalty ? ' · +1 penalty' : ''}
-                    {s.review ? ' · check' : ''}
+                    {s.penalty ? tr(' · +1 penalty', ' · +1 Strafschlag') : ''}
+                    {s.review ? tr(' · check', ' · prüfen') : ''}
                   </span>
                 </button>
                 <span className={`sg-badge ${v == null ? '' : v >= 0 ? 'good' : 'bad'}`}>{v == null ? '' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}`}</span>
@@ -189,9 +198,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             <li>
               <span className="n">⛳</span>
               <span>
-                {e.putts ?? '–'} putts
+                {e.putts ?? '–'} Putt{e.putts === 1 ? '' : 's'}
                 <span className="muted small" style={{ display: 'block' }}>
-                  first putt {firstPuttM({ ...d, pin }) != null ? fmt(firstPuttM({ ...d, pin })!) : '–'}
+                  {tr('first putt', 'erster Putt')} {firstPuttM({ ...d, pin }) != null ? fmt(firstPuttM({ ...d, pin })!) : '–'}
                 </span>
               </span>
               <span className={`sg-badge ${sg ? (sg[sg.length - 1].sg >= 0 ? 'good' : 'bad') : ''}`}>
@@ -205,12 +214,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
 
       <span className="spacer" />
       <button type="button" className="btn-primary" onClick={confirmHole}>
-        {k < round.holes.length - 1 ? `Confirm hole ${hole.label} →` : 'Confirm last hole'}
+        {k < round.holes.length - 1 ? tr(`Confirm hole ${hole.label} →`, `Loch ${hole.label} bestätigen →`) : tr('Confirm last hole', 'Letztes Loch bestätigen')}
       </button>
 
       {editing && d && (
         <ShotSheet
-          title={`Hole ${hole.label} · shot ${edit! + 1}`}
+          title={tr(`Hole ${hole.label} · shot ${edit! + 1}`, `Loch ${hole.label} · Schlag ${edit! + 1}`)}
           lie={editing.lie}
           club={editing.club}
           penalty={editing.penalty}

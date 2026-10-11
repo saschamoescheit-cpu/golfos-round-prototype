@@ -1,6 +1,7 @@
 import type { LngLat, Ring } from '../types';
 import { distanceM } from './geo';
 import { sideOf } from './dispersion';
+import { sideWord, tr } from './i18n';
 
 // What a caddie knows about the ground (feature 015): out of bounds next to the landing spot and fairways
 // that hang to one side. Rules of thumb – to be confirmed by Chris.
@@ -39,13 +40,25 @@ export function heightAt(samples: Samples | undefined, along: number): number | 
 /** "Fairway falls from right to left (4 %) – the ball rolls left", aim metres (+ = right). */
 export function slopeAdvice(pct: number | null): { text: string; aimM: number } | null {
   if (pct == null || Math.abs(pct) < TERRAIN.slopeMinPct) return null;
-  const high = pct > 0 ? 'right' : 'left';
-  const low = pct > 0 ? 'left' : 'right';
+  const high = sideWord(pct > 0 ? 'right' : 'left');
+  const low = sideWord(pct > 0 ? 'left' : 'right');
   const sign = pct > 0 ? 1 : -1;
   if (Math.abs(pct) > TERRAIN.steepPct)
-    return { text: `Strong side slope (${Math.round(Math.abs(pct))} %) – balls run ${low}, favour the ${high} half`, aimM: sign * TERRAIN.aimMaxM };
+    return {
+      text: tr(
+        `Strong side slope (${Math.round(Math.abs(pct))} %) – balls run ${low}, favour the ${high} half`,
+        `Starker Seithang (${Math.round(Math.abs(pct))} %) – Bälle laufen nach ${low}, spiel die ${pct > 0 ? 'rechte' : 'linke'} Hälfte`,
+      ),
+      aimM: sign * TERRAIN.aimMaxM,
+    };
   const aim = Math.min(TERRAIN.aimMaxM, Math.max(3, Math.round(Math.abs(pct) * TERRAIN.aimPerPct)));
-  return { text: `Fairway falls from ${high} to ${low} (${Math.abs(pct).toFixed(0)} %) – the ball rolls ${low}`, aimM: sign * aim };
+  return {
+    text: tr(
+      `Fairway falls from ${high} to ${low} (${Math.abs(pct).toFixed(0)} %) – the ball rolls ${low}`,
+      `Fairway hängt von ${high} nach ${low} (${Math.abs(pct).toFixed(0)} %) – der Ball rollt nach ${low}`,
+    ),
+    aimM: sign * aim,
+  };
 }
 
 function nearestOnSegment(p: LngLat, a: LngLat, b: LngLat): LngLat {
@@ -75,6 +88,6 @@ export function obAdvice(boundary: Ring[] | undefined, from: LngLat, target: Lng
       near[key] = Math.min(near[key], d);
     }
   }
-  const parts = (Object.keys(near) as (keyof typeof near)[]).filter((k) => near[k] < Infinity).map((k) => `${Math.round(near[k])} m ${k}`);
-  return parts.length ? { text: `Out of bounds ${parts.join(', ')}`, left: near.left, right: near.right } : null;
+  const parts = (Object.keys(near) as (keyof typeof near)[]).filter((k) => near[k] < Infinity).map((k) => `${Math.round(near[k])} m ${sideWord(k)}`);
+  return parts.length ? { text: `${tr('Out of bounds', 'Aus')} ${parts.join(', ')}`, left: near.left, right: near.right } : null;
 }

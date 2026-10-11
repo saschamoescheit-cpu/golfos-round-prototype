@@ -5,6 +5,7 @@ import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit } from '../lib/geo';
 import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, setImagery } from './mapStyle';
 import type { ImagerySource } from '../lib/imagery';
+import { tr } from '../lib/i18n';
 
 // Satellite hole map: imagery (see lib/imagery.ts) with the hole drawn on top in course colours.
 
@@ -142,7 +143,7 @@ export function HoleMap(props: HoleMapProps) {
     if (p.aimPoint) {
       if (!mk.aim) {
         const d = el('map-aim');
-        d.innerHTML = '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="11" fill="none" stroke="#0E1418" stroke-width="5"/><circle cx="15" cy="15" r="11" fill="none" stroke="#FFD54A" stroke-width="2.5"/><circle cx="15" cy="15" r="3" fill="#FFD54A" stroke="#0E1418" stroke-width="1"/></svg><span>Aim</span>';
+        d.innerHTML = '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="11" fill="none" stroke="#0E1418" stroke-width="5"/><circle cx="15" cy="15" r="11" fill="none" stroke="#FFD54A" stroke-width="2.5"/><circle cx="15" cy="15" r="3" fill="#FFD54A" stroke="#0E1418" stroke-width="1"/></svg><span>' + tr('Aim', 'Ziel') + '</span>';
         mk.aim = new maplibregl.Marker({ element: d }).setLngLat(p.aimPoint).addTo(m);
       } else mk.aim.setLngLat(p.aimPoint);
     } else if (mk.aim) {
@@ -334,13 +335,13 @@ function targetSignEl(n: number, carry: string, rest: string, unit: Unit, onRemo
   head.textContent = `${n} · ${carry} ${unit}`;
   const tail = document.createElement('div');
   tail.className = 'rest';
-  tail.textContent = `Pin ${rest} ${unit}`;
+  tail.textContent = `${tr('Pin', 'Fahne')} ${rest} ${unit}`;
   text.append(head, tail);
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'remove';
   remove.textContent = '✕';
-  remove.setAttribute('aria-label', `Remove target ${n}`);
+  remove.setAttribute('aria-label', tr(`Remove target ${n}`, `Ziel ${n} entfernen`));
   // Keep the tap from reaching the map (which would place a new target).
   for (const ev of ['mousedown', 'touchstart', 'pointerdown', 'click'] as const) remove.addEventListener(ev, (e) => e.stopPropagation());
   remove.addEventListener('click', onRemove);
@@ -350,7 +351,7 @@ function targetSignEl(n: number, carry: string, rest: string, unit: Unit, onRemo
 
 function crosshairEl(n: number): HTMLDivElement {
   const d = el('map-crosshair');
-  d.setAttribute('aria-label', `Target ${n}, drag to move`);
+  d.setAttribute('aria-label', tr(`Target ${n}, drag to move`, `Ziel ${n}, zum Verschieben ziehen`));
   d.innerHTML =
     '<svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="13" fill="none" stroke="#0E1418" stroke-width="5"/><circle cx="22" cy="22" r="13" fill="none" stroke="#FFFFFF" stroke-width="2.5"/><path d="M22 2v12M22 30v12M2 22h12M30 22h12" stroke="#0E1418" stroke-width="5"/><path d="M22 2v12M22 30v12M2 22h12M30 22h12" stroke="#FFFFFF" stroke-width="2.5"/></svg>';
   return d;
@@ -358,7 +359,7 @@ function crosshairEl(n: number): HTMLDivElement {
 
 function flagEl(): HTMLDivElement {
   const d = el('map-flag');
-  d.setAttribute('aria-label', 'Pin, drag to today’s position');
+  d.setAttribute('aria-label', tr('Pin, drag to today’s position', 'Fahne, auf die heutige Position ziehen'));
   d.innerHTML = '<svg width="30" height="38" viewBox="0 0 30 38" aria-hidden="true"><path d="M3 2v34" stroke="#FFFFFF" stroke-width="3"/><path d="M4 3h20l-5 6 5 6H4z" fill="#FF6B5E" stroke="#0E1418" stroke-width="1"/></svg>';
   return d;
 }

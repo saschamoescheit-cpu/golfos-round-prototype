@@ -1,3 +1,4 @@
+import { tr } from './i18n';
 // Backup of everything the app keeps on the device (rounds, hole set-ups, course corrections, settings).
 // iPhone: Safari and the home-screen app have separate storage – a backup moves the data between them.
 
@@ -22,7 +23,7 @@ export function createBackup(): Backup {
 
 /** Restores a backup. Rounds are merged by id (rounds on this device win); everything else is taken from the backup if missing here. */
 export function restoreBackup(b: Backup): { rounds: number } {
-  if (b?.app !== 'golfos-rounds' || typeof b.data !== 'object') throw new Error('This is not a GolfOS backup file.');
+  if (b?.app !== 'golfos-rounds' || typeof b.data !== 'object') throw new Error(tr('This is not a GolfOS backup file.', 'Das ist keine GolfOS-Sicherung.'));
   let added = 0;
   for (const [key, value] of Object.entries(b.data)) {
     if (key === 'golfos.rounds.v1') {
@@ -46,7 +47,7 @@ export async function shareBackup(): Promise<void> {
   const file = new File([JSON.stringify(b)], name, { type: 'application/json' });
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
   if (nav.canShare?.({ files: [file] })) {
-    await nav.share({ files: [file], title: 'GolfOS backup' });
+    await nav.share({ files: [file], title: tr('GolfOS backup', 'GolfOS-Sicherung') });
     return;
   }
   const url = URL.createObjectURL(file);

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { GROUPS, SG_CATEGORIES, SG_LABELS, groupSg, type SgValues } from '../lib/sg';
+import { dec, tr } from '../lib/i18n';
 
 // Strokes gained per category, compared with a target group (tour pro, scratch, handicap classes).
 // Used after a round (scorecard) and across rounds (stats).
 
-const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
+const fmt = (v: number) => dec(`${v > 0 ? '+' : ''}${v.toFixed(1)}`);
 
 export function SgCard(props: { values: SgValues; holes: number; defaultGroup: string; title: string }) {
   const [group, setGroup] = useState(props.defaultGroup);
@@ -15,9 +16,12 @@ export function SgCard(props: { values: SgValues; holes: number; defaultGroup: s
     <section className="card stats-card">
       <h2>{props.title}</h2>
       <p className="muted small" style={{ margin: 0 }}>
-        Strokes gained per 18 holes against the tour average ({props.holes} holes with all shots). Compare with:
+        {tr(
+          `Strokes gained per 18 holes against the tour average (${props.holes} holes with all shots). Compare with:`,
+          `Strokes Gained je 18 Löcher gegen den Tour-Durchschnitt (${props.holes} Löcher mit allen Schlägen). Vergleichen mit:`,
+        )}
       </p>
-      <div className="chip-row" role="group" aria-label="Compare with">
+      <div className="chip-row" role="group" aria-label={tr('Compare with', 'Vergleichen mit')}>
         {GROUPS.map((x) => (
           <button key={x.id} type="button" aria-pressed={group === x.id} onClick={() => setGroup(x.id)}>
             {x.label}
@@ -25,19 +29,19 @@ export function SgCard(props: { values: SgValues; holes: number; defaultGroup: s
         ))}
       </div>
       <p style={{ margin: 0 }}>
-        {group === 'tour' ? 'Against a tour pro you ' : `Against ${label} players you `}
+        {group === 'tour' ? tr('Against a tour pro you ', 'Gegen einen Tour-Profi ') : tr(`Against ${label} players you `, `Gegen Spieler mit ${label} `)}
         <strong className={diff >= 0 ? 'good-text' : 'bad-text'}>
-          {diff >= 0 ? 'gain' : 'lose'} {Math.abs(diff).toFixed(1)}
+          {diff >= 0 ? tr('gain', 'gewinnst du') : tr('lose', 'verlierst du')} {dec(Math.abs(diff).toFixed(1))}
         </strong>{' '}
-        strokes per round.
+        {tr('strokes per round.', 'Schläge pro Runde.')}
       </p>
       <table className="mini-table sg-table">
         <thead>
           <tr>
             <th />
-            <th>You</th>
+            <th>{tr('You', 'Du')}</th>
             <th>{label}</th>
-            <th>Difference</th>
+            <th>{tr('Difference', 'Differenz')}</th>
           </tr>
         </thead>
         <tbody>
@@ -57,7 +61,7 @@ export function SgCard(props: { values: SgValues; holes: number; defaultGroup: s
             );
           })}
           <tr className="sum">
-            <td>Total</td>
+            <td>{tr('Total', 'Gesamt')}</td>
             <td>{fmt(props.values.total)}</td>
             <td className="muted">{fmt(g.total)}</td>
             <td>

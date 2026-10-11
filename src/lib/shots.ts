@@ -1,21 +1,25 @@
 import type { Club, DetailEntry, FairwayResult, HoleEntry, Lie, LngLat, Ring, ShotKind } from '../types';
 export type { Club, DetailEntry, Lie, Shot, ShotKind } from '../types';
 import { distanceM, distToLine, pointInRing, type HoleMapData } from './geo';
+import { tr } from './i18n';
 
 // Detailed tracking (feature 003): shot by shot with club and lie. The quick values of the hole
 // (strokes, fairway, penalties, greenside bunker, up & down) are derived from the shots, so scorecard
 // and statistics work the same for both tracking modes.
 
 export const LIES: { value: Lie; label: string }[] = [
-  { value: 'tee', label: 'Tee' },
+  { value: 'tee', label: tr('Tee', 'Abschlag') },
   { value: 'fairway', label: 'Fairway' },
   { value: 'rough', label: 'Rough' },
   { value: 'bunker', label: 'Bunker' },
-  { value: 'recovery', label: 'Trees' },
+  { value: 'recovery', label: tr('Trees', 'Bäume') },
 ];
 
+/** Lie in the player's language. */
+export const lieName = (l: Lie): string => LIES.find((x) => x.value === l)?.label ?? l;
+
 export const KINDS: { value: ShotKind; label: string }[] = [
-  { value: 'full', label: 'Full' },
+  { value: 'full', label: tr('Full', 'Voll') },
   { value: 'punch', label: 'Punch' },
   { value: 'pitch', label: 'Pitch' },
   { value: 'chip', label: 'Chip' },

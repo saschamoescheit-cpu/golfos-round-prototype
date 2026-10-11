@@ -1,6 +1,7 @@
 import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, pointAt, pointInRing, lineLength, type HoleMapData } from './geo';
 import { missCost } from './missmap';
+import { hazardWord, sideWord, tr } from './i18n';
 
 // Hole plan for the AI caddie (feature 009): instead of a map full of dots, one sentence per shot –
 // where a miss is cheap and what to avoid. Built from the course map (green, bunkers, water) and the
@@ -51,10 +52,16 @@ export function approachPlan(data: HoleMapData, from: LngLat, pin: LngLat): Appr
   const avoid = sides.filter((s) => s.worst >= Math.max(0.5, best.worst + 0.2)).sort((a, b) => b.worst - a.worst);
   const text =
     avoid.length === 0
-      ? `Misses around the green cost about the same – aim for the middle.`
-      : `Best miss: ${best.side}. Avoid ${avoid.map((a) => `${a.side} (${a.why})`).join(', ')}.`;
+      ? tr('Misses around the green cost about the same – aim for the middle.', 'Fehlschläge ums Grün kosten etwa gleich viel – spiel auf die Mitte.')
+      : tr('Best miss', 'Bester Fehlschlag') +
+        `: ${sideWord(best.side)}. ` +
+        tr('Avoid', 'Vermeide') +
+        ` ${avoid.map((a) => `${sideWord(a.side)} (${hazardWord(a.why)})`).join(', ')}.`;
   return { best: best.side, avoid: avoid.map((a) => ({ side: a.side, why: a.why })), text };
 }
+
+/** The tee plan when both sides of the landing zone are fine. */
+export const openText = (): string => tr('Landing zone is open on both sides.', 'Die Landezone ist auf beiden Seiten offen.');
 
 /** Tee shot on a par 4/5: which side of the landing zone is safer (landing at the driver carry). */
 export function teePlan(data: HoleMapData, driverCarry: number): string {
@@ -69,8 +76,13 @@ export function teePlan(data: HoleMapData, driverCarry: number): string {
   };
   const left = side(270);
   const right = side(90);
-  if (Math.abs(left.cost - right.cost) < 0.2) return left.cost >= 0.5 ? `Tight landing zone (${left.why} both sides) – club down for the fairway.` : 'Landing zone is open on both sides.';
-  return left.cost < right.cost ? `Favour the left side – right: ${right.why}.` : `Favour the right side – left: ${left.why}.`;
+  if (Math.abs(left.cost - right.cost) < 0.2)
+    return left.cost >= 0.5
+      ? tr(`Tight landing zone (${left.why} both sides) – club down for the fairway.`, `Enge Landezone (${hazardWord(left.why)} auf beiden Seiten) – einen Schläger kürzer fürs Fairway.`)
+      : openText();
+  return left.cost < right.cost
+    ? tr(`Favour the left side – right: ${right.why}.`, `Spiel eher links – rechts: ${hazardWord(right.why)}.`)
+    : tr(`Favour the right side – left: ${left.why}.`, `Spiel eher rechts – links: ${hazardWord(left.why)}.`);
 }
 
 /** Width of the mapped fairway across the hole at `along` metres from the tee (null when no fairway there). */

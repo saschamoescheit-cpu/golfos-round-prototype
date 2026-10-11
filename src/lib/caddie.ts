@@ -1,4 +1,5 @@
 import type { Club } from '../types';
+import { sideWord, tr } from './i18n';
 
 // AI caddie (feature 008): how long a shot plays under today's conditions and which club fits.
 // "Plays like" = distance + wind + temperature + height difference. All factors are rules of thumb from
@@ -94,16 +95,22 @@ const CLUB_NAMES: Record<Club, string> = {
   Dr: 'Driver', '3W': '3-wood', '5W': '5-wood', Hy: 'Hybrid', '4i': '4-iron', '5i': '5-iron', '6i': '6-iron', '7i': '7-iron',
   '8i': '8-iron', '9i': '9-iron', PW: 'Pitching wedge', GW: 'Gap wedge', SW: 'Sand wedge', LW: 'Lob wedge',
 };
-export const clubName = (c: Club) => CLUB_NAMES[c];
+const CLUB_NAMES_DE: Record<Club, string> = {
+  Dr: 'Driver', '3W': 'Holz 3', '5W': 'Holz 5', Hy: 'Hybrid', '4i': 'Eisen 4', '5i': 'Eisen 5', '6i': 'Eisen 6', '7i': 'Eisen 7',
+  '8i': 'Eisen 8', '9i': 'Eisen 9', PW: 'Pitching Wedge', GW: 'Gap Wedge', SW: 'Sand Wedge', LW: 'Lob Wedge',
+};
+export const clubName = (c: Club) => tr(CLUB_NAMES[c], CLUB_NAMES_DE[c]);
 
 /** One line per factor for the caddie card, e.g. "Into the wind 25 km/h (gusts): +20 m". */
 export function explain(p: PlaysLike, c: Conditions | null): string[] {
   const out: string[] = [];
   const m = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v))} m`;
-  if (c && Math.abs(p.wind) >= 1) out.push(`${p.headKmh >= 0 ? 'Into the wind' : 'Downwind'} ${Math.abs(p.headKmh)} km/h${c.gustKmh > c.windKmh + 5 ? ' (gusty)' : ''}: ${m(p.wind)}`);
+  if (c && Math.abs(p.wind) >= 1)
+    out.push(`${p.headKmh >= 0 ? tr('Into the wind', 'Gegenwind') : tr('Downwind', 'Rückenwind')} ${Math.abs(p.headKmh)} km/h${c.gustKmh > c.windKmh + 5 ? tr(' (gusty)', ' (böig)') : ''}: ${m(p.wind)}`);
   if (c && Math.abs(p.temp) >= 1) out.push(`${Math.round(c.tempC)} °C: ${m(p.temp)}`);
-  if (Math.abs(p.height) >= 1) out.push(`${p.height > 0 ? 'Uphill' : 'Downhill'} ${Math.abs(Math.round(p.height))} m: ${m(p.height)}`);
-  if (Math.abs(p.aimM) >= 2) out.push(`Crosswind ${Math.abs(p.crossKmh)} km/h from the ${p.crossKmh > 0 ? 'right' : 'left'}`);
+  if (Math.abs(p.height) >= 1) out.push(`${p.height > 0 ? tr('Uphill', 'Bergauf') : tr('Downhill', 'Bergab')} ${Math.abs(Math.round(p.height))} m: ${m(p.height)}`);
+  if (Math.abs(p.aimM) >= 2)
+    out.push(tr(`Crosswind ${Math.abs(p.crossKmh)} km/h from the ${p.crossKmh > 0 ? 'right' : 'left'}`, `Seitenwind ${Math.abs(p.crossKmh)} km/h von ${p.crossKmh > 0 ? 'rechts' : 'links'}`));
   return out;
 }
 
@@ -114,57 +121,65 @@ export function explain(p: PlaysLike, c: Conditions | null): string[] {
 export function aimAdvice(windAimM: number, biasM: number | null, club: Club, slopeAimM = 0): string | null {
   const total = Math.round(windAimM - (biasM ?? 0) + slopeAimM);
   const parts: string[] = [];
-  if (Math.abs(windAimM) >= 2) parts.push('wind');
-  if (Math.abs(slopeAimM) >= 2) parts.push('slope');
-  if (biasM != null && Math.abs(biasM) >= 3) parts.push(`your ${clubName(club)} goes ${Math.abs(biasM)} m ${biasM > 0 ? 'right' : 'left'} on average`);
+  if (Math.abs(windAimM) >= 2) parts.push(tr('wind', 'Wind'));
+  if (Math.abs(slopeAimM) >= 2) parts.push(tr('slope', 'Hang'));
+  if (biasM != null && Math.abs(biasM) >= 3)
+    parts.push(tr(`your ${clubName(club)} goes ${Math.abs(biasM)} m ${biasM > 0 ? 'right' : 'left'} on average`, `dein ${clubName(club)} geht im Schnitt ${Math.abs(biasM)} m ${biasM > 0 ? 'rechts' : 'links'}`));
   if (Math.abs(total) < 2 || !parts.length) return null;
   const side = total > 0 ? 'right' : 'left';
   // More than 15 m on a fairway: a caddie would name the edge, not a number.
-  if (Math.abs(total) > 15 && Math.abs(slopeAimM) >= 2) return `Aim at the ${side} edge of the fairway (${parts.join(' + ')})`;
-  return `Aim ${Math.min(20, Math.abs(total))} m ${side} (${parts.join(' + ')})`;
+  if (Math.abs(total) > 15 && Math.abs(slopeAimM) >= 2)
+    return tr(`Aim at the ${side} edge of the fairway (${parts.join(' + ')})`, `Ziele auf den ${side === 'right' ? 'rechten' : 'linken'} Fairwayrand (${parts.join(' + ')})`);
+  return tr(`Aim ${Math.min(20, Math.abs(total))} m ${side} (${parts.join(' + ')})`, `Ziele ${Math.min(20, Math.abs(total))} m ${sideWord(side)} (${parts.join(' + ')})`);
 }
 
 /** Green slope for the player: strength and how the putt behaves, seen from where he stands. */
 export function readGreen(slope: { pct: number; downDeg: number }, puttBearing: number): { level: string; text: string } {
   const level = slope.pct < 1 ? 'flat' : slope.pct < 2 ? 'gentle' : slope.pct < 3.5 ? 'moderate' : 'strong';
-  if (level === 'flat') return { level, text: 'Green is almost flat' };
+  if (level === 'flat') return { level, text: tr('Green is almost flat', 'Grün ist fast flach') };
   // Angle between the putt and the fall line: 0 = falls away (downhill putt), 180 = towards the player (uphill).
   const rel = (((slope.downDeg - puttBearing) % 360) + 360) % 360;
-  const along = rel < 45 || rel > 315 ? 'downhill putt' : rel > 135 && rel < 225 ? 'uphill putt' : null;
-  const side = rel >= 45 && rel <= 135 ? 'breaks right' : rel >= 225 && rel <= 315 ? 'breaks left' : null;
-  return { level, text: [along, side].filter(Boolean).join(', ') || 'slope across' };
+  const along = rel < 45 || rel > 315 ? tr('downhill putt', 'Putt bergab') : rel > 135 && rel < 225 ? tr('uphill putt', 'Putt bergauf') : null;
+  const side = rel >= 45 && rel <= 135 ? tr('breaks right', 'bricht nach rechts') : rel >= 225 && rel <= 315 ? tr('breaks left', 'bricht nach links') : null;
+  return { level, text: [along, side].filter(Boolean).join(', ') || tr('slope across', 'Hang quer') };
+}
+
+/** Green slope strength for display: "moderate" / "mittlere" (before "slope" / "Neigung"); short form for the map arrow. */
+export function levelName(level: string, short = false): string {
+  const de: Record<string, string> = short ? { gentle: 'leicht', moderate: 'mittel', strong: 'stark' } : { gentle: 'leichte', moderate: 'mittlere', strong: 'starke' };
+  return tr(level, de[level] ?? level);
 }
 
 // ---- Lie of the ball (feature 019) – rules of thumb, to be confirmed by Chris ----
 export type LieKind = 'normal' | 'lightRough' | 'heavyRough' | 'fairwayBunker' | 'uphill' | 'downhill' | 'above' | 'below';
 export const LIE_OPTIONS: { value: LieKind; label: string }[] = [
   { value: 'normal', label: 'Normal' },
-  { value: 'lightRough', label: 'Light rough' },
-  { value: 'heavyRough', label: 'Deep rough' },
-  { value: 'fairwayBunker', label: 'Fairway bunker' },
-  { value: 'uphill', label: 'Uphill' },
-  { value: 'downhill', label: 'Downhill' },
-  { value: 'above', label: 'Ball above feet' },
-  { value: 'below', label: 'Ball below feet' },
+  { value: 'lightRough', label: tr('Light rough', 'Leichtes Rough') },
+  { value: 'heavyRough', label: tr('Deep rough', 'Tiefes Rough') },
+  { value: 'fairwayBunker', label: tr('Fairway bunker', 'Fairwaybunker') },
+  { value: 'uphill', label: tr('Uphill', 'Bergauf') },
+  { value: 'downhill', label: tr('Downhill', 'Bergab') },
+  { value: 'above', label: tr('Ball above feet', 'Ball über den Füßen') },
+  { value: 'below', label: tr('Ball below feet', 'Ball unter den Füßen') },
 ];
 
 /** How the lie changes the shot: plays-like factor, aim (m, + right, right-handed player), longest club, tip. */
 export function lieEffect(lie: LieKind): { factor: number; aimM: number; maxClub: Club | null; text: string } | null {
   switch (lie) {
     case 'lightRough':
-      return { factor: 0.95, aimM: 0, maxClub: null, text: 'Light rough: the ball can jump ("flyer") and fly further – land it short of the target' };
+      return { factor: 0.95, aimM: 0, maxClub: null, text: tr('Light rough: the ball can jump ("flyer") and fly further – land it short of the target', 'Leichtes Rough: der Ball kann springen („Flyer“) und weiter fliegen – lande ihn vor dem Ziel') };
     case 'heavyRough':
-      return { factor: 1.15, aimM: 0, maxClub: '7i', text: 'Deep rough: 7-iron at most, take loft' };
+      return { factor: 1.15, aimM: 0, maxClub: '7i', text: tr('Deep rough: 7-iron at most, take loft', 'Tiefes Rough: höchstens Eisen 7, nimm Loft') };
     case 'fairwayBunker':
-      return { factor: 1.05, aimM: 0, maxClub: '5i', text: 'Fairway bunker: one club more, ball first – enough loft for the lip' };
+      return { factor: 1.05, aimM: 0, maxClub: '5i', text: tr('Fairway bunker: one club more, ball first – enough loft for the lip', 'Fairwaybunker: ein Schläger mehr, Ball zuerst treffen – genug Loft für die Kante') };
     case 'uphill':
-      return { factor: 1.06, aimM: 3, maxClub: null, text: 'Uphill lie: one club more, the ball goes higher and left – aim a little right' };
+      return { factor: 1.06, aimM: 3, maxClub: null, text: tr('Uphill lie: one club more, the ball goes higher and left – aim a little right', 'Hanglage bergauf: ein Schläger mehr, der Ball steigt höher und geht nach links – ziele etwas rechts') };
     case 'downhill':
-      return { factor: 0.95, aimM: -3, maxClub: null, text: 'Downhill lie: one club less, the ball flies lower and right – aim a little left' };
+      return { factor: 0.95, aimM: -3, maxClub: null, text: tr('Downhill lie: one club less, the ball flies lower and right – aim a little left', 'Hanglage bergab: ein Schläger weniger, der Ball fliegt flacher und nach rechts – ziele etwas links') };
     case 'above':
-      return { factor: 1, aimM: 4, maxClub: null, text: 'Ball above your feet: it curves left – aim right, grip down' };
+      return { factor: 1, aimM: 4, maxClub: null, text: tr('Ball above your feet: it curves left – aim right, grip down', 'Ball über den Füßen: er dreht nach links – ziele rechts, greif kürzer') };
     case 'below':
-      return { factor: 1, aimM: -4, maxClub: null, text: 'Ball below your feet: it curves right – aim left, flex the knees' };
+      return { factor: 1, aimM: -4, maxClub: null, text: tr('Ball below your feet: it curves right – aim left, flex the knees', 'Ball unter den Füßen: er dreht nach rechts – ziele links, geh tiefer in die Knie') };
     default:
       return null;
   }
@@ -181,8 +196,12 @@ export function adviseClubMax(target: number, bag: CarryBag, teeShot: boolean, m
 /** One line about the score on this hole: strokes received on the tee, pick up when no point is left. */
 export function scoreStrategy(o: { par: number; received: number; shotsSoFar: number | null }): string | null {
   const net2 = o.par + o.received; // gross score that still gives 2 Stableford points
-  if (o.shotsSoFar != null && o.shotsSoFar >= net2 + 1) return 'No Stableford point left on this hole – pick up and keep the pace';
+  if (o.shotsSoFar != null && o.shotsSoFar >= net2 + 1) return tr('No Stableford point left on this hole – pick up and keep the pace', 'Kein Stableford-Punkt mehr möglich – heb auf und halte das Tempo');
   if (o.shotsSoFar !== 0) return null; // the stroke reminder belongs on the tee
-  if (o.received >= 1) return `You get ${o.received} stroke${o.received > 1 ? 's' : ''} here – a ${net2} still scores 2 points, no need to force it`;
+  if (o.received >= 1)
+    return tr(
+      `You get ${o.received} stroke${o.received > 1 ? 's' : ''} here – a ${net2} still scores 2 points, no need to force it`,
+      `Du bekommst hier ${o.received} ${o.received > 1 ? 'Schläge' : 'Schlag'} – eine ${net2} bringt noch 2 Punkte, kein Risiko nötig`,
+    );
   return null;
 }

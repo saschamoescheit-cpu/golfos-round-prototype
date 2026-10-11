@@ -1,6 +1,7 @@
 import type { Club, Round } from '../types';
 import { greenInRegulation, grossForHole, handicapStrokes, stablefordPoints } from './scoring';
 import { BAG, firstPuttM, shotLengths } from './shots';
+import { tr } from './i18n';
 
 // Analysis across rounds (feature 005): the player's ("me") key figures, tendencies, club distances
 // and the focus areas compared with the next better handicap band – the input for training plans (GOL-27).
@@ -225,12 +226,16 @@ export function playerBag(rounds: Round[], minShots = 3): { club: Club; m: numbe
 
 /** Typical values per handicap band (approximate amateur averages – to be confirmed by Chris). */
 export const BANDS: { label: string; maxHcp: number; fir: number; gir: number; putts: number; scrambling: number; threePutts: number; penalties: number }[] = [
-  { label: 'hcp 0–5', maxHcp: 5, fir: 55, gir: 50, putts: 30.5, scrambling: 45, threePutts: 5, penalties: 0.5 },
-  { label: 'hcp 6–12', maxHcp: 12, fir: 48, gir: 35, putts: 32, scrambling: 30, threePutts: 9, penalties: 1 },
-  { label: 'hcp 13–20', maxHcp: 20, fir: 42, gir: 22, putts: 33.5, scrambling: 20, threePutts: 13, penalties: 1.8 },
-  { label: 'hcp 21–28', maxHcp: 28, fir: 36, gir: 12, putts: 35, scrambling: 12, threePutts: 17, penalties: 2.8 },
-  { label: 'hcp 29+', maxHcp: 99, fir: 30, gir: 6, putts: 36.5, scrambling: 7, threePutts: 22, penalties: 4 },
+  { label: tr('hcp 0–5', 'Hcp 0–5'), maxHcp: 5, fir: 55, gir: 50, putts: 30.5, scrambling: 45, threePutts: 5, penalties: 0.5 },
+  { label: tr('hcp 6–12', 'Hcp 6–12'), maxHcp: 12, fir: 48, gir: 35, putts: 32, scrambling: 30, threePutts: 9, penalties: 1 },
+  { label: tr('hcp 13–20', 'Hcp 13–20'), maxHcp: 20, fir: 42, gir: 22, putts: 33.5, scrambling: 20, threePutts: 13, penalties: 1.8 },
+  { label: tr('hcp 21–28', 'Hcp 21–28'), maxHcp: 28, fir: 36, gir: 12, putts: 35, scrambling: 12, threePutts: 17, penalties: 2.8 },
+  { label: tr('hcp 29+', 'Hcp 29+'), maxHcp: 99, fir: 30, gir: 6, putts: 36.5, scrambling: 7, threePutts: 22, penalties: 4 },
 ];
+
+/** Focus area in the player's language. */
+export const areaName = (a: Focus['area']): string =>
+  tr(a, ({ Driving: 'Abschlag', Approach: 'Annäherung', 'Short game': 'Kurzes Spiel', Putting: 'Putten', 'Course management': 'Platzstrategie' } as Record<string, string>)[a]);
 
 export interface Focus {
   area: 'Driving' | 'Approach' | 'Short game' | 'Putting' | 'Course management';
@@ -258,12 +263,12 @@ export function focusAreas(a: Analysis): { band: string; target: string; focus: 
     if (v == null) return;
     if (v > goal[key]) list.push({ area, metric, yours: `${v}${unit}`, target: `${goal[key]}${unit}`, gap: (v - goal[key]) / step(key) });
   };
-  higherBetter('Driving', 'Fairways hit', pct(a.fairways), 'fir');
-  higherBetter('Approach', 'Greens in regulation', pct(a.gir), 'gir');
-  higherBetter('Short game', 'Scrambling (par after missing the green)', pct(a.scrambling), 'scrambling');
-  lowerBetter('Putting', 'Putts per round', a.puttsPer18, 'putts', '');
+  higherBetter('Driving', tr('Fairways hit', 'Fairways getroffen'), pct(a.fairways), 'fir');
+  higherBetter('Approach', tr('Greens in regulation', 'Grüns in Regulation'), pct(a.gir), 'gir');
+  higherBetter('Short game', tr('Scrambling (par after missing the green)', 'Scrambling (Par nach verfehltem Grün)'), pct(a.scrambling), 'scrambling');
+  lowerBetter('Putting', tr('Putts per round', 'Putts pro Runde'), a.puttsPer18, 'putts', '');
   lowerBetter('Putting', '3-putts', pct(a.threePutts), 'threePutts', '%');
-  lowerBetter('Course management', 'Penalty strokes per round', a.penaltiesPer18, 'penalties', '');
+  lowerBetter('Course management', tr('Penalty strokes per round', 'Strafschläge pro Runde'), a.penaltiesPer18, 'penalties', '');
   list.sort((x, y) => y.gap - x.gap);
   // One entry per area, at most three.
   const seen = new Set<string>();
@@ -276,11 +281,31 @@ export function focusAreas(a: Analysis): { band: string; target: string; focus: 
  * Placeholder drills – Chris replaces them with his own (GOL-27).
  */
 export const DRILLS: Record<Focus['area'], { title: string; minutes: number; how: string }> = {
-  Driving: { title: 'Fairway gate', minutes: 15, how: 'Pick two targets 25 m apart on the range as your fairway. 20 drivers with your full routine – count how many land in between.' },
-  Approach: { title: 'Three distances', minutes: 15, how: 'Hit 5 balls each to 100, 130 and 150 m targets. Only a ball within 10 m of the target counts.' },
-  'Short game': { title: 'Up and down', minutes: 15, how: 'Chip 10 balls from 5 different lies around the green and putt them out. Goal: 4 of 10 in two.' },
-  Putting: { title: 'Lag ladder', minutes: 15, how: 'Putt from 6, 9 and 12 m – the ball must stop within one putter length of the hole. Then 20 putts from 1 m.' },
-  'Course management': { title: 'Safe target', minutes: 10, how: 'Before each range ball name the target and the miss you accept. On the course: play the caddie’s safe style for 9 holes.' },
+  Driving: {
+    title: tr('Fairway gate', 'Fairway-Tor'),
+    minutes: 15,
+    how: tr('Pick two targets 25 m apart on the range as your fairway. 20 drivers with your full routine – count how many land in between.', 'Wähle auf der Range zwei Ziele 25 m auseinander als Fairway. 20 Drives mit voller Routine – zähle, wie viele dazwischen landen.'),
+  },
+  Approach: {
+    title: tr('Three distances', 'Drei Distanzen'),
+    minutes: 15,
+    how: tr('Hit 5 balls each to 100, 130 and 150 m targets. Only a ball within 10 m of the target counts.', 'Je 5 Bälle auf Ziele in 100, 130 und 150 m. Nur ein Ball innerhalb von 10 m ums Ziel zählt.'),
+  },
+  'Short game': {
+    title: tr('Up and down', 'Up and Down'),
+    minutes: 15,
+    how: tr('Chip 10 balls from 5 different lies around the green and putt them out. Goal: 4 of 10 in two.', 'Chippe 10 Bälle aus 5 verschiedenen Lagen ums Grün und putte sie zu Ende. Ziel: 4 von 10 mit zwei Schlägen.'),
+  },
+  Putting: {
+    title: tr('Lag ladder', 'Lag-Leiter'),
+    minutes: 15,
+    how: tr('Putt from 6, 9 and 12 m – the ball must stop within one putter length of the hole. Then 20 putts from 1 m.', 'Putte aus 6, 9 und 12 m – der Ball muss innerhalb einer Putterlänge ums Loch liegen bleiben. Danach 20 Putts aus 1 m.'),
+  },
+  'Course management': {
+    title: tr('Safe target', 'Sicheres Ziel'),
+    minutes: 10,
+    how: tr('Before each range ball name the target and the miss you accept. On the course: play the caddie’s safe style for 9 holes.', 'Benenne vor jedem Rangeball das Ziel und den Fehlschlag, den du akzeptierst. Auf dem Platz: 9 Löcher mit der sicheren Spielweise des Caddies spielen.'),
+  },
 };
 
 export function practicePlan(focus: Focus[]): { area: Focus['area']; title: string; minutes: number; how: string }[] {

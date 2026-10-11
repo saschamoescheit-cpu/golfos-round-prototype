@@ -1,4 +1,5 @@
 import type { LngLat } from '../types';
+import { tr } from './i18n';
 
 // Weather on the course (GOL-26): temperature and wind from Open-Meteo (free for non-commercial use,
 // no key; a product needs their commercial plan or another provider). Cached for 10 minutes, the last
@@ -54,9 +55,9 @@ export function windOnHole(w: Weather, holeBearingDeg: number): { headKmh: numbe
   const head = w.windKmh * Math.cos(a);
   const cross = w.windKmh * Math.sin(a);
   let label: string;
-  if (Math.round(w.windKmh) < 5) label = 'Calm';
-  else if (Math.abs(head) >= Math.abs(cross)) label = head > 0 ? 'Into the wind' : 'Downwind';
-  else label = cross > 0 ? 'Wind from the right' : 'Wind from the left';
+  if (Math.round(w.windKmh) < 5) label = tr('Calm', 'Windstill');
+  else if (Math.abs(head) >= Math.abs(cross)) label = head > 0 ? tr('Into the wind', 'Gegenwind') : tr('Downwind', 'Rückenwind');
+  else label = cross > 0 ? tr('Wind from the right', 'Wind von rechts') : tr('Wind from the left', 'Wind von links');
   return { headKmh: Math.round(head), crossKmh: Math.round(cross), label };
 }
 
@@ -111,7 +112,7 @@ export function forecastNote(f: Forecast | null, nowGustKmh: number): string | n
   const rain = f.hours.find((h) => h.rainPct >= 60);
   const wind = f.hours.find((h) => h.gustKmh >= nowGustKmh + 15 && h.gustKmh >= 30);
   const parts: string[] = [];
-  if (rain) parts.push(`rain likely from ${hh(rain.time)}`);
-  if (wind) parts.push(`gusts up to ${Math.round(wind.gustKmh)} km/h around ${hh(wind.time)}`);
-  return parts.length ? `Coming up: ${parts.join(', ')}` : null;
+  if (rain) parts.push(tr(`rain likely from ${hh(rain.time)}`, `Regen wahrscheinlich ab ${hh(rain.time)}`));
+  if (wind) parts.push(tr(`gusts up to ${Math.round(wind.gustKmh)} km/h around ${hh(wind.time)}`, `Böen bis ${Math.round(wind.gustKmh)} km/h gegen ${hh(wind.time)}`));
+  return parts.length ? `${tr('Coming up', 'Demnächst')}: ${parts.join(', ')}` : null;
 }

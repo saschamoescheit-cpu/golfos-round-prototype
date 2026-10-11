@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { shareBackup } from '../lib/backup';
+import { tr } from '../lib/i18n';
 
 /** Set before reloading so the app opens the start page instead of the round that crashed. */
 export const NO_RESUME = 'golfos.noresume';
@@ -26,12 +27,12 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
     if (!this.state.error) return this.props.children;
     return (
       <main className="screen" style={{ justifyContent: 'center', gap: 16 }}>
-        <h1 style={{ margin: 0 }}>Something went wrong</h1>
+        <h1 style={{ margin: 0 }}>{tr('Something went wrong', 'Da ist etwas schiefgelaufen')}</h1>
         <p className="muted" style={{ margin: 0 }}>
-          Your round is saved. Tap “Continue” to go on where you were.
+          {tr('Your round is saved. Tap “Continue” to go on where you were.', 'Deine Runde ist gespeichert. Tippe auf „Weiter“, um dort weiterzumachen.')}
         </p>
         <button type="button" className="btn-primary" onClick={() => location.reload()}>
-          Continue
+          {tr('Continue', 'Weiter')}
         </button>
         <button
           type="button"
@@ -45,26 +46,26 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
             location.reload();
           }}
         >
-          Go to start page
+          {tr('Go to start page', 'Zur Startseite')}
         </button>
         <button type="button" className="btn-secondary" onClick={() => shareBackup().catch(() => undefined)}>
-          Save backup
+          {tr('Save backup', 'Sichern')}
         </button>
         <button
           type="button"
           className="btn-secondary btn-danger"
           onClick={() => {
-            if (!confirm('Delete all rounds and settings on this phone? Save a backup first if you want to keep them.')) return;
+            if (!confirm(tr('Delete all rounds and settings on this phone? Save a backup first if you want to keep them.', 'Alle Runden und Einstellungen auf diesem Handy löschen? Sichere sie vorher, wenn du sie behalten willst.'))) return;
             Object.keys(localStorage)
               .filter((k) => k.startsWith('golfos.'))
               .forEach((k) => localStorage.removeItem(k));
             location.reload();
           }}
         >
-          Reset app data
+          {tr('Reset app data', 'App-Daten zurücksetzen')}
         </button>
         <p className="muted small" style={{ margin: 0, wordBreak: 'break-word' }}>
-          Error: {this.state.error.message}
+          {tr('Error', 'Fehler')}: {this.state.error.message}
         </p>
       </main>
     );

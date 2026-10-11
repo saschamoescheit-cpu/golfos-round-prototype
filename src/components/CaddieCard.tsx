@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { answer, canListen, listen, RULES, speak, summary, type CaddieFacts } from '../lib/caddietalk';
 import type { HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
+import { getLang, tr } from '../lib/i18n';
 
 // The caddie on the hole map (feature 017): appears when he has something new to say, can be hidden completely.
 // Bottom row: read aloud, ask, rules, hole notes.
@@ -26,8 +27,8 @@ export function CaddieCard(props: {
       <section className="caddie-card" aria-label="AI caddie">
         <button type="button" className="head" onClick={() => setDetails(!details)} aria-expanded={details}>
           <span>
-            Caddie · {Math.round(f.distance)} {f.unit} to {f.target} → plays <strong>{Math.round(f.playsLike)} {f.unit}</strong>
-            <span className="muted small"> {details ? '▴' : '▾ why'}</span>
+            Caddie · {Math.round(f.distance)} {f.unit} {f.targetTo} → {tr('plays', 'spielt wie')} <strong>{Math.round(f.playsLike)} {f.unit}</strong>
+            <span className="muted small"> {details ? '▴' : tr('▾ why', '▾ warum')}</span>
           </span>
           <span className="club">{props.clubCode}</span>
         </button>
@@ -39,7 +40,7 @@ export function CaddieCard(props: {
         {details && props.alt && <span className="alt">{props.alt}</span>}
         {props.lie != null && (
           <label className="caddie-lie">
-            <span>Lie</span>
+            <span>{tr('Lie', 'Lage')}</span>
             <select value={props.lie} onChange={(e) => props.onLie(e.target.value as LieKind)}>
               {LIE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -50,19 +51,19 @@ export function CaddieCard(props: {
           </label>
         )}
         <div className="caddie-actions">
-          <button type="button" onClick={() => speak(summary(f))} aria-label="Read aloud">
+          <button type="button" onClick={() => speak(summary(f))} aria-label={tr('Read aloud', 'Vorlesen')}>
             🔊
           </button>
           <button type="button" onClick={() => setSheet('ask')}>
-            Ask
+            {tr('Ask', 'Fragen')}
           </button>
           <button type="button" onClick={() => setSheet('rules')}>
-            Rules
+            {tr('Rules', 'Regeln')}
           </button>
           <button type="button" onClick={() => setSheet('notes')}>
-            Hole notes
+            {tr('Hole notes', 'Lochnotizen')}
           </button>
-          <button type="button" onClick={props.onHide} aria-label="Hide caddie">
+          <button type="button" onClick={props.onHide} aria-label={tr('Hide caddie', 'Caddie ausblenden')}>
             ✕
           </button>
         </div>
@@ -90,7 +91,7 @@ function Sheet(props: { title: string; onClose: () => void; children: React.Reac
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.title}</strong>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={props.onClose}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
             ✕
           </button>
         </div>
@@ -100,7 +101,10 @@ function Sheet(props: { title: string; onClose: () => void; children: React.Reac
   );
 }
 
-const QUESTIONS = ['What club?', 'How far?', 'Where do I aim?', 'How is the wind?', 'How does the green break?'];
+const QUESTIONS = (): string[] =>
+  getLang() === 'de'
+    ? ['Welcher Schläger?', 'Wie weit?', 'Wohin ziele ich?', 'Wie ist der Wind?', 'Wie läuft das Grün?']
+    : ['What club?', 'How far?', 'Where do I aim?', 'How is the wind?', 'How does the green break?'];
 
 function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () => void }) {
   const [q, setQ] = useState<string | null>(null);
@@ -113,15 +117,15 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
     speak(reply);
   };
   return (
-    <Sheet title="Ask your caddie" onClose={props.onClose}>
+    <Sheet title={tr('Ask your caddie', 'Frag deinen Caddie')} onClose={props.onClose}>
       <div className="chip-row wrap">
-        {QUESTIONS.map((x) => (
+        {QUESTIONS().map((x) => (
           <button key={x} type="button" onClick={() => ask(x)}>
             {x}
           </button>
         ))}
         <button type="button" onClick={props.onRules}>
-          Rules help
+          {tr('Rules help', 'Regelhilfe')}
         </button>
       </div>
       {canListen() && (
@@ -134,13 +138,13 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
             const heard = await listen();
             setBusy(false);
             if (heard) ask(heard);
-            else setA('I did not catch that – tap a question instead.');
+            else setA(tr('I did not catch that – tap a question instead.', 'Das habe ich nicht verstanden – tippe stattdessen eine Frage an.'));
           }}
         >
-          {busy ? 'Listening …' : '🎤 Ask with your voice'}
+          {busy ? tr('Listening …', 'Ich höre zu …') : tr('🎤 Ask with your voice', '🎤 Per Sprache fragen')}
         </button>
       )}
-      {q && <p className="muted small" style={{ margin: 0 }}>“{q}”</p>}
+      {q && <p className="muted small" style={{ margin: 0 }}>{tr(`“${q}”`, `„${q}“`)}</p>}
       {a && <p style={{ margin: 0, fontSize: 17 }}>{a}</p>}
     </Sheet>
   );
@@ -149,7 +153,7 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
 function RulesSheet(props: { onClose: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <Sheet title="Rules help" onClose={props.onClose}>
+    <Sheet title={tr('Rules help', 'Regelhilfe')} onClose={props.onClose}>
       {RULES.map((r) => (
         <div key={r.id} className="card" style={{ background: 'var(--surface-2)' }}>
           <button type="button" className="toggle" aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)}>
@@ -167,7 +171,7 @@ function RulesSheet(props: { onClose: () => void }) {
         </div>
       ))}
       <p className="muted small" style={{ margin: 0 }}>
-        Summary of the Rules of Golf (2023). Local rules of the club come first.
+        {tr('Summary of the Rules of Golf (2023). Local rules of the club come first.', 'Kurzfassung der Golfregeln (2023). Die Platzregeln des Clubs gehen vor.')}
       </p>
     </Sheet>
   );
@@ -177,19 +181,19 @@ function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: HoleNote)
   const [n, setN] = useState<HoleNote>(props.note);
   const flip = (k: 'obLeft' | 'obRight' | 'obLong') => setN({ ...n, [k]: !n[k] });
   return (
-    <Sheet title={`Hole ${props.hole} – what the caddie should know`} onClose={props.onClose}>
+    <Sheet title={tr(`Hole ${props.hole} – what the caddie should know`, `Loch ${props.hole} – was der Caddie wissen soll`)} onClose={props.onClose}>
       <button type="button" className="toggle" aria-pressed={!!n.obLeft} onClick={() => flip('obLeft')}>
-        {n.obLeft ? '✓' : '○'} Out of bounds left
+        {n.obLeft ? '✓' : '○'} {tr('Out of bounds left', 'Aus links')}
       </button>
       <button type="button" className="toggle" aria-pressed={!!n.obRight} onClick={() => flip('obRight')}>
-        {n.obRight ? '✓' : '○'} Out of bounds right
+        {n.obRight ? '✓' : '○'} {tr('Out of bounds right', 'Aus rechts')}
       </button>
       <button type="button" className="toggle" aria-pressed={!!n.obLong} onClick={() => flip('obLong')}>
-        {n.obLong ? '✓' : '○'} Out of bounds behind the green
+        {n.obLong ? '✓' : '○'} {tr('Out of bounds behind the green', 'Aus hinter dem Grün')}
       </button>
       <div className="field">
-        <label htmlFor="hole-note">Note (shown by the caddie)</label>
-        <input id="hole-note" className="input" value={n.text ?? ''} placeholder="e.g. blind tee shot – aim at the right tree" onChange={(e) => setN({ ...n, text: e.target.value })} />
+        <label htmlFor="hole-note">{tr('Note (shown by the caddie)', 'Notiz (zeigt der Caddie)')}</label>
+        <input id="hole-note" className="input" value={n.text ?? ''} placeholder={tr('e.g. blind tee shot – aim at the right tree', 'z. B. blinder Abschlag – auf den rechten Baum zielen')} onChange={(e) => setN({ ...n, text: e.target.value })} />
       </div>
       <button
         type="button"
@@ -199,7 +203,7 @@ function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: HoleNote)
           props.onClose();
         }}
       >
-        Save for this course
+        {tr('Save for this course', 'Für diesen Platz speichern')}
       </button>
     </Sheet>
   );

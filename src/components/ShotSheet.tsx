@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Club, Lie, ShotKind } from '../types';
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
 import { Segmented } from './ui';
+import { clubCode, tr } from '../lib/i18n';
 
 // Bottom sheet for one shot of the detailed tracking: lie (suggested from the map), shot type (suggested
 // from lie and distance), club (suggested from the distance), penalty. One tap on a club saves a new
@@ -32,21 +33,21 @@ export function ShotSheet(props: {
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.title}</strong>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={props.onCancel}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onCancel}>
             ✕
           </button>
         </div>
         <div className="field">
-          <label>Lie</label>
-          <Segmented<Lie> label="Lie" value={lie} onChange={(v) => v && setLie(v)} options={LIES} />
+          <label>{tr('Lie', 'Lage')}</label>
+          <Segmented<Lie> label={tr('Lie', 'Lage')} value={lie} onChange={(v) => v && setLie(v)} options={LIES} />
         </div>
         <div className="field">
-          <label>Shot</label>
-          <Segmented<ShotKind> label="Shot type" value={shownKind} onChange={(v) => v && setKind(v)} options={KINDS} />
+          <label>{tr('Shot', 'Schlag')}</label>
+          <Segmented<ShotKind> label={tr('Shot type', 'Schlagart')} value={shownKind} onChange={(v) => v && setKind(v)} options={KINDS} />
         </div>
         <div className="field">
-          <label>Club {props.editing ? '' : '– tap to save'}</label>
-          <div className="club-grid" role="group" aria-label="Club">
+          <label>{tr('Club', 'Schläger')} {props.editing ? '' : tr('– tap to save', '– antippen zum Speichern')}</label>
+          <div className="club-grid" role="group" aria-label={tr('Club', 'Schläger')}>
             {(props.bag ?? BAG).map((b) => (
               <button
                 key={b.club}
@@ -58,28 +59,28 @@ export function ShotSheet(props: {
                   if (!props.editing) save(b.club);
                 }}
               >
-                {b.club}
+                {clubCode(b.club)}
                 <small>{b.m} m</small>
               </button>
             ))}
           </div>
         </div>
         <button type="button" className="toggle" aria-pressed={penalty} onClick={() => setPenalty(!penalty)}>
-          {penalty ? '✓' : '○'} Penalty after this shot (water, out of bounds) +1
+          {penalty ? '✓' : '○'} {tr('Penalty after this shot (water, out of bounds) +1', 'Strafschlag nach diesem Schlag (Wasser, Aus) +1')}
         </button>
         <div className="sheet-actions">
           {props.onDelete && (
             <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
-              Delete shot
+              {tr('Delete shot', 'Schlag löschen')}
             </button>
           )}
           {props.onHoledOut && (
             <button type="button" className="btn-secondary" onClick={props.onHoledOut}>
-              Holed it! (chip-in)
+              {tr('Holed it! (chip-in)', 'Eingelocht! (Chip-in)')}
             </button>
           )}
           <button type="button" className="btn-primary" onClick={() => save(club)}>
-            {props.editing ? 'Save' : club ? `Save · ${club}` : 'Save without club'}
+            {props.editing ? tr('Save', 'Speichern') : club ? `${tr('Save', 'Speichern')} · ${clubCode(club)}` : tr('Save without club', 'Ohne Schläger speichern')}
           </button>
         </div>
       </section>
@@ -101,17 +102,17 @@ export function GreenSheet(props: {
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.title}</strong>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={props.onCancel}>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onCancel}>
             ✕
           </button>
         </div>
         {props.firstPuttM != null && (
           <p className="muted" style={{ margin: 0 }}>
-            First putt from <strong style={{ color: 'var(--text)' }}>{props.fmt(props.firstPuttM)} {props.unit}</strong> (ball → flag)
+            {tr('First putt from', 'Erster Putt aus')} <strong style={{ color: 'var(--text)' }}>{props.fmt(props.firstPuttM)} {props.unit}</strong> {tr('(ball → flag)', '(Ball → Fahne)')}
           </p>
         )}
         <div className="field">
-          <label>Putts – tap to save</label>
+          <label>{tr('Putts – tap to save', 'Putts – antippen zum Speichern')}</label>
           <div className="club-grid" role="group" aria-label="Putts">
             {[1, 2, 3, 4].map((n) => (
               <button key={n} type="button" aria-pressed={props.putts === n} onClick={() => props.onSave(n)}>

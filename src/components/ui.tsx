@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { tr } from '../lib/i18n';
 
 export function Stepper(props: {
   value: number | null;
@@ -12,13 +13,13 @@ export function Stepper(props: {
   const base = value ?? placeholder ?? min;
   return (
     <div className={`stepper${compact ? ' compact' : ''}`} role="group" aria-label={label}>
-      <button type="button" aria-label={`${label} minus one`} disabled={base <= min} onClick={() => onChange(Math.max(min, base - 1))}>
+      <button type="button" aria-label={tr(`${label} minus one`, `${label} minus eins`)} disabled={base <= min} onClick={() => onChange(Math.max(min, base - 1))}>
         −
       </button>
       <span className={`value${value == null ? ' placeholder' : ''}`} aria-live="polite">
         {value ?? placeholder ?? '–'}
       </span>
-      <button type="button" aria-label={`${label} plus one`} onClick={() => onChange(base + 1)}>
+      <button type="button" aria-label={tr(`${label} plus one`, `${label} plus eins`)} onClick={() => onChange(base + 1)}>
         +
       </button>
     </div>
@@ -51,7 +52,7 @@ export function TopBar(props: { title: ReactNode; onBack?: () => void; backLabel
   return (
     <div className="topbar">
       {props.onBack && (
-        <button type="button" className="icon-btn" aria-label={props.backLabel ?? 'Back'} onClick={props.onBack}>
+        <button type="button" className="icon-btn" aria-label={props.backLabel ?? tr('Back', 'Zurück')} onClick={props.onBack}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" />
           </svg>
@@ -64,10 +65,10 @@ export function TopBar(props: { title: ReactNode; onBack?: () => void; backLabel
 }
 
 export function Attribution() {
-  return <p className="attribution">Course data © OpenStreetMap contributors (ODbL) · OpenGolfAPI</p>;
+  return <p className="attribution">{tr('Course data', 'Platzdaten')} © OpenStreetMap contributors (ODbL) · OpenGolfAPI</p>;
 }
 
 export function formatToPar(n: number): string {
-  if (n === 0) return 'E';
+  if (n === 0) return tr('E', 'Par');
   return n > 0 ? `+${n}` : String(n);
 }

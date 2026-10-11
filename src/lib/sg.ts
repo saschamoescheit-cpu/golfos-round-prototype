@@ -1,6 +1,7 @@
 import type { DetailEntry, Lie, Round } from '../types';
 import { distanceM } from './geo';
 import { firstPuttM } from './shots';
+import { tr } from './i18n';
 
 // Strokes gained (feature 007): every shot is measured against the average number of strokes a tour pro
 // needs to hole out from the same distance and lie. Gaining 0.3 means the shot was 0.3 strokes better than
@@ -39,7 +40,7 @@ export function expectedStrokes(m: number, lie: Lie | 'green'): number {
 
 export type SgCategory = 'tee' | 'approach' | 'around' | 'putting';
 export const SG_CATEGORIES: SgCategory[] = ['tee', 'approach', 'around', 'putting'];
-export const SG_LABELS: Record<SgCategory, string> = { tee: 'Off the tee', approach: 'Approach', around: 'Around the green', putting: 'Putting' };
+export const SG_LABELS: Record<SgCategory, string> = { tee: tr('Off the tee', 'Abschlag'), approach: tr('Approach', 'Annäherung'), around: tr('Around the green', 'Rund ums Grün'), putting: 'Putting' };
 const AROUND_M = 30 / YD; // within 30 yards of the hole (and not on the green)
 
 export interface ShotSg {
@@ -110,7 +111,7 @@ export function roundsSg(rounds: Round[]): SgSummary | null {
  */
 const SHARE: Record<SgCategory, number> = { tee: 0.27, approach: 0.4, around: 0.17, putting: 0.16 };
 export const GROUPS: { id: string; label: string; total: number }[] = [
-  { id: 'tour', label: 'Tour pro', total: 0 },
+  { id: 'tour', label: tr('Tour pro', 'Tour-Profi'), total: 0 },
   { id: 'scratch', label: 'Scratch', total: -4 },
   { id: 'h5', label: 'Hcp 5', total: -8 },
   { id: 'h10', label: 'Hcp 10', total: -13 },

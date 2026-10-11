@@ -372,3 +372,6 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 /* Lie of the ball in the caddie card (feature 019) */
 .caddie-lie { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-2); }
 .caddie-lie select { flex: 1; min-height: 36px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: inherit; font-size: 15px; padding: 0 10px; }
+
+/* Language switch on the start page (feature 021) */
+.lang-btn { min-width: 44px; min-height: 32px; border-radius: 16px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); letter-spacing: 0.4px; }
