@@ -15,8 +15,9 @@ import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
 import { GREEN_CHARTS } from '../data/greenCharts';
 import { approachPlan, teePlan } from '../lib/holeplan';
+import { crossSlopeAt, obAdvice, slopeAdvice } from '../lib/terrain';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, lineLength, pointAt, suggestTarget, type Unit } from '../lib/geo';
+import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, lineLength, pointAt, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
@@ -396,7 +397,13 @@ export function HoleScreen(props: {
     const teeShot = !onHole || distanceM(from, mapData.tee) < 30;
     const advice = adviseClub(pl.playsLike, carryBag, teeShot && hole.par >= 4);
     const reasons = explain(pl, conditions);
-    const aim = aimAdvice(pl.aimM, tendency.get(advice.club) ?? null, advice.club);
+    // Ground at the landing spot: fairway hanging to one side (not for shots at the green) and out of bounds.
+    const hang = target !== pin ? slopeAdvice(crossSlopeAt(geometry.fairwaySlopes?.[hole.label], alongLine(mapData.line, target))) : null;
+    const ob = obAdvice(geometry.boundary, from, target);
+    let aim = aimAdvice(pl.aimM, tendency.get(advice.club) ?? null, advice.club, hang?.aimM ?? 0);
+    // Never aim towards out of bounds that is close (≤ 25 m): stay in the middle instead.
+    const towardsOb = aim && ob && ((aim.includes(' left') && ob.left <= 25) || (aim.includes(' right') && ob.right <= 25));
+    if (towardsOb) aim = `Aim at the centre – out of bounds ${ob!.left <= 25 ? 'left' : 'right'}, accept the roll`;
     const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;
     const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
     // Hole plan in one sentence: tee shot on par 4/5 → which side; otherwise → where to miss the green.
@@ -517,7 +524,9 @@ export function HoleScreen(props: {
               </span>
               {caddieOpen && !greenFocus && (
                 <>
-                  <span className="plan">{holePlan}</span>
+                  {!(ob && holePlan.startsWith('Landing zone is open')) && <span className="plan">{holePlan}</span>}
+                  {ob && <span className="plan warn">{ob.text}</span>}
+                  {hang && <span className="plan">{hang.text}</span>}
                   {aim && <span className="plan">{aim}</span>}
                   <span className="why">
                     {clubName(advice.club)} (carry {fmt(advice.carry)} {unit}){reasons.length ? ' · ' + reasons.join(' · ') : ' · calm, flat'}

@@ -111,13 +111,17 @@ export function explain(p: PlaysLike, c: Conditions | null): string[] {
  * Where to aim: into the crosswind, and against the player's own tendency with this club
  * (`biasM` > 0 = the club goes right on average, known from ≥ 5 tracked shots).
  */
-export function aimAdvice(windAimM: number, biasM: number | null, club: Club): string | null {
-  const total = Math.round(windAimM - (biasM ?? 0));
+export function aimAdvice(windAimM: number, biasM: number | null, club: Club, slopeAimM = 0): string | null {
+  const total = Math.round(windAimM - (biasM ?? 0) + slopeAimM);
   const parts: string[] = [];
   if (Math.abs(windAimM) >= 2) parts.push('wind');
+  if (Math.abs(slopeAimM) >= 2) parts.push('slope');
   if (biasM != null && Math.abs(biasM) >= 3) parts.push(`your ${clubName(club)} goes ${Math.abs(biasM)} m ${biasM > 0 ? 'right' : 'left'} on average`);
   if (Math.abs(total) < 2 || !parts.length) return null;
-  return `Aim ${Math.abs(total)} m ${total > 0 ? 'right' : 'left'} (${parts.join(' + ')})`;
+  const side = total > 0 ? 'right' : 'left';
+  // More than 15 m on a fairway: a caddie would name the edge, not a number.
+  if (Math.abs(total) > 15 && Math.abs(slopeAimM) >= 2) return `Aim at the ${side} edge of the fairway (${parts.join(' + ')})`;
+  return `Aim ${Math.min(20, Math.abs(total))} m ${side} (${parts.join(' + ')})`;
 }
 
 /** Green slope for the player: strength and how the putt behaves, seen from where he stands. */

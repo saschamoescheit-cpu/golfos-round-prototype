@@ -333,3 +333,4 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .map-slope { display: flex; flex-direction: column; align-items: center; gap: 0; pointer-events: none; }
 .map-slope span { background: rgba(14, 20, 24, 0.85); color: #fff; border-radius: 8px; padding: 1px 6px; font: 600 11px var(--body); }
 .caddie-card .plan { color: var(--text); font-weight: 600; }
+.caddie-card .plan.warn { color: #ff9d8f; }

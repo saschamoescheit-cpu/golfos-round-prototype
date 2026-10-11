@@ -206,9 +206,15 @@ export function geometryFromOsm(osm: ReturnType<typeof parseOsmXml>): CourseGeom
     }
     const k = featureKind(w.tags);
     if (k && line.length >= 4 && w.nodes[0] === w.nodes[w.nodes.length - 1]) geo[k].push(line);
+    if (w.tags.leisure === 'golf_course' && line.length >= 4 && w.nodes[0] === w.nodes[w.nodes.length - 1]) (geo.boundary ??= []).push(line);
   }
   for (const r of osm.relations) {
     if (r.tags.type !== 'multipolygon') continue;
+    if (r.tags.leisure === 'golf_course') {
+      const outer = r.members.filter((m) => m.type === 'way' && (m.role === 'outer' || m.role === '')).map((m) => byId.get(m.ref)?.nodes ?? []);
+      for (const ring of joinRings(outer)) (geo.boundary ??= []).push(coords(ring));
+      continue;
+    }
     const k = featureKind(r.tags);
     if (!k) continue;
     const outer = r.members.filter((m) => m.type === 'way' && (m.role === 'outer' || m.role === '')).map((m) => byId.get(m.ref)?.nodes ?? []);
