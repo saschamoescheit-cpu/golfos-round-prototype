@@ -8,6 +8,8 @@ import { loadCarryBag } from '../lib/storage';
 import { getLang, setLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
 
+const INTRO_KEY = 'golfos.intro.v1';
+
 export function Home(props: {
   rounds: Round[];
   onNewRound: () => void;
@@ -23,6 +25,22 @@ export function Home(props: {
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const finished = props.rounds.filter((r) => r.finishedAt);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
+  // First start: three steps that say what the app does (closed once, then gone).
+  const [intro, setIntro] = useState(() => {
+    try {
+      return localStorage.getItem(INTRO_KEY) == null && props.rounds.length === 0;
+    } catch {
+      return false;
+    }
+  });
+  const closeIntro = () => {
+    setIntro(false);
+    try {
+      localStorage.setItem(INTRO_KEY, '1');
+    } catch {
+      // storage blocked – the intro shows again next time
+    }
+  };
 
   return (
     <main className="screen">
@@ -31,9 +49,6 @@ export function Home(props: {
           GOLF<span>OS</span>
         </div>
         <span className="spacer" />
-        <span className="muted small" title={__BUILD_TIME__}>
-          Version {new Date(__BUILD_TIME__).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-        </span>
         <button
           type="button"
           className="lang-btn"
@@ -43,6 +58,45 @@ export function Home(props: {
           {getLang() === 'de' ? 'EN' : 'DE'}
         </button>
       </div>
+
+      {intro && (
+        <section className="card intro" aria-label={tr('How GolfOS works', 'So funktioniert GolfOS')}>
+          <span className="eyebrow">{tr('How GolfOS works', 'So funktioniert GolfOS')}</span>
+          <ol>
+            <li>
+              <span>
+                <strong>{tr('Pick your course', 'Platz wählen')}</strong>
+                <span className="muted small">{tr('Nearby or by name, then your tee and playing handicap.', 'In der Nähe oder nach Namen, dann Abschlag und Spielvorgabe.')}</span>
+              </span>
+            </li>
+            <li>
+              <span>
+                <strong>{tr('Play with the hole map', 'Mit der Lochkarte spielen')}</strong>
+                <span className="muted small">
+                  {tr(
+                    'Distances to the green come from GPS. Numbers at bunkers and water: to reach / to carry it.',
+                    'Die Distanzen zum Grün kommen per GPS. Zahlen an Bunkern und Wasser: bis dorthin / drüber.',
+                  )}
+                </span>
+              </span>
+            </li>
+            <li>
+              <span>
+                <strong>{tr('Listen to your caddie', 'Auf den Caddie hören')}</strong>
+                <span className="muted small">
+                  {tr(
+                    'He names the club and where to aim (gold marker), with wind and slope. The round icons switch caddie, pin and green slope on and off.',
+                    'Er nennt Schläger und Ziel (goldene Markierung), mit Wind und Hang. Die runden Symbole schalten Caddie, Fahne und Grün-Neigung ein und aus.',
+                  )}
+                </span>
+              </span>
+            </li>
+          </ol>
+          <button type="button" className="btn-secondary" onClick={closeIntro}>
+            {tr('Got it', 'Verstanden')}
+          </button>
+        </section>
+      )}
 
       {open && (
         <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -73,9 +127,9 @@ export function Home(props: {
         </button>
       </div>
 
+      {finished.length > 0 && (
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <h2>{tr('Your rounds', 'Deine Runden')}</h2>
-        {finished.length === 0 && <p className="muted">{tr('No rounds yet. Your finished rounds will appear here.', 'Noch keine Runden. Deine beendeten Runden erscheinen hier.')}</p>}
         <ul className="list">
           {finished.map((r) => {
             const me = r.players.find((p) => p.isMe)!;
@@ -102,7 +156,9 @@ export function Home(props: {
           })}
         </ul>
       </section>
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      )}
+      {/* Backup: full block once there are rounds to keep; before that only "restore" for a new phone. */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }} hidden={finished.length === 0}>
         <h2>{tr('Backup', 'Sicherung')}</h2>
         <p className="muted small" style={{ margin: 0 }}>
           {tr(
@@ -140,9 +196,20 @@ export function Home(props: {
         />
         {backupMsg && <p className="small" style={{ margin: 0 }}>{backupMsg}</p>}
       </section>
+      {finished.length === 0 && (
+        <button type="button" className="btn-ghost" onClick={() => fileInput.current?.click()}>
+          {tr('New phone? Restore a backup', 'Neues Handy? Sicherung wiederherstellen')}
+        </button>
+      )}
+      {finished.length === 0 && backupMsg && <p className="small" style={{ margin: 0 }}>{backupMsg}</p>}
 
       <span className="spacer" />
-      <Attribution />
+      <div className="home-foot">
+        <Attribution />
+        <span className="muted small" title={__BUILD_TIME__}>
+          Version {new Date(__BUILD_TIME__).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+        </span>
+      </div>
     </main>
   );
 }

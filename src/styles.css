@@ -375,3 +375,17 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 
 /* Language switch on the start page (feature 021) */
 .lang-btn { min-width: 44px; min-height: 32px; border-radius: 16px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); letter-spacing: 0.4px; }
+
+/* Simpler hole map (feature 022): one bottom row – back, + target, score, next */
+.map-nav.with-target { grid-template-columns: 56px auto 1fr 56px; }
+.map-nav.with-target > .map-btn:not(.round) { padding: 0 14px; white-space: nowrap; }
+.map-imagery { padding: 0; width: 44px; justify-content: center; }
+
+/* First start: what the app does, in three steps */
+.intro { display: flex; flex-direction: column; gap: 12px; }
+.intro ol { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 10px; counter-reset: step; }
+.intro li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; counter-increment: step; }
+.intro li::before { content: counter(step); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 14px; background: var(--brand-soft); color: var(--brand-text); font: 700 14px var(--display); }
+.intro li strong { display: block; }
+.home-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: center; }
+[hidden] { display: none !important; }

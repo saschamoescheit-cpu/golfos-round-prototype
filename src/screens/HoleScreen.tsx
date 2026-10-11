@@ -5,7 +5,7 @@ import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix } from '../lib/track';
-import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp, saveUnit } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
 import { loadForecast, loadWeather, weatherIcon, windOnHole, type Forecast, type Weather } from '../lib/weather';
@@ -110,7 +110,7 @@ export function HoleScreen(props: {
   const [view, setView] = useState<'map' | 'score'>('map');
   const [setupOpen, setSetupOpen] = useState(false);
   const [editHole, setEditHole] = useState(false);
-  const [unit, setUnit] = useState<Unit>(loadUnit);
+  const [unit] = useState<Unit>(loadUnit);
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -415,12 +415,11 @@ export function HoleScreen(props: {
       const last = plan.targets[plan.targets.length - 1] ?? from;
       setPlan({ targets: [...plan.targets, suggestTarget(mapData.line, last)] });
     };
-    const toggleUnit = () => {
-      const u = unit === 'm' ? 'yd' : 'm';
-      setUnit(u);
-      saveUnit(u);
-    };
     const strokesShown = myEntry.pickedUp ? 'PU' : String(myEntry.strokes ?? hole.par);
+    // Targets the player has walked past or reached (e.g. the tee shot's landing zone) are hidden; they stay in the plan.
+    const passed = (t: LngLat) => onHole && !round.preview && (distanceM(t, pin) > distanceM(from, pin) - 5 || distanceM(t, from) < 30);
+    const passedTargets = plan.targets.filter(passed);
+    const shownTargets = plan.targets.filter((t) => !passed(t));
     // Automatic shot length: from the last place the player stood (or the tee) to here – no tapping needed.
     const autoLen = onHole && player && !round.preview ? autoShot(loadTrack(round.id), mapData, player.pos) : null;
     // ---------- AI caddie ----------
@@ -490,7 +489,7 @@ export function HoleScreen(props: {
           player={player?.pos ?? null}
           from={from}
           pin={pin}
-          targets={plan.targets}
+          targets={shownTargets}
           unit={unit}
           imagery={imagery}
           track={detailMode ? track : undefined}
@@ -498,9 +497,9 @@ export function HoleScreen(props: {
           aimPoint={ap && !plan.targets.some((t) => distanceM(t, ap.pos) < 15) && ap.kind !== 'approach' ? ap.pos : null}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: green_.level } : undefined}
-          onTargetsChange={(targets) => setPlan({ targets })}
+          onTargetsChange={(targets) => setPlan({ targets: [...passedTargets, ...targets] })}
           onPinChange={(p) => setPlan({ pin: p })}
-          onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((_, j) => j !== index) })}
+          onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((t) => t !== shownTargets[index]) })}
           onMapTap={tapMap}
         />
 
@@ -512,12 +511,6 @@ export function HoleScreen(props: {
             <span className="map-hole-no">{hole.label}</span>
             <span>Par {hole.par || '?'} · Hcp {hole.strokeIndex || '?'}</span>
           </div>
-          <button type="button" className="map-btn round" aria-label={tr('Set up this hole on the map again', 'Dieses Loch auf der Karte neu einrichten')} onClick={() => setSetupOpen(true)}>
-            ✎
-          </button>
-          <button type="button" className="map-btn" onClick={toggleUnit} aria-label={tr(`Unit: ${unit === 'm' ? 'metres' : 'yards'}, tap to switch`, `Einheit: ${unit === 'm' ? 'Meter' : 'Yards'}, antippen zum Wechseln`)}>
-            {unit === 'm' ? 'm' : 'yd'}
-          </button>
           <button type="button" className="map-btn round" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(commitPar(round))}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
           </button>
@@ -525,8 +518,7 @@ export function HoleScreen(props: {
 
         {imageryChoices.length > 1 && (
           <button type="button" className="map-btn map-imagery" onClick={switchImagery} aria-label={tr(`Satellite image: ${imagery.label}, tap to switch`, `Satellitenbild: ${imagery.label}, antippen zum Wechseln`)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
-            {imagery.label}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
           </button>
         )}
 
@@ -605,9 +597,7 @@ export function HoleScreen(props: {
         )}
 
         <div className="map-bottom">
-          {!greenFocus && (gpsError || (player && !onHole)) && (
-            <div className="map-hint">{round.preview ? tr('Preview · distances from the tee', 'Vorschau · Distanzen vom Abschlag') : (gpsError ?? tr('You are not on this hole – distances from the tee.', 'Du bist nicht an diesem Loch – Distanzen vom Abschlag.'))}</div>
-          )}
+          {!greenFocus && gpsError && !round.preview && <div className="map-hint">{gpsError}</div>}
           {detectedBanner}
           {offlineHint}
           <div className="map-tools">
@@ -707,7 +697,7 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
-          {detailMode ? (
+          {detailMode && (
             <div className="map-actions detail">
               <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
                 {tr('+ Target', '+ Ziel')}
@@ -730,35 +720,16 @@ export function HoleScreen(props: {
                 {detail.onGreen ? 'Putts' : tr('On green', 'Auf dem Grün')}
               </button>
             </div>
-          ) : (
-            <div className="map-actions">
-              <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
-                {plan.targets.length >= MAX_TARGETS ? tr(`${MAX_TARGETS} targets`, `${MAX_TARGETS} Ziele`) : tr(`+ Target ${plan.targets.length + 1}`, `+ Ziel ${plan.targets.length + 1}`)}
-              </button>
-              <button type="button" className="map-btn" onClick={() => setPlan({ targets: plan.targets.slice(0, -1) })} disabled={plan.targets.length === 0}>
-                {tr('− Target', '− Ziel')}
-              </button>
-              <button
-                type="button"
-                className="map-btn"
-                disabled={!player}
-                onClick={() =>
-                  setLive((l) =>
-                    l.shotStart
-                      ? { ...l, shotStart: null, lastShot: player ? distanceM(l.shotStart, player.pos) : null }
-                      : { ...l, shotStart: player!.pos, lastShot: null },
-                  )
-                }
-                aria-pressed={shotStart != null}
-              >
-                {shotStart ? tr('Done measuring', 'Messung beenden') : tr('Measure shot', 'Schlag messen')}
-              </button>
-            </div>
           )}
-          <div className="map-nav">
+          <div className={`map-nav${detailMode ? '' : ' with-target'}`}>
             <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
               ←
             </button>
+            {!detailMode && (
+              <button type="button" className="map-btn" onClick={addTarget} disabled={shownTargets.length >= MAX_TARGETS} aria-label={tr('Add a target on the map', 'Ziel auf der Karte hinzufügen')}>
+                {tr('+ Target', '+ Ziel')}
+              </button>
+            )}
             {round.preview ? (
               <span className="map-score">
                 <span className="small">{tr('Preview', 'Vorschau')}</span>
@@ -857,6 +828,11 @@ export function HoleScreen(props: {
             <span>{tr('Stroke index', 'Hcp (Lochvorgabe)')}</span>
             <Stepper compact label={tr('Stroke index', 'Hcp')} value={hole.strokeIndex || null} placeholder={9} min={1} onChange={(v) => fixHole({ strokeIndex: Math.min(18, v) })} />
           </div>
+          {mapData && (
+            <button type="button" className="btn-ghost" onClick={() => setSetupOpen(true)}>
+              {tr('Hole map wrong? Mark tee and green again', 'Lochkarte falsch? Abschlag und Grün neu markieren')}
+            </button>
+          )}
         </section>
       )}
 

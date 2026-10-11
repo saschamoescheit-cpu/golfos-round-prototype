@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Club, Round } from '../types';
 import { clubName, DEFAULT_CARRY, type CarryBag } from '../lib/caddie';
 import { trackedCarry } from '../lib/stats';
-import { loadCaddieSettings, loadCarryBag, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
+import { loadCaddieSettings, loadCarryBag, loadUnit, saveCaddieSettings, saveCarryBag, saveUnit, type CaddieSettings } from '../lib/storage';
 import { Segmented, TopBar } from '../components/ui';
 import { clubCode, tr } from '../lib/i18n';
 
@@ -15,6 +15,7 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
     return Object.fromEntries(DEFAULT_CARRY.map((d) => [d.club, String(saved ? (saved.find((s) => s.club === d.club)?.carry ?? '') : d.carry)]));
   });
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
+  const [unit, setUnit] = useState(loadUnit);
   const [note, setNote] = useState<string | null>(loadCarryBag() ? null : tr('Start values for a mid-handicap player – enter your own carry distances.', 'Startwerte für ein mittleres Handicap – trag deine eigenen Carry-Weiten ein.'));
 
   const set = (patch: Partial<CaddieSettings>) => {
@@ -53,6 +54,23 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
   return (
     <main className="screen">
       <TopBar title={tr('My bag & caddie', 'Mein Bag & Caddie')} onBack={props.onBack} />
+
+      <section className="card stats-card">
+        <h2>{tr('Distances in', 'Distanzen in')}</h2>
+        <Segmented<'m' | 'yd'>
+          label={tr('Unit', 'Einheit')}
+          value={unit}
+          onChange={(v) => {
+            if (!v) return;
+            setUnit(v);
+            saveUnit(v);
+          }}
+          options={[
+            { value: 'm', label: tr('Metres', 'Meter') },
+            { value: 'yd', label: 'Yards' },
+          ]}
+        />
+      </section>
 
       <section className="card stats-card">
         <h2>{tr('AI caddie', 'KI-Caddie')}</h2>
