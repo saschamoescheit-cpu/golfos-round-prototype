@@ -134,3 +134,14 @@ describe('Son Muntaner geometry (OpenStreetMap snapshot)', () => {
     });
   });
 });
+
+describe('Son Gual geometry (OpenStreetMap snapshot, hole 5 corrected)', () => {
+  const geo = SEED_GEOMETRY['osm:way/60140256'];
+  it('has all 18 holes with a line and a green', () => {
+    for (let n = 1; n <= 18; n++) {
+      const d = holeMapData(geo, 'Main', n);
+      expect(d, `hole ${n}`).not.toBeNull();
+      expect(d!.green, `green ${n}`).not.toBeNull();
+    }
+  });
+});
