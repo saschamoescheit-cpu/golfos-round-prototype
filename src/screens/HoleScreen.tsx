@@ -15,7 +15,7 @@ import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
 import { approachPlan, teePlan } from '../lib/holeplan';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, suggestTarget, type Unit } from '../lib/geo';
+import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, lineLength, pointAt, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
@@ -193,6 +193,8 @@ export function HoleScreen(props: {
   const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope, []);
   const missMapOn = useMemo(() => loadCaddieSettings().missMap, []);
   const [showMiss, setShowMiss] = useState(missMapOn);
+  // Green slope: automatic near the green, or shown any time with the "Green" button.
+  const [showGreen, setShowGreen] = useState(false);
   const carryBag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
@@ -336,7 +338,11 @@ export function HoleScreen(props: {
   }
 
   if (view === 'map' && mapData) {
-    const plan = plans[i] ?? { targets: [], pin: null };
+    // Par 4/5: target 1 is there from the start – at the driver carry along the hole (at least 80 m short of
+    // the green). The player can drag it or remove it (✕); his own plan is kept once he changed it.
+    const driver = carryBag.find((b) => b.club === 'Dr')?.carry ?? 200;
+    const autoAt = Math.min(driver, lineLength(mapData.line) - 80);
+    const plan = plans[i] ?? { targets: hole.par >= 4 && autoAt >= 100 ? [pointAt(mapData.line, autoAt)] : [], pin: null };
     const pin = plan.pin ?? mapData.greenCenter;
     const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
     const from = onHole ? player!.pos : mapData.tee;
@@ -376,8 +382,8 @@ export function HoleScreen(props: {
       saveUnit(u);
     };
     const strokesShown = myEntry.pickedUp ? 'PU' : String(myEntry.strokes ?? hole.par);
-    // Caddie: from the player (or tee) to the first planned target, else to the pin.
-    const target = plan.targets[0] ?? pin;
+    // Caddie: from the player (or tee) to the first planned target still ahead of him, else to the pin.
+    const target = plan.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15) ?? pin;
     const fromH = heightAt(from);
     const greenH = heightAt(mapData.greenCenter);
     const targetH = target === pin ? greenH : null;
@@ -390,12 +396,12 @@ export function HoleScreen(props: {
     const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;
     const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
     // Hole plan in one sentence: tee shot on par 4/5 → which side; otherwise → where to miss the green.
-    const driver = carryBag.find((b) => b.club === 'Dr')?.carry ?? 200;
-    const holePlan = teeShot && hole.par >= 4 && !plan.targets.length ? teePlan(mapData, driver) || approachPlan(mapData, from, pin).text : approachPlan(mapData, from, pin).text;
+    const holePlan = teeShot && hole.par >= 4 ? teePlan(mapData, driver) || approachPlan(mapData, from, pin).text : approachPlan(mapData, from, pin).text;
     // Green slope when the player is on or next to the green (or planning from the sofa).
     const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
-    const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || round.preview === true;
-    const green_ = slope && nearGreen ? readGreen(slope, bearingDeg(from, pin)) : null;
+    const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || (round.preview === true && hole.par === 3);
+    const greenVisible = nearGreen || showGreen;
+    const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
 
     return (
       <main className="map-screen">
@@ -476,6 +482,11 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
+          {slope && !nearGreen && (
+            <button type="button" className="map-btn map-miss" aria-pressed={showGreen} onClick={() => setShowGreen(!showGreen)}>
+              ⛳ {showGreen ? 'Hide green slope' : 'Green slope'}
+            </button>
+          )}
           {missMapOn && (
             <button type="button" className="map-btn map-miss" aria-pressed={showMiss} onClick={() => setShowMiss(!showMiss)}>
               ◎ {showMiss ? 'Hide' : 'Where not to miss'}
@@ -575,7 +586,7 @@ export function HoleScreen(props: {
                 }
                 aria-pressed={shotStart != null}
               >
-                {shotStart ? 'End shot' : 'Mark ball'}
+                {shotStart ? 'Done measuring' : 'Measure shot'}
               </button>
             </div>
           )}
