@@ -23,7 +23,9 @@ export function Home(props: {
           GOLF<span>OS</span>
         </div>
         <span className="spacer" />
-        <span className="muted small">Rounds · v0.1</span>
+        <span className="muted small" title={__BUILD_TIME__}>
+          Version {new Date(__BUILD_TIME__).toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+        </span>
       </div>
 
       {open && (
