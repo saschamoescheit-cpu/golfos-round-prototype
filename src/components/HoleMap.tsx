@@ -274,7 +274,7 @@ function syncGreenChart(m: maplibregl.Map, chart: HoleMapProps['greenChart']): v
     return;
   }
   m.addSource('green-chart', { type: 'image', url, coordinates: chart.corners });
-  m.addLayer({ id: 'green-chart', type: 'raster', source: 'green-chart', paint: { 'raster-opacity': 0.95, 'raster-fade-duration': 0 } }, 'hole');
+  m.addLayer({ id: 'green-chart', type: 'raster', source: 'green-chart', paint: { 'raster-opacity': 0.95, 'raster-fade-duration': 0 } }, m.getLayer('hole') ? 'hole' : undefined);
 }
 
 function missData(p: HoleMapProps): GeoJSON.FeatureCollection {
