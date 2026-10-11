@@ -120,3 +120,17 @@ describe('Son Vida geometry (course guide 2026 + PNOA)', () => {
     });
   });
 });
+
+describe('Son Muntaner geometry (OpenStreetMap snapshot)', () => {
+  const geo = SEED_GEOMETRY['osm:way/51852280'];
+  // Official lengths from the white tees (scorecard 2026); OSM lines run back tee → pin.
+  const white = [372, 487, 350, 407, 196, 416, 141, 502, 388, 382, 205, 359, 130, 315, 524, 442, 328, 361];
+  it('all 18 holes have a line, a green outline and about the official length', () => {
+    white.forEach((len, k) => {
+      const d = holeMapData(geo, 'Main', k + 1);
+      expect(d, `hole ${k + 1}`).not.toBeNull();
+      expect(d!.green, `green ${k + 1}`).not.toBeNull();
+      expect(Math.abs(lineLength(d!.line) - len), `length ${k + 1}`).toBeLessThan(len * 0.1);
+    });
+  });
+});

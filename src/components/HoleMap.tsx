@@ -52,6 +52,7 @@ export function HoleMap(props: HoleMapProps) {
       m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.6 } });
       m.addLayer({ id: 'plan', type: 'line', source: 'plan', paint: { 'line-color': '#FFFFFF', 'line-width': 2.5 } });
       ready.current = true;
+      m.on('moveend', () => render()); // labels are spaced out for the current view
       collapseAttribution(m);
       fit(m, latest.current.data);
       render();
@@ -145,13 +146,19 @@ export function HoleMap(props: HoleMapProps) {
       ...p.data.bunkers.map((ring) => ({ ring, kind: 'bunker' as const })),
       ...p.data.water.map((ring) => ({ ring, kind: 'water' as const })),
     ];
-    for (const h of hazards) {
-      const c = centroid(h.ring);
-      if (!isAhead(p.from, p.pin, c)) continue;
-      const { to, carry } = hazardToCarry(p.from, h.ring);
-      if (to < 5 || to > 330) continue;
-      const text = `${formatDistance(to, p.unit)} / ${formatDistance(carry, p.unit)}`;
-      mk.labels.push(new maplibregl.Marker({ element: labelEl(text, `map-label hazard ${h.kind}`) }).setLngLat(c).addTo(m));
+    // Nearest hazards first; a label that would cover another one on screen is left out.
+    const placed = [p.pin, ...p.targets].map((x) => m.project(x));
+    const candidates = hazards
+      .map((h) => ({ ...h, c: centroid(h.ring), ...hazardToCarry(p.from, h.ring) }))
+      .filter((h) => isAhead(p.from, p.pin, h.c) && h.to >= 5 && h.to <= 330)
+      .sort((a, b) => a.to - b.to);
+    for (const h of candidates) {
+      const at = m.project(h.c);
+      if (placed.some((q) => Math.abs(q.x - at.x) < 70 && Math.abs(q.y - at.y) < 26)) continue;
+      placed.push(at);
+      // Water along the hole (carry far beyond the near edge): only the distance to it.
+      const text = h.carry - h.to > 120 ? `${formatDistance(h.to, p.unit)} ›` : `${formatDistance(h.to, p.unit)} / ${formatDistance(h.carry, p.unit)}`;
+      mk.labels.push(new maplibregl.Marker({ element: labelEl(text, `map-label hazard ${h.kind}`) }).setLngLat(h.c).addTo(m));
     }
   }
 
