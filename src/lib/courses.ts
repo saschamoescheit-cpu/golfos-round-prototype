@@ -10,6 +10,7 @@ import { SEED_COURSES } from '../data/seedCourses';
 //  - OpenGolfAPI: US courses (par per hole, no stroke index).
 
 const PHOTON = 'https://photon.komoot.io/api/';
+const PHOTON_REVERSE = 'https://photon.komoot.io/reverse';
 const OSM_API = 'https://api.openstreetmap.org/api/0.6/map';
 const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
@@ -38,8 +39,8 @@ interface PhotonFeature {
   };
 }
 
-async function photon(params: Record<string, string>): Promise<CourseSummary[]> {
-  const url = `${PHOTON}?${new URLSearchParams({ ...params, osm_tag: 'leisure:golf_course', limit: '20' })}`;
+async function photon(params: Record<string, string>, endpoint = PHOTON): Promise<CourseSummary[]> {
+  const url = `${endpoint}?${new URLSearchParams({ ...params, osm_tag: 'leisure:golf_course', limit: '20' })}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`Photon ${res.status}`);
   const json = (await res.json()) as { features: PhotonFeature[] };
@@ -64,7 +65,17 @@ async function photon(params: Record<string, string>): Promise<CourseSummary[]> 
 }
 
 export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Promise<CourseSummary[]> {
-  const list = await photon({ q: 'golf', lat: String(lat), lon: String(lon), location_bias_scale: '0.1' });
+  // Reverse search by type finds courses without "golf" in the name (e.g. "Maioris"); the text search is the fallback.
+  const near = { lat: String(lat), lon: String(lon) };
+  const [byType, byName] = await Promise.allSettled([
+    photon({ ...near, radius: String(radiusKm) }, PHOTON_REVERSE),
+    photon({ q: 'golf', ...near, location_bias_scale: '0.1' }),
+  ]);
+  if (byType.status === 'rejected' && byName.status === 'rejected') throw byName.reason;
+  const seen = new Set<string>();
+  const list = [...(byType.status === 'fulfilled' ? byType.value : []), ...(byName.status === 'fulfilled' ? byName.value : [])].filter((c) =>
+    seen.has(c.id) ? false : (seen.add(c.id), true),
+  );
   return list
     .map((c) => ({ ...c, distanceKm: distanceKm(lat, lon, c.lat, c.lon) }))
     .filter((c) => c.distanceKm <= radiusKm)
