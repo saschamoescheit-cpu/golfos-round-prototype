@@ -13,6 +13,7 @@ import maioris from './courses/maioris.json';
 import pula from './courses/pula.json';
 import puntiro from './courses/puntiro.json';
 import sonantem from './courses/sonantem.json';
+import sonantemeast from './courses/sonantemeast.json';
 
 export const SEED_GEOMETRY: Record<string, CourseGeometry> = {
   'osm:relation/1326323': hetzenhof as unknown as CourseGeometry,
@@ -28,4 +29,5 @@ export const SEED_GEOMETRY: Record<string, CourseGeometry> = {
   'osm:way/108783334': puntiro as unknown as CourseGeometry,
   'osm:way/28625559': sonantem as unknown as CourseGeometry,
   'osm:relation/3977168': sonantem as unknown as CourseGeometry,
+  'sonantem:east': sonantemeast as unknown as CourseGeometry,
 };

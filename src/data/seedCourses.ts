@@ -1,6 +1,6 @@
 // Snapshot of OpenStreetMap hole data for the test course (© OpenStreetMap contributors, ODbL),
 // taken 2026-10-10 via Overpass. Bundled so the course works even when the OSM servers are busy.
-export const SEED_COURSES: Record<string, { name: string; lat: number; lon: number; holeTags: Record<string, string>[] }> = {
+export const SEED_COURSES: Record<string, { name: string; lat: number; lon: number; holeTags: Record<string, string>[]; shownWith?: string[] }> = {
   'osm:relation/1326323': {
     name: 'Golfclub Hetzenhof',
     lat: 48.7802,
@@ -354,6 +354,35 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
       {"handicap": "3", "par": "5", "ref": "16"},
       {"handicap": "15", "par": "3", "ref": "17"},
       {"handicap": "1", "par": "4", "ref": "18"},
+    ],
+  },
+  'sonantem:east': {
+    name: 'Golf de Son Antem East',
+    lat: 39.4700,
+    lon: 2.8300,
+    // East course: OSM maps both Son Antem courses as one area with 36 unnumbered hole lines – the 18 East lines were
+    // numbered by fitting the official East course map (October 2023) onto the OSM greens; par, Hcp and tees from the
+    // official scorecard. Offered wherever the course list shows Son Antem.
+    shownWith: ["osm:way/28625559", "osm:relation/3977168"],
+    holeTags: [
+      {"handicap": "9", "par": "5", "ref": "1"},
+      {"handicap": "17", "par": "3", "ref": "2"},
+      {"handicap": "7", "par": "4", "ref": "3"},
+      {"handicap": "5", "par": "4", "ref": "4"},
+      {"handicap": "15", "par": "3", "ref": "5"},
+      {"handicap": "13", "par": "4", "ref": "6"},
+      {"handicap": "1", "par": "5", "ref": "7"},
+      {"handicap": "3", "par": "4", "ref": "8"},
+      {"handicap": "11", "par": "4", "ref": "9"},
+      {"handicap": "14", "par": "5", "ref": "10"},
+      {"handicap": "6", "par": "4", "ref": "11"},
+      {"handicap": "12", "par": "4", "ref": "12"},
+      {"handicap": "16", "par": "3", "ref": "13"},
+      {"handicap": "10", "par": "4", "ref": "14"},
+      {"handicap": "8", "par": "4", "ref": "15"},
+      {"handicap": "18", "par": "3", "ref": "16"},
+      {"handicap": "4", "par": "4", "ref": "17"},
+      {"handicap": "2", "par": "5", "ref": "18"},
     ],
   },
 };

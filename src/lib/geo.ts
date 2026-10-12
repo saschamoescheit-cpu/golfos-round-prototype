@@ -44,6 +44,24 @@ export function pointInRing(p: LngLat, ring: Ring): boolean {
   return inside;
 }
 
+/**
+ * Course areas mapped twice in OSM (Son Antem: one area for both courses plus a multipolygon for parts of it):
+ * a ring that lies (almost) entirely inside another one is no real boundary – its edges would cut through the
+ * course as false out of bounds. Such rings are dropped.
+ */
+export function dropNestedRings(rings: Ring[]): Ring[] {
+  return rings.filter((r, i) => {
+    const pts = r.slice(0, -1);
+    return !rings.some((o, j) => j !== i && o.length > 3 && pts.filter((p) => pointInRing(p, o)).length >= 0.9 * pts.length && ringAreaAbs(o) > ringAreaAbs(r));
+  });
+}
+
+function ringAreaAbs(r: Ring): number {
+  let a = 0;
+  for (let k = 0; k < r.length - 1; k++) a += r[k][0] * r[k + 1][1] - r[k + 1][0] * r[k][1];
+  return Math.abs(a / 2);
+}
+
 /** Distance from point p to segment ab, in metres. */
 function distToSegment(p: LngLat, a: LngLat, b: LngLat): number {
   const proj = projector(p);

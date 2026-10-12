@@ -1,5 +1,6 @@
 import type { Course, CourseGeometry, CourseHole, CourseSummary, LngLat } from '../types';
 import { parseHoleRef, parseStrokeIndex } from './loops';
+import { dropNestedRings } from './geo';
 import { loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
 import { SEED_COURSES } from '../data/seedCourses';
 
@@ -66,10 +67,15 @@ async function photon(params: Record<string, string>, endpoint = PHOTON): Promis
 
 /**
  * Bundled courses show their own name ("Golf de Son Antem West"); a course mapped twice in OSM (an area and a
- * relation with the same name) appears once.
+ * relation with the same name) appears once. A bundled course that OSM does not have on its own (Son Antem East
+ * inside the one Son Antem area) is added wherever its sibling shows.
  */
 function tidy(list: CourseSummary[]): CourseSummary[] {
   const kept: CourseSummary[] = [];
+  for (const [id, seed] of Object.entries(SEED_COURSES)) {
+    const sibling = seed.shownWith && list.find((x) => seed.shownWith!.includes(x.id));
+    if (sibling && !list.some((x) => x.id === id)) list = [...list, { ...sibling, id, name: seed.name, lat: seed.lat, lon: seed.lon }];
+  }
   // bundled courses first, so they win over the plain database entries
   const ordered = list.map((x) => (SEED_COURSES[x.id] ? { ...x, name: SEED_COURSES[x.id].name } : x)).sort((x, y) => Number(!SEED_COURSES[x.id]) - Number(!SEED_COURSES[y.id]));
   for (const c of ordered) {
@@ -246,6 +252,7 @@ export function geometryFromOsm(osm: ReturnType<typeof parseOsmXml>): CourseGeom
     const outer = r.members.filter((m) => m.type === 'way' && (m.role === 'outer' || m.role === '')).map((m) => byId.get(m.ref)?.nodes ?? []);
     for (const ring of joinRings(outer)) geo[k].push(coords(ring));
   }
+  if (geo.boundary) geo.boundary = dropNestedRings(geo.boundary);
   return geo;
 }
 

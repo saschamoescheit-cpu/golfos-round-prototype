@@ -29,7 +29,7 @@ describe('trend', () => {
     const pts = roundPoints([a, b]);
     expect(pts.map((p) => p.toPar18)).toEqual([0, 18]);
     expect(pts[0].putts18).toBe(36);
-    expect(pts[1].differential).toBe(Math.round((113 / 136) * (69 + 18 - 72.2) * 10) / 10);
+    expect(pts[1].differential).toBe(Math.round((113 / 134) * (69 + 18 - 71.8) * 10) / 10);
   });
 });
 

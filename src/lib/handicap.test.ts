@@ -19,11 +19,11 @@ describe('played handicap (WHS score differential)', () => {
     expect(scoreDifferential(90, { cr: 72.2, slope: 136 })).toBe(14.8);
     expect(scoreDifferential(70, { cr: 72.2, slope: 136 })).toBe(-1.8);
   });
-  it('uses the bundled rating of the tee: 18 × 5 on Son Antem West yellow = 14.8', () => {
+  it('uses the bundled rating of the tee: 18 × 5 on Son Antem West yellow (71.8 / 134) = 15.3', () => {
     const p = playedHandicap(round(Array(18).fill(5)))!;
     expect(p.adjustedGross).toBe(90);
-    expect(p.rating).toEqual({ cr: 72.2, slope: 136 });
-    expect(p.differential).toBe(14.8);
+    expect(p.rating).toEqual({ cr: 71.8, slope: 134 });
+    expect(p.differential).toBe(15.3);
   });
   it('caps every hole at net double bogey: 10 on stroke index 1 counts 7, 9 on stroke index 18 counts 6', () => {
     const s = Array(18).fill(5);
@@ -32,7 +32,7 @@ describe('played handicap (WHS score differential)', () => {
     expect(playedHandicap(round(s))!.adjustedGross).toBe(16 * 5 + 7 + 6);
   });
   it('a rating the player entered wins over the bundled one', () => {
-    expect(playedHandicap(round(Array(18).fill(5), { rating: { cr: 71.8, slope: 134 } }))!.differential).toBe(15.3); // 113 / 134 × 18.2
+    expect(playedHandicap(round(Array(18).fill(5), { rating: { cr: 72.2, slope: 136 } }))!.differential).toBe(14.8); // 113 / 136 × 17.8
   });
   it('none for 9 holes, a missing score or a course without rating', () => {
     expect(playedHandicap(round(Array(9).fill(5), { holes: holes18.slice(0, 9) }))).toBeNull();

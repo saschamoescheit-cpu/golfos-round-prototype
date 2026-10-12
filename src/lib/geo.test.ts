@@ -182,3 +182,14 @@ describe('island greens (025)', () => {
     expect(pointInRing(at(100, 30), cut)).toBe(false); // outside the pond
   });
 });
+
+describe('course boundary', () => {
+  it('drops a course area mapped a second time inside the big one (Son Antem), keeps separate areas', async () => {
+    const { dropNestedRings } = await import('./geo');
+    const sq = (x: number, y: number, s: number): [number, number][] => [[x, y], [x + s, y], [x + s, y + s], [x, y + s], [x, y]];
+    const big = sq(0, 0, 10);
+    const inner = sq(2, 2, 3);
+    const apart = sq(20, 0, 5);
+    expect(dropNestedRings([big, inner, apart])).toEqual([big, apart]);
+  });
+});
