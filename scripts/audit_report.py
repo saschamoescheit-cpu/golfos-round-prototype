@@ -329,8 +329,8 @@ figure {{ margin: 0; }}
 <div class="wrap">
 <header>
 <h1>Caddie-Prüfbericht</h1>
-<p class="lede">Der KI-Caddie hat jedes Loch der fünf Testplätze von mehreren Stellen und bei fünf Wetterlagen gespielt. Ein Prüfprogramm hat jede Empfehlung gegen die Platzkarte gehalten. Was falsch war, ist in der App behoben; was ein Golfprofi entscheiden sollte, steht unten für Chris.</p>
-<ul class="facts"><li><b>{len(data)}</b> Löcher</li><li><b>{n_cases}</b> Situationen</li><li><b>{n_err}</b> Fehler</li><li><b>{n_warn}</b> Warnungen</li><li><b>{n_info}</b> Hinweise</li><li>Stand 11.10.2026</li></ul>
+<p class="lede">Der KI-Caddie hat jedes Loch der {len(courses)} Testplätze von mehreren Stellen und bei fünf Wetterlagen gespielt. Ein Prüfprogramm hat jede Empfehlung gegen die Platzkarte gehalten. Was falsch war, ist in der App behoben; was ein Golfprofi entscheiden sollte, steht unten für Chris.</p>
+<ul class="facts"><li><b>{len(data)}</b> Löcher</li><li><b>{n_cases}</b> Situationen</li><li><b>{n_err}</b> Fehler</li><li><b>{n_warn}</b> Warnungen</li><li><b>{n_info}</b> Hinweise</li><li>Stand 12.10.2026</li></ul>
 </header>
 
 <div class="two">
@@ -346,6 +346,7 @@ figure {{ margin: 0; }}
 <li>Wetter: windstill bei 20 °C sowie 20 km/h (Böen 30) von vorn, von hinten, von links und von rechts bei 15 °C.</li>
 <li>Stellen: Abschlag (gelb), bei Par 4/5 die Landezone des Drives und je 25 m links und rechts davon, bei Par 5 zusätzlich der dritte Schlag; bei Par 3 ein Ball 30 m vor dem Grün.</li>
 <li>Fahne in Grünmitte. Lochnotizen wie in der App (Hetzenhof 1A: Aus links und rechts).</li>
+<li>Seit 12.10.: elf Plätze (sechs neue auf Mallorca), Inselgrüns, echte Abschlagflächen für längere Abschläge, Ausweg um Bäume mit Abstand zum Aus.</li>
 </ul>
 </section>
 </div>
