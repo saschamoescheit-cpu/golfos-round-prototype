@@ -524,7 +524,8 @@ export function HoleScreen(props: {
     if (caddieSettings.voice && caddieShown && spokenSig.current !== caddieSig && !round.preview) {
       spokenSig.current = caddieSig;
       const said = summary(cad!.facts);
-      setTimeout(() => speak(said), 300);
+      // read the setting again: the player may have muted the caddie in the meantime
+      setTimeout(() => loadCaddieSettings().voice && speak(said), 300);
     }
 
     return (

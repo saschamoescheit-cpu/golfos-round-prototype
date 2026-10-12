@@ -2,7 +2,7 @@ import { Component, useMemo, type ReactNode } from 'react';
 import type { Round } from '../types';
 import { roundSummary } from '../lib/summary';
 import { SG_LABELS } from '../lib/sg';
-import { speak } from '../lib/caddietalk';
+import { toggleSpeak } from '../lib/caddietalk';
 import { tr } from '../lib/i18n';
 
 // Feature 014: the round summary on the scorecard of a finished round – what happened, why, and the practice plan.
@@ -19,12 +19,12 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
   const s = useMemo(() => roundSummary(props.round, props.history), [props.round, props.history]);
   if (!s) return null;
   const minutes = s.plan.reduce((t, d) => t + d.minutes, 0);
-  const read = () => speak([s.headline, ...s.lines.map((l) => l.text), s.nextRound ?? ''].join(' '));
+  const read = () => toggleSpeak([s.headline, ...s.lines.map((l) => l.text), s.nextRound ?? ''].join(' '));
   return (
     <section className="card stats-card round-summary">
       <div className="row">
         <h2>{tr('Your round summary', 'Dein Rundenfazit')}</h2>
-        <button type="button" className="icon-btn" aria-label={tr('Read aloud', 'Vorlesen')} onClick={read}>
+        <button type="button" className="icon-btn" aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')} onClick={read}>
           🔊
         </button>
       </div>
