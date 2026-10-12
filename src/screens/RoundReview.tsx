@@ -118,6 +118,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         <div className="review-map">
           <HoleMap
             holeKey={`review-${k}`}
+            plain
             padding={{ top: 24, bottom: 24, left: 24, right: 24 }}
             data={data}
             player={null}

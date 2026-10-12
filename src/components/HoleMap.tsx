@@ -31,6 +31,8 @@ export interface HoleMapProps {
   greenSlope?: { pos: LngLat; downDeg: number; label: string };
   /** Putt read on the green: the ball, the rolling line and the point to aim at next to the hole. */
   putt?: { ball: LngLat; line: LngLat[]; aim: LngLat | null } | null;
+  /** Round check: only the shots – no plan line, no distance or hazard labels that would cover the shot labels. */
+  plain?: boolean;
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
   padding?: { top: number; bottom: number; left: number; right: number };
   onTargetsChange: (t: LngLat[]) => void;
@@ -232,6 +234,7 @@ export function HoleMap(props: HoleMapProps) {
     // crosshair with the carry to it (from the player or the previous target) and the rest to the pin.
     mk.labels.forEach((l) => l.remove());
     mk.labels = [];
+    if (p.plain) return;
     if (p.putt) {
       // putt read on screen: no player → pin label over the putt line
     } else if (p.targets.length === 0) {
@@ -334,7 +337,7 @@ function puttLine(p: HoleMapProps): GeoJSON.FeatureCollection {
 
 function planLine(p: HoleMapProps): GeoJSON.FeatureCollection {
   // On the green with a putt read the putt line replaces the plan line.
-  if (p.putt) return { type: 'FeatureCollection', features: [] };
+  if (p.putt || p.plain) return { type: 'FeatureCollection', features: [] };
   // With a caddie aim point (and no own target before it) the line runs player → aim point → pin.
   const pts = p.aimPoint && p.targets.length === 0 ? [p.from, p.aimPoint, p.pin] : [p.from, ...p.targets, p.pin];
   return {
