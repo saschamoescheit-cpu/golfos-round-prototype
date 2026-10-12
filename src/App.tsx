@@ -89,7 +89,8 @@ export function App() {
               persist(round);
               setScreen({ name: 'review', round });
             }}
-            onDone={() => setScreen({ name: 'scorecard', round: screen.round })}
+            // the latest round, also when it was saved in the same click
+            onDone={() => setScreen((s) => (s.name === 'review' ? { name: 'scorecard', round: s.round } : s))}
           />
         </Suspense>
       );

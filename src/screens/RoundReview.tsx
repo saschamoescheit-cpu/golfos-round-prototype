@@ -77,9 +77,31 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     );
   };
 
+  // Holes other than this one that still have shots marked for checking.
+  const openHoles = entries.flatMap((x, i) => (i !== k && x.detail?.shots.some((s) => s.review) ? [i] : []));
+  const last = k === round.holes.length - 1;
+  const goTo = (i: number) => {
+    setK(i);
+    setEdit(null);
+    window.scrollTo(0, 0); // the map is at the top
+  };
   const confirmHole = () => {
     if (d) saveDetail(k, { ...d, shots: d.shots.map((s) => ({ ...s, review: false })) });
-    if (k < round.holes.length - 1) setK(k + 1);
+    setNotice(null);
+    if (!last) return goTo(k + 1);
+    // Last hole: on to the first hole still to check, otherwise the check is done.
+    if (openHoles.length) {
+      const n = openHoles.reduce((c, i) => c + entries[i].detail!.shots.filter((s) => s.review).length, 0);
+      const labels = openHoles.map((i) => round.holes[i].label).join(', ');
+      setNotice(
+        tr(
+          `${n} ${n === 1 ? 'shot' : 'shots'} still to check (hole ${labels}) – here is the first one.`,
+          `Noch ${n} ${n === 1 ? 'Schlag' : 'Schläge'} zu prüfen (Loch ${labels}) – hier ist der erste.`,
+        ),
+      );
+      return goTo(openHoles[0]);
+    }
+    props.onDone();
   };
 
   const editing: Shot | null = d && edit != null ? d.shots[edit] : null;
@@ -100,7 +122,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       {notice && <div className="notice">{notice}</div>}
 
       <div className="review-nav">
-        <button type="button" className="icon-btn" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={k === 0} onClick={() => setK(k - 1)}>
+        <button type="button" className="icon-btn" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={k === 0} onClick={() => goTo(k - 1)}>
           ←
         </button>
         <div style={{ textAlign: 'center' }}>
@@ -109,7 +131,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             Par {hole.par} · {e.strokes ?? '–'} {tr('strokes', 'Schläge')}{e.putts != null ? ` · ${e.putts} Putt${e.putts === 1 ? '' : 's'}` : ''}
           </div>
         </div>
-        <button type="button" className="icon-btn" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={k === round.holes.length - 1} onClick={() => setK(k + 1)}>
+        <button type="button" className="icon-btn" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={last} onClick={() => goTo(k + 1)}>
           →
         </button>
       </div>
@@ -215,7 +237,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
 
       <span className="spacer" />
       <button type="button" className="btn-primary" onClick={confirmHole}>
-        {k < round.holes.length - 1 ? tr(`Confirm hole ${hole.label} →`, `Loch ${hole.label} bestätigen →`) : tr('Confirm last hole', 'Letztes Loch bestätigen')}
+        {!last
+          ? tr(`Confirm hole ${hole.label} →`, `Loch ${hole.label} bestätigen →`)
+          : openHoles.length
+            ? tr(`Confirm hole ${hole.label} → still to check`, `Loch ${hole.label} bestätigen → noch offene prüfen`)
+            : tr('Confirm round ✓', 'Runde bestätigen ✓')}
       </button>
 
       {editing && d && (
