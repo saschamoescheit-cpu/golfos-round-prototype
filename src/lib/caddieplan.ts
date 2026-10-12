@@ -1,4 +1,5 @@
 import type { Club, LngLat, Ring } from '../types';
+import type { GreenGrid } from './greenread';
 import { alongLine, bearingDeg, distanceM, distToLine, formatDistance, type HoleMapData, type Unit } from './geo';
 import { adviseClubMax, aimAdvice, clubName, explain, lieEffect, playsLike, scoreStrategy, type CarryBag, type ClubAdvice, type Conditions, type LieKind, type PlaysLike } from './caddie';
 import { aimPoint, type AimPoint, type PlayStyle } from './aimpoint';
@@ -17,6 +18,7 @@ export type Tone = 'warn' | 'plan' | 'mental' | 'muted';
 export interface CaddieLine {
   text: string;
   tone?: Tone;
+  lead?: boolean; // the line the folded caddie card shows (after a warning)
 }
 
 export interface CaddieInput {
@@ -47,6 +49,8 @@ export interface CaddieInput {
   wind?: { gustKmh: number; label: string; windKmh: number } | null;
   greenText?: string | null;
   leave?: string | null; // where the approach should finish on the green (green heights), e.g. "below the hole"
+  playing?: number | null; // playing handicap – spread for the pin strategy
+  grid?: GreenGrid | null; // heights of this green
 }
 
 type TargetKey = 'pin' | 't1' | 'gold';
@@ -80,7 +84,7 @@ export function teeAimFor(o: Pick<CaddieInput, 'data' | 'par' | 'pin' | 'bag' | 
 export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const { data, from, pin, note, unit } = o;
   const fmt = (m: number) => formatDistance(m, unit);
-  const ap = aimPoint({ data, from, pin, par: o.par, teeShot: o.teeShot, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, note, style: o.style, favourite: o.favourite });
+  const ap = aimPoint({ data, from, pin, par: o.par, teeShot: o.teeShot, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, note, style: o.style, favourite: o.favourite, playing: o.playing, grid: o.grid });
   // Own planned target still ahead (dragged or added by the player) wins over the caddie's point.
   const ownTarget = o.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15 && !(o.teeAim && distanceM(t, o.teeAim.pos) < 3)) ?? null;
   const target = ownTarget ?? ap.pos;
@@ -134,7 +138,9 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   if (note.text) lines.push({ text: note.text, tone: 'warn' });
   // The instruction first, the reasons (plan, hanging fairway) after it.
   if (aim) lines.push({ text: aim, tone: 'plan' });
-  if (o.leave && ap.kind === 'approach' && !ownTarget) lines.push({ text: o.leave, tone: 'plan' });
+  // Pin strategy first; the "best leave" only when the plan is the flag itself (else the two would argue).
+  if (ap.strategy?.text && ap.kind === 'approach' && !ownTarget) lines.push({ text: ap.strategy.text, tone: 'plan', lead: ap.strategy.kind !== 'pin' });
+  if (o.leave && ap.kind === 'approach' && !ownTarget && (!ap.strategy || ap.strategy.kind === 'pin')) lines.push({ text: o.leave, tone: 'plan' });
   // "Lay up to the gold marker" says the same as the aim line – only in the spoken summary.
   const layupLine = ap.kind === 'layup' && !ownTarget && aim != null;
   if (holePlan && !layupLine && !(warning && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan' });

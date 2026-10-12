@@ -10,7 +10,7 @@ import { getLang, tr } from '../lib/i18n';
 
 export function CaddieCard(props: {
   facts: CaddieFacts;
-  lines: { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted' }[];
+  lines: { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted'; lead?: boolean }[];
   alt: string | null;
   onHide: () => void;
   note: HoleNote;
@@ -78,10 +78,10 @@ export function CaddieCard(props: {
   );
 }
 
-type Line = { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted' };
+type Line = { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted'; lead?: boolean };
 /** Folded card: the one line that matters – a warning first, else the plan. */
 function one(lines: Line[]): Line[] {
-  const l = lines.find((x) => x.tone === 'warn') ?? lines.find((x) => x.tone === 'plan') ?? lines[0];
+  const l = lines.find((x) => x.tone === 'warn') ?? lines.find((x) => x.lead) ?? lines.find((x) => x.tone === 'plan') ?? lines[0];
   return l ? [l] : [];
 }
 

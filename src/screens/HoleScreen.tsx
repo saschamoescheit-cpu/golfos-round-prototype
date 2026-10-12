@@ -507,6 +507,8 @@ export function HoleScreen(props: {
           forecast,
           wind: weather ? { gustKmh: weather.gustKmh, windKmh: weather.windKmh, label: windOnHole(weather, bearingDeg(from, pin)).label } : null,
           leave: greenCache.current.leave,
+          playing: me.playingHandicap,
+          grid,
           greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })
       : null;
@@ -541,7 +543,7 @@ export function HoleScreen(props: {
           imagery={imagery}
           track={detailMode ? track : undefined}
           missMap={miss}
-          aimPoint={ap && !plan.targets.some((t) => distanceM(t, ap.pos) < 15) && ap.kind !== 'approach' ? ap.pos : null}
+          aimPoint={ap && !plan.targets.some((t) => distanceM(t, ap.pos) < 15) && (ap.kind !== 'approach' || (ap.strategy != null && ap.strategy.kind !== 'pin')) ? ap.pos : null}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}

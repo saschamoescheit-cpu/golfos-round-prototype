@@ -1,4 +1,6 @@
 import type { Club, LngLat, Ring } from '../types';
+import { pinStrategy, type PinPlan } from './pinstrategy';
+import type { GreenGrid } from './greenread';
 import { alongLine, bearingDeg, distanceM, distToLine, lineLength, pointAt, pointInRing, type HoleMapData } from './geo';
 import { adviseClub, playsLike, type CarryBag, type Conditions, type PlaysLike } from './caddie';
 import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, type Samples } from './terrain';
@@ -24,6 +26,7 @@ export interface AimPoint {
   side: number; // metres moved sideways (+ right) for wind/tendency/slope
   reasons: string[]; // why the point is where it is, short
   note: string | null; // trees, out of bounds …
+  strategy?: PinPlan | null; // approaches: flag, middle of the green or short of the flag (feature 015)
 }
 
 export function move(p: LngLat, bearing: number, m: number): LngLat {
@@ -63,6 +66,8 @@ export interface AimInput {
   note?: HoleNote;
   style?: PlayStyle;
   favourite?: number; // favourite approach distance in metres
+  playing?: number | null; // playing handicap – the player's spread for the pin strategy
+  grid?: GreenGrid | null; // heights of this green – uphill or downhill putts
 }
 
 export function aimPoint(input: AimInput): AimPoint {
@@ -91,10 +96,14 @@ export function aimPoint(input: AimInput): AimPoint {
 
   let base: LngLat;
   let kind: AimKind;
+  let strategy: PinPlan | null = null;
   if (toPin.playsLike <= longest + reachMargin && !driverOk) {
     base = pin;
     kind = 'approach';
-    if (style === 'safe' && o.data.green && distanceM(pin, o.data.greenCenter) > 6) {
+    // Flag, middle of the green or short of the flag: what costs the fewest strokes with this player's spread.
+    strategy = pinStrategy({ from, pin, data, distM: toPin.playsLike, playing: o.playing ?? null, style, grid: o.grid ?? null });
+    if (strategy) base = strategy.aim;
+    else if (style === 'safe' && o.data.green && distanceM(pin, o.data.greenCenter) > 6) {
       base = o.data.greenCenter; // safe: middle of the green, not the flag
       reasons.push(tr('middle of the green', 'Grünmitte'));
     }
@@ -192,7 +201,7 @@ export function aimPoint(input: AimInput): AimPoint {
   const sideText = (k: 'left' | 'right', known: boolean | undefined, m: number | undefined) => (known || m == null || !isFinite(m) ? sideWord(k) : `${Math.round(m)} m ${sideWord(k)}`);
   const obSides = [obLeft && sideText('left', obNote.obLeft, ob?.left), obRight && sideText('right', obNote.obRight, ob?.right), obNote.obLong && sideWord('long')].filter(Boolean);
   if (!note && obSides.length) note = tr('Out of bounds', 'Aus') + ' ' + obSides.join(tr(' and ', ' und '));
-  return { pos, landing: kind === 'recovery' ? pos : base, kind, club, distance, pl, side, reasons, note };
+  return { pos, landing: kind === 'recovery' ? pos : base, kind, club, distance, pl, side, reasons, note, strategy };
 }
 
 /** Why the landing spot moved. */
