@@ -50,3 +50,19 @@ export function handicapIndex(differentials: number[]): { index: number; used: n
   const avg = best.reduce((s, x) => s + x, 0) / used;
   return { index: Math.min(54, Math.round((avg + adjust) * 10) / 10), used, of: n };
 }
+
+/**
+ * Course handicap (WHS) – the strokes the player gets on this course and tee: index × slope / 113 + (course rating − par),
+ * rounded. Used as the playing handicap (100 %, a private round). Plus handicaps are negative indexes ("+1.2" → −1.2).
+ */
+export function courseHandicap(index: number, rating: TeeRating, par: number): number {
+  return Math.round(index * (rating.slope / 113) + (rating.cr - par));
+}
+
+/** Handicap index as typed: "7,4", "7.4", "+1,2" (plus handicap → −1.2); null when empty or not a number. */
+export function parseIndex(s: string): number | null {
+  const t = s.trim().replace(',', '.');
+  if (!t) return null;
+  const n = t.startsWith('+') ? -Number(t.slice(1)) : Number(t);
+  return Number.isFinite(n) && n >= -10 && n <= 54 ? n : null;
+}

@@ -66,7 +66,7 @@ export function ShotSheet(props: {
           </div>
         </div>
         <button type="button" className="toggle" aria-pressed={penalty} onClick={() => setPenalty(!penalty)}>
-          {penalty ? '✓' : '○'} {tr('Penalty after this shot (water, out of bounds) +1', 'Strafschlag nach diesem Schlag (Wasser, Aus) +1')}
+          {penalty ? '✓' : '○'} {tr('+1 penalty (water, out of bounds)', '+1 Strafschlag (Wasser, Aus)')}
         </button>
         <div className="sheet-actions">
           {props.onDelete && (

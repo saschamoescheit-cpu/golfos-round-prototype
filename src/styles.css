@@ -92,7 +92,9 @@ h2 { margin: 0; font: 600 17px var(--display); }
 .choice small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
 
 .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.segmented button { min-height: 52px; border: 0; background: var(--surface); font: 600 16px var(--display); }
+.segmented button { min-height: 52px; border: 0; background: var(--surface); font: 600 16px var(--display); padding: 0 2px; overflow: hidden; text-overflow: ellipsis; }
+/* five choices (lie, shot type) on a phone: smaller type so that 'Abschlag' fits */
+.segmented:has(> button:nth-child(5)) button { font-size: clamp(12px, 3.5vw, 16px); }
 .segmented button + button { border-left: 1px solid var(--line); }
 .segmented button[aria-pressed='true'] { background: var(--brand); color: var(--bg); }
 
@@ -492,3 +494,5 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .topar-bar i.bad { background: rgba(255, 138, 127, 0.55); }
 .topar-bar i.good { background: rgba(155, 197, 61, 0.6); }
 .topar-bar b { position: relative; font: 700 13px var(--body); font-variant-numeric: tabular-nums; }
+/* Start page: where the game is heading */
+.home-trend { display: flex; flex-direction: column; gap: 2px; text-align: left; background: var(--surface); border: 0; border-radius: 12px; padding: 12px 14px; font-weight: 600; }

@@ -5,7 +5,9 @@ import { Attribution, formatToPar } from '../components/ui';
 import { restoreBackup, shareBackup } from '../lib/backup';
 import { carryToReview } from '../lib/stats';
 import { loadCarryBag } from '../lib/storage';
-import { getLang, setLang, tr } from '../lib/i18n';
+import { dec, getLang, setLang, tr } from '../lib/i18n';
+import { roundPoints, sgTrends, trendChange } from '../lib/history';
+import { SG_LABELS } from '../lib/sg';
 import { loopsText } from '../lib/loops';
 
 const INTRO_KEY = 'golfos.intro.v1';
@@ -23,7 +25,10 @@ export function Home(props: {
   const fileInput = useRef<HTMLInputElement>(null);
   const review = carryToReview(props.rounds, loadCarryBag()).length;
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
-  const finished = props.rounds.filter((r) => r.finishedAt);
+  // newest first; the start page shows the last five
+  const finished = props.rounds.filter((r) => r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const [allRounds, setAllRounds] = useState(false);
+  const shown = allRounds ? finished : finished.slice(0, 5);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   // First start: three steps that say what the app does (closed once, then gone).
   const [intro, setIntro] = useState(() => {
@@ -123,15 +128,20 @@ export function Home(props: {
         )}
         <button type="button" className="btn-secondary" onClick={props.onBag}>
           {tr('My bag & caddie', 'Mein Bag & Caddie')}
-          {review > 0 && <span className="badge-dot">{tr(`${review} to review`, `${review} prüfen`)}</span>}
+          {review > 0 && (
+            <span className="badge-dot" aria-label={tr(`${review} new measured distances`, `${review} neue gemessene Weiten`)}>
+              {tr(`${review} new`, `${review} neu`)}
+            </span>
+          )}
         </button>
       </div>
 
       {finished.length > 0 && (
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <HomeTrend rounds={finished} onOpen={props.onStats} />
         <h2>{tr('Your rounds', 'Deine Runden')}</h2>
         <ul className="list">
-          {finished.map((r) => {
+          {shown.map((r) => {
             const me = r.players.find((p) => p.isMe)!;
             const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
             return (
@@ -155,6 +165,11 @@ export function Home(props: {
             );
           })}
         </ul>
+        {finished.length > 5 && (
+          <button type="button" className="btn-ghost" onClick={() => setAllRounds(!allRounds)}>
+            {allRounds ? tr('Show fewer', 'Weniger anzeigen') : tr(`All rounds (${finished.length})`, `Alle Runden (${finished.length})`)}
+          </button>
+        )}
       </section>
       )}
       {/* Backup: full block once there are rounds to keep; before that only "restore" for a new phone. */}
@@ -211,5 +226,34 @@ export function Home(props: {
         </span>
       </div>
     </main>
+  );
+}
+
+/** One line on the start page: where the player's game is heading (from 3 finished rounds), tap for the stats. */
+function HomeTrend(props: { rounds: Round[]; onOpen: () => void }) {
+  const pts = roundPoints(props.rounds.slice(0, 10));
+  const t = trendChange(pts.map((p) => p.toPar18));
+  if (!t) return null;
+  const sg = sgTrends(pts);
+  const better = t.change <= -0.5;
+  const worse = t.change >= 0.5;
+  const amount = dec(Math.abs(t.change).toFixed(1));
+  return (
+    <button type="button" className="home-trend" onClick={props.onOpen}>
+      <span className={better ? 'good-text' : worse ? 'bad-text' : undefined}>
+        {better ? '↗ ' : worse ? '↘ ' : '→ '}
+        {better
+          ? tr(`${amount} strokes better per round over ${t.rounds} rounds`, `${amount} Schläge besser je Runde über ${t.rounds} Runden`)
+          : worse
+            ? tr(`${amount} strokes worse per round over ${t.rounds} rounds`, `${amount} Schläge schlechter je Runde über ${t.rounds} Runden`)
+            : tr(`Steady over ${t.rounds} rounds`, `Gleichbleibend über ${t.rounds} Runden`)}
+      </span>
+      {sg.better && (
+        <span className="muted small">
+          {tr('Improved most: ', 'Am meisten verbessert: ')}
+          {SG_LABELS[sg.better.c]} ({dec(`+${sg.better.change.toFixed(1)}`)})
+        </span>
+      )}
+    </button>
   );
 }

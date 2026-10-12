@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { handicapIndex, playedHandicap, scoreDifferential } from './handicap';
+import { courseHandicap, handicapIndex, parseIndex, playedHandicap, scoreDifferential } from './handicap';
 import { emptyEntry } from './scoring';
 import type { Round, RoundHole } from '../types';
 
@@ -55,5 +55,22 @@ describe('handicap index (WHS table)', () => {
     const twenty = Array.from({ length: 20 }, (_, i) => 10 + i); // best 8: 10 … 17
     expect(handicapIndex(twenty)).toEqual({ index: 13.5, used: 8, of: 20 });
     expect(handicapIndex([...twenty, 0, 0])!.index).toBe(13.5);
+  });
+});
+
+describe('course handicap (playing handicap from the index)', () => {
+  it('index × slope / 113 + (CR − par), rounded – matches the RFEG table of Son Antem West yellow', () => {
+    // table: playing handicap 8 for index 6.5 – 7.3, 9 for 7.4 – 8.1 (71.8 / 134, par 72)
+    expect(courseHandicap(6.5, { cr: 71.8, slope: 134 }, 72)).toBe(8);
+    expect(courseHandicap(7.3, { cr: 71.8, slope: 134 }, 72)).toBe(8);
+    expect(courseHandicap(7.4, { cr: 71.8, slope: 134 }, 72)).toBe(9);
+    expect(courseHandicap(8.1, { cr: 71.8, slope: 134 }, 72)).toBe(9);
+    expect(courseHandicap(-1.0, { cr: 71.8, slope: 134 }, 72)).toBe(-1);
+  });
+  it('reads the index as typed', () => {
+    expect(parseIndex('7,4')).toBe(7.4);
+    expect(parseIndex('+1,2')).toBe(-1.2);
+    expect(parseIndex('')).toBeNull();
+    expect(parseIndex('abc')).toBeNull();
   });
 });

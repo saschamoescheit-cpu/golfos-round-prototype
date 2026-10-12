@@ -5,54 +5,80 @@ import { emptyEntry } from '../lib/scoring';
 import { newId } from '../lib/storage';
 import { TopBar } from '../components/ui';
 import { TEE_COLOURS, TEES, teeName } from '../data/tees';
-import { tr } from '../lib/i18n';
+import { dec, tr } from '../lib/i18n';
+import { courseHandicap, parseIndex } from '../lib/handicap';
+import { RATINGS, type TeeRating } from '../data/ratings';
 
 const ME_KEY = 'golfos.me.v1';
 
 interface DraftPlayer {
   id: string;
   name: string;
-  handicap: string; // text field, parsed on start
+  index: string; // handicap index as typed – the playing handicap follows from course rating and slope
+  handicap: string; // playing handicap as typed, where the course has no rating
 }
 
-function loadMe(): DraftPlayer {
+/** What the setup remembers from the last round: the player, how they track and the tee per course. */
+interface Remembered {
+  name: string;
+  index?: string;
+  handicap?: string;
+  mode?: CaptureMode;
+  tees?: Record<string, string>;
+}
+
+function loadRemembered(): Remembered | null {
   try {
     const raw = localStorage.getItem(ME_KEY);
-    if (raw) return { ...JSON.parse(raw), id: 'me' };
+    return raw ? (JSON.parse(raw) as Remembered) : null;
   } catch {
-    /* ignore */
+    return null;
   }
-  return { id: 'me', name: tr('Me', 'Ich'), handicap: '' };
 }
 
 export function RoundSetup(props: { course: Course; onBack: () => void; onStart: (r: Round) => void; onBook: (holes: RoundHole[], tee: string | null) => void }) {
   const options = useMemo(() => loopOptions(props.course.holes), [props.course]);
   const [optionId, setOptionId] = useState(options[0]?.id ?? '');
-  const [mode, setMode] = useState<CaptureMode>('quick');
+  const remembered = useMemo(loadRemembered, []);
+  const [mode, setMode] = useState<CaptureMode>(remembered?.mode ?? 'quick');
   const teeData = TEES[props.course.id];
-  const [tee, setTee] = useState<string | null>(teeData ? (teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[0]) : null);
-  const [me, setMe] = useState<DraftPlayer>(loadMe);
+  const lastTee = remembered?.tees?.[props.course.id];
+  const [tee, setTee] = useState<string | null>(
+    teeData ? (lastTee && teeData.tees.includes(lastTee) ? lastTee : teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null,
+  );
+  const [me, setMe] = useState<DraftPlayer>(() => ({ id: 'me', name: remembered?.name ?? tr('Me', 'Ich'), index: remembered?.index ?? '', handicap: remembered?.handicap ?? '' }));
   const [others, setOthers] = useState<DraftPlayer[]>([]);
 
   const option = options.find((o) => o.id === optionId);
   const holes = option ? buildRoundHoles(props.course.holes, option) : [];
   const missing = holes.filter((h) => !h.par || !h.strokeIndex).length;
 
+  // Course rating and slope of the chosen tee (18 holes): the playing handicap follows from the handicap index.
+  const rating: TeeRating | null = tee && holes.length === 18 ? (RATINGS[props.course.id]?.[tee] ?? null) : null;
+  const par = holes.reduce((sum, h) => sum + (h.par || 0), 0);
   const parseHcp = (s: string): number | null => {
     const n = Number(s.replace(',', '.'));
     return s.trim() === '' || !Number.isFinite(n) ? null : Math.round(n);
+  };
+  const playingHandicap = (p: DraftPlayer): number | null => {
+    if (rating) {
+      const idx = parseIndex(p.index);
+      return idx == null ? null : courseHandicap(idx, rating, par);
+    }
+    return parseHcp(p.handicap);
   };
 
   const start = (preview = false) => {
     if (!option) return;
     try {
-      localStorage.setItem(ME_KEY, JSON.stringify({ name: me.name, handicap: me.handicap }));
+      const r: Remembered = { name: me.name, index: me.index, handicap: me.handicap, mode, tees: { ...remembered?.tees, ...(tee ? { [props.course.id]: tee } : {}) } };
+      localStorage.setItem(ME_KEY, JSON.stringify(r));
     } catch {
       /* ignore */
     }
     const players: Player[] = [
-      { id: 'me', name: me.name.trim() || tr('Me', 'Ich'), playingHandicap: parseHcp(me.handicap), isMe: true },
-      ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`), playingHandicap: parseHcp(o.handicap), isMe: false })),
+      { id: 'me', name: me.name.trim() || tr('Me', 'Ich'), playingHandicap: playingHandicap(me), isMe: true },
+      ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`), playingHandicap: playingHandicap(o), isMe: false })),
     ];
     const entries: Round['entries'] = {};
     for (const p of players) entries[p.id] = holes.map(() => emptyEntry());
@@ -129,26 +155,33 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
-        <PlayerRow player={me} onChange={setMe} nameLabel={tr('Your name', 'Dein Name')} />
+        <PlayerRow player={me} onChange={setMe} nameLabel={tr('Your name', 'Dein Name')} rating={rating} playing={playingHandicap(me)} />
         {others.map((p, i) => (
           <PlayerRow
             key={p.id}
             player={p}
             nameLabel={tr(`Player ${i + 2}`, `Spieler ${i + 2}`)}
+            rating={rating}
+            playing={playingHandicap(p)}
             onChange={(np) => setOthers(others.map((o) => (o.id === p.id ? np : o)))}
             onRemove={() => setOthers(others.filter((o) => o.id !== p.id))}
           />
         ))}
         {others.length < 3 && (
-          <button type="button" className="btn-secondary" onClick={() => setOthers([...others, { id: newId(), name: '', handicap: '' }])}>
+          <button type="button" className="btn-secondary" onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '' }])}>
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
         <p className="muted small" style={{ margin: 0 }}>
-          {tr(
-            'Playing handicap is needed for Stableford. Leave it empty to count gross only.',
-            'Für Stableford braucht es die Spielvorgabe. Leer lassen, um nur brutto zu zählen.',
-          )}
+          {rating
+            ? tr(
+                `Your handicap index – the app works out the playing handicap for this tee (course rating ${dec(rating.cr.toFixed(1))}, slope ${rating.slope}). Leave it empty to count gross only.`,
+                `Dein Handicap (Index) – die App rechnet die Spielvorgabe für diesen Abschlag aus (Course Rating ${dec(rating.cr.toFixed(1))}, Slope ${rating.slope}). Leer lassen, um nur brutto zu zählen.`,
+              )
+            : tr(
+                'Playing handicap is needed for Stableford (from the club’s table). Leave it empty to count gross only.',
+                'Für Stableford braucht es die Spielvorgabe (aus der Tabelle des Clubs). Leer lassen, um nur brutto zu zählen.',
+              )}
         </p>
       </section>
 
@@ -166,7 +199,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   );
 }
 
-function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string }) {
+function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null }) {
   const { player } = props;
   return (
     <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 110px auto', gap: 8, alignItems: 'end' }}>
@@ -175,15 +208,22 @@ function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => v
         <input id={`name-${player.id}`} className="input" value={player.name} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
       </div>
       <div className="field">
-        <label htmlFor={`hcp-${player.id}`}>{tr('Playing hcp', 'Spielvorgabe')}</label>
+        <label htmlFor={`hcp-${player.id}`}>{props.rating ? 'Handicap' : tr('Playing hcp', 'Spielvorgabe')}</label>
         <input
           id={`hcp-${player.id}`}
           className="input"
-          inputMode="numeric"
-          value={player.handicap}
-          onChange={(e) => props.onChange({ ...player, handicap: e.target.value })}
+          inputMode="decimal"
+          placeholder={props.rating ? dec('7.4') : ''}
+          value={props.rating ? player.index : player.handicap}
+          onChange={(e) => props.onChange(props.rating ? { ...player, index: e.target.value } : { ...player, handicap: e.target.value })}
         />
       </div>
+      {props.rating && props.playing != null && (
+        <span className="muted small" style={{ gridColumn: '1 / -1' }}>
+          {tr('Playing handicap here: ', 'Spielvorgabe hier: ')}
+          {props.playing < 0 ? `+${-props.playing}` : props.playing}
+        </span>
+      )}
       {props.onRemove ? (
         <button type="button" className="icon-btn" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={props.onRemove} style={{ marginBottom: 3 }}>
           ✕
