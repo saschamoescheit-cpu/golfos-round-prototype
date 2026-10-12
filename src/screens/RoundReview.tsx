@@ -11,7 +11,7 @@ import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { ShotSheet } from '../components/ShotSheet';
 import { TopBar } from '../components/ui';
-import { clubCode, tr } from '../lib/i18n';
+import { clubCode, dec, tr } from '../lib/i18n';
 
 // Round check after a detailed round (feature 007): every shot of every hole on the map, with club, shot type,
 // lie, length and strokes gained. Shots detected from the GPS track are marked "check"; the player corrects
@@ -131,7 +131,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               ...(d?.shots ?? []).flatMap((s, n) => {
                 const v = sg?.[n]?.sg;
                 const tone: 'good' | 'bad' | undefined = v == null ? undefined : v >= 0 ? 'good' : 'bad';
-                return s.pos ? [{ id: `shot-${n}`, pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${v != null ? ` ${v >= 0 ? '+' : ''}${v.toFixed(1)}` : ''}${s.review ? ' ?' : ''}` }] : [];
+                return s.pos ? [{ id: `shot-${n}`, pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${v != null ? ` ${v >= 0 ? '+' : ''}${dec(v.toFixed(1))}` : ''}${s.review ? ' ?' : ''}` }] : [];
               }),
               ...(d?.onGreen ? [{ id: 'green', pos: d.onGreen, label: e.putts != null ? `${e.putts} Putt${e.putts === 1 ? '' : 's'}` : tr('green', 'Grün'), green: true }] : []),
             ]}
@@ -189,7 +189,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     {s.review ? tr(' · check', ' · prüfen') : ''}
                   </span>
                 </button>
-                <span className={`sg-badge ${v == null ? '' : v >= 0 ? 'good' : 'bad'}`}>{v == null ? '' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}`}</span>
+                <span className={`sg-badge ${v == null ? '' : v >= 0 ? 'good' : 'bad'}`}>{v == null ? '' : `${v >= 0 ? '+' : ''}${dec(v.toFixed(2))}`}</span>
                 <span />
               </li>
             );
@@ -204,7 +204,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 </span>
               </span>
               <span className={`sg-badge ${sg ? (sg[sg.length - 1].sg >= 0 ? 'good' : 'bad') : ''}`}>
-                {sg && sg[sg.length - 1].category === 'putting' ? `${sg[sg.length - 1].sg >= 0 ? '+' : ''}${sg[sg.length - 1].sg.toFixed(2)}` : ''}
+                {sg && sg[sg.length - 1].category === 'putting' ? `${sg[sg.length - 1].sg >= 0 ? '+' : ''}${dec(sg[sg.length - 1].sg.toFixed(2))}` : ''}
               </span>
               <span />
             </li>
