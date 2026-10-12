@@ -5,6 +5,7 @@ import { deleteRound } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
+import { shareScorecard } from '../lib/shareCard';
 import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
 import { groupForHandicap, roundsSg } from '../lib/sg';
@@ -23,6 +24,7 @@ export function Scorecard(props: {
 }) {
   const { round } = props;
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
   const me = round.players.find((p) => p.isMe)!;
   const finished = round.finishedAt != null;
   const stats = roundStats(round.holes, round.entries[me.id]);
@@ -104,6 +106,20 @@ export function Scorecard(props: {
         </div>
       </section>
 
+      {finished && (
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() =>
+            shareScorecard(round)
+              .then((r) => setShareMsg(r === 'downloaded' ? tr('Picture saved – you find it in your downloads.', 'Bild gespeichert – du findest es bei deinen Downloads.') : null))
+              .catch(() => setShareMsg(tr('The picture could not be made.', 'Das Bild konnte nicht erstellt werden.')))
+          }
+        >
+          {tr('Share scorecard', 'Scorekarte teilen')}
+        </button>
+      )}
+      {shareMsg && <p className="muted small" style={{ margin: 0 }}>{shareMsg}</p>}
       {canReview && (
         <button type="button" className="btn-secondary" onClick={() => props.onReview(round)}>
           {tr('Check your shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? tr(' · some to check', ' · einige offen') : ''}

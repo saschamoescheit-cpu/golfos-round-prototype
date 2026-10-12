@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Course, LngLat, RoundHole } from '../types';
 import { bearingDeg, centroid, formatDistance, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, type HoleMapData } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
-import { loadCaddieSettings, loadCarryBag, loadGeometry, loadUnit } from '../lib/storage';
+import { loadCaddieSettings, loadCarryBag, loadGeometry, loadRounds, loadUnit } from '../lib/storage';
+import { courseStats, type CourseHoleStat } from '../lib/history';
 import { DEFAULT_CARRY, levelName, readGreen } from '../lib/caddie';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { loadHoleNotes } from '../lib/holenotes';
@@ -11,7 +12,7 @@ import { heightAt } from '../lib/terrain';
 import { bestLeave, loadGreenGrids, type GreenGrid } from '../lib/greenread';
 import { HoleSketch } from '../components/HoleSketch';
 import { TopBar } from '../components/ui';
-import { clubCode, hazardWord, sideWord, tr } from '../lib/i18n';
+import { clubCode, dec, hazardWord, sideWord, tr } from '../lib/i18n';
 import { teeName } from '../data/tees';
 
 // Course book (feature 027): every hole of the round on one page, like a birdie book – sketch with distance dots,
@@ -31,6 +32,8 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
   const bag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
   const settings = useMemo(() => loadCaddieSettings(), []);
   const notes = useMemo(() => loadHoleNotes(props.course.id), [props.course.id]);
+  // the player's record per hole from earlier rounds here (feature 012)
+  const record = useMemo(() => new Map(courseStats(loadRounds(), props.course.name).holes.map((h) => [h.hole.label, h])), [props.course.name]);
   return (
     <main className="screen book">
       <TopBar title={tr('Course book', 'Lochbuch')} onBack={props.onBack} />
@@ -59,6 +62,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
             style={settings.style}
             favourite={settings.favourite}
             note={notes[h.label] ?? {}}
+            record={record.get(h.label)}
           />
         );
       })}
@@ -80,6 +84,7 @@ function HolePage(p: {
   style: 'safe' | 'normal' | 'aggressive';
   favourite: number;
   note: import('../lib/holenotes').HoleNote;
+  record?: CourseHoleStat;
 }) {
   const fmt = (m: number) => formatDistance(m, p.unit);
   const { hole, data } = p;
@@ -170,6 +175,20 @@ function HolePage(p: {
               <ul className="book-lines">
                 {g && <li>{g.level === 'flat' ? tr('almost flat', 'fast flach') : tr(`${g.level} slope, ${g.text}`, `${levelName(g.level)} Neigung, ${g.text}`)}</li>}
                 {leave && <li>{leave.text}</li>}
+              </ul>
+            </>
+          )}
+          {p.record && (
+            <>
+              <p className="lbl">{tr('Your record', 'Deine Bilanz')}</p>
+              <ul className="book-lines">
+                <li>
+                  {tr(
+                    `Ø ${dec(p.record.avg.toFixed(1))} (${p.record.toPar > 0 ? '+' : ''}${dec(p.record.toPar.toFixed(1))}) in ${p.record.played} ${p.record.played === 1 ? 'round' : 'rounds'} · best ${p.record.best}`,
+                    `Ø ${dec(p.record.avg.toFixed(1))} (${p.record.toPar > 0 ? '+' : ''}${dec(p.record.toPar.toFixed(1))}) aus ${p.record.played} ${p.record.played === 1 ? 'Runde' : 'Runden'} · beste ${p.record.best}`,
+                  )}
+                </li>
+                {p.record.notes.length > 0 && <li className="muted">{p.record.notes.join(' · ')}</li>}
               </ul>
             </>
           )}

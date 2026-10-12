@@ -469,3 +469,26 @@ table.sc { width: 100%; border-collapse: collapse; table-layout: fixed; font-var
 .sc-legend .mark { width: 20px; height: 20px; font-size: 11px; }
 table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .sc .hcp-dots { top: -6px; right: -4px; font-size: 13px; }
+/* History (feature 012): trend chart, personal bests, course stats */
+.trend-chart { display: block; width: 100%; height: auto; }
+.trend-chart .tick { font: 500 10px var(--body); fill: var(--muted); }
+.trend-chart .last { font: 700 12px var(--body); fill: var(--text); }
+.trend-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.trend-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.trend-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.bests { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.best { min-width: 0; overflow: hidden; display: flex; flex-direction: column; gap: 2px; text-align: left; background: var(--surface-2); border: 0; border-radius: 12px; padding: 10px 12px; min-height: 76px; }
+.best strong { font: 700 20px var(--body); }
+.best span { max-width: 100%; }
+.best span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-card .list-item { background: var(--surface-2); min-height: 54px; }
+.course-holes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.course-holes li { display: grid; grid-template-columns: 30px 1fr 96px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.course-holes li:last-child { border-bottom: 0; }
+.course-holes .hole-no { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); display: inline-flex; align-items: center; justify-content: center; font: 700 13px var(--body); }
+.course-holes .grow { display: flex; flex-direction: column; min-width: 0; }
+.topar-bar { position: relative; height: 22px; display: flex; align-items: center; justify-content: flex-end; }
+.topar-bar i { position: absolute; left: 0; top: 4px; height: 14px; border-radius: 4px; background: var(--line-strong); }
+.topar-bar i.bad { background: rgba(255, 138, 127, 0.55); }
+.topar-bar i.good { background: rgba(155, 197, 61, 0.6); }
+.topar-bar b { position: relative; font: 700 13px var(--body); font-variant-numeric: tabular-nums; }

@@ -4,6 +4,7 @@ import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../
 import { Segmented, TopBar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { PlayedHcpStats } from '../components/PlayedHcp';
+import { BestsCard, CoursesCard, TrendCard } from '../components/HistoryCards';
 import { groupForHandicap, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
@@ -13,7 +14,7 @@ import { clubCode, dec, tr } from '../lib/i18n';
 
 type Range = 5 | 10 | 0;
 
-export function Stats(props: { rounds: Round[]; onBack: () => void }) {
+export function Stats(props: { rounds: Round[]; onBack: () => void; onOpenRound: (r: Round) => void; onOpenCourse: (courseName: string) => void }) {
   const [range, setRange] = useState<Range>(5);
   const finished = useMemo(
     () => props.rounds.filter((r) => r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -52,9 +53,15 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
             <Big value={dec(a.puttsPer18 ?? '–')} label="Putts" />
           </section>
 
+          <TrendCard rounds={picked} />
+
+          <BestsCard rounds={finished} onOpen={props.onOpenRound} />
+
           <PlayedHcpStats rounds={finished} />
 
           {sg && <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(a.handicap)} />}
+
+          <CoursesCard rounds={finished} onOpen={props.onOpenCourse} />
 
           {f && f.focus.length > 0 && (
             <section className="card stats-card">

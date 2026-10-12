@@ -8,14 +8,16 @@ import { Scorecard } from './screens/Scorecard';
 import { NO_RESUME } from './components/ErrorBoundary';
 import { Stats } from './screens/Stats';
 import { MyBag } from './screens/MyBag';
+import { CourseStats } from './screens/CourseStats';
 
 type Screen =
   | { name: 'home' }
   | { name: 'pickCourse' }
   | { name: 'setup'; course: Course }
   | { name: 'hole'; round: Round }
-  | { name: 'scorecard'; round: Round }
+  | { name: 'scorecard'; round: Round; back?: Screen }
   | { name: 'stats' }
+  | { name: 'courseStats'; courseName: string }
   | { name: 'bag' }
   | { name: 'review'; round: Round }
   | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null };
@@ -97,7 +99,23 @@ export function App() {
     case 'bag':
       return <MyBag rounds={rounds} onBack={() => setScreen({ name: 'home' })} />;
     case 'stats':
-      return <Stats rounds={rounds} onBack={() => setScreen({ name: 'home' })} />;
+      return (
+        <Stats
+          rounds={rounds}
+          onBack={() => setScreen({ name: 'home' })}
+          onOpenRound={(round) => setScreen({ name: 'scorecard', round, back: { name: 'stats' } })}
+          onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })}
+        />
+      );
+    case 'courseStats':
+      return (
+        <CourseStats
+          rounds={rounds}
+          courseName={screen.courseName}
+          onBack={() => setScreen({ name: 'stats' })}
+          onOpen={(round) => setScreen({ name: 'scorecard', round, back: { name: 'courseStats', courseName: screen.courseName } })}
+        />
+      );
     case 'pickCourse':
       return <CoursePicker onBack={() => setScreen({ name: 'home' })} onPicked={(course) => setScreen({ name: 'setup', course })} />;
     case 'setup':
@@ -145,10 +163,10 @@ export function App() {
             persist(round);
             setScreen({ name: 'home' });
           }}
-          onClose={() => setScreen({ name: 'home' })}
+          onClose={() => setScreen(screen.back ?? { name: 'home' })}
           onChange={(round) => {
             persist(round);
-            setScreen({ name: 'scorecard', round });
+            setScreen({ name: 'scorecard', round, back: screen.back });
           }}
           onReview={(round) => {
             persist(round);
