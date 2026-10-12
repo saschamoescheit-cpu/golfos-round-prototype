@@ -38,7 +38,7 @@ export function Scorecard(props: {
       <div>
         <div style={{ font: '600 19px var(--display)' }}>{round.courseName}</div>
         <span className="muted small">
-          {new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined)} · {loopsText(round.loopOrder)}
+          {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
         </span>
       </div>
 

@@ -103,7 +103,7 @@ export function Home(props: {
           <span className="eyebrow">{tr('Round in progress', 'Laufende Runde')}</span>
           <div style={{ font: '600 19px var(--display)' }}>{open.courseName}</div>
           <span className="muted">
-            {loopsText(open.loopOrder)} · {tr(`hole ${open.currentHole + 1} of ${open.holes.length}`, `Loch ${open.currentHole + 1} von ${open.holes.length}`)}
+            {[loopsText(open.loopOrder), tr(`hole ${open.currentHole + 1} of ${open.holes.length}`, `Loch ${open.currentHole + 1} von ${open.holes.length}`)].filter(Boolean).join(' · ')}
           </span>
           <button type="button" className="btn-primary" onClick={() => props.onContinue(open)}>
             {tr('Continue round', 'Runde fortsetzen')}
@@ -140,7 +140,7 @@ export function Home(props: {
                   <span className="grow">
                     <span className="title">{r.courseName}</span>
                     <span className="muted small">
-                      {new Date(r.createdAt).toLocaleDateString(locale)} · {loopsText(r.loopOrder)} · {r.holes.length} {tr('holes', 'Löcher')}
+                      {[new Date(r.createdAt).toLocaleDateString(locale), loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   <span style={{ textAlign: 'right' }}>

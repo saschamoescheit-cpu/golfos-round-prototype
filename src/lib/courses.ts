@@ -64,6 +64,22 @@ async function photon(params: Record<string, string>, endpoint = PHOTON): Promis
     .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
 }
 
+/**
+ * Bundled courses show their own name ("Golf de Son Antem West"); a course mapped twice in OSM (an area and a
+ * relation with the same name) appears once.
+ */
+function tidy(list: CourseSummary[]): CourseSummary[] {
+  const kept: CourseSummary[] = [];
+  // bundled courses first, so they win over the plain database entries
+  const ordered = list.map((x) => (SEED_COURSES[x.id] ? { ...x, name: SEED_COURSES[x.id].name } : x)).sort((x, y) => Number(!SEED_COURSES[x.id]) - Number(!SEED_COURSES[y.id]));
+  for (const c of ordered) {
+    // same name within 2 km = the same course; a bundled "… West" also covers the plain "…" entry
+    const same = (k: CourseSummary) => distanceKm(k.lat, k.lon, c.lat, c.lon) < 2 && (k.name === c.name || (SEED_COURSES[k.id] != null && k.name.startsWith(c.name)));
+    if (!kept.some(same)) kept.push(c);
+  }
+  return kept;
+}
+
 export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Promise<CourseSummary[]> {
   // Reverse search by type finds courses without "golf" in the name (e.g. "Maioris"); the text search is the fallback.
   const near = { lat: String(lat), lon: String(lon) };
@@ -76,7 +92,7 @@ export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Pr
   const list = [...(byType.status === 'fulfilled' ? byType.value : []), ...(byName.status === 'fulfilled' ? byName.value : [])].filter((c) =>
     seen.has(c.id) ? false : (seen.add(c.id), true),
   );
-  return list
+  return tidy(list)
     .map((c) => ({ ...c, distanceKm: distanceKm(lat, lon, c.lat, c.lon) }))
     .filter((c) => c.distanceKm <= radiusKm)
     .sort((a, b) => a.distanceKm - b.distanceKm);
@@ -88,10 +104,10 @@ export async function searchCourses(text: string, near?: { lat: number; lon: num
   if (q.length < 3) return [];
   const bias: Record<string, string> = near ? { lat: String(near.lat), lon: String(near.lon) } : {};
   const [osm, oga] = await Promise.allSettled([photon({ q, ...bias }), searchOga(q)]);
-  return [
+  return tidy([
     ...(osm.status === 'fulfilled' ? osm.value : []),
     ...(oga.status === 'fulfilled' ? oga.value : []),
-  ];
+  ]);
 }
 
 async function searchOga(q: string): Promise<CourseSummary[]> {
@@ -102,7 +118,7 @@ async function searchOga(q: string): Promise<CourseSummary[]> {
     id: `oga:${c.id}`,
     source: 'opengolfapi' as const,
     name: c.name,
-    place: [c.city, c.state, 'USA'].filter(Boolean).join(', '),
+    place: [c.city, c.state, c.longitude < -50 ? 'USA' : null].filter(Boolean).join(', '),
     lat: c.latitude,
     lon: c.longitude,
   }));
@@ -126,7 +142,7 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
       ? await osmHoles(summary, (geo) => saveGeometry(summary.id, geo))
       : await ogaHoles(summary.id);
   const loops = [...new Set(holes.map((h) => h.loop))];
-  const course: Course = { id: summary.id, source: summary.source, name: summary.name, lat: summary.lat, lon: summary.lon, holes, loops };
+  const course: Course = { id: summary.id, source: summary.source, name: seed?.name ?? summary.name, lat: summary.lat, lon: summary.lon, holes, loops };
   if (holes.length > 0) saveCachedCourse(course);
   return course;
 }

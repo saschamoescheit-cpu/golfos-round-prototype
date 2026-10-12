@@ -14,6 +14,9 @@ const KEY = 'golfos.holenotes.v1.';
 /** Known from players (Sascha, 11.10.2026). */
 const DEFAULTS: Record<string, Record<string, HoleNote>> = {
   'osm:relation/1326323': { '1A': { obLeft: true, obRight: true } },
+  // Son Antem West, local rules (scorecard 2023): the driving range right of 10, behind the 11th green and right of 12 is out of bounds.
+  'osm:way/28625559': { '10': { obRight: true }, '11': { obLong: true }, '12': { obRight: true } },
+  'osm:relation/3977168': { '10': { obRight: true }, '11': { obLong: true }, '12': { obRight: true } },
 };
 
 export function loadHoleNotes(courseId: string): Record<string, HoleNote> {

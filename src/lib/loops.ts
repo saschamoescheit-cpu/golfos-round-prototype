@@ -63,7 +63,7 @@ export function loopOptions(holes: CourseHole[]): LoopOption[] {
 }
 
 /** Loops of a round for display: "A + B", or "Main course" for an 18-hole course. */
-export const loopsText = (loops: string[]): string => loops.map((l) => (l === 'Main' ? tr('Main course', 'Hauptplatz') : l)).join(' + ');
+export const loopsText = (loops: string[]): string => loops.filter((l) => l !== 'Main').join(' + '); // a plain 18-hole course has no loop name
 
 function loopLabel(loop: string, text: string): string {
   return loop === 'Main' ? text : `${loop} · ${text}`;
