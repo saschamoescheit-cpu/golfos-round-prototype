@@ -14,6 +14,9 @@ import '@fontsource/figtree/latin-700.css';
 // The map stylesheet first, our styles after it (they override map positioning) – also with the map loaded lazily.
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './styles.css';
+import { applyTheme } from './lib/theme';
+
+applyTheme(); // sun mode before the first paint
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -9,6 +9,7 @@ import { dec, getLang, setLang, tr } from '../lib/i18n';
 import { roundPoints, sgTrends, trendChange } from '../lib/history';
 import { SG_LABELS } from '../lib/sg';
 import { loopsText } from '../lib/loops';
+import { isSun, setSun } from '../lib/theme';
 
 const INTRO_KEY = 'golfos.intro.v1';
 
@@ -25,6 +26,7 @@ export function Home(props: {
   const fileInput = useRef<HTMLInputElement>(null);
   const review = carryToReview(props.rounds, loadCarryBag()).length;
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
+  const [sun, setSunState] = useState(isSun);
   // newest first; the start page shows the last five
   const finished = props.rounds.filter((r) => r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [allRounds, setAllRounds] = useState(false);
@@ -54,6 +56,18 @@ export function Home(props: {
           GOLF<span>OS</span>
         </div>
         <span className="spacer" />
+        <button
+          type="button"
+          className="lang-btn"
+          aria-pressed={sun}
+          aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on – light screen for bright sunshine', 'Sonnenmodus an – heller Bildschirm für grelles Sonnenlicht')}
+          onClick={() => {
+            setSun(!sun);
+            setSunState(!sun);
+          }}
+        >
+          ☀
+        </button>
         <button
           type="button"
           className="lang-btn"

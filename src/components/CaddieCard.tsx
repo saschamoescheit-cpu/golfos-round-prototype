@@ -5,7 +5,8 @@ import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
 import { getLang, tr } from '../lib/i18n';
 
 // The caddie on the hole map (feature 017): appears when he has something new to say, can be hidden completely.
-// Bottom row: read aloud, ask, rules, hole notes.
+// Folded it is one glance – club, distance and the one line that matters; tapped open: reasons, lie, read aloud,
+// ask, rules, hole notes.
 
 export function CaddieCard(props: {
   facts: CaddieFacts;
@@ -25,20 +26,20 @@ export function CaddieCard(props: {
   return (
     <>
       <section className="caddie-card" aria-label="AI caddie">
-        <button type="button" className="head" onClick={() => setDetails(!details)} aria-expanded={details}>
-          <span>
-            Caddie · {Math.round(f.distance)} {f.unit} {f.targetTo} → {tr('plays', 'spielt wie')} <strong>{Math.round(f.playsLike)} {f.unit}</strong>
-            <span className="muted small"> {details ? '▴' : tr('▾ why', '▾ warum')}</span>
-          </span>
+        <button type="button" className="head" onClick={() => setDetails(!details)} aria-expanded={details} aria-label={details ? tr('Fold the caddie', 'Caddie zuklappen') : tr('More from the caddie', 'Mehr vom Caddie')}>
           <span className="club">{props.clubCode}</span>
+          <span className="grow">
+            {Math.round(f.distance)} {f.unit} {f.targetTo} · {tr('plays', 'spielt wie')} <strong>{Math.round(f.playsLike)} {f.unit}</strong>
+          </span>
+          <span className="more" aria-hidden="true">{details ? '▴' : '▾'}</span>
         </button>
-        {(details ? props.lines : short(props.lines)).map((l, k) => (
+        {(details ? props.lines : one(props.lines)).map((l, k) => (
           <span key={k} className={l.tone === 'warn' ? 'plan warn' : l.tone === 'plan' ? 'plan' : l.tone === 'mental' ? 'mental' : 'why'}>
             {l.text}
           </span>
         ))}
         {details && props.alt && <span className="alt">{props.alt}</span>}
-        {props.lie != null && (
+        {details && props.lie != null && (
           <label className="caddie-lie">
             <span>{tr('Lie', 'Lage')}</span>
             <select value={props.lie} onChange={(e) => props.onLie(e.target.value as LieKind)}>
@@ -50,6 +51,7 @@ export function CaddieCard(props: {
             </select>
           </label>
         )}
+        {details && (
         <div className="caddie-actions">
           <button type="button" onClick={() => speak(summary(f))} aria-label={tr('Read aloud', 'Vorlesen')}>
             🔊
@@ -67,6 +69,7 @@ export function CaddieCard(props: {
             ✕
           </button>
         </div>
+        )}
       </section>
       {sheet === 'ask' && <AskSheet facts={f} onClose={() => setSheet(null)} onRules={() => setSheet('rules')} />}
       {sheet === 'rules' && <RulesSheet onClose={() => setSheet(null)} />}
@@ -76,13 +79,10 @@ export function CaddieCard(props: {
 }
 
 type Line = { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted' };
-/** Folded card: warnings, then the plan, one mental line – at most three lines (the rest under "why"). */
-function short(lines: Line[]): Line[] {
-  const warn = lines.filter((l) => l.tone === 'warn');
-  const plan = lines.filter((l) => l.tone === 'plan');
-  const mental = lines.filter((l) => l.tone === 'mental').slice(0, 1);
-  const keep = new Set([...warn, ...plan].slice(0, mental.length ? 2 : 3).concat(mental));
-  return lines.filter((l) => keep.has(l));
+/** Folded card: the one line that matters – a warning first, else the plan. */
+function one(lines: Line[]): Line[] {
+  const l = lines.find((x) => x.tone === 'warn') ?? lines.find((x) => x.tone === 'plan') ?? lines[0];
+  return l ? [l] : [];
 }
 
 function Sheet(props: { title: string; onClose: () => void; children: React.ReactNode }) {

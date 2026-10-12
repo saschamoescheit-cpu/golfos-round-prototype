@@ -18,6 +18,7 @@ import { heightAt as terrainHeight } from '../lib/terrain';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard } from '../components/CaddieCard';
+import { isSun, setSun } from '../lib/theme';
 import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, type GreenGrid, type PuttRead } from '../lib/greenread';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
@@ -278,6 +279,22 @@ export function HoleScreen(props: {
   const pinPos: LngLat | null = plans[i]?.pin ?? mapData?.greenCenter ?? null;
   const [sheet, setSheet] = useState<{ kind: 'shot'; index: number | null; pos: LngLat | null } | { kind: 'green'; pos: LngLat | null } | null>(null);
   const [placing, setPlacing] = useState<'shot' | 'green' | null>(null);
+  const [sun, setSunState] = useState(isSun);
+  // After saving: a short buzz and a few seconds to take it back (a wrong tap with a glove).
+  const [undo, setUndo] = useState<{ text: string; detail: DetailEntry; putts: number | null; hole: number } | null>(null);
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), 6000);
+    return () => clearTimeout(t);
+  }, [undo]);
+  const confirmSaved = (text: string) => {
+    setUndo({ text, detail, putts: myEntry.putts, hole: i });
+    try {
+      navigator.vibrate?.(25);
+    } catch {
+      /* not supported (iPhone) */
+    }
+  };
   const fmtU = (m: number) => formatDistance(m, unit);
   const lengths = shotLengths(detail);
   // Club suggestions use the player's own distances from finished detailed rounds (≥ 3 shots per club).
@@ -318,6 +335,7 @@ export function HoleScreen(props: {
           const shots = detail.shots.slice();
           if (editing) shots[sheet.index!] = { ...shots[sheet.index!], ...v };
           else shots.push({ pos: sheet.pos, ...v });
+          confirmSaved(tr(`Shot ${n}${v.club ? ' · ' + clubCode(v.club) : ''} saved`, `Schlag ${n}${v.club ? ' · ' + clubCode(v.club) : ''} gespeichert`));
           saveDetail({ ...detail, shots });
           setSheet(null);
         }}
@@ -326,6 +344,7 @@ export function HoleScreen(props: {
           editing
             ? undefined
             : () => {
+                confirmSaved(tr('Holed out – saved', 'Eingelocht – gespeichert'));
                 saveDetail({ ...detail, shots: [...detail.shots, { pos: sheet.pos, lie: pos && mapData ? lieAt(pos, mapData, n === 1) : 'fairway', club: null, penalty: false }], holedOut: true, onGreen: null, pin: pinPos }, 0);
                 setSheet(null);
               }
@@ -344,6 +363,7 @@ export function HoleScreen(props: {
         putts={myEntry.putts}
         onCancel={() => setSheet(null)}
         onSave={(putts) => {
+          confirmSaved(tr(`${putts} putt${putts === 1 ? '' : 's'} saved`, `${putts} Putt${putts === 1 ? '' : 's'} gespeichert`));
           saveDetail({ ...d, holedOut: false }, putts);
           setSheet(null);
         }}
@@ -549,6 +569,15 @@ export function HoleScreen(props: {
             <span className="map-hole-no">{hole.label}</span>
             <span>Par {hole.par || '?'} · Hcp {hole.strokeIndex || '?'}</span>
           </div>
+          {detailMode && !round.preview && (
+            <button type="button" className="map-btn map-score-chip" onClick={() => setView('score')} aria-label={tr(`Score ${strokesShown ?? '–'}, tap to edit`, `Score ${strokesShown ?? '–'}, antippen zum Ändern`)}>
+              <span className="small">Score</span>
+              <strong>{strokesShown ?? '–'}</strong>
+            </button>
+          )}
+          <button type="button" className="map-btn round" aria-pressed={sun} aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on', 'Sonnenmodus an')} onClick={() => { setSun(!sun); setSunState(!sun); }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></svg>
+          </button>
           <button type="button" className="map-btn round" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(commitPar(round))}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
           </button>
@@ -589,7 +618,10 @@ export function HoleScreen(props: {
               {tr('plays like', 'spielt wie')} {fmt(green.center + slopeToGreen)}
             </span>
           )}
-          <span className="map-from">{onHole ? `GPS ±${Math.round(player!.accuracy)} m` : tr('from tee', 'vom Abschlag')}</span>
+          {/* Distances follow the GPS position on the hole; elsewhere (at home, no signal) they count from the tee – say why. */}
+          <span className={`map-from${onHole ? '' : ' off'}`}>
+            {onHole ? `GPS ±${Math.round(player!.accuracy)} m` : player ? tr('from tee · GPS not on the course', 'ab Abschlag · GPS nicht am Platz') : tr('from tee · no GPS', 'ab Abschlag · kein GPS')}
+          </span>
         </div>
 
         {pinSheet && mapData.green && (
@@ -639,6 +671,15 @@ export function HoleScreen(props: {
           {detectedBanner}
           {offlineHint}
           <div className="map-tools">
+            {detailMode && (
+              <button type="button" className="map-btn round tool" aria-label={tr('Add a target on the map', 'Ziel auf der Karte hinzufügen')} title={tr('Target', 'Ziel')} onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="11" cy="13" r="6.5" />
+                  <path d="M11 4.5v3M11 18.5v3M2.5 13h3M16.5 13h3" />
+                  <path d="M19 2v6M16 5h6" strokeWidth="2.2" />
+                </svg>
+              </button>
+            )}
             {(slope || chart) && !nearGreen && (
               <button type="button" className="map-btn round tool" aria-pressed={showGreen} aria-label={showGreen ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!showGreen)}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -744,10 +785,25 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
-          {detailMode && (
-            <div className="map-actions detail">
-              <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
-                {tr('+ Target', '+ Ziel')}
+          {undo && undo.hole === i && !placing && (
+            <div className="map-hint detected" role="status">
+              <span>✓ {undo.text}</span>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => {
+                  saveDetail(undo.detail, undo.putts);
+                  setUndo(null);
+                }}
+              >
+                {tr('Undo', 'Rückgängig')}
+              </button>
+            </div>
+          )}
+          {detailMode ? (
+            <div className="map-nav detail">
+              <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
+                ←
               </button>
               {holeDone ? (
                 <button type="button" className="map-btn primary" onClick={() => goTo(i + 1)}>
@@ -764,19 +820,20 @@ export function HoleScreen(props: {
                 disabled={detail.shots.length === 0 || detail.holedOut}
                 onClick={() => (detail.onGreen ? openAt('green', detail.onGreen) : onHole ? openAt('green', player!.pos) : setPlacing('green'))}
               >
-                {detail.onGreen ? 'Putts' : tr('On green', 'Auf dem Grün')}
+                {detail.onGreen ? 'Putts' : tr('Green', 'Grün')}
+              </button>
+              <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => goTo(i + 1)}>
+                →
               </button>
             </div>
-          )}
-          <div className={`map-nav${detailMode ? '' : ' with-target'}`}>
+          ) : (
+          <div className="map-nav with-target">
             <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
               ←
             </button>
-            {!detailMode && (
-              <button type="button" className="map-btn" onClick={addTarget} disabled={shownTargets.length >= MAX_TARGETS} aria-label={tr('Add a target on the map', 'Ziel auf der Karte hinzufügen')}>
-                {tr('+ Target', '+ Ziel')}
-              </button>
-            )}
+            <button type="button" className="map-btn" onClick={addTarget} disabled={shownTargets.length >= MAX_TARGETS} aria-label={tr('Add a target on the map', 'Ziel auf der Karte hinzufügen')}>
+              {tr('+ Target', '+ Ziel')}
+            </button>
             {round.preview ? (
               <span className="map-score">
                 <span className="small">{tr('Preview', 'Vorschau')}</span>
@@ -795,6 +852,7 @@ export function HoleScreen(props: {
               →
             </button>
           </div>
+          )}
         </div>
         {sheetEl}
       </main>

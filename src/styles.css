@@ -496,3 +496,72 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .topar-bar b { position: relative; font: 700 13px var(--body); font-variant-numeric: tabular-nums; }
 /* Start page: where the game is heading */
 .home-trend { display: flex; flex-direction: column; gap: 2px; text-align: left; background: var(--surface); border: 0; border-radius: 12px; padding: 12px 14px; font-weight: 600; }
+
+/* Hole map, one glance (UX pass): score chip on top, one bottom row in detailed mode, compact caddie */
+.map-score-chip { flex-direction: column; gap: 0; min-width: 56px; padding: 2px 10px; line-height: 1.05; }
+.map-score-chip .small { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.map-score-chip strong { font: 700 20px var(--display); }
+.map-nav.detail { grid-template-columns: 56px 1fr auto 56px; }
+.map-nav.detail > .map-btn:not(.round) { min-height: 56px; padding: 0 14px; font-size: 16px; }
+.map-nav.detail > .map-btn.primary:not(.round) { font-weight: 700; }
+.caddie-card .head { gap: 10px; }
+.caddie-card .head .club { font-size: 26px; min-width: 44px; }
+.caddie-card .head .grow { flex: 1; font-size: 15px; }
+.caddie-card .head .more { color: var(--muted); font-size: 16px; padding: 0 2px; }
+.caddie-card > .plan, .caddie-card > .why, .caddie-card > .mental { font-size: 14px; }
+.lang-btn[aria-pressed='true'] { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+
+/* ---------- Sun mode: light panels, black type, stronger colours (readable in bright sunshine) ---------- */
+:root[data-theme='sun'] {
+  --bg: #f4f6f2;
+  --surface: #ffffff;
+  --surface-2: #e8ede5;
+  --line: #c9d3cb;
+  --line-strong: #9fada3;
+  --text: #0b1013;
+  --text-2: #1f2a31;
+  --muted: #47544c;
+  --brand: #4f7a0a;
+  --brand-text: #3a6300;
+  --brand-soft: #e1eecb;
+  --ok: #1d8a43;
+  --bad: #c2362b;
+  --warn: #9a6400;
+  color-scheme: light;
+}
+:root[data-theme='sun'] .btn-primary,
+:root[data-theme='sun'] .map-btn.primary,
+:root[data-theme='sun'] .map-btn[aria-pressed='true'],
+:root[data-theme='sun'] .segmented button[aria-pressed='true'],
+:root[data-theme='sun'] .club-grid button[aria-pressed='true'],
+:root[data-theme='sun'] .club-grid button[aria-pressed='true'] small,
+:root[data-theme='sun'] .chip-row button[aria-pressed='true'],
+:root[data-theme='sun'] .lang-btn[aria-pressed='true'] { color: #ffffff; }
+:root[data-theme='sun'] .bad-text { color: #b42318; }
+:root[data-theme='sun'] .good-text { color: #2f5a00; }
+:root[data-theme='sun'] .map-top { background: linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0)); }
+:root[data-theme='sun'] .map-bottom { background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.94) 35%); }
+:root[data-theme='sun'] .map-btn,
+:root[data-theme='sun'] .map-green,
+:root[data-theme='sun'] .map-weather,
+:root[data-theme='sun'] .map-score,
+:root[data-theme='sun'] .map-hint,
+:root[data-theme='sun'] .map-shot,
+:root[data-theme='sun'] .caddie-card { background: rgba(255, 255, 255, 0.96); color: var(--text); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+:root[data-theme='sun'] .map-btn.primary,
+:root[data-theme='sun'] .map-btn[aria-pressed='true'] { background: var(--brand); }
+:root[data-theme='sun'] .map-hint { color: #7a4d00; }
+:root[data-theme='sun'] .map-hint.detected { color: var(--text); }
+:root[data-theme='sun'] .map-label,
+:root[data-theme='sun'] .map-slope span { background: rgba(255, 255, 255, 0.95); color: #0b1013; }
+:root[data-theme='sun'] .caddie-card .plan.warn { color: #b42318; }
+:root[data-theme='sun'] .caddie-card .mental { color: #1d4f86; }
+:root[data-theme='sun'] .map-slope-chip { color: #7a4d00; }
+:root[data-theme='sun'] .badge-dot { background: #f2c14e; }
+:root[data-theme='sun'] .map-target-sign { background: rgba(255, 255, 255, 0.96); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+:root[data-theme='sun'] .map-target-sign .carry { color: #0b1013; }
+:root[data-theme='sun'] .map-target-sign .remove { background: var(--surface-2); color: #0b1013; }
+/* On the hole map the map credits sit under the distance box, not behind the bottom buttons */
+.map-screen .maplibregl-ctrl-bottom-right { top: calc(env(safe-area-inset-top) + 250px); bottom: auto; }
+.map-from.off { max-width: 92px; text-align: center; line-height: 1.2; color: #f6d48a; }
+:root[data-theme='sun'] .map-from.off { color: #7a4d00; }
