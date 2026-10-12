@@ -28,8 +28,10 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
     setSettings(next);
     saveCaddieSettings(next);
   };
+  // Only believable carries count (20–400 m); empty or odd values fall back to the standard for that club.
+  const valid = (v: string) => Number(v) >= 20 && Number(v) <= 400;
   const save = () => {
-    const out: CarryBag = DEFAULT_CARRY.map((d) => ({ club: d.club, carry: Number(bag[d.club]) })).filter((b) => b.carry > 0);
+    const out: CarryBag = DEFAULT_CARRY.map((d) => ({ club: d.club, carry: Number(bag[d.club]) })).filter((b) => valid(String(b.carry)));
     saveCarryBag(out);
     setNote(tr(`Saved · ${out.length} clubs.`, `Gespeichert · ${out.length} Schläger.`));
   };
@@ -42,7 +44,7 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
   const toReview = DEFAULT_CARRY.filter((d) => differs(d.club)).length;
   const persist = (next: Record<string, string>) => {
     setBag(next);
-    saveCarryBag(DEFAULT_CARRY.map((d) => ({ club: d.club, carry: Number(next[d.club]) })).filter((b) => b.carry > 0));
+    saveCarryBag(DEFAULT_CARRY.map((d) => ({ club: d.club, carry: Number(next[d.club]) })).filter((b) => valid(String(b.carry))));
   };
   const useTracked = (clubs: string[]) => {
     const next = { ...bag };
@@ -115,7 +117,8 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
               inputMode="numeric"
               value={settings.favourite}
               aria-label={tr('Favourite approach distance in metres', 'Lieblingsdistanz in Metern')}
-              onChange={(e) => set({ favourite: Number(e.target.value.replace(/[^0-9]/g, '')) || 0 })}
+              onChange={(e) => set({ favourite: Number(e.target.value.replace(/[^0-9]/g, '').slice(0, 3)) || 0 })}
+              onBlur={() => set({ favourite: Math.min(200, Math.max(30, settings.favourite || 90)) })}
             />
             m
           </span>
@@ -159,7 +162,9 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
                   inputMode="numeric"
                   value={bag[d.club]}
                   aria-label={tr(`${clubName(d.club)} carry in metres`, `${clubName(d.club)} Carry in Metern`)}
-                  onChange={(e) => setBag({ ...bag, [d.club]: e.target.value.replace(/[^0-9]/g, '') })}
+                  onChange={(e) => setBag({ ...bag, [d.club]: e.target.value.replace(/[^0-9]/g, '').slice(0, 3) })}
+                  onBlur={save}
+                  aria-invalid={bag[d.club] !== '' && !valid(bag[d.club])}
                 />
                 m
               </span>

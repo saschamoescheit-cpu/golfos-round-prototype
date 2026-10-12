@@ -55,6 +55,10 @@ describe('detailed tracking', () => {
     expect(v.putts).toBe(0);
     expect(v.fairway).toBe('left');
   });
+  it('putts typed in without marking the ball on the green still finish the hole', () => {
+    const d: DetailEntry = { ...emptyDetail(), shots: [shot(0, 0, 'tee'), shot(4, 230, 'fairway'), shot(2, 340, 'fairway')] };
+    expect(deriveFromShots(d, 2, 4, hole).strokes).toBe(5); // 3 shots + 2 putts
+  });
   it('unfinished hole leaves the strokes open', () => {
     const d: DetailEntry = { ...emptyDetail(), shots: [shot(0, 0, 'tee')] };
     expect(deriveFromShots(d, null, 4, hole).strokes).toBeUndefined();

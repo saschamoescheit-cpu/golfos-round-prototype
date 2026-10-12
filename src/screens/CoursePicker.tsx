@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Course, CourseSummary } from '../types';
 import { saveCachedCourse } from '../lib/storage';
-import { loadCourse, nearbyCourses, searchCourses } from '../lib/courses';
+import { loadCourse, nearbyCourses, searchBundled, searchCourses } from '../lib/courses';
 import { Attribution, TopBar } from '../components/ui';
 import { tr } from '../lib/i18n';
 
@@ -15,6 +15,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
   const [nearby, setNearby] = useState<NearbyState>({ status: 'locating' });
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CourseSummary[] | null>(null);
+  const [searchError, setSearchError] = useState(false);
   const [searching, setSearching] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -47,10 +48,15 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
       setResults(null);
       return;
     }
+    // Bundled courses show at once (also offline); the course databases add the rest a moment later.
+    setResults(searchBundled(query));
+    setSearchError(false);
     searchTimer.current = window.setTimeout(async () => {
       setSearching(true);
       try {
         setResults(await searchCourses(query, position.current));
+      } catch {
+        setSearchError(true); // keep the bundled hits
       } finally {
         setSearching(false);
       }
@@ -120,7 +126,12 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <h2>{tr('Results', 'Ergebnisse')}</h2>
           {searching && <span className="spinner" aria-label={tr('Searching', 'Sucht')} />}
-          {!searching && results.length === 0 && <p className="muted">{tr('No golf course found. Try another spelling.', 'Kein Golfplatz gefunden. Versuche eine andere Schreibweise.')}</p>}
+          {searchError && (
+            <p className="muted small" style={{ margin: 0 }}>
+              {tr('The online course search is not reachable right now – showing the courses that come with the app.', 'Die Online-Platzsuche ist gerade nicht erreichbar – angezeigt werden die Plätze, die in der App stecken.')}
+            </p>
+          )}
+          {!searching && !searchError && results.length === 0 && <p className="muted">{tr('No golf course found. Try another spelling.', 'Kein Golfplatz gefunden. Versuche eine andere Schreibweise.')}</p>}
           {renderList(results)}
         </section>
       ) : (

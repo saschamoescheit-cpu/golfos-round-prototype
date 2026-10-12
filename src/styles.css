@@ -279,7 +279,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .focus-list li { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
 .focus-list .grow { flex: 1; min-width: 0; }
 .focus-area { display: block; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: 0.4px; color: var(--brand-text); }
-.focus-list li > span:last-child { white-space: nowrap; }
+.focus-list li:not(.drill) > span:last-child { white-space: nowrap; }
 .bad-text { color: #ff8a7f; }
 .tee-bar, .mix-bar { display: flex; height: 34px; border-radius: 10px; overflow: hidden; font: 600 12px/34px var(--body); }
 .tee-bar span, .mix-bar span { text-align: center; white-space: nowrap; overflow: hidden; color: #0e1418; flex-basis: 0; }
@@ -496,3 +496,9 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .topar-bar b { position: relative; font: 700 13px var(--body); font-variant-numeric: tabular-nums; }
 /* Start page: where the game is heading */
 .home-trend { display: flex; flex-direction: column; gap: 2px; text-align: left; background: var(--surface); border: 0; border-radius: 12px; padding: 12px 14px; font-weight: 600; }
+/* score mix: a label that does not fit its share is hidden instead of cut */
+.mix-bar span { overflow: hidden; text-overflow: clip; font-size: 11px; }
+.input[aria-invalid='true'] { border-color: var(--bad); }
+/* caddie buttons fit a 320 px phone: columns may shrink, long words get an ellipsis */
+.caddie-actions { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 40px; }
+.caddie-actions button { padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

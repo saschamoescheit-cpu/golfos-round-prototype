@@ -108,7 +108,7 @@ export function aimPoint(input: AimInput): AimPoint {
     const reach = longest * ratio;
     let along = Math.min(alongFrom + reach, total - 60);
     // Layup (not the tee shot on a par 4): leave the favourite distance if that is in reach.
-    const fav = o.favourite ?? 90;
+    const fav = Math.min(200, Math.max(30, o.favourite || 90)); // 30–200 m, whatever was typed
     if (!o.teeShot && total - fav > alongFrom + 30 && total - fav <= alongFrom + reach) {
       along = total - fav;
       reasons.push(tr(`leaves ${fav} m`, `lässt ${fav} m`));

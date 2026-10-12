@@ -28,7 +28,18 @@ export function restoreBackup(b: Backup): { rounds: number } {
   for (const [key, value] of Object.entries(b.data)) {
     if (key === 'golfos.rounds.v1') {
       const here: { id: string }[] = JSON.parse(localStorage.getItem(key) ?? '[]');
-      const theirs: { id: string }[] = JSON.parse(value);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        throw new Error(tr('The rounds in this backup are damaged.', 'Die Runden in dieser Sicherung sind beschädigt.'));
+      }
+      // Only complete rounds: an id, holes, players with "me", and one entry per hole for every player.
+      const theirs = (Array.isArray(parsed) ? parsed : []).filter(
+        (r): r is { id: string } =>
+          r != null && typeof r.id === 'string' && Array.isArray(r.holes) && r.holes.length > 0 && Array.isArray(r.players) && r.players.some((p: { isMe?: boolean }) => p?.isMe) &&
+          r.entries != null && r.players.every((p: { id: string }) => Array.isArray(r.entries[p.id]) && r.entries[p.id].length === r.holes.length),
+      );
       const ids = new Set(here.map((r) => r.id));
       const merged = [...here, ...theirs.filter((r) => !ids.has(r.id))];
       added = merged.length - here.length;

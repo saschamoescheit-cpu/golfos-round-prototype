@@ -54,8 +54,10 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   const missing = holes.filter((h) => !h.par || !h.strokeIndex).length;
 
   // Course rating and slope of the chosen tee (18 holes): the playing handicap follows from the handicap index.
-  const rating: TeeRating | null = tee && holes.length === 18 ? (RATINGS[props.course.id]?.[tee] ?? null) : null;
-  const par = holes.reduce((sum, h) => sum + (h.par || 0), 0);
+  // 9 holes: half the 18-hole course handicap (WHS uses 9-hole ratings; half of the 18-hole one is within a stroke).
+  const rating: TeeRating | null = tee && (holes.length === 18 || holes.length === 9) ? (RATINGS[props.course.id]?.[tee] ?? null) : null;
+  const nine = holes.length === 9;
+  const par = nine ? props.course.holes.filter((h) => h.loop === holes[0]?.loop).reduce((sum, h) => sum + (h.par || 0), 0) : holes.reduce((sum, h) => sum + (h.par || 0), 0);
   const parseHcp = (s: string): number | null => {
     const n = Number(s.replace(',', '.'));
     return s.trim() === '' || !Number.isFinite(n) ? null : Math.round(n);
@@ -63,7 +65,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   const playingHandicap = (p: DraftPlayer): number | null => {
     if (rating) {
       const idx = parseIndex(p.index);
-      return idx == null ? null : courseHandicap(idx, rating, par);
+      if (idx == null) return null;
+      if (!nine) return courseHandicap(idx, rating, par);
+      return Math.round((idx * (rating.slope / 113) + (rating.cr - par)) / 2);
     }
     return parseHcp(p.handicap);
   };
@@ -222,6 +226,13 @@ function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => v
         <span className="muted small" style={{ gridColumn: '1 / -1' }}>
           {tr('Playing handicap here: ', 'Spielvorgabe hier: ')}
           {props.playing < 0 ? `+${-props.playing}` : props.playing}
+        </span>
+      )}
+      {(props.rating ? player.index : player.handicap).trim() !== '' && props.playing == null && (
+        <span className="bad-text small" style={{ gridColumn: '1 / -1' }} role="alert">
+          {props.rating
+            ? tr('Please enter your handicap as a number, e.g. 7.4 or +1.2', 'Bitte das Handicap als Zahl eingeben, z. B. 7,4 oder +1,2')
+            : tr('Please enter the playing handicap as a number, e.g. 12', 'Bitte die Spielvorgabe als Zahl eingeben, z. B. 12')}
         </span>
       )}
       {props.onRemove ? (

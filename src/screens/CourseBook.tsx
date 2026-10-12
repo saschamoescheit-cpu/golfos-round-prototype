@@ -155,16 +155,16 @@ function HolePage(p: {
             )}
           </p>
           <ul className="book-lines">
-            {lines.map((t) => (
-              <li key={t}>{t}</li>
+            {lines.map((t, k) => (
+              <li key={`${k}-${t}`}>{t}</li>
             ))}
           </ul>
           {hz.length > 0 && (
             <>
               <p className="lbl">{tr('From the tee: to reach / to carry', 'Vom Abschlag: bis dorthin / drüber')}</p>
               <ul className="book-lines muted">
-                {hz.map((t) => (
-                  <li key={t}>{t}</li>
+                {hz.map((t, k) => (
+                  <li key={`${k}-${t}`}>{t}</li>
                 ))}
               </ul>
             </>

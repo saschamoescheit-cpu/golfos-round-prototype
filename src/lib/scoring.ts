@@ -1,4 +1,4 @@
-import type { HoleEntry, RoundHole } from '../types';
+import type { HoleEntry, Round, RoundHole } from '../types';
 
 /**
  * Handicap strokes per hole: sort the round's holes by stroke index (ascending)
@@ -7,13 +7,41 @@ import type { HoleEntry, RoundHole } from '../types';
  */
 export function handicapStrokes(holes: RoundHole[], playingHandicap: number | null): number[] {
   const result = holes.map(() => 0);
-  if (playingHandicap == null || playingHandicap <= 0 || holes.length === 0) return result;
+  if (playingHandicap == null || playingHandicap === 0 || holes.length === 0) return result;
   const order = holes
     .map((h, i) => ({ i, si: h.strokeIndex }))
     .sort((a, b) => a.si - b.si || a.i - b.i)
     .map((x) => x.i);
+  // A plus handicap (negative) gives strokes back, starting on the easiest hole (highest stroke index).
+  if (playingHandicap < 0) {
+    for (let s = 0; s < -playingHandicap; s++) result[order[order.length - 1 - (s % order.length)]] -= 1;
+    return result;
+  }
   for (let s = 0; s < playingHandicap; s++) result[order[s % order.length]] += 1;
   return result;
+}
+
+/** Playing handicap as golfers write it: 12, or "+2" for a plus handicap. */
+export const fmtHcp = (v: number): string => (v < 0 ? `+${-v}` : String(v));
+
+/**
+ * Quick tracking pre-fills par: when the player leaves a hole (or finishes the round on it) without touching the
+ * score, par is written for every player. Holes with recorded shots are left alone – their score comes from the
+ * shots and putts, and a guessed par would hide an unfinished hole.
+ */
+export function commitParAt(r: Round, index: number): Round {
+  const hole = r.holes[index];
+  if (!hole || !(hole.par > 0)) return r;
+  const entries = { ...r.entries };
+  for (const p of r.players) {
+    const e = entries[p.id][index];
+    if (e.strokes == null && !e.pickedUp && !(e.detail && e.detail.shots.length > 0)) {
+      const list = entries[p.id].slice();
+      list[index] = { ...e, strokes: hole.par };
+      entries[p.id] = list;
+    }
+  }
+  return { ...r, entries };
 }
 
 /** Gross value written for a picked-up hole: net double bogey. */

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Round } from '../types';
-import { playerTotals, roundStats } from '../lib/scoring';
+import { fmtHcp, playerTotals, roundStats } from '../lib/scoring';
 import { deleteRound } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
@@ -82,13 +82,13 @@ export function Scorecard(props: {
             const t = playerTotals(round.holes, round.entries[p.id], p.playingHandicap);
             return (
               <div key={p.id} className="sc-other">
-                <span className="grow">{p.name}{p.playingHandicap != null ? <span className="muted small"> · {tr('hcp', 'SV')} {p.playingHandicap}</span> : null}</span>
+                <span className="grow">{p.name}{p.playingHandicap != null ? <span className="muted small"> · {tr('hcp', 'SV')} {fmtHcp(p.playingHandicap)}</span> : null}</span>
                 <strong>{t.gross}</strong> <span className="muted small">{formatToPar(t.toPar)}</span>
                 {t.stableford != null && <span className="muted small"> · {t.stableford} {tr('pts', 'Pkt.')}</span>}
               </div>
             );
           })}
-        {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {me.playingHandicap}</div>}
+        {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {fmtHcp(me.playingHandicap)}</div>}
       </section>
 
       <ScoreTable round={round} />
