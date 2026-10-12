@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import type { Round } from '../types';
-import { grossForHole, handicapStrokes, playerTotals, roundStats, stablefordPoints } from '../lib/scoring';
+import { playerTotals, roundStats } from '../lib/scoring';
 import { deleteRound } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
+import { ScoreTable } from '../components/ScoreTable';
+import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
 import { groupForHandicap, roundsSg } from '../lib/sg';
 import { loadTrack } from '../lib/track';
@@ -23,110 +25,71 @@ export function Scorecard(props: {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const me = round.players.find((p) => p.isMe)!;
   const finished = round.finishedAt != null;
-  const received = Object.fromEntries(round.players.map((p) => [p.id, handicapStrokes(round.holes, p.playingHandicap)]));
   const stats = roundStats(round.holes, round.entries[me.id]);
   const sg = roundsSg([round]);
   const canReview = round.mode === 'detail' || round.entries[me.id].some((e) => e.detail) || loadTrack(round.id).length > 20;
-  const nines = round.holes.length === 18 ? [round.holes.slice(0, 9), round.holes.slice(9)] : [round.holes];
-
-  const sumGross = (pid: string, idx: number[]) =>
-    idx.reduce((s, i) => s + (grossForHole(round.entries[pid][i], round.holes[i].par, received[pid][i]) ?? 0), 0);
-  const sumPts = (pid: string, idx: number[]) =>
-    idx.reduce((s, i) => s + (stablefordPoints(round.entries[pid][i], round.holes[i].par, received[pid][i]) ?? 0), 0);
 
   return (
     <main className="screen">
       <TopBar title={tr('Scorecard', 'Scorekarte')} onBack={finished ? props.onClose : props.onBackToHole} backLabel={finished ? tr('Close', 'Schließen') : tr('Back to hole', 'Zurück zum Loch')} />
       <div>
         <div style={{ font: '600 19px var(--display)' }}>{round.courseName}</div>
-        <span className="muted small">
+        <span className="muted small sc-sub">
           {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
+          {round.tee && (
+            <>
+              {' · '}
+              <span className="tee-dot" style={{ background: TEE_COLOURS[round.tee] ?? '#888' }} />
+              {teeName(round.tee)}
+            </>
+          )}
         </span>
       </div>
 
-      <div className="stat-grid">
-        {round.players.map((p) => {
-          const t = playerTotals(round.holes, round.entries[p.id], p.playingHandicap);
+      <section className="card sc-hero">
+        {(() => {
+          const t = playerTotals(round.holes, round.entries[me.id], me.playingHandicap);
           return (
-            <div key={p.id} className="stat">
-              <div className="muted small">{p.name}{p.playingHandicap != null ? ` · ${tr('hcp', 'SV')} ${p.playingHandicap}` : ''}</div>
-              <div className="num">
-                {t.gross} <span className="muted small">{formatToPar(t.toPar)}</span>
+            <div className="sc-hero-main">
+              <div>
+                <div className="sc-big">{t.gross}</div>
+                <div className="muted small">{tr('strokes', 'Schläge')}</div>
               </div>
-              <div className="small">{t.stableford != null ? tr(`${t.stableford} Stableford pts`, `${t.stableford} Stableford-Punkte`) : tr('gross only', 'nur brutto')}</div>
+              <div>
+                <div className="sc-mid">{formatToPar(t.toPar)}</div>
+                <div className="muted small">{tr('to par', 'zu Par')}</div>
+              </div>
+              {t.stableford != null && (
+                <div>
+                  <div className="sc-mid">{t.stableford}</div>
+                  <div className="muted small">{tr('Stableford pts', 'Stableford')}</div>
+                </div>
+              )}
+              {round.entries[me.id].some((e) => e.putts != null) && (
+                <div>
+                  <div className="sc-mid">{stats.putts}</div>
+                  <div className="muted small">Putts</div>
+                </div>
+              )}
             </div>
           );
-        })}
-      </div>
+        })()}
+        {round.players
+          .filter((p) => !p.isMe)
+          .map((p) => {
+            const t = playerTotals(round.holes, round.entries[p.id], p.playingHandicap);
+            return (
+              <div key={p.id} className="sc-other">
+                <span className="grow">{p.name}{p.playingHandicap != null ? <span className="muted small"> · {tr('hcp', 'SV')} {p.playingHandicap}</span> : null}</span>
+                <strong>{t.gross}</strong> <span className="muted small">{formatToPar(t.toPar)}</span>
+                {t.stableford != null && <span className="muted small"> · {t.stableford} {tr('pts', 'Pkt.')}</span>}
+              </div>
+            );
+          })}
+        {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {me.playingHandicap}</div>}
+      </section>
 
-      <div className="table-wrap">
-        <table className="scorecard">
-          <thead>
-            <tr>
-              <th>{tr('Hole', 'Loch')}</th>
-              <th>Par</th>
-              <th>Hcp</th>
-              {round.players.map((p) => (
-                <th key={p.id}>{p.name}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {nines.map((nine, n) => {
-              const idx = nine.map((h) => h.index);
-              return [
-                ...nine.map((h) => (
-                  <tr key={h.index}>
-                    <td>{h.label}</td>
-                    <td>{h.par}</td>
-                    <td className="muted">{h.strokeIndex}</td>
-                    {round.players.map((p) => {
-                      const e = round.entries[p.id][h.index];
-                      const g = grossForHole(e, h.par, received[p.id][h.index]);
-                      const pts = stablefordPoints(e, h.par, received[p.id][h.index]);
-                      return (
-                        <td key={p.id} className={g != null && g < h.par ? 'under' : ''}>
-                          {g ?? '–'}
-                          {e.pickedUp && '*'}
-                          {p.playingHandicap != null && pts != null && <span className="pts">{pts}</span>}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                )),
-                <tr key={`sum-${n}`} className="sum">
-                  <td>{nines.length === 2 ? (n === 0 ? tr('Out', 'Out') : tr('In', 'In')) : tr('Total', 'Gesamt')}</td>
-                  <td>{nine.reduce((s, h) => s + h.par, 0)}</td>
-                  <td />
-                  {round.players.map((p) => (
-                    <td key={p.id}>
-                      {sumGross(p.id, idx)}
-                      {p.playingHandicap != null && <span className="pts">{sumPts(p.id, idx)}</span>}
-                    </td>
-                  ))}
-                </tr>,
-              ];
-            })}
-            {nines.length === 2 && (
-              <tr className="sum">
-                <td>{tr('Total', 'Gesamt')}</td>
-                <td>{round.holes.reduce((s, h) => s + h.par, 0)}</td>
-                <td />
-                {round.players.map((p) => {
-                  const all = round.holes.map((h) => h.index);
-                  return (
-                    <td key={p.id}>
-                      {sumGross(p.id, all)}
-                      {p.playingHandicap != null && <span className="pts">{sumPts(p.id, all)}</span>}
-                    </td>
-                  );
-                })}
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <p className="muted small" style={{ margin: 0 }}>{tr('Small numbers: Stableford points. * picked up (net double bogey).', 'Kleine Zahlen: Stableford-Punkte. * aufgehoben (Netto-Doppelbogey).')}</p>
+      <ScoreTable round={round} />
 
       <PlayedHcpCard round={round} onChange={props.onChange} />
 

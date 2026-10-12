@@ -430,3 +430,42 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .rating-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 .rating-form label { display: flex; flex-direction: column; gap: 4px; }
 .rating-form .input { min-height: 44px; width: 100%; }
+/* Scorecard like the paper one: per nine a block with the holes across */
+.sc-sub { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.tee-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.35); }
+.sc-hero { display: flex; flex-direction: column; gap: 10px; }
+.sc-hero-main { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; text-align: center; }
+.sc-hero-main > div:first-child { text-align: left; }
+.sc-big { font: 700 44px/1 var(--display); font-variant-numeric: tabular-nums; }
+.sc-mid { font: 700 22px/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.sc-other { display: flex; align-items: baseline; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.sc-other .grow { flex: 1; }
+.sc-wrap { display: flex; flex-direction: column; gap: 10px; }
+.sc-block { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+table.sc { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+.sc col.lab { width: 50px; }
+.sc col.sumcol { width: 38px; }
+.sc th, .sc td { text-align: center; padding: 5px 0; font-size: 14px; }
+.sc tr.holes th { background: var(--surface-2); color: var(--text); font: 700 13px var(--body); padding: 7px 0; }
+.sc .lab { text-align: left; padding-left: 8px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc tr.holes th.lab { font-size: 11px; color: var(--muted); }
+.sc .lab.name { color: var(--text); text-transform: none; font-size: 12px; }
+.sc tr.meta td { font-size: 11px; color: var(--muted); padding: 3px 0; }
+.sc tr.par td { font-weight: 700; border-bottom: 1px solid var(--line); }
+.sc tr.par td.lab { font-weight: 600; }
+.sc tr.score td { padding: 7px 0; }
+.sc tr.pts td { color: var(--text-2); }
+.sc .sumc { background: var(--surface-2); font-weight: 700; color: var(--text); }
+.sc tr.meta td.sumc { color: var(--text-2); }
+.mark { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; font: 700 14px var(--body); line-height: 1; }
+.mark.birdie { border: 1.5px solid var(--brand-text); border-radius: 50%; color: var(--brand-text); }
+.mark.eagle { background: var(--brand-text); border-radius: 50%; color: #0e1418; }
+.mark.bogey { border: 1.5px solid var(--muted); border-radius: 3px; }
+.mark.double { background: #ff8a7f; border-radius: 3px; color: #0e1418; }
+.hcp-dots { position: absolute; top: -6px; right: -5px; font: normal 10px/1 var(--body); letter-spacing: -1px; color: var(--warn); }
+.hcp-dot { color: var(--warn); }
+.sc-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.sc-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.sc-legend .mark { width: 20px; height: 20px; font-size: 11px; }
+table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
+.sc .hcp-dots { top: -6px; right: -4px; font-size: 13px; }
