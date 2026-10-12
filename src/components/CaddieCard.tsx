@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { answer, canListen, listen, RULES, speak, summary, type CaddieFacts } from '../lib/caddietalk';
+import { answer, canListen, listen, RULES, speak, summary, toggleSpeak, type CaddieFacts } from '../lib/caddietalk';
 import type { HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
 import { getLang, tr } from '../lib/i18n';
@@ -51,7 +51,7 @@ export function CaddieCard(props: {
           </label>
         )}
         <div className="caddie-actions">
-          <button type="button" onClick={() => speak(summary(f))} aria-label={tr('Read aloud', 'Vorlesen')}>
+          <button type="button" onClick={() => toggleSpeak(summary(f))} aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')}>
             🔊
           </button>
           <button type="button" onClick={() => setSheet('ask')}>

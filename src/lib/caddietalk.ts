@@ -120,16 +120,47 @@ export function answer(q: string, f: CaddieFacts): string {
   return summary(f);
 }
 
+// Whether the caddie is talking right now – the app shows a stop button while he is.
+let talking = false;
+const listeners = new Set<() => void>();
+const setTalking = (v: boolean) => {
+  if (talking === v) return;
+  talking = v;
+  listeners.forEach((l) => l());
+};
+export const isSpeaking = () => talking;
+export function onSpeaking(l: () => void): () => void {
+  listeners.add(l);
+  return () => listeners.delete(l);
+}
+
+const synth = () => (typeof window === 'undefined' ? undefined : (window as Window & { speechSynthesis?: SpeechSynthesis }).speechSynthesis);
+
 /** Reads text aloud (iPhone Safari supports this). */
 export function speak(text: string): boolean {
-  const s = (window as Window & { speechSynthesis?: SpeechSynthesis }).speechSynthesis;
-  if (!s) return false;
+  const s = synth();
+  if (!s || !text.trim()) return false;
   s.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = speechLang();
   u.rate = 1;
+  u.onend = () => setTalking(false);
+  u.onerror = () => setTalking(false);
+  setTalking(true);
   s.speak(u);
   return true;
+}
+
+/** Stops the caddie mid-sentence. */
+export function stopSpeaking(): void {
+  synth()?.cancel();
+  setTalking(false);
+}
+
+/** The read-aloud buttons: a second tap stops him. */
+export function toggleSpeak(text: string): void {
+  if (talking) stopSpeaking();
+  else speak(text);
 }
 
 /** Listens once (Safari: webkitSpeechRecognition); resolves the recognised text or null. */
