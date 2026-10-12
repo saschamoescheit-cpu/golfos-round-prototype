@@ -310,3 +310,13 @@ export function teeDelta(lengths: (number | null)[] | undefined, teeIndex: numbe
   const ref = lengths.reduce<number | null>((best, l) => (l != null && (best == null || Math.abs(l - lineM) < Math.abs(best - lineM)) ? l : best), null);
   return ref == null ? 0 : ref - want;
 }
+
+/**
+ * Where the green is played from: the point on the hole line 100 m before the green (the tee on short holes).
+ * "Front", "back", "left" and "right" of a green – on a pin sheet and for the slope of the green – are seen from here,
+ * not from the tee: on a dogleg the tee looks at the green from the side.
+ */
+export function approachFrom(d: { line: LngLat[]; tee: LngLat }): LngLat {
+  const L = lineLength(d.line);
+  return L > 100 ? pointAt(d.line, L - 100) : d.tee;
+}

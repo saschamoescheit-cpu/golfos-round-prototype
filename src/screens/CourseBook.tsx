@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Course, LngLat, RoundHole } from '../types';
-import { bearingDeg, centroid, formatDistance, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, type HoleMapData } from '../lib/geo';
+import { bearingDeg, centroid, formatDistance, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, type HoleMapData, approachFrom } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
 import { loadCaddieSettings, loadCarryBag, loadGeometry, loadRounds, loadUnit } from '../lib/storage';
 import { courseStats, type CourseHoleStat } from '../lib/history';
@@ -138,7 +138,7 @@ function HolePage(p: {
   const h1 = heightAt(p.slopes, L - 20);
   const rise = h0 != null && h1 != null ? h1 - h0 : null;
   // green: main slope and where to leave the approach (from 120 m in front, middle pin)
-  const g = p.greenSlope ? readGreen(p.greenSlope, bearingDeg(data.tee, data.greenCenter)) : null;
+  const g = p.greenSlope ? readGreen(p.greenSlope, bearingDeg(approachFrom(data), data.greenCenter)) : null;
   const leave = p.grid ? bestLeave(p.grid, data.greenCenter, pointAt(data.line, Math.max(0, L - 120)), data.green) : null;
   return (
     <section className="card book-hole">
