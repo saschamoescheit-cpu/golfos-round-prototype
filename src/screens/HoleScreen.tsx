@@ -24,7 +24,7 @@ import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { sideOf } from '../lib/dispersion';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, suggestTarget, type Unit } from '../lib/geo';
+import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, suggestTarget, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
@@ -384,9 +384,11 @@ export function HoleScreen(props: {
     const fmt = (m: number) => formatDistance(m, unit);
     /** Pin of the day on a 3 × 3 grid: depth front/middle/back × left/centre/right (thirds of the green). */
     const pinAt = (depth: -1 | 0 | 1, side: -1 | 0 | 1): LngLat => {
-      const g = greenFrontBack(mapData.tee, mapData.green!);
+      // front/back as on a pin sheet: seen from where the green is played (not from the tee – doglegs)
+      const origin = approachFrom(mapData);
+      const g = greenFrontBack(origin, mapData.green!);
       const along = depth < 0 ? -(g.center - g.front) * 0.6 : depth > 0 ? (g.back - g.center) * 0.6 : 0;
-      const b = bearingDeg(mapData.tee, mapData.greenCenter);
+      const b = bearingDeg(origin, mapData.greenCenter);
       // half width across the line: furthest outline point to the side
       const half = Math.max(6, ...mapData.green!.map((q) => Math.abs(sideOf(mapData.greenCenter, move(mapData.greenCenter, b, 10), q))));
       const p1 = move(mapData.greenCenter, b, along);

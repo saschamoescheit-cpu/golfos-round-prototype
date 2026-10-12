@@ -193,3 +193,16 @@ describe('course boundary', () => {
     expect(dropNestedRings([big, inner, apart])).toEqual([big, apart]);
   });
 });
+
+describe('where a green is played from', () => {
+  it('100 m before the green on the hole line – on a dogleg not the tee', async () => {
+    const { approachFrom, distanceM, bearingDeg } = await import('./geo');
+    const M = 1 / 111195;
+    const at = (e: number, n: number): [number, number] => [9.69 + (e * M) / Math.cos((48.78 * Math.PI) / 180), 48.78 + n * M];
+    // dogleg right: 250 m north, then 150 m east to the green
+    const line = [at(0, 0), at(0, 250), at(150, 250)];
+    const a = approachFrom({ line, tee: line[0] });
+    expect(distanceM(a, at(50, 250))).toBeLessThan(1);
+    expect(Math.round(bearingDeg(a, at(150, 250)))).toBe(90); // the green is played eastwards, not north-east from the tee
+  });
+});
