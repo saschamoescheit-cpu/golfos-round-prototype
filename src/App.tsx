@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round, RoundHole } from './types';
 import { ensureGeometry, geometryReady, loadRounds, saveRound } from './lib/storage';
+import { commitParAt } from './lib/scoring';
 import { Home } from './screens/Home';
 import { CoursePicker } from './screens/CoursePicker';
 import { RoundSetup } from './screens/RoundSetup';
@@ -21,6 +22,32 @@ type Screen =
   | { name: 'bag' }
   | { name: 'review'; round: Round }
   | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null };
+
+// The player left the round on purpose (pause): a reload in this session stays on the start page.
+const PAUSED = 'golfos.paused';
+const pausedRound = (() => {
+  try {
+    return sessionStorage.getItem(PAUSED);
+  } catch {
+    return null;
+  }
+})();
+const setPaused = (id: string | null) => {
+  try {
+    if (id) sessionStorage.setItem(PAUSED, id);
+    else sessionStorage.removeItem(PAUSED);
+  } catch {
+    /* storage blocked */
+  }
+};
+
+const sessionStorageHas = () => {
+  try {
+    return sessionStorage.getItem(PAUSED) != null;
+  } catch {
+    return false;
+  }
+};
 
 /** A round started in the last 8 hours (a round takes at most ~6) and not finished: the app reopens straight on its hole (iOS may reload the page while the phone is in the pocket). */
 function roundInPlay(rounds: Round[]): Round | undefined {
@@ -52,6 +79,7 @@ export function App() {
   const [rounds, setRounds] = useState<Round[]>(() => loadRounds());
   const [screen, setScreen] = useState<Screen>(() => {
     const r = SKIP_RESUME ? undefined : roundInPlay(rounds);
+    if (r && r.id === pausedRound) return { name: 'home' };
     return r ? { name: 'hole', round: r } : { name: 'home' };
   });
 
@@ -137,6 +165,7 @@ export function App() {
         </Suspense>
       );
     case 'hole':
+      if (pausedRound === screen.round.id || sessionStorageHas()) setPaused(null);
       return (
         <Suspense fallback={<Waiting />}>
           <HoleScreen
@@ -145,7 +174,10 @@ export function App() {
               if (!round.preview) persist(round);
               setScreen({ name: 'hole', round });
             }}
-            onExit={() => setScreen({ name: 'home' })}
+            onExit={() => {
+              setPaused(screen.round.id);
+              setScreen({ name: 'home' });
+            }}
             onShowScorecard={(round) => {
               if (round.preview) return setScreen({ name: 'home' });
               persist(round);
@@ -160,7 +192,8 @@ export function App() {
           round={screen.round}
           onBackToHole={() => setScreen({ name: 'hole', round: screen.round })}
           onFinish={(round) => {
-            persist(round);
+            // Finishing on the last hole is leaving it: its untouched score counts as par (quick tracking).
+            persist(round.currentHole === round.holes.length - 1 ? commitParAt(round, round.currentHole) : round);
             setScreen({ name: 'home' });
           }}
           onClose={() => setScreen(screen.back ?? { name: 'home' })}

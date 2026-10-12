@@ -213,7 +213,13 @@ export function Home(props: {
             e.target.value = '';
             if (!file) return;
             try {
-              const { rounds } = restoreBackup(JSON.parse(await file.text()));
+              let data: unknown;
+              try {
+                data = JSON.parse(await file.text());
+              } catch {
+                throw new Error(tr('This file is not a GolfOS backup.', 'Diese Datei ist keine GolfOS-Sicherung.'));
+              }
+              const { rounds } = restoreBackup(data as Parameters<typeof restoreBackup>[0]);
               setBackupMsg(
                 tr(`Backup restored · ${rounds} ${rounds === 1 ? 'round' : 'rounds'} added.`, `Sicherung wiederhergestellt · ${rounds} ${rounds === 1 ? 'Runde' : 'Runden'} hinzugefügt.`),
               );

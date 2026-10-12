@@ -81,9 +81,34 @@ function tidy(list: CourseSummary[]): CourseSummary[] {
   for (const c of ordered) {
     // same name within 2 km = the same course; a bundled "… West" also covers the plain "…" entry
     const same = (k: CourseSummary) => distanceKm(k.lat, k.lon, c.lat, c.lon) < 2 && (k.name === c.name || (SEED_COURSES[k.id] != null && k.name.startsWith(c.name)));
-    if (!kept.some(same)) kept.push(c);
+    const k = kept.find(same);
+    if (!k) kept.push(c);
+    else if (!k.place && c.place) k.place = c.place; // a bundled entry takes the place name from the database hit
   }
+  // a course without a place name (Son Antem East) takes it from a neighbour within 2 km
+  for (const c of kept) if (!c.place) c.place = kept.find((o) => o.place && distanceKm(o.lat, o.lon, c.lat, c.lon) < 2)?.place ?? c.place;
   return kept;
+}
+
+// ---------- Bundled courses: found instantly and offline ----------
+
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** The bundled courses as list entries (a course mapped twice in OSM appears once). */
+export function bundledCourses(): CourseSummary[] {
+  const seen = new Set<string>();
+  return Object.entries(SEED_COURSES).flatMap(([id, s]) => {
+    if (seen.has(s.name)) return [];
+    seen.add(s.name);
+    return [{ id, source: 'osm' as const, name: s.name, place: '', lat: s.lat, lon: s.lon }];
+  });
+}
+
+/** Bundled courses whose name contains every word of the query (accents and case ignored). */
+export function searchBundled(text: string): CourseSummary[] {
+  const words = fold(text).split(/\s+/).filter((w) => w.length > 0);
+  if (!words.length) return [];
+  return bundledCourses().filter((c) => words.every((w) => fold(c.name).includes(w)));
 }
 
 export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Promise<CourseSummary[]> {
@@ -93,9 +118,11 @@ export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Pr
     photon({ ...near, radius: String(radiusKm) }, PHOTON_REVERSE),
     photon({ q: 'golf', ...near, location_bias_scale: '0.1' }),
   ]);
-  if (byType.status === 'rejected' && byName.status === 'rejected') throw byName.reason;
+  const bundled = bundledCourses().filter((c) => distanceKm(lat, lon, c.lat, c.lon) <= radiusKm);
+  // Without the course database (no signal on the course) the bundled courses nearby still show.
+  if (byType.status === 'rejected' && byName.status === 'rejected' && !bundled.length) throw byName.reason;
   const seen = new Set<string>();
-  const list = [...(byType.status === 'fulfilled' ? byType.value : []), ...(byName.status === 'fulfilled' ? byName.value : [])].filter((c) =>
+  const list = [...(byType.status === 'fulfilled' ? byType.value : []), ...(byName.status === 'fulfilled' ? byName.value : []), ...bundled].filter((c) =>
     seen.has(c.id) ? false : (seen.add(c.id), true),
   );
   return tidy(list)
@@ -110,10 +137,9 @@ export async function searchCourses(text: string, near?: { lat: number; lon: num
   if (q.length < 3) return [];
   const bias: Record<string, string> = near ? { lat: String(near.lat), lon: String(near.lon) } : {};
   const [osm, oga] = await Promise.allSettled([photon({ q, ...bias }), searchOga(q)]);
-  return tidy([
-    ...(osm.status === 'fulfilled' ? osm.value : []),
-    ...(oga.status === 'fulfilled' ? oga.value : []),
-  ]);
+  const local = searchBundled(q);
+  if (osm.status === 'rejected' && oga.status === 'rejected' && !local.length) throw osm.reason;
+  return tidy([...local, ...(osm.status === 'fulfilled' ? osm.value : []), ...(oga.status === 'fulfilled' ? oga.value : [])]);
 }
 
 async function searchOga(q: string): Promise<CourseSummary[]> {

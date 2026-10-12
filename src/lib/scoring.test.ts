@@ -20,6 +20,14 @@ describe('handicapStrokes', () => {
     expect(s[2]).toBe(1);
     expect(s.reduce((a, b) => a + b, 0)).toBe(20);
   });
+  it('plus handicap +2: gives a stroke back on stroke index 18 and 17', () => {
+    const s = handicapStrokes(holes18, -2);
+    expect(s[17]).toBe(-1);
+    expect(s[16]).toBe(-1);
+    expect(s.reduce((a, b) => a + b, 0)).toBe(-2);
+    // par on the easiest hole is only 1 point for a +2 player
+    expect(stablefordPoints({ ...emptyEntry(), strokes: 4 }, 4, s[17])).toBe(1);
+  });
   it('no handicap: zero strokes', () => {
     expect(handicapStrokes(holes18, null).every((x) => x === 0)).toBe(true);
   });

@@ -93,7 +93,7 @@ export function Stats(props: { rounds: Round[]; onBack: () => void; onOpenRound:
               </p>
               <ol className="focus-list">
                 {practicePlan(f.focus).map((d) => (
-                  <li key={d.area} style={{ display: 'block' }}>
+                  <li key={d.area} className="drill" style={{ display: 'block' }}>
                     <span className="focus-area">
                       {areaName(d.area)} · {d.minutes} min
                     </span>
@@ -171,7 +171,7 @@ export function Stats(props: { rounds: Round[]; onBack: () => void; onOpenRound:
               ).map(([k, label, color]) =>
                 a.scoreMix[k] > 0 ? (
                   <span key={k} style={{ flexGrow: a.scoreMix[k], background: color }} title={`${label} ${a.scoreMix[k]}%`}>
-                    {a.scoreMix[k] >= 8 ? `${label} ${a.scoreMix[k]}%` : ''}
+                    {a.scoreMix[k] >= 30 ? `${label} ${a.scoreMix[k]}%` : a.scoreMix[k] >= 9 ? `${a.scoreMix[k]}%` : ''}
                   </span>
                 ) : null,
               )}

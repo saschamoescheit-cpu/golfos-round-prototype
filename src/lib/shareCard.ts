@@ -1,5 +1,5 @@
 import type { Round, RoundHole } from '../types';
-import { grossForHole, handicapStrokes, playerTotals, stablefordPoints } from './scoring';
+import { fmtHcp, grossForHole, handicapStrokes, playerTotals, stablefordPoints } from './scoring';
 import { playedHandicap } from './handicap';
 import { teeName } from '../data/tees';
 import { dec, getLang, tr } from './i18n';
@@ -45,7 +45,7 @@ export async function renderScorecard(round: Round): Promise<Blob> {
   g.font = `700 54px ${DISPLAY}`;
   while (g.measureText(name).width > W - 120 && name.length > 4) name = name.slice(0, -2) + '…';
   text(name, 60, 172, `700 54px ${DISPLAY}`);
-  const sub = [me.name, round.tee ? `${tr('tee', 'Abschlag')} ${teeName(round.tee)}` : null, me.playingHandicap != null ? `${tr('hcp', 'SV')} ${me.playingHandicap}` : null].filter(Boolean).join(' · ');
+  const sub = [me.name, round.tee ? `${tr('tee', 'Abschlag')} ${teeName(round.tee)}` : null, me.playingHandicap != null ? `${tr('hcp', 'SV')} ${fmtHcp(me.playingHandicap)}` : null].filter(Boolean).join(' · ');
   text(sub, 60, 222, `500 30px ${BODY}`, C.muted);
 
   // totals

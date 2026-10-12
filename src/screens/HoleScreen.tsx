@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DetailEntry, FairwayResult, HoleEntry, LngLat, Round } from '../types';
 import { deriveFromShots, emptyDetail, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
-import { greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
+import { commitParAt, greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp } from '../lib/storage';
@@ -60,18 +60,7 @@ export function HoleScreen(props: {
   };
 
   /** Strokes are pre-filled with par: leaving a hole commits par for players who did not change it. */
-  const commitPar = (r: Round): Round => {
-    const entries = { ...r.entries };
-    for (const p of r.players) {
-      const e = entries[p.id][i];
-      if (e.strokes == null && !e.pickedUp && hole.par > 0) {
-        const list = entries[p.id].slice();
-        list[i] = { ...e, strokes: hole.par };
-        entries[p.id] = list;
-      }
-    }
-    return { ...r, entries };
-  };
+  const commitPar = (r: Round): Round => commitParAt(r, i);
 
   const goTo = (target: number) => {
     setDetected(null);
@@ -578,7 +567,7 @@ export function HoleScreen(props: {
           <button type="button" className="map-btn round" aria-pressed={sun} aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on', 'Sonnenmodus an')} onClick={() => { setSun(!sun); setSunState(!sun); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></svg>
           </button>
-          <button type="button" className="map-btn round" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(commitPar(round))}>
+          <button type="button" className="map-btn round" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(round)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
           </button>
         </div>
@@ -729,7 +718,7 @@ export function HoleScreen(props: {
               </button>
             )}
           </div>
-          {putt ? (
+          {putt && !(detailMode && holeDone) ? (
             <div className="map-hint detected putt-read" style={{ color: 'var(--text)' }}>
               <span>
                 {putt.text} <span className="muted small">{tr('(approx.)', '(ca.)')}</span>
@@ -882,7 +871,7 @@ export function HoleScreen(props: {
                 <path d="M9 4v14M15 6v14" />
               </svg>
             </button>
-            <button type="button" className="icon-btn" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(commitPar(round))}>
+            <button type="button" className="icon-btn" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(round)}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <rect x="4" y="3" width="16" height="18" rx="2" />
                 <path d="M8 8h8M8 12h8M8 16h5" />
@@ -969,7 +958,13 @@ export function HoleScreen(props: {
               {tr('+ Add shot', '+ Schlag hinzufügen')}
             </button>
             {hasShots && (
-              <button type="button" className="btn-secondary btn-danger" onClick={() => update(me.id, { detail: undefined })}>
+              <button
+                type="button"
+                className="btn-secondary btn-danger"
+                onClick={() => {
+                  if (window.confirm(tr(`Delete all ${detail.shots.length} shots of this hole?`, `Alle ${detail.shots.length} Schläge dieses Lochs löschen?`))) update(me.id, { detail: undefined, strokes: null, putts: null });
+                }}
+              >
                 {tr('Clear shots', 'Schläge löschen')}
               </button>
             )}

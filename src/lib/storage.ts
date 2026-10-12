@@ -156,7 +156,10 @@ export function saveOfflineStamp(courseId: string, imageryId: string): void {
 /** The player's carry distances (AI caddie, "My bag"); null until he saved them. */
 const BAG = 'golfos.bag.v1';
 export function loadCarryBag(): CarryBag | null {
-  return read<CarryBag | null>(BAG, null);
+  const b = read<CarryBag | null>(BAG, null);
+  // values saved by older versions without a check: keep only believable carries
+  const ok = Array.isArray(b) ? b.filter((x) => x && typeof x.carry === 'number' && x.carry >= 20 && x.carry <= 400) : [];
+  return ok.length ? ok : null;
 }
 export function saveCarryBag(bag: CarryBag): void {
   write(BAG, bag);

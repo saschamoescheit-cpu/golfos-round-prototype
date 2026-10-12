@@ -90,7 +90,8 @@ function side(p: LngLat, line: LngLat[]): 'left' | 'right' {
 export function deriveFromShots(d: DetailEntry, putts: number | null, par: number, data: HoleMapData | null): Partial<HoleEntry> {
   const penalties = d.shots.filter((s) => s.penalty).length;
   const out: Partial<HoleEntry> = { penalties };
-  const finished = d.holedOut || (d.onGreen != null && putts != null);
+  // Holed out, or putts entered – also when the ball was not marked on the green (putts typed in the score view).
+  const finished = d.holedOut || (d.shots.length > 0 && putts != null);
   if (finished) out.strokes = d.shots.length + penalties + (d.holedOut ? 0 : (putts ?? 0));
   if (d.holedOut) out.putts = 0;
 
