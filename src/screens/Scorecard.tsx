@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { Round } from '../types';
 import { fmtHcp, playerTotals, roundStats } from '../lib/scoring';
-import { deleteRound } from '../lib/storage';
+import { deleteRound, loadRounds } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
+import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
 import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
@@ -90,6 +91,8 @@ export function Scorecard(props: {
           })}
         {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {fmtHcp(me.playingHandicap)}</div>}
       </section>
+
+      {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
 
       <ScoreTable round={round} />
 

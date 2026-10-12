@@ -20,6 +20,10 @@ describe('strokes gained', () => {
     expect(s.map((x) => x.category)).toEqual(['tee', 'approach', 'putting']);
     expect(s.reduce((a, x) => a + x.sg, 0)).toBeCloseTo(expectedStrokes(366, 'tee') - 4, 5);
   });
+  it('par 5: the second shot from more than 180 m is "long game", the third from 90 m "approach"', () => {
+    const d: DetailEntry = { shots: [{ pos: at(0), lie: 'tee', club: 'Dr', penalty: false }, { pos: at(230), lie: 'fairway', club: '3W', penalty: false }, { pos: at(410), lie: 'fairway', club: 'PW', penalty: false }], onGreen: at(495), pin: at(500), holedOut: false };
+    expect(holeSg(d, 2, 5)!.map((x) => x.category)).toEqual(['tee', 'long', 'approach', 'putting']);
+  });
   it('a penalty costs a full stroke more', () => {
     const base: DetailEntry = { shots: [{ pos: at(0), lie: 'tee', club: 'Dr', penalty: false }, { pos: at(220), lie: 'rough', club: '7i', penalty: false }], onGreen: at(362), pin: at(366), holedOut: false };
     const pen = { ...base, shots: [{ ...base.shots[0], penalty: true }, base.shots[1]] };
