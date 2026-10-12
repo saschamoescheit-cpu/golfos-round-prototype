@@ -4,6 +4,7 @@ import { grossForHole, handicapStrokes, playerTotals, roundStats, stablefordPoin
 import { deleteRound } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
+import { PlayedHcpCard } from '../components/PlayedHcp';
 import { groupForHandicap, roundsSg } from '../lib/sg';
 import { loadTrack } from '../lib/track';
 import { loopsText } from '../lib/loops';
@@ -16,6 +17,7 @@ export function Scorecard(props: {
   onClose: () => void;
   onReview: (r: Round) => void;
   onDeleted: () => void;
+  onChange: (r: Round) => void;
 }) {
   const { round } = props;
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -126,6 +128,8 @@ export function Scorecard(props: {
       </div>
       <p className="muted small" style={{ margin: 0 }}>{tr('Small numbers: Stableford points. * picked up (net double bogey).', 'Kleine Zahlen: Stableford-Punkte. * aufgehoben (Netto-Doppelbogey).')}</p>
 
+      <PlayedHcpCard round={round} onChange={props.onChange} />
+
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h2>{tr('Your stats', 'Deine Statistik')}</h2>
         <div className="stat-grid">
@@ -142,7 +146,7 @@ export function Scorecard(props: {
           {tr('Check your shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? tr(' · some to check', ' · einige offen') : ''}
         </button>
       )}
-      {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} holes={sg.holes} defaultGroup={groupForHandicap(me.playingHandicap)} />}
+      {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(me.playingHandicap)} />}
 
       <span className="spacer" />
       {!finished && (

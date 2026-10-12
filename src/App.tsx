@@ -146,6 +146,10 @@ export function App() {
             setScreen({ name: 'home' });
           }}
           onClose={() => setScreen({ name: 'home' })}
+          onChange={(round) => {
+            persist(round);
+            setScreen({ name: 'scorecard', round });
+          }}
           onReview={(round) => {
             persist(round);
             setScreen({ name: 'review', round });

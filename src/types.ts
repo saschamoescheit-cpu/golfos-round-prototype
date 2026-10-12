@@ -131,6 +131,8 @@ export interface Round {
   currentHole: number;
   /** Tee colour the player plays from (when the course has tee data). */
   tee?: string;
+  /** Course rating and slope the player entered or corrected (else the bundled values for the tee are used). */
+  rating?: { cr: number; slope: number };
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
 }

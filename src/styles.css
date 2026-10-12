@@ -412,3 +412,21 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .sk-line { fill: none; stroke: #ffffff; stroke-width: 1.2; stroke-dasharray: 4 4; opacity: 0.7; }
 .sk-shot { stroke: #ffd54a; stroke-width: 1.6; } .sk-aim { fill: #ffd54a; stroke: #0e1418; stroke-width: 1.2; }
 .sk-dot { fill: #ffffff; } .sk-mark { font: 600 10px var(--body); fill: #ffffff; paint-order: stroke; stroke: #0e1418; stroke-width: 2.4px; }
+
+/* Strokes gained on a drawn hole (SgHole) */
+.sg-hole { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.sg-hole svg { display: block; width: 100%; height: auto; }
+.sg-hole-row { display: grid; gap: 4px; }
+.sg-hole-box { border-radius: 8px; padding: 4px 2px; text-align: center; color: #0e1418; line-height: 1.15; }
+.sg-hole-box strong { display: block; font: 700 17px var(--display); font-variant-numeric: tabular-nums; }
+.sg-hole-box span { font-size: 11px; font-weight: 600; }
+.sg-hole-box.good { background: var(--brand-text); }
+.sg-hole-box.bad { background: #ff8a7f; }
+.sg-hole-row.labels span { text-align: center; font-size: 11px; color: var(--muted); line-height: 1.2; }
+/* Handicap played today */
+.played-hcp { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.played-hcp .num { font: 700 30px var(--display); font-variant-numeric: tabular-nums; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--brand-text); font-weight: 600; text-decoration: underline; }
+.rating-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+.rating-form label { display: flex; flex-direction: column; gap: 4px; }
+.rating-form .input { min-height: 44px; width: 100%; }

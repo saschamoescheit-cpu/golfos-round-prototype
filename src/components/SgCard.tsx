@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { GROUPS, SG_CATEGORIES, SG_LABELS, groupSg, type SgValues } from '../lib/sg';
+import { GROUPS, SG_CATEGORIES, SG_LABELS, groupSg, type SgCategory, type SgValues } from '../lib/sg';
+import { SgHole } from './SgHole';
 import { dec, tr } from '../lib/i18n';
 
 // Strokes gained per category, compared with a target group (tour pro, scratch, handicap classes).
@@ -7,11 +8,12 @@ import { dec, tr } from '../lib/i18n';
 
 const fmt = (v: number) => dec(`${v > 0 ? '+' : ''}${v.toFixed(1)}`);
 
-export function SgCard(props: { values: SgValues; holes: number; defaultGroup: string; title: string }) {
+export function SgCard(props: { values: SgValues; shots: Record<SgCategory, number>; holes: number; defaultGroup: string; title: string }) {
   const [group, setGroup] = useState(props.defaultGroup);
   const g = groupSg(group);
   const label = GROUPS.find((x) => x.id === group)!.label;
   const diff = Math.round((props.values.total - g.total) * 10) / 10;
+  const diffs = Object.fromEntries(SG_CATEGORIES.map((c) => [c, Math.round((props.values[c] - g[c]) * 10) / 10])) as Record<SgCategory, number>;
   return (
     <section className="card stats-card">
       <h2>{props.title}</h2>
@@ -35,6 +37,7 @@ export function SgCard(props: { values: SgValues; holes: number; defaultGroup: s
         </strong>{' '}
         {tr('strokes per round.', 'Schläge pro Runde.')}
       </p>
+      <SgHole diff={diffs} shots={props.shots} />
       <table className="mini-table sg-table">
         <thead>
           <tr>

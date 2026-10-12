@@ -74,11 +74,14 @@ export type SgValues = Record<SgCategory | 'total', number>;
 export interface SgSummary {
   holes: number; // holes with complete shot data
   per18: SgValues;
+  /** Strokes played in each category per 18 holes (putting = putts). */
+  shotsPer18: Record<SgCategory, number>;
 }
 
 /** Strokes gained against the tour, per 18 holes, over the player's detailed holes. */
 export function roundsSg(rounds: Round[]): SgSummary | null {
   const sum: Record<SgCategory, number> = { tee: 0, approach: 0, around: 0, putting: 0 };
+  const shots: Record<SgCategory, number> = { tee: 0, approach: 0, around: 0, putting: 0 };
   let holes = 0;
   for (const r of rounds) {
     const me = r.players.find((p) => p.isMe);
@@ -93,7 +96,10 @@ export function roundsSg(rounds: Round[]): SgSummary | null {
       const s = holeSg(d, e.putts, h.par);
       if (!s) return;
       holes++;
-      s.forEach((x) => (sum[x.category] += x.sg));
+      s.forEach((x) => {
+        sum[x.category] += x.sg;
+        shots[x.category] += x.category === 'putting' ? (e.putts ?? 0) : 1;
+      });
     });
   }
   if (!holes) return null;
@@ -101,7 +107,8 @@ export function roundsSg(rounds: Round[]): SgSummary | null {
   const r1 = (v: number) => Math.round(v * f * 10) / 10;
   const per18: SgValues = { tee: r1(sum.tee), approach: r1(sum.approach), around: r1(sum.around), putting: r1(sum.putting), total: 0 };
   per18.total = Math.round((per18.tee + per18.approach + per18.around + per18.putting) * 10) / 10;
-  return { holes, per18 };
+  const n18 = (c: SgCategory) => Math.round(shots[c] * f);
+  return { holes, per18, shotsPer18: { tee: n18('tee'), approach: n18('approach'), around: n18('around'), putting: n18('putting') } };
 }
 
 /**

@@ -3,6 +3,7 @@ import type { Round } from '../types';
 import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
 import { Segmented, TopBar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
+import { PlayedHcpStats } from '../components/PlayedHcp';
 import { groupForHandicap, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
@@ -51,7 +52,9 @@ export function Stats(props: { rounds: Round[]; onBack: () => void }) {
             <Big value={dec(a.puttsPer18 ?? '–')} label="Putts" />
           </section>
 
-          {sg && <SgCard title="Strokes gained" values={sg.per18} holes={sg.holes} defaultGroup={groupForHandicap(a.handicap)} />}
+          <PlayedHcpStats rounds={finished} />
+
+          {sg && <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(a.handicap)} />}
 
           {f && f.focus.length > 0 && (
             <section className="card stats-card">
