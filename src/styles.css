@@ -420,8 +420,8 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .sg-hole svg { display: block; width: 100%; height: auto; }
 .sg-hole-row { display: grid; gap: 4px; }
 .sg-hole-box { border-radius: 8px; padding: 4px 2px; text-align: center; color: #0e1418; line-height: 1.15; }
-.sg-hole-box strong { display: block; font: 700 17px var(--display); font-variant-numeric: tabular-nums; }
-.sg-hole-box span { font-size: 11px; font-weight: 600; }
+.sg-hole-box strong { display: block; font: 700 16px var(--display); font-variant-numeric: tabular-nums; }
+.sg-hole-box span { font-size: 10px; font-weight: 600; white-space: nowrap; }
 .sg-hole-box.good { background: var(--brand-text); }
 .sg-hole-box.bad { background: #ff8a7f; }
 .sg-hole-row.labels span { text-align: center; font-size: 11px; color: var(--muted); line-height: 1.2; }
@@ -571,3 +571,10 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 /* caddie buttons fit a 320 px phone: columns may shrink, long words get an ellipsis */
 .caddie-actions { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 40px; }
 .caddie-actions button { padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Round summary (feature 014) */
+.round-summary .headline { margin: 0; font: 600 17px/1.35 var(--display); }
+.round-summary h3 { margin: 4px 0 0; font: 600 15px var(--display); }
+.summary-lines { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.summary-lines li.good::marker { color: var(--brand-text); }
+.summary-lines li.bad::marker { color: #ff8a7f; }
+.next-round { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); font-weight: 600; }

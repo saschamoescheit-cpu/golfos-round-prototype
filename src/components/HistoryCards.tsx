@@ -8,7 +8,7 @@ import { dec, getLang, tr } from '../lib/i18n';
 // Stats (feature 012): how the player develops over the rounds, personal bests and the courses played.
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { day: 'numeric', month: 'numeric' });
-export const SG_COLOURS: Record<SgCategory, string> = { tee: '#f5d042', approach: '#5ec2ff', around: '#e48fc0', putting: '#9bc53d' };
+export const SG_COLOURS: Record<SgCategory, string> = { tee: '#f5d042', long: '#ff9f43', approach: '#5ec2ff', around: '#e48fc0', putting: '#9bc53d' };
 
 type Metric = 'score' | 'stableford' | 'hcp' | 'putts' | 'sg';
 

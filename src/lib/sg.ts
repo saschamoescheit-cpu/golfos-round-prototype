@@ -38,10 +38,17 @@ export function expectedStrokes(m: number, lie: Lie | 'green'): number {
   return t[t.length - 1][1];
 }
 
-export type SgCategory = 'tee' | 'approach' | 'around' | 'putting';
-export const SG_CATEGORIES: SgCategory[] = ['tee', 'approach', 'around', 'putting'];
-export const SG_LABELS: Record<SgCategory, string> = { tee: tr('Off the tee', 'Abschlag'), approach: tr('Approach', 'Annäherung'), around: tr('Around the green', 'Rund ums Grün'), putting: 'Putting' };
+export type SgCategory = 'tee' | 'long' | 'approach' | 'around' | 'putting';
+export const SG_CATEGORIES: SgCategory[] = ['tee', 'long', 'approach', 'around', 'putting'];
+export const SG_LABELS: Record<SgCategory, string> = {
+  tee: tr('Off the tee', 'Abschlag'),
+  long: tr('Long game', 'Langes Spiel'),
+  approach: tr('Approach', 'Annäherung'),
+  around: tr('Around the green', 'Rund ums Grün'),
+  putting: 'Putting',
+};
 const AROUND_M = 30 / YD; // within 30 yards of the hole (and not on the green)
+const LONG_M = 180; // shots (not off the tee) from further out are "long game": second shots on par 5s, layups
 
 export interface ShotSg {
   category: SgCategory;
@@ -62,7 +69,7 @@ export function holeSg(d: DetailEntry, putts: number | null, par: number): ShotS
     if (k + 1 < d.shots.length) end = expectedStrokes(distanceM(d.shots[k + 1].pos!, pin), d.shots[k + 1].lie);
     else if (d.holedOut) end = 0;
     else end = expectedStrokes(firstPutt, 'green');
-    const category: SgCategory = k === 0 && par >= 4 ? 'tee' : from <= AROUND_M ? 'around' : 'approach';
+    const category: SgCategory = k === 0 && par >= 4 ? 'tee' : from <= AROUND_M ? 'around' : from > LONG_M ? 'long' : 'approach';
     out.push({ category, sg: start - end - 1 - (s.penalty ? 1 : 0) });
   });
   if (!d.holedOut && putts != null) out.push({ category: 'putting', sg: expectedStrokes(firstPutt, 'green') - putts });
@@ -80,8 +87,8 @@ export interface SgSummary {
 
 /** Strokes gained against the tour, per 18 holes, over the player's detailed holes. */
 export function roundsSg(rounds: Round[]): SgSummary | null {
-  const sum: Record<SgCategory, number> = { tee: 0, approach: 0, around: 0, putting: 0 };
-  const shots: Record<SgCategory, number> = { tee: 0, approach: 0, around: 0, putting: 0 };
+  const sum: Record<SgCategory, number> = { tee: 0, long: 0, approach: 0, around: 0, putting: 0 };
+  const shots: Record<SgCategory, number> = { tee: 0, long: 0, approach: 0, around: 0, putting: 0 };
   let holes = 0;
   for (const r of rounds) {
     const me = r.players.find((p) => p.isMe);
@@ -105,10 +112,10 @@ export function roundsSg(rounds: Round[]): SgSummary | null {
   if (!holes) return null;
   const f = 18 / holes;
   const r1 = (v: number) => Math.round(v * f * 10) / 10;
-  const per18: SgValues = { tee: r1(sum.tee), approach: r1(sum.approach), around: r1(sum.around), putting: r1(sum.putting), total: 0 };
-  per18.total = Math.round((per18.tee + per18.approach + per18.around + per18.putting) * 10) / 10;
-  const n18 = (c: SgCategory) => Math.round(shots[c] * f);
-  return { holes, per18, shotsPer18: { tee: n18('tee'), approach: n18('approach'), around: n18('around'), putting: n18('putting') } };
+  const per18 = { ...(Object.fromEntries(SG_CATEGORIES.map((c) => [c, r1(sum[c])])) as Record<SgCategory, number>), total: 0 };
+  per18.total = Math.round(SG_CATEGORIES.reduce((t, c) => t + per18[c], 0) * 10) / 10;
+  const shotsPer18 = Object.fromEntries(SG_CATEGORIES.map((c) => [c, Math.round(shots[c] * f)])) as Record<SgCategory, number>;
+  return { holes, per18, shotsPer18 };
 }
 
 /**
@@ -116,7 +123,8 @@ export function roundsSg(rounds: Round[]): SgSummary | null {
  * it is split like Broadie's finding that the long game (tee + approach) makes about two thirds of the gap.
  * Approximate values – to be confirmed by Chris.
  */
-const SHARE: Record<SgCategory, number> = { tee: 0.27, approach: 0.4, around: 0.17, putting: 0.16 };
+// Long game and approach share Broadie's approach part (0.40): about a quarter of it from 180 m and further.
+const SHARE: Record<SgCategory, number> = { tee: 0.27, long: 0.1, approach: 0.3, around: 0.17, putting: 0.16 };
 export const GROUPS: { id: string; label: string; total: number }[] = [
   { id: 'tour', label: tr('Tour pro', 'Tour-Profi'), total: 0 },
   { id: 'scratch', label: 'Scratch', total: -4 },
@@ -130,7 +138,7 @@ export const GROUPS: { id: string; label: string; total: number }[] = [
 export function groupSg(id: string): SgValues {
   const g = GROUPS.find((x) => x.id === id) ?? GROUPS[0];
   const v = (c: SgCategory) => Math.round(g.total * SHARE[c] * 10) / 10;
-  return { tee: v('tee'), approach: v('approach'), around: v('around'), putting: v('putting'), total: g.total };
+  return { ...(Object.fromEntries(SG_CATEGORIES.map((c) => [c, v(c)])) as Record<SgCategory, number>), total: g.total };
 }
 
 /** The comparison group closest to a playing handicap. */

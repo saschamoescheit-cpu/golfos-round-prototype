@@ -1,24 +1,26 @@
 import { SG_LABELS, type SgCategory } from '../lib/sg';
 import { dec, tr } from '../lib/i18n';
 
-// Strokes gained drawn on a golf hole: tee, approach, around the green and putting as zones from tee to flag,
-// above each its strokes won (green) or lost (red) against the chosen group and the strokes played there.
+// Strokes gained drawn on a golf hole: tee, long game (second shots on par 5s, layups), approach, around the green
+// (the ring round the green) and putting. Above each zone the strokes won (green) or lost (red) against the chosen
+// group and the strokes played there.
 
 const ZONES: { c: SgCategory; w: number }[] = [
-  { c: 'tee', w: 24 },
-  { c: 'approach', w: 34 },
-  { c: 'around', w: 20 },
-  { c: 'putting', w: 22 },
+  { c: 'tee', w: 17 },
+  { c: 'long', w: 22 },
+  { c: 'approach', w: 22 },
+  { c: 'around', w: 19 },
+  { c: 'putting', w: 20 },
 ];
 const COLS = ZONES.map((z) => `${z.w}fr`).join(' ');
-// zone borders on the 400-wide drawing
-const X1 = 4 * 24;
-const X2 = 4 * (24 + 34);
-const X3 = 4 * (24 + 34 + 20);
+// zone borders on the 500-wide drawing (around the green is the ring, not a line)
+const X1 = 5 * 17;
+const X2 = 5 * (17 + 22);
+const X3 = 5 * (17 + 22 + 22);
 
 const TREES = [
-  [14, 12], [40, 9], [62, 15], [88, 8], [118, 12], [146, 7], [176, 13], [204, 9], [238, 12], [300, 9], [394, 14], [386, 104],
-  [22, 106], [52, 110], [80, 104], [112, 109], [222, 108], [250, 103], [278, 110], [306, 106], [334, 111], [362, 107],
+  [14, 12], [42, 9], [66, 15], [96, 8], [126, 13], [156, 7], [186, 13], [216, 9], [246, 12], [276, 8], [306, 12], [330, 7],
+  [22, 128], [54, 132], [84, 126], [204, 131], [232, 126], [262, 132], [292, 127], [318, 133],
 ] as const;
 
 export function SgHole(props: { diff: Record<SgCategory, number>; shots: Record<SgCategory, number> }) {
@@ -37,28 +39,43 @@ export function SgHole(props: { diff: Record<SgCategory, number>; shots: Record<
           );
         })}
       </div>
-      <svg viewBox="0 0 400 120" role="img" aria-hidden="true">
-        <rect width="400" height="120" rx="12" fill="#5d8c3b" />
-        {TREES.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 7 : 5.5} fill="#2e5a28" />
-        ))}
-        {/* fairway from the tee to the green */}
-        <path d="M30 52 C 80 38, 150 32, 210 38 S 300 40, 322 46 L 322 74 C 290 80, 240 84, 190 82 S 80 76, 30 68 Z" fill="#7cb24c" />
-        <path d="M60 50 C 110 42, 160 40, 210 44 L 210 76 C 160 78, 110 76, 60 70 Z" fill="#86bb55" />
-        <rect x="10" y="51" width="18" height="18" rx="4" fill="#8fc95a" stroke="#c9e6a4" strokeWidth="1.5" />
-        <circle cx="19" cy="60" r="2.6" fill="#ffffff" />
-        <ellipse cx="168" cy="96" rx="34" ry="9" fill="#3d7fd0" />
-        <ellipse cx="262" cy="30" rx="15" ry="6" fill="#e9dca6" />
-        {/* green with fringe, flag and bunker */}
-        <ellipse cx="352" cy="60" rx="35" ry="25" fill="#86c964" />
-        <ellipse cx="352" cy="60" rx="30" ry="21" fill="#a3e27f" />
-        <ellipse cx="294" cy="90" rx="13" ry="5.5" fill="#e9dca6" />
-        <circle cx="358" cy="62" r="2.4" fill="#0e1418" />
-        <line x1="358" y1="62" x2="358" y2="36" stroke="#ffffff" strokeWidth="1.8" />
-        <path d="M358 36 L372 40.5 L358 45 Z" fill="#ff6b5e" />
-        {[X1, X2, X3].map((x) => (
-          <line key={x} x1={x} y1="4" x2={x} y2="116" stroke="#ffffff" strokeWidth="1.6" strokeDasharray="5 4" opacity="0.9" />
-        ))}
+      <svg viewBox="0 0 500 140" role="img" aria-hidden="true">
+        <defs>
+          <clipPath id="sg-hole-clip">
+            <rect width="500" height="140" rx="12" />
+          </clipPath>
+        </defs>
+        <g clipPath="url(#sg-hole-clip)">
+          <rect width="500" height="140" fill="#5d8c3b" />
+          {TREES.map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 7 : 5.5} fill="#2e5a28" />
+          ))}
+          {/* around the green: the ring of fringe, rough and greenside bunkers */}
+          <ellipse cx="420" cy="70" rx="84" ry="58" fill="#6c9d47" />
+          {/* fairway from the tee into the ring */}
+          <path d="M28 60 C 90 46, 170 40, 250 44 S 330 50, 360 56 L 360 84 C 330 90, 270 96, 210 94 S 90 88, 28 80 Z" fill="#7cb24c" />
+          <path d="M60 58 C 120 50, 180 48, 250 51 L 250 87 C 180 89, 120 86, 60 82 Z" fill="#86bb55" />
+          <rect x="10" y="61" width="18" height="18" rx="4" fill="#8fc95a" stroke="#c9e6a4" strokeWidth="1.5" />
+          <circle cx="19" cy="70" r="2.6" fill="#ffffff" />
+          <ellipse cx="145" cy="112" rx="34" ry="9" fill="#3d7fd0" />
+          <ellipse cx="258" cy="32" rx="15" ry="6" fill="#e9dca6" />
+          <ellipse cx="372" cy="34" rx="13" ry="6" fill="#e9dca6" />
+          <ellipse cx="380" cy="110" rx="14" ry="6" fill="#e9dca6" />
+          {/* green with flag */}
+          <ellipse cx="442" cy="70" rx="42" ry="31" fill="#86c964" />
+          <ellipse cx="442" cy="70" rx="37" ry="27" fill="#a3e27f" />
+          <circle cx="450" cy="73" r="2.4" fill="#0e1418" />
+          <line x1="450" y1="73" x2="450" y2="45" stroke="#ffffff" strokeWidth="1.8" />
+          <path d="M450 45 L464 49.5 L450 54 Z" fill="#ff6b5e" />
+          {[X1, X2].map((x) => (
+            <line key={x} x1={x} y1="4" x2={x} y2="136" stroke="#ffffff" strokeWidth="1.6" strokeDasharray="5 4" opacity="0.9" />
+          ))}
+          {/* approach ends where the ring round the green begins */}
+          <line x1={X3} y1="4" x2={X3} y2="22" stroke="#ffffff" strokeWidth="1.6" strokeDasharray="5 4" opacity="0.9" />
+          <line x1={X3} y1="118" x2={X3} y2="136" stroke="#ffffff" strokeWidth="1.6" strokeDasharray="5 4" opacity="0.9" />
+          <ellipse cx="420" cy="70" rx="84" ry="58" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeDasharray="5 4" opacity="0.9" />
+          <ellipse cx="442" cy="70" rx="42" ry="31" fill="none" stroke="#ffffff" strokeWidth="1.2" strokeDasharray="3 3" opacity="0.7" />
+        </g>
       </svg>
       <div className="sg-hole-row labels" style={{ gridTemplateColumns: COLS }}>
         {ZONES.map((z) => (
