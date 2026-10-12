@@ -8,6 +8,7 @@ import { TEES } from '../src/data/tees';
 import { holesFromTags } from '../src/lib/courses';
 import { bearingDeg, distanceM, distToLine, holeMapData, lineLength, pointInRing, shiftTee, teeDelta, type HoleMapData } from '../src/lib/geo';
 import { move } from '../src/lib/aimpoint';
+import { holeForTee } from '../src/lib/teeline';
 import { caddieAdvice, teeAimFor, type CaddieOutput } from '../src/lib/caddieplan';
 import { DEFAULT_CARRY, playsLike, type Conditions } from '../src/lib/caddie';
 import { loadHoleNotes } from '../src/lib/holenotes';
@@ -122,7 +123,8 @@ for (const [courseId, seed] of Object.entries(SEED_COURSES)) {
   for (const h of holes) {
     let d = holeMapData(geo, h.loop, h.number);
     if (!d) continue;
-    if (tees) d = shiftTee(d, teeDelta(tees.holes[h.ref], tees.tees.indexOf(tees.tees.includes('Yellow') ? 'Yellow' : tees.tees[0]), lineLength(d.line)));
+    if (tees) d = holeForTee(d, courseId, h.ref, tees.tees.includes('Yellow') ? 'Yellow' : tees.tees[0], geo.tee);
+if (!d) continue;
     const par = h.par!;
     const terrain = { slopes: geo.fairwaySlopes?.[h.ref], boundary: geo.boundary, trees: geo.trees };
     const note = notes[h.ref] ?? {};

@@ -65,7 +65,9 @@ export interface AimInput {
   favourite?: number; // favourite approach distance in metres
 }
 
-export function aimPoint(o: AimInput): AimPoint {
+export function aimPoint(input: AimInput): AimPoint {
+  // A tee is never in the woods: a wood area that contains the tee (generously mapped in OSM) does not block it.
+  const o = input.teeShot && input.trees ? { ...input, trees: input.trees.filter((r) => !pointInRing(input.from, r)) } : input;
   const { data, from, pin } = o;
   const style = o.style ?? 'normal';
   const driverOk = o.teeShot && o.par >= 4;
@@ -165,7 +167,10 @@ export function aimPoint(o: AimInput): AimPoint {
           const p = move(from, b0 + sgn * ang, d0 * frac);
           if (blocked(from, p, o.trees) || (o.trees ?? []).some((r) => pointInRing(p, r))) continue;
           if (data.water.some((r) => pointInRing(p, r)) || (fromInside && outside(p))) continue;
-          const score = ang * 1.5 + (1 - frac) * 60 + Math.max(0, distanceM(p, pin) - distanceM(pos, pin)) * 0.2;
+          // keep clear of out of bounds like every landing spot (feature 020): never closer than 10 m, prefer 20 m
+          const gap = fromInside && o.boundary?.length ? Math.min(...o.boundary.map((r) => distToLine(p, r))) : Infinity;
+          if (gap < 10) continue;
+          const score = ang * 1.5 + (1 - frac) * 60 + Math.max(0, distanceM(p, pin) - distanceM(pos, pin)) * 0.2 + Math.max(0, SAFETY.obMarginM - gap) * 3;
           if (!best || score < best.score) best = { p, score, ang: sgn * ang };
         }
       }

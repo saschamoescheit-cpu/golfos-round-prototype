@@ -42,7 +42,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
         </span>
       </div>
       {props.holes.map((h) => {
-        const data = holeForTee(holeMapData(geometry, h.loop, h.number), props.course.id, h.label, props.tee);
+        const data = holeForTee(holeMapData(geometry, h.loop, h.number), props.course.id, h.label, props.tee, geometry.tee);
         return (
           <HolePage
             key={h.index}

@@ -13,18 +13,18 @@ import { DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
-import { TEES } from '../data/tees';
 import { GREEN_CHARTS } from '../data/greenCharts';
 import { heightAt as terrainHeight } from '../lib/terrain';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard } from '../components/CaddieCard';
+import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, type GreenGrid, type PuttRead } from '../lib/greenread';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { sideOf } from '../lib/dispersion';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, suggestTarget, lineLength, shiftTee, teeDelta, type Unit } from '../lib/geo';
+import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, suggestTarget, type Unit } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
@@ -101,11 +101,7 @@ export function HoleScreen(props: {
   const [geoVersion, setGeoVersion] = useState(0); // bumps after the player set up a hole
   const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId, geoVersion]);
   // The hole from the tee the player chose (courses with tee data); the map line starts at one of the tees.
-  const forTee = (d: ReturnType<typeof holeMapData>, label: string) => {
-    const t = TEES[round.courseId];
-    if (!d || !t || !round.tee) return d;
-    return shiftTee(d, teeDelta(t.holes[label], t.tees.indexOf(round.tee), lineLength(d.line)));
-  };
+  const forTee = (d: ReturnType<typeof holeMapData>, label: string) => holeForTee(d, round.courseId, label, round.tee, geometry.tee);
   const mapData = useMemo(() => forTee(holeMapData(geometry, hole.loop, hole.number), hole.label), [geometry, hole.loop, hole.number, round.tee]);
   // The map is the main view. A hole without a hole line opens the set-up on the map (Sascha 10.10.2026).
   const [view, setView] = useState<'map' | 'score'>('map');

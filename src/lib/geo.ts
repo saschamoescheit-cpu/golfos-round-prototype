@@ -176,6 +176,32 @@ export interface HoleMapData {
 }
 
 /** Picks the geometry that belongs to one hole: its line, green, and hazards along the corridor. */
+/**
+ * Island greens (feature 025): OSM often maps a pond as one plain area right over its island green (Maioris 4).
+ * Each green lying completely inside a water area is cut out with a keyhole outline – a zero-width bridge from
+ * the shore to the island – so point-in-polygon tests and the map treat the green as dry land.
+ */
+export function islandsCut(water: Ring[], greens: Ring[]): Ring[] {
+  return water.map((w) => {
+    let ring = w;
+    for (const g of greens) {
+      if (!g.every((p) => pointInRing(p, ring))) continue;
+      const open = (r: Ring) => (r.length > 1 && r[0][0] === r[r.length - 1][0] && r[0][1] === r[r.length - 1][1] ? r.slice(0, -1) : r.slice());
+      const outer = open(ring);
+      const island = open(g).reverse(); // opposite direction to the shore
+      let best = { i: 0, j: 0, d: Infinity };
+      outer.forEach((p, i) => island.forEach((q, j) => {
+        const d = distanceM(p, q);
+        if (d < best.d) best = { i, j, d };
+      }));
+      const rot = [...island.slice(best.j), ...island.slice(0, best.j), island[best.j]];
+      const cut = [...outer.slice(0, best.i + 1), ...rot, ...outer.slice(best.i)];
+      ring = [...cut, cut[0]];
+    }
+    return ring;
+  });
+}
+
 export function holeMapData(geo: CourseGeometry, loop: string, number: number, corridorM = 45): HoleMapData | null {
   const hole = geo.holes.find((h) => {
     const p = parseHoleRef(h.ref);
@@ -201,7 +227,7 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
     green,
     greenCenter: green ? centroid(green) : end,
     bunkers: geo.bunker.filter(near),
-    water: geo.water.filter((r) => r.some((p) => distToLine(p, line) <= corridorM * 1.5)),
+    water: islandsCut(geo.water.filter((r) => r.some((p) => distToLine(p, line) <= corridorM * 1.5)), geo.green),
     fairways: geo.fairway.filter((r) => r.some((p) => distToLine(p, line) <= 20)),
     tees: geo.tee.filter((r) => r.some((p) => distanceM(p, line[0]) <= 60)),
   };

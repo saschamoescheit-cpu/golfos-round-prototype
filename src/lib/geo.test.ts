@@ -167,3 +167,18 @@ describe('tee colour (019)', () => {
     expect(shiftTee(d, 1)).toBe(d);
   });
 });
+
+import { islandsCut, pointInRing } from './geo';
+describe('island greens (025)', () => {
+  it('a green inside a pond is dry land after the cut, the pond stays wet', () => {
+    const M = 1 / 111320;
+    const at = (e: number, n: number): LngLat => [2.76 + (e * M) / Math.cos((39.45 * Math.PI) / 180), 39.45 + n * M];
+    const pond: Ring = [at(0, 0), at(80, 0), at(80, 60), at(0, 60), at(0, 0)];
+    const green: Ring = [at(30, 20), at(50, 20), at(50, 40), at(30, 40), at(30, 20)];
+    const [cut] = islandsCut([pond], [green]);
+    expect(pointInRing(at(40, 30), cut)).toBe(false); // on the green
+    expect(pointInRing(at(10, 10), cut)).toBe(true); // in the water
+    expect(pointInRing(at(70, 50), cut)).toBe(true);
+    expect(pointInRing(at(100, 30), cut)).toBe(false); // outside the pond
+  });
+});

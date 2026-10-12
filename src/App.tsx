@@ -4,7 +4,6 @@ import { ensureGeometry, geometryReady, loadRounds, saveRound } from './lib/stor
 import { Home } from './screens/Home';
 import { CoursePicker } from './screens/CoursePicker';
 import { RoundSetup } from './screens/RoundSetup';
-import { CourseBook } from './screens/CourseBook';
 import { Scorecard } from './screens/Scorecard';
 import { NO_RESUME } from './components/ErrorBoundary';
 import { Stats } from './screens/Stats';
@@ -39,6 +38,7 @@ const SKIP_RESUME = (() => {
 
 // The map screens bring the map library (the largest part of the app) – loaded when a hole is opened (feature 026).
 const HoleScreen = lazy(() => import('./screens/HoleScreen').then((m) => ({ default: m.HoleScreen })));
+const CourseBook = lazy(() => import('./screens/CourseBook').then((m) => ({ default: m.CourseBook })));
 const RoundReview = lazy(() => import('./screens/RoundReview').then((m) => ({ default: m.RoundReview })));
 const Waiting = () => (
   <main className="screen" style={{ justifyContent: 'center', alignItems: 'center' }}>
@@ -112,7 +112,11 @@ export function App() {
         />
       );
     case 'book':
-      return <CourseBook course={screen.course} holes={screen.holes} tee={screen.tee} onBack={() => setScreen({ name: 'setup', course: screen.course })} />;
+      return (
+        <Suspense fallback={<Waiting />}>
+          <CourseBook course={screen.course} holes={screen.holes} tee={screen.tee} onBack={() => setScreen({ name: 'setup', course: screen.course })} />
+        </Suspense>
+      );
     case 'hole':
       return (
         <Suspense fallback={<Waiting />}>
