@@ -167,7 +167,9 @@ export function HoleScreen(props: {
     const fresh = Date.now() - loadOfflineStamp(round.courseId, imagery.id) < 30 * 24 * 3600 * 1000;
     if (holes.length === 0 || fresh || !navigator.serviceWorker?.controller) return; // without service worker nothing is kept
     const ctrl = new AbortController();
-    const urls = holeTileUrls(imagery, holes);
+    // the green charts and green heights of the course too, so the green read works without network (feature 028)
+    const charts = Object.values(GREEN_CHARTS[round.courseId] ?? {}).map((c) => c.file);
+    const urls = [...holeTileUrls(imagery, holes), ...charts, ...(charts.length ? [charts[0].replace(/[^/]+$/, 'heights.json')] : [])];
     setOffline({ done: 0, total: urls.length });
     prefetchTiles(urls, (done, total) => setOffline({ done, total }), ctrl.signal).then((failed) => {
       if (ctrl.signal.aborted) return;
@@ -179,9 +181,11 @@ export function HoleScreen(props: {
   }, [round.courseId, imagery, allMaps]);
   const offlineHint =
     offline === 'ready' ? (
-      <div className="map-shot">Map saved for offline ✓</div>
+      <div className="map-shot">{tr('Map saved for offline ✓', 'Karte offline gespeichert ✓')}</div>
     ) : offline ? (
-      <div className="map-shot">Saving map for offline · {Math.round((offline.done / offline.total) * 100)}%</div>
+      <div className="map-shot">
+        {tr('Saving map for offline', 'Karte wird offline gespeichert')} · {Math.round((offline.done / offline.total) * 100)}%
+      </div>
     ) : null;
 
   // Weather: on opening and every 10 minutes; saved with the hole when the player is on it.
