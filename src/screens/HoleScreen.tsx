@@ -106,7 +106,7 @@ export function HoleScreen(props: {
   const pocketRef = useRef(false);
   pocketRef.current = pocket;
   // Battery: iOS delivers a fix about every second. The screen (map, caddie, labels) is only redrawn when the player
-  // really moved (≥ 2 m), the accuracy changed noticeably or 15 s passed – standing at the ball costs nothing.
+  // moved (≥ 1 m), the accuracy changed or 3 s passed – standing still at the ball redraws rarely.
   // In pocket mode nothing is drawn at all; the fixes only go into the track.
   const latestFix = useRef<{ pos: LngLat; accuracy: number; t: number } | null>(null);
   const shownFix = useRef<{ pos: LngLat; accuracy: number; t: number } | null>(null);
@@ -140,7 +140,7 @@ export function HoleScreen(props: {
         const fix = { pos: [p.coords.longitude, p.coords.latitude] as LngLat, accuracy: p.coords.accuracy, t: Date.now() };
         latestFix.current = fix;
         const was = shownFix.current;
-        if (!pocketRef.current && (!was || distanceM(was.pos, fix.pos) >= 2 || Math.abs(was.accuracy - fix.accuracy) >= 5 || fix.t - was.t >= 15000)) showFix(fix);
+        if (!pocketRef.current && (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000)) showFix(fix);
         // Every round keeps the GPS track (while the app is open): automatic shot length, shot detection.
         if (!round.preview) recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy });
       },
@@ -158,7 +158,7 @@ export function HoleScreen(props: {
         window.clearTimeout(restart);
         restart = window.setTimeout(() => setGpsTry((n) => n + 1), 3000); // start a fresh watch
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 },
     );
     return () => {
       window.clearTimeout(restart);
