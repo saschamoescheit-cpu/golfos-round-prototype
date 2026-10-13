@@ -339,6 +339,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       </p>
       <p className="muted small" style={{ margin: 0 }}>
         {walked && walked.stops.length > 0 && <>{tr('○ = you stood still here (GPS), a tap sets the shot exactly. ', '○ = hier bist du stehen geblieben (GPS), Tipp setzt den Schlag genau dort. ')}</>}
+        {tr('Drag the flag to where the hole was (first putt). ', 'Fahne dorthin ziehen, wo das Loch war (erster Putt). ')}
         {tr('Colour against a tour pro: ', 'Farbe gegen Tour-Profi: ')}
         <span className="good-text">{tr('green = strokes gained', 'grün = Schläge gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.
       </p>
