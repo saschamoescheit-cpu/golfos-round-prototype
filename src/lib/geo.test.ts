@@ -213,3 +213,15 @@ describe('where a green is played from', () => {
     expect(Math.round(bearingDeg(a, at(150, 250)))).toBe(90); // the green is played eastwards, not north-east from the tee
   });
 });
+
+import { centroid } from './geo';
+describe('green middle', () => {
+  it('is the centre of the area, not of the outline points', () => {
+    const M = 1 / 111320;
+    const k = Math.cos((48.78 * Math.PI) / 180);
+    const at = (e: number, n: number): LngLat => [9.69 + (e * M) / k, 48.78 + n * M];
+    // a 30 × 30 m green, its east edge mapped with many points
+    const ring = [at(0, 0), at(30, 0), ...[5, 10, 15, 20, 25].map((n) => at(30, n)), at(30, 30), at(0, 30), at(0, 0)];
+    expect(distanceM(centroid(ring), at(15, 15))).toBeLessThan(0.2);
+  });
+});

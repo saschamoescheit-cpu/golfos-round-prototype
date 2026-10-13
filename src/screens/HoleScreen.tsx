@@ -121,6 +121,7 @@ export function HoleScreen(props: {
   // The app was opened again (phone out of the pocket, often at the ball): the next fix is marked in the track –
   // a strong hint for the shot detection – and the hole is looked up again.
   const reopened = useRef(true);
+  const visibleAt = useRef(Date.now());
   const [gpsError, setGpsError] = useState<string | null>(null);
   // Targets, pin and the marked ball survive a reload (iOS may drop the page while the phone is in the pocket).
   const [live, setLive] = useState(() => loadLive(round.id));
@@ -141,11 +142,15 @@ export function HoleScreen(props: {
     const id = navigator.geolocation.watchPosition(
       (p) => {
         setGpsError(null);
+        // Just unlocked: a fix from before the phone went into the pocket is the old place, not where the player stands
+        // (only right after unlocking, so a phone with an odd GPS clock is never locked out).
+        if (Date.now() - visibleAt.current < 5000 && p.timestamp < visibleAt.current - 10000) return;
         const fix = filter.current.push({ pos: [p.coords.longitude, p.coords.latitude] as LngLat, accuracy: p.coords.accuracy, t: Date.now() });
         const was = shownFix.current;
         if (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still) showFix(fix);
         // Every round keeps the GPS track (while the app is open, raw fixes): automatic shot length, shot detection.
-        const open = reopened.current && p.coords.accuracy <= 30;
+        // only a fresh fix: right after unlocking, iOS may first hand out the old position (where the phone was put away)
+        const open = reopened.current && p.coords.accuracy <= 30 && p.timestamp >= visibleAt.current - 2000;
         if (open) reopened.current = false;
         if (!round.preview) recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy, ...(open ? { open: true } : {}) });
       },
@@ -179,6 +184,7 @@ export function HoleScreen(props: {
       if (document.visibilityState === 'visible') {
         detectArmed.current = true;
         reopened.current = true;
+        visibleAt.current = Date.now();
         filter.current = new PositionFilter(); // the player has moved meanwhile: no average across the gap
       }
     };

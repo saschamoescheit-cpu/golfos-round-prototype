@@ -38,8 +38,9 @@ for (const h of holesFromTags(seed.holeTags).filter((x) => x.par != null)) {
   const t = advise(d.tee, true);
   const L = Math.round(lineLength(d.line));
   lines.push(`## ${h.ref} · Par ${h.par} · ${L} m${h.strokeIndex ? ` · Hcp ${h.strokeIndex}` : ''}`);
-  lines.push(`- **Abschlag:** ${t.advice.club === 'Dr' ? 'Driver' : t.advice.club} – ${t.aim ?? '–'}`);
-  if (t.holePlan) lines.push(`- **Plan:** ${t.holePlan}`);
+  lines.push(`- **Abschlag:** ${t.advice.club === 'Dr' ? 'Driver' : t.advice.club}${t.aim ? ' – ' + t.aim : ''}`);
+  // the plan as the app shows it ("open on both sides" is left out next to an out-of-bounds warning)
+  if (t.holePlan && t.lines.some((x) => x.text === t.holePlan)) lines.push(`- **Plan:** ${t.holePlan}`);
   const extra = t.lines.filter((x) => /Fairway .* breit|Aus |Wasser|Bäume/.test(x.text) && x.text !== t.aim && x.text !== t.holePlan).map((x) => x.text);
   if (extra.length) lines.push(`- ${extra.join(' · ')}`);
   if (h.par! >= 4 && teeAim) {

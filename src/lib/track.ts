@@ -352,6 +352,8 @@ export function loadTrack(roundId: string): TrackPoint[] {
 export function recordFix(roundId: string, fix: TrackPoint): void {
   const c = cached(roundId);
   const last = c.raw[c.raw.length - 1];
+  // a cached fix handed out again (iOS, after the phone was unlocked) is no new position – and would break the order
+  if (last && fix.t <= last[0]) return;
   if (!fix.open && last && fix.t - last[0] < 5000 && distanceM([last[1], last[2]], fix.p) < 3) return;
   const base: [number, number, number, number] = [fix.t, Math.round(fix.p[0] * 1e6) / 1e6, Math.round(fix.p[1] * 1e6) / 1e6, Math.round(fix.acc)];
   const row: Row = fix.open ? [...base, 1] : base;

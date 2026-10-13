@@ -310,16 +310,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           </button>
         </div>
       )}
+      <p className="small" style={{ margin: 0 }}>
+        <strong>{tr('Tap where your ball lay – on the green for the putts. Drag to move a shot.', 'Tippe, wo dein Ball lag – auf dem Grün für die Putts. Ziehen verschiebt.')}</strong>
+      </p>
       <p className="muted small" style={{ margin: 0 }}>
-        {tr('Each shot is coloured by strokes gained against a tour pro:', 'Jeder Schlag ist nach Strokes Gained gegen einen Tour-Profi eingefärbt:')}{' '}
-        <span className="good-text">{tr('green = gained', 'grün = gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.{' '}
-        <strong style={{ color: 'var(--text)' }}>{tr('Tap the map where your ball lay to add a shot – on the green for the putts. Drag a shot to move it.', 'Tippe auf die Karte, wo dein Ball lag – so setzt du einen Schlag, auf dem Grün den Ball fürs Putten. Ziehen verschiebt einen Schlag.')}</strong>
-        {walked && walked.stops.length > 0 && (
-          <>
-            {' '}
-            {tr('White circles: where you stood still (GPS) – a tap there sets the shot exactly.', 'Weiße Kreise: Dort bist du stehen geblieben (GPS) – ein Tipp darauf setzt den Schlag genau dort.')}
-          </>
-        )}
+        {walked && walked.stops.length > 0 && <>{tr('○ = you stood still here (GPS), a tap sets the shot exactly. ', '○ = hier bist du stehen geblieben (GPS), Tipp setzt den Schlag genau dort. ')}</>}
+        {tr('Colour against a tour pro: ', 'Farbe gegen Tour-Profi: ')}
+        <span className="good-text">{tr('green = strokes gained', 'grün = Schläge gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.
       </p>
 
       {mismatch && (

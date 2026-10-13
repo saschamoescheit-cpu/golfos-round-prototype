@@ -189,6 +189,12 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   if (Math.abs(pl0.aimM) >= 2) reasons.push(tr('wind', 'Wind') + ` ${Math.abs(Math.round(pl0.aimM))} m ${sideWord(pl0.aimM > 0 ? 'right' : 'left')}`);
   if (Math.abs(tend) >= 3) reasons.push(tr(`your ${club0} goes`, `dein ${clubCode(club0)} geht`) + ` ${Math.abs(tend)} m ${sideWord(tend > 0 ? 'right' : 'left')}`);
   if (hang) reasons.push(tr('slope', 'Hang') + ` ${Math.abs(hang.aimM)} m ${sideWord(hang.aimM > 0 ? 'right' : 'left')}`);
+  // "Centre" is wrong when the landing spot already sits on one side of the fairway (dogleg, clear line): then the
+  // aim just goes no further towards the out of bounds.
+  const keepOff = (towards: 'left' | 'right') =>
+    (fairwaySideM !== 0 && fairwaySideM != null) || teeSide !== 0
+      ? tr(`no further ${towards} – out of bounds`, `nicht weiter ${sideWord(towards)} – Aus`)
+      : tr('centre – out of bounds', 'Mitte – Aus') + ` ${sideWord(towards)}`;
   const dropMoves = () => {
     // Only say why the shot stays in the middle; the moves that were dropped would confuse.
     for (let k = reasons.length - 1; k >= 0; k--) if (/^(wind|your|slope|Wind|dein|Hang) /.test(reasons[k])) reasons.splice(k, 1);
@@ -198,7 +204,7 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
     const towards = side < 0 ? 'left' : 'right';
     side = 0;
     dropMoves();
-    reasons.push(tr('centre – out of bounds', 'Mitte – Aus') + ` ${sideWord(towards)}`);
+    reasons.push(keepOff(towards));
   }
 
   // Safety (feature 020, like a tour caddie): the landing spot is clear of water, bunkers and trees and stays
@@ -209,7 +215,7 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
     const towards = side < 0 ? 'left' : 'right';
     dropMoves();
     if (zone.k > 0) reasons.push(tr('only', 'nur') + ` ${Math.round(Math.abs(side * zone.k))} m ${sideWord(towards)} – ` + tr('out of bounds', 'Aus'));
-    else reasons.push(tr('centre – out of bounds', 'Mitte – Aus') + ` ${sideWord(towards)}`);
+    else reasons.push(keepOff(towards));
   }
   side *= zone.k;
   base = zone.landing;

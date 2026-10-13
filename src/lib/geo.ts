@@ -28,10 +28,31 @@ function projector(origin: LngLat) {
   return (p: LngLat): [number, number] => [(p[0] - origin[0]) * kx, (p[1] - origin[1]) * ky];
 }
 
+/** Centre of an area (a green's "middle"): the area centroid – the mean of the outline points leans towards the side
+ *  mapped with more points (up to 2.7 m on the bundled greens). Degenerate outlines: the mean of the points. */
 export function centroid(ring: Ring): LngLat {
   const pts = ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1] ? ring.slice(0, -1) : ring;
   const s = pts.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
-  return [s[0] / pts.length, s[1] / pts.length];
+  const mean: LngLat = [s[0] / pts.length, s[1] / pts.length];
+  if (pts.length < 3) return mean;
+  const kx = Math.cos((mean[1] * Math.PI) / 180);
+  let a = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const q = pts[(i + 1) % pts.length];
+    const x1 = (p[0] - mean[0]) * kx;
+    const y1 = p[1] - mean[1];
+    const x2 = (q[0] - mean[0]) * kx;
+    const y2 = q[1] - mean[1];
+    const f = x1 * y2 - x2 * y1;
+    a += f;
+    cx += (x1 + x2) * f;
+    cy += (y1 + y2) * f;
+  }
+  if (Math.abs(a) < 1e-14) return mean;
+  return [mean[0] + cx / (3 * a) / kx, mean[1] + cy / (3 * a)];
 }
 
 export function pointInRing(p: LngLat, ring: Ring): boolean {
