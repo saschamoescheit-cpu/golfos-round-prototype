@@ -237,10 +237,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // The caddie's advice at the player's own shots first (that is what the verdict is about); advice given where he
   // only stood (a partner's ball, waiting) behind "more".
   const cadAll = (cadLog[k] ?? []).map((c, n) => {
-    const shot = (d?.shots ?? []).findIndex((s) => s.pos != null && distanceM(s.pos, c.pos) <= 20);
-    return { c, n, shot: shot >= 0 ? shot : null };
+    const putt = c.club === 'Putt'; // the putt read on the green
+    const shot = putt ? -1 : (d?.shots ?? []).findIndex((s) => s.pos != null && distanceM(s.pos, c.pos) <= 20);
+    return { c, n, shot: shot >= 0 ? shot : null, putt };
   });
-  const cadMain = d?.shots.length ? cadAll.filter((x) => x.shot != null) : cadAll;
+  const cadMain = d?.shots.length ? cadAll.filter((x) => x.shot != null || x.putt) : cadAll;
   const cadOther = cadMain.length ? cadAll.filter((x) => !cadMain.includes(x)) : []; // none at a shot: all are shown
   const cadShown = moreCad === k ? [...cadMain, ...cadOther] : cadMain.length ? cadMain : cadAll;
   const editing: Shot | null = d && edit != null ? d.shots[edit] : null;
@@ -444,11 +445,19 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       {(cadLog[k]?.length ?? 0) > 0 && (
         <section className="caddie-review" aria-label={tr('What the caddie said', 'Was der Caddie gesagt hat')}>
           <h3>{tr('What the caddie said – and you?', 'Was der Caddie gesagt hat – und du?')}</h3>
-          {cadShown.map(({ c, n, shot }) => (
+          {cadShown.map(({ c, n, shot, putt }) => (
             <div key={n} className="caddie-review-item">
               <div>
-                <strong>{shot != null ? `${tr('Shot', 'Schlag')} ${shot + 1} · ` : ''}{fmt(c.toPin)} {tr('to the pin', 'zur Fahne')} · {c.club}</strong>
-                <span className="muted small"> · {tr('plays like', 'spielt wie')} {fmt(c.playsLike)}</span>
+                {putt ? (
+                  <strong>
+                    {tr('Putt read', 'Putt-Linie')} · {fmt(c.toPin)}
+                  </strong>
+                ) : (
+                  <>
+                    <strong>{shot != null ? `${tr('Shot', 'Schlag')} ${shot + 1} · ` : ''}{fmt(c.toPin)} {tr('to the pin', 'zur Fahne')} · {c.club}</strong>
+                    <span className="muted small"> · {tr('plays like', 'spielt wie')} {fmt(c.playsLike)}</span>
+                  </>
+                )}
               </div>
               {c.aim && <div className="small">{c.aim}</div>}
               {c.plan && <div className="small muted">{c.plan}</div>}

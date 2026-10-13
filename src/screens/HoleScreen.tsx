@@ -333,6 +333,7 @@ export function HoleScreen(props: {
   const [lieSet, setLieSet] = useState<{ sig: string; lie: LieKind } | null>(null);
   const spokenSig = useRef<string | null>(null);
   const loggedSig = useRef<string | null>(null);
+  const loggedPutt = useRef<number | null>(null); // hole whose first putt read is in the caddie log
   // Heights of tee, green and player (for "plays shorter, downhill"); rounded positions keep requests rare.
   const [hts, setHts] = useState<Record<string, number | null>>({});
   const htKey = (p: LngLat) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`;
@@ -634,6 +635,12 @@ export function HoleScreen(props: {
       };
     }
     const putt = greenVisible ? greenCache.current.putt : null;
+    // The first putt read of the hole goes into the caddie log too – the round check asks whether the line was right
+    // (the data to calibrate green slopes and speed). Short putts need no read.
+    if (putt && ball && !round.preview && loggedPutt.current !== i && distanceM(ball, pin) >= 2.5 && (puttBall?.hole === i || player?.still)) {
+      loggedPutt.current = i;
+      recordCaddie(round.id, i, { t: Date.now(), pos: ball, toPin: Math.round(distanceM(ball, pin)), club: 'Putt', playsLike: Math.round(distanceM(ball, pin)), aim: putt.text, plan: null, warning: null });
+    }
     const puttAim = putt && ball ? move(pin, bearingDeg(ball, pin) + 90, putt.aimCm / 100) : null;
     const prev = i > 0 ? round.entries[me.id][i - 1] : null;
     const prevHole = i > 0 ? round.holes[i - 1] : null;
@@ -691,7 +698,9 @@ export function HoleScreen(props: {
     }
     // Keep what the caddie advised on the course – the round check shows it again for the player's verdict.
     // only standing (by the ball, on the tee) – what the caddie says while the player walks is not advice for a shot
-    if (cad != null && onThisHole && player?.still && !round.preview && loggedSig.current !== caddieSig) {
+    // not on the green itself: there the putt read is logged (a wedge "advice" from the green is no advice)
+    const onTheGreen = mapData.green ? pointInRing(from, mapData.green) : distanceM(from, mapData.greenCenter) <= 10;
+    if (cad != null && onThisHole && player?.still && !onTheGreen && !round.preview && loggedSig.current !== caddieSig) {
       loggedSig.current = caddieSig;
       recordCaddie(round.id, i, {
         t: Date.now(),

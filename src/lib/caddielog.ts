@@ -45,7 +45,8 @@ export function recordCaddie(roundId: string, hole: number, e: CaddieLogEntry): 
   const log = loadCaddieLog(roundId);
   const list = log[hole] ?? [];
   const last = list[list.length - 1];
-  if (last && distanceM(last.pos, e.pos) < SAME_SPOT_M) list[list.length - 1] = { ...e, verdict: last.verdict, note: last.note };
+  // the same spot again: the newer advice replaces the older – a putt read never replaces a shot's advice (or back)
+  if (last && distanceM(last.pos, e.pos) < SAME_SPOT_M && (last.club === 'Putt') === (e.club === 'Putt')) list[list.length - 1] = { ...e, verdict: last.verdict, note: last.note };
   else list.push(e);
   log[hole] = list.slice(-MAX_PER_HOLE);
   save(roundId, log);

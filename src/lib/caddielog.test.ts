@@ -25,3 +25,13 @@ describe('caddie log', () => {
     expect(loadCaddieLog('r')[2][0]).toMatchObject({ verdict: 'other', note: 'Holz 3 wegen Wasser' });
   });
 });
+
+describe('putt reads in the caddie log', () => {
+  it('a putt read next to the chip spot does not replace the chip advice', () => {
+    const id = 'putt-test';
+    const at = (m: number): [number, number] => [2.8, 39.47 + m / 111320];
+    recordCaddie(id, 0, { t: 1, pos: at(0), toPin: 15, club: 'LW', playsLike: 15, aim: 'Chip', plan: null, warning: null });
+    recordCaddie(id, 0, { t: 2, pos: at(10), toPin: 5, club: 'Putt', playsLike: 5, aim: 'Putt 5 m', plan: null, warning: null });
+    expect(loadCaddieLog(id)[0].map((e) => e.club)).toEqual(['LW', 'Putt']);
+  });
+});
