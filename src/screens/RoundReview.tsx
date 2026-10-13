@@ -167,10 +167,20 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       // the score and putts from the course tell how many shots there were to the green
       const e = list[i];
       const count = e.strokes != null && e.putts != null && !e.pickedUp ? e.strokes - e.putts - (e.penalties ?? 0) : null;
-      const raw = detectHoleShots(part, m, h.par, bag, { shots: count != null && count >= 1 ? count : null });
+      const detect = (n: number | null) => detectHoleShots(part, m, h.par, bag, { shots: n != null && n >= 1 ? n : null });
+      const raw = detect(count);
       if (!raw) return;
       // a penalty entered on the course: the shot that flew over water gets it
-      const found = markWaterPenalties(raw, m, e.penalties ?? 0);
+      const pen = e.penalties ?? 0;
+      let found = markWaterPenalties(raw, m, pen);
+      // The rest was out of bounds: the ball is played again from the same spot – one place on the track for two
+      // swings. Detected again with one shot fewer each (no invented chip); the player marks the shot "out of
+      // bounds" in the check, which adds the replay.
+      const ob = pen - found.shots.filter((s) => s.penalty).length;
+      if (ob > 0 && count != null && count - ob >= 1) {
+        const again = detect(count - ob);
+        if (again) found = markWaterPenalties(again, m, pen - ob);
+      }
       holes++;
       const derived = deriveFromShots(found, list[i].putts, h.par, m);
       if (list[i].strokes != null) delete derived.strokes; // keep the score entered on the course
@@ -239,7 +249,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     { strokes: 0, par: 0, holes: 0 },
   );
   const shotCount = d ? d.shots.length + Math.max(d.shots.filter((s) => s.penalty).length, e.penalties ?? 0) + (d.holedOut ? 0 : (e.putts ?? 0)) : null;
-  const mismatch = d && e.strokes != null && shotCount != null && d.onGreen && e.putts != null && shotCount !== e.strokes;
+  const unplacedPenalty = d != null && d.shots.length > 0 && (e.penalties ?? 0) > d.shots.filter((s) => s.penalty).length;
+  // an unplaced penalty explains a difference by itself (out of bounds: the replay comes with marking the shot)
+  const mismatch = d && e.strokes != null && shotCount != null && d.onGreen && e.putts != null && shotCount !== e.strokes && !unplacedPenalty;
 
   return (
     <main className="screen review">
@@ -344,7 +356,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         <span className="good-text">{tr('green = strokes gained', 'grün = Schläge gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.
       </p>
 
-      {d && d.shots.length > 0 && (e.penalties ?? 0) > d.shots.filter((s) => s.penalty).length && (
+      {unplacedPenalty && (
         <div className="notice">
           {tr(
             `${e.penalties} penalty ${e.penalties === 1 ? 'stroke' : 'strokes'} from the course – tap the shot it belongs to and choose water or out of bounds.`,

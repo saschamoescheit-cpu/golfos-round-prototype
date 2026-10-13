@@ -263,9 +263,14 @@ describe('penalties from the course', () => {
     const at = (e: number, n: number): LngLat => [9.69 + (e * M) / k, 48.78 + n * M];
     const pond = [at(-20, 150), at(20, 150), at(20, 180), at(-20, 180), at(-20, 150)];
     const hole = { line: [at(0, 0), at(0, 350)], tee: at(0, 0), green: null, greenCenter: at(0, 350), bunkers: [], water: [pond], fairways: [], tees: [] };
-    const d = { shots: [{ pos: at(0, 0), lie: 'tee' as const, club: null, penalty: false }, { pos: at(25, 185), lie: 'rough' as const, club: null, penalty: false }, { pos: at(0, 300), lie: 'fairway' as const, club: null, penalty: false }], onGreen: at(0, 345), pin: null, holedOut: false };
-    // the tee shot ends beside the pond: its flight did not cross it; the drop at (25, 185) → … no crossing either
+    const d = { shots: [{ pos: at(0, 0), lie: 'tee' as const, club: null, penalty: false }, { pos: at(40, 185), lie: 'rough' as const, club: null, penalty: false }, { pos: at(0, 300), lie: 'fairway' as const, club: null, penalty: false }], onGreen: at(0, 345), pin: null, holedOut: false };
+    // the tee shot ends 20 m right of the pond, its flight does not cross it: no water
     expect(markWaterPenalties(d, hole, 1).shots.some((s) => s.penalty)).toBe(false);
+    // lateral water: the next shot is played from a drop 7 m beside the pond
+    const lateral = { ...d, shots: [d.shots[0], { ...d.shots[1], pos: at(25, 185) }, d.shots[2]] };
+    const l = markWaterPenalties(lateral, hole, 1);
+    expect(l.shots[0].penalty).toBe(true);
+    expect(distanceM(l.shots[0].missPos!, at(20, 180))).toBeLessThan(3);
     // a tee shot straight over the pond to the drop behind it
     const d2 = { ...d, shots: [d.shots[0], { ...d.shots[1], pos: at(0, 190) }, d.shots[2]] };
     const m = markWaterPenalties(d2, hole, 1);

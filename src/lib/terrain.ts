@@ -61,7 +61,7 @@ export function slopeAdvice(pct: number | null): { text: string; aimM: number } 
   };
 }
 
-function nearestOnSegment(p: LngLat, a: LngLat, b: LngLat): LngLat {
+export function nearestOnSegment(p: LngLat, a: LngLat, b: LngLat): LngLat {
   const k = Math.cos((p[1] * Math.PI) / 180);
   const ax = (a[0] - p[0]) * k, ay = a[1] - p[1], bx = (b[0] - p[0]) * k, by = b[1] - p[1];
   const dx = bx - ax, dy = by - ay;

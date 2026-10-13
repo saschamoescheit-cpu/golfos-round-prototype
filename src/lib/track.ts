@@ -2,6 +2,7 @@ import type { Club, DetailEntry, LngLat, Shot } from '../types';
 import { distanceM, distToLine, pointInRing, type HoleMapData } from './geo';
 import { BAG, lieAt, onGreenAt, suggestKind } from './shots';
 import { expectedStrokes } from './sg';
+import { nearestOnSegment } from './terrain';
 
 // Shot detection from the GPS track (features 004/007). A golfer walks to the ball, stands there while
 // choosing the club and hitting, then walks on towards the green. "Stand still, then move on towards the
@@ -411,7 +412,8 @@ if (typeof document !== 'undefined') {
 
 /**
  * Penalties entered on the course (water): the detected shot whose flight (straight from its spot to the next one)
- * crosses water gets the penalty and where the ball went in. Out of bounds is left to the player (the replay comes
+ * crosses water – or that ends right beside it (the drop at lateral water) – gets the penalty and where the ball went
+ * in. Out of bounds is left to the player (the replay comes
  * from the same spot, the track cannot tell it apart). Marked for checking like every detected shot.
  */
 export function markWaterPenalties(d: DetailEntry, hole: HoleMapData, penalties: number): DetailEntry {
@@ -430,6 +432,17 @@ export function markWaterPenalties(d: DetailEntry, hole: HoleMapData, penalties:
       const f = m / len;
       const q: LngLat = [s.pos[0] + (end[0] - s.pos[0]) * f, s.pos[1] + (end[1] - s.pos[1]) * f];
       if (inWater(q)) miss = q;
+    }
+    // Lateral water: the drop is right beside it (≤ 10 m) – the flight to the drop need not cross the water.
+    if (!miss && k + 1 < d.shots.length) {
+      let best: { q: LngLat; m: number } | null = null;
+      for (const r of hole.water)
+        for (let i = 0; i + 1 < r.length; i++) {
+          const q = nearestOnSegment(end, r[i], r[i + 1]);
+          const m = distanceM(q, end);
+          if (!best || m < best.m) best = { q, m };
+        }
+      if (best && best.m <= 10) miss = best.q;
     }
     if (!miss) return s;
     left--;
