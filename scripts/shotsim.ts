@@ -15,7 +15,12 @@ import { holesFromTags } from '../src/lib/courses';
 import { distanceM, holeMapData, lineLength, pointAt, bearingDeg, type HoleMapData } from '../src/lib/geo';
 import { holeForTee } from '../src/lib/teeline';
 import { move } from '../src/lib/aimpoint';
-import { detectHoleShots, findStops, splitRound, type TrackPoint } from '../src/lib/track';
+import { DETECT, PLAUSIBLE, detectHoleShots, findStops, splitRound, type TrackPoint } from '../src/lib/track';
+// tuning without touching the app: P_SHOTCOST=0.5 P_COUNTMISS=2 … override the detection values for this run
+for (const [k, v] of Object.entries(process.env)) {
+  if (k.startsWith('P_')) (PLAUSIBLE as Record<string, number>)[k.slice(2).toLowerCase().replace(/_(.)/g, (_, c) => c.toUpperCase())] = Number(v);
+  if (k.startsWith('D_')) (DETECT as Record<string, number>)[k.slice(2).toLowerCase().replace(/_(.)/g, (_, c) => c.toUpperCase())] = Number(v);
+}
 import { onGreenAt } from '../src/lib/shots';
 import type { LngLat } from '../src/types';
 
