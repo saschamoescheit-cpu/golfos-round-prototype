@@ -244,6 +244,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const cadMain = d?.shots.length ? cadAll.filter((x) => x.shot != null || x.putt) : cadAll;
   const cadOther = cadMain.length ? cadAll.filter((x) => !cadMain.includes(x)) : []; // none at a shot: all are shown
   const cadShown = moreCad === k ? [...cadMain, ...cadOther] : cadMain.length ? cadMain : cadAll;
+  const cadAllHoles = Object.values(cadLog).flat();
+  const cadTotal = cadAllHoles.length;
+  const cadRated = cadAllHoles.filter((c) => c.verdict).length;
   const editing: Shot | null = d && edit != null ? d.shots[edit] : null;
   const roundTotal = entries.reduce(
     (t, x, i) => (x.strokes != null && !x.pickedUp ? { strokes: t.strokes + x.strokes, par: t.par + round.holes[i].par, holes: t.holes + 1 } : t),
@@ -258,7 +261,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     <main className="screen review">
       <TopBar title={tr('Check your shots', 'Schläge prüfen')} onBack={props.onDone} backLabel={tr('Done', 'Fertig')} />
       <div className="row">
-        <span className="muted small">{toCheck ? tr(`${toCheck} ${toCheck === 1 ? 'shot' : 'shots'} to check`, `${toCheck} ${toCheck === 1 ? 'Schlag' : 'Schläge'} zu prüfen`) : tr('All shots checked ✓', 'Alle Schläge geprüft ✓')}</span>
+        <span className="muted small">
+          {toCheck ? tr(`${toCheck} ${toCheck === 1 ? 'shot' : 'shots'} to check`, `${toCheck} ${toCheck === 1 ? 'Schlag' : 'Schläge'} zu prüfen`) : tr('All shots checked ✓', 'Alle Schläge geprüft ✓')}
+          {cadTotal > 0 && <span style={{ display: 'block' }}>{tr(`Caddie: ${cadRated} of ${cadTotal} rated`, `Caddie: ${cadRated} von ${cadTotal} bewertet`)}</span>}
+        </span>
         {track.length > 20 && (
           <button type="button" className="btn-ghost" onClick={detectAll}>
             {tr('Detect shots from GPS track', 'Schläge aus der GPS-Spur erkennen')}
