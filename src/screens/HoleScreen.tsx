@@ -212,7 +212,10 @@ export function HoleScreen(props: {
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
   const caddieSettings = useMemo(() => loadCaddieSettings(), []);
   // Hidden by the player until the caddie has something new to say (new hole, new shot, new warning).
-  const [hiddenSig, setHiddenSig] = useState<string | null>(null);
+  // The caddie card opens only on a tap; new advice shows as a dot on the caddie button ("!" with a warning).
+  const [caddieOpen, setCaddieOpen] = useState(false);
+  const [seenSig, setSeenSig] = useState<string | null>(null);
+  useEffect(() => setCaddieOpen(false), [i]); // every hole starts with the map
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   const [pinSheet, setPinSheet] = useState(false);
@@ -492,7 +495,6 @@ export function HoleScreen(props: {
           greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })
       : null;
-    const ap = cad?.ap ?? null;
     // Heights for the green box: terrain model along the hole, else the coarse elevation service.
     const tH = (p: LngLat) => (distToLine(p, mapData.line) <= 40 ? terrainHeight(geometry.fairwaySlopes?.[hole.label], alongLine(mapData.line, p)) : null);
     const fromH = tH(from) ?? heightAt(from);
@@ -502,8 +504,13 @@ export function HoleScreen(props: {
 
     // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
     const caddieSig = cad ? `${i}|${cad.advice.club}|${cad.warning ?? ''}|${cad.ap.kind}|${Math.round(cad.pl.distance / 25)}` : '';
-    const caddieShown = cad != null && !greenFocus && hiddenSig !== caddieSig;
-    if (caddieSettings.voice && caddieShown && spokenSig.current !== caddieSig && !round.preview) {
+    const caddieShown = cad != null && !greenFocus && caddieOpen;
+    const caddieNews = cad != null && !greenFocus && !caddieOpen && seenSig !== caddieSig;
+    const toggleCaddie = () => {
+      setSeenSig(caddieSig);
+      setCaddieOpen(!caddieShown);
+    };
+    if (caddieSettings.voice && cad != null && !greenFocus && spokenSig.current !== caddieSig && !round.preview) {
       spokenSig.current = caddieSig;
       const said = summary(cad!.facts);
       // read the setting again: the player may have muted the caddie in the meantime
@@ -523,7 +530,7 @@ export function HoleScreen(props: {
           imagery={imagery}
           track={detailMode ? track : undefined}
           missMap={miss}
-          aimPoint={ap && !plan.targets.some((t) => distanceM(t, ap.pos) < 15) && ap.kind !== 'approach' ? ap.pos : null}
+          aimPoint={null}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}
@@ -666,10 +673,19 @@ export function HoleScreen(props: {
                 type="button"
                 className="map-btn round tool"
                 aria-pressed={caddieShown}
-                aria-label={caddieShown ? tr('Hide caddie', 'Caddie ausblenden') : tr('Show caddie', 'Caddie zeigen')}
+                aria-label={
+                  caddieShown
+                    ? tr('Hide caddie', 'Caddie ausblenden')
+                    : caddieNews
+                      ? cad?.warning
+                        ? tr('Show caddie – warning', 'Caddie zeigen – Warnung')
+                        : tr('Show caddie – new advice', 'Caddie zeigen – neuer Hinweis')
+                      : tr('Show caddie', 'Caddie zeigen')
+                }
                 title={tr('AI caddie', 'KI-Caddie')}
-                onClick={() => setHiddenSig(caddieShown ? caddieSig : null)}
+                onClick={toggleCaddie}
               >
+                {caddieNews && <span className={`tool-badge${cad?.warning ? ' warn' : ''}`} aria-hidden="true">{cad?.warning ? '!' : ''}</span>}
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="8" y="9" width="8" height="12" rx="2.5" />
                   <path d="M8 13h8" />
@@ -701,7 +717,7 @@ export function HoleScreen(props: {
               facts={cad.facts}
               lines={cad.lines}
               alt={cad.alt}
-              onHide={() => setHiddenSig(caddieSig)}
+              onHide={toggleCaddie}
               note={note}
               holeLabel={hole.label}
               clubCode={clubCode(cad.advice.club)}

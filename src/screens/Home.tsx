@@ -90,8 +90,8 @@ export function Home(props: {
                 <strong>{tr('Listen to your caddie', 'Auf den Caddie hören')}</strong>
                 <span className="muted small">
                   {tr(
-                    'He names the club and where to aim (gold marker), with wind and slope. The round icons switch caddie, pin and green slope on and off.',
-                    'Er nennt Schläger und Ziel (goldene Markierung), mit Wind und Hang. Die runden Symbole schalten Caddie, Fahne und Grün-Neigung ein und aus.',
+                    'Tap the caddie button for the club and where to aim, with wind and slope – a dot on it means he has something new. The round icons switch caddie, pin and green slope on and off.',
+                    'Tippe auf den Caddie-Knopf für Schläger und Ziel, mit Wind und Hang – ein Punkt daran heißt: er hat etwas Neues. Die runden Symbole schalten Caddie, Fahne und Grün-Neigung ein und aus.',
                   )}
                 </span>
               </span>

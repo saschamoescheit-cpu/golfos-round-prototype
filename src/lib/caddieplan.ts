@@ -49,11 +49,11 @@ export interface CaddieInput {
   leave?: string | null; // where the approach should finish on the green (green heights), e.g. "below the hole"
 }
 
-type TargetKey = 'pin' | 't1' | 'gold';
+type TargetKey = 'pin' | 't1' | 'spot';
 const targetNoun = (k: TargetKey): string =>
-  ({ pin: tr('the pin', 'die Fahne'), t1: tr('target 1', 'Ziel 1'), gold: tr('the gold marker', 'die goldene Markierung') })[k];
+  ({ pin: tr('the pin', 'die Fahne'), t1: tr('target 1', 'Ziel 1'), spot: '' })[k];
 const targetTo = (k: TargetKey): string =>
-  ({ pin: tr('to the pin', 'zur Fahne'), t1: tr('to target 1', 'zu Ziel 1'), gold: tr('to the gold marker', 'zur goldenen Markierung') })[k];
+  ({ pin: tr('to the pin', 'zur Fahne'), t1: tr('to target 1', 'zu Ziel 1'), spot: tr('ahead', 'nach vorn') })[k];
 
 export interface CaddieOutput {
   ap: AimPoint;
@@ -84,9 +84,9 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   // Own planned target still ahead (dragged or added by the player) wins over the caddie's point.
   const ownTarget = o.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15 && !(o.teeAim && distanceM(t, o.teeAim.pos) < 3)) ?? null;
   const target = ownTarget ?? ap.pos;
-  // The caddie's point is drawn as target 1 when that sits on it (tee), else as the gold marker.
-  const apKey: TargetKey = o.targets.some((t) => distanceM(t, ap.pos) < 15) ? 't1' : 'gold';
-  const apName = targetNoun(apKey);
+  // The caddie's point is target 1 when that sits on it (tee); otherwise there is no marker – it is said as a distance.
+  const apKey: TargetKey = o.targets.some((t) => distanceM(t, ap.pos) < 15) ? 't1' : 'spot';
+  const apName = apKey === 'spot' ? `${formatDistance(ap.distance, o.unit)} ${o.unit}` : targetNoun(apKey);
   // Heights: terrain model along the hole; else the coarse elevation service.
   const tH = (p: LngLat) => (distToLine(p, data.line) <= 40 ? heightAt(o.slopes, alongLine(data.line, p)) : null);
   const fromH = tH(from) ?? o.coarseHeight?.(from) ?? null;
@@ -108,7 +108,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   let aim = ownTarget
     ? aimAdvice(pl.aimM, o.tendency.get(advice.club) ?? null, advice.club, hang?.aimM ?? 0)
     : ap.kind !== 'approach'
-      ? tr(`Aim at ${apName}`, `Spiel auf ${apName}`) + (ap.reasons.length ? ' (' + ap.reasons.join(', ') + ')' : '')
+      ? (ap.kind === 'layup' && apKey === 'spot' ? tr(`Lay up to ${apName}`, `Leg vor auf ${apName}`) : tr(`Aim at ${apName}`, `Spiel auf ${apName}`)) + (ap.reasons.length ? ' (' + ap.reasons.join(', ') + ')' : '')
       : ap.reasons.length
         ? `${tr('Aim', 'Ziel')}: ${ap.reasons.join(', ')}`
         : null;
@@ -135,7 +135,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   // The instruction first, the reasons (plan, hanging fairway) after it.
   if (aim) lines.push({ text: aim, tone: 'plan' });
   if (o.leave && ap.kind === 'approach' && !ownTarget) lines.push({ text: o.leave, tone: 'plan' });
-  // "Lay up to the gold marker" says the same as the aim line – only in the spoken summary.
+  // "Lay up to 150 m" says the same as the aim line – only in the spoken summary.
   const layupLine = ap.kind === 'layup' && !ownTarget && aim != null;
   if (holePlan && !layupLine && !(warning && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan' });
   if (hang) lines.push({ text: hang.text, tone: 'plan' });
@@ -184,7 +184,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     club: clubName(advice.club),
     distance: Number(fmt(pl.distance)),
     playsLike: Number(fmt(pl.playsLike)),
-    target: targetNoun(targetKey),
+    target: targetKey === 'spot' ? apName : targetNoun(targetKey),
     targetTo: targetTo(targetKey),
     aim,
     plan: holePlan || null,
