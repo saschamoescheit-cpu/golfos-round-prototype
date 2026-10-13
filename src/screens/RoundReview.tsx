@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
@@ -152,6 +152,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         : tr('No shots found in the GPS track.', 'Keine Schläge in der GPS-Spur gefunden.'),
     );
   };
+
+  // First visit after the round: no shots yet but a GPS track – find them right away (no extra button to tap).
+  useEffect(() => {
+    if (track.length > 20 && !entries.some((x) => x.detail?.shots.length)) detectAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Holes other than this one that still have shots marked for checking.
   const openHoles = entries.flatMap((x, i) => (i !== k && x.detail?.shots.some((s) => s.review) ? [i] : []));

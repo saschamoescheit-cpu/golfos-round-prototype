@@ -6,7 +6,9 @@
 //   locked – the phone is in the pocket between shots; it is taken out at the ball (and on the tee and green)
 // Then runs the real detection (src/lib/track.ts) and counts found, missed and wrong shots.
 // Run: npx vite-node scripts/shotsim.ts [rounds per mode]
+import { writeFileSync } from 'node:fs';
 import { SEED_COURSES } from '../src/data/seedCourses';
+let exported = false;
 import { SEED_GEOMETRY } from '../src/data/seedGeometry';
 import { TEES } from '../src/data/tees';
 import { holesFromTags } from '../src/lib/courses';
@@ -177,6 +179,10 @@ function playRound(mode: 'open' | 'locked'): Score {
   });
 
   const track = phone.out;
+  if (process.env.EXPORT && !exported) {
+    exported = true;
+    writeFileSync(process.env.EXPORT, JSON.stringify({ track: track.map((x) => (x.open ? [x.t, x.p[0], x.p[1], x.acc, 1] : [x.t, x.p[0], x.p[1], x.acc])), truth: truths }));
+  }
   const parts = splitRound(track, holes.map((h) => h.d));
   const s: Score = { truth: 0, found: 0, missed: 0, wrong: 0, green: 0, greenFound: 0, holes: 0, exactHoles: 0 };
   holes.forEach((h, n) => {

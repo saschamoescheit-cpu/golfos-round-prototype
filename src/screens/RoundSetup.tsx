@@ -40,7 +40,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   const options = useMemo(() => loopOptions(props.course.holes), [props.course]);
   const [optionId, setOptionId] = useState(options[0]?.id ?? '');
   const remembered = useMemo(loadRemembered, []);
-  const [mode, setMode] = useState<CaptureMode>(remembered?.mode ?? 'quick');
+  // One way to play (13.10.2026): the score on the course, the shots afterwards from the GPS track – the old choice
+  // "quick / detailed" promised shot-by-shot buttons that are gone. Rounds keep the field for older data.
+  const mode: CaptureMode = 'quick';
   const teeData = TEES[props.course.id];
   const lastTee = remembered?.tees?.[props.course.id];
   const [tee, setTee] = useState<string | null>(
@@ -144,17 +146,6 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
             </div>
           </>
         )}
-        <span className="eyebrow">{tr('Tracking', 'Erfassung')}</span>
-        <div className="choice-grid">
-          <button type="button" className="choice" aria-pressed={mode === 'quick'} onClick={() => setMode('quick')}>
-            {tr('Quick', 'Schnell')}
-            <small>{tr('Scorecard: strokes, putts, fairway, penalties, bunker', 'Scorekarte: Schläge, Putts, Fairway, Strafschläge, Bunker')}</small>
-          </button>
-          <button type="button" className="choice" aria-pressed={mode === 'detail'} onClick={() => setMode('detail')}>
-            {tr('Detailed', 'Detailliert')}
-            <small>{tr('Shot by shot with club and lie on the map · you can switch per hole', 'Schlag für Schlag mit Schläger und Lage auf der Karte · je Loch umschaltbar')}</small>
-          </button>
-        </div>
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

@@ -191,8 +191,8 @@ export function Stats(props: { rounds: Round[]; onBack: () => void; onOpenRound:
             {a.clubs.length === 0 ? (
               <p className="muted small" style={{ margin: 0 }}>
                 {tr(
-                  'Track rounds in “Detailed” mode to learn your distances. From 3 shots per club they replace the standard values in club suggestions.',
-                  'Erfasse Runden im Modus „Detailliert“, um deine Weiten zu lernen. Ab 3 Schlägen je Schläger ersetzen sie die Standardwerte in den Empfehlungen.',
+                  'Check the shots of your rounds after playing (“Check shots”) to learn your distances. From 3 shots per club they replace the standard values in club suggestions.',
+                  'Prüfe nach der Runde deine Schläge („Schläge prüfen“), dann lernt die App deine Weiten. Ab 3 Schlägen je Schläger ersetzen sie die Standardwerte in den Empfehlungen.',
                 )}
               </p>
             ) : (

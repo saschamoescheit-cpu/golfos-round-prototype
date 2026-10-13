@@ -110,6 +110,17 @@ export function Home(props: {
                 </span>
               </span>
             </li>
+            <li>
+              <span>
+                <strong>{tr('After the round: check your shots', 'Nach der Runde: Schläge prüfen')}</strong>
+                <span className="muted small">
+                  {tr(
+                    'On the course you only enter the score. Afterwards the app finds your shots in the GPS track – best when you take the phone out at your ball. Tap the map to correct, and tell the caddie where you would have played differently.',
+                    'Auf dem Platz trägst du nur den Score ein. Danach findet die App deine Schläge in der GPS-Spur – am besten, wenn du das Handy an deinem Ball kurz herausnimmst. Antippen der Karte korrigiert, und dem Caddie sagst du, wo du anders gespielt hättest.',
+                  )}
+                </span>
+              </span>
+            </li>
           </ol>
           <button type="button" className="btn-secondary" onClick={closeIntro}>
             {tr('Got it', 'Verstanden')}
