@@ -72,9 +72,9 @@ export function HoleScreen(props: {
   const commitPar = (r: Round): Round => commitParAt(r, i);
 
   /** `byGps`: the GPS moved the round on – the player confirmed nothing, so no par is written for the last hole. */
-  const goTo = (target: number, byGps = false) => {
+  const goTo = (target: number, byGps = false, base: Round = round) => {
     setDetected(null);
-    const committed = byGps ? round : commitPar(round);
+    const committed = byGps ? base : commitPar(base);
     if (target >= round.holes.length) {
       props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 });
       return;
@@ -284,7 +284,20 @@ export function HoleScreen(props: {
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   const [pinSheet, setPinSheet] = useState(false);
-  const [scoreSheet, setScoreSheet] = useState(false); // quick score + putts over the map
+  // quick score + putts over the map; 'next': opened by "→" without a score – done = on to the next hole
+  const [scoreSheet, setScoreSheet] = useState<false | 'score' | 'next'>(false);
+  /** Saves the sheet's last tap; with strokes and putts both set the sheet closes (and moves on when opened by "→"). */
+  const sheetTap = (patch: Partial<HoleEntry>) => {
+    const e = { ...myEntry, ...patch };
+    const list = round.entries[me.id].slice();
+    list[i] = e;
+    const r = { ...round, entries: { ...round.entries, [me.id]: list } };
+    if (e.strokes == null || e.putts == null) return props.onChange(r);
+    const next = scoreSheet === 'next';
+    setScoreSheet(false);
+    if (next) goTo(i + 1, false, r);
+    else props.onChange(r);
+  };
   // Once per device: how the round check finds the shots (it depends on how the phone is used on the course).
   const [shotTip, setShotTip] = useState(() => {
     try {
@@ -801,26 +814,11 @@ export function HoleScreen(props: {
                 <Segmented<number>
                   label={tr('Strokes', 'Schläge')}
                   value={myEntry.strokes}
-                  onChange={(v) => {
-                    update(me.id, { strokes: v, pickedUp: false });
-                    if (v != null && myEntry.putts != null) setScoreSheet(false);
-                  }}
+                  onChange={(v) => sheetTap({ strokes: v, pickedUp: false })}
                   options={[...new Set([...[-1, 0, 1, 2, 3].map((d) => (hole.par || 4) + d), ...(myEntry.strokes != null ? [myEntry.strokes] : [])])]
                     .filter((n) => n >= 1)
                     .sort((a, b) => a - b)
                     .map((n) => ({ value: n, label: String(n) }))}
-                />
-              </div>
-              <div className="field">
-                <label>Putts</label>
-                <Segmented<number>
-                  label="Putts"
-                  value={myEntry.putts}
-                  onChange={(v) => {
-                    update(me.id, { putts: v });
-                    if (v != null && myEntry.strokes != null) setScoreSheet(false);
-                  }}
-                  options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
                 />
               </div>
               <div className="field">
@@ -830,6 +828,15 @@ export function HoleScreen(props: {
                   value={myEntry.penalties ?? 0}
                   onChange={(v) => update(me.id, { penalties: v ?? 0 })}
                   options={[0, 1, 2, 3].map((n) => ({ value: n, label: String(n) }))}
+                />
+              </div>
+              <div className="field">
+                <label>Putts</label>
+                <Segmented<number>
+                  label="Putts"
+                  value={myEntry.putts}
+                  onChange={(v) => sheetTap({ putts: v })}
+                  options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
                 />
               </div>
               <div className="score-sheet-foot">
@@ -843,8 +850,16 @@ export function HoleScreen(props: {
                 >
                   {tr('Fairway, bunker …', 'Fairway, Bunker …')}
                 </button>
-                <button type="button" className="btn-primary" onClick={() => setScoreSheet(false)}>
-                  {tr('Done', 'Fertig')}
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    const next = scoreSheet === 'next';
+                    setScoreSheet(false);
+                    if (next) goTo(i + 1);
+                  }}
+                >
+                  {scoreSheet === 'next' ? tr('Next →', 'Weiter →') : tr('Done', 'Fertig')}
                 </button>
               </div>
             </section>
@@ -1110,14 +1125,14 @@ export function HoleScreen(props: {
                 </strong>
               </span>
             ) : (
-              <button type="button" className="map-score" onClick={() => (hasShots ? setView('score') : setScoreSheet(true))}>
+              <button type="button" className="map-score" onClick={() => (hasShots ? setView('score') : setScoreSheet('score'))}>
                 <span className="small">Score</span>
                 {/* nothing entered yet: par in grey, as a suggestion – entered values in full colour */}
                 <strong className={myEntry.strokes == null && !myEntry.pickedUp ? 'placeholder' : undefined}>{strokesShown}</strong>
                 {myEntry.putts != null && <span className="small">{myEntry.putts} Putt{myEntry.putts === 1 ? '' : 's'}</span>}
               </button>
             )}
-            <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => goTo(i + 1)}>
+            <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => (myEntry.strokes == null && !myEntry.pickedUp && !round.preview ? setScoreSheet('next') : goTo(i + 1))}>
               →
             </button>
           </div>
