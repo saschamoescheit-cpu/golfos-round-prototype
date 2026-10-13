@@ -150,8 +150,13 @@ function holeNotes(entries: HoleEntry[], par: number): string[] {
     else if (left > right && left / fw.length >= 0.5) out.push(tr('tee shot mostly left', 'Abschlag meist links'));
     else if (right > left && right / fw.length >= 0.5) out.push(tr('tee shot mostly right', 'Abschlag meist rechts'));
   }
-  const water = entries.reduce((s, e) => s + (e.detail ? e.detail.shots.filter((x) => x.penalty).length : e.penalties), 0);
-  if (water) out.push(tr(`${water}× penalty`, `${water}× Strafschlag`));
+  const pens = entries.flatMap((e) => (e.detail ? e.detail.shots.filter((x) => x.penalty) : Array.from({ length: e.penalties }, () => null)));
+  const water = pens.filter((x) => x?.penaltyKind === 'water').length;
+  const ob = pens.filter((x) => x?.penaltyKind === 'ob').length;
+  const other = pens.length - water - ob;
+  if (water) out.push(tr(`${water}× water`, `${water}× Wasser`));
+  if (ob) out.push(tr(`${ob}× out of bounds`, `${ob}× Aus`));
+  if (other) out.push(tr(`${other}× penalty`, `${other}× Strafschlag`));
   const bunker = entries.filter((e) => e.greensideBunker || e.detail?.shots.some((x) => x.lie === 'bunker')).length;
   if (bunker >= 2) out.push(tr(`${bunker}× bunker`, `${bunker}× Bunker`));
   const three = entries.filter((e) => (e.putts ?? 0) >= 3).length;

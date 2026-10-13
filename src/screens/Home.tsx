@@ -186,8 +186,8 @@ export function Home(props: {
         )}
       </section>
       )}
-      {/* Backup: full block once there are rounds to keep; before that only "restore" for a new phone. */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }} hidden={finished.length === 0}>
+      {/* Backup: full block once there is a round to keep (also a running one); before that only "restore" for a new phone. */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }} hidden={props.rounds.length === 0}>
         <h2>{tr('Backup', 'Sicherung')}</h2>
         <p className="muted small" style={{ margin: 0 }}>
           {tr(
@@ -231,12 +231,12 @@ export function Home(props: {
         />
         {backupMsg && <p className="small" style={{ margin: 0 }}>{backupMsg}</p>}
       </section>
-      {finished.length === 0 && (
+      {props.rounds.length === 0 && (
         <button type="button" className="btn-ghost" onClick={() => fileInput.current?.click()}>
           {tr('New phone? Restore a backup', 'Neues Handy? Sicherung wiederherstellen')}
         </button>
       )}
-      {finished.length === 0 && backupMsg && <p className="small" style={{ margin: 0 }}>{backupMsg}</p>}
+      {props.rounds.length === 0 && backupMsg && <p className="small" style={{ margin: 0 }}>{backupMsg}</p>}
 
       <span className="spacer" />
       <div className="home-foot">

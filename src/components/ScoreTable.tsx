@@ -4,15 +4,16 @@ import { TEES } from '../data/tees';
 import { tr } from '../lib/i18n';
 
 // The digital scorecard laid out like the paper one: per nine a block with the holes across, rows for metres,
-// stroke index, par and every player's score (golf marks: circle = birdie, square = bogey), Stableford points and putts.
+// stroke index, par and every player's score (golf marks: filled circle = eagle, circle = birdie, square = bogey,
+// double square = double bogey, filled square = triple bogey or worse), Stableford points and putts.
 
-type Mark = 'eagle' | 'birdie' | 'par' | 'bogey' | 'double';
+type Mark = 'eagle' | 'birdie' | 'par' | 'bogey' | 'double' | 'triple';
 const markFor = (gross: number, par: number): Mark => {
   const d = gross - par;
-  return d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : d === 1 ? 'bogey' : 'double';
+  return d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : d === 1 ? 'bogey' : d === 2 ? 'double' : 'triple';
 };
 
-export function ScoreTable(props: { round: Round }) {
+export function ScoreTable(props: { round: Round; onHole?: (index: number) => void }) {
   const { round } = props;
   const received = Object.fromEntries(round.players.map((p) => [p.id, handicapStrokes(round.holes, p.playingHandicap)]));
   const teeData = TEES[round.courseId];
@@ -45,7 +46,15 @@ export function ScoreTable(props: { round: Round }) {
                 <tr className="holes">
                   <th className="lab">{tr('Hole', 'Loch')}</th>
                   {nine.map((h) => (
-                    <th key={h.index}>{h.label}</th>
+                    <th key={h.index}>
+                      {props.onHole ? (
+                        <button type="button" className="sc-hole" aria-label={tr(`Edit hole ${h.label}`, `Loch ${h.label} bearbeiten`)} onClick={() => props.onHole!(h.index)}>
+                          {h.label}
+                        </button>
+                      ) : (
+                        h.label
+                      )}
+                    </th>
                   ))}
                   <th className="sumc">{sumLabel}</th>
                 </tr>
@@ -81,7 +90,7 @@ export function ScoreTable(props: { round: Round }) {
                       const g = gross(p.id, h);
                       const extra = received[p.id][h.index];
                       return (
-                        <td key={h.index}>
+                        <td key={h.index} className={props.onHole ? 'tap' : undefined} onClick={props.onHole ? () => props.onHole!(h.index) : undefined}>
                           {g == null ? (
                             <span className="muted">–</span>
                           ) : (
@@ -121,10 +130,11 @@ export function ScoreTable(props: { round: Round }) {
         );
       })}
       <div className="sc-legend muted small">
-        <span><span className="mark eagle">3</span> Eagle</span>
-        <span><span className="mark birdie">3</span> Birdie</span>
-        <span><span className="mark bogey">5</span> Bogey</span>
-        <span><span className="mark double">6</span> {tr('Double+', 'Doppel+')}</span>
+        <span><span className="mark eagle" aria-hidden="true" /> Eagle</span>
+        <span><span className="mark birdie" aria-hidden="true" /> Birdie</span>
+        <span><span className="mark bogey" aria-hidden="true" /> Bogey</span>
+        <span><span className="mark double" aria-hidden="true" /> {tr('Double bogey', 'Doppelbogey')}</span>
+        <span><span className="mark triple" aria-hidden="true" /> {tr('Triple bogey+', 'Triple-Bogey+')}</span>
         <span><span className="hcp-dot">•</span> {tr('handicap stroke', 'Vorgabeschlag')}</span>
         {round.players.some((p) => round.entries[p.id].some((e) => e.pickedUp)) && <span>* {tr('picked up', 'aufgehoben')}</span>}
       </div>

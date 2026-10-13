@@ -19,8 +19,8 @@ export function SgCard(props: { values: SgValues; shots: Record<SgCategory, numb
       <h2>{props.title}</h2>
       <p className="muted small" style={{ margin: 0 }}>
         {tr(
-          `Strokes gained per 18 holes against the tour average (${props.holes} holes with all shots). Compare with:`,
-          `Strokes Gained je 18 Löcher gegen den Tour-Durchschnitt (${props.holes} Löcher mit allen Schlägen). Vergleichen mit:`,
+          `Strokes gained per 18 holes against the tour average (${props.holes} holes with all shots checked${props.holes < 9 ? ' – few holes, the values still swing a lot' : ''}). Compare with:`,
+          `Strokes Gained je 18 Löcher gegen den Tour-Durchschnitt (${props.holes} Löcher mit allen Schlägen geprüft${props.holes < 9 ? ' – noch wenige Löcher, die Werte schwanken stark' : ''}). Vergleichen mit:`,
         )}
       </p>
       <div className="chip-row" role="group" aria-label={tr('Compare with', 'Vergleichen mit')}>

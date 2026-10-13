@@ -17,16 +17,19 @@ export interface HoleMapProps {
   targets: LngLat[]; // planned landing points (max 3), in playing order
   unit: Unit;
   imagery: ImagerySource;
+  credit?: string | null; // extra data credit for the map's ⓘ (green heights)
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a yellow line with numbered dots. */
   track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string }[];
   /** Track points can be dragged (round check); called on release with the point's id. */
   onTrackMove?: (id: string, pos: LngLat) => void;
+  /** While a shot is dragged: the text its marker shows (e.g. the shot length), null = keep the label. */
+  onTrackDrag?: (id: string, pos: LngLat) => string | null;
   /** "Where not to miss": points with relative cost 0 (good miss) … 1 (expensive miss). */
   missMap?: { pos: LngLat; cost: number }[];
   /** A marker for the caddie's aim point with a dashed line from the player (not used on the hole map any more). */
   aimPoint?: LngLat | null;
   /** Green chart image (slope colours, arrows, contours) placed by its corners. */
-  greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat] } | null;
+  greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat]; roomy?: boolean } | null; // roomy: map buttons still on screen
   /** Green slope: arrow on the green pointing where it falls (compass degrees). */
   greenSlope?: { pos: LngLat; downDeg: number; label: string };
   /** Putt read on the green: the ball, the rolling line and the point to aim at next to the hole. */
@@ -59,7 +62,7 @@ export function HoleMap(props: HoleMapProps) {
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
-      attributionControl: { compact: true },
+      attributionControl: { compact: true, ...(props.credit ? { customAttribution: props.credit } : {}) },
     });
     m.touchZoomRotate.disableRotation();
     m.on('load', () => {
@@ -114,14 +117,21 @@ export function HoleMap(props: HoleMapProps) {
   }, [props.holeKey, props.data]);
 
   // Green chart shown: zoom onto the green (keeping the playing direction); hidden again: back to the hole.
-  const chartKey = props.greenChart ? props.greenChart.url : '';
+  const chartKey = props.greenChart ? `${props.greenChart.url}${props.greenChart.roomy ? '|roomy' : ''}` : ''; // closer zoom once at the green
   useEffect(() => {
     const m = map.current;
     if (!m || !ready.current) return;
     const c = latest.current.greenChart;
     if (c) {
       const b = c.corners.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(c.corners[0], c.corners[0]));
-      m.fitBounds(b, { bearing: m.getBearing(), padding: { top: 150, bottom: 260, left: 20, right: 20 }, maxZoom: 21, duration: 600 });
+      // Room for the boxes above and the buttons below – scaled down on small screens, or MapLibre refuses to zoom.
+      const h = m.getContainer().clientHeight;
+      let top = 150;
+      let bottom = c.roomy ? 300 : 260;
+      const k = Math.min(1, (h - 160) / (top + bottom));
+      top *= k;
+      bottom *= k;
+      m.fitBounds(b, { bearing: m.getBearing(), padding: { top, bottom, left: 20, right: 20 }, maxZoom: 21, duration: 600 });
     } else fit(m, latest.current.data, latest.current.padding);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartKey]);
@@ -188,11 +198,20 @@ export function HoleMap(props: HoleMapProps) {
       const d = labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       const movable = p.onTrackMove != null && t.id != null;
       const marker = new maplibregl.Marker({ element: d, draggable: movable }).setLngLat(t.pos).addTo(m);
-      if (movable)
+      if (movable) {
+        marker.on('drag', () => {
+          const ll = marker.getLngLat();
+          const text = latest.current.onTrackDrag?.(t.id!, [ll.lng, ll.lat]);
+          if (text != null) d.textContent = text;
+          // the line between the shots follows the finger
+          const pts = (latest.current.track ?? []).map((x) => (x.id === t.id ? ([ll.lng, ll.lat] as LngLat) : x.pos));
+          (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] });
+        });
         marker.on('dragend', () => {
           const ll = marker.getLngLat();
           latest.current.onTrackMove?.(t.id!, [ll.lng, ll.lat]);
         });
+      }
       return marker;
     });
 

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DetailEntry, FairwayResult, HoleEntry, LngLat, Round } from '../types';
-import { deriveFromShots, emptyDetail, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
+import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix } from '../lib/track';
+import { PositionFilter } from '../lib/gpsfilter';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
@@ -14,6 +15,7 @@ import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
 import { GREEN_CHARTS } from '../data/greenCharts';
+import { greenSource } from '../data/greenSources';
 import { heightAt as terrainHeight } from '../lib/terrain';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
@@ -37,6 +39,10 @@ const fairwayName = (f: string) => tr(f, ({ left: 'links', hit: 'getroffen', rig
 /** Beyond this distance from the hole the app measures from the tee (planning at home or on another hole). */
 const ON_HOLE_M = 1500;
 /** Landing points the player can plan per hole (e.g. drive, layup, approach). */
+// Shots are not logged by hand on the map any more (Sascha, 13.10.2026): they come from the GPS track and are
+// checked after the round. The code stays for Ben (spec 004 decides); false = the quick-mode buttons in every mode.
+const MANUAL_SHOTS = false;
+const GREEN_AUTO_M = 120; // green chart comes up by itself from here on
 const MAX_TARGETS = 3;
 
 export function HoleScreen(props: {
@@ -101,6 +107,19 @@ export function HoleScreen(props: {
   const [unit] = useState<Unit>(loadUnit);
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
+  const detectArmed = useRef(true); // the next good fix may move the round to the hole the player is on
+  // Battery: iOS delivers a fix about every second. The screen (map, caddie, labels) is only redrawn when the player
+  // moved (≥ 1 m), the accuracy changed or 3 s passed – standing still at the ball redraws rarely.
+  // Accuracy: the shown position is filtered – averaged while standing at the ball, the newest fix while walking.
+  const filter = useRef(new PositionFilter());
+  const shownFix = useRef<{ pos: LngLat; accuracy: number; t: number } | null>(null);
+  const showFix = (f: { pos: LngLat; accuracy: number; t: number }) => {
+    shownFix.current = f;
+    setPlayer({ pos: f.pos, accuracy: f.accuracy });
+  };
+  // The app was opened again (phone out of the pocket, often at the ball): the next fix is marked in the track –
+  // a strong hint for the shot detection – and the hole is looked up again.
+  const reopened = useRef(true);
   const [gpsError, setGpsError] = useState<string | null>(null);
   // Targets, pin and the marked ball survive a reload (iOS may drop the page while the phone is in the pocket).
   const [live, setLive] = useState(() => loadLive(round.id));
@@ -109,29 +128,58 @@ export function HoleScreen(props: {
   const setPlans = (p: typeof plans) => setLive((l) => ({ ...l, plans: p }));
   const shotStart = live.shotStart;
   // GPS runs while the hole screen is open (map or score), so the hole is recognised in both views.
+  // No fix yet (cold start, trees) is no reason to give up: the watch is restarted and the player sees "searching".
+  // Only a refused permission needs the player – the hint says where to switch it on.
+  const [gpsTry, setGpsTry] = useState(0);
   useEffect(() => {
-    if (!('geolocation' in navigator)) return;
+    if (!('geolocation' in navigator)) {
+      setGpsError(tr('This browser has no GPS – distances are measured from the tee.', 'Dieser Browser hat kein GPS – Distanzen werden vom Abschlag gemessen.'));
+      return;
+    }
+    let restart: number | undefined;
     const id = navigator.geolocation.watchPosition(
       (p) => {
         setGpsError(null);
-        setPlayer({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy });
-        // Detailed rounds keep the GPS track for the shot detection after the round (only while the app is open).
-        // Every round keeps the GPS track (while the app is open): automatic shot length, shot detection.
-        if (!round.preview) recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy });
+        const fix = filter.current.push({ pos: [p.coords.longitude, p.coords.latitude] as LngLat, accuracy: p.coords.accuracy, t: Date.now() });
+        const was = shownFix.current;
+        if (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000) showFix(fix);
+        // Every round keeps the GPS track (while the app is open, raw fixes): automatic shot length, shot detection.
+        const open = reopened.current && p.coords.accuracy <= 30;
+        if (open) reopened.current = false;
+        if (!round.preview) recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy, ...(open ? { open: true } : {}) });
       },
-      () => setGpsError(tr('No GPS – distances are measured from the tee.', 'Kein GPS – Distanzen werden vom Abschlag gemessen.')),
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+      (err) => {
+        if (err.code === 1) {
+          setGpsError(
+            tr(
+              'Location not allowed. iPhone: Settings → Privacy & Security → Location Services → Safari Websites → “While Using” and Precise Location on. Then reload.',
+              'Standort nicht erlaubt. iPhone: Einstellungen → Datenschutz & Sicherheit → Ortungsdienste → Safari-Websites → „Beim Verwenden“ und „Genauer Standort“ an. Dann neu laden.',
+            ),
+          );
+          return;
+        }
+        setGpsError(tr('GPS is searching … distances from the tee until there is a fix.', 'GPS sucht … bis dahin Distanzen vom Abschlag.'));
+        window.clearTimeout(restart);
+        restart = window.setTimeout(() => setGpsTry((n) => n + 1), 3000); // start a fresh watch
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 },
     );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
+    return () => {
+      window.clearTimeout(restart);
+      navigator.geolocation.clearWatch(id);
+    };
+  }, [gpsTry]);
 
   // Phone back out of the pocket (or app opened): with the first good GPS fix, move to the hole the player is on.
   const allMaps = useMemo(() => round.holes.map((h) => forTee(holeMapData(geometry, h.loop, h.number), h.label)), [geometry, round.holes, round.tee]);
   const [detected, setDetected] = useState<{ from: number; to: number } | null>(null);
-  const detectArmed = useRef(true);
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') detectArmed.current = true;
+      if (document.visibilityState === 'visible') {
+        detectArmed.current = true;
+        reopened.current = true;
+        filter.current = new PositionFilter(); // the player has moved meanwhile: no average across the gap
+      }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
@@ -207,8 +255,10 @@ export function HoleScreen(props: {
   const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope, []);
   const missMapOn = useMemo(() => loadCaddieSettings().missMap, []);
   const [showMiss, setShowMiss] = useState(missMapOn);
-  // Green slope: automatic near the green, or shown any time with the "Green" button.
-  const [showGreen, setShowGreen] = useState(false);
+  // Green slope: automatic from 120 m before the green (Sascha, 13.10.2026), or any time with the "Green" button.
+  // null = automatic; true/false = the player switched it on or off on this hole.
+  const [showGreen, setShowGreen] = useState<boolean | null>(null);
+  useEffect(() => setShowGreen(null), [i]); // a green opened on the last hole does not follow to the next tee
   const carryBag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []); // with the wedges' partial swings
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
@@ -238,10 +288,12 @@ export function HoleScreen(props: {
   // Heights of tee, green and player (for "plays shorter, downhill"); rounded positions keep requests rare.
   const [hts, setHts] = useState<Record<string, number | null>>({});
   const htKey = (p: LngLat) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`;
-  const playerKey = player ? htKey(player.pos) : '';
+  // The height grid is 90 m: the player's position is snapped to ~50 m, so walking does not fetch a height every 10 m.
+  const snap = (p: LngLat): LngLat => [Math.round(p[0] * 2000) / 2000, Math.round(p[1] * 2000) / 2000];
+  const playerKey = player ? htKey(snap(player.pos)) : '';
   useEffect(() => {
     if (!mapData) return;
-    const pts: LngLat[] = [mapData.tee, mapData.greenCenter, ...(player ? [player.pos] : [])];
+    const pts: LngLat[] = [mapData.tee, mapData.greenCenter, ...(player ? [snap(player.pos)] : [])];
     let alive = true;
     heights(pts).then((h) => alive && setHts((old) => ({ ...old, ...Object.fromEntries(pts.map((p, k) => [htKey(p), h[k]])) })));
     return () => {
@@ -249,7 +301,7 @@ export function HoleScreen(props: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapData, playerKey]);
-  const heightAt = (p: LngLat) => hts[htKey(p)] ?? null;
+  const heightAt = (p: LngLat) => hts[htKey(p)] ?? hts[htKey(snap(p))] ?? null;
 
   const switchImagery = () => {
     const next = imageryChoices[(imageryChoices.indexOf(imagery) + 1) % imageryChoices.length];
@@ -320,6 +372,7 @@ export function HoleScreen(props: {
         club={existing ? existing.club : suggestClub(hole.par || 4, n === 1, toPin ?? (hole.par >= 4 ? 300 : 150), bag)}
         bag={bag}
         penalty={existing?.penalty ?? false}
+        penaltyKind={existing?.penaltyKind}
         kind={existing?.kind}
         toPinM={toPin}
         editing={editing}
@@ -401,6 +454,7 @@ export function HoleScreen(props: {
     const plan = plans[i] ?? { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null };
     const pin = plan.pin ?? mapData.greenCenter;
     const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
+    const shotButtons = detailMode && MANUAL_SHOTS;
     const from = onHole ? player!.pos : mapData.tee;
     // Without a mapped green outline (player-set green) only the centre distance is known.
     const green = mapData.green ? greenFrontBack(from, mapData.green) : { front: null, center: distanceM(from, mapData.greenCenter), back: null };
@@ -456,6 +510,8 @@ export function HoleScreen(props: {
     const shownTargets = plan.targets.filter((t) => !passed(t));
     // Automatic shot length: from the last place the player stood (or the tee) to here – no tapping needed.
     const autoLen = onHole && player && !round.preview ? autoShot(loadTrack(round.id), mapData, player.pos) : null;
+    const teeDist = onHole && player && !round.preview ? distanceM(mapData.tee, player.pos) : null;
+    const fromTee = teeDist != null && teeDist >= 20 ? teeDist : null;
     // ---------- AI caddie ----------
     const teeShot = !onHole || distanceM(from, mapData.tee) < 30;
     const note: HoleNote = notes[hole.label] ?? {};
@@ -463,10 +519,12 @@ export function HoleScreen(props: {
     // Green slope when the player is on or next to the green (or planning from the sofa).
     const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
     const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || (round.preview === true && hole.par === 3);
-    const greenVisible = nearGreen || showGreen;
+    const greenAuto = distanceM(from, mapData.greenCenter) <= GREEN_AUTO_M || nearGreen;
+    const greenVisible = nearGreen || (showGreen ?? greenAuto);
     const chart = greenSlopeOn ? GREEN_CHARTS[round.courseId]?.[hole.label] : undefined;
     // Green chart on screen: keep the view free (caddie folded, no hint).
-    const greenFocus = chart != null && greenVisible;
+    // Only around the green (≤ 40 m) – on the approach the caddie stays at hand next to the green chart.
+    const greenFocus = chart != null && greenVisible && nearGreen;
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
     const grid = grids?.[hole.label] ?? null;
     const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos)
@@ -543,6 +601,7 @@ export function HoleScreen(props: {
     return (
       <main className="map-screen">
         <HoleMap
+          credit={greenSource(round.courseId, GREEN_CHARTS[round.courseId] != null)}
           holeKey={`${round.id}-${i}`}
           data={mapData}
           player={player?.pos ?? null}
@@ -554,7 +613,7 @@ export function HoleScreen(props: {
           track={detailMode ? track : undefined}
           missMap={miss}
           aimPoint={null}
-          greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners } : null}
+          greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}
           onTargetsChange={(targets) => setPlan({ targets: [...passedTargets, ...targets] })}
@@ -669,7 +728,14 @@ export function HoleScreen(props: {
         )}
 
         <div className="map-bottom">
-          {!greenFocus && gpsError && !round.preview && <div className="map-hint">{gpsError}</div>}
+          {!greenFocus && gpsError && !round.preview && (
+            <div className="map-hint gps-hint">
+              <span>{gpsError}</span>
+              <button type="button" className="btn-ghost" onClick={() => setGpsTry((n) => n + 1)}>
+                {tr('Try again', 'Erneut versuchen')}
+              </button>
+            </div>
+          )}
           {detectedBanner}
           {offlineHint}
           <div className="map-tools">
@@ -683,7 +749,7 @@ export function HoleScreen(props: {
               </button>
             )}
             {(slope || chart) && !nearGreen && (
-              <button type="button" className="map-btn round tool" aria-pressed={showGreen} aria-label={showGreen ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!showGreen)}>
+              <button type="button" className="map-btn round tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!greenVisible)}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <ellipse cx="12" cy="17" rx="9" ry="4" fill="currentColor" opacity="0.35" />
                   <path d="M7 16.5l4-2.5 3 1.8 4-2.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -778,12 +844,19 @@ export function HoleScreen(props: {
               {tr('Shot', 'Schlag')} <strong>{fmt(distanceM(shotStart, player.pos))} {unit}</strong>
             </div>
           )}
-          {!shotStart && autoLen && (
+          {/* Always the whole way from the tee to here (Sascha, 13.10.2026: stops – e.g. with a cart – must not
+              restart it); the last shot only as a small addition when one was recognised after the tee shot. */}
+          {!shotStart && fromTee != null && (
             <div className="map-shot">
-              {autoLen.fromTee ? tr('Tee shot', 'Abschlag') : tr('Last shot', 'Letzter Schlag')} <strong>{fmt(autoLen.length)} {unit}</strong>
+              {tr('From tee', 'Vom Abschlag')} <strong>{fmt(fromTee)} {unit}</strong>
+              {autoLen && !autoLen.fromTee && (
+                <span className="map-shot-last">
+                  {tr('last shot', 'letzter Schlag')} {fmt(autoLen.length)} {unit}
+                </span>
+              )}
             </div>
           )}
-          {!shotStart && !autoLen && live.lastShot != null && (
+          {!shotStart && fromTee == null && live.lastShot != null && (
             <div className="map-shot">
               {tr('Last shot', 'Letzter Schlag')} <strong>{fmt(live.lastShot)} {unit}</strong>
             </div>
@@ -811,7 +884,7 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
-          {detailMode ? (
+          {shotButtons ? (
             <div className="map-nav detail">
               <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
                 ←
@@ -956,7 +1029,7 @@ export function HoleScreen(props: {
         <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="row">
             <span className="row-label">{tr('Shots', 'Schläge')}</span>
-            <span className="muted small">{hasShots ? tr('Strokes, fairway, penalties and bunker come from the shots', 'Schläge, Fairway, Strafschläge und Bunker ergeben sich aus den Schlägen') : tr('Track shot by shot on the map, or enter the score below', 'Erfasse Schlag für Schlag auf der Karte oder trage unten den Score ein')}</span>
+            <span className="muted small">{hasShots && shotsComplete(detail) ? tr('Strokes, fairway, penalties and bunker come from the shots', 'Schläge, Fairway, Strafschläge und Bunker ergeben sich aus den Schlägen') : MANUAL_SHOTS ? tr('Track shot by shot on the map, or enter the score below', 'Erfasse Schlag für Schlag auf der Karte oder trage unten den Score ein') : tr('Enter the score below – the shots come from the GPS track, check them after the round', 'Trag unten den Score ein – die Schläge kommen aus der GPS-Spur, du prüfst sie nach der Runde')}</span>
           </div>
           {hasShots && (
             <ol className="shot-list">
@@ -999,7 +1072,7 @@ export function HoleScreen(props: {
           <span className="row-label">{me.name} · {tr('Strokes', 'Schläge')}</span>
           {myEntry.pickedUp ? (
             <span className="badge warn">{tr('Picked up', 'Aufgehoben')}</span>
-          ) : hasShots ? (
+          ) : hasShots && shotsComplete(detail) ? (
             <span className="num" style={{ font: '700 28px var(--display)' }}>{myEntry.strokes ?? '…'}</span>
           ) : (
             <Stepper label={tr('Strokes', 'Schläge')} value={myEntry.strokes} placeholder={hole.par || 4} min={1} onChange={(v) => update(me.id, { strokes: v })} />

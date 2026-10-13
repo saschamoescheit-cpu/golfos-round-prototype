@@ -6,6 +6,7 @@ import { adviseClub, playsLike, type CarryBag, type Conditions, type PlaysLike }
 import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, type Samples } from './terrain';
 import type { HoleNote } from './holenotes';
 import { clubCode, sideWord, tr } from './i18n';
+import { missCost } from './missmap';
 
 // The caddie's aim point (features 016/017): where to hit this shot, from where the player is now.
 // Tee: the landing zone at the longest suitable carry. In reach of the green: the pin. Otherwise a layup that
@@ -27,6 +28,7 @@ export interface AimPoint {
   reasons: string[]; // why the point is where it is, short
   note: string | null; // trees, out of bounds …
   strategy?: PinPlan | null; // approaches: flag, middle of the green or short of the flag (feature 015)
+  fairwaySide?: number; // the drive goes to this side of the fairway (+ right) to set up the next shot; 0 = moved, not said
 }
 
 export function move(p: LngLat, bearing: number, m: number): LngLat {
@@ -71,6 +73,17 @@ export interface AimInput {
 }
 
 export function aimPoint(input: AimInput): AimPoint {
+  // The fairway side is a refinement: only when that plan works out clean – no recovery through trees, no bunker or
+  // water at the landing or aim point, nothing the safety check had to move away from. Else the plan on the line.
+  const withSide = aimPointOn(input, true);
+  if (withSide.fairwaySide == null) return withSide;
+  const bad = (p: LngLat) => [...input.data.bunkers, ...input.data.water].some((r) => pointInRing(p, r));
+  const moved = withSide.reasons.some((r) => (Object.keys(ZONE_WORDS) as ZoneReason[]).some((k) => r === zoneText(k)));
+  if (withSide.kind === 'recovery' || bad(withSide.landing) || bad(withSide.pos) || moved) return aimPointOn(input, false);
+  return withSide;
+}
+
+function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   // A tee is never in the woods: a wood area that contains the tee (generously mapped in OSM) does not block it.
   const o = input.teeShot && input.trees ? { ...input, trees: input.trees.filter((r) => !pointInRing(input.from, r)) } : input;
   const { data, from, pin } = o;
@@ -87,6 +100,7 @@ export function aimPoint(input: AimInput): AimPoint {
     return hFrom != null && h != null ? h - hFrom : null;
   };
   const reasons: string[] = [];
+  let fairwaySideM: number | undefined;
 
   // Hazards around the landing zone → the safe style clubs down off the tee.
   const obNote = o.note ?? {};
@@ -124,6 +138,18 @@ export function aimPoint(input: AimInput): AimPoint {
     }
     base = pointAt(data.line, Math.max(along, alongFrom + 30));
     kind = o.teeShot ? 'drive' : 'layup';
+    // Which side of the fairway sets up the next shot best (dogleg left → right side, trees at the corner …).
+    const fs = useSide ? fairwaySide({ from, base, pin, data, trees: o.trees }) : null;
+    if (fs) base = fs.landing;
+    if (fs) fairwaySideM = fs.side; // 0: moved towards the fairway middle, not worth saying
+    if (fs && fs.side !== 0) {
+      const right = fs.side > 0;
+      reasons.push(
+        fs.why === 'line'
+          ? tr(`${right ? 'right' : 'left'} side of the fairway – clear line to the green`, `${right ? 'rechte' : 'linke'} Fairwayseite – freie Linie aufs Grün`)
+          : tr(`${right ? 'right' : 'left'} side of the fairway – opens up the dogleg`, `${right ? 'rechte' : 'linke'} Fairwayseite – öffnet das Dogleg`),
+      );
+    }
   }
 
   // Sideways: wind drift, own tendency, hanging fairway – the aim point; the ball should end up at the landing spot.
@@ -179,7 +205,9 @@ export function aimPoint(input: AimInput): AimPoint {
           // keep clear of out of bounds like every landing spot (feature 020): never closer than 10 m, prefer 20 m
           const gap = fromInside && o.boundary?.length ? Math.min(...o.boundary.map((r) => distToLine(p, r))) : Infinity;
           if (gap < 10) continue;
-          const score = ang * 1.5 + (1 - frac) * 60 + Math.max(0, distanceM(p, pin) - distanceM(pos, pin)) * 0.2 + Math.max(0, SAFETY.obMarginM - gap) * 3;
+          // a punch out into a bunker is no way out: only when nothing else is free
+          const sand = data.bunkers.some((r) => pointInRing(p, r)) ? 200 : 0;
+          const score = ang * 1.5 + (1 - frac) * 60 + Math.max(0, distanceM(p, pin) - distanceM(pos, pin)) * 0.2 + Math.max(0, SAFETY.obMarginM - gap) * 3 + sand;
           if (!best || score < best.score) best = { p, score, ang: sgn * ang };
         }
       }
@@ -201,11 +229,78 @@ export function aimPoint(input: AimInput): AimPoint {
   const sideText = (k: 'left' | 'right', known: boolean | undefined, m: number | undefined) => (known || m == null || !isFinite(m) ? sideWord(k) : `${Math.round(m)} m ${sideWord(k)}`);
   const obSides = [obLeft && sideText('left', obNote.obLeft, ob?.left), obRight && sideText('right', obNote.obRight, ob?.right), obNote.obLong && sideWord('long')].filter(Boolean);
   if (!note && obSides.length) note = tr('Out of bounds', 'Aus') + ' ' + obSides.join(tr(' and ', ' und '));
-  return { pos, landing: kind === 'recovery' ? pos : base, kind, club, distance, pl, side, reasons, note, strategy };
+  return { pos, landing: kind === 'recovery' ? pos : base, kind, club, distance, pl, side, reasons, note, strategy, fairwaySide: fairwaySideM };
+}
+
+/**
+ * Which side of the fairway (Sascha, 13.10.2026: "dogleg left – the ball belongs on the right side").
+ * Caddie rule: on a dogleg the drive goes to the outside of the corner – it opens the angle into the green and
+ * keeps the corner (trees, rough) out of the next shot; the more the hole turns, the further out (≈ 3 m + 0.3 m
+ * per degree). The rule gives way to the lie around the spot (a drive scatters about ±10 m: bunker, water, rough)
+ * and to trees in the line of the next shot (they stop a low start and the last metres; a high shot flies over
+ * the middle) – a side with a clear line wins on straight holes too. Keeps 5 m from the fairway edge.
+ * Null = stay in the middle.
+ */
+export function fairwaySide(o: { from: LngLat; base: LngLat; pin: LngLat; data: HoleMapData; trees?: Ring[] }): { landing: LngLat; side: number; why: 'line' | 'dogleg' } | null {
+  const { data, pin } = o;
+  const b = bearingDeg(o.from, o.base);
+  const across = (s: number) => move(o.base, b + 90, s);
+  const fw = nearRings(data.fairways, o.base, 80);
+  const inFw = (p: LngLat) => fw.some((r) => pointInRing(p, r));
+  let lo = -12;
+  let hi = 12;
+  if (fw.length) {
+    if (!inFw(o.base)) return null; // off the fairway: the safe landing search brings it back
+    lo = 0;
+    hi = 0;
+    while (lo > -40 && inFw(across(lo - 2))) lo -= 2;
+    while (hi < 40 && inFw(across(hi + 2))) hi += 2;
+    lo += 5;
+    hi -= 5;
+  }
+  if (hi - lo < 6) return null;
+  // Where the next shot goes: the pin when in reach, else 200 m on along the hole (par 5).
+  const alongBase = alongLine(data.line, o.base);
+  const next = distanceM(o.base, pin) <= 230 ? pin : pointAt(data.line, Math.min(lineLength(data.line), alongBase + 200));
+  const turn = ((bearingDeg(o.base, next) - b + 540) % 360) - 180; // < 0: the hole turns left
+  // Measured from the middle of the fairway (the hole line need not run through it).
+  const mid = (lo + hi) / 2;
+  const dogleg = Math.abs(turn) >= 15;
+  const want = dogleg ? mid - Math.sign(turn) * (3 + 0.3 * Math.abs(turn)) : 0;
+  const toNext = distanceM(o.base, next);
+  const trees = nearRings(o.trees, move(o.base, bearingDeg(o.base, next), toNext / 2), toNext / 2 + 40);
+  const inTrees = (p: LngLat) => trees.some((r) => pointInRing(p, r));
+  const rate = (s: number) => {
+    const l = across(s);
+    const d = distanceM(l, next);
+    const br = bearingDeg(l, next);
+    let line = 0;
+    for (let k = 8; k < d - 5; k += 6) if (inTrees(move(l, br, k))) line += k < 50 || k > d - 25 ? 0.12 : 0.03;
+    line = Math.min(line, 0.8);
+    const lie = ([-10, 0, 10].reduce((sum, x) => sum + missCost(across(s + x), pin, data), 0) * 0.6) / 3;
+    return { cost: line + lie + (dogleg ? 0.012 : 0.006) * Math.abs(s - want), line };
+  };
+  const centreS = Math.max(lo, Math.min(hi, 0));
+  const centre = rate(centreS);
+  let best = { s: centreS, ...centre };
+  // never onto a bunker, water or trees that lie inside the mapped fairway
+  const bad = [...nearRings(data.bunkers, o.base, 60), ...nearRings(data.water, o.base, 60), ...nearRings(o.trees, o.base, 60)];
+  for (let s = lo; s <= hi; s += 2) {
+    if (bad.some((r) => pointInRing(across(s), r))) continue;
+    const r = rate(s);
+    if (r.cost < best.cost) best = { s, ...r };
+  }
+  if (Math.abs(best.s - centreS) < 3 || centre.cost - best.cost < (dogleg ? 0.01 : 0.02)) return null;
+  const why = best.line < centre.line - 0.02 ? 'line' : 'dogleg';
+  // Said only when the spot really is on one side of the fairway – and for a dogleg only on its outside.
+  const side = best.s - mid;
+  if (Math.abs(side) < 3 || (why === 'dogleg' && Math.sign(side) !== -Math.sign(turn))) return { landing: across(best.s), side: 0, why };
+  return { landing: across(best.s), side, why };
 }
 
 /** Why the landing spot moved. */
 export type ZoneReason = 'water' | 'waterPast' | 'ob' | 'trees' | 'bunker' | 'fairway';
+const ZONE_WORDS: Record<ZoneReason, true> = { water: true, waterPast: true, ob: true, trees: true, bunker: true, fairway: true };
 export const zoneText = (r: ZoneReason): string =>
   ({
     water: tr('clear of the water', 'weg vom Wasser'),

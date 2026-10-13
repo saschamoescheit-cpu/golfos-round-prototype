@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
-import type { DetailEntry, HoleEntry, Round, Shot } from '../types';
-import { distanceM, holeMapData } from '../lib/geo';
-import { deriveFromShots, firstPuttM, KINDS, lieName, shotLengths, suggestKind } from '../lib/shots';
+import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
+import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
+import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { holeSg } from '../lib/sg';
-import { detectHoleShots, loadTrack, trackForHole } from '../lib/track';
+import { clubForLength, detectHoleShots, loadTrack, trackForHole } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadRounds, loadUnit } from '../lib/storage';
 import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { ShotSheet } from '../components/ShotSheet';
-import { TopBar } from '../components/ui';
+import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { clubCode, dec, tr } from '../lib/i18n';
 
 // Round check after a detailed round (feature 007): every shot of every hole on the map, with club, shot type,
@@ -32,6 +32,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const [k, setK] = useState(firstToCheck >= 0 ? firstToCheck : 0);
   const [edit, setEdit] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // after a penalty: the next tap on the map is where the ball went into the water / out of bounds
+  const [placingMiss, setPlacingMiss] = useState<number | null>(null);
 
   const hole = round.holes[k];
   const data = maps[k];
@@ -49,10 +51,79 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
   };
   /** Saves shots and recomputes the derived values; a score the player entered by hand is kept. */
-  const saveDetail = (index: number, detail: DetailEntry, entry = entries[index]) => {
-    const derived = deriveFromShots(detail, entry.putts, round.holes[index].par, maps[index]);
+  const saveDetail = (index: number, detail: DetailEntry, putts = entries[index].putts) => {
+    const entry = entries[index];
+    const derived = deriveFromShots(detail, putts, round.holes[index].par, maps[index]);
     if (entry.strokes != null && !entry.detail) delete derived.strokes;
-    save(index, { detail, ...derived });
+    save(index, { detail, putts, ...derived });
+  };
+
+  // ---- Setting shots by hand (Sascha, 13.10.2026: "nothing detected on hole 1 and I cannot set a shot") ----
+  // A tap on the map = where the ball lay: a shot is played from there. On the green = the ball for the putts.
+  // Shots stay in playing order (further from the pin first); the tee shot is added by itself.
+  const nearTee = (pos: LngLat, m: HoleMapData) => distanceM(pos, m.tee) <= 25;
+  const lieFor = (pos: LngLat, n: number, m: HoleMapData) => (n === 0 && nearTee(pos, m) ? 'tee' : lieAt(pos, m, false));
+  /** Clubs for shots without one, from their length (the player can change them). */
+  const withClubs = (det: DetailEntry): DetailEntry => {
+    const len = shotLengths(det);
+    return { ...det, shots: det.shots.map((x, n) => (x.club || len[n] == null ? x : { ...x, club: clubForLength(len[n]!, n === 0 && round.holes[k].par >= 4, bag) })) };
+  };
+  const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
+  const tapMap = (pos: LngLat) => {
+    if (!data) return;
+    if (placingMiss != null && d) {
+      const n = placingMiss;
+      const shots = d.shots.slice();
+      shots[n] = { ...shots[n], missPos: pos };
+      // out of bounds = stroke and distance: the next shot is played from the same spot again
+      const from = shots[n].pos;
+      if (shots[n].penaltyKind === 'ob' && from && !(shots[n + 1]?.pos && distanceM(shots[n + 1].pos!, from) <= 10))
+        shots.splice(n + 1, 0, { pos: from, lie: shots[n].lie, club: null, penalty: false });
+      setPlacingMiss(null);
+      saveDetail(k, withClubs({ ...d, shots }));
+      return;
+    }
+    const base: DetailEntry = d ?? { ...emptyDetail(), pin: data.greenCenter };
+    // A tap on (or right after dragging) a shot opens it instead of adding one next to it.
+    const hit = base.shots.findIndex((x) => x.pos != null && distanceM(x.pos, pos) < 8);
+    if (hit >= 0) return setEdit(hit);
+    if (base.onGreen && distanceM(base.onGreen, pos) < 4) return;
+    if (onGreenSpot(pos, data)) {
+      saveDetail(k, withClubs({ ...base, onGreen: pos, holedOut: false }));
+      return;
+    }
+    const pinNow = base.pin ?? data.greenCenter;
+    const shots = base.shots.slice();
+    if (shots.length === 0 && !nearTee(pos, data)) shots.push({ pos: data.tee, lie: 'tee', club: null, penalty: false });
+    const toPin = distanceM(pos, pinNow);
+    let at = shots.findIndex((x) => x.pos != null && distanceM(x.pos, pinNow) < toPin);
+    if (at < 0) at = shots.length;
+    shots.splice(at, 0, { pos, lie: lieFor(pos, at, data), club: null, penalty: false });
+    saveDetail(k, withClubs({ ...base, shots }));
+  };
+  const addTeeShot = () => {
+    if (!data || !d) return;
+    // The first shot was the tee shot dragged to where the ball lay: its club goes with the tee shot.
+    const [first, ...rest] = d.shots;
+    const shots: Shot[] = [{ pos: data.tee, lie: 'tee', club: first.club, penalty: false }, { ...first, club: null, kind: undefined }, ...rest];
+    saveDetail(k, withClubs({ ...d, shots }));
+  };
+  /** Label of a shot while it is dragged: how far from the spot before, how far to the next spot (or the pin). */
+  const dragLabel = (id: string, pos: LngLat): string | null => {
+    if (!d) return null;
+    if (id === 'green') return pin ? `${fmt(distanceM(pos, pin))} ${tr('to the pin', 'zur Fahne')}` : null;
+    if (id.startsWith('miss-')) {
+      const from = d.shots[Number(id.slice(5))]?.pos;
+      return from ? `✕ ${fmt(distanceM(from, pos))}` : null;
+    }
+    const n = Number(id.slice(5));
+    const next = n + 1 < d.shots.length ? d.shots[n + 1].pos : d.onGreen;
+    const prev = n > 0 ? d.shots[n - 1].pos : null;
+    const parts = [`${n + 1}`];
+    if (prev) parts.push(`${tr('from', 'von')} ${n}: ${fmt(distanceM(prev, pos))}`);
+    if (next) parts.push(`→ ${fmt(distanceM(pos, next))}`);
+    else if (pin) parts.push(`${fmt(distanceM(pos, pin))} ${tr('to pin', 'z. Fahne')}`);
+    return parts.join(' · ');
   };
 
   const detectAll = () => {
@@ -105,6 +176,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   };
 
   const editing: Shot | null = d && edit != null ? d.shots[edit] : null;
+  const roundTotal = entries.reduce(
+    (t, x, i) => (x.strokes != null && !x.pickedUp ? { strokes: t.strokes + x.strokes, par: t.par + round.holes[i].par, holes: t.holes + 1 } : t),
+    { strokes: 0, par: 0, holes: 0 },
+  );
   const shotCount = d ? d.shots.length + d.shots.filter((s) => s.penalty).length + (d.holedOut ? 0 : (e.putts ?? 0)) : null;
   const mismatch = d && e.strokes != null && shotCount != null && d.onGreen && e.putts != null && shotCount !== e.strokes;
 
@@ -128,7 +203,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         <div style={{ textAlign: 'center' }}>
           <strong>{tr('Hole', 'Loch')} {hole.label}</strong>
           <div className="muted small">
-            Par {hole.par} · {e.strokes ?? '–'} {tr('strokes', 'Schläge')}{e.putts != null ? ` · ${e.putts} Putt${e.putts === 1 ? '' : 's'}` : ''}
+            Par {hole.par} · Score {e.strokes ?? '–'}{e.putts != null ? ` · ${e.putts} Putt${e.putts === 1 ? '' : 's'}` : ''}
+          </div>
+          <div className="muted small">
+            {tr('Round', 'Runde')}: {roundTotal.strokes} ({formatToPar(roundTotal.strokes - roundTotal.par)}) {tr(`after ${roundTotal.holes} holes`, `nach ${roundTotal.holes} Löchern`)}
           </div>
         </div>
         <button type="button" className="icon-btn" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={last} onClick={() => goTo(k + 1)}>
@@ -154,7 +232,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               ...(d?.shots ?? []).flatMap((s, n) => {
                 const v = sg?.[n]?.sg;
                 const tone: 'good' | 'bad' | undefined = v == null ? undefined : v >= 0 ? 'good' : 'bad';
-                return s.pos ? [{ id: `shot-${n}`, pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${v != null ? ` ${v >= 0 ? '+' : ''}${dec(v.toFixed(1))}` : ''}${s.review ? ' ?' : ''}` }] : [];
+                const len = lengths[n];
+                const shot = s.pos ? [{ id: `shot-${n}`, pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${len != null ? ` ${formatDistance(len, unit)} ${unit}` : ''}${s.review ? ' ?' : ''}` }] : [];
+                // where the ball went into the water / out of bounds – between this shot and the next
+                const miss = s.penalty && s.missPos ? [{ id: `miss-${n}`, pos: s.missPos, tone: 'bad' as const, label: `✕ ${s.penaltyKind === 'ob' ? tr('OB', 'Aus') : tr('Water', 'Wasser')}` }] : [];
+                return [...shot, ...miss];
               }),
               ...(d?.onGreen ? [{ id: 'green', pos: d.onGreen, label: e.putts != null ? `${e.putts} Putt${e.putts === 1 ? '' : 's'}` : tr('green', 'Grün'), green: true }] : []),
             ]}
@@ -165,22 +247,38 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               if (!d) return;
               // Drag a shot (or the ball on the green) to where it really was; lengths and strokes gained follow.
               if (id === 'green') saveDetail(k, { ...d, onGreen: pos });
-              else {
+              else if (id.startsWith('miss-')) {
                 const n = Number(id.slice(5));
                 const shots = d.shots.slice();
-                shots[n] = { ...shots[n], pos, review: false };
+                shots[n] = { ...shots[n], missPos: pos };
+                saveDetail(k, { ...d, shots });
+              } else {
+                const n = Number(id.slice(5));
+                const shots = d.shots.slice();
+                shots[n] = { ...shots[n], pos, lie: data ? lieFor(pos, n, data) : shots[n].lie, review: false };
                 saveDetail(k, { ...d, shots });
               }
             }}
-            onMapTap={() => {}}
+            onTrackDrag={dragLabel}
+            onMapTap={tapMap}
           />
         </div>
       )}
 
+      {placingMiss != null && d?.shots[placingMiss] && (
+        <div className="notice">
+          {d.shots[placingMiss].penaltyKind === 'ob'
+            ? tr(`Tap the map where shot ${placingMiss + 1} went out of bounds.`, `Tippe auf die Karte, wo Schlag ${placingMiss + 1} ins Aus ging.`)
+            : tr(`Tap the map where shot ${placingMiss + 1} went into the water.`, `Tippe auf die Karte, wo Schlag ${placingMiss + 1} ins Wasser ging.`)}{' '}
+          <button type="button" className="btn-ghost" onClick={() => setPlacingMiss(null)}>
+            {tr('Skip', 'Überspringen')}
+          </button>
+        </div>
+      )}
       <p className="muted small" style={{ margin: 0 }}>
         {tr('Each shot is coloured by strokes gained against a tour pro:', 'Jeder Schlag ist nach Strokes Gained gegen einen Tour-Profi eingefärbt:')}{' '}
         <span className="good-text">{tr('green = gained', 'grün = gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.{' '}
-        {tr('Drag a shot on the map to where it really was.', 'Zieh einen Schlag auf der Karte dorthin, wo er wirklich war.')}
+        <strong style={{ color: 'var(--text)' }}>{tr('Tap the map where your ball lay to add a shot – on the green for the putts. Drag a shot to move it.', 'Tippe auf die Karte, wo dein Ball lag – so setzt du einen Schlag, auf dem Grün den Ball fürs Putten. Ziehen verschiebt einen Schlag.')}</strong>
       </p>
 
       {mismatch && (
@@ -193,7 +291,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       )}
 
       {!d || d.shots.length === 0 ? (
-        <p className="muted">{tr('No shots on this hole', 'Keine Schläge an diesem Loch')}{track.length > 20 ? tr(' – try “Detect shots from GPS track”.', ' – versuche „Schläge aus der GPS-Spur erkennen“.') : '.'}</p>
+        <p className="muted">{tr('No shots on this hole yet – tap the map where your ball lay after the tee shot; the tee shot is added by itself.', 'Noch keine Schläge an diesem Loch – tippe auf die Karte, wo dein Ball nach dem Abschlag lag; der Abschlag wird von selbst gesetzt.')}</p>
       ) : (
         <ol className="shot-list review-list">
           {d.shots.map((s, n) => {
@@ -208,7 +306,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                   <span className="muted small" style={{ display: 'block' }}>
                     {lieName(s.lie)}
                     {lengths[n] != null ? ` · ${fmt(lengths[n]!)}` : ''}
-                    {s.penalty ? tr(' · +1 penalty', ' · +1 Strafschlag') : ''}
+                    {s.penalty ? (s.penaltyKind === 'ob' ? tr(' · out of bounds (+1)', ' · ins Aus (+1)') : s.penaltyKind === 'water' ? tr(' · water (+1)', ' · ins Wasser (+1)') : tr(' · +1 penalty', ' · +1 Strafschlag')) : ''}
                     {s.review ? tr(' · check', ' · prüfen') : ''}
                   </span>
                 </button>
@@ -235,6 +333,31 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </ol>
       )}
 
+      {d && data && d.shots.length > 0 && (!d.shots[0].pos || !nearTee(d.shots[0].pos, data)) && (
+        <button type="button" className="btn-secondary" onClick={addTeeShot}>
+          {tr('Tee shot missing – add it at the tee', 'Abschlag fehlt – am Abschlag ergänzen')}
+        </button>
+      )}
+      <div className="row">
+        <span className="row-label">{tr(`Score on hole ${hole.label}`, `Score an Loch ${hole.label}`)}</span>
+        <Stepper label={tr('Score', 'Score')} value={e.strokes} placeholder={hole.par} min={1} onChange={(v) => save(k, { strokes: v, pickedUp: false })} />
+      </div>
+      {data && (
+        <div className="field">
+          <label>{tr('Putts on this hole', 'Putts an diesem Loch')}</label>
+          <Segmented<number>
+            label="Putts"
+            value={e.putts}
+            onChange={(v) => {
+              const base: DetailEntry = d ?? { ...emptyDetail(), pin: data.greenCenter };
+              // 0 putts = holed from off the green (chip-in)
+              saveDetail(k, { ...base, holedOut: v === 0 }, v);
+            }}
+            options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
+          />
+        </div>
+      )}
+
       <span className="spacer" />
       <button type="button" className="btn-primary" onClick={confirmHole}>
         {!last
@@ -255,10 +378,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           editing
           bag={bag}
           onCancel={() => setEdit(null)}
+          penaltyKind={editing.penaltyKind}
           onSave={(v) => {
             const shots = d.shots.slice();
-            shots[edit!] = { ...shots[edit!], ...v };
+            shots[edit!] = { ...shots[edit!], ...v, missPos: v.penalty ? shots[edit!].missPos : null };
             saveDetail(k, { ...d, shots });
+            if (v.penalty && !shots[edit!].missPos) setPlacingMiss(edit);
             setEdit(null);
           }}
           onDelete={() => {

@@ -71,10 +71,10 @@ export function suggestClub(par: number, isFirstShot: boolean, toPinM: number, b
   return fit.sort((a, b) => a.d - b.d)[0].b.club;
 }
 
-/** Length of every shot: to the next shot, or to the ball on the green for the last one. */
+/** Length of every shot: to the next shot, or to the ball on the green for the last one – into the water / out of bounds: to where it went in. */
 export function shotLengths(d: DetailEntry): (number | null)[] {
   return d.shots.map((s, k) => {
-    const next = k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
+    const next = s.penalty && s.missPos ? s.missPos : k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
     return s.pos && next ? distanceM(s.pos, next) : null;
   });
 }
@@ -87,11 +87,18 @@ function side(p: LngLat, line: LngLat[]): 'left' | 'right' {
 }
 
 /** Quick values of the hole derived from the shots (only fields that the shots determine). */
+/** The shots start at the tee, so they are the whole hole (and give the score). */
+export function shotsComplete(d: DetailEntry): boolean {
+  return d.shots[0]?.lie === 'tee';
+}
+
 export function deriveFromShots(d: DetailEntry, putts: number | null, par: number, data: HoleMapData | null): Partial<HoleEntry> {
   const penalties = d.shots.filter((s) => s.penalty).length;
   const out: Partial<HoleEntry> = { penalties };
   // Holed out, or putts entered – also when the ball was not marked on the green (putts typed in the score view).
-  const finished = d.holedOut || (d.shots.length > 0 && putts != null);
+  // Only a shot list that starts at the tee gives the score: a single "holed" chip added in the score view is not
+  // a hole in one (Sascha, 13.10.2026) – then the strokes typed in stay.
+  const finished = shotsComplete(d) && (d.holedOut || (d.shots.length > 0 && putts != null));
   if (finished) out.strokes = d.shots.length + penalties + (d.holedOut ? 0 : (putts ?? 0));
   if (d.holedOut) out.putts = 0;
 

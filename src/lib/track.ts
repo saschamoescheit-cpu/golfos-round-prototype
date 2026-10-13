@@ -11,6 +11,7 @@ export interface TrackPoint {
   t: number; // ms
   p: LngLat;
   acc: number; // GPS accuracy in metres
+  open?: boolean; // first fix after the app was opened again (often at the ball)
 }
 
 /** Tunable values (feature 004, Akzeptanzkriterien – to be calibrated with real rounds). */
@@ -135,23 +136,41 @@ export function autoShot(track: TrackPoint[], hole: HoleMapData, now: LngLat): {
 const KEY = 'golfos.track.v1.';
 const MAX_POINTS = 6000; // ~8 h at one fix per 5 s
 
-export function loadTrack(roundId: string): TrackPoint[] {
-  try {
-    const raw: [number, number, number, number][] = JSON.parse(localStorage.getItem(KEY + roundId) ?? '[]');
-    return raw.map(([t, lon, lat, acc]) => ({ t, p: [lon, lat], acc }));
-  } catch {
-    return [];
+// The track of the running round stays in memory: reading and parsing the whole stored track on every fix
+// (once a second, thousands of points late in the round) costs battery.
+type Row = [number, number, number, number] | [number, number, number, number, 1];
+let mem: { id: string; raw: Row[]; pts: TrackPoint[] } | null = null;
+
+function cached(roundId: string) {
+  if (mem?.id !== roundId) {
+    let raw: Row[] = [];
+    try {
+      raw = JSON.parse(localStorage.getItem(KEY + roundId) ?? '[]');
+    } catch {
+      raw = [];
+    }
+    mem = { id: roundId, raw, pts: raw.map(([t, lon, lat, acc, o]): TrackPoint => (o ? { t, p: [lon, lat], acc, open: true } : { t, p: [lon, lat], acc })) };
   }
+  return mem;
+}
+
+export function loadTrack(roundId: string): TrackPoint[] {
+  return cached(roundId).pts;
 }
 
 /** Appends a GPS fix when the player moved ≥ 3 m or 5 s passed (compact storage). */
 export function recordFix(roundId: string, fix: TrackPoint): void {
+  const c = cached(roundId);
+  const last = c.raw[c.raw.length - 1];
+  if (!fix.open && last && fix.t - last[0] < 5000 && distanceM([last[1], last[2]], fix.p) < 3) return;
+  const base: [number, number, number, number] = [fix.t, Math.round(fix.p[0] * 1e6) / 1e6, Math.round(fix.p[1] * 1e6) / 1e6, Math.round(fix.acc)];
+  const row: Row = fix.open ? [...base, 1] : base;
+  // new arrays: callers may hold the old one (e.g. a memo)
+  c.raw = [...c.raw, row].slice(-MAX_POINTS);
+  const pt: TrackPoint = fix.open ? { t: base[0], p: [base[1], base[2]], acc: base[3], open: true } : { t: base[0], p: [base[1], base[2]], acc: base[3] };
+  c.pts = [...c.pts, pt].slice(-MAX_POINTS);
   try {
-    const raw: [number, number, number, number][] = JSON.parse(localStorage.getItem(KEY + roundId) ?? '[]');
-    const last = raw[raw.length - 1];
-    if (last && fix.t - last[0] < 5000 && distanceM([last[1], last[2]], fix.p) < 3) return;
-    raw.push([fix.t, Math.round(fix.p[0] * 1e6) / 1e6, Math.round(fix.p[1] * 1e6) / 1e6, Math.round(fix.acc)]);
-    localStorage.setItem(KEY + roundId, JSON.stringify(raw.slice(-MAX_POINTS)));
+    localStorage.setItem(KEY + roundId, JSON.stringify(c.raw));
   } catch {
     // storage full – the track is a bonus, the round itself is saved separately
   }
