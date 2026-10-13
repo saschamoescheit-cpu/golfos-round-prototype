@@ -284,6 +284,22 @@ export function HoleScreen(props: {
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   const [pinSheet, setPinSheet] = useState(false);
   const [scoreSheet, setScoreSheet] = useState(false); // quick score + putts over the map
+  // Once per device: how the round check finds the shots (it depends on how the phone is used on the course).
+  const [shotTip, setShotTip] = useState(() => {
+    try {
+      return !round.preview && localStorage.getItem('golfos.tip.shots.v1') == null;
+    } catch {
+      return false;
+    }
+  });
+  const closeShotTip = () => {
+    setShotTip(false);
+    try {
+      localStorage.setItem('golfos.tip.shots.v1', '1');
+    } catch {
+      /* storage blocked – shown again next time */
+    }
+  };
   // Green heights for the putt read and the best leave (feature 024), loaded on demand per course.
   const [grids, setGrids] = useState<Record<string, GreenGrid> | null>(null);
   useEffect(() => {
@@ -875,6 +891,16 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
+          {shotTip && !detectedBanner && (
+            <div className="map-hint detected">
+              <span>
+                {tr('Shots are found after the round: at the ball glance at the phone, after each hole enter score and putts.', 'Die Schläge findet die App nach der Runde: am Ball kurz aufs Handy schauen, nach jedem Loch Score und Putts eintragen.')}
+              </span>
+              <button type="button" className="btn-ghost" onClick={closeShotTip}>
+                OK
+              </button>
+            </div>
+          )}
           <div className="map-tools">
             {camByHand && (
               <button type="button" className="map-btn round tool" aria-label={tr('Centre the map again', 'Karte wieder zentrieren')} title={tr('Centre', 'Zentrieren')} onClick={() => setRecenter((n) => n + 1)}>
