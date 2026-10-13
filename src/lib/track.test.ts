@@ -162,6 +162,21 @@ describe('shot detection from the GPS track', () => {
     expect(a[a.length - 1].t).toBeLessThan(b[0].t + 1);
   });
 
+  it('the next tee right next to the green still ends the hole (Hetzenhof 4A → 5A)', () => {
+    const near = { ...hole2, tee: shift(hole1.greenCenter, 14, 0) }; // next tee 14 m from this green
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    w.walk(onGreen);
+    w.stand(60);
+    w.walk(near.tee);
+    w.stand(40);
+    w.walk(shift(near.tee, 0, 150));
+    w.stand(30);
+    const [a, b] = splitRound(w.pts, [hole1, near]);
+    expect(b.length).toBeGreaterThan(5);
+    expect(a.every((x) => distanceM(x.p, near.tee) > 5 || distanceM(x.p, hole1.greenCenter) < distanceM(x.p, near.tee))).toBe(true);
+  });
+
   it('club from the shot length', () => {
     expect(clubForLength(228, true)).toBe('Dr');
     expect(clubForLength(228, false)).toBe('3W');

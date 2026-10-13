@@ -253,7 +253,8 @@ export function splitRound(track: TrackPoint[], holes: (HoleMapData | null)[]): 
       // seen near the green (or at least well on the hole) first, then at the next tee
       const onHole = rest.findIndex((x, k) => k > start && distanceM(x.p, hole.greenCenter) <= 40);
       const from = onHole > 0 ? onHole : start;
-      const k = rest.findIndex((x, i) => i > from && distanceM(x.p, next.tee) <= 25 && distanceM(x.p, hole.greenCenter) > 30);
+      // at the next tee = near it and nearer to it than to this green (tees often lie right next to the last green)
+      const k = rest.findIndex((x, i) => i > from && distanceM(x.p, next.tee) <= 25 && distanceM(x.p, next.tee) < distanceM(x.p, hole.greenCenter));
       if (k > 0) end = k;
     }
     parts.push(rest.slice(start, end));
@@ -268,7 +269,7 @@ export function trackForHole(track: TrackPoint[], hole: HoleMapData, nextHole: H
   if (start < 0) return [];
   let end = track.length;
   if (nextHole) {
-    const k = track.findIndex((x, n) => n > start && distanceM(x.p, nextHole.tee) <= 25 && distanceM(x.p, hole.greenCenter) > 30);
+    const k = track.findIndex((x, n) => n > start && distanceM(x.p, nextHole.tee) <= 25 && distanceM(x.p, nextHole.tee) < distanceM(x.p, hole.greenCenter));
     if (k > 0) end = k;
   }
   return track.slice(start, end);
