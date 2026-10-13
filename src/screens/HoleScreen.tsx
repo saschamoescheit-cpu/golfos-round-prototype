@@ -247,9 +247,13 @@ export function HoleScreen(props: {
     };
     get();
     const t = window.setInterval(get, 10 * 60 * 1000);
+    // the timer sleeps while the phone is locked: on unlocking (at the ball) the wind is fetched again if it is old
+    const onVisible = () => document.visibilityState === 'visible' && get();
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       alive = false;
       window.clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round.courseId]);
