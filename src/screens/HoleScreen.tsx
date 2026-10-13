@@ -6,6 +6,7 @@ import { commitParAt, greenInRegulation, handicapStrokes, playerTotals } from '.
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix } from '../lib/track';
 import { PositionFilter } from '../lib/gpsfilter';
+import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
@@ -288,6 +289,7 @@ export function HoleScreen(props: {
   const greenCache = useRef<{ key: string; putt: PuttRead | null; leave: string | null }>({ key: '', putt: null, leave: null });
   const [lieSet, setLieSet] = useState<{ sig: string; lie: LieKind } | null>(null);
   const spokenSig = useRef<string | null>(null);
+  const loggedSig = useRef<string | null>(null);
   // Heights of tee, green and player (for "plays shorter, downhill"); rounded positions keep requests rare.
   const [hts, setHts] = useState<Record<string, number | null>>({});
   const htKey = (p: LngLat) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`;
@@ -599,6 +601,20 @@ export function HoleScreen(props: {
       const said = summary(cad!.facts);
       // read the setting again: the player may have muted the caddie in the meantime
       setTimeout(() => loadCaddieSettings().voice && speak(said), 300);
+    }
+    // Keep what the caddie advised on the course – the round check shows it again for the player's verdict.
+    if (cad != null && onHole && !round.preview && loggedSig.current !== caddieSig) {
+      loggedSig.current = caddieSig;
+      recordCaddie(round.id, i, {
+        t: Date.now(),
+        pos: from,
+        toPin: Math.round(distanceM(from, pin)),
+        club: clubCode(cad.advice.club) + swingMark(cad.advice.swing),
+        playsLike: Math.round(cad.pl.playsLike),
+        aim: cad.aim,
+        plan: cad.holePlan || null,
+        warning: cad.warning,
+      });
     }
 
     return (

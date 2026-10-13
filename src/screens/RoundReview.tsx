@@ -11,6 +11,7 @@ import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { ShotSheet } from '../components/ShotSheet';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
+import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
 import { clubCode, dec, tr } from '../lib/i18n';
 
 // Round check after a detailed round (feature 007): every shot of every hole on the map, with club, shot type,
@@ -34,6 +35,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const [notice, setNotice] = useState<string | null>(null);
   // after a penalty: the next tap on the map is where the ball went into the water / out of bounds
   const [placingMiss, setPlacingMiss] = useState<number | null>(null);
+  // what the caddie said on the course, with the player's verdict
+  const [cadLog, setCadLog] = useState<CaddieLog>(() => loadCaddieLog(round.id));
+  const [noteFor, setNoteFor] = useState<number | null>(null);
 
   const hole = round.holes[k];
   const data = maps[k];
@@ -356,6 +360,40 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
           />
         </div>
+      )}
+
+      {(cadLog[k]?.length ?? 0) > 0 && (
+        <section className="caddie-review" aria-label={tr('What the caddie said', 'Was der Caddie gesagt hat')}>
+          <h3>{tr('What the caddie said – and you?', 'Was der Caddie gesagt hat – und du?')}</h3>
+          {cadLog[k].map((c, n) => (
+            <div key={n} className="caddie-review-item">
+              <div>
+                <strong>{fmt(c.toPin)} {tr('to the pin', 'zur Fahne')} · {c.club}</strong>
+                <span className="muted small"> · {tr('plays like', 'spielt wie')} {fmt(c.playsLike)}</span>
+              </div>
+              {c.aim && <div className="small">{c.aim}</div>}
+              {c.plan && <div className="small muted">{c.plan}</div>}
+              {c.warning && <div className="small warn-text">{c.warning}</div>}
+              <div className="caddie-review-vote" role="group" aria-label={tr('Your view', 'Deine Einschätzung')}>
+                <button type="button" aria-pressed={c.verdict === 'ok'} onClick={() => { setCadLog({ ...rateCaddie(round.id, k, n, c.verdict === 'ok' ? undefined : 'ok') }); setNoteFor(null); }}>
+                  {tr('👍 Fits', '👍 Passt')}
+                </button>
+                <button type="button" aria-pressed={c.verdict === 'other'} onClick={() => { setCadLog({ ...rateCaddie(round.id, k, n, 'other') }); setNoteFor(n); }}>
+                  {tr('✋ I’d play it differently', '✋ Würde ich anders spielen')}
+                </button>
+              </div>
+              {c.verdict === 'other' && (noteFor === n || c.note) && (
+                <textarea
+                  className="input"
+                  rows={2}
+                  placeholder={tr('What would you do – club, target, why?', 'Was würdest du machen – Schläger, Ziel, warum?')}
+                  defaultValue={c.note ?? ''}
+                  onBlur={(ev) => setCadLog({ ...rateCaddie(round.id, k, n, 'other', ev.target.value.trim()) })}
+                />
+              )}
+            </div>
+          ))}
+        </section>
       )}
 
       <span className="spacer" />

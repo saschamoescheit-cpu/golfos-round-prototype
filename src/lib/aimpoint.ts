@@ -262,7 +262,10 @@ export function fairwaySide(o: { from: LngLat; base: LngLat; pin: LngLat; data: 
   // Where the next shot goes: the pin when in reach, else 200 m on along the hole (par 5).
   const alongBase = alongLine(data.line, o.base);
   const next = distanceM(o.base, pin) <= 230 ? pin : pointAt(data.line, Math.min(lineLength(data.line), alongBase + 200));
-  const turn = ((bearingDeg(o.base, next) - b + 540) % 360) - 180; // < 0: the hole turns left
+  // How the hole turns at the landing spot – along the hole line, not from where the player stands (from the side
+  // of a straight hole the line to the green would look like a dogleg).
+  const lineDir = bearingDeg(pointAt(data.line, Math.max(0, alongBase - 30)), pointAt(data.line, alongBase));
+  const turn = ((bearingDeg(o.base, next) - lineDir + 540) % 360) - 180; // < 0: the hole turns left
   // Measured from the middle of the fairway (the hole line need not run through it).
   const mid = (lo + hi) / 2;
   const dogleg = Math.abs(turn) >= 15;

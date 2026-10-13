@@ -623,3 +623,12 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .sc-hole { background: none; border: 0; padding: 0; min-width: 100%; min-height: 28px; color: inherit; font: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
 .sc td.tap { cursor: pointer; }
 .sheet-done { min-height: 40px; padding: 0 18px; }
+/* Round check: the caddie's advice next to the player's verdict */
+.caddie-review { display: flex; flex-direction: column; gap: 10px; }
+.caddie-review h3 { margin: 0; font: 600 16px var(--display); }
+.caddie-review-item { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.caddie-review-vote { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.caddie-review-vote button { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); }
+.caddie-review-vote button[aria-pressed='true'] { border-color: var(--brand-text); color: var(--brand-text); }
+.caddie-review textarea { width: 100%; min-height: 56px; resize: vertical; font: 400 15px var(--body); padding: 8px 12px; }
+.warn-text { color: #f6d48a; }
