@@ -22,6 +22,8 @@ export interface HoleMapProps {
   track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string }[];
   /** Track points can be dragged (round check); called on release with the point's id. */
   onTrackMove?: (id: string, pos: LngLat) => void;
+  /** While a shot is dragged: the text its marker shows (e.g. the shot length), null = keep the label. */
+  onTrackDrag?: (id: string, pos: LngLat) => string | null;
   /** "Where not to miss": points with relative cost 0 (good miss) … 1 (expensive miss). */
   missMap?: { pos: LngLat; cost: number }[];
   /** A marker for the caddie's aim point with a dashed line from the player (not used on the hole map any more). */
@@ -196,11 +198,20 @@ export function HoleMap(props: HoleMapProps) {
       const d = labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       const movable = p.onTrackMove != null && t.id != null;
       const marker = new maplibregl.Marker({ element: d, draggable: movable }).setLngLat(t.pos).addTo(m);
-      if (movable)
+      if (movable) {
+        marker.on('drag', () => {
+          const ll = marker.getLngLat();
+          const text = latest.current.onTrackDrag?.(t.id!, [ll.lng, ll.lat]);
+          if (text != null) d.textContent = text;
+          // the line between the shots follows the finger
+          const pts = (latest.current.track ?? []).map((x) => (x.id === t.id ? ([ll.lng, ll.lat] as LngLat) : x.pos));
+          (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] });
+        });
         marker.on('dragend', () => {
           const ll = marker.getLngLat();
           latest.current.onTrackMove?.(t.id!, [ll.lng, ll.lat]);
         });
+      }
       return marker;
     });
 

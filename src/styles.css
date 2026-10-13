@@ -308,7 +308,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .sg-badge.good { color: var(--brand-text); }
 .sg-badge.bad { color: #ff8a7f; }
 .review-nav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; }
-.review-map { position: relative; height: 44vh; min-height: 260px; border-radius: 14px; overflow: hidden; }
+.review-map { position: relative; height: 62vh; min-height: 320px; border-radius: 14px; overflow: hidden; }
 .review-map .hole-map { position: absolute; inset: 0; }
 .review-list li { grid-template-columns: 28px 1fr auto 0; }
 .review-list li.check { background: rgba(246, 212, 138, 0.12); border-radius: 10px; }
