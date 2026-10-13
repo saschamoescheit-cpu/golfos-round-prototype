@@ -11,7 +11,6 @@ import { shareScorecard } from '../lib/shareCard';
 import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
 import { groupForHandicap, roundsSg } from '../lib/sg';
-import { loadTrack } from '../lib/track';
 import { loopsText } from '../lib/loops';
 import { getLang, tr } from '../lib/i18n';
 
@@ -32,7 +31,8 @@ export function Scorecard(props: {
   const finished = round.finishedAt != null;
   const stats = roundStats(round.holes, round.entries[me.id]);
   const sg = roundsSg([round]);
-  const canReview = round.mode === 'detail' || round.entries[me.id].some((e) => e.detail) || loadTrack(round.id).length > 20;
+  // Always: without a GPS track (GPS off, phone switched off) the shots can still be set by tapping the map.
+  const canReview = !round.preview;
 
   return (
     <main className="screen">
