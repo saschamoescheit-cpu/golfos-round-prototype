@@ -36,7 +36,7 @@ function loadRemembered(): Remembered | null {
   }
 }
 
-export function RoundSetup(props: { course: Course; onBack: () => void; onStart: (r: Round) => void; onBook: (holes: RoundHole[], tee: string | null) => void }) {
+export function RoundSetup(props: { course: Course; onBack: () => void; onStart: (r: Round) => void; onBook: (holes: RoundHole[], tee: string | null, playing: number | null) => void }) {
   const options = useMemo(() => loopOptions(props.course.holes), [props.course]);
   const [optionId, setOptionId] = useState(options[0]?.id ?? '');
   const remembered = useMemo(loadRemembered, []);
@@ -181,7 +181,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       </section>
 
       <span className="spacer" />
-      <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee)} disabled={!option}>
+      <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee, playingHandicap(me))} disabled={!option}>
         {tr('Course book – all holes at a glance', 'Lochbuch – alle Löcher auf einen Blick')}
       </button>
       <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>

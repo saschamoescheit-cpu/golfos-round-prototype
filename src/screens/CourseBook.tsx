@@ -19,7 +19,7 @@ import { withPartials } from '../lib/partials';
 // Course book (feature 027): every hole of the round on one page, like a birdie book – sketch with distance dots,
 // hazards from the tee, the caddie's tee plan in calm weather and how to approach the green. For planning at home.
 
-export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: string | null; onBack: () => void }) {
+export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: string | null; playing?: number | null; onBack: () => void }) {
   const geometry = useMemo(() => loadGeometry(props.course.id), [props.course.id]);
   const [grids, setGrids] = useState<Record<string, GreenGrid> | null>(null);
   useEffect(() => {
@@ -35,6 +35,14 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
   const notes = useMemo(() => loadHoleNotes(props.course.id), [props.course.id]);
   // the player's record per hole from earlier rounds here (feature 012)
   const record = useMemo(() => new Map(courseStats(loadRounds(), props.course.name).holes.map((h) => [h.hole.label, h])), [props.course.name]);
+  // The caddie plans every hole (tee strategy, feature 017) – a few holes at a time, so the first pages show at once
+  // and the phone never freezes for seconds.
+  const [shown, setShown] = useState(3);
+  useEffect(() => {
+    if (shown >= props.holes.length) return;
+    const t = window.setTimeout(() => setShown((n) => n + 3), 30);
+    return () => window.clearTimeout(t);
+  }, [shown, props.holes.length]);
   return (
     <main className="screen book">
       <TopBar title={tr('Course book', 'Lochbuch')} onBack={props.onBack} />
@@ -45,7 +53,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
           {tr('plan for calm weather with your carry distances', 'Plan bei Windstille mit deinen Carry-Weiten')}
         </span>
       </div>
-      {props.holes.map((h) => {
+      {props.holes.slice(0, shown).map((h) => {
         const data = holeForTee(holeMapData(geometry, h.loop, h.number), props.course.id, h.label, props.tee, geometry.tee);
         return (
           <HolePage
@@ -62,6 +70,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
             bag={bag}
             style={settings.style}
             favourite={settings.favourite}
+            playing={props.playing ?? null}
             note={notes[h.label] ?? {}}
             record={record.get(h.label)}
           />
@@ -72,6 +81,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
 }
 
 function HolePage(p: {
+  playing: number | null;
   hole: RoundHole;
   data: HoleMapData | null;
   courseId: string;
@@ -113,11 +123,11 @@ function HolePage(p: {
   const marks = [100, 150, 200].filter((d) => L - d > 40).map((d) => ({ pos: pointAt(data.line, L - d), label: fmt(d) }));
   // caddie off the tee, calm weather
   const terrain = { slopes: p.slopes, boundary: p.boundary, trees: p.trees };
-  const teeAim = teeAimFor({ data, par: hole.par, pin: data.greenCenter, bag: p.bag, conditions: null, tendency: new Map(), ...terrain, note: p.note, style: p.style, favourite: p.favourite });
+  const teeAim = teeAimFor({ data, par: hole.par, pin: data.greenCenter, bag: p.bag, conditions: null, tendency: new Map(), ...terrain, note: p.note, style: p.style, favourite: p.favourite, playing: p.playing });
   const cad = caddieAdvice({
     data, par: hole.par || 4, holeIndex: hole.index, holeCount: 18, from: data.tee, teeShot: true, pin: data.greenCenter,
     targets: teeAim ? [teeAim.pos] : [], teeAim, ...terrain, bag: p.bag, conditions: null, tendency: new Map(), note: p.note,
-    style: p.style, favourite: p.favourite, lieChoice: null, unit: p.unit,
+    style: p.style, favourite: p.favourite, lieChoice: null, unit: p.unit, playing: p.playing,
   });
   const lines = cad.lines.filter((l) => l.tone === 'warn' || l.tone === 'plan' || /^Fairway \d/.test(l.text)).map((l) => l.text);
   // hazards from the tee (bunkers and water ahead, nearest first)

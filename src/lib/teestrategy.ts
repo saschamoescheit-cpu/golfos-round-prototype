@@ -23,7 +23,7 @@ export interface TeePlan {
   text: string | null; // one sentence for the caddie card; null = nothing special
 }
 
-const N = 160;
+const N = 100; // the same 100 shots for every option: their comparison is steadier than the number suggests
 const SAMPLES: [number, number][] = (() => {
   let s = 20261014;
   const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);

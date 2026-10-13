@@ -21,7 +21,7 @@ type Screen =
   | { name: 'courseStats'; courseName: string }
   | { name: 'bag' }
   | { name: 'review'; round: Round }
-  | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null };
+  | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null; playing?: number | null };
 
 // The player left the round on purpose (pause): a reload in this session stays on the start page.
 const PAUSED = 'golfos.paused';
@@ -151,7 +151,7 @@ export function App() {
         <RoundSetup
           course={screen.course}
           onBack={() => setScreen({ name: 'pickCourse' })}
-          onBook={(holes, tee) => setScreen({ name: 'book', course: screen.course, holes, tee })}
+          onBook={(holes, tee, playing) => setScreen({ name: 'book', course: screen.course, holes, tee, playing })}
           onStart={(round) => {
             if (!round.preview) persist(round);
             setScreen({ name: 'hole', round });
@@ -161,7 +161,7 @@ export function App() {
     case 'book':
       return (
         <Suspense fallback={<Waiting />}>
-          <CourseBook course={screen.course} holes={screen.holes} tee={screen.tee} onBack={() => setScreen({ name: 'setup', course: screen.course })} />
+          <CourseBook course={screen.course} holes={screen.holes} tee={screen.tee} playing={screen.playing ?? null} onBack={() => setScreen({ name: 'setup', course: screen.course })} />
         </Suspense>
       );
     case 'hole':
