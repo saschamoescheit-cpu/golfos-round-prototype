@@ -113,8 +113,10 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
         <span className="eyebrow">{tr('Holes', 'Löcher')}</span>
         <div className="choice-grid">
           {options.map((o) => (
-            <button key={o.id} type="button" className="choice" aria-pressed={o.id === optionId} onClick={() => setOptionId(o.id)}>
-              {o.label}
+            <button key={o.id} type="button" className="choice choice-loop" aria-label={o.label} aria-pressed={o.id === optionId} onClick={() => setOptionId(o.id)}>
+              {/* "A + B · 18 holes": the loops large, the number of holes small below (no odd wrap on small phones) */}
+              <strong>{o.label.split(' · ')[0]}</strong>
+              {o.label.includes(' · ') && <span className="small muted">{o.label.split(' · ').slice(1).join(' · ')}</span>}
             </button>
           ))}
         </div>
@@ -182,10 +184,10 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
 
       <span className="spacer" />
       <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee, playingHandicap(me))} disabled={!option}>
-        {tr('Course book – all holes at a glance', 'Lochbuch – alle Löcher auf einen Blick')}
+        {tr('Course book – all holes', 'Lochbuch – alle Löcher')}
       </button>
       <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>
-        {tr('Preview the holes (plan, nothing saved)', 'Löcher ansehen (planen, nichts wird gespeichert)')}
+        {tr('Preview the holes – no round', 'Löcher ansehen – ohne Runde')}
       </button>
       <button type="button" className="btn-primary" onClick={() => start()} disabled={!option}>
         {tr('Start round', 'Runde starten')}
