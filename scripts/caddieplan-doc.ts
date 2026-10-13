@@ -23,7 +23,7 @@ const playing = Number(ph);
 const lines: string[] = [];
 lines.push(`# Caddie-Plan ${seed.name}`);
 lines.push('');
-lines.push(`> Erzeugt im Nachtlauf 13./14.10.2026 aus der App-Logik (Feature 017 Lochstrategie, Dogleg-Regel, Fahnen-Strategie). Annahmen: **Spielvorgabe ${playing}**, Standard-Bag (Driver 200 m Carry, Holz 3 185, Holz 5 172, Hybrid 165, E4 160 … PW 115), Abschlag Gelb, windstill, 20 °C, Fahne in Grünmitte.`);
+lines.push(`> Erzeugt im Nachtlauf 13./14.10.2026 (Stand 01:50) aus der App-Logik (Feature 017 Lochstrategie, Dogleg-Regel, Fahnen-Strategie). Annahmen: **Spielvorgabe ${playing}** (18 Löcher – für eine 9-Loch-Runde trägst du die halbe ein, die App verdoppelt sie für den Caddie), Standard-Bag (Driver 200 m Carry, Holz 3 185, Holz 5 172, Hybrid 165, E4 160 … PW 115), Abschlag Gelb, windstill, 20 °C, Fahne in Grünmitte.`);
 lines.push('> **Bitte prüfen:** Stimmt Schläger und Ziel mit dem, was du auf dem Loch spielst? Abweichungen gern direkt hier notieren – oder nach der Runde in der Nachbereitung („Würde ich anders spielen“).');
 lines.push('');
 for (const h of holesFromTags(seed.holeTags).filter((x) => x.par != null)) {
