@@ -347,7 +347,7 @@ export function autoShot(track: TrackPoint[], hole: HoleMapData, now: LngLat): {
 // ---- Recording (web prototype: only while the app is open) ----
 
 const KEY = 'golfos.track.v1.';
-const MAX_POINTS = 6000; // ~8 h at one fix per 5 s
+const MAX_POINTS = 12000; // 18 holes with the screen on all round (a fix every ~3 m walking, or 5 s standing)
 
 // The track of the running round stays in memory: reading and parsing the whole stored track on every fix
 // (once a second, thousands of points late in the round) costs battery.
@@ -356,6 +356,7 @@ let mem: { id: string; raw: Row[]; pts: TrackPoint[] } | null = null;
 
 function cached(roundId: string) {
   if (mem?.id !== roundId) {
+    flushTrack(); // another round: the last fixes of the one in memory first
     let raw: Row[] = [];
     try {
       raw = JSON.parse(localStorage.getItem(KEY + roundId) ?? '[]');
@@ -384,9 +385,26 @@ export function recordFix(roundId: string, fix: TrackPoint): void {
   c.raw = [...c.raw, row].slice(-MAX_POINTS);
   const pt: TrackPoint = fix.open ? { t: base[0], p: [base[1], base[2]], acc: base[3], open: true } : { t: base[0], p: [base[1], base[2]], acc: base[3] };
   c.pts = [...c.pts, pt].slice(-MAX_POINTS);
+  // Writing the whole track on every fix costs battery: at most every 10 s, right away for an app-open (a shot
+  // anchor), and when the app goes to the background (flushTrack).
+  dirty = true;
+  if (fix.open || Date.now() - savedAt >= 10000) flushTrack();
+}
+
+let dirty = false;
+let savedAt = 0;
+/** Writes the track kept in memory to storage (before a backup, when the app is hidden). */
+export function flushTrack(): void {
+  if (!mem || !dirty) return;
+  dirty = false;
+  savedAt = Date.now();
   try {
-    localStorage.setItem(KEY + roundId, JSON.stringify(c.raw));
+    localStorage.setItem(KEY + mem.id, JSON.stringify(mem.raw));
   } catch {
     // storage full – the track is a bonus, the round itself is saved separately
   }
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flushTrack());
+  window.addEventListener('pagehide', flushTrack);
 }

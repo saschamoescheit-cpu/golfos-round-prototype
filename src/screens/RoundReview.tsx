@@ -41,6 +41,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // what the caddie said on the course, with the player's verdict
   const [cadLog, setCadLog] = useState<CaddieLog>(() => loadCaddieLog(round.id));
   const [noteFor, setNoteFor] = useState<number | null>(null);
+  const [moreCad, setMoreCad] = useState<number | null>(null); // hole whose other caddie advice is shown
 
   const hole = round.holes[k];
   const data = maps[k];
@@ -209,6 +210,15 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     props.onDone();
   };
 
+  // The caddie's advice at the player's own shots first (that is what the verdict is about); advice given where he
+  // only stood (a partner's ball, waiting) behind "more".
+  const cadAll = (cadLog[k] ?? []).map((c, n) => {
+    const shot = (d?.shots ?? []).findIndex((s) => s.pos != null && distanceM(s.pos, c.pos) <= 20);
+    return { c, n, shot: shot >= 0 ? shot : null };
+  });
+  const cadMain = d?.shots.length ? cadAll.filter((x) => x.shot != null) : cadAll;
+  const cadOther = cadMain.length ? cadAll.filter((x) => !cadMain.includes(x)) : []; // none at a shot: all are shown
+  const cadShown = moreCad === k ? [...cadMain, ...cadOther] : cadMain.length ? cadMain : cadAll;
   const editing: Shot | null = d && edit != null ? d.shots[edit] : null;
   const roundTotal = entries.reduce(
     (t, x, i) => (x.strokes != null && !x.pickedUp ? { strokes: t.strokes + x.strokes, par: t.par + round.holes[i].par, holes: t.holes + 1 } : t),
@@ -399,10 +409,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       {(cadLog[k]?.length ?? 0) > 0 && (
         <section className="caddie-review" aria-label={tr('What the caddie said', 'Was der Caddie gesagt hat')}>
           <h3>{tr('What the caddie said – and you?', 'Was der Caddie gesagt hat – und du?')}</h3>
-          {cadLog[k].map((c, n) => (
+          {cadShown.map(({ c, n, shot }) => (
             <div key={n} className="caddie-review-item">
               <div>
-                <strong>{fmt(c.toPin)} {tr('to the pin', 'zur Fahne')} · {c.club}</strong>
+                <strong>{shot != null ? `${tr('Shot', 'Schlag')} ${shot + 1} · ` : ''}{fmt(c.toPin)} {tr('to the pin', 'zur Fahne')} · {c.club}</strong>
                 <span className="muted small"> · {tr('plays like', 'spielt wie')} {fmt(c.playsLike)}</span>
               </div>
               {c.aim && <div className="small">{c.aim}</div>}
@@ -427,6 +437,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               )}
             </div>
           ))}
+          {cadOther.length > 0 && moreCad !== k && (
+            <button type="button" className="btn-ghost" onClick={() => setMoreCad(k)}>
+              {tr(`${cadOther.length} more (where you stood, not a shot)`, `${cadOther.length} weitere (wo du standest, kein Schlag)`)}
+            </button>
+          )}
         </section>
       )}
 

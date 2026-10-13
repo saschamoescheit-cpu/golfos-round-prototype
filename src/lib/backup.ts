@@ -1,4 +1,5 @@
 import { tr } from './i18n';
+import { flushTrack } from './track';
 // Backup of everything the app keeps on the device (rounds, hole set-ups, course corrections, settings).
 // iPhone: Safari and the home-screen app have separate storage – a backup moves the data between them.
 
@@ -13,6 +14,7 @@ export interface Backup {
 }
 
 export function createBackup(): Backup {
+  flushTrack(); // the last seconds of the GPS track are still in memory
   const data: Record<string, string> = {};
   for (let k = 0; k < localStorage.length; k++) {
     const key = localStorage.key(k)!;
