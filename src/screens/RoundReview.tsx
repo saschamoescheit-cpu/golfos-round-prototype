@@ -138,7 +138,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     const parts = splitRound(track, maps);
     round.holes.forEach((h, i) => {
       const m = maps[i];
-      if (!m || list[i].detail?.shots.length) return;
+      // holes the player touched (a shot moved, set, edited – or the hole confirmed) stay as they are; the rest is
+      // detected again, so older rounds profit from a better detection
+      if (!m || list[i].detail?.shots.some((x) => !x.review)) return;
       const part = parts[i] ?? [];
       // the score and putts from the course tell how many shots there were to the green
       const e = list[i];
