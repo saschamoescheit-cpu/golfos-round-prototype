@@ -658,3 +658,6 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
   .book-sketch { display: flex; justify-content: center; }
   .book-sketch .sketch { width: 55%; max-height: 260px; }
 }
+.score-sheet .segmented button, .score-sheet .segmented:has(> button:nth-child(5)) button { min-height: 60px; font: 700 22px var(--display); }
+.score-sheet-foot { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.score-sheet-foot .btn-primary { min-width: 120px; }

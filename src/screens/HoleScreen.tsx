@@ -283,6 +283,7 @@ export function HoleScreen(props: {
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   const [pinSheet, setPinSheet] = useState(false);
+  const [scoreSheet, setScoreSheet] = useState(false); // quick score + putts over the map
   // Green heights for the putt read and the best leave (feature 024), loaded on demand per course.
   const [grids, setGrids] = useState<Record<string, GreenGrid> | null>(null);
   useEffect(() => {
@@ -752,6 +753,63 @@ export function HoleScreen(props: {
           </span>
         </div>
 
+        {scoreSheet && (
+          // Score and putts in two taps, without leaving the map (they tell the round check how many shots to find).
+          <div className="sheet-backdrop" onClick={() => setScoreSheet(false)}>
+            <section className="sheet score-sheet" role="dialog" aria-label={tr('Score on this hole', 'Score an diesem Loch')} onClick={(e) => e.stopPropagation()}>
+              <div className="sheet-head">
+                <strong>
+                  {tr('Hole', 'Loch')} {hole.label} · Par {hole.par}
+                </strong>
+                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setScoreSheet(false)}>
+                  ✕
+                </button>
+              </div>
+              <div className="field">
+                <label>{tr('Strokes', 'Schläge')}</label>
+                <Segmented<number>
+                  label={tr('Strokes', 'Schläge')}
+                  value={myEntry.strokes}
+                  onChange={(v) => {
+                    update(me.id, { strokes: v, pickedUp: false });
+                    if (v != null && myEntry.putts != null) setScoreSheet(false);
+                  }}
+                  options={[...new Set([...[-1, 0, 1, 2, 3].map((d) => (hole.par || 4) + d), ...(myEntry.strokes != null ? [myEntry.strokes] : [])])]
+                    .filter((n) => n >= 1)
+                    .sort((a, b) => a - b)
+                    .map((n) => ({ value: n, label: String(n) }))}
+                />
+              </div>
+              <div className="field">
+                <label>Putts</label>
+                <Segmented<number>
+                  label="Putts"
+                  value={myEntry.putts}
+                  onChange={(v) => {
+                    update(me.id, { putts: v });
+                    if (v != null && myEntry.strokes != null) setScoreSheet(false);
+                  }}
+                  options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
+                />
+              </div>
+              <div className="score-sheet-foot">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => {
+                    setScoreSheet(false);
+                    setView('score');
+                  }}
+                >
+                  {tr('Penalties, fairway …', 'Strafschläge, Fairway …')}
+                </button>
+                <button type="button" className="btn-primary" onClick={() => setScoreSheet(false)}>
+                  {tr('Done', 'Fertig')}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
         {pinSheet && mapData.green && (
           <div className="sheet-backdrop" onClick={() => setPinSheet(false)}>
             <section className="sheet" role="dialog" aria-label={tr('Pin position today', 'Fahnenposition heute')} onClick={(e) => e.stopPropagation()}>
@@ -1002,7 +1060,7 @@ export function HoleScreen(props: {
                 </strong>
               </span>
             ) : (
-              <button type="button" className="map-score" onClick={() => setView('score')}>
+              <button type="button" className="map-score" onClick={() => (hasShots ? setView('score') : setScoreSheet(true))}>
                 <span className="small">Score</span>
                 {/* nothing entered yet: par in grey, as a suggestion – entered values in full colour */}
                 <strong className={myEntry.strokes == null && !myEntry.pickedUp ? 'placeholder' : undefined}>{strokesShown}</strong>
