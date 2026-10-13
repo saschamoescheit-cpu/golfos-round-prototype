@@ -28,7 +28,7 @@ import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { sideOf } from '../lib/dispersion';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { alongLine, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, suggestTarget, type Unit, approachFrom } from '../lib/geo';
+import { profileAlong, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, suggestTarget, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
@@ -587,7 +587,7 @@ export function HoleScreen(props: {
         })
       : null;
     // Heights for the green box: terrain model along the hole, else the coarse elevation service.
-    const tH = (p: LngLat) => (distToLine(p, mapData.line) <= 40 ? terrainHeight(geometry.fairwaySlopes?.[hole.label], alongLine(mapData.line, p)) : null);
+    const tH = (p: LngLat) => (distToLine(p, mapData.line) <= 40 ? terrainHeight(geometry.fairwaySlopes?.[hole.label], profileAlong(mapData, p)) : null);
     const fromH = tH(from) ?? heightAt(from);
     const greenH = tH(mapData.greenCenter) ?? heightAt(mapData.greenCenter);
     const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;

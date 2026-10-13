@@ -1,7 +1,7 @@
 import type { Club, LngLat, Ring } from '../types';
 import { layupInstead, pinStrategy, type PinPlan } from './pinstrategy';
 import type { GreenGrid } from './greenread';
-import { alongLine, bearingDeg, distanceM, distToLine, lineLength, pointAt, pointInRing, type HoleMapData } from './geo';
+import { alongLine, profileAlong, bearingDeg, distanceM, distToLine, lineLength, pointAt, pointInRing, type HoleMapData } from './geo';
 import { adviseClub, playsLike, type CarryBag, type Conditions, type PlaysLike } from './caddie';
 import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, type Samples } from './terrain';
 import type { HoleNote } from './holenotes';
@@ -96,8 +96,8 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   const total = lineLength(data.line);
   const alongFrom = alongLine(data.line, from);
   // Heights from the terrain model along the hole (player near the line only).
-  const hFrom = distToLine(from, data.line) <= 40 ? heightAt(o.slopes, alongFrom) : null;
-  const hAt = (p: LngLat) => (distToLine(p, data.line) <= 40 ? heightAt(o.slopes, alongLine(data.line, p)) : null);
+  const hFrom = distToLine(from, data.line) <= 40 ? heightAt(o.slopes, profileAlong(data, from)) : null;
+  const hAt = (p: LngLat) => (distToLine(p, data.line) <= 40 ? heightAt(o.slopes, profileAlong(data, p)) : null);
   const hd = (p: LngLat) => {
     const h = hAt(p);
     return hFrom != null && h != null ? h - hFrom : null;
@@ -183,7 +183,7 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   const dist0 = distanceM(from, base);
   const pl0 = playsLike(dist0, bearingDeg(from, base), o.conditions, hd(base));
   const club0 = adviseClub(pl0.playsLike, o.bag, driverOk).club;
-  const hang = kind === 'approach' ? null : slopeAdvice(crossSlopeAt(o.slopes, alongLine(data.line, base)));
+  const hang = kind === 'approach' ? null : slopeAdvice(crossSlopeAt(o.slopes, profileAlong(data, base)));
   const tend = o.tendency.get(club0) ?? 0;
   let side = Math.max(-15, Math.min(15, pl0.aimM - tend + (hang?.aimM ?? 0)));
   if (Math.abs(pl0.aimM) >= 2) reasons.push(tr('wind', 'Wind') + ` ${Math.abs(Math.round(pl0.aimM))} m ${sideWord(pl0.aimM > 0 ? 'right' : 'left')}`);

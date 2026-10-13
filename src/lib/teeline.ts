@@ -28,7 +28,7 @@ export function holeForTee(d: HoleMapData | null, courseId: string, label: strin
   }
   if (best && best.err <= 25) {
     const line = [best.c, ...d.line];
-    return { ...d, line, tee: best.c };
+    return { ...d, line, tee: best.c, along0: (d.along0 ?? 0) - distanceM(best.c, start) };
   }
   return shiftTee(d, Math.max(delta, -30));
 }

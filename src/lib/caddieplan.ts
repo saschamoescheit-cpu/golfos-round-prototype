@@ -1,6 +1,6 @@
 import type { Club, LngLat, Ring } from '../types';
 import type { GreenGrid } from './greenread';
-import { alongLine, bearingDeg, distanceM, distToLine, formatDistance, type HoleMapData, type Unit } from './geo';
+import { alongLine, profileAlong, bearingDeg, distanceM, distToLine, formatDistance, type HoleMapData, type Unit } from './geo';
 import { adviseClubMax, aimAdvice, clubName, explain, lieEffect, playsLike, scoreStrategy, type CarryBag, type ClubAdvice, type Conditions, type LieKind, type PlaysLike } from './caddie';
 import { aimPoint, type AimPoint, type PlayStyle } from './aimpoint';
 import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, type Samples } from './terrain';
@@ -107,7 +107,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const apKey: TargetKey = o.targets.some((t) => distanceM(t, ap.pos) < 15) ? 't1' : 'spot';
   const apName = apKey === 'spot' ? `${formatDistance(ap.distance, o.unit)} ${o.unit}` : targetNoun(apKey);
   // Heights: terrain model along the hole; else the coarse elevation service.
-  const tH = (p: LngLat) => (distToLine(p, data.line) <= 40 ? heightAt(o.slopes, alongLine(data.line, p)) : null);
+  const tH = (p: LngLat) => (distToLine(p, data.line) <= 40 ? heightAt(o.slopes, profileAlong(data, p)) : null);
   const fromH = tH(from) ?? o.coarseHeight?.(from) ?? null;
   const greenH = tH(data.greenCenter) ?? o.coarseHeight?.(data.greenCenter) ?? null;
   const targetH = ap.kind === 'approach' && !ownTarget ? greenH : tH(target);
@@ -122,7 +122,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const reasons = explain(pl0, o.conditions);
   if (lieFx && lieFx.factor !== 1) reasons.push(`${tr('lie', 'Lage')} ${lieFx.factor > 1 ? '+' : '−'}${fmt(Math.abs(pl.playsLike - pl0.playsLike))} ${unit}`);
 
-  const hang = ownTarget ? slopeAdvice(crossSlopeAt(o.slopes, alongLine(data.line, target))) : null;
+  const hang = ownTarget ? slopeAdvice(crossSlopeAt(o.slopes, profileAlong(data, target))) : null;
   const ob = obAdvice(o.boundary, from, target);
   let aim = ownTarget
     ? aimAdvice(pl.aimM, o.tendency.get(advice.club) ?? null, advice.club, hang?.aimM ?? 0)
@@ -161,7 +161,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   if (holePlan && !layupLine && !(warning && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan' });
   if (hang) lines.push({ text: hang.text, tone: 'plan' });
   else if (!ownTarget && ap.kind !== 'approach') {
-    const h = slopeAdvice(crossSlopeAt(o.slopes, alongLine(data.line, ap.pos)));
+    const h = slopeAdvice(crossSlopeAt(o.slopes, profileAlong(data, ap.pos)));
     if (h) lines.push({ text: h.text, tone: 'plan' });
   }
   if (lieFx) {

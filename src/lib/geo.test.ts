@@ -146,7 +146,7 @@ describe('Son Gual geometry (OpenStreetMap snapshot, hole 5 corrected)', () => {
   });
 });
 
-import { shiftTee, teeDelta, type HoleMapData } from './geo';
+import { profileAlong, shiftTee, teeDelta, type HoleMapData } from './geo';
 describe('tee colour (019)', () => {
   const M = 1 / 111320;
   const at = (north: number): [number, number] => [2.6, 39.6 + north * M];
@@ -165,6 +165,13 @@ describe('tee colour (019)', () => {
     const back = shiftTee(d, -27);
     expect(lineLength(back.line)).toBeCloseTo(377, 0);
     expect(shiftTee(d, 1)).toBe(d);
+  });
+  it('the terrain profile is read at the same spot from every tee', () => {
+    // profiles are measured along the mapped line: a point 250 m up the mapped line stays at 250 m
+    const p = at(250);
+    expect(profileAlong(d, p)).toBeCloseTo(250, 0);
+    expect(profileAlong(shiftTee(d, 50), p)).toBeCloseTo(250, 0);
+    expect(profileAlong(shiftTee(d, -27), p)).toBeCloseTo(250, 0);
   });
 });
 

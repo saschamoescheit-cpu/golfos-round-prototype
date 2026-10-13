@@ -191,6 +191,14 @@ export interface HoleMapData {
   water: Ring[];
   fairways: Ring[];
   tees: Ring[]; // tee boxes at the start of the hole
+  /** Metres of the mapped hole line before this line's start (a forward tee: +, a tee behind it: −). The terrain
+   *  profiles (heights, side slopes) are measured along the mapped line, from its first point. */
+  along0?: number;
+}
+
+/** Position along the mapped hole line – the scale of the terrain profiles – whichever tee the line starts at. */
+export function profileAlong(d: HoleMapData, p: LngLat): number {
+  return alongLine(d.line, p) + (d.along0 ?? 0);
 }
 
 /** Picks the geometry that belongs to one hole: its line, green, and hazards along the corridor. */
@@ -283,9 +291,11 @@ export function formatDistance(m: number, unit: Unit): string {
 export function shiftTee(d: HoleMapData, delta: number): HoleMapData {
   if (Math.abs(delta) < 2) return d;
   let line: LngLat[];
+  let along0 = d.along0 ?? 0;
   if (delta > 0) {
     const total = lineLength(d.line);
     const start = Math.min(delta, total - 30);
+    along0 += start;
     const rest: LngLat[] = [pointAt(d.line, start)];
     let acc = 0;
     for (let k = 0; k + 1 < d.line.length; k++) {
@@ -297,10 +307,11 @@ export function shiftTee(d: HoleMapData, delta: number): HoleMapData {
     const b = bearingDeg(d.line[1], d.line[0]); // backwards from the tee
     const r = (b * Math.PI) / 180;
     const m = -delta;
+    along0 -= m;
     const p0 = d.line[0];
     line = [[p0[0] + (m * Math.sin(r)) / (111320 * Math.cos((p0[1] * Math.PI) / 180)), p0[1] + (m * Math.cos(r)) / 111320], ...d.line];
   }
-  return { ...d, line, tee: line[0] };
+  return { ...d, line, tee: line[0], along0 };
 }
 
 /** Shift for the chosen tee: the line starts at the tee whose length is closest to the line's length. */
