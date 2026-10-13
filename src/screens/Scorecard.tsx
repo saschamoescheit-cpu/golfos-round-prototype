@@ -94,8 +94,6 @@ export function Scorecard(props: {
         {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {fmtHcp(me.playingHandicap)}</div>}
       </section>
 
-      {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
-
       <ScoreTable round={round} onHole={setEditHole} />
       <p className="muted small" style={{ margin: '-4px 0 0' }}>{tr('Tap a hole to correct it.', 'Tippe auf ein Loch, um es zu korrigieren.')}</p>
       {editHole != null && (
@@ -108,6 +106,8 @@ export function Scorecard(props: {
       )}
 
       <PlayedHcpCard round={round} onChange={props.onChange} />
+
+      {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h2>{tr('Your stats', 'Deine Statistik')}</h2>
