@@ -53,11 +53,11 @@ export interface CaddieInput {
   grid?: GreenGrid | null; // heights of this green
 }
 
-type TargetKey = 'pin' | 't1' | 'spot';
+type TargetKey = 'pin' | 't1' | 'spot' | 'centre' | 'short';
 const targetNoun = (k: TargetKey): string =>
-  ({ pin: tr('the pin', 'die Fahne'), t1: tr('target 1', 'Ziel 1'), spot: '' })[k];
+  ({ pin: tr('the pin', 'die Fahne'), t1: tr('target 1', 'Ziel 1'), spot: '', centre: tr('the middle of the green', 'die Grünmitte'), short: tr('the spot short of the pin', 'den Punkt vor der Fahne') })[k];
 const targetTo = (k: TargetKey): string =>
-  ({ pin: tr('to the pin', 'zur Fahne'), t1: tr('to target 1', 'zu Ziel 1'), spot: tr('ahead', 'nach vorn') })[k];
+  ({ pin: tr('to the pin', 'zur Fahne'), t1: tr('to target 1', 'zu Ziel 1'), spot: tr('ahead', 'nach vorn'), centre: tr('towards the middle of the green', 'Richtung Grünmitte'), short: tr('short of the pin', 'vor die Fahne') })[k];
 
 export interface CaddieOutput {
   ap: AimPoint;
@@ -185,7 +185,8 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     ]
       .filter(Boolean)
       .join(' · ') || null;
-  const targetKey: TargetKey = ownTarget ? 't1' : ap.kind !== 'approach' ? apKey : 'pin';
+  // With the pin strategy the distances are to the new aim – the words say which.
+  const targetKey: TargetKey = ownTarget ? 't1' : ap.kind !== 'approach' ? apKey : ap.strategy && ap.strategy.kind !== 'pin' ? (ap.strategy.kind === 'below' ? 'short' : 'centre') : 'pin';
   const facts: CaddieFacts = {
     club: clubName(advice.club),
     distance: Number(fmt(pl.distance)),
