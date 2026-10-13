@@ -38,6 +38,15 @@ export interface HoleMapProps {
   plain?: boolean;
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
   padding?: { top: number; bottom: number; left: number; right: number };
+  /**
+   * Camera that walks with the player (Sascha, 13.10.2026: "always zooming in again is annoying – Hole19 and
+   * Bebressie do it better"): the view from the player to the green, turned in the playing direction. A new `key`
+   * (the player moved on) moves the camera; null = the whole hole. After the player zoomed or panned himself the
+   * camera stays put until `recenter` changes.
+   */
+  camera?: { from: LngLat; key: string } | null;
+  recenter?: number;
+  onUserCamera?: (moved: boolean) => void;
   onTargetsChange: (t: LngLat[]) => void;
   onTargetRemove: (index: number) => void;
   onPinChange: (p: LngLat) => void;
@@ -51,6 +60,15 @@ export function HoleMap(props: HoleMapProps) {
   const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
   latest.current = props;
+  const userCam = useRef(false);
+
+  /** The automatic view: green chart > player → green > whole hole. */
+  function autoCamera(m: maplibregl.Map, duration: number) {
+    const p = latest.current;
+    if (p.greenChart) return chartCamera(m, p.greenChart);
+    if (p.camera) return follow(m, p.camera.from, p.data, p.padding, duration);
+    fit(m, p.data, p.padding);
+  }
 
   // Create the map once.
   useEffect(() => {
@@ -95,9 +113,17 @@ export function HoleMap(props: HoleMapProps) {
       ready.current = true;
       m.on('moveend', () => render()); // labels are spaced out for the current view
       collapseAttribution(m);
-      fit(m, latest.current.data, latest.current.padding);
+      autoCamera(m, 0);
       render();
     });
+    // The player zooms or pans himself (a real touch, not the camera): leave the view to him.
+    const byHand = (e: { originalEvent?: unknown }) => {
+      if (!e.originalEvent || userCam.current) return;
+      userCam.current = true;
+      latest.current.onUserCamera?.(true);
+    };
+    m.on('dragstart', byHand);
+    m.on('zoomstart', byHand);
     m.on('click', (e) => latest.current.onMapTap([e.lngLat.lng, e.lngLat.lat]));
     map.current = m;
     return () => {
@@ -113,26 +139,35 @@ export function HoleMap(props: HoleMapProps) {
     const m = map.current;
     if (!m || !ready.current) return;
     (m.getSource('shapes') as maplibregl.GeoJSONSource).setData(shapes(props.data));
-    fit(m, props.data, props.padding);
+    userCam.current = false; // a new hole: the automatic view again
+    latest.current.onUserCamera?.(false);
+    autoCamera(m, 0);
   }, [props.holeKey, props.data]);
+
+  // The player moved on (or asked to centre again): the camera follows – unless he is looking around himself.
+  const camKey = props.camera?.key ?? '';
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready.current || userCam.current) return;
+    autoCamera(m, 700);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camKey]);
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready.current || !props.recenter) return;
+    userCam.current = false;
+    latest.current.onUserCamera?.(false);
+    autoCamera(m, 500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.recenter]);
 
   // Green chart shown: zoom onto the green (keeping the playing direction); hidden again: back to the hole.
   const chartKey = props.greenChart ? `${props.greenChart.url}${props.greenChart.roomy ? '|roomy' : ''}` : ''; // closer zoom once at the green
   useEffect(() => {
     const m = map.current;
     if (!m || !ready.current) return;
-    const c = latest.current.greenChart;
-    if (c) {
-      const b = c.corners.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(c.corners[0], c.corners[0]));
-      // Room for the boxes above and the buttons below – scaled down on small screens, or MapLibre refuses to zoom.
-      const h = m.getContainer().clientHeight;
-      let top = 150;
-      let bottom = c.roomy ? 300 : 260;
-      const k = Math.min(1, (h - 160) / (top + bottom));
-      top *= k;
-      bottom *= k;
-      m.fitBounds(b, { bearing: m.getBearing(), padding: { top, bottom, left: 20, right: 20 }, maxZoom: 21, duration: 600 });
-    } else fit(m, latest.current.data, latest.current.padding);
+    if (userCam.current) return;
+    autoCamera(m, 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartKey]);
 
@@ -291,6 +326,33 @@ export function HoleMap(props: HoleMapProps) {
 }
 
 const FULL_SCREEN_PADDING = { top: 120, bottom: 170, left: 40, right: 110 };
+
+/** Zoom onto the green chart (keeping the playing direction). */
+function chartCamera(m: maplibregl.Map, c: NonNullable<HoleMapProps['greenChart']>) {
+  const b = c.corners.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(c.corners[0], c.corners[0]));
+  // Room for the boxes above and the buttons below – scaled down on small screens, or MapLibre refuses to zoom.
+  const h = m.getContainer().clientHeight;
+  let top = 150;
+  let bottom = c.roomy ? 300 : 260;
+  const k = Math.min(1, (h - 160) / (top + bottom));
+  top *= k;
+  bottom *= k;
+  m.fitBounds(b, { bearing: m.getBearing(), padding: { top, bottom, left: 20, right: 20 }, maxZoom: 21, duration: 600 });
+}
+
+/** From the player to the green: both on screen, the green at the top, the player at the bottom. */
+function follow(m: maplibregl.Map, from: LngLat, d: HoleMapData, padding = FULL_SCREEN_PADDING, duration = 0) {
+  const pts = [from, ...(d.green ?? [d.greenCenter])];
+  const bounds = pts.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
+  const h = m.getContainer().clientHeight;
+  const k = Math.min(1, (h - 120) / (padding.top + padding.bottom));
+  m.fitBounds(bounds, {
+    bearing: bearingDeg(from, d.greenCenter),
+    padding: { ...padding, top: padding.top * k, bottom: padding.bottom * k },
+    maxZoom: 19,
+    duration,
+  });
+}
 
 function fit(m: maplibregl.Map, d: HoleMapData, padding = FULL_SCREEN_PADDING) {
   const pts = [...d.line, ...(d.green ?? [])];

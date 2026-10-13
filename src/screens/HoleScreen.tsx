@@ -258,6 +258,9 @@ export function HoleScreen(props: {
   // Green slope: automatic from 120 m before the green (Sascha, 13.10.2026), or any time with the "Green" button.
   // null = automatic; true/false = the player switched it on or off on this hole.
   const [showGreen, setShowGreen] = useState<boolean | null>(null);
+  // map camera: follows the player unless he zoomed or panned himself (then a button centres it again)
+  const [camByHand, setCamByHand] = useState(false);
+  const [recenter, setRecenter] = useState(0);
   useEffect(() => setShowGreen(null), [i]); // a green opened on the last hole does not follow to the next tee
   const carryBag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []); // with the wedges' partial swings
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
@@ -601,6 +604,13 @@ export function HoleScreen(props: {
     return (
       <main className="map-screen">
         <HoleMap
+          camera={
+            onHole && !round.preview && distanceM(player!.pos, mapData.tee) > 40
+              ? { from: player!.pos, key: `${i}:${Math.round(player!.pos[0] * 6000)},${Math.round(player!.pos[1] * 9000)}` } // a new view every ~12 m
+              : null
+          }
+          recenter={recenter}
+          onUserCamera={setCamByHand}
           credit={greenSource(round.courseId, GREEN_CHARTS[round.courseId] != null)}
           holeKey={`${round.id}-${i}`}
           data={mapData}
@@ -739,6 +749,15 @@ export function HoleScreen(props: {
           {detectedBanner}
           {offlineHint}
           <div className="map-tools">
+            {camByHand && (
+              <button type="button" className="map-btn round tool" aria-label={tr('Centre the map again', 'Karte wieder zentrieren')} title={tr('Centre', 'Zentrieren')} onClick={() => setRecenter((n) => n + 1)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="6.5" />
+                  <circle cx="12" cy="12" r="2" fill="currentColor" />
+                  <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
+                </svg>
+              </button>
+            )}
             {detailMode && (
               <button type="button" className="map-btn round tool" aria-label={tr('Add a target on the map', 'Ziel auf der Karte hinzufügen')} title={tr('Target', 'Ziel')} onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
