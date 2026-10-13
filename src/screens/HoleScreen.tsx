@@ -459,6 +459,9 @@ export function HoleScreen(props: {
     const plan = plans[i] ?? { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null };
     const pin = plan.pin ?? mapData.greenCenter;
     const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
+    // really playing this hole (not on the next fairway or in the clubhouse): for the camera, the shot lengths and
+    // the caddie log
+    const onThisHole = player != null && distToLine(player.pos, mapData.line) <= 60;
     const shotButtons = detailMode && MANUAL_SHOTS;
     const from = onHole ? player!.pos : mapData.tee;
     // Without a mapped green outline (player-set green) only the centre distance is known.
@@ -514,8 +517,8 @@ export function HoleScreen(props: {
     const passedTargets = plan.targets.filter(passed);
     const shownTargets = plan.targets.filter((t) => !passed(t));
     // Automatic shot length: from the last place the player stood (or the tee) to here – no tapping needed.
-    const autoLen = onHole && player && !round.preview ? autoShot(loadTrack(round.id), mapData, player.pos) : null;
-    const teeDist = onHole && player && !round.preview ? distanceM(mapData.tee, player.pos) : null;
+    const autoLen = onThisHole && player && !round.preview ? autoShot(loadTrack(round.id), mapData, player.pos) : null;
+    const teeDist = onThisHole && player && !round.preview ? distanceM(mapData.tee, player.pos) : null;
     const fromTee = teeDist != null && teeDist >= 20 ? teeDist : null;
     // ---------- AI caddie ----------
     const teeShot = !onHole || distanceM(from, mapData.tee) < 30;
@@ -603,7 +606,7 @@ export function HoleScreen(props: {
       setTimeout(() => loadCaddieSettings().voice && speak(said), 300);
     }
     // Keep what the caddie advised on the course – the round check shows it again for the player's verdict.
-    if (cad != null && onHole && !round.preview && loggedSig.current !== caddieSig) {
+    if (cad != null && onThisHole && !round.preview && loggedSig.current !== caddieSig) {
       loggedSig.current = caddieSig;
       recordCaddie(round.id, i, {
         t: Date.now(),
@@ -621,7 +624,7 @@ export function HoleScreen(props: {
       <main className="map-screen">
         <HoleMap
           camera={
-            onHole && !round.preview && distanceM(player!.pos, mapData.tee) > 40
+            onThisHole && !round.preview && distanceM(player!.pos, mapData.tee) > 40
               ? { from: player!.pos, key: `${i}:${Math.round(player!.pos[0] * 6000)},${Math.round(player!.pos[1] * 9000)}` } // a new view every ~12 m
               : null
           }
