@@ -707,6 +707,8 @@ export function HoleScreen(props: {
           targets={shownTargets}
           unit={unit}
           imagery={imagery}
+          // the state's aerial service does not answer: Esri for this visit (the choice stays as it is)
+          onImageryFail={() => imagery.id !== 'esri' && setImageryPref('esri')}
           track={detailMode ? track : undefined}
           missMap={miss}
           aimPoint={null}

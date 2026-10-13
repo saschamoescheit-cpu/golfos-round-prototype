@@ -49,6 +49,8 @@ export interface HoleMapProps {
   camera?: { from: LngLat; key: string } | null;
   recenter?: number;
   onUserCamera?: (moved: boolean) => void;
+  /** The imagery server does not deliver (several tiles failed, none arrived): the screen may switch to another. */
+  onImageryFail?: () => void;
   onTargetsChange: (t: LngLat[]) => void;
   onTargetRemove: (index: number) => void;
   onPinChange: (p: LngLat) => void;
@@ -59,6 +61,7 @@ export function HoleMap(props: HoleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const ready = useRef(false);
+  const sat = useRef({ ok: 0, fail: 0 }); // imagery tiles loaded / failed (for the fallback)
   const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
   latest.current = props;
@@ -121,6 +124,14 @@ export function HoleMap(props: HoleMapProps) {
       autoCamera(m, 0);
       render();
     });
+    // Imagery server down (e.g. the state's aerial service): several tile errors before any tile arrived.
+    m.on('error', (e: { sourceId?: string }) => {
+      if (e.sourceId !== 'sat' || sat.current.ok > 0) return;
+      if (++sat.current.fail === 6) latest.current.onImageryFail?.();
+    });
+    m.on('sourcedata', (e: { sourceId?: string; tile?: unknown }) => {
+      if (e.sourceId === 'sat' && e.tile) sat.current.ok++;
+    });
     // The player zooms or pans himself (a real touch, not the camera): leave the view to him.
     const byHand = (e: { originalEvent?: unknown }) => {
       if (!e.originalEvent || userCam.current) return;
@@ -180,6 +191,7 @@ export function HoleMap(props: HoleMapProps) {
   useEffect(() => {
     const m = map.current;
     if (m && ready.current) setImagery(m, props.imagery);
+    sat.current = { ok: 0, fail: 0 };
   }, [props.imagery]);
 
   // Markers and labels follow every prop change.
