@@ -20,6 +20,8 @@ export interface HoleMapProps {
   credit?: string | null; // extra data credit for the map's ⓘ (green heights)
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a yellow line with numbered dots. */
   track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string }[];
+  /** Review: the path the player walked (GPS) and where he stood still – the places a shot may have been played. */
+  walked?: { line: LngLat[]; stops: LngLat[] } | null;
   /** Track points can be dragged (round check); called on release with the point's id. */
   onTrackMove?: (id: string, pos: LngLat) => void;
   /** While a shot is dragged: the text its marker shows (e.g. the shot length), null = keep the label. */
@@ -102,6 +104,9 @@ export function HoleMap(props: HoleMapProps) {
         },
       });
       m.addLayer({ id: 'hole', type: 'line', source: 'shapes', filter: ['==', 'kind', 'hole'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [3, 3] } });
+      m.addSource('walked', { type: 'geojson', data: walkedData(latest.current) });
+      m.addLayer({ id: 'walked-line', type: 'line', source: 'walked', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [1, 2] } });
+      m.addLayer({ id: 'walked-stop', type: 'circle', source: 'walked', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 9, 'circle-color': 'rgba(255,255,255,0.25)', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 } });
       m.addSource('track', { type: 'geojson', data: trackLine(latest.current) });
       m.addLayer({ id: 'track-casing', type: 'line', source: 'track', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.5 } });
       m.addLayer({ id: 'track', type: 'line', source: 'track', paint: { 'line-color': '#FFD54A', 'line-width': 2.5 } });
@@ -207,6 +212,7 @@ export function HoleMap(props: HoleMapProps) {
       pm.puttAim = undefined;
     }
     (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData(trackLine(p));
+    (m.getSource('walked') as maplibregl.GeoJSONSource | undefined)?.setData(walkedData(p));
     (m.getSource('miss') as maplibregl.GeoJSONSource | undefined)?.setData(missData(p));
     syncGreenChart(m, p.greenChart ?? null);
     const mk = markers.current;
@@ -403,6 +409,18 @@ function missData(p: HoleMapProps): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: (p.missMap ?? []).map((x) => ({ type: 'Feature', properties: { cost: x.cost }, geometry: { type: 'Point', coordinates: x.pos } })),
+  };
+}
+
+function walkedData(p: HoleMapProps): GeoJSON.FeatureCollection {
+  const w = p.walked;
+  if (!w) return { type: 'FeatureCollection', features: [] };
+  return {
+    type: 'FeatureCollection',
+    features: [
+      ...(w.line.length >= 2 ? [{ type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates: w.line } }] : []),
+      ...w.stops.map((s) => ({ type: 'Feature' as const, properties: {}, geometry: { type: 'Point' as const, coordinates: s } })),
+    ],
   };
 }
 

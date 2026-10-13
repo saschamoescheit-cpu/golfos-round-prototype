@@ -3,7 +3,7 @@ import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { holeSg } from '../lib/sg';
-import { clubForLength, detectHoleShots, loadTrack, splitRound } from '../lib/track';
+import { clubForLength, detectHoleShots, findStops, loadTrack, splitRound } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadRounds, loadUnit } from '../lib/storage';
 import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
@@ -26,6 +26,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // the same holes as on the course: from the tee the player played (yellow, red …), not the back tee of the map
   const maps = useMemo(() => round.holes.map((h) => holeForTee(holeMapData(geometry, h.loop, h.number), round.courseId, h.label, round.tee, geometry.tee)), [geometry, round.holes, round.courseId, round.tee]);
   const track = useMemo(() => loadTrack(round.id), [round.id]);
+  const parts = useMemo(() => (track.length > 20 ? splitRound(track, maps) : []), [track, maps]);
   const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id)), [round.id]);
   const unit = loadUnit();
   const course = loadCachedCourse(round.courseId);
@@ -47,9 +48,22 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const d: DetailEntry | null = e.detail ?? null;
   const pin = d?.pin ?? data?.greenCenter ?? null;
   const lengths = d ? shotLengths(d) : [];
+  const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
   const sg = d ? holeSg({ ...d, pin }, e.putts, hole.par) : null;
   const toCheck = entries.reduce((n, x) => n + (x.detail?.shots.filter((s) => s.review).length ?? 0), 0);
   const fmt = (m: number) => `${formatDistance(m, unit)} ${unit}`;
+  // The GPS track of this hole: the walked path and where the player stood still – a shot the detection missed
+  // (or gave to a partner's ball) is one tap on a grey circle away.
+  const part = parts[k] ?? [];
+  const stopsHere = useMemo(() => (part.length ? findStops(part).map((s) => s.p) : []), [part]);
+  const freeStops = stopsHere.filter(
+    (s) =>
+      !(d?.shots ?? []).some((x) => x.pos && distanceM(x.pos, s) < 12) &&
+      !(d?.onGreen && distanceM(d.onGreen, s) < 12) &&
+      !(data && onGreenSpot(s, data)) &&
+      !(data && distanceM(s, data.tee) < 15 && d?.shots[0]?.pos && distanceM(d.shots[0].pos, data.tee) < 15),
+  );
+  const walked = part.length ? { line: part.filter((x) => x.acc <= 15).map((x) => x.p), stops: freeStops } : null;
 
   const save = (index: number, patch: Partial<HoleEntry>) => {
     const list = entries.slice();
@@ -74,9 +88,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     const len = shotLengths(det);
     return { ...det, shots: det.shots.map((x, n) => (x.club || len[n] == null ? x : { ...x, club: clubForLength(len[n]!, n === 0 && round.holes[k].par >= 4, bag) })) };
   };
-  const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
-  const tapMap = (pos: LngLat) => {
+  const tapMap = (tap: LngLat) => {
     if (!data) return;
+    // a tap on (next to) a grey circle sets the shot exactly where the player stood
+    const snap = freeStops.reduce<LngLat | null>((b, s) => (distanceM(s, tap) < 15 && (!b || distanceM(s, tap) < distanceM(b, tap)) ? s : b), null);
+    const pos = snap ?? tap;
     if (placingMiss != null && d) {
       const n = placingMiss;
       const shots = d.shots.slice();
@@ -245,6 +261,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             targets={[]}
             unit={unit}
             imagery={imagery}
+            walked={walked}
             track={[
               // Where strokes are won (green) and lost (red): every shot coloured by its strokes gained.
               ...(d?.shots ?? []).flatMap((s, n) => {
@@ -297,6 +314,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         {tr('Each shot is coloured by strokes gained against a tour pro:', 'Jeder Schlag ist nach Strokes Gained gegen einen Tour-Profi eingefärbt:')}{' '}
         <span className="good-text">{tr('green = gained', 'grün = gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.{' '}
         <strong style={{ color: 'var(--text)' }}>{tr('Tap the map where your ball lay to add a shot – on the green for the putts. Drag a shot to move it.', 'Tippe auf die Karte, wo dein Ball lag – so setzt du einen Schlag, auf dem Grün den Ball fürs Putten. Ziehen verschiebt einen Schlag.')}</strong>
+        {walked && walked.stops.length > 0 && (
+          <>
+            {' '}
+            {tr('White circles: where you stood still (GPS) – a tap there sets the shot exactly.', 'Weiße Kreise: Dort bist du stehen geblieben (GPS) – ein Tipp darauf setzt den Schlag genau dort.')}
+          </>
+        )}
       </p>
 
       {mismatch && (
