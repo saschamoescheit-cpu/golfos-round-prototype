@@ -546,6 +546,5 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .pocket-warn { color: #b8893a; }
 .pocket-hold { margin-top: 16px; padding: 10px 16px; border: 1px solid #333; border-radius: 999px; color: #666; transition: color 1s, border-color 1s, background 1s; }
 .pocket-hold.on { color: #ddd; border-color: #ddd; background: #111; }
-/* Distance from the tee under the GPS accuracy (how far the drive went) */
-.map-from-tee { display: block; font-size: 12px; color: var(--muted); }
-.map-from-tee strong { color: var(--text); font-weight: 700; }
+/* Small addition to "From tee": the last recognised shot */
+.map-shot-last { margin-left: 8px; color: var(--muted); font-size: 12px; }

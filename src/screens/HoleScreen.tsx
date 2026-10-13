@@ -484,6 +484,8 @@ export function HoleScreen(props: {
     const shownTargets = plan.targets.filter((t) => !passed(t));
     // Automatic shot length: from the last place the player stood (or the tee) to here – no tapping needed.
     const autoLen = onHole && player && !round.preview ? autoShot(loadTrack(round.id), mapData, player.pos) : null;
+    const teeDist = onHole && player && !round.preview ? distanceM(mapData.tee, player.pos) : null;
+    const fromTee = teeDist != null && teeDist >= 20 ? teeDist : null;
     // ---------- AI caddie ----------
     const teeShot = !onHole || distanceM(from, mapData.tee) < 30;
     const note: HoleNote = notes[hole.label] ?? {};
@@ -638,12 +640,6 @@ export function HoleScreen(props: {
             </span>
           )}
           <span className="map-from">{onHole ? `GPS ±${Math.round(player!.accuracy)} m` : tr('from tee', 'vom Abschlag')}</span>
-          {/* How far the tee shot went: straight line from the tee to here, always on screen (Sascha, 13.10.2026) */}
-          {onHole && !round.preview && distanceM(mapData.tee, player!.pos) >= 20 && (
-            <span className="map-from-tee">
-              {tr('from tee', 'vom Abschlag')} <strong>{fmt(distanceM(mapData.tee, player!.pos))} {unit}</strong>
-            </span>
-          )}
         </div>
 
         {pinSheet && mapData.green && (
@@ -805,12 +801,19 @@ export function HoleScreen(props: {
               {tr('Shot', 'Schlag')} <strong>{fmt(distanceM(shotStart, player.pos))} {unit}</strong>
             </div>
           )}
-          {!shotStart && autoLen && (
+          {/* Always the whole way from the tee to here (Sascha, 13.10.2026: stops – e.g. with a cart – must not
+              restart it); the last shot only as a small addition when one was recognised after the tee shot. */}
+          {!shotStart && fromTee != null && (
             <div className="map-shot">
-              {autoLen.fromTee ? tr('Tee shot', 'Abschlag') : tr('Last shot', 'Letzter Schlag')} <strong>{fmt(autoLen.length)} {unit}</strong>
+              {tr('From tee', 'Vom Abschlag')} <strong>{fmt(fromTee)} {unit}</strong>
+              {autoLen && !autoLen.fromTee && (
+                <span className="map-shot-last">
+                  {tr('last shot', 'letzter Schlag')} {fmt(autoLen.length)} {unit}
+                </span>
+              )}
             </div>
           )}
-          {!shotStart && !autoLen && live.lastShot != null && (
+          {!shotStart && fromTee == null && live.lastShot != null && (
             <div className="map-shot">
               {tr('Last shot', 'Letzter Schlag')} <strong>{fmt(live.lastShot)} {unit}</strong>
             </div>
