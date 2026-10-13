@@ -57,16 +57,16 @@ export function Scorecard(props: {
           return (
             <div className="sc-hero-main">
               <div>
-                <div className="sc-big">{t.gross}</div>
+                <div className="sc-big">{t.holesPlayed ? t.gross : '–'}</div>
                 <div className="muted small">{tr('strokes', 'Schläge')}</div>
               </div>
               <div>
-                <div className="sc-mid">{formatToPar(t.toPar)}</div>
+                <div className="sc-mid">{t.holesPlayed ? formatToPar(t.toPar) : '–'}</div>
                 <div className="muted small">{tr('to par', 'zu Par')}</div>
               </div>
               {t.stableford != null && (
                 <div>
-                  <div className="sc-mid">{t.stableford}</div>
+                  <div className="sc-mid">{t.holesPlayed ? t.stableford : '–'}</div>
                   <div className="muted small">{tr('Stableford pts', 'Stableford')}</div>
                 </div>
               )}

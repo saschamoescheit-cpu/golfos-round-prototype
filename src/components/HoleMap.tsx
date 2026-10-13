@@ -306,7 +306,18 @@ export function HoleMap(props: HoleMapProps) {
       const sign = targetSignEl(i + 1, formatDistance(distanceM(prev, t), p.unit), formatDistance(distanceM(t, p.pin), p.unit), p.unit, () =>
         latest.current.onTargetRemove(i),
       );
-      mk.labels.push(new maplibregl.Marker({ element: sign, anchor: 'left', offset: [26, 0] }).setLngLat(t).addTo(m));
+      let marker = new maplibregl.Marker({ element: sign, anchor: 'left', offset: [26, 0] }).setLngLat(t).addTo(m);
+      // When on the right the sign would run under the distance box or off the screen (small phones: iPhone SE),
+      // it goes left of the crosshair – or, without room there either, below it.
+      const r = sign.getBoundingClientRect();
+      const box = document.querySelector('.map-green')?.getBoundingClientRect();
+      const covered = (box && r.right > box.left - 4 && r.bottom > box.top && r.top < box.bottom) || r.right > window.innerWidth - 4;
+      if (covered) {
+        marker.remove();
+        const left = r.left - r.width - 52 >= 4;
+        marker = new maplibregl.Marker({ element: sign, anchor: left ? 'right' : 'top', offset: left ? [-26, 0] : [0, 24] }).setLngLat(t).addTo(m);
+      }
+      mk.labels.push(marker);
     });
     const hazards: { ring: Ring; kind: 'bunker' | 'water' }[] = [
       ...p.data.bunkers.map((ring) => ({ ring, kind: 'bunker' as const })),
@@ -340,6 +351,10 @@ function chartCamera(m: maplibregl.Map, c: NonNullable<HoleMapProps['greenChart'
   const h = m.getContainer().clientHeight;
   let top = 150;
   let bottom = c.roomy ? 300 : 260;
+  // the real height of the buttons, caddie card and hints below (small phones: they cover more of the map)
+  const cont = m.getContainer().getBoundingClientRect();
+  const below = document.querySelector('.map-bottom')?.getBoundingClientRect();
+  if (below && below.height > 0) bottom = Math.max(120, cont.bottom - below.top + 8);
   const k = Math.min(1, (h - 160) / (top + bottom));
   top *= k;
   bottom *= k;
