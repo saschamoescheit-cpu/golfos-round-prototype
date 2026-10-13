@@ -108,21 +108,43 @@ export function HoleScreen(props: {
   const setPlans = (p: typeof plans) => setLive((l) => ({ ...l, plans: p }));
   const shotStart = live.shotStart;
   // GPS runs while the hole screen is open (map or score), so the hole is recognised in both views.
+  // No fix yet (cold start, trees) is no reason to give up: the watch is restarted and the player sees "searching".
+  // Only a refused permission needs the player – the hint says where to switch it on.
+  const [gpsTry, setGpsTry] = useState(0);
   useEffect(() => {
-    if (!('geolocation' in navigator)) return;
+    if (!('geolocation' in navigator)) {
+      setGpsError(tr('This browser has no GPS – distances are measured from the tee.', 'Dieser Browser hat kein GPS – Distanzen werden vom Abschlag gemessen.'));
+      return;
+    }
+    let restart: number | undefined;
     const id = navigator.geolocation.watchPosition(
       (p) => {
         setGpsError(null);
         setPlayer({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy });
-        // Detailed rounds keep the GPS track for the shot detection after the round (only while the app is open).
         // Every round keeps the GPS track (while the app is open): automatic shot length, shot detection.
         if (!round.preview) recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy });
       },
-      () => setGpsError(tr('No GPS – distances are measured from the tee.', 'Kein GPS – Distanzen werden vom Abschlag gemessen.')),
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+      (err) => {
+        if (err.code === 1) {
+          setGpsError(
+            tr(
+              'Location not allowed. iPhone: Settings → Privacy & Security → Location Services → Safari Websites → “While Using” and Precise Location on. Then reload.',
+              'Standort nicht erlaubt. iPhone: Einstellungen → Datenschutz & Sicherheit → Ortungsdienste → Safari-Websites → „Beim Verwenden“ und „Genauer Standort“ an. Dann neu laden.',
+            ),
+          );
+          return;
+        }
+        setGpsError(tr('GPS is searching … distances from the tee until there is a fix.', 'GPS sucht … bis dahin Distanzen vom Abschlag.'));
+        window.clearTimeout(restart);
+        restart = window.setTimeout(() => setGpsTry((n) => n + 1), 3000); // start a fresh watch
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 },
     );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
+    return () => {
+      window.clearTimeout(restart);
+      navigator.geolocation.clearWatch(id);
+    };
+  }, [gpsTry]);
 
   // Phone back out of the pocket (or app opened): with the first good GPS fix, move to the hole the player is on.
   const allMaps = useMemo(() => round.holes.map((h) => forTee(holeMapData(geometry, h.loop, h.number), h.label)), [geometry, round.holes, round.tee]);
@@ -635,7 +657,14 @@ export function HoleScreen(props: {
         )}
 
         <div className="map-bottom">
-          {!greenFocus && gpsError && !round.preview && <div className="map-hint">{gpsError}</div>}
+          {!greenFocus && gpsError && !round.preview && (
+            <div className="map-hint gps-hint">
+              <span>{gpsError}</span>
+              <button type="button" className="btn-ghost" onClick={() => setGpsTry((n) => n + 1)}>
+                {tr('Try again', 'Erneut versuchen')}
+              </button>
+            </div>
+          )}
           {detectedBanner}
           {offlineHint}
           <div className="map-tools">

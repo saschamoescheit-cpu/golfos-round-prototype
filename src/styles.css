@@ -536,3 +536,6 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .bag-partial .input { min-height: 40px; width: 100%; text-align: right; }
 .bag-partial .input::placeholder { color: var(--muted); opacity: 0.55; font-style: italic; }
 .bag-use { align-self: flex-start; min-height: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid #f6d48a; background: none; color: #f6d48a; font: 600 11px var(--body); }
+/* GPS problem on the hole map: the reason and a retry */
+.map-hint.gps-hint { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+.map-hint.gps-hint .btn-ghost { min-height: 36px; color: var(--brand-text); white-space: nowrap; }
