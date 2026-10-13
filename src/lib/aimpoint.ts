@@ -7,6 +7,7 @@ import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, type Samples } from './t
 import type { HoleNote } from './holenotes';
 import { clubCode, sideWord, tr } from './i18n';
 import { missCost } from './missmap';
+import { teeStrategy } from './teestrategy';
 
 // The caddie's aim point (features 016/017): where to hit this shot, from where the player is now.
 // Tee: the landing zone at the longest suitable carry. In reach of the green: the pin. Otherwise a layup that
@@ -29,6 +30,8 @@ export interface AimPoint {
   note: string | null; // trees, out of bounds …
   strategy?: PinPlan | null; // approaches: flag, middle of the green or short of the flag (feature 015)
   fairwaySide?: number; // the drive goes to this side of the fairway (+ right) to set up the next shot; 0 = moved, not said
+  teePlan?: string | null; // tee strategy (feature 017): club and side by expected strokes, one sentence
+  teeClub?: Club; // the club that sentence is about
 }
 
 export function move(p: LngLat, bearing: number, m: number): LngLat {
@@ -101,6 +104,9 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   };
   const reasons: string[] = [];
   let fairwaySideM: number | undefined;
+  let teePlanText: string | null = null;
+  let teeClub: Club | undefined;
+  let teeSide = 0;
 
   // Hazards around the landing zone → the safe style clubs down off the tee.
   const obNote = o.note ?? {};
@@ -124,7 +130,14 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   } else {
     const dir = bearingDeg(from, pin);
     const ratio = 100 / playsLike(100, dir, o.conditions, null).playsLike;
-    if (driverOk && style === 'safe' && (obNote.obLeft || obNote.obRight) && clubs.length > 1) {
+    // Tee strategy (feature 017): the club and side with the fewest expected strokes for this player.
+    const ts = driverOk && distanceM(from, data.tee) < 30 ? teeStrategy({ data, par: o.par, bag: o.bag, playing: o.playing ?? null, style, conditions: o.conditions, boundary: o.boundary, trees: o.trees, note: obNote }) : null;
+    if (ts) {
+      teePlanText = ts.text;
+      teeClub = ts.club;
+      teeSide = ts.side;
+      if (ts.carry < longest) longest = ts.carry;
+    } else if (driverOk && style === 'safe' && (obNote.obLeft || obNote.obRight) && clubs.length > 1) {
       longest = clubs[1].carry; // safe: one club less off the tee when out of bounds is close
       reasons.push(tr(`${clubs[1].club} for safety`, `${clubCode(clubs[1].club)} zur Sicherheit`));
     }
@@ -138,8 +151,13 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
     }
     base = pointAt(data.line, Math.max(along, alongFrom + 30));
     kind = o.teeShot ? 'drive' : 'layup';
-    // Which side of the fairway sets up the next shot best (dogleg left → right side, trees at the corner …).
-    const fs = useSide ? fairwaySide({ from, base, pin, data, trees: o.trees }) : null;
+    // The tee strategy chose a side (away from out of bounds, water …): that one. Otherwise: which side of the
+    // fairway sets up the next shot best (dogleg left → right side, trees at the corner …).
+    if (teeSide !== 0) {
+      const at = alongLine(data.line, base);
+      base = move(base, bearingDeg(pointAt(data.line, Math.max(0, at - 20)), base) + 90, teeSide);
+    }
+    const fs = useSide && teeSide === 0 ? fairwaySide({ from, base, pin, data, trees: o.trees }) : null;
     if (fs) base = fs.landing;
     if (fs) fairwaySideM = fs.side; // 0: moved towards the fairway middle, not worth saying
     if (fs && fs.side !== 0) {
@@ -229,7 +247,7 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   const sideText = (k: 'left' | 'right', known: boolean | undefined, m: number | undefined) => (known || m == null || !isFinite(m) ? sideWord(k) : `${Math.round(m)} m ${sideWord(k)}`);
   const obSides = [obLeft && sideText('left', obNote.obLeft, ob?.left), obRight && sideText('right', obNote.obRight, ob?.right), obNote.obLong && sideWord('long')].filter(Boolean);
   if (!note && obSides.length) note = tr('Out of bounds', 'Aus') + ' ' + obSides.join(tr(' and ', ' und '));
-  return { pos, landing: kind === 'recovery' ? pos : base, kind, club, distance, pl, side, reasons, note, strategy, fairwaySide: fairwaySideM };
+  return { pos, landing: kind === 'recovery' ? pos : base, kind, club, distance, pl, side, reasons, note, strategy, fairwaySide: fairwaySideM, teePlan: teePlanText, teeClub };
 }
 
 /**

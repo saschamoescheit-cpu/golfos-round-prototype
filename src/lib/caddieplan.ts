@@ -77,6 +77,12 @@ export interface CaddieOutput {
   heights: { from: number | null; green: number | null };
 }
 
+/** The tee strategy weighed the clubs already (feature 017): the rule of thumb "club down" would contradict it. */
+function keepClub(plan: string, weighed: boolean): string {
+  if (!weighed) return plan;
+  return plan.replace(/ – club down for the fairway\./, ' – accuracy before length.').replace(/ – einen Schläger kürzer fürs Fairway\./, ' – Genauigkeit vor Länge.');
+}
+
 /** The tee plan unless it sends the ball to the other side than the caddie's fairway side (that one knows the dogleg). */
 function sameSide(plan: string, fairwaySide: number | undefined): string {
   if (!fairwaySide) return plan;
@@ -134,7 +140,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const driver = o.bag.find((b) => b.club === 'Dr')?.carry ?? 200;
   const holePlan =
     o.teeShot && o.par >= 4
-      ? sameSide(teePlan(data, driver) || '', ap.fairwaySide)
+      ? (ap.teePlan && ap.teeClub === advice.club ? ap.teePlan : '') || keepClub(sameSide(teePlan(data, driver) || '', ap.fairwaySide), ap.teeClub != null)
       : ap.kind !== 'approach'
         ? ap.kind === 'recovery'
           ? ''
