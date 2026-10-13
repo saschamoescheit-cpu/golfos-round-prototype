@@ -848,7 +848,7 @@ export function HoleScreen(props: {
                     setView('score');
                   }}
                 >
-                  {tr('Fairway, bunker …', 'Fairway, Bunker …')}
+                  {tr('Other number, fairway …', 'Andere Zahl, Fairway …')}
                 </button>
                 <button
                   type="button"
