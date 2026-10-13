@@ -3,7 +3,7 @@ import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { holeSg } from '../lib/sg';
-import { clubForLength, detectHoleShots, loadTrack, trackForHole } from '../lib/track';
+import { clubForLength, detectHoleShots, loadTrack, splitRound } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadRounds, loadUnit } from '../lib/storage';
 import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
@@ -133,10 +133,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const detectAll = () => {
     let holes = 0;
     const list = entries.slice();
+    const parts = splitRound(track, maps);
     round.holes.forEach((h, i) => {
       const m = maps[i];
       if (!m || list[i].detail?.shots.length) return;
-      const part = trackForHole(track, m, maps[i + 1] ?? null);
+      const part = parts[i] ?? [];
       const found = detectHoleShots(part, m, h.par, bag);
       if (!found) return;
       holes++;

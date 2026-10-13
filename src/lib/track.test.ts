@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clubForLength, detectHoleShots, findStops, trackForHole, type TrackPoint } from './track';
+import { clubForLength, detectHoleShots, findStops, splitRound, trackForHole, type TrackPoint } from './track';
 import { distanceM, holeMapData, pointAt } from './geo';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 import type { LngLat } from '../types';
@@ -88,6 +88,61 @@ describe('shot detection from the GPS track', () => {
     const part = trackForHole(w.pts, hole1, hole2);
     expect(part.length).toBeGreaterThan(10);
     expect(distanceM(part[part.length - 1].p, hole2.tee)).toBeGreaterThan(20);
+  });
+
+  it('walking slowly with noisy GPS (fix every 2.5 s, ±4 m) is no stop', () => {
+    const pts: TrackPoint[] = [];
+    for (let k = 0; k < 80; k++) pts.push({ t: k * 2500, p: noisy(pointAt(hole1.line, 20 + k * 3), 4), acc: 6 });
+    expect(findStops(pts).length).toBe(0);
+  });
+
+  it('waiting by a partner ball on the way is not taken for a shot', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(30); // tee shot
+    w.walk(shift(pointAt(hole1.line, 120), -22, 0)); // partner's ball, left of the line
+    w.stand(25);
+    w.walk(ball2);
+    w.stand(30); // own ball: the approach
+    w.walk(onGreen);
+    w.stand(90);
+    const d = detectHoleShots(w.pts, hole1, 4)!;
+    expect(d.shots.length).toBe(2);
+    expect(distanceM(d.shots[1].pos!, ball2)).toBeLessThan(8);
+  });
+
+  it('phone in the pocket between shots, opened at the ball: the shots are found', () => {
+    const pts: TrackPoint[] = [];
+    let t = 0;
+    const at = (p: LngLat, s: number, open = false) => {
+      for (let k = 0; k < s; k += 5) {
+        pts.push({ t, p: noisy(p), acc: 6, ...(open && k === 0 ? { open: true } : {}) });
+        t += 5000;
+      }
+    };
+    at(hole1.tee, 30, true);
+    t += 150000; // walking, phone locked
+    at(ball2, 30, true);
+    t += 120000;
+    at(onGreen, 90, true);
+    const d = detectHoleShots(pts, hole1, 4)!;
+    expect(d.shots.length).toBe(2);
+    expect(distanceM(d.shots[1].pos!, ball2)).toBeLessThan(8);
+    expect(distanceM(d.onGreen!, onGreen)).toBeLessThan(8);
+  });
+
+  it('splits a round in playing order', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    w.walk(onGreen);
+    w.stand(60);
+    w.walk(hole2.tee);
+    w.stand(30);
+    w.walk(hole2.greenCenter);
+    w.stand(60);
+    const [a, b] = splitRound(w.pts, [hole1, hole2]);
+    expect(a.length).toBeGreaterThan(5);
+    expect(b.length).toBeGreaterThan(5);
+    expect(a[a.length - 1].t).toBeLessThan(b[0].t + 1);
   });
 
   it('club from the shot length', () => {
