@@ -2,7 +2,7 @@ import type { Club, LngLat, Round } from '../types';
 import { distanceM } from './geo';
 import { grossForHole, handicapStrokes, playerTotals, stablefordPoints } from './scoring';
 import { groupForHandicap, groupSg, GROUPS, holeSg, roundsSg, SG_CATEGORIES, SG_LABELS, type SgCategory } from './sg';
-import { firstPuttM } from './shots';
+import { firstPuttM, shotsComplete } from './shots';
 import { playedHandicap } from './handicap';
 import { clubCode, dec, tr } from './i18n';
 
@@ -118,6 +118,8 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
     if (e.penalties > 0 || e.detail?.shots.some((s) => s.penalty)) penaltyHoles.push(h.label);
     const d = e.detail;
     if (!d || !d.shots.length) return;
+    // only holes the player has checked (as strokes gained): a shot detected wrongly is no "most expensive shot"
+    if (!shotsComplete(d) || d.shots.some((s) => s.review)) return;
     detailed++;
     if (d.shots[0]?.penalty && h.par >= 4) tee.penalties++;
     const pin = d.pin;
