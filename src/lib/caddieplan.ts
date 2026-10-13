@@ -73,6 +73,14 @@ export interface CaddieOutput {
   heights: { from: number | null; green: number | null };
 }
 
+/** The tee plan unless it sends the ball to the other side than the caddie's fairway side (that one knows the dogleg). */
+function sameSide(plan: string, fairwaySide: number | undefined): string {
+  if (!fairwaySide) return plan;
+  const left = /Favour the left|eher links/.test(plan);
+  const right = /Favour the right|eher rechts/.test(plan);
+  return (fairwaySide > 0 && left) || (fairwaySide < 0 && right) ? '' : plan;
+}
+
 export function teeAimFor(o: Pick<CaddieInput, 'data' | 'par' | 'pin' | 'bag' | 'conditions' | 'tendency' | 'slopes' | 'boundary' | 'trees' | 'note' | 'style' | 'favourite'>): AimPoint | null {
   if (o.par < 4) return null;
   return aimPoint({ data: o.data, from: o.data.tee, pin: o.pin, par: o.par, teeShot: true, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, note: o.note, style: o.style, favourite: o.favourite });
@@ -122,7 +130,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const driver = o.bag.find((b) => b.club === 'Dr')?.carry ?? 200;
   const holePlan =
     o.teeShot && o.par >= 4
-      ? teePlan(data, driver) || ''
+      ? sameSide(teePlan(data, driver) || '', ap.fairwaySide)
       : ap.kind !== 'approach'
         ? ap.kind === 'recovery'
           ? ''
