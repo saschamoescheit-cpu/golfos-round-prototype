@@ -17,6 +17,7 @@ export interface HoleMapProps {
   targets: LngLat[]; // planned landing points (max 3), in playing order
   unit: Unit;
   imagery: ImagerySource;
+  credit?: string | null; // extra data credit for the map's ⓘ (green heights)
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a yellow line with numbered dots. */
   track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string }[];
   /** Track points can be dragged (round check); called on release with the point's id. */
@@ -59,7 +60,7 @@ export function HoleMap(props: HoleMapProps) {
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
-      attributionControl: { compact: true },
+      attributionControl: { compact: true, ...(props.credit ? { customAttribution: props.credit } : {}) },
     });
     m.touchZoomRotate.disableRotation();
     m.on('load', () => {

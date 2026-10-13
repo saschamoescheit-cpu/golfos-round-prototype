@@ -14,6 +14,7 @@ import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { missMap } from '../lib/missmap';
 import { GREEN_CHARTS } from '../data/greenCharts';
+import { greenSource } from '../data/greenSources';
 import { heightAt as terrainHeight } from '../lib/terrain';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
@@ -579,6 +580,7 @@ export function HoleScreen(props: {
     return (
       <main className="map-screen">
         <HoleMap
+          credit={greenSource(round.courseId, GREEN_CHARTS[round.courseId] != null)}
           holeKey={`${round.id}-${i}`}
           data={mapData}
           player={player?.pos ?? null}
