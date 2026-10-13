@@ -23,7 +23,7 @@ import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard } from '../components/CaddieCard';
 import { isSun, setSun } from '../lib/theme';
 import { holeForTee } from '../lib/teeline';
-import { bestLeave, loadGreenGrids, onThisGreen, readPutt, type GreenGrid, type PuttRead } from '../lib/greenread';
+import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { sideOf } from '../lib/dispersion';
@@ -260,6 +260,7 @@ export function HoleScreen(props: {
 
   // ---------- AI caddie (feature 008) ----------
   const caddieOn = useMemo(() => loadCaddieSettings().caddie, []);
+  useMemo(() => setGreenSpeed(loadCaddieSettings().greenSpeed), []); // putt reads at the chosen green speed
   const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope, []);
   const missMapOn = useMemo(() => loadCaddieSettings().missMap, []);
   const [showMiss, setShowMiss] = useState(missMapOn);

@@ -118,6 +118,22 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
             )}
           </span>
         </div>
+        <div className="field">
+          <label>{tr('Greens today (for the putt line)', 'Grüns heute (für die Putt-Linie)')}</label>
+          <Segmented<CaddieSettings['greenSpeed']>
+            label={tr('Green speed', 'Grüngeschwindigkeit')}
+            value={settings.greenSpeed}
+            onChange={(v) => v && set({ greenSpeed: v })}
+            options={[
+              { value: 'slow', label: tr('Slow', 'Langsam') },
+              { value: 'medium', label: tr('Medium', 'Mittel') },
+              { value: 'fast', label: tr('Fast', 'Schnell') },
+            ]}
+          />
+          <span className="muted small">
+            {tr('Slow greens break less, fast greens more. Club greens are mostly medium.', 'Langsame Grüns brechen weniger, schnelle mehr. Clubgrüns sind meist mittel.')}
+          </span>
+        </div>
         <label className="bag-row">
           <span>
             <strong>{tr('Favourite approach', 'Lieblingsdistanz')}</strong> <span className="muted small">{tr('layups leave this distance', 'beim Vorlegen bleibt diese Distanz')}</span>

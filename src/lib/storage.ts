@@ -174,9 +174,10 @@ export interface CaddieSettings {
   style: 'safe' | 'normal' | 'aggressive';
   favourite: number; // favourite approach distance (m) for layups
   voice: boolean; // read the caddie's advice aloud
+  greenSpeed: 'slow' | 'medium' | 'fast'; // for the putt read: Stimp 8.5 / 9.5 / 11
 }
 export function loadCaddieSettings(): CaddieSettings {
-  return { caddie: true, greenSlope: true, missMap: false, style: 'normal', favourite: 90, voice: false, ...read<Partial<CaddieSettings>>(CADDIE, {}) };
+  return { caddie: true, greenSlope: true, missMap: false, style: 'normal', favourite: 90, voice: false, greenSpeed: 'medium', ...read<Partial<CaddieSettings>>(CADDIE, {}) };
 }
 export function saveCaddieSettings(s: CaddieSettings): void {
   write(CADDIE, s);

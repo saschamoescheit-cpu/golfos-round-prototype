@@ -9,7 +9,7 @@ import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { loadHoleNotes } from '../lib/holenotes';
 import { sideOf } from '../lib/dispersion';
 import { heightAt } from '../lib/terrain';
-import { bestLeave, loadGreenGrids, type GreenGrid } from '../lib/greenread';
+import { bestLeave, loadGreenGrids, setGreenSpeed, type GreenGrid } from '../lib/greenread';
 import { HoleSketch } from '../components/HoleSketch';
 import { TopBar } from '../components/ui';
 import { clubCode, dec, hazardWord, sideWord, tr } from '../lib/i18n';
@@ -32,6 +32,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
   const unit = loadUnit();
   const bag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []);
   const settings = useMemo(() => loadCaddieSettings(), []);
+  useMemo(() => setGreenSpeed(settings.greenSpeed), [settings]);
   const notes = useMemo(() => loadHoleNotes(props.course.id), [props.course.id]);
   // the player's record per hole from earlier rounds here (feature 012)
   const record = useMemo(() => new Map(courseStats(loadRounds(), props.course.name).holes.map((h) => [h.hole.label, h])), [props.course.name]);

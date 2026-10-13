@@ -4,7 +4,7 @@ import { GREEN_CHARTS } from '../data/greenCharts';
 import { dec, sideWord, tr } from './i18n';
 
 // Reading the green like a tour caddie (feature 024): heights of each green (LiDAR, 1 m grid, cm) let the app
-// roll a putt the way a ball rolls – slope pulls it, the green slows it (Stimp 10). From that: where to aim,
+// roll a putt the way a ball rolls – slope pulls it, the green slows it (the chosen green speed, medium = Stimp 9.5). From that: where to aim,
 // how much up or down, and for the approach shot where the ball should finish (below the hole).
 
 export interface GreenGrid {
@@ -15,8 +15,14 @@ export interface GreenGrid {
   cm: number[]; // row 0 = north, cm above base
 }
 
-/** Putt physics (rules of thumb, Chris to confirm): Stimp 10 ≈ ball rolls 3.05 m from 1.83 m/s on the flat. */
-export const PUTT = { decel: (1.83 * 1.83) / (2 * 3.05), slopeFactor: (5 / 7) * 9.81, holeR: 0.054, pastM: 0.4, dt: 0.01 };
+/** Putt physics (rules of thumb, Chris to confirm): Stimp 9.5 ≈ ball rolls 2.9 m from 1.83 m/s on the flat (medium greens). */
+export const PUTT = { decel: (1.83 * 1.83) / (2 * 9.5 * 0.3048), slopeFactor: (5 / 7) * 9.81, holeR: 0.054, pastM: 0.4, dt: 0.01 };
+
+/** Green speed the player chose (club greens in Germany in autumn ≈ Stimp 8.5–9.5, fast resort greens 11). */
+export const STIMP = { slow: 8.5, medium: 9.5, fast: 11 } as const;
+export function setGreenSpeed(speed: keyof typeof STIMP): void {
+  PUTT.decel = (1.83 * 1.83) / (2 * STIMP[speed] * 0.3048);
+}
 
 const cache = new Map<string, Promise<Record<string, GreenGrid> | null>>();
 
