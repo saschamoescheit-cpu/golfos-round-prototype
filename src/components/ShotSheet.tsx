@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Club, Lie, ShotKind } from '../types';
+import type { Club, Lie, PenaltyKind, ShotKind } from '../types';
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
 import { Segmented } from './ui';
 import { clubCode, tr } from '../lib/i18n';
@@ -13,21 +13,24 @@ export function ShotSheet(props: {
   lie: Lie;
   club: Club | null; // suggestion or the saved club when editing
   penalty: boolean;
+  penaltyKind?: PenaltyKind;
   kind?: ShotKind; // saved shot type; missing = suggested from lie and distance
   toPinM: number | null;
   editing: boolean;
   bag?: { club: Club; m: number }[]; // the player's distances (own data or standard)
-  onSave: (v: { lie: Lie; club: Club | null; penalty: boolean; kind: ShotKind; review: false }) => void;
+  onSave: (v: { lie: Lie; club: Club | null; penalty: boolean; penaltyKind?: PenaltyKind; kind: ShotKind; review: false }) => void;
   onDelete?: () => void;
   onHoledOut?: () => void; // "holed from here" (chip-in) – only for a new shot
   onCancel: () => void;
 }) {
   const [lie, setLie] = useState<Lie>(props.lie);
-  const [penalty, setPenalty] = useState(props.penalty);
+  // none / water / out of bounds – an older penalty without a kind shows as water
+  const [pk, setPk] = useState<PenaltyKind | 'none'>(props.penalty ? (props.penaltyKind ?? 'water') : 'none');
+  const penalty = pk !== 'none';
   const [club, setClub] = useState<Club | null>(props.club);
   const [kind, setKind] = useState<ShotKind | null>(props.kind ?? null); // null = follow the suggestion
   const shownKind = kind ?? suggestKind(lie, props.toPinM);
-  const save = (c: Club | null) => props.onSave({ lie, club: c, penalty, kind: shownKind, review: false });
+  const save = (c: Club | null) => props.onSave({ lie, club: c, penalty, penaltyKind: penalty ? (pk as PenaltyKind) : undefined, kind: shownKind, review: false });
   return (
     <div className="sheet-backdrop" onClick={props.onCancel}>
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
@@ -65,9 +68,19 @@ export function ShotSheet(props: {
             ))}
           </div>
         </div>
-        <button type="button" className="toggle" aria-pressed={penalty} onClick={() => setPenalty(!penalty)}>
-          {penalty ? '✓' : '○'} {tr('+1 penalty (water, out of bounds)', '+1 Strafschlag (Wasser, Aus)')}
-        </button>
+        <div className="field">
+          <label>{tr('Penalty after this shot (+1)', 'Strafschlag nach diesem Schlag (+1)')}</label>
+          <Segmented<PenaltyKind | 'none'>
+            label={tr('Penalty', 'Strafschlag')}
+            value={pk}
+            onChange={(v) => v && setPk(v)}
+            options={[
+              { value: 'none', label: tr('None', 'Keiner') },
+              { value: 'water', label: tr('Water', 'Wasser') },
+              { value: 'ob', label: tr('Out of bounds', 'Aus') },
+            ]}
+          />
+        </div>
         <div className="sheet-actions">
           {props.onDelete && (
             <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>

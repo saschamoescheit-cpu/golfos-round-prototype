@@ -71,10 +71,10 @@ export function suggestClub(par: number, isFirstShot: boolean, toPinM: number, b
   return fit.sort((a, b) => a.d - b.d)[0].b.club;
 }
 
-/** Length of every shot: to the next shot, or to the ball on the green for the last one. */
+/** Length of every shot: to the next shot, or to the ball on the green for the last one – into the water / out of bounds: to where it went in. */
 export function shotLengths(d: DetailEntry): (number | null)[] {
   return d.shots.map((s, k) => {
-    const next = k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
+    const next = s.penalty && s.missPos ? s.missPos : k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
     return s.pos && next ? distanceM(s.pos, next) : null;
   });
 }

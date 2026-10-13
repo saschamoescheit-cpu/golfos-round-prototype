@@ -77,11 +77,15 @@ export type Lie = 'tee' | 'fairway' | 'rough' | 'bunker' | 'recovery';
 /** How the shot was played (feature 007): full swing, punch (low, under trees), pitch, chip, bunker shot. */
 export type ShotKind = 'full' | 'punch' | 'pitch' | 'chip' | 'bunker';
 export type Club = 'Dr' | '3W' | '5W' | 'Hy' | '4i' | '5i' | '6i' | '7i' | '8i' | '9i' | 'PW' | 'GW' | 'SW' | 'LW';
+/** Penalty after a shot: water (drop near where it went in) or out of bounds (stroke and distance). */
+export type PenaltyKind = 'water' | 'ob';
 export interface Shot {
   pos: LngLat | null; // where the shot was hit from (GPS or tapped); null when entered without position
   lie: Lie;
   club: Club | null;
   penalty: boolean; // ball in water / out of bounds after this shot: +1 stroke
+  penaltyKind?: PenaltyKind; // what the penalty was for (missing on older rounds: unknown)
+  missPos?: LngLat | null; // where the ball went into the water / out of bounds (for the miss statistics)
   kind?: ShotKind; // missing = suggested from lie and distance
   review?: boolean; // detected automatically from the GPS track – the player should check it
 }

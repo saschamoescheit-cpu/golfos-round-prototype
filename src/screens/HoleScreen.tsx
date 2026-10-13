@@ -357,6 +357,7 @@ export function HoleScreen(props: {
         club={existing ? existing.club : suggestClub(hole.par || 4, n === 1, toPin ?? (hole.par >= 4 ? 300 : 150), bag)}
         bag={bag}
         penalty={existing?.penalty ?? false}
+        penaltyKind={existing?.penaltyKind}
         kind={existing?.kind}
         toPinM={toPin}
         editing={editing}
