@@ -102,11 +102,8 @@ export function Scorecard(props: {
         <HoleEditSheet
           round={round}
           index={editHole}
-          onCancel={() => setEditHole(null)}
-          onSave={(r) => {
-            setEditHole(null);
-            props.onChange(r);
-          }}
+          onClose={() => setEditHole(null)}
+          onChange={props.onChange}
         />
       )}
 
