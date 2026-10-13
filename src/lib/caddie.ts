@@ -6,7 +6,7 @@ import { sideWord, tr } from './i18n';
 // club fitting / launch monitor practice – to be confirmed by Chris (marked in the spec).
 
 /** The player's carry distance per club in metres (editable under "My bag"). */
-export type CarryBag = { club: Club; carry: number }[];
+export type CarryBag = { club: Club; carry: number; swing?: 'full' | 'threeQ' | 'half' }[];
 
 /** Mid-handicap male amateur carry distances – the start values until the player enters his own. */
 export const DEFAULT_CARRY: CarryBag = [
@@ -76,19 +76,36 @@ export function playsLike(distance: number, shotBearing: number, c: Conditions |
   };
 }
 
+type BagClub = CarryBag[number];
 export interface ClubAdvice {
   club: Club;
   carry: number;
-  shorter: { club: Club; carry: number } | null; // one club less
-  longer: { club: Club; carry: number } | null; // one club more
+  swing?: 'full' | 'threeQ' | 'half'; // wedges: a partial swing (feature 016)
+  shorter: BagClub | null; // one club (or swing) less
+  longer: BagClub | null; // one club (or swing) more
 }
 
-/** Club whose carry reaches the plays-like distance (up to 5 m short – the ball still rolls); between two clubs the longer one. */
+/**
+ * Club whose carry reaches the plays-like distance (up to 5 m short – the ball still rolls); between two clubs the
+ * longer one. Wedge range (30 m up to the full pitching wedge) with partial swings in the bag: the full or partial
+ * swing whose carry is closest – the fuller swing when it is about as close.
+ */
 export function adviseClub(target: number, bag: CarryBag, teeShot = false): ClubAdvice {
-  const clubs = bag.filter((b) => teeShot || b.club !== 'Dr').slice().sort((a, b) => a.carry - b.carry);
-  const fit = clubs.find((b) => b.carry >= target - 5) ?? clubs[clubs.length - 1];
-  const k = clubs.indexOf(fit);
-  return { club: fit.club, carry: fit.carry, shorter: clubs[k - 1] ?? null, longer: clubs[k + 1] ?? null };
+  const usable = bag.filter((b) => teeShot || b.club !== 'Dr');
+  const full = usable.filter((b) => !b.swing || b.swing === 'full').sort((a, b) => a.carry - b.carry);
+  const pw = full.find((b) => b.club === 'PW')?.carry;
+  if (pw != null && target >= 30 && target <= pw + 2 && usable.some((b) => b.swing && b.swing !== 'full')) {
+    const wedge = usable.filter((b) => ['PW', 'GW', 'SW', 'LW'].includes(b.club)).sort((a, b) => a.carry - b.carry || (a.swing ? 1 : -1));
+    // The fuller swing is the steadier one: a half swing has to be 2 m closer, a three-quarter 1 m, to win.
+    const cost = (b: BagClub) => Math.abs(b.carry - target) + (b.swing === 'half' ? 2 : b.swing === 'threeQ' ? 1 : 0);
+    const fit = wedge.reduce((best, b) => (cost(b) < cost(best) - 1e-9 ? b : best));
+    const k = wedge.indexOf(fit);
+    const longer = wedge[k + 1] ?? full.find((b) => b.carry > fit.carry) ?? null;
+    return { club: fit.club, carry: fit.carry, swing: fit.swing, shorter: wedge[k - 1] ?? null, longer };
+  }
+  const fit = full.find((b) => b.carry >= target - 5) ?? full[full.length - 1];
+  const k = full.indexOf(fit);
+  return { club: fit.club, carry: fit.carry, shorter: full[k - 1] ?? null, longer: full[k + 1] ?? null };
 }
 
 const CLUB_NAMES: Record<Club, string> = {

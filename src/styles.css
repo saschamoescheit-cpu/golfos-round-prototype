@@ -599,3 +599,9 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
   background: var(--brand-text); border: 2px solid var(--bg); font: 800 11px/12px var(--body); color: #fff; text-align: center;
 }
 .tool-badge.warn { background: #ff5a4e; min-width: 20px; height: 20px; border-radius: 10px; font-size: 13px; line-height: 16px; top: -5px; right: -5px; }
+/* Wedge partial swings under the full carry (feature 016) */
+.bag-partials { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 0 8px 12px; border-left: 2px solid var(--line); margin-left: 6px; }
+.bag-partial { display: flex; flex-direction: column; gap: 3px; }
+.bag-partial .input { min-height: 40px; width: 100%; text-align: right; }
+.bag-partial .input::placeholder { color: var(--muted); opacity: 0.55; font-style: italic; }
+.bag-use { align-self: flex-start; min-height: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid #f6d48a; background: none; color: #f6d48a; font: 600 11px var(--body); }

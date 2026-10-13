@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { Club, Round } from '../types';
 import { clubName, DEFAULT_CARRY, type CarryBag } from '../lib/caddie';
 import { trackedCarry } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, loadUnit, saveCaddieSettings, saveCarryBag, saveUnit, type CaddieSettings } from '../lib/storage';
 import { Segmented, TopBar } from '../components/ui';
 import { clubCode, tr } from '../lib/i18n';
+import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, type Partials } from '../lib/partials';
 
 // "My bag & caddie" (feature 008): carry distance per club for the AI caddie, and the switches for
 // caddie, green slope and the miss map. An empty field = club not in the bag.
@@ -15,6 +16,16 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
     return Object.fromEntries(DEFAULT_CARRY.map((d) => [d.club, String(saved ? (saved.find((s) => s.club === d.club)?.carry ?? '') : d.carry)]));
   });
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
+  // Wedges: half (9 o'clock) and three-quarter (10:30) swing – empty = suggested from the full carry.
+  const [partials, setPartials] = useState<Partials>(loadPartials);
+  const setPartial = (club: Club, swing: 'half' | 'threeQ', v: string) => {
+    const n = Number(v);
+    const next: Partials = { ...partials, [club]: { ...partials[club], [swing]: v === '' ? undefined : n } };
+    setPartials(next);
+    savePartials(next);
+  };
+  const fullOf = (club: Club) => Number(bag[club]) || DEFAULT_CARRY.find((d) => d.club === club)!.carry;
+  const trackedP = trackedPartials(props.rounds, DEFAULT_CARRY.map((d) => ({ club: d.club, carry: fullOf(d.club) })), partials);
   const [unit, setUnit] = useState(loadUnit);
   const [note, setNote] = useState<string | null>(loadCarryBag() ? null : tr('Start values for a mid-handicap player – enter your own carry distances.', 'Startwerte für ein mittleres Handicap – trag deine eigenen Carry-Weiten ein.'));
 
@@ -129,8 +140,8 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
         <h2>{tr('Carry per club', 'Carry je Schläger')}</h2>
         <p className="muted small" style={{ margin: 0 }}>
           {tr(
-            'Carry = how far the ball flies in the air on a normal day (no wind, 20 °C, flat). Leave empty if the club is not in your bag. Next to it: what your tracked shots say (from 3 full shots per club). Keep your value or take the tracked one – check again after a few rounds.',
-            'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben). Leer lassen, wenn der Schläger nicht im Bag ist. Daneben: was deine gemessenen Schläge sagen (ab 3 vollen Schlägen je Schläger). Behalte deinen Wert oder übernimm den gemessenen – schau nach ein paar Runden wieder rein.',
+            'Carry = how far the ball flies in the air on a normal day (no wind, 20 °C, flat). Leave empty if the club is not in your bag. Next to it: what your tracked shots say (from 3 full shots per club). Keep your value or take the tracked one – check again after a few rounds. For the wedges also a three-quarter (10:30) and a half swing (9 o’clock): empty = suggested from the full carry, used between 30 m and the full pitching wedge.',
+            'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben). Leer lassen, wenn der Schläger nicht im Bag ist. Daneben: was deine gemessenen Schläge sagen (ab 3 vollen Schlägen je Schläger). Behalte deinen Wert oder übernimm den gemessenen – schau nach ein paar Runden wieder rein. Bei den Wedges zusätzlich Dreiviertel- (10:30) und halber Schwung (9 Uhr): leer = Vorschlag aus der vollen Carry, für Distanzen zwischen 30 m und dem vollen Pitching Wedge.',
           )}
         </p>
         {toReview > 0 && (
@@ -140,7 +151,8 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
         )}
         <div className="bag-grid">
           {DEFAULT_CARRY.map((d) => (
-            <div key={d.club} className="bag-row club">
+            <Fragment key={d.club}>
+            <div className="bag-row club">
               <span className="bag-name">
                 <strong>{clubCode(d.club as Club)}</strong>
                 <span className="muted small">{clubName(d.club as Club)}</span>
@@ -169,6 +181,34 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
                 m
               </span>
             </div>
+            {WEDGES.includes(d.club) && Number(bag[d.club]) > 0 && (
+              <div className="bag-partials" role="group" aria-label={tr(`${clubName(d.club)} partial swings`, `${clubName(d.club)} Teilschwünge`)}>
+                {(['threeQ', 'half'] as const).map((sw) => {
+                  const t = trackedP.get(`${d.club}|${sw}`);
+                  const own = partials[d.club]?.[sw];
+                  const label = sw === 'threeQ' ? tr('¾ (10:30)', '¾ (10:30)') : tr('½ (9 o’clock)', '½ (9 Uhr)');
+                  return (
+                    <span key={sw} className="bag-partial">
+                      <span className="muted small">{label}</span>
+                      <input
+                        className="input"
+                        inputMode="numeric"
+                        value={own ?? ''}
+                        placeholder={`≈ ${suggestedPartial(fullOf(d.club), sw)}`}
+                        aria-label={tr(`${clubName(d.club)} ${sw === 'threeQ' ? 'three-quarter' : 'half'} swing carry in metres`, `${clubName(d.club)} ${sw === 'threeQ' ? 'Dreiviertel' : 'halber'} Schwung Carry in Metern`)}
+                        onChange={(e) => setPartial(d.club, sw, e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+                      />
+                      {t && Math.abs((own ?? suggestedPartial(fullOf(d.club), sw)) - t.carry) >= 4 && (
+                        <button type="button" className="bag-use" onClick={() => setPartial(d.club, sw, String(t.carry))}>
+                          {tr(`tracked ${t.carry} m · use`, `gemessen ${t.carry} m · übernehmen`)}
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            </Fragment>
           ))}
         </div>
         {note && <p className="small" style={{ margin: 0 }}>{note}</p>}

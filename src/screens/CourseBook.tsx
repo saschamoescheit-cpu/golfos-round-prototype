@@ -14,6 +14,7 @@ import { HoleSketch } from '../components/HoleSketch';
 import { TopBar } from '../components/ui';
 import { clubCode, dec, hazardWord, sideWord, tr } from '../lib/i18n';
 import { teeName } from '../data/tees';
+import { withPartials } from '../lib/partials';
 
 // Course book (feature 027): every hole of the round on one page, like a birdie book – sketch with distance dots,
 // hazards from the tee, the caddie's tee plan in calm weather and how to approach the green. For planning at home.
@@ -29,7 +30,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
     };
   }, [props.course.id]);
   const unit = loadUnit();
-  const bag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
+  const bag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []);
   const settings = useMemo(() => loadCaddieSettings(), []);
   const notes = useMemo(() => loadHoleNotes(props.course.id), [props.course.id]);
   // the player's record per hole from earlier rounds here (feature 012)

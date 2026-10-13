@@ -10,6 +10,7 @@ import { mentalTip, type CaddieFacts } from './caddietalk';
 import { lieAt } from './shots';
 import type { HoleNote } from './holenotes';
 import { clubCode, tr } from './i18n';
+import { swingMark, swingName } from './partials';
 
 // Everything the AI caddie says for one shot, as a pure function (features 008/016/017/019).
 // The hole screen shows the result; the caddie audit (scripts/audit.ts) runs it for every hole and position.
@@ -172,15 +173,15 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   }
   const coming = o.teeShot ? forecastNote(o.forecast ?? null, o.wind?.gustKmh ?? 0) : null;
   if (coming) lines.push({ text: coming, tone: 'mental' });
-  lines.push({ text: `${clubName(advice.club)} (${tr('carry', 'Carry')} ${fmt(advice.carry)} ${unit})${reasons.length ? ' · ' + reasons.join(' · ') : tr(' · calm, flat', ' · windstill, eben')}` });
+  lines.push({ text: `${clubName(advice.club)}${advice.swing && advice.swing !== 'full' ? ` · ${swingName(advice.swing)}` : ''} (${tr('carry', 'Carry')} ${fmt(advice.carry)} ${unit})${reasons.length ? ' · ' + reasons.join(' · ') : tr(' · calm, flat', ' · windstill, eben')}` });
   const mental = o.teeShot
     ? mentalTip({ hole: o.holeIndex, holes: o.holeCount, lastToPar: o.prev?.toPar ?? null, lastPickedUp: !!o.prev?.pickedUp, tempC: o.conditions?.tempC ?? null })
     : null;
   if (mental) lines.push({ text: mental, tone: 'mental' });
   const alt =
     [
-      advice.shorter && `${tr('Less', 'Weniger')}: ${clubCode(advice.shorter.club)} ${fmt(advice.shorter.carry)}`,
-      advice.longer && `${tr('More', 'Mehr')}: ${clubCode(advice.longer.club)} ${fmt(advice.longer.carry)}`,
+      advice.shorter && `${tr('Less', 'Weniger')}: ${clubCode(advice.shorter.club)}${swingMark(advice.shorter.swing)} ${fmt(advice.shorter.carry)}`,
+      advice.longer && `${tr('More', 'Mehr')}: ${clubCode(advice.longer.club)}${swingMark(advice.longer.swing)} ${fmt(advice.longer.carry)}`,
       !o.conditions && tr('no weather data', 'keine Wetterdaten'),
     ]
       .filter(Boolean)
@@ -188,7 +189,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   // With the pin strategy the distances are to the new aim – the words say which.
   const targetKey: TargetKey = ownTarget ? 't1' : ap.kind !== 'approach' ? apKey : ap.strategy && ap.strategy.kind !== 'pin' ? (ap.strategy.kind === 'below' ? 'short' : 'centre') : 'pin';
   const facts: CaddieFacts = {
-    club: clubName(advice.club),
+    club: clubName(advice.club) + (advice.swing && advice.swing !== 'full' ? `, ${swingName(advice.swing)}` : ''),
     distance: Number(fmt(pl.distance)),
     playsLike: Number(fmt(pl.playsLike)),
     target: targetKey === 'spot' ? apName : targetNoun(targetKey),
