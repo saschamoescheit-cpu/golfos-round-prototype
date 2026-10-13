@@ -14,6 +14,7 @@ import { loadForecast, loadWeather, weatherIcon, windOnHole, type Forecast, type
 import { DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
+import { gridHeight, loadTerrainGrid, type TerrainGrid } from '../lib/terraingrid';
 import { missMap } from '../lib/missmap';
 import { GREEN_CHARTS } from '../data/greenCharts';
 import { greenSource } from '../data/greenSources';
@@ -331,7 +332,16 @@ export function HoleScreen(props: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapData, playerKey]);
-  const heightAt = (p: LngLat) => hts[htKey(p)] ?? hts[htKey(snap(p))] ?? null;
+  // The course height grid (10 m from the 1 m terrain model) where there is one – exact also off the hole line.
+  const [tgrid, setTgrid] = useState<TerrainGrid | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadTerrainGrid(round.courseId).then((g) => alive && setTgrid(g));
+    return () => {
+      alive = false;
+    };
+  }, [round.courseId]);
+  const heightAt = (p: LngLat) => (tgrid ? gridHeight(tgrid, p) : null) ?? hts[htKey(p)] ?? hts[htKey(snap(p))] ?? null;
 
   const switchImagery = () => {
     const next = imageryChoices[(imageryChoices.indexOf(imagery) + 1) % imageryChoices.length];

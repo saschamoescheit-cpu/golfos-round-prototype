@@ -36,8 +36,9 @@ export default defineConfig({
             options: { cacheName: 'greens', expiration: { maxEntries: 400 }, cacheableResponse: { statuses: [0, 200] } },
           },
           {
-            // green heights for the putt read (feature 024): offline on the course, refreshed when online
-            urlPattern: /\/greens\/.*\/heights\.json$/,
+            // green heights for the putt read (feature 024) and the course height grid: offline on the course,
+            // refreshed when online
+            urlPattern: /\/greens\/.*\/(heights|terrain)\.json$/,
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'green-heights', expiration: { maxEntries: 40 }, cacheableResponse: { statuses: [0, 200] } },
           },
