@@ -9,7 +9,8 @@ import { dec, sideWord, tr } from './i18n';
 
 export interface GreenGrid {
   corners: [LngLat, LngLat, LngLat, LngLat]; // top-left, top-right, bottom-right, bottom-left (north up)
-  size: number; // cells per side, 1 m each
+  size: number; // cells per side
+  cell?: number; // metres per cell (default 1; Hetzenhof 0.5 from the 25 cm terrain model)
   base: number; // metres above sea level of value 0
   cm: number[]; // row 0 = north, cm above base
 }
@@ -56,20 +57,20 @@ function frame(g: GreenGrid): Frame {
       const q = loc(p);
       const u = (q[0] * b[1] - q[1] * b[0]) / det;
       const v = (a[0] * q[1] - a[1] * q[0]) / det;
-      return [u * g.size, v * g.size];
+      return [u * g.size * (g.cell ?? 1), v * g.size * (g.cell ?? 1)]; // metres from the top-left corner
     },
     toLngLat: (x, y) => {
-      const u = x / g.size;
-      const v = y / g.size;
+      const u = x / (g.size * (g.cell ?? 1));
+      const v = y / (g.size * (g.cell ?? 1));
       return [tl[0] + (u * a[0] + v * b[0]) / k, tl[1] + (u * a[1] + v * b[1]) / 111320];
     },
   };
 }
 
-/** Height (m above base) at grid position, bilinear between cell centres; null outside. */
+/** Height (m above base) at a position in metres from the top-left corner, bilinear between cell centres; null outside. */
 function h(g: GreenGrid, x: number, y: number): number | null {
-  const cx = x - 0.5;
-  const cy = y - 0.5;
+  const cx = x / (g.cell ?? 1) - 0.5;
+  const cy = y / (g.cell ?? 1) - 0.5;
   if (cx < 0 || cy < 0 || cx > g.size - 1 || cy > g.size - 1) return null;
   const i = Math.min(g.size - 2, Math.floor(cx));
   const j = Math.min(g.size - 2, Math.floor(cy));
