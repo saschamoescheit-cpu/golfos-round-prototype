@@ -355,7 +355,13 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .map-tools { align-self: flex-end; display: flex; gap: 8px; }
 .map-btn.round.tool { width: 46px; min-width: 46px; padding: 0; }
 .map-btn.round.tool[aria-pressed='true'] { background: var(--brand); color: var(--bg); }
-.bag-row.club { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+/* club | carry input; the measured value on its own line below (fits a 320 px screen) */
+.bag-row.club { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: center; padding-bottom: 6px; }
+.bag-row.club .bag-name { grid-column: 1; grid-row: 1; }
+.bag-row.club .bag-input { grid-column: 2; grid-row: 1; }
+.bag-row.club .bag-tracked { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+.bag-row.club .bag-tracked.muted { display: none; } /* nothing measured yet: no line */
+.bag-tracked-text { white-space: nowrap; }
 .bag-name { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .bag-name .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bag-tracked { margin-left: 0; justify-content: flex-end; }

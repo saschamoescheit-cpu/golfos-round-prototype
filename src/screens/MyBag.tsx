@@ -160,7 +160,9 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
               {!tracked.get(d.club as Club) && <span className="bag-tracked muted">–</span>}
               {tracked.get(d.club as Club) && (
                 <span className={`bag-tracked${differs(d.club) ? ' differs' : ''}`}>
-                  {tr('tracked', 'gemessen')} {tracked.get(d.club as Club)!.carry} m <span className="muted">({tracked.get(d.club as Club)!.shots})</span>
+                  <span className="bag-tracked-text">
+                    {tr('tracked', 'gemessen')} {tracked.get(d.club as Club)!.carry} m <span className="muted">({tracked.get(d.club as Club)!.shots})</span>
+                  </span>
                   {differs(d.club) && (
                     <button type="button" aria-label={tr(`Use tracked ${tracked.get(d.club as Club)!.carry} m for ${clubName(d.club as Club)}`, `Gemessene ${tracked.get(d.club as Club)!.carry} m für ${clubName(d.club as Club)} übernehmen`)} onClick={() => useTracked([d.club])}>
                       {tr('Use', 'Übernehmen')}
