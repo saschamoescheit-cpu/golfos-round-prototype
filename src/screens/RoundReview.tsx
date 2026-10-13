@@ -3,7 +3,7 @@ import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { holeSg } from '../lib/sg';
-import { clubForLength, detectHoleShots, findStops, loadTrack, splitRound, teeSpot } from '../lib/track';
+import { clubForLength, detectHoleShots, findStops, loadTrack, markWaterPenalties, splitRound, teeSpot } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadRounds, loadUnit } from '../lib/storage';
 import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
@@ -76,6 +76,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     const entry = entries[index];
     const derived = deriveFromShots(detail, putts, round.holes[index].par, maps[index]);
     if (entry.strokes != null && !entry.detail) delete derived.strokes;
+    // penalties entered on the course stay until the player marks the shots they belong to
+    if ((entry.penalties ?? 0) > (derived.penalties ?? 0) && !detail.shots.some((s) => s.penalty)) delete derived.penalties;
     save(index, { detail, putts, ...derived });
   };
 
@@ -162,11 +164,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       // the score and putts from the course tell how many shots there were to the green
       const e = list[i];
       const count = e.strokes != null && e.putts != null && !e.pickedUp ? e.strokes - e.putts - (e.penalties ?? 0) : null;
-      const found = detectHoleShots(part, m, h.par, bag, { shots: count != null && count >= 1 ? count : null });
-      if (!found) return;
+      const raw = detectHoleShots(part, m, h.par, bag, { shots: count != null && count >= 1 ? count : null });
+      if (!raw) return;
+      // a penalty entered on the course: the shot that flew over water gets it
+      const found = markWaterPenalties(raw, m, e.penalties ?? 0);
       holes++;
       const derived = deriveFromShots(found, list[i].putts, h.par, m);
       if (list[i].strokes != null) delete derived.strokes; // keep the score entered on the course
+      if ((e.penalties ?? 0) > (derived.penalties ?? 0)) delete derived.penalties; // and its penalties, not yet placed
       list[i] = { ...list[i], detail: { ...found, pin: m.greenCenter }, ...derived };
     });
     props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
@@ -224,7 +229,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     (t, x, i) => (x.strokes != null && !x.pickedUp ? { strokes: t.strokes + x.strokes, par: t.par + round.holes[i].par, holes: t.holes + 1 } : t),
     { strokes: 0, par: 0, holes: 0 },
   );
-  const shotCount = d ? d.shots.length + d.shots.filter((s) => s.penalty).length + (d.holedOut ? 0 : (e.putts ?? 0)) : null;
+  const shotCount = d ? d.shots.length + Math.max(d.shots.filter((s) => s.penalty).length, e.penalties ?? 0) + (d.holedOut ? 0 : (e.putts ?? 0)) : null;
   const mismatch = d && e.strokes != null && shotCount != null && d.onGreen && e.putts != null && shotCount !== e.strokes;
 
   return (

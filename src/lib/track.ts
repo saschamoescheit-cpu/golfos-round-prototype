@@ -1,5 +1,5 @@
 import type { Club, DetailEntry, LngLat, Shot } from '../types';
-import { distanceM, distToLine, type HoleMapData } from './geo';
+import { distanceM, distToLine, pointInRing, type HoleMapData } from './geo';
 import { BAG, lieAt, onGreenAt, suggestKind } from './shots';
 import { expectedStrokes } from './sg';
 
@@ -407,4 +407,33 @@ export function flushTrack(): void {
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flushTrack());
   window.addEventListener('pagehide', flushTrack);
+}
+
+/**
+ * Penalties entered on the course (water): the detected shot whose flight (straight from its spot to the next one)
+ * crosses water gets the penalty and where the ball went in. Out of bounds is left to the player (the replay comes
+ * from the same spot, the track cannot tell it apart). Marked for checking like every detected shot.
+ */
+export function markWaterPenalties(d: DetailEntry, hole: HoleMapData, penalties: number): DetailEntry {
+  if (penalties < 1 || !hole.water.length) return d;
+  let left = penalties - d.shots.filter((s) => s.penalty).length;
+  if (left < 1) return d;
+  const inWater = (p: LngLat) => hole.water.some((r) => pointInRing(p, r));
+  const shots = d.shots.map((s, k) => {
+    if (left < 1 || s.penalty || !s.pos) return s;
+    const end = k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
+    if (!end) return s;
+    const len = distanceM(s.pos, end);
+    // first point of the flight over water (every 5 m, the first 10 m are the player's own spot)
+    let miss: LngLat | null = null;
+    for (let m = 10; m <= len && !miss; m += 5) {
+      const f = m / len;
+      const q: LngLat = [s.pos[0] + (end[0] - s.pos[0]) * f, s.pos[1] + (end[1] - s.pos[1]) * f];
+      if (inWater(q)) miss = q;
+    }
+    if (!miss) return s;
+    left--;
+    return { ...s, penalty: true, penaltyKind: 'water' as const, missPos: miss };
+  });
+  return { ...d, shots };
 }
