@@ -5,6 +5,7 @@ import { deleteRound, loadRounds } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
+import { HoleEditSheet } from '../components/HoleEditSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
 import { TEE_COLOURS, teeName } from '../data/tees';
@@ -25,6 +26,7 @@ export function Scorecard(props: {
 }) {
   const { round } = props;
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editHole, setEditHole] = useState<number | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const me = round.players.find((p) => p.isMe)!;
   const finished = round.finishedAt != null;
@@ -94,7 +96,19 @@ export function Scorecard(props: {
 
       {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
 
-      <ScoreTable round={round} />
+      <ScoreTable round={round} onHole={setEditHole} />
+      <p className="muted small" style={{ margin: '-4px 0 0' }}>{tr('Tap a hole to correct it.', 'Tippe auf ein Loch, um es zu korrigieren.')}</p>
+      {editHole != null && (
+        <HoleEditSheet
+          round={round}
+          index={editHole}
+          onCancel={() => setEditHole(null)}
+          onSave={(r) => {
+            setEditHole(null);
+            props.onChange(r);
+          }}
+        />
+      )}
 
       <PlayedHcpCard round={round} onChange={props.onChange} />
 

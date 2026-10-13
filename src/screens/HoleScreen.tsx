@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DetailEntry, FairwayResult, HoleEntry, LngLat, Round } from '../types';
-import { deriveFromShots, emptyDetail, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
+import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
@@ -978,7 +978,7 @@ export function HoleScreen(props: {
         <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="row">
             <span className="row-label">{tr('Shots', 'Schläge')}</span>
-            <span className="muted small">{hasShots ? tr('Strokes, fairway, penalties and bunker come from the shots', 'Schläge, Fairway, Strafschläge und Bunker ergeben sich aus den Schlägen') : MANUAL_SHOTS ? tr('Track shot by shot on the map, or enter the score below', 'Erfasse Schlag für Schlag auf der Karte oder trage unten den Score ein') : tr('Enter the score below – the shots come from the GPS track, check them after the round', 'Trag unten den Score ein – die Schläge kommen aus der GPS-Spur, du prüfst sie nach der Runde')}</span>
+            <span className="muted small">{hasShots && shotsComplete(detail) ? tr('Strokes, fairway, penalties and bunker come from the shots', 'Schläge, Fairway, Strafschläge und Bunker ergeben sich aus den Schlägen') : MANUAL_SHOTS ? tr('Track shot by shot on the map, or enter the score below', 'Erfasse Schlag für Schlag auf der Karte oder trage unten den Score ein') : tr('Enter the score below – the shots come from the GPS track, check them after the round', 'Trag unten den Score ein – die Schläge kommen aus der GPS-Spur, du prüfst sie nach der Runde')}</span>
           </div>
           {hasShots && (
             <ol className="shot-list">
@@ -1021,7 +1021,7 @@ export function HoleScreen(props: {
           <span className="row-label">{me.name} · {tr('Strokes', 'Schläge')}</span>
           {myEntry.pickedUp ? (
             <span className="badge warn">{tr('Picked up', 'Aufgehoben')}</span>
-          ) : hasShots ? (
+          ) : hasShots && shotsComplete(detail) ? (
             <span className="num" style={{ font: '700 28px var(--display)' }}>{myEntry.strokes ?? '…'}</span>
           ) : (
             <Stepper label={tr('Strokes', 'Schläge')} value={myEntry.strokes} placeholder={hole.par || 4} min={1} onChange={(v) => update(me.id, { strokes: v })} />

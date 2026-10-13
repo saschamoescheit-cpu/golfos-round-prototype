@@ -12,7 +12,7 @@ const markFor = (gross: number, par: number): Mark => {
   return d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : d === 1 ? 'bogey' : 'double';
 };
 
-export function ScoreTable(props: { round: Round }) {
+export function ScoreTable(props: { round: Round; onHole?: (index: number) => void }) {
   const { round } = props;
   const received = Object.fromEntries(round.players.map((p) => [p.id, handicapStrokes(round.holes, p.playingHandicap)]));
   const teeData = TEES[round.courseId];
@@ -45,7 +45,15 @@ export function ScoreTable(props: { round: Round }) {
                 <tr className="holes">
                   <th className="lab">{tr('Hole', 'Loch')}</th>
                   {nine.map((h) => (
-                    <th key={h.index}>{h.label}</th>
+                    <th key={h.index}>
+                      {props.onHole ? (
+                        <button type="button" className="sc-hole" aria-label={tr(`Edit hole ${h.label}`, `Loch ${h.label} bearbeiten`)} onClick={() => props.onHole!(h.index)}>
+                          {h.label}
+                        </button>
+                      ) : (
+                        h.label
+                      )}
+                    </th>
                   ))}
                   <th className="sumc">{sumLabel}</th>
                 </tr>
@@ -81,7 +89,7 @@ export function ScoreTable(props: { round: Round }) {
                       const g = gross(p.id, h);
                       const extra = received[p.id][h.index];
                       return (
-                        <td key={h.index}>
+                        <td key={h.index} className={props.onHole ? 'tap' : undefined} onClick={props.onHole ? () => props.onHole!(h.index) : undefined}>
                           {g == null ? (
                             <span className="muted">–</span>
                           ) : (

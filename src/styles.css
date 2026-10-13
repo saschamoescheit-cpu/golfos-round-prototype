@@ -548,3 +548,6 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .pocket-hold.on { color: #ddd; border-color: #ddd; background: #111; }
 /* Small addition to "From tee": the last recognised shot */
 .map-shot-last { margin-left: 8px; color: var(--muted); font-size: 12px; }
+/* Scorecard: tap a hole to correct it */
+.sc-hole { background: none; border: 0; padding: 0; min-width: 100%; min-height: 28px; color: inherit; font: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
+.sc td.tap { cursor: pointer; }

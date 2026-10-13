@@ -87,11 +87,18 @@ function side(p: LngLat, line: LngLat[]): 'left' | 'right' {
 }
 
 /** Quick values of the hole derived from the shots (only fields that the shots determine). */
+/** The shots start at the tee, so they are the whole hole (and give the score). */
+export function shotsComplete(d: DetailEntry): boolean {
+  return d.shots[0]?.lie === 'tee';
+}
+
 export function deriveFromShots(d: DetailEntry, putts: number | null, par: number, data: HoleMapData | null): Partial<HoleEntry> {
   const penalties = d.shots.filter((s) => s.penalty).length;
   const out: Partial<HoleEntry> = { penalties };
   // Holed out, or putts entered – also when the ball was not marked on the green (putts typed in the score view).
-  const finished = d.holedOut || (d.shots.length > 0 && putts != null);
+  // Only a shot list that starts at the tee gives the score: a single "holed" chip added in the score view is not
+  // a hole in one (Sascha, 13.10.2026) – then the strokes typed in stay.
+  const finished = shotsComplete(d) && (d.holedOut || (d.shots.length > 0 && putts != null));
   if (finished) out.strokes = d.shots.length + penalties + (d.holedOut ? 0 : (putts ?? 0));
   if (d.holedOut) out.putts = 0;
 
