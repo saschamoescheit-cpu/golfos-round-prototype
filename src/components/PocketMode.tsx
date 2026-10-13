@@ -46,6 +46,7 @@ export function PocketMode(props: { roundId: string; onExit: () => void }) {
   // how the recording is doing
   useEffect(() => {
     const t = window.setInterval(() => {
+      // cheap: the track of the running round is kept in memory
       const track = loadTrack(props.roundId);
       setPoints(track.length);
       const last = track[track.length - 1];

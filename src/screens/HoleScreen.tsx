@@ -101,6 +101,22 @@ export function HoleScreen(props: {
   const [unit] = useState<Unit>(loadUnit);
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
+  // pocket mode: screen stays awake but black, so the GPS keeps recording (feature 004)
+  const [pocket, setPocket] = useState(false);
+  const pocketRef = useRef(false);
+  pocketRef.current = pocket;
+  // Battery: iOS delivers a fix about every second. The screen (map, caddie, labels) is only redrawn when the player
+  // really moved (≥ 2 m), the accuracy changed noticeably or 15 s passed – standing at the ball costs nothing.
+  // In pocket mode nothing is drawn at all; the fixes only go into the track.
+  const latestFix = useRef<{ pos: LngLat; accuracy: number; t: number } | null>(null);
+  const shownFix = useRef<{ pos: LngLat; accuracy: number; t: number } | null>(null);
+  const showFix = (f: { pos: LngLat; accuracy: number; t: number }) => {
+    shownFix.current = f;
+    setPlayer({ pos: f.pos, accuracy: f.accuracy });
+  };
+  useEffect(() => {
+    if (!pocket && latestFix.current) showFix(latestFix.current); // back out of the pocket: show where the player is now
+  }, [pocket]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   // Targets, pin and the marked ball survive a reload (iOS may drop the page while the phone is in the pocket).
   const [live, setLive] = useState(() => loadLive(round.id));
@@ -121,7 +137,10 @@ export function HoleScreen(props: {
     const id = navigator.geolocation.watchPosition(
       (p) => {
         setGpsError(null);
-        setPlayer({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy });
+        const fix = { pos: [p.coords.longitude, p.coords.latitude] as LngLat, accuracy: p.coords.accuracy, t: Date.now() };
+        latestFix.current = fix;
+        const was = shownFix.current;
+        if (!pocketRef.current && (!was || distanceM(was.pos, fix.pos) >= 2 || Math.abs(was.accuracy - fix.accuracy) >= 5 || fix.t - was.t >= 15000)) showFix(fix);
         // Every round keeps the GPS track (while the app is open): automatic shot length, shot detection.
         if (!round.preview) recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy });
       },
@@ -238,8 +257,6 @@ export function HoleScreen(props: {
   // Hidden by the player until the caddie has something new to say (new hole, new shot, new warning).
   // The caddie card opens only on a tap; new advice shows as a dot on the caddie button ("!" with a warning).
   const [caddieOpen, setCaddieOpen] = useState(false);
-  // pocket mode: screen stays awake but black, so the GPS keeps recording (feature 004)
-  const [pocket, setPocket] = useState(false);
   const [seenSig, setSeenSig] = useState<string | null>(null);
   useEffect(() => setCaddieOpen(false), [i]); // every hole starts with the map
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
@@ -262,10 +279,12 @@ export function HoleScreen(props: {
   // Heights of tee, green and player (for "plays shorter, downhill"); rounded positions keep requests rare.
   const [hts, setHts] = useState<Record<string, number | null>>({});
   const htKey = (p: LngLat) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`;
-  const playerKey = player ? htKey(player.pos) : '';
+  // The height grid is 90 m: the player's position is snapped to ~50 m, so walking does not fetch a height every 10 m.
+  const snap = (p: LngLat): LngLat => [Math.round(p[0] * 2000) / 2000, Math.round(p[1] * 2000) / 2000];
+  const playerKey = player ? htKey(snap(player.pos)) : '';
   useEffect(() => {
     if (!mapData) return;
-    const pts: LngLat[] = [mapData.tee, mapData.greenCenter, ...(player ? [player.pos] : [])];
+    const pts: LngLat[] = [mapData.tee, mapData.greenCenter, ...(player ? [snap(player.pos)] : [])];
     let alive = true;
     heights(pts).then((h) => alive && setHts((old) => ({ ...old, ...Object.fromEntries(pts.map((p, k) => [htKey(p), h[k]])) })));
     return () => {
@@ -273,7 +292,7 @@ export function HoleScreen(props: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapData, playerKey]);
-  const heightAt = (p: LngLat) => hts[htKey(p)] ?? null;
+  const heightAt = (p: LngLat) => hts[htKey(p)] ?? hts[htKey(snap(p))] ?? null;
 
   const switchImagery = () => {
     const next = imageryChoices[(imageryChoices.indexOf(imagery) + 1) % imageryChoices.length];
