@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DetailEntry, FairwayResult, HoleEntry, LngLat, Round } from '../types';
 import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
-import { commitParAt, greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
+import { commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { PositionFilter } from '../lib/gpsfilter';
@@ -489,7 +489,7 @@ export function HoleScreen(props: {
     const conditions = weather ? { windKmh: weather.windKmh, gustKmh: weather.gustKmh, windFromDeg: weather.windFromDeg, tempC: weather.tempC } : null;
     // The caddie's spread model works with the 18-hole playing handicap; a 9-hole round carries the 9-hole value
     // (about half – right for Stableford), so it is doubled here.
-    const caddiePlaying = me.playingHandicap == null ? null : round.holes.length <= 9 ? me.playingHandicap * 2 : me.playingHandicap;
+    const caddiePlaying = playing18(round.holes.length, me.playingHandicap);
     const terrain = { slopes: geometry.fairwaySlopes?.[hole.label], boundary: geometry.boundary, trees: geometry.trees };
     // Par 4/5: target 1 is there from the start – the caddie's landing spot from the tee (driver carry, moved for
     // wind, slope and tendency, clear of trees). The player can drag or remove it; his own plan is kept then.

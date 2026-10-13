@@ -80,3 +80,13 @@ describe('loops (Hetzenhof style data)', () => {
     expect(round[9].label).toBe('1B');
   });
 });
+
+import { playing18 } from './scoring';
+describe('18-hole playing handicap', () => {
+  it('a 9-hole round carries the 9-hole value: doubled for the caddie and the comparison group', () => {
+    expect(playing18(9, 4)).toBe(8);
+    expect(playing18(18, 8)).toBe(8);
+    expect(playing18(9, null)).toBeNull();
+    expect(playing18(6, -1)).toBe(-2); // short course, plus handicap
+  });
+});

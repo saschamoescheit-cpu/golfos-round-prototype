@@ -10,6 +10,7 @@ import { loadHoleNotes } from '../lib/holenotes';
 import { sideOf } from '../lib/dispersion';
 import { heightAt } from '../lib/terrain';
 import { bestLeave, loadGreenGrids, setGreenSpeed, type GreenGrid } from '../lib/greenread';
+import { playing18 } from '../lib/scoring';
 import { HoleSketch } from '../components/HoleSketch';
 import { TopBar } from '../components/ui';
 import { clubCode, dec, hazardWord, sideWord, tr } from '../lib/i18n';
@@ -71,7 +72,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
             bag={bag}
             style={settings.style}
             favourite={settings.favourite}
-            playing={props.playing == null ? null : props.holes.length <= 9 ? props.playing * 2 : props.playing} // 18-hole value for the spread
+            playing={playing18(props.holes.length, props.playing ?? null)} // 18-hole value for the spread
             note={notes[h.label] ?? {}}
             record={record.get(h.label)}
           />

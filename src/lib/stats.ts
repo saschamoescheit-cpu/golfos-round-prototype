@@ -1,5 +1,5 @@
 import type { Club, Round } from '../types';
-import { greenInRegulation, grossForHole, handicapStrokes, stablefordPoints } from './scoring';
+import { greenInRegulation, grossForHole, handicapStrokes, playing18, stablefordPoints } from './scoring';
 import { BAG, firstPuttM, shotLengths } from './shots';
 import { tr } from './i18n';
 
@@ -79,7 +79,7 @@ export function analyse(rounds: Round[]): Analysis {
   for (const r of rounds) {
     const me = r.players.find((p) => p.isMe);
     if (!me) continue;
-    handicap = me.playingHandicap ?? handicap;
+    handicap = playing18(r.holes.length, me.playingHandicap) ?? handicap;
     const received = handicapStrokes(r.holes, me.playingHandicap);
     r.holes.forEach((h, i) => {
       const e = r.entries[me.id][i];

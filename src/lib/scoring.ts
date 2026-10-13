@@ -143,3 +143,11 @@ export function emptyEntry(): HoleEntry {
     penalties: 0, greensideBunker: false, upAndDown: null,
   };
 }
+
+/**
+ * The 18-hole playing handicap of a player in a round: a 9-hole round carries the 9-hole value (about half, right
+ * for Stableford); the caddie's spread and the strokes-gained comparison group work with the 18-hole value.
+ */
+export function playing18(holeCount: number, playingHandicap: number | null): number | null {
+  return playingHandicap == null ? null : holeCount <= 9 ? playingHandicap * 2 : playingHandicap;
+}
