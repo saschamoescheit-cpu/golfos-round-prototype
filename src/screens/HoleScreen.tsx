@@ -101,6 +101,7 @@ export function HoleScreen(props: {
   const [unit] = useState<Unit>(loadUnit);
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
+  const detectArmed = useRef(true); // the next good fix may move the round to the hole the player is on
   // pocket mode: screen stays awake but black, so the GPS keeps recording (feature 004)
   const [pocket, setPocket] = useState(false);
   const pocketRef = useRef(false);
@@ -115,7 +116,10 @@ export function HoleScreen(props: {
     setPlayer({ pos: f.pos, accuracy: f.accuracy });
   };
   useEffect(() => {
-    if (!pocket && latestFix.current) showFix(latestFix.current); // back out of the pocket: show where the player is now
+    if (pocket) return;
+    // back out of the pocket: like unlocking the phone – find the hole the player is on now, and show where he is
+    detectArmed.current = true;
+    if (latestFix.current) showFix(latestFix.current);
   }, [pocket]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   // Targets, pin and the marked ball survive a reload (iOS may drop the page while the phone is in the pocket).
@@ -169,7 +173,6 @@ export function HoleScreen(props: {
   // Phone back out of the pocket (or app opened): with the first good GPS fix, move to the hole the player is on.
   const allMaps = useMemo(() => round.holes.map((h) => forTee(holeMapData(geometry, h.loop, h.number), h.label)), [geometry, round.holes, round.tee]);
   const [detected, setDetected] = useState<{ from: number; to: number } | null>(null);
-  const detectArmed = useRef(true);
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') detectArmed.current = true;
@@ -250,6 +253,7 @@ export function HoleScreen(props: {
   const [showMiss, setShowMiss] = useState(missMapOn);
   // Green slope: automatic near the green, or shown any time with the "Green" button.
   const [showGreen, setShowGreen] = useState(false);
+  useEffect(() => setShowGreen(false), [i]); // a green opened on the last hole does not follow to the next tee
   const carryBag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []); // with the wedges' partial swings
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
