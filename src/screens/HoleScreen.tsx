@@ -37,6 +37,10 @@ const fairwayName = (f: string) => tr(f, ({ left: 'links', hit: 'getroffen', rig
 /** Beyond this distance from the hole the app measures from the tee (planning at home or on another hole). */
 const ON_HOLE_M = 1500;
 /** Landing points the player can plan per hole (e.g. drive, layup, approach). */
+// Shots are not logged by hand on the map any more (Sascha, 13.10.2026): they come from the GPS track and are
+// checked after the round. The code stays for Ben (spec 004 decides); false = the quick-mode buttons in every mode.
+const MANUAL_SHOTS = false;
+const GREEN_AUTO_M = 120; // green chart comes up by itself from here on
 const MAX_TARGETS = 3;
 
 export function HoleScreen(props: {
@@ -251,9 +255,10 @@ export function HoleScreen(props: {
   const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope, []);
   const missMapOn = useMemo(() => loadCaddieSettings().missMap, []);
   const [showMiss, setShowMiss] = useState(missMapOn);
-  // Green slope: automatic near the green, or shown any time with the "Green" button.
-  const [showGreen, setShowGreen] = useState(false);
-  useEffect(() => setShowGreen(false), [i]); // a green opened on the last hole does not follow to the next tee
+  // Green slope: automatic from 120 m before the green (Sascha, 13.10.2026), or any time with the "Green" button.
+  // null = automatic; true/false = the player switched it on or off on this hole.
+  const [showGreen, setShowGreen] = useState<boolean | null>(null);
+  useEffect(() => setShowGreen(null), [i]); // a green opened on the last hole does not follow to the next tee
   const carryBag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []); // with the wedges' partial swings
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
@@ -429,6 +434,7 @@ export function HoleScreen(props: {
     const plan = plans[i] ?? { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null };
     const pin = plan.pin ?? mapData.greenCenter;
     const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
+    const shotButtons = detailMode && MANUAL_SHOTS;
     const from = onHole ? player!.pos : mapData.tee;
     // Without a mapped green outline (player-set green) only the centre distance is known.
     const green = mapData.green ? greenFrontBack(from, mapData.green) : { front: null, center: distanceM(from, mapData.greenCenter), back: null };
@@ -493,10 +499,12 @@ export function HoleScreen(props: {
     // Green slope when the player is on or next to the green (or planning from the sofa).
     const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
     const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || (round.preview === true && hole.par === 3);
-    const greenVisible = nearGreen || showGreen;
+    const greenAuto = distanceM(from, mapData.greenCenter) <= GREEN_AUTO_M || nearGreen;
+    const greenVisible = nearGreen || (showGreen ?? greenAuto);
     const chart = greenSlopeOn ? GREEN_CHARTS[round.courseId]?.[hole.label] : undefined;
     // Green chart on screen: keep the view free (caddie folded, no hint).
-    const greenFocus = chart != null && greenVisible;
+    // Only around the green (≤ 40 m) – on the approach the caddie stays at hand next to the green chart.
+    const greenFocus = chart != null && greenVisible && nearGreen;
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
     const grid = grids?.[hole.label] ?? null;
     const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos)
@@ -582,7 +590,7 @@ export function HoleScreen(props: {
           track={detailMode ? track : undefined}
           missMap={miss}
           aimPoint={null}
-          greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners } : null}
+          greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}
           onTargetsChange={(targets) => setPlan({ targets: [...passedTargets, ...targets] })}
@@ -697,7 +705,7 @@ export function HoleScreen(props: {
           {offlineHint}
           <div className="map-tools">
             {(slope || chart) && !nearGreen && (
-              <button type="button" className="map-btn round tool" aria-pressed={showGreen} aria-label={showGreen ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!showGreen)}>
+              <button type="button" className="map-btn round tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!greenVisible)}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <ellipse cx="12" cy="17" rx="9" ry="4" fill="currentColor" opacity="0.35" />
                   <path d="M7 16.5l4-2.5 3 1.8 4-2.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -826,7 +834,7 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
-          {detailMode && (
+          {shotButtons && (
             <div className="map-actions detail">
               <button type="button" className="map-btn" onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
                 {tr('+ Target', '+ Ziel')}
@@ -850,11 +858,11 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
-          <div className={`map-nav${detailMode ? '' : ' with-target'}`}>
+          <div className={`map-nav${shotButtons ? '' : ' with-target'}`}>
             <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
               ←
             </button>
-            {!detailMode && (
+            {!shotButtons && (
               <button type="button" className="map-btn" onClick={addTarget} disabled={shownTargets.length >= MAX_TARGETS} aria-label={tr('Add a target on the map', 'Ziel auf der Karte hinzufügen')}>
                 {tr('+ Target', '+ Ziel')}
               </button>
@@ -970,7 +978,7 @@ export function HoleScreen(props: {
         <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="row">
             <span className="row-label">{tr('Shots', 'Schläge')}</span>
-            <span className="muted small">{hasShots ? tr('Strokes, fairway, penalties and bunker come from the shots', 'Schläge, Fairway, Strafschläge und Bunker ergeben sich aus den Schlägen') : tr('Track shot by shot on the map, or enter the score below', 'Erfasse Schlag für Schlag auf der Karte oder trage unten den Score ein')}</span>
+            <span className="muted small">{hasShots ? tr('Strokes, fairway, penalties and bunker come from the shots', 'Schläge, Fairway, Strafschläge und Bunker ergeben sich aus den Schlägen') : MANUAL_SHOTS ? tr('Track shot by shot on the map, or enter the score below', 'Erfasse Schlag für Schlag auf der Karte oder trage unten den Score ein') : tr('Enter the score below – the shots come from the GPS track, check them after the round', 'Trag unten den Score ein – die Schläge kommen aus der GPS-Spur, du prüfst sie nach der Runde')}</span>
           </div>
           {hasShots && (
             <ol className="shot-list">

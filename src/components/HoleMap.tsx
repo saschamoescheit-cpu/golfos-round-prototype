@@ -26,7 +26,7 @@ export interface HoleMapProps {
   /** A marker for the caddie's aim point with a dashed line from the player (not used on the hole map any more). */
   aimPoint?: LngLat | null;
   /** Green chart image (slope colours, arrows, contours) placed by its corners. */
-  greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat] } | null;
+  greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat]; roomy?: boolean } | null; // roomy: map buttons still on screen
   /** Green slope: arrow on the green pointing where it falls (compass degrees). */
   greenSlope?: { pos: LngLat; downDeg: number; label: string };
   /** Putt read on the green: the ball, the rolling line and the point to aim at next to the hole. */
@@ -114,14 +114,21 @@ export function HoleMap(props: HoleMapProps) {
   }, [props.holeKey, props.data]);
 
   // Green chart shown: zoom onto the green (keeping the playing direction); hidden again: back to the hole.
-  const chartKey = props.greenChart ? props.greenChart.url : '';
+  const chartKey = props.greenChart ? `${props.greenChart.url}${props.greenChart.roomy ? '|roomy' : ''}` : ''; // closer zoom once at the green
   useEffect(() => {
     const m = map.current;
     if (!m || !ready.current) return;
     const c = latest.current.greenChart;
     if (c) {
       const b = c.corners.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(c.corners[0], c.corners[0]));
-      m.fitBounds(b, { bearing: m.getBearing(), padding: { top: 150, bottom: 260, left: 20, right: 20 }, maxZoom: 21, duration: 600 });
+      // Room for the boxes above and the buttons below – scaled down on small screens, or MapLibre refuses to zoom.
+      const h = m.getContainer().clientHeight;
+      let top = 150;
+      let bottom = c.roomy ? 300 : 260;
+      const k = Math.min(1, (h - 160) / (top + bottom));
+      top *= k;
+      bottom *= k;
+      m.fitBounds(b, { bearing: m.getBearing(), padding: { top, bottom, left: 20, right: 20 }, maxZoom: 21, duration: 600 });
     } else fit(m, latest.current.data, latest.current.padding);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartKey]);
