@@ -169,6 +169,9 @@ export function Home(props: {
           {shown.map((r) => {
             const me = r.players.find((p) => p.isMe)!;
             const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
+            // a recent round whose shots are not all checked yet: a reminder (strokes gained needs checked holes)
+            const recent = Date.now() - new Date(r.createdAt).getTime() < 14 * 24 * 3600 * 1000;
+            const unchecked = recent && r.entries[me.id].some((e) => !e.pickedUp && (!e.detail?.shots.length || e.detail.shots.some((s) => s.review)));
             return (
               <li key={r.id}>
                 <button type="button" className="list-item" onClick={() => props.onOpen(r)}>
@@ -177,6 +180,7 @@ export function Home(props: {
                     <span className="muted small">
                       {[new Date(r.createdAt).toLocaleDateString(locale), loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`].filter(Boolean).join(' · ')}
                     </span>
+                    {unchecked && <span className="small good-text" style={{ display: 'block', fontWeight: 600 }}>{tr('Check your shots →', 'Schläge prüfen →')}</span>}
                   </span>
                   <span style={{ textAlign: 'right' }}>
                     <span style={{ font: '700 20px var(--display)' }}>{t.gross}</span>
