@@ -59,7 +59,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   // 9 holes: half the 18-hole course handicap (WHS uses 9-hole ratings; half of the 18-hole one is within a stroke).
   const rating: TeeRating | null = tee && (holes.length === 18 || holes.length === 9) ? (RATINGS[props.course.id]?.[tee] ?? null) : null;
   const nine = holes.length === 9;
-  const par = nine ? props.course.holes.filter((h) => h.loop === holes[0]?.loop).reduce((sum, h) => sum + (h.par || 0), 0) : holes.reduce((sum, h) => sum + (h.par || 0), 0);
+  // the rating is for 18 holes: its par too (a loop of 9 holes counts twice)
+  const loopHoles = props.course.holes.filter((h) => h.loop === holes[0]?.loop);
+  const par = nine ? loopHoles.reduce((sum, h) => sum + (h.par || 0), 0) * (loopHoles.length <= 9 ? 2 : 1) : holes.reduce((sum, h) => sum + (h.par || 0), 0);
   const parseHcp = (s: string): number | null => {
     const n = Number(s.replace(',', '.'));
     return s.trim() === '' || !Number.isFinite(n) ? null : Math.round(n);
