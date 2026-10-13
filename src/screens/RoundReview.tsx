@@ -172,6 +172,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       const derived = deriveFromShots(found, list[i].putts, h.par, m);
       if (list[i].strokes != null) delete derived.strokes; // keep the score entered on the course
       if ((e.penalties ?? 0) > (derived.penalties ?? 0)) delete derived.penalties; // and its penalties, not yet placed
+      // what the player said on the course beats the GPS (a ball at the fairway edge is ±5 m): fairway and bunker
+      if (e.fairway != null) delete derived.fairway;
+      if (e.greensideBunker) {
+        delete derived.greensideBunker;
+        delete derived.upAndDown;
+      }
       list[i] = { ...list[i], detail: { ...found, pin: m.greenCenter }, ...derived };
     });
     props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
