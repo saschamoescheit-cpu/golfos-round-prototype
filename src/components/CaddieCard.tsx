@@ -79,9 +79,12 @@ export function CaddieCard(props: {
 }
 
 type Line = { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted'; lead?: boolean };
-/** Folded card: the one line that matters – a warning first, else the plan. */
+/** Folded card: the lines that matter – a warning, and the reason for the plan when the caddie chose one (else the plan). */
 function one(lines: Line[]): Line[] {
-  const l = lines.find((x) => x.tone === 'warn') ?? lines.find((x) => x.lead) ?? lines.find((x) => x.tone === 'plan') ?? lines[0];
+  const warn = lines.find((x) => x.tone === 'warn');
+  const lead = lines.find((x) => x.lead);
+  if (warn && lead) return [warn, lead];
+  const l = warn ?? lead ?? lines.find((x) => x.tone === 'plan') ?? lines[0];
   return l ? [l] : [];
 }
 

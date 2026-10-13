@@ -163,7 +163,9 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   if (o.leave && ap.kind === 'approach' && !ownTarget && (!ap.strategy || ap.strategy.kind === 'pin')) lines.push({ text: o.leave, tone: 'plan' });
   // "Lay up to 150 m" says the same as the aim line – only in the spoken summary.
   const layupLine = ap.kind === 'layup' && !ownTarget && aim != null;
-  if (holePlan && !layupLine && !(warning && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan' });
+  // The tee strategy's sentence ("3-wood instead of driver: …") is the golf reason for the club – shown folded too.
+  const teeReason = o.teeShot && ap.teePlan != null && holePlan === ap.teePlan;
+  if (holePlan && !layupLine && !(warning && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan', ...(teeReason ? { lead: true } : {}) });
   if (hang) lines.push({ text: hang.text, tone: 'plan' });
   else if (!ownTarget && ap.kind !== 'approach') {
     const h = slopeAdvice(crossSlopeAt(o.slopes, profileAlong(data, ap.pos)));
