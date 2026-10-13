@@ -638,6 +638,12 @@ export function HoleScreen(props: {
             </span>
           )}
           <span className="map-from">{onHole ? `GPS ±${Math.round(player!.accuracy)} m` : tr('from tee', 'vom Abschlag')}</span>
+          {/* How far the tee shot went: straight line from the tee to here, always on screen (Sascha, 13.10.2026) */}
+          {onHole && !round.preview && distanceM(mapData.tee, player!.pos) >= 20 && (
+            <span className="map-from-tee">
+              {tr('from tee', 'vom Abschlag')} <strong>{fmt(distanceM(mapData.tee, player!.pos))} {unit}</strong>
+            </span>
+          )}
         </div>
 
         {pinSheet && mapData.green && (
