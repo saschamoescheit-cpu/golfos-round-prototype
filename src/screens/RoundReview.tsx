@@ -340,6 +340,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         <span className="good-text">{tr('green = strokes gained', 'grün = Schläge gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.
       </p>
 
+      {d && d.shots.length > 0 && (e.penalties ?? 0) > d.shots.filter((s) => s.penalty).length && (
+        <div className="notice">
+          {tr(
+            `${e.penalties} penalty ${e.penalties === 1 ? 'stroke' : 'strokes'} from the course – tap the shot it belongs to and choose water or out of bounds.`,
+            `${e.penalties} Strafschlag${e.penalties === 1 ? '' : 'e'} vom Platz – tippe den Schlag an, zu dem ${e.penalties === 1 ? 'er' : 'sie'} gehör${e.penalties === 1 ? 't' : 'en'}, und wähle Wasser oder Aus.`,
+          )}
+        </div>
+      )}
       {mismatch && (
         <div className="notice">
           {tr(
