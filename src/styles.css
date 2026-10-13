@@ -463,12 +463,14 @@ table.sc { width: 100%; border-collapse: collapse; table-layout: fixed; font-var
 .mark.birdie { border: 1.5px solid var(--brand-text); border-radius: 50%; color: var(--brand-text); }
 .mark.eagle { background: var(--brand-text); border-radius: 50%; color: #0e1418; }
 .mark.bogey { border: 1.5px solid var(--muted); border-radius: 3px; }
-.mark.double { background: #ff8a7f; border-radius: 3px; color: #0e1418; }
+.mark.double { border: 1.5px solid #ff8a7f; border-radius: 3px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px #ff8a7f; color: #ff8a7f; }
+.mark.triple { background: #ff8a7f; border-radius: 3px; color: #0e1418; }
 .hcp-dots { position: absolute; top: -6px; right: -5px; font: normal 10px/1 var(--body); letter-spacing: -1px; color: var(--warn); }
 .hcp-dot { color: var(--warn); }
 .sc-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
 .sc-legend > span { display: inline-flex; align-items: center; gap: 5px; }
 .sc-legend .mark { width: 20px; height: 20px; font-size: 11px; }
+.sc-legend .mark.double { margin: 0 4px; } /* room for the outer square */
 table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .sc .hcp-dots { top: -6px; right: -4px; font-size: 13px; }
 /* History (feature 012): trend chart, personal bests, course stats */

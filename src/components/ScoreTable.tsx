@@ -4,12 +4,13 @@ import { TEES } from '../data/tees';
 import { tr } from '../lib/i18n';
 
 // The digital scorecard laid out like the paper one: per nine a block with the holes across, rows for metres,
-// stroke index, par and every player's score (golf marks: circle = birdie, square = bogey), Stableford points and putts.
+// stroke index, par and every player's score (golf marks: filled circle = eagle, circle = birdie, square = bogey,
+// double square = double bogey, filled square = triple bogey or worse), Stableford points and putts.
 
-type Mark = 'eagle' | 'birdie' | 'par' | 'bogey' | 'double';
+type Mark = 'eagle' | 'birdie' | 'par' | 'bogey' | 'double' | 'triple';
 const markFor = (gross: number, par: number): Mark => {
   const d = gross - par;
-  return d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : d === 1 ? 'bogey' : 'double';
+  return d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : d === 1 ? 'bogey' : d === 2 ? 'double' : 'triple';
 };
 
 export function ScoreTable(props: { round: Round; onHole?: (index: number) => void }) {
@@ -129,10 +130,11 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
         );
       })}
       <div className="sc-legend muted small">
-        <span><span className="mark eagle">3</span> Eagle</span>
-        <span><span className="mark birdie">3</span> Birdie</span>
-        <span><span className="mark bogey">5</span> Bogey</span>
-        <span><span className="mark double">6</span> {tr('Double+', 'Doppel+')}</span>
+        <span><span className="mark eagle" aria-hidden="true" /> Eagle</span>
+        <span><span className="mark birdie" aria-hidden="true" /> Birdie</span>
+        <span><span className="mark bogey" aria-hidden="true" /> Bogey</span>
+        <span><span className="mark double" aria-hidden="true" /> {tr('Double bogey', 'Doppelbogey')}</span>
+        <span><span className="mark triple" aria-hidden="true" /> {tr('Triple bogey+', 'Triple-Bogey+')}</span>
         <span><span className="hcp-dot">•</span> {tr('handicap stroke', 'Vorgabeschlag')}</span>
         {round.players.some((p) => round.entries[p.id].some((e) => e.pickedUp)) && <span>* {tr('picked up', 'aufgehoben')}</span>}
       </div>
