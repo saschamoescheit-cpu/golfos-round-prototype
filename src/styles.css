@@ -652,3 +652,9 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 :root[data-theme='sun'] .mark.double { border-color: #c2362b; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px #c2362b; }
 :root[data-theme='sun'] .sg-badge.good { color: #2f5a00; }
 .map-score strong.placeholder, .map-score-chip strong.placeholder { color: var(--muted); font-weight: 500; }
+/* Course book on small phones (iPhone SE): sketch above the text – side by side left the text a few words wide */
+@media (max-width: 380px) {
+  .book-body { grid-template-columns: 1fr; }
+  .book-sketch { display: flex; justify-content: center; }
+  .book-sketch .sketch { width: 55%; max-height: 260px; }
+}
