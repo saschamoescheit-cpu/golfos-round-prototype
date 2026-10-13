@@ -427,7 +427,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .sg-hole-row { display: grid; gap: 4px; }
 .sg-hole-box { border-radius: 8px; padding: 4px 2px; text-align: center; color: #0e1418; line-height: 1.15; }
 .sg-hole-box strong { display: block; font: 700 16px var(--display); font-variant-numeric: tabular-nums; }
-.sg-hole-box span { font-size: 10px; font-weight: 600; white-space: nowrap; }
+.sg-hole-box span { display: block; font-size: 10px; font-weight: 600; white-space: normal; overflow-wrap: anywhere; } /* "12 Schläge" wraps on small phones instead of being cut */
 .sg-hole-box.good { background: var(--brand-text); }
 .sg-hole-box.bad { background: #ff8a7f; }
 .sg-hole-row.labels span { text-align: center; font-size: 11px; color: var(--muted); line-height: 1.2; }
@@ -642,3 +642,12 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 /* Round set-up: loop name and number of holes on two lines */
 .choice.choice-loop { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .choice.choice-loop strong { font-size: 18px; }
+/* Sun mode: black figures on a light green (the dark brand green behind black type was unreadable), deeper red text */
+:root[data-theme='sun'] .sg-hole-box.good,
+:root[data-theme='sun'] .sg-diff.good,
+:root[data-theme='sun'] .mark.eagle { background: #9fd36a; }
+:root[data-theme='sun'] .tee-bar .hit { background: #6aa531; }
+:root[data-theme='sun'] .sg-badge.bad,
+:root[data-theme='sun'] .mark.double { color: #b42318; }
+:root[data-theme='sun'] .mark.double { border-color: #c2362b; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px #c2362b; }
+:root[data-theme='sun'] .sg-badge.good { color: #2f5a00; }

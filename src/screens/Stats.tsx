@@ -214,7 +214,7 @@ export function Stats(props: { rounds: Round[]; onBack: () => void; onOpenRound:
                       </td>
                       <td>{c.median} m</td>
                       <td className="muted">
-                        {c.min}–{c.max} m
+                        {c.max - c.min >= 2 ? `${c.min}–${c.max} m` : '–'}
                       </td>
                       <td>{tendencyText(tend.get(c.club))}</td>
                       <td className="muted">{c.shots}</td>
