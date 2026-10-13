@@ -1,6 +1,6 @@
 import type { DetailEntry, Lie, Round } from '../types';
 import { distanceM } from './geo';
-import { firstPuttM } from './shots';
+import { firstPuttM, shotsComplete } from './shots';
 import { tr } from './i18n';
 
 // Strokes gained (feature 007): every shot is measured against the average number of strokes a tour pro
@@ -98,6 +98,9 @@ export function roundsSg(rounds: Round[]): SgSummary | null {
       if (!e.detail || e.pickedUp) return;
       // Holes whose shots do not add up to the score are left out until the player corrected them.
       const d = e.detail;
+      // Only holes the player checked: shots from GPS detection that are not confirmed yet, or a shot list that
+      // does not start at the tee, would count wrong positions (Sascha, 13.10.2026: "−20 against Hcp 10").
+      if (!shotsComplete(d) || d.shots.some((x) => x.review)) return;
       const count = d.shots.length + d.shots.filter((x) => x.penalty).length + (d.holedOut ? 0 : (e.putts ?? 0));
       if (e.strokes != null && count !== e.strokes) return;
       const s = holeSg(d, e.putts, h.par);
