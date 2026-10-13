@@ -30,6 +30,7 @@ import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
 import { clubCode, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
+import { PocketMode } from '../components/PocketMode';
 
 const fairwayName = (f: string) => tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f);
 
@@ -237,6 +238,8 @@ export function HoleScreen(props: {
   // Hidden by the player until the caddie has something new to say (new hole, new shot, new warning).
   // The caddie card opens only on a tap; new advice shows as a dot on the caddie button ("!" with a warning).
   const [caddieOpen, setCaddieOpen] = useState(false);
+  // pocket mode: screen stays awake but black, so the GPS keeps recording (feature 004)
+  const [pocket, setPocket] = useState(false);
   const [seenSig, setSeenSig] = useState<string | null>(null);
   useEffect(() => setCaddieOpen(false), [i]); // every hole starts with the map
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
@@ -725,6 +728,15 @@ export function HoleScreen(props: {
                 </svg>
               </button>
             )}
+            {!round.preview && (
+              <button type="button" className="map-btn round tool" aria-label={tr('Pocket mode: screen black, GPS keeps recording', 'Taschenmodus: Bildschirm schwarz, GPS zeichnet weiter auf')} title={tr('Pocket mode', 'Taschenmodus')} onClick={() => setPocket(true)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 4h14v8a7 7 0 0 1-14 0z" />
+                  <path d="M5 8h14" />
+                  <circle cx="12" cy="13" r="1.6" fill="currentColor" stroke="none" />
+                </svg>
+              </button>
+            )}
           </div>
           {putt && !(detailMode && holeDone) ? (
             <div className="map-hint detected putt-read" style={{ color: 'var(--text)' }}>
@@ -835,6 +847,7 @@ export function HoleScreen(props: {
           </div>
         </div>
         {sheetEl}
+        {pocket && <PocketMode roundId={round.id} onExit={() => setPocket(false)} />}
       </main>
     );
   }
