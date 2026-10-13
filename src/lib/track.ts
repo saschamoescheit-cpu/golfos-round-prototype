@@ -265,9 +265,16 @@ export function trackForHole(track: TrackPoint[], hole: HoleMapData, nextHole: H
 export function autoShot(track: TrackPoint[], hole: HoleMapData, now: LngLat): { from: LngLat; length: number; fromTee: boolean } | null {
   const toGreen = (p: LngLat) => distanceM(p, hole.greenCenter);
   if (distToLine(now, hole.line) > DETECT.corridorM || toGreen(now) > toGreen(hole.tee) - 15) return null;
-  const pts = track.filter((x) => x.acc <= DETECT.maxAccuracyM);
-  // Anchors: stops, and the last fix before a gap of ≥ 30 s (phone put away).
+  const all = track.filter((x) => x.acc <= DETECT.maxAccuracyM);
+  // Only what happened on this hole: since the player was last on its tee – or, with the phone in the pocket on the
+  // tee, since he was last away from the hole (a stop on a neighbouring green must not start this shot).
+  let since = -Infinity;
+  for (const x of all) if (distanceM(x.p, hole.tee) <= 40) since = x.t;
+  if (since === -Infinity) for (const x of all) if (distToLine(x.p, hole.line) > DETECT.corridorM) since = x.t;
+  const pts = all.filter((x) => x.t >= since);
+  // Anchors: stops, the app opened again (by the ball), and the last fix before a gap of ≥ 30 s (phone put away).
   const anchors: { t: number; p: LngLat }[] = findStops(pts).map((s) => ({ t: s.to, p: s.p }));
+  for (const x of pts) if (x.open) anchors.push({ t: x.t, p: x.p });
   for (let k = 0; k + 1 < pts.length; k++) if (pts[k + 1].t - pts[k].t >= 30000) anchors.push({ t: pts[k].t, p: pts[k].p });
   anchors.sort((a, b) => b.t - a.t); // newest first
   const here = (p: LngLat) => distanceM(p, now) < 15;

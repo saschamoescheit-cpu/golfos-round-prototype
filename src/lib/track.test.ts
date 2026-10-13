@@ -172,6 +172,24 @@ describe('automatic shot length', () => {
     expect(r.fromTee).toBe(false);
     expect(Math.abs(r.length - distanceM(ball2, ball3))).toBeLessThan(5);
   });
+  it('a stop before the tee of this hole (the green next door) does not start the shot', () => {
+    const w = new Walker(shift(pointAt(hole1.line, 150), 30, 0)); // putting on a neighbouring green beside the fairway
+    w.stand(90);
+    w.walk(hole1.tee);
+    w.stand(20); // tee shot, then the phone goes into the pocket
+    w.t += 150000;
+    const r = autoShot(w.pts, hole1, ball2)!;
+    expect(r.fromTee).toBe(true);
+  });
+  it('the app opened by the ball counts as where the last shot came from', () => {
+    const pts: TrackPoint[] = [
+      { t: 0, p: hole1.tee, acc: 5 },
+      { t: 200000, p: ball2, acc: 6, open: true }, // a quick look by the ball, then the shot
+    ];
+    const r = autoShot(pts, hole1, ball3)!;
+    expect(r.fromTee).toBe(false);
+    expect(Math.abs(r.length - distanceM(ball2, ball3))).toBeLessThan(2);
+  });
   it('still on the tee: no shot', () => {
     expect(autoShot([], hole1, hole1.tee)).toBeNull();
   });
