@@ -75,7 +75,7 @@ class Phone {
   open = true;
   justOpened = false;
   openedAt = -1e9;
-  constructor(public mode: 'open' | 'locked') {}
+  constructor(public mode: 'open' | 'locked' | 'cart') {}
   fix(p: LngLat) {
     this.t += 1000;
     // slowly wandering error (multipath, satellites) + white noise + now and then a wild fix
@@ -133,7 +133,7 @@ interface Score {
   exactHoles: number;
 }
 
-function playRound(mode: 'open' | 'locked'): Score {
+function playRound(mode: 'open' | 'locked' | 'cart'): Score {
   const phone = new Phone(mode);
   const pl = new Player(phone, holes[0].d.tee);
   const truths: { shots: LngLat[]; green: LngLat }[] = [];
@@ -146,7 +146,26 @@ function playRound(mode: 'open' | 'locked'): Score {
     pl.walk(h.d.tee);
     phone.setOpen(true);
     pl.stand(Math.round(between(15, 40)));
-    for (let k = 1; k < b.shots.length; k++) {
+    // cart: the path runs 25–40 m beside the hole; the player drives, stops by the ball (or a partner's), walks over
+    const side = (rnd() < 0.5 ? 1 : -1) * between(25, 40);
+    const onPath = (q: LngLat) => move(q, bearingDeg(h.d.tee, h.d.greenCenter) + 90, side);
+    for (let k = 1; k < b.shots.length && mode === 'cart'; k++) {
+      phone.setOpen(false);
+      const target = b.shots[k];
+      pl.walk(onPath(pl.at), 1.2); // back to the cart
+      if (rnd() < 0.5) {
+        // stop by a partner's ball first, he walks over, we wait in the cart
+        const mid = move(pl.at, bearingDeg(pl.at, onPath(target)), distanceM(pl.at, onPath(target)) * between(0.3, 0.7));
+        pl.walk(mid, 5);
+        pl.stand(Math.round(between(20, 45)));
+      }
+      pl.walk(onPath(target), 5); // drive
+      pl.stand(Math.round(between(5, 15))); // park, pick the club
+      pl.walk(target, 1.2);
+      phone.setOpen(true);
+      pl.stand(Math.round(between(15, 35)));
+    }
+    for (let k = 1; k < b.shots.length && mode !== 'cart'; k++) {
       phone.setOpen(false);
       const target = b.shots[k];
       // a partner's ball on the way: wait next to it (10–30 m off the line) for a while
@@ -221,7 +240,7 @@ function playRound(mode: 'open' | 'locked'): Score {
   return s;
 }
 
-for (const mode of ['open', 'locked'] as const) {
+for (const mode of (process.env.MODES ? process.env.MODES.split(',') : ['open', 'locked', 'cart']) as ('open' | 'locked' | 'cart')[]) {
   const tot: Score = { truth: 0, found: 0, missed: 0, wrong: 0, green: 0, greenFound: 0, holes: 0, exactHoles: 0 };
   for (let r = 0; r < ROUNDS; r++) {
     const s = playRound(mode);
