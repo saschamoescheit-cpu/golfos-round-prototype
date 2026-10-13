@@ -769,7 +769,7 @@ export function HoleScreen(props: {
                 </button>
               </div>
               <div className="field">
-                <label>{tr('Strokes', 'Schläge')}</label>
+                <label>{tr('Strokes (with penalties)', 'Schläge (mit Strafschlägen)')}</label>
                 <Segmented<number>
                   label={tr('Strokes', 'Schläge')}
                   value={myEntry.strokes}
@@ -795,6 +795,15 @@ export function HoleScreen(props: {
                   options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
                 />
               </div>
+              <div className="field">
+                <label>{tr('Penalty strokes (water, out of bounds)', 'Strafschläge (Wasser, Aus)')}</label>
+                <Segmented<number>
+                  label={tr('Penalty strokes', 'Strafschläge')}
+                  value={myEntry.penalties ?? 0}
+                  onChange={(v) => update(me.id, { penalties: v ?? 0 })}
+                  options={[0, 1, 2, 3].map((n) => ({ value: n, label: String(n) }))}
+                />
+              </div>
               <div className="score-sheet-foot">
                 <button
                   type="button"
@@ -804,7 +813,7 @@ export function HoleScreen(props: {
                     setView('score');
                   }}
                 >
-                  {tr('Penalties, fairway …', 'Strafschläge, Fairway …')}
+                  {tr('Fairway, bunker …', 'Fairway, Bunker …')}
                 </button>
                 <button type="button" className="btn-primary" onClick={() => setScoreSheet(false)}>
                   {tr('Done', 'Fertig')}
