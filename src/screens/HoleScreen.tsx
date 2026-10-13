@@ -29,6 +29,7 @@ import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { HoleSetup } from '../components/HoleSetup';
 import { clubCode, tr } from '../lib/i18n';
+import { swingMark, withPartials } from '../lib/partials';
 
 const fairwayName = (f: string) => tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f);
 
@@ -207,7 +208,7 @@ export function HoleScreen(props: {
   const [showMiss, setShowMiss] = useState(missMapOn);
   // Green slope: automatic near the green, or shown any time with the "Green" button.
   const [showGreen, setShowGreen] = useState(false);
-  const carryBag = useMemo(() => loadCarryBag() ?? DEFAULT_CARRY, []);
+  const carryBag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []); // with the wedges' partial swings
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
   const caddieSettings = useMemo(() => loadCaddieSettings(), []);
@@ -503,7 +504,7 @@ export function HoleScreen(props: {
     const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
 
     // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
-    const caddieSig = cad ? `${i}|${cad.advice.club}|${cad.warning ?? ''}|${cad.ap.kind}|${Math.round(cad.pl.distance / 25)}` : '';
+    const caddieSig = cad ? `${i}|${cad.advice.club}${cad.advice.swing ?? ''}|${cad.warning ?? ''}|${cad.ap.kind}|${Math.round(cad.pl.distance / 25)}` : '';
     const caddieShown = cad != null && !greenFocus && caddieOpen;
     const caddieNews = cad != null && !greenFocus && !caddieOpen && seenSig !== caddieSig;
     const toggleCaddie = () => {
@@ -720,7 +721,7 @@ export function HoleScreen(props: {
               onHide={toggleCaddie}
               note={note}
               holeLabel={hole.label}
-              clubCode={clubCode(cad.advice.club)}
+              clubCode={clubCode(cad.advice.club) + swingMark(cad.advice.swing)}
               lie={teeShot ? null : cad.lie}
               onLie={(l) => setLieSet({ sig: lieSig, lie: l })}
               onNote={(n) => {
