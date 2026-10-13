@@ -592,3 +592,10 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 /* on the hole map the bar sits in the top row (between back and scorecard), never over the distances */
 .map-screen + .speech-bar { top: calc(env(safe-area-inset-top) + 10px); left: 66px; right: 66px; transform: none; max-width: none; justify-content: center; min-height: 46px; }
 .map-screen + .speech-bar .grow { display: none; }
+/* New caddie advice: a dot on the caddie button, "!" when it is a warning */
+.map-btn.round.tool { position: relative; }
+.tool-badge {
+  position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px; border-radius: 8px; padding: 0 4px;
+  background: var(--brand-text); border: 2px solid var(--bg); font: 800 11px/12px var(--body); color: #fff; text-align: center;
+}
+.tool-badge.warn { background: #ff5a4e; min-width: 20px; height: 20px; border-radius: 10px; font-size: 13px; line-height: 16px; top: -5px; right: -5px; }

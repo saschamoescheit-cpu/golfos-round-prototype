@@ -23,7 +23,7 @@ export interface HoleMapProps {
   onTrackMove?: (id: string, pos: LngLat) => void;
   /** "Where not to miss": points with relative cost 0 (good miss) … 1 (expensive miss). */
   missMap?: { pos: LngLat; cost: number }[];
-  /** The caddie's aim point (gold), with a dashed line from the player. */
+  /** A marker for the caddie's aim point with a dashed line from the player (not used on the hole map any more). */
   aimPoint?: LngLat | null;
   /** Green chart image (slope colours, arrows, contours) placed by its corners. */
   greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat] } | null;

@@ -85,7 +85,7 @@ export interface CaddieFacts {
   club: string;
   distance: number;
   playsLike: number;
-  target: string; // 'the pin' | 'the gold marker' | 'target 1' (in the player's language)
+  target: string; // 'the pin' | 'target 1' | '150 m' (in the player's language)
   targetTo: string; // 'to the pin' / 'zur Fahne'
   aim: string | null;
   plan: string | null;
