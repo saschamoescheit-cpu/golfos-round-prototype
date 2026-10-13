@@ -4,7 +4,7 @@ import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, greenInRegulation, handicapStrokes, playerTotals } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
-import { autoShot, loadTrack, recordFix } from '../lib/track';
+import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { PositionFilter } from '../lib/gpsfilter';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp } from '../lib/storage';
@@ -553,7 +553,8 @@ export function HoleScreen(props: {
     const shownTargets = plan.targets.filter((t) => !passed(t));
     // Automatic shot length: from the last place the player stood (or the tee) to here – no tapping needed.
     const autoLen = onThisHole && player && !round.preview ? autoShot(loadTrack(round.id), mapData, player.pos) : null;
-    const teeDist = onThisHole && player && !round.preview ? distanceM(mapData.tee, player.pos) : null;
+    // from where the player stood on the tee (GPS), else the tee of the map
+    const teeDist = onThisHole && player && !round.preview ? distanceM(teeSpot(loadTrack(round.id), mapData) ?? mapData.tee, player.pos) : null;
     const fromTee = teeDist != null && teeDist >= 20 ? teeDist : null;
     // ---------- AI caddie ----------
     const teeShot = !onHole || distanceM(from, mapData.tee) < 30;

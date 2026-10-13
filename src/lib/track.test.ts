@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clubForLength, detectHoleShots, findStops, splitRound, trackForHole, type TrackPoint } from './track';
+import { clubForLength, detectHoleShots, findStops, splitRound, teeSpot, trackForHole, type TrackPoint } from './track';
 import { distanceM, holeMapData, pointAt } from './geo';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 import type { LngLat } from '../types';
@@ -209,6 +209,18 @@ describe('automatic shot length', () => {
     const r = autoShot([], hole1, ball2)!;
     expect(r.fromTee).toBe(true);
     expect(Math.abs(r.length - 225)).toBeLessThan(5);
+  });
+  it('the tee shot is measured from where the player stood on the tee, not from the tee of the map', () => {
+    const realTee = shift(hole1.tee, -12, 6); // the yellow box beside the mapped tee point
+    const w = new Walker(realTee);
+    w.stand(40);
+    w.walk(ball2);
+    expect(distanceM(teeSpot(w.pts, hole1)!, realTee)).toBeLessThan(4);
+    const r = autoShot(w.pts, hole1, ball2)!;
+    expect(r.fromTee).toBe(true);
+    expect(Math.abs(r.length - distanceM(realTee, ball2))).toBeLessThan(4);
+    // nothing recorded on the tee: the tee of the map
+    expect(teeSpot([], hole1)).toBeNull();
   });
   it('app looked at by the ball, put away, opened at the next ball: length of that shot', () => {
     const w = new Walker(hole1.tee);

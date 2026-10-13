@@ -299,6 +299,26 @@ export function trackForHole(track: TrackPoint[], hole: HoleMapData, nextHole: H
  * or the last fix before the app went to the background) to where he is now. On the first shot the tee is
  * known anyway. Only places on this hole count; the player must have come ≥ 15 m closer to the green.
  */
+/**
+ * Where the player really teed off: the last place near the tee (≤ 40 m) where he stood still or opened the app.
+ * The tee of the map is a guess (the line cut to the scorecard length of the played tee, up to 14 m off at
+ * Hetzenhof); null when the track knows nothing (phone in the pocket on the tee).
+ */
+export function teeSpot(track: TrackPoint[], hole: HoleMapData): LngLat | null {
+  const near = track.filter((x) => x.acc <= DETECT.maxAccuracyM && distanceM(x.p, hole.tee) <= 40);
+  if (!near.length) return null;
+  // only the last visit to this tee (a tee next to an earlier green is passed before)
+  let start = near.length - 1;
+  while (start > 0 && near[start].t - near[start - 1].t < 5 * 60000) start--;
+  const visit = near.slice(start);
+  // on the tee itself (≤ 25 m): not a stop on a green or path nearby
+  const onTee = (p: LngLat) => distanceM(p, hole.tee) <= 25;
+  const stop = findStops(visit).filter((x) => onTee(x.p)).pop();
+  if (stop) return stop.p;
+  const open = visit.filter((x) => x.open && onTee(x.p)).pop();
+  return open ? open.p : null;
+}
+
 export function autoShot(track: TrackPoint[], hole: HoleMapData, now: LngLat): { from: LngLat; length: number; fromTee: boolean } | null {
   const toGreen = (p: LngLat) => distanceM(p, hole.greenCenter);
   if (distToLine(now, hole.line) > DETECT.corridorM || toGreen(now) > toGreen(hole.tee) - 15) return null;
@@ -316,8 +336,11 @@ export function autoShot(track: TrackPoint[], hole: HoleMapData, now: LngLat): {
   anchors.sort((a, b) => b.t - a.t); // newest first
   const here = (p: LngLat) => distanceM(p, now) < 15;
   const from = anchors.find((a) => !here(a.p) && distToLine(a.p, hole.line) <= DETECT.corridorM && toGreen(a.p) >= toGreen(now) + 15);
-  // Nothing recorded on this hole yet: the shot came from the tee.
-  if (!from || distanceM(from.p, hole.tee) < 25) return { from: hole.tee, length: distanceM(hole.tee, now), fromTee: true };
+  // Nothing recorded on this hole yet: the shot came from the tee (where the player stood on it, if known).
+  if (!from || distanceM(from.p, hole.tee) < 25) {
+    const tee = teeSpot(all, hole) ?? hole.tee;
+    return { from: tee, length: distanceM(tee, now), fromTee: true };
+  }
   return { from: from.p, length: distanceM(from.p, now), fromTee: false };
 }
 

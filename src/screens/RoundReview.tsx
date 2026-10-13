@@ -3,7 +3,7 @@ import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { holeSg } from '../lib/sg';
-import { clubForLength, detectHoleShots, findStops, loadTrack, splitRound } from '../lib/track';
+import { clubForLength, detectHoleShots, findStops, loadTrack, splitRound, teeSpot } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadRounds, loadUnit } from '../lib/storage';
 import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
@@ -116,7 +116,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     }
     const pinNow = base.pin ?? data.greenCenter;
     const shots = base.shots.slice();
-    if (shots.length === 0 && !nearTee(pos, data)) shots.push({ pos: data.tee, lie: 'tee', club: null, penalty: false });
+    if (shots.length === 0 && !nearTee(pos, data)) shots.push({ pos: teeSpot(part, data) ?? data.tee, lie: 'tee', club: null, penalty: false });
     const toPin = distanceM(pos, pinNow);
     let at = shots.findIndex((x) => x.pos != null && distanceM(x.pos, pinNow) < toPin);
     if (at < 0) at = shots.length;
@@ -127,7 +127,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     if (!data || !d) return;
     // The first shot was the tee shot dragged to where the ball lay: its club goes with the tee shot.
     const [first, ...rest] = d.shots;
-    const shots: Shot[] = [{ pos: data.tee, lie: 'tee', club: first.club, penalty: false }, { ...first, club: null, kind: undefined }, ...rest];
+    const shots: Shot[] = [{ pos: teeSpot(part, data) ?? data.tee, lie: 'tee', club: first.club, penalty: false }, { ...first, club: null, kind: undefined }, ...rest];
     saveDetail(k, withClubs({ ...d, shots }));
   };
   /** Label of a shot while it is dragged: how far from the spot before, how far to the next spot (or the pin). */
