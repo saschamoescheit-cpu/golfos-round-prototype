@@ -208,6 +208,11 @@ function playRound(mode: 'open' | 'locked'): Score {
     s.found += found;
     s.missed += truth.length - found;
     s.wrong += got.length - used.size;
+    if (process.env.GDEBUG && !det?.onGreen) {
+      const nx = holes[n + 1]?.d;
+      const last = part[part.length - 1];
+      console.log('no green', h.ref, 'part', part.length, last ? `last at ${Math.round(distanceM(last.p, h.d.greenCenter))} m from green, ${nx ? Math.round(distanceM(last.p, nx.tee)) : '-'} m from next tee` : '', '| true green ball', Math.round(distanceM(truths[n].green, h.d.greenCenter)));
+    }
     s.green++;
     if (det?.onGreen && (onGreenAt(det.onGreen, h.d) || distanceM(det.onGreen, truths[n].green) <= 10)) s.greenFound++;
     s.holes++;

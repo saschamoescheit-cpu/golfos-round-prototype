@@ -251,10 +251,18 @@ export function splitRound(track: TrackPoint[], holes: (HoleMapData | null)[]): 
     let end = rest.length;
     if (next) {
       // seen near the green (or at least well on the hole) first, then at the next tee
-      const onHole = rest.findIndex((x, k) => k > start && distanceM(x.p, hole.greenCenter) <= 40);
+      // on the green (or right at it) first – a ball 35 m short of the green is not the end of the hole yet
+      let onHole = rest.findIndex((x, k) => k > start && (onGreenAt(x.p, hole) || distanceM(x.p, hole.greenCenter) <= 20));
+      if (onHole < 0) onHole = rest.findIndex((x, k) => k > start && distanceM(x.p, hole.greenCenter) <= 40);
       const from = onHole > 0 ? onHole : start;
-      // at the next tee = near it and nearer to it than to this green (tees often lie right next to the last green)
-      const k = rest.findIndex((x, i) => i > from && distanceM(x.p, next.tee) <= 25 && distanceM(x.p, next.tee) < distanceM(x.p, hole.greenCenter));
+      // at the next tee: near it (40 m – the tee box played may lie in front of or behind the mapped one) and nearer to
+      // it than to this green (tees often lie right next to the last green) – or already on the next hole's line
+      const k = rest.findIndex(
+        (x, i) =>
+          i > from &&
+          ((distanceM(x.p, next.tee) <= 40 && distanceM(x.p, next.tee) < distanceM(x.p, hole.greenCenter) && distanceM(x.p, hole.greenCenter) > 25 && !onGreenAt(x.p, hole)) ||
+            (distToLine(x.p, next.line) <= 20 && distanceM(x.p, hole.greenCenter) > 40 && distToLine(x.p, hole.line) > 30)),
+      );
       if (k > 0) end = k;
     }
     parts.push(rest.slice(start, end));

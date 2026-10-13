@@ -9,6 +9,7 @@ import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
+import { holeForTee } from '../lib/teeline';
 import { ShotSheet } from '../components/ShotSheet';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
@@ -22,7 +23,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const { round } = props;
   const me = round.players.find((p) => p.isMe)!;
   const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId]);
-  const maps = useMemo(() => round.holes.map((h) => holeMapData(geometry, h.loop, h.number)), [geometry, round.holes]);
+  // the same holes as on the course: from the tee the player played (yellow, red …), not the back tee of the map
+  const maps = useMemo(() => round.holes.map((h) => holeForTee(holeMapData(geometry, h.loop, h.number), round.courseId, h.label, round.tee, geometry.tee)), [geometry, round.holes, round.courseId, round.tee]);
   const track = useMemo(() => loadTrack(round.id), [round.id]);
   const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id)), [round.id]);
   const unit = loadUnit();

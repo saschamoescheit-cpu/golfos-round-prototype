@@ -163,7 +163,7 @@ describe('shot detection from the GPS track', () => {
   });
 
   it('the next tee right next to the green still ends the hole (Hetzenhof 4A → 5A)', () => {
-    const near = { ...hole2, tee: shift(hole1.greenCenter, 14, 0) }; // next tee 14 m from this green
+    const near = { ...hole2, tee: shift(hole1.greenCenter, 30, 0) }; // next tee 30 m from this green's centre
     const w = new Walker(hole1.tee);
     w.stand(30);
     w.walk(onGreen);
