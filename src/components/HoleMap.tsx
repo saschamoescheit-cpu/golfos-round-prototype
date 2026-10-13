@@ -325,6 +325,9 @@ export function HoleMap(props: HoleMapProps) {
     ];
     // Nearest hazards first; a label that would cover another one on screen is left out.
     const placed = [p.pin, ...p.targets].map((x) => m.project(x));
+    // the flag stands up and to the right of the pin (30 × 38 px): its middle counts as taken too
+    const flagAt = m.project(p.pin);
+    placed.push(new maplibregl.Point(flagAt.x + 14, flagAt.y - 22));
     const candidates = hazards
       .map((h) => ({ ...h, c: centroid(h.ring), ...hazardToCarry(p.from, h.ring) }))
       .filter((h) => isAhead(p.from, p.pin, h.c) && h.to >= 5 && h.to <= 330)
