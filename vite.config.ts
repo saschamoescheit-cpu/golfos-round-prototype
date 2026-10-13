@@ -43,7 +43,7 @@ export default defineConfig({
           },
           {
             // Satellite tiles: keep what the player has seen, so the map works with poor reception on the course.
-            urlPattern: /^https:\/\/(server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery|tms-pnoa-ma\.idee\.es\/1\.0\.0\/pnoa-ma)\//,
+            urlPattern: /^https:\/\/(server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery|tms-pnoa-ma\.idee\.es\/1\.0\.0\/pnoa-ma|owsproxy\.lgl-bw\.de\/owsproxy\/ows\/WMS_LGL-BW_ATKIS_DOP_20_C)/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'imagery',

@@ -2,13 +2,15 @@ import type { LngLat } from '../types';
 
 // Satellite imagery sources. Esri works worldwide but is only free for prototypes.
 // PNOA (Spanish national orthophoto, 25 cm) is sharper and free incl. commercial use (CC BY 4.0, credit IGN).
+// LGL DOP20 (Baden-Württemberg, 20 cm, flown every 3 years) – Open Data (dl-de/by-2-0, credit LGL-BW): Hetzenhof.
+// Checked 13.10.2026: the OSM green outlines at Hetzenhof sit within 1–2 m of the DOP20 image.
 
-export type ImageryId = 'esri' | 'pnoa';
+export type ImageryId = 'esri' | 'pnoa' | 'lgl';
 
 export interface ImagerySource {
   id: ImageryId;
   label: string; // short button text
-  tiles: string;
+  tiles: string; // {z}/{x}/{y} – or {bbox-epsg-3857} for a WMS
   scheme: 'xyz' | 'tms';
   maxzoom: number;
   attribution: string;
@@ -28,6 +30,18 @@ export const IMAGERY: Record<ImageryId, ImagerySource> = {
     attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
     paint: { 'raster-saturation': 0, 'raster-contrast': 0 },
     coverage: 'world',
+  },
+  lgl: {
+    id: 'lgl',
+    label: 'LGL',
+    tiles:
+      'https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DOP_20_C?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=IMAGES_DOP_20_RGB&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/jpeg',
+    scheme: 'xyz',
+    maxzoom: 20,
+    attribution: 'Luftbild: LGL-BW (2026) dl-de/by-2-0, www.lgl-bw.de',
+    paint: { 'raster-saturation': 0.15, 'raster-contrast': 0.08 },
+    // Baden-Württemberg (a box; outside the state the service returns white)
+    coverage: [[7.5, 47.53, 10.5, 49.8]],
   },
   pnoa: {
     id: 'pnoa',
@@ -56,7 +70,7 @@ export function covers(source: ImagerySource, p: LngLat): boolean {
 
 /** Sources with imagery at this place, best first (national orthophoto before the worldwide fallback). */
 export function imageryOptions(p: LngLat): ImagerySource[] {
-  return [IMAGERY.pnoa, IMAGERY.esri].filter((s) => covers(s, p));
+  return [IMAGERY.pnoa, IMAGERY.lgl, IMAGERY.esri].filter((s) => covers(s, p));
 }
 
 /** The player's choice if it covers this place, else the best source there. */

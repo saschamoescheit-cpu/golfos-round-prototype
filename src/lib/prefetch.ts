@@ -29,6 +29,22 @@ function tileXY(lon: number, lat: number, z: number): [number, number] {
   return [x, y];
 }
 
+/** One tile's URL: {z}/{x}/{y}, or the tile's box in web mercator for a WMS – exactly as MapLibre writes it. */
+export function tileUrl(template: string, z: number, x: number, y: number): string {
+  if (template.includes('{bbox-epsg-3857}')) {
+    // same arithmetic as MapLibre (@mapbox/whoots-js getTileBBox), so the cached tile is found again
+    const merc = (px: number, py: number) => {
+      const res = (2 * Math.PI * 6378137) / 256 / Math.pow(2, z);
+      return [px * res - (2 * Math.PI * 6378137) / 2.0, py * res - (2 * Math.PI * 6378137) / 2.0];
+    };
+    const yy = Math.pow(2, z) - y - 1;
+    const min = merc(x * 256, yy * 256);
+    const max = merc((x + 1) * 256, (yy + 1) * 256);
+    return template.replace('{bbox-epsg-3857}', min[0] + ',' + min[1] + ',' + max[0] + ',' + max[1]);
+  }
+  return template.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y));
+}
+
 /** Tile URLs covering each hole: the whole hole at zoom 15–18, tee and green close up at zoom 19. */
 export function holeTileUrls(source: ImagerySource, holes: HoleMapData[]): string[] {
   const areas: { box: BBox; zooms: number[] }[] = [];
@@ -46,7 +62,7 @@ export function holeTileUrls(source: ImagerySource, holes: HoleMapData[]): strin
       for (let x = x0; x <= x1; x++) {
         for (let y = y0; y <= y1; y++) {
           const yy = source.scheme === 'tms' ? 2 ** z - 1 - y : y;
-          urls.add(source.tiles.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(yy)));
+          urls.add(tileUrl(source.tiles, z, x, yy));
         }
       }
     }

@@ -10,13 +10,14 @@ describe('imagery', () => {
   it('uses the Spanish orthophoto in Spain and Esri elsewhere', () => {
     expect(pickImagery(SON_QUINT, null).id).toBe('pnoa');
     expect(pickImagery(BADAJOZ, null).id).toBe('pnoa');
-    expect(pickImagery(HETZENHOF, null).id).toBe('esri');
+    expect(pickImagery(HETZENHOF, null).id).toBe('lgl');
     expect(pickImagery(LISBON, null).id).toBe('esri');
   });
   it('keeps the player’s choice where it is available', () => {
     expect(pickImagery(SON_QUINT, 'esri').id).toBe('esri');
-    expect(pickImagery(HETZENHOF, 'pnoa').id).toBe('esri');
-    expect(imageryOptions(HETZENHOF).map((s) => s.id)).toEqual(['esri']);
+    expect(pickImagery(HETZENHOF, 'pnoa').id).toBe('lgl');
+    expect(pickImagery(HETZENHOF, 'esri').id).toBe('esri');
+    expect(imageryOptions(HETZENHOF).map((s) => s.id)).toEqual(['lgl', 'esri']);
     expect(imageryOptions(SON_QUINT).map((s) => s.id)).toEqual(['pnoa', 'esri']);
   });
 });
