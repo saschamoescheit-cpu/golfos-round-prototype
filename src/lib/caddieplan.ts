@@ -147,7 +147,12 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
           : tr(`Lay up to ${apName} – a full shot into the green next.`, `Leg vor auf ${apName} – danach ein voller Schlag aufs Grün.`)
         : approachPlan(data, from, pin).text;
 
-  const warning = ap.note ?? ob?.text ?? null;
+  // Out of bounds near the target: only when a miss can reach it (2.5 × the sideways spread for this length,
+  // + 5 m – as in aimPoint); a 40 m pitch does not hear about a boundary 27 m away.
+  const shotLen = distanceM(from, target);
+  const reach = 2.5 * (0.065 * shotLen + 2) * (0.6 + Math.min(36, Math.max(0, o.playing ?? 18)) / 25) + 5;
+  const obInPlay = ob && Math.min(ob.left, ob.right) <= reach ? ob.text : null;
+  const warning = ap.note ?? obInPlay ?? null;
   const lines: CaddieLine[] = [];
   if (warning) lines.push({ text: warning, tone: 'warn' });
   if (note.text) lines.push({ text: note.text, tone: 'warn' });

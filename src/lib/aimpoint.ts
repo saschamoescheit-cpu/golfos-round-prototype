@@ -260,7 +260,17 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   const club = adviseClub(pl.playsLike, o.bag, driverOk && kind === 'drive').club;
   // One wording everywhere: "Out of bounds 18 m left and right" – distance from the map, side from the hole notes.
   const sideText = (k: 'left' | 'right', known: boolean | undefined, m: number | undefined) => (known || m == null || !isFinite(m) ? sideWord(k) : `${Math.round(m)} m ${sideWord(k)}`);
-  const obSides = [obLeft && sideText('left', obNote.obLeft, ob?.left), obRight && sideText('right', obNote.obRight, ob?.right), obNote.obLong && sideWord('long')].filter(Boolean);
+  // Said only when it is in play for this shot (like a caddie): the boundary within 2.5 × the player's sideways
+  // spread (+5 m) – a 40 m pitch never hears about out of bounds 27 m away. Known only from a hole note (no
+  // distance): from 120 m on.
+  const k = 0.6 + Math.min(36, Math.max(0, o.playing ?? 18)) / 25;
+  const reach = 2.5 * (0.065 * distance + 2) * k + 5;
+  const inPlay = (m: number | undefined, known: boolean | undefined) => (m != null && isFinite(m) ? m <= reach : !!known && distance >= 120);
+  const obSides = [
+    obLeft && inPlay(ob?.left, obNote.obLeft) && sideText('left', obNote.obLeft, ob?.left),
+    obRight && inPlay(ob?.right, obNote.obRight) && sideText('right', obNote.obRight, ob?.right),
+    obNote.obLong && distance >= 120 && sideWord('long'),
+  ].filter(Boolean);
   if (!note && obSides.length) note = tr('Out of bounds', 'Aus') + ' ' + obSides.join(tr(' and ', ' und '));
   return { pos, landing: kind === 'recovery' ? pos : base, kind, club, distance, pl, side, reasons, note, strategy, fairwaySide: fairwaySideM, teePlan: teePlanText, teeClub };
 }
