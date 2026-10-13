@@ -1,5 +1,5 @@
 import type { Club, LngLat, Ring } from '../types';
-import { pinStrategy, type PinPlan } from './pinstrategy';
+import { layupInstead, pinStrategy, type PinPlan } from './pinstrategy';
 import type { GreenGrid } from './greenread';
 import { alongLine, bearingDeg, distanceM, distToLine, lineLength, pointAt, pointInRing, type HoleMapData } from './geo';
 import { adviseClub, playsLike, type CarryBag, type Conditions, type PlaysLike } from './caddie';
@@ -123,6 +123,15 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
     // Flag, middle of the green or short of the flag: what costs the fewest strokes with this player's spread.
     strategy = pinStrategy({ from, pin, data, distM: toPin.playsLike, playing: o.playing ?? null, style, grid: o.grid ?? null });
     if (strategy) base = strategy.aim;
+    // A long shot at the green: would a lay-up to the favourite distance cost fewer strokes? (feature 017)
+    const fav = Math.min(200, Math.max(30, o.favourite || 90));
+    const lu = strategy ? layupInstead({ from, pin, data, distM: toPin.playsLike, favourite: fav, playing: o.playing ?? null, style }) : null;
+    if (lu) {
+      base = lu.aim;
+      kind = 'layup';
+      strategy = null;
+      reasons.push(lu.text);
+    }
     else if (style === 'safe' && o.data.green && distanceM(pin, o.data.greenCenter) > 6) {
       base = o.data.greenCenter; // safe: middle of the green, not the flag
       reasons.push(tr('middle of the green', 'Grünmitte'));

@@ -17,6 +17,7 @@ export interface PinPlan {
   kind: PinPlanKind;
   saved: number; // strokes saved against aiming at the flag (0 for the flag)
   text: string | null;
+  expected: number; // strokes still needed after this shot, on average (for the lay-up comparison)
 }
 
 const N = 240;
@@ -104,18 +105,76 @@ export function pinStrategy(o: {
   let plan: PinPlan;
   // under 0.08 strokes the difference is not worth a change of plan (and would read "saves 0.0")
   if (best.kind === 'pin' || saved < 0.08) {
-    plan = { aim: o.pin, kind: 'pin', saved: 0, text: distanceM(o.pin, centre) > 6 ? tr('Pin is accessible – go for it.', 'Fahne ist frei – geh drauf.') : null };
+    plan = { aim: o.pin, kind: 'pin', saved: 0, text: distanceM(o.pin, centre) > 6 ? tr('Pin is accessible – go for it.', 'Fahne ist frei – geh drauf.') : null, expected: atPin };
   } else if (best.kind === 'below') {
     const d = Math.round(distanceM(best.aim, o.pin));
-    plan = { aim: best.aim, kind: 'below', saved, text: tr(`Aim ${d} m short of the pin – uphill putt (saves about ${dec(saved.toFixed(1))}).`, `Ziel ${d} m vor die Fahne – Putt bergauf (spart etwa ${dec(saved.toFixed(1))} Schläge).`) };
+    plan = { aim: best.aim, kind: 'below', saved, text: tr(`Aim ${d} m short of the pin – uphill putt (saves about ${dec(saved.toFixed(1))}).`, `Ziel ${d} m vor die Fahne – Putt bergauf (spart etwa ${dec(saved.toFixed(1))} Schläge).`), expected: best.e };
   } else {
     const h = hazardNearPin(o.pin, o.from, o.data, best.aim);
     const why = h ? tr(`Pin close to the ${hazardWord(h.kind).toLowerCase()} ${h.where}`, `Fahne nah am ${hazardWord(h.kind)} ${h.where}`) : tr('Pin on the edge of the green', 'Fahne am Grünrand');
-    plan = { aim: best.aim, kind: best.kind, saved, text: tr(`${why} – play towards the middle of the green (saves about ${dec(saved.toFixed(1))}).`, `${why} – spiel Richtung Grünmitte (spart etwa ${dec(saved.toFixed(1))} Schläge).`) };
+    plan = { aim: best.aim, kind: best.kind, saved, text: tr(`${why} – play towards the middle of the green (saves about ${dec(saved.toFixed(1))}).`, `${why} – spiel Richtung Grünmitte (spart etwa ${dec(saved.toFixed(1))} Schläge).`), expected: best.e };
   }
   if (cache.size > 200) cache.clear();
   cache.set(key, plan);
   return plan;
+}
+
+/**
+ * Lay up instead of going for the green (feature 017, Sascha: "the plan for the hole"): from 170 m and more a shot
+ * at the green brings water and sand into play; a lay-up to the favourite distance and a full wedge from there may
+ * cost fewer strokes. Both are played with the player's spread; the lay-up wins only by 0.1 strokes or more.
+ */
+export function layupInstead(o: {
+  from: LngLat;
+  pin: LngLat;
+  data: HoleMapData;
+  distM: number; // plays-like to the pin
+  favourite: number; // metres left after the lay-up
+  playing: number | null;
+  style?: 'safe' | 'normal' | 'aggressive';
+}): { aim: LngLat; saved: number; text: string } | null {
+  if (o.distM < 170 || !o.data.green) return null;
+  const toPin = distanceM(o.from, o.pin);
+  const lay = toPin - o.favourite;
+  if (lay < 60) return null; // a lay-up of a few metres is no plan
+  const ph = Math.min(36, Math.max(0, o.playing ?? 18));
+  const k = (0.6 + ph / 25) * (o.style === 'safe' ? 1.15 : o.style === 'aggressive' ? 0.85 : 1);
+  const sandExtra = 0.2 + ph * 0.025;
+  const roughExtra = 0.05 + ph * 0.01;
+  const b = bearingDeg(o.from, o.pin);
+  const cost = (p: LngLat): number => {
+    let e = strokesFrom(p, o.pin, o.data);
+    if (o.data.bunkers.some((r) => pointInRing(p, r))) e += sandExtra;
+    else if (!onGreenAt(p, o.data) && !o.data.fairways.some((r) => pointInRing(p, r))) e += roughExtra;
+    return e;
+  };
+  // A shot with a wood or hybrid from 170 m+: spread like a tee shot, and now and then a mishit (thin, topped) that
+  // goes 50–70 % of the way – the main reason amateurs should lay up. The lay-up with an iron mishits rarely.
+  const play = (dist: number, sdLong: number, sdSide: number, mishit: number): number => {
+    const bad = Math.round(N * mishit);
+    let sum = 0;
+    SAMPLES.forEach(([a, c], n) => {
+      const d = n < bad ? dist * (0.5 + 0.2 * ((n % 5) / 4)) : dist + a * sdLong;
+      sum += cost(move(move(o.from, b, d), b + 90, c * sdSide));
+    });
+    return sum / N;
+  };
+  const goE = play(toPin, (toPin * 0.06 + 3) * k, (toPin * 0.065 + 2) * k, 0.05 + ph * 0.004);
+  const sd = spread(lay, o.playing, o.style);
+  // the lay-up's next shot (a full wedge) is not simulated: an amateur loses a little more there than the tour table
+  const layE = play(lay, sd.long, sd.side, 0.02 + ph * 0.002) + (0.1 + ph * 0.01);
+  const saved = Math.round((goE - layE) * 100) / 100;
+  if (saved < 0.1) return null;
+  const water = o.data.water.some((r) => r.some((q) => distanceM(q, o.data.greenCenter) < 40));
+  const why = water ? tr('water near the green', 'Wasser am Grün') : tr('sand around the green', 'Sand ums Grün');
+  return {
+    aim: move(o.from, b, lay),
+    saved,
+    text: tr(
+      `Lay up to ${o.favourite} m instead of going for the green – ${why} (saves about ${dec(saved.toFixed(1))}).`,
+      `Vorlegen auf ${o.favourite} m statt aufs Grün – ${why} (spart etwa ${dec(saved.toFixed(1))} Schläge).`,
+    ),
+  };
 }
 
 /**
