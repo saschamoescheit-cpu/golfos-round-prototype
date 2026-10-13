@@ -5,6 +5,7 @@ import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLe
 import { holeSg } from '../lib/sg';
 import { clubForLength, detectHoleShots, findStops, loadTrack, markWaterPenalties, splitRound, teeSpot } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
+import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
 import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
 import { formatDistance } from '../lib/geo';
@@ -45,6 +46,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const [cadLog, setCadLog] = useState<CaddieLog>(() => loadCaddieLog(round.id));
   const [noteFor, setNoteFor] = useState<number | null>(null);
   const [moreCad, setMoreCad] = useState<number | null>(null); // hole whose other caddie advice is shown
+  const [savedNote, setSavedNote] = useState<string | null>(null);
 
   const hole = round.holes[k];
   const data = maps[k];
@@ -484,6 +486,22 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                   defaultValue={c.note ?? ''}
                   onBlur={(ev) => setCadLog({ ...rateCaddie(round.id, k, n, 'other', ev.target.value.trim()) })}
                 />
+              )}
+              {c.verdict === 'other' && c.note && c.club !== 'Putt' && (
+                // the player's own knowledge for next time: the caddie card shows hole notes on this hole
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{ alignSelf: 'flex-start' }}
+                  disabled={savedNote === `${k}:${c.note}`}
+                  onClick={() => {
+                    const notes = loadHoleNotes(round.courseId);
+                    saveHoleNote(round.courseId, hole.label, { ...(notes[hole.label] ?? {}), text: c.note });
+                    setSavedNote(`${k}:${c.note}`);
+                  }}
+                >
+                  {savedNote === `${k}:${c.note}` ? tr('Kept as hole note ✓', 'Als Lochnotiz gemerkt ✓') : tr('Keep as hole note for next time', 'Fürs nächste Mal als Lochnotiz merken')}
+                </button>
               )}
             </div>
           ))}
