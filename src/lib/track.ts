@@ -87,7 +87,12 @@ export function clubForLength(lengthM: number, isTeeShot: boolean, bag = BAG): C
 }
 
 /** An amateur shot against the tour: about −0.25 strokes, spread ±0.4 (tuned with scripts/shotsim.ts). */
-export const PLAUSIBLE = { meanSg: -0.25, sdSg: 0.4, shotCost: 0.4 }; // shotCost: every shot must be earned – waiting is common
+export const PLAUSIBLE = {
+  meanSg: -0.25,
+  sdSg: 0.4,
+  shotCost: 0.4, // every shot must be earned – waiting by a partner's ball is common
+  countMiss: 1.5, // per shot more or less than score − putts − penalties (when the player entered them)
+};
 
 function greenRadius(hole: HoleMapData): number {
   if (!hole.green) return 12;
@@ -144,7 +149,7 @@ function places(track: TrackPoint[], hole: HoleMapData): Place[] {
  * a shot that loses a stroke; leaving out the own ball would need a shot no amateur hits. The most plausible chain
  * of places wins (dynamic programming over the places in time order).
  */
-export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: number, bag = BAG): DetailEntry | null {
+export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: number, bag = BAG, opts: { shots?: number | null } = {}): DetailEntry | null {
   const toGreen = (p: LngLat) => distanceM(p, hole.greenCenter);
   let list = places(track, hole);
   if (list.length === 0 && track.length === 0) return null;
@@ -174,33 +179,47 @@ export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: num
     return ll;
   };
   const nodes = [{ p: tee.p, e: E(tee.p, true), q: 0 }, ...list.map((x) => ({ p: x.p, e: E(x.p, false), q: x.q }))];
-  const best: number[] = nodes.map(() => -Infinity);
-  const prev: number[] = nodes.map(() => -1);
-  best[0] = 0;
+  // best[j][c]: the most plausible chain that ends at place j with c shots (tee = 1). The count matters: the player
+  // entered his score and putts on the course – score − putts − penalties = shots to the green, a strong hint.
+  const MAXC = Math.min(nodes.length, 9);
+  const best: number[][] = nodes.map(() => Array(MAXC + 1).fill(-Infinity));
+  const prev: number[][] = nodes.map(() => Array(MAXC + 1).fill(-1));
+  best[0][1] = 0;
   for (let j = 1; j < nodes.length; j++) {
     for (let i = 0; i < j; i++) {
-      if (best[i] === -Infinity) continue;
-      const v = best[i] + shotLL(nodes[i].e, nodes[j].e, toGreen(nodes[i].p) - toGreen(nodes[j].p)) + nodes[j].q - PLAUSIBLE.shotCost;
-      if (v > best[j]) {
-        best[j] = v;
-        prev[j] = i;
+      const step = shotLL(nodes[i].e, nodes[j].e, toGreen(nodes[i].p) - toGreen(nodes[j].p)) + nodes[j].q - PLAUSIBLE.shotCost;
+      for (let c = 1; c < MAXC; c++) {
+        if (best[i][c] === -Infinity) continue;
+        const v = best[i][c] + step;
+        if (v > best[j][c + 1]) {
+          best[j][c + 1] = v;
+          prev[j][c + 1] = i;
+        }
       }
     }
   }
   let last = 0;
+  let lastC = 1;
   let total = -Infinity;
   for (let i = 0; i < nodes.length; i++) {
-    if (best[i] === -Infinity) continue;
-    const v = best[i] + shotLL(nodes[i].e, endE, toGreen(nodes[i].p));
-    if (v > total) {
-      total = v;
-      last = i;
+    for (let c = 1; c <= MAXC; c++) {
+      if (best[i][c] === -Infinity) continue;
+      let v = best[i][c] + shotLL(nodes[i].e, endE, toGreen(nodes[i].p));
+      if (opts.shots != null) v += c === opts.shots ? 0 : -PLAUSIBLE.countMiss * Math.abs(c - opts.shots);
+      if (v > total) {
+        total = v;
+        last = i;
+        lastC = c;
+      }
     }
   }
   const chain: number[] = [];
-  for (let k = last; k >= 0; k = prev[k]) {
+  for (let k = last, c = lastC; k >= 0 && c >= 1; ) {
     chain.unshift(k);
     if (k === 0) break;
+    const pk = prev[k][c];
+    k = pk;
+    c--;
   }
   const end = green?.p ?? null;
   const shots: Shot[] = chain.map((k, n) => {

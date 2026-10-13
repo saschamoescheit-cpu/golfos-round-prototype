@@ -138,7 +138,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       const m = maps[i];
       if (!m || list[i].detail?.shots.length) return;
       const part = parts[i] ?? [];
-      const found = detectHoleShots(part, m, h.par, bag);
+      // the score and putts from the course tell how many shots there were to the green
+      const e = list[i];
+      const count = e.strokes != null && e.putts != null && !e.pickedUp ? e.strokes - e.putts - (e.penalties ?? 0) : null;
+      const found = detectHoleShots(part, m, h.par, bag, { shots: count != null && count >= 1 ? count : null });
       if (!found) return;
       holes++;
       const derived = deriveFromShots(found, list[i].putts, h.par, m);

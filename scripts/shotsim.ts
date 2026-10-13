@@ -187,7 +187,7 @@ function playRound(mode: 'open' | 'locked'): Score {
   const s: Score = { truth: 0, found: 0, missed: 0, wrong: 0, green: 0, greenFound: 0, holes: 0, exactHoles: 0 };
   holes.forEach((h, n) => {
     const part = parts[n];
-    const det = detectHoleShots(part, h.d, h.par);
+    const det = detectHoleShots(part, h.d, h.par, undefined, { shots: process.env.COUNT ? truths[n].shots.length : null });
     const truth = truths[n].shots;
     const got = (det?.shots ?? []).map((x) => x.pos!).filter(Boolean);
     const used = new Set<number>();

@@ -130,6 +130,23 @@ describe('shot detection from the GPS track', () => {
     expect(distanceM(d.onGreen!, onGreen)).toBeLessThan(8);
   });
 
+  it('score and putts from the course decide a doubtful chip', () => {
+    const chip = shift(hole1.greenCenter, 0, -22); // just off the green, short
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    w.walk(ball2);
+    w.stand(30);
+    w.walk(chip);
+    w.stand(15); // a quick chip
+    w.walk(onGreen);
+    w.stand(90);
+    const withCount = detectHoleShots(w.pts, hole1, 4, undefined, { shots: 3 })!;
+    expect(withCount.shots.length).toBe(3);
+    expect(distanceM(withCount.shots[2].pos!, chip)).toBeLessThan(8);
+    const told2 = detectHoleShots(w.pts, hole1, 4, undefined, { shots: 2 })!;
+    expect(told2.shots.length).toBe(2);
+  });
+
   it('splits a round in playing order', () => {
     const w = new Walker(hole1.tee);
     w.stand(30);

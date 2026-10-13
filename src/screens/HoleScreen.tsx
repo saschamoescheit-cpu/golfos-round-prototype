@@ -107,16 +107,16 @@ export function HoleScreen(props: {
   const [editHole, setEditHole] = useState(false);
   const [unit] = useState<Unit>(loadUnit);
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
-  const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number } | null>(null);
+  const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number; still?: boolean } | null>(null);
   const detectArmed = useRef(true); // the next good fix may move the round to the hole the player is on
   // Battery: iOS delivers a fix about every second. The screen (map, caddie, labels) is only redrawn when the player
   // moved (≥ 1 m), the accuracy changed or 3 s passed – standing still at the ball redraws rarely.
   // Accuracy: the shown position is filtered – averaged while standing at the ball, the newest fix while walking.
   const filter = useRef(new PositionFilter());
-  const shownFix = useRef<{ pos: LngLat; accuracy: number; t: number } | null>(null);
-  const showFix = (f: { pos: LngLat; accuracy: number; t: number }) => {
+  const shownFix = useRef<{ pos: LngLat; accuracy: number; t: number; still?: boolean } | null>(null);
+  const showFix = (f: { pos: LngLat; accuracy: number; t: number; still?: boolean }) => {
     shownFix.current = f;
-    setPlayer({ pos: f.pos, accuracy: f.accuracy });
+    setPlayer({ pos: f.pos, accuracy: f.accuracy, still: f.still });
   };
   // The app was opened again (phone out of the pocket, often at the ball): the next fix is marked in the track –
   // a strong hint for the shot detection – and the hole is looked up again.
@@ -143,7 +143,7 @@ export function HoleScreen(props: {
         setGpsError(null);
         const fix = filter.current.push({ pos: [p.coords.longitude, p.coords.latitude] as LngLat, accuracy: p.coords.accuracy, t: Date.now() });
         const was = shownFix.current;
-        if (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000) showFix(fix);
+        if (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still) showFix(fix);
         // Every round keeps the GPS track (while the app is open, raw fixes): automatic shot length, shot detection.
         const open = reopened.current && p.coords.accuracy <= 30;
         if (open) reopened.current = false;
@@ -606,7 +606,8 @@ export function HoleScreen(props: {
       setTimeout(() => loadCaddieSettings().voice && speak(said), 300);
     }
     // Keep what the caddie advised on the course – the round check shows it again for the player's verdict.
-    if (cad != null && onThisHole && !round.preview && loggedSig.current !== caddieSig) {
+    // only standing (by the ball, on the tee) – what the caddie says while the player walks is not advice for a shot
+    if (cad != null && onThisHole && player?.still && !round.preview && loggedSig.current !== caddieSig) {
       loggedSig.current = caddieSig;
       recordCaddie(round.id, i, {
         t: Date.now(),
