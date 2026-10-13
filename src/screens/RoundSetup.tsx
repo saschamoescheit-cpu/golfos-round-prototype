@@ -152,7 +152,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
-        <PlayerRow player={me} onChange={setMe} nameLabel={tr('Your name', 'Dein Name')} rating={rating} playing={playingHandicap(me)} />
+        <PlayerRow player={me} onChange={setMe} nameLabel={tr('Your name', 'Dein Name')} rating={rating} playing={playingHandicap(me)} nine={nine} />
         {others.map((p, i) => (
           <PlayerRow
             key={p.id}
@@ -196,7 +196,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   );
 }
 
-function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null }) {
+function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean }) {
   const { player } = props;
   return (
     <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 110px auto', gap: 8, alignItems: 'end' }}>
@@ -215,6 +215,11 @@ function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => v
           onChange={(e) => props.onChange(props.rating ? { ...player, index: e.target.value } : { ...player, handicap: e.target.value })}
         />
       </div>
+      {!props.rating && props.nine && (
+        <span className="muted small" style={{ gridColumn: '1 / -1' }}>
+          {tr('9 holes: enter the playing handicap for 9 holes (for Stableford). The caddie works with the 18-hole value by itself.', '9 Löcher: die Spielvorgabe für 9 Löcher eintragen (für Stableford). Der Caddie rechnet selbst mit dem 18-Loch-Wert.')}
+        </span>
+      )}
       {props.rating && props.playing != null && (
         <span className="muted small" style={{ gridColumn: '1 / -1' }}>
           {tr('Playing handicap here: ', 'Spielvorgabe hier: ')}

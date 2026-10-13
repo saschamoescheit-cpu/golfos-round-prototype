@@ -487,10 +487,13 @@ export function HoleScreen(props: {
 
   if (view === 'map' && mapData) {
     const conditions = weather ? { windKmh: weather.windKmh, gustKmh: weather.gustKmh, windFromDeg: weather.windFromDeg, tempC: weather.tempC } : null;
+    // The caddie's spread model works with the 18-hole playing handicap; a 9-hole round carries the 9-hole value
+    // (about half – right for Stableford), so it is doubled here.
+    const caddiePlaying = me.playingHandicap == null ? null : round.holes.length <= 9 ? me.playingHandicap * 2 : me.playingHandicap;
     const terrain = { slopes: geometry.fairwaySlopes?.[hole.label], boundary: geometry.boundary, trees: geometry.trees };
     // Par 4/5: target 1 is there from the start – the caddie's landing spot from the tee (driver carry, moved for
     // wind, slope and tendency, clear of trees). The player can drag or remove it; his own plan is kept then.
-    const teeAim = teeAimFor({ data: mapData, par: hole.par, pin: plans[i]?.pin ?? mapData.greenCenter, bag: carryBag, conditions, tendency, ...terrain, note: notes[hole.label] ?? {}, style: caddieSettings.style, favourite: caddieSettings.favourite, playing: me.playingHandicap });
+    const teeAim = teeAimFor({ data: mapData, par: hole.par, pin: plans[i]?.pin ?? mapData.greenCenter, bag: carryBag, conditions, tendency, ...terrain, note: notes[hole.label] ?? {}, style: caddieSettings.style, favourite: caddieSettings.favourite, playing: caddiePlaying });
     const plan = plans[i] ?? { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null };
     const pin = plan.pin ?? mapData.greenCenter;
     const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
@@ -617,7 +620,7 @@ export function HoleScreen(props: {
           forecast,
           wind: weather ? { gustKmh: weather.gustKmh, windKmh: weather.windKmh, label: windOnHole(weather, bearingDeg(from, pin)).label } : null,
           leave: greenCache.current.leave,
-          playing: me.playingHandicap,
+          playing: caddiePlaying,
           grid,
           greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })

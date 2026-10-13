@@ -71,7 +71,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
             bag={bag}
             style={settings.style}
             favourite={settings.favourite}
-            playing={props.playing ?? null}
+            playing={props.playing == null ? null : props.holes.length <= 9 ? props.playing * 2 : props.playing} // 18-hole value for the spread
             note={notes[h.label] ?? {}}
             record={record.get(h.label)}
           />
