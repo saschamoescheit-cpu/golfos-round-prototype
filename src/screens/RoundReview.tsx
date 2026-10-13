@@ -4,7 +4,7 @@ import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/ge
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { holeSg } from '../lib/sg';
 import { clubForLength, detectHoleShots, findStops, loadTrack, markWaterPenalties, splitRound, teeSpot } from '../lib/track';
-import { loadCachedCourse, loadGeometry, loadImagery, loadRounds, loadUnit } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
 import { formatDistance } from '../lib/geo';
@@ -26,6 +26,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // the same holes as on the course: from the tee the player played (yellow, red …), not the back tee of the map
   const maps = useMemo(() => round.holes.map((h) => holeForTee(holeMapData(geometry, h.loop, h.number), round.courseId, h.label, round.tee, geometry.tee)), [geometry, round.holes, round.courseId, round.tee]);
   const track = useMemo(() => loadTrack(round.id), [round.id]);
+  // where the pin was on the course ("Where is the pin today?" or the dragged flag) – else the middle of the green
+  const coursePins = useMemo(() => loadLive(round.id).plans, [round.id]);
+  const pinFor = (index: number): LngLat | null => coursePins[index]?.pin ?? maps[index]?.greenCenter ?? null;
   const parts = useMemo(() => (track.length > 20 ? splitRound(track, maps) : []), [track, maps]);
   const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id)), [round.id]);
   const unit = loadUnit();
@@ -108,7 +111,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       saveDetail(k, withClubs({ ...d, shots }));
       return;
     }
-    const base: DetailEntry = d ?? { ...emptyDetail(), pin: data.greenCenter };
+    const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
     // A tap on (or right after dragging) a shot opens it instead of adding one next to it.
     const hit = base.shots.findIndex((x) => x.pos != null && distanceM(x.pos, pos) < 8);
     if (hit >= 0) return setEdit(hit);
@@ -178,7 +181,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         delete derived.greensideBunker;
         delete derived.upAndDown;
       }
-      list[i] = { ...list[i], detail: { ...found, pin: m.greenCenter }, ...derived };
+      list[i] = { ...list[i], detail: { ...found, pin: pinFor(i) }, ...derived };
     });
     props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
     setNotice(
@@ -416,7 +419,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             label="Putts"
             value={e.putts}
             onChange={(v) => {
-              const base: DetailEntry = d ?? { ...emptyDetail(), pin: data.greenCenter };
+              const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
               // 0 putts = holed from off the green (chip-in)
               saveDetail(k, { ...base, holedOut: v === 0 }, v);
             }}
