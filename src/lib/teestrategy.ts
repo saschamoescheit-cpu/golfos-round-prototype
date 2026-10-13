@@ -84,19 +84,38 @@ export function teeStrategy(o: {
   const trees = near(o.trees);
   const fairways = data.fairways;
   const bound = o.boundary ?? [];
+  // point-in-polygon behind a bounding-box check: most samples are far from most woods and ponds (speed on the phone)
+  const tester = (rings: Ring[]) => {
+    const boxes = rings.map((r) => {
+      let w = Infinity, e = -Infinity, so = Infinity, n = -Infinity;
+      for (const q of r) {
+        if (q[0] < w) w = q[0];
+        if (q[0] > e) e = q[0];
+        if (q[1] < so) so = q[1];
+        if (q[1] > n) n = q[1];
+      }
+      return [w, so, e, n] as const;
+    });
+    return (p: LngLat) => rings.some((r, k) => p[0] >= boxes[k][0] && p[0] <= boxes[k][2] && p[1] >= boxes[k][1] && p[1] <= boxes[k][3] && pointInRing(p, r));
+  };
   const inAny = (p: LngLat, rings: Ring[]) => rings.some((r) => pointInRing(p, r));
+  const inWater = tester(water);
+  const inTrees = tester(trees);
+  const inBunker = tester(bunkers);
+  const inFairway = tester(fairways);
+  const inBound = tester(bound);
   const teeInside = !bound.length || inAny(data.tee, bound);
   const fromTee = expectedStrokes(L, 'tee');
   /** Strokes still needed after the tee shot when the ball finishes at p – and what kind of spot it is. */
   const value = (p: LngLat, side: number): { v: number; miss: Miss } => {
     const d = distanceM(p, pin);
-    if (bound.length && teeInside && !inAny(p, bound)) return { v: 1 + fromTee, miss: 'ob' };
+    if (bound.length && teeInside && !inBound(p)) return { v: 1 + fromTee, miss: 'ob' };
     // out of bounds the map does not know (hole notes): more than 25 m to that side
     if ((o.note?.obLeft && side < -25) || (o.note?.obRight && side > 25)) return { v: 1 + fromTee, miss: 'ob' };
-    if (inAny(p, water)) return { v: 1 + expectedStrokes(d + 10, 'rough') + roughExtra, miss: 'water' };
-    if (inAny(p, trees)) return { v: expectedStrokes(d, 'recovery'), miss: 'trees' };
-    if (inAny(p, bunkers)) return { v: expectedStrokes(d, 'bunker') + sandExtra, miss: 'bunker' };
-    if (inAny(p, fairways)) return { v: expectedStrokes(d, 'fairway'), miss: 'fairway' };
+    if (inWater(p)) return { v: 1 + expectedStrokes(d + 10, 'rough') + roughExtra, miss: 'water' };
+    if (inTrees(p)) return { v: expectedStrokes(d, 'recovery'), miss: 'trees' };
+    if (inBunker(p)) return { v: expectedStrokes(d, 'bunker') + sandExtra, miss: 'bunker' };
+    if (inFairway(p)) return { v: expectedStrokes(d, 'fairway'), miss: 'fairway' };
     return { v: expectedStrokes(d, 'rough') + roughExtra, miss: 'rough' };
   };
 
@@ -122,7 +141,7 @@ export function teeStrategy(o: {
     for (const off of TEE_STRATEGY.offsets) {
       const aim = move(c, dir + 90, off);
       // aim at the fairway (the caddie's safety check would pull an aim in the rough back anyway)
-      if (off !== 0 && !inAny(aim, fairways)) continue;
+      if (off !== 0 && !inFairway(aim)) continue;
       let sum = 0;
       const misses: Record<Miss, number> = { ob: 0, water: 0, trees: 0, bunker: 0, rough: 0, fairway: 0 };
       let badSide = 0;
