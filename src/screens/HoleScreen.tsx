@@ -70,9 +70,10 @@ export function HoleScreen(props: {
   /** Strokes are pre-filled with par: leaving a hole commits par for players who did not change it. */
   const commitPar = (r: Round): Round => commitParAt(r, i);
 
-  const goTo = (target: number) => {
+  /** `byGps`: the GPS moved the round on – the player confirmed nothing, so no par is written for the last hole. */
+  const goTo = (target: number, byGps = false) => {
     setDetected(null);
-    const committed = commitPar(round);
+    const committed = byGps ? round : commitPar(round);
     if (target >= round.holes.length) {
       props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 });
       return;
@@ -196,7 +197,7 @@ export function HoleScreen(props: {
     detectArmed.current = false;
     const k = detectHole(player.pos, allMaps, i);
     if (k == null) return;
-    goTo(k);
+    goTo(k, true);
     setDetected({ from: i, to: k });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player]);
@@ -320,12 +321,38 @@ export function HoleScreen(props: {
     saveImagery(next.id);
   };
 
+  // Moved on to the next hole without a score on the last one: score and putts are what the round check needs to
+  // find the shots – one tap back to enter them.
+  const left = detected && detected.to === i && detected.to > detected.from ? round.entries[me.id][detected.from] : null;
+  const leftEmpty = left != null && !left.pickedUp && (left.strokes == null || left.putts == null);
   const detectedBanner = detected && detected.to === i && (
     <div className="map-hint detected">
-      <span>{tr(`Hole ${hole.label} detected by GPS`, `Loch ${hole.label} per GPS erkannt`)}</span>
-      <button type="button" className="btn-ghost" onClick={() => goTo(detected.from)}>
-        {tr('Undo', 'Rückgängig')}
-      </button>
+      {leftEmpty ? (
+        <>
+          <span>
+            {left!.strokes == null
+              ? tr(`Hole ${hole.label} · score for ${round.holes[detected.from].label} missing`, `Loch ${hole.label} · Score für ${round.holes[detected.from].label} fehlt`)
+              : tr(`Hole ${hole.label} · putts for ${round.holes[detected.from].label} missing`, `Loch ${hole.label} · Putts für ${round.holes[detected.from].label} fehlen`)}
+          </span>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => {
+              goTo(detected.from);
+              setView('score');
+            }}
+          >
+            {tr('Enter', 'Eintragen')}
+          </button>
+        </>
+      ) : (
+        <>
+          <span>{tr(`Hole ${hole.label} detected by GPS`, `Loch ${hole.label} per GPS erkannt`)}</span>
+          <button type="button" className="btn-ghost" onClick={() => goTo(detected.from)}>
+            {tr('Undo', 'Rückgängig')}
+          </button>
+        </>
+      )}
     </div>
   );
 
@@ -671,7 +698,7 @@ export function HoleScreen(props: {
           {detailMode && !round.preview && (
             <button type="button" className="map-btn map-score-chip" onClick={() => setView('score')} aria-label={tr(`Score ${strokesShown ?? '–'}, tap to edit`, `Score ${strokesShown ?? '–'}, antippen zum Ändern`)}>
               <span className="small">Score</span>
-              <strong>{strokesShown ?? '–'}</strong>
+              <strong className={myEntry.strokes == null && !myEntry.pickedUp ? 'placeholder' : undefined}>{strokesShown ?? '–'}</strong>
             </button>
           )}
           <button type="button" className="map-btn round" aria-pressed={sun} aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on', 'Sonnenmodus an')} onClick={() => { setSun(!sun); setSunState(!sun); }}>
@@ -975,7 +1002,8 @@ export function HoleScreen(props: {
             ) : (
               <button type="button" className="map-score" onClick={() => setView('score')}>
                 <span className="small">Score</span>
-                <strong>{strokesShown}</strong>
+                {/* nothing entered yet: par in grey, as a suggestion – entered values in full colour */}
+                <strong className={myEntry.strokes == null && !myEntry.pickedUp ? 'placeholder' : undefined}>{strokesShown}</strong>
                 {myEntry.putts != null && <span className="small">{myEntry.putts} Putt{myEntry.putts === 1 ? '' : 's'}</span>}
               </button>
             )}
