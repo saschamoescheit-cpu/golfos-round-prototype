@@ -147,6 +147,23 @@ describe('shot detection from the GPS track', () => {
     expect(told2.shots.length).toBe(2);
   });
 
+  it('a chip without any GPS fix (phone stayed in the pocket) is suggested at the green edge', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    w.walk(ball2);
+    w.stand(30);
+    w.walk(onGreen); // past the chip spot without stopping
+    w.stand(90);
+    const found = detectHoleShots(w.pts, hole1, 4, undefined, { shots: 3 })!;
+    expect(found.shots.length).toBe(3);
+    const chip = found.shots[2];
+    expect(chip.review).toBe(true);
+    expect(distanceM(chip.pos!, hole1.greenCenter)).toBeLessThan(35);
+    expect(distanceM(chip.pos!, hole1.greenCenter)).toBeGreaterThan(5);
+    // without the score nothing is invented
+    expect(detectHoleShots(w.pts, hole1, 4)!.shots.length).toBe(2);
+  });
+
   it('splits a round in playing order', () => {
     const w = new Walker(hole1.tee);
     w.stand(30);

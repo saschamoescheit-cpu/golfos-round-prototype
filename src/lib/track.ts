@@ -222,9 +222,18 @@ export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: num
     c--;
   }
   const end = green?.p ?? null;
-  const shots: Shot[] = chain.map((k, n) => {
-    const p = nodes[k].p;
-    const next = n + 1 < chain.length ? nodes[chain[n + 1]].p : end;
+  // One shot fewer than score − putts says, the last place well away from the green: the missing one is almost
+  // always the chip or pitch from just off the green (nobody takes the phone out for it). It is suggested at the
+  // green's edge on the way in, marked for checking – the player drags it to where the ball lay.
+  const spots = chain.map((k) => nodes[k].p);
+  const lastP = spots[spots.length - 1];
+  if (opts.shots != null && opts.shots - spots.length === 1 && lastP && toGreen(lastP) > greenRadius(hole) + 15) {
+    const r = greenRadius(hole) + 4;
+    const k = r / toGreen(lastP);
+    spots.push([hole.greenCenter[0] + (lastP[0] - hole.greenCenter[0]) * k, hole.greenCenter[1] + (lastP[1] - hole.greenCenter[1]) * k]);
+  }
+  const shots: Shot[] = spots.map((p, n) => {
+    const next = n + 1 < spots.length ? spots[n + 1] : end;
     const length = next ? distanceM(p, next) : toGreen(p);
     const lie = lieOf(p, n === 0);
     const kind = suggestKind(lie, toGreen(p));
