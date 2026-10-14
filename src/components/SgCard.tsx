@@ -73,6 +73,18 @@ export function SgCard(props: { values: SgValues; shots: Record<SgCategory, numb
           </tr>
         </tbody>
       </table>
+      {SG_CATEGORIES.some((c) => props.shots[c] === 0 && diffs[c] > 0) && (
+        // "0 strokes, +3.9" looks like a mistake: the group needs those strokes (missed greens), the player did not
+        <p className="muted small" style={{ margin: 0 }}>
+          {SG_CATEGORIES.filter((c) => props.shots[c] === 0 && diffs[c] > 0)
+            .map((c) => SG_LABELS[c])
+            .join(', ')}
+          {tr(
+            `: no strokes of yours – the group needs some here (e.g. after missed greens), you saved them.`,
+            `: kein Schlag von dir – die Vergleichsgruppe braucht hier welche (z. B. nach verfehlten Grüns), du hast sie gespart.`,
+          )}
+        </p>
+      )}
     </section>
   );
 }
