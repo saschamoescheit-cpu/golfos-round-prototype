@@ -34,14 +34,44 @@ export function saveRound(round: Round): void {
   write(ROUNDS, [round, ...rounds]);
 }
 
-/** Deletes a round the player wants gone – with its GPS track, plan and caddie notes, so it does not come back. */
-export function deleteRound(id: string): void {
+const ROUND_KEYS = ['golfos.track.v1.', 'golfos.live.v1.', 'golfos.caddielog.v1.'];
+/** The last round the player deleted, for "Undo" (Sascha 15.10.2026: one tap to delete, no second question). */
+let undoSnap: { round: Round; keys: Record<string, string> } | null = null;
+
+/** Deletes a round the player wants gone – with its GPS track, plan and caddie notes, so it does not come back.
+ *  `undoable`: the player deleted it himself – it can be brought back for a few seconds ("Undo"). */
+export function deleteRound(id: string, undoable = false): void {
+  const round = loadRounds().find((r) => r.id === id);
+  const keys: Record<string, string> = {};
   write(ROUNDS, loadRounds().filter((r) => r.id !== id));
   try {
-    for (const k of ['golfos.track.v1.', 'golfos.live.v1.', 'golfos.caddielog.v1.']) localStorage.removeItem(k + id);
+    for (const k of ROUND_KEYS) {
+      const v = localStorage.getItem(k + id);
+      if (v != null) keys[k + id] = v;
+      localStorage.removeItem(k + id);
+    }
   } catch {
     /* storage blocked */
   }
+  if (undoable && round && !round.preview) {
+    undoSnap = { round, keys };
+    window.dispatchEvent(new CustomEvent('golfos:round-deleted', { detail: round.courseName }));
+  }
+}
+
+/** Brings the last deleted round back, with its track; tells the app to reload the rounds. */
+export function undoDelete(): boolean {
+  if (!undoSnap) return false;
+  const { round, keys } = undoSnap;
+  undoSnap = null;
+  saveRound(round);
+  try {
+    for (const [k, v] of Object.entries(keys)) localStorage.setItem(k, v);
+  } catch {
+    /* storage full */
+  }
+  window.dispatchEvent(new Event('golfos:rounds-changed'));
+  return true;
 }
 
 export function loadCachedCourse(id: string): Course | null {

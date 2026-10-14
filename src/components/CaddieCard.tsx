@@ -3,6 +3,7 @@ import { answer, canListen, listen, RULES, speak, summary, toggleSpeak, type Cad
 import type { HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
 import { getLang, tr } from '../lib/i18n';
+import type { HoleBook } from '../lib/holebook';
 
 // The caddie on the hole map (feature 017): appears when he has something new to say, can be hidden completely.
 // Folded it is one glance – club, distance and the one line that matters; tapped open: reasons, lie, read aloud,
@@ -19,6 +20,7 @@ export function CaddieCard(props: {
   clubCode: string;
   lie: LieKind | null; // null on the tee
   onLie: (l: LieKind) => void;
+  book?: HoleBook | null; // what the course book knows about the hole
 }) {
   const [details, setDetails] = useState(false);
   const [sheet, setSheet] = useState<'ask' | 'rules' | 'notes' | null>(null);
@@ -39,6 +41,7 @@ export function CaddieCard(props: {
           </span>
         ))}
         {details && props.alt && <span className="alt">{props.alt}</span>}
+        {details && props.book && <BookPart book={props.book} />}
         {details && props.lie != null && (
           <label className="caddie-lie">
             <span>{tr('Lie', 'Lage')}</span>
@@ -209,5 +212,40 @@ function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: HoleNote)
         {tr('Save for this course', 'Für diesen Platz speichern')}
       </button>
     </Sheet>
+  );
+}
+
+/** The course book's facts on the hole (Sascha 15.10.2026), under the caddie's advice when unfolded. */
+function BookPart(props: { book: HoleBook }) {
+  const b = props.book;
+  if (!b.rise && !b.hazards.length && !b.green.length && !b.record.length) return null;
+  return (
+    <div className="caddie-book" aria-label={tr('The hole', 'Das Loch')}>
+      <span className="caddie-book-title">{tr('The hole', 'Das Loch')}{b.rise ? ` · ${b.rise}` : ''}</span>
+      {b.hazards.length > 0 && (
+        <>
+          <span className="caddie-book-lbl">{tr('From the tee: to reach / to carry', 'Vom Abschlag: bis dorthin / drüber')}</span>
+          {b.hazards.map((t) => (
+            <span key={t}>{t}</span>
+          ))}
+        </>
+      )}
+      {b.green.length > 0 && (
+        <>
+          <span className="caddie-book-lbl">{tr('Green', 'Grün')}</span>
+          {b.green.map((t) => (
+            <span key={t}>{t}</span>
+          ))}
+        </>
+      )}
+      {b.record.length > 0 && (
+        <>
+          <span className="caddie-book-lbl">{tr('Your record', 'Deine Bilanz')}</span>
+          {b.record.map((t) => (
+            <span key={t}>{t}</span>
+          ))}
+        </>
+      )}
+    </div>
   );
 }

@@ -143,7 +143,7 @@ export function PlayTab(props: {
                 <button type="button" className="btn-secondary" onClick={() => setConfirm('end')}>
                   {tr('Finish round', 'Runde beenden')}
                 </button>
-                <button type="button" className="btn-secondary btn-danger" onClick={() => setConfirm('abort')}>
+                <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(open)}>
                   {tr('Cancel round', 'Runde abbrechen')}
                 </button>
               </div>
@@ -167,7 +167,7 @@ export function PlayTab(props: {
                   {tr('Save & finish', 'Speichern & beenden')}
                 </button>
               </div>
-              <button type="button" className="btn-secondary btn-danger" onClick={() => setConfirm('abort')}>
+              <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(open)}>
                 {tr('Delete round instead', 'Runde stattdessen löschen')}
               </button>
             </div>

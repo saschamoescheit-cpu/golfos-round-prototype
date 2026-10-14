@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
+import { FriendChips, roughPlaying } from './Home';
 import { emptyEntry } from '../lib/scoring';
 import { loadCarryBag, newId } from '../lib/storage';
 import { TopBar } from '../components/ui';
@@ -220,6 +221,12 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
             onRemove={() => setOthers(others.filter((o) => o.id !== p.id))}
           />
         ))}
+        {others.length < 3 && (
+          <FriendChips
+            taken={[me.name, ...others.map((o) => o.name)]}
+            onAdd={(f) => setOthers([...others.filter((o) => o.name.trim() || o.index.trim() || o.handicap.trim()), { id: newId(), name: f.name, index: f.hcp, handicap: roughPlaying(f.hcp) }].slice(0, 3))}
+          />
+        )}
         {others.length < 3 && (
           <button type="button" className="btn-secondary" onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '' }])}>
             {tr('+ Add player', '+ Spieler hinzufügen')}

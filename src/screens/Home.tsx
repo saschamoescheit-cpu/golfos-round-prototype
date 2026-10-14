@@ -1,0 +1,142 @@
+import { useState, type ReactNode } from 'react';
+import { tr } from '../lib/i18n';
+import { loadFriends, saveFriends, type Friend } from '../lib/friends';
+import { newId } from '../lib/storage';
+import { MENU_ICONS, MenuBar } from '../components/TabBar';
+
+// The start page of GolfOS (Sascha 15.10.2026): the two modules, the friends you play with and your profile – with a
+// menu at the bottom like inside the modules. The profile is the same everywhere.
+
+export type HomeTab = 'start' | 'friends' | 'profile';
+
+export function Home(props: {
+  tab: HomeTab;
+  onTab: (t: HomeTab) => void;
+  roundOpen: boolean;
+  gameOpen: boolean;
+  onPick: (m: 'rounds' | 'games') => void;
+  profile: ReactNode;
+}) {
+  return (
+    <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} onPick={props.onPick} />}
+      {props.tab === 'friends' && <Friends />}
+      {props.tab === 'profile' && props.profile}
+      <MenuBar
+        items={[
+          { id: 'start' as HomeTab, label: 'Start', icon: MENU_ICONS.home },
+          { id: 'friends' as HomeTab, label: tr('Friends', 'Freunde'), icon: MENU_ICONS.friends },
+          { id: 'profile' as HomeTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile },
+        ]}
+        current={props.tab}
+        onPick={(t) => {
+          props.onTab(t);
+          window.scrollTo(0, 0);
+        }}
+      />
+    </main>
+  );
+}
+
+function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; onPick: (m: 'rounds' | 'games') => void }) {
+  return (
+    <>
+      <div className="brand module-brand">
+        GOLF<span>OS</span>
+      </div>
+      {/* the GolfOS claim (Sascha 15.10.2026), the same in both languages */}
+      <p className="muted module-claim">unlock every part of your golf game</p>
+      <button type="button" className="module-card" onClick={() => props.onPick('rounds')}>
+        <span className="module-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 21V3l11 4-11 4" />
+            <ellipse cx="12" cy="21" rx="8" ry="1.6" />
+          </svg>
+        </span>
+        <span className="grow">
+          <strong>Rounds</strong>
+          <span className="muted small">{tr('Your round with GPS map, caddie, scorecard and the analysis afterwards.', 'Deine Runde mit GPS-Karte, Caddie, Scorekarte und der Analyse danach.')}</span>
+          {props.roundOpen && <span className="small module-live">{tr('A round is in play', 'Eine Runde läuft')}</span>}
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
+      <button type="button" className="module-card" onClick={() => props.onPick('games')}>
+        <span className="module-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="7" width="18" height="12" rx="3" />
+            <path d="M8 11v4M6 13h4" />
+            <circle cx="15.5" cy="12" r="1" />
+            <circle cx="17.5" cy="14.5" r="1" />
+          </svg>
+        </span>
+        <span className="grow">
+          <strong>Games</strong>
+          <span className="muted small">{tr('Side games among friends: skins, Nassau, wolf, Las Vegas … with standing and settlement.', 'Spiele unter Freunden: Skins, Nassau, Wolf, Las Vegas … mit Zwischenstand und Abrechnung.')}</span>
+          {props.gameOpen && <span className="small module-live">{tr('A game is in play', 'Ein Spiel läuft')}</span>}
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
+    </>
+  );
+}
+
+/** The people you play with – Rounds and Games offer them when setting up. */
+function Friends() {
+  const [list, setList] = useState<Friend[]>(loadFriends);
+  const store = (next: Friend[]) => {
+    setList(next);
+    saveFriends(next.filter((f) => f.name.trim() || f.hcp.trim()));
+  };
+  const set = (id: string, patch: Partial<Friend>) => store(list.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  return (
+    <>
+      <h1 className="tab-title">{tr('Friends', 'Freunde')}</h1>
+      <p className="muted" style={{ margin: 0 }}>
+        {tr('The people you play with, once with their handicap – a tap adds them to a round or a game.', 'Mit wem du spielst, einmal mit Handicap – ein Tipp nimmt sie in eine Runde oder ein Spiel auf.')}
+      </p>
+      {list.map((f) => (
+        <div key={f.id} className="card game-player-row">
+          <div className="field">
+            <label htmlFor={`fname-${f.id}`}>Name</label>
+            <input id={`fname-${f.id}`} className="input" value={f.name} onChange={(e) => set(f.id, { name: e.target.value })} />
+          </div>
+          <div className="field">
+            <label htmlFor={`fhcp-${f.id}`}>Handicap</label>
+            <input id={`fhcp-${f.id}`} className="input" inputMode="decimal" value={f.hcp} onChange={(e) => set(f.id, { hcp: e.target.value })} />
+          </div>
+          <button type="button" className="icon-btn" aria-label={tr(`Remove ${f.name || 'friend'}`, `${f.name || 'Freund'} entfernen`)} onClick={() => store(list.filter((x) => x.id !== f.id))} style={{ marginBottom: 3 }}>
+            ✕
+          </button>
+        </div>
+      ))}
+      <button type="button" className="btn-secondary" onClick={() => setList([...list, { id: newId(), name: '', hcp: '' }])}>
+        {tr('+ Add friend', '+ Freund hinzufügen')}
+      </button>
+    </>
+  );
+}
+
+/** Friends not yet in the flight, as chips to add with one tap (round and game setup). */
+export function FriendChips(props: { taken: string[]; onAdd: (f: Friend) => void }) {
+  const free = loadFriends().filter((f) => f.name.trim() && !props.taken.some((n) => n.trim().toLowerCase() === f.name.trim().toLowerCase()));
+  if (!free.length) return null;
+  return (
+    <div className="friend-chips">
+      <span className="muted small">{tr('Friends', 'Freunde')}</span>
+      <div className="chip-set">
+        {free.map((f) => (
+          <button key={f.id} type="button" className="chip" onClick={() => props.onAdd(f)}>
+            + {f.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Handicap index as typed → rounded playing handicap (plus handicap negative), as a start value. */
+export const roughPlaying = (hcp: string): string => {
+  const t = hcp.trim().replace(',', '.');
+  const n = Number(t.replace('+', ''));
+  return t === '' || !Number.isFinite(n) ? '' : String(Math.round(t.startsWith('+') ? -n : n));
+};

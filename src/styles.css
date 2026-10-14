@@ -670,7 +670,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 
 /* ---------- Menu tabs (14.10.2026): play, rounds, record, stats, profile ---------- */
 .screen.with-tabs { padding-bottom: calc(env(safe-area-inset-bottom) + 96px); }
-.tab-title { margin: 0; font: 700 30px/1.15 var(--display); }
+.tab-title { margin: 14px 0 0; font: 700 30px/1.15 var(--display); } /* more room below the GOLFOS bar (Sascha 15.10.2026) */
 .tabbar {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 10px); z-index: 5;
   width: calc(100% - 24px); max-width: 536px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 6px;
@@ -1010,3 +1010,22 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .game-grid th:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
 .game-grid tbody tr { border-top: 1px solid var(--line); }
 .play-module { margin-left: auto; }
+
+/* the course book's facts in the caddie (Sascha 15.10.2026) */
+.caddie-book { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
+.caddie-book-title { font-weight: 700; font-size: 14px; }
+.caddie-book-lbl { margin-top: 4px; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+
+/* "Round deleted · Undo" */
+.undo-toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 40;
+  width: min(440px, calc(100% - 32px)); display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border-radius: 14px; background: #24323c; color: var(--text); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); font-size: 15px;
+}
+.undo-toast button { background: none; border: 0; color: var(--brand-text); font: 700 15px var(--body); padding: 6px 4px; }
+
+/* friends to add with a tap; the Games balance */
+.friend-chips { display: flex; flex-direction: column; gap: 6px; }
+.balance-totals { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; gap: 8px; }
+.balance-totals div { display: flex; flex-direction: column; gap: 2px; }
+.balance-totals strong { font: 700 24px var(--display); font-variant-numeric: tabular-nums; }

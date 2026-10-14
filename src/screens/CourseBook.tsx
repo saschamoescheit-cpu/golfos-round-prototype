@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Course, LngLat, RoundHole } from '../types';
-import { bearingDeg, centroid, formatDistance, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, type HoleMapData, approachFrom } from '../lib/geo';
+import { formatDistance, holeMapData, lineLength, pointAt, type HoleMapData } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
 import { loadCaddieSettings, loadCarryBag, loadGeometry, loadRounds, loadUnit } from '../lib/storage';
 import { courseStats, type CourseHoleStat } from '../lib/history';
-import { DEFAULT_CARRY, levelName, readGreen } from '../lib/caddie';
+import { DEFAULT_CARRY } from '../lib/caddie';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { loadHoleNotes } from '../lib/holenotes';
-import { sideOf } from '../lib/dispersion';
-import { heightAt } from '../lib/terrain';
-import { bestLeave, loadGreenGrids, setGreenSpeed, type GreenGrid } from '../lib/greenread';
+import { loadGreenGrids, setGreenSpeed, type GreenGrid } from '../lib/greenread';
 import { playing18 } from '../lib/scoring';
 import { HoleSketch } from '../components/HoleSketch';
 import { TopBar } from '../components/ui';
-import { clubCode, dec, hazardWord, sideWord, tr } from '../lib/i18n';
+import { clubCode, tr } from '../lib/i18n';
 import { teeName } from '../data/tees';
 import { withPartials } from '../lib/partials';
+import { holeBook } from '../lib/holebook';
 
 // Course book (feature 027): every hole of the round on one page, like a birdie book – sketch with distance dots,
 // hazards from the tee, the caddie's tee plan in calm weather and how to approach the green. For planning at home.
@@ -132,27 +131,7 @@ function HolePage(p: {
     style: p.style, favourite: p.favourite, lieChoice: null, unit: p.unit, playing: p.playing,
   });
   const lines = cad.lines.filter((l) => l.tone === 'warn' || l.tone === 'plan' || /^Fairway \d/.test(l.text)).map((l) => l.text);
-  // hazards from the tee (bunkers and water ahead, nearest first)
-  const hz = [
-    ...data.bunkers.map((r) => ({ r, kind: 'bunker' })),
-    ...data.water.map((r) => ({ r, kind: 'water' })),
-  ]
-    .map((x) => ({ ...x, c: centroid(x.r), ...hazardToCarry(data.tee, x.r) }))
-    .filter((x) => isAhead(data.tee, data.greenCenter, x.c) && x.to >= 60 && x.to <= Math.min(320, L - 30))
-    .sort((a, b) => a.to - b.to)
-    .slice(0, 4)
-    .map((x) => {
-      const s = sideOf(data.tee, data.greenCenter, x.c);
-      const where = Math.abs(s) < 8 ? tr('in the middle', 'mittig') : sideWord(s > 0 ? 'right' : 'left');
-      return `${hazardWord(x.kind)} ${where}: ${fmt(x.to)} / ${fmt(x.carry)}`;
-    });
-  // height tee → green (terrain model along the hole)
-  const h0 = heightAt(p.slopes, 0);
-  const h1 = heightAt(p.slopes, L - 20);
-  const rise = h0 != null && h1 != null ? h1 - h0 : null;
-  // green: main slope and where to leave the approach (from 120 m in front, middle pin)
-  const g = p.greenSlope ? readGreen(p.greenSlope, bearingDeg(approachFrom(data), data.greenCenter)) : null;
-  const leave = p.grid ? bestLeave(p.grid, data.greenCenter, pointAt(data.line, Math.max(0, L - 120)), data.green) : null;
+  const book = holeBook({ data, slopes: p.slopes, greenSlope: p.greenSlope, grid: p.grid, unit: p.unit, record: p.record });
   return (
     <section className="card book-hole">
       {head}
@@ -163,45 +142,42 @@ function HolePage(p: {
         <div className="book-text">
           <p className="book-club">
             <strong>{clubCode(cad.advice.club)}</strong> {tr('off the tee', 'vom Abschlag')}
-            {rise != null && Math.abs(rise) >= 2 && (
-              <span className="muted"> · {tr(`green ${Math.abs(Math.round(rise))} m ${rise > 0 ? 'higher' : 'lower'}`, `Grün ${Math.abs(Math.round(rise))} m ${rise > 0 ? 'höher' : 'tiefer'}`)}</span>
-            )}
+            {book.rise && <span className="muted"> · {book.rise}</span>}
           </p>
           <ul className="book-lines">
             {lines.map((t, k) => (
               <li key={`${k}-${t}`}>{t}</li>
             ))}
           </ul>
-          {hz.length > 0 && (
+          {book.hazards.length > 0 && (
             <>
               <p className="lbl">{tr('From the tee: to reach / to carry', 'Vom Abschlag: bis dorthin / drüber')}</p>
               <ul className="book-lines muted">
-                {hz.map((t, k) => (
+                {book.hazards.map((t, k) => (
                   <li key={`${k}-${t}`}>{t}</li>
                 ))}
               </ul>
             </>
           )}
-          {(g || leave) && (
+          {book.green.length > 0 && (
             <>
               <p className="lbl">{tr('Green', 'Grün')}</p>
               <ul className="book-lines">
-                {g && <li>{g.level === 'flat' ? tr('almost flat', 'fast flach') : tr(`${g.level} slope, ${g.text}`, `${levelName(g.level)} Neigung, ${g.text}`)}</li>}
-                {leave && <li>{leave.text}</li>}
+                {book.green.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
               </ul>
             </>
           )}
-          {p.record && (
+          {book.record.length > 0 && (
             <>
               <p className="lbl">{tr('Your record', 'Deine Bilanz')}</p>
               <ul className="book-lines">
-                <li>
-                  {tr(
-                    `Ø ${dec(p.record.avg.toFixed(1))} (${p.record.toPar > 0 ? '+' : ''}${dec(p.record.toPar.toFixed(1))}) in ${p.record.played} ${p.record.played === 1 ? 'round' : 'rounds'} · best ${p.record.best}`,
-                    `Ø ${dec(p.record.avg.toFixed(1))} (${p.record.toPar > 0 ? '+' : ''}${dec(p.record.toPar.toFixed(1))}) aus ${p.record.played} ${p.record.played === 1 ? 'Runde' : 'Runden'} · beste ${p.record.best}`,
-                  )}
-                </li>
-                {p.record.notes.length > 0 && <li className="muted">{p.record.notes.join(' · ')}</li>}
+                {book.record.map((t, k) => (
+                  <li key={t} className={k ? 'muted' : undefined}>
+                    {t}
+                  </li>
+                ))}
               </ul>
             </>
           )}

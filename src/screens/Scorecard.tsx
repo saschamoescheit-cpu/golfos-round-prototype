@@ -90,7 +90,15 @@ export function Scorecard(props: {
                   {scoreOnly ? tr('Scorecard only ✓', 'Nur Scorekarte ✓') : tr('Scorecard only', 'Nur als Scorekarte')}
                 </button>
               )}
-              <button type="button" className="btn-secondary btn-danger" onClick={() => setConfirmDelete(true)}>
+              {/* one tap – "Undo" brings it back for a few seconds (Sascha 15.10.2026) */}
+              <button
+                type="button"
+                className="btn-secondary btn-danger"
+                onClick={() => {
+                  deleteRound(round.id, true);
+                  props.onDeleted();
+                }}
+              >
                 {tr('Delete round', 'Runde löschen')}
               </button>
             </div>
@@ -210,7 +218,14 @@ export function Scorecard(props: {
       <span className="spacer" />
       {/* save and delete sit in the card at the top while the round is being finished */}
       {finished && !props.justFinished && (!confirmDelete ? (
-        <button type="button" className="btn-secondary btn-danger" onClick={() => setConfirmDelete(true)}>
+        <button
+          type="button"
+          className="btn-secondary btn-danger"
+          onClick={() => {
+            deleteRound(round.id, true);
+            props.onDeleted();
+          }}
+        >
           {tr('Delete round', 'Runde löschen')}
         </button>
       ) : (

@@ -31,7 +31,7 @@ export interface HoleMapProps {
   /** A marker for the caddie's aim point with a dashed line from the player (not used on the hole map any more). */
   aimPoint?: LngLat | null;
   /** Green chart image (slope colours, arrows, contours) placed by its corners. */
-  greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat]; roomy?: boolean } | null; // roomy: map buttons still on screen
+  greenChart?: { url: string; corners: [LngLat, LngLat, LngLat, LngLat]; roomy?: boolean; fit?: LngLat[] } | null; // roomy: map buttons still on screen; fit: the green itself fills the screen
   /** Green slope: arrow on the green pointing where it falls (compass degrees). */
   greenSlope?: { pos: LngLat; downDeg: number; label: string };
   /** Putt read on the green: the ball, the rolling line and the point to aim at next to the hole. */
@@ -218,7 +218,7 @@ export function HoleMap(props: HoleMapProps) {
   }, [props.recenter]);
 
   // Green chart shown: zoom onto the green (keeping the playing direction); hidden again: back to the hole.
-  const chartKey = props.greenChart ? `${props.greenChart.url}${props.greenChart.roomy ? '|roomy' : ''}` : ''; // closer zoom once at the green
+  const chartKey = props.greenChart ? `${props.greenChart.url}${props.greenChart.roomy ? '|roomy' : ''}${props.greenChart.fit ? '|fit' : ''}` : ''; // closer zoom once at the green
   useEffect(() => {
     const m = map.current;
     if (!m || !ready.current) return;
@@ -469,7 +469,9 @@ function treesData(trees: Ring[] | undefined): GeoJSON.FeatureCollection {
 
 /** Zoom onto the green chart (keeping the playing direction). */
 function chartCamera(m: maplibregl.Map, c: NonNullable<HoleMapProps['greenChart']>) {
-  const b = c.corners.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(c.corners[0], c.corners[0]));
+  // the green itself when known (asked for with the button: as large as the screen allows), else the whole chart
+  const pts = c.fit?.length ? c.fit : c.corners;
+  const b = pts.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
   // Room for the boxes above and the buttons below – scaled down on small screens, or MapLibre refuses to zoom.
   const h = m.getContainer().clientHeight;
   let top = 150;
@@ -481,7 +483,7 @@ function chartCamera(m: maplibregl.Map, c: NonNullable<HoleMapProps['greenChart'
   const k = Math.min(1, (h - 160) / (top + bottom));
   top *= k;
   bottom *= k;
-  m.fitBounds(b, { bearing: m.getBearing(), padding: { top, bottom, left: 20, right: 20 }, maxZoom: 21, duration: 600 });
+  m.fitBounds(b, { bearing: m.getBearing(), padding: { top, bottom, left: 20, right: c.fit?.length ? 78 : 20 }, maxZoom: 21, duration: 600 }); // the tool bar on the right
 }
 
 /** From the player to the green: both on screen, the green at the top, the player at the bottom. */

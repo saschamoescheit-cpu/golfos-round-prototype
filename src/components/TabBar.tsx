@@ -55,16 +55,68 @@ export const tabLabel = (t: Tab): string =>
 
 export function TabBar(props: { tab: Tab; onTab: (t: Tab) => void; dots?: Partial<Record<Tab, boolean>> }) {
   return (
+    <MenuBar
+      items={(['play', 'rounds', 'record', 'stats', 'profile'] as Tab[]).map((t) => ({ id: t, label: tabLabel(t), icon: ICONS[t], dot: props.dots?.[t] }))}
+      current={props.tab}
+      onPick={props.onTab}
+    />
+  );
+}
+
+/** The menu at the bottom – also on the start page and in Games (Sascha 15.10.2026). */
+export function MenuBar<T extends string>(props: { items: { id: T; label: string; icon: ReactNode; dot?: boolean }[]; current: T; onPick: (t: T) => void }) {
+  return (
     <nav className="tabbar" aria-label={tr('Menu', 'Menü')}>
-      {(['play', 'rounds', 'record', 'stats', 'profile'] as Tab[]).map((t) => (
-        <button key={t} type="button" aria-current={props.tab === t ? 'page' : undefined} onClick={() => props.onTab(t)}>
+      {props.items.map((it) => (
+        <button key={it.id} type="button" aria-current={props.current === it.id ? 'page' : undefined} onClick={() => props.onPick(it.id)}>
           <span className="tabbar-icon">
-            {ICONS[t]}
-            {props.dots?.[t] && <i className="tabbar-dot" aria-label={tr('new', 'neu')} />}
+            {it.icon}
+            {it.dot && <i className="tabbar-dot" aria-label={tr('new', 'neu')} />}
           </span>
-          {tabLabel(t)}
+          {it.label}
         </button>
       ))}
     </nav>
   );
 }
+
+/** Icons of the other menus. */
+export const MENU_ICONS = {
+  profile: ICONS.profile,
+  play: ICONS.play,
+  list: ICONS.rounds,
+  // house
+  home: icon(<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" />),
+  // two people
+  friends: icon(
+    <>
+      <circle cx="9" cy="8" r="3.4" />
+      <path d="M2.5 20c.9-3.4 3.4-5.2 6.5-5.2s5.6 1.8 6.5 5.2" />
+      <circle cx="17" cy="9" r="2.7" />
+      <path d="M16.5 14.8c2.5.2 4.2 1.8 5 4.6" />
+    </>,
+  ),
+  // controller
+  game: icon(
+    <>
+      <rect x="2.5" y="7" width="19" height="11" rx="3.5" />
+      <path d="M7.5 10.5v4M5.5 12.5h4" />
+      <circle cx="15.5" cy="11.5" r="0.6" fill="currentColor" />
+      <circle cx="18" cy="14" r="0.6" fill="currentColor" />
+    </>,
+  ),
+  // coins (balance)
+  balance: icon(
+    <>
+      <ellipse cx="12" cy="6.5" rx="7" ry="2.8" />
+      <path d="M5 6.5v5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-5M5 11.5v5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-5" />
+    </>,
+  ),
+  // open book (rules)
+  rules: icon(
+    <>
+      <path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5z" />
+      <path d="M12 6.5v13" />
+    </>,
+  ),
+};

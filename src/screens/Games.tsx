@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { Course } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
@@ -7,15 +7,17 @@ import { newId } from '../lib/storage';
 import { FORMS, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadGames, saveGame } from '../lib/gamestore';
 import { TopBar } from '../components/ui';
+import { MENU_ICONS, MenuBar } from '../components/TabBar';
+import { FriendChips, roughPlaying } from './Home';
 import { CoursePicker } from './CoursePicker';
 
 // The "Games" module (Sascha 15.10.2026): side games as a product of its own – choose a game form, the course and the
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
 // who pays whom. Not linked to the round analysis yet; a side game next to a round may follow later.
 
+export type GamesTab = 'play' | 'games' | 'balance' | 'rules' | 'profile';
 type View =
-  | { name: 'home' }
-  | { name: 'forms' }
+  | { name: 'tab'; tab: GamesTab }
   | { name: 'setup'; draft: Draft }
   | { name: 'course'; draft: Draft }
   | { name: 'play'; game: Game }
@@ -51,28 +53,32 @@ function newDraft(form: FormId = 'skins'): Draft {
   return { form, course: null, optionId: '', players: [me, { id: newId(), name: '', hcp: '' }], settings: defaults(formDef(form)) };
 }
 
-export function GamesApp(props: { onModules: () => void }) {
+export function GamesApp(props: { onModules: () => void; profile: ReactNode; tab?: GamesTab; onTabChange?: (t: GamesTab) => void }) {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
-  const [view, setView] = useState<View>(() => (running[0] ? { name: 'play', game: running[0] } : { name: 'home' }));
+  const [view, setView] = useState<View>(() => (running[0] && !props.tab ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' }));
   const store = (g: Game) => {
     saveGame(g);
     setGames(loadGames());
   };
 
   switch (view.name) {
-    case 'home':
+    case 'tab':
       return (
-        <GamesHome
+        <GamesTabs
+          tab={view.tab}
           games={games}
+          profile={props.profile}
+          onTab={(tab) => {
+            setView({ name: 'tab', tab });
+            props.onTabChange?.(tab);
+            window.scrollTo(0, 0);
+          }}
           onModules={props.onModules}
-          onNew={() => setView({ name: 'setup', draft: newDraft() })}
-          onForms={() => setView({ name: 'forms' })}
+          onNew={(form) => setView({ name: 'setup', draft: newDraft(form) })}
           onOpen={(g) => setView(g.finishedAt ? { name: 'result', game: g } : { name: 'play', game: g })}
         />
       );
-    case 'forms':
-      return <FormCatalog onBack={() => setView({ name: 'home' })} onPlay={(form) => setView({ name: 'setup', draft: newDraft(form) })} />;
     case 'course':
       return (
         <CoursePicker
@@ -85,7 +91,7 @@ export function GamesApp(props: { onModules: () => void }) {
         <GameSetup
           draft={view.draft}
           onChange={(draft) => setView({ name: 'setup', draft })}
-          onBack={() => setView({ name: 'home' })}
+          onBack={() => setView({ name: 'tab', tab: 'play' })}
           onCourse={() => setView({ name: 'course', draft: view.draft })}
           onStart={(g) => {
             store(g);
@@ -101,7 +107,7 @@ export function GamesApp(props: { onModules: () => void }) {
             store(g);
             setView({ name: 'play', game: g });
           }}
-          onBack={() => setView({ name: 'home' })}
+          onBack={() => setView({ name: 'tab', tab: 'play' })}
           onFinish={(g) => {
             const done = { ...g, finishedAt: new Date().toISOString() };
             store(done);
@@ -113,7 +119,7 @@ export function GamesApp(props: { onModules: () => void }) {
       return (
         <GameResult
           game={view.game}
-          onBack={() => setView({ name: 'home' })}
+          onBack={() => setView({ name: 'tab', tab: 'games' })}
           onReopen={() => {
             const g = { ...view.game, finishedAt: null };
             store(g);
@@ -122,70 +128,176 @@ export function GamesApp(props: { onModules: () => void }) {
           onDelete={() => {
             deleteGame(view.game.id);
             setGames(loadGames());
-            setView({ name: 'home' });
+            setView({ name: 'tab', tab: 'games' });
           }}
         />
       );
   }
 }
 
-// ---------- start page of the module ----------
+// ---------- the module's tabs (Sascha 15.10.2026: a menu at the bottom as in Rounds) ----------
 
-function GamesHome(props: { games: Game[]; onModules: () => void; onNew: () => void; onForms: () => void; onOpen: (g: Game) => void }) {
+function GamesTabs(props: {
+  tab: GamesTab;
+  games: Game[];
+  profile: ReactNode;
+  onTab: (t: GamesTab) => void;
+  onModules: () => void;
+  onNew: (form?: FormId) => void;
+  onOpen: (g: Game) => void;
+}) {
+  const running = props.games.filter((g) => !g.finishedAt);
+  return (
+    <main className="screen with-tabs">
+      {props.tab !== 'profile' && (
+        <div className="topbar">
+          <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
+            <span className="brand">
+              GOLF<span>OS</span>
+            </span>
+            <span className="module-tag">Games</span>
+            <span aria-hidden="true">⇄</span>
+          </button>
+        </div>
+      )}
+      {props.tab === 'play' && (
+        <>
+          <h1 className="tab-title">{tr('Play a game', 'Spiel starten')}</h1>
+          <p className="muted" style={{ margin: 0 }}>
+            {tr('Side games among friends – skins, Nassau, wolf and more, with the standing and who pays whom.', 'Spiele unter Freunden – Skins, Nassau, Wolf und mehr, mit Zwischenstand und Abrechnung.')}
+          </p>
+          {running.length > 0 && <GameList games={running} onOpen={props.onOpen} title={tr('In play', 'Läuft gerade')} />}
+          <button type="button" className="btn-primary" onClick={() => props.onNew()}>
+            {tr('New game', 'Neues Spiel')}
+          </button>
+        </>
+      )}
+      {props.tab === 'games' && (
+        <>
+          <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
+          {props.games.length ? <GameList games={props.games} onOpen={props.onOpen} /> : <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>}
+        </>
+      )}
+      {props.tab === 'balance' && <Balance games={props.games} />}
+      {props.tab === 'rules' && <FormCatalog onPlay={props.onNew} />}
+      {props.tab === 'profile' && props.profile}
+      <MenuBar
+        items={[
+          { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
+          { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
+          { id: 'balance' as GamesTab, label: tr('Balance', 'Bilanz'), icon: MENU_ICONS.balance },
+          { id: 'rules' as GamesTab, label: tr('Rules', 'Regeln'), icon: MENU_ICONS.rules },
+          { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile },
+        ]}
+        current={props.tab}
+        onPick={props.onTab}
+      />
+    </main>
+  );
+}
+
+function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: string }) {
   const date = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: '2-digit' });
   return (
-    <main className="screen">
-      <div className="topbar">
-        <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
-          <span className="brand">
-            GOLF<span>OS</span>
-          </span>
-          <span className="module-tag">Games</span>
-          <span aria-hidden="true">⇄</span>
-        </button>
-      </div>
-      <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
-      <p className="muted" style={{ margin: 0 }}>
-        {tr('Side games among friends – skins, Nassau, wolf and more, with the standing and who pays whom.', 'Spiele unter Freunden – Skins, Nassau, Wolf und mehr, mit Zwischenstand und Abrechnung.')}
-      </p>
-      <button type="button" className="btn-primary" onClick={props.onNew}>
-        {tr('New game', 'Neues Spiel')}
-      </button>
-      <button type="button" className="btn-secondary" onClick={props.onForms}>
-        {tr('All game forms & rules', 'Alle Spielformen & Regeln')}
-      </button>
-      {props.games.length > 0 && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span className="eyebrow">{tr('Your games', 'Deine Spiele')}</span>
-          <ul className="list">
-            {props.games.map((g) => {
-              const f = formDef(g.form);
-              const st = standingOf(g);
-              return (
-                <li key={g.id}>
-                  <button type="button" className={`list-item${g.finishedAt ? '' : ' live'}`} onClick={() => props.onOpen(g)}>
-                    <span className="grow">
-                      <span className="title">
-                        {f.name()} · {g.courseName}
-                      </span>
-                      <span className="muted small">
-                        {date(g.createdAt)} · {g.players.map((p) => p.name).join(', ')}
-                      </span>
-                      <span className="small">
-                        {g.finishedAt
-                          ? winnerOf(st.rows) ? `${tr('Winner', 'Sieger')}: ${winnerOf(st.rows)}` : tr('Tied', 'Unentschieden')
-                          : tr(`In play – ${holesPlayed(g)} of ${g.holes.length} holes`, `Läuft – ${holesPlayed(g)} von ${g.holes.length} Löchern`)}
-                      </span>
+    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {props.title && <span className="eyebrow">{props.title}</span>}
+      <ul className="list">
+        {props.games.map((g) => {
+          const f = formDef(g.form);
+          const st = standingOf(g);
+          return (
+            <li key={g.id}>
+              <button type="button" className={`list-item${g.finishedAt ? '' : ' live'}`} onClick={() => props.onOpen(g)}>
+                <span className="grow">
+                  <span className="title">
+                    {f.name()} · {g.courseName}
+                  </span>
+                  <span className="muted small">
+                    {date(g.createdAt)} · {g.players.map((p) => p.name).join(', ')}
+                  </span>
+                  <span className="small">
+                    {g.finishedAt
+                      ? winnerOf(st.rows)
+                        ? `${tr('Winner', 'Sieger')}: ${winnerOf(st.rows)}`
+                        : tr('Tied', 'Unentschieden')
+                      : tr(`In play – ${holesPlayed(g)} of ${g.holes.length} holes`, `Läuft – ${holesPlayed(g)} von ${g.holes.length} Löchern`)}
+                  </span>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Your balance over all finished games: wins, money, and against whom (player 1 is you). */
+function Balance(props: { games: Game[] }) {
+  const done = props.games.filter((g) => g.finishedAt);
+  let wins = 0;
+  let money = 0;
+  const vs = new Map<string, { name: string; games: number; money: number }>();
+  for (const g of done) {
+    const me = g.players[0];
+    const st = standingOf(g);
+    const lead = winnerOf(st.rows) ? st.rows[0].id : null;
+    if (lead === me.id || lead === 'A') wins++;
+    money += st.money?.[me.id] ?? 0;
+    const pays = st.money ? transfers(st.money) : [];
+    for (const p of g.players.slice(1)) {
+      const key = p.name.trim().toLowerCase();
+      const row = vs.get(key) ?? { name: p.name, games: 0, money: 0 };
+      row.games++;
+      for (const t of pays) {
+        if (t.from === p.id && t.to === me.id) row.money += t.amount;
+        if (t.from === me.id && t.to === p.id) row.money -= t.amount;
+      }
+      vs.set(key, row);
+    }
+  }
+  const cls = (v: number) => (v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted');
+  return (
+    <>
+      <h1 className="tab-title">{tr('Balance', 'Bilanz')}</h1>
+      {done.length === 0 ? (
+        <p className="muted">{tr('Your balance shows once you finished a game.', 'Deine Bilanz erscheint, sobald du ein Spiel beendet hast.')}</p>
+      ) : (
+        <>
+          <section className="card balance-totals">
+            <div>
+              <strong>{done.length}</strong>
+              <span className="muted small">{tr('games', 'Spiele')}</span>
+            </div>
+            <div>
+              <strong>{wins}</strong>
+              <span className="muted small">{tr('wins', 'Siege')}</span>
+            </div>
+            <div>
+              <strong className={cls(money)}>{formatEuro(money)}</strong>
+              <span className="muted small">{tr('money', 'Geld')}</span>
+            </div>
+          </section>
+          <section className="card">
+            <span className="eyebrow">{tr('Against your friends', 'Gegen deine Mitspieler')}</span>
+            <ul className="game-pays">
+              {[...vs.values()]
+                .sort((a, b) => b.games - a.games)
+                .map((r) => (
+                  <li key={r.name}>
+                    <span>
+                      {r.name} <span className="muted small">· {r.games} {r.games === 1 ? tr('game', 'Spiel') : tr('games', 'Spiele')}</span>
                     </span>
-                    <span aria-hidden="true">›</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+                    <strong className={cls(r.money)}>{formatEuro(r.money)}</strong>
+                  </li>
+                ))}
+            </ul>
+            <span className="muted small">{tr('Money between you and each player, from the settlements (you are player 1).', 'Geld zwischen dir und dem Mitspieler, aus den Abrechnungen (du bist Spieler 1).')}</span>
+          </section>
+        </>
       )}
-    </main>
+    </>
   );
 }
 
@@ -199,11 +311,11 @@ function FormRules(props: { form: FormDef }) {
   );
 }
 
-function FormCatalog(props: { onBack: () => void; onPlay: (f: FormId) => void }) {
+function FormCatalog(props: { onPlay: (f: FormId) => void }) {
   const [open, setOpen] = useState<FormId | null>(null);
   return (
-    <main className="screen">
-      <TopBar title={tr('Game forms', 'Spielformen')} onBack={props.onBack} />
+    <>
+      <h1 className="tab-title">{tr('Game forms & rules', 'Spielformen & Regeln')}</h1>
       <ul className="list">
         {FORMS.map((f) => (
           <li key={f.id} className="card game-form">
@@ -225,7 +337,7 @@ function FormCatalog(props: { onBack: () => void; onPlay: (f: FormId) => void })
           </li>
         ))}
       </ul>
-    </main>
+    </>
   );
 }
 
@@ -331,6 +443,12 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             )}
           </div>
         ))}
+        {n < 4 && (
+          <FriendChips
+            taken={d.players.map((p) => p.name)}
+            onAdd={(fr) => set({ players: [...d.players.filter((p, k) => k === 0 || p.name.trim() || p.hcp.trim()), { id: newId(), name: fr.name, hcp: roughPlaying(fr.hcp) }].slice(0, 4) })}
+          />
+        )}
         {n < 4 && (
           <button type="button" className="btn-secondary" onClick={() => set({ players: [...d.players, { id: newId(), name: '', hcp: '' }] })}>
             {tr('+ Add player', '+ Spieler hinzufügen')}
@@ -833,49 +951,5 @@ function ScoreGrid(props: { game: Game }) {
         </table>
       </div>
     </section>
-  );
-}
-
-// ---------- the choice at app start ----------
-
-export function ModuleChooser(props: { roundOpen: boolean; gameOpen: boolean; onPick: (m: 'rounds' | 'games') => void }) {
-  return (
-    <main className="screen module-chooser">
-      <div className="brand module-brand">
-        GOLF<span>OS</span>
-      </div>
-      {/* the GolfOS claim (Sascha 15.10.2026), the same in both languages */}
-      <p className="muted module-claim">unlock every part of your golf game</p>
-      <button type="button" className="module-card" onClick={() => props.onPick('rounds')}>
-        <span className="module-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 21V3l11 4-11 4" />
-            <ellipse cx="12" cy="21" rx="8" ry="1.6" />
-          </svg>
-        </span>
-        <span className="grow">
-          <strong>Rounds</strong>
-          <span className="muted small">{tr('Your round with GPS map, caddie, scorecard and the analysis afterwards.', 'Deine Runde mit GPS-Karte, Caddie, Scorekarte und der Analyse danach.')}</span>
-          {props.roundOpen && <span className="small module-live">{tr('A round is in play', 'Eine Runde läuft')}</span>}
-        </span>
-        <span aria-hidden="true">›</span>
-      </button>
-      <button type="button" className="module-card" onClick={() => props.onPick('games')}>
-        <span className="module-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="7" width="18" height="12" rx="3" />
-            <path d="M8 11v4M6 13h4" />
-            <circle cx="15.5" cy="12" r="1" />
-            <circle cx="17.5" cy="14.5" r="1" />
-          </svg>
-        </span>
-        <span className="grow">
-          <strong>Games</strong>
-          <span className="muted small">{tr('Side games among friends: skins, Nassau, wolf, Las Vegas … with standing and settlement.', 'Spiele unter Freunden: Skins, Nassau, Wolf, Las Vegas … mit Zwischenstand und Abrechnung.')}</span>
-          {props.gameOpen && <span className="small module-live">{tr('A game is in play', 'Ein Spiel läuft')}</span>}
-        </span>
-        <span aria-hidden="true">›</span>
-      </button>
-    </main>
   );
 }

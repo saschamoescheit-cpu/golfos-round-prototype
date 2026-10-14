@@ -16,7 +16,8 @@ import { NO_RESUME } from './components/ErrorBoundary';
 import { Stats } from './screens/Stats';
 import { MyBag } from './screens/MyBag';
 import { CourseStats } from './screens/CourseStats';
-import { GamesApp, ModuleChooser } from './screens/Games';
+import { GamesApp, type GamesTab } from './screens/Games';
+import { Home, type HomeTab } from './screens/Home';
 import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
 
 type Screen =
@@ -100,11 +101,22 @@ export function App() {
   // Two modules (Sascha 15.10.2026): "Rounds" (round and analysis) and "Games" (side games) – chosen when the app
   // opens; a round in play reopens straight on its hole, a reload stays in the module of this tab.
   const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' ? 'rounds' : sessionModule()));
+  const [homeTab, setHomeTab] = useState<HomeTab>('start');
+  const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(undefined);
+  // the bag and the caddie settings opened from the profile of the start page or of Games
+  const [bagFrom, setBagFrom] = useState<null | { part: 'bag' | 'caddie' }>(null);
   const setModule = (m: AppModule | null) => {
     setSessionModule(m);
     setModuleState(m);
     window.scrollTo(0, 0);
   };
+
+  // "Undo" after a delete brings the round back: show it again
+  useEffect(() => {
+    const reload = () => setRounds(loadRounds());
+    window.addEventListener('golfos:rounds-changed', reload);
+    return () => window.removeEventListener('golfos:rounds-changed', reload);
+  }, []);
 
   // Every change to a round is saved immediately, so closing the app never loses a hole.
   const persist = (round: Round) => {
@@ -119,8 +131,31 @@ export function App() {
     if (geoId && !geometryReady(geoId)) ensureGeometry(geoId).then(() => setGeoTick((t) => t + 1));
   }, [geoId]);
   if (geoId && !geometryReady(geoId)) return <Waiting />;
-  if (!module) return <ModuleChooser roundOpen={rounds.some((r) => !r.finishedAt)} gameOpen={loadGames().some((g) => !g.finishedAt)} onPick={setModule} />;
-  if (module === 'games') return <GamesApp onModules={() => setModule(null)} />;
+  // one profile for the start page, Rounds and Games (Sascha 15.10.2026)
+  const profile = (
+    <ProfileTab
+      rounds={rounds}
+      onBag={() => (module === 'rounds' ? setScreen({ name: 'bag', part: 'bag' }) : setBagFrom({ part: 'bag' }))}
+      onCaddie={() => (module === 'rounds' ? setScreen({ name: 'bag', part: 'caddie' }) : setBagFrom({ part: 'caddie' }))}
+      onChanged={() => setRounds(loadRounds())}
+    />
+  );
+  if (module !== 'rounds' && bagFrom) return <MyBag rounds={rounds} part={bagFrom.part} onBack={() => setBagFrom(null)} />;
+  if (!module)
+    return (
+      <Home
+        tab={homeTab}
+        onTab={setHomeTab}
+        roundOpen={rounds.some((r) => !r.finishedAt)}
+        gameOpen={loadGames().some((g) => !g.finishedAt)}
+        onPick={(m) => {
+          if (m === 'games') setGamesTab(undefined);
+          setModule(m);
+        }}
+        profile={profile}
+      />
+    );
+  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} tab={gamesTab} onTabChange={setGamesTab} />;
 
   switch (screen.name) {
     case 'tab': {
@@ -139,7 +174,7 @@ export function App() {
                 setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
               }}
               onAbort={(round) => {
-                deleteRound(round.id);
+                deleteRound(round.id, true);
                 setPaused(null);
                 setRounds(loadRounds());
               }}
@@ -156,14 +191,7 @@ export function App() {
             />
           )}
           {tab === 'stats' && <Stats rounds={rounds} onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })} />}
-          {tab === 'profile' && (
-            <ProfileTab
-              rounds={rounds}
-              onBag={() => setScreen({ name: 'bag', part: 'bag' })}
-              onCaddie={() => setScreen({ name: 'bag', part: 'caddie' })}
-              onChanged={() => setRounds(loadRounds())}
-            />
-          )}
+          {tab === 'profile' && profile}
           <TabBar
             tab={tab}
             dots={dots}
@@ -244,7 +272,7 @@ export function App() {
               setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
             }}
             onAbort={(round) => {
-              deleteRound(round.id);
+              deleteRound(round.id, true);
               setRounds(loadRounds());
               setScreen(HOME);
             }}

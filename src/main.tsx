@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SpeechBar } from './components/SpeechBar';
+import { UndoToast } from './components/UndoToast';
 // Fonts ship with the app (static weights, latin incl. umlauts): same look on every phone, offline on the course,
 // and no request to Google Fonts (privacy).
 import '@fontsource/lexend/latin-500.css';
@@ -24,6 +25,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <App />
       <SpeechBar />
+      <UndoToast />
     </ErrorBoundary>
   </React.StrictMode>,
 );

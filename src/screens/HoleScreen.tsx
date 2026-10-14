@@ -21,6 +21,8 @@ import { greenSource } from '../data/greenSources';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard } from '../components/CaddieCard';
+import { holeBook } from '../lib/holebook';
+import { courseStats } from '../lib/history';
 import { isSun, setSun } from '../lib/theme';
 import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
@@ -134,6 +136,8 @@ export function HoleScreen(props: {
   const [setupOpen, setSetupOpen] = useState(false);
   const [editHole, setEditHole] = useState(false);
   const [unit] = useState<Unit>(loadUnit);
+  // the player's record per hole from earlier rounds here (course book, feature 012)
+  const holeRecords = useMemo(() => new Map(courseStats(loadRounds(), round.courseName).holes.map((h) => [h.hole.label, h])), [round.courseName]);
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number; still?: boolean } | null>(null);
   const detectArmed = useRef(true); // the next good fix may move the round to the hole the player is on
@@ -361,7 +365,7 @@ export function HoleScreen(props: {
             <button type="button" className="btn-primary" onClick={() => setExitConfirm('end')}>
               {tr('Finish round', 'Runde beenden')}
             </button>
-            <button type="button" className="btn-secondary btn-danger" onClick={() => setExitConfirm('abort')}>
+            <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
               {tr('Cancel round', 'Runde abbrechen')}
             </button>
           </div>
@@ -380,7 +384,7 @@ export function HoleScreen(props: {
               <button type="button" className="btn-primary" onClick={() => props.onEnd(round)}>
                 {tr('Save & finish', 'Speichern & beenden')}
               </button>
-              <button type="button" className="btn-secondary btn-danger" onClick={() => setExitConfirm('abort')}>
+              <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
                 {tr('Delete round', 'Runde löschen')}
               </button>
               <button type="button" className="btn-secondary" onClick={() => setExitConfirm(null)}>
@@ -698,6 +702,8 @@ export function HoleScreen(props: {
     const greenFocus = chart != null && greenVisible && nearGreen;
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
     const grid = grids?.[hole.label] ?? null;
+    // the course book's facts on this hole, also in the caddie (Sascha 15.10.2026)
+    const book = holeBook({ data: mapData, slopes: geometry.fairwaySlopes?.[hole.label], greenSlope: geometry.greenSlopes?.[hole.label], grid, unit, record: holeRecords.get(hole.label) });
     const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos)
         ? ([Math.round(player.pos[0] * 1e5) / 1e5, Math.round(player.pos[1] * 1e5) / 1e5] as LngLat) // ~1 m: GPS jitter does not re-roll the putt
         : null;
@@ -811,7 +817,7 @@ export function HoleScreen(props: {
           track={detailMode ? track : undefined}
           missMap={miss}
           aimPoint={null}
-          greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus } : null}
+          greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus && showGreen !== true, fit: showGreen === true && mapData.green ? mapData.green : undefined } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}
           onTargetsChange={(targets) => setPlan({ targets: [...passedTargets, ...targets] })}
@@ -898,7 +904,13 @@ export function HoleScreen(props: {
             </button>
           )}
           {(slope || chart) && !nearGreen && (
-            <button type="button" className="map-tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!greenVisible)}>
+            <button type="button" className="map-tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')}
+              onClick={() => {
+                // always onto the green with the slopes – also after the player moved the map himself (Sascha 15.10.2026)
+                setShowGreen(!greenVisible);
+                setRecenter((n) => n + 1);
+              }}
+            >
               {/* green slope: the green with the arrow of its fall line */}
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <ellipse cx="12" cy="13" rx="9.5" ry="6.5" />
@@ -1052,6 +1064,7 @@ export function HoleScreen(props: {
           )}
           {caddieShown && cad && (
             <CaddieCard
+              book={book}
               facts={cad.facts}
               lines={cad.lines}
               alt={cad.alt}
