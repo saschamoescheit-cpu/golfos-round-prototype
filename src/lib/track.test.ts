@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { clubForLength, detectHoleShots, detectWithScore, markWaterPenalties, findStops, splitRound, teeSpot, trackForHole, type TrackPoint } from './track';
-import { distanceM, holeMapData, pointAt } from './geo';
+import { distanceM, holeMapData, lineLength, pointAt } from './geo';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 import type { LngLat } from '../types';
 
@@ -298,5 +298,27 @@ describe('detection with the score from the course', () => {
     expect(d.shots.every((s) => !s.penalty)).toBe(true); // the player marks it "out of bounds" in the check
     // without the penalty the same score would mean a missing chip
     expect(detectWithScore(w.pts, hole1, 4, undefined, { strokes: 5, putts: 2, penalties: 0 })!.shots.length).toBe(3);
+  });
+});
+
+describe('chip from the fringe', () => {
+  it('a short stop at the green edge followed by the ball on the green is the chip – with the score', () => {
+    const ball2 = shift(pointAt(hole1.line, 225), 8, 0);
+    const r = hole1.green ? Math.max(...hole1.green.map((q) => distanceM(q, hole1.greenCenter))) : 12;
+    // just inside the green outline on the way in (GPS puts the fringe there), then the ball 9 m further on
+    const edge = pointAt(hole1.line, lineLength(hole1.line) - Math.max(3, r - 2));
+    const onGreen2 = shift(hole1.greenCenter, 2, 0);
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    w.walk(ball2);
+    w.stand(30);
+    w.walk(edge);
+    w.stand(20); // the chip
+    w.walk(onGreen2);
+    w.stand(90); // putting
+    const d = detectHoleShots(w.pts, hole1, 4, undefined, { shots: 3 })!;
+    expect(d.shots.length).toBe(3);
+    expect(distanceM(d.shots[2].pos!, edge)).toBeLessThan(8);
+    expect(distanceM(d.onGreen!, onGreen2)).toBeLessThan(8);
   });
 });

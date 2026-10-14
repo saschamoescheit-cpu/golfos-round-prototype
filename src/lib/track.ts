@@ -151,6 +151,18 @@ function places(track: TrackPoint[], hole: HoleMapData): Place[] {
  * of places wins (dynamic programming over the places in time order).
  */
 export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: number, bag = BAG, opts: { shots?: number | null } = {}): DetailEntry | null {
+  const plain = detectCore(track, hole, par, bag, opts, false);
+  // A chip from the fringe: the GPS puts the short stop at the green's edge inside the green outline, and it is taken
+  // for the first putt. When the score says a shot is missing and another stop on the green follows, that first stop
+  // was the chip – if the chain then needs no invented chip, it wins.
+  if (opts.shots != null && plain) {
+    const fringe = detectCore(track, hole, par, bag, opts, true);
+    if (fringe && !fringe.suggested && fringe.detail.shots.length === opts.shots && (plain.suggested || fringe.total > plain.total)) return fringe.detail;
+  }
+  return plain?.detail ?? null;
+}
+
+function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: typeof BAG, opts: { shots?: number | null }, fringe: boolean): { detail: DetailEntry; suggested: boolean; total: number } | null {
   const toGreen = (p: LngLat) => distanceM(p, hole.greenCenter);
   let list = places(track, hole);
   if (list.length === 0 && track.length === 0) return null;
@@ -161,11 +173,19 @@ export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: num
   if (teeIdx != null) list = list.slice(teeIdx + 1);
   list = list.filter((x) => distanceM(x.p, hole.tee) > 40);
   // The ball on the green: the first place on it (or a long stop right next to it – GPS error at the edge).
-  const g = list.findIndex((x) => onGreenAt(x.p, hole) || (toGreen(x.p) <= greenRadius(hole) + 4 && (x.to - x.from) / 1000 >= 60));
+  let g = list.findIndex((x) => onGreenAt(x.p, hole) || (toGreen(x.p) <= greenRadius(hole) + 4 && (x.to - x.from) / 1000 >= 60));
+  // fringe: the first place on the green was the chip, the ball on the green is the next place on it (3 m away or more)
+  const chipSpot = fringe && g >= 0 ? list[g] : null;
+  if (fringe) {
+    if (!chipSpot) return null;
+    const g2 = list.findIndex((x, k) => k > g && onGreenAt(x.p, hole) && distanceM(x.p, chipSpot.p) >= 3);
+    if (g2 < 0) return null;
+    g = g2;
+  }
   const green = g >= 0 ? list[g] : null;
   if (g >= 0) list = list.slice(0, g);
-  // places off the green on the way (not on the green itself)
-  list = list.filter((x) => !onGreenAt(x.p, hole));
+  // places off the green on the way (not on the green itself) – and the fringe chip
+  list = list.filter((x) => !onGreenAt(x.p, hole) || x === chipSpot);
 
   // ---- the most plausible chain tee → … → green ----
   const lieOf = (p: LngLat, first: boolean) => lieAt(p, hole, first);
@@ -228,7 +248,9 @@ export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: num
   // green's edge on the way in, marked for checking – the player drags it to where the ball lay.
   const spots = chain.map((k) => nodes[k].p);
   const lastP = spots[spots.length - 1];
+  let suggested = false;
   if (opts.shots != null && opts.shots - spots.length === 1 && lastP && toGreen(lastP) > greenRadius(hole) + 15) {
+    suggested = true;
     const r = greenRadius(hole) + 4;
     const k = r / toGreen(lastP);
     spots.push([hole.greenCenter[0] + (lastP[0] - hole.greenCenter[0]) * k, hole.greenCenter[1] + (lastP[1] - hole.greenCenter[1]) * k]);
@@ -241,7 +263,7 @@ export function detectHoleShots(track: TrackPoint[], hole: HoleMapData, par: num
     const club = kind === 'chip' || kind === 'pitch' || kind === 'bunker' ? clubForLength(Math.max(length, 50), false, bag) : clubForLength(length, n === 0 && par >= 4, bag);
     return { pos: p, lie, club, penalty: false, kind, review: true };
   });
-  return { shots, onGreen: end, pin: null, holedOut: false };
+  return { detail: { shots, onGreen: end, pin: null, holedOut: false }, suggested, total };
 }
 
 /**
