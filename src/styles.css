@@ -889,3 +889,4 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .finish-actions > .btn-danger:nth-child(3) { grid-column: 1 / -1; }
 .topbar-version { text-align: center; font-size: 11px; white-space: nowrap; }
 .score-sheet .stepper-label small { color: var(--warn); }
+.hole-bar-dots { margin-left: 4px; color: #f6d48a; font-style: normal; letter-spacing: 1px; font-weight: 700; }

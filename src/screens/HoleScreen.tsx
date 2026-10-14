@@ -18,7 +18,6 @@ import { gridHeight, loadTerrainGrid, type TerrainGrid } from '../lib/terraingri
 import { missMap } from '../lib/missmap';
 import { GREEN_CHARTS } from '../data/greenCharts';
 import { greenSource } from '../data/greenSources';
-import { heightAt as terrainHeight } from '../lib/terrain';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard } from '../components/CaddieCard';
@@ -28,7 +27,7 @@ import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type G
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { profileAlong, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
+import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { ScoreSheet } from '../components/ScoreSheet';
@@ -298,6 +297,22 @@ export function HoleScreen(props: {
   const [puttEditor, setPuttEditor] = useState(false);
   const [hazardsOn, setHazardsOn] = useState(false); // distances to bunkers and water, on demand
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
+  // aerial image or the drawn hole (2D, as in BeBrassie) – kept for the next round
+  const [view2d, setView2d] = useState(() => {
+    try {
+      return localStorage.getItem('golfos.mapview.v1') === '2d';
+    } catch {
+      return false;
+    }
+  });
+  const toggleView = () => {
+    setView2d(!view2d);
+    try {
+      localStorage.setItem('golfos.mapview.v1', view2d ? 'aerial' : '2d');
+    } catch {
+      /* storage blocked – this visit only */
+    }
+  };
   // Leaving the round (back arrow): pause, finish or cancel – so a round never stays "in progress" by accident.
   const [exitOpen, setExitOpen] = useState(false);
   const [exitConfirm, setExitConfirm] = useState<null | 'end' | 'abort'>(null);
@@ -716,11 +731,6 @@ export function HoleScreen(props: {
           greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })
       : null;
-    // Heights for the green box: terrain model along the hole, else the coarse elevation service.
-    const tH = (p: LngLat) => (distToLine(p, mapData.line) <= 40 ? terrainHeight(geometry.fairwaySlopes?.[hole.label], profileAlong(mapData, p)) : null);
-    const fromH = tH(from) ?? heightAt(from);
-    const greenH = tH(mapData.greenCenter) ?? heightAt(mapData.greenCenter);
-    const slopeToGreen = fromH != null && greenH != null ? greenH - fromH : null;
     const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
 
     // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
@@ -788,6 +798,8 @@ export function HoleScreen(props: {
           onMapTap={tapMap}
           clean
           hazards={hazardsOn}
+          view={view2d ? '2d' : 'aerial'}
+          trees={view2d ? (geometry.trees ?? []).filter((r) => r.some((q) => distToLine(q, mapData.line) <= 150)) : undefined}
         />
 
         <div className="map-top">
@@ -814,15 +826,7 @@ export function HoleScreen(props: {
               <span className="map-green-num">{fmt(green.front)}</span>
             </>
           )}
-          {slopeToGreen != null && Math.abs(slopeToGreen) >= 2 && (
-            <span className="map-slope-chip">
-              {tr('plays like', 'spielt wie')} {fmt(green.center + slopeToGreen)}
-            </span>
-          )}
-          {/* Distances follow the GPS position on the hole; elsewhere (at home, no signal) they count from the tee – say why. */}
-          <span className={`map-from${onHole ? (player!.accuracy > 12 ? ' poor' : '') : ' off'}`}>
-            {onHole ? (player!.accuracy > 12 ? tr(`GPS poor ±${Math.round(player!.accuracy)} m`, `GPS ungenau ±${Math.round(player!.accuracy)} m`) : `GPS ±${Math.round(player!.accuracy)} m`) : player ? tr('from tee · GPS off course', 'ab Abschlag · GPS nicht am Platz') : tr('from tee · no GPS', 'ab Abschlag · kein GPS')}
-          </span>
+          {/* only back, middle and front – the caddie card has "plays like" (Sascha 14.10.2026) */}
         </div>
 
         {/* the tools in one column on the right, as in Hole19: caddie, green slope, hazards, imagery, scorecard */}
@@ -882,6 +886,14 @@ export function HoleScreen(props: {
               </svg>
             </button>
           )}
+          <button type="button" className="map-tool" aria-pressed={view2d} aria-label={view2d ? tr('Aerial image', 'Luftbild zeigen') : tr('Drawn hole (2D)', 'Gezeichnetes Loch (2D)')} title="2D" onClick={toggleView}>
+            {/* 2D: the outline of a hole with its green */}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 21c-1.5-3-1-6.5 1-9.5S13 6.5 13.5 4" />
+              <path d="M13 21c-1-3-.5-6 1.4-9S17 7 17 5" />
+              <circle cx="15.3" cy="3.6" r="1.6" />
+            </svg>
+          </button>
           {round.players.length > 1 && !round.preview && (
             <button type="button" className="map-tool" aria-label="Leaderboard" title="Leaderboard" onClick={() => setBoardOpen(true)}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1096,7 +1108,15 @@ export function HoleScreen(props: {
               <span className="map-hole-no">{hole.label}</span>
               <span className="hole-bar-par">
                 <span>Par {hole.par || '?'}</span>
-                <span>Hcp {hole.strokeIndex || '?'}</span>
+                <span>
+                  Hcp {hole.strokeIndex || '?'}
+                  {/* strokes received on this hole – one yellow dot each, as on the scorecard */}
+                  {received > 0 && !round.preview && (
+                    <i className="hole-bar-dots" aria-label={tr(`${received} handicap ${received === 1 ? 'stroke' : 'strokes'} on this hole`, `${received} ${received === 1 ? 'Vorgabeschlag' : 'Vorgabeschläge'} auf diesem Loch`)}>
+                      {'•'.repeat(Math.min(received, 3))}
+                    </i>
+                  )}
+                </span>
               </span>
               {round.preview ? (
                 <span className="hole-bar-score muted small">
@@ -1104,7 +1124,8 @@ export function HoleScreen(props: {
                 </span>
               ) : (
                 <span className={`hole-bar-score${myEntry.strokes == null && !myEntry.pickedUp ? ' placeholder' : ''}`}>
-                  {strokesShown}
+                  {/* nothing entered yet: a dash, not the par (Sascha 14.10.2026: "par twice") */}
+                  {myEntry.strokes == null && !myEntry.pickedUp ? '–' : strokesShown}
                   {myEntry.putts != null && <small>{myEntry.putts} P</small>}
                 </span>
               )}

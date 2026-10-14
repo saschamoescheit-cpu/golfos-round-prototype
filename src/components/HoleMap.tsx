@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit } from '../lib/geo';
-import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, setImagery } from './mapStyle';
+import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, PLAN_COLOURS, setCourseLook, setImagery } from './mapStyle';
 import type { ImagerySource } from '../lib/imagery';
 import { tr } from '../lib/i18n';
 
@@ -44,6 +44,9 @@ export interface HoleMapProps {
    */
   clean?: boolean;
   hazards?: boolean;
+  /** '2d': the drawn hole instead of the aerial image (as in BeBrassie); `trees` are drawn there too. */
+  view?: 'aerial' | '2d';
+  trees?: Ring[];
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
   padding?: { top: number; bottom: number; left: number; right: number };
   /**
@@ -96,6 +99,10 @@ export function HoleMap(props: HoleMapProps) {
     m.touchZoomRotate.disableRotation();
     m.on('load', () => {
       m.addSource('shapes', { type: 'geojson', data: shapes(latest.current.data), attribution: OSM_ATTRIBUTION });
+      // the drawn hole (2D): rough under everything, trees above it – hidden on the aerial view
+      m.addLayer({ id: 'plan-rough', type: 'background', layout: { visibility: 'none' }, paint: { 'background-color': PLAN_COLOURS.rough } }, 'sat');
+      m.addSource('trees', { type: 'geojson', data: treesData(latest.current.trees) });
+      m.addLayer({ id: 'plan-trees', type: 'fill', source: 'trees', layout: { visibility: 'none' }, paint: { 'fill-color': PLAN_COLOURS.trees, 'fill-opacity': 0.9 } });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       // the playing view keeps the shapes invisible (they still feed the distances): only the aerial image
       courseLayers('shapes').forEach((l) => m.addLayer(latest.current.clean ? { ...l, layout: { ...(l.layout ?? {}), visibility: 'none' } } as maplibregl.LayerSpecification : l));
@@ -114,6 +121,7 @@ export function HoleMap(props: HoleMapProps) {
         },
       });
       m.addLayer({ id: 'hole', type: 'line', source: 'shapes', filter: ['==', 'kind', 'hole'], layout: { visibility: latest.current.clean ? 'none' : 'visible' }, paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [3, 3] } });
+      setCourseLook(m, latest.current.view === '2d' ? 'plan' : latest.current.clean ? 'hidden' : 'overlay');
       m.addSource('walked', { type: 'geojson', data: walkedData(latest.current) });
       m.addLayer({ id: 'walked-line', type: 'line', source: 'walked', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [1, 2] } });
       m.addLayer({ id: 'walked-stop', type: 'circle', source: 'walked', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 9, 'circle-color': 'rgba(255,255,255,0.25)', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 } });
@@ -197,9 +205,22 @@ export function HoleMap(props: HoleMapProps) {
   // Imagery switched by the player.
   useEffect(() => {
     const m = map.current;
-    if (m && ready.current) setImagery(m, props.imagery);
+    if (m && ready.current) {
+      setImagery(m, props.imagery);
+      setCourseLook(m, props.view === '2d' ? 'plan' : props.clean ? 'hidden' : 'overlay');
+    }
     sat.current = { ok: 0, fail: 0 };
   }, [props.imagery]);
+
+  // Aerial image or the drawn hole (2D).
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready.current) return;
+    (m.getSource('trees') as maplibregl.GeoJSONSource | undefined)?.setData(treesData(latest.current.trees));
+    setCourseLook(m, props.view === '2d' ? 'plan' : props.clean ? 'hidden' : 'overlay');
+    // the trees change with the hole, not with every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.view, props.holeKey, props.clean]);
 
   // Markers and labels follow every prop change.
   useEffect(() => {
@@ -385,6 +406,10 @@ export function HoleMap(props: HoleMapProps) {
 }
 
 const FULL_SCREEN_PADDING = { top: 120, bottom: 170, left: 40, right: 110 };
+
+function treesData(trees: Ring[] | undefined): GeoJSON.FeatureCollection {
+  return { type: 'FeatureCollection', features: (trees ?? []).map((r) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [r] } })) };
+}
 
 /** Zoom onto the green chart (keeping the playing direction). */
 function chartCamera(m: maplibregl.Map, c: NonNullable<HoleMapProps['greenChart']>) {

@@ -49,7 +49,8 @@ export function tileUrl(template: string, z: number, x: number, y: number): stri
 export function holeTileUrls(source: ImagerySource, holes: HoleMapData[]): string[] {
   const areas: { box: BBox; zooms: number[] }[] = [];
   for (const h of holes) {
-    areas.push({ box: pad(bboxOf([...h.line, ...(h.green ?? [])]), 60), zooms: [15, 16, 17, 18] });
+    // the map asks one level finer than it shows (sharp on phone screens, see mapStyle): 16–19 along the hole
+    areas.push({ box: pad(bboxOf([...h.line, ...(h.green ?? [])]), 60), zooms: [16, 17, 18, 19] });
     areas.push({ box: pad(bboxOf([h.greenCenter]), 60), zooms: [19] });
     areas.push({ box: pad(bboxOf([h.tee]), 40), zooms: [19] });
   }

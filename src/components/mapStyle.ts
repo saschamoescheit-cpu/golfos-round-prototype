@@ -11,8 +11,13 @@ export function imageryStyle(source: ImagerySource): maplibregl.StyleSpecificati
   return { version: 8, sources: { sat: rasterSource(source) }, layers: [imageryLayer(source)] };
 }
 
+/**
+ * Sharp on phone screens (Sascha 14.10.2026: "the maps are not really good"): tiles at twice the density – the WMS
+ * (LGL) sends 512 px images for each 256 px tile, the tile services are asked one zoom level finer (128 px tiles).
+ */
 function rasterSource(source: ImagerySource): maplibregl.RasterSourceSpecification {
-  return { type: 'raster', tiles: [source.tiles], scheme: source.scheme, tileSize: 256, maxzoom: source.maxzoom, attribution: source.attribution };
+  const wms = source.tiles.includes('{bbox-epsg-3857}');
+  return { type: 'raster', tiles: [source.tiles], scheme: source.scheme, tileSize: wms ? 256 : 128, maxzoom: source.maxzoom, attribution: source.attribution };
 }
 
 export function imageryLayer(source: ImagerySource): maplibregl.RasterLayerSpecification {
@@ -28,7 +33,8 @@ export function collapseAttribution(m: maplibregl.Map): void {
 
 /** Swaps the imagery under the existing course layers. */
 export function setImagery(m: maplibregl.Map, source: ImagerySource): void {
-  const below = m.getStyle().layers[1]?.id; // course layers stay on top
+  const layers = m.getStyle().layers;
+  const below = layers[layers.findIndex((l) => l.id === 'sat') + 1]?.id; // course layers stay on top
   m.removeLayer('sat');
   m.removeSource('sat');
   m.addSource('sat', rasterSource(source));
@@ -43,6 +49,33 @@ const FILL: Record<string, { color: string; opacity: number; edge: string; edgeO
   green: { color: '#7EE04A', opacity: 0.6, edge: '#EFFFC2', edgeOpacity: 1, width: 2 },
 };
 const ORDER = ['fairway', 'tee', 'water', 'bunker', 'green'];
+
+/**
+ * The drawn hole as in BeBrassie (Sascha 14.10.2026): no aerial image, the course in flat colours on a light rough –
+ * fairway, tee, green, bunkers, water and trees.
+ */
+export const PLAN_COLOURS = { rough: '#8cc46f', trees: '#2f6b2b', fairway: '#4c9e3c', tee: '#4c9e3c', green: '#62cf55', bunker: '#f3e3a3', water: '#4f9fe0' } as const;
+
+/** Course layers for the view: hidden (aerial only), soft overlay on the aerial image, or the drawn hole. */
+export function setCourseLook(m: maplibregl.Map, look: 'hidden' | 'overlay' | 'plan'): void {
+  const plan = look === 'plan';
+  for (const kind of ORDER) {
+    const f = FILL[kind];
+    for (const part of ['fill', 'edge'] as const) {
+      const id = `${kind}-${part}`;
+      if (!m.getLayer(id)) continue;
+      m.setLayoutProperty(id, 'visibility', look === 'hidden' ? 'none' : 'visible');
+      if (part === 'fill') {
+        m.setPaintProperty(id, 'fill-color', plan ? PLAN_COLOURS[kind as keyof typeof PLAN_COLOURS] : f.color);
+        m.setPaintProperty(id, 'fill-opacity', plan ? 1 : f.opacity);
+      } else {
+        m.setPaintProperty(id, 'line-opacity', plan ? (kind === 'green' || kind === 'bunker' ? 0.9 : 0.35) : f.edgeOpacity);
+      }
+    }
+  }
+  for (const id of ['plan-rough', 'plan-trees']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', plan ? 'visible' : 'none');
+  if (m.getLayer('sat')) m.setLayoutProperty('sat', 'visibility', plan ? 'none' : 'visible');
+}
 
 /** Fill + soft edge per surface; `source` holds polygons with a `kind` property. */
 export function courseLayers(source: string): maplibregl.LayerSpecification[] {

@@ -268,12 +268,21 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
       .sort((a, b) => a.d - b.d)[0]?.g ??
     null;
   const near = (ring: Ring) => ring.some((p) => distToLine(p, line) <= corridorM) || (green != null && ring.some((p) => distanceM(p, centroid(green)) < 40));
+  // Fairway bunkers further out (Sascha 14.10.2026: "some fairway bunkers are missing"): up to 65 m from the line –
+  // a bunker between two fairways is in play on both holes – but not the greenside bunkers of another hole.
+  const ownGreen = green ? centroid(green) : end;
+  const otherGreens = geo.green.filter((g) => g !== green).map(centroid);
+  const ownBunker = (ring: Ring) => {
+    const c = centroid(ring);
+    const atOtherGreen = otherGreens.some((g) => distanceM(c, g) < 40) && distanceM(c, ownGreen) > 40;
+    return !atOtherGreen && ring.some((p) => distToLine(p, line) <= 65);
+  };
   return {
     line,
     tee: line[0],
     green,
     greenCenter: green ? centroid(green) : end,
-    bunkers: geo.bunker.filter(near),
+    bunkers: geo.bunker.filter((r) => near(r) || ownBunker(r)),
     water: islandsCut(geo.water.filter((r) => r.some((p) => distToLine(p, line) <= corridorM * 1.5)), geo.green),
     fairways: geo.fairway.filter((r) => r.some((p) => distToLine(p, line) <= 20)),
     tees: geo.tee.filter((r) => r.some((p) => distanceM(p, line[0]) <= 60)),
