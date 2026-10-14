@@ -6,7 +6,8 @@
   "scripts": {
     "rehearsal": "node het9.mjs http://localhost:5173/",
     "live": "node live-smoke.mjs https://saschamoescheit-cpu.github.io/golfos-round-prototype/",
-    "score": "node score.mjs http://localhost:5173/"
+    "score": "node score.mjs http://localhost:5173/",
+    "review": "node review.mjs http://localhost:5173/"
   },
   "dependencies": {
     "playwright": "1.56.1"
