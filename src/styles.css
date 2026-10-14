@@ -958,3 +958,4 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .drawer-switch.on::after { left: 21px; }
 .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .hole-drawer > * { flex-shrink: 0; }
+:root[data-theme='sun'] .hole-bar .map-score { border: 0; background: transparent; box-shadow: none; }

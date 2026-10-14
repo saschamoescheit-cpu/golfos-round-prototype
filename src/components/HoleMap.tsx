@@ -47,7 +47,7 @@ export interface HoleMapProps {
   /** '2d': the drawn hole instead of the aerial image (as in BeBrassie), with woods, single trees, hedges, paths, rough and the out-of-bounds line. */
   view?: 'aerial' | '2d';
   trees?: Ring[];
-  details?: { treePoints: LngLat[]; treeRows: LngLat[][]; paths: LngLat[][]; rough: Ring[]; ob: Ring[] };
+  details?: { treePoints: LngLat[]; treeRows: LngLat[][]; paths: LngLat[][]; rough: Ring[]; ob: Ring[]; around?: Record<'fairway' | 'tee' | 'water' | 'bunker' | 'green', Ring[]> };
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
   padding?: { top: number; bottom: number; left: number; right: number };
   /**
@@ -106,7 +106,18 @@ export function HoleMap(props: HoleMapProps) {
       m.addSource('details', { type: 'geojson', data: detailsData(latest.current.details) });
       const hidden = { visibility: 'none' as const };
       m.addLayer({ id: 'plan-roughareas', type: 'fill', source: 'details', filter: ['==', ['get', 'kind'], 'rough'], layout: hidden, paint: { 'fill-color': PLAN_COLOURS.deepRough } });
-      m.addLayer({ id: 'plan-trees', type: 'fill', source: 'trees', layout: hidden, paint: { 'fill-color': PLAN_COLOURS.trees, 'fill-opacity': 0.9 } });
+      // the holes around (fairways, tees, greens, bunkers, water of the neighbours) – the whole picture as on the aerial image
+      m.addLayer({
+        id: 'plan-around',
+        type: 'fill',
+        source: 'details',
+        filter: ['==', ['slice', ['get', 'kind'], 0, 2], 'a-'],
+        layout: hidden,
+        paint: {
+          'fill-color': ['match', ['get', 'kind'], 'a-fairway', PLAN_COLOURS.fairway, 'a-tee', PLAN_COLOURS.tee, 'a-green', PLAN_COLOURS.green, 'a-bunker', PLAN_COLOURS.bunker, 'a-water', PLAN_COLOURS.water, PLAN_COLOURS.rough],
+        },
+      });
+      m.addLayer({ id: 'plan-trees', type: 'fill', source: 'trees', layout: hidden, paint: { 'fill-color': PLAN_COLOURS.trees, 'fill-opacity': 0.92, 'fill-outline-color': '#24521f' } });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       // the playing view keeps the shapes invisible (they still feed the distances): only the aerial image
       courseLayers('shapes').forEach((l) => m.addLayer(latest.current.clean ? { ...l, layout: { ...(l.layout ?? {}), visibility: 'none' } } as maplibregl.LayerSpecification : l));
@@ -439,6 +450,8 @@ function detailsData(d: HoleMapProps['details']): GeoJSON.FeatureCollection {
     type: 'FeatureCollection',
     features: [
       ...d.rough.map((r) => f('rough', { type: 'Polygon', coordinates: [r] })),
+      // the neighbours in playing order: fairways first, greens and bunkers on top
+      ...(['fairway', 'tee', 'water', 'green', 'bunker'] as const).flatMap((k) => (d.around?.[k] ?? []).map((r) => f('a-' + k, { type: 'Polygon', coordinates: [r] }))),
       ...d.paths.map((l) => f('path', { type: 'LineString', coordinates: l })),
       ...d.treeRows.map((l) => f('treerow', { type: 'LineString', coordinates: l })),
       ...d.treePoints.map((p) => f('tree', { type: 'Point', coordinates: p })),

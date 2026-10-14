@@ -25,6 +25,8 @@ export interface CourseGeometry {
   treeRows?: LngLat[][];
   paths?: LngLat[][];
   rough?: Ring[];
+  /** Tree and bush crowns read from the aerial image (scripts/canopy.py) – OSM has only part of the trees. */
+  canopy?: Ring[];
   /** Every 10 m along each hole (by ref): [metres from the tee, cross slope % (+ = right side higher, ball rolls left), height m]. */
   fairwaySlopes?: Record<string, [number, number, number?][]>;
 }

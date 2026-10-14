@@ -803,7 +803,7 @@ export function HoleScreen(props: {
           clean
           hazards={hazardsOn}
           view={view2d ? '2d' : 'aerial'}
-          trees={view2d ? (geometry.trees ?? []).filter((r) => r.some((q) => distToLine(q, mapData.line) <= 150)) : undefined}
+          trees={view2d ? [...(geometry.trees ?? []), ...(geometry.canopy ?? [])].filter((r) => r.some((q) => distToLine(q, mapData.line) <= 250)) : undefined}
           details={
             view2d
               ? {
@@ -812,6 +812,9 @@ export function HoleScreen(props: {
                   paths: (geometry.paths ?? []).filter((l) => l.some((q) => distToLine(q, mapData.line) <= 150)),
                   rough: (geometry.rough ?? []).filter((r) => r.some((q) => distToLine(q, mapData.line) <= 150)),
                   ob: geometry.boundary ?? [],
+                  around: Object.fromEntries(
+                    (['fairway', 'tee', 'water', 'bunker', 'green'] as const).map((k) => [k, geometry[k].filter((r) => r.some((q) => distToLine(q, mapData.line) <= 250))]),
+                  ) as Record<'fairway' | 'tee' | 'water' | 'bunker' | 'green', LngLat[][]>,
                 }
               : undefined
           }
