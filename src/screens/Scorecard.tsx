@@ -5,6 +5,7 @@ import { deleteRound, loadRounds } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
+import { LeaderboardCard } from '../components/Leaderboard';
 import { HoleEditSheet } from '../components/HoleEditSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
@@ -93,6 +94,8 @@ export function Scorecard(props: {
           })}
         {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {fmtHcp(me.playingHandicap)}</div>}
       </section>
+
+      {round.players.length > 1 && <LeaderboardCard round={round} />}
 
       <ScoreTable round={round} onHole={setEditHole} />
       <p className="muted small" style={{ margin: '-4px 0 0' }}>{tr('Tap a hole to correct it.', 'Tippe auf ein Loch, um es zu korrigieren.')}</p>

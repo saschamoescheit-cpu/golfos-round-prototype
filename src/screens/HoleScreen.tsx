@@ -27,11 +27,13 @@ import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
-import { sideOf } from '../lib/dispersion';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { profileAlong, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, suggestTarget, type Unit, approachFrom } from '../lib/geo';
+import { profileAlong, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
+import { ScoreSheet } from '../components/ScoreSheet';
+import { PuttEditor } from '../components/PuttEditor';
+import { LeaderboardSheet } from '../components/Leaderboard';
 import { HoleSetup } from '../components/HoleSetup';
 import { clubCode, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
@@ -45,7 +47,8 @@ const ON_HOLE_M = 1500;
 // checked after the round. The code stays for Ben (spec 004 decides); false = the quick-mode buttons in every mode.
 const MANUAL_SHOTS = false;
 const GREEN_AUTO_M = 120; // green chart comes up by itself from here on
-const MAX_TARGETS = 3;
+// One target only, as in Hole19 (Sascha 14.10.2026): plan the next shot, not the whole hole.
+const MAX_TARGETS = 1;
 
 export function HoleScreen(props: {
   round: Round;
@@ -289,9 +292,11 @@ export function HoleScreen(props: {
   useEffect(() => setCaddieOpen(false), [i]); // every hole starts with the map
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
-  const [pinSheet, setPinSheet] = useState(false);
-  // quick score + putts over the map; 'next': opened by "→" without a score – done = on to the next hole
+  // score after the hole over the map (Hole19); 'next': opened by "→" without a score – done = on to the next hole
   const [scoreSheet, setScoreSheet] = useState<false | 'score' | 'next'>(false);
+  const [puttEditor, setPuttEditor] = useState(false);
+  const [hazardsOn, setHazardsOn] = useState(false); // distances to bunkers and water, on demand
+  const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
   // Leaving the round (back arrow): pause, finish or cancel – so a round never stays "in progress" by accident.
   const [exitOpen, setExitOpen] = useState(false);
   const [exitConfirm, setExitConfirm] = useState<null | 'end' | 'abort'>(null);
@@ -359,18 +364,6 @@ export function HoleScreen(props: {
       </section>
     </div>
   );
-  /** Saves the sheet's last tap; with strokes and putts both set the sheet closes (and moves on when opened by "→"). */
-  const sheetTap = (patch: Partial<HoleEntry>) => {
-    const e = { ...myEntry, ...patch };
-    const list = round.entries[me.id].slice();
-    list[i] = e;
-    const r = { ...round, entries: { ...round.entries, [me.id]: list } };
-    if (e.strokes == null || e.putts == null) return props.onChange(r);
-    const next = scoreSheet === 'next';
-    setScoreSheet(false);
-    if (next) goTo(i + 1, false, r);
-    else props.onChange(r);
-  };
   // Once per device: how the round check finds the shots (it depends on how the phone is used on the course).
   const [shotTip, setShotTip] = useState(() => {
     try {
@@ -619,19 +612,6 @@ export function HoleScreen(props: {
     const green = mapData.green ? greenFrontBack(from, mapData.green) : { front: null, center: distanceM(from, mapData.greenCenter), back: null };
     const setPlan = (patch: Partial<{ targets: LngLat[]; pin: LngLat | null }>) => setPlans({ ...plans, [i]: { ...plan, ...patch } });
     const fmt = (m: number) => formatDistance(m, unit);
-    /** Pin of the day on a 3 × 3 grid: depth front/middle/back × left/centre/right (thirds of the green). */
-    const pinAt = (depth: -1 | 0 | 1, side: -1 | 0 | 1): LngLat => {
-      // front/back as on a pin sheet: seen from where the green is played (not from the tee – doglegs)
-      const origin = approachFrom(mapData);
-      const g = greenFrontBack(origin, mapData.green!);
-      const along = depth < 0 ? -(g.center - g.front) * 0.6 : depth > 0 ? (g.back - g.center) * 0.6 : 0;
-      const b = bearingDeg(origin, mapData.greenCenter);
-      // half width across the line: furthest outline point to the side
-      const half = Math.max(6, ...mapData.green!.map((q) => Math.abs(sideOf(mapData.greenCenter, move(mapData.greenCenter, b, 10), q))));
-      const p1 = move(mapData.greenCenter, b, along);
-      return side === 0 ? p1 : move(p1, b + 90 * side, half * 0.55);
-    };
-
     const tapMap = (p: LngLat) => {
       if (placing) {
         openAt(placing, p);
@@ -655,12 +635,6 @@ export function HoleScreen(props: {
         next[d.indexOf(Math.min(...d))] = p;
         setPlan({ targets: next });
       }
-    };
-    const addTarget = () => {
-      if (plan.targets.length >= MAX_TARGETS) return;
-      // New target on the hole's playing line (follows doglegs), then drag it where you want.
-      const last = plan.targets[plan.targets.length - 1] ?? from;
-      setPlan({ targets: [...plan.targets, suggestTarget(mapData.line, last)] });
     };
     const strokesShown = myEntry.pickedUp ? 'PU' : String(myEntry.strokes ?? hole.par);
     // Targets the player has walked past or reached (e.g. the tee shot's landing zone) are hidden; they stay in the plan.
@@ -814,188 +788,162 @@ export function HoleScreen(props: {
           onPinChange={(p) => setPlan({ pin: p })}
           onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((t) => t !== shownTargets[index]) })}
           onMapTap={tapMap}
+          clean
+          hazards={hazardsOn}
         />
 
         <div className="map-top">
           <button type="button" className="map-btn round" aria-label={tr('Leave round', 'Runde verlassen')} onClick={askExit}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
           </button>
-          <div className="map-hole">
-            <span className="map-hole-no">{hole.label}</span>
-            <span>Par {hole.par || '?'} · Hcp {hole.strokeIndex || '?'}</span>
-          </div>
-          {detailMode && !round.preview && (
-            <button type="button" className="map-btn map-score-chip" onClick={() => setView('score')} aria-label={tr(`Score ${strokesShown ?? '–'}, tap to edit`, `Score ${strokesShown ?? '–'}, antippen zum Ändern`)}>
-              <span className="small">Score</span>
-              <strong className={myEntry.strokes == null && !myEntry.pickedUp ? 'placeholder' : undefined}>{strokesShown ?? '–'}</strong>
-            </button>
-          )}
-          <button type="button" className="map-btn round" aria-pressed={sun} aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on', 'Sonnenmodus an')} onClick={() => { setSun(!sun); setSunState(!sun); }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></svg>
-          </button>
-          <button type="button" className="map-btn round" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(round)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
-          </button>
         </div>
 
-        {imageryChoices.length > 1 && (
-          <button type="button" className="map-btn map-imagery" onClick={switchImagery} aria-label={tr(`Satellite image: ${imagery.label}, tap to switch`, `Satellitenbild: ${imagery.label}, antippen zum Wechseln`)}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
-          </button>
-        )}
+        {weather && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
 
-        {weather && (
-          <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={imageryChoices.length > 1} />
-        )}
-
+        {/* Hole19: one big number to the middle of the green, front and back small under it */}
         <div className="map-green" aria-label={tr('Distance to the green', 'Distanz zum Grün')}>
-          {green.back != null && (
-            <>
-              <span className="small">{tr('Back', 'Hinten')}</span>
-              <span className="map-green-num">{fmt(green.back)}</span>
-            </>
-          )}
-          <span className="small">{tr('Center', 'Mitte')}</span>
-          <span className="map-green-num big">{fmt(green.center)}</span>
-          {green.front != null && (
-            <>
-              <span className="small">{tr('Front', 'Vorne')}</span>
-              <span className="map-green-num">{fmt(green.front)}</span>
-            </>
+          <span className="map-green-num big">
+            {fmt(green.center)}
+            <small>{unit}</small>
+          </span>
+          {green.front != null && green.back != null && (
+            <span className="map-green-fb">
+              {tr('F', 'V')} {fmt(green.front)} · {tr('B', 'H')} {fmt(green.back)}
+            </span>
           )}
           {slopeToGreen != null && Math.abs(slopeToGreen) >= 2 && (
             <span className="map-slope-chip">
-              {tr(
-                `Green ${Math.abs(Math.round(slopeToGreen))} m ${slopeToGreen < 0 ? 'lower' : 'higher'}`,
-                `Grün ${Math.abs(Math.round(slopeToGreen))} m ${slopeToGreen < 0 ? 'tiefer' : 'höher'}`,
-              )}
-              <br />
               {tr('plays like', 'spielt wie')} {fmt(green.center + slopeToGreen)}
             </span>
           )}
           {/* Distances follow the GPS position on the hole; elsewhere (at home, no signal) they count from the tee – say why. */}
-          {/* poor GPS (trees, buildings): said plainly, the numbers above may be several metres off */}
           <span className={`map-from${onHole ? (player!.accuracy > 12 ? ' poor' : '') : ' off'}`}>
-            {onHole ? (player!.accuracy > 12 ? tr(`GPS poor ±${Math.round(player!.accuracy)} m`, `GPS ungenau ±${Math.round(player!.accuracy)} m`) : `GPS ±${Math.round(player!.accuracy)} m`) : player ? tr('from tee · GPS not on the course', 'ab Abschlag · GPS nicht am Platz') : tr('from tee · no GPS', 'ab Abschlag · kein GPS')}
+            {onHole ? (player!.accuracy > 12 ? tr(`GPS poor ±${Math.round(player!.accuracy)} m`, `GPS ungenau ±${Math.round(player!.accuracy)} m`) : `GPS ±${Math.round(player!.accuracy)} m`) : player ? tr('from tee · GPS off course', 'ab Abschlag · GPS nicht am Platz') : tr('from tee · no GPS', 'ab Abschlag · kein GPS')}
           </span>
-          {/* approaching the green, pin not set: the caddie aims at the middle and the round check measures the first
-              putt from there – one tap to say where the flag is today */}
-          {onHole && mapData.green && !plans[i]?.pin && !greenFocus && distanceM(from, mapData.greenCenter) <= 200 && (
-            <button type="button" className="map-pin-ask" onClick={() => setPinSheet(true)}>
-              {tr('Set pin', 'Fahne setzen')}
+        </div>
+
+        {/* the tools in one column on the right, as in Hole19: caddie, green slope, hazards, imagery, scorecard */}
+        <div className="map-toolbar" role="toolbar" aria-label={tr('Map tools', 'Kartenwerkzeuge')}>
+          {caddieOn && !greenFocus && (
+            <button
+              type="button"
+              className="map-tool"
+              aria-pressed={caddieShown}
+              aria-label={
+                caddieShown
+                  ? tr('Hide caddie', 'Caddie ausblenden')
+                  : caddieNews
+                    ? cad?.warning
+                      ? tr('Show caddie – warning', 'Caddie zeigen – Warnung')
+                      : tr('Show caddie – new advice', 'Caddie zeigen – neuer Hinweis')
+                    : tr('Show caddie', 'Caddie zeigen')
+              }
+              title={tr('AI caddie', 'KI-Caddie')}
+              onClick={toggleCaddie}
+            >
+              {caddieNews && <span className={`tool-badge${cad?.warning ? ' warn' : ''}`} aria-hidden="true">{cad?.warning ? '!' : ''}</span>}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="8" y="9" width="8" height="12" rx="2.5" />
+                <path d="M8 13h8" />
+                <path d="M10 9V3.5M12.5 9V2.5M15 9V4" />
+                <path d="M9 3.5h2M11.5 2.5h2.2M14 4h2" />
+                <path d="M16 11c2.5 1 2.5 6 0 7" />
+              </svg>
             </button>
           )}
+          {(slope || chart) && !nearGreen && (
+            <button type="button" className="map-tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!greenVisible)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <ellipse cx="12" cy="17" rx="9" ry="4" fill="currentColor" opacity="0.35" />
+                <path d="M7 16.5l4-2.5 3 1.8 4-2.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M16 13.2l2 0-.6 1.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M10 15V3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M10.5 3.5h6l-1.8 2.2 1.8 2.2h-6z" fill="#FF6B5E" />
+              </svg>
+            </button>
+          )}
+          {(mapData.bunkers.length > 0 || mapData.water.length > 0) && (
+            <button type="button" className="map-tool" aria-pressed={hazardsOn} aria-label={hazardsOn ? tr('Hide hazard distances', 'Distanzen zu Hindernissen ausblenden') : tr('Show hazard distances', 'Distanzen zu Hindernissen zeigen')} title={tr('Hazards', 'Hindernisse')} onClick={() => setHazardsOn(!hazardsOn)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d="M3 16c2-3 5-4 9-4s7 1 9 4c-2 2.5-5.5 4-9 4s-7-1.5-9-4z" />
+                <path d="M8 8h8M12 4v8" />
+              </svg>
+            </button>
+          )}
+          {missMapOn && (
+            <button type="button" className="map-tool" aria-pressed={showMiss} aria-label={showMiss ? tr('Hide where not to miss', 'Fehlschlag-Karte ausblenden') : tr('Show where not to miss', 'Zeigen, wo ich nicht verfehlen darf')} title={tr('Where not to miss', 'Wo nicht verfehlen')} onClick={() => setShowMiss(!showMiss)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" />
+                <circle cx="12" cy="12" r="4.5" />
+                <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+              </svg>
+            </button>
+          )}
+          {imageryChoices.length > 1 && (
+            <button type="button" className="map-tool" onClick={switchImagery} aria-label={tr(`Satellite image: ${imagery.label}, tap to switch`, `Satellitenbild: ${imagery.label}, antippen zum Wechseln`)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
+            </button>
+          )}
+          {round.players.length > 1 && !round.preview && (
+            <button type="button" className="map-tool" aria-label="Leaderboard" title="Leaderboard" onClick={() => setBoardOpen(true)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="8" cy="8" r="3" />
+                <circle cx="16.5" cy="9" r="2.5" />
+                <path d="M2.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5M13.5 14.5c.9-.6 1.9-1 3-1 2.2 0 4 1.5 4.6 4.5" />
+              </svg>
+            </button>
+          )}
+          <button type="button" className="map-tool" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(round)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+          </button>
+          <button type="button" className="map-tool" aria-pressed={sun} aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on', 'Sonnenmodus an')} onClick={() => { setSun(!sun); setSunState(!sun); }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></svg>
+          </button>
         </div>
 
         {exitEl}
         {scoreSheet && (
-          // Score and putts in two taps, without leaving the map (they tell the round check how many shots to find).
-          <div className="sheet-backdrop" onClick={() => setScoreSheet(false)}>
-            <section className="sheet score-sheet" role="dialog" aria-label={tr('Score on this hole', 'Score an diesem Loch')} onClick={(e) => e.stopPropagation()}>
-              <div className="sheet-head">
-                <strong>
-                  {tr('Hole', 'Loch')} {hole.label} · Par {hole.par}
-                </strong>
-                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setScoreSheet(false)}>
-                  ✕
-                </button>
-              </div>
-              <div className="field">
-                <label>{tr('Strokes (with penalties)', 'Schläge (mit Strafschlägen)')}</label>
-                <Segmented<number>
-                  label={tr('Strokes', 'Schläge')}
-                  value={myEntry.strokes}
-                  onChange={(v) => sheetTap({ strokes: v, pickedUp: false })}
-                  options={[...new Set([...[-1, 0, 1, 2, 3].map((d) => (hole.par || 4) + d), ...(myEntry.strokes != null ? [myEntry.strokes] : [])])]
-                    .filter((n) => n >= 1)
-                    .sort((a, b) => a - b)
-                    .map((n) => ({ value: n, label: String(n) }))}
-                />
-              </div>
-              <div className="field">
-                <label>{tr('Penalty strokes (water, out of bounds)', 'Strafschläge (Wasser, Aus)')}</label>
-                <Segmented<number>
-                  label={tr('Penalty strokes', 'Strafschläge')}
-                  value={myEntry.penalties ?? 0}
-                  onChange={(v) => update(me.id, { penalties: v ?? 0 })}
-                  options={[0, 1, 2, 3].map((n) => ({ value: n, label: String(n) }))}
-                />
-              </div>
-              <div className="field">
-                <label>Putts</label>
-                <Segmented<number>
-                  label="Putts"
-                  value={myEntry.putts}
-                  onChange={(v) => sheetTap({ putts: v })}
-                  options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
-                />
-              </div>
-              <div className="score-sheet-foot">
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => {
-                    setScoreSheet(false);
-                    setView('score');
-                  }}
-                >
-                  {tr('Other number, fairway …', 'Andere Zahl, Fairway …')}
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => {
-                    const next = scoreSheet === 'next';
-                    setScoreSheet(false);
-                    if (next) goTo(i + 1);
-                  }}
-                >
-                  {scoreSheet === 'next' ? tr('Next →', 'Weiter →') : tr('Done', 'Fertig')}
-                </button>
-              </div>
-            </section>
-          </div>
+          <ScoreSheet
+            hole={hole}
+            players={round.players}
+            entries={Object.fromEntries(round.players.map((p) => [p.id, round.entries[p.id][i]]))}
+            toPar={Object.fromEntries(
+              round.players.map((p) => {
+                const t = playerTotals(round.holes, round.entries[p.id], p.playingHandicap);
+                return [p.id, t.holesPlayed ? t.toPar : null];
+              }),
+            )}
+            next={scoreSheet === 'next'}
+            last={i === round.holes.length - 1}
+            canPlacePutts={!round.preview}
+            onChange={update}
+            onPlacePutts={() => setPuttEditor(true)}
+            onClose={() => setScoreSheet(false)}
+            onDone={() => {
+              const next = scoreSheet === 'next';
+              setScoreSheet(false);
+              if (next) goTo(i + 1);
+            }}
+          />
         )}
-        {pinSheet && mapData.green && (
-          <div className="sheet-backdrop" onClick={() => setPinSheet(false)}>
-            <section className="sheet" role="dialog" aria-label={tr('Pin position today', 'Fahnenposition heute')} onClick={(e) => e.stopPropagation()}>
-              <div className="sheet-head">
-                <strong>{tr('Where is the pin today?', 'Wo steckt die Fahne heute?')}</strong>
-                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPinSheet(false)}>
-                  ✕
-                </button>
-              </div>
-              <p className="muted small" style={{ margin: 0 }}>
-                {tr(
-                  'Seen from the fairway – back of the green at the top. You can also drag the flag on the map.',
-                  'Vom Fairway aus gesehen – hinterer Grünteil oben. Du kannst die Fahne auch auf der Karte ziehen.',
-                )}
-              </p>
-              <div className="pin-grid" role="group" aria-label={tr('Pin position', 'Fahnenposition')}>
-                {([1, 0, -1] as const).flatMap((depth) =>
-                  ([-1, 0, 1] as const).map((side) => {
-                    const name = tr(
-                      `${depth > 0 ? 'Back' : depth < 0 ? 'Front' : 'Middle'}${side < 0 ? ' left' : side > 0 ? ' right' : depth === 0 ? '' : ' centre'}`,
-                      `${depth > 0 ? 'Hinten' : depth < 0 ? 'Vorne' : 'Mitte'}${side < 0 ? ' links' : side > 0 ? ' rechts' : depth === 0 ? '' : ' Mitte'}`,
-                    );
-                    return (
-                      <button
-                        key={`${depth}${side}`}
-                        type="button"
-                        aria-label={`${tr('Pin', 'Fahne')} ${name.toLowerCase()}`}
-                        onClick={() => {
-                          setPlan({ pin: pinAt(depth, side) });
-                          setPinSheet(false);
-                        }}
-                      >
-                        {name}
-                      </button>
-                    );
-                  }),
-                )}
-              </div>
-            </section>
-          </div>
+        {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
+        {puttEditor && myEntry.putts != null && myEntry.putts > 0 && (
+          <PuttEditor
+            title={tr(`Hole ${hole.label} · ${myEntry.putts} ${myEntry.putts === 1 ? 'putt' : 'putts'}`, `Loch ${hole.label} · ${myEntry.putts} Putt${myEntry.putts === 1 ? '' : 's'}`)}
+            green={mapData.green}
+            greenCenter={mapData.greenCenter}
+            from={approachFrom(mapData)}
+            pin={myEntry.puttsAt?.pin ?? pin}
+            putts={myEntry.putts}
+            balls={myEntry.puttsAt?.balls ?? null}
+            ballOnGreen={player && mapData.green && pointInRing(player.pos, mapData.green) ? player.pos : null}
+            onCancel={() => setPuttEditor(false)}
+            onSave={(v) => {
+              setPuttEditor(false);
+              update(me.id, { puttsAt: v });
+              setPlan({ pin: v.pin });
+            }}
+          />
         )}
 
         <div className="map-bottom">
@@ -1019,8 +967,8 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
-          <div className="map-tools">
-            {camByHand && (
+          {camByHand && (
+            <div className="map-tools">
               <button type="button" className="map-btn round tool" aria-label={tr('Centre the map again', 'Karte wieder zentrieren')} title={tr('Centre', 'Zentrieren')} onClick={() => setRecenter((n) => n + 1)}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
                   <circle cx="12" cy="12" r="6.5" />
@@ -1028,74 +976,8 @@ export function HoleScreen(props: {
                   <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
                 </svg>
               </button>
-            )}
-            {detailMode && (
-              <button type="button" className="map-btn round tool" aria-label={tr('Add a target on the map', 'Ziel auf der Karte hinzufügen')} title={tr('Target', 'Ziel')} onClick={addTarget} disabled={plan.targets.length >= MAX_TARGETS}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                  <circle cx="11" cy="13" r="6.5" />
-                  <path d="M11 4.5v3M11 18.5v3M2.5 13h3M16.5 13h3" />
-                  <path d="M19 2v6M16 5h6" strokeWidth="2.2" />
-                </svg>
-              </button>
-            )}
-            {(slope || chart) && !nearGreen && (
-              <button type="button" className="map-btn round tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!greenVisible)}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <ellipse cx="12" cy="17" rx="9" ry="4" fill="currentColor" opacity="0.35" />
-                  <path d="M7 16.5l4-2.5 3 1.8 4-2.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M16 13.2l2 0-.6 1.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M10 15V3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  <path d="M10.5 3.5h6l-1.8 2.2 1.8 2.2h-6z" fill="#FF6B5E" />
-                </svg>
-              </button>
-            )}
-            {mapData.green && !greenFocus && (
-              <button type="button" className="map-btn round tool" aria-label={tr("Set today's pin position", 'Fahnenposition von heute setzen')} title={tr('Pin position', 'Fahnenposition')} onClick={() => setPinSheet(true)}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <ellipse cx="12" cy="18" rx="9" ry="3.6" fill="currentColor" opacity="0.35" />
-                  <path d="M11 18V4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  <path d="M11.5 4h6.5l-2 2.5 2 2.5h-6.5z" fill="#FF6B5E" />
-                  <circle cx="11" cy="18" r="1.4" fill="currentColor" />
-                </svg>
-              </button>
-            )}
-            {missMapOn && (
-              <button type="button" className="map-btn round tool" aria-pressed={showMiss} aria-label={showMiss ? tr('Hide where not to miss', 'Fehlschlag-Karte ausblenden') : tr('Show where not to miss', 'Zeigen, wo ich nicht verfehlen darf')} title={tr('Where not to miss', 'Wo nicht verfehlen')} onClick={() => setShowMiss(!showMiss)}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                  <circle cx="12" cy="12" r="8.5" />
-                  <circle cx="12" cy="12" r="4.5" />
-                  <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-                </svg>
-              </button>
-            )}
-            {caddieOn && !greenFocus && (
-              <button
-                type="button"
-                className="map-btn round tool"
-                aria-pressed={caddieShown}
-                aria-label={
-                  caddieShown
-                    ? tr('Hide caddie', 'Caddie ausblenden')
-                    : caddieNews
-                      ? cad?.warning
-                        ? tr('Show caddie – warning', 'Caddie zeigen – Warnung')
-                        : tr('Show caddie – new advice', 'Caddie zeigen – neuer Hinweis')
-                      : tr('Show caddie', 'Caddie zeigen')
-                }
-                title={tr('AI caddie', 'KI-Caddie')}
-                onClick={toggleCaddie}
-              >
-                {caddieNews && <span className={`tool-badge${cad?.warning ? ' warn' : ''}`} aria-hidden="true">{cad?.warning ? '!' : ''}</span>}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="8" y="9" width="8" height="12" rx="2.5" />
-                  <path d="M8 13h8" />
-                  <path d="M10 9V3.5M12.5 9V2.5M15 9V4" />
-                  <path d="M9 3.5h2M11.5 2.5h2.2M14 4h2" />
-                  <path d="M16 11c2.5 1 2.5 6 0 7" />
-                </svg>
-              </button>
-            )}
-          </div>
+            </div>
+          )}
           {putt && !(detailMode && holeDone) ? (
             <div className="map-hint detected putt-read" style={{ color: 'var(--text)' }}>
               <span>
@@ -1201,30 +1083,35 @@ export function HoleScreen(props: {
               </button>
             </div>
           ) : (
-          <div className="map-nav with-target">
-            <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
-              ←
+          <div className="hole-bar">
+            <button type="button" className="hole-bar-arrow" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
             </button>
-            <button type="button" className="map-btn" onClick={addTarget} disabled={shownTargets.length >= MAX_TARGETS} aria-label={tr('Add a target on the map', 'Ziel auf der Karte hinzufügen')}>
-              {tr('+ Target', '+ Ziel')}
-            </button>
-            {round.preview ? (
-              <span className="map-score">
-                <span className="small">{tr('Preview', 'Vorschau')}</span>
-                <strong>
-                  {i + 1}/{round.holes.length}
-                </strong>
+            <button
+              type="button"
+              className="map-score"
+              disabled={round.preview}
+              aria-label={round.preview ? undefined : tr(`Hole ${hole.label}, score ${strokesShown} – tap to enter`, `Loch ${hole.label}, Score ${strokesShown} – antippen zum Eintragen`)}
+              onClick={() => (hasShots ? setView('score') : setScoreSheet('score'))}
+            >
+              <span className="map-hole-no">{hole.label}</span>
+              <span className="hole-bar-par">
+                <span>Par {hole.par || '?'}</span>
+                <span>Hcp {hole.strokeIndex || '?'}</span>
               </span>
-            ) : (
-              <button type="button" className="map-score" onClick={() => (hasShots ? setView('score') : setScoreSheet('score'))}>
-                <span className="small">Score</span>
-                {/* nothing entered yet: par in grey, as a suggestion – entered values in full colour */}
-                <strong className={myEntry.strokes == null && !myEntry.pickedUp ? 'placeholder' : undefined}>{strokesShown}</strong>
-                {myEntry.putts != null && <span className="small">{myEntry.putts} Putt{myEntry.putts === 1 ? '' : 's'}</span>}
-              </button>
-            )}
-            <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => (myEntry.strokes == null && !myEntry.pickedUp && !round.preview ? setScoreSheet('next') : goTo(i + 1))}>
-              →
+              {round.preview ? (
+                <span className="hole-bar-score muted small">
+                  {i + 1}/{round.holes.length}
+                </span>
+              ) : (
+                <span className={`hole-bar-score${myEntry.strokes == null && !myEntry.pickedUp ? ' placeholder' : ''}`}>
+                  {strokesShown}
+                  {myEntry.putts != null && <small>{myEntry.putts} P</small>}
+                </span>
+              )}
+            </button>
+            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => (myEntry.strokes == null && !myEntry.pickedUp && !round.preview ? setScoreSheet('next') : goTo(i + 1))}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
           )}

@@ -3,12 +3,13 @@ import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { emptyEntry } from '../lib/scoring';
 import { loadCarryBag, newId } from '../lib/storage';
-import { TopBar } from '../components/ui';
+import { Segmented, TopBar } from '../components/ui';
 import { TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex } from '../lib/handicap';
 import { RATINGS, type TeeRating } from '../data/ratings';
 import { fullName, loadProfile, saveProfile } from '../lib/profile';
+import { DEFAULT_FORMAT, modeName, modesFor, scoringName, type GameMode, type RoundFormat, type Scoring } from '../lib/games';
 
 const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
@@ -70,6 +71,10 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     return { id: 'me', name: fullName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false) };
   });
   const [others, setOthers] = useState<DraftPlayer[]>([]);
+  // Game mode and scoring (as in Hole19): the modes on offer follow the number of players
+  const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
+  const modes = modesFor(others.length + 1);
+  const shownFormat: RoundFormat = modes.includes(format.mode) ? format : { ...format, mode: 'single' };
 
   const option = options.find((o) => o.id === optionId);
   const holes = option ? buildRoundHoles(props.course.holes, option) : [];
@@ -136,6 +141,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       players,
       entries,
       currentHole: 0,
+      format: shownFormat,
       ...(tee ? { tee } : {}),
       ...(preview ? { preview: true } : {}),
     });
@@ -220,11 +226,42 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
         {!hasCarries && (
           <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>
             {tr(
-              'The caddie uses standard distances (driver 200 m … PW 115 m) – enter your own carries under “My bag & caddie” on the home screen.',
-              'Der Caddie rechnet mit Standard-Weiten (Driver 200 m … PW 115 m) – deine eigenen Carry-Weiten trägst du auf der Startseite unter „Mein Bag & Caddie“ ein.',
+              'The caddie uses standard distances (driver 200 m … PW 115 m) – enter your own carries in your profile under “My bag”.',
+              'Der Caddie rechnet mit Standard-Weiten (Driver 200 m … PW 115 m) – deine eigenen Carry-Weiten trägst du im Profil unter „Mein Bag“ ein.',
             )}
           </p>
         )}
+      </section>
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span className="eyebrow">{tr('Format', 'Format')}</span>
+        <div className="field">
+          <label>{tr('Game mode', 'Spielmodus')}</label>
+          <div className="format-list" role="group" aria-label={tr('Game mode', 'Spielmodus')}>
+            {(['single', 'match', 'fourball'] as GameMode[]).map((m) => (
+              <button key={m} type="button" className="format-option" aria-pressed={shownFormat.mode === m} disabled={!modes.includes(m)} onClick={() => setFormat({ ...shownFormat, mode: m })}>
+                <strong>{modeName(m)}</strong>
+                <span className="muted small">
+                  {m === 'single'
+                    ? tr('Lowest score or most Stableford points wins.', 'Wenigste Schläge oder meiste Stableford-Punkte gewinnen.')
+                    : m === 'match'
+                      ? tr('Hole by hole, net – 2 players.', 'Loch für Loch, netto – 2 Spieler.')
+                      : tr('Players 1 & 2 against 3 & 4, the better score of the team counts – 4 players.', 'Spieler 1 & 2 gegen 3 & 4, das bessere Ergebnis des Teams zählt – 4 Spieler.')}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <label>{tr('Scoring', 'Wertung')}</label>
+          <Segmented<Scoring>
+            label={tr('Scoring', 'Wertung')}
+            value={shownFormat.scoring}
+            onChange={(v) => v && setFormat({ ...shownFormat, scoring: v })}
+            options={(['stroke', 'net', 'stableford'] as Scoring[]).map((x) => ({ value: x, label: x === 'stroke' ? tr('Gross', 'Brutto') : x === 'net' ? tr('Net', 'Netto') : 'Stableford' }))}
+          />
+          <span className="muted small">{scoringName(shownFormat.scoring)} · {tr('live leaderboard of your flight on the hole map', 'Live-Leaderboard deines Flights auf der Lochkarte')}</span>
+        </div>
       </section>
 
       <span className="spacer" />

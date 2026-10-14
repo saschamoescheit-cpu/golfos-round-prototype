@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round, RoundHole } from './types';
-import { deleteRound, ensureGeometry, geometryReady, loadCarryBag, loadRounds, saveRound } from './lib/storage';
+import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCarryBag, loadRounds, saveRound } from './lib/storage';
 import { commitParAt } from './lib/scoring';
 import { carryToReview } from './lib/stats';
 import { PlayTab } from './screens/Play';
@@ -83,7 +83,11 @@ const HOME: Screen = { name: 'tab', tab: 'play' };
 const ROUNDS: Screen = { name: 'tab', tab: 'rounds' };
 
 export function App() {
-  const [rounds, setRounds] = useState<Round[]>(() => loadRounds());
+  // rounds left open for more than a day are tidied up first (finished with their scores, or deleted when empty)
+  const [rounds, setRounds] = useState<Round[]>(() => {
+    closeStaleRounds(24);
+    return loadRounds();
+  });
   const [screen, setScreen] = useState<Screen>(() => {
     const r = SKIP_RESUME ? undefined : roundInPlay(rounds);
     if (r && r.id === pausedRound) return HOME;
@@ -190,7 +194,11 @@ export function App() {
           onBack={() => setScreen({ name: 'pickCourse' })}
           onBook={(holes, tee, playing) => setScreen({ name: 'book', course: screen.course, holes, tee, playing })}
           onStart={(round) => {
-            if (!round.preview) persist(round);
+            if (!round.preview) {
+              persist(round);
+              closeStaleRounds(0, round.id); // a new round: no other one stays "in progress"
+              setRounds(loadRounds());
+            }
             setScreen({ name: 'hole', round });
           }}
         />

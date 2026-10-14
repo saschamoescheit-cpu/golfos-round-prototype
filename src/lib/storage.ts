@@ -186,3 +186,16 @@ export function saveCaddieSettings(s: CaddieSettings): void {
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
+
+/**
+ * Rounds left open by accident (Sascha 14.10.2026: after cancelling a round an older one showed "Continue round"):
+ * open rounds other than `keep` and older than `maxAgeH` hours are finished when they have a score, else deleted.
+ */
+export function closeStaleRounds(maxAgeH: number, keep: string | null = null): void {
+  for (const r of loadRounds()) {
+    if (r.finishedAt || r.id === keep || Date.now() - Date.parse(r.createdAt) < maxAgeH * 3600 * 1000) continue;
+    const scored = Object.values(r.entries).some((list) => list.some((e) => e.strokes != null || e.pickedUp));
+    if (scored) saveRound({ ...r, finishedAt: r.createdAt });
+    else deleteRound(r.id);
+  }
+}

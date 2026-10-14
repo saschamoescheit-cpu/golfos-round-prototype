@@ -107,6 +107,8 @@ export interface HoleEntry {
   upAndDown: boolean | null;
   /** Detailed tracking: shots of the hole. Absent = quick tracking for this hole. */
   detail?: DetailEntry;
+  /** Putts placed on the course (putt editor after the hole): the pin and where the ball lay before each putt. */
+  puttsAt?: { pin: LngLat; balls: LngLat[] };
   /** Weather when the player was on the hole (GOL-26). */
   weather?: { tempC: number; windKmh: number; windFromDeg: number };
 }
@@ -139,4 +141,6 @@ export interface Round {
   rating?: { cr: number; slope: number };
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
+  /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
+  format?: { mode: 'single' | 'match' | 'fourball'; scoring: 'stroke' | 'net' | 'stableford' };
 }

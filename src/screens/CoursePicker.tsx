@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Course, CourseSummary } from '../types';
 import { saveCachedCourse } from '../lib/storage';
 import { loadCourse, nearbyCourses, searchBundled, searchCourses } from '../lib/courses';
@@ -90,7 +90,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
     <ul className="list">
       {list.map((c) => (
         <li key={c.id}>
-          <button type="button" className="list-item" onClick={() => pick(c)} disabled={loadingId != null}>
+          <button type="button" className="list-item course-card" style={aerial(c.lat, c.lon)} onClick={() => pick(c)} disabled={loadingId != null}>
             <span className="grow">
               <span className="title">{c.name}</span>
               <span className="muted small">
@@ -151,6 +151,22 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
       )}
       <span className="spacer" />
       <Attribution />
+      <p className="attribution" style={{ marginTop: -8 }}>{tr('Aerial images', 'Luftbilder')} © Esri, Maxar, Earthstar Geographics</p>
     </main>
   );
+}
+
+/**
+ * A picture of the course for the list (Sascha 14.10.2026, Hole19 shows photos): the aerial image around the course,
+ * one Esri tile at zoom 16 around the course point.
+ */
+function aerial(lat: number, lon: number): CSSProperties {
+  const z = 16;
+  const n = 2 ** z;
+  const x = ((lon + 180) / 360) * n;
+  const r = (lat * Math.PI) / 180;
+  const y = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n;
+  const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${Math.floor(y)}/${Math.floor(x)}`;
+  // background-position in % puts that point of the (enlarged) image at the same % of the card
+  return { backgroundImage: `linear-gradient(rgba(14, 20, 24, 0.15), rgba(14, 20, 24, 0.88)), url(${url})`, backgroundSize: '100% 100%, 170%', backgroundPosition: `0 0, ${(x % 1) * 100}% ${(y % 1) * 100}%` };
 }

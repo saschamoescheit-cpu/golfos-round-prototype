@@ -34,7 +34,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const track = useMemo(() => loadTrack(round.id), [round.id]);
   // where the pin was on the course ("Where is the pin today?" or the dragged flag) – else the middle of the green
   const coursePins = useMemo(() => loadLive(round.id).plans, [round.id]);
-  const pinFor = (index: number): LngLat | null => coursePins[index]?.pin ?? maps[index]?.greenCenter ?? null;
+  // the pin the player set with his putts on the course wins, then the one from the hole map
+  const pinFor = (index: number): LngLat | null => round.entries[me.id][index]?.puttsAt?.pin ?? coursePins[index]?.pin ?? maps[index]?.greenCenter ?? null;
   const parts = useMemo(() => (track.length > 20 ? splitRound(track, maps) : []), [track, maps]);
   const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id)), [round.id]);
   const unit = loadUnit();
@@ -186,7 +187,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         delete derived.greensideBunker;
         delete derived.upAndDown;
       }
-      list[i] = { ...list[i], detail: { ...found, pin: pinFor(i) }, ...derived };
+      // putts placed on the course: the first putt is where the ball lay, nothing to check there any more
+      const placed = e.puttsAt?.balls[0];
+      list[i] = { ...list[i], detail: { ...found, ...(placed ? { onGreen: placed } : {}), pin: pinFor(i) }, ...derived };
     });
     props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
     setNotice(

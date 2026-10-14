@@ -38,6 +38,12 @@ export interface HoleMapProps {
   putt?: { ball: LngLat; line: LngLat[]; aim: LngLat | null } | null;
   /** Round check: only the shots – no plan line, no distance or hazard labels that would cover the shot labels. */
   plain?: boolean;
+  /**
+   * Playing view as in Hole19 (Sascha, 14.10.2026): the bare aerial image – no course shapes drawn over it, one target
+   * as a ring, the two distances next to the line. Hazard distances only when `hazards` is on.
+   */
+  clean?: boolean;
+  hazards?: boolean;
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
   padding?: { top: number; bottom: number; left: number; right: number };
   /**
@@ -91,7 +97,8 @@ export function HoleMap(props: HoleMapProps) {
     m.on('load', () => {
       m.addSource('shapes', { type: 'geojson', data: shapes(latest.current.data), attribution: OSM_ATTRIBUTION });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
-      courseLayers('shapes').forEach((l) => m.addLayer(l));
+      // the playing view keeps the shapes invisible (they still feed the distances): only the aerial image
+      courseLayers('shapes').forEach((l) => m.addLayer(latest.current.clean ? { ...l, layout: { ...(l.layout ?? {}), visibility: 'none' } } as maplibregl.LayerSpecification : l));
       m.addSource('miss', { type: 'geojson', data: missData(latest.current) });
       syncGreenChart(m, latest.current.greenChart ?? null);
       m.addLayer({
@@ -106,7 +113,7 @@ export function HoleMap(props: HoleMapProps) {
           'circle-stroke-color': '#0E1418',
         },
       });
-      m.addLayer({ id: 'hole', type: 'line', source: 'shapes', filter: ['==', 'kind', 'hole'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [3, 3] } });
+      m.addLayer({ id: 'hole', type: 'line', source: 'shapes', filter: ['==', 'kind', 'hole'], layout: { visibility: latest.current.clean ? 'none' : 'visible' }, paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.5, 'line-dasharray': [3, 3] } });
       m.addSource('walked', { type: 'geojson', data: walkedData(latest.current) });
       m.addLayer({ id: 'walked-line', type: 'line', source: 'walked', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#FFFFFF', 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [1, 2] } });
       m.addLayer({ id: 'walked-stop', type: 'circle', source: 'walked', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 9, 'circle-color': 'rgba(255,255,255,0.25)', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 } });
@@ -291,7 +298,7 @@ export function HoleMap(props: HoleMapProps) {
     p.targets.forEach((t, i) => {
       let marker = mk.targets[i];
       if (!marker) {
-        marker = new maplibregl.Marker({ element: crosshairEl(i + 1), draggable: true }).setLngLat(t).addTo(m);
+        marker = new maplibregl.Marker({ element: latest.current.clean ? ringEl() : crosshairEl(i + 1), draggable: true }).setLngLat(t).addTo(m);
         marker.on('drag', () => {
           const ll = marker.getLngLat();
           const next = latest.current.targets.slice();
@@ -311,9 +318,25 @@ export function HoleMap(props: HoleMapProps) {
       // putt read on screen: no player → pin label over the putt line
     } else if (p.targets.length === 0) {
       const mid: LngLat = [(p.from[0] + p.pin[0]) / 2, (p.from[1] + p.pin[1]) / 2];
-      mk.labels.push(new maplibregl.Marker({ element: labelEl(formatDistance(distanceM(p.from, p.pin), p.unit), 'map-label') }).setLngLat(mid).addTo(m));
+      if (p.clean) {
+        const d = labelEl('', 'map-dist');
+        d.innerHTML = `<strong>${formatDistance(distanceM(p.from, p.pin), p.unit)}</strong><small>${p.unit}</small>`;
+        mk.labels.push(new maplibregl.Marker({ element: d, anchor: 'right', offset: [-18, 0] }).setLngLat(mid).addTo(m));
+      } else mk.labels.push(new maplibregl.Marker({ element: labelEl(formatDistance(distanceM(p.from, p.pin), p.unit), 'map-label') }).setLngLat(mid).addTo(m));
+    }
+    if (p.clean && p.targets.length === 1 && !p.putt) {
+      // Hole19: the carry next to the lower half of the line, the rest to the pin next to the upper half
+      const t = p.targets[0];
+      const side = (a: LngLat, b: LngLat, m_: number) =>
+        new maplibregl.Marker({ element: labelEl('', 'map-dist'), anchor: 'right', offset: [-18, 0] }).setLngLat([a[0] + (b[0] - a[0]) * m_, a[1] + (b[1] - a[1]) * m_]).addTo(m);
+      const carry = side(p.from, t, 0.5);
+      carry.getElement().innerHTML = `<strong>${formatDistance(distanceM(p.from, t), p.unit)}</strong><small>${p.unit}</small>`;
+      const rest = side(t, p.pin, 0.5);
+      rest.getElement().innerHTML = `<strong>${formatDistance(distanceM(t, p.pin), p.unit)}</strong><small>${p.unit}</small>`;
+      mk.labels.push(carry, rest);
     }
     p.targets.forEach((t, i) => {
+      if (p.clean && p.targets.length === 1) return;
       const prev = i === 0 ? p.from : p.targets[i - 1];
       const sign = targetSignEl(i + 1, formatDistance(distanceM(prev, t), p.unit), formatDistance(distanceM(t, p.pin), p.unit), p.unit, () =>
         latest.current.onTargetRemove(i),
@@ -331,6 +354,7 @@ export function HoleMap(props: HoleMapProps) {
       }
       mk.labels.push(marker);
     });
+    if (p.clean && !p.hazards) return;
     const hazards: { ring: Ring; kind: 'bunker' | 'water' }[] = [
       ...p.data.bunkers.map((ring) => ({ ring, kind: 'bunker' as const })),
       ...p.data.water.map((ring) => ({ ring, kind: 'water' as const })),
@@ -510,6 +534,15 @@ function targetSignEl(n: number, carry: string, rest: string, unit: Unit, onRemo
   for (const ev of ['mousedown', 'touchstart', 'pointerdown', 'click'] as const) remove.addEventListener(ev, (e) => e.stopPropagation());
   remove.addEventListener('click', onRemove);
   d.append(text, remove);
+  return d;
+}
+
+/** The target as in Hole19: a white ring with a dot, dragged with the finger. */
+function ringEl(): HTMLDivElement {
+  const d = el('map-crosshair');
+  d.setAttribute('aria-label', tr('Target, drag to move', 'Ziel, zum Verschieben ziehen'));
+  d.innerHTML =
+    '<svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="21" fill="rgba(255,255,255,0.08)" stroke="#0E1418" stroke-opacity="0.45" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="#FFFFFF" stroke-width="2.5"/><circle cx="26" cy="26" r="2" fill="#FFFFFF"/></svg>';
   return d;
 }
 
