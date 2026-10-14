@@ -11,7 +11,9 @@ describe('German texts (021)', () => {
   useLangForTests('de');
   afterAll(() => useLangForTests('en'));
   it('club names and codes', () => {
-    expect(clubCode('7i')).toBe('E7');
+    expect(clubCode('7i')).toBe('7i');
+    expect(clubCode('Dr')).toBe('D');
+    expect(clubCode('Hy')).toBe('4H');
     expect(clubName('3W')).toBe('Holz 3');
     expect(tr('New round', 'Neue Runde')).toBe('Neue Runde');
   });

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
-import { holeSg } from '../lib/sg';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
@@ -14,7 +13,7 @@ import { holeForTee } from '../lib/teeline';
 import { ShotSheet } from '../components/ShotSheet';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
-import { clubCode, dec, tr } from '../lib/i18n';
+import { clubCode, tr } from '../lib/i18n';
 
 // Round check after a detailed round (feature 007): every shot of every hole on the map, with club, shot type,
 // lie, length and strokes gained. Shots detected from the GPS track are marked "check"; the player corrects
@@ -61,7 +60,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const pin = d?.pin ?? data?.greenCenter ?? null;
   const lengths = d ? shotLengths(d) : [];
   const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
-  const sg = d ? holeSg({ ...d, pin }, e.putts, hole.par) : null;
   const toCheck = entries.reduce((n, x) => n + (x.detail?.shots.filter((s) => s.review).length ?? 0), 0);
   const fmt = (m: number) => `${formatDistance(m, unit)} ${unit}`;
   // The GPS track of this hole: the walked path and where the player stood still – a shot the detection missed
@@ -306,10 +304,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             track={[
               // Where strokes are won (green) and lost (red): every shot coloured by its strokes gained.
               ...(d?.shots ?? []).flatMap((s, n) => {
-                const v = sg?.[n]?.sg;
-                const tone: 'good' | 'bad' | undefined = v == null ? undefined : v >= 0 ? 'good' : 'bad';
                 const len = lengths[n];
-                const shot = s.pos ? [{ id: `shot-${n}`, pos: s.pos, tone, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${len != null ? ` ${formatDistance(len, unit)} ${unit}` : ''}${s.review ? ' ?' : ''}` }] : [];
+                const shot = s.pos ? [{ id: `shot-${n}`, pos: s.pos, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${len != null ? ` ${formatDistance(len, unit)} ${unit}` : ''}${s.review ? ' ?' : ''}` }] : [];
                 // where the ball went into the water / out of bounds – between this shot and the next
                 const miss = s.penalty && s.missPos ? [{ id: `miss-${n}`, pos: s.missPos, tone: 'bad' as const, label: `✕ ${s.penaltyKind === 'ob' ? tr('OB', 'Aus') : tr('Water', 'Wasser')}` }] : [];
                 return [...shot, ...miss];
@@ -357,8 +353,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       <p className="muted small" style={{ margin: 0 }}>
         {walked && walked.stops.length > 0 && <>{tr('○ = you stood still here (GPS), a tap sets the shot exactly. ', '○ = hier bist du stehen geblieben (GPS), Tipp setzt den Schlag genau dort. ')}</>}
         {tr('Drag the flag to where the hole was (first putt). ', 'Fahne dorthin ziehen, wo das Loch war (erster Putt). ')}
-        {tr('Colour against a tour pro: ', 'Farbe gegen Tour-Profi: ')}
-        <span className="good-text">{tr('green = strokes gained', 'grün = Schläge gewonnen')}</span>, <span className="bad-text">{tr('red = lost', 'rot = verloren')}</span>.
       </p>
 
       {unplacedPenalty && (
@@ -385,7 +379,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           {d.shots.map((s, n) => {
             const toPin = s.pos && pin ? distanceM(s.pos, pin) : null;
             const kind = s.kind ?? suggestKind(s.lie, toPin);
-            const v = sg?.[n]?.sg;
             return (
               <li key={n} className={s.review ? 'check' : undefined}>
                 <span className="n">{n + 1}</span>
@@ -398,7 +391,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     {s.review ? tr(' · check', ' · prüfen') : ''}
                   </span>
                 </button>
-                <span className={`sg-badge ${v == null ? '' : v >= 0 ? 'good' : 'bad'}`}>{v == null ? '' : `${v >= 0 ? '+' : ''}${dec(v.toFixed(2))}`}</span>
+                <span />
                 <span />
               </li>
             );
@@ -412,9 +405,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                   {tr('first putt', 'erster Putt')} {firstPuttM({ ...d, pin }) != null ? fmt(firstPuttM({ ...d, pin })!) : '–'}
                 </span>
               </span>
-              <span className={`sg-badge ${sg ? (sg[sg.length - 1].sg >= 0 ? 'good' : 'bad') : ''}`}>
-                {sg && sg[sg.length - 1].category === 'putting' ? `${sg[sg.length - 1].sg >= 0 ? '+' : ''}${dec(sg[sg.length - 1].sg.toFixed(2))}` : ''}
-              </span>
+              <span />
               <span />
             </li>
           )}
