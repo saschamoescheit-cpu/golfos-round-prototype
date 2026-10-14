@@ -45,6 +45,7 @@ export function ScoreSheet(props: {
   next: boolean; // opened by "→": the button goes on to the next hole
   last: boolean;
   canPlacePutts: boolean;
+  team?: boolean; // scramble / foursomes: one score per team, nothing per player
   onChange: (playerId: string, patch: Partial<HoleEntry>) => void;
   onPlacePutts: () => void;
   onDone: () => void;
@@ -91,7 +92,7 @@ export function ScoreSheet(props: {
               </div>
               {!e.pickedUp && (
                 <Stepper
-                  label={tr('Strokes', 'Schläge')}
+                  label={props.team ? tr('Team strokes', 'Team-Schläge') : tr('Strokes', 'Schläge')}
                   value={strokes}
                   start={h.par || 4}
                   min={1}
@@ -99,7 +100,7 @@ export function ScoreSheet(props: {
                   onChange={(v) => set({ strokes: v, pickedUp: false })}
                 />
               )}
-              {p.isMe && !e.pickedUp && (
+              {p.isMe && !e.pickedUp && !props.team && (
                 <>
                   <Stepper label="Putts" value={e.putts} start={2} max={9} onChange={(v) => set({ putts: v, ...(e.puttsAt && v !== e.puttsAt.balls.length ? { puttsAt: undefined } : {}) })} />
                   <Stepper label={tr('Penalty strokes', 'Strafschläge')} value={e.penalties ?? 0} start={1} max={9} onChange={(v) => set({ penalties: v ?? 0 })} />

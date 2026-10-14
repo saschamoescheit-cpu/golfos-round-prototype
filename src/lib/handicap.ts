@@ -1,6 +1,7 @@
 import type { Round } from '../types';
 import { RATINGS, type TeeRating } from '../data/ratings';
 import { grossForHole, handicapStrokes, netDoubleBogey } from './scoring';
+import { isTeamRound } from './games';
 
 // The handicap played today (World Handicap System): the score differential of an 18-hole round,
 //   differential = 113 / slope × (adjusted gross score − course rating),
@@ -20,6 +21,7 @@ export interface PlayedHandicap {
 
 /** Score differential of the player's round; null for 9-hole rounds, holes without a score or no rating. */
 export function playedHandicap(r: Round): PlayedHandicap | null {
+  if (isTeamRound(r)) return null; // a team score is no handicap of the player
   const me = r.players.find((p) => p.isMe);
   const rating = roundRating(r);
   if (!me || !rating || r.holes.length !== 18) return null;

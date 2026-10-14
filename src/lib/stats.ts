@@ -2,6 +2,7 @@ import type { Club, Round } from '../types';
 import { greenInRegulation, grossForHole, handicapStrokes, playing18, stablefordPoints } from './scoring';
 import { BAG, firstPuttM, shotLengths } from './shots';
 import { tr } from './i18n';
+import { isTeamRound } from './games';
 
 // Analysis across rounds (feature 005): the player's ("me") key figures, tendencies, club distances
 // and the focus areas compared with the next better handicap band – the input for training plans (GOL-27).
@@ -54,6 +55,7 @@ const PUTT_BUCKETS: { label: string; max: number }[] = [
 ];
 
 export function analyse(rounds: Round[]): Analysis {
+  rounds = rounds.filter((r) => !isTeamRound(r)); // team scores (scramble, foursomes) are not the player's own
   let holes = 0;
   let toPar = 0;
   let pts = 0;
@@ -200,6 +202,7 @@ export function analyse(rounds: Round[]): Analysis {
 
 /** Carry per club from tracked full shots: median length minus typical roll (≈ 7 %), from 3 shots on. */
 export function trackedCarry(rounds: Round[], minShots = 3): Map<Club, { carry: number; shots: number }> {
+  rounds = rounds.filter((r) => !isTeamRound(r)); // team scores (scramble, foursomes) are not the player's own
   return new Map(
     analyse(rounds.filter((r) => r.finishedAt))
       .clubs.filter((c) => c.shots >= minShots)
@@ -218,6 +221,7 @@ export function carryToReview(rounds: Round[], bag: { club: Club; carry: number 
 
 /** The player's own club distances replace the standard bag once a club has enough shots. */
 export function playerBag(rounds: Round[], minShots = 3): { club: Club; m: number }[] {
+  rounds = rounds.filter((r) => !isTeamRound(r)); // team scores (scramble, foursomes) are not the player's own
   const own = new Map(analyse(rounds).clubs.filter((c) => c.shots >= minShots).map((c) => [c.club, c.median]));
   return BAG.map((b) => ({ club: b.club, m: own.get(b.club) ?? b.m }));
 }

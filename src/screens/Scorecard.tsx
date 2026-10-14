@@ -6,6 +6,7 @@ import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
+import { isTeamRound } from '../lib/games';
 import { HoleEditSheet } from '../components/HoleEditSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
@@ -33,7 +34,7 @@ export function Scorecard(props: {
   const stats = roundStats(round.holes, round.entries[me.id]);
   const sg = roundsSg([round]);
   // Always: without a GPS track (GPS off, phone switched off) the shots can still be set by tapping the map.
-  const canReview = !round.preview;
+  const canReview = !round.preview && !isTeamRound(round); // a team ball: no own shots to check
 
   return (
     <main className="screen">

@@ -41,8 +41,10 @@ console.log('box:', (await p.locator('.map-green').innerText()).replace(/\s+/g, 
 await p.getByRole('button', { name: 'Nächstes Loch' }).click();
 await p.waitForTimeout(500);
 console.log('→ opens sheet:', await p.locator('.score-sheet').count());
-await p.locator('.score-sheet [aria-label="Schläge"] button').filter({ hasText: /^4$/ }).click();
-await p.locator('.score-sheet [aria-label="Putts"] button').filter({ hasText: /^2$/ }).click();
+// steppers (Hole19): the first + gives par, putts start at 2
+await p.locator('.score-sheet').getByRole('button', { name: 'Schläge plus eins', exact: true }).first().click();
+await p.locator('.score-sheet').getByRole('button', { name: 'Putts plus eins', exact: true }).click();
+await p.locator('.score-sheet').getByRole('button', { name: /Nächstes Loch/ }).click();
 await p.waitForTimeout(800);
 console.log('now on:', await p.locator('.map-hole-no').innerText());
 console.log('responses:', JSON.stringify(got));

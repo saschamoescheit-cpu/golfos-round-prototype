@@ -34,6 +34,7 @@ import { HoleMap } from '../components/HoleMap';
 import { ScoreSheet } from '../components/ScoreSheet';
 import { PuttEditor } from '../components/PuttEditor';
 import { LeaderboardSheet } from '../components/Leaderboard';
+import { isTeamRound } from '../lib/games';
 import { HoleSetup } from '../components/HoleSetup';
 import { clubCode, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
@@ -915,7 +916,8 @@ export function HoleScreen(props: {
             )}
             next={scoreSheet === 'next'}
             last={i === round.holes.length - 1}
-            canPlacePutts={!round.preview}
+            canPlacePutts={!round.preview && !isTeamRound(round)}
+            team={isTeamRound(round)}
             onChange={update}
             onPlacePutts={() => setPuttEditor(true)}
             onClose={() => setScoreSheet(false)}

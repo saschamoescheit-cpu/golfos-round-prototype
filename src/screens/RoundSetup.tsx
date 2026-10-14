@@ -9,7 +9,7 @@ import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex } from '../lib/handicap';
 import { RATINGS, type TeeRating } from '../data/ratings';
 import { fullName, loadProfile, saveProfile } from '../lib/profile';
-import { DEFAULT_FORMAT, modeName, modesFor, scoringName, type GameMode, type RoundFormat, type Scoring } from '../lib/games';
+import { DEFAULT_FORMAT, isTeamMode, modeName, modesFor, scoringName, teamHandicap, teamsOf, type GameMode, type RoundFormat, type Scoring } from '../lib/games';
 
 const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
@@ -123,10 +123,19 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     } catch {
       /* ignore */
     }
-    const players: Player[] = [
+    const single: Player[] = [
       { id: 'me', name: me.name.trim() || tr('Me', 'Ich'), playingHandicap: playingHandicap(me), isMe: true },
       ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`), playingHandicap: playingHandicap(o), isMe: false })),
     ];
+    // Scramble and foursomes: one ball per team – the teams are the round's players (one score per hole each)
+    const players: Player[] = isTeamMode(shownFormat.mode)
+      ? teamsOf(shownFormat.mode, single.length).map((t, k) => ({
+          id: k === 0 ? 'me' : `team-${k + 1}`,
+          name: t.map((j) => single[j].name).join(' & '),
+          playingHandicap: teamHandicap(shownFormat.mode, t.map((j) => single[j].playingHandicap)),
+          isMe: k === 0,
+        }))
+      : single;
     const entries: Round['entries'] = {};
     for (const p of players) entries[p.id] = holes.map(() => emptyEntry());
     props.onStart({
@@ -238,7 +247,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
         <div className="field">
           <label>{tr('Game mode', 'Spielmodus')}</label>
           <div className="format-list" role="group" aria-label={tr('Game mode', 'Spielmodus')}>
-            {(['single', 'match', 'fourball'] as GameMode[]).map((m) => (
+            {(['single', 'match', 'fourball', 'scramble', 'foursome'] as GameMode[]).map((m) => (
               <button key={m} type="button" className="format-option" aria-pressed={shownFormat.mode === m} disabled={!modes.includes(m)} onClick={() => setFormat({ ...shownFormat, mode: m })}>
                 <strong>{modeName(m)}</strong>
                 <span className="muted small">
@@ -246,7 +255,11 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
                     ? tr('Lowest score or most Stableford points wins.', 'Wenigste Schläge oder meiste Stableford-Punkte gewinnen.')
                     : m === 'match'
                       ? tr('Hole by hole, net – 2 players.', 'Loch für Loch, netto – 2 Spieler.')
-                      : tr('Players 1 & 2 against 3 & 4, the better score of the team counts – 4 players.', 'Spieler 1 & 2 gegen 3 & 4, das bessere Ergebnis des Teams zählt – 4 Spieler.')}
+                      : m === 'fourball'
+                        ? tr('Players 1 & 2 against 3 & 4, the better score of the team counts – 4 players.', 'Spieler 1 & 2 gegen 3 & 4, das bessere Ergebnis des Teams zählt – 4 Spieler.')
+                        : m === 'scramble'
+                          ? tr('Everyone hits, the team picks the best ball and all play on from there – one team score. 2–4 players (4: 1 & 2 against 3 & 4).', 'Alle schlagen, das Team wählt den besten Ball, alle spielen von dort weiter – ein Team-Score. 2–4 Spieler (4: 1 & 2 gegen 3 & 4).')
+                          : tr('Two players share one ball and hit in turn – one team score. 2 or 4 players (4: 1 & 2 against 3 & 4).', 'Zwei Spieler teilen sich einen Ball und schlagen abwechselnd – ein Team-Score. 2 oder 4 Spieler (4: 1 & 2 gegen 3 & 4).')}
                 </span>
               </button>
             ))}
@@ -260,7 +273,14 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
             onChange={(v) => v && setFormat({ ...shownFormat, scoring: v })}
             options={(['stroke', 'net', 'stableford'] as Scoring[]).map((x) => ({ value: x, label: x === 'stroke' ? tr('Gross', 'Brutto') : x === 'net' ? tr('Net', 'Netto') : 'Stableford' }))}
           />
-          <span className="muted small">{scoringName(shownFormat.scoring)} · {tr('live leaderboard of your flight on the hole map', 'Live-Leaderboard deines Flights auf der Lochkarte')}</span>
+          <span className="muted small">
+            {scoringName(shownFormat.scoring)} · {tr('live leaderboard of your flight on the hole map', 'Live-Leaderboard deines Flights auf der Lochkarte')}
+            {isTeamMode(shownFormat.mode) &&
+              tr(
+                ' · team handicap from the players’ handicaps (foursomes 50 %, scramble 35/15 % for two). Team rounds do not count for your own stats.',
+                ' · Team-Vorgabe aus den Vorgaben der Spieler (Vierer 50 %, Scramble zu zweit 35/15 %). Team-Runden zählen nicht für deine eigene Statistik.',
+              )}
+          </span>
         </div>
       </section>
 

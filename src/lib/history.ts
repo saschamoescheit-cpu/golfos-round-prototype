@@ -4,6 +4,7 @@ import { playedHandicap } from './handicap';
 import { roundsSg, SG_CATEGORIES, type SgCategory } from './sg';
 import { shotLengths } from './shots';
 import { tr } from './i18n';
+import { isTeamRound } from './games';
 
 // The player's history (feature 012): every finished round as one point for the trend charts, the stats per
 // course (average per hole, hardest and best hole) and personal bests.
@@ -21,6 +22,7 @@ export interface RoundPoint {
 
 /** Finished rounds of the player, oldest first, as points for the trend charts. */
 export function roundPoints(rounds: Round[]): RoundPoint[] {
+  rounds = rounds.filter((r) => !isTeamRound(r)); // team scores (scramble, foursomes) are not the player's own
   return rounds
     .filter((r) => r.finishedAt && mine(r))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
@@ -174,6 +176,7 @@ export interface Best {
 }
 
 export function personalBests(rounds: Round[]): Best[] {
+  rounds = rounds.filter((r) => !isTeamRound(r)); // team scores (scramble, foursomes) are not the player's own
   const out: Best[] = [];
   const done = rounds.filter((r) => r.finishedAt && mine(r)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const pick = <T,>(xs: { v: T; r: Round }[], better: (a: T, b: T) => boolean) => xs.reduce<{ v: T; r: Round } | null>((b, x) => (!b || better(x.v, b.v) ? x : b), null);
@@ -240,6 +243,7 @@ export interface Career {
 
 /** The player's record over all finished rounds (record tab): what was played and the results per hole. */
 export function career(rounds: Round[]): Career {
+  rounds = rounds.filter((r) => !isTeamRound(r)); // team scores (scramble, foursomes) are not the player's own
   const c: Career = { rounds: 0, holes: 0, strokes: 0, mix: { eaglePlus: 0, birdie: 0, par: 0, bogey: 0, doublePlus: 0 }, toParPer18: null };
   let toPar = 0;
   for (const r of rounds) {

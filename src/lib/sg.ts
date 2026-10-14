@@ -2,6 +2,7 @@ import type { DetailEntry, Lie, Round } from '../types';
 import { distanceM } from './geo';
 import { firstPuttM, shotsComplete } from './shots';
 import { tr } from './i18n';
+import { isTeamRound } from './games';
 
 // Strokes gained (feature 007): every shot is measured against the average number of strokes a tour pro
 // needs to hole out from the same distance and lie. Gaining 0.3 means the shot was 0.3 strokes better than
@@ -87,6 +88,7 @@ export interface SgSummary {
 
 /** Strokes gained against the tour, per 18 holes, over the player's detailed holes. */
 export function roundsSg(rounds: Round[]): SgSummary | null {
+  rounds = rounds.filter((r) => !isTeamRound(r)); // team scores (scramble, foursomes) are not the player's own
   const sum: Record<SgCategory, number> = { tee: 0, long: 0, approach: 0, around: 0, putting: 0 };
   const shots: Record<SgCategory, number> = { tee: 0, long: 0, approach: 0, around: 0, putting: 0 };
   let holes = 0;

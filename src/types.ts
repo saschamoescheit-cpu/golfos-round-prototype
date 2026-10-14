@@ -142,5 +142,5 @@ export interface Round {
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
-  format?: { mode: 'single' | 'match' | 'fourball'; scoring: 'stroke' | 'net' | 'stableford' };
+  format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford' };
 }

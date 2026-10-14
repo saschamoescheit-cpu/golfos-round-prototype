@@ -68,3 +68,23 @@ describe('leaderboard', () => {
     expect(modesFor(4)).toContain('fourball');
   });
 });
+
+describe('team modes', () => {
+  it('scramble and foursomes: team handicap from the players', async () => {
+    const { teamHandicap, teamsOf, modesFor } = await import('./games');
+    expect(teamHandicap('foursome', [10, 20])).toBe(15);
+    expect(teamHandicap('scramble', [20, 10])).toBe(7); // 35 % of 10 + 15 % of 20 = 6.5
+    expect(teamHandicap('scramble', [10, null])).toBeNull();
+    expect(teamsOf('scramble', 4)).toEqual([[0, 1], [2, 3]]);
+    expect(teamsOf('scramble', 3)).toEqual([[0, 1, 2]]);
+    expect(modesFor(3)).toEqual(['single', 'scramble']);
+  });
+  it('two teams: ranked like players, with the match status', () => {
+    const b = leaderboard(round([{ id: 'A & B', hcp: null, scores: [3, 4, null, null] }, { id: 'C & D', hcp: null, scores: [4, 4, null, null] }], { mode: 'scramble', scoring: 'stroke' }));
+    expect(b.rows.map((r) => [r.name, r.value])).toEqual([
+      ['A & B', '-1'],
+      ['C & D', 'Par'],
+    ]);
+    expect(b.status).toBe('A & B 1 up after 2');
+  });
+});
