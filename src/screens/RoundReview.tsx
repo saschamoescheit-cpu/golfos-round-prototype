@@ -20,6 +20,12 @@ import { clubCode, dec, tr } from '../lib/i18n';
 // lie, length and strokes gained. Shots detected from the GPS track are marked "check"; the player corrects
 // them and confirms the hole.
 
+/** How a putt really broke against the read (stored as the note of the verdict). */
+const puttVerdicts = () => [
+  { note: 'bricht weniger', label: tr('Breaks less', 'Bricht weniger') },
+  { note: 'bricht mehr', label: tr('Breaks more', 'Bricht mehr') },
+];
+
 export function RoundReview(props: { round: Round; onChange: (r: Round) => void; onDone: () => void }) {
   const { round } = props;
   const me = round.players.find((p) => p.isMe)!;
@@ -464,11 +470,20 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 <button type="button" aria-pressed={c.verdict === 'ok'} onClick={() => { setCadLog({ ...rateCaddie(round.id, k, n, c.verdict === 'ok' ? undefined : 'ok') }); setNoteFor(null); }}>
                   {tr('👍 Fits', '👍 Passt')}
                 </button>
-                <button type="button" aria-pressed={c.verdict === 'other'} onClick={() => { setCadLog({ ...rateCaddie(round.id, k, n, 'other') }); setNoteFor(n); }}>
-                  {tr('✋ I’d play it differently', '✋ Würde ich anders spielen')}
-                </button>
+                {putt ? (
+                  // the putt line: how the ball really broke – the data to calibrate green slope and speed
+                  puttVerdicts().map((v) => (
+                    <button key={v.note} type="button" aria-pressed={c.verdict === 'other' && c.note === v.note} onClick={() => setCadLog({ ...rateCaddie(round.id, k, n, 'other', v.note) })}>
+                      {v.label}
+                    </button>
+                  ))
+                ) : (
+                  <button type="button" aria-pressed={c.verdict === 'other'} onClick={() => { setCadLog({ ...rateCaddie(round.id, k, n, 'other') }); setNoteFor(n); }}>
+                    {tr('✋ I’d play it differently', '✋ Würde ich anders spielen')}
+                  </button>
+                )}
               </div>
-              {c.verdict === 'other' && (noteFor === n || c.note) && (
+              {c.verdict === 'other' && !putt && (noteFor === n || c.note) && (
                 <textarea
                   className="input"
                   rows={2}
