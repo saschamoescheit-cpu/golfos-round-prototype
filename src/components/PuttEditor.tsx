@@ -84,10 +84,14 @@ export function PuttEditor(props: {
   return (
     <div className="sheet-backdrop" onClick={props.onCancel}>
       <section className="sheet putt-editor" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
+        {/* ✕ = leave without saving, ✓ = save (Sascha 14.10.2026) */}
         <div className="sheet-head">
-          <strong>{props.title}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onCancel}>
+          <button type="button" className="icon-btn" aria-label={tr('Cancel – do not save', 'Abbrechen – nicht speichern')} onClick={props.onCancel}>
             ✕
+          </button>
+          <strong>{props.title}</strong>
+          <button type="button" className="icon-btn save" aria-label={tr('Save putts', 'Putts speichern')} onClick={() => props.onSave({ pin, balls })}>
+            ✓
           </button>
         </div>
         <p className="muted small" style={{ margin: 0 }}>
@@ -125,21 +129,17 @@ export function PuttEditor(props: {
                 <text x={x} y={y + r * 0.4} textAnchor="middle" fontSize={r * 1.15} fontWeight="700" fill="#0e1418">
                   {k + 1}
                 </text>
+                {/* the length of this putt right next to the ball, also while it is dragged */}
+                <g className="putt-dist" transform={`translate(${x + r * 1.6} ${y - r * 0.2})`}>
+                  <rect x={0} y={-r * 1.15} width={r * 5.8} height={r * 2.3} rx={r * 0.6} fill="#0e1418" opacity="0.85" />
+                  <text x={r * 2.9} y={r * 0.5} textAnchor="middle" fontSize={r * 1.45} fontWeight="700" fill="#fff">
+                    {fmt(distanceM(b, pin))}
+                  </text>
+                </g>
               </g>
             );
           })}
         </svg>
-        <ol className="putt-list">
-          {balls.map((b, k) => (
-            <li key={k}>
-              <span>{tr(`Putt ${k + 1}`, `${k + 1}. Putt`)}</span>
-              <strong>{fmt(distanceM(b, pin))}</strong>
-            </li>
-          ))}
-        </ol>
-        <button type="button" className="btn-primary" onClick={() => props.onSave({ pin, balls })}>
-          {tr('Save putts', 'Putts speichern')}
-        </button>
       </section>
     </div>
   );

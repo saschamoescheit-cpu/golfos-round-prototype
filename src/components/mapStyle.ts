@@ -54,7 +54,9 @@ const ORDER = ['fairway', 'tee', 'water', 'bunker', 'green'];
  * The drawn hole as in BeBrassie (Sascha 14.10.2026): no aerial image, the course in flat colours on a light rough –
  * fairway, tee, green, bunkers, water and trees.
  */
-export const PLAN_COLOURS = { rough: '#8cc46f', trees: '#2f6b2b', fairway: '#4c9e3c', tee: '#4c9e3c', green: '#62cf55', bunker: '#f3e3a3', water: '#4f9fe0' } as const;
+export const PLAN_COLOURS = { rough: '#8cc46f', deepRough: '#79b25c', trees: '#2f6b2b', fairway: '#4c9e3c', tee: '#4c9e3c', green: '#62cf55', bunker: '#f3e3a3', water: '#4f9fe0', path: '#ddd5bf' } as const;
+/** Layers of the drawn hole that only show in 2D. */
+export const PLAN_LAYERS = ['plan-rough', 'plan-roughareas', 'plan-trees', 'plan-paths', 'plan-treerows', 'plan-treepoints', 'plan-ob-casing', 'plan-ob', 'plan-ob-stakes'];
 
 /** Course layers for the view: hidden (aerial only), soft overlay on the aerial image, or the drawn hole. */
 export function setCourseLook(m: maplibregl.Map, look: 'hidden' | 'overlay' | 'plan'): void {
@@ -73,7 +75,7 @@ export function setCourseLook(m: maplibregl.Map, look: 'hidden' | 'overlay' | 'p
       }
     }
   }
-  for (const id of ['plan-rough', 'plan-trees']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', plan ? 'visible' : 'none');
+  for (const id of PLAN_LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', plan ? 'visible' : 'none');
   if (m.getLayer('sat')) m.setLayoutProperty('sat', 'visibility', plan ? 'none' : 'visible');
 }
 

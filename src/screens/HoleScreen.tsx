@@ -800,6 +800,17 @@ export function HoleScreen(props: {
           hazards={hazardsOn}
           view={view2d ? '2d' : 'aerial'}
           trees={view2d ? (geometry.trees ?? []).filter((r) => r.some((q) => distToLine(q, mapData.line) <= 150)) : undefined}
+          details={
+            view2d
+              ? {
+                  treePoints: (geometry.treePoints ?? []).filter((q) => distToLine(q, mapData.line) <= 150),
+                  treeRows: (geometry.treeRows ?? []).filter((l) => l.some((q) => distToLine(q, mapData.line) <= 150)),
+                  paths: (geometry.paths ?? []).filter((l) => l.some((q) => distToLine(q, mapData.line) <= 150)),
+                  rough: (geometry.rough ?? []).filter((r) => r.some((q) => distToLine(q, mapData.line) <= 150)),
+                  ob: geometry.boundary ?? [],
+                }
+              : undefined
+          }
         />
 
         <div className="map-top">
@@ -887,12 +898,7 @@ export function HoleScreen(props: {
             </button>
           )}
           <button type="button" className="map-tool" aria-pressed={view2d} aria-label={view2d ? tr('Aerial image', 'Luftbild zeigen') : tr('Drawn hole (2D)', 'Gezeichnetes Loch (2D)')} title="2D" onClick={toggleView}>
-            {/* 2D: the outline of a hole with its green */}
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M9 21c-1.5-3-1-6.5 1-9.5S13 6.5 13.5 4" />
-              <path d="M13 21c-1-3-.5-6 1.4-9S17 7 17 5" />
-              <circle cx="15.3" cy="3.6" r="1.6" />
-            </svg>
+            <span className="map-tool-text">2D</span>
           </button>
           {round.players.length > 1 && !round.preview && (
             <button type="button" className="map-tool" aria-label="Leaderboard" title="Leaderboard" onClick={() => setBoardOpen(true)}>
@@ -923,18 +929,11 @@ export function HoleScreen(props: {
                 return [p.id, t.holesPlayed ? t.toPar : null];
               }),
             )}
-            next={scoreSheet === 'next'}
-            last={i === round.holes.length - 1}
             canPlacePutts={!round.preview && !isTeamRound(round)}
             team={isTeamRound(round)}
             onChange={update}
             onPlacePutts={() => setPuttEditor(true)}
             onClose={() => setScoreSheet(false)}
-            onDone={() => {
-              const next = scoreSheet === 'next';
-              setScoreSheet(false);
-              if (next) goTo(i + 1);
-            }}
           />
         )}
         {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
@@ -957,7 +956,9 @@ export function HoleScreen(props: {
           />
         )}
 
-        <div className="map-bottom">
+        <div className={`map-bottom${scoreSheet ? ' with-panel' : ''}`}>
+          {!scoreSheet && (
+            <>
           {!greenFocus && gpsError && !round.preview && (
             <div className="map-hint gps-hint">
               <span>{gpsError}</span>
@@ -1067,6 +1068,8 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
+            </>
+          )}
           {shotButtons ? (
             <div className="map-nav detail">
               <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
@@ -1103,7 +1106,7 @@ export function HoleScreen(props: {
               className="map-score"
               disabled={round.preview}
               aria-label={round.preview ? undefined : tr(`Hole ${hole.label}, score ${strokesShown} – tap to enter`, `Loch ${hole.label}, Score ${strokesShown} – antippen zum Eintragen`)}
-              onClick={() => (hasShots ? setView('score') : setScoreSheet('score'))}
+              onClick={() => (hasShots ? setView('score') : setScoreSheet(scoreSheet ? false : 'score'))}
             >
               <span className="map-hole-no">{hole.label}</span>
               <span className="hole-bar-par">
@@ -1130,7 +1133,7 @@ export function HoleScreen(props: {
                 </span>
               )}
             </button>
-            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => (myEntry.strokes == null && !myEntry.pickedUp && !round.preview ? setScoreSheet('next') : goTo(i + 1))}>
+            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => (myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1))}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>

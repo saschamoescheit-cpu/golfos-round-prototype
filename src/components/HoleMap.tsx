@@ -44,9 +44,10 @@ export interface HoleMapProps {
    */
   clean?: boolean;
   hazards?: boolean;
-  /** '2d': the drawn hole instead of the aerial image (as in BeBrassie); `trees` are drawn there too. */
+  /** '2d': the drawn hole instead of the aerial image (as in BeBrassie), with woods, single trees, hedges, paths, rough and the out-of-bounds line. */
   view?: 'aerial' | '2d';
   trees?: Ring[];
+  details?: { treePoints: LngLat[]; treeRows: LngLat[][]; paths: LngLat[][]; rough: Ring[]; ob: Ring[] };
   /** Space kept free around the hole when fitting the camera (full screen: room for the overlays). */
   padding?: { top: number; bottom: number; left: number; right: number };
   /**
@@ -102,10 +103,21 @@ export function HoleMap(props: HoleMapProps) {
       // the drawn hole (2D): rough under everything, trees above it – hidden on the aerial view
       m.addLayer({ id: 'plan-rough', type: 'background', layout: { visibility: 'none' }, paint: { 'background-color': PLAN_COLOURS.rough } }, 'sat');
       m.addSource('trees', { type: 'geojson', data: treesData(latest.current.trees) });
-      m.addLayer({ id: 'plan-trees', type: 'fill', source: 'trees', layout: { visibility: 'none' }, paint: { 'fill-color': PLAN_COLOURS.trees, 'fill-opacity': 0.9 } });
+      m.addSource('details', { type: 'geojson', data: detailsData(latest.current.details) });
+      const hidden = { visibility: 'none' as const };
+      m.addLayer({ id: 'plan-roughareas', type: 'fill', source: 'details', filter: ['==', ['get', 'kind'], 'rough'], layout: hidden, paint: { 'fill-color': PLAN_COLOURS.deepRough } });
+      m.addLayer({ id: 'plan-trees', type: 'fill', source: 'trees', layout: hidden, paint: { 'fill-color': PLAN_COLOURS.trees, 'fill-opacity': 0.9 } });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       // the playing view keeps the shapes invisible (they still feed the distances): only the aerial image
       courseLayers('shapes').forEach((l) => m.addLayer(latest.current.clean ? { ...l, layout: { ...(l.layout ?? {}), visibility: 'none' } } as maplibregl.LayerSpecification : l));
+      // above the course: paths, hedges and tree rows, single trees, the out-of-bounds line with white stakes
+      const z = (a: number, b: number) => ['interpolate', ['exponential', 2], ['zoom'], 15, a, 20, b] as maplibregl.ExpressionSpecification;
+      m.addLayer({ id: 'plan-paths', type: 'line', source: 'details', filter: ['==', ['get', 'kind'], 'path'], layout: { ...hidden, 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.path, 'line-width': z(0.6, 9) } });
+      m.addLayer({ id: 'plan-treerows', type: 'line', source: 'details', filter: ['==', ['get', 'kind'], 'treerow'], layout: { ...hidden, 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.trees, 'line-width': z(1, 22) } });
+      m.addLayer({ id: 'plan-treepoints', type: 'circle', source: 'details', filter: ['==', ['get', 'kind'], 'tree'], layout: hidden, paint: { 'circle-color': PLAN_COLOURS.trees, 'circle-radius': z(0.7, 16), 'circle-stroke-color': '#24521f', 'circle-stroke-width': 1 } });
+      m.addLayer({ id: 'plan-ob-casing', type: 'line', source: 'details', filter: ['==', ['get', 'kind'], 'ob'], layout: hidden, paint: { 'line-color': '#0E1418', 'line-width': 4, 'line-opacity': 0.35 } });
+      m.addLayer({ id: 'plan-ob', type: 'line', source: 'details', filter: ['==', ['get', 'kind'], 'ob'], layout: hidden, paint: { 'line-color': '#FFFFFF', 'line-width': 2, 'line-dasharray': [3, 2] } });
+      m.addLayer({ id: 'plan-ob-stakes', type: 'circle', source: 'details', filter: ['==', ['get', 'kind'], 'stake'], layout: hidden, paint: { 'circle-color': '#FFFFFF', 'circle-radius': z(1.2, 6), 'circle-stroke-color': '#0E1418', 'circle-stroke-width': 1 } });
       m.addSource('miss', { type: 'geojson', data: missData(latest.current) });
       syncGreenChart(m, latest.current.greenChart ?? null);
       m.addLayer({
@@ -217,6 +229,7 @@ export function HoleMap(props: HoleMapProps) {
     const m = map.current;
     if (!m || !ready.current) return;
     (m.getSource('trees') as maplibregl.GeoJSONSource | undefined)?.setData(treesData(latest.current.trees));
+    (m.getSource('details') as maplibregl.GeoJSONSource | undefined)?.setData(detailsData(latest.current.details));
     setCourseLook(m, props.view === '2d' ? 'plan' : props.clean ? 'hidden' : 'overlay');
     // the trees change with the hole, not with every render
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -406,6 +419,34 @@ export function HoleMap(props: HoleMapProps) {
 }
 
 const FULL_SCREEN_PADDING = { top: 120, bottom: 170, left: 40, right: 110 };
+
+/** Paths, hedges, single trees, deep rough and the out-of-bounds line (with a white stake every 25 m) for the 2D view. */
+function detailsData(d: HoleMapProps['details']): GeoJSON.FeatureCollection {
+  if (!d) return { type: 'FeatureCollection', features: [] };
+  const f = (kind: string, geometry: GeoJSON.Geometry): GeoJSON.Feature => ({ type: 'Feature', properties: { kind }, geometry });
+  const stakes: LngLat[] = [];
+  for (const ring of d.ob) {
+    let since = 0;
+    for (let i = 1; i < ring.length; i++) {
+      since += distanceM(ring[i - 1], ring[i]);
+      if (since >= 25) {
+        stakes.push(ring[i]);
+        since = 0;
+      }
+    }
+  }
+  return {
+    type: 'FeatureCollection',
+    features: [
+      ...d.rough.map((r) => f('rough', { type: 'Polygon', coordinates: [r] })),
+      ...d.paths.map((l) => f('path', { type: 'LineString', coordinates: l })),
+      ...d.treeRows.map((l) => f('treerow', { type: 'LineString', coordinates: l })),
+      ...d.treePoints.map((p) => f('tree', { type: 'Point', coordinates: p })),
+      ...d.ob.map((r) => f('ob', { type: 'LineString', coordinates: r })),
+      ...stakes.map((p) => f('stake', { type: 'Point', coordinates: p })),
+    ],
+  };
+}
 
 function treesData(trees: Ring[] | undefined): GeoJSON.FeatureCollection {
   return { type: 'FeatureCollection', features: (trees ?? []).map((r) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [r] } })) };

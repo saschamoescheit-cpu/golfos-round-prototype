@@ -1,6 +1,6 @@
-import type { Course, CourseGeometry, CourseHole, CourseSummary, LngLat } from '../types';
+import type { Course, CourseGeometry, CourseHole, CourseSummary, LngLat, Ring } from '../types';
 import { parseHoleRef, parseStrokeIndex } from './loops';
-import { dropNestedRings } from './geo';
+import { distToLine, dropNestedRings, pointInRing } from './geo';
 import { loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
 import { SEED_COURSES } from '../data/seedCourses';
 
@@ -208,7 +208,7 @@ interface OsmRelation {
 }
 
 /** Minimal OSM-XML reader (nodes, ways, relations). Works in browser and tests – no DOMParser needed. */
-export function parseOsmXml(xml: string): { nodes: Map<string, LngLat>; ways: OsmWay[]; relations: OsmRelation[] } {
+export function parseOsmXml(xml: string): { nodes: Map<string, LngLat>; ways: OsmWay[]; relations: OsmRelation[]; trees?: LngLat[] } {
   const attr = (s: string, name: string) => s.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] ?? '';
   const tagsOf = (body: string) => {
     const tags: Record<string, string> = {};
@@ -218,6 +218,11 @@ export function parseOsmXml(xml: string): { nodes: Map<string, LngLat>; ways: Os
   const nodes = new Map<string, LngLat>();
   for (const n of xml.matchAll(/<node\b([^>]*?)\/?>/g)) {
     nodes.set(attr(n[1], 'id'), [Number(attr(n[1], 'lon')), Number(attr(n[1], 'lat'))]);
+  }
+  // single trees (natural=tree) for the drawn hole
+  const trees: LngLat[] = [];
+  for (const n of xml.matchAll(/<node\b([^>]*?)>([\s\S]*?)<\/node>/g)) {
+    if (/<tag k="natural" v="tree"\s*\/>/.test(n[2])) trees.push([Number(attr(n[1], 'lon')), Number(attr(n[1], 'lat'))]);
   }
   const ways: OsmWay[] = [];
   for (const w of xml.matchAll(/<way\b([^>]*)>([\s\S]*?)<\/way>/g)) {
@@ -230,7 +235,7 @@ export function parseOsmXml(xml: string): { nodes: Map<string, LngLat>; ways: Os
       members: [...r[2].matchAll(/<member\b([^>]*)\/>/g)].map((m) => ({ type: attr(m[1], 'type'), ref: attr(m[1], 'ref'), role: attr(m[1], 'role') })),
     });
   }
-  return { nodes, ways, relations };
+  return { nodes, ways, relations, trees };
 }
 
 type Kind = 'green' | 'tee' | 'bunker' | 'fairway' | 'water';
@@ -279,7 +284,30 @@ export function geometryFromOsm(osm: ReturnType<typeof parseOsmXml>): CourseGeom
     for (const ring of joinRings(outer)) geo[k].push(coords(ring));
   }
   if (geo.boundary) geo.boundary = dropNestedRings(geo.boundary);
+  Object.assign(geo, planDetails(osm, geo));
   return geo;
+}
+
+/**
+ * Details for the drawn hole (2D): single trees, tree rows and hedges, paths (cart paths, footways, tracks) and
+ * rough – only what lies on the course (inside its outline, or near a hole without an outline).
+ */
+export function planDetails(osm: ReturnType<typeof parseOsmXml>, geo: CourseGeometry): Pick<CourseGeometry, 'treePoints' | 'treeRows' | 'paths' | 'rough'> {
+  const coords = (ids: string[]) => ids.map((id) => osm.nodes.get(id)).filter((p): p is LngLat => p != null);
+  const onCourse = (p: LngLat) =>
+    geo.boundary?.length ? geo.boundary.some((b) => pointInRing(p, b)) : geo.holes.some((h) => h.line.length >= 2 && distToLine(p, h.line) <= 80);
+  const treeRows: LngLat[][] = [];
+  const paths: LngLat[][] = [];
+  const rough: Ring[] = [];
+  const PATHS = new Set(['path', 'footway', 'track', 'service', 'cycleway', 'bridleway']);
+  for (const w of osm.ways) {
+    const line = coords(w.nodes);
+    if (line.length < 2 || !line.some(onCourse)) continue;
+    if (w.tags.natural === 'tree_row' || w.tags.barrier === 'hedge') treeRows.push(line);
+    else if ((w.tags.highway && PATHS.has(w.tags.highway)) || w.tags.golf === 'cartpath' || w.tags.golf === 'path') paths.push(line);
+    else if (w.tags.golf === 'rough' && line.length >= 4 && w.nodes[0] === w.nodes[w.nodes.length - 1]) rough.push(line);
+  }
+  return { treePoints: (osm.trees ?? []).filter(onCourse), treeRows, paths, rough };
 }
 
 function joinRings(segments: string[][]): string[][] {

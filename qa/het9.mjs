@@ -86,16 +86,16 @@ for (const [n, h] of holes.entries()) {
   await walk(h.balls[h.balls.length - 1], h.green);
   await visibility('visible');
   await stand(h.green, 14);
-  // score on the green via the sheet: par, or bogey every third hole, then "Fertig"
+  // score on the green via the sheet: par, or bogey every third hole, then back to the map
   await p.locator('.map-score').first().click();
   await p.waitForTimeout(400);
   const want = h.par + (n % 3 === 2 ? 1 : 0);
   // Hole19 steppers: the first + gives par, every further + one more
-  for (let k = h.par; k <= want; k++) await p.locator('.score-sheet').getByRole('button', { name: 'Schläge plus eins', exact: true }).first().click();
-  await p.locator('.score-sheet').getByRole('button', { name: 'Putts plus eins', exact: true }).click();
-  await p.locator('.score-sheet').getByRole('button', { name: 'Fertig' }).click();
+  for (let k = h.par; k <= want; k++) await p.locator('.score-panel').getByRole('button', { name: 'Schläge plus eins', exact: true }).first().click();
+  await p.locator('.score-panel').getByRole('button', { name: 'Putts plus eins', exact: true }).click();
+  await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
   await p.waitForTimeout(300);
-  if (await p.locator('.score-sheet').count()) log.push(`${h.ref}: score sheet did not close`);
+  if (await p.locator('.score-panel').count()) log.push(`${h.ref}: score sheet did not close`);
   await p.getByRole('button', { name: /Nächstes Loch|Runde beenden/ }).last().click().catch(() => log.push(`${h.ref}: no next button`));
   await p.waitForTimeout(800);
 }

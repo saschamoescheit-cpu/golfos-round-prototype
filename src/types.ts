@@ -20,6 +20,11 @@ export interface CourseGeometry {
   trees?: Ring[];
   /** Outline of the golf course (OSM leisure=golf_course) – beyond it is usually out of bounds. */
   boundary?: Ring[];
+  /** Details for the drawn hole (2D, Sascha 14.10.2026), from OSM: single trees, tree rows and hedges, paths, rough. */
+  treePoints?: LngLat[];
+  treeRows?: LngLat[][];
+  paths?: LngLat[][];
+  rough?: Ring[];
   /** Every 10 m along each hole (by ref): [metres from the tee, cross slope % (+ = right side higher, ball rolls left), height m]. */
   fairwaySlopes?: Record<string, [number, number, number?][]>;
 }
@@ -106,6 +111,8 @@ export interface HoleEntry {
   fairway: FairwayResult | null;
   penalties: number;
   greensideBunker: boolean;
+  /** Shots from the sand on this hole (score entry as in Hole19); greensideBunker follows from it. */
+  sandShots?: number;
   upAndDown: boolean | null;
   /** Detailed tracking: shots of the hole. Absent = quick tracking for this hole. */
   detail?: DetailEntry;

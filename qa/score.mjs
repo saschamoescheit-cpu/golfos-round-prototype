@@ -34,14 +34,16 @@ const stored = (k) => p.evaluate((k) => Object.values(JSON.parse(localStorage.ge
 // 1 · "→" without a score: the sheet, then on to 2A
 await p.getByRole('button', { name: 'Nächstes Loch' }).click();
 await p.waitForTimeout(500);
-ok((await p.locator('.score-sheet').count()) === 1, '"→" without a score opens the score sheet');
+ok((await p.locator('.score-panel').count()) === 1, '"→" without a score opens the score sheet');
 // Hole19 steppers: the first + gives par, every further + one more
-const plus = (what) => p.locator('.score-sheet').getByRole('button', { name: what + ' plus eins', exact: true }).first().click();
+const plus = (what) => p.locator('.score-panel').getByRole('button', { name: what + ' plus eins', exact: true }).first().click();
 await plus('Schläge');
 await plus('Schläge');
 await plus('Strafschläge');
 await plus('Putts');
-await p.locator('.score-sheet').getByRole('button', { name: /Nächstes Loch/ }).click();
+await p.getByRole('button', { name: 'Nächstes Loch' }).click(); // the hole bar stays under the panel (Hole19)
+await p.waitForTimeout(500);
+await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
 await p.waitForTimeout(800);
 const e1 = await stored(0);
 ok((await hole()) === '2A' && e1.strokes === 5 && e1.putts === 2 && e1.penalties === 1, `strokes 5, penalty 1, putts 2 → on 2A (stored ${e1.strokes}/${e1.penalties}/${e1.putts})`);
