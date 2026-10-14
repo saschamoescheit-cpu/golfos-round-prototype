@@ -13,3 +13,4 @@ npm run live                       # the live site
 
 - `het9.mjs` – dress rehearsal Hetzenhof A, 9 holes on foot: phone out at every ball, score via the sheet, round check finds the shots.
 - `live-smoke.mjs` – smoke test of a build: version, set-up hints, height grid and imagery load, score sheet on "→".
+- `score.mjs` – score paths: sheet on "→", reminder when the GPS moves on without a score, scorecard correction (prints ✓/✗ per check).
