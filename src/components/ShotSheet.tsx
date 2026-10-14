@@ -42,7 +42,7 @@ export function ShotSheet(props: {
         </div>
         <div className="field">
           <label>{tr('Lie', 'Lage')}</label>
-          <Segmented<Lie> label={tr('Lie', 'Lage')} value={lie} onChange={(v) => v && setLie(v)} options={LIES} />
+          <Segmented<Lie> label={tr('Lie', 'Lage')} value={lie} onChange={(v) => v && setLie(v)} options={LIES.map((o) => (o.value === 'tee' ? { ...o, label: 'Tee' } : o))} /* "Abschlag" is cut off on small phones */ />
         </div>
         <div className="field">
           <label>{tr('Shot', 'Schlag')}</label>
