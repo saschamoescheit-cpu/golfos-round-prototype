@@ -283,6 +283,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           <strong>{tr('Hole', 'Loch')} {hole.label}</strong>
           <div className="muted small">
             Par {hole.par} · Score {e.strokes ?? '–'}{e.putts != null ? ` · ${e.putts} Putt${e.putts === 1 ? '' : 's'}` : ''}
+            {(e.penalties ?? 0) > 0 ? tr(` · ${e.penalties} penalty`, ` · ${e.penalties} Strafschlag${e.penalties === 1 ? '' : 'e'}`) : ''}
           </div>
           <div className="muted small">
             {tr('Round', 'Runde')}: {roundTotal.strokes} ({formatToPar(roundTotal.strokes - roundTotal.par)}) {tr(`after ${roundTotal.holes} holes`, `nach ${roundTotal.holes} Löchern`)}
