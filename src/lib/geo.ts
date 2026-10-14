@@ -268,14 +268,28 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
       .sort((a, b) => a.d - b.d)[0]?.g ??
     null;
   const near = (ring: Ring) => ring.some((p) => distToLine(p, line) <= corridorM) || (green != null && ring.some((p) => distanceM(p, centroid(green)) < 40));
-  // Fairway bunkers further out (Sascha 14.10.2026: "some fairway bunkers are missing"): up to 65 m from the line –
-  // a bunker between two fairways is in play on both holes – but not the greenside bunkers of another hole.
+  // Hazards of this hole only (Sascha 15.10.2026: "the pond beside 8A does not belong to the hole"):
+  // - bunkers up to 45 m from the line; fairway bunkers up to 65 m when no other hole's line is nearer to them
+  //   (14.10.: "some fairway bunkers are missing"), never the greenside bunkers of another hole;
+  // - water up to 30 m from the line or right at the green; up to 45 m when no other hole is nearer.
   const ownGreen = green ? centroid(green) : end;
   const otherGreens = geo.green.filter((g) => g !== green).map(centroid);
+  const otherLines = geo.holes.filter((h) => h !== hole && h.line.length >= 2).map((h) => h.line);
+  const mine = (ring: Ring) => {
+    const c = centroid(ring);
+    const d = distToLine(c, line);
+    return otherLines.every((o) => distToLine(c, o) > d);
+  };
+  const edge = (ring: Ring) => Math.min(...ring.map((p) => distToLine(p, line)));
   const ownBunker = (ring: Ring) => {
     const c = centroid(ring);
     const atOtherGreen = otherGreens.some((g) => distanceM(c, g) < 40) && distanceM(c, ownGreen) > 40;
-    return !atOtherGreen && ring.some((p) => distToLine(p, line) <= 65);
+    return !atOtherGreen && edge(ring) <= 65 && mine(ring);
+  };
+  const ownWater = (ring: Ring) => {
+    const e = edge(ring);
+    const byGreen = green != null && ring.some((p) => distanceM(p, centroid(green)) < 35);
+    return e <= 30 || byGreen || (e <= 45 && mine(ring));
   };
   return {
     line,
@@ -283,7 +297,7 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
     green,
     greenCenter: green ? centroid(green) : end,
     bunkers: geo.bunker.filter((r) => near(r) || ownBunker(r)),
-    water: islandsCut(geo.water.filter((r) => r.some((p) => distToLine(p, line) <= corridorM * 1.5)), geo.green),
+    water: islandsCut(geo.water.filter(ownWater), geo.green),
     fairways: geo.fairway.filter((r) => r.some((p) => distToLine(p, line) <= 20)),
     tees: geo.tee.filter((r) => r.some((p) => distanceM(p, line[0]) <= 60)),
   };
