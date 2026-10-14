@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { emptyEntry } from '../lib/scoring';
@@ -23,6 +23,7 @@ interface Remembered {
   name: string;
   index?: string;
   handicap?: string;
+  handicap18?: string; // the playing handicap for 18 holes (a 9-hole round entered half of it)
   mode?: CaptureMode;
   tees?: Record<string, string>;
 }
@@ -48,7 +49,14 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   const [tee, setTee] = useState<string | null>(
     teeData ? (lastTee && teeData.tees.includes(lastTee) ? lastTee : teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null,
   );
-  const [me, setMe] = useState<DraftPlayer>(() => ({ id: 'me', name: remembered?.name ?? tr('Me', 'Ich'), index: remembered?.index ?? '', handicap: remembered?.handicap ?? '' }));
+  // The playing handicap is remembered for 18 holes; a 9-hole round is pre-filled with half of it.
+  const h18 = remembered?.handicap18 ?? remembered?.handicap ?? '';
+  const autoFor = (nineHoles: boolean): string => {
+    const n = Number(h18.replace(',', '.'));
+    return h18.trim() === '' || !Number.isFinite(n) || !nineHoles ? h18 : String(Math.round(n / 2));
+  };
+  const autoHcp = useRef<string | null>(autoFor(false));
+  const [me, setMe] = useState<DraftPlayer>(() => ({ id: 'me', name: remembered?.name ?? tr('Me', 'Ich'), index: remembered?.index ?? '', handicap: autoFor(false) }));
   const [others, setOthers] = useState<DraftPlayer[]>([]);
 
   const option = options.find((o) => o.id === optionId);
@@ -60,6 +68,14 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   // 9 holes: half the 18-hole course handicap (WHS uses 9-hole ratings; half of the 18-hole one is within a stroke).
   const rating: TeeRating | null = tee && (holes.length === 18 || holes.length === 9) ? (RATINGS[props.course.id]?.[tee] ?? null) : null;
   const nine = holes.length === 9;
+  // 9 or 18 holes chosen: the remembered playing handicap follows (unless the player typed his own)
+  useEffect(() => {
+    if (me.handicap !== autoHcp.current) return;
+    const v = autoFor(nine);
+    autoHcp.current = v;
+    setMe((m) => ({ ...m, handicap: v }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nine]);
   // the rating is for 18 holes: its par too (a loop of 9 holes counts twice)
   const loopHoles = props.course.holes.filter((h) => h.loop === holes[0]?.loop);
   const par = nine ? loopHoles.reduce((sum, h) => sum + (h.par || 0), 0) * (loopHoles.length <= 9 ? 2 : 1) : holes.reduce((sum, h) => sum + (h.par || 0), 0);
@@ -80,7 +96,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   const start = (preview = false) => {
     if (!option) return;
     try {
-      const r: Remembered = { name: me.name, index: me.index, handicap: me.handicap, mode, tees: { ...remembered?.tees, ...(tee ? { [props.course.id]: tee } : {}) } };
+      const entered = Number(me.handicap.replace(',', '.'));
+      const handicap18 = me.handicap.trim() !== '' && Number.isFinite(entered) && nine ? String(entered * 2) : me.handicap;
+      const r: Remembered = { name: me.name, index: me.index, handicap: me.handicap, handicap18, mode, tees: { ...remembered?.tees, ...(tee ? { [props.course.id]: tee } : {}) } };
       localStorage.setItem(ME_KEY, JSON.stringify(r));
     } catch {
       /* ignore */
