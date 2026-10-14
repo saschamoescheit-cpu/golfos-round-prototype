@@ -45,6 +45,7 @@ export interface SummaryFacts {
   penaltyHoles: string[];
   keyShots: { worst: KeyShot[]; best: KeyShot | null };
   trend: { c: SgCategory; change: number } | null; // biggest change against the last rounds (per 18)
+  unchecked?: number; // holes with detected shots the player has not checked yet (left out of the shot lines)
 }
 export interface RoundSummary {
   facts: SummaryFacts;
@@ -103,6 +104,7 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
   const penaltyHoles: string[] = [];
   const shotSg: KeyShot[] = [];
   let detailed = 0;
+  let unchecked = 0;
   round.holes.forEach((h, i) => {
     const e = entries[i];
     if (e.pickedUp) return;
@@ -119,7 +121,10 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
     const d = e.detail;
     if (!d || !d.shots.length) return;
     // only holes the player has checked (as strokes gained): a shot detected wrongly is no "most expensive shot"
-    if (!shotsComplete(d) || d.shots.some((s) => s.review)) return;
+    if (!shotsComplete(d) || d.shots.some((s) => s.review)) {
+      unchecked++;
+      return;
+    }
     detailed++;
     if (d.shots[0]?.penalty && h.par >= 4) tee.penalties++;
     const pin = d.pin;
@@ -196,7 +201,7 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
     approach: approach.shots >= 3 ? { ...approach, avgLeaveM: approach.leave.length ? r1(approach.leave.reduce((s, x) => s + x, 0) / approach.leave.length) : null } : null,
     around: around.chances ? around : null,
     putting: putting.putts ? { putts: putting.putts, threePutts: putting.threePutts, shortMisses: putting.shortMisses, avgFirstM: putting.first.length ? r1(putting.first.reduce((s, x) => s + x, 0) / putting.first.length) : null } : null,
-    penaltyHoles, keyShots: { worst, best }, trend,
+    penaltyHoles, keyShots: { worst, best }, trend, unchecked,
   };
   void detailed;
   return { facts, ...write(facts), plan: planFor(facts) };
@@ -240,6 +245,14 @@ function write(f: SummaryFacts): Pick<RoundSummary, 'headline' | 'lines' | 'next
     const up = f.trend.change > 0;
     lines.push({ text: tr(`Against your last rounds: ${SG_LABELS[f.trend.c]} ${up ? 'better' : 'worse'} by ${dec(Math.abs(f.trend.change).toFixed(1))} strokes.`, `Gegenüber deinen letzten Runden: ${SG_LABELS[f.trend.c]} um ${dec(Math.abs(f.trend.change).toFixed(1))} Schläge ${up ? 'besser' : 'schlechter'}.`), tone: up ? 'good' : 'bad' });
   }
+  if (f.unchecked)
+    lines.push({
+      text: tr(
+        `${f.unchecked} ${f.unchecked === 1 ? 'hole' : 'holes'} not checked yet – the shot lines use the checked ones only ("Check your shots").`,
+        `${f.unchecked} ${f.unchecked === 1 ? 'Loch' : 'Löcher'} noch nicht geprüft – die Aussagen zu Schlägen nutzen nur die geprüften („Schläge prüfen“).`,
+      ),
+      tone: 'plain',
+    });
   return { headline, lines, nextRound: nextRoundTip(f) };
 }
 
