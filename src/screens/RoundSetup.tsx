@@ -8,8 +8,11 @@ import { TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex } from '../lib/handicap';
 import { RATINGS, type TeeRating } from '../data/ratings';
+import { fullName, loadProfile, saveProfile } from '../lib/profile';
 
 const ME_KEY = 'golfos.me.v1';
+// Name and handicap index come from the profile when it is filled in (profile tab).
+const profile = () => loadProfile();
 
 interface DraftPlayer {
   id: string;
@@ -50,13 +53,22 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     teeData ? (lastTee && teeData.tees.includes(lastTee) ? lastTee : teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null,
   );
   // The playing handicap is remembered for 18 holes; a 9-hole round is pre-filled with half of it.
-  const h18 = remembered?.handicap18 ?? remembered?.handicap ?? '';
+  // Nothing remembered yet: the rounded handicap index from the profile is the start value ("+1,2" = plus handicap).
+  const fromProfile = (() => {
+    const t = loadProfile().hcpIndex.trim().replace(',', '.');
+    const n = Number(t.replace('+', ''));
+    return t === '' || !Number.isFinite(n) ? '' : String(Math.round(t.startsWith('+') ? -n : n));
+  })();
+  const h18 = remembered?.handicap18 ?? remembered?.handicap ?? fromProfile;
   const autoFor = (nineHoles: boolean): string => {
     const n = Number(h18.replace(',', '.'));
     return h18.trim() === '' || !Number.isFinite(n) || !nineHoles ? h18 : String(Math.round(n / 2));
   };
   const autoHcp = useRef<string | null>(autoFor(false));
-  const [me, setMe] = useState<DraftPlayer>(() => ({ id: 'me', name: remembered?.name ?? tr('Me', 'Ich'), index: remembered?.index ?? '', handicap: autoFor(false) }));
+  const [me, setMe] = useState<DraftPlayer>(() => {
+    const p = profile();
+    return { id: 'me', name: fullName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false) };
+  });
   const [others, setOthers] = useState<DraftPlayer[]>([]);
 
   const option = options.find((o) => o.id === optionId);
@@ -100,6 +112,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       const handicap18 = me.handicap.trim() !== '' && Number.isFinite(entered) && nine ? String(entered * 2) : me.handicap;
       const r: Remembered = { name: me.name, index: me.index, handicap: me.handicap, handicap18, mode, tees: { ...remembered?.tees, ...(tee ? { [props.course.id]: tee } : {}) } };
       localStorage.setItem(ME_KEY, JSON.stringify(r));
+      // a changed handicap index is the player's new index – the profile keeps it
+      const p = profile();
+      if (me.index.trim() && me.index.trim() !== p.hcpIndex) saveProfile({ ...p, hcpIndex: me.index.trim() });
     } catch {
       /* ignore */
     }

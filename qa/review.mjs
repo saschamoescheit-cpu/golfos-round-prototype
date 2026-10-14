@@ -47,7 +47,10 @@ await p.evaluate(
 );
 await p.reload();
 await p.waitForTimeout(1500);
-ok((await p.getByText('Schläge prüfen →').count()) === 1, 'home: "Schläge prüfen →" on the round');
+ok((await p.locator('.tabbar-dot').count()) === 1, 'menu: dot on "Runden"');
+await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click();
+await p.waitForTimeout(400);
+ok((await p.getByText('Schläge prüfen →').count()) === 1, 'rounds tab: "Schläge prüfen →" on the round');
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1000);
 await p.getByRole('button', { name: /Schläge prüfen/ }).click();

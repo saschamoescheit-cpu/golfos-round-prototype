@@ -2,15 +2,15 @@ import { Fragment, useState } from 'react';
 import type { Club, Round } from '../types';
 import { clubName, DEFAULT_CARRY, type CarryBag } from '../lib/caddie';
 import { trackedCarry } from '../lib/stats';
-import { loadCaddieSettings, loadCarryBag, loadUnit, saveCaddieSettings, saveCarryBag, saveUnit, type CaddieSettings } from '../lib/storage';
+import { loadCaddieSettings, loadCarryBag, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
 import { Segmented, TopBar } from '../components/ui';
 import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, type Partials } from '../lib/partials';
 
-// "My bag & caddie" (feature 008): carry distance per club for the AI caddie, and the switches for
-// caddie, green slope and the miss map. An empty field = club not in the bag.
+// "My bag" and "Caddie" (feature 008, both reached from the profile): carry distance per club and the favourite
+// approach distance for the AI caddie; the switches for caddie, green slope and the miss map. An empty field = club not in the bag.
 
-export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
+export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: () => void }) {
   const [bag, setBag] = useState<Record<string, string>>(() => {
     const saved = loadCarryBag();
     return Object.fromEntries(DEFAULT_CARRY.map((d) => [d.club, String(saved ? (saved.find((s) => s.club === d.club)?.carry ?? '') : d.carry)]));
@@ -26,7 +26,6 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
   };
   const fullOf = (club: Club) => Number(bag[club]) || DEFAULT_CARRY.find((d) => d.club === club)!.carry;
   const trackedP = trackedPartials(props.rounds, DEFAULT_CARRY.map((d) => ({ club: d.club, carry: fullOf(d.club) })), partials);
-  const [unit, setUnit] = useState(loadUnit);
   const [note, setNote] = useState<string | null>(loadCarryBag() ? null : tr('Start values for a mid-handicap player – enter your own carry distances.', 'Startwerte für ein mittleres Handicap – trag deine eigenen Carry-Weiten ein.'));
 
   const set = (patch: Partial<CaddieSettings>) => {
@@ -66,25 +65,9 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
 
   return (
     <main className="screen">
-      <TopBar title={tr('My bag & caddie', 'Mein Bag & Caddie')} onBack={props.onBack} />
+      <TopBar title={props.part === 'bag' ? tr('My bag', 'Mein Bag') : tr('Caddie', 'Caddie')} onBack={props.onBack} />
 
-      <section className="card stats-card">
-        <h2>{tr('Distances in', 'Distanzen in')}</h2>
-        <Segmented<'m' | 'yd'>
-          label={tr('Unit', 'Einheit')}
-          value={unit}
-          onChange={(v) => {
-            if (!v) return;
-            setUnit(v);
-            saveUnit(v);
-          }}
-          options={[
-            { value: 'm', label: tr('Metres', 'Meter') },
-            { value: 'yd', label: 'Yards' },
-          ]}
-        />
-      </section>
-
+      {props.part === 'caddie' && (
       <section className="card stats-card">
         <h2>{tr('AI caddie', 'KI-Caddie')}</h2>
         <button type="button" className="toggle" aria-pressed={settings.caddie} onClick={() => toggle('caddie')}>
@@ -134,9 +117,15 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
             {tr('Slow greens break less, fast greens more. Club greens are mostly medium.', 'Langsame Grüns brechen weniger, schnelle mehr. Clubgrüns sind meist mittel.')}
           </span>
         </div>
+      </section>
+      )}
+
+      {props.part === 'bag' && (
+      <section className="card stats-card">
+        <h2>{tr('Favourite approach', 'Lieblingsdistanz für die Annäherung')}</h2>
         <label className="bag-row">
           <span>
-            <strong>{tr('Favourite approach', 'Lieblingsdistanz')}</strong> <span className="muted small">{tr('layups leave this distance', 'beim Vorlegen bleibt diese Distanz')}</span>
+            <span className="muted small">{tr('layups leave this distance', 'beim Vorlegen bleibt diese Distanz')}</span>
           </span>
           <span className="bag-input">
             <input
@@ -151,7 +140,9 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
           </span>
         </label>
       </section>
+      )}
 
+      {props.part === 'bag' && (
       <section className="card stats-card">
         <h2>{tr('Carry per club', 'Carry je Schläger')}</h2>
         <p className="muted small" style={{ margin: 0 }}>
@@ -234,6 +225,7 @@ export function MyBag(props: { rounds: Round[]; onBack: () => void }) {
           {tr('Save my values', 'Meine Werte speichern')}
         </button>
       </section>
+      )}
     </main>
   );
 }

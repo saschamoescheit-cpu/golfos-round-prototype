@@ -16,6 +16,8 @@ p.on('response', (r) => {
 });
 await p.goto(url);
 await p.waitForTimeout(1500);
+// the version stands in the profile tab (since 14.10.2026; before on the start page)
+if (await p.locator('.tabbar').count()) await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 console.log('version:', (await p.locator('main').innerText()).match(/Version [^\n]*/)?.[0]);
 await p.evaluate(() => {
   localStorage.clear();

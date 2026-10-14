@@ -183,7 +183,14 @@ export function personalBests(rounds: Round[]): Best[] {
     return r.holes.length === 18 && t.holesPlayed === 18 ? [{ r, t, me }] : [];
   });
   const lowest = pick(full.map((x) => ({ v: x.t.gross, r: x.r })), (a, b) => a < b);
-  if (lowest) out.push({ key: 'gross', label: tr('Best round', 'Beste Runde'), value: tr(`${lowest.v} strokes`, `${lowest.v} Schläge`), round: lowest.r });
+  if (lowest) out.push({ key: 'gross', label: tr('Best round (18 holes)', 'Beste Runde (18 Loch)'), value: tr(`${lowest.v} strokes`, `${lowest.v} Schläge`), round: lowest.r });
+  const nines = done.flatMap((r) => {
+    const me = mine(r)!;
+    const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
+    return r.holes.length === 9 && t.holesPlayed === 9 ? [{ v: t.gross, r }] : [];
+  });
+  const low9 = pick(nines, (a, b) => a < b);
+  if (low9) out.push({ key: 'gross9', label: tr('Best round (9 holes)', 'Beste Runde (9 Loch)'), value: tr(`${low9.v} strokes`, `${low9.v} Schläge`), round: low9.r });
   const pts = pick(full.filter((x) => x.t.stableford != null).map((x) => ({ v: x.t.stableford!, r: x.r })), (a, b) => a > b);
   if (pts) out.push({ key: 'stableford', label: tr('Most Stableford points', 'Meiste Stableford-Punkte'), value: tr(`${pts.v} pts`, `${pts.v} Punkte`), round: pts.r });
   const diff = pick(done.flatMap((r) => {
@@ -221,4 +228,43 @@ export function personalBests(rounds: Round[]): Best[] {
     }
   }
   return out;
+}
+
+export interface Career {
+  rounds: number;
+  holes: number; // holes with a score
+  strokes: number;
+  mix: { eaglePlus: number; birdie: number; par: number; bogey: number; doublePlus: number }; // number of holes
+  toParPer18: number | null;
+}
+
+/** The player's record over all finished rounds (record tab): what was played and the results per hole. */
+export function career(rounds: Round[]): Career {
+  const c: Career = { rounds: 0, holes: 0, strokes: 0, mix: { eaglePlus: 0, birdie: 0, par: 0, bogey: 0, doublePlus: 0 }, toParPer18: null };
+  let toPar = 0;
+  for (const r of rounds) {
+    const me = mine(r);
+    if (!r.finishedAt || !me) continue;
+    const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
+    if (!t.holesPlayed) continue;
+    c.rounds++;
+    const received = handicapStrokes(r.holes, me.playingHandicap);
+    r.holes.forEach((h, i) => {
+      const e = r.entries[me.id][i];
+      const g = grossForHole(e, h.par, received[i]); // a picked-up hole counts as net double bogey
+      if (g == null) return;
+      c.holes++;
+      c.strokes += g;
+      toPar += g - h.par;
+      if (e.pickedUp) return c.mix.doublePlus++;
+      const d = g - h.par;
+      if (d <= -2) c.mix.eaglePlus++;
+      else if (d === -1) c.mix.birdie++;
+      else if (d === 0) c.mix.par++;
+      else if (d === 1) c.mix.bogey++;
+      else c.mix.doublePlus++;
+    });
+  }
+  if (c.holes) c.toParPer18 = Math.round((toPar / c.holes) * 18 * 10) / 10;
+  return c;
 }

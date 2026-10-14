@@ -109,11 +109,11 @@ export function adviseClub(target: number, bag: CarryBag, teeShot = false): Club
 }
 
 const CLUB_NAMES: Record<Club, string> = {
-  Dr: 'Driver', '3W': '3-wood', '5W': '5-wood', Hy: 'Hybrid', '4i': '4-iron', '5i': '5-iron', '6i': '6-iron', '7i': '7-iron',
+  Dr: 'Driver', '3W': '3-wood', '5W': '5-wood', Hy: '4-hybrid', '4i': '4-iron', '5i': '5-iron', '6i': '6-iron', '7i': '7-iron',
   '8i': '8-iron', '9i': '9-iron', PW: 'Pitching wedge', GW: 'Gap wedge', SW: 'Sand wedge', LW: 'Lob wedge',
 };
 const CLUB_NAMES_DE: Record<Club, string> = {
-  Dr: 'Driver', '3W': 'Holz 3', '5W': 'Holz 5', Hy: 'Hybrid', '4i': 'Eisen 4', '5i': 'Eisen 5', '6i': 'Eisen 6', '7i': 'Eisen 7',
+  Dr: 'Driver', '3W': 'Holz 3', '5W': 'Holz 5', Hy: 'Hybrid 4', '4i': 'Eisen 4', '5i': 'Eisen 5', '6i': 'Eisen 6', '7i': 'Eisen 7',
   '8i': 'Eisen 8', '9i': 'Eisen 9', PW: 'Pitching Wedge', GW: 'Gap Wedge', SW: 'Sand Wedge', LW: 'Lob Wedge',
 };
 export const clubName = (c: Club) => tr(CLUB_NAMES[c], CLUB_NAMES_DE[c]);

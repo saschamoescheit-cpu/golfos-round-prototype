@@ -50,7 +50,9 @@ const MAX_TARGETS = 3;
 export function HoleScreen(props: {
   round: Round;
   onChange: (r: Round) => void;
-  onExit: () => void;
+  onExit: () => void; // pause: back to the start page, the round can be continued
+  onEnd: (r: Round) => void; // finish now: saved with the holes played so far
+  onAbort: (r: Round) => void; // cancel: the round is deleted
   onShowScorecard: (r: Round) => void;
 }) {
   const { round } = props;
@@ -290,6 +292,73 @@ export function HoleScreen(props: {
   const [pinSheet, setPinSheet] = useState(false);
   // quick score + putts over the map; 'next': opened by "→" without a score – done = on to the next hole
   const [scoreSheet, setScoreSheet] = useState<false | 'score' | 'next'>(false);
+  // Leaving the round (back arrow): pause, finish or cancel – so a round never stays "in progress" by accident.
+  const [exitOpen, setExitOpen] = useState(false);
+  const [exitConfirm, setExitConfirm] = useState<null | 'end' | 'abort'>(null);
+  const askExit = () => (round.preview ? props.onExit() : setExitOpen(true));
+  const closeExit = () => {
+    setExitOpen(false);
+    setExitConfirm(null);
+  };
+  const holesScored = round.entries[me.id].filter((e) => e.strokes != null || e.pickedUp).length;
+  const exitEl = exitOpen && (
+    <div className="sheet-backdrop" onClick={closeExit}>
+      <section className="sheet" role="dialog" aria-label={tr('Leave the round', 'Runde verlassen')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{round.courseName}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={closeExit}>
+            ✕
+          </button>
+        </div>
+        {exitConfirm === null && (
+          <div className="sheet-actions">
+            <button type="button" className="btn-secondary" onClick={props.onExit}>
+              {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
+            </button>
+            <button type="button" className="btn-primary" onClick={() => setExitConfirm('end')}>
+              {tr('Finish round', 'Runde beenden')}
+            </button>
+            <button type="button" className="btn-secondary btn-danger" onClick={() => setExitConfirm('abort')}>
+              {tr('Cancel round', 'Runde abbrechen')}
+            </button>
+          </div>
+        )}
+        {exitConfirm === 'end' && (
+          <>
+            <span>
+              {holesScored < round.holes.length
+                ? tr(
+                    `Finish now? ${holesScored} of ${round.holes.length} holes have a score – they are saved, the others stay empty.`,
+                    `Jetzt beenden? ${holesScored} von ${round.holes.length} Löchern haben einen Score – sie werden gespeichert, die anderen bleiben leer.`,
+                  )
+                : tr('Finish and save the round?', 'Runde beenden und speichern?')}
+            </span>
+            <div className="sheet-actions">
+              <button type="button" className="btn-primary" onClick={() => props.onEnd(round)}>
+                {tr('Finish', 'Beenden')}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setExitConfirm(null)}>
+                {tr('Back', 'Zurück')}
+              </button>
+            </div>
+          </>
+        )}
+        {exitConfirm === 'abort' && (
+          <>
+            <span>{tr('Cancel and delete the round? Everything entered for it is lost.', 'Runde abbrechen und löschen? Alle Eingaben dieser Runde gehen verloren.')}</span>
+            <div className="sheet-actions">
+              <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
+                {tr('Delete round', 'Runde löschen')}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setExitConfirm(null)}>
+                {tr('Back', 'Zurück')}
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    </div>
+  );
   /** Saves the sheet's last tap; with strokes and putts both set the sheet closes (and moves on when opened by "→"). */
   const sheetTap = (patch: Partial<HoleEntry>) => {
     const e = { ...myEntry, ...patch };
@@ -748,7 +817,7 @@ export function HoleScreen(props: {
         />
 
         <div className="map-top">
-          <button type="button" className="map-btn round" aria-label={tr('Pause round', 'Runde pausieren')} onClick={props.onExit}>
+          <button type="button" className="map-btn round" aria-label={tr('Leave round', 'Runde verlassen')} onClick={askExit}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
           </button>
           <div className="map-hole">
@@ -818,6 +887,7 @@ export function HoleScreen(props: {
           )}
         </div>
 
+        {exitEl}
         {scoreSheet && (
           // Score and putts in two taps, without leaving the map (they tell the round check how many shots to find).
           <div className="sheet-backdrop" onClick={() => setScoreSheet(false)}>
@@ -1177,8 +1247,8 @@ export function HoleScreen(props: {
     >
       <TopBar
         title={round.courseName}
-        onBack={props.onExit}
-        backLabel={tr('Pause round', 'Runde pausieren')}
+        onBack={askExit}
+        backLabel={tr('Leave round', 'Runde verlassen')}
         right={
           <>
             <button type="button" className="icon-btn" aria-label={mapData ? tr('Hole map', 'Lochkarte') : tr('Set up hole map', 'Lochkarte einrichten')} onClick={() => setView('map')}>
@@ -1434,6 +1504,7 @@ export function HoleScreen(props: {
         </button>
       </div>
       {sheetEl}
+      {exitEl}
     </main>
   );
 }

@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { Round } from '../types';
 import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
-import { Segmented, TopBar } from '../components/ui';
+import { Segmented } from '../components/ui';
 import { SgCard } from '../components/SgCard';
-import { PlayedHcpStats } from '../components/PlayedHcp';
-import { BestsCard, CoursesCard, TrendCard } from '../components/HistoryCards';
+import { CoursesCard } from '../components/HistoryCards';
 import { groupForHandicap, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
@@ -14,8 +13,11 @@ import { clubCode, dec, tr } from '../lib/i18n';
 
 type Range = 5 | 10 | 0;
 
-export function Stats(props: { rounds: Round[]; onBack: () => void; onOpenRound: (r: Round) => void; onOpenCourse: (courseName: string) => void }) {
+type Section = 'overview' | 'tee' | 'green' | 'putting' | 'clubs' | 'courses';
+
+export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: string) => void }) {
   const [range, setRange] = useState<Range>(5);
+  const [section, setSection] = useState<Section>('overview');
   const finished = useMemo(
     () => props.rounds.filter((r) => r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [props.rounds],
@@ -26,10 +28,20 @@ export function Stats(props: { rounds: Round[]; onBack: () => void; onOpenRound:
   const sg = useMemo(() => roundsSg(picked), [picked]);
   const tend = useMemo(() => new Map(clubDispersion(picked).map((d) => [d.club, d])), [picked]);
   const fmtPar = (v: number | null) => (v == null ? '–' : v > 0 ? `+${v}` : String(v));
+  const drive = a.clubs.find((c) => c.club === 'Dr');
+  const longest = Math.max(1, ...a.clubs.map((x) => x.max));
+  const sections: { id: Section; label: string }[] = [
+    { id: 'overview', label: tr('Overview', 'Überblick') },
+    { id: 'tee', label: tr('Tee', 'Abschlag') },
+    { id: 'green', label: tr('Greens & short game', 'Grün & kurzes Spiel') },
+    { id: 'putting', label: 'Putten' },
+    { id: 'clubs', label: tr('Clubs', 'Schläger') },
+    { id: 'courses', label: tr('Courses', 'Plätze') },
+  ];
 
   return (
-    <main className="screen">
-      <TopBar title={tr('Your stats', 'Deine Statistik')} onBack={props.onBack} />
+    <>
+      <h1 className="tab-title">{tr('Stats', 'Statistik')}</h1>
       <Segmented<Range>
         label={tr('Rounds', 'Runden')}
         value={range}
@@ -44,189 +56,220 @@ export function Stats(props: { rounds: Round[]; onBack: () => void; onOpenRound:
         <p className="muted">{tr('Finish a round to see your stats.', 'Beende eine Runde, um deine Statistik zu sehen.')}</p>
       ) : (
         <>
+          <div className="chip-row section-chips" role="group" aria-label={tr('Topic', 'Thema')}>
+            {sections.map((x) => (
+              <button key={x.id} type="button" aria-pressed={section === x.id} onClick={() => setSection(x.id)}>
+                {x.label}
+              </button>
+            ))}
+          </div>
           <p className="muted small" style={{ margin: 0 }}>
             {tr(`${a.rounds} ${a.rounds === 1 ? 'round' : 'rounds'} · ${a.holes} holes · values per 18 holes`, `${a.rounds} ${a.rounds === 1 ? 'Runde' : 'Runden'} · ${a.holes} Löcher · Werte je 18 Löcher`)}
           </p>
-          <section className="totals card">
-            <Big value={dec(fmtPar(a.toParPer18))} label={tr('To par', 'Zu Par')} />
-            <Big value={dec(a.stablefordPer18 ?? '–')} label="Stableford" />
-            <Big value={dec(a.puttsPer18 ?? '–')} label="Putts" />
-          </section>
 
-          <TrendCard rounds={picked} />
-
-          <BestsCard rounds={finished} onOpen={props.onOpenRound} />
-
-          <PlayedHcpStats rounds={finished} />
-
-          {sg && <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(a.handicap)} />}
-
-          <CoursesCard rounds={finished} onOpen={props.onOpenCourse} />
-
-          {f && f.focus.length > 0 && (
-            <section className="card stats-card">
-              <h2>{tr('Where you lose strokes', 'Wo du Schläge verlierst')}</h2>
-              <p className="muted small" style={{ margin: 0 }}>
-                {tr(`Compared with players of ${f.target} (you: ${f.band}). Your practice plan below starts here.`, `Verglichen mit Spielern mit ${f.target} (du: ${f.band}). Dein Trainingsplan unten setzt hier an.`)}
-              </p>
-              <ol className="focus-list">
-                {f.focus.map((x) => (
-                  <li key={x.metric}>
-                    <span className="grow">
-                      <span className="focus-area">{areaName(x.area)}</span>
-                      {x.metric}
-                    </span>
-                    <span>
-                      <strong className="bad-text">{dec(x.yours)}</strong> <span className="muted">→ {dec(x.target)}</span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-
-          {f && f.focus.length > 0 && (
-            <section className="card stats-card">
-              <h2>{tr('Practice plan', 'Trainingsplan')}</h2>
-              <p className="muted small" style={{ margin: 0 }}>
-                {tr(`About ${practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} minutes, built from the areas above.`, `Etwa ${practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} Minuten, aus den Bereichen oben.`)}
-              </p>
-              <ol className="focus-list">
-                {practicePlan(f.focus).map((d) => (
-                  <li key={d.area} className="drill" style={{ display: 'block' }}>
-                    <span className="focus-area">
-                      {areaName(d.area)} · {d.minutes} min
-                    </span>
-                    <strong>{d.title}</strong>
-                    <span className="muted small" style={{ display: 'block' }}>
-                      {d.how}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-
-          <section className="card stats-card">
-            <h2>{tr('Off the tee', 'Vom Abschlag')}</h2>
-            <TeeBar left={a.missLeft} hit={a.fairways} right={a.missRight} />
-          </section>
-
-          <section className="card stats-card">
-            <h2>{tr('Approach & short game', 'Annäherung & kurzes Spiel')}</h2>
-            <div className="stat-grid">
-              <RateStat label={tr('Greens in regulation', 'Grüns in Regulation')} r={a.gir} />
-              <RateStat label="Scrambling" r={a.scrambling} hint={tr('par or better after missing the green', 'Par oder besser nach verfehltem Grün')} />
-              <RateStat label={tr('Sand saves', 'Sand Saves')} r={a.sandSaves} />
-              <div className="stat">
-                <div className="num">{dec(a.penaltiesPer18 ?? '–')}</div>
-                <div className="muted small">{tr('Penalty strokes', 'Strafschläge')}</div>
-              </div>
-            </div>
-          </section>
-
-          <section className="card stats-card">
-            <h2>Putting</h2>
-            <div className="stat-grid">
-              <div className="stat">
-                <div className="num">{dec(a.puttsPerGir ?? '–')}</div>
-                <div className="muted small">{tr('Putts per green hit', 'Putts je getroffenem Grün')}</div>
-              </div>
-              <RateStat label={tr('1-putts', '1-Putts')} r={a.onePutts} />
-              <RateStat label={tr('3-putts', '3-Putts')} r={a.threePutts} />
-            </div>
-            {a.puttsByFirstPutt.some((b) => b.holes > 0) && (
-              <table className="mini-table">
-                <thead>
-                  <tr>
-                    <th>{tr('First putt', 'Erster Putt')}</th>
-                    <th>Putts</th>
-                    <th>{tr('Holes', 'Löcher')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {a.puttsByFirstPutt.map((b) => (
-                    <tr key={b.label}>
-                      <td>{dec(b.label)}</td>
-                      <td>{dec(b.avgPutts ?? '–')}</td>
-                      <td className="muted">{b.holes}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
-
-          <section className="card stats-card">
-            <h2>{tr('Scoring', 'Ergebnisse')}</h2>
-            <div className="mix-bar" role="img" aria-label={tr('Score mix', 'Ergebnis-Mix')}>
-              {(
-                [
-                  ['eaglePlus', 'Eagle+', '#5ec2ff'],
-                  ['birdie', 'Birdie', '#9bc53d'],
-                  ['par', 'Par', '#e8edf0'],
-                  ['bogey', 'Bogey', '#f6d48a'],
-                  ['doublePlus', tr('Double+', 'Doppel+'), '#ff6b5e'],
-                ] as const
-              ).map(([k, label, color]) =>
-                a.scoreMix[k] > 0 ? (
-                  <span key={k} style={{ flexGrow: a.scoreMix[k], background: color }} title={`${label} ${a.scoreMix[k]}%`}>
-                    {a.scoreMix[k] >= 30 ? `${label} ${a.scoreMix[k]}%` : a.scoreMix[k] >= 9 ? `${a.scoreMix[k]}%` : ''}
-                  </span>
-                ) : null,
-              )}
-            </div>
-            <div className="stat-grid three">
-              {([3, 4, 5] as const).map((p) => (
-                <div className="stat" key={p}>
-                  <div className="num">{a.byPar[p] == null ? '–' : dec(`${a.byPar[p]! > 0 ? '+' : ''}${a.byPar[p]!.toFixed(1)}`)}</div>
-                  <div className="muted small">{tr(`Par ${p} average`, `Par ${p} Schnitt`)}</div>
+          {section === 'overview' && (
+            <>
+              <section className="totals card">
+                <Big value={dec(fmtPar(a.toParPer18))} label={tr('To par', 'Zu Par')} />
+                <Big value={dec(a.stablefordPer18 ?? '–')} label="Stableford" />
+                <Big value={dec(a.puttsPer18 ?? '–')} label="Putts" />
+              </section>
+              <section className="card stats-card">
+                <h2>{tr('Your key figures', 'Deine Kennzahlen')}</h2>
+                <div className="ring-row">
+                  <Ring label="Fairways" r={a.fairways} />
+                  <Ring label={tr('Greens', 'Grüns')} r={a.gir} />
+                  <Ring label="Scrambling" r={a.scrambling} />
                 </div>
-              ))}
-            </div>
-          </section>
+                <p className="muted small" style={{ margin: 0 }}>
+                  {tr('Fairways hit off the tee, greens in regulation, par or better after a missed green.', 'Fairways vom Abschlag getroffen, Grüns in Regulation, Par oder besser nach verfehltem Grün.')}
+                </p>
+              </section>
 
-          <section className="card stats-card">
-            <h2>{tr('Your club distances', 'Deine Schlägerweiten')}</h2>
-            {a.clubs.length === 0 ? (
-              <p className="muted small" style={{ margin: 0 }}>
-                {tr(
-                  'Check the shots of your rounds after playing (“Check shots”) to learn your distances. From 3 shots per club they replace the standard values in club suggestions.',
-                  'Prüfe nach der Runde deine Schläge („Schläge prüfen“), dann lernt die App deine Weiten. Ab 3 Schlägen je Schläger ersetzen sie die Standardwerte in den Empfehlungen.',
-                )}
-              </p>
-            ) : (
-              <table className="mini-table">
-                <thead>
-                  <tr>
-                    <th>{tr('Club', 'Schläger')}</th>
-                    <th>{tr('Typical', 'Typisch')}</th>
-                    <th>{tr('Range', 'Spanne')}</th>
-                    <th>{tr('Tendency', 'Tendenz')}</th>
-                    <th>{tr('Shots', 'Schläge')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {a.clubs.map((c) => (
-                    <tr key={c.club}>
-                      <td>
-                        <strong>{clubCode(c.club)}</strong>
-                      </td>
-                      <td>{c.median} m</td>
-                      <td className="muted">
-                        {c.max - c.min >= 2 ? `${c.min}–${c.max} m` : '–'}
-                      </td>
-                      <td>{tendencyText(tend.get(c.club))}</td>
-                      <td className="muted">{c.shots}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
+              {sg ? (
+                <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(a.handicap)} />
+              ) : (
+                <p className="muted small" style={{ margin: 0 }}>
+                  {tr('Check the shots of a round (“Check shots”) to see where you gain and lose strokes.', 'Prüfe die Schläge einer Runde („Schläge prüfen“), dann siehst du, wo du Schläge gewinnst und verlierst.')}
+                </p>
+              )}
+
+              {f && f.focus.length > 0 && (
+                <section className="card stats-card">
+                  <h2>{tr('Where you lose strokes', 'Wo du Schläge verlierst')}</h2>
+                  <p className="muted small" style={{ margin: 0 }}>
+                    {tr(`Compared with players of ${f.target} (you: ${f.band}). Your practice plan below starts here.`, `Verglichen mit Spielern mit ${f.target} (du: ${f.band}). Dein Trainingsplan unten setzt hier an.`)}
+                  </p>
+                  <ol className="focus-list">
+                    {f.focus.map((x) => (
+                      <li key={x.metric}>
+                        <span className="grow">
+                          <span className="focus-area">{areaName(x.area)}</span>
+                          {x.metric}
+                        </span>
+                        <span>
+                          <strong className="bad-text">{dec(x.yours)}</strong> <span className="muted">→ {dec(x.target)}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
+
+              {f && f.focus.length > 0 && (
+                <section className="card stats-card">
+                  <h2>{tr('Practice plan', 'Trainingsplan')}</h2>
+                  <p className="muted small" style={{ margin: 0 }}>
+                    {tr(`About ${practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} minutes, built from the areas above.`, `Etwa ${practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} Minuten, aus den Bereichen oben.`)}
+                  </p>
+                  <ol className="focus-list">
+                    {practicePlan(f.focus).map((d) => (
+                      <li key={d.area} className="drill" style={{ display: 'block' }}>
+                        <span className="focus-area">
+                          {areaName(d.area)} · {d.minutes} min
+                        </span>
+                        <strong>{d.title}</strong>
+                        <span className="muted small" style={{ display: 'block' }}>
+                          {d.how}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
+            </>
+          )}
+
+          {section === 'tee' && (
+            <>
+              <section className="card stats-card">
+                <h2>{tr('Off the tee', 'Vom Abschlag')}</h2>
+                <TeeBar left={a.missLeft} hit={a.fairways} right={a.missRight} />
+              </section>
+              <div className="tile-row">
+                <div className="tile">
+                  <span className="tile-num">{drive ? `${drive.median} m` : '–'}</span>
+                  <span className="muted small">{tr('Typical drive', 'Typischer Drive')}</span>
+                </div>
+                <div className="tile">
+                  <span className="tile-num">{drive ? `${drive.max} m` : '–'}</span>
+                  <span className="muted small">{tr('Longest drive', 'Längster Drive')}</span>
+                </div>
+                <div className="tile">
+                  <span className="tile-num">{dec(a.penaltiesPer18 ?? '–')}</span>
+                  <span className="muted small">{tr('Penalties', 'Strafschläge')}</span>
+                </div>
+              </div>
+              {!drive && (
+                <p className="muted small" style={{ margin: 0 }}>
+                  {tr('Drive lengths come from checked shots with the driver (from 3 shots).', 'Drive-Längen kommen aus geprüften Schlägen mit dem Driver (ab 3 Schlägen).')}
+                </p>
+              )}
+            </>
+          )}
+
+          {section === 'green' && (
+            <>
+              <section className="card stats-card">
+                <h2>{tr('Approach & short game', 'Annäherung & kurzes Spiel')}</h2>
+                <div className="ring-row">
+                  <Ring label={tr('Greens in regulation', 'Grüns in Regulation')} r={a.gir} />
+                  <Ring label="Scrambling" r={a.scrambling} />
+                  <Ring label={tr('Sand saves', 'Sand Saves')} r={a.sandSaves} />
+                </div>
+                <p className="muted small" style={{ margin: 0 }}>
+                  {tr('Scrambling: par or better after missing the green. Sand save: par or better from a greenside bunker.', 'Scrambling: Par oder besser nach verfehltem Grün. Sand Save: Par oder besser aus dem Grünbunker.')}
+                </p>
+              </section>
+              <section className="card stats-card">
+                <h2>{tr('Results by par', 'Ergebnis nach Par')}</h2>
+                <ParBars byPar={a.byPar} />
+              </section>
+            </>
+          )}
+
+          {section === 'putting' && (
+            <>
+              <div className="tile-row">
+                <div className="tile">
+                  <span className="tile-num">{dec(a.puttsPer18 ?? '–')}</span>
+                  <span className="muted small">{tr('Putts per round', 'Putts je Runde')}</span>
+                </div>
+                <div className="tile">
+                  <span className="tile-num">{dec(a.puttsPerGir ?? '–')}</span>
+                  <span className="muted small">{tr('Putts per green hit', 'Putts je getroffenem Grün')}</span>
+                </div>
+              </div>
+              <section className="card stats-card">
+                <h2>Putting</h2>
+                <div className="ring-row two">
+                  <Ring label={tr('1-putts', '1-Putts')} r={a.onePutts} />
+                  <Ring label={tr('3-putts', '3-Putts')} r={a.threePutts} bad />
+                </div>
+              </section>
+              {a.puttsByFirstPutt.some((b) => b.holes > 0) && (
+                <section className="card stats-card">
+                  <h2>{tr('Putts by length of the first putt', 'Putts nach Länge des ersten Putts')}</h2>
+                  <div className="hbars">
+                    {a.puttsByFirstPutt.map((b) => (
+                      <div key={b.label} className="hbar">
+                        <span className="hbar-label">{dec(b.label)}</span>
+                        <span className="hbar-track">{b.avgPutts != null && <span className="hbar-fill" style={{ width: `${Math.min(100, (b.avgPutts / 3) * 100)}%` }} />}</span>
+                        <span className="hbar-value">
+                          {dec(b.avgPutts ?? '–')} <span className="muted small">({b.holes})</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="muted small" style={{ margin: 0 }}>
+                    {tr('Average putts per hole; in brackets the number of holes.', 'Durchschnittliche Putts je Loch; in Klammern die Zahl der Löcher.')}
+                  </p>
+                </section>
+              )}
+            </>
+          )}
+
+          {section === 'clubs' && (
+            <section className="card stats-card">
+              <h2>{tr('Your club distances', 'Deine Schlägerweiten')}</h2>
+              {a.clubs.length === 0 ? (
+                <p className="muted small" style={{ margin: 0 }}>
+                  {tr(
+                    'Check the shots of your rounds after playing (“Check shots”) to learn your distances. From 3 shots per club they replace the standard values in club suggestions.',
+                    'Prüfe nach der Runde deine Schläge („Schläge prüfen“), dann lernt die App deine Weiten. Ab 3 Schlägen je Schläger ersetzen sie die Standardwerte in den Empfehlungen.',
+                  )}
+                </p>
+              ) : (
+                <>
+                  <div className="hbars">
+                    {a.clubs.map((c) => (
+                      <div key={c.club} className="hbar gap-row">
+                        <strong className="hbar-label">{clubCode(c.club)}</strong>
+                        <span className="hbar-track">
+                          <span className="gap-range" style={{ left: `${(c.min / longest) * 100}%`, width: `${Math.max(1, ((c.max - c.min) / longest) * 100)}%` }} />
+                          <span className="gap-median" style={{ left: `${(c.median / longest) * 100}%` }} />
+                        </span>
+                        <span className="hbar-value">
+                          {c.median} m
+                          <span className="muted small" style={{ display: 'block' }}>
+                            {tendencyText(tend.get(c.club))}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="muted small" style={{ margin: 0 }}>
+                    {tr('Line: typical length · band: shortest to longest shot · below the length: where your approaches end up.', 'Strich: typische Länge · Band: kürzester bis längster Schlag · unter der Länge: wo deine Annäherungen landen.')}
+                  </p>
+                </>
+              )}
+            </section>
+          )}
+
+          {section === 'courses' && <CoursesCard rounds={finished} onOpen={props.onOpenCourse} />}
         </>
       )}
-    </main>
+    </>
   );
 }
 
@@ -239,15 +282,45 @@ function Big(props: { value: string | number; label: string }) {
   );
 }
 
-function RateStat(props: { label: string; r: Rate; hint?: string }) {
+/** A ring for a rate (fairways, greens …): the share in the middle, n of m below. */
+function Ring(props: { label: string; r: Rate; bad?: boolean }) {
   const p = pct(props.r);
+  const c = 2 * Math.PI * 26;
   return (
-    <div className="stat">
-      <div className="num">{p == null ? '–' : `${p}%`}</div>
-      <div className="muted small">
-        {props.label} · {props.r.n}/{props.r.of}
-      </div>
-      {props.hint && <div className="muted small">{props.hint}</div>}
+    <div className="ring" role="img" aria-label={`${props.label}: ${p == null ? '–' : `${p}%`} (${props.r.n}/${props.r.of})`}>
+      <svg viewBox="0 0 64 64" width="76" height="76" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" className="ring-track" />
+        {p != null && p > 0 && <circle cx="32" cy="32" r="26" className={`ring-fill${props.bad ? ' bad' : ''}`} strokeDasharray={`${(p / 100) * c} ${c}`} transform="rotate(-90 32 32)" />}
+        <text x="32" y="37" textAnchor="middle" className="ring-text">
+          {p == null ? '–' : `${p}%`}
+        </text>
+      </svg>
+      <span className="small">{props.label}</span>
+      <span className="muted small">
+        {props.r.n}/{props.r.of}
+      </span>
+    </div>
+  );
+}
+
+/** Average over par on par 3, 4 and 5 as bars (0 = par). */
+function ParBars(props: { byPar: Record<3 | 4 | 5, number | null> }) {
+  const max = Math.max(1, ...([3, 4, 5] as const).map((p) => Math.abs(props.byPar[p] ?? 0)));
+  return (
+    <div className="hbars">
+      {([3, 4, 5] as const).map((p) => {
+        const v = props.byPar[p];
+        return (
+          <div key={p} className="hbar">
+            <span className="hbar-label">Par {p}</span>
+            <span className="hbar-track">{v != null && <span className={`hbar-fill${v > 0 ? ' over' : ''}`} style={{ width: `${Math.max(2, (Math.abs(v) / max) * 100)}%` }} />}</span>
+            <span className="hbar-value">{v == null ? '–' : dec(`${v > 0 ? '+' : ''}${v.toFixed(1)}`)}</span>
+          </div>
+        );
+      })}
+      <p className="muted small" style={{ margin: 0 }}>
+        {tr('Strokes over par per hole on average.', 'Schläge über Par je Loch im Schnitt.')}
+      </p>
     </div>
   );
 }

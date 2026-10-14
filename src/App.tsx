@@ -1,8 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round, RoundHole } from './types';
-import { ensureGeometry, geometryReady, loadRounds, saveRound } from './lib/storage';
+import { deleteRound, ensureGeometry, geometryReady, loadCarryBag, loadRounds, saveRound } from './lib/storage';
 import { commitParAt } from './lib/scoring';
-import { Home } from './screens/Home';
+import { carryToReview } from './lib/stats';
+import { PlayTab } from './screens/Play';
+import { RoundsTab, uncheckedRounds } from './screens/Rounds';
+import { RecordTab } from './screens/Record';
+import { ProfileTab } from './screens/Profile';
+import { TabBar, type Tab } from './components/TabBar';
 import { CoursePicker } from './screens/CoursePicker';
 import { RoundSetup } from './screens/RoundSetup';
 import { Scorecard } from './screens/Scorecard';
@@ -12,14 +17,13 @@ import { MyBag } from './screens/MyBag';
 import { CourseStats } from './screens/CourseStats';
 
 type Screen =
-  | { name: 'home' }
+  | { name: 'tab'; tab: Tab } // the five menu tabs (play, rounds, record, stats, profile)
   | { name: 'pickCourse' }
   | { name: 'setup'; course: Course }
   | { name: 'hole'; round: Round }
   | { name: 'scorecard'; round: Round; back?: Screen }
-  | { name: 'stats' }
   | { name: 'courseStats'; courseName: string }
-  | { name: 'bag' }
+  | { name: 'bag'; part: 'bag' | 'caddie' }
   | { name: 'review'; round: Round }
   | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null; playing?: number | null };
 
@@ -75,12 +79,15 @@ const Waiting = () => (
   </main>
 );
 
+const HOME: Screen = { name: 'tab', tab: 'play' };
+const ROUNDS: Screen = { name: 'tab', tab: 'rounds' };
+
 export function App() {
   const [rounds, setRounds] = useState<Round[]>(() => loadRounds());
   const [screen, setScreen] = useState<Screen>(() => {
     const r = SKIP_RESUME ? undefined : roundInPlay(rounds);
-    if (r && r.id === pausedRound) return { name: 'home' };
-    return r ? { name: 'hole', round: r } : { name: 'home' };
+    if (r && r.id === pausedRound) return HOME;
+    return r ? { name: 'hole', round: r } : HOME;
   });
 
   // Every change to a round is saved immediately, so closing the app never loses a hole.
@@ -98,18 +105,57 @@ export function App() {
   if (geoId && !geometryReady(geoId)) return <Waiting />;
 
   switch (screen.name) {
-    case 'home':
+    case 'tab': {
+      const tab = screen.tab;
+      const dots = { rounds: uncheckedRounds(rounds).length > 0, profile: carryToReview(rounds, loadCarryBag()).length > 0 };
       return (
-        <Home
-          rounds={rounds}
-          onNewRound={() => setScreen({ name: 'pickCourse' })}
-          onContinue={(round) => setScreen({ name: 'hole', round })}
-          onOpen={(round) => setScreen({ name: 'scorecard', round })}
-          onStats={() => setScreen({ name: 'stats' })}
-          onBag={() => setScreen({ name: 'bag' })}
-          onChanged={() => setRounds(loadRounds())}
-        />
+        <main className="screen with-tabs">
+          {tab === 'play' && (
+            <PlayTab
+              rounds={rounds}
+              onNewRound={() => setScreen({ name: 'pickCourse' })}
+              onContinue={(round) => setScreen({ name: 'hole', round })}
+              onEnd={(round) => {
+                const done = { ...round, finishedAt: new Date().toISOString() };
+                persist(done);
+                setScreen({ name: 'scorecard', round: done, back: ROUNDS });
+              }}
+              onAbort={(round) => {
+                deleteRound(round.id);
+                setPaused(null);
+                setRounds(loadRounds());
+              }}
+              onCheck={() => setScreen(ROUNDS)}
+            />
+          )}
+          {tab === 'rounds' && <RoundsTab rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} />}
+          {tab === 'record' && (
+            <RecordTab
+              rounds={rounds}
+              onOpenRound={(round) => setScreen({ name: 'scorecard', round, back: { name: 'tab', tab: 'record' } })}
+              onProfile={() => setScreen({ name: 'tab', tab: 'profile' })}
+            />
+          )}
+          {tab === 'stats' && <Stats rounds={rounds} onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })} />}
+          {tab === 'profile' && (
+            <ProfileTab
+              rounds={rounds}
+              onBag={() => setScreen({ name: 'bag', part: 'bag' })}
+              onCaddie={() => setScreen({ name: 'bag', part: 'caddie' })}
+              onChanged={() => setRounds(loadRounds())}
+            />
+          )}
+          <TabBar
+            tab={tab}
+            dots={dots}
+            onTab={(t) => {
+              setScreen({ name: 'tab', tab: t });
+              window.scrollTo(0, 0);
+            }}
+          />
+        </main>
       );
+    }
     case 'review':
       return (
         <Suspense fallback={<Waiting />}>
@@ -125,27 +171,18 @@ export function App() {
         </Suspense>
       );
     case 'bag':
-      return <MyBag rounds={rounds} onBack={() => setScreen({ name: 'home' })} />;
-    case 'stats':
-      return (
-        <Stats
-          rounds={rounds}
-          onBack={() => setScreen({ name: 'home' })}
-          onOpenRound={(round) => setScreen({ name: 'scorecard', round, back: { name: 'stats' } })}
-          onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })}
-        />
-      );
+      return <MyBag rounds={rounds} part={screen.part} onBack={() => setScreen({ name: 'tab', tab: 'profile' })} />;
     case 'courseStats':
       return (
         <CourseStats
           rounds={rounds}
           courseName={screen.courseName}
-          onBack={() => setScreen({ name: 'stats' })}
+          onBack={() => setScreen({ name: 'tab', tab: 'stats' })}
           onOpen={(round) => setScreen({ name: 'scorecard', round, back: { name: 'courseStats', courseName: screen.courseName } })}
         />
       );
     case 'pickCourse':
-      return <CoursePicker onBack={() => setScreen({ name: 'home' })} onPicked={(course) => setScreen({ name: 'setup', course })} />;
+      return <CoursePicker onBack={() => setScreen(HOME)} onPicked={(course) => setScreen({ name: 'setup', course })} />;
     case 'setup':
       return (
         <RoundSetup
@@ -176,10 +213,20 @@ export function App() {
             }}
             onExit={() => {
               setPaused(screen.round.id);
-              setScreen({ name: 'home' });
+              setScreen(HOME);
+            }}
+            onEnd={(round) => {
+              const done = { ...round, finishedAt: new Date().toISOString() };
+              persist(done);
+              setScreen({ name: 'scorecard', round: done, back: ROUNDS });
+            }}
+            onAbort={(round) => {
+              deleteRound(round.id);
+              setRounds(loadRounds());
+              setScreen(HOME);
             }}
             onShowScorecard={(round) => {
-              if (round.preview) return setScreen({ name: 'home' });
+              if (round.preview) return setScreen(HOME);
               persist(round);
               setScreen({ name: 'scorecard', round });
             }}
@@ -194,9 +241,9 @@ export function App() {
           onFinish={(round) => {
             // Finishing on the last hole is leaving it: its untouched score counts as par (quick tracking).
             persist(round.currentHole === round.holes.length - 1 ? commitParAt(round, round.currentHole) : round);
-            setScreen({ name: 'home' });
+            setScreen(ROUNDS);
           }}
-          onClose={() => setScreen(screen.back ?? { name: 'home' })}
+          onClose={() => setScreen(screen.back ?? ROUNDS)}
           onChange={(round) => {
             persist(round);
             setScreen({ name: 'scorecard', round, back: screen.back });
@@ -207,7 +254,7 @@ export function App() {
           }}
           onDeleted={() => {
             setRounds(loadRounds());
-            setScreen({ name: 'home' });
+            setScreen(ROUNDS);
           }}
         />
       );
