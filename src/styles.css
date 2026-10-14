@@ -1029,3 +1029,14 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .balance-totals { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; gap: 8px; }
 .balance-totals div { display: flex; flex-direction: column; gap: 2px; }
 .balance-totals strong { font: 700 24px var(--display); font-variant-numeric: tabular-nums; }
+:root[data-theme='sun'] .undo-toast { background: #1f2a31; color: #ffffff; }
+:root[data-theme='sun'] .undo-toast .muted { color: #c9d3cc; }
+:root[data-theme='sun'] .undo-toast button { color: #b5e06a; }
+
+/* open tasks on the start page (yellow dot as in the menus) */
+.module-icon { position: relative; }
+.module-dot { top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 6px; }
+.module-todo { color: var(--warn); font-weight: 600; }
+/* start page: version and sun mode at the top, the modules below in the middle */
+.module-chooser .home-topbar { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 16px; right: 16px; }
+.home-topbar .topbar-version { text-align: left; }

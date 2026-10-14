@@ -3,6 +3,7 @@ import { tr } from '../lib/i18n';
 import { loadFriends, saveFriends, type Friend } from '../lib/friends';
 import { newId } from '../lib/storage';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
+import { TopTools } from '../components/TopTools';
 
 // The start page of GolfOS (Sascha 15.10.2026): the two modules, the friends you play with and your profile – with a
 // menu at the bottom like inside the modules. The profile is the same everywhere.
@@ -14,19 +15,21 @@ export function Home(props: {
   onTab: (t: HomeTab) => void;
   roundOpen: boolean;
   gameOpen: boolean;
+  toCheck: number; // finished rounds whose shots are not checked yet
+  profileDot: boolean; // carries to take over into the bag
   onPick: (m: 'rounds' | 'games') => void;
   profile: ReactNode;
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
-      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} onPick={props.onPick} />}
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} toCheck={props.toCheck} onPick={props.onPick} />}
       {props.tab === 'friends' && <Friends />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
         items={[
           { id: 'start' as HomeTab, label: 'Start', icon: MENU_ICONS.home },
           { id: 'friends' as HomeTab, label: tr('Friends', 'Freunde'), icon: MENU_ICONS.friends },
-          { id: 'profile' as HomeTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile },
+          { id: 'profile' as HomeTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}
         current={props.tab}
         onPick={(t) => {
@@ -38,9 +41,12 @@ export function Home(props: {
   );
 }
 
-function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; onPick: (m: 'rounds' | 'games') => void }) {
+function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; toCheck: number; onPick: (m: 'rounds' | 'games') => void }) {
   return (
     <>
+      <div className="topbar home-topbar">
+        <TopTools />
+      </div>
       <div className="brand module-brand">
         GOLF<span>OS</span>
       </div>
@@ -48,6 +54,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; onPick: (m:
       <p className="muted module-claim">unlock every part of your golf game</p>
       <button type="button" className="module-card" onClick={() => props.onPick('rounds')}>
         <span className="module-icon" aria-hidden="true">
+          {props.toCheck > 0 && <i className="tabbar-dot module-dot" />}
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 21V3l11 4-11 4" />
             <ellipse cx="12" cy="21" rx="8" ry="1.6" />
@@ -57,6 +64,11 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; onPick: (m:
           <strong>Rounds</strong>
           <span className="muted small">{tr('Your round with GPS map, caddie, scorecard and the analysis afterwards.', 'Deine Runde mit GPS-Karte, Caddie, Scorekarte und der Analyse danach.')}</span>
           {props.roundOpen && <span className="small module-live">{tr('A round is in play', 'Eine Runde läuft')}</span>}
+          {props.toCheck > 0 && (
+            <span className="small module-todo">
+              {props.toCheck === 1 ? tr('1 round: check your shots', '1 Runde: Schläge prüfen') : tr(`${props.toCheck} rounds: check your shots`, `${props.toCheck} Runden: Schläge prüfen`)}
+            </span>
+          )}
         </span>
         <span aria-hidden="true">›</span>
       </button>

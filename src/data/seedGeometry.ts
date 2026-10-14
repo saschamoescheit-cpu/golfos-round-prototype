@@ -1,6 +1,7 @@
 // All bundled course geometry at once – for tests, the caddie audit and data scripts. The app itself loads one
 // course at a time (seedLoaders.ts). Sources and notes: courses/README.md.
 import type { CourseGeometry } from '../types';
+import { unpackGeometry } from '../lib/polyline';
 import hetzenhof from './courses/hetzenhof.json';
 import sonquint from './courses/sonquint.json';
 import sonvida from './courses/sonvida.json';
@@ -16,18 +17,18 @@ import sonantem from './courses/sonantem.json';
 import sonantemeast from './courses/sonantemeast.json';
 
 export const SEED_GEOMETRY: Record<string, CourseGeometry> = {
-  'osm:relation/1326323': hetzenhof as unknown as CourseGeometry,
-  'osm:relation/1654444': sonquint as unknown as CourseGeometry,
-  'osm:relation/1130271': sonvida as unknown as CourseGeometry,
-  'osm:way/51852280': sonmuntaner as unknown as CourseGeometry,
-  'osm:way/60140256': songual as unknown as CourseGeometry,
-  'osm:way/40755710': alcanada as unknown as CourseGeometry,
-  'osm:relation/3332769': canyamel as unknown as CourseGeometry,
-  'osm:way/81397943': sontermens as unknown as CourseGeometry,
-  'osm:way/98739153': maioris as unknown as CourseGeometry,
-  'osm:relation/2738804': pula as unknown as CourseGeometry,
-  'osm:way/108783334': puntiro as unknown as CourseGeometry,
-  'osm:way/28625559': sonantem as unknown as CourseGeometry,
-  'osm:relation/3977168': sonantem as unknown as CourseGeometry,
-  'sonantem:east': sonantemeast as unknown as CourseGeometry,
+  'osm:relation/1326323': unpackGeometry(hetzenhof as unknown as CourseGeometry),
+  'osm:relation/1654444': unpackGeometry(sonquint as unknown as CourseGeometry),
+  'osm:relation/1130271': unpackGeometry(sonvida as unknown as CourseGeometry),
+  'osm:way/51852280': unpackGeometry(sonmuntaner as unknown as CourseGeometry),
+  'osm:way/60140256': unpackGeometry(songual as unknown as CourseGeometry),
+  'osm:way/40755710': unpackGeometry(alcanada as unknown as CourseGeometry),
+  'osm:relation/3332769': unpackGeometry(canyamel as unknown as CourseGeometry),
+  'osm:way/81397943': unpackGeometry(sontermens as unknown as CourseGeometry),
+  'osm:way/98739153': unpackGeometry(maioris as unknown as CourseGeometry),
+  'osm:relation/2738804': unpackGeometry(pula as unknown as CourseGeometry),
+  'osm:way/108783334': unpackGeometry(puntiro as unknown as CourseGeometry),
+  'osm:way/28625559': unpackGeometry(sonantem as unknown as CourseGeometry),
+  'osm:relation/3977168': unpackGeometry(sonantem as unknown as CourseGeometry),
+  'sonantem:east': unpackGeometry(sonantemeast as unknown as CourseGeometry),
 };

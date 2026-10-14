@@ -55,7 +55,7 @@ function winds(holeBearing: number): { name: string; c: Conditions }[] {
 const inAny = (p: LngLat, rings: Ring[] | undefined) => (rings ?? []).some((r) => pointInRing(p, r));
 const distToRings = (p: LngLat, rings: Ring[] | undefined) => Math.min(Infinity, ...(rings ?? []).map((r) => distToLine(p, r)));
 
-function check(o: { r: CaddieOutput; d: HoleMapData; from: LngLat; teeShot: boolean; par: number; conditions: Conditions; boundary?: Ring[]; trees?: Ring[]; obNote: { obLeft?: boolean; obRight?: boolean } }): Finding[] {
+function check(o: { r: CaddieOutput; d: HoleMapData; from: LngLat; teeShot: boolean; par: number; conditions: Conditions; boundary?: Ring[]; trees?: Ring[]; obNote: { obLeft?: boolean; obRight?: boolean }; aerialFairway?: Ring[] }): Finding[] {
   const { r, d } = o;
   const f: Finding[] = [];
   const add = (severity: Severity, code: string, text: string) => f.push({ severity, code, text });
@@ -87,8 +87,12 @@ function check(o: { r: CaddieOutput; d: HoleMapData; from: LngLat; teeShot: bool
   // Strategy
   const toGreen = distanceM(ap.pos, d.greenCenter);
   if (ap.kind === 'drive' && toGreen < 45) add('warn', 'drive-too-close', `Drive aim only ${Math.round(toGreen)} m from the green – too close to approach well`);
-  if (ap.kind === 'drive' && d.fairways.length && !inAny(ap.landing, d.fairways)) {
-    const off = distToRings(ap.landing, d.fairways);
+  // Fairway check (night run 15./16.10.2026): not on a par 3 – it has no fairway, a lay-up short of the green lands in
+  // the rough on purpose – and against the OSM fairway together with the one read from the aerial image (OSM maps many
+  // Mallorca fairways only in part).
+  const fairways = [...d.fairways, ...(o.aerialFairway ?? [])];
+  if (ap.kind === 'drive' && o.par >= 4 && fairways.length && !inAny(ap.landing, fairways)) {
+    const off = distToRings(ap.landing, fairways);
     if (off > 8) add(off > 15 ? 'warn' : 'info', 'drive-off-fairway', `Drive lands ${Math.round(off)} m off the mapped fairway`);
   }
   if (ap.kind === 'layup') {
@@ -142,7 +146,7 @@ if (!d) continue;
         cases.push({
           spot, wind: w.name, from, aim: r.ap.pos, landing: r.ap.landing, reasons: r.ap.reasons, kind: r.ap.kind, club: r.advice.club, distance: Math.round(r.pl.distance), playsLike: Math.round(r.pl.playsLike),
           lines: r.lines.map((l) => (l.tone ? `[${l.tone}] ` : '') + l.text),
-          findings: check({ r, d: d!, from, teeShot, par, conditions: w.c, boundary: geo.boundary, trees: geo.trees, obNote: note }),
+          findings: check({ r, d: d!, from, teeShot, par, conditions: w.c, boundary: geo.boundary, trees: geo.trees, obNote: note, aerialFairway: geo.fairwayAuto?.[h.ref] }),
         });
         if (spot === 'tee' && w.name === 'calm') calmTee = r;
       }

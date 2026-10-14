@@ -10,6 +10,9 @@ import json, math, os, sys, urllib.request
 import cv2
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from packgeo import unpack  # noqa: E402 – course files may be packed (scripts/packgeo.py)
+
 R = 6378137.0
 # full resolution of the imagery (Sascha 15.10.2026: "maximum detail"): LGL DOP20 0.2 m, PNOA 0.25 m
 M_PER_PX = 0.4  # set per course in run()
@@ -49,7 +52,7 @@ def fetch(template, x0, y0, x1, y1, w, h):
 
 def run(path):
     global M_PER_PX
-    geo = json.load(open(path, encoding='utf-8'))
+    geo = unpack(json.load(open(path, encoding='utf-8')))
     pts = [p for h in geo['holes'] for p in h['line']] + [p for r in geo.get('boundary', []) for p in r]
     lon_c = sum(p[0] for p in pts) / len(pts)
     lat_c = sum(p[1] for p in pts) / len(pts)

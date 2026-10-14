@@ -146,3 +146,43 @@ describe('handicap share, press and limits (Sascha 15.10.2026)', () => {
     expect(standingOf(g).money).toEqual({ p0: 40, p1: -20, p2: -20 });
   });
 });
+
+describe('Chicago during the game', () => {
+  it('counts the quota pro rata for the holes played', () => {
+    // one hole played at par (2 points), playing handicap 18: quota 21 for 18 holes, 1.2 for one hole
+    const scores = [[4, ...Array(17).fill(null)]];
+    expect(formDef('chicago').standing(game('chicago', scores, {}, [18])).rows[0].points).toBeCloseTo(0.8);
+  });
+});
+
+describe('hammer, rabbit, acey deucey and free teams (night run 15./16.10.2026)', () => {
+  it('a hammered hole is worth double, a declined hammer gives the hole up', () => {
+    const g = game('hammer', [[4, 5, 4], [5, 4, 4]], { stake: 1 });
+    g.extra = [{ hammer: 1 }, {}, { hammer: 2, conceded: 'B' }];
+    // hole 1: A wins ×2 = +2, hole 2: B wins ×1 = −1, hole 3: B gave up at ×4 = +4
+    expect(formDef('hammer').standing(g).money).toEqual({ p0: 5, p1: -5 });
+  });
+  it('the rabbit is caught by an outright win, set free by another, and paid after the nine', () => {
+    const scores = [
+      [3, 4, 4, 4, 4, 4, 4, 4, 4],
+      [4, 3, 4, 4, 4, 4, 4, 4, 4],
+      [4, 4, 4, 4, 4, 4, 4, 4, 3],
+    ];
+    // hole 1: P0 catches it, hole 2: P1 sets it free, hole 9: P2 catches it and holds it at the end of the nine
+    const st = formDef('rabbit').standing(game('rabbit', scores, { stake: 2 }));
+    expect(st.rows[0]).toMatchObject({ id: 'p2', points: 1 });
+    expect(st.money).toEqual({ p0: -2, p1: -2, p2: 4 });
+  });
+  it('acey deucey: the best collects from each, the worst pays each', () => {
+    const st = formDef('acey').standing(game('acey', [[3], [4], [4], [6]], { stake: 1 }));
+    // ace P0 +3, the others −1; deuce P3 −3, the others +1
+    expect(st.money).toEqual({ p0: 4, p1: 0, p2: 0, p3: -4 });
+  });
+  it('teams are free to choose: player 1 with the partner set', () => {
+    const g = game('vegas', [[4], [5], [3], [6]], { partner: 2, flip: false });
+    // teams P0 & P2 (34) against P1 & P3 (56): +22 for P0's team
+    const st = formDef('vegas').standing(g);
+    expect(st.rows[0]).toMatchObject({ id: 'A', points: 22 });
+    expect(st.money!.p2).toBeGreaterThan(0);
+  });
+});

@@ -47,7 +47,7 @@ ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'a reloa
 // the catalogue
 await p.locator('.tabbar button').filter({ hasText: 'Regeln' }).click();
 const forms = await p.locator('.game-form').count();
-ok(forms === 11, `catalogue lists ${forms} game forms`);
+ok(forms === 14, `catalogue lists ${forms} game forms`);
 await p.locator('.game-form-head').filter({ hasText: 'Wolf' }).click();
 ok((await p.locator('.game-rules li').count()) >= 3, 'rules of the wolf open');
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
@@ -66,6 +66,10 @@ const CASES = [
   ['Stableford-Duell', 3],
   ['Lochspiel', 2],
   ['Lochspiel', 4],
+  ['Hammer', 2],
+  ['Hammer', 4],
+  ['Rabbit', 3],
+  ['Acey Deucey', 4],
 ];
 for (const [form, n] of CASES) {
   await p.getByRole('button', { name: 'Neues Spiel' }).click();
@@ -89,6 +93,7 @@ for (const [form, n] of CASES) {
     if (form === 'Wolf') await p.locator('.game-extra .chip').first().click();
     if (form === 'Bingo Bango Bongo') for (const row of await p.locator('.game-extra .game-setting').all()) await row.locator('.chip').first().click();
     if (form === 'Snake' && h === 2) await p.locator('.game-extra .chip').nth(1).click();
+    if (form === 'Hammer' && h === 1) await p.locator('[aria-label="Hammer"] .chip').first().click();
     if (form.startsWith('Dots')) await p.locator('.game-extra .game-setting').first().locator('.chip').first().click();
     await p.getByRole('button', { name: 'Nächstes Loch ›' }).click();
   }

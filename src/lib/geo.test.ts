@@ -90,6 +90,19 @@ describe('hole detection after taking the phone out of the pocket', () => {
   it('never jumps back and ignores positions off the course', () => {
     expect(detectHole(mid(0), holes, 3)).toBeNull();
     expect(detectHole([9.0, 48.0], holes, 0)).toBeNull();
+  });  // Son Térmens (night run 15./16.10.2026): the 18th tee lies next to the 16th, the 18th fairway between the 15th green
+  // and the 16th tee – the app jumped from 15 to 18 on the way and stayed there.
+  it('keeps the order where a later hole lies next to the way to the next tee', () => {
+    const st = SEED_GEOMETRY['osm:way/81397943'];
+    const maps = Array.from({ length: 18 }, (_, k) => holeMapData(st, 'Main', k + 1));
+    const g15 = pointAt(maps[14]!.line, lineLength(maps[14]!.line) - 3);
+    const t16 = maps[15]!.tee;
+    for (let s = 0; s <= 1; s += 0.125) {
+      const p: LngLat = [g15[0] + (t16[0] - g15[0]) * s, g15[1] + (t16[1] - g15[1]) * s];
+      expect([null, 15]).toContain(detectHole(p, maps, 14)); // stays on 15 or moves to 16 – never 17 or 18
+      expect(detectHole(p, maps, 15)).toBeNull(); // on (or walking to) the 16th tee: stays on 16
+    }
+    expect(detectHole(maps[16]!.tee, maps, 15)).toBe(16); // and on to the 17th tee
   });
 });
 

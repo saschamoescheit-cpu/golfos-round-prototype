@@ -1,11 +1,11 @@
-import { tr } from './i18n';
+import { dec, tr } from './i18n';
 
 // The "Games" module (Sascha 15.10.2026): side games among friends as a product of its own, not tied to the round
 // analysis – skins, Nassau, wolf, Chicago, Bingo Bango Bongo, Las Vegas, sixes, snake, dots, Stableford and match
 // play duels. Each form has its rules ("Ausgestaltung"), its settings and, where needed, what is entered per hole
 // besides the strokes. Results in points; with a stake per point the settlement in euros.
 
-export type FormId = 'skins' | 'nassau' | 'wolf' | 'chicago' | 'bbb' | 'vegas' | 'sixes' | 'snake' | 'dots' | 'stableford' | 'match';
+export type FormId = 'skins' | 'nassau' | 'wolf' | 'chicago' | 'bbb' | 'vegas' | 'sixes' | 'snake' | 'dots' | 'stableford' | 'match' | 'hammer' | 'rabbit' | 'acey';
 
 export interface GameHole {
   label: string;
@@ -26,6 +26,8 @@ export interface HoleExtra {
   bongo?: string | null; // first to hole out
   threePutt?: string[]; // snake: who three-putted (in order)
   dots?: Record<string, string[]>; // dots: per player the dots won on this hole
+  hammer?: number; // hammer: doublings accepted on this hole
+  conceded?: 'A' | 'B'; // hammer: the side that declined a hammer and gave the hole up
 }
 export interface Game {
   id: string;
@@ -72,7 +74,9 @@ export interface FormDef {
   players: [number, number];
   counts?: number[]; // only these player numbers (e.g. one against one or two against two)
   settings: SettingDef[];
-  input?: 'wolf' | 'bbb' | 'snake' | 'dots';
+  input?: 'wolf' | 'bbb' | 'snake' | 'dots' | 'hammer';
+  /** WHS recommendation for the share of the playing handicap, by the number of players (night run 15./16.10.2026). */
+  hcpFor?: (n: number) => string;
   standing: (g: Game) => Standing;
 }
 
@@ -114,7 +118,9 @@ export const canPress = (g: Game): boolean => !!g.settings.double && Number(g.se
 const stake = stakeNow;
 const played = (g: Game, i: number) => g.players.every((p) => g.scores[p.id]?.[i] != null);
 const holesDone = (g: Game) => g.holes.filter((_, i) => played(g, i)).length;
-const euro = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(Math.abs(v) % 1 ? 2 : 0)} €`;
+/** An amount in euros – comma in German, point in English; cents only when there are any. */
+export const money = (v: number): string => `${dec(Math.abs(v) % 1 ? Math.abs(v).toFixed(2) : String(Math.abs(v)))} €`;
+const euro = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${money(v)}`;
 const rank = (rows: StandingRow[]) => rows.sort((a, b) => b.points - a.points);
 const name = (g: Game, id: string) => g.players.find((p) => p.id === id)?.name ?? '?';
 
@@ -148,6 +154,15 @@ function matchText(results: (number | null)[], a: string, b: string): { diff: nu
   return { diff, text: tr(`${diff > 0 ? a : b} ${Math.abs(diff)} up after ${n}`, `${diff > 0 ? a : b} ${Math.abs(diff)} auf nach ${n}`) };
 }
 
+/** The two sides of a team game (Sascha: teams free to choose): player 1 with his partner (setting "partner", the
+ *  player's position, default player 2) against the others. Two players: one against one. */
+export function teamsOf(g: Pick<Game, 'players' | 'settings'>): [string[], string[]] {
+  const ids = g.players.map((p) => p.id);
+  if (ids.length < 4) return [[ids[0]], ids.slice(1, 2)];
+  const k = Math.min(ids.length - 1, Math.max(1, Number(g.settings.partner ?? 1)));
+  return [[ids[0], ids[k]], ids.filter((_, j) => j !== 0 && j !== k)];
+}
+
 // With or without handicap (Sascha 15.10.2026): the WHS share of the playing handicap, or gross.
 const HCP: SettingDef = {
   key: 'allowance',
@@ -171,12 +186,12 @@ const DOUBLE: SettingDef[] = [
     label: () => tr('Highest stake after presses', 'Höchsteinsatz nach Press'),
     type: 'choice',
     options: [
-      { value: '0.4', label: () => '0,40 €' },
-      { value: '0.8', label: () => '0,80 €' },
-      { value: '1.6', label: () => '1,60 €' },
-      { value: '3.2', label: () => '3,20 €' },
-      { value: '5', label: () => '5 €' },
-      { value: '10', label: () => '10 €' },
+      { value: '0.4', label: () => money(0.4) },
+      { value: '0.8', label: () => money(0.8) },
+      { value: '1.6', label: () => money(1.6) },
+      { value: '3.2', label: () => money(3.2) },
+      { value: '5', label: () => money(5) },
+      { value: '10', label: () => money(10) },
       { value: '0', label: () => tr('no cap', 'ohne Limit') },
     ],
     default: '1.6',
@@ -189,11 +204,11 @@ const MAX_LOSS: SettingDef = {
   type: 'choice',
   options: [
     { value: '0', label: () => tr('none', 'keine') },
-    { value: '5', label: () => '5 €' },
-    { value: '10', label: () => '10 €' },
-    { value: '20', label: () => '20 €' },
-    { value: '50', label: () => '50 €' },
-    { value: '100', label: () => '100 €' },
+    { value: '5', label: () => money(5) },
+    { value: '10', label: () => money(10) },
+    { value: '20', label: () => money(20) },
+    { value: '50', label: () => money(50) },
+    { value: '100', label: () => money(100) },
   ],
   default: '0',
 };
@@ -203,6 +218,7 @@ const MAX_LOSS: SettingDef = {
 export const FORMS: FormDef[] = [
   {
     id: 'skins',
+    hcpFor: () => '100',
     name: () => 'Skins',
     short: () => tr('Every hole is worth a skin – only an outright win takes it.', 'Jedes Loch ist ein Skin wert – nur ein alleiniger Sieg holt ihn.'),
     rules: () => [
@@ -247,6 +263,7 @@ export const FORMS: FormDef[] = [
   },
   {
     id: 'nassau',
+    hcpFor: (n) => (n === 4 ? '90' : '100'),
     name: () => 'Nassau',
     short: () => tr('Three matches in one: front 9, back 9 and the whole round.', 'Drei Lochspiele in einem: vordere 9, hintere 9 und die ganze Runde.'),
     rules: () => [
@@ -262,9 +279,7 @@ export const FORMS: FormDef[] = [
       { key: 'press', label: () => tr('Automatic press at 2 down', 'Automatischer Press bei 2 hinten'), type: 'bool', default: false },
     ],
     standing: (g) => {
-      const four = g.players.length === 4;
-      const A = four ? [g.players[0].id, g.players[1].id] : [g.players[0].id];
-      const B = four ? [g.players[2].id, g.players[3].id] : [g.players[1].id];
+      const [A, B] = teamsOf(g);
       const nA = A.map((id) => name(g, id)).join(' & ');
       const nB = B.map((id) => name(g, id)).join(' & ');
       const res = g.holes.map((_, i) => holeWinner(best(g, A, i), best(g, B, i)));
@@ -311,6 +326,7 @@ export const FORMS: FormDef[] = [
   },
   {
     id: 'wolf',
+    hcpFor: () => '90',
     name: () => 'Wolf',
     short: () => tr('Four players, the wolf picks a partner after each tee shot – or plays alone.', 'Vier Spieler, der Wolf wählt nach den Abschlägen einen Partner – oder spielt allein.'),
     rules: () => [
@@ -347,11 +363,12 @@ export const FORMS: FormDef[] = [
   },
   {
     id: 'chicago',
+    hcpFor: () => '100',
     name: () => 'Chicago',
     short: () => tr('Points per hole against your own quota – the handicap is in the quota.', 'Punkte je Loch gegen die eigene Quote – die Vorgabe steckt in der Quote.'),
     rules: () => [
       tr('Points on every hole (gross): bogey 1, par 2, birdie 4, eagle 8, albatross 16.', 'Punkte an jedem Loch (brutto): Bogey 1, Par 2, Birdie 4, Eagle 8, Albatros 16.'),
-      tr('Everyone has a quota: 39 minus the playing handicap (share as set; 9 holes: half). Without handicap the quota is 39 for all.', 'Jeder hat eine Quote: 39 minus Spielvorgabe (Anteil wie eingestellt; 9 Löcher: die Hälfte). Ohne Vorgabe ist die Quote für alle 39.'),
+      tr('Everyone has a quota: 39 minus the playing handicap for 18 holes (share as set) – during the game and on 9 holes pro rata for the holes played. Without handicap the quota is 39 for all.', 'Jeder hat eine Quote: 39 minus Spielvorgabe für 18 Löcher (Anteil wie eingestellt) – während des Spiels und auf 9 Löchern anteilig für die gespielten Löcher. Ohne Vorgabe ist die Quote für alle 39.'),
       tr('Who beats his quota by the most wins; with a stake everyone settles the differences.', 'Wer seine Quote am weitesten übertrifft, gewinnt; mit Einsatz rechnet jeder die Differenzen ab.'),
     ],
     players: [2, 4],
@@ -366,9 +383,12 @@ export const FORMS: FormDef[] = [
           const d = v - h.par;
           s += d >= 2 ? 0 : d === 1 ? 1 : d === 0 ? 2 : d === -1 ? 4 : d === -2 ? 8 : 16;
         });
-        const quota = Math.round(((39 - (hcpOf(g, p) ?? 0)) * g.holes.length) / 18);
-        pts[p.id] = s - quota;
-        return { id: p.id, name: p.name, points: s - quota, value: `${s - quota >= 0 ? '+' : ''}${s - quota}`, detail: tr(`${s} pts, quota ${quota}`, `${s} Pkt., Quote ${quota}`) };
+        // the quota for the holes played so far (pro rata) – after the whole round the full quota
+        const done = g.scores[p.id]?.filter((v) => v != null).length ?? 0;
+        const quota = Math.round(((39 - (hcpOf(g, p) ?? 0)) * done) / 18 * 10) / 10;
+        const over = Math.round((s - quota) * 10) / 10;
+        pts[p.id] = over;
+        return { id: p.id, name: p.name, points: over, value: `${over >= 0 ? '+' : ''}${dec(over)}`, detail: tr(`${s} pts, quota ${dec(quota)}`, `${s} Pkt., Quote ${dec(quota)}`) };
       });
       return { rows: rank(rows), money: settle(g, pts, stake(g)) };
     },
@@ -394,6 +414,7 @@ export const FORMS: FormDef[] = [
   },
   {
     id: 'vegas',
+    hcpFor: () => '90',
     name: () => 'Las Vegas',
     short: () => tr('Two against two, the two scores of a team make one number.', 'Zwei gegen zwei, die beiden Ergebnisse eines Teams ergeben eine Zahl.'),
     rules: () => [
@@ -408,7 +429,7 @@ export const FORMS: FormDef[] = [
       { key: 'stake', label: () => tr('Stake per point', 'Einsatz je Punkt'), type: 'stake', default: 0.1 },
     ],
     standing: (g) => {
-      const T = [[g.players[0].id, g.players[1].id], [g.players[2].id, g.players[3].id]];
+      const T = teamsOf(g);
       let diff = 0;
       g.holes.forEach((h, i) => {
         if (!played(g, i)) return;
@@ -444,6 +465,7 @@ export const FORMS: FormDef[] = [
   },
   {
     id: 'sixes',
+    hcpFor: () => '90',
     name: () => tr('Sixes (round robin)', 'Sixes (Round Robin)'),
     short: () => tr('Four players, new partners every six holes.', 'Vier Spieler, alle sechs Löcher neue Partner.'),
     rules: () => [
@@ -531,6 +553,7 @@ export const FORMS: FormDef[] = [
   },
   {
     id: 'stableford',
+    hcpFor: () => '95',
     name: () => tr('Stableford duel', 'Stableford-Duell'),
     short: () => tr('Classic Stableford points, everyone against everyone.', 'Klassische Stableford-Punkte, jeder gegen jeden.'),
     rules: () => [
@@ -556,6 +579,7 @@ export const FORMS: FormDef[] = [
   },
   {
     id: 'match',
+    hcpFor: (n) => (n === 4 ? '90' : '100'),
     name: () => tr('Match play', 'Lochspiel'),
     short: () => tr('One against one (or best ball two against two), hole by hole.', 'Einer gegen einen (oder Bestball zwei gegen zwei), Loch für Loch.'),
     rules: () => [
@@ -567,9 +591,7 @@ export const FORMS: FormDef[] = [
     counts: [2, 4],
     settings: [{ key: 'stake', label: () => tr('Stake for the match', 'Einsatz für das Spiel'), type: 'stake', default: 5 }],
     standing: (g) => {
-      const four = g.players.length === 4;
-      const A = four ? [g.players[0].id, g.players[1].id] : [g.players[0].id];
-      const B = four ? [g.players[2].id, g.players[3].id] : [g.players[1].id];
+      const [A, B] = teamsOf(g);
       const nA = A.map((id) => name(g, id)).join(' & ');
       const nB = B.map((id) => name(g, id)).join(' & ');
       const res = g.holes.map((_, i) => holeWinner(best(g, A, i), best(g, B, i)));
@@ -593,11 +615,128 @@ export const FORMS: FormDef[] = [
       };
     },
   },
+  {
+    id: 'hammer',
+    hcpFor: (n) => (n === 4 ? '90' : '100'),
+    name: () => 'Hammer',
+    short: () => tr('Match play where the stake of a hole can be doubled – accept or give up.', 'Lochspiel, bei dem der Einsatz eines Lochs verdoppelt werden kann – annehmen oder aufgeben.'),
+    rules: () => [
+      tr('One against one, or 1 & partner against the other two (better ball).', 'Einer gegen einen oder 1 & Partner gegen die anderen zwei (besserer Ball).'),
+      tr('Every hole starts at the stake. Any time during the hole a side may "hammer": the hole is now worth double.', 'Jedes Loch beginnt mit dem Einsatz. Jederzeit am Loch darf eine Seite „hämmern“: das Loch zählt dann doppelt.'),
+      tr('The other side accepts – or gives the hole up and pays its value before the hammer.', 'Die andere Seite nimmt an – oder gibt das Loch auf und zahlt den Wert vor dem Hammer.'),
+      tr('The lower (net) score wins the hole and its value; a tie: nobody.', 'Das bessere (Netto-)Ergebnis gewinnt das Loch und seinen Wert; Gleichstand: keiner.'),
+    ],
+    players: [2, 4],
+    counts: [2, 4],
+    input: 'hammer',
+    settings: [{ key: 'stake', label: () => tr('Stake per hole', 'Einsatz je Loch'), type: 'stake', default: 1 }],
+    standing: (g) => {
+      const [A, B] = teamsOf(g);
+      const nA = A.map((id) => name(g, id)).join(' & ');
+      const nB = B.map((id) => name(g, id)).join(' & ');
+      let units = 0; // + side A ahead, in stakes
+      let hammers = 0;
+      g.holes.forEach((_, i) => {
+        const x = g.extra[i] ?? {};
+        const v = 2 ** (x.hammer ?? 0);
+        hammers += x.hammer ?? 0;
+        if (x.conceded) {
+          units += x.conceded === 'B' ? v : -v;
+          return;
+        }
+        const r = holeWinner(best(g, A, i), best(g, B, i));
+        if (r) units += r * v;
+      });
+      const money: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
+      for (const id of A) money[id] += units * stake(g);
+      for (const id of B) money[id] -= units * stake(g);
+      const val = (u: number) => tr(`${u >= 0 ? '+' : ''}${u} stakes`, `${u >= 0 ? '+' : ''}${u} Einsätze`);
+      return {
+        rows: [
+          { id: 'A', name: nA, points: units, value: val(units) },
+          { id: 'B', name: nB, points: -units, value: val(-units) },
+        ].sort((a, b) => b.points - a.points),
+        status: tr(`${hammers} hammer(s) accepted`, `${hammers} Hammer angenommen`),
+        money,
+      };
+    },
+  },
+  {
+    id: 'rabbit',
+    hcpFor: () => '100',
+    name: () => 'Rabbit',
+    short: () => tr('Catch the rabbit with an outright hole win – and hold it to the end of the nine.', 'Fang den Hasen mit einem alleinigen Lochsieg – und halte ihn bis zum Ende der Neun.'),
+    rules: () => [
+      tr('The rabbit starts free. Whoever wins a hole alone (net) catches it.', 'Der Hase ist zu Beginn frei. Wer ein Loch allein gewinnt (netto), fängt ihn.'),
+      tr('Another player winning a hole alone sets it free again – the next outright winner catches it.', 'Gewinnt ein anderer Spieler ein Loch allein, ist der Hase wieder frei – der nächste alleinige Sieger fängt ihn.'),
+      tr('Whoever holds the rabbit after the 9th and after the 18th hole wins – each of the others pays the stake.', 'Wer den Hasen nach dem 9. und nach dem 18. Loch hat, gewinnt – jeder andere zahlt den Einsatz.'),
+    ],
+    players: [2, 4],
+    settings: [{ key: 'stake', label: () => tr('Stake per rabbit', 'Einsatz je Hase'), type: 'stake', default: 2 }],
+    standing: (g) => {
+      const half = g.holes.length >= 18 ? 9 : g.holes.length;
+      const ends = [half - 1, g.holes.length - 1];
+      const won: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
+      let holder: string | null = null;
+      g.holes.forEach((_, i) => {
+        if (played(g, i)) {
+          const nets = g.players.map((p) => ({ id: p.id, v: net(g, p.id, i)! }));
+          const low = Math.min(...nets.map((x) => x.v));
+          const w = nets.filter((x) => x.v === low);
+          if (w.length === 1) holder = holder == null ? w[0].id : holder === w[0].id ? holder : null;
+        }
+        if (ends.includes(i) && played(g, i)) {
+          if (holder) won[holder]++;
+          holder = null;
+        }
+      });
+      const money: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
+      const n = g.players.length;
+      for (const p of g.players) {
+        money[p.id] += won[p.id] * (n - 1) * stake(g);
+        for (const q of g.players) if (q.id !== p.id) money[q.id] -= won[p.id] * stake(g);
+      }
+      return {
+        rows: rank(g.players.map((p) => ({ id: p.id, name: p.name, points: won[p.id], value: tr(`${won[p.id]} rabbit(s)`, `${won[p.id]} Hase(n)`) }))),
+        status: holder ? tr(`🐇 ${name(g, holder)} holds the rabbit`, `🐇 ${name(g, holder)} hat den Hasen`) : tr('🐇 The rabbit is free', '🐇 Der Hase ist frei'),
+        money,
+      };
+    },
+  },
+  {
+    id: 'acey',
+    hcpFor: () => '100',
+    name: () => 'Acey Deucey',
+    short: () => tr('Best score on the hole collects from everyone, the worst pays everyone.', 'Bestes Ergebnis am Loch kassiert von allen, das schlechteste zahlt an alle.'),
+    rules: () => [
+      tr('Ace: the best (net) score alone on a hole wins the stake from each other player.', 'Ace: das alleinige beste (Netto-)Ergebnis am Loch bekommt von jedem anderen den Einsatz.'),
+      tr('Deuce: the worst score alone pays the stake to each other player.', 'Deuce: das alleinige schlechteste Ergebnis zahlt jedem anderen den Einsatz.'),
+      tr('Ties for best or worst: nothing for that part of the hole.', 'Gleichstand beim besten oder schlechtesten Ergebnis: für diesen Teil des Lochs nichts.'),
+    ],
+    players: [3, 4],
+    settings: [{ key: 'stake', label: () => tr('Stake', 'Einsatz'), type: 'stake', default: 0.5 }],
+    standing: (g) => {
+      const pts: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
+      const n = g.players.length;
+      g.holes.forEach((_, i) => {
+        if (!played(g, i)) return;
+        const nets = g.players.map((p) => ({ id: p.id, v: net(g, p.id, i)! }));
+        const lo = Math.min(...nets.map((x) => x.v));
+        const hi = Math.max(...nets.map((x) => x.v));
+        const ace = nets.filter((x) => x.v === lo);
+        const deuce = nets.filter((x) => x.v === hi);
+        if (ace.length === 1 && lo !== hi) for (const x of nets) pts[x.id] += x.id === ace[0].id ? n - 1 : -1;
+        if (deuce.length === 1 && lo !== hi) for (const x of nets) pts[x.id] += x.id === deuce[0].id ? -(n - 1) : 1;
+      });
+      const money = Object.fromEntries(g.players.map((p) => [p.id, pts[p.id] * stake(g)]));
+      return { rows: rank(g.players.map((p) => ({ id: p.id, name: p.name, points: pts[p.id], value: `${pts[p.id] >= 0 ? '+' : ''}${pts[p.id]}` }))), money };
+    },
+  },
 ];
 
 // handicap, press and loss limit for the forms where they make sense
-const WITH_HCP: FormId[] = ['skins', 'nassau', 'wolf', 'chicago', 'vegas', 'sixes', 'stableford', 'match'];
-const WITH_DOUBLE: FormId[] = ['skins', 'wolf', 'chicago', 'bbb', 'vegas', 'sixes', 'dots', 'stableford'];
+const WITH_HCP: FormId[] = ['skins', 'nassau', 'wolf', 'chicago', 'vegas', 'sixes', 'stableford', 'match', 'hammer', 'rabbit', 'acey'];
+const WITH_DOUBLE: FormId[] = ['skins', 'wolf', 'chicago', 'bbb', 'vegas', 'sixes', 'dots', 'stableford', 'rabbit', 'acey'];
 for (const f of FORMS) {
   if (WITH_HCP.includes(f.id)) f.settings.unshift(HCP);
   if (WITH_DOUBLE.includes(f.id)) f.settings.push(...DOUBLE);
@@ -643,8 +782,11 @@ export function transfers(money: Record<string, number>): { from: string; to: st
 }
 
 /** Players per side for the team forms (shown in the setup and the standing). */
-export function sidesOf(form: FormId, n: number): [number[], number[]] | null {
-  if (form === 'vegas' || ((form === 'nassau' || form === 'match') && n === 4)) return [[0, 1], [2, 3]];
+export function sidesOf(form: FormId, n: number, partner = 1): [number[], number[]] | null {
+  if (n === 4 && ['vegas', 'nassau', 'match', 'hammer'].includes(form)) {
+    const k = Math.min(3, Math.max(1, partner));
+    return [[0, k], [1, 2, 3].filter((j) => j !== k)];
+  }
   return null;
 }
 

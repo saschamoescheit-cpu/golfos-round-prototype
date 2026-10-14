@@ -140,6 +140,9 @@ export function App() {
       onChanged={() => setRounds(loadRounds())}
     />
   );
+  // open tasks (Sascha 15.10.2026: the yellow dot also on the start page and in Games): shots to check, carries to take over
+  const toCheck = uncheckedRounds(rounds).length;
+  const profileDot = carryToReview(rounds, loadCarryBag()).length > 0;
   if (module !== 'rounds' && bagFrom) return <MyBag rounds={rounds} part={bagFrom.part} onBack={() => setBagFrom(null)} />;
   if (!module)
     return (
@@ -147,6 +150,8 @@ export function App() {
         tab={homeTab}
         onTab={setHomeTab}
         roundOpen={rounds.some((r) => !r.finishedAt)}
+        toCheck={toCheck}
+        profileDot={profileDot}
         gameOpen={loadGames().some((g) => !g.finishedAt)}
         onPick={(m) => {
           if (m === 'games') setGamesTab(undefined);
@@ -155,12 +160,12 @@ export function App() {
         profile={profile}
       />
     );
-  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} tab={gamesTab} onTabChange={setGamesTab} />;
+  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} />;
 
   switch (screen.name) {
     case 'tab': {
       const tab = screen.tab;
-      const dots = { rounds: uncheckedRounds(rounds).length > 0, profile: carryToReview(rounds, loadCarryBag()).length > 0 };
+      const dots = { rounds: toCheck > 0, profile: profileDot };
       return (
         <main className="screen with-tabs">
           {tab === 'play' && (

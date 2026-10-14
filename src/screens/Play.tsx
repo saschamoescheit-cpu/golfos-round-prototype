@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
-import { isSun, setSun } from '../lib/theme';
+import { TopTools } from '../components/TopTools';
 import { uncheckedRounds } from './Rounds';
 
 // Tab "Play" (Sascha 14.10.2026): start a round, or carry on with, finish or cancel the one in progress.
@@ -21,7 +21,6 @@ export function PlayTab(props: {
 }) {
   const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const unchecked = uncheckedRounds(props.rounds).length;
-  const [sun, setSunState] = useState(isSun);
   const [confirm, setConfirm] = useState<'end' | 'abort' | null>(null);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   // First start: the steps that say what the app does (closed once, then gone).
@@ -52,22 +51,7 @@ export function PlayTab(props: {
           <span className="module-tag">Rounds</span>
           <span aria-hidden="true">⇄</span>
         </button>
-        {/* the version in small print, so a new one is easy to spot (Sascha 14.10.2026) */}
-        <span className="spacer topbar-version muted" title={__BUILD_TIME__}>
-          Version {new Date(__BUILD_TIME__).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-        </span>
-        <button
-          type="button"
-          className="lang-btn"
-          aria-pressed={sun}
-          aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on – light screen for bright sunshine', 'Sonnenmodus an – heller Bildschirm für grelles Sonnenlicht')}
-          onClick={() => {
-            setSun(!sun);
-            setSunState(!sun);
-          }}
-        >
-          ☀
-        </button>
+        <TopTools />
       </div>
       <h1 className="tab-title">{tr('Play golf', 'Golf spielen')}</h1>
 

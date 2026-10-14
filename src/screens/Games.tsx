@@ -4,10 +4,11 @@ import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { fullName, loadProfile } from '../lib/profile';
 import { newId } from '../lib/storage';
-import { FORMS, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
+import { FORMS, money, teamsOf, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadGames, saveGame } from '../lib/gamestore';
 import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
+import { TopTools } from '../components/TopTools';
 import { FriendChips, roughPlaying } from './Home';
 import { CoursePicker } from './CoursePicker';
 
@@ -34,6 +35,7 @@ interface Draft {
   optionId: string;
   players: DraftPlayer[];
   settings: Record<string, number | boolean | string>;
+  hcpTouched?: boolean; // the player chose the handicap share himself – no WHS default over it any more
 }
 
 /** The leader – or nobody when the first two are level. */
@@ -47,13 +49,19 @@ const parseHcp = (s: string): number | null => {
   return t === '' || !Number.isFinite(n) ? null : Math.round(t.startsWith('+') ? -n : n);
 };
 
+/** The WHS recommendation for the form and the number of players, unless the player chose the share himself. */
+function withWhs(d: Draft): Draft {
+  const rec = formDef(d.form).hcpFor?.(d.players.length);
+  return rec && !d.hcpTouched && d.settings.allowance != null ? { ...d, settings: { ...d.settings, allowance: rec } } : d;
+}
+
 function newDraft(form: FormId = 'skins'): Draft {
   const p = loadProfile();
   const me = { id: 'me', name: fullName(p) || tr('Me', 'Ich'), hcp: p.hcpIndex ? String(parseHcp(p.hcpIndex) ?? '') : '' };
-  return { form, course: null, optionId: '', players: [me, { id: newId(), name: '', hcp: '' }], settings: defaults(formDef(form)) };
+  return withWhs({ form, course: null, optionId: '', players: [me, { id: newId(), name: '', hcp: '' }], settings: defaults(formDef(form)) });
 }
 
-export function GamesApp(props: { onModules: () => void; profile: ReactNode; tab?: GamesTab; onTabChange?: (t: GamesTab) => void }) {
+export function GamesApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void }) {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
   const [view, setView] = useState<View>(() => (running[0] && !props.tab ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' }));
@@ -69,6 +77,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; tab
           tab={view.tab}
           games={games}
           profile={props.profile}
+          profileDot={props.profileDot}
           onTab={(tab) => {
             setView({ name: 'tab', tab });
             props.onTabChange?.(tab);
@@ -141,6 +150,7 @@ function GamesTabs(props: {
   tab: GamesTab;
   games: Game[];
   profile: ReactNode;
+  profileDot?: boolean;
   onTab: (t: GamesTab) => void;
   onModules: () => void;
   onNew: (form?: FormId) => void;
@@ -158,6 +168,7 @@ function GamesTabs(props: {
             <span className="module-tag">Games</span>
             <span aria-hidden="true">⇄</span>
           </button>
+          <TopTools />
         </div>
       )}
       {props.tab === 'play' && (
@@ -187,7 +198,7 @@ function GamesTabs(props: {
           { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
           { id: 'balance' as GamesTab, label: tr('Balance', 'Bilanz'), icon: MENU_ICONS.balance },
           { id: 'rules' as GamesTab, label: tr('Rules', 'Regeln'), icon: MENU_ICONS.rules },
-          { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile },
+          { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}
         current={props.tab}
         onPick={props.onTab}
@@ -354,8 +365,9 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
     : Array.from({ length: 18 }, (_, i) => ({ label: String(i + 1), par: 4, si: 0 }));
   const n = d.players.length;
   const fits = fitsPlayers(f, n);
-  const sides = sidesOf(d.form, n);
-  const set = (patch: Partial<Draft>) => props.onChange({ ...d, ...patch });
+  const sides = sidesOf(d.form, n, Number(d.settings.partner ?? 1));
+  const set = (patch: Partial<Draft>) => props.onChange(withWhs({ ...d, ...patch }));
+  const whs = f.hcpFor?.(n);
   const setPlayer = (id: string, patch: Partial<DraftPlayer>) => set({ players: d.players.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
   const label = (i: number) => d.players[i].name.trim() || tr(`Player ${i + 1}`, `Spieler ${i + 1}`);
 
@@ -455,9 +467,19 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
           </button>
         )}
         {sides && fits && (
-          <span className="small">
-            {tr('Teams', 'Teams')}: {sides[0].map(label).join(' & ')} {tr('vs', 'gegen')} {sides[1].map(label).join(' & ')}
-          </span>
+          <div className="game-setting">
+            <span className="stepper-label">{tr(`Partner of ${label(0)}`, `Partner von ${label(0)}`)}</span>
+            <div className="chip-set">
+              {[1, 2, 3].map((k) => (
+                <button key={k} type="button" className={`chip${sides[0][1] === k ? ' on' : ''}`} aria-pressed={sides[0][1] === k} onClick={() => set({ settings: { ...d.settings, partner: k } })}>
+                  {label(k)}
+                </button>
+              ))}
+            </div>
+            <span className="small">
+              {tr('Teams', 'Teams')}: {sides[0].map(label).join(' & ')} {tr('vs', 'gegen')} {sides[1].map(label).join(' & ')}
+            </span>
+          </div>
         )}
         {d.form === 'wolf' && fits && <span className="small">{tr('The wolf rotates in this order.', 'Der Wolf wechselt in dieser Reihenfolge.')}</span>}
         {!fits && (
@@ -485,17 +507,28 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             {s.type === 'choice' && (
               <div className="chip-set">
                 {s.options!.map((o) => (
-                  <button key={o.value} type="button" className={`chip${String(d.settings[s.key]) === o.value ? ' on' : ''}`} aria-pressed={String(d.settings[s.key]) === o.value} onClick={() => set({ settings: { ...d.settings, [s.key]: o.value } })}>
+                  <button
+                    key={o.value}
+                    type="button"
+                    className={`chip${String(d.settings[s.key]) === o.value ? ' on' : ''}`}
+                    aria-pressed={String(d.settings[s.key]) === o.value}
+                    onClick={() => set({ settings: { ...d.settings, [s.key]: o.value }, ...(s.key === 'allowance' ? { hcpTouched: true } : {}) })}
+                  >
                     {o.label()}
                   </button>
                 ))}
               </div>
             )}
+            {s.key === 'allowance' && whs && (
+              <span className="muted small">
+                {tr(`WHS recommendation for ${f.name()} with ${n} players: ${whs} %`, `WHS-Empfehlung für ${f.name()} mit ${n} Spielern: ${whs} %`)}
+              </span>
+            )}
             {s.type === 'stake' && (
               <div className="chip-set">
                 {STAKES.map((v) => (
                   <button key={v} type="button" className={`chip${d.settings[s.key] === v ? ' on' : ''}`} aria-pressed={d.settings[s.key] === v} onClick={() => set({ settings: { ...d.settings, [s.key]: v } })}>
-                    {v ? `${v < 1 ? v.toFixed(2).replace('.', ',') : v} €` : tr('none', 'ohne')}
+                    {v ? money(v) : tr('none', 'ohne')}
                   </button>
                 ))}
               </div>
@@ -521,7 +554,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                   className="pick-option"
                   aria-pressed={o.id === d.form}
                   onClick={() => {
-                    props.onChange({ ...d, form: o.id, settings: defaults(o) });
+                    props.onChange(withWhs({ ...d, form: o.id, settings: { ...defaults(o), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
                     setPicker(false);
                   }}
                 >
@@ -701,6 +734,10 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
         </section>
       )}
 
+      {f.input === 'hammer' && (
+        <HammerCard game={g} hole={i} onChange={setExtra} />
+      )}
+
       {f.input === 'dots' && (
         <section className="card game-extra">
           <span className="muted small">{tr('Birdies and eagles count by themselves.', 'Birdies und Eagles zählen von selbst.')}</span>
@@ -772,7 +809,7 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
   );
 }
 
-const euroText = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
+const euroText = money;
 
 /** Press (Sascha 15.10.2026): the last one may double the stake – 0,10 € → 0,20 € … up to the highest stake. */
 function PressCard(props: { game: Game; hole: number; onChange: (g: Game) => void }) {
@@ -825,7 +862,7 @@ function StandingCard(props: { game: Game; final?: boolean }) {
       <span className="muted small">
         {allowanceOf(g) ? tr(`Handicap ${allowanceOf(g)} %`, `Vorgabe ${allowanceOf(g)} %`) : tr('Gross, without handicap', 'Brutto, ohne Vorgabe')}
         {Number(g.settings.stake ?? 0) > 0 ? ` · ${tr('stake', 'Einsatz')} ${euroText(stakeNow(g))}` : ''}
-        {Number(g.settings.maxLoss ?? 0) > 0 ? ` · ${tr('loss limit', 'Verlustgrenze')} ${g.settings.maxLoss} €` : ''}
+        {Number(g.settings.maxLoss ?? 0) > 0 ? ` · ${tr('loss limit', 'Verlustgrenze')} ${money(Number(g.settings.maxLoss))}` : ''}
       </span>
       <ol className="game-rows">
         {st.rows.map((r) => (
@@ -881,7 +918,7 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
                 <span>
                   {nm(t.from)} → {nm(t.to)}
                 </span>
-                <strong>{formatEuro(t.amount).replace('+', '')}</strong>
+                <strong>{money(t.amount)}</strong>
               </li>
             ))}
           </ul>
@@ -949,6 +986,41 @@ function ScoreGrid(props: { game: Game }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </section>
+  );
+}
+
+/** Hammer on the hole: doublings accepted, or a side gave the hole up (night run 15./16.10.2026). */
+function HammerCard(props: { game: Game; hole: number; onChange: (x: Partial<HoleExtra>) => void }) {
+  const g = props.game;
+  const x = g.extra[props.hole] ?? {};
+  const h = x.hammer ?? 0;
+  const [A, B] = teamsOf(g);
+  const side = (ids: string[]) => ids.map((id) => g.players.find((p) => p.id === id)?.name ?? '?').join(' & ');
+  return (
+    <section className="card game-extra" aria-label="Hammer">
+      <span className="stepper-label">
+        {tr('This hole is worth', 'Dieses Loch zählt')} {money(Number(g.settings.stake ?? 0) * 2 ** h)}
+        <span className="muted small"> · {h}× {tr('hammered', 'gehämmert')}</span>
+      </span>
+      <div className="chip-set">
+        <button type="button" className="chip" onClick={() => props.onChange({ hammer: h + 1, conceded: undefined })}>
+          {tr('Hammer (×2)', 'Hammer (×2)')}
+        </button>
+        {h > 0 && (
+          <button type="button" className="chip" onClick={() => props.onChange({ hammer: h - 1 })}>
+            {tr('Take back', 'Zurücknehmen')}
+          </button>
+        )}
+      </div>
+      <span className="muted small">{tr('A hammer declined: the side gives the hole up at its value before.', 'Hammer abgelehnt: die Seite gibt das Loch zum bisherigen Wert auf.')}</span>
+      <div className="chip-set">
+        {(['A', 'B'] as const).map((k) => (
+          <button key={k} type="button" className={`chip${x.conceded === k ? ' on' : ''}`} aria-pressed={x.conceded === k} onClick={() => props.onChange({ conceded: x.conceded === k ? undefined : k })}>
+            {tr(`${side(k === 'A' ? A : B)} gives up`, `${side(k === 'A' ? A : B)} gibt auf`)}
+          </button>
+        ))}
       </div>
     </section>
   );

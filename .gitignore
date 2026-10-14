@@ -4,3 +4,4 @@ dev-dist/
 *.log
 *.tsbuildinfo
 scripts/audit-out/
+__pycache__/

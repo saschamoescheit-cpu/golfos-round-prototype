@@ -311,16 +311,28 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
 export function detectHole(pos: LngLat, holes: (HoleMapData | null)[], current: number): number | null {
   const TEE_M = 25; // standing on a tee
   const ON_HOLE_M = 30; // inside the hole's corridor
+  const NEXT_TEE_M = 80; // around a tee: on the way there or still close by
   const cur = holes[current];
+  const next = holes[current + 1];
   const ahead: number[] = [];
   for (let k = current + 1; k <= current + 3 && k < holes.length; k++) if (holes[k]) ahead.push(k);
-  const onTee = ahead.find((k) => distanceM(pos, holes[k]!.tee) <= TEE_M);
+  // Holes are played in order: a later hole only when the player is clearly away from the current and the next tee
+  // (night run 15./16.10.2026, Son Térmens: the 18th tee lies next to the 16th, the 18th fairway between the 15th
+  // green and the 16th tee – the app jumped from 15 to 18 and stayed there).
+  const nearNextTee = next != null && distanceM(pos, next.tee) <= NEXT_TEE_M;
+  const nearCurTee = cur != null && distanceM(pos, cur.tee) <= NEXT_TEE_M;
+  const mayJump = !nearNextTee && !nearCurTee;
+  const allowed = (k: number) => k === current + 1 || mayJump;
+  const inReach = ahead.filter((k) => allowed(k) && distanceM(pos, holes[k]!.tee) <= TEE_M).sort((a, b) => distanceM(pos, holes[a]!.tee) - distanceM(pos, holes[b]!.tee));
+  const onTee = inReach.includes(current + 1) ? current + 1 : inReach[0];
   if (cur) {
+    // standing on the current tee: stay
+    const onCurTee = distanceM(pos, cur.tee) <= TEE_M && (onTee == null || distanceM(pos, cur.tee) <= distanceM(pos, holes[onTee]!.tee));
     // Next tee right behind the current green: switch only once the player has left the green.
-    if (onTee != null && distanceM(pos, cur.greenCenter) > 25) return onTee;
+    if (onTee != null && !onCurTee && distanceM(pos, cur.greenCenter) > 25) return onTee;
     if (distToLine(pos, cur.line) <= ON_HOLE_M) return null;
   } else if (onTee != null) return onTee;
-  return ahead.find((k) => distToLine(pos, holes[k]!.line) <= ON_HOLE_M) ?? null;
+  return ahead.find((k) => allowed(k) && distToLine(pos, holes[k]!.line) <= ON_HOLE_M) ?? null;
 }
 
 export type Unit = 'm' | 'yd';
