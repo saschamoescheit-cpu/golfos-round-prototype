@@ -16,6 +16,7 @@ const ok = (cond, what) => {
 };
 
 await p.goto(url);
+await p.waitForTimeout(1500); // let the service worker register first (a reload right away cancels it: a WebKit error)
 await p.evaluate(() => {
   localStorage.clear();
   sessionStorage.clear();
