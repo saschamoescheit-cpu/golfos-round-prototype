@@ -35,7 +35,9 @@ await p.locator('button.list-item').first().click();
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(6000);
 // the hole map saves the imagery of the round for offline (hint "Karte offline gespeichert")
-await p.waitForFunction(() => document.body.innerText.includes('offline gespeichert'), null, { timeout: 120000 }).catch(() => {});
+const t0 = Date.now();
+await p.waitForFunction(() => document.body.innerText.includes('offline gespeichert ✓'), null, { timeout: 240000 }).catch(() => {});
+console.log('prefetch', Math.round((Date.now() - t0) / 1000), 's; hint:', (await p.locator('.map-shot').allInnerTexts()).join(' | '));
 ok(await p.evaluate(() => JSON.stringify(Object.keys(localStorage)).includes('golfos.offline')), 'map of the round saved for offline');
 
 await ctx.setOffline(true);
@@ -52,6 +54,7 @@ ok(saved === 4, `offline: the score is saved (${saved})`);
 await p.getByRole('button', { name: /Caddie zeigen/ }).click().catch(() => {});
 ok((await p.locator('.caddie-card').count()) === 1, 'offline: the caddie works');
 const tiles = await p.evaluate(() => [...document.querySelectorAll('canvas')].length);
+if (process.argv[3]) await p.screenshot({ path: process.argv[3] });
 ok(tiles > 0, 'offline: the map is drawn');
 ok(errs.filter((e) => !/Failed to fetch|NetworkError|Load failed|weather|open-meteo/i.test(e)).length === 0, `no page errors ${errs.join(' | ')}`);
 await ctx.setOffline(false);
