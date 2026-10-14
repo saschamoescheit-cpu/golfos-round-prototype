@@ -66,54 +66,54 @@ export function PlayTab(props: {
       </div>
       <h1 className="tab-title">{tr('Play golf', 'Golf spielen')}</h1>
 
+      {/* first start: a window of its own over the start page – gone after "Got it" (Sascha 15.10.2026) */}
       {intro && (
-        <section className="card intro" aria-label={tr('How GolfOS works', 'So funktioniert GolfOS')}>
-          <span className="eyebrow">{tr('How GolfOS works', 'So funktioniert GolfOS')}</span>
-          <ol>
-            <li>
-              <span>
-                <strong>{tr('Pick your course', 'Platz wählen')}</strong>
-                <span className="muted small">{tr('Nearby or by name, then your tee and playing handicap.', 'In der Nähe oder nach Namen, dann Abschlag und Spielvorgabe.')}</span>
-              </span>
-            </li>
-            <li>
-              <span>
-                <strong>{tr('Play with the hole map', 'Mit der Lochkarte spielen')}</strong>
-                <span className="muted small">
-                  {tr(
-                    'Distances to the green come from GPS. Numbers at bunkers and water: to reach / to carry it.',
-                    'Die Distanzen zum Grün kommen per GPS. Zahlen an Bunkern und Wasser: bis dorthin / drüber.',
-                  )}
+        <div className="intro-backdrop">
+          <section className="card intro intro-modal" role="dialog" aria-modal="true" aria-label={tr('How GolfOS works', 'So funktioniert GolfOS')}>
+            <span className="eyebrow">{tr('How GolfOS works', 'So funktioniert GolfOS')}</span>
+            <ol>
+              <li>
+                <span>
+                  <strong>{tr('Pick your course', 'Platz wählen')}</strong>
+                  <span className="muted small">{tr('Nearby or by name, then your tee and game mode.', 'In der Nähe oder nach Namen, dann Abschlag und Spielmodus.')}</span>
                 </span>
-              </span>
-            </li>
-            <li>
-              <span>
-                <strong>{tr('Listen to your caddie', 'Auf den Caddie hören')}</strong>
-                <span className="muted small">
-                  {tr(
-                    'Tap the caddie button for the club and where to aim, with wind and slope – a dot on it means he has something new. The round icons switch caddie, pin and green slope on and off.',
-                    'Tippe auf den Caddie-Knopf für Schläger und Ziel, mit Wind und Hang – ein Punkt daran heißt: er hat etwas Neues. Die runden Symbole schalten Caddie, Fahne und Grün-Neigung ein und aus.',
-                  )}
+              </li>
+              <li>
+                <span>
+                  <strong>{tr('Play with the hole map', 'Mit der Lochkarte spielen')}</strong>
+                  <span className="muted small">
+                    {tr(
+                      'Back, middle and front of the green by GPS. On the right: the caddie, green slope, hazards (to and over) and the 2D view.',
+                      'Hinten, Mitte und Vorne des Grüns per GPS. Rechts: Caddie, Grün-Neigung, Hindernisse (bis / über) und die 2D-Ansicht.',
+                    )}
+                  </span>
                 </span>
-              </span>
-            </li>
-            <li>
-              <span>
-                <strong>{tr('After the round: check your shots', 'Nach der Runde: Schläge prüfen')}</strong>
-                <span className="muted small">
-                  {tr(
-                    'On the course you only enter score and putts. Afterwards the app finds your shots in the GPS track – most accurately when you take the phone out at your ball. Tap the map to correct, and tell the caddie where you would have played differently.',
-                    'Auf dem Platz trägst du nur Score und Putts ein. Danach findet die App deine Schläge in der GPS-Spur – am genauesten, wenn du das Handy an deinem Ball kurz herausnimmst. Antippen der Karte korrigiert, und dem Caddie sagst du, wo du anders gespielt hättest.',
-                  )}
+              </li>
+              <li>
+                <span>
+                  <strong>{tr('Score after each hole', 'Score nach jedem Loch')}</strong>
+                  <span className="muted small">
+                    {tr('Tap the hole bar at the bottom: strokes, putts, sand shots, fairway. ‹ › change the hole.', 'Tippe unten auf die Lochleiste: Schläge, Putts, Sand Shots, Fairway. ‹ › wechseln das Loch.')}
+                  </span>
                 </span>
-              </span>
-            </li>
-          </ol>
-          <button type="button" className="btn-secondary" onClick={closeIntro}>
-            {tr('Got it', 'Verstanden')}
-          </button>
-        </section>
+              </li>
+              <li>
+                <span>
+                  <strong>{tr('After the round: check your shots', 'Nach der Runde: Schläge prüfen')}</strong>
+                  <span className="muted small">
+                    {tr(
+                      'The app finds your shots in the GPS track – most accurately when you glance at the phone at your ball. Check them, or keep the round as a scorecard only.',
+                      'Die App findet deine Schläge in der GPS-Spur – am genauesten, wenn du am Ball kurz aufs Handy schaust. Prüfe sie, oder behalte die Runde nur als Scorekarte.',
+                    )}
+                  </span>
+                </span>
+              </li>
+            </ol>
+            <button type="button" className="btn-primary" onClick={closeIntro}>
+              {tr('Got it', 'Verstanden')}
+            </button>
+          </section>
+        </div>
       )}
 
       {open && (

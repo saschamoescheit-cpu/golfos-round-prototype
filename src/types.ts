@@ -150,6 +150,8 @@ export interface Round {
   rating?: { cr: number; slope: number };
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
+  /** Rebuilt from its GPS track after it was lost on the phone (lib/restore.ts) – holes and score to check. */
+  restored?: boolean;
   /**
    * Quick or detailed tracking, chosen after the round (Sascha 14.10.2026 – the GPS track is recorded anyway):
    * 'score' = only a digital scorecard, no round check; 'full' or missing = the shots are checked after the round.

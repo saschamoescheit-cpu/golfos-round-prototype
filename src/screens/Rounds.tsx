@@ -80,14 +80,14 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                   </span>
                   <span className="grow">
                     <span className="title">{r.courseName}</span>
-                    <span className="muted small">{[loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`].filter(Boolean).join(' · ')}</span>
+                    <span className="muted small">{[loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`, r.restored ? tr('restored from GPS', 'aus GPS wiederhergestellt') : null].filter(Boolean).join(' · ')}</span>
                     {needsCheck(r) && <span className="small warn-text" style={{ display: 'block', fontWeight: 600 }}>{tr('Check your shots →', 'Schläge prüfen →')}</span>}
                   </span>
                   <span style={{ textAlign: 'right' }}>
-                    <span style={{ font: '700 20px var(--display)' }}>{t.gross}</span>
+                    <span style={{ font: '700 20px var(--display)' }}>{t.holesPlayed ? t.gross : '–'}</span>
                     <span className="muted small" style={{ display: 'block' }}>
-                      {formatToPar(t.toPar)}
-                      {t.stableford != null ? ` · ${t.stableford} ${tr('pts', 'Pkt.')}` : ''}
+                      {t.holesPlayed ? formatToPar(t.toPar) : tr('no score yet', 'noch kein Score')}
+                      {t.holesPlayed && t.stableford != null ? ` · ${t.stableford} ${tr('pts', 'Pkt.')}` : ''}
                     </span>
                   </span>
                 </button>

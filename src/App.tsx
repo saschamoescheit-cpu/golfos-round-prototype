@@ -3,6 +3,7 @@ import type { Course, Round, RoundHole } from './types';
 import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCarryBag, loadRounds, saveRound } from './lib/storage';
 import { commitParAt } from './lib/scoring';
 import { carryToReview } from './lib/stats';
+import { restoreLostRounds } from './lib/restore';
 import { PlayTab } from './screens/Play';
 import { RoundsTab, uncheckedRounds } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
@@ -85,6 +86,7 @@ const ROUNDS: Screen = { name: 'tab', tab: 'rounds' };
 export function App() {
   // rounds left open for more than a day are tidied up first (finished with their scores, or deleted when empty)
   const [rounds, setRounds] = useState<Round[]>(() => {
+    restoreLostRounds(); // rounds whose GPS track is still there (lost by the tidy-up of 14.10.)
     closeStaleRounds(24);
     return loadRounds();
   });

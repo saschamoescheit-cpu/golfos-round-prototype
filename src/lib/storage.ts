@@ -34,8 +34,14 @@ export function saveRound(round: Round): void {
   write(ROUNDS, [round, ...rounds]);
 }
 
+/** Deletes a round the player wants gone – with its GPS track, plan and caddie notes, so it does not come back. */
 export function deleteRound(id: string): void {
   write(ROUNDS, loadRounds().filter((r) => r.id !== id));
+  try {
+    for (const k of ['golfos.track.v1.', 'golfos.live.v1.', 'golfos.caddielog.v1.']) localStorage.removeItem(k + id);
+  } catch {
+    /* storage blocked */
+  }
 }
 
 export function loadCachedCourse(id: string): Course | null {
@@ -189,13 +195,20 @@ export function newId(): string {
 
 /**
  * Rounds left open by accident (Sascha 14.10.2026: after cancelling a round an older one showed "Continue round"):
- * open rounds other than `keep` and older than `maxAgeH` hours are finished when they have a score, else deleted.
+ * open rounds other than `keep` and older than `maxAgeH` hours are finished. Only a round with neither a score nor a
+ * GPS track is deleted – a round played without entering a score is still a round (15.10.2026: Son Gual was lost).
  */
 export function closeStaleRounds(maxAgeH: number, keep: string | null = null): void {
   for (const r of loadRounds()) {
     if (r.finishedAt || r.id === keep || Date.now() - Date.parse(r.createdAt) < maxAgeH * 3600 * 1000) continue;
     const scored = Object.values(r.entries).some((list) => list.some((e) => e.strokes != null || e.pickedUp));
-    if (scored) saveRound({ ...r, finishedAt: r.createdAt });
+    let tracked = false;
+    try {
+      tracked = JSON.parse(localStorage.getItem('golfos.track.v1.' + r.id) ?? '[]').length >= 30;
+    } catch {
+      tracked = false;
+    }
+    if (scored || tracked) saveRound({ ...r, finishedAt: r.createdAt });
     else deleteRound(r.id);
   }
 }
