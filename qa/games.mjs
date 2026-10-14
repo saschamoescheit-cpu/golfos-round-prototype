@@ -92,6 +92,23 @@ for (const [form, n] of CASES) {
 }
 ok((await p.locator('.list-item').count()) === CASES.length, `${CASES.length} games in the list`);
 
+// Chicago for money: gross, press doubles 0,10 € up to the cap (Sascha 15.10.2026)
+await p.getByRole('button', { name: 'Neues Spiel' }).click();
+await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await p.locator('.pick-option').filter({ hasText: 'Chicago' }).click();
+await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
+await p.locator('.game-setting').filter({ hasText: 'Vorgabe (WHS)' }).getByRole('button', { name: 'Ohne (brutto)' }).click();
+await p.locator('.game-setting').filter({ hasText: 'Press:' }).getByRole('button', { name: 'Ja' }).click();
+ok(await p.getByText('Höchsteinsatz nach Press').isVisible(), 'highest stake shows once press is on');
+await p.getByRole('button', { name: 'Spiel starten' }).click();
+await p.getByRole('button', { name: 'Par für alle übrigen' }).click();
+await p.locator('.game-scores .stepper').nth(1).getByRole('button', { name: 'plus eins' }).click(); // Ben bogey
+await p.getByRole('button', { name: 'Nächstes Loch ›' }).click();
+await p.getByRole('button', { name: 'Ben presst (×2)' }).click();
+ok((await p.locator('[aria-label="Press"]').innerText()).includes('0,20 €'), 'press doubles the stake to 0,20 €');
+ok((await p.locator('.game-standing').innerText()).includes('Brutto, ohne Vorgabe'), 'standing says gross');
+await p.getByRole('button', { name: 'Spiele' }).click();
+
 // too few players: no start
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
 await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();

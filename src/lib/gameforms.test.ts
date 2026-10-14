@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formDef, received, transfers, type FormId, type Game } from './gameforms';
+import { capLoss, formDef, received, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
 
 const holes = (n: number) => Array.from({ length: n }, (_, i) => ({ label: String(i + 1), par: 4, si: i + 1 }));
 
@@ -120,5 +120,29 @@ describe('snake and transfers', () => {
       { from: 'b', to: 'a', amount: 3 },
       { from: 'c', to: 'a', amount: 3 },
     ]);
+  });
+});
+
+describe('handicap share, press and limits (Sascha 15.10.2026)', () => {
+  it('plays gross without handicap and with a share of it', () => {
+    const scores = [Array(18).fill(5), Array(18).fill(4)];
+    expect(formDef('stableford').standing(game('stableford', scores, { allowance: '0' }, [18, 0])).rows.map((r) => r.points)).toEqual([36, 18]);
+    expect(formDef('stableford').standing(game('stableford', scores, { allowance: '50' }, [18, 0])).rows.map((r) => r.points)).toEqual([36, 27]);
+    // Chicago without handicap: the quota is 39 for everyone
+    expect(formDef('chicago').standing(game('chicago', [Array(18).fill(4)], { allowance: '0' }, [18])).rows[0].points).toBe(36 - 39);
+  });
+  it('a press doubles the stake up to the highest stake', () => {
+    const g = game('chicago', [Array(18).fill(4), Array(18).fill(5)], { stake: 0.1, double: true, maxStake: '1.6' });
+    g.presses = [1, 2, 3].map((hole) => ({ hole, by: 'p1' }));
+    expect(stakeNow(g)).toBeCloseTo(0.8);
+    g.presses.push({ hole: 4, by: 'p1' }, { hole: 5, by: 'p1' });
+    expect(stakeNow(g)).toBeCloseTo(1.6); // 3.20 would be over the cap
+    // 18 points apart × 1.60 €
+    expect(standingOf(g).money!.p0).toBeCloseTo(28.8);
+  });
+  it('nobody loses more than the limit', () => {
+    expect(capLoss({ a: 30, b: -20, c: -10 }, 10)).toEqual({ a: 20, b: -10, c: -10 });
+    const g = game('skins', [[3, 3, 3], [4, 4, 4], [4, 4, 4]], { stake: 10, maxLoss: '20' });
+    expect(standingOf(g).money).toEqual({ p0: 40, p1: -20, p2: -20 });
   });
 });

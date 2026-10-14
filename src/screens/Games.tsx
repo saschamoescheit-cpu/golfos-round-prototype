@@ -4,7 +4,7 @@ import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { fullName, loadProfile } from '../lib/profile';
 import { newId } from '../lib/storage';
-import { FORMS, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, received, sidesOf, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
+import { FORMS, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadGames, saveGame } from '../lib/gamestore';
 import { TopBar } from '../components/ui';
 import { CoursePicker } from './CoursePicker';
@@ -160,7 +160,7 @@ function GamesHome(props: { games: Game[]; onModules: () => void; onNew: () => v
           <ul className="list">
             {props.games.map((g) => {
               const f = formDef(g.form);
-              const st = f.standing(g);
+              const st = standingOf(g);
               return (
                 <li key={g.id}>
                   <button type="button" className={`list-item${g.finishedAt ? '' : ' live'}`} onClick={() => props.onOpen(g)}>
@@ -352,7 +352,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
-        {f.settings.map((s) => (
+        {f.settings.filter((s) => !s.when || s.when(d.settings)).map((s) => (
           <div key={s.key} className="game-setting">
             <span className="stepper-label">{s.label()}</span>
             {s.type === 'bool' && (
@@ -364,11 +364,20 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                 ))}
               </div>
             )}
+            {s.type === 'choice' && (
+              <div className="chip-set">
+                {s.options!.map((o) => (
+                  <button key={o.value} type="button" className={`chip${String(d.settings[s.key]) === o.value ? ' on' : ''}`} aria-pressed={String(d.settings[s.key]) === o.value} onClick={() => set({ settings: { ...d.settings, [s.key]: o.value } })}>
+                    {o.label()}
+                  </button>
+                ))}
+              </div>
+            )}
             {s.type === 'stake' && (
               <div className="chip-set">
                 {STAKES.map((v) => (
                   <button key={v} type="button" className={`chip${d.settings[s.key] === v ? ' on' : ''}`} aria-pressed={d.settings[s.key] === v} onClick={() => set({ settings: { ...d.settings, [s.key]: v } })}>
-                    {v ? `${String(v).replace('.', ',')} €` : tr('none', 'ohne')}
+                    {v ? `${v < 1 ? v.toFixed(2).replace('.', ',') : v} €` : tr('none', 'ohne')}
                   </button>
                 ))}
               </div>
@@ -434,7 +443,7 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
   const i = g.current;
   const hole = g.holes[i];
   const x: HoleExtra = g.extra[i] ?? {};
-  const st = f.standing(g);
+  const st = standingOf(g);
   const last = i === g.holes.length - 1;
   const [confirm, setConfirm] = useState(false);
 
@@ -480,7 +489,7 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
       <section className="card game-scores">
         {g.players.map((p) => {
           const v = g.scores[p.id][i];
-          const strokes = g.settings.net === false ? 0 : received(g.holes, p.hcp)[i];
+          const strokes = strokesOn(g, p)[i];
           return (
             <div key={p.id} className="stepper-row">
               <span className="stepper-label">
@@ -596,6 +605,8 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
         </section>
       )}
 
+      {g.settings.double && Number(g.settings.stake) > 0 && <PressCard game={g} hole={i} onChange={props.onChange} />}
+
       <StandingCard game={g} />
 
       <span className="spacer" />
@@ -643,14 +654,61 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
   );
 }
 
+const euroText = (v: number) => `${v.toFixed(2).replace('.', ',')} €`;
+
+/** Press (Sascha 15.10.2026): the last one may double the stake – 0,10 € → 0,20 € … up to the highest stake. */
+function PressCard(props: { game: Game; hole: number; onChange: (g: Game) => void }) {
+  const g = props.game;
+  const st = standingOf(g);
+  const presses = g.presses ?? [];
+  const here = presses.find((x) => x.hole === props.hole);
+  const low = Math.min(...st.rows.map((r) => r.points));
+  const last = holesPlayed(g) > 0 && st.rows.some((r) => r.points !== low) ? st.rows.filter((r) => r.points === low) : [];
+  const cap = Number(g.settings.maxStake ?? 0);
+  return (
+    <section className="card game-extra" aria-label="Press">
+      <span className="stepper-label">
+        {tr('Stake now', 'Einsatz jetzt')}: {euroText(stakeNow(g))}
+        <span className="muted small">
+          {' '}
+          · {presses.length}× {tr('pressed', 'gepresst')}
+          {cap > 0 ? ` · max ${euroText(cap)}` : ''}
+        </span>
+      </span>
+      {here ? (
+        <button type="button" className="chip" onClick={() => props.onChange({ ...g, presses: presses.filter((x) => x !== here) })}>
+          {tr(`Take back the press of ${st.rows.find((r) => r.id === here.by)?.name ?? ''}`, `Press von ${st.rows.find((r) => r.id === here.by)?.name ?? ''} zurücknehmen`)}
+        </button>
+      ) : !canPress(g) ? (
+        <span className="muted small">{tr('Highest stake reached – no more presses.', 'Höchsteinsatz erreicht – kein Press mehr möglich.')}</span>
+      ) : last.length ? (
+        <div className="chip-set">
+          {last.map((r) => (
+            <button key={r.id} type="button" className="chip" onClick={() => props.onChange({ ...g, presses: [...presses, { hole: props.hole, by: r.id }] })}>
+              {tr(`${r.name} presses (×2)`, `${r.name} presst (×2)`)}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <span className="muted small">{tr('The last one may press once someone is behind.', 'Pressen darf der Letzte, sobald jemand hinten liegt.')}</span>
+      )}
+    </section>
+  );
+}
+
 function StandingCard(props: { game: Game; final?: boolean }) {
   const g = props.game;
-  const st = formDef(g.form).standing(g);
+  const st = standingOf(g);
   const hasMoney = st.money && Object.values(st.money).some((v) => Math.abs(v) > 0.001);
   return (
     <section className="card game-standing" aria-label={tr('Standing', 'Zwischenstand')}>
       <span className="eyebrow">{props.final ? tr('Result', 'Ergebnis') : tr('Standing', 'Zwischenstand')}</span>
       {st.status && <span className="small game-status">{st.status}</span>}
+      <span className="muted small">
+        {allowanceOf(g) ? tr(`Handicap ${allowanceOf(g)} %`, `Vorgabe ${allowanceOf(g)} %`) : tr('Gross, without handicap', 'Brutto, ohne Vorgabe')}
+        {Number(g.settings.stake ?? 0) > 0 ? ` · ${tr('stake', 'Einsatz')} ${euroText(stakeNow(g))}` : ''}
+        {Number(g.settings.maxLoss ?? 0) > 0 ? ` · ${tr('loss limit', 'Verlustgrenze')} ${g.settings.maxLoss} €` : ''}
+      </span>
       <ol className="game-rows">
         {st.rows.map((r) => (
           // level players share the place; only a leader of his own is marked
@@ -680,7 +738,7 @@ function StandingCard(props: { game: Game; final?: boolean }) {
 function GameResult(props: { game: Game; onBack: () => void; onReopen: () => void; onDelete: () => void }) {
   const g = props.game;
   const f = formDef(g.form);
-  const st = f.standing(g);
+  const st = standingOf(g);
   const pays = st.money ? transfers(st.money) : [];
   const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
   const [ask, setAsk] = useState(false);
@@ -786,9 +844,8 @@ export function ModuleChooser(props: { roundOpen: boolean; gameOpen: boolean; on
       <div className="brand module-brand">
         GOLF<span>OS</span>
       </div>
-      <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
-        {tr('What would you like to open?', 'Was möchtest du öffnen?')}
-      </p>
+      {/* the GolfOS claim (Sascha 15.10.2026), the same in both languages */}
+      <p className="muted module-claim">unlock every part of your golf game</p>
       <button type="button" className="module-card" onClick={() => props.onPick('rounds')}>
         <span className="module-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

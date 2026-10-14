@@ -121,17 +121,29 @@ export function HoleDrawer(props: {
           </button>
         </div>
 
+        {/* three actions side by side as icons (Sascha 15.10.2026): scorecard, pause, stop like a recording */}
         <div className="drawer-actions">
-          <button type="button" className="btn-secondary" onClick={props.onScorecard}>
-            {tr('Scorecard', 'Scorekarte')}
+          <button type="button" className="drawer-action" onClick={props.onScorecard}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <rect x="4" y="3" width="16" height="18" rx="2" />
+              <path d="M8 8h8M8 12h8M8 16h5" />
+            </svg>
+            <span>{tr('Scorecard', 'Scorekarte')}</span>
           </button>
-          <button type="button" className="btn-primary" onClick={props.onEnd}>
-            {tr('Finish round', 'Runde beenden')}
+          <button type="button" className="drawer-action" onClick={props.onPause} aria-label={tr('Pause round – continue later', 'Runde pausieren – später fortsetzen')}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="4" width="4" height="16" rx="1.2" />
+              <rect x="14" y="4" width="4" height="16" rx="1.2" />
+            </svg>
+            <span>{tr('Pause', 'Pausieren')}</span>
+          </button>
+          <button type="button" className="drawer-action end" onClick={props.onEnd} aria-label={tr('Finish round', 'Runde beenden')}>
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor" />
+            </svg>
+            <span>{tr('Finish', 'Beenden')}</span>
           </button>
         </div>
-        <button type="button" className="btn-ghost" onClick={props.onPause}>
-          {tr('Pause round – continue later', 'Runde pausieren – später fortsetzen')}
-        </button>
       </section>
     </div>
   );
