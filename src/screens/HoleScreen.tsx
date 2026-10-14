@@ -805,8 +805,9 @@ export function HoleScreen(props: {
             </span>
           )}
           {/* Distances follow the GPS position on the hole; elsewhere (at home, no signal) they count from the tee – say why. */}
-          <span className={`map-from${onHole ? '' : ' off'}`}>
-            {onHole ? `GPS ±${Math.round(player!.accuracy)} m` : player ? tr('from tee · GPS not on the course', 'ab Abschlag · GPS nicht am Platz') : tr('from tee · no GPS', 'ab Abschlag · kein GPS')}
+          {/* poor GPS (trees, buildings): said plainly, the numbers above may be several metres off */}
+          <span className={`map-from${onHole ? (player!.accuracy > 12 ? ' poor' : '') : ' off'}`}>
+            {onHole ? (player!.accuracy > 12 ? tr(`GPS poor ±${Math.round(player!.accuracy)} m`, `GPS ungenau ±${Math.round(player!.accuracy)} m`) : `GPS ±${Math.round(player!.accuracy)} m`) : player ? tr('from tee · GPS not on the course', 'ab Abschlag · GPS nicht am Platz') : tr('from tee · no GPS', 'ab Abschlag · kein GPS')}
           </span>
         </div>
 
