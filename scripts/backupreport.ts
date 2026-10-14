@@ -88,6 +88,13 @@ round.holes.forEach((h, i) => {
   }
 });
 if (compared) console.log(`\nchecked holes: ${compared} · exact ${exact} (${Math.round((100 * exact) / compared)} %) · shots found ${found}/${truthN}`);
+// the player's verdicts: caddie advice, and how the putts broke against the read (calibration of green slope/speed)
+const all = Object.values(cad).flat();
+const advice = all.filter((c) => c.club !== 'Putt');
+const putts = all.filter((c) => c.club === 'Putt');
+const count = (list: typeof all, f: (c: (typeof all)[number]) => boolean) => list.filter(f).length;
+console.log(`caddie: ${count(advice, (c) => c.verdict === 'ok')} fits · ${count(advice, (c) => c.verdict === 'other')} other · ${count(advice, (c) => !c.verdict)} not rated`);
+console.log(`putt reads: ${count(putts, (c) => c.verdict === 'ok')} fit · ${count(putts, (c) => c.note === 'bricht weniger')} broke less · ${count(putts, (c) => c.note === 'bricht mehr')} broke more · ${count(putts, (c) => !c.verdict)} not rated`);
 
 function median(a: number[]): number {
   const s = a.slice().sort((x, y) => x - y);
