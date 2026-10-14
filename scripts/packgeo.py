@@ -83,7 +83,7 @@ def pack(path):
     if enc:
         geo['enc'] = enc
     json.dump(geo, open(path, 'w', encoding='utf-8'), separators=(',', ':'), ensure_ascii=False)
-    print(os.path.basename(path), ':', before // 1024, '→', os.path.getsize(path) // 1024, 'KB,', len(enc.get('canopy', [])), 'crowns kept')
+    print(os.path.basename(path), ':', before // 1024, '->', os.path.getsize(path) // 1024, 'KB,', len(enc.get('canopy', [])), 'crowns kept')
 
 
 if __name__ == '__main__':

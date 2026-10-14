@@ -56,7 +56,7 @@ def collect(path):
     k = 1 / math.cos(math.radians(lat_c))
     step = mpp * k
     px = lambda m: max(3, int(round(m / mpp)) | 1)
-    tiles, pos, neg = [], [], []
+    tiles, pos, neg, self_pos, self_neg = [], [], [], [], []
     for h in holes:
         xs, ys = zip(*[merc(*p) for p in h['line']])
         pad = (CORRIDOR + 25) * k
@@ -86,8 +86,21 @@ def collect(path):
                 pos.append(p_[:: max(1, len(p_) // 4000)])
             if len(n_):
                 neg.append(n_[:: max(1, len(n_) // 4000)])
+        # self-labels for courses without any OSM fairway: a 6 m strip along the hole line (not the first 50 m from the
+        # tee nor the last 25 m before the green) is mostly fairway, the ring 28–40 m from the line mostly rough
+        strip = np.zeros((H, W), np.uint8)
+        cv2.polylines(strip, [poly(h['line'])], False, 255, int(12 / mpp))
+        cv2.circle(strip, to_px(h['line'][0]), int(50 / mpp), 0, -1)
+        cv2.circle(strip, to_px(h['line'][-1]), int(25 / mpp), 0, -1)
+        ring_in = np.zeros((H, W), np.uint8)
+        cv2.polylines(ring_in, [poly(h['line'])], False, 255, int(56 / mpp))
+        ring_out = np.zeros((H, W), np.uint8)
+        cv2.polylines(ring_out, [poly(h['line'])], False, 255, int(80 / mpp))
+        sp, sn = f[(strip > 0) & (other == 0)], f[(ring_out > 0) & (ring_in == 0) & (other == 0)]
+        self_pos.append(sp[:: max(1, len(sp) // 3000)])
+        self_neg.append(sn[:: max(1, len(sn) // 3000)])
         tiles.append((h, img.shape, f, corridor, other, fw, x0, y1))
-    return {'path': path, 'geo': geo, 'tiles': tiles, 'pos': pos, 'neg': neg, 'mpp': mpp, 'step': step}
+    return {'path': path, 'geo': geo, 'tiles': tiles, 'pos': pos, 'neg': neg, 'self_pos': self_pos, 'self_neg': self_neg, 'mpp': mpp, 'step': step}
 
 
 def model_of(pos, neg):
@@ -156,6 +169,8 @@ def main(files, donors):
                 print(os.path.basename(f), ': no imagery')
             elif c['pos'] and c['neg']:
                 classify(c, model_of(c['pos'], c['neg']))
+            elif '--self' in sys.argv:
+                classify(c, model_of(c['self_pos'], c['self_neg']), '(learnt from the strip along the hole lines)')
             elif pool_pos and pool_neg:
                 classify(c, model_of(pool_pos, pool_neg), '(learnt from the donor courses)')
             else:
@@ -167,6 +182,7 @@ def main(files, donors):
 if __name__ == '__main__':
     args = sys.argv[1:]
     donors = []
+    args = [a for a in args if a != '--self']
     if '--donors' in args:
         i = args.index('--donors')
         donors, args = args[i + 1:], args[:i]
