@@ -16,6 +16,9 @@ p.on('response', (r) => {
 });
 await p.goto(url);
 await p.waitForTimeout(1500);
+// a fresh phone sees "How GolfOS works" as a window first (since 15.10.2026)
+console.log('intro window:', await p.locator('.intro-modal').count());
+if (await p.locator('.intro-modal').count()) await p.getByRole('button', { name: 'Verstanden' }).click();
 // the version stands in the profile tab (since 14.10.2026; before on the start page)
 if (await p.locator('.tabbar').count()) await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 console.log('version:', (await p.locator('main').innerText()).match(/Version [^\n]*/)?.[0]);
