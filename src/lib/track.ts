@@ -450,3 +450,29 @@ export function markWaterPenalties(d: DetailEntry, hole: HoleMapData, penalties:
   });
   return { ...d, shots };
 }
+
+/**
+ * The shots of a hole with what the player entered on the course: score − putts − penalties is the number of swings
+ * to the green; penalties go to the shot over water; what water does not explain was out of bounds – the replay comes
+ * from the same spot (one place, two swings), so the detection looks for one swing fewer per such penalty.
+ */
+export function detectWithScore(
+  part: TrackPoint[],
+  hole: HoleMapData,
+  par: number,
+  bag: typeof BAG | undefined,
+  e: { strokes: number | null; putts: number | null; penalties?: number; pickedUp?: boolean },
+): DetailEntry | null {
+  const count = e.strokes != null && e.putts != null && !e.pickedUp ? e.strokes - e.putts - (e.penalties ?? 0) : null;
+  const detect = (n: number | null) => detectHoleShots(part, hole, par, bag, { shots: n != null && n >= 1 ? n : null });
+  const raw = detect(count);
+  if (!raw) return null;
+  const pen = e.penalties ?? 0;
+  let found = markWaterPenalties(raw, hole, pen);
+  const ob = pen - found.shots.filter((s) => s.penalty).length;
+  if (ob > 0 && count != null && count - ob >= 1) {
+    const again = detect(count - ob);
+    if (again) found = markWaterPenalties(again, hole, pen - ob);
+  }
+  return found;
+}

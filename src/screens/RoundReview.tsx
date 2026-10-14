@@ -3,7 +3,7 @@ import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { holeSg } from '../lib/sg';
-import { clubForLength, detectHoleShots, findStops, loadTrack, markWaterPenalties, splitRound, teeSpot } from '../lib/track';
+import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot } from '../lib/track';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
 import { pickImagery } from '../lib/imagery';
@@ -166,23 +166,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       // detected again, so older rounds profit from a better detection
       if (!m || list[i].detail?.shots.some((x) => !x.review)) return;
       const part = parts[i] ?? [];
-      // the score and putts from the course tell how many shots there were to the green
+      // score, putts and penalties from the course: the number of swings, water and out of bounds (see track.ts)
       const e = list[i];
-      const count = e.strokes != null && e.putts != null && !e.pickedUp ? e.strokes - e.putts - (e.penalties ?? 0) : null;
-      const detect = (n: number | null) => detectHoleShots(part, m, h.par, bag, { shots: n != null && n >= 1 ? n : null });
-      const raw = detect(count);
-      if (!raw) return;
-      // a penalty entered on the course: the shot that flew over water gets it
-      const pen = e.penalties ?? 0;
-      let found = markWaterPenalties(raw, m, pen);
-      // The rest was out of bounds: the ball is played again from the same spot – one place on the track for two
-      // swings. Detected again with one shot fewer each (no invented chip); the player marks the shot "out of
-      // bounds" in the check, which adds the replay.
-      const ob = pen - found.shots.filter((s) => s.penalty).length;
-      if (ob > 0 && count != null && count - ob >= 1) {
-        const again = detect(count - ob);
-        if (again) found = markWaterPenalties(again, m, pen - ob);
-      }
+      const found = detectWithScore(part, m, h.par, bag, e);
+      if (!found) return;
       holes++;
       const derived = deriveFromShots(found, list[i].putts, h.par, m);
       if (list[i].strokes != null) delete derived.strokes; // keep the score entered on the course

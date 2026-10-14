@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clubForLength, detectHoleShots, markWaterPenalties, findStops, splitRound, teeSpot, trackForHole, type TrackPoint } from './track';
+import { clubForLength, detectHoleShots, detectWithScore, markWaterPenalties, findStops, splitRound, teeSpot, trackForHole, type TrackPoint } from './track';
 import { distanceM, holeMapData, pointAt } from './geo';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 import type { LngLat } from '../types';
@@ -279,5 +279,24 @@ describe('penalties from the course', () => {
     expect(distanceM(m.shots[0].missPos!, at(0, 150))).toBeLessThan(6);
     // no penalty entered: nothing changes
     expect(markWaterPenalties(d2, hole, 0)).toBe(d2);
+  });
+});
+
+describe('detection with the score from the course', () => {
+  const ball2 = shift(pointAt(hole1.line, 225), 8, 0);
+  const onGreen = shift(hole1.greenCenter, 2, -4);
+  it('out of bounds off the tee: the replay from the tee is no extra place – no chip is invented', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(40); // tee shot out of bounds, the second ball from the same tee
+    w.walk(ball2);
+    w.stand(30);
+    w.walk(onGreen);
+    w.stand(90);
+    // 3 swings (tee, tee again, approach) + 1 penalty + 2 putts
+    const d = detectWithScore(w.pts, hole1, 4, undefined, { strokes: 6, putts: 2, penalties: 1 })!;
+    expect(d.shots.length).toBe(2);
+    expect(d.shots.every((s) => !s.penalty)).toBe(true); // the player marks it "out of bounds" in the check
+    // without the penalty the same score would mean a missing chip
+    expect(detectWithScore(w.pts, hole1, 4, undefined, { strokes: 5, putts: 2, penalties: 0 })!.shots.length).toBe(3);
   });
 });
