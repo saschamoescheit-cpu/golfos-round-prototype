@@ -7,9 +7,9 @@ import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { PositionFilter } from '../lib/gpsfilter';
 import { recordCaddie } from '../lib/caddielog';
-import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveImagery, saveLive, saveOfflineStamp } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
-import { imageryOptions, pickImagery, type ImageryId } from '../lib/imagery';
+import { pickImagery, type ImageryId } from '../lib/imagery';
 import { loadForecast, loadWeather, weatherIcon, windOnHole, type Forecast, type Weather } from '../lib/weather';
 import { DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
 import { clubDispersion } from '../lib/dispersion';
@@ -214,7 +214,6 @@ export function HoleScreen(props: {
   const courseCenter: LngLat = course ? [course.lon, course.lat] : (mapData?.greenCenter ?? player?.pos ?? [0, 0]);
   // Best imagery for the course's country (e.g. Spanish national orthophoto) unless the player picked another one.
   const imagery = pickImagery(courseCenter, imageryPref);
-  const imageryChoices = imageryOptions(courseCenter);
   // Offline map: save the imagery of all holes of the round once (again after 30 days, or for another imagery source).
   const [offline, setOffline] = useState<{ done: number; total: number } | 'ready' | null>(null);
   useEffect(() => {
@@ -427,12 +426,6 @@ export function HoleScreen(props: {
     };
   }, [round.courseId]);
   const heightAt = (p: LngLat) => (tgrid ? gridHeight(tgrid, p) : null) ?? hts[htKey(p)] ?? hts[htKey(snap(p))] ?? null;
-
-  const switchImagery = () => {
-    const next = imageryChoices[(imageryChoices.indexOf(imagery) + 1) % imageryChoices.length];
-    setImageryPref(next.id);
-    saveImagery(next.id);
-  };
 
   // Moved on to the next hole without a score on the last one: score and putts are what the round check needs to
   // find the shots – one tap back to enter them.
@@ -887,11 +880,6 @@ export function HoleScreen(props: {
                 <circle cx="12" cy="12" r="4.5" />
                 <circle cx="12" cy="12" r="1.2" fill="currentColor" />
               </svg>
-            </button>
-          )}
-          {imageryChoices.length > 1 && (
-            <button type="button" className="map-tool" onClick={switchImagery} aria-label={tr(`Satellite image: ${imagery.label}, tap to switch`, `Satellitenbild: ${imagery.label}, antippen zum Wechseln`)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
             </button>
           )}
           {round.players.length > 1 && !round.preview && (
