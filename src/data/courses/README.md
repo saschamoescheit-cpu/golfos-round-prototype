@@ -13,5 +13,8 @@ Son Gual: OSM snapshot of 2026-10-11; hole 5 was tagged as a second hole 3 in OS
 greenSlopes and fairwaySlopes (Mallorca): LiDAR terrain model 2014, 2 m (Govern de les Illes Balears, IDEIB) – lidar/ib_install.py.
 boundary: course outline from OSM (2026-10-11). fairwaySlopes: every 10 m along each hole [m from tee, cross slope %, height m] –
 Hetzenhof: DGM1 Baden-Württemberg (1 m); Mallorca: LiDAR 2014 (2 m, IDEIB) – see the line above.
-trees: woods/scrub from OSM (2026-10-11).
+trees: woods/scrub from OSM (2026-10-11). treePoints, treeRows, paths, rough: OSM details (scripts/plandetails.ts).
+canopy: tree crowns read from the aerial image at full resolution (LGL DOP20 0.2 m, PNOA 0.25 m) – scripts/canopy.py (2026-10-15).
+fairwayAuto: fairway areas per hole from the aerial image, learnt from the OSM fairways of the course – scripts/fairways.py
+(2026-10-15; drawing of the 2D view only, caddie and stats keep the OSM fairways; Son Quint and Son Vida have none to learn from).
 Coordinates are [lon, lat]. 

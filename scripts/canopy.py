@@ -1,7 +1,7 @@
 """Trees, bushes and woods for the drawn hole (2D view, Sascha 15.10.2026: "trees are missing in 2D – BeBrassie shows
 them"): OpenStreetMap has only a part of them, so they are read from the aerial image itself. Trees are darker and more
 textured than grass; inside the course (outline + 15 m) and outside fairways, greens, tees, bunkers and water every
-such patch of at least 12 m² becomes a canopy outline. Written as `canopy` into src/data/courses/*.json.
+such patch of at least 7 m² becomes a canopy outline. Written as `canopy` into src/data/courses/*.json.
 
 Imagery: Baden-Württemberg LGL DOP20 (dl-de/by-2-0), Spain PNOA (IGN, CC BY 4.0).
 Usage: python scripts/canopy.py [course.json …]   (needs opencv-python, numpy)
@@ -11,7 +11,8 @@ import cv2
 import numpy as np
 
 R = 6378137.0
-M_PER_PX = 0.4
+# full resolution of the imagery (Sascha 15.10.2026: "maximum detail"): LGL DOP20 0.2 m, PNOA 0.25 m
+M_PER_PX = 0.4  # set per course in run()
 CHUNK = 1000  # pixels per WMS request
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'src', 'data', 'courses')
@@ -26,13 +27,14 @@ def unmerc(x, y):
 
 
 def wms(lon, lat):
+    """WMS template and its ground resolution (m per pixel)."""
     if 7.5 <= lon <= 10.5 and 47.53 <= lat <= 49.8:
-        return ('https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DOP_20_C?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
+        return 0.2, ('https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DOP_20_C?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
                 '&LAYERS=IMAGES_DOP_20_RGB&STYLES=&CRS=EPSG:3857&BBOX={b}&WIDTH={w}&HEIGHT={h}&FORMAT=image/jpeg')
     if -10 <= lon <= 4.5 and 35 <= lat <= 44:
-        return ('https://www.ign.es/wms-inspire/pnoa-ma?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
+        return 0.25, ('https://www.ign.es/wms-inspire/pnoa-ma?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
                 '&LAYERS=OI.OrthoimageCoverage&STYLES=&CRS=EPSG:3857&BBOX={b}&WIDTH={w}&HEIGHT={h}&FORMAT=image/jpeg')
-    return None
+    return None, None
 
 
 def fetch(template, x0, y0, x1, y1, w, h):
@@ -46,11 +48,12 @@ def fetch(template, x0, y0, x1, y1, w, h):
 
 
 def run(path):
+    global M_PER_PX
     geo = json.load(open(path, encoding='utf-8'))
     pts = [p for h in geo['holes'] for p in h['line']] + [p for r in geo.get('boundary', []) for p in r]
     lon_c = sum(p[0] for p in pts) / len(pts)
     lat_c = sum(p[1] for p in pts) / len(pts)
-    template = wms(lon_c, lat_c)
+    M_PER_PX, template = wms(lon_c, lat_c)
     if not template:
         print(os.path.basename(path), ': no imagery')
         return
@@ -93,25 +96,26 @@ def run(path):
     V = hsv[..., 2].astype(int)
     b, g, r = [img[..., c].astype(int) for c in range(3)]
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
-    mean = cv2.blur(gray, (9, 9))
-    var = cv2.blur(gray * gray, (9, 9)) - mean * mean
+    px = lambda m: max(3, int(round(m / M_PER_PX)) | 1)  # an odd kernel size for `m` metres
+    mean = cv2.blur(gray, (px(3.6), px(3.6)))
+    var = cv2.blur(gray * gray, (px(3.6), px(3.6))) - mean * mean
     # dark and green (the crowns), or very dark (their shadows), with texture; the threshold follows the image
     dark_level = min(95, np.percentile(V[area > 0], 30) if (area > 0).any() else 95)
     green = (g >= r) & (g >= b - 5)
     mask = (((V < dark_level) & green) | (V < 0.6 * dark_level)) & (var > 60)
     mask = (mask & (area > 0)).astype(np.uint8) * 255
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
-    # opening with a 3.6 m disc: tree crowns stay, the thin dark rows of a field next to the course go
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((px(2.0), px(2.0)), np.uint8))
+    # opening with a 2.6 m disc: tree crowns (and small single trees) stay, thin dark field rows go
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (px(2.6), px(2.6))))
     mask[area == 0] = 0
 
-    min_px = 12 / (M_PER_PX * M_PER_PX)
+    min_px = 7 / (M_PER_PX * M_PER_PX)  # from about one small tree (7 m²)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     canopy = []
     for c in contours:
         if cv2.contourArea(c) < min_px:
             continue
-        c = cv2.approxPolyDP(c, 1.2, True)
+        c = cv2.approxPolyDP(c, 0.45 / M_PER_PX, True)  # crown outlines within half a metre
         if len(c) < 3:
             continue
         ring = []

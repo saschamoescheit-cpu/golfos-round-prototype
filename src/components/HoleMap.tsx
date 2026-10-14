@@ -117,7 +117,9 @@ export function HoleMap(props: HoleMapProps) {
           'fill-color': ['match', ['get', 'kind'], 'a-fairway', PLAN_COLOURS.fairway, 'a-tee', PLAN_COLOURS.tee, 'a-green', PLAN_COLOURS.green, 'a-bunker', PLAN_COLOURS.bunker, 'a-water', PLAN_COLOURS.water, PLAN_COLOURS.rough],
         },
       });
-      m.addLayer({ id: 'plan-trees', type: 'fill', source: 'trees', layout: hidden, paint: { 'fill-color': PLAN_COLOURS.trees, 'fill-opacity': 0.92, 'fill-outline-color': '#24521f' } });
+      m.addLayer({ id: 'plan-trees', type: 'fill', source: 'trees', layout: hidden, paint: { 'fill-color': PLAN_COLOURS.trees, 'fill-opacity': 0.92 } });
+      // a darker rim gives each crown its own shape
+      m.addLayer({ id: 'plan-trees-edge', type: 'line', source: 'trees', layout: { ...hidden, 'line-join': 'round' }, paint: { 'line-color': '#1d4419', 'line-width': ['interpolate', ['linear'], ['zoom'], 15, 0.4, 19, 1.6] } });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       // the playing view keeps the shapes invisible (they still feed the distances): only the aerial image
       courseLayers('shapes').forEach((l) => m.addLayer(latest.current.clean ? { ...l, layout: { ...(l.layout ?? {}), visibility: 'none' } } as maplibregl.LayerSpecification : l));

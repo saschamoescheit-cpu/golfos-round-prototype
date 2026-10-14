@@ -27,6 +27,8 @@ export interface CourseGeometry {
   rough?: Ring[];
   /** Tree and bush crowns read from the aerial image (scripts/canopy.py) – OSM has only part of the trees. */
   canopy?: Ring[];
+  /** Fairway areas per hole read from the aerial image (scripts/fairways.py) – for drawing the 2D view only. */
+  fairwayAuto?: Record<string, Ring[]>;
   /** Every 10 m along each hole (by ref): [metres from the tee, cross slope % (+ = right side higher, ball rolls left), height m]. */
   fairwaySlopes?: Record<string, [number, number, number?][]>;
 }

@@ -15,7 +15,7 @@ p.on('pageerror', (e) => errs.push(e.message));
 await p.goto(url);
 await p.evaluate(() => {
   localStorage.clear();
-  localStorage.setItem('golfos.intro.v1', '1');
+  localStorage.setItem('golfos.intro.v1', '1'); sessionStorage.setItem('golfos.module', 'rounds');
   localStorage.setItem('golfos.tip.shots.v1', '1');
 });
 await p.reload();
@@ -35,11 +35,13 @@ await p.waitForTimeout(4000);
 const holes = await p.evaluate(async () => {
   const G = await import('/src/lib/geo.ts');
   const T = await import('/src/lib/teeline.ts');
-  const { SEED_GEOMETRY } = await import('/src/data/seedGeometry.ts');
+  // only Hetzenhof, the way the app loads it (all courses at once are ~8 MB since the full-resolution tree crowns)
+  const S = await import('/src/lib/storage.ts');
   const { SEED_COURSES } = await import('/src/data/seedCourses.ts');
   const C = await import('/src/lib/courses.ts');
   const id = 'osm:relation/1326323';
-  const geo = SEED_GEOMETRY[id];
+  await S.ensureGeometry(id);
+  const geo = S.loadGeometry(id);
   return C.holesFromTags(SEED_COURSES[id].holeTags)
     .filter((h) => h.loop === 'A' && h.par)
     .map((h) => {

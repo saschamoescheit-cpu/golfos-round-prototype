@@ -44,6 +44,24 @@ const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr
 
 /** Beyond this distance from the hole the app measures from the tee (planning at home or on another hole). */
 const ON_HOLE_M = 1500;
+/** 2D view: what is drawn beside the hole (Sascha 15.10.2026: 60 m). */
+const CORRIDOR_2D = 60;
+/** The parts of the course outline within `max` metres of the hole line (the out-of-bounds line along this hole only). */
+function nearRuns(rings: LngLat[][], line: LngLat[], max: number): LngLat[][] {
+  const out: LngLat[][] = [];
+  for (const ring of rings) {
+    let run: LngLat[] = [];
+    for (const p of ring) {
+      if (distToLine(p, line) <= max) run.push(p);
+      else {
+        if (run.length >= 2) out.push(run);
+        run = [];
+      }
+    }
+    if (run.length >= 2) out.push(run);
+  }
+  return out;
+}
 /** Landing points the player can plan per hole (e.g. drive, layup, approach). */
 // Shots are not logged by hand on the map any more (Sascha, 13.10.2026): they come from the GPS track and are
 // checked after the round. The code stays for Ben (spec 004 decides); false = the quick-mode buttons in every mode.
@@ -803,18 +821,19 @@ export function HoleScreen(props: {
           clean
           hazards={hazardsOn}
           view={view2d ? '2d' : 'aerial'}
-          trees={view2d ? [...(geometry.trees ?? []), ...(geometry.canopy ?? [])].filter((r) => r.some((q) => distToLine(q, mapData.line) <= 250)) : undefined}
+          // 2D: only this hole and what lies up to 60 m beside it – water, woods, trees, hedges, paths, out of bounds
+          // (Sascha 15.10.2026: "no neighbouring holes, only the hole I am on with the hazards left and right")
+          trees={view2d ? [...(geometry.trees ?? []), ...(geometry.canopy ?? [])].filter((r) => r.some((q) => distToLine(q, mapData.line) <= CORRIDOR_2D)) : undefined}
           details={
             view2d
               ? {
-                  treePoints: (geometry.treePoints ?? []).filter((q) => distToLine(q, mapData.line) <= 150),
-                  treeRows: (geometry.treeRows ?? []).filter((l) => l.some((q) => distToLine(q, mapData.line) <= 150)),
-                  paths: (geometry.paths ?? []).filter((l) => l.some((q) => distToLine(q, mapData.line) <= 150)),
-                  rough: (geometry.rough ?? []).filter((r) => r.some((q) => distToLine(q, mapData.line) <= 150)),
-                  ob: geometry.boundary ?? [],
-                  around: Object.fromEntries(
-                    (['fairway', 'tee', 'water', 'bunker', 'green'] as const).map((k) => [k, geometry[k].filter((r) => r.some((q) => distToLine(q, mapData.line) <= 250))]),
-                  ) as Record<'fairway' | 'tee' | 'water' | 'bunker' | 'green', LngLat[][]>,
+                  treePoints: (geometry.treePoints ?? []).filter((q) => distToLine(q, mapData.line) <= CORRIDOR_2D),
+                  treeRows: (geometry.treeRows ?? []).filter((l) => l.some((q) => distToLine(q, mapData.line) <= CORRIDOR_2D)),
+                  paths: (geometry.paths ?? []).filter((l) => l.some((q) => distToLine(q, mapData.line) <= CORRIDOR_2D)),
+                  rough: (geometry.rough ?? []).filter((r) => r.some((q) => distToLine(q, mapData.line) <= CORRIDOR_2D)),
+                  ob: nearRuns(geometry.boundary ?? [], mapData.line, CORRIDOR_2D),
+                  // the fairway of this hole as mown, read from the aerial image (OSM maps many only in part)
+                  around: { fairway: geometry.fairwayAuto?.[hole.label] ?? [], tee: [], green: [], bunker: [], water: geometry.water.filter((r) => r.some((q) => distToLine(q, mapData.line) <= CORRIDOR_2D)) },
                 }
               : undefined
           }
