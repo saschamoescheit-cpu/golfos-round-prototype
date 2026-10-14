@@ -1,5 +1,6 @@
 import type { Club } from '../types';
 import { sideWord, tr } from './i18n';
+import { CLUB_CATALOG, CLUB_ORDER } from './clubs';
 
 // AI caddie (feature 008): how long a shot plays under today's conditions and which club fits.
 // "Plays like" = distance + wind + temperature + height difference. All factors are rules of thumb from
@@ -9,12 +10,7 @@ import { sideWord, tr } from './i18n';
 export type CarryBag = { club: Club; carry: number; swing?: 'full' | 'threeQ' | 'half' }[];
 
 /** Mid-handicap male amateur carry distances – the start values until the player enters his own. */
-export const DEFAULT_CARRY: CarryBag = [
-  { club: 'Dr', carry: 200 }, { club: '3W', carry: 185 }, { club: '5W', carry: 172 }, { club: 'Hy', carry: 165 },
-  { club: '4i', carry: 160 }, { club: '5i', carry: 150 }, { club: '6i', carry: 140 }, { club: '7i', carry: 130 },
-  { club: '8i', carry: 120 }, { club: '9i', carry: 110 }, { club: 'PW', carry: 100 }, { club: 'GW', carry: 85 },
-  { club: 'SW', carry: 70 }, { club: 'LW', carry: 55 },
-];
+export const DEFAULT_CARRY: CarryBag = CLUB_CATALOG.filter((c) => c.standard).map((c) => ({ club: c.club, carry: c.carry }));
 
 export const FACTORS = {
   headPerKmh: 0.005, // into the wind: +0.5 % per km/h
@@ -109,11 +105,13 @@ export function adviseClub(target: number, bag: CarryBag, teeShot = false): Club
 }
 
 const CLUB_NAMES: Record<Club, string> = {
-  Dr: 'Driver', '3W': '3-wood', '5W': '5-wood', Hy: '4-hybrid', '4i': '4-iron', '5i': '5-iron', '6i': '6-iron', '7i': '7-iron',
+  Dr: 'Driver', '3W': '3-wood', '4W': '4-wood', '5W': '5-wood', '7W': '7-wood', '9W': '9-wood', '2H': '2-hybrid', '3H': '3-hybrid', Hy: '4-hybrid',
+  '5H': '5-hybrid', '6H': '6-hybrid', '2i': '2-iron', '3i': '3-iron', '4i': '4-iron', '5i': '5-iron', '6i': '6-iron', '7i': '7-iron',
   '8i': '8-iron', '9i': '9-iron', PW: 'Pitching wedge', GW: 'Gap wedge', SW: 'Sand wedge', LW: 'Lob wedge',
 };
 const CLUB_NAMES_DE: Record<Club, string> = {
-  Dr: 'Driver', '3W': 'Holz 3', '5W': 'Holz 5', Hy: 'Hybrid 4', '4i': 'Eisen 4', '5i': 'Eisen 5', '6i': 'Eisen 6', '7i': 'Eisen 7',
+  Dr: 'Driver', '3W': 'Holz 3', '4W': 'Holz 4', '5W': 'Holz 5', '7W': 'Holz 7', '9W': 'Holz 9', '2H': 'Hybrid 2', '3H': 'Hybrid 3', Hy: 'Hybrid 4',
+  '5H': 'Hybrid 5', '6H': 'Hybrid 6', '2i': 'Eisen 2', '3i': 'Eisen 3', '4i': 'Eisen 4', '5i': 'Eisen 5', '6i': 'Eisen 6', '7i': 'Eisen 7',
   '8i': 'Eisen 8', '9i': 'Eisen 9', PW: 'Pitching Wedge', GW: 'Gap Wedge', SW: 'Sand Wedge', LW: 'Lob Wedge',
 };
 export const clubName = (c: Club) => tr(CLUB_NAMES[c], CLUB_NAMES_DE[c]);
@@ -202,7 +200,6 @@ export function lieEffect(lie: LieKind): { factor: number; aimM: number; maxClub
   }
 }
 
-const CLUB_ORDER: Club[] = ['Dr', '3W', '5W', 'Hy', '4i', '5i', '6i', '7i', '8i', '9i', 'PW', 'GW', 'SW', 'LW'];
 /** Club advice limited to clubs not longer than `maxClub` (deep rough, fairway bunker). */
 export function adviseClubMax(target: number, bag: CarryBag, teeShot: boolean, maxClub: Club | null): ClubAdvice {
   const allowed = maxClub ? bag.filter((b) => CLUB_ORDER.indexOf(b.club) >= CLUB_ORDER.indexOf(maxClub)) : bag;

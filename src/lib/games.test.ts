@@ -30,6 +30,11 @@ describe('leaderboard', () => {
       ['A', '+2', 2],
     ]);
   });
+  it('handicap allowance: 50 % halves the strokes received', () => {
+    // A: hcp 8 at 50 % = 4 → one stroke on each of the four holes
+    const b = leaderboard(round([{ id: 'A', hcp: 8, scores: [5, 5, 5, 5] }], { mode: 'single', scoring: 'net', allowance: 50 }));
+    expect(b.rows[0].value).toBe('Par');
+  });
   it('Stableford: most points first', () => {
     // A gets a stroke on every hole (hcp 4 on four holes): 5 = net par = 2 points each
     const b = leaderboard(round([{ id: 'A', hcp: 4, scores: [5, 5, 5, 5] }, { id: 'B', hcp: 0, scores: [4, 4, 5, 4] }], { mode: 'single', scoring: 'stableford' }));
@@ -55,12 +60,15 @@ describe('leaderboard', () => {
         { mode: 'fourball', scoring: 'stroke' },
       ),
     );
-    // A & B: 4, 3, 5, 4 = +0; C & D: 4, 4, 4, 4 = par
+    // A & B: 4, 3, 5, 4 = +0; C & D: 4, 4, 4, 4 = par – stroke play: totals, no match status
     expect(b.rows.map((r) => [r.name, r.value])).toEqual([
       ['A & B', 'Par'],
       ['C & D', 'Par'],
     ]);
-    expect(b.status).toBe('All square after 4');
+    expect(b.status).toBeNull();
+    // the same as match play: hole by hole
+    const m = leaderboard({ ...round([{ id: 'A', hcp: null, scores: [6, 3, 5, 4] }, { id: 'B', hcp: null, scores: [4, 6, 5, 6] }, { id: 'C', hcp: null, scores: [4, 4, 4, 4] }, { id: 'D', hcp: null, scores: [5, 5, 5, 5] }]) }, { mode: 'fourball', scoring: 'stroke', matchplay: true });
+    expect(m.status).toBe('All square after 4');
   });
   it('modes depend on the number of players', () => {
     expect(modesFor(1)).toEqual(['single']);
@@ -79,12 +87,13 @@ describe('team modes', () => {
     expect(teamsOf('scramble', 3)).toEqual([[0, 1, 2]]);
     expect(modesFor(3)).toEqual(['single', 'scramble']);
   });
-  it('two teams: ranked like players, with the match status', () => {
+  it('two teams: ranked like players, as match play with the status', () => {
     const b = leaderboard(round([{ id: 'A & B', hcp: null, scores: [3, 4, null, null] }, { id: 'C & D', hcp: null, scores: [4, 4, null, null] }], { mode: 'scramble', scoring: 'stroke' }));
     expect(b.rows.map((r) => [r.name, r.value])).toEqual([
       ['A & B', '-1'],
       ['C & D', 'Par'],
     ]);
-    expect(b.status).toBe('A & B 1 up after 2');
+    const m = leaderboard(round([{ id: 'A & B', hcp: null, scores: [3, 4, null, null] }, { id: 'C & D', hcp: null, scores: [4, 4, null, null] }], { mode: 'scramble', scoring: 'stroke', matchplay: true }));
+    expect(m.status).toBe('A & B 1 up after 2');
   });
 });

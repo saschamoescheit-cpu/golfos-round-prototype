@@ -1,19 +1,26 @@
 import { Fragment, useState } from 'react';
 import type { Club, Round } from '../types';
-import { clubName, DEFAULT_CARRY, type CarryBag } from '../lib/caddie';
+import { clubName, type CarryBag } from '../lib/caddie';
+import { byOrder, catalogEntry, CLUB_CATALOG, MAX_CLUBS, STANDARD_CLUBS, type ClubGroup } from '../lib/clubs';
 import { trackedCarry } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
 import { Segmented, TopBar } from '../components/ui';
 import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, type Partials } from '../lib/partials';
 
-// "My bag" and "Caddie" (feature 008, both reached from the profile): carry distance per club and the favourite
-// approach distance for the AI caddie; the switches for caddie, green slope and the miss map. An empty field = club not in the bag.
+// "My bag" and "Caddie" (feature 008, both reached from the profile): the clubs the player carries (from the catalog –
+// remove the 4-hybrid, add a 2-iron …, Sascha 14.10.2026), their carry and the favourite approach distance for the AI
+// caddie; the switches for caddie, green slope and the miss map.
 
 export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: () => void }) {
+  // carry per club as typed (every club of the catalog) and the clubs in the bag
   const [bag, setBag] = useState<Record<string, string>>(() => {
     const saved = loadCarryBag();
-    return Object.fromEntries(DEFAULT_CARRY.map((d) => [d.club, String(saved ? (saved.find((s) => s.club === d.club)?.carry ?? '') : d.carry)]));
+    return Object.fromEntries(CLUB_CATALOG.map((d) => [d.club, String(saved?.find((s) => s.club === d.club)?.carry ?? d.carry)]));
+  });
+  const [inBag, setInBag] = useState<Club[]>(() => {
+    const saved = loadCarryBag();
+    return saved?.length ? byOrder(saved).map((b) => b.club) : STANDARD_CLUBS;
   });
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
   // Wedges: half (9 o'clock) and three-quarter (10:30) swing – empty = suggested from the full carry.
@@ -24,8 +31,8 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
     setPartials(next);
     savePartials(next);
   };
-  const fullOf = (club: Club) => Number(bag[club]) || DEFAULT_CARRY.find((d) => d.club === club)!.carry;
-  const trackedP = trackedPartials(props.rounds, DEFAULT_CARRY.map((d) => ({ club: d.club, carry: fullOf(d.club) })), partials);
+  const fullOf = (club: Club) => Number(bag[club]) || catalogEntry(club).carry;
+  const trackedP = trackedPartials(props.rounds, inBag.map((c) => ({ club: c, carry: fullOf(c) })), partials);
   const [note, setNote] = useState<string | null>(loadCarryBag() ? null : tr('Start values for a mid-handicap player – enter your own carry distances.', 'Startwerte für ein mittleres Handicap – trag deine eigenen Carry-Weiten ein.'));
 
   const set = (patch: Partial<CaddieSettings>) => {
@@ -40,28 +47,47 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
   };
   // Only believable carries count (20–400 m); empty or odd values fall back to the standard for that club.
   const valid = (v: string) => Number(v) >= 20 && Number(v) <= 400;
-  const save = () => {
-    const out: CarryBag = DEFAULT_CARRY.map((d) => ({ club: d.club, carry: Number(bag[d.club]) })).filter((b) => valid(String(b.carry)));
+  const persist = (next: Record<string, string>, clubs: Club[] = inBag) => {
+    setBag(next);
+    const out: CarryBag = clubs.map((c) => ({ club: c, carry: valid(next[c]) ? Number(next[c]) : catalogEntry(c).carry }));
     saveCarryBag(out);
+    return out;
+  };
+  const save = () => {
+    const out = persist(bag);
     setNote(tr(`Saved · ${out.length} clubs.`, `Gespeichert · ${out.length} Schläger.`));
+  };
+  const remove = (c: Club) => {
+    const next = inBag.filter((x) => x !== c);
+    setInBag(next);
+    persist(bag, next);
+    setNote(tr(`${clubName(c)} removed from your bag.`, `${clubName(c)} aus deinem Bag entfernt.`));
+  };
+  const add = (c: Club) => {
+    const next = byOrder([...inBag, c].map((club) => ({ club }))).map((x) => x.club);
+    setInBag(next);
+    persist(bag, next);
+    setNote(tr(`${clubName(c)} added – check its carry.`, `${clubName(c)} hinzugefügt – prüfe die Carry-Weite.`));
   };
   // Tracked carry from your detailed rounds – compared with what you entered; you decide per club, any time.
   const tracked = trackedCarry(props.rounds);
-  const differs = (club: string) => {
-    const t = tracked.get(club as Club);
-    return t != null && (bag[club] === '' || Math.abs(Number(bag[club]) - t.carry) >= 5);
+  const differs = (club: Club) => {
+    const t = tracked.get(club);
+    return t != null && Math.abs(Number(bag[club]) - t.carry) >= 5;
   };
-  const toReview = DEFAULT_CARRY.filter((d) => differs(d.club)).length;
-  const persist = (next: Record<string, string>) => {
-    setBag(next);
-    saveCarryBag(DEFAULT_CARRY.map((d) => ({ club: d.club, carry: Number(next[d.club]) })).filter((b) => valid(String(b.carry))));
-  };
-  const useTracked = (clubs: string[]) => {
+  const toReview = inBag.filter((c) => differs(c)).length;
+  const useTracked = (clubs: Club[]) => {
     const next = { ...bag };
-    for (const c of clubs) next[c] = String(tracked.get(c as Club)!.carry);
+    for (const c of clubs) next[c] = String(tracked.get(c)!.carry);
     persist(next);
-    setNote(tr(`Updated from your tracked shots: ${clubs.join(', ')}.`, `Aus deinen gemessenen Schlägen übernommen: ${clubs.map((c) => clubCode(c as Club)).join(', ')}.`));
+    setNote(tr(`Updated from your tracked shots: ${clubs.map((c) => clubCode(c)).join(', ')}.`, `Aus deinen gemessenen Schlägen übernommen: ${clubs.map((c) => clubCode(c)).join(', ')}.`));
   };
+  const groups: { id: ClubGroup; label: string }[] = [
+    { id: 'wood', label: tr('Driver & woods', 'Driver & Hölzer') },
+    { id: 'hybrid', label: tr('Hybrids', 'Hybride') },
+    { id: 'iron', label: tr('Irons', 'Eisen') },
+    { id: 'wedge', label: 'Wedges' },
+  ];
 
   return (
     <main className="screen">
@@ -144,20 +170,22 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
 
       {props.part === 'bag' && (
       <section className="card stats-card">
-        <h2>{tr('Carry per club', 'Carry je Schläger')}</h2>
+        <h2>
+          {tr('Your clubs', 'Deine Schläger')} <span className={`muted small${inBag.length > MAX_CLUBS ? ' bad-text' : ''}`}>{inBag.length}/{MAX_CLUBS}</span>
+        </h2>
         <p className="muted small" style={{ margin: 0 }}>
           {tr(
-            'Carry = how far the ball flies in the air on a normal day (no wind, 20 °C, flat). Leave empty if the club is not in your bag. Next to it: what your tracked shots say (from 3 full shots per club). Keep your value or take the tracked one – check again after a few rounds. For the wedges also a three-quarter (10:30) and a half swing (9 o’clock): empty = suggested from the full carry, used between 30 m and the full pitching wedge.',
-            'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben). Leer lassen, wenn der Schläger nicht im Bag ist. Daneben: was deine gemessenen Schläge sagen (ab 3 vollen Schlägen je Schläger). Behalte deinen Wert oder übernimm den gemessenen – schau nach ein paar Runden wieder rein. Bei den Wedges zusätzlich Dreiviertel- (10:30) und halber Schwung (9 Uhr): leer = Vorschlag aus der vollen Carry, für Distanzen zwischen 30 m und dem vollen Pitching Wedge.',
+            'Carry = how far the ball flies in the air on a normal day (no wind, 20 °C, flat). ✕ takes a club out of your bag, below you add the ones you carry. Next to it: what your tracked shots say (from 3 full shots per club). For the wedges also a three-quarter (10:30) and a half swing (9 o’clock): empty = suggested from the full carry.',
+            'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben). ✕ nimmt einen Schläger aus deinem Bag, unten fügst du die hinzu, die du spielst. Daneben: was deine gemessenen Schläge sagen (ab 3 vollen Schlägen je Schläger). Bei den Wedges zusätzlich Dreiviertel- (10:30) und halber Schwung (9 Uhr): leer = Vorschlag aus der vollen Carry.',
           )}
         </p>
         {toReview > 0 && (
-          <button type="button" className="btn-secondary" onClick={() => useTracked(DEFAULT_CARRY.filter((d) => differs(d.club)).map((d) => d.club))}>
+          <button type="button" className="btn-secondary" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
             {tr(`Use tracked values for ${toReview} ${toReview === 1 ? 'club' : 'clubs'}`, `Gemessene Werte für ${toReview} ${toReview === 1 ? 'Schläger' : 'Schläger'} übernehmen`)}
           </button>
         )}
         <div className="bag-grid">
-          {DEFAULT_CARRY.map((d) => (
+          {inBag.map((club) => ({ club })).map((d) => (
             <Fragment key={d.club}>
             <div className="bag-row club">
               <span className="bag-name">
@@ -189,6 +217,9 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
                 />
                 m
               </span>
+              <button type="button" className="bag-remove" aria-label={tr(`Remove ${clubName(d.club)} from the bag`, `${clubName(d.club)} aus dem Bag entfernen`)} onClick={() => remove(d.club)}>
+                ✕
+              </button>
             </div>
             {WEDGES.includes(d.club) && Number(bag[d.club]) > 0 && (
               <div className="bag-partials" role="group" aria-label={tr(`${clubName(d.club)} partial swings`, `${clubName(d.club)} Teilschwünge`)}>
@@ -220,11 +251,38 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
             </Fragment>
           ))}
         </div>
+        {inBag.length > MAX_CLUBS && (
+          <p className="small bad-text" style={{ margin: 0 }}>
+            {tr(`The rules allow ${MAX_CLUBS} clubs – take ${inBag.length - MAX_CLUBS} out before a round that counts.`, `Die Regeln erlauben ${MAX_CLUBS} Schläger – nimm ${inBag.length - MAX_CLUBS} heraus, bevor du eine Wertungsrunde spielst.`)}
+          </p>
+        )}
         {note && <p className="small" style={{ margin: 0 }}>{note}</p>}
         <button type="button" className="btn-primary" onClick={save}>
           {tr('Save my values', 'Meine Werte speichern')}
         </button>
       </section>
+      )}
+
+      {props.part === 'bag' && (
+        <section className="card stats-card">
+          <h2>{tr('Add clubs', 'Schläger hinzufügen')}</h2>
+          {groups.map((g) => {
+            const missing = CLUB_CATALOG.filter((c) => c.group === g.id && !inBag.includes(c.club));
+            if (!missing.length) return null;
+            return (
+              <div key={g.id} className="field">
+                <label>{g.label}</label>
+                <div className="chip-set">
+                  {missing.map((c) => (
+                    <button key={c.club} type="button" className="chip" aria-label={tr(`Add ${clubName(c.club)}`, `${clubName(c.club)} hinzufügen`)} onClick={() => add(c.club)}>
+                      + {clubCode(c.club)} <span className="muted small" style={{ marginLeft: 4 }}>{clubName(c.club)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </section>
       )}
     </main>
   );

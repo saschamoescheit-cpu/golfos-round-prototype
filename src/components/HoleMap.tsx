@@ -359,14 +359,17 @@ export function HoleMap(props: HoleMapProps) {
       ...p.data.bunkers.map((ring) => ({ ring, kind: 'bunker' as const })),
       ...p.data.water.map((ring) => ({ ring, kind: 'water' as const })),
     ];
-    // Nearest hazards first; a label that would cover another one on screen is left out.
-    const placed = [p.pin, ...p.targets].map((x) => m.project(x));
-    // the flag stands up and to the right of the pin (30 × 38 px): its middle counts as taken too
-    const flagAt = m.project(p.pin);
-    placed.push(new maplibregl.Point(flagAt.x + 14, flagAt.y - 22));
+    // Nearest hazards first; a label that would cover another one on screen is left out. Asked for on the playing
+    // view (Hindernisse): greenside bunkers count too – the flag does not block them (Sascha 14.10.: "nothing happens").
+    const placed = p.clean ? [] : [p.pin, ...p.targets].map((x) => m.project(x));
+    if (!p.clean) {
+      // the flag stands up and to the right of the pin (30 × 38 px): its middle counts as taken too
+      const flagAt = m.project(p.pin);
+      placed.push(new maplibregl.Point(flagAt.x + 14, flagAt.y - 22));
+    }
     const candidates = hazards
       .map((h) => ({ ...h, c: centroid(h.ring), ...hazardToCarry(p.from, h.ring) }))
-      .filter((h) => isAhead(p.from, p.pin, h.c) && h.to >= 5 && h.to <= 330)
+      .filter((h) => isAhead(p.from, p.pin, h.c) && h.to >= 5 && h.to <= (p.clean ? 450 : 330))
       .sort((a, b) => a.to - b.to);
     for (const h of candidates) {
       const at = m.project(h.c);
@@ -557,6 +560,8 @@ function crosshairEl(n: number): HTMLDivElement {
 function flagEl(): HTMLDivElement {
   const d = el('map-flag');
   d.setAttribute('aria-label', tr('Pin, drag to today’s position', 'Fahne, auf die heutige Position ziehen'));
-  d.innerHTML = '<svg width="30" height="38" viewBox="0 0 30 38" aria-hidden="true"><path d="M3 2v34" stroke="#FFFFFF" stroke-width="3"/><path d="M4 3h20l-5 6 5 6H4z" fill="#FF6B5E" stroke="#0E1418" stroke-width="1"/></svg>';
+  // a thin pin with a small pennant and the hole at its foot (Sascha 14.10.2026: "more delicate")
+  d.innerHTML =
+    '<svg width="30" height="38" viewBox="0 0 30 38" aria-hidden="true"><ellipse cx="3" cy="36" rx="2.6" ry="1.3" fill="#0E1418" opacity="0.75"/><path d="M3 35.5V3" stroke="#0E1418" stroke-opacity="0.55" stroke-width="3" stroke-linecap="round"/><path d="M3 35.5V3" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/><path d="M3.6 3.2h11l-2.6 3.3 2.6 3.3h-11z" fill="#FF5A4E" stroke="#0E1418" stroke-opacity="0.5" stroke-width="0.6" stroke-linejoin="round"/></svg>';
   return d;
 }

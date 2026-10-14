@@ -49,7 +49,8 @@ export function useLangForTests(l: Lang): void {
 // Short club labels as golfers write them, in both languages (Sascha 14.10.2026): D, 3W, 5W, 4H, 5i … 9i, PW, GW,
 // SW, LW (P = putter). The bag has one hybrid: 4H.
 const CLUB_CODE: Record<Club, string> = {
-  Dr: 'D', '3W': '3W', '5W': '5W', Hy: '4H', '4i': '4i', '5i': '5i', '6i': '6i', '7i': '7i', '8i': '8i', '9i': '9i', PW: 'PW', GW: 'GW', SW: 'SW', LW: 'LW',
+  Dr: 'D', '3W': '3W', '4W': '4W', '5W': '5W', '7W': '7W', '9W': '9W', '2H': '2H', '3H': '3H', Hy: '4H', '5H': '5H', '6H': '6H',
+  '2i': '2i', '3i': '3i', '4i': '4i', '5i': '5i', '6i': '6i', '7i': '7i', '8i': '8i', '9i': '9i', PW: 'PW', GW: 'GW', SW: 'SW', LW: 'LW',
 };
 /** Short club label: "7i", "D", "4H". */
 export const clubCode = (c: Club): string => CLUB_CODE[c];

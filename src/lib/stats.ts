@@ -3,6 +3,7 @@ import { greenInRegulation, grossForHole, handicapStrokes, playing18, stableford
 import { BAG, firstPuttM, shotLengths } from './shots';
 import { tr } from './i18n';
 import { isTeamRound } from './games';
+import { CLUB_CATALOG } from './clubs';
 
 // Analysis across rounds (feature 005): the player's ("me") key figures, tendencies, club distances
 // and the focus areas compared with the next better handicap band – the input for training plans (GOL-27).
@@ -159,7 +160,8 @@ export function analyse(rounds: Round[]): Analysis {
 
   const per18 = (v: number) => (holes ? Math.round((v / holes) * 18 * 10) / 10 : 0);
   const share = (n: number) => (holes ? Math.round((n / holes) * 100) : 0);
-  const clubs: ClubStat[] = BAG.filter((b) => clubLengths.has(b.club)).map((b) => {
+  // every club of the catalog with shots (also clubs outside the standard bag, e.g. a 2-iron)
+  const clubs: ClubStat[] = CLUB_CATALOG.filter((b) => clubLengths.has(b.club)).map((b) => {
     const xs = clubLengths.get(b.club)!.slice().sort((a, c) => a - c);
     const mid = xs.length >> 1;
     return {
@@ -219,11 +221,12 @@ export function carryToReview(rounds: Round[], bag: { club: Club; carry: number 
   }).map(([club]) => club);
 }
 
-/** The player's own club distances replace the standard bag once a club has enough shots. */
-export function playerBag(rounds: Round[], minShots = 3): { club: Club; m: number }[] {
+/** The player's own club distances replace the standard values once a club has enough shots; `clubs` = his bag. */
+export function playerBag(rounds: Round[], minShots = 3, clubs: Club[] | null = null): { club: Club; m: number }[] {
   rounds = rounds.filter((r) => !isTeamRound(r)); // team scores (scramble, foursomes) are not the player's own
   const own = new Map(analyse(rounds).clubs.filter((c) => c.shots >= minShots).map((c) => [c.club, c.median]));
-  return BAG.map((b) => ({ club: b.club, m: own.get(b.club) ?? b.m }));
+  const base = clubs?.length ? CLUB_CATALOG.filter((c) => clubs.includes(c.club)).map((c) => ({ club: c.club, m: c.total })) : BAG;
+  return base.map((b) => ({ club: b.club, m: own.get(b.club) ?? b.m }));
 }
 
 // ---- Focus areas: compare with the next better handicap band ----

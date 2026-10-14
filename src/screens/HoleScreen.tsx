@@ -490,7 +490,7 @@ export function HoleScreen(props: {
   const fmtU = (m: number) => formatDistance(m, unit);
   const lengths = shotLengths(detail);
   // Club suggestions use the player's own distances from finished detailed rounds (≥ 3 shots per club).
-  const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt)), []);
+  const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt), 3, loadCarryBag()?.map((b) => b.club) ?? null), []);
   const hasShots = detail.shots.length > 0;
   const holeDone = detail.holedOut || (detail.onGreen != null && myEntry.putts != null);
   const saveDetail = (d: DetailEntry, putts: number | null = myEntry.putts) =>
@@ -801,16 +801,21 @@ export function HoleScreen(props: {
 
         {weather && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
 
-        {/* Hole19: one big number to the middle of the green, front and back small under it */}
-        <div className="map-green" aria-label={tr('Distance to the green', 'Distanz zum Grün')}>
-          <span className="map-green-num big">
-            {fmt(green.center)}
-            <small>{unit}</small>
-          </span>
-          {green.front != null && green.back != null && (
-            <span className="map-green-fb">
-              {tr('F', 'V')} {fmt(green.front)} · {tr('B', 'H')} {fmt(green.back)}
-            </span>
+        {/* back, middle (large), front one below the other (Sascha 14.10.2026: clearer than one number) */}
+        <div className="map-green stacked" aria-label={tr('Distance to the green', 'Distanz zum Grün')}>
+          {green.back != null && (
+            <>
+              <span className="small">{tr('Back', 'Hinten')}</span>
+              <span className="map-green-num">{fmt(green.back)}</span>
+            </>
+          )}
+          <span className="small">{tr('Center', 'Mitte')}</span>
+          <span className="map-green-num big">{fmt(green.center)}</span>
+          {green.front != null && (
+            <>
+              <span className="small">{tr('Front', 'Vorne')}</span>
+              <span className="map-green-num">{fmt(green.front)}</span>
+            </>
           )}
           {slopeToGreen != null && Math.abs(slopeToGreen) >= 2 && (
             <span className="map-slope-chip">
@@ -854,20 +859,20 @@ export function HoleScreen(props: {
           )}
           {(slope || chart) && !nearGreen && (
             <button type="button" className="map-tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')} onClick={() => setShowGreen(!greenVisible)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <ellipse cx="12" cy="17" rx="9" ry="4" fill="currentColor" opacity="0.35" />
-                <path d="M7 16.5l4-2.5 3 1.8 4-2.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M16 13.2l2 0-.6 1.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M10 15V3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M10.5 3.5h6l-1.8 2.2 1.8 2.2h-6z" fill="#FF6B5E" />
+              {/* green slope: the green with the arrow of its fall line */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <ellipse cx="12" cy="13" rx="9.5" ry="6.5" />
+                <path d="M7.5 10.5l8 4.5" />
+                <path d="M15.5 15l-3.4.3M15.5 15l-1.4-3.1" />
               </svg>
             </button>
           )}
           {(mapData.bunkers.length > 0 || mapData.water.length > 0) && (
             <button type="button" className="map-tool" aria-pressed={hazardsOn} aria-label={hazardsOn ? tr('Hide hazard distances', 'Distanzen zu Hindernissen ausblenden') : tr('Show hazard distances', 'Distanzen zu Hindernissen zeigen')} title={tr('Hazards', 'Hindernisse')} onClick={() => setHazardsOn(!hazardsOn)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                <path d="M3 16c2-3 5-4 9-4s7 1 9 4c-2 2.5-5.5 4-9 4s-7-1.5-9-4z" />
-                <path d="M8 8h8M12 4v8" />
+              {/* hazards: a bunker with the distance marks over it */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3.5 17c1.6-2.6 4.6-4 8.5-4s6.9 1.4 8.5 4c-1.9 2-5 3-8.5 3s-6.6-1-8.5-3z" />
+                <path d="M5 8h14M5 6v4M19 6v4" />
               </svg>
             </button>
           )}
@@ -882,7 +887,7 @@ export function HoleScreen(props: {
           )}
           {imageryChoices.length > 1 && (
             <button type="button" className="map-tool" onClick={switchImagery} aria-label={tr(`Satellite image: ${imagery.label}, tap to switch`, `Satellitenbild: ${imagery.label}, antippen zum Wechseln`)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
             </button>
           )}
           {round.players.length > 1 && !round.preview && (
@@ -895,10 +900,10 @@ export function HoleScreen(props: {
             </button>
           )}
           <button type="button" className="map-tool" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(round)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
           </button>
           <button type="button" className="map-tool" aria-pressed={sun} aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on', 'Sonnenmodus an')} onClick={() => { setSun(!sun); setSunState(!sun); }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></svg>
           </button>
         </div>
 

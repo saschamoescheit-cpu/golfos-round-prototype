@@ -836,10 +836,31 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .lb-thru { text-align: right; }
 .leaderboard.card .leaderboard, .sheet .leaderboard { padding: 0; background: none; }
 
-/* course list with an aerial picture of each course (as the photos in Hole19) */
-.list-item.course-card {
-  min-height: 112px; align-items: flex-end; padding: 14px 16px; background-color: var(--surface-2); background-repeat: no-repeat;
-  color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+
+/* my bag: remove a club (✕), add clubs from the catalog */
+.bag-row.club { grid-template-columns: minmax(0, 1fr) auto 40px; }
+.bag-row.club .bag-remove { grid-column: 3; grid-row: 1; width: 36px; height: 36px; border-radius: 18px; border: 1px solid var(--line-strong); background: transparent; color: var(--muted); padding: 0; }
+
+/* round settings as in Hole19: rows that open a list with descriptions and a check mark */
+.settings-list { display: flex; flex-direction: column; background: var(--surface); border-radius: 14px; overflow: hidden; }
+.settings-row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; min-height: 54px; padding: 0 16px;
+  border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; font-weight: 600;
 }
-.list-item.course-card .title { font: 700 19px var(--display); white-space: normal; }
-.list-item.course-card .muted { color: #e2e8e4; }
+.settings-row:last-child { border-bottom: 0; }
+.settings-value { text-align: right; color: var(--muted); font-weight: 500; }
+.pick-list { display: flex; flex-direction: column; gap: 6px; }
+.pick-option {
+  display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.pick-option .grow { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.pick-option[aria-pressed='true'] { border: 2px solid var(--brand); }
+.pick-check { color: var(--brand-text); font: 700 20px var(--body); }
+
+/* green distances one below the other again (14.10.2026) */
+.map-green.stacked { align-items: center; min-width: 84px; padding: 8px 12px; }
+.map-green.stacked .map-green-num { font: 700 22px/1.1 var(--display); color: var(--text); }
+.map-green.stacked .map-green-num.big { font-size: 36px; color: var(--brand-text); }
+.map-green.stacked .map-slope-chip, .map-green.stacked .map-from { text-align: center; }
+.map-toolbar { top: calc(env(safe-area-inset-top) + 236px); }

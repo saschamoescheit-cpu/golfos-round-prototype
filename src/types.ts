@@ -76,7 +76,8 @@ export type FairwayResult = 'left' | 'hit' | 'right';
 export type Lie = 'tee' | 'fairway' | 'rough' | 'bunker' | 'recovery';
 /** How the shot was played (feature 007): full swing, punch (low, under trees), pitch, chip, bunker shot. */
 export type ShotKind = 'full' | 'punch' | 'pitch' | 'chip' | 'bunker';
-export type Club = 'Dr' | '3W' | '5W' | 'Hy' | '4i' | '5i' | '6i' | '7i' | '8i' | '9i' | 'PW' | 'GW' | 'SW' | 'LW';
+/** 'Hy' is the 4-hybrid (shown as "4H"; the name stays for older rounds). Full list: lib/clubs.ts. */
+export type Club = 'Dr' | '3W' | '4W' | '5W' | '7W' | '9W' | '2H' | '3H' | 'Hy' | '5H' | '6H' | '2i' | '3i' | '4i' | '5i' | '6i' | '7i' | '8i' | '9i' | 'PW' | 'GW' | 'SW' | 'LW';
 /** Penalty after a shot: water (drop near where it went in) or out of bounds (stroke and distance). */
 export type PenaltyKind = 'water' | 'ob';
 export interface Shot {
@@ -142,5 +143,5 @@ export interface Round {
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
-  format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford' };
+  format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number };
 }

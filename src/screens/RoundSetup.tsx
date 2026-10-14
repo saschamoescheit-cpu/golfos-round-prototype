@@ -3,13 +3,13 @@ import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { emptyEntry } from '../lib/scoring';
 import { loadCarryBag, newId } from '../lib/storage';
-import { Segmented, TopBar } from '../components/ui';
+import { TopBar } from '../components/ui';
 import { TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex } from '../lib/handicap';
 import { RATINGS, type TeeRating } from '../data/ratings';
 import { fullName, loadProfile, saveProfile } from '../lib/profile';
-import { DEFAULT_FORMAT, isTeamMode, modeName, modesFor, scoringName, teamHandicap, teamsOf, type GameMode, type RoundFormat, type Scoring } from '../lib/games';
+import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, type RoundFormat } from '../lib/games';
 
 const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
@@ -71,10 +71,15 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     return { id: 'me', name: fullName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false) };
   });
   const [others, setOthers] = useState<DraftPlayer[]>([]);
-  // Game mode and scoring (as in Hole19): the modes on offer follow the number of players
+  // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list
   const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
-  const modes = modesFor(others.length + 1);
-  const shownFormat: RoundFormat = modes.includes(format.mode) ? format : { ...format, mode: 'single' };
+  const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance'>(null);
+  const fmt = formatOf(format);
+  const playerCount = others.length + 1;
+  const fits = fmt.fits(playerCount);
+  const allowance = format.allowance ?? 100;
+  // stroke play with 0 % allowance is gross
+  const shownFormat: RoundFormat = { ...format, matchplay: fmt.matchplay, scoring: format.scoring === 'stableford' ? 'stableford' : allowance > 0 ? 'net' : 'stroke' };
 
   const option = options.find((o) => o.id === optionId);
   const holes = option ? buildRoundHoles(props.course.holes, option) : [];
@@ -244,45 +249,98 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Format', 'Format')}</span>
-        <div className="field">
-          <label>{tr('Game mode', 'Spielmodus')}</label>
-          <div className="format-list" role="group" aria-label={tr('Game mode', 'Spielmodus')}>
-            {(['single', 'match', 'fourball', 'scramble', 'foursome'] as GameMode[]).map((m) => (
-              <button key={m} type="button" className="format-option" aria-pressed={shownFormat.mode === m} disabled={!modes.includes(m)} onClick={() => setFormat({ ...shownFormat, mode: m })}>
-                <strong>{modeName(m)}</strong>
-                <span className="muted small">
-                  {m === 'single'
-                    ? tr('Lowest score or most Stableford points wins.', 'Wenigste Schläge oder meiste Stableford-Punkte gewinnen.')
-                    : m === 'match'
-                      ? tr('Hole by hole, net – 2 players.', 'Loch für Loch, netto – 2 Spieler.')
-                      : m === 'fourball'
-                        ? tr('Players 1 & 2 against 3 & 4, the better score of the team counts – 4 players.', 'Spieler 1 & 2 gegen 3 & 4, das bessere Ergebnis des Teams zählt – 4 Spieler.')
-                        : m === 'scramble'
-                          ? tr('Everyone hits, the team picks the best ball and all play on from there – one team score. 2–4 players (4: 1 & 2 against 3 & 4).', 'Alle schlagen, das Team wählt den besten Ball, alle spielen von dort weiter – ein Team-Score. 2–4 Spieler (4: 1 & 2 gegen 3 & 4).')
-                          : tr('Two players share one ball and hit in turn – one team score. 2 or 4 players (4: 1 & 2 against 3 & 4).', 'Zwei Spieler teilen sich einen Ball und schlagen abwechselnd – ein Team-Score. 2 oder 4 Spieler (4: 1 & 2 gegen 3 & 4).')}
-                </span>
-              </button>
-            ))}
-          </div>
+        <div className="settings-list">
+          <button type="button" className="settings-row" onClick={() => setPicker('mode')}>
+            <span>{tr('Mode', 'Modus')}</span>
+            <span className="settings-value">{fmt.name()}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          <button type="button" className="settings-row" onClick={() => setPicker('scoring')}>
+            <span>Scoring</span>
+            <span className="settings-value">{format.scoring === 'stableford' ? 'Stableford' : tr('Stroke play', 'Zählspiel')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          <button type="button" className="settings-row" onClick={() => setPicker('allowance')}>
+            <span>{tr('Handicap allowance', 'HCP-Vorgabe')}</span>
+            <span className="settings-value">{allowance > 0 ? `${allowance} %` : tr('0 % (gross)', '0 % (brutto)')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
         </div>
-        <div className="field">
-          <label>{tr('Scoring', 'Wertung')}</label>
-          <Segmented<Scoring>
-            label={tr('Scoring', 'Wertung')}
-            value={shownFormat.scoring}
-            onChange={(v) => v && setFormat({ ...shownFormat, scoring: v })}
-            options={(['stroke', 'net', 'stableford'] as Scoring[]).map((x) => ({ value: x, label: x === 'stroke' ? tr('Gross', 'Brutto') : x === 'net' ? tr('Net', 'Netto') : 'Stableford' }))}
-          />
-          <span className="muted small">
-            {scoringName(shownFormat.scoring)} · {tr('live leaderboard of your flight on the hole map', 'Live-Leaderboard deines Flights auf der Lochkarte')}
-            {isTeamMode(shownFormat.mode) &&
-              tr(
-                ' · team handicap from the players’ handicaps (foursomes 50 %, scramble 35/15 % for two). Team rounds do not count for your own stats.',
-                ' · Team-Vorgabe aus den Vorgaben der Spieler (Vierer 50 %, Scramble zu zweit 35/15 %). Team-Runden zählen nicht für deine eigene Statistik.',
-              )}
-          </span>
-        </div>
+        {!fits && (
+          <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>
+            {tr(`${fmt.name()} needs ${fmt.need()} – you have ${playerCount}. Add players below or choose another mode.`, `${fmt.name()} braucht ${fmt.need()} – ihr seid ${playerCount}. Füge oben Spieler hinzu oder wähle einen anderen Modus.`)}
+          </p>
+        )}
+        <span className="muted small">
+          {tr('Live leaderboard of your flight on the hole map.', 'Live-Leaderboard deines Flights auf der Lochkarte.')}
+          {isTeamMode(format.mode) &&
+            tr(
+              ' Team handicap from the players’ handicaps (foursomes 50 %, scramble 35/15 % for two). Team rounds do not count for your own stats.',
+              ' Team-Vorgabe aus den Vorgaben der Spieler (Vierer 50 %, Scramble zu zweit 35/15 %). Team-Runden zählen nicht für deine eigene Statistik.',
+            )}
+        </span>
       </section>
+      {picker && (
+        <div className="sheet-backdrop" onClick={() => setPicker(null)}>
+          <section className="sheet" role="dialog" aria-label={picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : tr('Handicap allowance', 'HCP-Vorgabe')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : tr('Handicap allowance', 'HCP-Vorgabe')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPicker(null)}>
+                ✕
+              </button>
+            </div>
+            <div className="pick-list">
+              {picker === 'mode' &&
+                FORMATS.map((o) => (
+                  <button key={o.id} type="button" className="pick-option" aria-pressed={o.id === fmt.id} onClick={() => { setFormat({ ...format, mode: o.mode, matchplay: o.matchplay }); setPicker(null); }}>
+                    <span className="grow">
+                      <strong>{o.name()}</strong>
+                      <span className="muted small">{o.text()}</span>
+                      {!o.fits(playerCount) && <span className="small" style={{ color: 'var(--warn)' }}>{tr(`needs ${o.need()}`, `braucht ${o.need()}`)}</span>}
+                    </span>
+                    {o.id === fmt.id && <span className="pick-check" aria-hidden="true">✓</span>}
+                  </button>
+                ))}
+              {picker === 'scoring' &&
+                ([
+                  ['stableford', 'Stableford', tr('Collect points on every hole from your strokes and handicap – most points win.', 'Auf jedem Loch Punkte sammeln, aus deinen Schlägen und deiner Vorgabe – die meisten Punkte gewinnen.')],
+                  ['net', tr('Stroke play', 'Zählspiel'), tr('The fewest strokes over the whole round win (net with the handicap allowance).', 'Die wenigsten Schläge über die ganze Runde gewinnen (netto mit der HCP-Vorgabe).')],
+                ] as const).map(([v, name, text]) => {
+                  const on = v === 'stableford' ? format.scoring === 'stableford' : format.scoring !== 'stableford';
+                  return (
+                    <button key={v} type="button" className="pick-option" aria-pressed={on} onClick={() => { setFormat({ ...format, scoring: v }); setPicker(null); }}>
+                      <span className="grow">
+                        <strong>{name}</strong>
+                        <span className="muted small">{text}</span>
+                      </span>
+                      {on && <span className="pick-check" aria-hidden="true">✓</span>}
+                    </button>
+                  );
+                })}
+              {picker === 'allowance' &&
+                [100, 95, 90, 85, 75, 50, 0].map((v) => (
+                  <button key={v} type="button" className="pick-option" aria-pressed={allowance === v} onClick={() => { setFormat({ ...format, allowance: v }); setPicker(null); }}>
+                    <span className="grow">
+                      <strong>{v} %</strong>
+                      <span className="muted small">
+                        {v === 100
+                          ? tr('Full handicap – usual for single play.', 'Volle Vorgabe – üblich im Einzel.')
+                          : v === 85
+                            ? tr('WHS recommendation for four-ball stroke play.', 'WHS-Empfehlung für Better Ball im Zählspiel.')
+                            : v === 90
+                              ? tr('WHS recommendation for four-ball match play.', 'WHS-Empfehlung für Better Ball im Lochspiel.')
+                              : v === 0
+                                ? tr('Gross – strokes only, no handicap.', 'Brutto – nur Schläge, ohne Vorgabe.')
+                                : tr('Share of the playing handicap that counts.', 'Anteil der Spielvorgabe, der zählt.')}
+                      </span>
+                    </span>
+                    {allowance === v && <span className="pick-check" aria-hidden="true">✓</span>}
+                  </button>
+                ))}
+            </div>
+          </section>
+        </div>
+      )}
 
       <span className="spacer" />
       <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee, playingHandicap(me))} disabled={!option}>
@@ -291,7 +349,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>
         {tr('Preview the holes – no round', 'Löcher ansehen – ohne Runde')}
       </button>
-      <button type="button" className="btn-primary" onClick={() => start()} disabled={!option}>
+      <button type="button" className="btn-primary" onClick={() => start()} disabled={!option || !fits}>
         {tr('Start round', 'Runde starten')}
       </button>
     </main>

@@ -2,6 +2,7 @@ import type { Club, DetailEntry, FairwayResult, HoleEntry, Lie, LngLat, Ring, Sh
 export type { Club, DetailEntry, Lie, Shot, ShotKind } from '../types';
 import { distanceM, distToLine, pointInRing, type HoleMapData } from './geo';
 import { tr } from './i18n';
+import { CLUB_CATALOG } from './clubs';
 
 // Detailed tracking (feature 003): shot by shot with club and lie. The quick values of the hole
 // (strokes, fairway, penalties, greenside bunker, up & down) are derived from the shots, so scorecard
@@ -39,12 +40,7 @@ export function suggestKind(lie: Lie, toPinM: number | null): ShotKind {
 }
 
 /** Standard bag with typical total distances (m) of a mid-handicap male amateur – used until the player has own data. */
-export const BAG: { club: Club; m: number }[] = [
-  { club: 'Dr', m: 210 }, { club: '3W', m: 190 }, { club: '5W', m: 175 }, { club: 'Hy', m: 165 },
-  { club: '4i', m: 160 }, { club: '5i', m: 150 }, { club: '6i', m: 140 }, { club: '7i', m: 130 },
-  { club: '8i', m: 120 }, { club: '9i', m: 110 }, { club: 'PW', m: 100 }, { club: 'GW', m: 85 },
-  { club: 'SW', m: 70 }, { club: 'LW', m: 55 },
-];
+export const BAG: { club: Club; m: number }[] = CLUB_CATALOG.filter((c) => c.standard).map((c) => ({ club: c.club, m: c.total }));
 
 export function emptyDetail(): DetailEntry {
   return { shots: [], onGreen: null, pin: null, holedOut: false };

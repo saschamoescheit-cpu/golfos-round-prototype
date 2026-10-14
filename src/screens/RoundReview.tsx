@@ -3,7 +3,7 @@ import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot } from '../lib/track';
-import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
+import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
 import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
@@ -37,7 +37,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // the pin the player set with his putts on the course wins, then the one from the hole map
   const pinFor = (index: number): LngLat | null => round.entries[me.id][index]?.puttsAt?.pin ?? coursePins[index]?.pin ?? maps[index]?.greenCenter ?? null;
   const parts = useMemo(() => (track.length > 20 ? splitRound(track, maps) : []), [track, maps]);
-  const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id)), [round.id]);
+  const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id), 3, loadCarryBag()?.map((b) => b.club) ?? null), [round.id]);
   const unit = loadUnit();
   const course = loadCachedCourse(round.courseId);
   const imagery = pickImagery(course ? [course.lon, course.lat] : (maps.find(Boolean)?.greenCenter ?? [0, 0]), loadImagery());
