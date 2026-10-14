@@ -1,0 +1,183 @@
+<title>GolfOS 2D-Lochgalerie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&family=Figtree:wght@400;600&display=swap">
+<style>
+  /* Layout: a course bar on top, the holes of the chosen course as a grid of phone-shaped tiles; a tap opens the hole large. */
+  :root {
+    --bg: #f3f5f0;
+    --surface: #ffffff;
+    --line: #cfd8cc;
+    --text: #12191d;
+    --muted: #55625a;
+    --brand: #4f7a0a;
+    --brand-soft: #e3eecf;
+    --flag: #b4400f;
+    --flag-soft: #f8e1d4;
+    --display: 'Lexend', 'Segoe UI', system-ui, sans-serif;
+    --body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0f1418; --surface: #18222a; --line: #2c3943; --text: #eef2ee; --muted: #9aa7a0; --brand: #9bc53d; --brand-soft: #24331b; --flag: #ff9b6b; --flag-soft: #3b2418; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #0f1418; --surface: #18222a; --line: #2c3943; --text: #eef2ee; --muted: #9aa7a0; --brand: #9bc53d; --brand-soft: #24331b; --flag: #ff9b6b; --flag-soft: #3b2418; color-scheme: dark; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--body); padding: 0 16px 32px; }
+  .wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-block: 18px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+  h1 { font: 700 26px/1.2 var(--display); margin: 0; text-wrap: balance; }
+  h1 span { color: var(--brand); }
+  .lead { margin: 0; color: var(--muted); max-width: 65ch; }
+  .courses { display: flex; flex-wrap: wrap; gap: 6px; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 8px; z-index: 2; }
+  .courses button { font: 600 13px var(--body); padding: 7px 12px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
+  .courses button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+  .courses button .n { font-variant-numeric: tabular-nums; opacity: 0.75; margin-left: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  figure button.shot { padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); cursor: zoom-in; }
+  figure img { display: block; width: 100%; max-width: 100%; aspect-ratio: 300 / 557; object-fit: cover; }
+  figure.flagged button.shot { border: 2px solid var(--flag); }
+  figcaption { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  figcaption b { font: 700 15px var(--display); }
+  figcaption small { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .flag { font: 600 12px var(--body); border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 14px; padding: 3px 9px; cursor: pointer; }
+  figure.flagged .flag { background: var(--flag-soft); border-color: var(--flag); color: var(--flag); }
+  .note { width: 100%; box-sizing: border-box; font: 13px var(--body); border: 1px solid var(--flag); border-radius: 8px; padding: 6px 8px; background: var(--surface); color: var(--text); }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .bar button { font: 600 14px var(--body); padding: 8px 14px; border-radius: 10px; border: 1px solid var(--brand); background: var(--brand-soft); color: var(--text); cursor: pointer; }
+  .bar span { color: var(--muted); font-size: 13px; }
+  textarea.out { width: 100%; box-sizing: border-box; min-height: 90px; font: 13px/1.4 var(--body); border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); padding: 8px; }
+  dialog { border: 0; padding: 0; background: transparent; max-width: min(430px, 94vw); }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+  dialog img { display: block; width: 100%; max-height: 86vh; object-fit: contain; border-radius: 14px; }
+  dialog p { color: #fff; margin: 8px 2px 0; font: 600 14px var(--body); display: flex; justify-content: space-between; gap: 8px; }
+  dialog p button { font: 600 13px var(--body); background: #ffffff22; color: #fff; border: 1px solid #ffffff55; border-radius: 10px; padding: 4px 10px; cursor: pointer; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>GOLF<span>OS</span> · 2D-Lochgalerie</h1>
+    <p class="lead">Jedes Loch der 13 mitgelieferten Plätze in der 2D-Ansicht: Bahn, Luftbild-Fairway, Baumkronen, Bunker, Wasser und Aus bis 60 m neben der Spiellinie. Tippe ein Bild zum Vergrößern und markiere, was nicht stimmt.</p>
+  </header>
+  <nav class="courses" id="courses" aria-label="Plätze"></nav>
+  <div class="bar">
+    <button type="button" id="copy">Notizen kopieren</button>
+    <span id="count">Noch nichts markiert.</span>
+  </div>
+  <textarea class="out" id="out" hidden readonly aria-label="Markierte Löcher"></textarea>
+  <section class="grid" id="grid" aria-live="polite"></section>
+</div>
+<dialog id="big"><img id="bigImg" alt=""><p><span id="bigCap"></span><button type="button" id="close">Schließen</button></p></dialog>
+
+<script>
+  const DATA = /*DATA*/[];
+  const KEY = 'golfos.gallery.flags.v1';
+  let flags = {};
+  try { flags = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { flags = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(flags)); } catch (e) {} };
+  let current = 0;
+  try { const h = location.hash.slice(1); const k = DATA.findIndex((c) => c.c.replace(/\W+/g, '') === h); if (k >= 0) current = k; } catch (e) {}
+
+  const courses = document.getElementById('courses');
+  const grid = document.getElementById('grid');
+  const big = document.getElementById('big');
+
+  function renderCourses() {
+    courses.innerHTML = '';
+    DATA.forEach((c, k) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(k === current));
+      const n = c.h.filter((h) => flags[c.c + '|' + h.l]).length;
+      b.innerHTML = '';
+      b.append(c.c);
+      const s = document.createElement('span');
+      s.className = 'n';
+      s.textContent = n ? '· ' + n + ' markiert' : '· ' + c.h.length;
+      b.append(s);
+      b.onclick = () => { current = k; render(); window.scrollTo({ top: 0 }); };
+      courses.append(b);
+    });
+  }
+
+  function renderGrid() {
+    grid.innerHTML = '';
+    const c = DATA[current];
+    if (!c) { grid.textContent = 'Keine Bilder.'; return; }
+    c.h.forEach((h) => {
+      const key = c.c + '|' + h.l;
+      const f = document.createElement('figure');
+      if (flags[key] != null) f.className = 'flagged';
+      const shot = document.createElement('button');
+      shot.type = 'button';
+      shot.className = 'shot';
+      shot.setAttribute('aria-label', 'Loch ' + h.l + ' vergrößern');
+      const img = document.createElement('img');
+      img.src = h.i;
+      img.alt = c.c + ', Loch ' + h.l + ' in 2D';
+      img.loading = 'lazy';
+      shot.append(img);
+      shot.onclick = () => {
+        document.getElementById('bigImg').src = h.i;
+        document.getElementById('bigCap').textContent = c.c + ' · Loch ' + h.l + (h.p ? ' · Par ' + h.p : '');
+        big.showModal();
+      };
+      const cap = document.createElement('figcaption');
+      const t = document.createElement('span');
+      t.innerHTML = '';
+      const b = document.createElement('b');
+      b.textContent = h.l;
+      t.append(b, ' ');
+      const sm = document.createElement('small');
+      sm.textContent = h.p ? 'Par ' + h.p : '';
+      t.append(sm);
+      const fl = document.createElement('button');
+      fl.type = 'button';
+      fl.className = 'flag';
+      fl.textContent = flags[key] != null ? 'Markiert' : 'Auffällig';
+      fl.setAttribute('aria-pressed', String(flags[key] != null));
+      fl.onclick = () => {
+        if (flags[key] != null) delete flags[key]; else flags[key] = '';
+        save(); render();
+      };
+      cap.append(t, fl);
+      f.append(shot, cap);
+      if (flags[key] != null) {
+        const note = document.createElement('input');
+        note.className = 'note';
+        note.id = 'note-' + key.replace(/\W+/g, '-');
+        note.placeholder = 'Was stimmt nicht? (optional)';
+        note.value = flags[key];
+        note.oninput = () => { flags[key] = note.value; save(); renderCount(); };
+        f.append(note);
+      }
+      grid.append(f);
+    });
+  }
+
+  function lines() {
+    return Object.entries(flags).map(([k, v]) => { const [c, l] = k.split('|'); return c + ' · Loch ' + l + (v ? ': ' + v : ''); });
+  }
+  function renderCount() {
+    const n = Object.keys(flags).length;
+    document.getElementById('count').textContent = n ? n + (n === 1 ? ' Loch markiert' : ' Löcher markiert') + ' – kopieren und an Claude schicken.' : 'Noch nichts markiert.';
+  }
+  function render() { renderCourses(); renderGrid(); renderCount(); }
+
+  document.getElementById('copy').onclick = async () => {
+    const text = lines().join('\n') || 'Keine Auffälligkeiten.';
+    const out = document.getElementById('out');
+    try {
+      await navigator.clipboard.writeText(text);
+      document.getElementById('count').textContent = 'Kopiert – füge es im Chat mit Claude ein.';
+    } catch (e) {
+      out.hidden = false;
+      out.value = text;
+      out.focus();
+      out.select();
+      document.getElementById('count').textContent = 'Markiere den Text unten und kopiere ihn.';
+    }
+  };
+  document.getElementById('close').onclick = () => big.close();
+  big.addEventListener('click', (e) => { if (e.target === big) big.close(); });
+  render();
+</script>

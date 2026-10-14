@@ -1,17 +1,17 @@
 // Dress rehearsal on any bundled course (night run 15./16.10.2026): a walking round over the first hole option,
 // like qa/het9.mjs on Hetzenhof A. At every ball the phone comes out of the pocket, the score goes in on the green.
 // Afterwards: hole detection per ball, the shots the check finds, the caddie's log – and page errors.
-// Usage: node rehearsal.mjs <app url> "<course name to search>" <course id> [seconds standing per ball]
+// Usage: node rehearsal.mjs <app url> "<course name to search>" <course id> [seconds standing per ball] ["loop option", e.g. "C + A"]
 import { chromium, devices } from 'playwright';
 
-const [url = 'http://localhost:5173/', search, courseId, standArg] = process.argv.slice(2);
+const [url = 'http://localhost:5173/', search, courseId, standArg, option] = process.argv.slice(2);
 const STAND = Number(standArg ?? 12);
 const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.78, longitude: 9.69, accuracy: 6 }, permissions: ['geolocation'] });
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
-const out = { course: search, holes: 0, wrongHole: [], shots: '', exact: 0, caddie: '', errors: [] };
+const out = { course: search + (option ? ' ' + option : ''), holes: 0, wrongHole: [], shots: '', exact: 0, caddie: '', errors: [] };
 
 await p.goto(url);
 await p.waitForTimeout(1500);
@@ -28,6 +28,7 @@ await p.fill('#course-search', search);
 await p.waitForTimeout(2000);
 await p.locator('button.list-item').filter({ hasText: search }).first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 30000 });
+if (option) await p.locator('button.choice-loop').filter({ hasText: option }).first().click();
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(4000);
 
