@@ -16,6 +16,8 @@ import { NO_RESUME } from './components/ErrorBoundary';
 import { Stats } from './screens/Stats';
 import { MyBag } from './screens/MyBag';
 import { CourseStats } from './screens/CourseStats';
+import { GamesApp, ModuleChooser } from './screens/Games';
+import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
 
 type Screen =
   | { name: 'tab'; tab: Tab } // the five menu tabs (play, rounds, record, stats, profile)
@@ -95,6 +97,14 @@ export function App() {
     if (r && r.id === pausedRound) return HOME;
     return r ? { name: 'hole', round: r } : HOME;
   });
+  // Two modules (Sascha 15.10.2026): "Rounds" (round and analysis) and "Games" (side games) – chosen when the app
+  // opens; a round in play reopens straight on its hole, a reload stays in the module of this tab.
+  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' ? 'rounds' : sessionModule()));
+  const setModule = (m: AppModule | null) => {
+    setSessionModule(m);
+    setModuleState(m);
+    window.scrollTo(0, 0);
+  };
 
   // Every change to a round is saved immediately, so closing the app never loses a hole.
   const persist = (round: Round) => {
@@ -109,6 +119,8 @@ export function App() {
     if (geoId && !geometryReady(geoId)) ensureGeometry(geoId).then(() => setGeoTick((t) => t + 1));
   }, [geoId]);
   if (geoId && !geometryReady(geoId)) return <Waiting />;
+  if (!module) return <ModuleChooser roundOpen={rounds.some((r) => !r.finishedAt)} gameOpen={loadGames().some((g) => !g.finishedAt)} onPick={setModule} />;
+  if (module === 'games') return <GamesApp onModules={() => setModule(null)} />;
 
   switch (screen.name) {
     case 'tab': {
@@ -132,6 +144,7 @@ export function App() {
                 setRounds(loadRounds());
               }}
               onCheck={() => setScreen(ROUNDS)}
+              onModules={() => setModule(null)}
             />
           )}
           {tab === 'rounds' && <RoundsTab rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} />}

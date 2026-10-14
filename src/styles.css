@@ -959,3 +959,48 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .hole-drawer > * { flex-shrink: 0; }
 :root[data-theme='sun'] .hole-bar .map-score { border: 0; background: transparent; box-shadow: none; }
+
+/* module choice at app start and the Games module (Sascha 15.10.2026) */
+.module-chooser { justify-content: center; gap: 14px; }
+.module-brand { font-size: 38px; text-align: center; }
+.module-card {
+  display: flex; align-items: center; gap: 14px; text-align: left; padding: 18px 16px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--line-strong); color: var(--text); font: inherit;
+}
+.module-card .grow { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.module-card strong { font: 700 22px var(--display); }
+.module-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--brand-soft); color: var(--brand-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.module-live { color: var(--brand-text); font-weight: 600; }
+.module-switch { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; color: var(--text); font: inherit; }
+.module-tag { font: 600 12px var(--body); text-transform: uppercase; letter-spacing: 0.8px; color: var(--brand-text); border: 1px solid var(--brand); border-radius: 8px; padding: 2px 6px; }
+.game-rules { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--text-2); }
+.game-form { display: flex; flex-direction: column; gap: 10px; }
+.game-form-head { display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; color: var(--text); font: inherit; text-align: left; }
+.game-form-head .grow { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.game-players { color: var(--brand-text); white-space: nowrap; }
+.game-player-row { display: grid; grid-template-columns: 1fr 110px auto; gap: 8px; align-items: end; }
+.game-setting { display: flex; flex-direction: column; gap: 6px; }
+.game-scores { display: flex; flex-direction: column; gap: 4px; }
+.game-dots { color: var(--warn); margin-left: 6px; letter-spacing: 1px; }
+.game-hole-meta { font: 500 14px var(--body); }
+.game-extra { display: flex; flex-direction: column; gap: 10px; }
+.game-standing { display: flex; flex-direction: column; gap: 8px; }
+.game-status { color: var(--text-2); }
+.game-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.game-rows li { display: flex; align-items: center; gap: 10px; }
+.game-rows .grow { flex: 1; min-width: 0; }
+.game-rank { width: 22px; height: 22px; border-radius: 11px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font: 700 12px var(--body); }
+.game-rows li.lead .game-rank { background: var(--brand); color: var(--bg); }
+.game-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+.game-money { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; font-weight: 600; border-top: 1px solid var(--line); padding-top: 8px; }
+.game-nav { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
+.game-winner { display: flex; flex-direction: column; gap: 2px; }
+.game-winner strong { font: 700 26px var(--display); }
+.game-pays { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.game-pays li { display: flex; justify-content: space-between; gap: 10px; }
+.game-grid-scroll { overflow-x: auto; margin-top: 8px; }
+.game-grid { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.game-grid th, .game-grid td { padding: 4px 6px; text-align: center; white-space: nowrap; }
+.game-grid th:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+.game-grid tbody tr { border-top: 1px solid var(--line); }
+.play-module { margin-left: auto; }

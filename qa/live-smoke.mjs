@@ -16,6 +16,9 @@ p.on('response', (r) => {
 });
 await p.goto(url);
 await p.waitForTimeout(1500);
+// the app opens on the choice of module (since 15.10.2026): Rounds or Games
+console.log('module choice:', await p.locator('.module-card').count());
+if (await p.locator('.module-card').count()) await p.locator('.module-card').filter({ hasText: 'Rounds' }).click();
 // a fresh phone sees "How GolfOS works" as a window first (since 15.10.2026)
 console.log('intro window:', await p.locator('.intro-modal').count());
 if (await p.locator('.intro-modal').count()) await p.getByRole('button', { name: 'Verstanden' }).click();
@@ -24,7 +27,7 @@ if (await p.locator('.tabbar').count()) await p.locator('.tabbar button').filter
 console.log('version:', (await p.locator('main').innerText()).match(/Version [^\n]*/)?.[0]);
 await p.evaluate(() => {
   localStorage.clear();
-  localStorage.setItem('golfos.intro.v1', '1');
+  localStorage.setItem('golfos.intro.v1', '1'); sessionStorage.setItem('golfos.module', 'rounds');
 });
 await p.reload();
 await p.waitForTimeout(1000);

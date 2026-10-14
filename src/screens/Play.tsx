@@ -17,6 +17,7 @@ export function PlayTab(props: {
   onEnd: (r: Round) => void;
   onAbort: (r: Round) => void;
   onCheck: () => void;
+  onModules: () => void;
 }) {
   const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const unchecked = uncheckedRounds(props.rounds).length;
@@ -44,9 +45,13 @@ export function PlayTab(props: {
   return (
     <>
       <div className="topbar">
-        <div className="brand">
-          GOLF<span>OS</span>
-        </div>
+        <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
+          <span className="brand">
+            GOLF<span>OS</span>
+          </span>
+          <span className="module-tag">Rounds</span>
+          <span aria-hidden="true">⇄</span>
+        </button>
         {/* the version in small print, so a new one is easy to spot (Sascha 14.10.2026) */}
         <span className="spacer topbar-version muted" title={__BUILD_TIME__}>
           Version {new Date(__BUILD_TIME__).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}

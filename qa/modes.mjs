@@ -42,7 +42,7 @@ for (const c of CASES) {
     await p.goto(url);
     await p.evaluate(() => {
       localStorage.clear();
-      localStorage.setItem('golfos.intro.v1', '1');
+      localStorage.setItem('golfos.intro.v1', '1'); sessionStorage.setItem('golfos.module', 'rounds');
       localStorage.setItem('golfos.tip.shots.v1', '1');
     });
     await p.reload();
