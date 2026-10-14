@@ -77,5 +77,11 @@ ok(e7.penalties === 1, 'penalty from the course kept on hole 7');
 ok(/Strafschlag vom Platz/.test(notices) || e7.detail.shots.some((s) => s.penalty), 'hole 7: penalty placed on a shot (water) or the hint to place it');
 ok(!/Dein Score war/.test(notices), 'no false score difference on hole 7');
 ok((await p.locator('.review-list li').filter({ hasText: /Putts/ }).count()) === 1, 'putts in the list');
+// confirming the hole keeps the score from the course (the detection may miss a shot, the penalty is not placed yet)
+const before = e7.strokes;
+await p.locator('.btn-primary').filter({ hasText: /bestätigen/ }).click();
+await p.waitForTimeout(600);
+const after = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][6].strokes);
+ok(after === before, `confirming hole 7 keeps the score from the course (${before} → ${after})`);
 console.log(errs.join(' / ') || 'no page errors');
 await b.close();

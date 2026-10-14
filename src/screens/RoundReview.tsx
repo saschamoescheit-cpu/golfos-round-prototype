@@ -80,7 +80,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const saveDetail = (index: number, detail: DetailEntry, putts = entries[index].putts) => {
     const entry = entries[index];
     const derived = deriveFromShots(detail, putts, round.holes[index].par, maps[index]);
-    if (entry.strokes != null && !entry.detail) delete derived.strokes;
+    // The score the player entered stays: confirming a hole whose detected shots miss one (or with a penalty not yet
+    // placed) must not change it. The score field above changes it; a difference shows the hint to fix the shots.
+    if (entry.strokes != null) delete derived.strokes;
     // penalties entered on the course stay until the player marks the shots they belong to
     if ((entry.penalties ?? 0) > (derived.penalties ?? 0) && !detail.shots.some((s) => s.penalty)) delete derived.penalties;
     save(index, { detail, putts, ...derived });
