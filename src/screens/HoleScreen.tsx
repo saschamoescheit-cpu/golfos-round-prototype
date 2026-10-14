@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DetailEntry, HoleEntry, LngLat, Round } from '../types';
 import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
-import { checksShots, commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
+import { commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { PositionFilter } from '../lib/gpsfilter';
@@ -925,7 +925,7 @@ export function HoleScreen(props: {
             )}
             next={scoreSheet === 'next'}
             last={i === round.holes.length - 1}
-            canPlacePutts={!round.preview && !isTeamRound(round) && checksShots(round)}
+            canPlacePutts={!round.preview && !isTeamRound(round)}
             team={isTeamRound(round)}
             onChange={update}
             onPlacePutts={() => setPuttEditor(true)}
@@ -968,7 +968,7 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
-          {shotTip && !detectedBanner && checksShots(round) && (
+          {shotTip && !detectedBanner && (
             <div className="map-hint detected">
               <span>
                 {tr('Shots are found after the round: at the ball glance at the phone, after each hole enter score and putts.', 'Die Schläge findet die App nach der Runde: am Ball kurz aufs Handy schauen, nach jedem Loch Score und Putts eintragen.')}

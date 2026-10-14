@@ -7,11 +7,14 @@ import { tr } from '../lib/i18n';
 // also putts and penalty strokes, fairway, greenside bunker. GIR and up & down follow by themselves. The putts can be
 // placed on the green right away (putt editor) – then nothing is left to do for them after the round.
 
-function Stepper(props: { label: string; value: number | null; start: number; min?: number; max?: number; hint?: string | null; onChange: (v: number | null) => void }) {
+function Stepper(props: { label: string; sub?: string; value: number | null; start: number; min?: number; max?: number; hint?: string | null; onChange: (v: number | null) => void }) {
   const min = props.min ?? 0;
   return (
     <div className="stepper-row">
-      <span className="stepper-label">{props.label}</span>
+      <span className="stepper-label">
+        {props.label}
+        {props.sub && <small className="muted">{props.sub}</small>}
+      </span>
       <div className="stepper" role="group" aria-label={props.label}>
         {props.value != null && (
           <button type="button" aria-label={tr(`${props.label} minus one`, `${props.label} minus eins`)} disabled={props.value <= min} onClick={() => props.onChange(props.value! - 1)}>
@@ -94,6 +97,8 @@ export function ScoreSheet(props: {
               {!e.pickedUp && (
                 <Stepper
                   label={props.team ? tr('Team strokes', 'Team-Schläge') : tr('Strokes', 'Schläge')}
+                  // penalty strokes count in the score: said plainly, with the number once there are some
+                  sub={(e.penalties ?? 0) > 0 ? tr(`incl. ${e.penalties} penalty ${e.penalties === 1 ? 'stroke' : 'strokes'}`, `inkl. ${e.penalties} ${e.penalties === 1 ? 'Strafschlag' : 'Strafschläge'}`) : tr('incl. penalty strokes', 'inkl. Strafschläge')}
                   value={strokes}
                   start={h.par || 4}
                   min={1}

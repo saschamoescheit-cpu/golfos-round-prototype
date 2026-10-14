@@ -47,7 +47,10 @@ export function PlayTab(props: {
         <div className="brand">
           GOLF<span>OS</span>
         </div>
-        <span className="spacer" />
+        {/* the version in small print, so a new one is easy to spot (Sascha 14.10.2026) */}
+        <span className="spacer topbar-version muted" title={__BUILD_TIME__}>
+          Version {new Date(__BUILD_TIME__).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+        </span>
         <button
           type="button"
           className="lang-btn"

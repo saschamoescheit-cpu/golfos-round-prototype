@@ -884,3 +884,8 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .finish-card strong { font: 600 17px var(--display); }
 .finish-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .finish-actions .btn-primary, .finish-actions .btn-secondary { min-height: 48px; font-size: 15px; }
+.stepper-label { display: flex; flex-direction: column; line-height: 1.2; }
+.stepper-label small { font: 500 11px var(--body); }
+.finish-actions > .btn-danger:nth-child(3) { grid-column: 1 / -1; }
+.topbar-version { text-align: center; font-size: 11px; white-space: nowrap; }
+.score-sheet .stepper-label small { color: var(--warn); }

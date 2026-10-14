@@ -35,8 +35,10 @@ export function Scorecard(props: {
   const stats = roundStats(round.holes, round.entries[me.id]);
   const sg = roundsSg([round]);
   // Always: without a GPS track (GPS off, phone switched off) the shots can still be set by tapping the map.
-  // a team ball has no own shots; quick tracking (score only) has no round check either
-  const canReview = !round.preview && !isTeamRound(round) && checksShots(round);
+  // a team ball has no own shots to check
+  const canReview = !round.preview && !isTeamRound(round);
+  // chosen after the round: detailed (check the shots) or quick (scorecard only) – the GPS track is there either way
+  const scoreOnly = !checksShots(round);
 
   return (
     <main className="screen">
@@ -61,7 +63,10 @@ export function Scorecard(props: {
           <span className="muted small">
             {finished
               ? canReview
-                ? tr('Check your shots now or later under Rounds – or delete the round.', 'Prüfe deine Schläge jetzt oder später unter Runden – oder lösche die Runde.')
+                ? tr(
+                    'Detailed: check your shots (now or later) – for strokes gained and club distances. Quick: keep it as a digital scorecard only.',
+                    'Detail: Schläge prüfen (jetzt oder später) – für Strokes Gained und Schlägerweiten. Schnell: nur als digitale Scorekarte behalten.',
+                  )
                 : tr('You find it under Rounds – or delete it.', 'Du findest sie unter Runden – oder lösche sie.')
               : tr('Save it for your stats – or delete it.', 'Speichere sie für deine Statistik – oder lösche sie.')}
           </span>
@@ -73,10 +78,15 @@ export function Scorecard(props: {
                 </button>
               ) : (
                 canReview && (
-                  <button type="button" className="btn-primary" onClick={() => props.onReview(round)}>
+                  <button type="button" className="btn-primary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
                     {tr('Check shots', 'Schläge prüfen')}
                   </button>
                 )
+              )}
+              {finished && canReview && (
+                <button type="button" className="btn-secondary" aria-pressed={scoreOnly} onClick={() => props.onChange({ ...round, capture: 'score' })}>
+                  {scoreOnly ? tr('Scorecard only ✓', 'Nur Scorekarte ✓') : tr('Scorecard only', 'Nur als Scorekarte')}
+                </button>
               )}
               <button type="button" className="btn-secondary btn-danger" onClick={() => setConfirmDelete(true)}>
                 {tr('Delete round', 'Runde löschen')}
@@ -188,7 +198,8 @@ export function Scorecard(props: {
       )}
       {shareMsg && <p className="muted small" style={{ margin: 0 }}>{shareMsg}</p>}
       {canReview && !(finished && props.justFinished) && (
-        <button type="button" className="btn-secondary" onClick={() => props.onReview(round)}>
+        // a scorecard-only round can still be checked later (the GPS track stays on the phone)
+        <button type="button" className="btn-secondary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
           {tr('Check your shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? tr(' · some to check', ' · einige offen') : ''}
         </button>
       )}

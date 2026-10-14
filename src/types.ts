@@ -144,8 +144,8 @@ export interface Round {
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
   /**
-   * How the round is tracked (Sascha 14.10.2026): 'score' = quick tracking, score and putts only, no round check;
-   * 'full' = detailed, the shots come from the GPS track and are checked after the round. Missing = 'full'.
+   * Quick or detailed tracking, chosen after the round (Sascha 14.10.2026 – the GPS track is recorded anyway):
+   * 'score' = only a digital scorecard, no round check; 'full' or missing = the shots are checked after the round.
    */
   capture?: 'score' | 'full';
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
