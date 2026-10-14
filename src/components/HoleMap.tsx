@@ -375,8 +375,8 @@ export function HoleMap(props: HoleMapProps) {
       const at = m.project(h.c);
       if (placed.some((q) => Math.abs(q.x - at.x) < 70 && Math.abs(q.y - at.y) < 26)) continue;
       placed.push(at);
-      // Water along the hole (carry far beyond the near edge): only the distance to it.
-      const text = h.carry - h.to > 120 ? `${formatDistance(h.to, p.unit)} ›` : `${formatDistance(h.to, p.unit)} / ${formatDistance(h.carry, p.unit)}`;
+      // always both: to the start of the hazard and to its end – what course management needs (Sascha 14.10.2026)
+      const text = `${formatDistance(h.to, p.unit)} / ${formatDistance(h.carry, p.unit)}`;
       mk.labels.push(new maplibregl.Marker({ element: labelEl(text, `map-label hazard ${h.kind}`) }).setLngLat(h.c).addTo(m));
     }
   }

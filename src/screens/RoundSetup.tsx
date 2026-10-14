@@ -29,6 +29,7 @@ interface Remembered {
   handicap?: string;
   handicap18?: string; // the playing handicap for 18 holes (a 9-hole round entered half of it)
   mode?: CaptureMode;
+  capture?: 'score' | 'full';
   tees?: Record<string, string>;
 }
 
@@ -71,6 +72,8 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     return { id: 'me', name: fullName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false) };
   });
   const [others, setOthers] = useState<DraftPlayer[]>([]);
+  // quick (score only) or detailed tracking (shots from the GPS track, checked after the round) – as last time
+  const [capture, setCapture] = useState<'score' | 'full'>(remembered?.capture ?? 'full');
   // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list
   const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
   const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance'>(null);
@@ -120,7 +123,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     try {
       const entered = Number(me.handicap.replace(',', '.'));
       const handicap18 = me.handicap.trim() !== '' && Number.isFinite(entered) && nine ? String(entered * 2) : me.handicap;
-      const r: Remembered = { name: me.name, index: me.index, handicap: me.handicap, handicap18, mode, tees: { ...remembered?.tees, ...(tee ? { [props.course.id]: tee } : {}) } };
+      const r: Remembered = { name: me.name, index: me.index, handicap: me.handicap, handicap18, mode, capture, tees: { ...remembered?.tees, ...(tee ? { [props.course.id]: tee } : {}) } };
       localStorage.setItem(ME_KEY, JSON.stringify(r));
       // a changed handicap index is the player's new index – the profile keeps it
       const p = profile();
@@ -155,6 +158,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       players,
       entries,
       currentHole: 0,
+      capture,
       format: shownFormat,
       ...(tee ? { tee } : {}),
       ...(preview ? { preview: true } : {}),
@@ -164,6 +168,20 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   return (
     <main className="screen">
       <TopBar title={props.course.name} onBack={props.onBack} />
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span className="eyebrow">{tr('Tracking', 'Erfassung')}</span>
+        <div className="choice-grid" role="group" aria-label={tr('Tracking', 'Erfassung')}>
+          <button type="button" className="choice capture-choice" aria-pressed={capture === 'score'} onClick={() => setCapture('score')}>
+            <strong>{tr('Quick', 'Schnell')}</strong>
+            <span className="small muted">{tr('Score and putts only – no round check afterwards.', 'Nur Score und Putts – keine Nachbereitung.')}</span>
+          </button>
+          <button type="button" className="choice capture-choice" aria-pressed={capture === 'full'} onClick={() => setCapture('full')}>
+            <strong>{tr('Detailed', 'Detail')}</strong>
+            <span className="small muted">{tr('Plus your shots from the GPS track, checked after the round – strokes gained, club distances.', 'Dazu deine Schläge aus der GPS-Spur, nach der Runde geprüft – Strokes Gained, Schlägerweiten.')}</span>
+          </button>
+        </div>
+      </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Holes', 'Löcher')}</span>

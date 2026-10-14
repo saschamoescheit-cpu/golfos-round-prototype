@@ -1,4 +1,5 @@
-import type { FairwayResult, HoleEntry, Player, RoundHole } from '../types';
+import type { HoleEntry, Player, RoundHole } from '../types';
+import { FairwayPicker } from './FairwayPicker';
 import { formatToPar } from './ui';
 import { tr } from '../lib/i18n';
 
@@ -107,19 +108,8 @@ export function ScoreSheet(props: {
                   {h.par >= 4 && (
                     <div className="stepper-row">
                       <span className="stepper-label">Fairway</span>
-                      <div className="chip-set" role="group" aria-label="Fairway">
-                        {(
-                          [
-                            ['left', tr('← Left', '← Links')],
-                            ['hit', tr('Hit', 'Getroffen')],
-                            ['right', tr('Right →', 'Rechts →')],
-                          ] as [FairwayResult, string][]
-                        ).map(([v, label]) => (
-                          <button key={v} type="button" className={`chip${e.fairway === v ? ' on' : ''}`} aria-pressed={e.fairway === v} onClick={() => set({ fairway: e.fairway === v ? null : v })}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
+                      {/* out of bounds: stroke and distance – at least one penalty stroke */}
+                      <FairwayPicker value={e.fairway} onChange={(v) => set({ fairway: v, ...(v === 'ob' ? { penalties: Math.max(1, e.penalties ?? 0) } : {}) })} />
                     </div>
                   )}
                   <div className="chip-set facts">

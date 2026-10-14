@@ -137,6 +137,9 @@ export function roundStats(holes: RoundHole[], entries: HoleEntry[]): RoundStats
   return s;
 }
 
+/** Detailed tracking: the shots are found in the GPS track and checked after the round (quick tracking: score only). */
+export const checksShots = (r: Pick<Round, 'capture'>): boolean => r.capture !== 'score';
+
 export function emptyEntry(): HoleEntry {
   return {
     strokes: null, pickedUp: false, putts: null, fairway: null,

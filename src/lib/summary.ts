@@ -111,7 +111,7 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
     if (h.par >= 4 && e.fairway) {
       tee.of++;
       if (e.fairway === 'hit') tee.fairways++;
-      else tee[e.fairway]++;
+      else if (e.fairway !== 'ob') tee[e.fairway]++;
     }
     if (e.putts != null) {
       putting.putts += e.putts;

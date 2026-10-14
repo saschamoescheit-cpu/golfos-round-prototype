@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { DetailEntry, FairwayResult, HoleEntry, LngLat, Round } from '../types';
+import type { DetailEntry, HoleEntry, LngLat, Round } from '../types';
 import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
-import { commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
+import { checksShots, commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { PositionFilter } from '../lib/gpsfilter';
@@ -38,8 +38,9 @@ import { isTeamRound } from '../lib/games';
 import { HoleSetup } from '../components/HoleSetup';
 import { clubCode, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
+import { FairwayPicker } from '../components/FairwayPicker';
 
-const fairwayName = (f: string) => tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f);
+const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f));
 
 /** Beyond this distance from the hole the app measures from the tee (planning at home or on another hole). */
 const ON_HOLE_M = 1500;
@@ -341,7 +342,10 @@ export function HoleScreen(props: {
             </span>
             <div className="sheet-actions">
               <button type="button" className="btn-primary" onClick={() => props.onEnd(round)}>
-                {tr('Finish', 'Beenden')}
+                {tr('Save & finish', 'Speichern & beenden')}
+              </button>
+              <button type="button" className="btn-secondary btn-danger" onClick={() => setExitConfirm('abort')}>
+                {tr('Delete round', 'Runde löschen')}
               </button>
               <button type="button" className="btn-secondary" onClick={() => setExitConfirm(null)}>
                 {tr('Back', 'Zurück')}
@@ -921,7 +925,7 @@ export function HoleScreen(props: {
             )}
             next={scoreSheet === 'next'}
             last={i === round.holes.length - 1}
-            canPlacePutts={!round.preview && !isTeamRound(round)}
+            canPlacePutts={!round.preview && !isTeamRound(round) && checksShots(round)}
             team={isTeamRound(round)}
             onChange={update}
             onPlacePutts={() => setPuttEditor(true)}
@@ -964,7 +968,7 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
-          {shotTip && !detectedBanner && (
+          {shotTip && !detectedBanner && checksShots(round) && (
             <div className="map-hint detected">
               <span>
                 {tr('Shots are found after the round: at the ball glance at the phone, after each hole enter score and putts.', 'Die Schläge findet die App nach der Runde: am Ball kurz aufs Handy schauen, nach jedem Loch Score und Putts eintragen.')}
@@ -1285,16 +1289,7 @@ export function HoleScreen(props: {
         {hole.par >= 4 && !hasShots && (
           <div className="field">
             <label>Fairway</label>
-            <Segmented<FairwayResult>
-              label="Fairway"
-              value={myEntry.fairway}
-              onChange={(v) => update(me.id, { fairway: v })}
-              options={[
-                { value: 'left', label: tr('← Left', '← Links') },
-                { value: 'hit', label: tr('Hit', 'Getroffen') },
-                { value: 'right', label: tr('Right →', 'Rechts →') },
-              ]}
-            />
+            <FairwayPicker value={myEntry.fairway} onChange={(v) => update(me.id, { fairway: v, ...(v === 'ob' ? { penalties: Math.max(1, myEntry.penalties ?? 0) } : {}) })} />
           </div>
         )}
 

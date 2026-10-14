@@ -864,3 +864,23 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .map-green.stacked .map-green-num.big { font-size: 36px; color: var(--brand-text); }
 .map-green.stacked .map-slope-chip, .map-green.stacked .map-from { text-align: center; }
 .map-toolbar { top: calc(env(safe-area-inset-top) + 236px); }
+
+/* fairway with symbols (Hole19): left, hit, right, out of bounds */
+.fw-picker { display: grid; grid-template-columns: repeat(4, 58px); gap: 6px; }
+.fw-option {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: 54px; padding: 0;
+  border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text);
+}
+.fw-option small { font: 600 9.5px var(--body); color: var(--muted); }
+.fw-option[aria-pressed='true'] { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.fw-option[aria-pressed='true'] small { color: var(--bg); }
+.fw-option.ob[aria-pressed='true'] { background: var(--bad); border-color: var(--bad); }
+.fw-ob { font: 800 14px/24px var(--display); letter-spacing: 0.5px; }
+.capture-choice { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; gap: 4px; padding: 10px 12px; }
+.capture-choice .small { white-space: normal; line-height: 1.3; }
+
+/* scorecard: finish the round – save / check the shots / delete */
+.finish-card { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--brand); }
+.finish-card strong { font: 600 17px var(--display); }
+.finish-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.finish-actions .btn-primary, .finish-actions .btn-secondary { min-height: 48px; font-size: 15px; }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Round } from '../types';
-import { playerTotals } from '../lib/scoring';
+import { checksShots, playerTotals } from '../lib/scoring';
 import { formatToPar } from '../components/ui';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
@@ -13,7 +13,7 @@ const mine = (r: Round) => r.players.find((p) => p.isMe)!;
 /** A recent finished round whose shots are not all checked yet (strokes gained needs checked holes). */
 export function needsCheck(r: Round): boolean {
   const recent = Date.now() - new Date(r.createdAt).getTime() < 14 * 24 * 3600 * 1000;
-  return !!r.finishedAt && recent && !isTeamRound(r) && r.entries[mine(r).id].some((e) => !e.pickedUp && e.strokes != null && (!e.detail?.shots.length || e.detail.shots.some((s) => s.review)));
+  return !!r.finishedAt && recent && !isTeamRound(r) && checksShots(r) && r.entries[mine(r).id].some((e) => !e.pickedUp && e.strokes != null && (!e.detail?.shots.length || e.detail.shots.some((s) => s.review)));
 }
 
 export const uncheckedRounds = (rounds: Round[]): Round[] => rounds.filter(needsCheck);

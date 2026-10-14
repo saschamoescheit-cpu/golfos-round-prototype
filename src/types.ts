@@ -70,7 +70,8 @@ export interface RoundHole {
   strokeIndex: number;
 }
 
-export type FairwayResult = 'left' | 'hit' | 'right';
+/** Tee shot on par 4/5: fairway hit, missed left or right, or out of bounds ('ob', a miss with a penalty stroke). */
+export type FairwayResult = 'left' | 'hit' | 'right' | 'ob';
 
 // ---- Detailed tracking (feature 003) ----
 export type Lie = 'tee' | 'fairway' | 'rough' | 'bunker' | 'recovery';
@@ -142,6 +143,11 @@ export interface Round {
   rating?: { cr: number; slope: number };
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
+  /**
+   * How the round is tracked (Sascha 14.10.2026): 'score' = quick tracking, score and putts only, no round check;
+   * 'full' = detailed, the shots come from the GPS track and are checked after the round. Missing = 'full'.
+   */
+  capture?: 'score' | 'full';
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
   format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number };
 }

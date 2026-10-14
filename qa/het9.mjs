@@ -110,7 +110,7 @@ const state = await p.evaluate(() => {
 });
 console.log('round:', JSON.stringify(state));
 // finish the round on the scorecard, then the check
-await p.getByRole('button', { name: /Runde beenden/ }).first().click().catch(() => {});
+await p.getByRole('button', { name: /Speichern & beenden|Runde beenden/ }).first().click().catch(() => {});
 await p.waitForTimeout(1200);
 await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click().catch(() => {});
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click().catch(() => {});

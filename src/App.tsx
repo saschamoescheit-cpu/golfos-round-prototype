@@ -21,7 +21,7 @@ type Screen =
   | { name: 'pickCourse' }
   | { name: 'setup'; course: Course }
   | { name: 'hole'; round: Round }
-  | { name: 'scorecard'; round: Round; back?: Screen }
+  | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean }
   | { name: 'courseStats'; courseName: string }
   | { name: 'bag'; part: 'bag' | 'caddie' }
   | { name: 'review'; round: Round }
@@ -122,7 +122,7 @@ export function App() {
               onEnd={(round) => {
                 const done = { ...round, finishedAt: new Date().toISOString() };
                 persist(done);
-                setScreen({ name: 'scorecard', round: done, back: ROUNDS });
+                setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
               }}
               onAbort={(round) => {
                 deleteRound(round.id);
@@ -226,7 +226,7 @@ export function App() {
             onEnd={(round) => {
               const done = { ...round, finishedAt: new Date().toISOString() };
               persist(done);
-              setScreen({ name: 'scorecard', round: done, back: ROUNDS });
+              setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
             }}
             onAbort={(round) => {
               deleteRound(round.id);
@@ -246,15 +246,17 @@ export function App() {
         <Scorecard
           round={screen.round}
           onBackToHole={() => setScreen({ name: 'hole', round: screen.round })}
+          justFinished={screen.justFinished}
           onFinish={(round) => {
             // Finishing on the last hole is leaving it: its untouched score counts as par (quick tracking).
-            persist(round.currentHole === round.holes.length - 1 ? commitParAt(round, round.currentHole) : round);
-            setScreen(ROUNDS);
+            const done = round.currentHole === round.holes.length - 1 ? commitParAt(round, round.currentHole) : round;
+            persist(done);
+            setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true }); // then: check the shots or delete
           }}
           onClose={() => setScreen(screen.back ?? ROUNDS)}
           onChange={(round) => {
             persist(round);
-            setScreen({ name: 'scorecard', round, back: screen.back });
+            setScreen({ name: 'scorecard', round, back: screen.back, justFinished: screen.justFinished });
           }}
           onReview={(round) => {
             persist(round);
