@@ -91,15 +91,18 @@ for (const c of CASES) {
     ok(round.players.length === c.blocks && round.entries[round.players[0].id].slice(0, 3).every((e) => e.strokes != null), `${label}: stored ${scores.join(' · ')}`);
     step = 'leaderboard';
     if (c.blocks > 1) {
-      await p.locator('.map-tool[title="Leaderboard"]').click();
+      // the leaderboard sits in the hole overview, pulled up from the hole bar
+      await p.locator('.hole-bar-handle').click();
+      await p.locator('.hole-drawer').getByRole('button', { name: 'Leaderboard' }).click();
       await p.waitForTimeout(300);
       const board = (await p.locator('.leaderboard').innerText()).replace(/\s+/g, ' ');
       ok(!c.status || /auf|All Square|gewinnt/.test(board), `${label}: leaderboard "${board.replace('Leaderboard ', '')}"`);
       await p.getByRole('button', { name: 'Schließen' }).last().click();
     }
     step = 'finish';
-    await p.locator('.map-btn[aria-label="Runde verlassen"]').click();
-    await p.getByRole('button', { name: 'Runde beenden' }).click();
+    // the hole overview (pulled up from the hole bar) has "Finish round"
+    await p.locator('.hole-bar-handle').click();
+    await p.locator('.hole-drawer').getByRole('button', { name: 'Runde beenden' }).click();
     await p.getByRole('button', { name: 'Speichern & beenden' }).click();
     await p.waitForTimeout(800);
     const card = await p.locator('.finish-card').innerText().catch(() => '');

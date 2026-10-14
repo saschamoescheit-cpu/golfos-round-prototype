@@ -24,7 +24,7 @@ type Screen =
   | { name: 'hole'; round: Round }
   | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean; finishing?: boolean }
   | { name: 'courseStats'; courseName: string }
-  | { name: 'bag'; part: 'bag' | 'caddie' }
+  | { name: 'bag'; part: 'bag' | 'caddie'; back?: Screen }
   | { name: 'review'; round: Round }
   | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null; playing?: number | null };
 
@@ -177,7 +177,7 @@ export function App() {
         </Suspense>
       );
     case 'bag':
-      return <MyBag rounds={rounds} part={screen.part} onBack={() => setScreen({ name: 'tab', tab: 'profile' })} />;
+      return <MyBag rounds={rounds} part={screen.part} onBack={() => setScreen(screen.back ?? { name: 'tab', tab: 'profile' })} />;
     case 'courseStats':
       return (
         <CourseStats
@@ -235,6 +235,7 @@ export function App() {
               setRounds(loadRounds());
               setScreen(HOME);
             }}
+            onOpenBag={(part) => setScreen({ name: 'bag', part, back: { name: 'hole', round: screen.round } })}
             onShowScorecard={(round, finishing) => {
               if (round.preview) return setScreen(HOME);
               persist(round);

@@ -919,3 +919,42 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .fw-option.ob[aria-pressed='true'] { background: #0e1418; border-color: #0e1418; color: #fff; }
 .fw-option.ob[aria-pressed='true'] small { color: #fff; }
 .fw-option.ob[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--text); }
+
+/* hole overview pulled up from the hole bar (Hole19) */
+.map-weather { top: calc(env(safe-area-inset-top) + 10px); }
+.hole-bar { position: relative; }
+.hole-bar-handle {
+  position: absolute; left: 50%; top: -14px; transform: translateX(-50%); width: 72px; height: 22px; border: 0; padding: 0;
+  background: transparent; display: flex; align-items: center; justify-content: center;
+}
+.hole-bar-handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--muted); opacity: 0.9; }
+.hole-drawer { gap: 14px; max-height: 90vh; }
+.drawer-handle { align-self: center; border: 0; background: transparent; color: var(--muted); padding: 0 20px; }
+.drawer-holes { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; }
+.drawer-hole {
+  position: relative; height: 56px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0;
+}
+.drawer-hole-no { font: 600 16px var(--display); }
+.drawer-hole-score { font: 700 12px var(--body); line-height: 1; }
+.drawer-hole-dots { position: absolute; bottom: 3px; color: #f6d48a; font-style: normal; font-size: 11px; letter-spacing: 1px; line-height: 1; }
+.drawer-hole.current { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.drawer-hole.eagle .drawer-hole-score { color: #5ec2ff; }
+.drawer-hole.birdie .drawer-hole-score { color: var(--brand-text); }
+.drawer-hole.bogey .drawer-hole-score { color: #f6d48a; }
+.drawer-hole.double .drawer-hole-score { color: #ff8a7f; }
+.drawer-hole.current .drawer-hole-score { color: var(--bg); }
+.drawer-hole.eagle, .drawer-hole.birdie, .drawer-hole.par, .drawer-hole.bogey, .drawer-hole.double, .drawer-hole.picked { background: var(--surface-2); }
+.drawer-hole.current.eagle, .drawer-hole.current.birdie, .drawer-hole.current.par, .drawer-hole.current.bogey, .drawer-hole.current.double { background: var(--brand); }
+.drawer-standing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; background: var(--surface-2); border-radius: 14px; padding: 10px 6px; }
+.drawer-standing > div { display: flex; flex-direction: column; }
+.drawer-standing strong { font: 700 20px var(--display); }
+.drawer-list { display: flex; flex-direction: column; background: var(--surface-2); border-radius: 14px; overflow: hidden; }
+.drawer-row { display: flex; align-items: center; justify-content: space-between; min-height: 50px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--line); background: transparent; font-weight: 600; text-align: left; }
+.drawer-row:last-child { border-bottom: 0; }
+.drawer-switch { width: 44px; height: 26px; border-radius: 13px; background: var(--line-strong); position: relative; flex: none; }
+.drawer-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 10px; background: #fff; transition: left 0.15s; }
+.drawer-switch.on { background: var(--brand); }
+.drawer-switch.on::after { left: 21px; }
+.drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hole-drawer > * { flex-shrink: 0; }

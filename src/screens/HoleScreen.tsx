@@ -38,6 +38,7 @@ import { HoleSetup } from '../components/HoleSetup';
 import { clubCode, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
 import { FairwayPicker } from '../components/FairwayPicker';
+import { HoleDrawer } from '../components/HoleDrawer';
 
 const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f));
 
@@ -57,6 +58,8 @@ export function HoleScreen(props: {
   onAbort: (r: Round) => void; // cancel: the round is deleted
   /** `finishing`: past the last hole – the scorecard offers to save or delete; else just a look at the score. */
   onShowScorecard: (r: Round, finishing?: boolean) => void;
+  /** From the hole overview: my bag or the caddie settings, back to this hole afterwards. */
+  onOpenBag?: (part: 'bag' | 'caddie') => void;
 }) {
   const { round } = props;
   const i = round.currentHole;
@@ -296,6 +299,8 @@ export function HoleScreen(props: {
   const [puttEditor, setPuttEditor] = useState(false);
   const [hazardsOn, setHazardsOn] = useState(false); // distances to bunkers and water, on demand
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
+  const [drawerOpen, setDrawerOpen] = useState(false); // hole overview pulled up from the hole bar (Hole19)
+  const barTouch = useRef<number | null>(null);
   // aerial image or the drawn hole (2D, as in BeBrassie) – kept for the next round
   const [view2d, setView2d] = useState(() => {
     try {
@@ -812,11 +817,13 @@ export function HoleScreen(props: {
           }
         />
 
-        <div className="map-top">
-          <button type="button" className="map-btn round" aria-label={tr('Leave round', 'Runde verlassen')} onClick={askExit}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-          </button>
-        </div>
+        {round.preview && (
+          <div className="map-top">
+            <button type="button" className="map-btn round" aria-label={tr('Leave round', 'Runde verlassen')} onClick={askExit}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+            </button>
+          </div>
+        )}
 
         {weather && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
 
@@ -899,21 +906,6 @@ export function HoleScreen(props: {
           <button type="button" className="map-tool" aria-pressed={view2d} aria-label={view2d ? tr('Aerial image', 'Luftbild zeigen') : tr('Drawn hole (2D)', 'Gezeichnetes Loch (2D)')} title="2D" onClick={toggleView}>
             <span className="map-tool-text">2D</span>
           </button>
-          {round.players.length > 1 && !round.preview && (
-            <button type="button" className="map-tool" aria-label="Leaderboard" title="Leaderboard" onClick={() => setBoardOpen(true)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="8" cy="8" r="3" />
-                <circle cx="16.5" cy="9" r="2.5" />
-                <path d="M2.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5M13.5 14.5c.9-.6 1.9-1 3-1 2.2 0 4 1.5 4.6 4.5" />
-              </svg>
-            </button>
-          )}
-          <button type="button" className="map-tool" aria-label={tr('Scorecard', 'Scorekarte')} onClick={() => props.onShowScorecard(round)}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
-          </button>
-          <button type="button" className="map-tool" aria-pressed={sun} aria-label={sun ? tr('Sun mode off', 'Sonnenmodus aus') : tr('Sun mode on', 'Sonnenmodus an')} onClick={() => { setSun(!sun); setSunState(!sun); }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" /></svg>
-          </button>
         </div>
 
         {exitEl}
@@ -936,6 +928,36 @@ export function HoleScreen(props: {
           />
         )}
         {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
+        {drawerOpen && (
+          <HoleDrawer
+            round={round}
+            current={i}
+            view2d={view2d}
+            hazards={hazardsOn}
+            sun={sun}
+            onGo={(k) => {
+              setDrawerOpen(false);
+              if (k !== i) goTo(k, true); // jumping to a hole writes no par for this one
+            }}
+            onClose={() => setDrawerOpen(false)}
+            onToggle2d={toggleView}
+            onToggleHazards={() => setHazardsOn(!hazardsOn)}
+            onToggleSun={() => {
+              setSun(!sun);
+              setSunState(!sun);
+            }}
+            onBag={() => props.onOpenBag?.('bag')}
+            onCaddie={() => props.onOpenBag?.('caddie')}
+            onScorecard={() => props.onShowScorecard(round)}
+            onLeaderboard={round.players.length > 1 ? () => { setDrawerOpen(false); setBoardOpen(true); } : null}
+            onPause={props.onExit}
+            onEnd={() => {
+              setDrawerOpen(false);
+              setExitOpen(true);
+              setExitConfirm('end');
+            }}
+          />
+        )}
         {puttEditor && myEntry.putts != null && myEntry.putts > 0 && (
           <PuttEditor
             title={tr(`Hole ${hole.label} · ${myEntry.putts} ${myEntry.putts === 1 ? 'putt' : 'putts'}`, `Loch ${hole.label} · ${myEntry.putts} Putt${myEntry.putts === 1 ? '' : 's'}`)}
@@ -1097,7 +1119,19 @@ export function HoleScreen(props: {
               </button>
             </div>
           ) : (
-          <div className="hole-bar">
+          <div
+            className="hole-bar"
+            onTouchStart={(e) => (barTouch.current = e.touches[0].clientY)}
+            onTouchEnd={(e) => {
+              if (barTouch.current != null && barTouch.current - e.changedTouches[0].clientY > 40 && !round.preview) setDrawerOpen(true);
+              barTouch.current = null;
+            }}
+          >
+            {!round.preview && (
+              <button type="button" className="hole-bar-handle" aria-label={tr('Open the hole overview', 'Lochübersicht öffnen')} onClick={() => setDrawerOpen(true)}>
+                <span />
+              </button>
+            )}
             <button type="button" className="hole-bar-arrow" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
             </button>
