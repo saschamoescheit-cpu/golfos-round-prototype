@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { tr } from '../lib/i18n';
 
-// The menu at the bottom (Sascha 14.10.2026, order as in BeBrassie): play, rounds, record, stats, profile.
+// The menu at the bottom (Sascha 14.10.2026, order as in BeBrassie): play, rounds, my golf, stats, profile.
 
 export type Tab = 'play' | 'rounds' | 'record' | 'stats' | 'profile';
 
@@ -48,7 +48,7 @@ export const tabLabel = (t: Tab): string =>
   ({
     play: tr('Play', 'Spielen'),
     rounds: tr('Rounds', 'Runden'),
-    record: tr('Record', 'Bilanz'),
+    record: tr('My golf', 'Mein Golf'),
     stats: tr('Stats', 'Statistik'),
     profile: tr('Profile', 'Profil'),
   })[t];
