@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { emptyEntry } from '../lib/scoring';
-import { newId } from '../lib/storage';
+import { loadCarryBag, newId } from '../lib/storage';
 import { TopBar } from '../components/ui';
 import { TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
@@ -53,6 +53,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
 
   const option = options.find((o) => o.id === optionId);
   const holes = option ? buildRoundHoles(props.course.holes, option) : [];
+  const hasCarries = useMemo(() => loadCarryBag() != null, []);
   const missing = holes.filter((h) => !h.par || !h.strokeIndex).length;
 
   // Course rating and slope of the chosen tee (18 holes): the playing handicap follows from the handicap index.
@@ -182,6 +183,15 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
                 'Für Stableford braucht es die Spielvorgabe (aus der Tabelle des Clubs). Leer lassen, um nur brutto zu zählen.',
               )}
         </p>
+        {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
+        {!hasCarries && (
+          <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>
+            {tr(
+              'The caddie uses standard distances (driver 200 m … PW 115 m) – enter your own carries under “My bag & caddie” on the home screen.',
+              'Der Caddie rechnet mit Standard-Weiten (Driver 200 m … PW 115 m) – deine eigenen Carry-Weiten trägst du auf der Startseite unter „Mein Bag & Caddie“ ein.',
+            )}
+          </p>
+        )}
       </section>
 
       <span className="spacer" />
