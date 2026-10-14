@@ -289,12 +289,12 @@ export function splitRound(track: TrackPoint[], holes: (HoleMapData | null)[]): 
       const from = onHole > 0 ? onHole : start;
       // at the next tee: near it (40 m – the tee box played may lie in front of or behind the mapped one) and nearer to
       // it than to this green (tees often lie right next to the last green) – or already on the next hole's line
-      const k = rest.findIndex(
-        (x, i) =>
-          i > from &&
-          ((distanceM(x.p, next.tee) <= 40 && distanceM(x.p, next.tee) < distanceM(x.p, hole.greenCenter) && distanceM(x.p, hole.greenCenter) > 25 && !onGreenAt(x.p, hole)) ||
-            (distToLine(x.p, next.line) <= 20 && distanceM(x.p, hole.greenCenter) > 40 && distToLine(x.p, hole.line) > 30)),
-      );
+      const atNext = (x: TrackPoint) =>
+        (distanceM(x.p, next.tee) <= 40 && distanceM(x.p, next.tee) < distanceM(x.p, hole.greenCenter) && distanceM(x.p, hole.greenCenter) > 25 && !onGreenAt(x.p, hole)) ||
+        (distToLine(x.p, next.line) <= 20 && distanceM(x.p, hole.greenCenter) > 40 && distToLine(x.p, hole.line) > 30);
+      // two fixes in a row: one GPS jump from the green towards a tee right next to it (Hetzenhof 4A → 5A, 48 m) is no
+      // walk to the next hole – it cut the putting off the hole
+      const k = rest.findIndex((x, i) => i > from && atNext(x) && (i + 1 >= rest.length || atNext(rest[i + 1])));
       if (k > 0) end = k;
     }
     parts.push(rest.slice(start, end));

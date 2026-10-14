@@ -322,3 +322,21 @@ describe('chip from the fringe', () => {
     expect(distanceM(d.onGreen!, onGreen2)).toBeLessThan(8);
   });
 });
+
+describe('round split', () => {
+  it('one GPS jump from the green to the next tee does not end the hole while putting', () => {
+    const w = new Walker(hole1.tee);
+    w.stand(30);
+    w.walk(hole1.greenCenter);
+    w.stand(30);
+    // a single wild fix at the next tee, then back on the green for the putts
+    w.pts.push({ t: w.t + 1000, p: hole2.tee, acc: 8 });
+    w.t += 1000;
+    w.stand(60);
+    const putting = w.t;
+    w.walk(hole2.tee);
+    w.stand(40);
+    const [a] = splitRound(w.pts, [hole1, hole2]);
+    expect(a[a.length - 1].t).toBeGreaterThanOrEqual(putting - 5000);
+  });
+});
