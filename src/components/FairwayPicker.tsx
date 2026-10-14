@@ -1,7 +1,8 @@
 import type { FairwayResult } from '../types';
 import { tr } from '../lib/i18n';
 
-// Fairway from the tee with symbols as in Hole19 (Sascha 14.10.2026): missed left, hit, missed right, out of bounds.
+// The tee shot with symbols as in Hole19 (Sascha 14.10.2026): missed left, fairway (middle), missed right, out of
+// bounds. Exactly one – a second tap keeps it (no toggling off), out of bounds shows black (15.10.2026).
 
 const icon = (d: JSX.Element) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -22,7 +23,7 @@ const OPTIONS: { value: FairwayResult; label: () => string; icon: JSX.Element }[
   },
   {
     value: 'hit',
-    label: () => tr('Hit', 'Getroffen'),
+    label: () => tr('Middle', 'Mitte'),
     icon: icon(
       <>
         <circle cx="12" cy="10" r="6.5" />
@@ -50,9 +51,9 @@ const OPTIONS: { value: FairwayResult; label: () => string; icon: JSX.Element }[
 
 export function FairwayPicker(props: { value: FairwayResult | null; onChange: (v: FairwayResult | null) => void }) {
   return (
-    <div className="fw-picker" role="group" aria-label="Fairway">
+    <div className="fw-picker" role="radiogroup" aria-label={tr('Tee shot', 'Abschlag')}>
       {OPTIONS.map((o) => (
-        <button key={o.value} type="button" className={`fw-option${o.value === 'ob' ? ' ob' : ''}`} aria-pressed={props.value === o.value} aria-label={`Fairway: ${o.label()}`} onClick={() => props.onChange(props.value === o.value ? null : o.value)}>
+        <button key={o.value} type="button" className={`fw-option${o.value === 'ob' ? ' ob' : ''}`} aria-pressed={props.value === o.value} aria-label={`${tr('Tee shot', 'Abschlag')}: ${o.label()}`} onClick={() => props.onChange(o.value)}>
           {o.icon}
           <small>{o.label()}</small>
         </button>

@@ -20,8 +20,9 @@ function Stepper(props: { label: string; sub?: string; extra?: JSX.Element; valu
         {props.sub && <small className="muted">{props.sub}</small>}
       </span>
       <div className="stepper" role="group" aria-label={props.label}>
-        {props.value != null && props.value > min && (
-          <button type="button" aria-label={tr(`${props.label} minus one`, `${props.label} minus eins`)} onClick={() => props.onChange(props.value! - 1)}>
+        {/* − always works once a value is set: down to the smallest sensible value, then back to empty (as in Hole19) */}
+        {props.value != null && (
+          <button type="button" aria-label={tr(`${props.label} minus one`, `${props.label} minus eins`)} onClick={() => props.onChange(props.value! > min ? props.value! - 1 : null)}>
             −
           </button>
         )}
@@ -46,6 +47,13 @@ function Stepper(props: { label: string; sub?: string; extra?: JSX.Element; valu
 
 const scoreName = (d: number): string =>
   d <= -3 ? 'Albatross' : d === -2 ? 'Eagle' : d === -1 ? 'Birdie' : d === 0 ? 'Par' : d === 1 ? 'Bogey' : d === 2 ? tr('Double bogey', 'Doppelbogey') : `+${d}`;
+
+/**
+ * The fewest strokes the other numbers allow: the putts, each penalty stroke with the shot that went into the water or
+ * out of bounds, and at least one shot from off the green (or every sand shot). Two balls out of bounds from the tee
+ * and a holed third ball: 2 penalties → at least 5 (Sascha 15.10.2026: "with 4 penalty strokes it cannot be 5").
+ */
+export const minStrokes = (e: Pick<HoleEntry, 'putts' | 'penalties' | 'sandShots'>): number => (e.putts ?? 0) + 2 * (e.penalties ?? 0) + Math.max(1, e.sandShots ?? 0);
 
 /** GIR, up & down and sand save from the numbers entered (Hole19: these are not tapped, they follow). */
 export function holeFacts(e: HoleEntry, par: number): { gir: boolean | null; upDown: boolean; sandSave: boolean } {
@@ -82,7 +90,12 @@ export function ScoreSheet(props: {
         const strokes = e.pickedUp ? null : e.strokes;
         const facts = holeFacts(e, h.par);
         const set = (patch: Partial<HoleEntry>) => {
-          const n = { ...e, ...patch };
+          let n = { ...e, ...patch };
+          // the score holds the putts and penalty strokes: it rises with them when they would not fit any more
+          if (p.isMe && !props.team && n.strokes != null && !n.pickedUp && n.strokes < minStrokes(n)) {
+            patch = { ...patch, strokes: minStrokes(n) };
+            n = { ...n, strokes: minStrokes(n) };
+          }
           const f = holeFacts(n, h.par);
           // sand shots tell the round statistics the ball was in a (greenside) bunker – sand saves come from there
           props.onChange(p.id, p.isMe ? { ...patch, upAndDown: f.gir == null ? null : f.upDown, greensideBunker: (n.sandShots ?? 0) > 0 } : patch);
@@ -108,8 +121,8 @@ export function ScoreSheet(props: {
                 label={props.team ? tr('Team strokes', 'Team-Schläge') : tr('Strokes', 'Schläge')}
                 sub={props.team ? undefined : penaltySub}
                 value={strokes}
-                start={h.par || 4}
-                min={1}
+                start={Math.max(h.par || 4, p.isMe && !props.team ? minStrokes(e) : 1)}
+                min={p.isMe && !props.team ? minStrokes(e) : 1}
                 hint={strokes != null && h.par > 0 ? scoreName(strokes - h.par) : null}
                 onChange={(v) => set({ strokes: v, pickedUp: false })}
               />
@@ -138,7 +151,7 @@ export function ScoreSheet(props: {
                 <Stepper label={tr('Penalty strokes', 'Strafschläge')} value={e.penalties ? e.penalties : null} start={1} max={9} onChange={(v) => set({ penalties: v ?? 0 })} />
                 {h.par >= 4 && (
                   <div className="stepper-row">
-                    <span className="stepper-label">Fairway</span>
+                    <span className="stepper-label">{tr('Tee shot', 'Abschlag')}</span>
                     {/* out of bounds: stroke and distance – at least one penalty stroke */}
                     <FairwayPicker value={e.fairway} onChange={(v) => set({ fairway: v, ...(v === 'ob' ? { penalties: Math.max(1, e.penalties ?? 0) } : {}) })} />
                   </div>

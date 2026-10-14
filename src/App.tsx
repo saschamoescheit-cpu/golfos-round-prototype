@@ -22,7 +22,7 @@ type Screen =
   | { name: 'pickCourse' }
   | { name: 'setup'; course: Course }
   | { name: 'hole'; round: Round }
-  | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean }
+  | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean; finishing?: boolean }
   | { name: 'courseStats'; courseName: string }
   | { name: 'bag'; part: 'bag' | 'caddie' }
   | { name: 'review'; round: Round }
@@ -235,10 +235,10 @@ export function App() {
               setRounds(loadRounds());
               setScreen(HOME);
             }}
-            onShowScorecard={(round) => {
+            onShowScorecard={(round, finishing) => {
               if (round.preview) return setScreen(HOME);
               persist(round);
-              setScreen({ name: 'scorecard', round });
+              setScreen({ name: 'scorecard', round, finishing });
             }}
           />
         </Suspense>
@@ -249,6 +249,7 @@ export function App() {
           round={screen.round}
           onBackToHole={() => setScreen({ name: 'hole', round: screen.round })}
           justFinished={screen.justFinished}
+          finishing={screen.finishing}
           onFinish={(round) => {
             // Finishing on the last hole is leaving it: its untouched score counts as par (quick tracking).
             const done = round.currentHole === round.holes.length - 1 ? commitParAt(round, round.currentHole) : round;
@@ -258,7 +259,7 @@ export function App() {
           onClose={() => setScreen(screen.back ?? ROUNDS)}
           onChange={(round) => {
             persist(round);
-            setScreen({ name: 'scorecard', round, back: screen.back, justFinished: screen.justFinished });
+            setScreen({ name: 'scorecard', round, back: screen.back, justFinished: screen.justFinished, finishing: screen.finishing });
           }}
           onReview={(round) => {
             persist(round);

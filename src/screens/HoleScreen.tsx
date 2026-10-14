@@ -48,8 +48,6 @@ const ON_HOLE_M = 1500;
 // checked after the round. The code stays for Ben (spec 004 decides); false = the quick-mode buttons in every mode.
 const MANUAL_SHOTS = false;
 const GREEN_AUTO_M = 120; // green chart comes up by itself from here on
-// One target only, as in Hole19 (Sascha 14.10.2026): plan the next shot, not the whole hole.
-const MAX_TARGETS = 1;
 
 export function HoleScreen(props: {
   round: Round;
@@ -57,7 +55,8 @@ export function HoleScreen(props: {
   onExit: () => void; // pause: back to the start page, the round can be continued
   onEnd: (r: Round) => void; // finish now: saved with the holes played so far
   onAbort: (r: Round) => void; // cancel: the round is deleted
-  onShowScorecard: (r: Round) => void;
+  /** `finishing`: past the last hole – the scorecard offers to save or delete; else just a look at the score. */
+  onShowScorecard: (r: Round, finishing?: boolean) => void;
 }) {
   const { round } = props;
   const i = round.currentHole;
@@ -82,7 +81,7 @@ export function HoleScreen(props: {
     setDetected(null);
     const committed = byGps ? base : commitPar(base);
     if (target >= round.holes.length) {
-      props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 });
+      props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 }, true);
       return;
     }
     if (target < 0) return;
@@ -645,17 +644,9 @@ export function HoleScreen(props: {
         return;
       }
       if (distanceM(p, pin) < 12 || plan.targets.some((t) => distanceM(p, t) < 12)) return; // tap on a marker
-      if (plan.targets.length < MAX_TARGETS) {
-        // Keep targets in playing order: the one nearer to the player comes first.
-        const next = [...plan.targets, p].sort((a, b) => distanceM(from, a) - distanceM(from, b));
-        setPlan({ targets: next });
-      } else {
-        // All targets set: the tap moves the nearest one.
-        const d = plan.targets.map((t) => distanceM(t, p));
-        const next = plan.targets.slice();
-        next[d.indexOf(Math.min(...d))] = p;
-        setPlan({ targets: next });
-      }
+      // A tap sets the target only when none is on screen; a target that is there moves only by dragging it – a stray
+      // tap (or a tap landing beside a button) must not throw it off the hole (Sascha 15.10.2026).
+      if (shownTargets.length === 0) setPlan({ targets: [p] });
     };
     const strokesShown = myEntry.pickedUp ? 'PU' : String(myEntry.strokes ?? hole.par);
     // Targets the player has walked past or reached (e.g. the tee shot's landing zone) are hidden; they stay in the plan.

@@ -25,6 +25,7 @@ export function Scorecard(props: {
   onDeleted: () => void;
   onChange: (r: Round) => void;
   justFinished?: boolean; // opened right after finishing: what next – check the shots or delete
+  finishing?: boolean; // reached past the last hole: save or delete (a look during the round shows only the score)
 }) {
   const { round } = props;
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -57,7 +58,8 @@ export function Scorecard(props: {
         </span>
       </div>
 
-      {(!finished || props.justFinished) && !round.preview && (
+      {/* only when the round ends – a look at the score during the round needs no save / delete (Sascha 15.10.2026) */}
+      {((!finished && props.finishing) || (finished && props.justFinished)) && !round.preview && (
         <section className="card finish-card">
           <strong>{finished ? tr('Round saved ✓', 'Runde gespeichert ✓') : tr('Finish the round', 'Runde abschließen')}</strong>
           <span className="muted small">

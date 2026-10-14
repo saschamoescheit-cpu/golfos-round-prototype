@@ -916,3 +916,6 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 @supports (height: 100dvh) {
   .map-screen { bottom: auto; height: 100dvh; }
 }
+.fw-option.ob[aria-pressed='true'] { background: #0e1418; border-color: #0e1418; color: #fff; }
+.fw-option.ob[aria-pressed='true'] small { color: #fff; }
+.fw-option.ob[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--text); }
