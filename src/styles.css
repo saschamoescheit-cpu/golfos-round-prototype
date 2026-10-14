@@ -569,8 +569,10 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 :root[data-theme='sun'] .map-target-sign { background: rgba(255, 255, 255, 0.96); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
 :root[data-theme='sun'] .map-target-sign .carry { color: #0b1013; }
 :root[data-theme='sun'] .map-target-sign .remove { background: var(--surface-2); color: #0b1013; }
-/* On the hole map the map credits sit under the distance box, not behind the bottom buttons */
-.map-screen .maplibregl-ctrl-bottom-right { top: calc(env(safe-area-inset-top) + 250px); bottom: auto; }
+/* On the hole map the map credits sit on the left under the weather box: the distance box on the right changes height */
+.map-screen .maplibregl-ctrl-bottom-right { top: calc(env(safe-area-inset-top) + 250px); bottom: auto; right: auto; left: 10px; }
+.map-screen.setup .maplibregl-ctrl-bottom-right { left: auto; right: 10px; }
+
 .map-from.off { max-width: 92px; text-align: center; line-height: 1.2; color: #f6d48a; }
 :root[data-theme='sun'] .map-from.off { color: #7a4d00; }
 /* score mix: a label that does not fit its share is hidden instead of cut */
@@ -663,3 +665,5 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .score-sheet-foot .btn-primary { min-width: 120px; }
 .map-from.poor { color: #ff8a7f; font-weight: 700; }
 :root[data-theme='sun'] .map-from.poor { color: #b42318; }
+.map-pin-ask { margin-top: 4px; min-height: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid #ff6b5e; background: none; color: #ff8a7f; font: 600 11px var(--body); }
+:root[data-theme='sun'] .map-pin-ask { color: #b42318; border-color: #c2362b; }

@@ -809,6 +809,13 @@ export function HoleScreen(props: {
           <span className={`map-from${onHole ? (player!.accuracy > 12 ? ' poor' : '') : ' off'}`}>
             {onHole ? (player!.accuracy > 12 ? tr(`GPS poor ±${Math.round(player!.accuracy)} m`, `GPS ungenau ±${Math.round(player!.accuracy)} m`) : `GPS ±${Math.round(player!.accuracy)} m`) : player ? tr('from tee · GPS not on the course', 'ab Abschlag · GPS nicht am Platz') : tr('from tee · no GPS', 'ab Abschlag · kein GPS')}
           </span>
+          {/* approaching the green, pin not set: the caddie aims at the middle and the round check measures the first
+              putt from there – one tap to say where the flag is today */}
+          {onHole && mapData.green && !plans[i]?.pin && !greenFocus && distanceM(from, mapData.greenCenter) <= 200 && (
+            <button type="button" className="map-pin-ask" onClick={() => setPinSheet(true)}>
+              {tr('Set pin', 'Fahne setzen')}
+            </button>
+          )}
         </div>
 
         {scoreSheet && (
