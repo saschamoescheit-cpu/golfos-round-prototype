@@ -570,7 +570,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 :root[data-theme='sun'] .map-target-sign .carry { color: #0b1013; }
 :root[data-theme='sun'] .map-target-sign .remove { background: var(--surface-2); color: #0b1013; }
 /* On the hole map the map credits sit on the left under the weather box: the distance box on the right changes height */
-.map-screen .maplibregl-ctrl-bottom-right { top: calc(env(safe-area-inset-top) + 250px); bottom: auto; right: auto; left: 10px; }
+.map-screen .maplibregl-ctrl-bottom-right { top: calc(env(safe-area-inset-top) + 194px); bottom: auto; right: auto; left: 10px; }
 .map-screen.setup .maplibregl-ctrl-bottom-right { left: auto; right: 10px; }
 
 .map-from.off { max-width: 92px; text-align: center; line-height: 1.2; color: #f6d48a; }
