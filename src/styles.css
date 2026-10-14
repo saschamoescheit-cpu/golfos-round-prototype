@@ -912,3 +912,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
   padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px); overflow-y: auto;
 }
 .intro-modal { width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
+/* the map fills the screen that is really visible (iOS Safari with its toolbar; 15.10.2026) */
+@supports (height: 100dvh) {
+  .map-screen { bottom: auto; height: 100dvh; }
+}

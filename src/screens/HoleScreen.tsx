@@ -391,6 +391,11 @@ export function HoleScreen(props: {
       return false;
     }
   });
+  // Safari keeps the scroll position of the page before (e.g. the scrolled start page): the full-screen map is then
+  // drawn shifted against where taps land – start at the top (Sascha 15.10.2026: "OK did not close the hint").
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const closeShotTip = () => {
     setShotTip(false);
     try {
@@ -614,7 +619,10 @@ export function HoleScreen(props: {
     // wind, slope and tendency, clear of trees). The player can drag or remove it; his own plan is kept then.
     const teeAim = teeAimFor({ data: mapData, par: hole.par, pin: plans[i]?.pin ?? mapData.greenCenter, bag: carryBag, conditions, tendency, ...terrain, note: notes[hole.label] ?? {}, style: caddieSettings.style, favourite: caddieSettings.favourite, playing: caddiePlaying });
     const plan = plans[i] ?? { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null };
-    const pin = plan.pin ?? mapData.greenCenter;
+    // The flag stays on the green (Sascha 15.10.2026: it stood 50 m short on the fairway after a stray drag): a pin
+    // off the green – dragged there or saved so – counts as not set.
+    const pinOk = (p: LngLat) => (mapData.green ? pointInRing(p, mapData.green) || distToLine(p, mapData.green) <= 3 : distanceM(p, mapData.greenCenter) <= 25);
+    const pin = plan.pin && pinOk(plan.pin) ? plan.pin : mapData.greenCenter;
     const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
     // really playing this hole (not on the next fairway or in the clubhouse): for the camera, the shot lengths and
     // the caddie log
@@ -793,7 +801,7 @@ export function HoleScreen(props: {
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}
           onTargetsChange={(targets) => setPlan({ targets: [...passedTargets, ...targets] })}
-          onPinChange={(p) => setPlan({ pin: p })}
+          onPinChange={(p) => pinOk(p) && setPlan({ pin: p })}
           onTargetRemove={(index) => setPlan({ targets: plan.targets.filter((t) => t !== shownTargets[index]) })}
           onMapTap={tapMap}
           clean
@@ -970,11 +978,12 @@ export function HoleScreen(props: {
           {detectedBanner}
           {offlineHint}
           {shotTip && !detectedBanner && (
-            <div className="map-hint detected">
+            // a tap anywhere on the hint closes it (a small "OK" was missed on the iPhone, Sascha 15.10.2026)
+            <div className="map-hint detected" role="button" tabIndex={0} onClick={closeShotTip}>
               <span>
                 {tr('Shots are found after the round: at the ball glance at the phone, after each hole enter score and putts.', 'Die Schläge findet die App nach der Runde: am Ball kurz aufs Handy schauen, nach jedem Loch Score und Putts eintragen.')}
               </span>
-              <button type="button" className="btn-ghost" onClick={closeShotTip}>
+              <button type="button" className="btn-ghost" onClick={(e) => { e.stopPropagation(); closeShotTip(); }}>
                 OK
               </button>
             </div>
