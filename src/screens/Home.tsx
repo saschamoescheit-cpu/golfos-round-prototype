@@ -66,7 +66,6 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; toCheck: nu
         </span>
         <span className="grow">
           <strong>Rounds</strong>
-          <span className="muted small">{tr('Your round with GPS map, caddie, scorecard and the analysis afterwards.', 'Deine Runde mit GPS-Karte, Caddie, Scorekarte und der Analyse danach.')}</span>
           {props.roundOpen && <span className="small module-live">{tr('A round is in play', 'Eine Runde läuft')}</span>}
           {props.toCheck > 0 && (
             <span className="small module-todo">
@@ -87,7 +86,6 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; toCheck: nu
         </span>
         <span className="grow">
           <strong>Games</strong>
-          <span className="muted small">{tr('Side games among friends: skins, Nassau, wolf, Las Vegas … with standing and settlement.', 'Spiele unter Freunden: Skins, Nassau, Wolf, Las Vegas … mit Zwischenstand und Abrechnung.')}</span>
           {props.gameOpen && <span className="small module-live">{tr('A game is in play', 'Ein Spiel läuft')}</span>}
         </span>
         <span aria-hidden="true">›</span>
