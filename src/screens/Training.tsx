@@ -83,7 +83,8 @@ type View =
   | { name: 'checkout' }
   | { name: 'ordered'; order: Order }
   | { name: 'builder'; plan: OwnPlan }
-  | { name: 'search'; q: string };
+  | { name: 'search'; q: string }
+  | { name: 'fault'; cat: CategoryId; index: number };
 
 const ICONS = {
   learn: MENU_ICONS.rules,
@@ -168,6 +169,8 @@ export function TrainingApp(props: { rounds: Round[]; onModules: () => void; pro
       return <PlanView plan={view.plan} own={view.own} nav={nav} />;
     case 'builder':
       return <Builder plan={view.plan} nav={nav} />;
+    case 'fault':
+      return <FaultView cat={view.cat} index={view.index} nav={nav} />;
     case 'search':
       return <SearchView q={view.q} nav={nav} />;
     case 'gear':
@@ -315,6 +318,65 @@ function DrillOfTheDay(props: { nav: Nav; prefer: string[] }) {
   );
 }
 
+/** “What is your problem?” – the faults of all topics as chips, a tap shows cause, cure and drills. */
+function FaultFinder(props: { nav: Nav }) {
+  const [all, setAll] = useState(false);
+  const list = CATEGORIES.flatMap((c) => (c.faults ?? []).map((f, index) => ({ c, f, index })));
+  // a short selection: the first fault of the most asked-about topics, then the second ones
+  const top = ['ballflight', 'putting', 'chipping', 'irons', 'driver', 'bunker', 'pitching', 'woods'];
+  const shown = all ? list : [0, 1].flatMap((k) => top.map((id) => list.find((x) => x.c.id === id && x.index === k)).filter((x): x is (typeof list)[number] => !!x)).slice(0, 12);
+  return (
+    <section className="tr-block">
+      <h2>{tr('What is your problem?', 'Was ist dein Problem?')}</h2>
+      <div className="chip-set">
+        {shown.map(({ c, f, index }) => (
+          <button key={`${c.id}-${index}`} type="button" className="chip" onClick={() => props.nav.push({ name: 'fault', cat: c.id, index })}>
+            {t(f.name)}
+          </button>
+        ))}
+        {!all && (
+          <button type="button" className="chip fact" onClick={() => setAll(true)}>
+            {tr(`All ${list.length} …`, `Alle ${list.length} …`)}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
+  const c = catById(props.cat);
+  const f = c?.faults?.[props.index];
+  if (!c || !f) return null;
+  const drills = (f.drills ?? []).map(drillById).filter((d): d is Drill => !!d);
+  return (
+    <main className="screen training">
+      <TopBar title={t(f.name)} onBack={props.nav.back} />
+      <span className="eyebrow">{t(c.name)}</span>
+      <section className="card tr-section">
+        <dl className="tr-fault">
+          <dt>{tr('What you see', 'Was du siehst')}</dt>
+          <dd>{t(f.looks)}</dd>
+          <dt>{tr('Why', 'Warum')}</dt>
+          <dd>{t(f.cause)}</dd>
+          <dt>{tr('What helps', 'Was hilft')}</dt>
+          <dd>{t(f.fix)}</dd>
+        </dl>
+      </section>
+      <h2>{tr('Drills for it', 'Übungen dafür')}</h2>
+      <DrillList drills={drills} nav={props.nav} />
+      {drills.length > 0 && (
+        <button type="button" className="btn-primary" onClick={() => props.nav.start(newSession(t(f.name), drills.map((d) => ({ drill: d.id, minutes: Math.min(12, d.minutes) }))))}>
+          {tr('Practise these drills now', 'Diese Übungen jetzt üben')}
+        </button>
+      )}
+      <button type="button" className="btn-ghost" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
+        {tr('More on', 'Mehr zu')} {t(c.name)} ›
+      </button>
+    </main>
+  );
+}
+
 function LearnTab(props: { nav: Nav; rounds: Round[] }) {
   const favs = loadFavs().map(drillById).filter((d): d is Drill => !!d);
   const advice = useMemo(() => adviceFromRounds(props.rounds), [props.rounds]);
@@ -349,6 +411,7 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
           })}
         </section>
       )}
+      <FaultFinder nav={props.nav} />
       {favs.length > 0 && (
         <section className="tr-block">
           <h2>{tr('Your favourites', 'Deine Favoriten')}</h2>
@@ -1178,7 +1241,7 @@ function SearchView(props: { q: string; nav: Nav }) {
   const both = (x?: { en: string; de: string }) => (x ? `${x.en} ${x.de}` : '');
   const drills = DRILLS.filter((d) => hit(both(d.name), both(d.goal), both(d.setup), ...d.steps.map(both), both(d.origin)));
   const cats = CATEGORIES.filter((c) => hit(both(c.name), both(c.short), both(c.intro)));
-  const faults = CATEGORIES.flatMap((c) => (c.faults ?? []).map((f) => ({ c, f }))).filter(({ f }) => hit(both(f.name), both(f.looks), both(f.cause)));
+  const faults = CATEGORIES.flatMap((c) => (c.faults ?? []).map((f, index) => ({ c, f, index }))).filter(({ f }) => hit(both(f.name), both(f.looks), both(f.cause)));
   const gear = GEAR.filter((g) => hit(g.name, typeof g.brand === 'string' ? g.brand : both(g.brand), both(g.what), both(g.why)));
   return (
     <main className="screen training">
@@ -1197,9 +1260,9 @@ function SearchView(props: { q: string; nav: Nav }) {
         <section className="tr-block">
           <h2>{tr('Faults', 'Fehler')}</h2>
           <ul className="list">
-            {faults.map(({ c, f }, i) => (
+            {faults.map(({ c, f, index }, i) => (
               <li key={i}>
-                <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
+                <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'fault', cat: c.id, index })}>
                   <span className="tr-cat-icon small">{CAT_ICON[c.id]}</span>
                   <span className="grow">
                     <span className="title">{t(f.name)}</span>

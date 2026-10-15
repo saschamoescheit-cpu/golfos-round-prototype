@@ -3,6 +3,7 @@ import { CATEGORIES, DRILLS, drillById } from './content';
 import { GEAR, gearById } from './content/gear';
 import { PLANS } from './content/plans';
 import { adviceFromRounds } from './recommend';
+import { COACH_FAULT_DRILLS } from './coachLinks';
 import type { L, Sketch } from './types';
 
 // The Training library is data – these checks keep it consistent when it grows (every reference resolves, both
@@ -95,5 +96,9 @@ describe('training content', () => {
     };
     for (const d of DRILLS) check(d.sketch, d.id);
     for (const c of CATEGORIES) c.sections.forEach((s, i) => check(s.sketch, `${c.id} section ${i}`));
+  });
+  it('every Coach fault points to existing drills', () => {
+    expect(Object.keys(COACH_FAULT_DRILLS).length).toBe(32);
+    for (const [fault, ids] of Object.entries(COACH_FAULT_DRILLS)) for (const id of ids) expect(drillById(id), `${fault} → ${id}`).toBeTruthy();
   });
 });

@@ -81,6 +81,11 @@ await back();
 await p.waitForTimeout(300);
 ok(await p.getByRole('heading', { name: 'Deine Favoriten' }).isVisible(), 'favourite on the library page');
 
+// fault finder
+await p.locator('.chip').filter({ hasText: 'Slice' }).first().click();
+ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 3, 'fault finder: Slice shows cause, cure and drills');
+await back();
+
 // search
 await p.locator('.tr-search input').fill('Tiger');
 await p.locator('.tr-search input').press('Enter');
