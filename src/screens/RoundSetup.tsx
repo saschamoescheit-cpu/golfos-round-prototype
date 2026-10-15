@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { FriendChips, roughPlaying } from './Home';
+import { ROUND_KINDS, kindName, type RoundKind } from '../lib/roundkind';
 import { emptyEntry } from '../lib/scoring';
 import { loadCarryBag, newId } from '../lib/storage';
 import { TopBar } from '../components/ui';
@@ -75,6 +76,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list
   const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
   const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance'>(null);
+  // the kind of round first – before holes and tee, chosen like the game mode (Sascha 15.10.2026)
+  const [kind, setKind] = useState<RoundKind>('social');
+  const [kindOpen, setKindOpen] = useState(false);
   const fmt = formatOf(format);
   const playerCount = others.length + 1;
   const fits = fmt.fits(playerCount);
@@ -157,6 +161,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       entries,
       currentHole: 0,
       format: shownFormat,
+      kind,
       ...(tee ? { tee } : {}),
       ...(preview ? { preview: true } : {}),
     });
@@ -165,6 +170,49 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   return (
     <main className="screen">
       <TopBar title={props.course.name} onBack={props.onBack} />
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span className="eyebrow">{tr('Round', 'Runde')}</span>
+        <div className="settings-list">
+          <button type="button" className="settings-row" onClick={() => setKindOpen(true)}>
+            <span>{tr('Kind of round', 'Rundenart')}</span>
+            <span className="settings-value">{kindName(kind)}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+      </section>
+      {kindOpen && (
+        <div className="sheet-backdrop" onClick={() => setKindOpen(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Kind of round', 'Rundenart')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Kind of round', 'Rundenart')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setKindOpen(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="pick-list">
+              {ROUND_KINDS.map((k) => (
+                <button
+                  key={k.id}
+                  type="button"
+                  className="pick-option"
+                  aria-pressed={kind === k.id}
+                  onClick={() => {
+                    setKind(k.id);
+                    setKindOpen(false);
+                  }}
+                >
+                  <span className="grow">
+                    <strong>{k.name()}</strong>
+                    <span className="muted small">{k.text()}</span>
+                  </span>
+                  {kind === k.id && <span className="pick-check" aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Holes', 'Löcher')}</span>
@@ -351,7 +399,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
 
       <span className="spacer" />
       <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee, playingHandicap(me))} disabled={!option}>
-        {tr('Course book – all holes', 'Lochbuch – alle Löcher')}
+        {tr('Birdie book – all holes', 'Birdiebook – alle Löcher')}
       </button>
       <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>
         {tr('Preview the holes – no round', 'Löcher ansehen – ohne Runde')}

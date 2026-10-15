@@ -57,7 +57,7 @@ const CASES = [
   ['Nassau', 2],
   ['Nassau', 4],
   ['Wolf', 4],
-  ['Chicago', 2],
+  ['Chicago', 4],
   ['Bingo Bango Bongo', 3],
   ['Las Vegas', 4],
   ['Sixes (Round Robin)', 4],
@@ -119,11 +119,15 @@ await p.getByRole('button', { name: 'Neues Spiel' }).click();
 await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await p.locator('.pick-option').filter({ hasText: 'Chicago' }).click();
 await p.getByRole('button', { name: '+ Ben' }).click();
+await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await p.locator('.game-player-row').nth(2).locator('input').first().fill('Chris');
+await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna');
 ok((await p.locator('.game-player-row').nth(1).locator('input').nth(1).inputValue()) === '12', 'friend Ben added with one tap, handicap 12');
-ok((await p.locator('.game-player-row').count()) === 2, 'the friend took the empty row');
+ok((await p.locator('.game-player-row').count()) === 4, 'the friend took the empty row (then two more players)');
 await p.locator('.game-setting').filter({ hasText: 'Vorgabe (WHS)' }).getByRole('button', { name: 'Ohne (brutto)' }).click();
-await p.locator('.game-setting').filter({ hasText: 'Press:' }).getByRole('button', { name: 'Ja' }).click();
-ok(await p.getByText('Höchsteinsatz nach Press').isVisible(), 'highest stake shows once press is on');
+ok((await p.locator('.game-setting').filter({ hasText: 'Press:' }).locator('.chip.on').innerText()) === 'Ja', 'Chicago: press is on by default');
+ok(await p.getByText('Höchsteinsatz (rastet', { exact: false }).isVisible(), 'highest stake shows once press is on');
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.getByRole('button', { name: 'Par für alle übrigen' }).click();
 await p.locator('.game-scores .stepper').nth(1).getByRole('button', { name: 'plus eins' }).click(); // Ben bogey

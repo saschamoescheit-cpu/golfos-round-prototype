@@ -4,6 +4,7 @@ import { checksShots, playerTotals } from '../lib/scoring';
 import { formatToPar } from '../components/ui';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
+import { kindName } from '../lib/roundkind';
 import { isTeamRound } from '../lib/games';
 
 // Tab "Rounds": every round, newest first. On top what is still to do – rounds whose shots are not checked yet.
@@ -80,7 +81,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                   </span>
                   <span className="grow">
                     <span className="title">{r.courseName}</span>
-                    <span className="muted small">{[loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`, r.restored ? tr('restored from GPS', 'aus GPS wiederhergestellt') : null].filter(Boolean).join(' · ')}</span>
+                    <span className="muted small">{[r.kind && r.kind !== 'social' ? kindName(r.kind) : null, loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`, r.restored ? tr('restored from GPS', 'aus GPS wiederhergestellt') : null].filter(Boolean).join(' · ')}</span>
                     {needsCheck(r) && <span className="small warn-text" style={{ display: 'block', fontWeight: 600 }}>{tr('Check your shots →', 'Schläge prüfen →')}</span>}
                   </span>
                   <span style={{ textAlign: 'right' }}>

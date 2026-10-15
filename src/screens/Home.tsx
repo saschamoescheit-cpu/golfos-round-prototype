@@ -44,9 +44,13 @@ export function Home(props: {
 function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; toCheck: number; onPick: (m: 'rounds' | 'games') => void }) {
   return (
     <>
-      <div className="topbar home-topbar">
+      <div className="topbar">
+        <span className="brand">
+          GOLF<span>OS</span>
+        </span>
         <TopTools />
       </div>
+      <div className="home-hero">
       <div className="brand module-brand">
         GOLF<span>OS</span>
       </div>
@@ -88,6 +92,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; toCheck: nu
         </span>
         <span aria-hidden="true">›</span>
       </button>
+      </div>
     </>
   );
 }

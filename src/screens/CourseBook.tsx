@@ -46,7 +46,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
   }, [shown, props.holes.length]);
   return (
     <main className="screen book">
-      <TopBar title={tr('Course book', 'Lochbuch')} onBack={props.onBack} />
+      <TopBar title={tr('Birdie book', 'Birdiebook')} onBack={props.onBack} />
       <div>
         <div style={{ font: '600 19px var(--display)' }}>{props.course.name}</div>
         <span className="muted small">

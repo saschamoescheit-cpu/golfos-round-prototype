@@ -4,7 +4,7 @@ import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { fullName, loadProfile } from '../lib/profile';
 import { newId } from '../lib/storage';
-import { FORMS, money, teamsOf, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
+import { FORMS, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadGames, saveGame } from '../lib/gamestore';
 import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
@@ -519,6 +519,14 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                 ))}
               </div>
             )}
+            {s.key === 'maxStake' && d.settings.double && Number(d.settings.maxStake) > 0 && Number(d.settings.stake) > 0 && (
+              <span className="muted small">
+                {tr(
+                  `From ${money(Number(d.settings.stake))} doubled the stake reaches at most ${money(stakeCap({ settings: d.settings }))}.`,
+                  `Ab ${money(Number(d.settings.stake))} verdoppelt erreicht der Einsatz höchstens ${money(stakeCap({ settings: d.settings }))}.`,
+                )}
+              </span>
+            )}
             {s.key === 'allowance' && whs && (
               <span className="muted small">
                 {tr(`WHS recommendation for ${f.name()} with ${n} players: ${whs} %`, `WHS-Empfehlung für ${f.name()} mit ${n} Spielern: ${whs} %`)}
@@ -734,6 +742,25 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
         </section>
       )}
 
+      {f.input === 'chicago' && (
+        <section className="card game-extra" aria-label={tr('Pairing', 'Paarung')}>
+          <span className="stepper-label">{tr('Pairing on this hole', 'Paarung an diesem Loch')}</span>
+          <div className="chip-set">
+            {[1, 2, 3].map((k) => {
+              const [A, B] = chicagoTeams({ players: g.players, extra: g.extra.map((e, j) => (j === i ? { ...e, pairing: k } : e)) }, i);
+              const on = chicagoTeams(g, i)[0][1] === A[1];
+              const nm = (ids: string[]) => ids.map((id) => g.players.find((p) => p.id === id)?.name ?? '?').join(' & ');
+              return (
+                <button key={k} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setExtra({ pairing: k })}>
+                  {nm(A)} {tr('vs', 'gegen')} {nm(B)}
+                </button>
+              );
+            })}
+          </div>
+          <span className="muted small">{tr('The pairings rotate hole by hole; change it here if your group plays another one.', 'Die Paarungen wechseln von Loch zu Loch; hier änderbar, wenn ihr anders spielt.')}</span>
+        </section>
+      )}
+
       {f.input === 'hammer' && (
         <HammerCard game={g} hole={i} onChange={setExtra} />
       )}
@@ -819,7 +846,9 @@ function PressCard(props: { game: Game; hole: number; onChange: (g: Game) => voi
   const here = presses.find((x) => x.hole === props.hole);
   const low = Math.min(...st.rows.map((r) => r.points));
   const last = holesPlayed(g) > 0 && st.rows.some((r) => r.points !== low) ? st.rows.filter((r) => r.points === low) : [];
-  const cap = Number(g.settings.maxStake ?? 0);
+  const cap = stakeCap(g);
+  // only at the start of a hole, before the first score is entered (Sascha's Chicago concept)
+  const started = g.players.some((p) => g.scores[p.id]?.[props.hole] != null);
   return (
     <section className="card game-extra" aria-label="Press">
       <span className="stepper-label">
@@ -827,13 +856,15 @@ function PressCard(props: { game: Game; hole: number; onChange: (g: Game) => voi
         <span className="muted small">
           {' '}
           · {presses.length}× {tr('pressed', 'gepresst')}
-          {cap > 0 ? ` · max ${euroText(cap)}` : ''}
+          {cap !== Infinity && cap > 0 ? ` · max ${euroText(cap)}` : ''}
         </span>
       </span>
       {here ? (
         <button type="button" className="chip" onClick={() => props.onChange({ ...g, presses: presses.filter((x) => x !== here) })}>
           {tr(`Take back the press of ${st.rows.find((r) => r.id === here.by)?.name ?? ''}`, `Press von ${st.rows.find((r) => r.id === here.by)?.name ?? ''} zurücknehmen`)}
         </button>
+      ) : started ? (
+        <span className="muted small">{tr('Presses only at the start of a hole, before the first score.', 'Pressen nur zu Lochbeginn, vor der ersten Eingabe.')}</span>
       ) : !canPress(g) ? (
         <span className="muted small">{tr('Highest stake reached – no more presses.', 'Höchsteinsatz erreicht – kein Press mehr möglich.')}</span>
       ) : last.length ? (

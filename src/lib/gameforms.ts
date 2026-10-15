@@ -27,6 +27,7 @@ export interface HoleExtra {
   threePutt?: string[]; // snake: who three-putted (in order)
   dots?: Record<string, string[]>; // dots: per player the dots won on this hole
   hammer?: number; // hammer: doublings accepted on this hole
+  pairing?: number; // chicago: the partner of player 1 on this hole (1, 2 or 3)
   conceded?: 'A' | 'B'; // hammer: the side that declined a hammer and gave the hole up
 }
 export interface Game {
@@ -74,7 +75,7 @@ export interface FormDef {
   players: [number, number];
   counts?: number[]; // only these player numbers (e.g. one against one or two against two)
   settings: SettingDef[];
-  input?: 'wolf' | 'bbb' | 'snake' | 'dots' | 'hammer';
+  input?: 'wolf' | 'bbb' | 'snake' | 'dots' | 'hammer' | 'chicago';
   /** WHS recommendation for the share of the playing handicap, by the number of players (night run 15./16.10.2026). */
   hcpFor?: (n: number) => string;
   standing: (g: Game) => Standing;
@@ -86,7 +87,11 @@ export interface FormDef {
 export function received(holes: GameHole[], hcp: number | null): number[] {
   if (hcp == null || hcp === 0) return holes.map(() => 0);
   const n = holes.length;
-  const order = holes.map((h, i) => ({ i, si: h.si || i + 1 })).sort((a, b) => a.si - b.si);
+  // without any stroke index the strokes are spread evenly over the round (Sascha's Chicago concept)
+  const noSi = holes.every((h) => !h.si);
+  const order = holes
+    .map((h, i) => ({ i, si: noSi ? ((i + 1) * 0.6180339887) % 1 : h.si || i + 1 }))
+    .sort((a, b) => a.si - b.si);
   const out = holes.map(() => 0);
   const full = n === 9 ? Math.round(hcp / 2) : hcp; // a 9-hole game gets half the 18-hole handicap
   const sign = full < 0 ? -1 : 1;
@@ -105,16 +110,29 @@ const net = (g: Game, pid: string, i: number): number | null => {
   const p = g.players.find((x) => x.id === pid)!;
   return s - strokesOn(g, p)[i];
 };
-/** The stake in force: doubled with every press, at most the cap. */
+/** The stake in force: doubled with every press (Sascha 15.10.2026: 0,10 → 0,20 → 0,40 …). */
 export function stakeNow(g: Game, key = 'stake'): number {
   const base = Number(g.settings[key] ?? 0);
   if (!g.settings.double || key !== 'stake') return base;
-  const v = base * 2 ** (g.presses?.length ?? 0);
-  const cap = Number(g.settings.maxStake ?? 0);
-  return cap > 0 ? Math.min(v, Math.max(cap, base)) : v;
+  return base * 2 ** (g.presses?.length ?? 0);
 }
-/** One more press would still raise the stake. */
-export const canPress = (g: Game): boolean => !!g.settings.double && Number(g.settings.stake ?? 0) > 0 && (Number(g.settings.maxStake ?? 0) === 0 || stakeNow(g) < Number(g.settings.maxStake));
+/** The stake on hole i: the presses made up to this hole count. */
+export const stakeAt = (g: Game, i: number): number =>
+  g.settings.double ? Number(g.settings.stake ?? 0) * 2 ** (g.presses?.filter((x) => x.hole <= i).length ?? 0) : Number(g.settings.stake ?? 0);
+/** The highest stake reachable: the cap in euros snaps to the doubling chain of the start stake
+ *  (start 0,15 €, maximum 3,60 € → 2,40 €), and the number of presses can be limited too. */
+export function stakeCap(g: Pick<Game, 'settings'>): number {
+  const base = Number(g.settings.stake ?? 0);
+  if (!base) return 0;
+  const euros = Number(g.settings.maxStake ?? 0);
+  const presses = Number(g.settings.maxPresses ?? 0);
+  let k = 0;
+  const limit = euros > 0 ? euros : Infinity;
+  while (base * 2 ** (k + 1) <= limit + 1e-9 && (!presses || k + 1 <= presses) && k < 20) k++;
+  return limit === Infinity && !presses ? Infinity : base * 2 ** k;
+}
+/** One more press stays within the cap. */
+export const canPress = (g: Game): boolean => !!g.settings.double && Number(g.settings.stake ?? 0) > 0 && stakeNow(g) * 2 <= stakeCap(g) + 1e-9;
 const stake = stakeNow;
 const played = (g: Game, i: number) => g.players.every((p) => g.scores[p.id]?.[i] != null);
 const holesDone = (g: Game) => g.holes.filter((_, i) => played(g, i)).length;
@@ -163,6 +181,18 @@ export function teamsOf(g: Pick<Game, 'players' | 'settings'>): [string[], strin
   return [[ids[0], ids[k]], ids.filter((_, j) => j !== 0 && j !== k)];
 }
 
+/** Chicago: the pairing of hole i – player 1 with partner 1, 2 or 3 in rotation, or as set on the hole. */
+export function chicagoTeams(g: Pick<Game, 'players' | 'extra'>, i: number): [string[], string[]] {
+  const ids = g.players.map((p) => p.id);
+  const k = Math.min(3, Math.max(1, Number(g.extra[i]?.pairing ?? (i % 3) + 1)));
+  return [[ids[0], ids[k]], ids.filter((_, j) => j !== 0 && j !== k)];
+}
+/** Chicago: the team's two (net) scores as one number, the lower one first – 6 and 5 = 56. */
+function teamNumber(g: Game, ids: string[], i: number): number {
+  const v = ids.map((id) => net(g, id, i)!).sort((a, b) => a - b);
+  return Number(`${v[0]}${v[1]}`);
+}
+
 // With or without handicap (Sascha 15.10.2026): the WHS share of the playing handicap, or gross.
 const HCP: SettingDef = {
   key: 'allowance',
@@ -183,18 +213,36 @@ const DOUBLE: SettingDef[] = [
   { key: 'double', label: () => tr('Press: the last may double the stake', 'Press: der Letzte darf den Einsatz verdoppeln'), type: 'bool', default: false },
   {
     key: 'maxStake',
-    label: () => tr('Highest stake after presses', 'Höchsteinsatz nach Press'),
+    label: () => tr('Highest stake (snaps to the doubling chain)', 'Höchsteinsatz (rastet auf die Verdopplungen ein)'),
     type: 'choice',
     options: [
       { value: '0.4', label: () => money(0.4) },
       { value: '0.8', label: () => money(0.8) },
+      { value: '1', label: () => money(1) },
       { value: '1.6', label: () => money(1.6) },
+      { value: '2', label: () => money(2) },
       { value: '3.2', label: () => money(3.2) },
+      { value: '3.6', label: () => money(3.6) },
       { value: '5', label: () => money(5) },
       { value: '10', label: () => money(10) },
       { value: '0', label: () => tr('no cap', 'ohne Limit') },
     ],
     default: '1.6',
+    when: (s) => !!s.double,
+  },
+  {
+    key: 'maxPresses',
+    label: () => tr('Presses allowed', 'Erlaubte Pressen'),
+    type: 'choice',
+    options: [
+      { value: '1', label: () => '1' },
+      { value: '2', label: () => '2' },
+      { value: '3', label: () => '3' },
+      { value: '4', label: () => '4' },
+      { value: '5', label: () => '5' },
+      { value: '0', label: () => tr('any', 'beliebig') },
+    ],
+    default: '0',
     when: (s) => !!s.double,
   },
 ];
@@ -362,35 +410,56 @@ export const FORMS: FormDef[] = [
     },
   },
   {
+    // Chicago as Sascha's group plays it (concept 15.10.2026): left against right per hole, the team scores as a
+    // two-digit number, the difference in points; a press doubles the stake and halves all points.
     id: 'chicago',
     hcpFor: () => '100',
     name: () => 'Chicago',
-    short: () => tr('Points per hole against your own quota – the handicap is in the quota.', 'Punkte je Loch gegen die eigene Quote – die Vorgabe steckt in der Quote.'),
+    short: () => tr('Two against two per hole, left against right – the two scores of a team make one number.', 'Pro Loch zwei gegen zwei, links gegen rechts – die zwei Ergebnisse eines Teams ergeben eine Zahl.'),
     rules: () => [
-      tr('Points on every hole (gross): bogey 1, par 2, birdie 4, eagle 8, albatross 16.', 'Punkte an jedem Loch (brutto): Bogey 1, Par 2, Birdie 4, Eagle 8, Albatros 16.'),
-      tr('Everyone has a quota: 39 minus the playing handicap for 18 holes (share as set) – during the game and on 9 holes pro rata for the holes played. Without handicap the quota is 39 for all.', 'Jeder hat eine Quote: 39 minus Spielvorgabe für 18 Löcher (Anteil wie eingestellt) – während des Spiels und auf 9 Löchern anteilig für die gespielten Löcher. Ohne Vorgabe ist die Quote für alle 39.'),
-      tr('Who beats his quota by the most wins; with a stake everyone settles the differences.', 'Wer seine Quote am weitesten übertrifft, gewinnt; mit Einsatz rechnet jeder die Differenzen ab.'),
+      tr(
+        'Four players, two teams on every hole. The three pairings (A+B vs C+D, A+C vs B+D, A+D vs B+C) rotate hole by hole – on 18 holes each six times, on 9 holes three times – so everyone plays with everyone. The pairing of a hole can be changed.',
+        'Vier Spieler, an jedem Loch zwei Teams. Die drei Paarungen (A+B gegen C+D, A+C gegen B+D, A+D gegen B+C) wechseln von Loch zu Loch – auf 18 Löchern je sechsmal, auf 9 Löchern je dreimal –, damit jeder mit jedem spielt. Die Paarung eines Lochs lässt sich ändern.',
+      ),
+      tr('The two scores of a team make a two-digit number, the lower one first: 6 and 5 = 56, 3 and 3 = 33.', 'Die zwei Schläge eines Teams ergeben eine zweistellige Zahl, der kleinere vorn: 6 und 5 = 56, 3 und 3 = 33.'),
+      tr(
+        'The difference is the hole: 56 − 33 = 23. Each player of the lower team gets +23, each of the other −23 – all accounts add up to zero.',
+        'Die Differenz ist das Loch: 56 − 33 = 23. Jeder Spieler des Teams mit der kleineren Zahl bekommt +23, jeder des anderen −23 – alle Konten ergeben zusammen null.',
+      ),
+      tr('Money: points × stake, e.g. 23 × 0.10 € = 2.30 €.', 'Geld: Punkte × Einsatz, z. B. 23 × 0,10 € = 2,30 €.'),
+      tr(
+        'Press: only the player furthest behind, only at the start of a hole. The stake doubles and all points are halved – the money so far stays the same, the coming holes count double.',
+        'Pressen: nur der Spieler mit den meisten Minuspunkten, nur zu Lochbeginn. Der Einsatz verdoppelt sich, alle Punkte werden halbiert – der bisherige Geldstand bleibt, die kommenden Löcher zählen doppelt.',
+      ),
+      tr(
+        'Highest stake: in euros (it snaps to the doubling chain: start 0.15 €, maximum 3.60 € → 2.40 €) or as a number of presses.',
+        'Höchsteinsatz: in Euro (rastet auf die Verdopplungs-Kette ein: Start 0,15 €, Maximum 3,60 € → 2,40 €) oder als Zahl erlaubter Pressen.',
+      ),
+      tr(
+        'Gross or net: net gives the strokes of the playing handicap hole by hole after the stroke index (without one: evenly over the round).',
+        'Brutto oder netto: netto werden die Vorgabeschläge Loch für Loch nach Stroke-Index verrechnet (ohne Index gleichmäßig über die Runde).',
+      ),
     ],
-    players: [2, 4],
-    settings: [{ key: 'stake', label: () => tr('Stake per point', 'Einsatz je Punkt'), type: 'stake', default: 0.1 }],
+    players: [4, 4],
+    input: 'chicago',
+    settings: [{ key: 'stake', label: () => tr('Start stake per point', 'Starteinsatz je Punkt'), type: 'stake', default: 0.1 }],
     standing: (g) => {
-      const pts: Record<string, number> = {};
-      const rows = g.players.map((p) => {
-        let s = 0;
-        g.holes.forEach((h, i) => {
-          const v = g.scores[p.id]?.[i];
-          if (v == null) return;
-          const d = v - h.par;
-          s += d >= 2 ? 0 : d === 1 ? 1 : d === 0 ? 2 : d === -1 ? 4 : d === -2 ? 8 : 16;
-        });
-        // the quota for the holes played so far (pro rata) – after the whole round the full quota
-        const done = g.scores[p.id]?.filter((v) => v != null).length ?? 0;
-        const quota = Math.round(((39 - (hcpOf(g, p) ?? 0)) * done) / 18 * 10) / 10;
-        const over = Math.round((s - quota) * 10) / 10;
-        pts[p.id] = over;
-        return { id: p.id, name: p.name, points: over, value: `${over >= 0 ? '+' : ''}${dec(over)}`, detail: tr(`${s} pts, quota ${dec(quota)}`, `${s} Pkt., Quote ${dec(quota)}`) };
+      const pts: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
+      g.holes.forEach((_, i) => {
+        if (!played(g, i)) return;
+        const [A, B] = chicagoTeams(g, i);
+        const d = teamNumber(g, B, i) - teamNumber(g, A, i); // + the first team is lower
+        for (const id of A) pts[id] += d;
+        for (const id of B) pts[id] -= d;
       });
-      return { rows: rank(rows), money: settle(g, pts, stake(g)) };
+      const cur = Math.min(g.current, g.holes.length - 1);
+      const [A, B] = chicagoTeams(g, cur);
+      const names = (ids: string[]) => ids.map((id) => name(g, id)).join(' & ');
+      return {
+        rows: rank(g.players.map((p) => ({ id: p.id, name: p.name, points: pts[p.id], value: `${pts[p.id] > 0 ? '+' : ''}${dec(pts[p.id])}` }))),
+        status: !g.finishedAt ? tr(`Hole ${g.holes[cur].label}: ${names(A)} vs ${names(B)}`, `Loch ${g.holes[cur].label}: ${names(A)} gegen ${names(B)}`) : undefined,
+        money: Object.fromEntries(g.players.map((p) => [p.id, pts[p.id] * stake(g)])),
+      };
     },
   },
   {
@@ -739,7 +808,8 @@ const WITH_HCP: FormId[] = ['skins', 'nassau', 'wolf', 'chicago', 'vegas', 'sixe
 const WITH_DOUBLE: FormId[] = ['skins', 'wolf', 'chicago', 'bbb', 'vegas', 'sixes', 'dots', 'stableford', 'rabbit', 'acey'];
 for (const f of FORMS) {
   if (WITH_HCP.includes(f.id)) f.settings.unshift(HCP);
-  if (WITH_DOUBLE.includes(f.id)) f.settings.push(...DOUBLE);
+  // Chicago is played with the press as a rule (Sascha's concept)
+  if (WITH_DOUBLE.includes(f.id)) f.settings.push(...(f.id === 'chicago' ? [{ ...DOUBLE[0], default: true }, ...DOUBLE.slice(1)] : DOUBLE));
   f.settings.push(MAX_LOSS);
 }
 
@@ -756,7 +826,31 @@ export function capLoss(money: Record<string, number>, cap: number): Record<stri
 }
 /** The standing as shown: the form's own, with the loss limit applied. */
 export function standingOf(g: Game): Standing {
-  const st = formDef(g.form).standing(g);
+  const f = formDef(g.form);
+  let st = f.standing(g);
+  if (g.settings.double && g.presses?.length && st.money) {
+    // A press doubles the stake of the coming holes – the money so far stays (Sascha's concept): every hole is
+    // settled at the stake in force on it (the form's result hole by hole, at stake 1, times that stake).
+    const plain: Game = { ...g, settings: { ...g.settings, double: false, stake: 1 }, presses: [] };
+    const zero = () => Object.fromEntries(g.players.map((p) => [p.id, 0])) as Record<string, number>;
+    const total = zero();
+    let prev = zero();
+    g.holes.forEach((_, k) => {
+      const upto: Game = { ...plain, scores: Object.fromEntries(Object.entries(g.scores).map(([id, s]) => [id, s.map((v, j) => (j <= k ? v : null))])), extra: g.extra.map((x, j) => (j <= k ? x : {})) };
+      const m = f.standing(upto).money ?? zero();
+      for (const p of g.players) total[p.id] += ((m[p.id] ?? 0) - (prev[p.id] ?? 0)) * stakeAt(g, k);
+      prev = m;
+    });
+    const now = stakeNow(g);
+    // Chicago keeps its points in step with the money: all points halved with every press
+    const rows = g.form === 'chicago' && now > 0
+      ? rank(st.rows.map((r) => {
+          const pts = Math.round((total[r.id] / now) * 100) / 100;
+          return { ...r, points: pts, value: `${pts > 0 ? '+' : ''}${dec(pts)}` };
+        }))
+      : st.rows;
+    st = { ...st, rows, money: total };
+  }
   return st.money ? { ...st, money: capLoss(st.money, Number(g.settings.maxLoss ?? 0)) } : st;
 }
 export const formatEuro = euro;

@@ -1,5 +1,5 @@
 // 2D gallery (night run 15./16.10.2026): every hole of every bundled course in the 2D view, as small JPEGs for a page
-// to look through. Usage: node gallery.mjs <app url> <out dir> ["Course name" …]
+// to look through. Usage: node gallery.mjs <app url> <out dir> ["Course name" or "Course name|loop option" …]
 import { chromium, devices } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
@@ -10,7 +10,8 @@ const COURSES = only.length
 mkdirSync(out, { recursive: true });
 const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const index = [];
-for (const course of COURSES) {
+for (const entry of COURSES) {
+  const [course, option] = entry.split("|");
   const ctx = await b.newContext({ ...devices['iPhone 13'], deviceScaleFactor: 1, locale: 'de-DE', geolocation: { latitude: 0, longitude: 0, accuracy: 5 }, permissions: ['geolocation'] });
   const p = await ctx.newPage();
   await p.goto(url);
@@ -29,6 +30,7 @@ for (const course of COURSES) {
   await p.waitForTimeout(1500);
   await p.locator('button.list-item').filter({ hasText: course }).first().click();
   await p.getByText('Runde starten').waitFor({ timeout: 30000 });
+  if (option) await p.locator('button.choice-loop').filter({ hasText: option }).first().click();
   await p.getByRole('button', { name: 'Löcher ansehen – ohne Runde' }).click();
   await p.waitForTimeout(6000);
   const n = await p.evaluate(() => {

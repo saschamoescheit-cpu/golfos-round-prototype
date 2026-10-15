@@ -68,7 +68,6 @@ function nearRuns(rings: LngLat[][], line: LngLat[], max: number): LngLat[][] {
 // Shots are not logged by hand on the map any more (Sascha, 13.10.2026): they come from the GPS track and are
 // checked after the round. The code stays for Ben (spec 004 decides); false = the quick-mode buttons in every mode.
 const MANUAL_SHOTS = false;
-const GREEN_AUTO_M = 120; // green chart comes up by itself from here on
 
 export function HoleScreen(props: {
   round: Round;
@@ -694,8 +693,9 @@ export function HoleScreen(props: {
     // Green slope when the player is on or next to the green (or planning from the sofa).
     const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
     const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || (round.preview === true && hole.par === 3);
-    const greenAuto = distanceM(from, mapData.greenCenter) <= GREEN_AUTO_M || nearGreen;
-    const greenVisible = nearGreen || (showGreen ?? greenAuto);
+    // The green slope only when the player asks for it (Sascha 15.10.2026: also on a par 3 the whole hole comes
+    // first) – never by itself near the green.
+    const greenVisible = showGreen === true;
     const chart = greenSlopeOn ? GREEN_CHARTS[round.courseId]?.[hole.label] : undefined;
     // Green chart on screen: keep the view free (caddie folded, no hint).
     // Only around the green (≤ 40 m) – on the approach the caddie stays at hand next to the green chart.
@@ -763,7 +763,7 @@ export function HoleScreen(props: {
 
     // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
     const caddieSig = cad ? `${i}|${cad.advice.club}${cad.advice.swing ?? ''}|${cad.warning ?? ''}|${cad.ap.kind}|${Math.round(cad.pl.distance / 25)}` : '';
-    const caddieShown = cad != null && !greenFocus && caddieOpen;
+    const caddieShown = cad != null && caddieOpen; // the tool bar is the same on every hole (Sascha 15.10.2026)
     const caddieNews = cad != null && !greenFocus && !caddieOpen && seenSig !== caddieSig;
     const toggleCaddie = () => {
       setSeenSig(caddieSig);
@@ -845,12 +845,11 @@ export function HoleScreen(props: {
           }
         />
 
+        {/* the hole preview can always be left (Sascha 15.10.2026: the old arrow sat under the weather badge) */}
         {round.preview && (
-          <div className="map-top">
-            <button type="button" className="map-btn round" aria-label={tr('Leave round', 'Runde verlassen')} onClick={askExit}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-            </button>
-          </div>
+          <button type="button" className="preview-exit" onClick={askExit}>
+            ✕ {tr('End preview', 'Vorschau beenden')}
+          </button>
         )}
 
         {weather && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
@@ -876,7 +875,7 @@ export function HoleScreen(props: {
 
         {/* the tools in one column on the right, as in Hole19: caddie, green slope, hazards, imagery, scorecard */}
         <div className="map-toolbar" role="toolbar" aria-label={tr('Map tools', 'Kartenwerkzeuge')}>
-          {caddieOn && !greenFocus && (
+          {caddieOn && (
             <button
               type="button"
               className="map-tool"
@@ -903,7 +902,7 @@ export function HoleScreen(props: {
               </svg>
             </button>
           )}
-          {(slope || chart) && !nearGreen && (
+          {(slope || chart) && (
             <button type="button" className="map-tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')}
               onClick={() => {
                 // always onto the green with the slopes – also after the player moved the map himself (Sascha 15.10.2026)

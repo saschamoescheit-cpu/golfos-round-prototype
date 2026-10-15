@@ -1,0 +1,207 @@
+<title>Hetzenhof Caddie-Werkstatt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&family=Figtree:wght@400;600;700&display=swap">
+<style>
+  /* Layout: one row per hole – the 2D map, the caddie's advice and the course facts, Sascha's notes – stacked on a phone. */
+  :root {
+    --bg: #f2f4ef;
+    --surface: #ffffff;
+    --surface-2: #e9eee5;
+    --line: #cfd8cc;
+    --text: #12191d;
+    --muted: #55625a;
+    --brand: #4f7a0a;
+    --brand-soft: #e3eecf;
+    --warn: #a3470e;
+    --plan: #1f4f8a;
+    --display: 'Lexend', 'Segoe UI', system-ui, sans-serif;
+    --body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0f1418; --surface: #18222a; --surface-2: #202c35; --line: #2c3943; --text: #eef2ee; --muted: #9aa7a0; --brand: #9bc53d; --brand-soft: #24331b; --warn: #ff9b6b; --plan: #8ec1ff; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #0f1418; --surface: #18222a; --surface-2: #202c35; --line: #2c3943; --text: #eef2ee; --muted: #9aa7a0; --brand: #9bc53d; --brand-soft: #24331b; --warn: #ff9b6b; --plan: #8ec1ff; color-scheme: dark; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--body); padding: 0 16px 40px; }
+  .wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-block: 18px; }
+  h1 { font: 700 26px/1.2 var(--display); margin: 0; text-wrap: balance; }
+  h1 span { color: var(--brand); }
+  .lead { margin: 0; color: var(--muted); max-width: 70ch; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 8px; z-index: 2; }
+  .bar button { font: 600 13px var(--body); padding: 7px 12px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
+  .bar button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+  .bar .status { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .hole { display: grid; grid-template-columns: 220px minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .hole.has-note { border-color: var(--brand); }
+  @media (max-width: 900px) { .hole { grid-template-columns: 150px minmax(0, 1fr); } .notes { grid-column: 1 / -1; } }
+  @media (max-width: 520px) { .hole { grid-template-columns: 1fr; } .shot-img { max-width: 220px; } }
+  .shot-img { width: 100%; max-width: 100%; border-radius: 10px; display: block; border: 1px solid var(--line); }
+  .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 6px; }
+  .head b { font: 700 22px var(--display); }
+  .head small { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .shot { border-top: 1px solid var(--line); padding-block: 8px; display: flex; flex-direction: column; gap: 3px; }
+  .shot:first-of-type { border-top: 0; padding-top: 0; }
+  .shot-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+  .club { font: 700 18px var(--display); color: var(--brand); min-width: 2.6em; }
+  .from { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 700; }
+  .dist { font-variant-numeric: tabular-nums; }
+  .line { font-size: 14px; color: var(--text); }
+  .line.warn { color: var(--warn); font-weight: 600; }
+  .line.plan { color: var(--plan); font-weight: 600; }
+  .line.muted { color: var(--muted); }
+  .alt { font-size: 13px; color: var(--muted); }
+  .facts { margin-top: 6px; background: var(--surface-2); border-radius: 10px; padding: 8px 10px; font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
+  .facts .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 700; margin-top: 4px; }
+  .notes { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .notes label { font: 700 13px var(--body); }
+  .notes textarea { width: 100%; box-sizing: border-box; min-height: 150px; resize: vertical; font: 14px/1.45 var(--body); border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 8px 10px; }
+  .notes .saved { font-size: 12px; color: var(--muted); min-height: 1.2em; }
+  .hint { font-size: 12px; color: var(--muted); }
+  textarea.out { width: 100%; box-sizing: border-box; min-height: 120px; font: 13px/1.4 var(--body); border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); padding: 8px; }
+  button:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>GOLF<span>OS</span> · Caddie-Werkstatt Hetzenhof</h1>
+  </header>
+  <p class="lead">Alle 27 Löcher in der 2D-Ansicht mit dem, was der Caddie heute empfiehlt: vom gelben Abschlag, bei Windstille, mit den Standard-Weiten (Driver 200 m … PW 115 m). Schreib daneben, was aus deiner Sicht wichtig ist: Strategie, Gefahren, wohin man nicht darf, was der Caddie anders sagen soll. Die Notizen speichern sich beim Tippen.</p>
+  <nav class="bar" aria-label="Schleifen">
+    <button type="button" data-loop="" aria-pressed="true">Alle</button>
+    <button type="button" data-loop="A" aria-pressed="false">A</button>
+    <button type="button" data-loop="B" aria-pressed="false">B</button>
+    <button type="button" data-loop="C" aria-pressed="false">C</button>
+    <button type="button" id="copy">Notizen kopieren</button>
+    <span class="status" id="status">Notizen: wird verbunden …</span>
+  </nav>
+  <textarea class="out" id="out" hidden readonly aria-label="Alle Notizen als Text"></textarea>
+  <main id="list" class="wrap" style="padding:0"></main>
+</div>
+
+<script>
+  const DATA = /*DATA*/[];
+  const LOCAL = 'golfos.caddie.notes.v1';
+  let notes = {};
+  try { notes = JSON.parse(localStorage.getItem(LOCAL) || '{}'); } catch (e) { notes = {}; }
+  const saveLocal = () => { try { localStorage.setItem(LOCAL, JSON.stringify(notes)); } catch (e) {} };
+  let db = null;
+  const pending = {};
+  const writing = {};
+  const statusEl = document.getElementById('status');
+
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function render() {
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    DATA.forEach((h) => {
+      const card = el('section', 'hole' + ((notes[h.hole] || '').trim() ? ' has-note' : ''));
+      card.dataset.loop = h.hole.slice(-1);
+      card.id = 'h' + h.hole;
+      const imgWrap = el('div');
+      if (h.img) { const img = el('img', 'shot-img'); img.src = h.img; img.alt = 'Loch ' + h.hole + ' in 2D'; img.loading = 'lazy'; imgWrap.append(img); }
+      const mid = el('div');
+      const head = el('div', 'head');
+      head.append(el('b', null, h.hole), el('small', null, 'Par ' + h.par + ' · ' + h.length + ' m' + (h.hcp ? ' · Hcp ' + h.hcp : '')));
+      mid.append(head);
+      (h.shots || []).forEach((s) => {
+        const box = el('div', 'shot');
+        const top = el('div', 'shot-top');
+        top.append(el('span', 'club', s.club), el('span', 'from', s.from), el('span', 'dist', s.distance + ' m · spielt wie ' + s.playsLike + ' m'));
+        box.append(top);
+        s.lines.forEach((l) => box.append(el('div', 'line' + (l.tone === 'warn' ? ' warn' : l.tone === 'plan' ? ' plan' : l.tone === 'muted' ? ' muted' : ''), l.text)));
+        if (s.alt) box.append(el('div', 'alt', s.alt));
+        mid.append(box);
+      });
+      const b = h.book || {};
+      if (b.rise || (b.hazards || []).length || (b.green || []).length) {
+        const f = el('div', 'facts');
+        f.append(el('div', 'lbl', 'Birdiebook'));
+        if (b.rise) f.append(el('div', null, b.rise));
+        if ((b.hazards || []).length) { f.append(el('div', 'lbl', 'Vom Abschlag: bis dorthin / drüber')); b.hazards.forEach((t) => f.append(el('div', null, t))); }
+        if ((b.green || []).length) { f.append(el('div', 'lbl', 'Grün')); b.green.forEach((t) => f.append(el('div', null, t))); }
+        mid.append(f);
+      }
+      const n = el('div', 'notes');
+      const id = 'note-' + h.hole;
+      const lab = el('label', null, 'Deine Notizen zu ' + h.hole);
+      lab.htmlFor = id;
+      const ta = el('textarea');
+      ta.id = id;
+      ta.placeholder = 'z. B. Driver nur bis 210 m, danach Wasser rechts · Vorlegen links vom Baum · Grün fällt nach hinten ab …';
+      ta.value = notes[h.hole] || '';
+      const saved = el('div', 'saved');
+      ta.addEventListener('input', () => {
+        notes[h.hole] = ta.value;
+        saveLocal();
+        card.classList.toggle('has-note', !!ta.value.trim());
+        saved.textContent = 'wird gespeichert …';
+        clearTimeout(pending[h.hole]);
+        pending[h.hole] = setTimeout(() => push(h.hole, saved), 900);
+      });
+      n.append(lab, ta, saved);
+      card.append(imgWrap, mid, n);
+      list.append(card);
+    });
+    filter();
+  }
+
+  // one write at a time per hole, after a pause in typing
+  async function push(hole, saved) {
+    pending[hole] = null;
+    if (!db) { saved.textContent = 'In diesem Browser gespeichert.'; return; }
+    if (writing[hole]) { clearTimeout(pending[hole]); pending[hole] = setTimeout(() => push(hole, saved), 600); return; }
+    writing[hole] = true;
+    try {
+      await db.doc('notes/' + hole).set({ hole, text: notes[hole] || '', updatedAt: new Date().toISOString() });
+      saved.textContent = 'Gespeichert.';
+    } catch (e) {
+      saved.textContent = 'Nicht online gespeichert – bleibt in diesem Browser. „Notizen kopieren“ geht immer.';
+    } finally { writing[hole] = false; }
+  }
+
+  let loop = '';
+  function filter() {
+    document.querySelectorAll('.hole').forEach((c) => { c.hidden = !!loop && c.dataset.loop !== loop; });
+    document.querySelectorAll('.bar button[data-loop]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.loop === loop)));
+  }
+  document.querySelectorAll('.bar button[data-loop]').forEach((b) => { b.onclick = () => { loop = b.dataset.loop; filter(); }; });
+
+  document.getElementById('copy').onclick = async () => {
+    const text = DATA.filter((h) => (notes[h.hole] || '').trim()).map((h) => h.hole + ': ' + notes[h.hole].trim()).join('\n\n') || 'Noch keine Notizen.';
+    try { await navigator.clipboard.writeText(text); statusEl.textContent = 'Kopiert.'; }
+    catch (e) { const out = document.getElementById('out'); out.hidden = false; out.value = text; out.focus(); out.select(); statusEl.textContent = 'Text unten markieren und kopieren.'; }
+  };
+
+  render();
+
+  // notes kept with the page, so Claude can read them (the db capability); without it: this browser only
+  (async () => {
+    try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
+    if (!db) { statusEl.textContent = 'Notizen bleiben in diesem Browser – „Notizen kopieren“ schickt sie Claude.'; return; }
+    statusEl.textContent = 'Notizen werden mit der Seite gespeichert.';
+    let first = true;
+    db.collection('notes').onSnapshot((snap) => {
+      if (first) {
+        // notes typed here before the page was connected: send those the page does not have yet
+        first = false;
+        const remote = new Set(snap.docs.map((d) => d.id));
+        Object.keys(notes).forEach((hole) => {
+          if ((notes[hole] || '').trim() && !remote.has(hole)) push(hole, document.querySelector('#h' + hole + ' .saved') || el('div'));
+        });
+      }
+      snap.docs.forEach((d) => {
+        const body = d.data();
+        if (!body || typeof body.text !== 'string') return;
+        const ta = document.getElementById('note-' + d.id);
+        if (!ta || document.activeElement === ta || pending[d.id]) return;
+        if (ta.value !== body.text) {
+          ta.value = body.text;
+          notes[d.id] = body.text;
+          saveLocal();
+          const card = document.getElementById('h' + d.id);
+          if (card) card.classList.toggle('has-note', !!body.text.trim());
+        }
+      });
+    }, () => { statusEl.textContent = 'Notizen bleiben in diesem Browser – „Notizen kopieren“ schickt sie Claude.'; db = null; });
+  })();
+</script>

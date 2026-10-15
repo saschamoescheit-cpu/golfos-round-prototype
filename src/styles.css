@@ -673,7 +673,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .tab-title { margin: 14px 0 0; font: 700 30px/1.15 var(--display); } /* more room below the GOLFOS bar (Sascha 15.10.2026) */
 .tabbar {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 10px); z-index: 5;
-  width: calc(100% - 24px); max-width: 536px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 6px;
+  width: calc(100% - 24px); max-width: 536px; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 6px;
   background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line); border-radius: 26px;
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
@@ -1038,5 +1038,29 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .module-dot { top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 6px; }
 .module-todo { color: var(--warn); font-weight: 600; }
 /* start page: version and sun mode at the top, the modules below in the middle */
-.module-chooser .home-topbar { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 16px; right: 16px; }
-.home-topbar .topbar-version { text-align: left; }
+/* the start page: the header on top as in the modules, the logo, claim and modules in the middle of the rest */
+.module-chooser { justify-content: flex-start; }
+.home-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding-bottom: 72px; }
+
+/* the header on narrow phones: logo, module, version (two lines), language and sun mode in one row (Sascha 15.10.2026) */
+@media (max-width: 440px) {
+  .topbar { gap: 6px; }
+  .topbar .lang-btn { min-width: 38px; }
+  .topbar-version { display: flex; flex-direction: column; line-height: 1.15; font-size: 10px; }
+  .module-switch { gap: 6px; }
+  .module-switch > span[aria-hidden='true'] { display: none; }
+  .module-tag { font-size: 11px; padding: 1px 5px; }
+}
+@media (max-width: 380px) {
+  .topbar .brand { font-size: 19px; }
+  .topbar .lang-btn { min-width: 34px; padding: 0 6px; }
+  .module-tag { font-size: 10px; letter-spacing: 0.4px; }
+}
+
+/* leaving the hole preview: a clear button at the top, between the weather and the distances */
+.preview-exit {
+  position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 4;
+  min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--text); font: 700 14px var(--body);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); white-space: nowrap;
+}

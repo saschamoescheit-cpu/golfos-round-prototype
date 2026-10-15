@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capLoss, formDef, received, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
+import { canPress, capLoss, chicagoTeams, formDef, received, stakeCap, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
 
 const holes = (n: number) => Array.from({ length: n }, (_, i) => ({ label: String(i + 1), par: 4, si: i + 1 }));
 
@@ -90,11 +90,7 @@ describe('Las Vegas', () => {
   });
 });
 
-describe('Chicago and Stableford', () => {
-  it('Chicago counts gross points against the quota', () => {
-    const st = formDef('chicago').standing(game('chicago', [Array(18).fill(4)], {}, [18]));
-    expect(st.rows[0].points).toBe(36 - 21);
-  });
+describe('Stableford', () => {
   it('Stableford gives the handicap strokes', () => {
     const st = formDef('stableford').standing(game('stableford', [Array(18).fill(5), Array(18).fill(4)], {}, [18, 0]));
     expect(st.rows.map((r) => r.points)).toEqual([36, 36]);
@@ -128,17 +124,12 @@ describe('handicap share, press and limits (Sascha 15.10.2026)', () => {
     const scores = [Array(18).fill(5), Array(18).fill(4)];
     expect(formDef('stableford').standing(game('stableford', scores, { allowance: '0' }, [18, 0])).rows.map((r) => r.points)).toEqual([36, 18]);
     expect(formDef('stableford').standing(game('stableford', scores, { allowance: '50' }, [18, 0])).rows.map((r) => r.points)).toEqual([36, 27]);
-    // Chicago without handicap: the quota is 39 for everyone
-    expect(formDef('chicago').standing(game('chicago', [Array(18).fill(4)], { allowance: '0' }, [18])).rows[0].points).toBe(36 - 39);
   });
-  it('a press doubles the stake up to the highest stake', () => {
-    const g = game('chicago', [Array(18).fill(4), Array(18).fill(5)], { stake: 0.1, double: true, maxStake: '1.6' });
-    g.presses = [1, 2, 3].map((hole) => ({ hole, by: 'p1' }));
-    expect(stakeNow(g)).toBeCloseTo(0.8);
-    g.presses.push({ hole: 4, by: 'p1' }, { hole: 5, by: 'p1' });
-    expect(stakeNow(g)).toBeCloseTo(1.6); // 3.20 would be over the cap
-    // 18 points apart × 1.60 €
-    expect(standingOf(g).money!.p0).toBeCloseTo(28.8);
+  it('a press doubles only the coming holes – the money so far stays', () => {
+    // skins: P0 wins hole 1 at 1 €, presses are made on hole 2, P0 wins hole 2 at 2 €
+    const g = game('skins', [[3, 3], [4, 4]], { stake: 1, double: true, maxStake: '0' });
+    g.presses = [{ hole: 1, by: 'p1' }];
+    expect(standingOf(g).money).toEqual({ p0: 3, p1: -3 });
   });
   it('nobody loses more than the limit', () => {
     expect(capLoss({ a: 30, b: -20, c: -10 }, 10)).toEqual({ a: 20, b: -10, c: -10 });
@@ -147,11 +138,45 @@ describe('handicap share, press and limits (Sascha 15.10.2026)', () => {
   });
 });
 
-describe('Chicago during the game', () => {
-  it('counts the quota pro rata for the holes played', () => {
-    // one hole played at par (2 points), playing handicap 18: quota 21 for 18 holes, 1.2 for one hole
-    const scores = [[4, ...Array(17).fill(null)]];
-    expect(formDef('chicago').standing(game('chicago', scores, {}, [18])).rows[0].points).toBeCloseTo(0.8);
+describe("Chicago as Sascha's group plays it", () => {
+  // players A, B, C, D = p0 … p3
+  it('makes a two-digit number of each team and gives the difference to every player', () => {
+    // hole 1: A+B against C+D; Sascha 6 and Cedric 5 = 56, Jonas 3 and Maggi 3 = 33 → 23
+    const st = standingOf(game('chicago', [[6], [5], [3], [3]], { stake: 0.1 }));
+    expect(Object.fromEntries(st.rows.map((r) => [r.id, r.points]))).toEqual({ p0: -23, p1: -23, p2: 23, p3: 23 });
+    expect(st.money!.p2).toBeCloseTo(2.3);
+    expect(Object.values(st.money!).reduce((a, b) => a + b, 0)).toBeCloseTo(0);
+  });
+  it('rotates the three pairings, and a hole can have its own', () => {
+    const g = game('chicago', [[4, 4, 4], [4, 4, 4], [4, 4, 4], [4, 4, 4]]);
+    expect(chicagoTeams(g, 0)).toEqual([['p0', 'p1'], ['p2', 'p3']]);
+    expect(chicagoTeams(g, 1)).toEqual([['p0', 'p2'], ['p1', 'p3']]);
+    expect(chicagoTeams(g, 2)).toEqual([['p0', 'p3'], ['p1', 'p2']]);
+    g.extra[2] = { pairing: 1 };
+    expect(chicagoTeams(g, 2)).toEqual([['p0', 'p1'], ['p2', 'p3']]);
+  });
+  it('a press doubles the stake and halves all points – the money so far stays', () => {
+    // hole 1: A+B 56 against C+D 33 (A −23); A presses on hole 2; hole 2: A+C 44 against B+D 55 (A +11 at double stake)
+    const g = game('chicago', [[6, 4], [5, 5], [3, 4], [3, 5]], { stake: 0.1 });
+    g.presses = [{ hole: 1, by: 'p0' }];
+    const st = standingOf(g);
+    expect(stakeNow(g)).toBeCloseTo(0.2);
+    expect(st.money!.p0).toBeCloseTo(-0.1); // −23 × 0,10 + 11 × 0,20
+    expect(st.rows.find((r) => r.id === 'p0')!.points).toBeCloseTo(-0.5); // −23 halved + 11
+  });
+  it('the highest stake snaps to the doubling chain, or counts presses', () => {
+    expect(stakeCap({ settings: { stake: 0.15, double: true, maxStake: '3.6' } })).toBeCloseTo(2.4);
+    expect(stakeCap({ settings: { stake: 0.1, double: true, maxStake: '3.6' } })).toBeCloseTo(3.2);
+    expect(stakeCap({ settings: { stake: 0.1, double: true, maxStake: '0', maxPresses: '2' } })).toBeCloseTo(0.4);
+    const g = game('chicago', [[4], [4], [4], [4]], { stake: 0.15, maxStake: '3.6' });
+    g.presses = [0, 0, 0, 0].map((hole) => ({ hole, by: 'p0' })); // 0,15 → 2,40
+    expect(canPress(g)).toBe(false);
+  });
+  it('net without stroke index spreads the strokes over the round', () => {
+    const noSi = Array.from({ length: 18 }, (_, i) => ({ label: String(i + 1), par: 4, si: 0 }));
+    const got = received(noSi, 6).map((v, i) => (v ? i : -1)).filter((i) => i >= 0);
+    expect(got).toHaveLength(6);
+    expect(Math.max(...got) - Math.min(...got)).toBeGreaterThan(10); // not just the first six holes
   });
 });
 

@@ -14,6 +14,7 @@ import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
 import { groupForHandicap, roundsSg } from '../lib/sg';
 import { loopsText } from '../lib/loops';
+import { kindName } from '../lib/roundkind';
 import { getLang, tr } from '../lib/i18n';
 
 export function Scorecard(props: {
@@ -47,7 +48,7 @@ export function Scorecard(props: {
       <div>
         <div style={{ font: '600 19px var(--display)' }}>{round.courseName}</div>
         <span className="muted small sc-sub">
-          {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
+          {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), kindName(round.kind), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
           {round.tee && (
             <>
               {' · '}

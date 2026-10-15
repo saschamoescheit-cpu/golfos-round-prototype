@@ -161,6 +161,8 @@ export interface Round {
    * 'score' = only a digital scorecard, no round check; 'full' or missing = the shots are checked after the round.
    */
   capture?: 'score' | 'full';
+  /** Tournament, social or practice round (chosen before the round); missing = social. */
+  kind?: 'tournament' | 'social' | 'training';
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
   format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number };
 }
