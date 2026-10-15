@@ -16,13 +16,14 @@ import { strategy, strategyDrills } from './strategy';
 import { mental, mentalDrills } from './mental';
 import { fitness, fitnessDrills } from './fitness';
 import { practice, practiceDrills } from './practice';
+import { SKETCHES } from './sketches';
 
 // All content of the Training module. Order of the categories = order in the library: the short game first
 // (where most strokes are lost), then the long game, then the head and the body.
 
 export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching, bunker, slopes, trouble, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice];
 
-export const DRILLS: Drill[] = [
+export const DRILLS: Drill[] = ([
   ...puttingDrills,
   ...greenreadingDrills,
   ...chippingDrills,
@@ -40,7 +41,7 @@ export const DRILLS: Drill[] = [
   ...mentalDrills,
   ...fitnessDrills,
   ...practiceDrills,
-];
+] as Drill[]).map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })); // every drill gets its own sketch
 
 export const catById = (id: CategoryId): Category | undefined => CATEGORIES.find((c) => c.id === id);
 export const drillById = (id: string): Drill | undefined => DRILLS.find((d) => d.id === id);

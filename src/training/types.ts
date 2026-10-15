@@ -197,10 +197,13 @@ export type SketchItem =
   | { k: 'text'; at: P; t: L | string; size?: number; anchor?: 'start' | 'middle' | 'end' }
   | { k: 'dim'; from: P; to: P; t: L | string }; // dimension line with text
 
+/** Golfer poses for side views; the fitness poses are drawn from joint points (see Sketch.tsx). */
+export type Pose = 'address' | 'top' | 'finish' | 'front' | 'stand' | 'bridge' | 'sidelying' | 'sit' | 'squat' | 'lunge' | 'oneleg' | 'floorsit' | 'turn';
+
 /** Side view (slopes, ball flight, posture). */
 export type SideItem =
   | { k: 'ground'; pts: P[] }
-  | { k: 'figure'; at: P; tilt?: number; pose?: 'address' | 'top' | 'finish' | 'front' } // front = seen from the front, target to the right
+  | { k: 'figure'; at: P; tilt?: number; pose?: Pose; flip?: boolean } // front = seen from the front, target to the right
   | { k: 'ball'; at: P }
   | { k: 'flight'; pts: P[]; dashed?: boolean }
   | { k: 'flag'; at: P }

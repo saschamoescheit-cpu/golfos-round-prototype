@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { tr } from '../lib/i18n';
-import type { L, P, SideItem, Sketch, SketchItem } from './types';
+import type { L, P, Pose, SideItem, Sketch, SketchItem } from './types';
 
 // Our own drawings for the drills (Sascha 15.10.2026: no pictures copied from the internet). A sketch is described in
 // meters – top view (x to the right, y towards the target) or side view (slopes, flight) – and drawn here as SVG.
@@ -111,7 +111,8 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
           <g key={i} opacity={it.ghost ? 0.5 : 1}>
             <circle cx={X(it.at[0])} cy={Y(it.at[1])} r={5.5} fill="#ffffff" stroke="#55606a" strokeWidth={1} />
             {it.n != null && (
-              <text x={X(it.at[0]) + 8} y={Y(it.at[1]) - 6} fontSize={11} fontWeight={700} fill={C.text}>
+              // labels of balls near the right edge go to the left of the ball
+              <text x={X(it.at[0]) + (X(it.at[0]) > W - 70 ? -8 : 8)} y={Y(it.at[1]) - 6} fontSize={11} fontWeight={700} fill={C.text} textAnchor={X(it.at[0]) > W - 70 ? 'end' : 'start'}>
                 {typeof it.n === 'object' ? txt(it.n) : it.n}
               </text>
             )}
@@ -226,10 +227,39 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
 }
 
 /** A golfer in side view: address on the slope (tilted), top of the swing or finish. */
-function Figure(props: { x: number; y: number; k: number; tilt: number; pose: 'address' | 'top' | 'finish' | 'front' }) {
+// Fitness and practice poses as joint points in tenths of the body height (x forward, y up):
+// head, neck, hip, knee 1, foot 1, knee 2, foot 2, elbow 1, hand 1, elbow 2, hand 2.
+type J = [number, number];
+const POSES: Partial<Record<Pose, J[]>> = {
+  stand: [[0, 9.2], [0, 8.3], [0, 4.8], [0.2, 2.4], [0.1, 0], [-0.2, 2.4], [-0.3, 0], [0.4, 6.6], [0.5, 5], [-0.4, 6.6], [-0.5, 5]],
+  turn: [[0, 9.2], [0, 8.3], [0, 4.8], [0.6, 2.4], [0.8, 0], [-0.6, 2.4], [-0.8, 0], [1.6, 8.2], [2.8, 8.2], [-1.6, 8.2], [-2.8, 8.2]],
+  bridge: [[-4.6, 0.6], [-3.8, 0.5], [0, 2.2], [2.2, 3.2], [3.0, 0], [2.0, 3.0], [2.8, 0], [-2.4, 0.2], [-1.2, 0.1], [-2.4, 0.15], [-1.2, 0.05]],
+  sidelying: [[-4.6, 0.8], [-3.8, 0.6], [0, 0.6], [1.6, 2.2], [3.2, 2.2], [1.7, 1.6], [3.3, 1.6], [-2.2, 2.6], [-1.0, 4.4], [-2.6, 0.6], [-1.0, 0.8]],
+  sit: [[0, 9.2], [0, 8.3], [0, 4.6], [2.4, 4.6], [2.4, 0], [2.2, 4.4], [2.2, 0], [1.6, 7.6], [2.6, 7.6], [-1.6, 7.6], [-2.6, 7.6]],
+  squat: [[0.5, 7.0], [0.3, 6.2], [-1.2, 2.6], [1.2, 3.0], [0.4, 0], [1.0, 2.8], [0.2, 0], [0.4, 7.8], [0.6, 9.4], [0.2, 7.8], [0.4, 9.4]],
+  lunge: [[0, 8.8], [0, 7.9], [0, 4.4], [2.0, 2.6], [2.0, 0], [-1.2, 1.4], [-2.6, 0.2], [0.8, 6.4], [1.6, 5.6], [-0.8, 6.4], [0.2, 5.6]],
+  oneleg: [[0, 9.2], [0, 8.3], [0, 4.8], [0.2, 2.4], [0.1, 0], [1.4, 3.6], [0.6, 2.4], [1.2, 7.6], [2.2, 7.8], [-1.2, 7.6], [-2.2, 7.8]],
+  floorsit: [[0, 5.6], [0, 4.8], [0, 0.6], [2.4, 0.5], [2.4, 2.6], [-1.6, 0.4], [-1.6, 2.4], [0.8, 3.2], [1.2, 1.8], [-0.8, 3.2], [-1.2, 1.8]],
+};
+
+function Figure(props: { x: number; y: number; k: number; tilt: number; pose: Pose; flip?: boolean }) {
   const s = props.k * 1.75; // body height in px
   const u = s / 10;
   const { pose } = props;
+  const joints = POSES[pose];
+  if (joints) {
+    const q = (j: J) => `${(props.flip ? -j[0] : j[0]) * u},${-j[1] * u}`;
+    const [hd, nk, hp, k1, f1, k2, f2, e1, h1, e2, h2] = joints;
+    return (
+      <g transform={`translate(${props.x},${props.y}) rotate(${-props.tilt})`} stroke="#22313b" strokeWidth={Math.max(2, u * 0.55)} strokeLinecap="round" strokeLinejoin="round" fill="none">
+        <polyline points={`${q(hp)} ${q(k2)} ${q(f2)}`} opacity={0.6} />
+        <polyline points={`${q(nk)} ${q(e2)} ${q(h2)}`} opacity={0.6} />
+        <polyline points={`${q(nk)} ${q(hp)} ${q(k1)} ${q(f1)}`} />
+        <polyline points={`${q(nk)} ${q(e1)} ${q(h1)}`} />
+        <circle cx={(props.flip ? -hd[0] : hd[0]) * u} cy={-hd[1] * u} r={u * 0.8} fill="#22313b" />
+      </g>
+    );
+  }
   if (pose === 'front')
     // face-on: feet apart, the ball between them, the target to the right
     return (
@@ -285,7 +315,7 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
         return <polygon key={i} points={`${X(it.pts[0][0])},${H} ${pts} ${X(it.pts[it.pts.length - 1][0])},${H}`} fill={C.ground} stroke="#3d6b22" strokeWidth={2} />;
       }
       case 'figure':
-        return <Figure key={i} x={X(it.at[0])} y={Y(it.at[1])} k={k} tilt={it.tilt ?? 0} pose={it.pose ?? 'address'} />;
+        return <Figure key={i} x={X(it.at[0])} y={Y(it.at[1])} k={k} tilt={it.tilt ?? 0} pose={it.pose ?? 'address'} flip={it.flip} />;
       case 'ball':
         return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1]) - 4} r={4.5} fill="#ffffff" stroke="#55606a" />;
       case 'flag':

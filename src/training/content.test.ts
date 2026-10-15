@@ -82,6 +82,11 @@ describe('training content', () => {
     }
   });
 
+  it('every drill has its own sketch (Sascha 15.10.2026)', () => {
+    const missing = DRILLS.filter((d) => !d.sketch).map((d) => d.id);
+    expect(missing).toEqual([]);
+  });
+
   it('sketches are drawable', () => {
     const check = (s: Sketch | undefined, where: string) => {
       if (!s) return;

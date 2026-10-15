@@ -102,7 +102,6 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
         </span>
         <span className="grow">
           <strong>Training</strong>
-          <span className="muted small">{tr('Your golf knowledge base: putting, chipping, slopes … with drills, videos, plans and practice gear.', 'Dein Golfwissen: Putten, Chippen, Hanglagen … mit Übungen, Videos, Plänen und Trainingszubehör.')}</span>
           {props.trainingOpen && <span className="small module-live">{tr('A session is paused', 'Eine Einheit ist pausiert')}</span>}
         </span>
         <span aria-hidden="true">›</span>
