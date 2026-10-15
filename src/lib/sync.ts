@@ -33,7 +33,11 @@ const TRASH = 'golfos.trash.v1';
 const GAMES = 'golfos.games.v1';
 const GAME_TRASH = 'golfos.games.trash.v1';
 /** Single settings: the key on the device is the row id. */
-const SETTINGS = ['golfos.profile.v1', 'golfos.bag.v1', 'golfos.bagstyle.v1', 'golfos.caddie.v1', 'golfos.partials.v1', 'golfos.unit.v1', 'golfos.friends.v1', 'golfos.lang.v1', 'golfos.me.v1'];
+const SETTINGS = [
+  'golfos.profile.v1', 'golfos.bag.v1', 'golfos.bagstyle.v1', 'golfos.caddie.v1', 'golfos.partials.v1', 'golfos.unit.v1', 'golfos.friends.v1', 'golfos.lang.v1', 'golfos.me.v1',
+  // Training (feature 022): favourites, results, sessions and their bin, own plans, cart, simulated orders
+  'golfos.training.fav.v1', 'golfos.training.log.v1', 'golfos.training.sessions.v1', 'golfos.training.trash.v1', 'golfos.training.plans.v1', 'golfos.training.cart.v1', 'golfos.training.orders.v1',
+];
 /** Per round or per course: a key prefix, the rest is the row id. */
 const PER = [
   { kind: 'track', prefix: 'golfos.track.v1.' },

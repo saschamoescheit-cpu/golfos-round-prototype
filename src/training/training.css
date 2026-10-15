@@ -135,3 +135,8 @@
   .tr-cat { padding: 12px; min-height: 140px; }
   .tr-timer-time { font-size: 34px; }
 }
+
+/* intro and drill of the day (16.10.2026) */
+.tr-intro { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--brand); }
+.tr-today { border: 1px dashed var(--brand); }
+.tr-today .eyebrow { color: var(--brand-text); }

@@ -16,6 +16,8 @@ import {
   addLog,
   cartCount,
   deleteSession,
+  introSeen,
+  setIntroSeen,
   loadCart,
   loadFavs,
   loadLog,
@@ -104,6 +106,11 @@ const ICONS = {
 /** Plan items with existing drills only. */
 const planItems = (p: { items: { drill: string; minutes: number }[] }) => p.items.filter((i) => drillById(i.drill));
 const planMinutes = (p: { items: { drill: string; minutes: number }[] }) => planItems(p).reduce((s, i) => s + i.minutes, 0);
+/** How many drills of a topic the player has logged at least once. */
+const practised = (id: CategoryId) => {
+  const logged = new Set(loadLog().map((e) => e.drill));
+  return drillsOf(id).filter((d) => logged.has(d.id)).length;
+};
 
 function newSession(name: string, items: { drill: string; minutes: number }[], planId?: string): Session {
   const list = items.filter((i) => drillById(i.drill));
@@ -115,7 +122,11 @@ function useTrainingTick(): number {
   useEffect(() => {
     const on = () => setN((x) => x + 1);
     window.addEventListener('golfos:training-changed', on);
-    return () => window.removeEventListener('golfos:training-changed', on);
+    window.addEventListener('golfos:synced', on); // results from another device
+    return () => {
+      window.removeEventListener('golfos:training-changed', on);
+      window.removeEventListener('golfos:synced', on);
+    };
   }, []);
   return n;
 }
@@ -259,6 +270,51 @@ function SearchField(props: { nav: Nav; initial?: string; onChange?: (q: string)
   );
 }
 
+/** Three lines how the module works – shown until the player closes it. */
+function IntroCard() {
+  const [seen, setSeen] = useState(introSeen);
+  if (seen) return null;
+  return (
+    <section className="card tr-intro">
+      <strong>{tr('How Training works', 'So funktioniert Training')}</strong>
+      <ol className="tr-steps">
+        <li>{tr('Library: pick a topic – basics, faults, drills with sketches, videos and gear.', 'Wissen: Thema wählen – Grundlagen, Fehler, Übungen mit Skizze, Videos und Zubehör.')}</li>
+        <li>{tr('Practice: start a plan or your own session – the timer guides you from drill to drill.', 'Üben: Plan oder eigene Einheit starten – der Timer führt dich von Übung zu Übung.')}</li>
+        <li>{tr('Progress: enter your results and see your bests against the goal for your handicap.', 'Verlauf: Ergebnisse eintragen und Bestwerte gegen das Ziel deines Handicaps sehen.')}</li>
+      </ol>
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={() => {
+          setIntroSeen();
+          setSeen(true);
+        }}
+      >
+        {tr('Got it', 'Verstanden')}
+      </button>
+    </section>
+  );
+}
+
+/** One drill per day – from the advice of the player's rounds when there is some, otherwise from all drills. */
+function DrillOfTheDay(props: { nav: Nav; prefer: string[] }) {
+  const day = Math.floor(Date.now() / 86400000);
+  const pool = props.prefer.map(drillById).filter((d): d is Drill => !!d);
+  const list = pool.length ? pool : DRILLS;
+  const d = list[day % list.length];
+  return (
+    <button type="button" className="list-item tr-today" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
+      <span className="tr-cat-icon">{CAT_ICON[d.cat]}</span>
+      <span className="grow">
+        <span className="eyebrow">{tr('Drill of the day', 'Übung des Tages')}</span>
+        <span className="title">{t(d.name)}</span>
+        <span className="muted small tr-two-lines">{t(d.goal)}</span>
+      </span>
+      <span aria-hidden="true">›</span>
+    </button>
+  );
+}
+
 function LearnTab(props: { nav: Nav; rounds: Round[] }) {
   const favs = loadFavs().map(drillById).filter((d): d is Drill => !!d);
   const advice = useMemo(() => adviceFromRounds(props.rounds), [props.rounds]);
@@ -272,6 +328,8 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
         )}
       </p>
       <SearchField nav={props.nav} />
+      <IntroCard />
+      <DrillOfTheDay nav={props.nav} prefer={advice.flatMap((a) => a.drills)} />
       {advice.length > 0 && (
         <section className="tr-advice">
           <h2>{tr('From your rounds', 'Aus deinen Runden')}</h2>
@@ -315,7 +373,10 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
               <span className="tr-cat-icon">{CAT_ICON[c.id]}</span>
               <strong>{t(c.name)}</strong>
               <span className="muted small">{t(c.short)}</span>
-              <span className="tr-count small">{tr(`${drillsOf(c.id).length} drills`, `${drillsOf(c.id).length} Übungen`)}</span>
+              <span className="tr-count small">
+                {tr(`${drillsOf(c.id).length} drills`, `${drillsOf(c.id).length} Übungen`)}
+                {practised(c.id) > 0 ? tr(` · ${practised(c.id)} practised`, ` · ${practised(c.id)} geübt`) : ''}
+              </span>
             </button>
           ))}
         </div>
@@ -337,6 +398,7 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
     return items.slice(0, 6);
   }, [advice]);
   const plans = PLANS.filter((p) => !p.week && (level === 0 || p.level === 0 || p.level === level) && planItems(p).length);
+  const favs = loadFavs().filter((id) => drillById(id));
   const weeks = PLANS.filter((p) => p.week);
   return (
     <>
@@ -364,6 +426,11 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
             {tr('Start now', 'Jetzt starten')}
           </button>
         </section>
+      )}
+      {favs.length >= 2 && (
+        <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(tr('My favourites', 'Meine Favoriten'), favs.slice(0, 8).map((id) => ({ drill: id, minutes: drillById(id)!.minutes }))))}>
+          ★ {tr(`Practise my ${Math.min(8, favs.length)} favourites`, `Meine ${Math.min(8, favs.length)} Favoriten üben`)}
+        </button>
       )}
       <section className="tr-block">
         <div className="row">
@@ -882,6 +949,18 @@ function DrillView(props: { id: string; nav: Nav }) {
         <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(t(d.name), [{ drill: d.id, minutes: d.minutes }]))}>
           {tr('Practise now with timer', 'Jetzt mit Timer üben')}
         </button>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => {
+            const own = loadOwnPlans();
+            // the newest own plan gets the drill; without one a new plan starts with it
+            const base: OwnPlan = own[0] ?? { id: trainingId(), name: tr('My session', 'Meine Einheit'), items: [], createdAt: new Date().toISOString() };
+            props.nav.push({ name: 'builder', plan: base.items.some((i) => i.drill === d.id) ? base : { ...base, items: [...base.items, { drill: d.id, minutes: d.minutes }] } });
+          }}
+        >
+          {tr('+ Add to my own session', '+ Zu meiner eigenen Einheit')}
+        </button>
       </div>
       {d.videos?.length ? (
         <>
@@ -1191,7 +1270,8 @@ function ShopTab(props: { nav: Nav }) {
   useTrainingTick();
   const [kind, setKind] = useState<GearKind | null>(null);
   const kinds = [...new Set(GEAR.map((g) => g.kind))];
-  const list = GEAR.filter((g) => !kind || g.kind === kind);
+  const [sort, setSort] = useState<'topic' | 'price'>('topic');
+  const list = GEAR.filter((g) => !kind || g.kind === kind).sort((a, b) => (sort === 'price' ? priceOf(a) - priceOf(b) : 0));
   const n = cartCount();
   return (
     <>
@@ -1214,6 +1294,14 @@ function ShopTab(props: { nav: Nav }) {
             {kindName(k)}
           </button>
         ))}
+      </div>
+      <div className="chip-set" role="group" aria-label={tr('Sort', 'Sortieren')}>
+        <button type="button" className={`chip${sort === 'topic' ? ' on' : ''}`} aria-pressed={sort === 'topic'} onClick={() => setSort('topic')}>
+          {tr('By topic', 'Nach Thema')}
+        </button>
+        <button type="button" className={`chip${sort === 'price' ? ' on' : ''}`} aria-pressed={sort === 'price'} onClick={() => setSort('price')}>
+          {tr('Price ↑', 'Preis ↑')}
+        </button>
       </div>
       <div className="tr-shop-grid">
         {list.map((g) => {

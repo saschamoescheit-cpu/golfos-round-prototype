@@ -1,6 +1,8 @@
 // What the player keeps in Training, on this device (like rounds and games): favourite drills, logged results,
 // practice sessions (running, paused, finished), own plans and the shopping cart. Nothing is deleted by itself
 // (feedback 14.10.2026) – a session the player deletes goes to the bin and can be brought back.
+// All keys are synced between the player's devices (src/lib/sync.ts, SETTINGS).
+import { syncSoon } from '../lib/sync';
 
 export interface LogEntry {
   id: string;
@@ -70,6 +72,7 @@ function write(key: string, v: unknown): void {
     /* storage full or blocked – keeps working for this visit */
   }
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('golfos:training-changed'));
+  if (key !== K.seen) syncSoon();
 }
 
 export const trainingId = (): string => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);

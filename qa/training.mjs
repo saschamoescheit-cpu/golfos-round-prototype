@@ -33,9 +33,14 @@ await p.waitForTimeout(800);
 ok((await p.locator('.module-card').count()) === 3, 'three modules on the start page');
 await p.locator('.module-card').filter({ hasText: 'Training' }).click();
 await p.waitForTimeout(800);
+await p.getByRole('heading', { name: 'Wissen' }).waitFor({ timeout: 20000 }).catch(() => {});
 ok(await p.getByRole('heading', { name: 'Wissen' }).isVisible(), 'Training opens on the library');
 const tabs = await p.locator('.tabbar button').allInnerTexts();
 ok(tabs.join('|') === 'Wissen|Üben|Verlauf|Shop|Profil', `menu: ${tabs.join(' · ')}`);
+ok(await p.getByText('So funktioniert Training').isVisible(), 'intro card on first open');
+ok(await p.locator('.tr-today').isVisible(), 'drill of the day');
+await p.getByRole('button', { name: 'Verstanden' }).click();
+ok(!(await p.getByText('So funktioniert Training').isVisible()), 'intro closes');
 const cats = await p.locator('.tr-cat').count();
 ok(cats >= 17, `${cats} topics`);
 await p.reload();
@@ -130,6 +135,19 @@ await tab('Üben');
 await tab('Verlauf');
 ok((await sessionsBlock().locator('.list-item').count()) === 1, 'session restored by undo');
 
+// favourites as a session needs two favourites: add the Tiger drill too
+await tab('Wissen');
+await p.locator('.tr-search input').fill('Tiger');
+await p.locator('.tr-search input').press('Enter');
+await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Tiger' }).first().click();
+await p.locator('.tr-fav').click();
+await p.getByRole('button', { name: '+ Zu meiner eigenen Einheit' }).click();
+ok((await p.locator('.tr-plan-list li').count()) === 1, 'drill page adds the drill to an own session');
+await tab('Üben').catch(() => {});
+for (let k = 0; k < 3; k++) await back().catch(() => {});
+await tab('Üben');
+ok(await p.getByRole('button', { name: /Favoriten üben/ }).isVisible(), 'favourites can be practised as a session');
+
 // own plan
 await tab('Üben');
 await p.getByRole('button', { name: '+ Eigene Einheit zusammenstellen' }).click();
@@ -144,6 +162,10 @@ await tab('Shop');
 await p.waitForTimeout(800);
 const products = await p.locator('.tr-product').count();
 ok(products >= 40, `${products} products`);
+await p.locator('button.chip').filter({ hasText: 'Preis ↑' }).click();
+const firstPrice = await p.locator('.tr-price').first().innerText();
+ok(/≈ (8|9)/.test(firstPrice), `sorted by price: cheapest first (${firstPrice})`);
+await p.locator('button.chip').filter({ hasText: 'Nach Thema' }).click();
 await p.locator('.tr-product').nth(0).locator('.chip').click();
 await shot('shop');
 await p.locator('.tr-cart-btn').click();
