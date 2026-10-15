@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { Round } from '../types';
 import { career, playedCourses } from '../lib/history';
 import { handicapIndex, playedHandicap } from '../lib/handicap';
-import { fullName, loadProfile } from '../lib/profile';
+import { shownName, loadProfile } from '../lib/profile';
 import { BestsCard, TrendCard } from '../components/HistoryCards';
 import { PlayedHcpStats } from '../components/PlayedHcp';
 import { dec, tr } from '../lib/i18n';
@@ -16,7 +16,7 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
   const finished = useMemo(() => props.rounds.filter((r) => r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [props.rounds]);
   const c = useMemo(() => career(finished), [finished]);
   const profile = loadProfile();
-  const name = fullName(profile);
+  const name = shownName(profile);
   const estimate = useMemo(() => {
     const d = finished.flatMap((r) => {
       const p = playedHandicap(r);

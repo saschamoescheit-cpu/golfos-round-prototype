@@ -10,7 +10,7 @@ import { TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex } from '../lib/handicap';
 import { RATINGS, type TeeRating } from '../data/ratings';
-import { fullName, loadProfile, saveProfile } from '../lib/profile';
+import { shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, type RoundFormat } from '../lib/games';
 
 const ME_KEY = 'golfos.me.v1';
@@ -70,7 +70,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   const autoHcp = useRef<string | null>(autoFor(false));
   const [me, setMe] = useState<DraftPlayer>(() => {
     const p = profile();
-    return { id: 'me', name: fullName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false) };
+    return { id: 'me', name: shownName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false) };
   });
   const [others, setOthers] = useState<DraftPlayer[]>([]);
   // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list

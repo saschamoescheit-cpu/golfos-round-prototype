@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { adviseClub, DEFAULT_CARRY, explain, playsLike, type CarryBag } from './caddie';
+import { byOrder } from './clubs';
 
 // Sascha's example: 7-iron carries 155 m; par 3 of 160 m, headwind with gusts of 30 km/h, 14 °C → 5-iron.
-const bag: CarryBag = DEFAULT_CARRY.map((b) => ({ ...b, carry: ({ '5i': 178, '6i': 167, '7i': 155, '8i': 144, '4i': 188, Hy: 195, '5W': 205, '3W': 215, Dr: 235 } as Record<string, number>)[b.club] ?? b.carry }));
+const bag: CarryBag = byOrder([...DEFAULT_CARRY, { club: '4i' as const, carry: 0 }]).map((b) => ({ ...b, carry: ({ '5i': 178, '6i': 167, '7i': 155, '8i': 144, '4i': 188, Hy: 195, '5W': 205, '3W': 215, Dr: 235 } as Record<string, number>)[b.club] ?? b.carry }));
 
 describe('AI caddie', () => {
   it('still air at 20 °C, flat: plays like the distance, 7-iron for 155 m', () => {

@@ -1,13 +1,15 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Round } from '../types';
 import { Attribution, Segmented } from '../components/ui';
 import { restoreBackup, shareBackup } from '../lib/backup';
 import { carryToReview } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, loadUnit, saveUnit } from '../lib/storage';
-import { getLang, setLang, tr } from '../lib/i18n';
-import { isSun, setSun } from '../lib/theme';
+import { getLang, tr } from '../lib/i18n';
+import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
+import { CoursePicker } from './CoursePicker';
+import { STANDARD_CLUBS } from '../lib/clubs';
+import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, saveProfile, type Profile } from '../lib/profile';
-import { SEED_COURSES } from '../data/seedCourses';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances, the caddie and the backup – everything the player sets once and the app keeps.
@@ -15,20 +17,32 @@ import { SEED_COURSES } from '../data/seedCourses';
 export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie: () => void; onChanged: () => void }) {
   const [p, setP] = useState<Profile>(loadProfile);
   const [unit, setUnit] = useState(loadUnit);
-  const [sun, setSunState] = useState(isSun);
+  const [picking, setPicking] = useState(false);
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const review = carryToReview(props.rounds, loadCarryBag()).length;
   const bag = loadCarryBag();
   const caddie = loadCaddieSettings();
-  const clubs = useMemo(() => [...new Set(Object.values(SEED_COURSES).map((c) => c.name))].sort((a, b) => a.localeCompare(b)), []);
+  const clubCount = (bag?.length ?? STANDARD_CLUBS.length) + (loadBagStyle().putter ? 1 : 0);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const set = (patch: Partial<Profile>) => {
     const next = { ...p, ...patch };
     setP(next);
     saveProfile(next);
   };
-  const style = { safe: tr('safe', 'sicher'), normal: 'normal', aggressive: tr('aggressive', 'offensiv') }[caddie.style];
+
+  if (picking)
+    return (
+      <div className="overlay-screen">
+        <CoursePicker
+          onBack={() => setPicking(false)}
+          onPicked={(c) => {
+            set({ homeClub: c.name });
+            setPicking(false);
+          }}
+        />
+      </div>
+    );
 
   return (
     <>
@@ -59,13 +73,12 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           <span className="muted small">{tr('Used for the playing handicap when you start a round.', 'Daraus rechnet die App beim Rundenstart deine Spielvorgabe.')}</span>
         </div>
         <div className="field">
-          <label htmlFor="pf-club">{tr('Home club', 'Heimatclub')}</label>
-          <input id="pf-club" className="input" list="pf-clubs" value={p.homeClub} onChange={(e) => set({ homeClub: e.target.value })} />
-          <datalist id="pf-clubs">
-            {clubs.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
+          <label>{tr('Home club', 'Heimatclub')}</label>
+          {/* searched like when starting a round (Sascha 15.10.2026) */}
+          <button type="button" className="settings-row home-club" onClick={() => setPicking(true)}>
+            <span className={p.homeClub ? '' : 'muted'}>{p.homeClub || tr('Search a course', 'Platz suchen')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
         </div>
       </section>
 
@@ -75,20 +88,10 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           <span className="grow">
             <span className="title">{tr('My bag', 'Mein Bag')}</span>
             <span className="muted small">
-              {tr(`${bag?.length ?? 14} clubs · favourite approach ${caddie.favourite} m`, `${bag?.length ?? 14} Schläger · Lieblingsdistanz ${caddie.favourite} m`)}
+              {tr(`${clubCount} clubs · favourite approach ${caddie.favourite} m`, `${clubCount} Schläger · Lieblingsdistanz ${caddie.favourite} m`)}
             </span>
           </span>
           {review > 0 && <span className="badge-dot">{tr(`${review} new`, `${review} neu`)}</span>}
-          <span aria-hidden="true">›</span>
-        </button>
-        <button type="button" className="list-item" onClick={props.onCaddie}>
-          <span className="grow">
-            <span className="title">{tr('Caddie', 'Caddie')}</span>
-            <span className="muted small">
-              {caddie.caddie ? tr(`On · plays ${style}`, `An · spielt ${style}`) : tr('Off', 'Aus')}
-              {caddie.voice ? tr(' · speaks', ' · spricht') : ''}
-            </span>
-          </span>
           <span aria-hidden="true">›</span>
         </button>
       </section>
@@ -111,29 +114,8 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
-        <div className="field">
-          <label>{tr('Language', 'Sprache')}</label>
-          <Segmented<'de' | 'en'>
-            label={tr('Language', 'Sprache')}
-            value={getLang()}
-            onChange={(v) => v && v !== getLang() && setLang(v)}
-            options={[
-              { value: 'de', label: 'Deutsch' },
-              { value: 'en', label: 'English' },
-            ]}
-          />
-        </div>
-        <button
-          type="button"
-          className="toggle"
-          aria-pressed={sun}
-          onClick={() => {
-            setSun(!sun);
-            setSunState(!sun);
-          }}
-        >
-          {sun ? '✓' : '○'} {tr('Sun mode – light screen for bright sunshine', 'Sonnenmodus – heller Bildschirm für grelles Sonnenlicht')}
-        </button>
+        <h3 className="settings-sub">{tr('Caddie', 'Caddie')}</h3>
+        <CaddieSettingsFields />
       </section>
 
       <section className="card stats-card">

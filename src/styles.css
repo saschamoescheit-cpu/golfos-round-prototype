@@ -1071,3 +1071,33 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .cap-input { display: flex; gap: 8px; }
 .cap-input .input { flex: 1; min-width: 0; }
 .cap-input .btn-secondary { width: auto; padding: 0 14px; }
+
+/* Games: the hole bar as in a round, sticky at the bottom; Chicago's team numbers on the hole */
+.game-dock { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 3; margin-top: 4px; }
+.game-dock .hole-bar { position: relative; }
+.chicago-result { display: flex; flex-direction: column; gap: 6px; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.chicago-team { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+.chicago-team .grow { flex: 1; min-width: 0; }
+.chicago-num { font: 700 22px var(--display); min-width: 36px; text-align: right; }
+.chicago-team strong:last-child { min-width: 44px; text-align: right; }
+
+/* Profile: home club searched like a course; the caddie's settings under the unit */
+.home-club { width: 100%; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface-2); }
+.settings-sub { margin: 6px 0 0; font: 700 16px var(--body); }
+.overlay-screen { position: fixed; inset: 0; z-index: 60; background: var(--bg); overflow-y: auto; }
+
+/* My bag (Sascha 15.10.2026): tabs, short codes, the pencil, pitches as a table */
+.bag-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+.bag-edit { width: auto; min-width: 44px; padding: 0 12px; font: 700 14px var(--body); }
+.bag-edit.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.bag-code { font: 700 18px var(--display); min-width: 52px; }
+.bag-row.full { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
+.bag-row.full .bag-tracked { justify-content: flex-start; flex-wrap: wrap; }
+.bag-row.edit { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 10px; align-items: center; }
+.bag-row.edit .bag-input .input { width: 64px; }
+.pitch-grid { display: grid; grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr); column-gap: 10px; row-gap: 8px; align-items: center; }
+.pitch-row { display: contents; }
+.pitch-h { text-align: center; }
+.pitch-cell { display: flex; flex-direction: column; gap: 3px; }
+.pitch-cell .input { min-height: 44px; width: 100%; text-align: right; }
+.pitch-cell .input::placeholder { color: var(--muted); opacity: 0.55; font-style: italic; }

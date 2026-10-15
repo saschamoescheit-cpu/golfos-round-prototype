@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { Course } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
-import { fullName, loadProfile } from '../lib/profile';
+import { shownName, loadProfile } from '../lib/profile';
 import { newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
-import { FORMS, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
-import { deleteGame, loadGames, saveGame } from '../lib/gamestore';
+import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
+import { deleteGame, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame } from '../lib/gamestore';
+import { Bin } from '../components/Bin';
 import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
@@ -58,7 +59,7 @@ function withWhs(d: Draft): Draft {
 
 function newDraft(form: FormId = 'skins'): Draft {
   const p = loadProfile();
-  const me = { id: 'me', name: fullName(p) || tr('Me', 'Ich'), hcp: p.hcpIndex ? String(parseHcp(p.hcpIndex) ?? '') : '' };
+  const me = { id: 'me', name: shownName(p) || tr('Me', 'Ich'), hcp: p.hcpIndex ? String(parseHcp(p.hcpIndex) ?? '') : '' };
   return withWhs({ form, course: null, optionId: '', players: [me, { id: newId(), name: '', hcp: '' }], settings: defaults(formDef(form)) });
 }
 
@@ -68,6 +69,15 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
   const [view, setView] = useState<View>(() => (running[0] && !props.tab ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' }));
   const store = (g: Game) => {
     saveGame(g);
+    setGames(loadGames());
+  };
+  useEffect(() => {
+    const reload = () => setGames(loadGames());
+    window.addEventListener('golfos:games-changed', reload);
+    return () => window.removeEventListener('golfos:games-changed', reload);
+  }, []);
+  const remove = (g: Game) => {
+    deleteGame(g.id);
     setGames(loadGames());
   };
 
@@ -123,6 +133,10 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
             store(done);
             setView({ name: 'result', game: done });
           }}
+          onDelete={(g) => {
+            remove(g);
+            setView({ name: 'tab', tab: 'play' });
+          }}
         />
       );
     case 'result':
@@ -136,8 +150,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
             setView({ name: 'play', game: g });
           }}
           onDelete={() => {
-            deleteGame(view.game.id);
-            setGames(loadGames());
+            remove(view.game);
             setView({ name: 'tab', tab: 'games' });
           }}
         />
@@ -188,6 +201,12 @@ function GamesTabs(props: {
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
           {props.games.length ? <GameList games={props.games} onOpen={props.onOpen} /> : <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>}
+          <Bin
+            title={tr('Deleted games', 'Gelöschte Spiele')}
+            items={loadGameTrash().map((t) => ({ id: t.game.id, date: t.game.createdAt, title: `${formDef(t.game.form).name()} · ${t.game.courseName}`, meta: t.game.players.map((p) => p.name).join(', '), deletedAt: t.deletedAt }))}
+            onRestore={restoreGame}
+            onPurge={purgeGame}
+          />
         </>
       )}
       {props.tab === 'balance' && <Balance games={props.games} />}
@@ -630,7 +649,7 @@ const DOTS = [
   { key: 'longputt', label: () => tr('Putt > 10 m', 'Putt > 10 m') },
 ];
 
-function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () => void; onFinish: (g: Game) => void }) {
+function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () => void; onFinish: (g: Game) => void; onDelete: (g: Game) => void }) {
   const g = props.game;
   const f = formDef(g.form);
   const i = g.current;
@@ -638,7 +657,12 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
   const x: HoleExtra = g.extra[i] ?? {};
   const st = standingOf(g);
   const last = i === g.holes.length - 1;
-  const [confirm, setConfirm] = useState(false);
+  // as in Rounds (Sascha 15.10.2026: "the same usability in every module"): the hole bar at the bottom, the overview
+  // pulled up from it, and leaving = pause, finish or cancel
+  const [drawer, setDrawer] = useState(false);
+  const [exit, setExit] = useState<null | 'menu' | 'end'>(null);
+  const [sheet, setSheet] = useState<null | 'card' | 'rules'>(null);
+  const barTouch = useRef<number | null>(null);
 
   const setScore = (pid: string, v: number | null) => props.onChange({ ...g, scores: { ...g.scores, [pid]: g.scores[pid].map((s, k) => (k === i ? v : s)) } });
   const setExtra = (patch: Partial<HoleExtra>) => props.onChange({ ...g, extra: g.extra.map((e, k) => (k === i ? { ...e, ...patch } : e)) });
@@ -661,8 +685,8 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
             </span>
           </>
         }
-        onBack={props.onBack}
-        backLabel={tr('Games', 'Spiele')}
+        onBack={() => setExit('menu')}
+        backLabel={tr('Leave', 'Verlassen')}
         right={<span className="muted small">{f.name()}</span>}
       />
 
@@ -792,6 +816,7 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
             })}
           </div>
           <span className="muted small">{tr('The pairings rotate hole by hole; change it here if your group plays another one.', 'Die Paarungen wechseln von Loch zu Loch; hier änderbar, wenn ihr anders spielt.')}</span>
+          <ChicagoHoleResult game={g} hole={i} />
         </section>
       )}
 
@@ -826,43 +851,107 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
       <StandingCard game={g} />
 
       <span className="spacer" />
-      <div className="game-nav">
-        <button type="button" className="btn-secondary" onClick={() => go(i - 1)} disabled={i === 0}>
-          ‹ {tr('Back', 'Zurück')}
-        </button>
-        {last ? (
-          <button type="button" className="btn-primary" onClick={() => setConfirm(true)}>
-            {tr('Finish game', 'Spiel beenden')}
+      <div
+        className="game-dock"
+        onTouchStart={(e) => (barTouch.current = e.touches[0].clientY)}
+        onTouchEnd={(e) => {
+          if (barTouch.current != null && barTouch.current - e.changedTouches[0].clientY > 40) setDrawer(true);
+          barTouch.current = null;
+        }}
+      >
+        <div className="hole-bar">
+          <button type="button" className="hole-bar-handle" aria-label={tr('Open the hole overview', 'Lochübersicht öffnen')} onClick={() => setDrawer(true)}>
+            <span />
           </button>
-        ) : (
-          <button type="button" className="btn-primary" onClick={() => go(i + 1)}>
-            {tr('Next hole', 'Nächstes Loch')} ›
+          <button type="button" className="hole-bar-arrow" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => go(i - 1)} disabled={i === 0}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
           </button>
-        )}
-      </div>
-      {!last && (
-        <button type="button" className="link-btn muted small" onClick={() => setConfirm(true)}>
-          {tr('Finish the game now', 'Spiel jetzt beenden')}
-        </button>
-      )}
-      {confirm && (
-        <div className="sheet-backdrop" onClick={() => setConfirm(false)}>
-          <section className="sheet" role="dialog" aria-label={tr('Finish game', 'Spiel beenden')} onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-head">
-              <strong>{tr('Finish game?', 'Spiel beenden?')}</strong>
-            </div>
-            <span className="muted">
-              {tr(`${holesPlayed(g)} of ${g.holes.length} holes complete. Holes without all scores do not count.`, `${holesPlayed(g)} von ${g.holes.length} Löchern vollständig. Löcher ohne alle Scores zählen nicht.`)}
-              {st.status ? ` ${st.status}` : ''}
+          <button type="button" className="map-score" aria-label={tr(`Hole ${hole.label} – open the overview`, `Loch ${hole.label} – Übersicht öffnen`)} onClick={() => setDrawer(true)}>
+            <span className="map-hole-no">{hole.label}</span>
+            <span className="hole-bar-par">
+              <span>Par {hole.par || '?'}</span>
+              <span>Hcp {hole.si || '?'}</span>
             </span>
-            <div className="sheet-actions">
-              <button type="button" className="btn-primary" onClick={() => props.onFinish(g)}>
-                {tr('Finish & settle', 'Beenden & abrechnen')}
-              </button>
-              <button type="button" className="btn-secondary" onClick={() => setConfirm(false)}>
-                {tr('Back to the game', 'Zurück zum Spiel')}
+            <span className="hole-bar-score muted small">
+              {g.players.filter((p) => g.scores[p.id][i] != null).length}/{g.players.length}
+            </span>
+          </button>
+          <button type="button" className="hole-bar-arrow" aria-label={last ? tr('Finish game', 'Spiel beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => (last ? setExit('end') : go(i + 1))}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {drawer && (
+        <GameDrawer
+          game={g}
+          onGo={(k) => {
+            go(k);
+            setDrawer(false);
+          }}
+          onClose={() => setDrawer(false)}
+          onRules={() => setSheet('rules')}
+          onCard={() => setSheet('card')}
+          onPause={props.onBack}
+          onEnd={() => {
+            setDrawer(false);
+            setExit('end');
+          }}
+        />
+      )}
+      {sheet && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <section className="sheet" role="dialog" aria-label={sheet === 'card' ? tr('Scorecard', 'Scorekarte') : f.name()} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{sheet === 'card' ? tr('Scorecard', 'Scorekarte') : f.name()}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setSheet(null)}>
+                ✕
               </button>
             </div>
+            {sheet === 'card' ? <ScoreGrid game={g} /> : <FormRules form={f} />}
+          </section>
+        </div>
+      )}
+      {exit && (
+        <div className="sheet-backdrop" onClick={() => setExit(null)}>
+          <section className="sheet" role="dialog" aria-label={tr('Leave the game', 'Spiel verlassen')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{exit === 'end' ? tr('Finish game?', 'Spiel beenden?') : `${f.name()} · ${g.courseName}`}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setExit(null)}>
+                ✕
+              </button>
+            </div>
+            {exit === 'menu' ? (
+              <div className="sheet-actions">
+                <button type="button" className="btn-secondary" onClick={props.onBack}>
+                  {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
+                </button>
+                <button type="button" className="btn-primary" onClick={() => setExit('end')}>
+                  {tr('Finish game', 'Spiel beenden')}
+                </button>
+                <button type="button" className="btn-secondary btn-danger" onClick={() => props.onDelete(g)}>
+                  {tr('Cancel game', 'Spiel abbrechen')}
+                </button>
+              </div>
+            ) : (
+              <>
+                <span className="muted">
+                  {tr(`${holesPlayed(g)} of ${g.holes.length} holes complete. Holes without all scores do not count.`, `${holesPlayed(g)} von ${g.holes.length} Löchern vollständig. Löcher ohne alle Scores zählen nicht.`)}
+                  {st.status ? ` ${st.status}` : ''}
+                </span>
+                <div className="sheet-actions">
+                  <button type="button" className="btn-primary" onClick={() => props.onFinish(g)}>
+                    {tr('Finish & settle', 'Beenden & abrechnen')}
+                  </button>
+                  <button type="button" className="btn-secondary btn-danger" onClick={() => props.onDelete(g)}>
+                    {tr('Delete game', 'Spiel löschen')}
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={() => setExit(null)}>
+                    {tr('Back to the game', 'Zurück zum Spiel')}
+                  </button>
+                </div>
+              </>
+            )}
           </section>
         </div>
       )}
@@ -961,7 +1050,6 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
   const st = standingOf(g);
   const pays = st.money ? transfers(st.money) : [];
   const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
-  const [ask, setAsk] = useState(false);
   return (
     <main className="screen">
       <TopBar title={f.name()} onBack={props.onBack} backLabel={tr('Games', 'Spiele')} />
@@ -994,20 +1082,10 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
       <button type="button" className="btn-secondary" onClick={props.onReopen}>
         {tr('Correct scores', 'Scores korrigieren')}
       </button>
-      {ask ? (
-        <div className="sheet-actions">
-          <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
-            {tr('Yes, delete the game', 'Ja, Spiel löschen')}
-          </button>
-          <button type="button" className="btn-secondary" onClick={() => setAsk(false)}>
-            {tr('Keep it', 'Behalten')}
-          </button>
-        </div>
-      ) : (
-        <button type="button" className="link-btn muted small" onClick={() => setAsk(true)}>
-          {tr('Delete game', 'Spiel löschen')}
-        </button>
-      )}
+      {/* as a round's scorecard: one tap – "Undo" and the bin bring it back (Sascha 15.10.2026) */}
+      <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
+        {tr('Delete game', 'Spiel löschen')}
+      </button>
     </main>
   );
 }
@@ -1177,6 +1255,112 @@ function PressPicker(props: { settings: Record<string, number | boolean | string
       <button type="button" className={`chip${now === 0 ? ' on' : ''}`} aria-pressed={now === 0} onClick={() => pick(0)}>
         {tr('any', 'beliebig')}
       </button>
+    </div>
+  );
+}
+
+/** The game's hole overview, pulled up from the hole bar – the same as in a round (Sascha 15.10.2026): every hole
+ *  (a tap jumps there), the standing, the rules, and scorecard · pause · finish. */
+function GameDrawer(props: { game: Game; onGo: (k: number) => void; onClose: () => void; onRules: () => void; onCard: () => void; onPause: () => void; onEnd: () => void }) {
+  const g = props.game;
+  const touchY = useRef<number | null>(null);
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section
+        className="sheet hole-drawer"
+        role="dialog"
+        aria-label={tr('Hole overview', 'Lochübersicht')}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => (touchY.current = e.touches[0].clientY)}
+        onTouchEnd={(e) => {
+          if (touchY.current != null && e.changedTouches[0].clientY - touchY.current > 70 && (e.currentTarget.scrollTop ?? 0) <= 0) props.onClose();
+          touchY.current = null;
+        }}
+      >
+        <button type="button" className="drawer-handle" aria-label={tr('Close the hole overview', 'Lochübersicht schließen')} onClick={props.onClose}>
+          <svg width="44" height="14" viewBox="0 0 44 14" aria-hidden="true">
+            <path d="M6 3l16 8 16-8" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div className="drawer-holes" role="group" aria-label={tr('Holes', 'Löcher')}>
+          {g.holes.map((h, k) => {
+            const n = g.players.filter((p) => g.scores[p.id][k] != null).length;
+            const done = n === g.players.length;
+            return (
+              <button
+                key={k}
+                type="button"
+                className={`drawer-hole${k === g.current ? ' current' : ''}${done ? ' par' : ''}`}
+                aria-current={k === g.current ? 'true' : undefined}
+                aria-label={tr(`Hole ${h.label}${done ? ', complete' : ''}`, `Loch ${h.label}${done ? ', vollständig' : ''}`)}
+                onClick={() => props.onGo(k)}
+              >
+                <span className="drawer-hole-no">{h.label}</span>
+                {done ? <span className="drawer-hole-score">✓</span> : n > 0 ? <span className="drawer-hole-score">{n}/{g.players.length}</span> : null}
+              </button>
+            );
+          })}
+        </div>
+        <StandingCard game={g} />
+        <div className="drawer-list">
+          <button type="button" className="drawer-row" onClick={props.onRules}>
+            <span>{tr('Game form & rules', 'Spielform & Regeln')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+        <div className="drawer-actions">
+          <button type="button" className="drawer-action" onClick={props.onCard}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <rect x="4" y="3" width="16" height="18" rx="2" />
+              <path d="M8 8h8M8 12h8M8 16h5" />
+            </svg>
+            <span>{tr('Scorecard', 'Scorekarte')}</span>
+          </button>
+          <button type="button" className="drawer-action" onClick={props.onPause} aria-label={tr('Pause game – continue later', 'Spiel pausieren – später fortsetzen')}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="4" width="4" height="16" rx="1.2" />
+              <rect x="14" y="4" width="4" height="16" rx="1.2" />
+            </svg>
+            <span>{tr('Pause', 'Pausieren')}</span>
+          </button>
+          <button type="button" className="drawer-action end" onClick={props.onEnd} aria-label={tr('Finish game', 'Spiel beenden')}>
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor" />
+            </svg>
+            <span>{tr('Finish', 'Beenden')}</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/** Chicago on this hole (Sascha 15.10.2026): each team's number, the difference, and plus/minus per player. */
+function ChicagoHoleResult(props: { game: Game; hole: number }) {
+  const g = props.game;
+  const h = chicagoHole(g, props.hole);
+  if (!h) return <span className="muted small">{tr('The team numbers show once all four scores are in.', 'Die Teamzahlen erscheinen, sobald alle vier Scores eingetragen sind.')}</span>;
+  const nm = (ids: string[]) => ids.map((id) => g.players.find((p) => p.id === id)?.name ?? '?').join(' & ');
+  const sign = (v: number) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '±0');
+  const netto = allowanceOf(g) > 0 && g.players.some((p) => strokesOn(g, p)[props.hole] > 0);
+  return (
+    <div className="chicago-result" aria-label={tr('Result of this hole', 'Ergebnis dieses Lochs')}>
+      {[h.a, h.b].map((t, k) => {
+        const pts = k === 0 ? h.diff : -h.diff;
+        return (
+          <div key={k} className="chicago-team">
+            <span className="grow">{nm(t.ids)}</span>
+            <strong className="chicago-num">{t.num}</strong>
+            <strong className={pts > 0 ? 'good-text' : pts < 0 ? 'bad-text' : 'muted'}>{sign(pts)}</strong>
+          </div>
+        );
+      })}
+      <span className="muted small">
+        {h.diff === 0
+          ? tr('Same number – the hole is halved.', 'Gleiche Zahl – das Loch ist geteilt.')
+          : tr(`Difference ${Math.max(h.a.num, h.b.num)} − ${Math.min(h.a.num, h.b.num)} = ${Math.abs(h.diff)}: each player of the lower team +${Math.abs(h.diff)}, of the other −${Math.abs(h.diff)}.`, `Differenz ${Math.max(h.a.num, h.b.num)} − ${Math.min(h.a.num, h.b.num)} = ${Math.abs(h.diff)}: jeder Spieler des Teams mit der kleineren Zahl +${Math.abs(h.diff)}, des anderen −${Math.abs(h.diff)}.`)}
+        {netto ? tr(' (net)', ' (netto)') : ''}
+      </span>
     </div>
   );
 }

@@ -20,7 +20,7 @@ export const CLUB_CATALOG: { club: Club; group: ClubGroup; carry: number; total:
   { club: '6H', group: 'hybrid', carry: 150, total: 153, standard: false },
   { club: '2i', group: 'iron', carry: 175, total: 180, standard: false },
   { club: '3i', group: 'iron', carry: 168, total: 172, standard: false },
-  { club: '4i', group: 'iron', carry: 160, total: 160, standard: true },
+  { club: '4i', group: 'iron', carry: 160, total: 160, standard: false }, // the 4-hybrid plays it – 13 clubs + putter = 14
   { club: '5i', group: 'iron', carry: 150, total: 150, standard: true },
   { club: '6i', group: 'iron', carry: 140, total: 140, standard: true },
   { club: '7i', group: 'iron', carry: 130, total: 130, standard: true },
@@ -34,7 +34,7 @@ export const CLUB_CATALOG: { club: Club; group: ClubGroup; carry: number; total:
 
 /** All clubs, longest first. */
 export const CLUB_ORDER: Club[] = CLUB_CATALOG.map((c) => c.club);
-/** The standard bag (14 clubs) until the player set up his own. */
+/** The standard bag (13 clubs + putter) until the player set up his own. */
 export const STANDARD_CLUBS: Club[] = CLUB_CATALOG.filter((c) => c.standard).map((c) => c.club);
 /** The rules allow at most 14 clubs in the bag. */
 export const MAX_CLUBS = 14;

@@ -4,7 +4,7 @@ import { holesFromTags } from './courses';
 import { buildRoundHoles, loopOptions } from './loops';
 import { emptyEntry } from './scoring';
 import { distanceM } from './geo';
-import { fullName, loadProfile } from './profile';
+import { shownName, loadProfile } from './profile';
 import { SEED_COURSES } from '../data/seedCourses';
 import { tr } from './i18n';
 
@@ -71,7 +71,7 @@ export function restoreLostRounds(): number {
       const hcp = Number((remembered?.handicap18 ?? remembered?.handicap ?? '').replace(',', '.'));
       const me: Player = {
         id: 'me',
-        name: fullName(loadProfile()) || remembered?.name || tr('Me', 'Ich'),
+        name: shownName(loadProfile()) || remembered?.name || tr('Me', 'Ich'),
         playingHandicap: remembered?.handicap18 && Number.isFinite(hcp) ? Math.round(holes.length === 9 ? hcp / 2 : hcp) : null,
         isMe: true,
       };

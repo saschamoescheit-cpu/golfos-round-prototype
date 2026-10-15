@@ -15,7 +15,6 @@ import { DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { gridHeight, loadTerrainGrid, type TerrainGrid } from '../lib/terraingrid';
-import { missMap } from '../lib/missmap';
 import { GREEN_CHARTS } from '../data/greenCharts';
 import { greenSource } from '../data/greenSources';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
@@ -23,7 +22,6 @@ import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard } from '../components/CaddieCard';
 import { holeBook } from '../lib/holebook';
 import { courseStats } from '../lib/history';
-import { isSun, setSun } from '../lib/theme';
 import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
@@ -297,8 +295,6 @@ export function HoleScreen(props: {
   const caddieOn = useMemo(() => loadCaddieSettings().caddie, []);
   useMemo(() => setGreenSpeed(loadCaddieSettings().greenSpeed), []); // putt reads at the chosen green speed
   const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope, []);
-  const missMapOn = useMemo(() => loadCaddieSettings().missMap, []);
-  const [showMiss, setShowMiss] = useState(missMapOn);
   // Green slope: automatic from 120 m before the green (Sascha, 13.10.2026), or any time with the "Green" button.
   // null = automatic; true/false = the player switched it on or off on this hole.
   const [showGreen, setShowGreen] = useState<boolean | null>(null);
@@ -515,7 +511,6 @@ export function HoleScreen(props: {
   const pinPos: LngLat | null = plans[i]?.pin ?? mapData?.greenCenter ?? null;
   const [sheet, setSheet] = useState<{ kind: 'shot'; index: number | null; pos: LngLat | null } | { kind: 'green'; pos: LngLat | null } | null>(null);
   const [placing, setPlacing] = useState<'shot' | 'green' | null>(null);
-  const [sun, setSunState] = useState(isSun);
   // After saving: a short buzz and a few seconds to take it back (a wrong tap with a glove).
   const [undo, setUndo] = useState<{ text: string; detail: DetailEntry; putts: number | null; hole: number } | null>(null);
   useEffect(() => {
@@ -763,7 +758,6 @@ export function HoleScreen(props: {
           greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })
       : null;
-    const miss = showMiss ? missMap(mapData, pin, plan.targets[0] ?? null) : undefined;
 
     // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
     const caddieSig = cad ? `${i}|${cad.advice.club}${cad.advice.swing ?? ''}|${cad.warning ?? ''}|${cad.ap.kind}|${Math.round(cad.pl.distance / 25)}` : '';
@@ -819,7 +813,6 @@ export function HoleScreen(props: {
           // the state's aerial service does not answer: Esri for this visit (the choice stays as it is)
           onImageryFail={() => imagery.id !== 'esri' && setImageryPref('esri')}
           track={detailMode ? track : undefined}
-          missMap={miss}
           aimPoint={null}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus && showGreen !== true, fit: showGreen === true && mapData.green ? mapData.green : undefined } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
@@ -926,15 +919,6 @@ export function HoleScreen(props: {
               </svg>
             </button>
           )}
-          {missMapOn && (
-            <button type="button" className="map-tool" aria-pressed={showMiss} aria-label={showMiss ? tr('Hide where not to miss', 'Fehlschlag-Karte ausblenden') : tr('Show where not to miss', 'Zeigen, wo ich nicht verfehlen darf')} title={tr('Where not to miss', 'Wo nicht verfehlen')} onClick={() => setShowMiss(!showMiss)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                <circle cx="12" cy="12" r="8.5" />
-                <circle cx="12" cy="12" r="4.5" />
-                <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-              </svg>
-            </button>
-          )}
           <button type="button" className="map-tool" aria-pressed={view2d} aria-label={view2d ? tr('Aerial image', 'Luftbild zeigen') : tr('Drawn hole (2D)', 'Gezeichnetes Loch (2D)')} title="2D" onClick={toggleView}>
             <span className="map-tool-text">2D</span>
           </button>
@@ -964,20 +948,11 @@ export function HoleScreen(props: {
           <HoleDrawer
             round={round}
             current={i}
-            view2d={view2d}
-            hazards={hazardsOn}
-            sun={sun}
             onGo={(k) => {
               setDrawerOpen(false);
               if (k !== i) goTo(k, true); // jumping to a hole writes no par for this one
             }}
             onClose={() => setDrawerOpen(false)}
-            onToggle2d={toggleView}
-            onToggleHazards={() => setHazardsOn(!hazardsOn)}
-            onToggleSun={() => {
-              setSun(!sun);
-              setSunState(!sun);
-            }}
             onBag={() => props.onOpenBag?.('bag')}
             onCaddie={() => props.onOpenBag?.('caddie')}
             onScorecard={() => props.onShowScorecard(round)}

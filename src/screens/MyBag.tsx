@@ -1,18 +1,36 @@
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import type { Club, Round } from '../types';
 import { clubName, type CarryBag } from '../lib/caddie';
 import { byOrder, catalogEntry, CLUB_CATALOG, MAX_CLUBS, STANDARD_CLUBS, type ClubGroup } from '../lib/clubs';
 import { trackedCarry } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
 import { Segmented, TopBar } from '../components/ui';
+import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, type Partials } from '../lib/partials';
+import { DEFAULT_LOFTS, loadBagStyle, saveBagStyle, type BagStyle } from '../lib/bagstyle';
 
-// "My bag" and "Caddie" (feature 008, both reached from the profile): the clubs the player carries (from the catalog –
-// remove the 4-hybrid, add a 2-iron …, Sascha 14.10.2026), their carry and the favourite approach distance for the AI
-// caddie; the switches for caddie, green slope and the miss map.
+// "My bag" (feature 008, reached from the profile and the round's drawer), as Sascha wants it (15.10.2026): two tabs –
+// full swing and pitches (¾, ½ and the favourite approach distance) –, short club codes (2i, not "Eisen 2"), the
+// putter in the bag, wedges by name or by loft, and a pencil to put the bag together (more than 14 clubs allowed –
+// players change clubs by course).
+
+type Tab = 'full' | 'pitch';
 
 export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: () => void }) {
+  if (props.part === 'caddie')
+    return (
+      <main className="screen">
+        <TopBar title={tr('Caddie', 'Caddie')} onBack={props.onBack} />
+        <section className="card stats-card">
+          <CaddieSettingsFields />
+        </section>
+      </main>
+    );
+  return <Bag rounds={props.rounds} onBack={props.onBack} />;
+}
+
+function Bag(props: { rounds: Round[]; onBack: () => void }) {
   // carry per club as typed (every club of the catalog) and the clubs in the bag
   const [bag, setBag] = useState<Record<string, string>>(() => {
     const saved = loadCarryBag();
@@ -22,29 +40,26 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
     const saved = loadCarryBag();
     return saved?.length ? byOrder(saved).map((b) => b.club) : STANDARD_CLUBS;
   });
+  const [style, setStyle] = useState<BagStyle>(loadBagStyle);
+  const [tab, setTab] = useState<Tab>('full');
+  const [editing, setEditing] = useState(false);
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
-  // Wedges: half (9 o'clock) and three-quarter (10:30) swing – empty = suggested from the full carry.
+  // Wedges: three-quarter and half swing – empty = suggested from the full carry.
   const [partials, setPartials] = useState<Partials>(loadPartials);
+  const [note, setNote] = useState<string | null>(loadCarryBag() ? null : tr('Start values for a mid-handicap player – enter your own carry distances.', 'Startwerte für ein mittleres Handicap – trag deine eigenen Carry-Weiten ein.'));
+
   const setPartial = (club: Club, swing: 'half' | 'threeQ', v: string) => {
-    const n = Number(v);
-    const next: Partials = { ...partials, [club]: { ...partials[club], [swing]: v === '' ? undefined : n } };
+    const next: Partials = { ...partials, [club]: { ...partials[club], [swing]: v === '' ? undefined : Number(v) } };
     setPartials(next);
     savePartials(next);
   };
+  const setStyleP = (patch: Partial<BagStyle>) => {
+    const next = { ...style, ...patch };
+    setStyle(next);
+    saveBagStyle(next);
+  };
   const fullOf = (club: Club) => Number(bag[club]) || catalogEntry(club).carry;
   const trackedP = trackedPartials(props.rounds, inBag.map((c) => ({ club: c, carry: fullOf(c) })), partials);
-  const [note, setNote] = useState<string | null>(loadCarryBag() ? null : tr('Start values for a mid-handicap player – enter your own carry distances.', 'Startwerte für ein mittleres Handicap – trag deine eigenen Carry-Weiten ein.'));
-
-  const set = (patch: Partial<CaddieSettings>) => {
-    const next = { ...settings, ...patch };
-    setSettings(next);
-    saveCaddieSettings(next);
-  };
-  const toggle = (k: 'caddie' | 'greenSlope' | 'missMap' | 'voice') => {
-    const next = { ...settings, [k]: !settings[k] };
-    setSettings(next);
-    saveCaddieSettings(next);
-  };
   // Only believable carries count (20–400 m); empty or odd values fall back to the standard for that club.
   const valid = (v: string) => Number(v) >= 20 && Number(v) <= 400;
   const persist = (next: Record<string, string>, clubs: Club[] = inBag) => {
@@ -53,21 +68,26 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
     saveCarryBag(out);
     return out;
   };
+  const count = inBag.length + (style.putter ? 1 : 0);
   const save = () => {
-    const out = persist(bag);
-    setNote(tr(`Saved · ${out.length} clubs.`, `Gespeichert · ${out.length} Schläger.`));
+    persist(bag);
+    setNote(tr(`Saved · ${count} clubs.`, `Gespeichert · ${count} Schläger.`));
   };
   const remove = (c: Club) => {
     const next = inBag.filter((x) => x !== c);
     setInBag(next);
     persist(bag, next);
-    setNote(tr(`${clubName(c)} removed from your bag.`, `${clubName(c)} aus deinem Bag entfernt.`));
   };
   const add = (c: Club) => {
     const next = byOrder([...inBag, c].map((club) => ({ club }))).map((x) => x.club);
     setInBag(next);
     persist(bag, next);
-    setNote(tr(`${clubName(c)} added – check its carry.`, `${clubName(c)} hinzugefügt – prüfe die Carry-Weite.`));
+    setNote(tr(`${clubCode(c)} added – check its carry.`, `${clubCode(c)} hinzugefügt – prüfe die Carry-Weite.`));
+  };
+  const setFav = (patch: Partial<CaddieSettings>) => {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    saveCaddieSettings(next);
   };
   // Tracked carry from your detailed rounds – compared with what you entered; you decide per club, any time.
   const tracked = trackedCarry(props.rounds);
@@ -88,201 +108,237 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
     { id: 'iron', label: tr('Irons', 'Eisen') },
     { id: 'wedge', label: 'Wedges' },
   ];
+  const wedges = inBag.filter((c) => WEDGES.includes(c));
+  const pencil = (
+    <button type="button" className={`icon-btn bag-edit${editing ? ' on' : ''}`} aria-pressed={editing} aria-label={editing ? tr('Done', 'Fertig') : tr('Edit your bag', 'Bag bearbeiten')} onClick={() => setEditing(!editing)}>
+      {editing ? (
+        tr('Done', 'Fertig')
+      ) : (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 20h4L19 9l-4-4L4 16v4z" />
+          <path d="M14 6l4 4" />
+        </svg>
+      )}
+    </button>
+  );
 
   return (
     <main className="screen">
-      <TopBar title={props.part === 'bag' ? tr('My bag', 'Mein Bag') : tr('Caddie', 'Caddie')} onBack={props.onBack} />
-
-      {props.part === 'caddie' && (
-      <section className="card stats-card">
-        <h2>{tr('AI caddie', 'KI-Caddie')}</h2>
-        <button type="button" className="toggle" aria-pressed={settings.caddie} onClick={() => toggle('caddie')}>
-          {settings.caddie ? '✓' : '○'} {tr('Club advice on every hole (wind, temperature, slope)', 'Schlägerempfehlung an jedem Loch (Wind, Temperatur, Höhe)')}
-        </button>
-        <button type="button" className="toggle" aria-pressed={settings.greenSlope} onClick={() => toggle('greenSlope')}>
-          {settings.greenSlope ? '✓' : '○'} {tr('Green slope when I am on the green', 'Grün-Neigung, wenn ich auf dem Grün bin')}
-        </button>
-        <button type="button" className="toggle" aria-pressed={settings.missMap} onClick={() => toggle('missMap')}>
-          {settings.missMap ? '✓' : '○'} {tr('Show where not to miss on the hole map', 'Auf der Lochkarte zeigen, wo ich nicht verfehlen darf')}
-        </button>
-        <button type="button" className="toggle" aria-pressed={settings.voice} onClick={() => toggle('voice')}>
-          {settings.voice ? '✓' : '○'} {tr('Caddie speaks (reads the advice aloud on every new shot)', 'Caddie spricht (liest die Empfehlung bei jedem neuen Schlag vor)')}
-        </button>
-        <div className="field">
-          <label>{tr('How should the caddie plan?', 'Wie soll der Caddie planen?')}</label>
-          <Segmented<CaddieSettings['style']>
-            label={tr('Play style', 'Spielweise')}
-            value={settings.style}
-            onChange={(v) => v && set({ style: v })}
-            options={[
-              { value: 'safe', label: tr('Safe', 'Sicher') },
-              { value: 'normal', label: 'Normal' },
-              { value: 'aggressive', label: tr('Aggressive', 'Offensiv') },
-            ]}
-          />
-          <span className="muted small">
-            {tr(
-              'Safe: one club less off the tee when out of bounds is close, middle of the green, lay up earlier. Aggressive: goes for the green sooner, at the flag.',
-              'Sicher: ein Schläger weniger vom Abschlag, wenn Aus nah ist, Grünmitte, früher vorlegen. Offensiv: geht früher aufs Grün, auf die Fahne.',
-            )}
-          </span>
-        </div>
-        <div className="field">
-          <label>{tr('Greens today (for the putt line)', 'Grüns heute (für die Putt-Linie)')}</label>
-          <Segmented<CaddieSettings['greenSpeed']>
-            label={tr('Green speed', 'Grüngeschwindigkeit')}
-            value={settings.greenSpeed}
-            onChange={(v) => v && set({ greenSpeed: v })}
-            options={[
-              { value: 'slow', label: tr('Slow', 'Langsam') },
-              { value: 'medium', label: tr('Medium', 'Mittel') },
-              { value: 'fast', label: tr('Fast', 'Schnell') },
-            ]}
-          />
-          <span className="muted small">
-            {tr('Slow greens break less, fast greens more. Club greens are mostly medium.', 'Langsame Grüns brechen weniger, schnelle mehr. Clubgrüns sind meist mittel.')}
-          </span>
-        </div>
-      </section>
+      <TopBar title={tr('My bag', 'Mein Bag')} onBack={props.onBack} right={pencil} />
+      <div className="bag-head">
+        <span className={count > MAX_CLUBS ? 'warn-text' : 'muted'}>
+          {tr(`${count} clubs incl. putter`, `${count} Schläger inkl. Putter`)}
+          {count > MAX_CLUBS ? tr(` – a counting round allows ${MAX_CLUBS}`, ` – in einer Wertungsrunde sind ${MAX_CLUBS} erlaubt`) : ''}
+        </span>
+      </div>
+      {!editing && (
+        <Segmented<Tab>
+          label={tr('Distances', 'Distanzen')}
+          value={tab}
+          onChange={(v) => v && setTab(v)}
+          options={[
+            { value: 'full', label: tr('Full swing', 'Voller Schwung') },
+            { value: 'pitch', label: tr('Pitches', 'Pitches') },
+          ]}
+        />
       )}
 
-      {props.part === 'bag' && (
-      <section className="card stats-card">
-        <h2>{tr('Favourite approach', 'Lieblingsdistanz für die Annäherung')}</h2>
-        <label className="bag-row">
-          <span>
-            <span className="muted small">{tr('layups leave this distance', 'beim Vorlegen bleibt diese Distanz')}</span>
-          </span>
-          <span className="bag-input">
-            <input
-              className="input"
-              inputMode="numeric"
-              value={settings.favourite}
-              aria-label={tr('Favourite approach distance in metres', 'Lieblingsdistanz in Metern')}
-              onChange={(e) => set({ favourite: Number(e.target.value.replace(/[^0-9]/g, '').slice(0, 3)) || 0 })}
-              onBlur={() => set({ favourite: Math.min(200, Math.max(30, settings.favourite || 90)) })}
-            />
-            m
-          </span>
-        </label>
-      </section>
-      )}
-
-      {props.part === 'bag' && (
-      <section className="card stats-card">
-        <h2>
-          {tr('Your clubs', 'Deine Schläger')} <span className={`muted small${inBag.length > MAX_CLUBS ? ' bad-text' : ''}`}>{inBag.length}/{MAX_CLUBS}</span>
-        </h2>
-        <p className="muted small" style={{ margin: 0 }}>
-          {tr(
-            'Carry = how far the ball flies in the air on a normal day (no wind, 20 °C, flat). ✕ takes a club out of your bag, below you add the ones you carry. Next to it: what your tracked shots say (from 3 full shots per club). For the wedges also a three-quarter (10:30) and a half swing (9 o’clock): empty = suggested from the full carry.',
-            'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben). ✕ nimmt einen Schläger aus deinem Bag, unten fügst du die hinzu, die du spielst. Daneben: was deine gemessenen Schläge sagen (ab 3 vollen Schlägen je Schläger). Bei den Wedges zusätzlich Dreiviertel- (10:30) und halber Schwung (9 Uhr): leer = Vorschlag aus der vollen Carry.',
-          )}
-        </p>
-        {toReview > 0 && (
-          <button type="button" className="btn-secondary" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
-            {tr(`Use tracked values for ${toReview} ${toReview === 1 ? 'club' : 'clubs'}`, `Gemessene Werte für ${toReview} ${toReview === 1 ? 'Schläger' : 'Schläger'} übernehmen`)}
-          </button>
-        )}
-        <div className="bag-grid">
-          {inBag.map((club) => ({ club })).map((d) => (
-            <Fragment key={d.club}>
-            <div className="bag-row club">
-              <span className="bag-name">
-                <strong>{clubCode(d.club as Club)}</strong>
-                <span className="muted small">{clubName(d.club as Club)}</span>
-              </span>
-              {!tracked.get(d.club as Club) && <span className="bag-tracked muted">–</span>}
-              {tracked.get(d.club as Club) && (
-                <span className={`bag-tracked${differs(d.club) ? ' differs' : ''}`}>
-                  <span className="bag-tracked-text">
-                    {tr('tracked', 'gemessen')} {tracked.get(d.club as Club)!.carry} m <span className="muted">({tracked.get(d.club as Club)!.shots})</span>
-                  </span>
-                  {differs(d.club) && (
-                    <button type="button" aria-label={tr(`Use tracked ${tracked.get(d.club as Club)!.carry} m for ${clubName(d.club as Club)}`, `Gemessene ${tracked.get(d.club as Club)!.carry} m für ${clubName(d.club as Club)} übernehmen`)} onClick={() => useTracked([d.club])}>
-                      {tr('Use', 'Übernehmen')}
-                    </button>
+      {editing ? (
+        <>
+          <section className="card stats-card">
+            <h2>{tr('In your bag', 'In deinem Bag')}</h2>
+            <div className="bag-grid">
+              {inBag.map((c) => (
+                <div key={c} className="bag-row edit">
+                  <strong className="bag-code">{style.wedgeLoft && WEDGES.includes(c) ? c : clubCode(c)}</strong>
+                  {style.wedgeLoft && WEDGES.includes(c) && (
+                    <span className="bag-input">
+                      <input
+                        className="input"
+                        inputMode="numeric"
+                        value={style.lofts[c] ?? ''}
+                        aria-label={tr(`Loft of the ${c}`, `Loft des ${c}`)}
+                        onChange={(e) => setStyleP({ lofts: { ...style.lofts, [c]: Number(e.target.value.replace(/[^0-9]/g, '').slice(0, 2)) || undefined } })}
+                        onBlur={() => !style.lofts[c] && setStyleP({ lofts: { ...style.lofts, [c]: DEFAULT_LOFTS[c] } })}
+                      />
+                      °
+                    </span>
                   )}
-                </span>
+                  <button type="button" className="bag-remove" aria-label={tr(`Remove ${clubCode(c)} from the bag`, `${clubCode(c)} aus dem Bag entfernen`)} onClick={() => remove(c)}>
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {style.putter && (
+                <div className="bag-row edit">
+                  <strong className="bag-code">Putter</strong>
+                  <button type="button" className="bag-remove" aria-label={tr('Remove the putter from the bag', 'Putter aus dem Bag entfernen')} onClick={() => setStyleP({ putter: false })}>
+                    ✕
+                  </button>
+                </div>
               )}
+            </div>
+          </section>
+          <section className="card stats-card">
+            <h2>{tr('Add clubs', 'Schläger hinzufügen')}</h2>
+            {groups.map((g) => {
+              const missing = CLUB_CATALOG.filter((c) => c.group === g.id && !inBag.includes(c.club));
+              if (!missing.length) return null;
+              return (
+                <div key={g.id} className="field">
+                  <label>{g.label}</label>
+                  <div className="chip-set">
+                    {missing.map((c) => (
+                      <button key={c.club} type="button" className="chip" aria-label={tr(`Add ${clubName(c.club)}`, `${clubName(c.club)} hinzufügen`)} onClick={() => add(c.club)}>
+                        + {clubCode(c.club)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {!style.putter && (
+              <div className="field">
+                <label>Putter</label>
+                <div className="chip-set">
+                  <button type="button" className="chip" onClick={() => setStyleP({ putter: true })}>
+                    + Putter
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+          <section className="card stats-card">
+            <h2>{tr('Wedges', 'Wedges')}</h2>
+            <Segmented<'name' | 'loft'>
+              label={tr('Name the wedges', 'Wedges benennen')}
+              value={style.wedgeLoft ? 'loft' : 'name'}
+              onChange={(v) => v && setStyleP({ wedgeLoft: v === 'loft' })}
+              options={[
+                { value: 'name', label: 'PW · GW · SW · LW' },
+                { value: 'loft', label: tr('By loft (56°)', 'Nach Loft (56°)') },
+              ]}
+            />
+            <span className="muted small">{tr('By loft: set each wedge’s loft above.', 'Nach Loft: den Loft je Wedge oben eintragen.')}</span>
+          </section>
+        </>
+      ) : tab === 'full' ? (
+        <section className="card stats-card">
+          <p className="muted small" style={{ margin: 0 }}>
+            {tr('Carry = how far the ball flies on a normal day (no wind, 20 °C, flat).', 'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben).')}
+          </p>
+          {toReview > 0 && (
+            <button type="button" className="btn-secondary" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
+              {tr(`Use tracked values for ${toReview} ${toReview === 1 ? 'club' : 'clubs'}`, `Gemessene Werte für ${toReview} Schläger übernehmen`)}
+            </button>
+          )}
+          <div className="bag-grid">
+            {inBag.map((c) => {
+              const t = tracked.get(c);
+              return (
+                <div key={c} className="bag-row full">
+                  <strong className="bag-code">{clubCode(c)}</strong>
+                  {t ? (
+                    <span className={`bag-tracked${differs(c) ? ' differs' : ''}`}>
+                      <span className="bag-tracked-text">
+                        {tr('tracked', 'gemessen')} {t.carry} m <span className="muted">({t.shots})</span>
+                      </span>
+                      {differs(c) && (
+                        <button type="button" aria-label={tr(`Use tracked ${t.carry} m for ${clubCode(c)}`, `Gemessene ${t.carry} m für ${clubCode(c)} übernehmen`)} onClick={() => useTracked([c])}>
+                          {tr('Use', 'Übernehmen')}
+                        </button>
+                      )}
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="bag-input">
+                    <input
+                      className="input"
+                      inputMode="numeric"
+                      value={bag[c]}
+                      aria-label={tr(`${clubCode(c)} carry in metres`, `${clubCode(c)} Carry in Metern`)}
+                      onChange={(e) => setBag({ ...bag, [c]: e.target.value.replace(/[^0-9]/g, '').slice(0, 3) })}
+                      onBlur={save}
+                      aria-invalid={bag[c] !== '' && !valid(bag[c])}
+                    />
+                    m
+                  </span>
+                </div>
+              );
+            })}
+            {style.putter && (
+              <div className="bag-row full">
+                <strong className="bag-code">Putter</strong>
+                <span />
+                <span className="muted small">{tr('no carry', 'ohne Weite')}</span>
+              </div>
+            )}
+          </div>
+          {note && <p className="small" style={{ margin: 0 }}>{note}</p>}
+          <button type="button" className="btn-primary" onClick={save}>
+            {tr('Save my values', 'Meine Werte speichern')}
+          </button>
+        </section>
+      ) : (
+        <>
+          <section className="card stats-card">
+            <h2>{tr('Favourite approach', 'Lieblingsdistanz')}</h2>
+            <div className="bag-row full">
+              <span className="muted small">{tr('Layups leave this distance to the green.', 'Beim Vorlegen bleibt diese Distanz zum Grün.')}</span>
+              <span />
               <span className="bag-input">
                 <input
                   className="input"
                   inputMode="numeric"
-                  value={bag[d.club]}
-                  aria-label={tr(`${clubName(d.club)} carry in metres`, `${clubName(d.club)} Carry in Metern`)}
-                  onChange={(e) => setBag({ ...bag, [d.club]: e.target.value.replace(/[^0-9]/g, '').slice(0, 3) })}
-                  onBlur={save}
-                  aria-invalid={bag[d.club] !== '' && !valid(bag[d.club])}
+                  value={settings.favourite}
+                  aria-label={tr('Favourite approach distance in metres', 'Lieblingsdistanz in Metern')}
+                  onChange={(e) => setFav({ favourite: Number(e.target.value.replace(/[^0-9]/g, '').slice(0, 3)) || 0 })}
+                  onBlur={() => setFav({ favourite: Math.min(200, Math.max(30, settings.favourite || 90)) })}
                 />
                 m
               </span>
-              <button type="button" className="bag-remove" aria-label={tr(`Remove ${clubName(d.club)} from the bag`, `${clubName(d.club)} aus dem Bag entfernen`)} onClick={() => remove(d.club)}>
-                ✕
-              </button>
             </div>
-            {WEDGES.includes(d.club) && Number(bag[d.club]) > 0 && (
-              <div className="bag-partials" role="group" aria-label={tr(`${clubName(d.club)} partial swings`, `${clubName(d.club)} Teilschwünge`)}>
-                {(['threeQ', 'half'] as const).map((sw) => {
-                  const t = trackedP.get(`${d.club}|${sw}`);
-                  const own = partials[d.club]?.[sw];
-                  const label = sw === 'threeQ' ? tr('¾ (10:30)', '¾ (10:30)') : tr('½ (9 o’clock)', '½ (9 Uhr)');
-                  return (
-                    <span key={sw} className="bag-partial">
-                      <span className="muted small">{label}</span>
-                      <input
-                        className="input"
-                        inputMode="numeric"
-                        value={own ?? ''}
-                        placeholder={`≈ ${suggestedPartial(fullOf(d.club), sw)}`}
-                        aria-label={tr(`${clubName(d.club)} ${sw === 'threeQ' ? 'three-quarter' : 'half'} swing carry in metres`, `${clubName(d.club)} ${sw === 'threeQ' ? 'Dreiviertel' : 'halber'} Schwung Carry in Metern`)}
-                        onChange={(e) => setPartial(d.club, sw, e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
-                      />
-                      {t && Math.abs((own ?? suggestedPartial(fullOf(d.club), sw)) - t.carry) >= 4 && (
-                        <button type="button" className="bag-use" onClick={() => setPartial(d.club, sw, String(t.carry))}>
-                          {tr(`tracked ${t.carry} m · use`, `gemessen ${t.carry} m · übernehmen`)}
-                        </button>
-                      )}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-            </Fragment>
-          ))}
-        </div>
-        {inBag.length > MAX_CLUBS && (
-          <p className="small bad-text" style={{ margin: 0 }}>
-            {tr(`The rules allow ${MAX_CLUBS} clubs – take ${inBag.length - MAX_CLUBS} out before a round that counts.`, `Die Regeln erlauben ${MAX_CLUBS} Schläger – nimm ${inBag.length - MAX_CLUBS} heraus, bevor du eine Wertungsrunde spielst.`)}
-          </p>
-        )}
-        {note && <p className="small" style={{ margin: 0 }}>{note}</p>}
-        <button type="button" className="btn-primary" onClick={save}>
-          {tr('Save my values', 'Meine Werte speichern')}
-        </button>
-      </section>
-      )}
-
-      {props.part === 'bag' && (
-        <section className="card stats-card">
-          <h2>{tr('Add clubs', 'Schläger hinzufügen')}</h2>
-          {groups.map((g) => {
-            const missing = CLUB_CATALOG.filter((c) => c.group === g.id && !inBag.includes(c.club));
-            if (!missing.length) return null;
-            return (
-              <div key={g.id} className="field">
-                <label>{g.label}</label>
-                <div className="chip-set">
-                  {missing.map((c) => (
-                    <button key={c.club} type="button" className="chip" aria-label={tr(`Add ${clubName(c.club)}`, `${clubName(c.club)} hinzufügen`)} onClick={() => add(c.club)}>
-                      + {clubCode(c.club)} <span className="muted small" style={{ marginLeft: 4 }}>{clubName(c.club)}</span>
-                    </button>
-                  ))}
+          </section>
+          <section className="card stats-card">
+            <h2>{tr('Pitches with the wedges', 'Pitches mit den Wedges')}</h2>
+            <p className="muted small" style={{ margin: 0 }}>{tr('Empty = suggested from the full carry.', 'Leer = Vorschlag aus der vollen Carry.')}</p>
+            <div className="pitch-grid" role="table" aria-label={tr('Partial swings', 'Teilschwünge')}>
+              <span className="pitch-h" role="columnheader" />
+              <span className="pitch-h muted small" role="columnheader">{tr('full', 'voll')}</span>
+              <span className="pitch-h muted small" role="columnheader">¾</span>
+              <span className="pitch-h muted small" role="columnheader">½</span>
+              {wedges.map((c) => (
+                <div key={c} className="pitch-row" role="row">
+                  <strong className="bag-code" role="cell">{clubCode(c)}</strong>
+                  <span className="muted" role="cell">{fullOf(c)}</span>
+                  {(['threeQ', 'half'] as const).map((sw) => {
+                    const t = trackedP.get(`${c}|${sw}`);
+                    const own = partials[c]?.[sw];
+                    return (
+                      <span key={sw} className="pitch-cell" role="cell">
+                        <input
+                          className="input"
+                          inputMode="numeric"
+                          value={own ?? ''}
+                          placeholder={`≈ ${suggestedPartial(fullOf(c), sw)}`}
+                          aria-label={tr(`${clubCode(c)} ${sw === 'threeQ' ? '¾' : '½'} swing carry in metres`, `${clubCode(c)} ${sw === 'threeQ' ? '¾' : '½'}-Schwung Carry in Metern`)}
+                          onChange={(e) => setPartial(c, sw, e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+                        />
+                        {t && Math.abs((own ?? suggestedPartial(fullOf(c), sw)) - t.carry) >= 4 && (
+                          <button type="button" className="bag-use" onClick={() => setPartial(c, sw, String(t.carry))}>
+                            {tr(`tracked ${t.carry} · use`, `gemessen ${t.carry} · übernehmen`)}
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
-              </div>
-            );
-          })}
-        </section>
+              ))}
+            </div>
+            {!wedges.length && <p className="muted small">{tr('No wedges in your bag.', 'Keine Wedges in deinem Bag.')}</p>}
+          </section>
+        </>
       )}
     </main>
   );

@@ -33,7 +33,7 @@ export default defineConfig({
           {
             urlPattern: /\/greens\/.*\.webp$/,
             handler: 'CacheFirst',
-            options: { cacheName: 'greens', expiration: { maxEntries: 400 }, cacheableResponse: { statuses: [0, 200] } },
+            options: { cacheName: 'greens-v2', expiration: { maxEntries: 400 }, cacheableResponse: { statuses: [0, 200] } },
           },
           {
             // green heights for the putt read (feature 024) and the course height grid: offline on the course,

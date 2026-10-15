@@ -68,7 +68,7 @@ export function deleteRound(id: string, undoable = false): void {
   if (undoable && round && !round.preview) {
     write(TRASH, [{ round, keys, deletedAt: new Date().toISOString() }, ...loadTrash().filter((t) => t.round.id !== id)]);
     undoSnap = { round, keys };
-    window.dispatchEvent(new CustomEvent('golfos:round-deleted', { detail: round.courseName }));
+    window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'round', id, label: round.courseName } }));
   }
 }
 
@@ -236,7 +236,7 @@ export interface CaddieSettings {
   missMap: boolean;
   style: 'safe' | 'normal' | 'aggressive';
   favourite: number; // favourite approach distance (m) for layups
-  voice: boolean; // read the caddie's advice aloud
+  voice: boolean; // read the caddie's advice aloud by itself (with headphones; default off – Sascha 15.10.2026)
   greenSpeed: 'slow' | 'medium' | 'fast'; // for the putt read: Stimp 8.5 / 9.5 / 11
 }
 export function loadCaddieSettings(): CaddieSettings {

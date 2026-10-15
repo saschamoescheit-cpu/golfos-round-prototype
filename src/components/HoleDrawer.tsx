@@ -5,22 +5,16 @@ import { formatToPar } from './ui';
 import { tr } from '../lib/i18n';
 
 // The hole overview pulled up from the hole bar, as in Hole19 (Sascha 15.10.2026): every hole with its score and
-// strokes received – a tap jumps there –, the standing of the round, the bag and the caddie, the view (2D, hazards,
-// sun) and scorecard, pause and finish. The map keeps only the tools needed on the shot.
+// strokes received – a tap jumps there –, the standing of the round, the bag and the caddie, and scorecard, pause
+// and finish. 2D, hazards and the sun mode are switched on the map's toolbar and in the header (Sascha 15.10.2026). The map keeps only the tools needed on the shot.
 
 const tone = (d: number) => (d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : d === 1 ? 'bogey' : 'double');
 
 export function HoleDrawer(props: {
   round: Round;
   current: number;
-  view2d: boolean;
-  hazards: boolean;
-  sun: boolean;
   onGo: (index: number) => void;
   onClose: () => void;
-  onToggle2d: () => void;
-  onToggleHazards: () => void;
-  onToggleSun: () => void;
   onBag: () => void;
   onCaddie: () => void;
   onScorecard: () => void;
@@ -107,21 +101,6 @@ export function HoleDrawer(props: {
           <button type="button" className="drawer-row" onClick={props.onCaddie}>
             <span>{tr('Caddie', 'Caddie')}</span>
             <span aria-hidden="true">›</span>
-          </button>
-        </div>
-
-        <div className="drawer-list">
-          <button type="button" className="drawer-row" role="switch" aria-checked={props.view2d} onClick={props.onToggle2d}>
-            <span>{tr('2D view', '2D-Ansicht')}</span>
-            <span className={`drawer-switch${props.view2d ? ' on' : ''}`} aria-hidden="true" />
-          </button>
-          <button type="button" className="drawer-row" role="switch" aria-checked={props.hazards} onClick={props.onToggleHazards}>
-            <span>{tr('Hazard distances', 'Distanzen zu Hindernissen')}</span>
-            <span className={`drawer-switch${props.hazards ? ' on' : ''}`} aria-hidden="true" />
-          </button>
-          <button type="button" className="drawer-row" role="switch" aria-checked={props.sun} onClick={props.onToggleSun}>
-            <span>{tr('Sun mode', 'Sonnenmodus')}</span>
-            <span className={`drawer-switch${props.sun ? ' on' : ''}`} aria-hidden="true" />
           </button>
         </div>
 

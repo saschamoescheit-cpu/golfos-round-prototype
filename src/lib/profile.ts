@@ -29,5 +29,9 @@ export function saveProfile(p: Profile): void {
   }
 }
 
+/** The name the app shows – on the leaderboard, in games, everywhere: the first name only (Sascha 15.10.2026);
+ *  the last name when no first name is set. */
+export const shownName = (p: Profile): string => p.firstName.trim() || p.lastName.trim();
+
 /** "Sascha Möscheit", or "" when no name is set. */
 export const fullName = (p: Profile): string => [p.firstName.trim(), p.lastName.trim()].filter(Boolean).join(' ');

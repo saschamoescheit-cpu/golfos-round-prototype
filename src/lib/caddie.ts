@@ -1,4 +1,5 @@
 import type { Club } from '../types';
+import { wedgeLoft } from './bagstyle';
 import { sideWord, tr } from './i18n';
 import { CLUB_CATALOG, CLUB_ORDER } from './clubs';
 
@@ -116,7 +117,10 @@ const CLUB_NAMES_DE: Record<Club, string> = {
   '5H': 'Hybrid 5', '6H': 'Hybrid 6', '2i': 'Eisen 2', '3i': 'Eisen 3', '4i': 'Eisen 4', '5i': 'Eisen 5', '6i': 'Eisen 6', '7i': 'Eisen 7',
   '8i': 'Eisen 8', '9i': 'Eisen 9', PW: 'Pitching Wedge', GW: 'Gap Wedge', SW: 'Sand Wedge', LW: 'Lob Wedge',
 };
-export const clubName = (c: Club) => tr(CLUB_NAMES[c], CLUB_NAMES_DE[c]);
+export const clubName = (c: Club) => {
+  const loft = wedgeLoft(c);
+  return loft != null ? tr(`${loft}° wedge`, `${loft}°-Wedge`) : tr(CLUB_NAMES[c], CLUB_NAMES_DE[c]);
+};
 
 /** One line per factor for the caddie card, e.g. "Into the wind 25 km/h (gusts): +20 m". */
 export function explain(p: PlaysLike, c: Conditions | null): string[] {

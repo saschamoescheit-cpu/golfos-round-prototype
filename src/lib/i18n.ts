@@ -1,4 +1,5 @@
 import type { Club } from '../types';
+import { wedgeLoft } from './bagstyle';
 
 // Language (feature 021): German or English, every text sits next to its translation at the call site –
 // tr('New round', 'Neue Runde'). Default is the phone's language; the player can switch on the home screen.
@@ -52,8 +53,11 @@ const CLUB_CODE: Record<Club, string> = {
   Dr: 'D', '3W': '3W', '4W': '4W', '5W': '5W', '7W': '7W', '9W': '9W', '2H': '2H', '3H': '3H', Hy: '4H', '5H': '5H', '6H': '6H',
   '2i': '2i', '3i': '3i', '4i': '4i', '5i': '5i', '6i': '6i', '7i': '7i', '8i': '8i', '9i': '9i', PW: 'PW', GW: 'GW', SW: 'SW', LW: 'LW',
 };
-/** Short club label: "7i", "D", "4H". */
-export const clubCode = (c: Club): string => CLUB_CODE[c];
+/** Short club label: "7i", "D", "4H" – a wedge as "56°" when the player names wedges by loft. */
+export const clubCode = (c: Club): string => {
+  const loft = wedgeLoft(c);
+  return loft != null ? `${loft}°` : CLUB_CODE[c];
+};
 
 /** Speech language for read-aloud and voice questions. */
 export const speechLang = (): string => (lang === 'de' ? 'de-DE' : 'en-US');

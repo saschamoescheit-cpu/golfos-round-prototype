@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
-import { undoDelete } from '../lib/storage';
+import { restoreRound } from '../lib/storage';
+import { restoreGame } from '../lib/gamestore';
 import { tr } from '../lib/i18n';
 
-// "Round deleted · Undo" for 8 seconds after the player deleted a round (Sascha 15.10.2026: one tap to delete,
-// no second question – a slip can still be undone).
+// "Round deleted · Undo" for 8 seconds after the player deleted a round or a game (Sascha 15.10.2026: one tap to
+// delete, no second question – a slip can still be undone; later from the bin).
+type Deleted = { kind: 'round' | 'game'; id: string; label: string };
+
 export function UndoToast() {
-  const [shown, setShown] = useState<string | null>(null);
+  const [shown, setShown] = useState<Deleted | null>(null);
   useEffect(() => {
     let t = 0;
     const on = (e: Event) => {
-      setShown((e as CustomEvent<string>).detail ?? '');
+      setShown((e as CustomEvent<Deleted>).detail);
       window.clearTimeout(t);
       t = window.setTimeout(() => setShown(null), 8000);
     };
-    window.addEventListener('golfos:round-deleted', on);
+    window.addEventListener('golfos:deleted', on);
     return () => {
-      window.removeEventListener('golfos:round-deleted', on);
+      window.removeEventListener('golfos:deleted', on);
       window.clearTimeout(t);
     };
   }, []);
@@ -23,13 +26,14 @@ export function UndoToast() {
   return (
     <div className="undo-toast" role="status">
       <span>
-        {tr('Round deleted', 'Runde gelöscht')}
-        {shown ? <span className="muted"> · {shown}</span> : null}
+        {shown.kind === 'game' ? tr('Game deleted', 'Spiel gelöscht') : tr('Round deleted', 'Runde gelöscht')}
+        {shown.label ? <span className="muted"> · {shown.label}</span> : null}
       </span>
       <button
         type="button"
         onClick={() => {
-          undoDelete();
+          if (shown.kind === 'game') restoreGame(shown.id);
+          else restoreRound(shown.id);
           setShown(null);
         }}
       >

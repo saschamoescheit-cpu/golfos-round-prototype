@@ -111,11 +111,12 @@ for (const [form, n] of CASES) {
     if (form === 'Snake' && h === 2) await p.locator('.game-extra .chip').nth(1).click();
     if (form === 'Hammer' && h === 1) await p.locator('[aria-label="Hammer"] .chip').first().click();
     if (form.startsWith('Dots')) await p.locator('.game-extra .game-setting').first().locator('.chip').first().click();
-    await p.getByRole('button', { name: 'Nächstes Loch ›' }).click();
+    await p.getByRole('button', { name: 'Nächstes Loch', exact: true }).click();
   }
   const standing = await p.locator('.game-standing').innerText();
   ok(/1\n/.test(standing) || standing.includes('1'), `${form} with ${n}: standing shown`);
-  await p.getByRole('button', { name: 'Spiel jetzt beenden' }).click();
+  await p.locator('.hole-bar-handle').click();
+  await p.locator('.hole-drawer').getByRole('button', { name: 'Spiel beenden' }).click();
   await p.getByRole('button', { name: 'Beenden & abrechnen' }).click();
   await p.waitForTimeout(200);
   const winner = (await p.locator('.game-winner strong').innerText()).trim();
@@ -125,6 +126,21 @@ for (const [form, n] of CASES) {
   if (form !== CASES[CASES.length - 1][0] || n !== CASES[CASES.length - 1][1]) await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 }
 ok((await p.locator('.list-item').count()) === CASES.length, `${CASES.length} games in the list`);
+// delete as a round: one tap, "Undo", the bin (Sascha 15.10.2026)
+await p.locator('.list-item').first().click();
+await p.getByRole('button', { name: 'Spiel löschen' }).click();
+ok(await p.getByText('Spiel gelöscht').isVisible(), 'game deleted – "Undo" offered');
+await p.getByRole('button', { name: 'Rückgängig' }).click();
+await p.waitForTimeout(300);
+await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
+ok((await p.locator('.list-item').count()) === CASES.length, 'Undo brings the game back');
+await p.locator('.list-item').first().click();
+await p.getByRole('button', { name: 'Spiel löschen' }).click();
+await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
+await p.getByRole('button', { name: /Gelöschte Spiele \(1\)/ }).click();
+await p.getByRole('button', { name: 'Wiederherstellen' }).click();
+await p.waitForTimeout(300);
+ok((await p.locator('.list-item').count()) === CASES.length && !(await p.getByRole('button', { name: /Gelöschte Spiele/ }).isVisible().catch(() => false)), 'restored from the bin');
 await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
 const bal = await p.locator('main').innerText();
 ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal), 'balance with games, wins and the other players');
@@ -158,7 +174,7 @@ ok(await cap.getByRole('alert').isVisible(), '12,20 € is refused');
 await cap.locator('input').fill('12,80');
 await cap.getByRole('button', { name: 'Übernehmen' }).click();
 ok((await cap.locator('.chip.on').innerText()) === '12,80 €' && (await cap.innerText()).includes('7× verdoppelt'), '12,80 € taken (7 doublings)');
-await p.screenshot({ path: (process.env.SHOTS ?? '.') + '/games-cap.png', fullPage: true });
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/games-cap.png', fullPage: true });
 await cap.getByRole('button', { name: '1,60 €' }).click();
 const presses = p.locator('.game-setting').filter({ hasText: 'Erlaubte Pressen' });
 ok((await presses.locator('.chip.on').innerText()) === '4×', 'highest stake 1,60 € = 4× pressing');
@@ -168,11 +184,16 @@ await cap.getByRole('button', { name: '1,60 €' }).click();
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.getByRole('button', { name: 'Par für alle übrigen' }).click();
 await p.locator('.game-scores .stepper').nth(1).getByRole('button', { name: 'plus eins' }).click(); // Ben bogey
-await p.getByRole('button', { name: 'Nächstes Loch ›' }).click();
+// the team numbers of the hole (Sascha 15.10.2026): Ich & Ben 4 and 5 = 45, Chris & Anna 4 and 4 = 44 → 1
+const team = (await p.locator('.chicago-result').innerText()).replace(/\s+/g, ' ');
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/games-play.png' });
+ok(/45 −1/.test(team) && /44 \+1/.test(team) && team.includes('45 − 44 = 1'), `Chicago hole result: ${team}`);
+await p.getByRole('button', { name: 'Nächstes Loch', exact: true }).click();
 await p.getByRole('button', { name: 'Ben presst (×2)' }).click();
 ok((await p.locator('[aria-label="Press"]').innerText()).includes('0,20 €'), 'press doubles the stake to 0,20 €');
 ok((await p.locator('.game-standing').innerText()).includes('Brutto, ohne Vorgabe'), 'standing says gross');
-await p.getByRole('button', { name: 'Spiele' }).click();
+await p.getByRole('button', { name: 'Verlassen' }).click();
+await p.getByRole('button', { name: 'Pausieren – später fortsetzen' }).click();
 
 // too few players: no start
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
@@ -192,9 +213,15 @@ await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 const head = await p.locator('.topbar h1').innerText();
 ok(/Par \d/.test(head) && /Hcp \d/.test(head), `hole header with course data: ${head.replace(/\s+/g, ' ')}`);
+ok((await p.locator('.hole-bar').innerText()).includes('Par 4'), 'hole bar at the bottom as in a round');
+await p.locator('.hole-bar-handle').click();
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/games-drawer.png' });
+ok((await p.locator('.hole-drawer .drawer-hole').count()) === 18 && (await p.locator('.hole-drawer').getByRole('button', { name: 'Pausieren' }).isVisible()), 'hole overview with 18 holes and pause');
+await p.locator('.hole-drawer .drawer-handle').click();
 
 // a running game: the module choice says so; back to Rounds
-await p.getByRole('button', { name: 'Spiele' }).click();
+await p.getByRole('button', { name: 'Verlassen' }).click();
+await p.getByRole('button', { name: 'Pausieren – später fortsetzen' }).click();
 await p.locator('.module-switch').click();
 ok(await p.getByText('Ein Spiel läuft').isVisible(), 'module choice shows the running game');
 await p.locator('.module-card').filter({ hasText: 'Rounds' }).click();

@@ -63,7 +63,7 @@ const toggle = p.getByRole('button', { name: /Gelöschte Runden \(1\)/ });
 ok(await toggle.isVisible(), 'Rounds tab shows "Gelöschte Runden (1)"');
 await toggle.click();
 await p.waitForTimeout(300);
-await p.screenshot({ path: (process.env.SHOTS ?? '.') + '/bin.png' });
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/bin.png' });
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(600);
 const back = await p.evaluate((rid) => ({ round: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').some((r) => r.id === rid), track: localStorage.getItem('golfos.track.v1.' + rid) != null, bin: JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length }), id);

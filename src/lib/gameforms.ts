@@ -212,6 +212,16 @@ function teamNumber(g: Game, ids: string[], i: number): number {
   return Number(`${v[0]}${v[1]}`);
 }
 
+/** Chicago on hole i (Sascha 15.10.2026: "Sascha & Max 44, Simon & Sam 56 – the difference 12"): the two teams with
+ *  their number, and the points of the hole (+ for team A). Null until all four scores are in. */
+export function chicagoHole(g: Game, i: number): { a: { ids: string[]; num: number }; b: { ids: string[]; num: number }; diff: number } | null {
+  if (!played(g, i)) return null;
+  const [A, B] = chicagoTeams(g, i);
+  const a = teamNumber(g, A, i);
+  const b = teamNumber(g, B, i);
+  return { a: { ids: A, num: a }, b: { ids: B, num: b }, diff: b - a };
+}
+
 // With or without handicap (Sascha 15.10.2026): the WHS share of the playing handicap, or gross.
 const HCP: SettingDef = {
   key: 'allowance',
