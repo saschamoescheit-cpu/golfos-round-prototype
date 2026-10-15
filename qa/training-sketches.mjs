@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const out = process.argv[3] ?? '.';
+const only = process.argv[4] ? new RegExp(process.argv[4]) : null; // only drills whose title matches
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 const p = await ctx.newPage();
@@ -44,6 +45,7 @@ for (let c = 0; c < cats; c++) {
   await p.waitForTimeout(200);
 }
 const seen = new Set();
+if (only) svgs.splice(0, svgs.length, ...svgs.filter((x) => only.test(x.where)));
 const uniq = svgs.filter((s) => (seen.has(s.html) ? false : (seen.add(s.html), true)));
 console.log(`${uniq.length} sketches`);
 const per = 12;
