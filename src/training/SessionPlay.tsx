@@ -52,6 +52,8 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
     if (!running) return;
     const id = window.setInterval(() => {
       setS((cur) => {
+        // while hidden the time away is added at once when the page comes back (no double counting)
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return cur;
         const spent = cur.spent.map((v, k) => (k === cur.current ? v + 1 : v));
         const next = { ...cur, spent };
         if (spent[cur.current] % 5 === 0) saveSession(next);
@@ -64,16 +66,60 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
     }, 1000);
     return () => window.clearInterval(id);
   }, [running]);
-  // keep the time when the app goes to the background
+  // keep the time when the app goes to the background – and count the time the phone was locked or in the pocket
+  // while the drill ran (at most 30 minutes; on the green the phone is usually in the pocket)
+  const hiddenAt = useRef<number | null>(null);
+  const runningRef = useRef(running);
+  runningRef.current = running;
   useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt.current = runningRef.current ? Date.now() : null;
+        setS((cur) => (saveSession(cur), cur));
+      } else if (hiddenAt.current != null) {
+        const away = Math.min(1800, Math.round((Date.now() - hiddenAt.current) / 1000));
+        hiddenAt.current = null;
+        if (away > 1) setS((cur) => {
+          const next = { ...cur, spent: cur.spent.map((v, k) => (k === cur.current ? v + away : v)) };
+          saveSession(next);
+          return next;
+        });
+      }
+    };
     const save = () => setS((cur) => (saveSession(cur), cur));
-    document.addEventListener('visibilitychange', save);
+    document.addEventListener('visibilitychange', onVis);
     window.addEventListener('pagehide', save);
     return () => {
-      document.removeEventListener('visibilitychange', save);
+      document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('pagehide', save);
     };
   }, []);
+  // keep the screen on while the timer runs (the phone lies on the bag at the range)
+  useEffect(() => {
+    if (!running) return;
+    type Sentinel = { release: () => Promise<void> };
+    const api = (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<Sentinel> } }).wakeLock;
+    let lock: Sentinel | null = null;
+    let alive = true;
+    const take = async () => {
+      try {
+        const l = await api?.request('screen');
+        if (!l) return;
+        if (!alive) return void l.release();
+        lock = l;
+      } catch {
+        /* not supported or not allowed – the timer still counts the time away */
+      }
+    };
+    void take();
+    const onVisible = () => document.visibilityState === 'visible' && void take();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      alive = false;
+      document.removeEventListener('visibilitychange', onVisible);
+      void lock?.release().catch(() => {});
+    };
+  }, [running]);
 
   const go = (k: number) => {
     if (k < 0 || k >= s.items.length) return;

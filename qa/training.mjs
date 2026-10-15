@@ -98,6 +98,15 @@ await p.waitForTimeout(2300);
 ok(await p.locator('.tr-now').isVisible(), 'session runs');
 ok(/0:0[1-3]/.test(await p.locator('.tr-timer-time').innerText()), 'timer counts');
 await shot('session');
+// the phone goes into the pocket for 4 s: the time away counts once
+const before = await p.locator('.tr-timer-time').innerText();
+await p.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+await p.waitForTimeout(4200);
+await p.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+await p.waitForTimeout(300);
+const secs = (x) => Number(x.split(':')[0]) * 60 + Number(x.split(':')[1]);
+const gained = secs(await p.locator('.tr-timer-time').innerText()) - secs(before);
+ok(gained >= 4 && gained <= 6, `time in the pocket counts once (+${gained} s)`);
 for (let i = 0; i < 14; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Fertig – nächste Übung' }).click();
 ok((await p.locator('.tr-now-name').innerText()).includes('Tiger'), 'next drill after done');
