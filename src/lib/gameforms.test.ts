@@ -134,6 +134,12 @@ describe('handicap share, press and limits (Sascha 15.10.2026)', () => {
 });
 
 describe("Chicago as Sascha's group plays it", () => {
+  it('a score of 10 or more goes first: 10 and 4 = 104 (to be checked again)', () => {
+    // A 10, B 4 = 104 against C 5, D 5 = 55 → 49 for C and D
+    const st = standingOf(game('chicago', [[10], [4], [5], [5]], { stake: 0.1, allowance: '0' }));
+    expect(st.rows.find((r) => r.id === 'p2')!.points).toBe(49);
+    expect(st.rows.find((r) => r.id === 'p0')!.points).toBe(-49);
+  });
   // players A, B, C, D = p0 … p3
   it('makes a two-digit number of each team and gives the difference to every player', () => {
     // hole 1: A+B against C+D; Sascha 6 and Cedric 5 = 56, Jonas 3 and Maggi 3 = 33 → 23

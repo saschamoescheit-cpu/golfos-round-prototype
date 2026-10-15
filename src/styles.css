@@ -1118,7 +1118,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .use-all { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .use-all svg { color: var(--brand-text); }
 .pitch-tracked { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-.bag-input .input:disabled { opacity: 1; color: var(--muted); text-align: center; -webkit-text-fill-color: var(--muted); }
+.bag-input .input:disabled { opacity: 1; color: var(--muted); text-align: right; -webkit-text-fill-color: var(--muted); }
 
 /* caddie settings as switches (Sascha 15.10.2026) */
 .settings-switches .drawer-row { min-height: 56px; gap: 12px; }
@@ -1126,3 +1126,13 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .switch-label .small { font-weight: 500; }
 
 .bin-title { margin: 4px 0 0; font: 700 18px var(--body); }
+
+/* My bag: the count under the table, saving as a disc */
+.bag-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bag-count { line-height: 1.35; }
+.save-btn { width: 48px; height: 48px; background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.save-btn:active { filter: brightness(0.9); }
+
+/* the column heading "Carry" over the fields (Sascha 15.10.2026: instead of the explanation) */
+.bag-row.bag-th { border-top: 0; min-height: 0; padding: 0; }
+.bag-row.bag-th > span:last-child { min-width: 84px; padding-right: 26px; text-align: center; font-weight: 700; letter-spacing: 0.04em; }

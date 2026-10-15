@@ -209,6 +209,8 @@ export function chicagoTeams(g: Pick<Game, 'players' | 'extra'>, i: number): [st
 /** Chicago: the team's two (net) scores as one number, the lower one first – 6 and 5 = 56. */
 function teamNumber(g: Game, ids: string[], i: number): number {
   const v = ids.map((id) => net(g, id, i)!).sort((a, b) => a - b);
+  // a score of 10 or more goes first: 10 and 4 = 104, not 410 (Sascha 15.10.2026 – to be checked again)
+  if (v[1] >= 10) return Number(`${v[1]}${v[0]}`);
   return Number(`${v[0]}${v[1]}`);
 }
 

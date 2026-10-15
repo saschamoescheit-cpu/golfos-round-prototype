@@ -55,6 +55,7 @@ await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
 await p.waitForTimeout(300);
 const full = await p.locator('main').innerText();
 ok(full.includes('14 Schläger inkl. Putter') && full.includes('Putter') && !full.includes('Eisen 7'), `bag: 13 clubs + putter, short codes only`);
+ok((await p.locator('.bag-foot .bag-count').innerText()).startsWith('14 Schläger') && (await p.getByRole('button', { name: 'Meine Werte speichern' }).innerText()).trim() === '', 'count under the table, saving as a disc icon');
 ok(await p.getByRole('radio', { name: 'Voller Schwung' }).or(p.getByRole('button', { name: 'Voller Schwung' })).first().isVisible(), 'tab "Voller Schwung"');
 await p.getByText('Pitches', { exact: true }).click();
 await p.waitForTimeout(200);
@@ -79,6 +80,18 @@ await p.getByRole('button', { name: 'Gemessene 216 m für D übernehmen' }).clic
 ok((await p.getByRole('textbox', { name: 'D Carry in Metern' }).inputValue()) === '216', 'icon takes over the tracked 216 m for the driver');
 ok((await p.locator('.bag-row.full').filter({ hasText: 'Putter' }).locator('input').inputValue()) === '–', 'putter: same box with "–"');
 await shot('bag-tracked');
+// yards (Sascha 15.10.2026): the same bag in the player's unit – 216 m are 236 yd; typed yards are stored in metres
+await p.evaluate(() => localStorage.setItem('golfos.unit.v1', JSON.stringify('yd')));
+await p.locator('.topbar').getByRole('button').first().click();
+await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
+await p.waitForTimeout(300);
+const dY = p.getByRole('textbox', { name: 'D Carry in Yards' });
+ok((await dY.inputValue()) === '236' && (await p.locator('.bag-row.full').filter({ hasText: 'Putter' }).innerText()).includes('yd'), 'yards: driver 236 yd');
+await dY.fill('250');
+await dY.blur();
+await p.waitForTimeout(200);
+ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.carry.v1') ?? localStorage.getItem('golfos.bag.v1') ?? '[]').find((b) => b.club === 'Dr')?.carry)) === 229, '250 yd stored as 229 m');
+await shot('bag-yards');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

@@ -3,7 +3,7 @@ import type { Club, Round } from '../types';
 import { clubName, type CarryBag } from '../lib/caddie';
 import { byOrder, catalogEntry, CLUB_CATALOG, MAX_CLUBS, STANDARD_CLUBS, type ClubGroup } from '../lib/clubs';
 import { trackedCarry } from '../lib/stats';
-import { loadCaddieSettings, loadCarryBag, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
+import { loadCaddieSettings, loadCarryBag, loadUnit, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
 import { Segmented, TopBar } from '../components/ui';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { clubCode, tr } from '../lib/i18n';
@@ -31,10 +31,16 @@ export function MyBag(props: { rounds: Round[]; part: 'bag' | 'caddie'; onBack: 
 }
 
 function Bag(props: { rounds: Round[]; onBack: () => void }) {
-  // carry per club as typed (every club of the catalog) and the clubs in the bag
+  // metres or yards as the player set it (Sascha 15.10.2026) – stored in metres, shown and typed in his unit
+  const unit = loadUnit();
+  const U = unit === 'yd' ? 1.09361 : 1;
+  const toU = (m: number) => Math.round(m * U);
+  const toM = (x: number) => Math.round(x / U);
+  const uL = unit === 'yd' ? 'yd' : 'm';
+  // carry per club as typed (every club of the catalog, in the player's unit) and the clubs in the bag
   const [bag, setBag] = useState<Record<string, string>>(() => {
     const saved = loadCarryBag();
-    return Object.fromEntries(CLUB_CATALOG.map((d) => [d.club, String(saved?.find((s) => s.club === d.club)?.carry ?? d.carry)]));
+    return Object.fromEntries(CLUB_CATALOG.map((d) => [d.club, String(toU(saved?.find((s) => s.club === d.club)?.carry ?? d.carry))]));
   });
   const [inBag, setInBag] = useState<Club[]>(() => {
     const saved = loadCarryBag();
@@ -46,6 +52,14 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
   // Wedges: three-quarter and half swing – empty = suggested from the full carry.
   const [partials, setPartials] = useState<Partials>(loadPartials);
+  // what is typed in the pitch fields and the favourite distance (in the player's unit), saved on leaving the field
+  const [pText, setPText] = useState<Record<string, string>>(() => {
+    const p = loadPartials();
+    const out: Record<string, string> = {};
+    for (const [c, v] of Object.entries(p)) for (const sw of ['half', 'threeQ'] as const) if (v?.[sw] != null) out[`${c}|${sw}`] = String(toU(v[sw]!));
+    return out;
+  });
+  const [favText, setFavText] = useState(() => String(toU(loadCaddieSettings().favourite)));
   const [note, setNote] = useState<string | null>(loadCarryBag() ? null : tr('Start values for a mid-handicap player – enter your own carry distances.', 'Startwerte für ein mittleres Handicap – trag deine eigenen Carry-Weiten ein.'));
 
   const setPartial = (club: Club, swing: 'half' | 'threeQ', v: string) => {
@@ -58,20 +72,20 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     setStyle(next);
     saveBagStyle(next);
   };
-  const fullOf = (club: Club) => Number(bag[club]) || catalogEntry(club).carry;
+  const fullOf = (club: Club) => toM(Number(bag[club])) || catalogEntry(club).carry; // metres
   const trackedP = trackedPartials(props.rounds, inBag.map((c) => ({ club: c, carry: fullOf(c) })), partials);
   // Only believable carries count (20–400 m); empty or odd values fall back to the standard for that club.
-  const valid = (v: string) => Number(v) >= 20 && Number(v) <= 400;
+  const valid = (v: string) => toM(Number(v)) >= 20 && toM(Number(v)) <= 400;
   const persist = (next: Record<string, string>, clubs: Club[] = inBag) => {
     setBag(next);
-    const out: CarryBag = clubs.map((c) => ({ club: c, carry: valid(next[c]) ? Number(next[c]) : catalogEntry(c).carry }));
+    const out: CarryBag = clubs.map((c) => ({ club: c, carry: valid(next[c]) ? toM(Number(next[c])) : catalogEntry(c).carry }));
     saveCarryBag(out);
     return out;
   };
   const count = inBag.length + (style.putter ? 1 : 0);
   const save = () => {
     persist(bag);
-    setNote(tr(`Saved · ${count} clubs.`, `Gespeichert · ${count} Schläger.`));
+    setNote(tr("Saved ✓", "Gespeichert ✓"));
   };
   const remove = (c: Club) => {
     const next = inBag.filter((x) => x !== c);
@@ -93,12 +107,12 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
   const tracked = trackedCarry(props.rounds);
   const differs = (club: Club) => {
     const t = tracked.get(club);
-    return t != null && Math.abs(Number(bag[club]) - t.carry) >= 5;
+    return t != null && Math.abs(toM(Number(bag[club])) - t.carry) >= 5;
   };
   const toReview = inBag.filter((c) => differs(c)).length;
   const useTracked = (clubs: Club[]) => {
     const next = { ...bag };
-    for (const c of clubs) next[c] = String(tracked.get(c)!.carry);
+    for (const c of clubs) next[c] = String(toU(tracked.get(c)!.carry));
     persist(next);
     setNote(tr(`Updated from your tracked shots: ${clubs.map((c) => clubCode(c)).join(', ')}.`, `Aus deinen gemessenen Schlägen übernommen: ${clubs.map((c) => clubCode(c)).join(', ')}.`));
   };
@@ -109,6 +123,13 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     { id: 'wedge', label: 'Wedges' },
   ];
   const wedges = inBag.filter((c) => WEDGES.includes(c));
+  // under the table, in the app's quiet grey (Sascha 15.10.2026: not on top, not in yellow)
+  const countLine = (
+    <span className="muted small bag-count">
+      {tr(`${count} clubs incl. putter`, `${count} Schläger inkl. Putter`)}
+      {count > MAX_CLUBS ? tr(` · a counting round allows ${MAX_CLUBS}`, ` · in einer Wertungsrunde sind ${MAX_CLUBS} erlaubt`) : ''}
+    </span>
+  );
   const pencil = (
     <button type="button" className={`icon-btn bag-edit${editing ? ' on' : ''}`} aria-pressed={editing} aria-label={editing ? tr('Done', 'Fertig') : tr('Edit your bag', 'Bag bearbeiten')} onClick={() => setEditing(!editing)}>
       {editing ? (
@@ -125,12 +146,6 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
   return (
     <main className="screen">
       <TopBar title={tr('My bag', 'Mein Bag')} onBack={props.onBack} right={pencil} />
-      <div className="bag-head">
-        <span className={count > MAX_CLUBS ? 'warn-text' : 'muted'}>
-          {tr(`${count} clubs incl. putter`, `${count} Schläger inkl. Putter`)}
-          {count > MAX_CLUBS ? tr(` – a counting round allows ${MAX_CLUBS}`, ` – in einer Wertungsrunde sind ${MAX_CLUBS} erlaubt`) : ''}
-        </span>
-      </div>
       {!editing && (
         <Segmented<Tab>
           label={tr('Distances', 'Distanzen')}
@@ -178,6 +193,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                 </div>
               )}
             </div>
+            {countLine}
           </section>
           <section className="card stats-card">
             <h2>{tr('Add clubs', 'Schläger hinzufügen')}</h2>
@@ -211,9 +227,6 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
         </>
       ) : tab === 'full' ? (
         <section className="card stats-card">
-          <p className="muted small" style={{ margin: 0 }}>
-            {tr('Carry = how far the ball flies on a normal day (no wind, 20 °C, flat).', 'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben).')}
-          </p>
           {toReview > 0 && (
             <button type="button" className="btn-secondary use-all" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
               <UseIcon />
@@ -221,6 +234,11 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
             </button>
           )}
           <div className="bag-grid">
+            <div className="bag-row full bag-th" aria-hidden="true">
+              <span />
+              <span />
+              <span className="muted small">Carry</span>
+            </div>
             {inBag.map((c) => {
               const t = tracked.get(c);
               return (
@@ -231,11 +249,11 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                       <span className="bag-tracked-text">
                         <span className="bag-tracked-label">{tr('tracked', 'gemessen')}</span>
                         <span>
-                          {t.carry} m <span className="muted">· {t.shots}×</span>
+                          {toU(t.carry)} {uL} <span className="muted">· {t.shots}×</span>
                         </span>
                       </span>
                       {differs(c) && (
-                        <button type="button" className="use-btn" aria-label={tr(`Use tracked ${t.carry} m for ${clubCode(c)}`, `Gemessene ${t.carry} m für ${clubCode(c)} übernehmen`)} title={tr('Use', 'Übernehmen')} onClick={() => useTracked([c])}>
+                        <button type="button" className="use-btn" aria-label={tr(`Use tracked ${toU(t.carry)} ${uL} for ${clubCode(c)}`, `Gemessene ${toU(t.carry)} ${uL} für ${clubCode(c)} übernehmen`)} title={tr('Use', 'Übernehmen')} onClick={() => useTracked([c])}>
                           <UseIcon />
                         </button>
                       )}
@@ -248,12 +266,12 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                       className="input"
                       inputMode="numeric"
                       value={bag[c]}
-                      aria-label={tr(`${clubCode(c)} carry in metres`, `${clubCode(c)} Carry in Metern`)}
+                      aria-label={tr(`${clubCode(c)} carry in ${unit === 'yd' ? 'yards' : 'metres'}`, `${clubCode(c)} Carry in ${unit === 'yd' ? 'Yards' : 'Metern'}`)}
                       onChange={(e) => setBag({ ...bag, [c]: e.target.value.replace(/[^0-9]/g, '').slice(0, 3) })}
                       onBlur={save}
                       aria-invalid={bag[c] !== '' && !valid(bag[c])}
                     />
-                    m
+                    {uL}
                   </span>
                 </div>
               );
@@ -264,15 +282,22 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                 <span />
                 <span className="bag-input">
                   <input className="input" value="–" readOnly disabled aria-label={tr('Putter – no carry', 'Putter – ohne Weite')} />
-                  m
+                  {uL}
                 </span>
               </div>
             )}
           </div>
           {note && <p className="small" style={{ margin: 0 }}>{note}</p>}
-          <button type="button" className="btn-primary" onClick={save}>
-            {tr('Save my values', 'Meine Werte speichern')}
-          </button>
+          <div className="bag-foot">
+            {countLine}
+            {/* saving as a disc (Sascha 15.10.2026) – the values are saved on leaving a field anyway */}
+            <button type="button" className="use-btn save-btn" aria-label={tr('Save my values', 'Meine Werte speichern')} title={tr('Save', 'Speichern')} onClick={save}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+                <path d="M7 3v5h8V3M7 21v-7h10v7" />
+              </svg>
+            </button>
+          </div>
         </section>
       ) : (
         <>
@@ -285,18 +310,21 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                 <input
                   className="input"
                   inputMode="numeric"
-                  value={settings.favourite}
-                  aria-label={tr('Favourite approach distance in metres', 'Lieblingsdistanz in Metern')}
-                  onChange={(e) => setFav({ favourite: Number(e.target.value.replace(/[^0-9]/g, '').slice(0, 3)) || 0 })}
-                  onBlur={() => setFav({ favourite: Math.min(200, Math.max(30, settings.favourite || 90)) })}
+                  value={favText}
+                  aria-label={tr('Favourite approach distance', 'Lieblingsdistanz')}
+                  onChange={(e) => setFavText(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+                  onBlur={() => {
+                    const m = Math.min(200, Math.max(30, toM(Number(favText)) || 90));
+                    setFav({ favourite: m });
+                    setFavText(String(toU(m)));
+                  }}
                 />
-                m
+                {uL}
               </span>
             </div>
           </section>
           <section className="card stats-card">
             <h2>{tr('Pitches with the wedges', 'Pitches mit den Wedges')}</h2>
-            <p className="muted small" style={{ margin: 0 }}>{tr('Empty = suggested from the full carry.', 'Leer = Vorschlag aus der vollen Carry.')}</p>
             <div className="pitch-grid" role="table" aria-label={tr('Partial swings', 'Teilschwünge')}>
               <span className="pitch-h" role="columnheader" />
               <span className="pitch-h muted small" role="columnheader">{tr('full', 'voll')}</span>
@@ -305,7 +333,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               {wedges.map((c) => (
                 <div key={c} className="pitch-row" role="row">
                   <strong className="bag-code" role="cell">{withLoft(clubCode(c), c, style)}</strong>
-                  <span className="muted" role="cell">{fullOf(c)}</span>
+                  <span className="muted" role="cell">{toU(fullOf(c))}</span>
                   {(['threeQ', 'half'] as const).map((sw) => {
                     const t = trackedP.get(`${c}|${sw}`);
                     const own = partials[c]?.[sw];
@@ -314,15 +342,28 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                         <input
                           className="input"
                           inputMode="numeric"
-                          value={own ?? ''}
-                          placeholder={`≈ ${suggestedPartial(fullOf(c), sw)}`}
-                          aria-label={tr(`${clubCode(c)} ${sw === 'threeQ' ? '¾' : '½'} swing carry in metres`, `${clubCode(c)} ${sw === 'threeQ' ? '¾' : '½'}-Schwung Carry in Metern`)}
-                          onChange={(e) => setPartial(c, sw, e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+                          value={pText[`${c}|${sw}`] ?? ''}
+                          placeholder={`≈ ${toU(suggestedPartial(fullOf(c), sw))}`}
+                          aria-label={tr(`${clubCode(c)} ${sw === 'threeQ' ? '¾' : '½'} swing carry`, `${clubCode(c)} ${sw === 'threeQ' ? '¾' : '½'}-Schwung Carry`)}
+                          onChange={(e) => setPText({ ...pText, [`${c}|${sw}`]: e.target.value.replace(/[^0-9]/g, '').slice(0, 3) })}
+                          onBlur={() => {
+                            const v = pText[`${c}|${sw}`] ?? '';
+                            setPartial(c, sw, v === '' ? '' : String(toM(Number(v))));
+                          }}
                         />
                         {t && Math.abs((own ?? suggestedPartial(fullOf(c), sw)) - t.carry) >= 4 && (
                           <span className="pitch-tracked">
-                            <span className="muted small">{tr(`tracked ${t.carry}`, `gemessen ${t.carry}`)}</span>
-                            <button type="button" className="use-btn small" aria-label={tr(`Use tracked ${t.carry} m`, `Gemessene ${t.carry} m übernehmen`)} title={tr('Use', 'Übernehmen')} onClick={() => setPartial(c, sw, String(t.carry))}>
+                            <span className="muted small">{tr(`tracked ${toU(t.carry)}`, `gemessen ${toU(t.carry)}`)}</span>
+                            <button
+                              type="button"
+                              className="use-btn small"
+                              aria-label={tr(`Use tracked ${toU(t.carry)} ${uL}`, `Gemessene ${toU(t.carry)} ${uL} übernehmen`)}
+                              title={tr('Use', 'Übernehmen')}
+                              onClick={() => {
+                                setPartial(c, sw, String(t.carry));
+                                setPText({ ...pText, [`${c}|${sw}`]: String(toU(t.carry)) });
+                              }}
+                            >
                               <UseIcon />
                             </button>
                           </span>
