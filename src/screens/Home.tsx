@@ -17,12 +17,13 @@ export function Home(props: {
   gameOpen: boolean;
   toCheck: number; // finished rounds whose shots are not checked yet
   profileDot: boolean; // carries to take over into the bag
-  onPick: (m: 'rounds' | 'games') => void;
+  trainingOpen: boolean; // a practice session is paused
+  onPick: (m: 'rounds' | 'games' | 'training') => void;
   profile: ReactNode;
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
-      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} toCheck={props.toCheck} onPick={props.onPick} />}
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} trainingOpen={props.trainingOpen} toCheck={props.toCheck} onPick={props.onPick} />}
       {props.tab === 'friends' && <Friends />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
@@ -41,7 +42,7 @@ export function Home(props: {
   );
 }
 
-function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; toCheck: number; onPick: (m: 'rounds' | 'games') => void }) {
+function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpen: boolean; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training') => void }) {
   return (
     <>
       <div className="topbar">
@@ -87,6 +88,22 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; toCheck: nu
         <span className="grow">
           <strong>Games</strong>
           {props.gameOpen && <span className="small module-live">{tr('A game is in play', 'Ein Spiel läuft')}</span>}
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
+      {/* the third module (Sascha 15.10.2026): the golf knowledge base for practice */}
+      <button type="button" className="module-card" onClick={() => props.onPick('training')}>
+        <span className="module-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="8.5" />
+            <circle cx="12" cy="12" r="4.5" />
+            <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+          </svg>
+        </span>
+        <span className="grow">
+          <strong>Training</strong>
+          <span className="muted small">{tr('Your golf knowledge base: putting, chipping, slopes … with drills, videos, plans and practice gear.', 'Dein Golfwissen: Putten, Chippen, Hanglagen … mit Übungen, Videos, Plänen und Trainingszubehör.')}</span>
+          {props.trainingOpen && <span className="small module-live">{tr('A session is paused', 'Eine Einheit ist pausiert')}</span>}
         </span>
         <span aria-hidden="true">›</span>
       </button>

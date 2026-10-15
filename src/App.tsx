@@ -20,6 +20,16 @@ import { CourseStats } from './screens/CourseStats';
 import { GamesApp, type GamesTab } from './screens/Games';
 import { Home, type HomeTab } from './screens/Home';
 import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
+import type { TrainingTab } from './screens/Training';
+
+/** A practice session of the Training module is paused (read without loading the module). */
+const trainingPaused = (): boolean => {
+  try {
+    return (JSON.parse(localStorage.getItem('golfos.training.sessions.v1') ?? '[]') as { finishedAt: string | null }[]).some((s) => !s.finishedAt);
+  } catch {
+    return false;
+  }
+};
 
 type Screen =
   | { name: 'tab'; tab: Tab } // the five menu tabs (play, rounds, record, stats, profile)
@@ -78,6 +88,8 @@ const SKIP_RESUME = (() => {
 const HoleScreen = lazy(() => import('./screens/HoleScreen').then((m) => ({ default: m.HoleScreen })));
 const CourseBook = lazy(() => import('./screens/CourseBook').then((m) => ({ default: m.CourseBook })));
 const RoundReview = lazy(() => import('./screens/RoundReview').then((m) => ({ default: m.RoundReview })));
+// Training (Sascha 15.10.2026) brings its whole library – loaded when the module is opened.
+const TrainingApp = lazy(() => import('./screens/Training').then((m) => ({ default: m.TrainingApp })));
 const Waiting = () => (
   <main className="screen" style={{ justifyContent: 'center', alignItems: 'center' }}>
     <span className="spinner" aria-label="…" />
@@ -121,6 +133,7 @@ export function App() {
   const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' ? 'rounds' : sessionModule()));
   const [homeTab, setHomeTab] = useState<HomeTab>('start');
   const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(undefined);
+  const [trainingTab, setTrainingTab] = useState<TrainingTab | undefined>(undefined);
   // the bag and the caddie settings opened from the profile of the start page or of Games
   const [bagFrom, setBagFrom] = useState<null | { part: 'bag' | 'caddie' }>(null);
   const setModule = (m: AppModule | null) => {
@@ -184,14 +197,22 @@ export function App() {
         toCheck={toCheck}
         profileDot={profileDot}
         gameOpen={loadGames().some((g) => !g.finishedAt)}
+        trainingOpen={trainingPaused()}
         onPick={(m) => {
           if (m === 'games') setGamesTab(undefined);
+          if (m === 'training') setTrainingTab(undefined);
           setModule(m);
         }}
         profile={profile}
       />
     );
   if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} />;
+  if (module === 'training')
+    return (
+      <Suspense fallback={<Waiting />}>
+        <TrainingApp rounds={rounds} onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={trainingTab} onTabChange={setTrainingTab} />
+      </Suspense>
+    );
 
   switch (screen.name) {
     case 'tab': {

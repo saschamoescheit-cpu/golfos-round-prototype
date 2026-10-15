@@ -72,11 +72,11 @@ export function purgeGame(id: string): void {
 }
 
 /** The module open in this browser tab: a reload stays in it, a new start of the app asks again. */
-export type AppModule = 'rounds' | 'games';
+export type AppModule = 'rounds' | 'games' | 'training';
 export function sessionModule(): AppModule | null {
   try {
     const m = sessionStorage.getItem(MODULE_KEY);
-    return m === 'rounds' || m === 'games' ? m : null;
+    return m === 'rounds' || m === 'games' || m === 'training' ? m : null;
   } catch {
     return null;
   }
