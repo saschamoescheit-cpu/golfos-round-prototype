@@ -154,7 +154,7 @@ await p.waitForTimeout(300);
 ok((await p.locator('.list-item').count()) === CASES.length && !(await p.getByRole('button', { name: /Gelöschte Spiele/ }).isVisible().catch(() => false)), 'restored from the bin');
 await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
 const bal = await p.locator('main').innerText();
-ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal), 'balance with games, wins and the other players');
+ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal) && /\d+:\d+ vorne/.test(bal), 'balance with games, wins, the other players and head to head');
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 
 // Chicago for money: gross, press doubles 0,10 € up to the cap (Sascha 15.10.2026)

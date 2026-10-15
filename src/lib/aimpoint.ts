@@ -157,7 +157,28 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
     const fav = Math.min(200, Math.max(30, o.favourite || 90)); // 30–200 m, whatever was typed
     if (!o.teeShot && total - fav > alongFrom + 30 && total - fav <= alongFrom + reach) {
       along = total - fav;
-      reasons.push(tr(`leaves ${fav} m`, `lässt ${fav} m`));
+      // a flat lie for the next shot (Sascha's Hetzenhof notes, 4A: "level with the fairway bunkers, no downslope"):
+      // within 25 m shorter or 5 m longer, the spot where the ground is least steep (across and along the line)
+      const steep = (a: number) => {
+        const off = o.data.along0 ?? 0;
+        const c = crossSlopeAt(o.slopes, a + off);
+        const h0 = heightAt(o.slopes, a + off - 5);
+        const h1 = heightAt(o.slopes, a + off + 5);
+        if (c == null || h0 == null || h1 == null) return null;
+        return Math.hypot(c, ((h1 - h0) / 10) * 100);
+      };
+      const here = steep(along);
+      if (here != null && here >= 4) {
+        let best = { a: along, v: here };
+        for (let a = along - 25; a <= along + 5 && a <= alongFrom + reach; a += 5) {
+          if (a < alongFrom + 30) continue;
+          const v = steep(a);
+          if (v != null && v < best.v) best = { a, v };
+        }
+        if (here - best.v >= 2) along = best.a;
+      }
+      const leaves = Math.round((total - along) / 5) * 5;
+      reasons.push(tr(`leaves ${leaves} m`, `lässt ${leaves} m`) + (along !== total - fav ? tr(' – flat lie', ' – ebene Lage') : ''));
     }
     base = pointAt(data.line, Math.max(along, alongFrom + 30));
     kind = o.teeShot ? 'drive' : 'layup';

@@ -292,7 +292,8 @@ function Balance(props: { games: Game[] }) {
   const done = props.games.filter((g) => g.finishedAt);
   let wins = 0;
   let money = 0;
-  const vs = new Map<string, { name: string; games: number; money: number }>();
+  // head to head per friend (Sascha 15.10.2026): games, who finished ahead, money
+  const vs = new Map<string, { name: string; games: number; money: number; won: number; lost: number }>();
   for (const g of done) {
     const me = g.players[0];
     const st = standingOf(g);
@@ -302,8 +303,14 @@ function Balance(props: { games: Game[] }) {
     const pays = st.money ? transfers(st.money) : [];
     for (const p of g.players.slice(1)) {
       const key = p.name.trim().toLowerCase();
-      const row = vs.get(key) ?? { name: p.name, games: 0, money: 0 };
+      const row = vs.get(key) ?? { name: p.name, games: 0, money: 0, won: 0, lost: 0 };
       row.games++;
+      const mine = st.rows.find((r) => r.id === me.id)?.points;
+      const his = st.rows.find((r) => r.id === p.id)?.points;
+      if (mine != null && his != null && mine !== his) {
+        if (mine > his) row.won++;
+        else row.lost++;
+      }
       for (const t of pays) {
         if (t.from === p.id && t.to === me.id) row.money += t.amount;
         if (t.from === me.id && t.to === p.id) row.money -= t.amount;
@@ -341,13 +348,16 @@ function Balance(props: { games: Game[] }) {
                 .map((r) => (
                   <li key={r.name}>
                     <span>
-                      {r.name} <span className="muted small">· {r.games} {r.games === 1 ? tr('game', 'Spiel') : tr('games', 'Spiele')}</span>
+                      {r.name}{' '}
+                      <span className="muted small">
+                        · {r.games} {r.games === 1 ? tr('game', 'Spiel') : tr('games', 'Spiele')} · {tr(`${r.won}:${r.lost} ahead`, `${r.won}:${r.lost} vorne`)}
+                      </span>
                     </span>
                     <strong className={cls(r.money)}>{formatEuro(r.money)}</strong>
                   </li>
                 ))}
             </ul>
-            <span className="muted small">{tr('Money between you and each player, from the settlements (you are player 1).', 'Geld zwischen dir und dem Mitspieler, aus den Abrechnungen (du bist Spieler 1).')}</span>
+            <span className="muted small">{tr('"2:1 ahead": in how many games you finished ahead of the player and behind him. Money from the settlements (you are player 1).', '„2:1 vorne“: in wie vielen Spielen du vor bzw. hinter dem Mitspieler lagst. Geld aus den Abrechnungen (du bist Spieler 1).')}</span>
           </section>
         </>
       )}

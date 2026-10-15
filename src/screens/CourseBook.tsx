@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { loadStrategy, type PlannedHole } from '../lib/strategy';
 import type { Course, LngLat, RoundHole } from '../types';
-import { formatDistance, holeMapData, lineLength, pointAt, woodsOf, type HoleMapData } from '../lib/geo';
+import { distanceM, formatDistance, holeMapData, lineLength, pointAt, woodsOf, type HoleMapData } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
 import { loadCaddieSettings, loadCarryBag, loadGeometry, loadRounds, loadUnit } from '../lib/storage';
 import { courseStats, type CourseHoleStat } from '../lib/history';
-import { DEFAULT_CARRY } from '../lib/caddie';
+import { adviseClub, DEFAULT_CARRY } from '../lib/caddie';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { loadHoleNotes } from '../lib/holenotes';
 import { loadGreenGrids, setGreenSpeed, type GreenGrid } from '../lib/greenread';
@@ -35,6 +36,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
   const settings = useMemo(() => loadCaddieSettings(), []);
   useMemo(() => setGreenSpeed(settings.greenSpeed), [settings]);
   const notes = useMemo(() => loadHoleNotes(props.course.id), [props.course.id]);
+  const strategy = useMemo(() => loadStrategy(props.course.id), [props.course.id]); // the player's round plan
   // the player's record per hole from earlier rounds here (feature 012)
   const record = useMemo(() => new Map(courseStats(loadRounds(), props.course.name).holes.map((h) => [h.hole.label, h])), [props.course.name]);
   // The caddie plans every hole (tee strategy, feature 017) – a few holes at a time, so the first pages show at once
@@ -76,6 +78,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
             playing={playing18(props.holes.length, props.playing ?? null)} // 18-hole value for the spread
             note={notes[h.label] ?? {}}
             record={record.get(h.label)}
+            planned={strategy[h.label]}
           />
         );
       })}
@@ -100,6 +103,8 @@ function HolePage(p: {
   favourite: number;
   note: import('../lib/holenotes').HoleNote;
   record?: CourseHoleStat;
+  /** The player's round plan for this hole (Sascha 16.10.2026: "plan a round") */
+  planned?: PlannedHole;
 }) {
   const fmt = (m: number) => formatDistance(m, p.unit);
   const { hole, data } = p;
@@ -128,10 +133,15 @@ function HolePage(p: {
   // caddie off the tee, calm weather
   const terrain = { slopes: p.slopes, boundary: p.boundary, trees: p.trees, woods: p.woods };
   const teeAim = teeAimFor({ data, par: hole.par, pin: data.greenCenter, bag: p.bag, conditions: null, tendency: new Map(), ...terrain, note: p.note, style: p.style, favourite: p.favourite, playing: p.playing });
+  // the player's plan wins over the caddie's own point: its targets and every shot's club (or the suggestion)
+  const plan = p.planned?.targets.length ? p.planned : null;
+  const planPoints = plan ? [data.tee, ...plan.targets, data.greenCenter] : [];
+  const planClubs = planPoints.slice(1).map((to, k) => plan!.clubs[k] ?? adviseClub(distanceM(planPoints[k], to), p.bag, k === 0 && hole.par >= 4).club);
   const cad = caddieAdvice({
     data, par: hole.par || 4, holeIndex: hole.index, holeCount: 18, from: data.tee, teeShot: true, pin: data.greenCenter,
-    targets: teeAim ? [teeAim.pos] : [], teeAim, ...terrain, bag: p.bag, conditions: null, tendency: new Map(), note: p.note,
+    targets: plan ? plan.targets : teeAim ? [teeAim.pos] : [], teeAim, ...terrain, bag: p.bag, conditions: null, tendency: new Map(), note: p.note,
     style: p.style, favourite: p.favourite, lieChoice: null, unit: p.unit, playing: p.playing,
+    planned: plan ? { clubs: planClubs, shot: 0 } : null,
   });
   const lines = cad.lines.filter((l) => l.tone === 'warn' || l.tone === 'plan' || /^Fairway \d/.test(l.text)).map((l) => l.text);
   const book = holeBook({ data, slopes: p.slopes, greenSlope: p.greenSlope, grid: p.grid, unit: p.unit, record: p.record });
@@ -140,11 +150,12 @@ function HolePage(p: {
       {head}
       <div className="book-body">
         <figure className="book-sketch">
-          <HoleSketch data={data} trees={p.trees} boundary={p.boundary} marks={marks} aim={hole.par >= 4 ? cad.ap.landing : null} />
+          <HoleSketch data={data} trees={p.trees} boundary={p.boundary} marks={marks} aim={plan ? plan.targets[0] : hole.par >= 4 ? cad.ap.landing : null} />
         </figure>
         <div className="book-text">
           <p className="book-club">
-            <strong>{clubCode(cad.advice.club)}</strong> {tr('off the tee', 'vom Abschlag')}
+            <strong>{clubCode(plan ? planClubs[0] : cad.advice.club)}</strong> {tr('off the tee', 'vom Abschlag')}
+            {plan && <span className="muted"> · {tr('your plan', 'dein Plan')}</span>}
             {book.rise && <span className="muted"> · {book.rise}</span>}
           </p>
           <ul className="book-lines">

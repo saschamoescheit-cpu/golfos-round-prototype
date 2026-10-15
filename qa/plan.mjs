@@ -48,6 +48,13 @@ await p.locator('.hole-drawer').getByRole('button', { name: 'Vorschau beenden' }
 await p.waitForTimeout(800);
 await pick();
 ok((await p.getByRole('button', { name: /Runde planen/ }).innerText()).includes('1 Loch geplant'), 'setup: "1 Loch geplant"');
+// the birdie book shows the plan
+await p.getByRole('button', { name: 'Birdiebook', exact: true }).click();
+await p.waitForTimeout(4000);
+const book1 = await p.locator('.book-hole').first().innerText();
+ok(/5i vom Abschlag · dein Plan/.test(book1.replace(/\s+/g, ' ')) && /Dein Plan: 5i auf Ziel 1 – danach 9i ins Grün/.test(book1), 'birdie book 1A: the plan');
+await p.locator('.topbar').getByRole('button').first().click();
+await p.waitForTimeout(800);
 // the live round: the planned target is there, the caddie says the plan
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(6000);
