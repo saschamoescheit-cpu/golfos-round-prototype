@@ -72,7 +72,15 @@ export function pinStrategy(o: {
   const cost = (p: LngLat): number => {
     let e = strokesFrom(p, o.pin, o.data);
     if (o.data.bunkers.some((r) => pointInRing(p, r))) e += sandExtra;
-    else if (!onGreenAt(p, o.data) && distanceM(p, o.data.greenCenter) < 40) e += roughExtra;
+    else if (!onGreenAt(p, o.data) && distanceM(p, o.data.greenCenter) < 40) {
+      e += roughExtra;
+      // off the green and well below it (Sascha 15.10.2026, 4A: "right of the green it drops steeply – a blind pitch
+      // up to a green 15 m higher"): every metre below the pin costs, from 1.5 m on
+      if (o.grid && hPin != null) {
+        const h = heightAt(o.grid, p);
+        if (h != null && hPin - h > 1.5) e += Math.min(0.45, 0.1 + (hPin - h - 1.5) * 0.08);
+      }
+    }
     if (o.grid && hPin != null && onGreenAt(p, o.data)) {
       const hp = heightAt(o.grid, p);
       if (hp != null) {

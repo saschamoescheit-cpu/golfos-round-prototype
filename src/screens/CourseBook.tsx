@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Course, LngLat, RoundHole } from '../types';
-import { formatDistance, holeMapData, lineLength, pointAt, type HoleMapData } from '../lib/geo';
+import { formatDistance, holeMapData, lineLength, pointAt, woodsOf, type HoleMapData } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
 import { loadCaddieSettings, loadCarryBag, loadGeometry, loadRounds, loadUnit } from '../lib/storage';
 import { courseStats, type CourseHoleStat } from '../lib/history';
@@ -21,6 +21,7 @@ import { holeBook } from '../lib/holebook';
 
 export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: string | null; playing?: number | null; onBack: () => void }) {
   const geometry = useMemo(() => loadGeometry(props.course.id), [props.course.id]);
+  const woods = useMemo(() => woodsOf(geometry), [geometry]);
   const [grids, setGrids] = useState<Record<string, GreenGrid> | null>(null);
   useEffect(() => {
     let alive = true;
@@ -63,6 +64,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
             data={data}
             courseId={props.course.id}
             trees={geometry.trees}
+            woods={woods}
             boundary={geometry.boundary}
             slopes={geometry.fairwaySlopes?.[h.label]}
             greenSlope={geometry.greenSlopes?.[h.label]}
@@ -87,6 +89,7 @@ function HolePage(p: {
   data: HoleMapData | null;
   courseId: string;
   trees?: LngLat[][];
+  woods?: LngLat[][];
   boundary?: LngLat[][];
   slopes?: [number, number, number?][];
   greenSlope?: { pct: number; downDeg: number };
@@ -123,7 +126,7 @@ function HolePage(p: {
   const L = lineLength(data.line);
   const marks = [100, 150, 200].filter((d) => L - d > 40).map((d) => ({ pos: pointAt(data.line, L - d), label: fmt(d) }));
   // caddie off the tee, calm weather
-  const terrain = { slopes: p.slopes, boundary: p.boundary, trees: p.trees };
+  const terrain = { slopes: p.slopes, boundary: p.boundary, trees: p.trees, woods: p.woods };
   const teeAim = teeAimFor({ data, par: hole.par, pin: data.greenCenter, bag: p.bag, conditions: null, tendency: new Map(), ...terrain, note: p.note, style: p.style, favourite: p.favourite, playing: p.playing });
   const cad = caddieAdvice({
     data, par: hole.par || 4, holeIndex: hole.index, holeCount: 18, from: data.tee, teeShot: true, pin: data.greenCenter,

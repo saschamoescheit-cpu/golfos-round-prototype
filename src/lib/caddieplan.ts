@@ -35,6 +35,8 @@ export interface CaddieInput {
   slopes?: Samples;
   boundary?: Ring[];
   trees?: Ring[];
+  /** Woods where a ball is lost (OSM woods plus large crown areas) – for the tee strategy only. */
+  woods?: Ring[];
   bag: CarryBag;
   conditions: Conditions | null;
   tendency: Map<Club, number>;
@@ -91,15 +93,15 @@ function sameSide(plan: string, fairwaySide: number | undefined): string {
   return (fairwaySide > 0 && left) || (fairwaySide < 0 && right) ? '' : plan;
 }
 
-export function teeAimFor(o: Pick<CaddieInput, 'data' | 'par' | 'pin' | 'bag' | 'conditions' | 'tendency' | 'slopes' | 'boundary' | 'trees' | 'note' | 'style' | 'favourite' | 'playing'>): AimPoint | null {
+export function teeAimFor(o: Pick<CaddieInput, 'data' | 'par' | 'pin' | 'bag' | 'conditions' | 'tendency' | 'slopes' | 'boundary' | 'trees' | 'woods' | 'note' | 'style' | 'favourite' | 'playing'>): AimPoint | null {
   if (o.par < 4) return null;
-  return aimPoint({ data: o.data, from: o.data.tee, pin: o.pin, par: o.par, teeShot: true, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, note: o.note, style: o.style, favourite: o.favourite, playing: o.playing });
+  return aimPoint({ data: o.data, from: o.data.tee, pin: o.pin, par: o.par, teeShot: true, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, woods: o.woods, note: o.note, style: o.style, favourite: o.favourite, playing: o.playing });
 }
 
 export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const { data, from, pin, note, unit } = o;
   const fmt = (m: number) => formatDistance(m, unit);
-  const ap = aimPoint({ data, from, pin, par: o.par, teeShot: o.teeShot, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, note, style: o.style, favourite: o.favourite, playing: o.playing, grid: o.grid });
+  const ap = aimPoint({ data, from, pin, par: o.par, teeShot: o.teeShot, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, woods: o.woods, note, style: o.style, favourite: o.favourite, playing: o.playing, grid: o.grid });
   // Own planned target still ahead (dragged or added by the player) wins over the caddie's point.
   const ownTarget = o.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15 && !(o.teeAim && distanceM(t, o.teeAim.pos) < 3)) ?? null;
   const target = ownTarget ?? ap.pos;
@@ -156,6 +158,14 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const lines: CaddieLine[] = [];
   if (warning) lines.push({ text: warning, tone: 'warn' });
   if (note.text) lines.push({ text: note.text, tone: 'warn' });
+  if (o.teeShot && (note.lostLeft || note.lostRight))
+    lines.push({
+      text: tr(
+        `Woods ${note.lostLeft ? 'left' : 'right'} – balls are mostly lost there; if you miss, miss ${note.lostLeft ? 'right' : 'left'}.`,
+        `Wald ${note.lostLeft ? 'links' : 'rechts'} – Bälle sind dort meist weg; wenn verfehlen, dann ${note.lostLeft ? 'rechts' : 'links'}.`,
+      ),
+      tone: 'warn',
+    });
   // The instruction first, the reasons (plan, hanging fairway) after it.
   if (aim) lines.push({ text: aim, tone: 'plan' });
   // Pin strategy first; the "best leave" only when the plan is the flag itself (else the two would argue).
@@ -165,7 +175,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const layupLine = ap.kind === 'layup' && !ownTarget && aim != null;
   // The tee strategy's sentence ("3-wood instead of driver: …") is the golf reason for the club – shown folded too.
   const teeReason = o.teeShot && ap.teePlan != null && holePlan === ap.teePlan;
-  if (holePlan && !layupLine && !(warning && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan', ...(teeReason ? { lead: true } : {}) });
+  if (holePlan && !layupLine && !((warning || note.lostLeft || note.lostRight) && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan', ...(teeReason ? { lead: true } : {}) });
   if (hang) lines.push({ text: hang.text, tone: 'plan' });
   else if (!ownTarget && ap.kind !== 'approach') {
     const h = slopeAdvice(crossSlopeAt(o.slopes, profileAlong(data, ap.pos)));

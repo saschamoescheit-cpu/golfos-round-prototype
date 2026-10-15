@@ -387,3 +387,18 @@ export function approachFrom(d: { line: LngLat[]; tee: LngLat }): LngLat {
   const L = lineLength(d.line);
   return L > 100 ? pointAt(d.line, L - 100) : d.tee;
 }
+
+/** Area of a ring in m² (small rings, flat earth). */
+export function ringArea(r: Ring): number {
+  if (r.length < 3) return 0;
+  const k = 111320 * Math.cos((r[0][1] * Math.PI) / 180);
+  let a = 0;
+  for (let i = 0; i + 1 < r.length; i++) a += r[i][0] * k * (r[i + 1][1] * 110540) - r[i + 1][0] * k * (r[i][1] * 110540);
+  return Math.abs(a) / 2;
+}
+
+/** The woods the caddie plays around (Sascha's Hetzenhof notes, 15.10.2026: the woods at 4A/5A swallow balls but are
+ *  hardly mapped in OSM): the mapped woods plus every tree-crown area from the aerial image of 1000 m² or more. */
+export function woodsOf(g: { trees?: Ring[]; canopy?: Ring[] }): Ring[] {
+  return [...(g.trees ?? []), ...(g.canopy ?? []).filter((r) => ringArea(r) >= 1000)];
+}

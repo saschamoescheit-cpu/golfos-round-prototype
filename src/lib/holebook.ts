@@ -11,6 +11,7 @@ import type { CourseHoleStat } from './history';
 // (to reach / to carry), the green's slope and where to leave the approach, the player's record on the hole.
 
 export interface HoleBook {
+  tip?: string; // what a good local player knows (hole notes)
   rise: string | null; // "green 6 m higher"
   hazards: string[]; // "Water left: 180 / 205"
   green: string[];
@@ -24,6 +25,7 @@ export function holeBook(p: {
   grid: GreenGrid | null;
   unit: Unit;
   record?: CourseHoleStat;
+  tip?: string;
 }): HoleBook {
   const { data } = p;
   const fmt = (m: number) => formatDistance(m, p.unit);
@@ -61,5 +63,5 @@ export function holeBook(p: {
         ...(rec.notes.length ? [rec.notes.join(' · ')] : []),
       ]
     : [];
-  return { rise, hazards, green, record };
+  return { ...(p.tip ? { tip: p.tip } : {}), rise, hazards, green, record };
 }

@@ -218,10 +218,16 @@ function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: HoleNote)
 /** The course book's facts on the hole (Sascha 15.10.2026), under the caddie's advice when unfolded. */
 function BookPart(props: { book: HoleBook }) {
   const b = props.book;
-  if (!b.rise && !b.hazards.length && !b.green.length && !b.record.length) return null;
+  if (!b.tip && !b.rise && !b.hazards.length && !b.green.length && !b.record.length) return null;
   return (
     <div className="caddie-book" aria-label={tr('The hole', 'Das Loch')}>
       <span className="caddie-book-title">{tr('The hole', 'Das Loch')}{b.rise ? ` · ${b.rise}` : ''}</span>
+      {b.tip && (
+        <>
+          <span className="caddie-book-lbl">{tr('Tip for this hole', 'Tipp für dieses Loch')}</span>
+          <span>{b.tip}</span>
+        </>
+      )}
       {b.hazards.length > 0 && (
         <>
           <span className="caddie-book-lbl">{tr('From the tee: to reach / to carry', 'Vom Abschlag: bis dorthin / drüber')}</span>

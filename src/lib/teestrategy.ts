@@ -50,7 +50,10 @@ export function teeSpread(total: number, club: Club, playing: number | null, sty
   return { long: (total * 0.06 + 3) * k, side: (total * 0.065 + 2) * k * (club === 'Dr' ? 1.15 : 1) };
 }
 
-type Miss = 'ob' | 'water' | 'trees' | 'bunker' | 'rough' | 'fairway';
+type Miss = 'ob' | 'lost' | 'water' | 'trees' | 'bunker' | 'rough' | 'fairway';
+/** Deeper than this into a wood the ball is mostly lost (Sascha 15.10.2026: "the balls are gone, you hit again from
+ *  the tee") – at its edge it is found and punched out. */
+export const LOST_IN_WOODS_M = 8;
 
 const cache = new Map<string, TeePlan | null>();
 
@@ -63,6 +66,7 @@ export function teeStrategy(o: {
   conditions: Conditions | null;
   boundary?: Ring[];
   trees?: Ring[];
+  woods?: Ring[]; // where a ball is lost: OSM woods plus large crown areas (deeper than LOST_IN_WOODS_M)
   note?: HoleNote;
 }): TeePlan | null {
   const { data } = o;
@@ -71,7 +75,7 @@ export function teeStrategy(o: {
   const dir0 = bearingDeg(data.tee, pointAt(data.line, Math.min(200, L / 2)));
   const ratio = 100 / playsLike(100, dir0, o.conditions, null).playsLike;
   const shape = (rings: Ring[] | undefined) => (rings ?? []).map((r) => `${r.length}:${r[0]?.join()}`).join(';');
-  const key = [data.tee.join(), data.greenCenter.join(), o.par, o.playing, o.style, ratio.toFixed(2), o.bag.map((b) => `${b.club}${b.carry}`).join(), o.note?.obLeft, o.note?.obRight, shape(data.water), shape(data.bunkers), shape(data.fairways), shape(o.boundary), (o.trees ?? []).length].join('|');
+  const key = [data.tee.join(), data.greenCenter.join(), o.par, o.playing, o.style, ratio.toFixed(2), o.bag.map((b) => `${b.club}${b.carry}`).join(), o.note?.obLeft, o.note?.obRight, o.note?.lostLeft, o.note?.lostRight, shape(data.water), shape(data.bunkers), shape(data.fairways), shape(o.boundary), (o.trees ?? []).length, (o.woods ?? []).length].join('|');
   if (cache.has(key)) return cache.get(key)!;
 
   const ph = Math.min(36, Math.max(0, o.playing ?? 18));
@@ -82,6 +86,8 @@ export function teeStrategy(o: {
   const water = near(data.water);
   const bunkers = near(data.bunkers);
   const trees = near(o.trees);
+  const woods = near(o.woods ?? o.trees);
+  const inWoods = (p: LngLat) => woods.some((r) => pointInRing(p, r) && distToLine(p, r) > LOST_IN_WOODS_M);
   const fairways = data.fairways;
   const bound = o.boundary ?? [];
   // point-in-polygon behind a bounding-box check: most samples are far from most woods and ponds (speed on the phone)
@@ -112,7 +118,11 @@ export function teeStrategy(o: {
     if (bound.length && teeInside && !inBound(p)) return { v: 1 + fromTee, miss: 'ob' };
     // out of bounds the map does not know (hole notes): more than 25 m to that side
     if ((o.note?.obLeft && side < -25) || (o.note?.obRight && side > 25)) return { v: 1 + fromTee, miss: 'ob' };
+    // woods the player knows to swallow balls (hole notes): more than 25 m to that side
+    if ((o.note?.lostLeft && side < -25) || (o.note?.lostRight && side > 25)) return { v: 1 + fromTee, miss: 'lost' };
     if (inWater(p)) return { v: 1 + expectedStrokes(d + 10, 'rough') + roughExtra, miss: 'water' };
+    // deep in the woods the ball is lost – stroke and distance; at the edge: punch out
+    if (inWoods(p)) return { v: 1 + fromTee, miss: 'lost' };
     if (inTrees(p)) return { v: expectedStrokes(d, 'recovery'), miss: 'trees' };
     if (inBunker(p)) return { v: expectedStrokes(d, 'bunker') + sandExtra, miss: 'bunker' };
     if (inFairway(p)) return { v: expectedStrokes(d, 'fairway'), miss: 'fairway' };
@@ -143,7 +153,7 @@ export function teeStrategy(o: {
       // aim at the fairway (the caddie's safety check would pull an aim in the rough back anyway)
       if (off !== 0 && !inFairway(aim)) continue;
       let sum = 0;
-      const misses: Record<Miss, number> = { ob: 0, water: 0, trees: 0, bunker: 0, rough: 0, fairway: 0 };
+      const misses: Record<Miss, number> = { ob: 0, lost: 0, water: 0, trees: 0, bunker: 0, rough: 0, fairway: 0 };
       let badSide = 0;
       let bad = 0;
       for (const [zl, zs] of SAMPLES) {
@@ -152,7 +162,7 @@ export function teeStrategy(o: {
         const r = value(p, side);
         sum += r.v;
         misses[r.miss]++;
-        if (r.miss === 'ob' || r.miss === 'water' || r.miss === 'trees') {
+        if (r.miss === 'ob' || r.miss === 'lost' || r.miss === 'water' || r.miss === 'trees') {
           badSide += side;
           bad++;
         }
@@ -176,9 +186,9 @@ export function teeStrategy(o: {
 
   // ---- the sentence ----
   const fmt = (m: number) => Math.round(m);
-  const missWord = (m: Miss) => ({ ob: tr('out of bounds', 'Aus'), water: tr('water', 'Wasser'), trees: tr('trees', 'Bäume'), bunker: tr('bunker', 'Bunker'), rough: tr('rough', 'Rough'), fairway: '' })[m];
+  const missWord = (m: Miss) => ({ ob: tr('out of bounds', 'Aus'), lost: tr('woods (ball mostly lost)', 'Wald (Ball meist weg)'), water: tr('water', 'Wasser'), trees: tr('trees', 'Bäume'), bunker: tr('bunker', 'Bunker'), rough: tr('rough', 'Rough'), fairway: '' })[m];
   const worstMiss = (c: Cand): Miss | null => {
-    const order: Miss[] = ['ob', 'water', 'trees', 'bunker'];
+    const order: Miss[] = ['ob', 'lost', 'water', 'trees', 'bunker'];
     const m = order.map((x) => [x, c.misses[x]] as const).sort((a, b) => b[1] - a[1])[0];
     return m[1] >= N * 0.06 ? m[0] : null; // at least 6 % of the drives
   };

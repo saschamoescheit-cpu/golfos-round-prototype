@@ -7,6 +7,7 @@ import { SEED_GEOMETRY } from '../src/data/seedGeometry';
 import { TEES } from '../src/data/tees';
 import { holesFromTags } from '../src/lib/courses';
 import { bearingDeg, distanceM, distToLine, holeMapData, lineLength, pointInRing, shiftTee, teeDelta, type HoleMapData } from '../src/lib/geo';
+import { woodsOf } from '../src/lib/geo';
 import { move } from '../src/lib/aimpoint';
 import { holeForTee } from '../src/lib/teeline';
 import { caddieAdvice, teeAimFor, type CaddieOutput } from '../src/lib/caddieplan';
@@ -130,7 +131,7 @@ for (const [courseId, seed] of Object.entries(SEED_COURSES)) {
     if (tees) d = holeForTee(d, courseId, h.ref, tees.tees.includes('Yellow') ? 'Yellow' : tees.tees[0], geo.tee);
 if (!d) continue;
     const par = h.par!;
-    const terrain = { slopes: geo.fairwaySlopes?.[h.ref], boundary: geo.boundary, trees: geo.trees };
+    const terrain = { slopes: geo.fairwaySlopes?.[h.ref], boundary: geo.boundary, trees: geo.trees, woods: woodsOf(geo) };
     const note = notes[h.ref] ?? {};
     const pin = d.greenCenter;
     const hb = bearingDeg(d.tee, d.greenCenter);

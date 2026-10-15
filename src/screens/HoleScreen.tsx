@@ -29,7 +29,7 @@ import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type G
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
+import { woodsOf, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { ScoreSheet } from '../components/ScoreSheet';
@@ -129,6 +129,7 @@ export function HoleScreen(props: {
   const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId, geoVersion]);
   // The hole from the tee the player chose (courses with tee data); the map line starts at one of the tees.
   const forTee = (d: ReturnType<typeof holeMapData>, label: string) => holeForTee(d, round.courseId, label, round.tee, geometry.tee);
+  const woods = useMemo(() => woodsOf(geometry), [geometry]);
   const mapData = useMemo(() => forTee(holeMapData(geometry, hole.loop, hole.number), hole.label), [geometry, hole.loop, hole.number, round.tee]);
   // The map is the main view. A hole without a hole line opens the set-up on the map (Sascha 10.10.2026).
   const [view, setView] = useState<'map' | 'score'>('map');
@@ -639,7 +640,7 @@ export function HoleScreen(props: {
     // The caddie's spread model works with the 18-hole playing handicap; a 9-hole round carries the 9-hole value
     // (about half – right for Stableford), so it is doubled here.
     const caddiePlaying = playing18(round.holes.length, me.playingHandicap);
-    const terrain = { slopes: geometry.fairwaySlopes?.[hole.label], boundary: geometry.boundary, trees: geometry.trees };
+    const terrain = { slopes: geometry.fairwaySlopes?.[hole.label], boundary: geometry.boundary, trees: geometry.trees, woods };
     // Par 4/5: target 1 is there from the start – the caddie's landing spot from the tee (driver carry, moved for
     // wind, slope and tendency, clear of trees). The player can drag or remove it; his own plan is kept then.
     const teeAim = teeAimFor({ data: mapData, par: hole.par, pin: plans[i]?.pin ?? mapData.greenCenter, bag: carryBag, conditions, tendency, ...terrain, note: notes[hole.label] ?? {}, style: caddieSettings.style, favourite: caddieSettings.favourite, playing: caddiePlaying });
@@ -703,7 +704,7 @@ export function HoleScreen(props: {
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
     const grid = grids?.[hole.label] ?? null;
     // the course book's facts on this hole, also in the caddie (Sascha 15.10.2026)
-    const book = holeBook({ data: mapData, slopes: geometry.fairwaySlopes?.[hole.label], greenSlope: geometry.greenSlopes?.[hole.label], grid, unit, record: holeRecords.get(hole.label) });
+    const book = holeBook({ data: mapData, slopes: geometry.fairwaySlopes?.[hole.label], greenSlope: geometry.greenSlopes?.[hole.label], grid, unit, record: holeRecords.get(hole.label), tip: (notes[hole.label] ?? {}).tip });
     const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos)
         ? ([Math.round(player.pos[0] * 1e5) / 1e5, Math.round(player.pos[1] * 1e5) / 1e5] as LngLat) // ~1 m: GPS jitter does not re-roll the putt
         : null;

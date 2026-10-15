@@ -7,11 +7,13 @@ import { SEED_COURSES } from '../src/data/seedCourses';
 import { SEED_GEOMETRY } from '../src/data/seedGeometry';
 import { holesFromTags } from '../src/lib/courses';
 import { distanceM, holeMapData, lineLength } from '../src/lib/geo';
+import { woodsOf } from '../src/lib/geo';
 import { holeForTee } from '../src/lib/teeline';
 import { caddieAdvice, teeAimFor } from '../src/lib/caddieplan';
 import { DEFAULT_CARRY } from '../src/lib/caddie';
 import { withPartials } from '../src/lib/partials';
 import { holeBook } from '../src/lib/holebook';
+import { loadHoleNotes } from '../src/lib/holenotes';
 import { clubCode } from '../src/lib/i18n';
 import type { LngLat } from '../src/types';
 
@@ -20,12 +22,14 @@ const [courseId = 'osm:relation/1326323', tee = 'Yellow'] = process.argv.slice(2
 const seed = SEED_COURSES[courseId];
 const geo = SEED_GEOMETRY[courseId];
 const bag = withPartials(DEFAULT_CARRY);
+const notes = loadHoleNotes(courseId);
 const holes = holesFromTags(seed.holeTags).filter((h) => h.par != null && h.loop.length === 1);
 const out = holes.map((h, k) => {
   const data = holeForTee(holeMapData(geo, h.loop, h.number), courseId, h.ref, tee, geo.tee);
   if (!data) return { hole: h.ref, par: h.par, missing: true };
-  const terrain = { slopes: geo.fairwaySlopes?.[h.ref], boundary: geo.boundary, trees: geo.trees };
-  const common = { data, par: h.par!, holeIndex: k, holeCount: 18, pin: data.greenCenter, ...terrain, bag, conditions: null, tendency: new Map(), note: {}, style: 'normal' as const, favourite: 90, lieChoice: null, unit: 'm' as const, playing: null };
+  const note = notes[h.ref] ?? {};
+  const terrain = { slopes: geo.fairwaySlopes?.[h.ref], boundary: geo.boundary, trees: geo.trees, woods: woodsOf(geo) };
+  const common = { data, par: h.par!, holeIndex: k, holeCount: 18, pin: data.greenCenter, ...terrain, bag, conditions: null, tendency: new Map(), note, style: 'normal' as const, favourite: 90, lieChoice: null, unit: 'm' as const, playing: null };
   const shots: { from: string; club: string; distance: number; playsLike: number; target: string; lines: { text: string; tone?: string }[]; alt: string | null }[] = [];
   let from: LngLat = data.tee;
   for (let n = 0; n < (h.par! >= 5 ? 3 : h.par! >= 4 ? 2 : 1); n++) {
@@ -44,7 +48,7 @@ const out = holes.map((h, k) => {
     if (distanceM(cad.ap.landing, data.greenCenter) < 30) break; // on (or by) the green
     from = cad.ap.landing;
   }
-  const book = holeBook({ data, slopes: geo.fairwaySlopes?.[h.ref], greenSlope: geo.greenSlopes?.[h.ref], grid: null, unit: 'm' });
+  const book = holeBook({ data, slopes: geo.fairwaySlopes?.[h.ref], greenSlope: geo.greenSlopes?.[h.ref], grid: null, unit: 'm', tip: note.tip });
   return { hole: h.ref, par: h.par, length: Math.round(lineLength(data.line)), hcp: h.strokeIndex?.[0] ?? null, shots, book };
 });
 console.log(JSON.stringify(out));
