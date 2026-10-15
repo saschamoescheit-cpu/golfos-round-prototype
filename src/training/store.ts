@@ -85,7 +85,8 @@ export function toggleFav(drill: string): void {
 }
 
 // ---------- results ----------
-export const loadLog = (): LogEntry[] => read<LogEntry[]>(K.log, []);
+// newest first – entries synced from another device are inserted at the top regardless of their time
+export const loadLog = (): LogEntry[] => read<LogEntry[]>(K.log, []).sort((a, b) => b.at.localeCompare(a.at));
 export function addLog(e: Omit<LogEntry, 'id' | 'at'> & { at?: string }): LogEntry {
   const entry: LogEntry = { id: trainingId(), at: e.at ?? new Date().toISOString(), ...e } as LogEntry;
   write(K.log, [entry, ...loadLog()]);
@@ -158,7 +159,7 @@ export function placeOrder(total: number): Order {
   write(K.cart, []);
   return o;
 }
-export const loadOrders = (): Order[] => read<Order[]>(K.orders, []);
+export const loadOrders = (): Order[] => read<Order[]>(K.orders, []).sort((a, b) => b.at.localeCompare(a.at));
 
 // ---------- seen intro ----------
 export const introSeen = (): boolean => read<boolean>(K.seen, false);

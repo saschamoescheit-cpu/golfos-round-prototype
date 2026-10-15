@@ -35,8 +35,6 @@ const GAME_TRASH = 'golfos.games.trash.v1';
 /** Single settings: the key on the device is the row id. */
 const SETTINGS = [
   'golfos.profile.v1', 'golfos.bag.v1', 'golfos.bagstyle.v1', 'golfos.caddie.v1', 'golfos.partials.v1', 'golfos.unit.v1', 'golfos.friends.v1', 'golfos.lang.v1', 'golfos.me.v1',
-  // Training (feature 022): favourites, results, sessions and their bin, own plans, cart, simulated orders
-  'golfos.training.fav.v1', 'golfos.training.log.v1', 'golfos.training.sessions.v1', 'golfos.training.trash.v1', 'golfos.training.plans.v1', 'golfos.training.cart.v1', 'golfos.training.orders.v1',
 ];
 /** Per round or per course: a key prefix, the rest is the row id. */
 const PER = [
@@ -52,6 +50,14 @@ const LISTS = [
   { kind: 'game', key: GAMES, idOf: (x: { id: string }) => x.id },
   { kind: 'trash-round', key: TRASH, idOf: (x: { round: { id: string } }) => x.round.id },
   { kind: 'trash-game', key: GAME_TRASH, idOf: (x: { game: { id: string } }) => x.game.id },
+  // Training (feature 022): every entry its own row, so both devices' entries are kept (never lose data)
+  { kind: 'training-log', key: 'golfos.training.log.v1', idOf: (x: { id: string }) => x.id },
+  { kind: 'training-session', key: 'golfos.training.sessions.v1', idOf: (x: { id: string }) => x.id },
+  { kind: 'training-trash', key: 'golfos.training.trash.v1', idOf: (x: { session: { id: string } }) => x.session.id },
+  { kind: 'training-plan', key: 'golfos.training.plans.v1', idOf: (x: { id: string }) => x.id },
+  { kind: 'training-order', key: 'golfos.training.orders.v1', idOf: (x: { id: string }) => x.id },
+  { kind: 'training-cart', key: 'golfos.training.cart.v1', idOf: (x: { gear: string }) => x.gear },
+  { kind: 'training-fav', key: 'golfos.training.fav.v1', idOf: (x: string) => x },
 ] as const;
 
 type Meta = Record<string, { hash: string; at: string }>; // per "kind|id": what was in sync last time

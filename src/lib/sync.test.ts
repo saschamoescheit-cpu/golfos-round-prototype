@@ -86,4 +86,17 @@ describe('sync between devices', () => {
     await syncOnce(a, srv, clock);
     expect(a.get('golfos.unit.v1')).toBe('"yd"');
   });
+  it('training results logged on two devices before the first sync are all kept (Training, feature 022)', async () => {
+    const srv = server();
+    const log = (id: string, drill: string) => ({ id, drill, at: '2026-10-16T08:00:00Z', value: 12 });
+    const phone = device({ 'golfos.training.log.v1': [log('l1', 'tiger-gate')], 'golfos.training.fav.v1': ['tiger-gate'] });
+    const ipad = device({ 'golfos.training.log.v1': [log('l2', 'landing-ring')], 'golfos.training.fav.v1': ['clock'] });
+    await syncOnce(phone, srv, clock);
+    await syncOnce(ipad, srv, clock);
+    await syncOnce(phone, srv, clock);
+    const ids = (d: LocalStore) => (JSON.parse(d.get('golfos.training.log.v1')!) as { id: string }[]).map((x) => x.id).sort();
+    expect(ids(phone)).toEqual(['l1', 'l2']);
+    expect(ids(ipad)).toEqual(['l1', 'l2']);
+    expect((JSON.parse(ipad.get('golfos.training.fav.v1')!) as string[]).sort()).toEqual(['clock', 'tiger-gate']);
+  });
 });
