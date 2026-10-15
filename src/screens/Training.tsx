@@ -642,7 +642,8 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
       {c.videos?.length ? (
         <>
           <h2 id="tr-videos">{tr('Explainer videos', 'Erklärvideos')}</h2>
-          {c.videos.map((v) => (
+          {/* videos in the player's language first */}
+          {[...c.videos].sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang())).map((v) => (
             <VideoCard key={v.id} v={v} />
           ))}
         </>

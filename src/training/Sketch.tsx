@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { tr } from '../lib/i18n';
+import { getLang, tr } from '../lib/i18n';
 import type { L, P, Pose, SideItem, Sketch, SketchItem } from './types';
 
 // Our own drawings for the drills (Sascha 15.10.2026: no pictures copied from the internet). A sketch is described in
 // meters – top view (x to the right, y towards the target) or side view (slopes, flight) – and drawn here as SVG.
 // Balls, tees and holes are drawn larger than to scale, so they stay visible on a phone.
 
-const txt = (t: L | string) => (typeof t === 'string' ? t : tr(t.en, t.de));
+// plain labels are written with a German decimal comma ("1,2 m") – a point in English
+const txt = (t: L | string) => (typeof t === 'string' ? (getLang() === 'en' ? t.replace(/(\d),(\d)/g, '$1.$2') : t) : tr(t.en, t.de));
 
 const C = {
   bg: '#5d8f3a',
