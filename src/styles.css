@@ -1140,3 +1140,5 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 /* Games: the standing read aloud, the result shared */
 .game-standing-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .share-btn { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+.google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; }

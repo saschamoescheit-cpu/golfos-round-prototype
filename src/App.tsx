@@ -4,6 +4,7 @@ import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCache
 import { commitParAt } from './lib/scoring';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
+import { finishSignIn, syncNow, syncSoon } from './lib/sync';
 import { PlayTab } from './screens/Play';
 import { RoundsTab, uncheckedRounds } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
@@ -139,7 +140,20 @@ export function App() {
   const persist = (round: Round) => {
     saveRound(round);
     setRounds(loadRounds());
+    syncSoon();
   };
+  // sync with the other devices (feature 013): after the Google login, on start, when the app comes back, every few
+  // minutes and shortly after a change – only when signed in and online
+  useEffect(() => {
+    finishSignIn().finally(() => syncNow());
+    const onShow = () => document.visibilityState === 'visible' && syncNow();
+    document.addEventListener('visibilitychange', onShow);
+    const t = window.setInterval(() => syncNow(), 3 * 60 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', onShow);
+      window.clearInterval(t);
+    };
+  }, []);
 
   // Hole map and round check need the course geometry – bundled courses load it on demand (a moment, once).
   const geoId = screen.name === 'hole' || screen.name === 'review' ? screen.round.courseId : screen.name === 'book' ? screen.course.id : null;

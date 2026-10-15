@@ -7,6 +7,7 @@ import { loadCaddieSettings, loadCarryBag, loadUnit, saveUnit } from '../lib/sto
 import { getLang, tr } from '../lib/i18n';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { CoursePicker } from './CoursePicker';
+import { SyncCard } from '../components/SyncCard';
 import { STANDARD_CLUBS } from '../lib/clubs';
 import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, saveProfile, type Profile } from '../lib/profile';
@@ -117,6 +118,8 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
         <h3 className="settings-sub">{tr('Caddie', 'Caddie')}</h3>
         <CaddieSettingsFields />
       </section>
+
+      <SyncCard />
 
       <section className="card stats-card">
         <h2>{tr('Backup', 'Sicherung')}</h2>

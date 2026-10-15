@@ -218,8 +218,8 @@ function fullness(json: string): number {
 // ---------- the browser side: localStorage and Supabase (REST, no library) ----------
 
 /** Filled in once the Supabase project exists (Sascha): the project URL and its public (anon) key. */
-export const SUPABASE_URL = '';
-export const SUPABASE_KEY = '';
+export const SUPABASE_URL: string = 'https://rgisfnilwehnqpmbrxmp.supabase.co'; // Sascha's project (EU, Ireland)
+export const SUPABASE_KEY: string = 'sb_publishable_41ASfBWeORDK7Mlql3pZyA_XjmtGWvC'; // public key – the row rule protects the data
 export const syncConfigured = (): boolean => SUPABASE_URL !== '' && SUPABASE_KEY !== '';
 
 export const browserStore: LocalStore = {
@@ -370,4 +370,12 @@ export function syncNow(): Promise<SyncResult | null> {
     }
   })();
   return running;
+}
+
+let soon = 0;
+/** A change was saved: sync in 20 s (several changes in a row become one sync). */
+export function syncSoon(): void {
+  if (!syncConfigured() || !loadSession()) return;
+  window.clearTimeout(soon);
+  soon = window.setTimeout(() => syncNow(), 20000);
 }

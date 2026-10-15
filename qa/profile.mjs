@@ -93,6 +93,14 @@ await dY.blur();
 await p.waitForTimeout(200);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.carry.v1') ?? localStorage.getItem('golfos.bag.v1') ?? '[]').find((b) => b.club === 'Dr')?.carry)) === 229, '250 yd stored as 229 m');
 await shot('bag-yards');
-ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
+// sync (feature 013): "Sign in with Google" goes to Google through Sascha's Supabase project
+await p.locator('.topbar').getByRole('button').first().click();
+await p.waitForTimeout(300);
+ok(await p.getByText('Auf allen Geräten').isVisible(), 'profile: "Auf allen Geräten" with the Google sign-in');
+ok(errs.length === 0, `no page errors in the app ${errs.slice(0, 2).join(' | ')}`); // Google's own page may log its own
+await p.getByRole('button', { name: 'Mit Google anmelden' }).click();
+await p.waitForURL(/accounts\.google\.com/, { timeout: 20000 }).catch(() => {});
+ok(/accounts\.google\.com/.test(p.url()) && p.url().includes('rgisfnilwehnqpmbrxmp'), `sign-in reaches Google (${p.url().slice(0, 60)}…)`);
+
 await b.close();
 process.exit(fails ? 1 : 0);

@@ -1,4 +1,5 @@
 import type { Game } from './gameforms';
+import { syncSoon } from './sync';
 
 // Games are kept apart from the rounds (Sascha 15.10.2026: the two modules are not linked yet).
 const KEY = 'golfos.games.v1';
@@ -19,6 +20,7 @@ export function saveGame(g: Game): void {
   } catch {
     /* storage full or blocked */
   }
+  syncSoon();
 }
 const TRASH = 'golfos.games.trash.v1';
 /** A game the player deleted – in the bin until he deletes it for good (as rounds, Sascha 15.10.2026). */
