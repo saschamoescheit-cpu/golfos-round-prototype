@@ -402,3 +402,8 @@ export function ringArea(r: Ring): number {
 export function woodsOf(g: { trees?: Ring[]; canopy?: Ring[] }): Ring[] {
   return [...(g.trees ?? []), ...(g.canopy ?? []).filter((r) => ringArea(r) >= 1000)];
 }
+
+/** Trees the player can aim at: OSM single trees and single crowns from the aerial image (15–600 m²). */
+export function landmarksOf(g: { treePoints?: LngLat[]; canopy?: Ring[] }): LngLat[] {
+  return [...(g.treePoints ?? []), ...(g.canopy ?? []).filter((r) => { const a = ringArea(r); return a >= 15 && a <= 600; }).map((r) => centroid(r))];
+}

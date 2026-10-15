@@ -43,3 +43,25 @@ describe('woods where balls are lost', () => {
     expect(lost!.expected).toBeGreaterThan(open!.expected + 0.05);
   });
 });
+
+describe('aim help and misses by the green (Sascha, Hetzenhof B)', () => {
+  const m = (x: number, y: number): [number, number] => [9.0 + x / (111320 * Math.cos((48 * Math.PI) / 180)), 48.0 + y / 111320];
+  it('names a tree in line with the aim, a little beyond it – not one far away or off the line', async () => {
+    const { aimHelp } = await import('./caddieplan');
+    const from = m(0, 0);
+    const aim = m(0, 200);
+    expect(aimHelp(from, aim, [m(1, 240)], false)).toMatch(/40 m/);
+    expect(aimHelp(from, aim, [m(1, 400)], false)).toBeNull(); // 200 m beyond: no help
+    expect(aimHelp(from, aim, [m(30, 240)], false)).toBeNull(); // 7° off the line
+    expect(aimHelp(from, aim, [m(1, 240), m(4, 245), m(-3, 238)], false)).toMatch(/group of trees|Baumgruppe/);
+  });
+  it('a wood next to the green makes that side the one to avoid', async () => {
+    const { approachPlan } = await import('./holeplan');
+    const green: Ring = [m(-10, 140), m(10, 140), m(10, 160), m(-10, 160), m(-10, 140)];
+    const data = { ...holeMapData(geo, 'A', 2)!, tee: m(0, 0), line: [m(0, 0), m(0, 150)], greenCenter: m(0, 150), green, fairways: [], water: [], bunkers: [] };
+    const wood: Ring = [m(-14, 100), m(-120, 100), m(-120, 220), m(-14, 220), m(-14, 100)];
+    const plan = approachPlan(data, m(0, 0), m(0, 150), { woods: [wood] });
+    expect(plan.avoid.some((a) => a.side === 'left' && a.why === 'woods')).toBe(true);
+    expect(plan.best).not.toBe('left');
+  });
+});

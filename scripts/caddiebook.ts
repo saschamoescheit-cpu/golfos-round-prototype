@@ -7,7 +7,7 @@ import { SEED_COURSES } from '../src/data/seedCourses';
 import { SEED_GEOMETRY } from '../src/data/seedGeometry';
 import { holesFromTags } from '../src/lib/courses';
 import { distanceM, holeMapData, lineLength } from '../src/lib/geo';
-import { woodsOf } from '../src/lib/geo';
+import { woodsOf, landmarksOf } from '../src/lib/geo';
 import { holeForTee } from '../src/lib/teeline';
 import { caddieAdvice, teeAimFor } from '../src/lib/caddieplan';
 import { DEFAULT_CARRY } from '../src/lib/caddie';
@@ -23,13 +23,14 @@ const seed = SEED_COURSES[courseId];
 const geo = SEED_GEOMETRY[courseId];
 const bag = withPartials(DEFAULT_CARRY);
 const notes = loadHoleNotes(courseId);
+const marks = landmarksOf(geo);
 const holes = holesFromTags(seed.holeTags).filter((h) => h.par != null && h.loop.length === 1);
 const out = holes.map((h, k) => {
   const data = holeForTee(holeMapData(geo, h.loop, h.number), courseId, h.ref, tee, geo.tee);
   if (!data) return { hole: h.ref, par: h.par, missing: true };
   const note = notes[h.ref] ?? {};
   const terrain = { slopes: geo.fairwaySlopes?.[h.ref], boundary: geo.boundary, trees: geo.trees, woods: woodsOf(geo) };
-  const common = { data, par: h.par!, holeIndex: k, holeCount: 18, pin: data.greenCenter, ...terrain, bag, conditions: null, tendency: new Map(), note, style: 'normal' as const, favourite: 90, lieChoice: null, unit: 'm' as const, playing: null };
+  const common = { data, par: h.par!, holeIndex: k % 9, holeCount: 18, pin: data.greenCenter, ...terrain, bag, conditions: null, tendency: new Map(), note, style: 'normal' as const, favourite: 90, lieChoice: null, unit: 'm' as const, playing: null, landmarks: marks, strokeIndex: h.strokeIndex?.[0] ?? null };
   const shots: { from: string; club: string; distance: number; playsLike: number; target: string; lines: { text: string; tone?: string }[]; alt: string | null }[] = [];
   let from: LngLat = data.tee;
   for (let n = 0; n < (h.par! >= 5 ? 3 : h.par! >= 4 ? 2 : 1); n++) {

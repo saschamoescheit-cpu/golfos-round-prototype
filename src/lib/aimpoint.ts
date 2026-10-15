@@ -141,7 +141,7 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
     const dir = bearingDeg(from, pin);
     const ratio = 100 / playsLike(100, dir, o.conditions, null).playsLike;
     // Tee strategy (feature 017): the club and side with the fewest expected strokes for this player.
-    const ts = driverOk && distanceM(from, data.tee) < 30 ? teeStrategy({ data, par: o.par, bag: o.bag, playing: o.playing ?? null, style, conditions: o.conditions, boundary: o.boundary, trees: o.trees, woods: o.woods, note: obNote }) : null;
+    const ts = driverOk && distanceM(from, data.tee) < 30 ? teeStrategy({ data, par: o.par, bag: o.bag, playing: o.playing ?? null, style, conditions: o.conditions, boundary: o.boundary, trees: o.trees, woods: o.woods, slopes: o.slopes, note: obNote }) : null;
     if (ts) {
       teePlanText = ts.text;
       teeClub = ts.club;

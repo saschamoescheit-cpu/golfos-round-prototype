@@ -1,6 +1,9 @@
 import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, pointAt, pointInRing, lineLength, type HoleMapData } from './geo';
 import { missCost } from './missmap';
+import { sideOf } from './dispersion';
+import { heightAt, type GreenGrid } from './greenread';
+import type { HoleNote } from './holenotes';
 import { hazardWord, sideWord, tr } from './i18n';
 
 // Hole plan for the AI caddie (feature 009): instead of a map full of dots, one sentence per shot –
@@ -30,6 +33,36 @@ function greenRadius(data: HoleMapData): number {
   return data.green.reduce((s, q) => s + distanceM(c, q), 0) / data.green.length;
 }
 
+/** What the map's lie alone does not know (Sascha's Hetzenhof notes, 15.10.2026): woods where a ball is lost, the
+ *  side a hole note marks, a steep drop next to the green. */
+export interface PlanContext {
+  woods?: Ring[];
+  teeShot?: boolean; // a par 3 from the tee: the hole note's side counts at the green too
+  note?: HoleNote;
+  grid?: GreenGrid | null;
+}
+const LOST_DEPTH_M = 8;
+function extraAt(p: LngLat, from: LngLat, toward: LngLat, ctx: PlanContext | undefined, pinH: number | null, teeShot = false): { cost: number; why: string } | null {
+  if (!ctx) return null;
+  // the side a hole note marks is about the tee shot – around the green only the mapped woods count
+  const s = sideOf(from, toward, p);
+  if (teeShot && ((ctx.note?.lostLeft && s < -20) || (ctx.note?.lostRight && s > 20))) return { cost: 1, why: 'woods' };
+  // out of bounds the hole note knows (the map's boundary may miss it): to the side, or behind the green (par 3)
+  if (teeShot && ((ctx.note?.obLeft && s < -20) || (ctx.note?.obRight && s > 20))) return { cost: 1, why: 'ob' };
+  if (teeShot && ctx.note?.obLong && Math.abs(s) < 25 && distanceM(from, p) > distanceM(from, toward) + 18) return { cost: 1, why: 'ob' };
+  if (ctx.woods?.some((r) => pointInRing(p, r) && distToRing(p, r) > LOST_DEPTH_M)) return { cost: 1, why: 'woods' };
+  if (ctx.grid && pinH != null) {
+    const h = heightAt(ctx.grid, p);
+    if (h != null && pinH - h > 2) return { cost: Math.min(0.9, 0.5 + (pinH - h - 2) * 0.1), why: 'drop' };
+  }
+  return null;
+}
+function distToRing(p: LngLat, r: Ring): number {
+  let best = Infinity;
+  for (let i = 0; i + 1 < r.length; i++) best = Math.min(best, distanceM(p, r[i]));
+  return best;
+}
+
 export interface ApproachPlan {
   best: Side;
   avoid: { side: Side; why: string }[];
@@ -37,18 +70,38 @@ export interface ApproachPlan {
 }
 
 /** Around the green, seen from where the player hits (shot direction = player → pin). */
-export function approachPlan(data: HoleMapData, from: LngLat, pin: LngLat): ApproachPlan {
+export function approachPlan(data: HoleMapData, from: LngLat, pin: LngLat, ctx?: PlanContext): ApproachPlan {
   const dir = bearingDeg(from, pin);
   const rg = greenRadius(data);
+  const pinH = ctx?.grid ? heightAt(ctx.grid, pin) : null;
   const sides = (Object.keys(SIDE_DEG) as Side[]).map((side) => {
     // Per side: just off the green (+7 m) and a bit further (+18 m, e.g. water in front), each at 0° and ±25°.
     const pts = [rg + 7, rg + 18].flatMap((r) => [-25, 0, 25].map((d) => move(data.greenCenter, dir + SIDE_DEG[side] + d, r)));
-    const costs = pts.map((p) => missCost(p, pin, data));
-    const worst = pts[costs.indexOf(Math.max(...costs))];
-    return { side, cost: costs.reduce((a, b) => a + b, 0) / costs.length, worst: Math.max(...costs), why: reason(worst, data) };
+    const scored = pts.map((p) => {
+      const base = missCost(p, pin, data);
+      const x = extraAt(p, from, pin, ctx, pinH, !!ctx?.teeShot);
+      return x && x.cost > base ? { cost: x.cost, why: x.why } : { cost: base, why: reason(p, data) };
+    });
+    const worst = scored.reduce((a, b) => (b.cost > a.cost ? b : a));
+    return { side, cost: scored.reduce((a, b) => a + b.cost, 0) / scored.length, worst: worst.cost, why: worst.why };
   });
   // Best miss = cheapest on average; avoid = sides with a bunker or water (worst point) clearly above the best.
-  const best = sides.slice().sort((a, b) => a.cost - b.cost || a.worst - b.worst)[0];
+  // a side without water, out of bounds or lost woods beats one with them – then the average (Hetzenhof 8C: water in
+  // front had the lowest average and left nothing to avoid)
+  const severe = (x: { worst: number }) => (x.worst >= 0.95 ? 1 : 0);
+  const best = sides.slice().sort((a, b) => severe(a) - severe(b) || a.cost - b.cost || a.worst - b.worst)[0];
+  // every side has water, out of bounds or lost woods (Hetzenhof 8C): no cheap miss – say so, and the least bad side
+  if (severe(best)) {
+    const others = sides.filter((x) => x.side !== best.side).sort((a, b) => b.cost - a.cost);
+    return {
+      best: best.side,
+      avoid: others.map((x) => ({ side: x.side, why: x.why })),
+      text: tr(
+        `No cheap miss here – hit the distance; the least bad: ${sideWord(best.side)}.`,
+        `Hier gibt es keinen billigen Fehlschlag – genau die Distanz treffen; am wenigsten schlimm: ${sideWord(best.side)}.`,
+      ),
+    };
+  }
   const avoid = sides.filter((s) => s.worst >= Math.max(0.5, best.worst + 0.2)).sort((a, b) => b.worst - a.worst);
   const text =
     avoid.length === 0
@@ -64,15 +117,20 @@ export function approachPlan(data: HoleMapData, from: LngLat, pin: LngLat): Appr
 export const openText = (): string => tr('Landing zone is open on both sides.', 'Die Landezone ist auf beiden Seiten offen.');
 
 /** Tee shot on a par 4/5: which side of the landing zone is safer (landing at the driver carry). */
-export function teePlan(data: HoleMapData, driverCarry: number): string {
+export function teePlan(data: HoleMapData, driverCarry: number, ctx?: PlanContext): string {
   const along = Math.min(driverCarry, lineLength(data.line) - 80);
   if (along < 120) return '';
   const land = pointAt(data.line, along);
   const dir = bearingDeg(pointAt(data.line, along - 20), land);
   const side = (deg: number) => {
     const pts = [15, 25].map((m) => move(land, dir + deg, m));
-    const cost = Math.max(...pts.map((p) => missCost(p, data.greenCenter, data)));
-    return { cost, why: reason(pts[pts.map((p) => missCost(p, data.greenCenter, data)).indexOf(cost)], data) };
+    const scored = pts.map((p) => {
+      const base = missCost(p, data.greenCenter, data);
+      const x = extraAt(p, data.tee, land, ctx, null, true);
+      return x && x.cost > base ? { cost: x.cost, why: x.why } : { cost: base, why: reason(p, data) };
+    });
+    const worst = scored.reduce((a, b) => (b.cost > a.cost ? b : a));
+    return { cost: worst.cost, why: worst.why };
   };
   const left = side(270);
   const right = side(90);

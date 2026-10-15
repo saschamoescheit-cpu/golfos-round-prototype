@@ -5,6 +5,7 @@ import { adviseClubMax, aimAdvice, clubName, explain, lieEffect, playsLike, scor
 import { aimPoint, type AimPoint, type PlayStyle } from './aimpoint';
 import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, type Samples } from './terrain';
 import { approachPlan, fairwayWidth, openText, teePlan } from './holeplan';
+import { lineLength as lineLen } from './geo';
 import { forecastNote, type Forecast } from './weather';
 import { mentalTip, type CaddieFacts } from './caddietalk';
 import { lieAt } from './shots';
@@ -54,6 +55,9 @@ export interface CaddieInput {
   leave?: string | null; // where the approach should finish on the green (green heights), e.g. "below the hole"
   playing?: number | null; // playing handicap – spread for the pin strategy
   grid?: GreenGrid | null; // heights of this green
+  /** Single trees and small tree groups (aerial crowns, OSM trees) – aim points the player can see. */
+  landmarks?: LngLat[];
+  strokeIndex?: number | null;
 }
 
 type TargetKey = 'pin' | 't1' | 'spot' | 'centre' | 'short';
@@ -142,12 +146,12 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const driver = o.bag.find((b) => b.club === 'Dr')?.carry ?? 200;
   const holePlan =
     o.teeShot && o.par >= 4
-      ? (ap.teePlan && ap.teeClub === advice.club ? ap.teePlan : '') || keepClub(sameSide(teePlan(data, driver) || '', ap.fairwaySide), ap.teeClub != null)
+      ? (ap.teePlan && ap.teeClub === advice.club ? ap.teePlan : '') || keepClub(sameSide(teePlan(data, driver, { woods: o.woods, note }) || '', ap.fairwaySide), ap.teeClub != null)
       : ap.kind !== 'approach'
         ? ap.kind === 'recovery'
           ? ''
           : tr(`Lay up to ${apName} – a full shot into the green next.`, `Leg vor auf ${apName} – danach ein voller Schlag aufs Grün.`)
-        : approachPlan(data, from, pin).text;
+        : approachPlan(data, from, pin, { woods: o.woods, note, grid: o.grid, teeShot: o.teeShot && o.par === 3 }).text;
 
   // Out of bounds near the target: only when a miss can reach it (2.5 × the sideways spread for this length,
   // + 5 m – as in aimPoint); a 40 m pitch does not hear about a boundary 27 m away.
@@ -158,7 +162,9 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const lines: CaddieLine[] = [];
   if (warning) lines.push({ text: warning, tone: 'warn' });
   if (note.text) lines.push({ text: note.text, tone: 'warn' });
-  if (o.teeShot && (note.lostLeft || note.lostRight))
+  if (o.teeShot && note.lostLeft && note.lostRight)
+    lines.push({ text: tr('Woods left and right – balls are mostly lost there: long and straight.', 'Wald links und rechts – Bälle sind dort meist weg: lang und gerade.'), tone: 'warn' });
+  else if (o.teeShot && (note.lostLeft || note.lostRight))
     lines.push({
       text: tr(
         `Woods ${note.lostLeft ? 'left' : 'right'} – balls are mostly lost there; if you miss, miss ${note.lostLeft ? 'right' : 'left'}.`,
@@ -202,6 +208,16 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     const st = scoreStrategy({ par: o.par, received: o.stableford.received, shotsSoFar: o.stableford.shotsSoFar });
     if (st) lines.push({ text: st, tone: o.stableford.shotsSoFar ? 'warn' : 'mental' });
   }
+  // Aim help (Sascha's notes: "the row of three trees behind the bunker", "the big tree behind the green"): a tree
+  // the player can see in line with the aim, a little beyond it.
+  const help = !ownTarget ? aimHelp(from, ap.kind === 'approach' ? (o.data.green ? o.data.greenCenter : pin) : ap.pos, o.landmarks, ap.kind === 'approach') : null;
+  if (help) lines.push({ text: help, tone: 'plan' });
+  // The hardest holes: bogey is a good score; short holes: a birdie chance (Sascha, 5A / 7B / 9B / 2B)
+  // the hardest holes (Hcp 1–4, Sascha: 5A, 5B, 7B, 5C, 9C) – for players who receive a stroke there
+  if (o.teeShot && o.strokeIndex != null && o.strokeIndex > 0 && o.strokeIndex <= 4 && o.par >= 4 && (o.playing == null || o.playing >= o.strokeIndex))
+    lines.push({ text: tr('One of the hardest holes – a bogey is a good score here. Play it safe.', 'Eines der schwersten Löcher – ein Bogey ist hier ein gutes Ergebnis. Spiel sicher.'), tone: 'mental' });
+  else if (o.teeShot && ((o.par === 5 && lineLen(data.line) <= 470) || (o.par === 4 && lineLen(data.line) <= 300)))
+    lines.push({ text: tr('A short hole – a birdie chance. Keep the ball in play, then attack.', 'Ein kurzes Loch – eine Birdie-Chance. Den Ball ins Spiel bringen, dann angreifen.'), tone: 'mental' });
   const coming = o.teeShot ? forecastNote(o.forecast ?? null, o.wind?.gustKmh ?? 0) : null;
   if (coming) lines.push({ text: coming, tone: 'mental' });
   lines.push({ text: `${clubName(advice.club)}${advice.swing && advice.swing !== 'full' ? ` · ${swingName(advice.swing)}` : ''} (${tr('carry', 'Carry')} ${fmt(advice.carry)} ${unit})${reasons.length ? ' · ' + reasons.join(' · ') : tr(' · calm, flat', ' · windstill, eben')}` });
@@ -233,4 +249,24 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     unit,
   };
   return { ap, ownTarget, target, apName, pl, advice, lie, warning, aim, holePlan, lines, alt, facts, heights: { from: fromH, green: greenH } };
+}
+
+/** A tree in line with the aim, 25–120 m beyond it (behind the green: 10–80 m) – within ±2.5°. */
+export function aimHelp(from: LngLat, aim: LngLat, landmarks: LngLat[] | undefined, toGreen: boolean): string | null {
+  if (!landmarks?.length) return null;
+  const b = bearingDeg(from, aim);
+  const d0 = distanceM(from, aim);
+  const near = toGreen ? [10, 80] : [25, 120];
+  const cands = landmarks
+    .map((p) => ({ p, d: distanceM(from, p), off: Math.abs(((bearingDeg(from, p) - b + 540) % 360) - 180) }))
+    .filter((x) => x.d >= d0 + near[0] && x.d <= d0 + near[1] && x.off <= 2.5)
+    .sort((x, y) => x.d - y.d);
+  if (!cands.length) return null;
+  const first = cands[0];
+  const group = landmarks.filter((p) => distanceM(p, first.p) <= 15).length;
+  const what = group >= 3 ? tr('the group of trees', 'die Baumgruppe') : group === 2 ? tr('the two trees', 'die zwei Bäume') : tr('the tree', 'den Baum');
+  const beyond = Math.round((first.d - d0) / 5) * 5;
+  return toGreen
+    ? tr(`Aim help: ${what} about ${beyond} m behind the green, in line.`, `Zielhilfe: ${what} etwa ${beyond} m hinter dem Grün, genau in Linie.`)
+    : tr(`Aim help: ${what} about ${beyond} m beyond the target, in line.`, `Zielhilfe: ${what} etwa ${beyond} m hinter dem Ziel, genau in Linie.`);
 }

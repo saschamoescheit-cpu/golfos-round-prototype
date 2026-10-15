@@ -29,7 +29,7 @@ import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type G
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { woodsOf, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
+import { woodsOf, landmarksOf, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { ScoreSheet } from '../components/ScoreSheet';
@@ -130,6 +130,7 @@ export function HoleScreen(props: {
   // The hole from the tee the player chose (courses with tee data); the map line starts at one of the tees.
   const forTee = (d: ReturnType<typeof holeMapData>, label: string) => holeForTee(d, round.courseId, label, round.tee, geometry.tee);
   const woods = useMemo(() => woodsOf(geometry), [geometry]);
+  const landmarks = useMemo(() => landmarksOf(geometry), [geometry]);
   const mapData = useMemo(() => forTee(holeMapData(geometry, hole.loop, hole.number), hole.label), [geometry, hole.loop, hole.number, round.tee]);
   // The map is the main view. A hole without a hole line opens the set-up on the map (Sascha 10.10.2026).
   const [view, setView] = useState<'map' | 'score'>('map');
@@ -757,6 +758,8 @@ export function HoleScreen(props: {
           leave: greenCache.current.leave,
           playing: caddiePlaying,
           grid,
+          landmarks,
+          strokeIndex: hole.strokeIndex || null,
           greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })
       : null;

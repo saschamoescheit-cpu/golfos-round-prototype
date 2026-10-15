@@ -62,9 +62,9 @@ const SIDE_DE: Record<string, string> = { left: 'links', right: 'rechts', long: 
 /** left / right / long / short in the player's language ("links", "rechts", "hinten", "kurz"). */
 export const sideWord = (s: string): string => tr(s, SIDE_DE[s] ?? s);
 
-const HAZARD_DE: Record<string, string> = { water: 'Wasser', bunker: 'Bunker', rough: 'Rough', trees: 'Bäume' };
+const HAZARD_DE: Record<string, string> = { water: 'Wasser', bunker: 'Bunker', rough: 'Rough', trees: 'Bäume', woods: 'Wald – Ball weg', drop: 'Abhang', ob: 'Aus' };
 /** Hazard name in the player's language. */
-export const hazardWord = (h: string): string => tr(h, HAZARD_DE[h] ?? h);
+export const hazardWord = (h: string): string => tr(({ woods: 'woods – ball lost', drop: 'steep drop', ob: 'out of bounds' } as Record<string, string>)[h] ?? h, HAZARD_DE[h] ?? h);
 
 /** Decimal number as text: "34.8" in English, "34,8" in German. */
 export const dec = (v: number | string): string => (lang === 'de' ? String(v).replace('.', ',') : String(v));

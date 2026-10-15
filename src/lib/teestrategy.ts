@@ -3,6 +3,7 @@ import { alongLine, bearingDeg, distanceM, distToLine, lineLength, pointAt, poin
 import { expectedStrokes } from './sg';
 import { clubName, playsLike, type CarryBag, type Conditions } from './caddie';
 import { fairwayWidth } from './holeplan';
+import { crossSlopeAt, type Samples } from './terrain';
 import type { HoleNote } from './holenotes';
 import { clubCode, sideWord, tr } from './i18n';
 
@@ -67,6 +68,7 @@ export function teeStrategy(o: {
   boundary?: Ring[];
   trees?: Ring[];
   woods?: Ring[]; // where a ball is lost: OSM woods plus large crown areas (deeper than LOST_IN_WOODS_M)
+  slopes?: Samples; // cross slope along the hole – a flat stance is worth something
   note?: HoleNote;
 }): TeePlan | null {
   const { data } = o;
@@ -75,7 +77,7 @@ export function teeStrategy(o: {
   const dir0 = bearingDeg(data.tee, pointAt(data.line, Math.min(200, L / 2)));
   const ratio = 100 / playsLike(100, dir0, o.conditions, null).playsLike;
   const shape = (rings: Ring[] | undefined) => (rings ?? []).map((r) => `${r.length}:${r[0]?.join()}`).join(';');
-  const key = [data.tee.join(), data.greenCenter.join(), o.par, o.playing, o.style, ratio.toFixed(2), o.bag.map((b) => `${b.club}${b.carry}`).join(), o.note?.obLeft, o.note?.obRight, o.note?.lostLeft, o.note?.lostRight, shape(data.water), shape(data.bunkers), shape(data.fairways), shape(o.boundary), (o.trees ?? []).length, (o.woods ?? []).length].join('|');
+  const key = [data.tee.join(), data.greenCenter.join(), o.par, o.playing, o.style, ratio.toFixed(2), o.bag.map((b) => `${b.club}${b.carry}`).join(), o.note?.obLeft, o.note?.obRight, o.note?.lostLeft, o.note?.lostRight, shape(data.water), shape(data.bunkers), shape(data.fairways), shape(o.boundary), (o.trees ?? []).length, (o.woods ?? []).length, (o.slopes ?? []).length].join('|');
   if (cache.has(key)) return cache.get(key)!;
 
   const ph = Math.min(36, Math.max(0, o.playing ?? 18));
@@ -124,9 +126,13 @@ export function teeStrategy(o: {
     // deep in the woods the ball is lost – stroke and distance; at the edge: punch out
     if (inWoods(p)) return { v: 1 + fromTee, miss: 'lost' };
     if (inTrees(p)) return { v: expectedStrokes(d, 'recovery'), miss: 'trees' };
-    if (inBunker(p)) return { v: expectedStrokes(d, 'bunker') + sandExtra, miss: 'bunker' };
-    if (inFairway(p)) return { v: expectedStrokes(d, 'fairway'), miss: 'fairway' };
-    return { v: expectedStrokes(d, 'rough') + roughExtra, miss: 'rough' };
+    // a fairway bunker costs an amateur one to two strokes (Sascha, 7B) – more than a greenside bunker shot
+    if (inBunker(p)) return { v: expectedStrokes(d, 'bunker') + sandExtra + 0.15 + ph * 0.01, miss: 'bunker' };
+    // a sloping stance makes the next shot harder (Sascha, 4A / 5B: "lay up where you stand level")
+    const cross = o.slopes ? Math.abs(crossSlopeAt(o.slopes, alongLine(data.line, p)) ?? 0) : 0;
+    const stance = cross > 6 ? Math.min(0.15, (cross - 6) * 0.02) : 0;
+    if (inFairway(p)) return { v: expectedStrokes(d, 'fairway') + stance, miss: 'fairway' };
+    return { v: expectedStrokes(d, 'rough') + roughExtra + stance, miss: 'rough' };
   };
 
   const clubs = o.bag.filter((b) => !b.swing && b.carry >= TEE_STRATEGY.minCarry).sort((a, b) => b.carry - a.carry);
