@@ -8,6 +8,7 @@ import { approachPlan, evenText, fairwayWidth, openText, teePlan } from './holep
 import { lineLength as lineLen } from './geo';
 import { forecastNote, type Forecast } from './weather';
 import { mentalTip, type CaddieFacts } from './caddietalk';
+import { planSteps } from './strategy';
 import { lieAt } from './shots';
 import type { HoleNote } from './holenotes';
 import { clubCode, tr } from './i18n';
@@ -58,6 +59,8 @@ export interface CaddieInput {
   /** Single trees and small tree groups (aerial crowns, OSM trees) – aim points the player can see. */
   landmarks?: LngLat[];
   strokeIndex?: number | null;
+  /** The player's round plan for this hole (strategy.ts): every shot's club, and which shot this is. */
+  planned?: { clubs: Club[]; shot: number } | null;
 }
 
 type TargetKey = 'pin' | 't1' | 'spot' | 'centre' | 'short';
@@ -256,8 +259,8 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   // the bare distance against the club for the plays-like distance; said when they differ.
   const still = adviseClub(Math.round(pl0.distance), o.bag, o.teeShot && o.par >= 4).club;
   let clubTalk: string | null = null;
-  if (still !== advice.club && !lieFx && !(o.teeShot && o.par >= 4) && (ap.kind === 'approach' || ownTarget != null)) {
-    const why: string[] = [];
+  const why: string[] = [];
+  {
     if (Math.abs(pl0.wind) >= 3)
       why.push(
         pl0.headKmh >= 0
@@ -266,6 +269,26 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
       );
     if (Math.abs(pl0.height) >= 3) why.push(pl0.height > 0 ? tr(`uphill (+${Math.round(pl0.height)} m)`, `bergauf (+${Math.round(pl0.height)} m)`) : tr(`downhill (−${Math.round(-pl0.height)} m)`, `bergab (−${Math.round(-pl0.height)} m)`));
     if (Math.abs(pl0.temp) >= 3) why.push(pl0.temp > 0 ? tr(`the cold air (+${Math.round(pl0.temp)} m)`, `die kalte Luft (+${Math.round(pl0.temp)} m)`) : tr(`the warm air (−${Math.round(-pl0.temp)} m)`, `die warme Luft (−${Math.round(-pl0.temp)} m)`));
+  }
+  // the player's own plan (Sascha 16.10.2026): said first; another club today – the reasons
+  const planned = o.planned && o.planned.clubs[o.planned.shot] ? o.planned : null;
+  let plannedLine: string | null = null;
+  if (planned) {
+    const pc = planned.clubs[planned.shot];
+    plannedLine = `${tr('Your plan', 'Dein Plan')}: ${planSteps(planned.clubs, planned.shot)}`;
+    if (pc !== advice.club && !lieFx) {
+      // the planned club fits the bare distance – the weather or the slope changes it today; else it does not fit
+      const carry = o.bag.find((b) => b.club === pc && (!b.swing || b.swing === 'full'))?.carry;
+      if (still === pc && why.length)
+        plannedLine += tr(`. Today the ${clubName(advice.club)} – ${why.join(' and ')}`, `. Heute ${clubArticle(advice.club)} ${clubName(advice.club)} – ${why.join(' und ')}`);
+      else
+        plannedLine += tr(
+          `. ${carry ? `Your ${clubName(pc)} carries ${fmt(carry)} ${unit} – ` : ''}for ${fmt(pl0.distance)} ${unit} (plays like ${fmt(pl.playsLike)}) the caddie takes the ${clubName(advice.club)}`,
+          `. ${carry ? `Dein ${clubName(pc)} fliegt ${fmt(carry)} ${unit} – ` : ''}für ${fmt(pl0.distance)} ${unit} (spielt wie ${fmt(pl.playsLike)}) nimmt der Caddie ${clubArticle(advice.club)} ${clubName(advice.club)}`,
+        );
+    }
+  }
+  if (!planned && still !== advice.club && !lieFx && !(o.teeShot && o.par >= 4) && (ap.kind === 'approach' || ownTarget != null)) {
     if (why.length)
       clubTalk = tr(
         `Normally your ${clubName(still)} – with ${why.join(' and ')} today the ${clubName(advice.club)}`,
@@ -273,6 +296,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
       );
   }
   if (clubTalk) lines.splice(Math.min(lines.length, warning ? 1 : 0), 0, { text: clubTalk + '.', tone: 'plan', lead: true });
+  if (plannedLine) lines.splice(Math.min(lines.length, warning ? 1 : 0), 0, { text: plannedLine + '.', tone: 'plan', lead: true });
   const facts: CaddieFacts = {
     club: clubName(advice.club) + (advice.swing && advice.swing !== 'full' ? `, ${swingName(advice.swing)}` : ''),
     distance: Number(fmt(pl.distance)),
@@ -286,7 +310,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     green: o.greenText ?? null,
     warning,
     unit,
-    clubTalk,
+    clubTalk: plannedLine ?? clubTalk,
     pinSpot,
     tip: note.tip ?? null,
     teeShot: o.teeShot,

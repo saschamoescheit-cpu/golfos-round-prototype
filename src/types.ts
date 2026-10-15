@@ -154,6 +154,8 @@ export interface Round {
   rating?: { cr: number; slope: number };
   /** Course preview from the sofa: browse the holes, nothing is saved. */
   preview?: boolean;
+  /** Planning the round (with preview): the targets and clubs set per hole are saved as the course's round plan. */
+  planning?: boolean;
   /** Rebuilt from its GPS track after it was lost on the phone (lib/restore.ts) – holes and score to check. */
   restored?: boolean;
   /**

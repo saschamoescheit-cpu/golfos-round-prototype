@@ -15,7 +15,7 @@ const geo = SEED_GEOMETRY[HET];
 const bag = withPartials(DEFAULT_CARRY);
 setLang('de');
 
-function approach(windKmh: number, fromRel: number, pinOffset = 0) {
+function approach(windKmh: number, fromRel: number, pinOffset = 0, planned: { clubs: import('../types').Club[]; shot: number } | null = null) {
   const data = holeMapData(geo, 'A', 1)!;
   const from = pointAt(data.line, lineLength(data.line) - 150);
   const b = bearingDeg(from, data.greenCenter);
@@ -26,6 +26,7 @@ function approach(windKmh: number, fromRel: number, pinOffset = 0) {
     data, par: 4, holeIndex: 0, holeCount: 18, from, teeShot: false, pin, targets: [], teeAim: null, slopes: geo.fairwaySlopes?.['1A'], boundary: geo.boundary, trees: geo.trees, woods: woodsOf(geo),
     bag, conditions: { windKmh, gustKmh: windKmh, windFromDeg: (b + fromRel + 360) % 360, tempC: 15 }, tendency: new Map(), note: loadHoleNotes(HET)['1A'], style: 'normal', favourite: 90, lieChoice: null, unit: 'm', playing: 18,
     wind: { windKmh, gustKmh: windKmh, label: 'Böig' },
+    planned,
   });
 }
 
@@ -59,5 +60,11 @@ describe('caddie talk', () => {
     expect(note.tip).toBeTruthy();
     expect(summary(cad.facts)).toContain(`Der Plan für dieses Loch: ${note.tip}`);
     expect(answer('Was ist der Plan?', cad.facts)).toContain(note.tip!);
+  });
+  it('says the player\'s plan – and another club today with the reasons', () => {
+    const calm = approach(0, 0, 0, { clubs: ['5i'], shot: 0 });
+    expect(calm.lines.find((l) => l.lead)?.text).toMatch(/^Dein Plan: 5i ins Grün/);
+    const windy = approach(30, 0, 0, { clubs: ['5i'], shot: 0 });
+    expect(windy.facts.clubTalk).toMatch(/^Dein Plan: 5i ins Grün\. Heute das .+ – 30 km\/h Gegenwind/);
   });
 });

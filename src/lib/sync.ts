@@ -43,6 +43,7 @@ const PER = [
   { kind: 'holenotes', prefix: 'golfos.holenotes.v1.' },
   { kind: 'holelines', prefix: 'golfos.holelines.v2.' },
   { kind: 'course', prefix: 'golfos.course.v1.' },
+  { kind: 'strategy', prefix: 'golfos.strategy.v1.' },
 ];
 /** Lists of objects with an id: every entry is its own row. */
 const LISTS = [

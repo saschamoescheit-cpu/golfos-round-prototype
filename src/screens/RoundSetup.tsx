@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { loadStrategy } from '../lib/strategy';
 import type { CaptureMode, Course, Player, Round, RoundHole } from '../types';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { FriendChips, roughPlaying } from './Home';
@@ -120,7 +121,8 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     return parseHcp(p.handicap);
   };
 
-  const start = (preview = false) => {
+  const planned = Object.keys(loadStrategy(props.course.id)).length;
+  const start = (preview = false, planning = false) => {
     if (!option) return;
     try {
       const entered = Number(me.handicap.replace(',', '.'));
@@ -164,6 +166,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       kind,
       ...(tee ? { tee } : {}),
       ...(preview ? { preview: true } : {}),
+      ...(planning ? { planning: true } : {}),
     });
   };
 
@@ -399,6 +402,11 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       </button>
       <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>
         {tr('Course preview', 'Platzvorschau')}
+      </button>
+      {/* plan the round: targets and clubs per hole, used by the caddie in the live round (Sascha 16.10.2026) */}
+      <button type="button" className="btn-secondary" onClick={() => start(true, true)} disabled={!option}>
+        {tr('Plan round', 'Runde planen')}
+        {planned > 0 ? <span className="muted small"> · {planned === 1 ? tr('1 hole planned', '1 Loch geplant') : tr(`${planned} holes planned`, `${planned} Löcher geplant`)}</span> : null}
       </button>
       <button type="button" className="btn-primary" onClick={() => start()} disabled={!option || !fits}>
         {tr('Start round', 'Runde starten')}

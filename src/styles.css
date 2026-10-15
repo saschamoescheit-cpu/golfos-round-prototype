@@ -1142,3 +1142,11 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .share-btn { display: flex; align-items: center; justify-content: center; gap: 8px; }
 
 .google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+/* Plan round (Sascha 16.10.2026): the plan of the hole over the hole bar */
+.plan-panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+.plan-panel-title { font: 700 13px var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand-text); }
+.plan-shot { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+.plan-shot-what { min-width: 0; }
+.plan-shot select { min-height: 38px; min-width: 74px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 700 15px var(--body); padding: 0 8px; }
+.plan-shot select.own { border-color: var(--brand); }

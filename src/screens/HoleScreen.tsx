@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { DetailEntry, HoleEntry, LngLat, Round } from '../types';
+import { loadStrategy, savePlannedHole, type CourseStrategy } from '../lib/strategy';
+import type { Club, DetailEntry, HoleEntry, LngLat, Round } from '../types';
 import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
@@ -11,7 +12,7 @@ import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, load
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { pickImagery, type ImageryId } from '../lib/imagery';
 import { loadForecast, loadWeather, weatherIcon, windOnHole, type Forecast, type Weather } from '../lib/weather';
-import { DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
+import { adviseClub, DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { gridHeight, loadTerrainGrid, type TerrainGrid } from '../lib/terraingrid';
@@ -160,6 +161,8 @@ export function HoleScreen(props: {
   const [live, setLive] = useState(() => loadLive(round.id));
   useEffect(() => saveLive(round.id, live), [round.id, live]);
   const plans = live.plans;
+  // the round plan of this course (Sascha 16.10.2026): targets and clubs per hole – made in "Plan round"
+  const [strategy, setStrategy] = useState<CourseStrategy>(() => loadStrategy(round.courseId));
   const setPlans = (p: typeof plans) => setLive((l) => ({ ...l, plans: p }));
   const shotStart = live.shotStart;
   // GPS runs while the hole screen is open (map or score), so the hole is recognised in both views.
@@ -643,7 +646,8 @@ export function HoleScreen(props: {
     // Par 4/5: target 1 is there from the start – the caddie's landing spot from the tee (driver carry, moved for
     // wind, slope and tendency, clear of trees). The player can drag or remove it; his own plan is kept then.
     const teeAim = teeAimFor({ data: mapData, par: hole.par, pin: plans[i]?.pin ?? mapData.greenCenter, bag: carryBag, conditions, tendency, ...terrain, note: notes[hole.label] ?? {}, style: caddieSettings.style, favourite: caddieSettings.favourite, playing: caddiePlaying });
-    const plan = plans[i] ?? { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null };
+    const planned = strategy[hole.label];
+    const plan = plans[i] ?? (planned?.targets.length ? { targets: planned.targets, pin: null } : { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null });
     // The flag stays on the green (Sascha 15.10.2026: it stood 50 m short on the fairway after a stray drag): a pin
     // off the green – dragged there or saved so – counts as not set.
     const pinOk = (p: LngLat) => (mapData.green ? pointInRing(p, mapData.green) || distToLine(p, mapData.green) <= 3 : distanceM(p, mapData.greenCenter) <= 25);
@@ -656,7 +660,22 @@ export function HoleScreen(props: {
     const from = onHole ? player!.pos : mapData.tee;
     // Without a mapped green outline (player-set green) only the centre distance is known.
     const green = mapData.green ? greenFrontBack(from, mapData.green) : { front: null, center: distanceM(from, mapData.greenCenter), back: null };
-    const setPlan = (patch: Partial<{ targets: LngLat[]; pin: LngLat | null }>) => setPlans({ ...plans, [i]: { ...plan, ...patch } });
+    const setPlan = (patch: Partial<{ targets: LngLat[]; pin: LngLat | null }>) => {
+      setPlans({ ...plans, [i]: { ...plan, ...patch } });
+      // planning: the targets are the course's plan for this hole
+      if (round.planning && patch.targets) setStrategy(savePlannedHole(round.courseId, hole.label, { targets: patch.targets, clubs: planned?.clubs ?? [], at: new Date().toISOString() }));
+    };
+    // every shot of the plan: from the tee over the targets into the green, with its club (chosen or suggested)
+    const planPoints = [mapData.tee, ...plan.targets, mapData.greenCenter];
+    const planShots = planPoints.slice(1).map((to, k) => {
+      const len = distanceM(planPoints[k], to);
+      const suggested = adviseClub(len, carryBag, k === 0 && hole.par >= 4).club;
+      return { len, club: (planned?.clubs[k] ?? suggested) as Club, own: planned?.clubs[k] != null };
+    });
+    const setPlanClub = (k: number, club: Club) => {
+      const clubs = planShots.map((_, j) => (j === k ? club : planned?.clubs[j] ?? null));
+      setStrategy(savePlannedHole(round.courseId, hole.label, { targets: plan.targets, clubs, at: new Date().toISOString() }));
+    };
     const fmt = (m: number) => formatDistance(m, unit);
     const tapMap = (p: LngLat) => {
       if (placing) {
@@ -758,6 +777,7 @@ export function HoleScreen(props: {
           grid,
           landmarks,
           strokeIndex: hole.strokeIndex || null,
+          planned: planned ? { clubs: planShots.map((x) => x.club), shot: teeShot ? 0 : Math.min(planShots.length - 1, passedTargets.length) } : null,
           greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })
       : null;
@@ -1004,6 +1024,27 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
+          {round.planning && !greenFocus && (
+            <section className="plan-panel" aria-label={tr('Plan for this hole', 'Plan für dieses Loch')}>
+              <span className="plan-panel-title">{tr(`Plan ${hole.label}`, `Plan ${hole.label}`)}</span>
+              {planShots.map((x, k) => (
+                <label key={k} className="plan-shot">
+                  <span className="plan-shot-what">
+                    {k === 0 ? tr('Tee', 'Abschlag') : tr(`Target ${k}`, `Ziel ${k}`)} → {k === planShots.length - 1 ? tr('green', 'Grün') : tr(`target ${k + 1}`, `Ziel ${k + 1}`)}
+                    <span className="muted"> · {fmt(x.len)} {unit}</span>
+                  </span>
+                  <select value={x.club} className={x.own ? 'own' : ''} aria-label={tr(`Club for shot ${k + 1}`, `Schläger für Schlag ${k + 1}`)} onChange={(e) => setPlanClub(k, e.target.value as Club)}>
+                    {carryBag.filter((b) => !b.swing || b.swing === 'full').map((b) => (
+                      <option key={b.club} value={b.club}>
+                        {clubCode(b.club)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+              <span className="muted small">{tr('Drag the targets on the map; tap the map for a target when there is none.', 'Ziele auf der Karte ziehen; ohne Ziel setzt ein Tipp eines.')}</span>
+            </section>
+          )}
           {shotTip && !detectedBanner && (
             // a tap anywhere on the hint closes it (a small "OK" was missed on the iPhone, Sascha 15.10.2026)
             <div className="map-hint detected" role="button" tabIndex={0} onClick={closeShotTip}>
