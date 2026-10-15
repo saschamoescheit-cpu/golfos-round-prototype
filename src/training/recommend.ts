@@ -54,7 +54,7 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
       const three = pct(a.threePutts) ?? 0;
       add(three >= 12 ? { cat: 'putting', why, drills: ['lag-circle', 'ladder', 'fringe', 'pelz-17'], weight: fo.gap } : { cat: 'putting', why, drills: ['clock', 'ball-gate', 'tiger-gate', 'mickelson-circle'], weight: fo.gap });
     } else if (fo.area === 'Short game') {
-      add({ cat: 'chipping', why, drills: ['landing-ring', 'up-and-down-9', 'chip-ladder', 'one-club-three-shots'], weight: fo.gap });
+      add({ cat: 'chipping', why, drills: ['landing-ring', 'up-and-down-9', 'chip-ladder', 'three-clubs-one-spot'], weight: fo.gap });
     } else if (fo.area === 'Approach') {
       add({ cat: 'irons', why, drills: ['towel-behind', 'three-distances', 'line-drill-irons'], weight: fo.gap });
     } else if (fo.area === 'Driving') {

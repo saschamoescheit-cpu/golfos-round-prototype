@@ -1,9 +1,11 @@
 import { L, type Plan } from '../types';
 
 // Ready-made practice plans: drills one after the other with minutes. Missing drill ids are skipped by the app,
-// so a plan never breaks when content changes.
+// so a plan never breaks when content changes. Weekly plans (week) by handicap follow the split “about half short
+// game and putting” (see Richtig trainieren).
 
 export const PLANS: Plan[] = [
+  // ---------- putting ----------
   {
     id: 'putt-30-startline',
     name: L('Putting 30 min: start line', 'Putten 30 Min: Startlinie'),
@@ -46,6 +48,19 @@ export const PLANS: Plan[] = [
     ],
   },
   {
+    id: 'putt-pressure',
+    name: L('Putting 30 min: short putts under pressure', 'Putten 30 Min: kurze Putts unter Druck'),
+    about: L('Never again miss from 1 m: circle games with consequence.', 'Nie wieder aus 1 m verschieben: Kreisspiele mit Konsequenz.'),
+    level: 2,
+    focus: ['putting', 'mental'],
+    items: [
+      { drill: 'tiger-gate', minutes: 5 },
+      { drill: 'nesw', minutes: 8 },
+      { drill: 'mickelson-circle', minutes: 12 },
+      { drill: 'pressure-ladder', minutes: 5 },
+    ],
+  },
+  {
     id: 'putt-home-15',
     name: L('Putting at home 15 min', 'Putten zu Hause 15 Min'),
     about: L('On a mat or carpet – every evening.', 'Auf Matte oder Teppich – jeden Abend.'),
@@ -56,6 +71,450 @@ export const PLANS: Plan[] = [
       { drill: 'coin-line', minutes: 4 },
       { drill: 'wellputt-lines', minutes: 4 },
       { drill: 'pressure-putt', minutes: 3 },
+    ],
+  },
+  {
+    id: 'greens-30',
+    name: L('Reading greens 30 min', 'Grün lesen 30 Min'),
+    about: L('Fall line, feet, apex – and miss on the pro side.', 'Falllinie, Füße, Scheitelpunkt – und auf der Pro-Seite verfehlen.'),
+    level: 2,
+    focus: ['greenreading', 'putting'],
+    items: [
+      { drill: 'fall-line', minutes: 8 },
+      { drill: 'feet-feel', minutes: 8 },
+      { drill: 'apex-tee', minutes: 7 },
+      { drill: 'pro-side-count', minutes: 7 },
+    ],
+  },
+
+  // ---------- short game ----------
+  {
+    id: 'chip-30',
+    name: L('Chipping 30 min: landing spot', 'Chippen 30 Min: Landepunkt'),
+    about: L('Target circles as landing spots, the roll of each club, then up-and-down.', 'Zielkreise als Landepunkte, das Rollen jedes Schlägers, dann Up-and-down.'),
+    level: 1,
+    focus: ['chipping'],
+    items: [
+      { drill: 'chip-line', minutes: 5 },
+      { drill: 'landing-ring', minutes: 10 },
+      { drill: 'three-clubs-one-spot', minutes: 7 },
+      { drill: 'flag-circles', minutes: 8 },
+    ],
+  },
+  {
+    id: 'shortgame-60',
+    name: L('Short game 60 min', 'Kurzes Spiel 60 Min'),
+    about: L('Chipping, pitching, bunker and putting out – the stroke savers.', 'Chippen, Pitchen, Bunker und Einlochen – die Schlägesparer.'),
+    level: 2,
+    focus: ['chipping', 'pitching', 'bunker'],
+    items: [
+      { drill: 'chip-line', minutes: 5 },
+      { drill: 'landing-ring', minutes: 10 },
+      { drill: 'chip-ladder', minutes: 10 },
+      { drill: 'nine-to-three', minutes: 8 },
+      { drill: 'line-in-sand', minutes: 7 },
+      { drill: 'bunker-circle', minutes: 8 },
+      { drill: 'up-and-down-9', minutes: 12 },
+    ],
+  },
+  {
+    id: 'wedges-45',
+    name: L('Wedges 45 min: your distance chart', 'Wedges 45 Min: deine Distanztabelle'),
+    about: L('Clock system, ladder and random distances 30–90 m.', 'Uhr-System, Leiter und zufällige Distanzen 30–90 m.'),
+    level: 2,
+    focus: ['pitching'],
+    items: [
+      { drill: 'nine-to-three', minutes: 8 },
+      { drill: 'clock-matrix', minutes: 17 },
+      { drill: 'wedge-ladder', minutes: 10 },
+      { drill: 'random-wedges', minutes: 10 },
+    ],
+  },
+  {
+    id: 'bunker-30',
+    name: L('Bunker 30 min', 'Bunker 30 Min'),
+    about: L('Entry point, open face, then length and special lies.', 'Eintrittspunkt, offene Fläche, dann Länge und besondere Lagen.'),
+    level: 1,
+    focus: ['bunker'],
+    items: [
+      { drill: 'splash-no-ball', minutes: 4 },
+      { drill: 'line-in-sand', minutes: 8 },
+      { drill: 'dollar-bill', minutes: 6 },
+      { drill: 'bunker-circle', minutes: 8 },
+      { drill: 'fried-egg', minutes: 4 },
+    ],
+  },
+  {
+    id: 'scoring-zone',
+    name: L('Scoring zone 45 min (under 100 m)', 'Score-Zone 45 Min (unter 100 m)'),
+    about: L('Everything from 100 m in: wedges, pitches, chips, putts – as games.', 'Alles ab 100 m: Wedges, Pitches, Chips, Putts – als Spiele.'),
+    level: 2,
+    focus: ['pitching', 'chipping', 'putting'],
+    items: [
+      { drill: 'hundred-game', minutes: 12 },
+      { drill: 'pitch-up-down', minutes: 13 },
+      { drill: 'up-and-down-9', minutes: 12 },
+      { drill: 'lag-circle', minutes: 8 },
+    ],
+  },
+  {
+    id: 'chip-home-20',
+    name: L('Short game at home 20 min', 'Kurzes Spiel zu Hause 20 Min'),
+    about: L('Garden or living room: basket, foam balls, mat.', 'Garten oder Wohnzimmer: Korb, Schaumstoffbälle, Matte.'),
+    level: 0,
+    focus: ['chipping', 'putting'],
+    items: [
+      { drill: 'chip-towel-home', minutes: 8 },
+      { drill: 'coin-line', minutes: 5 },
+      { drill: 'wellputt-lines', minutes: 7 },
+    ],
+  },
+
+  // ---------- full swing ----------
+  {
+    id: 'irons-45',
+    name: L('Irons 45 min: contact', 'Eisen 45 Min: Treffmoment'),
+    about: L('Ball first, then turf – then targets.', 'Erst der Ball, dann der Rasen – dann Ziele.'),
+    level: 1,
+    focus: ['irons'],
+    items: [
+      { drill: 'alignment-station', minutes: 3 },
+      { drill: 'towel-behind', minutes: 10 },
+      { drill: 'line-drill-irons', minutes: 10 },
+      { drill: 'step-drill', minutes: 8 },
+      { drill: 'three-distances', minutes: 14 },
+    ],
+  },
+  {
+    id: 'driver-30',
+    name: L('Driver 30 min: in play', 'Driver 30 Min: im Spiel bleiben'),
+    about: L('Tee height, hitting up, then fairways with routine.', 'Tee-Höhe, aufwärts treffen, dann Fairways mit Routine.'),
+    level: 1,
+    focus: ['driver'],
+    items: [
+      { drill: 'tee-height', minutes: 8 },
+      { drill: 'hit-up-tee', minutes: 7 },
+      { drill: 'fairway-gate', minutes: 15 },
+    ],
+  },
+  {
+    id: 'slice-fix-40',
+    name: L('Slice fix 40 min', 'Slice-Korrektur 40 Min'),
+    about: L('Grip, alignment, path from the inside and release.', 'Griff, Ausrichtung, Bahn von innen und Release.'),
+    level: 2,
+    focus: ['ballflight', 'driver'],
+    items: [
+      { drill: 'grip-check', minutes: 5 },
+      { drill: 'aim-check', minutes: 5 },
+      { drill: 'headcover-outside', minutes: 10 },
+      { drill: 'split-grip', minutes: 8 },
+      { drill: 'slice-gate', minutes: 12 },
+    ],
+  },
+  {
+    id: 'hook-fix-30',
+    name: L('Hook fix 30 min', 'Hook-Korrektur 30 Min'),
+    about: L('Weaker grip, keep turning, hold the face.', 'Schwächerer Griff, weiter drehen, Fläche halten.'),
+    level: 2,
+    focus: ['ballflight'],
+    items: [
+      { drill: 'grip-check', minutes: 5 },
+      { drill: 'hold-finish', minutes: 8 },
+      { drill: 'hook-gate', minutes: 10 },
+      { drill: 'face-path-read', minutes: 7 },
+    ],
+  },
+  {
+    id: 'tempo-30',
+    name: L('Tempo and sequence 30 min', 'Tempo und Ablauf 30 Min'),
+    about: L('3:1 rhythm, pause at the top, the downswing from the ground.', '3:1-Rhythmus, Pause oben, der Abschwung vom Boden.'),
+    level: 2,
+    focus: ['swing'],
+    items: [
+      { drill: 'feet-together-swing', minutes: 6 },
+      { drill: 'tempo-321', minutes: 10 },
+      { drill: 'pause-top', minutes: 7 },
+      { drill: 'pump-drill', minutes: 7 },
+    ],
+  },
+  {
+    id: 'slopes-30',
+    name: L('Slopes and trouble 40 min', 'Hanglagen und Rettung 40 Min'),
+    about: L('All four slopes, then low punches – on a practice round or a hilly range.', 'Alle vier Hanglagen, dann flache Punches – bei einer Übungsrunde oder auf einer hügeligen Range.'),
+    level: 2,
+    focus: ['slopes', 'trouble'],
+    items: [
+      { drill: 'brush-find', minutes: 6 },
+      { drill: 'four-lies-circuit', minutes: 20 },
+      { drill: 'punch-gap', minutes: 10 },
+      { drill: 'hold-finish-slope', minutes: 4 },
+    ],
+  },
+  {
+    id: 'range-60',
+    name: L('Range 60 min: train and test', 'Range 60 Min: trainieren und testen'),
+    about: L('Warm up, one technical block, then a round on the range.', 'Aufwärmen, ein Technikblock, dann eine Runde auf der Range.'),
+    level: 1,
+    focus: ['practice', 'irons', 'driver'],
+    items: [
+      { drill: 'warmup-10', minutes: 8 },
+      { drill: 'alignment-station', minutes: 4 },
+      { drill: 'block-then-random', minutes: 20 },
+      { drill: 'range-round', minutes: 28 },
+    ],
+  },
+
+  // ---------- before the round, home, fitness ----------
+  {
+    id: 'pre-round',
+    name: L('Before the round 25 min', 'Vor der Runde 25 Min'),
+    about: L('Warm up, find the rhythm and the green speed – not practise.', 'Aufwärmen, Rhythmus und Grüntempo finden – nicht üben.'),
+    level: 0,
+    focus: ['practice', 'fitness', 'putting'],
+    items: [
+      { drill: 'warmup-10', minutes: 6 },
+      { drill: 'first-tee', minutes: 2 },
+      { drill: 'stimp-test', minutes: 4 },
+      { drill: 'star-fringe', minutes: 6 },
+      { drill: 'tiger-gate', minutes: 4 },
+      { drill: 'box-breathing', minutes: 3 },
+    ],
+  },
+  {
+    id: 'mobility-15',
+    name: L('Mobility 15 min (daily)', 'Beweglichkeit 15 Min (täglich)'),
+    about: L('Upper back, hips, posture – for more turn and a healthy back.', 'Oberer Rücken, Hüfte, Haltung – für mehr Drehung und einen gesunden Rücken.'),
+    level: 0,
+    focus: ['fitness'],
+    items: [
+      { drill: 'open-books', minutes: 4 },
+      { drill: 'hip-9090', minutes: 4 },
+      { drill: 'seated-rotation', minutes: 3 },
+      { drill: 'deep-squat', minutes: 2 },
+      { drill: 'single-leg-balance', minutes: 2 },
+    ],
+  },
+  {
+    id: 'strength-25',
+    name: L('Golf strength 25 min (2× a week)', 'Golf-Kraft 25 Min (2× pro Woche)'),
+    about: L('Glutes, core, rotation power, forearms.', 'Gesäß, Rumpf, Rotationskraft, Unterarme.'),
+    level: 2,
+    focus: ['fitness'],
+    items: [
+      { drill: 'glute-bridge', minutes: 5 },
+      { drill: 'pallof-press', minutes: 6 },
+      { drill: 'med-ball-throw', minutes: 7 },
+      { drill: 'wrist-forearm', minutes: 4 },
+      { drill: 'single-leg-balance', minutes: 3 },
+    ],
+  },
+  {
+    id: 'speed-15',
+    name: L('Speed 15 min (3× a week)', 'Speed 15 Min (3× pro Woche)'),
+    about: L('Warm up and overspeed – more distance in 6–8 weeks.', 'Aufwärmen und Overspeed – mehr Länge in 6–8 Wochen.'),
+    level: 2,
+    focus: ['fitness', 'driver'],
+    items: [
+      { drill: 'warmup-10', minutes: 4 },
+      { drill: 'speed-training', minutes: 11 },
+    ],
+  },
+  {
+    id: 'home-swing-20',
+    name: L('Swing at home 20 min', 'Schwung zu Hause 20 Min'),
+    about: L('Mirror, slow motion and impact – no ball needed.', 'Spiegel, Zeitlupe und Treffmoment – ohne Ball.'),
+    level: 0,
+    focus: ['swing', 'basics'],
+    items: [
+      { drill: 'mirror-setup-full', minutes: 4 },
+      { drill: 'grip-check', minutes: 3 },
+      { drill: 'cross-arms-turn', minutes: 4 },
+      { drill: 'slow-motion', minutes: 5 },
+      { drill: 'impact-bag', minutes: 4 },
+    ],
+  },
+  {
+    id: 'beginner-60',
+    name: L('Beginner 60 min: the basics', 'Einsteiger 60 Min: die Grundlagen'),
+    about: L('Grip, set-up, alignment, the small swing – then chips and putts.', 'Griff, Ansprache, Ausrichtung, der kleine Schwung – dann Chips und Putts.'),
+    level: 1,
+    focus: ['basics', 'chipping', 'putting'],
+    items: [
+      { drill: 'grip-check', minutes: 5 },
+      { drill: 'posture-club-spine', minutes: 5 },
+      { drill: 'alignment-station', minutes: 5 },
+      { drill: 'l-to-l', minutes: 12 },
+      { drill: 'landing-ring', minutes: 10 },
+      { drill: 'ball-gate', minutes: 8 },
+      { drill: 'lag-circle', minutes: 8 },
+      { drill: 'up-and-down-9', minutes: 7 },
+    ],
+  },
+
+  // ---------- weekly plans by handicap ----------
+  {
+    id: 'week-hcp-high',
+    name: L('Weekly plan for hcp 21+', 'Wochenplan für Hcp 21+'),
+    about: L('3 sessions a week: contact, the short game and no three-putts – the fastest way to break 100 and 90.', '3 Einheiten pro Woche: Treffmoment, kurzes Spiel und keine Dreiputts – der schnellste Weg unter 100 und 90.'),
+    level: 1,
+    focus: ['putting', 'chipping', 'irons'],
+    items: [],
+    week: [
+      {
+        day: L('Day 1 – putting and chipping (60 min)', 'Tag 1 – Putten und Chippen (60 Min)'),
+        items: [
+          { drill: 'ball-gate', minutes: 10 },
+          { drill: 'lag-circle', minutes: 15 },
+          { drill: 'landing-ring', minutes: 15 },
+          { drill: 'up-and-down-9', minutes: 20 },
+        ],
+      },
+      {
+        day: L('Day 2 – range: contact (45 min)', 'Tag 2 – Range: Treffmoment (45 Min)'),
+        items: [
+          { drill: 'alignment-station', minutes: 5 },
+          { drill: 'l-to-l', minutes: 10 },
+          { drill: 'towel-behind', minutes: 12 },
+          { drill: 'fairway-gate', minutes: 18 },
+        ],
+      },
+      {
+        day: L('Day 3 – home (20 min)', 'Tag 3 – zu Hause (20 Min)'),
+        items: [
+          { drill: 'coin-line', minutes: 5 },
+          { drill: 'mirror-setup-full', minutes: 5 },
+          { drill: 'open-books', minutes: 5 },
+          { drill: 'glute-bridge', minutes: 5 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'week-hcp-mid',
+    name: L('Weekly plan for hcp 11–20', 'Wochenplan für Hcp 11–20'),
+    about: L('3–4 sessions: wedges and short game, approach, course management.', '3–4 Einheiten: Wedges und kurzes Spiel, Annäherung, Course Management.'),
+    level: 2,
+    focus: ['pitching', 'chipping', 'irons', 'strategy'],
+    items: [],
+    week: [
+      {
+        day: L('Day 1 – scoring zone (60 min)', 'Tag 1 – Score-Zone (60 Min)'),
+        items: [
+          { drill: 'clock-matrix', minutes: 15 },
+          { drill: 'chip-ladder', minutes: 12 },
+          { drill: 'bunker-circle', minutes: 10 },
+          { drill: 'pitch-up-down', minutes: 13 },
+          { drill: 'clock', minutes: 10 },
+        ],
+      },
+      {
+        day: L('Day 2 – range (60 min)', 'Tag 2 – Range (60 Min)'),
+        items: [
+          { drill: 'warmup-10', minutes: 5 },
+          { drill: 'line-drill-irons', minutes: 10 },
+          { drill: 'stock-shot', minutes: 10 },
+          { drill: 'decade-light', minutes: 10 },
+          { drill: 'range-round', minutes: 25 },
+        ],
+      },
+      {
+        day: L('Day 3 – putting (30 min)', 'Tag 3 – Putten (30 Min)'),
+        items: [
+          { drill: 'tiger-gate', minutes: 8 },
+          { drill: 'ladder', minutes: 8 },
+          { drill: 'four-tee', minutes: 7 },
+          { drill: 'par18', minutes: 7 },
+        ],
+      },
+      {
+        day: L('Day 4 – on the course (9 holes)', 'Tag 4 – auf dem Platz (9 Löcher)'),
+        items: [
+          { drill: 'nine-hole-plan', minutes: 15 },
+          { drill: 'bogey-plan', minutes: 90 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'week-hcp-low',
+    name: L('Weekly plan for hcp 0–10', 'Wochenplan für Hcp 0–10'),
+    about: L('4 sessions: precision with wedges and putter, shaping, pressure, speed.', '4 Einheiten: Präzision mit Wedges und Putter, Kurven, Druck, Geschwindigkeit.'),
+    level: 3,
+    focus: ['pitching', 'putting', 'ballflight', 'mental'],
+    items: [],
+    week: [
+      {
+        day: L('Day 1 – wedges (60 min)', 'Tag 1 – Wedges (60 Min)'),
+        items: [
+          { drill: 'wedge-ladder', minutes: 15 },
+          { drill: 'random-wedges', minutes: 15 },
+          { drill: 'low-spinner', minutes: 10 },
+          { drill: 'flop-shot', minutes: 10 },
+          { drill: 'hundred-game', minutes: 10 },
+        ],
+      },
+      {
+        day: L('Day 2 – putting under pressure (45 min)', 'Tag 2 – Putten unter Druck (45 Min)'),
+        items: [
+          { drill: 'tiger-gate', minutes: 8 },
+          { drill: 'apex-tee', minutes: 8 },
+          { drill: 'mickelson-circle', minutes: 15 },
+          { drill: 'lag-circle', minutes: 14 },
+        ],
+      },
+      {
+        day: L('Day 3 – shaping and trouble (45 min)', 'Tag 3 – Kurven und Rettung (45 Min)'),
+        items: [
+          { drill: 'nine-shot', minutes: 20 },
+          { drill: 'wind-trajectories', minutes: 15 },
+          { drill: 'punch-gap', minutes: 10 },
+        ],
+      },
+      {
+        day: L('Day 4 – speed and strength (30 min)', 'Tag 4 – Speed und Kraft (30 Min)'),
+        items: [
+          { drill: 'speed-training', minutes: 12 },
+          { drill: 'med-ball-throw', minutes: 8 },
+          { drill: 'pallof-press', minutes: 5 },
+          { drill: 'open-books', minutes: 5 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'week-winter',
+    name: L('Winter plan at home', 'Winterplan zu Hause'),
+    about: L('When the course is closed: putting mat, mirror, mobility, speed.', 'Wenn der Platz zu ist: Puttmatte, Spiegel, Beweglichkeit, Speed.'),
+    level: 0,
+    focus: ['putting', 'fitness', 'swing'],
+    items: [],
+    week: [
+      {
+        day: L('Mon/Thu – putting mat (15 min)', 'Mo/Do – Puttmatte (15 Min)'),
+        items: [
+          { drill: 'mirror-setup', minutes: 4 },
+          { drill: 'wellputt-lines', minutes: 6 },
+          { drill: 'pressure-putt', minutes: 5 },
+        ],
+      },
+      {
+        day: L('Tue/Fri – mobility and strength (25 min)', 'Di/Fr – Beweglichkeit und Kraft (25 Min)'),
+        items: [
+          { drill: 'open-books', minutes: 4 },
+          { drill: 'hip-9090', minutes: 4 },
+          { drill: 'glute-bridge', minutes: 5 },
+          { drill: 'pallof-press', minutes: 6 },
+          { drill: 'med-ball-throw', minutes: 6 },
+        ],
+      },
+      {
+        day: L('Wed/Sat – swing and speed (20 min)', 'Mi/Sa – Schwung und Speed (20 Min)'),
+        items: [
+          { drill: 'slow-motion', minutes: 5 },
+          { drill: 'impact-bag', minutes: 4 },
+          { drill: 'speed-training', minutes: 11 },
+        ],
+      },
     ],
   },
 ];

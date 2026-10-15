@@ -89,7 +89,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
             <rect x={X(it.x)} y={Y(it.y + it.h)} width={it.w * k} height={it.h * k} rx={4} fill="#ffffff22" stroke={C.line} strokeWidth={2} strokeDasharray="6 4" />
             {it.label && (
               <text x={X(it.x + it.w / 2)} y={Y(it.y + it.h / 2) + 4} textAnchor="middle" fontSize={12} fontWeight={700} fill={C.text}>
-                {it.label}
+                {txt(it.label)}
               </text>
             )}
           </g>
@@ -112,7 +112,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
             <circle cx={X(it.at[0])} cy={Y(it.at[1])} r={5.5} fill="#ffffff" stroke="#55606a" strokeWidth={1} />
             {it.n != null && (
               <text x={X(it.at[0]) + 8} y={Y(it.at[1]) - 6} fontSize={11} fontWeight={700} fill={C.text}>
-                {it.n}
+                {typeof it.n === 'object' ? txt(it.n) : it.n}
               </text>
             )}
           </g>
@@ -131,7 +131,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
             <circle cx={X(it.at[0])} cy={Y(it.at[1])} r={it.r * k} fill={it.fill ? '#ffd23f33' : 'none'} stroke={C.ring} strokeWidth={2.5} />
             {it.label && (
               <text x={X(it.at[0])} y={Y(it.at[1]) - it.r * k - 4} textAnchor="middle" fontSize={11} fontWeight={700} fill={C.text}>
-                {it.label}
+                {txt(it.label)}
               </text>
             )}
           </g>
@@ -184,7 +184,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
             <path d="M0,-18 l-6,9 l12,0 z" fill="#16324a" />
             {it.label && (
               <text x={8} y={4} fontSize={11} fill="#16324a" fontWeight={700} transform={`rotate(${-it.dir})`}>
-                {it.label}
+                {txt(it.label)}
               </text>
             )}
           </g>
@@ -226,10 +226,21 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
 }
 
 /** A golfer in side view: address on the slope (tilted), top of the swing or finish. */
-function Figure(props: { x: number; y: number; k: number; tilt: number; pose: 'address' | 'top' | 'finish' }) {
+function Figure(props: { x: number; y: number; k: number; tilt: number; pose: 'address' | 'top' | 'finish' | 'front' }) {
   const s = props.k * 1.75; // body height in px
   const u = s / 10;
   const { pose } = props;
+  if (pose === 'front')
+    // face-on: feet apart, the ball between them, the target to the right
+    return (
+      <g transform={`translate(${props.x},${props.y}) rotate(${-props.tilt})`} stroke="#22313b" strokeWidth={Math.max(2, u * 0.55)} strokeLinecap="round" fill="none">
+        <path d={`M${-u * 1.8},0 L${-u * 0.6},${-u * 4.6} L${u * 0.6},${-u * 4.6} L${u * 1.8},0`} />
+        <path d={`M0,${-u * 4.6} L${-u * 0.2},${-u * 8}`} />
+        <circle cx={-u * 0.25} cy={-u * 8.9} r={u * 0.8} fill="#22313b" />
+        <path d={`M${-u * 1.1},${-u * 7.4} L${-u * 0.3},${-u * 4.3} M${u * 0.7},${-u * 7.4} L${-u * 0.1},${-u * 4.3}`} />
+        <path d={`M${-u * 0.2},${-u * 4.3} L${u * 0.1},0`} stroke="#9aa4ab" strokeWidth={Math.max(1.5, u * 0.3)} />
+      </g>
+    );
   return (
     <g transform={`translate(${props.x},${props.y}) rotate(${-props.tilt})`} stroke="#22313b" strokeWidth={Math.max(2, u * 0.55)} strokeLinecap="round" fill="none">
       {/* legs */}

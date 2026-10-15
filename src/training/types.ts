@@ -181,26 +181,26 @@ export type SketchItem =
   | { k: 'water'; x: number; y: number; w: number; h: number; round?: boolean }
   | { k: 'mat'; x: number; y: number; w: number; h: number } // putting or hitting mat
   | { k: 'hole'; at: P; flag?: boolean }
-  | { k: 'ball'; at: P; n?: string | number; ghost?: boolean }
+  | { k: 'ball'; at: P; n?: string | number | L; ghost?: boolean }
   | { k: 'tee'; at: P }
   | { k: 'coin'; at: P }
   | { k: 'stick'; from: P; to: P } // alignment stick
   | { k: 'string'; from: P; to: P } // chalk line / string
-  | { k: 'ring'; at: P; r: number; label?: string; fill?: boolean } // target circle, hula hoop
-  | { k: 'zone'; x: number; y: number; w: number; h: number; label?: string } // landing zone
+  | { k: 'ring'; at: P; r: number; label?: string | L; fill?: boolean } // target circle, hula hoop
+  | { k: 'zone'; x: number; y: number; w: number; h: number; label?: string | L } // landing zone
   | { k: 'towel'; x: number; y: number; w: number; h: number }
   | { k: 'path'; pts: P[]; style?: 'roll' | 'flight' | 'aim' | 'club'; arrow?: boolean } // ball path, aim line
   | { k: 'player'; at: P; face?: 'up' | 'right' | 'left' } // the player seen from above (feet)
   | { k: 'club'; at: P; angle?: number } // a club lying on the ground
   | { k: 'putter'; at: P } // putter head behind the ball (face square to the line up the page)
-  | { k: 'slope'; at: P; dir: number; label?: string } // downhill arrow (degrees, 0 = up the page)
+  | { k: 'slope'; at: P; dir: number; label?: string | L } // downhill arrow (degrees, 0 = up the page)
   | { k: 'text'; at: P; t: L | string; size?: number; anchor?: 'start' | 'middle' | 'end' }
   | { k: 'dim'; from: P; to: P; t: L | string }; // dimension line with text
 
 /** Side view (slopes, ball flight, posture). */
 export type SideItem =
   | { k: 'ground'; pts: P[] }
-  | { k: 'figure'; at: P; tilt?: number; pose?: 'address' | 'top' | 'finish' }
+  | { k: 'figure'; at: P; tilt?: number; pose?: 'address' | 'top' | 'finish' | 'front' } // front = seen from the front, target to the right
   | { k: 'ball'; at: P }
   | { k: 'flight'; pts: P[]; dashed?: boolean }
   | { k: 'flag'; at: P }
