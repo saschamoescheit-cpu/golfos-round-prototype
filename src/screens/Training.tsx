@@ -525,7 +525,7 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
       </section>
       {weeks.length > 0 && (
         <section className="tr-block">
-          <h2>{tr('Weekly plans', 'Wochenpläne')}</h2>
+          <h2>{tr('Goals and weekly plans', 'Ziel- und Wochenpläne')}</h2>
           <ul className="list">
             {weeks.map((p) => (
               <li key={p.id}>
