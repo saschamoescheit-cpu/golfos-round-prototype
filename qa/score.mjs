@@ -42,9 +42,9 @@ await plus('Schläge');
 await plus('Strafschläge');
 await plus('Putts');
 await p.getByRole('button', { name: 'Nächstes Loch' }).click(); // the hole bar stays under the panel (Hole19)
-await p.waitForTimeout(500);
-await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
 await p.waitForTimeout(800);
+// on the next hole the sheet closes by itself – the map shows (Sascha 15.10.2026)
+ok((await p.locator('.score-panel').count()) === 0, 'on to the next hole: the score sheet closes by itself');
 const e1 = await stored(0);
 ok((await hole()) === '2A' && e1.strokes === 5 && e1.putts === 2 && e1.penalties === 1, `strokes 5, penalty 1, putts 2 → on 2A (stored ${e1.strokes}/${e1.penalties}/${e1.putts})`);
 

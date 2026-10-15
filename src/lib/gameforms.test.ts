@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canPress, capChain, capLoss, onChain, snapCap, chicagoTeams, formDef, received, stakeCap, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
+import { canPress, capChain, onChain, snapCap, chicagoTeams, formDef, received, stakeCap, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
 
 const holes = (n: number) => Array.from({ length: n }, (_, i) => ({ label: String(i + 1), par: 4, si: i + 1 }));
 
@@ -130,11 +130,6 @@ describe('handicap share, press and limits (Sascha 15.10.2026)', () => {
     const g = game('skins', [[3, 3], [4, 4]], { stake: 1, double: true, maxStake: '0' });
     g.presses = [{ hole: 1, by: 'p1' }];
     expect(standingOf(g).money).toEqual({ p0: 3, p1: -3 });
-  });
-  it('nobody loses more than the limit', () => {
-    expect(capLoss({ a: 30, b: -20, c: -10 }, 10)).toEqual({ a: 20, b: -10, c: -10 });
-    const g = game('skins', [[3, 3, 3], [4, 4, 4], [4, 4, 4]], { stake: 10, maxLoss: '20' });
-    expect(standingOf(g).money).toEqual({ p0: 40, p1: -20, p2: -20 });
   });
 });
 

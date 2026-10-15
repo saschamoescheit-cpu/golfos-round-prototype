@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round, RoundHole } from './types';
-import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCarryBag, loadRounds, saveRound } from './lib/storage';
+import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCachedCourse, loadCarryBag, loadRounds, saveRound } from './lib/storage';
 import { commitParAt } from './lib/scoring';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
@@ -29,7 +29,7 @@ type Screen =
   | { name: 'courseStats'; courseName: string }
   | { name: 'bag'; part: 'bag' | 'caddie'; back?: Screen }
   | { name: 'review'; round: Round }
-  | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null; playing?: number | null };
+  | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null; playing?: number | null; back?: Screen };
 
 // The player left the round on purpose (pause): a reload in this session stays on the start page.
 const PAUSED = 'golfos.paused';
@@ -88,6 +88,23 @@ const ROUNDS: Screen = { name: 'tab', tab: 'rounds' };
 
 export function App() {
   // rounds left open for more than a day are tidied up first (finished with their scores, or deleted when empty)
+  // a paused course preview (Sascha 15.10.2026: "pause" as in a round) – this tab only, never among the rounds
+  const [preview, setPreview] = useState<Round | null>(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('golfos.preview.v1') ?? 'null') as Round | null;
+    } catch {
+      return null;
+    }
+  });
+  const storePreview = (r: Round | null) => {
+    setPreview(r);
+    try {
+      if (r) sessionStorage.setItem('golfos.preview.v1', JSON.stringify(r));
+      else sessionStorage.removeItem('golfos.preview.v1');
+    } catch {
+      /* storage blocked – this visit only */
+    }
+  };
   const [rounds, setRounds] = useState<Round[]>(() => {
     restoreLostRounds(); // rounds whose GPS track is still there (lost by the tidy-up of 14.10.)
     closeStaleRounds(24);
@@ -171,6 +188,9 @@ export function App() {
           {tab === 'play' && (
             <PlayTab
               rounds={rounds}
+              preview={preview}
+              onPreview={(r) => setScreen({ name: 'hole', round: r })}
+              onEndPreview={() => storePreview(null)}
               onNewRound={() => setScreen({ name: 'pickCourse' })}
               onContinue={(round) => setScreen({ name: 'hole', round })}
               onEnd={(round) => {
@@ -254,7 +274,7 @@ export function App() {
     case 'book':
       return (
         <Suspense fallback={<Waiting />}>
-          <CourseBook course={screen.course} holes={screen.holes} tee={screen.tee} playing={screen.playing ?? null} onBack={() => setScreen({ name: 'setup', course: screen.course })} />
+          <CourseBook course={screen.course} holes={screen.holes} tee={screen.tee} playing={screen.playing ?? null} onBack={() => setScreen(screen.back ?? { name: 'setup', course: screen.course })} />
         </Suspense>
       );
     case 'hole':
@@ -268,7 +288,9 @@ export function App() {
               setScreen({ name: 'hole', round });
             }}
             onExit={() => {
-              setPaused(screen.round.id);
+              // a paused course preview waits on the start page ("continue"), nothing goes into the rounds
+              if (screen.round.preview) storePreview(screen.round);
+              else setPaused(screen.round.id);
               setScreen(HOME);
             }}
             onEnd={(round) => {
@@ -277,10 +299,16 @@ export function App() {
               setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
             }}
             onAbort={(round) => {
-              deleteRound(round.id, true);
+              if (round.preview) storePreview(null);
+              else deleteRound(round.id, true);
               setRounds(loadRounds());
               setScreen(HOME);
             }}
+            onBook={
+              screen.round.preview && loadCachedCourse(screen.round.courseId)
+                ? () => setScreen({ name: 'book', course: loadCachedCourse(screen.round.courseId)!, holes: screen.round.holes, tee: screen.round.tee ?? null, playing: null, back: { name: 'hole', round: screen.round } })
+                : undefined
+            }
             onOpenBag={(part) => setScreen({ name: 'bag', part, back: { name: 'hole', round: screen.round } })}
             onShowScorecard={(round, finishing) => {
               if (round.preview) return setScreen(HOME);

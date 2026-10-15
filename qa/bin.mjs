@@ -34,13 +34,33 @@ const pick = async () => {
 
 // preview: pull up the drawer, end the preview there
 await pick();
-await p.getByRole('button', { name: 'Löcher ansehen – ohne Runde' }).click();
+ok(await p.getByRole('button', { name: 'Birdiebook', exact: true }).isVisible(), 'setup: "Birdiebook" and "Platzvorschau"');
+await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(3000);
 await p.locator('.hole-bar-handle').click();
 await p.waitForTimeout(500);
-ok(await p.getByRole('button', { name: 'Vorschau beenden' }).isVisible(), 'preview drawer has "Vorschau beenden"');
-await p.getByRole('button', { name: 'Vorschau beenden' }).click();
+const acts = (await p.locator('.hole-drawer .drawer-action').allInnerTexts()).map((t) => t.trim()).join(' | ');
+ok(acts === 'Birdiebook | Pausieren | Beenden', `preview drawer: ${acts}`);
+// the birdie book and back to the hole
+await p.locator('.hole-drawer').getByRole('button', { name: 'Birdiebook' }).click();
+await p.waitForTimeout(1500);
+ok(/Birdiebook|1A/.test(await p.locator('main').innerText()), 'birdie book opens from the preview');
+await p.locator('.topbar').getByRole('button').first().click();
+await p.waitForTimeout(1500);
+ok((await p.locator('.map-hole-no').count()) === 1, 'back from the birdie book on the hole');
+// pause: the start page offers to continue
+await p.locator('.hole-bar-handle').click();
+await p.waitForTimeout(400);
+await p.locator('.hole-drawer').getByRole('button', { name: /Vorschau pausieren/ }).click();
 await p.waitForTimeout(800);
+ok(await p.getByRole('button', { name: 'Vorschau fortsetzen' }).isVisible(), 'paused preview: "Vorschau fortsetzen" on the start page');
+await p.getByRole('button', { name: 'Vorschau fortsetzen' }).click();
+await p.waitForTimeout(2500);
+await p.locator('.hole-bar-handle').click();
+await p.waitForTimeout(400);
+await p.locator('.hole-drawer').getByRole('button', { name: 'Vorschau beenden' }).click();
+await p.waitForTimeout(800);
+ok(!(await p.getByRole('button', { name: 'Vorschau fortsetzen' }).isVisible().catch(() => false)), 'finished preview: gone from the start page');
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 0, 'an ended preview does not go to the bin');
 
 // a round, ended and deleted
@@ -59,8 +79,8 @@ await p.goto(url);
 await p.waitForTimeout(1500);
 await p.locator('.tabbar button', { hasText: 'Runden' }).click();
 await p.waitForTimeout(600);
-const toggle = p.getByRole('button', { name: /Gelöschte Runden \(1\)/ });
-ok(await toggle.isVisible(), 'Rounds tab shows "Gelöschte Runden (1)"');
+const toggle = p.locator('.tile').filter({ hasText: 'gelöscht' });
+ok((await toggle.innerText()).replace(/\s+/g, ' ').trim() === '1 gelöscht', 'Rounds tab: fourth tile "1 gelöscht"');
 await toggle.click();
 await p.waitForTimeout(300);
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/bin.png' });
@@ -75,14 +95,14 @@ await p.evaluate(async (rid) => (await import('/src/lib/storage.ts')).deleteRoun
 await p.goto(url);
 await p.waitForTimeout(1500);
 await p.locator('.tabbar button', { hasText: 'Runden' }).click();
-await p.getByRole('button', { name: /Gelöschte Runden/ }).click();
+await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await p.getByRole('button', { name: 'Endgültig löschen' }).click();
 await p.waitForTimeout(200);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 1, 'the ✕ alone deletes nothing');
 await p.getByRole('button', { name: 'Endgültig löschen' }).last().click();
 await p.waitForTimeout(400);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 0, 'deleted for good after confirming');
-ok(!(await p.getByRole('button', { name: /Gelöschte Runden/ }).isVisible().catch(() => false)), 'bin row gone when empty');
+ok((await p.locator('.tile').filter({ hasText: 'gelöscht' }).count()) === 0, 'bin tile gone when empty');
 
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

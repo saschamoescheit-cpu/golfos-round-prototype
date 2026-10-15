@@ -21,6 +21,12 @@ await p.evaluate(() => {
   localStorage.setItem('golfos.intro.v1', '1');
   localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: 'Sascha', lastName: 'Möscheit', hcpIndex: '7,0', homeClub: '' }));
   sessionStorage.setItem('golfos.module', 'rounds');
+  // a finished round with tracked shots: driver 232 m and 9-iron 113 m on every hole (→ tracked 216 m and 105 m)
+  const M = 1 / 111195;
+  const at = (e, n) => [9.69 + (e * M) / Math.cos((48.78 * Math.PI) / 180), 48.78 + n * M];
+  const holes = Array.from({ length: 18 }, (_, k) => ({ index: k, label: String(k + 1), loop: 'Main', number: k + 1, par: 4, strokeIndex: k + 1 }));
+  const entry = () => ({ strokes: 4, putts: 2, pickedUp: false, fairway: null, penalties: 0, detail: { shots: [{ pos: at(0, 0), lie: 'tee', club: 'Dr', penalty: false }, { pos: at(0, 232), lie: 'fairway', club: '9i', penalty: false }], onGreen: at(0, 345), pin: at(0, 350), holedOut: false } });
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ id: 'qa1', createdAt: '2026-10-10T10:00:00Z', finishedAt: '2026-10-10T14:00:00Z', courseId: 'c', courseName: 'QA', loopOrder: ['Main'], holes, mode: 'detail', players: [{ id: 'me', name: 'Sascha', playingHandicap: 7, isMe: true }], entries: { me: holes.map(entry) }, currentHole: 17 }]));
 });
 await p.reload();
 await p.waitForTimeout(1200);
@@ -29,6 +35,12 @@ await p.waitForTimeout(300);
 const prof = await p.locator('main').innerText();
 ok(!/Sprache/.test(prof) && !/Sonnenmodus/.test(prof), 'no language and no sun mode in the profile');
 ok(/Von selbst vorlesen/.test(prof) && /Wie soll der Caddie planen/.test(prof) && !/verfehlen darf/.test(prof), 'caddie settings in the profile, no miss map');
+ok(!/Grüns heute/.test(prof), 'no green speed setting');
+const voice = p.getByRole('switch', { name: /Von selbst vorlesen/ });
+ok((await voice.getAttribute('aria-checked')) === 'false', 'voice switch off by default');
+await voice.click();
+ok((await voice.getAttribute('aria-checked')) === 'true' && (await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.caddie.v1')).voice)) === true, 'switch turns reading aloud on');
+await voice.click();
 await shot('profile');
 // home club: searched like a course
 await p.getByRole('button', { name: /Platz suchen/ }).click();
@@ -61,6 +73,12 @@ await p.getByText('Voller Schwung', { exact: true }).click();
 const after = await p.locator('main').innerText();
 ok(after.includes('4i') && after.includes('PW (43°)') && after.includes('SW') && !after.includes('SW (') && !after.includes('LW'), 'pencil: 4i added, LW removed, "PW (43°)" shown');
 await shot('bag-full');
+// tracked carry: shown next to the club, "use" as an icon (Sascha 15.10.2026)
+ok((await p.locator('.use-btn').count()) >= 2 && !(await p.locator('main').innerText()).includes('Übernehmen\n'), `tracked values with the icon button (${await p.locator('.use-btn').count()})`);
+await p.getByRole('button', { name: 'Gemessene 216 m für D übernehmen' }).click();
+ok((await p.getByRole('textbox', { name: 'D Carry in Metern' }).inputValue()) === '216', 'icon takes over the tracked 216 m for the driver');
+ok((await p.locator('.bag-row.full').filter({ hasText: 'Putter' }).locator('input').inputValue()) === '–', 'putter: same box with "–"');
+await shot('bag-tracked');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

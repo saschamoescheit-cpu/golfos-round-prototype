@@ -18,6 +18,10 @@ export function PlayTab(props: {
   onAbort: (r: Round) => void;
   onCheck: () => void;
   onModules: () => void;
+  /** A paused course preview: continue or end it. */
+  preview?: Round | null;
+  onPreview?: (r: Round) => void;
+  onEndPreview?: () => void;
 }) {
   const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const unchecked = uncheckedRounds(props.rounds).length;
@@ -105,6 +109,22 @@ export function PlayTab(props: {
         </div>
       )}
 
+      {props.preview && (
+        <section className="card play-card" aria-label={tr('Paused course preview', 'Pausierte Platzvorschau')}>
+          <span className="eyebrow">{tr('Course preview', 'Platzvorschau')}</span>
+          <div className="play-course">{props.preview.courseName}</div>
+          <span className="muted small">{tr(`hole ${props.preview.holes[props.preview.currentHole]?.label ?? ''}`, `Loch ${props.preview.holes[props.preview.currentHole]?.label ?? ''}`)}</span>
+          <div className="play-actions">
+            <button type="button" className="btn-primary" onClick={() => props.onPreview?.(props.preview!)}>
+              {tr('Continue preview', 'Vorschau fortsetzen')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={props.onEndPreview}>
+              {tr('Finish', 'Beenden')}
+            </button>
+          </div>
+        </section>
+      )}
+
       {open && (
         <section className="card play-card" aria-label={tr('Round in progress', 'Laufende Runde')}>
           <span className="eyebrow">{tr('Round in progress', 'Laufende Runde')}</span>
@@ -158,7 +178,7 @@ export function PlayTab(props: {
           )}
           {confirm === 'abort' && (
             <div className="play-confirm">
-              <span>{tr('Cancel and delete the round? Everything entered for it is lost.', 'Runde abbrechen und löschen? Alle Eingaben dieser Runde gehen verloren.')}</span>
+              <span>{tr('Cancel and delete the round? You can restore it under "Deleted rounds".', 'Runde abbrechen und löschen? Unter „Gelöschte Runden“ kannst du sie wiederherstellen.')}</span>
               <div className="play-actions">
                 <button type="button" className="btn-secondary" onClick={() => setConfirm(null)}>
                   {tr('Back', 'Zurück')}

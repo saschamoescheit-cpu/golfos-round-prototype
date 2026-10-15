@@ -31,7 +31,7 @@ for (const entry of COURSES) {
   await p.locator('button.list-item').filter({ hasText: course }).first().click();
   await p.getByText('Runde starten').waitFor({ timeout: 30000 });
   if (option) await p.locator('button.choice-loop').filter({ hasText: option }).first().click();
-  await p.getByRole('button', { name: 'Löcher ansehen – ohne Runde' }).click();
+  await p.getByRole('button', { name: 'Platzvorschau' }).click();
   await p.waitForTimeout(6000);
   const n = await p.evaluate(() => {
     const r = document.querySelector('.hole-bar')?.textContent ?? '';

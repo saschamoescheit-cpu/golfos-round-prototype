@@ -22,7 +22,8 @@ export function CaddieCard(props: {
   onLie: (l: LieKind) => void;
   book?: HoleBook | null; // what the course book knows about the hole
 }) {
-  const [details, setDetails] = useState(false);
+  // the player opened the caddie: everything at once (Sascha 15.10.2026) – a tap on the head folds it
+  const [details, setDetails] = useState(true);
   const [sheet, setSheet] = useState<'ask' | 'rules' | 'notes' | null>(null);
   const f = props.facts;
   return (

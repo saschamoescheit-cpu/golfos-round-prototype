@@ -1016,7 +1016,7 @@ function StandingCard(props: { game: Game; final?: boolean }) {
       <span className="muted small">
         {allowanceOf(g) ? tr(`Handicap ${allowanceOf(g)} %`, `Vorgabe ${allowanceOf(g)} %`) : tr('Gross, without handicap', 'Brutto, ohne Vorgabe')}
         {Number(g.settings.stake ?? 0) > 0 ? ` · ${tr('stake', 'Einsatz')} ${euroText(stakeNow(g))}` : ''}
-        {Number(g.settings.maxLoss ?? 0) > 0 ? ` · ${tr('loss limit', 'Verlustgrenze')} ${money(Number(g.settings.maxLoss))}` : ''}
+
       </span>
       <ol className="game-rows">
         {st.rows.map((r) => (

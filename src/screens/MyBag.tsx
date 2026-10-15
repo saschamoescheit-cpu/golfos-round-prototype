@@ -77,12 +77,12 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     const next = inBag.filter((x) => x !== c);
     setInBag(next);
     persist(bag, next);
+    setNote(null);
   };
   const add = (c: Club) => {
     const next = byOrder([...inBag, c].map((club) => ({ club }))).map((x) => x.club);
     setInBag(next);
     persist(bag, next);
-    setNote(tr(`${clubCode(c)} added – check its carry.`, `${clubCode(c)} hinzugefügt – prüfe die Carry-Weite.`));
   };
   const setFav = (patch: Partial<CaddieSettings>) => {
     const next = { ...settings, ...patch };
@@ -215,7 +215,8 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
             {tr('Carry = how far the ball flies on a normal day (no wind, 20 °C, flat).', 'Carry = wie weit der Ball an einem normalen Tag fliegt (kein Wind, 20 °C, eben).')}
           </p>
           {toReview > 0 && (
-            <button type="button" className="btn-secondary" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
+            <button type="button" className="btn-secondary use-all" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
+              <UseIcon />
               {tr(`Use tracked values for ${toReview} ${toReview === 1 ? 'club' : 'clubs'}`, `Gemessene Werte für ${toReview} Schläger übernehmen`)}
             </button>
           )}
@@ -228,11 +229,14 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                   {t ? (
                     <span className={`bag-tracked${differs(c) ? ' differs' : ''}`}>
                       <span className="bag-tracked-text">
-                        {tr('tracked', 'gemessen')} {t.carry} m <span className="muted">({t.shots})</span>
+                        <span className="bag-tracked-label">{tr('tracked', 'gemessen')}</span>
+                        <span>
+                          {t.carry} m <span className="muted">· {t.shots}×</span>
+                        </span>
                       </span>
                       {differs(c) && (
-                        <button type="button" aria-label={tr(`Use tracked ${t.carry} m for ${clubCode(c)}`, `Gemessene ${t.carry} m für ${clubCode(c)} übernehmen`)} onClick={() => useTracked([c])}>
-                          {tr('Use', 'Übernehmen')}
+                        <button type="button" className="use-btn" aria-label={tr(`Use tracked ${t.carry} m for ${clubCode(c)}`, `Gemessene ${t.carry} m für ${clubCode(c)} übernehmen`)} title={tr('Use', 'Übernehmen')} onClick={() => useTracked([c])}>
+                          <UseIcon />
                         </button>
                       )}
                     </span>
@@ -258,7 +262,10 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               <div className="bag-row full">
                 <strong className="bag-code">Putter</strong>
                 <span />
-                <span className="muted small">{tr('no carry', 'ohne Weite')}</span>
+                <span className="bag-input">
+                  <input className="input" value="–" readOnly disabled aria-label={tr('Putter – no carry', 'Putter – ohne Weite')} />
+                  m
+                </span>
               </div>
             )}
           </div>
@@ -313,9 +320,12 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                           onChange={(e) => setPartial(c, sw, e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
                         />
                         {t && Math.abs((own ?? suggestedPartial(fullOf(c), sw)) - t.carry) >= 4 && (
-                          <button type="button" className="bag-use" onClick={() => setPartial(c, sw, String(t.carry))}>
-                            {tr(`tracked ${t.carry} · use`, `gemessen ${t.carry} · übernehmen`)}
-                          </button>
+                          <span className="pitch-tracked">
+                            <span className="muted small">{tr(`tracked ${t.carry}`, `gemessen ${t.carry}`)}</span>
+                            <button type="button" className="use-btn small" aria-label={tr(`Use tracked ${t.carry} m`, `Gemessene ${t.carry} m übernehmen`)} title={tr('Use', 'Übernehmen')} onClick={() => setPartial(c, sw, String(t.carry))}>
+                              <UseIcon />
+                            </button>
+                          </span>
                         )}
                       </span>
                     );
@@ -328,5 +338,15 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
         </>
       )}
     </main>
+  );
+}
+
+/** "Use the tracked value": two arrows – the upper one to the left, the lower one to the right (Sascha 15.10.2026). */
+function UseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 8H5M9 4L5 8l4 4" />
+      <path d="M4 16h15M15 12l4 4-4 4" />
+    </svg>
   );
 }

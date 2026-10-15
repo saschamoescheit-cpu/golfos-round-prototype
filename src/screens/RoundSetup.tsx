@@ -395,10 +395,10 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
 
       <span className="spacer" />
       <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee, playingHandicap(me))} disabled={!option}>
-        {tr('Birdie book – all holes', 'Birdiebook – alle Löcher')}
+        {tr('Birdie book', 'Birdiebook')}
       </button>
       <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>
-        {tr('Preview the holes – no round', 'Löcher ansehen – ohne Runde')}
+        {tr('Course preview', 'Platzvorschau')}
       </button>
       <button type="button" className="btn-primary" onClick={() => start()} disabled={!option || !fits}>
         {tr('Start round', 'Runde starten')}

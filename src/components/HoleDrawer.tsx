@@ -21,8 +21,9 @@ export function HoleDrawer(props: {
   onLeaderboard: (() => void) | null;
   onPause: () => void;
   onEnd: () => void;
-  /** Hole preview (no round): no score, one action – end the preview. */
+  /** Course preview (no round): no score; birdie book, pause and finish. */
   preview?: boolean;
+  onBook?: () => void;
 }) {
   const r = props.round;
   const me = r.players.find((p) => p.isMe)!;
@@ -106,12 +107,27 @@ export function HoleDrawer(props: {
 
         {/* three actions side by side as icons (Sascha 15.10.2026): scorecard, pause, stop like a recording */}
         {props.preview ? (
-          <div className="drawer-actions single">
-            <button type="button" className="drawer-action end" onClick={props.onPause} aria-label={tr('End preview', 'Vorschau beenden')}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" />
+          // the course preview (Sascha 15.10.2026): birdie book, pause, finish – the same tiles as in a round
+          <div className="drawer-actions">
+            <button type="button" className="drawer-action" onClick={props.onBook} aria-label={tr('Birdie book', 'Birdiebook')}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
+                <path d="M4 21V5M9 7h6" />
               </svg>
-              <span>{tr('End preview', 'Vorschau beenden')}</span>
+              <span>{tr('Birdie book', 'Birdiebook')}</span>
+            </button>
+            <button type="button" className="drawer-action" onClick={props.onPause} aria-label={tr('Pause preview – continue later', 'Vorschau pausieren – später fortsetzen')}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <rect x="6" y="4" width="4" height="16" rx="1.2" />
+                <rect x="14" y="4" width="4" height="16" rx="1.2" />
+              </svg>
+              <span>{tr('Pause', 'Pausieren')}</span>
+            </button>
+            <button type="button" className="drawer-action end" onClick={props.onEnd} aria-label={tr('End preview', 'Vorschau beenden')}>
+              <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor" />
+              </svg>
+              <span>{tr('Finish', 'Beenden')}</span>
             </button>
           </div>
         ) : (

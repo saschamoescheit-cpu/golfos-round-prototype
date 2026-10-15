@@ -12,17 +12,23 @@ export interface BinItem {
   deletedAt: string;
 }
 
-export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: string) => void; onPurge: (id: string) => void }) {
-  const [open, setOpen] = useState(false);
+export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: string) => void; onPurge: (id: string) => void; open?: boolean }) {
+  // `open` given: the list is opened from outside (the tile on the rounds page) – no own toggle
+  const [ownOpen, setOpen] = useState(false);
+  const open = props.open ?? ownOpen;
   const [purging, setPurging] = useState<string | null>(null);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   if (!props.items.length) return null;
   const day = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
   return (
     <>
-      <button type="button" className="toggle bin-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {open ? '▾' : '▸'} {props.title} ({props.items.length})
-      </button>
+      {props.open == null ? (
+        <button type="button" className="toggle bin-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? '▾' : '▸'} {props.title} ({props.items.length})
+        </button>
+      ) : (
+        open && <h2 className="bin-title">{props.title}</h2>
+      )}
       {open && (
         <ul className="list">
           {props.items.map((t) => (

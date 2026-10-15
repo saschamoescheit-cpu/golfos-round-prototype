@@ -240,7 +240,8 @@ export interface CaddieSettings {
   greenSpeed: 'slow' | 'medium' | 'fast'; // for the putt read: Stimp 8.5 / 9.5 / 11
 }
 export function loadCaddieSettings(): CaddieSettings {
-  return { caddie: true, greenSlope: true, missMap: false, style: 'normal', favourite: 90, voice: false, greenSpeed: 'medium', ...read<Partial<CaddieSettings>>(CADDIE, {}) };
+  // green speed is no setting any more (Sascha 15.10.2026): the putt line reads club greens (medium)
+  return { caddie: true, greenSlope: true, missMap: false, style: 'normal', favourite: 90, voice: false, ...read<Partial<CaddieSettings>>(CADDIE, {}), greenSpeed: 'medium' };
 }
 export function saveCaddieSettings(s: CaddieSettings): void {
   write(CADDIE, s);

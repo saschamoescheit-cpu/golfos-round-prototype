@@ -4,7 +4,7 @@ import { Segmented } from './ui';
 import { tr } from '../lib/i18n';
 
 // The caddie's few settings (Sascha 15.10.2026): on/off, green slope, reading aloud by itself (with headphones),
-// how he plans and how fast the greens are. The miss map is gone until it is good; language and sun mode sit in
+// and how he plans (green speed dropped, Sascha 15.10.2026). The miss map is gone until it is good; language and sun mode sit in
 // the header.
 
 export function CaddieSettingsFields() {
@@ -16,15 +16,24 @@ export function CaddieSettingsFields() {
   };
   return (
     <>
-      <button type="button" className="toggle" aria-pressed={s.caddie} onClick={() => set({ caddie: !s.caddie })}>
-        {s.caddie ? '✓' : '○'} {tr('Club advice on every hole (wind, temperature, slope)', 'Schlägerempfehlung an jedem Loch (Wind, Temperatur, Höhe)')}
-      </button>
-      <button type="button" className="toggle" aria-pressed={s.greenSlope} onClick={() => set({ greenSlope: !s.greenSlope })}>
-        {s.greenSlope ? '✓' : '○'} {tr('Green slope when I am on the green', 'Grün-Neigung, wenn ich auf dem Grün bin')}
-      </button>
-      <button type="button" className="toggle" aria-pressed={s.voice} onClick={() => set({ voice: !s.voice })}>
-        {s.voice ? '✓' : '○'} {tr('Read aloud by itself – with headphones', 'Von selbst vorlesen – mit Kopfhörern')}
-      </button>
+      {/* switches as in the hole overview (Sascha 15.10.2026: "a slider looks better and is what users know") */}
+      <div className="drawer-list settings-switches">
+        {(
+          [
+            ['caddie', tr('Club advice on every hole', 'Schlägerempfehlung an jedem Loch'), tr('wind, temperature, slope', 'Wind, Temperatur, Höhe')],
+            ['greenSlope', tr('Green slope on the green', 'Grün-Neigung auf dem Grün'), null],
+            ['voice', tr('Read aloud by itself', 'Von selbst vorlesen'), tr('with headphones', 'mit Kopfhörern')],
+          ] as const
+        ).map(([k, label, sub]) => (
+          <button key={k} type="button" className="drawer-row" role="switch" aria-checked={s[k]} onClick={() => set({ [k]: !s[k] })}>
+            <span className="switch-label">
+              <span>{label}</span>
+              {sub && <span className="muted small">{sub}</span>}
+            </span>
+            <span className={`drawer-switch${s[k] ? ' on' : ''}`} aria-hidden="true" />
+          </button>
+        ))}
+      </div>
       <span className="muted small">
         {tr(
           'Off: the caddie only speaks when you tap 🔊 on his card. A web app cannot tell whether headphones are connected – switch this on when you wear them.',
@@ -49,19 +58,6 @@ export function CaddieSettingsFields() {
             'Sicher: ein Schläger weniger vom Abschlag, wenn Aus nah ist, Grünmitte, früher vorlegen. Offensiv: geht früher aufs Grün, auf die Fahne.',
           )}
         </span>
-      </div>
-      <div className="field">
-        <label>{tr('Greens today (for the putt line)', 'Grüns heute (für die Putt-Linie)')}</label>
-        <Segmented<CaddieSettings['greenSpeed']>
-          label={tr('Green speed', 'Grüngeschwindigkeit')}
-          value={s.greenSpeed}
-          onChange={(v) => v && set({ greenSpeed: v })}
-          options={[
-            { value: 'slow', label: tr('Slow', 'Langsam') },
-            { value: 'medium', label: tr('Medium', 'Mittel') },
-            { value: 'fast', label: tr('Fast', 'Schnell') },
-          ]}
-        />
       </div>
     </>
   );

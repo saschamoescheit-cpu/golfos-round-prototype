@@ -77,6 +77,8 @@ export function HoleScreen(props: {
   onShowScorecard: (r: Round, finishing?: boolean) => void;
   /** From the hole overview: my bag or the caddie settings, back to this hole afterwards. */
   onOpenBag?: (part: 'bag' | 'caddie') => void;
+  /** Course preview: the birdie book of the course, back to this hole afterwards. */
+  onBook?: () => void;
 }) {
   const { round } = props;
   const i = round.currentHole;
@@ -315,6 +317,7 @@ export function HoleScreen(props: {
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   // score after the hole over the map (Hole19); 'next': opened by "→" without a score – done = on to the next hole
   const [scoreSheet, setScoreSheet] = useState<false | 'score' | 'next'>(false);
+  useEffect(() => setScoreSheet(false), [i]); // on to the next hole: the sheet closes, the map shows (Sascha 15.10.2026)
   const [puttEditor, setPuttEditor] = useState(false);
   const [hazardsOn, setHazardsOn] = useState(false); // distances to bunkers and water, on demand
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
@@ -958,9 +961,12 @@ export function HoleScreen(props: {
             onScorecard={() => props.onShowScorecard(round)}
             onLeaderboard={round.players.length > 1 && !round.preview ? () => { setDrawerOpen(false); setBoardOpen(true); } : null}
             preview={round.preview}
+            onBook={props.onBook}
             onPause={props.onExit}
             onEnd={() => {
               setDrawerOpen(false);
+              // the preview ends at once (nothing saved); a round asks first
+              if (round.preview) return props.onAbort(round);
               setExitOpen(true);
               setExitConfirm('end');
             }}

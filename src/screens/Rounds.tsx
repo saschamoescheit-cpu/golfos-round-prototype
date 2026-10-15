@@ -32,6 +32,10 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
   // the bin (Sascha 15.10.2026): deleted rounds come back with one tap; only the player empties it
   const [trash, setTrash] = useState(loadTrash);
   useEffect(() => setTrash(loadTrash()), [props.rounds]);
+  const [binOpen, setBinOpen] = useState(false);
+  useEffect(() => {
+    if (!trash.length) setBinOpen(false);
+  }, [trash.length]);
 
   return (
     <>
@@ -49,7 +53,25 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
           <span className="tile-num">{holes}</span>
           <span className="muted small">{tr('holes', 'Löcher')}</span>
         </div>
+        {/* deleted rounds as the fourth tile (Sascha 15.10.2026) – a tap shows them under the list */}
+        {trash.length > 0 && (
+          <button type="button" className="tile" aria-pressed={binOpen} onClick={() => setBinOpen(!binOpen)}>
+            <span className="tile-num">{trash.length}</span>
+            <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+          </button>
+        )}
       </div>
+
+      <Bin
+        open={binOpen}
+        title={tr('Deleted rounds', 'Gelöschte Runden')}
+        items={trash.map((t) => ({ id: t.round.id, date: t.round.createdAt, title: t.round.courseName, meta: `${t.round.holes.length} ${tr('holes', 'Löcher')}`, deletedAt: t.deletedAt }))}
+        onRestore={restoreRound}
+        onPurge={(id) => {
+          purgeRound(id);
+          setTrash(loadTrash());
+        }}
+      />
 
       {open && (
         <button type="button" className="list-item live" onClick={() => props.onContinue(open)}>
@@ -103,15 +125,6 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
         </ul>
       )}
 
-      <Bin
-        title={tr('Deleted rounds', 'Gelöschte Runden')}
-        items={trash.map((t) => ({ id: t.round.id, date: t.round.createdAt, title: t.round.courseName, meta: `${t.round.holes.length} ${tr('holes', 'Löcher')}`, deletedAt: t.deletedAt }))}
-        onRestore={restoreRound}
-        onPurge={(id) => {
-          purgeRound(id);
-          setTrash(loadTrash());
-        }}
-      />
     </>
   );
 }

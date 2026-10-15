@@ -78,6 +78,11 @@ for (const c of CASES) {
     ok(blocks === c.blocks, `${label}: ${blocks} score blocks (expected ${c.blocks})`);
     if (c.team) ok((await p.locator('.score-panel').getByText('Putts', { exact: true }).count()) === 0, `${label}: team – no putts`);
     for (let h = 0; h < 3; h++) {
+      // the sheet closes on the next hole (Sascha 15.10.2026) – open it again there
+      if (h > 0) {
+        await p.locator('.map-score').click();
+        await p.waitForTimeout(300);
+      }
       for (let k = 0; k < blocks; k++) {
         const plus = p.locator('.score-player').nth(k).getByRole('button', { name: /Schläge plus eins/ });
         for (let x = 0; x <= (k + h) % 3; x++) await plus.click();
@@ -85,7 +90,6 @@ for (const c of CASES) {
       await p.getByRole('button', { name: 'Nächstes Loch' }).click();
       await p.waitForTimeout(500);
     }
-    await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
     const round = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]);
     const scores = round.players.map((pl) => `${pl.name} (SV ${pl.playingHandicap}): ${round.entries[pl.id].slice(0, 3).map((e) => e.strokes).join('/')}`);
     ok(round.players.length === c.blocks && round.entries[round.players[0].id].slice(0, 3).every((e) => e.strokes != null), `${label}: stored ${scores.join(' · ')}`);

@@ -258,20 +258,6 @@ const DOUBLE: SettingDef[] = [
     when: (s) => !!s.double,
   },
 ];
-const MAX_LOSS: SettingDef = {
-  key: 'maxLoss',
-  label: () => tr('Most anyone can lose', 'Verlustgrenze je Spieler'),
-  type: 'choice',
-  options: [
-    { value: '0', label: () => tr('none', 'keine') },
-    { value: '5', label: () => money(5) },
-    { value: '10', label: () => money(10) },
-    { value: '20', label: () => money(20) },
-    { value: '50', label: () => money(50) },
-    { value: '100', label: () => money(100) },
-  ],
-  default: '0',
-};
 
 // ---------- the forms ----------
 
@@ -815,14 +801,13 @@ export const FORMS: FormDef[] = [
   },
 ];
 
-// handicap, press and loss limit for the forms where they make sense
+// handicap and press for the forms where they make sense (no loss limit – Sascha 15.10.2026)
 const WITH_HCP: FormId[] = ['skins', 'nassau', 'wolf', 'chicago', 'vegas', 'sixes', 'stableford', 'match', 'hammer', 'rabbit', 'acey'];
 const WITH_DOUBLE: FormId[] = ['skins', 'wolf', 'chicago', 'bbb', 'vegas', 'sixes', 'dots', 'stableford', 'rabbit', 'acey'];
 for (const f of FORMS) {
   if (WITH_HCP.includes(f.id)) f.settings.unshift(HCP);
   // Chicago is played with the press as a rule (Sascha's concept)
   if (WITH_DOUBLE.includes(f.id)) f.settings.push(...(f.id === 'chicago' ? [{ ...DOUBLE[0], default: true }, ...DOUBLE.slice(1)] : DOUBLE));
-  f.settings.push(MAX_LOSS);
 }
 
 export const formDef = (id: FormId): FormDef => FORMS.find((f) => f.id === id)!;
@@ -863,7 +848,7 @@ export function standingOf(g: Game): Standing {
       : st.rows;
     st = { ...st, rows, money: total };
   }
-  return st.money ? { ...st, money: capLoss(st.money, Number(g.settings.maxLoss ?? 0)) } : st;
+  return st;
 }
 export const formatEuro = euro;
 export const holesPlayed = holesDone;
