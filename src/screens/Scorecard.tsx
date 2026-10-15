@@ -112,11 +112,11 @@ export function Scorecard(props: {
                 type="button"
                 className="btn-secondary btn-danger"
                 onClick={() => {
-                  deleteRound(round.id);
+                  deleteRound(round.id, true);
                   props.onDeleted();
                 }}
               >
-                {tr('Delete for good', 'Endgültig löschen')}
+                {tr('Delete', 'Löschen')}
               </button>
             </div>
           )}
@@ -231,7 +231,7 @@ export function Scorecard(props: {
         </button>
       ) : (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span>{tr('Delete this round for good?', 'Diese Runde endgültig löschen?')}</span>
+          <span>{tr('Delete this round? It stays under "Deleted rounds".', 'Diese Runde löschen? Sie bleibt unter „Gelöschte Runden“.')}</span>
           <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <button type="button" className="btn-secondary" onClick={() => setConfirmDelete(false)}>
               {tr('Keep', 'Behalten')}
@@ -240,7 +240,7 @@ export function Scorecard(props: {
               type="button"
               className="btn-secondary btn-danger"
               onClick={() => {
-                deleteRound(round.id);
+                deleteRound(round.id, true);
                 props.onDeleted();
               }}
             >

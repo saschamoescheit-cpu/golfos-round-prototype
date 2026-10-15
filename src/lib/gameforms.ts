@@ -49,7 +49,7 @@ export interface Game {
 export interface SettingDef {
   key: string;
   label: () => string;
-  type: 'stake' | 'bool' | 'choice';
+  type: 'stake' | 'bool' | 'choice' | 'cap' | 'presses';
   options?: { value: string; label: () => string }[];
   default: number | boolean | string;
   hint?: () => string;
@@ -130,6 +130,25 @@ export function stakeCap(g: Pick<Game, 'settings'>): number {
   const limit = euros > 0 ? euros : Infinity;
   while (base * 2 ** (k + 1) <= limit + 1e-9 && (!presses || k + 1 <= presses) && k < 20) k++;
   return limit === Infinity && !presses ? Infinity : base * 2 ** k;
+}
+/** The doubling chain of a start stake up to `upTo` (Sascha 15.10.2026: 0,10 → 0,20 → 0,40 … 6,40 €). */
+export function capChain(stake: number, upTo = 6.4): number[] {
+  const out: number[] = [];
+  for (let v = stake * 2; stake > 0 && v <= upTo + 1e-9 && out.length < 20; v *= 2) out.push(Math.round(v * 100) / 100);
+  return out;
+}
+/** A cap typed by hand must be a step of the chain: from 0,10 € 12,80 € or 25,60 € – not 10 € or 12,20 €. */
+export function onChain(stake: number, v: number): boolean {
+  if (!(stake > 0) || !(v > stake)) return false;
+  const k = Math.round(Math.log2(v / stake));
+  return k >= 1 && k <= 20 && Math.round(stake * 2 ** k * 100) === Math.round(v * 100);
+}
+/** A cap that is no step of the chain (start stake changed) → the step below it, at least one doubling. */
+export function snapCap(stake: number, cap: number): number {
+  if (!(stake > 0) || !(cap > 0)) return cap;
+  let v = stake * 2;
+  while (v * 2 <= cap + 1e-9) v *= 2;
+  return Math.round(v * 100) / 100;
 }
 /** One more press stays within the cap. */
 export const canPress = (g: Game): boolean => !!g.settings.double && Number(g.settings.stake ?? 0) > 0 && stakeNow(g) * 2 <= stakeCap(g) + 1e-9;
@@ -213,35 +232,18 @@ const DOUBLE: SettingDef[] = [
   { key: 'double', label: () => tr('Press: the last may double the stake', 'Press: der Letzte darf den Einsatz verdoppeln'), type: 'bool', default: false },
   {
     key: 'maxStake',
-    label: () => tr('Highest stake (snaps to the doubling chain)', 'Höchsteinsatz (rastet auf die Verdopplungen ein)'),
-    type: 'choice',
-    options: [
-      { value: '0.4', label: () => money(0.4) },
-      { value: '0.8', label: () => money(0.8) },
-      { value: '1', label: () => money(1) },
-      { value: '1.6', label: () => money(1.6) },
-      { value: '2', label: () => money(2) },
-      { value: '3.2', label: () => money(3.2) },
-      { value: '3.6', label: () => money(3.6) },
-      { value: '5', label: () => money(5) },
-      { value: '10', label: () => money(10) },
-      { value: '0', label: () => tr('no cap', 'ohne Limit') },
-    ],
+    label: () => tr('Highest stake', 'Höchsteinsatz'),
+    // the steps of the doubling chain of the start stake up to 6,40 €, "no cap", or a higher step typed in (Games.tsx)
+    type: 'cap',
     default: '1.6',
     when: (s) => !!s.double,
   },
   {
     key: 'maxPresses',
     label: () => tr('Presses allowed', 'Erlaubte Pressen'),
-    type: 'choice',
-    options: [
-      { value: '1', label: () => '1' },
-      { value: '2', label: () => '2' },
-      { value: '3', label: () => '3' },
-      { value: '4', label: () => '4' },
-      { value: '5', label: () => '5' },
-      { value: '0', label: () => tr('any', 'beliebig') },
-    ],
+    // the same limit as the highest stake, counted in doublings (Sascha 15.10.2026: 0,10 € up to 1,60 € = 4× pressing) –
+    // Games.tsx shows 1×, 2×, … and stores the highest stake; with money the stored value stays 0
+    type: 'presses',
     default: '0',
     when: (s) => !!s.double,
   },
@@ -432,8 +434,8 @@ export const FORMS: FormDef[] = [
         'Pressen: nur der Spieler mit den meisten Minuspunkten, nur zu Lochbeginn. Der Einsatz verdoppelt sich, alle Punkte werden halbiert – der bisherige Geldstand bleibt, die kommenden Löcher zählen doppelt.',
       ),
       tr(
-        'Highest stake: in euros (it snaps to the doubling chain: start 0.15 €, maximum 3.60 € → 2.40 €) or as a number of presses.',
-        'Höchsteinsatz: in Euro (rastet auf die Verdopplungs-Kette ein: Start 0,15 €, Maximum 3,60 € → 2,40 €) oder als Zahl erlaubter Pressen.',
+        'Highest stake: a step of the doubling chain (0.10 → 0.20 → 0.40 … 6.40 €, higher ones like 12.80 € typed in) or as a number of presses.',
+        'Höchsteinsatz: eine Stufe der Verdopplungs-Kette (0,10 → 0,20 → 0,40 … 6,40 €, höhere wie 12,80 € per Eingabe) oder als Zahl erlaubter Pressen.',
       ),
       tr(
         'Gross or net: net gives the strokes of the playing handicap hole by hole after the stroke index (without one: evenly over the round).',

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { loadTrash, purgeRound, restoreRound } from '../lib/storage';
 import type { Round } from '../types';
 import { checksShots, playerTotals } from '../lib/scoring';
 import { formatToPar } from '../components/ui';
@@ -27,6 +28,11 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
   const shown = onlyCheck ? toCheck : finished;
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const holes = finished.reduce((n, r) => n + r.holes.length, 0);
+  // the bin (Sascha 15.10.2026): deleted rounds come back with one tap; only the player empties it
+  const [trash, setTrash] = useState(loadTrash);
+  useEffect(() => setTrash(loadTrash()), [props.rounds]);
+  const [binOpen, setBinOpen] = useState(false);
+  const [purging, setPurging] = useState<string | null>(null);
 
   return (
     <>
@@ -96,6 +102,59 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
             );
           })}
         </ul>
+      )}
+
+      {trash.length > 0 && (
+        <>
+          <button type="button" className="toggle bin-toggle" aria-expanded={binOpen} onClick={() => setBinOpen(!binOpen)}>
+            {binOpen ? '▾' : '▸'} {tr(`Deleted rounds (${trash.length})`, `Gelöschte Runden (${trash.length})`)}
+          </button>
+          {binOpen && (
+            <ul className="list">
+              {trash.map((t) => (
+                <li key={t.round.id} className="list-item bin-item">
+                  <span className="round-date">
+                    <strong>{new Date(t.round.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
+                    <span className="muted small">{new Date(t.round.createdAt).getFullYear()}</span>
+                  </span>
+                  <span className="grow">
+                    <span className="title">{t.round.courseName}</span>
+                    <span className="muted small">
+                      {`${t.round.holes.length} ${tr('holes', 'Löcher')} · ${tr('deleted', 'gelöscht')} ${new Date(t.deletedAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}`}
+                    </span>
+                  </span>
+                  {purging === t.round.id ? (
+                    <span className="bin-actions">
+                      <button type="button" className="btn-secondary" onClick={() => setPurging(null)}>
+                        {tr('Keep', 'Behalten')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-danger"
+                        onClick={() => {
+                          purgeRound(t.round.id);
+                          setPurging(null);
+                          setTrash(loadTrash());
+                        }}
+                      >
+                        {tr('Delete for good', 'Endgültig löschen')}
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="bin-actions">
+                      <button type="button" className="btn-secondary" onClick={() => restoreRound(t.round.id)}>
+                        {tr('Restore', 'Wiederherstellen')}
+                      </button>
+                      <button type="button" className="btn-secondary bin-x" aria-label={tr('Delete for good', 'Endgültig löschen')} onClick={() => setPurging(t.round.id)}>
+                        ✕
+                      </button>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </>
   );

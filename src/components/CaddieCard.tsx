@@ -41,7 +41,7 @@ export function CaddieCard(props: {
           </span>
         ))}
         {details && props.alt && <span className="alt">{props.alt}</span>}
-        {details && props.book && <BookPart book={props.book} />}
+        {details && props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
         {details && props.lie != null && (
           <label className="caddie-lie">
             <span>{tr('Lie', 'Lage')}</span>
@@ -109,8 +109,8 @@ function Sheet(props: { title: string; onClose: () => void; children: React.Reac
 
 const QUESTIONS = (): string[] =>
   getLang() === 'de'
-    ? ['Welcher Schläger?', 'Wie weit?', 'Wohin ziele ich?', 'Wie ist der Wind?', 'Wie läuft das Grün?']
-    : ['What club?', 'How far?', 'Where do I aim?', 'How is the wind?', 'How does the green break?'];
+    ? ['Welcher Schläger?', 'Wie weit?', 'Wohin ziele ich?', 'Wie ist der Wind?', 'Wo steht die Fahne?', 'Wo darf ich verfehlen?', 'Was ist der Plan?', 'Wie läuft das Grün?']
+    : ['What club?', 'How far?', 'Where do I aim?', 'How is the wind?', 'Where is the flag?', 'Where can I miss?', "What's the plan?", 'How does the green break?'];
 
 function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () => void }) {
   const [q, setQ] = useState<string | null>(null);
@@ -216,8 +216,9 @@ function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: HoleNote)
 }
 
 /** The course book's facts on the hole (Sascha 15.10.2026), under the caddie's advice when unfolded. */
-function BookPart(props: { book: HoleBook }) {
-  const b = props.book;
+function BookPart(props: { book: HoleBook; said: string[] }) {
+  // a line the caddie already said above (e.g. the best leave on the green) is not repeated
+  const b = { ...props.book, green: props.book.green.filter((t) => !props.said.includes(t)) };
   if (!b.tip && !b.rise && !b.hazards.length && !b.green.length && !b.record.length) return null;
   return (
     <div className="caddie-book" aria-label={tr('The hole', 'Das Loch')}>

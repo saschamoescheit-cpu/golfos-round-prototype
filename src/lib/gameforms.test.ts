@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canPress, capLoss, chicagoTeams, formDef, received, stakeCap, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
+import { canPress, capChain, capLoss, onChain, snapCap, chicagoTeams, formDef, received, stakeCap, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
 
 const holes = (n: number) => Array.from({ length: n }, (_, i) => ({ label: String(i + 1), par: 4, si: i + 1 }));
 
@@ -171,6 +171,17 @@ describe("Chicago as Sascha's group plays it", () => {
     const g = game('chicago', [[4], [4], [4], [4]], { stake: 0.15, maxStake: '3.6' });
     g.presses = [0, 0, 0, 0].map((hole) => ({ hole, by: 'p0' })); // 0,15 → 2,40
     expect(canPress(g)).toBe(false);
+  });
+  it('the cap is a step of the doubling chain – chips to 6,40 €, typed ones checked', () => {
+    expect(capChain(0.1)).toEqual([0.2, 0.4, 0.8, 1.6, 3.2, 6.4]);
+    expect(capChain(0.15)).toEqual([0.3, 0.6, 1.2, 2.4, 4.8]);
+    expect(onChain(0.1, 12.8)).toBe(true);
+    expect(onChain(0.1, 25.6)).toBe(true);
+    expect(onChain(0.1, 10)).toBe(false);
+    expect(onChain(0.1, 12.2)).toBe(false);
+    expect(onChain(0.1, 0.1)).toBe(false);
+    expect(snapCap(0.15, 1.6)).toBeCloseTo(1.2);
+    expect(snapCap(2, 1.6)).toBeCloseTo(4);
   });
   it('net without stroke index spreads the strokes over the round', () => {
     const noSi = Array.from({ length: 18 }, (_, i) => ({ label: String(i + 1), par: 4, si: 0 }));

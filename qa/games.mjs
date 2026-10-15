@@ -50,6 +50,7 @@ const forms = await p.locator('.game-form').count();
 ok(forms === 14, `catalogue lists ${forms} game forms`);
 await p.locator('.game-form-head').filter({ hasText: 'Wolf' }).click();
 ok((await p.locator('.game-rules li').count()) >= 3, 'rules of the wolf open');
+ok(await p.getByRole('button', { name: '🔊 Spielform vorlesen' }).isVisible(), 'the rules can be read aloud');
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 
 const CASES = [
@@ -71,6 +72,15 @@ const CASES = [
   ['Rabbit', 3],
   ['Acey Deucey', 4],
 ];
+// a game needs a course (Sascha 15.10.2026) – Hetzenhof for every game
+const course = async () => {
+  await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
+  await p.fill('#course-search', 'Hetzenhof');
+  await p.waitForTimeout(2000);
+  await p.locator('button.list-item').first().click();
+  await p.waitForTimeout(800);
+};
+let firstCase = true;
 for (const [form, n] of CASES) {
   await p.getByRole('button', { name: 'Neues Spiel' }).click();
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
@@ -82,6 +92,12 @@ for (const [form, n] of CASES) {
     });
   }
   await p.locator('.game-player-row').nth(1).locator('input').nth(1).fill('12');
+  if (firstCase) {
+    ok(await p.getByRole('button', { name: 'Spiel starten' }).isDisabled(), 'no start without a course');
+    ok(await p.getByText('Wähle zuerst den Platz').isVisible(), 'says to choose the course');
+    firstCase = false;
+  }
+  await course();
   const start = p.getByRole('button', { name: 'Spiel starten' });
   ok(await start.isEnabled(), `${form} with ${n}: start possible`);
   await start.click();
@@ -125,9 +141,30 @@ await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna');
 ok((await p.locator('.game-player-row').nth(1).locator('input').nth(1).inputValue()) === '12', 'friend Ben added with one tap, handicap 12');
 ok((await p.locator('.game-player-row').count()) === 4, 'the friend took the empty row (then two more players)');
+await course();
 await p.locator('.game-setting').filter({ hasText: 'Vorgabe (WHS)' }).getByRole('button', { name: 'Ohne (brutto)' }).click();
 ok((await p.locator('.game-setting').filter({ hasText: 'Press:' }).locator('.chip.on').innerText()) === 'Ja', 'Chicago: press is on by default');
-ok(await p.getByText('Höchsteinsatz (rastet', { exact: false }).isVisible(), 'highest stake shows once press is on');
+// the highest stake: the doubling chain of 0,10 € up to 6,40 €, higher steps typed in and checked (Sascha 15.10.2026)
+const cap = p.locator('.game-setting').filter({ hasText: 'Höchsteinsatz' });
+const capChips = (await cap.locator('.chip').allInnerTexts()).join('|');
+ok(capChips === '0,20 €|0,40 €|0,80 €|1,60 €|3,20 €|6,40 €|ohne Limit|höher …', `cap chips: ${capChips}`);
+await cap.getByRole('button', { name: 'höher …' }).click();
+await cap.locator('input').fill('10');
+await cap.getByRole('button', { name: 'Übernehmen' }).click();
+ok((await cap.getByRole('alert').innerText()).includes('Nur Verdopplungen von 0,10 €'), '10 € is refused');
+await cap.locator('input').fill('12,20');
+await cap.getByRole('button', { name: 'Übernehmen' }).click();
+ok(await cap.getByRole('alert').isVisible(), '12,20 € is refused');
+await cap.locator('input').fill('12,80');
+await cap.getByRole('button', { name: 'Übernehmen' }).click();
+ok((await cap.locator('.chip.on').innerText()) === '12,80 €' && (await cap.innerText()).includes('7× verdoppelt'), '12,80 € taken (7 doublings)');
+await p.screenshot({ path: (process.env.SHOTS ?? '.') + '/games-cap.png', fullPage: true });
+await cap.getByRole('button', { name: '1,60 €' }).click();
+const presses = p.locator('.game-setting').filter({ hasText: 'Erlaubte Pressen' });
+ok((await presses.locator('.chip.on').innerText()) === '4×', 'highest stake 1,60 € = 4× pressing');
+await presses.getByRole('button', { name: '2×' }).click();
+ok((await cap.locator('.chip.on').innerText()) === '0,40 €', '2× pressing = highest stake 0,40 €');
+await cap.getByRole('button', { name: '1,60 €' }).click();
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.getByRole('button', { name: 'Par für alle übrigen' }).click();
 await p.locator('.game-scores .stepper').nth(1).getByRole('button', { name: 'plus eins' }).click(); // Ben bogey

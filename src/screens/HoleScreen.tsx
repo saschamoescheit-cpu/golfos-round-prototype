@@ -396,7 +396,7 @@ export function HoleScreen(props: {
         )}
         {exitConfirm === 'abort' && (
           <>
-            <span>{tr('Cancel and delete the round? Everything entered for it is lost.', 'Runde abbrechen und löschen? Alle Eingaben dieser Runde gehen verloren.')}</span>
+            <span>{tr('Cancel and delete the round? You can restore it under "Deleted rounds".', 'Runde abbrechen und löschen? Unter „Gelöschte Runden“ kannst du sie wiederherstellen.')}</span>
             <div className="sheet-actions">
               <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
                 {tr('Delete round', 'Runde löschen')}
@@ -849,12 +849,7 @@ export function HoleScreen(props: {
           }
         />
 
-        {/* the hole preview can always be left (Sascha 15.10.2026: the old arrow sat under the weather badge) */}
-        {round.preview && (
-          <button type="button" className="preview-exit" onClick={askExit}>
-            ✕ {tr('End preview', 'Vorschau beenden')}
-          </button>
-        )}
+
 
         {weather && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
 
@@ -986,7 +981,8 @@ export function HoleScreen(props: {
             onBag={() => props.onOpenBag?.('bag')}
             onCaddie={() => props.onOpenBag?.('caddie')}
             onScorecard={() => props.onShowScorecard(round)}
-            onLeaderboard={round.players.length > 1 ? () => { setDrawerOpen(false); setBoardOpen(true); } : null}
+            onLeaderboard={round.players.length > 1 && !round.preview ? () => { setDrawerOpen(false); setBoardOpen(true); } : null}
+            preview={round.preview}
             onPause={props.onExit}
             onEnd={() => {
               setDrawerOpen(false);
@@ -1161,15 +1157,13 @@ export function HoleScreen(props: {
             className="hole-bar"
             onTouchStart={(e) => (barTouch.current = e.touches[0].clientY)}
             onTouchEnd={(e) => {
-              if (barTouch.current != null && barTouch.current - e.changedTouches[0].clientY > 40 && !round.preview) setDrawerOpen(true);
+              if (barTouch.current != null && barTouch.current - e.changedTouches[0].clientY > 40) setDrawerOpen(true);
               barTouch.current = null;
             }}
           >
-            {!round.preview && (
-              <button type="button" className="hole-bar-handle" aria-label={tr('Open the hole overview', 'Lochübersicht öffnen')} onClick={() => setDrawerOpen(true)}>
-                <span />
-              </button>
-            )}
+            <button type="button" className="hole-bar-handle" aria-label={tr('Open the hole overview', 'Lochübersicht öffnen')} onClick={() => setDrawerOpen(true)}>
+              <span />
+            </button>
             <button type="button" className="hole-bar-arrow" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
             </button>

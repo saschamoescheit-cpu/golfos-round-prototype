@@ -93,14 +93,31 @@ export interface CaddieFacts {
   green: string | null;
   warning: string | null;
   unit: string;
+  /** "Normally your 7-iron – with the wind into you (+15 m) today the 6-iron." */
+  clubTalk?: string | null;
+  /** Where the flag stands on the green: "back left". */
+  pinSpot?: string | null;
+  /** The hole's strategy (hole note tip) – read on the tee. */
+  tip?: string | null;
+  teeShot?: boolean;
+  /** Under 5 km/h – the caddie does not talk about it unasked. */
+  calm?: boolean;
 }
 
-/** The caddie's summary in one or two sentences (also read aloud). */
+const dot = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+
+/** What the caddie says – like a caddie talks it through with the player (Sascha 15.10.2026): distance and club
+ *  (and why it is another club than usual), the wind, the flag, the danger, the aim, where to miss – and on the tee
+ *  the plan for the hole. Also read aloud. */
 export function summary(f: CaddieFacts): string {
-  const parts = [`${f.club}. ${Math.round(f.distance)} ${f.unit} ${f.targetTo}, ${tr('plays like', 'spielt sich wie')} ${Math.round(f.playsLike)}.`];
-  if (f.warning) parts.push(f.warning + '.');
-  if (f.aim) parts.push(f.aim + '.');
-  if (f.plan) parts.push(f.plan);
+  const parts = [`${Math.round(f.distance)} ${f.unit} ${f.targetTo}, ${tr('plays like', 'spielt sich wie')} ${Math.round(f.playsLike)}.`];
+  parts.push(f.clubTalk ? dot(f.clubTalk) : `${f.club}.`);
+  if (f.wind && !f.clubTalk && !f.calm) parts.push(dot(`${tr('Wind', 'Wind')}: ${f.wind}`));
+  if (f.pinSpot) parts.push(dot(tr(`The flag is ${f.pinSpot}`, `Die Fahne steht ${f.pinSpot}`)));
+  if (f.warning) parts.push(dot(f.warning));
+  if (f.aim) parts.push(dot(f.aim));
+  if (f.plan) parts.push(dot(f.plan));
+  if (f.teeShot && f.tip) parts.push(dot(`${tr('The plan for this hole', 'Der Plan für dieses Loch')}: ${f.tip}`));
   return parts.join(' ');
 }
 
@@ -111,7 +128,12 @@ export function answer(q: string, f: CaddieFacts): string {
   if (has('rule', 'water', 'drop', 'lost', 'out of bounds', 'unplayable', 'regel', 'wasser', 'aus ', 'verloren', 'unspielbar'))
     return tr('Open "Rules" for the options – water, out of bounds, unplayable and free relief.', 'Öffne „Regeln“ für die Möglichkeiten – Wasser, Aus, unspielbar und straflose Erleichterung.');
   if (has('green', 'putt', 'break', 'grün')) return f.green ?? tr('No green slope data for this hole.', 'Für dieses Loch gibt es keine Grün-Neigung.');
-  if (has('wind')) return f.wind ?? tr('No wind data right now.', 'Gerade keine Winddaten.');
+  if (has('wind')) return [f.wind ?? tr('No wind data right now.', 'Gerade keine Winddaten.'), f.clubTalk].filter(Boolean).join(' – ');
+  if (has('miss', 'verfehl', 'fehlschl', 'ablage'))
+    return [f.warning, f.plan ?? tr('No side is clearly worse – aim for the middle.', 'Keine Seite ist klar schlechter – spiel auf die Mitte.')].filter(Boolean).map((x) => dot(x as string)).join(' ');
+  if (has('plan', 'strateg', 'tip', 'tipp'))
+    return [f.teeShot ? null : f.plan, f.tip ? `${tr('The plan for this hole', 'Der Plan für dieses Loch')}: ${f.tip}` : null, f.teeShot ? f.plan : null].filter(Boolean).map((x) => dot(x as string)).join(' ') || tr('No plan for this hole yet.', 'Für dieses Loch gibt es noch keinen Plan.');
+  if (has('flag', 'pin', 'fahne')) return f.pinSpot ? tr(`The flag is ${f.pinSpot}.`, `Die Fahne steht ${f.pinSpot}.`) : tr('Flag in the middle of the green.', 'Fahne in der Grünmitte.');
   if (has('aim', 'where', 'line', 'wohin', 'ziel')) return [f.warning, f.aim ?? tr(`Aim at ${f.target}.`, `Spiel auf ${f.target}.`), f.plan].filter(Boolean).join(' ');
   if (has('far', 'distance', 'yard', 'meter', 'how long', 'weit', 'entfernung'))
     return `${Math.round(f.distance)} ${f.unit} ${f.targetTo}, ${tr('plays like', 'spielt sich wie')} ${Math.round(f.playsLike)} ${f.unit}.`;

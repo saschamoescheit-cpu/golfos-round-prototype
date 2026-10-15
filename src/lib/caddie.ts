@@ -13,8 +13,10 @@ export type CarryBag = { club: Club; carry: number; swing?: 'full' | 'threeQ' | 
 export const DEFAULT_CARRY: CarryBag = CLUB_CATALOG.filter((c) => c.standard).map((c) => ({ club: c.club, carry: c.carry }));
 
 export const FACTORS = {
-  headPerKmh: 0.005, // into the wind: +0.5 % per km/h
-  tailPerKmh: 0.0025, // downwind: −0.25 % per km/h (wind helps less than it hurts)
+  // the rule of thumb (TrackMan): +1 % per mph into the wind, −0.5 % per mph downwind (Sascha 15.10.2026: "a real
+  // caddie takes a 6 or a 5 iron into a strong wind") – per km/h 0.62 % and 0.31 %
+  headPerKmh: 0.0062, // into the wind: +0.62 % per km/h
+  tailPerKmh: 0.0031, // downwind: −0.31 % per km/h (wind helps less than it hurts)
   gustShare: 0.5, // gusts count half: effective wind = mean + 50 % of (gust − mean)
   tempPerDeg: 0.0025, // ±0.25 % per °C away from 20 °C (cold air is denser, the ball is slower)
   tempRefC: 20,

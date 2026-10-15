@@ -10,19 +10,19 @@ describe('AI caddie', () => {
     expect(p.playsLike).toBeCloseTo(155, 5);
     expect(adviseClub(p.playsLike, bag).club).toBe('7i');
   });
-  it('par 3 of 160 m into gusty headwind at 14 °C → 5-iron', () => {
+  it('par 3 of 160 m into gusty headwind at 14 °C → 4-iron (two clubs more than the 6-iron in still air)', () => {
     // Hole plays north (0°), wind from the north: 20 km/h, gusts 30 km/h → effective 25 km/h.
     const p = playsLike(160, 0, { windKmh: 20, gustKmh: 30, windFromDeg: 0, tempC: 14 }, 0);
     expect(p.headKmh).toBe(25);
-    expect(Math.round(p.wind)).toBe(20); // 160 × 0.5 % × 25
+    expect(Math.round(p.wind)).toBe(25); // 160 × 0.62 % × 25 (rule of thumb: +1 % per mph)
     expect(Math.round(p.temp)).toBe(2); // 160 × 0.25 % × 6
-    expect(Math.round(p.playsLike)).toBe(182);
-    expect(adviseClub(p.playsLike, bag).club).toBe('5i');
-    expect(explain(p, { windKmh: 20, gustKmh: 30, windFromDeg: 0, tempC: 14 })[0]).toBe('Into the wind 25 km/h (gusty): +20 m');
+    expect(Math.round(p.playsLike)).toBe(187);
+    expect(adviseClub(p.playsLike, bag).club).toBe('4i');
+    expect(explain(p, { windKmh: 20, gustKmh: 30, windFromDeg: 0, tempC: 14 })[0]).toBe('Into the wind 25 km/h (gusty): +25 m');
   });
   it('downwind helps less than headwind hurts; downhill plays shorter', () => {
     const tail = playsLike(160, 0, { windKmh: 20, gustKmh: 20, windFromDeg: 180, tempC: 20 }, 0);
-    expect(Math.round(tail.wind)).toBe(-8);
+    expect(Math.round(tail.wind)).toBe(-10); // 160 × 0.31 % × 20
     const down = playsLike(160, 0, null, -20);
     expect(down.playsLike).toBe(140);
     expect(adviseClub(down.playsLike, bag).club).toBe('8i');

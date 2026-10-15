@@ -1,10 +1,10 @@
 import type { Club, LngLat, Ring } from '../types';
 import type { GreenGrid } from './greenread';
 import { alongLine, profileAlong, bearingDeg, distanceM, distToLine, formatDistance, type HoleMapData, type Unit } from './geo';
-import { adviseClubMax, aimAdvice, clubName, explain, lieEffect, playsLike, scoreStrategy, type CarryBag, type ClubAdvice, type Conditions, type LieKind, type PlaysLike } from './caddie';
+import { adviseClub, adviseClubMax, aimAdvice, clubName, explain, lieEffect, playsLike, scoreStrategy, type CarryBag, type ClubAdvice, type Conditions, type LieKind, type PlaysLike } from './caddie';
 import { aimPoint, type AimPoint, type PlayStyle } from './aimpoint';
 import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, type Samples } from './terrain';
-import { approachPlan, fairwayWidth, openText, teePlan } from './holeplan';
+import { approachPlan, evenText, fairwayWidth, openText, teePlan } from './holeplan';
 import { lineLength as lineLen } from './geo';
 import { forecastNote, type Forecast } from './weather';
 import { mentalTip, type CaddieFacts } from './caddietalk';
@@ -159,6 +159,19 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const reach = 2.5 * (0.065 * shotLen + 2) * (0.6 + Math.min(36, Math.max(0, o.playing ?? 18)) / 25) + 5;
   const obInPlay = ob && Math.min(ob.left, ob.right) <= reach ? ob.text : null;
   const warning = ap.note ?? obInPlay ?? null;
+  // Where the flag stands on the green, seen from the player (a flag the player set; the middle says nothing).
+  let pinSpot: string | null = null;
+  if (ap.kind === 'approach' && data.green && distanceM(pin, data.greenCenter) >= 4) {
+    const b = bearingDeg(from, data.greenCenter);
+    const pb = bearingDeg(data.greenCenter, pin);
+    const dPin = distanceM(data.greenCenter, pin);
+    const rel = ((pb - b) * Math.PI) / 180;
+    const along = dPin * Math.cos(rel);
+    const across = dPin * Math.sin(rel);
+    const fb = along > 4 ? tr('back', 'hinten') : along < -4 ? tr('front', 'vorne') : '';
+    const lr = across > 4 ? tr('right', 'rechts') : across < -4 ? tr('left', 'links') : '';
+    pinSpot = [fb, lr].filter(Boolean).join(' ') || null;
+  }
   const lines: CaddieLine[] = [];
   if (warning) lines.push({ text: warning, tone: 'warn' });
   if (note.text) lines.push({ text: note.text, tone: 'warn' });
@@ -174,6 +187,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     });
   // The instruction first, the reasons (plan, hanging fairway) after it.
   if (aim) lines.push({ text: aim, tone: 'plan' });
+  if (pinSpot) lines.push({ text: tr(`The flag is ${pinSpot} (${fmt(distanceM(from, pin))} ${unit}).`, `Die Fahne steht ${pinSpot} (${fmt(distanceM(from, pin))} ${unit}).`), tone: 'plan' });
   // Pin strategy first; the "best leave" only when the plan is the flag itself (else the two would argue).
   if (ap.strategy?.text && ap.kind === 'approach' && !ownTarget) lines.push({ text: ap.strategy.text, tone: 'plan', lead: ap.strategy.kind !== 'pin' });
   if (o.leave && ap.kind === 'approach' && !ownTarget && (!ap.strategy || ap.strategy.kind === 'pin')) lines.push({ text: o.leave, tone: 'plan' });
@@ -181,7 +195,10 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const layupLine = ap.kind === 'layup' && !ownTarget && aim != null;
   // The tee strategy's sentence ("3-wood instead of driver: …") is the golf reason for the club – shown folded too.
   const teeReason = o.teeShot && ap.teePlan != null && holePlan === ap.teePlan;
-  if (holePlan && !layupLine && !((warning || note.lostLeft || note.lostRight) && holePlan === openText())) lines.push({ text: holePlan, tone: 'plan', ...(teeReason ? { lead: true } : {}) });
+  const quiet = (warning || note.lostLeft || note.lostRight) && holePlan === openText();
+  const sameAsAim = holePlan === evenText() && (warning != null || (aim != null && /Mitte|middle|centre/.test(aim)));
+  const planSaid = !!holePlan && !layupLine && !quiet && !sameAsAim;
+  if (planSaid) lines.push({ text: holePlan, tone: 'plan', ...(teeReason ? { lead: true } : {}) });
   if (hang) lines.push({ text: hang.text, tone: 'plan' });
   else if (!ownTarget && ap.kind !== 'approach') {
     const h = slopeAdvice(crossSlopeAt(o.slopes, profileAlong(data, ap.pos)));
@@ -235,6 +252,27 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
       .join(' · ') || null;
   // With the pin strategy the distances are to the new aim – the words say which.
   const targetKey: TargetKey = ownTarget ? 't1' : ap.kind !== 'approach' ? apKey : ap.strategy && ap.strategy.kind !== 'pin' ? (ap.strategy.kind === 'below' ? 'short' : 'centre') : 'pin';
+  // Like a caddie: "normally your 7-iron – with the wind into you today the 6-iron" (Sascha 15.10.2026). The club for
+  // the bare distance against the club for the plays-like distance; said when they differ.
+  const still = adviseClub(Math.round(pl0.distance), o.bag, o.teeShot && o.par >= 4).club;
+  let clubTalk: string | null = null;
+  if (still !== advice.club && !lieFx && !(o.teeShot && o.par >= 4) && (ap.kind === 'approach' || ownTarget != null)) {
+    const why: string[] = [];
+    if (Math.abs(pl0.wind) >= 3)
+      why.push(
+        pl0.headKmh >= 0
+          ? tr(`${Math.abs(pl0.headKmh)} km/h into you (+${Math.round(pl0.wind)} m)`, `${Math.abs(pl0.headKmh)} km/h Gegenwind (+${Math.round(pl0.wind)} m)`)
+          : tr(`${Math.abs(pl0.headKmh)} km/h behind you (−${Math.round(-pl0.wind)} m)`, `${Math.abs(pl0.headKmh)} km/h Rückenwind (−${Math.round(-pl0.wind)} m)`),
+      );
+    if (Math.abs(pl0.height) >= 3) why.push(pl0.height > 0 ? tr(`uphill (+${Math.round(pl0.height)} m)`, `bergauf (+${Math.round(pl0.height)} m)`) : tr(`downhill (−${Math.round(-pl0.height)} m)`, `bergab (−${Math.round(-pl0.height)} m)`));
+    if (Math.abs(pl0.temp) >= 3) why.push(pl0.temp > 0 ? tr(`the cold air (+${Math.round(pl0.temp)} m)`, `die kalte Luft (+${Math.round(pl0.temp)} m)`) : tr(`the warm air (−${Math.round(-pl0.temp)} m)`, `die warme Luft (−${Math.round(-pl0.temp)} m)`));
+    if (why.length)
+      clubTalk = tr(
+        `Normally your ${clubName(still)} – with ${why.join(' and ')} today the ${clubName(advice.club)}`,
+        `Normal wäre das dein ${clubName(still)} – mit ${why.join(' und ')} heute ${clubArticle(advice.club)} ${clubName(advice.club)}`,
+      );
+  }
+  if (clubTalk) lines.splice(Math.min(lines.length, warning ? 1 : 0), 0, { text: clubTalk + '.', tone: 'plan', lead: true });
   const facts: CaddieFacts = {
     club: clubName(advice.club) + (advice.swing && advice.swing !== 'full' ? `, ${swingName(advice.swing)}` : ''),
     distance: Number(fmt(pl.distance)),
@@ -242,11 +280,16 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     target: targetKey === 'spot' ? apName : targetNoun(targetKey),
     targetTo: targetTo(targetKey),
     aim,
-    plan: holePlan || null,
-    wind: o.wind ? `${Math.round(o.wind.windKmh)} km/h, ${o.wind.label.toLowerCase()}` : null,
+    plan: planSaid ? holePlan : null, // the card and the voice say the same
+    wind: o.wind ? (Math.round(o.wind.windKmh) < 5 ? tr('hardly any wind', 'kaum Wind') : `${Math.round(o.wind.windKmh)} km/h, ${o.wind.label.toLowerCase()}`) : null,
+    calm: o.wind != null && Math.round(o.wind.windKmh) < 5,
     green: o.greenText ?? null,
     warning,
     unit,
+    clubTalk,
+    pinSpot,
+    tip: note.tip ?? null,
+    teeShot: o.teeShot,
   };
   return { ap, ownTarget, target, apName, pl, advice, lie, warning, aim, holePlan, lines, alt, facts, heights: { from: fromH, green: greenH } };
 }
@@ -269,4 +312,9 @@ export function aimHelp(from: LngLat, aim: LngLat, landmarks: LngLat[] | undefin
   return toGreen
     ? tr(`Aim help: ${what} about ${beyond} m behind the green, in line.`, `Zielhilfe: ${what} etwa ${beyond} m hinter dem Grün, genau in Linie.`)
     : tr(`Aim help: ${what} about ${beyond} m beyond the target, in line.`, `Zielhilfe: ${what} etwa ${beyond} m hinter dem Ziel, genau in Linie.`);
+}
+
+/** "das" Eisen 7 / "den" Driver / "das" Holz 3 – the article before the club's German name. */
+function clubArticle(club: string): string {
+  return club === 'Dr' ? 'den' : 'das';
 }

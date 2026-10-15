@@ -1,10 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { Course } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { fullName, loadProfile } from '../lib/profile';
 import { newId } from '../lib/storage';
-import { FORMS, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
+import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
+import { FORMS, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadGames, saveGame } from '../lib/gamestore';
 import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
@@ -312,13 +313,39 @@ function Balance(props: { games: Game[] }) {
   );
 }
 
+/** The rules of a game form as a voice reads them: signs in words (Sascha 15.10.2026: "nobody has to read out the
+ *  rules – all four players listen"). */
+export function rulesSpoken(f: FormDef): string {
+  const words = (t: string) =>
+    t
+      .replace(/(\d) − (\d)/g, tr('$1 minus $2', '$1 minus $2'))
+      .replace(/−(\d)/g, tr('minus $1', 'minus $1'))
+      .replace(/\+(\d)/g, tr('plus $1', 'plus $1'))
+      .replace(/ × /g, tr(' times ', ' mal '))
+      .replace(/ = /g, tr(' is ', ' gleich '))
+      .replace(/ → /g, ', ')
+      .replace(/ … /g, tr(' up to ', ' bis '))
+      .replace(/…/g, '')
+      .replace(/([A-D])\+([A-D])/g, tr('$1 and $2', '$1 und $2'))
+      .replace(/ · /g, ', ');
+  return [f.name() + '.', words(f.short()), ...f.rules().map(words)].map((x) => (/[.!?:]$/.test(x.trim()) ? x.trim() : x.trim() + '.')).join(' ');
+}
+
 function FormRules(props: { form: FormDef }) {
+  const talking = useSyncExternalStore(onSpeaking, isSpeaking, () => false);
+  // leaving the rules stops the voice
+  useEffect(() => () => stopSpeaking(), [props.form.id]);
   return (
-    <ul className="game-rules">
-      {props.form.rules().map((r) => (
-        <li key={r}>{r}</li>
-      ))}
-    </ul>
+    <>
+      <ul className="game-rules">
+        {props.form.rules().map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+      <button type="button" className="btn-secondary read-rules" aria-pressed={talking} onClick={() => toggleSpeak(rulesSpoken(props.form))}>
+        {talking ? tr('■ Stop reading', '■ Vorlesen stoppen') : tr('🔊 Read the rules aloud', '🔊 Spielform vorlesen')}
+      </button>
+    </>
   );
 }
 
@@ -412,7 +439,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         <div className="settings-list">
           <button type="button" className="settings-row" onClick={props.onCourse}>
             <span>{tr('Course', 'Platz')}</span>
-            <span className="settings-value">{d.course?.name ?? tr('Without course data', 'Ohne Platzdaten')}</span>
+            <span className={`settings-value${d.course ? '' : ' warn-text'}`}>{d.course?.name ?? tr('Choose a course', 'Platz wählen')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>
@@ -519,14 +546,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                 ))}
               </div>
             )}
-            {s.key === 'maxStake' && d.settings.double && Number(d.settings.maxStake) > 0 && Number(d.settings.stake) > 0 && (
-              <span className="muted small">
-                {tr(
-                  `From ${money(Number(d.settings.stake))} doubled the stake reaches at most ${money(stakeCap({ settings: d.settings }))}.`,
-                  `Ab ${money(Number(d.settings.stake))} verdoppelt erreicht der Einsatz höchstens ${money(stakeCap({ settings: d.settings }))}.`,
-                )}
-              </span>
-            )}
+            {s.type === 'cap' && <CapPicker stake={Number(d.settings.stake ?? 0)} value={Number(d.settings[s.key] ?? 0)} onChange={(v) => set({ settings: { ...d.settings, [s.key]: String(v), maxPresses: '0' } })} />}
+            {s.type === 'presses' && <PressPicker settings={d.settings} onChange={(patch) => set({ settings: { ...d.settings, ...patch } })} />}
             {s.key === 'allowance' && whs && (
               <span className="muted small">
                 {tr(`WHS recommendation for ${f.name()} with ${n} players: ${whs} %`, `WHS-Empfehlung für ${f.name()} mit ${n} Spielern: ${whs} %`)}
@@ -535,7 +556,14 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             {s.type === 'stake' && (
               <div className="chip-set">
                 {STAKES.map((v) => (
-                  <button key={v} type="button" className={`chip${d.settings[s.key] === v ? ' on' : ''}`} aria-pressed={d.settings[s.key] === v} onClick={() => set({ settings: { ...d.settings, [s.key]: v } })}>
+                  <button
+                    key={v}
+                    type="button"
+                    className={`chip${d.settings[s.key] === v ? ' on' : ''}`}
+                    aria-pressed={d.settings[s.key] === v}
+                    // a new start stake: the cap moves to a step of its doubling chain
+                    onClick={() => set({ settings: { ...d.settings, [s.key]: v, ...(s.key === 'stake' && Number(d.settings.maxStake) > 0 ? { maxStake: String(snapCap(v, Number(d.settings.maxStake))) } : {}) } })}
+                  >
                     {v ? money(v) : tr('none', 'ohne')}
                   </button>
                 ))}
@@ -580,7 +608,13 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       )}
 
       <span className="spacer" />
-      <button type="button" className="btn-primary" onClick={start} disabled={!fits}>
+      {/* a game is played on a course (Sascha 15.10.2026): par and stroke index come from it – no start without one */}
+      {!d.course && (
+        <span className="small warn-text" role="status">
+          {tr('Choose the course first – par and stroke index come from it.', 'Wähle zuerst den Platz – Par und Stroke-Index kommen von dort.')}
+        </span>
+      )}
+      <button type="button" className="btn-primary" onClick={start} disabled={!fits || !d.course}>
         {tr('Start game', 'Spiel starten')}
       </button>
     </main>
@@ -1054,5 +1088,95 @@ function HammerCard(props: { game: Game; hole: number; onChange: (x: Partial<Hol
         ))}
       </div>
     </section>
+  );
+}
+
+/** The highest stake (Sascha 15.10.2026): the steps of the doubling chain up to 6,40 € as chips, "no cap", and a field
+ *  for higher steps (12,80 €, 25,60 € …) that only takes a step of the chain. */
+function CapPicker(props: { stake: number; value: number; onChange: (v: number) => void }) {
+  const chain = capChain(props.stake);
+  const custom = props.value > 0 && !chain.some((c) => Math.abs(c - props.value) < 0.005);
+  const [typing, setTyping] = useState(false);
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const next = (() => {
+    const top = chain[chain.length - 1] ?? props.stake;
+    return [top * 2, top * 4, top * 8].map((v) => money(Math.round(v * 100) / 100)).join(', ');
+  })();
+  const take = () => {
+    const v = Number(text.replace('€', '').replace(/\s/g, '').replace(',', '.'));
+    if (!text.trim() || !Number.isFinite(v)) return setError(tr('Type an amount, e.g. ' + next.split(', ')[0], 'Gib einen Betrag ein, z. B. ' + next.split(', ')[0]));
+    if (!onChain(props.stake, v))
+      return setError(tr(`Only doublings of ${money(props.stake)} – e.g. ${next}.`, `Nur Verdopplungen von ${money(props.stake)} möglich – z. B. ${next}.`));
+    setError(null);
+    setTyping(false);
+    props.onChange(Math.round(v * 100) / 100);
+  };
+  const doublings = props.value > 0 && props.stake > 0 ? Math.round(Math.log2(props.value / props.stake)) : 0;
+  return (
+    <>
+      <div className="chip-set">
+        {chain.map((v) => (
+          <button key={v} type="button" className={`chip${!typing && Math.abs(v - props.value) < 0.005 ? ' on' : ''}`} aria-pressed={Math.abs(v - props.value) < 0.005} onClick={() => { setTyping(false); setError(null); props.onChange(v); }}>
+            {money(v)}
+          </button>
+        ))}
+        <button type="button" className={`chip${!typing && props.value === 0 ? ' on' : ''}`} aria-pressed={props.value === 0} onClick={() => { setTyping(false); setError(null); props.onChange(0); }}>
+          {tr('no cap', 'ohne Limit')}
+        </button>
+        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(' €', '') : ''); }}>
+          {custom && !typing ? money(props.value) : tr('more …', 'höher …')}
+        </button>
+      </div>
+      {typing && (
+        <div className="cap-input">
+          <input
+            className="input"
+            inputMode="decimal"
+            autoFocus
+            aria-label={tr('Highest stake in euros', 'Höchsteinsatz in Euro')}
+            placeholder={next.split(', ')[0]}
+            value={text}
+            onChange={(e) => { setText(e.target.value); setError(null); }}
+            onKeyDown={(e) => e.key === 'Enter' && take()}
+          />
+          <button type="button" className="btn-secondary" onClick={take}>
+            {tr('Use', 'Übernehmen')}
+          </button>
+        </div>
+      )}
+      {error ? (
+        <span className="small" style={{ color: 'var(--warn)' }} role="alert">{error}</span>
+      ) : (
+        doublings > 0 && !typing && (
+          <span className="muted small">
+            {tr(`${money(props.stake)} doubled ${doublings}× = at most ${money(props.value)}.`, `${money(props.stake)} ${doublings}× verdoppelt = höchstens ${money(props.value)}.`)}
+          </span>
+        )
+      )}
+    </>
+  );
+}
+
+/** Presses allowed – the highest stake counted in doublings (Sascha 15.10.2026: from 0,10 € to 1,60 € is 4× pressing).
+ *  Both rows set the same limit; with a start stake it is stored as the highest stake. */
+function PressPicker(props: { settings: Record<string, number | boolean | string>; onChange: (patch: Record<string, string>) => void }) {
+  const stake = Number(props.settings.stake ?? 0);
+  const cap = Number(props.settings.maxStake ?? 0);
+  const now = stake > 0 ? (cap > 0 ? Math.round(Math.log2(cap / stake)) : 0) : Number(props.settings.maxPresses ?? 0);
+  const n = Math.max(stake > 0 ? capChain(stake).length : 5, now);
+  const pick = (k: number) =>
+    stake > 0 ? props.onChange({ maxStake: k ? String(Math.round(stake * 2 ** k * 100) / 100) : '0', maxPresses: '0' }) : props.onChange({ maxPresses: String(k) });
+  return (
+    <div className="chip-set">
+      {Array.from({ length: n }, (_, i) => i + 1).map((k) => (
+        <button key={k} type="button" className={`chip${now === k ? ' on' : ''}`} aria-pressed={now === k} onClick={() => pick(k)}>
+          {k}×
+        </button>
+      ))}
+      <button type="button" className={`chip${now === 0 ? ' on' : ''}`} aria-pressed={now === 0} onClick={() => pick(0)}>
+        {tr('any', 'beliebig')}
+      </button>
+    </div>
   );
 }

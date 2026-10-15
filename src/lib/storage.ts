@@ -17,11 +17,13 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-function write(key: string, value: unknown): void {
+function write(key: string, value: unknown): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
     // Storage full or blocked – the round stays in memory for this session.
+    return false;
   }
 }
 
@@ -35,6 +37,16 @@ export function saveRound(round: Round): void {
 }
 
 const ROUND_KEYS = ['golfos.track.v1.', 'golfos.live.v1.', 'golfos.caddielog.v1.'];
+const TRASH = 'golfos.trash.v1';
+
+/** A round the player deleted – kept with its GPS track until he deletes it for good (Sascha 15.10.2026: "deleted
+ *  rounds, in case one was deleted by mistake"). Never emptied automatically. */
+export interface TrashedRound {
+  round: Round;
+  keys: Record<string, string>;
+  deletedAt: string;
+}
+export const loadTrash = (): TrashedRound[] => read<TrashedRound[]>(TRASH, []);
 /** The last round the player deleted, for "Undo" (Sascha 15.10.2026: one tap to delete, no second question). */
 let undoSnap: { round: Round; keys: Record<string, string> } | null = null;
 
@@ -54,6 +66,7 @@ export function deleteRound(id: string, undoable = false): void {
     /* storage blocked */
   }
   if (undoable && round && !round.preview) {
+    write(TRASH, [{ round, keys, deletedAt: new Date().toISOString() }, ...loadTrash().filter((t) => t.round.id !== id)]);
     undoSnap = { round, keys };
     window.dispatchEvent(new CustomEvent('golfos:round-deleted', { detail: round.courseName }));
   }
@@ -62,16 +75,30 @@ export function deleteRound(id: string, undoable = false): void {
 /** Brings the last deleted round back, with its track; tells the app to reload the rounds. */
 export function undoDelete(): boolean {
   if (!undoSnap) return false;
-  const { round, keys } = undoSnap;
+  const { round } = undoSnap;
   undoSnap = null;
-  saveRound(round);
+  return restoreRound(round.id);
+}
+
+/** Brings a deleted round back from the bin, with its track. */
+export function restoreRound(id: string): boolean {
+  const t = loadTrash().find((x) => x.round.id === id);
+  if (!t) return false;
+  saveRound(t.round);
   try {
-    for (const [k, v] of Object.entries(keys)) localStorage.setItem(k, v);
+    for (const [k, v] of Object.entries(t.keys)) localStorage.setItem(k, v);
   } catch {
     /* storage full */
   }
+  write(TRASH, loadTrash().filter((x) => x.round.id !== id));
   window.dispatchEvent(new Event('golfos:rounds-changed'));
   return true;
+}
+
+/** The player empties one round from the bin – the only way a played round goes for good. */
+export function purgeRound(id: string): void {
+  write(TRASH, loadTrash().filter((x) => x.round.id !== id));
+  window.dispatchEvent(new Event('golfos:rounds-changed'));
 }
 
 export function loadCachedCourse(id: string): Course | null {

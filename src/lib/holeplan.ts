@@ -105,13 +105,16 @@ export function approachPlan(data: HoleMapData, from: LngLat, pin: LngLat, ctx?:
   const avoid = sides.filter((s) => s.worst >= Math.max(0.5, best.worst + 0.2)).sort((a, b) => b.worst - a.worst);
   const text =
     avoid.length === 0
-      ? tr('Misses around the green cost about the same – aim for the middle.', 'Fehlschläge ums Grün kosten etwa gleich viel – spiel auf die Mitte.')
+      ? evenText()
       : tr('Best miss', 'Bester Fehlschlag') +
         `: ${sideWord(best.side)}. ` +
         tr('Avoid', 'Vermeide') +
         ` ${avoid.map((a) => `${sideWord(a.side)} (${hazardWord(a.why)})`).join(', ')}.`;
   return { best: best.side, avoid: avoid.map((a) => ({ side: a.side, why: a.why })), text };
 }
+
+/** The approach plan when no side around the green is worse than another. */
+export const evenText = (): string => tr('Misses around the green cost about the same – aim for the middle.', 'Fehlschläge ums Grün kosten etwa gleich viel – spiel auf die Mitte.');
 
 /** The tee plan when both sides of the landing zone are fine. */
 export const openText = (): string => tr('Landing zone is open on both sides.', 'Die Landezone ist auf beiden Seiten offen.');

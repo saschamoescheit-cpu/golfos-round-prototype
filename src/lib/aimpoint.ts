@@ -421,20 +421,24 @@ export function safeLanding(o: { from: LngLat; base: LngLat; side: number; kind:
   let best: { l: LngLat; k: number; cost: number } | null = null;
   const d = distanceM(o.from, o.base);
   const b0 = bearingDeg(o.from, o.base);
-  for (const a of [0, -10, -20, -30, -45]) {
-    if (d + a < 40) continue;
-    for (let s = -20; s <= 20; s += 4) {
-      const l = move(move(o.from, b0, d + a), b0 + 90, s);
-      if (problem(l)) continue;
-      for (const k of [1, 0.5, 0]) {
-        // The aim point too: on a slope the ball lands there and only then rolls to the landing spot.
-        const aim = aimAt(l, k);
-        if (obGap(aim) < SAFETY.obMarginM || inAny(aim, water) || inAny(aim, bunkers) || inAny(aim, trees)) continue;
-        let cost = Math.abs(s) + Math.abs(a) * 0.8 + Math.abs(o.side) * (1 - k) * 0.7;
-        if (fairways.length && o.kind === 'drive' && !inAny(l, fairways)) cost += 10;
-        if (inAny(move(l, bearingDeg(o.from, l), -SAFETY.waterShortM), water)) cost += 8;
-        if (!best || cost < best.cost) best = { l, k, cost };
-        break; // the largest k that is safe
+  // near the plan first; nothing safe there (Son Gual 6 into a strong wind: water fills the landing zone) → lay up further
+  for (const ring of [{ as: [0, -10, -20, -30, -45], sw: 20 }, { as: [-60, -75, -90], sw: 32 }]) {
+    if (best) break;
+    for (const a of ring.as) {
+      if (d + a < 40) continue;
+      for (let s = -ring.sw; s <= ring.sw; s += 4) {
+        const l = move(move(o.from, b0, d + a), b0 + 90, s);
+        if (problem(l)) continue;
+        for (const k of [1, 0.5, 0]) {
+          // The aim point too: on a slope the ball lands there and only then rolls to the landing spot.
+          const aim = aimAt(l, k);
+          if (obGap(aim) < SAFETY.obMarginM || inAny(aim, water) || inAny(aim, bunkers) || inAny(aim, trees)) continue;
+          let cost = Math.abs(s) + Math.abs(a) * 0.8 + Math.abs(o.side) * (1 - k) * 0.7;
+          if (fairways.length && o.kind === 'drive' && !inAny(l, fairways)) cost += 10;
+          if (inAny(move(l, bearingDeg(o.from, l), -SAFETY.waterShortM), water)) cost += 8;
+          if (!best || cost < best.cost) best = { l, k, cost };
+          break; // the largest k that is safe
+        }
       }
     }
   }
