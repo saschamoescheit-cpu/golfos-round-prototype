@@ -34,7 +34,7 @@ const GAMES = 'golfos.games.v1';
 const GAME_TRASH = 'golfos.games.trash.v1';
 /** Single settings: the key on the device is the row id. */
 const SETTINGS = [
-  'golfos.profile.v1', 'golfos.bag.v1', 'golfos.bagstyle.v1', 'golfos.caddie.v1', 'golfos.partials.v1', 'golfos.unit.v1', 'golfos.friends.v1', 'golfos.lang.v1', 'golfos.me.v1',
+  'golfos.profile.v1', 'golfos.bag.v1', 'golfos.bagstyle.v1', 'golfos.caddie.v1', 'golfos.partials.v1', 'golfos.unit.v1', 'golfos.lang.v1', 'golfos.me.v1',
 ];
 /** Per round or per course: a key prefix, the rest is the row id. */
 const PER = [
@@ -51,6 +51,8 @@ const LISTS = [
   { kind: 'game', key: GAMES, idOf: (x: { id: string }) => x.id },
   { kind: 'trash-round', key: TRASH, idOf: (x: { round: { id: string } }) => x.round.id },
   { kind: 'trash-game', key: GAME_TRASH, idOf: (x: { game: { id: string } }) => x.game.id },
+  // friends one by one: a friend added on the iPad and one added on the phone are both kept
+  { kind: 'friend', key: 'golfos.friends.v1', idOf: (x: { id: string }) => x.id },
   // Training (feature 022): every entry its own row, so both devices' entries are kept (never lose data)
   { kind: 'training-log', key: 'golfos.training.log.v1', idOf: (x: { id: string }) => x.id },
   { kind: 'training-session', key: 'golfos.training.sessions.v1', idOf: (x: { id: string }) => x.id },

@@ -99,4 +99,15 @@ describe('sync between devices', () => {
     expect(ids(ipad)).toEqual(['l1', 'l2']);
     expect((JSON.parse(ipad.get('golfos.training.fav.v1')!) as string[]).sort()).toEqual(['clock', 'tiger-gate']);
   });
+  it('friends added on two devices before the first sync are all kept', async () => {
+    const srv = server();
+    const a = device({ 'golfos.friends.v1': [{ id: 'f1', name: 'Ben', hcp: '12' }] });
+    const b = device({ 'golfos.friends.v1': [{ id: 'f2', name: 'Chris', hcp: '3' }] });
+    await syncOnce(a, srv, clock);
+    await syncOnce(b, srv, clock);
+    await syncOnce(a, srv, clock);
+    const names = (d: LocalStore) => (JSON.parse(d.get('golfos.friends.v1')!) as { name: string }[]).map((f) => f.name).sort();
+    expect(names(a)).toEqual(['Ben', 'Chris']);
+    expect(names(b)).toEqual(['Ben', 'Chris']);
+  });
 });
