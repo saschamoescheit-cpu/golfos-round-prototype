@@ -227,12 +227,6 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
         </>
       ) : tab === 'full' ? (
         <section className="card stats-card">
-          {toReview > 0 && (
-            <button type="button" className="btn-secondary use-all" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
-              <UseIcon />
-              {tr(`Use tracked values for ${toReview} ${toReview === 1 ? 'club' : 'clubs'}`, `Gemessene Werte für ${toReview} Schläger übernehmen`)}
-            </button>
-          )}
           <div className="bag-grid">
             <div className="bag-row full bag-th" aria-hidden="true">
               <span />
@@ -247,9 +241,9 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                   {t ? (
                     <span className={`bag-tracked${differs(c) ? ' differs' : ''}`}>
                       <span className="bag-tracked-text">
-                        <span className="bag-tracked-label">{tr('tracked', 'gemessen')}</span>
+                        <span className="bag-tracked-label">{tr(`${t.shots} shots tracked`, `${t.shots} Schläge gemessen`)}</span>
                         <span>
-                          {toU(t.carry)} {uL} <span className="muted">· {t.shots}×</span>
+                          {toU(t.carry)} {uL}
                         </span>
                       </span>
                       {differs(c) && (
@@ -287,6 +281,13 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               </div>
             )}
           </div>
+          {/* under the table (Sascha 15.10.2026) */}
+          {toReview > 0 && (
+            <button type="button" className="btn-secondary use-all" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
+              <UseIcon />
+              {tr(`Use tracked values for ${toReview} ${toReview === 1 ? 'club' : 'clubs'}`, `Gemessene Werte für ${toReview} Schläger übernehmen`)}
+            </button>
+          )}
           {note && <p className="small" style={{ margin: 0 }}>{note}</p>}
           <div className="bag-foot">
             {countLine}

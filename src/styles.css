@@ -1136,3 +1136,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 /* the column heading "Carry" over the fields (Sascha 15.10.2026: instead of the explanation) */
 .bag-row.bag-th { border-top: 0; min-height: 0; padding: 0; }
 .bag-row.bag-th > span:last-child { min-width: 84px; padding-right: 26px; text-align: center; font-weight: 700; letter-spacing: 0.04em; }
+
+/* Games: the standing read aloud, the result shared */
+.game-standing-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.share-btn { display: flex; align-items: center; justify-content: center; gap: 8px; }

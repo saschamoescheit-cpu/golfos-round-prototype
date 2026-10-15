@@ -114,6 +114,7 @@ console.log('round:', JSON.stringify(state));
 // finish the round on the scorecard, then the check
 await p.getByRole('button', { name: /Speichern & beenden|Runde beenden/ }).first().click().catch(() => {});
 await p.waitForTimeout(1200);
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/review-0-scorecard.png', fullPage: true });
 await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click().catch(() => {});
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click().catch(() => {});
 await p.waitForTimeout(1200);
@@ -127,5 +128,10 @@ const det = await p.evaluate(() => {
 });
 console.log('detected (shots + putts vs score):', det);
 console.log('caddie items on the first hole to check:', await p.locator('.caddie-review-item').count());
+// screenshots of the check after the round (SHOTS=<dir>): the first hole, the whole page, the scorecard before it
+if (process.env.SHOTS) {
+  await p.screenshot({ path: process.env.SHOTS + '/review-1.png' });
+  await p.screenshot({ path: process.env.SHOTS + '/review-full.png', fullPage: true });
+}
 console.log(errs.join(' / ') || 'no page errors');
 await b.close();

@@ -1,4 +1,4 @@
-import type { Club, Round } from '../types';
+import type { Club, FairwayResult, HoleEntry, Round } from '../types';
 import { greenInRegulation, grossForHole, handicapStrokes, playing18, stablefordPoints } from './scoring';
 import { BAG, firstPuttM, shotLengths } from './shots';
 import { tr } from './i18n';
@@ -104,13 +104,14 @@ export function analyse(rounds: Round[]): Analysis {
         parSum[h.par].over += over;
         parSum[h.par].n++;
       }
-      if (h.par >= 4 && e.fairway != null) {
+      const fwy = h.par >= 4 ? fairwayOf(e) : null;
+      if (fwy != null) {
         fw.of++;
         left.of++;
         right.of++;
-        if (e.fairway === 'hit') fw.n++;
-        if (e.fairway === 'left') left.n++;
-        if (e.fairway === 'right') right.n++;
+        if (fwy === 'hit') fw.n++;
+        if (fwy === 'left') left.n++;
+        if (fwy === 'right') right.n++;
       }
       const g = greenInRegulation(e, h.par);
       if (g != null) {
@@ -317,4 +318,26 @@ export const DRILLS: Record<Focus['area'], { title: string; minutes: number; how
 
 export function practicePlan(focus: Focus[]): { area: Focus['area']; title: string; minutes: number; how: string }[] {
   return focus.map((f) => ({ area: f.area, ...DRILLS[f.area] }));
+}
+
+/** Fairway hit on a par 4/5: what the player entered, else from the checked shots (Sascha's test 16.10.2026 showed
+ *  "fairways 0/0" after a round with every drive found): the lie of the second shot, and on a miss the side of the
+ *  line tee → flag it lies on. A penalty on the tee shot counts as out of bounds. */
+export function fairwayOf(e: HoleEntry): FairwayResult | null {
+  if (e.fairway != null) return e.fairway;
+  const shots = e.detail?.shots ?? [];
+  if (shots.length < 2 || shots[0].lie !== 'tee') return null;
+  if (shots[0].penalty) return 'ob';
+  const second = shots[1];
+  if (second.lie === 'fairway') return 'hit';
+  const tee = shots[0].pos;
+  const pin = e.detail?.pin ?? e.detail?.onGreen ?? null;
+  if (!tee || !pin || !second.pos) return null;
+  // side of the second shot: sign of the cross product (east/north, longitude scaled by the latitude)
+  const k = Math.cos((tee[1] * Math.PI) / 180);
+  const ax = (pin[0] - tee[0]) * k;
+  const ay = pin[1] - tee[1];
+  const bx = (second.pos[0] - tee[0]) * k;
+  const by = second.pos[1] - tee[1];
+  return ax * by - ay * bx > 0 ? 'left' : 'right';
 }

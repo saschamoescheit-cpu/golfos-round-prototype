@@ -75,7 +75,8 @@ const after = await p.locator('main').innerText();
 ok(after.includes('4i') && after.includes('PW (43°)') && after.includes('SW') && !after.includes('SW (') && !after.includes('LW'), 'pencil: 4i added, LW removed, "PW (43°)" shown');
 await shot('bag-full');
 // tracked carry: shown next to the club, "use" as an icon (Sascha 15.10.2026)
-ok((await p.locator('.use-btn').count()) >= 2 && !(await p.locator('main').innerText()).includes('Übernehmen\n'), `tracked values with the icon button (${await p.locator('.use-btn').count()})`);
+ok((await p.locator('.use-btn').count()) >= 2 && /18 Schläge gemessen/i.test(await p.locator('main').innerText()), `tracked: "18 Schläge gemessen" with the icon button (${await p.locator('.use-btn').count()})`);
+ok((await p.locator('.bag-grid ~ .use-all').count()) === 1, '"use all" under the table');
 await p.getByRole('button', { name: 'Gemessene 216 m für D übernehmen' }).click();
 ok((await p.getByRole('textbox', { name: 'D Carry in Metern' }).inputValue()) === '216', 'icon takes over the tracked 216 m for the driver');
 ok((await p.locator('.bag-row.full').filter({ hasText: 'Putter' }).locator('input').inputValue()) === '–', 'putter: same box with "–"');

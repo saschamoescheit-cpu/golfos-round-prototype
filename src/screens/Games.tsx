@@ -41,6 +41,29 @@ interface Draft {
 }
 
 /** The leader – or nobody when the first two are level. */
+/** The standing in words – for reading aloud and for sharing (Sascha 15.10.2026: "nobody has to read it out"). */
+export function standingText(g: Game, spoken: boolean): string {
+  const st = standingOf(g);
+  const f = formDef(g.form);
+  const n = holesPlayed(g);
+  const sign = (v: string) => (spoken ? v.replace(/^\+/, tr('plus ', 'plus ')).replace(/^[−-]/, tr('minus ', 'minus ')) : v);
+  const lines: string[] = [];
+  if (!spoken) lines.push(`${f.name()} · ${g.courseName} · ${new Date(g.createdAt).toLocaleDateString()}`);
+  const head = g.finishedAt ? tr(`Result after ${n} holes`, `Ergebnis nach ${n} Löchern`) : tr(`Standing after ${n} holes`, `Zwischenstand nach ${n} Löchern`);
+  lines.push(spoken ? `${head}.` : head);
+  st.rows.forEach((r) => {
+    const place = 1 + st.rows.filter((o) => o.points > r.points).length;
+    lines.push(spoken ? `${place}. ${r.name}: ${sign(r.value)}.` : `${place}. ${r.name} ${r.value}`);
+  });
+  const pays = st.money ? transfers(st.money) : [];
+  if (pays.length) {
+    const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
+    if (!spoken) lines.push(tr('Settlement', 'Abrechnung'));
+    pays.forEach((t) => lines.push(spoken ? tr(`${nm(t.from)} pays ${nm(t.to)} ${money(t.amount)}.`, `${nm(t.from)} zahlt ${money(t.amount)} an ${nm(t.to)}.`) : `${nm(t.from)} → ${nm(t.to)} ${money(t.amount)}`));
+  }
+  return lines.join(spoken ? ' ' : '\n');
+}
+
 const winnerOf = (rows: { name: string; points: number }[]): string | null => (rows.length && (rows.length < 2 || rows[0].points !== rows[1].points) ? rows[0].name : null);
 
 const STAKES = [0, 0.1, 0.2, 0.5, 1, 2, 5, 10];
@@ -1011,7 +1034,15 @@ function StandingCard(props: { game: Game; final?: boolean }) {
   const hasMoney = st.money && Object.values(st.money).some((v) => Math.abs(v) > 0.001);
   return (
     <section className="card game-standing" aria-label={tr('Standing', 'Zwischenstand')}>
-      <span className="eyebrow">{props.final ? tr('Result', 'Ergebnis') : tr('Standing', 'Zwischenstand')}</span>
+      <div className="game-standing-head">
+        <span className="eyebrow">{props.final ? tr('Result', 'Ergebnis') : tr('Standing', 'Zwischenstand')}</span>
+        <button type="button" className="use-btn small" aria-label={tr('Read the standing aloud', 'Zwischenstand vorlesen')} title={tr('Read aloud', 'Vorlesen')} onClick={() => toggleSpeak(standingText(g, true))}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9z" />
+            <path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12" />
+          </svg>
+        </button>
+      </div>
       {st.status && <span className="small game-status">{st.status}</span>}
       <span className="muted small">
         {allowanceOf(g) ? tr(`Handicap ${allowanceOf(g)} %`, `Vorgabe ${allowanceOf(g)} %`) : tr('Gross, without handicap', 'Brutto, ohne Vorgabe')}
@@ -1079,6 +1110,7 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
       )}
       <ScoreGrid game={g} />
       <span className="spacer" />
+      <ShareResult game={g} />
       <button type="button" className="btn-secondary" onClick={props.onReopen}>
         {tr('Correct scores', 'Scores korrigieren')}
       </button>
@@ -1362,5 +1394,36 @@ function ChicagoHoleResult(props: { game: Game; hole: number }) {
         {netto ? tr(' (net)', ' (netto)') : ''}
       </span>
     </div>
+  );
+}
+
+/** Share the result and who pays whom (WhatsApp, Messages …); without the share sheet it is copied. */
+function ShareResult(props: { game: Game }) {
+  const [done, setDone] = useState<string | null>(null);
+  const share = async () => {
+    const text = standingText(props.game, false);
+    const nav = navigator as Navigator & { share?: (d: { text: string }) => Promise<void> };
+    try {
+      if (nav.share) {
+        await nav.share({ text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setDone(tr('Copied – paste it into your chat.', 'Kopiert – in den Chat einfügen.'));
+    } catch {
+      /* cancelled */
+    }
+  };
+  return (
+    <>
+      <button type="button" className="btn-secondary share-btn" onClick={share}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 3v12M7 8l5-5 5 5" />
+          <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+        </svg>
+        {tr('Share result', 'Ergebnis teilen')}
+      </button>
+      {done && <span className="muted small">{done}</span>}
+    </>
   );
 }

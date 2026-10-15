@@ -126,6 +126,17 @@ for (const [form, n] of CASES) {
   if (form !== CASES[CASES.length - 1][0] || n !== CASES[CASES.length - 1][1]) await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 }
 ok((await p.locator('.list-item').count()) === CASES.length, `${CASES.length} games in the list`);
+// the result: share it, read the standing aloud (Sascha 15.10.2026)
+await p.locator('.list-item').first().click();
+ok(await p.getByRole('button', { name: 'Ergebnis teilen' }).isVisible() && (await p.getByRole('button', { name: 'Zwischenstand vorlesen' }).count()) === 1, 'result: share and read aloud');
+const said = await p.evaluate(async () => {
+  const G = await import('/src/screens/Games.tsx');
+  const S = await import('/src/lib/gamestore.ts');
+  const g = S.loadGames()[0];
+  return [G.standingText(g, true), G.standingText(g, false)];
+});
+ok(/^Ergebnis nach 3 Löchern\. 1\. /.test(said[0]) && said[1].split('\n').length >= 3, `standing in words: "${said[0].slice(0, 70)}…"`);
+await p.locator('.topbar').getByRole('button', { name: /Spiele/ }).first().click(); // back from the result
 // delete as a round: one tap, "Undo", the bin (Sascha 15.10.2026)
 await p.locator('.list-item').first().click();
 await p.getByRole('button', { name: 'Spiel löschen' }).click();

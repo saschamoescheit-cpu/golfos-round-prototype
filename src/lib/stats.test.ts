@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyse, focusAreas, pct, playerBag } from './stats';
+import { analyse, fairwayOf, focusAreas, pct, playerBag } from './stats';
 import { emptyEntry } from './scoring';
 import type { HoleEntry, LngLat, Round } from '../types';
 
@@ -52,5 +52,21 @@ describe('analysis across rounds', () => {
     expect(b.puttsByFirstPutt[2]).toEqual({ label: '3–6 m', holes: 18, avgPutts: 2 });
     expect(playerBag([det]).find((x) => x.club === 'Dr')!.m).toBe(232);
     expect(playerBag([det]).find((x) => x.club === '7i')!.m).toBe(130); // no own data → standard
+  });
+});
+
+describe('fairway hit from the checked shots', () => {
+  const tee = at(0, 0);
+  const pin = at(0, 350);
+  const e = (second: { pos: LngLat; lie: 'fairway' | 'rough' }, penalty = false) =>
+    ({ ...emptyEntry(), strokes: 4, putts: 2, detail: { shots: [{ pos: tee, lie: 'tee', club: 'Dr', penalty }, { pos: second.pos, lie: second.lie, club: '9i', penalty: false }], onGreen: at(0, 345), pin, holedOut: false } }) as HoleEntry;
+  it('fairway lie = hit, rough = the side it lies on, a tee penalty = out of bounds', () => {
+    expect(fairwayOf(e({ pos: at(0, 230), lie: 'fairway' }))).toBe('hit');
+    expect(fairwayOf(e({ pos: at(-25, 230), lie: 'rough' }))).toBe('left');
+    expect(fairwayOf(e({ pos: at(25, 230), lie: 'rough' }))).toBe('right');
+    expect(fairwayOf(e({ pos: at(0, 230), lie: 'fairway' }, true))).toBe('ob');
+  });
+  it('what the player entered wins', () => {
+    expect(fairwayOf({ ...e({ pos: at(25, 230), lie: 'rough' }), fairway: 'hit' })).toBe('hit');
   });
 });
