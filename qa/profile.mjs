@@ -49,17 +49,17 @@ await p.waitForTimeout(200);
 const pitch = await p.locator('main').innerText();
 ok(pitch.includes('Lieblingsdistanz') && pitch.includes('¾') && pitch.includes('½') && !pitch.includes('10:30') && !pitch.includes('9 Uhr'), 'pitches: favourite distance, ¾ and ½ without clock times');
 await shot('bag-pitches');
-// the pencil: add a 4-iron, remove the LW, wedges by loft
+// the pencil: add a 4-iron, remove the LW, the PW's loft right at the club
 await p.getByRole('button', { name: 'Bag bearbeiten' }).click();
 await p.getByRole('button', { name: 'Eisen 4 hinzufügen' }).click();
 await p.getByRole('button', { name: 'LW aus dem Bag entfernen' }).click();
-await p.getByText('Nach Loft (56°)').click();
+await p.getByRole('textbox', { name: 'Loft des PW' }).fill('43');
 await p.waitForTimeout(200);
 await shot('bag-edit');
 await p.getByRole('button', { name: 'Fertig' }).click();
 await p.getByText('Voller Schwung', { exact: true }).click();
 const after = await p.locator('main').innerText();
-ok(after.includes('4i') && after.includes('56°') && after.includes('46°') && !after.includes('LW') && !after.includes('60°'), 'pencil: 4i added, LW removed, wedges shown by loft');
+ok(after.includes('4i') && after.includes('PW (43°)') && after.includes('SW') && !after.includes('SW (') && !after.includes('LW'), 'pencil: 4i added, LW removed, "PW (43°)" shown');
 await shot('bag-full');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

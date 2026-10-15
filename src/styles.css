@@ -1101,3 +1101,4 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .pitch-cell { display: flex; flex-direction: column; gap: 3px; }
 .pitch-cell .input { min-height: 44px; width: 100%; text-align: right; }
 .pitch-cell .input::placeholder { color: var(--muted); opacity: 0.55; font-style: italic; }
+.bag-row.edit .input::placeholder { color: var(--muted); opacity: 0.55; font-style: italic; }

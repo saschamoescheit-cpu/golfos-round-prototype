@@ -1,16 +1,16 @@
 import type { Club } from '../types';
 
-// How the player's bag is written (Sascha 15.10.2026): the putter belongs in the bag (no carry), and the wedges by
-// name (PW, GW, SW, LW) or by loft (46°, 50°, 56°, 60°) – the player chooses.
+// How the player's bag is written (Sascha 15.10.2026): the putter belongs in the bag (no carry), and each wedge keeps
+// its name with the loft the player entered – "PW (43°)".
 
 const KEY = 'golfos.bagstyle.v1';
 export const WEDGE_CLUBS: Club[] = ['PW', 'GW', 'SW', 'LW'];
+/** Typical lofts – only a hint in the empty field. */
 export const DEFAULT_LOFTS: Partial<Record<Club, number>> = { PW: 46, GW: 50, SW: 56, LW: 60 };
 
 export interface BagStyle {
   putter: boolean;
-  wedgeLoft: boolean; // true: "56°" instead of "SW"
-  lofts: Partial<Record<Club, number>>;
+  lofts: Partial<Record<Club, number>>; // as the player entered them; empty = not shown
 }
 
 let cache: BagStyle | null = null;
@@ -18,9 +18,9 @@ export function loadBagStyle(): BagStyle {
   if (cache) return cache;
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<BagStyle> | null;
-    cache = { putter: true, wedgeLoft: false, ...raw, lofts: { ...DEFAULT_LOFTS, ...raw?.lofts } };
+    cache = { putter: raw?.putter ?? true, lofts: { ...raw?.lofts } };
   } catch {
-    cache = { putter: true, wedgeLoft: false, lofts: { ...DEFAULT_LOFTS } };
+    cache = { putter: true, lofts: {} };
   }
   return cache;
 }
@@ -33,9 +33,8 @@ export function saveBagStyle(s: BagStyle): void {
   }
 }
 
-/** The wedge's loft when the player names wedges by loft ("56°"), else null. */
-export function wedgeLoft(c: Club): number | null {
-  if (!WEDGE_CLUBS.includes(c)) return null;
-  const s = typeof localStorage === 'undefined' ? null : loadBagStyle();
-  return s?.wedgeLoft ? (s.lofts[c] ?? DEFAULT_LOFTS[c] ?? null) : null;
+/** "PW (43°)" when the player entered the wedge's loft, else the club code as given. */
+export function withLoft(code: string, c: Club, s: BagStyle = loadBagStyle()): string {
+  const loft = WEDGE_CLUBS.includes(c) ? s.lofts[c] : undefined;
+  return loft ? `${code} (${loft}°)` : code;
 }

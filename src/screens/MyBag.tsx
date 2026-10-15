@@ -8,11 +8,11 @@ import { Segmented, TopBar } from '../components/ui';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, type Partials } from '../lib/partials';
-import { DEFAULT_LOFTS, loadBagStyle, saveBagStyle, type BagStyle } from '../lib/bagstyle';
+import { DEFAULT_LOFTS, loadBagStyle, saveBagStyle, withLoft, type BagStyle } from '../lib/bagstyle';
 
 // "My bag" (feature 008, reached from the profile and the round's drawer), as Sascha wants it (15.10.2026): two tabs –
 // full swing and pitches (¾, ½ and the favourite approach distance) –, short club codes (2i, not "Eisen 2"), the
-// putter in the bag, wedges by name or by loft, and a pencil to put the bag together (more than 14 clubs allowed –
+// putter in the bag, the wedges with their loft ("PW (43°)"), and a pencil to put the bag together (more than 14 clubs allowed –
 // players change clubs by course).
 
 type Tab = 'full' | 'pitch';
@@ -150,16 +150,16 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
             <div className="bag-grid">
               {inBag.map((c) => (
                 <div key={c} className="bag-row edit">
-                  <strong className="bag-code">{style.wedgeLoft && WEDGES.includes(c) ? c : clubCode(c)}</strong>
-                  {style.wedgeLoft && WEDGES.includes(c) && (
+                  <strong className="bag-code">{clubCode(c)}</strong>
+                  {WEDGES.includes(c) && (
                     <span className="bag-input">
                       <input
                         className="input"
                         inputMode="numeric"
                         value={style.lofts[c] ?? ''}
+                        placeholder={String(DEFAULT_LOFTS[c] ?? '')}
                         aria-label={tr(`Loft of the ${c}`, `Loft des ${c}`)}
                         onChange={(e) => setStyleP({ lofts: { ...style.lofts, [c]: Number(e.target.value.replace(/[^0-9]/g, '').slice(0, 2)) || undefined } })}
-                        onBlur={() => !style.lofts[c] && setStyleP({ lofts: { ...style.lofts, [c]: DEFAULT_LOFTS[c] } })}
                       />
                       °
                     </span>
@@ -208,19 +208,6 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               </div>
             )}
           </section>
-          <section className="card stats-card">
-            <h2>{tr('Wedges', 'Wedges')}</h2>
-            <Segmented<'name' | 'loft'>
-              label={tr('Name the wedges', 'Wedges benennen')}
-              value={style.wedgeLoft ? 'loft' : 'name'}
-              onChange={(v) => v && setStyleP({ wedgeLoft: v === 'loft' })}
-              options={[
-                { value: 'name', label: 'PW · GW · SW · LW' },
-                { value: 'loft', label: tr('By loft (56°)', 'Nach Loft (56°)') },
-              ]}
-            />
-            <span className="muted small">{tr('By loft: set each wedge’s loft above.', 'Nach Loft: den Loft je Wedge oben eintragen.')}</span>
-          </section>
         </>
       ) : tab === 'full' ? (
         <section className="card stats-card">
@@ -237,7 +224,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               const t = tracked.get(c);
               return (
                 <div key={c} className="bag-row full">
-                  <strong className="bag-code">{clubCode(c)}</strong>
+                  <strong className="bag-code">{withLoft(clubCode(c), c, style)}</strong>
                   {t ? (
                     <span className={`bag-tracked${differs(c) ? ' differs' : ''}`}>
                       <span className="bag-tracked-text">
@@ -310,7 +297,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               <span className="pitch-h muted small" role="columnheader">½</span>
               {wedges.map((c) => (
                 <div key={c} className="pitch-row" role="row">
-                  <strong className="bag-code" role="cell">{clubCode(c)}</strong>
+                  <strong className="bag-code" role="cell">{withLoft(clubCode(c), c, style)}</strong>
                   <span className="muted" role="cell">{fullOf(c)}</span>
                   {(['threeQ', 'half'] as const).map((sw) => {
                     const t = trackedP.get(`${c}|${sw}`);
