@@ -689,4 +689,17 @@ export const GEAR: Gear[] = [
   },
 ];
 
+// ---------- books: the knowledge behind the drills ----------
+const book = (id: string, name: string, author: string, cats: Gear['cats'], what: L, why: L, price: [number, number]): Gear => ({ id, name, brand: author, kind: 'books', cats, what, why, price, url: '' });
+GEAR.push(
+  book('book-pelz-short', 'Dave Pelz’s Short Game Bible', 'Dave Pelz', ['pitching', 'chipping', 'bunker'], L('The classic on the short game, based on measurements – the source of the clock system.', 'Der Klassiker zum kurzen Spiel, auf Messungen gestützt – die Quelle des Uhr-Systems.'), L('Understand why wedges go where they go; many drills of this module come from it.', 'Verstehen, warum Wedges dorthin fliegen, wo sie landen; viele Übungen dieses Moduls stammen daher.'), [25, 40]),
+  book('book-pelz-putt', 'Dave Pelz’s Putting Bible', 'Dave Pelz', ['putting', 'greenreading'], L('Everything about putting from Pelz’s research: the 17-inch rule, aim, speed.', 'Alles übers Putten aus Pelz’ Forschung: die 17-Zoll-Regel, Zielen, Tempo.'), L('The science behind start line and length.', 'Die Wissenschaft hinter Startlinie und Länge.'), [25, 40]),
+  book('book-broadie', 'Every Shot Counts', 'Mark Broadie', ['strategy', 'practice'], L('The book that introduced strokes gained – what really separates good from average golfers.', 'Das Buch, das Strokes Gained eingeführt hat – was gute von durchschnittlichen Golfern wirklich trennt.'), L('Train where you lose strokes; the base of the statistics in Rounds.', 'Dort trainieren, wo du Schläge verlierst; die Basis der Statistik in Rounds.'), [18, 30]),
+  book('book-rotella', 'Golf Is Not a Game of Perfect', 'Bob Rotella', ['mental'], L('The best-known book on the mental game.', 'Das bekannteste Buch über das mentale Spiel.'), L('Acceptance, commitment, routine – in simple stories from tour players.', 'Akzeptanz, Entschlossenheit, Routine – in einfachen Geschichten von Tour-Spielern.'), [12, 20]),
+  book('book-vision54', 'Every Shot Must Have a Purpose', 'Pia Nilsson & Lynn Marriott', ['mental', 'practice'], L('The Vision54 method: think box, play box and the human skills of golf.', 'Die Vision54-Methode: Denkbox, Spielbox und die menschlichen Fähigkeiten im Golf.'), L('A routine that holds under pressure.', 'Eine Routine, die unter Druck hält.'), [15, 25]),
+  book('book-hogan', 'Five Lessons: The Modern Fundamentals of Golf', 'Ben Hogan', ['basics', 'swing'], L('The classic on grip, stance and swing plane (1957).', 'Der Klassiker zu Griff, Stand und Schwungebene (1957).'), L('The fundamentals with famous drawings.', 'Die Grundlagen mit berühmten Zeichnungen.'), [12, 20]),
+  book('book-penick', 'Harvey Penick’s Little Red Book', 'Harvey Penick', ['basics', 'mental', 'practice'], L('Short lessons of a legendary teacher.', 'Kurze Lektionen eines legendären Golflehrers.'), L('One page a day – simple and wise.', 'Eine Seite am Tag – einfach und klug.'), [12, 20]),
+  book('book-decade', 'DECADE (online course)', 'Scott Fawcett', ['strategy'], L('Course management system used by tour players, online.', 'Course-Management-System, das Tour-Spieler nutzen, online.'), L('Shot patterns, target selection, the expected score of every decision.', 'Streuung, Zielwahl, der erwartete Score jeder Entscheidung.'), [80, 200]),
+);
+
 export const gearById = (id: string): Gear | undefined => GEAR.find((g) => g.id === id);

@@ -31,6 +31,7 @@ export const kindName = (k: GearKind): string =>
     home: tr('Home practice', 'Zu Hause'),
     fitness: 'Fitness',
     balls: tr('Balls', 'Bälle'),
+    books: tr('Books', 'Bücher'),
   })[k];
 
 export const euro = (v: number): string => (getLang() === 'de' ? `${v.toFixed(2).replace('.', ',')} €` : `€${v.toFixed(2)}`);
@@ -162,6 +163,7 @@ const GEAR_ICON: Record<GearKind, ReactNode> = {
   home: gi(<><path d="M4 11l8-7 8 7v9H4z" /><path d="M9 20v-5h6v5" /></>),
   fitness: gi(<><path d="M4 10v4M7 8v8M17 8v8M20 10v4M7 12h10" /></>),
   balls: gi(<><circle cx="12" cy="12" r="7" /><circle cx="10" cy="10" r="0.6" fill="currentColor" /><circle cx="13" cy="9" r="0.6" fill="currentColor" /><circle cx="14" cy="12" r="0.6" fill="currentColor" /></>),
+  books: gi(<><path d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5z" /><path d="M12 6.5v13" /></>),
 };
 
 /** Entering a result in the drill's scoring. */

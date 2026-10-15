@@ -134,7 +134,7 @@ export interface Source {
   url: string;
 }
 
-export type GearKind = 'putting' | 'shortgame' | 'swing' | 'alignment' | 'speed' | 'tech' | 'home' | 'fitness' | 'balls';
+export type GearKind = 'putting' | 'shortgame' | 'swing' | 'alignment' | 'speed' | 'tech' | 'home' | 'fitness' | 'balls' | 'books';
 
 export interface Gear {
   id: string;
