@@ -76,7 +76,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list
   const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
   const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance'>(null);
-  // the kind of round first – before holes and tee, chosen like the game mode (Sascha 15.10.2026)
+  // the kind of round – the first row of the format block, chosen like the game mode (Sascha 15.10.2026)
   const [kind, setKind] = useState<RoundKind>('social');
   const [kindOpen, setKindOpen] = useState(false);
   const fmt = formatOf(format);
@@ -171,16 +171,6 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     <main className="screen">
       <TopBar title={props.course.name} onBack={props.onBack} />
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <span className="eyebrow">{tr('Round', 'Runde')}</span>
-        <div className="settings-list">
-          <button type="button" className="settings-row" onClick={() => setKindOpen(true)}>
-            <span>{tr('Kind of round', 'Rundenart')}</span>
-            <span className="settings-value">{kindName(kind)}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-        </div>
-      </section>
       {kindOpen && (
         <div className="sheet-backdrop" onClick={() => setKindOpen(false)}>
           <section className="sheet" role="dialog" aria-label={tr('Kind of round', 'Rundenart')} onClick={(e) => e.stopPropagation()}>
@@ -305,6 +295,12 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Format', 'Format')}</span>
         <div className="settings-list">
+          {/* the kind of round first, in the format block (Sascha 15.10.2026) */}
+          <button type="button" className="settings-row" onClick={() => setKindOpen(true)}>
+            <span>{tr('Kind of round', 'Rundenart')}</span>
+            <span className="settings-value">{kindName(kind)}</span>
+            <span aria-hidden="true">›</span>
+          </button>
           <button type="button" className="settings-row" onClick={() => setPicker('mode')}>
             <span>{tr('Mode', 'Modus')}</span>
             <span className="settings-value">{fmt.name()}</span>
