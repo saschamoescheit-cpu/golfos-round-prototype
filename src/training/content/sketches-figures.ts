@@ -456,6 +456,14 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ], L('A firm pace and little break: aim inside the edge, the ball should hit the back of the cup.', 'Festes Tempo, wenig Break: innerhalb der Lochkante zielen, der Ball soll an die hintere Lochwand.')),
   },
   pitching: {
+    'The pitch set-up': S(4, 2.5, [
+      ground(4),
+      fig(1.9, 'front', { club: 'wedge', stance: 'narrow', shift: 0.03 }),
+      ball(1.9),
+      co('trailAnkle', L('stance a little narrower, slightly open', 'Stand etwas schmaler, leicht offen'), [0.7, 0.8]),
+      co('pelvis', L('55–60 % of the weight on the lead foot', '55–60 % Gewicht vorn'), [3.1, 1.0]),
+      co('hands', L('grip 2–3 cm down', '2–3 cm kürzer greifen'), [3.1, 1.6]),
+    ], L('Ball in the middle. The arms hang, the body turns – the arms do not lift the club.', 'Ball in der Mitte. Die Arme hängen, der Körper dreht – die Arme heben den Schläger nicht.')),
     'The motion': S(5, 2.8, [
       ground(5),
       fig(1.4, 'halfBack'),
@@ -480,6 +488,13 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ], L('Three swing lengths per wedge, the same rhythm.', 'Drei Schwunglängen je Wedge, gleicher Rhythmus.')),
   },
   swing: {
+    'Transition and downswing': S(4, 2.8, [
+      ground(4),
+      fig(1.9, 'pump', { shift: 0.04 }),
+      co('leadAnkle', L('first: pressure into the lead foot', 'zuerst: Druck zum vorderen Fuß'), [3.0, 0.6]),
+      co('pelvis', L('then the hips turn – the arms still finishing the backswing', 'dann dreht die Hüfte – die Arme beenden noch das Ausholen'), [3.0, 1.2]),
+      co('hands', L('chest, arms and club follow', 'Brust, Arme und Schläger folgen'), [0.6, 1.3]),
+    ], L('The downswing starts from the ground. Arms and shoulders first (“over the top”) bring the club from outside – slice and pull.', 'Der Abschwung beginnt am Boden. Starten Arme und Schultern zuerst („von oben“), kommt der Schläger von außen – Slice und Pull.')),
     'Takeaway and backswing': S(5, 2.8, [
       ground(5),
       fig(1.6, 'takeaway'),
@@ -500,6 +515,13 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ]),
   },
   driver: {
+    'Hit up and hit the centre': S(4, 2.5, [
+      ground(4),
+      fig(1.8, 'impact', { club: 'driver', stance: 'wide' }),
+      line([1.98, 0.2], [1.98, 0.25]),
+      ball(1.98, 0.25),
+      co('clubHead', L('ball forward and teed high: the club is already rising at impact', 'Ball vorn und hoch aufgeteet: der Schläger steigt im Treffmoment schon'), [3.1, 0.9]),
+    ], L('High launch, less spin – the best drives come from the centre of the face or slightly above.', 'Hoher Abflug, weniger Spin – die besten Drives kommen aus der Mitte der Fläche oder etwas darüber.')),
     'Set-up for the driver': S(4, 2.6, [
       ground(4),
       fig(1.9, 'front', { club: 'driver', stance: 'wide' }),
@@ -509,6 +531,45 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
       co('trailShoulder', L('trail shoulder lower – spine tilted away from the target', 'hintere Schulter tiefer – Wirbelsäule vom Ziel weg geneigt'), [0.45, 2.2]),
       co('trailAnkle', L('stance wider than the shoulders', 'Stand breiter als die Schultern'), [0.6, 0.8]),
     ]),
+  },
+  bunker: {
+    'The swing': S(5, 2.8, [
+      ground(5, true),
+      fig(1.4, 'halfBack'),
+      ball(1.42),
+      fig(3.6, 'frontFinish', { club: 'wedge' }),
+      co('hands', L('long and loose – like a 40–50 m pitch', 'lang und locker – wie ein 40–50-m-Pitch'), [0.3, 2.0], 0),
+      co('pelvis', L('through into a full finish – never slow down', 'durch bis ins volle Finish – nie abbremsen'), [4.7, 1.0], 1),
+    ], L('Along the open body line; the club enters the sand behind the ball, the face stays open and points to the sky in the finish.', 'Entlang der offenen Körperlinie; der Schläger dringt hinter dem Ball in den Sand ein, die Fläche bleibt offen und zeigt im Finish zum Himmel.')),
+  },
+  irons: {
+    'Set-up for irons': S(4, 2.5, [
+      ground(4),
+      fig(1.9, 'front', { club: 'iron' }),
+      ball(1.94),
+      co('trailAnkle', L('stance about shoulder width, weight 50:50', 'Stand etwa schulterbreit, Gewicht 50:50'), [0.7, 0.8]),
+      co('hands', L('hands level with or slightly ahead of the ball', 'Hände auf Höhe oder leicht vor dem Ball'), [3.1, 1.3]),
+    ], L('Ball: short irons in the middle, mid irons one ball forward, long irons two. Feet, hips and shoulders parallel to the target line.', 'Ball: kurze Eisen in der Mitte, mittlere eine Ballbreite, lange zwei Ballbreiten vor der Mitte. Füße, Hüften und Schultern parallel zur Ziellinie.')),
+  },
+  woods: {
+    'Set-up': S(4, 2.5, [
+      ground(4),
+      fig(1.9, 'front', { club: 'driver', stance: 'wide' }),
+      ball(2.08),
+      co('clubHead', L('ball about two balls inside the lead heel, sole flat', 'Ball etwa zwei Ballbreiten innerhalb der vorderen Ferse, Sohle flach'), [3.1, 0.75]),
+      co('hands', L('hands level with the ball – not ahead as with irons', 'Hände auf Höhe des Balls – nicht davor wie bei Eisen'), [3.1, 1.55]),
+      co('trailAnkle', L('stance a little wider than the shoulders', 'Stand etwas breiter als schulterbreit'), [0.7, 0.8]),
+    ]),
+    'The swing: sweep': S(4, 2.5, [
+      ground(4),
+      fig(1.9, 'impact', { club: 'driver' }),
+      ball(2.04),
+      co('clubHead', L('the club brushes the grass like a broom – let the loft lift the ball', 'der Schläger streift das Gras wie ein Besen – den Ball hebt der Loft'), [3.1, 0.75]),
+      co('neck', L('chest over the ball at impact', 'Brust im Treffmoment über dem Ball'), [0.6, 1.9]),
+    ], L('A wide, round swing: low and slow away from the ball, a full turn, a full finish.', 'Ein weiter, runder Schwung: flach und langsam vom Ball weg, volle Drehung, volles Finish.')),
+  },
+  fitness: {
+    'Warm-up before the round (10 minutes)': FIGURE_SKETCHES['warmup-10'],
   },
   basics: {
     'Ball position': SKETCHES['ball-position-ladder'],
