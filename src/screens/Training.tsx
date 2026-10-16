@@ -16,8 +16,6 @@ import {
   addLog,
   cartCount,
   deleteSession,
-  introSeen,
-  setIntroSeen,
   loadCart,
   loadFavs,
   loadLog,
@@ -273,32 +271,6 @@ function SearchField(props: { nav: Nav; initial?: string; onChange?: (q: string)
   );
 }
 
-/** Three lines how the module works – shown until the player closes it. */
-function IntroCard() {
-  const [seen, setSeen] = useState(introSeen);
-  if (seen) return null;
-  return (
-    <section className="card tr-intro">
-      <strong>{tr('How Training works', 'So funktioniert Training')}</strong>
-      <ol className="tr-steps">
-        <li>{tr('Library: pick a topic – basics, faults, drills with sketches, videos and gear.', 'Wissen: Thema wählen – Grundlagen, Fehler, Übungen mit Skizze, Videos und Zubehör.')}</li>
-        <li>{tr('Practice: start a plan or your own session – the timer guides you from drill to drill.', 'Üben: Plan oder eigene Einheit starten – der Timer führt dich von Übung zu Übung.')}</li>
-        <li>{tr('Progress: enter your results and see your bests against the goal for your handicap.', 'Verlauf: Ergebnisse eintragen und Bestwerte gegen das Ziel deines Handicaps sehen.')}</li>
-      </ol>
-      <button
-        type="button"
-        className="btn-secondary"
-        onClick={() => {
-          setIntroSeen();
-          setSeen(true);
-        }}
-      >
-        {tr('Got it', 'Verstanden')}
-      </button>
-    </section>
-  );
-}
-
 /** One drill per day – from the advice of the player's rounds when there is some, otherwise from all drills. */
 function DrillOfTheDay(props: { nav: Nav; prefer: string[] }) {
   const day = Math.floor(Date.now() / 86400000);
@@ -390,7 +362,6 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
         )}
       </p>
       <SearchField nav={props.nav} />
-      <IntroCard />
       <DrillOfTheDay nav={props.nav} prefer={advice.flatMap((a) => a.drills)} />
       {advice.length > 0 && (
         <section className="tr-advice">

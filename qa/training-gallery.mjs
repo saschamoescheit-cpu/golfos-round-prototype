@@ -28,7 +28,6 @@ await shot('start');
 await p.locator('.module-card').filter({ hasText: 'Training' }).click();
 await p.locator('.tr-cat').first().waitFor({ timeout: 30000 });
 await shot('wissen');
-await p.getByRole('button', { name: 'Verstanden' }).click();
 await p.evaluate(() => window.scrollTo(0, 700));
 await shot('themen');
 await p.locator('.tr-cat').filter({ hasText: 'Putten' }).first().click();

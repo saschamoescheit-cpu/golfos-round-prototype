@@ -390,11 +390,6 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .map-imagery { padding: 0; width: 44px; justify-content: center; }
 
 /* First start: what the app does, in three steps */
-.intro { display: flex; flex-direction: column; gap: 12px; }
-.intro ol { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 10px; counter-reset: step; }
-.intro li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; counter-increment: step; }
-.intro li::before { content: counter(step); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 14px; background: var(--brand-soft); color: var(--brand-text); font: 700 14px var(--display); }
-.intro li strong { display: block; }
 .home-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: center; }
 [hidden] { display: none !important; }
 
@@ -907,11 +902,6 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .map-tool-text { font: 800 15px var(--display); letter-spacing: 0.3px; }
 
 /* first start: "how GolfOS works" as a window of its own */
-.intro-backdrop {
-  position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center;
-  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px); overflow-y: auto;
-}
-.intro-modal { width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
 /* the map fills the screen that is really visible (iOS Safari with its toolbar; 15.10.2026) */
 @supports (height: 100dvh) {
   .map-screen { bottom: auto; height: 100dvh; }

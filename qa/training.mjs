@@ -37,10 +37,8 @@ await p.getByRole('heading', { name: 'Wissen' }).waitFor({ timeout: 20000 }).cat
 ok(await p.getByRole('heading', { name: 'Wissen' }).isVisible(), 'Training opens on the library');
 const tabs = await p.locator('.tabbar button').allInnerTexts();
 ok(tabs.join('|') === 'Wissen|Üben|Verlauf|Shop|Profil', `menu: ${tabs.join(' · ')}`);
-ok(await p.getByText('So funktioniert Training').isVisible(), 'intro card on first open');
 ok(await p.locator('.tr-today').isVisible(), 'drill of the day');
-await p.getByRole('button', { name: 'Verstanden' }).click();
-ok(!(await p.getByText('So funktioniert Training').isVisible()), 'intro closes');
+ok((await p.getByText('So funktioniert').count()) === 0, 'no intro card (Sascha 16.10.2026)');
 const cats = await p.locator('.tr-cat').count();
 ok(cats >= 17, `${cats} topics`);
 await p.reload();

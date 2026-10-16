@@ -54,7 +54,6 @@ const K = {
   plans: 'golfos.training.plans.v1',
   cart: 'golfos.training.cart.v1',
   orders: 'golfos.training.orders.v1',
-  seen: 'golfos.training.seen.v1',
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -72,7 +71,7 @@ function write(key: string, v: unknown): void {
     /* storage full or blocked – keeps working for this visit */
   }
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('golfos:training-changed'));
-  if (key !== K.seen) syncSoon();
+  syncSoon();
 }
 
 export const trainingId = (): string => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -160,7 +159,3 @@ export function placeOrder(total: number): Order {
   return o;
 }
 export const loadOrders = (): Order[] => read<Order[]>(K.orders, []).sort((a, b) => b.at.localeCompare(a.at));
-
-// ---------- seen intro ----------
-export const introSeen = (): boolean => read<boolean>(K.seen, false);
-export const setIntroSeen = (): void => write(K.seen, true);
