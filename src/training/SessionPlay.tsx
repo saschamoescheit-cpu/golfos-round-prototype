@@ -95,8 +95,8 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
             </ol>
           </>
         )}
-        <button type="button" className="btn-ghost" onClick={() => props.onDrill(d.id)}>
-          {tr('Everything about this drill ›', 'Alles zu dieser Übung ›')}
+        <button type="button" className="btn-secondary" onClick={() => props.onDrill(d.id)}>
+          {tr('Everything about this drill', 'Alles zu dieser Übung')}
         </button>
       </section>
       <section className="card tr-section tr-log">

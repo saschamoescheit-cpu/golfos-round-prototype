@@ -79,12 +79,12 @@ await p.locator('.tr-fav').click();
 for (let i = 0; i < 11; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Ergebnis speichern' }).click();
 ok(await p.getByRole('button', { name: 'Gespeichert ✓' }).isVisible(), 'result saved');
-ok((await p.locator('.tr-entries li').count()) === 1, 'result in the list');
+ok((await p.locator('.tr-history li').count()) === 1, 'result in the list');
 // removing a result can be undone (like deleting a round)
-await p.locator('.tr-entries li button').first().click();
-ok((await p.locator('.tr-entries li').count()) === 0 && (await p.locator('.undo-toast').isVisible()), 'removing a result shows Undo');
+await p.locator('.tr-history .tr-hist-remove').first().click();
+ok((await p.locator('.tr-history li').count()) === 0 && (await p.locator('.undo-toast').isVisible()), 'removing a result shows Undo');
 await p.locator('.undo-toast button').click();
-ok((await p.locator('.tr-entries li').count()) === 1, 'Undo brings the result back');
+ok((await p.locator('.tr-history li').count()) === 1, 'Undo brings the result back');
 await shot('drill');
 // video loads only on tap
 ok((await p.locator('iframe').count()) === 0, 'no video before tapping');
@@ -187,9 +187,10 @@ ok((await p.locator('.tile-num').first().innerText()).startsWith('1/4'), 'result
 await shot('result');
 await back();
 await p.waitForTimeout(200);
-ok(await p.getByRole('heading', { name: 'Bestwerte' }).isVisible(), 'progress shows the best results');
+ok(await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible(), 'progress shows the best results');
 ok((await p.locator('.tr-goals').innerText()).includes('Ziele für Hcp 11–20'), 'progress: the goals of the player’s handicap band');
 ok((await p.locator('.tr-thumb').count()) >= 1, 'progress: bests with the drill picture');
+ok(await p.getByRole('heading', { name: 'Letzte Ergebnisse' }).isVisible(), 'progress: the latest results by day');
 const sessionsBlock = () => p.locator('.tr-block').filter({ has: p.getByRole('heading', { name: 'Einheiten', exact: true }) });
 ok((await sessionsBlock().locator('.list-item').count()) === 1, 'finished session in the list');
 // delete with undo
