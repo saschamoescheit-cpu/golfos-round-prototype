@@ -21,6 +21,9 @@ export function HoleDrawer(props: {
   onLeaderboard: (() => void) | null;
   onPause: () => void;
   onEnd: () => void;
+  /** A game (Games): the leaderboard row shows the game's standing; more rows (invite players). */
+  leaderboardLabel?: string;
+  extraRows?: { label: string; onClick: () => void }[];
   /** Course preview (no round): no score; birdie book, pause and finish. */
   preview?: boolean;
   onBook?: () => void;
@@ -91,10 +94,16 @@ export function HoleDrawer(props: {
         <div className="drawer-list">
           {props.onLeaderboard && (
             <button type="button" className="drawer-row" onClick={props.onLeaderboard}>
-              <span>Leaderboard</span>
+              <span>{props.leaderboardLabel ?? 'Leaderboard'}</span>
               <span aria-hidden="true">›</span>
             </button>
           )}
+          {props.extraRows?.map((r) => (
+            <button key={r.label} type="button" className="drawer-row" onClick={r.onClick}>
+              <span>{r.label}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          ))}
           <button type="button" className="drawer-row" onClick={props.onBag}>
             <span>{tr('My bag', 'Mein Bag')}</span>
             <span aria-hidden="true">›</span>
@@ -146,7 +155,7 @@ export function HoleDrawer(props: {
               </svg>
               <span>{tr('Pause', 'Pausieren')}</span>
             </button>
-            <button type="button" className="drawer-action end" onClick={props.onEnd} aria-label={tr('Finish round', 'Runde beenden')}>
+            <button type="button" className="drawer-action end" onClick={props.onEnd} aria-label={props.leaderboardLabel ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')}>
               <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor" />
               </svg>

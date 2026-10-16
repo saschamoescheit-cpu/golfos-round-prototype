@@ -120,10 +120,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           {review > 0 && <span className="badge-dot">{tr(`${review} new`, `${review} neu`)}</span>}
           <span aria-hidden="true">›</span>
         </button>
-      </section>
-
-      <section className="card stats-card">
-        <h2>{tr('Settings', 'Einstellungen')}</h2>
         <div className="field">
           <label>{tr('Distances in', 'Distanzen in')}</label>
           <Segmented<'m' | 'yd'>
@@ -140,7 +136,10 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
-        <h3 className="settings-sub">{tr('Caddie', 'Caddie')}</h3>
+      </section>
+
+      <section className="card stats-card">
+        <h2>{tr('Caddie', 'Caddie')}</h2>
         <CaddieSettingsFields />
       </section>
 

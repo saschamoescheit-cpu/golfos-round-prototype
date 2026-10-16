@@ -206,7 +206,7 @@ export function App() {
         profile={profile}
       />
     );
-  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} />;
+  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} />;
   if (module === 'training')
     return (
       <Suspense fallback={<Waiting />}>

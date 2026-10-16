@@ -71,7 +71,7 @@ await H.locator('button.list-item').first().click();
 await H.waitForTimeout(800);
 await H.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
 await H.getByRole('button', { name: 'Spiel starten' }).click();
-await H.waitForTimeout(800);
+await H.waitForTimeout(4500);
 await H.locator('.hole-bar-handle').click();
 await H.locator('.hole-drawer').getByRole('button', { name: 'Mitspieler einladen' }).click();
 await H.getByRole('button', { name: 'Code erzeugen' }).click();
@@ -91,17 +91,36 @@ await G.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { n
 await G.waitForTimeout(1500);
 ok(await G.getByText('wer bist du?').isVisible(), 'guest: "who are you?" after joining');
 await G.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Ben', exact: true }).click();
-await G.waitForTimeout(1000);
-ok((await G.locator('.game-scores').innerText()).includes('Sascha') && (await G.locator('.game-scores').innerText()).includes('Ben'), 'guest: in the game with Sascha and Ben');
+await G.waitForTimeout(4500);
+// games are on the GPS map (Sascha 16.10.2026): the guest plays on the map too, with his own round
+ok((await G.locator('.maplibregl-canvas').count()) === 1 && (await G.locator('.game-bar').count()) === 1, 'guest: on the map with the game bar');
+const guestRound = await G.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1'))[0]);
+ok(guestRound.round && guestRound.round.players.find((p) => p.isMe)?.id === guestRound.shared.me, 'guest: in his round Ben is "me"');
+ok(!JSON.stringify([...shared.values()].map((v) => v.game.round?.entries ?? {})).includes('"shots"'), 'server: no shots or GPS of the round, only its frame');
+const block = (p, name) => p.locator('.score-player').filter({ has: p.locator('.score-player-head strong', { hasText: new RegExp(`^${name}$`) }) });
+const enter = async (p, name, times) => {
+  await p.locator('.map-score').click();
+  await p.waitForTimeout(250);
+  for (let k = 0; k < times; k++) await block(p, name).getByRole('button', { name: /Schläge plus eins/ }).click();
+  await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
+};
 
 // both enter: the host his own score, the guest his – after a few seconds both phones show both
-await H.locator('.game-scores .stepper').nth(0).getByRole('button', { name: 'plus eins' }).click(); // Sascha par 4
-await G.locator('.game-scores .stepper').nth(1).getByRole('button', { name: 'plus eins' }).click(); // Ben par 4
-await G.locator('.game-scores .stepper').nth(1).getByRole('button', { name: 'plus eins' }).click(); // Ben 5
+await enter(H, 'Sascha', 1); // Sascha par 4
+await enter(G, 'Ben', 2); // Ben 5
 await H.waitForTimeout(12000);
-const vals = async (p) => (await p.locator('.game-scores .stepper-value').allInnerTexts()).map((t) => t.trim()).join(',');
-ok((await vals(H)) === '4,5', `host sees both scores: ${await vals(H)}`);
-ok((await vals(G)) === '4,5', `guest sees both scores: ${await vals(G)}`);
+const vals = async (p) => {
+  await p.locator('.map-score').click();
+  await p.waitForTimeout(300);
+  const v = [];
+  for (const n of ['Sascha', 'Ben']) v.push((await block(p, n).locator('.stepper-value').first().innerText()).trim().split(/\s+/)[0]);
+  await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
+  return v.join(',');
+};
+const hv = await vals(H);
+const gv = await vals(G);
+ok(hv === '4,5', `host sees both scores: ${hv}`);
+ok(gv === '4,5', `guest sees both scores: ${gv}`);
 ok((await G.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1'))[0].shared.me)) !== 'me', 'guest: Ben is his own player (not player 1)');
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

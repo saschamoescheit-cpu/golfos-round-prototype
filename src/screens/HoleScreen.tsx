@@ -78,6 +78,8 @@ export function HoleScreen(props: {
   onShowScorecard: (r: Round, finishing?: boolean) => void;
   /** From the hole overview: my bag or the caddie settings, back to this hole afterwards. */
   onOpenBag?: (part: 'bag' | 'caddie') => void;
+  /** A game on the map (Games): its name and standing in a bar over the hole bar, opening the game sheet. */
+  game?: { name: string; line: string; onOpen: () => void; onInvite: (() => void) | null; shared: string | null };
   /** Course preview: the birdie book of the course, back to this hole afterwards. */
   onBook?: () => void;
 }) {
@@ -353,7 +355,7 @@ export function HoleScreen(props: {
   const holesScored = round.entries[me.id].filter((e) => e.strokes != null || e.pickedUp).length;
   const exitEl = exitOpen && (
     <div className="sheet-backdrop" onClick={closeExit}>
-      <section className="sheet" role="dialog" aria-label={tr('Leave the round', 'Runde verlassen')} onClick={(e) => e.stopPropagation()}>
+      <section className="sheet" role="dialog" aria-label={(props.game ? tr('Leave the game', 'Spiel verlassen') : tr('Leave the round', 'Runde verlassen'))} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{round.courseName}</strong>
           <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={closeExit}>
@@ -366,10 +368,10 @@ export function HoleScreen(props: {
               {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
             </button>
             <button type="button" className="btn-primary" onClick={() => setExitConfirm('end')}>
-              {tr('Finish round', 'Runde beenden')}
+              {props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')}
             </button>
             <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
-              {tr('Cancel round', 'Runde abbrechen')}
+              {props.game ? tr('Cancel game', 'Spiel abbrechen') : tr('Cancel round', 'Runde abbrechen')}
             </button>
           </div>
         )}
@@ -381,14 +383,14 @@ export function HoleScreen(props: {
                     `Finish now? ${holesScored} of ${round.holes.length} holes have a score – they are saved, the others stay empty.`,
                     `Jetzt beenden? ${holesScored} von ${round.holes.length} Löchern haben einen Score – sie werden gespeichert, die anderen bleiben leer.`,
                   )
-                : tr('Finish and save the round?', 'Runde beenden und speichern?')}
+                : (props.game ? tr('Finish the game and settle?', 'Spiel beenden und abrechnen?') : tr('Finish and save the round?', 'Runde beenden und speichern?'))}
             </span>
             <div className="sheet-actions">
               <button type="button" className="btn-primary" onClick={() => props.onEnd(round)}>
                 {tr('Save & finish', 'Speichern & beenden')}
               </button>
               <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
-                {tr('Delete round', 'Runde löschen')}
+                {props.game ? tr('Delete game', 'Spiel löschen') : tr('Delete round', 'Runde löschen')}
               </button>
               <button type="button" className="btn-secondary" onClick={() => setExitConfirm(null)}>
                 {tr('Back', 'Zurück')}
@@ -398,10 +400,10 @@ export function HoleScreen(props: {
         )}
         {exitConfirm === 'abort' && (
           <>
-            <span>{tr('Cancel and delete the round? You can restore it under "Deleted rounds".', 'Runde abbrechen und löschen? Unter „Gelöschte Runden“ kannst du sie wiederherstellen.')}</span>
+            <span>{props.game ? tr('Cancel and delete the game? You can restore it under "deleted" in Games.', 'Spiel abbrechen und löschen? In Games unter „gelöscht“ kannst du es wiederherstellen.') : tr('Cancel and delete the round? You can restore it under "Deleted rounds".', 'Runde abbrechen und löschen? Unter „Gelöschte Runden“ kannst du sie wiederherstellen.')}</span>
             <div className="sheet-actions">
               <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
-                {tr('Delete round', 'Runde löschen')}
+                {props.game ? tr('Delete game', 'Spiel löschen') : tr('Delete round', 'Runde löschen')}
               </button>
               <button type="button" className="btn-secondary" onClick={() => setExitConfirm(null)}>
                 {tr('Back', 'Zurück')}
@@ -415,7 +417,7 @@ export function HoleScreen(props: {
   // Once per device: how the round check finds the shots (it depends on how the phone is used on the course).
   const [shotTip, setShotTip] = useState(() => {
     try {
-      return !round.preview && localStorage.getItem('golfos.tip.shots.v1') == null;
+      return !round.preview && !props.game && localStorage.getItem('golfos.tip.shots.v1') == null; // games: no shot check afterwards
     } catch {
       return false;
     }
@@ -988,7 +990,9 @@ export function HoleScreen(props: {
             onBag={() => props.onOpenBag?.('bag')}
             onCaddie={() => props.onOpenBag?.('caddie')}
             onScorecard={() => props.onShowScorecard(round)}
-            onLeaderboard={round.players.length > 1 && !round.preview ? () => { setDrawerOpen(false); setBoardOpen(true); } : null}
+            onLeaderboard={props.game ? () => { setDrawerOpen(false); props.game!.onOpen(); } : round.players.length > 1 && !round.preview ? () => { setDrawerOpen(false); setBoardOpen(true); } : null}
+            leaderboardLabel={props.game ? `${props.game.name} · ${tr('standing', 'Stand')}` : undefined}
+            extraRows={props.game?.onInvite ? [{ label: props.game.shared ? tr(`Players' phones · code ${props.game.shared}`, `Handys der Mitspieler · Code ${props.game.shared}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); props.game!.onInvite!(); } }] : undefined}
             preview={round.preview}
             onBook={props.onBook}
             onPause={props.onExit}
@@ -1033,6 +1037,13 @@ export function HoleScreen(props: {
           )}
           {detectedBanner}
           {offlineHint}
+          {props.game && !greenFocus && (
+            <button type="button" className="game-bar" onClick={props.game.onOpen} aria-label={tr(`${props.game.name} – standing and input`, `${props.game.name} – Stand und Eingabe`)}>
+              <strong>{props.game.name}</strong>
+              <span className="grow">{props.game.line}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          )}
           {round.planning && !greenFocus && (
             <section className="plan-panel" aria-label={tr('Plan for this hole', 'Plan für dieses Loch')}>
               <span className="plan-panel-title">{tr(`Plan ${hole.label}`, `Plan ${hole.label}`)}</span>
@@ -1201,7 +1212,7 @@ export function HoleScreen(props: {
               >
                 {detail.onGreen ? 'Putts' : tr('Green', 'Grün')}
               </button>
-              <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => goTo(i + 1)}>
+              <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={() => goTo(i + 1)}>
                 →
               </button>
             </div>
@@ -1252,7 +1263,7 @@ export function HoleScreen(props: {
                 </span>
               )}
             </button>
-            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr('Next hole', 'Nächstes Loch')} onClick={() => (myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1))}>
+            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={() => (myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1))}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
@@ -1520,7 +1531,7 @@ export function HoleScreen(props: {
           {tr('← Back', '← Zurück')}
         </button>
         <button type="button" className="btn-primary" onClick={() => goTo(i + 1)}>
-          {i === round.holes.length - 1 ? tr('Finish round', 'Runde beenden') : tr(`Next · hole ${round.holes[i + 1].label}`, `Weiter · Loch ${round.holes[i + 1].label}`)}
+          {i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr(`Next · hole ${round.holes[i + 1].label}`, `Weiter · Loch ${round.holes[i + 1].label}`)}
         </button>
       </div>
       {sheetEl}

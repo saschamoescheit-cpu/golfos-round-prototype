@@ -1,5 +1,6 @@
 import type { Course, Player, Round } from '../types';
 import { loadCachedCourse, loadRounds, saveRound } from './storage';
+import { loadGames, loadGameTrash } from './gamestore';
 import { holesFromTags } from './courses';
 import { buildRoundHoles, loopOptions } from './loops';
 import { emptyEntry } from './scoring';
@@ -40,7 +41,9 @@ function coursesOnPhone(): Course[] {
 export function restoreLostRounds(): number {
   let restored = 0;
   try {
+    // rounds, and the rounds behind games (played on the map) – their tracks are not lost rounds
     const ids = new Set(loadRounds().map((r) => r.id));
+    for (const g of [...loadGames(), ...loadGameTrash().map((t) => t.game)]) if (g.round) ids.add(g.round.id);
     const keys: string[] = [];
     for (let k = 0; k < localStorage.length; k++) {
       const key = localStorage.key(k)!;

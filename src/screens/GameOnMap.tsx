@@ -1,0 +1,152 @@
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import type { Round } from '../types';
+import { ensureGeometry, geometryReady } from '../lib/storage';
+import { formDef, standingOf, type Game, type HoleExtra } from '../lib/gameforms';
+import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
+import { InviteSheet } from '../components/ShareGame';
+import { emptyEntry } from '../lib/scoring';
+import { tr } from '../lib/i18n';
+import { HoleExtras, PressCard, ScoreGrid, StandingCard } from './Games';
+
+// Games on the GPS map (Sascha 16.10.2026: "every game with the map and all its functions like a normal round – only
+// the score entry differs"): a game carries a round; the round's hole screen (map, caddie, hole bar, overview, pause
+// and finish) is the game's screen. The strokes come from the round's score entry; what the form needs on a hole
+// (wolf partner, pairing, press …) and the standing are in the game sheet – a bar over the hole bar opens it.
+
+const HoleScreen = lazy(() => import('./HoleScreen').then((m) => ({ default: m.HoleScreen })));
+
+/** A new round for a game: the game's players and holes, nothing entered. */
+export function roundForGame(g: Omit<Game, 'round'>, course: { id: string; name: string }, holes: Round['holes'], loops: string[]): Round {
+  const players = g.players.map((p, k) => ({ id: p.id, name: p.name, playingHandicap: p.hcp, isMe: k === 0 }));
+  return {
+    id: `gr-${g.id}`,
+    createdAt: g.createdAt,
+    finishedAt: null,
+    courseId: course.id,
+    courseName: course.name,
+    loopOrder: loops,
+    holes,
+    mode: 'quick',
+    players,
+    entries: Object.fromEntries(players.map((p) => [p.id, holes.map(() => emptyEntry())])),
+    currentHole: 0,
+  };
+}
+
+/** The game's strokes from its round (a picked-up hole: no score for the game) – a changed score gets its time
+ *  stamp, so a shared game keeps the later entry. */
+export function withRound(g: Game, r: Round): Game {
+  let next: Game = { ...g, round: r, current: r.currentHole };
+  const scores: Game['scores'] = {};
+  for (const p of g.players) {
+    scores[p.id] = g.holes.map((_, i) => {
+      const e = r.entries[p.id]?.[i];
+      const v = e ? (e.pickedUp ? null : e.strokes) : null;
+      if (v !== (g.scores[p.id]?.[i] ?? null)) next = stamp(next, `s:${p.id}:${i}`);
+      return v;
+    });
+  }
+  return { ...next, scores };
+}
+
+/** Scores that came from the other phones into the round's entries (a shared game). */
+function scoresIntoRound(g: Game): Game {
+  if (!g.round) return g;
+  const r = g.round;
+  let changed = false;
+  const entries = { ...r.entries };
+  for (const p of g.players) {
+    entries[p.id] = (r.entries[p.id] ?? []).map((e, i) => {
+      const v = g.scores[p.id]?.[i] ?? null;
+      if (e.pickedUp || (e.strokes ?? null) === v) return e;
+      changed = true;
+      return { ...e, strokes: v };
+    });
+  }
+  return changed ? { ...g, round: { ...r, entries } } : g;
+}
+
+export function GameOnMap(props: {
+  game: Game;
+  onChange: (g: Game) => void;
+  onPause: () => void;
+  onFinish: (g: Game) => void;
+  onDelete: (g: Game) => void;
+  onOpenBag?: (part: 'bag' | 'caddie') => void;
+}) {
+  const g = props.game;
+  const r = g.round!;
+  const [ready, setReady] = useState(geometryReady(r.courseId));
+  const [sheet, setSheet] = useState<null | 'game' | 'card'>(null);
+  const [canShare, setCanShare] = useState(false);
+  const [invite, setInvite] = useState(false);
+  useEffect(() => {
+    sharingAvailable().then(setCanShare);
+  }, []);
+  useEffect(() => {
+    if (!ready) ensureGeometry(r.courseId).then(() => setReady(true));
+  }, [ready, r.courseId]);
+  // a shared game: exchange with the other phones every 5 s
+  const latest = useRef(g);
+  latest.current = g;
+  useEffect(() => {
+    if (!g.shared) return;
+    const tick = async () => {
+      const m = await exchange(latest.current);
+      if (m && JSON.stringify(m) !== JSON.stringify(latest.current)) props.onChange(scoresIntoRound(m));
+    };
+    tick();
+    const t = window.setInterval(tick, 5000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g.shared?.code]);
+  if (!ready) return <main className="screen"><p className="muted">{tr('Loading the course …', 'Platz wird geladen …')}</p></main>;
+  const f = formDef(g.form);
+  const st = standingOf(g);
+  const i = r.currentHole;
+  const lead = st.rows[0];
+  const line = st.status ?? (lead ? `${lead.name} ${lead.value}` : '');
+  const setExtra = (patch: Partial<HoleExtra>) => props.onChange(stamp({ ...g, extra: g.extra.map((e, k) => (k === i ? { ...e, ...patch } : e)) }, `x:${i}`));
+  return (
+    <>
+      <Suspense fallback={<main className="screen" />}>
+        <HoleScreen
+          round={r}
+          onChange={(nr) => props.onChange(withRound(g, nr))}
+          onExit={props.onPause}
+          onEnd={(nr) => props.onFinish(withRound(g, { ...nr, finishedAt: new Date().toISOString() }))}
+          onAbort={() => props.onDelete(g)}
+          onShowScorecard={(nr, finishing) => (finishing ? props.onFinish(withRound(g, { ...nr, finishedAt: new Date().toISOString() })) : setSheet('card'))}
+          onOpenBag={props.onOpenBag}
+          game={{ name: f.name(), line, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null }}
+        />
+      </Suspense>
+      {invite && <InviteSheet game={g} onShared={props.onChange} onClose={() => setInvite(false)} />}
+      {sheet && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <section className="sheet game-sheet" role="dialog" aria-label={sheet === 'game' ? f.name() : tr('Scorecard', 'Scorekarte')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{sheet === 'game' ? `${f.name()} · ${tr('Hole', 'Loch')} ${g.holes[i]?.label ?? ''}` : tr('Scorecard', 'Scorekarte')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setSheet(null)}>
+                ✕
+              </button>
+            </div>
+            {sheet === 'game' ? (
+              <>
+                <span className="muted small">{tr('The strokes come from the score entry on the hole bar.', 'Die Schläge kommen aus der Score-Erfassung in der Lochleiste.')}</span>
+                <HoleExtras game={g} hole={i} onChange={setExtra} />
+                {g.settings.double && Number(g.settings.stake) > 0 && <PressCard game={g} hole={i} onChange={props.onChange} />}
+                <StandingCard game={g} />
+              </>
+            ) : (
+              <>
+                <ScoreGrid game={g} />
+                <StandingCard game={g} />
+              </>
+            )}
+          </section>
+        </div>
+      )}
+    </>
+  );
+}

@@ -80,6 +80,33 @@ const course = async () => {
   await p.locator('button.list-item').first().click();
   await p.waitForTimeout(800);
 };
+// games are played on the GPS map (Sascha 16.10.2026): the scores in the round's score sheet, the form's input in the
+// game sheet (the bar over the hole bar), pause and finish in the hole overview
+const scores = async (bump = []) => {
+  await p.locator('.map-score').click();
+  await p.waitForTimeout(250);
+  const blocks = p.locator('.score-player');
+  const nb = await blocks.count();
+  for (let k = 0; k < nb; k++) await blocks.nth(k).getByRole('button', { name: /Schläge plus eins/ }).click();
+  for (const [k, d] of bump) await blocks.nth(k).getByRole('button', { name: d > 0 ? /Schläge plus eins/ : /Schläge minus eins/ }).click();
+  await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
+};
+const gameSheet = async (fn) => {
+  await p.locator('.game-bar').click();
+  await p.waitForTimeout(250);
+  const r = await fn(p.locator('.game-sheet'));
+  await p.locator('.game-sheet').getByRole('button', { name: 'Schließen' }).click();
+  return r;
+};
+const nextHole = async () => {
+  await p.locator('.hole-bar').getByRole('button', { name: 'Nächstes Loch' }).click();
+  await p.waitForTimeout(500);
+};
+const pause = async () => {
+  await p.locator('.hole-bar-handle').click();
+  await p.locator('.hole-drawer').getByRole('button', { name: /pausieren/ }).click();
+  await p.waitForTimeout(400);
+};
 let firstCase = true;
 for (const [form, n] of CASES) {
   await p.getByRole('button', { name: 'Neues Spiel' }).click();
@@ -101,23 +128,26 @@ for (const [form, n] of CASES) {
   const start = p.getByRole('button', { name: 'Spiel starten' });
   ok(await start.isEnabled(), `${form} with ${n}: start possible`);
   await start.click();
-  await p.waitForTimeout(200);
+  await p.waitForTimeout(4500);
   for (let h = 0; h < 3; h++) {
     // everyone par, the first player one better on the second hole
-    await p.getByRole('button', { name: 'Par für alle übrigen' }).click();
-    if (h === 1) await p.locator('.game-scores .stepper').first().getByRole('button', { name: 'minus eins' }).click();
-    if (form === 'Wolf') await p.locator('.game-extra .chip').first().click();
-    if (form === 'Bingo Bango Bongo') for (const row of await p.locator('.game-extra .game-setting').all()) await row.locator('.chip').first().click();
-    if (form === 'Snake' && h === 2) await p.locator('.game-extra .chip').nth(1).click();
-    if (form === 'Hammer' && h === 1) await p.locator('[aria-label="Hammer"] .chip').first().click();
-    if (form.startsWith('Dots')) await p.locator('.game-extra .game-setting').first().locator('.chip').first().click();
-    await p.getByRole('button', { name: 'Nächstes Loch', exact: true }).click();
+    await scores(h === 1 ? [[0, -1]] : []);
+    const extras = form === 'Wolf' || form === 'Bingo Bango Bongo' || (form === 'Snake' && h === 2) || (form === 'Hammer' && h === 1) || form.startsWith('Dots');
+    if (extras)
+      await gameSheet(async (g) => {
+        if (form === 'Wolf') await g.locator('.game-extra .chip').first().click();
+        if (form === 'Bingo Bango Bongo') for (const row of await g.locator('.game-extra .game-setting').all()) await row.locator('.chip').first().click();
+        if (form === 'Snake') await g.locator('.game-extra .chip').nth(1).click();
+        if (form === 'Hammer') await g.locator('[aria-label="Hammer"] .chip').first().click();
+        if (form.startsWith('Dots')) await g.locator('.game-extra .game-setting').first().locator('.chip').first().click();
+      });
+    await nextHole();
   }
-  const standing = await p.locator('.game-standing').innerText();
+  const standing = await gameSheet((g) => g.locator('.game-standing').innerText());
   ok(/1\n/.test(standing) || standing.includes('1'), `${form} with ${n}: standing shown`);
   await p.locator('.hole-bar-handle').click();
   await p.locator('.hole-drawer').getByRole('button', { name: 'Spiel beenden' }).click();
-  await p.getByRole('button', { name: 'Beenden & abrechnen' }).click();
+  await p.getByRole('button', { name: /Speichern & beenden/ }).click();
   await p.waitForTimeout(200);
   const winner = (await p.locator('.game-winner strong').innerText()).trim();
   const pays = await p.locator('.game-pays li').count();
@@ -194,18 +224,21 @@ await presses.getByRole('button', { name: '2×' }).click();
 ok((await cap.locator('.chip.on').innerText()) === '0,40 €', '2× pressing = highest stake 0,40 €');
 await cap.getByRole('button', { name: '1,60 €' }).click();
 await p.getByRole('button', { name: 'Spiel starten' }).click();
-await p.getByRole('button', { name: 'Par für alle übrigen' }).click();
-await p.locator('.game-scores .stepper').nth(1).getByRole('button', { name: 'plus eins' }).click(); // Ben bogey
+await p.waitForTimeout(4500);
+await scores([[1, 1]]); // Ben bogey
 // the team numbers of the hole (Sascha 15.10.2026): Ich & Ben 4 and 5 = 45, Chris & Anna 4 and 4 = 44 → 1
-const team = (await p.locator('.chicago-result').innerText()).replace(/\s+/g, ' ');
-if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/games-play.png' });
+const team = await gameSheet(async (g) => {
+  if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/games-play.png' });
+  return (await g.locator('.chicago-result').innerText()).replace(/\s+/g, ' ');
+});
 ok(/45 −1/.test(team) && /44 \+1/.test(team) && team.includes('45 − 44 = 1'), `Chicago hole result: ${team}`);
-await p.getByRole('button', { name: 'Nächstes Loch', exact: true }).click();
-await p.getByRole('button', { name: 'Ben presst (×2)' }).click();
-ok((await p.locator('[aria-label="Press"]').innerText()).includes('0,20 €'), 'press doubles the stake to 0,20 €');
-ok((await p.locator('.game-standing').innerText()).includes('Brutto, ohne Vorgabe'), 'standing says gross');
-await p.getByRole('button', { name: 'Verlassen' }).click();
-await p.getByRole('button', { name: 'Pausieren – später fortsetzen' }).click();
+await nextHole();
+await gameSheet(async (g) => {
+  await g.getByRole('button', { name: 'Ben presst (×2)' }).click();
+  ok((await g.locator('[aria-label="Press"]').innerText()).includes('0,20 €'), 'press doubles the stake to 0,20 €');
+  ok((await g.locator('.game-standing').innerText()).includes('Brutto, ohne Vorgabe'), 'standing says gross');
+});
+await pause();
 
 // too few players: no start
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
@@ -223,17 +256,16 @@ await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Skins$/ }) }).click();
 await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
 await p.getByRole('button', { name: 'Spiel starten' }).click();
-const head = await p.locator('.topbar h1').innerText();
-ok(/Par \d/.test(head) && /Hcp \d/.test(head), `hole header with course data: ${head.replace(/\s+/g, ' ')}`);
-ok((await p.locator('.hole-bar').innerText()).includes('Par 4'), 'hole bar at the bottom as in a round');
+await p.waitForTimeout(4500);
+const head = (await p.locator('.hole-bar').innerText()).replace(/\s+/g, ' ');
+ok(/Par 4/.test(head) && /Hcp 11/.test(head) && (await p.locator('.maplibregl-canvas').count()) === 1, `on the map, hole bar with course data: ${head}`);
 await p.locator('.hole-bar-handle').click();
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/games-drawer.png' });
 ok((await p.locator('.hole-drawer .drawer-hole').count()) === 18 && (await p.locator('.hole-drawer').getByRole('button', { name: 'Pausieren' }).isVisible()), 'hole overview with 18 holes and pause');
 await p.locator('.hole-drawer .drawer-handle').click();
 
 // a running game: the module choice says so; back to Rounds
-await p.getByRole('button', { name: 'Verlassen' }).click();
-await p.getByRole('button', { name: 'Pausieren – später fortsetzen' }).click();
+await pause();
 await p.locator('.module-switch').click();
 ok(await p.getByText('Ein Spiel läuft').isVisible(), 'module choice shows the running game');
 await p.locator('.module-card').filter({ hasText: 'Rounds' }).click();

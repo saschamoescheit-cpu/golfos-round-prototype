@@ -1159,3 +1159,11 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 
 .plan-actions { display: flex; gap: 8px; }
 .plan-actions .btn-secondary { width: auto; min-height: 36px; padding: 0 12px; font-size: 14px; }
+
+/* Games on the map: the game's bar over the hole bar (Sascha 16.10.2026) */
+.game-bar { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line-strong); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--text); font: 600 14px var(--body); text-align: left; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
+.game-bar strong { color: var(--brand-text); white-space: nowrap; }
+.game-bar .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.game-sheet { gap: 12px; max-height: 88vh; overflow-y: auto; }
+/* the bag's pencil in the signal colour (Sascha 16.10.2026: "so it is seen") */
+.bag-edit, .bag-edit.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cleanCode, mergeGames, newCode, stamp } from './sharedgame';
+import { cleanCode, guestRound, mergeGames, newCode, onWire, stamp } from './sharedgame';
+import { roundForGame } from '../screens/GameOnMap';
 import type { Game } from './gameforms';
 
 // Two phones in one game: Sascha enters on his phone, Ben on his – nothing is lost.
@@ -49,5 +50,27 @@ describe('a game on two phones', () => {
     const c = newCode();
     expect(c).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
     expect(cleanCode(' k7p-4qx ')).toBe('K7P4QX');
+  });
+});
+
+describe('a game on the map, shared', () => {
+  const withRound = (): Game => {
+    const g = base();
+    const holes = g.holes.map((h, i) => ({ id: `h${i}`, label: h.label, par: h.par, si: h.si })) as never;
+    const round = roundForGame(g, { id: 'hetzenhof', name: 'Hetzenhof' }, holes, ['A']);
+    round.entries.me[0] = { ...round.entries.me[0], strokes: 4, shots: [{ at: [9.1, 48.7] }] } as never;
+    return { ...g, round, scores: { ...g.scores, me: [4, null, null] } };
+  };
+  it('the server gets the round frame only – no shots, no GPS, nobody marked as "me"', () => {
+    const w = onWire(withRound());
+    expect(w.round!.entries).toEqual({});
+    expect(w.round!.players.some((p) => p.isMe)).toBe(false);
+    expect(w.round!.holes).toHaveLength(3);
+  });
+  it('the guest gets his own round: he is "me", the scores so far are in it', () => {
+    const g = guestRound(onWire(withRound()), 'b');
+    expect(g.round!.players.find((p) => p.isMe)?.id).toBe('b');
+    expect(g.round!.entries.me[0].strokes).toBe(4);
+    expect(g.round!.entries.b[0].strokes).toBeNull();
   });
 });

@@ -48,6 +48,8 @@ export interface Game {
   shared?: { code: string; me?: string };
   /** When a score (s:player:hole) or a hole's extras (x:hole) were entered – merging two phones keeps the later. */
   stamps?: Record<string, string>;
+  /** Played on the GPS map (Sascha 16.10.2026): the round behind the game – map, caddie, score entry. */
+  round?: import('../types').Round;
 }
 
 export interface SettingDef {

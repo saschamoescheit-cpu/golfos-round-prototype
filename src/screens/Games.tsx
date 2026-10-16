@@ -15,6 +15,7 @@ import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { FriendChips, roughPlaying } from './Home';
 import { CoursePicker } from './CoursePicker';
+import { GameOnMap, roundForGame } from './GameOnMap';
 
 // The "Games" module (Sascha 15.10.2026): side games as a product of its own – choose a game form, the course and the
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
@@ -88,7 +89,7 @@ function newDraft(form: FormId = 'skins'): Draft {
   return withWhs({ form, course: null, optionId: '', players: [me, { id: newId(), name: '', hcp: '' }], settings: defaults(formDef(form)) });
 }
 
-export function GamesApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void }) {
+export function GamesApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void }) {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
   const [view, setView] = useState<View>(() => (running[0] && !props.tab && !location.hash.startsWith('#join=') ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' }));
@@ -149,6 +150,27 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
         />
       );
     case 'play':
+      if (view.game.round)
+        return (
+          <GameOnMap
+            game={view.game}
+            onChange={(g) => {
+              store(g);
+              setView({ name: 'play', game: g });
+            }}
+            onPause={() => setView({ name: 'tab', tab: 'play' })}
+            onFinish={(g) => {
+              const done = { ...g, finishedAt: new Date().toISOString() };
+              store(done);
+              setView({ name: 'result', game: done });
+            }}
+            onDelete={(g) => {
+              remove(g);
+              setView({ name: 'tab', tab: 'play' });
+            }}
+            onOpenBag={props.onOpenBag}
+          />
+        );
       return (
         <GamePlay
           game={view.game}
@@ -174,7 +196,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           game={view.game}
           onBack={() => setView({ name: 'tab', tab: 'games' })}
           onReopen={() => {
-            const g = { ...view.game, finishedAt: null };
+            const g = { ...view.game, finishedAt: null, ...(view.game.round ? { round: { ...view.game.round, finishedAt: null } } : {}) };
             store(g);
             setView({ name: 'play', game: g });
           }}
@@ -502,7 +524,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
 
   const start = () => {
     const players = d.players.map((p, i) => ({ id: p.id, name: label(i), hcp: parseHcp(p.hcp) }));
-    props.onStart({
+    const g: Game = {
       id: newId(),
       createdAt: new Date().toISOString(),
       finishedAt: null,
@@ -514,7 +536,9 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       scores: Object.fromEntries(players.map((p) => [p.id, holes.map(() => null)])),
       extra: holes.map(() => ({})),
       current: 0,
-    });
+    };
+    // played on the GPS map like a round (Sascha 16.10.2026)
+    props.onStart(d.course && option ? { ...g, round: roundForGame(g, d.course, buildRoundHoles(d.course.holes, option), option.loops) } : g);
   };
 
   return (
@@ -737,7 +761,6 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
   const f = formDef(g.form);
   const i = g.current;
   const hole = g.holes[i];
-  const x: HoleExtra = g.extra[i] ?? {};
   const st = standingOf(g);
   const last = i === g.holes.length - 1;
   // as in Rounds (Sascha 15.10.2026: "the same usability in every module"): the hole bar at the bottom, the overview
@@ -773,7 +796,6 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
   const go = (k: number) => props.onChange({ ...g, current: Math.max(0, Math.min(g.holes.length - 1, k)) });
   const allPar = () => props.onChange({ ...g, scores: Object.fromEntries(g.players.map((p) => [p.id, g.scores[p.id].map((s, k) => (k === i && s == null ? hole.par || 4 : s))])) });
   const par = hole.par || 4;
-  const wolf = g.players[i % g.players.length];
 
   return (
     <main className="screen game-play">
@@ -837,117 +859,7 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
         )}
       </section>
 
-      {f.input === 'wolf' && (
-        <section className="card game-extra">
-          <span className="eyebrow">
-            {tr('Wolf', 'Wolf')}: {wolf.name}
-          </span>
-          <span className="muted small">{tr('Partner after the tee shots – or alone.', 'Partner nach den Abschlägen – oder allein.')}</span>
-          <div className="chip-set">
-            {g.players
-              .filter((p) => p.id !== wolf.id)
-              .map((p) => (
-                <button key={p.id} type="button" className={`chip${x.wolfPartner === p.id ? ' on' : ''}`} aria-pressed={x.wolfPartner === p.id} onClick={() => setExtra({ wolfPartner: p.id, wolfBlind: false })}>
-                  {p.name}
-                </button>
-              ))}
-            <button type="button" className={`chip${x.wolfPartner === null && !x.wolfBlind ? ' on' : ''}`} aria-pressed={x.wolfPartner === null && !x.wolfBlind} onClick={() => setExtra({ wolfPartner: null, wolfBlind: false })}>
-              Lone Wolf
-            </button>
-            <button type="button" className={`chip${x.wolfPartner === null && x.wolfBlind ? ' on' : ''}`} aria-pressed={x.wolfPartner === null && !!x.wolfBlind} onClick={() => setExtra({ wolfPartner: null, wolfBlind: true })}>
-              Blind Wolf ×2
-            </button>
-          </div>
-        </section>
-      )}
-
-      {f.input === 'bbb' && (
-        <section className="card game-extra">
-          {(
-            [
-              ['bingo', 'Bingo', tr('first on the green', 'zuerst auf dem Grün')],
-              ['bango', 'Bango', tr('closest to the pin', 'am nächsten zur Fahne')],
-              ['bongo', 'Bongo', tr('first in the hole', 'zuerst eingelocht')],
-            ] as const
-          ).map(([k, nm, text]) => (
-            <div key={k} className="game-setting">
-              <span className="stepper-label">
-                {nm} <span className="muted small">{text}</span>
-              </span>
-              <div className="chip-set">
-                {g.players.map((p) => (
-                  <button key={p.id} type="button" className={`chip${x[k] === p.id ? ' on' : ''}`} aria-pressed={x[k] === p.id} onClick={() => setExtra({ [k]: x[k] === p.id ? null : p.id })}>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {f.input === 'snake' && (
-        <section className="card game-extra">
-          <span className="stepper-label">{tr('Three-putt on this hole', 'Dreiputt an diesem Loch')}</span>
-          <span className="muted small">{tr('In the order they happened – the last one takes the snake.', 'In der Reihenfolge, in der sie passiert sind – der Letzte bekommt die Schlange.')}</span>
-          <div className="chip-set">
-            {g.players.map((p) => {
-              const on = (x.threePutt ?? []).includes(p.id);
-              return (
-                <button key={p.id} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setExtra({ threePutt: on ? x.threePutt!.filter((id) => id !== p.id) : [...(x.threePutt ?? []), p.id] })}>
-                  {p.name}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {f.input === 'chicago' && (
-        <section className="card game-extra" aria-label={tr('Pairing', 'Paarung')}>
-          <span className="stepper-label">{tr('Pairing on this hole', 'Paarung an diesem Loch')}</span>
-          <div className="chip-set">
-            {[1, 2, 3].map((k) => {
-              const [A, B] = chicagoTeams({ players: g.players, extra: g.extra.map((e, j) => (j === i ? { ...e, pairing: k } : e)) }, i);
-              const on = chicagoTeams(g, i)[0][1] === A[1];
-              const nm = (ids: string[]) => ids.map((id) => g.players.find((p) => p.id === id)?.name ?? '?').join(' & ');
-              return (
-                <button key={k} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setExtra({ pairing: k })}>
-                  {nm(A)} {tr('vs', 'gegen')} {nm(B)}
-                </button>
-              );
-            })}
-          </div>
-          <span className="muted small">{tr('The pairings rotate hole by hole; change it here if your group plays another one.', 'Die Paarungen wechseln von Loch zu Loch; hier änderbar, wenn ihr anders spielt.')}</span>
-          <ChicagoHoleResult game={g} hole={i} />
-        </section>
-      )}
-
-      {f.input === 'hammer' && (
-        <HammerCard game={g} hole={i} onChange={setExtra} />
-      )}
-
-      {f.input === 'dots' && (
-        <section className="card game-extra">
-          <span className="muted small">{tr('Birdies and eagles count by themselves.', 'Birdies und Eagles zählen von selbst.')}</span>
-          {g.players.map((p) => (
-            <div key={p.id} className="game-setting">
-              <span className="stepper-label">{p.name}</span>
-              <div className="chip-set">
-                {DOTS.filter((dt) => dt.key !== 'greenie' || hole.par === 3).map((dt) => {
-                  const mine = x.dots?.[p.id] ?? [];
-                  const on = mine.includes(dt.key);
-                  return (
-                    <button key={dt.key} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setExtra({ dots: { ...x.dots, [p.id]: on ? mine.filter((k) => k !== dt.key) : [...mine, dt.key] } })}>
-                      {dt.label()}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
+      <HoleExtras game={g} hole={i} onChange={setExtra} />
 
       {g.settings.double && Number(g.settings.stake) > 0 && <PressCard game={g} hole={i} onChange={props.onChange} />}
 
@@ -1067,7 +979,7 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
 const euroText = money;
 
 /** Press (Sascha 15.10.2026): the last one may double the stake – 0,10 € → 0,20 € … up to the highest stake. */
-function PressCard(props: { game: Game; hole: number; onChange: (g: Game) => void }) {
+export function PressCard(props: { game: Game; hole: number; onChange: (g: Game) => void }) {
   const g = props.game;
   const st = standingOf(g);
   const presses = g.presses ?? [];
@@ -1110,7 +1022,7 @@ function PressCard(props: { game: Game; hole: number; onChange: (g: Game) => voi
   );
 }
 
-function StandingCard(props: { game: Game; final?: boolean }) {
+export function StandingCard(props: { game: Game; final?: boolean }) {
   const g = props.game;
   const st = standingOf(g);
   const hasMoney = st.money && Object.values(st.money).some((v) => Math.abs(v) > 0.001);
@@ -1204,7 +1116,7 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
   );
 }
 
-function ScoreGrid(props: { game: Game }) {
+export function ScoreGrid(props: { game: Game }) {
   const g = props.game;
   return (
     <section className="card game-grid-card">
@@ -1536,5 +1448,132 @@ function GameTiles(props: { games: Game[]; binOpen: boolean; onBin: () => void }
         </button>
       )}
     </div>
+  );
+}
+
+/** What a form needs entered on a hole besides the strokes (wolf partner, bingo/bango/bongo, three-putts, pairing,
+ *  hammer, dots) – in the plain game view and in the game sheet on the map. */
+export function HoleExtras(props: { game: Game; hole: number; onChange: (patch: Partial<HoleExtra>) => void }) {
+  const g = props.game;
+  const f = formDef(g.form);
+  const i = props.hole;
+  const hole = g.holes[i];
+  const x: HoleExtra = g.extra[i] ?? {};
+  const wolf = g.players[i % g.players.length];
+  const setExtra = props.onChange;
+  return (
+    <>
+        {f.input === 'wolf' && (
+          <section className="card game-extra">
+            <span className="eyebrow">
+              {tr('Wolf', 'Wolf')}: {wolf.name}
+            </span>
+            <span className="muted small">{tr('Partner after the tee shots – or alone.', 'Partner nach den Abschlägen – oder allein.')}</span>
+            <div className="chip-set">
+              {g.players
+                .filter((p) => p.id !== wolf.id)
+                .map((p) => (
+                  <button key={p.id} type="button" className={`chip${x.wolfPartner === p.id ? ' on' : ''}`} aria-pressed={x.wolfPartner === p.id} onClick={() => setExtra({ wolfPartner: p.id, wolfBlind: false })}>
+                    {p.name}
+                  </button>
+                ))}
+              <button type="button" className={`chip${x.wolfPartner === null && !x.wolfBlind ? ' on' : ''}`} aria-pressed={x.wolfPartner === null && !x.wolfBlind} onClick={() => setExtra({ wolfPartner: null, wolfBlind: false })}>
+                Lone Wolf
+              </button>
+              <button type="button" className={`chip${x.wolfPartner === null && x.wolfBlind ? ' on' : ''}`} aria-pressed={x.wolfPartner === null && !!x.wolfBlind} onClick={() => setExtra({ wolfPartner: null, wolfBlind: true })}>
+                Blind Wolf ×2
+              </button>
+            </div>
+          </section>
+        )}
+
+        {f.input === 'bbb' && (
+          <section className="card game-extra">
+            {(
+              [
+                ['bingo', 'Bingo', tr('first on the green', 'zuerst auf dem Grün')],
+                ['bango', 'Bango', tr('closest to the pin', 'am nächsten zur Fahne')],
+                ['bongo', 'Bongo', tr('first in the hole', 'zuerst eingelocht')],
+              ] as const
+            ).map(([k, nm, text]) => (
+              <div key={k} className="game-setting">
+                <span className="stepper-label">
+                  {nm} <span className="muted small">{text}</span>
+                </span>
+                <div className="chip-set">
+                  {g.players.map((p) => (
+                    <button key={p.id} type="button" className={`chip${x[k] === p.id ? ' on' : ''}`} aria-pressed={x[k] === p.id} onClick={() => setExtra({ [k]: x[k] === p.id ? null : p.id })}>
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {f.input === 'snake' && (
+          <section className="card game-extra">
+            <span className="stepper-label">{tr('Three-putt on this hole', 'Dreiputt an diesem Loch')}</span>
+            <span className="muted small">{tr('In the order they happened – the last one takes the snake.', 'In der Reihenfolge, in der sie passiert sind – der Letzte bekommt die Schlange.')}</span>
+            <div className="chip-set">
+              {g.players.map((p) => {
+                const on = (x.threePutt ?? []).includes(p.id);
+                return (
+                  <button key={p.id} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setExtra({ threePutt: on ? x.threePutt!.filter((id) => id !== p.id) : [...(x.threePutt ?? []), p.id] })}>
+                    {p.name}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {f.input === 'chicago' && (
+          <section className="card game-extra" aria-label={tr('Pairing', 'Paarung')}>
+            <span className="stepper-label">{tr('Pairing on this hole', 'Paarung an diesem Loch')}</span>
+            <div className="chip-set">
+              {[1, 2, 3].map((k) => {
+                const [A, B] = chicagoTeams({ players: g.players, extra: g.extra.map((e, j) => (j === i ? { ...e, pairing: k } : e)) }, i);
+                const on = chicagoTeams(g, i)[0][1] === A[1];
+                const nm = (ids: string[]) => ids.map((id) => g.players.find((p) => p.id === id)?.name ?? '?').join(' & ');
+                return (
+                  <button key={k} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setExtra({ pairing: k })}>
+                    {nm(A)} {tr('vs', 'gegen')} {nm(B)}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="muted small">{tr('The pairings rotate hole by hole; change it here if your group plays another one.', 'Die Paarungen wechseln von Loch zu Loch; hier änderbar, wenn ihr anders spielt.')}</span>
+            <ChicagoHoleResult game={g} hole={i} />
+          </section>
+        )}
+
+        {f.input === 'hammer' && (
+          <HammerCard game={g} hole={i} onChange={setExtra} />
+        )}
+
+        {f.input === 'dots' && (
+          <section className="card game-extra">
+            <span className="muted small">{tr('Birdies and eagles count by themselves.', 'Birdies und Eagles zählen von selbst.')}</span>
+            {g.players.map((p) => (
+              <div key={p.id} className="game-setting">
+                <span className="stepper-label">{p.name}</span>
+                <div className="chip-set">
+                  {DOTS.filter((dt) => dt.key !== 'greenie' || hole.par === 3).map((dt) => {
+                    const mine = x.dots?.[p.id] ?? [];
+                    const on = mine.includes(dt.key);
+                    return (
+                      <button key={dt.key} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => setExtra({ dots: { ...x.dots, [p.id]: on ? mine.filter((k) => k !== dt.key) : [...mine, dt.key] } })}>
+                        {dt.label()}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+    </>
   );
 }

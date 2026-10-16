@@ -1,4 +1,5 @@
 import type { Game } from './gameforms';
+import { emptyEntry } from './scoring';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 
 // One game on several phones (Sascha 15.10.2026: "four players, everyone with the web app – join by a code or a QR
@@ -44,6 +45,23 @@ export function mergeGames(local: Game, remote: Game): Game {
   };
 }
 
+/** What goes to the server: a game on the map sends only its round's frame (course, holes) – the GPS track, shots
+ *  and putts stay on the phone; the scores travel in the game. */
+export function onWire(g: Game): Game {
+  if (!g.round) return g;
+  const r = g.round;
+  return { ...g, round: { ...r, entries: {}, currentHole: 0, players: r.players.map((p) => ({ ...p, isMe: false })) } };
+}
+
+/** The joining phone's own round from the shared frame: nothing entered, its owner is `me` (the host otherwise). */
+export function guestRound(g: Game, me?: string): Game {
+  if (!g.round) return g;
+  const r = g.round;
+  const players = r.players.map((p, k) => ({ ...p, isMe: me ? p.id === me : k === 0 }));
+  const entries = Object.fromEntries(players.map((p) => [p.id, r.holes.map((_, i) => ({ ...emptyEntry(), strokes: g.scores[p.id]?.[i] ?? null }))]));
+  return { ...g, round: { ...r, players, entries, currentHole: g.current ?? 0, finishedAt: null } };
+}
+
 // ---------- Supabase ----------
 
 const table = () => `${SUPABASE_URL}/rest/v1/golfos_shared_games`;
@@ -75,7 +93,7 @@ export async function shareGame(g: Game): Promise<Game | null> {
   for (let attempt = 0; attempt < 4; attempt++) {
     const code = newCode();
     const shared = { ...g, shared: { code } };
-    const r = await fetch(table(), { method: 'POST', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ code, game: shared }) });
+    const r = await fetch(table(), { method: 'POST', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ code, game: onWire(shared) }) });
     if (r.ok) return shared;
     if (r.status !== 409) return null; // 409: the code is taken – another one
   }
@@ -107,8 +125,8 @@ export async function exchange(g: Game): Promise<Game | null> {
     const rows = (await r.json()) as { game: Game }[];
     if (!rows.length) return null;
     const merged = mergeGames(g, rows[0].game);
-    if (JSON.stringify(merged) !== JSON.stringify(rows[0].game))
-      await fetch(`${table()}?code=eq.${encodeURIComponent(g.shared.code)}`, { method: 'PATCH', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ game: merged, updated_at: new Date().toISOString() }) });
+    if (JSON.stringify(onWire(merged)) !== JSON.stringify(rows[0].game))
+      await fetch(`${table()}?code=eq.${encodeURIComponent(g.shared.code)}`, { method: 'PATCH', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ game: onWire(merged), updated_at: new Date().toISOString() }) });
     return merged;
   } catch {
     return null;

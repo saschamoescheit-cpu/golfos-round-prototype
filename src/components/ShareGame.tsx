@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import qrcode from 'qrcode-generator';
 import type { Game } from '../lib/gameforms';
-import { cleanCode, joinGame, joinLink, shareGame } from '../lib/sharedgame';
+import { cleanCode, joinGame, joinLink, shareGame, guestRound } from '../lib/sharedgame';
 import { tr } from '../lib/i18n';
 
 // Invite and join (Sascha 15.10.2026: "join the game by a code or a QR code"): the host shows the code and the QR
@@ -127,7 +127,7 @@ export function JoinSheet(props: { initial?: string; onJoined: (g: Game) => void
             <label>{tr(`${found.courseName} – who are you?`, `${found.courseName} – wer bist du?`)}</label>
             <div className="chip-set">
               {found.players.map((p) => (
-                <button key={p.id} type="button" className="chip" onClick={() => props.onJoined({ ...found, shared: { code: found.shared!.code, me: p.id } })}>
+                <button key={p.id} type="button" className="chip" onClick={() => props.onJoined(guestRound({ ...found, shared: { code: found.shared!.code, me: p.id } }, p.id))}>
                   {p.name}
                 </button>
               ))}
