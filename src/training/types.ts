@@ -234,4 +234,5 @@ export type SideItem =
 export type Sketch =
   | { view: 'top'; w: number; h: number; items: SketchItem[]; caption?: L }
   | { view: 'side'; w: number; h: number; items: SideItem[]; caption?: L }
-  | { view: 'face'; marks: { x: number; y: number; n?: L | string }[]; caption?: L }; // club face, impact marks (-1..1)
+  | { view: 'face'; marks: { x: number; y: number; n?: L | string }[]; caption?: L } // club face, impact marks (-1..1)
+  | { view: 'grip'; notes: [L, L, L, L]; caption?: L }; // both hands on the grip as the player sees them; notes for the 4 numbered points

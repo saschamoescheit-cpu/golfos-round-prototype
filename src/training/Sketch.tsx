@@ -34,18 +34,18 @@ const C = {
 export function SketchView(props: { sketch: Sketch; label?: string }) {
   const s = props.sketch;
   const caption = s.caption ? txt(s.caption) : null;
-  const callouts = s.view === 'side' ? s.items.filter((x): x is Extract<SideItem, { k: 'callout' }> => x.k === 'callout') : [];
+  const callouts = s.view === 'side' ? s.items.filter((x): x is Extract<SideItem, { k: 'callout' }> => x.k === 'callout').map((c) => c.t) : s.view === 'grip' ? s.notes : [];
   return (
     <figure className="tr-sketch">
-      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} /> : <Face marks={s.marks} label={props.label} />}
+      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} /> : s.view === 'grip' ? <Grip label={props.label} /> : <Face marks={s.marks} label={props.label} />}
       {callouts.length > 0 && (
         <ol className="tr-callouts">
-          {callouts.map((c, n) => (
+          {callouts.map((t, n) => (
             <li key={n}>
               <span className="tr-callout-no" aria-hidden="true">
                 {n + 1}
               </span>
-              <span>{txt(c.t)}</span>
+              <span>{txt(t)}</span>
             </li>
           ))}
         </ol>
@@ -61,7 +61,7 @@ export function SketchThumb(props: { sketch?: Sketch; fallback?: ReactNode }) {
   if (!s) return <span className="tr-cat-icon small">{props.fallback}</span>;
   return (
     <span className="tr-thumb" aria-hidden="true">
-      {s.view === 'top' ? <Top sketch={s} /> : s.view === 'side' ? <Side sketch={s} thumb /> : <Face marks={s.marks} />}
+      {s.view === 'top' ? <Top sketch={s} /> : s.view === 'side' ? <Side sketch={s} thumb /> : s.view === 'grip' ? <Grip thumb /> : <Face marks={s.marks} />}
     </span>
   );
 }
@@ -384,6 +384,65 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
 }
 
 /** The club face from the front with impact marks (x, y from -1 to 1: toe/heel, high/low). */
+/** Both hands on the grip as the player sees them looking down (right-hander): the gloved lead hand on top with
+ *  its knuckles, the trail hand below covering the lead thumb; both Vs point to the trail shoulder. Numbered points
+ *  1–4 match the notes in the legend. */
+function Grip(props: { label?: string; thumb?: boolean }) {
+  const glove = '#f4f6f7';
+  const gloveLine = '#b9c3cb';
+  const skin = '#d9ad86';
+  const skinLine = '#b88a63';
+  const badge = (n: number, x: number, y: number, jx: number, jy: number) => (
+    <g key={n}>
+      <circle cx={jx} cy={jy} r={4} fill="none" stroke="#5e8a14" strokeWidth={2} />
+      <line x1={jx} y1={jy} x2={x} y2={y} stroke="#5e8a14" strokeWidth={1.6} />
+      <circle cx={x} cy={y} r={9} fill="#5e8a14" stroke="#ffffff" strokeWidth={1.4} />
+      <text x={x} y={y + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
+        {n}
+      </text>
+    </g>
+  );
+  return (
+    <svg viewBox="0 0 340 300" width="100%" role="img" aria-label={props.label ?? tr('The grip as you see it', 'Der Griff, wie du ihn siehst')} style={{ display: 'block', background: C.sky, borderRadius: 12 }}>
+      {/* your own chest and shoulders, seen from above */}
+      <path d="M20,0 L320,0 L320,22 Q300,52 250,54 L90,54 Q40,52 20,22 z" fill="#3f5f73" />
+      {!props.thumb && (
+        <>
+          <text x={44} y={26} fontSize={11} fontWeight={700} fill="#ffffff">
+            {tr('lead shoulder', 'vordere Schulter')}
+          </text>
+          <text x={296} y={26} fontSize={11} fontWeight={700} fill="#ffffff" textAnchor="end">
+            {tr('trail shoulder', 'hintere Schulter')}
+          </text>
+        </>
+      )}
+      {/* the club: grip, then the shaft down to the ball */}
+      <line x1={168} y1={70} x2={182} y2={300} stroke="#c3cbd2" strokeWidth={5} />
+      <path d="M156,64 L180,62 L186,236 L170,238 z" fill="#25313a" />
+      {/* the V lines to the trail shoulder */}
+      <line x1={184} y1={118} x2={292} y2={34} stroke="#5e8a14" strokeWidth={2} strokeDasharray="5 4" />
+      <line x1={178} y1={176} x2={286} y2={92} stroke="#5e8a14" strokeWidth={2} strokeDasharray="5 4" />
+      {/* lead hand (glove): back of the hand, knuckles, thumb down the right side of the grip */}
+      <path d="M118,100 Q114,84 132,80 L190,74 Q206,74 206,92 L204,132 Q202,146 186,148 L134,152 Q118,152 118,138 z" fill={glove} stroke={gloveLine} strokeWidth={1.5} />
+      {[0, 1, 2, 3].map((i) => (
+        <rect key={'f' + i} x={104} y={86 + i * 15} width={22} height={14} rx={7} fill={glove} stroke={gloveLine} strokeWidth={1.5} />
+      ))}
+      {[0, 1, 2].map((i) => (
+        <ellipse key={i} cx={138 + i * 17} cy={89 - i * 2} rx={7} ry={5} fill="none" stroke={gloveLine} strokeWidth={1.5} />
+      ))}
+      <path d="M182,116 Q194,114 196,128 L194,170 Q192,180 184,180 Q176,178 177,168 z" fill={glove} stroke={gloveLine} strokeWidth={1.5} />
+      {/* trail hand (skin): wraps below, its palm (life line) over the lead thumb, its thumb down the left side */}
+      <path d="M140,160 Q136,146 152,144 L176,142 Q186,146 196,150 L214,154 Q228,158 226,176 L222,206 Q220,220 204,222 L158,226 Q142,226 142,210 z" fill={skin} stroke={skinLine} strokeWidth={1.5} />
+      {[0, 1, 2, 3].map((i) => (
+        <rect key={'t' + i} x={214} y={158 + i * 15} width={22} height={14} rx={7} fill={skin} stroke={skinLine} strokeWidth={1.5} />
+      ))}
+      <path d="M150,170 Q170,188 196,172" fill="none" stroke={skinLine} strokeWidth={1.5} />
+      <path d="M160,196 Q170,194 172,206 L170,246 Q168,256 160,256 Q152,254 153,244 z" fill={skin} stroke={skinLine} strokeWidth={1.5} />
+      {!props.thumb && [badge(1, 150, 64, 138, 89), badge(2, 222, 112, 186, 118), badge(3, 122, 196, 166, 182), badge(4, 262, 132, 192, 168)]}
+    </svg>
+  );
+}
+
 function Face(props: { marks: { x: number; y: number; n?: L | string }[]; label?: string }) {
   return (
     <svg viewBox="0 0 340 170" width="100%" role="img" aria-label={props.label ?? tr('Club face', 'Schlagfläche')} style={{ display: 'block', background: '#2a3640', borderRadius: 12 }}>

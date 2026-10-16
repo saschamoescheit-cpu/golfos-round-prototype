@@ -25,7 +25,20 @@ const triangle = (x: number, sh: number, hands: [number, number]): SideItem[] =>
   line([x - 0.17, G0 + sh], [x + hands[0], G0 + hands[1]], true),
 ];
 
+/** both hands on the grip, as the player sees them (basics › The grip, drill grip-check) */
+const GRIP: Sketch = {
+  view: 'grip',
+  notes: [
+    L('2–3 knuckles of the lead hand visible', '2–3 Knöchel der vorderen Hand sichtbar'),
+    L('the V of the lead hand points to the trail shoulder', 'das V der vorderen Hand zeigt zur hinteren Schulter'),
+    L('the life line of the trail hand covers the lead thumb', 'die Lebenslinie der hinteren Hand deckt den vorderen Daumen'),
+    L('the V of the trail hand points to the trail shoulder too', 'das V der hinteren Hand zeigt ebenfalls zur hinteren Schulter'),
+  ],
+  caption: L('Looking down at your hands (right-hander). Fewer knuckles = weak grip (slice), more = strong grip (hook).', 'Der Blick von oben auf deine Hände (Rechtshänder). Weniger Knöchel = schwacher Griff (Slice), mehr = starker Griff (Hook).'),
+};
+
 export const FIGURE_SKETCHES: Record<string, Sketch> = {
+  'grip-check': GRIP,
   // ---------- putting ----------
   'chalk-line': S(3, 2.2, [
     ground(3),
@@ -573,6 +586,7 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
   },
   basics: {
     'Ball position': SKETCHES['ball-position-ladder'],
+    'The grip': GRIP,
     Posture: S(3, 2.4, [
       ground(3),
       fig(1.1, 'address'),

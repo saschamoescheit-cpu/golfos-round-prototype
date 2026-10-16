@@ -96,6 +96,7 @@ describe('training content', () => {
     const check = (s: Sketch | undefined, where: string) => {
       if (!s) return;
       if (s.view === 'face') return expect(s.marks.length, where).toBeGreaterThan(0);
+      if (s.view === 'grip') return expect(s.notes.every((n) => n.en && n.de), where).toBe(true);
       expect(s.w > 0 && s.h > 0 && s.items.length > 0, where).toBe(true);
     };
     for (const d of DRILLS) check(d.sketch, d.id);
