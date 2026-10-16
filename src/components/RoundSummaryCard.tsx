@@ -1,4 +1,4 @@
-import { Component, useMemo, type ReactNode } from 'react';
+import { Component, useMemo, useState, type ReactNode } from 'react';
 import type { Round } from '../types';
 import { roundSummary } from '../lib/summary';
 import { SG_LABELS } from '../lib/sg';
@@ -20,6 +20,7 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
   if (!s) return null;
   const minutes = s.plan.reduce((t, d) => t + d.minutes, 0);
   const read = () => toggleSpeak([s.headline, ...s.lines.map((l) => l.text), s.nextRound ?? ''].join(' '));
+  const [taken, setTaken] = useState<string | null>(null);
   return (
     <section className="card stats-card round-summary">
       <div className="row">
@@ -54,6 +55,19 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
               </li>
             ))}
           </ol>
+          {/* the player decides (Sascha 16.10.2026): the week's plan as an own plan in Training */}
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={taken != null}
+            onClick={async () => {
+              const name = await toTraining(props.round, s.plan.map((d) => ({ area: d.area, minutes: d.minutes })));
+              setTaken(name ? tr(`Saved in Training as "${name}" (Practice → My plans).`, `Im Training gespeichert als „${name}“ (Üben → Meine Pläne).`) : tr('Training could not be opened.', 'Training ließ sich nicht öffnen.'));
+            }}
+          >
+            {taken ? tr('In Training ✓', 'Im Training ✓') : tr('Take it into Training', 'Ins Training übernehmen')}
+          </button>
+          {taken && <span className="muted small">{taken}</span>}
         </>
       )}
       {s.nextRound && <p className="next-round">{s.nextRound}</p>}
@@ -72,5 +86,26 @@ class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
   }
   render() {
     return this.state.failed ? null : this.props.children;
+  }
+}
+
+/** The week's plan as an own plan in the Training module: per weak area the matching drills (Training loads only
+ *  now – it is not part of the round screens). Returns the plan's name. */
+async function toTraining(round: Round, plan: { area: string; minutes: number }[]): Promise<string | null> {
+  try {
+    const [{ DRILLS }, store] = await Promise.all([import('../training/content'), import('../training/store')]);
+    const cat: Record<string, string> = { tee: 'driver', long: 'woods', approach: 'irons', around: 'chipping', putting: 'putting', strategy: 'strategy' };
+    const items: { drill: string; minutes: number }[] = [];
+    for (const d of plan) {
+      const pick = DRILLS.filter((x) => x.cat === cat[d.area] && !items.some((i) => i.drill === x.id)).slice(0, 2);
+      for (const x of pick) items.push({ drill: x.id, minutes: Math.max(5, Math.round(d.minutes / pick.length)) });
+    }
+    if (!items.length) return null;
+    const date = new Date(round.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
+    const name = tr(`After the round ${date} · ${round.courseName}`, `Nach der Runde ${date} · ${round.courseName}`);
+    store.saveOwnPlan({ id: store.trainingId(), name, items, createdAt: new Date().toISOString() });
+    return name;
+  } catch {
+    return null;
   }
 }
