@@ -810,6 +810,11 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .putt-editor { gap: 10px; }
 .putt-green { width: 100%; aspect-ratio: 1; max-height: 52vh; border-radius: 16px; background: #2f5d23; touch-action: none; user-select: none; }
 .putt-green-shape { fill: #5aa63a; stroke: #c9f1a3; }
+.putt-zoom { display: flex; flex-wrap: wrap; gap: 8px; }
+.putt-wrap { position: relative; }
+/* the dragged putt's length, large and above the finger (Sascha 16.10.2026) */
+.putt-readout { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1; padding: 6px 14px; border-radius: 999px; background: rgba(14, 20, 24, 0.88); color: #fff; font: 700 20px var(--display); white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
+.putt-zoom .chip { min-width: 44px; justify-content: center; }
 .putt-line { fill: none; stroke: #ffd54a; }
 .putt-ball, .putt-pin { cursor: grab; }
 .putt-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }

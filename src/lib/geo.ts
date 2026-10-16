@@ -407,3 +407,44 @@ export function woodsOf(g: { trees?: Ring[]; canopy?: Ring[] }): Ring[] {
 export function landmarksOf(g: { treePoints?: LngLat[]; canopy?: Ring[] }): LngLat[] {
   return [...(g.treePoints ?? []), ...(g.canopy ?? []).filter((r) => { const a = ringArea(r); return a >= 15 && a <= 600; }).map((r) => centroid(r))];
 }
+
+/**
+ * The flag stays on the green (Sascha 16.10.2026: "Fahne sollte sich nur auf dem Grün verschieben lassen"): a point
+ * off the green – or closer than `inset` metres to its edge – moves to the nearest spot `inset` metres inside the
+ * edge. Without a mapped green: within 25 m of its centre.
+ */
+export function keepOnGreen(p: LngLat, green: Ring | null, center: LngLat, inset = 1): LngLat {
+  if (!green || green.length < 3) {
+    const d = distanceM(center, p);
+    if (d <= 25) return p;
+    const k = 25 / d;
+    return [center[0] + (p[0] - center[0]) * k, center[1] + (p[1] - center[1]) * k];
+  }
+  if (pointInRing(p, green) && distToLine(p, green) >= inset) return p;
+  // nearest point on the outline (flat metres around the point)
+  const kx = 111320 * Math.cos((p[1] * Math.PI) / 180);
+  const ky = 110540;
+  const to = (q: LngLat): [number, number] => [(q[0] - p[0]) * kx, (q[1] - p[1]) * ky];
+  let best: [number, number] = [0, 0];
+  let bestD = Infinity;
+  for (let i = 1; i < green.length; i++) {
+    const [ax, ay] = to(green[i - 1]);
+    const [bx, by] = to(green[i]);
+    const dx = bx - ax;
+    const dy = by - ay;
+    const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
+    const q: [number, number] = [ax + t * dx, ay + t * dy];
+    const d = Math.hypot(q[0], q[1]);
+    if (d < bestD) {
+      bestD = d;
+      best = q;
+    }
+  }
+  // then `inset` metres towards the centre of the green
+  const [cx, cy] = to(center);
+  const len = Math.hypot(cx - best[0], cy - best[1]) || 1;
+  const s = Math.min(inset, len);
+  const x = best[0] + ((cx - best[0]) / len) * s;
+  const y = best[1] + ((cy - best[1]) / len) * s;
+  return [p[0] + x / kx, p[1] + y / ky];
+}

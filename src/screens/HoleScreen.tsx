@@ -34,6 +34,7 @@ import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { ScoreSheet } from '../components/ScoreSheet';
 import { PuttEditor } from '../components/PuttEditor';
+import { greenWalk } from '../lib/greenwalk';
 import { LeaderboardSheet } from '../components/Leaderboard';
 import { isTeamRound } from '../lib/games';
 import { HoleSetup } from '../components/HoleSetup';
@@ -1038,6 +1039,7 @@ export function HoleScreen(props: {
             putts={myEntry.putts}
             balls={myEntry.puttsAt?.balls ?? null}
             ballOnGreen={player && mapData.green && pointInRing(player.pos, mapData.green) ? player.pos : null}
+            walk={round.preview ? null : greenWalk(loadTrack(round.id), mapData.green, mapData.greenCenter)}
             onCancel={() => setPuttEditor(false)}
             onSave={(v) => {
               setPuttEditor(false);

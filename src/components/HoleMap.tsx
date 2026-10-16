@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import type { LngLat, Ring } from '../types';
-import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit } from '../lib/geo';
+import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit, keepOnGreen } from '../lib/geo';
 import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, PLAN_COLOURS, setCourseLook, setImagery } from './mapStyle';
 import { treeImage, TREE_LOOKS } from './treeSprite';
 import { fairwayShapes, holeOutline, smoothRing, treeSpots } from '../lib/plan2d';
@@ -356,7 +356,11 @@ export function HoleMap(props: HoleMapProps) {
       mk.pin = new maplibregl.Marker({ element: flagEl(), draggable: true, anchor: 'bottom-left', offset: [-2, 0] }).setLngLat(p.pin).addTo(m);
       mk.pin.on('drag', () => {
         const ll = mk.pin!.getLngLat();
-        latest.current.onPinChange([ll.lng, ll.lat]);
+        // the flag stays on the green (Sascha 16.10.2026): dragged beyond the edge it waits at the edge
+        const d = latest.current.data;
+        const on = keepOnGreen([ll.lng, ll.lat], d.green, d.greenCenter);
+        if (on[0] !== ll.lng || on[1] !== ll.lat) mk.pin!.setLngLat(on);
+        latest.current.onPinChange(on);
       });
     } else if (!isDragging(mk.pin)) mk.pin.setLngLat(p.pin);
 
