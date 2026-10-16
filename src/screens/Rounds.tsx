@@ -27,7 +27,9 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
   const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const toCheck = finished.filter(needsCheck);
   const [onlyCheck, setOnlyCheck] = useState(false);
-  const shown = onlyCheck ? toCheck : finished;
+  const signed = finished.filter((r) => r.signedAt);
+  const [onlySigned, setOnlySigned] = useState(false);
+  const shown = onlyCheck ? toCheck : onlySigned ? signed : finished;
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const holes = finished.reduce((n, r) => n + r.holes.length, 0);
   // the bin (Sascha 15.10.2026): deleted rounds come back with one tap; only the player empties it
@@ -42,14 +44,18 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
     <>
       <h1 className="tab-title">{tr('Rounds', 'Runden')}</h1>
       <div className="tile-row">
-        <button type="button" className="tile" aria-pressed={onlyCheck} disabled={!toCheck.length} onClick={() => setOnlyCheck(!onlyCheck)}>
+        <button type="button" className="tile" aria-pressed={onlyCheck} disabled={!toCheck.length} onClick={() => { setOnlyCheck(!onlyCheck); setOnlySigned(false); }}>
           <span className={`tile-num${toCheck.length ? ' good-text' : ''}`}>{toCheck.length}</span>
-          <span className="muted small">{tr('to check', 'Schläge prüfen')}</span>
+          <span className="muted small">{tr('to check', 'zu prüfen')}</span>
         </button>
         <div className="tile">
           <span className="tile-num">{finished.length}</span>
-          <span className="muted small">{tr('rounds played', 'Runden gespielt')}</span>
+          <span className="muted small">{tr('played', 'gespielt')}</span>
         </div>
+        <button type="button" className="tile" aria-pressed={onlySigned} disabled={!signed.length} onClick={() => { setOnlySigned(!onlySigned); setOnlyCheck(false); }}>
+          <span className="tile-num">{signed.length}</span>
+          <span className="muted small">{tr('signed', 'signiert')}</span>
+        </button>
         <div className="tile">
           <span className="tile-num">{holes}</span>
           <span className="muted small">{tr('holes', 'Löcher')}</span>

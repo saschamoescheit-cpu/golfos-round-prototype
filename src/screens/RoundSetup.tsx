@@ -288,7 +288,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
         </p>
         {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
         {!hasCarries && (
-          <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>
+          <p className="small good-text" style={{ margin: 0 }}>
             {tr(
               'The caddie uses standard distances (driver 200 m … PW 115 m) – enter your own carries in your profile under “My bag”.',
               'Der Caddie rechnet mit Standard-Weiten (Driver 200 m … PW 115 m) – deine eigenen Carry-Weiten trägst du im Profil unter „Mein Bag“ ein.',
@@ -323,7 +323,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
           </button>
         </div>
         {!fits && (
-          <p className="small" style={{ margin: 0, color: 'var(--warn)' }}>
+          <p className="small good-text" style={{ margin: 0 }}>
             {tr(`${fmt.name()} needs ${fmt.need()} – you have ${playerCount}. Add players below or choose another mode.`, `${fmt.name()} braucht ${fmt.need()} – ihr seid ${playerCount}. Füge oben Spieler hinzu oder wähle einen anderen Modus.`)}
           </p>
         )}
@@ -352,7 +352,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
                     <span className="grow">
                       <strong>{o.name()}</strong>
                       <span className="muted small">{o.text()}</span>
-                      {!o.fits(playerCount) && <span className="small" style={{ color: 'var(--warn)' }}>{tr(`needs ${o.need()}`, `braucht ${o.need()}`)}</span>}
+                      {!o.fits(playerCount) && <span className="small good-text">{tr(`needs ${o.need()}`, `braucht ${o.need()}`)}</span>}
                     </span>
                     {o.id === fmt.id && <span className="pick-check" aria-hidden="true">✓</span>}
                   </button>

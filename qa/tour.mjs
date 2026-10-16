@@ -17,7 +17,8 @@ p.on('pageerror', (e) => errs.push(e.message));
 let n = 0;
 const shot = async (name, full = true) => {
   await p.waitForTimeout(700);
-  await p.screenshot({ path: `${out}/${String(++n).padStart(2, '0')}-${name}.png`, fullPage: full });
+  const path = `${out}/${String(++n).padStart(2, '0')}-${name}.png`;
+  await p.screenshot({ path, fullPage: full, timeout: 15000 }).catch(() => p.screenshot({ path, timeout: 15000 }).catch(() => {}));
 };
 await p.goto(url);
 await p.waitForTimeout(1200);
@@ -34,7 +35,8 @@ await p.evaluate((exp) => {
 await p.reload();
 await p.waitForTimeout(1500);
 await shot('start-modules');
-const tabs = async (prefix, count) => {
+const tabs = async (prefix) => {
+  const count = await p.locator('.tabbar button').count();
   for (let k = 0; k < count; k++) {
     await p.locator('.tabbar button').nth(k).click();
     await p.waitForTimeout(900);
@@ -50,7 +52,7 @@ const toModule = async (name) => {
 };
 // ---- Rounds ----
 await toModule('rounds');
-await tabs('rounds', 5);
+await tabs('rounds');
 await p.locator('.tabbar button').nth(1).click();
 await p.waitForTimeout(600);
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
@@ -85,12 +87,12 @@ await p.getByRole('button', { name: /Mein Bag/ }).click().catch(() => {});
 await shot('rounds-mybag');
 // ---- Games ----
 await toModule('games');
-await tabs('games', 5);
+await tabs('games');
 await p.locator('.tabbar button').nth(0).click();
 await p.getByRole('button', { name: 'Neues Spiel' }).click().catch(() => {});
 await shot('games-setup');
 // ---- Training ----
 await toModule('training');
-await tabs('training', 5);
+await tabs('training');
 console.log(`${n} screenshots in ${out}${errs.length ? ' · page errors: ' + errs.slice(0, 3).join(' | ') : ''}`);
 await b.close();

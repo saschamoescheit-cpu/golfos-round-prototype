@@ -8,6 +8,7 @@ import { groupForHandicap, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
 import { statRounds, unsignedRounds } from '../lib/signing';
+import { profileIndex } from '../lib/profile';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
 // and the focus areas that later feed the training plans (GOL-27).
@@ -24,6 +25,10 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
     [props.rounds],
   );
   const picked = range ? finished.slice(0, range) : finished;
+  // the length the player plays (Sascha 16.10.2026: "9-hole rounds should not be doubled to make an 18-hole round"):
+  // mostly 9 holes → the values per 9 holes
+  const base = picked.length && picked.filter((r) => r.holes.length <= 9).length * 2 > picked.length ? 9 : 18;
+  const per = (v: number | null): number | null => (v == null ? null : Math.round(((v * base) / 18) * 10) / 10);
   const a = useMemo(() => analyse(picked), [picked]);
   const f = focusAreas(a);
   const sg = useMemo(() => roundsSg(picked), [picked]);
@@ -74,15 +79,15 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
             ))}
           </div>
           <p className="muted small" style={{ margin: 0 }}>
-            {tr(`${a.rounds} ${a.rounds === 1 ? 'round' : 'rounds'} · ${a.holes} holes · values per 18 holes`, `${a.rounds} ${a.rounds === 1 ? 'Runde' : 'Runden'} · ${a.holes} Löcher · Werte je 18 Löcher`)}
+            {tr(`${a.rounds} ${a.rounds === 1 ? 'round' : 'rounds'} · ${a.holes} holes · values per ${base} holes`, `${a.rounds} ${a.rounds === 1 ? 'Runde' : 'Runden'} · ${a.holes} Löcher · Werte je ${base} Löcher`)}
           </p>
 
           {section === 'overview' && (
             <>
               <section className="totals card">
-                <Big value={dec(fmtPar(a.toParPer18))} label={tr('To par', 'Zu Par')} />
-                <Big value={dec(a.stablefordPer18 ?? '–')} label="Stableford" />
-                <Big value={dec(a.puttsPer18 ?? '–')} label="Putts" />
+                <Big value={dec(fmtPar(per(a.toParPer18)))} label={tr('To par', 'Zu Par')} />
+                <Big value={dec(per(a.stablefordPer18) ?? '–')} label="Stableford" />
+                <Big value={dec(per(a.puttsPer18) ?? '–')} label="Putts" />
               </section>
               <section className="card stats-card">
                 <h2>{tr('Your key figures', 'Deine Kennzahlen')}</h2>
@@ -97,7 +102,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               </section>
 
               {sg ? (
-                <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(a.handicap)} />
+                <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(profileIndex() ?? a.handicap)} />
               ) : (
                 <p className="muted small" style={{ margin: 0 }}>
                   {tr('Check the shots of a round (“Check shots”) to see where you gain and lose strokes.', 'Prüfe die Schläge einer Runde („Schläge prüfen“), dann siehst du, wo du Schläge gewinnst und verlierst.')}
@@ -166,7 +171,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <span className="muted small">{tr('Longest drive', 'Längster Drive')}</span>
                 </div>
                 <div className="tile">
-                  <span className="tile-num">{dec(a.penaltiesPer18 ?? '–')}</span>
+                  <span className="tile-num">{dec(per(a.penaltiesPer18) ?? '–')}</span>
                   <span className="muted small">{tr('Penalties', 'Strafschläge')}</span>
                 </div>
               </div>
@@ -202,7 +207,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
             <>
               <div className="tile-row">
                 <div className="tile">
-                  <span className="tile-num">{dec(a.puttsPer18 ?? '–')}</span>
+                  <span className="tile-num">{dec(per(a.puttsPer18) ?? '–')}</span>
                   <span className="muted small">{tr('Putts per round', 'Putts je Runde')}</span>
                 </div>
                 <div className="tile">

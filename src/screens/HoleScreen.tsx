@@ -43,6 +43,7 @@ import { swingMark, withPartials } from '../lib/partials';
 import { FairwayPicker } from '../components/FairwayPicker';
 import { HoleDrawer } from '../components/HoleDrawer';
 import { statRounds } from '../lib/signing';
+import { isTestMode } from '../lib/testmode';
 
 const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f));
 
@@ -567,6 +568,13 @@ export function HoleScreen(props: {
     const t = setTimeout(() => setUndo(null), 6000);
     return () => clearTimeout(t);
   }, [undo]);
+  const testMode = isTestMode();
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!testMsg) return;
+    const t = setTimeout(() => setTestMsg(null), 6000);
+    return () => clearTimeout(t);
+  }, [testMsg]);
   const confirmSaved = (text: string) => {
     setUndo({ text, detail, putts: myEntry.putts, hole: i });
     try {
@@ -1236,6 +1244,42 @@ export function HoleScreen(props: {
               <button type="button" className="btn-ghost" onClick={() => setPlacing(null)}>
                 {tr('Cancel', 'Abbrechen')}
               </button>
+            </div>
+          )}
+          {/* test mode: the ball's spot by hand – the truth for the shot detection (Sascha 16.10.2026) */}
+          {testMode && !round.preview && !scoreSheet && (
+            <div className="test-shot-row">
+              <button
+                type="button"
+                className="btn-primary test-shot"
+                disabled={!player}
+                onClick={() => {
+                  if (!player) return;
+                  const mine = (round.manualShots ?? []).filter((x) => x.hole === i).length;
+                  props.onChange({ ...round, manualShots: [...(round.manualShots ?? []), { hole: i, pos: player.pos, t: Date.now(), acc: Math.round(player.accuracy) }] });
+                  setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted (±${Math.round(player.accuracy)} m)`, `Schlag ${mine + 1} an ${hole.label} erfasst (±${Math.round(player.accuracy)} m)`));
+                }}
+              >
+                {tr('Shot here', 'Schlag hier')} · {((round.manualShots ?? []).filter((x) => x.hole === i).length) + 1}
+              </button>
+              {testMsg && (
+                <span className="map-hint detected" role="status">
+                  <span>✓ {testMsg}</span>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => {
+                      const list = (round.manualShots ?? []).slice();
+                      const last = list.map((x) => x.hole).lastIndexOf(i);
+                      if (last >= 0) list.splice(last, 1);
+                      props.onChange({ ...round, manualShots: list });
+                      setTestMsg(null);
+                    }}
+                  >
+                    {tr('Undo', 'Rückgängig')}
+                  </button>
+                </span>
+              )}
             </div>
           )}
           {undo && undo.hole === i && !placing && (

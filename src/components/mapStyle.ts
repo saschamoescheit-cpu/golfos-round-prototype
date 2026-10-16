@@ -45,7 +45,7 @@ const FILL: Record<string, { color: string; opacity: number; edge: string; edgeO
   fairway: { color: '#5FC94A', opacity: 0.32, edge: '#C8F5A8', edgeOpacity: 0.55, width: 1.2 },
   tee: { color: '#5FC94A', opacity: 0.45, edge: '#E2FFD0', edgeOpacity: 0.8, width: 1.2 },
   water: { color: '#2E8BE0', opacity: 0.55, edge: '#9AD3FF', edgeOpacity: 0.8, width: 1.4 },
-  bunker: { color: '#F6E7BE', opacity: 0.8, edge: '#FFF8E3', edgeOpacity: 0.9, width: 1.2 },
+  bunker: { color: '#F6E7BE', opacity: 0.8, edge: '#FFF8E3', edgeOpacity: 0.9, width: 1.2 }, // ci-allow: bunker sand
   green: { color: '#7EE04A', opacity: 0.6, edge: '#EFFFC2', edgeOpacity: 1, width: 2 },
 };
 const ORDER = ['fairway', 'tee', 'water', 'bunker', 'green'];
@@ -64,8 +64,8 @@ export const PLAN_COLOURS = {
   teeEdge: '#a8e39a',
   green: '#8fd65c',
   fringe: '#b9e98f',
-  bunker: '#f2e3b8',
-  bunkerEdge: '#d6bf83',
+  bunker: '#f2e3b8', // ci-allow: bunker sand
+  bunkerEdge: '#d6bf83', // ci-allow: bunker sand
   water: '#4a8ee8',
   waterEdge: '#2a68c4',
   path: '#d8d0bb',

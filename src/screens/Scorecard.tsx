@@ -20,6 +20,7 @@ import { kindName } from '../lib/roundkind';
 import { getLang, tr } from '../lib/i18n';
 import { sign, unsign } from '../lib/signing';
 import { SignedIcon } from '../components/SignedIcon';
+import { profileIndex } from '../lib/profile';
 
 export function Scorecard(props: {
   round: Round;
@@ -197,18 +198,21 @@ export function Scorecard(props: {
         <section className={`card sign-card${round.signedAt ? ' signed' : ''}`} aria-label={tr('Signature', 'Unterschrift')}>
           {round.signedAt ? (
             <>
-              <span className="sign-seal" aria-hidden="true">
-                <SignedIcon size={22} />
+              <span className="sign-seal big" aria-hidden="true">
+                <SignedIcon size={34} />
               </span>
               <span className="grow">
                 <strong>{tr('Signed', 'Signiert')}</strong>
                 <span className="muted small" style={{ display: 'block' }}>
-                  {new Date(round.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  {tr(' · counts in your statistics', ' · zählt in deiner Statistik')}
+                  {new Date(round.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </span>
+                <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your statistics', 'Zählt in deiner Statistik')}</span>
               </span>
-              <button type="button" className="btn-ghost small" onClick={() => props.onChange(unsign(round))}>
-                {tr('Withdraw', 'Zurücknehmen')}
+              <button type="button" className="icon-btn" aria-label={tr('Withdraw the signature', 'Signatur zurücknehmen')} title={tr('Withdraw the signature', 'Signatur zurücknehmen')} onClick={() => props.onChange(unsign(round))}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 14 4 9l5-5" />
+                  <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+                </svg>
               </button>
             </>
           ) : (
@@ -258,7 +262,7 @@ export function Scorecard(props: {
           {tr('Check your shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? tr(' · some to check', ' · einige offen') : ''}
         </button>
       )}
-      {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(playing18(round.holes.length, me.playingHandicap))} />}
+      {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(profileIndex() ?? playing18(round.holes.length, me.playingHandicap))} />}
 
       <span className="spacer" />
       {/* save and delete sit in the card at the top while the round is being finished */}

@@ -16,12 +16,13 @@ import { TopTools } from '../components/TopTools';
 import { FriendChips, roughPlaying } from './Home';
 import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
+import { SignedIcon } from '../components/SignedIcon';
 
 // The "Games" module (Sascha 15.10.2026): side games as a product of its own – choose a game form, the course and the
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
 // who pays whom. Not linked to the round analysis yet; a side game next to a round may follow later.
 
-export type GamesTab = 'play' | 'games' | 'balance' | 'rules' | 'profile';
+export type GamesTab = 'play' | 'games' | 'balance' | 'profile';
 type View =
   | { name: 'tab'; tab: GamesTab }
   | { name: 'setup'; draft: Draft }
@@ -67,7 +68,17 @@ export function standingText(g: Game, spoken: boolean): string {
   return lines.join(spoken ? ' ' : '\n');
 }
 
-const winnerOf = (rows: { name: string; points: number }[]): string | null => (rows.length && (rows.length < 2 || rows[0].points !== rows[1].points) ? rows[0].name : null);
+/** Everyone on top – a team wins together ("Sascha & Ben"); null only when all stand equal (Sascha: "Unentschieden"
+ *  showed for a Chicago team that had won). */
+const topRows = <R extends { points: number }>(rows: R[]): R[] => {
+  if (!rows.length) return [];
+  const top = rows.filter((r) => r.points === rows[0].points);
+  return rows.length > 1 && top.length === rows.length ? [] : top;
+};
+const winnerOf = (rows: { name: string; points: number }[]): string | null => {
+  const top = topRows(rows);
+  return top.length ? top.map((r) => r.name).join(' & ') : null;
+};
 
 const STAKES = [0, 0.1, 0.2, 0.5, 1, 2, 5, 10];
 const defaults = (f: FormDef) => Object.fromEntries(f.settings.map((s) => [s.key, s.default]));
@@ -204,6 +215,10 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
             remove(view.game);
             setView({ name: 'tab', tab: 'games' });
           }}
+          onChange={(g) => {
+            store(g);
+            setView({ name: 'result', game: g });
+          }}
         />
       );
   }
@@ -233,7 +248,8 @@ function GamesTabs(props: {
   const [binOpen, setBinOpen] = useState(false);
   return (
     <main className="screen with-tabs">
-      {props.tab !== 'profile' && (
+      {/* the module header on every tab, the profile too (uniform with Rounds and Training) */}
+      {(
         <div className="topbar">
           <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
             <span className="brand">
@@ -305,14 +321,12 @@ function GamesTabs(props: {
         </>
       )}
       {props.tab === 'balance' && <Balance games={props.games} />}
-      {props.tab === 'rules' && <FormCatalog onPlay={props.onNew} />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
         items={[
           { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
           { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
           { id: 'balance' as GamesTab, label: tr('Balance', 'Bilanz'), icon: MENU_ICONS.balance },
-          { id: 'rules' as GamesTab, label: tr('Rules', 'Regeln'), icon: MENU_ICONS.rules },
           { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}
         current={props.tab}
@@ -337,6 +351,11 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
                 <span className="grow">
                   <span className="title">
                     {f.name()} · {g.courseName}
+                    {g.signedAt && (
+                      <span className="signed-mark" aria-label={tr('confirmed', 'bestätigt')} title={tr('confirmed', 'bestätigt')}>
+                        <SignedIcon size={16} />
+                      </span>
+                    )}
                   </span>
                   <span className="muted small">
                     {date(g.createdAt)} · {g.players.map((p) => p.name).join(', ')}
@@ -361,7 +380,8 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
 
 /** Your balance over all finished games: wins, money, and against whom (player 1 is you). */
 function Balance(props: { games: Game[] }) {
-  const done = props.games.filter((g) => g.finishedAt);
+  const done = props.games.filter((g) => g.finishedAt && g.signedAt);
+  const unconfirmed = props.games.filter((g) => g.finishedAt && !g.signedAt).length;
   let wins = 0;
   let money = 0;
   // head to head per friend (Sascha 15.10.2026): games, who finished ahead, money
@@ -369,8 +389,9 @@ function Balance(props: { games: Game[] }) {
   for (const g of done) {
     const me = g.players.find((p) => p.id === g.shared?.me) ?? g.players[0]; // a joined game: the player chosen on joining
     const st = standingOf(g);
-    const lead = winnerOf(st.rows) ? st.rows[0].id : null;
-    if (lead === me.id || lead === 'A') wins++;
+    const top = topRows(st.rows).map((r) => r.id);
+    // a team game's rows are the sides (A = player 1's side) or every player
+    if (top.includes(me.id) || (top.length === 1 && top[0] === 'A')) wins++;
     money += st.money?.[me.id] ?? 0;
     const pays = st.money ? transfers(st.money) : [];
     for (const p of g.players.filter((x) => x.id !== me.id)) {
@@ -394,6 +415,14 @@ function Balance(props: { games: Game[] }) {
   return (
     <>
       <h1 className="tab-title">{tr('Balance', 'Bilanz')}</h1>
+      {unconfirmed > 0 && (
+        <p className="notice" style={{ margin: 0 }}>
+          {tr(
+            `${unconfirmed} finished ${unconfirmed === 1 ? 'game is' : 'games are'} not confirmed yet – they count once you confirm the result.`,
+            `${unconfirmed} beendete${unconfirmed === 1 ? 's Spiel ist' : ' Spiele sind'} noch nicht bestätigt – sie zählen, sobald du das Ergebnis bestätigst.`,
+          )}
+        </p>
+      )}
       {done.length === 0 ? (
         <p className="muted">{tr('Your balance shows once you finished a game.', 'Deine Bilanz erscheint, sobald du ein Spiel beendet hast.')}</p>
       ) : (
@@ -455,7 +484,7 @@ export function rulesSpoken(f: FormDef): string {
   return [f.name() + '.', words(f.short()), ...f.rules().map(words)].map((x) => (/[.!?:]$/.test(x.trim()) ? x.trim() : x.trim() + '.')).join(' ');
 }
 
-function FormRules(props: { form: FormDef }) {
+export function FormRules(props: { form: FormDef }) {
   const talking = useSyncExternalStore(onSpeaking, isSpeaking, () => false);
   // leaving the rules stops the voice
   useEffect(() => () => stopSpeaking(), [props.form.id]);
@@ -473,35 +502,6 @@ function FormRules(props: { form: FormDef }) {
   );
 }
 
-function FormCatalog(props: { onPlay: (f: FormId) => void }) {
-  const [open, setOpen] = useState<FormId | null>(null);
-  return (
-    <>
-      <h1 className="tab-title">{tr('Game forms & rules', 'Spielformen & Regeln')}</h1>
-      <ul className="list">
-        {FORMS.map((f) => (
-          <li key={f.id} className="card game-form">
-            <button type="button" className="game-form-head" aria-expanded={open === f.id} onClick={() => setOpen(open === f.id ? null : f.id)}>
-              <span className="grow">
-                <strong>{f.name()}</strong>
-                <span className="muted small">{f.short()}</span>
-              </span>
-              <span className="game-players small">{playersText(f)}</span>
-            </button>
-            {open === f.id && (
-              <>
-                <FormRules form={f} />
-                <button type="button" className="btn-secondary" onClick={() => props.onPlay(f.id)}>
-                  {tr(`Play ${f.name()}`, `${f.name()} spielen`)}
-                </button>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
 
 // ---------- setup ----------
 
@@ -565,7 +565,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         <div className="settings-list">
           <button type="button" className="settings-row" onClick={props.onCourse}>
             <span>{tr('Course', 'Platz')}</span>
-            <span className={`settings-value${d.course ? '' : ' warn-text'}`}>{d.course?.name ?? tr('Choose a course', 'Platz wählen')}</span>
+            <span className={`settings-value${d.course ? '' : ' good-text'}`}>{d.course?.name ?? tr('Choose a course', 'Platz wählen')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>
@@ -636,7 +636,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         )}
         {d.form === 'wolf' && fits && <span className="small">{tr('The wolf rotates in this order.', 'Der Wolf wechselt in dieser Reihenfolge.')}</span>}
         {!fits && (
-          <span className="small" style={{ color: 'var(--warn)' }}>
+          <span className="small good-text">
             {tr(`${f.name()} needs ${playersText(f)} – you are ${n}.`, `${f.name()} braucht ${playersText(f)} – ihr seid ${n}.`)}
           </span>
         )}
@@ -680,20 +680,11 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
               </span>
             )}
             {s.type === 'stake' && (
-              <div className="chip-set">
-                {STAKES.map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    className={`chip${d.settings[s.key] === v ? ' on' : ''}`}
-                    aria-pressed={d.settings[s.key] === v}
-                    // a new start stake: the cap moves to a step of its doubling chain
-                    onClick={() => set({ settings: { ...d.settings, [s.key]: v, ...(s.key === 'stake' && Number(d.settings.maxStake) > 0 ? { maxStake: String(snapCap(v, Number(d.settings.maxStake))) } : {}) } })}
-                  >
-                    {v ? money(v) : tr('none', 'ohne')}
-                  </button>
-                ))}
-              </div>
+              <StakePicker
+                value={Number(d.settings[s.key] ?? 0)}
+                // a new start stake: the cap moves to a step of its doubling chain
+                onChange={(v) => set({ settings: { ...d.settings, [s.key]: v, ...(s.key === 'stake' && Number(d.settings.maxStake) > 0 ? { maxStake: String(snapCap(v, Number(d.settings.maxStake))) } : {}) } })}
+              />
             )}
           </div>
         ))}
@@ -723,7 +714,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                   <span className="grow">
                     <strong>{o.name()}</strong>
                     <span className="muted small">{o.short()}</span>
-                    <span className="small" style={{ color: fitsPlayers(o, n) ? 'var(--muted)' : 'var(--warn)' }}>{playersText(o)}</span>
+                    <span className="small" style={{ color: 'var(--muted)' }}>{playersText(o)}</span>
                   </span>
                   {o.id === d.form && <span className="pick-check" aria-hidden="true">✓</span>}
                 </button>
@@ -736,7 +727,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       <span className="spacer" />
       {/* a game is played on a course (Sascha 15.10.2026): par and stroke index come from it – no start without one */}
       {!d.course && (
-        <span className="small warn-text" role="status">
+        <span className="small good-text" role="status">
           {tr('Choose the course first – par and stroke index come from it.', 'Wähle zuerst den Platz – Par und Stroke-Index kommen von dort.')}
         </span>
       )}
@@ -1069,7 +1060,7 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
   );
 }
 
-function GameResult(props: { game: Game; onBack: () => void; onReopen: () => void; onDelete: () => void }) {
+function GameResult(props: { game: Game; onBack: () => void; onReopen: () => void; onDelete: () => void; onChange: (g: Game) => void }) {
   const g = props.game;
   const f = formDef(g.form);
   const st = standingOf(g);
@@ -1085,6 +1076,41 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
         <span className="eyebrow">{winnerOf(st.rows) ? tr('Winner', 'Sieger') : tr('Result', 'Ergebnis')}</span>
         <strong>{winnerOf(st.rows) ?? tr('Tied', 'Unentschieden')}</strong>
         <span className="muted">{winnerOf(st.rows) ? st.rows[0].value : st.status}</span>
+      </section>
+      {/* confirm the result like a scorecard (Sascha 16.10.2026: as signing a round) – only confirmed games count */}
+      <section className={`card sign-card${g.signedAt ? ' signed' : ''}`} aria-label={tr('Confirmation', 'Bestätigung')}>
+        {g.signedAt ? (
+          <>
+            <span className="sign-seal big" aria-hidden="true">
+              <SignedIcon size={34} />
+            </span>
+            <span className="grow">
+              <strong>{tr('Result confirmed', 'Ergebnis bestätigt')}</strong>
+              <span className="muted small" style={{ display: 'block' }}>
+                {new Date(g.signedAt).toLocaleString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your balance', 'Zählt in deiner Bilanz')}</span>
+            </span>
+            <button type="button" className="icon-btn" aria-label={tr('Withdraw the confirmation', 'Bestätigung zurücknehmen')} title={tr('Withdraw the confirmation', 'Bestätigung zurücknehmen')} onClick={() => props.onChange({ ...g, signedAt: null })}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 14 4 9l5-5" />
+                  <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+                </svg>
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="grow">
+              <strong>{tr('Confirm the result', 'Ergebnis bestätigen')}</strong>
+              <span className="muted small" style={{ display: 'block' }}>
+                {tr('Like signing a scorecard – only confirmed games count in your balance.', 'Wie das Signieren einer Scorekarte – nur bestätigte Spiele zählen in deiner Bilanz.')}
+              </span>
+            </span>
+            <button type="button" className="btn-primary" onClick={() => props.onChange({ ...g, signedAt: new Date().toISOString() })}>
+              {tr('Confirm', 'Bestätigen')}
+            </button>
+          </>
+        )}
       </section>
       <StandingCard game={g} final />
       {pays.length > 0 && (
@@ -1197,6 +1223,55 @@ function HammerCard(props: { game: Game; hole: number; onChange: (x: Partial<Hol
 
 /** The highest stake (Sascha 15.10.2026): the steps of the doubling chain up to 6,40 € as chips, "no cap", and a field
  *  for higher steps (12,80 €, 25,60 € …) that only takes a step of the chain. */
+/** The stake: the usual amounts as chips, any other typed in (Sascha 16.10.2026: "bei den Einsätzen überall eine
+ *  manuelle Eingabe – analog Chicago"). */
+function StakePicker(props: { value: number; onChange: (v: number) => void }) {
+  const custom = props.value > 0 && !STAKES.includes(props.value);
+  const [typing, setTyping] = useState(false);
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const take = () => {
+    const v = Number(text.replace('€', '').replace(/\s/g, '').replace(',', '.'));
+    if (!text.trim() || !Number.isFinite(v) || v <= 0) return setError(tr('Type an amount, e.g. 3', 'Gib einen Betrag ein, z. B. 3'));
+    if (v > 1000) return setError(tr('At most 1000 €.', 'Höchstens 1000 €.'));
+    setError(null);
+    setTyping(false);
+    props.onChange(Math.round(v * 100) / 100);
+  };
+  return (
+    <>
+      <div className="chip-set">
+        {STAKES.map((v) => (
+          <button key={v} type="button" className={`chip${!typing && props.value === v ? ' on' : ''}`} aria-pressed={props.value === v} onClick={() => { setTyping(false); setError(null); props.onChange(v); }}>
+            {v ? money(v) : tr('none', 'ohne')}
+          </button>
+        ))}
+        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(' €', '') : ''); }}>
+          {custom && !typing ? money(props.value) : tr('other …', 'anderer …')}
+        </button>
+      </div>
+      {typing && (
+        <div className="cap-input">
+          <input
+            className="input"
+            inputMode="decimal"
+            autoFocus
+            aria-label={tr('Stake in euros', 'Einsatz in Euro')}
+            placeholder="3"
+            value={text}
+            onChange={(e) => { setText(e.target.value); setError(null); }}
+            onKeyDown={(e) => e.key === 'Enter' && take()}
+          />
+          <button type="button" className="btn-secondary" onClick={take}>
+            {tr('Use', 'Übernehmen')}
+          </button>
+        </div>
+      )}
+      {error && <span className="small bad-text" role="alert">{error}</span>}
+    </>
+  );
+}
+
 function CapPicker(props: { stake: number; value: number; onChange: (v: number) => void }) {
   const chain = capChain(props.stake);
   const custom = props.value > 0 && !chain.some((c) => Math.abs(c - props.value) < 0.005);
@@ -1250,7 +1325,7 @@ function CapPicker(props: { stake: number; value: number; onChange: (v: number) 
         </div>
       )}
       {error ? (
-        <span className="small" style={{ color: 'var(--warn)' }} role="alert">{error}</span>
+        <span className="small bad-text" role="alert">{error}</span>
       ) : (
         doublings > 0 && !typing && (
           <span className="muted small">

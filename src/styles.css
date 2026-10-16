@@ -14,7 +14,7 @@
   --brand-soft: #24331b;
   --ok: #46c46e;
   --bad: #ff6b5e;
-  --warn: #f2b53d; /* warnings and errors only – every highlight is the brand green (Sascha 16.10.2026) */
+  --warn: #ff8a7f; /* no yellow anywhere (Sascha 16.10.2026): hints are the brand green, warnings red like --bad */
   --team-b: #5bb4f0;
   --display: Lexend, 'Segoe UI', system-ui, sans-serif;
   --body: Figtree, 'Segoe UI', system-ui, sans-serif;
@@ -129,7 +129,7 @@ h2 { margin: 0; font: 600 17px var(--display); }
 .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 2px 8px; font-size: 13px; font-weight: 700; }
 .badge.ok { background: var(--ok); color: var(--bg); }
 .badge.bad { background: var(--bad); color: var(--bg); }
-.badge.warn { background: var(--warn); color: var(--bg); }
+.badge.warn { background: var(--surface-2); color: var(--text-2); }
 
 .nav-bottom { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
 
@@ -232,7 +232,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 }
 .map-target-sign .carry { font: 700 17px/1.2 var(--display); color: #fff; }
 .map-target-sign .rest { font: 600 13px/1.2 var(--body); color: var(--brand-text); }
-.map-label.hazard.bunker { color: #F4E6B8; }
+.map-label.hazard.bunker { color: #F4E6B8; } /* ci-allow: bunker sand */
 .map-label.hazard.water { color: #9AD3F7; }
 .maplibregl-ctrl-attrib { font-size: 10px; }
 /* Keep the imagery credit (required for PNOA/Esri) above the bottom buttons. */
@@ -285,7 +285,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .tee-bar, .mix-bar { display: flex; height: 34px; border-radius: 10px; overflow: hidden; font: 600 12px/34px var(--body); }
 .tee-bar span, .mix-bar span { text-align: center; white-space: nowrap; overflow: hidden; color: #0e1418; flex-basis: 0; }
 .tee-bar .hit { background: var(--brand-text); }
-.tee-bar .miss { background: #f6d48a; }
+.tee-bar .miss { background: #8fa3b0; }
 .mini-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .mini-table th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 4px 0; }
 .mini-table td { padding: 6px 0; border-top: 1px solid var(--line); }
@@ -414,7 +414,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .book-lines { margin: 0; padding-left: 16px; display: grid; gap: 4px; font-size: 14px; }
 .book-text .lbl { margin: 4px 0 0; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
 .sk-rough { fill: #2c4a26; } .sk-trees { fill: #1b3317; } .sk-fw { fill: #4f8a36; } .sk-tee { fill: #6aa548; }
-.sk-water { fill: #2f6f9c; } .sk-bunker { fill: #d9c58b; } .sk-green { fill: #7ccf55; stroke: #e9f0e6; stroke-width: 0.8; }
+.sk-water { fill: #2f6f9c; } .sk-bunker { fill: #d9c58b; } /* ci-allow: bunker sand */ .sk-green { fill: #7ccf55; stroke: #e9f0e6; stroke-width: 0.8; }
 .sk-ob { fill: none; stroke: #ff6b5e; stroke-width: 2.2; stroke-dasharray: 6 4; }
 .sk-line { fill: none; stroke: #ffffff; stroke-width: 1.2; stroke-dasharray: 4 4; opacity: 0.7; }
 .sk-shot { stroke: #9bc53d; stroke-width: 1.6; } .sk-aim { fill: #9bc53d; stroke: #0e1418; stroke-width: 1.2; }
@@ -532,7 +532,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
   --brand-soft: #e1eecb;
   --ok: #1d8a43;
   --bad: #c2362b;
-  --warn: #9a6400;
+  --warn: #c2362b;
   --team-b: #1d6fae;
   color-scheme: light;
 }
@@ -564,7 +564,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 :root[data-theme='sun'] .caddie-card .plan.warn { color: #b42318; }
 :root[data-theme='sun'] .caddie-card .mental { color: #1d4f86; }
 :root[data-theme='sun'] .map-slope-chip { color: #7a4d00; }
-:root[data-theme='sun'] .badge-dot { background: #f2c14e; }
+:root[data-theme='sun'] .badge-dot { background: var(--brand); color: #fff; }
 :root[data-theme='sun'] .map-target-sign { background: rgba(255, 255, 255, 0.96); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
 :root[data-theme='sun'] .map-target-sign .carry { color: #0b1013; }
 :root[data-theme='sun'] .map-target-sign .remove { background: var(--surface-2); color: #0b1013; }
@@ -572,7 +572,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .map-screen .maplibregl-ctrl-bottom-right { top: calc(env(safe-area-inset-top) + 194px); bottom: auto; right: auto; left: 10px; }
 .map-screen.setup .maplibregl-ctrl-bottom-right { left: auto; right: 10px; }
 
-.map-from.off { max-width: 92px; text-align: center; line-height: 1.2; color: #f6d48a; }
+.map-from.off { max-width: 92px; text-align: center; line-height: 1.2; color: var(--muted); }
 :root[data-theme='sun'] .map-from.off { color: #7a4d00; }
 /* score mix: a label that does not fit its share is hidden instead of cut */
 .mix-bar span { overflow: hidden; text-overflow: clip; font-size: 11px; }
@@ -638,7 +638,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .caddie-review-vote button { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); }
 .caddie-review-vote button[aria-pressed='true'] { border-color: var(--brand-text); color: var(--brand-text); }
 .caddie-review textarea { width: 100%; min-height: 56px; resize: vertical; font: 400 15px var(--body); padding: 8px 12px; }
-.warn-text { color: #f6d48a; }
+.warn-text { color: var(--bad); }
 
 /* Round set-up: loop name and number of holes on two lines */
 .choice.choice-loop { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
@@ -690,7 +690,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .play-actions .btn-secondary, .play-actions .btn-primary { min-height: 48px; font-size: 15px; }
 .play-confirm { display: flex; flex-direction: column; gap: 10px; }
 .count-badge { min-width: 28px; height: 28px; border-radius: 14px; background: var(--brand); color: var(--bg); font: 700 14px/28px var(--body); text-align: center; padding: 0 8px; }
-.warn-text { color: var(--warn); }
+.warn-text { color: var(--bad); }
 .list-item.live { border: 2px solid var(--brand); }
 .round-date { display: flex; flex-direction: column; align-items: center; min-width: 44px; font-variant-numeric: tabular-nums; }
 
@@ -705,7 +705,6 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .record-who { display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; text-align: left; }
 .record-who .grow { display: flex; flex-direction: column; min-width: 0; }
 .record-who strong { font: 600 19px var(--display); }
-.avatar { width: 52px; height: 52px; border-radius: 26px; background: var(--brand); color: var(--bg); display: flex; align-items: center; justify-content: center; font: 700 19px var(--display); flex: none; text-transform: uppercase; }
 .hero-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .hero-nums > div { display: flex; flex-direction: column; gap: 2px; }
 .hero-num { font: 700 28px var(--display); font-variant-numeric: tabular-nums; }
@@ -721,14 +720,14 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .ring { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
 .ring-track { fill: none; stroke: var(--surface-2); stroke-width: 7; }
 .ring-fill { fill: none; stroke: var(--brand-text); stroke-width: 7; stroke-linecap: round; }
-.ring-fill.bad { stroke: #f6d48a; }
+.ring-fill.bad { stroke: #ff8a7f; }
 .ring-text { fill: var(--text); font: 700 14px var(--display); }
 .hbars { display: flex; flex-direction: column; gap: 10px; }
 .hbar { display: grid; grid-template-columns: 64px 1fr 76px; align-items: center; gap: 10px; }
 .hbar-label { font-size: 14px; font-variant-numeric: tabular-nums; }
 .hbar-track { position: relative; height: 14px; border-radius: 7px; background: var(--surface-2); overflow: hidden; }
 .hbar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; background: var(--brand-text); }
-.hbar-fill.over { background: #f6d48a; }
+.hbar-fill.over { background: #ff8a7f; }
 .hbar-value { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .gap-row { grid-template-columns: 40px 1fr 92px; }
 .gap-range { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; background: color-mix(in srgb, var(--brand-text) 40%, transparent); }
@@ -892,8 +891,8 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .stepper-label small { font: 500 11px var(--body); }
 .finish-actions > .btn-danger:nth-child(3) { grid-column: 1 / -1; }
 .topbar-version { text-align: center; font-size: 11px; white-space: nowrap; }
-.score-sheet .stepper-label small { color: var(--warn); }
-.hole-bar-dots { margin-left: 4px; color: #f6d48a; font-style: normal; letter-spacing: 1px; font-weight: 700; }
+.score-sheet .stepper-label small { color: var(--muted); }
+.hole-bar-dots { margin-left: 4px; color: var(--brand-text); font-style: normal; letter-spacing: 1px; font-weight: 700; }
 
 /* score entry as a panel over the map (Hole19); the hole bar below stays for ‹ / › */
 .score-panel {
@@ -936,11 +935,11 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 }
 .drawer-hole-no { font: 600 16px var(--display); }
 .drawer-hole-score { font: 700 12px var(--body); line-height: 1; }
-.drawer-hole-dots { position: absolute; bottom: 3px; color: #f6d48a; font-style: normal; font-size: 11px; letter-spacing: 1px; line-height: 1; }
+.drawer-hole-dots { position: absolute; bottom: 3px; color: var(--brand-text); font-style: normal; font-size: 11px; letter-spacing: 1px; line-height: 1; }
 .drawer-hole.current { background: var(--brand); border-color: var(--brand); color: var(--bg); }
 .drawer-hole.eagle .drawer-hole-score { color: #5ec2ff; }
 .drawer-hole.birdie .drawer-hole-score { color: var(--brand-text); }
-.drawer-hole.bogey .drawer-hole-score { color: #f6d48a; }
+.drawer-hole.bogey .drawer-hole-score { color: #8fa3b0; }
 .drawer-hole.double .drawer-hole-score { color: #ff8a7f; }
 .drawer-hole.current .drawer-hole-score { color: var(--bg); }
 .drawer-hole.eagle, .drawer-hole.birdie, .drawer-hole.par, .drawer-hole.bogey, .drawer-hole.double, .drawer-hole.picked { background: var(--surface-2); }
@@ -1189,8 +1188,24 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .bag-edit, .bag-edit.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }
 
 /* signing the round (Sascha 16.10.2026) */
-.sign-card { display: flex; align-items: center; gap: 12px; }
-.sign-card .grow { flex: 1; min-width: 0; }
+.sign-card { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.sign-card .grow { flex: 1 1 180px; min-width: 0; }
+/* the text above, the button below across the card (Sascha 16.10.2026: the button squeezed the text to one word a line) */
+.sign-card .btn-primary { flex: 1 1 100%; width: 100%; }
 .sign-card.signed { border-color: var(--brand); }
 .sign-seal, .signed-mark { display: inline-flex; color: var(--brand-text); }
 .signed-mark { margin-left: 6px; vertical-align: -2px; }
+
+/* test mode: "Shot here" on the map (Sascha 16.10.2026) */
+.test-shot-row { display: flex; flex-direction: column; align-items: stretch; gap: 8px; pointer-events: auto; }
+.test-shot { min-height: 52px; font-size: 17px; }
+
+/* the game sheet's rules, folded */
+.game-rules-box summary { cursor: pointer; font-weight: 700; }
+.game-rules-box[open] summary { margin-bottom: 8px; }
+
+.sign-seal.big { width: 52px; height: 52px; border-radius: 26px; display: inline-flex; align-items: center; justify-content: center; background: var(--brand-soft); flex: none; }
+.sign-card.signed { border: 1px solid var(--brand); background: color-mix(in srgb, var(--brand-soft) 45%, var(--surface)); }
+
+/* a sub page with the menu below: room for it */
+.screen:has(~ .tabbar) { padding-bottom: calc(env(safe-area-inset-bottom) + 96px); }

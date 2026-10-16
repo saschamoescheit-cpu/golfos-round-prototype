@@ -58,9 +58,9 @@ export function SgHole(props: { diff: Record<SgCategory, number>; shots: Record<
           <rect x="10" y="61" width="18" height="18" rx="4" fill="#8fc95a" stroke="#c9e6a4" strokeWidth="1.5" />
           <circle cx="19" cy="70" r="2.6" fill="#ffffff" />
           <ellipse cx="145" cy="112" rx="34" ry="9" fill="#3d7fd0" />
-          <ellipse cx="258" cy="32" rx="15" ry="6" fill="#e9dca6" />
-          <ellipse cx="372" cy="34" rx="13" ry="6" fill="#e9dca6" />
-          <ellipse cx="380" cy="110" rx="14" ry="6" fill="#e9dca6" />
+          <ellipse cx="258" cy="32" rx="15" ry="6" fill="#e9dca6" /* ci-allow: bunker sand */ />
+          <ellipse cx="372" cy="34" rx="13" ry="6" fill="#e9dca6" /* ci-allow: bunker sand */ />
+          <ellipse cx="380" cy="110" rx="14" ry="6" fill="#e9dca6" /* ci-allow: bunker sand */ />
           {/* green with flag */}
           <ellipse cx="442" cy="70" rx="42" ry="31" fill="#86c964" />
           <ellipse cx="442" cy="70" rx="37" ry="27" fill="#a3e27f" />

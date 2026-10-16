@@ -6,12 +6,13 @@ import { shownName, loadProfile } from '../lib/profile';
 import { BestsCard, TrendCard } from '../components/HistoryCards';
 import { PlayedHcpStats } from '../components/PlayedHcp';
 import { dec, tr } from '../lib/i18n';
-import { statRounds } from '../lib/signing';
+import { statRounds, unsignedRounds } from '../lib/signing';
+import { Avatar } from '../components/Avatar';
 
 // Tab "My golf" (Sascha 14.10.2026, instead of BeBrassie's "Dashboard"): who you are as a golfer in a few numbers –
 // handicap, average, what you played, how your holes end, your bests and where you are heading.
 
-export const RESULT_COLOURS = { eaglePlus: '#5ec2ff', birdie: '#9bc53d', par: '#e8edf0', bogey: '#f6d48a', doublePlus: '#ff6b5e' } as const;
+export const RESULT_COLOURS = { eaglePlus: '#5ec2ff', birdie: '#9bc53d', par: '#e8edf0', bogey: '#8fa3b0', doublePlus: '#ff6b5e' } as const;
 
 export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => void; onProfile: () => void }) {
   const finished = useMemo(() => statRounds(props.rounds).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [props.rounds]);
@@ -41,9 +42,8 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
       <h1 className="tab-title">{tr('My golf', 'Mein Golf')}</h1>
       <section className="card record-hero">
         <button type="button" className="record-who" onClick={props.onProfile}>
-          <span className="avatar" aria-hidden="true">
-            {(profile.firstName.trim()[0] ?? '') + (profile.lastName.trim()[0] ?? '') || '⛳'}
-          </span>
+          {/* the same picture as everywhere: the profile photo (Google or chosen), else the initial */}
+          <Avatar name={name || '⛳'} me size={52} />
           <span className="grow">
             <strong>{name || tr('Your profile', 'Dein Profil')}</strong>
             <span className="muted small">{profile.homeClub.trim() || tr('Add name, handicap and home club ›', 'Name, Handicap und Heimatclub eintragen ›')}</span>
@@ -66,7 +66,11 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
       </section>
 
       {c.holes === 0 ? (
-        <p className="muted">{tr('Finish a round – your golf overview starts here.', 'Beende eine Runde – hier beginnt dein Golf-Überblick.')}</p>
+        <p className="muted">
+          {unsignedRounds(props.rounds).length
+            ? tr('Sign your finished rounds (scorecard → Sign) – your golf overview starts with the first signed one.', 'Signiere deine beendeten Runden (Scorekarte → Signieren) – dein Golf-Überblick beginnt mit der ersten signierten.')
+            : tr('Finish a round – your golf overview starts here.', 'Beende eine Runde – hier beginnt dein Golf-Überblick.')}
+        </p>
       ) : (
         <>
           <section className="card stats-card">

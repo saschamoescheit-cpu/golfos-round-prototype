@@ -229,6 +229,17 @@ export function App() {
       </Suspense>
     );
 
+  // the menu at the bottom on the sub pages too (Sascha: "the menu on every page of a module", as in Training)
+  const subMenu = (current: Tab) => (
+    <TabBar
+      tab={current}
+      dots={{ rounds: toCheck > 0, profile: profileDot }}
+      onTab={(t) => {
+        setScreen({ name: 'tab', tab: t });
+        window.scrollTo(0, 0);
+      }}
+    />
+  );
   switch (screen.name) {
     case 'tab': {
       const tab = screen.tab;
@@ -257,7 +268,7 @@ export function App() {
               onModules={() => setModule(null)}
             />
           )}
-          {tab !== 'play' && tab !== 'profile' && <RoundsTopBar onModules={() => setModule(null)} />}
+          {tab !== 'play' && <RoundsTopBar onModules={() => setModule(null)} />}
           {tab === 'rounds' && <RoundsTab rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} />}
           {tab === 'record' && (
             <RecordTab
@@ -294,15 +305,23 @@ export function App() {
         </Suspense>
       );
     case 'bag':
-      return <MyBag rounds={rounds} part={screen.part} onBack={() => setScreen(screen.back ?? { name: 'tab', tab: 'profile' })} />;
+      return (
+        <>
+          <MyBag rounds={rounds} part={screen.part} onBack={() => setScreen(screen.back ?? { name: 'tab', tab: 'profile' })} />
+          {subMenu('profile')}
+        </>
+      );
     case 'courseStats':
       return (
+        <>
         <CourseStats
           rounds={rounds}
           courseName={screen.courseName}
           onBack={() => setScreen({ name: 'tab', tab: 'stats' })}
           onOpen={(round) => setScreen({ name: 'scorecard', round, back: { name: 'courseStats', courseName: screen.courseName } })}
         />
+        {subMenu('stats')}
+        </>
       );
     case 'pickCourse':
       return <CoursePicker onBack={() => setScreen(HOME)} onPicked={(course) => setScreen({ name: 'setup', course })} />;
@@ -371,6 +390,7 @@ export function App() {
       );
     case 'scorecard':
       return (
+        <>
         <Scorecard
           round={screen.round}
           onBackToHole={() => setScreen({ name: 'hole', round: screen.round })}
@@ -396,6 +416,9 @@ export function App() {
             setScreen(ROUNDS);
           }}
         />
+        {/* the menu on the scorecard too (uniform with Training) – not while the round is being finished */}
+        {!screen.finishing && !screen.justFinished && subMenu(screen.back?.name === 'tab' ? screen.back.tab : 'rounds')}
+        </>
       );
   }
 }

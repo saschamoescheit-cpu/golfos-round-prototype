@@ -6,7 +6,7 @@ import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
 import { InviteSheet } from '../components/ShareGame';
 import { emptyEntry } from '../lib/scoring';
 import { tr } from '../lib/i18n';
-import { HoleExtras, PressCard, ScoreGrid, StandingCard } from './Games';
+import { FormRules, HoleExtras, PressCard, ScoreGrid, StandingCard } from './Games';
 
 // Games on the GPS map (Sascha 16.10.2026: "every game with the map and all its functions like a normal round – only
 // the score entry differs"): a game carries a round; the round's hole screen (map, caddie, hole bar, overview, pause
@@ -138,10 +138,14 @@ export function GameOnMap(props: {
             </div>
             {sheet === 'game' ? (
               <>
-                <span className="muted small">{tr('The strokes come from the score entry on the hole bar.', 'Die Schläge kommen aus der Score-Erfassung in der Lochleiste.')}</span>
                 <HoleExtras game={g} hole={i} onChange={setExtra} />
                 {g.settings.double && Number(g.settings.stake) > 0 && <PressCard game={g} hole={i} onChange={props.onChange} />}
                 <StandingCard game={g} />
+                {/* the rules during the game (the menu has no rules tab any more – Sascha 16.10.2026) */}
+                <details className="card game-rules-box">
+                  <summary>{tr(`Rules of ${f.name()}`, `Regeln: ${f.name()}`)}</summary>
+                  <FormRules form={f} />
+                </details>
               </>
             ) : (
               <>

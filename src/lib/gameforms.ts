@@ -34,6 +34,8 @@ export interface Game {
   id: string;
   createdAt: string;
   finishedAt: string | null;
+  /** When the result was confirmed – like signing a round's scorecard (Sascha 16.10.2026); only these count in the balance. */
+  signedAt?: string | null;
   courseName: string;
   holes: GameHole[];
   players: GamePlayer[];
@@ -457,6 +459,7 @@ export const FORMS: FormDef[] = [
         'Vier Spieler, an jedem Loch zwei Teams. Die drei Paarungen (A+B gegen C+D, A+C gegen B+D, A+D gegen B+C) wechseln von Loch zu Loch – auf 18 Löchern je sechsmal, auf 9 Löchern je dreimal –, damit jeder mit jedem spielt. Die Paarung eines Lochs lässt sich ändern.',
       ),
       tr('The two scores of a team make a two-digit number, the lower one first: 6 and 5 = 56, 3 and 3 = 33.', 'Die zwei Schläge eines Teams ergeben eine zweistellige Zahl, der kleinere vorn: 6 und 5 = 56, 3 und 3 = 33.'),
+      tr('A score of 10 or more goes first: 10 and 4 = 104 (not 410).', 'Eine 10 oder mehr kommt nach vorn: 10 und 4 = 104 (nicht 410).'),
       tr(
         'The difference is the hole: 56 − 33 = 23. Each player of the lower team gets +23, each of the other −23 – all accounts add up to zero.',
         'Die Differenz ist das Loch: 56 − 33 = 23. Jeder Spieler des Teams mit der kleineren Zahl bekommt +23, jeder des anderen −23 – alle Konten ergeben zusammen null.',

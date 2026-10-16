@@ -39,7 +39,7 @@ describe('strokes gained', () => {
     expect(groupSg('h10').total).toBe(-13);
     expect(groupSg('tour').approach).toBe(0);
     expect(groupForHandicap(7)).toBe('h5');
-    expect(groupForHandicap(18)).toBe('h20');
+    expect(groupForHandicap(18)).toBe('h15'); // the next better group (Sascha 16.10.2026)
     expect(groupForHandicap(1)).toBe('scratch');
     expect(suggestKind('recovery', 140)).toBe('punch');
     expect(suggestKind('rough', 25)).toBe('chip');

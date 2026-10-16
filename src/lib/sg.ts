@@ -150,6 +150,8 @@ export function groupSg(id: string): SgValues {
 export function groupForHandicap(hcp: number | null): string {
   if (hcp == null) return 'h20';
   if (hcp <= 2) return 'scratch';
-  const hcpGroups = GROUPS.filter((g) => g.id.startsWith('h'));
-  return hcpGroups.reduce((best, g) => (Math.abs(Number(g.id.slice(1)) - hcp) < Math.abs(Number(best.id.slice(1)) - hcp) ? g : best)).id;
+  // the next better group, not the nearest (Sascha 16.10.2026: "with Hcp 7 the standard should not be Hcp 10"):
+  // the player measures himself against where he wants to go
+  const better = GROUPS.filter((g) => g.id.startsWith('h') && Number(g.id.slice(1)) <= hcp).sort((a, b) => Number(b.id.slice(1)) - Number(a.id.slice(1)));
+  return better[0]?.id ?? 'scratch';
 }

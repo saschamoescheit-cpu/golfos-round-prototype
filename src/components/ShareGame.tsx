@@ -135,7 +135,7 @@ export function JoinSheet(props: { initial?: string; onJoined: (g: Game) => void
           </div>
         )}
         {msg && (
-          <span className="small" style={{ color: 'var(--warn)' }} role="alert">
+          <span className="small bad-text" role="alert">
             {msg}
           </span>
         )}

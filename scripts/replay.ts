@@ -31,7 +31,9 @@ let n = 0;
 const rows: string[] = [];
 r.holes.forEach((h, i) => {
   const e = r.entries[me][i];
-  const truth = (e.detail?.shots ?? []).map((s) => s.pos).filter((p): p is LngLat => p != null);
+  // the truth: shots tracked by hand on the course (test mode), else the player's corrections
+  const byHand = (r.manualShots ?? []).filter((x) => x.hole === i).sort((a, b) => a.t - b.t).map((x) => x.pos);
+  const truth = byHand.length ? byHand : (e.detail?.shots ?? []).map((s) => s.pos).filter((p): p is LngLat => p != null);
   const m = maps[i];
   const found = m && parts[i]?.length ? detectWithScore(parts[i], m, h.par, undefined, e) : null;
   const got = (found?.shots ?? []).map((s) => s.pos).filter((p): p is LngLat => p != null);

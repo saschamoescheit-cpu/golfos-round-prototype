@@ -9,7 +9,7 @@ import { dec, getLang, tr } from './i18n';
 
 const C = {
   bg: '#0e1418', surface: '#18222a', surface2: '#222d35', line: '#2c3943', text: '#eef2ec', muted: '#9faea6',
-  brand: '#9bc53d', bad: '#ff8a7f', warn: '#f2b53d', dark: '#0e1418',
+  brand: '#9bc53d', bad: '#ff8a7f', dark: '#0e1418',
 };
 const DISPLAY = 'Lexend, "Segoe UI", system-ui, sans-serif';
 const BODY = 'Figtree, "Segoe UI", system-ui, sans-serif';
@@ -160,7 +160,7 @@ function drawNine(
     }
     cell(g, String(v), mx, my + 11, `700 32px ${BODY}`, colour);
     const e = extra(h);
-    if (e > 0) cell(g, '•'.repeat(Math.min(3, e)), mx + r + 2, my - r + 6, `700 22px ${BODY}`, C.warn);
+    if (e > 0) cell(g, '•'.repeat(Math.min(3, e)), mx + r + 2, my - r + 6, `700 22px ${BODY}`, C.brand);
   });
   cell(g, sum(gross), sx, y + 54, `700 34px ${BODY}`, C.text);
   y += heights[2];

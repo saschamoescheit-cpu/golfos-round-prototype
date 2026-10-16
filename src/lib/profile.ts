@@ -37,3 +37,12 @@ export const shownName = (p: Profile): string => p.firstName.trim() || p.lastNam
 
 /** "Sascha Möscheit", or "" when no name is set. */
 export const fullName = (p: Profile): string => [p.firstName.trim(), p.lastName.trim()].filter(Boolean).join(' ');
+
+/** The current handicap index from the profile ("12,4" → 12.4, "+1,2" → −1.2), null when empty or unreadable. */
+export function profileIndex(p: Profile = loadProfile()): number | null {
+  const t = p.hcpIndex.trim().replace(',', '.');
+  if (!t) return null;
+  const v = Number(t.replace(/^\+/, ''));
+  if (!Number.isFinite(v)) return null;
+  return t.startsWith('+') ? -v : v;
+}

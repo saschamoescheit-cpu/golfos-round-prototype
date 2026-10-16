@@ -15,4 +15,4 @@ export const teeName = (t: string): string =>
   /^\d+$/.test(t) ? `Tee ${t}` : tr(t, ({ White: 'Weiß', Yellow: 'Gelb', Blue: 'Blau', Red: 'Rot', Orange: 'Orange', Green: 'Grün', Pink: 'Rosa' } as Record<string, string>)[t] ?? t);
 
 // Courses that name their tees by length (Son Antem East: 62/58/52/48) get grey shades, longest darkest.
-export const TEE_COLOURS: Record<string, string> = { White: '#f2f2f2', Yellow: '#f5d042', Blue: '#3d8bfd', Red: '#e5484d', Orange: '#f59e0b', Green: '#1f7a4a', Pink: '#e48fc0', '62': '#5b6770', '58': '#87939b', '52': '#b3bdc3', '48': '#dfe5e8' };
+export const TEE_COLOURS: Record<string, string> = { White: '#f2f2f2', Yellow: '#f5d042', Blue: '#3d8bfd', Red: '#e5484d', Orange: '#f59e0b', Green: '#1f7a4a', Pink: '#e48fc0', '62': '#5b6770', '58': '#87939b', '52': '#b3bdc3', '48': '#dfe5e8' }; // ci-allow: the colours of the tee markers themselves

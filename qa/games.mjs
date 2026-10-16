@@ -39,19 +39,13 @@ await p.locator('.module-card').filter({ hasText: 'Games' }).click();
 await p.waitForTimeout(300);
 ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'Games start page');
 const gtabs = await p.locator('.tabbar button').allInnerTexts();
-ok(gtabs.join('|') === 'Spielen|Spiele|Bilanz|Regeln|Profil', `Games menu: ${gtabs.join(' · ')}`);
+ok(gtabs.join('|') === 'Spielen|Spiele|Bilanz|Profil', `Games menu without "Regeln": ${gtabs.join(' · ')}`);
 await p.reload();
 await p.waitForTimeout(800);
 ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'a reload stays in Games');
 
-// the catalogue
-await p.locator('.tabbar button').filter({ hasText: 'Regeln' }).click();
-const forms = await p.locator('.game-form').count();
-ok(forms === 14, `catalogue lists ${forms} game forms`);
-await p.locator('.game-form-head').filter({ hasText: 'Wolf' }).click();
-ok((await p.locator('.game-rules li').count()) >= 3, 'rules of the wolf open');
-ok(await p.getByRole('button', { name: '🔊 Spielform vorlesen' }).isVisible(), 'the rules can be read aloud');
-await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
+// no rules tab any more (Sascha 16.10.2026): the rules are in the setup and in the game sheet
+
 
 const CASES = [
   ['Skins', 3],
@@ -183,7 +177,24 @@ await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).count()) === 0, 'restored from the bin');
+// only confirmed games count in the balance (Sascha 16.10.2026, as signed rounds)
 await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
+await p.waitForTimeout(300);
+ok((await p.getByText(/noch nicht bestätigt/).count()) === 1, 'balance: the unconfirmed games are named');
+await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
+await p.locator('.list-item').first().click();
+await p.waitForTimeout(500);
+await p.locator('.sign-card').getByRole('button', { name: 'Bestätigen' }).click();
+await p.waitForTimeout(300);
+ok((await p.locator('.sign-card').innerText()).includes('Ergebnis bestätigt'), 'result: "Ergebnis bestätigen" confirms it');
+await p.evaluate(() => {
+  const gs = JSON.parse(localStorage.getItem('golfos.games.v1'));
+  localStorage.setItem('golfos.games.v1', JSON.stringify(gs.map((g) => (g.finishedAt ? { ...g, signedAt: g.signedAt ?? new Date().toISOString() } : g))));
+});
+await p.reload();
+await p.waitForTimeout(1200);
+await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
+await p.waitForTimeout(300);
 const bal = await p.locator('main').innerText();
 ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal) && /\d+:\d+ vorne/.test(bal), 'balance with games, wins, the other players and head to head');
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();

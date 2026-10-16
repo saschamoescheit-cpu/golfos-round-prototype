@@ -11,11 +11,13 @@ import { Avatar } from '../components/Avatar';
 import { STANDARD_CLUBS } from '../lib/clubs';
 import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, saveProfile, type Profile } from '../lib/profile';
+import { isTestMode, setTestMode } from '../lib/testmode';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
 
 export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie: () => void; onChanged: () => void }) {
+  const [testMode, setTestModeState] = useState(isTestMode);
   const [p, setP] = useState<Profile>(loadProfile);
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
@@ -141,6 +143,21 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       <section className="card stats-card">
         <h2>{tr('Caddie', 'Caddie')}</h2>
         <CaddieSettingsFields />
+      </section>
+
+      {/* test mode: shots by hand to measure the shot detection (Sascha 16.10.2026) */}
+      <section className="card stats-card">
+        <h2>{tr('Test', 'Test')}</h2>
+        <button type="button" className="drawer-row" role="switch" aria-checked={testMode} onClick={() => {
+          setTestMode(!testMode);
+          setTestModeState(!testMode);
+        }}>
+          <span className="switch-label">
+            <span>{tr('Track shots by hand', 'Schläge von Hand erfassen')}</span>
+            <span className="muted small">{tr('"Shot here" on the map, at the ball – to compare with the detection', '„Schlag hier“ auf der Karte, am Ball – zum Vergleich mit der Erkennung')}</span>
+          </span>
+          <span className={`drawer-switch${testMode ? ' on' : ''}`} aria-hidden="true" />
+        </button>
       </section>
 
 
