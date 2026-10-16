@@ -82,6 +82,12 @@
 .tr-video-cover { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--text); font: inherit; text-align: left; }
 .tr-video-cover .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .tr-play { width: 46px; height: 46px; border-radius: 23px; background: #e8412c; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+/* preview picture like on YouTube: 16:9 picture, play button on top, title below */
+.tr-video-cover.thumb { position: relative; flex-direction: column; align-items: stretch; gap: 8px; padding: 0 0 12px; overflow: hidden; }
+.tr-video-cover.thumb .grow { padding: 0 14px; }
+.tr-video-thumb { display: block; position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.tr-video-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tr-video-cover.thumb .tr-play { position: absolute; left: 50%; top: 0; margin-top: calc((100% * 9 / 16) / 2 - 21px); transform: translateX(-50%); width: 60px; height: 42px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
 .tr-video-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; }
 .tr-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .tr-video-note a { color: var(--text-2); }
@@ -144,3 +150,7 @@
 .tr-gear-row-main .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .tr-gear-row .tr-gear-img { width: 64px; flex-shrink: 0; }
 .tr-gear-row .chip { flex-shrink: 0; }
+
+/* the menu on every page of the module (Sascha 16.10.2026) */
+.tr-with-menu > .screen { padding-bottom: calc(env(safe-area-inset-bottom) + 96px); }
+.tr-section-drill { background: var(--bg); }

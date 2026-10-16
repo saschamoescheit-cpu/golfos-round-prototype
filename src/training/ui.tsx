@@ -96,9 +96,10 @@ export const CAT_ICON: Record<CategoryId, ReactNode> = {
   practice: ic(<><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8M8 13h5M8 17h3" /><path d="M15 15l2 2 3-4" /></>),
 };
 
-// ---------- video: loaded only on tap (privacy) ----------
+// ---------- video: a preview picture like on YouTube (Sascha 16.10.2026); the video loads only on tap ----------
 export function VideoCard(props: { v: Video }) {
   const [on, setOn] = useState(false);
+  const [noThumb, setNoThumb] = useState(false);
   const v = props.v;
   const src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0${v.start ? `&start=${v.start}` : ''}`;
   return (
@@ -108,7 +109,12 @@ export function VideoCard(props: { v: Video }) {
           <iframe src={src} title={v.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
         </div>
       ) : (
-        <button type="button" className="tr-video-cover" onClick={() => setOn(true)} aria-label={tr(`Play video: ${v.title}`, `Video abspielen: ${v.title}`)}>
+        <button type="button" className={`tr-video-cover${noThumb ? '' : ' thumb'}`} onClick={() => setOn(true)} aria-label={tr(`Play video: ${v.title}`, `Video abspielen: ${v.title}`)}>
+          {!noThumb && (
+            <span className="tr-video-thumb">
+              <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setNoThumb(true)} />
+            </span>
+          )}
           <span className="tr-play" aria-hidden="true">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8 5v14l11-7z" />

@@ -38,7 +38,7 @@ import {
   type OwnPlan,
   type Session,
 } from '../training/store';
-import type { Category, CategoryId, Drill, Gear, GearKind, L, Level, Place, Plan } from '../training/types';
+import type { Category, CategoryId, Drill, Gear, GearKind, L, Level, Place, Plan, Section, Video } from '../training/types';
 import {
   bandName,
   bandOf,
@@ -156,48 +156,78 @@ export function TrainingApp(props: { rounds: Round[]; onModules: () => void; pro
   };
   const nav: Nav = { push, back, toTab, start };
 
-  switch (view.name) {
-    case 'tab':
-      return <Tabs tab={view.tab} nav={nav} rounds={props.rounds} profile={props.profile} profileDot={props.profileDot} onModules={props.onModules} />;
-    case 'cat':
-      return <CategoryView id={view.id} nav={nav} />;
-    case 'drill':
-      return <DrillView id={view.id} nav={nav} />;
-    case 'plan':
-      return <PlanView plan={view.plan} own={view.own} nav={nav} />;
-    case 'builder':
-      return <Builder plan={view.plan} nav={nav} />;
-    case 'fault':
-      return <FaultView cat={view.cat} index={view.index} nav={nav} />;
-    case 'search':
-      return <SearchView q={view.q} nav={nav} />;
-    case 'gear':
-      return <GearView id={view.id} nav={nav} />;
-    case 'cart':
-      return <CartView nav={nav} />;
-    case 'checkout':
-      return <Checkout nav={nav} onOrdered={(order) => setStack([{ name: 'tab', tab: 'shop' }, { name: 'ordered', order }])} />;
-    case 'ordered':
-      return <Ordered order={view.order} nav={nav} />;
-    case 'session': {
-      const s = loadSessions().find((x) => x.id === view.id);
-      if (!s) return <Tabs tab="train" nav={nav} rounds={props.rounds} profile={props.profile} onModules={props.onModules} />;
-      return (
-        <SessionPlay
-          session={s}
-          onPause={() => setStack([{ name: 'tab', tab: 'train' }])}
-          onFinish={(done) => setStack([{ name: 'tab', tab: 'log' }, { name: 'done', id: done.id }])}
-          onDelete={() => {
-            deleteSession(s.id);
-            setStack([{ name: 'tab', tab: 'train' }]);
-          }}
-          onDrill={(id) => push({ name: 'drill', id })}
-        />
-      );
+  // the menu stays at the bottom on every page of the module (Sascha 16.10.2026) – only a session in play has its
+  // drill bar there instead, like a round in play has the hole bar
+  if (view.name === 'tab' || view.name === 'session') return page();
+  const root = stack[0].name === 'tab' ? stack[0].tab : 'learn';
+  return (
+    <div className="tr-with-menu">
+      {page()}
+      <TrainingMenu current={root} onPick={toTab} profileDot={props.profileDot} />
+    </div>
+  );
+
+  function page() {
+    switch (view.name) {
+      case 'tab':
+        return <Tabs tab={view.tab} nav={nav} rounds={props.rounds} profile={props.profile} profileDot={props.profileDot} onModules={props.onModules} />;
+      case 'cat':
+        return <CategoryView id={view.id} nav={nav} />;
+      case 'drill':
+        return <DrillView id={view.id} nav={nav} />;
+      case 'plan':
+        return <PlanView plan={view.plan} own={view.own} nav={nav} />;
+      case 'builder':
+        return <Builder plan={view.plan} nav={nav} />;
+      case 'fault':
+        return <FaultView cat={view.cat} index={view.index} nav={nav} />;
+      case 'search':
+        return <SearchView q={view.q} nav={nav} />;
+      case 'gear':
+        return <GearView id={view.id} nav={nav} />;
+      case 'cart':
+        return <CartView nav={nav} />;
+      case 'checkout':
+        return <Checkout nav={nav} onOrdered={(order) => setStack([{ name: 'tab', tab: 'shop' }, { name: 'ordered', order }])} />;
+      case 'ordered':
+        return <Ordered order={view.order} nav={nav} />;
+      case 'session': {
+        const s = loadSessions().find((x) => x.id === view.id);
+        if (!s) return <Tabs tab="train" nav={nav} rounds={props.rounds} profile={props.profile} onModules={props.onModules} />;
+        return (
+          <SessionPlay
+            session={s}
+            onPause={() => setStack([{ name: 'tab', tab: 'train' }])}
+            onFinish={(done) => setStack([{ name: 'tab', tab: 'log' }, { name: 'done', id: done.id }])}
+            onDelete={() => {
+              deleteSession(s.id);
+              setStack([{ name: 'tab', tab: 'train' }]);
+            }}
+            onDrill={(id) => push({ name: 'drill', id })}
+          />
+        );
+      }
+      case 'done':
+        return <SessionResult id={view.id} nav={nav} />;
     }
-    case 'done':
-      return <SessionResult id={view.id} nav={nav} />;
   }
+}
+
+function TrainingMenu(props: { current: TrainingTab; onPick: (t: TrainingTab) => void; profileDot?: boolean }) {
+  const n = cartCount();
+  return (
+    <MenuBar
+      items={[
+        { id: 'learn' as TrainingTab, label: tr('Library', 'Wissen'), icon: ICONS.learn },
+        { id: 'train' as TrainingTab, label: tr('Practice', 'Üben'), icon: ICONS.train, dot: loadSessions().some((s) => !s.finishedAt) },
+        { id: 'log' as TrainingTab, label: tr('Progress', 'Verlauf'), icon: ICONS.log },
+        { id: 'shop' as TrainingTab, label: n ? `Shop (${n})` : 'Shop', icon: ICONS.shop },
+        { id: 'profile' as TrainingTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
+      ]}
+      current={props.current}
+      onPick={props.onPick}
+    />
+  );
 }
 
 interface Nav {
@@ -210,7 +240,6 @@ interface Nav {
 // ---------- tabs ----------
 
 function Tabs(props: { tab: TrainingTab; nav: Nav; rounds: Round[]; profile: ReactNode; profileDot?: boolean; onModules: () => void }) {
-  const n = cartCount();
   return (
     <main className="screen with-tabs training">
       {props.tab !== 'profile' && (
@@ -230,17 +259,7 @@ function Tabs(props: { tab: TrainingTab; nav: Nav; rounds: Round[]; profile: Rea
       {props.tab === 'log' && <LogTab nav={props.nav} />}
       {props.tab === 'shop' && <ShopTab nav={props.nav} />}
       {props.tab === 'profile' && props.profile}
-      <MenuBar
-        items={[
-          { id: 'learn' as TrainingTab, label: tr('Library', 'Wissen'), icon: ICONS.learn },
-          { id: 'train' as TrainingTab, label: tr('Practice', 'Üben'), icon: ICONS.train, dot: loadSessions().some((s) => !s.finishedAt) },
-          { id: 'log' as TrainingTab, label: tr('Progress', 'Verlauf'), icon: ICONS.log },
-          { id: 'shop' as TrainingTab, label: n ? `Shop (${n})` : 'Shop', icon: ICONS.shop },
-          { id: 'profile' as TrainingTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
-        ]}
-        current={props.tab}
-        onPick={props.nav.toTab}
-      />
+      <TrainingMenu current={props.tab} onPick={props.nav.toTab} profileDot={props.profileDot} />
     </main>
   );
 }
@@ -335,6 +354,12 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
           <dd>{t(f.fix)}</dd>
         </dl>
       </section>
+      {drills[0]?.sketch && (
+        <>
+          <span className="eyebrow">{tr('The first drill for it', 'Die erste Übung dafür')}: {t(drills[0].name)}</span>
+          <SketchView sketch={drills[0].sketch} label={t(drills[0].name)} />
+        </>
+      )}
       <h2>{tr('Drills for it', 'Übungen dafür')}</h2>
       <DrillList drills={drills} nav={props.nav} />
       {drills.length > 0 && (
@@ -636,6 +661,31 @@ function LogTab(props: { nav: Nav }) {
 // ---------- category ----------
 
 // the open tab per topic – back from a drill returns to the same tab
+// A picture with every text (Sascha 16.10.2026): the section's own sketch or the sketch of the drill that shows it
+// (with a link to that drill), and a video in the player's language when one explains it.
+function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
+  const d = props.s.drill ? drillById(props.s.drill) : undefined;
+  const sketch = props.s.sketch ?? d?.sketch;
+  const vids = (props.s.videos ?? []).map((id) => props.videos?.find((v) => v.id === id)).filter((v): v is Video => !!v);
+  const video = vids.find((v) => v.lang === getLang()) ?? vids[0];
+  return (
+    <>
+      {sketch && <SketchView sketch={sketch} label={t(props.s.title)} />}
+      {d && (
+        <button type="button" className="list-item tr-section-drill" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
+          <span className="tr-cat-icon small">{CAT_ICON[d.cat]}</span>
+          <span className="grow">
+            <span className="eyebrow">{tr('Practise it', 'So übst du es')}</span>
+            <span className="title">{t(d.name)}</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
+      {video && <VideoCard v={video} />}
+    </>
+  );
+}
+
 const CAT_TAB = new Map<CategoryId, 'drills' | 'basics' | 'faults' | 'videos'>();
 
 function CategoryView(props: { id: CategoryId; nav: Nav }) {
@@ -719,7 +769,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
                 </ul>
               )}
               {s.fact && <p className="tr-fact">{t(s.fact)}</p>}
-              {s.sketch && <SketchView sketch={s.sketch} label={t(s.title)} />}
+              <SectionMedia s={s} videos={c.videos} nav={props.nav} />
             </Collapsible>
           ))}
           {c.see?.length ? (

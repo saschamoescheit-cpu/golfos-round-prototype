@@ -19,13 +19,15 @@ import { practice, practiceDrills } from './practice';
 import { SKETCHES } from './sketches';
 import { moreDrills } from './more';
 import { VIDEOS_DE } from './videos-de';
+import { SECTION_MEDIA } from './section-media';
 
 // All content of the Training module. Order of the categories = order in the library: the short game first
 // (where most strokes are lost), then the long game, then the head and the body.
 
-export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching, bunker, slopes, trouble, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice].map((c) =>
-  VIDEOS_DE[c.id] ? { ...c, videos: [...(c.videos ?? []), ...VIDEOS_DE[c.id]!] } : c,
-);
+export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching, bunker, slopes, trouble, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice]
+  .map((c) => (VIDEOS_DE[c.id] ? { ...c, videos: [...(c.videos ?? []), ...VIDEOS_DE[c.id]!] } : c))
+  // a picture and, where there is one, a video for every section of the basics (Sascha 16.10.2026)
+  .map((c) => ({ ...c, sections: c.sections.map((x, i) => ({ ...SECTION_MEDIA[c.id]?.[i], ...x })) }));
 
 export const DRILLS: Drill[] = ([
   ...puttingDrills,

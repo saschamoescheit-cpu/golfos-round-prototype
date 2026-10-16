@@ -45,6 +45,10 @@ export interface Section {
   /** a key figure or rule of thumb, shown highlighted */
   fact?: L;
   sketch?: Sketch;
+  /** the drill that shows it (its sketch when the section has none, and a link) */
+  drill?: string;
+  /** YouTube ids from the topic videos that explain it */
+  videos?: string[];
 }
 
 /** A typical fault: what the player sees – why – what helps, with drills that fix it. */

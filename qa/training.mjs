@@ -60,6 +60,9 @@ ok(topicTabs.length === 4 && topicTabs[0].startsWith('Übungen') && topicTabs[1]
 ok((await p.locator('.tr-gear-row, .tr-product').count()) === 0, 'no product list on the topic page');
 await p.getByRole('tab', { name: 'Grundlagen' }).click();
 ok((await p.locator('.tr-intro-text').isVisible()) && (await p.locator('.tr-drill-row').count()) === 0, 'basics tab shows only the knowledge');
+const firstSection = p.locator('.tr-coll').first();
+ok((await firstSection.locator('.tr-sketch svg').count()) >= 1 && (await firstSection.locator('.tr-section-drill').count()) === 1, 'a basics section has a picture and its drill');
+ok((await p.locator('.tr-video-thumb img').count()) >= 1, 'video with a preview picture in the basics');
 await p.getByRole('tab', { name: 'Fehler' }).click();
 await p.locator('.list .list-item').first().click();
 await p.waitForTimeout(200);
@@ -70,6 +73,7 @@ await p.getByRole('tab', { name: /^Übungen/ }).click();
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).click();
 await p.waitForTimeout(300);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'drill shows its sketch');
+ok(await p.locator('.tabbar').isVisible(), 'the menu stays at the bottom on the drill page (Sascha 16.10.2026)');
 ok((await p.locator('.tr-targets .mine').innerText()).includes('Hcp 11–20'), 'target of the player’s band is highlighted (hcp 12.4)');
 await p.locator('.tr-fav').click();
 for (let i = 0; i < 11; i++) await p.locator('.tr-result button').nth(1).click();
@@ -162,8 +166,6 @@ await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Tiger' }).first()
 await p.locator('.tr-fav').click();
 await p.getByRole('button', { name: '+ Zu meiner eigenen Einheit' }).click();
 ok((await p.locator('.tr-plan-list li').count()) === 1, 'drill page adds the drill to an own session');
-await tab('Üben').catch(() => {});
-for (let k = 0; k < 3; k++) await back().catch(() => {});
 await tab('Üben');
 ok(await p.getByRole('button', { name: /Favoriten üben/ }).isVisible(), 'favourites can be practised as a session');
 

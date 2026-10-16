@@ -105,6 +105,18 @@ describe('training content', () => {
     expect(DRILLS.filter((d) => gearForDrill(d).length > 0).length).toBeGreaterThan(50);
   });
 
+  it('every section of the basics has a picture, its drill and videos resolve (Sascha 16.10.2026)', () => {
+    for (const c of CATEGORIES)
+      c.sections.forEach((s, i) => {
+        const where = `${c.id} ${i} ${s.title.de}`;
+        if (s.drill) expect(drillById(s.drill), where).toBeTruthy();
+        expect(s.sketch ?? (s.drill ? drillById(s.drill)?.sketch : undefined), where).toBeTruthy();
+        for (const id of s.videos ?? []) expect(c.videos?.some((v) => v.id === id), `${where} → ${id}`).toBe(true);
+      });
+    const withVideo = CATEGORIES.flatMap((c) => c.sections).filter((s) => s.videos?.length).length;
+    expect(withVideo).toBeGreaterThan(50);
+  });
+
   it('every Coach fault points to existing drills', () => {
     expect(Object.keys(COACH_FAULT_DRILLS).length).toBe(32);
     for (const [fault, ids] of Object.entries(COACH_FAULT_DRILLS)) for (const id of ids) expect(drillById(id), `${fault} → ${id}`).toBeTruthy();
