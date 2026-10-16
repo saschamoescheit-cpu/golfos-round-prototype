@@ -378,7 +378,8 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
   }
   return (
     <svg viewBox={view} width="100%" role="img" aria-label={props.label ?? tr('Sketch', 'Skizze')} style={{ display: 'block', background: C.sky, borderRadius: 12 }}>
-      {items.map(draw)}
+      {/* a thumbnail shows the scene only – numbered marks and texts are unreadable that small */}
+      {(props.thumb ? items.filter((it) => it.k !== 'callout' && it.k !== 'text') : items).map(draw)}
     </svg>
   );
 }
