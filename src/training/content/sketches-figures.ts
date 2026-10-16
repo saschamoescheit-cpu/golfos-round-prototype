@@ -144,8 +144,7 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     fig(2.2, 'front', { tilt: 9.5, y: 0.57 }),
     ball(2.25, 0.57),
     co('clubHead', L('the ball goes where the club brushes the grass', 'Ball dorthin, wo der Schläger das Gras streift'), [3.7, 0.55]),
-    txt([4.7, 2.3], L('uphill: usually further forward', 'bergauf: meist weiter vorn'), 10),
-  ]),
+  ], L('Practice swings on the slope: uphill the club usually brushes further forward, downhill further back.', 'Probeschwünge im Hang: bergauf streift der Schläger meist weiter vorn, bergab weiter hinten.')),
   'hold-finish-slope': S(6, 2.8, [
     slope(6, 0.9, 0.2),
     fig(2.2, 'frontFinish', { tilt: -6.7, y: 0.64 }),
@@ -187,7 +186,7 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     ground(5),
     fig(1.9, 'halfBack', { stance: 'together', club: 'iron' }),
     co('leadAnkle', L('while swinging back: step to the target', 'beim Ausholen: Schritt zum Ziel'), [3.3, 0.75]),
-    arrow([2.05, 0.35], [2.55, 0.35]),
+    arrow([2.3, 0.3], [2.8, 0.3]),
   ], L('Feet together at address. Plant the foot first – then swing down: the weight moves forward by itself.', 'Ansprache mit geschlossenen Füßen. Erst den Fuß aufsetzen – dann abschwingen: das Gewicht kommt von selbst nach vorn.')),
   'impact-bag': S(4, 2.6, [
     ground(4),
@@ -198,8 +197,7 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     co('hands', L('hands ahead of the clubhead', 'Hände vor dem Schlägerkopf'), [3.0, 1.35]),
     co('leadHip', L('belt buckle to the bag or further', 'Gürtelschnalle zum Sack oder weiter'), [3.1, 1.9]),
     co('leadAnkle', L('weight on the lead foot', 'Gewicht auf dem vorderen Fuß'), [3.0, 0.7]),
-    txt([2.28, 0.3], L('bag', 'Sack'), 10, 'start'),
-  ]),
+  ], L('The clubhead meets an impact bag (or a folded towel) where the ball would be – hold this position 3 s.', 'Der Schlägerkopf trifft einen Impact-Sack (oder ein gefaltetes Handtuch) dort, wo der Ball läge – die Position 3 s halten.')),
   'lead-arm-only': S(4, 2.6, [
     ground(4),
     fig(1.9, 'halfThrough', { oneHand: true, club: 'iron' }),
