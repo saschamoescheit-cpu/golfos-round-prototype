@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { lastSync, loadSession, signIn, signOut, syncConfigured, syncNow } from '../lib/sync';
+import { dropReplaced, keepThisDevice, lastSync, lastSyncError, loadSession, replacedSettings, signIn, signOut, syncConfigured, syncNow } from '../lib/sync';
 import { getLang, tr } from '../lib/i18n';
 
 // "On all your devices" in the profile (feature 013): sign in with Google, then rounds, games, profile, bag and
@@ -8,12 +8,16 @@ import { getLang, tr } from '../lib/i18n';
 export function SyncCard(props: { onSignedIn?: () => void }) {
   const [session, setSession] = useState(loadSession);
   const [last, setLast] = useState(lastSync);
+  const [err, setErr] = useState(lastSyncError);
+  const [replaced, setReplaced] = useState(() => replacedSettings());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
     const on = () => {
       setSession(loadSession());
       setLast(lastSync());
+      setErr(lastSyncError());
+      setReplaced(replacedSettings());
       props.onSignedIn?.();
     };
     window.addEventListener('golfos:synced', on);
@@ -59,7 +63,14 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
                 setBusy(true);
                 const r = await syncNow();
                 setBusy(false);
-                setMsg(r ? tr(`Synced · ${r.pushed} sent, ${r.pulled} received.`, `Abgeglichen · ${r.pushed} gesendet, ${r.pulled} empfangen.`) : tr('No connection right now – it syncs by itself later.', 'Gerade keine Verbindung – der Abgleich läuft später von selbst.'));
+                setErr(lastSyncError());
+                setMsg(
+                  r
+                    ? tr(`Synced · ${r.pushed} sent, ${r.pulled} received · ${r.server ?? 0} entries on the server.`, `Abgeglichen · ${r.pushed} gesendet, ${r.pulled} empfangen · ${r.server ?? 0} Einträge auf dem Server.`) + (r.failed ? ' ' + (lastSyncError()?.text ?? '') : '')
+                    : navigator.onLine === false
+                      ? tr('No connection right now – it syncs by itself later.', 'Gerade keine Verbindung – der Abgleich läuft später von selbst.')
+                      : (lastSyncError()?.text ?? tr('Sync did not run – please try again.', 'Abgleich lief nicht – bitte noch einmal versuchen.')),
+                );
               }}
             >
               {busy ? tr('Syncing …', 'Gleiche ab …') : tr('Sync now', 'Jetzt abgleichen')}
@@ -79,6 +90,59 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
         </>
       )}
       {msg && <span className="muted small">{msg}</span>}
+      {!msg && err && <span className="small warn-text">{err.text}</span>}
+      {/* settings of this device replaced by another device's at the first sync – the player decides */}
+      {session && replaced.length > 0 && (
+        <div className="notice" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span>
+            {tr(
+              `Settings taken from your other device: ${replaced.map(settingName).join(', ')}.`,
+              `Einstellungen vom anderen Gerät übernommen: ${replaced.map(settingName).join(', ')}.`,
+            )}
+          </span>
+          <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={async () => {
+                keepThisDevice();
+                setReplaced([]);
+                window.dispatchEvent(new Event('golfos:settings-restored'));
+                const r = await syncNow();
+                setMsg(r ? tr('This device’s settings kept – the other devices get them now.', 'Einstellungen dieses Geräts behalten – die anderen Geräte bekommen sie jetzt.') : null);
+                setTimeout(() => location.reload(), 600);
+              }}
+            >
+              {tr('Keep this device’s', 'Die von diesem Gerät behalten')}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                dropReplaced();
+                setReplaced([]);
+              }}
+            >
+              {tr('Fine as it is', 'Passt so')}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
+}
+
+/** The settings' names in the player's words. */
+function settingName(key: string): string {
+  const names: Record<string, string> = {
+    'golfos.profile.v1': tr('profile', 'Profil'),
+    'golfos.bag.v1': tr('bag', 'Bag'),
+    'golfos.bagstyle.v1': tr('club names', 'Schlägernamen'),
+    'golfos.caddie.v1': tr('caddie', 'Caddie'),
+    'golfos.partials.v1': tr('partial swings', 'Teilschwünge'),
+    'golfos.unit.v1': tr('distances in', 'Distanzen in'),
+    'golfos.lang.v1': tr('language', 'Sprache'),
+    'golfos.me.v1': tr('round start', 'Rundenstart'),
+  };
+  return names[key] ?? key;
 }

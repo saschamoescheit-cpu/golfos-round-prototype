@@ -10,6 +10,7 @@ import { playerBag } from '../lib/stats';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { PuttEditor } from '../components/PuttEditor';
+import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
 import { greenWalk } from '../lib/greenwalk';
 import { approachFrom } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
@@ -572,6 +573,23 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             : tr('Confirm round ✓', 'Runde bestätigen ✓')}
       </button>
 
+      {/* the round as a file for the analysis of the shot detection (Sascha 16.10.2026) */}
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={async () => {
+          const detectedNow = round.holes.map((h, i) => {
+            const m = maps[i];
+            const found = m && parts[i]?.length ? detectWithScore(parts[i], m, h.par, bag, entries[i]) : null;
+            return found ? { shots: found.shots.map((x) => ({ pos: x.pos, club: x.club ?? null })), onGreen: found.onGreen ?? null } : null;
+          });
+          const data = buildExport({ app: __BUILD_TIME__, round, track, caddieLog: cadLog, detectedNow });
+          const how = await shareExport(data, exportFileName(round));
+          if (how === 'downloaded') setNotice(tr('Round saved as a file (Downloads).', 'Runde als Datei gespeichert (Downloads).'));
+        }}
+      >
+        {tr('Export round (file for the analysis)', 'Runde exportieren (Datei für die Auswertung)')}
+      </button>
       {editing && d && (
         <ShotSheet
           title={tr(`Hole ${hole.label} · shot ${edit! + 1}`, `Loch ${hole.label} · Schlag ${edit! + 1}`)}

@@ -1,4 +1,5 @@
 import { loadProfile, saveProfile } from './profile';
+import { tr } from './i18n';
 
 // Sync between the player's devices (feature 013, Sascha 15.10.2026: "iPhone, iPad and PC should show the same").
 // Offline first: the app keeps saving to the device as before; with a Google login and a network the data is
@@ -26,7 +27,8 @@ export interface Remote {
   list(): Promise<Row[]>;
   /** The data of these rows. */
   fetch(keys: { kind: string; id: string }[]): Promise<Row[]>;
-  upsert(rows: Row[]): Promise<void>;
+  /** Sends the rows; returns those the server refused (the rest is saved – one bad row never blocks the others). */
+  upsert(rows: Row[]): Promise<void | { row: Row; error: string }[]>;
 }
 
 const META = 'golfos.sync.meta.v1';
@@ -86,6 +88,36 @@ const parse = <T>(s: string | null, fallback: T): T => {
   }
 };
 
+/** Settings of this device that the sync replaced by another device's (key → the value it had here). */
+const REPLACED = 'golfos.sync.replaced.v1';
+export function replacedSettings(store: LocalStore = browserStore): string[] {
+  return Object.keys(parse<Record<string, unknown>>(store.get(REPLACED), {}));
+}
+/** Keep this device's settings after all: they come back and go to the other devices with the next sync. */
+export function keepThisDevice(store: LocalStore = browserStore): void {
+  const kept = parse<Record<string, { value: string }>>(store.get(REPLACED), {});
+  for (const [key, v] of Object.entries(kept)) store.set(key, v.value);
+  store.remove(REPLACED);
+}
+/** Fine with the other device's settings: forget this device's old ones. */
+export function dropReplaced(store: LocalStore = browserStore): void {
+  store.remove(REPLACED);
+}
+
+/** Settings the app stores as plain text, not JSON (the language: "de"). They travel as a JSON string. */
+const RAW_SETTINGS = new Set(['golfos.lang.v1']);
+/** A stored value as JSON for the server – null when it is no JSON at all (skipped: one odd value must never stop
+ *  the whole sync – Sascha 16.10.2026, the iPhone's "de" did exactly that). */
+function asJson(key: string, v: string): string | null {
+  if (RAW_SETTINGS.has(key)) return JSON.stringify(v);
+  try {
+    JSON.parse(v);
+    return v;
+  } catch {
+    return null;
+  }
+}
+
 /** Everything on this device that is synced, as kind|id → JSON. */
 export function localItems(store: LocalStore): Map<string, { kind: string; id: string; json: string }> {
   const out = new Map<string, { kind: string; id: string; json: string }>();
@@ -98,13 +130,15 @@ export function localItems(store: LocalStore): Map<string, { kind: string; id: s
   }
   for (const key of SETTINGS) {
     const v = store.get(key);
-    if (v != null) out.set(k('setting', key), { kind: 'setting', id: key, json: v });
+    const json = v != null ? asJson(key, v) : null;
+    if (json != null) out.set(k('setting', key), { kind: 'setting', id: key, json });
   }
   for (const key of store.keys()) {
     const p = PER.find((x) => key.startsWith(x.prefix));
     if (!p) continue;
     const v = store.get(key);
-    if (v != null) out.set(k(p.kind, key.slice(p.prefix.length)), { kind: p.kind, id: key.slice(p.prefix.length), json: v });
+    const json = v != null ? asJson(key, v) : null;
+    if (json != null) out.set(k(p.kind, key.slice(p.prefix.length)), { kind: p.kind, id: key.slice(p.prefix.length), json });
   }
   return out;
 }
@@ -120,7 +154,10 @@ function apply(store: LocalStore, kind: string, id: string, json: string | null)
   }
   if (kind === 'setting') {
     if (json == null) store.remove(id);
-    else store.set(id, json);
+    else if (RAW_SETTINGS.has(id)) {
+      const v = JSON.parse(json);
+      if (typeof v === 'string') store.set(id, v); // back to plain text, as the app reads it
+    } else store.set(id, json);
     return;
   }
   const p = PER.find((x) => x.kind === kind);
@@ -133,6 +170,11 @@ export interface SyncResult {
   pushed: number;
   pulled: number;
   at: string;
+  /** rows the server refused this time (tried again next sync) and why */
+  failed?: number;
+  error?: string;
+  /** rows of this player on the server – the same on every device once all are synced */
+  server?: number;
 }
 
 /**
@@ -198,6 +240,14 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
         continue;
       }
     }
+    // a setting of this device replaced by another device's: kept aside, never lost – the player can keep this
+    // device's instead (Sascha 16.10.2026: the iPhone, his main device, synced last)
+    if (r.kind === 'setting' && l != null) {
+      const kept = parse<Record<string, { value: string; at: string }>>(store.get(REPLACED), {});
+      const raw = store.get(r.id);
+      if (raw != null) kept[r.id] = { value: raw, at };
+      store.set(REPLACED, JSON.stringify(kept));
+    }
     apply(store, r.kind, r.id, json);
     meta[key] = { hash: hashOf(localItems(store).get(key)?.json ?? json), at: r.updated_at };
     pulled++;
@@ -216,13 +266,16 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
     pulled++;
   }
 
-  if (push.length) await remote.upsert(push);
-  for (const p of push) meta[k(p.kind, p.id)] = { hash: p.deleted ? '' : hashOf(JSON.stringify(p.data)), at: p.updated_at };
+  const refused = push.length ? ((await remote.upsert(push)) ?? []) : [];
+  const failedKeys = new Set(refused.map((f) => k(f.row.kind, f.row.id)));
+  const sent = push.filter((p) => !failedKeys.has(k(p.kind, p.id)));
+  for (const p of sent) meta[k(p.kind, p.id)] = { hash: p.deleted ? '' : hashOf(JSON.stringify(p.data)), at: p.updated_at };
   // a pushed setting or list entry: its fingerprint as the device stores it
   const after = localItems(store);
-  for (const p of push) if (!p.deleted && after.get(k(p.kind, p.id))) meta[k(p.kind, p.id)].hash = hashOf(after.get(k(p.kind, p.id))!.json);
+  for (const p of sent) if (!p.deleted && after.get(k(p.kind, p.id))) meta[k(p.kind, p.id)].hash = hashOf(after.get(k(p.kind, p.id))!.json);
   store.set(META, JSON.stringify(meta));
-  return { pushed: push.length, pulled, at };
+  const server = new Set([...rows.filter((r) => !r.deleted).map((r) => k(r.kind, r.id)), ...sent.filter((p) => !p.deleted).map((p) => k(p.kind, p.id))]).size;
+  return { pushed: sent.length, pulled, at, server, ...(refused.length ? { failed: refused.length, error: refused[0].error } : {}) };
 }
 
 /** How much a round or game holds: entered scores and shots – the fuller version wins a conflict. */
@@ -319,24 +372,61 @@ export async function finishSignIn(): Promise<Session | null> {
   return s;
 }
 
-/** A valid access token – refreshed when it runs out (a token lives an hour). */
+/** A valid access token – refreshed when it runs out (a token lives an hour). One refresh at a time: two at once
+ *  (sync and a shared game) would use the same refresh token twice, and the second would sign the player out. */
+let refreshing: Promise<string | null> | null = null;
 export async function authToken(): Promise<string | null> {
   const s = loadSession();
   if (!s) return null;
   if (s.expires_at - 60 > Date.now() / 1000) return s.access_token;
-  const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-    method: 'POST',
-    headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: s.refresh_token }),
-  });
-  if (!r.ok) {
-    if (r.status === 400 || r.status === 401) saveSession(null); // signed out elsewhere
-    return null;
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: s.refresh_token }),
+      });
+      if (!r.ok) {
+        const why = await r.text().catch(() => '');
+        // the login is really gone (signed out elsewhere, revoked): sign in again – said in the profile
+        if ((r.status === 400 || r.status === 401) && /invalid|not found|revoked/i.test(why) && !/already used/i.test(why)) {
+          saveSession(null);
+          noteSyncError(tr('Signed out – please sign in again.', 'Abgemeldet – bitte neu anmelden.'));
+        }
+        return null;
+      }
+      const j = await r.json();
+      const next = { ...s, access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (j.expires_in ?? 3600) };
+      saveSession(next);
+      return next.access_token as string;
+    } catch {
+      return null; // offline
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
+/** Below the server's request size limit: rows go in packets of at most ~700 KB (a GPS track can be 0.5 MB). */
+const PACKET_BYTES = 700_000;
+export function packets<T>(items: T[], size: (x: T) => number, max = PACKET_BYTES, maxCount = 50): T[][] {
+  const out: T[][] = [];
+  let cur: T[] = [];
+  let bytes = 0;
+  for (const x of items) {
+    const b = size(x);
+    if (cur.length && (bytes + b > max || cur.length >= maxCount)) {
+      out.push(cur);
+      cur = [];
+      bytes = 0;
+    }
+    cur.push(x);
+    bytes += b;
   }
-  const j = await r.json();
-  const next = { ...s, access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (j.expires_in ?? 3600) };
-  saveSession(next);
-  return next.access_token;
+  if (cur.length) out.push(cur);
+  return out;
 }
 
 function supabaseRemote(bearer: string): Remote {
@@ -347,7 +437,15 @@ function supabaseRemote(bearer: string): Remote {
     return r;
   };
   return {
-    list: async () => (await ok(await fetch(`${base}?select=kind,id,updated_at,deleted`, { headers }))).json(),
+    list: async () => {
+      // the server hands out at most 1000 rows per request: page through all of them
+      const all: Row[] = [];
+      for (let from = 0; ; from += 1000) {
+        const page: Row[] = await (await ok(await fetch(`${base}?select=kind,id,updated_at,deleted&order=kind,id&limit=1000&offset=${from}`, { headers }))).json();
+        all.push(...page);
+        if (page.length < 1000) return all;
+      }
+    },
     fetch: async (keys) => {
       const out: Row[] = [];
       const byKind = new Map<string, string[]>();
@@ -360,16 +458,38 @@ function supabaseRemote(bearer: string): Remote {
       return out;
     },
     upsert: async (rows) => {
-      for (let i = 0; i < rows.length; i += 50) {
-        const chunk = rows.slice(i, i + 50).map((r) => ({ kind: r.kind, id: r.id, data: r.data ?? {}, updated_at: r.updated_at, deleted: !!r.deleted }));
-        await ok(await fetch(`${base}?on_conflict=user_id,kind,id`, { method: 'POST', headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(chunk) }));
+      const body = (r: Row) => ({ kind: r.kind, id: r.id, data: r.data ?? {}, updated_at: r.updated_at, deleted: !!r.deleted });
+      const send = (list: Row[]) => fetch(`${base}?on_conflict=user_id,kind,id`, { method: 'POST', headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(list.map(body)) });
+      const why = async (x: Response) => `${x.status} ${(await x.text().catch(() => '')).slice(0, 120)}`.trim();
+      const failed: { row: Row; error: string }[] = [];
+      for (const chunk of packets(rows, (r) => JSON.stringify(body(r)).length)) {
+        const r = await send(chunk);
+        if (r.ok) continue;
+        if (r.status === 401) throw new Error('sync 401'); // the login: nothing goes through – try again later
+        // one refused row must not block the others: one by one, and note which ones the server refuses
+        if (chunk.length === 1) {
+          failed.push({ row: chunk[0], error: await why(r) });
+          continue;
+        }
+        for (const row of chunk) {
+          const one = await send([row]);
+          if (!one.ok) failed.push({ row, error: await why(one) });
+        }
       }
+      return failed;
     },
   };
 }
 
 const LAST = 'golfos.sync.last.v1';
 export const lastSync = (): string | null => browserStore.get(LAST);
+/** What went wrong at the last sync (Sascha 16.10.2026: "the iPhone's round is not on the PC" – it said nothing). */
+const LAST_ERROR = 'golfos.sync.error.v1';
+export const lastSyncError = (): { at: string; text: string } | null => parse<{ at: string; text: string } | null>(browserStore.get(LAST_ERROR), null);
+function noteSyncError(text: string | null): void {
+  if (text) browserStore.set(LAST_ERROR, JSON.stringify({ at: new Date().toISOString(), text }));
+  else browserStore.remove(LAST_ERROR);
+}
 let running: Promise<SyncResult | null> | null = null;
 
 /** Syncs now if signed in and online; tells the app to reload what came down. One at a time. */
@@ -382,14 +502,18 @@ export function syncNow(): Promise<SyncResult | null> {
       if (!t) return null;
       const res = await syncOnce(browserStore, supabaseRemote(t));
       browserStore.set(LAST, res.at);
+      noteSyncError(res.failed ? tr(`${res.failed} entries were refused (${res.error}) – tried again at the next sync.`, `${res.failed} Einträge abgelehnt (${res.error}) – beim nächsten Abgleich erneut.`) : null);
       if (res.pulled) {
         window.dispatchEvent(new Event('golfos:rounds-changed'));
         window.dispatchEvent(new Event('golfos:games-changed'));
       }
       window.dispatchEvent(new Event('golfos:synced'));
       return res;
-    } catch {
-      return null; // offline or the server asleep – next time
+    } catch (e) {
+      // offline or the server asleep – next time; anything else is shown in the profile
+      if (typeof navigator === 'undefined' || navigator.onLine !== false) noteSyncError(tr(`Sync failed: ${(e as Error).message}`, `Abgleich fehlgeschlagen: ${(e as Error).message}`));
+      window.dispatchEvent(new Event('golfos:synced'));
+      return null;
     } finally {
       running = null;
     }
