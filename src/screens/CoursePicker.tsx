@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Course, CourseSummary } from '../types';
-import { saveCachedCourse } from '../lib/storage';
+import { loadCachedCourse, loadRounds, saveCachedCourse } from '../lib/storage';
 import { loadCourse, nearbyCourses, searchBundled, searchCourses } from '../lib/courses';
 import { Attribution, TopBar } from '../components/ui';
 import { tr } from '../lib/i18n';
@@ -19,6 +19,19 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
   const [searching, setSearching] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // the courses played last – one tap instead of a search (usability, night 16./17.10.2026)
+  const [recent] = useState<CourseSummary[]>(() => {
+    const seen = new Set<string>();
+    const out: CourseSummary[] = [];
+    for (const r of loadRounds().sort((a, b) => b.createdAt.localeCompare(a.createdAt))) {
+      if (seen.has(r.courseId) || r.preview) continue;
+      seen.add(r.courseId);
+      const c = loadCachedCourse(r.courseId);
+      if (c) out.push({ id: c.id, source: c.source, name: c.name, lat: c.lat, lon: c.lon });
+      if (out.length === 3) break;
+    }
+    return out;
+  });
   const searchTimer = useRef<number>();
   const position = useRef<{ lat: number; lon: number }>();
 
@@ -135,6 +148,13 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
           {renderList(results)}
         </section>
       ) : (
+        <>
+        {recent.length > 0 && (
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <h2>{tr('Played last', 'Zuletzt gespielt')}</h2>
+            {renderList(recent)}
+          </section>
+        )}
         <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <h2>{tr('Nearby', 'In der Nähe')}</h2>
           {nearby.status === 'locating' && (
@@ -148,6 +168,7 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
           {nearby.status === 'loaded' && nearby.courses.length === 0 && <p className="muted">{tr('No course within 40 km. Search by name instead.', 'Kein Platz im Umkreis von 40 km. Suche stattdessen nach dem Namen.')}</p>}
           {nearby.status === 'loaded' && renderList(nearby.courses)}
         </section>
+        </>
       )}
       <span className="spacer" />
       <Attribution />

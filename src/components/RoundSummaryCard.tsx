@@ -71,9 +71,6 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
         </>
       )}
       {s.nextRound && <p className="next-round">{s.nextRound}</p>}
-      <p className="muted small" style={{ margin: 0 }}>
-        {tr('Worked out from your shots and strokes gained. Drills are placeholders until our pro adds his own.', 'Aus deinen Schlägen und Strokes Gained berechnet. Die Übungen sind Platzhalter, bis unser Pro seine eigenen einträgt.')}
-      </p>
     </section>
   );
 }

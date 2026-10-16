@@ -179,20 +179,6 @@ export function Scorecard(props: {
       {round.players.length > 1 && <LeaderboardCard round={round} />}
 
       <ScoreTable round={round} onHole={setEditHole} />
-      <p className="muted small" style={{ margin: '-4px 0 0' }}>{tr('Tap a hole to correct it.', 'Tippe auf ein Loch, um es zu korrigieren.')}</p>
-      {editHole != null && (
-        <HoleEditSheet
-          round={round}
-          index={editHole}
-          onClose={() => setEditHole(null)}
-          onChange={props.onChange}
-        />
-      )}
-
-      <PlayedHcpCard round={round} onChange={props.onChange} />
-
-      {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
-
       {/* sign the round like a paper scorecard (Sascha 16.10.2026) – only signed rounds count in the statistics */}
       {finished && !round.preview && (
         <section className={`card sign-card${round.signedAt ? ' signed' : ''}`} aria-label={tr('Signature', 'Unterschrift')}>
@@ -230,6 +216,19 @@ export function Scorecard(props: {
           )}
         </section>
       )}
+
+      {editHole != null && (
+        <HoleEditSheet
+          round={round}
+          index={editHole}
+          onClose={() => setEditHole(null)}
+          onChange={props.onChange}
+        />
+      )}
+
+      <PlayedHcpCard round={round} onChange={props.onChange} />
+
+      {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h2>{tr('Your stats', 'Deine Statistik')}</h2>

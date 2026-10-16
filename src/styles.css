@@ -65,7 +65,8 @@ h2 { margin: 0; font: 600 17px var(--display); }
 }
 .btn-primary { background: var(--brand); color: var(--bg); }
 .btn-secondary { background: transparent; border: 1px solid var(--line-strong); color: var(--text); font-size: 16px; min-height: 52px; }
-.btn-ghost { background: none; border: 0; color: var(--text-2); font: 600 15px var(--body); min-height: 44px; text-decoration: underline; text-underline-offset: 3px; }
+.btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 14px; color: var(--text); font: 600 14px var(--body); min-height: 36px; text-decoration: none; white-space: nowrap; }
+.btn-ghost:active { background: var(--surface-2); }
 .btn-danger { color: var(--bad); border-color: #5a2a26; }
 
 .card { background: var(--surface); border-radius: 14px; padding: 14px 16px; }
