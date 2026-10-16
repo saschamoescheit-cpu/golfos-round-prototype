@@ -98,6 +98,7 @@ await back();
 await back();
 await p.waitForTimeout(300);
 ok(await p.getByRole('heading', { name: 'Deine Favoriten' }).isVisible(), 'favourite on the library page');
+ok((await p.locator('.tr-block').filter({ has: p.getByRole('heading', { name: 'Zuletzt angesehen' }) }).locator('.tr-mini').first().innerText()).includes('Landering'), 'library: the drill opened last is offered again');
 
 // fault finder
 await p.locator('.chip').filter({ hasText: 'Slice' }).first().click();
@@ -172,7 +173,7 @@ await back();
 await p.getByRole('button', { name: 'Einheit beenden' }).click();
 await p.getByRole('button', { name: 'Beenden & Ergebnis ansehen' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.tr-stats strong').first().innerText()).startsWith('1/4'), 'result page: 1 of 4 drills done');
+ok((await p.locator('.tile-num').first().innerText()).startsWith('1/4'), 'result page: 1 of 4 drills done');
 await shot('result');
 await back();
 await p.waitForTimeout(200);
@@ -254,7 +255,7 @@ await p.locator('.tr-reviewbar').getByRole('button', { name: '✕ Streichen' }).
 await back();
 await back();
 await p.waitForTimeout(300);
-ok((await p.locator('.tr-stats strong').first().innerText()).startsWith('2/'), 'review overview counts 2 marks');
+ok((await p.locator('.tile-num').first().innerText()).startsWith('2/'), 'review overview counts 2 marks');
 ok((await p.locator('.tr-review-topics').last().innerText()).includes('Abstände in Metern angeben'), 'the change note is listed');
 const [dl] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Als Datei speichern (.md)' }).click()]);
 ok(/golfos-training-pruefung-.*\.md/.test(dl.suggestedFilename()), `review list saved as ${dl.suggestedFilename()}`);

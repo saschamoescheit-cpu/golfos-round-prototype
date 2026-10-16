@@ -383,13 +383,55 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
   );
 }
 
+// the drills opened last – "carry on where you were" on the library page (night run 16./17.10.2026)
+const RECENT = 'golfos.training.recent.v1';
+function loadRecent(): string[] {
+  try {
+    return (JSON.parse(localStorage.getItem(RECENT) ?? '[]') as string[]).filter((id) => drillById(id));
+  } catch {
+    return [];
+  }
+}
+function rememberDrill(id: string): void {
+  try {
+    localStorage.setItem(RECENT, JSON.stringify([id, ...loadRecent().filter((x) => x !== id)].slice(0, 6)));
+  } catch {
+    /* private mode – nothing to remember */
+  }
+}
+
+// a drill as a small card in a sideways list (recently opened, favourites): picture, name, minutes and place
+function DrillMini(props: { d: Drill; nav: Nav }) {
+  const d = props.d;
+  return (
+    <button type="button" className="tr-mini" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
+      <SketchThumb sketch={d.sketch} fallback={CAT_ICON[d.cat]} />
+      <strong>{t(d.name)}</strong>
+      <span className="muted small">
+        {d.minutes} min · {placeName(d.place)}
+      </span>
+    </button>
+  );
+}
+
 function LearnTab(props: { nav: Nav; rounds: Round[] }) {
   const favs = loadFavs().map(drillById).filter((d): d is Drill => !!d);
+  const recent = loadRecent().map(drillById).filter((d): d is Drill => !!d).slice(0, 6);
   const advice = useMemo(() => adviceFromRounds(props.rounds), [props.rounds]);
   return (
     <>
       <h1 className="tab-title">{tr('Library', 'Wissen')}</h1>
       <SearchField nav={props.nav} />
+      {recent.length > 0 && (
+        <section className="tr-block">
+          <h2>{tr('Recently opened', 'Zuletzt angesehen')}</h2>
+          <div className="tr-hscroll">
+            {recent.map((d) => (
+              <DrillMini key={d.id} d={d} nav={props.nav} />
+            ))}
+          </div>
+        </section>
+      )}
       <DrillOfTheDay nav={props.nav} prefer={advice.flatMap((a) => a.drills)} />
       {advice.length > 0 && (
         <section className="tr-advice">
@@ -416,13 +458,7 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
           <h2>{tr('Your favourites', 'Deine Favoriten')}</h2>
           <div className="tr-hscroll">
             {favs.map((d) => (
-              <button key={d.id} type="button" className="tr-mini" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
-                <span className="tr-cat-icon small">{CAT_ICON[d.cat]}</span>
-                <strong>{t(d.name)}</strong>
-                <span className="muted small">
-                  {d.minutes} min · {placeName(d.place)}
-                </span>
-              </button>
+              <DrillMini key={d.id} d={d} nav={props.nav} />
             ))}
           </div>
         </section>
@@ -966,6 +1002,9 @@ function DrillView(props: { id: string; nav: Nav }) {
   const d = drillById(props.id);
   const [value, setValue] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    if (drillById(props.id)) rememberDrill(props.id);
+  }, [props.id]);
   if (!d) return null;
   const fav = loadFavs().includes(d.id);
   const entries = logFor(d.id);

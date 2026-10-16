@@ -1,8 +1,11 @@
 import type { Round } from '../types';
 import { analyse, focusAreas, pct } from '../lib/stats';
 import { groupForHandicap, groupSg, roundsSg, SG_CATEGORIES, type SgCategory } from '../lib/sg';
-import { tr } from '../lib/i18n';
+import { getLang, tr } from '../lib/i18n';
 import type { CategoryId } from './types';
+
+/** German decimal comma in a text with numbers ("30.5" → "30,5"). */
+const num = (s: string) => (getLang() === 'de' ? s.replace(/(\d)\.(\d)/g, '$1,$2') : s);
 
 // Training from the rounds (Sascha 15.10.2026): the weak spots of the player's own statistics – focus areas against
 // the next better handicap band and strokes gained against his comparison group – point to categories and drills.
@@ -49,7 +52,8 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
   // 1. focus areas against the next better handicap band
   const f = focusAreas(a);
   for (const fo of f?.focus ?? []) {
-    const why = `${fo.metric}: ${fo.yours} – ${tr('goal', 'Ziel')} ${fo.target} (${f!.target})`;
+    // the numbers come formatted from Rounds' stats with a decimal point – a comma in German
+    const why = num(`${fo.metric}: ${fo.yours} – ${tr('goal', 'Ziel')} ${fo.target} (${f!.target})`);
     if (fo.area === 'Putting') {
       const three = pct(a.threePutts) ?? 0;
       add(three >= 12 ? { cat: 'putting', why, drills: ['lag-circle', 'ladder', 'fringe', 'pelz-17'], weight: fo.gap } : { cat: 'putting', why, drills: ['clock', 'ball-gate', 'tiger-gate', 'mickelson-circle'], weight: fo.gap });

@@ -1,3 +1,4 @@
+// Contact sheet of uniformity.mjs: renders its index-<tag>.html into one PNG. Usage: node uniformity-sheet.mjs <index.html> <out.png>
 import { chromium } from 'playwright';
 import { pathToFileURL } from 'node:url';
 const [, , file, out] = process.argv;
