@@ -28,7 +28,7 @@ export interface Session {
   finishedAt: string | null;
   current: number;
   items: SessionItem[];
-  /** seconds spent per item, counted while the session screen is open and not paused */
+  /** seconds per item – from the timer, removed 16.10.2026; kept so older sessions still load */
   spent: number[];
   note?: string;
 }

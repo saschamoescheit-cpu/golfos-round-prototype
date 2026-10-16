@@ -7,7 +7,7 @@ import { TopTools } from '../components/TopTools';
 import { TopBar } from '../components/ui';
 import { Bin } from '../components/Bin';
 import { CATEGORIES, DRILLS, catById, drillById, drillsOf } from '../training/content';
-import { GEAR, gearById } from '../training/content/gear';
+import { GEAR, gearById, gearForDrill } from '../training/content/gear';
 import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
 import { SketchView } from '../training/Sketch';
@@ -38,7 +38,7 @@ import {
   type OwnPlan,
   type Session,
 } from '../training/store';
-import type { Category, CategoryId, Drill, Gear, GearKind, Level, Place, Plan } from '../training/types';
+import type { Category, CategoryId, Drill, Gear, GearKind, L, Level, Place, Plan } from '../training/types';
 import {
   bandName,
   bandOf,
@@ -547,7 +547,7 @@ function LogTab(props: { nav: Nav }) {
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const band = bandOf(playerHcp());
   const month = new Date().toISOString().slice(0, 7);
-  const minutesMonth = Math.round(sessions.filter((s) => s.createdAt.startsWith(month)).reduce((m, s) => m + s.spent.reduce((a, b) => a + b, 0), 0) / 60);
+  const drillsMonth = log.filter((e) => e.at.startsWith(month)).length;
   const drillIds = [...new Set(log.map((e) => e.drill))].filter((id) => drillById(id));
   return (
     <>
@@ -558,8 +558,8 @@ function LogTab(props: { nav: Nav }) {
           <span className="muted small">{tr('sessions', 'Einheiten')}</span>
         </div>
         <div>
-          <strong>{minutesMonth}</strong>
-          <span className="muted small">{tr('min this month', 'Min. diesen Monat')}</span>
+          <strong>{drillsMonth}</strong>
+          <span className="muted small">{tr('drills this month', 'Übungen diesen Monat')}</span>
         </div>
         <div>
           <strong>{log.length}</strong>
@@ -613,7 +613,7 @@ function LogTab(props: { nav: Nav }) {
                   <span className="grow">
                     <span className="title">{s.name}</span>
                     <span className="muted small">
-                      {s.items.filter((i) => i.done).length}/{s.items.length} {tr('drills', 'Übungen')} · {Math.round(s.spent.reduce((a, b) => a + b, 0) / 60)} min
+                      {s.items.filter((i) => i.done).length}/{s.items.length} {tr('drills', 'Übungen')}
                     </span>
                   </span>
                   <span aria-hidden="true">›</span>
@@ -635,136 +635,139 @@ function LogTab(props: { nav: Nav }) {
 
 // ---------- category ----------
 
+// the open tab per topic – back from a drill returns to the same tab
+const CAT_TAB = new Map<CategoryId, 'drills' | 'basics' | 'faults' | 'videos'>();
+
 function CategoryView(props: { id: CategoryId; nav: Nav }) {
   const c = catById(props.id);
+  const [tab, setTabState] = useState<'drills' | 'basics' | 'faults' | 'videos'>(() => CAT_TAB.get(props.id) ?? 'drills');
+  const setTab = (x: typeof tab) => {
+    CAT_TAB.set(props.id, x);
+    setTabState(x);
+  };
   const [lvl, setLvl] = useState<Level | 0>(0);
   const [place, setPlace] = useState<Place | null>(null);
   if (!c) return null;
   const all = drillsOf(c.id);
   const places = [...new Set(all.map((d) => d.place))];
   const drills = all.filter((d) => (lvl === 0 || d.level === lvl) && (!place || d.place === place));
-  const gear = GEAR.filter((g) => g.cats.includes(c.id));
+  // Sascha 16.10.2026: no one-pager – one part at a time; the gear only at the drill it belongs to
+  const tabs: { id: typeof tab; label: string }[] = [
+    { id: 'drills', label: tr('Drills', 'Übungen') },
+    { id: 'basics', label: tr('Basics', 'Grundlagen') },
+    ...(c.faults?.length ? [{ id: 'faults' as const, label: tr('Faults', 'Fehler') }] : []),
+    ...(c.videos?.length ? [{ id: 'videos' as const, label: 'Videos' }] : []),
+  ];
   return (
     <main className="screen training">
       <TopBar title={t(c.name)} onBack={props.nav.back} />
       <div className="tr-hero">
         <span className="tr-cat-icon large">{CAT_ICON[c.id]}</span>
-        <p>{t(c.intro)}</p>
+        <p>{t(c.short)}</p>
       </div>
-      <div className="tr-jump chip-set">
-        <a className="chip" href="#tr-basics">{tr('Basics', 'Grundlagen')}</a>
-        {c.faults?.length ? <a className="chip" href="#tr-faults">{tr('Faults', 'Fehler')}</a> : null}
-        <a className="chip" href="#tr-drills">{tr(`Drills (${all.length})`, `Übungen (${all.length})`)}</a>
-        {gear.length > 0 && <a className="chip" href="#tr-gear">{tr('Gear', 'Zubehör')}</a>}
-        {c.videos?.length ? <a className="chip" href="#tr-videos">Videos</a> : null}
-      </div>
-      {c.facts?.length ? (
-        <section className="card tr-facts">
-          <span className="eyebrow">{tr('Good to know', 'Gut zu wissen')}</span>
-          <ul>
-            {c.facts.map((f, i) => (
-              <li key={i}>{t(f)}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      <h2 id="tr-basics">{tr('Basics', 'Grundlagen')}</h2>
-      {c.sections.map((s, i) => (
-        <Collapsible key={i} title={<strong>{t(s.title)}</strong>} open={i === 0}>
-          {s.text?.map((p, k) => <p key={k}>{t(p)}</p>)}
-          {s.points && (
-            <ul className="tr-points">
-              {s.points.map((p, k) => (
-                <li key={k}>{t(p)}</li>
-              ))}
-            </ul>
-          )}
-          {s.fact && <p className="tr-fact">{t(s.fact)}</p>}
-          {s.sketch && <SketchView sketch={s.sketch} label={t(s.title)} />}
-        </Collapsible>
-      ))}
-      {c.faults?.length ? (
-        <>
-          <h2 id="tr-faults">{tr('Typical faults – and what helps', 'Typische Fehler – und was hilft')}</h2>
-          {c.faults.map((f, i) => (
-            <Collapsible key={i} title={<strong>{t(f.name)}</strong>}>
-              <dl className="tr-fault">
-                <dt>{tr('What you see', 'Was du siehst')}</dt>
-                <dd>{t(f.looks)}</dd>
-                <dt>{tr('Why', 'Warum')}</dt>
-                <dd>{t(f.cause)}</dd>
-                <dt>{tr('What helps', 'Was hilft')}</dt>
-                <dd>{t(f.fix)}</dd>
-              </dl>
-              {f.drills?.length ? (
-                <div className="chip-set">
-                  {f.drills
-                    .map(drillById)
-                    .filter((d): d is Drill => !!d)
-                    .map((d) => (
-                      <button key={d.id} type="button" className="chip" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
-                        {t(d.name)} ›
-                      </button>
-                    ))}
-                </div>
-              ) : null}
-            </Collapsible>
-          ))}
-        </>
-      ) : null}
-      <h2 id="tr-drills">{tr('Drills', 'Übungen')}</h2>
-      <div className="chip-set" role="group" aria-label={tr('Level', 'Niveau')}>
-        {([0, 1, 2, 3] as const).map((l) => (
-          <button key={l} type="button" className={`chip${lvl === l ? ' on' : ''}`} aria-pressed={lvl === l} onClick={() => setLvl(l)}>
-            {levelName(l)}
+      <div className="segmented tr-tabs" role="tablist" aria-label={t(c.name)}>
+        {tabs.map((x) => (
+          <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} aria-pressed={tab === x.id} onClick={() => setTab(x.id)}>
+            {x.label}
           </button>
         ))}
       </div>
-      {places.length > 1 && (
-        <div className="chip-set" role="group" aria-label={tr('Place', 'Ort')}>
-          {places.map((p) => (
-            <button key={p} type="button" className={`chip${place === p ? ' on' : ''}`} aria-pressed={place === p} onClick={() => setPlace(place === p ? null : p)}>
-              {placeName(p)}
-            </button>
-          ))}
-        </div>
-      )}
-      <DrillList drills={drills} nav={props.nav} />
-      {gear.length > 0 && (
+
+      {tab === 'drills' && (
         <>
-          <h2 id="tr-gear">{tr('Practice gear', 'Trainingszubehör')}</h2>
-          <div className="tr-hscroll">
-            {gear.map((g) => (
-              <GearTile key={g.id} g={g} nav={props.nav} />
+          <div className="chip-set" role="group" aria-label={tr('Level', 'Niveau')}>
+            {([0, 1, 2, 3] as const).map((l) => (
+              <button key={l} type="button" className={`chip${lvl === l ? ' on' : ''}`} aria-pressed={lvl === l} onClick={() => setLvl(l)}>
+                {levelName(l)}
+              </button>
             ))}
           </div>
+          {places.length > 1 && (
+            <div className="chip-set" role="group" aria-label={tr('Place', 'Ort')}>
+              {places.map((p) => (
+                <button key={p} type="button" className={`chip${place === p ? ' on' : ''}`} aria-pressed={place === p} onClick={() => setPlace(place === p ? null : p)}>
+                  {placeName(p)}
+                </button>
+              ))}
+            </div>
+          )}
+          <DrillList drills={drills} nav={props.nav} />
         </>
       )}
-      {c.videos?.length ? (
+
+      {tab === 'basics' && (
         <>
-          <h2 id="tr-videos">{tr('Explainer videos', 'Erklärvideos')}</h2>
+          <p className="tr-intro-text">{t(c.intro)}</p>
+          {c.facts?.length ? (
+            <section className="card tr-facts">
+              <span className="eyebrow">{tr('Good to know', 'Gut zu wissen')}</span>
+              <ul>
+                {c.facts.map((f, i) => (
+                  <li key={i}>{t(f)}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {c.sections.map((s, i) => (
+            <Collapsible key={i} title={<strong>{t(s.title)}</strong>} open={i === 0}>
+              {s.text?.map((p, k) => <p key={k}>{t(p)}</p>)}
+              {s.points && (
+                <ul className="tr-points">
+                  {s.points.map((p, k) => (
+                    <li key={k}>{t(p)}</li>
+                  ))}
+                </ul>
+              )}
+              {s.fact && <p className="tr-fact">{t(s.fact)}</p>}
+              {s.sketch && <SketchView sketch={s.sketch} label={t(s.title)} />}
+            </Collapsible>
+          ))}
+          {c.see?.length ? (
+            <div className="chip-set">
+              <span className="muted small">{tr('Related topics', 'Passende Themen')}:</span>
+              {c.see
+                .map(catById)
+                .filter((x): x is Category => !!x)
+                .map((x) => (
+                  <button key={x.id} type="button" className="chip" onClick={() => props.nav.push({ name: 'cat', id: x.id })}>
+                    {t(x.name)} ›
+                  </button>
+                ))}
+            </div>
+          ) : null}
+          <Sources list={c.sources} />
+        </>
+      )}
+
+      {tab === 'faults' && (
+        <>
+          <p className="muted" style={{ margin: 0 }}>
+            {tr('Tap a fault: what you see, why it happens, what helps – and the drills for it.', 'Tippe auf einen Fehler: was du siehst, warum er passiert, was hilft – und die Übungen dafür.')}
+          </p>
+          <ul className="list">
+            {(c.faults ?? []).map((f, i) => (
+              <li key={i}>
+                <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'fault', cat: c.id, index: i })}>
+                  <span className="grow">
+                    <span className="title">{t(f.name)}</span>
+                    <span className="muted small tr-two-lines">{t(f.looks)}</span>
+                  </span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {tab === 'videos' && c.videos?.length ? (
+        <>
           {/* videos in the player's language first */}
           {[...c.videos].sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang())).map((v) => (
             <VideoCard key={v.id} v={v} />
           ))}
         </>
       ) : null}
-      {c.see?.length ? (
-        <>
-          <h2>{tr('Related topics', 'Passende Themen')}</h2>
-          <div className="chip-set">
-            {c.see
-              .map(catById)
-              .filter((x): x is Category => !!x)
-              .map((x) => (
-                <button key={x.id} type="button" className="chip" onClick={() => props.nav.push({ name: 'cat', id: x.id })}>
-                  {t(x.name)} ›
-                </button>
-              ))}
-          </div>
-        </>
-      ) : null}
-      <Sources list={c.sources} />
     </main>
   );
 }
@@ -834,6 +837,9 @@ function DrillView(props: { id: string; nav: Nav }) {
   const band = bandOf(hcp);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const scored = d.scoring && d.scoring.kind !== 'none';
+  // Sascha 16.10.2026: the gear belongs to the drill – shown here, not on the topic page
+  const plainNeeds = (d.needs ?? []).filter((n): n is L => typeof n !== 'string');
+  const gear = gearForDrill(d);
   return (
     <main className="screen training">
       <TopBar
@@ -862,25 +868,15 @@ function DrillView(props: { id: string; nav: Nav }) {
       <section className="card tr-section">
         <h2>{tr('Set-up', 'Aufbau')}</h2>
         <p>{t(d.setup)}</p>
-        {d.needs?.length ? (
+        {plainNeeds.length ? (
           <div className="tr-needs">
             <span className="muted small">{tr('You need', 'Du brauchst')}:</span>
             <div className="chip-set">
-              {d.needs.map((n, i) => {
-                if (typeof n === 'string') {
-                  const g = gearById(n);
-                  return g ? (
-                    <button key={i} type="button" className="chip" onClick={() => props.nav.push({ name: 'gear', id: g.id })}>
-                      {g.name} ›
-                    </button>
-                  ) : null;
-                }
-                return (
-                  <span key={i} className="chip fact">
-                    {t(n)}
-                  </span>
-                );
-              })}
+              {plainNeeds.map((n, i) => (
+                <span key={i} className="chip fact">
+                  {t(n)}
+                </span>
+              ))}
             </div>
           </div>
         ) : null}
@@ -915,6 +911,14 @@ function DrillView(props: { id: string; nav: Nav }) {
               <strong>{tr('Harder', 'Schwerer')}:</strong> {t(d.harder)}
             </p>
           )}
+        </section>
+      )}
+      {gear.length > 0 && (
+        <section className="tr-block">
+          <h2>{tr('Gear for this drill', 'Zubehör für diese Übung')}</h2>
+          {gear.map((g) => (
+            <GearRow key={g.id} g={g} nav={props.nav} />
+          ))}
         </section>
       )}
       {d.targets && (
@@ -980,9 +984,6 @@ function DrillView(props: { id: string; nav: Nav }) {
         )}
       </section>
       <div className="tr-actions">
-        <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(t(d.name), [{ drill: d.id, minutes: d.minutes }]))}>
-          {tr('Practise now with timer', 'Jetzt mit Timer üben')}
-        </button>
         <button
           type="button"
           className="btn-ghost"
@@ -1272,6 +1273,27 @@ function GearTile(props: { g: Gear; nav: Nav }) {
       <strong>{props.g.name}</strong>
       <span className="muted small">{euroRange(props.g.price)}</span>
     </button>
+  );
+}
+
+/** A product in the context of a drill: picture, what it helps with, price, into the cart. */
+function GearRow(props: { g: Gear; nav: Nav }) {
+  useTrainingTick();
+  const inCart = loadCart().some((x) => x.gear === props.g.id);
+  return (
+    <div className="tr-gear-row">
+      <button type="button" className="tr-gear-row-main" onClick={() => props.nav.push({ name: 'gear', id: props.g.id })}>
+        <GearImage g={props.g} />
+        <span className="grow">
+          <strong>{props.g.name}</strong>
+          <span className="muted small tr-two-lines">{t(props.g.why)}</span>
+          <span className="tr-price small">{euroRange(props.g.price)}</span>
+        </span>
+      </button>
+      <button type="button" className={`chip${inCart ? ' on' : ''}`} onClick={() => setCartQty(props.g.id, inCart ? 0 : 1)}>
+        {inCart ? `✓ ${tr('in cart', 'im Korb')}` : `+ ${tr('cart', 'Warenkorb')}`}
+      </button>
+    </div>
   );
 }
 
@@ -1573,7 +1595,6 @@ function SessionResult(props: { id: string; nav: Nav }) {
   useTrainingTick();
   const s = loadSessions().find((x) => x.id === props.id);
   if (!s) return null;
-  const secs = s.spent.reduce((a, b) => a + b, 0);
   const band = bandOf(playerHcp());
   return (
     <main className="screen training">
@@ -1582,10 +1603,6 @@ function SessionResult(props: { id: string; nav: Nav }) {
         <div>
           <strong>{s.items.filter((i) => i.done).length}/{s.items.length}</strong>
           <span className="muted small">{tr('drills done', 'Übungen erledigt')}</span>
-        </div>
-        <div>
-          <strong>{Math.round(secs / 60)}</strong>
-          <span className="muted small">{tr('minutes', 'Minuten')}</span>
         </div>
         <div>
           <strong>{s.items.filter((i) => i.value != null).length}</strong>
@@ -1604,7 +1621,7 @@ function SessionResult(props: { id: string; nav: Nav }) {
                 <span className="grow">
                   <span className="title">{t(d.name)}</span>
                   <span className="muted small">
-                    {i.done ? scoreText(d.scoring, i.value ?? null) : tr('not done', 'nicht gemacht')} · {Math.round(s.spent[k] / 60)} min
+                    {i.done ? scoreText(d.scoring, i.value ?? null) : tr('not done', 'nicht gemacht')}
                   </span>
                 </span>
                 {ok != null && <span className={`badge ${ok ? 'ok' : 'warn'}`}>{ok ? tr('✓ goal', '✓ Ziel') : tr('below goal', 'unter Ziel')}</span>}

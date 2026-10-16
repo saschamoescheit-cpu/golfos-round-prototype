@@ -1,5 +1,5 @@
 // The Training module (15.10.2026): module choice, library, category, drill with a result, favourite, plan →
-// session with timer (next, pause, continue, finish), progress, search, own plan, shop → cart → checkout (simulated),
+// session (next, pause, continue, finish – no timer since 16.10.2026), progress, search, own plan, shop → cart → checkout (simulated),
 // delete a session with undo, English. Usage: node training.mjs <app url> [shots dir]
 import { webkit, devices } from 'playwright';
 
@@ -54,6 +54,19 @@ await p.locator('button.chip').filter({ hasText: 'Könner' }).click();
 const adv = await p.locator('.tr-drill-row').count();
 await p.locator('button.chip').filter({ hasText: /^alle$/ }).first().click();
 ok(adv > 0 && adv < (await p.locator('.tr-drill-row').count()), 'level filter works');
+// the topic page is split into tabs, products are not listed there (Sascha 16.10.2026)
+const topicTabs = await p.locator('.tr-tabs [role="tab"]').allInnerTexts();
+ok(topicTabs.length === 4 && topicTabs[0].startsWith('Übungen') && topicTabs[1] === 'Grundlagen', `topic tabs: ${topicTabs.join(' · ')}`);
+ok((await p.locator('.tr-gear-row, .tr-product').count()) === 0, 'no product list on the topic page');
+await p.getByRole('tab', { name: 'Grundlagen' }).click();
+ok((await p.locator('.tr-intro-text').isVisible()) && (await p.locator('.tr-drill-row').count()) === 0, 'basics tab shows only the knowledge');
+await p.getByRole('tab', { name: 'Fehler' }).click();
+await p.locator('.list .list-item').first().click();
+await p.waitForTimeout(200);
+ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 1, 'a fault leads to cause, cure and drills');
+await back();
+ok((await p.getByRole('tab', { name: 'Fehler' }).getAttribute('aria-selected')) === 'true', 'back returns to the same tab');
+await p.getByRole('tab', { name: /^Übungen/ }).click();
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).click();
 await p.waitForTimeout(300);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'drill shows its sketch');
@@ -68,11 +81,14 @@ await shot('drill');
 ok((await p.locator('iframe').count()) === 0, 'no video before tapping');
 await p.locator('.tr-video-cover').first().click();
 ok((await p.locator('iframe[src*="youtube-nocookie.com"]').count()) === 1, 'video loads from youtube-nocookie on tap');
-// gear from the drill
-await p.locator('.tr-needs .chip').filter({ hasText: 'EyeLine' }).first().click();
+// gear belongs to the drill
+const gearRows = p.locator('.tr-gear-row');
+ok((await gearRows.count()) >= 1 && (await gearRows.first().innerText()).includes('EyeLine'), 'the drill shows its own gear');
+await gearRows.first().locator('.chip').click();
+ok((await gearRows.first().locator('.chip').innerText()).includes('im Korb'), 'gear into the cart from the drill');
+await gearRows.first().locator('.tr-gear-row-main').click();
 await p.waitForTimeout(300);
-await p.getByRole('button', { name: 'In den Warenkorb' }).click();
-ok(await p.getByText('Im Warenkorb').isVisible(), 'gear into the cart from the drill');
+ok(await p.getByText('Im Warenkorb').isVisible(), 'gear page knows it is in the cart');
 await back();
 await back();
 await back();
@@ -99,17 +115,8 @@ await p.locator('.list-item').filter({ hasText: 'Putten 30 Min: Startlinie' }).c
 await p.getByRole('button', { name: 'Einheit starten' }).click();
 await p.waitForTimeout(2300);
 ok(await p.locator('.tr-now').isVisible(), 'session runs');
-ok(/0:0[1-3]/.test(await p.locator('.tr-timer-time').innerText()), 'timer counts');
+ok((await p.locator('.tr-timer, .tr-timer-time').count()) === 0, 'no timer in the session (Sascha 16.10.2026)');
 await shot('session');
-// the phone goes into the pocket for 4 s: the time away counts once
-const before = await p.locator('.tr-timer-time').innerText();
-await p.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
-await p.waitForTimeout(4200);
-await p.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
-await p.waitForTimeout(300);
-const secs = (x) => Number(x.split(':')[0]) * 60 + Number(x.split(':')[1]);
-const gained = secs(await p.locator('.tr-timer-time').innerText()) - secs(before);
-ok(gained >= 4 && gained <= 6, `time in the pocket counts once (+${gained} s)`);
 for (let i = 0; i < 14; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Fertig – nächste Übung' }).click();
 ok((await p.locator('.tr-now-name').innerText()).includes('Tiger'), 'next drill after done');

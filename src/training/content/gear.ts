@@ -703,3 +703,72 @@ GEAR.push(
 );
 
 export const gearById = (id: string): Gear | undefined => GEAR.find((g) => g.id === id);
+
+// Gear per drill beyond what the drill names under "you need" (Sascha 16.10.2026: products belong to the drill,
+// not to the topic page). Best first.
+export const DRILL_GEAR: Record<string, string[]> = {
+  'tiger-gate': ['eyeline-gates', 'sklz-gates'],
+  'ball-gate': ['eyeline-edge-rail', 'sklz-gates'],
+  'sweetspot-gate': ['impact-tape', 'wellputt-stroke-itt'],
+  'coin-line': ['wellputt-start', 'eyeline-roll-rock'],
+  'chalk-line': ['putt-string', 'putting-arc'],
+  'mirror-setup': ['puttout-mirror', 'eyeline-mirror'],
+  'one-hand': ['eyeline-gates'],
+  metronome: ['wellputt-classic'],
+  ladder: ['tees-alignment'],
+  'pelz-17': ['book-pelz-putt'],
+  'lag-circle': ['target-rings', 'wellputt-16'],
+  clock: ['eyeline-bullseye'],
+  'mickelson-circle': ['eyeline-bullseye'],
+  'wellputt-lines': ['wellputt-classic', 'wellputt-start', 'wellputt-16'],
+  'pressure-putt': ['puttout-pressure'],
+  'apex-tee': ['eyeline-sword'],
+  'fall-line': ['book-pelz-putt'],
+  'landing-ring': ['target-rings'],
+  'flag-circles': ['target-rings'],
+  'chip-ladder': ['tees-alignment'],
+  'chip-towel-home': ['sklz-chip-net', 'decathlon-chip-net', 'foam-balls'],
+  'stick-lead-arm': ['tees-alignment'],
+  'lead-hand-chip': ['chip-master'],
+  'hold-finish-chip': ['stan-utley-wedge'],
+  'clock-matrix': ['garmin-r10', 'book-pelz-short'],
+  'wedge-ladder': ['garmin-r10'],
+  'towel-arms': ['smart-ball'],
+  'line-in-sand': ['sklz-bunker'],
+  'towel-behind': ['divot-board'],
+  'line-drill-irons': ['divot-board', 'impact-tape'],
+  'impact-bag': ['divot-home-range'],
+  gapping: ['garmin-r10', 'rapsodo-mlm2pro'],
+  'divot-board-drill': ['divot-board', 'divot-home-range'],
+  'tempo-321': ['orange-whip', 'lag-shot'],
+  'pause-top': ['lag-shot'],
+  'feet-together-swing': ['orange-whip'],
+  'pump-drill': ['shallow-shot'],
+  'slow-motion': ['swingsetter'],
+  'l-to-l': ['straightaway'],
+  'slice-gate': ['eyeline-speed-trap', 'sklz-swing-guide'],
+  'headcover-outside': ['shallow-shot'],
+  'split-grip': ['izzo-swing-paddle'],
+  'hook-gate': ['hackmotion'],
+  'alignment-station': ['tour-aim', 'eyeline-practice-t'],
+  'ball-position-ladder': ['izzo-sure-stance'],
+  'speed-training': ['superspeed', 'prgr-radar'],
+  'tee-height': ['impact-tape'],
+  'driver-face-gate': ['impact-tape'],
+  'pallof-press': ['resistance-bands'],
+  'open-books': ['foam-roller'],
+  'wrist-forearm': ['superspeed-squeeze'],
+  'single-leg-balance': ['superspeed-stability'],
+  'warmup-10': ['resistance-bands', 'orange-whip'],
+  'decade-light': ['garmin-r10', 'book-decade'],
+  'think-play-box': ['book-vision54'],
+  'routine-build': ['book-rotella'],
+  'range-round': ['garmin-r10'],
+  'stats-round': ['book-broadie'],
+};
+
+/** The products for a drill: what it names under "you need", then the matching extras. */
+export function gearForDrill(d: { id: string; needs?: (string | L)[] }): Gear[] {
+  const ids = [...(d.needs ?? []).filter((n): n is string => typeof n === 'string'), ...(DRILL_GEAR[d.id] ?? [])];
+  return [...new Set(ids)].map(gearById).filter((g): g is Gear => !!g);
+}

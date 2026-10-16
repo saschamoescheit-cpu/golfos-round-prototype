@@ -122,10 +122,6 @@
 .tr-now-head { display: flex; gap: 12px; align-items: center; }
 .tr-now-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tr-now-name { font: 700 21px/1.2 var(--display); }
-.tr-timer { display: flex; align-items: baseline; gap: 8px; }
-.tr-timer .chip { margin-left: auto; }
-.tr-timer-time { font: 700 40px/1 var(--display); font-variant-numeric: tabular-nums; }
-.tr-timer.over .tr-timer-time { color: var(--warn); }
 .tr-bar-name span:first-child { font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52vw; }
 .tr-session .drawer-row[aria-current='true'] { background: var(--brand-soft); }
 .tr-session .drawer-row > span:first-child { flex: 1; padding-right: 8px; }
@@ -133,10 +129,18 @@
 @media (max-width: 360px) {
   .tr-cat-grid, .tr-shop-grid { gap: 8px; }
   .tr-cat { padding: 12px; min-height: 140px; }
-  .tr-timer-time { font-size: 34px; }
 }
 
-/* intro and drill of the day (16.10.2026) */
-.tr-intro { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--brand); }
+/* drill of the day (16.10.2026) */
 .tr-today { border: 1px dashed var(--brand); }
 .tr-today .eyebrow { color: var(--brand-text); }
+
+/* topic tabs and gear per drill (Sascha 16.10.2026) */
+.tr-tabs { position: sticky; top: 0; z-index: 2; }
+.tr-tabs button { font-size: 14px; min-height: 46px; }
+.tr-intro-text { color: var(--text-2); }
+.tr-gear-row { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.tr-gear-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; text-align: left; color: var(--text); font: inherit; }
+.tr-gear-row-main .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tr-gear-row .tr-gear-img { width: 64px; flex-shrink: 0; }
+.tr-gear-row .chip { flex-shrink: 0; }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { TopBar } from '../components/ui';
 import { drillById } from './content';
@@ -8,35 +8,14 @@ import { CAT_ICON, ResultInput, placeName, scoreText, t } from './ui';
 
 // A practice session in play – built like a round and a game (Sascha 15.10.2026: the same usability in every
 // module): the drill bar at the bottom with ‹ ›, the overview pulled up from it, and leaving = pause, finish or
-// cancel. The timer counts while the screen is open and not paused; the time per drill is kept.
-
-const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-
-function beep(): void {
-  try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.frequency.value = 880;
-    g.gain.value = 0.15;
-    o.connect(g).connect(ctx.destination);
-    o.start();
-    o.stop(ctx.currentTime + 0.35);
-    navigator.vibrate?.(200);
-  } catch {
-    /* no audio – the screen still shows it */
-  }
-}
+// cancel. No timer (Sascha 16.10.2026: not needed) – the minutes of a plan are only a guide.
 
 export function SessionPlay(props: { session: Session; onPause: () => void; onFinish: (s: Session) => void; onDelete: () => void; onDrill: (id: string) => void }) {
   const [s, setS] = useState<Session>(props.session);
-  const [running, setRunning] = useState(true);
   const [drawer, setDrawer] = useState(false);
   const [exit, setExit] = useState<null | 'menu' | 'end'>(null);
   const [showSteps, setShowSteps] = useState(true);
   const barTouch = useRef<number | null>(null);
-  const beeped = useRef<Set<number>>(new Set());
   const i = s.current;
   const item = s.items[i];
   const d = drillById(item.drill);
@@ -46,80 +25,6 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
     setS(next);
     saveSession(next);
   };
-
-  // the timer: one second at a time for the current drill, saved every 5 seconds
-  useEffect(() => {
-    if (!running) return;
-    const id = window.setInterval(() => {
-      setS((cur) => {
-        // while hidden the time away is added at once when the page comes back (no double counting)
-        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return cur;
-        const spent = cur.spent.map((v, k) => (k === cur.current ? v + 1 : v));
-        const next = { ...cur, spent };
-        if (spent[cur.current] % 5 === 0) saveSession(next);
-        if (spent[cur.current] === cur.items[cur.current].minutes * 60 && !beeped.current.has(cur.current)) {
-          beeped.current.add(cur.current);
-          beep();
-        }
-        return next;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [running]);
-  // keep the time when the app goes to the background – and count the time the phone was locked or in the pocket
-  // while the drill ran (at most 30 minutes; on the green the phone is usually in the pocket)
-  const hiddenAt = useRef<number | null>(null);
-  const runningRef = useRef(running);
-  runningRef.current = running;
-  useEffect(() => {
-    const onVis = () => {
-      if (document.visibilityState === 'hidden') {
-        hiddenAt.current = runningRef.current ? Date.now() : null;
-        setS((cur) => (saveSession(cur), cur));
-      } else if (hiddenAt.current != null) {
-        const away = Math.min(1800, Math.round((Date.now() - hiddenAt.current) / 1000));
-        hiddenAt.current = null;
-        if (away > 1) setS((cur) => {
-          const next = { ...cur, spent: cur.spent.map((v, k) => (k === cur.current ? v + away : v)) };
-          saveSession(next);
-          return next;
-        });
-      }
-    };
-    const save = () => setS((cur) => (saveSession(cur), cur));
-    document.addEventListener('visibilitychange', onVis);
-    window.addEventListener('pagehide', save);
-    return () => {
-      document.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('pagehide', save);
-    };
-  }, []);
-  // keep the screen on while the timer runs (the phone lies on the bag at the range)
-  useEffect(() => {
-    if (!running) return;
-    type Sentinel = { release: () => Promise<void> };
-    const api = (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<Sentinel> } }).wakeLock;
-    let lock: Sentinel | null = null;
-    let alive = true;
-    const take = async () => {
-      try {
-        const l = await api?.request('screen');
-        if (!l) return;
-        if (!alive) return void l.release();
-        lock = l;
-      } catch {
-        /* not supported or not allowed – the timer still counts the time away */
-      }
-    };
-    void take();
-    const onVisible = () => document.visibilityState === 'visible' && void take();
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      alive = false;
-      document.removeEventListener('visibilitychange', onVisible);
-      void lock?.release().catch(() => {});
-    };
-  }, [running]);
 
   const go = (k: number) => {
     if (k < 0 || k >= s.items.length) return;
@@ -148,21 +53,12 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
   };
 
   if (!d) return null;
-  const goal = item.minutes * 60;
-  const spent = s.spent[i] ?? 0;
-  const over = spent >= goal;
-  const total = s.spent.reduce((a, b) => a + b, 0);
   const scored = d.scoring && d.scoring.kind !== 'none';
 
   return (
     <main className="screen game-play training tr-session">
       <TopBar
-        title={
-          <>
-            {s.name}
-            <span className="muted small game-hole-meta"> · {mmss(total)}</span>
-          </>
-        }
+        title={s.name}
         onBack={() => setExit('menu')}
         backLabel={tr('Leave', 'Verlassen')}
       />
@@ -176,17 +72,6 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
             <strong className="tr-now-name">{t(d.name)}</strong>
           </span>
         </div>
-        <div className={`tr-timer${over ? ' over' : ''}`} aria-live="off">
-          <span className="tr-timer-time">{mmss(spent)}</span>
-          <span className="muted small">/ {item.minutes}:00</span>
-          <button type="button" className="chip" onClick={() => setRunning(!running)} aria-pressed={!running}>
-            {running ? tr('⏸ Hold', '⏸ Anhalten') : tr('▶ Go on', '▶ Weiter')}
-          </button>
-        </div>
-        <div className="progress" aria-hidden="true">
-          <div style={{ width: `${Math.min(100, (spent / goal) * 100)}%`, background: over ? 'var(--warn)' : undefined }} />
-        </div>
-        {over && <span className="warn-text small">{tr('Time is up – finish the drill or carry on.', 'Zeit ist um – Übung abschließen oder weitermachen.')}</span>}
         <p className="tr-goal">{t(d.goal)}</p>
       </section>
       {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
@@ -277,8 +162,6 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
                     <span>
                       {k + 1}. {dk ? t(dk.name) : x.drill}
                       <span className="muted small">
-                        {' '}
-                        · {mmss(s.spent[k] ?? 0)} / {x.minutes}:00
                         {x.done && dk ? ` · ${scoreText(dk.scoring, x.value ?? null)}` : ''}
                       </span>
                     </span>
@@ -288,13 +171,6 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
               })}
             </div>
             <div className="drawer-actions">
-              <button type="button" className="drawer-action" onClick={() => setRunning(!running)}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <circle cx="12" cy="13" r="8" />
-                  <path d="M12 9v4l3 2" />
-                </svg>
-                <span>{running ? tr('Hold timer', 'Timer anhalten') : tr('Timer on', 'Timer weiter')}</span>
-              </button>
               <button
                 type="button"
                 className="drawer-action"
@@ -358,7 +234,7 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
             ) : (
               <>
                 <span className="muted">
-                  {tr(`${s.items.filter((x) => x.done).length} of ${s.items.length} drills done, ${mmss(total)} practised.`, `${s.items.filter((x) => x.done).length} von ${s.items.length} Übungen erledigt, ${mmss(total)} geübt.`)}
+                  {tr(`${s.items.filter((x) => x.done).length} of ${s.items.length} drills done.`, `${s.items.filter((x) => x.done).length} von ${s.items.length} Übungen erledigt.`)}
                 </span>
                 <div className="sheet-actions">
                   <button type="button" className="btn-primary" onClick={finish}>
