@@ -3,6 +3,8 @@ import maplibregl from 'maplibre-gl';
 import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit } from '../lib/geo';
 import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, PLAN_COLOURS, setCourseLook, setImagery } from './mapStyle';
+import { treeImage, TREE_LOOKS } from './treeSprite';
+import { fairwayShapes, holeOutline, smoothRing, treeSpots } from '../lib/plan2d';
 import type { ImagerySource } from '../lib/imagery';
 import { tr } from '../lib/i18n';
 
@@ -100,34 +102,52 @@ export function HoleMap(props: HoleMapProps) {
     m.touchZoomRotate.disableRotation();
     m.on('load', () => {
       m.addSource('shapes', { type: 'geojson', data: shapes(latest.current.data), attribution: OSM_ATTRIBUTION });
-      // the drawn hole (2D): rough under everything, trees above it – hidden on the aerial view
-      m.addLayer({ id: 'plan-rough', type: 'background', layout: { visibility: 'none' }, paint: { 'background-color': PLAN_COLOURS.rough } }, 'sat');
-      m.addSource('trees', { type: 'geojson', data: treesData(latest.current.trees) });
+      // the drawn hole (2D, BeBrassie quality – Sascha 16.10.2026): a light ground, the hole's own dark rough as one
+      // smooth shape, the surfaces with soft outlines, trees as drawn crowns – hidden on the aerial view
+      m.addLayer({ id: 'plan-rough', type: 'background', layout: { visibility: 'none' }, paint: { 'background-color': PLAN_COLOURS.ground } }, 'sat');
       m.addSource('details', { type: 'geojson', data: detailsData(latest.current.details) });
+      m.addSource('plan2d', { type: 'geojson', data: plan2dData(latest.current) });
+      for (let v = 0; v < TREE_LOOKS; v++) {
+        const img = treeImage(v);
+        if (img && !m.hasImage(`tree-${v}`)) m.addImage(`tree-${v}`, img, { pixelRatio: 2 });
+      }
       const hidden = { visibility: 'none' as const };
-      m.addLayer({ id: 'plan-roughareas', type: 'fill', source: 'details', filter: ['==', ['get', 'kind'], 'rough'], layout: hidden, paint: { 'fill-color': PLAN_COLOURS.deepRough } });
-      // the holes around (fairways, tees, greens, bunkers, water of the neighbours) – the whole picture as on the aerial image
-      m.addLayer({
-        id: 'plan-around',
-        type: 'fill',
-        source: 'details',
-        filter: ['==', ['slice', ['get', 'kind'], 0, 2], 'a-'],
-        layout: hidden,
-        paint: {
-          'fill-color': ['match', ['get', 'kind'], 'a-fairway', PLAN_COLOURS.fairway, 'a-tee', PLAN_COLOURS.tee, 'a-green', PLAN_COLOURS.green, 'a-bunker', PLAN_COLOURS.bunker, 'a-water', PLAN_COLOURS.water, PLAN_COLOURS.rough],
-        },
-      });
-      m.addLayer({ id: 'plan-trees', type: 'fill', source: 'trees', layout: hidden, paint: { 'fill-color': PLAN_COLOURS.trees, 'fill-opacity': 0.92 } });
-      // a darker rim gives each crown its own shape
-      m.addLayer({ id: 'plan-trees-edge', type: 'line', source: 'trees', layout: { ...hidden, 'line-join': 'round' }, paint: { 'line-color': '#1d4419', 'line-width': ['interpolate', ['linear'], ['zoom'], 15, 0.4, 19, 1.6] } });
+      const zw = (a: number, b: number) => ['interpolate', ['exponential', 2], ['zoom'], 15, a, 20, b] as maplibregl.ExpressionSpecification;
+      const kindIs = (k: string) => ['==', ['get', 'kind'], k] as maplibregl.FilterSpecification;
+      m.addLayer({ id: 'plan-corridor', type: 'fill', source: 'plan2d', filter: kindIs('corridor'), layout: hidden, paint: { 'fill-color': PLAN_COLOURS.rough } });
+      m.addLayer({ id: 'plan-fairway', type: 'fill', source: 'plan2d', filter: kindIs('fairway'), layout: hidden, paint: { 'fill-color': PLAN_COLOURS.fairway } });
+      m.addLayer({ id: 'plan-fairway-edge', type: 'line', source: 'plan2d', filter: kindIs('fairway'), layout: { ...hidden, 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.fairwayEdge, 'line-width': zw(0.3, 3), 'line-opacity': 0.7 } });
+      m.addLayer({ id: 'plan-tee', type: 'fill', source: 'plan2d', filter: kindIs('tee'), layout: hidden, paint: { 'fill-color': PLAN_COLOURS.tee } });
+      m.addLayer({ id: 'plan-tee-edge', type: 'line', source: 'plan2d', filter: kindIs('tee'), layout: { ...hidden, 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.teeEdge, 'line-width': zw(0.3, 3) } });
+      m.addLayer({ id: 'plan-water', type: 'fill', source: 'plan2d', filter: kindIs('water'), layout: hidden, paint: { 'fill-color': PLAN_COLOURS.water } });
+      m.addLayer({ id: 'plan-water-edge', type: 'line', source: 'plan2d', filter: kindIs('water'), layout: { ...hidden, 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.waterEdge, 'line-width': zw(0.5, 6) } });
+      m.addLayer({ id: 'plan-bunker', type: 'fill', source: 'plan2d', filter: kindIs('bunker'), layout: hidden, paint: { 'fill-color': PLAN_COLOURS.bunker } });
+      m.addLayer({ id: 'plan-bunker-edge', type: 'line', source: 'plan2d', filter: kindIs('bunker'), layout: { ...hidden, 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.bunkerEdge, 'line-width': zw(0.3, 3) } });
+      // the green with its fringe (a lighter band around it)
+      m.addLayer({ id: 'plan-fringe', type: 'line', source: 'plan2d', filter: kindIs('green'), layout: { ...hidden, 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.fringe, 'line-width': zw(0.6, 20) } });
+      m.addLayer({ id: 'plan-green', type: 'fill', source: 'plan2d', filter: kindIs('green'), layout: hidden, paint: { 'fill-color': PLAN_COLOURS.green } });
       m.addSource('plan', { type: 'geojson', data: planLine(latest.current) });
       // the playing view keeps the shapes invisible (they still feed the distances): only the aerial image
       courseLayers('shapes').forEach((l) => m.addLayer(latest.current.clean ? { ...l, layout: { ...(l.layout ?? {}), visibility: 'none' } } as maplibregl.LayerSpecification : l));
       // above the course: paths, hedges and tree rows, single trees, the out-of-bounds line with white stakes
       const z = (a: number, b: number) => ['interpolate', ['exponential', 2], ['zoom'], 15, a, 20, b] as maplibregl.ExpressionSpecification;
       m.addLayer({ id: 'plan-paths', type: 'line', source: 'details', filter: ['==', ['get', 'kind'], 'path'], layout: { ...hidden, 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.path, 'line-width': z(0.6, 9) } });
-      m.addLayer({ id: 'plan-treerows', type: 'line', source: 'details', filter: ['==', ['get', 'kind'], 'treerow'], layout: { ...hidden, 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': PLAN_COLOURS.trees, 'line-width': z(1, 22) } });
-      m.addLayer({ id: 'plan-treepoints', type: 'circle', source: 'details', filter: ['==', ['get', 'kind'], 'tree'], layout: hidden, paint: { 'circle-color': PLAN_COLOURS.trees, 'circle-radius': z(0.7, 16), 'circle-stroke-color': '#24521f', 'circle-stroke-width': 1 } });
+      // trees as drawn crowns, about 7 m across (MapLibre: 0.049 m per px at zoom 20 here), the lower ones in front
+      m.addLayer({
+        id: 'plan-tree-icons',
+        type: 'symbol',
+        source: 'plan2d',
+        filter: kindIs('tree'),
+        layout: {
+          ...hidden,
+          'icon-image': ['concat', 'tree-', ['to-string', ['get', 'v']]],
+          'icon-size': ['interpolate', ['exponential', 2], ['zoom'], 15, ['*', ['get', 's'], 0.139], 20, ['*', ['get', 's'], 4.45]],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'icon-rotation-alignment': 'viewport',
+          'symbol-z-order': 'viewport-y',
+        },
+      });
       m.addLayer({ id: 'plan-ob-casing', type: 'line', source: 'details', filter: ['==', ['get', 'kind'], 'ob'], layout: hidden, paint: { 'line-color': '#0E1418', 'line-width': 4, 'line-opacity': 0.35 } });
       m.addLayer({ id: 'plan-ob', type: 'line', source: 'details', filter: ['==', ['get', 'kind'], 'ob'], layout: hidden, paint: { 'line-color': '#FFFFFF', 'line-width': 2, 'line-dasharray': [3, 2] } });
       m.addLayer({ id: 'plan-ob-stakes', type: 'circle', source: 'details', filter: ['==', ['get', 'kind'], 'stake'], layout: hidden, paint: { 'circle-color': '#FFFFFF', 'circle-radius': z(1.2, 6), 'circle-stroke-color': '#0E1418', 'circle-stroke-width': 1 } });
@@ -241,8 +261,8 @@ export function HoleMap(props: HoleMapProps) {
   useEffect(() => {
     const m = map.current;
     if (!m || !ready.current) return;
-    (m.getSource('trees') as maplibregl.GeoJSONSource | undefined)?.setData(treesData(latest.current.trees));
     (m.getSource('details') as maplibregl.GeoJSONSource | undefined)?.setData(detailsData(latest.current.details));
+    (m.getSource('plan2d') as maplibregl.GeoJSONSource | undefined)?.setData(plan2dData(latest.current));
     setCourseLook(m, props.view === '2d' ? 'plan' : props.clean ? 'hidden' : 'overlay');
     // the trees change with the hole, not with every render
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -463,8 +483,31 @@ function detailsData(d: HoleMapProps['details']): GeoJSON.FeatureCollection {
   };
 }
 
-function treesData(trees: Ring[] | undefined): GeoJSON.FeatureCollection {
-  return { type: 'FeatureCollection', features: (trees ?? []).map((r) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [r] } })) };
+/** The drawn hole (2D): the hole's rough outline, the surfaces with soft outlines, the deep rough and the trees. */
+function plan2dData(p: HoleMapProps): GeoJSON.FeatureCollection {
+  if (p.view !== '2d') return { type: 'FeatureCollection', features: [] };
+  const d = p.data;
+  const det = p.details;
+  const poly = (kind: string, r: Ring): GeoJSON.Feature => ({ type: 'Feature', properties: { kind }, geometry: { type: 'Polygon', coordinates: [smoothRing(r)] } });
+  // one calm fairway shape per run (BeBrassie) from the mapped and the aerial-read fairway areas
+  const fairwayAreas = [...d.fairways, ...(det?.around?.fairway ?? [])];
+  const calm = fairwayShapes(d.line, fairwayAreas);
+  const fairways = calm.length ? calm : fairwayAreas;
+  const water = [...d.water, ...(det?.around?.water ?? []).filter((r) => !d.water.includes(r))];
+  const outline = holeOutline(d.line, [...fairwayAreas, ...d.tees, ...d.bunkers, ...(d.green ? [d.green] : [])]);
+  const trees = treeSpots(d.line, p.trees ?? [], det?.treeRows ?? [], det?.treePoints ?? []);
+  return {
+    type: 'FeatureCollection',
+    features: [
+      ...(outline ? [{ type: 'Feature', properties: { kind: 'corridor' }, geometry: { type: 'Polygon', coordinates: [outline] } } as GeoJSON.Feature] : []),
+      ...water.map((r) => poly('water', r)),
+      ...fairways.map((r): GeoJSON.Feature => ({ type: 'Feature', properties: { kind: 'fairway' }, geometry: { type: 'Polygon', coordinates: [calm.length ? r : smoothRing(r)] } })),
+      ...d.tees.map((r) => poly('tee', r)),
+      ...d.bunkers.map((r) => poly('bunker', r)),
+      ...(d.green ? [poly('green', d.green)] : []),
+      ...trees.map((t): GeoJSON.Feature => ({ type: 'Feature', properties: { kind: 'tree', s: t.s, v: t.v }, geometry: { type: 'Point', coordinates: t.pos } })),
+    ],
+  };
 }
 
 /** Zoom onto the green chart (keeping the playing direction). */

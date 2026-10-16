@@ -51,12 +51,30 @@ const FILL: Record<string, { color: string; opacity: number; edge: string; edgeO
 const ORDER = ['fairway', 'tee', 'water', 'bunker', 'green'];
 
 /**
- * The drawn hole as in BeBrassie (Sascha 14.10.2026): no aerial image, the course in flat colours on a light rough –
- * fairway, tee, green, bunkers, water and trees.
+ * The drawn hole as in BeBrassie (Sascha 14.10.2026; 16.10.2026: "this quality is the least I want"): no aerial
+ * image – the hole's own dark rough as one smooth shape on a light ground, a bright fairway, a light green with its
+ * fringe, cream bunkers and blue water with an edge, soft outlines everywhere, trees as drawn crowns.
  */
-export const PLAN_COLOURS = { rough: '#8cc46f', deepRough: '#79b25c', trees: '#2f6b2b', fairway: '#4c9e3c', tee: '#4c9e3c', green: '#62cf55', bunker: '#f3e3a3', water: '#4f9fe0', path: '#ddd5bf' } as const;
+export const PLAN_COLOURS = {
+  ground: '#e3eed6',
+  rough: '#23803d',
+  fairway: '#3fb54d',
+  fairwayEdge: '#5fcb69',
+  tee: '#3fb54d',
+  teeEdge: '#a8e39a',
+  green: '#8fd65c',
+  fringe: '#b9e98f',
+  bunker: '#f2e3b8',
+  bunkerEdge: '#d6bf83',
+  water: '#4a8ee8',
+  waterEdge: '#2a68c4',
+  path: '#d8d0bb',
+} as const;
 /** Layers of the drawn hole that only show in 2D. */
-export const PLAN_LAYERS = ['plan-rough', 'plan-roughareas', 'plan-around', 'plan-trees', 'plan-trees-edge', 'plan-paths', 'plan-treerows', 'plan-treepoints', 'plan-ob-casing', 'plan-ob', 'plan-ob-stakes'];
+export const PLAN_LAYERS = [
+  'plan-rough', 'plan-corridor', 'plan-fairway', 'plan-fairway-edge', 'plan-tee', 'plan-tee-edge', 'plan-water', 'plan-water-edge',
+  'plan-bunker', 'plan-bunker-edge', 'plan-fringe', 'plan-green', 'plan-paths', 'plan-ob-casing', 'plan-ob', 'plan-ob-stakes', 'plan-tree-icons',
+];
 
 /** Course layers for the view: hidden (aerial only), soft overlay on the aerial image, or the drawn hole. */
 export function setCourseLook(m: maplibregl.Map, look: 'hidden' | 'overlay' | 'plan'): void {
@@ -66,13 +84,10 @@ export function setCourseLook(m: maplibregl.Map, look: 'hidden' | 'overlay' | 'p
     for (const part of ['fill', 'edge'] as const) {
       const id = `${kind}-${part}`;
       if (!m.getLayer(id)) continue;
-      m.setLayoutProperty(id, 'visibility', look === 'hidden' ? 'none' : 'visible');
-      if (part === 'fill') {
-        m.setPaintProperty(id, 'fill-color', plan ? PLAN_COLOURS[kind as keyof typeof PLAN_COLOURS] : f.color);
-        m.setPaintProperty(id, 'fill-opacity', plan ? 1 : f.opacity);
-      } else {
-        m.setPaintProperty(id, 'line-opacity', plan ? (kind === 'green' || kind === 'bunker' ? 0.9 : 0.35) : f.edgeOpacity);
-      }
+      // the drawn hole has its own smoothed shapes (plan-…): the overlay shapes are hidden there
+      m.setLayoutProperty(id, 'visibility', look === 'overlay' ? 'visible' : 'none');
+      if (part === 'fill') m.setPaintProperty(id, 'fill-opacity', f.opacity);
+      else m.setPaintProperty(id, 'line-opacity', f.edgeOpacity);
     }
   }
   for (const id of PLAN_LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', plan ? 'visible' : 'none');
