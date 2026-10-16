@@ -421,8 +421,22 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
   ]),
 };
 
+/** Sections that show the picture of a drill (its sketch lives in the drill's content file), by topic and title. */
+export const SECTION_DRILL_PICTURES: Partial<Record<CategoryId, Record<string, string>>> = {
+  irons: { 'Where to aim on approach shots': 'par3-middle' },
+  basics: { 'A set-up routine': 'routine-aim-tee' },
+};
+
 /** Sections with a golfer, by topic and the English section title. */
 export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, Sketch>>> = {
+  // sections whose drill picture shows exactly what the section text says
+  trouble: {
+    'From the rough': SKETCHES['rough-reading'],
+    'Divots, bare ground, wet grass': SKETCHES['divot-lie'],
+  },
+  practice: {
+    'Winter and home practice': SKETCHES['chip-towel-home'],
+  },
   chipping: {
     'The stroke': S(5, 2.4, [
       ground(5),
@@ -484,6 +498,7 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
       co('hands', L('the wrists hinge naturally', 'die Handgelenke winkeln natürlich an'), [0.4, 2.0], 0),
       co('pelvis', L('chest to the target, weight forward – hold', 'Brust zum Ziel, Gewicht vorn – halten'), [4.7, 0.9], 1),
     ], L('The body turns back and through, the arms stay in front of the chest. Ball first, then a shallow divot.', 'Der Körper dreht zurück und durch, die Arme bleiben vor der Brust. Erst der Ball, dann ein flaches Divot.')),
+    Spin: SKETCHES['low-spinner'],
     'Lob and flop': S(4, 2.6, [
       ground(4),
       fig(1.9, 'front', { club: 'wedge', stance: 'wide' }),
@@ -546,6 +561,7 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ]),
   },
   bunker: {
+    'Fairway bunker': FIGURE_SKETCHES['fairway-bunker'],
     'The swing': S(5, 2.8, [
       ground(5, true),
       fig(1.4, 'halfBack'),
@@ -556,6 +572,7 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ], L('Along the open body line; the club enters the sand behind the ball, the face stays open and points to the sky in the finish.', 'Entlang der offenen Körperlinie; der Schläger dringt hinter dem Ball in den Sand ein, die Fläche bleibt offen und zeigt im Finish zum Himmel.')),
   },
   irons: {
+    'Know your distances': SKETCHES['gapping'],
     'Set-up for irons': S(4, 2.5, [
       ground(4),
       fig(1.9, 'front', { club: 'iron' }),
@@ -582,6 +599,8 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ], L('A wide, round swing: low and slow away from the ball, a full turn, a full finish.', 'Ein weiter, runder Schwung: flach und langsam vom Ball weg, volle Drehung, volles Finish.')),
   },
   fitness: {
+    'Strength and speed': FIGURE_SKETCHES['med-ball-throw'],
+    'Self tests (TPI-style)': FIGURE_SKETCHES['deep-squat'],
     'Warm-up before the round (10 minutes)': FIGURE_SKETCHES['warmup-10'],
   },
   basics: {

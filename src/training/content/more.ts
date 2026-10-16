@@ -402,8 +402,8 @@ export const moreDrills: Drill[] = [
       { k: 'coin', at: [2.3, 2.6] },
       { k: 'path', pts: [[2.3, 0.6], [2.3, 5.8]], style: 'aim', arrow: true },
       { k: 'stick', from: [1.5, 0.8], to: [1.5, 4] },
-      { k: 'text', at: [3.2, 0.4], t: L('1 behind', '1 hinten'), size: 10 },
-      { k: 'text', at: [3.3, 2.6], t: L('2 spot', '2 Punkt'), size: 10 },
+      { k: 'text', at: [1.95, 0.3], t: L('1 behind the ball', '1 hinter dem Ball'), size: 10, anchor: 'end' },
+      { k: 'text', at: [2.5, 2.55], t: L('2 spot to aim at', '2 Zwischenziel'), size: 10, anchor: 'start' },
     ]),
   },
 

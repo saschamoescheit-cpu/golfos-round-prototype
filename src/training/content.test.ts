@@ -176,7 +176,8 @@ describe('training content', () => {
       }
     }
     for (const [where, sk] of all) {
-      if (sk.view !== 'side') continue;
+      // a reused drill picture without numbered marks (e.g. a ball flight) needs no figure
+      if (sk.view !== 'side' || !sk.items.some((x) => x.k === 'callout')) continue;
       const figs = sk.items.filter((x) => x.k === 'figure');
       expect(figs.length, where).toBeGreaterThan(0);
       for (const it of sk.items) {

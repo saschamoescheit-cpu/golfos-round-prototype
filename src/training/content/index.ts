@@ -23,7 +23,7 @@ import { SECTION_MEDIA } from './section-media';
 import { CHARTS } from './charts';
 import { DRILL_VIDEOS } from './drill-videos';
 import { DRILL_ROUNDS, SECTION_ROUNDS } from './rounds-links';
-import { FIGURE_SKETCHES, SECTION_FIGURE_SKETCHES } from './sketches-figures';
+import { FIGURE_SKETCHES, SECTION_DRILL_PICTURES, SECTION_FIGURE_SKETCHES } from './sketches-figures';
 
 // All content of the Training module. Order of the categories = order in the library: the short game first
 // (where most strokes are lost), then the long game, then the head and the body.
@@ -39,19 +39,7 @@ export const SWING_TEMPO_DRILLS = ['tempo-321', 'feet-together-swing', 'driver-8
  * targets; drills whose scoring is already "none" behave the same. */
 export const NO_RESULT_DRILLS = ['safe-target', 'nine-hole-plan', 'bogey-plan', 'par3-middle', 'two-club-wind', 'seated-rotation', 'think-play-box', 'visualise', 'ten-second'];
 
-export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching, bunker, slopes, trouble, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice]
-  .map((c) => (VIDEOS_DE[c.id] ? { ...c, videos: [...(c.videos ?? []), ...VIDEOS_DE[c.id]!] } : c))
-  // a picture and, where there is one, a video for every section of the basics (Sascha 16.10.2026)
-  .map((c) => ({ ...c, sections: c.sections.map((x, i) => ({ ...SECTION_MEDIA[c.id]?.[i], ...x })) }))
-  // small charts of the key numbers (Sascha 16.10.2026: pictures with the text)
-  .map((c) => (CHARTS[c.id] ? { ...c, charts: CHARTS[c.id] } : c))
-  .map((c) => (SECTION_FIGURE_SKETCHES[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_FIGURE_SKETCHES[c.id]![x.title.en] ? { ...x, sketch: SECTION_FIGURE_SKETCHES[c.id]![x.title.en] } : x)) } : c))
-  // the Rounds functions a section names, opened with a tap
-  .map((c) => (SECTION_ROUNDS[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_ROUNDS[c.id]![x.title.en] ? { ...x, rounds: SECTION_ROUNDS[c.id]![x.title.en] } : x)) } : c));
-
-const TOPIC_VIDEOS = new Map(CATEGORIES.flatMap((c) => c.videos ?? []).map((v) => [v.id, v]));
-
-export const DRILLS: Drill[] = ([
+const RAW_DRILLS = [
   ...puttingDrills,
   ...greenreadingDrills,
   ...chippingDrills,
@@ -70,7 +58,26 @@ export const DRILLS: Drill[] = ([
   ...fitnessDrills,
   ...practiceDrills,
   ...moreDrills,
-] as Drill[])
+] as Drill[];
+const drillPicture = (id: string) => {
+  const d = RAW_DRILLS.find((x) => x.id === id);
+  return FIGURE_SKETCHES[id] ?? d?.sketch ?? SKETCHES[id];
+};
+
+export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching, bunker, slopes, trouble, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice]
+  .map((c) => (VIDEOS_DE[c.id] ? { ...c, videos: [...(c.videos ?? []), ...VIDEOS_DE[c.id]!] } : c))
+  // a picture and, where there is one, a video for every section of the basics (Sascha 16.10.2026)
+  .map((c) => ({ ...c, sections: c.sections.map((x, i) => ({ ...SECTION_MEDIA[c.id]?.[i], ...x })) }))
+  // small charts of the key numbers (Sascha 16.10.2026: pictures with the text)
+  .map((c) => (CHARTS[c.id] ? { ...c, charts: CHARTS[c.id] } : c))
+  .map((c) => (SECTION_DRILL_PICTURES[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_DRILL_PICTURES[c.id]![x.title.en] ? { ...x, sketch: drillPicture(SECTION_DRILL_PICTURES[c.id]![x.title.en]) } : x)) } : c))
+  .map((c) => (SECTION_FIGURE_SKETCHES[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_FIGURE_SKETCHES[c.id]![x.title.en] ? { ...x, sketch: SECTION_FIGURE_SKETCHES[c.id]![x.title.en] } : x)) } : c))
+  // the Rounds functions a section names, opened with a tap
+  .map((c) => (SECTION_ROUNDS[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_ROUNDS[c.id]![x.title.en] ? { ...x, rounds: SECTION_ROUNDS[c.id]![x.title.en] } : x)) } : c));
+
+const TOPIC_VIDEOS = new Map(CATEGORIES.flatMap((c) => c.videos ?? []).map((v) => [v.id, v]));
+
+export const DRILLS: Drill[] = RAW_DRILLS
   .map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })) // every drill gets its own sketch
   // the sketches with a golfer, drawn again to show what the text describes (16./17.10.2026)
   .map((d) => (FIGURE_SKETCHES[d.id] ? { ...d, sketch: FIGURE_SKETCHES[d.id] } : d))
