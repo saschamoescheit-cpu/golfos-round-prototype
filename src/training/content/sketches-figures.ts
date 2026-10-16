@@ -390,8 +390,8 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
   ]),
   'med-ball-throw': S(5, 2.6, [
     ground(5),
-    line([4.6, 0.2], [4.6, 2.4]),
-    txt([4.6, 2.5], L('wall', 'Wand'), 10),
+    line([4.6, 0.2], [4.6, 2.3]),
+    txt([4.5, 2.2], L('wall', 'Wand'), 10, 'end'),
     fig(2.0, 'halfThrough', { club: 'none' }),
     { k: 'ball', at: [2.6, 1.3] },
     arrow([2.8, 1.3], [4.4, 1.3]),
