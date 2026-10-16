@@ -212,6 +212,35 @@ export function chicagoTeams(g: Pick<Game, 'players' | 'extra'>, i: number): [st
   const k = Math.min(3, Math.max(1, Number(g.extra[i]?.pairing ?? (i % 3) + 1)));
   return [[ids[0], ids[k]], ids.filter((_, j) => j !== 0 && j !== k)];
 }
+/** Who plays with whom on hole i – for the game bar over the map (Sascha 16.10.2026: the teams "go under"). Null
+ *  for forms without sides (skins, stableford …) and for a wolf who has not chosen yet. */
+export function holeTeams(g: Pick<Game, 'form' | 'players' | 'settings' | 'extra' | 'holes'>, i: number): [string[], string[]] | null {
+  const ids = g.players.map((p) => p.id);
+  switch (g.form) {
+    case 'chicago':
+      return ids.length === 4 ? chicagoTeams(g, i) : null;
+    case 'sixes': {
+      if (ids.length !== 4) return null;
+      const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
+      const [a, b] = pairs[Math.min(2, Math.floor(i / Math.ceil(g.holes.length / 3)))];
+      return [a.map((j) => ids[j]), b.map((j) => ids[j])];
+    }
+    case 'wolf': {
+      const x = g.extra[i] ?? {};
+      if (ids.length !== 4 || x.wolfPartner === undefined) return null;
+      const team = x.wolfPartner ? [ids[i % 4], x.wolfPartner] : [ids[i % 4]];
+      return [team, ids.filter((id) => !team.includes(id))];
+    }
+    case 'nassau':
+    case 'vegas':
+    case 'match':
+    case 'hammer':
+      return teamsOf(g);
+    default:
+      return null;
+  }
+}
+
 /** Chicago: the team's two (net) scores as one number, the lower one first – 6 and 5 = 56. */
 function teamNumber(g: Game, ids: string[], i: number): number {
   const v = ids.map((id) => net(g, id, i)!).sort((a, b) => a - b);

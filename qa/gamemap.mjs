@@ -41,6 +41,8 @@ await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(6000);
 ok((await p.locator('.hole-bar').count()) === 1 && (await p.locator('.maplibregl-canvas').count()) === 1, 'the game opens on the GPS map with the hole bar');
 ok((await p.locator('.game-bar').innerText()).includes('Chicago'), `game bar: ${(await p.locator('.game-bar').innerText()).replace(/\s+/g, ' ')}`);
+const teamTexts = (await p.locator('.game-bar .game-team').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+ok(teamTexts.length === 2 && /Sascha.*Ben/.test(teamTexts[0]) && /Chris.*Anna/.test(teamTexts[1]), `game bar: two coloured teams on 1A (${teamTexts.join(' | ')})`);
 await shot('gamemap-hole');
 // hole 1: Sascha 4, Ben 5, Chris 4, Anna 4 – in the round's score sheet
 await p.locator('.map-score').click();

@@ -121,7 +121,9 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
     return parseHcp(p.handicap);
   };
 
-  const planned = Object.keys(loadStrategy(props.course.id)).length;
+  // the holes of the chosen loops with a plan – a loop planned once counts in every combination (A+B, C+A, B+C)
+  const strategy = loadStrategy(props.course.id);
+  const planned = holes.filter((h) => strategy[h.label]).length;
   const start = (preview = false, planning = false) => {
     if (!option) return;
     try {
@@ -406,7 +408,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
       {/* plan the round: targets and clubs per hole, used by the caddie in the live round (Sascha 16.10.2026) */}
       <button type="button" className="btn-secondary" onClick={() => start(true, true)} disabled={!option}>
         {tr('Plan round', 'Runde planen')}
-        {planned > 0 ? <span className="muted small"> · {planned === 1 ? tr('1 hole planned', '1 Loch geplant') : tr(`${planned} holes planned`, `${planned} Löcher geplant`)}</span> : null}
+        {planned > 0 ? <span className="muted small"> · {planned === holes.length ? tr(`all ${planned} holes planned`, `alle ${planned} Löcher geplant`) : tr(`${planned} of ${holes.length} holes planned`, `${planned} von ${holes.length} Löchern geplant`)}</span> : null}
       </button>
       <button type="button" className="btn-primary" onClick={() => start()} disabled={!option || !fits}>
         {tr('Start round', 'Runde starten')}

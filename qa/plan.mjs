@@ -62,7 +62,20 @@ await p.waitForTimeout(400);
 await p.locator('.hole-drawer').getByRole('button', { name: 'Vorschau beenden' }).click();
 await p.waitForTimeout(800);
 await pick();
-ok((await p.getByRole('button', { name: /Runde planen/ }).innerText()).includes('2 Löcher geplant'), 'setup: "2 Löcher geplant"');
+// every hole looked at counts – also the two only seen (Sascha 16.10.2026: "nur 13 Löcher geplant, obwohl ich alle
+// 18 geplant habe"); a loop planned once counts in every combination
+const planLabel = async () => (await p.getByRole('button', { name: /Runde planen/ }).innerText()).replace(/\s+/g, ' ');
+const savedNow = await p.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('golfos.strategy.v1.osm:relation/1326323') ?? '{}')).sort().join(','));
+ok(savedNow === '1A,2A,3A,4A', `planned: ${savedNow} (2A and 3A only looked at)`);
+ok((await planLabel()).includes('4 von 18 Löchern geplant'), `setup A+B: ${await planLabel()}`);
+await p.locator('button.choice-loop').filter({ hasText: /C.*A/ }).first().click();
+await p.waitForTimeout(300);
+ok((await planLabel()).includes('4 von 18 Löchern geplant'), `setup C+A: the A holes count too (${await planLabel()})`);
+await p.locator('button.choice-loop').filter({ hasText: /B.*C/ }).first().click();
+await p.waitForTimeout(300);
+ok(!(await planLabel()).includes('geplant'), `setup B+C: nothing planned yet (${await planLabel()})`);
+await p.locator('button.choice-loop').first().click();
+await p.waitForTimeout(300);
 // the birdie book shows the plan
 await p.getByRole('button', { name: 'Birdiebook', exact: true }).click();
 await p.waitForTimeout(4000);

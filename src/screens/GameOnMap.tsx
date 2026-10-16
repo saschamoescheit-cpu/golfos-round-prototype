@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
 import { ensureGeometry, geometryReady } from '../lib/storage';
-import { formDef, standingOf, type Game, type HoleExtra } from '../lib/gameforms';
+import { formDef, holeTeams, standingOf, type Game, type HoleExtra } from '../lib/gameforms';
 import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
 import { InviteSheet } from '../components/ShareGame';
 import { emptyEntry } from '../lib/scoring';
@@ -105,7 +105,12 @@ export function GameOnMap(props: {
   const st = standingOf(g);
   const i = r.currentHole;
   const lead = st.rows[0];
-  const line = st.status ?? (lead ? `${lead.name} ${lead.value}` : '');
+  // the sides of this hole as two coloured teams; the bar's line then says the hole and who leads
+  const sides = holeTeams(g, i);
+  const meId = g.shared?.me ?? r.players.find((p) => p.isMe)?.id;
+  const teams = sides ? (sides.map((ids) => ids.map((id) => ({ name: g.players.find((p) => p.id === id)?.name ?? '?', me: id === meId }))) as [{ name: string; me: boolean }[], { name: string; me: boolean }[]]) : null;
+  const leadText = lead && lead.points !== 0 ? `${lead.name} ${lead.value}` : '';
+  const line = teams ? [tr(`Hole ${r.holes[i]?.label ?? ''}`, `Loch ${r.holes[i]?.label ?? ''}`), leadText].filter(Boolean).join(' · ') : (st.status ?? (lead ? `${lead.name} ${lead.value}` : ''));
   const setExtra = (patch: Partial<HoleExtra>) => props.onChange(stamp({ ...g, extra: g.extra.map((e, k) => (k === i ? { ...e, ...patch } : e)) }, `x:${i}`));
   return (
     <>
@@ -118,7 +123,7 @@ export function GameOnMap(props: {
           onAbort={() => props.onDelete(g)}
           onShowScorecard={(nr, finishing) => (finishing ? props.onFinish(withRound(g, { ...nr, finishedAt: new Date().toISOString() })) : setSheet('card'))}
           onOpenBag={props.onOpenBag}
-          game={{ name: f.name(), line, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null }}
+          game={{ name: f.name(), line, teams, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null }}
         />
       </Suspense>
       {invite && <InviteSheet game={g} onShared={props.onChange} onClose={() => setInvite(false)} />}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Avatar } from '../components/Avatar';
 import { loadStrategy, savePlannedHole, type CourseStrategy } from '../lib/strategy';
 import type { Club, DetailEntry, HoleEntry, LngLat, Round } from '../types';
 import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
@@ -79,7 +80,15 @@ export function HoleScreen(props: {
   /** From the hole overview: my bag or the caddie settings, back to this hole afterwards. */
   onOpenBag?: (part: 'bag' | 'caddie') => void;
   /** A game on the map (Games): its name and standing in a bar over the hole bar, opening the game sheet. */
-  game?: { name: string; line: string; onOpen: () => void; onInvite: (() => void) | null; shared: string | null };
+  game?: {
+    name: string;
+    line: string;
+    onOpen: () => void;
+    onInvite: (() => void) | null;
+    shared: string | null;
+    /** the two sides on this hole – shown as two coloured teams (Sascha 16.10.2026: the teams "go under") */
+    teams?: [{ name: string; me: boolean }[], { name: string; me: boolean }[]] | null;
+  };
   /** Course preview: the birdie book of the course, back to this hole afterwards. */
   onBook?: () => void;
 }) {
@@ -166,6 +175,14 @@ export function HoleScreen(props: {
   // the round plan of this course (Sascha 16.10.2026): targets and clubs per hole – made in "Plan round"
   const [strategy, setStrategy] = useState<CourseStrategy>(() => loadStrategy(round.courseId));
   const setPlans = (p: typeof plans) => setLive((l) => ({ ...l, plans: p }));
+  // planning: a hole looked at counts as planned – the caddie's suggestion taken as it is (Sascha 16.10.2026: "nur 13
+  // Löcher geplant, obwohl ich alle 18 geplant habe" – only moved targets or chosen clubs were saved)
+  const planDefault = useRef<{ label: string; targets: LngLat[] } | null>(null);
+  useEffect(() => {
+    const d = planDefault.current;
+    if (!round.planning || !d || strategy[d.label]) return;
+    setStrategy(savePlannedHole(round.courseId, d.label, { targets: d.targets, clubs: [], at: new Date().toISOString() }));
+  });
   const shotStart = live.shotStart;
   // GPS runs while the hole screen is open (map or score), so the hole is recognised in both views.
   // No fix yet (cold start, trees) is no reason to give up: the watch is restarted and the player sees "searching".
@@ -245,9 +262,12 @@ export function HoleScreen(props: {
   const imagery = pickImagery(courseCenter, imageryPref);
   // Offline map: save the imagery of all holes of the round once (again after 30 days, or for another imagery source).
   const [offline, setOffline] = useState<{ done: number; total: number } | 'ready' | null>(null);
+  // saved per course AND loops (Sascha 16.10.2026: "C much worse than A and B" – after an A+B round the course counted
+  // as saved, so the C holes were never fetched and showed coarse tiles on a weak network)
+  const offlineKey = round.loopOrder?.length ? `${round.courseId}.${[...round.loopOrder].sort().join('')}` : round.courseId;
   useEffect(() => {
     const holes = allMaps.filter((m): m is NonNullable<typeof m> => m != null);
-    const fresh = Date.now() - loadOfflineStamp(round.courseId, imagery.id) < 30 * 24 * 3600 * 1000;
+    const fresh = Date.now() - loadOfflineStamp(offlineKey, imagery.id) < 30 * 24 * 3600 * 1000;
     if (holes.length === 0 || fresh || !navigator.serviceWorker?.controller) return; // without service worker nothing is kept
     const ctrl = new AbortController();
     // the green charts and green heights of the course too, so the green read works without network (feature 028)
@@ -256,12 +276,12 @@ export function HoleScreen(props: {
     setOffline({ done: 0, total: urls.length });
     prefetchTiles(urls, (done, total) => setOffline({ done, total }), ctrl.signal).then((failed) => {
       if (ctrl.signal.aborted) return;
-      if (failed < urls.length * 0.05) saveOfflineStamp(round.courseId, imagery.id);
+      if (failed < urls.length * 0.05) saveOfflineStamp(offlineKey, imagery.id);
       setOffline('ready');
       setTimeout(() => setOffline(null), 4000);
     });
     return () => ctrl.abort();
-  }, [round.courseId, imagery, allMaps]);
+  }, [round.courseId, offlineKey, imagery, allMaps]);
   const offlineHint =
     offline === 'ready' ? (
       <div className="map-shot">{tr('Map saved for offline ✓', 'Karte offline gespeichert ✓')}</div>
@@ -659,6 +679,8 @@ export function HoleScreen(props: {
       return at > alongLine(mapData.line, first[0]) + 40 ? [first[0], pointAt(mapData.line, at)] : first;
     };
     const plan = plans[i] ?? (planned?.targets.length ? { targets: planned.targets, pin: null } : { targets: defaultTargets(), pin: null });
+    // a par 3 has no target; a longer hole waits for the caddie's landing spot (the bag may still be loading)
+    planDefault.current = round.planning && !planned && (hole.par < 4 || plan.targets.length > 0) ? { label: hole.label, targets: plan.targets } : null;
     // The flag stays on the green (Sascha 15.10.2026: it stood 50 m short on the fairway after a stray drag): a pin
     // off the green – dragged there or saved so – counts as not set.
     const pinOk = (p: LngLat) => (mapData.green ? pointInRing(p, mapData.green) || distToLine(p, mapData.green) <= 3 : distanceM(p, mapData.greenCenter) <= 25);
@@ -1038,10 +1060,27 @@ export function HoleScreen(props: {
           {detectedBanner}
           {offlineHint}
           {props.game && !greenFocus && (
-            <button type="button" className="game-bar" onClick={props.game.onOpen} aria-label={tr(`${props.game.name} – standing and input`, `${props.game.name} – Stand und Eingabe`)}>
-              <strong>{props.game.name}</strong>
-              <span className="grow">{props.game.line}</span>
-              <span aria-hidden="true">›</span>
+            <button type="button" className={`game-bar${props.game.teams ? ' with-teams' : ''}`} onClick={props.game.onOpen} aria-label={tr(`${props.game.name} – standing and input`, `${props.game.name} – Stand und Eingabe`)}>
+              <span className="game-bar-head">
+                <strong>{props.game.name}</strong>
+                <span className="grow">{props.game.line}</span>
+                <span aria-hidden="true">›</span>
+              </span>
+              {props.game.teams && (
+                <span className="game-teams">
+                  {props.game.teams.map((side, k) => (
+                    <span key={k} className={`game-team ${k ? 'team-b' : 'team-a'}`}>
+                      {side.map((m) => (
+                        <span key={m.name} className="game-team-player">
+                          <Avatar name={m.name} me={m.me} size={20} />
+                          <span className="game-team-name">{m.name}</span>
+                        </span>
+                      ))}
+                    </span>
+                  ))}
+                  <span className="game-vs">{tr('vs', 'gegen')}</span>
+                </span>
+              )}
             </button>
           )}
           {round.planning && !greenFocus && (

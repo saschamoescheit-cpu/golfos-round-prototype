@@ -22,28 +22,27 @@ export function CaddieCard(props: {
   onLie: (l: LieKind) => void;
   book?: HoleBook | null; // what the course book knows about the hole
 }) {
-  // the player opened the caddie: everything at once (Sascha 15.10.2026) – a tap on the head folds it
-  const [details, setDetails] = useState(true);
+  // the player opened the caddie: everything at once (Sascha 15.10.2026); no folding – shown or hidden from the
+  // map's menu (Sascha 16.10.2026: "den kleinen Einklapppfeil brauchen wir nicht")
   const [sheet, setSheet] = useState<'ask' | 'rules' | 'notes' | null>(null);
   const f = props.facts;
   return (
     <>
       <section className="caddie-card" aria-label="AI caddie">
-        <button type="button" className="head" onClick={() => setDetails(!details)} aria-expanded={details} aria-label={details ? tr('Fold the caddie', 'Caddie zuklappen') : tr('More from the caddie', 'Mehr vom Caddie')}>
+        <div className="head">
           <span className="club">{props.clubCode}</span>
           <span className="grow">
             {Math.round(f.distance)} {f.unit} {f.targetTo} · {tr('plays', 'spielt wie')} <strong>{Math.round(f.playsLike)} {f.unit}</strong>
           </span>
-          <span className="more" aria-hidden="true">{details ? '▴' : '▾'}</span>
-        </button>
-        {(details ? props.lines : one(props.lines)).map((l, k) => (
+        </div>
+        {props.lines.map((l, k) => (
           <span key={k} className={l.tone === 'warn' ? 'plan warn' : l.tone === 'plan' ? 'plan' : l.tone === 'mental' ? 'mental' : 'why'}>
             {l.text}
           </span>
         ))}
-        {details && props.alt && <span className="alt">{props.alt}</span>}
-        {details && props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
-        {details && props.lie != null && (
+        {props.alt && <span className="alt">{props.alt}</span>}
+        {props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
+        {props.lie != null && (
           <label className="caddie-lie">
             <span>{tr('Lie', 'Lage')}</span>
             <select value={props.lie} onChange={(e) => props.onLie(e.target.value as LieKind)}>
@@ -55,7 +54,6 @@ export function CaddieCard(props: {
             </select>
           </label>
         )}
-        {details && (
         <div className="caddie-actions">
           <button type="button" onClick={() => toggleSpeak(summary(f))} aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')}>
             🔊
@@ -73,23 +71,12 @@ export function CaddieCard(props: {
             ✕
           </button>
         </div>
-        )}
       </section>
       {sheet === 'ask' && <AskSheet facts={f} onClose={() => setSheet(null)} onRules={() => setSheet('rules')} />}
       {sheet === 'rules' && <RulesSheet onClose={() => setSheet(null)} />}
       {sheet === 'notes' && <NotesSheet hole={props.holeLabel} note={props.note} onSave={props.onNote} onClose={() => setSheet(null)} />}
     </>
   );
-}
-
-type Line = { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted'; lead?: boolean };
-/** Folded card: the lines that matter – a warning, and the reason for the plan when the caddie chose one (else the plan). */
-function one(lines: Line[]): Line[] {
-  const warn = lines.find((x) => x.tone === 'warn');
-  const lead = lines.find((x) => x.lead);
-  if (warn && lead) return [warn, lead];
-  const l = warn ?? lead ?? lines.find((x) => x.tone === 'plan') ?? lines[0];
-  return l ? [l] : [];
 }
 
 function Sheet(props: { title: string; onClose: () => void; children: React.ReactNode }) {

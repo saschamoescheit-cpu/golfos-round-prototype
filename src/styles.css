@@ -15,6 +15,7 @@
   --ok: #46c46e;
   --bad: #ff6b5e;
   --warn: #f2b53d;
+  --team-b: #5bb4f0;
   --display: Lexend, 'Segoe UI', system-ui, sans-serif;
   --body: Figtree, 'Segoe UI', system-ui, sans-serif;
   color-scheme: dark;
@@ -510,7 +511,6 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .caddie-card .head { gap: 10px; }
 .caddie-card .head .club { font-size: 26px; min-width: 44px; }
 .caddie-card .head .grow { flex: 1; font-size: 15px; }
-.caddie-card .head .more { color: var(--muted); font-size: 16px; padding: 0 2px; }
 .caddie-card > .plan, .caddie-card > .why, .caddie-card > .mental { font-size: 14px; }
 .lang-btn[aria-pressed='true'] { background: var(--brand); color: var(--bg); border-color: var(--brand); }
 
@@ -530,6 +530,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
   --ok: #1d8a43;
   --bad: #c2362b;
   --warn: #9a6400;
+  --team-b: #1d6fae;
   color-scheme: light;
 }
 :root[data-theme='sun'] .btn-primary,
@@ -1164,6 +1165,17 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .game-bar { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line-strong); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--text); font: 600 14px var(--body); text-align: left; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
 .game-bar strong { color: var(--brand-text); white-space: nowrap; }
 .game-bar .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.game-bar-head { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; }
+/* the two sides of the hole as coloured teams (Sascha 16.10.2026: the teams "go under") */
+.game-bar.with-teams { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; }
+.game-teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 8px; }
+.game-team { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; min-height: 100%; padding: 7px 10px; border-radius: 14px; border: 1.5px solid var(--team); background: color-mix(in srgb, var(--team) 16%, var(--surface)); color: var(--text); font: 700 14px var(--body); }
+.game-team.team-a { --team: var(--brand-text); grid-column: 1; }
+.game-team.team-b { --team: var(--team-b); grid-column: 3; }
+.game-vs { grid-column: 2; grid-row: 1; align-self: center; color: var(--muted); font: 600 11px var(--body); text-transform: uppercase; letter-spacing: 0.05em; }
+.game-team-player { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.game-team-player .avatar { flex: none; }
+.game-team-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .game-sheet { gap: 12px; max-height: 88vh; overflow-y: auto; }
 /* the bag's pencil in the signal colour (Sascha 16.10.2026: "so it is seen") */
 .bag-edit, .bag-edit.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }
