@@ -15,6 +15,7 @@ import { Metronome } from '../training/Metronome';
 import { FactChart } from '../training/FactChart';
 import { ReviewBar } from '../training/ReviewBar';
 import { search } from '../training/search';
+import type { RoundsTarget } from '../training/content/rounds-links';
 import { drillKey, exportMarkdown, factKey, faultKey, gearKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
 import { SessionPlay } from '../training/SessionPlay';
 import {
@@ -144,11 +145,33 @@ function useTrainingTick(): number {
   return n;
 }
 
-export function TrainingApp(props: { rounds: Round[]; onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: TrainingTab; onTabChange?: (t: TrainingTab) => void }) {
+// the page stack while Mein Bag is open over Training (the App shows My bag instead of Training for a moment)
+let keptStack: { stack: View[]; scroll: number } | null = null;
+// read only – cleared after the first render (React may run the state initializer twice)
+function takeKeptStack(): View[] | null {
+  return keptStack?.stack ?? null;
+}
+
+export function TrainingApp(props: {
+  rounds: Round[];
+  onModules: () => void;
+  profile: ReactNode;
+  profileDot?: boolean;
+  tab?: TrainingTab;
+  onTabChange?: (t: TrainingTab) => void;
+  /** opens a function of GolfOS Rounds (Mein Bag, caddie, statistics, rounds, course choice) */
+  onOpenRounds?: (t: RoundsTarget) => void;
+}) {
   useTrainingTick();
   const running = loadSessions().filter((s) => !s.finishedAt);
   // a session in play opens straight on its drill (like a round in play)
-  const [stack, setStack] = useState<View[]>(() => [{ name: 'tab', tab: props.tab ?? 'learn' }, ...(running[0] && !props.tab ? [{ name: 'session', id: running[0].id } as View] : [])]);
+  // back from Mein Bag (opened over Training) the player is where they were
+  const [stack, setStack] = useState<View[]>(() => takeKeptStack() ?? [{ name: 'tab', tab: props.tab ?? 'learn' }, ...(running[0] && !props.tab ? [{ name: 'session', id: running[0].id } as View] : [])]);
+  useEffect(() => {
+    const k = keptStack;
+    keptStack = null;
+    if (k) window.setTimeout(() => window.scrollTo(0, k.scroll), 50);
+  }, []);
   const view = stack[stack.length - 1];
   const push = (v: View) => {
     setStack([...stack, v]);
@@ -168,7 +191,18 @@ export function TrainingApp(props: { rounds: Round[]; onModules: () => void; pro
     setStack([{ name: 'tab', tab: 'train' }, { name: 'session', id: s.id }]);
     window.scrollTo(0, 0);
   };
-  const nav: Nav = { push, back, toTab, start };
+  const nav: Nav = {
+    push,
+    back,
+    toTab,
+    start,
+    openRounds: props.onOpenRounds
+      ? (to) => {
+          if (to === 'bag' || to === 'caddie') keptStack = { stack, scroll: window.scrollY };
+          props.onOpenRounds!(to);
+        }
+      : undefined,
+  };
 
   // the menu stays at the bottom on every page of the module (Sascha 16.10.2026) – only a session in play has its
   // drill bar there instead, like a round in play has the hole bar
@@ -251,6 +285,7 @@ interface Nav {
   back: () => void;
   toTab: (t: TrainingTab) => void;
   start: (s: Session) => void;
+  openRounds?: (t: RoundsTarget) => void;
 }
 
 // ---------- tabs ----------
@@ -946,6 +981,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
               )}
               {s.fact && <p className="tr-fact">{t(s.fact)}</p>}
               <SectionMedia s={s} videos={c.videos} nav={props.nav} />
+              <RoundsLinks targets={s.rounds} nav={props.nav} />
               <ReviewBar itemKey={sectionKey(c.id, s.title)} />
             </Collapsible>
           ))}
@@ -1025,6 +1061,40 @@ function TrendArrow(props: { up: boolean }) {
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style={{ transform: props.up ? undefined : 'rotate(180deg)' }}>
       <path d="M7 2l5 6H9v4H5V8H2z" fill="currentColor" />
     </svg>
+  );
+}
+
+// a function of GolfOS Rounds a drill or a section names – one tap opens it (Sascha 16.10.2026)
+const ROUNDS_TARGET: Record<RoundsTarget, { title: () => string; sub: () => string }> = {
+  bag: { title: () => tr('My bag', 'Mein Bag'), sub: () => tr('Carry per club and the pitch chart', 'Carry je Schläger und Pitch-Tabelle') },
+  caddie: { title: () => tr('Caddie settings', 'Caddie-Einstellungen'), sub: () => tr('How the caddie advises you on the course', 'Wie dich der Caddie auf dem Platz berät') },
+  stats: { title: () => tr('Statistics', 'Statistik'), sub: () => tr('Where you lose strokes – strokes gained, putts, greens', 'Wo du Schläge verlierst – Strokes Gained, Putts, Grüns') },
+  rounds: { title: () => tr('Your rounds', 'Deine Runden'), sub: () => tr('Scorecards and the round summary', 'Scorekarten und Rundenfazit') },
+  course: { title: () => tr('Course preview & birdie book', 'Platzvorschau & Birdiebook'), sub: () => tr('Choose the course – every hole with map, hazards and slopes', 'Platz wählen – jedes Loch mit Karte, Gefahren und Neigung') },
+};
+function RoundsLinks(props: { targets?: RoundsTarget[]; nav: Nav }) {
+  if (!props.targets?.length || !props.nav.openRounds) return null;
+  return (
+    <ul className="list tr-rounds-links">
+      {props.targets.map((x) => (
+        <li key={x}>
+          <button type="button" className="list-item" onClick={() => props.nav.openRounds!(x)}>
+            <span className="tr-cat-icon small" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 21V3l11 4-11 4" />
+                <ellipse cx="12" cy="21" rx="8" ry="1.6" />
+              </svg>
+            </span>
+            <span className="grow">
+              <span className="eyebrow">{tr('Open in Rounds', 'In Rounds öffnen')}</span>
+              <span className="title">{ROUNDS_TARGET[x].title()}</span>
+              <span className="muted small">{ROUNDS_TARGET[x].sub()}</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -1192,6 +1262,7 @@ function DrillView(props: { id: string; nav: Nav }) {
           ))}
         </ol>
       </section>
+      <RoundsLinks targets={d.rounds} nav={props.nav} />
       {d.tips?.length ? (
         <section className="card tr-section">
           <h2>{tr('Tips', 'Tipps')}</h2>

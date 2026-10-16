@@ -210,7 +210,20 @@ export function App() {
   if (module === 'training')
     return (
       <Suspense fallback={<Waiting />}>
-        <TrainingApp rounds={rounds} onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={trainingTab} onTabChange={setTrainingTab} />
+        <TrainingApp
+          rounds={rounds}
+          onModules={() => setModule(null)}
+          profile={profile}
+          profileDot={profileDot}
+          tab={trainingTab}
+          onTabChange={setTrainingTab}
+          onOpenRounds={(to) => {
+            // Mein Bag and the caddie settings over Training (back returns there), the rest in Rounds
+            if (to === 'bag' || to === 'caddie') return setBagFrom({ part: to });
+            setModule('rounds');
+            setScreen(to === 'course' ? { name: 'pickCourse' } : { name: 'tab', tab: to === 'stats' ? 'stats' : 'rounds' });
+          }}
+        />
       </Suspense>
     );
 

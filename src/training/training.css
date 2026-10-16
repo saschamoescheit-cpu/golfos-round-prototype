@@ -262,3 +262,4 @@
 .tr-hist-remove { border: 0 !important; background: transparent !important; }
 .tr-day { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .tr-day .eyebrow { color: var(--text-2); }
+.tr-rounds-links .grow { display: flex; flex-direction: column; gap: 2px; }

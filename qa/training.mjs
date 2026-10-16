@@ -248,6 +248,21 @@ await p.waitForTimeout(1500);
 const imgs = await p.locator('img.tr-gear-img').count();
 ok(imgs >= 30, `${imgs} manufacturer pictures loaded`);
 
+// Rounds functions named in a drill open with a tap (Sascha 16.10.2026)
+await tab('Wissen');
+await p.locator('.tr-search input').fill('Gapping');
+await p.locator('.tr-search input').press('Enter');
+await p.locator('.tr-drill-row .list-item').first().click();
+await p.waitForTimeout(300);
+await p.locator('.tr-rounds-links .list-item').filter({ hasText: 'Mein Bag' }).click();
+await p.waitForTimeout(500);
+ok((await p.locator('.topbar h1').innerText()).includes('Mein Bag'), 'drill: "In Rounds öffnen · Mein Bag" opens My bag');
+await back();
+await p.waitForTimeout(500);
+ok((await p.locator('.topbar h1').innerText()).includes('Gapping'), 'back from My bag returns to the drill');
+await back();
+await back();
+
 // review mode for the golf pro (Sascha 16.10.2026)
 await tab('Wissen');
 await p.locator('.tr-review-entry').click();

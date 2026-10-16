@@ -1,4 +1,5 @@
 import type { Chart } from './content/charts';
+import type { RoundsTarget } from './content/rounds-links';
 
 // The "Training" module (Sascha 15.10.2026): a golf knowledge base for practice – categories (putting, chipping,
 // slopes …) with the basics, the typical faults, drills with a sketch, explainer videos and practice gear.
@@ -53,6 +54,8 @@ export interface Section {
   videos?: string[];
   /** shows the built-in metronome: putting beat or swing tempo 3 : 1 */
   metronome?: 'putt' | 'swing';
+  /** functions of GolfOS Rounds the section names */
+  rounds?: RoundsTarget[];
 }
 
 /** A typical fault: what the player sees – why – what helps, with drills that fix it. */
@@ -126,6 +129,8 @@ export interface Drill {
   sketch?: Sketch;
   /** the built-in metronome: putting beat (distance control) or swing tempo 3 : 1 */
   metronome?: 'putt' | 'swing';
+  /** functions of GolfOS Rounds the drill uses – opened with a tap (content/rounds-links.ts) */
+  rounds?: RoundsTarget[];
   videos?: Video[];
   sources?: Source[];
   review?: boolean;
