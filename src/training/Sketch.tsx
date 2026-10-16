@@ -20,11 +20,11 @@ const C = {
   mat: '#3f8a4a',
   line: '#ffffff',
   roll: '#ffffff',
-  flight: '#ffe27a',
+  flight: '#ffffff', // dotted white over the grass (no yellow – CI 16.10.2026)
   aim: '#ff7a59',
   club: '#d8dde2',
   text: '#10210c',
-  ring: '#ffd23f',
+  ring: '#ffffff',
   stick: '#ff9d2e',
   sky: '#cfe6f5',
   ground: '#6ea545',
@@ -141,7 +141,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
       case 'ring':
         return (
           <g key={i}>
-            <circle cx={X(it.at[0])} cy={Y(it.at[1])} r={it.r * k} fill={it.fill ? '#ffd23f33' : 'none'} stroke={C.ring} strokeWidth={2.5} />
+            <circle cx={X(it.at[0])} cy={Y(it.at[1])} r={it.r * k} fill={it.fill ? '#ffffff33' : 'none'} stroke={C.ring} strokeWidth={3} />
             {it.label && (
               <text x={X(it.at[0])} y={Y(it.at[1]) - it.r * k - 4} textAnchor="middle" fontSize={11} fontWeight={700} fill={C.text}>
                 {txt(it.label)}
@@ -340,7 +340,7 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
       case 'flight': {
         const p = it.pts;
         const d = p.length === 3 ? `M${X(p[0][0])},${Y(p[0][1])} Q${X(p[1][0])},${Y(p[1][1])} ${X(p[2][0])},${Y(p[2][1])}` : `M${p.map((q) => `${X(q[0])},${Y(q[1])}`).join(' L')}`;
-        return <path key={i} d={d} fill="none" stroke="#c98f00" strokeWidth={2.2} strokeDasharray={it.dashed ? '3 4' : undefined} />;
+        return <path key={i} d={d} fill="none" stroke="#4f7a14" strokeWidth={2.4} strokeDasharray={it.dashed ? '3 4' : undefined} />;
       }
       case 'arrow': {
         const ang = (Math.atan2(Y(it.to[1]) - Y(it.from[1]), X(it.to[0]) - X(it.from[0])) * 180) / Math.PI;

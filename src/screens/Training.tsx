@@ -617,7 +617,7 @@ function LogTab(props: { nav: Nav }) {
                         {d.targets ? ` · ${tr('goal', 'Ziel')} ${bandName(band)}: ${dec(d.targets[band])}` : ''}
                       </span>
                     </span>
-                    {ok != null && <span className={`badge ${ok ? 'ok' : 'warn'}`}>{ok ? '✓' : '…'}</span>}
+                    {ok != null && <span className={`badge ${ok ? 'ok' : 'tr-below'}`}>{ok ? '✓' : '…'}</span>}
                   </button>
                 </li>
               );
@@ -1685,7 +1685,7 @@ function SessionResult(props: { id: string; nav: Nav }) {
                     {i.done ? scoreText(d.scoring, i.value ?? null) : tr('not done', 'nicht gemacht')}
                   </span>
                 </span>
-                {ok != null && <span className={`badge ${ok ? 'ok' : 'warn'}`}>{ok ? tr('✓ goal', '✓ Ziel') : tr('below goal', 'unter Ziel')}</span>}
+                {ok != null && <span className={`badge ${ok ? 'ok' : 'tr-below'}`}>{ok ? tr('✓ goal', '✓ Ziel') : tr('below goal', 'unter Ziel')}</span>}
               </button>
             </li>
           );

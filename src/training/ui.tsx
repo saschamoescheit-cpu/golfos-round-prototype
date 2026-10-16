@@ -231,7 +231,7 @@ export function Sparkline(props: { values: number[]; goal?: number }) {
   const y = (v: number) => H - 6 - ((v - lo) / span) * (H - 12);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} aria-hidden="true" className="tr-spark">
-      {props.goal != null && <line x1={0} x2={W} y1={y(props.goal)} y2={y(props.goal)} stroke="var(--warn)" strokeDasharray="4 4" strokeWidth={1} />}
+      {props.goal != null && <line x1={0} x2={W} y1={y(props.goal)} y2={y(props.goal)} stroke="var(--brand-text)" strokeDasharray="4 4" strokeWidth={1} />}
       <polyline points={vs.map((v, i) => `${x(i)},${y(v)}`).join(' ')} fill="none" stroke="var(--brand-text)" strokeWidth={2} />
       {vs.map((v, i) => (
         <circle key={i} cx={x(i)} cy={y(v)} r={2.6} fill="var(--brand-text)" />
