@@ -214,3 +214,11 @@
 .tr-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .tr-chart-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--brand); }
 .tr-chart p { margin: 0; }
+
+/* progress: goals of the handicap band, the result chart of a drill (16.10.2026) */
+.tr-goals { display: flex; flex-direction: column; gap: 8px; }
+.tr-goals .row { display: flex; align-items: baseline; justify-content: space-between; }
+.tr-goals .tr-count { font: 700 20px var(--display); }
+.tr-result-chart { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.tr-result-chart svg { display: block; }
+.tr-metro-bpm.swing strong { font-size: 24px; }

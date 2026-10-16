@@ -10,7 +10,7 @@ export interface SectionMedia {
   sketch?: Sketch;
   videos?: string[];
   /** the built-in metronome right in the section */
-  metronome?: boolean;
+  metronome?: 'putt' | 'swing';
 }
 
 const grain: Sketch = {
@@ -39,7 +39,7 @@ export const SECTION_MEDIA: Partial<Record<CategoryId, SectionMedia[]>> = {
     { drill: 'ball-gate', videos: ['YZA7DEt-MG4', 'VMBqHXYalis'] },
     { drill: 'mirror-setup', videos: ['VMBqHXYalis'] },
     { drill: 'one-hand', videos: ['och5_Z0V6PI', 'VMBqHXYalis'] },
-    { drill: 'metronome', metronome: true, videos: ['Lx1e2M2NiLc', '2QFk4Jncu4s'] },
+    { drill: 'metronome', metronome: 'putt', videos: ['Lx1e2M2NiLc', '2QFk4Jncu4s'] },
     { drill: 'clock' },
     { drill: 'ladder', videos: ['MducFYxKUmQ', 'PI9o7pwJpbc', 'Lx1e2M2NiLc', 'yoqycx4scGY'] },
     { drill: 'par18', videos: ['Lx1e2M2NiLc', 'R4HD_Dg7aCQ'] },
@@ -116,7 +116,7 @@ export const SECTION_MEDIA: Partial<Record<CategoryId, SectionMedia[]>> = {
     { drill: 'slow-motion' },
     { drill: 'pump-drill', videos: ['ZQob3g4l0WU'] },
     { drill: 'l-to-l' },
-    { drill: 'tempo-321', videos: ['V-8UIPxsJiQ', '0pA3JRw2xJA', 'NqPQr1CyaCk', '3-hyz3ucsOE'] },
+    { drill: 'tempo-321', metronome: 'swing', videos: ['V-8UIPxsJiQ', '0pA3JRw2xJA', 'NqPQr1CyaCk', '3-hyz3ucsOE'] },
   ],
   ballflight: [
     { drill: 'nine-shot', videos: ['_-6S0cf1my4'] },

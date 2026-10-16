@@ -240,6 +240,56 @@ export function Sparkline(props: { values: number[]; goal?: number }) {
   );
 }
 
+/** The results of a drill over time: dots and line, the goal of the player's band dashed, best marked, dates. */
+export function ResultChart(props: { entries: { at: string; value: number }[]; goal?: number; lowerBetter?: boolean; fmt: (v: number) => string }) {
+  const es = props.entries.slice(-12);
+  if (es.length < 2) return null;
+  const vals = es.map((e) => e.value);
+  const all = props.goal != null ? [...vals, props.goal] : vals;
+  const lo = Math.min(...all);
+  const hi = Math.max(...all);
+  const span = hi - lo || 1;
+  const W = 320;
+  const H = 130;
+  const L0 = 8;
+  const R0 = 46;
+  const T0 = 14;
+  const B0 = 22;
+  const x = (i: number) => L0 + (i * (W - L0 - R0)) / (es.length - 1);
+  const y = (v: number) => T0 + (1 - (v - lo) / span) * (H - T0 - B0);
+  const bestV = props.lowerBetter ? Math.min(...vals) : Math.max(...vals);
+  const bestI = vals.lastIndexOf(bestV);
+  const date = (s: string) => new Date(s).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit' });
+  return (
+    <figure className="tr-result-chart">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={tr('Your results over time', 'Deine Ergebnisse im Verlauf')}>
+        {props.goal != null && (
+          <g>
+            <line x1={L0} x2={W - R0} y1={y(props.goal)} y2={y(props.goal)} stroke="var(--text-2)" strokeDasharray="5 4" strokeWidth={1.2} />
+            <text x={W - R0 + 6} y={y(props.goal) + 4} fontSize={11} fill="var(--text-2)">
+              {tr('goal', 'Ziel')}
+            </text>
+          </g>
+        )}
+        <polyline points={vals.map((v, i) => `${x(i)},${y(v)}`).join(' ')} fill="none" stroke="var(--brand-text)" strokeWidth={2.4} strokeLinejoin="round" />
+        {vals.map((v, i) => (
+          <circle key={i} cx={x(i)} cy={y(v)} r={i === bestI ? 5.5 : 3.4} fill={i === bestI ? 'var(--brand)' : 'var(--brand-text)'} stroke={i === bestI ? 'var(--text)' : 'none'} strokeWidth={1.5} />
+        ))}
+        <text x={W - R0 + 6} y={y(vals[vals.length - 1]) + 4} fontSize={12} fontWeight={700} fill="var(--text)">
+          {dec(vals[vals.length - 1])}
+        </text>
+        <text x={L0} y={H - 4} fontSize={11} fill="var(--text-2)">
+          {date(es[0].at)}
+        </text>
+        <text x={W - R0} y={H - 4} fontSize={11} fill="var(--text-2)" textAnchor="end">
+          {date(es[es.length - 1].at)}
+        </text>
+      </svg>
+      {props.lowerBetter && <figcaption className="muted small">{tr('Lower is better.', 'Weniger ist besser.')}</figcaption>}
+    </figure>
+  );
+}
+
 export function Collapsible(props: { title: ReactNode; children: ReactNode; open?: boolean; className?: string }) {
   const [open, setOpen] = useState(props.open ?? false);
   return (

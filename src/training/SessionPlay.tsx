@@ -75,7 +75,7 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
         </div>
         <p className="tr-goal">{t(d.goal)}</p>
       </section>
-      {d.metronome && <Metronome key={d.id} compact />}
+      {d.metronome && <Metronome key={d.id} compact mode={d.metronome} />}
       {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
       <section className="card tr-section">
         <button type="button" className="tr-coll-head" aria-expanded={showSteps} onClick={() => setShowSteps(!showSteps)}>

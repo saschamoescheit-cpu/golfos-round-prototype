@@ -29,6 +29,9 @@ import { DRILL_VIDEOS } from './drill-videos';
 /** Distance-control drills that show the built-in metronome (Sascha 16.10.2026: rhythm is the key to length). */
 export const METRONOME_DRILLS = ['metronome', 'ladder', 'lag-circle', 'four-tee', 'pelz-17', 'fringe', 'star-fringe', 'eyes-hole', 'eyes-closed', 'uphill-downhill', 'wellputt-lines', 'pressure-putt', 'three-speeds', 'stimp-test'];
 
+/** Full-swing drills with the swing tempo 3 : 1 (Tour Tempo). */
+export const SWING_TEMPO_DRILLS = ['tempo-321', 'feet-together-swing', 'driver-80', 'practice-swing-match'];
+
 export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching, bunker, slopes, trouble, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice]
   .map((c) => (VIDEOS_DE[c.id] ? { ...c, videos: [...(c.videos ?? []), ...VIDEOS_DE[c.id]!] } : c))
   // a picture and, where there is one, a video for every section of the basics (Sascha 16.10.2026)
@@ -59,7 +62,7 @@ export const DRILLS: Drill[] = ([
   ...moreDrills,
 ] as Drill[])
   .map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })) // every drill gets its own sketch
-  .map((d) => (METRONOME_DRILLS.includes(d.id) ? { ...d, metronome: true } : d))
+  .map((d) => (METRONOME_DRILLS.includes(d.id) ? { ...d, metronome: 'putt' as const } : SWING_TEMPO_DRILLS.includes(d.id) ? { ...d, metronome: 'swing' as const } : d))
   // a video for every drill where one fits – the drill's own first, then the matching topic videos
   .map((d) => {
     const extra = (DRILL_VIDEOS[d.id] ?? []).map((id) => TOPIC_VIDEOS.get(id)).filter((v): v is NonNullable<typeof v> => !!v);

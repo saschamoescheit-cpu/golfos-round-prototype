@@ -60,7 +60,8 @@ import {
   priceOf,
   ResultInput,
   scoreText,
-  Sparkline,
+  ResultChart,
+  higherBetter,
   t,
   VideoCard,
 } from '../training/ui';
@@ -592,6 +593,17 @@ function LogTab(props: { nav: Nav }) {
   const month = new Date().toISOString().slice(0, 7);
   const drillsMonth = log.filter((e) => e.at.startsWith(month)).length;
   const drillIds = [...new Set(log.map((e) => e.drill))].filter((id) => drillById(id));
+  // the goals of the player's handicap band: how many of the drills with a goal are reached (16.10.2026)
+  const withGoal = drillIds.filter((id) => drillById(id)!.targets && log.some((e) => e.drill === id && e.value != null));
+  const reached = withGoal.filter((id) => {
+    const d = drillById(id)!;
+    return meets(d.scoring, d.targets, bestOf(d.scoring, log.filter((e) => e.drill === id && e.value != null).map((e) => e.value!)), band);
+  }).length;
+  // where the practice goes: results per topic
+  const perTopic = CATEGORIES.map((c) => ({ c, n: log.filter((e) => drillById(e.drill)?.cat === c.id).length }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 6);
   return (
     <>
       <h1 className="tab-title">{tr('Progress', 'Verlauf')}</h1>
@@ -614,6 +626,35 @@ function LogTab(props: { nav: Nav }) {
           {tr('Your results appear here: start a plan or open a drill and enter your score.', 'Hier erscheinen deine Ergebnisse: Starte einen Plan oder öffne eine Übung und trag dein Ergebnis ein.')}
         </p>
       )}
+      {withGoal.length > 0 && (
+        <section className="card tr-goals">
+          <div className="row">
+            <strong>{tr(`Goals for ${bandName(band)}`, `Ziele für ${bandName(band)}`)}</strong>
+            <span className="tr-count">
+              {reached}/{withGoal.length}
+            </span>
+          </div>
+          <div className="progress" aria-hidden="true">
+            <div style={{ width: `${(reached / withGoal.length) * 100}%` }} />
+          </div>
+          <span className="muted small">
+            {tr(
+              `${reached} of the ${withGoal.length} drills you have results for reach the goal of your handicap.`,
+              `${reached} der ${withGoal.length} Übungen mit Ergebnis erreichen das Ziel deines Handicaps.`,
+            )}
+          </span>
+        </section>
+      )}
+      {perTopic.length > 1 && (
+        <FactChart
+          chart={{
+            kind: 'bars',
+            title: { en: 'Where you practise (results)', de: 'Wo du übst (Ergebnisse)' },
+            unit: '',
+            bars: perTopic.map((x) => ({ label: x.c.name, value: x.n })),
+          }}
+        />
+      )}
       {drillIds.length > 0 && (
         <section className="tr-block">
           <h2>{tr('Personal bests', 'Bestwerte')}</h2>
@@ -626,7 +667,7 @@ function LogTab(props: { nav: Nav }) {
               return (
                 <li key={id}>
                   <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'drill', id })}>
-                    <span className="tr-cat-icon small">{CAT_ICON[d.cat]}</span>
+                    <SketchThumb sketch={d.sketch} fallback={CAT_ICON[d.cat]} />
                     <span className="grow">
                       <span className="title">{t(d.name)}</span>
                       <span className="muted small">
@@ -689,7 +730,7 @@ function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
   return (
     <>
       {sketch && <SketchView sketch={sketch} label={t(props.s.title)} />}
-      {props.s.metronome && <Metronome />}
+      {props.s.metronome && <Metronome mode={props.s.metronome} />}
       {d && (
         <button type="button" className="list-item tr-section-drill" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
           <span className="tr-cat-icon small">{CAT_ICON[d.cat]}</span>
@@ -953,7 +994,7 @@ function DrillView(props: { id: string; nav: Nav }) {
       </div>
       {d.review && <p className="tr-review small">{tr('Content still to be checked by our golf pro.', 'Inhalt wird noch von unserem Golfprofi geprüft.')}</p>}
       {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
-      {d.metronome && <Metronome />}
+      {d.metronome && <Metronome mode={d.metronome} />}
       {d.origin && (
         <p className="muted small">
           {tr('Known from', 'Bekannt durch')}: {t(d.origin)}
@@ -1060,7 +1101,7 @@ function DrillView(props: { id: string; nav: Nav }) {
             <span className="muted small">
               {tr('Best', 'Bestwert')}: {scoreText(d.scoring, best)} · {tr(`${entries.length}× logged`, `${entries.length}× eingetragen`)}
             </span>
-            <Sparkline values={[...vals].reverse()} goal={d.targets?.[band]} />
+            <ResultChart entries={entries.filter((e) => e.value != null).reverse().map((e) => ({ at: e.at, value: e.value! }))} goal={d.targets?.[band]} lowerBetter={!higherBetter(d.scoring)} fmt={(v) => scoreText(d.scoring, v)} />
           </>
         )}
         {entries.length > 0 && (

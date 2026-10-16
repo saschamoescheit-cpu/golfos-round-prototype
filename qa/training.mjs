@@ -124,6 +124,16 @@ await p.locator('.tr-metro-go').click();
 ok((await p.locator('.tr-metro-go').getAttribute('aria-pressed')) === 'false', 'metronome stops');
 await back();
 await back();
+// the full swing gets the tempo trainer 3 : 1 (Tour Tempo)
+await p.locator('.tr-search input').fill('3:1-Rhythmus');
+await p.locator('.tr-search input').press('Enter');
+await p.locator('.tr-drill-row .list-item').filter({ hasText: '3:1-Rhythmus' }).first().click();
+await p.waitForTimeout(300);
+ok((await p.locator('.tr-metronome').innerText()).toLowerCase().includes('schwung-tempo 3 : 1') && (await p.locator('.tr-metro-lights i').count()) === 3, 'swing drill: tempo trainer 3 : 1 with three sounds');
+await p.locator('.tr-metronome .chip').filter({ hasText: '21/7' }).click();
+ok((await p.locator('.tr-metro-bpm').innerText()).includes('0,70'), 'tempo 21/7: back 0.70 s');
+await back();
+await back();
 
 // search
 await p.locator('.tr-search input').fill('Tiger');
@@ -167,6 +177,8 @@ await shot('result');
 await back();
 await p.waitForTimeout(200);
 ok(await p.getByRole('heading', { name: 'Bestwerte' }).isVisible(), 'progress shows the best results');
+ok((await p.locator('.tr-goals').innerText()).includes('Ziele für Hcp 11–20'), 'progress: the goals of the player’s handicap band');
+ok((await p.locator('.tr-thumb').count()) >= 1, 'progress: bests with the drill picture');
 const sessionsBlock = () => p.locator('.tr-block').filter({ has: p.getByRole('heading', { name: 'Einheiten', exact: true }) });
 ok((await sessionsBlock().locator('.list-item').count()) === 1, 'finished session in the list');
 // delete with undo

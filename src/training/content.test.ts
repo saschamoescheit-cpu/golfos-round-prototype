@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORIES, DRILLS, METRONOME_DRILLS, drillById } from './content';
+import { CATEGORIES, DRILLS, METRONOME_DRILLS, SWING_TEMPO_DRILLS, drillById } from './content';
 import { DRILL_GEAR, GEAR, gearById, gearForDrill } from './content/gear';
 import { PLANS } from './content/plans';
 import { adviceFromRounds } from './recommend';
@@ -120,7 +120,9 @@ describe('training content', () => {
   });
 
   it('the metronome is on the distance-control drills and in the putting basics (Sascha 16.10.2026)', () => {
-    for (const id of METRONOME_DRILLS) expect(drillById(id)?.metronome, id).toBe(true);
+    for (const id of METRONOME_DRILLS) expect(drillById(id)?.metronome, id).toBe('putt');
+    for (const id of SWING_TEMPO_DRILLS) expect(drillById(id)?.metronome, id).toBe('swing');
+    expect(CATEGORIES.find((c) => c.id === 'swing')!.sections.some((s) => s.metronome === 'swing')).toBe(true);
     const putting = CATEGORIES.find((c) => c.id === 'putting')!;
     const rhythm = putting.sections.find((s) => s.metronome);
     expect(rhythm?.title.de).toBe('Rhythmus: der Schlüssel zur Länge');
