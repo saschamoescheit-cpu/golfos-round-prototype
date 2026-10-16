@@ -134,7 +134,7 @@ export function VideoCard(props: { v: Video }) {
             {tr('Open on YouTube', 'Auf YouTube öffnen')} ↗
           </a>
         ) : (
-          tr('Loads from YouTube only when you tap.', 'Wird erst beim Antippen von YouTube geladen.')
+          tr('Preview picture from YouTube · the video starts only when you tap.', 'Vorschaubild von YouTube · das Video startet erst beim Antippen.')
         )}
       </span>
     </div>

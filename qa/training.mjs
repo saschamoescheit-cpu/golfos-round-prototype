@@ -224,6 +224,31 @@ await p.waitForTimeout(1500);
 const imgs = await p.locator('img.tr-gear-img').count();
 ok(imgs >= 30, `${imgs} manufacturer pictures loaded`);
 
+// review mode for the golf pro (Sascha 16.10.2026)
+await tab('Wissen');
+await p.locator('.tr-review-entry').click();
+ok((await p.locator('.tr-reviewbar').count()) === 0, 'no review bars while the review mode is off');
+await p.getByRole('button', { name: 'Prüfmodus einschalten' }).click();
+await p.getByRole('button', { name: 'Nächste ungeprüfte Übung prüfen' }).click();
+await p.waitForTimeout(300);
+const firstReview = await p.locator('.topbar h1').innerText();
+await p.locator('.tr-reviewbar').getByRole('button', { name: '✎ Ändern' }).click();
+await p.locator('.tr-reviewbar textarea').fill('Abstände in Metern angeben');
+await p.locator('.tr-reviewbar textarea').blur();
+await p.getByRole('button', { name: 'Nächste ungeprüfte Übung ›' }).click();
+await p.waitForTimeout(300);
+ok((await p.locator('.topbar h1').innerText()) !== firstReview, 'review goes on to the next drill');
+await p.locator('.tr-reviewbar').getByRole('button', { name: '✕ Streichen' }).click();
+await back();
+await back();
+await p.waitForTimeout(300);
+ok((await p.locator('.tr-stats strong').first().innerText()).startsWith('2/'), 'review overview counts 2 marks');
+ok((await p.locator('.tr-review-topics').last().innerText()).includes('Abstände in Metern angeben'), 'the change note is listed');
+const [dl] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Als Datei speichern (.md)' }).click()]);
+ok(/golfos-training-pruefung-.*\.md/.test(dl.suggestedFilename()), `review list saved as ${dl.suggestedFilename()}`);
+await p.getByRole('button', { name: 'Prüfmodus ist an – ausschalten' }).click();
+await back();
+
 // English
 await p.evaluate(() => localStorage.setItem('golfos.lang.v1', 'en'));
 await p.reload();

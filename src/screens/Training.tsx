@@ -12,6 +12,8 @@ import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { Metronome } from '../training/Metronome';
+import { ReviewBar } from '../training/ReviewBar';
+import { drillKey, exportMarkdown, faultKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
 import { SessionPlay } from '../training/SessionPlay';
 import {
   addLog,
@@ -83,7 +85,8 @@ type View =
   | { name: 'ordered'; order: Order }
   | { name: 'builder'; plan: OwnPlan }
   | { name: 'search'; q: string }
-  | { name: 'fault'; cat: CategoryId; index: number };
+  | { name: 'fault'; cat: CategoryId; index: number }
+  | { name: 'review' };
 
 const ICONS = {
   learn: MENU_ICONS.rules,
@@ -180,6 +183,8 @@ export function TrainingApp(props: { rounds: Round[]; onModules: () => void; pro
         return <PlanView plan={view.plan} own={view.own} nav={nav} />;
       case 'builder':
         return <Builder plan={view.plan} nav={nav} />;
+      case 'review':
+        return <ReviewView nav={nav} />;
       case 'fault':
         return <FaultView cat={view.cat} index={view.index} nav={nav} />;
       case 'search':
@@ -355,6 +360,7 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
           <dd>{t(f.fix)}</dd>
         </dl>
       </section>
+      <ReviewBar itemKey={faultKey(c.id, f.name)} />
       {drills[0]?.sketch && (
         <>
           <span className="eyebrow">{tr('The first drill for it', 'Die erste Übung dafür')}: {t(drills[0].name)}</span>
@@ -441,6 +447,16 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
           ))}
         </div>
       </section>
+      <button type="button" className="list-item tr-review-entry" onClick={() => props.nav.push({ name: 'review' })}>
+        <span className="tr-cat-icon small" aria-hidden="true">
+          ✎
+        </span>
+        <span className="grow">
+          <span className="title">{tr('Review the content', 'Inhalte prüfen')}</span>
+          <span className="muted small">{tr('For our golf pro: keep, change or cut – and share the list.', 'Für unseren Golfprofi: passt, ändern oder streichen – und die Liste teilen.')}</span>
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
     </>
   );
 }
@@ -772,6 +788,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
               )}
               {s.fact && <p className="tr-fact">{t(s.fact)}</p>}
               <SectionMedia s={s} videos={c.videos} nav={props.nav} />
+              <ReviewBar itemKey={sectionKey(c.id, s.title)} />
             </Collapsible>
           ))}
           {c.see?.length ? (
@@ -816,7 +833,10 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
         <>
           {/* videos in the player's language first */}
           {[...c.videos].sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang())).map((v) => (
-            <VideoCard key={v.id} v={v} />
+            <div key={v.id} className="tr-video-item">
+              <VideoCard v={v} />
+              <ReviewBar itemKey={videoKey(v.id)} />
+            </div>
           ))}
         </>
       ) : null}
@@ -843,6 +863,8 @@ function PlanRow(props: { drill: string; meta: string; nav: Nav }) {
 function DrillList(props: { drills: Drill[]; nav: Nav; onAdd?: (d: Drill) => void; added?: string[] }) {
   if (!props.drills.length) return <p className="muted">{tr('No drills for this filter.', 'Keine Übungen für diesen Filter.')}</p>;
   const favs = loadFavs();
+  const review = reviewOn();
+  const marks = review ? loadReview() : {};
   return (
     <ul className="list">
       {props.drills.map((d) => (
@@ -851,6 +873,7 @@ function DrillList(props: { drills: Drill[]; nav: Nav; onAdd?: (d: Drill) => voi
             <SketchThumb sketch={d.sketch} fallback={CAT_ICON[d.cat]} />
             <span className="grow">
               <span className="title">
+                {review && marks[drillKey(d.id)] ? `${SIGN[marks[drillKey(d.id)].verdict]} ` : ''}
                 {favs.includes(d.id) ? '★ ' : ''}
                 {t(d.name)}
               </span>
@@ -1077,7 +1100,200 @@ function DrillView(props: { id: string; nav: Nav }) {
       <button type="button" className="btn-ghost" onClick={() => props.nav.push({ name: 'cat', id: d.cat })}>
         {tr('More on', 'Mehr zu')} {t(catById(d.cat)?.name)} ›
       </button>
+      <ReviewBar itemKey={drillKey(d.id)} />
+      {reviewOn() && (
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => {
+            const next = nextOpenDrill(d.id);
+            if (next) props.nav.push({ name: 'drill', id: next });
+          }}
+        >
+          {tr('Next drill to review ›', 'Nächste ungeprüfte Übung ›')}
+        </button>
+      )}
       <Sources list={d.sources} />
+    </main>
+  );
+}
+
+// ---------- review mode (Sascha 16.10.2026: go through the module with Chris and shorten it) ----------
+
+const SIGN: Record<Verdict, string> = { ok: '✓', edit: '✎', cut: '✕' };
+const KIND_NAME: Record<ReviewKind, () => string> = {
+  drill: () => tr('Drills', 'Übungen'),
+  section: () => tr('Basics', 'Grundlagen'),
+  fault: () => tr('Faults', 'Fehler'),
+  video: () => tr('Videos', 'Videos'),
+  plan: () => tr('Plans', 'Pläne'),
+};
+
+function ReviewView(props: { nav: Nav }) {
+  useTrainingTick();
+  const [shared, setShared] = useState<string | null>(null);
+  const on = reviewOn();
+  const marks = loadReview();
+  const items = useMemo(reviewItems, []);
+  const done = items.filter((i) => marks[i.key]);
+  const count = (v: Verdict) => done.filter((i) => marks[i.key].verdict === v).length;
+  const todo = done.filter((i) => marks[i.key].verdict !== 'ok').sort((a, b) => marks[b.key].at.localeCompare(marks[a.key].at));
+  const who = fullName(loadProfile());
+  const lang = getLang() === 'de' ? 'de' : 'en';
+
+  const open = (i: ReviewItem) => {
+    const [kind, ...rest] = i.key.split(':');
+    if (kind === 'drill') return props.nav.push({ name: 'drill', id: rest.join(':') });
+    if (kind === 'plan') {
+      const p = PLANS.find((x) => x.id === rest.join(':'));
+      return p && props.nav.push({ name: 'plan', plan: p });
+    }
+    if (kind === 'fault' && i.cat) {
+      const index = (catById(i.cat)?.faults ?? []).findIndex((f) => faultKey(i.cat!, f.name) === i.key);
+      if (index >= 0) return props.nav.push({ name: 'fault', cat: i.cat, index });
+    }
+    if (i.cat) {
+      CAT_TAB.set(i.cat, kind === 'video' ? 'videos' : kind === 'section' ? 'basics' : 'drills');
+      props.nav.push({ name: 'cat', id: i.cat });
+    }
+  };
+  const share = async () => {
+    const text = exportMarkdown(lang, who || undefined);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: tr('GolfOS Training – review', 'GolfOS Training – Prüfung'), text });
+        return setShared(tr('Shared.', 'Geteilt.'));
+      }
+    } catch {
+      /* cancelled – fall back to the clipboard */
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShared(tr('Copied – paste it into a message or e-mail.', 'Kopiert – in eine Nachricht oder Mail einfügen.'));
+    } catch {
+      setShared(tr('Could not share – use “Save as file”.', 'Teilen ging nicht – nimm „Als Datei speichern“.'));
+    }
+  };
+  const download = () => {
+    const blob = new Blob([exportMarkdown(lang, who || undefined)], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `golfos-training-pruefung-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  return (
+    <main className="screen training">
+      <TopBar title={tr('Review the content', 'Inhalte prüfen')} onBack={props.nav.back} />
+      <p className="muted" style={{ margin: 0 }}>
+        {tr(
+          'Switch the review on: under every drill, basics section, fault, plan and video you can mark ✓ keep, ✎ change or ✕ cut, with a note. The marks stay on this device until you share them.',
+          'Schalte die Prüfung ein: Unter jeder Übung, jedem Grundlagen-Abschnitt, Fehler, Plan und Video kannst du ✓ passt, ✎ ändern oder ✕ streichen wählen, mit Notiz. Die Bewertungen bleiben auf diesem Gerät, bis du sie teilst.',
+        )}
+      </p>
+      <button type="button" className={on ? 'btn-secondary' : 'btn-primary'} aria-pressed={on} onClick={() => setReviewOn(!on)}>
+        {on ? tr('Review mode is on – switch off', 'Prüfmodus ist an – ausschalten') : tr('Switch review mode on', 'Prüfmodus einschalten')}
+      </button>
+      <div className="tr-stats four">
+        <div>
+          <strong>
+            {done.length}/{items.length}
+          </strong>
+          <span className="muted small">{tr('reviewed', 'geprüft')}</span>
+        </div>
+        <div>
+          <strong>{count('ok')}</strong>
+          <span className="muted small">✓ {tr('keep', 'passt')}</span>
+        </div>
+        <div>
+          <strong>{count('edit')}</strong>
+          <span className="muted small">✎ {tr('change', 'ändern')}</span>
+        </div>
+        <div>
+          <strong>{count('cut')}</strong>
+          <span className="muted small">✕ {tr('cut', 'streichen')}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="btn-primary"
+        onClick={() => {
+          if (!on) setReviewOn(true);
+          const next = nextOpenDrill();
+          if (next) props.nav.push({ name: 'drill', id: next });
+        }}
+        disabled={!nextOpenDrill()}
+      >
+        {tr('Review the next drill', 'Nächste ungeprüfte Übung prüfen')}
+      </button>
+      <section className="card tr-section">
+        <h2>{tr('By topic', 'Nach Thema')}</h2>
+        <ul className="tr-review-topics">
+          {CATEGORIES.map((c) => {
+            const list = items.filter((i) => i.cat === c.id);
+            const n = list.filter((i) => marks[i.key]).length;
+            return (
+              <li key={c.id}>
+                <button type="button" className="tr-plan-row" onClick={() => props.nav.push({ name: 'cat', id: c.id })}>
+                  <span className="tr-cat-icon small">{CAT_ICON[c.id]}</span>
+                  <span className="grow">
+                    <strong>{t(c.name)}</strong>
+                    <span className="muted small">
+                      {(['drill', 'section', 'fault', 'video'] as ReviewKind[])
+                        .map((k) => {
+                          const all = list.filter((i) => i.kind === k);
+                          return all.length ? `${KIND_NAME[k]()} ${all.filter((i) => marks[i.key]).length}/${all.length}` : '';
+                        })
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                  <span className="tr-count small">
+                    {n}/{list.length}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+      {todo.length > 0 && (
+        <section className="card tr-section">
+          <h2>{tr('To change or cut', 'Zu ändern oder streichen')}</h2>
+          <ul className="tr-review-topics">
+            {todo.map((i) => (
+              <li key={i.key}>
+                <button type="button" className="tr-plan-row" onClick={() => open(i)}>
+                  <span className={`tr-review-sign ${marks[i.key].verdict}`}>{SIGN[marks[i.key].verdict]}</span>
+                  <span className="grow">
+                    <strong>{t(i.title)}</strong>
+                    <span className="muted small">
+                      {KIND_NAME[i.kind]()}
+                      {i.cat ? ` · ${t(catById(i.cat)?.name)}` : ''}
+                      {marks[i.key].note ? ` – ${marks[i.key].note}` : ''}
+                    </span>
+                  </span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <section className="card tr-section">
+        <h2>{tr('Share the list', 'Liste teilen')}</h2>
+        <p className="muted small" style={{ margin: 0 }}>
+          {tr('All marks with notes, grouped by topic – for Sascha or Linear.', 'Alle Bewertungen mit Notizen, nach Themen sortiert – für Sascha oder Linear.')}
+        </p>
+        <button type="button" className="btn-primary" onClick={() => void share()} disabled={!done.length}>
+          {tr('Share list', 'Liste teilen')}
+        </button>
+        <button type="button" className="btn-secondary" onClick={download} disabled={!done.length}>
+          {tr('Save as file (.md)', 'Als Datei speichern (.md)')}
+        </button>
+        {shared && <span className="muted small" role="status">{shared}</span>}
+      </section>
     </main>
   );
 }
@@ -1128,6 +1344,7 @@ function PlanView(props: { plan: Plan | OwnPlan; own?: boolean; nav: Nav }) {
               ))}
             </ol>
           </section>
+          {!props.own && <ReviewBar itemKey={planKey(p.id)} />}
           <GearForPlan items={items} nav={props.nav} />
           <button type="button" className="btn-primary" disabled={!items.length} onClick={() => props.nav.start(newSession(name, items, p.id))}>
             {tr('Start session', 'Einheit starten')}
