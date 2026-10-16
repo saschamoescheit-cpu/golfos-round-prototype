@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { drillKey, exportMarkdown, loadReview, nextOpenDrill, planKey, reviewItems, sectionKey, setMark } from './review';
 import { CATEGORIES, DRILLS } from './content';
 import { PLANS } from './content/plans';
+import { GEAR } from './content/gear';
 
 describe('training review (for the golf pro)', () => {
   beforeEach(() => {
@@ -14,6 +15,8 @@ describe('training review (for the golf pro)', () => {
     expect(new Set(items.map((i) => i.key)).size).toBe(items.length);
     expect(items.filter((i) => i.kind === 'drill').length).toBe(DRILLS.filter((d) => CATEGORIES.some((c) => c.id === d.cat)).length);
     expect(items.filter((i) => i.kind === 'plan').length).toBe(PLANS.length);
+    expect(items.filter((i) => i.kind === 'gear').length).toBe(GEAR.length);
+    expect(items.filter((i) => i.kind === 'fact').length).toBe(CATEGORIES.reduce((n, c) => n + (c.facts?.length ?? 0), 0));
   });
 
   it('goes through the drills one by one, skipping the reviewed ones', () => {

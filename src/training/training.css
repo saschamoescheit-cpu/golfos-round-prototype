@@ -227,3 +227,5 @@
 @media (max-width: 380px) {
   .tr-tabs button { font-size: 13px; padding-left: 2px; padding-right: 2px; letter-spacing: -0.1px; }
 }
+.tr-reviewbar.compact { padding: 6px 8px; margin: 6px 0 4px; gap: 6px; }
+.tr-reviewbar.compact .chip { min-height: 32px; font-size: 12px; padding: 0 10px; }

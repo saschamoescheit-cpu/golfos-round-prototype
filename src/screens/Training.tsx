@@ -15,7 +15,7 @@ import { Metronome } from '../training/Metronome';
 import { FactChart } from '../training/FactChart';
 import { ReviewBar } from '../training/ReviewBar';
 import { search } from '../training/search';
-import { drillKey, exportMarkdown, faultKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
+import { drillKey, exportMarkdown, factKey, faultKey, gearKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
 import { SessionPlay } from '../training/SessionPlay';
 import {
   addLog,
@@ -854,7 +854,10 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
               <span className="eyebrow">{tr('Good to know', 'Gut zu wissen')}</span>
               <ul>
                 {c.facts.map((f, i) => (
-                  <li key={i}>{t(f)}</li>
+                  <li key={i}>
+                    {t(f)}
+                    <ReviewBar itemKey={factKey(c.id, f)} compact />
+                  </li>
                 ))}
               </ul>
             </section>
@@ -1212,11 +1215,13 @@ function DrillView(props: { id: string; nav: Nav }) {
 
 const SIGN: Record<Verdict, string> = { ok: '✓', edit: '✎', cut: '✕' };
 const KIND_NAME: Record<ReviewKind, () => string> = {
+  fact: () => tr('Numbers', 'Zahlen'),
   drill: () => tr('Drills', 'Übungen'),
   section: () => tr('Basics', 'Grundlagen'),
   fault: () => tr('Faults', 'Fehler'),
   video: () => tr('Videos', 'Videos'),
   plan: () => tr('Plans', 'Pläne'),
+  gear: () => tr('Gear', 'Zubehör'),
 };
 
 function ReviewView(props: { nav: Nav }) {
@@ -1234,6 +1239,7 @@ function ReviewView(props: { nav: Nav }) {
   const open = (i: ReviewItem) => {
     const [kind, ...rest] = i.key.split(':');
     if (kind === 'drill') return props.nav.push({ name: 'drill', id: rest.join(':') });
+    if (kind === 'gear') return props.nav.push({ name: 'gear', id: rest.join(':') });
     if (kind === 'plan') {
       const p = PLANS.find((x) => x.id === rest.join(':'));
       return p && props.nav.push({ name: 'plan', plan: p });
@@ -1243,7 +1249,7 @@ function ReviewView(props: { nav: Nav }) {
       if (index >= 0) return props.nav.push({ name: 'fault', cat: i.cat, index });
     }
     if (i.cat) {
-      CAT_TAB.set(i.cat, kind === 'video' ? 'videos' : kind === 'section' ? 'basics' : 'drills');
+      CAT_TAB.set(i.cat, kind === 'video' ? 'videos' : kind === 'section' || kind === 'fact' ? 'basics' : 'drills');
       props.nav.push({ name: 'cat', id: i.cat });
     }
   };
@@ -1330,7 +1336,7 @@ function ReviewView(props: { nav: Nav }) {
                   <span className="grow">
                     <strong>{t(c.name)}</strong>
                     <span className="muted small">
-                      {(['drill', 'section', 'fault', 'video'] as ReviewKind[])
+                      {(['fact', 'drill', 'section', 'fault', 'video'] as ReviewKind[])
                         .map((k) => {
                           const all = list.filter((i) => i.kind === k);
                           return all.length ? `${KIND_NAME[k]()} ${all.filter((i) => marks[i.key]).length}/${all.length}` : '';
@@ -1434,11 +1440,12 @@ function PlanView(props: { plan: Plan | OwnPlan; own?: boolean; nav: Nav }) {
               ))}
             </ol>
           </section>
-          {!props.own && <ReviewBar itemKey={planKey(p.id)} />}
-          <GearForPlan items={items} nav={props.nav} />
+          {/* the main action right after the drills, as on the rounds page */}
           <button type="button" className="btn-primary" disabled={!items.length} onClick={() => props.nav.start(newSession(name, items, p.id))}>
             {tr('Start session', 'Einheit starten')}
           </button>
+          {!props.own && <ReviewBar itemKey={planKey(p.id)} />}
+          <GearForPlan items={items} nav={props.nav} />
           {isOwn && (
             <div className="tr-actions">
               <button type="button" className="btn-secondary" onClick={() => props.nav.push({ name: 'builder', plan: p as OwnPlan })}>
@@ -1760,6 +1767,7 @@ function GearView(props: { id: string; nav: Nav }) {
         )}
       </section>
       <AddToCart g={g} />
+      <ReviewBar itemKey={gearKey(g.id)} />
       {g.url && (
         <a className="btn-secondary" href={g.affiliateUrl || g.url} target="_blank" rel="noreferrer">
           {tr('Manufacturer’s page', 'Seite des Herstellers')} ↗

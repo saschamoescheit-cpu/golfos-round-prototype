@@ -6,7 +6,7 @@ import { loadReview, reviewOn, setMark, type Verdict } from './review';
 // The review bar under a drill, section, fault, plan or video – only while the review mode is on.
 // ✓ keep · ✎ change · ✕ cut; a note for ✎ and ✕. Tapping the chosen verdict again removes the mark.
 
-export function ReviewBar(props: { itemKey: string; onMarked?: (v: Verdict) => void }) {
+export function ReviewBar(props: { itemKey: string; onMarked?: (v: Verdict) => void; compact?: boolean }) {
   const [, tick] = useState(0);
   useEffect(() => {
     const on = () => tick((n) => n + 1);
@@ -30,8 +30,8 @@ export function ReviewBar(props: { itemKey: string; onMarked?: (v: Verdict) => v
     { v: 'cut', label: tr('✕ Cut', '✕ Streichen') },
   ];
   return (
-    <div className={`tr-reviewbar${mark ? ` ${mark.verdict}` : ''}`} role="group" aria-label={tr('Review', 'Prüfung')}>
-      <span className="eyebrow">{tr('Review', 'Prüfung')}</span>
+    <div className={`tr-reviewbar${props.compact ? ' compact' : ''}${mark ? ` ${mark.verdict}` : ''}`} role="group" aria-label={tr('Review', 'Prüfung')}>
+      {!props.compact && <span className="eyebrow">{tr('Review', 'Prüfung')}</span>}
       <div className="chip-set">
         {opts.map((o) => (
           <button key={o.v} type="button" className={`chip${mark?.verdict === o.v ? ' on' : ''}`} aria-pressed={mark?.verdict === o.v} onClick={() => pick(o.v)}>

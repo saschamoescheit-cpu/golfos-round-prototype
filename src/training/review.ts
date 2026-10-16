@@ -1,5 +1,6 @@
 import { CATEGORIES, DRILLS } from './content';
 import { PLANS } from './content/plans';
+import { GEAR } from './content/gear';
 import type { CategoryId, L } from './types';
 
 // Review mode for the golf pro (Sascha 16.10.2026: "next step: go through it with Chris" – and shorten it).
@@ -13,7 +14,7 @@ export interface ReviewMark {
   at: string;
   by?: string;
 }
-export type ReviewKind = 'drill' | 'section' | 'fault' | 'plan' | 'video';
+export type ReviewKind = 'fact' | 'drill' | 'section' | 'fault' | 'video' | 'plan' | 'gear';
 export interface ReviewItem {
   key: string;
   kind: ReviewKind;
@@ -68,17 +69,21 @@ export const sectionKey = (cat: CategoryId, title: L) => `section:${cat}:${title
 export const faultKey = (cat: CategoryId, name: L) => `fault:${cat}:${name.en}`;
 export const planKey = (id: string) => `plan:${id}`;
 export const videoKey = (id: string) => `video:${id}`;
+export const factKey = (cat: CategoryId, fact: L) => `fact:${cat}:${fact.en.slice(0, 80)}`;
+export const gearKey = (id: string) => `gear:${id}`;
 
 /** Everything that can be reviewed, in the order of the library. */
 export function reviewItems(): ReviewItem[] {
   const out: ReviewItem[] = [];
   for (const c of CATEGORIES) {
+    for (const f of c.facts ?? []) out.push({ key: factKey(c.id, f), kind: 'fact', cat: c.id, title: f });
     for (const d of DRILLS.filter((x) => x.cat === c.id)) out.push({ key: drillKey(d.id), kind: 'drill', cat: c.id, title: d.name });
     for (const s of c.sections) out.push({ key: sectionKey(c.id, s.title), kind: 'section', cat: c.id, title: s.title });
     for (const f of c.faults ?? []) out.push({ key: faultKey(c.id, f.name), kind: 'fault', cat: c.id, title: f.name });
     for (const v of c.videos ?? []) out.push({ key: videoKey(v.id), kind: 'video', cat: c.id, title: v.title });
   }
   for (const p of PLANS) out.push({ key: planKey(p.id), kind: 'plan', title: p.name });
+  for (const g of GEAR) out.push({ key: gearKey(g.id), kind: 'gear', title: g.name });
   return out;
 }
 
@@ -91,11 +96,13 @@ export function nextOpenDrill(after?: string): string | undefined {
 }
 
 const KIND: Record<ReviewKind, L> = {
+  fact: { en: 'Good to know (numbers)', de: 'Gut zu wissen (Zahlen)' },
   drill: { en: 'Drills', de: 'Übungen' },
   section: { en: 'Basics', de: 'Grundlagen' },
   fault: { en: 'Faults', de: 'Fehler' },
   video: { en: 'Videos', de: 'Videos' },
   plan: { en: 'Plans', de: 'Pläne' },
+  gear: { en: 'Gear', de: 'Zubehör' },
 };
 const SIGN: Record<Verdict, string> = { ok: '✓', edit: '✎', cut: '✕' };
 
@@ -118,6 +125,7 @@ export function exportMarkdown(lang: 'en' | 'de', who?: string): string {
   const groups: { title: string; list: ReviewItem[] }[] = [
     ...CATEGORIES.map((c) => ({ title: tx(c.name), list: items.filter((i) => i.cat === c.id) })),
     { title: tx(KIND.plan), list: items.filter((i) => i.kind === 'plan') },
+    { title: tx(KIND.gear), list: items.filter((i) => i.kind === 'gear') },
   ];
   for (const g of groups) {
     const marked = g.list.filter((i) => marks[i.key]);
@@ -126,7 +134,7 @@ export function exportMarkdown(lang: 'en' | 'de', who?: string): string {
     for (const kind of Object.keys(KIND) as ReviewKind[]) {
       const k = marked.filter((i) => i.kind === kind);
       if (!k.length) continue;
-      if (g.title !== tx(KIND.plan)) lines.push('', `### ${tx(KIND[kind])}`);
+      if (g.title !== tx(KIND.plan) && g.title !== tx(KIND.gear)) lines.push('', `### ${tx(KIND[kind])}`);
       // the changes and cuts first – that is the work to do
       const order: Verdict[] = ['cut', 'edit', 'ok'];
       for (const v of order)
