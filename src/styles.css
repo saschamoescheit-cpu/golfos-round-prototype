@@ -1150,3 +1150,10 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .plan-shot-what { min-width: 0; }
 .plan-shot select { min-height: 38px; min-width: 74px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 700 15px var(--body); padding: 0 8px; }
 .plan-shot select.own { border-color: var(--brand); }
+
+/* Games: invite players and join (QR code, code) */
+.invite-sheet { align-items: stretch; gap: 12px; }
+.qr-box { align-self: center; width: min(240px, 70vw); background: #fff; border-radius: 12px; padding: 6px; }
+.qr-box svg { display: block; width: 100%; height: auto; }
+.join-code { align-self: center; font: 800 34px var(--display); letter-spacing: 0.18em; }
+.join-input { font: 700 26px var(--display); letter-spacing: 0.2em; text-align: center; text-transform: uppercase; }

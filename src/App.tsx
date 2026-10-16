@@ -130,7 +130,7 @@ export function App() {
   });
   // Two modules (Sascha 15.10.2026): "Rounds" (round and analysis) and "Games" (side games) – chosen when the app
   // opens; a round in play reopens straight on its hole, a reload stays in the module of this tab.
-  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' ? 'rounds' : sessionModule()));
+  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : sessionModule())); // a join link opens Games
   const [homeTab, setHomeTab] = useState<HomeTab>('start');
   const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(undefined);
   const [trainingTab, setTrainingTab] = useState<TrainingTab | undefined>(undefined);

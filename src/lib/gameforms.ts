@@ -44,6 +44,10 @@ export interface Game {
   current: number;
   /** Presses (Sascha 15.10.2026): the last one doubles the stake – from 0.10 € to 0.20 € and so on, up to the cap. */
   presses?: { hole: number; by: string }[];
+  /** Shared with other phones (sharedgame.ts): the join code. */
+  shared?: { code: string };
+  /** When a score (s:player:hole) or a hole's extras (x:hole) were entered – merging two phones keeps the later. */
+  stamps?: Record<string, string>;
 }
 
 export interface SettingDef {

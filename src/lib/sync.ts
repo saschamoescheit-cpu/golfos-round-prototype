@@ -308,7 +308,7 @@ export async function finishSignIn(): Promise<Session | null> {
 }
 
 /** A valid access token – refreshed when it runs out (a token lives an hour). */
-async function token(): Promise<string | null> {
+export async function authToken(): Promise<string | null> {
   const s = loadSession();
   if (!s) return null;
   if (s.expires_at - 60 > Date.now() / 1000) return s.access_token;
@@ -366,7 +366,7 @@ export function syncNow(): Promise<SyncResult | null> {
   if (running) return running;
   running = (async () => {
     try {
-      const t = await token();
+      const t = await authToken();
       if (!t) return null;
       const res = await syncOnce(browserStore, supabaseRemote(t));
       browserStore.set(LAST, res.at);
