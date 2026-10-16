@@ -38,6 +38,7 @@ export type GolferPose =
   | 'frontFinish' // finish facing the target, on the trail toe
   | 'halfBack' // 9 o'clock back: lead arm parallel to the ground, shaft up
   | 'halfThrough' // 3 o'clock through: trail arm parallel, shaft up, chest to the target
+  | 'takeaway' // 9 o'clock up in the takeaway: hands at hip height, the shaft parallel to the ground
   | 'pump' // downswing: hands at hip height, the butt of the grip points to the ball line
   | 'chipFinish' // the short, held finish of a chip: hands low ahead, clubface up
   // down the line (player faces right)
@@ -62,7 +63,7 @@ type P = [number, number];
 type Joints = Partial<Record<JointName, P>> & { head: P; neck: P; pelvis: P };
 
 /** Is the pose seen face-on (feet drawn turned out a little) or from the side (feet pointing right)? */
-const FACE_ON: GolferPose[] = ['front', 'chip', 'putt', 'frontTop', 'impact', 'frontFinish', 'halfBack', 'halfThrough', 'pump', 'chipFinish', 'stand', 'turn', 'oneleg', 'squat', 'floorsit'];
+const FACE_ON: GolferPose[] = ['front', 'chip', 'putt', 'frontTop', 'impact', 'frontFinish', 'halfBack', 'halfThrough', 'takeaway', 'pump', 'chipFinish', 'stand', 'turn', 'oneleg', 'squat', 'floorsit'];
 
 // ---------- the poses (metres) ----------
 const BASE: Record<string, Joints> = {
@@ -184,6 +185,23 @@ const BASE: Record<string, Joints> = {
     leadAnkle: [0.2, 0.08],
     trailAnkle: [-0.2, 0.08],
     clubHead: [0.58, 2.12],
+  },
+  takeaway: {
+    head: [-0.04, 1.56],
+    neck: [-0.03, 1.42],
+    pelvis: [-0.01, 0.92],
+    leadShoulder: [0.09, 1.39],
+    trailShoulder: [-0.19, 1.38],
+    leadElbow: [-0.05, 1.13],
+    trailElbow: [-0.24, 1.09],
+    hands: [-0.32, 0.99],
+    leadHip: [0.11, 0.92],
+    trailHip: [-0.12, 0.92],
+    leadKnee: [0.17, 0.48],
+    trailKnee: [-0.18, 0.49],
+    leadAnkle: [0.2, 0.08],
+    trailAnkle: [-0.2, 0.08],
+    clubHead: [-1.15, 1.02],
   },
   pump: {
     head: [-0.06, 1.56],
@@ -376,7 +394,7 @@ const fromOld = (t: J[]): Joints => {
   } as Joints;
 };
 
-const DEFAULT_CLUB: Partial<Record<GolferPose, Club>> = { front: 'iron', chip: 'wedge', putt: 'putter', frontTop: 'iron', impact: 'iron', frontFinish: 'iron', halfBack: 'wedge', halfThrough: 'wedge', pump: 'iron', chipFinish: 'wedge', address: 'iron', puttSide: 'putter', top: 'iron', finish: 'iron' };
+const DEFAULT_CLUB: Partial<Record<GolferPose, Club>> = { front: 'iron', chip: 'wedge', putt: 'putter', frontTop: 'iron', impact: 'iron', frontFinish: 'iron', halfBack: 'wedge', halfThrough: 'wedge', takeaway: 'iron', pump: 'iron', chipFinish: 'wedge', address: 'iron', puttSide: 'putter', top: 'iron', finish: 'iron' };
 
 export interface GolferOptions {
   pose: GolferPose;
