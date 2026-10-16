@@ -1322,7 +1322,7 @@ function DrillView(props: { id: string; nav: Nav }) {
             {(['high', 'mid', 'low', 'tour'] as const)
               .filter((b) => d.targets![b] != null)
               .map((b) => (
-                <div key={b} className={b === band ? 'mine' : ''}>
+                <div key={b} className={hcp != null && b === band ? 'mine' : ''}>
                   <strong>{d.scoring?.kind === 'made' ? `${d.targets![b]}/${d.scoring.of}` : dec(d.targets![b]!)}</strong>
                   <span className="small">{bandName(b)}</span>
                 </div>
