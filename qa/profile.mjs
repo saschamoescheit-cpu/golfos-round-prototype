@@ -26,7 +26,7 @@ await p.evaluate(() => {
   const at = (e, n) => [9.69 + (e * M) / Math.cos((48.78 * Math.PI) / 180), 48.78 + n * M];
   const holes = Array.from({ length: 18 }, (_, k) => ({ index: k, label: String(k + 1), loop: 'Main', number: k + 1, par: 4, strokeIndex: k + 1 }));
   const entry = () => ({ strokes: 4, putts: 2, pickedUp: false, fairway: null, penalties: 0, detail: { shots: [{ pos: at(0, 0), lie: 'tee', club: 'Dr', penalty: false }, { pos: at(0, 232), lie: 'fairway', club: '9i', penalty: false }], onGreen: at(0, 345), pin: at(0, 350), holedOut: false } });
-  localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ id: 'qa1', createdAt: '2026-10-10T10:00:00Z', finishedAt: '2026-10-10T14:00:00Z', courseId: 'c', courseName: 'QA', loopOrder: ['Main'], holes, mode: 'detail', players: [{ id: 'me', name: 'Sascha', playingHandicap: 7, isMe: true }], entries: { me: holes.map(entry) }, currentHole: 17 }]));
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ id: 'qa1', createdAt: '2026-10-10T10:00:00Z', finishedAt: '2026-10-10T14:00:00Z', signedAt: '2026-10-10T14:05:00Z', courseId: 'c', courseName: 'QA', loopOrder: ['Main'], holes, mode: 'detail', players: [{ id: 'me', name: 'Sascha', playingHandicap: 7, isMe: true }], entries: { me: holes.map(entry) }, currentHole: 17 }]));
 });
 await p.reload();
 await p.waitForTimeout(1200);

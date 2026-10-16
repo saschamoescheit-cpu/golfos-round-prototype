@@ -16,6 +16,7 @@ import { clubCode, tr } from '../lib/i18n';
 import { teeName } from '../data/tees';
 import { withPartials } from '../lib/partials';
 import { holeBook } from '../lib/holebook';
+import { statRounds } from '../lib/signing';
 
 // Course book (feature 027): every hole of the round on one page, like a birdie book – sketch with distance dots,
 // hazards from the tee, the caddie's tee plan in calm weather and how to approach the green. For planning at home.
@@ -38,7 +39,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
   const notes = useMemo(() => loadHoleNotes(props.course.id), [props.course.id]);
   const strategy = useMemo(() => loadStrategy(props.course.id), [props.course.id]); // the player's round plan
   // the player's record per hole from earlier rounds here (feature 012)
-  const record = useMemo(() => new Map(courseStats(loadRounds(), props.course.name).holes.map((h) => [h.hole.label, h])), [props.course.name]);
+  const record = useMemo(() => new Map(courseStats(statRounds(loadRounds()), props.course.name).holes.map((h) => [h.hole.label, h])), [props.course.name]);
   // The caddie plans every hole (tee strategy, feature 017) – a few holes at a time, so the first pages show at once
   // and the phone never freezes for seconds.
   const [shown, setShown] = useState(3);

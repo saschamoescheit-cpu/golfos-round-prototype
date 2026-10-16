@@ -1,3 +1,5 @@
+import { Avatar } from '../components/Avatar';
+import { loadProfile } from '../lib/profile';
 import { useState } from 'react';
 import type { Round } from '../types';
 import { checksShots, fmtHcp, playerTotals, playing18, roundStats } from '../lib/scoring';
@@ -16,6 +18,8 @@ import { groupForHandicap, roundsSg } from '../lib/sg';
 import { loopsText } from '../lib/loops';
 import { kindName } from '../lib/roundkind';
 import { getLang, tr } from '../lib/i18n';
+import { sign, unsign } from '../lib/signing';
+import { SignedIcon } from '../components/SignedIcon';
 
 export function Scorecard(props: {
   round: Round;
@@ -45,7 +49,10 @@ export function Scorecard(props: {
   return (
     <main className="screen">
       <TopBar title={tr('Scorecard', 'Scorekarte')} onBack={finished ? props.onClose : props.onBackToHole} backLabel={finished ? tr('Close', 'Schließen') : tr('Back to hole', 'Zurück zum Loch')} />
-      <div>
+      {/* the player's photo at the top right, next to course and date (Sascha 16.10.2026: not in the table's
+          name column, where it cut the name off) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ font: '600 19px var(--display)' }}>{round.courseName}</div>
         <span className="muted small sc-sub">
           {[new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined), kindName(round.kind), loopsText(round.loopOrder)].filter(Boolean).join(' · ')}
@@ -57,6 +64,8 @@ export function Scorecard(props: {
             </>
           )}
         </span>
+      </div>
+      {loadProfile().photo && round.players.some((p) => p.isMe) && <Avatar name={round.players.find((p) => p.isMe)!.name} me size={44} />}
       </div>
 
       {/* only when the round ends – a look at the score during the round needs no save / delete (Sascha 15.10.2026) */}
@@ -183,12 +192,47 @@ export function Scorecard(props: {
 
       {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
 
+      {/* sign the round like a paper scorecard (Sascha 16.10.2026) – only signed rounds count in the statistics */}
+      {finished && !round.preview && (
+        <section className={`card sign-card${round.signedAt ? ' signed' : ''}`} aria-label={tr('Signature', 'Unterschrift')}>
+          {round.signedAt ? (
+            <>
+              <span className="sign-seal" aria-hidden="true">
+                <SignedIcon size={22} />
+              </span>
+              <span className="grow">
+                <strong>{tr('Signed', 'Signiert')}</strong>
+                <span className="muted small" style={{ display: 'block' }}>
+                  {new Date(round.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  {tr(' · counts in your statistics', ' · zählt in deiner Statistik')}
+                </span>
+              </span>
+              <button type="button" className="btn-ghost small" onClick={() => props.onChange(unsign(round))}>
+                {tr('Withdraw', 'Zurücknehmen')}
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="grow">
+                <strong>{tr('Sign your round', 'Runde signieren')}</strong>
+                <span className="muted small" style={{ display: 'block' }}>
+                  {tr('With your signature you confirm the scores – only signed rounds count in your statistics.', 'Mit deiner Unterschrift bestätigst du die Scores – nur signierte Runden zählen in deiner Statistik.')}
+                </span>
+              </span>
+              <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
+                {tr('Sign', 'Signieren')}
+              </button>
+            </>
+          )}
+        </section>
+      )}
+
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h2>{tr('Your stats', 'Deine Statistik')}</h2>
         <div className="stat-grid">
           <Stat label="Putts" value={String(stats.putts)} />
           <Stat label={tr('Fairways hit', 'Fairways getroffen')} value={`${stats.fairwaysHit} / ${stats.fairwaysPossible}`} />
-          <Stat label={tr('Greens in regulation', 'Grüns in Regulation')} value={`${stats.gir} / ${stats.girPossible}`} />
+          <Stat label="GIR" value={`${stats.gir} / ${stats.girPossible}`} />
           <Stat label={tr('Penalties', 'Strafschläge')} value={String(stats.penalties)} />
           <Stat label={tr('Sand saves', 'Sand Saves')} value={`${stats.sandSaves} / ${stats.bunkerHoles}`} />
         </div>

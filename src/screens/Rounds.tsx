@@ -8,6 +8,7 @@ import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
 import { kindName } from '../lib/roundkind';
 import { isTeamRound } from '../lib/games';
+import { SignedIcon } from '../components/SignedIcon';
 
 // Tab "Rounds": every round, newest first. On top what is still to do – rounds whose shots are not checked yet.
 
@@ -42,7 +43,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
       <h1 className="tab-title">{tr('Rounds', 'Runden')}</h1>
       <div className="tile-row">
         <button type="button" className="tile" aria-pressed={onlyCheck} disabled={!toCheck.length} onClick={() => setOnlyCheck(!onlyCheck)}>
-          <span className={`tile-num${toCheck.length ? ' warn-text' : ''}`}>{toCheck.length}</span>
+          <span className={`tile-num${toCheck.length ? ' good-text' : ''}`}>{toCheck.length}</span>
           <span className="muted small">{tr('to check', 'Schläge prüfen')}</span>
         </button>
         <div className="tile">
@@ -107,9 +108,16 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                     <span className="muted small">{new Date(r.createdAt).getFullYear()}</span>
                   </span>
                   <span className="grow">
-                    <span className="title">{r.courseName}</span>
+                    <span className="title">
+                      {r.courseName}
+                      {r.signedAt && (
+                        <span className="signed-mark" aria-label={tr('signed', 'signiert')} title={tr('signed', 'signiert')}>
+                          <SignedIcon size={16} />
+                        </span>
+                      )}
+                    </span>
                     <span className="muted small">{[r.kind && r.kind !== 'social' ? kindName(r.kind) : null, loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`, r.restored ? tr('restored from GPS', 'aus GPS wiederhergestellt') : null].filter(Boolean).join(' · ')}</span>
-                    {needsCheck(r) && <span className="small warn-text" style={{ display: 'block', fontWeight: 600 }}>{tr('Check your shots →', 'Schläge prüfen →')}</span>}
+                    {needsCheck(r) && <span className="small good-text" style={{ display: 'block', fontWeight: 600 }}>{tr('Check your shots →', 'Schläge prüfen →')}</span>}
                   </span>
                   <span style={{ textAlign: 'right' }}>
                     <span style={{ font: '700 20px var(--display)' }}>{t.holesPlayed ? t.gross : '–'}</span>

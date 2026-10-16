@@ -9,6 +9,7 @@ import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, type Partials } from '../lib/partials';
 import { DEFAULT_LOFTS, loadBagStyle, saveBagStyle, withLoft, type BagStyle } from '../lib/bagstyle';
+import { statRounds } from '../lib/signing';
 
 // "My bag" (feature 008, reached from the profile and the round's drawer), as Sascha wants it (15.10.2026): two tabs –
 // full swing and pitches (¾, ½ and the favourite approach distance) –, short club codes (2i, not "Eisen 2"), the
@@ -106,7 +107,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     saveCaddieSettings(next);
   };
   // Tracked carry from your detailed rounds – compared with what you entered; you decide per club, any time.
-  const tracked = trackedCarry(props.rounds);
+  const tracked = trackedCarry(statRounds(props.rounds));
   const differs = (club: Club) => {
     const t = tracked.get(club);
     return t != null && Math.abs(toM(Number(bag[club])) - t.carry) >= 5;

@@ -49,13 +49,12 @@ export async function shareExport(data: RoundExport, name: string): Promise<'sha
       // sharing refused: a download instead
     }
   }
-  const url = URL.createObjectURL(blob);
+  // a data link (WebKit refuses a blob link here "due to access control checks")
   const a = document.createElement('a');
-  a.href = url;
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
   a.download = name;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return 'downloaded';
 }

@@ -1,5 +1,4 @@
 import type { Round, RoundHole } from '../types';
-import { Avatar } from './Avatar';
 import { grossForHole, handicapStrokes, stablefordPoints } from '../lib/scoring';
 import { TEES } from '../data/tees';
 import { tr } from '../lib/i18n';
@@ -87,10 +86,7 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                 {round.players.map((p) => [
                   <tr className="score" key={p.id}>
                     <td className="lab name">
-                      <span className="name-with-avatar">
-                        <Avatar name={p.name} me={p.isMe} size={20} />
-                        {p.name}
-                      </span>
+                      {p.name}
                     </td>
                     {nine.map((h) => {
                       const g = gross(p.id, h);

@@ -7,6 +7,7 @@ import { CoursesCard } from '../components/HistoryCards';
 import { groupForHandicap, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
+import { statRounds, unsignedRounds } from '../lib/signing';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
 // and the focus areas that later feed the training plans (GOL-27).
@@ -19,7 +20,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
   const [range, setRange] = useState<Range>(5);
   const [section, setSection] = useState<Section>('overview');
   const finished = useMemo(
-    () => props.rounds.filter((r) => r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    () => statRounds(props.rounds).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [props.rounds],
   );
   const picked = range ? finished.slice(0, range) : finished;
@@ -42,6 +43,15 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
   return (
     <>
       <h1 className="tab-title">{tr('Stats', 'Statistik')}</h1>
+      {/* only signed rounds count (Sascha 16.10.2026) – say how many still wait for the signature */}
+      {unsignedRounds(props.rounds).length > 0 && (
+        <p className="notice" style={{ margin: 0 }}>
+          {tr(
+            `${unsignedRounds(props.rounds).length} finished ${unsignedRounds(props.rounds).length === 1 ? 'round is' : 'rounds are'} not signed yet – they count once you sign them (scorecard → Sign).`,
+            `${unsignedRounds(props.rounds).length} beendete ${unsignedRounds(props.rounds).length === 1 ? 'Runde ist' : 'Runden sind'} noch nicht signiert – sie zählen, sobald du sie signierst (Scorekarte → Signieren).`,
+          )}
+        </p>
+      )}
       <Segmented<Range>
         label={tr('Rounds', 'Runden')}
         value={range}
@@ -82,7 +92,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <Ring label="Scrambling" r={a.scrambling} />
                 </div>
                 <p className="muted small" style={{ margin: 0 }}>
-                  {tr('Fairways hit off the tee, greens in regulation, par or better after a missed green.', 'Fairways vom Abschlag getroffen, Grüns in Regulation, Par oder besser nach verfehltem Grün.')}
+                  {tr('Fairways hit off the tee, GIR, par or better after a missed green.', 'Fairways vom Abschlag getroffen, GIR, Par oder besser nach verfehltem Grün.')}
                 </p>
               </section>
 
@@ -173,7 +183,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               <section className="card stats-card">
                 <h2>{tr('Approach & short game', 'Annäherung & kurzes Spiel')}</h2>
                 <div className="ring-row">
-                  <Ring label={tr('Greens in regulation', 'Grüns in Regulation')} r={a.gir} />
+                  <Ring label="GIR" r={a.gir} />
                   <Ring label="Scrambling" r={a.scrambling} />
                   <Ring label={tr('Sand saves', 'Sand Saves')} r={a.sandSaves} />
                 </div>

@@ -329,12 +329,21 @@ export function HoleMap(props: HoleMapProps) {
         marker.on('drag', () => {
           const ll = marker.getLngLat();
           const text = latest.current.onTrackDrag?.(t.id!, [ll.lng, ll.lat]);
-          if (text != null) d.textContent = text;
+          if (text != null) {
+            let r = m.getContainer().querySelector<HTMLDivElement>('.map-drag-readout');
+            if (!r) {
+              r = document.createElement('div');
+              r.className = 'map-drag-readout';
+              m.getContainer().appendChild(r);
+            }
+            r.textContent = text;
+          }
           // the line between the shots follows the finger
           const pts = (latest.current.track ?? []).map((x) => (x.id === t.id ? ([ll.lng, ll.lat] as LngLat) : x.pos));
           (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] });
         });
         marker.on('dragend', () => {
+          m.getContainer().querySelector('.map-drag-readout')?.remove();
           const ll = marker.getLngLat();
           latest.current.onTrackMove?.(t.id!, [ll.lng, ll.lat]);
         });

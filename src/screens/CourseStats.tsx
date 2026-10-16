@@ -4,6 +4,7 @@ import { courseStats, type CourseHoleStat } from '../lib/history';
 import { TopBar, formatToPar } from '../components/ui';
 import { playerTotals } from '../lib/scoring';
 import { dec, getLang, tr } from '../lib/i18n';
+import { statRounds } from '../lib/signing';
 
 // Feature 012: the player's record on one course – average per hole against par, hardest and best hole,
 // what keeps happening there (tee-shot side, water, bunkers, three-putts) and the rounds played.
@@ -12,7 +13,7 @@ const signed = (v: number) => dec(`${v > 0 ? '+' : v < 0 ? '−' : '±'}${Math.a
 const date = (iso: string) => new Date(iso).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined);
 
 export function CourseStats(props: { rounds: Round[]; courseName: string; onBack: () => void; onOpen: (r: Round) => void }) {
-  const s = useMemo(() => courseStats(props.rounds, props.courseName), [props.rounds, props.courseName]);
+  const s = useMemo(() => courseStats(statRounds(props.rounds), props.courseName), [props.rounds, props.courseName]);
   const maxAbs = Math.max(1, ...s.holes.map((h) => Math.abs(h.toPar)));
 
   return (

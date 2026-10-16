@@ -68,16 +68,44 @@ const same = counts.filter((c, k) => c === truth[k]).length;
 ok(same >= 7, `shot count right on ${same} of 9 holes (detected ${counts.join(',')} · true ${truth.join(',')})`);
 // white circles = stops that are no shot yet; with the phone locked between balls there are few (info, no check)
 console.log('· white circles on the first hole to check:', (await p.getByText(/hier bist du stehen geblieben/).count()) ? 'yes' : 'none (all stops are shots)');
-ok((await p.getByText(/Fahne dorthin ziehen/).count()) === 1, 'flag hint');
+// slim (Sascha 16.10.2026): no explanations, no detect link, no caddie rating; score above the map
+ok((await p.getByText(/Fahne dorthin ziehen|Tippe, wo dein Ball lag|Schläge aus der GPS-Spur erkennen|Caddie: \d+ von/).count()) === 0, 'no explanations, no detect link, no caddie count');
+const top = await p.locator('.review').evaluate((el) => {
+  const score = el.querySelector('.row .stepper')?.getBoundingClientRect().top ?? 9999;
+  const map = el.querySelector('.review-map')?.getBoundingClientRect().top ?? 0;
+  return score < map;
+});
+ok(top, 'score of the hole above the map');
+ok((await p.locator('.review-map').boundingBox()).height < 0.5 * 844, 'the map leaves room below it on the iPhone');
+await p.locator('.review-view').click();
+await p.waitForTimeout(1500);
+ok((await p.locator('.review-view').innerText()).trim() === 'Luftbild', 'switch to 2D and back');
+await p.locator('.review-view').click();
+await p.waitForTimeout(800);
 // hole 1: the putts placed on the course show on the map and in the list, the editor opens with them
 const labels = (await p.locator('.review').innerText()).replace(/\s+/g, ' ');
-ok(/2 Putts · [0-9,]+ m \/ [0-9,]+ (m|cm)/.test(labels), 'hole 1: the placed putts on the map with their lengths');
+ok((await p.locator('.map-shot-dot.green').allInnerTexts()).join(',') === 'P1,P2', 'hole 1: the placed putts on the map as small P1, P2');
 ok(/1: [0-9,]+ m · 2: [0-9,]+ (m|cm)/.test(labels), 'hole 1: the putt lengths in the list');
 await p.getByRole('button', { name: 'Putts auf dem Grün bearbeiten' }).click();
 await p.waitForTimeout(500);
 ok((await p.locator('.putt-editor .putt-ball').count()) === 2, 'the putt editor opens with the two placed balls');
 await p.locator('.putt-editor').getByRole('button', { name: /Abbrechen/ }).click();
 await p.waitForTimeout(300);
+// a shot dragged out of bounds (Sascha 16.10.2026, 6C): penalty stroke and a new shot from the same spot
+const before1 = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots.length);
+const m2 = p.locator('.map-shot-dot').filter({ hasText: /^2/ }).first();
+const b2 = await m2.boundingBox();
+await p.mouse.move(b2.x + b2.width / 2, b2.y + b2.height / 2);
+await p.mouse.down();
+const mapBox = await p.locator(".review-map").boundingBox();
+await p.mouse.move(mapBox.x + 20, b2.y + b2.height / 2, { steps: 8 });
+const readout = (await p.locator('.map-drag-readout').innerText().catch(() => '')).trim();
+await p.mouse.up();
+await p.waitForTimeout(800);
+ok(/^Aus – Strafschlag \+ neuer Schlag/.test(readout), `while dragging out: "${readout}" at the top of the map`);
+const h1 = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots);
+const sameSpot = h1[1]?.pos && h1[0].pos && Math.abs(h1[1].pos[0] - h1[0].pos[0]) < 1e-9 && Math.abs(h1[1].pos[1] - h1[0].pos[1]) < 1e-9;
+ok(h1[0].penalty && h1[0].penaltyKind === "ob" && sameSpot && h1.length === before1, `out of bounds: shot 1 +1 penalty, shot 2 again from the tee (${h1.length} shots)`);
 // hole 7: the penalty from the course
 for (let k = 0; k < 10; k++) {
   const n = Number((await p.locator('.review-nav').innerText()).match(/Loch ([0-9])/)[1]);

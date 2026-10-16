@@ -272,7 +272,7 @@ export function focusAreas(a: Analysis): { band: string; target: string; focus: 
     if (v > goal[key]) list.push({ area, metric, yours: `${v}${unit}`, target: `${goal[key]}${unit}`, gap: (v - goal[key]) / step(key) });
   };
   higherBetter('Driving', tr('Fairways hit', 'Fairways getroffen'), pct(a.fairways), 'fir');
-  higherBetter('Approach', tr('Greens in regulation', 'Grüns in Regulation'), pct(a.gir), 'gir');
+  higherBetter('Approach', 'GIR', pct(a.gir), 'gir');
   higherBetter('Short game', tr('Scrambling (par after missing the green)', 'Scrambling (Par nach verfehltem Grün)'), pct(a.scrambling), 'scrambling');
   lowerBetter('Putting', tr('Putts per round', 'Putts pro Runde'), a.puttsPer18, 'putts', '');
   lowerBetter('Putting', '3-putts', pct(a.threePutts), 'threePutts', '%');

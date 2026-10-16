@@ -165,6 +165,8 @@ export interface Round {
   capture?: 'score' | 'full';
   /** Tournament, social or practice round (chosen before the round); missing = social. */
   kind?: 'tournament' | 'social' | 'training';
+  /** When the player signed the scorecard (Sascha 16.10.2026) – only signed rounds count in statistics. */
+  signedAt?: string | null;
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
   format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number };
 }

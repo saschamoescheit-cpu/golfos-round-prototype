@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
-import { distanceM, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
+import { distanceM, distToLine, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot } from '../lib/track';
 import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
@@ -24,6 +24,9 @@ import { clubCode, tr } from '../lib/i18n';
 // them and confirms the hole.
 
 /** How a putt really broke against the read (stored as the note of the verdict). */
+/** The caddie's advice to rate after the round – off while the caddie is reworked (Sascha 16.10.2026: "makes no sense,
+ *  I did not use the caddie"). */
+const SHOW_CADDIE_REVIEW = false;
 const puttVerdicts = () => [
   { note: 'bricht weniger', label: tr('Breaks less', 'Bricht weniger') },
   { note: 'bricht mehr', label: tr('Breaks more', 'Bricht mehr') },
@@ -52,6 +55,24 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // the putts placed on the course, shown and editable here too (Sascha 16.10.2026)
   const [puttEdit, setPuttEdit] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // aerial image or the drawn hole – the same choice as on the course (Sascha 16.10.2026)
+  const [view2d, setView2d] = useState(() => {
+    try {
+      return localStorage.getItem('golfos.mapview.v1') === '2d';
+    } catch {
+      return false;
+    }
+  });
+  const toggleView = () => {
+    setView2d((v) => {
+      try {
+        localStorage.setItem('golfos.mapview.v1', v ? 'aerial' : '2d');
+      } catch {
+        /* this visit only */
+      }
+      return !v;
+    });
+  };
   // after a penalty: the next tap on the map is where the ball went into the water / out of bounds
   const [placingMiss, setPlacingMiss] = useState<number | null>(null);
   // what the caddie said on the course, with the player's verdict
@@ -69,7 +90,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const placedPutts = e?.puttsAt?.balls ?? null;
   const lengths = d ? shotLengths(d) : [];
   const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
-  const toCheck = entries.reduce((n, x) => n + (x.detail?.shots.filter((s) => s.review).length ?? 0), 0);
   const fmt = (m: number) => `${formatDistance(m, unit)} ${unit}`;
   // The GPS track of this hole: the walked path and where the player stood still – a shot the detection missed
   // (or gave to a partner's ball) is one tap on a grey circle away.
@@ -110,6 +130,30 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const withClubs = (det: DetailEntry): DetailEntry => {
     const len = shotLengths(det);
     return { ...det, shots: det.shots.map((x, n) => (x.club || len[n] == null ? x : { ...x, club: clubForLength(len[n]!, n === 0 && round.holes[k].par >= 4, bag) })) };
+  };
+  /** Outside the course boundary = out of bounds (only where the course outline is known). */
+  const isOut = (p: LngLat) => (geometry.boundary?.length ? !geometry.boundary.some((r) => pointInRing(p, r)) : false);
+  /**
+   * A shot dragged out of bounds (Sascha 16.10.2026, 6C: "the first tee shot right out of bounds – the penalty and
+   * another shot should be added by themselves"): the shot before it (the tee shot itself when it is dragged) went
+   * out there – one penalty stroke, and the next shot is played again from the same spot.
+   */
+  const dragOut = (n: number, pos: LngLat) => {
+    if (!d) return;
+    const shots = d.shots.slice();
+    const m = n === 0 ? 0 : n - 1; // the shot that went out
+    const from = shots[m].pos;
+    shots[m] = { ...shots[m], penalty: true, penaltyKind: 'ob', missPos: pos, review: false };
+    const replay: Shot = { pos: from, lie: shots[m].lie, club: null, penalty: false };
+    if (n === 0) shots.splice(1, 0, replay);
+    else shots[n] = replay;
+    saveDetail(k, withClubs({ ...d, shots }));
+    setNotice(
+      tr(
+        `Shot ${m + 1} out of bounds: penalty stroke and a new shot from the same spot added.`,
+        `Schlag ${m + 1} im Aus: Strafschlag und neuer Schlag vom selben Ort ergänzt.`,
+      ),
+    );
   };
   const tapMap = (tap: LngLat) => {
     if (!data) return;
@@ -162,6 +206,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       return from ? `✕ ${fmt(distanceM(from, pos))}` : null;
     }
     const n = Number(id.slice(5));
+    if (isOut(pos)) return tr(`Out of bounds – penalty + new shot from ${n === 0 ? 'the tee' : `shot ${n}`}`, `Aus – Strafschlag + neuer Schlag ${n === 0 ? 'vom Abschlag' : `von Schlag ${n}`}`);
     const next = n + 1 < d.shots.length ? d.shots[n + 1].pos : d.onGreen;
     const prev = n > 0 ? d.shots[n - 1].pos : null;
     const parts = [`${n + 1}`];
@@ -250,9 +295,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const cadMain = d?.shots.length ? cadAll.filter((x) => x.shot != null || x.putt) : cadAll;
   const cadOther = cadMain.length ? cadAll.filter((x) => !cadMain.includes(x)) : []; // none at a shot: all are shown
   const cadShown = moreCad === k ? [...cadMain, ...cadOther] : cadMain.length ? cadMain : cadAll;
-  const cadAllHoles = Object.values(cadLog).flat();
-  const cadTotal = cadAllHoles.length;
-  const cadRated = cadAllHoles.filter((c) => c.verdict).length;
   const editing: Shot | null = d && edit != null ? d.shots[edit] : null;
   const roundTotal = entries.reduce(
     (t, x, i) => (x.strokes != null && !x.pickedUp ? { strokes: t.strokes + x.strokes, par: t.par + round.holes[i].par, holes: t.holes + 1 } : t),
@@ -266,17 +308,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   return (
     <main className="screen review">
       <TopBar title={tr('Check your shots', 'Schläge prüfen')} onBack={props.onDone} backLabel={tr('Done', 'Fertig')} />
-      <div className="row">
-        <span className="muted small">
-          {toCheck ? tr(`${toCheck} ${toCheck === 1 ? 'shot' : 'shots'} to check`, `${toCheck} ${toCheck === 1 ? 'Schlag' : 'Schläge'} zu prüfen`) : tr('All shots checked ✓', 'Alle Schläge geprüft ✓')}
-          {cadTotal > 0 && <span style={{ display: 'block' }}>{tr(`Caddie: ${cadRated} of ${cadTotal} rated`, `Caddie: ${cadRated} von ${cadTotal} bewertet`)}</span>}
-        </span>
-        {track.length > 20 && (
-          <button type="button" className="btn-ghost" onClick={detectAll}>
-            {tr('Detect shots from GPS track', 'Schläge aus der GPS-Spur erkennen')}
-          </button>
-        )}
-      </div>
       {notice && <div className="notice">{notice}</div>}
 
       <div className="review-nav">
@@ -298,8 +329,31 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </button>
       </div>
 
+      <div className="row">
+        <span className="row-label">{tr(`Score on hole ${hole.label}`, `Score an Loch ${hole.label}`)}</span>
+        <Stepper label={tr('Score', 'Score')} value={e.strokes} placeholder={hole.par} min={1} onChange={(v) => save(k, { strokes: v, pickedUp: false })} />
+      </div>
+      {data && (
+        <div className="field">
+          <label>{tr('Putts on this hole', 'Putts an diesem Loch')}</label>
+          <Segmented<number>
+            label="Putts"
+            value={e.putts}
+            onChange={(v) => {
+              const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
+              // 0 putts = holed from off the green (chip-in)
+              saveDetail(k, { ...base, holedOut: v === 0 }, v);
+            }}
+            options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
+          />
+        </div>
+      )}
       {data && (
         <div className="review-map">
+          {/* aerial image or 2D, as on the course */}
+          <button type="button" className="review-view chip" aria-pressed={view2d} onClick={toggleView}>
+            {view2d ? tr('Aerial', 'Luftbild') : '2D'}
+          </button>
           <HoleMap
             holeKey={`review-${k}`}
             plain
@@ -311,14 +365,29 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             targets={[]}
             unit={unit}
             imagery={imagery}
+            view={view2d ? '2d' : 'aerial'}
+            trees={view2d ? [...(geometry.trees ?? []), ...(geometry.canopy ?? [])].filter((r) => r.some((q) => distToLine(q, data.line) <= 60)) : undefined}
+            details={
+              view2d
+                ? {
+                    treePoints: (geometry.treePoints ?? []).filter((q) => distToLine(q, data.line) <= 60),
+                    treeRows: (geometry.treeRows ?? []).filter((l) => l.some((q) => distToLine(q, data.line) <= 60)),
+                    paths: (geometry.paths ?? []).filter((l) => l.some((q) => distToLine(q, data.line) <= 60)),
+                    rough: [],
+                    ob: [],
+                    around: { fairway: geometry.fairwayAuto?.[hole.label] ?? [], tee: [], green: [], bunker: [], water: geometry.water.filter((r) => r.some((q) => distToLine(q, data.line) <= 60)) },
+                  }
+                : undefined
+            }
             walked={walked}
             track={[
               // Where strokes are won (green) and lost (red): every shot coloured by its strokes gained.
               ...(d?.shots ?? []).flatMap((s, n) => {
                 const len = lengths[n];
-                const shot = s.pos ? [{ id: `shot-${n}`, pos: s.pos, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${len != null ? ` ${formatDistance(len, unit)} ${unit}` : ''}${s.review ? ' ?' : ''}` }] : [];
+                void len;
+                const shot = s.pos ? [{ id: `shot-${n}`, pos: s.pos, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${s.review ? ' ?' : ''}` }] : [];
                 // where the ball went into the water / out of bounds – between this shot and the next
-                const miss = s.penalty && s.missPos ? [{ id: `miss-${n}`, pos: s.missPos, tone: 'bad' as const, label: `✕ ${s.penaltyKind === 'ob' ? tr('OB', 'Aus') : tr('Water', 'Wasser')}` }] : [];
+                const miss = s.penalty && s.missPos ? [{ id: `miss-${n}`, pos: s.missPos, tone: 'bad' as const, label: '✕' }] : [];
                 return [...shot, ...miss];
               }),
               ...(placedPutts?.length && pin
@@ -326,11 +395,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                   placedPutts.map((b, n) => ({
                     id: n === 0 ? 'green' : `putt-${n}`,
                     pos: b,
-                    label: n === 0 ? `${placedPutts.length} Putt${placedPutts.length === 1 ? '' : 's'} · ${placedPutts.map((x) => fmt(distanceM(x, pin))).join(' / ')}` : String(n + 1),
+                    label: `P${n + 1}`,
                     green: true,
                   }))
                 : d?.onGreen
-                  ? [{ id: 'green', pos: d.onGreen, label: e.putts != null ? `${e.putts} Putt${e.putts === 1 ? '' : 's'}` : tr('green', 'Grün'), green: true }]
+                  ? [{ id: 'green', pos: d.onGreen, label: 'P1', green: true }]
                   : []),
             ]}
             onTargetsChange={() => {}}
@@ -352,6 +421,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 saveDetail(k, { ...d, shots });
               } else {
                 const n = Number(id.slice(5));
+                if (isOut(pos)) return dragOut(n, pos);
                 const shots = d.shots.slice();
                 shots[n] = { ...shots[n], pos, lie: data ? lieFor(pos, n, data) : shots[n].lie, review: false };
                 saveDetail(k, { ...d, shots });
@@ -373,13 +443,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           </button>
         </div>
       )}
-      <p className="small" style={{ margin: 0 }}>
-        <strong>{tr('Tap where your ball lay – on the green for the putts. Drag to move a shot.', 'Tippe, wo dein Ball lag – auf dem Grün für die Putts. Ziehen verschiebt.')}</strong>
-      </p>
-      <p className="muted small" style={{ margin: 0 }}>
-        {walked && walked.stops.length > 0 && <>{tr('○ = you stood still here (GPS), a tap sets the shot exactly. ', '○ = hier bist du stehen geblieben (GPS), Tipp setzt den Schlag genau dort. ')}</>}
-        {tr('Drag the flag to where the hole was (first putt). ', 'Fahne dorthin ziehen, wo das Loch war (erster Putt). ')}
-      </p>
 
       {unplacedPenalty && (
         <div className="notice">
@@ -445,10 +508,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           {tr('Tee shot missing – add it at the tee', 'Abschlag fehlt – am Abschlag ergänzen')}
         </button>
       )}
-      <div className="row">
-        <span className="row-label">{tr(`Score on hole ${hole.label}`, `Score an Loch ${hole.label}`)}</span>
-        <Stepper label={tr('Score', 'Score')} value={e.strokes} placeholder={hole.par} min={1} onChange={(v) => save(k, { strokes: v, pickedUp: false })} />
-      </div>
       {data && (e.putts ?? 0) > 0 && (
         <button type="button" className="btn-secondary" onClick={() => setPuttEdit(true)}>
           {placedPutts?.length ? tr('Edit the putts on the green', 'Putts auf dem Grün bearbeiten') : tr('Place the putts on the green', 'Putts auf dem Grün setzen')}
@@ -476,23 +535,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           }}
         />
       )}
-      {data && (
-        <div className="field">
-          <label>{tr('Putts on this hole', 'Putts an diesem Loch')}</label>
-          <Segmented<number>
-            label="Putts"
-            value={e.putts}
-            onChange={(v) => {
-              const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
-              // 0 putts = holed from off the green (chip-in)
-              saveDetail(k, { ...base, holedOut: v === 0 }, v);
-            }}
-            options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
-          />
-        </div>
-      )}
 
-      {(cadLog[k]?.length ?? 0) > 0 && (
+      {SHOW_CADDIE_REVIEW && (cadLog[k]?.length ?? 0) > 0 && (
         <section className="caddie-review" aria-label={tr('What the caddie said', 'Was der Caddie gesagt hat')}>
           <h3>{tr('What the caddie said – and you?', 'Was der Caddie gesagt hat – und du?')}</h3>
           {cadShown.map(({ c, n, shot, putt }) => (

@@ -42,6 +42,7 @@ import { clubCode, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
 import { FairwayPicker } from '../components/FairwayPicker';
 import { HoleDrawer } from '../components/HoleDrawer';
+import { statRounds } from '../lib/signing';
 
 const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f));
 
@@ -151,7 +152,7 @@ export function HoleScreen(props: {
   const [editHole, setEditHole] = useState(false);
   const [unit] = useState<Unit>(loadUnit);
   // the player's record per hole from earlier rounds here (course book, feature 012)
-  const holeRecords = useMemo(() => new Map(courseStats(loadRounds(), round.courseName).holes.map((h) => [h.hole.label, h])), [round.courseName]);
+  const holeRecords = useMemo(() => new Map(courseStats(statRounds(loadRounds()), round.courseName).holes.map((h) => [h.hole.label, h])), [round.courseName]);
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number; still?: boolean } | null>(null);
   const detectArmed = useRef(true); // the next good fix may move the round to the hole the player is on
