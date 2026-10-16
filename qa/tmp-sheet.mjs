@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+import { pathToFileURL } from 'node:url';
+const [, , file, out] = process.argv;
+const b = await chromium.launch({ channel: 'msedge' });
+const p = await b.newPage({ viewport: { width: 1700, height: 900 } });
+await p.goto(pathToFileURL(file).href);
+await p.addStyleTag({ content: 'section{flex-wrap:wrap} img{width:300px}' });
+await p.waitForTimeout(500);
+await p.screenshot({ path: out, fullPage: true });
+await b.close();

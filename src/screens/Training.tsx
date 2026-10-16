@@ -389,12 +389,6 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
   return (
     <>
       <h1 className="tab-title">{tr('Library', 'Wissen')}</h1>
-      <p className="muted" style={{ margin: 0 }}>
-        {tr(
-          `Everything for your practice: ${CATEGORIES.length} topics, ${DRILLS.length} drills with sketches, explainer videos and practice gear.`,
-          `Alles fürs Training: ${CATEGORIES.length} Themen, ${DRILLS.length} Übungen mit Skizzen, Erklärvideos und Trainingszubehör.`,
-        )}
-      </p>
       <SearchField nav={props.nav} />
       <DrillOfTheDay nav={props.nav} prefer={advice.flatMap((a) => a.drills)} />
       {advice.length > 0 && (
@@ -493,15 +487,13 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
         </button>
       ))}
       {fromRounds.length > 0 && (
-        <section className="card tr-plan-card">
-          <span className="eyebrow">{tr('Your plan from your rounds', 'Dein Plan aus deinen Runden')}</span>
-          <strong>{advice.map((a) => t(catById(a.cat)?.name)).join(' · ')}</strong>
-          <span className="muted small">{advice.map((a) => a.why).join(' · ')}</span>
+        <section className="card play-card">
+          <strong className="play-course">{tr('Your plan from your rounds', 'Dein Plan aus deinen Runden')}</strong>
           <span className="muted small">
-            {fromRounds.length} {tr('drills', 'Übungen')} · {fromRounds.reduce((s, i) => s + i.minutes, 0)} min
+            {advice.map((a) => t(catById(a.cat)?.name)).join(' · ')} – {fromRounds.length} {tr('drills', 'Übungen')}, {fromRounds.reduce((s, i) => s + i.minutes, 0)} min
           </span>
           <button type="button" className="btn-primary" onClick={() => props.nav.start(newSession(tr('Plan from my rounds', 'Plan aus meinen Runden'), fromRounds, 'rounds'))}>
-            {tr('Start now', 'Jetzt starten')}
+            {tr('Start plan', 'Plan starten')}
           </button>
         </section>
       )}
@@ -588,6 +580,10 @@ function LogTab(props: { nav: Nav }) {
   const log = loadLog();
   const sessions = loadSessions().filter((s) => s.finishedAt);
   const trash = loadSessionTrash();
+  const [binOpen, setBinOpen] = useState(false);
+  useEffect(() => {
+    if (!trash.length) setBinOpen(false);
+  }, [trash.length]);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const band = bandOf(playerHcp());
   const month = new Date().toISOString().slice(0, 7);
@@ -607,20 +603,34 @@ function LogTab(props: { nav: Nav }) {
   return (
     <>
       <h1 className="tab-title">{tr('Progress', 'Verlauf')}</h1>
-      <div className="tr-stats">
-        <div>
-          <strong>{sessions.length}</strong>
+      <div className="tile-row">
+        <div className="tile">
+          <span className="tile-num">{sessions.length}</span>
           <span className="muted small">{tr('sessions', 'Einheiten')}</span>
         </div>
-        <div>
-          <strong>{drillsMonth}</strong>
-          <span className="muted small">{tr('drills this month', 'Übungen diesen Monat')}</span>
+        <div className="tile">
+          <span className="tile-num">{drillsMonth}</span>
+          <span className="muted small">{tr('this month', 'diesen Monat')}</span>
         </div>
-        <div>
-          <strong>{log.length}</strong>
+        <div className="tile">
+          <span className="tile-num">{log.length}</span>
           <span className="muted small">{tr('results', 'Ergebnisse')}</span>
         </div>
+        {/* deleted sessions as the fourth tile – like the rounds page */}
+        {trash.length > 0 && (
+          <button type="button" className="tile" aria-pressed={binOpen} onClick={() => setBinOpen(!binOpen)}>
+            <span className="tile-num">{trash.length}</span>
+            <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+          </button>
+        )}
       </div>
+      <Bin
+        open={binOpen}
+        title={tr('Deleted sessions', 'Gelöschte Einheiten')}
+        items={trash.map((x) => ({ id: x.session.id, date: x.session.createdAt, title: x.session.name, meta: `${x.session.items.length} ${tr('drills', 'Übungen')}`, deletedAt: x.deletedAt }))}
+        onRestore={(id) => restoreSession(id)}
+        onPurge={(id) => purgeSession(id)}
+      />
       {!log.length && !sessions.length && (
         <p className="muted">
           {tr('Your results appear here: start a plan or open a drill and enter your score.', 'Hier erscheinen deine Ergebnisse: Starte einen Plan oder öffne eine Übung und trag dein Ergebnis ein.')}
@@ -707,12 +717,6 @@ function LogTab(props: { nav: Nav }) {
           </ul>
         </section>
       )}
-      <Bin
-        title={tr('Deleted sessions', 'Gelöschte Einheiten')}
-        items={trash.map((x) => ({ id: x.session.id, date: x.session.createdAt, title: x.session.name, meta: `${x.session.items.length} ${tr('drills', 'Übungen')}`, deletedAt: x.deletedAt }))}
-        onRestore={(id) => restoreSession(id)}
-        onPurge={(id) => purgeSession(id)}
-      />
     </>
   );
 }
@@ -1241,23 +1245,23 @@ function ReviewView(props: { nav: Nav }) {
       <button type="button" className={on ? 'btn-secondary' : 'btn-primary'} aria-pressed={on} onClick={() => setReviewOn(!on)}>
         {on ? tr('Review mode is on – switch off', 'Prüfmodus ist an – ausschalten') : tr('Switch review mode on', 'Prüfmodus einschalten')}
       </button>
-      <div className="tr-stats four">
-        <div>
-          <strong>
+      <div className="tile-row">
+        <div className="tile">
+          <span className="tile-num">
             {done.length}/{items.length}
-          </strong>
+          </span>
           <span className="muted small">{tr('reviewed', 'geprüft')}</span>
         </div>
-        <div>
-          <strong>{count('ok')}</strong>
+        <div className="tile">
+          <span className="tile-num">{count('ok')}</span>
           <span className="muted small">✓ {tr('keep', 'passt')}</span>
         </div>
-        <div>
-          <strong>{count('edit')}</strong>
+        <div className="tile">
+          <span className="tile-num">{count('edit')}</span>
           <span className="muted small">✎ {tr('change', 'ändern')}</span>
         </div>
-        <div>
-          <strong>{count('cut')}</strong>
+        <div className="tile">
+          <span className="tile-num">{count('cut')}</span>
           <span className="muted small">✕ {tr('cut', 'streichen')}</span>
         </div>
       </div>
@@ -1662,9 +1666,6 @@ function ShopTab(props: { nav: Nav }) {
           {n > 0 && <span className="count-badge">{n}</span>}
         </button>
       </div>
-      <p className="muted" style={{ margin: 0 }}>
-        {tr('Practice gear that fits the drills – put it in the cart and order later.', 'Trainingszubehör passend zu den Übungen – in den Warenkorb legen und später bestellen.')}
-      </p>
       <div className="chip-set">
         <button type="button" className={`chip${kind == null ? ' on' : ''}`} onClick={() => setKind(null)}>
           {tr('All', 'Alle')}
@@ -1923,13 +1924,13 @@ function SessionResult(props: { id: string; nav: Nav }) {
   return (
     <main className="screen training">
       <TopBar title={s.name} onBack={props.nav.back} />
-      <div className="tr-stats">
-        <div>
-          <strong>{s.items.filter((i) => i.done).length}/{s.items.length}</strong>
+      <div className="tile-row">
+        <div className="tile">
+          <span className="tile-num">{s.items.filter((i) => i.done).length}/{s.items.length}</span>
           <span className="muted small">{tr('drills done', 'Übungen erledigt')}</span>
         </div>
-        <div>
-          <strong>{s.items.filter((i) => i.value != null).length}</strong>
+        <div className="tile">
+          <span className="tile-num">{s.items.filter((i) => i.value != null).length}</span>
           <span className="muted small">{tr('results', 'Ergebnisse')}</span>
         </div>
       </div>
