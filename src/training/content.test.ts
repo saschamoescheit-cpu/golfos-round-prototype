@@ -6,6 +6,8 @@ import { adviceFromRounds } from './recommend';
 import { COACH_FAULT_DRILLS } from './coachLinks';
 import { CHARTS } from './content/charts';
 import { DRILL_VIDEOS } from './content/drill-videos';
+import { FIGURE_SKETCHES, SECTION_FIGURE_SKETCHES } from './content/sketches-figures';
+import { golferJoints } from './Golfer';
 import type { L, Sketch } from './types';
 
 // The Training library is data – these checks keep it consistent when it grows (every reference resolves, both
@@ -160,5 +162,30 @@ describe('training content', () => {
   it('every Coach fault points to existing drills', () => {
     expect(Object.keys(COACH_FAULT_DRILLS).length).toBe(32);
     for (const [fault, ids] of Object.entries(COACH_FAULT_DRILLS)) for (const id of ids) expect(drillById(id), `${fault} → ${id}`).toBeTruthy();
+  });
+
+  it('every golfer sketch belongs to a drill or section, and every numbered detail sits on a joint of a figure', () => {
+    const all: [string, Sketch][] = Object.entries(FIGURE_SKETCHES);
+    for (const id of Object.keys(FIGURE_SKETCHES)) expect(drillById(id), id).toBeTruthy();
+    for (const [cat, m] of Object.entries(SECTION_FIGURE_SKETCHES)) {
+      const c = CATEGORIES.find((x) => x.id === cat);
+      for (const [title, sk] of Object.entries(m!)) {
+        expect(c?.sections.some((x) => x.title.en === title), `${cat} › ${title}`).toBe(true);
+        all.push([`${cat} › ${title}`, sk]);
+      }
+    }
+    for (const [where, sk] of all) {
+      if (sk.view !== 'side') continue;
+      const figs = sk.items.filter((x) => x.k === 'figure');
+      expect(figs.length, where).toBeGreaterThan(0);
+      for (const it of sk.items) {
+        if (it.k !== 'callout') continue;
+        const fg = figs[it.fig ?? 0];
+        expect(fg, `${where}: figure ${it.fig ?? 0}`).toBeTruthy();
+        if (fg?.k !== 'figure') continue;
+        expect(golferJoints({ ...fg, pose: fg.pose ?? 'address' })[it.on], `${where}: ${it.on}`).toBeTruthy();
+        if (typeof it.t !== 'string') expect(it.t.de && it.t.en, where).toBeTruthy();
+      }
+    }
   });
 });

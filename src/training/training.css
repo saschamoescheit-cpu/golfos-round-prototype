@@ -263,3 +263,7 @@
 .tr-day { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .tr-day .eyebrow { color: var(--text-2); }
 .tr-rounds-links .grow { display: flex; flex-direction: column; gap: 2px; }
+/* the numbered details of a sketch (16./17.10.2026) */
+.tr-callouts { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tr-callouts li { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.35; }
+.tr-callout-no { flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; background: #5e8a14; color: #fff; font: 800 12px var(--display); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }

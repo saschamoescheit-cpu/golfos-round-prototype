@@ -23,6 +23,7 @@ import { SECTION_MEDIA } from './section-media';
 import { CHARTS } from './charts';
 import { DRILL_VIDEOS } from './drill-videos';
 import { DRILL_ROUNDS, SECTION_ROUNDS } from './rounds-links';
+import { FIGURE_SKETCHES, SECTION_FIGURE_SKETCHES } from './sketches-figures';
 
 // All content of the Training module. Order of the categories = order in the library: the short game first
 // (where most strokes are lost), then the long game, then the head and the body.
@@ -44,6 +45,7 @@ export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching
   .map((c) => ({ ...c, sections: c.sections.map((x, i) => ({ ...SECTION_MEDIA[c.id]?.[i], ...x })) }))
   // small charts of the key numbers (Sascha 16.10.2026: pictures with the text)
   .map((c) => (CHARTS[c.id] ? { ...c, charts: CHARTS[c.id] } : c))
+  .map((c) => (SECTION_FIGURE_SKETCHES[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_FIGURE_SKETCHES[c.id]![x.title.en] ? { ...x, sketch: SECTION_FIGURE_SKETCHES[c.id]![x.title.en] } : x)) } : c))
   // the Rounds functions a section names, opened with a tap
   .map((c) => (SECTION_ROUNDS[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_ROUNDS[c.id]![x.title.en] ? { ...x, rounds: SECTION_ROUNDS[c.id]![x.title.en] } : x)) } : c));
 
@@ -70,6 +72,8 @@ export const DRILLS: Drill[] = ([
   ...moreDrills,
 ] as Drill[])
   .map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })) // every drill gets its own sketch
+  // the sketches with a golfer, drawn again to show what the text describes (16./17.10.2026)
+  .map((d) => (FIGURE_SKETCHES[d.id] ? { ...d, sketch: FIGURE_SKETCHES[d.id] } : d))
   .map((d) => (DRILL_ROUNDS[d.id] ? { ...d, rounds: DRILL_ROUNDS[d.id] } : d))
   .map((d) => (METRONOME_DRILLS.includes(d.id) ? { ...d, metronome: 'putt' as const } : SWING_TEMPO_DRILLS.includes(d.id) ? { ...d, metronome: 'swing' as const } : d))
   .map((d) => (NO_RESULT_DRILLS.includes(d.id) ? { ...d, scoring: { kind: 'none' as const }, targets: undefined } : d))

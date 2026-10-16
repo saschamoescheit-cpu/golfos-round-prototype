@@ -1,4 +1,5 @@
 import type { Chart } from './content/charts';
+import type { GolferOptions, GolferPose, JointName } from './Golfer';
 import type { RoundsTarget } from './content/rounds-links';
 
 // The "Training" module (Sascha 15.10.2026): a golf knowledge base for practice – categories (putting, chipping,
@@ -215,12 +216,14 @@ export type SketchItem =
   | { k: 'dim'; from: P; to: P; t: L | string }; // dimension line with text
 
 /** Golfer poses for side views; the fitness poses are drawn from joint points (see Sketch.tsx). */
-export type Pose = 'address' | 'top' | 'finish' | 'front' | 'stand' | 'bridge' | 'sidelying' | 'sit' | 'squat' | 'lunge' | 'oneleg' | 'floorsit' | 'turn';
+export type Pose = GolferPose;
 
 /** Side view (slopes, ball flight, posture). */
 export type SideItem =
-  | { k: 'ground'; pts: P[] }
-  | { k: 'figure'; at: P; tilt?: number; pose?: Pose; flip?: boolean } // front = seen from the front, target to the right
+  | { k: 'ground'; pts: P[]; sand?: boolean }
+  | ({ k: 'figure'; at: P; tilt?: number; pose?: Pose } & Omit<GolferOptions, 'pose'>) // front = seen from the front, target to the right
+  /** a label that points at a joint of a figure (the first figure unless fig is given) – the detail the text is about */
+  | { k: 'callout'; on: JointName; t: L | string; at: P; fig?: number }
   | { k: 'ball'; at: P }
   | { k: 'flight'; pts: P[]; dashed?: boolean }
   | { k: 'flag'; at: P }
