@@ -42,6 +42,7 @@ export type GolferPose =
   | 'chipFinish' // the short, held finish of a chip: hands low ahead, clubface up
   // down the line (player faces right)
   | 'address'
+  | 'puttSide' // putting address from the side: eyes over the ball, arms hanging, putter nearly upright
   | 'top'
   | 'finish'
   // fitness and body positions
@@ -288,6 +289,23 @@ const BASE: Record<string, Joints> = {
     trailAnkle: [-0.02, 0.08],
     clubHead: [0.68, 0.035],
   },
+  puttSide: {
+    head: [0.3, 1.4],
+    neck: [0.2, 1.31],
+    pelvis: [-0.09, 0.89],
+    leadShoulder: [0.22, 1.28],
+    trailShoulder: [0.18, 1.28],
+    leadElbow: [0.24, 1.04],
+    trailElbow: [0.2, 1.03],
+    hands: [0.28, 0.84],
+    leadHip: [-0.08, 0.89],
+    trailHip: [-0.1, 0.89],
+    leadKnee: [0.07, 0.48],
+    trailKnee: [0.05, 0.48],
+    leadAnkle: [0.0, 0.08],
+    trailAnkle: [-0.02, 0.08],
+    clubHead: [0.36, 0.03],
+  },
   top: {
     head: [0.27, 1.43],
     neck: [0.18, 1.34],
@@ -358,7 +376,7 @@ const fromOld = (t: J[]): Joints => {
   } as Joints;
 };
 
-const DEFAULT_CLUB: Partial<Record<GolferPose, Club>> = { front: 'iron', chip: 'wedge', putt: 'putter', frontTop: 'iron', impact: 'iron', frontFinish: 'iron', halfBack: 'wedge', halfThrough: 'wedge', pump: 'iron', chipFinish: 'wedge', address: 'iron', top: 'iron', finish: 'iron' };
+const DEFAULT_CLUB: Partial<Record<GolferPose, Club>> = { front: 'iron', chip: 'wedge', putt: 'putter', frontTop: 'iron', impact: 'iron', frontFinish: 'iron', halfBack: 'wedge', halfThrough: 'wedge', pump: 'iron', chipFinish: 'wedge', address: 'iron', puttSide: 'putter', top: 'iron', finish: 'iron' };
 
 export interface GolferOptions {
   pose: GolferPose;

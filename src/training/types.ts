@@ -229,7 +229,7 @@ export type SideItem =
   | { k: 'flag'; at: P }
   | { k: 'arrow'; from: P; to: P }
   | { k: 'text'; at: P; t: L | string; size?: number; anchor?: 'start' | 'middle' | 'end' }
-  | { k: 'line'; from: P; to: P; dashed?: boolean };
+  | { k: 'line'; from: P; to: P; dashed?: boolean; stick?: boolean } // stick = an alignment stick (orange, thicker)
 
 export type Sketch =
   | { view: 'top'; w: number; h: number; items: SketchItem[]; caption?: L }

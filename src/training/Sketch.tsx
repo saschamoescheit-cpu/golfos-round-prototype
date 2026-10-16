@@ -339,7 +339,7 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
         );
       }
       case 'line':
-        return <line key={i} x1={X(it.from[0])} y1={Y(it.from[1])} x2={X(it.to[0])} y2={Y(it.to[1])} stroke="#16324a" strokeWidth={1.5} strokeDasharray={it.dashed ? '5 4' : undefined} />;
+        return <line key={i} x1={X(it.from[0])} y1={Y(it.from[1])} x2={X(it.to[0])} y2={Y(it.to[1])} stroke={it.stick ? '#ff9d2e' : '#16324a'} strokeWidth={it.stick ? 3 : 1.5} strokeLinecap={it.stick ? 'round' : undefined} strokeDasharray={it.dashed ? '5 4' : undefined} />;
       case 'text':
         return (
           <text key={i} x={X(it.at[0])} y={Y(it.at[1])} fontSize={it.size ?? 12} fontWeight={700} fill="#16324a" textAnchor={it.anchor ?? 'middle'}>

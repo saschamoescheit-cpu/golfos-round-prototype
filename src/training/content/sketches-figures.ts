@@ -18,6 +18,25 @@ const arrow = (from: P, to: P): SideItem => ({ k: 'arrow', from, to });
 const line = (from: P, to: P, dashed = false): SideItem => ({ k: 'line', from, to, dashed });
 
 export const FIGURE_SKETCHES: Record<string, Sketch> = {
+  // ---------- putting ----------
+  'chalk-line': S(3, 2.2, [
+    ground(3),
+    fig(1.0, 'puttSide'),
+    ball(1.38),
+    line([1.36, 1.43], [1.38, 0.3], true),
+    { k: 'line', from: [1.345, 0.33], to: [1.415, 0.33] },
+    { k: 'line', from: [1.345, 0.335], to: [1.415, 0.335] },
+    txt([1.5, 0.36], L('string 10 cm above the green', 'Schnur 10 cm über dem Grün'), 10, 'start'),
+    co('head', L('eyes right over the string and the ball', 'Augen genau über Schnur und Ball'), [2.2, 1.9]),
+    co('hands', L('arms hang loosely', 'Arme hängen locker'), [2.2, 1.1]),
+  ], L('From the side: eyes, string and ball on one line. Then watch the putter head run along the string.', 'Von der Seite: Augen, Schnur und Ball auf einer Linie. Dann beobachten, wie der Putterkopf an der Schnur entlang läuft.')),
+  'one-hand': S(4, 2.3, [
+    ground(4),
+    fig(1.9, 'putt', { oneHand: true }),
+    ball(2.0),
+    co('hands', L('lead hand only – back of the hand to the target, the wrist does not bend', 'nur die Führhand – Handrücken zum Ziel, das Handgelenk knickt nicht ab'), [3.0, 1.3]),
+    co('trailElbow', L('the other hand stays off the club', 'die andere Hand bleibt weg vom Schläger'), [0.8, 1.6]),
+  ], L('Straight putts of 1–2 m: 10 with the lead hand, 10 with the trail hand, then 10 with both.', 'Gerade Putts aus 1–2 m: 10 mit der Führhand, 10 mit der hinteren Hand, dann 10 mit beiden.')),
   // ---------- chipping ----------
   'trail-toe': S(4, 2.4, [
     ground(4),
@@ -233,6 +252,13 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     co('hands', L('stop 1 second at the top', '1 Sekunde oben anhalten'), [0.6, 2.45]),
     co('leadAnkle', L('start down with pressure into the lead foot', 'Abschwung mit Druck in den vorderen Fuß starten'), [3.1, 0.7]),
   ]),
+  'hip-stick': S(4, 2.8, [
+    ground(4),
+    { k: 'line', from: [1.52, 0.2], to: [1.52, 1.3], stick: true },
+    fig(1.9, 'halfBack', { club: 'iron' }),
+    co('trailHip', L('the hip turns away from the stick – no touch', 'die Hüfte dreht vom Stab weg – keine Berührung'), [0.6, 0.9]),
+    txt([1.47, 0.45], L('stick', 'Stab'), 10, 'end'),
+  ], L('Face-on: the stick stands vertically just outside the trail hip. If the hip pushes into it, the hip sways instead of turning.', 'Von vorn: der Stab steht senkrecht knapp außerhalb der hinteren Hüfte. Drückt die Hüfte dagegen, schiebt sie seitlich statt zu drehen.')),
   'pump-drill': S(4, 2.8, [
     ground(4),
     fig(1.9, 'pump'),
