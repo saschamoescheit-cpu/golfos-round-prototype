@@ -809,7 +809,7 @@ export function HoleScreen(props: {
         club: clubCode(cad.advice.club) + swingMark(cad.advice.swing),
         playsLike: Math.round(cad.pl.playsLike),
         aim: cad.aim,
-        plan: cad.holePlan || null,
+        plan: cad.facts.plan ?? null, // what the card said (no "misses cost the same" next to a warning)
         warning: cad.warning,
       });
     }
