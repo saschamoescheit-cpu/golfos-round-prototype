@@ -122,7 +122,7 @@ export const basics: Category = {
   ],
   sources: [
     { label: 'GOLFTEC – ball position for every club', url: 'https://www.golftec.com/' },
-    { label: 'Ben Hogan – Five Lessons: The Modern Fundamentals of Golf', url: 'https://en.wikipedia.org/wiki/Five_Lessons:_The_Modern_Fundamentals_of_Golf' },
+    { label: 'Ben Hogan – Five Lessons: The Modern Fundamentals of Golf', url: 'https://www.librarything.com/work/302479' },
   ],
   see: ['swing', 'ballflight', 'irons'],
 };

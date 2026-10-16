@@ -47,7 +47,7 @@ export function SketchThumb(props: { sketch?: Sketch; fallback?: ReactNode }) {
   if (!s) return <span className="tr-cat-icon small">{props.fallback}</span>;
   return (
     <span className="tr-thumb" aria-hidden="true">
-      {s.view === 'top' ? <Top sketch={s} /> : s.view === 'side' ? <Side sketch={s} /> : <Face marks={s.marks} />}
+      {s.view === 'top' ? <Top sketch={s} /> : s.view === 'side' ? <Side sketch={s} thumb /> : <Face marks={s.marks} />}
     </span>
   );
 }
@@ -100,7 +100,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
           <g key={i}>
             <rect x={X(it.x)} y={Y(it.y + it.h)} width={it.w * k} height={it.h * k} rx={4} fill="#ffffff22" stroke={C.line} strokeWidth={2} strokeDasharray="6 4" />
             {it.label && (
-              <text x={X(it.x + it.w / 2)} y={Y(it.y + it.h / 2) + 4} textAnchor="middle" fontSize={12} fontWeight={700} fill={C.text}>
+              <text x={X(it.x + it.w / 2)} y={Math.min(Y(it.y + it.h / 2) + 4, Y(it.y + it.h) + 16)} textAnchor="middle" fontSize={12} fontWeight={700} fill={C.text}>
                 {txt(it.label)}
               </text>
             )}
@@ -131,7 +131,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
           </g>
         );
       case 'tee':
-        return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1])} r={3.2} fill="#ffcf33" stroke="#7a5a00" strokeWidth={1} />;
+        return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1])} r={3.2} fill="#ffffff" stroke="#55606a" strokeWidth={1.2} />;
       case 'coin':
         return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1])} r={5} fill="#d9b44a" stroke="#8a6a12" strokeWidth={1.2} />;
       case 'stick':
@@ -191,12 +191,16 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
       }
       case 'slope': {
         const [x, y] = [X(it.at[0]), Y(it.at[1])];
+        const rad = (it.dir * Math.PI) / 180;
+        const [cx, sy] = [Math.cos(rad), Math.sin(rad)];
         return (
-          <g key={i} transform={`translate(${x},${y}) rotate(${it.dir})`}>
-            <line x1={0} y1={16} x2={0} y2={-14} stroke="#16324a" strokeWidth={2.5} />
-            <path d="M0,-18 l-6,9 l12,0 z" fill="#16324a" />
+          <g key={i}>
+            <g transform={`translate(${x},${y}) rotate(${it.dir})`}>
+              <line x1={0} y1={16} x2={0} y2={-14} stroke="#16324a" strokeWidth={2.5} />
+              <path d="M0,-18 l-6,9 l12,0 z" fill="#16324a" />
+            </g>
             {it.label && (
-              <text x={8} y={4} fontSize={11} fill="#16324a" fontWeight={700} transform={`rotate(${-it.dir})`}>
+              <text x={x + 14 * cx} y={y + 18 * sy + 4} fontSize={11} fill="#16324a" fontWeight={700} textAnchor={cx > 0.3 ? 'start' : cx < -0.3 ? 'end' : 'middle'}>
                 {txt(it.label)}
               </text>
             )}
@@ -313,7 +317,7 @@ function Figure(props: { x: number; y: number; k: number; tilt: number; pose: Po
   );
 }
 
-function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string }) {
+function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean }) {
   const { w, h, items } = props.sketch;
   const W = 340;
   const k = W / w;
@@ -361,8 +365,26 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
         );
     }
   };
+  // as a thumbnail: a square around the figures (or everything else when there is no figure)
+  let view = `0 0 ${W} ${H}`;
+  if (props.thumb) {
+    const figs = items.filter((it): it is Extract<SideItem, { k: 'figure' }> => it.k === 'figure');
+    const pts: [number, number][] = figs.length
+      ? figs.flatMap((f) => [[f.at[0] - 1.1, f.at[1]], [f.at[0] + 1.1, f.at[1] + 1.9]] as [number, number][])
+      : items.flatMap((it) => ('at' in it ? [it.at] : 'from' in it ? [it.from, it.to] : 'pts' in it ? it.pts : []));
+    if (pts.length) {
+      const x0 = Math.min(...pts.map((p) => X(p[0])));
+      const x1 = Math.max(...pts.map((p) => X(p[0])));
+      const y0 = Math.min(...pts.map((p) => Y(p[1])));
+      const y1 = Math.max(...pts.map((p) => Y(p[1])));
+      const size = Math.min(Math.max(x1 - x0, y1 - y0) + 24, Math.max(W, H));
+      const cx = (x0 + x1) / 2;
+      const cy = (y0 + y1) / 2;
+      view = `${(cx - size / 2).toFixed(1)} ${(cy - size / 2).toFixed(1)} ${size.toFixed(1)} ${size.toFixed(1)}`;
+    }
+  }
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={props.label ?? tr('Sketch', 'Skizze')} style={{ display: 'block', background: C.sky, borderRadius: 12 }}>
+    <svg viewBox={view} width="100%" role="img" aria-label={props.label ?? tr('Sketch', 'Skizze')} style={{ display: 'block', background: C.sky, borderRadius: 12 }}>
       {items.map(draw)}
     </svg>
   );
@@ -382,7 +404,7 @@ function Face(props: { marks: { x: number; y: number; n?: L | string }[]; label?
         <g key={i}>
           <ellipse cx={175 + m.x * 95} cy={86 - m.y * 40} rx={8} ry={6} fill="#1d5fa8" opacity={0.75} />
           {m.n && (
-            <text x={175 + m.x * 95} y={86 - m.y * 40 - 10} fontSize={11} fill="#ffffff" textAnchor="middle" fontWeight={700}>
+            <text x={175 + m.x * 95} y={86 - m.y * 40 + 22} fontSize={11} fill="#16324a" textAnchor="middle" fontWeight={700}>
               {txt(m.n)}
             </text>
           )}

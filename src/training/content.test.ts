@@ -4,6 +4,8 @@ import { DRILL_GEAR, GEAR, gearById, gearForDrill } from './content/gear';
 import { PLANS } from './content/plans';
 import { adviceFromRounds } from './recommend';
 import { COACH_FAULT_DRILLS } from './coachLinks';
+import { CHARTS } from './content/charts';
+import { DRILL_VIDEOS } from './content/drill-videos';
 import type { L, Sketch } from './types';
 
 // The Training library is data – these checks keep it consistent when it grows (every reference resolves, both
@@ -122,6 +124,27 @@ describe('training content', () => {
     const putting = CATEGORIES.find((c) => c.id === 'putting')!;
     const rhythm = putting.sections.find((s) => s.metronome);
     expect(rhythm?.title.de).toBe('Rhythmus: der Schlüssel zur Länge');
+  });
+
+  it('charts: real topics, both languages, positive values (Sascha 16.10.2026)', () => {
+    for (const [cat, charts] of Object.entries(CHARTS)) {
+      expect(CATEGORIES.find((c) => c.id === cat)?.charts?.length, cat).toBe(charts!.length);
+      for (const ch of charts!) {
+        expect(filled(ch.title), cat).toBe(true);
+        const values = ch.kind === 'bars' ? ch.bars.map((b) => b.value) : ch.rows.flatMap((r) => r.parts);
+        expect(values.every((v) => v >= 0) && values.some((v) => v > 0), cat).toBe(true);
+        if (ch.kind === 'split') for (const r of ch.rows) expect(r.parts.length, cat).toBeLessThanOrEqual(ch.legend.length + 1);
+      }
+    }
+  });
+
+  it('drill videos come from the checked topic videos; most drills have one', () => {
+    const topic = new Set(CATEGORIES.flatMap((c) => c.videos ?? []).map((v) => v.id));
+    for (const [d, ids] of Object.entries(DRILL_VIDEOS)) {
+      expect(drillById(d), d).toBeTruthy();
+      for (const id of ids) expect(topic.has(id), `${d} → ${id}`).toBe(true);
+    }
+    expect(DRILLS.filter((d) => d.videos?.length).length).toBeGreaterThan(120);
   });
 
   it('every Coach fault points to existing drills', () => {

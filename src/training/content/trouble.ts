@@ -112,7 +112,7 @@ export const trouble: Category = {
   sources: [
     { label: 'R&A Rules of Golf – Rule 19 unplayable ball', url: 'https://www.randa.org/en/rog/the-rules-of-golf/rule-19' },
     { label: 'R&A Rules of Golf – Rule 16 abnormal course conditions', url: 'https://www.randa.org/en/rog/the-rules-of-golf/rule-16' },
-    { label: 'TrackMan – how wind affects the ball flight', url: 'https://www.trackman.com/blog/golf/the-effect-of-wind' },
+    { label: 'GolfWRX – How the wind affects your golf ball (TrackMan data)', url: 'https://www.golfwrx.com/318416/how-the-wind-affects-your-golf-ball/' },
   ],
   see: ['slopes', 'strategy', 'ballflight'],
 };

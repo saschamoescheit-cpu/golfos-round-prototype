@@ -62,7 +62,7 @@ export const SKETCHES: Record<string, Sketch> = {
     txt([1.6, 1.05], '2 m', 10, 'start'),
     txt([1.6, 2.05], '4 m', 10, 'start'),
     txt([1.6, 4.1], '10 m', 10, 'start'),
-    txt([0.45, 2.6], '♪ 75–80 bpm', 11, 'end'),
+    txt([0.45, 2.6], '♪ 72–80 bpm', 11, 'end'),
   ], L('Same beat, only the stroke length changes.', 'Gleicher Takt, nur die Bewegungslänge ändert sich.')),
   'four-tee': greenTop(4, 5, [
     flag(2, 3.6),
@@ -467,7 +467,7 @@ export const SKETCHES: Record<string, Sketch> = {
     ground(0.2, 4),
     { k: 'figure', at: [1.8, 0.2], pose: 'front', tilt: -4 },
     { k: 'ball', at: [1.9, 0.2] },
-    stxt([0.8, 0.6], L('trail foot back on the toes', 'hinterer Fuß zurück auf den Zehen'), 10, 'start'),
+    stxt([0.15, 2.1], L('trail foot back on the toes', 'hinterer Fuß zurück auf den Zehen'), 10, 'start'),
     stxt([2.9, 1.3], L('weight forward', 'Gewicht vorn'), 11),
   ]),
   'bunker-circle': bunkerTop([
@@ -1201,9 +1201,10 @@ export const SKETCHES: Record<string, Sketch> = {
   ], L('Every ball: the next shot of your home course.', 'Jeder Ball: der nächste Schlag deines Heimatplatzes.')),
   'one-ball-range': T(10, 8, [
     { k: 'fairway', x: 0, y: 0, w: 10, h: 8 },
-    { k: 'ring', at: [5, 1], r: 0.6, fill: true, label: L('basket 5 m behind', 'Korb 5 m dahinter') },
+    { k: 'ring', at: [3.6, 1.2], r: 0.6, fill: true },
+    txt([3.6, 0.25], L('basket 5 m behind', 'Korb 5 m dahinter'), 10),
     ...me(5, 6, 0.6),
-    { k: 'path', pts: [[5, 1.6], [5, 5.6]], style: 'aim', arrow: true },
+    { k: 'path', pts: [[4.1, 1.6], [5, 5.6]], style: 'aim', arrow: true },
   ]),
   'block-then-random': range([
     ...me(8, 2, 1.2),

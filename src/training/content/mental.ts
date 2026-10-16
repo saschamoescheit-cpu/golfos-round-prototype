@@ -79,7 +79,7 @@ export const mental: Category = {
   ],
   sources: [
     { label: 'Vision54 – Pia Nilsson & Lynn Marriott', url: 'https://www.vision54.com/' },
-    { label: 'Bob Rotella – Golf Is Not a Game of Perfect', url: 'https://en.wikipedia.org/wiki/Bob_Rotella' },
+    { label: 'Bob Rotella – Golf Is Not a Game of Perfect', url: 'https://www.simonandschuster.com/books/Golf-is-Not-a-Game-of-Perfect/Bob-Rotella/9780684803647' },
   ],
   see: ['strategy', 'practice'],
 };

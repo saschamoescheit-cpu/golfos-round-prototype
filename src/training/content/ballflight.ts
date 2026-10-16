@@ -120,7 +120,8 @@ export const ballflight: Category = {
     { id: 'bE1h1iQXpzI', title: 'Gerade Schläge mit dem Driver – nie wieder Slice', channel: 'Florian Raggl Golf', lang: 'de' },
   ],
   sources: [
-    { label: 'TrackMan – ball flight laws', url: 'https://www.trackman.com/blog/golf/ball-flight-laws' },
+    { label: 'NCCGA – Understanding ball flight with TrackMan', url: 'https://nccga.org/swing-tips/understanding-ball-flight-with-trackman/' },
+    { label: 'GolfWRX – Understanding the new ball flight laws', url: 'https://www.golfwrx.com/107406/understanding-the-new-ball-flight-laws/' },
     { label: 'Golf Digest – how to fix a shank', url: 'https://www.golfdigest.com/' },
   ],
   see: ['basics', 'swing', 'driver'],

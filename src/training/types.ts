@@ -1,3 +1,5 @@
+import type { Chart } from './content/charts';
+
 // The "Training" module (Sascha 15.10.2026): a golf knowledge base for practice – categories (putting, chipping,
 // slopes …) with the basics, the typical faults, drills with a sketch, explainer videos and practice gear.
 // Every text sits next to its translation ({ en, de }) like tr(en, de) elsewhere in the app.
@@ -71,6 +73,8 @@ export interface Category {
   facts?: L[];
   sections: Section[];
   faults?: Fault[];
+  /** small charts of the key numbers (content/charts.ts) */
+  charts?: Chart[];
   videos?: Video[];
   sources?: Source[];
   /** related categories */

@@ -12,6 +12,7 @@ import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { Metronome } from '../training/Metronome';
+import { FactChart } from '../training/FactChart';
 import { ReviewBar } from '../training/ReviewBar';
 import { drillKey, exportMarkdown, faultKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
 import { SessionPlay } from '../training/SessionPlay';
@@ -776,6 +777,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
               </ul>
             </section>
           ) : null}
+          {c.charts?.map((ch, i) => <FactChart key={i} chart={ch} />)}
           {c.sections.map((s, i) => (
             <Collapsible key={i} title={<strong>{t(s.title)}</strong>} open={i === 0}>
               {s.text?.map((p, k) => <p key={k}>{t(p)}</p>)}
@@ -1091,10 +1093,13 @@ function DrillView(props: { id: string; nav: Nav }) {
       </div>
       {d.videos?.length ? (
         <>
-          <h2>{tr('Video', 'Video')}</h2>
-          {d.videos.map((v) => (
-            <VideoCard key={v.id} v={v} />
-          ))}
+          <h2>{d.videos.length > 1 ? tr('Videos', 'Videos') : tr('Video', 'Video')}</h2>
+          {[...d.videos]
+            .sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang()))
+            .slice(0, 2)
+            .map((v) => (
+              <VideoCard key={v.id} v={v} />
+            ))}
         </>
       ) : null}
       <button type="button" className="btn-ghost" onClick={() => props.nav.push({ name: 'cat', id: d.cat })}>

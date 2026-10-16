@@ -302,7 +302,7 @@ export const puttingDrills: Drill[] = [
     scoring: { kind: 'made', of: 20, unit: L('clean strikes', 'saubere Treffer') },
     targets: { high: 12, mid: 15, low: 18 },
     tips: [L('Centre strike gives the same length for the same stroke – it makes the length control learnable.', 'Ein mittiger Treffer gibt bei gleicher Bewegung die gleiche Länge – erst dadurch wird Längenkontrolle lernbar.')],
-    sketch: { view: 'face', marks: [{ x: 0, y: 0 }, { x: 0.08, y: 0.05 }, { x: -0.1, y: -0.05 }, { x: 0.45, y: 0, n: L('toe: short + right', 'Spitze: kurz + rechts') }], caption: L('Impact marks: most should sit in the circle.', 'Treffbild: Die meisten Treffer sollen im Kreis liegen.') },
+    sketch: { view: 'face', marks: [{ x: 0, y: 0 }, { x: 0.08, y: 0.05 }, { x: -0.1, y: -0.05 }, { x: 0.5, y: -0.35, n: L('toe: short + right', 'Spitze: kurz + rechts') }], caption: L('Impact marks: most should sit in the circle.', 'Treffbild: Die meisten Treffer sollen im Kreis liegen.') },
   },
   {
     id: 'coin-line',
