@@ -125,11 +125,7 @@ await p.locator('.btn-primary').filter({ hasText: /bestätigen/ }).click();
 await p.waitForTimeout(600);
 const after = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][6].strokes);
 ok(after === before, `confirming hole 7 keeps the score from the course (${before} → ${after})`);
-// the round as a file for the analysis (Sascha 16.10.2026): round, GPS track, detection now
-const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.getByRole('button', { name: /Runde exportieren/ }).click()]);
-const { readFileSync: rf } = await import('node:fs');
-const file = JSON.parse(rf(await dl.path(), 'utf-8'));
-ok(/^golfos-runde-\d{4}-\d\d-\d\d-.+\.json$/.test(dl.suggestedFilename()), `export file name: ${dl.suggestedFilename()}`);
-ok(file.kind === 'golfos-round-export' && file.round?.holes?.length === 9 && file.track.length > 50 && file.detectedNow.length === 9 && file.detectedNow.filter(Boolean).length >= 7, `export: round, ${file.track.length} GPS fixes, detection on ${file.detectedNow.filter(Boolean).length} holes`);
+// the export is out again (Sascha 16.10.2026: "vorerst aus der Webversion entfernen")
+ok((await p.getByRole('button', { name: /Runde exportieren/ }).count()) === 0, 'no export button');
 console.log(errs.join(' / ') || 'no page errors');
 await b.close();

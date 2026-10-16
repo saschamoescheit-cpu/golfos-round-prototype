@@ -26,6 +26,11 @@ export function CaddieCard(props: {
   // map's menu (Sascha 16.10.2026: "den kleinen Einklapppfeil brauchen wir nicht")
   const [sheet, setSheet] = useState<'ask' | 'rules' | 'notes' | null>(null);
   const f = props.facts;
+  // at most three lines (Sascha 16.10.2026: "der Caddie hat viel zu viele Informationen"): the head – club, distance,
+  // plays like –, then the instruction (his plan, or the caddie's aim) and the one danger that matters. The rest is
+  // still worked out and answered under "Ask".
+  const shown = pickLines(props.lines);
+  const head = `${Math.round(f.distance)} ${f.unit} ${f.targetTo} · ${tr('plays', 'spielt wie')} ${Math.round(f.playsLike)} ${f.unit}`;
   return (
     <>
       <section className="caddie-card" aria-label="AI caddie">
@@ -35,13 +40,13 @@ export function CaddieCard(props: {
             {Math.round(f.distance)} {f.unit} {f.targetTo} · {tr('plays', 'spielt wie')} <strong>{Math.round(f.playsLike)} {f.unit}</strong>
           </span>
         </div>
-        {props.lines.map((l, k) => (
+        {shown.map((l, k) => (
           <span key={k} className={l.tone === 'warn' ? 'plan warn' : l.tone === 'plan' ? 'plan' : l.tone === 'mental' ? 'mental' : 'why'}>
             {l.text}
           </span>
         ))}
-        {props.alt && <span className="alt">{props.alt}</span>}
-        {props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
+        {SHOW_DETAILS && props.alt && <span className="alt">{props.alt}</span>}
+        {SHOW_DETAILS && props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
         {props.lie != null && (
           <label className="caddie-lie">
             <span>{tr('Lie', 'Lage')}</span>
@@ -55,7 +60,8 @@ export function CaddieCard(props: {
           </label>
         )}
         <div className="caddie-actions">
-          <button type="button" onClick={() => toggleSpeak(summary(f))} aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')}>
+          {/* read aloud exactly what the card says */}
+          <button type="button" onClick={() => toggleSpeak(SHOW_DETAILS ? summary(f) : [`${f.club}.`, head + '.', ...shown.map((l) => l.text)].join(' '))} aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')}>
             🔊
           </button>
           <button type="button" onClick={() => setSheet('ask')}>
@@ -77,6 +83,19 @@ export function CaddieCard(props: {
       {sheet === 'notes' && <NotesSheet hole={props.holeLabel} note={props.note} onSave={props.onNote} onClose={() => setSheet(null)} />}
     </>
   );
+}
+
+/** The long caddie (every reason, the hole book, other clubs) – off: the card keeps three lines (Sascha 16.10.2026). */
+const SHOW_DETAILS = false;
+
+type Line = { text: string; tone?: 'warn' | 'plan' | 'mental' | 'muted'; lead?: boolean };
+/** The instruction (the player's plan or today's club talk, else the caddie's aim) and the one warning. */
+export function pickLines(lines: Line[]): Line[] {
+  const where = /^(You are|Du liegst) /;
+  const instruction =
+    lines.find((l) => l.lead) ?? lines.find((l) => l.tone === 'plan' && !where.test(l.text) && !/^(From the map|Laut Karte)/.test(l.text)) ?? null;
+  const warning = lines.find((l) => l.tone === 'warn' && l !== instruction) ?? null;
+  return [instruction, warning].filter((l): l is Line => l != null);
 }
 
 function Sheet(props: { title: string; onClose: () => void; children: React.ReactNode }) {

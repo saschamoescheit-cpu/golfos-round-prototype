@@ -15,7 +15,10 @@ import { holesFromTags } from '../src/lib/courses';
 import { distanceM, holeMapData, lineLength, pointAt, bearingDeg, type HoleMapData } from '../src/lib/geo';
 import { holeForTee } from '../src/lib/teeline';
 import { move } from '../src/lib/aimpoint';
-import { DETECT, PLAUSIBLE, detectHoleShots, findStops, splitRound, type TrackPoint } from '../src/lib/track';
+import { BLIND, DETECT, PLAUSIBLE, detectHoleShots, findStops, splitRound, type TrackPoint } from '../src/lib/track';
+if (process.env.BLIND_OFF) BLIND.on = false;
+if (process.env.BLIND_Q) BLIND.q = Number(process.env.BLIND_Q);
+if (process.env.BLIND_GAP) BLIND.gapS = Number(process.env.BLIND_GAP);
 // tuning without touching the app: P_SHOTCOST=0.5 P_COUNTMISS=2 … override the detection values for this run
 for (const [k, v] of Object.entries(process.env)) {
   if (k.startsWith('P_')) (PLAUSIBLE as Record<string, number>)[k.slice(2).toLowerCase().replace(/_(.)/g, (_, c) => c.toUpperCase())] = Number(v);

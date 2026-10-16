@@ -17,6 +17,9 @@ export interface TrackPoint {
 }
 
 /** Tunable values (feature 004, Akzeptanzkriterien – calibrated with the simulator scripts/shotsim.ts, then real rounds). */
+/** Spots guessed on blind stretches of the track (no fix for a while between two places). */
+export const BLIND = { on: true, gapS: 60, at: [0.3, 0.45, 0.6, 0.75], q: -1 }; // q tuned: Sascha's C round 16.10. and scripts/shotsim.ts (locked 88 %)
+
 export const DETECT = {
   maxAccuracyM: 15, // ignore worse fixes
   stopRadiusM: 8, // standing still = the fixes stay within this radius of their centre (phone GPS wanders 3–8 m)
@@ -107,6 +110,7 @@ interface Place {
   to: number;
   q: number; // how sure we are that the player stood there (and not just walked past)
   w: number; // weight of its position (a stop's centre beats the first fix after unlocking)
+  guess?: boolean; // a spot on a stretch the phone saw nothing of – no fix there
 }
 
 /** All places on this hole: stops, the first fix after opening the app, the last fix before the phone went away. */
@@ -187,6 +191,39 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
   // places off the green on the way (not on the green itself) – and the fringe chip
   list = list.filter((x) => !onGreenAt(x.p, hole) || x === chipSpot);
 
+  // Blind stretches (Sascha's round 16.10.2026: the phone locked for ten minutes between the tee and the third ball –
+  // not one fix near the second): where the track has no fix for a minute or more between two places, the ball may
+  // have been played on the way – a few possible spots along it join the places, marked as guessed. The chain
+  // below takes them only when the shot count needs them and they make golfing sense.
+  if (BLIND.on && opts.shots != null) {
+    const fixTimes = track.filter((x) => x.acc <= DETECT.maxAccuracyM).map((x) => x.t);
+    const blind = (t0: number, t1: number): boolean => {
+      let last = t0;
+      for (const t of fixTimes) {
+        if (t <= t0) continue;
+        if (t >= t1) break;
+        if (t - last >= BLIND.gapS * 1000) return true;
+        last = t;
+      }
+      return t1 - last >= BLIND.gapS * 1000;
+    };
+    const seq: Place[] = [tee, ...list, ...(green ? [green] : [])];
+    const aug: Place[] = [];
+    for (let k = 0; k + 1 < seq.length; k++) {
+      const a = seq[k];
+      const b = seq[k + 1];
+      if (k > 0) aug.push(a);
+      if (!blind(a.to, b.from) || distanceM(a.p, b.p) < 60) continue;
+      for (const t of BLIND.at) {
+        const p: LngLat = [a.p[0] + (b.p[0] - a.p[0]) * t, a.p[1] + (b.p[1] - a.p[1]) * t];
+        if (!onGreenAt(p, hole)) aug.push({ p, from: a.to + (b.from - a.to) * t, to: a.to + (b.from - a.to) * t, q: BLIND.q, w: 0, guess: true });
+      }
+    }
+    if (seq.length > 1 && !green) aug.push(seq[seq.length - 1]);
+    if (green && seq.length > 2) aug.push(seq[seq.length - 2]);
+    list = aug.filter((x, k, all) => all.indexOf(x) === k).sort((a, b) => a.from - b.from);
+  }
+
   // ---- the most plausible chain tee → … → green ----
   const lieOf = (p: LngLat, first: boolean) => lieAt(p, hole, first);
   const E = (p: LngLat, first: boolean): number => expectedStrokes(toGreen(p), lieOf(p, first));
@@ -199,7 +236,7 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
     if (progress < 5) ll -= 3; // a "shot" that does not get closer to the green
     return ll;
   };
-  const nodes = [{ p: tee.p, e: E(tee.p, true), q: 0 }, ...list.map((x) => ({ p: x.p, e: E(x.p, false), q: x.q }))];
+  const nodes = [{ p: tee.p, e: E(tee.p, true), q: 0, guess: false }, ...list.map((x) => ({ p: x.p, e: E(x.p, false), q: x.q, guess: !!x.guess }))];
   // best[j][c]: the most plausible chain that ends at place j with c shots (tee = 1). The count matters: the player
   // entered his score and putts on the course – score − putts − penalties = shots to the green, a strong hint.
   const MAXC = Math.min(nodes.length, 9);

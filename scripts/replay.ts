@@ -5,11 +5,17 @@ import { readFileSync } from 'node:fs';
 import { SEED_GEOMETRY } from '../src/data/seedGeometry';
 import { holeMapData, distanceM, type HoleMapData } from '../src/lib/geo';
 import { holeForTee } from '../src/lib/teeline';
-import { detectWithScore, splitRound, type TrackPoint } from '../src/lib/track';
+import { BLIND, detectWithScore, splitRound, type TrackPoint } from '../src/lib/track';
 import type { Round, LngLat } from '../src/types';
 
 const file = process.argv[2];
 const verbose = process.argv.includes('--verbose');
+// tuning: --q=-0.35 --gap=60 --off
+for (const a of process.argv) {
+  if (a.startsWith('--q=')) BLIND.q = Number(a.slice(4));
+  if (a.startsWith('--gap=')) BLIND.gapS = Number(a.slice(6));
+  if (a === '--off') BLIND.on = false;
+}
 const data = JSON.parse(readFileSync(file, 'utf-8')) as { round: Round; track: TrackPoint[] };
 const r = data.round;
 const geo = SEED_GEOMETRY[r.courseId];
