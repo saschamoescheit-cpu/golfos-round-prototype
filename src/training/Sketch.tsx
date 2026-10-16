@@ -41,6 +41,17 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
   );
 }
 
+/** The sketch as a small picture in lists (Sascha 16.10.2026: "a small thumbnail with every drill") – no labels. */
+export function SketchThumb(props: { sketch?: Sketch; fallback?: ReactNode }) {
+  const s = props.sketch;
+  if (!s) return <span className="tr-cat-icon small">{props.fallback}</span>;
+  return (
+    <span className="tr-thumb" aria-hidden="true">
+      {s.view === 'top' ? <Top sketch={s} /> : s.view === 'side' ? <Side sketch={s} /> : <Face marks={s.marks} />}
+    </span>
+  );
+}
+
 function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }) {
   const { w, h, items } = props.sketch;
   const W = 340;

@@ -137,6 +137,7 @@ await tab('Üben');
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-block .list-item').count()) >= 10, 'ready-made plans listed');
 await p.locator('.list-item').filter({ hasText: 'Putten 30 Min: Startlinie' }).click();
+ok((await p.locator('.tr-plan-row .tr-thumb svg').count()) === 4, 'every drill of the plan has a small picture (Sascha 16.10.2026)');
 await p.getByRole('button', { name: 'Einheit starten' }).click();
 await p.waitForTimeout(2300);
 ok(await p.locator('.tr-now').isVisible(), 'session runs');

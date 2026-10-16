@@ -10,7 +10,7 @@ import { CATEGORIES, DRILLS, catById, drillById, drillsOf } from '../training/co
 import { GEAR, gearById, gearForDrill } from '../training/content/gear';
 import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
-import { SketchView } from '../training/Sketch';
+import { SketchThumb, SketchView } from '../training/Sketch';
 import { Metronome } from '../training/Metronome';
 import { SessionPlay } from '../training/SessionPlay';
 import {
@@ -824,6 +824,22 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
   );
 }
 
+// a drill in a plan: small picture, name, minutes – tap opens the drill (Sascha 16.10.2026)
+function PlanRow(props: { drill: string; meta: string; nav: Nav }) {
+  const d = drillById(props.drill);
+  if (!d) return null;
+  return (
+    <button type="button" className="tr-plan-row" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
+      <SketchThumb sketch={d.sketch} fallback={CAT_ICON[d.cat]} />
+      <span className="grow">
+        <strong>{t(d.name)}</strong>
+        <span className="muted small">{props.meta}</span>
+      </span>
+      <span aria-hidden="true">›</span>
+    </button>
+  );
+}
+
 function DrillList(props: { drills: Drill[]; nav: Nav; onAdd?: (d: Drill) => void; added?: string[] }) {
   if (!props.drills.length) return <p className="muted">{tr('No drills for this filter.', 'Keine Übungen für diesen Filter.')}</p>;
   const favs = loadFavs();
@@ -832,7 +848,7 @@ function DrillList(props: { drills: Drill[]; nav: Nav; onAdd?: (d: Drill) => voi
       {props.drills.map((d) => (
         <li key={d.id} className="tr-drill-row">
           <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
-            <span className="tr-cat-icon small">{CAT_ICON[d.cat]}</span>
+            <SketchThumb sketch={d.sketch} fallback={CAT_ICON[d.cat]} />
             <span className="grow">
               <span className="title">
                 {favs.includes(d.id) ? '★ ' : ''}
@@ -1088,10 +1104,7 @@ function PlanView(props: { plan: Plan | OwnPlan; own?: boolean; nav: Nav }) {
             <ol className="tr-plan-list">
               {planItems(day).map((i, n) => (
                 <li key={n}>
-                  <button type="button" className="tr-link" onClick={() => props.nav.push({ name: 'drill', id: i.drill })}>
-                    {t(drillById(i.drill)!.name)}
-                  </button>
-                  <span className="muted small">{i.minutes} min</span>
+                  <PlanRow drill={i.drill} meta={`${i.minutes} min`} nav={props.nav} />
                 </li>
               ))}
             </ol>
@@ -1110,12 +1123,7 @@ function PlanView(props: { plan: Plan | OwnPlan; own?: boolean; nav: Nav }) {
             <ol className="tr-plan-list">
               {items.map((i, n) => (
                 <li key={n}>
-                  <button type="button" className="tr-link" onClick={() => props.nav.push({ name: 'drill', id: i.drill })}>
-                    {t(drillById(i.drill)!.name)}
-                  </button>
-                  <span className="muted small">
-                    {i.minutes} min · {placeName(drillById(i.drill)!.place)}
-                  </span>
+                  <PlanRow drill={i.drill} meta={`${i.minutes} min · ${placeName(drillById(i.drill)!.place)}`} nav={props.nav} />
                 </li>
               ))}
             </ol>
