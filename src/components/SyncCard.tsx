@@ -5,7 +5,7 @@ import { getLang, tr } from '../lib/i18n';
 // "On all your devices" in the profile (feature 013): sign in with Google, then rounds, games, profile, bag and
 // friends are the same on iPhone, iPad and PC. Hidden until the Supabase project is set up.
 
-export function SyncCard() {
+export function SyncCard(props: { onSignedIn?: () => void }) {
   const [session, setSession] = useState(loadSession);
   const [last, setLast] = useState(lastSync);
   const [busy, setBusy] = useState(false);
@@ -14,6 +14,7 @@ export function SyncCard() {
     const on = () => {
       setSession(loadSession());
       setLast(lastSync());
+      props.onSignedIn?.();
     };
     window.addEventListener('golfos:synced', on);
     return () => window.removeEventListener('golfos:synced', on);

@@ -1,3 +1,5 @@
+import { loadProfile, saveProfile } from './profile';
+
 // Sync between the player's devices (feature 013, Sascha 15.10.2026: "iPhone, iPad and PC should show the same").
 // Offline first: the app keeps saving to the device as before; with a Google login and a network the data is
 // compared with the copy in Supabase (EU, Frankfurt) – one row per round, game, track and setting – and the newer
@@ -300,6 +302,16 @@ export async function finishSignIn(): Promise<Session | null> {
     const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${access}` } }).then((r) => r.json());
     s.email = u.email ?? null;
     s.name = u.user_metadata?.full_name ?? u.user_metadata?.name ?? null;
+    // the first name, last name and photo from Google into the profile – fields the player filled stay his
+    const p = loadProfile();
+    const parts = (s.name ?? '').trim().split(/\s+/).filter(Boolean);
+    const photo: string | undefined = u.user_metadata?.avatar_url ?? u.user_metadata?.picture ?? undefined;
+    saveProfile({
+      ...p,
+      firstName: p.firstName || parts[0] || '',
+      lastName: p.lastName || parts.slice(1).join(' '),
+      photo: p.photo || photo,
+    });
   } catch {
     /* the name comes later */
   }

@@ -1147,3 +1147,15 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .qr-box svg { display: block; width: 100%; height: auto; }
 .join-code { align-self: center; font: 800 34px var(--display); letter-spacing: 0.18em; }
 .join-input { font: 700 26px var(--display); letter-spacing: 0.2em; text-align: center; text-transform: uppercase; }
+
+/* profile photo and the small pictures next to the names (Sascha 16.10.2026) */
+.avatar { border-radius: 50%; object-fit: cover; flex: none; display: inline-block; vertical-align: middle; }
+.avatar.initial { display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); border: 1px solid var(--line-strong); color: var(--text-2); font-weight: 700; }
+.profile-photo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.profile-photo-btn { position: relative; border: 0; background: none; padding: 0; border-radius: 50%; }
+.profile-photo-edit { position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%; background: var(--brand); color: var(--bg); font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.lb-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.name-with-avatar { display: inline-flex; align-items: center; gap: 6px; }
+
+.plan-actions { display: flex; gap: 8px; }
+.plan-actions .btn-secondary { width: auto; min-height: 36px; padding: 0 12px; font-size: 14px; }

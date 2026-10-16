@@ -1,11 +1,13 @@
 import type { Round } from '../types';
 import { leaderboard } from '../lib/games';
 import { tr } from '../lib/i18n';
+import { Avatar } from './Avatar';
 
 // Live leaderboard of the flight (Sascha 14.10.2026): everyone entered on this phone, after every hole.
 
 export function LeaderboardCard(props: { round: Round }) {
   const b = leaderboard(props.round);
+  const me = props.round.players.find((p) => p.isMe);
   return (
     <section className="card stats-card leaderboard">
       <h2>Leaderboard</h2>
@@ -15,7 +17,10 @@ export function LeaderboardCard(props: { round: Round }) {
         {b.rows.map((r) => (
           <li key={r.key}>
             <span className="lb-rank">{r.rank}</span>
-            <span className="lb-name">{r.name}</span>
+            <span className="lb-name">
+              <Avatar name={r.name} me={me != null && (r.key === me.id || r.name === me.name)} size={24} />
+              {r.name}
+            </span>
             <span className="lb-value">{r.value}</span>
             <span className="lb-thru muted small">{r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
           </li>

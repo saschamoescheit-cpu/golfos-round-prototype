@@ -83,9 +83,11 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     return out;
   };
   const count = inBag.length + (style.putter ? 1 : 0);
-  const save = () => {
-    persist(bag);
-    setNote(tr("Saved ✓", "Gespeichert ✓"));
+  // saved with every change (Sascha 16.10.2026: no save buttons – it saves by itself)
+  const setCarry = (c: Club, v: string) => {
+    const next = { ...bag, [c]: v };
+    setBag(next);
+    persist(next);
   };
   const remove = (c: Club) => {
     const next = inBag.filter((x) => x !== c);
@@ -114,7 +116,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     const next = { ...bag };
     for (const c of clubs) next[c] = String(toU(tracked.get(c)!.carry));
     persist(next);
-    setNote(tr(`Updated from your tracked shots: ${clubs.map((c) => clubCode(c)).join(', ')}.`, `Aus deinen gemessenen Schlägen übernommen: ${clubs.map((c) => clubCode(c)).join(', ')}.`));
+    setNote(null);
   };
   const groups: { id: ClubGroup; label: string }[] = [
     { id: 'wood', label: tr('Driver & woods', 'Driver & Hölzer') },
@@ -238,8 +240,8 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
               return (
                 <div key={c} className="bag-row full">
                   <strong className="bag-code">{withLoft(clubCode(c), c, style)}</strong>
-                  {t ? (
-                    <span className={`bag-tracked${differs(c) ? ' differs' : ''}`}>
+                  {t && differs(c) ? (
+                    <span className="bag-tracked differs">
                       <span className="bag-tracked-text">
                         <span className="bag-tracked-label">{tr(`${t.shots} shots tracked`, `${t.shots} Schläge gemessen`)}</span>
                         <span>
@@ -261,8 +263,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                       inputMode="numeric"
                       value={bag[c]}
                       aria-label={tr(`${clubCode(c)} carry in ${unit === 'yd' ? 'yards' : 'metres'}`, `${clubCode(c)} Carry in ${unit === 'yd' ? 'Yards' : 'Metern'}`)}
-                      onChange={(e) => setBag({ ...bag, [c]: e.target.value.replace(/[^0-9]/g, '').slice(0, 3) })}
-                      onBlur={save}
+                      onChange={(e) => setCarry(c, e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
                       aria-invalid={bag[c] !== '' && !valid(bag[c])}
                     />
                     {uL}
@@ -291,13 +292,6 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
           {note && <p className="small" style={{ margin: 0 }}>{note}</p>}
           <div className="bag-foot">
             {countLine}
-            {/* saving as a disc (Sascha 15.10.2026) – the values are saved on leaving a field anyway */}
-            <button type="button" className="use-btn save-btn" aria-label={tr('Save my values', 'Meine Werte speichern')} title={tr('Save', 'Speichern')} onClick={save}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
-                <path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-                <path d="M7 3v5h8V3M7 21v-7h10v7" />
-              </svg>
-            </button>
           </div>
         </section>
       ) : (

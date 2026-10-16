@@ -8,6 +8,8 @@ export interface Profile {
   lastName: string;
   hcpIndex: string; // as typed, e.g. "12,4" or "+1,2"
   homeClub: string;
+  /** Profile photo: from the Google sign-in (URL) or chosen in the app (small JPEG as data URL). */
+  photo?: string;
 }
 
 export const EMPTY_PROFILE: Profile = { firstName: '', lastName: '', hcpIndex: '', homeClub: '' };

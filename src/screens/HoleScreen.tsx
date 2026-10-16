@@ -28,7 +28,7 @@ import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type G
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
-import { woodsOf, landmarksOf, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
+import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
 import { ScoreSheet } from '../components/ScoreSheet';
@@ -647,7 +647,16 @@ export function HoleScreen(props: {
     // wind, slope and tendency, clear of trees). The player can drag or remove it; his own plan is kept then.
     const teeAim = teeAimFor({ data: mapData, par: hole.par, pin: plans[i]?.pin ?? mapData.greenCenter, bag: carryBag, conditions, tendency, ...terrain, note: notes[hole.label] ?? {}, style: caddieSettings.style, favourite: caddieSettings.favourite, playing: caddiePlaying });
     const planned = strategy[hole.label];
-    const plan = plans[i] ?? (planned?.targets.length ? { targets: planned.targets, pin: null } : { targets: teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [], pin: null });
+    // planning a par 5 (Sascha 16.10.2026): three shots – two targets from the start, the second where the
+    // favourite distance is left
+    const defaultTargets = (): LngLat[] => {
+      const first = teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [];
+      if (!round.planning || hole.par < 5 || !first.length) return first;
+      const L = lineLength(mapData.line);
+      const at = L - Math.min(200, Math.max(30, caddieSettings.favourite || 90));
+      return at > alongLine(mapData.line, first[0]) + 40 ? [first[0], pointAt(mapData.line, at)] : first;
+    };
+    const plan = plans[i] ?? (planned?.targets.length ? { targets: planned.targets, pin: null } : { targets: defaultTargets(), pin: null });
     // The flag stays on the green (Sascha 15.10.2026: it stood 50 m short on the fairway after a stray drag): a pin
     // off the green – dragged there or saved so – counts as not set.
     const pinOk = (p: LngLat) => (mapData.green ? pointInRing(p, mapData.green) || distToLine(p, mapData.green) <= 3 : distanceM(p, mapData.greenCenter) <= 25);
@@ -1042,7 +1051,29 @@ export function HoleScreen(props: {
                   </select>
                 </label>
               ))}
-              <span className="muted small">{tr('Drag the targets on the map; tap the map for a target when there is none.', 'Ziele auf der Karte ziehen; ohne Ziel setzt ein Tipp eines.')}</span>
+              <div className="plan-actions">
+                {plan.targets.length < 3 && (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      // a new target between the last one (or the tee) and the green
+                      const from = plan.targets[plan.targets.length - 1] ?? mapData.tee;
+                      const a0 = alongLine(mapData.line, from);
+                      const a1 = lineLength(mapData.line);
+                      setPlan({ targets: [...plan.targets, pointAt(mapData.line, a0 + (a1 - a0) / 2)] });
+                    }}
+                  >
+                    + {tr('Target', 'Ziel')}
+                  </button>
+                )}
+                {plan.targets.length > 0 && (
+                  <button type="button" className="btn-secondary" onClick={() => setPlan({ targets: plan.targets.slice(0, -1) })}>
+                    − {tr(`Target ${plan.targets.length}`, `Ziel ${plan.targets.length}`)}
+                  </button>
+                )}
+              </div>
+              <span className="muted small">{tr('Drag the targets on the map.', 'Ziele auf der Karte ziehen.')}</span>
             </section>
           )}
           {shotTip && !detectedBanner && (

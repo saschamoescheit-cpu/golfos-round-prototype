@@ -1,26 +1,25 @@
 import { useRef, useState } from 'react';
 import type { Round } from '../types';
 import { Attribution, Segmented } from '../components/ui';
-import { restoreBackup, shareBackup } from '../lib/backup';
 import { carryToReview } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, loadUnit, saveUnit } from '../lib/storage';
 import { getLang, tr } from '../lib/i18n';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { CoursePicker } from './CoursePicker';
 import { SyncCard } from '../components/SyncCard';
+import { Avatar } from '../components/Avatar';
 import { STANDARD_CLUBS } from '../lib/clubs';
 import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, saveProfile, type Profile } from '../lib/profile';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
-// distances, the caddie and the backup – everything the player sets once and the app keeps.
+// distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
 
 export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie: () => void; onChanged: () => void }) {
   const [p, setP] = useState<Profile>(loadProfile);
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
-  const [backupMsg, setBackupMsg] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
   const review = carryToReview(props.rounds, loadCarryBag()).length;
   const bag = loadCarryBag();
   const caddie = loadCaddieSettings();
@@ -49,8 +48,34 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
     <>
       <h1 className="tab-title">{tr('Profile', 'Profil')}</h1>
 
+      {/* the Google sign-in first (Sascha 16.10.2026): it brings the name and the photo */}
+      <SyncCard onSignedIn={() => setP(loadProfile())} />
+
       <section className="card stats-card">
         <h2>{tr('About you', 'Persönliche Daten')}</h2>
+        <div className="profile-photo">
+          <button type="button" className="profile-photo-btn" aria-label={tr('Change your photo', 'Profilbild ändern')} onClick={() => photoInput.current?.click()}>
+            <Avatar name={p.firstName || '?'} me size={72} />
+            <span className="profile-photo-edit" aria-hidden="true">✎</span>
+          </button>
+          <span className="muted small">{p.photo ? tr('Tap the photo to change it.', 'Tippe aufs Bild, um es zu ändern.') : tr('Tap to add a photo.', 'Tippe, um ein Bild hinzuzufügen.')}</span>
+          {p.photo && (
+            <button type="button" className="link-btn muted small" onClick={() => set({ photo: undefined })}>
+              {tr('Remove', 'Entfernen')}
+            </button>
+          )}
+          <input
+            ref={photoInput}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              e.target.value = '';
+              if (f) set({ photo: await shrinkPhoto(f) });
+            }}
+          />
+        </div>
         <div className="form-grid">
           <div className="field">
             <label htmlFor="pf-first">{tr('First name', 'Vorname')}</label>
@@ -119,53 +144,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
         <CaddieSettingsFields />
       </section>
 
-      <SyncCard />
-
-      <section className="card stats-card">
-        <h2>{tr('Backup', 'Sicherung')}</h2>
-        <p className="muted small" style={{ margin: 0 }}>
-          {tr(
-            'Your rounds live only on this phone. Safari and the home-screen app keep separate data – use a backup to move or save it.',
-            'Deine Runden liegen nur auf diesem Handy. Safari und die App auf dem Home-Bildschirm speichern getrennt – mit einer Sicherung kannst du sie übertragen oder aufbewahren.',
-          )}
-        </p>
-        <div className="nav-bottom" style={{ gridTemplateColumns: props.rounds.length ? '1fr 1fr' : '1fr' }}>
-          {props.rounds.length > 0 && (
-            <button type="button" className="btn-secondary" onClick={() => shareBackup().catch(() => setBackupMsg(tr('Backup cancelled.', 'Sicherung abgebrochen.')))}>
-              {tr('Save backup', 'Sichern')}
-            </button>
-          )}
-          <button type="button" className="btn-secondary" onClick={() => fileInput.current?.click()}>
-            {tr('Restore backup', 'Wiederherstellen')}
-          </button>
-        </div>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (!file) return;
-            try {
-              let data: unknown;
-              try {
-                data = JSON.parse(await file.text());
-              } catch {
-                throw new Error(tr('This file is not a GolfOS backup.', 'Diese Datei ist keine GolfOS-Sicherung.'));
-              }
-              const { rounds } = restoreBackup(data as Parameters<typeof restoreBackup>[0]);
-              setBackupMsg(tr(`Backup restored · ${rounds} ${rounds === 1 ? 'round' : 'rounds'} added.`, `Sicherung wiederhergestellt · ${rounds} ${rounds === 1 ? 'Runde' : 'Runden'} hinzugefügt.`));
-              setP(loadProfile());
-              props.onChanged();
-            } catch (err) {
-              setBackupMsg(err instanceof Error ? err.message : tr('This file could not be read.', 'Diese Datei konnte nicht gelesen werden.'));
-            }
-          }}
-        />
-        {backupMsg && <p className="small" style={{ margin: 0 }}>{backupMsg}</p>}
-      </section>
 
       <div className="home-foot">
         <Attribution />
@@ -175,4 +153,26 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       </div>
     </>
   );
+}
+
+/** A chosen photo as a small square JPEG (160 px) – small enough to keep on the phone and to sync. */
+async function shrinkPhoto(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((ok, fail) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = fail;
+      i.src = url;
+    });
+    const n = 160;
+    const c = document.createElement('canvas');
+    c.width = n;
+    c.height = n;
+    const side = Math.min(img.width, img.height);
+    c.getContext('2d')!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, n, n);
+    return c.toDataURL('image/jpeg', 0.82);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

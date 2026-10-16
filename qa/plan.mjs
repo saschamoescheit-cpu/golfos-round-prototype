@@ -42,12 +42,27 @@ await p.waitForTimeout(300);
 const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.strategy.v1.osm:relation/1326323') ?? '{}'));
 ok(saved['1A']?.clubs?.join(',') === '5i,9i' && saved['1A']?.targets?.length === 1, `plan saved: ${JSON.stringify(saved['1A']?.clubs)}`);
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan-1A.png' });
+// a par 5 (4A): three shots – two targets from the start; "+ Ziel" / "− Ziel" (Sascha 16.10.2026)
+for (let k = 0; k < 3; k++) {
+  await p.getByRole('button', { name: 'Nächstes Loch' }).last().click();
+  await p.waitForTimeout(1200);
+}
+const label4 = (await p.locator('.map-hole-no').innerText()).trim();
+const shots4 = await p.locator('.plan-panel .plan-shot').count();
+ok(label4 === '4A' && shots4 === 3, `par 5 ${label4}: ${shots4} shots (tee → target 1 → target 2 → green)`);
+await p.locator('.plan-panel').getByRole('button', { name: '− Ziel 2' }).click();
+await p.waitForTimeout(300);
+ok((await p.locator('.plan-panel .plan-shot').count()) === 2, '"− Ziel 2" removes the second target');
+await p.locator('.plan-panel').getByRole('button', { name: '+ Ziel' }).click();
+await p.waitForTimeout(300);
+ok((await p.locator('.plan-panel .plan-shot').count()) === 3, '"+ Ziel" adds it back');
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan-4A.png' });
 await p.locator('.hole-bar-handle').click();
 await p.waitForTimeout(400);
 await p.locator('.hole-drawer').getByRole('button', { name: 'Vorschau beenden' }).click();
 await p.waitForTimeout(800);
 await pick();
-ok((await p.getByRole('button', { name: /Runde planen/ }).innerText()).includes('1 Loch geplant'), 'setup: "1 Loch geplant"');
+ok((await p.getByRole('button', { name: /Runde planen/ }).innerText()).includes('2 Löcher geplant'), 'setup: "2 Löcher geplant"');
 // the birdie book shows the plan
 await p.getByRole('button', { name: 'Birdiebook', exact: true }).click();
 await p.waitForTimeout(4000);

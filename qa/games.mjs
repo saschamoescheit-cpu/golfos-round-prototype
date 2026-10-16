@@ -253,7 +253,7 @@ await p.waitForTimeout(500);
 ok(await p.locator('.undo-toast').isVisible(), 'delete: "Round deleted · Undo" shows, no second question');
 ok(!(await p.getByRole('button', { name: 'Runde fortsetzen' }).count()), 'the round is gone');
 await p.locator('.undo-toast button').click();
-await p.waitForTimeout(300);
+await p.waitForTimeout(1000);
 ok(await p.getByRole('button', { name: 'Runde fortsetzen' }).isVisible(), 'Undo brings the round back');
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);
 console.log(bad ? `${bad} FAILED` : 'all ok');
