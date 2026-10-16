@@ -311,7 +311,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .sg-badge.bad { color: #ff8a7f; }
 .review-nav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; }
 .review-map { position: relative; height: 44vh; min-height: 260px; border-radius: 14px; overflow: hidden; }
-.review-view { position: absolute; top: 10px; right: 10px; z-index: 2; min-width: 64px; justify-content: center; background: rgba(14, 20, 24, 0.85); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
+.review-view { position: absolute; top: 10px; right: 10px; z-index: 2; min-width: 64px; min-height: 44px; justify-content: center; background: rgba(14, 20, 24, 0.85); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
 /* while a shot is dragged: what it means, large at the top of the map – not under the finger (Sascha 16.10.2026) */
 .map-drag-readout { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 3; max-width: calc(100% - 100px); padding: 6px 12px; border-radius: 999px; background: rgba(14, 20, 24, 0.9); color: #fff; font: 700 15px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .review-map .hole-map { position: absolute; inset: 0; }
@@ -387,7 +387,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .caddie-lie select { flex: 1; min-height: 36px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: inherit; font-size: 15px; padding: 0 10px; }
 
 /* Language switch on the start page (feature 021) */
-.lang-btn { min-width: 44px; min-height: 32px; border-radius: 16px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); letter-spacing: 0.4px; }
+.lang-btn { min-width: 44px; min-height: 44px; border-radius: 22px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); letter-spacing: 0.4px; }
 
 /* Simpler hole map (feature 022): one bottom row – back, + target, score, next */
 .map-nav.with-target { grid-template-columns: 56px auto 1fr 56px; }
@@ -628,7 +628,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 /* Small addition to "From tee": the last recognised shot */
 .map-shot-last { margin-left: 8px; color: var(--muted); font-size: 12px; }
 /* Scorecard: tap a hole to correct it */
-.sc-hole { background: none; border: 0; padding: 0; min-width: 100%; min-height: 28px; color: inherit; font: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
+.sc-hole { background: none; border: 0; padding: 0; min-width: 100%; min-height: 44px; color: inherit; font: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
 .sc td.tap { cursor: pointer; }
 .sheet-done { min-height: 40px; padding: 0 18px; }
 /* Round check: the caddie's advice next to the player's verdict */
@@ -801,7 +801,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .chip-set { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip-set.facts .chip { flex: 1; text-align: center; }
 .chip {
-  min-height: 38px; padding: 0 12px; border-radius: 19px; border: 1px solid var(--line-strong); background: transparent;
+  min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid var(--line-strong); background: transparent;
   font: 600 13px var(--body); color: var(--text-2); display: inline-flex; align-items: center; justify-content: center;
 }
 .chip.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }
@@ -923,7 +923,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .map-weather { top: calc(env(safe-area-inset-top) + 10px); }
 .hole-bar { position: relative; }
 .hole-bar-handle {
-  position: absolute; left: 50%; top: -14px; transform: translateX(-50%); width: 72px; height: 22px; border: 0; padding: 0;
+  position: absolute; left: 50%; top: -20px; transform: translateX(-50%); width: 96px; height: 40px; border: 0; padding: 0;
   background: transparent; display: flex; align-items: center; justify-content: center;
 }
 .hole-bar-handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--muted); opacity: 0.9; }
@@ -976,7 +976,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .module-card strong { font: 700 22px var(--display); }
 .module-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--brand-soft); color: var(--brand-text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .module-live { color: var(--brand-text); font-weight: 600; }
-.module-switch { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; color: var(--text); font: inherit; }
+.module-switch { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; min-height: 44px; color: var(--text); font: inherit; }
 .module-tag { font: 600 12px var(--body); text-transform: uppercase; letter-spacing: 0.8px; color: var(--brand-text); border: 1px solid var(--brand); border-radius: 8px; padding: 2px 6px; }
 .game-rules { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--text-2); }
 .game-form { display: flex; flex-direction: column; gap: 10px; }
@@ -1044,7 +1044,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 /* the header on narrow phones: logo, module, version (two lines), language and sun mode in one row (Sascha 15.10.2026) */
 @media (max-width: 440px) {
   .topbar { gap: 6px; }
-  .topbar .lang-btn { min-width: 38px; }
+  .topbar .lang-btn { min-width: 44px; }
   .topbar-version { display: flex; flex-direction: column; line-height: 1.15; font-size: 10px; }
   .module-switch { gap: 6px; }
   .module-switch > span[aria-hidden='true'] { display: none; }
@@ -1207,6 +1207,9 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 
 .sign-seal.big { width: 52px; height: 52px; border-radius: 26px; display: inline-flex; align-items: center; justify-content: center; background: var(--brand-soft); flex: none; }
 .sign-card.signed { border: 1px solid var(--brand); background: color-mix(in srgb, var(--brand-soft) 45%, var(--surface)); }
+
+/* thumb-sized targets everywhere (night 16./17.10.2026, qa/tapsize.mjs): at least 44 px */
+.chip-row button { min-height: 44px; }
 
 /* a sub page with the menu below: room for it */
 .screen:has(~ .tabbar) { padding-bottom: calc(env(safe-area-inset-bottom) + 96px); }
