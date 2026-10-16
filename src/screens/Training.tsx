@@ -761,6 +761,10 @@ function LogTab(props: { nav: Nav }) {
                     <span className="title">{s.name}</span>
                     <span className="muted small">
                       {s.items.filter((i) => i.done).length}/{s.items.length} {tr('drills', 'Übungen')}
+                      {(() => {
+                        const g = sessionGoals(s, band);
+                        return g.of ? tr(` · ${g.reached}/${g.of} goals`, ` · ${g.reached}/${g.of} Ziele`) : '';
+                      })()}
                     </span>
                   </span>
                   <span aria-hidden="true">›</span>
@@ -2157,11 +2161,26 @@ function Ordered(props: { order: Order; nav: Nav }) {
 
 // ---------- session result ----------
 
+/** How many drills of a session reached the goal of the player's band (of those with a goal and a result). */
+function sessionGoals(s: Session, band: Band): { reached: number; of: number } {
+  let reached = 0;
+  let of = 0;
+  for (const i of s.items) {
+    const d = drillById(i.drill);
+    const ok = d && i.done ? meets(d.scoring, d.targets, i.value ?? null, band) : null;
+    if (ok == null) continue;
+    of++;
+    if (ok) reached++;
+  }
+  return { reached, of };
+}
+
 function SessionResult(props: { id: string; nav: Nav }) {
   useTrainingTick();
   const s = loadSessions().find((x) => x.id === props.id);
   if (!s) return null;
   const band = bandOf(playerHcp());
+  const goals = sessionGoals(s, band);
   return (
     <main className="screen training">
       <TopBar title={s.name} onBack={props.nav.back} />
@@ -2174,6 +2193,14 @@ function SessionResult(props: { id: string; nav: Nav }) {
           <span className="tile-num">{s.items.filter((i) => i.value != null).length}</span>
           <span className="muted small">{tr('results', 'Ergebnisse')}</span>
         </div>
+        {goals.of > 0 && (
+          <div className="tile">
+            <span className={`tile-num${goals.reached ? ' good-text' : ''}`}>
+              {goals.reached}/{goals.of}
+            </span>
+            <span className="muted small">{tr('goals reached', 'Ziele erreicht')}</span>
+          </div>
+        )}
       </div>
       <ul className="list">
         {s.items.map((i, k) => {
