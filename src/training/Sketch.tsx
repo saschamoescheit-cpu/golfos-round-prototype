@@ -68,7 +68,9 @@ export function SketchThumb(props: { sketch?: Sketch; fallback?: ReactNode }) {
 
 function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }) {
   const { w, h, items } = props.sketch;
-  const W = 340;
+  // a tall sketch gets a narrower canvas so it is never higher than 360 px (the CSS limit): the texts and balls keep
+  // their size instead of being scaled down
+  const W = Math.min(340, Math.round((360 * w) / h));
   const k = W / w;
   const H = Math.round(h * k);
   const X = (x: number) => x * k;
@@ -207,15 +209,21 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
         const [x, y] = [X(it.at[0]), Y(it.at[1])];
         const rad = (it.dir * Math.PI) / 180;
         const [cx, sy] = [Math.cos(rad), Math.sin(rad)];
+        // the label beside the arrow – on the other side when it would run out of the picture
+        const label = it.label ? txt(it.label) : '';
+        const tw = label.length * 6.4;
+        let side = cx > 0.3 ? 1 : cx < -0.3 ? -1 : 0;
+        if (side === 1 && x + 14 + tw > W - 4) side = -1;
+        else if (side === -1 && x - 14 - tw < 4) side = 1;
         return (
           <g key={i}>
             <g transform={`translate(${x},${y}) rotate(${it.dir})`}>
               <line x1={0} y1={16} x2={0} y2={-14} stroke="#16324a" strokeWidth={2.5} />
               <path d="M0,-18 l-6,9 l12,0 z" fill="#16324a" />
             </g>
-            {it.label && (
-              <text x={x + 14 * cx} y={y + 18 * sy + 4} fontSize={11} fill="#16324a" fontWeight={700} textAnchor={cx > 0.3 ? 'start' : cx < -0.3 ? 'end' : 'middle'}>
-                {txt(it.label)}
+            {label && (
+              <text x={x + 14 * side} y={y + 18 * sy + 4} fontSize={11} fill="#16324a" fontWeight={700} textAnchor={side > 0 ? 'start' : side < 0 ? 'end' : 'middle'}>
+                {label}
               </text>
             )}
           </g>

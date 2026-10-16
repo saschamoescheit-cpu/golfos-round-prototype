@@ -181,7 +181,7 @@ export const pitchingDrills: Drill[] = [
     place: 'range',
     balls: 15,
     needs: [L('a partner or dice', 'ein Partner oder ein Würfel')],
-    setup: L('A partner calls a distance between 30 and 90 m – or roll a die (1 = 30 m … 6 = 80 m).', 'Ein Partner sagt eine Distanz zwischen 30 und 90 m an – oder würfle (1 = 30 m … 6 = 80 m).'),
+    setup: L('A partner calls a distance between 30 and 80 m – or roll a die (1 = 30 m … 6 = 80 m).', 'Ein Partner sagt eine Distanz zwischen 30 und 80 m an – oder würfle (1 = 30 m … 6 = 80 m).'),
     steps: [
       L('Full routine: choose club and swing length from your chart, practice swing, hit.', 'Volle Routine: Schläger und Schwunglänge aus der Tabelle wählen, Probeschwung, schlagen.'),
       L('Count balls within 5 m.', 'Zähle Bälle innerhalb 5 m.'),

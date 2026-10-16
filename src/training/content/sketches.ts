@@ -312,7 +312,7 @@ export const SKETCHES: Record<string, Sketch> = {
       [3, 1.4],
       [5.5, 3.6],
       [5.8, 8.2],
-      [3, 11.7],
+      [3, 11.1],
       [0.2, 8.2],
       [0.5, 3.6],
     ] as P[]).map((at, i): SketchItem => ({ k: 'ball', at, n: i + 1 })),
@@ -512,7 +512,7 @@ export const SKETCHES: Record<string, Sketch> = {
     stxt([1.3, 0.05], L('ball first', 'erst der Ball'), 10),
   ]),
   'tee-in-sand': S(4, 1.6, [
-    { k: 'ground', pts: [[0, 0.6], [4, 0.6]] },
+    { k: 'ground', pts: [[0, 0.6], [4, 0.6]], sand: true },
     { k: 'line', from: [2, 0.6], to: [2, 0.3] },
     { k: 'ball', at: [2, 0.6] },
     { k: 'line', from: [1.0, 0.45], to: [3.0, 0.45], dashed: true },
@@ -547,7 +547,8 @@ export const SKETCHES: Record<string, Sketch> = {
     ...me(10, 2, 0.8),
     flag(10, 27),
     { k: 'path', pts: [[10, 2], [16, 20], [10.4, 26.6]], style: 'flight', arrow: true },
-    txt([10, 29], L('aim right – the slope brings it back', 'rechts zielen – der Hang bringt ihn zurück'), 10),
+    txt([5.2, 15], L('aim right –', 'rechts zielen –'), 10),
+    txt([5.2, 13.6], L('the slope brings it back', 'der Hang bringt ihn zurück'), 10),
   ], L('Ball above the feet: aim right, the ball curves left.', 'Ball über den Füßen: rechts zielen, der Ball dreht nach links.')),
   'below-feet-stay': S(6, 3.6, [
     { k: 'ground', pts: [[0, 1.6], [6, 0.3]] },
@@ -617,8 +618,9 @@ export const SKETCHES: Record<string, Sketch> = {
   'escape-decision': T(30, 40, [
     { k: 'rough', x: 0, y: 0, w: 30, h: 40 },
     { k: 'fairway', x: 14, y: 0, w: 12, h: 40 },
-    { k: 'ring', at: [8, 16], r: 3, fill: true, label: L('trees', 'Bäume') },
+    { k: 'ring', at: [8, 16], r: 3, fill: true },
     { k: 'ring', at: [10, 22], r: 3, fill: true },
+    txt([2.2, 19.5], L('trees', 'Bäume'), 11, 'start'),
     { k: 'ball', at: [6, 10] },
     { k: 'path', pts: [[6, 10], [8, 30], [20, 36]], style: 'flight', arrow: true },
     { k: 'path', pts: [[6, 10], [18, 16]], style: 'roll', arrow: true },
@@ -757,8 +759,8 @@ export const SKETCHES: Record<string, Sketch> = {
     { k: 'path', pts: [[15, 2], [12, 38]], style: 'flight', arrow: true },
     { k: 'path', pts: [[15, 2], [17, 32]], style: 'flight', arrow: true },
     ...me(15, 2, 1.2),
-    txt([10, 40], L('driver', 'Driver'), 10),
-    txt([20, 30], L('3-wood', 'Holz 3'), 10),
+    txt([10.6, 34], L('driver', 'Driver'), 10, 'end'),
+    txt([18.2, 30], L('3-wood', 'Holz 3'), 10, 'start'),
   ]),
 
   // ================= driver =================
@@ -820,8 +822,9 @@ export const SKETCHES: Record<string, Sketch> = {
     { k: 'fairway', x: 0, y: 0, w: 12, h: 2.4 },
     { k: 'rough', x: 0, y: 2.4, w: 12, h: 7.6 },
     { k: 'fairway', x: 2, y: 5, w: 8, h: 5 },
-    { k: 'stick', from: [11, 3], to: [11, 10] },
-    txt([10.7, 8], L('OB', 'Aus'), 10, 'end'),
+    // out of bounds: white stakes along the right edge
+    ...[3, 4.4, 5.8, 7.2, 8.6].map((y): SketchItem => ({ k: 'tee', at: [11.2, y] })),
+    txt([10.8, 7.7], L('OB', 'Aus'), 10, 'end'),
     ...me(9.5, 1.2, 0.5),
     { k: 'path', pts: [[9.5, 1.2], [4.5, 9]], style: 'aim', arrow: true },
   ], L('Trouble right: tee up on the right, aim left.', 'Gefahr rechts: rechts aufteen, links zielen.')),

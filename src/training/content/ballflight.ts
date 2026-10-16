@@ -12,7 +12,8 @@ const flight = (curve: number, start: number, caption: { en: string; de: string 
     { k: 'fairway', x: 1.5, y: 0, w: 3, h: 10 },
     { k: 'string', from: [3, 0.6], to: [3, 9.8] },
     { k: 'ball', at: [3, 0.6] },
-    { k: 'path', pts: [[3, 0.6], [3 + start * 4 + curve * 0.3, 6], [3 + start * 8 + curve, 9.5]], style: 'flight', arrow: true },
+    // the control point lies on the start side: the ball leaves to that side first, then curves the other way
+    { k: 'path', pts: [[3, 0.6], [3 + start * 14, 7], [3 + curve * 0.7, 9.5]], style: 'flight', arrow: true },
   ],
   caption,
 });
