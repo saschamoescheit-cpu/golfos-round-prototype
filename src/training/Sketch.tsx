@@ -15,7 +15,7 @@ const C = {
   fairway: '#6ea545',
   fringe: '#7fb850',
   green: '#8cc95c',
-  sand: '#e9d9a6',
+  sand: '#e9d9a6', // ci-allow: bunker sand
   water: '#4f8fc0',
   mat: '#3f8a4a',
   line: '#ffffff',
@@ -94,7 +94,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
           </g>
         );
       case 'towel':
-        return <rect key={i} x={X(it.x)} y={Y(it.y + it.h)} width={it.w * k} height={it.h * k} rx={3} fill="#f4f1ea" stroke="#c9c3b5" strokeWidth={1.5} />;
+        return <rect key={i} x={X(it.x)} y={Y(it.y + it.h)} width={it.w * k} height={it.h * k} rx={3} fill="#f2f4f3" stroke="#c3c9c6" strokeWidth={1.5} />;
       case 'zone':
         return (
           <g key={i}>
@@ -133,7 +133,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
       case 'tee':
         return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1])} r={3.2} fill="#ffffff" stroke="#55606a" strokeWidth={1.2} />;
       case 'coin':
-        return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1])} r={5} fill="#d9b44a" stroke="#8a6a12" strokeWidth={1.2} />;
+        return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1])} r={5} fill="#d5dade" stroke="#7d8790" strokeWidth={1.2} />;
       case 'stick':
         return <line key={i} x1={X(it.from[0])} y1={Y(it.from[1])} x2={X(it.to[0])} y2={Y(it.to[1])} stroke={C.stick} strokeWidth={4} strokeLinecap="round" />;
       case 'string':
