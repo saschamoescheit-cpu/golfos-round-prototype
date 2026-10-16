@@ -32,6 +32,7 @@ import {
   placeOrder,
   purgeSession,
   removeLog,
+  restoreLog,
   removeOwnPlan,
   restoreSession,
   saveOwnPlan,
@@ -40,6 +41,7 @@ import {
   toggleFav,
   trainingId,
   type Order,
+  type LogEntry,
   type OwnPlan,
   type Session,
 } from '../training/store';
@@ -1006,6 +1008,13 @@ function DrillView(props: { id: string; nav: Nav }) {
   const d = drillById(props.id);
   const [value, setValue] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
+  // a removed result can be brought back for 8 seconds – the same "Undo" as for rounds, games and sessions
+  const [removed, setRemoved] = useState<LogEntry | null>(null);
+  useEffect(() => {
+    if (!removed) return;
+    const t = window.setTimeout(() => setRemoved(null), 8000);
+    return () => window.clearTimeout(t);
+  }, [removed]);
   useEffect(() => {
     if (drillById(props.id)) rememberDrill(props.id);
   }, [props.id]);
@@ -1157,7 +1166,15 @@ function DrillView(props: { id: string; nav: Nav }) {
               <li key={e.id}>
                 <span className="muted small">{new Date(e.at).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                 <span>{scoreText(d.scoring, e.value)}</span>
-                <button type="button" className="btn-ghost small" aria-label={tr('Remove this entry', 'Eintrag entfernen')} onClick={() => removeLog(e.id)}>
+                <button
+                  type="button"
+                  className="btn-ghost small"
+                  aria-label={tr('Remove this entry', 'Eintrag entfernen')}
+                  onClick={() => {
+                    removeLog(e.id);
+                    setRemoved(e);
+                  }}
+                >
                   ✕
                 </button>
               </li>
@@ -1207,6 +1224,23 @@ function DrillView(props: { id: string; nav: Nav }) {
         </button>
       )}
       <Sources list={d.sources} />
+      {removed && (
+        <div className="undo-toast" role="status">
+          <span>
+            {tr('Result removed', 'Ergebnis entfernt')}
+            <span className="muted"> · {scoreText(d.scoring, removed.value)}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              restoreLog(removed);
+              setRemoved(null);
+            }}
+          >
+            {tr('Undo', 'Rückgängig')}
+          </button>
+        </div>
+      )}
     </main>
   );
 }

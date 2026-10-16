@@ -80,6 +80,11 @@ for (let i = 0; i < 11; i++) await p.locator('.tr-result button').nth(1).click()
 await p.getByRole('button', { name: 'Ergebnis speichern' }).click();
 ok(await p.getByRole('button', { name: 'Gespeichert ✓' }).isVisible(), 'result saved');
 ok((await p.locator('.tr-entries li').count()) === 1, 'result in the list');
+// removing a result can be undone (like deleting a round)
+await p.locator('.tr-entries li button').first().click();
+ok((await p.locator('.tr-entries li').count()) === 0 && (await p.locator('.undo-toast').isVisible()), 'removing a result shows Undo');
+await p.locator('.undo-toast button').click();
+ok((await p.locator('.tr-entries li').count()) === 1, 'Undo brings the result back');
 await shot('drill');
 // video loads only on tap
 ok((await p.locator('iframe').count()) === 0, 'no video before tapping');

@@ -95,6 +95,10 @@ export function addLog(e: Omit<LogEntry, 'id' | 'at'> & { at?: string }): LogEnt
 export function removeLog(id: string): void {
   write(K.log, loadLog().filter((x) => x.id !== id));
 }
+/** Puts a removed result back (the undo after removing it). */
+export function restoreLog(e: LogEntry): void {
+  write(K.log, [e, ...loadLog().filter((x) => x.id !== e.id)]);
+}
 export const logFor = (drill: string): LogEntry[] => loadLog().filter((x) => x.drill === drill);
 
 // ---------- sessions ----------
