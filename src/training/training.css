@@ -95,8 +95,8 @@
 .tr-plan-card { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--brand); }
 .tr-plan-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
 .tr-plan-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tr-plan-list li .grow { flex: 1; min-width: 120px; }
-.tr-link { background: none; border: 0; padding: 0; color: var(--text); font: 600 15px var(--body); text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.tr-plan-list li .grow { flex: 1 1 100%; } /* the name on its own line, the controls in one row below (44 px buttons) */
+.tr-plan-list li > .tr-min + .chip { margin-left: auto; }
 .tr-min { display: inline-flex; align-items: center; gap: 4px; }
 .tr-min .chip, .tr-plan-list li > .chip { min-width: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; } /* thumb size (44 px, like Rounds) */
 
