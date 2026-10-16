@@ -20,7 +20,7 @@ export interface HoleMapProps {
   unit: Unit;
   imagery: ImagerySource;
   credit?: string | null; // extra data credit for the map's ⓘ (green heights)
-  /** Detailed tracking: recorded shots (and the ball on the green), drawn as a yellow line with numbered dots. */
+  /** Detailed tracking: recorded shots (and the ball on the green), drawn as a green line (the app's highlight) with numbered dots. */
   track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string }[];
   /** Review: the path the player walked (GPS) and where he stood still – the places a shot may have been played. */
   walked?: { line: LngLat[]; stops: LngLat[] } | null;
@@ -172,12 +172,12 @@ export function HoleMap(props: HoleMapProps) {
       m.addLayer({ id: 'walked-stop', type: 'circle', source: 'walked', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 9, 'circle-color': 'rgba(255,255,255,0.25)', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2 } });
       m.addSource('track', { type: 'geojson', data: trackLine(latest.current) });
       m.addLayer({ id: 'track-casing', type: 'line', source: 'track', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.5 } });
-      m.addLayer({ id: 'track', type: 'line', source: 'track', paint: { 'line-color': '#FFD54A', 'line-width': 2.5 } });
+      m.addLayer({ id: 'track', type: 'line', source: 'track', paint: { 'line-color': '#9BC53D', 'line-width': 2.5 } });
       m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.6 } });
       m.addLayer({ id: 'plan', type: 'line', source: 'plan', paint: { 'line-color': '#FFFFFF', 'line-width': 2.5 } });
       m.addSource('putt', { type: 'geojson', data: puttLine(latest.current) });
       m.addLayer({ id: 'putt-casing', type: 'line', source: 'putt', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.55 }, layout: { 'line-cap': 'round' } });
-      m.addLayer({ id: 'putt', type: 'line', source: 'putt', paint: { 'line-color': '#FFD54A', 'line-width': 2.5 }, layout: { 'line-cap': 'round' } });
+      m.addLayer({ id: 'putt', type: 'line', source: 'putt', paint: { 'line-color': '#9BC53D', 'line-width': 2.5 }, layout: { 'line-cap': 'round' } });
       ready.current = true;
       m.on('moveend', () => render()); // labels are spaced out for the current view
       collapseAttribution(m);
@@ -305,7 +305,7 @@ export function HoleMap(props: HoleMapProps) {
     if (p.aimPoint) {
       if (!mk.aim) {
         const d = el('map-aim');
-        d.innerHTML = '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="11" fill="none" stroke="#0E1418" stroke-width="5"/><circle cx="15" cy="15" r="11" fill="none" stroke="#FFD54A" stroke-width="2.5"/><circle cx="15" cy="15" r="3" fill="#FFD54A" stroke="#0E1418" stroke-width="1"/></svg><span>' + tr('Aim', 'Ziel') + '</span>';
+        d.innerHTML = '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="11" fill="none" stroke="#0E1418" stroke-width="5"/><circle cx="15" cy="15" r="11" fill="none" stroke="#9BC53D" stroke-width="2.5"/><circle cx="15" cy="15" r="3" fill="#9BC53D" stroke="#0E1418" stroke-width="1"/></svg><span>' + tr('Aim', 'Ziel') + '</span>';
         mk.aim = new maplibregl.Marker({ element: d }).setLngLat(p.aimPoint).addTo(m);
       } else mk.aim.setLngLat(p.aimPoint);
     } else if (mk.aim) {

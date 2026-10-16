@@ -38,6 +38,8 @@ await p.evaluate(
     const r = rs[0];
     const id = Object.keys(r.entries)[0];
     r.entries[id] = r.entries[id].map((e, k) => ({ ...e, strokes: truth[k].shots.length + 2 + (k === 6 ? 1 : 0), putts: 2, penalties: k === 6 ? 1 : 0 }));
+    // hole 1: the putts placed on the course (Sascha 16.10.2026: they must show in the check and stay editable)
+    r.entries[id][0].puttsAt = { pin: [9.69356755600646, 48.781410881427405], balls: [[9.6935, 48.78134], [9.693562, 48.781402]] };
     r.finishedAt = new Date().toISOString();
     localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
     localStorage.setItem('golfos.track.v1.' + r.id, JSON.stringify(track));
@@ -67,6 +69,15 @@ ok(same >= 7, `shot count right on ${same} of 9 holes (detected ${counts.join(',
 // white circles = stops that are no shot yet; with the phone locked between balls there are few (info, no check)
 console.log('· white circles on the first hole to check:', (await p.getByText(/hier bist du stehen geblieben/).count()) ? 'yes' : 'none (all stops are shots)');
 ok((await p.getByText(/Fahne dorthin ziehen/).count()) === 1, 'flag hint');
+// hole 1: the putts placed on the course show on the map and in the list, the editor opens with them
+const labels = (await p.locator('.review').innerText()).replace(/\s+/g, ' ');
+ok(/2 Putts · [0-9,]+ m \/ [0-9,]+ (m|cm)/.test(labels), 'hole 1: the placed putts on the map with their lengths');
+ok(/1: [0-9,]+ m · 2: [0-9,]+ (m|cm)/.test(labels), 'hole 1: the putt lengths in the list');
+await p.getByRole('button', { name: 'Putts auf dem Grün bearbeiten' }).click();
+await p.waitForTimeout(500);
+ok((await p.locator('.putt-editor .putt-ball').count()) === 2, 'the putt editor opens with the two placed balls');
+await p.locator('.putt-editor').getByRole('button', { name: /Abbrechen/ }).click();
+await p.waitForTimeout(300);
 // hole 7: the penalty from the course
 for (let k = 0; k < 10; k++) {
   const n = Number((await p.locator('.review-nav').innerText()).match(/Loch ([0-9])/)[1]);

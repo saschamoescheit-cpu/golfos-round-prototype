@@ -14,7 +14,7 @@
   --brand-soft: #24331b;
   --ok: #46c46e;
   --bad: #ff6b5e;
-  --warn: #f2b53d;
+  --warn: #f2b53d; /* warnings and errors only – every highlight is the brand green (Sascha 16.10.2026) */
   --team-b: #5bb4f0;
   --display: Lexend, 'Segoe UI', system-ui, sans-serif;
   --body: Figtree, 'Segoe UI', system-ui, sans-serif;
@@ -204,7 +204,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .map-score .small { color: var(--muted); }
 .map-hint, .map-shot { align-self: center; background: rgba(14, 20, 24, 0.9); border-radius: 10px; padding: 6px 12px; font-size: 13px; }
 .map-shot strong { font: 700 18px var(--display); color: var(--brand-text); }
-.map-hint { color: #f6d48a; }
+.map-hint { color: #b9e98f; }
 .map-hint.detected { display: flex; align-items: center; gap: 12px; color: var(--text); padding: 2px 4px 2px 12px; }
 .map-hint.detected .btn-ghost { min-height: 36px; color: var(--brand-text); }
 .screen > .map-hint.detected { align-self: stretch; justify-content: space-between; }
@@ -219,7 +219,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .setup-card { display: flex; flex-direction: column; gap: 8px; background: rgba(14, 20, 24, 0.94); border-radius: 14px; padding: 14px; font-size: 14px; color: var(--text-2); }
 .setup-card strong { color: var(--text); font: 600 17px var(--display); }
 .setup-pin { width: 34px; height: 34px; border-radius: 17px; display: flex; align-items: center; justify-content: center; font: 700 15px var(--display); border: 3px solid #fff; color: #0E1418; }
-.setup-pin.tee { background: #F2B53D; }
+.setup-pin.tee { background: #9bc53d; }
 .setup-pin.green { background: #9BC53D; }
 .map-target-sign .remove {
   pointer-events: auto; margin-left: 8px; width: 30px; height: 30px; border-radius: 15px; border: 0;
@@ -240,7 +240,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 /* Set-up: the card at the bottom is taller, so the credit goes top right under the header. */
 .map-screen.setup .maplibregl-ctrl-bottom-right { top: calc(env(safe-area-inset-top) + 72px); bottom: auto; }
 
-.notice { border-radius: 12px; padding: 12px 14px; background: #33290f; color: #f6d48a; font-size: 14px; }
+.notice { border-radius: 12px; padding: 12px 14px; background: var(--brand-soft); color: var(--brand-text); font-size: 14px; } /* hints in the brand green (Sascha 16.10.2026) */
 .error { border-radius: 12px; padding: 12px 14px; background: #3a1f1d; color: #ff8f84; font-size: 14px; }
 .attribution { font-size: 11px; color: var(--muted); text-align: center; }
 .spinner { width: 22px; height: 22px; border-radius: 11px; border: 3px solid var(--brand); border-right-color: transparent; animation: spin 0.8s linear infinite; }
@@ -263,14 +263,14 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .club-grid button.suggested { border: 2px solid var(--brand-text); }
 .club-grid button[aria-pressed='true'] { background: var(--brand); color: var(--bg); border-color: var(--brand); }
 .map-shot-dot {
-  min-width: 22px; height: 22px; border-radius: 11px; padding: 0 6px; background: #ffd54a; color: #0e1418;
+  min-width: 22px; height: 22px; border-radius: 11px; padding: 0 6px; background: #9bc53d; color: #0e1418;
   font: 700 12px/22px var(--body); text-align: center; border: 2px solid #0e1418; white-space: nowrap;
 }
 .map-shot-dot.green { background: #fff; }
 .map-actions.detail { grid-template-columns: 1fr 1.6fr 1fr; }
 .shot-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .shot-list li { display: grid; grid-template-columns: 28px 1fr auto auto; align-items: center; gap: 8px; min-height: 44px; }
-.shot-list .n { width: 24px; height: 24px; border-radius: 12px; background: #ffd54a; color: #0e1418; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.shot-list .n { width: 24px; height: 24px; border-radius: 12px; background: var(--brand); color: var(--bg); font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; }
 
 /* ---------- Stats (feature 005) ---------- */
 .stats-card { display: flex; flex-direction: column; gap: 10px; }
@@ -329,7 +329,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .caddie-card .club { font: 700 20px var(--display); color: var(--brand-text); }
 .caddie-card .why { color: var(--text-2); }
 .caddie-card .alt { color: var(--muted); font-size: 12px; }
-.map-slope-chip { margin-top: 2px; font-size: 11px; color: #f6d48a; text-align: center; }
+.map-slope-chip { margin-top: 2px; font-size: 11px; color: #b9e98f; text-align: center; }
 .map-miss { align-self: flex-end; min-height: 36px; padding: 0 12px; font-size: 13px; }
 .map-shot-dot.good { background: #7ee04a; }
 .map-shot-dot.bad { background: #ff8a7f; }
@@ -338,7 +338,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .caddie-card .plan { color: var(--text); font-weight: 600; }
 .caddie-card .plan.warn { color: #ff9d8f; }
 .map-aim { display: flex; flex-direction: column; align-items: center; pointer-events: none; }
-.map-aim span { margin-top: -2px; background: #ffd54a; color: #0e1418; border-radius: 8px; padding: 0 6px; font: 700 11px var(--body); }
+.map-aim span { margin-top: -2px; background: #9bc53d; color: #0e1418; border-radius: 8px; padding: 0 6px; font: 700 11px var(--body); }
 .caddie-card .mental { color: #9ad3ff; font-style: italic; }
 .caddie-actions { display: grid; grid-template-columns: 44px 1fr 1fr 1.4fr 44px; gap: 6px; margin-top: 4px; }
 .caddie-actions button {
@@ -350,9 +350,9 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .pin-chips button { width: 26px; height: 24px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 700 11px var(--body); padding: 0; }
 .caddie-card .head { background: none; border: 0; padding: 0; color: var(--text); font: inherit; text-align: left; width: 100%; }
 .bag-tracked { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.bag-tracked.differs { color: #f6d48a; }
-.bag-tracked button { min-height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid #f6d48a; background: none; color: #f6d48a; font: 600 12px var(--body); }
-.badge-dot { margin-left: 8px; background: #f6d48a; color: #0e1418; border-radius: 10px; padding: 1px 8px; font: 700 11px var(--body); }
+.bag-tracked.differs { color: var(--brand-text); }
+.bag-tracked button { min-height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--brand-text); background: none; color: var(--brand-text); font: 600 12px var(--body); }
+.badge-dot { margin-left: 8px; background: var(--brand); color: var(--bg); border-radius: 10px; padding: 1px 8px; font: 700 11px var(--body); }
 .map-tools { align-self: flex-end; display: flex; gap: 8px; }
 .map-btn.round.tool { width: 46px; min-width: 46px; padding: 0; }
 .map-btn.round.tool[aria-pressed='true'] { background: var(--brand); color: var(--bg); }
@@ -396,7 +396,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 
 /* Putt read on the green (feature 024) */
 .map-putt-ball { width: 14px; height: 14px; border-radius: 7px; background: #fff; border: 2px solid #0e1418; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
-.map-putt-aim { width: 16px; height: 16px; border-radius: 8px; border: 2.5px solid #ffd54a; box-shadow: 0 0 0 2px rgba(14, 20, 24, 0.6); }
+.map-putt-aim { width: 16px; height: 16px; border-radius: 8px; border: 2.5px solid #9bc53d; box-shadow: 0 0 0 2px rgba(14, 20, 24, 0.6); }
 
 /* Course book (feature 027) */
 .book-hole { display: flex; flex-direction: column; gap: 10px; }
@@ -414,7 +414,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .sk-water { fill: #2f6f9c; } .sk-bunker { fill: #d9c58b; } .sk-green { fill: #7ccf55; stroke: #e9f0e6; stroke-width: 0.8; }
 .sk-ob { fill: none; stroke: #ff6b5e; stroke-width: 2.2; stroke-dasharray: 6 4; }
 .sk-line { fill: none; stroke: #ffffff; stroke-width: 1.2; stroke-dasharray: 4 4; opacity: 0.7; }
-.sk-shot { stroke: #ffd54a; stroke-width: 1.6; } .sk-aim { fill: #ffd54a; stroke: #0e1418; stroke-width: 1.2; }
+.sk-shot { stroke: #9bc53d; stroke-width: 1.6; } .sk-aim { fill: #9bc53d; stroke: #0e1418; stroke-width: 1.2; }
 .sk-dot { fill: #ffffff; } .sk-mark { font: 600 10px var(--body); fill: #ffffff; paint-order: stroke; stroke: #0e1418; stroke-width: 2.4px; }
 
 /* Strokes gained on a drawn hole (SgHole) */
@@ -467,8 +467,8 @@ table.sc { width: 100%; border-collapse: collapse; table-layout: fixed; font-var
 .mark.bogey { border: 1.5px solid var(--muted); border-radius: 3px; }
 .mark.double { border: 1.5px solid #ff8a7f; border-radius: 3px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px #ff8a7f; color: #ff8a7f; }
 .mark.triple { background: #ff8a7f; border-radius: 3px; color: #0e1418; }
-.hcp-dots { position: absolute; top: -6px; right: -5px; font: normal 10px/1 var(--body); letter-spacing: -1px; color: var(--warn); }
-.hcp-dot { color: var(--warn); }
+.hcp-dots { position: absolute; top: -6px; right: -5px; font: normal 10px/1 var(--body); letter-spacing: -1px; color: var(--brand-text); }
+.hcp-dot { color: var(--brand-text); }
 .sc-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
 .sc-legend > span { display: inline-flex; align-items: center; gap: 5px; }
 .sc-legend .mark { width: 20px; height: 20px; font-size: 11px; }
@@ -610,7 +610,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .bag-partial { display: flex; flex-direction: column; gap: 3px; }
 .bag-partial .input { min-height: 40px; width: 100%; text-align: right; }
 .bag-partial .input::placeholder { color: var(--muted); opacity: 0.55; font-style: italic; }
-.bag-use { align-self: flex-start; min-height: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid #f6d48a; background: none; color: #f6d48a; font: 600 11px var(--body); }
+.bag-use { align-self: flex-start; min-height: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--brand-text); background: none; color: var(--brand-text); font: 600 11px var(--body); }
 /* GPS problem on the hole map: the reason and a retry */
 .map-hint.gps-hint { display: flex; align-items: center; gap: 8px; max-width: 100%; }
 .map-hint.gps-hint .btn-ghost { min-height: 36px; color: var(--brand-text); white-space: nowrap; }
@@ -679,14 +679,14 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 }
 .tabbar button[aria-current='page'] { background: var(--brand-soft); color: var(--brand-text); }
 .tabbar-icon { position: relative; display: flex; }
-.tabbar-dot { position: absolute; top: -2px; right: -4px; width: 9px; height: 9px; border-radius: 5px; background: var(--warn); border: 2px solid var(--surface); }
+.tabbar-dot { position: absolute; top: -2px; right: -4px; width: 9px; height: 9px; border-radius: 5px; background: var(--brand-text); border: 2px solid var(--surface); }
 
 .play-card { display: flex; flex-direction: column; gap: 10px; }
 .play-course { font: 600 19px var(--display); }
 .play-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .play-actions .btn-secondary, .play-actions .btn-primary { min-height: 48px; font-size: 15px; }
 .play-confirm { display: flex; flex-direction: column; gap: 10px; }
-.count-badge { min-width: 28px; height: 28px; border-radius: 14px; background: var(--warn); color: #0e1418; font: 700 14px/28px var(--body); text-align: center; padding: 0 8px; }
+.count-badge { min-width: 28px; height: 28px; border-radius: 14px; background: var(--brand); color: var(--bg); font: 700 14px/28px var(--body); text-align: center; padding: 0 8px; }
 .warn-text { color: var(--warn); }
 .list-item.live { border: 2px solid var(--brand); }
 .round-date { display: flex; flex-direction: column; align-items: center; min-width: 44px; font-variant-numeric: tabular-nums; }
@@ -695,7 +695,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .tile {
   display: flex; flex-direction: column; gap: 2px; background: var(--surface); border: 0; border-radius: 14px; padding: 12px; text-align: left; min-width: 0;
 }
-button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
+button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .tile-num { font: 700 24px var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .record-hero { display: flex; flex-direction: column; gap: 14px; background: linear-gradient(160deg, var(--brand-soft), var(--surface) 70%); }
@@ -815,7 +815,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 /* the dragged putt's length, large and above the finger (Sascha 16.10.2026) */
 .putt-readout { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1; padding: 6px 14px; border-radius: 999px; background: rgba(14, 20, 24, 0.88); color: #fff; font: 700 20px var(--display); white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
 .putt-zoom .chip { min-width: 44px; justify-content: center; }
-.putt-line { fill: none; stroke: #ffd54a; }
+.putt-line { fill: none; stroke: #c4ef6a; }
 .putt-ball, .putt-pin { cursor: grab; }
 .putt-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
 .putt-list li { display: flex; justify-content: space-between; gap: 8px; background: var(--surface-2); border-radius: 10px; padding: 8px 12px; }
@@ -983,7 +983,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 .game-player-row { display: grid; grid-template-columns: 1fr 110px auto; gap: 8px; align-items: end; }
 .game-setting { display: flex; flex-direction: column; gap: 6px; }
 .game-scores { display: flex; flex-direction: column; gap: 4px; }
-.game-dots { color: var(--warn); margin-left: 6px; letter-spacing: 1px; }
+.game-dots { color: var(--brand-text); margin-left: 6px; letter-spacing: 1px; }
 .game-hole-meta { font: 500 14px var(--body); }
 .game-extra { display: flex; flex-direction: column; gap: 10px; }
 .game-standing { display: flex; flex-direction: column; gap: 8px; }
@@ -1032,7 +1032,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--warn); }
 /* open tasks on the start page (yellow dot as in the menus) */
 .module-icon { position: relative; }
 .module-dot { top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 6px; }
-.module-todo { color: var(--warn); font-weight: 600; }
+.module-todo { color: var(--brand-text); font-weight: 600; }
 /* start page: version and sun mode at the top, the modules below in the middle */
 /* the start page: the header on top as in the modules, the logo, claim and modules in the middle of the rest */
 .module-chooser { justify-content: flex-start; }

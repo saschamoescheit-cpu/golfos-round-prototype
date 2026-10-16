@@ -9,6 +9,9 @@ import { pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
+import { PuttEditor } from '../components/PuttEditor';
+import { greenWalk } from '../lib/greenwalk';
+import { approachFrom } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
 import { ShotSheet } from '../components/ShotSheet';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
@@ -45,6 +48,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const firstToCheck = entries.findIndex((e) => e.detail?.shots.some((s) => s.review));
   const [k, setK] = useState(firstToCheck >= 0 ? firstToCheck : 0);
   const [edit, setEdit] = useState<number | null>(null);
+  // the putts placed on the course, shown and editable here too (Sascha 16.10.2026)
+  const [puttEdit, setPuttEdit] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // after a penalty: the next tap on the map is where the ball went into the water / out of bounds
   const [placingMiss, setPlacingMiss] = useState<number | null>(null);
@@ -58,7 +63,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const data = maps[k];
   const e = entries[k];
   const d: DetailEntry | null = e.detail ?? null;
-  const pin = d?.pin ?? data?.greenCenter ?? null;
+  // the flag the player set with his putts wins
+  const pin = e?.puttsAt?.pin ?? d?.pin ?? data?.greenCenter ?? null;
+  const placedPutts = e?.puttsAt?.balls ?? null;
   const lengths = d ? shotLengths(d) : [];
   const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
   const toCheck = entries.reduce((n, x) => n + (x.detail?.shots.filter((s) => s.review).length ?? 0), 0);
@@ -313,7 +320,17 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 const miss = s.penalty && s.missPos ? [{ id: `miss-${n}`, pos: s.missPos, tone: 'bad' as const, label: `✕ ${s.penaltyKind === 'ob' ? tr('OB', 'Aus') : tr('Water', 'Wasser')}` }] : [];
                 return [...shot, ...miss];
               }),
-              ...(d?.onGreen ? [{ id: 'green', pos: d.onGreen, label: e.putts != null ? `${e.putts} Putt${e.putts === 1 ? '' : 's'}` : tr('green', 'Grün'), green: true }] : []),
+              ...(placedPutts?.length && pin
+                ? // one label at the first ball (the balls lie close together on the whole hole), the others their number
+                  placedPutts.map((b, n) => ({
+                    id: n === 0 ? 'green' : `putt-${n}`,
+                    pos: b,
+                    label: n === 0 ? `${placedPutts.length} Putt${placedPutts.length === 1 ? '' : 's'} · ${placedPutts.map((x) => fmt(distanceM(x, pin))).join(' / ')}` : String(n + 1),
+                    green: true,
+                  }))
+                : d?.onGreen
+                  ? [{ id: 'green', pos: d.onGreen, label: e.putts != null ? `${e.putts} Putt${e.putts === 1 ? '' : 's'}` : tr('green', 'Grün'), green: true }]
+                  : []),
             ]}
             onTargetsChange={() => {}}
             onTargetRemove={() => {}}
@@ -321,7 +338,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             onTrackMove={(id, pos) => {
               if (!d) return;
               // Drag a shot (or the ball on the green) to where it really was; lengths and strokes gained follow.
-              if (id === 'green') saveDetail(k, { ...d, onGreen: pos });
+              if (id === 'green' || id.startsWith('putt-')) {
+                // a placed putt ball moved: the putts keep it, the first one is where the ball reached the green
+                const n = id === 'green' ? 0 : Number(id.slice(5));
+                if (placedPutts && e.puttsAt) save(k, { puttsAt: { ...e.puttsAt, balls: placedPutts.map((b, j) => (j === n ? pos : b)) } });
+                if (n === 0) saveDetail(k, { ...d, onGreen: pos });
+              }
               else if (id.startsWith('miss-')) {
                 const n = Number(id.slice(5));
                 const shots = d.shots.slice();
@@ -405,7 +427,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               <span>
                 {e.putts ?? '–'} Putt{e.putts === 1 ? '' : 's'}
                 <span className="muted small" style={{ display: 'block' }}>
-                  {tr('first putt', 'erster Putt')} {firstPuttM({ ...d, pin }) != null ? fmt(firstPuttM({ ...d, pin })!) : '–'}
+                  {placedPutts?.length && pin
+                    ? placedPutts.map((b, n) => `${n + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')
+                    : `${tr('first putt', 'erster Putt')} ${firstPuttM({ ...d, pin: pin ?? d.pin }) != null ? fmt(firstPuttM({ ...d, pin: pin ?? d.pin })!) : '–'}`}
                 </span>
               </span>
               <span />
@@ -424,6 +448,33 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         <span className="row-label">{tr(`Score on hole ${hole.label}`, `Score an Loch ${hole.label}`)}</span>
         <Stepper label={tr('Score', 'Score')} value={e.strokes} placeholder={hole.par} min={1} onChange={(v) => save(k, { strokes: v, pickedUp: false })} />
       </div>
+      {data && (e.putts ?? 0) > 0 && (
+        <button type="button" className="btn-secondary" onClick={() => setPuttEdit(true)}>
+          {placedPutts?.length ? tr('Edit the putts on the green', 'Putts auf dem Grün bearbeiten') : tr('Place the putts on the green', 'Putts auf dem Grün setzen')}
+        </button>
+      )}
+      {puttEdit && data && (e.putts ?? 0) > 0 && (
+        <PuttEditor
+          title={tr(`Hole ${hole.label} · ${e.putts} ${e.putts === 1 ? 'putt' : 'putts'}`, `Loch ${hole.label} · ${e.putts} Putt${e.putts === 1 ? '' : 's'}`)}
+          green={data.green}
+          greenCenter={data.greenCenter}
+          from={approachFrom(data)}
+          pin={pin ?? data.greenCenter}
+          putts={e.putts!}
+          balls={placedPutts}
+          ballOnGreen={d?.onGreen ?? null}
+          walk={greenWalk(track, data.green, data.greenCenter)}
+          onCancel={() => setPuttEdit(false)}
+          onSave={(v) => {
+            setPuttEdit(false);
+            const base: DetailEntry = d ?? { ...emptyDetail(), pin: v.pin };
+            const detail = { ...base, onGreen: v.balls[0], pin: v.pin };
+            const derived = deriveFromShots(detail, e.putts, hole.par, data);
+            if (e.strokes != null) delete derived.strokes;
+            save(k, { puttsAt: v, detail, ...derived });
+          }}
+        />
+      )}
       {data && (
         <div className="field">
           <label>{tr('Putts on this hole', 'Putts an diesem Loch')}</label>
