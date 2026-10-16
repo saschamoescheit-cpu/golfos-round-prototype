@@ -84,6 +84,8 @@ export function JoinSheet(props: { initial?: string; onJoined: (g: Game) => void
   const [code, setCode] = useState(cleanCode(props.initial ?? ''));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // joined: who is this phone's owner? (his own balance, his own row)
+  const [found, setFound] = useState<Game | null>(null);
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet invite-sheet" role="dialog" aria-label={tr('Join a game', 'Spiel beitreten')} onClick={(e) => e.stopPropagation()}>
@@ -114,12 +116,24 @@ export function JoinSheet(props: { initial?: string; onJoined: (g: Game) => void
             setBusy(true);
             const g = await joinGame(code);
             setBusy(false);
-            if (g) props.onJoined(g);
+            if (g) setFound(g);
             else setMsg(tr('No game with this code – check the code or the connection.', 'Kein Spiel mit diesem Code – Code oder Verbindung prüfen.'));
           }}
         >
           {busy ? tr('Joining …', 'Trete bei …') : tr('Join', 'Beitreten')}
         </button>
+        {found && (
+          <div className="field">
+            <label>{tr(`${found.courseName} – who are you?`, `${found.courseName} – wer bist du?`)}</label>
+            <div className="chip-set">
+              {found.players.map((p) => (
+                <button key={p.id} type="button" className="chip" onClick={() => props.onJoined({ ...found, shared: { code: found.shared!.code, me: p.id } })}>
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {msg && (
           <span className="small" style={{ color: 'var(--warn)' }} role="alert">
             {msg}

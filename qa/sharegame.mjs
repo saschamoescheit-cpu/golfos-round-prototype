@@ -89,6 +89,9 @@ await G.waitForTimeout(2000);
 ok(await G.getByRole('dialog', { name: 'Spiel beitreten' }).isVisible(), 'guest: the QR link opens "Spiel beitreten" with the code');
 await G.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Beitreten', exact: true }).click();
 await G.waitForTimeout(1500);
+ok(await G.getByText('wer bist du?').isVisible(), 'guest: "who are you?" after joining');
+await G.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Ben', exact: true }).click();
+await G.waitForTimeout(1000);
 ok((await G.locator('.game-scores').innerText()).includes('Sascha') && (await G.locator('.game-scores').innerText()).includes('Ben'), 'guest: in the game with Sascha and Ben');
 
 // both enter: the host his own score, the guest his – after a few seconds both phones show both
@@ -99,6 +102,7 @@ await H.waitForTimeout(12000);
 const vals = async (p) => (await p.locator('.game-scores .stepper-value').allInnerTexts()).map((t) => t.trim()).join(',');
 ok((await vals(H)) === '4,5', `host sees both scores: ${await vals(H)}`);
 ok((await vals(G)) === '4,5', `guest sees both scores: ${await vals(G)}`);
+ok((await G.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1'))[0].shared.me)) !== 'me', 'guest: Ben is his own player (not player 1)');
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

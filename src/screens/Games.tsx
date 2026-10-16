@@ -345,13 +345,13 @@ function Balance(props: { games: Game[] }) {
   // head to head per friend (Sascha 15.10.2026): games, who finished ahead, money
   const vs = new Map<string, { name: string; games: number; money: number; won: number; lost: number }>();
   for (const g of done) {
-    const me = g.players[0];
+    const me = g.players.find((p) => p.id === g.shared?.me) ?? g.players[0]; // a joined game: the player chosen on joining
     const st = standingOf(g);
     const lead = winnerOf(st.rows) ? st.rows[0].id : null;
     if (lead === me.id || lead === 'A') wins++;
     money += st.money?.[me.id] ?? 0;
     const pays = st.money ? transfers(st.money) : [];
-    for (const p of g.players.slice(1)) {
+    for (const p of g.players.filter((x) => x.id !== me.id)) {
       const key = p.name.trim().toLowerCase();
       const row = vs.get(key) ?? { name: p.name, games: 0, money: 0, won: 0, lost: 0 };
       row.games++;
