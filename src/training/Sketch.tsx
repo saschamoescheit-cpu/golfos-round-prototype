@@ -182,6 +182,16 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
         // two feet seen from above, toes towards the ball line
         const [x, y] = [X(it.at[0]), Y(it.at[1])];
         const rot = it.face === 'left' ? 180 : it.face === 'up' ? -90 : 0;
+        if (it.stance) {
+          // feet to scale (about 28 × 10 cm), the stance width between their centres
+          const half = (it.stance / 2) * k;
+          return (
+            <g key={i} transform={`translate(${x},${y}) rotate(${rot})`} aria-hidden="true">
+              <ellipse cx={0} cy={-half} rx={0.14 * k} ry={0.05 * k} fill="#2b3a44" />
+              <ellipse cx={0} cy={half} rx={0.14 * k} ry={0.05 * k} fill="#2b3a44" />
+            </g>
+          );
+        }
         return (
           <g key={i} transform={`translate(${x},${y}) rotate(${rot})`} aria-hidden="true">
             <ellipse cx={-2} cy={-11} rx={9} ry={4.5} fill="#2b3a44" />

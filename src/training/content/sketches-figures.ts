@@ -1,5 +1,6 @@
 import { L, type CategoryId, type P, type SideItem, type Sketch } from '../types';
 import type { GolferOptions, JointName } from '../Golfer';
+import { SKETCHES } from './sketches';
 
 // The sketches with a golfer, drawn again (night run 16./17.10.2026 – Sascha: "the drawings do not show the details
 // the text describes"). Every sketch shows the position the text asks for and points at the detail that matters
@@ -16,6 +17,13 @@ const ball = (x: number, y = G0): SideItem => ({ k: 'ball', at: [x, y] });
 const txt = (at: P, t: L | string, size = 11, anchor: 'start' | 'middle' | 'end' = 'middle'): SideItem => ({ k: 'text', at, t, size, anchor });
 const arrow = (from: P, to: P): SideItem => ({ k: 'arrow', from, to });
 const line = (from: P, to: P, dashed = false): SideItem => ({ k: 'line', from, to, dashed });
+
+/** the triangle of arms and shoulders that moves as one (dashed), for a face-on figure at x */
+const triangle = (x: number, sh: number, hands: [number, number]): SideItem[] => [
+  line([x - 0.17, G0 + sh], [x + 0.17, G0 + sh], true),
+  line([x + 0.17, G0 + sh], [x + hands[0], G0 + hands[1]], true),
+  line([x - 0.17, G0 + sh], [x + hands[0], G0 + hands[1]], true),
+];
 
 export const FIGURE_SKETCHES: Record<string, Sketch> = {
   // ---------- putting ----------
@@ -403,6 +411,14 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
 /** Sections with a golfer, by topic and the English section title. */
 export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, Sketch>>> = {
   chipping: {
+    'The stroke': S(5, 2.4, [
+      ground(5),
+      fig(1.4, 'chip', { shift: 0.04 }),
+      ball(1.36),
+      fig(3.6, 'chipFinish'),
+      co('clubHead', L('the club brushes the grass under the ball – no scooping', 'der Schlägerkopf streift das Gras unter dem Ball – nicht schaufeln'), [0.4, 0.8], 0),
+      co('hands', L('the grip leads, lead wrist flat', 'der Griff führt, vorderes Handgelenk gerade'), [4.6, 1.5], 1),
+    ], L('A putting stroke with loft: the shoulders rock, back and through about the same length.', 'Eine Puttbewegung mit Loft: die Schultern schaukeln, zurück und durch etwa gleich lang.')),
     'The set-up': S(4, 2.4, [
       ground(4),
       fig(1.9, 'chip', { shift: 0.04 }),
@@ -413,6 +429,23 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ], L('Face-on, target to the right.', 'Von vorn, Ziel rechts.')),
   },
   putting: {
+    'Set-up': S(3, 2.2, [
+      ground(3),
+      fig(1.0, 'puttSide'),
+      ball(1.37),
+      line([1.36, 1.43], [1.37, 0.3], true),
+      co('head', L('eyes over the ball or slightly inside', 'Augen über dem Ball oder leicht innerhalb'), [2.2, 1.9]),
+      co('hands', L('light grip pressure, about 3–4 of 10', 'leichter Griffdruck, etwa 3–4 von 10'), [2.2, 1.0]),
+    ], L('From the side. Ball slightly ahead of centre, shoulders parallel to the start line; aim the face first, then build the stance.', 'Von der Seite. Ball etwas vor der Mitte, Schultern parallel zur Startlinie; erst die Fläche ausrichten, dann den Stand aufbauen.')),
+    'The stroke': S(4, 2.3, [
+      ground(4),
+      fig(2.0, 'putt'),
+      ...triangle(2.0, 1.32, [0, 0.8]),
+      arrow([1.92, 0.36], [1.6, 0.36]),
+      arrow([2.08, 0.36], [2.45, 0.36]),
+      co('leadShoulder', L('the shoulders move the putter – arms and shoulders as one triangle', 'die Schultern bewegen den Putter – Arme und Schultern als ein Dreieck'), [3.2, 1.8]),
+      co('hands', L('hands stay passive', 'Hände bleiben passiv'), [0.8, 1.0]),
+    ], L('A pendulum: a gentle arc, square at impact – and through the ball it accelerates gently, never slowing down.', 'Ein Pendel: ein sanfter Bogen, square im Treffmoment – und durch den Ball sanft beschleunigen, nie abbremsen.')),
     'Short putts (under 2 m)': S(5, 2.3, [
       ground(5),
       fig(1.6, 'putt'),
@@ -423,6 +456,13 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ], L('A firm pace and little break: aim inside the edge, the ball should hit the back of the cup.', 'Festes Tempo, wenig Break: innerhalb der Lochkante zielen, der Ball soll an die hintere Lochwand.')),
   },
   pitching: {
+    'The motion': S(5, 2.8, [
+      ground(5),
+      fig(1.4, 'halfBack'),
+      fig(3.6, 'halfThrough'),
+      co('hands', L('the wrists hinge naturally', 'die Handgelenke winkeln natürlich an'), [0.4, 2.0], 0),
+      co('pelvis', L('chest to the target, weight forward – hold', 'Brust zum Ziel, Gewicht vorn – halten'), [4.7, 0.9], 1),
+    ], L('The body turns back and through, the arms stay in front of the chest. Ball first, then a shallow divot.', 'Der Körper dreht zurück und durch, die Arme bleiben vor der Brust. Erst der Ball, dann ein flaches Divot.')),
     'Lob and flop': S(4, 2.6, [
       ground(4),
       fig(1.9, 'front', { club: 'wedge', stance: 'wide' }),
@@ -471,6 +511,7 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ]),
   },
   basics: {
+    'Ball position': SKETCHES['ball-position-ladder'],
     Posture: S(3, 2.4, [
       ground(3),
       fig(1.1, 'address'),

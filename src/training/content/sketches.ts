@@ -857,16 +857,19 @@ export const SKETCHES: Record<string, Sketch> = {
     { k: 'line', from: [0.95, 0.95], to: [1.42, 1.85] },
     stxt([2.2, 2.2], L('club along the spine', 'Schläger am Rücken'), 10),
   ]),
-  'ball-position-ladder': T(3, 3, [
-    { k: 'fairway', x: 0, y: 0, w: 3, h: 3 },
-    { k: 'player', at: [1.2, 1.5], face: 'right' },
-    { k: 'ball', at: [1.75, 1.5], n: 'SW' },
-    { k: 'ball', at: [1.75, 1.85], n: '7i' },
-    { k: 'ball', at: [1.75, 2.2], n: 'H' },
-    { k: 'ball', at: [1.75, 2.55], n: 'D' },
-    { k: 'path', pts: [[2.6, 0.4], [2.6, 2.9]], style: 'aim', arrow: true },
-    txt([2.6, 0.2], L('target', 'Ziel'), 10),
-  ], L('Seen from above, target up: the longer the club, the further forward.', 'Von oben, Ziel oben: Je länger der Schläger, desto weiter vorn.')),
+  'ball-position-ladder': T(1.9, 1.6, [
+    { k: 'fairway', x: 0, y: 0, w: 1.9, h: 1.6 },
+    // stick along the toes and stick from the lead heel to the ball line
+    { k: 'stick', from: [0.88, 0.2], to: [0.88, 1.4] },
+    { k: 'stick', from: [0.62, 1.1], to: [1.24, 1.1] },
+    { k: 'player', at: [0.72, 0.75], face: 'right', stance: 0.7 },
+    ...([[0.75, 'SW'], [0.85, '7i'], [0.95, 'H'], [1.1, 'D']] as [number, string][]).flatMap(([y, n]): SketchItem[] => [
+      { k: 'ball', at: [1.28, y] },
+      txt([1.36, y - 0.02], n, 11, 'start'),
+    ]),
+    { k: 'path', pts: [[1.7, 0.25], [1.7, 1.45]], style: 'aim', arrow: true },
+    txt([1.7, 0.12], L('target', 'Ziel'), 10),
+  ], L('From above, target up (not to scale): wedge in the middle, the longer the club the further forward – the driver opposite the lead heel.', 'Von oben, Ziel oben (nicht maßstäblich): Wedge in der Mitte, je länger der Schläger, desto weiter vorn – der Driver gegenüber der vorderen Ferse.')),
   'spot-aim': T(4, 10, [
     { k: 'fairway', x: 0, y: 0, w: 4, h: 10 },
     ...me(2, 1, 0.5),

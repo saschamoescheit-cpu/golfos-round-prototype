@@ -208,7 +208,7 @@ export type SketchItem =
   | { k: 'zone'; x: number; y: number; w: number; h: number; label?: string | L } // landing zone
   | { k: 'towel'; x: number; y: number; w: number; h: number }
   | { k: 'path'; pts: P[]; style?: 'roll' | 'flight' | 'aim' | 'club'; arrow?: boolean } // ball path, aim line
-  | { k: 'player'; at: P; face?: 'up' | 'right' | 'left' } // the player seen from above (feet)
+  | { k: 'player'; at: P; face?: 'up' | 'right' | 'left'; stance?: number } // the player seen from above (feet); stance = metres between the feet, drawn to scale
   | { k: 'club'; at: P; angle?: number } // a club lying on the ground
   | { k: 'putter'; at: P } // putter head behind the ball (face square to the line up the page)
   | { k: 'slope'; at: P; dir: number; label?: string | L } // downhill arrow (degrees, 0 = up the page)
