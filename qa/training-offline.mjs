@@ -58,6 +58,7 @@ await p.getByRole('button', { name: 'Einheit starten' }).click();
 await p.waitForTimeout(500);
 ok(await p.locator('.tr-now').isVisible(), 'offline: a session starts');
 await p.locator('.hole-bar-arrow').last().click();
+await p.getByRole('button', { name: 'Überspringen – nächste Übung' }).click();
 ok((await p.locator('.map-hole-no').innerText()) === '2', 'offline: the drill bar goes to the next drill');
 await ctx.setOffline(false);
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);

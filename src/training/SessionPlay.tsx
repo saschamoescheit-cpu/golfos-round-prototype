@@ -15,6 +15,8 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
   const [s, setS] = useState<Session>(props.session);
   const [drawer, setDrawer] = useState(false);
   const [exit, setExit] = useState<null | 'menu' | 'end'>(null);
+  // like "→" without a score on a hole: the result sheet first (Rounds is the base – night run 16./17.10.2026)
+  const [resultSheet, setResultSheet] = useState(false);
   const [showSteps, setShowSteps] = useState(true);
   const barTouch = useRef<number | null>(null);
   const i = s.current;
@@ -132,7 +134,7 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
               </span>
             </span>
           </button>
-          <button type="button" className="hole-bar-arrow" aria-label={last ? tr('Finish session', 'Einheit beenden') : tr('Next drill', 'Nächste Übung')} onClick={() => (last ? setExit('end') : go(i + 1))}>
+          <button type="button" className="hole-bar-arrow" aria-label={last ? tr('Finish session', 'Einheit beenden') : tr('Next drill', 'Nächste Übung')} onClick={() => (!item.done ? setResultSheet(true) : last ? setExit('end') : go(i + 1))}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
               <path d="M9 5l7 7-7 7" />
             </svg>
@@ -201,6 +203,42 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
                   <rect x="5" y="5" width="14" height="14" rx="2" />
                 </svg>
                 <span>{tr('Finish', 'Beenden')}</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {resultSheet && (
+        <div className="sheet-backdrop" onClick={() => setResultSheet(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Your result', 'Dein Ergebnis')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{t(d.name)}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setResultSheet(false)}>
+                ✕
+              </button>
+            </div>
+            {scored && <ResultInput drill={d} value={item.value ?? null} onChange={setValue} />}
+            <div className="sheet-actions">
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  setResultSheet(false);
+                  complete();
+                }}
+              >
+                {last ? tr('Done – finish session', 'Fertig – Einheit beenden') : tr('Done – next drill', 'Fertig – nächste Übung')}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setResultSheet(false);
+                  if (last) setExit('end');
+                  else go(i + 1);
+                }}
+              >
+                {last ? tr('Finish without it', 'Ohne Ergebnis beenden') : tr('Skip – next drill', 'Überspringen – nächste Übung')}
               </button>
             </div>
           </section>

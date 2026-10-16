@@ -157,6 +157,11 @@ await shot('session');
 for (let i = 0; i < 14; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Fertig – nächste Übung' }).click();
 ok((await p.locator('.tr-now-name').innerText()).includes('Tiger'), 'next drill after done');
+// the arrow without a result opens the result sheet – like the score sheet on a hole
+await p.locator('.hole-bar-arrow').last().click();
+ok(await p.getByRole('dialog', { name: 'Dein Ergebnis' }).isVisible(), 'drill bar: the arrow without a result opens the result sheet');
+await p.getByRole('button', { name: 'Überspringen – nächste Übung' }).click();
+ok((await p.locator('.map-hole-no').innerText()) === '3', 'result sheet: skip goes on to the next drill');
 // pause through the overview
 await p.locator('.hole-bar .map-score').click();
 ok((await p.locator('.drawer-row').count()) === 4, 'overview lists the 4 drills');
