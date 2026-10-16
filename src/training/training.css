@@ -98,7 +98,7 @@
 .tr-plan-list li .grow { flex: 1; min-width: 120px; }
 .tr-link { background: none; border: 0; padding: 0; color: var(--text); font: 600 15px var(--body); text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .tr-min { display: inline-flex; align-items: center; gap: 4px; }
-.tr-min .chip { min-height: 32px; padding: 0 10px; }
+.tr-min .chip, .tr-plan-list li > .chip { min-width: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; } /* thumb size (44 px, like Rounds) */
 
 .tr-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
 .tr-stats > div { display: flex; flex-direction: column; background: var(--surface); border-radius: 14px; padding: 10px 6px; }
