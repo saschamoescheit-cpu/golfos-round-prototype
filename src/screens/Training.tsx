@@ -145,6 +145,9 @@ function useTrainingTick(): number {
   return n;
 }
 
+// finished rounds still waiting for the signature (set by TrainingApp; used by the advice block)
+let unsignedCount = 0;
+
 // the page stack while Mein Bag is open over Training (the App shows My bag instead of Training for a moment)
 let keptStack: { stack: View[]; scroll: number } | null = null;
 // read only – cleared after the first render (React may run the state initializer twice)
@@ -161,6 +164,8 @@ export function TrainingApp(props: {
   onTabChange?: (t: TrainingTab) => void;
   /** opens a function of GolfOS Rounds (Mein Bag, caddie, statistics, rounds, course choice) */
   onOpenRounds?: (t: RoundsTarget) => void;
+  /** finished rounds not signed yet – they do not count (like the Rounds statistics) */
+  unsignedRounds?: number;
 }) {
   useTrainingTick();
   const running = loadSessions().filter((s) => !s.finishedAt);
@@ -191,6 +196,7 @@ export function TrainingApp(props: {
     setStack([{ name: 'tab', tab: 'train' }, { name: 'session', id: s.id }]);
     window.scrollTo(0, 0);
   };
+  unsignedCount = props.unsignedRounds ?? 0;
   const nav: Nav = {
     push,
     back,
@@ -473,6 +479,23 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
         </section>
       )}
       <DrillOfTheDay nav={props.nav} prefer={advice.flatMap((a) => a.drills)} />
+      {advice.length === 0 && unsignedCount > 0 && (
+        <section className="tr-advice">
+          <h2>{tr('From your rounds', 'Aus deinen Runden')}</h2>
+          <button type="button" className="list-item" onClick={() => props.nav.openRounds?.('rounds')} disabled={!props.nav.openRounds}>
+            <span className="grow">
+              <span className="title">{tr('Sign your finished rounds', 'Signiere deine beendeten Runden')}</span>
+              <span className="muted small">
+                {tr(
+                  `Scorecard → Sign. Only signed rounds count – then your weak spots become drills here (${unsignedCount} not signed yet).`,
+                  `Scorekarte → Signieren. Nur signierte Runden zählen – dann werden deine Schwächen hier zu Übungen (${unsignedCount} noch nicht signiert).`,
+                )}
+              </span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </section>
+      )}
       {advice.length > 0 && (
         <section className="tr-advice">
           <h2>{tr('From your rounds', 'Aus deinen Runden')}</h2>

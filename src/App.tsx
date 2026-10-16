@@ -21,6 +21,7 @@ import { GamesApp, type GamesTab } from './screens/Games';
 import { Home, type HomeTab } from './screens/Home';
 import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
 import type { TrainingTab } from './screens/Training';
+import { statRounds, unsignedRounds } from './lib/signing';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -211,7 +212,8 @@ export function App() {
     return (
       <Suspense fallback={<Waiting />}>
         <TrainingApp
-          rounds={rounds}
+          rounds={statRounds(rounds)}
+          unsignedRounds={unsignedRounds(rounds).length}
           onModules={() => setModule(null)}
           profile={profile}
           profileDot={profileDot}

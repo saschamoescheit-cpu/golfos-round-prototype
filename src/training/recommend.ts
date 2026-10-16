@@ -2,6 +2,7 @@ import type { Round } from '../types';
 import { analyse, focusAreas, pct } from '../lib/stats';
 import { groupForHandicap, groupSg, roundsSg, SG_CATEGORIES, type SgCategory } from '../lib/sg';
 import { getLang, tr } from '../lib/i18n';
+import { loadProfile } from '../lib/profile';
 import type { CategoryId } from './types';
 
 /** German decimal comma in a text with numbers ("30.5" → "30,5"). */
@@ -41,6 +42,14 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
   if (!done.length) return [];
   const a = analyse(done);
   if (a.holes < 9) return [];
+  // 9-hole players (like the Rounds statistics, 16.10.2026): values per round shown per 9 holes, the target halved –
+  // never doubled
+  const nine = done.filter((r) => r.holes.length <= 9).length > done.length / 2;
+  const half = (s: string) => s.replace(/\d+(?:[.,]\d+)?/, (m) => String(Math.round((parseFloat(m.replace(',', '.')) / 2) * 10) / 10));
+  const perNine = (fo: { metric: string; yours: string; target: string }) =>
+    nine && /per round|pro Runde/.test(fo.metric)
+      ? { metric: fo.metric.replace('per round', 'per 9 holes').replace('pro Runde', 'je 9 Löcher'), yours: half(fo.yours), target: half(fo.target) }
+      : fo;
   const out: Advice[] = [];
   const add = (x: Advice) => {
     const has = out.find((o) => o.cat === x.cat);
@@ -53,7 +62,8 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
   const f = focusAreas(a);
   for (const fo of f?.focus ?? []) {
     // the numbers come formatted from Rounds' stats with a decimal point – a comma in German
-    const why = num(`${fo.metric}: ${fo.yours} – ${tr('goal', 'Ziel')} ${fo.target} (${f!.target})`);
+    const shown = perNine(fo);
+    const why = num(`${shown.metric}: ${shown.yours} – ${tr('goal', 'Ziel')} ${shown.target} (${f!.target})`);
     if (fo.area === 'Putting') {
       const three = pct(a.threePutts) ?? 0;
       add(three >= 12 ? { cat: 'putting', why, drills: ['lag-circle', 'ladder', 'fringe', 'pelz-17'], weight: fo.gap } : { cat: 'putting', why, drills: ['clock', 'ball-gate', 'tiger-gate', 'mickelson-circle'], weight: fo.gap });
@@ -86,7 +96,8 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
   // 3. strokes gained against the player's comparison group
   const sg = roundsSg(done);
   if (sg && sg.holes >= 9) {
-    const g = groupSg(groupForHandicap(a.handicap));
+    const index = Number((loadProfile().hcpIndex ?? '').replace(',', '.'));
+    const g = groupSg(groupForHandicap(loadProfile().hcpIndex && Number.isFinite(index) ? index : a.handicap));
     const gaps = SG_CATEGORIES.map((c) => ({ c, d: sg.per18[c] - g[c] })).sort((x, y) => x.d - y.d);
     const worst = gaps[0];
     if (worst.d < -0.5) {
