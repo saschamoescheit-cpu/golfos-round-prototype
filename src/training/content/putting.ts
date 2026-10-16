@@ -15,6 +15,7 @@ export const putting: Category = {
     'Putten ist der größte einzelne Teil des Scores: Ein Spieler mit Handicap 20 braucht rund 34–36 Putts pro Runde. Zwei Fähigkeiten entscheiden fast alles: Der Ball muss auf der gewählten Linie starten (das ist der Treffmoment – immer dieselbe Stelle der Schlagfläche, die Fläche square zur Linie) und er muss die richtige Länge rollen. Die Technik der Bewegung selbst ist viel weniger wichtig als bei allen anderen Schlägen – gute Putter haben ganz unterschiedliche Bewegungen, aber alle starten den Ball auf der Linie und kontrollieren das Tempo.',
   ),
   facts: [
+    L('Rhythm controls the length: good putters take about the same time for a 2 m and a 15 m putt – only the stroke gets longer, not faster (Grober). A steady beat matters more for distance than any technique detail.', 'Der Rhythmus steuert die Länge: Gute Putter brauchen für einen 2-m- und einen 15-m-Putt etwa gleich lang – nur die Bewegung wird länger, nicht schneller (Grober). Ein gleichmäßiger Takt ist für die Länge wichtiger als jedes Technik-Detail.'),
     L('The face decides the start line: about 80–90 % of the start direction comes from where the face points at impact, only the rest from the path.', 'Die Schlagfläche bestimmt die Startlinie: Etwa 80–90 % der Startrichtung kommen von der Stellung der Fläche im Treffmoment, nur der Rest von der Schwungbahn.'),
     L('Tour players hole about 99 % from 0.6 m (2 ft), about 96 % from 0.9 m (3 ft), about 88 % from 1.2 m (4 ft), about 50 % from 2.4 m (8 ft) and only about 15 % from 6 m (20 ft) – long putts are about getting close, not holing.', 'Tour-Spieler lochen aus 0,6 m etwa 99 %, aus 0,9 m etwa 96 %, aus 1,2 m etwa 88 %, aus 2,4 m etwa 50 % und aus 6 m nur noch etwa 15 % – lange Putts heißen: nah rankommen, nicht lochen.'),
     L('Three-putts come mostly from the length of the first putt, not from its direction: a 10 m putt that is 1.5 m short leaves a 50/50 putt.', 'Dreiputts entstehen meistens aus der Länge des ersten Putts, nicht aus der Richtung: Ein 10-m-Putt, der 1,5 m zu kurz bleibt, hinterlässt einen 50/50-Putt.'),
@@ -70,12 +71,28 @@ export const putting: Category = {
           'A pendulum from the shoulders: the triangle of arms and shoulders moves as one piece, the hands stay passive. For most players the putter moves on a gentle arc – slightly inside going back, square at impact, slightly inside after. Do not force a straight-back-straight-through line. Through the ball the stroke accelerates gently; it should never slow down at impact.',
           'Ein Pendel aus den Schultern: Das Dreieck aus Armen und Schultern bewegt sich als Einheit, die Hände bleiben passiv. Bei den meisten Spielern läuft der Putter auf einem sanften Bogen – zurück leicht nach innen, im Treffmoment square, danach leicht nach innen. Erzwinge keine gerade Linie zurück und durch. Durch den Ball beschleunigt die Bewegung sanft; sie darf im Treffmoment nie abbremsen.',
         ),
-        L(
-          'Rhythm: back and through take about the same time for every length – some players count “one – two”. A metronome at about 75–80 beats per minute is a good start.',
-          'Rhythmus: Zurück und durch dauern bei jeder Länge etwa gleich lang – manche zählen „eins – zwei“. Ein Metronom mit etwa 75–80 Schlägen pro Minute ist ein guter Anfang.',
-        ),
       ],
       fact: L('Rule of thumb: twice the length of the backswing does not give twice the distance – learn your own scale with the ladder drill.', 'Faustregel: Doppelt so langes Ausholen bringt nicht die doppelte Länge – lerne deine eigene Skala mit der Leiter-Übung.'),
+    },
+    {
+      title: L('Rhythm: the key to length', 'Rhythmus: der Schlüssel zur Länge'),
+      text: [
+        L(
+          'For the length of a putt, rhythm matters most. Good putters need about the same time for a short and a long putt – a long putt is longer because the stroke is longer, not because it is faster. Whoever “adds power” on long putts or slows down on short ones loses the length.',
+          'Für die Länge eines Putts ist der Rhythmus das Wichtigste. Gute Putter brauchen für einen kurzen und einen langen Putt etwa gleich lang – ein langer Putt wird länger, weil die Bewegung länger ist, nicht weil sie schneller ist. Wer bei langen Putts „Kraft dazugibt“ oder bei kurzen abbremst, verliert die Länge.',
+        ),
+        L(
+          'The physicist Theodore Grober analysed videos of top players: the time of the stroke hardly changes with the length of the putt, the backstroke takes about twice as long as the forward stroke (about 2:1), and the putter meets the ball at an even speed – like a pendulum.',
+          'Der Physiker Theodore Grober hat Videos von Spitzenspielern ausgewertet: Die Dauer der Bewegung ändert sich mit der Länge des Putts kaum, der Rückschwung dauert etwa doppelt so lang wie der Vorschwung (etwa 2:1), und der Putter trifft den Ball mit gleichmäßigem Tempo – wie ein Pendel.',
+        ),
+      ],
+      points: [
+        L('A metronome gives the beat: “tick” = end of the backswing, “tock” = impact. It is built in right here – no extra app needed (any metronome app works too).', 'Ein Metronom gibt den Takt vor: „Tick“ = Ende der Ausholbewegung, „Tack“ = Treffmoment. Es ist direkt hier eingebaut – keine extra App nötig (jede Metronom-App geht auch).'),
+        L('Start at 72–80 beats per minute, try a few values, then keep yours – do not change it from putt to putt.', 'Starte bei 72–80 Schlägen pro Minute, probiere ein paar Werte und bleib dann bei deinem Tempo – nicht von Putt zu Putt ändern.'),
+        L('First swing to the beat without a ball, then putt short and long putts to the same beat – only the stroke gets longer.', 'Erst ohne Ball im Takt pendeln, dann kurze und lange Putts im selben Takt – nur die Bewegung wird länger.'),
+        L('On the course: count your beat silently during the practice stroke (“one – two”).', 'Auf dem Platz: Zähl deinen Takt beim Probeschwung leise mit („eins – zwei“).'),
+      ],
+      fact: L('Same beat, longer stroke = longer putt.', 'Gleicher Takt, längere Bewegung = längerer Putt.'),
     },
     {
       title: L('Short putts (under 2 m)', 'Kurze Putts (unter 2 m)'),
@@ -156,6 +173,9 @@ export const putting: Category = {
     { label: 'golf.com – Tiger’s timeless putting drill explained', url: 'https://golf.com/instruction/tigers-timeless-putting-drill-explained/' },
     { label: 'golf.com – Four-tee drill / capture speed', url: 'https://golf.com/instruction/putting/four-tee-putting-drill-golf-video/' },
     { label: 'HackMotion – Putting drills for distance control', url: 'https://hackmotion.com/putting-drills-for-distance-control/' },
+    { label: 'T. Grober – The secret of world class putting (arXiv)', url: 'https://www.arxiv.org/pdf/1103.2827' },
+    { label: 'Golf Digest – Fix tension in the putting stroke (72–80 bpm)', url: 'https://www.golfdigest.com/story/tension-putting-stroke-fix-distance-control' },
+    { label: 'GolfWRX – Better speed control with a metronome app', url: 'https://www.golfwrx.com/409214/want-better-speed-control-on-the-greens-download-a-metronome-app/' },
     { label: 'Abendzeitung – Sternputten zum Aufwärmen (Felix Lubenau)', url: 'https://www.abendzeitung-muenchen.de/sport/so-waermen-sie-sich-vor-der-runde-mit-einer-effizienten-putt-uebung-auf-art-238692' },
     { label: 'Golf Digest – Dave Pelz research-based short game tips', url: 'https://www.golfdigest.com/story/dave-pelz-short-game-research-based-tips-golf-digest' },
   ],
@@ -419,8 +439,8 @@ export const puttingDrills: Drill[] = [
     minutes: 10,
     place: 'home',
     balls: 15,
-    needs: [L('a metronome app (free)', 'eine Metronom-App (kostenlos)')],
-    setup: L('Metronome at 75–80 beats per minute. Targets at 2, 4 and 10 m (tees as markers on a mat or the green).', 'Metronom auf 75–80 Schläge pro Minute. Ziele bei 2, 4 und 10 m (Tees als Marker auf Matte oder Grün).'),
+    needs: [L('the metronome on this page (or any metronome app)', 'das Metronom auf dieser Seite (oder eine Metronom-App)')],
+    setup: L('Metronome at 72–80 beats per minute. Targets at 2, 4 and 10 m (tees as markers on a mat or the green).', 'Metronom auf 72–80 Schläge pro Minute. Ziele bei 2, 4 und 10 m (Tees als Marker auf Matte oder Grün).'),
     steps: [
       L('Without a ball: end of backswing on one beat, impact/finish on the next beat.', 'Ohne Ball: Ende der Ausholbewegung auf einen Schlag, Treffmoment/Finish auf den nächsten Schlag.'),
       L('With the ball: 5 putts to each target, same beat – only make the stroke longer.', 'Mit Ball: je 5 Putts zu jedem Ziel, gleicher Takt – nur die Bewegung länger machen.'),

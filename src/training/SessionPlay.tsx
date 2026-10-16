@@ -3,6 +3,7 @@ import { tr } from '../lib/i18n';
 import { TopBar } from '../components/ui';
 import { drillById } from './content';
 import { SketchView } from './Sketch';
+import { Metronome } from './Metronome';
 import { addLog, saveSession, type Session } from './store';
 import { CAT_ICON, ResultInput, placeName, scoreText, t } from './ui';
 
@@ -74,6 +75,7 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
         </div>
         <p className="tr-goal">{t(d.goal)}</p>
       </section>
+      {d.metronome && <Metronome key={d.id} compact />}
       {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
       <section className="card tr-section">
         <button type="button" className="tr-coll-head" aria-expanded={showSteps} onClick={() => setShowSteps(!showSteps)}>

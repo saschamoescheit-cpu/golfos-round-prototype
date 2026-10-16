@@ -24,6 +24,9 @@ import { SECTION_MEDIA } from './section-media';
 // All content of the Training module. Order of the categories = order in the library: the short game first
 // (where most strokes are lost), then the long game, then the head and the body.
 
+/** Distance-control drills that show the built-in metronome (Sascha 16.10.2026: rhythm is the key to length). */
+export const METRONOME_DRILLS = ['metronome', 'ladder', 'lag-circle', 'four-tee', 'pelz-17', 'fringe', 'star-fringe', 'eyes-hole', 'eyes-closed', 'uphill-downhill', 'wellputt-lines', 'pressure-putt', 'three-speeds', 'stimp-test'];
+
 export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching, bunker, slopes, trouble, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice]
   .map((c) => (VIDEOS_DE[c.id] ? { ...c, videos: [...(c.videos ?? []), ...VIDEOS_DE[c.id]!] } : c))
   // a picture and, where there is one, a video for every section of the basics (Sascha 16.10.2026)
@@ -48,7 +51,9 @@ export const DRILLS: Drill[] = ([
   ...fitnessDrills,
   ...practiceDrills,
   ...moreDrills,
-] as Drill[]).map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })); // every drill gets its own sketch
+] as Drill[])
+  .map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })) // every drill gets its own sketch
+  .map((d) => (METRONOME_DRILLS.includes(d.id) ? { ...d, metronome: true } : d));
 
 export const catById = (id: CategoryId): Category | undefined => CATEGORIES.find((c) => c.id === id);
 export const drillById = (id: string): Drill | undefined => DRILLS.find((d) => d.id === id);

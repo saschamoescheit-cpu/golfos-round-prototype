@@ -6,6 +6,7 @@ import type { CategoryId, Video } from '../types';
 const v = (id: string, title: string, channel: string): Video => ({ id, title, channel, lang: 'de' });
 
 export const VIDEOS_DE: Partial<Record<CategoryId, Video[]>> = {
+  putting: [v('2QFk4Jncu4s', 'Rhythmus beim Putten – Golf zu Hause trainieren (Übung)', 'GOLFSTUN.DE')],
   greenreading: [
     v('Khk7PGhDq1o', 'Golf Training Putt: So lesen Sie ein Break', 'Golf.de'),
     v('tV8RdAWzoLU', 'Golf Training Putten: Das Break richtig lesen', 'Golf.de'),

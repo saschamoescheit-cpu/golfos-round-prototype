@@ -9,6 +9,8 @@ export interface SectionMedia {
   drill?: string;
   sketch?: Sketch;
   videos?: string[];
+  /** the built-in metronome right in the section */
+  metronome?: boolean;
 }
 
 const grain: Sketch = {
@@ -36,7 +38,8 @@ export const SECTION_MEDIA: Partial<Record<CategoryId, SectionMedia[]>> = {
   putting: [
     { drill: 'ball-gate', videos: ['YZA7DEt-MG4', 'VMBqHXYalis'] },
     { drill: 'mirror-setup', videos: ['VMBqHXYalis'] },
-    { drill: 'metronome', videos: ['och5_Z0V6PI', 'R4HD_Dg7aCQ'] },
+    { drill: 'one-hand', videos: ['och5_Z0V6PI', 'VMBqHXYalis'] },
+    { drill: 'metronome', metronome: true, videos: ['Lx1e2M2NiLc', '2QFk4Jncu4s'] },
     { drill: 'clock' },
     { drill: 'ladder', videos: ['MducFYxKUmQ', 'PI9o7pwJpbc', 'Lx1e2M2NiLc', 'yoqycx4scGY'] },
     { drill: 'par18', videos: ['Lx1e2M2NiLc', 'R4HD_Dg7aCQ'] },

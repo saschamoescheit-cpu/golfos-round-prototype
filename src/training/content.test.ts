@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORIES, DRILLS, drillById } from './content';
+import { CATEGORIES, DRILLS, METRONOME_DRILLS, drillById } from './content';
 import { DRILL_GEAR, GEAR, gearById, gearForDrill } from './content/gear';
 import { PLANS } from './content/plans';
 import { adviceFromRounds } from './recommend';
@@ -115,6 +115,13 @@ describe('training content', () => {
       });
     const withVideo = CATEGORIES.flatMap((c) => c.sections).filter((s) => s.videos?.length).length;
     expect(withVideo).toBeGreaterThan(50);
+  });
+
+  it('the metronome is on the distance-control drills and in the putting basics (Sascha 16.10.2026)', () => {
+    for (const id of METRONOME_DRILLS) expect(drillById(id)?.metronome, id).toBe(true);
+    const putting = CATEGORIES.find((c) => c.id === 'putting')!;
+    const rhythm = putting.sections.find((s) => s.metronome);
+    expect(rhythm?.title.de).toBe('Rhythmus: der Schlüssel zur Länge');
   });
 
   it('every Coach fault points to existing drills', () => {

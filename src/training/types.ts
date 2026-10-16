@@ -49,6 +49,8 @@ export interface Section {
   drill?: string;
   /** YouTube ids from the topic videos that explain it */
   videos?: string[];
+  /** shows the built-in metronome */
+  metronome?: boolean;
 }
 
 /** A typical fault: what the player sees – why – what helps, with drills that fix it. */
@@ -118,6 +120,8 @@ export interface Drill {
   /** who made it known, e.g. "Tiger Woods" */
   origin?: L;
   sketch?: Sketch;
+  /** the built-in metronome is shown (distance-control drills) */
+  metronome?: boolean;
   videos?: Video[];
   sources?: Source[];
   review?: boolean;

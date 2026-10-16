@@ -104,6 +104,27 @@ await p.locator('.chip').filter({ hasText: 'Slice' }).first().click();
 ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 3, 'fault finder: Slice shows cause, cure and drills');
 await back();
 
+// the built-in metronome on a distance drill (Sascha 16.10.2026)
+await p.locator('.tr-search input').fill('Leiter-Übung');
+await p.locator('.tr-search input').press('Enter');
+await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Leiter-Übung' }).first().click();
+await p.waitForTimeout(300);
+ok(await p.locator('.tr-metronome').isVisible(), 'the ladder drill has the metronome');
+await p.locator('.tr-metronome').getByRole('button', { name: '+' }).click().catch(() => {});
+await p.locator('.tr-metro-go').click();
+await p.waitForTimeout(1600);
+ok((await p.locator('.tr-metro-go').getAttribute('aria-pressed')) === 'true' && (await p.locator('.tr-metro-lights i.on').count()) <= 1, 'metronome runs');
+let lit = 0;
+for (let k = 0; k < 12; k++) {
+  lit += await p.locator('.tr-metro-lights i.on').count();
+  await p.waitForTimeout(100);
+}
+ok(lit > 0, 'metronome beat is shown');
+await p.locator('.tr-metro-go').click();
+ok((await p.locator('.tr-metro-go').getAttribute('aria-pressed')) === 'false', 'metronome stops');
+await back();
+await back();
+
 // search
 await p.locator('.tr-search input').fill('Tiger');
 await p.locator('.tr-search input').press('Enter');

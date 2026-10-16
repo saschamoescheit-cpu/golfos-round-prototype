@@ -11,6 +11,7 @@ import { GEAR, gearById, gearForDrill } from '../training/content/gear';
 import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
 import { SketchView } from '../training/Sketch';
+import { Metronome } from '../training/Metronome';
 import { SessionPlay } from '../training/SessionPlay';
 import {
   addLog,
@@ -671,6 +672,7 @@ function SectionMedia(props: { s: Section; videos?: Video[]; nav: Nav }) {
   return (
     <>
       {sketch && <SketchView sketch={sketch} label={t(props.s.title)} />}
+      {props.s.metronome && <Metronome />}
       {d && (
         <button type="button" className="list-item tr-section-drill" onClick={() => props.nav.push({ name: 'drill', id: d.id })}>
           <span className="tr-cat-icon small">{CAT_ICON[d.cat]}</span>
@@ -910,6 +912,7 @@ function DrillView(props: { id: string; nav: Nav }) {
       </div>
       {d.review && <p className="tr-review small">{tr('Content still to be checked by our golf pro.', 'Inhalt wird noch von unserem Golfprofi geprüft.')}</p>}
       {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
+      {d.metronome && <Metronome />}
       {d.origin && (
         <p className="muted small">
           {tr('Known from', 'Bekannt durch')}: {t(d.origin)}
