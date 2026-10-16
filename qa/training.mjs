@@ -171,7 +171,7 @@ await p.waitForTimeout(400);
 ok(await p.locator('.tr-now').isVisible(), 'opening Training again continues the session');
 await back();
 await p.getByRole('button', { name: 'Einheit beenden' }).click();
-await p.getByRole('button', { name: 'Beenden & Ergebnis ansehen' }).click();
+await p.getByRole('button', { name: 'Speichern & beenden' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.tile-num').first().innerText()).startsWith('1/4'), 'result page: 1 of 4 drills done');
 await shot('result');

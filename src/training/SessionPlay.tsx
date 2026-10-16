@@ -55,6 +55,7 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
 
   if (!d) return null;
   const scored = d.scoring && d.scoring.kind !== 'none';
+  const doneCount = s.items.filter((x) => x.done).length;
 
   return (
     <main className="screen game-play training tr-session">
@@ -209,7 +210,7 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
         <div className="sheet-backdrop" onClick={() => setExit(null)}>
           <section className="sheet" role="dialog" aria-label={tr('Leave the session', 'Einheit verlassen')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
-              <strong>{exit === 'end' ? tr('Finish session?', 'Einheit beenden?') : s.name}</strong>
+              <strong>{s.name}</strong>
               <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setExit(null)}>
                 ✕
               </button>
@@ -235,18 +236,23 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
               </div>
             ) : (
               <>
-                <span className="muted">
-                  {tr(`${s.items.filter((x) => x.done).length} of ${s.items.length} drills done.`, `${s.items.filter((x) => x.done).length} von ${s.items.length} Übungen erledigt.`)}
+                <span>
+                  {doneCount < s.items.length
+                    ? tr(
+                        `Finish now? ${doneCount} of ${s.items.length} drills are done – they are saved, the others stay open.`,
+                        `Jetzt beenden? ${doneCount} von ${s.items.length} Übungen sind erledigt – sie werden gespeichert, die anderen bleiben offen.`,
+                      )
+                    : tr('Finish and save the session?', 'Einheit beenden und speichern?')}
                 </span>
                 <div className="sheet-actions">
                   <button type="button" className="btn-primary" onClick={finish}>
-                    {tr('Finish & see results', 'Beenden & Ergebnis ansehen')}
+                    {tr('Save & finish', 'Speichern & beenden')}
                   </button>
                   <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
                     {tr('Delete session', 'Einheit löschen')}
                   </button>
                   <button type="button" className="btn-secondary" onClick={() => setExit(null)}>
-                    {tr('Back to the session', 'Zurück zur Einheit')}
+                    {tr('Back', 'Zurück')}
                   </button>
                 </div>
               </>

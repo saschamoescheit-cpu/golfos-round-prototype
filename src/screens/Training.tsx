@@ -14,6 +14,7 @@ import { SketchThumb, SketchView } from '../training/Sketch';
 import { Metronome } from '../training/Metronome';
 import { FactChart } from '../training/FactChart';
 import { ReviewBar } from '../training/ReviewBar';
+import { search } from '../training/search';
 import { drillKey, exportMarkdown, faultKey, loadReview, nextOpenDrill, planKey, reviewItems, reviewOn, sectionKey, setReviewOn, videoKey, type ReviewItem, type ReviewKind, type Verdict } from '../training/review';
 import { SessionPlay } from '../training/SessionPlay';
 import {
@@ -1568,20 +1569,10 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
 
 // ---------- search ----------
 
-const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 function SearchView(props: { q: string; nav: Nav }) {
   const [q, setQ] = useState(props.q);
-  const words = norm(q).split(/\s+/).filter(Boolean);
-  const hit = (...texts: (string | undefined)[]) => {
-    const all = norm(texts.filter(Boolean).join(' '));
-    return words.length > 0 && words.every((w) => all.includes(w));
-  };
-  const both = (x?: { en: string; de: string }) => (x ? `${x.en} ${x.de}` : '');
-  const drills = DRILLS.filter((d) => hit(both(d.name), both(d.goal), both(d.setup), ...d.steps.map(both), both(d.origin)));
-  const cats = CATEGORIES.filter((c) => hit(both(c.name), both(c.short), both(c.intro)));
-  const faults = CATEGORIES.flatMap((c) => (c.faults ?? []).map((f, index) => ({ c, f, index }))).filter(({ f }) => hit(both(f.name), both(f.looks), both(f.cause)));
-  const gear = GEAR.filter((g) => hit(g.name, typeof g.brand === 'string' ? g.brand : both(g.brand), both(g.what), both(g.why)));
+  const { cats, faults, drills, gear } = useMemo(() => search(q), [q]);
   return (
     <main className="screen training">
       <TopBar title={tr('Search', 'Suche')} onBack={props.nav.back} />
