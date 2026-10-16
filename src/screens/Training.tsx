@@ -1027,9 +1027,6 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
 
       {tab === 'faults' && (
         <>
-          <p className="muted" style={{ margin: 0 }}>
-            {tr('Tap a fault: what you see, why it happens, what helps – and the drills for it.', 'Tippe auf einen Fehler: was du siehst, warum er passiert, was hilft – und die Übungen dafür.')}
-          </p>
           <ul className="list">
             {(c.faults ?? []).map((f, i) => (
               <li key={i}>
@@ -1331,9 +1328,7 @@ function DrillView(props: { id: string; nav: Nav }) {
                 </div>
               ))}
           </div>
-          <span className="muted small">
-            {hcp == null ? tr('Enter your handicap in the profile to see your goal highlighted.', 'Trag dein Handicap im Profil ein, dann ist dein Ziel markiert.') : tr('Approximate values.', 'Richtwerte.')}
-          </span>
+          {hcp == null && <span className="muted small">{tr('Enter your handicap in the profile to see your goal highlighted.', 'Trag dein Handicap im Profil ein, dann ist dein Ziel markiert.')}</span>}
         </section>
       )}
       {/* only drills with a measurable result get the result part (no "done it?" for planning or mobility) */}
@@ -1585,12 +1580,6 @@ function ReviewView(props: { nav: Nav }) {
   return (
     <main className="screen training">
       <TopBar title={tr('Review the content', 'Inhalte prüfen')} onBack={props.nav.back} />
-      <p className="muted" style={{ margin: 0 }}>
-        {tr(
-          'Switch the review on: under every number of „Good to know“, drill, basics section, fault, video, plan and product you can mark ✓ keep, ✎ change or ✕ cut, with a note. The marks stay on this device until you share them.',
-          'Schalte die Prüfung ein: Unter jeder Zahl bei „Gut zu wissen“, jeder Übung, jedem Grundlagen-Abschnitt, Fehler, Video, Plan und Produkt kannst du ✓ passt, ✎ ändern oder ✕ streichen wählen, mit Notiz. Die Bewertungen bleiben auf diesem Gerät, bis du sie teilst.',
-        )}
-      </p>
       <button type="button" className="btn-secondary" aria-pressed={on} onClick={() => setReviewOn(!on)}>
         {on ? tr('Review mode is on – switch off', 'Prüfmodus ist an – ausschalten') : tr('Switch review mode on', 'Prüfmodus einschalten')}
       </button>
@@ -1682,9 +1671,6 @@ function ReviewView(props: { nav: Nav }) {
       )}
       <section className="card tr-section">
         <h2>{tr('Share the list', 'Liste teilen')}</h2>
-        <p className="muted small" style={{ margin: 0 }}>
-          {tr('All marks with notes, grouped by topic – for Sascha or Linear.', 'Alle Bewertungen mit Notizen, nach Themen sortiert – für Sascha oder Linear.')}
-        </p>
         <button type="button" className="btn-primary" onClick={() => void share()} disabled={!done.length}>
           {tr('Share list', 'Liste teilen')}
         </button>
