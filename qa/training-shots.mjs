@@ -34,7 +34,11 @@ await shot('02-category', true);
 await p.locator('.tr-drill-row .list-item').first().click();
 await p.waitForTimeout(400);
 await shot('03-drill', true);
+// a drill goes into the own session (plan builder), from there the session starts
 await p.locator('.tr-actions .btn-secondary').first().click();
+await p.waitForTimeout(600);
+await shot('04-builder');
+await p.getByRole('button', { name: /Save & start|Speichern & starten/ }).click();
 await p.waitForTimeout(2500);
 await shot('04-session', true);
 await p.locator('.hole-bar .map-score').click();
