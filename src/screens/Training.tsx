@@ -1313,28 +1313,31 @@ function DrillView(props: { id: string; nav: Nav }) {
           </span>
         </section>
       )}
-      <section className="card tr-section tr-log">
-        <h2>{scored ? tr('Enter your result', 'Ergebnis eintragen') : tr('Done it?', 'Erledigt?')}</h2>
-        <ResultInput
-          drill={d}
-          value={value}
-          onChange={(v) => {
-            setValue(v);
-            setSaved(false);
-          }}
-        />
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={scored && value == null}
-          onClick={() => {
-            addLog({ drill: d.id, value: scored ? value : null });
-            setSaved(true);
-          }}
-        >
-          {saved ? tr('Saved ✓', 'Gespeichert ✓') : scored ? tr('Save result', 'Ergebnis speichern') : tr('Mark as done', 'Als erledigt speichern')}
-        </button>
-      </section>
+      {/* only drills with a measurable result get the result part (no "done it?" for planning or mobility) */}
+      {scored && (
+        <section className="card tr-section tr-log">
+          <h2>{tr('Enter your result', 'Ergebnis eintragen')}</h2>
+          <ResultInput
+            drill={d}
+            value={value}
+            onChange={(v) => {
+              setValue(v);
+              setSaved(false);
+            }}
+          />
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={scored && value == null}
+            onClick={() => {
+              addLog({ drill: d.id, value: scored ? value : null });
+              setSaved(true);
+            }}
+          >
+            {saved ? tr('Saved ✓', 'Gespeichert ✓') : tr('Save result', 'Ergebnis speichern')}
+          </button>
+        </section>
+      )}
       {scored && stats && (
         <section className="card tr-section tr-eval">
           <h2>{tr('Your evaluation', 'Deine Auswertung')}</h2>
@@ -1372,7 +1375,7 @@ function DrillView(props: { id: string; nav: Nav }) {
           />
         </section>
       )}
-      {entries.length > 0 && (
+      {scored && entries.length > 0 && (
         <section className="card tr-section">
           <div className="row">
             <h2>{tr('History', 'Historie')}</h2>

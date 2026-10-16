@@ -33,6 +33,11 @@ export const METRONOME_DRILLS = ['metronome', 'ladder', 'lag-circle', 'four-tee'
 /** Full-swing drills with the swing tempo 3 : 1 (Tour Tempo). */
 export const SWING_TEMPO_DRILLS = ['tempo-321', 'feet-together-swing', 'driver-80', 'practice-swing-match'];
 
+/** Drills without a measurable result at practice – planning, on-course tasks, judgement (Sascha 16.10.2026: "for
+ * course management or fitness the result part makes little sense"). They show no result entry, evaluation or
+ * targets; drills whose scoring is already "none" behave the same. */
+export const NO_RESULT_DRILLS = ['safe-target', 'nine-hole-plan', 'bogey-plan', 'par3-middle', 'two-club-wind', 'seated-rotation', 'think-play-box', 'visualise', 'ten-second'];
+
 export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching, bunker, slopes, trouble, irons, woods, driver, basics, swing, ballflight, strategy, mental, fitness, practice]
   .map((c) => (VIDEOS_DE[c.id] ? { ...c, videos: [...(c.videos ?? []), ...VIDEOS_DE[c.id]!] } : c))
   // a picture and, where there is one, a video for every section of the basics (Sascha 16.10.2026)
@@ -67,6 +72,7 @@ export const DRILLS: Drill[] = ([
   .map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })) // every drill gets its own sketch
   .map((d) => (DRILL_ROUNDS[d.id] ? { ...d, rounds: DRILL_ROUNDS[d.id] } : d))
   .map((d) => (METRONOME_DRILLS.includes(d.id) ? { ...d, metronome: 'putt' as const } : SWING_TEMPO_DRILLS.includes(d.id) ? { ...d, metronome: 'swing' as const } : d))
+  .map((d) => (NO_RESULT_DRILLS.includes(d.id) ? { ...d, scoring: { kind: 'none' as const }, targets: undefined } : d))
   // a video for every drill where one fits – the drill's own first, then the matching topic videos
   .map((d) => {
     const extra = (DRILL_VIDEOS[d.id] ?? []).map((id) => TOPIC_VIDEOS.get(id)).filter((v): v is NonNullable<typeof v> => !!v);

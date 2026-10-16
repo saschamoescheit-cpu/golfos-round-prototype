@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORIES, DRILLS, METRONOME_DRILLS, SWING_TEMPO_DRILLS, drillById } from './content';
+import { CATEGORIES, DRILLS, METRONOME_DRILLS, NO_RESULT_DRILLS, SWING_TEMPO_DRILLS, drillById } from './content';
 import { DRILL_GEAR, GEAR, gearById, gearForDrill } from './content/gear';
 import { PLANS } from './content/plans';
 import { adviceFromRounds } from './recommend';
@@ -147,6 +147,14 @@ describe('training content', () => {
       for (const id of ids) expect(topic.has(id), `${d} → ${id}`).toBe(true);
     }
     expect(DRILLS.filter((d) => d.videos?.length).length).toBeGreaterThan(120);
+  });
+
+  it('planning, on-course and judgement drills have no result part (Sascha 16.10.2026)', () => {
+    for (const id of NO_RESULT_DRILLS) {
+      expect(drillById(id), id).toBeTruthy();
+      expect(drillById(id)!.scoring?.kind, id).toBe('none');
+      expect(drillById(id)!.targets, id).toBeUndefined();
+    }
   });
 
   it('every Coach fault points to existing drills', () => {
