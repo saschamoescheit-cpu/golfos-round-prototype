@@ -258,18 +258,17 @@ interface Nav {
 function Tabs(props: { tab: TrainingTab; nav: Nav; rounds: Round[]; profile: ReactNode; profileDot?: boolean; onModules: () => void }) {
   return (
     <main className="screen with-tabs training">
-      {props.tab !== 'profile' && (
-        <div className="topbar">
-          <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
-            <span className="brand">
-              GOLF<span>OS</span>
-            </span>
-            <span className="module-tag">Training</span>
-            <span aria-hidden="true">⇄</span>
-          </button>
-          <TopTools />
-        </div>
-      )}
+      {/* the module header on every tab, the profile too (like Rounds and Games since 16.10.2026) */}
+      <div className="topbar">
+        <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
+          <span className="brand">
+            GOLF<span>OS</span>
+          </span>
+          <span className="module-tag">Training</span>
+          <span aria-hidden="true">⇄</span>
+        </button>
+        <TopTools />
+      </div>
       {props.tab === 'learn' && <LearnTab nav={props.nav} rounds={props.rounds} />}
       {props.tab === 'train' && <TrainTab nav={props.nav} rounds={props.rounds} />}
       {props.tab === 'log' && <LogTab nav={props.nav} />}
