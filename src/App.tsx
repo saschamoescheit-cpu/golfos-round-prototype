@@ -5,7 +5,7 @@ import { commitParAt } from './lib/scoring';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
 import { finishSignIn, syncNow, syncSoon } from './lib/sync';
-import { PlayTab } from './screens/Play';
+import { PlayTab, RoundsTopBar } from './screens/Play';
 import { RoundsTab, uncheckedRounds } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
 import { ProfileTab } from './screens/Profile';
@@ -242,6 +242,7 @@ export function App() {
               onModules={() => setModule(null)}
             />
           )}
+          {tab !== 'play' && tab !== 'profile' && <RoundsTopBar onModules={() => setModule(null)} />}
           {tab === 'rounds' && <RoundsTab rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} />}
           {tab === 'record' && (
             <RecordTab

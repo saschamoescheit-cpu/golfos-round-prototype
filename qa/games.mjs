@@ -148,10 +148,11 @@ ok((await p.locator('.list-item').count()) === CASES.length, 'Undo brings the ga
 await p.locator('.list-item').first().click();
 await p.getByRole('button', { name: 'Spiel löschen' }).click();
 await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
-await p.getByRole('button', { name: /Gelöschte Spiele \(1\)/ }).click();
+ok((await p.locator('.tile').filter({ hasText: 'gelöscht' }).innerText()).replace(/\s+/g, ' ').trim() === '1 gelöscht', 'games list: tile "1 gelöscht" as in Rounds');
+await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.list-item').count()) === CASES.length && !(await p.getByRole('button', { name: /Gelöschte Spiele/ }).isVisible().catch(() => false)), 'restored from the bin');
+ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).count()) === 0, 'restored from the bin');
 await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
 const bal = await p.locator('main').innerText();
 ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal) && /\d+:\d+ vorne/.test(bal), 'balance with games, wins, the other players and head to head');

@@ -194,6 +194,7 @@ function GamesTabs(props: {
   onOpen: (g: Game) => void;
 }) {
   const running = props.games.filter((g) => !g.finishedAt);
+  const [binOpen, setBinOpen] = useState(false);
   return (
     <main className="screen with-tabs">
       {props.tab !== 'profile' && (
@@ -211,25 +212,29 @@ function GamesTabs(props: {
       {props.tab === 'play' && (
         <>
           <h1 className="tab-title">{tr('Play a game', 'Spiel starten')}</h1>
-          <p className="muted" style={{ margin: 0 }}>
-            {tr('Side games among friends – skins, Nassau, wolf and more, with the standing and who pays whom.', 'Spiele unter Freunden – Skins, Nassau, Wolf und mehr, mit Zwischenstand und Abrechnung.')}
-          </p>
           {running.length > 0 && <GameList games={running} onOpen={props.onOpen} title={tr('In play', 'Läuft gerade')} />}
-          <button type="button" className="btn-primary" onClick={() => props.onNew()}>
-            {tr('New game', 'Neues Spiel')}
-          </button>
+          {/* as "Start a new round" in Rounds (Sascha 15.10.2026: the same in every module) */}
+          <section className="card play-card">
+            <strong className="play-course">{tr('Start a new game', 'Neues Spiel starten')}</strong>
+            <span className="muted small">{tr('Side games among friends – skins, Nassau, wolf and more, with the standing and who pays whom.', 'Spiele unter Freunden – Skins, Nassau, Wolf und mehr, mit Zwischenstand und Abrechnung.')}</span>
+            <button type="button" className={running.length ? 'btn-secondary' : 'btn-primary'} onClick={() => props.onNew()}>
+              {tr('New game', 'Neues Spiel')}
+            </button>
+          </section>
         </>
       )}
       {props.tab === 'games' && (
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
-          {props.games.length ? <GameList games={props.games} onOpen={props.onOpen} /> : <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>}
+          <GameTiles games={props.games} binOpen={binOpen} onBin={() => setBinOpen(!binOpen)} />
           <Bin
+            open={binOpen && loadGameTrash().length > 0}
             title={tr('Deleted games', 'Gelöschte Spiele')}
             items={loadGameTrash().map((t) => ({ id: t.game.id, date: t.game.createdAt, title: `${formDef(t.game.form).name()} · ${t.game.courseName}`, meta: t.game.players.map((p) => p.name).join(', '), deletedAt: t.deletedAt }))}
             onRestore={restoreGame}
             onPurge={purgeGame}
           />
+          {props.games.length ? <GameList games={props.games} onOpen={props.onOpen} /> : <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>}
         </>
       )}
       {props.tab === 'balance' && <Balance games={props.games} />}
@@ -1435,5 +1440,28 @@ function ShareResult(props: { game: Game }) {
       </button>
       {done && <span className="muted small">{done}</span>}
     </>
+  );
+}
+
+/** The tiles over the games list – as over the rounds list: played, in play, and the bin as a tile. */
+function GameTiles(props: { games: Game[]; binOpen: boolean; onBin: () => void }) {
+  const trash = loadGameTrash().length;
+  return (
+    <div className="tile-row">
+      <div className="tile">
+        <span className="tile-num">{props.games.filter((g) => g.finishedAt).length}</span>
+        <span className="muted small">{tr('games played', 'Spiele gespielt')}</span>
+      </div>
+      <div className="tile">
+        <span className="tile-num">{props.games.filter((g) => !g.finishedAt).length}</span>
+        <span className="muted small">{tr('in play', 'laufen')}</span>
+      </div>
+      {trash > 0 && (
+        <button type="button" className="tile" aria-pressed={props.binOpen} onClick={props.onBin}>
+          <span className="tile-num">{trash}</span>
+          <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+        </button>
+      )}
+    </div>
   );
 }

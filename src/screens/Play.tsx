@@ -47,16 +47,7 @@ export function PlayTab(props: {
 
   return (
     <>
-      <div className="topbar">
-        <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
-          <span className="brand">
-            GOLF<span>OS</span>
-          </span>
-          <span className="module-tag">Rounds</span>
-          <span aria-hidden="true">⇄</span>
-        </button>
-        <TopTools />
-      </div>
+      <RoundsTopBar onModules={props.onModules} />
       <h1 className="tab-title">{tr('Play golf', 'Golf spielen')}</h1>
 
       {/* first start: a window of its own over the start page – gone after "Got it" (Sascha 15.10.2026) */}
@@ -222,5 +213,22 @@ export function PlayTab(props: {
         </button>
       )}
     </>
+  );
+}
+
+/** The Rounds header – logo with the module, version, language, sun mode – on every tab but the profile, as in Games
+ *  and Training (Sascha 15.10.2026: "the same in every module"). */
+export function RoundsTopBar(props: { onModules: () => void }) {
+  return (
+    <div className="topbar">
+      <button type="button" className="module-switch" onClick={props.onModules} aria-label={tr('Switch module', 'Modul wechseln')}>
+        <span className="brand">
+          GOLF<span>OS</span>
+        </span>
+        <span className="module-tag">Rounds</span>
+        <span aria-hidden="true">⇄</span>
+      </button>
+      <TopTools />
+    </div>
   );
 }
