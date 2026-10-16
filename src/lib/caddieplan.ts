@@ -9,10 +9,10 @@ import { lineLength as lineLen } from './geo';
 import { forecastNote, type Forecast } from './weather';
 import { mentalTip, type CaddieFacts } from './caddietalk';
 import { planSteps } from './strategy';
-import { lieAt } from './shots';
 import type { HoleNote } from './holenotes';
 import { clubCode, tr } from './i18n';
 import { swingMark, swingName } from './partials';
+import { ballSpot, easierClub, hcpTier, ownParLine, shortGameClub, shortGameLine, spotLine, spreadFactor, strokesOn } from './hcp';
 
 // Everything the AI caddie says for one shot, as a pure function (features 008/016/017/019).
 // The hole screen shows the result; the caddie audit (scripts/audit.ts) runs it for every hole and position.
@@ -61,6 +61,8 @@ export interface CaddieInput {
   strokeIndex?: number | null;
   /** The player's round plan for this hole (strategy.ts): every shot's club, and which shot this is. */
   planned?: { clubs: Club[]; shot: number } | null;
+  /** Fairway areas read from the aerial image (where OSM has none) – for where the ball lies. */
+  fairwaysAuto?: Ring[];
 }
 
 type TargetKey = 'pin' | 't1' | 'spot' | 'centre' | 'short';
@@ -84,6 +86,8 @@ export interface CaddieOutput {
   alt: string | null;
   facts: CaddieFacts;
   heights: { from: number | null; green: number | null };
+  /** around the green for bogey golfers and beginners: the putter or a chip and run instead of the wedge advice */
+  shortGame: { club: 'Putter' | '8i' } | null;
 }
 
 /** The tee strategy weighed the clubs already (feature 017): the rule of thumb "club down" would contradict it. */
@@ -122,12 +126,18 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const targetH = ap.kind === 'approach' && !ownTarget ? greenH : tH(target);
   const pl0 = ownTarget ? playsLike(distanceM(from, target), bearingDeg(from, target), o.conditions, fromH != null && targetH != null ? targetH - fromH : null) : ap.pl;
 
-  // Lie of the ball (not on the tee): the map knows bunkers, the player tells the rest.
-  const mapLie = o.teeShot ? null : lieAt(from, data, false);
-  const lie: LieKind = o.teeShot ? 'normal' : (o.lieChoice ?? (mapLie === 'bunker' && distanceM(from, data.greenCenter) > 60 ? 'fairwayBunker' : 'normal'));
+  // Where the ball lies (Sascha 16.10.2026): fairway, rough left/right, bunker, trees, fringe, a slope – from the map;
+  // the player can still set the lie himself.
+  const spot = o.teeShot ? null : ballSpot(from, data, { fairways: o.fairwaysAuto, trees: o.trees, slopes: o.slopes });
+  const lieFromMap = !o.teeShot && o.lieChoice == null && spot?.lie != null;
+  const lie: LieKind = o.teeShot ? 'normal' : (o.lieChoice ?? spot?.lie ?? 'normal');
   const lieFx = lieEffect(lie);
   const pl = lieFx ? { ...pl0, playsLike: pl0.playsLike * lieFx.factor, aimM: pl0.aimM + lieFx.aimM } : pl0;
-  const advice = adviseClubMax(pl.playsLike, o.bag, o.teeShot && o.par >= 4 && (ap.kind === 'drive' || !!ownTarget), lieFx?.maxClub ?? null);
+  const tier = hcpTier(o.playing);
+  const advice0 = adviseClubMax(pl.playsLike, o.bag, o.teeShot && o.par >= 4 && (ap.kind === 'drive' || !!ownTarget), lieFx?.maxClub ?? null);
+  // bogey golfers and beginners: a hybrid or a lofted wood instead of a long iron of the same carry
+  const easier = easierClub(advice0.club, o.bag, tier, { teeShot: o.teeShot, rough: lie === 'lightRough' || lie === 'heavyRough' });
+  const advice: ClubAdvice = easier ? { ...advice0, club: easier.club, carry: easier.carry } : advice0;
   const reasons = explain(pl0, o.conditions);
   if (lieFx && lieFx.factor !== 1) reasons.push(`${tr('lie', 'Lage')} ${lieFx.factor > 1 ? '+' : '−'}${fmt(Math.abs(pl.playsLike - pl0.playsLike))} ${unit}`);
 
@@ -159,7 +169,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   // Out of bounds near the target: only when a miss can reach it (2.5 × the sideways spread for this length,
   // + 5 m – as in aimPoint); a 40 m pitch does not hear about a boundary 27 m away.
   const shotLen = distanceM(from, target);
-  const reach = 2.5 * (0.065 * shotLen + 2) * (0.6 + Math.min(36, Math.max(0, o.playing ?? 18)) / 25) + 5;
+  const reach = 2.5 * (0.065 * shotLen + 2) * spreadFactor(o.playing) + 5;
   const obInPlay = ob && Math.min(ob.left, ob.right) <= reach ? ob.text : null;
   const warning = ap.note ?? obInPlay ?? null;
   // Where the flag stands on the green, seen from the player (a flag the player set; the middle says nothing).
@@ -212,8 +222,22 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
       lieFx.maxClub && advice.carry < pl.playsLike - 5
         ? tr(`. ${clubName(advice.club)} goes about ${fmt(advice.carry)} ${unit} – short is fine`, `. ${clubName(advice.club)} kommt etwa ${fmt(advice.carry)} ${unit} – kurz ist okay`)
         : '';
-    lines.unshift({ text: lieFx.text + short, tone: 'plan' });
+    lines.unshift({ text: (lieFromMap ? tr('From the map – ', 'Laut Karte – ') : '') + lieFx.text + short, tone: 'plan' });
   }
+  // the ball's place first: "You are in the rough right – 152 m to the pin."
+  const where = spot ? spotLine(spot, `${fmt(distanceM(from, pin))} ${unit}`) : null;
+  if (where) lines.unshift({ text: where, tone: 'plan' });
+  if (easier)
+    lines.push({
+      text:
+        advice0.club === '3W' || advice0.club === '4W'
+          ? tr(`${clubName(easier.club)} instead of the ${clubName(advice0.club)} – off the grass far easier to get up, a little shorter.`, `${clubName(easier.club)} statt ${clubName(advice0.club)} – vom Gras viel leichter in die Luft, etwas kürzer.`)
+          : tr(`${clubName(easier.club)} instead of the ${clubName(advice0.club)} – same length, far more forgiving.`, `${clubName(easier.club)} statt ${clubName(advice0.club)} – ähnliche Länge, verzeiht viel mehr.`),
+      tone: 'plan',
+    });
+  // around the green: how to play it for this handicap
+  const sg = spot && spot.where !== 'green' && spot.where !== 'bunker' ? shortGameLine(distanceM(from, pin), spot.where === 'fringe', tier) : null;
+  if (sg) lines.push({ text: sg, tone: 'plan' });
   // Fairway width where the drive lands (from the mapped fairway).
   if (o.teeShot && o.par >= 4 && ap.kind === 'drive') {
     const at = alongLine(data.line, ap.pos);
@@ -224,9 +248,13 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
       });
   }
   // Stableford: strokes received on the tee, pick up when no point is left.
+  // Bogey golfers and beginners: their own par on the tee (it says the strokes received too)
+  const received = o.stableford?.received ?? strokesOn(o.playing, o.strokeIndex);
+  const ownPar = o.teeShot ? ownParLine(o.par, received, tier) : null;
+  if (ownPar) lines.push({ text: ownPar, tone: 'mental' });
   if (o.stableford) {
     const st = scoreStrategy({ par: o.par, received: o.stableford.received, shotsSoFar: o.stableford.shotsSoFar });
-    if (st) lines.push({ text: st, tone: o.stableford.shotsSoFar ? 'warn' : 'mental' });
+    if (st && !(ownPar && o.stableford.shotsSoFar === 0)) lines.push({ text: st, tone: o.stableford.shotsSoFar ? 'warn' : 'mental' });
   }
   // Aim help (Sascha's notes: "the row of three trees behind the bunker", "the big tree behind the green"): a tree
   // the player can see in line with the aim, a little beyond it.
@@ -240,7 +268,13 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     lines.push({ text: tr('A short hole – a birdie chance. Keep the ball in play, then attack.', 'Ein kurzes Loch – eine Birdie-Chance. Den Ball ins Spiel bringen, dann angreifen.'), tone: 'mental' });
   const coming = o.teeShot ? forecastNote(o.forecast ?? null, o.wind?.gustKmh ?? 0) : null;
   if (coming) lines.push({ text: coming, tone: 'mental' });
-  lines.push({ text: `${clubName(advice.club)}${advice.swing && advice.swing !== 'full' ? ` · ${swingName(advice.swing)}` : ''} (${tr('carry', 'Carry')} ${fmt(advice.carry)} ${unit})${reasons.length ? ' · ' + reasons.join(' · ') : tr(' · calm, flat', ' · windstill, eben')}` });
+  // around the green for bogey golfers and beginners: the putter or a chip and run, not a lob wedge
+  const sgClub = spot ? shortGameClub(distanceM(from, pin), spot.where, tier) : null;
+  lines.push({
+    text: sgClub
+      ? sgClub.text
+      : `${clubName(advice.club)}${advice.swing && advice.swing !== 'full' ? ` · ${swingName(advice.swing)}` : ''} (${tr('carry', 'Carry')} ${fmt(advice.carry)} ${unit})${reasons.length ? ' · ' + reasons.join(' · ') : tr(' · calm, flat', ' · windstill, eben')}`,
+  });
   const mental = o.teeShot
     ? mentalTip({ hole: o.holeIndex, holes: o.holeCount, lastToPar: o.prev?.toPar ?? null, lastPickedUp: !!o.prev?.pickedUp, tempC: o.conditions?.tempC ?? null })
     : null;
@@ -298,7 +332,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   if (clubTalk) lines.splice(Math.min(lines.length, warning ? 1 : 0), 0, { text: clubTalk + '.', tone: 'plan', lead: true });
   if (plannedLine) lines.splice(Math.min(lines.length, warning ? 1 : 0), 0, { text: plannedLine + '.', tone: 'plan', lead: true });
   const facts: CaddieFacts = {
-    club: clubName(advice.club) + (advice.swing && advice.swing !== 'full' ? `, ${swingName(advice.swing)}` : ''),
+    club: sgClub ? (sgClub.club === 'Putter' ? 'Putter' : clubName('8i') + ', Chip & Run') : clubName(advice.club) + (advice.swing && advice.swing !== 'full' ? `, ${swingName(advice.swing)}` : ''),
     distance: Number(fmt(pl.distance)),
     playsLike: Number(fmt(pl.playsLike)),
     target: targetKey === 'spot' ? apName : targetNoun(targetKey),
@@ -315,7 +349,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     tip: note.tip ?? null,
     teeShot: o.teeShot,
   };
-  return { ap, ownTarget, target, apName, pl, advice, lie, warning, aim, holePlan, lines, alt, facts, heights: { from: fromH, green: greenH } };
+  return { ap, ownTarget, target, apName, pl, advice, lie, warning, aim, holePlan, lines, alt, facts, heights: { from: fromH, green: greenH }, shortGame: sgClub ? { club: sgClub.club } : null };
 }
 
 /** A tree in line with the aim, 25–120 m beyond it (behind the green: 10–80 m) – within ±2.5°. */

@@ -8,6 +8,7 @@ import type { HoleNote } from './holenotes';
 import { clubCode, sideWord, tr } from './i18n';
 import { missCost } from './missmap';
 import { teeStrategy } from './teestrategy';
+import { spreadFactor } from './hcp';
 
 // The caddie's aim point (features 016/017): where to hit this shot, from where the player is now.
 // Tee: the landing zone at the longest suitable carry. In reach of the green: the pin. Otherwise a layup that
@@ -285,7 +286,7 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   // Said only when it is in play for this shot (like a caddie): the boundary within 2.5 × the player's sideways
   // spread (+5 m) – a 40 m pitch never hears about out of bounds 27 m away. Known only from a hole note (no
   // distance): from 120 m on.
-  const k = 0.6 + Math.min(36, Math.max(0, o.playing ?? 18)) / 25;
+  const k = spreadFactor(o.playing);
   const reach = 2.5 * (0.065 * distance + 2) * k + 5;
   const inPlay = (m: number | undefined, known: boolean | undefined) => (m != null && isFinite(m) ? m <= reach : !!known && distance >= 120);
   const obSides = [

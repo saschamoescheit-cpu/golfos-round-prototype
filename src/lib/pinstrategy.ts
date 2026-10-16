@@ -4,6 +4,7 @@ import { strokesFrom } from './missmap';
 import { bestLeave, heightAt, type GreenGrid } from './greenread';
 import { onGreenAt } from './shots';
 import { dec, hazardWord, tr } from './i18n';
+import { clampHcp, spreadFactor } from './hcp';
 
 // Pin strategy (feature 015): where to aim an approach – at the flag, towards the middle of the green, or short of the
 // flag for an uphill putt. For every candidate aim the shot is played 240 times with the player's spread (from the
@@ -42,7 +43,7 @@ const move = (p: LngLat, bearing: number, m: number): LngLat => {
 
 /** Spread of an approach (1 standard deviation, metres): grows with the distance and the playing handicap. */
 export function spread(distM: number, playing: number | null, style: 'safe' | 'normal' | 'aggressive' = 'normal'): { long: number; side: number } {
-  const k = (0.6 + Math.min(36, Math.max(0, playing ?? 18)) / 25) * (style === 'safe' ? 1.15 : style === 'aggressive' ? 0.85 : 1);
+  const k = spreadFactor(playing) * (style === 'safe' ? 1.15 : style === 'aggressive' ? 0.85 : 1);
   return { long: (distM * 0.055 + 3) * k, side: (distM * 0.045 + 2) * k };
 }
 
@@ -66,7 +67,7 @@ export function pinStrategy(o: {
   const hPin = o.grid ? heightAt(o.grid, o.pin) : null;
   // What an amateur loses on top of the tour baseline grows with the handicap: from a greenside bunker about 0.5 strokes
   // at handicap 12 (≈ 3 strokes to hole out instead of 2.5), a chip from the rough next to the green about 0.17.
-  const ph = Math.min(36, Math.max(0, o.playing ?? 18));
+  const ph = clampHcp(o.playing);
   const sandExtra = 0.2 + ph * 0.025;
   const roughExtra = 0.05 + ph * 0.01;
   const cost = (p: LngLat): number => {
@@ -145,7 +146,7 @@ export function layupInstead(o: {
   const toPin = distanceM(o.from, o.pin);
   const lay = toPin - o.favourite;
   if (lay < 60) return null; // a lay-up of a few metres is no plan
-  const ph = Math.min(36, Math.max(0, o.playing ?? 18));
+  const ph = clampHcp(o.playing);
   const k = (0.6 + ph / 25) * (o.style === 'safe' ? 1.15 : o.style === 'aggressive' ? 0.85 : 1);
   const sandExtra = 0.2 + ph * 0.025;
   const roughExtra = 0.05 + ph * 0.01;

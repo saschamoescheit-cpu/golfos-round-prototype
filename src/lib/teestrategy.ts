@@ -6,6 +6,7 @@ import { fairwayWidth } from './holeplan';
 import { crossSlopeAt, type Samples } from './terrain';
 import type { HoleNote } from './holenotes';
 import { clubCode, sideWord, tr } from './i18n';
+import { clampHcp, spreadFactor } from './hcp';
 
 // Hole strategy off the tee (feature 017, Sascha 13.10.2026: "more golf knowledge – the plan for the hole"):
 // which club and which side of the fairway give this player the fewest strokes for the hole – the way modern course
@@ -47,7 +48,7 @@ const move = (p: LngLat, bearing: number, m: number): LngLat => {
 
 /** Spread of a tee shot (1 standard deviation, metres): grows with the length, the playing handicap and the driver. */
 export function teeSpread(total: number, club: Club, playing: number | null, style: 'safe' | 'normal' | 'aggressive' = 'normal'): { long: number; side: number } {
-  const k = (0.6 + Math.min(36, Math.max(0, playing ?? 18)) / 25) * (style === 'safe' ? 1.15 : style === 'aggressive' ? 0.85 : 1);
+  const k = spreadFactor(playing) * (style === 'safe' ? 1.15 : style === 'aggressive' ? 0.85 : 1);
   return { long: (total * 0.06 + 3) * k, side: (total * 0.065 + 2) * k * (club === 'Dr' ? 1.15 : 1) };
 }
 
@@ -80,7 +81,7 @@ export function teeStrategy(o: {
   const key = [data.tee.join(), data.greenCenter.join(), o.par, o.playing, o.style, ratio.toFixed(2), o.bag.map((b) => `${b.club}${b.carry}`).join(), o.note?.obLeft, o.note?.obRight, o.note?.lostLeft, o.note?.lostRight, shape(data.water), shape(data.bunkers), shape(data.fairways), shape(o.boundary), (o.trees ?? []).length, (o.woods ?? []).length, (o.slopes ?? []).length].join('|');
   if (cache.has(key)) return cache.get(key)!;
 
-  const ph = Math.min(36, Math.max(0, o.playing ?? 18));
+  const ph = clampHcp(o.playing);
   const sandExtra = 0.2 + ph * 0.025;
   const roughExtra = 0.05 + ph * 0.01;
   const pin = data.greenCenter;

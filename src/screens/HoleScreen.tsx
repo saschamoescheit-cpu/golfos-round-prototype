@@ -810,6 +810,7 @@ export function HoleScreen(props: {
           grid,
           landmarks,
           strokeIndex: hole.strokeIndex || null,
+          fairwaysAuto: geometry.fairwayAuto?.[hole.label],
           planned: planned ? { clubs: planShots.map((x) => x.club), shot: teeShot ? 0 : Math.min(planShots.length - 1, passedTargets.length) } : null,
           greenText: putt ? putt.text : green_ ? (green_.level === 'flat' ? tr('The green is almost flat.', 'Das Grün ist fast flach.') : tr(`${green_.level} slope, ${green_.text}.`, `${levelName(green_.level)} Neigung, ${green_.text}.`)) : null,
         })
@@ -1173,7 +1174,7 @@ export function HoleScreen(props: {
               onHide={toggleCaddie}
               note={note}
               holeLabel={hole.label}
-              clubCode={clubCode(cad.advice.club) + swingMark(cad.advice.swing)}
+              clubCode={cad.shortGame ? (cad.shortGame.club === 'Putter' ? 'Pt' : '8i') : clubCode(cad.advice.club) + swingMark(cad.advice.swing)}
               lie={teeShot ? null : cad.lie}
               onLie={(l) => setLieSet({ sig: lieSig, lie: l })}
               onNote={(n) => {
