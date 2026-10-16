@@ -252,6 +252,14 @@ export function HoleScreen(props: {
     detectArmed.current = false;
     const k = detectHole(player.pos, allMaps, i);
     if (k == null) return;
+    // walked on to a later hole without a score for this one (Sascha 16.10.2026: "beim Weiterschalten sollte die
+    // Erfassung des Scores aufklappen"): first this hole's score, then on to the hole the GPS found
+    const mine = round.entries[me.id][i];
+    if (k > i && !round.preview && mine && mine.strokes == null && !mine.pickedUp) {
+      setPendingHole(k);
+      setScoreSheet('next');
+      return;
+    }
     goTo(k, true);
     setDetected({ from: i, to: k });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -343,6 +351,17 @@ export function HoleScreen(props: {
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   // score after the hole over the map (Hole19); 'next': opened by "→" without a score – done = on to the next hole
   const [scoreSheet, setScoreSheet] = useState<false | 'score' | 'next'>(false);
+  // the hole the GPS found while this one still needs its score – reached after the score sheet
+  const [pendingHole, setPendingHole] = useState<number | null>(null);
+  const onAfterScore = (entered: boolean) => {
+    const k = pendingHole;
+    const from = i;
+    setPendingHole(null);
+    if (k == null) return;
+    goTo(k, !entered);
+    // closed without a score: the reminder on the new hole stays ("Score für 2A fehlt · Eintragen")
+    if (!entered) setDetected({ from, to: k });
+  };
   useEffect(() => setScoreSheet(false), [i]); // on to the next hole: the sheet closes, the map shows (Sascha 15.10.2026)
   const [puttEditor, setPuttEditor] = useState(false);
   const [hazardsOn, setHazardsOn] = useState(false); // distances to bunkers and water, on demand
@@ -998,7 +1017,10 @@ export function HoleScreen(props: {
             team={isTeamRound(round)}
             onChange={update}
             onPlacePutts={() => setPuttEditor(true)}
-            onClose={() => setScoreSheet(false)}
+            onClose={() => {
+              setScoreSheet(false);
+              if (pendingHole != null) onAfterScore(myEntry.strokes != null || !!myEntry.pickedUp);
+            }}
           />
         )}
         {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
@@ -1305,7 +1327,7 @@ export function HoleScreen(props: {
                 </span>
               )}
             </button>
-            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={() => (myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1))}>
+            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={() => (pendingHole != null ? onAfterScore(true) : myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1))}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>

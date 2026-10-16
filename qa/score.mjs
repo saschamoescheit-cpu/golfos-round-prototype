@@ -70,6 +70,13 @@ for (let k = 0; k < 4; k++) {
   await ctx.setGeolocation({ latitude: tee3[1] + k * 1e-6, longitude: tee3[0], accuracy: 5 });
   await p.waitForTimeout(700);
 }
+// on to 3A by GPS without a score for 2A (Sascha 16.10.2026): the score entry of 2A opens by itself first
+const panel = p.getByRole('dialog', { name: 'Score an diesem Loch' });
+ok((await panel.isVisible()) && /2A/.test(await panel.innerText()), 'walking on: the score entry of 2A opens by itself');
+// closed without a score: on to 3A, the reminder stays
+await panel.getByRole('button', { name: 'Zurück zur Karte' }).click();
+await p.waitForTimeout(600);
+ok((await p.locator('.map-hole-no').innerText()).trim() === '3A', 'closed without a score: on to 3A (the GPS hole)');
 const banner = (await p.locator('.map-hint.detected').innerText().catch(() => '')).replace(/\s+/g, ' ');
 ok(/Score für 2A fehlt/.test(banner), `reminder: "${banner.trim()}"`);
 ok((await stored(1)).strokes == null, 'no par written silently for 2A');
