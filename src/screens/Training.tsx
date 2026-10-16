@@ -1307,14 +1307,6 @@ function DrillView(props: { id: string; nav: Nav }) {
           )}
         </section>
       )}
-      {gear.length > 0 && (
-        <section className="tr-block">
-          <h2>{tr('Gear for this drill', 'Zubehör für diese Übung')}</h2>
-          {gear.map((g) => (
-            <GearRow key={g.id} g={g} nav={props.nav} />
-          ))}
-        </section>
-      )}
       {d.targets && (
         <section className="card tr-section">
           <h2>{tr('Targets by handicap', 'Ziele nach Handicap')}</h2>
@@ -1473,6 +1465,15 @@ function DrillView(props: { id: string; nav: Nav }) {
             ))}
         </>
       ) : null}
+      {/* the gear after learning, practising and the videos – not between the instructions and the result */}
+      {gear.length > 0 && (
+        <section className="tr-block">
+          <h2>{tr('Gear for this drill', 'Zubehör für diese Übung')}</h2>
+          {gear.map((g) => (
+            <GearRow key={g.id} g={g} nav={props.nav} />
+          ))}
+        </section>
+      )}
       <TopicRow id={d.cat} nav={props.nav} />
       <ReviewBar itemKey={drillKey(d.id)} />
       {reviewOn() && (
