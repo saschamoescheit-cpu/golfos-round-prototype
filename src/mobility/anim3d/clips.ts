@@ -19,7 +19,7 @@ const ARMS_CROSSED: J = { shoulderL: [-30, -80, 5], shoulderR: [-30, 80, -5], el
 const HANDS_ON_HIPS: J = { shoulderL: [10, -40, 35], shoulderR: [10, 40, -35], elbowL: [-100, 0, 0], elbowR: [-100, 0, 0] };
 
 /** standing tall */
-const stand = (j: J = {}): Pose => P({ ...ARMS_DOWN, hipL: [0, 0, 2], hipR: [0, 0, -2], ...j });
+const stand = (j: J = {}, extra: Omit<Pose, 'j'> = {}): Pose => P({ ...ARMS_DOWN, hipL: [0, 0, 2], hipR: [0, 0, -2], ...j }, extra);
 
 /** golf posture: hip hinge 35°, knees soft, trunk 40° forward, eyes down */
 const GOLF: J = {
@@ -94,10 +94,10 @@ export const CLIPS: Record<TestId, Clip> = {
       k(0, stand(ARMS_CROSSED), L('Arms crossed on the chest', 'Arme vor der Brust verschränken')),
       k(1.2, stand(ARMS_CROSSED)),
       k(2.2, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -2], kneeR: [92, 0, 0], ankleR: [20, 0, 0] }), L('Right knee up to hip height', 'Rechtes Knie auf Hüfthöhe')),
-      k(3.0, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -2], kneeR: [92, 0, 0], ankleR: [20, 0, 0], head: [6, 0, 0] }), L('Eyes closed – stand still for 20 s', 'Augen zu – 20 s ruhig stehen')),
-      k(4.5, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -4], kneeR: [92, 0, 0], ankleR: [20, 0, 0], head: [6, 0, 0], pelvis: [0, 0, 2] })),
-      k(6.0, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -1], kneeR: [92, 0, 0], ankleR: [20, 0, 0], head: [6, 0, 0], pelvis: [0, 0, -2] })),
-      k(7.0, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -2], kneeR: [92, 0, 0], ankleR: [20, 0, 0], head: [6, 0, 0] })),
+      k(3.0, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -2], kneeR: [92, 0, 0], ankleR: [20, 0, 0], head: [6, 0, 0] }, { eyes: 0 }), L('Eyes closed – stand still for 20 s', 'Augen zu – 20 s ruhig stehen')),
+      k(4.5, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -4], kneeR: [92, 0, 0], ankleR: [20, 0, 0], head: [6, 0, 0], pelvis: [0, 0, 2] }, { eyes: 0 })),
+      k(6.0, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -1], kneeR: [92, 0, 0], ankleR: [20, 0, 0], head: [6, 0, 0], pelvis: [0, 0, -2] }, { eyes: 0 })),
+      k(7.0, stand({ ...ARMS_CROSSED, hipR: [-88, 0, -2], kneeR: [92, 0, 0], ankleR: [20, 0, 0], head: [6, 0, 0] }, { eyes: 0 })),
       k(8.0, stand(ARMS_CROSSED), L('Then the other leg', 'Dann das andere Bein')),
       k(9.0, stand(ARMS_CROSSED)),
     ],

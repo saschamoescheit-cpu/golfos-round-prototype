@@ -71,6 +71,8 @@ export interface Rig {
   /** where a club or stick is held: the right and left hand */
   hands: { L: THREE.Object3D; R: THREE.Object3D };
   head: THREE.Object3D;
+  /** the eyes (scaled flat when closed – single-leg balance) */
+  eyes: THREE.Object3D[];
 }
 
 function mat(color: string, rough = 0.75) {
@@ -167,6 +169,8 @@ export function buildRig(): Rig {
   visor.scale.set(1, 1, 1.25);
   visor.castShadow = true;
   head.add(visor);
+  // eyes: they close for the balance test
+  const eyes = [-1, 1].map((s) => ball(head, 0.014, '#1c2328', [s * 0.036, B.headR * 1.0, B.headR * 0.9]));
   // nose and ears: the head turn has to be visible
   ball(head, 0.022, COLORS.skin, [0, B.headR * 0.85, B.headR * 0.95]);
   ball(head, 0.022, COLORS.skin, [B.headR * 0.92, B.headR * 0.85, -0.005], [0.6, 1.2, 1]);
@@ -214,6 +218,7 @@ export function buildRig(): Rig {
   return {
     root,
     head,
+    eyes,
     markers,
     hands: { L: aL.grip, R: aR.grip },
     joints: {
@@ -250,6 +255,8 @@ export interface Pose {
   turn?: number;
   /** the whole body tipped forward/back (lying: −90 = on the back) */
   tip?: number;
+  /** 1 = eyes open (default), 0 = closed */
+  eyes?: number;
 }
 
 /** Puts the rig into a pose; with `ground` the lowest marker is set on the floor. */
@@ -260,6 +267,7 @@ export function applyPose(rig: Rig, p: Pose, ground = true): void {
   }
   rig.root.position.set(p.at?.[0] ?? 0, 0, p.at?.[1] ?? 0);
   rig.root.rotation.set(D(p.tip ?? 0), D(p.turn ?? 0), 0, 'YXZ');
+  for (const e of rig.eyes) e.scale.set(1, Math.max(0.12, p.eyes ?? 1), 1);
   if (p.y != null) {
     rig.root.position.y = p.y;
     return;
@@ -291,5 +299,6 @@ export function mixPose(a: Pose, b: Pose, k: number): Pose {
     y: a.y != null || b.y != null ? l(a.y, b.y) : undefined,
     turn: l(a.turn, b.turn),
     tip: l(a.tip, b.tip),
+    eyes: a.eyes != null || b.eyes != null ? (a.eyes ?? 1) + ((b.eyes ?? 1) - (a.eyes ?? 1)) * k : undefined,
   };
 }
