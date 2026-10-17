@@ -302,7 +302,7 @@ export const mobilityDrills: Drill[] = [
     goal: L('Outer rotation of the shoulder – room for the trail arm at the top.', 'Außenrotation der Schulter – Platz für den hinteren Arm am Top.'),
     minutes: 3,
     needs: [L('a stick or club', 'einen Stab oder Schläger')],
-    setup: L('Upper arm at shoulder height out to the side, elbow bent 90°.', 'Oberarm auf Schulterhöhe seitlich, Ellbogen 90° gebeugt.'),
+    setup: L('Upper arm at shoulder height out to the side, elbow bent 90°, a stick or club in the other hand.', 'Oberarm auf Schulterhöhe seitlich, Ellbogen 90° gebeugt, ein Stab oder Schläger in der anderen Hand.'),
     steps: [L('With the stick in the other hand, gently push the forearm back.', 'Mit dem Stab in der anderen Hand den Unterarm sanft nach hinten drücken.'), L('Hold 20 s, 3 times per side – no pain.', '20 s halten, 3-mal pro Seite – ohne Schmerz.')],
     videos: [v('kqs1dm8Lt8Y', '90-90 shoulder PVC external rotation stretch', 'Strength & Sport'), v('vhpYIKmXJeU', 'Passive shoulder ER at 90/90', 'Sophie Bargeron – SLB Performance')],
   }),

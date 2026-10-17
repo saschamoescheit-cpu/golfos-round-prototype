@@ -108,3 +108,24 @@
   position: absolute; left: 12px; right: 12px; top: 64px; padding: 6px 10px; border-radius: 10px; text-align: center;
   background: rgba(14, 20, 24, 0.78); color: #ffffff; font: 600 13px var(--body);
 }
+
+/* the 3D video of a test */
+.mob-3d { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.mob-3d-stage { position: relative; border-radius: 14px; overflow: hidden; background: #cfe6f5; aspect-ratio: 4 / 3; }
+.mob-3d-stage canvas { display: block; width: 100%; height: 100%; }
+.mob-3d-step {
+  display: flex; gap: 10px; align-items: center; min-height: 48px; padding: 8px 12px; border-radius: 12px; background: var(--surface);
+  color: var(--text); font: 600 15px var(--body);
+}
+.mob-3d-no { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color: #0e1418; display: inline-flex; align-items: center; justify-content: center; font: 700 12px var(--body); }
+.mob-3d-controls { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; align-items: center; gap: 6px; }
+.mob-3d-controls .grow { flex: 1; }
+.mob-3d-controls .chip, .mob-3d-controls .icon-btn { min-height: 44px; padding: 0 12px; background: rgba(14, 20, 24, 0.62); border-color: transparent; color: #ffffff; }
+.mob-3d-controls .icon-btn { width: 44px; padding: 0; }
+.mob-3d-controls .chip.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.mob-3d-views { display: flex; gap: 6px; }
+.mob-3d-wait { aspect-ratio: 4 / 3; border-radius: 14px; background: #cfe6f5; }
+
+/* pages with the menu at the bottom: the main button sits above the menu, not behind it */
+.tr-with-menu .mobility .sticky-cta,
+.screen.with-tabs.mobility .sticky-cta { bottom: calc(env(safe-area-inset-bottom) + 84px); padding-bottom: 8px; }

@@ -1,0 +1,17 @@
+import { webkit, devices } from 'playwright';
+const [url, out, test] = process.argv.slice(2);
+const b = await webkit.launch();
+const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+const p = await ctx.newPage();
+const errs = [];
+p.on('pageerror', (e) => errs.push(e.message));
+await p.goto(url);
+await p.evaluate(() => { localStorage.clear(); localStorage.setItem('golfos.lang.v1', 'de'); });
+await p.reload();
+await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
+await p.locator('.mob-test-row').filter({ hasText: test }).first().click();
+await p.locator('.mob-3d canvas').waitFor({ timeout: 30000 });
+await p.waitForTimeout(3500);
+await p.screenshot({ path: out });
+console.log('errors:', errs.join(' | ') || 'none', 'step:', await p.locator('.mob-3d-step').textContent().catch(() => '-'));
+await b.close();

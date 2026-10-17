@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { tr } from '../lib/i18n';
 import { isLeftHanded } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
@@ -19,6 +19,9 @@ import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
 import type { Area, Grade, Measurement, Screening, Side, TestDef, TestId, TestResult } from '../mobility/types';
 import '../training/training.css';
 import '../mobility/mobility.css';
+
+// the 3D video of a test (three.js, loaded with the first test page)
+const Anim3D = lazy(() => import('../mobility/Anim3D'));
 
 // The module "Agility" (Sascha 17.10.2026, a mobility screen): the player copies tests shown on the
 // phone, the camera measures them (the rest the player judges with pictures), and the app shows what the body allows:
@@ -396,7 +399,9 @@ function TestBrief(props: { test: TestDef; side: Side | null; noPicture?: boolea
   const top = test.metric === 'trunkRotation' ? <TopTurn part="shoulders" goal={45} still="hips" /> : test.metric === 'pelvicRotation' ? <TopTurn part="hips" goal={30} still="shoulders" /> : test.metric === 'lowerQuarter' ? <TopTurn part="hips" goal={60} still="feet" /> : test.metric === 'neck' ? <TopTurn part="head" goal={70} still="shoulders" /> : null;
   return (
     <>
-      {!props.noPicture && <TestPicture test={test} />}
+      <Suspense fallback={<div className="mob-3d-wait" />}>
+        <Anim3D test={test.id} />
+      </Suspense>
       <section className="card tr-section">
         <p className="mob-why">{t(test.why)}</p>
         <ol className="tr-steps">
@@ -414,6 +419,8 @@ function TestBrief(props: { test: TestDef; side: Side | null; noPicture?: boolea
           </p>
         )}
       </section>
+      {/* the drawing with the numbered details the text is about (the self checks show theirs as the choices) */}
+      {!props.noPicture && <TestPicture test={test} />}
       {top}
       {test.mode === 'camera' && <PhoneSetup view={test.view ?? 'front'} height={test.metric === 'bridge' ? 'floor' : test.metric === 'trunkRotation' || test.metric === 'lat' ? 'knee' : 'hip'} />}
       <VideoCard v={test.video} />
