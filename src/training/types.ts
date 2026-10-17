@@ -236,9 +236,11 @@ export interface MotionFrame {
 }
 /** The movement of one figure of a side sketch: the still picture stays, a play button shows the movement. */
 export interface Motion {
-  /** the figure that moves (index among the figures, default 0) */
+  /** the figure that moves (index among the figures; default the one at the ball) */
   fig?: number;
   frames: MotionFrame[];
+  /** more figures moving at the same time – the fault and the right way side by side */
+  with?: { fig: number; frames: MotionFrame[] }[];
 }
 
 /** Side view (slopes, ball flight, posture). */

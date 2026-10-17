@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { at, blend, frameJoints, timeline } from './motion';
 import { CATEGORIES, DRILLS } from './content';
-import { DRILL_MOTIONS, SECTION_MOTIONS } from './content/motions';
+import { DRILL_MOTIONS, FAULT_MOTIONS, SECTION_MOTIONS } from './content/motions';
 
 // The animated figure (Sascha 17.10.2026): every movement belongs to a picture with a golfer, limbs keep their length
 // between the poses, and a run starts and ends in a pose.
@@ -19,6 +19,17 @@ describe('animated pictures', () => {
       for (const title of Object.keys(list!)) {
         const s = CATEGORIES.find((c) => c.id === cat)?.sections.find((x) => x.title.en === title);
         expect(s?.sketch?.view === 'side' && !!s.sketch.motion, `${cat} › ${title}`).toBe(true);
+      }
+    }
+  });
+
+  it('every fault movement has its picture, both figures move', () => {
+    for (const [cat, list] of Object.entries(FAULT_MOTIONS)) {
+      for (const [name, m] of Object.entries(list!)) {
+        const f = CATEGORIES.find((c) => c.id === cat)?.faults?.find((x) => x.name.en === name);
+        const figs = f?.sketch?.view === 'side' ? f.sketch.items.filter((x) => x.k === 'figure').length : 0;
+        expect(f?.sketch?.view === 'side' && !!f.sketch.motion, `${cat} › ${name}`).toBe(true);
+        expect(figs, `${cat} › ${name}`).toBeGreaterThan(Math.max(m.fig ?? 0, ...(m.with ?? []).map((w) => w.fig)));
       }
     }
   });

@@ -70,33 +70,41 @@ const KEEP: (keyof GolferOptions)[] = ['club', 'stance', 'flip', 'oneHand', 'gri
 /** Plays the movement of a side sketch: three runs, then the still picture again (a tap stops it earlier). */
 function useMotion(s: Sketch) {
   const motion = s.view === 'side' ? s.motion : undefined;
-  const tl = useMemo(() => {
+  // one timeline per moving figure; the first one names the phases
+  const tls = useMemo(() => {
     if (!motion || s.view !== 'side') return null;
-    const fig = s.items.filter((x) => x.k === 'figure')[motionFig(s, motion)] as Extract<SideItem, { k: 'figure' }> | undefined;
-    if (!fig) return null;
-    const base: Omit<GolferOptions, 'pose'> = {};
-    for (const k of KEEP) if (fig[k] !== undefined) (base as Record<string, unknown>)[k] = fig[k];
-    return timeline(base, motion);
+    const figs = s.items.filter((x): x is Extract<SideItem, { k: 'figure' }> => x.k === 'figure');
+    const parts = [{ fig: motionFig(s, motion), frames: motion.frames }, ...(motion.with ?? [])];
+    const out = parts.flatMap((p) => {
+      const fig = figs[p.fig];
+      if (!fig) return [];
+      const base: Omit<GolferOptions, 'pose'> = {};
+      for (const k of KEEP) if (fig[k] !== undefined) (base as Record<string, unknown>)[k] = fig[k];
+      return [{ fig: p.fig, tl: timeline(base, { frames: p.frames }) }];
+    });
+    return out.length ? out : null;
   }, [s, motion]);
+  const total = tls ? Math.max(...tls.map((x) => x.tl.total)) : 0;
   const [time, setTime] = useState<number | null>(null);
   const playing = time !== null;
   const raf = useRef(0);
   useEffect(() => {
-    if (!playing || !tl) return;
-    const run = tl.total + 0.9; // a short rest in the finish before the next run
+    if (!playing || !tls) return;
+    const run = total + 0.9; // a short rest in the finish before the next run
     const start = performance.now();
     const tick = (now: number) => {
       const t = (now - start) / 1000;
       if (t >= run * 3) return setTime(null);
-      setTime(Math.min(t % run, tl.total));
+      setTime(Math.min(t % run, total));
       raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf.current);
-  }, [playing, tl]);
-  if (!tl || !motion || s.view !== 'side') return null;
-  const now = time === null ? null : at(tl, time);
-  return { fig: motionFig(s, motion), playing, frame: now?.j, label: now?.label, toggle: () => setTime(playing ? null : 0) };
+  }, [playing, tls, total]);
+  if (!tls || !motion || s.view !== 'side') return null;
+  const now = time === null ? null : tls.map((x) => ({ fig: x.fig, ...at(x.tl, time) }));
+  const frames = now ? new Map(now.map((x) => [x.fig, x.j])) : undefined;
+  return { playing, frames, label: now?.[0].label, toggle: () => setTime(playing ? null : 0) };
 }
 
 export function SketchView(props: { sketch: Sketch; label?: string }) {
@@ -107,7 +115,7 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
     s.view === 'side' || s.view === 'top' ? (s.items as (SideItem | SketchItem)[]).flatMap((x) => (x.k === 'callout' || x.k === 'mark' ? [x.t] : [])) : s.view === 'grip' || s.view === 'palm' ? s.notes : [];
   return (
     <figure className="tr-sketch">
-      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} moving={motion?.playing ? { fig: motion.fig, j: motion.frame! } : undefined} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
+      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
       {motion && (
         <div className="tr-motion-bar">
         <button type="button" className={`tr-motion-btn${motion.playing ? ' on' : ''}`} onClick={motion.toggle} aria-pressed={motion.playing}>
@@ -400,7 +408,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; 
   );
 }
 
-function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean; moving?: { fig: number; j: Frame } }) {
+function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean; moving?: Map<number, Frame> }) {
   const { w, h, items } = props.sketch;
   const W = 340;
   const k = W / w;
@@ -430,7 +438,7 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
       }
       case 'figure': {
         // the moving figure takes the joints of the movement; the numbers wait for the still picture
-        const frame = props.moving && figs.indexOf(it) === props.moving.fig ? props.moving.j : undefined;
+        const frame = props.moving?.get(figs.indexOf(it));
         // the other figures of the picture (the steps of a sequence) step aside while one moves through them
         if (props.moving && !frame) return null;
         return <Golfer key={i} {...it} x={X(it.at[0])} y={Y(it.at[1])} k={k} tilt={it.tilt ?? 0} pose={it.pose ?? 'address'} frame={frame} />;

@@ -20,7 +20,7 @@ import { SKETCHES } from './sketches';
 import { moreDrills } from './more';
 import { MOBILITY_DRILL_VIDEOS, mobilityDrills } from './mobility';
 import { VIDEOS_DE } from './videos-de';
-import { DRILL_MOTIONS, SECTION_MOTIONS } from './motions';
+import { DRILL_MOTIONS, FAULT_MOTIONS, SECTION_MOTIONS } from './motions';
 import { SECTION_MEDIA } from './section-media';
 import { CHARTS } from './charts';
 import { DRILL_VIDEOS } from './drill-videos';
@@ -86,7 +86,8 @@ export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching
   // the Rounds functions a section names, opened with a tap
   .map((c) => (SECTION_ROUNDS[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_ROUNDS[c.id]![x.title.en] ? { ...x, rounds: SECTION_ROUNDS[c.id]![x.title.en] } : x)) } : c))
   // the picture moves: a play button shows the movement (Sascha 17.10.2026)
-  .map((c) => (SECTION_MOTIONS[c.id] ? { ...c, sections: c.sections.map((x) => withMotion(x, SECTION_MOTIONS[c.id]![x.title.en])) } : c));
+  .map((c) => (SECTION_MOTIONS[c.id] ? { ...c, sections: c.sections.map((x) => withMotion(x, SECTION_MOTIONS[c.id]![x.title.en])) } : c))
+  .map((c) => (FAULT_MOTIONS[c.id] ? { ...c, faults: c.faults?.map((f) => withMotion(f, FAULT_MOTIONS[c.id]![f.name.en])) } : c));
 
 const TOPIC_VIDEOS = new Map(CATEGORIES.flatMap((c) => c.videos ?? []).map((v) => [v.id, v]));
 

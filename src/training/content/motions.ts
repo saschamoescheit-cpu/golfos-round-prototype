@@ -112,3 +112,107 @@ export const SECTION_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>
     'Tempo and rhythm': fullSwing(),
   },
 };
+
+// ---------- the fault pictures in motion: the fault (left figure) and the right way (right figure) in step ----------
+
+type Opts = MotionFrame['opts'];
+
+/** a swing down to impact, held there – full (to the top) or half (to 9 o’clock) */
+const swingTo = (end: Opts, say: L | undefined, o: { half?: boolean; top?: Opts; after?: MotionFrame[] } = {}): MotionFrame[] => [
+  { pose: 'front', t: 0, hold: 0.5 },
+  { pose: 'takeaway', opts: o.top, t: 0.5, label: say && L('back', 'zurück') },
+  { pose: 'halfBack', opts: o.top, t: 0.45, hold: o.half ? 0.3 : 0 },
+  ...(o.half ? [] : [{ pose: 'frontTop' as const, opts: o.top, t: 0.55, hold: 0.3, label: say && L('the top', 'oben') }]),
+  { pose: 'pump', t: 0.3, label: say && L('down', 'runter') },
+  { pose: 'impact', opts: end, t: 0.2, hold: o.after ? 0 : 1.6, label: say },
+  ...(o.after ?? []),
+];
+const pairSwing = (fault: Opts, right: Opts, say: L, o: { half?: boolean } = {}): Motion => ({
+  fig: 0,
+  frames: swingTo(fault, say, o),
+  with: [{ fig: 1, frames: swingTo(right, undefined, o) }],
+});
+const chipTo = (end: Opts, say?: L): MotionFrame[] => [
+  { pose: 'chip', t: 0, hold: 0.5 },
+  { pose: 'chip', rock: -15, t: 0.6, label: say && L('back', 'zurück') },
+  { pose: 'chip', opts: end, t: 0.3, hold: 1.6, label: say },
+];
+const pairChip = (fault: Opts, right: Opts, say: L): Motion => ({ fig: 0, frames: chipTo(fault, say), with: [{ fig: 1, frames: chipTo(right) }] });
+
+export const FAULT_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> = {
+  chipping: {
+    'Fat chip (chunk)': pairChip({ shift: -0.08, scoop: true }, { shift: 0.06 }, L('left: weight back, the wrists flip – the club hits the ground first; right: weight forward, the grip leads', 'links: Gewicht hinten, die Handgelenke klappen – der Schläger trifft zuerst den Boden; rechts: Gewicht vorn, der Griff führt')),
+    'Thin or bladed chip': pairChip({ standUp: true, scoop: true }, { shift: 0.05 }, L('left: the body rises, the leading edge hits the ball; right: the body stays down', 'links: der Körper richtet sich auf, die Kante trifft den Ball; rechts: der Körper bleibt unten')),
+    'Slowing down': {
+      fig: 0,
+      frames: [
+        { pose: 'chip', t: 0, hold: 0.5 },
+        { pose: 'chip', rock: -24, t: 0.7, label: L('left: a long backswing; right: a short one', 'links: weit ausholen; rechts: kurz ausholen') },
+        { pose: 'chip', rock: 3, t: 0.6, hold: 1.4, label: L('left: braking at the ball; right: longer through, finish held', 'links: am Ball bremsen; rechts: länger durch, Finish halten') },
+      ],
+      with: [{ fig: 1, frames: [{ pose: 'chip', t: 0, hold: 0.5 }, { pose: 'chip', rock: -12, t: 0.7 }, { pose: 'chip', rock: 18, t: 0.6, hold: 1.4 }] }],
+    },
+  },
+  pitching: {
+    'Fat or thin pitches': pairSwing({ shift: -0.08, scoop: true }, { shift: 0.05 }, L('left: arms only, weight back – the ground first; right: the body turns, weight forward', 'links: nur die Arme, Gewicht hinten – zuerst der Boden; rechts: der Körper dreht, Gewicht vorn'), { half: true }),
+    'Slowing down at the ball': {
+      fig: 0,
+      frames: swingTo(undefined, L('left: too long back – it has to brake; right: shorter back, through to 3 o’clock', 'links: zu weit ausgeholt – er muss bremsen; rechts: kürzer aus, durch bis 3 Uhr')),
+      with: [{ fig: 1, frames: [{ pose: 'front', t: 0, hold: 0.5 }, { pose: 'takeaway', t: 0.5 }, { pose: 'halfBack', t: 1, hold: 0.3 }, { pose: 'pump', t: 0.3 }, { pose: 'impact', t: 0.2 }, { pose: 'halfThrough', t: 0.35, hold: 1.25 }] }],
+    },
+  },
+  bunker: {
+    'Thin over the green': pairSwing({ standUp: true, shift: -0.05 }, { shift: 0.04 }, L('left: the body rises, the club hits the ball; right: down into the sand behind the ball', 'links: der Körper richtet sich auf, der Schläger trifft den Ball; rechts: unten bleiben, in den Sand hinter dem Ball')),
+    'Ball stays in the bunker': {
+      fig: 0,
+      frames: swingTo({ shift: -0.04 }, L('left: the club stops in the sand; right: through to a full finish', 'links: der Schläger bleibt im Sand stecken; rechts: durch bis ins volle Finish')),
+      with: [{ fig: 1, frames: swingTo(undefined, undefined, { after: [{ pose: 'halfThrough', t: 0.25 }, { pose: 'frontFinish', t: 0.45, hold: 0.9 }] }) }],
+    },
+  },
+  trouble: {
+    'Punch shot goes up into the branches': pairSwing({ scoop: true }, { shift: 0.06 }, L('left: the hands flip – loft is added; right: hands ahead, the ball stays low', 'links: die Hände klappen – mehr Loft; rechts: Hände vorn, der Ball bleibt flach'), { half: true }),
+  },
+  irons: {
+    'Fat shots': pairSwing({ shift: -0.08, scoop: true }, { shift: 0.06 }, L('left: weight back, casting – the ground first; right: weight forward, hands ahead', 'links: Gewicht hinten, früh abgewinkelt – zuerst der Boden; rechts: Gewicht vorn, Hände vorn')),
+    'Thin shots': pairSwing({ standUp: true }, { shift: 0.04 }, L('left: the chest rises – the edge hits the ball; right: the posture is kept', 'links: der Brustkorb hebt sich – die Kante trifft den Ball; rechts: die Haltung bleibt')),
+  },
+  woods: {
+    Topping: pairSwing({ standUp: true }, {}, L('left: lifting the ball – the body rises; right: chest over the ball, sweeping the grass', 'links: den Ball heben wollen – der Körper richtet sich auf; rechts: Brust über dem Ball, das Gras fegen')),
+    'Fat (chunked) woods': pairSwing({ shift: -0.08 }, {}, L('left: weight back, too steep – the club digs; right: wide and flat, sweeping', 'links: Gewicht hinten, zu steil – der Schläger gräbt; rechts: weit und flach, fegen')),
+  },
+  swing: {
+    'Sway instead of turn': {
+      fig: 0,
+      frames: [
+        { pose: 'front', t: 0, hold: 0.5 },
+        { pose: 'takeaway', opts: { shift: -0.06 }, t: 0.6, label: L('left: the hips slide away from the target; right: they turn', 'links: die Hüfte gleitet vom Ziel weg; rechts: sie dreht') },
+        { pose: 'frontTop', opts: { shift: -0.12 }, t: 0.9, hold: 1.4, label: L('left: head and body moved back; right: turned around a steady centre', 'links: Kopf und Körper sind nach hinten gewandert; rechts: um ein ruhiges Zentrum gedreht') },
+      ],
+      with: [{ fig: 1, frames: [{ pose: 'front', t: 0, hold: 0.5 }, { pose: 'takeaway', t: 0.6 }, { pose: 'frontTop', t: 0.9, hold: 1.4 }] }],
+    },
+  },
+  ballflight: {
+    'Topped shots': pairSwing({ standUp: true }, { shift: 0.04 }, L('left: the body rises, the arms pull in; right: the posture is kept through impact', 'links: der Körper richtet sich auf, die Arme ziehen ein; rechts: die Haltung bleibt durch den Treffmoment')),
+  },
+  fitness: {
+    'Short, armsy backswing': {
+      fig: 0,
+      frames: [
+        { pose: 'front', t: 0, hold: 0.5 },
+        { pose: 'takeaway', t: 0.5, label: L('left: only the arms swing; right: the upper back turns', 'links: nur die Arme schwingen; rechts: der obere Rücken dreht') },
+        { pose: 'halfBack', t: 0.45 },
+        { pose: 'halfBack', t: 0.55, hold: 1.4, label: L('left: the turn ends early; right: a full turn to the top', 'links: die Drehung endet früh; rechts: volle Drehung bis oben') },
+      ],
+      with: [{ fig: 1, frames: [{ pose: 'front', t: 0, hold: 0.5 }, { pose: 'takeaway', t: 0.5 }, { pose: 'halfBack', t: 0.45 }, { pose: 'frontTop', t: 0.55, hold: 1.4 }] }],
+    },
+    'Early extension (standing up)': {
+      fig: 0,
+      frames: [
+        { pose: 'address', t: 0, hold: 0.5 },
+        { pose: 'top', t: 1.1, hold: 0.3, label: L('back to the top', 'zurück bis oben') },
+        { pose: 'address', opts: { standUp: true }, t: 0.5, hold: 1.4, label: L('left: the hips move to the ball, the body rises; right: the posture is kept', 'links: die Hüfte geht zum Ball, der Körper richtet sich auf; rechts: die Haltung bleibt') },
+      ],
+      with: [{ fig: 1, frames: [{ pose: 'address', t: 0, hold: 0.5 }, { pose: 'top', t: 1.1, hold: 0.3 }, { pose: 'address', t: 0.5, hold: 1.4 }] }],
+    },
+  },
+};
