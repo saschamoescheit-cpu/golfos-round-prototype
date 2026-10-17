@@ -59,5 +59,9 @@ await small('Eigene Einheit');
 await p.getByRole('button', { name: /Speichern & starten/ }).click();
 await p.waitForTimeout(1500);
 await small('Einheit läuft');
+// the overview drawer of the session (its grip is shared with Rounds: .drawer-handle)
+await p.locator('.hole-bar-handle').click();
+await p.waitForTimeout(600);
+await small('Einheit: Übersicht');
 console.log(`\ntotal: ${total}`);
 await b.close();
