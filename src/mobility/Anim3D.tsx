@@ -18,7 +18,7 @@ const VIEW_NAMES: Record<View, () => string> = {
 
 export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
   const clip = props.clip ?? CLIPS[props.test!];
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const [playing, setPlaying] = useState(!reduce);
@@ -28,12 +28,19 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    const c = canvasRef.current;
-    if (!c) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    // a fresh canvas each time: its WebGL context is given back when the video closes (WebKit crashes after a few
+    // dozen open contexts – found by Training); a reused canvas cannot be revived after a forced context loss
+    const c = document.createElement('canvas');
+    c.setAttribute('role', 'img');
+    c.setAttribute('aria-label', tr('3D video of the test', '3D-Video des Tests'));
+    stage.prepend(c);
     let v: Viewer;
     try {
       v = createViewer(c);
     } catch {
+      c.remove();
       setFailed(true);
       return;
     }
@@ -49,6 +56,7 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
     return () => {
       ro?.disconnect();
       v.dispose();
+      c.remove();
       viewerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,8 +69,7 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
   const views = clip.views ?? ['front', 'side', 'angle'];
   return (
     <figure className="mob-3d">
-      <div className="mob-3d-stage">
-        <canvas ref={canvasRef} role="img" aria-label={tr('3D video of the test', '3D-Video des Tests')} />
+      <div className="mob-3d-stage" ref={stageRef}>
         <div className="mob-3d-controls">
           <button type="button" className="icon-btn" aria-label={playing ? tr('Pause', 'Pause') : tr('Play', 'Abspielen')} aria-pressed={!playing} onClick={() => setPlaying(!playing)}>
             {playing ? (

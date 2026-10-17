@@ -398,7 +398,6 @@ export function createViewer(canvas: HTMLCanvasElement): Viewer {
     dispose() {
       cancelAnimationFrame(raf);
       io?.disconnect();
-      renderer.dispose();
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
         m.geometry?.dispose?.();
@@ -406,6 +405,9 @@ export function createViewer(canvas: HTMLCanvasElement): Viewer {
         if (Array.isArray(mm)) mm.forEach((x) => x.dispose());
         else mm?.dispose?.();
       });
+      renderer.dispose();
+      // give the WebGL context back now, not when the garbage collector gets to it (WebKit has only a few)
+      renderer.forceContextLoss();
     },
   };
 }
