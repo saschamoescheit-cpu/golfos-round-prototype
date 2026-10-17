@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { SpeakerIcon } from '../components/SpeakerIcon';
 import type { Course } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
@@ -496,7 +497,7 @@ export function FormRules(props: { form: FormDef }) {
         ))}
       </ul>
       <button type="button" className="btn-secondary read-rules" aria-pressed={talking} onClick={() => toggleSpeak(rulesSpoken(props.form))}>
-        {talking ? tr('■ Stop reading', '■ Vorlesen stoppen') : tr('🔊 Read the rules aloud', '🔊 Spielform vorlesen')}
+        {talking ? tr('■ Stop reading', '■ Vorlesen stoppen') : <><SpeakerIcon /> {tr('Read the rules aloud', 'Spielform vorlesen')}</>}
       </button>
     </>
   );
@@ -1021,10 +1022,7 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
       <div className="game-standing-head">
         <span className="eyebrow">{props.final ? tr('Result', 'Ergebnis') : tr('Standing', 'Zwischenstand')}</span>
         <button type="button" className="use-btn small" aria-label={tr('Read the standing aloud', 'Zwischenstand vorlesen')} title={tr('Read aloud', 'Vorlesen')} onClick={() => toggleSpeak(standingText(g, true))}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M4 9v6h4l5 4V5L8 9z" />
-            <path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12" />
-          </svg>
+          <SpeakerIcon size={16} />
         </button>
       </div>
       {st.status && <span className="small game-status">{st.status}</span>}

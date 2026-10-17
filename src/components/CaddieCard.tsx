@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SpeakerIcon } from './SpeakerIcon';
 import { answer, canListen, listen, RULES, speak, summary, toggleSpeak, type CaddieFacts } from '../lib/caddietalk';
 import type { HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
@@ -62,7 +63,7 @@ export function CaddieCard(props: {
         <div className="caddie-actions">
           {/* read aloud exactly what the card says */}
           <button type="button" onClick={() => toggleSpeak(SHOW_DETAILS ? summary(f) : [`${f.club}.`, head + '.', ...shown.map((l) => l.text)].join(' '))} aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')}>
-            🔊
+            <SpeakerIcon />
           </button>
           <button type="button" onClick={() => setSheet('ask')}>
             {tr('Ask', 'Fragen')}

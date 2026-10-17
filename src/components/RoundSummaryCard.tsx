@@ -1,4 +1,5 @@
 import { Component, useMemo, useState, type ReactNode } from 'react';
+import { SpeakerIcon } from './SpeakerIcon';
 import type { Round } from '../types';
 import { roundSummary } from '../lib/summary';
 import { SG_LABELS } from '../lib/sg';
@@ -26,7 +27,7 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
       <div className="row">
         <h2>{tr('Your round summary', 'Dein Rundenfazit')}</h2>
         <button type="button" className="icon-btn" aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')} onClick={read}>
-          🔊
+          <SpeakerIcon />
         </button>
       </div>
       <p className="headline">{s.headline}</p>
