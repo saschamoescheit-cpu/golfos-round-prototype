@@ -22,3 +22,7 @@ Grassed-over bunkers: checked against the newest official aerial (lidar/bunker_c
 Mallorca, checked on PNOA by eye (2026-10-17): grass or water instead of sand – Maioris 2, T Golf Puntiró 4 (one a pond tagged as bunker), Son Antem 2, Son Térmens 2 OSM bunkers left out.
 Southern Dunes, checked on the Polk 2023 aerial by eye (night 17./18.10.2026): 2 grassed-over OSM bunkers and 14 false aerial ones (two greens, paths, tree edges) left out.
 StoneGate Oaks, checked by eye (night 17./18.10.2026): 13 false aerial bunkers (cart paths, pond banks, tree edges) left out.
+Kissimmee Bay Country Club (kissimmeebay): OSM snapshot of 17.10.2026, bundled for offline use in the USA.
+Falcon's Fire Golf Club (falconsfire): OSM snapshot of 17.10.2026, bundled for offline use in the USA; 1 OSM bunkers without sand on the county aerial left out.
+Legends Golf and Country Club (legendsclermont): OSM snapshot of 17.10.2026, bundled for offline use in the USA.
+Orange Lake Resort – The Legends (orangelakelegends): OSM snapshot of 17.10.2026, bundled for offline use in the USA; 6 OSM bunkers without sand on the county aerial left out.

@@ -87,6 +87,23 @@ await p.waitForTimeout(8000);
 ok((await p.locator('.map-hole-no').innerText()).trim() === '1', 'StoneGate Oaks: on hole 1');
 ok(/Par 5/.test(await p.locator('body').innerText()), 'StoneGate Oaks: hole 1 is a par 5');
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/stonegateoaks-1.png` });
+// the four OSM courses are bundled (night 17./18.10.2026): found and loaded with no course database and no OSM at all –
+// in the USA without roaming
+await p.route(/photon\.komoot\.io|overpass|openstreetmap\.org|opengolfapi/, (r) => r.abort());
+for (const [q, name] of [['Kissimmee Bay', /Kissimmee Bay/], ['Orange Lake', /The Legends/], ['Legends Golf', /Legends Golf and Country/]]) {
+  await p.goto(url);
+  await p.waitForTimeout(800);
+  await p.getByRole('button', { name: 'Neue Runde' }).click();
+  await p.fill('#course-search', q);
+  const hit = p.locator('button.list-item').filter({ hasText: name }).first();
+  const found = await hit.waitFor({ timeout: 15000 }).then(() => true, () => false);
+  if (found) {
+    await hit.click();
+    await p.getByText('Runde starten').waitFor({ timeout: 30000 }).catch(() => {});
+  }
+  ok(found && /18 Löcher/.test(await p.locator('body').innerText()), `${q}: found and loaded without any course server`);
+}
+await p.unroute(/photon\.komoot\.io|overpass|openstreetmap\.org|opengolfapi/);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

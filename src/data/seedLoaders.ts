@@ -20,4 +20,8 @@ export const SEED_LOADERS: Record<string, () => Promise<CourseGeometry>> = {
   'sonantem:east': () => import('./courses/sonantemeast.json').then((m) => unpackGeometry(m.default as unknown as CourseGeometry)),
   'southerndunes:fl': () => import('./courses/southerndunes.json').then((m) => unpackGeometry(m.default as unknown as CourseGeometry)),
   'osm:relation/4039063': () => import('./courses/stonegateoaks.json').then((m) => unpackGeometry(m.default as unknown as CourseGeometry)),
+  'osm:relation/4039579': () => import('./courses/kissimmeebay.json').then((m) => unpackGeometry(m.default as unknown as CourseGeometry)),
+  'osm:way/311994625': () => import('./courses/falconsfire.json').then((m) => unpackGeometry(m.default as unknown as CourseGeometry)),
+  'osm:relation/4040123': () => import('./courses/legendsclermont.json').then((m) => unpackGeometry(m.default as unknown as CourseGeometry)),
+  'osm:relation/4039887': () => import('./courses/orangelakelegends.json').then((m) => unpackGeometry(m.default as unknown as CourseGeometry)),
 };
