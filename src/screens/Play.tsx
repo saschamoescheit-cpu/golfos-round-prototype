@@ -3,8 +3,7 @@ import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
 import { TopTools } from '../components/TopTools';
-import { uncheckedRounds } from './Rounds';
-import { unsignedRounds } from '../lib/signing';
+import { roundsToSign, uncheckedRounds } from './Rounds';
 
 // Tab "Play" (Sascha 14.10.2026): start a round, or carry on with, finish or cancel the one in progress.
 // "Continue round" only shows while a started round was neither finished nor cancelled.
@@ -16,6 +15,7 @@ export function PlayTab(props: {
   onEnd: (r: Round) => void;
   onAbort: (r: Round) => void;
   onCheck: () => void;
+  onSign: () => void;
   onModules: () => void;
   /** A paused course preview: continue or end it. */
   preview?: Round | null;
@@ -24,7 +24,7 @@ export function PlayTab(props: {
 }) {
   const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const unchecked = uncheckedRounds(props.rounds).length;
-  const toSign = unsignedRounds(props.rounds).length - unchecked;
+  const toSign = roundsToSign(props.rounds).length;
   const [confirm, setConfirm] = useState<'end' | 'abort' | null>(null);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const played = open ? open.entries[open.players.find((p) => p.isMe)!.id].filter((e) => e.strokes != null || e.pickedUp).length : 0;
@@ -144,7 +144,7 @@ export function PlayTab(props: {
         </button>
       )}
       {toSign > 0 && (
-        <button type="button" className="list-item" onClick={props.onCheck}>
+        <button type="button" className="list-item" onClick={props.onSign}>
           <span className="grow">
             <span className="title">{tr('Sign your rounds', 'Runden signieren')}</span>
             <span className="muted small">

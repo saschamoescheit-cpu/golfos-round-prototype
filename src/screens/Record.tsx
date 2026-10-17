@@ -12,7 +12,8 @@ import { Avatar } from '../components/Avatar';
 // Tab "My golf" (Sascha 14.10.2026, instead of BeBrassie's "Dashboard"): who you are as a golfer in a few numbers –
 // handicap, average, what you played, how your holes end, your bests and where you are heading.
 
-export const RESULT_COLOURS = { eaglePlus: '#5ec2ff', birdie: '#9bc53d', par: '#e8edf0', bogey: '#8fa3b0', doublePlus: '#ff6b5e' } as const;
+// in the app's colours (Sascha 17.10.2026): greens for under par, greys for par and over – lighter is better
+export const RESULT_COLOURS = { eaglePlus: '#5f9a1e', birdie: '#9bc53d', par: '#dfe6ea', bogey: '#93a3ae', doublePlus: '#55636d' } as const;
 
 export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => void; onProfile: () => void }) {
   const finished = useMemo(() => statRounds(props.rounds).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [props.rounds]);

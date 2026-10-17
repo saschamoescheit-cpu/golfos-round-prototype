@@ -22,6 +22,24 @@ const round = (id: string, strokes: (number | null)[], finished = false) => ({ i
 const rounds = (d: LocalStore) => JSON.parse(d.get('golfos.rounds.v1') ?? '[]') as { id: string; entries: { me: { strokes: number | null }[] } }[];
 
 describe('sync between devices', () => {
+  it('a change on a device whose clock is behind still reaches the other (Sascha 17.10.2026: handicap PC → iPhone)', async () => {
+    const srv = server();
+    const phone = device({ 'golfos.profile.v1': { firstName: 'Sascha', hcpIndex: '8.0' } });
+    const pc = device();
+    let sec = 0;
+    const phoneClock = () => new Date(Date.UTC(2026, 9, 17, 14, 20, sec++)).toISOString();
+    const pcClock = () => new Date(Date.UTC(2026, 9, 17, 14, 19, sec++)).toISOString(); // the PC a minute behind
+    await syncOnce(phone, srv, phoneClock);
+    await syncOnce(pc, srv, pcClock);
+    phone.set('golfos.profile.v1', JSON.stringify({ firstName: 'Sascha', hcpIndex: '7.9' }));
+    await syncOnce(phone, srv, phoneClock);
+    await syncOnce(pc, srv, pcClock);
+    expect(JSON.parse(pc.get('golfos.profile.v1')!).hcpIndex).toBe('7.9');
+    pc.set('golfos.profile.v1', JSON.stringify({ firstName: 'Sascha', hcpIndex: '7.8' }));
+    await syncOnce(pc, srv, pcClock);
+    await syncOnce(phone, srv, phoneClock);
+    expect(JSON.parse(phone.get('golfos.profile.v1')!).hcpIndex).toBe('7.8');
+  });
   it('a round and the profile from the phone appear on the iPad; the iPad keeps the bag from the server', async () => {
     const srv = server();
     const phone = device({ 'golfos.rounds.v1': [round('r1', [4, 5, 3], true)], 'golfos.profile.v1': { firstName: 'Sascha' }, 'golfos.bag.v1': [{ club: 'Dr', carry: 230 }], 'golfos.track.v1.r1': [[1, 2, 3, 4]] });

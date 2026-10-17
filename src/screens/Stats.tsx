@@ -17,7 +17,7 @@ type Range = 5 | 10 | 0;
 
 type Section = 'overview' | 'tee' | 'green' | 'putting' | 'clubs' | 'courses';
 
-export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: string) => void }) {
+export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: string) => void; onToSign?: () => void }) {
   const [range, setRange] = useState<Range>(5);
   const [section, setSection] = useState<Section>('overview');
   const finished = useMemo(
@@ -53,12 +53,16 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
       <h1 className="tab-title">{tr('Stats', 'Statistik')}</h1>
       {/* only signed rounds count (Sascha 16.10.2026) – say how many still wait for the signature */}
       {unsignedRounds(props.rounds).length > 0 && (
-        <p className="notice" style={{ margin: 0 }}>
-          {tr(
-            `${unsignedRounds(props.rounds).length} finished ${unsignedRounds(props.rounds).length === 1 ? 'round is' : 'rounds are'} not signed yet – they count once you sign them (scorecard → Sign).`,
-            `${unsignedRounds(props.rounds).length} beendete ${unsignedRounds(props.rounds).length === 1 ? 'Runde ist' : 'Runden sind'} noch nicht signiert – sie zählen, sobald du sie signierst (Scorekarte → Signieren).`,
-          )}
-        </p>
+        // a tap: the rounds to sign, filtered (Sascha 17.10.2026)
+        <button type="button" className="notice notice-link" onClick={props.onToSign}>
+          <span className="grow">
+            {tr(
+              `${unsignedRounds(props.rounds).length} finished ${unsignedRounds(props.rounds).length === 1 ? 'round is' : 'rounds are'} not signed yet – they count once you sign them.`,
+              `${unsignedRounds(props.rounds).length} beendete ${unsignedRounds(props.rounds).length === 1 ? 'Runde ist' : 'Runden sind'} noch nicht signiert – sie zählen, sobald du sie signierst.`,
+            )}
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
       )}
       <Segmented<Range>
         label={tr('Rounds', 'Runden')}

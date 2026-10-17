@@ -6,7 +6,7 @@ import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
 import { finishSignIn, syncNow, syncSoon, watchChanges } from './lib/sync';
 import { PlayTab, RoundsTopBar } from './screens/Play';
-import { RoundsTab, uncheckedRounds } from './screens/Rounds';
+import { RoundsTab, uncheckedRounds, type RoundsFilter } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
 import { ProfileTab } from './screens/Profile';
 import { TabBar, type Tab } from './components/TabBar';
@@ -33,7 +33,7 @@ const trainingPaused = (): boolean => {
 };
 
 type Screen =
-  | { name: 'tab'; tab: Tab } // the five menu tabs (play, rounds, record, stats, profile)
+  | { name: 'tab'; tab: Tab; filter?: RoundsFilter } // the five menu tabs (play, rounds, record, stats, profile)
   | { name: 'pickCourse' }
   | { name: 'setup'; course: Course }
   | { name: 'hole'; round: Round }
@@ -164,7 +164,8 @@ export function App() {
     // back to the app: fetch what the other devices changed; leaving it (another tab, the phone locked): send ours
     const onShow = () => syncNow();
     document.addEventListener('visibilitychange', onShow);
-    const t = window.setInterval(() => syncNow(), 3 * 60 * 1000);
+    // while the app is on screen, a look every 20 s: a change on the PC shows on the open iPhone without reloading
+    const t = window.setInterval(() => document.visibilityState === 'visible' && syncNow(), 20 * 1000);
     return () => {
       document.removeEventListener('visibilitychange', onShow);
       window.clearInterval(t);
@@ -266,12 +267,13 @@ export function App() {
                 setPaused(null);
                 setRounds(loadRounds());
               }}
-              onCheck={() => setScreen(ROUNDS)}
+              onCheck={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'check' })}
+              onSign={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' })}
               onModules={() => setModule(null)}
             />
           )}
           {tab !== 'play' && <RoundsTopBar onModules={() => setModule(null)} />}
-          {tab === 'rounds' && <RoundsTab rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} />}
+          {tab === 'rounds' && <RoundsTab key={screen.filter ?? 'all'} filter={screen.filter} rounds={rounds} onOpen={(round) => setScreen({ name: 'scorecard', round, back: ROUNDS })} onContinue={(round) => setScreen({ name: 'hole', round })} />}
           {tab === 'record' && (
             <RecordTab
               rounds={rounds}
@@ -279,7 +281,7 @@ export function App() {
               onProfile={() => setScreen({ name: 'tab', tab: 'profile' })}
             />
           )}
-          {tab === 'stats' && <Stats rounds={rounds} onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })} />}
+          {tab === 'stats' && <Stats rounds={rounds} onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })} onToSign={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' })} />}
           {tab === 'profile' && profile}
           <TabBar
             tab={tab}

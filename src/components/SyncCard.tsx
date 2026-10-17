@@ -5,11 +5,15 @@ import { getLang, tr } from '../lib/i18n';
 // "On all your devices" in the profile (feature 013): sign in with Google, then rounds, games, profile, bag and
 // friends are the same on iPhone, iPad and PC. Hidden until the Supabase project is set up.
 
+// the question "keep this device's?" right after a new device met the other's settings – later it is old news
+// (the replaced values stay stored, never deleted)
+const RECENT = 10 * 60 * 1000;
+
 export function SyncCard(props: { onSignedIn?: () => void }) {
   const [session, setSession] = useState(loadSession);
   const [last, setLast] = useState(lastSync);
   const [err, setErr] = useState(lastSyncError);
-  const [replaced, setReplaced] = useState(() => replacedSettings());
+  const [replaced, setReplaced] = useState(() => replacedSettings(undefined, RECENT));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -17,7 +21,7 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
       setSession(loadSession());
       setLast(lastSync());
       setErr(lastSyncError());
-      setReplaced(replacedSettings());
+      setReplaced(replacedSettings(undefined, RECENT));
       props.onSignedIn?.();
     };
     window.addEventListener('golfos:synced', on);
@@ -27,7 +31,7 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const when = last ? new Date(last).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
   // signed in, all well: no card – who is signed in stands by the profile photo (Sascha 17.10.2026)
-  if (session && !err && !msg && replaced.length === 0) return null;
+  if (session && !err && replaced.length === 0) return null;
   return (
     <section className="card stats-card">
       <h2>{tr('On all your devices', 'Auf allen Geräten')}</h2>

@@ -99,7 +99,15 @@ export function HoleMap(props: HoleMapProps) {
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
-      attributionControl: { compact: true, ...(props.credit ? { customAttribution: props.credit } : {}) },
+      attributionControl: false,
+    });
+    // the credits (ⓘ) bottom left; a tap on the open text closes it too, not only the ⓘ (Sascha 17.10.2026)
+    const attrib = new maplibregl.AttributionControl({ compact: true, ...(props.credit ? { customAttribution: props.credit } : {}) });
+    m.addControl(attrib, 'bottom-left');
+    container.current!.addEventListener('click', (ev) => {
+      const box = (ev.target as HTMLElement).closest('.maplibregl-ctrl-attrib');
+      if (!box || (ev.target as HTMLElement).closest('a, .maplibregl-ctrl-attrib-button')) return;
+      if (box.classList.contains('maplibregl-compact-show')) (attrib as unknown as { _toggleAttribution: () => void })._toggleAttribution();
     });
     m.touchZoomRotate.disableRotation();
     m.on('load', () => {
@@ -346,11 +354,13 @@ export function HoleMap(props: HoleMapProps) {
           const ll = marker.getLngLat();
           const text = latest.current.onTrackDrag?.(t.id!, [ll.lng, ll.lat]);
           if (text != null) {
-            let r = m.getContainer().querySelector<HTMLDivElement>('.map-drag-readout');
+            // on the page, not in the map: the map may be zoomed in (putt view) – the readout stays whole and centred
+            // at the top of the screen (Sascha 17.10.2026: "cut off")
+            let r = document.querySelector<HTMLDivElement>('.map-drag-readout');
             if (!r) {
               r = document.createElement('div');
               r.className = 'map-drag-readout';
-              m.getContainer().appendChild(r);
+              document.body.appendChild(r);
             }
             r.textContent = text;
           }
@@ -359,7 +369,7 @@ export function HoleMap(props: HoleMapProps) {
           (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] });
         });
         marker.on('dragend', () => {
-          m.getContainer().querySelector('.map-drag-readout')?.remove();
+          document.querySelector('.map-drag-readout')?.remove();
           const ll = marker.getLngLat();
           latest.current.onTrackMove?.(t.id!, [ll.lng, ll.lat]);
         });
@@ -502,7 +512,7 @@ export function HoleMap(props: HoleMapProps) {
         const made = ends.map((e) => {
           const right = m.project(e.out).x >= m.project(e.at).x; // the label continues the line, never over the hazard
           const anchor = `${e.v}-${right ? 'left' : 'right'}` as maplibregl.PositionAnchor;
-          return new maplibregl.Marker({ element: labelEl(e.text, `map-label hazard ${h.kind}`), anchor, offset: [right ? -4 : 4, e.v === 'top' ? -3 : 3] }).setLngLat(e.out).addTo(m);
+          return new maplibregl.Marker({ element: distEl(e.text, p.unit, `map-label hazard ${h.kind}`), anchor, offset: [right ? -4 : 4, e.v === 'top' ? -3 : 3] }).setLngLat(e.out).addTo(m);
         });
         const rs = made.map((x) => rect(x.getElement()));
         if (k < 6 && rs.some(hits)) {
@@ -719,6 +729,17 @@ function isDragging(marker: maplibregl.Marker): boolean {
 function el(className: string): HTMLDivElement {
   const d = document.createElement('div');
   d.className = className;
+  return d;
+}
+
+/** A distance with its unit, as every distance on the map (Sascha 17.10.2026: "the m is missing at the hazards"). */
+function distEl(n: string, unit: Unit, className: string): HTMLDivElement {
+  const d = el(className);
+  const strong = document.createElement('strong');
+  strong.textContent = n;
+  const small = document.createElement('small');
+  small.textContent = unit;
+  d.append(strong, small);
   return d;
 }
 

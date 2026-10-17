@@ -90,8 +90,9 @@ const parse = <T>(s: string | null, fallback: T): T => {
 
 /** Settings of this device that the sync replaced by another device's (key → the value it had here). */
 const REPLACED = 'golfos.sync.replaced.v1';
-export function replacedSettings(store: LocalStore = browserStore): string[] {
-  return Object.keys(parse<Record<string, unknown>>(store.get(REPLACED), {}));
+export function replacedSettings(store: LocalStore = browserStore, withinMs = Infinity): string[] {
+  const kept = parse<Record<string, { at?: string }>>(store.get(REPLACED), {});
+  return Object.keys(kept).filter((key) => withinMs === Infinity || Date.now() - Date.parse(kept[key].at ?? '') < withinMs);
 }
 /** Keep this device's settings after all: they come back and go to the other devices with the next sync. */
 export function keepThisDevice(store: LocalStore = browserStore): void {
@@ -197,7 +198,9 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
     const r = remoteBy.get(key);
     const m = meta[key];
     const localChanged = l != null && (!m || m.hash !== hashOf(l.json));
-    const remoteChanged = r != null && (!m || r.updated_at > m.at);
+    // any other time stamp than the one last seen or sent is a change elsewhere – never "later than": the time comes
+    // from the other device's clock, and a PC a minute behind the iPhone was never newer (Sascha 17.10.2026)
+    const remoteChanged = r != null && (!m || r.updated_at !== m.at);
     if (l && !r) {
       push.push({ kind: l.kind, id: l.id, data: JSON.parse(l.json), updated_at: at, deleted: false });
     } else if (!l && r) {
@@ -230,7 +233,7 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
       meta[key] = { hash: hashOf(l.json), at: r.updated_at }; // the same on both sides
       continue;
     }
-    const conflict = l != null && m != null && m.hash !== hashOf(l.json) && r.updated_at > m.at;
+    const conflict = l != null && m != null && m.hash !== hashOf(l.json) && r.updated_at !== m.at;
     if (conflict || (l != null && !m)) {
       // changed on both sides: rounds and games keep the fuller one, a setting this device's (the newer edit).
       // Met for the first time (a new device): a setting takes the server's – a fresh phone must not overwrite the bag.
@@ -242,7 +245,8 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
     }
     // a setting of this device replaced by another device's: kept aside, never lost – the player can keep this
     // device's instead (Sascha 16.10.2026: the iPhone, his main device, synced last)
-    if (r.kind === 'setting' && l != null) {
+    // (only when this device meets the row for the first time – an ordinary change from the other device is no news)
+    if (r.kind === 'setting' && l != null && !m) {
       const kept = parse<Record<string, { value: string; at: string }>>(store.get(REPLACED), {});
       const raw = store.get(r.id);
       if (raw != null) kept[r.id] = { value: raw, at };

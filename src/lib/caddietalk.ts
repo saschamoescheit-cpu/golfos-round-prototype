@@ -158,23 +158,77 @@ export function onSpeaking(l: () => void): () => void {
 
 const synth = () => (typeof window === 'undefined' ? undefined : (window as Window & { speechSynthesis?: SpeechSynthesis }).speechSynthesis);
 
+/**
+ * A moment of silence through an <audio> element, played from the tap: on the iPhone the page then plays sound like a
+ * media app – the read-aloud is heard with the ring switch on silent, which mutes it otherwise (Sascha 17.10.2026:
+ * "I tap read aloud, nothing happens").
+ */
+let silence: HTMLAudioElement | null = null;
+function wakeAudio(): void {
+  try {
+    if (!silence) {
+      const n = 400; // 50 ms of 8 kHz, 8 bit, mono
+      const b = new Uint8Array(44 + n);
+      const v = new DataView(b.buffer);
+      const str = (o: number, t: string) => [...t].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
+      str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, 'data'); v.setUint32(40, n, true);
+      b.fill(128, 44);
+      silence = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' })));
+    }
+    silence.currentTime = 0;
+    void silence.play().catch(() => undefined);
+  } catch {
+    /* no audio element: speak anyway */
+  }
+}
+
+let current: SpeechSynthesisUtterance | null = null; // held, so the browser does not drop it before it ends
+let watchdog = 0;
+
 /** Reads text aloud (iPhone Safari supports this). */
 export function speak(text: string): boolean {
   const s = synth();
   if (!s || !text.trim()) return false;
-  s.cancel();
+  wakeAudio();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = speechLang();
+  // a voice of that language, when the device has one (Safari otherwise sometimes stays silent)
+  const voice = s.getVoices().find((x) => x.lang.replace('_', '-').toLowerCase().startsWith(u.lang.slice(0, 2).toLowerCase()));
+  if (voice) u.voice = voice;
   u.rate = 1;
-  u.onend = () => setTalking(false);
-  u.onerror = () => setTalking(false);
+  u.onstart = () => window.clearTimeout(watchdog);
+  u.onend = () => {
+    window.clearTimeout(watchdog);
+    if (current === u) setTalking(false);
+  };
+  u.onerror = u.onend;
+  current = u;
   setTalking(true);
-  s.speak(u);
+  const go = () => {
+    if (s.paused) s.resume();
+    s.speak(u);
+    // never started (Safari's speech engine stuck): not green for ever – the next tap tries again
+    window.clearTimeout(watchdog);
+    watchdog = window.setTimeout(() => {
+      if (current === u && !s.speaking) {
+        s.cancel();
+        setTalking(false);
+      }
+    }, 2500);
+  };
+  // cancel and speak in the same moment leaves Safari silent: a short pause between, only when something was talking
+  if (s.speaking || s.pending) {
+    s.cancel();
+    window.setTimeout(go, 120);
+  } else go();
   return true;
 }
 
 /** Stops the caddie mid-sentence. */
 export function stopSpeaking(): void {
+  current = null;
+  window.clearTimeout(watchdog);
   synth()?.cancel();
   setTalking(false);
 }

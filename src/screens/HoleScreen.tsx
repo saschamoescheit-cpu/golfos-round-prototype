@@ -39,7 +39,7 @@ import { greenWalk } from '../lib/greenwalk';
 import { LeaderboardSheet } from '../components/Leaderboard';
 import { isTeamRound } from '../lib/games';
 import { HoleSetup } from '../components/HoleSetup';
-import { clubCode, dec, tr } from '../lib/i18n';
+import { clubCode, dec, getLang, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
 import { FairwayPicker } from '../components/FairwayPicker';
 import { HoleDrawer } from '../components/HoleDrawer';
@@ -580,6 +580,8 @@ export function HoleScreen(props: {
     return () => clearTimeout(t);
   }, [undo]);
   const [removeShot, setRemoveShot] = useState<number | null>(null);
+  const [shotList, setShotList] = useState(false); // the shots noted by hand on this hole, to remove one
+  useEffect(() => setShotList(false), [i]);
   const latestRound = useRef(round); // the round as it is now – for a measurement that finishes seconds later
   latestRound.current = round; // index in round.manualShots offered for removal
   const [testMsg, setTestMsg] = useState<string | null>(null);
@@ -920,6 +922,19 @@ export function HoleScreen(props: {
           onImageryFail={() => imagery.id !== 'esri' && setImageryPref('esri')}
           track={detailMode ? track : manualTrack}
           onTrackTap={detailMode ? undefined : (id) => setRemoveShot(Number(id.slice(1)))}
+          // a shot noted by hand moves with the finger to the exact spot on the aerial – to the metre (Sascha 17.10.2026)
+          onTrackMove={
+            detailMode
+              ? undefined
+              : (id, pos) => {
+                  const k = Number(id.slice(1));
+                  const list = (round.manualShots ?? []).slice();
+                  if (!list[k]) return;
+                  list[k] = { ...list[k], pos, acc: 0, placed: true };
+                  props.onChange({ ...round, manualShots: list });
+                  setTestMsg(tr('Shot moved to the spot', 'Schlag an die Stelle verschoben'));
+                }
+          }
           aimPoint={null}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus && showGreen !== true, fit: showGreen === true && mapData.green ? mapData.green : undefined } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
@@ -992,7 +1007,7 @@ export function HoleScreen(props: {
               title={tr('AI caddie', 'KI-Caddie')}
               onClick={toggleCaddie}
             >
-              {caddieNews && <span className={`tool-badge${cad?.warning ? ' warn' : ''}`} aria-hidden="true">{cad?.warning ? '!' : ''}</span>}
+              {caddieNews && <span className={`tool-badge ${cad?.warning ? 'warn' : 'news'}`} aria-hidden="true">{cad?.warning ? '!' : 'i'}</span>}
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="8" y="9" width="8" height="12" rx="2.5" />
                 <path d="M8 13h8" />
@@ -1065,7 +1080,12 @@ export function HoleScreen(props: {
                 <path d="M13 17c-.6 1.6-2.4 2.6-4.6 2.3l-.6-1.6c1.6.1 3-.3 3.8-1.4z" />
                 <path d="M18 5v6M15 8h6" />
               </svg>
-              {(round.manualShots ?? []).some((x) => x.hole === i) && <span className="tool-badge shot-count">{(round.manualShots ?? []).filter((x) => x.hole === i).length}</span>}
+            </button>
+          )}
+          {!round.preview && !props.game && (round.manualShots ?? []).some((x) => x.hole === i) && (
+            // the count on the shot button: the list of this hole's shots, to remove one (Sascha 17.10.2026: "pressed by mistake")
+            <button type="button" className="shot-count" aria-pressed={shotList} aria-label={tr('Shots noted on this hole', 'Erfasste Schläge an diesem Loch')} onClick={() => { setShotList(!shotList); setRemoveShot(null); }}>
+              {(round.manualShots ?? []).filter((x) => x.hole === i).length}
             </button>
           )}
         </div>
@@ -1304,6 +1324,42 @@ export function HoleScreen(props: {
               <button type="button" className="btn-ghost" onClick={() => setPlacing(null)}>
                 {tr('Cancel', 'Abbrechen')}
               </button>
+            </div>
+          )}
+          {shotList && !scoreSheet && (
+            <div className="test-shot-row">
+              <div className="map-hint detected shot-list" role="dialog" aria-label={tr('Shots noted on this hole', 'Erfasste Schläge an diesem Loch')}>
+                <div className="shot-list-head">
+                  <strong>{tr(`Shots on ${hole.label}`, `Schläge an ${hole.label}`)}</strong>
+                  <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setShotList(false)}>
+                    ✕
+                  </button>
+                </div>
+                {(round.manualShots ?? [])
+                  .map((x, k) => ({ x, k }))
+                  .filter(({ x }) => x.hole === i)
+                  .map(({ x, k }, n) => (
+                    <div key={x.t} className="shot-list-row">
+                      <span className="shot-list-no">{n + 1}</span>
+                      <span className="grow">
+                        {new Date(x.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit' })}
+                        <span className="muted"> · {x.placed ? tr('set on the map', 'auf der Karte gesetzt') : `±${dec(String(x.acc))} m`}</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-ghost danger"
+                        onClick={() => {
+                          const list = (round.manualShots ?? []).slice();
+                          list.splice(k, 1);
+                          props.onChange({ ...round, manualShots: list });
+                          if (!list.some((y) => y.hole === i)) setShotList(false);
+                        }}
+                      >
+                        {tr('Remove', 'Entfernen')}
+                      </button>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
           {removeShot != null && round.manualShots?.[removeShot] && !scoreSheet && (

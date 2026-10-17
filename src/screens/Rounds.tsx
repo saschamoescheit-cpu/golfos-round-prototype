@@ -9,16 +9,8 @@ import { loopsText } from '../lib/loops';
 import { kindName } from '../lib/roundkind';
 import { isTeamRound } from '../lib/games';
 import { SignedIcon } from '../components/SignedIcon';
-
-/** A paused round in the list: two bars, like the pause button in the hole overview. */
-function PauseIcon(props: { size: number }) {
-  return (
-    <svg width={props.size} height={props.size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <rect x="6" y="5" width="4" height="14" rx="1" />
-      <rect x="14" y="5" width="4" height="14" rx="1" />
-    </svg>
-  );
-}
+import { PausedIcon } from '../components/PausedIcon';
+import { CheckShotsIcon, ToSignIcon } from '../components/RoundIcons';
 
 // Tab "Rounds": every round, newest first. On top what is still to do – rounds whose shots are not checked yet.
 
@@ -32,38 +24,64 @@ export function needsCheck(r: Round): boolean {
 
 export const uncheckedRounds = (rounds: Round[]): Round[] => rounds.filter(needsCheck);
 
-export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; onContinue: (r: Round) => void }) {
+/** Finished, not signed yet: what "Sign your rounds", the stats' notice and the "to sign" tile count – one number
+ *  everywhere (a round with shots to check is not signed either). */
+export const roundsToSign = (rounds: Round[]): Round[] => rounds.filter((r) => !!r.finishedAt && !r.signedAt && !r.preview);
+
+export type RoundsFilter = 'check' | 'sign' | 'signed' | 'bin' | null;
+
+export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; onContinue: (r: Round) => void; filter?: RoundsFilter }) {
   const finished = props.rounds.filter((r) => r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const paused = props.rounds.filter((r) => !r.finishedAt && !r.preview).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const toCheck = finished.filter(needsCheck);
-  const [onlyCheck, setOnlyCheck] = useState(false);
   const signed = finished.filter((r) => r.signedAt);
-  const [onlySigned, setOnlySigned] = useState(false);
-  const shown = onlyCheck ? toCheck : onlySigned ? signed : finished;
+  const toSign = roundsToSign(finished);
+  // one tile at a time; from the start screen's "Check your shots" / "Sign your rounds" only those rounds
+  // (Sascha 17.10.2026: "it says 2 rounds to sign, then it should only show those")
+  const [filter, setFilter] = useState<RoundsFilter>(props.filter ?? null);
+  const pick = (f: RoundsFilter) => setFilter(filter === f ? null : f);
+  const onlyCheck = filter === 'check';
+  const shown = onlyCheck ? toCheck : filter === 'sign' ? toSign : filter === 'signed' ? signed : finished;
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const holes = finished.reduce((n, r) => n + r.holes.length, 0);
   // the bin (Sascha 15.10.2026): deleted rounds come back with one tap; only the player empties it
   const [trash, setTrash] = useState(loadTrash);
   useEffect(() => setTrash(loadTrash()), [props.rounds]);
-  const [binOpen, setBinOpen] = useState(false);
+  const binOpen = filter === 'bin';
   useEffect(() => {
-    if (!trash.length) setBinOpen(false);
+    if (!trash.length && filter === 'bin') setFilter(null);
   }, [trash.length]);
+  useEffect(() => {
+    if ((filter === 'check' && !toCheck.length) || (filter === 'sign' && !toSign.length)) setFilter(null); // all done: all rounds again
+  }, [toCheck.length, toSign.length]);
 
   return (
     <>
       <h1 className="tab-title">{tr('Rounds', 'Runden')}</h1>
       <div className="tile-row">
-        <button type="button" className="tile" aria-pressed={onlyCheck} disabled={!toCheck.length} onClick={() => { setOnlyCheck(!onlyCheck); setOnlySigned(false); setBinOpen(false); }}>
-          <span className={`tile-num${toCheck.length ? ' good-text' : ''}`}>{toCheck.length}</span>
+        <button type="button" className="tile" aria-pressed={onlyCheck} disabled={!toCheck.length} onClick={() => pick('check')}>
+          <span className="tile-head">
+            <span className={`tile-num${toCheck.length ? ' good-text' : ''}`}>{toCheck.length}</span>
+            <span className="tile-mark"><CheckShotsIcon /></span>
+          </span>
           <span className="muted small">{tr('to check', 'zu prüfen')}</span>
+        </button>
+        <button type="button" className="tile" aria-pressed={filter === 'sign'} disabled={!toSign.length} onClick={() => pick('sign')}>
+          <span className="tile-head">
+            <span className={`tile-num${toSign.length ? ' good-text' : ''}`}>{toSign.length}</span>
+            <span className="tile-mark"><ToSignIcon /></span>
+          </span>
+          <span className="muted small">{tr('to sign', 'zu signieren')}</span>
         </button>
         <div className="tile">
           <span className="tile-num">{finished.length}</span>
           <span className="muted small">{tr('played', 'gespielt')}</span>
         </div>
-        <button type="button" className="tile" aria-pressed={onlySigned} disabled={!signed.length} onClick={() => { setOnlySigned(!onlySigned); setOnlyCheck(false); setBinOpen(false); }}>
-          <span className="tile-num">{signed.length}</span>
+        <button type="button" className="tile" aria-pressed={filter === 'signed'} disabled={!signed.length} onClick={() => pick('signed')}>
+          <span className="tile-head">
+            <span className="tile-num">{signed.length}</span>
+            <span className="tile-mark"><SignedIcon /></span>
+          </span>
           <span className="muted small">{tr('signed', 'signiert')}</span>
         </button>
         <div className="tile">
@@ -73,7 +91,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
         {/* deleted rounds as the fourth tile (Sascha 15.10.2026) – a tap shows them under the list */}
         {trash.length > 0 && (
           // one tile at a time (Sascha 17.10.2026: from "deleted" to "to check" did not switch)
-          <button type="button" className="tile" aria-pressed={binOpen} onClick={() => { setBinOpen(!binOpen); setOnlyCheck(false); setOnlySigned(false); }}>
+          <button type="button" className="tile" aria-pressed={binOpen} onClick={() => pick('bin')}>
             <span className="tile-num">{trash.length}</span>
             <span className="muted small">{tr('deleted', 'gelöscht')}</span>
           </button>
@@ -107,7 +125,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                     <span className="title">
                       {r.courseName}
                       <span className="paused-mark" aria-hidden="true" title={tr('paused', 'pausiert')}>
-                        <PauseIcon size={16} />
+                        <PausedIcon size={16} />
                       </span>
                     </span>
                     <span className="muted small">{tr(`Paused · hole ${r.currentHole + 1} of ${r.holes.length}`, `Pausiert · Loch ${r.currentHole + 1} von ${r.holes.length}`)}</span>
@@ -123,11 +141,6 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
         </ul>
       )}
 
-      {onlyCheck && (
-        <p className="muted small" style={{ margin: 0 }}>
-          {tr('Rounds with shots still to check. Tap the tile again for all rounds.', 'Runden mit offenen Schlägen. Kachel nochmal antippen für alle Runden.')}
-        </p>
-      )}
       {finished.length === 0 ? (
         <p className="muted">{tr('Your finished rounds show up here.', 'Hier erscheinen deine beendeten Runden.')}</p>
       ) : (
@@ -145,14 +158,22 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                   <span className="grow">
                     <span className="title">
                       {r.courseName}
-                      {r.signedAt && (
-                        <span className="signed-mark" aria-label={tr('signed', 'signiert')} title={tr('signed', 'signiert')}>
+                      {/* one mark per round, the same as on the tile above: to check, to sign or signed */}
+                      {needsCheck(r) ? (
+                        <span className="signed-mark" role="img" aria-label={tr('shots to check', 'Schläge prüfen')} title={tr('shots to check', 'Schläge prüfen')}>
+                          <CheckShotsIcon size={16} />
+                        </span>
+                      ) : r.signedAt ? (
+                        <span className="signed-mark" role="img" aria-label={tr('signed', 'signiert')} title={tr('signed', 'signiert')}>
                           <SignedIcon size={16} />
+                        </span>
+                      ) : (
+                        <span className="signed-mark" role="img" aria-label={tr('to sign', 'zu signieren')} title={tr('to sign', 'zu signieren')}>
+                          <ToSignIcon size={16} />
                         </span>
                       )}
                     </span>
                     <span className="muted small">{[r.kind && r.kind !== 'social' ? kindName(r.kind) : null, loopsText(r.loopOrder), `${r.holes.length} ${tr('holes', 'Löcher')}`, r.restored ? tr('restored from GPS', 'aus GPS wiederhergestellt') : null].filter(Boolean).join(' · ')}</span>
-                    {needsCheck(r) && <span className="small good-text" style={{ display: 'block', fontWeight: 600 }}>{tr('Check your shots →', 'Schläge prüfen →')}</span>}
                   </span>
                   <span style={{ textAlign: 'right' }}>
                     <span style={{ font: '700 20px var(--display)' }}>{t.holesPlayed ? t.gross : '–'}</span>

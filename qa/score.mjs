@@ -57,6 +57,37 @@ await p.waitForTimeout(300);
 await p.getByRole('button', { name: 'Entfernen', exact: true }).click();
 await p.waitForTimeout(300);
 ok((await manual()) === 0 && (await p.locator('.map-shot-dot.tap').count()) === 0, 'a tap on it and "Entfernen" removes it');
+// pressed by mistake twice: the count on the button lists this hole's shots, each can be removed (Sascha 17.10.2026)
+await shotTool.click();
+await p.waitForTimeout(300);
+await shotTool.click();
+await p.waitForTimeout(300);
+const count = p.getByRole('button', { name: 'Erfasste Schläge an diesem Loch' });
+ok((await count.innerText()).trim() === '2', 'the count on the shot button: 2');
+await count.click();
+await p.waitForTimeout(300);
+ok((await p.locator('.shot-list-row').count()) === 2, 'a tap on the count lists both shots');
+await p.locator('.shot-list-row').last().getByRole('button', { name: 'Entfernen' }).click();
+await p.waitForTimeout(300);
+ok((await manual()) === 1 && (await p.locator('.shot-list-row').count()) === 1, 'one removed from the list, one kept');
+await p.getByRole('button', { name: 'Schließen' }).click();
+await p.waitForTimeout(6000); // the 5 s measuring of the first is done
+// moved on the aerial to the exact spot – to the metre
+const before = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].manualShots[0]);
+const bb = await p.locator('.map-shot-dot.tap').first().boundingBox();
+await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+await p.mouse.down();
+await p.mouse.move(bb.x + bb.width / 2 + 20, bb.y + bb.height / 2 - 30, { steps: 8 });
+await p.mouse.up();
+await p.waitForTimeout(500);
+const after = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].manualShots[0]);
+ok(after.placed === true && after.acc === 0 && (after.pos[0] !== before.pos[0] || after.pos[1] !== before.pos[1]), 'dragged on the map: the shot stands where it was put');
+await count.click();
+await p.waitForTimeout(300);
+ok(/auf der Karte gesetzt/.test(await p.locator('.shot-list').innerText()), 'the list says it was set on the map');
+await p.locator('.shot-list-row').first().getByRole('button', { name: 'Entfernen' }).click();
+await p.waitForTimeout(300);
+ok((await manual()) === 0 && (await p.locator('.shot-list').count()) === 0, 'the last one removed: the list closes');
 // 1 · "→" without a score: the sheet, then on to 2A
 await p.getByRole('button', { name: 'Nächstes Loch' }).click();
 await p.waitForTimeout(500);

@@ -496,8 +496,9 @@ export function FormRules(props: { form: FormDef }) {
           <li key={r}>{r}</li>
         ))}
       </ul>
-      <button type="button" className="btn-secondary read-rules" aria-pressed={talking} onClick={() => toggleSpeak(rulesSpoken(props.form))}>
-        <SpeakerIcon /> {tr('Read the rules aloud', 'Spielform vorlesen')}
+      {/* only the speaker, as the caddie's on the round (Sascha 17.10.2026) */}
+      <button type="button" className="btn-secondary read-rules" aria-pressed={talking} aria-label={tr('Read the rules aloud or stop', 'Spielform vorlesen oder stoppen')} title={tr('Read aloud', 'Vorlesen')} onClick={() => toggleSpeak(rulesSpoken(props.form))}>
+        <SpeakerIcon size={22} />
       </button>
     </>
   );
@@ -1352,7 +1353,7 @@ function PressPicker(props: { settings: Record<string, number | boolean | string
         </button>
       ))}
       <button type="button" className={`chip${now === 0 ? ' on' : ''}`} aria-pressed={now === 0} onClick={() => pick(0)}>
-        {tr('any', 'beliebig')}
+        {tr('no cap', 'ohne Limit')}
       </button>
     </div>
   );

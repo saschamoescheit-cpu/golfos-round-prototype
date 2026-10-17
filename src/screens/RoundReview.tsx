@@ -82,6 +82,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   };
   // after a penalty: the next tap on the map is where the ball went into the water / out of bounds
   const [placingMiss, setPlacingMiss] = useState<number | null>(null);
+  // "add a shot": the next tap on the map places a new shot there (Sascha 17.10.2026: "it says add a shot, but I
+  // cannot") – also right beside another shot or on the green's edge, where a plain tap would open that shot
+  const [adding, setAdding] = useState(false);
+  useEffect(() => setAdding(false), [k]);
   // what the caddie said on the course, with the player's verdict
   const [cadLog, setCadLog] = useState<CaddieLog>(() => loadCaddieLog(round.id));
   const [noteFor, setNoteFor] = useState<number | null>(null);
@@ -181,10 +185,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     }
     const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
     // A tap on (or right after dragging) a shot opens it instead of adding one next to it.
-    const hit = base.shots.findIndex((x) => x.pos != null && distanceM(x.pos, pos) < 8);
+    const hit = adding ? -1 : base.shots.findIndex((x) => x.pos != null && distanceM(x.pos, pos) < 8);
     if (hit >= 0) return setEdit(hit);
-    if (base.onGreen && distanceM(base.onGreen, pos) < 4) return;
-    if (onGreenSpot(pos, data)) {
+    if (!adding && base.onGreen && distanceM(base.onGreen, pos) < 4) return;
+    if (!adding && onGreenSpot(pos, data)) {
       saveDetail(k, withClubs({ ...base, onGreen: pos, holedOut: false }));
       return;
     }
@@ -196,6 +200,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     if (at < 0) at = shots.length;
     shots.splice(at, 0, { pos, lie: lieFor(pos, at, data), club: null, penalty: false });
     saveDetail(k, withClubs({ ...base, shots }));
+    if (adding) {
+      setAdding(false);
+      setEdit(at); // the club and the kind of the new shot right away
+    }
   };
   const addTeeShot = () => {
     if (!data || !d) return;
@@ -468,6 +476,21 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             `Dein Score war ${e.strokes}, die Schläge ergeben ${shotCount}. Bitte einen Schlag ergänzen oder löschen oder die Putts korrigieren.`,
           )}
         </div>
+      )}
+
+      {data && (
+        adding ? (
+          <div className="notice" role="status">
+            {tr('Tap the map where the shot was played – a grey circle (where you stood) puts it there exactly. Drag it afterwards to correct.', 'Tippe auf die Karte, wo der Schlag gespielt wurde – ein grauer Kreis (wo du standest) setzt ihn genau dorthin. Danach kannst du ihn verschieben.')}{' '}
+            <button type="button" className="btn-ghost" onClick={() => setAdding(false)}>
+              {tr('Cancel', 'Abbrechen')}
+            </button>
+          </div>
+        ) : (
+          <button type="button" className={mismatch && (shotCount ?? 0) < (e.strokes ?? 0) ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdding(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+            {tr('+ Add a shot', '+ Schlag hinzufügen')}
+          </button>
+        )
       )}
 
       {!d || d.shots.length === 0 ? (

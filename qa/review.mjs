@@ -52,7 +52,8 @@ await p.waitForTimeout(1500);
 ok((await p.locator('.tabbar-dot').count()) === 1, 'menu: dot on "Runden"');
 await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click();
 await p.waitForTimeout(400);
-ok((await p.getByText('Schläge prüfen →').count()) === 1, 'rounds tab: "Schläge prüfen →" on the round');
+ok((await p.locator('ul.list .signed-mark[aria-label="Schläge prüfen"]').count()) === 1, 'rounds tab: the green magnifier on the round to check (no text hint)');
+ok((await p.getByText('Schläge prüfen →').count()) === 0, 'rounds tab: no green text hint any more');
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1000);
 await p.getByRole('button', { name: /Schläge prüfen/ }).click();
@@ -101,12 +102,28 @@ await p.mouse.down();
 const mapBox = await p.locator(".review-map").boundingBox();
 await p.mouse.move(mapBox.x + 20, b2.y + b2.height / 2, { steps: 8 });
 const readout = (await p.locator('.map-drag-readout').innerText().catch(() => '')).trim();
+const rb = await p.locator('.map-drag-readout').boundingBox();
+const vw = p.viewportSize().width;
 await p.mouse.up();
+ok(rb && rb.x >= 8 && rb.x + rb.width <= vw - 8 && Math.abs(rb.x + rb.width / 2 - vw / 2) < 3, `the readout whole and centred on the screen (${rb ? Math.round(rb.x) + '–' + Math.round(rb.x + rb.width) : '–'} of ${vw})`);
 await p.waitForTimeout(800);
 ok(/^Aus – Strafschlag \+ neuer Schlag/.test(readout), `while dragging out: "${readout}" at the top of the map`);
 const h1 = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots);
 const sameSpot = h1[1]?.pos && h1[0].pos && Math.abs(h1[1].pos[0] - h1[0].pos[0]) < 1e-9 && Math.abs(h1[1].pos[1] - h1[0].pos[1]) < 1e-9;
 ok(h1[0].penalty && h1[0].penaltyKind === "ob" && sameSpot && h1.length === before1, `out of bounds: shot 1 +1 penalty, shot 2 again from the tee (${h1.length} shots)`);
+// a shot missing: "+ Schlag hinzufügen", a tap on the map – the new shot with its sheet (Sascha 17.10.2026)
+const shotsNow = () => p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots.length);
+const n0 = await shotsNow();
+await p.getByRole('button', { name: '+ Schlag hinzufügen' }).click();
+await p.waitForTimeout(400);
+ok(/Tippe auf die Karte, wo der Schlag gespielt wurde/.test(await p.locator('.notice').allInnerTexts().then((t) => t.join(' '))), '"+ Schlag hinzufügen": the hint to tap the map');
+const mb = await p.locator('.review-map').boundingBox();
+await p.mouse.click(mb.x + mb.width * 0.3, mb.y + mb.height * 0.55);
+await p.waitForTimeout(600);
+ok((await shotsNow()) === n0 + 1, `a tap on the map adds the shot (${n0} → ${await shotsNow()})`);
+ok((await p.locator('.sheet').count()) === 1, 'its sheet opens for the club');
+await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).first().click();
+await p.waitForTimeout(300);
 // hole 7: the penalty from the course
 for (let k = 0; k < 10; k++) {
   const n = Number((await p.locator('.review-nav').innerText()).match(/Loch ([0-9])/)[1]);
