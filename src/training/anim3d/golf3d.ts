@@ -125,7 +125,8 @@ const lerpRot = (a: Rot | undefined, b: Rot | undefined, k: number): Rot => {
 };
 
 interface Prepared {
-  keys: (SwingKey & { clubLocal: THREE.Vector3 })[];
+  /** clubQ: the club's whole turn in the chest frame – the shaft direction and the face with it */
+  keys: (SwingKey & { clubLocal: THREE.Vector3; clubQ: THREE.Quaternion })[];
   length: number;
 }
 
@@ -219,9 +220,14 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   const chestQ = (rig: Rig) => rig.joints.chest.getWorldQuaternion(new THREE.Quaternion());
   const chestPos = (rig: Rig) => rig.joints.chest.getWorldPosition(new THREE.Vector3());
 
-  /** each key's club direction in the chest frame – 'ball' worked out with the key's own trunk */
+  /** each key's club direction in the chest frame – 'ball' worked out with the key's own trunk. The face: the neutral
+   *  swing (Sascha 17.10.2026: the basic swing model) – the hands do not roll the face, it follows the body turn: from
+   *  the address (face square to the target, toe away from the player) the club only turns the shortest way in the
+   *  chest's frame, so the toe points up when the shaft is level back and through, and the face is square again at
+   *  impact */
   const prepare = (p: { rig: Rig; swing: Swing; x: number; z: number }): Prepared => {
     const s = p.swing;
+    let address: { dir: THREE.Vector3; q: THREE.Quaternion } | null = null;
     const keys = s.keys.map((k) => {
       poseTrunk(p, k.body, k.shift ?? 0, -(k.drop ?? 0.05), k.push ?? 0);
       let hands = new THREE.Vector3(...k.hands).applyQuaternion(chestQ(p.rig)).add(chestPos(p.rig));
@@ -230,7 +236,18 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       // at the ball the clubhead sits exactly behind it: the hands slide along the shaft to the club's length
       if (k.club === 'ball') hands = head.clone().addScaledVector(dir, -(CLUB_LEN[s.club] - 0.05));
       const local = hands.clone().sub(chestPos(p.rig)).applyQuaternion(chestQ(p.rig).invert());
-      return { ...k, hands: [local.x, local.y, local.z] as V3, clubLocal: dir.applyQuaternion(chestQ(p.rig).invert()) };
+      const inv = chestQ(p.rig).invert();
+      const clubLocal = dir.clone().applyQuaternion(inv);
+      if (!address) {
+        // the address: the shaft along dir (club +y), the toe away from the player (club +z towards the ball line)
+        const y = dir.clone();
+        const zAxis = new THREE.Vector3(0, 0, 1).sub(y.clone().multiplyScalar(y.z)).normalize();
+        const x = new THREE.Vector3().crossVectors(y, zAxis);
+        const world = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, zAxis));
+        address = { dir: clubLocal.clone(), q: inv.clone().multiply(world) };
+      }
+      const clubQ = new THREE.Quaternion().setFromUnitVectors(address.dir, clubLocal).multiply(address.q);
+      return { ...k, hands: [local.x, local.y, local.z] as V3, clubLocal, clubQ };
     });
     return { keys, length: keys[keys.length - 1].t };
   };
@@ -267,10 +284,9 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const q = chestQ(rig);
     const chestP = chestPos(rig);
     const handsL = new THREE.Vector3(lerp(a.hands[0], b.hands[0], k), lerp(a.hands[1], b.hands[1], k), lerp(a.hands[2], b.hands[2], k)).applyQuaternion(q).add(chestP);
-    // the club turns on the shortest way between the two keys
-    const qa = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), a.clubLocal);
-    const qb = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clubLocal);
-    const dir = new THREE.Vector3(0, 1, 0).applyQuaternion(qa.slerp(qb, k)).applyQuaternion(q).normalize();
+    // the club turns on the shortest way between the two keys – shaft and face together
+    const clubW = q.clone().multiply(a.clubQ.clone().slerp(b.clubQ, k));
+    const dir = new THREE.Vector3(0, 1, 0).applyQuaternion(clubW).normalize();
     const handsR = handsL.clone().addScaledVector(dir, 0.09);
 
     // arms: the wrists 6 cm before the grip points, the hands along the shaft
@@ -309,7 +325,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
 
     // the club in the hands
     p.club.position.copy(handsL).addScaledVector(dir, -0.05);
-    p.club.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    p.club.quaternion.copy(clubW);
     p.club.updateMatrixWorld(true);
 
     let label: L | undefined;
@@ -500,7 +516,14 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     dispose() {
       cancelAnimationFrame(raf);
       io?.disconnect();
+      // the GPU memory of every shape and material, then the context itself (the canvas is not used again)
+      scene.traverse((o) => {
+        const m = o as THREE.Mesh;
+        m.geometry?.dispose();
+        for (const x of Array.isArray(m.material) ? m.material : m.material ? [m.material] : []) x.dispose();
+      });
       renderer.dispose();
+      renderer.forceContextLoss();
     },
   };
 }

@@ -31,19 +31,19 @@ export const FULL_SWING: Swing = {
     k(1.45, {
       body: { pelvis: [32, -28, 2], spine: [6, -10, 0], chest: [6, -34, 6], neck: [-8, 32, 0], head: [22, 12, 0] },
       hands: [-0.1, -0.12, 0.45],
-      club: [-0.15, 1, -0.1],
+      club: [-0.1, 0.93, -0.36],
       label: L('Wrists hinge – two', 'Handgelenke winkeln an – zwei'),
     }),
     k(2.0, {
       body: { pelvis: [32, -42, 0], spine: [6, -12, 0], chest: [6, -36, 8], neck: [-8, 44, 0], head: [22, 14, 0] },
       hands: [-0.22, 0.44, 0.16],
-      club: [0.9, -0.05, -0.42],
+      club: [0.95, -0.05, 0.1],
       label: L('The top – three', 'Oben – drei'),
     }),
     k(2.3, {
       body: { pelvis: [32, -42, 0], spine: [6, -12, 0], chest: [6, -36, 8], neck: [-8, 44, 0], head: [22, 14, 0] },
       hands: [-0.22, 0.44, 0.16],
-      club: [0.9, -0.05, -0.42],
+      club: [0.95, -0.05, 0.1],
     }),
     k(2.6, {
       body: { pelvis: [32, -8, 5], spine: [6, -10, 2], chest: [6, -30, 8], neck: [-8, 30, 0], head: [22, 10, 0] },
@@ -52,6 +52,12 @@ export const FULL_SWING: Swing = {
       shift: 0.04,
       label: L('Down from the ground', 'Abschwung vom Boden'),
     }),
+    k(2.7, {
+      body: { pelvis: [31, 12, 6], spine: [6, -4, 2], chest: [6, -22, 8], neck: [-8, 10, 0], head: [22, 2, 0] },
+      hands: [-0.05, -0.17, 0.43],
+      club: [-1, 0.06, 0.12],
+      shift: 0.06,
+    }),
     k(2.8, {
       body: { pelvis: [30, 30, 6], spine: [6, 2, 2], chest: [6, -10, 7], neck: [-8, -12, 0], head: [22, -6, 0] },
       hands: [0.1, -0.21, 0.42],
@@ -59,10 +65,16 @@ export const FULL_SWING: Swing = {
       shift: 0.07,
       label: L('Impact: hands ahead – four', 'Treffmoment: Hände vorn – vier'),
     }),
+    k(2.92, {
+      body: { pelvis: [27, 45, 5], spine: [5, 6, 1], chest: [5, 4, 4], neck: [-7, -18, 0], head: [20, -8, 0] },
+      hands: [0.16, -0.17, 0.44],
+      club: [1, 0.06, 0.12],
+      shift: 0.09,
+    }),
     k(3.05, {
       body: { pelvis: [24, 55, 4], spine: [4, 8, 0], chest: [4, 18, 2], neck: [-6, -30, 0], head: [18, -10, 0] },
       hands: [0.12, -0.08, 0.46],
-      club: [0.2, 1, 0.15],
+      club: [0.12, 0.93, -0.34],
       shift: 0.1,
       label: L('Through', 'Durch'),
       free: true,
@@ -112,13 +124,13 @@ export const HALF_SWING: Swing = {
     k(1.5, {
       body: { pelvis: [32, -24, 2], spine: [6, -8, 0], chest: [6, -30, 6], neck: [-8, 28, 0], head: [22, 10, 0] },
       hands: [-0.1, -0.12, 0.45],
-      club: [-0.15, 1, -0.1],
+      club: [-0.1, 0.93, -0.36],
       label: L('9 o’clock: lead arm level, shaft up', '9 Uhr: vorderer Arm waagrecht, Schaft nach oben'),
     }),
     k(1.85, {
       body: { pelvis: [32, -24, 2], spine: [6, -8, 0], chest: [6, -30, 6], neck: [-8, 28, 0], head: [22, 10, 0] },
       hands: [-0.1, -0.12, 0.45],
-      club: [-0.15, 1, -0.1],
+      club: [-0.1, 0.93, -0.36],
     }),
     k(2.1, {
       body: { pelvis: [30, 26, 5], spine: [6, 2, 2], chest: [6, -8, 6], neck: [-8, -10, 0], head: [22, -5, 0] },
@@ -130,7 +142,7 @@ export const HALF_SWING: Swing = {
     k(2.5, {
       body: { pelvis: [24, 50, 4], spine: [4, 8, 0], chest: [4, 16, 2], neck: [-6, -28, 0], head: [18, -10, 0] },
       hands: [0.12, -0.08, 0.46],
-      club: [0.2, 1, 0.15],
+      club: [0.12, 0.93, -0.34],
       shift: 0.08,
       label: L('3 o’clock: chest to the target', '3 Uhr: Brust zum Ziel'),
       free: true,
@@ -138,7 +150,7 @@ export const HALF_SWING: Swing = {
     k(3.5, {
       body: { pelvis: [24, 50, 4], spine: [4, 8, 0], chest: [4, 16, 2], neck: [-6, -28, 0], head: [18, -10, 0] },
       hands: [0.12, -0.08, 0.46],
-      club: [0.2, 1, 0.15],
+      club: [0.12, 0.93, -0.34],
       shift: 0.08,
       free: true,
     }),

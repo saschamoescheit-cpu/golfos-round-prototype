@@ -24,7 +24,7 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
   const swing = pair ? pair.fault : SWINGS[props.swing as SwingId];
   const behind = !!(pair && 'behind' in pair && pair.behind);
   const views: View[] = !pair ? ['front', 'side', 'angle', 'above'] : behind ? ['side', 'angle', 'above'] : ['front', 'angle', 'above'];
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const [playing, setPlaying] = useState(true);
   const [slow, setSlow] = useState(false);
@@ -33,13 +33,22 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
   const left = isLeftHanded();
 
   useEffect(() => {
-    const c = canvasRef.current;
-    if (!c) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    // a fresh canvas for every start: its WebGL context is released for good when the video closes (many videos one
+    // after another must not run the phone out of contexts or memory)
+    const c = document.createElement('canvas');
+    c.setAttribute('role', 'img');
+    c.setAttribute('aria-label', tr('3D video of the movement', '3D-Video der Bewegung'));
+    // left-handers see the player mirrored, like every Training picture
+    if (left) c.style.transform = 'scaleX(-1)';
+    stage.prepend(c);
     let v: Viewer;
     try {
       v = createGolfViewer(c);
     } catch (e) {
       console.error('Training 3D: no WebGL', e);
+      c.remove();
       props.onFail?.();
       return;
     }
@@ -55,6 +64,7 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
     return () => {
       ro?.disconnect();
       v.dispose();
+      c.remove();
       viewerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,9 +74,7 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
 
   return (
     <div className="tr-3d">
-      <div className="tr-3d-stage">
-        {/* left-handers see the player mirrored, like every Training picture */}
-        <canvas ref={canvasRef} role="img" aria-label={tr('3D video of the movement', '3D-Video der Bewegung')} style={left ? { transform: 'scaleX(-1)' } : undefined} />
+      <div className="tr-3d-stage" ref={stageRef}>
         <div className="tr-3d-controls">
           <button type="button" className="icon-btn" aria-label={playing ? tr('Pause', 'Pause') : tr('Play', 'Abspielen')} aria-pressed={!playing} onClick={() => setPlaying(!playing)}>
             {playing ? (
