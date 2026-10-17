@@ -19,7 +19,7 @@ import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
-import { FOCUS_NAMES, GOAL_STEPS, loadGoal, pillar, saveGoal, targetPos, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
+import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
 import { profileIndex } from '../lib/profile';
 import { hasPain, leadSide, previousMeasurement, likelyMisses, latestResults, MISS_NAMES, PLAY_NOW, swingPatterns, type PatternResult } from '../mobility/swing';
 import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
@@ -415,32 +415,42 @@ function TestView(props: { id: TestId; nav: Nav }) {
   );
 }
 
-/** The measured values of a test over time (the better side and the worse side as bars). */
+/**
+ * The values of a test over time, on its scale (measuring, not grading): each bar is how much movement (the side with
+ * less counts), the line across is where the goal asks for – after a repeat the gap shows at a glance.
+ */
 function HistoryChart(props: { test: TestDef; history: { s: Screening; r: TestResult }[] }) {
+  const goal = loadGoal();
   const pts = [...props.history].reverse().slice(-8);
-  const val = (r: TestResult): number | null => {
-    const ms = [r.both, r.left, r.right].filter((m): m is Measurement => !!m && m.value != null);
-    if (!ms.length) return null;
-    const vs = ms.map((m) => m.value!);
-    // the worse side counts (for the toe touch and the 90/90 a smaller value is better)
-    const lowerBetter = props.test.metric === 'toeTouch' || props.test.metric === 'shoulder9090';
-    return lowerBetter ? Math.max(...vs) : Math.min(...vs);
+  const pos = pts.map((p) => testPos(props.test, p.r));
+  if (!pos.some((x) => x != null)) return null;
+  const tgt = targetPos(props.test, goal);
+  const tv = targetValue(props.test, goal);
+  // the number above a bar: the value of the side with less movement
+  const shown = (r: TestResult): string => {
+    const ms = [r.both, r.left, r.right].filter((m): m is Measurement => !!m && !m.pain);
+    if (!ms.length) return '!';
+    const m = ms.reduce((x, y) => ((measurePos(props.test, x) ?? 1) <= (measurePos(props.test, y) ?? 1) ? x : y));
+    return m.value != null ? String(Math.round(m.value)) : tr('self', 'selbst');
   };
-  const vals = pts.map((p) => val(p.r));
-  const max = Math.max(1, ...vals.map((v) => Math.abs(v ?? 0)));
-  if (vals.filter((v) => v != null).length < 2) return null;
   return (
     <figure className="mob-chart" aria-label={tr('Your values over time', 'Deine Werte im Verlauf')}>
       <div className="mob-bars">
         {pts.map((p, i) => (
           <div key={p.s.id} className="mob-bar">
-            <span className="small">{vals[i] == null ? '–' : Math.round(vals[i]!)}</span>
-            <i style={{ height: `${Math.max(6, (Math.abs(vals[i] ?? 0) / max) * 100)}%` }} />
+            <span className="small">{shown(p.r)}</span>
+            <span className="mob-bar-track">
+              <i style={{ height: `${Math.max(4, (pos[i] ?? 0) * 100)}%` }} />
+              <b style={{ bottom: `${tgt * 100}%` }} />
+            </span>
             <span className="muted small">{new Date(p.s.createdAt).toLocaleDateString(tr('en-GB', 'de-DE'), { day: 'numeric', month: 'numeric' })}</span>
           </div>
         ))}
       </div>
-      <figcaption className="muted small">{tr('The weaker side counts.', 'Es zählt die schwächere Seite.')}</figcaption>
+      <figcaption className="muted small">
+        {tr('Bar: how much movement (the side with less counts) · line: your goal', 'Balken: wie viel Bewegung (die Seite mit weniger zählt) · Strich: dein Ziel')}
+        {tv != null && props.test.metric ? ` (${tr('about', 'etwa')} ${valueText(props.test.metric, tv, tr)})` : ''}
+      </figcaption>
     </figure>
   );
 }
@@ -464,6 +474,12 @@ function TestBrief(props: { test: TestDef; side: Side | null; noPicture?: boolea
         </ol>
         <p className="mob-target">
           <strong>{tr('Golf value', 'Golf-Richtwert')}:</strong> {t(test.target)}
+          {test.metric && loadGoal() && (
+            <>
+              {' · '}
+              <strong>{tr('for your goal', 'für dein Ziel')}:</strong> {tr('about', 'etwa')} {valueText(test.metric, targetValue(test, loadGoal()), tr)}
+            </>
+          )}
         </p>
         {test.needs && (
           <p className="muted small">

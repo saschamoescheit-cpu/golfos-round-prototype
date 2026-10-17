@@ -233,6 +233,9 @@ ok(await p.locator('.mob-3d-play').isVisible(), 'play/pause is the round symbol 
 const painted = await p.evaluate(() => { const c = document.querySelector('.mob-3d canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; });
 ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');
 await shot('brief');
+await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+ok((await p.locator('.mob-bar-track b').count()) >= 1, 'the values over time on the scale, with the line of the goal');
+await shot('test-history');
 await p.locator('.topbar .icon-btn').first().click();
 
 // ---------- a single self check ----------
