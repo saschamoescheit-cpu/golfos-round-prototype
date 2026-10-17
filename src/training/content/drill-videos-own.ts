@@ -171,4 +171,14 @@ export const DRILL_OWN_VIDEOS: Record<string, Video[]> = {
     { id: "mQwDv_vsWdA", title: "2 Drills for The Correct Shoulder Turn in Golf!", channel: "Scratch Golf Academy", lang: "en" },
     { id: "93B--sQCHwM", title: "3 Stretches for More Shoulder Turn in Your Golf Swing!", channel: "HansenFitnessForGolf", lang: "en" },
   ],
+  "three-distances": [
+    { id: "MJCG7gvGC0I", title: "Effektiver trainieren auf der Driving Range", channel: "GOLFSTUN.DE - Golf-Training und -Übungen", lang: "de" },
+    { id: "BrkxsSw0P8M", title: "TrackMan Combine - Golf benchmarking", channel: "Trackman", lang: "en" },
+  ],
+  "two-ball-nine": [
+    { id: "YCstmHmzwx0", title: "How To CRUSH Your Practice Rounds | Practice Like A Pro", channel: "Andrew Jensen Golf", lang: "en" },
+  ],
+  "weekly-log": [
+    { id: "BrkxsSw0P8M", title: "TrackMan Combine - Golf benchmarking", channel: "Trackman", lang: "en" },
+  ],
 };
