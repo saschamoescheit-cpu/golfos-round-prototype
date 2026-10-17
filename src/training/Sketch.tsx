@@ -5,6 +5,7 @@ import { sided } from './sides';
 import type { L, P, SideItem, Sketch, SketchItem } from './types';
 import { Golfer, golferJoints, type GolferOptions } from './Golfer';
 import { at, timeline, type Frame } from './motion';
+import { ballsAt, rollPlan } from './roll';
 
 // Our own drawings for the drills (Sascha 15.10.2026: no pictures copied from the internet). A sketch is described in
 // meters – top view (x to the right, y towards the target) or side view (slopes, flight) – and drawn here as SVG.
@@ -110,11 +111,39 @@ function useMotion(s: Sketch) {
   return { playing, frames, label: now?.[0].label, toggle: () => setTime(playing ? null : 0) };
 }
 
+/** The ball on a top view: rolling or flying along its drawn paths (three runs, a tap stops it earlier). */
+function useRoll(s: Sketch) {
+  const plan = useMemo(() => rollPlan(s), [s]);
+  const [time, setTime] = useState<number | null>(null);
+  const playing = time !== null;
+  const raf = useRef(0);
+  useEffect(() => {
+    if (!playing || !plan) return;
+    const run = plan.total + 0.6;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = (now - start) / 1000;
+      if (t >= run * 3) return setTime(null);
+      setTime(Math.min(t % run, plan.total));
+      raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [playing, plan]);
+  if (!plan) return null;
+  return {
+    playing,
+    rolling: time === null ? undefined : { balls: ballsAt(plan, time), hide: plan.starts.filter((x) => x.t <= time).map((x) => x.at) },
+    toggle: () => setTime(playing ? null : 0),
+  };
+}
+
 export function SketchView(props: { sketch: Sketch; label?: string }) {
   const s = props.sketch;
   const caption = s.caption ? txt(s.caption) : null;
   const motion = useMotion(s);
   const video = s.view === 'side' ? s.motion?.video : undefined;
+  const roll = useRoll(s);
   const [show3d, setShow3d] = useState(false);
   const callouts: (L | string)[] =
     s.view === 'side' || s.view === 'top' ? (s.items as (SideItem | SketchItem)[]).flatMap((x) => (x.k === 'callout' || x.k === 'mark' ? [x.t] : [])) : s.view === 'grip' || s.view === 'palm' ? s.notes : [];
@@ -124,7 +153,7 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
         <Suspense fallback={<Side sketch={s as Extract<Sketch, { view: 'side' }>} label={props.label} />}>
           <Swing3D swing={video} onFail={() => setShow3d(false)} />
         </Suspense>
-      ) : s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
+      ) : s.view === 'top' ? <Top sketch={s} label={props.label} rolling={roll?.rolling} /> : s.view === 'side' ? <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
       {video ? (
         <div className="tr-motion-bar">
           <button type="button" className={`tr-motion-btn${show3d ? ' on' : ''}`} onClick={() => setShow3d(!show3d)} aria-pressed={show3d}>
@@ -138,6 +167,22 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
               </svg>
             )}
             <span>{show3d ? tr('Back to the picture', 'Zurück zum Bild') : tr('3D video', '3D-Video')}</span>
+          </button>
+        </div>
+      ) : roll && !motion ? (
+        <div className="tr-motion-bar">
+          <button type="button" className={`tr-motion-btn${roll.playing ? ' on' : ''}`} onClick={roll.toggle} aria-pressed={roll.playing}>
+            {roll.playing ? (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <rect x="3" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
+                <rect x="9.4" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />
+              </svg>
+            )}
+            <span>{roll.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen')}</span>
           </button>
         </div>
       ) : motion && (
@@ -183,7 +228,7 @@ export function SketchThumb(props: { sketch?: Sketch; fallback?: ReactNode }) {
     <span className="tr-thumb" aria-hidden="true">
       {s.view === 'top' ? <Top sketch={s} thumb /> : s.view === 'side' ? <Side sketch={s} thumb /> : s.view === 'grip' ? <Grip thumb /> : s.view === 'palm' ? <Palm thumb /> : <Face marks={s.marks} />}
       {/* the picture moves: a small play mark, so the moving pictures can be found in the lists */}
-      {s.view === 'side' && s.motion && (
+      {((s.view === 'side' && s.motion) || rollPlan(s)) && (
         <span className="tr-thumb-play">
           <svg viewBox="0 0 16 16" width="8" height="8">
             <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />
@@ -221,7 +266,7 @@ function Badge(props: { jx: number; jy: number; mx: number; my: number; no: numb
   );
 }
 
-function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; thumb?: boolean }) {
+function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; thumb?: boolean; rolling?: { balls: { at: P; lift: number }[]; hide: P[] } }) {
   const { w, h, items } = props.sketch;
   // a tall sketch gets a narrower canvas so it is never higher than 360 px (the CSS limit): the texts and balls keep
   // their size instead of being scaled down
@@ -299,6 +344,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; 
           </g>
         );
       case 'ball':
+        if (props.rolling?.hide.some((h) => Math.hypot(h[0] - it.at[0], h[1] - it.at[1]) < 0.15)) return null;
         return (
           <g key={i} opacity={it.ghost ? 0.5 : 1}>
             <circle cx={X(it.at[0])} cy={Y(it.at[1])} r={5.5} fill="#ffffff" stroke="#55606a" strokeWidth={1} />
@@ -435,6 +481,13 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; 
         </marker>
       </defs>
       {(props.thumb ? items.filter((it) => it.k !== 'mark') : items).map(draw)}
+      {/* the moving balls: a flying one rises above its shadow */}
+      {props.rolling?.balls.map((b, n) => (
+        <g key={'roll' + n}>
+          {b.lift > 0 && <ellipse cx={X(b.at[0])} cy={Y(b.at[1])} rx={5} ry={2.4} fill="#00000033" />}
+          <circle cx={X(b.at[0])} cy={Y(b.at[1]) - b.lift * 22} r={5.5 * (1 + 0.3 * b.lift)} fill="#ffffff" stroke="#55606a" strokeWidth={1} />
+        </g>
+      ))}
     </Mirror>
     </svg>
   );

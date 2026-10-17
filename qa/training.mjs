@@ -97,6 +97,14 @@ await p.getByRole('tab', { name: /^Übungen/ }).click();
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).click();
 await p.waitForTimeout(300);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'drill shows its sketch');
+// the ball moves on the top view: it flies onto the ring and rolls to the hole
+const topFig = p.locator('figure.tr-sketch').first();
+const topStill = await topFig.locator('svg[role="img"]').innerHTML();
+await topFig.locator('.tr-motion-btn').click();
+await p.waitForTimeout(700);
+ok((await topFig.locator('svg[role="img"]').innerHTML()) !== topStill, 'the ball flies and rolls on the top view');
+await topFig.locator('.tr-motion-btn').click();
+ok((await topFig.locator('svg[role="img"]').innerHTML()) === topStill, 'Stopp brings back the still top view');
 ok(await p.locator('.tabbar').isVisible(), 'the menu stays at the bottom on the drill page (Sascha 16.10.2026)');
 // the drill page in tabs (Sascha 17.10.2026: no one-pager)
 ok((await p.getByRole('tab').allInnerTexts()).join('|') === 'Anleitung|Ergebnis|Videos|Zubehör', 'drill page tabs: Anleitung · Ergebnis · Videos · Zubehör');
