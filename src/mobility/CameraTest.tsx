@@ -5,6 +5,7 @@ import { BONES, facingOf, makeAnalyzer, missingPoints, valueText, type Analyzer,
 import { detect, loadPose, resetTracking } from './pose';
 import type { Grade, Measurement, MetricKind, Side, TestDef } from './types';
 import type { Clip } from './anim3d/scene';
+import { loadGoal, position, targetPos, targetValue } from './profile';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -294,7 +295,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       if (shotRef.current && out) setShot(shotRef.current.toDataURL('image/jpeg', 0.8));
       go('result');
       if (out) {
-        say(`${valueText(kind, out.value, tr)}. ${gradeName(out.grade)}.`);
+        // the value, no grade (Sascha 18.10.2026: measuring, not grading)
+        say(`${valueText(kind, out.value, tr)}.`);
         setAuto(props.coach ? 4 : AUTO_SAVE_S);
       } else say(tr('Not recognised. Please try again.', 'Nicht erkannt. Bitte nochmal.'));
       // the camera goes off with the result (a new attempt starts it again)
@@ -580,10 +582,17 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           <div className={`card mob-outcome ${done.grade}`}>
             {shot && <img className="mob-shot" src={shot} alt={tr('Your best moment with the measured lines', 'Dein bester Moment mit den gemessenen Linien')} />}
             <div className="mob-outcome-head">
-              <span className={`mob-grade ${done.grade}`}>{done.grade === 'pass' ? '✓' : done.grade === 'fail' ? '✕' : '–'}</span>
               <span className="grow">
                 <strong className="mob-value">{valueText(kind, done.value, tr)}</strong>
-                <span className="small">{gradeName(done.grade)} · {tr('goal', 'Ziel')}: {props.test.target[trLang()]}</span>
+                {done.value != null && (
+                  <span className="mob-levelbar" role="img" aria-label={tr('on the scale from little to a lot of movement', 'auf der Skala von wenig bis viel Bewegung')}>
+                    <i style={{ width: `${Math.max(4, position(kind, done.value) * 100)}%` }} />
+                    <b style={{ left: `${targetPos(props.test, loadGoal()) * 100}%` }} />
+                  </span>
+                )}
+                <span className="small muted">
+                  {tr('Your goal asks for about', 'Dein Ziel braucht etwa')} {valueText(kind, targetValue(props.test, loadGoal()), tr)}
+                </span>
               </span>
             </div>
             {props.previous && kind && done.value != null && (() => {

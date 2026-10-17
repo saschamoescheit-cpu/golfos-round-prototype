@@ -162,3 +162,18 @@
 .mob-setup-tests .tr-thumb { width: 56px; height: 56px; }
 .mob-start-coach { min-height: 60px; font-size: 20px; }
 .mob-hold-screen { display: flex; flex-direction: column; gap: 12px; }
+
+/* measuring, not grading: a value on its scale (little … a lot of movement), the tick where the goal asks for */
+.mob-levelbar { position: relative; display: block; width: 100%; height: 12px; margin: 6px 0 4px; border-radius: 6px; background: var(--surface-2, rgba(255, 255, 255, 0.12)); overflow: visible; }
+.mob-levelbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--brand); }
+.mob-levelbar b { position: absolute; top: -4px; width: 3px; height: 20px; margin-left: -1.5px; border-radius: 2px; background: var(--text); }
+.mob-levelbar.small { flex: none; width: 72px; height: 8px; margin: 0; }
+.mob-levelbar.small b { top: -4px; height: 16px; }
+.mob-area-head, .mob-drill-head { display: flex; align-items: center; gap: 12px; }
+.mob-area-head .mob-levelbar, .mob-drill-head .mob-levelbar { flex: none; width: 110px; margin: 0; }
+.mob-goal { display: flex; flex-direction: column; gap: 8px; }
+.mob-goal:not(.edit) { flex-direction: row; align-items: center; gap: 12px; }
+.mob-goal .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mob-goal .chip { min-height: 44px; }
+.mob-scale-note { margin: 0; }
+.mob-goal:not(.edit) .btn-secondary { flex: none; width: auto; min-height: 44px; padding: 0 18px; }

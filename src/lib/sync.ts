@@ -68,6 +68,8 @@ const LISTS = [
   // mobility screen (feature 030): every screening its own row
   { kind: 'mobility', key: 'golfos.mobility.v1', idOf: (x: { id: string }) => x.id },
   { kind: 'mobility-trash', key: 'golfos.mobility.trash.v1', idOf: (x: { screening: { id: string } }) => x.screening.id },
+  // the mobility goal (handicap to reach, what matters most) – one row
+  { kind: 'mobility-goal', key: 'golfos.mobility.goal.v1', idOf: (x: { id: string }) => x.id },
 ] as const;
 
 type Meta = Record<string, { hash: string; at: string }>; // per "kind|id": what was in sync last time

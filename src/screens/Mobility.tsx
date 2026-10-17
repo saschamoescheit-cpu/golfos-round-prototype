@@ -14,12 +14,14 @@ import { DRILL_CLIPS, RETEST_CLIPS } from '../mobility/anim3d/drills';
 import { CLIPS } from '../mobility/anim3d/clips';
 import type { Clip } from '../mobility/anim3d/scene';
 import type { Coach } from '../mobility/CameraTest';
-import { CameraTest, gradeName, isFakeCamera, sideText, unlockAudio } from '../mobility/CameraTest';
+import { CameraTest, isFakeCamera, sideText, unlockAudio } from '../mobility/CameraTest';
 import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
-import { hasPain, leadSide, previousMeasurement, likelyMisses, latestResults, MISS_NAMES, PLAY_NOW, swingPatterns, testGrade, type PatternResult } from '../mobility/swing';
+import { FOCUS_NAMES, GOAL_STEPS, loadGoal, pillar, saveGoal, targetPos, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
+import { profileIndex } from '../lib/profile';
+import { hasPain, leadSide, previousMeasurement, likelyMisses, latestResults, MISS_NAMES, PLAY_NOW, swingPatterns, type PatternResult } from '../mobility/swing';
 import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
 import type { Area, Grade, Measurement, Screening, Side, SquatCause, TestDef, TestId, TestResult } from '../mobility/types';
 import '../training/training.css';
@@ -77,7 +79,6 @@ const AREA_NAMES: Record<Area, L> = {
 const AREAS: Area[] = ['hips', 'spine', 'shoulders', 'stability', 'legs', 'neck', 'wrists'];
 
 const playerHand = (): 'right' | 'left' => (isLeftHanded() ? 'left' : 'right');
-const GLYPH: Record<Grade, string> = { pass: '✓', limited: '–', fail: '✕' };
 const sideName = (s: Side) => (s === 'left' ? tr('left', 'links') : tr('right', 'rechts'));
 const dateText = (iso: string) => new Date(iso).toLocaleDateString(tr('en-GB', 'de-DE'), { day: 'numeric', month: 'short', year: 'numeric' });
 const kindName = (k: Screening['kind']) => (k === 'quick' ? tr('Quick check', 'Kurz-Check') : k === 'full' ? tr('Full screen', 'Komplettes Screening') : tr('Single test', 'Einzeltest'));
@@ -128,25 +129,32 @@ function sideGap(test: TestDef, r: TestResult): string | null {
   return tr(`${n} difference`, `${n} Unterschied`);
 }
 
-/** The mark of a test result: ✓ – ✕, or "!" when it hurt. */
-function ResultMark(props: { r: TestResult | undefined; small?: boolean }) {
+/**
+ * The mark of a test result (Sascha 18.10.2026: measuring, not grading): where the value sits on the scale from little
+ * to a lot of movement, the line where the goal asks for – "!" when it hurt, a dashed circle when not tested.
+ */
+function ResultMark(props: { r: TestResult | undefined; test: TestDef; small?: boolean }) {
   if (hasPain(props.r))
     return (
       <span className={`mob-grade fail pain${props.small ? ' small' : ''}`} aria-label={tr('pain', 'Schmerz')}>
         !
       </span>
     );
-  return <GradeMark grade={testGrade(props.r)} small={props.small} />;
+  const pos = testPos(props.test, props.r);
+  if (pos == null) return <span className={`mob-grade none${props.small ? ' small' : ''}`} aria-label={tr('not tested', 'nicht getestet')} />;
+  return <LevelBar pos={pos} target={targetPos(props.test, loadGoal())} small={props.small} />;
 }
 
-function GradeMark(props: { grade: Grade | null; small?: boolean }) {
-  if (!props.grade) return <span className={`mob-grade none${props.small ? ' small' : ''}`} aria-label={tr('not tested', 'nicht getestet')} />;
+/** A value on its scale: the bar fills from little to a lot of movement; the tick is where the goal asks for. */
+function LevelBar(props: { pos: number; target?: number; small?: boolean; label?: string }) {
   return (
-    <span className={`mob-grade ${props.grade}${props.small ? ' small' : ''}`} aria-label={gradeName(props.grade)}>
-      {GLYPH[props.grade]}
+    <span className={`mob-levelbar${props.small ? ' small' : ''}`} role="img" aria-label={props.label ?? tr(`${Math.round(props.pos * 100)} % of the scale`, `${Math.round(props.pos * 100)} % der Skala`)}>
+      <i style={{ width: `${Math.max(4, props.pos * 100)}%` }} />
+      {props.target != null && <b style={{ left: `${props.target * 100}%` }} />}
     </span>
   );
 }
+
 
 /** the picture of a test as a thumbnail in lists */
 function TestThumb(props: { test: TestDef }) {
@@ -327,7 +335,7 @@ function TestTab(props: { nav: Nav }) {
                     {test.mode === 'camera' ? tr('Camera', 'Kamera') : tr('Self check', 'Selbsttest')} · {resultText(test, results[id])}
                   </span>
                 </span>
-                <ResultMark r={results[id]} small />
+                <ResultMark r={results[id]} test={test} small />
               </button>
             );
           })}
@@ -381,7 +389,7 @@ function TestView(props: { id: TestId; nav: Nav }) {
                         {dateText(s.createdAt)} · {kindName(s.kind)}
                       </span>
                     </span>
-                    <ResultMark r={r} small />
+                    <ResultMark r={r} test={test} small />
                   </button>
                 ))}
               </div>
@@ -427,7 +435,7 @@ function HistoryChart(props: { test: TestDef; history: { s: Screening; r: TestRe
         {pts.map((p, i) => (
           <div key={p.s.id} className="mob-bar">
             <span className="small">{vals[i] == null ? '–' : Math.round(vals[i]!)}</span>
-            <i className={testGrade(p.r) ?? ''} style={{ height: `${Math.max(6, (Math.abs(vals[i] ?? 0) / max) * 100)}%` }} />
+            <i style={{ height: `${Math.max(6, (Math.abs(vals[i] ?? 0) / max) * 100)}%` }} />
             <span className="muted small">{new Date(p.s.createdAt).toLocaleDateString(tr('en-GB', 'de-DE'), { day: 'numeric', month: 'numeric' })}</span>
           </div>
         ))}
@@ -455,7 +463,7 @@ function TestBrief(props: { test: TestDef; side: Side | null; noPicture?: boolea
           ))}
         </ol>
         <p className="mob-target">
-          <strong>{tr('Goal', 'Ziel')}:</strong> {t(test.target)}
+          <strong>{tr('Golf value', 'Golf-Richtwert')}:</strong> {t(test.target)}
         </p>
         {test.needs && (
           <p className="muted small">
@@ -565,13 +573,11 @@ function AnkleCheck(props: { onPick: (ok: boolean) => void }) {
       <h2>{tr('Which one is you?', 'Was passt zu dir?')}</h2>
       <button type="button" className="mob-option pass" onClick={() => props.onPick(true)}>
         <span className="mob-option-label">
-          <GradeMark grade="pass" small />
           <span>{tr('The knee touches the wall on both sides, heel down', 'Das Knie berührt auf beiden Seiten die Wand, Ferse unten')}</span>
         </span>
       </button>
       <button type="button" className="mob-option fail" onClick={() => props.onPick(false)}>
         <span className="mob-option-label">
-          <GradeMark grade="fail" small />
           <span>{tr('The knee does not reach it, or the heel comes up', 'Das Knie kommt nicht hin oder die Ferse hebt ab')}</span>
         </span>
       </button>
@@ -611,7 +617,6 @@ function FeelCheck(props: { test: TestDef; onPick: (where: Felt) => void }) {
       {opts.map(([id, label, g]) => (
         <button key={id} type="button" className={`mob-option ${g}`} onClick={() => props.onPick(id)}>
           <span className="mob-option-label">
-            <GradeMark grade={g as Grade} small />
             <span>{label}</span>
           </span>
         </button>
@@ -842,7 +847,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       <>
       <section className="card tr-now">
         <div className="tr-now-head">
-          <ResultMark r={s.results[step.test]} />
+          <ResultMark r={s.results[step.test]} test={test} />
           <span className="grow">
             <span className="eyebrow">
               {single ? (test.mode === 'camera' ? tr('Camera test', 'Kameratest') : tr('Self check', 'Selbsttest')) : tr(`Test ${testIndex + 1} of ${s.tests.length}`, `Test ${testIndex + 1} von ${s.tests.length}`)}
@@ -953,7 +958,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
                       {i + 1}. {t(tt.name)}
                       <span className="muted small">{s.results[id] ? ` · ${resultText(tt, s.results[id])}` : s.skipped?.includes(id) ? ` · ${tr('skipped', 'übersprungen')}` : ''}</span>
                     </span>
-                    <span aria-hidden="true">{s.results[id] ? GLYPH[testGrade(s.results[id])!] : id === step.test ? '●' : '›'}</span>
+                    <span aria-hidden="true">{s.results[id] ? '•' : id === step.test ? '●' : '›'}</span>
                   </button>
                 );
               })}
@@ -1048,9 +1053,10 @@ function SelfCheck(props: { test: TestDef; onPick: (m: Measurement) => void; onB
   const opts =
     props.test.options ??
     ([
-      { grade: 'pass', label: { en: `Goal reached: ${props.test.target.en}`, de: `Ziel erreicht: ${props.test.target.de}` } },
-      { grade: 'limited', label: { en: 'Just missed', de: 'Knapp verfehlt' } },
-      { grade: 'fail', label: { en: 'Clearly missed', de: 'Deutlich verfehlt' } },
+      // described, not graded: about the golf value, a little less, clearly less
+      { grade: 'pass', label: { en: `About this far or further: ${props.test.target.en}`, de: `Etwa so weit oder weiter: ${props.test.target.de}` } },
+      { grade: 'limited', label: { en: 'A little less', de: 'Etwas weniger' } },
+      { grade: 'fail', label: { en: 'Clearly less', de: 'Deutlich weniger' } },
     ] as { grade: Grade; label: L; picture?: () => ReactNode }[]);
   return (
     <section className="tr-block mob-self">
@@ -1059,7 +1065,6 @@ function SelfCheck(props: { test: TestDef; onPick: (m: Measurement) => void; onB
         <button key={o.grade} type="button" className={`mob-option ${o.grade}`} onClick={() => props.onPick({ value: null, grade: o.grade, source: 'self', at: new Date().toISOString() })}>
           {'picture' in o && o.picture && <span className="mob-option-pic">{o.picture()}</span>}
           <span className="mob-option-label">
-            <GradeMark grade={o.grade} small />
             <span>{t(o.label)}</span>
           </span>
         </button>
@@ -1095,7 +1100,7 @@ function ResultTab(props: { nav: Nav }) {
   const { results, at } = latestResults(all);
   // lead and trail come from the profile now (a player who corrects it sees the result for the right side)
   const hand = playerHand();
-  const [tab, setTab] = useState<'body' | 'swing'>('swing');
+  const [tab, setTab] = useState<'body' | 'swing'>('body');
   const tested = TESTS.filter((x) => results[x.id]);
   if (!tested.length)
     return (
@@ -1107,35 +1112,25 @@ function ResultTab(props: { nav: Nav }) {
         </button>
       </section>
     );
-  const count = (g: Grade) => tested.filter((x) => testGrade(results[x.id]) === g).length;
   const patterns = swingPatterns(results, hand);
   const misses = likelyMisses(patterns);
   const newest = Object.values(at).sort().at(-1);
   return (
     <>
       <section className="card mob-summary">
-        <div className="mob-summary-nums">
-          <span className="pass">
-            <strong>{count('pass')}</strong> ✓
-          </span>
-          <span className="limited">
-            <strong>{count('limited')}</strong> –
-          </span>
-          <span className="fail">
-            <strong>{count('fail')}</strong> ✕
-          </span>
-        </div>
+        <strong>{tr('Your mobility profile', 'Dein Beweglichkeitsprofil')}</strong>
         <span className="muted small">
-          {tr(`${tested.length} of ${TESTS.length} tests`, `${tested.length} von ${TESTS.length} Tests`)}
+          {tr(`${tested.length} of ${TESTS.length} tests measured`, `${tested.length} von ${TESTS.length} Tests gemessen`)}
           {newest ? ` · ${tr('as of', 'Stand')} ${dateText(newest)}` : ''} · {hand === 'right' ? tr('right-handed', 'Rechtshänder') : tr('left-handed', 'Linkshänder')}
         </span>
       </section>
+      <GoalCard />
       <div className="segmented tr-tabs" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'swing'} aria-pressed={tab === 'swing'} onClick={() => setTab('swing')}>
-          {tr('Your swing', 'Dein Schwung')}
-        </button>
         <button type="button" role="tab" aria-selected={tab === 'body'} aria-pressed={tab === 'body'} onClick={() => setTab('body')}>
           {tr('Your body', 'Dein Körper')}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'swing'} aria-pressed={tab === 'swing'} onClick={() => setTab('swing')}>
+          {tr('Your swing', 'Dein Schwung')}
         </button>
       </div>
       {tab === 'swing' ? (
@@ -1152,13 +1147,13 @@ function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<type
     return (
       <section className="card tr-section">
         <strong className="good-text">{tr('Your body allows a free swing', 'Dein Körper lässt einen freien Schwung zu')}</strong>
-        <p>{tr('No test points to a swing pattern. Keep it with the drills now and then.', 'Kein Test deutet auf ein Schwungmuster hin. Halte es mit den Übungen ab und zu.')}</p>
+        <p>{tr('None of your values points to a swing pattern.', 'Keiner deiner Werte deutet auf ein Schwungmuster hin.')}</p>
       </section>
     );
   return (
     <>
       <section className="tr-block">
-        <h2>{tr('Misses your body points to', 'Fehlschläge, auf die dein Körper hindeutet')}</h2>
+        <h2>{tr('Misses your body tends to', 'Fehlschläge, die dein Körper begünstigt')}</h2>
         <div className="chip-set mob-misses">
           {props.misses.slice(0, 6).map((m) => (
             <span key={m.miss} className="chip mob-miss">
@@ -1168,7 +1163,7 @@ function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<type
         </div>
       </section>
       <section className="tr-block">
-        <h2>{tr('Swing patterns', 'Schwungmuster')}</h2>
+        <h2>{tr('Swing patterns your body tends to', 'Schwungmuster, die dein Körper begünstigt')}</h2>
         {props.patterns.map((r) => (
           <button key={r.pattern.id} type="button" className="mob-pattern" onClick={() => props.nav.push({ name: 'pattern', id: r.pattern.id })}>
             <SketchThumb sketch={r.pattern.sketch} />
@@ -1233,11 +1228,11 @@ function PatternView(props: { id: string; nav: Nav }) {
                 <span className="grow">
                   <span className="title">{t(test.name)}</span>
                   <span className="muted small">
-                    {gradeName(c.grade)}
+                    {resultText(test, results[c.test])}
                     {sideLabel}
                   </span>
                 </span>
-                <GradeMark grade={c.grade} small />
+                <ResultMark r={results[c.test]} test={test} small />
               </button>
             );
           })}
@@ -1253,13 +1248,19 @@ function PatternView(props: { id: string; nav: Nav }) {
 }
 
 function BodyResult(props: { results: Partial<Record<TestId, TestResult>>; nav: Nav }) {
+  const areas = pillar(TESTS, props.results, loadGoal());
   return (
     <>
+      <p className="muted small mob-scale-note">{tr('Each bar runs from little to a lot of movement; the line is where your goal asks for.', 'Jeder Balken reicht von wenig bis viel Bewegung; der Strich zeigt, was dein Ziel braucht.')}</p>
       {AREAS.map((a) => {
         const tests = TESTS.filter((x) => x.area === a);
+        const st = areas.find((x) => x.area === a);
         return (
           <section key={a} className="tr-block">
-            <h2>{t(AREA_NAMES[a])}</h2>
+            <h2 className="mob-area-head">
+              <span>{t(AREA_NAMES[a])}</span>
+              {st && <LevelBar pos={st.now} target={st.target} />}
+            </h2>
             <div className="list">
               {tests.map((test) => (
                 <button key={test.id} type="button" className={`list-item mob-test-row${props.results[test.id] ? '' : ' untested'}`} onClick={() => props.nav.push({ name: 'test', id: test.id })}>
@@ -1268,7 +1269,7 @@ function BodyResult(props: { results: Partial<Record<TestId, TestResult>>; nav: 
                     <span className="title">{t(test.name)}</span>
                     <span className="muted small">{resultText(test, props.results[test.id])}</span>
                   </span>
-                  <ResultMark r={props.results[test.id]} small />
+                  <ResultMark r={props.results[test.id]} test={test} small />
                 </button>
               ))}
             </div>
@@ -1339,16 +1340,26 @@ function PainNote(props: { tests: TestDef[] }) {
 function DrillsTab(props: { nav: Nav }) {
   const { results } = latestResults(loadScreenings());
   const [saved, setSaved] = useState(false);
-  // ✕ before –, then what matters most for the swing (TPI coaches: the turning areas and separating upper and lower body
-  // first; toe touch and arms overhead are more about aches than about swing faults)
-  const rank = (x: TestDef) => (testGrade(results[x.id]) === 'fail' ? 0 : 10) + GOLF_PRIORITY[x.id];
-  const open = TESTS.filter((x) => {
-    const g = testGrade(results[x.id]);
-    return (g === 'fail' || g === 'limited') && !hasPain(results[x.id]);
-  }).sort((a, b) => rank(a) - rank(b));
+  const goal = loadGoal();
+  const areas = pillar(TESTS, results, goal);
   const pain = TESTS.filter((x) => hasPain(results[x.id]));
   const keep = ['open-books', 'deep-squat', 'glute-bridge', 'single-leg-balance'].map(drillById).filter((d): d is Drill => !!d);
-  const all = [...new Set(open.flatMap((x) => drillsOf(x, results[x.id])))].map(drillById).filter((d): d is Drill => !!d);
+  // the drills of an area: of its tests below the goal (not those that hurt), what matters most for the swing first
+  const drillsFor = (area: AreaState) =>
+    [
+      ...new Set(
+        area.tests
+          .map(testById)
+          .filter((x) => !hasPain(results[x.id]) && (testPos(x, results[x.id]) ?? 1) < targetPos(x, goal))
+          .sort((x, y) => GOLF_PRIORITY[x.id] - GOLF_PRIORITY[y.id])
+          .flatMap((x) => drillsOf(x, results[x.id])),
+      ),
+    ]
+      .map(drillById)
+      .filter((d): d is Drill => !!d);
+  const focus = areas.filter((x) => x.focus);
+  const rest = areas.filter((x) => !x.focus);
+  const all = [...new Set(focus.flatMap(drillsFor))];
   const planDrills = all.length ? all.slice(0, 8) : keep;
   if (!Object.keys(results).length)
     return (
@@ -1361,22 +1372,44 @@ function DrillsTab(props: { nav: Nav }) {
     );
   return (
     <>
+      <GoalCard />
       {pain.length > 0 && <PainNote tests={pain} />}
-      {open.length === 0 ? (
+      <section className="tr-block">
+        <h2>{tr('Your mobility pillar', 'Deine Säule Beweglichkeit')}</h2>
+        <p className="muted small">{tr('For your goal: the areas with the biggest gap first, with the drills for home.', 'Für dein Ziel: die Bereiche mit dem größten Abstand zuerst, mit den Übungen für zu Hause.')}</p>
+      </section>
+      {focus.length === 0 ? (
         <section className="tr-block">
           <h2>{tr('Keep it', 'Erhalten')}</h2>
           <DrillList drills={keep} nav={props.nav} />
         </section>
       ) : (
-        open.map((x) => (
-          <section key={x.id} className="tr-block">
+        focus.map((x) => (
+          <section key={x.area} className="tr-block mob-pillar-area">
             <h2 className="mob-drill-head">
-              <ResultMark r={results[x.id]} small />
-              <span>{t(x.name)}</span>
+              <span>{t(AREA_NAMES[x.area])}</span>
+              <LevelBar pos={x.now} target={x.target} />
             </h2>
-            <DrillList drills={drillsOf(x, results[x.id]).map(drillById).filter((d): d is Drill => !!d)} nav={props.nav} />
+            <span className="muted small">{x.tests.map((id) => `${t(testById(id).name)}: ${resultText(testById(id), results[id])}`).join(' · ')}</span>
+            <DrillList drills={drillsFor(x)} nav={props.nav} />
           </section>
         ))
+      )}
+      {rest.length > 0 && (
+        <section className="tr-block">
+          <h2>{tr('The other areas', 'Die anderen Bereiche')}</h2>
+          <div className="list">
+            {rest.map((x) => (
+              <div key={x.area} className="list-item mob-area-row">
+                <span className="grow">
+                  <span className="title">{t(AREA_NAMES[x.area])}</span>
+                  <span className="muted small">{x.gap <= 0 ? tr('where your goal asks for', 'dort, wo dein Ziel es braucht') : tr('close to your goal', 'nah an deinem Ziel')}</span>
+                </span>
+                <LevelBar pos={x.now} target={x.target} small />
+              </div>
+            ))}
+          </div>
+        </section>
       )}
       <div className="sticky-cta">
         {saved ? (
@@ -1407,6 +1440,71 @@ function DrillsTab(props: { nav: Nav }) {
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * The goal (Sascha 18.10.2026: "from the analysis ask for the player's goals, e.g. the handicap"): the handicap to
+ * reach and what matters most – it sets the line on every bar and the order of the pillar.
+ */
+function GoalCard() {
+  const [goal, setGoal] = useState<MobilityGoal | null>(() => loadGoal());
+  const [edit, setEdit] = useState(!goal);
+  const [hcp, setHcp] = useState<number | null>(goal?.hcp ?? null);
+  const [focus, setFocus] = useState<Focus[]>(goal?.focus ?? []);
+  const now = profileIndex();
+  const hcpName = (h: number) => (h === 0 ? 'Scratch' : String(h));
+  if (goal && !edit)
+    return (
+      <section className="card mob-goal">
+        <span className="grow">
+          <strong>
+            {tr('Your goal', 'Dein Ziel')}: {goal.hcp === 0 ? 'Scratch' : tr(`handicap ${goal.hcp}`, `Handicap ${goal.hcp}`)}
+          </strong>
+          <span className="muted small">{goal.focus.length ? goal.focus.map((f) => t(FOCUS_NAMES[f])).join(' · ') : tr('no focus set', 'ohne Schwerpunkt')}</span>
+        </span>
+        <button type="button" className="btn-secondary" onClick={() => setEdit(true)}>
+          {tr('Change', 'Ändern')}
+        </button>
+      </section>
+    );
+  return (
+    <section className="card mob-goal edit">
+      <strong>{tr('What is your goal?', 'Was ist dein Ziel?')}</strong>
+      <span className="muted small">
+        {now != null ? tr(`Your handicap now: ${String(now).replace('-', '+')}. `, `Dein Handicap jetzt: ${String(now).replace('.', ',').replace('-', '+')}. `) : ''}
+        {tr('The values you need follow from it.', 'Daraus ergibt sich, welche Werte du brauchst.')}
+      </span>
+      <span className="small">{tr('Handicap to reach', 'Ziel-Handicap')}</span>
+      <div className="chip-set">
+        {GOAL_STEPS.map((h) => (
+          <button key={h} type="button" className={`chip${hcp === h ? ' on' : ''}`} aria-pressed={hcp === h} onClick={() => setHcp(h)}>
+            {hcpName(h)}
+          </button>
+        ))}
+      </div>
+      <span className="small">{tr('What matters most to you (optional)', 'Was dir wichtig ist (optional)')}</span>
+      <div className="chip-set">
+        {(Object.keys(FOCUS_NAMES) as Focus[]).map((f) => (
+          <button key={f} type="button" className={`chip${focus.includes(f) ? ' on' : ''}`} aria-pressed={focus.includes(f)} onClick={() => setFocus(focus.includes(f) ? focus.filter((x) => x !== f) : [...focus, f])}>
+            {t(FOCUS_NAMES[f])}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={hcp == null}
+        onClick={() => {
+          const g: MobilityGoal = { id: 'goal', hcp: hcp!, focus, at: new Date().toISOString() };
+          saveGoal(g);
+          setGoal(g);
+          setEdit(false);
+        }}
+      >
+        {tr('Save the goal', 'Ziel speichern')}
+      </button>
+    </section>
   );
 }
 
@@ -1493,29 +1591,26 @@ function HistoryTab(props: { nav: Nav }) {
   return (
     <>
       {full.length >= 2 && (
-        <figure className="mob-chart" aria-label={tr('Passed tests per screening', 'Bestandene Tests je Screening')}>
+        <figure className="mob-chart" aria-label={tr('Mobility on average per screening', 'Beweglichkeit im Mittel je Screening')}>
           <div className="mob-bars">
             {full.slice(-8).map((s) => {
-              const n = Object.keys(s.results).length;
-              const ok = Object.values(s.results).filter((r) => testGrade(r) === 'pass').length;
+              const ps = s.tests.map((id) => testPos(testById(id), s.results[id])).filter((p): p is number => p != null);
+              const avg = ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : 0;
               return (
                 <div key={s.id} className="mob-bar">
-                  <span className="small">
-                    {ok}/{n}
-                  </span>
-                  <i className="pass" style={{ height: `${Math.max(6, (ok / Math.max(1, n)) * 100)}%` }} />
+                  <span className="small">{Math.round(avg * 100)} %</span>
+                  <i style={{ height: `${Math.max(6, avg * 100)}%` }} />
                   <span className="muted small">{new Date(s.createdAt).toLocaleDateString(tr('en-GB', 'de-DE'), { day: 'numeric', month: 'numeric' })}</span>
                 </div>
               );
             })}
           </div>
-          <figcaption className="muted small">{tr('Passed tests per screening', 'Bestandene Tests je Screening')}</figcaption>
+          <figcaption className="muted small">{tr('Where your values sit on average on their scales (100 % = a lot of movement)', 'Wo deine Werte im Mittel auf ihren Skalen liegen (100 % = viel Bewegung)')}</figcaption>
         </figure>
       )}
       <div className="list">
         {list.map((s) => {
-          const rs = Object.values(s.results);
-          const c = (g: Grade) => rs.filter((r) => testGrade(r) === g).length;
+          const n = Object.keys(s.results).length;
           return (
             <button key={s.id} type="button" className="list-item" onClick={() => props.nav.push({ name: 'screening', id: s.id })}>
               <span className="grow">
@@ -1524,7 +1619,7 @@ function HistoryTab(props: { nav: Nav }) {
                   {s.kind === 'single' && s.tests[0] ? ` · ${t(testById(s.tests[0]).name)}` : ''} {!s.finishedAt && s.kind !== 'single' && <PausedMark />}
                 </span>
                 <span className="muted small">
-                  {dateText(s.createdAt)} · {c('pass')} ✓ · {c('limited')} – · {c('fail')} ✕
+                  {dateText(s.createdAt)} · {tr(`${n} tests measured`, `${n} Tests gemessen`)}
                 </span>
               </span>
               <span aria-hidden="true">›</span>
@@ -1573,7 +1668,7 @@ function ScreeningView(props: { id: string; nav: Nav }) {
                 <span className="title">{t(test.name)}</span>
                 <span className="muted small">{s.skipped?.includes(id) && !s.results[id] ? tr('skipped', 'übersprungen') : resultText(test, s.results[id])}</span>
               </span>
-              <ResultMark r={s.results[id]} small />
+              <ResultMark r={s.results[id]} test={test} small />
             </button>
           );
         })}

@@ -137,6 +137,20 @@ const measured = Object.values(quick?.results ?? {}).reduce((n, r) => n + ['left
 ok(measured === 9, `${measured} of 9 camera steps saved (6 tests, 3 with both sides)`);
 await p.locator('.mob-summary').waitFor();
 ok(await p.locator('.mob-summary').isVisible(), 'the result opens after the screening');
+// measuring, not grading (Sascha 18.10.2026): values on scales, no ✓/✕, the goal asked for
+const glyphs = await p.evaluate(() => (document.querySelector('main')?.textContent ?? '').match(/[✓✕]|[Bb]estanden/g)?.length ?? 0);
+ok(glyphs === 0, `no grades in the result (${glyphs} ✓/✕/"bestanden")`);
+ok(await p.getByText('Was ist dein Ziel?').isVisible(), 'the result asks for the goal');
+await p.locator('.mob-goal .chip').filter({ hasText: /^10$/ }).click();
+await p.locator('.mob-goal .chip').filter({ hasText: 'Mehr Länge' }).click();
+await shot('goal');
+await p.getByRole('button', { name: 'Ziel speichern' }).click();
+const goalText = await p.locator('.mob-goal').innerText().catch(() => '');
+ok(/Dein Ziel: Handicap 10/.test(goalText) && /Mehr Länge/.test(goalText), `the goal is saved (${goalText.replace(/s+/g, ' ')})`);
+ok((await p.locator('.mob-area-head .mob-levelbar').count()) >= 4, 'each measured area shows its bar with the line of the goal');
+ok((await p.locator('.mob-test-row .mob-levelbar').count()) >= 6, 'each measured test shows its value on a scale');
+await shot('result-body');
+await p.locator('.segmented button').filter({ hasText: 'Dein Schwung' }).click();
 const patterns = await p.locator('.mob-pattern').count();
 ok(patterns >= 3, `${patterns} swing patterns for the stiff player`);
 ok((await p.locator('.mob-level.likely').count()) >= 1, 'at least one pattern is likely');
@@ -152,18 +166,22 @@ ok((await p.locator('.mob-play-now li').count()) >= 1, 'pattern page says how to
 await shot('pattern');
 await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.segmented button').filter({ hasText: 'Dein Körper' }).click();
+await p.waitForTimeout(300);
 ok((await p.locator('.mob-test-row').count()) === 15, 'body result lists all 15 tests by area');
 ok((await p.locator('.mob-test-row.untested').count()) === 9, 'the 9 tests not in the quick check are marked untested');
 ok(await p.getByText('Ursache: Sprunggelenke').first().isVisible(), 'the deep squat names its cause (ankles)');
-await shot('result-body');
 
 // ---------- drills → Training ----------
 await tab('Übungen');
 await p.waitForTimeout(300);
-const drillGroups = await p.locator('.mob-drill-head').count();
-ok(drillGroups >= 4, `${drillGroups} limited tests with drills`);
-const squatDrills = await p.locator('.tr-block').filter({ has: p.locator('.mob-drill-head', { hasText: 'Tiefe Kniebeuge' }) }).locator('.list-item .title').allInnerTexts();
-ok(squatDrills.length === 2 && squatDrills[0] === 'Knie zur Wand', 'the deep squat drills follow the cause (ankles: ' + squatDrills.join(', ') + ')');
+const drillGroups = await p.locator('.mob-pillar-area').count();
+ok(await p.getByText('Deine Säule Beweglichkeit').isVisible(), 'the drills are the mobility pillar for the goal');
+ok(drillGroups >= 2 && drillGroups <= 3, `${drillGroups} focus areas with drills (the biggest gaps first)`);
+const legs = p.locator('.mob-pillar-area').filter({ has: p.locator('.mob-drill-head', { hasText: 'Beine' }) });
+if (await legs.count()) {
+  const legDrills = await legs.locator('.list-item .title').allInnerTexts();
+  ok(legDrills[0] === 'Knie zur Wand', 'the leg drills follow the cause of the squat (ankles: ' + legDrills.join(', ') + ')');
+}
 await shot('drills');
 await small('the drills');
 await p.locator('.mob-test-row').first().click();
@@ -290,7 +308,14 @@ await p.locator('.mob-setup').waitFor({ timeout: 10000 });
 await p.locator('.mob-start-coach').click();
 await p.locator('.mob-demo.big').waitFor({ timeout: 30000 });
 const resumed = await p.locator('.mob-side-tag').innerText().catch(() => '');
-ok(/Hüftrotation auf einem Bein|Gewicht auf dem/.test(resumed), `continues with the next open test after one tap on Start (${resumed})`);
+// the first test of the paused screening that is not done yet (a sided test needs both sides)
+const nextNo = await p.evaluate(() => {
+  const sc = JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]').find((x) => !x.finishedAt && x.kind !== 'single');
+  const sided = ['lower-quarter', 'single-leg', 'seated-rotation', 'neck', 'bridge', 'shoulder-9090'];
+  const done = (id) => { const r = sc.results[id]; return !!r && (sided.includes(id) ? !!(r.left && r.right) : !!(r.both || r.left || r.right)); };
+  return sc.tests.findIndex((id) => !done(id) && !(sc.skipped ?? []).includes(id)) + 1;
+});
+ok(new RegExp(`Test ${nextNo} von 15|Gewicht auf dem|Bein stehen`).test(resumed) && !/Beckenrotation/.test(resumed), `continues with the next open test (${nextNo}) after one tap on Start (${resumed})`);
 
 // ---------- left-handed: lead and trail come from the profile ----------
 await p.evaluate(() => {
@@ -304,12 +329,14 @@ await p.evaluate(() => {
 await p.reload();
 await p.waitForTimeout(1200);
 await tab('Ergebnis');
+await p.locator('.segmented button').filter({ hasText: 'Dein Schwung' }).click();
 const rh = await p.locator('.mob-pattern').allInnerTexts();
 const prof = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1') ?? '{}'));
 await p.evaluate((pr) => localStorage.setItem('golfos.profile.v1', JSON.stringify({ ...pr, hand: 'left' })), prof);
 await p.reload();
 await p.waitForTimeout(1200);
 await tab('Ergebnis');
+await p.locator('.segmented button').filter({ hasText: 'Dein Schwung' }).click();
 const lh = await p.locator('.mob-pattern').allInnerTexts();
 ok(rh.some((x) => x.includes('Sway')) && lh.some((x) => x.includes('Slide')) && !lh.some((x) => x.includes('Sway')) && !rh.some((x) => x.includes('Slide')), 'left-handed: the failed right hip means slide instead of sway');
 await p.evaluate((pr) => localStorage.setItem('golfos.profile.v1', JSON.stringify(pr)), prof);
