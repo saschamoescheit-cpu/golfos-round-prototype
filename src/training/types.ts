@@ -158,7 +158,7 @@ export type GearKind = 'putting' | 'shortgame' | 'swing' | 'alignment' | 'speed'
 
 export interface Gear {
   id: string;
-  name: string;
+  name: string | L; // L for generic items without a brand name ("Faszienrolle")
   brand: string | L;
   kind: GearKind;
   cats: CategoryId[];

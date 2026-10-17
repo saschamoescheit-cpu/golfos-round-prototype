@@ -397,7 +397,7 @@ export const puttingDrills: Drill[] = [
     id: 'one-hand',
     cat: 'putting',
     name: L('One-hand putting', 'Einhändig putten'),
-    goal: L('Feel what each hand does: the trail hand steers, the lead hand keeps the face square.', 'Fühlen, was jede Hand tut: Die hintere Hand führt, die vordere hält die Fläche square.'),
+    goal: L('Feel what each hand does: the lead hand guides and keeps the face square, the trail hand feels the length.', 'Fühlen, was jede Hand tut: Die vordere Hand führt und hält die Fläche square, die hintere gibt das Gefühl für die Länge.'),
     level: 2,
     minutes: 8,
     place: 'green',

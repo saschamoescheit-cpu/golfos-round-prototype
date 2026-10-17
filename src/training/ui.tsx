@@ -159,7 +159,7 @@ export function GearImage(props: { g: Gear; size?: 'small' | 'large' }) {
         {GEAR_ICON[props.g.kind]}
       </span>
     );
-  return <img className={cls} src={props.g.image} alt={props.g.name} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
+  return <img className={cls} src={props.g.image} alt={t(props.g.name)} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
 }
 
 const gi = (d: ReactNode) => (

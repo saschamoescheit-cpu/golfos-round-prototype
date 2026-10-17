@@ -95,6 +95,6 @@ export function search(q: string): SearchResult {
     cats: CATEGORIES.filter((c) => hit(`${both(c.name)} ${both(c.short)}`)),
     faults: CATEGORIES.flatMap((c) => (c.faults ?? []).map((f, index) => ({ c, f, index }))).filter(({ f }) => hit(`${both(f.name)} ${both(f.looks)} ${both(f.cause)}`)),
     drills,
-    gear: GEAR.filter((g) => hit(`${g.name} ${typeof g.brand === 'string' ? g.brand : both(g.brand)} ${both(g.what)} ${both(g.why)}`)),
+    gear: GEAR.filter((g) => hit(`${typeof g.name === 'string' ? g.name : both(g.name)} ${typeof g.brand === 'string' ? g.brand : both(g.brand)} ${both(g.what)} ${both(g.why)}`)),
   };
 }

@@ -51,6 +51,6 @@ for (const c of CATEGORIES) {
 lines.push('## Pläne', '');
 for (const p of PLANS) lines.push(`- [ ] **${p.name.de}** – ${p.about.de}`);
 lines.push('', '## Zubehör', '');
-for (const g of GEAR) lines.push(`- [ ] **${g.name}** (${typeof g.brand === 'string' ? g.brand : g.brand.de}, ca. ${g.price[0]}–${g.price[1]} €) – ${g.why.de}`);
+for (const g of GEAR) lines.push(`- [ ] **${typeof g.name === 'string' ? g.name : g.name.de}** (${typeof g.brand === 'string' ? g.brand : g.brand.de}, ca. ${g.price[0]}–${g.price[1]} €) – ${g.why.de}`);
 writeFileSync(out, lines.join('\n'));
 console.log(`${out}: ${lines.length} Zeilen`);

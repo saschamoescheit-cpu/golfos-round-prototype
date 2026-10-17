@@ -1993,7 +1993,7 @@ function GearTile(props: { g: Gear; nav: Nav }) {
   return (
     <button type="button" className="tr-gear-tile" onClick={() => props.nav.push({ name: 'gear', id: props.g.id })}>
       <GearImage g={props.g} />
-      <strong>{props.g.name}</strong>
+      <strong>{t(props.g.name)}</strong>
       <span className="muted small">{euroRange(props.g.price)}</span>
     </button>
   );
@@ -2008,7 +2008,7 @@ function GearRow(props: { g: Gear; nav: Nav }) {
       <button type="button" className="tr-gear-row-main" onClick={() => props.nav.push({ name: 'gear', id: props.g.id })}>
         <GearImage g={props.g} />
         <span className="grow">
-          <strong>{props.g.name}</strong>
+          <strong>{t(props.g.name)}</strong>
           <span className="muted small tr-two-lines">{t(props.g.why)}</span>
           <span className="tr-price small">{euroRange(props.g.price)}</span>
         </span>
@@ -2086,7 +2086,7 @@ function ShopTab(props: { nav: Nav }) {
             <div key={g.id} className="tr-product">
               <button type="button" className="tr-product-main" onClick={() => props.nav.push({ name: 'gear', id: g.id })}>
                 <GearImage g={g} />
-                <strong>{g.name}</strong>
+                <strong>{t(g.name)}</strong>
                 <span className="muted small tr-two-lines">{t(g.why)}</span>
                 <span className="tr-price">{euroRange(g.price)}</span>
               </button>
@@ -2107,7 +2107,7 @@ function GearView(props: { id: string; nav: Nav }) {
   const drills = DRILLS.filter((d) => d.needs?.includes(g.id));
   return (
     <main className="screen training">
-      <TopBar title={g.name} onBack={props.nav.back} />
+      <TopBar title={t(g.name)} onBack={props.nav.back} />
       <GearImage g={g} size="large" />
       <div className="row">
         <span className="muted">{typeof g.brand === 'string' ? g.brand : t(g.brand)}</span>
@@ -2171,7 +2171,7 @@ function CartView(props: { nav: Nav }) {
                 <li key={l.gear} className="list-item tr-cart-line">
                   <GearImage g={g} />
                   <span className="grow">
-                    <span className="title">{g.name}</span>
+                    <span className="title">{t(g.name)}</span>
                     <span className="muted small">{euro(priceOf(g))}</span>
                   </span>
                   <div className="stepper compact">
@@ -2201,7 +2201,7 @@ function CartView(props: { nav: Nav }) {
           <ul className="tr-points small">
             {orders.map((o) => (
               <li key={o.id}>
-                {new Date(o.at).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined)} · {o.lines.map((l) => `${l.qty}× ${gearById(l.gear)?.name ?? l.gear}`).join(', ')} · {euro(o.total)}
+                {new Date(o.at).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined)} · {o.lines.map((l) => `${l.qty}× ${t(gearById(l.gear)?.name ?? l.gear)}`).join(', ')} · {euro(o.total)}
               </li>
             ))}
           </ul>
@@ -2231,7 +2231,7 @@ function Checkout(props: { nav: Nav; onOrdered: (o: Order) => void }) {
         <ul className="tr-points">
           {lines.map((l) => (
             <li key={l.gear}>
-              {l.qty}× {gearById(l.gear)!.name} – {euro(priceOf(gearById(l.gear)!) * l.qty)}
+              {l.qty}× {t(gearById(l.gear)!.name)} – {euro(priceOf(gearById(l.gear)!) * l.qty)}
             </li>
           ))}
         </ul>
@@ -2297,7 +2297,7 @@ function Ordered(props: { order: Order; nav: Nav }) {
         <ul className="tr-points">
           {props.order.lines.map((l) => (
             <li key={l.gear}>
-              {l.qty}× {gearById(l.gear)?.name ?? l.gear}
+              {l.qty}× {t(gearById(l.gear)?.name ?? l.gear)}
             </li>
           ))}
         </ul>

@@ -147,7 +147,7 @@ export const PLANS: Plan[] = [
   {
     id: 'scoring-zone',
     name: L('Scoring zone 45 min (under 100 m)', 'Score-Zone 45 Min (unter 100 m)'),
-    about: L('Everything from 100 m in: wedges, pitches, chips, putts – as games.', 'Alles ab 100 m: Wedges, Pitches, Chips, Putts – als Spiele.'),
+    about: L('Everything from 100 m in: wedges, pitches, chips, putts – as games.', 'Alles unter 100 m: Wedges, Pitches, Chips, Putts – als Spiele.'),
     level: 2,
     focus: ['pitching', 'chipping', 'putting'],
     items: [

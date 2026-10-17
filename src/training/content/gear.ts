@@ -200,7 +200,7 @@ export const GEAR: Gear[] = [
   },
   {
     id: 'putt-string',
-    name: 'Putting string line',
+    name: L('Putting string line', 'Schnur-Linie fürs Putten'),
     brand: L('various', 'verschiedene'),
     kind: 'putting',
     cats: ['putting', 'greenreading'],
@@ -494,7 +494,7 @@ export const GEAR: Gear[] = [
   // ---------- speed ----------
   {
     id: 'superspeed',
-    name: 'SuperSpeed C (speed training)',
+    name: L('SuperSpeed C (speed training)', 'SuperSpeed C (Speed-Training)'),
     brand: 'SuperSpeed Golf',
     kind: 'speed',
     cats: ['driver', 'fitness'],
@@ -631,7 +631,7 @@ export const GEAR: Gear[] = [
   // ---------- fitness ----------
   {
     id: 'superspeed-squeeze',
-    name: 'SuperSpeed Squeeze (grip strength)',
+    name: L('SuperSpeed Squeeze (grip strength)', 'SuperSpeed Squeeze (Griffkraft)'),
     brand: 'SuperSpeed Golf',
     kind: 'fitness',
     cats: ['fitness'],
@@ -667,7 +667,7 @@ export const GEAR: Gear[] = [
   },
   {
     id: 'resistance-bands',
-    name: 'Resistance bands (set)',
+    name: L('Resistance bands (set)', 'Widerstandsbänder (Set)'),
     brand: L('various', 'verschiedene'),
     kind: 'fitness',
     cats: ['fitness'],
@@ -678,7 +678,7 @@ export const GEAR: Gear[] = [
   },
   {
     id: 'foam-roller',
-    name: 'Foam roller',
+    name: L('Foam roller', 'Faszienrolle'),
     brand: L('various', 'verschiedene'),
     kind: 'fitness',
     cats: ['fitness'],
