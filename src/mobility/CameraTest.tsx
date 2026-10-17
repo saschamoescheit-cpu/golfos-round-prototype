@@ -26,6 +26,9 @@ export interface Coach {
   onSkip: () => void;
 }
 
+/** Once the tracking was too slow with the small golfer on, it stays off for the rest of the session (this phone). */
+let phoneSlow = false;
+
 /** Where to stand, in words – said after the demo. */
 function placeText(test: TestDef): string {
   if (test.metric === 'bridge') return tr('Lie on your back side-on to the phone, the whole body in the picture.', 'Leg dich seitlich zum Handy auf den Rücken, der ganze Körper im Bild.');
@@ -189,6 +192,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
   // hands-free (17./18.10.2026): the result is said aloud and saved after a few seconds – the player stays in position
   const [auto, setAuto] = useState<number | null>(null);
   const [ratio, setRatio] = useState('9 / 16');
+  const [demoOff, setDemoOff] = useState(phoneSlow);
   const fake = fakeLevel();
 
   const phaseRef = useRef<Phase>('starting');
@@ -312,6 +316,17 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       // about 30 pictures a second are plenty – the phone stays cool and the screen smooth
       if (performance.now() - lastDetect < 30) return;
       lastDetect = performance.now();
+      // trainer mode: the small 3D golfer and the body tracking share the phone – if tracking drops under 12 pictures a
+      // second, the golfer goes away while measuring (accuracy first)
+      rateN++;
+      if (lastDetect - rateT0 > 3000) {
+        if (props.coach && !fake && !stillCanvas && rateN / ((lastDetect - rateT0) / 1000) < 12 && (phaseRef.current === 'frame' || phaseRef.current === 'run')) {
+          phoneSlow = true;
+          setDemoOff(true);
+        }
+        rateT0 = lastDetect;
+        rateN = 0;
+      }
       let lm: Lm[] | null = null;
       let people = lm ? 1 : 0;
       let w = 720;
@@ -400,6 +415,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     };
 
     let countTimer = 0;
+    let rateT0 = performance.now();
+    let rateN = 0;
     let demoTimer = 0;
     let wrongSince = -1;
     let missSince = -1;
@@ -693,7 +710,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
   return (
     <section className={`mob-camera${props.coach ? ' coach' : ''}`}>
       <div className="mob-stage-wrap">
-      {props.coach?.demo && (phase === 'demo' || phase === 'frame' || phase === 'count' || phase === 'run') && (
+      {props.coach?.demo && (phase === 'demo' || (!demoOff && (phase === 'frame' || phase === 'count' || phase === 'run'))) && (
         <div className={`mob-demo${phase === 'demo' ? ' big' : ''}`}>
           <Suspense fallback={null}>
             <Anim3D clip={props.coach.demo} compact />
