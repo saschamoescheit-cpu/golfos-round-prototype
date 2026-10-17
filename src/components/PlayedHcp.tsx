@@ -32,8 +32,8 @@ export function PlayedHcpCard(props: { round: Round; onChange: (r: Round) => voi
           </div>
           <p className="muted small" style={{ margin: 0 }}>
             {tr(
-              `From ${p.adjustedGross} adjusted strokes (each hole at most net double bogey), course rating ${fmt(p.rating.cr)} and slope ${p.rating.slope}`,
-              `Aus ${p.adjustedGross} bereinigten Schlägen (jedes Loch höchstens Netto-Doppelbogey), Course Rating ${fmt(p.rating.cr)} und Slope ${p.rating.slope}`,
+              `${p.adjustedGross} adjusted strokes · course rating ${fmt(p.rating.cr)} · slope ${p.rating.slope}`,
+              `${p.adjustedGross} bereinigte Schläge · Course Rating ${fmt(p.rating.cr)} · Slope ${p.rating.slope}`,
             )}
             {round.tee && !round.rating ? ` (${teeName(round.tee)})` : ''}.{' '}
             <button type="button" className="link-btn" onClick={() => setEditing(true)}>

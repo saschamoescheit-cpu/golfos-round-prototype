@@ -122,9 +122,6 @@ function Friends() {
   return (
     <>
       <h1 className="tab-title">{tr('Friends', 'Freunde')}</h1>
-      <p className="muted" style={{ margin: 0 }}>
-        {tr('The people you play with, once with their handicap – a tap adds them to a round or a game.', 'Mit wem du spielst, einmal mit Handicap – ein Tipp nimmt sie in eine Runde oder ein Spiel auf.')}
-      </p>
       {list.map((f) => (
         <div key={f.id} className="card game-player-row">
           <div className="field">

@@ -99,9 +99,6 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <Ring label={tr('Greens', 'Grüns')} r={a.gir} />
                   <Ring label="Scrambling" r={a.scrambling} />
                 </div>
-                <p className="muted small" style={{ margin: 0 }}>
-                  {tr('Fairways hit off the tee, GIR, par or better after a missed green.', 'Fairways vom Abschlag getroffen, GIR, Par oder besser nach verfehltem Grün.')}
-                </p>
               </section>
 
               {sg ? (
@@ -195,9 +192,6 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <Ring label="Scrambling" r={a.scrambling} />
                   <Ring label={tr('Sand saves', 'Sand Saves')} r={a.sandSaves} />
                 </div>
-                <p className="muted small" style={{ margin: 0 }}>
-                  {tr('Scrambling: par or better after missing the green. Sand save: par or better from a greenside bunker.', 'Scrambling: Par oder besser nach verfehltem Grün. Sand Save: Par oder besser aus dem Grünbunker.')}
-                </p>
               </section>
               <section className="card stats-card">
                 <h2>{tr('Results by par', 'Ergebnis nach Par')}</h2>

@@ -72,6 +72,9 @@ function nearRuns(rings: LngLat[][], line: LngLat[], max: number): LngLat[][] {
 // checked after the round. The code stays for Ben (spec 004 decides); false = the quick-mode buttons in every mode.
 const MANUAL_SHOTS = false;
 
+/** The one-time tip how the shots are found – off: no introductions in the app (Sascha 16.10.2026). */
+const SHOW_SHOT_TIP = false;
+
 export function HoleScreen(props: {
   round: Round;
   onChange: (r: Round) => void;
@@ -457,9 +460,10 @@ export function HoleScreen(props: {
     </div>
   );
   // Once per device: how the round check finds the shots (it depends on how the phone is used on the course).
+  // Off since 17.10.2026: no introductions in the app (SHOW_SHOT_TIP).
   const [shotTip, setShotTip] = useState(() => {
     try {
-      return !round.preview && !props.game && localStorage.getItem('golfos.tip.shots.v1') == null; // games: no shot check afterwards
+      return SHOW_SHOT_TIP && !round.preview && !props.game && localStorage.getItem('golfos.tip.shots.v1') == null; // games: no shot check afterwards
     } catch {
       return false;
     }

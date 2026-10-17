@@ -206,7 +206,7 @@ export function Scorecard(props: {
               <span className="grow">
                 <strong>{tr('Sign your round', 'Runde signieren')}</strong>
                 <span className="muted small" style={{ display: 'block' }}>
-                  {tr('With your signature you confirm the scores – only signed rounds count in your statistics.', 'Mit deiner Unterschrift bestätigst du die Scores – nur signierte Runden zählen in deiner Statistik.')}
+                  {tr('Only signed rounds count in your statistics.', 'Nur signierte Runden zählen in deiner Statistik.')}
                 </span>
               </span>
               <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>

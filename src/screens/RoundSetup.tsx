@@ -427,7 +427,7 @@ function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => v
       </div>
       {!props.rating && props.nine && (
         <span className="muted small" style={{ gridColumn: '1 / -1' }}>
-          {tr('9 holes: enter the playing handicap for 9 holes (for Stableford). The caddie works with the 18-hole value by itself.', '9 Löcher: die Spielvorgabe für 9 Löcher eintragen (für Stableford). Der Caddie rechnet selbst mit dem 18-Loch-Wert.')}
+          {tr('Playing handicap for 9 holes', 'Spielvorgabe für 9 Löcher')}
         </span>
       )}
       {props.rating && props.playing != null && (
