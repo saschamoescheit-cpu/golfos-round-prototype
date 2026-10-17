@@ -319,12 +319,39 @@ export const EARLY_EXT: Swing = fault(FULL_SWING, {
   },
 });
 
+/** the chip faults: fat (weight back, wrists flip), thin (the body rises), slowing down (long back, short through) */
+export const CHIP_FAT: Swing = fault(CHIP_STROKE, {
+  1.55: {
+    body: { pelvis: [30, 0, 4], spine: [6, 0, 4], chest: [8, -4, 8] },
+    shift: -0.05,
+    drop: 0.08,
+    miss: [-0.07, -0.02, 0],
+    label: L('Left: weight back, the wrists flip – the ground first; right: weight forward, the grip leads', 'Links: Gewicht hinten, die Handgelenke klappen – zuerst der Boden; rechts: Gewicht vorn, der Griff führt'),
+  },
+}, { hit: { at: 1.55, roll: 0.8 } });
+export const CHIP_THIN: Swing = fault(CHIP_STROKE, {
+  1.55: {
+    body: { pelvis: [20, 6, 0], spine: [2, 0, -2], chest: [4, 0, -2] },
+    drop: -0.03,
+    miss: [0.01, 0.04, 0],
+    label: L('Left: the body rises, the edge hits the ball; right: the body stays down', 'Links: der Körper richtet sich auf, die Kante trifft den Ball; rechts: der Körper bleibt unten'),
+  },
+}, { hit: { at: 1.55, roll: 4.5 } });
+export const CHIP_SLOW: Swing = fault(CHIP_STROKE, {
+  1.25: { hands: [-0.03, -0.17, 0.43], club: [-0.7, -0.68, 0.2], body: { chest: [8, -20, -2] }, label: L('Left: a long backswing – right: a short one', 'Links: weit ausholen – rechts: kurz ausholen') },
+  1.9: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] }, label: L('Left: braking at the ball; right: longer through, finish held', 'Links: am Ball bremsen; rechts: länger durch, Finish halten') },
+  3.0: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] } },
+}, { hit: { at: 1.55, roll: 1.2 } });
+
 /** pairs for the fault pictures: the fault first (left), the right way (right); z: one behind the other for the view from behind */
 export const PAIRS = {
   fatPair: { fault: FAT, right: quiet(FULL_SWING) },
   thinPair: { fault: THIN, right: quiet(FULL_SWING) },
   swayPair: { fault: SWAY, right: quiet(FULL_SWING) },
   earlyPair: { fault: EARLY_EXT, right: quiet(FULL_SWING), behind: true },
+  chipFatPair: { fault: CHIP_FAT, right: quiet(CHIP_STROKE) },
+  chipThinPair: { fault: CHIP_THIN, right: quiet(CHIP_STROKE) },
+  chipSlowPair: { fault: CHIP_SLOW, right: quiet(CHIP_STROKE) },
 };
 export type PairId = keyof typeof PAIRS;
 

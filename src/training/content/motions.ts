@@ -302,3 +302,6 @@ set3d(FAULT_MOTIONS.irons?.['Thin shots'], 'thinPair');
 set3d(FAULT_MOTIONS.ballflight?.['Topped shots'], 'thinPair');
 set3d(FAULT_MOTIONS.swing?.['Sway instead of turn'], 'swayPair');
 set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');
+set3d(FAULT_MOTIONS.chipping?.['Fat chip (chunk)'], 'chipFatPair');
+set3d(FAULT_MOTIONS.chipping?.['Thin or bladed chip'], 'chipThinPair');
+set3d(FAULT_MOTIONS.chipping?.['Slowing down'], 'chipSlowPair');

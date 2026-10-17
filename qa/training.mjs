@@ -80,16 +80,16 @@ ok((await stroke.locator('.tr-3d').count()) === 0 && (await stroke.locator('.tr-
 await p.getByRole('tab', { name: 'Fehler' }).click();
 await p.locator('.list .list-item').first().click();
 await p.waitForTimeout(200);
-// the fault picture moves as a drawing: the fault and the right way side by side
+// the fault picture as a 3D video: the fault and the right way side by side
 const faultFig = p.locator('figure.tr-sketch').first();
-const playBtn = faultFig.locator('.tr-motion-btn');
-ok((await playBtn.innerText()).includes('Bewegung abspielen'), 'the fault picture has a play button');
-const still = await faultFig.locator('svg[role="img"]').innerHTML();
-await playBtn.click();
-await p.waitForTimeout(900);
-ok((await faultFig.locator('svg[role="img"]').innerHTML()) !== still && (await faultFig.locator('.tr-motion-phase').innerText()).length > 3, 'the figures move and the phase is named');
-await playBtn.click();
-ok((await faultFig.locator('svg[role="img"]').innerHTML()) === still, 'Stopp brings back the still picture with its numbers');
+const faultBtn = faultFig.locator('.tr-motion-btn');
+ok((await faultBtn.innerText()).includes('3D-Video'), 'the fault picture has a 3D video');
+await faultBtn.click();
+await faultFig.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
+await p.waitForTimeout(1200);
+ok((await faultFig.locator('.tr-3d-views .chip').allInnerTexts()).join('|') === 'Vorne|Schräg|Oben', 'the fault pair: views Vorne · Schräg · Oben');
+await faultBtn.click();
+ok((await faultFig.locator('.tr-3d').count()) === 0, 'back to the fault picture');
 ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 1, 'a fault leads to cause, cure and drills');
 await back();
 ok((await p.getByRole('tab', { name: 'Fehler' }).getAttribute('aria-selected')) === 'true', 'back returns to the same tab');
