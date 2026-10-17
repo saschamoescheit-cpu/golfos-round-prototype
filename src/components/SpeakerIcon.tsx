@@ -1,3 +1,11 @@
+import { useSyncExternalStore } from 'react';
+import { isSpeaking, onSpeaking } from '../lib/caddietalk';
+
+/** Is something being read aloud right now? The speaker buttons show it green (Sascha 17.10.2026). */
+export function useSpeaking(): boolean {
+  return useSyncExternalStore(onSpeaking, isSpeaking, () => false);
+}
+
 // "Read aloud" as a line drawing in the text colour, like the menu icons – the same everywhere instead of the 🔊
 // emoji (night 17.10.2026: one look in every module).
 export function SpeakerIcon(props: { size?: number }) {

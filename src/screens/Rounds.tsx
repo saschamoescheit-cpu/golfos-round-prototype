@@ -54,7 +54,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
     <>
       <h1 className="tab-title">{tr('Rounds', 'Runden')}</h1>
       <div className="tile-row">
-        <button type="button" className="tile" aria-pressed={onlyCheck} disabled={!toCheck.length} onClick={() => { setOnlyCheck(!onlyCheck); setOnlySigned(false); }}>
+        <button type="button" className="tile" aria-pressed={onlyCheck} disabled={!toCheck.length} onClick={() => { setOnlyCheck(!onlyCheck); setOnlySigned(false); setBinOpen(false); }}>
           <span className={`tile-num${toCheck.length ? ' good-text' : ''}`}>{toCheck.length}</span>
           <span className="muted small">{tr('to check', 'zu prüfen')}</span>
         </button>
@@ -62,7 +62,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
           <span className="tile-num">{finished.length}</span>
           <span className="muted small">{tr('played', 'gespielt')}</span>
         </div>
-        <button type="button" className="tile" aria-pressed={onlySigned} disabled={!signed.length} onClick={() => { setOnlySigned(!onlySigned); setOnlyCheck(false); }}>
+        <button type="button" className="tile" aria-pressed={onlySigned} disabled={!signed.length} onClick={() => { setOnlySigned(!onlySigned); setOnlyCheck(false); setBinOpen(false); }}>
           <span className="tile-num">{signed.length}</span>
           <span className="muted small">{tr('signed', 'signiert')}</span>
         </button>
@@ -72,7 +72,8 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
         </div>
         {/* deleted rounds as the fourth tile (Sascha 15.10.2026) – a tap shows them under the list */}
         {trash.length > 0 && (
-          <button type="button" className="tile" aria-pressed={binOpen} onClick={() => setBinOpen(!binOpen)}>
+          // one tile at a time (Sascha 17.10.2026: from "deleted" to "to check" did not switch)
+          <button type="button" className="tile" aria-pressed={binOpen} onClick={() => { setBinOpen(!binOpen); setOnlyCheck(false); setOnlySigned(false); }}>
             <span className="tile-num">{trash.length}</span>
             <span className="muted small">{tr('deleted', 'gelöscht')}</span>
           </button>

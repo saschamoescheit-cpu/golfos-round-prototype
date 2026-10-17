@@ -492,16 +492,22 @@ function noteSyncError(text: string | null): void {
   else browserStore.remove(LAST_ERROR);
 }
 let running: Promise<SyncResult | null> | null = null;
+let again = false; // a change came while a sync was running: one more right after
+let inSync = false; // a change during a sync waits for the round right after it
 
 /** Syncs now if signed in and online; tells the app to reload what came down. One at a time. */
 export function syncNow(): Promise<SyncResult | null> {
   if (!syncConfigured() || !loadSession() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return Promise.resolve(null);
-  if (running) return running;
+  if (running) {
+    again = true;
+    return running;
+  }
   running = (async () => {
     try {
       const t = await authToken();
       if (!t) return null;
-      const res = await syncOnce(browserStore, supabaseRemote(t));
+      inSync = true;
+      const res = await syncOnce(browserStore, supabaseRemote(t)).finally(() => (inSync = false));
       browserStore.set(LAST, res.at);
       noteSyncError(res.failed ? tr(`${res.failed} entries were refused (${res.error}) – tried again at the next sync.`, `${res.failed} Einträge abgelehnt (${res.error}) – beim nächsten Abgleich erneut.`) : null);
       if (res.pulled) {
@@ -518,15 +524,50 @@ export function syncNow(): Promise<SyncResult | null> {
       return null;
     } finally {
       running = null;
+      if (again) {
+        again = false;
+        syncSoon(1000);
+      }
     }
   })();
   return running;
 }
 
 let soon = 0;
-/** A change was saved: sync in 20 s (several changes in a row become one sync). */
-export function syncSoon(): void {
+/** A change was saved: sync in a few seconds (several changes in a row become one sync). Was 20 s – Sascha
+ *  17.10.2026: "changed the handicap on the PC, the iPhone does not show it, not even after reloading". */
+export function syncSoon(ms = 3000): void {
   if (!syncConfigured() || !loadSession()) return;
   window.clearTimeout(soon);
-  soon = window.setTimeout(() => syncNow(), 20000);
+  soon = window.setTimeout(() => syncNow(), ms);
+}
+
+/** Is this device key one the sync carries (rounds, games, profile, bag, tracks, plans …)? */
+export const isSyncedKey = (key: string): boolean =>
+  SETTINGS.includes(key) || LISTS.some((l) => l.key === key) || PER.some((p) => key.startsWith(p.prefix));
+
+/**
+ * Every change to synced data starts a sync a few seconds later – the profile, the bag, the caddie settings and the
+ * plans did not before (only rounds, games and Training did), so they waited for the 3-minute round.
+ */
+export function watchChanges(): void {
+  if (typeof Storage === 'undefined' || (Storage.prototype as unknown as { __golfosWatched?: boolean }).__golfosWatched) return;
+  const proto = Storage.prototype as unknown as { __golfosWatched?: boolean; setItem: (k: string, v: string) => void; removeItem: (k: string) => void };
+  proto.__golfosWatched = true;
+  const set = proto.setItem;
+  const remove = proto.removeItem;
+  proto.setItem = function (this: Storage, k: string, v: string) {
+    set.call(this, k, v);
+    if (this === localStorage && isSyncedKey(k)) {
+      if (inSync) again = true; // during a sync (its own writes too): one more round right after
+      else syncSoon();
+    }
+  };
+  proto.removeItem = function (this: Storage, k: string) {
+    remove.call(this, k);
+    if (this === localStorage && isSyncedKey(k)) {
+      if (inSync) again = true; // during a sync (its own writes too): one more round right after
+      else syncSoon();
+    }
+  };
 }

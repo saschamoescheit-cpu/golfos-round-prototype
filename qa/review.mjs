@@ -77,10 +77,11 @@ const top = await p.locator('.review').evaluate((el) => {
 });
 ok(top, 'score of the hole above the map');
 ok((await p.locator('.review-map').boundingBox()).height < 0.5 * 844, 'the map leaves room below it on the iPhone');
-await p.locator('.review-view').click();
+const tool = p.locator('.review-tools .map-tool');
+await tool.click();
 await p.waitForTimeout(1500);
-ok((await p.locator('.review-view').innerText()).trim() === 'Luftbild', 'switch to 2D and back');
-await p.locator('.review-view').click();
+ok((await tool.getAttribute('aria-pressed')) === 'true', 'switch to 2D and back – the same tool as on the course');
+await tool.click();
 await p.waitForTimeout(800);
 // hole 1: the putts placed on the course show on the map and in the list, the editor opens with them
 const labels = (await p.locator('.review').innerText()).replace(/\s+/g, ' ');

@@ -75,12 +75,16 @@ ok((await ed.locator('.putt-walk polyline').count()) === 1 && stops >= 2, `the G
 ok(await ed.getByText('Gestrichelt: dein GPS-Laufweg').isVisible(), 'a line explains the walk');
 const width = async () => Number((await ed.locator('svg.putt-green').getAttribute('viewBox')).split(' ')[2]);
 const w0 = await width();
-await ed.getByRole('button', { name: 'Hineinzoomen' }).click();
+// no zoom buttons and no explanation any more (Sascha 17.10.2026): two fingers (here the wheel) zoom
+ok((await ed.locator('.putt-zoom').count()) === 0 && (await ed.getByText(/Ziehe die Fahne/).count()) === 0, 'no zoom buttons, no explanation');
+// mobile WebKit has no wheel: the zoom gesture's event, sent to the green
+const wheel = (dy, n) => ed.locator('svg.putt-green').evaluate((svg, [dy, n]) => {
+  for (let k = 0; k < n; k++) svg.dispatchEvent(new WheelEvent('wheel', { deltaY: dy, bubbles: true, cancelable: true }));
+}, [dy, n]);
+await wheel(-200, 6);
+await p.waitForTimeout(300);
 const w1 = await width();
-ok(w1 < w0 * 0.7, `"+" zooms in (view ${w0.toFixed(1)} → ${w1.toFixed(1)} m)`);
-await ed.getByRole('button', { name: 'Auf die Putts' }).click();
-const w2 = await width();
-ok(w2 < w0 * 0.6, `"Auf die Putts": flag and balls fill the view (${w2.toFixed(1)} m)`);
+ok(w1 < w0 * 0.7, `zooming in with two fingers (wheel) (view ${w0.toFixed(1)} → ${w1.toFixed(1)} m)`);
 // the balls keep their size on the screen
 const ballPx = (await ed.locator('.putt-ball circle').nth(1).boundingBox()).width;
 ok(ballPx > 12 && ballPx < 40, `a ball is still finger-sized when zoomed (${Math.round(ballPx)} px)`);
@@ -96,7 +100,6 @@ await p.waitForTimeout(200);
 const vb1 = await ed.locator('svg.putt-green').getAttribute('viewBox');
 ok(vb0 !== vb1, 'dragging the free green moves the view');
 // a ball still drags when zoomed
-await ed.getByRole('button', { name: 'Auf die Putts' }).click();
 const ball = ed.locator('.putt-ball').first().locator('circle').nth(1);
 const bb = await ball.boundingBox();
 const before = (await ed.locator('.putt-dist text').first().textContent()).trim();
@@ -113,8 +116,9 @@ ok(movedPx > 15 && movedPx < 35, `finer: the ball moved ${Math.round(movedPx)} p
 ok((await ed.locator('.putt-readout').count()) === 0, 'the readout goes when the finger lifts');
 const after = (await ed.locator('.putt-dist text').first().textContent()).trim();
 ok(before !== after, `the first ball moved while zoomed (${before} → ${after})`);
-// the flag in the editor stays on the green too
-await ed.getByRole('button', { name: 'Ganzes Grün' }).click();
+// the flag in the editor stays on the green too – zoomed out again first
+await wheel(300, 20);
+await p.waitForTimeout(300);
 const pinG = ed.locator('.putt-pin circle').first();
 const pb = await pinG.boundingBox();
 const svgBox = await ed.locator('svg.putt-green').boundingBox();
@@ -131,7 +135,7 @@ const inGreen = await ed.locator('svg.putt-green').evaluate((svg) => {
   return poly.isPointInFill(pt);
 });
 ok(inGreen, 'editor: the flag dragged into the corner stays on the green');
-ok((await ed.getByRole('button', { name: 'Ganzes Grün' }).count()) === 0 && !(await ed.getByRole('button', { name: 'Herauszoomen' }).isEnabled()), '"Ganzes Grün" shows the whole green again (not zoomed)');
+ok(Math.abs((await width()) - w0) < 0.5, 'zoomed out again: the whole green');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/puttzoom.png' });
 await ed.getByRole('button', { name: 'Putts speichern' }).click();
 await p.waitForTimeout(400);

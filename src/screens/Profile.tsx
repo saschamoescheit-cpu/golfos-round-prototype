@@ -12,6 +12,7 @@ import { STANDARD_CLUBS } from '../lib/clubs';
 import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, saveProfile, type Profile } from '../lib/profile';
 import { isTestMode, setTestMode } from '../lib/testmode';
+import { loadSession, signOut } from '../lib/sync';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
@@ -23,6 +24,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [picking, setPicking] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const [rev, setRev] = useState(0);
+  const [session, setSession] = useState(loadSession);
   useEffect(() => {
     const on = () => {
       const a = document.activeElement;
@@ -63,7 +65,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       <h1 className="tab-title">{tr('Profile', 'Profil')}</h1>
 
       {/* the Google sign-in first (Sascha 16.10.2026): it brings the name and the photo */}
-      <SyncCard onSignedIn={() => setP(loadProfile())} />
+      <SyncCard onSignedIn={() => { setP(loadProfile()); setSession(loadSession()); }} />
 
       <section className="card stats-card">
         <h2>{tr('About you', 'Persönliche Daten')}</h2>
@@ -72,9 +74,26 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             <Avatar name={p.firstName || '?'} me size={72} />
             <span className="profile-photo-edit" aria-hidden="true">✎</span>
           </button>
-          <span className="muted small">{p.photo ? tr('Tap the photo to change it.', 'Tippe aufs Bild, um es zu ändern.') : tr('Tap to add a photo.', 'Tippe, um ein Bild hinzuzufügen.')}</span>
-          {p.photo && (
-            <button type="button" className="link-btn muted small" onClick={() => set({ photo: undefined })}>
+          {session ? (
+            <span className="profile-account">
+              <span className="small">{tr('Signed in with Google', 'Mit Google angemeldet')}</span>
+              {session.email && <span className="muted small">{session.email}</span>}
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => {
+                  signOut();
+                  setSession(null);
+                }}
+              >
+                {tr('Sign out', 'Abmelden')}
+              </button>
+            </span>
+          ) : (
+            <span className="muted small">{p.photo ? tr('Tap the photo to change it.', 'Tippe aufs Bild, um es zu ändern.') : tr('Tap to add a photo.', 'Tippe, um ein Bild hinzuzufügen.')}</span>
+          )}
+          {p.photo && !session && (
+            <button type="button" className="btn-ghost" onClick={() => set({ photo: undefined })}>
               {tr('Remove', 'Entfernen')}
             </button>
           )}
@@ -177,8 +196,8 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           setTestModeState(!testMode);
         }}>
           <span className="switch-label">
-            <span>{tr('Track shots by hand', 'Schläge von Hand erfassen')}</span>
-            <span className="muted small">{tr('"Shot here" on the map, at the ball – to compare with the detection', '„Schlag hier“ auf der Karte, am Ball – zum Vergleich mit der Erkennung')}</span>
+            <span>{tr('Export rounds', 'Runden exportieren')}</span>
+            <span className="muted small">{tr('In "Check shots" – for the shot detection', 'In „Schläge prüfen“ – für die Schlagerkennung')}</span>
           </span>
           <span className={`drawer-switch${testMode ? ' on' : ''}`} aria-hidden="true" />
         </button>

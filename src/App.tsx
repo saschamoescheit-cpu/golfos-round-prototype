@@ -4,7 +4,7 @@ import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCache
 import { commitParAt } from './lib/scoring';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
-import { finishSignIn, syncNow, syncSoon } from './lib/sync';
+import { finishSignIn, syncNow, syncSoon, watchChanges } from './lib/sync';
 import { PlayTab, RoundsTopBar } from './screens/Play';
 import { RoundsTab, uncheckedRounds } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
@@ -159,8 +159,10 @@ export function App() {
   // sync with the other devices (feature 013): after the Google login, on start, when the app comes back, every few
   // minutes and shortly after a change – only when signed in and online
   useEffect(() => {
+    watchChanges();
     finishSignIn().finally(() => syncNow());
-    const onShow = () => document.visibilityState === 'visible' && syncNow();
+    // back to the app: fetch what the other devices changed; leaving it (another tab, the phone locked): send ours
+    const onShow = () => syncNow();
     document.addEventListener('visibilitychange', onShow);
     const t = window.setInterval(() => syncNow(), 3 * 60 * 1000);
     return () => {

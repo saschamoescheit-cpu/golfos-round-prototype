@@ -357,10 +357,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       )}
       {data && (
         <div className="review-map">
-          {/* aerial image or 2D, as on the course */}
-          <button type="button" className="review-view chip" aria-pressed={view2d} onClick={toggleView}>
-            {view2d ? tr('Aerial', 'Luftbild') : '2D'}
-          </button>
+          {/* aerial image or 2D – the same tool as on the course (Sascha 17.10.2026: "looks different again") */}
+          <div className="map-toolbar review-tools">
+            <button type="button" className="map-tool" aria-pressed={view2d} aria-label={view2d ? tr('Aerial image', 'Luftbild zeigen') : tr('Drawn hole (2D)', 'Gezeichnetes Loch (2D)')} title="2D" onClick={toggleView}>
+              <span className="map-tool-text">2D</span>
+            </button>
+          </div>
           <HoleMap
             holeKey={`review-${k}`}
             plain

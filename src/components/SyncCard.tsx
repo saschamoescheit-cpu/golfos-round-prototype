@@ -26,6 +26,8 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
   if (!syncConfigured()) return null;
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const when = last ? new Date(last).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+  // signed in, all well: no card – who is signed in stands by the profile photo (Sascha 17.10.2026)
+  if (session && !err && !msg && replaced.length === 0) return null;
   return (
     <section className="card stats-card">
       <h2>{tr('On all your devices', 'Auf allen Geräten')}</h2>

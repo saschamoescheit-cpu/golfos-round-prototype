@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { SpeakerIcon } from '../components/SpeakerIcon';
+import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
 import type { Course } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
@@ -497,7 +497,7 @@ export function FormRules(props: { form: FormDef }) {
         ))}
       </ul>
       <button type="button" className="btn-secondary read-rules" aria-pressed={talking} onClick={() => toggleSpeak(rulesSpoken(props.form))}>
-        {talking ? tr('■ Stop reading', '■ Vorlesen stoppen') : <><SpeakerIcon /> {tr('Read the rules aloud', 'Spielform vorlesen')}</>}
+        <SpeakerIcon /> {tr('Read the rules aloud', 'Spielform vorlesen')}
       </button>
     </>
   );
@@ -1017,11 +1017,12 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
   const g = props.game;
   const st = standingOf(g);
   const hasMoney = st.money && Object.values(st.money).some((v) => Math.abs(v) > 0.001);
+  const talking = useSpeaking();
   return (
     <section className="card game-standing" aria-label={tr('Standing', 'Zwischenstand')}>
       <div className="game-standing-head">
         <span className="eyebrow">{props.final ? tr('Result', 'Ergebnis') : tr('Standing', 'Zwischenstand')}</span>
-        <button type="button" className="use-btn small" aria-label={tr('Read the standing aloud', 'Zwischenstand vorlesen')} title={tr('Read aloud', 'Vorlesen')} onClick={() => toggleSpeak(standingText(g, true))}>
+        <button type="button" className="use-btn small" aria-label={tr('Read the standing aloud', 'Zwischenstand vorlesen')} title={tr('Read aloud', 'Vorlesen')} aria-pressed={talking} onClick={() => toggleSpeak(standingText(g, true))}>
           <SpeakerIcon size={16} />
         </button>
       </div>

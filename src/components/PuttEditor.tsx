@@ -11,6 +11,9 @@ import { dec, tr } from '../lib/i18n';
 const M_LAT = 110540;
 const mLon = (lat: number) => 111320 * Math.cos((lat * Math.PI) / 180);
 
+/** The zoom buttons over the green – off: pinch and drag are enough (Sascha 17.10.2026). */
+const SHOW_ZOOM_BUTTONS = false;
+
 export function PuttEditor(props: {
   title: string;
   green: LngLat[] | null; // outline of the green (null: only the centre is known)
@@ -170,25 +173,25 @@ export function PuttEditor(props: {
             ✓
           </button>
         </div>
-        <p className="muted small" style={{ margin: 0 }}>
-          {tr('Drag the flag to the hole and each ball to where it lay before the putt.', 'Ziehe die Fahne zum Loch und jeden Ball dorthin, wo er vor dem Putt lag.')}
-        </p>
-        <div className="putt-zoom" role="group" aria-label={tr('Zoom', 'Zoom')}>
-          <button type="button" className="chip" aria-label={tr('Zoom out', 'Herauszoomen')} disabled={view.zoom <= 1} onClick={() => zoomBy(1 / 1.6)}>
-            −
-          </button>
-          <button type="button" className="chip" aria-label={tr('Zoom in', 'Hineinzoomen')} disabled={view.zoom >= MAX_ZOOM} onClick={() => zoomBy(1.6)}>
-            +
-          </button>
-          <button type="button" className="chip" onClick={toPutts}>
-            {tr('Onto the putts', 'Auf die Putts')}
-          </button>
-          {view.zoom > 1 && (
-            <button type="button" className="chip" onClick={() => setView({ zoom: 1, cx: 0, cy: 0 })}>
-              {tr('Whole green', 'Ganzes Grün')}
+        {/* no explanation, no zoom buttons (Sascha 17.10.2026) – two fingers zoom and move the green */}
+        {SHOW_ZOOM_BUTTONS && (
+          <div className="putt-zoom" role="group" aria-label={tr('Zoom', 'Zoom')}>
+            <button type="button" className="chip" aria-label={tr('Zoom out', 'Herauszoomen')} disabled={view.zoom <= 1} onClick={() => zoomBy(1 / 1.6)}>
+              −
             </button>
-          )}
-        </div>
+            <button type="button" className="chip" aria-label={tr('Zoom in', 'Hineinzoomen')} disabled={view.zoom >= MAX_ZOOM} onClick={() => zoomBy(1.6)}>
+              +
+            </button>
+            <button type="button" className="chip" onClick={toPutts}>
+              {tr('Onto the putts', 'Auf die Putts')}
+            </button>
+            {view.zoom > 1 && (
+              <button type="button" className="chip" onClick={() => setView({ zoom: 1, cx: 0, cy: 0 })}>
+                {tr('Whole green', 'Ganzes Grün')}
+              </button>
+            )}
+          </div>
+        )}
         <div className="putt-wrap">
         {active != null && (
           <div className="putt-readout" aria-live="polite">

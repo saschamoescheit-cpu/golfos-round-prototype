@@ -44,7 +44,6 @@ import { swingMark, withPartials } from '../lib/partials';
 import { FairwayPicker } from '../components/FairwayPicker';
 import { HoleDrawer } from '../components/HoleDrawer';
 import { statRounds } from '../lib/signing';
-import { isTestMode } from '../lib/testmode';
 
 const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f));
 
@@ -579,7 +578,6 @@ export function HoleScreen(props: {
     const t = setTimeout(() => setUndo(null), 6000);
     return () => clearTimeout(t);
   }, [undo]);
-  const testMode = isTestMode();
   const [testMsg, setTestMsg] = useState<string | null>(null);
   useEffect(() => {
     if (!testMsg) return;
@@ -1016,6 +1014,31 @@ export function HoleScreen(props: {
               </svg>
             </button>
           )}
+          {/* the ball's spot by hand, at the ball: the truth for the shot detection – on the map for every round, not
+              in the profile (Sascha 17.10.2026); the detection from the GPS track runs as always, both kept to compare */}
+          {!round.preview && !props.game && (
+            <button
+              type="button"
+              className="map-tool shot-tool"
+              disabled={!player}
+              aria-label={tr('Note the ball here', 'Schlag hier erfassen')}
+              title={tr('Shot here', 'Schlag hier')}
+              onClick={() => {
+                if (!player) return;
+                const mine = (round.manualShots ?? []).filter((x) => x.hole === i).length;
+                props.onChange({ ...round, manualShots: [...(round.manualShots ?? []), { hole: i, pos: player.pos, t: Date.now(), acc: Math.round(player.accuracy) }] });
+                setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted (±${Math.round(player.accuracy)} m)`, `Schlag ${mine + 1} an ${hole.label} erfasst (±${Math.round(player.accuracy)} m)`));
+              }}
+            >
+              {/* a club with a plus */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 3l7 14" />
+                <path d="M13 17c-.6 1.6-2.4 2.6-4.6 2.3l-.6-1.6c1.6.1 3-.3 3.8-1.4z" />
+                <path d="M18 5v6M15 8h6" />
+              </svg>
+              {(round.manualShots ?? []).some((x) => x.hole === i) && <span className="tool-badge shot-count">{(round.manualShots ?? []).filter((x) => x.hole === i).length}</span>}
+            </button>
+          )}
           <button type="button" className="map-tool" aria-pressed={view2d} aria-label={view2d ? tr('Aerial image', 'Luftbild zeigen') : tr('Drawn hole (2D)', 'Gezeichnetes Loch (2D)')} title="2D" onClick={toggleView}>
             <span className="map-tool-text">2D</span>
           </button>
@@ -1257,40 +1280,25 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
-          {/* test mode: the ball's spot by hand – the truth for the shot detection (Sascha 16.10.2026) */}
-          {testMode && !round.preview && !scoreSheet && (
+          {/* the ball's spot by hand noted (the map tool) – a toast with undo */}
+          {testMsg && !scoreSheet && (
             <div className="test-shot-row">
-              <button
-                type="button"
-                className="btn-primary test-shot"
-                disabled={!player}
-                onClick={() => {
-                  if (!player) return;
-                  const mine = (round.manualShots ?? []).filter((x) => x.hole === i).length;
-                  props.onChange({ ...round, manualShots: [...(round.manualShots ?? []), { hole: i, pos: player.pos, t: Date.now(), acc: Math.round(player.accuracy) }] });
-                  setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted (±${Math.round(player.accuracy)} m)`, `Schlag ${mine + 1} an ${hole.label} erfasst (±${Math.round(player.accuracy)} m)`));
-                }}
-              >
-                {tr('Shot here', 'Schlag hier')} · {((round.manualShots ?? []).filter((x) => x.hole === i).length) + 1}
-              </button>
-              {testMsg && (
-                <span className="map-hint detected" role="status">
-                  <span>✓ {testMsg}</span>
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={() => {
-                      const list = (round.manualShots ?? []).slice();
-                      const last = list.map((x) => x.hole).lastIndexOf(i);
-                      if (last >= 0) list.splice(last, 1);
-                      props.onChange({ ...round, manualShots: list });
-                      setTestMsg(null);
-                    }}
-                  >
-                    {tr('Undo', 'Rückgängig')}
-                  </button>
-                </span>
-              )}
+              <span className="map-hint detected" role="status">
+                <span>✓ {testMsg}</span>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => {
+                    const list = (round.manualShots ?? []).slice();
+                    const last = list.map((x) => x.hole).lastIndexOf(i);
+                    if (last >= 0) list.splice(last, 1);
+                    props.onChange({ ...round, manualShots: list });
+                    setTestMsg(null);
+                  }}
+                >
+                  {tr('Undo', 'Rückgängig')}
+                </button>
+              </span>
             </div>
           )}
           {undo && undo.hole === i && !placing && (

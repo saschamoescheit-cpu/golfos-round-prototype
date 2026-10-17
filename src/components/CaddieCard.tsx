@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SpeakerIcon } from './SpeakerIcon';
+import { SpeakerIcon, useSpeaking } from './SpeakerIcon';
 import { answer, canListen, listen, RULES, speak, summary, toggleSpeak, type CaddieFacts } from '../lib/caddietalk';
 import type { HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
@@ -26,6 +26,7 @@ export function CaddieCard(props: {
   // the player opened the caddie: everything at once (Sascha 15.10.2026); no folding – shown or hidden from the
   // map's menu (Sascha 16.10.2026: "den kleinen Einklapppfeil brauchen wir nicht")
   const [sheet, setSheet] = useState<'ask' | 'rules' | 'notes' | null>(null);
+  const talking = useSpeaking();
   const f = props.facts;
   // at most three lines (Sascha 16.10.2026: "der Caddie hat viel zu viele Informationen"): the head – club, distance,
   // plays like –, then the instruction (his plan, or the caddie's aim) and the one danger that matters. The rest is
@@ -62,7 +63,7 @@ export function CaddieCard(props: {
         )}
         <div className="caddie-actions">
           {/* read aloud exactly what the card says */}
-          <button type="button" onClick={() => toggleSpeak(SHOW_DETAILS ? summary(f) : [`${f.club}.`, head + '.', ...shown.map((l) => l.text)].join(' '))} aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')}>
+          <button type="button" onClick={() => toggleSpeak(SHOW_DETAILS ? summary(f) : [`${f.club}.`, head + '.', ...shown.map((l) => l.text)].join(' '))} aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')} aria-pressed={talking}>
             <SpeakerIcon />
           </button>
           <button type="button" onClick={() => setSheet('ask')}>

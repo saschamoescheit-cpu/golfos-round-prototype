@@ -1,5 +1,5 @@
 import { Component, useMemo, useState, type ReactNode } from 'react';
-import { SpeakerIcon } from './SpeakerIcon';
+import { SpeakerIcon, useSpeaking } from './SpeakerIcon';
 import type { Round } from '../types';
 import { roundSummary } from '../lib/summary';
 import { SG_LABELS } from '../lib/sg';
@@ -20,13 +20,14 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
   const s = useMemo(() => roundSummary(props.round, props.history), [props.round, props.history]);
   if (!s) return null;
   const minutes = s.plan.reduce((t, d) => t + d.minutes, 0);
+  const talking = useSpeaking();
   const read = () => toggleSpeak([s.headline, ...s.lines.map((l) => l.text), s.nextRound ?? ''].join(' '));
   const [taken, setTaken] = useState<string | null>(null);
   return (
     <section className="card stats-card round-summary">
       <div className="row">
         <h2>{tr('Your round summary', 'Dein Rundenfazit')}</h2>
-        <button type="button" className="icon-btn" aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')} onClick={read}>
+        <button type="button" className="icon-btn" aria-label={tr('Read aloud or stop', 'Vorlesen oder stoppen')} aria-pressed={talking} onClick={read}>
           <SpeakerIcon />
         </button>
       </div>
