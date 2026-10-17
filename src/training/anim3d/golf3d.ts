@@ -176,7 +176,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   renderer.toneMappingExposure = 1.25;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#cfe6f5');
-  scene.fog = new THREE.Fog('#cfe6f5', 7, 14);
+  scene.fog = new THREE.Fog('#cfe6f5', 9, 26);
   scene.add(new THREE.HemisphereLight('#ffffff', '#7cb257', 1.5));
   const sun = new THREE.DirectionalLight('#ffffff', 2.1);
   sun.position.set(2.2, 4.5, 3.2);
@@ -190,7 +190,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   fill.position.set(-3, 2.5, -2);
   scene.add(fill);
   const floorMat = (c: string) => new THREE.MeshStandardMaterial({ color: c, roughness: 1 });
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(8, 48), floorMat('#7cb257'));
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(30, 64), floorMat('#7cb257'));
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
@@ -199,6 +199,18 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   pad.position.y = 0.001;
   pad.receiveShadow = true;
   scene.add(pad);
+  // the target: a flag on a small green down the target line – from behind it shows where the ball is meant to go
+  const green = new THREE.Mesh(new THREE.CircleGeometry(1.1, 40), floorMat('#93c86c'));
+  green.rotation.x = -Math.PI / 2;
+  green.position.set(6.4, 0.002, 0.3);
+  scene.add(green);
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 2.1, 8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.5 }));
+  pin.position.set(6.4, 1.05, 0.3);
+  scene.add(pin);
+  const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.32), new THREE.MeshStandardMaterial({ color: '#79a128', roughness: 0.8, side: THREE.DoubleSide }));
+  cloth.position.set(6.4, 1.92, 0.3 - 0.25);
+  cloth.rotation.y = Math.PI / 2;
+  scene.add(cloth);
 
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
 
