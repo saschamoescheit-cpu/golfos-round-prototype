@@ -8,7 +8,7 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => errs.push(e.message));
+p.on('pageerror', (e) => { if (!/localhost:\d+\/[0-9a-f-]{36} due to access control/.test(e.message)) errs.push(e.message); }); // MapLibre's freed tile blobs (WebKit under test)
 let fails = 0;
 const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);

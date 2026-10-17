@@ -10,7 +10,9 @@ const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftsh
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.78, longitude: 9.69, accuracy: 6 }, permissions: ['geolocation'] });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => errs.push(e.message));
+// MapLibre loads map tiles through blob: addresses and frees them once drawn – WebKit under test now and then reports
+// the freed one ("…localhost:5173/<uuid> due to access control checks"); the tile is on the map, nothing is wrong
+p.on('pageerror', (e) => { if (!/localhost:\d+\/[0-9a-f-]{36} due to access control/.test(e.message)) errs.push(e.message); });
 const out = { course: search + (option ? ' ' + option : ''), holes: 0, wrongHole: [], shots: '', exact: 0, caddie: '', errors: [] };
 
 await p.goto(url);

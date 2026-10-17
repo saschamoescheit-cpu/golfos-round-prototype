@@ -11,7 +11,9 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => errs.push(e.message));
+// MapLibre loads map tiles through blob: addresses and frees them once drawn – WebKit under test now and then reports
+// the freed one ("…localhost:5173/<uuid> due to access control checks"); the tile is on the map, nothing is wrong
+p.on('pageerror', (e) => { if (!/localhost:\d+\/[0-9a-f-]{36} due to access control/.test(e.message)) errs.push(e.message); });
 const ok = (cond, what) => console.log(`${cond ? '✓' : '✗'} ${what}`);
 
 await p.goto(url);
@@ -41,6 +43,8 @@ await p.evaluate(
     // hole 1: the putts placed on the course (Sascha 16.10.2026: they must show in the check and stay editable)
     r.entries[id][0].puttsAt = { pin: [9.69356755600646, 48.781410881427405], balls: [[9.6935, 48.78134], [9.693562, 48.781402]] };
     r.finishedAt = new Date().toISOString();
+    // hole 2 noted by hand on the course: the tee shot and the ball on the green
+    r.manualShots = [{ hole: 1, pos: truth[1].shots[0], t: 1, acc: 3 }, { hole: 1, pos: truth[1].green, t: 2, acc: 3 }];
     localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
     localStorage.setItem('golfos.track.v1.' + r.id, JSON.stringify(track));
     sessionStorage.setItem('golfos.paused', r.id);
@@ -146,6 +150,22 @@ const before2 = (await order()).length;
 await p.getByRole('button', { name: 'Schlag 1 löschen' }).click();
 await p.waitForTimeout(400);
 ok((await order()).length === before2 - 1 && (await p.locator('.sheet').count()) === 0, 'the bin in the row deletes the shot, no sheet');
+// hole 2: the shots noted by hand on the course taken over with one tap, undo brings the others back
+await p.getByRole('button', { name: 'Nächstes Loch' }).first().click();
+await p.waitForTimeout(1200);
+const det2 = () => p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][1].detail);
+const before2d = JSON.stringify((await det2())?.shots ?? []);
+const take = p.getByRole('button', { name: /von Hand erfassten Schläge übernehmen/ });
+ok((await take.count()) === 1 && /Die 2 von Hand/.test(await take.innerText()), 'hole 2: "Die 2 von Hand erfassten Schläge übernehmen"');
+await take.click();
+await p.waitForTimeout(500);
+const after2 = await det2();
+ok(after2.shots.length === 1 && after2.shots[0].lie === 'tee' && Array.isArray(after2.onGreen), `taken over: the tee shot and the ball on the green (${after2.shots.length} shot)`);
+await p.locator('.notice').getByRole('button', { name: 'Rückgängig' }).click();
+await p.waitForTimeout(400);
+ok(JSON.stringify((await det2())?.shots ?? []) === before2d, 'undo brings the shots before back');
+await p.getByRole('button', { name: 'Voriges Loch' }).first().click();
+await p.waitForTimeout(800);
 // hole 7: the penalty from the course
 for (let k = 0; k < 10; k++) {
   const n = Number((await p.locator('.review-nav').innerText()).match(/Loch ([0-9])/)[1]);

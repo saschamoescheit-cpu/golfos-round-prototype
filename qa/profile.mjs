@@ -7,7 +7,9 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => errs.push(e.message));
+// MapLibre loads map tiles through blob: addresses and frees them once drawn – WebKit under test now and then reports
+// the freed one ("…localhost:5173/<uuid> due to access control checks"); the tile is on the map, nothing is wrong
+p.on('pageerror', (e) => { if (!/localhost:\d+\/[0-9a-f-]{36} due to access control/.test(e.message)) errs.push(e.message); });
 let fails = 0;
 const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
@@ -142,6 +144,39 @@ ok((await planSheet.locator('.pick-option').count()) === 3, 'the choice in a she
 await planSheet.locator('.pick-option').filter({ hasText: /^Sicher/ }).click();
 await p.waitForTimeout(200);
 ok(/Sicher/.test(await planRow.innerText()) && (await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.caddie.v1')).style)) === 'safe', 'Sicher chosen and kept');
+// a new photo: placed and zoomed by hand before it is used (Sascha 17.10.2026)
+{
+  // a 400 × 300 test picture: left half green, right half white
+  const png = await p.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 400; c.height = 300;
+    const g = c.getContext('2d');
+    g.fillStyle = '#2e7d32'; g.fillRect(0, 0, 200, 300);
+    g.fillStyle = '#ffffff'; g.fillRect(200, 0, 200, 300);
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  await p.locator('input[type=file][accept="image/*"]').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  const crop = p.getByRole('dialog', { name: 'Profilbild anpassen' });
+  await crop.waitFor({ timeout: 5000 });
+  ok(await crop.isVisible(), 'a new photo opens the cropper');
+  await crop.getByRole('slider', { name: 'Zoom' }).fill('2');
+  const fb = await crop.locator('.crop-frame').boundingBox();
+  await p.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+  await p.mouse.down();
+  await p.mouse.move(fb.x + fb.width / 2 + 200, fb.y + fb.height / 2, { steps: 6 }); // the left (green) half into the frame
+  await p.mouse.up();
+  await crop.getByRole('button', { name: 'Bild übernehmen' }).click();
+  await p.waitForTimeout(300);
+  const centre = await p.evaluate(async () => {
+    const src = JSON.parse(localStorage.getItem('golfos.profile.v1')).photo;
+    const i = new Image();
+    await new Promise((r) => { i.onload = r; i.src = src; });
+    const c = document.createElement('canvas'); c.width = i.width; c.height = i.height;
+    const g = c.getContext('2d'); g.drawImage(i, 0, 0);
+    return { w: i.width, px: [...g.getImageData(i.width / 2, i.height / 2, 1, 1).data] };
+  });
+  ok(centre.w === 160 && centre.px[1] > 100 && centre.px[0] < 120, `the photo saved as placed: 160 px, the green half in the middle (${centre.px.slice(0, 3).join(',')})`);
+}
 ok(errs.length === 0, `no page errors in the app ${errs.slice(0, 2).join(' | ')}`); // Google's own page may log its own
 await p.getByRole('button', { name: 'Mit Google anmelden' }).click();
 await p.waitForURL(/accounts\.google\.com/, { timeout: 20000 }).catch(() => {});

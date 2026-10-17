@@ -85,6 +85,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // cannot") – also right beside another shot or on the green's edge, where a plain tap would open that shot
   const [adding, setAdding] = useState(false);
   useEffect(() => setAdding(false), [k]);
+  const [undoHand, setUndoHand] = useState<{ k: number; detail: DetailEntry } | null>(null);
+  useEffect(() => setUndoHand(null), [k]);
   // reorder the shots: hold the grip and move up or down (Sascha 17.10.2026)
   const listRef = useRef<HTMLOListElement>(null);
   const latestShots = useRef<Shot[]>([]);
@@ -346,6 +348,18 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     { strokes: 0, par: 0, holes: 0 },
   );
   latestShots.current = d?.shots ?? [];
+  const hand = (round.manualShots ?? []).filter((x) => x.hole === k);
+  const takeHand = () => {
+    if (!data || !hand.length) return;
+    const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
+    const pinNow = base.pin ?? data.greenCenter;
+    const onGreen = hand.map((x) => x.pos).filter((p) => onGreenSpot(p, data));
+    const off = hand.map((x) => x.pos).filter((p) => !onGreenSpot(p, data)).sort((a, b) => distanceM(b, pinNow) - distanceM(a, pinNow));
+    const shots: Shot[] = off.map((pos, n) => ({ pos, lie: lieFor(pos, n, data), club: null, penalty: false }));
+    if (!shots.length || !nearTee(shots[0].pos!, data)) shots.unshift({ pos: teeSpot(part, data) ?? data.tee, lie: 'tee', club: null, penalty: false });
+    setUndoHand({ k, detail: base });
+    saveDetail(k, withClubs({ ...base, shots, onGreen: onGreen[0] ?? base.onGreen, holedOut: false }));
+  };
   reorderRef.current = (from: number, to: number) => {
     if (!d) return;
     const shots = d.shots.slice();
@@ -543,6 +557,27 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             }}
           >
             <ShotHereIcon size={20} />
+          </button>
+        </div>
+      )}
+      {data && hand.length > 0 && !(undoHand && undoHand.k === k) && (
+        <button type="button" className="btn-ghost hand-take" onClick={takeHand}>
+          <ShotHereIcon size={18} />
+          {tr(`Use the ${hand.length} shots noted by hand`, `Die ${hand.length} von Hand erfassten Schläge übernehmen`)}
+        </button>
+      )}
+      {undoHand && undoHand.k === k && (
+        <div className="notice" role="status">
+          {tr('The shots noted by hand are the hole’s shots now.', 'Die von Hand erfassten Schläge sind jetzt die Schläge des Lochs.')}{' '}
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => {
+              saveDetail(k, undoHand.detail);
+              setUndoHand(null);
+            }}
+          >
+            {tr('Undo', 'Rückgängig')}
           </button>
         </div>
       )}

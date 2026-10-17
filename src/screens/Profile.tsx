@@ -8,6 +8,7 @@ import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { CoursePicker } from './CoursePicker';
 import { SyncCard } from '../components/SyncCard';
 import { Avatar } from '../components/Avatar';
+import { PhotoCropper } from '../components/PhotoCropper';
 import { STANDARD_CLUBS } from '../lib/clubs';
 import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, profileIndex, saveProfile, type Profile } from '../lib/profile';
@@ -23,6 +24,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [picking, setPicking] = useState(false);
   const [sgPick, setSgPick] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
+  const [cropping, setCropping] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
   const [session, setSession] = useState(loadSession);
   useEffect(() => {
@@ -131,6 +133,16 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
               {tr('Remove', 'Entfernen')}
             </button>
           )}
+          {cropping && (
+            <PhotoCropper
+              src={cropping}
+              onCancel={() => setCropping(null)}
+              onSave={(photo) => {
+                set({ photo });
+                setCropping(null);
+              }}
+            />
+          )}
           <input
             ref={photoInput}
             type="file"
@@ -139,7 +151,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             onChange={async (e) => {
               const f = e.target.files?.[0];
               e.target.value = '';
-              if (f) set({ photo: await shrinkPhoto(f) });
+              if (f) setCropping(await readPhoto(f)); // placed and zoomed by hand first (Sascha 17.10.2026)
             }}
           />
         </div>
@@ -243,24 +255,25 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   );
 }
 
-/** A chosen photo as a small square JPEG (160 px) – small enough to keep on the phone and to sync. */
-async function shrinkPhoto(file: File): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((ok, fail) => {
-      const i = new Image();
-      i.onload = () => ok(i);
-      i.onerror = fail;
-      i.src = url;
-    });
-    const n = 160;
-    const c = document.createElement('canvas');
-    c.width = n;
-    c.height = n;
-    const side = Math.min(img.width, img.height);
-    c.getContext('2d')!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, n, n);
-    return c.toDataURL('image/jpeg', 0.82);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+/** A chosen photo read as a data address, at most 1600 px – the cropper places and zooms it. */
+async function readPhoto(file: File): Promise<string> {
+  const raw = await new Promise<string>((ok, fail) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result));
+    r.onerror = fail;
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((ok, fail) => {
+    const i = new Image();
+    i.onload = () => ok(i);
+    i.onerror = fail;
+    i.src = raw;
+  });
+  const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+  if (k === 1) return raw;
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * k);
+  c.height = Math.round(img.height * k);
+  c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.9);
 }

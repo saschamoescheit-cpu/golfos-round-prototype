@@ -7,7 +7,9 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => errs.push(e.message));
+// MapLibre loads map tiles through blob: addresses and frees them once drawn – WebKit under test now and then reports
+// the freed one ("…localhost:5173/<uuid> due to access control checks"); the tile is on the map, nothing is wrong
+p.on('pageerror', (e) => { if (!/localhost:\d+\/[0-9a-f-]{36} due to access control/.test(e.message)) errs.push(e.message); });
 let fails = 0;
 const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
@@ -72,6 +74,7 @@ const id = await p.evaluate(async () => {
   const r = S.loadRounds()[0];
   localStorage.setItem('golfos.track.v1.' + r.id, JSON.stringify([[1, 2, 3, 4]]));
   S.saveRound({ ...r, finishedAt: new Date().toISOString() });
+  S.saveRound({ ...r, id: r.id + '-kept', finishedAt: new Date().toISOString() }); // one that stays in the list
   S.deleteRound(r.id, true);
   return r.id;
 });
@@ -84,6 +87,7 @@ ok((await toggle.innerText()).replace(/\s+/g, ' ').trim() === '1 gelöscht', 'Ro
 await toggle.click();
 await p.waitForTimeout(300);
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/bin.png' });
+ok((await p.locator('ul.list button.list-item').count()) === 0 && (await p.locator('li.bin-item').count()) === 1, 'the bin tile shows only the deleted rounds, no others below');
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(600);
 const back = await p.evaluate((rid) => ({ round: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').some((r) => r.id === rid), track: localStorage.getItem('golfos.track.v1.' + rid) != null, bin: JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length }), id);

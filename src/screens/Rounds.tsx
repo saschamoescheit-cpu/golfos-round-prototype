@@ -151,7 +151,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
         </ul>
       )}
 
-      {filter === 'paused' ? null : finished.length === 0 ? (
+      {filter === 'paused' || filter === 'bin' ? null : finished.length === 0 ? (
         <p className="muted">{tr('Your finished rounds show up here.', 'Hier erscheinen deine beendeten Runden.')}</p>
       ) : (
         <ul className="list">
