@@ -102,9 +102,12 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
     const worst = gaps[0];
     if (worst.d < -0.5) {
       const m = SG_TO_CAT[worst.c];
+      // 9-hole players: per 9 holes, like the Rounds SG card with base 9 (17.10.2026) – never doubled
+      const shown = nine ? worst.d / 2 : worst.d;
+      const per = nine ? tr('per 9 holes', 'je 9 Löcher') : tr('per round', 'pro Runde');
       add({
         cat: m.cat,
-        why: tr(`Strokes gained ${SG_NAME(worst.c)}: ${worst.d.toFixed(1)} per round against your handicap group`, `Strokes Gained ${SG_NAME(worst.c)}: ${worst.d.toFixed(1).replace('.', ',')} pro Runde gegenüber deiner Handicap-Gruppe`),
+        why: tr(`Strokes gained ${SG_NAME(worst.c)}: ${shown.toFixed(1)} ${per} against your handicap group`, `Strokes Gained ${SG_NAME(worst.c)}: ${shown.toFixed(1).replace('.', ',')} ${per} gegenüber deiner Handicap-Gruppe`),
         drills: m.drills,
         weight: -worst.d / 2,
       });

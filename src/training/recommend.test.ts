@@ -32,6 +32,12 @@ describe('advice from 9-hole rounds', () => {
     expect(putting?.why).toMatch(/: 18 /); // 2 putts × 9 holes – the 9-hole value itself, not 36
   });
 
+  it('no advice for 9-hole players counts per 18 holes (putts, strokes gained …)', () => {
+    const advice = adviceFromRounds([round('a', 9, 3), round('b', 9, 3), round('c', 9, 2)]);
+    expect(advice.length).toBeGreaterThan(0);
+    for (const x of advice) expect(x.why, x.why).not.toMatch(/per round|pro Runde/);
+  });
+
   it('18-hole rounds stay per round', () => {
     const advice = adviceFromRounds([round('a', 18, 2), round('b', 18, 2)]);
     const putting = advice.find((a) => a.cat === 'putting');
