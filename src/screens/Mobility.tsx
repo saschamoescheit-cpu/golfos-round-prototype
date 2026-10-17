@@ -11,7 +11,11 @@ import { VideoCard, VideoNote } from '../training/ui';
 import { saveOwnPlan, trainingId } from '../training/store';
 import type { Drill, L } from '../training/types';
 import { DRILL_CLIPS, RETEST_CLIPS } from '../mobility/anim3d/drills';
-import { CameraTest, gradeName, sideText, unlockAudio } from '../mobility/CameraTest';
+import { CLIPS } from '../mobility/anim3d/clips';
+import type { Clip } from '../mobility/anim3d/scene';
+import type { Coach } from '../mobility/CameraTest';
+import { CameraTest, gradeName, isFakeCamera, sideText, unlockAudio } from '../mobility/CameraTest';
+import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
@@ -504,25 +508,42 @@ function withCause(s: Screening, cause: SquatCause): Screening {
   return { ...s, results: { ...s.results, 'deep-squat': { ...r, both: { ...r.both, cause, notes: [...(r.both.notes ?? []), CAUSE_NOTE[cause]] } } } };
 }
 
-/** The deep squat missed – one more try with the hands behind the head shows where the limit sits. */
-function WhyCheck(props: { onCamera: () => void; onSkip: () => void }) {
+/** The setup of the trainer mode: where the phone goes, what you need, the tests – then one tap. */
+function CoachSetup(props: { screening: Screening; single: boolean; onStart: () => void; onSelf: () => void }) {
+  const cams = props.screening.tests.map(testById).filter((x) => x.mode === 'camera');
+  const selfs = props.screening.tests.map(testById).filter((x) => x.mode === 'self');
+  const needs = [...new Set(cams.map((x) => (x.needs ? t(x.needs) : '')).filter(Boolean))];
   return (
-    <section className="tr-block mob-why-check">
-      <Suspense fallback={<div className="mob-3d-wait" />}>
-        <Anim3D clip={RETEST_CLIPS.squatHands} />
-      </Suspense>
-      <section className="card tr-section">
-        <h2>{tr('Find the cause', 'Ursache finden')}</h2>
-        <p>{tr('The same squat with the hands behind the head. If it works now, the limit is in the shoulders and upper back – not in the legs.', 'Dieselbe Kniebeuge mit den Händen hinter dem Kopf. Geht es jetzt, liegt die Grenze in Schultern und oberem Rücken – nicht in den Beinen.')}</p>
-      </section>
-      <button type="button" className="btn-primary" onClick={props.onCamera}>
-        {tr('Start the camera', 'Kamera starten')}
-      </button>
-      <div className="mob-pills">
-        <button type="button" className="chip" onClick={props.onSkip}>
-          {tr('Go on without it', 'Ohne Nachtest weiter')}
-        </button>
+    <section className="tr-block mob-setup">
+      <h2>{tr('Set up the phone – once', 'Handy aufstellen – einmal')}</h2>
+      <PhoneSetup view="front" height="hip" />
+      <ol className="card tr-section tr-steps">
+        <li>{tr('Phone upright on a stand or against a bottle, at hip height, the screen towards you.', 'Handy hochkant auf ein Stativ oder an eine Flasche lehnen, auf Hüfthöhe, Bildschirm zu dir.')}</li>
+        <li>{tr('Step back 2.5–3 m, sound on. The app shows each test, then you copy it.', '2,5–3 m zurückgehen, Ton an. Die App macht jeden Test vor, dann machst du ihn nach.')}</li>
+        <li>{tr('It measures, says the result and goes on by itself – you only come back at the end.', 'Sie misst, sagt das Ergebnis und macht von selbst weiter – du kommst erst am Ende zurück.')}</li>
+      </ol>
+      {needs.length > 0 && (
+        <p className="muted small">
+          {tr('You need', 'Du brauchst')}: {needs.join(', ')}
+        </p>
+      )}
+      <div className="mob-setup-tests" aria-label={tr('The tests', 'Die Tests')}>
+        {cams.map((x) => (
+          <TestThumb key={x.id} test={x} />
+        ))}
       </div>
+      {!props.single && selfs.length > 0 && <p className="muted small">{tr(`Then ${selfs.length} short questions on the phone.`, `Danach ${selfs.length} kurze Fragen am Handy.`)}</p>}
+      <p className="muted small mob-private">{tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}</p>
+      <button type="button" className="btn-primary mob-start-coach" onClick={props.onStart}>
+        {tr('Start', 'Start')}
+      </button>
+      {props.single && (
+        <div className="mob-pills">
+          <button type="button" className="chip" onClick={props.onSelf}>
+            {tr('Judge it myself', 'Selbst einschätzen')}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -607,7 +628,16 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   const steps = stepsOf(s);
   const firstOpen = () => Math.max(0, steps.findIndex((st) => !stepDone(s, st)));
   const [k, setK] = useState<number>(() => firstOpen());
-  const [stage, setStage] = useState<'brief' | 'camera' | 'self' | 'feel' | 'why' | 'retest' | 'ankle'>('brief');
+  // the trainer mode (Sascha 17.10.2026): set up once, one tap – then the camera tests run one after the other
+  const [stage, setStage] = useState<'setup' | 'brief' | 'camera' | 'self' | 'feel' | 'retest' | 'ankle' | 'hold'>(() => (testById(steps[firstOpen()]?.test ?? s.tests[0]).mode === 'camera' ? 'setup' : 'brief'));
+  // questions that need a tap, asked after the camera part (the player stays away from the phone until then)
+  const [later, setLater] = useState<('feel' | 'ankle')[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const stopStream = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  };
+  useEffect(() => stopStream, []);
   const [drawer, setDrawer] = useState(false);
   const [exit, setExit] = useState<null | 'menu' | 'end'>(null);
   const barTouch = useRef<number | null>(null);
@@ -639,72 +669,177 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       else setExit('end');
     } else goTo(steps.findIndex((st) => !stepDone(cur, st)));
   };
-  const save = (m: Measurement) => {
-    const cur = withResult({ ...s, current: testIndex }, step.test, step.side, m);
-    store(cur);
-    // the other side of the same test: straight back to the camera, the player stays where they are
-    const open = steps.findIndex((st, i) => i > k && !stepDone(cur, st));
-    if (m.source === 'camera' && open >= 0 && steps[open].test === step.test) {
-      setK(open);
+  const isCam = (st: { test: TestId }) => testById(st.test).mode === 'camera';
+  /** the next open camera step (after this one, else any) */
+  const nextCam = (cur: Screening) => {
+    const after = steps.findIndex((st, i) => i > k && isCam(st) && !stepDone(cur, st));
+    return after >= 0 ? after : steps.findIndex((st) => isCam(st) && !stepDone(cur, st));
+  };
+  /** after a camera step: the next one straight away; at the end the questions, the self checks, the result */
+  const goOn = (cur: Screening, queue: ('feel' | 'ankle')[]) => {
+    const i = nextCam(cur);
+    if (i >= 0) {
+      setK(i);
       setStage('camera');
       return;
     }
-    // the bridge, both sides done: where did it work? (TPI: hamstrings or low back instead of the glutes = control)
-    const moreOfIt = steps.some((st, i) => i > k && st.test === step.test && !stepDone(cur, st));
-    if (step.test === 'bridge' && m.source === 'camera' && !m.pain && !moreOfIt) {
-      setStage('feel');
+    stopStream();
+    const selfOpen = steps.some((st) => !isCam(st) && !stepDone(cur, st));
+    if (queue.length || selfOpen) {
+      speak(tr('The camera tests are done. Now a few taps on the phone.', 'Die Kameratests sind fertig. Zum Schluss noch kurz ans Handy.'));
+      if (queue.length) {
+        setLater(queue);
+        setK(steps.findIndex((st) => st.test === (queue[0] === 'feel' ? 'bridge' : 'deep-squat')));
+        setStage(queue[0]);
+        return;
+      }
+      setStage('brief');
+      goTo(steps.findIndex((st) => !stepDone(cur, st)));
       return;
     }
-    // the deep squat missed: find the cause (TPI breakout) – hands behind the head, then the ankle if the heels came up
-    if (step.test === 'deep-squat' && m.source === 'camera' && m.grade !== 'pass' && !m.pain) {
-      setStage('why');
-      return;
-    }
-    setStage('brief');
-    next(cur);
+    // everything done: straight to the result
+    speak(tr('Done. Here is your result.', 'Fertig. Hier ist dein Ergebnis.'));
+    finish(cur);
   };
-  const setCause = (cause: SquatCause | null) => {
-    const cur = cause ? withCause(s, cause) : s;
-    if (cur !== s) store(cur);
+  /** a question at the end answered: the next one, then the self checks or the result */
+  const answered = (cur: Screening) => {
+    const q = later.slice(1);
+    setLater(q);
+    if (q.length) {
+      setK(steps.findIndex((st) => st.test === (q[0] === 'feel' ? 'bridge' : 'deep-squat')));
+      setStage(q[0]);
+      return;
+    }
+    goOn(cur, []);
+  };
+  const startCoach = () => {
+    unlockAudio();
+    // the camera is opened here, in the tap (iPhone), and stays on for all camera tests
+    if (!isFakeCamera() && navigator.mediaDevices?.getUserMedia)
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false })
+        .then((st) => {
+          streamRef.current = st;
+          setStage('camera');
+        })
+        .catch(() => setStage('camera'));
+    else setStage('camera');
+  };
+  const save = (m: Measurement) => {
+    const cur = withResult({ ...s, current: testIndex }, step.test, step.side, m);
+    store(cur);
+    if (m.source === 'camera') {
+      const moreOfIt = steps.some((st, i) => i > k && st.test === step.test && !stepDone(cur, st));
+      const q: ('feel' | 'ankle')[] = step.test === 'bridge' && !m.pain && !moreOfIt && !later.includes('feel') ? [...later, 'feel'] : later;
+      setLater(q);
+      // the deep squat missed: the retest follows at once (hands behind the head)
+      if (step.test === 'deep-squat' && m.grade !== 'pass' && !m.pain) {
+        setStage('retest');
+        return;
+      }
+      goOn(cur, q);
+      return;
+    }
+    // a camera test judged by hand (or it hurt): on with the next camera test
+    if (isCam(step)) {
+      goOn(cur, later);
+      return;
+    }
     setStage('brief');
     next(cur);
   };
   const retested = (m: Measurement) => {
-    if (m.pain || m.source !== 'camera') return setCause(null);
-    if (m.grade === 'pass') return setCause('upper');
-    if (m.notes?.some((n) => n.en === NOTE_HEELS.en)) return setStage('ankle');
-    setCause('hips');
+    const cause: SquatCause | null = m.pain || m.source !== 'camera' ? null : m.grade === 'pass' ? 'upper' : m.notes?.some((n) => n.en === NOTE_HEELS.en) ? null : 'hips';
+    const cur = cause ? withCause(s, cause) : s;
+    if (cur !== s) store(cur);
+    // the heels still come up: knee to the wall at the end (a tap)
+    const heels = !m.pain && m.source === 'camera' && m.grade !== 'pass' && m.notes?.some((n) => n.en === NOTE_HEELS.en);
+    const q: ('feel' | 'ankle')[] = heels ? [...later, 'ankle'] : later;
+    setLater(q);
+    goOn(cur, q);
+  };
+  const ankle = (ok: boolean) => {
+    const cur = withCause(s, ok ? 'hips' : 'ankle');
+    store(cur);
+    answered(cur);
   };
   const felt = (where: Felt) => {
     const cur = where === 'glutes' || where === null ? s : withFeel(s, where);
     if (cur !== s) store(cur);
-    setStage('brief');
-    next(cur);
+    answered(cur);
   };
   const skip = () => {
     const cur = { ...s, skipped: [...new Set([...(s.skipped ?? []), step.test])] };
     store(cur);
+    if (stage === 'camera') return goOn(cur, later);
     next(cur);
+  };
+  const coachFor = (intro: string, demo: Clip | undefined): Coach => ({ stream: streamRef.current, intro, demo, onMenu: () => setStage('hold'), onSkip: skip });
+  const introOf = () => {
+    const n = single ? '' : tr(`Test ${testIndex + 1} of ${s.tests.length}: `, `Test ${testIndex + 1} von ${s.tests.length}: `);
+    const side = step.side && test.metric ? ` – ${sideText(test.metric, step.side).replace(/\.$/, '')}` : '';
+    return `${n}${t(test.name)}${side}`;
   };
   const doneCount = s.tests.filter((id) => s.results[id] || s.skipped?.includes(id)).length;
 
   if (stage === 'retest')
     return (
       <main className="screen mobility mob-run-camera">
-        <CameraTest key="squat-retest" test={test} side={null} variant="handsBehind" onResult={retested} onSelf={() => setCause(null)} onCancel={() => setStage('why')} />
+        <CameraTest key="squat-retest" test={test} side={null} variant="handsBehind" coach={coachFor(tr('Retest: the same squat with the hands behind the head', 'Nachtest: dieselbe Kniebeuge mit den Händen hinter dem Kopf'), RETEST_CLIPS.squatHands)} onResult={retested} onSelf={() => retested({ value: null, grade: 'limited', source: 'self', at: new Date().toISOString() })} onCancel={() => setStage('hold')} />
       </main>
     );
 
   if (stage === 'camera')
     return (
       <main className="screen mobility mob-run-camera">
-        <CameraTest key={`${step.test}-${step.side}`} test={test} side={step.side} previous={previousMeasurement(loadScreenings(), step.test, step.side, s.id)} onResult={save} onSelf={() => setStage('self')} onCancel={() => setStage('brief')} />
+        <CameraTest key={`${step.test}-${step.side}`} test={test} side={step.side} previous={previousMeasurement(loadScreenings(), step.test, step.side, s.id)} coach={coachFor(introOf(), CLIPS[step.test])} onResult={save} onSelf={() => setStage('self')} onCancel={() => setStage('hold')} />
       </main>
     );
 
   return (
     <main className="screen game-play training mobility tr-session">
       <TopBar title={single ? t(test.name) : kindName(s.kind)} onBack={() => (!single ? setExit('menu') : Object.keys(s.results).length ? finish(s) : (discardEmpty(s.id), props.onPause()))} backLabel={tr('Leave', 'Verlassen')} />
+      {stage === 'setup' ? (
+        <CoachSetup screening={s} onStart={startCoach} onSelf={() => setStage('self')} single={single} />
+      ) : stage === 'hold' ? (
+        <section className="tr-block mob-hold-screen">
+          <h2>{tr('Paused', 'Pausiert')}</h2>
+          <p className="muted">{tr(`${doneCount} of ${s.tests.length} tests done. Continue goes on with the test where you stopped.`, `${doneCount} von ${s.tests.length} Tests erledigt. Weiter macht mit dem Test weiter, bei dem du aufgehört hast.`)}</p>
+          <button type="button" className="btn-primary" onClick={() => setStage('camera')}>
+            {tr('Continue', 'Weiter')}
+          </button>
+          {!single && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                stopStream();
+                saveScreening(s);
+                props.onPause();
+              }}
+            >
+              {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              stopStream();
+              if (single) {
+                if (Object.keys(s.results).length) finish(s);
+                else {
+                  discardEmpty(s.id);
+                  props.onPause();
+                }
+              } else setExit('end');
+            }}
+          >
+            {single ? tr('Leave the test', 'Test verlassen') : tr('Finish screening', 'Screening beenden')}
+          </button>
+        </section>
+      ) : (
+      <>
       <section className="card tr-now">
         <div className="tr-now-head">
           <ResultMark r={s.results[step.test]} />
@@ -720,16 +855,8 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       </section>
       {stage === 'feel' ? (
         <FeelCheck test={test} onPick={felt} />
-      ) : stage === 'why' ? (
-        <WhyCheck
-          onCamera={() => {
-            unlockAudio();
-            setStage('retest');
-          }}
-          onSkip={() => setCause(null)}
-        />
       ) : stage === 'ankle' ? (
-        <AnkleCheck onPick={(ok) => setCause(ok ? 'hips' : 'ankle')} />
+        <AnkleCheck onPick={ankle} />
       ) : stage === 'self' ? (
         <SelfCheck test={test} onPick={save} onBack={() => setStage(test.mode === 'self' ? 'brief' : 'brief')} />
       ) : (
@@ -740,14 +867,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
             <SelfCheck test={test} onPick={save} />
           ) : (
             <div className="sticky-cta">
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  unlockAudio();
-                  setStage('camera');
-                }}
-              >
+              <button type="button" className="btn-primary" onClick={startCoach}>
                 {tr('Start the camera', 'Kamera starten')}
               </button>
               <div className="mob-pills">
@@ -764,8 +884,10 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
           )}
         </>
       )}
+      </>
+      )}
 
-      {!single && (
+      {!single && stage !== 'setup' && (
         <>
           <span className="spacer" />
           <div

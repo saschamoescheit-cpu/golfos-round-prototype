@@ -57,92 +57,84 @@ await tab('Ergebnis');
 ok(await p.getByText('Noch kein Ergebnis').isVisible(), 'empty result points to the screening');
 await tab('Screening');
 
-// ---------- quick check with the stiff player ----------
+// ---------- quick check with the stiff player: the trainer mode – set up once, ONE tap, then everything by itself ----------
 await p.locator('.mob-start').filter({ hasText: 'Kurz-Check' }).click();
-await p.getByRole('button', { name: 'Kamera starten' }).waitFor();
-ok(await p.locator('.tr-sketch svg').first().isVisible(), 'the test shows its picture');
-ok((await p.locator('.tr-video').count()) >= 1, 'the test shows its video');
-await p.locator('.mob-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
-await p.waitForTimeout(2500);
-ok(await p.locator('.mob-3d canvas').isVisible(), 'the test shows its 3D video');
-ok(((await p.locator('.mob-3d-step').textContent()) ?? '').length > 5, 'the 3D video names the step of the moment');
-const painted = await p.evaluate(() => { const c = document.querySelector('.mob-3d canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; });
-ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');
-await shot('brief');
-let steps = 0;
-let autoSecond = 0;
+await p.locator('.mob-setup').waitFor({ timeout: 15000 });
+ok(await p.getByText('Handy aufstellen – einmal').isVisible(), 'the setup: set up the phone once');
+ok(await p.locator('.mob-setup .tr-sketch, .mob-setup svg').first().isVisible(), 'the setup shows where the phone goes');
+ok((await p.locator('.mob-setup-tests .tr-thumb, .mob-setup-tests svg').count()) >= 6, 'the setup lists the tests');
+await shot('coach-setup');
+await small('the setup');
+let taps = 0;
+await p.locator('.mob-start-coach').click();
+taps++;
+// from here on no tap until the questions at the end: the 3D golfer shows each test, the camera measures, says the
+// result and goes on (the second side, the retest of the deep squat)
+const intros = new Set();
+let demoSeen = false;
+let demoDrawn = 0;
+let demoShot = false;
+let lastPaint = 0;
+let liveShot = false;
+let resultShot = false;
+let autoText = '';
+const t0 = Date.now();
+while (Date.now() - t0 < 240000) {
+  if (await p.locator('.mob-feel, .mob-ankle, .mob-summary, .sheet').first().isVisible().catch(() => false)) break;
+  if (await p.locator('.mob-demo.big').isVisible().catch(() => false)) {
+    demoSeen = true;
+    const tag = await p.locator('.mob-side-tag').innerText().catch(() => '');
+    if (tag) intros.add(tag);
+    if (!demoShot) {
+      demoShot = true;
+      await shot('coach-demo');
+    }
+  }
+  // the small 3D golfer over the camera is drawn (measured now and then, the best count kept)
+  if (Date.now() - lastPaint > 1000 && (await p.locator('.mob-demo canvas').isVisible().catch(() => false))) {
+    lastPaint = Date.now();
+    demoDrawn = Math.max(demoDrawn, await p.evaluate(() => { const c = document.querySelector('.mob-demo canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; }));
+  }
+  if (!liveShot && (await p.locator('.mob-live').isVisible().catch(() => false))) {
+    liveShot = true;
+    await shot('coach-live');
+  }
+  if (!resultShot && (await p.locator('.mob-outcome').isVisible().catch(() => false))) {
+    resultShot = true;
+    autoText = await p.getByRole('button', { name: 'Speichern und weiter' }).innerText().catch(() => '');
+    await shot('coach-result');
+  }
+  await p.waitForTimeout(150);
+}
+console.log('   intros:', [...intros].join(' | '));
+ok(demoSeen && demoDrawn > 12, `the 3D golfer shows each test over the camera first (${demoDrawn} colours)`);
+ok(intros.size >= 9, `${intros.size} tests and sides shown and measured without a tap (6 tests, 3 with both sides, + the squat retest)`);
+ok([...intros].some((x) => /Nachtest/.test(x)), 'the deep squat missed: the retest with the hands behind the head runs by itself');
+ok(/\(\d\)/.test(autoText), `the result saves itself after a countdown (${autoText})`);
+// the questions at the end: where the bridge was felt, knee to the wall
 let feelAsked = false;
-let retest = '';
-for (let i = 0; i < 13; i++) {
-  const start = p.getByRole('button', { name: 'Kamera starten' });
-  if (await p.locator('.sheet').isVisible().catch(() => false)) break;
-  // after both sides of the bridge: where did you feel it? (the back of the thighs = the wrong muscles)
+let ankleAsked = false;
+for (let i = 0; i < 4; i++) {
   if (await p.locator('.mob-feel').isVisible().catch(() => false)) {
     feelAsked = true;
     await shot('bridge-feel');
     await p.locator('.mob-feel .mob-option').filter({ hasText: 'Oberschenkel' }).click();
-    await p.locator('.mob-camera, .sheet').or(start).first().waitFor({ timeout: 15000 }).catch(() => {});
-    continue;
-  }
-  // the deep squat missed: the retest with the hands behind the head, then knee to the wall (the stiff player's heels come up)
-  if (await p.locator('.mob-why-check').isVisible().catch(() => false)) {
-    await shot('squat-why');
-    await p.locator('.mob-why-check .btn-primary').click();
-    await p.locator('.mob-side-tag').waitFor({ timeout: 15000 }).catch(() => {});
-    retest = await p.locator('.mob-side-tag').innerText().catch(() => '');
-    const save = p.getByRole('button', { name: 'Speichern und weiter' });
-    await save.waitFor({ timeout: 40000 }).catch(() => {});
-    await save.click().catch(() => {});
-    await p.locator('.mob-ankle').waitFor({ timeout: 15000 }).catch(() => {});
-    if (await p.locator('.mob-ankle').isVisible().catch(() => false)) {
-      retest += ' → knee to wall';
-      await shot('squat-ankle');
-      await p.locator('.mob-ankle .mob-option.fail').click();
-    }
-    await p.locator('.mob-camera, .sheet').or(start).first().waitFor({ timeout: 15000 }).catch(() => {});
-    continue;
-  }
-  const camera = await p.locator('.mob-camera').isVisible().catch(() => false);
-  if (!camera && !(await start.isVisible().catch(() => false))) break;
-  // the second side of a test starts the camera by itself (hands-free)
-  if (camera) autoSecond++;
-  const name = camera ? await p.locator('.mob-side-tag').innerText() : await p.locator('.tr-now-name').innerText();
-  if (!camera) await start.click();
-  if (i === 0) {
-    await p.locator('.mob-live').waitFor({ timeout: 15000 }).catch(() => {});
-    await shot('camera-live');
-  }
-  const save = p.getByRole('button', { name: 'Speichern und weiter' });
-  const again = p.getByRole('button', { name: 'Nochmal versuchen' });
-  await Promise.race([save.waitFor({ timeout: 40000 }), again.waitFor({ timeout: 40000 })]).catch(() => {});
-  if (i === 0) {
-    await shot('camera-result');
-    ok(/\(\d\)/.test(await save.innerText().catch(() => '')), 'the result saves itself after a countdown');
-  }
-  if (await save.isVisible().catch(() => false)) {
-    steps++;
-    const grade = await p.locator('.mob-outcome .mob-grade').innerText();
-    console.log(`   ${name}: ${await p.locator('.mob-value').innerText()} ${grade}`);
-    await save.click();
-  } else {
-    console.log(`   ${name}: not recognised`);
-    ok(false, `${name} was measured`);
-    await p.getByRole('button', { name: 'Selbst einschätzen' }).click();
-    await p.locator('.mob-option').first().click();
-  }
-  // wait for the next state instead of a fixed time (the machine may be busy): the result is gone, then the camera of
-  // the second side, the next test or the finish sheet
-  await p.locator('.mob-outcome').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
-  await p.locator('.mob-camera, .sheet, .mob-feel').or(p.getByRole('button', { name: 'Kamera starten' })).first().waitFor({ timeout: 15000 }).catch(() => {});
-  await p.waitForTimeout(300);
+    taps++;
+  } else if (await p.locator('.mob-ankle').isVisible().catch(() => false)) {
+    ankleAsked = true;
+    await shot('squat-ankle');
+    await p.locator('.mob-ankle .mob-option.fail').click();
+    taps++;
+  } else break;
+  await p.waitForTimeout(400);
 }
-ok(feelAsked, 'after the bridge: "where did you feel it?"');
-ok(/Nachtest/.test(retest) && /knee to wall/.test(retest), `the deep squat missed: retest with the hands behind the head, then knee to the wall (${retest})`);
-ok(steps === 9, `${steps} of 9 camera steps measured (6 tests, 3 with both sides)`);
-ok(autoSecond === 3, `the second side started the camera by itself ${autoSecond} times`);
-await p.getByRole('button', { name: 'Beenden & Ergebnis zeigen' }).waitFor({ timeout: 5000 }).catch(() => {});
-await shot('finish-sheet');
-await p.getByRole('button', { name: 'Beenden & Ergebnis zeigen' }).click();
+ok(feelAsked, 'at the end: "where did you feel the bridge?"');
+ok(ankleAsked, 'at the end: knee to the wall (the heels came up in the retest)');
+ok(taps === 3, `${taps} taps for the whole quick check (start + two questions)`);
+await p.locator('.mob-summary').waitFor({ timeout: 15000 }).catch(() => {});
+const quick = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]').at(-1));
+const measured = Object.values(quick?.results ?? {}).reduce((n, r) => n + ['left', 'right', 'both'].filter((k) => r[k]).length, 0);
+ok(measured === 9, `${measured} of 9 camera steps saved (6 tests, 3 with both sides)`);
 await p.locator('.mob-summary').waitFor();
 ok(await p.locator('.mob-summary').isVisible(), 'the result opens after the screening');
 const patterns = await p.locator('.mob-pattern').count();
@@ -210,6 +202,21 @@ await p.waitForTimeout(300);
 await tab('Verlauf');
 ok((await p.locator('.list-item').count()) === 1, 'undo brings the screening back');
 
+// ---------- a camera test page: picture, video, 3D ----------
+await tab('Screening');
+await p.locator('.mob-test-row').filter({ hasText: 'Rumpfrotation im Sitzen' }).click();
+await p.locator('.mob-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
+await p.waitForTimeout(2500);
+ok(await p.locator('.tr-sketch svg').first().isVisible(), 'the test shows its picture');
+ok((await p.locator('.tr-video').count()) >= 1, 'the test shows its video');
+ok(await p.locator('.mob-3d canvas').isVisible(), 'the test shows its 3D video');
+ok(((await p.locator('.mob-3d-step').textContent()) ?? '').length > 5, 'the 3D video names the step of the moment');
+ok(await p.locator('.mob-3d-play').isVisible(), 'play/pause is the round symbol in the picture');
+const painted = await p.evaluate(() => { const c = document.querySelector('.mob-3d canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; });
+ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');
+await shot('brief');
+await p.locator('.topbar .icon-btn').first().click();
+
 // ---------- a single self check ----------
 await tab('Screening');
 await p.locator('.mob-test-row').filter({ hasText: 'Handgelenk anwinkeln' }).click();
@@ -249,7 +256,7 @@ await p.waitForTimeout(300);
 // ---------- hands-free: a sided single test runs through without a tap ----------
 await p.locator('.mob-test-row').filter({ hasText: 'Kopfdrehung' }).click();
 await p.getByRole('button', { name: 'Test starten' }).click();
-await p.getByRole('button', { name: 'Kamera starten' }).click();
+await p.locator('.mob-start-coach').click();
 // left side, saved by itself, the right side starts by itself, saved by itself, back on the test page
 await p.locator('.tr-tabs').waitFor({ timeout: 90000 }).catch(() => {});
 await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
@@ -260,9 +267,14 @@ await p.locator('.topbar .icon-btn').first().click();
 // ---------- pause and continue ----------
 await p.evaluate(() => localStorage.setItem('golfos.mobility.fake', 'good'));
 await p.locator('.mob-start').filter({ hasText: 'Komplettes Screening' }).click();
-await p.getByRole('button', { name: 'Kamera starten' }).click();
-await p.getByRole('button', { name: 'Speichern und weiter' }).waitFor({ timeout: 40000 });
-await p.getByRole('button', { name: 'Speichern und weiter' }).click();
+await p.locator('.mob-start-coach').click();
+// the first test is measured and saved by itself; during the next one: Pause
+await p.locator('.mob-outcome').waitFor({ timeout: 60000 });
+await p.locator('.mob-demo.big').waitFor({ timeout: 30000 });
+await p.locator('.mob-coach-pause').click();
+await p.locator('.mob-hold-screen').waitFor({ timeout: 10000 });
+ok(await p.getByRole('button', { name: 'Weiter' }).isVisible(), 'Pause in the trainer mode: continue, pause for later, finish');
+await shot('coach-hold');
 await p.locator('.hole-bar-handle').click();
 await shot('drawer');
 await small('the screening in play');
@@ -274,8 +286,11 @@ await p.locator('.module-switch').click();
 ok(await p.getByText('Ein Screening ist pausiert').isVisible(), 'the start page says a screening is paused');
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-open').click();
-await p.waitForTimeout(300);
-ok((await p.locator('.tr-now-name').innerText()) === 'Hüftrotation auf einem Bein', 'continues with the next open test');
+await p.locator('.mob-setup').waitFor({ timeout: 10000 });
+await p.locator('.mob-start-coach').click();
+await p.locator('.mob-demo.big').waitFor({ timeout: 30000 });
+const resumed = await p.locator('.mob-side-tag').innerText().catch(() => '');
+ok(/Hüftrotation auf einem Bein|Gewicht auf dem/.test(resumed), `continues with the next open test after one tap on Start (${resumed})`);
 
 // ---------- left-handed: lead and trail come from the profile ----------
 await p.evaluate(() => {

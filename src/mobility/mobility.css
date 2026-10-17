@@ -140,3 +140,25 @@
 .mob-since { color: var(--text-2); }
 .mob-since.better { color: var(--brand); font-weight: 600; }
 .mob-when, .mob-private { margin: 0; text-align: center; }
+
+/* play / pause: a round symbol bottom right in the picture, CI green (as in Training) */
+.mob-3d-play { position: absolute; right: 10px; bottom: 10px; width: 48px; height: 48px; border-radius: 50%; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--brand); color: #0e1418; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); cursor: pointer; }
+.mob-3d.compact .mob-3d-stage { border-radius: 12px; }
+
+/* trainer mode: the 3D golfer over the camera – big while it shows the test, then small top right */
+.mob-stage-wrap { position: relative; }
+.mob-demo { position: absolute; top: 8px; right: 8px; width: 40%; z-index: 3; border-radius: 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); transition: width 0.35s ease; }
+.mob-demo.big { width: calc(100% - 16px); }
+.mob-demo .mob-3d { gap: 0; }
+/* 2.5–3 m away: big words, the test name top left, the instruction in the middle, the value large */
+.mob-camera.coach .mob-side-tag { top: 10px; left: 10px; right: auto; bottom: auto; max-width: 54%; text-align: left; font-size: 15px; z-index: 4; }
+.mob-camera.coach .mob-status { top: 60%; font-size: 26px; padding: 10px 18px; }
+.mob-camera.coach .mob-status.big { top: 40%; font-size: 96px; }
+.mob-camera.coach .mob-live-value { font-size: 64px; }
+.mob-result.coach .mob-value { font-size: 44px; }
+.mob-result.coach .mob-outcome .mob-grade { width: 64px; height: 64px; font-size: 32px; }
+.mob-setup { display: flex; flex-direction: column; gap: 12px; }
+.mob-setup-tests { display: flex; flex-wrap: wrap; gap: 8px; }
+.mob-setup-tests .tr-thumb { width: 56px; height: 56px; }
+.mob-start-coach { min-height: 60px; font-size: 20px; }
+.mob-hold-screen { display: flex; flex-direction: column; gap: 12px; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIMITS, makeAnalyzer, missingPoints, nearSide, NOTE_HEELS, type Frame } from './measure';
+import { facingOf, LIMITS, makeAnalyzer, missingPoints, nearSide, NOTE_HEELS, type Frame } from './measure';
 import { frames, frontBody, script, SYNTH_H, SYNTH_W } from './synth';
 import type { MetricKind, Side } from './types';
 
@@ -117,6 +117,16 @@ describe('mobility analysers', () => {
     expect(full.notes.some((n) => /arms/.test(n.en))).toBe(true);
     expect(retest.notes.some((n) => /arms/.test(n.en))).toBe(false);
     expect(retest.notes.some((n) => n.en === NOTE_HEELS.en)).toBe(true);
+  });
+
+  it('knows whether the player stands face-on or side-on to the phone (trainer mode)', () => {
+    const first = (kind: MetricKind) => frames(script(kind, 'left', 'good'))[0];
+    expect(facingOf(first('trunkRotation'))).toBe('front');
+    expect(facingOf(first('pelvicRotation'))).toBe('front');
+    expect(facingOf(first('balance'))).toBe('front');
+    expect(facingOf(first('squat'))).toBe('side');
+    expect(facingOf(first('toeTouch'))).toBe('side');
+    expect(facingOf(first('lat'))).toBe('side');
   });
 
   it('returns no result when the movement was never seen', () => {

@@ -57,7 +57,7 @@ for (const photo of photos) {
   await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
   await p.locator('.mob-test-row').filter({ hasText: testName }).first().click();
   await p.getByRole('button', { name: 'Test starten' }).click();
-  await p.getByRole('button', { name: 'Kamera starten' }).click();
+  await p.locator('.mob-start-coach').click();
   const t0 = Date.now();
   // the model loads (≈ 22 MB the first time), then the status shows what the camera sees
   let status = '';

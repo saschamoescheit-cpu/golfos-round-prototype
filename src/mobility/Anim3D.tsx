@@ -16,7 +16,11 @@ const VIEW_NAMES: Record<View, () => string> = {
   above: () => tr('Above', 'Oben'),
 };
 
-export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
+/**
+ * compact: the small demo over the camera in the trainer mode – no controls, no caption, a lighter picture.
+ * Play/pause (Sascha 17.10.2026 via Training): a round symbol bottom right in the picture, ▶ / ❚❚ in CI green.
+ */
+export default function Anim3D(props: { test?: TestId; clip?: Clip; compact?: boolean }) {
   const clip = props.clip ?? CLIPS[props.test!];
   const stageRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -38,7 +42,7 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
     stage.prepend(c);
     let v: Viewer;
     try {
-      v = createViewer(c);
+      v = createViewer(c, props.compact ? { pixelRatio: 1 } : {});
     } catch {
       c.remove();
       setFailed(true);
@@ -68,10 +72,10 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
   if (failed) return null;
   const views = clip.views ?? ['front', 'side', 'angle'];
   return (
-    <figure className="mob-3d">
+    <figure className={`mob-3d${props.compact ? ' compact' : ''}`}>
       <div className="mob-3d-stage" ref={stageRef}>
-        <div className="mob-3d-controls">
-          <button type="button" className="icon-btn" aria-label={playing ? tr('Pause', 'Pause') : tr('Play', 'Abspielen')} aria-pressed={!playing} onClick={() => setPlaying(!playing)}>
+        {!props.compact && (
+        <button type="button" className="mob-3d-play" aria-label={playing ? tr('Pause', 'Pause') : tr('Play', 'Abspielen')} aria-pressed={!playing} onClick={() => setPlaying(!playing)}>
             {playing ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <rect x="6" y="5" width="4" height="14" rx="1" />
@@ -82,7 +86,10 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
                 <path d="M8 5v14l11-7z" />
               </svg>
             )}
-          </button>
+        </button>
+        )}
+        {!props.compact && (
+        <div className="mob-3d-controls">
           <button type="button" className={`chip${slow ? ' on' : ''}`} aria-pressed={slow} onClick={() => setSlow(!slow)}>
             {tr('Slow', 'Zeitlupe')}
           </button>
@@ -104,12 +111,15 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
             ))}
           </div>
         </div>
+        )}
       </div>
       {/* the step of the moment – below the video, so it never covers the feet */}
-      <figcaption className="mob-3d-step" aria-live="polite">
-        <span className="mob-3d-no">{label.step || 1}</span>
-        <span>{label.l ? tr(label.l.en, label.l.de) : ''}</span>
-      </figcaption>
+      {!props.compact && (
+        <figcaption className="mob-3d-step" aria-live="polite">
+          <span className="mob-3d-no">{label.step || 1}</span>
+          <span>{label.l ? tr(label.l.en, label.l.de) : ''}</span>
+        </figcaption>
+      )}
     </figure>
   );
 }

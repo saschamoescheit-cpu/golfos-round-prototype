@@ -161,9 +161,10 @@ export interface Viewer {
   dispose(): void;
 }
 
-export function createViewer(canvas: HTMLCanvasElement): Viewer {
+/** pixelRatio: lower for a small picture over the camera (the phone also runs the body tracking) */
+export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: number } = {}): Viewer {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setPixelRatio(opts.pixelRatio ?? Math.min(2, window.devicePixelRatio || 1));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;

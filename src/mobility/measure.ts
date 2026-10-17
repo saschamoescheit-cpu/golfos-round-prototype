@@ -193,6 +193,21 @@ export function missingPoints(kind: MetricKind, f: Frame): number[] {
   return a.length <= b.length ? a : b;
 }
 
+/**
+ * How the player stands to the phone (the trainer mode waits for the right one): front = the shoulders side by side
+ * (their width at least half the trunk length), side = one behind the other (under a third), null = in between.
+ */
+export function facingOf(f: Frame): 'front' | 'side' | null {
+  const need = [P.lSh, P.rSh, P.lHip, P.rHip];
+  if (need.some((i) => (f.lm[i].v ?? 1) < 0.1)) return null;
+  const mid = (a: V, b: V): V => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const sh = dist(px(f, P.lSh), px(f, P.rSh));
+  const torso = dist(mid(px(f, P.lSh), px(f, P.rSh)), mid(px(f, P.lHip), px(f, P.rHip)));
+  if (torso < 1) return null;
+  const r = sh / torso;
+  return r > 0.5 ? 'front' : r < 0.33 ? 'side' : null;
+}
+
 // ---------- the analysers ----------
 const CAL_FRAMES = 10;
 

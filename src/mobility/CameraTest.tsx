@@ -1,16 +1,43 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
-import { BONES, makeAnalyzer, missingPoints, valueText, type Analyzer, type Cue, type Frame, type Lm, type Outcome } from './measure';
+import { BONES, facingOf, makeAnalyzer, missingPoints, valueText, type Analyzer, type Cue, type Frame, type Lm, type Outcome } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
 import type { Grade, Measurement, MetricKind, Side, TestDef } from './types';
+import type { Clip } from './anim3d/scene';
+
+const Anim3D = lazy(() => import('./Anim3D'));
+
+/**
+ * The trainer mode (Sascha 17.10.2026: "set the phone up once, tap once – the app shows each exercise in the selfie
+ * camera, analyses in real time and leads me through the next ones"): one camera stream for the whole session, the 3D
+ * golfer shows the test first, then the camera waits until the player stands right (face-on or side-on) and measures.
+ */
+export interface Coach {
+  /** the camera of the session (opened once with the start tap); null = the test opens its own */
+  stream: MediaStream | null;
+  /** said and shown first, e.g. "Test 2 of 6: Single-leg balance" */
+  intro: string;
+  /** the test shown by the 3D golfer */
+  demo?: Clip;
+  /** pause (the menu of the session) and skip this test */
+  onMenu: () => void;
+  onSkip: () => void;
+}
+
+/** Where to stand, in words – said after the demo. */
+function placeText(test: TestDef): string {
+  if (test.metric === 'bridge') return tr('Lie on your back side-on to the phone, the whole body in the picture.', 'Leg dich seitlich zum Handy auf den Rücken, der ganze Körper im Bild.');
+  if (test.metric === 'trunkRotation') return tr('Sit face-on to the phone on a chair.', 'Setz dich frontal zum Handy auf einen Stuhl.');
+  return test.view === 'side' ? tr('Stand side-on to the phone, the whole body in the picture.', 'Stell dich seitlich zum Handy, der ganze Körper im Bild.') : tr('Stand face-on to the phone, the whole body in the picture.', 'Stell dich frontal zum Handy, der ganze Körper im Bild.');
+}
 
 // A camera test (Sascha 17.10.2026: "the user sees the exercise on the phone, copies it, and the app analyses the
 // mobility"). The phone stands 2–3 m away, so the app talks: it says when the whole body is in the picture, counts
 // down, says what to do and when it is done. The skeleton over the video shows what the camera sees; the lines the
 // test measures are drawn in green. Nothing is recorded or sent – the pictures stay in the phone's memory.
 
-type Phase = 'starting' | 'frame' | 'count' | 'run' | 'result' | 'error';
+type Phase = 'starting' | 'demo' | 'frame' | 'count' | 'run' | 'result' | 'error';
 
 let audio: AudioContext | null = null;
 /** Call in the tap that starts the camera: iOS only plays sound after a tap. */
@@ -110,6 +137,9 @@ const fakeLevel = (): 'good' | 'stiff' | null => {
     return null;
   }
 };
+/** QA: a synthetic player or a photo instead of the camera – the trainer mode then opens no camera itself */
+export const isFakeCamera = (): boolean => !!(fakeLevel() || fakeImage());
+
 const fakeImage = (): string | null => {
   try {
     return localStorage.getItem('golfos.mobility.fakeImage');
@@ -141,14 +171,14 @@ function sinceText(kind: MetricKind, now: number, before: Measurement): { text: 
   return { text: tr(`${n} since ${date} (${was})`, `${n} seit ${date} (${was})`), better: lowerBetter ? d < 0 : d > 0 };
 }
 
-export function CameraTest(props: { test: TestDef; side: Side | null; previous?: Measurement; variant?: 'handsBehind'; onResult: (m: Measurement) => void; onSelf: () => void; onCancel: () => void }) {
+export function CameraTest(props: { test: TestDef; side: Side | null; previous?: Measurement; variant?: 'handsBehind'; coach?: Coach; onResult: (m: Measurement) => void; onSelf: () => void; onCancel: () => void }) {
   const kind = props.test.metric!;
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shotRef = useRef<HTMLCanvasElement | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [count, setCount] = useState(3);
-  const [live, setLive] = useState<{ value: number | null; best: number | null; hold?: number; missing: number; seen: boolean; calibrating?: boolean; people?: number }>({ value: null, best: null, missing: 0, seen: false });
+  const [live, setLive] = useState<{ value: number | null; best: number | null; hold?: number; missing: number; seen: boolean; calibrating?: boolean; people?: number; turned?: boolean }>({ value: null, best: null, missing: 0, seen: false });
   const [outcome, setOutcome] = useState<Outcome | null | undefined>(undefined);
   const finishRef = useRef<(() => void) | null>(null);
   const [shot, setShot] = useState<string | null>(null);
@@ -170,6 +200,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     let stopped = false;
     let raf = 0;
     let stream: MediaStream | null = null;
+    // the session's camera stays on between the tests; only a stream the test opened itself is stopped
+    let ownStream = true;
     // the player stands 2–3 m away for minutes: the screen must not lock meanwhile (Safari 16.4+)
     let wake: { release: () => Promise<void> } | null = null;
     (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock
@@ -263,12 +295,12 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       go('result');
       if (out) {
         say(`${valueText(kind, out.value, tr)}. ${gradeName(out.grade)}.`);
-        setAuto(AUTO_SAVE_S);
+        setAuto(props.coach ? 4 : AUTO_SAVE_S);
       } else say(tr('Not recognised. Please try again.', 'Nicht erkannt. Bitte nochmal.'));
       // the camera goes off with the result (a new attempt starts it again)
       stopped = true;
       cancelAnimationFrame(raf);
-      stream?.getTracks().forEach((t) => t.stop());
+      if (ownStream) stream?.getTracks().forEach((t) => t.stop());
     };
     finishRef.current = finish;
 
@@ -306,7 +338,10 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       const t = fakeScript ? (now - fakeT0) * speed : now;
       const f: Frame | null = lm ? { lm, w, h, t } : null;
       const missing = f ? missingPoints(kind, f).length : 99;
-      const framed = !!f && missing === 0;
+      const want = kind === 'bridge' ? null : (props.test.view ?? null);
+      const facingNow = f ? facingOf(f) : null;
+      const turned = !want || facingNow === want;
+      const framed = !!f && missing === 0 && turned;
       draw(lm, w, h, framed || phaseRef.current === 'run');
       const ph = phaseRef.current;
       if (ph === 'frame') {
@@ -314,6 +349,19 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           if (framedSince < 0) framedSince = now;
           if (now - framedSince > (fake ? 300 : 1000)) startCountdown();
         } else framedSince = -1;
+        // spoken help, at most every 7 s: turn the right way, or step back
+        const wrong = !!f && missing === 0 && !turned;
+        wrongSince = wrong ? (wrongSince < 0 ? now : wrongSince) : -1;
+        missSince = f && missing > 0 ? (missSince < 0 ? now : missSince) : -1;
+        if (now - lastHint > 7000) {
+          if (wrongSince >= 0 && now - wrongSince > 1500) {
+            lastHint = now;
+            say(want === 'side' ? tr('Turn side-on to the phone.', 'Dreh dich seitlich zum Handy.') : tr('Turn face-on to the phone.', 'Dreh dich frontal zum Handy.'));
+          } else if (missSince >= 0 && now - missSince > 5000) {
+            lastHint = now;
+            say(tr('Step back – the whole body in the picture.', 'Weiter zurück – der ganze Körper ins Bild.'));
+          }
+        }
       }
       if (ph === 'run' && f && analyzer) {
         const l = analyzer.push(f);
@@ -344,12 +392,16 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
         }
       } else if (now - lastUi > 150 && ph !== 'result') {
         lastUi = now;
-        setLive((x) => ({ ...x, missing, seen: !!f, people }));
+        setLive((x) => ({ ...x, missing, seen: !!f, people, turned }));
       }
       if (fakeScript && (now - fakeT0) * speed > fakeScript.ms + 500 && phaseRef.current === 'run') finish();
     };
 
     let countTimer = 0;
+    let demoTimer = 0;
+    let wrongSince = -1;
+    let missSince = -1;
+    let lastHint = 0;
     const startCountdown = () => {
       go('count');
       analyzer = makeAnalyzer(kind, sideParam, { noArms: props.variant === 'handsBehind' });
@@ -410,9 +462,11 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           fakeScript = script(kind, sideParam, fake);
           fakeT0 = performance.now();
         } else {
-          if (!navigator.mediaDevices?.getUserMedia) throw new Error('nocamera');
-          const [s, l] = await Promise.all([navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false }), loadPose()]);
+          const shared = props.coach?.stream?.active ? props.coach.stream : null;
+          if (!shared && !navigator.mediaDevices?.getUserMedia) throw new Error('nocamera');
+          const [s, l] = await Promise.all([shared ? Promise.resolve(shared) : navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false }), loadPose()]);
           stream = s;
+          ownStream = !shared;
           landmarker = l;
           if (stopped) return;
           const v = videoRef.current!;
@@ -421,8 +475,27 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           if (v.videoWidth && v.videoHeight) setRatio(`${v.videoWidth} / ${v.videoHeight}`);
         }
         if (stopped) return;
-        go('frame');
-        say(tr('Step back until your whole body is in the picture.', 'Geh so weit zurück, bis dein ganzer Körper im Bild ist.'));
+        if (props.coach) {
+          // the 3D golfer shows the test first (about one loop), then: "Now you" and where to stand
+          go('demo');
+          say(`${props.coach.intro}. ${tr('Watch.', 'Schau zu.')}`);
+          const t0 = performance.now();
+          const clip = props.coach.demo;
+          const loop = clip ? (clip.length ?? clip.keys[clip.keys.length - 1].t) * 1000 : 0;
+          const toFrame = () => {
+            if (stopped) return;
+            if (!fake && isSpeaking() && performance.now() - t0 < 12000) {
+              demoTimer = window.setTimeout(toFrame, 200);
+              return;
+            }
+            go('frame');
+            say(`${tr('Now you.', 'Jetzt du.')} ${placeText(props.test)}`);
+          };
+          demoTimer = window.setTimeout(toFrame, fake ? 200 : Math.min(8000, Math.max(4500, loop)));
+        } else {
+          go('frame');
+          say(tr('Step back until your whole body is in the picture.', 'Geh so weit zurück, bis dein ganzer Körper im Bild ist.'));
+        }
         raf = requestAnimationFrame(tick);
       } catch (e) {
         const m = e instanceof Error ? e.message : String(e);
@@ -441,7 +514,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       stopped = true;
       cancelAnimationFrame(raf);
       window.clearTimeout(countTimer);
-      stream?.getTracks().forEach((t) => t.stop());
+      window.clearTimeout(demoTimer);
+      if (ownStream) stream?.getTracks().forEach((t) => t.stop());
       void wake?.release().catch(() => {});
       stopSpeaking();
     };
@@ -496,7 +570,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
   if (phase === 'result' && outcome !== undefined) {
     const done = outcome;
     return (
-      <section className="mob-result" aria-live="polite">
+      <section className={`mob-result${props.coach ? ' coach' : ''}`} aria-live="polite">
         {!done ? (
           <div className="card">
             <strong>{tr('The movement was not recognised', 'Die Bewegung wurde nicht erkannt')}</strong>
@@ -583,12 +657,18 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
   const status =
     phase === 'starting'
       ? tr('Starting the camera …', 'Kamera startet …')
+      : phase === 'demo'
+        ? tr('Watch', 'Schau zu')
       : phase === 'frame'
         ? !live.seen
           ? tr('Step into the picture', 'Stell dich ins Bild')
           : live.missing
             ? tr('Step back – the whole body in the picture', 'Weiter zurück – der ganze Körper ins Bild')
-            : tr('Hold still …', 'Still halten …')
+            : live.turned === false
+              ? props.test.view === 'side'
+                ? tr('Turn side-on to the phone', 'Dreh dich seitlich zum Handy')
+                : tr('Turn face-on to the phone', 'Dreh dich frontal zum Handy')
+              : tr('Hold still …', 'Still halten …')
         : phase === 'count'
           ? String(count)
           : phase === 'result'
@@ -602,7 +682,15 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
                 : null;
 
   return (
-    <section className="mob-camera">
+    <section className={`mob-camera${props.coach ? ' coach' : ''}`}>
+      <div className="mob-stage-wrap">
+      {props.coach?.demo && (phase === 'demo' || phase === 'frame' || phase === 'count' || phase === 'run') && (
+        <div className={`mob-demo${phase === 'demo' ? ' big' : ''}`}>
+          <Suspense fallback={null}>
+            <Anim3D clip={props.coach.demo} compact />
+          </Suspense>
+        </div>
+      )}
       <div className={`mob-stage${facing === 'user' && !fake && !fakeImage() ? ' mirror' : ''}`} style={{ aspectRatio: ratio }}>
         {!fake && <video ref={videoRef} playsInline muted />}
         <canvas ref={canvasRef} aria-hidden="true" />
@@ -623,9 +711,26 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           </div>
         )}
         {(live.people ?? 0) > 1 && <div className="mob-people">{tr('Several people in the picture – please step in alone', 'Mehrere Personen im Bild – bitte allein ins Bild')}</div>}
-        <div className="mob-side-tag">{props.variant === 'handsBehind' ? tr('Retest: hands behind the head', 'Nachtest: Hände hinter dem Kopf') : props.side ? sideText(kind, props.side) : props.test.name[trLang()]}</div>
+        <div className="mob-side-tag">{props.variant === 'handsBehind' ? tr('Retest: hands behind the head', 'Nachtest: Hände hinter dem Kopf') : props.coach && phase === 'demo' ? props.coach.intro : props.side ? sideText(kind, props.side) : props.test.name[trLang()]}</div>
       </div>
-      {phase !== 'run' && <p className="muted small mob-private">{tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}</p>}
+      </div>
+      {phase !== 'run' && !props.coach && <p className="muted small mob-private">{tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}</p>}
+      {props.coach ? (
+        <div className="mob-camera-actions">
+          {phase === 'run' ? (
+            <button type="button" className="btn-primary" onClick={() => finishRef.current?.()}>
+              {tr('Done', 'Fertig')}
+            </button>
+          ) : (
+            <button type="button" className="btn-secondary" onClick={props.coach.onSkip}>
+              {tr('Skip', 'Überspringen')}
+            </button>
+          )}
+          <button type="button" className="btn-secondary mob-coach-pause" onClick={props.coach.onMenu}>
+            {tr('Pause', 'Pause')}
+          </button>
+        </div>
+      ) : (
       <div className="mob-camera-actions">
         {phase === 'run' ? (
           <button type="button" className="btn-primary" onClick={() => finishRef.current?.()}>
@@ -642,6 +747,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           {tr('Cancel', 'Abbrechen')}
         </button>
       </div>
+      )}
     </section>
   );
 }
