@@ -1605,7 +1605,7 @@ function ReviewView(props: { nav: Nav }) {
   return (
     <main className="screen training">
       <TopBar title={tr('Review the content', 'Inhalte prüfen')} onBack={props.nav.back} />
-      <button type="button" className="btn-secondary" aria-pressed={on} onClick={() => setReviewOn(!on)}>
+      <button type="button" className="btn-secondary tr-switch" aria-pressed={on} onClick={() => setReviewOn(!on)}>
         {on ? tr('Review mode is on – switch off', 'Prüfmodus ist an – ausschalten') : tr('Switch review mode on', 'Prüfmodus einschalten')}
       </button>
       <div className="tile-row">
