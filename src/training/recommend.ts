@@ -1,6 +1,6 @@
 import type { Round } from '../types';
 import { analyse, focusAreas, pct } from '../lib/stats';
-import { groupForHandicap, groupSg, roundsSg, SG_CATEGORIES, type SgCategory } from '../lib/sg';
+import { comparisonGroup, groupSg, GROUPS, roundsSg, SG_CATEGORIES, type SgCategory } from '../lib/sg';
 import { getLang, tr } from '../lib/i18n';
 import { loadProfile } from '../lib/profile';
 import type { CategoryId } from './types';
@@ -97,7 +97,10 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
   const sg = roundsSg(done);
   if (sg && sg.holes >= 9) {
     const index = Number((loadProfile().hcpIndex ?? '').replace(',', '.'));
-    const g = groupSg(groupForHandicap(loadProfile().hcpIndex && Number.isFinite(index) ? index : a.handicap));
+    // the comparison group chosen in the profile, or else the next better one – the same as Rounds (17.10.2026)
+    const groupId = comparisonGroup(loadProfile().hcpIndex && Number.isFinite(index) ? index : a.handicap);
+    const g = groupSg(groupId);
+    const groupLabel = GROUPS.find((x) => x.id === groupId)?.label ?? groupId;
     const gaps = SG_CATEGORIES.map((c) => ({ c, d: sg.per18[c] - g[c] })).sort((x, y) => x.d - y.d);
     const worst = gaps[0];
     if (worst.d < -0.5) {
@@ -107,7 +110,7 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
       const per = nine ? tr('per 9 holes', 'je 9 Löcher') : tr('per round', 'pro Runde');
       add({
         cat: m.cat,
-        why: tr(`Strokes gained ${SG_NAME(worst.c)}: ${shown.toFixed(1)} ${per} against your handicap group`, `Strokes Gained ${SG_NAME(worst.c)}: ${shown.toFixed(1).replace('.', ',')} ${per} gegenüber deiner Handicap-Gruppe`),
+        why: tr(`Strokes gained ${SG_NAME(worst.c)}: ${shown.toFixed(1)} ${per} against your comparison group (${groupLabel})`, `Strokes Gained ${SG_NAME(worst.c)}: ${shown.toFixed(1).replace('.', ',')} ${per} gegenüber deiner Vergleichsgruppe (${groupLabel})`),
         drills: m.drills,
         weight: -worst.d / 2,
       });
