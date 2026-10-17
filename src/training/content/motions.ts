@@ -308,3 +308,8 @@ set3d(FAULT_MOTIONS.chipping?.['Slowing down'], 'chipSlowPair');
 set3d(FAULT_MOTIONS.woods?.Topping, 'woodTopPair');
 set3d(FAULT_MOTIONS.woods?.['Fat (chunked) woods'], 'woodFatPair');
 set3d(FAULT_MOTIONS.pitching?.['Fat or thin pitches'], 'pitchFatPair');
+// drill aids in 3D: the stick at the hip, the towel, the stick with the grip, the trail heel up
+set3d(DRILL_MOTIONS['hip-stick'], 'hipStick');
+set3d(DRILL_MOTIONS['towel-arms'], 'towelHalf');
+set3d(DRILL_MOTIONS['stick-lead-arm'], 'chipStick');
+set3d(DRILL_MOTIONS['trail-toe'], 'chipToe');

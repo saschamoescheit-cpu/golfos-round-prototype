@@ -51,6 +51,8 @@ export interface Swing {
   oneHand?: boolean;
   /** played from sand (bunker) */
   sand?: boolean;
+  /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
+  props?: ('stickHip' | 'towel' | 'stickGrip')[];
   view?: View;
 }
 
@@ -183,6 +185,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     club: THREE.Group;
     ball: THREE.Mesh;
     tee: THREE.Mesh;
+    extras: THREE.Group;
     swing: Swing;
     prep: Prepared;
     x: number;
@@ -424,7 +427,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   raf = requestAnimationFrame(frame);
 
   const setSwings = (list: { swing: Swing; x?: number; z?: number }[]) => {
-    for (const p of players) scene.remove(p.rig.root, p.club, p.ball, p.tee);
+    for (const p of players) scene.remove(p.rig.root, p.club, p.ball, p.tee, p.extras);
     players = list.map(({ swing, x = 0, z = 0 }) => {
       const rig = buildRig();
       const club = buildClub(swing.club);
@@ -432,11 +435,33 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       ball.castShadow = true;
       const tee = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.04, 8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.6 }));
       tee.visible = !!swing.tee;
+      // the drill aids (orange like the alignment sticks of the drawings)
+      const extras = new THREE.Group();
+      const stickMat = new THREE.MeshStandardMaterial({ color: COLORS.stick, roughness: 0.5 });
+      if (swing.props?.includes('stickHip')) {
+        const s = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 1.05, 8), stickMat);
+        s.position.set(x - (swing.stance ?? 0.36) / 2 - 0.13, 0.5, z - 0.02);
+        s.castShadow = true;
+        extras.add(s);
+      }
+      if (swing.props?.includes('towel')) {
+        const towel = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.07, 0.05), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }));
+        towel.position.set(0, 0.1, 0.13);
+        towel.castShadow = true;
+        rig.joints.chest.add(towel);
+      }
+      if (swing.props?.includes('stickGrip')) {
+        // the stick continues the shaft above the hands, past the lead hip
+        const s = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.85, 8), stickMat);
+        s.position.y = -0.42;
+        s.castShadow = true;
+        club.add(s);
+      }
       const at = ballPos({ swing, x, z });
       ball.position.copy(at);
       tee.position.set(at.x, 0.02, at.z);
-      scene.add(rig.root, club, ball, tee);
-      return { rig, club, ball, tee, swing, x, z, prep: prepare({ rig, swing, x, z }) };
+      scene.add(rig.root, club, ball, tee, extras);
+      return { rig, club, ball, tee, extras, swing, x, z, prep: prepare({ rig, swing, x, z }) };
     });
     length = Math.max(...players.map((p) => p.prep.length));
     const first = list[0].swing;
