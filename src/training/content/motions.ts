@@ -116,6 +116,19 @@ export const DRILL_MOTIONS: Record<string, Motion> = {
   },
   'punch-gap': punch(),
   'divot-lie': punch(),
+  // stance: undefined – the figure of the picture stands with the feet together; after the step the normal stance
+  'step-drill': {
+    frames: [
+      { pose: 'front', opts: { club: 'iron', stance: 'together' }, t: 0, hold: 0.6, label: L('feet together', 'Füße zusammen') },
+      { pose: 'takeaway', opts: { club: 'iron', stance: 'together' }, t: 0.6, label: L('start back with the feet together', 'mit geschlossenen Füßen ausholen') },
+      { pose: 'halfBack', opts: { club: 'iron', stance: undefined }, t: 0.6, hold: 0.2, label: L('the lead foot steps towards the target', 'der vordere Fuß tritt Richtung Ziel') },
+      { pose: 'pump', opts: { club: 'iron', stance: undefined, shift: 0.04 }, t: 0.35, label: L('foot down – the weight is forward first', 'Fuß aufsetzen – zuerst ist das Gewicht vorn') },
+      { pose: 'impact', opts: { club: 'iron', stance: undefined, shift: 0.06 }, t: 0.2 },
+      { pose: 'halfThrough', opts: { club: 'iron', stance: undefined, shift: 0.06 }, t: 0.3, hold: 1, label: L('then the club arrives', 'dann kommt der Schläger') },
+    ],
+  },
+  'hold-finish-slope': fullSwing(undefined, 0.2),
+  'brush-find': halfSwing({ club: 'iron' }),
   'impact-bag': {
     frames: [
       { pose: 'front', t: 0, hold: 0.5 },
@@ -141,6 +154,7 @@ export const SECTION_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>
   pitching: { 'The motion': halfSwing(), 'The clock system': halfSwing(), 'Lob and flop': fullSwing({ club: 'wedge', stance: 'wide' }) },
   bunker: { 'The swing': fullSwing({ club: 'wedge', stance: 'wide' }), 'Fairway bunker': fullSwing({ club: 'iron' }) },
   trouble: { 'The punch shot under trees': punch() },
+  slopes: { 'Uphill lie': fullSwing(), 'Downhill lie': fullSwing() },
   woods: { 'The swing: sweep': fullSwing({ club: 'driver' }) },
   driver: { 'More speed': fullSwing({ club: 'driver', stance: 'wide' }), 'Hit up and hit the centre': fullSwing({ club: 'driver', stance: 'wide' }) },
   swing: {
