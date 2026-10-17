@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
 import { BONES, makeAnalyzer, missingPoints, valueText, type Analyzer, type Cue, type Frame, type Lm, type Outcome } from './measure';
-import { detect, loadPose } from './pose';
+import { detect, loadPose, resetTracking } from './pose';
 import type { Grade, Measurement, MetricKind, Side, TestDef } from './types';
 
 // A camera test (Sascha 17.10.2026: "the user sees the exercise on the phone, copies it, and the app analyses the
@@ -106,6 +106,13 @@ const fakeLevel = (): 'good' | 'stiff' | null => {
     return null;
   }
 };
+const fakeImage = (): string | null => {
+  try {
+    return localStorage.getItem('golfos.mobility.fakeImage');
+  } catch {
+    return null;
+  }
+};
 const fakeSpeed = (): number => {
   try {
     return Number(localStorage.getItem('golfos.mobility.fakeSpeed')) || 1;
@@ -125,7 +132,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
   const shotRef = useRef<HTMLCanvasElement | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [count, setCount] = useState(3);
-  const [live, setLive] = useState<{ value: number | null; best: number | null; hold?: number; missing: number; seen: boolean; calibrating?: boolean }>({ value: null, best: null, missing: 0, seen: false });
+  const [live, setLive] = useState<{ value: number | null; best: number | null; hold?: number; missing: number; seen: boolean; calibrating?: boolean; people?: number }>({ value: null, best: null, missing: 0, seen: false });
   const [outcome, setOutcome] = useState<Outcome | null | undefined>(undefined);
   const finishRef = useRef<(() => void) | null>(null);
   const [shot, setShot] = useState<string | null>(null);
@@ -145,9 +152,16 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
     let stopped = false;
     let raf = 0;
     let stream: MediaStream | null = null;
+    // the player stands 2–3 m away for minutes: the screen must not lock meanwhile (Safari 16.4+)
+    let wake: { release: () => Promise<void> } | null = null;
+    (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock
+      ?.request('screen')
+      .then((w) => (stopped ? void w.release() : (wake = w)))
+      .catch(() => {});
     let analyzer: Analyzer | null = null;
     let framedSince = -1;
     let lastUi = 0;
+    let lastDetect = 0;
     let lastShot = 0;
     let lastBest: number | null = null;
     let spokenSec = -1;
@@ -174,6 +188,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
         g.fillStyle = '#18222a';
         g.fillRect(0, 0, w, h);
       }
+      if (stillCanvas) g.drawImage(stillCanvas, 0, 0, w, h);
       if (!lm) return;
       const focus = new Set((analyzer?.focus() ?? []).map(([a, b]) => `${Math.min(a, b)}-${Math.max(a, b)}`));
       const p = (i: number) => [lm[i].x * w, lm[i].y * h] as const;
@@ -238,19 +253,33 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
     const tick = () => {
       if (stopped) return;
       raf = requestAnimationFrame(tick);
+      // about 30 pictures a second are plenty – the phone stays cool and the screen smooth
+      if (performance.now() - lastDetect < 30) return;
+      lastDetect = performance.now();
       let lm: Lm[] | null = null;
+      let people = lm ? 1 : 0;
       let w = 720;
       let h = 1280;
       const now = performance.now();
       if (fakeScript) {
         const t = (now - fakeT0) * speed;
         lm = fakeScript.at(Math.min(t, fakeScript.ms));
+      } else if (stillCanvas) {
+        // QA: a photo instead of the camera (golfos.mobility.fakeImage) – the real pose model on a real person
+        if (!landmarker) return;
+        w = stillCanvas.width;
+        h = stillCanvas.height;
+        const d = detect(landmarker, stillCanvas);
+        lm = d.lm;
+        people = d.people;
       } else {
         const v = videoRef.current;
         if (!v || v.readyState < 2 || !landmarker) return;
         w = v.videoWidth;
         h = v.videoHeight;
-        lm = detect(landmarker, v);
+        const d = detect(landmarker, v);
+        lm = d.lm;
+        people = d.people;
       }
       const t = fakeScript ? (now - fakeT0) * speed : now;
       const f: Frame | null = lm ? { lm, w, h, t } : null;
@@ -283,7 +312,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
         }
         if (now - lastUi > 100 || l.phase === 'done') {
           lastUi = now;
-          setLive({ value: l.value, best: l.best, hold: l.hold, missing, seen: true, calibrating: l.phase === 'calibrate' });
+          setLive({ value: l.value, best: l.best, hold: l.hold, missing, seen: true, calibrating: l.phase === 'calibrate', people });
         }
         if (l.phase === 'done') {
           beep(1400, 260);
@@ -293,7 +322,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
         }
       } else if (now - lastUi > 150 && ph !== 'result') {
         lastUi = now;
-        setLive((x) => ({ ...x, missing, seen: !!f }));
+        setLive((x) => ({ ...x, missing, seen: !!f, people }));
       }
       if (fakeScript && (now - fakeT0) * speed > fakeScript.ms + 500 && phaseRef.current === 'run') finish();
     };
@@ -337,9 +366,24 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
     };
 
     let landmarker: Awaited<ReturnType<typeof loadPose>> | null = null;
+    let stillCanvas: HTMLCanvasElement | null = null;
+    let stillImage: string | null = null;
+    void stillImage;
     (async () => {
       try {
-        if (fake) {
+        resetTracking();
+        const still = fakeImage();
+        if (still) {
+          const img = new Image();
+          img.src = still;
+          await img.decode();
+          stillCanvas = document.createElement('canvas');
+          stillCanvas.width = img.naturalWidth;
+          stillCanvas.height = img.naturalHeight;
+          stillCanvas.getContext('2d')!.drawImage(img, 0, 0);
+          landmarker = await loadPose();
+          stillImage = still;
+        } else if (fake) {
           const { script } = await import('./synth');
           fakeScript = script(kind, sideParam, fake);
           fakeT0 = performance.now();
@@ -376,6 +420,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
       cancelAnimationFrame(raf);
       window.clearTimeout(countTimer);
       stream?.getTracks().forEach((t) => t.stop());
+      void wake?.release().catch(() => {});
       stopSpeaking();
     };
     // a new attempt or the other camera starts again
@@ -492,7 +537,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
 
   return (
     <section className="mob-camera">
-      <div className={`mob-stage${facing === 'user' && !fake ? ' mirror' : ''}`} style={{ aspectRatio: ratio }}>
+      <div className={`mob-stage${facing === 'user' && !fake && !fakeImage() ? ' mirror' : ''}`} style={{ aspectRatio: ratio }}>
         {!fake && <video ref={videoRef} playsInline muted />}
         <canvas ref={canvasRef} aria-hidden="true" />
         {status && <div className={`mob-status${phase === 'count' ? ' big' : ''}`}>{status}</div>}
@@ -511,6 +556,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
             )}
           </div>
         )}
+        {(live.people ?? 0) > 1 && <div className="mob-people">{tr('Several people in the picture – please step in alone', 'Mehrere Personen im Bild – bitte allein ins Bild')}</div>}
         <div className="mob-side-tag">{props.side ? sideText(kind, props.side) : props.test.name[trLang()]}</div>
       </div>
       <div className="mob-camera-actions">

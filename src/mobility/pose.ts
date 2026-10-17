@@ -1,4 +1,4 @@
-import type { Lm } from './measure';
+import { personCenter, pickMainPerson, type Lm } from './measure';
 
 // The pose model in the browser (MediaPipe Pose Landmarker, as in the Coach prototype): the WASM runtime and the model
 // come from the app itself (public/mediapipe – copied from node_modules by scripts/mediapipe-assets.mjs – and
@@ -7,7 +7,7 @@ import type { Lm } from './measure';
 // Ideengebung für Ben: the native app would use the same model (MediaPipe for iOS) or Apple Vision body pose.
 
 type Landmarker = {
-  detectForVideo(video: HTMLVideoElement, ts: number): { landmarks?: Lm[][] };
+  detectForVideo(video: HTMLVideoElement | HTMLCanvasElement, ts: number): { landmarks?: Lm[][] };
   close(): void;
 };
 
@@ -36,7 +36,7 @@ export function loadPose(): Promise<Landmarker> {
     const options = (delegate: 'GPU' | 'CPU') => ({
       baseOptions: { modelAssetPath: `${base()}models/pose_landmarker_full.task`, delegate },
       runningMode: 'VIDEO' as const,
-      numPoses: 1,
+      numPoses: 2, // a second person in the picture must not become the player
       minPoseDetectionConfidence: 0.5,
       minPosePresenceConfidence: 0.5,
       minTrackingConfidence: 0.5,
@@ -52,12 +52,21 @@ export function loadPose(): Promise<Landmarker> {
   return shared;
 }
 
-/** The body points in the current video picture (null: nobody seen). */
-export function detect(lm: Landmarker, video: HTMLVideoElement): Lm[] | null {
+let lastCenter: { x: number; y: number } | null = null;
+/** A new test: forget whom we followed. */
+export function resetTracking(): void {
+  lastCenter = null;
+}
+
+/** The player's body points in the current picture (null: nobody seen) and how many people were seen. */
+export function detect(lm: Landmarker, source: HTMLVideoElement | HTMLCanvasElement): { lm: Lm[] | null; people: number } {
   const now = performance.now();
   const ts = now <= lastTs ? lastTs + 1 : now; // MediaPipe needs increasing times
   lastTs = ts;
-  const res = lm.detectForVideo(video, ts);
-  const p = res.landmarks?.[0];
-  return p ? p.map((l) => ({ x: l.x, y: l.y, z: l.z, v: (l as { visibility?: number }).visibility ?? 1 })) : null;
+  const res = lm.detectForVideo(source, ts);
+  const all = (res.landmarks ?? []).map((p) => p.map((l) => ({ x: l.x, y: l.y, z: l.z, v: (l as { visibility?: number }).visibility ?? 1 })));
+  if (!all.length) return { lm: null, people: 0 };
+  const main = all[pickMainPerson(all, lastCenter)];
+  lastCenter = personCenter(main);
+  return { lm: main, people: all.length };
 }

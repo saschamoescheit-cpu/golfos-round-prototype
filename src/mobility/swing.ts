@@ -102,9 +102,9 @@ export const PATTERNS: Pattern[] = [
     links: [{ test: 'pelvic-rotation', w: 3 }, { test: 'seated-rotation', w: 2 }, { test: 'shoulder-9090', w: 2, side: 'trail' }, { test: 'lower-quarter', w: 2, side: 'lead' }, { test: 'lat', w: 1 }, { test: 'single-leg', w: 1 }],
     sketch: scene([
       { k: 'figure', at: at(1.4), pose: 'top', club: 'iron' },
-      { k: 'flight', pts: [[2.2, 2.0], [2.0, 1.2], [1.95, 0.25]], dashed: true },
+      { k: 'flight', pts: [[2.25, 1.75], [2.05, 1.1], [1.95, 0.25]], dashed: true },
       { k: 'callout', on: 'trailShoulder', t: L('the shoulders start the downswing', 'die Schultern starten den Abschwung'), at: [0.3, 1.9] },
-      { k: 'text', at: [2.25, 1.55], t: L('club from outside', 'Schläger von außen'), size: 11, anchor: 'start' },
+      { k: 'text', at: [2.95, 1.95], t: L('club from outside', 'Schläger von außen'), size: 11, anchor: 'end' },
     ]),
     training: { cat: 'swing', fault: 'Over the top' },
   },
@@ -143,8 +143,10 @@ export const PATTERNS: Pattern[] = [
     misses: ['slice', 'pull', 'back'],
     links: [{ test: 'seated-rotation', w: 3 }, { test: 'lat', w: 2 }, { test: 'neck', w: 2 }, { test: 'lower-quarter', w: 1, side: 'trail' }, { test: 'single-leg', w: 1 }],
     sketch: scene([
-      { k: 'figure', at: at(1.5), pose: 'frontTop', tilt: -8 },
+      { k: 'figure', at: at(1.5), pose: 'frontTop', joints: { head: [0.1, 1.54], neck: [0.08, 1.41], leadShoulder: [0.18, 1.36], trailShoulder: [-0.06, 1.41], leadElbow: [-0.06, 1.46], trailElbow: [-0.24, 1.3], hands: [-0.28, 1.6], clubHead: [0.55, 1.78], pelvis: [-0.06, 0.92], leadHip: [0.05, 0.92], trailHip: [-0.17, 0.92] } },
+      { k: 'line', from: [1.5 - 0.06, G0 + 0.92], to: [1.5 - 0.06, G0 + 1.75], dashed: true },
       { k: 'callout', on: 'head', t: L('the upper body leans towards the target', 'der Oberkörper lehnt zum Ziel'), at: [2.6, 1.9] },
+      { k: 'callout', on: 'trailHip', t: L('the hips slide back', 'die Hüfte schiebt nach hinten'), at: [0.45, 0.9] },
     ]),
   },
   {
@@ -155,8 +157,10 @@ export const PATTERNS: Pattern[] = [
     misses: ['hook', 'push', 'fat'],
     links: [{ test: 'lat', w: 2 }, { test: 'reach-roll-lift', w: 2 }, { test: 'shoulder-9090', w: 1 }, { test: 'seated-rotation', w: 1 }, { test: 'pelvic-tilt', w: 1 }],
     sketch: scene([
-      { k: 'figure', at: at(1.4), pose: 'top', club: 'iron' },
+      { k: 'figure', at: at(1.4), pose: 'top', club: 'iron', joints: { leadShoulder: [0.22, 1.37], trailShoulder: [0.1, 1.37], leadElbow: [0.02, 1.36], trailElbow: [-0.14, 1.28], hands: [-0.22, 1.44], clubHead: [-0.72, 1.66] } },
+      { k: 'line', from: [1.4 - 0.25, G0 + 1.37], to: [1.4 + 0.6, G0 + 1.37], dashed: true },
       { k: 'callout', on: 'leadShoulder', t: L('the shoulders turn level, not tilted', 'die Schultern drehen waagrecht statt geneigt'), at: [2.6, 1.9] },
+      { k: 'callout', on: 'hands', t: L('arms and club flat behind the body', 'Arme und Schläger flach hinter dem Körper'), at: [0.35, 1.0] },
     ]),
   },
   {

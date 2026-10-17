@@ -251,7 +251,7 @@ export function WristFlex(props: { flex: number; ext: number; thumb?: boolean })
       <text x={wx + 86 * Math.cos(rad(-props.flex))} y={wy - 86 * Math.sin(rad(-props.flex)) + 10} textAnchor="middle" fontSize={14} fontWeight={700} fill={C.text}>
         {props.flex}°
       </text>
-      <text x={20} y={H - 10} fontSize={13} fill={C.text}>
+      <text x={20} y={24} fontSize={13} fill={C.text}>
         {tr('back of the hand up · fingers relaxed', 'Handrücken oben · Finger locker')}
       </text>
     </Frame>

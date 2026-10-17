@@ -104,3 +104,7 @@
 .mob-bar i.fail { background: var(--bad); }
 
 :root[data-theme='sun'] .mob-level.likely, :root[data-theme='sun'] .mob-grade { color: #ffffff; }
+.mob-people {
+  position: absolute; left: 12px; right: 12px; top: 64px; padding: 6px 10px; border-radius: 10px; text-align: center;
+  background: rgba(14, 20, 24, 0.78); color: #ffffff; font: 600 13px var(--body);
+}

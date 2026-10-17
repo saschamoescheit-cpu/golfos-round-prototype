@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { tr } from '../lib/i18n';
+import { isLeftHanded } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { TopBar } from '../components/ui';
@@ -66,6 +67,7 @@ const AREA_NAMES: Record<Area, L> = {
 };
 const AREAS: Area[] = ['hips', 'spine', 'shoulders', 'stability', 'legs', 'neck', 'wrists'];
 
+const playerHand = (): 'right' | 'left' => (isLeftHanded() ? 'left' : 'right');
 const GLYPH: Record<Grade, string> = { pass: '✓', limited: '–', fail: '✕' };
 const sideName = (s: Side) => (s === 'left' ? tr('left', 'links') : tr('right', 'rechts'));
 const dateText = (iso: string) => new Date(iso).toLocaleDateString(tr('en-GB', 'de-DE'), { day: 'numeric', month: 'short', year: 'numeric' });
@@ -730,7 +732,9 @@ function SelfCheck(props: { test: TestDef; onPick: (m: Measurement) => void; onB
 
 function ResultTab(props: { nav: Nav }) {
   const all = loadScreenings();
-  const { results, at, hand } = latestResults(all);
+  const { results, at } = latestResults(all);
+  // lead and trail come from the profile now (a player who corrects it sees the result for the right side)
+  const hand = playerHand();
   const [tab, setTab] = useState<'body' | 'swing'>('swing');
   const tested = TESTS.filter((x) => results[x.id]);
   if (!tested.length)
@@ -824,7 +828,8 @@ function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<type
 }
 
 function PatternView(props: { id: string; nav: Nav }) {
-  const { results, hand } = latestResults(loadScreenings());
+  const { results } = latestResults(loadScreenings());
+  const hand = playerHand();
   const r = swingPatterns(results, hand).find((x) => x.pattern.id === props.id);
   if (!r) return null;
   const p = r.pattern;

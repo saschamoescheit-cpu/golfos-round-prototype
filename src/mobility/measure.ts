@@ -874,3 +874,40 @@ export function valueText(kind: MetricKind, v: number | null, tr: (en: string, d
       return `${v}°`;
   }
 }
+
+// ---------- several people in the picture ----------
+/** The centre of the visible points of a person (for following the same person from picture to picture). */
+export function personCenter(lm: Lm[] | null): { x: number; y: number } | null {
+  if (!lm) return null;
+  const v = lm.filter((p) => (p.v ?? 1) > 0.3);
+  if (!v.length) return null;
+  const xs = v.map((p) => p.x);
+  const ys = v.map((p) => p.y);
+  return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+}
+
+/**
+ * The player when several people are in the picture (a partner holding the phone, a child walking past): the largest,
+ * most central person, and the one seen before stays the player (as in the Coach prototype).
+ */
+export function pickMainPerson(people: Lm[][], prev?: { x: number; y: number } | null): number {
+  if (people.length <= 1) return 0;
+  let best = 0;
+  let bestScore = -Infinity;
+  people.forEach((lm, i) => {
+    const v = lm.filter((p) => (p.v ?? 1) > 0.3);
+    if (!v.length) return;
+    const xs = v.map((p) => p.x);
+    const ys = v.map((p) => p.y);
+    const h = Math.max(...ys) - Math.min(...ys);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    let score = h * (1 - Math.min(1, Math.abs(cx - 0.5)));
+    if (prev) score -= 2 * Math.hypot(cx - prev.x, cy - prev.y);
+    if (score > bestScore) {
+      bestScore = score;
+      best = i;
+    }
+  });
+  return best;
+}

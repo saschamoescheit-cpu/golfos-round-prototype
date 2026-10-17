@@ -22,6 +22,12 @@ const pair = (lead: JointName, trail: JointName, p: P, dx = -0.02): J => ({ [lea
 const legs = (hip: P, knee: P, ankle: P, heel: P, toe: P): J => ({ ...pair('leadHip', 'trailHip', hip), ...pair('leadKnee', 'trailKnee', knee), ...pair('leadAnkle', 'trailAnkle', ankle), ...pair('leadHeel', 'trailHeel', heel), ...pair('leadToe', 'trailToe', toe) });
 const side = (j: J): GolferOptions => ({ pose: 'address', club: 'none', faceOn: false, joints: j });
 
+/** standing tall, seen from the front */
+const FRONT_STAND: J = { head: [0, 1.62], neck: [0, 1.48], pelvis: [0, 0.93], leadShoulder: [0.19, 1.44], trailShoulder: [-0.19, 1.44], leadElbow: [0.22, 1.16], trailElbow: [-0.22, 1.16], hands: [0.24, 0.9], trailHand: [-0.24, 0.9], leadHip: [0.11, 0.93], trailHip: [-0.11, 0.93], leadKnee: [0.12, 0.5], trailKnee: [-0.12, 0.5], leadAnkle: [0.12, 0.08], trailAnkle: [-0.12, 0.08] };
+const front = (j: J = {}): GolferOptions => ({ pose: 'front', club: 'none', faceOn: true, joints: { ...FRONT_STAND, ...j } });
+/** standing tall, seen from the side (facing right) */
+const SIDE_STAND: J = { head: [0.03, 1.62], neck: [0, 1.48], pelvis: [0, 0.93], ...legs([0, 0.93], [0.02, 0.5], [0, 0.08], [-0.06, 0.02], [0.18, 0.02]), ...pair('leadShoulder', 'trailShoulder', [0, 1.44]) };
+
 /** on hands and knees, seen from the side (head to the right) */
 const ALL_FOURS: J = {
   pelvis: [0, 0.55],
@@ -95,39 +101,41 @@ const sketches: Record<string, Sketch> = {
   ]),
   'mob-clamshell': S(3, 1.3, [
     ground(3),
-    fig(1.6, { pose: 'sidelying', joints: { leadKnee: [0.3, 0.62], leadAnkle: [0.56, 0.4], leadHeel: [0.52, 0.42], leadToe: [0.66, 0.42] } }),
-    arrow([2.0, 0.7], [2.0, 0.95]),
+    // on the side, knees bent, the feet together: the top knee opens
+    fig(1.6, { pose: 'sidelying', joints: { leadKnee: [0.3, 0.6], leadAnkle: [0.57, 0.37], leadHeel: [0.53, 0.35], leadToe: [0.67, 0.4], leadElbow: [-0.08, 0.6], hands: [0.06, 0.5] } }),
+    arrow([2.0, 0.72], [2.0, 0.98]),
     co('leadKnee', L('open the top knee, feet stay together', 'das obere Knie öffnen, die Füße bleiben zusammen'), [2.6, 1.2]),
     co('pelvis', L('the pelvis does not roll back', 'das Becken kippt nicht nach hinten'), [0.6, 1.1]),
   ]),
   'mob-lat-stretch': S(3, 1.6, [
     ground(3),
-    line([2.0, G0 + 0.45], [2.6, G0 + 0.45]),
-    line([2.1, G0], [2.1, G0 + 0.45]),
-    line([2.5, G0], [2.5, G0 + 0.45]),
-    txt([2.3, G0 + 0.55], L('bench or chair', 'Bank oder Stuhl'), 10),
-    fig(1.0, side({ pelvis: [0, 0.55], neck: [0.55, 0.5], head: [0.66, 0.45], ...legs([0, 0.55], [0.02, 0.1], [-0.38, 0.1], [-0.36, 0.16], [-0.48, 0.03]), ...pair('leadShoulder', 'trailShoulder', [0.53, 0.52]), ...pair('leadElbow', 'trailElbow', [0.9, 0.48]), hands: [0.95, 0.75], trailHand: [0.93, 0.75] })),
-    co('leadElbow', L('elbows on the bench, hands together behind the head', 'Ellbogen auf der Bank, Hände hinter dem Kopf zusammen'), [2.5, 1.45]),
-    co('pelvis', L('sit the hips back to the heels', 'die Hüfte nach hinten zu den Fersen schieben'), [0.3, 1.2]),
+    line([1.75, G0 + 0.45], [2.35, G0 + 0.45]),
+    line([1.85, G0], [1.85, G0 + 0.45]),
+    line([2.25, G0], [2.25, G0 + 0.45]),
+    txt([2.05, G0 + 0.2], L('bench', 'Bank'), 9),
+    fig(1.0, side({ pelvis: [0, 0.55], neck: [0.55, 0.5], head: [0.67, 0.44], ...legs([0, 0.55], [0.02, 0.1], [-0.38, 0.1], [-0.36, 0.16], [-0.48, 0.03]), ...pair('leadShoulder', 'trailShoulder', [0.53, 0.52]), ...pair('leadElbow', 'trailElbow', [0.86, 0.5]), hands: [0.62, 0.6], trailHand: [0.6, 0.6] })),
+    co('leadElbow', L('elbows on the bench, hands together behind the head', 'Ellbogen auf der Bank, Hände hinter dem Kopf zusammen'), [2.6, 1.45]),
+    co('pelvis', L('sit the hips back to the heels, the chest sinks', 'die Hüfte nach hinten zu den Fersen, die Brust sinkt'), [0.3, 1.2]),
   ]),
   'mob-wall-angels': S(3, 2.1, [
     ground(3),
-    fig(1.5, { pose: 'stand', faceOn: true, joints: { leadElbow: [0.34, 1.45], trailElbow: [-0.34, 1.45], hands: [0.32, 1.8], trailHand: [-0.32, 1.8] } }),
-    arrow([1.5 + 0.42, 1.95], [1.5 + 0.38, 2.05]),
+    fig(1.5, front({ leadElbow: [0.38, 1.47], trailElbow: [-0.38, 1.47], hands: [0.36, 1.8], trailHand: [-0.36, 1.8] })),
+    arrow([1.5 + 0.48, 1.95], [1.5 + 0.42, 2.06]),
     co('hands', L('back of the hands and elbows touch the wall, slide up and down', 'Handrücken und Ellbogen an der Wand, hoch und runter gleiten'), [2.6, 1.95]),
     co('pelvis', L('back and head stay on the wall', 'Rücken und Kopf bleiben an der Wand'), [2.6, 0.9]),
   ]),
   'mob-9090-stretch': S(3, 2.1, [
     ground(3),
-    fig(1.3, side({ ...pair('leadShoulder', 'trailShoulder', [0.0, 1.42]), leadElbow: [0.02, 1.42], hands: [-0.04, 1.7], trailElbow: [0.18, 1.2], trailHand: [0.3, 1.45] })),
-    line([1.3 + 0.3, G0 + 1.45], [1.3 - 0.05, G0 + 1.7]),
+    // the "goal post": upper arm out at shoulder height, forearm up; the other hand pushes it back with a stick
+    fig(1.4, front({ leadElbow: [0.46, 1.43], hands: [0.47, 1.72], trailElbow: [-0.1, 1.2], trailHand: [0.08, 1.3] })),
+    line([1.4 + 0.08, G0 + 1.3], [1.4 + 0.5, G0 + 1.62]),
     co('hands', L('the forearm turns back, a stick helps', 'der Unterarm dreht nach hinten, ein Stab hilft'), [2.5, 1.95]),
-    co('leadElbow', L('elbow at shoulder height, bent 90°', 'Ellbogen auf Schulterhöhe, 90° gebeugt'), [2.5, 1.2]),
+    co('leadElbow', L('elbow at shoulder height, bent 90°', 'Ellbogen auf Schulterhöhe, 90° gebeugt'), [2.55, 1.2]),
   ]),
   'mob-band-er': S(3, 2.1, [
     ground(3),
-    fig(1.5, { pose: 'stand', faceOn: true, joints: { leadElbow: [0.18, 1.15], trailElbow: [-0.18, 1.15], hands: [0.4, 1.18], trailHand: [-0.4, 1.18] } }),
-    line([1.5 - 0.4, G0 + 1.18], [1.5 + 0.4, G0 + 1.18], true),
+    fig(1.5, front({ leadElbow: [0.2, 1.16], trailElbow: [-0.2, 1.16], hands: [0.44, 1.2], trailHand: [-0.44, 1.2] })),
+    line([1.5 - 0.44, G0 + 1.2], [1.5 + 0.44, G0 + 1.2], true),
     co('hands', L('hands out against the band', 'Hände gegen das Band nach außen'), [2.6, 1.6]),
     co('leadElbow', L('elbows stay at the sides', 'Ellbogen bleiben am Körper'), [2.6, 0.9]),
   ]),
@@ -146,20 +154,23 @@ const sketches: Record<string, Sketch> = {
   ]),
   'mob-neck-turn': S(3, 2.1, [
     ground(3),
-    fig(1.5, { pose: 'stand', faceOn: true }),
+    fig(1.5, front()),
     co('head', L('chin in, then turn the head slowly to each side', 'Kinn einziehen, dann den Kopf langsam zu jeder Seite drehen'), [2.6, 1.95]),
     co('leadShoulder', L('the shoulders stay low and still', 'die Schultern bleiben tief und ruhig'), [2.6, 1.3]),
   ]),
   'mob-forearm-turn': S(3, 2.1, [
     ground(3),
-    fig(1.5, { pose: 'stand', faceOn: true, club: 'iron', joints: { leadElbow: [0.2, 1.15], trailElbow: [-0.2, 1.15], hands: [0.22, 1.12], trailHand: [-0.22, 1.05], clubHead: [0.6, 1.4] } }),
+    // the elbow at the side, the forearm forward (towards you), the club held short: it tips to the side
+    fig(1.5, { ...front({ leadElbow: [0.22, 1.16], hands: [0.26, 1.08], trailElbow: [-0.22, 1.16], trailHand: [-0.24, 0.9] }), club: 'iron', joints: { ...FRONT_STAND, leadElbow: [0.22, 1.16], hands: [0.26, 1.08], trailElbow: [-0.22, 1.16], trailHand: [-0.24, 0.9], clubHead: [0.72, 1.36] } }),
+    line([1.5 + 0.26, G0 + 1.08], [1.5 + 0.26, G0 + 1.65], true),
     co('hands', L('club short at the grip, tip it slowly left and right', 'Schläger kurz am Griff, langsam nach links und rechts kippen'), [2.6, 1.95]),
-    co('leadElbow', L('the elbow stays at the side', 'der Ellbogen bleibt am Körper'), [2.6, 0.9]),
+    co('leadElbow', L('the elbow stays at the side, bent 90°', 'der Ellbogen bleibt am Körper, 90° gebeugt'), [2.6, 0.9]),
   ]),
   'mob-wrist-hinge': S(3, 2.1, [
     ground(3),
-    fig(1.1, { ...side({ leadElbow: [0.3, 1.38], hands: [0.56, 1.38], clubHead: [1.05, 1.75], trailElbow: [0.24, 1.04], trailHand: [0.28, 0.82] }), club: 'iron' }),
-    co('hands', L('arm straight, hinge the club up and down', 'Arm gestreckt, den Schläger hoch und runter anwinkeln'), [2.4, 1.95]),
+    fig(1.0, { ...side({ ...SIDE_STAND, leadElbow: [0.28, 1.43], hands: [0.55, 1.43], trailElbow: [0.02, 1.16], trailHand: [0.04, 0.88], clubHead: [1.05, 1.78] }), club: 'iron' }),
+    line([1.0 + 0.55, G0 + 1.43], [1.0 + 1.15, G0 + 1.43], true),
+    co('hands', L('arm straight at shoulder height, hinge the club up and down', 'Arm gestreckt auf Schulterhöhe, den Schläger hoch und runter anwinkeln'), [2.4, 1.95]),
     co('leadElbow', L('only the wrist moves', 'nur das Handgelenk bewegt sich'), [2.5, 1.0]),
   ]),
   'mob-wrist-stretch': S(3, 1.4, [

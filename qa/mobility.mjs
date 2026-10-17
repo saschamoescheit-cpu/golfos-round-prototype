@@ -17,6 +17,11 @@ const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
 };
 let n = 0;
+// every button the player taps is at least 44 px high (as in Rounds, qa/tapsize.mjs)
+const small = async (where) => {
+  const list = await p.evaluate(() => [...document.querySelectorAll('main button, main a.btn-secondary, nav.tabbar button')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 44).map((e) => (e.textContent || e.getAttribute('aria-label') || e.className).trim().slice(0, 30) + ' ' + Math.round(e.getBoundingClientRect().height)));
+  ok(list.length === 0, `tap sizes ≥ 44 px on ${where}${list.length ? ': ' + list.join(', ') : ''}`);
+};
 const shot = async (name) => shots && p.screenshot({ path: `${shots}/${String(++n).padStart(2, '0')}-${name}.png`, fullPage: true });
 const tab = (name) => p.locator('.tabbar button').filter({ hasText: name }).click();
 
@@ -45,6 +50,7 @@ ok((await p.locator('.module-tag').textContent()) === 'Beweglichkeit', 'module h
 ok((await p.getByText('So funktioniert').count()) === 0, 'no intro card');
 ok((await p.locator('.mob-test-row').count()) === 15, '15 single tests listed');
 await shot('screening-tab');
+await small('the screening tab');
 
 // the empty result and drills tabs
 await tab('Ergebnis');
@@ -97,6 +103,7 @@ ok((await p.locator('.mob-level.likely').count()) >= 1, 'at least one pattern is
 ok(await p.locator('.mob-pattern').filter({ hasText: 'Frühes Aufrichten' }).isVisible(), 'early extension is found (squat, bridge failed)');
 ok((await p.locator('.mob-miss').count()) >= 3, 'misses in player language');
 await shot('result-swing');
+await small('the result');
 await p.locator('.mob-pattern').first().click();
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-sketch svg').count()) >= 1, 'pattern page shows the fault as a picture');
@@ -114,6 +121,7 @@ await p.waitForTimeout(300);
 const drillGroups = await p.locator('.mob-drill-head').count();
 ok(drillGroups >= 4, `${drillGroups} limited tests with drills`);
 await shot('drills');
+await small('the drills');
 await p.locator('.mob-test-row').first().click();
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-video').count()) >= 1, 'a drill has videos');
@@ -156,6 +164,7 @@ await p.getByRole('button', { name: 'Test starten' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.mob-option').count()) === 3, 'self check offers three pictures');
 await shot('self-check');
+await small('a self check');
 await p.locator('.mob-option.limited').click();
 await p.waitForTimeout(500);
 ok((await p.locator('.topbar h1').innerText()) === 'Handgelenk anwinkeln', 'back on the test page after a single test');
@@ -171,6 +180,7 @@ await p.getByRole('button', { name: 'Speichern und weiter' }).waitFor({ timeout:
 await p.getByRole('button', { name: 'Speichern und weiter' }).click();
 await p.locator('.hole-bar-handle').click();
 await shot('drawer');
+await small('the screening in play');
 await p.locator('.drawer-action').filter({ hasText: 'Pausieren' }).click();
 await p.waitForTimeout(300);
 ok(await p.locator('.mob-open').isVisible(), 'the paused screening is offered on the screening tab');
@@ -181,6 +191,33 @@ await p.locator('.module-card').filter({ hasText: 'Beweglichkeits-Screening' }).
 await p.locator('.mob-open').click();
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-now-name').innerText()) === 'Hüftrotation auf einem Bein', 'continues with the next open test');
+
+// ---------- left-handed: lead and trail come from the profile ----------
+await p.evaluate(() => {
+  const ids = ['lower-quarter'];
+  const m = (grade) => ({ value: 40, grade, source: 'camera', at: '2026-10-18T06:00:00Z' });
+  // only this result, so nothing else points to a pattern
+  const list = [];
+  list.push({ id: 'lh', kind: 'single', tests: ids, createdAt: '2026-10-18T06:00:00Z', finishedAt: '2026-10-18T06:00:00Z', current: 0, hand: 'right', results: { 'lower-quarter': { left: m('pass'), right: m('fail') } } });
+  localStorage.setItem('golfos.mobility.v1', JSON.stringify(list));
+});
+await p.reload();
+await p.waitForTimeout(1200);
+await tab('Ergebnis');
+const rh = await p.locator('.mob-pattern').allInnerTexts();
+const prof = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1') ?? '{}'));
+await p.evaluate((pr) => localStorage.setItem('golfos.profile.v1', JSON.stringify({ ...pr, hand: 'left' })), prof);
+await p.reload();
+await p.waitForTimeout(1200);
+await tab('Ergebnis');
+const lh = await p.locator('.mob-pattern').allInnerTexts();
+ok(rh.some((x) => x.includes('Sway')) && lh.some((x) => x.includes('Slide')) && !lh.some((x) => x.includes('Sway')) && !rh.some((x) => x.includes('Slide')), 'left-handed: the failed right hip means slide instead of sway');
+await p.evaluate((pr) => localStorage.setItem('golfos.profile.v1', JSON.stringify(pr)), prof);
+
+// ---------- sun mode ----------
+await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'sun'));
+await shot('result-sun');
+await p.evaluate(() => document.documentElement.removeAttribute('data-theme'));
 
 // ---------- English ----------
 await p.evaluate(() => localStorage.setItem('golfos.lang.v1', 'en'));

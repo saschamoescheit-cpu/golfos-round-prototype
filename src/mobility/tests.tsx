@@ -101,6 +101,29 @@ const seated = S(3, 2.0, [
 /** face-on golf posture with the arms crossed on the chest */
 const frontCrossed: J = { leadElbow: [0.1, 1.17], trailElbow: [-0.12, 1.17], hands: [0.06, 1.3], trailHand: [-0.06, 1.3] };
 
+/** standing tall, seen from the front (the "stand" pose of Training is drawn narrow, like from the side) */
+export const FRONT_STAND: J = {
+  head: [0, 1.62],
+  neck: [0, 1.48],
+  pelvis: [0, 0.93],
+  leadShoulder: [0.19, 1.44],
+  trailShoulder: [-0.19, 1.44],
+  leadElbow: [0.22, 1.16],
+  trailElbow: [-0.22, 1.16],
+  hands: [0.24, 0.9],
+  trailHand: [-0.24, 0.9],
+  leadHip: [0.11, 0.93],
+  trailHip: [-0.11, 0.93],
+  leadKnee: [0.12, 0.5],
+  trailKnee: [-0.12, 0.5],
+  leadAnkle: [0.12, 0.08],
+  trailAnkle: [-0.12, 0.08],
+};
+/** front view standing with own arms or legs */
+const front = (j: J = {}): GolferOptions => ({ pose: 'front', club: 'none', faceOn: true, joints: { ...FRONT_STAND, ...j } });
+/** standing tall arms crossed on the chest */
+const STAND_CROSSED: J = { leadElbow: [0.15, 1.2], trailElbow: [-0.15, 1.2], hands: [0.08, 1.33], trailHand: [-0.08, 1.33] };
+
 const pelvicRotation = S(3, 2.1, [
   ground(3),
   fig(1.5, { pose: 'front', club: 'none', joints: frontCrossed }),
@@ -112,25 +135,17 @@ const pelvicRotation = S(3, 2.1, [
 
 const lowerQuarter = S(3, 2.1, [
   ground(3),
-  fig(1.5, {
-    pose: 'stand',
-    joints: { leadElbow: [0.24, 1.08], trailElbow: [-0.24, 1.08], hands: [0.13, 0.94], trailHand: [-0.13, 0.94], trailKnee: [-0.02, 0.5], trailAnkle: [0.02, 0.13], trailHeel: [-0.02, 0.15], trailToe: [0.06, 0.02] },
-    faceOn: true,
-  }),
-  co('hands', L('hands on the hips', 'Hände an der Hüfte'), [2.6, 1.3]),
+  fig(1.5, front({ leadElbow: [0.31, 1.12], trailElbow: [-0.31, 1.12], hands: [0.15, 0.97], trailHand: [-0.15, 0.97], trailKnee: [-0.06, 0.52], trailAnkle: [-0.02, 0.15], trailHeel: [-0.05, 0.17], trailToe: [0.0, 0.02] })),
+  co('leadElbow', L('hands on the hips, elbows out', 'Hände an der Hüfte, Ellbogen nach außen'), [2.6, 1.45]),
   co('trailToe', L('the other foot only touches with the toe', 'der andere Fuß berührt nur mit der Spitze'), [0.4, 0.6]),
   co('pelvis', L('turn as far as you can both ways – 60° each', 'so weit wie möglich zu beiden Seiten drehen – je 60°'), [2.6, 0.75]),
 ]);
 
 const singleLeg = S(3, 2.1, [
   ground(3),
-  fig(1.5, {
-    pose: 'stand',
-    faceOn: true,
-    joints: { leadElbow: [0.12, 1.2], trailElbow: [-0.12, 1.2], hands: [0.07, 1.32], trailHand: [-0.07, 1.32], trailKnee: [-0.08, 0.72], trailAnkle: [-0.07, 0.4], trailHeel: [-0.1, 0.38], trailToe: [-0.02, 0.36] },
-  }),
+  fig(1.5, front({ ...STAND_CROSSED, trailKnee: [-0.08, 0.9], trailAnkle: [-0.1, 0.5], trailHeel: [-0.12, 0.47], trailToe: [-0.06, 0.4] })),
   co('head', L('eyes closed', 'Augen zu'), [2.5, 1.95]),
-  co('trailKnee', L('knee up to hip height', 'Knie auf Hüfthöhe'), [0.5, 1.0]),
+  co('trailKnee', L('knee up to hip height', 'Knie auf Hüfthöhe'), [0.5, 1.15]),
   co('leadAnkle', L('the standing foot does not move – 20 s', 'der Standfuß bewegt sich nicht – 20 s'), [2.6, 0.6]),
 ]);
 
@@ -140,9 +155,9 @@ const bridge = S(3.2, 1.3, [
     pose: 'bridge',
     joints: { leadKnee: [0.385, 0.56], leadAnkle: [0.77, 0.73], leadHeel: [0.74, 0.69], leadToe: [0.81, 0.86] },
   }),
-  co('pelvis', L('lift the hips, then stretch one leg – hold 10 s', 'Hüfte heben, dann ein Bein strecken – 10 s halten'), [1.2, 1.15]),
-  co('leadAnkle', L('the thighs stay parallel', 'die Oberschenkel bleiben parallel'), [2.7, 1.1]),
-  co('trailKnee', L('the pelvis must not sink', 'das Becken darf nicht absinken'), [2.8, 0.45]),
+  co('pelvis', L('hips up and level – hold 10 s, the pelvis does not sink', 'Hüfte oben und gerade – 10 s halten, das Becken sinkt nicht ab'), [1.2, 1.15]),
+  co('leadKnee', L('one leg stretched, the thighs stay parallel', 'ein Bein gestreckt, die Oberschenkel bleiben parallel'), [2.7, 1.15]),
+  co('trailHeel', L('the other foot flat on the floor', 'der andere Fuß flach am Boden'), [2.85, 0.5]),
 ]);
 
 const lat = S(3, 2.1, [
@@ -161,22 +176,25 @@ const lat = S(3, 2.1, [
   co('pelvis', L('low back flat on the wall, knees almost 90°', 'unterer Rücken flach an der Wand, Knie fast 90°'), [2.4, 0.6]),
 ]);
 
+/** the 90/90 position seen from the front ("goal post"): the tested arm out at shoulder height, forearm up */
+const goalPost = (stand: boolean): J => ({
+  ...(stand ? FRONT_STAND : {}),
+  leadElbow: [0.46, stand ? 1.43 : 1.38],
+  hands: [0.47, stand ? 1.7 : 1.65],
+  trailElbow: stand ? [-0.22, 1.16] : [-0.15, 1.12],
+  trailHand: stand ? [-0.24, 0.9] : [-0.1, 0.85],
+});
 const shoulder = S(3, 2.1, [
   ground(3),
-  fig(1.2, {
-    pose: 'address',
-    club: 'none',
-    joints: { leadElbow: [0.25, 1.26], hands: [0.41, 1.48], trailElbow: [0.24, 1.04], trailHand: [0.3, 0.82] },
-  }),
-  line([1.2 - 0.1, G0 + 0.88], [1.2 + 0.32, G0 + 1.46], true),
-  co('hands', L('forearm parallel to the spine', 'Unterarm parallel zur Wirbelsäule'), [2.4, 1.95]),
-  co('leadElbow', L('upper arm out to the side, elbow 90°', 'Oberarm seitlich, Ellbogen 90°'), [2.5, 1.2]),
-  co('pelvis', L('keep the golf posture', 'Golfhaltung halten'), [0.3, 1.2]),
-]);
+  fig(1.4, { pose: 'front', club: 'none', joints: goalPost(false) }),
+  co('hands', L('turn the forearm back and up – parallel to the spine', 'Unterarm nach hinten oben drehen – parallel zur Wirbelsäule'), [2.5, 1.95]),
+  co('leadElbow', L('upper arm out at shoulder height, elbow 90°', 'Oberarm seitlich auf Schulterhöhe, Ellbogen 90°'), [2.55, 1.25]),
+  co('pelvis', L('keep the golf posture', 'Golfhaltung halten'), [0.35, 1.0]),
+], L('Seen from the front. For the test the arm faces the phone, the phone at your side.', 'Von vorn gesehen. Zum Test zeigt der Arm zum Handy, das Handy steht neben dir.'));
 
 const neck = S(3, 2.1, [
   ground(3),
-  fig(1.5, { pose: 'stand', faceOn: true, joints: frontCrossed }),
+  fig(1.5, front(STAND_CROSSED)),
   co('head', L('turn the chin towards the shoulder – 70° each way', 'Kinn Richtung Schulter drehen – 70° pro Seite'), [2.6, 1.95]),
   co('leadShoulder', L('the shoulders stay still', 'die Schultern bleiben ruhig'), [2.6, 1.3]),
 ]);
@@ -185,10 +203,12 @@ const pelvicTilt = (arrows: 'both' | 'one' | 'none'): Sketch =>
   S(3, 2.0, [
     ground(3),
     fig(1.3, { pose: 'address', club: 'none', joints: POSTURE_CROSSED }),
-    ...(arrows !== 'none' ? [arrow([1.0, 1.25], [0.92, 1.42])] : []),
-    ...(arrows === 'both' ? [arrow([1.0, 1.25], [1.08, 1.06])] : []),
-    co('pelvis', arrows === 'both' ? L('tilts forward and back', 'kippt vor und zurück') : arrows === 'one' ? L('only one way', 'nur in eine Richtung') : L('the chest moves instead', 'die Brust bewegt sich mit'), [0.35, 0.9]),
-    co('neck', L('the chest stays still', 'die Brust bleibt ruhig'), [2.4, 1.85]),
+    // behind the low back: the top of the pelvis tilts forward (hollow back) and back (flat back)
+    ...(arrows !== 'none' ? [arrow([1.0, 1.12], [0.92, 1.3])] : []),
+    ...(arrows === 'both' ? [arrow([1.0, 1.06], [0.92, 0.88])] : []),
+    ...(arrows === 'none' ? [arrow([1.5, 1.45], [1.62, 1.58])] : []),
+    co('pelvis', arrows === 'both' ? L('tilts forward and back', 'kippt vor und zurück') : arrows === 'one' ? L('only one way', 'nur in eine Richtung') : L('hardly – the chest moves instead', 'kaum – die Brust bewegt sich mit'), [0.35, 0.75]),
+    co('leadShoulder', L('the chest stays still', 'die Brust bleibt ruhig'), [2.45, 1.85]),
   ]);
 
 /** kneeling, sitting back on the heels, chest on the thighs; the near arm forward, lifted by `lift` (0 down … 1 ear) */
