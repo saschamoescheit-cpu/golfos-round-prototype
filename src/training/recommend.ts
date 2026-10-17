@@ -9,7 +9,7 @@ import type { CategoryId } from './types';
 const num = (s: string) => (getLang() === 'de' ? s.replace(/(\d)\.(\d)/g, '$1,$2') : s);
 
 // Training from the rounds (Sascha 15.10.2026): the weak spots of the player's own statistics – focus areas against
-// the next better handicap band and strokes gained against his comparison group – point to categories and drills.
+// the next better handicap band and strokes gained against the player's comparison group – point to categories and drills.
 // Training stays a module of its own; it only reads the rounds.
 
 export interface Advice {
