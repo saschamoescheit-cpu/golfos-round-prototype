@@ -426,7 +426,7 @@ function Balance(props: { games: Game[] }) {
         </p>
       )}
       {done.length === 0 ? (
-        <p className="muted">{tr('Your balance shows once you finished a game.', 'Deine Bilanz erscheint, sobald du ein Spiel beendet hast.')}</p>
+        unconfirmed === 0 && <p className="muted">{tr('Your balance shows after your first confirmed game.', 'Deine Bilanz erscheint nach deinem ersten bestätigten Spiel.')}</p>
       ) : (
         <>
           <section className="card balance-totals">
