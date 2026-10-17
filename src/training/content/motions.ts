@@ -1,0 +1,114 @@
+import { L, type CategoryId, type Motion, type MotionFrame } from '../types';
+
+// The movements of the animated figure (Sascha 17.10.2026: "animated videos would be better than the still
+// pictures"). The still picture with its numbers stays; the play button on it shows the movement. Times are seconds as
+// shown – slowed down so the eye can follow, the proportions kept (full swing 3:1, putting stroke 2:1).
+
+/** the full swing, face-on: back in three counts, down in one (Tour Tempo 3:1), the finish held */
+const fullSwing = (opts?: MotionFrame['opts'], top = 0.3): Motion => ({
+  frames: [
+    { pose: 'front', opts, t: 0, hold: 0.5 },
+    { pose: 'takeaway', opts, t: 0.5, label: L('back in one piece – one', 'aus einem Guss zurück – eins') },
+    { pose: 'halfBack', opts, t: 0.45, label: L('wrists hinge – two', 'Handgelenke winkeln an – zwei') },
+    { pose: 'frontTop', opts, t: 0.55, hold: top, label: L('the top – three', 'oben – drei') },
+    { pose: 'pump', opts, t: 0.3, label: L('down from the ground', 'Abschwung vom Boden') },
+    { pose: 'impact', opts, t: 0.2, label: L('impact: hands ahead – four', 'Treffmoment: Hände vorn – vier') },
+    { pose: 'halfThrough', opts, t: 0.25, label: L('through', 'durch') },
+    { pose: 'frontFinish', opts, t: 0.45, hold: 1, label: L('hold the finish', 'Finish halten') },
+  ],
+});
+
+/** the half swing from 9 to 3 o'clock (L to L, pitch, chip-and-run of the bunker without the full finish) */
+const halfSwing = (opts?: MotionFrame['opts']): Motion => ({
+  frames: [
+    { pose: 'front', opts: { club: 'wedge', ...opts }, t: 0, hold: 0.5 },
+    { pose: 'takeaway', opts: { club: 'wedge', ...opts }, t: 0.5, label: L('the body turns back', 'der Körper dreht zurück') },
+    { pose: 'halfBack', opts: { club: 'wedge', ...opts }, t: 0.5, hold: 0.4, label: L('9 o’clock: lead arm parallel', '9 Uhr: vorderer Arm waagrecht') },
+    { pose: 'pump', opts: { club: 'wedge', ...opts }, t: 0.35, label: L('the body turns through', 'der Körper dreht durch') },
+    { pose: 'impact', opts: { club: 'wedge', ...opts }, t: 0.2, label: L('ball first, then the grass', 'erst der Ball, dann das Gras') },
+    { pose: 'halfThrough', opts: { club: 'wedge', ...opts }, t: 0.35, hold: 1, label: L('3 o’clock: chest to the target', '3 Uhr: Brust zum Ziel') },
+  ],
+});
+
+/** the putting stroke: a pendulum from the shoulders, back twice as long as through (Grober) */
+const puttStroke = (opts?: MotionFrame['opts'], arc = 9): Motion => ({
+  frames: [
+    { pose: 'putt', opts, t: 0, hold: 0.6 },
+    { pose: 'putt', opts, rock: -arc, t: 0.7, label: L('the shoulders rock back – tick', 'die Schultern schaukeln zurück – Tick') },
+    { pose: 'putt', opts, rock: arc, t: 0.35, label: L('through the ball – tock', 'durch den Ball – Tack') },
+    { pose: 'putt', opts, rock: arc, t: 0, hold: 1, label: L('the head stays still', 'der Kopf bleibt ruhig') },
+    { pose: 'putt', opts, t: 0.7, hold: 0.2 },
+  ],
+});
+
+/** the chip: the same pendulum with a lofted club, the grip leads, the short finish held */
+const chipStroke = (opts?: MotionFrame['opts']): Motion => ({
+  frames: [
+    { pose: 'chip', opts, t: 0, hold: 0.6 },
+    { pose: 'chip', opts, rock: -15, t: 0.6, label: L('the shoulders rock, the wrists stay firm', 'die Schultern schaukeln, die Handgelenke bleiben fest') },
+    { pose: 'chip', opts, rock: 0, t: 0.25, label: L('the club brushes the grass', 'der Schläger streift das Gras') },
+    { pose: 'chip', opts, rock: 17, t: 0.3, hold: 1, label: L('the grip leads – hold the finish', 'der Griff führt – Finish halten') },
+    { pose: 'chip', opts, t: 0.7, hold: 0.2 },
+  ],
+});
+
+/** the moving figure of a drill's picture, by drill id */
+export const DRILL_MOTIONS: Record<string, Motion> = {
+  // full swing
+  'slow-motion': fullSwing(undefined, 0.8),
+  'tempo-321': fullSwing(),
+  'pause-top': fullSwing(undefined, 1),
+  'feet-together-swing': fullSwing({ stance: 'together' }),
+  'hold-finish': fullSwing(),
+  'hip-stick': fullSwing({ club: 'iron' }),
+  'driver-80': fullSwing({ club: 'driver', stance: 'wide' }),
+  'speed-training': fullSwing({ club: 'driver', stance: 'wide' }),
+  'driver-wide-stance': fullSwing({ club: 'driver', stance: 'wide' }),
+  'pump-drill': {
+    frames: [
+      { pose: 'front', t: 0, hold: 0.4 },
+      { pose: 'takeaway', t: 0.45 },
+      { pose: 'halfBack', t: 0.4 },
+      { pose: 'frontTop', t: 0.5, hold: 0.2, label: L('to the top', 'bis oben') },
+      { pose: 'pump', t: 0.45, hold: 0.3, label: L('down to hip height – once', 'bis Hüfthöhe – einmal') },
+      { pose: 'frontTop', t: 0.45, label: L('and up again', 'und wieder hoch') },
+      { pose: 'pump', t: 0.45, hold: 0.3, label: L('down – twice', 'runter – zweimal') },
+      { pose: 'frontTop', t: 0.45, label: L('up again', 'wieder hoch') },
+      { pose: 'pump', t: 0.3, label: L('the third time through to the ball', 'beim dritten Mal durch zum Ball') },
+      { pose: 'impact', t: 0.2 },
+      { pose: 'halfThrough', t: 0.25 },
+      { pose: 'frontFinish', t: 0.45, hold: 0.8, label: L('hold the finish', 'Finish halten') },
+    ],
+  },
+  // half swing
+  'l-to-l': halfSwing({ club: 'iron' }),
+  'nine-to-three': halfSwing(),
+  'feet-together-pitch': halfSwing({ stance: 'together' }),
+  'towel-arms': halfSwing({ towel: true }),
+  'lead-arm-only': halfSwing({ club: 'iron', oneHand: true }),
+  'split-grip': halfSwing({ club: 'iron' }),
+  'grip-pressure-ball': halfSwing({ club: 'iron' }),
+  'splash-no-ball': fullSwing({ club: 'wedge', stance: 'wide' }),
+  // putting and chipping
+  'one-hand': puttStroke({ oneHand: true }),
+  'trail-toe': chipStroke({ heelUp: 'trail' }),
+  'stick-lead-arm': chipStroke({ gripStick: true }),
+  'hold-finish-chip': chipStroke(),
+  'lead-hand-chip': chipStroke({ oneHand: true }),
+  'hybrid-chip': puttStroke({ club: 'driver' }, 12),
+};
+
+/** the moving figure of a section's picture, by topic and English title */
+export const SECTION_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> = {
+  putting: { 'The stroke': puttStroke(), 'Short putts (under 2 m)': puttStroke(undefined, 6) },
+  chipping: { 'The stroke': chipStroke() },
+  pitching: { 'The motion': halfSwing(), 'The clock system': halfSwing() },
+  bunker: { 'The swing': fullSwing({ club: 'wedge', stance: 'wide' }) },
+  driver: { 'More speed': fullSwing({ club: 'driver', stance: 'wide' }) },
+  swing: {
+    'Takeaway and backswing': fullSwing(),
+    'Transition and downswing': fullSwing(),
+    'Impact and finish': fullSwing(),
+    'Tempo and rhythm': fullSwing(),
+  },
+};

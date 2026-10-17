@@ -548,8 +548,9 @@ function capsule(a: P, b: P, ra: number, rb: number): string {
   return `M${f(p1[0])},${f(p1[1])} L${f(p2[0])},${f(p2[1])} L${f(p3[0])},${f(p3[1])} L${f(p4[0])},${f(p4[1])} Z ${circle(a, ra)} ${circle(b, rb)}`;
 }
 
-export function Golfer(props: { x: number; y: number; k: number; tilt?: number } & GolferOptions) {
-  const j = golferJoints(props);
+export function Golfer(props: { x: number; y: number; k: number; tilt?: number; frame?: Partial<Record<JointName | 'trailHand', P>> } & GolferOptions) {
+  // frame: the joints of an animated figure between two poses (motion.ts) instead of the pose's own
+  const j = (props.frame as ReturnType<typeof golferJoints> | undefined) ?? golferJoints(props);
   const k = props.k;
   // metres → px around the figure's foot point (y up → svg y down)
   const q = (p: P): P => [p[0] * k, -p[1] * k];

@@ -269,3 +269,9 @@
 .tr-callout-no { flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; background: #5e8a14; color: #fff; font: 800 12px var(--display); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
 /* switched on = brand green, like the speaker button and the map tools in Rounds (Sascha 17.10.2026) */
 .tr-switch[aria-pressed='true'], .tr-metro-go[aria-pressed='true'] { border: 2px solid var(--brand); background: var(--brand-soft); color: var(--brand-text); }
+
+/* the animated figure (Sascha 17.10.2026): the play button under the picture, the phase beside it while it moves */
+.tr-motion-bar { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.tr-motion-btn { flex-shrink: 0; min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; border-radius: 22px; border: 0; background: var(--brand); color: var(--bg); font: 600 14px var(--display); cursor: pointer; }
+.tr-motion-btn.on { background: var(--surface-2); color: var(--text); }
+.tr-motion-phase { font-weight: 600; color: var(--brand-text); line-height: 1.3; }

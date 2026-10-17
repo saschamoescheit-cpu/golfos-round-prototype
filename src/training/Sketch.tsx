@@ -1,9 +1,10 @@
-import { createContext, useContext, type ReactNode, type SVGProps } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from 'react';
 import { getLang, tr } from '../lib/i18n';
 import { isLeftHanded } from '../lib/profile';
 import { sided } from './sides';
 import type { L, P, SideItem, Sketch, SketchItem } from './types';
-import { Golfer, golferJoints } from './Golfer';
+import { Golfer, golferJoints, type GolferOptions } from './Golfer';
+import { at, timeline, type Frame } from './motion';
 
 // Our own drawings for the drills (Sascha 15.10.2026: no pictures copied from the internet). A sketch is described in
 // meters – top view (x to the right, y towards the target) or side view (slopes, flight) – and drawn here as SVG.
@@ -52,14 +53,79 @@ const C = {
   ground: '#6ea545',
 };
 
+/** the figure that moves: the one named, else the one at the ball (a sequence of steps has the ball at its address) */
+function motionFig(s: Extract<Sketch, { view: 'side' }>, m: NonNullable<Extract<Sketch, { view: 'side' }>['motion']>): number {
+  if (m.fig !== undefined) return m.fig;
+  const figs = s.items.filter((x): x is Extract<SideItem, { k: 'figure' }> => x.k === 'figure');
+  const ball = s.items.find((x): x is Extract<SideItem, { k: 'ball' }> => x.k === 'ball');
+  if (!ball || figs.length < 2) return 0;
+  let best = 0;
+  figs.forEach((f, i) => Math.abs(f.at[0] - ball.at[0]) < Math.abs(figs[best].at[0] - ball.at[0]) && (best = i));
+  return best;
+}
+
+/** a figure's options that stay the same through a movement */
+const KEEP: (keyof GolferOptions)[] = ['club', 'stance', 'flip', 'oneHand', 'gripStick', 'towel', 'spineClub', 'crossClub'];
+
+/** Plays the movement of a side sketch: three runs, then the still picture again (a tap stops it earlier). */
+function useMotion(s: Sketch) {
+  const motion = s.view === 'side' ? s.motion : undefined;
+  const tl = useMemo(() => {
+    if (!motion || s.view !== 'side') return null;
+    const fig = s.items.filter((x) => x.k === 'figure')[motionFig(s, motion)] as Extract<SideItem, { k: 'figure' }> | undefined;
+    if (!fig) return null;
+    const base: Omit<GolferOptions, 'pose'> = {};
+    for (const k of KEEP) if (fig[k] !== undefined) (base as Record<string, unknown>)[k] = fig[k];
+    return timeline(base, motion);
+  }, [s, motion]);
+  const [time, setTime] = useState<number | null>(null);
+  const playing = time !== null;
+  const raf = useRef(0);
+  useEffect(() => {
+    if (!playing || !tl) return;
+    const run = tl.total + 0.9; // a short rest in the finish before the next run
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = (now - start) / 1000;
+      if (t >= run * 3) return setTime(null);
+      setTime(Math.min(t % run, tl.total));
+      raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [playing, tl]);
+  if (!tl || !motion || s.view !== 'side') return null;
+  const now = time === null ? null : at(tl, time);
+  return { fig: motionFig(s, motion), playing, frame: now?.j, label: now?.label, toggle: () => setTime(playing ? null : 0) };
+}
+
 export function SketchView(props: { sketch: Sketch; label?: string }) {
   const s = props.sketch;
   const caption = s.caption ? txt(s.caption) : null;
+  const motion = useMotion(s);
   const callouts: (L | string)[] =
     s.view === 'side' || s.view === 'top' ? (s.items as (SideItem | SketchItem)[]).flatMap((x) => (x.k === 'callout' || x.k === 'mark' ? [x.t] : [])) : s.view === 'grip' || s.view === 'palm' ? s.notes : [];
   return (
     <figure className="tr-sketch">
-      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
+      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} moving={motion?.playing ? { fig: motion.fig, j: motion.frame! } : undefined} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
+      {motion && (
+        <div className="tr-motion-bar">
+        <button type="button" className={`tr-motion-btn${motion.playing ? ' on' : ''}`} onClick={motion.toggle} aria-pressed={motion.playing}>
+          {motion.playing ? (
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <rect x="3" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
+              <rect x="9.4" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />
+            </svg>
+          )}
+          <span>{motion.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen')}</span>
+        </button>
+        {motion.playing && <span className="tr-motion-phase">{motion.label ? txt(motion.label) : ''}</span>}
+        </div>
+      )}
       {callouts.length > 0 && (
         <ol className="tr-callouts">
           {callouts.map((t, n) => (
@@ -334,7 +400,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; 
   );
 }
 
-function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean }) {
+function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean; moving?: { fig: number; j: Frame } }) {
   const { w, h, items } = props.sketch;
   const W = 340;
   const k = W / w;
@@ -362,10 +428,16 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
         const pts = it.pts.map((p) => `${X(p[0])},${Y(p[1])}`).join(' ');
         return <polygon key={i} points={`${X(it.pts[0][0])},${H} ${pts} ${X(it.pts[it.pts.length - 1][0])},${H}`} fill={it.sand ? C.sand : C.ground} stroke={it.sand ? '#c9b37a' : '#3d6b22'} strokeWidth={2} />;
       }
-      case 'figure':
-        return <Golfer key={i} {...it} x={X(it.at[0])} y={Y(it.at[1])} k={k} tilt={it.tilt ?? 0} pose={it.pose ?? 'address'} />;
+      case 'figure': {
+        // the moving figure takes the joints of the movement; the numbers wait for the still picture
+        const frame = props.moving && figs.indexOf(it) === props.moving.fig ? props.moving.j : undefined;
+        // the other figures of the picture (the steps of a sequence) step aside while one moves through them
+        if (props.moving && !frame) return null;
+        return <Golfer key={i} {...it} x={X(it.at[0])} y={Y(it.at[1])} k={k} tilt={it.tilt ?? 0} pose={it.pose ?? 'address'} frame={frame} />;
+      }
       case 'callout':
       case 'mark': {
+        if (props.moving) return null;
         const m = badges.get(it);
         return m ? <Badge key={i} {...m} /> : null;
       }

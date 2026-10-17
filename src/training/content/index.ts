@@ -1,4 +1,4 @@
-import type { Category, CategoryId, Drill } from '../types';
+import type { Category, CategoryId, Drill, Motion, Sketch } from '../types';
 import { putting, puttingDrills } from './putting';
 import { greenreading, greenreadingDrills } from './greenreading';
 import { chipping, chippingDrills } from './chipping';
@@ -20,6 +20,7 @@ import { SKETCHES } from './sketches';
 import { moreDrills } from './more';
 import { MOBILITY_DRILL_VIDEOS, mobilityDrills } from './mobility';
 import { VIDEOS_DE } from './videos-de';
+import { DRILL_MOTIONS, SECTION_MOTIONS } from './motions';
 import { SECTION_MEDIA } from './section-media';
 import { CHARTS } from './charts';
 import { DRILL_VIDEOS } from './drill-videos';
@@ -63,6 +64,10 @@ const RAW_DRILLS = [
   ...moreDrills,
   ...mobilityDrills, // corrective drills of the mobility screen (17.10.2026)
 ] as Drill[];
+/** a side picture with its movement */
+function withMotion<T extends { sketch?: Sketch }>(x: T, motion?: Motion): T {
+  return motion && x.sketch?.view === 'side' ? { ...x, sketch: { ...x.sketch, motion } } : x;
+}
 const drillPicture = (id: string) => {
   const d = RAW_DRILLS.find((x) => x.id === id);
   return FIGURE_SKETCHES[id] ?? d?.sketch ?? SKETCHES[id];
@@ -79,7 +84,9 @@ export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching
   // the picture of each fault: the fault next to the right way (Sascha 17.10.2026)
   .map((c) => (FAULT_SKETCHES[c.id] ? { ...c, faults: c.faults?.map((f) => (FAULT_SKETCHES[c.id]![f.name.en] ? { ...f, sketch: FAULT_SKETCHES[c.id]![f.name.en] } : f)) } : c))
   // the Rounds functions a section names, opened with a tap
-  .map((c) => (SECTION_ROUNDS[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_ROUNDS[c.id]![x.title.en] ? { ...x, rounds: SECTION_ROUNDS[c.id]![x.title.en] } : x)) } : c));
+  .map((c) => (SECTION_ROUNDS[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_ROUNDS[c.id]![x.title.en] ? { ...x, rounds: SECTION_ROUNDS[c.id]![x.title.en] } : x)) } : c))
+  // the picture moves: a play button shows the movement (Sascha 17.10.2026)
+  .map((c) => (SECTION_MOTIONS[c.id] ? { ...c, sections: c.sections.map((x) => withMotion(x, SECTION_MOTIONS[c.id]![x.title.en])) } : c));
 
 const TOPIC_VIDEOS = new Map(CATEGORIES.flatMap((c) => c.videos ?? []).map((v) => [v.id, v]));
 
@@ -87,6 +94,7 @@ export const DRILLS: Drill[] = RAW_DRILLS
   .map((d) => (d.sketch || !SKETCHES[d.id] ? d : { ...d, sketch: SKETCHES[d.id] })) // every drill gets its own sketch
   // the sketches with a golfer, drawn again to show what the text describes (16./17.10.2026)
   .map((d) => (FIGURE_SKETCHES[d.id] ? { ...d, sketch: FIGURE_SKETCHES[d.id] } : d))
+  .map((d) => withMotion(d, DRILL_MOTIONS[d.id]))
   .map((d) => (DRILL_ROUNDS[d.id] ? { ...d, rounds: DRILL_ROUNDS[d.id] } : d))
   .map((d) => (METRONOME_DRILLS.includes(d.id) ? { ...d, metronome: 'putt' as const } : SWING_TEMPO_DRILLS.includes(d.id) ? { ...d, metronome: 'swing' as const } : d))
   .map((d) => (NO_RESULT_DRILLS.includes(d.id) ? { ...d, scoring: { kind: 'none' as const }, targets: undefined } : d))

@@ -221,6 +221,26 @@ export type SketchItem =
 /** Golfer poses for side views; the fitness poses are drawn from joint points (see Sketch.tsx). */
 export type Pose = GolferPose;
 
+/** One position of an animated figure (Sascha 17.10.2026: "animated rather than still pictures"): a pose with its
+ *  options, reached from the position before in t seconds (as shown – slow motion is in the numbers). */
+export interface MotionFrame {
+  pose: GolferPose;
+  opts?: Omit<GolferOptions, 'pose'>;
+  /** arms and club rock around the shoulders by this many degrees (+ towards the target) – putting and chipping */
+  rock?: number;
+  t: number;
+  /** stay here this many seconds */
+  hold?: number;
+  /** what happens on the way to this position, shown under the picture while it plays */
+  label?: L;
+}
+/** The movement of one figure of a side sketch: the still picture stays, a play button shows the movement. */
+export interface Motion {
+  /** the figure that moves (index among the figures, default 0) */
+  fig?: number;
+  frames: MotionFrame[];
+}
+
 /** Side view (slopes, ball flight, posture). */
 export type SideItem =
   | { k: 'ground'; pts: P[]; sand?: boolean }
@@ -237,7 +257,7 @@ export type SideItem =
 
 export type Sketch =
   | { view: 'top'; w: number; h: number; items: SketchItem[]; caption?: L }
-  | { view: 'side'; w: number; h: number; items: SideItem[]; caption?: L }
+  | { view: 'side'; w: number; h: number; items: SideItem[]; caption?: L; motion?: Motion }
   | { view: 'face'; marks: { x: number; y: number; n?: L | string }[]; caption?: L } // club face, impact marks (-1..1)
   | { view: 'grip'; notes: [L, L, L, L]; caption?: L } // both hands on the grip as the player sees them; notes for the 4 numbered points
   | { view: 'palm'; notes: [L, L]; caption?: L }; // the open lead hand twice: the grip through the palm (fault) and through the fingers (right)
