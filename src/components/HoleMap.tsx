@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import type { LngLat, Ring } from '../types';
-import { bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, type HoleMapData, type Unit, keepOnGreen } from '../lib/geo';
+import { bearingDeg, centroid, distanceM, formatDistance, hazardTicks, hazardToCarry, isAhead, type HoleMapData, type Unit, keepOnGreen } from '../lib/geo';
 import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, PLAN_COLOURS, setCourseLook, setImagery } from './mapStyle';
 import { treeImage, TREE_LOOKS } from './treeSprite';
 import { fairwayShapes, holeOutline, smoothRing, treeSpots } from '../lib/plan2d';
@@ -175,6 +175,10 @@ export function HoleMap(props: HoleMapProps) {
       m.addLayer({ id: 'track', type: 'line', source: 'track', paint: { 'line-color': '#9BC53D', 'line-width': 2.5 } });
       m.addLayer({ id: 'plan-casing', type: 'line', source: 'plan', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.6 } });
       m.addLayer({ id: 'plan', type: 'line', source: 'plan', paint: { 'line-color': '#FFFFFF', 'line-width': 2.5 } });
+      // start and end of the hazards: dashed lines out to their distances (Sascha 17.10.2026)
+      m.addSource('hazard-ticks', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      m.addLayer({ id: 'hazard-ticks-casing', type: 'line', source: 'hazard-ticks', paint: { 'line-color': '#0E1418', 'line-width': 3.5, 'line-opacity': 0.5 } });
+      m.addLayer({ id: 'hazard-ticks', type: 'line', source: 'hazard-ticks', paint: { 'line-color': '#FFFFFF', 'line-width': 1.75 } });
       m.addSource('putt', { type: 'geojson', data: puttLine(latest.current) });
       m.addLayer({ id: 'putt-casing', type: 'line', source: 'putt', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.55 }, layout: { 'line-cap': 'round' } });
       m.addLayer({ id: 'putt', type: 'line', source: 'putt', paint: { 'line-color': '#9BC53D', 'line-width': 2.5 }, layout: { 'line-cap': 'round' } });
@@ -393,7 +397,10 @@ export function HoleMap(props: HoleMapProps) {
     // crosshair with the carry to it (from the player or the previous target) and the rest to the pin.
     mk.labels.forEach((l) => l.remove());
     mk.labels = [];
-    if (p.plain) return;
+    // the hazard lines: set once per pass (an empty set right before the full one was left on screen)
+    const ticks = m.getSource('hazard-ticks') as maplibregl.GeoJSONSource | undefined;
+    const noTicks = () => ticks?.setData({ type: 'FeatureCollection', features: [] });
+    if (p.plain) return noTicks();
     if (p.putt) {
       // putt read on screen: no player → pin label over the putt line
     } else if (p.targets.length === 0) {
@@ -434,7 +441,7 @@ export function HoleMap(props: HoleMapProps) {
       }
       mk.labels.push(marker);
     });
-    if (p.clean && !p.hazards) return;
+    if (p.clean && !p.hazards) return noTicks();
     const hazards: { ring: Ring; kind: 'bunker' | 'water' }[] = [
       ...p.data.bunkers.map((ring) => ({ ring, kind: 'bunker' as const })),
       ...p.data.water.map((ring) => ({ ring, kind: 'water' as const })),
@@ -449,16 +456,63 @@ export function HoleMap(props: HoleMapProps) {
     }
     const candidates = hazards
       .map((h) => ({ ...h, c: centroid(h.ring), ...hazardToCarry(p.from, h.ring) }))
-      .filter((h) => isAhead(p.from, p.pin, h.c) && h.to >= 5 && h.to <= (p.clean ? 450 : 330))
+      // all the way to behind the green (Sascha 17.10.2026: on a par 5 the greenside bunkers were missing)
+      .filter((h) => isAhead(p.from, p.pin, h.c) && h.to >= 5 && h.to <= distanceM(p.from, p.pin) + 40)
       .sort((a, b) => a.to - b.to);
+    // every hazard, start and end (Sascha 17.10.2026: "3C has three bunkers right, only two are shown"): a dashed line
+    // from each out to the side away from the line of play, the distance at its end; a label that would cover another
+    // one moves further out instead of being left out
+    const lines: GeoJSON.Feature[] = [];
+    // what is on the map already: the distance labels, the target signs, the green box
+    const rect = (e: Element) => e.getBoundingClientRect();
+    const taken: DOMRect[] = mk.labels.map((l) => rect(l.getElement()));
+    const box = document.querySelector('.map-green');
+    if (box) taken.push(rect(box));
+    const hits = (r: DOMRect) => taken.some((q) => r.left < q.right + 4 && r.right > q.left - 4 && r.top < q.bottom + 2 && r.bottom > q.top - 2);
+    // the dashed lines at least ~30 px long on screen, whatever the zoom
+    const ll = (q: maplibregl.LngLat): LngLat => [q.lng, q.lat];
+    const step = Math.max(8, distanceM(ll(m.unproject([0, 0])), ll(m.unproject([30, 0]))));
     for (const h of candidates) {
-      const at = m.project(h.c);
-      if (placed.some((q) => Math.abs(q.x - at.x) < 70 && Math.abs(q.y - at.y) < 26)) continue;
-      placed.push(at);
-      // always both: to the start of the hazard and to its end – what course management needs (Sascha 14.10.2026)
-      const text = `${formatDistance(h.to, p.unit)} / ${formatDistance(h.carry, p.unit)}`;
-      mk.labels.push(new maplibregl.Marker({ element: labelEl(text, `map-label hazard ${h.kind}`) }).setLngLat(h.c).addTo(m));
+      for (let k = 0; k <= 6; k++) {
+        const t = hazardTicks(p.from, p.pin, h.ring, step * (1 + k * 0.7));
+        // each line its own number: the start's below its line, the end's above it (on screen), so even a short
+        // bunker shows both apart and every dashed line points at its distance
+        const frontLow = m.project(t.front.out).y >= m.project(t.back.out).y;
+        const ends = [
+          { ...t.front, text: formatDistance(t.front.dist, p.unit), v: frontLow ? 'top' : 'bottom' },
+          { ...t.back, text: formatDistance(t.back.dist, p.unit), v: frontLow ? 'bottom' : 'top' },
+        ];
+        const made = ends.map((e) => {
+          const right = m.project(e.out).x >= m.project(e.at).x; // the label continues the line, never over the hazard
+          const anchor = `${e.v}-${right ? 'left' : 'right'}` as maplibregl.PositionAnchor;
+          return new maplibregl.Marker({ element: labelEl(e.text, `map-label hazard ${h.kind}`), anchor, offset: [right ? -4 : 4, e.v === 'top' ? -3 : 3] }).setLngLat(e.out).addTo(m);
+        });
+        const rs = made.map((x) => rect(x.getElement()));
+        if (k < 6 && rs.some(hits)) {
+          made.forEach((x) => x.remove());
+          continue; // further out
+        }
+        taken.push(...rs);
+        mk.labels.push(...made);
+        // the dashes drawn here, 5 px on / 4 px off on screen: MapLibre stretches a dash pattern at high zoom until a
+        // short line shows none
+        for (const e of [t.front, t.back]) {
+          const [a0, a1] = [m.project(e.at), m.project(e.out)];
+          const len = a0.dist(a1);
+          const dashes: LngLat[][] = [];
+          for (let d = 0; d < len; d += 9) {
+            const f0 = d / len;
+            const f1 = Math.min(1, (d + 5) / len);
+            const at = (f: number) => ll(m.unproject([a0.x + (a1.x - a0.x) * f, a0.y + (a1.y - a0.y) * f]));
+            dashes.push([at(f0), at(f1)]);
+          }
+          lines.push({ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: dashes } });
+        }
+        break;
+      }
     }
+    ticks?.setData({ type: 'FeatureCollection', features: lines });
+    m.triggerRepaint();
   }
 
   return <div ref={container} className="hole-map" />;

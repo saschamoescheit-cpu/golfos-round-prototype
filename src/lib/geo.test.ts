@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alongLine, bearingDeg, detectHole, distanceM, greenFrontBack, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, suggestTarget } from './geo';
+import { alongLine, bearingDeg, detectHole, distanceM, greenFrontBack, hazardTicks, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, suggestTarget } from './geo';
 import type { LngLat, Ring } from '../types';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 
@@ -236,5 +236,28 @@ describe('green middle', () => {
     // a 30 × 30 m green, its east edge mapped with many points
     const ring = [at(0, 0), at(30, 0), ...[5, 10, 15, 20, 25].map((n) => at(30, n)), at(30, 30), at(0, 30), at(0, 0)];
     expect(distanceM(centroid(ring), at(15, 15))).toBeLessThan(0.2);
+  });
+});
+
+describe('hazard start and end (Sascha 17.10.2026: dashed lines outwards)', () => {
+  // playing north from (0, 0): a bunker 100–120 m ahead, 10–20 m right of the line
+  const from: [number, number] = [0, 0];
+  const pin: [number, number] = [0, 300 / 111195];
+  const m = (x: number, y: number): [number, number] => [x / 111195, y / 111195];
+  const bunker = [m(10, 100), m(20, 100), m(20, 120), m(10, 120), m(10, 100)];
+  it('start and end are the nearest and the farthest point, the lines go out to the right', () => {
+    const t = hazardTicks(from, pin, bunker);
+    expect(t.side).toBe(1);
+    expect(t.front.dist).toBeCloseTo(Math.hypot(10, 100), 0);
+    expect(t.back.dist).toBeCloseTo(Math.hypot(20, 120), 0);
+    // out beyond the outer edge (20 m) by the gap, level with each point
+    expect(t.front.out[0] * 111195).toBeCloseTo(30, 0);
+    expect(t.back.out[1] * 111195).toBeCloseTo(t.back.at[1] * 111195, 0);
+  });
+  it('a bunker left of the line: lines to the left', () => {
+    const left = bunker.map(([x, y]) => [-x, y] as [number, number]);
+    const t = hazardTicks(from, pin, left);
+    expect(t.side).toBe(-1);
+    expect(t.front.out[0] * 111195).toBeCloseTo(-30, 0);
   });
 });

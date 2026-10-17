@@ -77,6 +77,22 @@ await tab('Spielen');
 await p.waitForTimeout(400);
 ok((await p.getByText('Runden signieren').count()) === 0, 'start page: nothing left to sign');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/sign.png', fullPage: true });
+// a paused round stands in the list with a pause mark (Sascha 17.10.2026); a tap carries on with it
+await p.evaluate(() => {
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ ...rs[0], id: rs[0].id + '-p', finishedAt: null, signedAt: null, currentHole: 4, createdAt: new Date().toISOString() }, ...rs]));
+  sessionStorage.setItem('golfos.paused', rs[0].id + '-p'); // left on purpose: a reload stays on the start page
+});
+await p.reload();
+await p.waitForTimeout(1000);
+await tab('Runden');
+await p.waitForTimeout(400);
+const pausedRow = p.locator('.list-item').filter({ has: p.locator('.paused-mark') });
+ok((await pausedRow.count()) === 1 && /Pausiert · Loch 5 von 9/.test(await pausedRow.innerText()), 'rounds list: the paused round with its pause mark and hole');
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/rounds-paused.png' });
+await pausedRow.click();
+await p.waitForTimeout(2500);
+ok(await p.locator('.map-hole-no').isVisible(), 'a tap on the paused round carries on with it');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

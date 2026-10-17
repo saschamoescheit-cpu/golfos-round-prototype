@@ -140,6 +140,47 @@ export function hazardToCarry(from: LngLat, ring: Ring): { to: number; carry: nu
   return { to, carry };
 }
 
+/** Start and end of a hazard as seen from `from` playing towards `target`: the nearest and the farthest point of its
+ *  outline, each with a dashed line out to the side away from the line of play – `out` lies `gap` metres beyond the
+ *  hazard's outer edge, level with the point (Sascha 17.10.2026). side 1 = right of the line, −1 = left. */
+export function hazardTicks(from: LngLat, target: LngLat, ring: Ring, gap = 10): { side: 1 | -1; front: { at: LngLat; out: LngLat; dist: number }; back: { at: LngLat; out: LngLat; dist: number } } {
+  const proj = projector(from);
+  const kx = Math.cos(rad(from[1])) * (Math.PI / 180) * R;
+  const ky = (Math.PI / 180) * R;
+  const back2 = (x: number, y: number): LngLat => [from[0] + x / kx, from[1] + y / ky];
+  const [tx, ty] = proj(target);
+  const tl = Math.hypot(tx, ty) || 1;
+  const u: [number, number] = [tx / tl, ty / tl]; // along the line of play
+  const v: [number, number] = [u[1], -u[0]]; // to the right of it
+  // the outline every metre, so start and end are found on the edges too
+  const pts: [number, number][] = [];
+  const xy = ring.map(proj);
+  for (let i = 1; i < xy.length; i++) {
+    const [a, b] = [xy[i - 1], xy[i]];
+    const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1])));
+    for (let k = 0; k < n; k++) pts.push([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n]);
+  }
+  if (pts.length === 0) pts.push(...xy);
+  const lat = (p: [number, number]) => p[0] * v[0] + p[1] * v[1];
+  const along = (p: [number, number]) => p[0] * u[0] + p[1] * u[1];
+  const meanLat = pts.reduce((s, p) => s + lat(p), 0) / pts.length;
+  const side: 1 | -1 = meanLat >= 0 ? 1 : -1;
+  const edge = side > 0 ? Math.max(...pts.map(lat)) : Math.min(...pts.map(lat));
+  const outLat = edge + side * gap;
+  const dist = (p: [number, number]) => Math.hypot(p[0], p[1]);
+  let near = pts[0];
+  let far = pts[0];
+  for (const p of pts) {
+    if (dist(p) < dist(near)) near = p;
+    if (dist(p) > dist(far)) far = p;
+  }
+  const tick = (p: [number, number]) => {
+    const a = along(p);
+    return { at: back2(p[0], p[1]), out: back2(a * u[0] + outLat * v[0], a * u[1] + outLat * v[1]), dist: dist(p) };
+  };
+  return { side, front: tick(near), back: tick(far) };
+}
+
 /** Is `p` in front of `from` when playing towards `target`? */
 export function isAhead(from: LngLat, target: LngLat, p: LngLat): boolean {
   const proj = projector(from);
@@ -269,8 +310,8 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
     null;
   const near = (ring: Ring) => ring.some((p) => distToLine(p, line) <= corridorM) || (green != null && ring.some((p) => distanceM(p, centroid(green)) < 40));
   // Hazards of this hole only (Sascha 15.10.2026: "the pond beside 8A does not belong to the hole"):
-  // - bunkers up to 45 m from the line; fairway bunkers up to 65 m when no other hole's line is nearer to them
-  //   (14.10.: "some fairway bunkers are missing"), never the greenside bunkers of another hole;
+  // - bunkers up to 45 m from the line; fairway bunkers up to 60 m, up to 65 m when no other hole's line is nearer
+  //   to them (14.10.: "some fairway bunkers are missing"), never the greenside bunkers of another hole;
   // - water up to 30 m from the line or right at the green; up to 45 m when no other hole is nearer.
   const ownGreen = green ? centroid(green) : end;
   const otherGreens = geo.green.filter((g) => g !== green).map(centroid);
@@ -284,7 +325,9 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
   const ownBunker = (ring: Ring) => {
     const c = centroid(ring);
     const atOtherGreen = otherGreens.some((g) => distanceM(c, g) < 40) && distanceM(c, ownGreen) > 40;
-    return !atOtherGreen && edge(ring) <= 65 && mine(ring);
+    // up to 60 m even when it lies on a neighbouring fairway: a big miss reaches it, and it is on the map (Sascha
+    // 17.10.2026: "3C has three bunkers right, two are shown" – the third sits by the line of 4C)
+    return !atOtherGreen && edge(ring) <= 65 && (mine(ring) || edge(ring) <= 60);
   };
   const ownWater = (ring: Ring) => {
     const e = edge(ring);

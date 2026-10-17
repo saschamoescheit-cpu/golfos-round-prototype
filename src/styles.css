@@ -233,8 +233,10 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 }
 .map-target-sign .carry { font: 700 17px/1.2 var(--display); color: #fff; }
 .map-target-sign .rest { font: 600 13px/1.2 var(--body); color: var(--brand-text); }
-.map-label.hazard.bunker { color: #F4E6B8; } /* ci-allow: bunker sand */
-.map-label.hazard.water { color: #9AD3F7; }
+/* hazard distances in the app's look (Sascha 17.10.2026: "the distances are yellow"): white type, the kind as a
+   small edge – sand for a bunker, blue for water */
+.map-label.hazard.bunker { color: #fff; box-shadow: inset 3px 0 0 #D9C48A; } /* ci-allow: bunker sand */
+.map-label.hazard.water { color: #fff; box-shadow: inset 3px 0 0 #4FA3E0; }
 .maplibregl-ctrl-attrib { font-size: 10px; }
 /* Keep the imagery credit (required for PNOA/Esri) above the bottom buttons. */
 .map-screen .maplibregl-ctrl-bottom-right { bottom: calc(env(safe-area-inset-bottom) + 190px); }
@@ -1199,6 +1201,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .sign-card.signed { border-color: var(--brand); }
 .sign-seal, .signed-mark { display: inline-flex; color: var(--brand-text); }
 .signed-mark { margin-left: 6px; vertical-align: -2px; }
+.paused-mark { display: inline-flex; margin-left: 6px; vertical-align: -2px; color: var(--muted); } /* a paused round (Sascha 17.10.2026) */
 
 /* test mode: "Shot here" on the map (Sascha 16.10.2026) */
 .test-shot-row { display: flex; flex-direction: column; align-items: stretch; gap: 8px; pointer-events: auto; }

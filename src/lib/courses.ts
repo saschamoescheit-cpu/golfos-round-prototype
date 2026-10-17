@@ -187,7 +187,7 @@ async function osmHoles(summary: CourseSummary, onGeometry: (g: CourseGeometry) 
       const box = [b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad].map((n) => n.toFixed(5)).join(',');
       const res = await fetch(`${OSM_API}?bbox=${box}`, { signal: AbortSignal.timeout(45000) });
       if (!res.ok) throw new Error(`OSM API ${res.status}`);
-      const osm = parseOsmXml(await res.text());
+      const osm = ownHoles(parseOsmXml(await res.text()), summary.id);
       onGeometry(geometryFromOsm(osm));
       return holesFromTags(osm.ways.filter((w) => w.tags.golf === 'hole').map((w) => w.tags));
     } catch {
@@ -203,6 +203,7 @@ interface OsmWay {
   nodes: string[];
 }
 interface OsmRelation {
+  id?: string;
   tags: Record<string, string>;
   members: { type: string; ref: string; role: string }[];
 }
@@ -231,6 +232,7 @@ export function parseOsmXml(xml: string): { nodes: Map<string, LngLat>; ways: Os
   const relations: OsmRelation[] = [];
   for (const r of xml.matchAll(/<relation\b([^>]*)>([\s\S]*?)<\/relation>/g)) {
     relations.push({
+      id: attr(r[1], 'id'),
       tags: tagsOf(r[2]),
       members: [...r[2].matchAll(/<member\b([^>]*)\/>/g)].map((m) => ({ type: attr(m[1], 'type'), ref: attr(m[1], 'ref'), role: attr(m[1], 'role') })),
     });
@@ -251,6 +253,37 @@ function featureKind(tags: Record<string, string>): Kind | null {
 }
 
 /** Same extraction as the script that built the bundled Hetzenhof snapshot. */
+/**
+ * Only the course's own holes when another course borders it (Legends and Kings Ridge, Clermont FL): holes whose line
+ * lies mostly inside the course's OSM outline. Without an outline, or when that would keep fewer than half the holes
+ * (an outline drawn too small), everything stays as it was.
+ */
+export function ownHoles(osm: ReturnType<typeof parseOsmXml>, courseId: string): ReturnType<typeof parseOsmXml> {
+  const m = /^osm:(way|relation)\/(\d+)$/.exec(courseId);
+  if (!m) return osm;
+  const coords = (ids: string[]) => ids.map((id) => osm.nodes.get(id)).filter((p): p is LngLat => p != null);
+  const byId = new Map(osm.ways.map((w) => [w.id, w]));
+  let rings: LngLat[][] = [];
+  if (m[1] === 'way') {
+    const w = byId.get(m[2]);
+    if (w) rings = [coords(w.nodes)];
+  } else {
+    const r = osm.relations.find((x) => x.id === m[2]);
+    if (r) rings = joinRings(r.members.filter((x) => x.type === 'way' && (x.role === 'outer' || x.role === '')).map((x) => byId.get(x.ref)?.nodes ?? [])).map(coords);
+  }
+  rings = rings.filter((r) => r.length >= 4);
+  if (!rings.length) return osm;
+  const holes = osm.ways.filter((w) => w.tags.golf === 'hole');
+  const inside = (w: (typeof holes)[number]) => {
+    const line = coords(w.nodes);
+    return line.filter((p) => rings.some((r) => pointInRing(p, r))).length * 2 >= line.length;
+  };
+  const keep = holes.filter(inside);
+  if (keep.length === holes.length || keep.length * 2 < holes.length) return osm;
+  const drop = new Set(holes.filter((w) => !keep.includes(w)).map((w) => w.id));
+  return { ...osm, ways: osm.ways.filter((w) => !drop.has(w.id)) };
+}
+
 export function geometryFromOsm(osm: ReturnType<typeof parseOsmXml>): CourseGeometry {
   const geo: CourseGeometry = { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] };
   const coords = (ids: string[]) => ids.map((id) => osm.nodes.get(id)).filter((p): p is LngLat => p != null);

@@ -10,6 +10,16 @@ import { kindName } from '../lib/roundkind';
 import { isTeamRound } from '../lib/games';
 import { SignedIcon } from '../components/SignedIcon';
 
+/** A paused round in the list: two bars, like the pause button in the hole overview. */
+function PauseIcon(props: { size: number }) {
+  return (
+    <svg width={props.size} height={props.size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </svg>
+  );
+}
+
 // Tab "Rounds": every round, newest first. On top what is still to do – rounds whose shots are not checked yet.
 
 const mine = (r: Round) => r.players.find((p) => p.isMe)!;
@@ -24,7 +34,7 @@ export const uncheckedRounds = (rounds: Round[]): Round[] => rounds.filter(needs
 
 export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; onContinue: (r: Round) => void }) {
   const finished = props.rounds.filter((r) => r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const paused = props.rounds.filter((r) => !r.finishedAt && !r.preview).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const toCheck = finished.filter(needsCheck);
   const [onlyCheck, setOnlyCheck] = useState(false);
   const signed = finished.filter((r) => r.signedAt);
@@ -80,18 +90,36 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
         }}
       />
 
-      {open && (
-        <button type="button" className="list-item live" onClick={() => props.onContinue(open)}>
-          <span className="grow">
-            <span className="title">{open.courseName}</span>
-            <span className="muted small">
-              {tr(`In progress · hole ${open.currentHole + 1} of ${open.holes.length}`, `Läuft · Loch ${open.currentHole + 1} von ${open.holes.length}`)}
-            </span>
-          </span>
-          <span className="good-text small" style={{ fontWeight: 600 }}>
-            {tr('Continue ›', 'Fortsetzen ›')}
-          </span>
-        </button>
+      {paused.length > 0 && (
+        <ul className="list">
+          {paused.map((r) => {
+            const me = mine(r);
+            const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
+            return (
+              <li key={r.id}>
+                <button type="button" className="list-item" aria-label={tr(`${r.courseName}, paused – continue`, `${r.courseName}, pausiert – fortsetzen`)} onClick={() => props.onContinue(r)}>
+                  <span className="round-date">
+                    <strong>{new Date(r.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
+                    <span className="muted small">{new Date(r.createdAt).getFullYear()}</span>
+                  </span>
+                  <span className="grow">
+                    <span className="title">
+                      {r.courseName}
+                      <span className="paused-mark" aria-hidden="true" title={tr('paused', 'pausiert')}>
+                        <PauseIcon size={16} />
+                      </span>
+                    </span>
+                    <span className="muted small">{tr(`Paused · hole ${r.currentHole + 1} of ${r.holes.length}`, `Pausiert · Loch ${r.currentHole + 1} von ${r.holes.length}`)}</span>
+                  </span>
+                  <span style={{ textAlign: 'right' }}>
+                    <span style={{ font: '700 20px var(--display)' }}>{t.holesPlayed ? t.gross : '–'}</span>
+                    <span className="muted small" style={{ display: 'block' }}>{t.holesPlayed ? formatToPar(t.toPar) : tr('no score yet', 'noch kein Score')}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       {onlyCheck && (
