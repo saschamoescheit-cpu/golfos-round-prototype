@@ -36,14 +36,14 @@ export const FULL_SWING: Swing = {
     }),
     k(2.0, {
       body: { pelvis: [32, -42, 0], spine: [6, -12, 0], chest: [6, -36, 8], neck: [-8, 44, 0], head: [22, 14, 0] },
-      hands: [-0.2, 0.32, 0.3],
-      club: [0.85, -0.15, -0.5],
+      hands: [-0.22, 0.44, 0.16],
+      club: [0.9, -0.05, -0.42],
       label: L('The top – three', 'Oben – drei'),
     }),
     k(2.3, {
       body: { pelvis: [32, -42, 0], spine: [6, -12, 0], chest: [6, -36, 8], neck: [-8, 44, 0], head: [22, 14, 0] },
-      hands: [-0.2, 0.32, 0.3],
-      club: [0.85, -0.15, -0.5],
+      hands: [-0.22, 0.44, 0.16],
+      club: [0.9, -0.05, -0.42],
     }),
     k(2.6, {
       body: { pelvis: [32, -8, 5], spine: [6, -10, 2], chest: [6, -30, 8], neck: [-8, 30, 0], head: [22, 10, 0] },
