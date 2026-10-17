@@ -24,7 +24,7 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(800);
-ok((await p.locator('.module-card').count()) === 3, 'app opens on the module choice (Rounds, Games, Training)');
+ok((await p.locator('.module-card').count()) === 4, 'app opens on the module choice (Rounds, Games, Training, Mobility)');
 // the start page's menu: start, friends, profile (Sascha 15.10.2026)
 const tabs = await p.locator('.tabbar button').allInnerTexts();
 ok(tabs.join('|') === 'Start|Freunde|Profil', `start page menu: ${tabs.join(' · ')}`);

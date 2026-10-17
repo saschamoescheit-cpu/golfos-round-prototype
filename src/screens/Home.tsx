@@ -19,12 +19,13 @@ export function Home(props: {
   toCheck: number; // finished rounds whose shots are not checked yet
   profileDot: boolean; // carries to take over into the bag
   trainingOpen: boolean; // a practice session is paused
-  onPick: (m: 'rounds' | 'games' | 'training') => void;
+  onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void;
   profile: ReactNode;
+  mobilityOpen?: boolean; // a screening is paused
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
-      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} trainingOpen={props.trainingOpen} toCheck={props.toCheck} onPick={props.onPick} />}
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} toCheck={props.toCheck} onPick={props.onPick} />}
       {props.tab === 'friends' && <Friends />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
@@ -52,7 +53,7 @@ function PausedMark() {
   );
 }
 
-function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpen: boolean; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training') => void }) {
+function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpen: boolean; mobilityOpen?: boolean; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
   return (
     <>
       <div className="topbar">
@@ -120,6 +121,25 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
           {props.trainingOpen && (
             <span className="small module-live">
               {tr('A session is paused', 'Eine Einheit ist pausiert')}
+              <PausedMark />
+            </span>
+          )}
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
+      {/* the fourth module (Sascha 17.10.2026): the mobility screen with the camera – what the body allows the swing */}
+      <button type="button" className="module-card" onClick={() => props.onPick('mobility')}>
+        <span className="module-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="4.2" r="2" />
+            <path d="M12 6.8v6.2M12 13l-4.2 7.5M12 13l4.2 7.5M5 8.6l7 1.6 7-3.4" />
+          </svg>
+        </span>
+        <span className="grow">
+          <strong>{tr('Mobility screen', 'Beweglichkeits-Screening')}</strong>
+          {props.mobilityOpen && (
+            <span className="small module-live">
+              {tr('A screening is paused', 'Ein Screening ist pausiert')}
               <PausedMark />
             </span>
           )}

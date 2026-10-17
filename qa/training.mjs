@@ -30,7 +30,7 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(800);
-ok((await p.locator('.module-card').count()) === 3, 'three modules on the start page');
+ok((await p.locator('.module-card').count()) === 4, 'four modules on the start page');
 await p.locator('.module-card').filter({ hasText: 'Training' }).click();
 await p.waitForTimeout(800);
 await p.getByRole('heading', { name: 'Wissen' }).waitFor({ timeout: 20000 }).catch(() => {});

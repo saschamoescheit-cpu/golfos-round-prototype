@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { restoreRound } from '../lib/storage';
 import { restoreGame } from '../lib/gamestore';
 import { restoreSession } from '../training/store';
+import { restoreScreening } from '../mobility/store';
 import { tr } from '../lib/i18n';
 
 // "Round deleted · Undo" for 8 seconds after the player deleted a round or a game (Sascha 15.10.2026: one tap to
 // delete, no second question – a slip can still be undone; later from the bin).
-type Deleted = { kind: 'round' | 'game' | 'training'; id: string; label: string };
+type Deleted = { kind: 'round' | 'game' | 'training' | 'mobility'; id: string; label: string };
 
 export function UndoToast() {
   const [shown, setShown] = useState<Deleted | null>(null);
@@ -27,7 +28,7 @@ export function UndoToast() {
   return (
     <div className="undo-toast" role="status">
       <span>
-        {shown.kind === 'game' ? tr('Game deleted', 'Spiel gelöscht') : shown.kind === 'training' ? tr('Session deleted', 'Einheit gelöscht') : tr('Round deleted', 'Runde gelöscht')}
+        {shown.kind === 'game' ? tr('Game deleted', 'Spiel gelöscht') : shown.kind === 'training' ? tr('Session deleted', 'Einheit gelöscht') : shown.kind === 'mobility' ? tr('Screening deleted', 'Screening gelöscht') : tr('Round deleted', 'Runde gelöscht')}
         {shown.label ? <span className="muted"> · {shown.label}</span> : null}
       </span>
       <button
@@ -35,6 +36,7 @@ export function UndoToast() {
         onClick={() => {
           if (shown.kind === 'game') restoreGame(shown.id);
           else if (shown.kind === 'training') restoreSession(shown.id);
+          else if (shown.kind === 'mobility') restoreScreening(shown.id);
           else restoreRound(shown.id);
           setShown(null);
         }}

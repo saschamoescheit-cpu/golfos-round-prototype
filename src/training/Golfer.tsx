@@ -423,12 +423,16 @@ export interface GolferOptions {
   /** standing up through the shot (early extension): face-on the body rises, the club comes up off the ground; from the
    *  side the hips move towards the ball and the back gets upright */
   standUp?: boolean;
+  /** own joint positions (metres) over the pose – for positions the poses do not have (mobility screen, 17.10.2026) */
+  joints?: Partial<Record<JointName | 'trailHand', P>>;
+  /** draw face-on (true) or from the side (false) – default from the pose */
+  faceOn?: boolean;
 }
 
 /** The joints of a pose in metres (with the options applied), and the feet. */
 export function golferJoints(o: GolferOptions): Record<JointName, P> & { trailHand?: P } {
   const old = OLD[o.pose];
-  const j: Record<string, P> = { ...(old ? fromOld(old) : BASE[o.pose] ?? BASE.front) };
+  const j: Record<string, P> = { ...(old ? fromOld(old) : BASE[o.pose] ?? BASE.front), ...(o.joints as Record<string, P> | undefined) };
   const club = o.club ?? DEFAULT_CLUB[o.pose] ?? 'none';
   // the driver is longer and the ball sits further forward; the putter shorter
   if (j.clubHead && j.hands && club === 'driver') j.clubHead = [j.clubHead[0] + (FACE_ON.includes(o.pose) ? 0.14 : 0.22), j.clubHead[1]];
@@ -437,7 +441,7 @@ export function golferJoints(o: GolferOptions): Record<JointName, P> & { trailHa
     for (const k of ['head', 'neck', 'pelvis', 'leadShoulder', 'trailShoulder', 'leadElbow', 'trailElbow', 'hands', 'leadHip', 'trailHip', 'trailHand']) if (j[k]) j[k] = [j[k][0] + o.shift * (k === 'pelvis' || k.endsWith('Hip') ? 1 : 0.7), j[k][1]];
     for (const k of ['leadKnee', 'trailKnee']) if (j[k]) j[k] = [j[k][0] + o.shift * 0.4, j[k][1]];
   }
-  const face = FACE_ON.includes(o.pose);
+  const face = o.faceOn ?? FACE_ON.includes(o.pose);
   // stance width (face-on): move ankles, knees and hips together or apart
   if (o.stance && FACE_ON.includes(o.pose)) {
     const w = o.stance === 'together' ? 0.055 : o.stance === 'narrow' ? 0.12 : 0.3;
@@ -485,6 +489,9 @@ export function golferJoints(o: GolferOptions): Record<JointName, P> & { trailHa
     const a = j[side + 'Ankle'];
     if (!a) return;
     const dir = face ? (side === 'lead' ? 1 : -1) : 1;
+    // own heel and toe points (lying, kneeling, a foot in the air) stay as given
+    const own = o.joints?.[(side + 'Heel') as JointName] && o.joints?.[(side + 'Toe') as JointName];
+    if (own) return;
     const len = face ? 0.17 : 0.24;
     let heel: P = [a[0] - dir * len * 0.3, 0.02];
     let toe: P = [a[0] + dir * len * 0.7, 0.02];
@@ -547,7 +554,7 @@ export function Golfer(props: { x: number; y: number; k: number; tilt?: number }
   // metres → px around the figure's foot point (y up → svg y down)
   const q = (p: P): P => [p[0] * k, -p[1] * k];
   const r = (m: number) => Math.max(1.2, m * k);
-  const face = FACE_ON.includes(props.pose);
+  const face = props.faceOn ?? FACE_ON.includes(props.pose);
   const club = props.club ?? DEFAULT_CLUB[props.pose] ?? 'none';
   const limb = (a?: P, b?: P, ra = 0.05, rb = 0.04, fill = C.shirt, key?: string): ReactNode => {
     if (!a || !b) return null;

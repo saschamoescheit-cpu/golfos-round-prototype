@@ -34,7 +34,7 @@ await p.waitForTimeout(1500);
 await ctx.setOffline(true);
 await p.reload();
 await p.waitForTimeout(1500);
-ok((await p.locator('.module-card').count()) === 3, 'offline: the start page opens');
+ok((await p.locator('.module-card').count()) === 4, 'offline: the start page opens');
 await p.locator('.module-card').filter({ hasText: 'Training' }).click();
 await p.locator('.tr-cat').first().waitFor({ timeout: 20000 }).catch(() => {});
 ok((await p.locator('.tr-cat').count()) >= 17, 'offline: Training opens with all topics');

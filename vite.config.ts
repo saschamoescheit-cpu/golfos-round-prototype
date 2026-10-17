@@ -38,9 +38,15 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        globIgnores: ['greens/**'], // green charts load on demand (runtime cache below)
+        globIgnores: ['greens/**', 'mediapipe/**', 'models/**'], // green charts and the pose model load on demand (runtime cache below)
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // map library is > 2 MB
         runtimeCaching: [
+          {
+            // the pose model of the mobility screen (feature 030): ≈ 22 MB, only when a camera test is started, then kept
+            urlPattern: /\/(mediapipe|models)\/[^/]+\.(wasm|js|task)$/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'pose-model', expiration: { maxEntries: 8 }, cacheableResponse: { statuses: [0, 200] } },
+          },
           {
             // the list of US imagery sources (loaded for a course in the USA)
             urlPattern: /\/imagery\/[a-z]+\.json$/,

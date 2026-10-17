@@ -65,6 +65,9 @@ const LISTS = [
   { kind: 'training-order', key: 'golfos.training.orders.v1', idOf: (x: { id: string }) => x.id },
   { kind: 'training-cart', key: 'golfos.training.cart.v1', idOf: (x: { gear: string }) => x.gear },
   { kind: 'training-fav', key: 'golfos.training.fav.v1', idOf: (x: string) => x },
+  // mobility screen (feature 030): every screening its own row
+  { kind: 'mobility', key: 'golfos.mobility.v1', idOf: (x: { id: string }) => x.id },
+  { kind: 'mobility-trash', key: 'golfos.mobility.trash.v1', idOf: (x: { screening: { id: string } }) => x.screening.id },
 ] as const;
 
 type Meta = Record<string, { hash: string; at: string }>; // per "kind|id": what was in sync last time

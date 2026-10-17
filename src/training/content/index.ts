@@ -18,6 +18,7 @@ import { fitness, fitnessDrills } from './fitness';
 import { practice, practiceDrills } from './practice';
 import { SKETCHES } from './sketches';
 import { moreDrills } from './more';
+import { MOBILITY_DRILL_VIDEOS, mobilityDrills } from './mobility';
 import { VIDEOS_DE } from './videos-de';
 import { SECTION_MEDIA } from './section-media';
 import { CHARTS } from './charts';
@@ -60,6 +61,7 @@ const RAW_DRILLS = [
   ...fitnessDrills,
   ...practiceDrills,
   ...moreDrills,
+  ...mobilityDrills, // corrective drills of the mobility screen (17.10.2026)
 ] as Drill[];
 const drillPicture = (id: string) => {
   const d = RAW_DRILLS.find((x) => x.id === id);
@@ -90,7 +92,8 @@ export const DRILLS: Drill[] = RAW_DRILLS
   .map((d) => (NO_RESULT_DRILLS.includes(d.id) ? { ...d, scoring: { kind: 'none' as const }, targets: undefined } : d))
   // a video for every drill where one fits – the drill's own first, then the matching topic videos
   .map((d) => {
-    const extra = [...(DRILL_OWN_VIDEOS[d.id] ?? []), ...(DRILL_VIDEOS[d.id] ?? []).map((id) => TOPIC_VIDEOS.get(id)).filter((v): v is NonNullable<typeof v> => !!v)];
+    const all = [...(DRILL_OWN_VIDEOS[d.id] ?? []), ...(DRILL_VIDEOS[d.id] ?? []).map((id) => TOPIC_VIDEOS.get(id)).filter((v): v is NonNullable<typeof v> => !!v), ...(MOBILITY_DRILL_VIDEOS[d.id] ?? [])];
+    const extra = all.filter((v, i) => all.findIndex((x) => x.id === v.id) === i);
     if (!extra.length) return d;
     const own = d.videos ?? [];
     return { ...d, videos: [...own, ...extra.filter((v) => !own.some((o) => o.id === v.id))] };

@@ -21,6 +21,7 @@ import { GamesApp, type GamesTab } from './screens/Games';
 import { Home, type HomeTab } from './screens/Home';
 import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
 import type { TrainingTab } from './screens/Training';
+import type { MobilityTab } from './screens/Mobility';
 import { statRounds, unsignedRounds } from './lib/signing';
 
 /** A practice session of the Training module is paused (read without loading the module). */
@@ -91,6 +92,16 @@ const CourseBook = lazy(() => import('./screens/CourseBook').then((m) => ({ defa
 const RoundReview = lazy(() => import('./screens/RoundReview').then((m) => ({ default: m.RoundReview })));
 // Training (Sascha 15.10.2026) brings its whole library – loaded when the module is opened.
 const TrainingApp = lazy(() => import('./screens/Training').then((m) => ({ default: m.TrainingApp })));
+// The mobility screen (Sascha 17.10.2026) brings the camera tests – loaded when the module is opened.
+const MobilityApp = lazy(() => import('./screens/Mobility').then((m) => ({ default: m.MobilityApp })));
+/** A screening of the mobility module is paused (read without loading the module). */
+const mobilityPaused = (): boolean => {
+  try {
+    return (JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]') as { finishedAt: string | null; kind: string }[]).some((s) => !s.finishedAt && s.kind !== 'single');
+  } catch {
+    return false;
+  }
+};
 const Waiting = () => (
   <main className="screen" style={{ justifyContent: 'center', alignItems: 'center' }}>
     <span className="spinner" aria-label="…" />
@@ -135,6 +146,7 @@ export function App() {
   const [homeTab, setHomeTab] = useState<HomeTab>('start');
   const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(undefined);
   const [trainingTab, setTrainingTab] = useState<TrainingTab | undefined>(undefined);
+  const [mobilityTab, setMobilityTab] = useState<MobilityTab | undefined>(undefined);
   // the bag and the caddie settings opened from the profile of the start page or of Games
   const [bagFrom, setBagFrom] = useState<null | { part: 'bag' | 'caddie' }>(null);
   const setModule = (m: AppModule | null) => {
@@ -205,15 +217,34 @@ export function App() {
         profileDot={profileDot}
         gameOpen={loadGames().some((g) => !g.finishedAt)}
         trainingOpen={trainingPaused()}
+        mobilityOpen={mobilityPaused()}
         onPick={(m) => {
           if (m === 'games') setGamesTab(undefined);
           if (m === 'training') setTrainingTab(undefined);
+          if (m === 'mobility') setMobilityTab(undefined);
           setModule(m);
         }}
         profile={profile}
       />
     );
   if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} />;
+  if (module === 'mobility')
+    return (
+      <Suspense fallback={<Waiting />}>
+        <MobilityApp
+          onModules={() => setModule(null)}
+          profile={profile}
+          profileDot={profileDot}
+          tab={mobilityTab}
+          onTabChange={setMobilityTab}
+          onOpenTraining={() => {
+            // the plan from the screen waits in Training › Practice › My plans
+            setTrainingTab('train');
+            setModule('training');
+          }}
+        />
+      </Suspense>
+    );
   if (module === 'training')
     return (
       <Suspense fallback={<Waiting />}>

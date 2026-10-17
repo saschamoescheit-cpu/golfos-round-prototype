@@ -5,3 +5,5 @@ dev-dist/
 *.tsbuildinfo
 scripts/audit-out/
 __pycache__/
+# copied from node_modules before dev/build (scripts/mediapipe-assets.mjs)
+public/mediapipe/
