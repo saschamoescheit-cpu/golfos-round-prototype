@@ -73,7 +73,7 @@ export const irons: Category = {
   faults: [
     {
       name: L('Fat shots', 'Fette Schläge'),
-      looks: L('The club hits the ground before the ball; short and heavy.', 'Der Schläger trifft den Boden vor dem Ball; kurz und schwer.'),
+      looks: L('The club hits the ground before the ball; short and heavy.', 'Der Schläger trifft zuerst den Boden hinter dem Ball; kurz und schwer.'),
       cause: L('Weight stays back, early release (casting), ball too far forward.', 'Gewicht bleibt hinten, frühes Abwinkeln (Casting), Ball zu weit vorn.'),
       fix: L('Towel behind the ball, line drill, step drill.', 'Handtuch hinter dem Ball, Linien-Übung, Schritt-Übung.'),
       drills: ['towel-behind', 'line-drill-irons', 'step-drill'],
@@ -302,7 +302,7 @@ export const ironsDrills: Drill[] = [
     setup: L('Divot Board (or a hitting mat with a towel) and foam balls in the garden or a room with space.', 'Divot Board (oder Abschlagmatte mit Handtuch) und Schaumstoffbälle im Garten oder einem Raum mit Platz.'),
     steps: [
       L('Hit balls; the board shows where the club touched the surface.', 'Schlag Bälle; das Board zeigt, wo der Schläger die Fläche berührt hat.'),
-      L('Goal: the mark starts in front of the ball and points straight.', 'Ziel: Die Spur beginnt vor dem Ball und zeigt geradeaus.'),
+      L('Goal: the mark starts at the ball or after it and points straight.', 'Ziel: Die Spur beginnt am Ball oder danach und zeigt geradeaus.'),
     ],
     scoring: { kind: 'made', of: 20, unit: L('marks after the ball', 'Spuren nach dem Ball') },
     targets: { high: 10, mid: 14, low: 17 },

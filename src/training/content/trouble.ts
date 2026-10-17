@@ -63,7 +63,7 @@ export const trouble: Category = {
       title: L('Wind', 'Wind'),
       points: [
         L('Into the wind: one or two clubs more, swing at 80 %, ball a little back – a lower ball with less spin.', 'Gegen den Wind: ein bis zwei Schläger mehr, mit 80 % schwingen, Ball etwas zurück – ein flacherer Ball mit weniger Spin.'),
-        L('Downwind: less club, the ball lands steeper, rolls further – a higher ball is fine.', 'Mit dem Wind: weniger Schläger, der Ball landet steiler, rollt weiter – ein höherer Ball ist in Ordnung.'),
+        L('Downwind: less club; the wind takes spin off the ball, so it stops less and rolls further – a higher ball is fine.', 'Mit dem Wind: weniger Schläger; der Wind nimmt dem Ball Spin, er bremst weniger und rollt weiter – ein höherer Ball ist in Ordnung.'),
         L('Crosswind: aim into the wind and let it bring the ball back.', 'Seitenwind: in den Wind zielen und ihn den Ball zurückbringen lassen.'),
         L('The GolfOS caddie already includes the wind in the “plays like” distance.', 'Der GolfOS-Caddie rechnet den Wind schon in die „spielt wie“-Distanz ein.'),
       ],

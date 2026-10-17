@@ -56,7 +56,7 @@ export const greenreading: Category = {
     {
       title: L('Speed and break belong together', 'Tempo und Break gehören zusammen'),
       points: [
-        L('Die-in speed (ball just reaches the hole): most break, the hole is “wide”.', 'Tempo „gerade so ins Loch“: meister Break, das Loch ist „breit“.'),
+        L('Die-in speed (ball just reaches the hole): most break, the hole is “wide”.', 'Tempo „gerade so ins Loch“: am meisten Break, das Loch ist „breit“.'),
         L('Firm speed (45 cm past): less break, the most putts holed overall (Pelz).', 'Festes Tempo (45 cm vorbei): weniger Break, insgesamt die meisten gelochten Putts (Pelz).'),
         L('Too firm: hardly any break, but a lip-out flies far past – three-putt danger.', 'Zu fest: kaum Break, aber ein Lip-out fliegt weit vorbei – Dreiputt-Gefahr.'),
         L('Downhill putts break more because the ball is slower for longer.', 'Bergab-Putts brechen mehr, weil der Ball länger langsam ist.'),

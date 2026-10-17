@@ -100,7 +100,7 @@ export const pitching: Category = {
     },
     {
       name: L('Fat or thin pitches', 'Fette oder dünne Pitches'),
-      looks: L('Ground before ball, or the leading edge hits the ball’s middle.', 'Boden vor dem Ball, oder die Vorderkante trifft die Ballmitte.'),
+      looks: L('Ground before ball, or the leading edge hits the ball’s middle.', 'Erst der Boden hinter dem Ball, oder die Vorderkante trifft die Ballmitte.'),
       cause: L('Arms-only swing, weight back, flicking the wrists at the ball.', 'Reiner Armschwung, Gewicht hinten, Handgelenke schnappen zum Ball.'),
       fix: L('Feet together, towel under the arms – the body turns the club.', 'Füße zusammen, Handtuch unter den Armen – der Körper dreht den Schläger.'),
       drills: ['feet-together-pitch', 'towel-arms', 'towel-behind'],

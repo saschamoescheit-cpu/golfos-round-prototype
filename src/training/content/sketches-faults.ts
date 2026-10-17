@@ -136,7 +136,7 @@ export const FAULT_SKETCHES: Partial<Record<CategoryId, Record<string, Sketch>>>
       fig(2.8, 'chip', { shift: 0.06 }), ball(2.76),
       co('pelvis', L('the weight moves back', 'das Gewicht geht nach hinten'), [0.2, 1.3], 0),
       co('hands', L('the wrists flip – the hands fall behind the clubhead', 'die Handgelenke klappen – die Hände fallen hinter den Schlägerkopf'), [0.2, 0.9], 0),
-      co('clubHead', L('the club hits the ground before the ball', 'der Schläger trifft vor dem Ball den Boden'), [1.8, 0.5], 0),
+      co('clubHead', L('the club hits the ground before the ball', 'der Schläger trifft zuerst den Boden hinter dem Ball'), [1.8, 0.5], 0),
       co('hands', L('handle ahead, wrists firm', 'Griff vorn, Handgelenke fest'), [3.6, 1.0], 1),
       co('pelvis', L('weight on the lead foot', 'Gewicht vorn'), [3.6, 1.5], 1),
     ]),
@@ -183,7 +183,7 @@ export const FAULT_SKETCHES: Partial<Record<CategoryId, Record<string, Sketch>>>
       fig(1.0, 'impact', { club: 'wedge', shift: -0.08, scoop: true }), ball(1.1),
       fig(2.8, 'impact', { club: 'wedge', shift: 0.05 }), ball(2.8),
       co('pelvis', L('weight back, a pure arm swing', 'Gewicht hinten, reiner Armschwung'), [0.2, 1.3], 0),
-      co('hands', L('the wrists snap to the ball – ground before the ball or the edge into the ball', 'die Handgelenke schnappen zum Ball – Boden vor dem Ball oder die Kante in den Ball'), [0.2, 0.8], 0),
+      co('hands', L('the wrists snap to the ball – ground before the ball or the edge into the ball', 'die Handgelenke schnappen zum Ball – Boden hinter dem Ball oder die Kante in den Ball'), [0.2, 0.8], 0),
       co('pelvis', L('the body turns the club, the arms stay in front of the chest', 'der Körper dreht den Schläger, die Arme bleiben vor der Brust'), [3.6, 1.4], 1),
     ]),
     'Slowing down at the ball': pair(2.6, [
@@ -289,7 +289,7 @@ export const FAULT_SKETCHES: Partial<Record<CategoryId, Record<string, Sketch>>>
     'Fat shots': pair(2.3, [
       fig(1.0, 'impact', { shift: -0.08, scoop: true }), ball(1.12), line([0.86, 0.2], [0.98, 0.26]), line([0.9, 0.2], [1.0, 0.28]),
       co('pelvis', L('the weight stays back', 'das Gewicht bleibt hinten'), [0.2, 1.3], 0),
-      mk([0.92, 0.24], L('the club hits the ground before the ball – short and heavy', 'der Schläger trifft vor dem Ball den Boden – kurz und schwer')),
+      mk([0.92, 0.24], L('the club hits the ground before the ball – short and heavy', 'der Schläger trifft zuerst den Boden hinter dem Ball – kurz und schwer')),
       fig(2.8, 'impact', { shift: 0.06 }), ball(2.74),
       line([2.8, 0.2], [2.95, 0.2]),
       co('hands', L('hands ahead of the ball', 'Hände vor dem Ball'), [3.6, 1.2], 1),

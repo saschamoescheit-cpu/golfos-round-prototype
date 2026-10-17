@@ -118,7 +118,7 @@ export const swingDrills: Drill[] = [
     id: 'pause-top',
     cat: 'swing',
     name: L('Pause at the top', 'Pause oben'),
-    goal: L('Separate backswing and downswing; start down from the ground.', 'Ausholen und Abschwung trennen; von unten nach unten starten.'),
+    goal: L('Separate backswing and downswing; start down from the ground.', 'Ausholen und Abschwung trennen; den Abschwung vom Boden aus starten.'),
     level: 2,
     minutes: 10,
     place: 'range',

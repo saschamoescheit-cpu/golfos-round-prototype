@@ -81,7 +81,7 @@ export const basics: Category = {
         L('Wedges and short irons: middle of the stance.', 'Wedges und kurze Eisen: Mitte des Stands.'),
         L('Mid irons: one ball width forward of centre. Long irons, hybrids: two.', 'Mittlere Eisen: eine Ballbreite vor der Mitte. Lange Eisen, Hybride: zwei.'),
         L('Fairway woods: about two ball widths inside the lead heel. Driver: opposite the lead heel.', 'Fairwayhölzer: etwa zwei Ballbreiten innerhalb der vorderen Ferse. Driver: gegenüber der vorderen Ferse.'),
-        L('A ball too far forward opens the shoulders (pull/slice); too far back blocks it right.', 'Ein zu weit vorn liegender Ball öffnet die Schultern (Pull/Slice); zu weit hinten blockt ihn nach rechts.'),
+        L('A ball too far forward opens the shoulders (pull/slice); too far back it often starts right (push).', 'Ein zu weit vorn liegender Ball öffnet die Schultern (Pull/Slice); zu weit hinten startet er oft rechts (Push).'),
       ],
     },
     {
