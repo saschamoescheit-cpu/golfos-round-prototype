@@ -9,6 +9,8 @@ import { ARMS_CROSSED, CLIPS, golf, GOLF, k, P, stand, type J } from './clips';
 
 const with_ = (c: Clip, extra: Partial<Clip>): Clip => ({ ...c, ...extra });
 /** the test clip with the first step named for the drill (its props) */
+/** both hands closed (holding a band handle, a cable) */
+const holding = (c: Clip): Clip => ({ ...c, keys: c.keys.map((x) => ({ ...x, pose: { ...x.pose, gripL: 1, gripR: 1 } })) });
 const firstStep = (c: Clip, label: L): Clip => ({ ...c, keys: c.keys.map((x, i) => (i ? x : { ...x, label })) });
 
 // ---------- floor positions ----------
@@ -336,7 +338,7 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(6.6, stand({ ...STICK_L, shoulderR: [0, 0, -88], elbowR: [-90, 0, 0] })),
     ],
   },
-  'pallof-press': {
+  'pallof-press': holding({
     view: 'side',
     views: ['side', 'angle', 'front'],
     keys: [
@@ -347,6 +349,6 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(4.6, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] }), L('… and back – 3 × 10 per side', '… und zurück – 3 × 10 pro Seite')),
       k(5.2, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] })),
     ],
-  },
+  }),
 };
 

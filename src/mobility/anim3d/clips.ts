@@ -21,25 +21,34 @@ export const HANDS_ON_HIPS: J = { shoulderL: [10, -40, 35], shoulderR: [10, 40, 
 /** standing tall */
 export const stand = (j: J = {}, extra: Omit<Pose, 'j'> = {}): Pose => P({ ...ARMS_DOWN, hipL: [0, 0, 2], hipR: [0, 0, -2], ...j }, extra);
 
-/** golf posture: hip hinge 35°, knees soft, trunk 40° forward, eyes down */
+/**
+ * The golf address – the reference posture (Sascha 17.10.2026 23:13: "look at the posture of the head … it has nothing to
+ * do with golf"): bent from the hips with a straight back (trunk about 45° forward: pelvis 40°, spine and chest a few
+ * degrees), knees flexed about 20° over the balls of the feet (thighs 20° forward, shins 20° back), the arms hanging
+ * straight down from the shoulders, the hands a hand width in front of the thighs, the head in line with the spine and
+ * the eyes down to the ball – the posture line ear – hip – knee – ankle of TPI (Adam Scott). Training builds its
+ * addresses on it (ADDRESS).
+ */
 export const GOLF: J = {
-  pelvis: [35, 0, 0],
-  spine: [3, 0, 0],
-  chest: [2, 0, 0],
-  neck: [-4, 0, 0],
-  head: [14, 0, 0],
-  hipL: [-50, 0, 4],
-  hipR: [-50, 0, -4],
-  kneeL: [30, 0, 0],
-  kneeR: [30, 0, 0],
-  ankleL: [-15, 0, 0],
-  ankleR: [-15, 0, 0],
-  shoulderL: [-40, 0, -6],
-  shoulderR: [-40, 0, 6],
+  pelvis: [40, 0, 0],
+  spine: [4, 0, 0],
+  chest: [3, 0, 0],
+  neck: [-6, 0, 0],
+  head: [16, 0, 0],
+  hipL: [-60, 0, 4],
+  hipR: [-60, 0, -4],
+  kneeL: [40, 0, 0],
+  kneeR: [40, 0, 0],
+  ankleL: [-20, 0, 0],
+  ankleR: [-20, 0, 0],
+  shoulderL: [-50, 0, -6],
+  shoulderR: [-50, 0, 6],
   elbowL: [-8, 0, 0],
   elbowR: [-8, 0, 0],
 };
 export const golf = (j: J = {}): Pose => P({ ...GOLF, ...j });
+/** the reference address for Training (the same as GOLF) */
+export const ADDRESS = GOLF;
 
 /** sitting upright on a chair or against the wall (thighs level, knees 90°) */
 export const SIT: J = { hipL: [-90, 0, 4], hipR: [-90, 0, -4], kneeL: [90, 0, 0], kneeR: [90, 0, 0] };
@@ -65,10 +74,10 @@ export const CLIPS: Record<TestId, Clip> = {
     keys: [
       k(0, golf(ARMS_CROSSED), L('Golf posture, arms crossed', 'Golfhaltung, Arme verschränkt')),
       k(1.2, golf(ARMS_CROSSED)),
-      k(2.4, golf({ ...ARMS_CROSSED, pelvis: [35, 32, 0], chest: [2, -30, 0], hipL: [-50, -28, 4], hipR: [-50, -28, -4] }), L('Turn the hips to the left – the chest stays', 'Hüfte nach links drehen – die Brust bleibt')),
-      k(3.2, golf({ ...ARMS_CROSSED, pelvis: [35, 32, 0], chest: [2, -30, 0], hipL: [-50, -28, 4], hipR: [-50, -28, -4] })),
-      k(4.4, golf({ ...ARMS_CROSSED, pelvis: [35, -32, 0], chest: [2, 30, 0], hipL: [-50, 28, 4], hipR: [-50, 28, -4] }), L('… and to the right', '… und nach rechts')),
-      k(5.2, golf({ ...ARMS_CROSSED, pelvis: [35, -32, 0], chest: [2, 30, 0], hipL: [-50, 28, 4], hipR: [-50, 28, -4] })),
+      k(2.4, golf({ ...ARMS_CROSSED, pelvis: [40, 32, 0], chest: [3, -30, 0], hipL: [-60, -28, 4], hipR: [-60, -28, -4] }), L('Turn the hips to the left – the chest stays', 'Hüfte nach links drehen – die Brust bleibt')),
+      k(3.2, golf({ ...ARMS_CROSSED, pelvis: [40, 32, 0], chest: [3, -30, 0], hipL: [-60, -28, 4], hipR: [-60, -28, -4] })),
+      k(4.4, golf({ ...ARMS_CROSSED, pelvis: [40, -32, 0], chest: [3, 30, 0], hipL: [-60, 28, 4], hipR: [-60, 28, -4] }), L('… and to the right', '… und nach rechts')),
+      k(5.2, golf({ ...ARMS_CROSSED, pelvis: [40, -32, 0], chest: [3, 30, 0], hipL: [-60, 28, 4], hipR: [-60, 28, -4] })),
       k(6.4, golf(ARMS_CROSSED)),
     ],
   },
@@ -207,10 +216,10 @@ export const CLIPS: Record<TestId, Clip> = {
     keys: [
       k(0, golf(ARMS_CROSSED), L('Golf posture, arms crossed', 'Golfhaltung, Arme verschränkt')),
       k(1.0, golf(ARMS_CROSSED)),
-      k(2.2, golf({ ...ARMS_CROSSED, pelvis: [53, 0, 0], spine: [-15, 0, 0], hipL: [-68, 0, 4], hipR: [-68, 0, -4] }), L('Tilt the pelvis forward – hollow back', 'Becken nach vorn kippen – Hohlkreuz')),
-      k(2.8, golf({ ...ARMS_CROSSED, pelvis: [53, 0, 0], spine: [-15, 0, 0], hipL: [-68, 0, 4], hipR: [-68, 0, -4] })),
-      k(4.2, golf({ ...ARMS_CROSSED, pelvis: [17, 0, 0], spine: [21, 0, 0], hipL: [-32, 0, 4], hipR: [-32, 0, -4] }), L('… and back – flat back. The chest stays still', '… und zurück – flacher Rücken. Die Brust bleibt ruhig')),
-      k(4.8, golf({ ...ARMS_CROSSED, pelvis: [17, 0, 0], spine: [21, 0, 0], hipL: [-32, 0, 4], hipR: [-32, 0, -4] })),
+      k(2.2, golf({ ...ARMS_CROSSED, pelvis: [58, 0, 0], spine: [-14, 0, 0], hipL: [-78, 0, 4], hipR: [-78, 0, -4] }), L('Tilt the pelvis forward – hollow back', 'Becken nach vorn kippen – Hohlkreuz')),
+      k(2.8, golf({ ...ARMS_CROSSED, pelvis: [58, 0, 0], spine: [-14, 0, 0], hipL: [-78, 0, 4], hipR: [-78, 0, -4] })),
+      k(4.2, golf({ ...ARMS_CROSSED, pelvis: [22, 0, 0], spine: [22, 0, 0], hipL: [-42, 0, 4], hipR: [-42, 0, -4] }), L('… and back – flat back. The chest stays still', '… und zurück – flacher Rücken. Die Brust bleibt ruhig')),
+      k(4.8, golf({ ...ARMS_CROSSED, pelvis: [22, 0, 0], spine: [22, 0, 0], hipL: [-42, 0, 4], hipR: [-42, 0, -4] })),
       k(6.0, golf(ARMS_CROSSED)),
     ],
   },
