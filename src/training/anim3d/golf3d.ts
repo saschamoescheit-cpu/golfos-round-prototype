@@ -312,10 +312,25 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const dir = new THREE.Vector3(0, 1, 0).applyQuaternion(clubW).normalize();
     const handsR = handsL.clone().addScaledVector(dir, 0.09);
 
-    // arms: the wrists 6 cm before the grip points, the hands along the shaft
-    const wristL = handsL.clone().addScaledVector(dir, -0.06);
-    const wristR = handsR.clone().addScaledVector(dir, -0.06);
+    // the hands on the grip (a golf grip, not a fist around a stick): the shaft runs diagonally through the fingers –
+    // in the hand's frame half towards the thumb side (+z, where the fingers close around) and half along the fingers
+    // (−y) – and the back of the lead hand / the palm of the trail hand face where the clubface looks; the grip point
+    // sits 6 cm from the wrist, the fingers of the Agility figure close around it
     const J = rig.joints;
+    const faceN = new THREE.Vector3(-1, 0, 0).applyQuaternion(clubW);
+    const C = new THREE.Vector3(0, -Math.SQRT1_2, Math.SQRT1_2);
+    const local = new THREE.Matrix4().makeBasis(new THREE.Vector3(1, 0, 0), C, new THREE.Vector3(1, 0, 0).cross(C));
+    const nx = faceN.clone().sub(dir.clone().multiplyScalar(faceN.dot(dir))).normalize();
+    const world = new THREE.Matrix4().makeBasis(nx, dir, nx.clone().cross(dir));
+    const handW = new THREE.Quaternion().setFromRotationMatrix(world.multiply(local.clone().invert()));
+    const GRIP = new THREE.Vector3(0, -0.06, 0.01).applyQuaternion(handW);
+    const wristL = handsL.clone().sub(GRIP);
+    const wristR = handsR.clone().sub(GRIP);
+    const setHand = (wrist: THREE.Object3D) => {
+      wrist.parent!.getWorldQuaternion(tmpQ);
+      wrist.quaternion.copy(tmpQ.clone().invert().multiply(handW));
+      wrist.updateMatrixWorld(true);
+    };
     // elbows point down and a little out, away from the body
     const poleL = chestP.clone().add(new THREE.Vector3(0.5, -1, 0.1).applyQuaternion(q));
     const poleR = chestP.clone().add(new THREE.Vector3(-0.5, -1, 0.1).applyQuaternion(q));
@@ -323,11 +338,11 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // one-handed: the trail hand rests flat on the chest
     const rest = chestP.clone().add(new THREE.Vector3(0.02, 0.1, 0.17).applyQuaternion(q));
     twoBone(J.shoulderR, J.elbowR, BODY.upperArm, BODY.forearm, swing.oneHand ? rest : wristR, poleR);
-    aim(J.wristL, wristL, wristL.clone().add(dir));
+    setHand(J.wristL);
     // one-handed the trail hand lies open on the chest
     if (swing.oneHand) rig.setGrip(1, 0.1);
     if (swing.oneHand) aim(J.wristR, rest, rest.clone().add(new THREE.Vector3(1, 0.3, 0).applyQuaternion(q)));
-    else aim(J.wristR, wristR, wristR.clone().add(dir));
+    else setHand(J.wristR);
 
     // legs: the ankles stay where they stand; the trail heel comes up in the finish
     const half = (swing.stance ?? 0.36) / 2;
