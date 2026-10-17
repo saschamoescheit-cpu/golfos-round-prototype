@@ -39,10 +39,15 @@ await shot('thema-fehler');
 await p.getByRole('tab', { name: /^Übungen/ }).click();
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Tiger' }).click();
 await shot('uebung');
-await p.evaluate(() => document.querySelector('.tr-gear-row')?.scrollIntoView({ block: 'center' }));
+// the drill page in tabs (17.10.2026): Zubehör and Ergebnis are their own tabs
+await p.getByRole('tab', { name: 'Zubehör' }).click();
+await p.waitForTimeout(300);
 await shot('uebung-zubehoer');
-await p.evaluate(() => document.querySelector('.tr-targets')?.scrollIntoView({ block: 'center' }));
-await shot('ziele-ergebnis');
+await p.getByRole('tab', { name: 'Ergebnis' }).click();
+await p.waitForTimeout(300);
+await shot('uebung-ergebnis');
+await p.getByRole('tab', { name: 'Anleitung' }).click();
+await p.waitForTimeout(200);
 await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.topbar .icon-btn').first().click();
 await tab('Üben');
