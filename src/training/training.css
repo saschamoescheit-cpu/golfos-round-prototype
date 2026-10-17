@@ -269,5 +269,3 @@
 .tr-callout-no { flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; background: #5e8a14; color: #fff; font: 800 12px var(--display); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
 /* the sticky main action (Rounds .sticky-cta) sits above the Training menu, the two buttons side by side */
 .tr-with-menu .sticky-cta { bottom: calc(env(safe-area-inset-bottom) + 58px); padding-bottom: 26px; }
-/* pause mark of a paused session – same as Rounds (.paused-mark in styles.css); kept here until that push is on main */
-.training .paused-mark { display: inline-flex; margin-left: 6px; vertical-align: -2px; color: var(--muted); }
