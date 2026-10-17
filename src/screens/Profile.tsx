@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
 import { Attribution, Segmented } from '../components/ui';
 import { carryToReview } from '../lib/stats';
@@ -22,6 +22,18 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
+  const [rev, setRev] = useState(0);
+  useEffect(() => {
+    const on = () => {
+      const a = document.activeElement;
+      if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return; // typing: the next sync brings it
+      setP(loadProfile());
+      setUnit(loadUnit());
+      setRev((r) => r + 1);
+    };
+    window.addEventListener('golfos:pulled', on);
+    return () => window.removeEventListener('golfos:pulled', on);
+  }, []);
   const review = carryToReview(props.rounds, loadCarryBag()).length;
   const bag = loadCarryBag();
   const caddie = loadCaddieSettings();
@@ -142,7 +154,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
 
       <section className="card stats-card">
         <h2>{tr('Caddie', 'Caddie')}</h2>
-        <CaddieSettingsFields />
+        <CaddieSettingsFields key={rev} />
       </section>
 
       {/* test mode: shots by hand to measure the shot detection (Sascha 16.10.2026) */}

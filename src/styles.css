@@ -558,7 +558,10 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 :root[data-theme='sun'] .caddie-card { background: rgba(255, 255, 255, 0.96); color: var(--text); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
 :root[data-theme='sun'] .map-btn.primary,
 :root[data-theme='sun'] .map-btn[aria-pressed='true'] { background: var(--brand); }
-:root[data-theme='sun'] .map-hint { color: #7a4d00; }
+:root[data-theme='sun'] .map-hint { color: var(--brand-text); }
+:root[data-theme='sun'] .review-view,
+:root[data-theme='sun'] .map-drag-readout { background: rgba(255, 255, 255, 0.96); color: var(--text); border-color: transparent; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+:root[data-theme='sun'] .review-view[aria-pressed='true'] { background: var(--brand); color: #fff; }
 :root[data-theme='sun'] .map-hint.detected { color: var(--text); }
 :root[data-theme='sun'] .map-label,
 :root[data-theme='sun'] .map-slope span { background: rgba(255, 255, 255, 0.95); color: #0b1013; }

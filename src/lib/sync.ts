@@ -507,6 +507,7 @@ export function syncNow(): Promise<SyncResult | null> {
       if (res.pulled) {
         window.dispatchEvent(new Event('golfos:rounds-changed'));
         window.dispatchEvent(new Event('golfos:games-changed'));
+        window.dispatchEvent(new Event('golfos:pulled'));
       }
       window.dispatchEvent(new Event('golfos:synced'));
       return res;

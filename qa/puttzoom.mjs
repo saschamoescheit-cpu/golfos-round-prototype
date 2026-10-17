@@ -85,12 +85,14 @@ ok(w2 < w0 * 0.6, `"Auf die Putts": flag and balls fill the view (${w2.toFixed(1
 const ballPx = (await ed.locator('.putt-ball circle').nth(1).boundingBox()).width;
 ok(ballPx > 12 && ballPx < 40, `a ball is still finger-sized when zoomed (${Math.round(ballPx)} px)`);
 // one finger on the free green moves the view
+await p.waitForTimeout(400); // the zoom has settled (the long gate run on a busy machine)
 const box = await ed.locator('svg.putt-green').boundingBox();
 const vb0 = await ed.locator('svg.putt-green').getAttribute('viewBox');
 await p.mouse.move(box.x + 12, box.y + 12);
 await p.mouse.down();
-await p.mouse.move(box.x + 60, box.y + 60, { steps: 5 });
+await p.mouse.move(box.x + 60, box.y + 60, { steps: 8 });
 await p.mouse.up();
+await p.waitForTimeout(200);
 const vb1 = await ed.locator('svg.putt-green').getAttribute('viewBox');
 ok(vb0 !== vb1, 'dragging the free green moves the view');
 // a ball still drags when zoomed

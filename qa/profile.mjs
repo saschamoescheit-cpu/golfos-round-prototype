@@ -105,6 +105,15 @@ await shot('bag-yards');
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(300);
 ok(await p.getByText('Auf allen Geräten').isVisible(), 'profile: "Auf allen Geräten" with the Google sign-in');
+// what the sync brings from another device shows at once (golfos:pulled), the open profile included
+await p.evaluate(() => {
+  const pr = JSON.parse(localStorage.getItem('golfos.profile.v1'));
+  localStorage.setItem('golfos.profile.v1', JSON.stringify({ ...pr, firstName: 'Ben' }));
+  document.activeElement?.blur();
+  window.dispatchEvent(new Event('golfos:pulled'));
+});
+await p.waitForTimeout(300);
+ok((await p.locator('#pf-first').inputValue()) === 'Ben', 'profile: a name synced from another device shows at once');
 ok(errs.length === 0, `no page errors in the app ${errs.slice(0, 2).join(' | ')}`); // Google's own page may log its own
 await p.getByRole('button', { name: 'Mit Google anmelden' }).click();
 await p.waitForURL(/accounts\.google\.com/, { timeout: 20000 }).catch(() => {});
