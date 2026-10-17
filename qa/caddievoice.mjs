@@ -45,6 +45,7 @@ await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(5000);
 // unread: a small green dot, no "!" or "i" (Sascha 17.10.2026); gone once opened, back on the next hole
+await p.locator('.map-tool .tool-dot').waitFor({ timeout: 15000 }).catch(() => {}); // the caddie speaks once GPS and weather are in
 ok((await p.locator('.map-tool .tool-dot').count()) === 1 && (await p.locator('.map-tool .tool-badge').count()) === 0, 'the caddie unread: a small green dot');
 await p.getByRole('button', { name: /Caddie zeigen/ }).click();
 await p.waitForTimeout(800);
@@ -70,6 +71,7 @@ ok((await p.locator('.map-tool .tool-dot').count()) === 0, 'read: the dot is gon
 await p.locator('.hole-bar').getByRole('button', { name: 'Nächstes Loch' }).click();
 await p.waitForTimeout(2500);
 if (await p.locator('.score-panel').count()) { await p.locator('.hole-bar').getByRole('button', { name: 'Nächstes Loch' }).click().catch(() => {}); await p.waitForTimeout(2500); }
+await p.locator('.map-tool .tool-dot').waitFor({ timeout: 15000 }).catch(() => {});
 ok((await p.locator('.map-tool .tool-dot').count()) === 1, 'the next hole: the dot is back');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

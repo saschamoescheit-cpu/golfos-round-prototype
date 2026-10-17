@@ -108,6 +108,12 @@ export function dropReplaced(store: LocalStore = browserStore): void {
   store.remove(REPLACED);
 }
 
+/** Rounds and games of this device that lost a conflict to another device's version: kept, never deleted. */
+const CONFLICTS = 'golfos.sync.conflicts.v1';
+export function conflictCopies(store: LocalStore = browserStore): { kind: string; id: string; at: string; data: unknown }[] {
+  return parse(store.get(CONFLICTS), []);
+}
+
 /** Settings the app stores as plain text, not JSON (the language: "de"). They travel as a JSON string. */
 const RAW_SETTINGS = new Set(['golfos.lang.v1']);
 /** A stored value as JSON for the server – null when it is no JSON at all (skipped: one odd value must never stop
@@ -244,6 +250,12 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
       if (keepLocal) {
         push.push({ kind: r.kind, id: r.id, data: JSON.parse(l!.json), updated_at: at, deleted: false });
         continue;
+      }
+      // the other device's version wins: this device's is kept aside, never lost
+      if (conflict && r.kind !== 'setting' && r.kind !== 'course') {
+        const kept = parse<{ kind: string; id: string; at: string; data: unknown }[]>(store.get(CONFLICTS), []);
+        kept.push({ kind: r.kind, id: r.id, at, data: JSON.parse(l!.json) });
+        store.set(CONFLICTS, JSON.stringify(kept));
       }
     }
     // a setting of this device replaced by another device's: kept aside, never lost – the player can keep this

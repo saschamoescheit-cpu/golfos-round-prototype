@@ -38,7 +38,7 @@ ok(!/Sicherung/.test(prof) && prof.indexOf('Auf allen Geräten') >= 0 && prof.in
 const heads = (await p.locator('main h2').allInnerTexts()).map((t) => t.trim());
 ok(heads.join(' | ').includes('Persönliche Daten | Golf | Caddie') && !heads.includes('Einstellungen'), `sections: ${heads.join(' | ')}`);
 ok(/Mein Bag[\s\S]*Distanzen in/.test(await p.locator('section').filter({ has: p.locator('h2', { hasText: /^Golf$/ }) }).innerText()), 'distances under Golf, below "Mein Bag"');
-ok(/Von selbst vorlesen/.test(prof) && /Wie soll der Caddie planen/.test(prof) && !/verfehlen darf/.test(prof), 'caddie settings in the profile, no miss map');
+ok(/Von selbst vorlesen/.test(prof) && /Wie der Caddie plant/.test(prof) && !/verfehlen darf/.test(prof), 'caddie settings in the profile, no miss map');
 ok(!/Grüns heute/.test(prof), 'no green speed setting');
 const voice = p.getByRole('switch', { name: /Von selbst vorlesen/ });
 ok((await voice.getAttribute('aria-checked')) === 'false', 'voice switch off by default');
@@ -131,6 +131,17 @@ await p.waitForTimeout(300);
 await sheet.locator('.pick-option').first().click();
 await p.waitForTimeout(200);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).sgGroup)) == null, 'back to the next better group');
+// how the caddie plans: a row in the switch list, the choice in a sheet (Sascha 17.10.2026); no hint under the index
+ok(!/Daraus rechnet die App/.test(await p.locator('main').innerText()), 'no hint text under the handicap index');
+const planRow = p.locator('.drawer-row').filter({ hasText: 'Wie der Caddie plant' });
+ok((await planRow.count()) === 1 && /Normal/.test(await planRow.innerText()), `the caddie's plan as a row of the switch list (${(await planRow.innerText()).replace(/\s+/g, ' ')})`);
+await planRow.click();
+await p.waitForTimeout(300);
+const planSheet = p.getByRole('dialog', { name: 'Wie der Caddie plant' });
+ok((await planSheet.locator('.pick-option').count()) === 3, 'the choice in a sheet: Sicher, Normal, Offensiv');
+await planSheet.locator('.pick-option').filter({ hasText: /^Sicher/ }).click();
+await p.waitForTimeout(200);
+ok(/Sicher/.test(await planRow.innerText()) && (await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.caddie.v1')).style)) === 'safe', 'Sicher chosen and kept');
 ok(errs.length === 0, `no page errors in the app ${errs.slice(0, 2).join(' | ')}`); // Google's own page may log its own
 await p.getByRole('button', { name: 'Mit Google anmelden' }).click();
 await p.waitForURL(/accounts\.google\.com/, { timeout: 20000 }).catch(() => {});

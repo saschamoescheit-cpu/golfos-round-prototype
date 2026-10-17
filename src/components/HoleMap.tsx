@@ -169,7 +169,8 @@ export function HoleMap(props: HoleMapProps) {
         type: 'circle',
         source: 'miss',
         paint: {
-          'circle-color': ['interpolate', ['linear'], ['get', 'cost'], 0, '#2ECC71', 0.25, '#C9E26B', 0.5, '#FF9F1A', 1, '#FF2D2D'],
+          // cheap misses green, costly ones red, grey between – no yellow or orange (CI, Sascha 16.10.2026)
+          'circle-color': ['interpolate', ['linear'], ['get', 'cost'], 0, '#2ECC71', 0.5, '#9AA6AE', 1, '#FF4D4D'],
           'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 15, 1.5, 17, 4.5, 19, 16],
           'circle-opacity': 0.8,
           'circle-stroke-width': 0.5,

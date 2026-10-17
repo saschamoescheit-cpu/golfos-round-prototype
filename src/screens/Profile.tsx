@@ -163,7 +163,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             value={p.hcpIndex}
             onChange={(e) => set({ hcpIndex: e.target.value.replace(/[^0-9.,+-]/g, '').slice(0, 5) })}
           />
-          <span className="muted small">{tr('Used for the playing handicap when you start a round.', 'Daraus rechnet die App beim Rundenstart deine Spielvorgabe.')}</span>
         </div>
         <div className="field">
           <label>{tr('Home club', 'Heimatclub')}</label>

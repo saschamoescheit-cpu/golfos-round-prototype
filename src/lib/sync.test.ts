@@ -93,6 +93,22 @@ describe('sync between devices', () => {
     expect(rounds(a)[0].entries.me.map((e) => e.strokes)).toEqual([4, 5, 3]);
     expect(rounds(b)[0].entries.me.map((e) => e.strokes)).toEqual([4, 5, 3]);
   });
+  it('changed on both devices, the other wins: this device’s version is kept aside, never lost (night 18.10.2026)', async () => {
+    const { conflictCopies } = await import('./sync');
+    const srv = server();
+    const a = device({ 'golfos.rounds.v1': [round('r1', [4, 5, null])] });
+    const b = device();
+    await syncOnce(a, srv, clock);
+    await syncOnce(b, srv, clock);
+    a.set('golfos.rounds.v1', JSON.stringify([round('r1', [4, 5, 3])]));
+    b.set('golfos.rounds.v1', JSON.stringify([round('r1', [4, 6, null])]));
+    await syncOnce(a, srv, clock);
+    await syncOnce(b, srv, clock); // a's fuller round wins on b
+    expect(rounds(b)[0].entries.me.map((e) => e.strokes)).toEqual([4, 5, 3]);
+    const kept = conflictCopies(b);
+    expect(kept).toHaveLength(1);
+    expect((kept[0].data as { entries: { me: { strokes: number | null }[] } }).entries.me[1].strokes).toBe(6);
+  });
   it('a setting edited on this device since the last sync is kept', async () => {
     const srv = server();
     const a = device({ 'golfos.unit.v1': '"m"' });

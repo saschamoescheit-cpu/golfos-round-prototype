@@ -167,14 +167,15 @@ let silence: HTMLAudioElement | null = null;
 function wakeAudio(): void {
   try {
     if (!silence) {
-      const n = 400; // 50 ms of 8 kHz, 8 bit, mono
+      // 50 ms of silence as a data: address (not a blob: one – a revoked blob address showed as an error in WebKit)
+      const n = 400; // 8 kHz, 8 bit, mono
       const b = new Uint8Array(44 + n);
       const v = new DataView(b.buffer);
       const str = (o: number, t: string) => [...t].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
       str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
       v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, 'data'); v.setUint32(40, n, true);
       b.fill(128, 44);
-      silence = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' })));
+      silence = new Audio('data:audio/wav;base64,' + btoa(String.fromCharCode(...b)));
     }
     silence.currentTime = 0;
     void silence.play().catch(() => undefined);
