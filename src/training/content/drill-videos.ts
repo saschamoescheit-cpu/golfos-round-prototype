@@ -162,4 +162,6 @@ export const DRILL_VIDEOS: Record<string, string[]> = {
   'spot-aim': ['_9HsHMOMzoc'],
   'routine-aim-tee': ['_9HsHMOMzoc', 'P4d5TjzEgtk'],
   'pressure-ladder': ['2QHCkNPEK8o'],
+  'green-target-game': ['i5OAPb-VJ8U', '7Fzog82ca8Q'],
+  'driver-9-shot': ['i5OAPb-VJ8U', '7Fzog82ca8Q'],
 };

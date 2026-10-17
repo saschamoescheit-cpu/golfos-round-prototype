@@ -147,4 +147,28 @@ export const DRILL_OWN_VIDEOS: Record<string, Video[]> = {
   "worst-ball": [
     { id: "XM_7zsq2ttk", title: "Zach Johnson plays 'worst ball'", channel: "PGA Tour", lang: "en" },
   ],
+  "ten-second": [
+    { id: "7fPrrTZR1Ko", title: "Golf MENTAL Umgang mit Fehlschlägen", channel: "Stefan Kloppe", lang: "de" },
+    { id: "IS5J4MT-jrM", title: "The Best (and worst) Things To Do After You Hit a Bad Shot", channel: "Golf Digest", lang: "en" },
+  ],
+  "reset-word": [
+    { id: "7fPrrTZR1Ko", title: "Golf MENTAL Umgang mit Fehlschlägen", channel: "Stefan Kloppe", lang: "de" },
+    { id: "20pF-AiUfZk", title: "9 Mental Techniques Guaranteed to Improve Your Golf Game", channel: "Jon Sherman Golf", lang: "en" },
+  ],
+  "process-score": [
+    { id: "SY1vZO0CMGs", title: "Golf mental: Fokus auf das WIE und den Schlag statt auf den Score", channel: "Antje Heimsoeth", lang: "de" },
+    { id: "tD3gre1a-y4", title: "Golf Psychology Tips – Understanding Process v Outcome, Golf Mental Game Lesson, Part 1", channel: "Scratch At 50 Press Conferences", lang: "en" },
+  ],
+  "round-journal": [
+    { id: "J3g9G7xEYNk", title: "Discover the Benefits of Using a Golf Journal!", channel: "The Silent Golfer", lang: "en" },
+    { id: "MzIKiy4RC34", title: "Is this the best way to track your golf? – JOURNAL 18 OVERVIEW", channel: "Made for the Range Golf", lang: "en" },
+  ],
+  "stats-round": [
+    { id: "rpiJvNXwW1Y", title: "Golf Statistics You Should Be Tracking", channel: "Titleist", lang: "en" },
+    { id: "GrTP-ZLHrKM", title: "Do you keep stats when you play golf? Here’s why you should.", channel: "Golf Distillery", lang: "en" },
+  ],
+  "cross-arms-turn": [
+    { id: "mQwDv_vsWdA", title: "2 Drills for The Correct Shoulder Turn in Golf!", channel: "Scratch Golf Academy", lang: "en" },
+    { id: "93B--sQCHwM", title: "3 Stretches for More Shoulder Turn in Your Golf Swing!", channel: "HansenFitnessForGolf", lang: "en" },
+  ],
 };
