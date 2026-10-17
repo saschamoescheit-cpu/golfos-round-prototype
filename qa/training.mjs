@@ -63,23 +63,33 @@ ok((await p.locator('.tr-intro-text').isVisible()) && (await p.locator('.tr-dril
 const firstSection = p.locator('.tr-coll').first();
 ok((await firstSection.locator('.tr-sketch svg').count()) >= 1 && (await firstSection.locator('.tr-section-drill').count()) === 1, 'a basics section has a picture and its drill');
 ok((await p.locator('.tr-video-thumb img').count()) >= 1, 'video with a preview picture in the basics');
-// the animated figure (Sascha 17.10.2026): the still picture stays, a button under it plays the movement
+// moving pictures (Sascha 17.10.2026): the chip stroke as a 3D video (the golfer of Agility), the still picture stays
 const stroke = p.locator('.tr-coll').filter({ hasText: 'Die Bewegung' }).first();
 if (!(await stroke.locator('.tr-coll-body').count())) await stroke.locator('.tr-coll-head').click();
-const playBtn = stroke.locator('.tr-motion-btn');
-ok((await playBtn.innerText()).includes('Bewegung abspielen'), 'the chip stroke has a play button');
-const box = await playBtn.boundingBox();
-ok(box && box.height >= 44, 'the play button is big enough to tap');
-const still = await stroke.locator('.tr-sketch > svg').innerHTML();
-await playBtn.click();
-await p.waitForTimeout(900);
-const moving = await stroke.locator('.tr-sketch > svg').innerHTML();
-ok(moving !== still && (await stroke.locator('.tr-motion-phase').innerText()).length > 3, 'the figure moves and the phase is named');
-await playBtn.click();
-ok((await playBtn.innerText()).includes('Bewegung abspielen') && (await stroke.locator('.tr-sketch > svg').innerHTML()) === still, 'Stopp brings back the still picture with its numbers');
+const btn3d = stroke.locator('.tr-motion-btn');
+ok((await btn3d.innerText()).includes('3D-Video'), 'the chip stroke has a 3D video');
+const box = await btn3d.boundingBox();
+ok(box && box.height >= 44, 'the 3D button is big enough to tap');
+await btn3d.click();
+await stroke.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
+await p.waitForTimeout(1500);
+ok((await stroke.locator('.tr-3d canvas').count()) === 1 && (await stroke.locator('.tr-3d-step').innerText()).length > 3, '3D video plays and names the step');
+ok((await stroke.locator('.tr-3d-views .chip').allInnerTexts()).join('|') === 'Vorne|Hinten|Schräg|Oben', 'views: Vorne · Hinten · Schräg · Oben');
+await btn3d.click();
+ok((await stroke.locator('.tr-3d').count()) === 0 && (await stroke.locator('.tr-sketch > svg').count()) === 1, '“Zurück zum Bild” brings back the still picture');
 await p.getByRole('tab', { name: 'Fehler' }).click();
 await p.locator('.list .list-item').first().click();
 await p.waitForTimeout(200);
+// the fault picture moves as a drawing: the fault and the right way side by side
+const faultFig = p.locator('figure.tr-sketch').first();
+const playBtn = faultFig.locator('.tr-motion-btn');
+ok((await playBtn.innerText()).includes('Bewegung abspielen'), 'the fault picture has a play button');
+const still = await faultFig.locator('svg[role="img"]').innerHTML();
+await playBtn.click();
+await p.waitForTimeout(900);
+ok((await faultFig.locator('svg[role="img"]').innerHTML()) !== still && (await faultFig.locator('.tr-motion-phase').innerText()).length > 3, 'the figures move and the phase is named');
+await playBtn.click();
+ok((await faultFig.locator('svg[role="img"]').innerHTML()) === still, 'Stopp brings back the still picture with its numbers');
 ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-drill-row').count()) >= 1, 'a fault leads to cause, cure and drills');
 await back();
 ok((await p.getByRole('tab', { name: 'Fehler' }).getAttribute('aria-selected')) === 'true', 'back returns to the same tab');
