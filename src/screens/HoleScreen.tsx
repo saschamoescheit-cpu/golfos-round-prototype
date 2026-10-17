@@ -12,7 +12,8 @@ import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { pickImagery, type ImageryId } from '../lib/imagery';
-import { loadForecast, loadWeather, weatherIcon, windOnHole, type Forecast, type Weather } from '../lib/weather';
+import { loadForecast, loadWeather, windOnHole, type Forecast, type Weather } from '../lib/weather';
+import { WeatherIcon } from '../components/WeatherIcon';
 import { adviseClub, DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
@@ -1661,7 +1662,7 @@ function WeatherBadge(props: { weather: Weather; holeBearing: number; below: boo
   return (
     <div className={`map-weather${props.below ? ' below' : ''}`} aria-label={tr(`${Math.round(w.tempC)} degrees, wind ${Math.round(w.windKmh)} km/h, ${rel.label}`, `${Math.round(w.tempC)} Grad, Wind ${Math.round(w.windKmh)} km/h, ${rel.label}`)}>
       <span className="temp">
-        {weatherIcon(w.code)} {Math.round(w.tempC)}°
+        <WeatherIcon code={w.code} /> {Math.round(w.tempC)}°
       </span>
       <span className="wind">
         {Math.round(w.windKmh) >= 5 && (
