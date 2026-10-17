@@ -65,6 +65,7 @@ export const FULL_SWING: Swing = {
       club: [0.2, 1, 0.15],
       shift: 0.1,
       label: L('Through', 'Durch'),
+      free: true,
     }),
     k(3.5, {
       body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-4, -20, 0], head: [6, -8, 0] },
@@ -73,6 +74,7 @@ export const FULL_SWING: Swing = {
       shift: 0.12,
       drop: 0.02,
       heel: 1,
+      free: true,
       label: L('Hold the finish', 'Finish halten'),
     }),
     k(4.7, {
@@ -82,6 +84,7 @@ export const FULL_SWING: Swing = {
       shift: 0.12,
       drop: 0.02,
       heel: 1,
+      free: true,
     }),
   ],
 };
@@ -130,12 +133,14 @@ export const HALF_SWING: Swing = {
       club: [0.2, 1, 0.15],
       shift: 0.08,
       label: L('3 o’clock: chest to the target', '3 Uhr: Brust zum Ziel'),
+      free: true,
     }),
     k(3.5, {
       body: { pelvis: [24, 50, 4], spine: [4, 8, 0], chest: [4, 16, 2], neck: [-6, -28, 0], head: [18, -10, 0] },
       hands: [0.12, -0.08, 0.46],
       club: [0.2, 1, 0.15],
       shift: 0.08,
+      free: true,
     }),
   ],
 };

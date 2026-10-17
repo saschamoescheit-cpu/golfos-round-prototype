@@ -27,6 +27,8 @@ export interface SwingKey {
   drop?: number;
   /** the trail heel comes up (0–1) */
   heel?: number;
+  /** the eyes stay on the ball (default) or the head follows the body to the target (after impact) */
+  free?: boolean;
   label?: L;
 }
 
@@ -233,6 +235,17 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const body: SwingKey['body'] = {};
     for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) body[id] = lerpRot(a.body[id], b.body[id], k);
     poseTrunk(body, lerp(a.shift ?? 0, b.shift ?? 0, k), -lerp(a.drop ?? 0.05, b.drop ?? 0.05, k));
+    // the eyes on the ball until the club has passed it, then the head turns with the body
+    const look = lerp(a.free ? 0 : 1, b.free ? 0 : 1, k);
+    if (look > 0) {
+      const head = rig.joints.head;
+      const keyed = head.quaternion.clone();
+      head.lookAt(ballPos());
+      // lookAt points the face (+z) at the ball; tilt it down a little more – the eyes, not the nose
+      head.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(12)));
+      head.quaternion.copy(keyed.slerp(head.quaternion, look));
+      head.updateMatrixWorld(true);
+    }
     const q = chestQ();
     const handsL = new THREE.Vector3(lerp(a.hands[0], b.hands[0], k), lerp(a.hands[1], b.hands[1], k), lerp(a.hands[2], b.hands[2], k)).applyQuaternion(q).add(chestPos());
     // the club turns on the shortest way between the two keys
