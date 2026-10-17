@@ -65,7 +65,7 @@ h2 { margin: 0; font: 600 17px var(--display); }
 }
 .btn-primary { background: var(--brand); color: var(--bg); }
 .btn-secondary { background: transparent; border: 1px solid var(--line-strong); color: var(--text); font-size: 16px; min-height: 52px; }
-.btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 14px; color: var(--text); font: 600 14px var(--body); min-height: 36px; text-decoration: none; white-space: nowrap; }
+.btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 14px; color: var(--text); font: 600 14px var(--body); min-height: 44px; text-decoration: none; white-space: nowrap; }
 .btn-ghost:active { background: var(--surface-2); }
 .btn-danger { color: var(--bad); border-color: #5a2a26; }
 
@@ -207,7 +207,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .map-shot strong { font: 700 18px var(--display); color: var(--brand-text); }
 .map-hint { color: #b9e98f; }
 .map-hint.detected { display: flex; align-items: center; gap: 12px; color: var(--text); padding: 2px 4px 2px 12px; }
-.map-hint.detected .btn-ghost { min-height: 36px; color: var(--brand-text); }
+.map-hint.detected .btn-ghost { min-height: 44px; color: var(--brand-text); }
 .screen > .map-hint.detected { align-self: stretch; justify-content: space-between; }
 .map-player { width: 18px; height: 18px; border-radius: 9px; background: #3B8BFF; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(59, 139, 255, 0.3); }
 .map-crosshair { width: 44px; height: 44px; cursor: grab; touch-action: none; }
@@ -620,7 +620,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .bag-use { align-self: flex-start; min-height: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--brand-text); background: none; color: var(--brand-text); font: 600 11px var(--body); }
 /* GPS problem on the hole map: the reason and a retry */
 .map-hint.gps-hint { display: flex; align-items: center; gap: 8px; max-width: 100%; }
-.map-hint.gps-hint .btn-ghost { min-height: 36px; color: var(--brand-text); white-space: nowrap; }
+.map-hint.gps-hint .btn-ghost { min-height: 44px; color: var(--brand-text); white-space: nowrap; }
 /* Pocket mode: black, swallows touches, hold 1 s to leave (GPS keeps recording) */
 .pocket { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; align-items: flex-end; justify-content: center; padding: 0 24px calc(48px + env(safe-area-inset-bottom)); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .pocket-info { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: #555; font: 500 13px var(--body); max-width: 320px; }
@@ -931,7 +931,7 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 }
 .hole-bar-handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--muted); opacity: 0.9; }
 .hole-drawer { gap: 14px; max-height: 90vh; }
-.drawer-handle { align-self: center; border: 0; background: transparent; color: var(--muted); padding: 0 20px; }
+.drawer-handle { align-self: center; border: 0; background: transparent; color: var(--muted); padding: 0 20px; min-width: 96px; min-height: 44px; } /* a thumb-sized grip (night 17.10.2026) */
 .drawer-holes { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; }
 .drawer-hole {
   position: relative; height: 56px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface);
@@ -1112,10 +1112,10 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .bag-tracked-label { font: 600 10px var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .bag-row.full .bag-tracked.differs .bag-tracked-text > span:last-child { color: var(--brand-text); }
 .bag-row.full .bag-tracked button.use-btn, .use-btn {
-  width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%; border: 1px solid var(--line-strong);
+  width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--line-strong);
   background: var(--surface-2); color: var(--brand-text); display: inline-flex; align-items: center; justify-content: center; flex: none;
 }
-.use-btn.small { width: 32px; height: 32px; min-height: 32px; }
+.use-btn.small { width: 44px; height: 44px; min-height: 44px; } /* small in look only: the tap target stays thumb-sized */
 .use-btn:active { background: var(--brand); color: var(--bg); }
 .use-all { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .use-all svg { color: var(--brand-text); }
