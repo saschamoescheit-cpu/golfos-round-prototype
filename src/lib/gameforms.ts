@@ -243,12 +243,24 @@ export function holeTeams(g: Pick<Game, 'form' | 'players' | 'settings' | 'extra
   }
 }
 
-/** Chicago: the team's two (net) scores as one number, the lower one first – 6 and 5 = 56. */
-function teamNumber(g: Game, ids: string[], i: number): number {
-  const v = ids.map((id) => net(g, id, i)!).sort((a, b) => a - b);
-  // a score of 10 or more goes first: 10 and 4 = 104, not 410 (Sascha 15.10.2026 – to be checked again)
-  if (v[1] >= 10) return Number(`${v[1]}${v[0]}`);
-  return Number(`${v[0]}${v[1]}`);
+/** Chicago: the team's two (net) scores as one number, the lower one first – 6 and 5 = 56. Sascha's group's house
+ *  rules (17.10.2026), both switchable: highest score 9 (a 10 counts as 9), a team without a par turns its number
+ *  round when the other team has one (bogey and 10 = 95), and every birdie (or better) takes 5 off the team's number
+ *  when the other team has no par: par and birdie = 34 − 5 = 29. */
+function teamNumber(g: Game, ids: string[], i: number, others: string[] = []): number {
+  // on when chosen (new Chicago games have both on); games from before keep their old reckoning
+  const max9 = g.settings.max9 === true || g.settings.max9 === 'true';
+  const bonus = g.settings.birdie5 === true || g.settings.birdie5 === 'true';
+  const v = ids.map((id) => net(g, id, i)!).map((x) => (max9 ? Math.min(9, x) : x)).sort((a, b) => a - b);
+  const par = g.holes[i]?.par ?? 4;
+  const parOrBetter = (team: string[]) => team.some((id) => net(g, id, i)! <= par);
+  // with the house rules a team without a par turns round when the other team has one: bogey and double = 65, not
+  // 56 (Sascha's examples 17.10.2026); otherwise a score of 10 or more goes first: 10 and 4 = 104, not 410
+  const turned = max9 && others.length > 0 && !parOrBetter(ids) && parOrBetter(others);
+  const num = turned || v[1] >= 10 ? Number(`${v[1]}${v[0]}`) : Number(`${v[0]}${v[1]}`);
+  if (!bonus || !others.length) return num;
+  const birdies = ids.filter((id) => net(g, id, i)! <= par - 1).length;
+  return birdies && !parOrBetter(others) ? num - 5 * birdies : num;
 }
 
 /** Chicago on hole i (Sascha 15.10.2026: "Sascha & Max 44, Simon & Sam 56 – the difference 12"): the two teams with
@@ -256,8 +268,8 @@ function teamNumber(g: Game, ids: string[], i: number): number {
 export function chicagoHole(g: Game, i: number): { a: { ids: string[]; num: number }; b: { ids: string[]; num: number }; diff: number } | null {
   if (!played(g, i)) return null;
   const [A, B] = chicagoTeams(g, i);
-  const a = teamNumber(g, A, i);
-  const b = teamNumber(g, B, i);
+  const a = teamNumber(g, A, i, B);
+  const b = teamNumber(g, B, i, A);
   return { a: { ids: A, num: a }, b: { ids: B, num: b }, diff: b - a };
 }
 
@@ -459,7 +471,15 @@ export const FORMS: FormDef[] = [
         'Vier Spieler, an jedem Loch zwei Teams. Die drei Paarungen (A+B gegen C+D, A+C gegen B+D, A+D gegen B+C) wechseln von Loch zu Loch – auf 18 Löchern je sechsmal, auf 9 Löchern je dreimal –, damit jeder mit jedem spielt. Die Paarung eines Lochs lässt sich ändern.',
       ),
       tr('The two scores of a team make a two-digit number, the lower one first: 6 and 5 = 56, 3 and 3 = 33.', 'Die zwei Schläge eines Teams ergeben eine zweistellige Zahl, der kleinere vorn: 6 und 5 = 56, 3 und 3 = 33.'),
-      tr('A score of 10 or more goes first: 10 and 4 = 104 (not 410).', 'Eine 10 oder mehr kommt nach vorn: 10 und 4 = 104 (nicht 410).'),
+      tr(
+        'Highest score 9 (if chosen): a 10 counts as 9. And a team without a par turns its number round when the other team has one: bogey and double = 65, bogey and 10 = 95.',
+        'Höchstes Ergebnis 9 (wenn gewählt): eine 10 zählt als 9. Und ein Team ohne Par dreht seine Zahl um, wenn das andere Team ein Par hat: Bogey und Doppel-Bogey = 65, Bogey und 10 = 95.',
+      ),
+      tr('Without that: a score of 10 or more goes first: 10 and 4 = 104 (not 410).', 'Ohne diese Regel kommt eine 10 oder mehr nach vorn: 10 und 4 = 104 (nicht 410).'),
+      tr(
+        'Birdie −5 (if chosen): every birdie of a team takes 5 off its number, as long as nobody in the other team makes par – par and birdie = 34 − 5 = 29, two birdies = 33 − 10 = 23.',
+        'Birdie −5 (wenn gewählt): jedes Birdie eines Teams zieht 5 von seiner Zahl ab, solange im anderen Team keiner Par spielt – Par und Birdie = 34 − 5 = 29, zwei Birdies = 33 − 10 = 23.',
+      ),
       tr(
         'The difference is the hole: 56 − 33 = 23. Each player of the lower team gets +23, each of the other −23 – all accounts add up to zero.',
         'Die Differenz ist das Loch: 56 − 33 = 23. Jeder Spieler des Teams mit der kleineren Zahl bekommt +23, jeder des anderen −23 – alle Konten ergeben zusammen null.',
@@ -480,13 +500,18 @@ export const FORMS: FormDef[] = [
     ],
     players: [4, 4],
     input: 'chicago',
-    settings: [{ key: 'stake', label: () => tr('Start stake per point', 'Starteinsatz je Punkt'), type: 'stake', default: 0.1 }],
+    settings: [
+      // the house rules of Sascha's group (17.10.2026) – on by default
+      { key: 'max9', label: () => tr('Highest score 9', 'Höchstes Ergebnis 9'), type: 'bool', default: true },
+      { key: 'birdie5', label: () => tr('Birdie −5 (other team no par)', 'Birdie −5 (anderes Team ohne Par)'), type: 'bool', default: true },
+      { key: 'stake', label: () => tr('Start stake per point', 'Starteinsatz je Punkt'), type: 'stake', default: 0.1 },
+    ],
     standing: (g) => {
       const pts: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
       g.holes.forEach((_, i) => {
         if (!played(g, i)) return;
         const [A, B] = chicagoTeams(g, i);
-        const d = teamNumber(g, B, i) - teamNumber(g, A, i); // + the first team is lower
+        const d = teamNumber(g, B, i, A) - teamNumber(g, A, i, B); // + the first team is lower
         for (const id of A) pts[id] += d;
         for (const id of B) pts[id] -= d;
       });

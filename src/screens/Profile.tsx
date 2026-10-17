@@ -21,6 +21,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [p, setP] = useState<Profile>(loadProfile);
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
+  const [sgPick, setSgPick] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const [rev, setRev] = useState(0);
   const [session, setSession] = useState(loadSession);
@@ -45,6 +46,40 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
     setP(next);
     saveProfile(next);
   };
+
+  const autoGroup = GROUPS.find((g) => g.id === groupForHandicap(profileIndex(p)))?.label ?? '';
+  const sgSheet = sgPick && (
+    <div className="sheet-backdrop" onClick={() => setSgPick(false)}>
+      <section className="sheet" role="dialog" aria-label={tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setSgPick(false)}>
+            ✕
+          </button>
+        </div>
+        <div className="pick-list">
+          {[{ id: '', label: tr(`Next better group (${autoGroup})`, `Nächstbessere Gruppe (${autoGroup})`), hint: tr('Follows your handicap index', 'Folgt deinem Handicap-Index') }, ...GROUPS.map((g) => ({ id: g.id, label: g.label, hint: '' }))].map((o) => (
+            <button
+              key={o.id || 'auto'}
+              type="button"
+              className="pick-option"
+              aria-pressed={(p.sgGroup ?? '') === o.id}
+              onClick={() => {
+                set({ sgGroup: o.id || undefined });
+                setSgPick(false);
+              }}
+            >
+              <span className="grow">
+                <strong>{o.label}</strong>
+                {o.hint && <span className="muted small">{o.hint}</span>}
+              </span>
+              {(p.sgGroup ?? '') === o.id && <span className="pick-check" aria-hidden="true">✓</span>}
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 
   if (picking)
     return (
@@ -180,19 +215,14 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
-        {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026) */}
+        {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026);
+            a row like the home club, the choice in a sheet like the game form (Sascha: "it does not look like the rest") */}
         <div className="field">
-          <label id="pf-sg">{tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')}</label>
-          <div className="chip-set" role="group" aria-labelledby="pf-sg">
-            <button type="button" className={`chip${!p.sgGroup ? ' on' : ''}`} aria-pressed={!p.sgGroup} onClick={() => set({ sgGroup: undefined })}>
-              {tr(`Next better (${GROUPS.find((g) => g.id === groupForHandicap(profileIndex(p)))?.label})`, `Nächstbessere (${GROUPS.find((g) => g.id === groupForHandicap(profileIndex(p)))?.label})`)}
-            </button>
-            {GROUPS.map((g) => (
-              <button key={g.id} type="button" className={`chip${p.sgGroup === g.id ? ' on' : ''}`} aria-pressed={p.sgGroup === g.id} onClick={() => set({ sgGroup: g.id })}>
-                {g.label}
-              </button>
-            ))}
-          </div>
+          <label>{tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')}</label>
+          <button type="button" className="settings-row home-club sg-row" onClick={() => setSgPick(true)}>
+            <span>{p.sgGroup ? GROUPS.find((g) => g.id === p.sgGroup)?.label : tr(`Next better group (${autoGroup})`, `Nächstbessere Gruppe (${autoGroup})`)}</span>
+            <span aria-hidden="true">›</span>
+          </button>
         </div>
       </section>
 
@@ -203,6 +233,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
 
 
 
+      {sgSheet}
       <div className="home-foot">
         <Attribution />
         <span className="muted small" title={__BUILD_TIME__}>

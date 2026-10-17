@@ -95,10 +95,17 @@ function withWhs(d: Draft): Draft {
   return rec && !d.hcpTouched && d.settings.allowance != null ? { ...d, settings: { ...d.settings, allowance: rec } } : d;
 }
 
+/** As many player rows as the form needs (Sascha 17.10.2026: "Chicago needs 4 – show 4, not 2"); never fewer than 2. */
+function atLeast(players: DraftPlayer[], n: number): DraftPlayer[] {
+  const out = players.slice();
+  while (out.length < Math.max(2, n)) out.push({ id: newId(), name: '', hcp: '' });
+  return out;
+}
+
 function newDraft(form: FormId = 'skins'): Draft {
   const p = loadProfile();
   const me = { id: 'me', name: shownName(p) || tr('Me', 'Ich'), hcp: p.hcpIndex ? String(parseHcp(p.hcpIndex) ?? '') : '' };
-  return withWhs({ form, course: null, optionId: '', players: [me, { id: newId(), name: '', hcp: '' }], settings: defaults(formDef(form)) });
+  return withWhs({ form, course: null, optionId: '', players: atLeast([me], formDef(form).players[0]), settings: defaults(formDef(form)) });
 }
 
 export function GamesApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void }) {
@@ -491,15 +498,15 @@ export function FormRules(props: { form: FormDef }) {
   useEffect(() => () => stopSpeaking(), [props.form.id]);
   return (
     <>
+      {/* only the speaker, as the caddie's on the round, before the rules – long rules hid it (Sascha 17.10.2026) */}
+      <button type="button" className="btn-secondary read-rules" aria-pressed={talking} aria-label={tr('Read the rules aloud or stop', 'Spielform vorlesen oder stoppen')} title={tr('Read aloud', 'Vorlesen')} onClick={() => toggleSpeak(rulesSpoken(props.form))}>
+        <SpeakerIcon size={22} />
+      </button>
       <ul className="game-rules">
         {props.form.rules().map((r) => (
           <li key={r}>{r}</li>
         ))}
       </ul>
-      {/* only the speaker, as the caddie's on the round (Sascha 17.10.2026) */}
-      <button type="button" className="btn-secondary read-rules" aria-pressed={talking} aria-label={tr('Read the rules aloud or stop', 'Spielform vorlesen oder stoppen')} title={tr('Read aloud', 'Vorlesen')} onClick={() => toggleSpeak(rulesSpoken(props.form))}>
-        <SpeakerIcon size={22} />
-      </button>
     </>
   );
 }
@@ -547,20 +554,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
     <main className="screen">
       <TopBar title={tr('New game', 'Neues Spiel')} onBack={props.onBack} />
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <span className="eyebrow">{tr('Game form', 'Spielform')}</span>
-        <div className="settings-list">
-          <button type="button" className="settings-row" onClick={() => setPicker(true)}>
-            <span>{tr('Form', 'Spielform')}</span>
-            <span className="settings-value">{f.name()}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-        </div>
-        <div className="card">
-          <FormRules form={f} />
-        </div>
-      </section>
-
+      {/* the course first, then the form (Sascha 17.10.2026: "the course goes under otherwise") */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Course', 'Platz')}</span>
         <div className="settings-list">
@@ -586,6 +580,20 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span className="eyebrow">{tr('Game form', 'Spielform')}</span>
+        <div className="settings-list">
+          <button type="button" className="settings-row" onClick={() => setPicker(true)}>
+            <span>{tr('Form', 'Spielform')}</span>
+            <span className="settings-value">{f.name()}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+        <div className="card">
+          <FormRules form={f} />
+        </div>
+      </section>
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">
           {tr('Players', 'Spieler')} · {playersText(f)}
         </span>
@@ -608,10 +616,15 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             )}
           </div>
         ))}
-        {n < 4 && (
+        {(n < 4 || d.players.some((p, k) => k > 0 && !p.name.trim() && !p.hcp.trim())) && (
+          // a friend takes the first empty row (Chicago starts with four), else a new one
           <FriendChips
             taken={d.players.map((p) => p.name)}
-            onAdd={(fr) => set({ players: [...d.players.filter((p, k) => k === 0 || p.name.trim() || p.hcp.trim()), { id: newId(), name: fr.name, hcp: roughPlaying(fr.hcp) }].slice(0, 4) })}
+            onAdd={(fr) => {
+              const row = { id: newId(), name: fr.name, hcp: roughPlaying(fr.hcp) };
+              const k = d.players.findIndex((p, j) => j > 0 && !p.name.trim() && !p.hcp.trim());
+              set({ players: k > 0 ? d.players.map((p, j) => (j === k ? row : p)) : [...d.players, row].slice(0, 4) });
+            }}
           />
         )}
         {n < 4 && (
@@ -706,7 +719,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                   className="pick-option"
                   aria-pressed={o.id === d.form}
                   onClick={() => {
-                    props.onChange(withWhs({ ...d, form: o.id, settings: { ...defaults(o), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
+                    props.onChange(withWhs({ ...d, form: o.id, players: atLeast(d.players, o.players[0]), settings: { ...defaults(o), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
                     setPicker(false);
                   }}
                 >
@@ -726,11 +739,6 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       <span className="spacer" />
       {/* a game is played on a course (Sascha 15.10.2026): par and stroke index come from it – no start without one */}
       <div className="sticky-cta">
-        {!d.course && (
-          <span className="small good-text" role="status">
-            {tr('Choose the course first.', 'Wähle zuerst den Platz.')}
-          </span>
-        )}
         <button type="button" className="btn-primary" onClick={start} disabled={!fits || !d.course}>
           {tr('Start game', 'Spiel starten')}
         </button>
@@ -1299,11 +1307,11 @@ function CapPicker(props: { stake: number; value: number; onChange: (v: number) 
             {money(v)}
           </button>
         ))}
-        <button type="button" className={`chip${!typing && props.value === 0 ? ' on' : ''}`} aria-pressed={props.value === 0} onClick={() => { setTyping(false); setError(null); props.onChange(0); }}>
-          {tr('no cap', 'ohne Limit')}
-        </button>
         <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(' €', '') : ''); }}>
           {custom && !typing ? money(props.value) : tr('more …', 'höher …')}
+        </button>
+        <button type="button" className={`chip${!typing && props.value === 0 ? ' on' : ''}`} aria-pressed={props.value === 0} onClick={() => { setTyping(false); setError(null); props.onChange(0); }}>
+          {tr('no cap', 'ohne Limit')}
         </button>
       </div>
       {typing && (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canPress, capChain, onChain, snapCap, chicagoTeams, formDef, received, stakeCap, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
+import { canPress, capChain, onChain, snapCap, chicagoHole, chicagoTeams, formDef, received, stakeCap, stakeNow, standingOf, transfers, type FormId, type Game } from './gameforms';
 
 const holes = (n: number) => Array.from({ length: n }, (_, i) => ({ label: String(i + 1), par: 4, si: i + 1 }));
 
@@ -134,16 +134,44 @@ describe('handicap share, press and limits (Sascha 15.10.2026)', () => {
 });
 
 describe("Chicago as Sascha's group plays it", () => {
+  // the house rules (Sascha 17.10.2026), par 4: Max & Sascha against Sam & Cedric = p0, p1 against p2, p3
+  const house = (scores: number[]) => {
+    const g = game('chicago', scores.map((x) => [x]), { stake: 0.1, max9: true, birdie5: true });
+    g.holes = g.holes.map((h) => ({ ...h, par: 4 }));
+    return chicagoHole(g, 0)!;
+  };
+  it('house rules: par par 44 against bogey double 65', () => {
+    expect([house([4, 4, 5, 6]).a.num, house([4, 4, 5, 6]).b.num]).toEqual([44, 65]);
+  });
+  it('house rules: the highest score is 9, turned round – bogey and a 10 = 95', () => {
+    expect(house([4, 4, 5, 10]).b.num).toBe(95);
+  });
+  it('house rules: par and birdie 29 against bogey and double 65', () => {
+    expect([house([4, 3, 5, 6]).a.num, house([4, 3, 5, 6]).b.num]).toEqual([29, 65]);
+  });
+  it('house rules: two birdies 23 against 65', () => {
+    expect([house([3, 3, 5, 6]).a.num, house([3, 3, 5, 6]).b.num]).toEqual([23, 65]);
+  });
+  it('house rules: par and birdie = 34 − 5 = 29 when the other team has no par', () => {
+    expect(house([4, 3, 5, 6]).a.num).toBe(29);
+  });
+  it('house rules: no −5 when somebody in the other team makes par', () => {
+    expect(house([3, 4, 4, 6]).a.num).toBe(34);
+    expect(house([4, 4, 4, 6]).b.num).toBe(46);
+  });
+  it('house rules: two birdies = 33 − 10 = 23', () => {
+    expect(house([3, 3, 5, 6]).a.num).toBe(23);
+  });
   it('a score of 10 or more goes first: 10 and 4 = 104 (to be checked again)', () => {
     // A 10, B 4 = 104 against C 5, D 5 = 55 → 49 for C and D
-    const st = standingOf(game('chicago', [[10], [4], [5], [5]], { stake: 0.1, allowance: '0' }));
+    const st = standingOf(game('chicago', [[10], [4], [5], [5]], { stake: 0.1, allowance: '0', max9: false, birdie5: false }));
     expect(st.rows.find((r) => r.id === 'p2')!.points).toBe(49);
     expect(st.rows.find((r) => r.id === 'p0')!.points).toBe(-49);
   });
   // players A, B, C, D = p0 … p3
   it('makes a two-digit number of each team and gives the difference to every player', () => {
     // hole 1: A+B against C+D; Sascha 6 and Cedric 5 = 56, Jonas 3 and Maggi 3 = 33 → 23
-    const st = standingOf(game('chicago', [[6], [5], [3], [3]], { stake: 0.1 }));
+    const st = standingOf(game('chicago', [[6], [5], [3], [3]], { stake: 0.1, max9: false, birdie5: false }));
     expect(Object.fromEntries(st.rows.map((r) => [r.id, r.points]))).toEqual({ p0: -23, p1: -23, p2: 23, p3: 23 });
     expect(st.money!.p2).toBeCloseTo(2.3);
     expect(Object.values(st.money!).reduce((a, b) => a + b, 0)).toBeCloseTo(0);
@@ -158,7 +186,7 @@ describe("Chicago as Sascha's group plays it", () => {
   });
   it('a press doubles the stake and halves all points – the money so far stays', () => {
     // hole 1: A+B 56 against C+D 33 (A −23); A presses on hole 2; hole 2: A+C 44 against B+D 55 (A +11 at double stake)
-    const g = game('chicago', [[6, 4], [5, 5], [3, 4], [3, 5]], { stake: 0.1 });
+    const g = game('chicago', [[6, 4], [5, 5], [3, 4], [3, 5]], { stake: 0.1, max9: false, birdie5: false });
     g.presses = [{ hole: 1, by: 'p0' }];
     const st = standingOf(g);
     expect(stakeNow(g)).toBeCloseTo(0.2);

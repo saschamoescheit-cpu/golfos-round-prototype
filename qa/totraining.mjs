@@ -41,7 +41,7 @@ await p.evaluate(() => {
   const id = r.players.find((x) => x.isMe).id;
   r.entries[id] = r.entries[id].map((e, k) => ({ ...e, strokes: r.holes[k].par + 1, putts: 3, penalties: 0 }));
   r.finishedAt = new Date().toISOString();
-  r.capture = 'score';
+  r.capture = 'full';
   localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
 });
 await p.reload();

@@ -18,3 +18,5 @@ canopy: tree crowns read from the aerial image at full resolution (LGL DOP20 0.2
 fairwayAuto: fairway areas per hole from the aerial image, learnt from the OSM fairways of the course – scripts/fairways.py
 (2026-10-15; drawing of the 2D view only, caddie and stats keep the OSM fairways; Son Quint and Son Vida have none to learn from).
 Coordinates are [lon, lat]. 
+Grassed-over bunkers: checked against the newest official aerial (lidar/bunker_check.py, 2026-10-17) – Hetzenhof: the two OSM bunkers in the dogleg of 8A are turf on the LGL 2026 image and were left out (kept in lidar/bunkercheck/).
+Mallorca, checked on PNOA by eye (2026-10-17): grass or water instead of sand – Maioris 2, T Golf Puntiró 4 (one a pond tagged as bunker), Son Antem 2, Son Térmens 2 OSM bunkers left out.

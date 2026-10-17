@@ -10,7 +10,9 @@ export const isSigned = (r: Round): boolean => !!r.finishedAt && !!r.signedAt;
 export const statRounds = (rounds: Round[]): Round[] => rounds.filter(isSigned);
 
 /** Finished rounds still waiting for the signature. */
-export const unsignedRounds = (rounds: Round[]): Round[] => rounds.filter((r) => !!r.finishedAt && !r.signedAt && !r.preview);
+/** Finished rounds the player wants to sign and has not yet – a round only kept as a round (capture 'score') is
+ *  done as it is (Sascha 17.10.2026). */
+export const unsignedRounds = (rounds: Round[]): Round[] => rounds.filter((r) => !!r.finishedAt && !r.signedAt && !r.preview && r.capture !== 'score');
 
 export const sign = (r: Round): Round => ({ ...r, signedAt: new Date().toISOString() });
 export const unsign = (r: Round): Round => ({ ...r, signedAt: null });

@@ -34,7 +34,12 @@ const stored = (k) => p.evaluate((k) => Object.values(JSON.parse(localStorage.ge
 // 0 · "shot here" on the map for every round, green, with undo (Sascha 17.10.2026 – it was in the profile's test mode)
 await p.waitForTimeout(1500);
 const shotTool = p.getByRole('button', { name: 'Schlag hier erfassen' });
-ok((await p.locator('.map-toolbar .map-shot-btn').count()) === 0 && (await p.locator('.map-side > .map-shot-btn').count()) === 1, '"Schlag hier" on its own below the tools, not in the toolbar');
+ok((await p.locator('.map-toolbar .map-shot-btn').count()) === 0 && (await p.locator('.map-bottom-tools .map-shot-btn').count()) === 1, '"Schlag hier" bottom right, where "centre" was (Sascha 17.10.2026)');
+{
+  const sb = await p.locator('.map-shot-btn').boundingBox();
+  const ib = await p.getByRole('button', { name: 'Karteninfo' }).boundingBox();
+  ok(ib && sb && ib.x < 40 && Math.abs(ib.y + ib.height - (sb.y + sb.height)) < 3, `the map ⓘ bottom left at the height of "shot here" (${Math.round(ib?.y + ib?.height)} / ${Math.round(sb?.y + sb?.height)})`);
+}
 ok(await shotTool.isVisible(), '"Schlag hier" is a map tool on every round');
 await shotTool.click();
 await p.waitForTimeout(300);
@@ -50,13 +55,13 @@ ok((await manual()) === 0, 'undo takes it back');
 // a noted shot stands on the map; a tap on it offers to remove it (Sascha 17.10.2026)
 await shotTool.click();
 await p.waitForTimeout(400);
-const dot = p.locator('.map-shot-dot.tap');
+const dot = p.locator('.map-hand-shot');
 ok((await dot.count()) === 1, 'the noted shot stands on the map');
 await dot.first().click();
 await p.waitForTimeout(300);
 await p.getByRole('button', { name: 'Entfernen', exact: true }).click();
 await p.waitForTimeout(300);
-ok((await manual()) === 0 && (await p.locator('.map-shot-dot.tap').count()) === 0, 'a tap on it and "Entfernen" removes it');
+ok((await manual()) === 0 && (await p.locator('.map-hand-shot').count()) === 0, 'a tap on it and "Entfernen" removes it');
 // pressed by mistake twice: the count on the button lists this hole's shots, each can be removed (Sascha 17.10.2026)
 await shotTool.click();
 await p.waitForTimeout(300);
@@ -74,7 +79,7 @@ await p.getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(6000); // the 5 s measuring of the first is done
 // moved on the aerial to the exact spot – to the metre
 const before = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].manualShots[0]);
-const bb = await p.locator('.map-shot-dot.tap').first().boundingBox();
+const bb = await p.locator('.map-hand-shot').first().boundingBox();
 await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
 await p.mouse.down();
 await p.mouse.move(bb.x + bb.width / 2 + 20, bb.y + bb.height / 2 - 30, { steps: 8 });
@@ -84,10 +89,10 @@ const after = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rou
 ok(after.placed === true && after.acc === 0 && (after.pos[0] !== before.pos[0] || after.pos[1] !== before.pos[1]), 'dragged on the map: the shot stands where it was put');
 await count.click();
 await p.waitForTimeout(300);
-ok(/auf der Karte gesetzt/.test(await p.locator('.shot-list').innerText()), 'the list says it was set on the map');
+ok(/auf der Karte gesetzt/.test(await p.locator('.hand-list').innerText()), 'the list says it was set on the map');
 await p.locator('.shot-list-row').first().getByRole('button', { name: 'Entfernen' }).click();
 await p.waitForTimeout(300);
-ok((await manual()) === 0 && (await p.locator('.shot-list').count()) === 0, 'the last one removed: the list closes');
+ok((await manual()) === 0 && (await p.locator('.hand-list').count()) === 0, 'the last one removed: the list closes');
 // 1 · "→" without a score: the sheet, then on to 2A
 await p.getByRole('button', { name: 'Nächstes Loch' }).click();
 await p.waitForTimeout(500);

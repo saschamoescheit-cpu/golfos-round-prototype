@@ -58,6 +58,11 @@ await p.locator('.tabbar button').filter({ hasText: 'Mein Golf' }).click();
 await p.waitForTimeout(600);
 const hero = await p.locator('.record-hero').innerText();
 ok(/\+8,0\s*Ø zu Par \(9 Loch\)/.test(hero), 'my golf: average to par per 9 holes (+8,0, not +16,0)');
+// how the holes end: the numbers in the bars, the legend alone below (Sascha 17.10.2026)
+const bars = await p.locator('.mix-bar span').allInnerTexts();
+ok(bars.length > 0 && bars.every((t) => /^\d+$/.test(t.trim())), `the numbers stand in the bars (${bars.join(' · ')})`);
+ok(!/\d/.test(await p.locator('.mix-legend').innerText()), 'the legend has no numbers');
+if (process.env.SHOTS) await p.locator('.mix-bar').locator('..').screenshot({ path: process.env.SHOTS + '/mixbar.png' });
 // the progress of two 9-hole rounds: per 9 holes too
 await p.evaluate(() => {
   const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));

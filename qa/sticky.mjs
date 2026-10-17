@@ -1,5 +1,6 @@
-// Usability (night 17.10.2026): the main action of a long form stays at the bottom of the screen – Rounds setup,
-// Games setup, the round check. Checks the button is inside the viewport without scrolling and not covered.
+// Usability (Sascha 17.10.2026 evening: "you tap 'start' too quickly before checking the settings"): the main action
+// of a long form is at the end of the page, after the settings – not floating. Rounds setup, Games setup, the round
+// check: the button does not stay on screen while scrolling, it is the last thing on the page, and reachable there.
 // Usage: node qa/sticky.mjs [url]
 import { webkit, devices } from 'playwright';
 import { readFileSync } from 'node:fs';
@@ -26,10 +27,19 @@ await p.evaluate((exp) => {
 const inView = async (name, where) => {
   const btn = (name instanceof RegExp ? p.getByRole('button', { name }) : p.getByRole('button', { name, exact: true })).last();
   await btn.waitFor({ timeout: 30000 });
+  const info = await btn.evaluate((el) => {
+    let floating = false;
+    for (let e = el; e && e !== document.body; e = e.parentElement) if (/sticky|fixed/.test(getComputedStyle(e).position)) floating = true;
+    const main = el.closest('main');
+    const r = el.getBoundingClientRect();
+    const below = [...main.querySelectorAll('section, .card, .field, .settings-list')].filter((x) => !x.contains(el) && x.getBoundingClientRect().bottom > r.bottom + 1 && x.getBoundingClientRect().height > 0).length;
+    return { floating, below };
+  });
+  ok(!info.floating && info.below === 0, `${where}: "${name}" at the end of the page, not floating (${info.floating ? 'floating' : 'static'}, ${info.below} settings below it)`);
+  await btn.scrollIntoViewIfNeeded();
   const vh = p.viewportSize().height;
   const r = await btn.boundingBox();
-  const top = await btn.evaluate((el) => { const r = el.getBoundingClientRect(); const t = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!t && (t === el || el.contains(t)); });
-  ok(r && r.y >= 0 && r.y + r.height <= vh && top, `${where}: "${name}" at the bottom, visible without scrolling (${r ? Math.round(r.y) : '–'} of ${vh})`);
+  ok(r && r.y >= 0 && r.y + r.height <= vh, `${where}: reachable at the end`);
   if (shots) await p.screenshot({ path: `${shots}/sticky-${where}.png` });
 };
 const toModule = async (m) => { await p.evaluate((m) => sessionStorage.setItem('golfos.module', m), m); await p.reload(); await p.waitForTimeout(1500); };

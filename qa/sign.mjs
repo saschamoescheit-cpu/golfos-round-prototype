@@ -41,7 +41,7 @@ await p.evaluate(() => {
   const id = r.players.find((x) => x.isMe).id;
   r.entries[id] = r.entries[id].map((e, k) => ({ ...e, strokes: r.holes[k].par + 1, putts: 3, penalties: 0 }));
   r.finishedAt = new Date().toISOString();
-  r.capture = 'score';
+  r.capture = 'full'; // chosen to check and sign (a round kept as a round is never open – Sascha 17.10.2026)
   localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
 });
 await p.reload();
@@ -56,7 +56,7 @@ await p.waitForTimeout(600);
 ok((await p.getByText(/1 beendete Runde ist noch nicht signiert/).count()) === 1, 'stats: the unsigned round is named, it does not count yet');
 await tab('Runden');
 await p.waitForTimeout(400);
-ok((await p.locator('ul.list .signed-mark[aria-label="signiert"]').count()) === 0 && (await p.locator('ul.list .signed-mark[aria-label="zu signieren"]').count()) === 1, 'rounds list: no seal yet, the pen of a round to sign');
+ok((await p.locator('ul.list .signed-mark[aria-label="signiert"]').count()) === 0 && (await p.locator('ul.list .signed-mark[aria-label="zu signieren"], ul.list .signed-mark[aria-label="Schläge prüfen"]').count()) === 1, 'rounds list: no seal yet, the mark of an open round');
 ok((await p.locator('.tile .tile-mark svg').count()) === 3, 'the tiles carry the marks (to check, to sign, signed) – the legend');
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1200);
@@ -92,6 +92,14 @@ const pausedRow = p.locator('.list-item').filter({ has: p.locator('.paused-mark'
 ok((await pausedRow.count()) === 1 && /Pausiert · Loch 5 von 9/.test(await pausedRow.innerText()), 'rounds list: the paused round with its pause mark and hole');
 const mark = await pausedRow.locator('.paused-mark').evaluate((e) => ({ circle: !!e.querySelector('circle'), colour: getComputedStyle(e).color, seal: getComputedStyle(document.documentElement).getPropertyValue('--brand-text') }));
 ok(mark.circle && mark.colour !== 'rgb(255, 255, 255)' && /^rgb\(1[0-9]{2}, 1[5-9][0-9]|^rgb\(([5-9][0-9]|1[0-9]{2}), 1[0-9]{2}, /.test(mark.colour), `the pause mark: a small circle, in green (${mark.colour})`);
+const pTile = p.locator('button.tile').filter({ hasText: 'pausiert' });
+ok((await pTile.count()) === 1 && (await pTile.locator('.tile-mark svg circle').count()) === 1, 'a "pausiert" tile with the pause mark');
+await pTile.click();
+await p.waitForTimeout(300);
+ok((await p.locator('ul.list button.list-item').count()) === 1 && (await p.locator('ul.list .paused-mark').count()) === 1, 'the tile shows only the paused round');
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/rounds-paused-filter.png' });
+await pTile.click();
+await p.waitForTimeout(300);
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/rounds-paused.png' });
 await pausedRow.click();
 await p.waitForTimeout(2500);

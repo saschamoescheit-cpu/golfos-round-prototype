@@ -107,7 +107,7 @@ for (const [form, n] of CASES) {
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
   await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${form.replace(/[()]/g, '\\$&')}$`) }) }).click();
   for (let k = 2; k <= n; k++) {
-    if (k > 2) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+    if ((await p.locator('.game-player-row').count()) < k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
     await p.fill(`.game-player-row:nth-of-type(${k}) input >> nth=0`, `S${k}`).catch(async () => {
       await p.locator('.game-player-row').nth(k - 1).locator('input').first().fill(`S${k}`);
     });
@@ -115,7 +115,11 @@ for (const [form, n] of CASES) {
   await p.locator('.game-player-row').nth(1).locator('input').nth(1).fill('12');
   if (firstCase) {
     ok(await p.getByRole('button', { name: 'Spiel starten' }).isDisabled(), 'no start without a course');
-    ok(await p.getByText('Wähle zuerst den Platz').isVisible(), 'says to choose the course');
+    ok((await p.getByText('Wähle zuerst den Platz').count()) === 0, 'no green hint – the course stands first');
+    const order = await p.locator('main .eyebrow').allInnerTexts();
+    ok(order[0] === 'PLATZ' || /^Platz$/i.test(order[0]), `the course above the game form (${order.slice(0, 2).join(' · ')})`);
+    const rules = await p.locator('main .card').filter({ has: p.locator('.game-rules') }).first().evaluate((c) => [...c.children].map((x) => x.className));
+    ok(/read-rules/.test(rules[0]) && /game-rules/.test(rules[1]), 'the speaker before the rules');
     firstCase = false;
   }
   await course();
@@ -207,9 +211,9 @@ await p.getByRole('button', { name: 'Neues Spiel' }).click();
 await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await p.locator('.pick-option').filter({ hasText: 'Chicago' }).click();
 await p.getByRole('button', { name: '+ Ben' }).click();
-await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+// Chicago needs four: four rows from the start (Sascha 17.10.2026)
+ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('button', { name: '+ Spieler hinzufügen' }).count()) === 0, 'Chicago: four player rows straight away');
 await p.locator('.game-player-row').nth(2).locator('input').first().fill('Chris');
-await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna');
 ok((await p.locator('.game-player-row').nth(1).locator('input').nth(1).inputValue()) === '12', 'friend Ben added with one tap, handicap 12');
 ok((await p.locator('.game-player-row').count()) === 4, 'the friend took the empty row (then two more players)');
@@ -219,7 +223,7 @@ ok((await p.locator('.game-setting').filter({ hasText: 'Press:' }).locator('.chi
 // the highest stake: the doubling chain of 0,10 € up to 6,40 €, higher steps typed in and checked (Sascha 15.10.2026)
 const cap = p.locator('.game-setting').filter({ hasText: 'Höchsteinsatz' });
 const capChips = (await cap.locator('.chip').allInnerTexts()).join('|');
-ok(capChips === '0,20 €|0,40 €|0,80 €|1,60 €|3,20 €|6,40 €|ohne Limit|höher …', `cap chips: ${capChips}`);
+ok(capChips === '0,20 €|0,40 €|0,80 €|1,60 €|3,20 €|6,40 €|höher …|ohne Limit', `cap chips, "ohne Limit" last: ${capChips}`);
 await cap.getByRole('button', { name: 'höher …' }).click();
 await cap.locator('input').fill('10');
 await cap.getByRole('button', { name: 'Übernehmen' }).click();

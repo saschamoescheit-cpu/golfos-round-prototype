@@ -79,19 +79,21 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
           <section className="card stats-card">
             <h2>{tr('How your holes end', 'So enden deine Löcher')}</h2>
             <div className="mix-bar" role="img" aria-label={results.map((x) => `${x.label} ${c.mix[x.k]}`).join(', ')}>
+              {/* the numbers in the bars, the legend below on its own (Sascha 17.10.2026) */}
               {results.map((x) =>
-                c.mix[x.k] > 0 ? <span key={x.k} style={{ flexGrow: c.mix[x.k], background: RESULT_COLOURS[x.k] }} /> : null,
+                c.mix[x.k] > 0 ? (
+                  <span key={x.k} style={{ flexGrow: c.mix[x.k], background: RESULT_COLOURS[x.k], color: x.k === 'doublePlus' || x.k === 'eaglePlus' ? '#fff' : '#0e1418' }}>
+                    {c.mix[x.k]}
+                  </span>
+                ) : null,
               )}
             </div>
-            <div className="result-grid">
+            <div className="mix-legend">
               {results.map((x) => (
-                <div key={x.k}>
-                  <span className="result-num">{c.mix[x.k]}</span>
-                  <span className="muted small">
-                    <i style={{ background: RESULT_COLOURS[x.k] }} />
-                    {x.label}
-                  </span>
-                </div>
+                <span key={x.k} className="muted small">
+                  <i style={{ background: RESULT_COLOURS[x.k] }} />
+                  {x.label}
+                </span>
               ))}
             </div>
           </section>

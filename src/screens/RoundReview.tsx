@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ShotHereIcon } from '../components/RoundIcons';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, distToLine, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
@@ -84,6 +85,37 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // cannot") – also right beside another shot or on the green's edge, where a plain tap would open that shot
   const [adding, setAdding] = useState(false);
   useEffect(() => setAdding(false), [k]);
+  // reorder the shots: hold the grip and move up or down (Sascha 17.10.2026)
+  const listRef = useRef<HTMLOListElement>(null);
+  const latestShots = useRef<Shot[]>([]);
+  const reorderRef = useRef<(from: number, to: number) => void>(() => undefined);
+  const [drag, setDrag] = useState<{ from: number; to: number; dy: number } | null>(null);
+  const startDrag = (ev: React.PointerEvent, from: number) => {
+    ev.preventDefault();
+    const y0 = ev.clientY;
+    const rows = [...(listRef.current?.children ?? [])].slice(0, latestShots.current.length) as HTMLElement[];
+    const mids = rows.map((r) => {
+      const b = r.getBoundingClientRect();
+      return b.top + b.height / 2;
+    });
+    let to = from;
+    setDrag({ from, to, dy: 0 });
+    const move = (e: PointerEvent) => {
+      const y = mids[from] + (e.clientY - y0);
+      to = mids.reduce((best, m, j) => (Math.abs(m - y) < Math.abs(mids[best] - y) ? j : best), from);
+      setDrag({ from, to, dy: e.clientY - y0 });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      setDrag(null);
+      if (to !== from) reorderRef.current(from, to);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
   // what the caddie said on the course, with the player's verdict
   const [cadLog, setCadLog] = useState<CaddieLog>(() => loadCaddieLog(round.id));
   const [noteFor, setNoteFor] = useState<number | null>(null);
@@ -313,6 +345,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     (t, x, i) => (x.strokes != null && !x.pickedUp ? { strokes: t.strokes + x.strokes, par: t.par + round.holes[i].par, holes: t.holes + 1 } : t),
     { strokes: 0, par: 0, holes: 0 },
   );
+  latestShots.current = d?.shots ?? [];
+  reorderRef.current = (from: number, to: number) => {
+    if (!d) return;
+    const shots = d.shots.slice();
+    const [x] = shots.splice(from, 1);
+    shots.splice(to, 0, { ...x, review: false });
+    saveDetail(k, { ...d, shots });
+  };
   const shotCount = d ? d.shots.length + Math.max(d.shots.filter((s) => s.penalty).length, e.penalties ?? 0) + (d.holedOut ? 0 : (e.putts ?? 0)) : null;
   const unplacedPenalty = d != null && d.shots.length > 0 && (e.penalties ?? 0) > d.shots.filter((s) => s.penalty).length;
   // an unplaced penalty explains a difference by itself (out of bounds: the replay comes with marking the shot)
@@ -396,6 +436,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             }
             walked={walked}
             track={[
+              // the shots noted by hand on the course: shown and movable here too (Sascha 17.10.2026)
+              ...(round.manualShots ?? [])
+                .map((x, kk) => ({ x, kk }))
+                .filter(({ x }) => x.hole === k)
+                .map(({ x, kk }, n) => ({ id: `hand-${kk}`, pos: x.pos, label: String(n + 1), hand: true })),
               // Where strokes are won (green) and lost (red): every shot coloured by its strokes gained.
               ...(d?.shots ?? []).flatMap((s, n) => {
                 const len = lengths[n];
@@ -421,6 +466,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             onTargetRemove={() => {}}
             onPinChange={(p) => d && saveDetail(k, { ...d, pin: p })}
             onTrackMove={(id, pos) => {
+              if (id.startsWith('hand-')) {
+                const kk = Number(id.slice(5));
+                const list = (round.manualShots ?? []).slice();
+                if (list[kk]) list[kk] = { ...list[kk], pos, acc: 0, placed: true };
+                return props.onChange({ ...round, manualShots: list });
+              }
               if (!d) return;
               // Drag a shot (or the ball on the green) to where it really was; lengths and strokes gained follow.
               if (id === 'green' || id.startsWith('putt-')) {
@@ -476,30 +527,41 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </div>
       )}
 
+      {/* the shots: add one with the "shot here" symbol, delete in the row, reorder by the grip (Sascha 17.10.2026) */}
       {data && (
-        adding ? (
-          <div className="notice" role="status">
-            {tr('Tap the map where the shot was played – a grey circle (where you stood) puts it there exactly. Drag it afterwards to correct.', 'Tippe auf die Karte, wo der Schlag gespielt wurde – ein grauer Kreis (wo du standest) setzt ihn genau dorthin. Danach kannst du ihn verschieben.')}{' '}
-            <button type="button" className="btn-ghost" onClick={() => setAdding(false)}>
-              {tr('Cancel', 'Abbrechen')}
-            </button>
-          </div>
-        ) : (
-          <button type="button" className={mismatch && (shotCount ?? 0) < (e.strokes ?? 0) ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdding(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-            {tr('+ Add a shot', '+ Schlag hinzufügen')}
+        <div className="review-shots-head">
+          <span className="eyebrow">{tr('Shots', 'Schläge')}</span>
+          <button
+            type="button"
+            className="map-shot-btn small"
+            aria-pressed={adding}
+            aria-label={tr('Add a shot', 'Schlag hinzufügen')}
+            title={tr('Add a shot', 'Schlag hinzufügen')}
+            onClick={() => {
+              if (!adding) window.scrollTo({ top: 0, behavior: 'smooth' });
+              setAdding(!adding);
+            }}
+          >
+            <ShotHereIcon size={20} />
           </button>
-        )
+        </div>
+      )}
+      {adding && (
+        <div className="notice" role="status">
+          {tr('Tap the map where the shot was played – a grey circle (where you stood) puts it there exactly.', 'Tippe auf die Karte, wo der Schlag gespielt wurde – ein grauer Kreis (wo du standest) setzt ihn genau dorthin.')}
+        </div>
       )}
 
       {!d || d.shots.length === 0 ? (
         <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>
       ) : (
-        <ol className="shot-list review-list">
+        <ol className="shot-list review-list" ref={listRef}>
           {d.shots.map((s, n) => {
             const toPin = s.pos && pin ? distanceM(s.pos, pin) : null;
             const kind = s.kind ?? suggestKind(s.lie, toPin);
+            const cls = [s.review ? 'check' : '', drag?.from === n ? 'dragging' : '', drag && drag.from !== n && drag.to === n ? (drag.to < drag.from ? 'drop-before' : 'drop-after') : ''].join(' ').trim();
             return (
-              <li key={n} className={s.review ? 'check' : undefined}>
+              <li key={n} className={cls || undefined} style={drag?.from === n ? { transform: `translateY(${drag.dy}px)` } : undefined}>
                 <span className="n">{n + 1}</span>
                 <button type="button" className="shot-row" onClick={() => setEdit(n)}>
                   <strong>{s.club ? clubCode(s.club) : '–'}</strong> · {KINDS.find((x) => x.value === kind)!.label}
@@ -510,8 +572,22 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     {s.review ? tr(' · check', ' · prüfen') : ''}
                   </span>
                 </button>
-                <span />
-                <span />
+                <button type="button" className="icon-btn row-delete" aria-label={tr(`Delete shot ${n + 1}`, `Schlag ${n + 1} löschen`)} onClick={() => saveDetail(k, { ...d, shots: d.shots.filter((_, j) => j !== n) })}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+                  </svg>
+                </button>
+                {/* hold the grip and move the shot up or down in the order */}
+                <span className="row-grip" role="button" tabIndex={-1} aria-label={tr(`Move shot ${n + 1}`, `Schlag ${n + 1} verschieben`)} onPointerDown={(ev) => startDrag(ev, n)}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="9" cy="6" r="1.6" />
+                    <circle cx="15" cy="6" r="1.6" />
+                    <circle cx="9" cy="12" r="1.6" />
+                    <circle cx="15" cy="12" r="1.6" />
+                    <circle cx="9" cy="18" r="1.6" />
+                    <circle cx="15" cy="18" r="1.6" />
+                  </svg>
+                </span>
               </li>
             );
           })}

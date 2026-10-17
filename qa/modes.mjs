@@ -110,7 +110,7 @@ for (const c of CASES) {
     await p.getByRole('button', { name: 'Speichern & beenden' }).click();
     await p.waitForTimeout(800);
     const card = await p.locator('.finish-card').innerText().catch(() => '');
-    ok(/gespeichert/.test(card) && (c.team ? !/Schläge prüfen/.test(card) : /Schläge prüfen/.test(card)), `${label}: finished – ${c.team ? 'no shot check (team)' : 'shot check offered'}`);
+    ok(/gespeichert/.test(card) && (c.team ? !/Prüfen & signieren/.test(card) : /Prüfen & signieren/.test(card) && /Als Runde behalten ✓/.test(card)), `${label}: finished – ${c.team ? 'no shot check (team)' : '"Prüfen & signieren" offered, kept as a round by default'}`);
   } catch (e) {
     ok(false, `${label} [${step}]: ${String(e.message).split('\n')[0]}`);
   }

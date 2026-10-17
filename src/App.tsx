@@ -292,7 +292,7 @@ export function App() {
               onNewRound={() => setScreen({ name: 'pickCourse' })}
               onContinue={(round) => setScreen({ name: 'hole', round })}
               onEnd={(round) => {
-                const done = { ...round, finishedAt: new Date().toISOString() };
+                const done = { ...round, finishedAt: new Date().toISOString(), capture: round.capture ?? 'score' };
                 persist(done);
                 setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
               }}
@@ -402,7 +402,7 @@ export function App() {
               setScreen(HOME);
             }}
             onEnd={(round) => {
-              const done = { ...round, finishedAt: new Date().toISOString() };
+              const done = { ...round, finishedAt: new Date().toISOString(), capture: round.capture ?? 'score' };
               persist(done);
               setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
             }}

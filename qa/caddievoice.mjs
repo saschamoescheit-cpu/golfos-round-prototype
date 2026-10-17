@@ -44,11 +44,8 @@ await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(5000);
-const badge = p.locator('.tool-badge.news, .tool-badge.warn');
-if (await badge.count()) {
-  const t = (await badge.first().innerText()).trim();
-  ok(t === 'i' || t === '!', `new caddie advice: "${t}" on the caddie button`);
-} else console.log('· no new advice on the button right now');
+// unread: a small green dot, no "!" or "i" (Sascha 17.10.2026); gone once opened, back on the next hole
+ok((await p.locator('.map-tool .tool-dot').count()) === 1 && (await p.locator('.map-tool .tool-badge').count()) === 0, 'the caddie unread: a small green dot');
 await p.getByRole('button', { name: /Caddie zeigen/ }).click();
 await p.waitForTimeout(800);
 const speaker = p.getByRole('button', { name: 'Vorlesen oder stoppen' });
@@ -67,6 +64,13 @@ await p.evaluate(() => (window.__mute = true));
 await speaker.click();
 await p.waitForTimeout(3200);
 ok((await speaker.getAttribute('aria-pressed')) === 'false', 'an engine that never starts does not leave the speaker green');
+await p.getByRole('button', { name: /Caddie ausblenden/ }).click().catch(() => {});
+await p.waitForTimeout(300);
+ok((await p.locator('.map-tool .tool-dot').count()) === 0, 'read: the dot is gone after closing');
+await p.locator('.hole-bar').getByRole('button', { name: 'Nächstes Loch' }).click();
+await p.waitForTimeout(2500);
+if (await p.locator('.score-panel').count()) { await p.locator('.hole-bar').getByRole('button', { name: 'Nächstes Loch' }).click().catch(() => {}); await p.waitForTimeout(2500); }
+ok((await p.locator('.map-tool .tool-dot').count()) === 1, 'the next hole: the dot is back');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

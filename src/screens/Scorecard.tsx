@@ -73,14 +73,22 @@ export function Scorecard(props: {
       ) : (
         <>
           <span className="grow">
-            <strong>{tr('Sign your round', 'Runde signieren')}</strong>
+            <strong>{scoreOnly ? tr('Kept as a round', 'Als Runde behalten') : tr('Sign your round', 'Runde signieren')}</strong>
             <span className="muted small" style={{ display: 'block' }}>
-              {tr('Only signed rounds count in your statistics.', 'Nur signierte Runden zählen in deiner Statistik.')}
+              {scoreOnly
+                ? tr('It does not count in your statistics – check and sign it to count.', 'Zählt nicht in deiner Statistik – prüfen und signieren, damit sie zählt.')
+                : tr('Only signed rounds count in your statistics.', 'Nur signierte Runden zählen in deiner Statistik.')}
             </span>
           </span>
-          <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
-            {tr('Sign', 'Signieren')}
-          </button>
+          {scoreOnly && canReview ? (
+            <button type="button" className="btn-secondary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
+              {tr('Check & sign', 'Prüfen & signieren')}
+            </button>
+          ) : (
+            <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
+              {tr('Sign', 'Signieren')}
+            </button>
+          )}
         </>
       )}
     </section>
@@ -116,8 +124,8 @@ export function Scorecard(props: {
             {finished
               ? canReview
                 ? tr(
-                    'Detailed: check your shots (now or later) – for strokes gained and club distances. Quick: keep it as a digital scorecard only.',
-                    'Detail: Schläge prüfen (jetzt oder später) – für Strokes Gained und Schlägerweiten. Schnell: nur als digitale Scorekarte behalten.',
+                    'Check & sign: the shots checked, the round signed – it counts in your statistics. Or keep it as a round – it does not count.',
+                    'Prüfen & signieren: Schläge prüfen, Runde signieren – sie zählt in deiner Statistik. Oder als Runde behalten – sie zählt nicht.',
                   )
                 : tr('You find it under Rounds – or delete it.', 'Du findest sie unter Runden – oder lösche sie.')
               : tr('Save it for your stats – or delete it.', 'Speichere sie für deine Statistik – oder lösche sie.')}
@@ -125,19 +133,19 @@ export function Scorecard(props: {
           {!confirmDelete ? (
             <div className="finish-actions">
               {!finished ? (
-                <button type="button" className="btn-primary" onClick={() => props.onFinish({ ...round, finishedAt: new Date().toISOString() })}>
+                <button type="button" className="btn-primary" onClick={() => props.onFinish({ ...round, finishedAt: new Date().toISOString(), capture: round.capture ?? 'score' })}>
                   {tr('Save & finish', 'Speichern & beenden')}
                 </button>
               ) : (
                 canReview && (
                   <button type="button" className="btn-primary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
-                    {tr('Check shots', 'Schläge prüfen')}
+                    {tr('Check & sign', 'Prüfen & signieren')}
                   </button>
                 )
               )}
               {finished && canReview && (
                 <button type="button" className="btn-secondary" aria-pressed={scoreOnly} onClick={() => props.onChange({ ...round, capture: 'score' })}>
-                  {scoreOnly ? tr('Scorecard only ✓', 'Nur Scorekarte ✓') : tr('Scorecard only', 'Nur als Scorekarte')}
+                  {scoreOnly ? tr('Kept as a round ✓', 'Als Runde behalten ✓') : tr('Keep as a round', 'Als Runde behalten')}
                 </button>
               )}
               {/* one tap – "Undo" brings it back for a few seconds (Sascha 15.10.2026) */}

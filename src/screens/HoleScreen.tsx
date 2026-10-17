@@ -8,6 +8,7 @@ import { commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing1
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
+import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
@@ -348,6 +349,7 @@ export function HoleScreen(props: {
   const [showGreen, setShowGreen] = useState<boolean | null>(null);
   // map camera: follows the player unless he zoomed or panned himself (then a button centres it again)
   const [camByHand, setCamByHand] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [recenter, setRecenter] = useState(0);
   useEffect(() => setShowGreen(null), [i]); // a green opened on the last hole does not follow to the next tee
   const carryBag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []); // with the wedges' partial swings
@@ -615,7 +617,7 @@ export function HoleScreen(props: {
   const manualTrack = (round.manualShots ?? [])
     .map((x, k) => ({ x, k }))
     .filter(({ x }) => x.hole === i)
-    .map(({ x, k }, n) => ({ pos: x.pos, label: String(n + 1), tone: 'good' as const, id: `m${k}` }));
+    .map(({ x, k }, n) => ({ pos: x.pos, label: String(n + 1), tone: 'good' as const, id: `m${k}`, hand: true }));
   const track: { pos: LngLat; label: string; green?: boolean }[] = detail.shots
     .map((s, k) => (s.pos ? { pos: s.pos, label: `${k + 1}${s.club ? ' ' + clubCode(s.club) : ''}${lengths[k] != null ? ' · ' + fmtU(lengths[k]!) : ''}${s.penalty ? ' +1' : ''}` } : null))
     .filter((t): t is { pos: LngLat; label: string } => t != null);
@@ -870,9 +872,10 @@ export function HoleScreen(props: {
     // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
     const caddieSig = cad ? `${i}|${cad.advice.club}${cad.advice.swing ?? ''}|${cad.warning ?? ''}|${cad.ap.kind}|${Math.round(cad.pl.distance / 25)}` : '';
     const caddieShown = cad != null && caddieOpen; // the tool bar is the same on every hole (Sascha 15.10.2026)
-    const caddieNews = cad != null && !greenFocus && !caddieOpen && seenSig !== caddieSig;
+    // unread: a small green dot until the caddie was opened on this hole – on the next hole it comes back (Sascha 17.10.2026)
+    const caddieNews = cad != null && !greenFocus && !caddieOpen && seenSig !== String(i);
     const toggleCaddie = () => {
-      setSeenSig(caddieSig);
+      setSeenSig(String(i));
       setCaddieOpen(!caddieShown);
     };
     if (caddieSettings.voice && cad != null && !greenFocus && spokenSig.current !== caddieSig && !round.preview) {
@@ -999,15 +1002,13 @@ export function HoleScreen(props: {
                 caddieShown
                   ? tr('Hide caddie', 'Caddie ausblenden')
                   : caddieNews
-                    ? cad?.warning
-                      ? tr('Show caddie – warning', 'Caddie zeigen – Warnung')
-                      : tr('Show caddie – new advice', 'Caddie zeigen – neuer Hinweis')
+                    ? tr('Show caddie – unread', 'Caddie zeigen – ungelesen')
                     : tr('Show caddie', 'Caddie zeigen')
               }
               title={tr('AI caddie', 'KI-Caddie')}
               onClick={toggleCaddie}
             >
-              {caddieNews && <span className={`tool-badge ${cad?.warning ? 'warn' : 'news'}`} aria-hidden="true">{cad?.warning ? '!' : 'i'}</span>}
+              {caddieNews && <span className="tool-dot" aria-hidden="true" />}
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="8" y="9" width="8" height="12" rx="2.5" />
                 <path d="M8 13h8" />
@@ -1046,48 +1047,6 @@ export function HoleScreen(props: {
             <span className="map-tool-text">2D</span>
           </button>
         </div>
-        {/* the ball's spot by hand, at the ball: the truth for the shot detection – on the map for every round, not
-              in the profile, below the tools on its own (Sascha 17.10.2026); the GPS detection runs as always, both kept */}
-          {!round.preview && !props.game && (
-            <button
-              type="button"
-              className="map-shot-btn"
-              disabled={!player}
-              aria-label={tr('Note the ball here', 'Schlag hier erfassen')}
-              title={tr('Shot here', 'Schlag hier')}
-              onClick={() => {
-                if (!player) return;
-                const mine = (round.manualShots ?? []).filter((x) => x.hole === i).length;
-                const t = Date.now();
-                props.onChange({ ...round, manualShots: [...(round.manualShots ?? []), { hole: i, pos: player.pos, t, acc: Math.round(player.accuracy) }] });
-                setTestMsg(tr(`Shot ${mine + 1} on ${hole.label}: measuring – stand still for 5 s …`, `Schlag ${mine + 1} an ${hole.label}: wird gemessen – 5 s stehen bleiben …`));
-                // as exact as the phone allows: the fixes of the next 5 s averaged, then the shot's spot corrected
-                sampleFix(5000, shownFix.current).then((f) => {
-                  const r = latestRound.current;
-                  const k = (r.manualShots ?? []).findIndex((x) => x.t === t);
-                  if (k < 0) return;
-                  if (!f) return setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted`, `Schlag ${mine + 1} an ${hole.label} erfasst`));
-                  const list = (r.manualShots ?? []).slice();
-                  list[k] = { ...list[k], pos: f.pos, acc: Math.round(f.accuracy * 10) / 10 };
-                  props.onChange({ ...r, manualShots: list });
-                  setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted (±${dec(f.accuracy.toFixed(1))} m, ${f.n} ${f.n === 1 ? 'fix' : 'fixes'})`, `Schlag ${mine + 1} an ${hole.label} erfasst (±${dec(f.accuracy.toFixed(1))} m, ${f.n} ${f.n === 1 ? 'Messung' : 'Messungen'})`));
-                });
-              }}
-            >
-              {/* a club with a plus */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 3l7 14" />
-                <path d="M13 17c-.6 1.6-2.4 2.6-4.6 2.3l-.6-1.6c1.6.1 3-.3 3.8-1.4z" />
-                <path d="M18 5v6M15 8h6" />
-              </svg>
-            </button>
-          )}
-          {!round.preview && !props.game && (round.manualShots ?? []).some((x) => x.hole === i) && (
-            // the count on the shot button: the list of this hole's shots, to remove one (Sascha 17.10.2026: "pressed by mistake")
-            <button type="button" className="shot-count" aria-pressed={shotList} aria-label={tr('Shots noted on this hole', 'Erfasste Schläge an diesem Loch')} onClick={() => { setShotList(!shotList); setRemoveShot(null); }}>
-              {(round.manualShots ?? []).filter((x) => x.hole === i).length}
-            </button>
-          )}
         </div>
 
         {exitEl}
@@ -1251,16 +1210,77 @@ export function HoleScreen(props: {
               </button>
             </div>
           )}
-          {camByHand && (
-            <div className="map-tools">
-              <button type="button" className="map-btn round tool" aria-label={tr('Centre the map again', 'Karte wieder zentrieren')} title={tr('Centre', 'Zentrieren')} onClick={() => setRecenter((n) => n + 1)}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="6.5" />
-                  <circle cx="12" cy="12" r="2" fill="currentColor" />
-                  <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
-                </svg>
-              </button>
+          {/* the bottom row (Sascha 17.10.2026): the map info bottom left, "shot here" bottom right where "centre" was,
+              "centre" above it */}
+          <div className="map-tools map-bottom-tools">
+            <button type="button" className="map-btn round tool map-info" aria-pressed={infoOpen} aria-label={tr('Map information', 'Karteninfo')} title={tr('Map information', 'Karteninfo')} onClick={() => setInfoOpen(!infoOpen)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 11v6" />
+                <circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+              </svg>
+            </button>
+            <span className="grow" />
+            <div className="map-tools-stack">
+              {camByHand && (
+                <button type="button" className="map-btn round tool" aria-label={tr('Centre the map again', 'Karte wieder zentrieren')} title={tr('Centre', 'Zentrieren')} onClick={() => setRecenter((n) => n + 1)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="6.5" />
+                    <circle cx="12" cy="12" r="2" fill="currentColor" />
+                    <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
+                  </svg>
+                </button>
+              )}
+              <span className="shot-wrap">
+            {/* the ball's spot by hand, at the ball: the truth for the shot detection – on the map for every round, not
+                  in the profile, below the tools on its own (Sascha 17.10.2026); the GPS detection runs as always, both kept */}
+              {!round.preview && !props.game && (
+                <button
+                  type="button"
+                  className="map-shot-btn"
+                  disabled={!player}
+                  aria-label={tr('Note the ball here', 'Schlag hier erfassen')}
+                  title={tr('Shot here', 'Schlag hier')}
+                  onClick={() => {
+                    if (!player) return;
+                    const mine = (round.manualShots ?? []).filter((x) => x.hole === i).length;
+                    const t = Date.now();
+                    props.onChange({ ...round, manualShots: [...(round.manualShots ?? []), { hole: i, pos: player.pos, t, acc: Math.round(player.accuracy) }] });
+                    setTestMsg(tr(`Shot ${mine + 1} on ${hole.label}: measuring – stand still for 5 s …`, `Schlag ${mine + 1} an ${hole.label}: wird gemessen – 5 s stehen bleiben …`));
+                    // as exact as the phone allows: the fixes of the next 5 s averaged, then the shot's spot corrected
+                    sampleFix(5000, shownFix.current).then((f) => {
+                      const r = latestRound.current;
+                      const k = (r.manualShots ?? []).findIndex((x) => x.t === t);
+                      if (k < 0) return;
+                      if (!f) return setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted`, `Schlag ${mine + 1} an ${hole.label} erfasst`));
+                      const list = (r.manualShots ?? []).slice();
+                      list[k] = { ...list[k], pos: f.pos, acc: Math.round(f.accuracy * 10) / 10 };
+                      props.onChange({ ...r, manualShots: list });
+                      setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted (±${dec(f.accuracy.toFixed(1))} m, ${f.n} ${f.n === 1 ? 'fix' : 'fixes'})`, `Schlag ${mine + 1} an ${hole.label} erfasst (±${dec(f.accuracy.toFixed(1))} m, ${f.n} ${f.n === 1 ? 'Messung' : 'Messungen'})`));
+                    });
+                  }}
+                >
+                  <ShotHereIcon />
+                </button>
+              )}
+              {!round.preview && !props.game && (round.manualShots ?? []).some((x) => x.hole === i) && (
+                // the count on the shot button: the list of this hole's shots, to remove one (Sascha 17.10.2026: "pressed by mistake")
+                <button type="button" className="shot-count" aria-pressed={shotList} aria-label={tr('Shots noted on this hole', 'Erfasste Schläge an diesem Loch')} onClick={() => { setShotList(!shotList); setRemoveShot(null); }}>
+                  {(round.manualShots ?? []).filter((x) => x.hole === i).length}
+                </button>
+              )}
+              </span>
             </div>
+          </div>
+          {infoOpen && (
+            // the credits of the map (imagery, OSM, green heights) – a tap closes them
+            <div
+              className="map-hint map-credits"
+              role="button"
+              tabIndex={0}
+              onClick={() => setInfoOpen(false)}
+              dangerouslySetInnerHTML={{ __html: document.querySelector('.map-screen .maplibregl-ctrl-attrib-inner')?.innerHTML ?? '' }}
+            />
           )}
           {putt && !(detailMode && holeDone) ? (
             <div className="map-hint detected putt-read" style={{ color: 'var(--text)' }}>
@@ -1328,7 +1348,7 @@ export function HoleScreen(props: {
           )}
           {shotList && !scoreSheet && (
             <div className="test-shot-row">
-              <div className="map-hint detected shot-list" role="dialog" aria-label={tr('Shots noted on this hole', 'Erfasste Schläge an diesem Loch')}>
+              <div className="map-hint detected hand-list" role="dialog" aria-label={tr('Shots noted on this hole', 'Erfasste Schläge an diesem Loch')}>
                 <div className="shot-list-head">
                   <strong>{tr(`Shots on ${hole.label}`, `Schläge an ${hole.label}`)}</strong>
                   <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setShotList(false)}>

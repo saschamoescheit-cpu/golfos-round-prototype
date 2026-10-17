@@ -33,7 +33,7 @@ await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(3000);
-// five finished rounds: two to sign (score only), one signed, two with shots to check
+// five finished rounds: two kept as rounds (not open – Sascha 17.10.2026), one signed, two chosen to check and sign
 await p.evaluate(() => {
   const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0];
   const id = r.players.find((x) => x.isMe).id;
@@ -56,7 +56,7 @@ const checkN = Number((await check.locator('.count-badge').innerText()).trim());
 console.log(`· start page: ${signN} to sign, ${checkN} to check`);
 await sign.click();
 await p.waitForTimeout(600);
-ok((await listed()) === signN && signN === 4, `"Runden signieren" shows only the ${signN} rounds to sign (${await listed()})`);
+ok((await listed()) === signN && signN === 2, `"Runden signieren" shows only the ${signN} rounds to sign – the kept ones are not open (${await listed()})`);
 ok((await p.locator('button.tile').filter({ hasText: 'zu signieren' }).getAttribute('aria-pressed')) === 'true', 'the "zu signieren" tile is on');
 await tab('Spielen');
 await p.waitForTimeout(400);
@@ -68,7 +68,7 @@ await p.waitForTimeout(600);
 ok((await listed()) === 5, `the menu's "Runden" shows all rounds (${await listed()})`);
 await p.locator('button.tile').filter({ hasText: 'zu signieren' }).click();
 await p.waitForTimeout(300);
-ok((await listed()) === 4, 'the tile filters too');
+ok((await listed()) === 2, 'the tile filters too');
 await p.locator('button.tile').filter({ hasText: 'zu signieren' }).click();
 await p.waitForTimeout(300);
 ok((await listed()) === 5, 'tapped again: all rounds');
@@ -77,7 +77,7 @@ await tab('Statistik');
 await p.waitForTimeout(500);
 await p.locator('.notice-link').click();
 await p.waitForTimeout(600);
-ok((await listed()) === 4 && (await p.locator('button.tile').filter({ hasText: 'zu signieren' }).getAttribute('aria-pressed')) === 'true', 'the stats notice opens the rounds to sign');
+ok((await listed()) === 2 && (await p.locator('button.tile').filter({ hasText: 'zu signieren' }).getAttribute('aria-pressed')) === 'true', 'the stats notice opens the rounds to sign');
 await tab('Runden');
 await p.waitForTimeout(400);
 if (process.env.SHOTS) {

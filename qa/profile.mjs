@@ -52,7 +52,7 @@ await p.fill('#course-search', 'Hetzenhof');
 await p.waitForTimeout(2000);
 await p.locator('button.list-item').first().click();
 await p.waitForTimeout(400);
-ok((await p.locator('.home-club').innerText()).includes('Hetzenhof'), 'home club picked from the course search');
+ok((await p.locator('.home-club:not(.sg-row)').innerText()).includes('Hetzenhof'), 'home club picked from the course search');
 
 // the bag
 await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
@@ -117,14 +117,18 @@ ok((await p.locator('#pf-first').inputValue()) === 'Ben', 'profile: a name synce
 // no "Test" card any more; Golf → strokes gained comparison (Sascha 17.10.2026)
 const main = await p.locator('main').innerText();
 ok(!/Runden exportieren/.test(main) && (await p.getByRole('heading', { name: 'Test', exact: true }).count()) === 0, 'profile: no "Test" card');
-const sgSet = p.getByRole('group', { name: 'Strokes-Gained-Vergleich' });
-ok((await sgSet.count()) === 1, 'Golf: "Strokes-Gained-Vergleich" is there');
-const auto = sgSet.getByRole('button', { name: /^Nächstbessere/ });
-ok((await auto.getAttribute('aria-pressed')) === 'true', `by default the next better group (${(await auto.innerText()).trim()})`);
-await sgSet.getByRole('button', { name: 'Scratch', exact: true }).click();
+const sgRow = p.locator('.field').filter({ hasText: 'Strokes-Gained-Vergleich' }).locator('.settings-row');
+ok((await sgRow.count()) === 1 && /Nächstbessere Gruppe \(Hcp 5\)/.test(await sgRow.innerText()), `Golf: "Strokes-Gained-Vergleich" as a row like the home club (${(await sgRow.innerText()).replace(/\s+/g, ' ')})`);
+await sgRow.click();
+await p.waitForTimeout(300);
+const sheet = p.getByRole('dialog', { name: 'Strokes-Gained-Vergleich' });
+ok((await sheet.locator('.pick-option').count()) === 8, 'the choice in a sheet: next better group and the seven groups');
+await sheet.locator('.pick-option').filter({ hasText: /^Scratch/ }).click();
 await p.waitForTimeout(200);
-ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).sgGroup)) === 'scratch', 'choosing Scratch keeps it in the profile (synced with it)');
-await auto.click();
+ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).sgGroup)) === 'scratch' && /Scratch/.test(await sgRow.innerText()), 'choosing Scratch keeps it in the profile (synced with it)');
+await sgRow.click();
+await p.waitForTimeout(300);
+await sheet.locator('.pick-option').first().click();
 await p.waitForTimeout(200);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).sgGroup)) == null, 'back to the next better group');
 ok(errs.length === 0, `no page errors in the app ${errs.slice(0, 2).join(' | ')}`); // Google's own page may log its own

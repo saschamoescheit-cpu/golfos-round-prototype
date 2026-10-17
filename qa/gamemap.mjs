@@ -33,7 +33,7 @@ await p.waitForTimeout(2000);
 await p.locator('button.list-item').first().click();
 await p.waitForTimeout(800);
 for (const [k, n] of [[1, 'Ben'], [2, 'Chris'], [3, 'Anna']]) {
-  if (k > 1) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+  if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click(); // Chicago starts with four rows
   await p.locator('.game-player-row').nth(k).locator('input').first().fill(n);
 }
 await p.locator('.game-setting').filter({ hasText: 'Vorgabe (WHS)' }).getByRole('button', { name: 'Ohne (brutto)' }).click();

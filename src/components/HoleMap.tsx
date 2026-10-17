@@ -21,7 +21,8 @@ export interface HoleMapProps {
   imagery: ImagerySource;
   credit?: string | null; // extra data credit for the map's ⓘ (green heights)
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a green line (the app's highlight) with numbered dots. */
-  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string }[];
+  /** hand: a shot noted by hand on the course – a small circle with the club-and-plus, not part of the shot line */
+  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string; hand?: boolean }[];
   /** Review: the path the player walked (GPS) and where he stood still – the places a shot may have been played. */
   walked?: { line: LngLat[]; stops: LngLat[] } | null;
   /** Track points can be dragged (round check); called on release with the point's id. */
@@ -338,7 +339,7 @@ export function HoleMap(props: HoleMapProps) {
     }
     mk.track.forEach((t) => t.remove());
     mk.track = (p.track ?? []).map((t) => {
-      const d = labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
+      const d = t.hand ? handEl(t.label) : labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       const movable = p.onTrackMove != null && t.id != null;
       if (p.onTrackTap && t.id != null) {
         d.classList.add('tap');
@@ -354,22 +355,21 @@ export function HoleMap(props: HoleMapProps) {
           const ll = marker.getLngLat();
           const text = latest.current.onTrackDrag?.(t.id!, [ll.lng, ll.lat]);
           if (text != null) {
-            // on the page, not in the map: the map may be zoomed in (putt view) – the readout stays whole and centred
-            // at the top of the screen (Sascha 17.10.2026: "cut off")
-            let r = document.querySelector<HTMLDivElement>('.map-drag-readout');
+            // in the map window, at its top, centred and wrapping – never cut off (Sascha 17.10.2026)
+            let r = m.getContainer().querySelector<HTMLDivElement>('.map-drag-readout');
             if (!r) {
               r = document.createElement('div');
               r.className = 'map-drag-readout';
-              document.body.appendChild(r);
+              m.getContainer().appendChild(r);
             }
             r.textContent = text;
           }
           // the line between the shots follows the finger
-          const pts = (latest.current.track ?? []).map((x) => (x.id === t.id ? ([ll.lng, ll.lat] as LngLat) : x.pos));
+          const pts = (latest.current.track ?? []).filter((x) => !x.hand).map((x) => (x.id === t.id ? ([ll.lng, ll.lat] as LngLat) : x.pos));
           (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] });
         });
         marker.on('dragend', () => {
-          document.querySelector('.map-drag-readout')?.remove();
+          m.getContainer().querySelector('.map-drag-readout')?.remove();
           const ll = marker.getLngLat();
           latest.current.onTrackMove?.(t.id!, [ll.lng, ll.lat]);
         });
@@ -702,7 +702,7 @@ function walkedData(p: HoleMapProps): GeoJSON.FeatureCollection {
 }
 
 function trackLine(p: HoleMapProps): GeoJSON.FeatureCollection {
-  const pts = (p.track ?? []).map((t) => t.pos);
+  const pts = (p.track ?? []).filter((t) => !t.hand).map((t) => t.pos);
   return { type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] };
 }
 
@@ -740,6 +740,17 @@ function distEl(n: string, unit: Unit, className: string): HTMLDivElement {
   const small = document.createElement('small');
   small.textContent = unit;
   d.append(strong, small);
+  return d;
+}
+
+/** A shot noted by hand: a small green circle with the club-and-plus and its number (Sascha 17.10.2026). */
+function handEl(n: string): HTMLDivElement {
+  const d = el('map-hand-shot');
+  d.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l7 14"/><path d="M13 17c-.6 1.6-2.4 2.6-4.6 2.3l-.6-1.6c1.6.1 3-.3 3.8-1.4z"/><path d="M18 5v6M15 8h6"/></svg>';
+  const b = document.createElement('b');
+  b.textContent = n;
+  d.append(b);
+  d.setAttribute('aria-label', `Schlag ${n} von Hand erfasst`);
   return d;
 }
 

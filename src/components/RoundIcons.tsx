@@ -23,3 +23,15 @@ export function ToSignIcon(props: { size?: number }) {
     </svg>
   );
 }
+
+/** A shot noted by hand: a club with a plus – the "shot here" button, its marks on the map and in the round check. */
+export function ShotHereIcon(props: { size?: number }) {
+  const s = props.size ?? 22;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 3l7 14" />
+      <path d="M13 17c-.6 1.6-2.4 2.6-4.6 2.3l-.6-1.6c1.6.1 3-.3 3.8-1.4z" />
+      <path d="M18 5v6M15 8h6" />
+    </svg>
+  );
+}
