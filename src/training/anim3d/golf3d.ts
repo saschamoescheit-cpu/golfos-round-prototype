@@ -476,6 +476,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       cancelAnimationFrame(raf);
       io?.disconnect();
       renderer.dispose();
+      // free the WebGL context at once – opening many videos one after another must not run out of contexts
+      renderer.forceContextLoss();
     },
   };
 }
