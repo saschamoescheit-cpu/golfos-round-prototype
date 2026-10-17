@@ -17,6 +17,8 @@ export const RESULT_COLOURS = { eaglePlus: '#5ec2ff', birdie: '#9bc53d', par: '#
 export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => void; onProfile: () => void }) {
   const finished = useMemo(() => statRounds(props.rounds).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [props.rounds]);
   const c = useMemo(() => career(finished), [finished]);
+  const nine = finished.length > 0 && finished.filter((r) => r.holes.length <= 9).length * 2 > finished.length;
+  const toPar = c.toParPer18 == null ? null : nine ? Math.round(c.toParPer18 * 5) / 10 : c.toParPer18;
   const profile = loadProfile();
   const name = shownName(profile);
   const estimate = useMemo(() => {
@@ -55,8 +57,8 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
             <span className="muted small">{hcpLabel}</span>
           </div>
           <div>
-            <span className="hero-num">{c.toParPer18 == null ? '–' : dec(`${c.toParPer18 > 0 ? '+' : ''}${c.toParPer18.toFixed(1)}`)}</span>
-            <span className="muted small">{tr('Ø to par (18 holes)', 'Ø zu Par (18 Loch)')}</span>
+            <span className="hero-num">{toPar == null ? '–' : dec(`${toPar > 0 ? '+' : ''}${toPar.toFixed(1)}`)}</span>
+            <span className="muted small">{nine ? tr('Ø to par (9 holes)', 'Ø zu Par (9 Loch)') : tr('Ø to par (18 holes)', 'Ø zu Par (18 Loch)')}</span>
           </div>
           <div>
             <span className="hero-num">{c.rounds}</span>

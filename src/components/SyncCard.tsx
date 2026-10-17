@@ -32,10 +32,7 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
       {!session ? (
         <>
           <p className="muted small" style={{ margin: 0 }}>
-            {tr(
-              'Sign in, and your rounds, games, profile, bag and friends are the same on iPhone, iPad and computer. On the course the app keeps working without a network.',
-              'Melde dich an, dann sind Runden, Spiele, Profil, Bag und Freunde auf iPhone, iPad und Computer gleich. Auf dem Platz funktioniert die App weiter ohne Netz.',
-            )}
+            {tr('Rounds, games and bag on iPhone, iPad and computer.', 'Runden, Spiele und Bag auf iPhone, iPad und Computer.')}
           </p>
           <button type="button" className="btn-secondary google-btn" onClick={signIn}>
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">

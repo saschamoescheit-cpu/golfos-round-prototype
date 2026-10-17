@@ -555,7 +555,6 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
           </button>
         </div>
         <div className="card">
-          <span className="muted small">{f.short()}</span>
           <FormRules form={f} />
         </div>
       </section>
@@ -579,7 +578,6 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             ))}
           </div>
         )}
-        {!d.course && <span className="muted small">{tr('18 holes, par 4 each – the par can be changed on every hole.', '18 Löcher, je Par 4 – das Par lässt sich an jedem Loch ändern.')}</span>}
         {d.course && holes.some((h) => !h.par) && (
           <span className="muted small">{tr('Some holes have no par – set it on the hole.', 'Einige Löcher haben kein Par – am Loch einstellen.')}</span>
         )}

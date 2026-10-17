@@ -34,12 +34,6 @@ export function CaddieSettingsFields() {
           </button>
         ))}
       </div>
-      <span className="muted small">
-        {tr(
-          'Off: the caddie only speaks when you tap 🔊 on his card. A web app cannot tell whether headphones are connected – switch this on when you wear them.',
-          'Aus: Der Caddie spricht nur, wenn du auf seiner Karte 🔊 antippst. Ob Kopfhörer verbunden sind, kann eine Web-App nicht erkennen – schalte es ein, wenn du welche trägst.',
-        )}
-      </span>
       <div className="field">
         <label>{tr('How should the caddie plan?', 'Wie soll der Caddie planen?')}</label>
         <Segmented<CaddieSettings['style']>
@@ -52,12 +46,6 @@ export function CaddieSettingsFields() {
             { value: 'aggressive', label: tr('Aggressive', 'Offensiv') },
           ]}
         />
-        <span className="muted small">
-          {tr(
-            'Safe: one club less off the tee when out of bounds is close, middle of the green, lay up earlier. Aggressive: goes for the green sooner, at the flag.',
-            'Sicher: ein Schläger weniger vom Abschlag, wenn Aus nah ist, Grünmitte, früher vorlegen. Offensiv: geht früher aufs Grün, auf die Fahne.',
-          )}
-        </span>
       </div>
     </>
   );

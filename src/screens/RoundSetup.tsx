@@ -275,17 +275,11 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
-        <p className="muted small" style={{ margin: 0 }}>
-          {rating
-            ? tr(
-                `Your handicap index – the app works out the playing handicap for this tee (course rating ${dec(rating.cr.toFixed(1))}, slope ${rating.slope}). Leave it empty to count gross only.`,
-                `Dein Handicap (Index) – die App rechnet die Spielvorgabe für diesen Abschlag aus (Course Rating ${dec(rating.cr.toFixed(1))}, Slope ${rating.slope}). Leer lassen, um nur brutto zu zählen.`,
-              )
-            : tr(
-                'Playing handicap is needed for Stableford (from the club’s table). Leave it empty to count gross only.',
-                'Für Stableford braucht es die Spielvorgabe (aus der Tabelle des Clubs). Leer lassen, um nur brutto zu zählen.',
-              )}
-        </p>
+        {rating && (
+          <p className="muted small" style={{ margin: 0 }}>
+            Course Rating {dec(rating.cr.toFixed(1))} · Slope {rating.slope}
+          </p>
+        )}
         {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
         {!hasCarries && (
           <p className="small good-text" style={{ margin: 0 }}>
@@ -327,14 +321,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
             {tr(`${fmt.name()} needs ${fmt.need()} – you have ${playerCount}. Add players below or choose another mode.`, `${fmt.name()} braucht ${fmt.need()} – ihr seid ${playerCount}. Füge oben Spieler hinzu oder wähle einen anderen Modus.`)}
           </p>
         )}
-        <span className="muted small">
-          {tr('Live leaderboard of your flight on the hole map.', 'Live-Leaderboard deines Flights auf der Lochkarte.')}
-          {isTeamMode(format.mode) &&
-            tr(
-              ' Team handicap from the players’ handicaps (foursomes 50 %, scramble 35/15 % for two). Team rounds do not count for your own stats.',
-              ' Team-Vorgabe aus den Vorgaben der Spieler (Vierer 50 %, Scramble zu zweit 35/15 %). Team-Runden zählen nicht für deine eigene Statistik.',
-            )}
-        </span>
+        {isTeamMode(format.mode) && <span className="muted small">{tr('Team rounds do not count for your own stats.', 'Team-Runden zählen nicht für deine eigene Statistik.')}</span>}
       </section>
       {picker && (
         <div className="sheet-backdrop" onClick={() => setPicker(null)}>

@@ -54,6 +54,10 @@ const focus = await p.locator('section').filter({ hasText: 'Wo du Schläge verli
 ok(!/pro Runde/.test(focus) && /Putts je 9 Löcher\s*17/.test(focus), 'statistics: where you lose strokes per 9 holes (Putts 17)');
 const sgStats = await p.locator('section').filter({ hasText: 'Strokes gained' }).last().innerText();
 ok(/Je 9 Löcher/.test(sgStats), 'statistics: strokes gained per 9 holes');
+await p.locator('.tabbar button').filter({ hasText: 'Mein Golf' }).click();
+await p.waitForTimeout(600);
+const hero = await p.locator('.record-hero').innerText();
+ok(/\+8,0\s*Ø zu Par \(9 Loch\)/.test(hero), 'my golf: average to par per 9 holes (+8,0, not +16,0)');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
