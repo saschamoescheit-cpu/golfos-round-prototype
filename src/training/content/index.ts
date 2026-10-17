@@ -22,6 +22,7 @@ import { VIDEOS_DE } from './videos-de';
 import { SECTION_MEDIA } from './section-media';
 import { CHARTS } from './charts';
 import { DRILL_VIDEOS } from './drill-videos';
+import { DRILL_OWN_VIDEOS } from './drill-videos-own';
 import { DRILL_ROUNDS, SECTION_ROUNDS } from './rounds-links';
 import { FIGURE_SKETCHES, SECTION_DRILL_PICTURES, SECTION_FIGURE_SKETCHES } from './sketches-figures';
 import { FAULT_SKETCHES } from './sketches-faults';
@@ -89,7 +90,7 @@ export const DRILLS: Drill[] = RAW_DRILLS
   .map((d) => (NO_RESULT_DRILLS.includes(d.id) ? { ...d, scoring: { kind: 'none' as const }, targets: undefined } : d))
   // a video for every drill where one fits – the drill's own first, then the matching topic videos
   .map((d) => {
-    const extra = (DRILL_VIDEOS[d.id] ?? []).map((id) => TOPIC_VIDEOS.get(id)).filter((v): v is NonNullable<typeof v> => !!v);
+    const extra = [...(DRILL_OWN_VIDEOS[d.id] ?? []), ...(DRILL_VIDEOS[d.id] ?? []).map((id) => TOPIC_VIDEOS.get(id)).filter((v): v is NonNullable<typeof v> => !!v)];
     if (!extra.length) return d;
     const own = d.videos ?? [];
     return { ...d, videos: [...own, ...extra.filter((v) => !own.some((o) => o.id === v.id))] };
