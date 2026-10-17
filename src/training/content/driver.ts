@@ -158,6 +158,7 @@ export const driverDrills: Drill[] = [
     setup: L('Put a second tee 20–30 cm in front of the ball on the target line, pushed in to 1 cm height.', 'Steck einen zweiten Tee 20–30 cm vor dem Ball auf die Ziellinie, nur 1 cm hoch.'),
     steps: [
       L('Drive the ball without touching the second tee – the club must be rising.', 'Schlag den Ball, ohne den zweiten Tee zu berühren – der Schläger muss steigen.'),
+      L('15 drives with your normal routine; count the ones that leave the second tee standing.', '15 Drives mit deiner normalen Routine; zähle die, bei denen der zweite Tee stehen bleibt.'),
     ],
     scoring: { kind: 'made', of: 15, unit: L('second tee untouched', 'zweiter Tee unberührt') },
     targets: { high: 7, mid: 10, low: 13 },

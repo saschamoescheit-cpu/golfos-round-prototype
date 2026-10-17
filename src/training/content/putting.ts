@@ -420,7 +420,7 @@ export const puttingDrills: Drill[] = [
     level: 2,
     minutes: 8,
     place: 'green',
-    balls: 10,
+    balls: 15,
     setup: L('Put 5 balls at 3, 6 and 9 m.', 'Leg je 5 Bälle auf 3, 6 und 9 m.'),
     steps: [
       L('Look at the hole, take your stance, close your eyes and putt.', 'Schau zum Loch, stell dich hin, schließe die Augen und putte.'),
