@@ -3,11 +3,9 @@ import type { Clip } from './scene';
 import type { JointId, Rot } from './rig';
 
 type J = Partial<Record<JointId, Rot>>;
-const still = (j: J, view: Clip['view'] = 'side'): Clip => ({ view, ground: 'all', props: ['mat'], keys: [{ t: 0, pose: { j } }, { t: 1, pose: { j } }] });
-const BACK: J = { hipR: [0, 0, -90], kneeR: [90, 0, 0] };
+const still = (j: J, view: Clip['view'] = 'angle'): Clip => ({ view, keys: [{ t: 0, pose: { j } }, { t: 1, pose: { j } }] });
 export const LAB: [string, Clip][] = [
-  ['front y+90', still({ ...BACK, hipL: [-90, 90, 0], kneeL: [90, 0, 0] }, 'angle')],
-  ['front y-90', still({ ...BACK, hipL: [-90, -90, 0], kneeL: [90, 0, 0] }, 'angle')],
-  ['front y-90 above', still({ ...BACK, hipL: [-90, -90, 0], kneeL: [90, 0, 0] }, 'above')],
-  ['front y+90 above', still({ ...BACK, hipL: [-90, 90, 0], kneeL: [90, 0, 0] }, 'above')],
+  ['a', still({ shoulderL: [0, 90, 120], shoulderR: [0, -90, -120], elbowL: [-140, 0, 0], elbowR: [-140, 0, 0] })],
+  ['b', still({ shoulderL: [-20, 90, 110], shoulderR: [-20, -90, -110], elbowL: [-150, 0, 0], elbowR: [-150, 0, 0] })],
+  ['c', still({ shoulderL: [0, 70, 125], shoulderR: [0, -70, -125], elbowL: [-145, 0, 0], elbowR: [-145, 0, 0] })],
 ];

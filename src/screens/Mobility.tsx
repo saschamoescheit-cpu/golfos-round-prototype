@@ -10,14 +10,14 @@ import { SketchThumb, SketchView } from '../training/Sketch';
 import { VideoCard, VideoNote } from '../training/ui';
 import { saveOwnPlan, trainingId } from '../training/store';
 import type { Drill, L } from '../training/types';
-import { DRILL_CLIPS } from '../mobility/anim3d/drills';
+import { DRILL_CLIPS, RETEST_CLIPS } from '../mobility/anim3d/drills';
 import { CameraTest, gradeName, sideText, unlockAudio } from '../mobility/CameraTest';
-import { valueText } from '../mobility/measure';
+import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { hasPain, leadSide, previousMeasurement, likelyMisses, latestResults, MISS_NAMES, PLAY_NOW, swingPatterns, testGrade, type PatternResult } from '../mobility/swing';
 import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
-import type { Area, Grade, Measurement, Screening, Side, TestDef, TestId, TestResult } from '../mobility/types';
+import type { Area, Grade, Measurement, Screening, Side, SquatCause, TestDef, TestId, TestResult } from '../mobility/types';
 import '../training/training.css';
 import '../mobility/mobility.css';
 
@@ -92,10 +92,16 @@ function useMobilityTick(): number {
   return n;
 }
 
+const CAUSE_SHORT: Record<SquatCause, L> = {
+  upper: { en: 'cause: shoulders, upper back', de: 'Ursache: Schultern, oberer Rücken' },
+  ankle: { en: 'cause: ankles', de: 'Ursache: Sprunggelenke' },
+  hips: { en: 'cause: hips, trunk', de: 'Ursache: Hüfte, Rumpf' },
+};
+
 /** The value of a result in words – both sides for sided tests ("left 48° · right 39°"). */
 function resultText(test: TestDef, r: TestResult | undefined): string {
   if (!r) return tr('not tested yet', 'noch nicht getestet');
-  const one = (m: Measurement) => (m.pain ? tr('pain', 'Schmerz') : m.source === 'self' ? tr('self-judged', 'selbst eingeschätzt') : test.metric ? valueText(test.metric, m.value, tr) : '');
+  const one = (m: Measurement) => (m.pain ? tr('pain', 'Schmerz') : m.source === 'self' ? tr('self-judged', 'selbst eingeschätzt') : test.metric ? valueText(test.metric, m.value, tr) + (m.cause ? ` · ${t(CAUSE_SHORT[m.cause])}` : '') : '');
   if (r.both) return `${one(r.both)}`;
   const text = (['left', 'right'] as Side[])
     .filter((s) => r[s])
@@ -337,7 +343,7 @@ function TestView(props: { id: TestId; nav: Nav }) {
     .map((s) => ({ s, r: s.results[props.id] }))
     .filter((x): x is { s: Screening; r: TestResult } => !!x.r)
     .sort((a, b) => b.s.createdAt.localeCompare(a.s.createdAt));
-  const drills = test.drills.map(drillById).filter((d): d is Drill => !!d);
+  const drills = drillsOf(test, latestResults(loadScreenings()).results[test.id]).map(drillById).filter((d): d is Drill => !!d);
   return (
     <main className="screen training mobility">
       <TopBar title={t(test.name)} onBack={props.nav.back} />
@@ -474,12 +480,134 @@ const stepDone = (s: Screening, st: { test: TestId; side: Side | null }) => {
   return !!(st.side ? r?.[st.side] : r?.both) || !!s.skipped?.includes(st.test);
 };
 
+/** The cause found for a deep squat that missed: on the measurement, with a note in words. */
+const CAUSE_NOTE: Record<SquatCause, L> = {
+  upper: { en: 'Cause: shoulders and upper back – with the hands behind the head it works', de: 'Ursache: Schultern und oberer Rücken – mit den Händen hinter dem Kopf geht es' },
+  ankle: { en: 'Cause: the ankles – the knee does not reach the wall', de: 'Ursache: Sprunggelenke – das Knie erreicht die Wand nicht' },
+  hips: { en: 'Cause: hips and trunk – too shallow even without the arms', de: 'Ursache: Hüfte und Rumpf – auch ohne Arme zu wenig tief' },
+};
+/** The drills for the cause (REVIEW(golf) – Chris). */
+const CAUSE_DRILLS: Record<SquatCause, string[]> = {
+  upper: ['mob-wall-angels', 'open-books', 'mob-lat-stretch'],
+  ankle: ['mob-ankle-wall', 'deep-squat'],
+  hips: ['hip-9090', 'deep-squat', 'glute-bridge'],
+};
+/** The drills of a test – for the deep squat those of the cause, once it is known. */
+function drillsOf(test: TestDef, r: TestResult | undefined): string[] {
+  const c = test.id === 'deep-squat' ? r?.both?.cause : undefined;
+  return c ? CAUSE_DRILLS[c] : test.drills;
+}
+
+function withCause(s: Screening, cause: SquatCause): Screening {
+  const r = s.results['deep-squat'];
+  if (!r?.both) return s;
+  return { ...s, results: { ...s.results, 'deep-squat': { ...r, both: { ...r.both, cause, notes: [...(r.both.notes ?? []), CAUSE_NOTE[cause]] } } } };
+}
+
+/** The deep squat missed – one more try with the hands behind the head shows where the limit sits. */
+function WhyCheck(props: { onCamera: () => void; onSkip: () => void }) {
+  return (
+    <section className="tr-block mob-why-check">
+      <Suspense fallback={<div className="mob-3d-wait" />}>
+        <Anim3D clip={RETEST_CLIPS.squatHands} />
+      </Suspense>
+      <section className="card tr-section">
+        <h2>{tr('Find the cause', 'Ursache finden')}</h2>
+        <p>{tr('The same squat with the hands behind the head. If it works now, the limit is in the shoulders and upper back – not in the legs.', 'Dieselbe Kniebeuge mit den Händen hinter dem Kopf. Geht es jetzt, liegt die Grenze in Schultern und oberem Rücken – nicht in den Beinen.')}</p>
+      </section>
+      <button type="button" className="btn-primary" onClick={props.onCamera}>
+        {tr('Start the camera', 'Kamera starten')}
+      </button>
+      <div className="mob-pills">
+        <button type="button" className="chip" onClick={props.onSkip}>
+          {tr('Go on without it', 'Ohne Nachtest weiter')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** The heels came up: the knee-to-wall test tells whether the ankles are the limit (TPI: 10 cm, heel down). */
+function AnkleCheck(props: { onPick: (ok: boolean) => void }) {
+  return (
+    <section className="tr-block mob-self mob-ankle">
+      <Suspense fallback={<div className="mob-3d-wait" />}>
+        <Anim3D clip={DRILL_CLIPS['mob-ankle-wall']} />
+      </Suspense>
+      <section className="card tr-section">
+        <h2>{tr('Knee to the wall', 'Knie zur Wand')}</h2>
+        <ol className="tr-steps">
+          <li>{tr('Toes a hand width (10 cm) from the wall, kneel on the other knee.', 'Zehen eine Handbreit (10 cm) vor der Wand, auf das andere Knie knien.')}</li>
+          <li>{tr('Push the knee forward to the wall – the heel stays down. Then the other leg.', 'Das Knie nach vorn zur Wand schieben – die Ferse bleibt unten. Dann das andere Bein.')}</li>
+        </ol>
+      </section>
+      <h2>{tr('Which one is you?', 'Was passt zu dir?')}</h2>
+      <button type="button" className="mob-option pass" onClick={() => props.onPick(true)}>
+        <span className="mob-option-label">
+          <GradeMark grade="pass" small />
+          <span>{tr('The knee touches the wall on both sides, heel down', 'Das Knie berührt auf beiden Seiten die Wand, Ferse unten')}</span>
+        </span>
+      </button>
+      <button type="button" className="mob-option fail" onClick={() => props.onPick(false)}>
+        <span className="mob-option-label">
+          <GradeMark grade="fail" small />
+          <span>{tr('The knee does not reach it, or the heel comes up', 'Das Knie kommt nicht hin oder die Ferse hebt ab')}</span>
+        </span>
+      </button>
+    </section>
+  );
+}
+
+type Felt = 'glutes' | 'hamstrings' | 'back' | null;
+
+/** The bridge measured with "the wrong muscles": a pass becomes limited, the note says which muscles worked. */
+function withFeel(s: Screening, where: 'hamstrings' | 'back'): Screening {
+  const r = s.results.bridge;
+  if (!r) return s;
+  const note: L =
+    where === 'hamstrings'
+      ? { en: 'The back of the thighs did the work, not the glutes', de: 'Die Oberschenkel-Rückseite hat gearbeitet, nicht das Gesäß' }
+      : { en: 'The low back did the work, not the glutes', de: 'Der untere Rücken hat gearbeitet, nicht das Gesäß' };
+  const fix = (m: Measurement | undefined): Measurement | undefined => (m && !m.pain ? { ...m, grade: m.grade === 'pass' ? 'limited' : m.grade, notes: [...(m.notes ?? []), note] } : m);
+  const next: TestResult = {};
+  if (r.left) next.left = fix(r.left);
+  if (r.right) next.right = fix(r.right);
+  if (r.both) next.both = fix(r.both);
+  return { ...s, results: { ...s.results, bridge: next } };
+}
+
+/** After the bridge: where did you feel it? Glutes = right; back of the thighs or low back = the wrong muscles (TPI). */
+function FeelCheck(props: { test: TestDef; onPick: (where: Felt) => void }) {
+  const opts: [Felt, string, string][] = [
+    ['glutes', tr('In the glutes', 'Im Gesäß'), 'pass'],
+    ['hamstrings', tr('In the back of the thighs (or a cramp)', 'In der Oberschenkel-Rückseite (oder ein Krampf)'), 'limited'],
+    ['back', tr('In the low back', 'Im unteren Rücken'), 'limited'],
+  ];
+  return (
+    <section className="tr-block mob-self mob-feel">
+      <SketchView sketch={props.test.sketch} label={t(props.test.name)} />
+      <h2>{tr('Where did you feel it most?', 'Wo hast du es vor allem gespürt?')}</h2>
+      {opts.map(([id, label, g]) => (
+        <button key={id} type="button" className={`mob-option ${g}`} onClick={() => props.onPick(id)}>
+          <span className="mob-option-label">
+            <GradeMark grade={g as Grade} small />
+            <span>{label}</span>
+          </span>
+        </button>
+      ))}
+      <button type="button" className="btn-secondary" onClick={() => props.onPick(null)}>
+        {tr("I don't know", 'Weiß nicht')}
+      </button>
+    </section>
+  );
+}
+
 function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFinished: (s: Screening) => void; onDelete: () => void }) {
   const [s, setS] = useState<Screening>(props.screening);
   const steps = stepsOf(s);
   const firstOpen = () => Math.max(0, steps.findIndex((st) => !stepDone(s, st)));
   const [k, setK] = useState<number>(() => firstOpen());
-  const [stage, setStage] = useState<'brief' | 'camera' | 'self'>('brief');
+  const [stage, setStage] = useState<'brief' | 'camera' | 'self' | 'feel' | 'why' | 'retest' | 'ankle'>('brief');
   const [drawer, setDrawer] = useState(false);
   const [exit, setExit] = useState<null | 'menu' | 'end'>(null);
   const barTouch = useRef<number | null>(null);
@@ -521,6 +649,35 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       setStage('camera');
       return;
     }
+    // the bridge, both sides done: where did it work? (TPI: hamstrings or low back instead of the glutes = control)
+    const moreOfIt = steps.some((st, i) => i > k && st.test === step.test && !stepDone(cur, st));
+    if (step.test === 'bridge' && m.source === 'camera' && !m.pain && !moreOfIt) {
+      setStage('feel');
+      return;
+    }
+    // the deep squat missed: find the cause (TPI breakout) – hands behind the head, then the ankle if the heels came up
+    if (step.test === 'deep-squat' && m.source === 'camera' && m.grade !== 'pass' && !m.pain) {
+      setStage('why');
+      return;
+    }
+    setStage('brief');
+    next(cur);
+  };
+  const setCause = (cause: SquatCause | null) => {
+    const cur = cause ? withCause(s, cause) : s;
+    if (cur !== s) store(cur);
+    setStage('brief');
+    next(cur);
+  };
+  const retested = (m: Measurement) => {
+    if (m.pain || m.source !== 'camera') return setCause(null);
+    if (m.grade === 'pass') return setCause('upper');
+    if (m.notes?.some((n) => n.en === NOTE_HEELS.en)) return setStage('ankle');
+    setCause('hips');
+  };
+  const felt = (where: Felt) => {
+    const cur = where === 'glutes' || where === null ? s : withFeel(s, where);
+    if (cur !== s) store(cur);
     setStage('brief');
     next(cur);
   };
@@ -530,6 +687,13 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
     next(cur);
   };
   const doneCount = s.tests.filter((id) => s.results[id] || s.skipped?.includes(id)).length;
+
+  if (stage === 'retest')
+    return (
+      <main className="screen mobility mob-run-camera">
+        <CameraTest key="squat-retest" test={test} side={null} variant="handsBehind" onResult={retested} onSelf={() => setCause(null)} onCancel={() => setStage('why')} />
+      </main>
+    );
 
   if (stage === 'camera')
     return (
@@ -552,9 +716,21 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
             <strong className="tr-now-name">{t(test.name)}</strong>
           </span>
         </div>
-        {step.side && test.metric && <p className="mob-side-now">{sideText(test.metric, step.side)}</p>}
+        {step.side && test.metric && (stage === 'brief' || stage === 'self') && <p className="mob-side-now">{sideText(test.metric, step.side)}</p>}
       </section>
-      {stage === 'self' ? (
+      {stage === 'feel' ? (
+        <FeelCheck test={test} onPick={felt} />
+      ) : stage === 'why' ? (
+        <WhyCheck
+          onCamera={() => {
+            unlockAudio();
+            setStage('retest');
+          }}
+          onSkip={() => setCause(null)}
+        />
+      ) : stage === 'ankle' ? (
+        <AnkleCheck onPick={(ok) => setCause(ok ? 'hips' : 'ankle')} />
+      ) : stage === 'self' ? (
         <SelfCheck test={test} onPick={save} onBack={() => setStage(test.mode === 'self' ? 'brief' : 'brief')} />
       ) : (
         <>
@@ -896,7 +1072,7 @@ function PatternView(props: { id: string; nav: Nav }) {
   if (!r) return null;
   const p = r.pattern;
   // the drills of the tests behind it, the worst first – a handful, not all
-  const drills = [...new Set(r.causes.flatMap((c) => testById(c.test).drills))].map(drillById).filter((d): d is Drill => !!d).slice(0, 6);
+  const drills = [...new Set(r.causes.flatMap((c) => drillsOf(testById(c.test), results[c.test])))].map(drillById).filter((d): d is Drill => !!d).slice(0, 6);
   const lead = leadSide(hand);
   return (
     <main className="screen training mobility">
@@ -1050,7 +1226,7 @@ function DrillsTab(props: { nav: Nav }) {
   }).sort((a, b) => rank(a) - rank(b));
   const pain = TESTS.filter((x) => hasPain(results[x.id]));
   const keep = ['open-books', 'deep-squat', 'glute-bridge', 'single-leg-balance'].map(drillById).filter((d): d is Drill => !!d);
-  const all = [...new Set(open.flatMap((x) => x.drills))].map(drillById).filter((d): d is Drill => !!d);
+  const all = [...new Set(open.flatMap((x) => drillsOf(x, results[x.id])))].map(drillById).filter((d): d is Drill => !!d);
   const planDrills = all.length ? all.slice(0, 8) : keep;
   if (!Object.keys(results).length)
     return (
@@ -1076,7 +1252,7 @@ function DrillsTab(props: { nav: Nav }) {
               <ResultMark r={results[x.id]} small />
               <span>{t(x.name)}</span>
             </h2>
-            <DrillList drills={x.drills.map(drillById).filter((d): d is Drill => !!d)} nav={props.nav} />
+            <DrillList drills={drillsOf(x, results[x.id]).map(drillById).filter((d): d is Drill => !!d)} nav={props.nav} />
           </section>
         ))
       )}

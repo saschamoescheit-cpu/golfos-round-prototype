@@ -448,10 +448,11 @@ class SquatAnalyzer implements Analyzer {
   private started = false;
   private t0 = -1;
   private done = false;
-  constructor(private ms = 15000) {}
+  /** arms = false: the retest with the hands behind the head – only depth and heels count */
+  constructor(private ms = 15000, private arms = true) {}
   focus(): [number, number][] {
     const s = S(this.side ?? 'left');
-    return [[s.hip, s.kn], [s.sh, s.wr]];
+    return this.arms ? [[s.hip, s.kn], [s.sh, s.wr]] : [[s.hip, s.kn]];
   }
   push(f: Frame): Live {
     if (this.done) return { value: null, best: this.best, phase: 'done' };
@@ -495,8 +496,8 @@ class SquatAnalyzer implements Analyzer {
     const lim = LIMITS.squat;
     const notes: Text[] = [];
     if (this.best < lim.depth) notes.push(L('The hips stay above the knees', 'Die Hüfte bleibt über Kniehöhe'));
-    if (this.heelRise > lim.heel) notes.push(L('The heels come up', 'Die Fersen heben ab'));
-    if (this.armsAtBest > lim.arms) notes.push(L('The arms tip forward', 'Die Arme kippen nach vorn'));
+    if (this.heelRise > lim.heel) notes.push(NOTE_HEELS);
+    if (this.arms && this.armsAtBest > lim.arms) notes.push(L('The arms tip forward', 'Die Arme kippen nach vorn'));
     const grade: Grade = !notes.length ? 'pass' : this.best < lim.depthFail || notes.length >= 2 ? 'fail' : 'limited';
     return { value: Math.round(this.best), grade, notes };
   }
@@ -849,7 +850,10 @@ class ShoulderAnalyzer implements Analyzer {
  * The analyser of a test. `side`: the direction to turn (trunk, neck), the standing leg (balance, lower quarter),
  * the stretched leg (bridge) or the arm towards the camera (90/90).
  */
-export function makeAnalyzer(kind: MetricKind, side: Side = 'left'): Analyzer {
+/** The squat note for heels that come up – the retest asks the ankle about it. */
+export const NOTE_HEELS = L('The heels come up', 'Die Fersen heben ab');
+
+export function makeAnalyzer(kind: MetricKind, side: Side = 'left', opts: { noArms?: boolean } = {}): Analyzer {
   switch (kind) {
     case 'trunkRotation':
       return new TurnAnalyzer('trunkRotation', [P.lSh, P.rSh], null);
@@ -860,7 +864,7 @@ export function makeAnalyzer(kind: MetricKind, side: Side = 'left'): Analyzer {
     case 'neck':
       return new NeckAnalyzer();
     case 'squat':
-      return new SquatAnalyzer();
+      return new SquatAnalyzer(15000, !opts.noArms);
     case 'toeTouch':
       return new ToeTouchAnalyzer();
     case 'balance':

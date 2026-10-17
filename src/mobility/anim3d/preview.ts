@@ -2,7 +2,7 @@
 // check each pose against the test text. Query: ?clip=<test id>&view=front|side|angle|above&n=<stills>
 import { CLIPS } from './clips';
 import { LAB } from './lab';
-import { DRILL_CLIPS } from './drills';
+import { DRILL_CLIPS, RETEST_CLIPS } from './drills';
 import { createViewer, type View } from './scene';
 import type { TestId } from '../types';
 
@@ -16,7 +16,7 @@ const out = document.getElementById('out')!;
 const v = createViewer(canvas);
 v.setPlaying(false);
 (async () => {
-  const entries = (q.get('lab') ? LAB : q.get('drills') ? Object.entries(DRILL_CLIPS) : Object.entries(CLIPS)) as [TestId, (typeof CLIPS)[TestId]][];
+  const entries = (q.get('lab') ? LAB : q.get('drills') ? [...Object.entries(DRILL_CLIPS), ...Object.entries(RETEST_CLIPS)] : Object.entries(CLIPS)) as [TestId, (typeof CLIPS)[TestId]][];
   for (const [id, clip] of entries) {
     if (only && only !== id) continue;
     const views = forcedView ? [forcedView] : [clip.view];

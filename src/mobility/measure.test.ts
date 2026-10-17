@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIMITS, makeAnalyzer, missingPoints, nearSide, type Frame } from './measure';
+import { LIMITS, makeAnalyzer, missingPoints, nearSide, NOTE_HEELS, type Frame } from './measure';
 import { frames, frontBody, script, SYNTH_H, SYNTH_W } from './synth';
 import type { MetricKind, Side } from './types';
 
@@ -104,6 +104,19 @@ describe('mobility analysers', () => {
       if (l.cue) cues.push(l.cue);
     }
     expect(cues).toContain('otherLeg');
+  });
+
+  it('the squat retest with the hands behind the head ignores the arms, the heels still count', () => {
+    const run = (noArms: boolean) => {
+      const a = makeAnalyzer('squat', 'left', { noArms });
+      for (const f of frames(script('squat', 'left', 'stiff'))) a.push(f);
+      return a.finish()!;
+    };
+    const full = run(false);
+    const retest = run(true);
+    expect(full.notes.some((n) => /arms/.test(n.en))).toBe(true);
+    expect(retest.notes.some((n) => /arms/.test(n.en))).toBe(false);
+    expect(retest.notes.some((n) => n.en === NOTE_HEELS.en)).toBe(true);
   });
 
   it('returns no result when the movement was never seen', () => {

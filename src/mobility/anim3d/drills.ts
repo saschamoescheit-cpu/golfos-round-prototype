@@ -87,6 +87,25 @@ const REACH_START = stand({ ...ARMS_CROSSED, kneeL: [10, 0, 0], hipR: [-30, 0, -
 /** the left hand holds a stick in front of the body (90/90 stretch) */
 const STICK_L: J = { shoulderL: [-55, 0, -20], elbowL: [-25, 0, 0] };
 
+/** hands behind the head, elbows out (the deep squat retest) */
+const HANDS_HEAD: J = { shoulderL: [0, 90, 120], shoulderR: [0, -90, -120], elbowL: [-140, 0, 0], elbowR: [-140, 0, 0] };
+
+/** The retests (TPI breakouts): the deep squat with the hands behind the head instead of the stick overhead. */
+export const RETEST_CLIPS = {
+  squatHands: {
+    ...CLIPS['deep-squat'],
+    // from the angle: the depth and the elbows out both show
+    view: 'angle',
+    views: ['angle', 'side', 'front'],
+    props: [],
+    keys: CLIPS['deep-squat'].keys.map((x, i) => ({
+      ...x,
+      pose: { ...x.pose, j: { ...x.pose.j, ...HANDS_HEAD } },
+      label: i === 0 ? L('Hands behind the head, elbows out', 'Hände hinter den Kopf, Ellbogen nach außen') : i === 2 ? L('Squat as deep as you can – heels down', 'So tief wie möglich in die Hocke – Fersen unten') : x.label,
+    })),
+  } as Clip,
+};
+
 export const DRILL_CLIPS: Record<string, Clip> = {
   // ---------- the tests as drills ----------
   'deep-squat': CLIPS['deep-squat'],

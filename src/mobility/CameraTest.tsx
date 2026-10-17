@@ -141,7 +141,7 @@ function sinceText(kind: MetricKind, now: number, before: Measurement): { text: 
   return { text: tr(`${n} since ${date} (${was})`, `${n} seit ${date} (${was})`), better: lowerBetter ? d < 0 : d > 0 };
 }
 
-export function CameraTest(props: { test: TestDef; side: Side | null; previous?: Measurement; onResult: (m: Measurement) => void; onSelf: () => void; onCancel: () => void }) {
+export function CameraTest(props: { test: TestDef; side: Side | null; previous?: Measurement; variant?: 'handsBehind'; onResult: (m: Measurement) => void; onSelf: () => void; onCancel: () => void }) {
   const kind = props.test.metric!;
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -352,8 +352,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     let countTimer = 0;
     const startCountdown = () => {
       go('count');
-      analyzer = makeAnalyzer(kind, sideParam);
-      const instruction = `${sideText(kind, props.side)} ${CALIBRATES.includes(kind) ? tr('Look at the phone and hold still.', 'Schau zum Handy und halte still.') : ''}`;
+      analyzer = makeAnalyzer(kind, sideParam, { noArms: props.variant === 'handsBehind' });
+      const instruction = `${props.variant === 'handsBehind' ? tr('Hands behind the head.', 'Hände hinter den Kopf.') : sideText(kind, props.side)} ${CALIBRATES.includes(kind) ? tr('Look at the phone and hold still.', 'Schau zum Handy und halte still.') : ''}`;
       say(instruction);
       // wait for the sentence (max 6 s), then 3 – 2 – 1
       const t0 = performance.now();
@@ -623,7 +623,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           </div>
         )}
         {(live.people ?? 0) > 1 && <div className="mob-people">{tr('Several people in the picture – please step in alone', 'Mehrere Personen im Bild – bitte allein ins Bild')}</div>}
-        <div className="mob-side-tag">{props.side ? sideText(kind, props.side) : props.test.name[trLang()]}</div>
+        <div className="mob-side-tag">{props.variant === 'handsBehind' ? tr('Retest: hands behind the head', 'Nachtest: Hände hinter dem Kopf') : props.side ? sideText(kind, props.side) : props.test.name[trLang()]}</div>
       </div>
       {phase !== 'run' && <p className="muted small mob-private">{tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}</p>}
       <div className="mob-camera-actions">

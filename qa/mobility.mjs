@@ -71,9 +71,37 @@ ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');
 await shot('brief');
 let steps = 0;
 let autoSecond = 0;
-for (let i = 0; i < 12; i++) {
+let feelAsked = false;
+let retest = '';
+for (let i = 0; i < 13; i++) {
   const start = p.getByRole('button', { name: 'Kamera starten' });
   if (await p.locator('.sheet').isVisible().catch(() => false)) break;
+  // after both sides of the bridge: where did you feel it? (the back of the thighs = the wrong muscles)
+  if (await p.locator('.mob-feel').isVisible().catch(() => false)) {
+    feelAsked = true;
+    await shot('bridge-feel');
+    await p.locator('.mob-feel .mob-option').filter({ hasText: 'Oberschenkel' }).click();
+    await p.locator('.mob-camera, .sheet').or(start).first().waitFor({ timeout: 15000 }).catch(() => {});
+    continue;
+  }
+  // the deep squat missed: the retest with the hands behind the head, then knee to the wall (the stiff player's heels come up)
+  if (await p.locator('.mob-why-check').isVisible().catch(() => false)) {
+    await shot('squat-why');
+    await p.locator('.mob-why-check .btn-primary').click();
+    await p.locator('.mob-side-tag').waitFor({ timeout: 15000 }).catch(() => {});
+    retest = await p.locator('.mob-side-tag').innerText().catch(() => '');
+    const save = p.getByRole('button', { name: 'Speichern und weiter' });
+    await save.waitFor({ timeout: 40000 }).catch(() => {});
+    await save.click().catch(() => {});
+    await p.locator('.mob-ankle').waitFor({ timeout: 15000 }).catch(() => {});
+    if (await p.locator('.mob-ankle').isVisible().catch(() => false)) {
+      retest += ' → knee to wall';
+      await shot('squat-ankle');
+      await p.locator('.mob-ankle .mob-option.fail').click();
+    }
+    await p.locator('.mob-camera, .sheet').or(start).first().waitFor({ timeout: 15000 }).catch(() => {});
+    continue;
+  }
   const camera = await p.locator('.mob-camera').isVisible().catch(() => false);
   if (!camera && !(await start.isVisible().catch(() => false))) break;
   // the second side of a test starts the camera by itself (hands-free)
@@ -105,9 +133,11 @@ for (let i = 0; i < 12; i++) {
   // wait for the next state instead of a fixed time (the machine may be busy): the result is gone, then the camera of
   // the second side, the next test or the finish sheet
   await p.locator('.mob-outcome').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
-  await p.locator('.mob-camera, .sheet').or(p.getByRole('button', { name: 'Kamera starten' })).first().waitFor({ timeout: 15000 }).catch(() => {});
+  await p.locator('.mob-camera, .sheet, .mob-feel').or(p.getByRole('button', { name: 'Kamera starten' })).first().waitFor({ timeout: 15000 }).catch(() => {});
   await p.waitForTimeout(300);
 }
+ok(feelAsked, 'after the bridge: "where did you feel it?"');
+ok(/Nachtest/.test(retest) && /knee to wall/.test(retest), `the deep squat missed: retest with the hands behind the head, then knee to the wall (${retest})`);
 ok(steps === 9, `${steps} of 9 camera steps measured (6 tests, 3 with both sides)`);
 ok(autoSecond === 3, `the second side started the camera by itself ${autoSecond} times`);
 await p.getByRole('button', { name: 'Beenden & Ergebnis zeigen' }).waitFor({ timeout: 5000 }).catch(() => {});
@@ -132,6 +162,7 @@ await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.segmented button').filter({ hasText: 'Dein Körper' }).click();
 ok((await p.locator('.mob-test-row').count()) === 15, 'body result lists all 15 tests by area');
 ok((await p.locator('.mob-test-row.untested').count()) === 9, 'the 9 tests not in the quick check are marked untested');
+ok(await p.getByText('Ursache: Sprunggelenke').first().isVisible(), 'the deep squat names its cause (ankles)');
 await shot('result-body');
 
 // ---------- drills → Training ----------
@@ -139,6 +170,8 @@ await tab('Übungen');
 await p.waitForTimeout(300);
 const drillGroups = await p.locator('.mob-drill-head').count();
 ok(drillGroups >= 4, `${drillGroups} limited tests with drills`);
+const squatDrills = await p.locator('.tr-block').filter({ has: p.locator('.mob-drill-head', { hasText: 'Tiefe Kniebeuge' }) }).locator('.list-item .title').allInnerTexts();
+ok(squatDrills.length === 2 && squatDrills[0] === 'Knie zur Wand', 'the deep squat drills follow the cause (ankles: ' + squatDrills.join(', ') + ')');
 await shot('drills');
 await small('the drills');
 await p.locator('.mob-test-row').first().click();

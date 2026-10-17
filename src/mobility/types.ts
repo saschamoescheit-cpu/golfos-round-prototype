@@ -89,8 +89,14 @@ export interface Measurement {
   /** it hurt (TPI scores pain as its own result): graded ✕, but no swing pattern and no drill follow from it – a
    * physio should look at it first */
   pain?: boolean;
+  /** the deep squat: where the limit sits, from the retest (TPI breakout) – the drills follow the cause */
+  cause?: SquatCause;
   at: string;
 }
+
+/** upper = shoulders and upper back (with the hands behind the head it works) · ankle = the knee does not reach the wall
+ * · hips = hips and trunk (too shallow even without the arms) */
+export type SquatCause = 'upper' | 'ankle' | 'hips';
 
 export interface TestResult {
   /** sided tests */
