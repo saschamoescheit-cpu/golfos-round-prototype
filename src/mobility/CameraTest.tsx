@@ -129,7 +129,19 @@ export function gradeName(g: Grade): string {
   return g === 'pass' ? tr('Passed', 'Bestanden') : g === 'limited' ? tr('Limited', 'Eingeschränkt') : tr('Not passed', 'Nicht bestanden');
 }
 
-export function CameraTest(props: { test: TestDef; side: Side | null; onResult: (m: Measurement) => void; onSelf: () => void; onCancel: () => void }) {
+/** The change since last time in words, and whether it is better (lower is better for the toe touch and the 90/90). */
+function sinceText(kind: MetricKind, now: number, before: Measurement): { text: string; better: boolean | null } {
+  const d = Math.round((now - (before.value ?? 0)) * 10) / 10;
+  const lowerBetter = kind === 'toeTouch' || kind === 'shoulder9090';
+  const unit = kind === 'toeTouch' ? ' cm' : kind === 'balance' || kind === 'bridge' ? ' s' : '°';
+  const date = new Date(before.at).toLocaleDateString(tr('en-GB', 'de-DE'), { day: 'numeric', month: 'short' });
+  const was = valueText(kind, before.value, tr);
+  if (Math.abs(d) < (unit === '°' ? 3 : 1)) return { text: tr(`As on ${date} (${was})`, `Wie am ${date} (${was})`), better: null };
+  const n = `${d > 0 ? '+' : '−'}${String(Math.abs(d)).replace('.', tr('.', ','))}${unit}`;
+  return { text: tr(`${n} since ${date} (${was})`, `${n} seit ${date} (${was})`), better: lowerBetter ? d < 0 : d > 0 };
+}
+
+export function CameraTest(props: { test: TestDef; side: Side | null; previous?: Measurement; onResult: (m: Measurement) => void; onSelf: () => void; onCancel: () => void }) {
   const kind = props.test.metric!;
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -500,6 +512,10 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
                 <span className="small">{gradeName(done.grade)} · {tr('goal', 'Ziel')}: {props.test.target[trLang()]}</span>
               </span>
             </div>
+            {props.previous && kind && done.value != null && (() => {
+              const since = sinceText(kind, done.value, props.previous);
+              return <span className={`small mob-since${since.better ? ' better' : ''}`}>{since.text}</span>;
+            })()}
             {done.notes.length > 0 && (
               <ul className="mob-notes">
                 {done.notes.map((n, i) => (
@@ -547,6 +563,16 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
               }}
             >
               {tr('Judge it myself', 'Selbst einschätzen')}
+            </button>
+            <button
+              type="button"
+              className="chip mob-pain-chip"
+              onClick={() => {
+                setAuto(null);
+                props.onResult({ value: done ? done.value : null, grade: 'fail', source: done ? 'camera' : 'self', pain: true, at: new Date().toISOString() });
+              }}
+            >
+              {tr('It hurt', 'Hat wehgetan')}
             </button>
           </div>
         </div>
@@ -599,6 +625,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
         {(live.people ?? 0) > 1 && <div className="mob-people">{tr('Several people in the picture – please step in alone', 'Mehrere Personen im Bild – bitte allein ins Bild')}</div>}
         <div className="mob-side-tag">{props.side ? sideText(kind, props.side) : props.test.name[trLang()]}</div>
       </div>
+      {phase !== 'run' && <p className="muted small mob-private">{tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}</p>}
       <div className="mob-camera-actions">
         {phase === 'run' ? (
           <button type="button" className="btn-primary" onClick={() => finishRef.current?.()}>

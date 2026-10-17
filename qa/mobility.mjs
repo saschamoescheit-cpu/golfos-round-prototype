@@ -102,6 +102,10 @@ for (let i = 0; i < 12; i++) {
     await p.getByRole('button', { name: 'Selbst einschätzen' }).click();
     await p.locator('.mob-option').first().click();
   }
+  // wait for the next state instead of a fixed time (the machine may be busy): the result is gone, then the camera of
+  // the second side, the next test or the finish sheet
+  await p.locator('.mob-outcome').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
+  await p.locator('.mob-camera, .sheet').or(p.getByRole('button', { name: 'Kamera starten' })).first().waitFor({ timeout: 15000 }).catch(() => {});
   await p.waitForTimeout(300);
 }
 ok(steps === 9, `${steps} of 9 camera steps measured (6 tests, 3 with both sides)`);
@@ -122,6 +126,7 @@ await p.locator('.mob-pattern').first().click();
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-sketch svg').count()) >= 1, 'pattern page shows the fault as a picture');
 ok((await p.locator('.mob-test-row').count()) >= 2, 'pattern page names the tests behind it');
+ok((await p.locator('.mob-play-now li').count()) >= 1, 'pattern page says how to play with it today');
 await shot('pattern');
 await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.segmented button').filter({ hasText: 'Dein Körper' }).click();
@@ -181,7 +186,8 @@ ok(tt.join('|') === 'Ablauf|Ergebnisse|Übungen', `test page tabs: ${tt.join(' �
 await shot('test-page');
 await p.getByRole('button', { name: 'Test starten' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.mob-option').count()) === 3, 'self check offers three pictures');
+ok((await p.locator('.mob-option:not(.mob-pain)').count()) === 3, 'self check offers three pictures');
+ok(await p.locator('.mob-pain').isVisible(), 'self check offers "It hurts" (pain is its own result)');
 await shot('self-check');
 await small('a self check');
 await p.locator('.mob-option.limited').click();
@@ -190,6 +196,22 @@ ok((await p.locator('.topbar h1').innerText()) === 'Handgelenk anwinkeln', 'back
 await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
 ok(await p.getByText('selbst eingeschätzt').first().isVisible(), 'the self-judged result is listed');
 await p.locator('.topbar .icon-btn').first().click();
+
+// ---------- pain: its own result, no drills for it ----------
+await p.locator('.mob-test-row').filter({ hasText: 'Handgelenk beugen' }).click();
+await p.getByRole('button', { name: 'Test starten' }).click();
+await p.locator('.mob-pain').click();
+await p.waitForTimeout(500);
+await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+ok(await p.getByText('Schmerz').first().isVisible(), 'a test that hurt is listed as "Schmerz"');
+await p.locator('.topbar .icon-btn').first().click();
+await tab('Übungen');
+await p.waitForTimeout(300);
+ok(await p.locator('.mob-pain-note').filter({ hasText: 'Handgelenk beugen' }).isVisible(), 'the drills say: pain – a physio first, no drills for it');
+ok((await p.locator('.mob-drill-head').filter({ hasText: 'Handgelenk beugen' }).count()) === 0, 'no drills for the test that hurt');
+await shot('pain-note');
+await tab('Screening');
+await p.waitForTimeout(300);
 
 // ---------- hands-free: a sided single test runs through without a tap ----------
 await p.locator('.mob-test-row').filter({ hasText: 'Kopfdrehung' }).click();

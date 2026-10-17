@@ -126,6 +126,17 @@
 .mob-3d-views { display: flex; gap: 6px; }
 .mob-3d-wait { aspect-ratio: 4 / 3; border-radius: 14px; background: #cfe6f5; }
 
-/* pages with the menu at the bottom: the main button sits above the menu, not behind it */
-.tr-with-menu .mobility .sticky-cta,
-.screen.with-tabs.mobility .sticky-cta { bottom: calc(env(safe-area-inset-bottom) + 84px); padding-bottom: 8px; }
+
+/* playing with it today: the pro's tips per pattern, green ticks */
+.mob-play-now { margin: 0; padding: 14px 16px 14px 40px; display: flex; flex-direction: column; gap: 8px; list-style: none; }
+.mob-play-now li { position: relative; }
+.mob-play-now li::before { content: '✓'; position: absolute; left: -24px; color: var(--brand); font-weight: 700; }
+
+/* pain: its own result (TPI) – red with "!", a note instead of drills */
+.mob-grade.pain { border-radius: 8px; }
+.mob-pain { min-height: 56px; }
+.mob-pain-note { display: flex; align-items: center; gap: 12px; }
+.mob-pain-note .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mob-since { color: var(--text-2); }
+.mob-since.better { color: var(--brand); font-weight: 600; }
+.mob-when, .mob-private { margin: 0; text-align: center; }

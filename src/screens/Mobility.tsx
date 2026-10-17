@@ -15,7 +15,7 @@ import { CameraTest, gradeName, sideText, unlockAudio } from '../mobility/Camera
 import { valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
-import { leadSide, likelyMisses, latestResults, MISS_NAMES, swingPatterns, testGrade, type PatternResult } from '../mobility/swing';
+import { hasPain, leadSide, previousMeasurement, likelyMisses, latestResults, MISS_NAMES, PLAY_NOW, swingPatterns, testGrade, type PatternResult } from '../mobility/swing';
 import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
 import type { Area, Grade, Measurement, Screening, Side, TestDef, TestId, TestResult } from '../mobility/types';
 import '../training/training.css';
@@ -95,12 +95,38 @@ function useMobilityTick(): number {
 /** The value of a result in words – both sides for sided tests ("left 48° · right 39°"). */
 function resultText(test: TestDef, r: TestResult | undefined): string {
   if (!r) return tr('not tested yet', 'noch nicht getestet');
-  const one = (m: Measurement) => (m.source === 'self' ? tr('self-judged', 'selbst eingeschätzt') : test.metric ? valueText(test.metric, m.value, tr) : '');
+  const one = (m: Measurement) => (m.pain ? tr('pain', 'Schmerz') : m.source === 'self' ? tr('self-judged', 'selbst eingeschätzt') : test.metric ? valueText(test.metric, m.value, tr) : '');
   if (r.both) return `${one(r.both)}`;
-  return (['left', 'right'] as Side[])
+  const text = (['left', 'right'] as Side[])
     .filter((s) => r[s])
     .map((s) => `${sideName(s)} ${one(r[s]!)}`)
     .join(' · ');
+  const gap = sideGap(test, r);
+  return gap ? `${text} · ${gap}` : text;
+}
+
+/** A clear difference between the sides, in words ("14° difference") – TPI coaches name it: a body often turns better
+ * into the backswing than through. From 10° or 5 s on; none for self checks. */
+function sideGap(test: TestDef, r: TestResult): string | null {
+  const a = r.left?.source === 'camera' ? r.left.value : null;
+  const b = r.right?.source === 'camera' ? r.right.value : null;
+  if (a == null || b == null || !test.metric) return null;
+  const secs = test.metric === 'balance' || test.metric === 'bridge';
+  const d = Math.abs(a - b);
+  if (d < (secs ? 5 : 10)) return null;
+  const n = secs ? `${Math.round(d)} s` : `${Math.round(d)}°`;
+  return tr(`${n} difference`, `${n} Unterschied`);
+}
+
+/** The mark of a test result: ✓ – ✕, or "!" when it hurt. */
+function ResultMark(props: { r: TestResult | undefined; small?: boolean }) {
+  if (hasPain(props.r))
+    return (
+      <span className={`mob-grade fail pain${props.small ? ' small' : ''}`} aria-label={tr('pain', 'Schmerz')}>
+        !
+      </span>
+    );
+  return <GradeMark grade={testGrade(props.r)} small={props.small} />;
 }
 
 function GradeMark(props: { grade: Grade | null; small?: boolean }) {
@@ -230,6 +256,9 @@ function TestTab(props: { nav: Nav }) {
   const all = loadScreenings();
   const open = all.filter((s) => !s.finishedAt && s.kind !== 'single');
   const { results } = latestResults(all);
+  // repeat every four weeks (GOWOD 30 days, Amazon Halo 2–4 weeks, TPI coaches 4 weeks) – a hint, no lock
+  const lastDone = all.filter((s) => s.finishedAt && s.kind !== 'single' && Object.keys(s.results).length).map((s) => s.finishedAt!).sort().at(-1);
+  const next = lastDone ? { last: lastDone, from: new Date(new Date(lastDone).getTime() + 28 * 86400000).toISOString() } : null;
   const start = (kind: 'quick' | 'full') => {
     const s = newScreening(kind, kind === 'quick' ? QUICK : FULL);
     saveScreening(s);
@@ -270,6 +299,10 @@ function TestTab(props: { nav: Nav }) {
           <span className="muted small">{tr(`${FULL.length} tests · about ${minutesOf(FULL)} min`, `${FULL.length} Tests · etwa ${minutesOf(FULL)} Min.`)}</span>
         </button>
       </section>
+      <p className="muted small mob-when">
+        {next ? tr(`Last screening ${dateText(next.last)} · the next one from ${dateText(next.from)}. `, `Letztes Screening ${dateText(next.last)} · das nächste ab ${dateText(next.from)}. `) : ''}
+        {tr('For values you can compare: not warmed up, about the same time of day.', 'Für vergleichbare Werte: nicht aufgewärmt, etwa zur gleichen Tageszeit.')}
+      </p>
       <section className="tr-block">
         <h2>{tr('Single tests', 'Einzelne Tests')}</h2>
         <div className="list">
@@ -284,7 +317,7 @@ function TestTab(props: { nav: Nav }) {
                     {test.mode === 'camera' ? tr('Camera', 'Kamera') : tr('Self check', 'Selbsttest')} · {resultText(test, results[id])}
                   </span>
                 </span>
-                <GradeMark grade={testGrade(results[id])} small />
+                <ResultMark r={results[id]} small />
               </button>
             );
           })}
@@ -338,7 +371,7 @@ function TestView(props: { id: TestId; nav: Nav }) {
                         {dateText(s.createdAt)} · {kindName(s.kind)}
                       </span>
                     </span>
-                    <GradeMark grade={testGrade(r)} small />
+                    <ResultMark r={r} small />
                   </button>
                 ))}
               </div>
@@ -501,7 +534,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   if (stage === 'camera')
     return (
       <main className="screen mobility mob-run-camera">
-        <CameraTest key={`${step.test}-${step.side}`} test={test} side={step.side} onResult={save} onSelf={() => setStage('self')} onCancel={() => setStage('brief')} />
+        <CameraTest key={`${step.test}-${step.side}`} test={test} side={step.side} previous={previousMeasurement(loadScreenings(), step.test, step.side, s.id)} onResult={save} onSelf={() => setStage('self')} onCancel={() => setStage('brief')} />
       </main>
     );
 
@@ -510,7 +543,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       <TopBar title={single ? t(test.name) : kindName(s.kind)} onBack={() => (!single ? setExit('menu') : Object.keys(s.results).length ? finish(s) : (discardEmpty(s.id), props.onPause()))} backLabel={tr('Leave', 'Verlassen')} />
       <section className="card tr-now">
         <div className="tr-now-head">
-          <GradeMark grade={testGrade(s.results[step.test])} />
+          <ResultMark r={s.results[step.test]} />
           <span className="grow">
             <span className="eyebrow">
               {single ? (test.mode === 'camera' ? tr('Camera test', 'Kameratest') : tr('Self check', 'Selbsttest')) : tr(`Test ${testIndex + 1} of ${s.tests.length}`, `Test ${testIndex + 1} von ${s.tests.length}`)}
@@ -733,12 +766,27 @@ function SelfCheck(props: { test: TestDef; onPick: (m: Measurement) => void; onB
           </span>
         </button>
       ))}
+      <PainButton onPick={props.onPick} />
       {props.onBack && (
         <button type="button" className="btn-secondary" onClick={props.onBack}>
           {tr('Back to the camera test', 'Zurück zum Kameratest')}
         </button>
       )}
     </section>
+  );
+}
+
+/** "It hurts" – TPI scores pain as its own result: no drill for it, a physio first. */
+function PainButton(props: { onPick: (m: Measurement) => void; value?: number | null; source?: Measurement['source'] }) {
+  return (
+    <button type="button" className="mob-option mob-pain" onClick={() => props.onPick({ value: props.value ?? null, grade: 'fail', source: props.source ?? 'self', pain: true, at: new Date().toISOString() })}>
+      <span className="mob-option-label">
+        <span className="mob-grade fail pain small" aria-hidden="true">
+          !
+        </span>
+        <span>{tr('It hurts', 'Es tut weh')}</span>
+      </span>
+    </button>
   );
 }
 
@@ -867,6 +915,15 @@ function PatternView(props: { id: string; nav: Nav }) {
         </div>
       </section>
       <section className="tr-block">
+        <h2>{tr('Playing with it today', 'So spielst du heute schon damit')}</h2>
+        <ul className="card tr-section mob-play-now">
+          {PLAY_NOW[p.id].map((x, i) => (
+            <li key={i}>{t(x)}</li>
+          ))}
+        </ul>
+        <span className="muted small">{tr('Until the drills work – then the full swing comes back.', 'Bis die Übungen wirken – danach kommt der volle Schwung zurück.')}</span>
+      </section>
+      <section className="tr-block">
         <h2>{tr('Because of these tests', 'Wegen dieser Tests')}</h2>
         <div className="list">
           {r.causes.map((c) => {
@@ -913,7 +970,7 @@ function BodyResult(props: { results: Partial<Record<TestId, TestResult>>; nav: 
                     <span className="title">{t(test.name)}</span>
                     <span className="muted small">{resultText(test, props.results[test.id])}</span>
                   </span>
-                  <GradeMark grade={testGrade(props.results[test.id])} small />
+                  <ResultMark r={props.results[test.id]} small />
                 </button>
               ))}
             </div>
@@ -946,13 +1003,52 @@ function DrillList(props: { drills: Drill[]; nav: Nav }) {
 }
 
 /** The drills for the tests that did not pass, worst first – and into Training as a plan. */
+/** How much a test matters for the swing, 1 = most (Macro Golf, TPI): turning and separating, then posture and
+ * stability, then length and the hands. REVIEW(golf) – Chris. */
+const GOLF_PRIORITY: Record<TestId, number> = {
+  'pelvic-rotation': 1,
+  'seated-rotation': 1,
+  'lower-quarter': 1,
+  'shoulder-9090': 2,
+  neck: 2,
+  'pelvic-tilt': 2,
+  'deep-squat': 3,
+  bridge: 3,
+  'single-leg': 3,
+  'reach-roll-lift': 4,
+  lat: 4,
+  'toe-touch': 5,
+  forearm: 5,
+  'wrist-hinge': 5,
+  'wrist-flex': 5,
+};
+
+/** Tests that hurt: no drills for them – a physio first (TPI: pain is its own result). */
+function PainNote(props: { tests: TestDef[] }) {
+  return (
+    <section className="card mob-pain-note" role="note">
+      <span className="mob-grade fail pain" aria-hidden="true">
+        !
+      </span>
+      <span className="grow">
+        <strong>{tr('Pain', 'Schmerz')}: {props.tests.map((x) => t(x.name)).join(', ')}</strong>
+        <span className="small">{tr('No drills for it here – have a physio look at it first.', 'Dafür gibt es hier keine Übungen – lass das zuerst von einem Physio anschauen.')}</span>
+      </span>
+    </section>
+  );
+}
+
 function DrillsTab(props: { nav: Nav }) {
   const { results } = latestResults(loadScreenings());
   const [saved, setSaved] = useState(false);
+  // ✕ before –, then what matters most for the swing (TPI coaches: the turning areas and separating upper and lower body
+  // first; toe touch and arms overhead are more about aches than about swing faults)
+  const rank = (x: TestDef) => (testGrade(results[x.id]) === 'fail' ? 0 : 10) + GOLF_PRIORITY[x.id];
   const open = TESTS.filter((x) => {
     const g = testGrade(results[x.id]);
-    return g === 'fail' || g === 'limited';
-  }).sort((a, b) => (testGrade(results[a.id]) === 'fail' ? 0 : 1) - (testGrade(results[b.id]) === 'fail' ? 0 : 1));
+    return (g === 'fail' || g === 'limited') && !hasPain(results[x.id]);
+  }).sort((a, b) => rank(a) - rank(b));
+  const pain = TESTS.filter((x) => hasPain(results[x.id]));
   const keep = ['open-books', 'deep-squat', 'glute-bridge', 'single-leg-balance'].map(drillById).filter((d): d is Drill => !!d);
   const all = [...new Set(open.flatMap((x) => x.drills))].map(drillById).filter((d): d is Drill => !!d);
   const planDrills = all.length ? all.slice(0, 8) : keep;
@@ -967,6 +1063,7 @@ function DrillsTab(props: { nav: Nav }) {
     );
   return (
     <>
+      {pain.length > 0 && <PainNote tests={pain} />}
       {open.length === 0 ? (
         <section className="tr-block">
           <h2>{tr('Keep it', 'Erhalten')}</h2>
@@ -976,7 +1073,7 @@ function DrillsTab(props: { nav: Nav }) {
         open.map((x) => (
           <section key={x.id} className="tr-block">
             <h2 className="mob-drill-head">
-              <GradeMark grade={testGrade(results[x.id])} small />
+              <ResultMark r={results[x.id]} small />
               <span>{t(x.name)}</span>
             </h2>
             <DrillList drills={x.drills.map(drillById).filter((d): d is Drill => !!d)} nav={props.nav} />
@@ -1178,7 +1275,7 @@ function ScreeningView(props: { id: string; nav: Nav }) {
                 <span className="title">{t(test.name)}</span>
                 <span className="muted small">{s.skipped?.includes(id) && !s.results[id] ? tr('skipped', 'übersprungen') : resultText(test, s.results[id])}</span>
               </span>
-              <GradeMark grade={testGrade(s.results[id])} small />
+              <ResultMark r={s.results[id]} small />
             </button>
           );
         })}

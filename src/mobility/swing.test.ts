@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { latestResults, likelyMisses, measurementFor, swingPatterns } from './swing';
+import { hasPain, latestResults, likelyMisses, measurementFor, PLAY_NOW, PATTERNS, swingPatterns } from './swing';
 import { FULL, QUICK, TESTS } from './tests';
 import { drillById } from '../training/content';
 import type { Grade, Measurement, Screening, TestId, TestResult } from './types';
@@ -21,6 +21,14 @@ describe('body–swing connection', () => {
     expect(ps[0].pattern.id).toBe('early-extension');
     const misses = likelyMisses(ps).map((x) => x.miss);
     expect(misses).toEqual(expect.arrayContaining(['push', 'hook', 'thin', 'shank']));
+  });
+
+  it('a test that hurt points to no pattern and offers no drills (a physio first)', () => {
+    const r = { ...all('pass'), 'deep-squat': { both: { ...m('fail'), pain: true } }, bridge: { left: { ...m('fail'), pain: true }, right: m('pass') } };
+    expect(swingPatterns(r, 'right').find((p) => p.pattern.id === 'early-extension')).toBeUndefined();
+    expect(hasPain(r['deep-squat'])).toBe(true);
+    expect(hasPain(r.bridge)).toBe(true);
+    expect(hasPain(r['toe-touch'])).toBe(false);
   });
 
   it('one contributing test alone is at most "possible"', () => {
@@ -92,6 +100,13 @@ describe('the tests', () => {
       const d = drillById(id)!;
       expect(d.sketch, id).toBeTruthy();
       expect(d.videos?.length ?? 0, id).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('every pattern says how to play with it today, in both languages', () => {
+    for (const p of PATTERNS) {
+      expect(PLAY_NOW[p.id].length, p.id).toBeGreaterThan(0);
+      for (const x of PLAY_NOW[p.id]) expect(x.en && x.de, p.id).toBeTruthy();
     }
   });
 });

@@ -86,6 +86,9 @@ export interface Measurement {
   source: 'camera' | 'self';
   /** checks that did not hold (e.g. "the heels come up") – English/German */
   notes?: L[];
+  /** it hurt (TPI scores pain as its own result): graded ✕, but no swing pattern and no drill follow from it – a
+   * physio should look at it first */
+  pain?: boolean;
   at: string;
 }
 

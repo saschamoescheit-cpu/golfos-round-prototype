@@ -227,6 +227,61 @@ export const PATTERNS: Pattern[] = [
   },
 ];
 
+/**
+ * Playing with it today ("teach around it", TPI): until the body moves better, a small change at address or in the swing
+ * takes the pressure off the limit – TPI coaches flare the trail foot for a hip that does not turn in, keep the swing
+ * short for a stiff upper back (Jon Rahm: short backswing, full separation). One or two per pattern, in player
+ * language. REVIEW(golf) – Chris.
+ */
+export const PLAY_NOW: Record<PatternId, L[]> = {
+  'early-extension': [
+    L('Turn the trail foot out 20–30° at address – the hip can turn instead of pushing towards the ball.', 'Den hinteren Fuß beim Ansprechen 20–30° ausdrehen – die Hüfte kann drehen statt zum Ball zu schieben.'),
+    L('Feel the seat stay on an imagined wall behind you until after impact.', 'Das Gesäß bleibt bis nach dem Treffpunkt an einer gedachten Wand hinter dir.'),
+  ],
+  'loss-of-posture': [
+    L('Swing back only as far as you keep your posture – a three-quarter swing hits it more solid.', 'Nur so weit ausholen, wie du die Haltung hältst – ein Dreiviertelschwung trifft sauberer.'),
+    L('Stand a little taller at address, knees soft.', 'Beim Ansprechen etwas aufrechter stehen, Knie locker.'),
+  ],
+  'over-the-top': [
+    L('Start the downswing with the hips, the arms come later – slower back, short pause at the top.', 'Den Abschwung mit der Hüfte beginnen, die Arme kommen später – langsam ausholen, oben kurz warten.'),
+    L('Set up a little closed (trail foot back) – it gives the arms room from the inside.', 'Etwas geschlossen stehen (hinterer Fuß zurück) – das gibt den Armen Platz von innen.'),
+  ],
+  sway: [
+    L('Turn the trail foot out 20–30° and keep the weight on the inside of that foot.', 'Den hinteren Fuß 20–30° ausdrehen und das Gewicht auf seiner Innenseite halten.'),
+    L('A slightly narrower stance makes turning easier than sliding.', 'Ein etwas schmalerer Stand macht Drehen leichter als Schieben.'),
+  ],
+  slide: [
+    L('Turn the lead foot out 20–30° – the hip can turn through instead of sliding to the target.', 'Den vorderen Fuß 20–30° ausdrehen – die Hüfte kann durchdrehen statt zum Ziel zu schieben.'),
+  ],
+  'reverse-spine': [
+    L('Let the lead heel come up a little in the backswing – it gives the turn more room.', 'Die vordere Ferse im Rückschwung etwas heben lassen – das gibt der Drehung Platz.'),
+    L('Swing shorter: stop where the chest stops turning, not where the arms could go.', 'Kürzer ausholen: dort stoppen, wo die Brust aufhört zu drehen, nicht wo die Arme noch könnten.'),
+  ],
+  'flat-shoulder': [
+    L('Bend a little more from the hips at address – the shoulders turn steeper by themselves.', 'Beim Ansprechen etwas mehr aus der Hüfte beugen – die Schultern drehen von selbst steiler.'),
+    L('A shorter backswing with the arms in front of the chest.', 'Ein kürzerer Rückschwung, die Arme bleiben vor der Brust.'),
+  ],
+  'hanging-back': [
+    L('Start with a little more weight on the lead foot (about 55 %) and the ball a touch further back.', 'Mit etwas mehr Gewicht auf dem vorderen Fuß beginnen (etwa 55 %), den Ball etwas weiter hinten.'),
+  ],
+  casting: [
+    L('Hinge the wrists early in the backswing – the angle is set before the top.', 'Die Handgelenke früh im Rückschwung abwinkeln – der Winkel steht schon vor dem höchsten Punkt.'),
+    L('Three-quarter swings: hold the angle a little longer instead of swinging harder.', 'Dreiviertelschwünge: den Winkel etwas länger halten statt fester zu schlagen.'),
+  ],
+  'chicken-wing': [
+    L('A slightly stronger grip helps the face close without pulling the elbow in.', 'Ein etwas stärkerer Griff hilft, das Schlagblatt zu schließen, ohne den Ellbogen anzuziehen.'),
+    L('Short finish: let the forearms turn over, the arms stay long only to hip height.', 'Kurzes Finish: die Unterarme drehen lassen, die Arme nur bis Hüfthöhe lang.'),
+  ],
+  scooping: [
+    L('Ball a touch further back, hands slightly ahead of it at address.', 'Den Ball etwas weiter hinten, die Hände beim Ansprechen leicht davor.'),
+    L('Keep more weight on the lead foot through impact.', 'Durch den Treffpunkt mehr Gewicht auf dem vorderen Fuß.'),
+  ],
+  's-posture': [
+    L('At address, roll the pelvis under a little (belt buckle up) – the low back is flat, not hollow.', 'Beim Ansprechen das Becken leicht einrollen (Gürtelschnalle nach oben) – der untere Rücken ist flach, nicht hohl.'),
+    L('Knees a little more bent, the weight over the balls of the feet.', 'Die Knie etwas mehr gebeugt, das Gewicht über den Fußballen.'),
+  ],
+};
+
 // ---------- results ----------
 const SCORE: Record<Grade, number> = { pass: 0, limited: 0.5, fail: 1 };
 const worse = (a?: Measurement, b?: Measurement): Measurement | undefined => (!a ? b : !b ? a : SCORE[a.grade] >= SCORE[b.grade] ? a : b);
@@ -242,6 +297,25 @@ export function measurementFor(r: TestResult | undefined, side: 'lead' | 'trail'
   const lead = leadSide(hand);
   return side === 'lead' ? r[lead] : r[lead === 'left' ? 'right' : 'left'];
 }
+
+/**
+ * The last measured value of a test (and side) before this screening – for "last time 44°, now +8°" (Yogger shows
+ * two attempts side by side). Camera values only, no pain.
+ */
+export function previousMeasurement(list: Screening[], test: TestId, side: Side | null, exclude?: string): Measurement | undefined {
+  let best: Measurement | undefined;
+  for (const s of list) {
+    if (s.id === exclude) continue;
+    const r = s.results[test];
+    const m = side ? r?.[side] : r?.both;
+    if (!m || m.source !== 'camera' || m.value == null || m.pain) continue;
+    if (!best || m.at > best.at) best = m;
+  }
+  return best;
+}
+
+/** It hurt on one side or both. */
+export const hasPain = (r: TestResult | undefined): boolean => !!(r?.both?.pain || r?.left?.pain || r?.right?.pain);
 
 /** The grade of a whole test (the worse side). */
 export function testGrade(r: TestResult | undefined): Grade | null {
@@ -276,7 +350,8 @@ export function swingPatterns(results: Partial<Record<TestId, TestResult>>, hand
     const causes: PatternResult['causes'] = [];
     for (const l of p.links) {
       const m = measurementFor(results[l.test], l.side, hand);
-      if (!m) continue;
+      // pain says nothing about mobility – the test does not count until it is pain-free
+      if (!m || m.pain) continue;
       done++;
       total += l.w;
       lost += l.w * SCORE[m.grade];
