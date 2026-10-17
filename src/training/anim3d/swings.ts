@@ -9,7 +9,7 @@ import type { Swing, SwingKey } from './golf3d';
 const k = (t: number, x: Omit<SwingKey, 't'>): SwingKey => ({ t, ...x });
 
 const ADDRESS: Omit<SwingKey, 't'> = {
-  body: { pelvis: [32, 0, 2], spine: [6, 0, 0], chest: [6, 0, 5], neck: [-8, 0, 0], head: [16, 0, 0] },
+  body: { pelvis: [38, 0, 2], spine: [2, 0, 0], chest: [2, 0, 5], neck: [-14, 0, 0], head: [6, 0, 0] },
   hands: [0.06, -0.2, 0.42],
   club: 'ball',
 };
@@ -23,56 +23,56 @@ export const FULL_SWING: Swing = {
     k(0, { ...ADDRESS, label: L('Set-up', 'Ansprache') }),
     k(0.5, ADDRESS),
     k(1.0, {
-      body: { pelvis: [32, -14, 2], spine: [6, -6, 0], chest: [6, -22, 5], neck: [-8, 18, 0], head: [22, 8, 0] },
+      body: { pelvis: [38, -14, 2], spine: [2, -6, 0], chest: [2, -22, 5], neck: [-14, 18, 0], head: [12, 8, 0] },
       hands: [-0.02, -0.24, 0.44],
       club: [-1, 0.08, 0.05],
       label: L('Back in one piece – one', 'Aus einem Guss zurück – eins'),
     }),
     k(1.45, {
-      body: { pelvis: [32, -28, 2], spine: [6, -10, 0], chest: [6, -34, 6], neck: [-8, 32, 0], head: [22, 12, 0] },
+      body: { pelvis: [38, -28, 2], spine: [2, -10, 0], chest: [2, -34, 6], neck: [-14, 32, 0], head: [12, 12, 0] },
       hands: [-0.1, -0.12, 0.45],
       club: [-0.1, 0.93, -0.36],
       label: L('Wrists hinge – two', 'Handgelenke winkeln an – zwei'),
     }),
     k(2.0, {
-      body: { pelvis: [32, -42, 0], spine: [6, -12, 0], chest: [6, -36, 8], neck: [-8, 44, 0], head: [22, 14, 0] },
+      body: { pelvis: [38, -42, 0], spine: [2, -12, 0], chest: [2, -36, 8], neck: [-14, 44, 0], head: [12, 14, 0] },
       hands: [-0.22, 0.44, 0.16],
       club: [0.95, -0.05, 0.1],
       label: L('The top – three', 'Oben – drei'),
     }),
     k(2.3, {
-      body: { pelvis: [32, -42, 0], spine: [6, -12, 0], chest: [6, -36, 8], neck: [-8, 44, 0], head: [22, 14, 0] },
+      body: { pelvis: [38, -42, 0], spine: [2, -12, 0], chest: [2, -36, 8], neck: [-14, 44, 0], head: [12, 14, 0] },
       hands: [-0.22, 0.44, 0.16],
       club: [0.95, -0.05, 0.1],
     }),
     k(2.6, {
-      body: { pelvis: [32, -8, 5], spine: [6, -10, 2], chest: [6, -30, 8], neck: [-8, 30, 0], head: [22, 10, 0] },
+      body: { pelvis: [38, -8, 5], spine: [2, -10, 2], chest: [2, -30, 8], neck: [-14, 30, 0], head: [12, 10, 0] },
       hands: [-0.12, -0.08, 0.42],
       club: [-0.45, 0.75, -0.45],
       shift: 0.04,
       label: L('Down from the ground', 'Abschwung vom Boden'),
     }),
     k(2.7, {
-      body: { pelvis: [31, 12, 6], spine: [6, -4, 2], chest: [6, -22, 8], neck: [-8, 10, 0], head: [22, 2, 0] },
+      body: { pelvis: [37, 12, 6], spine: [2, -4, 2], chest: [2, -22, 8], neck: [-14, 10, 0], head: [12, 2, 0] },
       hands: [-0.05, -0.17, 0.43],
       club: [-1, 0.06, 0.12],
       shift: 0.06,
     }),
     k(2.8, {
-      body: { pelvis: [30, 30, 6], spine: [6, 2, 2], chest: [6, -10, 7], neck: [-8, -12, 0], head: [22, -6, 0] },
+      body: { pelvis: [36, 30, 6], spine: [2, 2, 2], chest: [2, -10, 7], neck: [-14, -12, 0], head: [12, -6, 0] },
       hands: [0.1, -0.21, 0.42],
       club: 'ball',
       shift: 0.07,
       label: L('Impact: hands ahead – four', 'Treffmoment: Hände vorn – vier'),
     }),
     k(2.92, {
-      body: { pelvis: [27, 45, 5], spine: [5, 6, 1], chest: [5, 4, 4], neck: [-7, -18, 0], head: [20, -8, 0] },
+      body: { pelvis: [33, 45, 5], spine: [1, 6, 1], chest: [1, 4, 4], neck: [-13, -18, 0], head: [10, -8, 0] },
       hands: [0.16, -0.17, 0.44],
       club: [1, 0.06, 0.12],
       shift: 0.09,
     }),
     k(3.05, {
-      body: { pelvis: [24, 55, 4], spine: [4, 8, 0], chest: [4, 18, 2], neck: [-6, -30, 0], head: [18, -10, 0] },
+      body: { pelvis: [30, 55, 4], spine: [0, 8, 0], chest: [0, 18, 2], neck: [-12, -30, 0], head: [8, -10, 0] },
       hands: [0.12, -0.08, 0.46],
       club: [0.12, 0.93, -0.34],
       shift: 0.1,
@@ -80,7 +80,7 @@ export const FULL_SWING: Swing = {
       free: true,
     }),
     k(3.5, {
-      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-4, -20, 0], head: [6, -8, 0] },
+      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-10, -20, 0], head: [4, -8, 0] },
       hands: [0.12, 0.34, 0.3],
       club: [-0.75, -0.25, -0.6],
       shift: 0.12,
@@ -90,7 +90,7 @@ export const FULL_SWING: Swing = {
       label: L('Hold the finish', 'Finish halten'),
     }),
     k(4.7, {
-      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-4, -20, 0], head: [6, -8, 0] },
+      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-10, -20, 0], head: [4, -8, 0] },
       hands: [0.12, 0.34, 0.3],
       club: [-0.75, -0.25, -0.6],
       shift: 0.12,
@@ -116,31 +116,31 @@ export const HALF_SWING: Swing = {
     k(0, { ...ADDRESS, label: L('Set-up', 'Ansprache') }),
     k(0.5, ADDRESS),
     k(1.0, {
-      body: { pelvis: [32, -12, 2], spine: [6, -6, 0], chest: [6, -18, 5], neck: [-8, 16, 0], head: [22, 6, 0] },
+      body: { pelvis: [38, -12, 2], spine: [2, -6, 0], chest: [2, -18, 5], neck: [-14, 16, 0], head: [12, 6, 0] },
       hands: [-0.02, -0.24, 0.44],
       club: [-1, 0.1, 0.05],
       label: L('The body turns back', 'Der Körper dreht zurück'),
     }),
     k(1.5, {
-      body: { pelvis: [32, -24, 2], spine: [6, -8, 0], chest: [6, -30, 6], neck: [-8, 28, 0], head: [22, 10, 0] },
+      body: { pelvis: [38, -24, 2], spine: [2, -8, 0], chest: [2, -30, 6], neck: [-14, 28, 0], head: [12, 10, 0] },
       hands: [-0.1, -0.12, 0.45],
       club: [-0.1, 0.93, -0.36],
       label: L('9 o’clock: lead arm level, shaft up', '9 Uhr: vorderer Arm waagrecht, Schaft nach oben'),
     }),
     k(1.85, {
-      body: { pelvis: [32, -24, 2], spine: [6, -8, 0], chest: [6, -30, 6], neck: [-8, 28, 0], head: [22, 10, 0] },
+      body: { pelvis: [38, -24, 2], spine: [2, -8, 0], chest: [2, -30, 6], neck: [-14, 28, 0], head: [12, 10, 0] },
       hands: [-0.1, -0.12, 0.45],
       club: [-0.1, 0.93, -0.36],
     }),
     k(2.1, {
-      body: { pelvis: [30, 26, 5], spine: [6, 2, 2], chest: [6, -8, 6], neck: [-8, -10, 0], head: [22, -5, 0] },
+      body: { pelvis: [36, 26, 5], spine: [2, 2, 2], chest: [2, -8, 6], neck: [-14, -10, 0], head: [12, -5, 0] },
       hands: [0.1, -0.21, 0.42],
       club: 'ball',
       shift: 0.05,
       label: L('Ball first, then the grass', 'Erst der Ball, dann das Gras'),
     }),
     k(2.5, {
-      body: { pelvis: [24, 50, 4], spine: [4, 8, 0], chest: [4, 16, 2], neck: [-6, -28, 0], head: [18, -10, 0] },
+      body: { pelvis: [30, 50, 4], spine: [0, 8, 0], chest: [0, 16, 2], neck: [-12, -28, 0], head: [8, -10, 0] },
       hands: [0.12, -0.08, 0.46],
       club: [0.12, 0.93, -0.34],
       shift: 0.08,
@@ -148,7 +148,7 @@ export const HALF_SWING: Swing = {
       free: true,
     }),
     k(3.5, {
-      body: { pelvis: [24, 50, 4], spine: [4, 8, 0], chest: [4, 16, 2], neck: [-6, -28, 0], head: [18, -10, 0] },
+      body: { pelvis: [30, 50, 4], spine: [0, 8, 0], chest: [0, 16, 2], neck: [-12, -28, 0], head: [8, -10, 0] },
       hands: [0.12, -0.08, 0.46],
       club: [0.12, 0.93, -0.34],
       shift: 0.08,
@@ -158,7 +158,7 @@ export const HALF_SWING: Swing = {
 };
 
 const CHIP_ADDRESS: Omit<SwingKey, 't'> = {
-  body: { pelvis: [30, 6, 0], spine: [6, 0, -2], chest: [8, 0, -2], neck: [-8, 0, 0], head: [20, 0, 0] },
+  body: { pelvis: [36, 6, 0], spine: [2, 0, -2], chest: [4, 0, -2], neck: [-14, 0, 0], head: [10, 0, 0] },
   hands: [0.1, -0.2, 0.42],
   club: 'ball',
   shift: 0.04,
@@ -175,7 +175,7 @@ export const CHIP_STROKE: Swing = {
     k(0.6, CHIP_ADDRESS),
     k(1.25, {
       ...CHIP_ADDRESS,
-      body: { pelvis: [30, 0, 0], spine: [6, -4, -2], chest: [8, -12, -2], neck: [-8, 12, 0], head: [20, 4, 0] },
+      body: { pelvis: [36, 0, 0], spine: [2, -4, -2], chest: [4, -12, -2], neck: [-14, 12, 0], head: [10, 4, 0] },
       hands: [0.04, -0.21, 0.43],
       club: [-0.42, -0.88, 0.2],
       label: L('The shoulders rock, the wrists stay firm', 'Die Schultern schaukeln, die Handgelenke bleiben fest'),
@@ -183,14 +183,14 @@ export const CHIP_STROKE: Swing = {
     k(1.55, { ...CHIP_ADDRESS, label: L('The club brushes the grass', 'Der Schläger streift das Gras') }),
     k(1.9, {
       ...CHIP_ADDRESS,
-      body: { pelvis: [28, 20, 0], spine: [6, 6, -2], chest: [8, 12, -2], neck: [-8, -14, 0], head: [20, -6, 0] },
+      body: { pelvis: [34, 20, 0], spine: [2, 6, -2], chest: [4, 12, -2], neck: [-14, -14, 0], head: [10, -6, 0] },
       hands: [0.17, -0.2, 0.43],
       club: [0.45, -0.85, 0.25],
       label: L('The grip leads – hold the finish', 'Der Griff führt – Finish halten'),
     }),
     k(3.0, {
       ...CHIP_ADDRESS,
-      body: { pelvis: [28, 20, 0], spine: [6, 6, -2], chest: [8, 12, -2], neck: [-8, -14, 0], head: [20, -6, 0] },
+      body: { pelvis: [34, 20, 0], spine: [2, 6, -2], chest: [4, 12, -2], neck: [-14, -14, 0], head: [10, -6, 0] },
       hands: [0.17, -0.2, 0.43],
       club: [0.45, -0.85, 0.25],
     }),
@@ -198,7 +198,7 @@ export const CHIP_STROKE: Swing = {
 };
 
 const PUTT_ADDRESS: Omit<SwingKey, 't'> = {
-  body: { pelvis: [36, 0, 0], spine: [8, 0, 0], chest: [10, 0, 0], neck: [-10, 0, 0], head: [28, 0, 0] },
+  body: { pelvis: [42, 0, 0], spine: [4, 0, 0], chest: [6, 0, 0], neck: [-16, 0, 0], head: [18, 0, 0] },
   hands: [0.0, -0.24, 0.38],
   club: 'ball',
 };
@@ -214,7 +214,7 @@ export const PUTT_STROKE: Swing = {
     k(0.6, PUTT_ADDRESS),
     k(1.35, {
       ...PUTT_ADDRESS,
-      body: { ...PUTT_ADDRESS.body, chest: [10, -9, 0], neck: [-10, 9, 0] },
+      body: { ...PUTT_ADDRESS.body, chest: [6, -9, 0], neck: [-16, 9, 0] },
       hands: [-0.05, -0.24, 0.38],
       club: [-0.3, -0.93, 0.15],
       label: L('The shoulders rock back – tick', 'Die Schultern schaukeln zurück – Tick'),
@@ -222,14 +222,14 @@ export const PUTT_STROKE: Swing = {
     k(1.7, { ...PUTT_ADDRESS, label: L('Through the ball – tock', 'Durch den Ball – Tack') }),
     k(2.05, {
       ...PUTT_ADDRESS,
-      body: { ...PUTT_ADDRESS.body, chest: [10, 9, 0], neck: [-10, -9, 0] },
+      body: { ...PUTT_ADDRESS.body, chest: [6, 9, 0], neck: [-16, -9, 0] },
       hands: [0.06, -0.24, 0.38],
       club: [0.3, -0.93, 0.15],
       label: L('The head stays still', 'Der Kopf bleibt ruhig'),
     }),
     k(3.2, {
       ...PUTT_ADDRESS,
-      body: { ...PUTT_ADDRESS.body, chest: [10, 9, 0], neck: [-10, -9, 0] },
+      body: { ...PUTT_ADDRESS.body, chest: [6, 9, 0], neck: [-16, -9, 0] },
       hands: [0.06, -0.24, 0.38],
       club: [0.3, -0.93, 0.15],
     }),
@@ -299,7 +299,7 @@ const quiet = (sw: Swing): Swing => ({ ...sw, keys: sw.keys.map((x) => ({ ...x, 
 /** fat: the weight stays back, the wrists flip – the club hits the ground behind the ball */
 export const FAT: Swing = fault(FULL_SWING, {
   2.8: {
-    body: { pelvis: [32, 12, 2], spine: [6, -4, 6], chest: [6, -16, 12] },
+    body: { pelvis: [38, 12, 2], spine: [2, -4, 6], chest: [2, -16, 12] },
     shift: -0.05,
     drop: 0.08,
     miss: [-0.09, -0.02, 0],
@@ -309,7 +309,7 @@ export const FAT: Swing = fault(FULL_SWING, {
 /** thin: the body rises – the leading edge hits the middle of the ball */
 export const THIN: Swing = fault(FULL_SWING, {
   2.8: {
-    body: { pelvis: [18, 26, 4], spine: [2, 2, 2], chest: [2, -10, 6] },
+    body: { pelvis: [18, 26, 4], spine: [0, 2, 2], chest: [0, -10, 6] },
     drop: -0.02,
     miss: [0.01, 0.045, 0],
     label: L('Left: the chest rises, the edge hits the ball · right: the posture stays', 'Links: der Brustkorb hebt sich, die Kante trifft den Ball · rechts: die Haltung bleibt'),
@@ -317,13 +317,13 @@ export const THIN: Swing = fault(FULL_SWING, {
 });
 /** sway: the hips slide away from the target instead of turning */
 export const SWAY: Swing = fault(FULL_SWING, {
-  2.0: { shift: -0.12, body: { pelvis: [32, -20, -6], chest: [6, -30, 2] }, label: L('Left: the hips slide away · right: they turn', 'Links: die Hüfte gleitet weg · rechts: sie dreht') },
-  2.3: { shift: -0.12, body: { pelvis: [32, -20, -6], chest: [6, -30, 2] } },
+  2.0: { shift: -0.12, body: { pelvis: [38, -20, -6], chest: [2, -30, 2] }, label: L('Left: the hips slide away · right: they turn', 'Links: die Hüfte gleitet weg · rechts: sie dreht') },
+  2.3: { shift: -0.12, body: { pelvis: [38, -20, -6], chest: [2, -30, 2] } },
 });
 /** early extension: the hips move to the ball, the body stands up – seen from behind */
 export const EARLY_EXT: Swing = fault(FULL_SWING, {
   2.8: {
-    body: { pelvis: [14, 30, 6], spine: [2, 2, 2], chest: [4, -10, 7] },
+    body: { pelvis: [14, 30, 6], spine: [0, 2, 2], chest: [0, -10, 7] },
     push: 0.1,
     drop: -0.02,
     miss: [0, 0.03, 0.02],
@@ -334,7 +334,7 @@ export const EARLY_EXT: Swing = fault(FULL_SWING, {
 /** the chip faults: fat (weight back, wrists flip), thin (the body rises), slowing down (long back, short through) */
 export const CHIP_FAT: Swing = fault(CHIP_STROKE, {
   1.55: {
-    body: { pelvis: [30, 0, 4], spine: [6, 0, 4], chest: [8, -4, 8] },
+    body: { pelvis: [36, 0, 4], spine: [2, 0, 4], chest: [4, -4, 8] },
     shift: -0.05,
     drop: 0.08,
     miss: [-0.07, -0.02, 0],
@@ -343,22 +343,22 @@ export const CHIP_FAT: Swing = fault(CHIP_STROKE, {
 }, { hit: { at: 1.55, shot: 'chip', scale: 0.35 } });
 export const CHIP_THIN: Swing = fault(CHIP_STROKE, {
   1.55: {
-    body: { pelvis: [20, 6, 0], spine: [2, 0, -2], chest: [4, 0, -2] },
+    body: { pelvis: [20, 6, 0], spine: [0, 0, -2], chest: [0, 0, -2] },
     drop: -0.03,
     miss: [0.01, 0.04, 0],
     label: L('Left: the body rises, the edge hits the ball · right: the body stays down', 'Links: der Körper richtet sich auf, die Kante trifft den Ball · rechts: der Körper bleibt unten'),
   },
 }, { hit: { at: 1.55, shot: 'punch', scale: 0.7 } });
 export const CHIP_SLOW: Swing = fault(CHIP_STROKE, {
-  1.25: { hands: [-0.03, -0.17, 0.43], club: [-0.7, -0.68, 0.2], body: { chest: [8, -20, -2] }, label: L('Left: a long backswing · right: a short one', 'Links: weit ausholen · rechts: kurz ausholen') },
-  1.9: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] }, label: L('Left: braking at the ball · right: longer through, finish held', 'Links: am Ball bremsen · rechts: länger durch, Finish halten') },
-  3.0: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] } },
+  1.25: { hands: [-0.03, -0.17, 0.43], club: [-0.7, -0.68, 0.2], body: { chest: [4, -20, -2] }, label: L('Left: a long backswing · right: a short one', 'Links: weit ausholen · rechts: kurz ausholen') },
+  1.9: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [4, 3, -2] }, label: L('Left: braking at the ball · right: longer through, finish held', 'Links: am Ball bremsen · rechts: länger durch, Finish halten') },
+  3.0: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [4, 3, -2] } },
 }, { hit: { at: 1.55, shot: 'chip', scale: 0.5 } });
 
 /** the fairway wood: topped (lifting the ball, the body rises) and fat (too steep, weight back) */
 export const WOOD_TOP: Swing = fault(WOOD_SWING, {
   2.8: {
-    body: { pelvis: [18, 26, 4], spine: [2, 2, 2], chest: [2, -10, 6] },
+    body: { pelvis: [18, 26, 4], spine: [0, 2, 2], chest: [0, -10, 6] },
     drop: -0.03,
     miss: [0.01, 0.05, 0],
     label: L('Left: lifting the ball – the body rises · right: chest over the ball, sweeping the grass', 'Links: den Ball heben wollen – der Körper richtet sich auf · rechts: Brust über dem Ball, das Gras fegen'),
@@ -366,7 +366,7 @@ export const WOOD_TOP: Swing = fault(WOOD_SWING, {
 }, { hit: { at: 2.8, shot: 'putt', scale: 4 } });
 export const WOOD_FAT: Swing = fault(WOOD_SWING, {
   2.8: {
-    body: { pelvis: [32, 12, 2], spine: [6, -4, 6], chest: [6, -16, 12] },
+    body: { pelvis: [38, 12, 2], spine: [2, -4, 6], chest: [2, -16, 12] },
     shift: -0.05,
     drop: 0.08,
     miss: [-0.1, -0.02, 0],
@@ -376,7 +376,7 @@ export const WOOD_FAT: Swing = fault(WOOD_SWING, {
 /** the pitch: fat with the arms only and the weight back */
 export const PITCH_FAT: Swing = fault(HALF_SWING, {
   2.1: {
-    body: { pelvis: [32, 6, 2], spine: [6, -4, 6], chest: [6, -14, 12] },
+    body: { pelvis: [38, 6, 2], spine: [2, -4, 6], chest: [2, -14, 12] },
     shift: -0.05,
     drop: 0.08,
     miss: [-0.08, -0.02, 0],

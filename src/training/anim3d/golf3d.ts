@@ -214,7 +214,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
 
   /** the trunk of a key (or between two) put on the rig, the limbs left for the solver */
   const poseTrunk = (p: { rig: Rig; x: number; z: number }, body: SwingKey['body'], shift: number, drop: number, push = 0) => {
-    const pose: Pose = { j: { ...body }, at: [p.x + shift, p.z + push], y: drop };
+    const pose: Pose = { j: { ...body }, at: [p.x + shift, p.z + push - 0.06], y: drop };
     applyPose(p.rig, pose, false);
     p.rig.root.updateMatrixWorld(true);
   };
@@ -232,7 +232,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const keys = s.keys.map((k) => {
       poseTrunk(p, k.body, k.shift ?? 0, -(k.drop ?? 0.05), k.push ?? 0);
       let hands = new THREE.Vector3(...k.hands).applyQuaternion(chestQ(p.rig)).add(chestPos(p.rig));
-      const head = ballPos(p).add(new THREE.Vector3(0, 0.005, -0.03)).add(new THREE.Vector3(...(k.miss ?? [0, 0, 0])));
+      const head = ballPos(p).add(new THREE.Vector3(-0.04, 0.005, 0)).add(new THREE.Vector3(...(k.miss ?? [0, 0, 0])));
       const dir = k.club === 'ball' ? head.clone().sub(hands).normalize() : new THREE.Vector3(...k.club).normalize();
       // at the ball the clubhead sits exactly behind it: the hands slide along the shaft to the club's length
       if (k.club === 'ball') hands = head.clone().addScaledVector(dir, -(CLUB_LEN[s.club] - 0.05));
@@ -279,7 +279,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       const turned = new THREE.Quaternion().setFromUnitVectors(face, want).multiply(wq);
       head.parent!.getWorldQuaternion(tmpQ);
       const local = tmpQ.clone().invert().multiply(turned);
-      head.quaternion.copy(keyed.slerp(local, look));
+      head.quaternion.copy(keyed.slerp(local, look * 0.55));
       head.updateMatrixWorld(true);
     }
     const q = chestQ(rig);
@@ -448,7 +448,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     players = list.map(({ swing, x = 0, z = 0 }) => {
       const rig = buildRig();
       const club = buildClub(swing.club);
-      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.0215, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
       ball.castShadow = true;
       const tee = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.04, 8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.6 }));
       tee.visible = !!swing.tee;
