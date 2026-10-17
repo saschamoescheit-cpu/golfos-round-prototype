@@ -3,9 +3,11 @@ import type { Clip } from './scene';
 import type { JointId, Rot } from './rig';
 
 type J = Partial<Record<JointId, Rot>>;
-const still = (j: J, view: Clip['view'] = 'angle'): Clip => ({ view, keys: [{ t: 0, pose: { j } }, { t: 1, pose: { j } }] });
+const still = (j: J, view: Clip['view'] = 'angle', grip = 0.25, props: Clip['props'] = []): Clip => ({ view, props, focus: [0.1, 1.2, 0.45], dist: 1.2, keys: [{ t: 0, pose: { j, gripL: grip, gripR: grip } }, { t: 1, pose: { j, gripL: grip, gripR: grip } }] });
+const FWD: J = { shoulderL: [-70, 0, 8], shoulderR: [-70, 0, -8] };
 export const LAB: [string, Clip][] = [
-  ['a', still({ shoulderL: [0, 90, 120], shoulderR: [0, -90, -120], elbowL: [-140, 0, 0], elbowR: [-140, 0, 0] })],
-  ['b', still({ shoulderL: [-20, 90, 110], shoulderR: [-20, -90, -110], elbowL: [-150, 0, 0], elbowR: [-150, 0, 0] })],
-  ['c', still({ shoulderL: [0, 70, 125], shoulderR: [0, -70, -125], elbowL: [-145, 0, 0], elbowR: [-145, 0, 0] })],
+  ['open', still(FWD, 'angle', 0)],
+  ['relaxed', still({}, 'front', 0.25)],
+  ['closed', still(FWD, 'angle', 1)],
+  ['club', still({ shoulderR: [-60, 0, -8], elbowR: [-20, 0, 0] }, 'angle', 1, ['clubR'])],
 ];

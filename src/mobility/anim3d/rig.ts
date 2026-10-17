@@ -75,6 +75,21 @@ export interface Rig {
   head: THREE.Object3D;
   /** the eyes (scaled flat when closed – single-leg balance) */
   eyes: THREE.Object3D[];
+  /** the finger and thumb joints of each hand (curled by setGrip) */
+  fingers: { L: Finger[]; R: Finger[] };
+  /** how far the hands close: 0 = open and relaxed, 1 = closed around a grip (a club, a stick) */
+  setGrip(left: number, right: number): void;
+}
+
+/** a finger: its knuckle and middle joint (a thumb: base and tip) – curled about the hand's z (towards the palm) */
+interface Finger {
+  base: THREE.Object3D;
+  mid: THREE.Object3D;
+  /** curl of base and mid at a closed grip, degrees */
+  closed: [number, number];
+  /** curl at an open, relaxed hand */
+  open: [number, number];
+  thumb?: boolean;
 }
 
 function mat(color: string, rough = 0.75) {
@@ -189,13 +204,37 @@ export function buildRig(): Rig {
     const elbow = pivot(shoulder, [0, -B.upperArm, 0], 'XYZ');
     limb(elbow, B.forearm, 0.042, 0.032, COLORS.skin);
     const wrist = pivot(elbow, [0, -B.forearm, 0], 'XZY');
-    // the hand: a flat rounded block (the right hand bare, the left one in the glove as a golfer)
-    ball(wrist, 0.045, side === 1 ? COLORS.glove : COLORS.skin, [0, -0.05, 0.005], [0.62, 1.15, 1.0]);
+    // the hand (Sascha 17.10.2026: "more detail – fingers and hands"): the palm, four fingers in two parts and the
+    // thumb; the left hand in the glove as a golfer. Palm towards the body (−x for the left hand), thumb forward (+z).
+    const handColor = side === 1 ? COLORS.glove : COLORS.skin;
+    ball(wrist, 0.042, handColor, [0, -0.048, 0.004], [0.5, 1.05, 1.0]);
+    const fingers: Finger[] = [];
+    // index … little: knuckle across the palm (z), lengths of the two parts, thickness
+    const F: [number, number, number, number][] = [
+      [0.026, 0.046, 0.036, 0.0095],
+      [0.009, 0.05, 0.039, 0.0098],
+      [-0.008, 0.047, 0.036, 0.0092],
+      [-0.024, 0.038, 0.03, 0.0082],
+    ];
+    for (const [z, l1, l2, r] of F) {
+      const base = pivot(wrist, [0, -0.088 + Math.abs(z) * 0.25, z], 'XYZ');
+      limb(base, l1, r, r * 0.92, handColor);
+      const mid = pivot(base, [0, -l1, 0], 'XYZ');
+      limb(mid, l2, r * 0.9, r * 0.8, handColor);
+      fingers.push({ base, mid, closed: [78, 95], open: [14, 16] });
+    }
+    // the thumb: from the heel of the hand forward and down; closed it lies along the grip
+    const tb = pivot(wrist, [-side * 0.008, -0.03, 0.03], 'XYZ');
+    tb.rotation.set(THREE.MathUtils.degToRad(-28), 0, 0);
+    limb(tb, 0.036, 0.0115, 0.0105, handColor);
+    const tm = pivot(tb, [0, -0.036, 0], 'XYZ');
+    limb(tm, 0.03, 0.0102, 0.0088, handColor);
+    fingers.push({ base: tb, mid: tm, closed: [38, 22], open: [8, 10], thumb: true });
     const grip = pivot(wrist, [0, -0.06, 0.01]);
     marker(wrist, [0, -0.08, -0.02], contacts); // palm
     marker(elbow, [0, 0, -0.045], contacts); // back of the elbow
     marker(shoulder, [side * 0.065, 0, 0], contacts); // side of the shoulder (lying on the side)
-    return { shoulder, elbow, wrist, grip, s };
+    return { shoulder, elbow, wrist, grip, s, fingers };
   };
   const aL = arm(1);
   const aR = arm(-1);
@@ -230,6 +269,19 @@ export function buildRig(): Rig {
     markers,
     contacts,
     hands: { L: aL.grip, R: aR.grip },
+    fingers: { L: aL.fingers, R: aR.fingers },
+    setGrip(left: number, right: number) {
+      for (const [list, k, side] of [[aL.fingers, left, 1], [aR.fingers, right, -1]] as [Finger[], number, 1 | -1][]) {
+        for (const f of list) {
+          const a = f.open[0] + (f.closed[0] - f.open[0]) * k;
+          const b = f.open[1] + (f.closed[1] - f.open[1]) * k;
+          // fingers curl towards the palm (about z); the thumb folds across the palm (about z as well, from its base tilt)
+          f.base.rotation.z = THREE.MathUtils.degToRad(-side * a);
+          f.mid.rotation.z = THREE.MathUtils.degToRad(-side * b);
+          if (f.thumb) f.base.rotation.y = THREE.MathUtils.degToRad(side * 20 * k);
+        }
+      }
+    },
     joints: {
       pelvis,
       spine,
@@ -268,6 +320,9 @@ export interface Pose {
   eyes?: number;
   /** the whole body rolled to the side (lying on the side: 90 = on the right side) */
   roll?: number;
+  /** how far each hand is closed, 0 … 1 (default: relaxed, slightly curled; holding a club or stick: 1) */
+  gripL?: number;
+  gripR?: number;
 }
 
 /** Puts the rig into a pose; with `ground` the lowest marker is set on the floor ('all': knees, hands, elbows too). */
@@ -279,6 +334,7 @@ export function applyPose(rig: Rig, p: Pose, ground: boolean | 'all' = true): vo
   rig.root.position.set(p.at?.[0] ?? 0, 0, p.at?.[1] ?? 0);
   rig.root.rotation.set(D(p.tip ?? 0), D(p.turn ?? 0), D(p.roll ?? 0), 'YXZ');
   for (const e of rig.eyes) e.scale.set(1, Math.max(0.12, p.eyes ?? 1), 1);
+  rig.setGrip(p.gripL ?? 0.25, p.gripR ?? 0.25);
   if (p.y != null) {
     rig.root.position.y = p.y;
     return;
@@ -312,5 +368,7 @@ export function mixPose(a: Pose, b: Pose, k: number): Pose {
     tip: l(a.tip, b.tip),
     roll: l(a.roll, b.roll),
     eyes: a.eyes != null || b.eyes != null ? (a.eyes ?? 1) + ((b.eyes ?? 1) - (a.eyes ?? 1)) * k : undefined,
+    gripL: l(a.gripL, b.gripL),
+    gripR: l(a.gripR, b.gripR),
   };
 }

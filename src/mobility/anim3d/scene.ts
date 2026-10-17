@@ -316,6 +316,10 @@ export function createViewer(canvas: HTMLCanvasElement): Viewer {
     if (!clip) return;
     const s = sample(clip, t);
     applyPose(rig, s.pose, clip.ground ?? true);
+    // hands around what they hold (a stick, a band, the club in the right hand) unless the clip says otherwise
+    const props = clip.props ?? [];
+    const both = props.includes('barHands') || props.includes('band');
+    if (s.pose.gripL == null && s.pose.gripR == null && (both || props.includes('clubR') || props.includes('clubLineR'))) rig.setGrip(both ? 1 : 0.25, 1);
     rig.root.updateMatrixWorld(true);
     if (bar) {
       // a stick held in both hands, 30 cm longer on each side
