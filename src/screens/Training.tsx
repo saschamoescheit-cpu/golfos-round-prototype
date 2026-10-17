@@ -562,6 +562,18 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
   );
 }
 
+/** the pause mark of a paused session (two bars, like a paused round in Rounds) */
+function PausedMark() {
+  return (
+    <span className="paused-mark" role="img" aria-label={tr('paused', 'pausiert')}>
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+        <rect x="6" y="5" width="4" height="14" rx="1" />
+        <rect x="14" y="5" width="4" height="14" rx="1" />
+      </svg>
+    </span>
+  );
+}
+
 function TrainTab(props: { nav: Nav; rounds: Round[] }) {
   const sessions = loadSessions();
   const running = sessions.filter((s) => !s.finishedAt);
@@ -581,14 +593,19 @@ function TrainTab(props: { nav: Nav; rounds: Round[] }) {
     <>
       <h1 className="tab-title">{tr('Practice', 'Üben')}</h1>
       {running.map((s) => (
-        <button key={s.id} type="button" className="list-item live" onClick={() => props.nav.push({ name: 'session', id: s.id })}>
+        // a paused session like a paused round (Rounds 17.10.2026): the same row as the finished ones, a pause mark at the name,
+        // the whole row opens it – no "Weiter ›" text link
+        <button key={s.id} type="button" className="list-item" onClick={() => props.nav.push({ name: 'session', id: s.id })}>
           <span className="grow">
-            <span className="title">{s.name}</span>
+            <span className="title">
+              {s.name}
+              <PausedMark />
+            </span>
             <span className="muted small">
               {tr(`Paused · drill ${s.current + 1} of ${s.items.length}`, `Pausiert · Übung ${s.current + 1} von ${s.items.length}`)}
             </span>
           </span>
-          <span className="small module-live">{tr('Continue ›', 'Weiter ›')}</span>
+          <span aria-hidden="true">›</span>
         </button>
       ))}
       {fromRounds.length > 0 && (

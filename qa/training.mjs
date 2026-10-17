@@ -172,7 +172,8 @@ await p.locator('.hole-bar .map-score').click();
 ok((await p.locator('.drawer-row').count()) === 4, 'overview lists the 4 drills');
 await p.locator('.drawer-action').filter({ hasText: 'Pausieren' }).click();
 await p.waitForTimeout(300);
-ok(await p.locator('.list-item.live').isVisible(), 'paused session is offered to continue');
+ok(await p.locator('.list-item').filter({ has: p.locator('.paused-mark') }).first().isVisible(), 'paused session: a row with the pause mark (like a paused round)');
+ok((await p.getByText(/^(Weiter|Continue) ›$/).count()) === 0, 'no text link to continue');
 // leave to the start page: the module card says a session is paused
 await p.locator('.module-switch').click();
 ok(await p.getByText('Eine Einheit ist pausiert').isVisible(), 'start page shows the paused session');
