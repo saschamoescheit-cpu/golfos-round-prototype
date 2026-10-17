@@ -279,6 +279,9 @@ export const FAULT_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> 
 const set3d = (m: Motion | undefined, v: Motion['video']) => m && (m.video = v);
 for (const id of ['hip-stick', 'sand-on-face', 'brush-find', 'hold-finish-slope']) set3d(DRILL_MOTIONS[id], undefined);
 set3d(DRILL_MOTIONS['fairway-bunker'], 'sand');
+set3d(DRILL_MOTIONS['feet-together-swing'], 'feet');
+set3d(DRILL_MOTIONS['feet-together-pitch'], 'feetHalf');
+set3d(DRILL_MOTIONS['pause-top'], 'pause');
 set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sand');
 set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
 for (const t of ['Uphill lie', 'Downhill lie']) set3d(SECTION_MOTIONS.slopes?.[t], undefined);

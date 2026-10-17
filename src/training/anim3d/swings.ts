@@ -229,5 +229,18 @@ export const WOOD_SWING: Swing = { ...DRIVER_SWING, tee: false, stance: 0.44, ba
 /** from a fairway bunker: the full swing from the sand, ball first */
 export const SAND_SWING: Swing = { ...FULL_SWING, sand: true };
 
-export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE };
+/** a swing that stays longer at one key (pause at the top): every later key moves on */
+const holdAt = (sw: Swing, at: number, extra: number, label: SwingKey['label']): Swing => ({
+  ...sw,
+  hit: sw.hit && { ...sw.hit, at: sw.hit.at + (sw.hit.at > at ? extra : 0) },
+  keys: sw.keys.flatMap((x) => (x.t === at ? [{ ...x, label: label ?? x.label }, { ...x, t: at + extra, label: undefined }] : x.t > at ? [{ ...x, t: x.t + extra }] : [x])),
+});
+
+/** feet together: balance and arms in step with the turn */
+export const FEET_SWING: Swing = { ...FULL_SWING, stance: 0.1 };
+export const FEET_HALF: Swing = { ...HALF_SWING, stance: 0.1 };
+/** a second's pause at the top, then down from the ground */
+export const PAUSE_SWING: Swing = holdAt(FULL_SWING, 2.3, 1, L('Pause at the top – one second', 'Pause oben – eine Sekunde'));
+
+export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING };
 export type SwingId = keyof typeof SWINGS;

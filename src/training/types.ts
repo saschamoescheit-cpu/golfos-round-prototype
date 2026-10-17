@@ -242,7 +242,7 @@ export interface Motion {
   /** more figures moving at the same time – the fault and the right way side by side */
   with?: { fig: number; frames: MotionFrame[] }[];
   /** the movement as a 3D video (anim3d/swings.ts) – shown instead of the drawn movement */
-  video?: 'full' | 'driver' | 'wood' | 'sand' | 'half' | 'chip' | 'putt';
+  video?: 'full' | 'driver' | 'wood' | 'sand' | 'half' | 'chip' | 'putt' | 'feet' | 'feetHalf' | 'pause';
 }
 
 /** Side view (slopes, ball flight, posture). */
