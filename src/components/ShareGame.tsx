@@ -46,7 +46,7 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
         </div>
         {!code ? (
           <>
-            <span className="muted">{tr('Your friends see the game on their phones and enter their scores too. They need to be signed in.', 'Deine Mitspieler sehen das Spiel auf ihrem Handy und tragen selbst ein. Sie müssen angemeldet sein.')}</span>
+            <span className="muted">{tr('Your friends enter their scores too (signed in).', 'Mitspieler tragen selbst ein (angemeldet).')}</span>
             <button
               type="button"
               className="btn-primary"
@@ -68,7 +68,7 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
             <strong className="join-code" aria-label={tr(`Code ${code}`, `Code ${code}`)}>
               {code}
             </strong>
-            <span className="muted small">{tr('Scan with the phone camera, or in Games → "Join a game" type the code.', 'Mit der Handykamera scannen oder in Games → „Spiel beitreten“ den Code eingeben.')}</span>
+            <span className="muted small">{tr('Scan, or type the code under "Join a game".', 'Scannen oder Code unter „Spiel beitreten“ eingeben.')}</span>
             <button type="button" className="btn-secondary" onClick={share}>
               {tr('Share the link', 'Link teilen')}
             </button>

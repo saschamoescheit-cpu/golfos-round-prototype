@@ -268,7 +268,6 @@ function GamesTabs(props: {
           {/* as "Start a new round" in Rounds (Sascha 15.10.2026: the same in every module) */}
           <section className="card play-card">
             <strong className="play-course">{tr('Start a new game', 'Neues Spiel starten')}</strong>
-            <span className="muted small">{tr('Side games among friends – skins, Nassau, wolf and more, with the standing and who pays whom.', 'Spiele unter Freunden – Skins, Nassau, Wolf und mehr, mit Zwischenstand und Abrechnung.')}</span>
             <button type="button" className={running.length ? 'btn-secondary' : 'btn-primary'} onClick={() => props.onNew()}>
               {tr('New game', 'Neues Spiel')}
             </button>
@@ -451,14 +450,13 @@ function Balance(props: { games: Game[] }) {
                     <span>
                       {r.name}{' '}
                       <span className="muted small">
-                        · {r.games} {r.games === 1 ? tr('game', 'Spiel') : tr('games', 'Spiele')} · {tr(`${r.won}:${r.lost} ahead`, `${r.won}:${r.lost} vorne`)}
+                        · {r.games} {r.games === 1 ? tr('game', 'Spiel') : tr('games', 'Spiele')} · {tr(`${r.won}× ahead · ${r.lost}× behind`, `${r.won}× vorne · ${r.lost}× hinten`)}
                       </span>
                     </span>
                     <strong className={cls(r.money)}>{formatEuro(r.money)}</strong>
                   </li>
                 ))}
             </ul>
-            <span className="muted small">{tr('"2:1 ahead": in how many games you finished ahead of the player and behind him. Money from the settlements (you are player 1).', '„2:1 vorne“: in wie vielen Spielen du vor bzw. hinter dem Mitspieler lagst. Geld aus den Abrechnungen (du bist Spieler 1).')}</span>
           </section>
         </>
       )}
@@ -640,7 +638,6 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             {tr(`${f.name()} needs ${playersText(f)} – you are ${n}.`, `${f.name()} braucht ${playersText(f)} – ihr seid ${n}.`)}
           </span>
         )}
-        <span className="muted small">{tr('Playing handicap for 18 holes; on 9 holes the game uses half of it. Empty = 0.', 'Spielvorgabe für 18 Löcher; auf 9 Löchern rechnet das Spiel mit der Hälfte. Leer = 0.')}</span>
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -726,14 +723,16 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
 
       <span className="spacer" />
       {/* a game is played on a course (Sascha 15.10.2026): par and stroke index come from it – no start without one */}
-      {!d.course && (
-        <span className="small good-text" role="status">
-          {tr('Choose the course first – par and stroke index come from it.', 'Wähle zuerst den Platz – Par und Stroke-Index kommen von dort.')}
-        </span>
-      )}
-      <button type="button" className="btn-primary" onClick={start} disabled={!fits || !d.course}>
-        {tr('Start game', 'Spiel starten')}
-      </button>
+      <div className="sticky-cta">
+        {!d.course && (
+          <span className="small good-text" role="status">
+            {tr('Choose the course first.', 'Wähle zuerst den Platz.')}
+          </span>
+        )}
+        <button type="button" className="btn-primary" onClick={start} disabled={!fits || !d.course}>
+          {tr('Start game', 'Spiel starten')}
+        </button>
+      </div>
     </main>
   );
 }
@@ -1619,7 +1618,6 @@ export function HoleExtras(props: { game: Game; hole: number; onChange: (patch: 
                 );
               })}
             </div>
-            <span className="muted small">{tr('The pairings rotate hole by hole; change it here if your group plays another one.', 'Die Paarungen wechseln von Loch zu Loch; hier änderbar, wenn ihr anders spielt.')}</span>
             <ChicagoHoleResult game={g} hole={i} />
           </section>
         )}

@@ -410,9 +410,11 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
         {tr('Plan round', 'Runde planen')}
         {planned > 0 ? <span className="muted small"> · {planned === holes.length ? tr(`all ${planned} holes planned`, `alle ${planned} Löcher geplant`) : tr(`${planned} of ${holes.length} holes planned`, `${planned} von ${holes.length} Löchern geplant`)}</span> : null}
       </button>
-      <button type="button" className="btn-primary" onClick={() => start()} disabled={!option || !fits}>
-        {tr('Start round', 'Runde starten')}
-      </button>
+      <div className="sticky-cta">
+        <button type="button" className="btn-primary" onClick={() => start()} disabled={!option || !fits}>
+          {tr('Start round', 'Runde starten')}
+        </button>
+      </div>
     </main>
   );
 }

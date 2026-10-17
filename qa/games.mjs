@@ -196,7 +196,7 @@ await p.waitForTimeout(1200);
 await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
 await p.waitForTimeout(300);
 const bal = await p.locator('main').innerText();
-ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal) && /\d+:\d+ vorne/.test(bal), 'balance with games, wins, the other players and head to head');
+ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal) && /\d+× vorne · \d+× hinten/.test(bal), 'balance with games, wins, the other players and head to head');
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 
 // Chicago for money: gross, press doubles 0,10 € up to the cap (Sascha 15.10.2026)

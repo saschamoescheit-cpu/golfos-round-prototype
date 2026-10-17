@@ -144,6 +144,35 @@ describe('sync that never gets stuck (Sascha 16.10.2026: "the iPhone round is no
   });
 });
 
+describe('signed rounds (night 17.10.2026)', () => {
+  const signed = (d: LocalStore) => (JSON.parse(d.get('golfos.rounds.v1') ?? '[]') as { signedAt?: string | null }[])[0]?.signedAt ?? null;
+  it('signed on the iPhone: the round shows signed on the PC after the next sync', async () => {
+    const srv = server();
+    const phone = device({ 'golfos.rounds.v1': [round('r1', [4, 5, 3], true)] });
+    const pc = device();
+    await syncOnce(phone, srv, clock);
+    await syncOnce(pc, srv, clock);
+    phone.set('golfos.rounds.v1', JSON.stringify([{ ...round('r1', [4, 5, 3], true), signedAt: '2026-10-16T20:00:00Z' }]));
+    await syncOnce(phone, srv, clock);
+    await syncOnce(pc, srv, clock);
+    expect(signed(pc)).toBe('2026-10-16T20:00:00Z');
+  });
+  it('signed on one device, a shot moved on the other: the signed round wins', async () => {
+    const srv = server();
+    const phone = device({ 'golfos.rounds.v1': [round('r1', [4, 5, 3], true)] });
+    const pc = device();
+    await syncOnce(phone, srv, clock);
+    await syncOnce(pc, srv, clock);
+    phone.set('golfos.rounds.v1', JSON.stringify([{ ...round('r1', [4, 5, 3], true), signedAt: '2026-10-16T20:00:00Z' }]));
+    pc.set('golfos.rounds.v1', JSON.stringify([{ ...round('r1', [4, 5, 3], true), details: [{ shots: [{ pos: { lat: 50, lon: 8 } }] }] }]));
+    await syncOnce(pc, srv, clock);
+    await syncOnce(phone, srv, clock);
+    await syncOnce(pc, srv, clock);
+    expect(signed(phone)).toBe('2026-10-16T20:00:00Z');
+    expect(signed(pc)).toBe('2026-10-16T20:00:00Z');
+  });
+});
+
 describe('settings stored as plain text', () => {
   it('the language "de" (no JSON) no longer stops the sync – it reaches the other device as "de"', async () => {
     const srv = server();

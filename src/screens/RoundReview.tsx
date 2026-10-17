@@ -463,7 +463,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       )}
 
       {!d || d.shots.length === 0 ? (
-        <p className="muted">{tr('No shots on this hole yet – tap the map where your ball lay after the tee shot; the tee shot is added by itself.', 'Noch keine Schläge an diesem Loch – tippe auf die Karte, wo dein Ball nach dem Abschlag lag; der Abschlag wird von selbst gesetzt.')}</p>
+        <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>
       ) : (
         <ol className="shot-list review-list">
           {d.shots.map((s, n) => {
@@ -610,13 +610,15 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       )}
 
       <span className="spacer" />
-      <button type="button" className="btn-primary" onClick={confirmHole}>
-        {!last
-          ? tr(`Confirm hole ${hole.label} →`, `Loch ${hole.label} bestätigen →`)
-          : openHoles.length
-            ? tr(`Confirm hole ${hole.label} → still to check`, `Loch ${hole.label} bestätigen → noch offene prüfen`)
-            : tr('Confirm round ✓', 'Runde bestätigen ✓')}
-      </button>
+      <div className="sticky-cta">
+        <button type="button" className="btn-primary" onClick={confirmHole}>
+          {!last
+            ? tr(`Confirm hole ${hole.label} →`, `Loch ${hole.label} bestätigen →`)
+            : openHoles.length
+              ? tr(`Confirm hole ${hole.label} → still to check`, `Loch ${hole.label} bestätigen → noch offene prüfen`)
+              : tr('Confirm round ✓', 'Runde bestätigen ✓')}
+        </button>
+      </div>
 
       {/* test mode: the round as a file for the analysis of the shot detection */}
       {isTestMode() && (

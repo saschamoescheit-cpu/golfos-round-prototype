@@ -280,7 +280,8 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
 
 /** How much a round or game holds: entered scores and shots – the fuller version wins a conflict. */
 function fullness(json: string): number {
-  return (json.match(/"strokes":\d/g)?.length ?? 0) * 10 + (json.match(/"pos":/g)?.length ?? 0) + (json.match(/"finishedAt":"/g)?.length ?? 0) * 100;
+  // a signed round or a confirmed game is the finished one – it wins over the same round edited elsewhere (night 17.10.2026)
+  return (json.match(/"strokes":\d/g)?.length ?? 0) * 10 + (json.match(/"pos":/g)?.length ?? 0) + (json.match(/"finishedAt":"/g)?.length ?? 0) * 100 + (json.match(/"signedAt":"/g)?.length ?? 0) * 1000;
 }
 
 // ---------- the browser side: localStorage and Supabase (REST, no library) ----------

@@ -124,9 +124,6 @@ export function PlayTab(props: {
 
       <section className="card play-card">
         <strong className="play-course">{tr('Start a new round', 'Neue Runde starten')}</strong>
-        <span className="muted small">
-          {tr('Score on the course – your shots come afterwards from the GPS track.', 'Score auf dem Platz – deine Schläge kommen danach aus der GPS-Spur.')}
-        </span>
         <button type="button" className={open ? 'btn-secondary' : 'btn-primary'} onClick={props.onNewRound}>
           {tr('New round', 'Neue Runde')}
         </button>
