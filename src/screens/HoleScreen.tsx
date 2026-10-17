@@ -11,7 +11,7 @@ import { PositionFilter } from '../lib/gpsfilter';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
-import { pickImagery, type ImageryId } from '../lib/imagery';
+import { loadRegionalImagery, pickImagery, type ImageryId } from '../lib/imagery';
 import { loadForecast, loadWeather, windOnHole, type Forecast, type Weather } from '../lib/weather';
 import { WeatherIcon } from '../components/WeatherIcon';
 import { adviseClub, DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
@@ -275,6 +275,12 @@ export function HoleScreen(props: {
   const courseCenter: LngLat = course ? [course.lon, course.lat] : (mapData?.greenCenter ?? player?.pos ?? [0, 0]);
   // Best imagery for the course's country (e.g. Spanish national orthophoto) unless the player picked another one.
   const imagery = pickImagery(courseCenter, imageryPref);
+  // a course in the USA: the state's or county's orthoimagery once its list is loaded (17.10.2026)
+  const [, setImageryTick] = useState(0);
+  useEffect(() => {
+    loadRegionalImagery(courseCenter).then((found) => found && setImageryTick((t) => t + 1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [`${courseCenter[0].toFixed(3)},${courseCenter[1].toFixed(3)}`]); // again once the course's position is known
   // Offline map: save the imagery of all holes of the round once (again after 30 days, or for another imagery source).
   const [offline, setOffline] = useState<{ done: number; total: number } | 'ready' | null>(null);
   // saved per course AND loops (Sascha 16.10.2026: "C much worse than A and B" – after an A+B round the course counted

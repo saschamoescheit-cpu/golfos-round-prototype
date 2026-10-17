@@ -1,11 +1,12 @@
 import type { LngLat } from '../types';
+import { pointInRing } from './geo';
 
 // Satellite imagery sources. Esri works worldwide but is only free for prototypes.
 // PNOA (Spanish national orthophoto, 25 cm) is sharper and free incl. commercial use (CC BY 4.0, credit IGN).
 // LGL DOP20 (Baden-Württemberg, 20 cm, flown every 3 years) – Open Data (dl-de/by-2-0, credit LGL-BW): Hetzenhof.
 // Checked 13.10.2026: the OSM green outlines at Hetzenhof sit within 1–2 m of the DOP20 image.
 
-export type ImageryId = 'esri' | 'pnoa' | 'lgl';
+export type ImageryId = string; // 'esri' | 'pnoa' | 'lgl' | a US source id from public/imagery/us.json
 
 export interface ImagerySource {
   id: ImageryId;
@@ -16,8 +17,8 @@ export interface ImagerySource {
   attribution: string;
   /** Raster paint tweaks so the imagery looks vivid under the course overlays. */
   paint: { 'raster-saturation': number; 'raster-contrast': number; 'raster-brightness-min'?: number };
-  /** Bounding boxes [west, south, east, north] where the source has imagery. */
-  coverage: [number, number, number, number][] | 'world';
+  /** Bounding boxes [west, south, east, north] where the source has imagery – or outlines (US counties, states). */
+  coverage: [number, number, number, number][] | 'world' | { rings: LngLat[][] };
 }
 
 export const IMAGERY: Record<ImageryId, ImagerySource> = {
@@ -65,12 +66,37 @@ export const IMAGERY: Record<ImageryId, ImagerySource> = {
 
 export function covers(source: ImagerySource, p: LngLat): boolean {
   if (source.coverage === 'world') return true;
+  if ('rings' in source.coverage) return source.coverage.rings.some((r) => pointInRing(p, r));
   return source.coverage.some(([w, s, e, n]) => p[0] >= w && p[0] <= e && p[1] >= s && p[1] <= n);
 }
 
-/** Sources with imagery at this place, best first (national orthophoto before the worldwide fallback). */
+// ---- the USA: state and county orthoimagery, checked by scripts/us-imagery.py (USA trip, 17.10.2026) ----
+interface UsSource { id: string; name: string; tiles: string; scheme: 'xyz' | 'tms'; maxzoom: number; year: number; best: boolean; attribution: string; coverage: LngLat[][] }
+let regional: ImagerySource[] = [];
+let regionalLoad: Promise<void> | null = null;
+const IN_USA = (p: LngLat) => (p[0] >= -125 && p[0] <= -66 && p[1] >= 24 && p[1] <= 50) || (p[0] >= -180 && p[0] <= -129 && p[1] >= 51 && p[1] <= 72) || (p[0] >= -161 && p[0] <= -154 && p[1] >= 18 && p[1] <= 23) || (p[0] >= -68 && p[0] <= -64 && p[1] >= 17 && p[1] <= 19);
+
+/** Loads the US sources once for a course in the USA; true when one covers it (the map then picks it). */
+export async function loadRegionalImagery(p: LngLat): Promise<boolean> {
+  if (!IN_USA(p)) return false;
+  regionalLoad ??= fetch(`${import.meta.env.BASE_URL}imagery/us.json`)
+    .then((r) => (r.ok ? r.json() : { sources: [] }))
+    .then((d: { sources: UsSource[] }) => {
+      // marked best by the index first, then the newest, then the finest
+      regional = [...d.sources]
+        .sort((a, b) => Number(b.best) - Number(a.best) || b.year - a.year || b.maxzoom - a.maxzoom)
+        .map((s) => ({ id: s.id, label: s.name, tiles: s.tiles, scheme: s.scheme, maxzoom: s.maxzoom, attribution: s.attribution, paint: { 'raster-saturation': 0.1, 'raster-contrast': 0.05 }, coverage: { rings: s.coverage } }));
+    })
+    .catch(() => {
+      regionalLoad = null; // offline: next time
+    });
+  await regionalLoad;
+  return regional.some((s) => covers(s, p));
+}
+
+/** Sources with imagery at this place, best first (national or county orthophoto before the worldwide fallback). */
 export function imageryOptions(p: LngLat): ImagerySource[] {
-  return [IMAGERY.pnoa, IMAGERY.lgl, IMAGERY.esri].filter((s) => covers(s, p));
+  return [...regional, IMAGERY.pnoa, IMAGERY.lgl, IMAGERY.esri].filter((s) => covers(s, p));
 }
 
 /** The player's choice if it covers this place, else the best source there. */

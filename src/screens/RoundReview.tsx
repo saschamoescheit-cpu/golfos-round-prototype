@@ -5,7 +5,7 @@ import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLe
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot } from '../lib/track';
 import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
-import { pickImagery } from '../lib/imagery';
+import { loadRegionalImagery, pickImagery } from '../lib/imagery';
 import { playerBag } from '../lib/stats';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
@@ -48,7 +48,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id), 3, loadCarryBag()?.map((b) => b.club) ?? null), [round.id]);
   const unit = loadUnit();
   const course = loadCachedCourse(round.courseId);
-  const imagery = pickImagery(course ? [course.lon, course.lat] : (maps.find(Boolean)?.greenCenter ?? [0, 0]), loadImagery());
+  const imageryAt: LngLat = course ? [course.lon, course.lat] : (maps.find(Boolean)?.greenCenter ?? [0, 0]);
+  const imagery = pickImagery(imageryAt, loadImagery());
+  const [, setImageryTick] = useState(0);
+  useEffect(() => {
+    loadRegionalImagery(imageryAt).then((found) => found && setImageryTick((t) => t + 1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [`${imageryAt[0].toFixed(3)},${imageryAt[1].toFixed(3)}`]); // again once the course's position is known
   const entries = round.entries[me.id];
   const firstToCheck = entries.findIndex((e) => e.detail?.shots.some((s) => s.review));
   const [k, setK] = useState(firstToCheck >= 0 ? firstToCheck : 0);

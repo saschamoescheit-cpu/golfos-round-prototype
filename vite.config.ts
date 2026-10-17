@@ -1,6 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
+
+// hosts of the checked US imagery sources (public/imagery/us.json) – their tiles are kept like the others
+const usHosts = (() => {
+  try {
+    const d = JSON.parse(readFileSync('public/imagery/us.json', 'utf-8')) as { sources: { tiles: string }[] };
+    return [...new Set(d.sources.map((s) => new URL(s.tiles.replace(/\{[^}]+\}/g, '0')).host))];
+  } catch {
+    return [];
+  }
+})();
 
 // base './' so the build works under any GitHub Pages sub-path.
 export default defineConfig({
@@ -30,6 +41,18 @@ export default defineConfig({
         globIgnores: ['greens/**'], // green charts load on demand (runtime cache below)
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // map library is > 2 MB
         runtimeCaching: [
+          {
+            // the list of US imagery sources (loaded for a course in the USA)
+            urlPattern: /\/imagery\/[a-z]+\.json$/,
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'imagery-sources', cacheableResponse: { statuses: [0, 200] } },
+          },
+          {
+            // tiles of the US state and county orthoimagery – kept for the course, as the other imagery
+            urlPattern: ({ url }) => usHosts.includes(url.host),
+            handler: 'CacheFirst',
+            options: { cacheName: 'imagery-us', expiration: { maxEntries: 5000, maxAgeSeconds: 60 * 60 * 24 * 60 }, cacheableResponse: { statuses: [0, 200] } },
+          },
           {
             urlPattern: /\/greens\/.*\.webp$/,
             handler: 'CacheFirst',

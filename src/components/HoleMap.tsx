@@ -183,6 +183,8 @@ export function HoleMap(props: HoleMapProps) {
       m.addLayer({ id: 'putt-casing', type: 'line', source: 'putt', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.55 }, layout: { 'line-cap': 'round' } });
       m.addLayer({ id: 'putt', type: 'line', source: 'putt', paint: { 'line-color': '#9BC53D', 'line-width': 2.5 }, layout: { 'line-cap': 'round' } });
       ready.current = true;
+      // imagery chosen while the map was loading (a US county's, once its list arrived): take it now
+      if ((m.getSource('sat') as maplibregl.RasterTileSource | undefined)?.tiles?.[0] !== latest.current.imagery.tiles) setImagery(m, latest.current.imagery);
       m.on('moveend', () => render()); // labels are spaced out for the current view
       collapseAttribution(m);
       autoCamera(m, 0);
