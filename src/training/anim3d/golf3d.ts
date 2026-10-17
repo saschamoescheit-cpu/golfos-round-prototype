@@ -214,7 +214,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
 
   /** the trunk of a key (or between two) put on the rig, the limbs left for the solver */
   const poseTrunk = (p: { rig: Rig; x: number; z: number }, body: SwingKey['body'], shift: number, drop: number, push = 0) => {
-    const pose: Pose = { j: { ...body }, at: [p.x + shift, p.z + push - 0.06], y: drop };
+    // both hands closed around the grip (the fingers of the Agility figure)
+    const pose: Pose = { j: { ...body }, at: [p.x + shift, p.z + push - 0.06], y: drop, gripL: 1, gripR: 1 };
     applyPose(p.rig, pose, false);
     p.rig.root.updateMatrixWorld(true);
   };
@@ -302,6 +303,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const rest = chestP.clone().add(new THREE.Vector3(0.02, 0.1, 0.17).applyQuaternion(q));
     twoBone(J.shoulderR, J.elbowR, BODY.upperArm, BODY.forearm, swing.oneHand ? rest : wristR, poleR);
     aim(J.wristL, wristL, wristL.clone().add(dir));
+    // one-handed the trail hand lies open on the chest
+    if (swing.oneHand) rig.setGrip(1, 0.1);
     if (swing.oneHand) aim(J.wristR, rest, rest.clone().add(new THREE.Vector3(1, 0.3, 0).applyQuaternion(q)));
     else aim(J.wristR, wristR, wristR.clone().add(dir));
 
