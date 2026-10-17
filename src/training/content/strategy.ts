@@ -105,7 +105,7 @@ export const strategy: Category = {
     { id: 'TfJyD72ZV_M', title: 'Birdie more par 5s with this course management strategy', channel: 'Scratch Golf Tips', lang: 'en' },
   ],
   sources: [
-    { label: 'DECADE Golf (Scott Fawcett)', url: 'https://decadegolf.com/' },
+    { label: 'DECADE Golf (Scott Fawcett)', url: 'https://decade.golf/' },
     { label: 'Mark Broadie – Every Shot Counts', url: 'https://www.everyshotcounts.com/' },
   ],
   see: ['mental', 'trouble', 'driver'],
