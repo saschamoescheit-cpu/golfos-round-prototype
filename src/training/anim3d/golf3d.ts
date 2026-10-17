@@ -221,6 +221,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     ball: THREE.Mesh;
     tee: THREE.Mesh;
     extras: THREE.Group;
+    /** the divot: the mark in the turf and the bits of grass flying off (none for a putt, a chip, from the tee or thin) */
+    divot: { mark: THREE.Mesh; bits: THREE.Mesh[]; from: number; len: number } | null;
     swing: Swing;
     prep: Prepared;
     x: number;
@@ -390,6 +392,45 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     return { label, step };
   };
 
+  /** the divot of a swing, relative to the ball (x towards the target, metres): after the ball when the ball is
+   *  struck first – the sign of a good iron shot – behind it when fat; none when thin or topped (the edge stays above
+   *  the ground), from the tee, with a wood that sweeps, a chip that brushes the grass or a putt */
+  const divotOf = (swing: Swing): { from: number; len: number } | null => {
+    const h = swing.hit;
+    if (!h || swing.tee || h.shot === 'putt') return null;
+    const miss = swing.keys.find((k) => Math.abs(k.t - h.at) < 1e-6)?.miss ?? [0, 0, 0];
+    if (miss[1] > 0.015) return null;
+    if (miss[0] < -0.03) return { from: miss[0] - 0.02, len: 0.17 };
+    if (swing.club === 'driver' || h.shot === 'chip') return null;
+    return { from: 0.01, len: h.shot === 'full' ? 0.15 : 0.09 };
+  };
+  /** the divot opens as the club passes the ground, the bits of turf fly forward and stay where they land */
+  const placeDivot = (p: Player, time: number) => {
+    const d = p.divot;
+    const h = p.swing.hit;
+    if (!d || !h) return;
+    const s = time - (h.at - 0.03);
+    const u = THREE.MathUtils.clamp(s / 0.08, 0, 1);
+    const at = ballPos(p);
+    d.mark.visible = s > 0;
+    d.mark.scale.set(Math.max(0.001, (d.len / 2) * u), 0.026, 1);
+    d.mark.position.set(at.x + d.from + (d.len * u) / 2, 0.003, at.z);
+    d.bits.forEach((b, i) => {
+      b.visible = s > 0.02;
+      if (!b.visible) return;
+      const k = Math.max(0, s - 0.02);
+      const vx = 0.9 + 0.35 * i;
+      const vy = 1.1 + 0.25 * ((i * 7) % 3);
+      const vz = 0.18 * (((i * 5) % 3) - 1);
+      // flying until it lands, then lying there
+      const land = (2 * vy) / 9.81;
+      const tt = Math.min(k, land);
+      b.position.set(at.x + d.from + 0.05 + vx * tt, Math.max(0.006, 0.01 + vy * tt - 4.9 * tt * tt), at.z + vz * tt);
+      b.rotation.set(k * 9 * (i + 1), k * 5, k * 7);
+      if (k >= land) b.rotation.set(0, i, 0);
+    });
+  };
+
   /** the ball: still until the club arrives, then rolling to a stop or flying away towards the target */
   const placeBall = (p: Player, time: number) => {
     const at = ballPos(p);
@@ -471,6 +512,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       const r = place(p, tt);
       if (i === 0) s = r;
       placeBall(p, tt);
+      placeDivot(p, tt);
     });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
@@ -501,7 +543,15 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   raf = requestAnimationFrame(frame);
 
   const setSwings = (list: { swing: Swing; x?: number; z?: number }[]) => {
-    for (const p of players) scene.remove(p.rig.root, p.club, p.ball, p.tee, p.extras);
+    for (const p of players) {
+      scene.remove(p.rig.root, p.club, p.ball, p.tee, p.extras);
+      for (const o of [p.rig.root, p.club, p.ball, p.tee, p.extras])
+        o.traverse((x) => {
+          const m = x as THREE.Mesh;
+          m.geometry?.dispose();
+          for (const y of Array.isArray(m.material) ? m.material : m.material ? [m.material] : []) y.dispose();
+        });
+    }
     players = list.map(({ swing, x = 0, z = 0 }) => {
       const rig = buildRig();
       const club = buildClub(swing.club);
@@ -531,11 +581,31 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         s.castShadow = true;
         club.add(s);
       }
+      // the divot: dark soil (light sand in a bunker), bits of turf with the grass on top
+      const dv = divotOf(swing);
+      let divot: Player['divot'] = null;
+      if (dv) {
+        const mark = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshStandardMaterial({ color: swing.sand ? '#bfae84' : '#6b5638', roughness: 1 }));
+        mark.rotation.x = -Math.PI / 2;
+        mark.receiveShadow = true;
+        mark.visible = false;
+        const turf = new THREE.MeshStandardMaterial({ color: '#6a9e45', roughness: 1 });
+        const bits = swing.sand
+          ? []
+          : [0, 1, 2, 3].map((i) => {
+              const b = new THREE.Mesh(new THREE.BoxGeometry(0.035 - i * 0.005, 0.01, 0.025), turf);
+              b.castShadow = true;
+              b.visible = false;
+              return b;
+            });
+        extras.add(mark, ...bits);
+        divot = { mark, bits, ...dv };
+      }
       const at = ballPos({ swing, x, z });
       ball.position.copy(at);
       tee.position.set(at.x, 0.02, at.z);
       scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, swing, x, z, prep: prepare({ rig, swing, x, z }) };
+      return { rig, club, ball, tee, extras, divot, swing, x, z, prep: prepare({ rig, swing, x, z }) };
     });
     length = Math.max(...players.map((p) => p.prep.length));
     const first = list[0].swing;
