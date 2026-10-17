@@ -68,3 +68,18 @@ describe('animated pictures', () => {
     expect(through.head).toEqual(still.head);
   });
 });
+
+describe('3D videos', () => {
+  it('every 3D video named by a picture exists; its keys run forward in time; the club meets the ball', async () => {
+    const { SWINGS } = await import('./anim3d/swings');
+    const named = [...DRILLS.map((d) => d.sketch), ...CATEGORIES.flatMap((c) => c.sections.map((s) => s.sketch))].flatMap((s) => (s?.view === 'side' && s.motion?.video ? [s.motion.video] : []));
+    expect(named.length).toBeGreaterThan(20);
+    for (const v of named) expect(SWINGS[v], v).toBeTruthy();
+    for (const [id, sw] of Object.entries(SWINGS)) {
+      sw.keys.forEach((k, i) => i && expect(k.t, `${id} key ${i}`).toBeGreaterThan(sw.keys[i - 1].t));
+      expect(sw.keys[0].club, `${id} starts at the ball`).toBe('ball');
+      expect(sw.keys.some((k, i) => i > 1 && k.club === 'ball'), `${id} comes back to the ball`).toBe(true);
+      if (sw.hit) expect(sw.keys.some((k) => k.t === sw.hit!.at && k.club === 'ball'), `${id}: the ball leaves at impact`).toBe(true);
+    }
+  });
+});

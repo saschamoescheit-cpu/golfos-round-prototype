@@ -41,6 +41,8 @@ export interface Swing {
   hit?: { at: number; roll?: number; fly?: boolean };
   /** the ball sits on a tee (driver) */
   tee?: boolean;
+  /** played from sand (bunker) */
+  sand?: boolean;
   view?: View;
 }
 
@@ -396,6 +398,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       scene.add(rig.root);
       ballMesh.position.copy(ballPos());
       tee.visible = !!s.tee;
+      (pad.material as THREE.MeshStandardMaterial).color.set(s.sand ? '#e3cf96' : '#8fc069');
       tee.position.set(ballPos().x, 0.02, ballPos().z);
       prep = prepare(s);
       bounds = null;

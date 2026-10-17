@@ -273,3 +273,12 @@ export const FAULT_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> 
     },
   },
 };
+
+// 3D where the video shows what the picture shows: no slope, no drill aid the 3D player does not have; the bunker from
+// the sand, the fairway wood without a tee
+const set3d = (m: Motion | undefined, v: Motion['video']) => m && (m.video = v);
+for (const id of ['hip-stick', 'sand-on-face', 'brush-find', 'hold-finish-slope']) set3d(DRILL_MOTIONS[id], undefined);
+set3d(DRILL_MOTIONS['fairway-bunker'], 'sand');
+set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sand');
+set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
+for (const t of ['Uphill lie', 'Downhill lie']) set3d(SECTION_MOTIONS.slopes?.[t], undefined);

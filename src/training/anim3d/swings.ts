@@ -219,5 +219,10 @@ export const PUTT_STROKE: Swing = {
   ],
 };
 
-export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE };
+/** a fairway wood from the grass: the driver's swing without a tee */
+export const WOOD_SWING: Swing = { ...DRIVER_SWING, tee: false, stance: 0.44, ball: [0.1, 0.68] };
+/** from a fairway bunker: the full swing from the sand, ball first */
+export const SAND_SWING: Swing = { ...FULL_SWING, sand: true };
+
+export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE };
 export type SwingId = keyof typeof SWINGS;
