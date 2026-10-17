@@ -721,7 +721,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             ? tr(`Confirm hole ${hole.label} →`, `Loch ${hole.label} bestätigen →`)
             : openHoles.length
               ? tr(`Confirm hole ${hole.label} → still to check`, `Loch ${hole.label} bestätigen → noch offene prüfen`)
-              : tr('Confirm round ✓', 'Runde bestätigen ✓')}
+              : round.signedAt || round.capture === 'score'
+                ? tr('Confirm round ✓', 'Runde bestätigen ✓')
+                : tr('Confirm & sign the round ✓', 'Runde bestätigen & signieren ✓')}
         </button>
       </div>
 

@@ -187,8 +187,15 @@ await p.waitForTimeout(300);
 ok((await p.getByText(/noch nicht bestätigt/).count()) === 1, 'balance: the unconfirmed games are named');
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 await p.waitForTimeout(300);
-ok((await p.getByText('Ergebnis bestätigen').count()) >= 1, 'start page: the finished games to confirm');
-await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
+// as "sign your rounds" in Rounds (Sascha 17.10.2026): a card with the count under "new game", it opens the list filtered
+const confirmCard = p.getByRole('button', { name: /Ergebnisse bestätigen/ });
+const nConfirm = Number((await confirmCard.locator('.count-badge').innerText()).trim());
+ok(nConfirm > 0, `start page: "Ergebnisse bestätigen · ${nConfirm}"`);
+await confirmCard.click();
+await p.waitForTimeout(400);
+ok((await p.locator('ul.list .list-item').count()) === nConfirm && (await p.locator('button.tile').filter({ hasText: 'zu bestätigen' }).getAttribute('aria-pressed')) === 'true', 'it opens the games list filtered to the ones to confirm');
+ok((await p.locator('ul.list .signed-mark[aria-label="zu bestätigen"]').count()) === nConfirm && (await p.locator('.tile .tile-mark svg').count()) >= 2, 'the same marks as in the rounds list, on the tiles too');
+ok((await p.locator('ul.list .round-date').count()) === nConfirm, 'rows with the date block as in the rounds list');
 await p.locator('.list-item').first().click();
 await p.waitForTimeout(500);
 await p.locator('.sign-card').getByRole('button', { name: 'Bestätigen' }).click();

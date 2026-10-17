@@ -159,6 +159,10 @@ describe("Chicago as Sascha's group plays it", () => {
     expect(house([3, 4, 4, 6]).a.num).toBe(34);
     expect(house([4, 4, 4, 6]).b.num).toBe(46);
   });
+  it('house rules: no par on either side – both teams put the higher score first', () => {
+    const h = house([5, 6, 7, 5]);
+    expect([h.a.num, h.b.num]).toEqual([65, 75]);
+  });
   it('house rules: two birdies = 33 − 10 = 23', () => {
     expect(house([3, 3, 5, 6]).a.num).toBe(23);
   });

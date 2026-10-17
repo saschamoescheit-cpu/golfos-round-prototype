@@ -104,6 +104,32 @@ if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/rounds-p
 await pausedRow.click();
 await p.waitForTimeout(2500);
 ok(await p.locator('.map-hole-no').isVisible(), 'a tap on the paused round carries on with it');
+// "Check & sign": the check's last step signs the round (Sascha 17.10.2026)
+await p.goto(url);
+await p.waitForTimeout(800);
+await p.evaluate(() => {
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1')).filter((r) => r.finishedAt);
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ ...rs[0], id: rs[0].id + '-c', signedAt: null, capture: 'full', createdAt: new Date().toISOString() }]));
+  sessionStorage.removeItem('golfos.paused');
+  sessionStorage.setItem('golfos.module', 'rounds');
+});
+await p.reload();
+await p.waitForTimeout(1200);
+await tab('Runden');
+await p.waitForTimeout(400);
+await p.locator('ul.list .list-item').first().click();
+await p.waitForTimeout(1000);
+await p.getByRole('button', { name: /Schläge prüfen|Prüfen & signieren/ }).first().click();
+await p.waitForTimeout(2000);
+let lastLabel = '';
+for (let k = 0; k < 14 && (await p.locator('.sc-wrap').count()) === 0; k++) {
+  const btn = p.locator('.sticky-cta .btn-primary');
+  lastLabel = (await btn.innerText().catch(() => '')).trim();
+  await btn.click().catch(() => {});
+  await p.waitForTimeout(700);
+}
+ok(/signieren/.test(lastLabel), `the last step says it signs ("${lastLabel}")`);
+ok((await p.locator('.sign-card.signed').count()) === 1 && (await p.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), 'after the check the round is signed, the seal on the scorecard');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

@@ -124,7 +124,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
               </button>
             </span>
           ) : (
-            <span className="muted small">{p.photo ? tr('Tap the photo to change it.', 'Tippe aufs Bild, um es zu ändern.') : tr('Tap to add a photo.', 'Tippe, um ein Bild hinzuzufügen.')}</span>
+            <span />
           )}
           {p.photo && !session && (
             <button type="button" className="btn-ghost" onClick={() => set({ photo: undefined })}>

@@ -22,7 +22,7 @@ import { Home, type HomeTab } from './screens/Home';
 import { loadGames, sessionModule, setSessionModule, type AppModule } from './lib/gamestore';
 import type { TrainingTab } from './screens/Training';
 import type { MobilityTab } from './screens/Mobility';
-import { statRounds, unsignedRounds } from './lib/signing';
+import { sign, statRounds, unsignedRounds } from './lib/signing';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -338,7 +338,15 @@ export function App() {
               setScreen({ name: 'review', round });
             }}
             // the latest round, also when it was saved in the same click
-            onDone={() => setScreen((s) => (s.name === 'review' ? { name: 'scorecard', round: s.round } : s))}
+            onDone={() =>
+              setScreen((s) => {
+                if (s.name !== 'review') return s;
+                // checked and chosen to sign: signed with the last step of the check (Sascha 17.10.2026)
+                const done = !s.round.signedAt && s.round.capture !== 'score' ? sign(s.round) : s.round;
+                if (done !== s.round) persist(done);
+                return { name: 'scorecard', round: done };
+              })
+            }
           />
         </Suspense>
       );

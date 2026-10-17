@@ -244,8 +244,8 @@ export function holeTeams(g: Pick<Game, 'form' | 'players' | 'settings' | 'extra
 }
 
 /** Chicago: the team's two (net) scores as one number, the lower one first – 6 and 5 = 56. Sascha's group's house
- *  rules (17.10.2026), both switchable: highest score 9 (a 10 counts as 9), a team without a par turns its number
- *  round when the other team has one (bogey and 10 = 95), and every birdie (or better) takes 5 off the team's number
+ *  rules (17.10.2026), both switchable: highest score 9 (a 10 counts as 9), a team without a par always puts the
+ *  higher score first (bogey and 10 = 95), and every birdie (or better) takes 5 off the team's number
  *  when the other team has no par: par and birdie = 34 − 5 = 29. */
 function teamNumber(g: Game, ids: string[], i: number, others: string[] = []): number {
   // on when chosen (new Chicago games have both on); games from before keep their old reckoning
@@ -254,9 +254,10 @@ function teamNumber(g: Game, ids: string[], i: number, others: string[] = []): n
   const v = ids.map((id) => net(g, id, i)!).map((x) => (max9 ? Math.min(9, x) : x)).sort((a, b) => a - b);
   const par = g.holes[i]?.par ?? 4;
   const parOrBetter = (team: string[]) => team.some((id) => net(g, id, i)! <= par);
-  // with the house rules a team without a par turns round when the other team has one: bogey and double = 65, not
-  // 56 (Sascha's examples 17.10.2026); otherwise a score of 10 or more goes first: 10 and 4 = 104, not 410
-  const turned = max9 && others.length > 0 && !parOrBetter(ids) && parOrBetter(others);
+  // with the house rules a team without a par always puts the higher score first: bogey and double = 65, not 56
+  // (Sascha 17.10.2026: "whenever no par is played, the highest number is always in front"); otherwise a score of
+  // 10 or more goes first: 10 and 4 = 104, not 410
+  const turned = max9 && !parOrBetter(ids);
   const num = turned || v[1] >= 10 ? Number(`${v[1]}${v[0]}`) : Number(`${v[0]}${v[1]}`);
   if (!bonus || !others.length) return num;
   const birdies = ids.filter((id) => net(g, id, i)! <= par - 1).length;
@@ -472,8 +473,8 @@ export const FORMS: FormDef[] = [
       ),
       tr('The two scores of a team make a two-digit number, the lower one first: 6 and 5 = 56, 3 and 3 = 33.', 'Die zwei Schläge eines Teams ergeben eine zweistellige Zahl, der kleinere vorn: 6 und 5 = 56, 3 und 3 = 33.'),
       tr(
-        'Highest score 9 (if chosen): a 10 counts as 9. And a team without a par turns its number round when the other team has one: bogey and double = 65, bogey and 10 = 95.',
-        'Höchstes Ergebnis 9 (wenn gewählt): eine 10 zählt als 9. Und ein Team ohne Par dreht seine Zahl um, wenn das andere Team ein Par hat: Bogey und Doppel-Bogey = 65, Bogey und 10 = 95.',
+        'Highest score 9 (if chosen): a 10 counts as 9. And a team without a par always puts the higher score first: bogey and double = 65, bogey and 10 = 95.',
+        'Höchstes Ergebnis 9 (wenn gewählt): eine 10 zählt als 9. Und ein Team ohne Par stellt immer die höhere Zahl vorn: Bogey und Doppel-Bogey = 65, Bogey und 10 = 95.',
       ),
       tr('Without that: a score of 10 or more goes first: 10 and 4 = 104 (not 410).', 'Ohne diese Regel kommt eine 10 oder mehr nach vorn: 10 und 4 = 104 (nicht 410).'),
       tr(

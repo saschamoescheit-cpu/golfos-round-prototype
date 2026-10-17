@@ -58,7 +58,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
           <span className="grow">
             {tr(
               `${unsignedRounds(props.rounds).length} finished ${unsignedRounds(props.rounds).length === 1 ? 'round is' : 'rounds are'} not signed yet – they count once you sign them.`,
-              `${unsignedRounds(props.rounds).length} beendete ${unsignedRounds(props.rounds).length === 1 ? 'Runde ist' : 'Runden sind'} noch nicht signiert – sie zählen, sobald du sie signierst.`,
+              `${unsignedRounds(props.rounds).length} beendete ${unsignedRounds(props.rounds).length === 1 ? 'Runde ist noch nicht signiert – sie zählt' : 'Runden sind noch nicht signiert – sie zählen'}, sobald du sie signierst.`,
             )}
           </span>
           <span aria-hidden="true">›</span>

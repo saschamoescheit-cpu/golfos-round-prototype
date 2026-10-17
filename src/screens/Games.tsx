@@ -18,6 +18,8 @@ import { FriendChips, roughPlaying } from './Home';
 import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
+import { PausedIcon } from '../components/PausedIcon';
+import { ToSignIcon } from '../components/RoundIcons';
 
 // The "Games" module (Sascha 15.10.2026): side games as a product of its own – choose a game form, the course and the
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
@@ -246,7 +248,6 @@ function GamesTabs(props: {
   onJoined: (g: Game) => void;
 }) {
   const running = props.games.filter((g) => !g.finishedAt);
-  const toConfirm = props.games.filter((g) => g.finishedAt && !g.signedAt).sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? '')).slice(0, 3);
   // join a friend's game (code or the QR link #join=CODE) – shown once signed in and the shared table exists
   const [canShare, setCanShare] = useState(false);
   const [joinOpen, setJoinOpen] = useState<string | null>(() => (location.hash.startsWith('#join=') ? location.hash.slice(6) : null));
@@ -254,7 +255,18 @@ function GamesTabs(props: {
     sharingAvailable().then(setCanShare);
     if (location.hash.startsWith('#join=')) history.replaceState(null, '', location.pathname + location.search);
   }, []);
-  const [binOpen, setBinOpen] = useState(false);
+  // the games list filtered by one tile at a time, as the rounds list (Sascha 17.10.2026: the same in every module)
+  const [filter, setFilter] = useState<GamesFilter>(null);
+  const binOpen = filter === 'bin';
+  const trashCount = loadGameTrash().length;
+  useEffect(() => {
+    if (filter === 'bin' && !trashCount) setFilter(null); // the bin emptied or restored: all games again
+  }, [trashCount, filter]);
+  const openList = (f: GamesFilter) => {
+    setFilter(f);
+    props.onTab('games');
+  };
+  const confirmCount = props.games.filter((g) => g.finishedAt && !g.signedAt).length;
   return (
     <main className="screen with-tabs">
       {/* the module header on every tab, the profile too (uniform with Rounds and Training) */}
@@ -274,7 +286,6 @@ function GamesTabs(props: {
         <>
           <h1 className="tab-title">{tr('Play a game', 'Spiel starten')}</h1>
           {running.length > 0 && <GameList games={running} onOpen={props.onOpen} title={tr('In play', 'Läuft gerade')} />}
-          {toConfirm.length > 0 && <GameList games={toConfirm} onOpen={props.onOpen} title={tr('Confirm the result', 'Ergebnis bestätigen')} />}
           {/* as "Start a new round" in Rounds (Sascha 15.10.2026: the same in every module) */}
           <section className="card play-card">
             <strong className="play-course">{tr('Start a new game', 'Neues Spiel starten')}</strong>
@@ -287,6 +298,18 @@ function GamesTabs(props: {
               </button>
             )}
           </section>
+          {confirmCount > 0 && (
+            <button type="button" className="list-item" onClick={() => openList('confirm')}>
+              <span className="grow">
+                <span className="title">{tr('Confirm the results', 'Ergebnisse bestätigen')}</span>
+                <span className="muted small">
+                  {confirmCount === 1 ? tr('1 game not confirmed yet', '1 Spiel noch nicht bestätigt') : tr(`${confirmCount} games not confirmed yet`, `${confirmCount} Spiele noch nicht bestätigt`)}
+                </span>
+              </span>
+              <span className="count-badge">{confirmCount}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          )}
           {joinOpen != null && (
             <>
               {canShare ? (
@@ -318,7 +341,7 @@ function GamesTabs(props: {
       {props.tab === 'games' && (
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
-          <GameTiles games={props.games} binOpen={binOpen} onBin={() => setBinOpen(!binOpen)} />
+          <GameTiles games={props.games} filter={filter} onFilter={(f) => setFilter(filter === f ? null : f)} />
           <Bin
             open={binOpen && loadGameTrash().length > 0}
             title={tr('Deleted games', 'Gelöschte Spiele')}
@@ -326,7 +349,11 @@ function GamesTabs(props: {
             onRestore={restoreGame}
             onPurge={purgeGame}
           />
-          {props.games.length ? <GameList games={props.games} onOpen={props.onOpen} /> : <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>}
+          {props.games.length ? (
+            !binOpen && <GameList games={props.games.filter((g) => (filter === 'confirm' ? g.finishedAt && !g.signedAt : filter === 'running' ? !g.finishedAt : filter === 'confirmed' ? g.finishedAt && g.signedAt : true))} onOpen={props.onOpen} />
+          ) : (
+            <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>
+          )}
         </>
       )}
       {props.tab === 'balance' && <Balance games={props.games} />}
@@ -339,14 +366,17 @@ function GamesTabs(props: {
           { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}
         current={props.tab}
-        onPick={props.onTab}
+        onPick={(t) => {
+          setFilter(null); // the menu shows all again
+          props.onTab(t);
+        }}
       />
     </main>
   );
 }
 
 function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: string }) {
-  const date = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: '2-digit' });
+  const locale = undefined;
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {props.title && <span className="eyebrow">{props.title}</span>}
@@ -354,30 +384,51 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
         {props.games.map((g) => {
           const f = formDef(g.form);
           const st = standingOf(g);
+          const winner = g.finishedAt ? winnerOf(st.rows) : null;
           return (
             <li key={g.id}>
               <button type="button" className={`list-item${g.finishedAt ? '' : ' live'}`} onClick={() => props.onOpen(g)}>
+                <span className="round-date">
+                  <strong>{new Date(g.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
+                  <span className="muted small">{new Date(g.createdAt).getFullYear()}</span>
+                </span>
                 <span className="grow">
                   <span className="title">
-                    {f.name()} · {g.courseName}
-                    {g.signedAt && (
-                      <span className="signed-mark" aria-label={tr('confirmed', 'bestätigt')} title={tr('confirmed', 'bestätigt')}>
+                    {f.name()}
+                    {/* the same marks as on the rounds: confirmed (seal), to confirm (pen), in play (pause) */}
+                    {!g.finishedAt ? (
+                      <span className="paused-mark" role="img" aria-label={tr('in play', 'läuft')} title={tr('in play', 'läuft')}>
+                        <PausedIcon size={16} />
+                      </span>
+                    ) : g.signedAt ? (
+                      <span className="signed-mark" role="img" aria-label={tr('confirmed', 'bestätigt')} title={tr('confirmed', 'bestätigt')}>
                         <SignedIcon size={16} />
+                      </span>
+                    ) : (
+                      <span className="signed-mark" role="img" aria-label={tr('to confirm', 'zu bestätigen')} title={tr('to confirm', 'zu bestätigen')}>
+                        <ToSignIcon size={16} />
                       </span>
                     )}
                   </span>
                   <span className="muted small">
-                    {date(g.createdAt)} · {g.players.map((p) => p.name).join(', ')}
-                  </span>
-                  <span className="small">
-                    {g.finishedAt
-                      ? winnerOf(st.rows)
-                        ? `${tr('Winner', 'Sieger')}: ${winnerOf(st.rows)}`
-                        : tr('Tied', 'Unentschieden')
-                      : tr(`In play – ${holesPlayed(g)} of ${g.holes.length} holes`, `Läuft – ${holesPlayed(g)} von ${g.holes.length} Löchern`)}
+                    {g.courseName} · {g.players.map((p) => p.name).join(', ')}
                   </span>
                 </span>
-                <span aria-hidden="true">›</span>
+                <span style={{ textAlign: 'right' }}>
+                  {g.finishedAt ? (
+                    <>
+                      <span style={{ font: '700 16px var(--display)', display: 'block' }}>{winner ?? tr('Tied', 'Unentschieden')}</span>
+                      <span className="muted small">{winner ? tr('winner', 'Sieger') : ''}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ font: '700 20px var(--display)', display: 'block' }}>
+                        {holesPlayed(g)}/{g.holes.length}
+                      </span>
+                      <span className="muted small">{tr('holes', 'Löcher')}</span>
+                    </>
+                  )}
+                </span>
               </button>
             </li>
           );
@@ -1510,21 +1561,46 @@ function ShareResult(props: { game: Game }) {
   );
 }
 
-/** The tiles over the games list – as over the rounds list: played, in play, and the bin as a tile. */
-function GameTiles(props: { games: Game[]; binOpen: boolean; onBin: () => void }) {
+type GamesFilter = 'confirm' | 'running' | 'confirmed' | 'bin' | null;
+
+/** The tiles over the games list – as over the rounds list (Sascha 17.10.2026): to confirm, in play, played,
+ *  confirmed and the bin, each with its mark, one at a time filtering the list. */
+function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: GamesFilter) => void }) {
   const trash = loadGameTrash().length;
+  const toConfirm = props.games.filter((g) => g.finishedAt && !g.signedAt).length;
+  const running = props.games.filter((g) => !g.finishedAt).length;
+  const confirmed = props.games.filter((g) => g.finishedAt && g.signedAt).length;
   return (
     <div className="tile-row">
+      <button type="button" className="tile" aria-pressed={props.filter === 'confirm'} disabled={!toConfirm} onClick={() => props.onFilter('confirm')}>
+        <span className="tile-head">
+          <span className={`tile-num${toConfirm ? ' good-text' : ''}`}>{toConfirm}</span>
+          <span className="tile-mark"><ToSignIcon /></span>
+        </span>
+        <span className="muted small">{tr('to confirm', 'zu bestätigen')}</span>
+      </button>
+      {running > 0 && (
+        <button type="button" className="tile" aria-pressed={props.filter === 'running'} onClick={() => props.onFilter('running')}>
+          <span className="tile-head">
+            <span className="tile-num good-text">{running}</span>
+            <span className="tile-mark"><PausedIcon /></span>
+          </span>
+          <span className="muted small">{tr('in play', 'laufen')}</span>
+        </button>
+      )}
       <div className="tile">
         <span className="tile-num">{props.games.filter((g) => g.finishedAt).length}</span>
-        <span className="muted small">{tr('games played', 'Spiele gespielt')}</span>
+        <span className="muted small">{tr('played', 'gespielt')}</span>
       </div>
-      <div className="tile">
-        <span className="tile-num">{props.games.filter((g) => !g.finishedAt).length}</span>
-        <span className="muted small">{tr('in play', 'laufen')}</span>
-      </div>
+      <button type="button" className="tile" aria-pressed={props.filter === 'confirmed'} disabled={!confirmed} onClick={() => props.onFilter('confirmed')}>
+        <span className="tile-head">
+          <span className="tile-num">{confirmed}</span>
+          <span className="tile-mark"><SignedIcon /></span>
+        </span>
+        <span className="muted small">{tr('confirmed', 'bestätigt')}</span>
+      </button>
       {trash > 0 && (
-        <button type="button" className="tile" aria-pressed={props.binOpen} onClick={props.onBin}>
+        <button type="button" className="tile" aria-pressed={props.filter === 'bin'} onClick={() => props.onFilter('bin')}>
           <span className="tile-num">{trash}</span>
           <span className="muted small">{tr('deleted', 'gelöscht')}</span>
         </button>
