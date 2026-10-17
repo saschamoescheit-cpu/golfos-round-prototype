@@ -285,3 +285,11 @@ set3d(DRILL_MOTIONS['pause-top'], 'pause');
 set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sand');
 set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
 for (const t of ['Uphill lie', 'Downhill lie']) set3d(SECTION_MOTIONS.slopes?.[t], undefined);
+
+// the set-up sections: the address in 3D, still – the views show it from the front, from behind, at an angle
+const still3d = (video: Motion['video']): Motion => ({ frames: [], video });
+SECTION_MOTIONS.basics = { ...SECTION_MOTIONS.basics, Posture: still3d('setupIron') };
+SECTION_MOTIONS.irons = { ...SECTION_MOTIONS.irons, 'Set-up for irons': still3d('setupIron') };
+SECTION_MOTIONS.driver = { ...SECTION_MOTIONS.driver, 'Set-up for the driver': still3d('setupDriver') };
+SECTION_MOTIONS.chipping = { ...SECTION_MOTIONS.chipping, 'The set-up': still3d('setupChip') };
+SECTION_MOTIONS.putting = { ...SECTION_MOTIONS.putting, 'Set-up': still3d('setupPutt') };

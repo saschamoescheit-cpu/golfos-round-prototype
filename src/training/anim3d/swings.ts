@@ -242,5 +242,33 @@ export const FEET_HALF: Swing = { ...HALF_SWING, stance: 0.1 };
 /** a second's pause at the top, then down from the ground */
 export const PAUSE_SWING: Swing = holdAt(FULL_SWING, 2.3, 1, L('Pause at the top – one second', 'Pause oben – eine Sekunde'));
 
-export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING };
+/** the set-up held still – turn the view to see it from the front and from behind; the checks are named in turn */
+const setup = (sw: Swing, address: Omit<SwingKey, 't'>, checks: SwingKey['label'][]): Swing => ({
+  ...sw,
+  hit: undefined,
+  keys: checks.map((label, i) => k(i * 2.2, { ...address, label })).concat([k(checks.length * 2.2, address)]),
+});
+export const SETUP_IRON = setup(FULL_SWING, ADDRESS, [
+  L('Bend from the hips, back straight', 'Aus der Hüfte beugen, Rücken gerade'),
+  L('Knees soft, weight over the middle of the feet', 'Knie leicht gebeugt, Gewicht über der Fußmitte'),
+  L('Arms hang from the shoulders, a hand’s width from the thighs', 'Die Arme hängen, eine Handbreit vor den Oberschenkeln'),
+  L('Ball in the middle, hands level or slightly ahead', 'Ball in der Mitte, Hände auf Höhe oder leicht vor dem Ball'),
+]);
+export const SETUP_DRIVER = setup(DRIVER_SWING, ADDRESS, [
+  L('Wider stance, ball opposite the lead heel', 'Breiter Stand, Ball gegenüber der vorderen Ferse'),
+  L('Spine tilted away from the target', 'Wirbelsäule vom Ziel weg geneigt'),
+  L('Teed high: half the ball above the clubface', 'Hoch aufgeteet: halber Ball über der Schlagfläche'),
+]);
+export const SETUP_CHIP = setup(CHIP_STROKE, CHIP_ADDRESS, [
+  L('Narrow stance, ball back of centre', 'Schmaler Stand, Ball hinter der Mitte'),
+  L('60–70 % of the weight on the lead foot', '60–70 % des Gewichts vorn'),
+  L('Hands ahead of the ball, grip a little shorter', 'Hände vor dem Ball, etwas kürzer greifen'),
+]);
+export const SETUP_PUTT = setup(PUTT_STROKE, PUTT_ADDRESS, [
+  L('Eyes over the ball – look from behind', 'Augen über dem Ball – von hinten ansehen'),
+  L('Shoulders parallel to the start line', 'Schultern parallel zur Startlinie'),
+  L('Arms hang, light grip pressure', 'Die Arme hängen, leichter Griffdruck'),
+]);
+
+export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT };
 export type SwingId = keyof typeof SWINGS;

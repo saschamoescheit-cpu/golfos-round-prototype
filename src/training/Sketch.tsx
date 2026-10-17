@@ -76,7 +76,7 @@ function useMotion(s: Sketch) {
   const motion = s.view === 'side' ? s.motion : undefined;
   // one timeline per moving figure; the first one names the phases
   const tls = useMemo(() => {
-    if (!motion || s.view !== 'side') return null;
+    if (!motion || s.view !== 'side' || !motion.frames.length) return null;
     const figs = s.items.filter((x): x is Extract<SideItem, { k: 'figure' }> => x.k === 'figure');
     const parts = [{ fig: motionFig(s, motion), frames: motion.frames }, ...(motion.with ?? [])];
     const out = parts.flatMap((p) => {
