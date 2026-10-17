@@ -8,19 +8,27 @@ import { dec, tr } from '../lib/i18n';
 
 const fmt = (v: number) => dec(`${v > 0 ? '+' : ''}${v.toFixed(1)}`);
 
-export function SgCard(props: { values: SgValues; shots: Record<SgCategory, number>; holes: number; defaultGroup: string; title: string }) {
+export function SgCard(props: { values: SgValues; shots: Record<SgCategory, number>; holes: number; defaultGroup: string; title: string; base?: 9 | 18 }) {
   const [group, setGroup] = useState(props.defaultGroup);
-  const g = groupSg(group);
+  const base = props.base ?? 18;
+  const k = base / 18;
+  const r1 = (v: number) => Math.round(v * k * 10) / 10;
+  const values = Object.fromEntries(Object.entries(props.values).map(([c, v]) => [c, r1(v)])) as SgValues;
+  const shots = Object.fromEntries(Object.entries(props.shots).map(([c, v]) => [c, Math.round(v * k)])) as Record<SgCategory, number>;
+  const g = Object.fromEntries(Object.entries(groupSg(group)).map(([c, v]) => [c, r1(v)])) as SgValues;
+  // the totals as the sum of the rounded categories, so the table adds up
+  values.total = Math.round(SG_CATEGORIES.reduce((t, c) => t + values[c], 0) * 10) / 10;
+  g.total = Math.round(SG_CATEGORIES.reduce((t, c) => t + g[c], 0) * 10) / 10;
   const label = GROUPS.find((x) => x.id === group)!.label;
-  const diff = Math.round((props.values.total - g.total) * 10) / 10;
-  const diffs = Object.fromEntries(SG_CATEGORIES.map((c) => [c, Math.round((props.values[c] - g[c]) * 10) / 10])) as Record<SgCategory, number>;
+  const diff = Math.round((values.total - g.total) * 10) / 10;
+  const diffs = Object.fromEntries(SG_CATEGORIES.map((c) => [c, Math.round((values[c] - g[c]) * 10) / 10])) as Record<SgCategory, number>;
   return (
     <section className="card stats-card">
       <h2>{props.title}</h2>
       <p className="muted small" style={{ margin: 0 }}>
         {tr(
-          `Strokes gained per 18 holes against the tour average (${props.holes} holes with all shots checked${props.holes < 9 ? ' – few holes, the values still swing a lot' : ''}). Compare with:`,
-          `Strokes Gained je 18 Löcher gegen den Tour-Durchschnitt (${props.holes} Löcher mit allen Schlägen geprüft${props.holes < 9 ? ' – noch wenige Löcher, die Werte schwanken stark' : ''}). Vergleichen mit:`,
+          `Per ${base} holes · ${props.holes} holes checked${props.holes < 9 ? ' – values still swing' : ''}`,
+          `Je ${base} Löcher · ${props.holes} Löcher geprüft${props.holes < 9 ? ' – Werte schwanken noch' : ''}`,
         )}
       </p>
       <div className="chip-row" role="group" aria-label={tr('Compare with', 'Vergleichen mit')}>
@@ -35,9 +43,9 @@ export function SgCard(props: { values: SgValues; shots: Record<SgCategory, numb
         <strong className={diff >= 0 ? 'good-text' : 'bad-text'}>
           {diff >= 0 ? tr('gain', 'gewinnst du') : tr('lose', 'verlierst du')} {dec(Math.abs(diff).toFixed(1))}
         </strong>{' '}
-        {tr('strokes per round.', 'Schläge pro Runde.')}
+        {base === 9 ? tr('strokes per 9 holes.', 'Schläge je 9 Löcher.') : tr('strokes per round.', 'Schläge pro Runde.')}
       </p>
-      <SgHole diff={diffs} shots={props.shots} />
+      <SgHole diff={diffs} shots={shots} />
       <table className="mini-table sg-table">
         <thead>
           <tr>
@@ -49,11 +57,11 @@ export function SgCard(props: { values: SgValues; shots: Record<SgCategory, numb
         </thead>
         <tbody>
           {SG_CATEGORIES.map((c) => {
-            const d = Math.round((props.values[c] - g[c]) * 10) / 10;
+            const d = Math.round((values[c] - g[c]) * 10) / 10;
             return (
               <tr key={c}>
                 <td>{SG_LABELS[c]}</td>
-                <td>{fmt(props.values[c])}</td>
+                <td>{fmt(values[c])}</td>
                 <td className="muted">{fmt(g[c])}</td>
                 <td>
                   <span className={`sg-diff ${d >= 0 ? 'good' : 'bad'}`} style={{ width: `${Math.min(82, Math.abs(d) * 16) + 18}%` }}>
@@ -65,7 +73,7 @@ export function SgCard(props: { values: SgValues; shots: Record<SgCategory, numb
           })}
           <tr className="sum">
             <td>{tr('Total', 'Gesamt')}</td>
-            <td>{fmt(props.values.total)}</td>
+            <td>{fmt(values.total)}</td>
             <td className="muted">{fmt(g.total)}</td>
             <td>
               <strong className={diff >= 0 ? 'good-text' : 'bad-text'}>{fmt(diff)}</strong>
@@ -73,10 +81,10 @@ export function SgCard(props: { values: SgValues; shots: Record<SgCategory, numb
           </tr>
         </tbody>
       </table>
-      {SG_CATEGORIES.some((c) => props.shots[c] === 0 && diffs[c] > 0) && (
+      {SG_CATEGORIES.some((c) => shots[c] === 0 && diffs[c] > 0) && (
         // "0 strokes, +3.9" looks like a mistake: the group needs those strokes (missed greens), the player did not
         <p className="muted small" style={{ margin: 0 }}>
-          {SG_CATEGORIES.filter((c) => props.shots[c] === 0 && diffs[c] > 0)
+          {SG_CATEGORIES.filter((c) => shots[c] === 0 && diffs[c] > 0)
             .map((c) => SG_LABELS[c])
             .join(', ')}
           {tr(

@@ -261,7 +261,7 @@ export function Scorecard(props: {
           {tr('Check your shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? tr(' · some to check', ' · einige offen') : ''}
         </button>
       )}
-      {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(profileIndex() ?? playing18(round.holes.length, me.playingHandicap))} />}
+      {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={round.holes.length <= 9 ? 9 : 18} defaultGroup={groupForHandicap(profileIndex() ?? playing18(round.holes.length, me.playingHandicap))} />}
 
       <span className="spacer" />
       {/* save and delete sit in the card at the top while the round is being finished */}

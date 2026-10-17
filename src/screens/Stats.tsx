@@ -29,6 +29,9 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
   // mostly 9 holes → the values per 9 holes
   const base = picked.length && picked.filter((r) => r.holes.length <= 9).length * 2 > picked.length ? 9 : 18;
   const per = (v: number | null): number | null => (v == null ? null : Math.round(((v * base) / 18) * 10) / 10);
+  const half = (s: string) => s.replace(/\d+(?:[.,]\d+)?/, (m) => String(Math.round((parseFloat(m.replace(',', '.')) / 2) * 10) / 10));
+  const perBase = <T extends { metric: string; yours: string; target: string }>(x: T): T =>
+    base === 9 && /per round|pro Runde/.test(x.metric) ? { ...x, metric: x.metric.replace('per round', 'per 9 holes').replace('pro Runde', 'je 9 Löcher'), yours: half(x.yours), target: half(x.target) } : x;
   const a = useMemo(() => analyse(picked), [picked]);
   const f = focusAreas(a);
   const sg = useMemo(() => roundsSg(picked), [picked]);
@@ -102,7 +105,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               </section>
 
               {sg ? (
-                <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} defaultGroup={groupForHandicap(profileIndex() ?? a.handicap)} />
+                <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={base} defaultGroup={groupForHandicap(profileIndex() ?? a.handicap)} />
               ) : (
                 <p className="muted small" style={{ margin: 0 }}>
                   {tr('Check the shots of a round (“Check shots”) to see where you gain and lose strokes.', 'Prüfe die Schläge einer Runde („Schläge prüfen“), dann siehst du, wo du Schläge gewinnst und verlierst.')}
@@ -113,10 +116,10 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                 <section className="card stats-card">
                   <h2>{tr('Where you lose strokes', 'Wo du Schläge verlierst')}</h2>
                   <p className="muted small" style={{ margin: 0 }}>
-                    {tr(`Compared with players of ${f.target} (you: ${f.band}). Your practice plan below starts here.`, `Verglichen mit Spielern mit ${f.target} (du: ${f.band}). Dein Trainingsplan unten setzt hier an.`)}
+                    {tr(`Compared with players of ${f.target} (you: ${f.band}).`, `Verglichen mit Spielern mit ${f.target} (du: ${f.band}).`)}
                   </p>
                   <ol className="focus-list">
-                    {f.focus.map((x) => (
+                    {f.focus.map(perBase).map((x) => (
                       <li key={x.metric}>
                         <span className="grow">
                           <span className="focus-area">{areaName(x.area)}</span>
