@@ -248,12 +248,17 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // the eyes on the ball until the club has passed it, then the head turns with the body
     const look = lerp(a.free ? 0 : 1, b.free ? 0 : 1, k);
     if (look > 0) {
+      // the smallest turn of the head that points the face at the ball (no roll, also with the ball right below the
+      // eyes when putting); the face points a little below the eyes' line – aim a bit beyond the ball
       const head = rig.joints.head;
       const keyed = head.quaternion.clone();
-      head.lookAt(ballPos(p));
-      // lookAt points the face (+z) at the ball; tilt it down a little more – the eyes, not the nose
-      head.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(12)));
-      head.quaternion.copy(keyed.slerp(head.quaternion, look));
+      const wq = head.getWorldQuaternion(new THREE.Quaternion());
+      const face = new THREE.Vector3(0, -0.25, 1).normalize().applyQuaternion(wq);
+      const want = ballPos(p).sub(head.getWorldPosition(new THREE.Vector3())).normalize();
+      const turned = new THREE.Quaternion().setFromUnitVectors(face, want).multiply(wq);
+      head.parent!.getWorldQuaternion(tmpQ);
+      const local = tmpQ.clone().invert().multiply(turned);
+      head.quaternion.copy(keyed.slerp(local, look));
       head.updateMatrixWorld(true);
     }
     const q = chestQ(rig);
