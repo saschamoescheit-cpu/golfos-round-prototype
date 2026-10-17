@@ -305,3 +305,6 @@ set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');
 set3d(FAULT_MOTIONS.chipping?.['Fat chip (chunk)'], 'chipFatPair');
 set3d(FAULT_MOTIONS.chipping?.['Thin or bladed chip'], 'chipThinPair');
 set3d(FAULT_MOTIONS.chipping?.['Slowing down'], 'chipSlowPair');
+set3d(FAULT_MOTIONS.woods?.Topping, 'woodTopPair');
+set3d(FAULT_MOTIONS.woods?.['Fat (chunked) woods'], 'woodFatPair');
+set3d(FAULT_MOTIONS.pitching?.['Fat or thin pitches'], 'pitchFatPair');

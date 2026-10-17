@@ -343,6 +343,35 @@ export const CHIP_SLOW: Swing = fault(CHIP_STROKE, {
   3.0: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] } },
 }, { hit: { at: 1.55, roll: 1.2 } });
 
+/** the fairway wood: topped (lifting the ball, the body rises) and fat (too steep, weight back) */
+export const WOOD_TOP: Swing = fault(WOOD_SWING, {
+  2.8: {
+    body: { pelvis: [18, 26, 4], spine: [2, 2, 2], chest: [2, -10, 6] },
+    drop: -0.03,
+    miss: [0.01, 0.05, 0],
+    label: L('Left: lifting the ball – the body rises · right: chest over the ball, sweeping the grass', 'Links: den Ball heben wollen – der Körper richtet sich auf · rechts: Brust über dem Ball, das Gras fegen'),
+  },
+}, { hit: { at: 2.8, roll: 6 } });
+export const WOOD_FAT: Swing = fault(WOOD_SWING, {
+  2.8: {
+    body: { pelvis: [32, 12, 2], spine: [6, -4, 6], chest: [6, -16, 12] },
+    shift: -0.05,
+    drop: 0.08,
+    miss: [-0.1, -0.02, 0],
+    label: L('Left: weight back, too steep – the club digs · right: wide and flat, sweeping', 'Links: Gewicht hinten, zu steil – der Schläger gräbt · rechts: weit und flach, fegen'),
+  },
+}, { hit: undefined });
+/** the pitch: fat with the arms only and the weight back */
+export const PITCH_FAT: Swing = fault(HALF_SWING, {
+  2.1: {
+    body: { pelvis: [32, 6, 2], spine: [6, -4, 6], chest: [6, -14, 12] },
+    shift: -0.05,
+    drop: 0.08,
+    miss: [-0.08, -0.02, 0],
+    label: L('Left: arms only, weight back – the ground first · right: the body turns, weight forward', 'Links: nur die Arme, Gewicht hinten – zuerst der Boden · rechts: der Körper dreht, Gewicht vorn'),
+  },
+}, { hit: undefined });
+
 /** pairs for the fault pictures: the fault first (left), the right way (right); z: one behind the other for the view from behind */
 export const PAIRS = {
   fatPair: { fault: FAT, right: quiet(FULL_SWING) },
@@ -352,6 +381,9 @@ export const PAIRS = {
   chipFatPair: { fault: CHIP_FAT, right: quiet(CHIP_STROKE) },
   chipThinPair: { fault: CHIP_THIN, right: quiet(CHIP_STROKE) },
   chipSlowPair: { fault: CHIP_SLOW, right: quiet(CHIP_STROKE) },
+  woodTopPair: { fault: WOOD_TOP, right: quiet(WOOD_SWING) },
+  woodFatPair: { fault: WOOD_FAT, right: quiet(WOOD_SWING) },
+  pitchFatPair: { fault: PITCH_FAT, right: quiet(HALF_SWING) },
 };
 export type PairId = keyof typeof PAIRS;
 
