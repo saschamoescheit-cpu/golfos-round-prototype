@@ -38,7 +38,8 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
     let v: Viewer;
     try {
       v = createGolfViewer(c);
-    } catch {
+    } catch (e) {
+      console.error('Training 3D: no WebGL', e);
       props.onFail?.();
       return;
     }
