@@ -291,7 +291,7 @@ export const FAT: Swing = fault(FULL_SWING, {
     shift: -0.05,
     drop: 0.08,
     miss: [-0.09, -0.02, 0],
-    label: L('Left: weight back, the club hits the ground first – right: weight forward, ball first', 'Links: Gewicht hinten, der Schläger trifft zuerst den Boden – rechts: Gewicht vorn, erst der Ball'),
+    label: L('Left: weight back, the club hits the ground first · right: weight forward, ball first', 'Links: Gewicht hinten, der Schläger trifft zuerst den Boden · rechts: Gewicht vorn, erst der Ball'),
   },
 }, { hit: undefined });
 /** thin: the body rises – the leading edge hits the middle of the ball */
@@ -300,12 +300,12 @@ export const THIN: Swing = fault(FULL_SWING, {
     body: { pelvis: [18, 26, 4], spine: [2, 2, 2], chest: [2, -10, 6] },
     drop: -0.02,
     miss: [0.01, 0.045, 0],
-    label: L('Left: the chest rises, the edge hits the ball – right: the posture stays', 'Links: der Brustkorb hebt sich, die Kante trifft den Ball – rechts: die Haltung bleibt'),
+    label: L('Left: the chest rises, the edge hits the ball · right: the posture stays', 'Links: der Brustkorb hebt sich, die Kante trifft den Ball · rechts: die Haltung bleibt'),
   },
 });
 /** sway: the hips slide away from the target instead of turning */
 export const SWAY: Swing = fault(FULL_SWING, {
-  2.0: { shift: -0.12, body: { pelvis: [32, -20, -6], chest: [6, -30, 2] }, label: L('Left: the hips slide away – right: they turn', 'Links: die Hüfte gleitet weg – rechts: sie dreht') },
+  2.0: { shift: -0.12, body: { pelvis: [32, -20, -6], chest: [6, -30, 2] }, label: L('Left: the hips slide away · right: they turn', 'Links: die Hüfte gleitet weg · rechts: sie dreht') },
   2.3: { shift: -0.12, body: { pelvis: [32, -20, -6], chest: [6, -30, 2] } },
 });
 /** early extension: the hips move to the ball, the body stands up – seen from behind */
@@ -315,7 +315,7 @@ export const EARLY_EXT: Swing = fault(FULL_SWING, {
     push: 0.1,
     drop: -0.02,
     miss: [0, 0.03, 0.02],
-    label: L('Left: the hips move to the ball, the body stands up – right: the posture stays', 'Links: die Hüfte geht zum Ball, der Körper richtet sich auf – rechts: die Haltung bleibt'),
+    label: L('Left: the hips move to the ball, the body stands up · right: the posture stays', 'Links: die Hüfte geht zum Ball, der Körper richtet sich auf · rechts: die Haltung bleibt'),
   },
 });
 
@@ -326,7 +326,7 @@ export const CHIP_FAT: Swing = fault(CHIP_STROKE, {
     shift: -0.05,
     drop: 0.08,
     miss: [-0.07, -0.02, 0],
-    label: L('Left: weight back, the wrists flip – the ground first; right: weight forward, the grip leads', 'Links: Gewicht hinten, die Handgelenke klappen – zuerst der Boden; rechts: Gewicht vorn, der Griff führt'),
+    label: L('Left: weight back, the wrists flip – the ground first · right: weight forward, the grip leads', 'Links: Gewicht hinten, die Handgelenke klappen – zuerst der Boden · rechts: Gewicht vorn, der Griff führt'),
   },
 }, { hit: { at: 1.55, roll: 0.8 } });
 export const CHIP_THIN: Swing = fault(CHIP_STROKE, {
@@ -334,12 +334,12 @@ export const CHIP_THIN: Swing = fault(CHIP_STROKE, {
     body: { pelvis: [20, 6, 0], spine: [2, 0, -2], chest: [4, 0, -2] },
     drop: -0.03,
     miss: [0.01, 0.04, 0],
-    label: L('Left: the body rises, the edge hits the ball; right: the body stays down', 'Links: der Körper richtet sich auf, die Kante trifft den Ball; rechts: der Körper bleibt unten'),
+    label: L('Left: the body rises, the edge hits the ball · right: the body stays down', 'Links: der Körper richtet sich auf, die Kante trifft den Ball · rechts: der Körper bleibt unten'),
   },
 }, { hit: { at: 1.55, roll: 4.5 } });
 export const CHIP_SLOW: Swing = fault(CHIP_STROKE, {
-  1.25: { hands: [-0.03, -0.17, 0.43], club: [-0.7, -0.68, 0.2], body: { chest: [8, -20, -2] }, label: L('Left: a long backswing – right: a short one', 'Links: weit ausholen – rechts: kurz ausholen') },
-  1.9: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] }, label: L('Left: braking at the ball; right: longer through, finish held', 'Links: am Ball bremsen; rechts: länger durch, Finish halten') },
+  1.25: { hands: [-0.03, -0.17, 0.43], club: [-0.7, -0.68, 0.2], body: { chest: [8, -20, -2] }, label: L('Left: a long backswing · right: a short one', 'Links: weit ausholen · rechts: kurz ausholen') },
+  1.9: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] }, label: L('Left: braking at the ball · right: longer through, finish held', 'Links: am Ball bremsen · rechts: länger durch, Finish halten') },
   3.0: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] } },
 }, { hit: { at: 1.55, roll: 1.2 } });
 
