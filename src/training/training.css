@@ -169,7 +169,9 @@
 .tr-metro-go { width: auto; min-width: 96px; flex: 1 0 96px; padding-left: 14px; padding-right: 14px; }
 
 /* small pictures of the drills in lists and plans (Sascha 16.10.2026) */
-.tr-thumb { width: 60px; height: 60px; flex-shrink: 0; border-radius: 12px; overflow: hidden; display: block; }
+.tr-thumb { width: 60px; height: 60px; flex-shrink: 0; border-radius: 12px; overflow: hidden; display: block; position: relative; }
+.tr-thumb-play { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--brand); color: var(--bg); display: flex; align-items: center; justify-content: center; }
+.tr-thumb-play svg { width: 8px !important; height: 8px !important; margin-left: 1px; }
 .tr-thumb svg { width: 100%; height: 100%; border-radius: 0 !important; }
 .tr-thumb svg text { display: none; }
 .tr-plan-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 6px 0; background: none; border: 0; color: var(--text); font: inherit; text-align: left; }
