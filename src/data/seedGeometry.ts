@@ -15,6 +15,8 @@ import pula from './courses/pula.json';
 import puntiro from './courses/puntiro.json';
 import sonantem from './courses/sonantem.json';
 import sonantemeast from './courses/sonantemeast.json';
+import southerndunes from './courses/southerndunes.json';
+import stonegateoaks from './courses/stonegateoaks.json';
 
 export const SEED_GEOMETRY: Record<string, CourseGeometry> = {
   'osm:relation/1326323': unpackGeometry(hetzenhof as unknown as CourseGeometry),
@@ -31,4 +33,6 @@ export const SEED_GEOMETRY: Record<string, CourseGeometry> = {
   'osm:way/28625559': unpackGeometry(sonantem as unknown as CourseGeometry),
   'osm:relation/3977168': unpackGeometry(sonantem as unknown as CourseGeometry),
   'sonantem:east': unpackGeometry(sonantemeast as unknown as CourseGeometry),
+  'southerndunes:fl': unpackGeometry(southerndunes as unknown as CourseGeometry),
+  'osm:relation/4039063': unpackGeometry(stonegateoaks as unknown as CourseGeometry),
 };

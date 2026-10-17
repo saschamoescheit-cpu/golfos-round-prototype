@@ -181,6 +181,39 @@ export function hazardTicks(from: LngLat, target: LngLat, ring: Ring, gap = 10):
   return { side, front: tick(near), back: tick(far) };
 }
 
+/** Hazards close together as one (Sascha 17.10.2026: "still very cluttered"): rings less than `gapM` apart are joined
+ *  into their convex outline – a bunker complex gets one start and one end. */
+export function groupHazards(rings: Ring[], gapM = 12): Ring[] {
+  const parent = rings.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  for (let i = 0; i < rings.length; i++)
+    for (let j = i + 1; j < rings.length; j++) {
+      if (find(i) === find(j)) continue;
+      if (rings[i].some((a) => rings[j].some((b) => distanceM(a, b) < gapM))) parent[find(i)] = find(j);
+    }
+  const groups = new Map<number, Ring[]>();
+  rings.forEach((r, i) => groups.set(find(i), [...(groups.get(find(i)) ?? []), r]));
+  return [...groups.values()].map((g) => (g.length === 1 ? g[0] : hull(g.flat())));
+}
+
+/** Convex outline of points (monotone chain), closed. */
+function hull(pts: LngLat[]): Ring {
+  const p = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: LngLat, a: LngLat, b: LngLat) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: LngLat[] = [];
+  for (const q of p) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop();
+    lower.push(q);
+  }
+  const upper: LngLat[] = [];
+  for (const q of p.reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop();
+    upper.push(q);
+  }
+  const h = [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  return [...h, h[0]];
+}
+
 /** Is `p` in front of `from` when playing towards `target`? */
 export function isAhead(from: LngLat, target: LngLat, p: LngLat): boolean {
   const proj = projector(from);

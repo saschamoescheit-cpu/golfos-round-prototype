@@ -9,7 +9,7 @@ const OUT = 'C:/Users/SMoescheit/GolfOS/lidar/us';
 const COURSES: [string, string, [number, number, number, number]][] = [
   ['kissimmeebay', 'osm:relation/4039579', [-81.33452, 28.30423, -81.32046, 28.31159]],
   ['falconsfire', 'osm:way/311994625', [-81.5157, 28.33842, -81.49758, 28.34695]],
-  ['southerndunes', 'southerndunes', [-81.63549, 28.12388, -81.62365, 28.132]],
+  ['southerndunes', 'southerndunes', [-81.6370, 28.1135, -81.6225, 28.1325]],
   ['legendsclermont', 'osm:relation/4040123', [-81.73999, 28.49978, -81.72017, 28.51071]],
   ['stonegateoaks', 'osm:relation/4039063', [-81.48889, 28.118, -81.47272, 28.13739]],
   ['stonegatecypress', 'osm:relation/4039062', [-81.48549, 28.13094, -81.4585, 28.14487]],

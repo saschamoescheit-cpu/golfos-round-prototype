@@ -21,6 +21,7 @@ const SON_ANTEM_WEST: Record<string, TeeRating> = {
 };
 
 export const RATINGS: Record<string, Record<string, TeeRating>> = {
+  'osm:relation/4039063': { Gold: { cr: 72.3, slope: 128 }, Blue: { cr: 70.0, slope: 123 }, White: { cr: 67.8, slope: 119 }, Red: { cr: 65.6, slope: 114 }, Green: { cr: 67.4, slope: 114 } }, // StoneGate Golf Club – Oaks: official scorecard 2025
   'osm:way/28625559': SON_ANTEM_WEST,
   'osm:relation/3977168': SON_ANTEM_WEST,
   'sonantem:east': { '62': { cr: 72.9, slope: 133 }, '58': { cr: 70.7, slope: 129 }, '52': { cr: 67.6, slope: 122 }, '48': { cr: 65.5, slope: 114 } },

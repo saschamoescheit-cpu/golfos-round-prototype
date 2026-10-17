@@ -11,6 +11,8 @@ const BY_COURSE: Record<string, string> = {
   'osm:way/311994625': USGS,
   'osm:relation/4040123': USGS,
   'osm:relation/4039887': USGS,
+  'southerndunes:fl': USGS,
+  'osm:relation/4039063': USGS,
 };
 
 /** Credit for the green heights of a course, or null when it has no green charts. */

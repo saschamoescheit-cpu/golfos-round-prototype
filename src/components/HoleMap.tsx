@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import type { LngLat, Ring } from '../types';
-import { bearingDeg, centroid, distanceM, formatDistance, hazardTicks, hazardToCarry, isAhead, type HoleMapData, type Unit, keepOnGreen } from '../lib/geo';
+import { bearingDeg, centroid, distanceM, distToLine, formatDistance, groupHazards, hazardTicks, hazardToCarry, isAhead, type HoleMapData, type Unit, keepOnGreen } from '../lib/geo';
 import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, PLAN_COLOURS, setCourseLook, setImagery } from './mapStyle';
 import { treeImage, TREE_LOOKS } from './treeSprite';
 import { fairwayShapes, holeOutline, smoothRing, treeSpots } from '../lib/plan2d';
@@ -26,6 +26,8 @@ export interface HoleMapProps {
   walked?: { line: LngLat[]; stops: LngLat[] } | null;
   /** Track points can be dragged (round check); called on release with the point's id. */
   onTrackMove?: (id: string, pos: LngLat) => void;
+  /** A tap on a track point (the shots noted by hand on the course: to remove one). */
+  onTrackTap?: (id: string) => void;
   /** While a shot is dragged: the text its marker shows (e.g. the shot length), null = keep the label. */
   onTrackDrag?: (id: string, pos: LngLat) => string | null;
   /** "Where not to miss": points with relative cost 0 (good miss) … 1 (expensive miss). */
@@ -330,6 +332,14 @@ export function HoleMap(props: HoleMapProps) {
     mk.track = (p.track ?? []).map((t) => {
       const d = labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       const movable = p.onTrackMove != null && t.id != null;
+      if (p.onTrackTap && t.id != null) {
+        d.classList.add('tap');
+        d.setAttribute('role', 'button');
+        d.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          latest.current.onTrackTap?.(t.id!);
+        });
+      }
       const marker = new maplibregl.Marker({ element: d, draggable: movable }).setLngLat(t.pos).addTo(m);
       if (movable) {
         marker.on('drag', () => {
@@ -444,9 +454,13 @@ export function HoleMap(props: HoleMapProps) {
       mk.labels.push(marker);
     });
     if (p.clean && !p.hazards) return noTicks();
+    // only what is in play (Sascha 17.10.2026: "still very cluttered; the bunkers right by the tee need not be
+    // shown"): up to 35 m beside the line the player plays (via the targets to the flag), bunker groups as one
+    const playLine: LngLat[] = [p.from, ...p.targets, p.pin];
+    const inPlay = (ring: Ring) => ring.some((q) => distToLine(q, playLine) <= 35);
     const hazards: { ring: Ring; kind: 'bunker' | 'water' }[] = [
-      ...p.data.bunkers.map((ring) => ({ ring, kind: 'bunker' as const })),
-      ...p.data.water.map((ring) => ({ ring, kind: 'water' as const })),
+      ...groupHazards(p.data.bunkers).filter(inPlay).map((ring) => ({ ring, kind: 'bunker' as const })),
+      ...p.data.water.filter(inPlay).map((ring) => ({ ring, kind: 'water' as const })),
     ];
     // Nearest hazards first; a label that would cover another one on screen is left out. Asked for on the playing
     // view (Hindernisse): greenside bunkers count too – the flag does not block them (Sascha 14.10.: "nothing happens").
@@ -459,7 +473,8 @@ export function HoleMap(props: HoleMapProps) {
     const candidates = hazards
       .map((h) => ({ ...h, c: centroid(h.ring), ...hazardToCarry(p.from, h.ring) }))
       // all the way to behind the green (Sascha 17.10.2026: on a par 5 the greenside bunkers were missing)
-      .filter((h) => isAhead(p.from, p.pin, h.c) && h.to >= 5 && h.to <= distanceM(p.from, p.pin) + 40)
+      // from the tee, what ends before 80 m is out of reach of any tee shot (Sascha 17.10.2026: "the bunkers by the tee")
+      .filter((h) => isAhead(p.from, p.pin, h.c) && h.to >= 5 && h.carry >= (distanceM(p.from, p.data.tee) < 15 ? 80 : 5) && h.to <= distanceM(p.from, p.pin) + 40)
       .sort((a, b) => a.to - b.to);
     // every hazard, start and end (Sascha 17.10.2026: "3C has three bunkers right, only two are shown"): a dashed line
     // from each out to the side away from the line of play, the distance at its end; a label that would cover another

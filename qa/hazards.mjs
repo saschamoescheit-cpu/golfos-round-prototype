@@ -39,7 +39,12 @@ await p.waitForTimeout(2500);
 const labels = await p.locator('.map-label.hazard').allInnerTexts();
 console.log('· labels:', labels.join(' | '));
 const bunkers = await p.locator('.map-label.hazard.bunker').count();
-ok(bunkers >= 14, `start and end of all seven bunkers shown (${bunkers} labels) – none dropped`);
+// only what is in play (Sascha 17.10.2026: "still very cluttered"): near the line, past the reach of the tee, bunker
+// groups as one – on 3C the right pair at 128–147 and the greenside bunkers, nothing by the tee
+const values = labels.map(Number);
+ok(bunkers >= 6 && bunkers <= 10, `the bunkers in play with start and end (${bunkers} labels)`);
+ok(values.every((v) => v >= 80), 'nothing by the tee (all past 80 m)');
+ok(values.includes(128) && values.includes(147), 'the right bunker pair as one group (128–147)');
 const colours = await p.locator('.map-label.hazard').evaluateAll((els) => [...new Set(els.map((e) => getComputedStyle(e).color))]);
 ok(colours.every((c) => c === 'rgb(255, 255, 255)'), `white distance type, no yellow (${colours.join(', ')})`);
 // the dashed lines are drawn: the map has features in the hazard-ticks source

@@ -7,7 +7,7 @@ import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
-import { PositionFilter } from '../lib/gpsfilter';
+import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
@@ -39,7 +39,7 @@ import { greenWalk } from '../lib/greenwalk';
 import { LeaderboardSheet } from '../components/Leaderboard';
 import { isTeamRound } from '../lib/games';
 import { HoleSetup } from '../components/HoleSetup';
-import { clubCode, tr } from '../lib/i18n';
+import { clubCode, dec, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
 import { FairwayPicker } from '../components/FairwayPicker';
 import { HoleDrawer } from '../components/HoleDrawer';
@@ -48,7 +48,7 @@ import { statRounds } from '../lib/signing';
 const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f));
 
 /** Beyond this distance from the hole the app measures from the tee (planning at home or on another hole). */
-const ON_HOLE_M = 1500;
+const ON_HOLE_M = 15; // metres past the tee along the hole before the distances count from the player
 /** 2D view: what is drawn beside the hole (Sascha 15.10.2026: 60 m). */
 const CORRIDOR_2D = 60;
 /** The parts of the course outline within `max` metres of the hole line (the out-of-bounds line along this hole only). */
@@ -207,6 +207,7 @@ export function HoleScreen(props: {
         // (only right after unlocking, so a phone with an odd GPS clock is never locked out).
         if (Date.now() - visibleAt.current < 5000 && p.timestamp < visibleAt.current - 10000) return;
         const fix = filter.current.push({ pos: [p.coords.longitude, p.coords.latitude] as LngLat, accuracy: p.coords.accuracy, t: Date.now() });
+        feedFix({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy, t: p.timestamp });
         const was = shownFix.current;
         if (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still) showFix(fix);
         // Every round keeps the GPS track (while the app is open, raw fixes): automatic shot length, shot detection.
@@ -578,6 +579,9 @@ export function HoleScreen(props: {
     const t = setTimeout(() => setUndo(null), 6000);
     return () => clearTimeout(t);
   }, [undo]);
+  const [removeShot, setRemoveShot] = useState<number | null>(null);
+  const latestRound = useRef(round); // the round as it is now – for a measurement that finishes seconds later
+  latestRound.current = round; // index in round.manualShots offered for removal
   const [testMsg, setTestMsg] = useState<string | null>(null);
   useEffect(() => {
     if (!testMsg) return;
@@ -605,6 +609,11 @@ export function HoleScreen(props: {
     if (kind === 'shot' && pos && mapData && onGreenAt(pos, mapData) && detail.shots.length > 0) setSheet({ kind: 'green', pos });
     else setSheet(kind === 'shot' ? { kind, index: null, pos } : { kind, pos });
   };
+  // the shots noted by hand on this hole, on the map – a tap offers to remove one (Sascha 17.10.2026)
+  const manualTrack = (round.manualShots ?? [])
+    .map((x, k) => ({ x, k }))
+    .filter(({ x }) => x.hole === i)
+    .map(({ x, k }, n) => ({ pos: x.pos, label: String(n + 1), tone: 'good' as const, id: `m${k}` }));
   const track: { pos: LngLat; label: string; green?: boolean }[] = detail.shots
     .map((s, k) => (s.pos ? { pos: s.pos, label: `${k + 1}${s.club ? ' ' + clubCode(s.club) : ''}${lengths[k] != null ? ' · ' + fmtU(lengths[k]!) : ''}${s.penalty ? ' +1' : ''}` } : null))
     .filter((t): t is { pos: LngLat; label: string } => t != null);
@@ -723,10 +732,12 @@ export function HoleScreen(props: {
     // off the green – dragged there or saved so – counts as not set.
     const pinOk = (p: LngLat) => (mapData.green ? pointInRing(p, mapData.green) || distToLine(p, mapData.green) <= 3 : distanceM(p, mapData.greenCenter) <= 25);
     const pin = plan.pin && pinOk(plan.pin) ? plan.pin : mapData.greenCenter;
-    const onHole = player != null && distToLine(player.pos, mapData.line) < ON_HOLE_M;
     // really playing this hole (not on the next fairway or in the clubhouse): for the camera, the shot lengths and
     // the caddie log
     const onThisHole = player != null && distToLine(player.pos, mapData.line) <= 60;
+    // Distances from the player only once he is on the hole, past the tee; until then always from the tee (Sascha
+    // 17.10.2026: "the GPS should always start from the tee" – beside the course it measured across from there)
+    const onHole = onThisHole && alongLine(mapData.line, player!.pos) > ON_HOLE_M;
     const shotButtons = detailMode && MANUAL_SHOTS;
     const from = onHole ? player!.pos : mapData.tee;
     // Without a mapped green outline (player-set green) only the centre distance is known.
@@ -907,7 +918,8 @@ export function HoleScreen(props: {
           imagery={imagery}
           // the state's aerial service does not answer: Esri for this visit (the choice stays as it is)
           onImageryFail={() => imagery.id !== 'esri' && setImageryPref('esri')}
-          track={detailMode ? track : undefined}
+          track={detailMode ? track : manualTrack}
+          onTrackTap={detailMode ? undefined : (id) => setRemoveShot(Number(id.slice(1)))}
           aimPoint={null}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus && showGreen !== true, fit: showGreen === true && mapData.green ? mapData.green : undefined } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
@@ -961,6 +973,7 @@ export function HoleScreen(props: {
         </div>
 
         {/* the tools in one column on the right, as in Hole19: caddie, green slope, hazards, imagery, scorecard */}
+        <div className="map-side">
         <div className="map-toolbar" role="toolbar" aria-label={tr('Map tools', 'Kartenwerkzeuge')}>
           {caddieOn && (
             <button
@@ -1014,20 +1027,36 @@ export function HoleScreen(props: {
               </svg>
             </button>
           )}
-          {/* the ball's spot by hand, at the ball: the truth for the shot detection – on the map for every round, not
-              in the profile (Sascha 17.10.2026); the detection from the GPS track runs as always, both kept to compare */}
+          <button type="button" className="map-tool" aria-pressed={view2d} aria-label={view2d ? tr('Aerial image', 'Luftbild zeigen') : tr('Drawn hole (2D)', 'Gezeichnetes Loch (2D)')} title="2D" onClick={toggleView}>
+            <span className="map-tool-text">2D</span>
+          </button>
+        </div>
+        {/* the ball's spot by hand, at the ball: the truth for the shot detection – on the map for every round, not
+              in the profile, below the tools on its own (Sascha 17.10.2026); the GPS detection runs as always, both kept */}
           {!round.preview && !props.game && (
             <button
               type="button"
-              className="map-tool shot-tool"
+              className="map-shot-btn"
               disabled={!player}
               aria-label={tr('Note the ball here', 'Schlag hier erfassen')}
               title={tr('Shot here', 'Schlag hier')}
               onClick={() => {
                 if (!player) return;
                 const mine = (round.manualShots ?? []).filter((x) => x.hole === i).length;
-                props.onChange({ ...round, manualShots: [...(round.manualShots ?? []), { hole: i, pos: player.pos, t: Date.now(), acc: Math.round(player.accuracy) }] });
-                setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted (±${Math.round(player.accuracy)} m)`, `Schlag ${mine + 1} an ${hole.label} erfasst (±${Math.round(player.accuracy)} m)`));
+                const t = Date.now();
+                props.onChange({ ...round, manualShots: [...(round.manualShots ?? []), { hole: i, pos: player.pos, t, acc: Math.round(player.accuracy) }] });
+                setTestMsg(tr(`Shot ${mine + 1} on ${hole.label}: measuring – stand still for 5 s …`, `Schlag ${mine + 1} an ${hole.label}: wird gemessen – 5 s stehen bleiben …`));
+                // as exact as the phone allows: the fixes of the next 5 s averaged, then the shot's spot corrected
+                sampleFix(5000, shownFix.current).then((f) => {
+                  const r = latestRound.current;
+                  const k = (r.manualShots ?? []).findIndex((x) => x.t === t);
+                  if (k < 0) return;
+                  if (!f) return setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted`, `Schlag ${mine + 1} an ${hole.label} erfasst`));
+                  const list = (r.manualShots ?? []).slice();
+                  list[k] = { ...list[k], pos: f.pos, acc: Math.round(f.accuracy * 10) / 10 };
+                  props.onChange({ ...r, manualShots: list });
+                  setTestMsg(tr(`Shot ${mine + 1} on ${hole.label} noted (±${dec(f.accuracy.toFixed(1))} m, ${f.n} ${f.n === 1 ? 'fix' : 'fixes'})`, `Schlag ${mine + 1} an ${hole.label} erfasst (±${dec(f.accuracy.toFixed(1))} m, ${f.n} ${f.n === 1 ? 'Messung' : 'Messungen'})`));
+                });
               }}
             >
               {/* a club with a plus */}
@@ -1039,9 +1068,6 @@ export function HoleScreen(props: {
               {(round.manualShots ?? []).some((x) => x.hole === i) && <span className="tool-badge shot-count">{(round.manualShots ?? []).filter((x) => x.hole === i).length}</span>}
             </button>
           )}
-          <button type="button" className="map-tool" aria-pressed={view2d} aria-label={view2d ? tr('Aerial image', 'Luftbild zeigen') : tr('Drawn hole (2D)', 'Gezeichnetes Loch (2D)')} title="2D" onClick={toggleView}>
-            <span className="map-tool-text">2D</span>
-          </button>
         </div>
 
         {exitEl}
@@ -1278,6 +1304,28 @@ export function HoleScreen(props: {
               <button type="button" className="btn-ghost" onClick={() => setPlacing(null)}>
                 {tr('Cancel', 'Abbrechen')}
               </button>
+            </div>
+          )}
+          {removeShot != null && round.manualShots?.[removeShot] && !scoreSheet && (
+            <div className="test-shot-row">
+              <span className="map-hint detected" role="status">
+                <span>{tr(`Shot ${(round.manualShots ?? []).slice(0, removeShot + 1).filter((x) => x.hole === i).length} noted by hand`, `Schlag ${(round.manualShots ?? []).slice(0, removeShot + 1).filter((x) => x.hole === i).length} (von Hand erfasst)`)}</span>
+                <button
+                  type="button"
+                  className="btn-ghost danger"
+                  onClick={() => {
+                    const list = (round.manualShots ?? []).slice();
+                    list.splice(removeShot, 1);
+                    props.onChange({ ...round, manualShots: list });
+                    setRemoveShot(null);
+                  }}
+                >
+                  {tr('Remove', 'Entfernen')}
+                </button>
+                <button type="button" className="icon-btn" aria-label={tr('Keep it', 'Behalten')} onClick={() => setRemoveShot(null)}>
+                  ✕
+                </button>
+              </span>
             </div>
           )}
           {/* the ball's spot by hand noted (the map tool) – a toast with undo */}

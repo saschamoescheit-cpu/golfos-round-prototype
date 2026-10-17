@@ -63,3 +63,43 @@ function weightedMean(fixes: Fix[]): LngLat {
   }
   return [x / w, y / w];
 }
+
+/**
+ * The spot of a shot as exact as the phone allows (Sascha 17.10.2026: "not ±5 m – as exact as possible"): every fix of
+ * the next seconds, weighted by its accuracy (1/acc²), averaged. A single fix is off by 3–5 m in a random direction;
+ * the mean of ~5 fixes while the player stands still is about 1–2 m. Resolves null without GPS.
+ */
+const fed = new Set<(f: Fix) => void>();
+/** The app's own position watch hands every fix on here, so a running sampleFix sees it too. */
+export function feedFix(f: Fix): void {
+  fed.forEach((l) => l(f));
+}
+
+export function sampleFix(ms = 5000, last?: Fix | null): Promise<(Fix & { n: number }) | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return resolve(null);
+    const fixes: Fix[] = [];
+    // the same reading may come from both watches: counted once
+    const add = (f: Fix) => { if (!fixes.some((x) => x.t === f.t)) fixes.push({ ...f, accuracy: Math.max(1, f.accuracy) }); };
+    fed.add(add);
+    const id = navigator.geolocation.watchPosition(
+      (p) => add({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy, t: p.timestamp }),
+      () => undefined,
+      { enableHighAccuracy: true, maximumAge: 0, timeout: ms },
+    );
+    setTimeout(() => {
+      navigator.geolocation.clearWatch(id);
+      fed.delete(add);
+      // the very first fix may be an old, cached one: dropped when newer ones came; none at all (standing still, the
+      // phone hands out nothing new): the last good fix
+      const use = fixes.length > 2 ? fixes.slice(1) : fixes.length ? fixes : last ? [last] : [];
+      if (!use.length) return resolve(null);
+      const w = use.map((f) => 1 / (f.accuracy * f.accuracy));
+      const sw = w.reduce((a, b) => a + b, 0);
+      const lon = use.reduce((s, f, i) => s + f.pos[0] * w[i], 0) / sw;
+      const lat = use.reduce((s, f, i) => s + f.pos[1] * w[i], 0) / sw;
+      // the spread of the mean: never claimed better than 1 m
+      resolve({ pos: [lon, lat], accuracy: Math.max(1, Math.sqrt(1 / sw)), t: use[use.length - 1].t, n: use.length });
+    }, ms);
+  });
+}

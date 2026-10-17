@@ -385,4 +385,60 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
       {"handicap": "2", "par": "5", "ref": "18"},
     ],
   },
+  'southerndunes:fl': {
+    name: 'Southern Dunes Golf & Country Club',
+    lat: 28.1279,
+    lon: -81.6246,
+    // Haines City, Florida (USA trip, 17.10.2026). OSM has the north holes only and no course area: the 18 hole
+    // lines were read off the club's course map and the Polk County 2023 aerial, the greens and bunkers of 11–18
+    // traced from that aerial (GolfOS/lidar/us_sd_holes.py, us_greens.py, us_bunkers.py); par and Hcp from the scorecard.
+    holeTags: [
+      {"handicap": "9", "par": "4", "ref": "1"},
+      {"handicap": "15", "par": "4", "ref": "2"},
+      {"handicap": "11", "par": "3", "ref": "3"},
+      {"handicap": "5", "par": "5", "ref": "4"},
+      {"handicap": "7", "par": "4", "ref": "5"},
+      {"handicap": "17", "par": "3", "ref": "6"},
+      {"handicap": "1", "par": "4", "ref": "7"},
+      {"handicap": "13", "par": "4", "ref": "8"},
+      {"handicap": "3", "par": "5", "ref": "9"},
+      {"handicap": "2", "par": "4", "ref": "10"},
+      {"handicap": "16", "par": "3", "ref": "11"},
+      {"handicap": "6", "par": "5", "ref": "12"},
+      {"handicap": "8", "par": "4", "ref": "13"},
+      {"handicap": "18", "par": "3", "ref": "14"},
+      {"handicap": "14", "par": "4", "ref": "15"},
+      {"handicap": "4", "par": "5", "ref": "16"},
+      {"handicap": "12", "par": "4", "ref": "17"},
+      {"handicap": "10", "par": "4", "ref": "18"},
+    ],
+  },
+  'osm:relation/4039063': {
+    name: 'StoneGate Golf Club – Oaks',
+    lat: 28.1277,
+    lon: -81.4860,
+    // Poinciana, Florida (USA trip, 17.10.2026). OSM has only the course area: no course map is published, so tees and
+    // greens were read off the Polk County 2023 aerial and the routing worked out from the official 2025 scorecard
+    // (GolfOS/lidar/us_sg_holes.py; greens and bunkers us_greens.py, us_bunkers.py). Lengths agree with the card.
+    holeTags: [
+      {"handicap": "8", "par": "5", "ref": "1"},
+      {"handicap": "12", "par": "4", "ref": "2"},
+      {"handicap": "2", "par": "4", "ref": "3"},
+      {"handicap": "14", "par": "3", "ref": "4"},
+      {"handicap": "6", "par": "4", "ref": "5"},
+      {"handicap": "10", "par": "4", "ref": "6"},
+      {"handicap": "16", "par": "3", "ref": "7"},
+      {"handicap": "18", "par": "5", "ref": "8"},
+      {"handicap": "4", "par": "4", "ref": "9"},
+      {"handicap": "9", "par": "4", "ref": "10"},
+      {"handicap": "5", "par": "4", "ref": "11"},
+      {"handicap": "1", "par": "3", "ref": "12"},
+      {"handicap": "11", "par": "4", "ref": "13"},
+      {"handicap": "15", "par": "5", "ref": "14"},
+      {"handicap": "13", "par": "3", "ref": "15"},
+      {"handicap": "7", "par": "4", "ref": "16"},
+      {"handicap": "3", "par": "4", "ref": "17"},
+      {"handicap": "17", "par": "5", "ref": "18"},
+    ],
+  },
 };

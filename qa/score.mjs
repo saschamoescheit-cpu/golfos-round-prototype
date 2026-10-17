@@ -34,14 +34,29 @@ const stored = (k) => p.evaluate((k) => Object.values(JSON.parse(localStorage.ge
 // 0 · "shot here" on the map for every round, green, with undo (Sascha 17.10.2026 – it was in the profile's test mode)
 await p.waitForTimeout(1500);
 const shotTool = p.getByRole('button', { name: 'Schlag hier erfassen' });
+ok((await p.locator('.map-toolbar .map-shot-btn').count()) === 0 && (await p.locator('.map-side > .map-shot-btn').count()) === 1, '"Schlag hier" on its own below the tools, not in the toolbar');
 ok(await shotTool.isVisible(), '"Schlag hier" is a map tool on every round');
 await shotTool.click();
 await p.waitForTimeout(300);
 const manual = () => p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].manualShots ?? []).length);
-ok((await manual()) === 1 && (await p.getByText(/Schlag 1 an 1A erfasst/).isVisible()), 'a tap notes the ball, a toast says so');
+ok((await manual()) === 1 && (await p.getByText(/Schlag 1 an 1A: wird gemessen/).isVisible()), 'a tap notes the ball and measures for 5 s');
+await p.waitForTimeout(6000);
+const acc = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].manualShots[0].acc);
+const toast = await p.locator('.test-shot-row').innerText().catch(() => '');
+ok(/Schlag 1 an 1A erfasst \(±[\d,]+ m, \d+ Messung(en)?\)/.test(toast) && acc <= 5, `then the averaged spot (±${acc} m): ${toast.replace(/\s+/g, ' ')}`);
 await p.getByRole('button', { name: 'Rückgängig' }).click();
 await p.waitForTimeout(300);
 ok((await manual()) === 0, 'undo takes it back');
+// a noted shot stands on the map; a tap on it offers to remove it (Sascha 17.10.2026)
+await shotTool.click();
+await p.waitForTimeout(400);
+const dot = p.locator('.map-shot-dot.tap');
+ok((await dot.count()) === 1, 'the noted shot stands on the map');
+await dot.first().click();
+await p.waitForTimeout(300);
+await p.getByRole('button', { name: 'Entfernen', exact: true }).click();
+await p.waitForTimeout(300);
+ok((await manual()) === 0 && (await p.locator('.map-shot-dot.tap').count()) === 0, 'a tap on it and "Entfernen" removes it');
 // 1 · "→" without a score: the sheet, then on to 2A
 await p.getByRole('button', { name: 'Nächstes Loch' }).click();
 await p.waitForTimeout(500);
