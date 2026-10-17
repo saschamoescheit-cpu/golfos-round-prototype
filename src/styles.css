@@ -1307,3 +1307,21 @@ button.tile:disabled .tile-mark { opacity: 0.5; }
 .crop-ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgba(14, 20, 24, 0.6); outline: 2px solid var(--brand); pointer-events: none; }
 .crop-zoom { width: 100%; max-width: 260px; accent-color: var(--brand); align-self: center; }
 .photo-cropper .btn-primary { width: 100%; }
+
+/* the Rules of Golf (R&A structure): groups, green rule numbers, the › at the right */
+.rules-book .screen { gap: 14px; }
+.rules-group { display: flex; flex-direction: column; gap: 8px; }
+.rule-no { flex: none; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; background: var(--brand); color: #0e1418; font: 700 14px/30px var(--display); text-align: center; font-variant-numeric: tabular-nums; }
+.rule-no.big { min-width: 44px; height: 44px; font-size: 20px; line-height: 44px; border-radius: 12px; }
+.rule-head { display: flex; align-items: center; gap: 12px; }
+.rule-head h2 { margin: 0; font: 700 20px/1.25 var(--display); text-wrap: balance; }
+.rule-section { display: flex; flex-direction: column; gap: 6px; scroll-margin-top: 12px; }
+.rule-section p { margin: 0; line-height: 1.45; }
+.rule-section.hit { outline: 2px solid var(--brand); }
+.rule-sec-id { color: var(--brand-text); font-variant-numeric: tabular-nums; }
+.rule-penalty { color: var(--text); font-size: 14px; }
+.rule-penalty span { color: var(--bad); font-weight: 700; margin-right: 4px; }
+.rule-snippet { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rules-note { margin: 0; }
+.rule-sketch { display: block; width: 100%; height: auto; max-width: 520px; border-radius: 14px; }
+.rules-book .list-item .title { white-space: normal; overflow: visible; text-overflow: clip; } /* full rule titles, as in the R&A app */

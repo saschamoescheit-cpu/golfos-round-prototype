@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SpeakerIcon, useSpeaking } from './SpeakerIcon';
-import { answer, canListen, listen, RULES, speak, summary, toggleSpeak, type CaddieFacts } from '../lib/caddietalk';
+import { answer, canListen, listen, speak, summary, toggleSpeak, type CaddieFacts } from '../lib/caddietalk';
+import { RulesBook } from './RulesBook';
 import type { HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
 import { getLang, tr } from '../lib/i18n';
@@ -81,7 +82,7 @@ export function CaddieCard(props: {
         </div>
       </section>
       {sheet === 'ask' && <AskSheet facts={f} onClose={() => setSheet(null)} onRules={() => setSheet('rules')} />}
-      {sheet === 'rules' && <RulesSheet onClose={() => setSheet(null)} />}
+      {sheet === 'rules' && <RulesBook onClose={() => setSheet(null)} />}
       {sheet === 'notes' && <NotesSheet hole={props.holeLabel} note={props.note} onSave={props.onNote} onClose={() => setSheet(null)} />}
     </>
   );
@@ -161,33 +162,6 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
       )}
       {q && <p className="muted small" style={{ margin: 0 }}>{tr(`“${q}”`, `„${q}“`)}</p>}
       {a && <p style={{ margin: 0, fontSize: 17 }}>{a}</p>}
-    </Sheet>
-  );
-}
-
-function RulesSheet(props: { onClose: () => void }) {
-  const [open, setOpen] = useState<string | null>(null);
-  return (
-    <Sheet title={tr('Rules help', 'Regelhilfe')} onClose={props.onClose}>
-      {RULES.map((r) => (
-        <div key={r.id} className="card" style={{ background: 'var(--surface-2)' }}>
-          <button type="button" className="toggle" aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)}>
-            {open === r.id ? '▾' : '▸'} {r.title}
-          </button>
-          {open === r.id && (
-            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-              {r.text.map((t) => (
-                <li key={t} style={{ marginBottom: 4 }}>
-                  {t}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ))}
-      <p className="muted small" style={{ margin: 0 }}>
-        {tr('Summary of the Rules of Golf (2023). Local rules of the club come first.', 'Kurzfassung der Golfregeln (2023). Die Platzregeln des Clubs gehen vor.')}
-      </p>
     </Sheet>
   );
 }

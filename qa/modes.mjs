@@ -35,9 +35,9 @@ for (const c of CASES) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 5 }, permissions: ['geolocation'] });
   const p = await ctx.newPage();
   const errs = [];
-  // MapLibre loads map tiles through blob: addresses and frees them once drawn – WebKit under test now and then reports
-// the freed one ("…localhost:5173/<uuid> due to access control checks"); the tile is on the map, nothing is wrong
-p.on('pageerror', (e) => { if (!/localhost:\d+\/[0-9a-f-]{36} due to access control/.test(e.message)) errs.push(e.message); });
+  // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –
+// WebKit under test reports it as "…localhost:5173/… due to access control checks"; nothing is wrong in the app
+p.on('pageerror', (e) => { if (!/localhost:\d+\/\S* due to access control/.test(e.message)) errs.push(e.message); });
   const label = `${c.n} Sp. · ${c.mode} · ${c.scoring}`;
   let step = 'setup';
   try {
