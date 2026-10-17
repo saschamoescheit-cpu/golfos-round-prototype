@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode, type SVGProps } from 'react';
 import { getLang, tr } from '../lib/i18n';
 import { isLeftHanded } from '../lib/profile';
+import { sided } from './sides';
 import type { L, P, SideItem, Sketch, SketchItem } from './types';
 import { Golfer, golferJoints } from './Golfer';
 
@@ -11,17 +12,9 @@ import { Golfer, golferJoints } from './Golfer';
 // plain labels are written with a German decimal comma ("1,2 m") – a point in English
 const plain = (t: L | string) => (typeof t === 'string' ? (getLang() === 'en' ? t.replace(/(\d),(\d)/g, '$1.$2') : t) : tr(t.en, t.de));
 
-// Left-handers (Sascha 17.10.2026, profile "Du spielst"): every sketch is drawn mirrored – the target is on the other
-// side, so the words for the sides in the sketch texts swap as well (the drill texts say lead/trail and stay as they are)
-const SIDE_WORDS: Record<string, string> = {
-  rechts: 'links', links: 'rechts', Rechts: 'Links', Links: 'Rechts',
-  rechte: 'linke', linke: 'rechte', rechten: 'linken', linken: 'rechten', rechter: 'linker', linker: 'rechter', rechtes: 'linkes', linkes: 'rechtes',
-  Rechtshänder: 'Linkshänder', Linkshänder: 'Rechtshänder',
-  right: 'left', left: 'right', Right: 'Left', Left: 'Right',
-  'right-hander': 'left-hander', 'left-hander': 'right-hander',
-};
-export const swapSides = (s: string) => s.replace(/(?<![\p{L}-])(right-hander|left-hander|Rechtshänder|Linkshänder|rechte[nrs]?|linke[nrs]?|[Rr]echts|[Ll]inks|[Rr]ight|[Ll]eft)(?![\p{L}-])/gu, (w) => SIDE_WORDS[w] ?? w);
-const txt = (t: L | string) => (isLeftHanded() ? swapSides(plain(t)) : plain(t));
+export { swapSides } from './sides';
+// the sketch texts follow the mirrored drawing for left-handers
+const txt = (t: L | string) => sided(plain(t));
 
 /** the drawing of a sketch, mirrored for left-handers; texts inside stay readable (MText) */
 const MirrorCtx = createContext(false);

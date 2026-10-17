@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from 'react';
+import { sided } from './sides';
 import { dec, getLang, tr } from '../lib/i18n';
 import { loadProfile } from '../lib/profile';
 import type { CategoryId, Drill, Gear, GearKind, L, Level, Place, Scoring, Targets, Video } from './types';
 
 // Small building blocks of the Training module.
 
-export const t = (x: L | string | undefined): string => (x == null ? '' : typeof x === 'string' ? x : tr(x.en, x.de));
+// left-handers read every right/left mirrored, like the pictures (sides.ts)
+export const t = (x: L | string | undefined): string => (x == null ? '' : typeof x === 'string' ? x : sided(tr(x.en, x.de)));
 
 export const levelName = (l: Level | 0): string => [tr('everyone', 'alle'), tr('beginner', 'Einsteiger'), tr('intermediate', 'Fortgeschritten'), tr('advanced', 'Könner')][l];
 
