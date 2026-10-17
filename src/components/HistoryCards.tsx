@@ -13,7 +13,20 @@ export const SG_COLOURS: Record<SgCategory, string> = { tee: '#b4a7ff', long: '#
 type Metric = 'score' | 'stableford' | 'hcp' | 'putts' | 'sg';
 
 export function TrendCard(props: { rounds: Round[] }) {
-  const pts = useMemo(() => roundPoints(props.rounds), [props.rounds]);
+  const nine = props.rounds.length > 0 && props.rounds.filter((r) => r.holes.length <= 9).length * 2 > props.rounds.length;
+  const per = nine ? tr('per 9 holes', 'je 9 Löcher') : tr('per round', 'je Runde');
+  const pts = useMemo(() => {
+    const all = roundPoints(props.rounds);
+    if (!nine) return all;
+    const h = (v: number | null | undefined) => (v == null ? null : Math.round(v * 5) / 10);
+    return all.map((p) => ({
+      ...p,
+      toPar18: Math.round(p.toPar18 * 5) / 10,
+      stableford18: h(p.stableford18),
+      putts18: h(p.putts18),
+      sg: p.sg ? (Object.fromEntries(Object.entries(p.sg).map(([c, v]) => [c, h(v as number)])) as typeof p.sg) : p.sg,
+    }));
+  }, [props.rounds, nine]);
   const [metric, setMetric] = useState<Metric>('score');
   if (pts.length < 2) return null;
   const labels = pts.map((p) => shortDate(p.round.createdAt));
@@ -39,7 +52,7 @@ export function TrendCard(props: { rounds: Round[] }) {
         {s.better ? (
           <span className="good-text">
             {tr('Improved most: ', 'Am meisten verbessert: ')}
-            {SG_LABELS[s.better.c]} ({dec(`+${s.better.change.toFixed(1)}`)} {tr('strokes per round', 'Schläge je Runde')})
+            {SG_LABELS[s.better.c]} ({dec(`+${s.better.change.toFixed(1)}`)} {tr('strokes', 'Schläge')} {per})
           </span>
         ) : (
           tr('No area changed by half a stroke or more.', 'Kein Bereich hat sich um einen halben Schlag oder mehr verändert.')
@@ -61,10 +74,10 @@ export function TrendCard(props: { rounds: Round[] }) {
       m.id === 'hcp'
         ? tr(`your handicap played went ${up ? 'up' : 'down'} by ${amount}`, `ist dein gespieltes Handicap um ${amount} ${up ? 'gestiegen' : 'gesunken'}`)
         : m.id === 'stableford'
-          ? tr(`you score ${amount} points ${up ? 'more' : 'fewer'} per round`, `holst du ${amount} Punkte ${up ? 'mehr' : 'weniger'} je Runde`)
+          ? tr(`you score ${amount} points ${up ? 'more' : 'fewer'} ${per}`, `holst du ${amount} Punkte ${up ? 'mehr' : 'weniger'} ${per}`)
           : m.id === 'putts'
-            ? tr(`you need ${amount} putts ${up ? 'more' : 'fewer'} per round`, `brauchst du ${amount} Putts ${up ? 'mehr' : 'weniger'} je Runde`)
-            : tr(`you got ${amount} strokes per round ${better ? 'better' : 'worse'}`, `bist du um ${amount} Schläge je Runde ${better ? 'besser' : 'schlechter'} geworden`);
+            ? tr(`you need ${amount} putts ${up ? 'more' : 'fewer'} ${per}`, `brauchst du ${amount} Putts ${up ? 'mehr' : 'weniger'} ${per}`)
+            : tr(`you got ${amount} strokes ${per} ${better ? 'better' : 'worse'}`, `bist du um ${amount} Schläge ${per} ${better ? 'besser' : 'schlechter'} geworden`);
     sentence =
       better || worse ? (
         <span className={better ? 'good-text' : 'bad-text'}>{tr(`Over your ${t.rounds} rounds ${what}.`, `Über deine ${t.rounds} Runden ${what}.`)}</span>
@@ -107,10 +120,10 @@ export function TrendCard(props: { rounds: Round[] }) {
       <p style={{ margin: 0 }}>{sentence}</p>
       <p className="muted small" style={{ margin: 0 }}>
         {m.id === 'sg'
-          ? tr('Strokes gained per 18 holes against a tour pro (0 = tour level).', 'Strokes Gained je 18 Löcher gegen einen Tour-Profi (0 = Tour-Niveau).')
+          ? tr(`Strokes gained ${per} against a tour pro (0 = tour level).`, `Strokes Gained ${per} gegen einen Tour-Profi (0 = Tour-Niveau).`)
           : m.id === 'hcp'
             ? tr(`Handicap played (WHS score differential) in ${known} of your rounds of 18 holes.`, `Gespieltes Handicap (Score Differential nach WHS) aus ${known} deiner 18-Loch-Runden.`)
-            : tr('Values per 18 holes; the dashed line shows the trend.', 'Werte je 18 Löcher; die gestrichelte Linie zeigt den Trend.')}
+            : tr(`Values ${nine ? 'per 9 holes' : 'per 18 holes'}; the dashed line shows the trend.`, `Werte je ${nine ? 9 : 18} Löcher; die gestrichelte Linie zeigt den Trend.`)}
       </p>
     </section>
   );

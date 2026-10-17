@@ -58,6 +58,17 @@ await p.locator('.tabbar button').filter({ hasText: 'Mein Golf' }).click();
 await p.waitForTimeout(600);
 const hero = await p.locator('.record-hero').innerText();
 ok(/\+8,0\s*Ø zu Par \(9 Loch\)/.test(hero), 'my golf: average to par per 9 holes (+8,0, not +16,0)');
+// the progress of two 9-hole rounds: per 9 holes too
+await p.evaluate(() => {
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify([...rs, { ...rs[0], id: rs[0].id + '-2', createdAt: '2026-10-09T08:00:00Z', finishedAt: '2026-10-09T10:00:00Z' }]));
+});
+await p.reload();
+await p.waitForTimeout(1200);
+await p.locator('.tabbar button').filter({ hasText: 'Mein Golf' }).click();
+await p.waitForTimeout(600);
+const trend = await p.locator('section').filter({ hasText: 'Dein Verlauf' }).last().innerText();
+ok(/Werte je 9 Löcher/.test(trend) && !/je 18/.test(trend), 'my golf: progress per 9 holes');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
