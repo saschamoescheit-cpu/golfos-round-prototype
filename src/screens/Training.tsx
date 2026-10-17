@@ -1889,7 +1889,19 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
             </li>
           ))}
         </ol>
+        {/* the start at the end of the plan, after its settings – never floating (Sascha 17.10.2026 evening) */}
         <div className="tr-actions">
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!p.items.length}
+            onClick={() => {
+              saveOwnPlan(p);
+              props.nav.start(newSession(p.name, p.items, p.id));
+            }}
+          >
+            {tr('Save & start', 'Speichern & starten')}
+          </button>
           <button
             type="button"
             className="btn-secondary"
@@ -1916,20 +1928,6 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
         ))}
       </div>
       <DrillList drills={pool} nav={props.nav} onAdd={add} added={p.items.map((i) => i.drill)} />
-      {/* the main action stays in reach while the list of drills is long (Rounds .sticky-cta, 17.10.2026) */}
-      <div className="sticky-cta">
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={!p.items.length}
-          onClick={() => {
-            saveOwnPlan(p);
-            props.nav.start(newSession(p.name, p.items, p.id));
-          }}
-        >
-          {tr('Save & start', 'Speichern & starten')}
-        </button>
-      </div>
     </main>
   );
 }

@@ -267,7 +267,5 @@
 .tr-callouts { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .tr-callouts li { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.35; }
 .tr-callout-no { flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; background: #5e8a14; color: #fff; font: 800 12px var(--display); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
-/* the sticky main action (Rounds .sticky-cta) sits above the Training menu, the two buttons side by side */
-.tr-with-menu .sticky-cta { bottom: calc(env(safe-area-inset-bottom) + 58px); padding-bottom: 26px; }
 /* switched on = brand green, like the speaker button and the map tools in Rounds (Sascha 17.10.2026) */
 .tr-switch[aria-pressed='true'], .tr-metro-go[aria-pressed='true'] { border: 2px solid var(--brand); background: var(--brand-soft); color: var(--brand-text); }
