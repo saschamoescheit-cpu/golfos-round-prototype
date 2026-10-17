@@ -500,18 +500,66 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
 };
 
 /** a plan as stacked bars: one row per part, its height by the minutes (or equal), the label inside */
-const timeBars = (rows: [L, number][], caption?: L): Sketch => {
+type Bar = [L, number, ((cy: number) => SketchItem[])?];
+const timeBars = (rows: Bar[], caption?: L): Sketch => {
   const total = rows.reduce((n, r) => n + r[1], 0);
   const H = 6;
   let y = H;
   const items: SketchItem[] = [{ k: 'fairway', x: 0, y: 0, w: 4, h: H }];
-  for (const [label, m] of rows) {
+  for (const [label, m, draw] of rows) {
     const h = (m / total) * (H - 0.4);
     y -= h;
     items.push({ k: 'zone', x: 0.25, y: y + 0.04, w: 3.5, h: h - 0.08, label });
+    // the little picture of the part, under its label
+    if (draw) items.push(...draw(y + (h - 0.3) / 2));
   }
   return { view: 'top', w: 4, h: H, items, caption };
 };
+
+// the little pictures in the bars
+const barGate = (cy: number): SketchItem[] => [
+  { k: 'path', pts: [[0.9, cy], [3.1, cy]], style: 'roll', arrow: true },
+  { k: 'tee', at: [1.7, cy + 0.13] },
+  { k: 'tee', at: [1.7, cy - 0.13] },
+  { k: 'ball', at: [0.9, cy] },
+  { k: 'hole', at: [3.2, cy] },
+];
+const barLadder = (cy: number): SketchItem[] => [
+  { k: 'ball', at: [0.7, cy], ghost: true },
+  { k: 'path', pts: [[0.85, cy - 0.25], [3.3, cy - 0.25]], style: 'roll', arrow: true },
+  ...[1, 2, 3, 4].map((n): SketchItem => ({ k: 'ball', at: [1.0 + n * 0.55, cy] })),
+];
+const barCircle = (cy: number): SketchItem[] => [
+  { k: 'ring', at: [2, cy], r: 0.42 },
+  { k: 'hole', at: [2, cy] },
+  ...[0, 90, 180, 270].map((a): SketchItem => ({ k: 'ball', at: [2 + 0.42 * Math.cos((a * Math.PI) / 180), cy + 0.42 * Math.sin((a * Math.PI) / 180)] })),
+];
+const barPutt = (cy: number): SketchItem[] => [
+  { k: 'green', x: 0.6, y: cy - 0.35, w: 2.8, h: 0.7, round: true },
+  { k: 'path', pts: [[1.0, cy], [2.6, cy + 0.12], [3.0, cy]], style: 'roll', arrow: true },
+  { k: 'ball', at: [1.0, cy] },
+  { k: 'hole', at: [3.05, cy] },
+];
+const barChip = (cy: number): SketchItem[] => [
+  { k: 'green', x: 1.8, y: cy - 0.35, w: 1.7, h: 0.7, round: true },
+  { k: 'ring', at: [2.15, cy], r: 0.18 },
+  { k: 'path', pts: [[0.8, cy], [2.15, cy]], style: 'flight' },
+  { k: 'path', pts: [[2.15, cy], [3.05, cy]], style: 'roll', arrow: true },
+  { k: 'ball', at: [0.8, cy] },
+  { k: 'hole', at: [3.1, cy] },
+];
+const barFull = (cy: number): SketchItem[] => [
+  { k: 'stick', from: [0.5, cy - 0.25], to: [3.5, cy - 0.25] },
+  { k: 'path', pts: [[0.8, cy], [2.2, cy + 0.2], [3.4, cy + 0.05]], style: 'flight', arrow: true },
+  { k: 'tee', at: [0.8, cy] },
+  { k: 'ball', at: [0.8, cy] },
+];
+const barGame = (cy: number): SketchItem[] => [
+  { k: 'path', pts: [[0.8, cy], [2.2, cy + 0.15]], style: 'flight' },
+  { k: 'path', pts: [[2.2, cy + 0.15], [3.1, cy]], style: 'roll', arrow: true },
+  { k: 'ball', at: [0.8, cy] },
+  { k: 'hole', at: [3.15, cy] },
+];
 
 /** Sections that show the picture of a drill (its sketch lives in the drill's content file), by topic and title. */
 export const SECTION_DRILL_PICTURES: Partial<Record<CategoryId, Record<string, string>>> = {
@@ -568,9 +616,9 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
   putting: {
     'How to practise putting': timeBars(
       [
-        [L('start line – gates', 'Startlinie – Tore'), 1],
-        [L('length – ladder, lag', 'Länge – Leiter, Lag'), 1],
-        [L('short putts under pressure – circles', 'kurze Putts unter Druck – Kreise'), 1],
+        [L('start line – gates', 'Startlinie – Tore'), 1, barGate],
+        [L('length – ladder, lag', 'Länge – Leiter, Lag'), 1, barLadder],
+        [L('short putts under pressure – circles', 'kurze Putts unter Druck – Kreise'), 1, barCircle],
       ],
       L('About a third of the time each. Then one ball like on the course: read, routine, putt.', 'Je etwa ein Drittel der Zeit. Danach ein Ball wie auf dem Platz: lesen, Routine, putten.'),
     ),
@@ -726,10 +774,10 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     'A 60-minute session': timeBars(
       [
         [L('warm-up · 5 min', 'Aufwärmen · 5 min'), 5],
-        [L('putting · 15 min', 'Putten · 15 min'), 15],
-        [L('chipping and pitching · 15 min', 'Chippen und Pitchen · 15 min'), 15],
-        [L('full swing · 15 min', 'Voller Schwung · 15 min'), 15],
-        [L('game · 10 min', 'Spiel · 10 min'), 10],
+        [L('putting · 15 min', 'Putten · 15 min'), 15, barPutt],
+        [L('chipping and pitching · 15 min', 'Chippen und Pitchen · 15 min'), 15, barChip],
+        [L('full swing · 15 min', 'Voller Schwung · 15 min'), 15, barFull],
+        [L('game · 10 min', 'Spiel · 10 min'), 10, barGame],
       ],
       L('Each part ends with targets and a count.', 'Jeder Teil endet mit Zielen und Zählen.'),
     ),
