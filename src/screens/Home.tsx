@@ -4,6 +4,7 @@ import { loadFriends, saveFriends, type Friend } from '../lib/friends';
 import { newId } from '../lib/storage';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
+import { PausedIcon } from '../components/PausedIcon';
 
 // The start page of GolfOS (Sascha 15.10.2026): the two modules, the friends you play with and your profile – with a
 // menu at the bottom like inside the modules. The profile is the same everywhere.
@@ -42,14 +43,11 @@ export function Home(props: {
   );
 }
 
-/** the pause mark (two bars) of a paused round or session – as in the round list (Sascha 17.10.2026) */
+/** the pause mark of a paused round or session – the shared green circle with two bars (Rounds, Sascha 17.10.2026) */
 function PausedMark() {
   return (
-    <span className="paused-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-        <rect x="6" y="5" width="4" height="14" rx="1" />
-        <rect x="14" y="5" width="4" height="14" rx="1" />
-      </svg>
+    <span className="paused-mark">
+      <PausedIcon size={16} />
     </span>
   );
 }

@@ -11,6 +11,7 @@ import { GEAR, gearById, gearForDrill } from '../training/content/gear';
 import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
 import { SketchThumb, SketchView } from '../training/Sketch';
+import { PausedIcon } from '../components/PausedIcon';
 import { Metronome } from '../training/Metronome';
 import { FactChart } from '../training/FactChart';
 import { ReviewBar } from '../training/ReviewBar';
@@ -562,14 +563,11 @@ function LearnTab(props: { nav: Nav; rounds: Round[] }) {
   );
 }
 
-/** the pause mark of a paused session (two bars, like a paused round in Rounds) */
+/** the pause mark of a paused session – the shared green circle with two bars, as in the rounds list */
 function PausedMark() {
   return (
     <span className="paused-mark" role="img" aria-label={tr('paused', 'pausiert')}>
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-        <rect x="6" y="5" width="4" height="14" rx="1" />
-        <rect x="14" y="5" width="4" height="14" rx="1" />
-      </svg>
+      <PausedIcon />
     </span>
   );
 }
