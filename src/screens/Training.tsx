@@ -411,7 +411,13 @@ function FaultView(props: { cat: CategoryId; index: number; nav: Nav }) {
         </dl>
       </section>
       <ReviewBar itemKey={faultKey(c.id, f.name)} />
-      {drills[0]?.sketch && (
+      {/* the fault itself next to the right way (Sascha 17.10.2026); the drills below keep their own pictures */}
+      {f.sketch ? (
+        <>
+          <span className="eyebrow">{tr('What the fault looks like', 'So sieht der Fehler aus')}</span>
+          <SketchView sketch={f.sketch} label={t(f.name)} />
+        </>
+      ) : drills[0]?.sketch && (
         <>
           <span className="eyebrow">{tr('The first drill for it', 'Die erste Übung dafür')}: {t(drills[0].name)}</span>
           <SketchView sketch={drills[0].sketch} label={t(drills[0].name)} />
@@ -1031,6 +1037,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
             {(c.faults ?? []).map((f, i) => (
               <li key={i}>
                 <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'fault', cat: c.id, index: i })}>
+                  {f.sketch && <SketchThumb sketch={f.sketch} />}
                   <span className="grow">
                     <span className="title">{t(f.name)}</span>
                     <span className="muted small tr-two-lines">{t(f.looks)}</span>

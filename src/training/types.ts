@@ -66,6 +66,8 @@ export interface Fault {
   cause: L;
   fix: L;
   drills?: string[];
+  /** the fault itself next to the right way (Sascha 17.10.2026) */
+  sketch?: Sketch;
 }
 
 export interface Category {
@@ -210,7 +212,8 @@ export type SketchItem =
   | { k: 'path'; pts: P[]; style?: 'roll' | 'flight' | 'aim' | 'club'; arrow?: boolean } // ball path, aim line
   | { k: 'player'; at: P; face?: 'up' | 'right' | 'left'; stance?: number } // the player seen from above (feet); stance = metres between the feet, drawn to scale
   | { k: 'club'; at: P; angle?: number } // a club lying on the ground
-  | { k: 'putter'; at: P } // putter head behind the ball (face square to the line up the page)
+  | { k: 'putter'; at: P; angle?: number } // putter head behind the ball; angle in degrees, + = face open (pointing right)
+  | { k: 'mark'; at: P; t: L | string } // a numbered detail: the badge at the point, the text in the legend under the picture
   | { k: 'slope'; at: P; dir: number; label?: string | L } // downhill arrow (degrees, 0 = up the page)
   | { k: 'text'; at: P; t: L | string; size?: number; anchor?: 'start' | 'middle' | 'end' }
   | { k: 'dim'; from: P; to: P; t: L | string }; // dimension line with text
@@ -230,9 +233,11 @@ export type SideItem =
   | { k: 'arrow'; from: P; to: P }
   | { k: 'text'; at: P; t: L | string; size?: number; anchor?: 'start' | 'middle' | 'end' }
   | { k: 'line'; from: P; to: P; dashed?: boolean; stick?: boolean } // stick = an alignment stick (orange, thicker)
+  | { k: 'mark'; at: P; t: L | string } // a numbered detail at a point (like a callout, but not on a joint)
 
 export type Sketch =
   | { view: 'top'; w: number; h: number; items: SketchItem[]; caption?: L }
   | { view: 'side'; w: number; h: number; items: SideItem[]; caption?: L }
   | { view: 'face'; marks: { x: number; y: number; n?: L | string }[]; caption?: L } // club face, impact marks (-1..1)
-  | { view: 'grip'; notes: [L, L, L, L]; caption?: L }; // both hands on the grip as the player sees them; notes for the 4 numbered points
+  | { view: 'grip'; notes: [L, L, L, L]; caption?: L } // both hands on the grip as the player sees them; notes for the 4 numbered points
+  | { view: 'palm'; notes: [L, L]; caption?: L }; // the open lead hand twice: the grip through the palm (fault) and through the fingers (right)

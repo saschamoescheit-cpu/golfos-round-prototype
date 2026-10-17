@@ -420,6 +420,9 @@ export interface GolferOptions {
   crouch?: boolean;
   /** the typical fault: the wrists flip, the hands fall behind the clubhead, the shaft leans away from the target */
   scoop?: boolean;
+  /** standing up through the shot (early extension): face-on the body rises, the club comes up off the ground; from the
+   *  side the hips move towards the ball and the back gets upright */
+  standUp?: boolean;
 }
 
 /** The joints of a pose in metres (with the options applied), and the feet. */
@@ -454,6 +457,23 @@ export function golferJoints(o: GolferOptions): Record<JointName, P> & { trailHa
   if (o.scoop && j.hands && j.clubHead) {
     j.hands = [j.clubHead[0] - 0.2, j.hands[1] + 0.03];
     for (const k of ['leadElbow', 'trailElbow']) if (j[k]) j[k] = [j[k][0] - 0.1, j[k][1]];
+  }
+  if (o.standUp) {
+    const lift = (k: string, dx: number, dy: number) => j[k] && (j[k] = [j[k][0] + dx, j[k][1] + dy]);
+    if (face) {
+      for (const k of ['head', 'neck', 'pelvis', 'leadShoulder', 'trailShoulder', 'leadElbow', 'trailElbow', 'hands', 'trailHand', 'leadHip', 'trailHip']) lift(k, 0, 0.07);
+      for (const k of ['leadKnee', 'trailKnee']) lift(k, 0, 0.03);
+      lift('clubHead', 0, 0.09);
+    } else {
+      for (const k of ['pelvis', 'leadHip', 'trailHip']) lift(k, 0.09, 0.04);
+      for (const k of ['leadKnee', 'trailKnee']) lift(k, 0.05, 0.02);
+      lift('head', -0.07, 0.1);
+      lift('neck', -0.06, 0.09);
+      for (const k of ['leadShoulder', 'trailShoulder']) lift(k, -0.05, 0.08);
+      for (const k of ['leadElbow', 'trailElbow']) lift(k, -0.02, 0.07);
+      lift('hands', 0, 0.06);
+      lift('clubHead', 0, 0.06);
+    }
   }
   if (o.oneHand) {
     // the trail hand rests on the chest

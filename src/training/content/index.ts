@@ -24,6 +24,7 @@ import { CHARTS } from './charts';
 import { DRILL_VIDEOS } from './drill-videos';
 import { DRILL_ROUNDS, SECTION_ROUNDS } from './rounds-links';
 import { FIGURE_SKETCHES, SECTION_DRILL_PICTURES, SECTION_FIGURE_SKETCHES } from './sketches-figures';
+import { FAULT_SKETCHES } from './sketches-faults';
 
 // All content of the Training module. Order of the categories = order in the library: the short game first
 // (where most strokes are lost), then the long game, then the head and the body.
@@ -72,6 +73,8 @@ export const CATEGORIES: Category[] = [putting, greenreading, chipping, pitching
   .map((c) => (CHARTS[c.id] ? { ...c, charts: CHARTS[c.id] } : c))
   .map((c) => (SECTION_DRILL_PICTURES[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_DRILL_PICTURES[c.id]![x.title.en] ? { ...x, sketch: drillPicture(SECTION_DRILL_PICTURES[c.id]![x.title.en]) } : x)) } : c))
   .map((c) => (SECTION_FIGURE_SKETCHES[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_FIGURE_SKETCHES[c.id]![x.title.en] ? { ...x, sketch: SECTION_FIGURE_SKETCHES[c.id]![x.title.en] } : x)) } : c))
+  // the picture of each fault: the fault next to the right way (Sascha 17.10.2026)
+  .map((c) => (FAULT_SKETCHES[c.id] ? { ...c, faults: c.faults?.map((f) => (FAULT_SKETCHES[c.id]![f.name.en] ? { ...f, sketch: FAULT_SKETCHES[c.id]![f.name.en] } : f)) } : c))
   // the Rounds functions a section names, opened with a tap
   .map((c) => (SECTION_ROUNDS[c.id] ? { ...c, sections: c.sections.map((x) => (SECTION_ROUNDS[c.id]![x.title.en] ? { ...x, rounds: SECTION_ROUNDS[c.id]![x.title.en] } : x)) } : c));
 

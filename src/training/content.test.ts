@@ -7,6 +7,7 @@ import { COACH_FAULT_DRILLS } from './coachLinks';
 import { CHARTS } from './content/charts';
 import { DRILL_VIDEOS } from './content/drill-videos';
 import { FIGURE_SKETCHES, SECTION_FIGURE_SKETCHES } from './content/sketches-figures';
+import { FAULT_SKETCHES } from './content/sketches-faults';
 import { golferJoints } from './Golfer';
 import type { L, Sketch } from './types';
 
@@ -96,7 +97,7 @@ describe('training content', () => {
     const check = (s: Sketch | undefined, where: string) => {
       if (!s) return;
       if (s.view === 'face') return expect(s.marks.length, where).toBeGreaterThan(0);
-      if (s.view === 'grip') return expect(s.notes.every((n) => n.en && n.de), where).toBe(true);
+      if (s.view === 'grip' || s.view === 'palm') return expect(s.notes.every((n) => n.en && n.de), where).toBe(true);
       expect(s.w > 0 && s.h > 0 && s.items.length > 0, where).toBe(true);
     };
     for (const d of DRILLS) check(d.sketch, d.id);
@@ -175,6 +176,13 @@ describe('training content', () => {
         all.push([`${cat} › ${title}`, sk]);
       }
     }
+    for (const [cat, m] of Object.entries(FAULT_SKETCHES)) {
+      const c = CATEGORIES.find((x) => x.id === cat);
+      for (const [name, sk] of Object.entries(m!)) {
+        expect(c?.faults?.some((f) => f.name.en === name), `fault ${cat} › ${name}`).toBe(true);
+        all.push([`fault ${cat} › ${name}`, sk]);
+      }
+    }
     for (const [where, sk] of all) {
       // a reused drill picture without numbered marks (e.g. a ball flight) needs no figure
       if (sk.view !== 'side' || !sk.items.some((x) => x.k === 'callout')) continue;
@@ -189,5 +197,9 @@ describe('training content', () => {
         if (typeof it.t !== 'string') expect(it.t.de && it.t.en, where).toBeTruthy();
       }
     }
+  });
+
+  it('every fault has its own picture (Sascha 17.10.2026: the fault next to the right way)', () => {
+    for (const c of CATEGORIES) for (const f of c.faults ?? []) expect(f.sketch, `${c.id} › ${f.name.en}`).toBeTruthy();
   });
 });

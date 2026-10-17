@@ -62,10 +62,11 @@ const C = {
 export function SketchView(props: { sketch: Sketch; label?: string }) {
   const s = props.sketch;
   const caption = s.caption ? txt(s.caption) : null;
-  const callouts = s.view === 'side' ? s.items.filter((x): x is Extract<SideItem, { k: 'callout' }> => x.k === 'callout').map((c) => c.t) : s.view === 'grip' ? s.notes : [];
+  const callouts: (L | string)[] =
+    s.view === 'side' || s.view === 'top' ? (s.items as (SideItem | SketchItem)[]).flatMap((x) => (x.k === 'callout' || x.k === 'mark' ? [x.t] : [])) : s.view === 'grip' || s.view === 'palm' ? s.notes : [];
   return (
     <figure className="tr-sketch">
-      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} /> : s.view === 'grip' ? <Grip label={props.label} /> : <Face marks={s.marks} label={props.label} />}
+      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
       {callouts.length > 0 && (
         <ol className="tr-callouts">
           {callouts.map((t, n) => (
@@ -89,12 +90,39 @@ export function SketchThumb(props: { sketch?: Sketch; fallback?: ReactNode }) {
   if (!s) return <span className="tr-cat-icon small">{props.fallback}</span>;
   return (
     <span className="tr-thumb" aria-hidden="true">
-      {s.view === 'top' ? <Top sketch={s} /> : s.view === 'side' ? <Side sketch={s} thumb /> : s.view === 'grip' ? <Grip thumb /> : <Face marks={s.marks} />}
+      {s.view === 'top' ? <Top sketch={s} thumb /> : s.view === 'side' ? <Side sketch={s} thumb /> : s.view === 'grip' ? <Grip thumb /> : s.view === 'palm' ? <Palm thumb /> : <Face marks={s.marks} />}
     </span>
   );
 }
 
-function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }) {
+/** places the numbered marks: beside their point, towards dir; a mark that would sit on another one or outside the
+ *  picture takes the next free place around the point */
+function placeBadges<T>(points: { key: T; jx: number; jy: number; dir: number }[], W: number, H: number) {
+  const badges = new Map<T, { jx: number; jy: number; mx: number; my: number; no: number }>();
+  points.forEach(({ key, jx, jy, dir }, n) => {
+    const tries: P[] = [[16, -12], [18, 6], [8, -20], [-16, -12], [28, -4], [-18, 6], [0, -24], [30, -22], [-8, -20], [24, 18]];
+    const free = (x: number, y: number) => x > 10 && x < W - 10 && y > 10 && y < H - 10 && [...badges.values()].every((o) => Math.hypot(o.mx - x, o.my - y) > 19 && Math.hypot(o.jx - x, o.jy - y) > 11);
+    const pick = tries.map(([dx, dy]): P => [jx + dir * dx, jy + dy]).find(([x, y]) => free(x, y)) ?? [Math.min(W - 10, Math.max(10, jx + dir * 16)), Math.max(10, jy - 12)];
+    badges.set(key, { jx, jy, mx: pick[0], my: pick[1], no: n + 1 });
+  });
+  return badges;
+}
+function Badge(props: { jx: number; jy: number; mx: number; my: number; no: number }) {
+  const { jx, jy, mx, my, no } = props;
+  const d = Math.hypot(mx - jx, my - jy) || 1;
+  return (
+    <g>
+      <circle cx={jx} cy={jy} r={4} fill="none" stroke="#5e8a14" strokeWidth={2} />
+      <line x1={jx + ((mx - jx) / d) * 4} y1={jy + ((my - jy) / d) * 4} x2={mx - ((mx - jx) / d) * 8.5} y2={my - ((my - jy) / d) * 8.5} stroke="#5e8a14" strokeWidth={1.6} />
+      <circle cx={mx} cy={my} r={8.5} fill="#5e8a14" stroke="#ffffff" strokeWidth={1.4} />
+      <MText x={mx} y={my + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
+        {no}
+      </MText>
+    </g>
+  );
+}
+
+function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; thumb?: boolean }) {
   const { w, h, items } = props.sketch;
   // a tall sketch gets a narrower canvas so it is never higher than 360 px (the CSS limit): the texts and balls keep
   // their size instead of being scaled down
@@ -113,7 +141,16 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
         {extra}
       </g>
     );
+  const badges = placeBadges(
+    items.flatMap((it) => (it.k === 'mark' ? [{ key: it as SketchItem, jx: X(it.at[0]), jy: Y(it.at[1]), dir: X(it.at[0]) > W * 0.75 ? -1 : 1 }] : [])),
+    W,
+    H,
+  );
   const draw = (it: SketchItem, i: number): ReactNode => {
+    if (it.k === 'mark') {
+      const m = badges.get(it);
+      return m ? <Badge key={i} {...m} /> : null;
+    }
     switch (it.k) {
       case 'rough':
         return area({ ...it }, C.rough, i);
@@ -241,7 +278,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
         // a putter head of about 11 cm, square to the target line (up the page), just behind the ball
         const [x, y] = [X(it.at[0]), Y(it.at[1])];
         const w = Math.max(16, 0.11 * k);
-        return <rect key={i} x={x - w / 2} y={y + 6} width={w} height={6} rx={2} fill="#d8dde2" stroke="#55606a" strokeWidth={1} />;
+        return <rect key={i} x={x - w / 2} y={y + 6} width={w} height={6} rx={2} fill="#d8dde2" stroke="#55606a" strokeWidth={1} transform={it.angle ? `rotate(${it.angle} ${x} ${y + 9})` : undefined} />;
       }
       case 'slope': {
         const [x, y] = [X(it.at[0]), Y(it.at[1])];
@@ -298,7 +335,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
           <path d="M0,0 L10,5 L0,10 z" fill="#16324a" />
         </marker>
       </defs>
-      {items.map(draw)}
+      {(props.thumb ? items.filter((it) => it.k !== 'mark') : items).map(draw)}
     </Mirror>
     </svg>
   );
@@ -313,24 +350,19 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
   const Y = (y: number) => H - y * k;
   // the numbered marks of the details: beside the joint, towards the side of the text anchor; a mark that would sit on
   // another one or outside the picture takes the next free place around the joint
-  const badges = new Map<SideItem, { jx: number; jy: number; mx: number; my: number; no: number }>();
   const figs = items.filter((x): x is Extract<SideItem, { k: 'figure' }> => x.k === 'figure');
-  let no = 0;
-  for (const it of items) {
-    if (it.k !== 'callout') continue;
-    no++;
+  const anchors = items.flatMap((it) => {
+    if (it.k === 'mark') return [{ key: it as SideItem, jx: X(it.at[0]), jy: Y(it.at[1]), dir: X(it.at[0]) > W * 0.75 ? -1 : 1 }];
+    if (it.k !== 'callout') return [];
     const f = figs[it.fig ?? 0];
     const jt = f && golferJoints({ ...f, pose: f.pose ?? 'address' })[it.on];
-    if (!f || !jt) continue;
+    if (!f || !jt) return [];
     const a = ((f.tilt ?? 0) * Math.PI) / 180;
     const jx = X(f.at[0]) + jt[0] * k * Math.cos(a) - jt[1] * k * Math.sin(a);
     const jy = Y(f.at[1]) - (jt[1] * k * Math.cos(a) + jt[0] * k * Math.sin(a));
-    const dir = X(it.at[0]) < jx ? -1 : 1;
-    const tries: P[] = [[16, -12], [18, 6], [8, -20], [-16, -12], [28, -4], [-18, 6], [0, -24], [30, -22], [-8, -20], [24, 18]];
-    const free = (x: number, y: number) => x > 10 && x < W - 10 && y > 10 && y < H - 10 && [...badges.values()].every((o) => Math.hypot(o.mx - x, o.my - y) > 19 && Math.hypot(o.jx - x, o.jy - y) > 11);
-    const pick = tries.map(([dx, dy]): P => [jx + dir * dx, jy + dy]).find(([x, y]) => free(x, y)) ?? [Math.min(W - 10, Math.max(10, jx + dir * 16)), Math.max(10, jy - 12)];
-    badges.set(it, { jx, jy, mx: pick[0], my: pick[1], no });
-  }
+    return [{ key: it as SideItem, jx, jy, dir: X(it.at[0]) < jx ? -1 : 1 }];
+  });
+  const badges = placeBadges(anchors, W, H);
   const draw = (it: SideItem, i: number): ReactNode => {
     switch (it.k) {
       case 'ground': {
@@ -339,21 +371,10 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
       }
       case 'figure':
         return <Golfer key={i} {...it} x={X(it.at[0])} y={Y(it.at[1])} k={k} tilt={it.tilt ?? 0} pose={it.pose ?? 'address'} />;
-      case 'callout': {
+      case 'callout':
+      case 'mark': {
         const m = badges.get(it);
-        if (!m) return null;
-        const { jx, jy, mx, my, no } = m;
-        const d = Math.hypot(mx - jx, my - jy) || 1;
-        return (
-          <g key={i}>
-            <circle cx={jx} cy={jy} r={4} fill="none" stroke="#5e8a14" strokeWidth={2} />
-            <line x1={jx + ((mx - jx) / d) * 4} y1={jy + ((my - jy) / d) * 4} x2={mx - ((mx - jx) / d) * 8.5} y2={my - ((my - jy) / d) * 8.5} stroke="#5e8a14" strokeWidth={1.6} />
-            <circle cx={mx} cy={my} r={8.5} fill="#5e8a14" stroke="#ffffff" strokeWidth={1.4} />
-            <MText x={mx} y={my + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
-              {no}
-            </MText>
-          </g>
-        );
+        return m ? <Badge key={i} {...m} /> : null;
       }
       case 'ball':
         return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1]) - 4} r={4.5} fill="#ffffff" stroke="#55606a" />;
@@ -411,7 +432,7 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
     <svg viewBox={view} width="100%" role="img" aria-label={props.label ?? tr('Sketch', 'Skizze')} style={{ display: 'block', background: C.sky, borderRadius: 12 }}>
       <Mirror w={W}>
       {/* a thumbnail shows the scene only – numbered marks and texts are unreadable that small */}
-      {(props.thumb ? items.filter((it) => it.k !== 'callout' && it.k !== 'text') : items).map(draw)}
+      {(props.thumb ? items.filter((it) => it.k !== 'callout' && it.k !== 'mark' && it.k !== 'text') : items).map(draw)}
     </Mirror>
     </svg>
   );
@@ -479,6 +500,49 @@ function Grip(props: { label?: string; thumb?: boolean }) {
   );
 }
 
+/** The open lead hand, palm up, twice (Sascha 17.10.2026: the fault next to the right way): left the grip runs through
+ *  the palm like a hammer (fault), right diagonally through the fingers – from the base of the little finger to the
+ *  middle of the index finger. Numbered 1 and 2 like the legend. */
+function Palm(props: { label?: string; thumb?: boolean }) {
+  const skin = '#d9ad86';
+  const line = '#b88a63';
+  const hand = (ox: number, grip: 'palm' | 'fingers', no: number) => {
+    // the hand: palm, four fingers up, the thumb to the right (lead hand of a right-hander, palm towards you)
+    const fingers = [0, 1, 2, 3].map((f) => {
+      const x = ox + 34 + f * 22;
+      const len = [58, 66, 62, 50][3 - f];
+      return <rect key={f} x={x - 9} y={92 - len} width={18} height={len + 14} rx={9} fill={skin} stroke={line} strokeWidth={1.4} />;
+    });
+    const club = grip === 'fingers' ? { x1: ox + 18, y1: 110, x2: ox + 130, y2: 64 } : { x1: ox + 40, y1: 186, x2: ox + 120, y2: 102 };
+    const mid = { x: (club.x1 + club.x2) / 2, y: (club.y1 + club.y2) / 2 };
+    return (
+      <g key={grip}>
+        {fingers}
+        <path d={`M${ox + 24},96 L${ox + 112},96 Q${ox + 122},150 ${ox + 104},196 L${ox + 40},196 Q${ox + 20},150 ${ox + 24},96 z`} fill={skin} stroke={line} strokeWidth={1.4} />
+        <path d={`M${ox + 108},120 Q${ox + 150},116 ${ox + 156},90 Q${ox + 160},76 ${ox + 148},76 Q${ox + 136},96 ${ox + 106},104 z`} fill={skin} stroke={line} strokeWidth={1.4} />
+        {/* finger roots and the life line */}
+        <path d={`M${ox + 28},104 Q${ox + 70},112 ${ox + 112},102`} fill="none" stroke={line} strokeWidth={1.2} />
+        <path d={`M${ox + 104},112 Q${ox + 70},140 ${ox + 72},190`} fill="none" stroke={line} strokeWidth={1.2} />
+        <line {...club} stroke="#25313a" strokeWidth={14} strokeLinecap="round" opacity={0.85} />
+        {!props.thumb && <Badge jx={mid.x} jy={mid.y} mx={mid.x - 26} my={mid.y - 18} no={no} />}
+        {!props.thumb && (
+          <MText x={ox + 80} y={226} fontSize={12} fontWeight={800} fill="#16324a" textAnchor="middle">
+            {no === 1 ? tr('the fault', 'Der Fehler') : tr('right', 'Richtig')}
+          </MText>
+        )}
+      </g>
+    );
+  };
+  return (
+    <svg viewBox="0 0 340 240" width="100%" role="img" aria-label={props.label ?? tr('Where the grip lies in the lead hand', 'Wo der Griff in der vorderen Hand liegt')} style={{ display: 'block', background: C.sky, borderRadius: 12 }}>
+      <Mirror w={340}>
+        {hand(4, 'palm', 1)}
+        {hand(172, 'fingers', 2)}
+      </Mirror>
+    </svg>
+  );
+}
+
 function Face(props: { marks: { x: number; y: number; n?: L | string }[]; label?: string }) {
   return (
     <svg viewBox="0 0 340 170" width="100%" role="img" aria-label={props.label ?? tr('Club face', 'Schlagfläche')} style={{ display: 'block', background: '#2a3640', borderRadius: 12 }}>
@@ -487,13 +551,13 @@ function Face(props: { marks: { x: number; y: number; n?: L | string }[]; label?
       {[60, 75, 90, 105, 120].map((y) => (
         <line key={y} x1={70} x2={285} y1={y} y2={y - 2} stroke="#9aa4ab" strokeWidth={1} />
       ))}
-      <line x1={330} y1={30} x2={300} y2={70} stroke="#8b959d" strokeWidth={6} strokeLinecap="round" />
+      <line x1={10} y1={30} x2={44} y2={78} stroke="#8b959d" strokeWidth={6} strokeLinecap="round" />
       <circle cx={175} cy={86} r={14} fill="none" stroke="#46c46e" strokeWidth={2} strokeDasharray="3 3" />
       {props.marks.map((m, i) => (
         <g key={i}>
           <ellipse cx={175 + m.x * 95} cy={86 - m.y * 40} rx={8} ry={6} fill="#1d5fa8" opacity={0.75} />
           {m.n && (
-            <MText x={175 + m.x * 95} y={86 - m.y * 40 + 22} fontSize={11} fill="#16324a" textAnchor="middle" fontWeight={700}>
+            <MText x={Math.min(240, Math.max(112, 175 + m.x * 95))} y={86 - m.y * 40 + 22} fontSize={11} fill="#16324a" textAnchor="middle" fontWeight={700}>
               {txt(m.n)}
             </MText>
           )}
