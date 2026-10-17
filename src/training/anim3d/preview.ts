@@ -21,6 +21,8 @@ const swing = pair ? pair.fault : (SW as unknown as Record<string, Swing>)[name]
     if (pair) v.setSwings(pair.behind ? [{ swing: pair.fault, z: -1 }, { swing: pair.right, z: 1 }] : [{ swing: pair.fault, x: -1 }, { swing: pair.right, x: 1 }]);
     else v.setSwing(swing);
     v.setView(view);
+    const cu = q.get('close');
+    if (cu) v.closeUp?.(cu.split(',').map(Number) as [number, number, number], Number(q.get('dist') ?? 0.6));
     const len = swing.keys[swing.keys.length - 1].t;
     const div = document.createElement('div');
     div.innerHTML = `<h2>${name} · ${view}</h2><div class="row"></div>`;

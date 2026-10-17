@@ -91,28 +91,47 @@ function twoBone(root: THREE.Object3D, mid: THREE.Object3D, a: number, b: number
 /** The club: grip, shaft and head along +y of its group (the butt end at 0). */
 function buildClub(kind: Club3D): THREE.Group {
   const g = new THREE.Group();
-  const m = (c: string, r = 0.5) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0.2 });
+  const m = (c: string, r = 0.5, metal = 0.2) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: metal });
+  const steel = m('#c9d1d6', 0.28, 0.75);
   const len = CLUB_LEN[kind];
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.011, 0.27, 10), m(COLORS.grip, 0.8));
+  // grip with a cap, the shaft narrowing to the hosel
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.0135, 0.0105, 0.27, 12), m(COLORS.grip, 0.85));
   grip.position.y = 0.135;
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.004, len - 0.27, 8), m(COLORS.shaft, 0.3));
-  shaft.position.y = 0.27 + (len - 0.27) / 2;
-  let head: THREE.Mesh;
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.0135, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), m(COLORS.grip, 0.85));
+  cap.rotation.x = Math.PI;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.0042, len - 0.31, 10), steel);
+  shaft.position.y = 0.27 + (len - 0.31) / 2;
+  const hosel = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0075, 0.045, 10), kind === 'driver' ? m('#2a3136', 0.4, 0.3) : steel);
+  hosel.position.y = len - 0.02;
+  // the head lies flat on the ground at address: tilted against the shaft by the lie angle, toe away from the player
+  const head = new THREE.Group();
+  head.position.y = len;
+  head.rotation.x = -0.33;
   if (kind === 'driver') {
-    head = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), m(COLORS.clubHead, 0.35));
-    head.scale.set(1, 0.6, 1.2);
-    head.position.set(0, len, 0.05);
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(0.062, 24, 16), m('#2a3136', 0.32, 0.4));
+    crown.scale.set(0.9, 0.62, 1.15);
+    crown.position.set(0.015, -0.02, 0.055);
+    head.add(crown);
   } else if (kind === 'putter') {
-    head = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.025, 0.11), m(COLORS.clubHead, 0.35));
-    head.position.set(0, len, 0.03);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.024, 0.11), steel);
+    blade.position.set(0.004, -0.012, 0.045);
+    const line = new THREE.Mesh(new THREE.BoxGeometry(0.0285, 0.0005, 0.003), m('#ffffff', 0.6));
+    line.position.set(0.004, -0.024, 0.045);
+    head.add(blade, line);
   } else {
-    head = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.045, 0.085), m(COLORS.clubHead, 0.35));
-    head.position.set(0, len, 0.035);
+    // a blade iron: thin face, a little thicker at the sole, a rounded toe
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.046, 0.075), steel);
+    blade.position.set(0.002, -0.016, 0.04);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.01, 0.075), steel);
+    sole.position.set(0.004, 0.004, 0.04);
+    const toe = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), steel);
+    toe.scale.set(0.008, 0.023, 0.009);
+    toe.position.set(0.002, -0.016, 0.0775);
+    head.add(blade, sole, toe);
   }
-  for (const x of [grip, shaft, head]) {
-    x.castShadow = true;
-    g.add(x);
-  }
+  for (const x of [grip, cap, shaft, hosel]) g.add(x);
+  g.add(head);
+  g.traverse((o) => (o as THREE.Mesh).isMesh && ((o as THREE.Mesh).castShadow = true));
   return g;
 }
 
@@ -140,6 +159,8 @@ export interface Viewer {
   setSpeed(k: number): void;
   seek(t: number): void;
   onLabel(cb: (label: L | undefined, step: number) => void): void;
+  /** development: look closer at a point (the preview checks the club head) */
+  closeUp?(at: [number, number, number] | null, dist?: number): void;
   resize(): void;
   dispose(): void;
 }
@@ -376,7 +397,13 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     for (const p of players) box.expandByObject(p.ball);
     return box;
   };
+  let close: { at: THREE.Vector3; dist: number } | null = null;
   const placeCamera = () => {
+    if (close) {
+      camera.position.copy(close.at).addScaledVector(DIRS[view], close.dist);
+      camera.lookAt(close.at);
+      return;
+    }
     bounds ??= swingBounds();
     const dir = DIRS[view];
     if (!bounds || bounds.isEmpty()) {
@@ -515,6 +542,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     },
     onLabel(cb) {
       labelCb = cb;
+    },
+    closeUp(at, dist = 0.6) {
+      close = at ? { at: new THREE.Vector3(...at), dist } : null;
+      placeCamera();
     },
     resize,
     dispose() {
