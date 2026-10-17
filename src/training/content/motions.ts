@@ -6,6 +6,8 @@ import { L, type CategoryId, type Motion, type MotionFrame } from '../types';
 
 /** the full swing, face-on: back in three counts, down in one (Tour Tempo 3:1), the finish held */
 const fullSwing = (opts?: MotionFrame['opts'], top = 0.3): Motion => ({
+  // the 3D video where the player swings as usual (no drill aid in the picture)
+  video: !opts || (Object.keys(opts).length === 1 && opts.club === 'iron') ? 'full' : opts.club === 'driver' && !opts.heelUp ? 'driver' : undefined,
   frames: [
     { pose: 'front', opts, t: 0, hold: 0.5 },
     { pose: 'takeaway', opts, t: 0.5, label: L('back in one piece – one', 'aus einem Guss zurück – eins') },
@@ -20,6 +22,7 @@ const fullSwing = (opts?: MotionFrame['opts'], top = 0.3): Motion => ({
 
 /** the half swing from 9 to 3 o'clock (L to L, pitch, chip-and-run of the bunker without the full finish) */
 const halfSwing = (opts?: MotionFrame['opts']): Motion => ({
+  video: !opts || (Object.keys(opts).length === 1 && opts.club === 'iron') ? 'half' : undefined,
   frames: [
     { pose: 'front', opts: { club: 'wedge', ...opts }, t: 0, hold: 0.5 },
     { pose: 'takeaway', opts: { club: 'wedge', ...opts }, t: 0.5, label: L('the body turns back', 'der Körper dreht zurück') },
@@ -32,6 +35,7 @@ const halfSwing = (opts?: MotionFrame['opts']): Motion => ({
 
 /** the putting stroke: a pendulum from the shoulders, back twice as long as through (Grober) */
 const puttStroke = (opts?: MotionFrame['opts'], arc = 9): Motion => ({
+  video: opts ? undefined : 'putt',
   frames: [
     { pose: 'putt', opts, t: 0, hold: 0.6 },
     { pose: 'putt', opts, rock: -arc, t: 0.7, label: L('the shoulders rock back – tick', 'die Schultern schaukeln zurück – Tick') },
@@ -43,6 +47,7 @@ const puttStroke = (opts?: MotionFrame['opts'], arc = 9): Motion => ({
 
 /** the chip: the same pendulum with a lofted club, the grip leads, the short finish held */
 const chipStroke = (opts?: MotionFrame['opts']): Motion => ({
+  video: opts ? undefined : 'chip',
   frames: [
     { pose: 'chip', opts, t: 0, hold: 0.6 },
     { pose: 'chip', opts, rock: -15, t: 0.6, label: L('the shoulders rock, the wrists stay firm', 'die Schultern schaukeln, die Handgelenke bleiben fest') },

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Training 3D – Vorschau (nur Entwicklung)</title>
+    <style>
+      body { margin: 0; background: #0e1418; color: #eef2ec; font: 12px system-ui; }
+      .clip { padding: 8px; }
+      .row { display: flex; gap: 6px; flex-wrap: wrap; }
+      .row figure { margin: 0; width: 230px; }
+      .row img { width: 230px; height: 172px; display: block; border-radius: 8px; }
+      body.big .row figure, body.big .row img { width: 440px; height: 330px; }
+      h2 { margin: 6px 0; font-size: 14px; }
+      canvas { position: absolute; left: -9999px; width: 460px; height: 344px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="460" height="344"></canvas>
+    <div id="out"></div>
+    <script type="module" src="/src/training/anim3d/preview.ts"></script>
+  </body>
+</html>

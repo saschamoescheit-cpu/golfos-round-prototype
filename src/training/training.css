@@ -277,3 +277,15 @@
 .tr-motion-btn { flex-shrink: 0; min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; border-radius: 22px; border: 0; background: var(--brand); color: var(--bg); font: 600 14px var(--display); cursor: pointer; }
 .tr-motion-btn.on { background: var(--surface-2); color: var(--text); }
 .tr-motion-phase { font-weight: 600; color: var(--brand-text); line-height: 1.3; }
+
+/* the 3D video of a movement (like the Agility test videos) */
+.tr-3d { display: flex; flex-direction: column; gap: 8px; }
+.tr-3d-stage { position: relative; border-radius: 12px; overflow: hidden; background: #cfe6f5; aspect-ratio: 4 / 3; }
+.tr-3d-stage canvas { display: block; width: 100%; height: 100%; }
+.tr-3d-controls { position: absolute; left: 8px; top: 8px; display: flex; gap: 6px; }
+.tr-3d-views { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.tr-3d-controls .chip, .tr-3d-controls .icon-btn, .tr-3d-views .chip { min-height: 44px; padding: 0 12px; background: rgba(14, 20, 24, 0.62); border-color: transparent; color: #ffffff; }
+.tr-3d-controls .icon-btn { width: 44px; padding: 0; }
+.tr-3d-controls .chip.on, .tr-3d-views .chip.on { background: var(--brand); border-color: var(--brand); color: var(--bg); }
+.tr-3d-step { display: flex; gap: 10px; align-items: center; min-height: 48px; padding: 8px 12px; border-radius: 12px; background: var(--surface); color: var(--text); font: 600 15px var(--body); }
+.tr-3d-no { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color: var(--bg); display: inline-flex; align-items: center; justify-content: center; font: 700 12px var(--body); }

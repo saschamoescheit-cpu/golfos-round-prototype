@@ -1,0 +1,223 @@
+import { L } from '../types';
+import type { Swing, SwingKey } from './golf3d';
+
+// The swings of the 3D videos. Trunk angles in degrees (pelvis, spine, chest – x forward, y + towards the target,
+// z + leaning to the player's right); the lead hand in the chest's frame (x to the player's left, y up the spine, z
+// forward); the club as a world direction (x towards the target, y up, z towards the ball) or 'ball'.
+// Times in seconds as shown: slowed so the eye can follow, back three times as long as down (Tour Tempo 3:1).
+
+const k = (t: number, x: Omit<SwingKey, 't'>): SwingKey => ({ t, ...x });
+
+const ADDRESS: Omit<SwingKey, 't'> = {
+  body: { pelvis: [32, 0, 2], spine: [6, 0, 0], chest: [6, 0, 5], neck: [-8, 0, 0], head: [16, 0, 0] },
+  hands: [0.06, -0.2, 0.42],
+  club: 'ball',
+};
+
+/** the full swing, face-on: address, takeaway, 9 o'clock, top, down, impact, 3 o'clock, finish */
+export const FULL_SWING: Swing = {
+  club: 'iron',
+  stance: 0.38,
+  ball: [0.02, 0.6],
+  keys: [
+    k(0, { ...ADDRESS, label: L('Set-up', 'Ansprache') }),
+    k(0.5, ADDRESS),
+    k(1.0, {
+      body: { pelvis: [32, -14, 2], spine: [6, -6, 0], chest: [6, -22, 5], neck: [-8, 18, 0], head: [22, 8, 0] },
+      hands: [-0.02, -0.24, 0.44],
+      club: [-1, 0.08, 0.05],
+      label: L('Back in one piece – one', 'Aus einem Guss zurück – eins'),
+    }),
+    k(1.45, {
+      body: { pelvis: [32, -28, 2], spine: [6, -10, 0], chest: [6, -34, 6], neck: [-8, 32, 0], head: [22, 12, 0] },
+      hands: [-0.1, -0.12, 0.45],
+      club: [-0.15, 1, -0.1],
+      label: L('Wrists hinge – two', 'Handgelenke winkeln an – zwei'),
+    }),
+    k(2.0, {
+      body: { pelvis: [32, -42, 0], spine: [6, -12, 0], chest: [6, -36, 8], neck: [-8, 44, 0], head: [22, 14, 0] },
+      hands: [-0.2, 0.32, 0.3],
+      club: [0.85, -0.15, -0.5],
+      label: L('The top – three', 'Oben – drei'),
+    }),
+    k(2.3, {
+      body: { pelvis: [32, -42, 0], spine: [6, -12, 0], chest: [6, -36, 8], neck: [-8, 44, 0], head: [22, 14, 0] },
+      hands: [-0.2, 0.32, 0.3],
+      club: [0.85, -0.15, -0.5],
+    }),
+    k(2.6, {
+      body: { pelvis: [32, -8, 5], spine: [6, -10, 2], chest: [6, -30, 8], neck: [-8, 30, 0], head: [22, 10, 0] },
+      hands: [-0.12, -0.08, 0.42],
+      club: [-0.45, 0.75, -0.45],
+      shift: 0.04,
+      label: L('Down from the ground', 'Abschwung vom Boden'),
+    }),
+    k(2.8, {
+      body: { pelvis: [30, 30, 6], spine: [6, 2, 2], chest: [6, -10, 7], neck: [-8, -12, 0], head: [22, -6, 0] },
+      hands: [0.1, -0.21, 0.42],
+      club: 'ball',
+      shift: 0.07,
+      label: L('Impact: hands ahead – four', 'Treffmoment: Hände vorn – vier'),
+    }),
+    k(3.05, {
+      body: { pelvis: [24, 55, 4], spine: [4, 8, 0], chest: [4, 18, 2], neck: [-6, -30, 0], head: [18, -10, 0] },
+      hands: [0.12, -0.08, 0.46],
+      club: [0.2, 1, 0.15],
+      shift: 0.1,
+      label: L('Through', 'Durch'),
+    }),
+    k(3.5, {
+      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-4, -20, 0], head: [6, -8, 0] },
+      hands: [0.12, 0.34, 0.3],
+      club: [-0.75, -0.25, -0.6],
+      shift: 0.12,
+      drop: 0.02,
+      heel: 1,
+      label: L('Hold the finish', 'Finish halten'),
+    }),
+    k(4.7, {
+      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-4, -20, 0], head: [6, -8, 0] },
+      hands: [0.12, 0.34, 0.3],
+      club: [-0.75, -0.25, -0.6],
+      shift: 0.12,
+      drop: 0.02,
+      heel: 1,
+    }),
+  ],
+};
+
+FULL_SWING.hit = { at: 2.8, fly: true };
+
+/** the driver: wider stance, the ball forward on a tee, hit on the way up */
+export const DRIVER_SWING: Swing = { ...FULL_SWING, club: 'driver', stance: 0.5, ball: [0.16, 0.72], tee: true };
+
+/** the wedge swing from 9 to 3 o'clock (L to L, pitch) */
+export const HALF_SWING: Swing = {
+  club: 'wedge',
+  stance: 0.3,
+  ball: [0, 0.56],
+  hit: { at: 2.1, fly: true },
+  keys: [
+    k(0, { ...ADDRESS, label: L('Set-up', 'Ansprache') }),
+    k(0.5, ADDRESS),
+    k(1.0, {
+      body: { pelvis: [32, -12, 2], spine: [6, -6, 0], chest: [6, -18, 5], neck: [-8, 16, 0], head: [22, 6, 0] },
+      hands: [-0.02, -0.24, 0.44],
+      club: [-1, 0.1, 0.05],
+      label: L('The body turns back', 'Der Körper dreht zurück'),
+    }),
+    k(1.5, {
+      body: { pelvis: [32, -24, 2], spine: [6, -8, 0], chest: [6, -30, 6], neck: [-8, 28, 0], head: [22, 10, 0] },
+      hands: [-0.1, -0.12, 0.45],
+      club: [-0.15, 1, -0.1],
+      label: L('9 o’clock: lead arm level, shaft up', '9 Uhr: vorderer Arm waagrecht, Schaft nach oben'),
+    }),
+    k(1.85, {
+      body: { pelvis: [32, -24, 2], spine: [6, -8, 0], chest: [6, -30, 6], neck: [-8, 28, 0], head: [22, 10, 0] },
+      hands: [-0.1, -0.12, 0.45],
+      club: [-0.15, 1, -0.1],
+    }),
+    k(2.1, {
+      body: { pelvis: [30, 26, 5], spine: [6, 2, 2], chest: [6, -8, 6], neck: [-8, -10, 0], head: [22, -5, 0] },
+      hands: [0.1, -0.21, 0.42],
+      club: 'ball',
+      shift: 0.05,
+      label: L('Ball first, then the grass', 'Erst der Ball, dann das Gras'),
+    }),
+    k(2.5, {
+      body: { pelvis: [24, 50, 4], spine: [4, 8, 0], chest: [4, 16, 2], neck: [-6, -28, 0], head: [18, -10, 0] },
+      hands: [0.12, -0.08, 0.46],
+      club: [0.2, 1, 0.15],
+      shift: 0.08,
+      label: L('3 o’clock: chest to the target', '3 Uhr: Brust zum Ziel'),
+    }),
+    k(3.5, {
+      body: { pelvis: [24, 50, 4], spine: [4, 8, 0], chest: [4, 16, 2], neck: [-6, -28, 0], head: [18, -10, 0] },
+      hands: [0.12, -0.08, 0.46],
+      club: [0.2, 1, 0.15],
+      shift: 0.08,
+    }),
+  ],
+};
+
+const CHIP_ADDRESS: Omit<SwingKey, 't'> = {
+  body: { pelvis: [30, 6, 0], spine: [6, 0, -2], chest: [8, 0, -2], neck: [-8, 0, 0], head: [20, 0, 0] },
+  hands: [0.1, -0.2, 0.42],
+  club: 'ball',
+  shift: 0.04,
+};
+
+/** the chip: narrow stance, weight and hands forward, the shoulders rock, the wrists stay firm, the finish held */
+export const CHIP_STROKE: Swing = {
+  club: 'wedge',
+  stance: 0.2,
+  ball: [-0.03, 0.5],
+  hit: { at: 1.55, roll: 2.4 },
+  keys: [
+    k(0, { ...CHIP_ADDRESS, label: L('Narrow stance, weight and hands forward', 'Schmaler Stand, Gewicht und Hände vorn') }),
+    k(0.6, CHIP_ADDRESS),
+    k(1.25, {
+      ...CHIP_ADDRESS,
+      body: { pelvis: [30, 0, 0], spine: [6, -4, -2], chest: [8, -12, -2], neck: [-8, 12, 0], head: [20, 4, 0] },
+      hands: [0.04, -0.21, 0.43],
+      club: [-0.42, -0.88, 0.2],
+      label: L('The shoulders rock, the wrists stay firm', 'Die Schultern schaukeln, die Handgelenke bleiben fest'),
+    }),
+    k(1.55, { ...CHIP_ADDRESS, label: L('The club brushes the grass', 'Der Schläger streift das Gras') }),
+    k(1.9, {
+      ...CHIP_ADDRESS,
+      body: { pelvis: [28, 20, 0], spine: [6, 6, -2], chest: [8, 12, -2], neck: [-8, -14, 0], head: [20, -6, 0] },
+      hands: [0.17, -0.2, 0.43],
+      club: [0.45, -0.85, 0.25],
+      label: L('The grip leads – hold the finish', 'Der Griff führt – Finish halten'),
+    }),
+    k(3.0, {
+      ...CHIP_ADDRESS,
+      body: { pelvis: [28, 20, 0], spine: [6, 6, -2], chest: [8, 12, -2], neck: [-8, -14, 0], head: [20, -6, 0] },
+      hands: [0.17, -0.2, 0.43],
+      club: [0.45, -0.85, 0.25],
+    }),
+  ],
+};
+
+const PUTT_ADDRESS: Omit<SwingKey, 't'> = {
+  body: { pelvis: [36, 0, 0], spine: [8, 0, 0], chest: [10, 0, 0], neck: [-10, 0, 0], head: [28, 0, 0] },
+  hands: [0.0, -0.24, 0.38],
+  club: 'ball',
+};
+
+/** the putt: a pendulum from the shoulders, back twice as long as through, the head still */
+export const PUTT_STROKE: Swing = {
+  club: 'putter',
+  stance: 0.3,
+  ball: [0.03, 0.46],
+  hit: { at: 1.7, roll: 3 },
+  keys: [
+    k(0, { ...PUTT_ADDRESS, label: L('Eyes over the ball, arms hanging', 'Augen über dem Ball, die Arme hängen') }),
+    k(0.6, PUTT_ADDRESS),
+    k(1.35, {
+      ...PUTT_ADDRESS,
+      body: { ...PUTT_ADDRESS.body, chest: [10, -9, 0], neck: [-10, 9, 0] },
+      hands: [-0.05, -0.24, 0.38],
+      club: [-0.3, -0.93, 0.15],
+      label: L('The shoulders rock back – tick', 'Die Schultern schaukeln zurück – Tick'),
+    }),
+    k(1.7, { ...PUTT_ADDRESS, label: L('Through the ball – tock', 'Durch den Ball – Tack') }),
+    k(2.05, {
+      ...PUTT_ADDRESS,
+      body: { ...PUTT_ADDRESS.body, chest: [10, 9, 0], neck: [-10, -9, 0] },
+      hands: [0.06, -0.24, 0.38],
+      club: [0.3, -0.93, 0.15],
+      label: L('The head stays still', 'Der Kopf bleibt ruhig'),
+    }),
+    k(3.2, {
+      ...PUTT_ADDRESS,
+      body: { ...PUTT_ADDRESS.body, chest: [10, 9, 0], neck: [-10, -9, 0] },
+      hands: [0.06, -0.24, 0.38],
+      club: [0.3, -0.93, 0.15],
+    }),
+  ],
+};
+
+export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE };
+export type SwingId = keyof typeof SWINGS;

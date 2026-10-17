@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from 'react';
+import { createContext, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type SVGProps } from 'react';
 import { getLang, tr } from '../lib/i18n';
 import { isLeftHanded } from '../lib/profile';
 import { sided } from './sides';
@@ -64,6 +64,9 @@ function motionFig(s: Extract<Sketch, { view: 'side' }>, m: NonNullable<Extract<
   return best;
 }
 
+// the 3D video of a movement: three.js only loads when it is played
+const Swing3D = lazy(() => import('./anim3d/Swing3D'));
+
 /** a figure's options that stay the same through a movement */
 const KEEP: (keyof GolferOptions)[] = ['club', 'stance', 'flip', 'oneHand', 'gripStick', 'towel', 'spineClub', 'crossClub'];
 
@@ -111,12 +114,33 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
   const s = props.sketch;
   const caption = s.caption ? txt(s.caption) : null;
   const motion = useMotion(s);
+  const video = s.view === 'side' ? s.motion?.video : undefined;
+  const [show3d, setShow3d] = useState(false);
   const callouts: (L | string)[] =
     s.view === 'side' || s.view === 'top' ? (s.items as (SideItem | SketchItem)[]).flatMap((x) => (x.k === 'callout' || x.k === 'mark' ? [x.t] : [])) : s.view === 'grip' || s.view === 'palm' ? s.notes : [];
   return (
     <figure className="tr-sketch">
-      {s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
-      {motion && (
+      {video && show3d ? (
+        <Suspense fallback={<Side sketch={s as Extract<Sketch, { view: 'side' }>} label={props.label} />}>
+          <Swing3D swing={video} onFail={() => setShow3d(false)} />
+        </Suspense>
+      ) : s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'side' ? <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
+      {video ? (
+        <div className="tr-motion-bar">
+          <button type="button" className={`tr-motion-btn${show3d ? ' on' : ''}`} onClick={() => setShow3d(!show3d)} aria-pressed={show3d}>
+            {show3d ? (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <rect x="2" y="3" width="12" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />
+              </svg>
+            )}
+            <span>{show3d ? tr('Back to the picture', 'Zurück zum Bild') : tr('3D video', '3D-Video')}</span>
+          </button>
+        </div>
+      ) : motion && (
         <div className="tr-motion-bar">
         <button type="button" className={`tr-motion-btn${motion.playing ? ' on' : ''}`} onClick={motion.toggle} aria-pressed={motion.playing}>
           {motion.playing ? (
