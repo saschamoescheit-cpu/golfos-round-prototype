@@ -24,7 +24,7 @@ export interface Frame {
   t: number;
 }
 
-export type Cue = 'go' | 'hold' | 'eyes' | 'done';
+export type Cue = 'go' | 'hold' | 'eyes' | 'done' | 'otherLeg';
 
 export interface Live {
   /** the value now (smoothed) */
@@ -577,6 +577,8 @@ class BalanceAnalyzer implements Analyzer {
   private held = 0;
   private done = false;
   private startT = -1;
+  private wrongSince = -1;
+  private told = false;
   constructor(private stand: Side, private ms = 30000) {}
   focus(): [number, number][] {
     const a = S(this.stand);
@@ -609,6 +611,15 @@ class BalanceAnalyzer implements Analyzer {
           return { value: 0, best: 0, phase: 'hold', hold: 0, cue: 'eyes' };
         }
       } else this.upSince = -1;
+      // the other foot is up: the player stands on the wrong leg (left and right are easily mixed up in a mirror)
+      const wrong = standY < liftY - 0.1 * this.leg;
+      if (wrong) {
+        if (this.wrongSince < 0) this.wrongSince = f.t;
+        if (!this.told && f.t - this.wrongSince > 1000) {
+          this.told = true;
+          return { value: null, best: null, phase: 'move', cue: 'otherLeg' };
+        }
+      } else this.wrongSince = -1;
       if (f.t - this.startT > this.ms) {
         this.done = true;
         return { value: null, best: null, phase: 'done', cue: 'done' };
@@ -682,12 +693,18 @@ class BridgeAnalyzer implements Analyzer {
       }
       return { value: null, best: null, phase: 'calibrate' };
     }
-    const angle = this.roll.push(this.hipAngle(f));
-    const extStraight = jointAngle(px(f, e.hip), px(f, e.kn), px(f, e.an)) >= 150;
-    const extUp = px(f, e.an)[1] < px(f, sup.an)[1] - 0.15 * this.leg;
     const goal = LIMITS.bridge.hold;
     if (this.t1 < 0) {
-      if (angle >= 150 && extStraight && extUp) {
+      // the stretched leg is the one that is up and straight – lying side-on the pose model may swap left and right
+      const up = (x: Side) => {
+        const a = S(x);
+        const b = S(other(x));
+        return jointAngle(px(f, a.hip), px(f, a.kn), px(f, a.an)) >= 150 && px(f, a.an)[1] < px(f, b.an)[1] - 0.15 * this.leg;
+      };
+      const which = up(this.ext) ? this.ext : up(other(this.ext)) ? other(this.ext) : null;
+      if (which) this.ext = which;
+      const angle = this.roll.push(this.hipAngle(f));
+      if (which && angle >= 150) {
         if (this.readySince < 0) this.readySince = f.t;
         if (f.t - this.readySince > 300) {
           this.t1 = f.t;
@@ -700,6 +717,7 @@ class BridgeAnalyzer implements Analyzer {
       }
       return { value: null, best: null, phase: 'move' };
     }
+    const angle = this.roll.push(this.hipAngle(f));
     this.held = (f.t - this.t1) / 1000;
     if (this.held < 0.5) this.a0s.push(angle);
     else {

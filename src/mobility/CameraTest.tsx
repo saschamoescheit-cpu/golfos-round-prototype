@@ -74,6 +74,7 @@ const CUE_TEXT = (kind: MetricKind, cue: Cue): string | null => {
   if (cue === 'done') return tr('Done.', 'Fertig.');
   if (cue === 'eyes') return tr('Eyes closed.', 'Augen zu.');
   if (cue === 'hold') return tr('Hold.', 'Halten.');
+  if (cue === 'otherLeg') return tr('The other leg, please.', 'Bitte das andere Bein.');
   switch (kind) {
     case 'trunkRotation':
     case 'neck':

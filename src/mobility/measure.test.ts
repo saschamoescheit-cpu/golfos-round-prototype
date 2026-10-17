@@ -87,6 +87,25 @@ describe('mobility analysers', () => {
     expect(out!.notes.some((n) => n.en.startsWith('The pelvis sinks'))).toBe(true);
   });
 
+  it('the bridge finds the stretched leg even when left and right are swapped', () => {
+    const a = makeAnalyzer('bridge', 'right');
+    let out;
+    for (const f of frames(script('bridge', 'left', 'good'))) a.push(f);
+    out = a.finish();
+    expect(out?.grade).toBe('pass');
+  });
+
+  it('says so when the player stands on the wrong leg', () => {
+    const a = makeAnalyzer('balance', 'left'); // asked to stand on the left …
+    const cues: string[] = [];
+    for (const f of frames(script('balance', 'right', 'good'))) {
+      // … but stands on the right
+      const l = a.push(f);
+      if (l.cue) cues.push(l.cue);
+    }
+    expect(cues).toContain('otherLeg');
+  });
+
   it('returns no result when the movement was never seen', () => {
     const a = makeAnalyzer('squat');
     for (let t = 0; t < 16000; t += 50) a.push({ lm: frontBody({}), w: SYNTH_W, h: SYNTH_H, t });
