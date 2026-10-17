@@ -50,6 +50,18 @@ await p.getByRole('tab', { name: 'Anleitung' }).click();
 await p.waitForTimeout(200);
 await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.topbar .icon-btn').first().click();
+// the 3D video of a swing (17.10.2026): from the front and from behind
+await p.locator('.tr-cat').filter({ hasText: 'Drehung, Ablauf' }).first().click();
+await p.locator('.tr-drill-row .list-item').filter({ hasText: '3:1' }).click();
+await p.locator('.tr-motion-btn').first().click();
+await p.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
+await p.waitForTimeout(2600);
+await shot('3d-video');
+await p.locator('.tr-3d-views .chip').filter({ hasText: 'Hinten' }).click();
+await p.waitForTimeout(1500);
+await shot('3d-video-hinten');
+await p.locator('.topbar .icon-btn').first().click();
+await p.locator('.topbar .icon-btn').first().click();
 await tab('Üben');
 await p.locator('.list-item').filter({ hasText: 'Putten 30 Min: Startlinie' }).click();
 await p.getByRole('button', { name: 'Einheit starten' }).click();
