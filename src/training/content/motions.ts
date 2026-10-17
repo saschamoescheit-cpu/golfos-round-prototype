@@ -52,6 +52,18 @@ const chipStroke = (opts?: MotionFrame['opts']): Motion => ({
   ],
 });
 
+/** the punch: ball back, a short backswing, a short finish with the hands low */
+const punch = (): Motion => ({
+  frames: [
+    { pose: 'front', opts: { club: 'iron', shift: 0.04 }, t: 0, hold: 0.5 },
+    { pose: 'takeaway', opts: { club: 'iron', shift: 0.04 }, t: 0.6, label: L('short back – to hip or chest height', 'kurz zurück – bis Hüft- oder Brusthöhe') },
+    { pose: 'halfBack', opts: { club: 'iron', shift: 0.04 }, t: 0.4, hold: 0.2 },
+    { pose: 'pump', opts: { club: 'iron', shift: 0.05 }, t: 0.3 },
+    { pose: 'impact', opts: { club: 'iron', shift: 0.06 }, t: 0.2, label: L('hands ahead, weight forward', 'Hände vorn, Gewicht vorn') },
+    { pose: 'chipFinish', opts: { club: 'iron', shift: 0.06 }, t: 0.3, hold: 1.2, label: L('a short finish, the hands stay low', 'kurzes Finish, die Hände bleiben tief') },
+  ],
+});
+
 /** the moving figure of a drill's picture, by drill id */
 export const DRILL_MOTIONS: Record<string, Motion> = {
   // full swing
@@ -89,6 +101,30 @@ export const DRILL_MOTIONS: Record<string, Motion> = {
   'split-grip': halfSwing({ club: 'iron' }),
   'grip-pressure-ball': halfSwing({ club: 'iron' }),
   'splash-no-ball': fullSwing({ club: 'wedge', stance: 'wide' }),
+  'sand-on-face': halfSwing(),
+  'one-foot-bunker': fullSwing({ club: 'wedge', stance: 'wide', heelUp: 'trail' }),
+  'fairway-bunker': fullSwing({ club: 'iron' }),
+  'brush-five': fullSwing({ club: 'iron' }),
+  'fried-egg': {
+    frames: [
+      { pose: 'front', opts: { club: 'wedge' }, t: 0, hold: 0.5 },
+      { pose: 'halfBack', opts: { club: 'wedge' }, t: 0.7, label: L('steep back', 'steil zurück') },
+      { pose: 'frontTop', opts: { club: 'wedge' }, t: 0.4, hold: 0.2 },
+      { pose: 'pump', opts: { club: 'wedge' }, t: 0.3, label: L('hard down behind the ball', 'kräftig nach unten hinter den Ball') },
+      { pose: 'impact', opts: { club: 'wedge', shift: 0.04 }, t: 0.2, hold: 1.4, label: L('the club stays in the sand – hardly a finish', 'der Schläger bleibt im Sand – kaum ein Finish') },
+    ],
+  },
+  'punch-gap': punch(),
+  'divot-lie': punch(),
+  'impact-bag': {
+    frames: [
+      { pose: 'front', t: 0, hold: 0.5 },
+      { pose: 'takeaway', t: 0.6 },
+      { pose: 'halfBack', t: 0.5, hold: 0.3, label: L('slowly back', 'langsam zurück') },
+      { pose: 'pump', t: 0.6 },
+      { pose: 'impact', opts: { shift: 0.05 }, t: 0.4, hold: 1.4, label: L('stop at impact: hands ahead, weight forward', 'im Treffmoment stoppen: Hände vorn, Gewicht vorn') },
+    ],
+  },
   // putting and chipping
   'one-hand': puttStroke({ oneHand: true }),
   'trail-toe': chipStroke({ heelUp: 'trail' }),
@@ -102,9 +138,11 @@ export const DRILL_MOTIONS: Record<string, Motion> = {
 export const SECTION_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> = {
   putting: { 'The stroke': puttStroke(), 'Short putts (under 2 m)': puttStroke(undefined, 6) },
   chipping: { 'The stroke': chipStroke() },
-  pitching: { 'The motion': halfSwing(), 'The clock system': halfSwing() },
-  bunker: { 'The swing': fullSwing({ club: 'wedge', stance: 'wide' }) },
-  driver: { 'More speed': fullSwing({ club: 'driver', stance: 'wide' }) },
+  pitching: { 'The motion': halfSwing(), 'The clock system': halfSwing(), 'Lob and flop': fullSwing({ club: 'wedge', stance: 'wide' }) },
+  bunker: { 'The swing': fullSwing({ club: 'wedge', stance: 'wide' }), 'Fairway bunker': fullSwing({ club: 'iron' }) },
+  trouble: { 'The punch shot under trees': punch() },
+  woods: { 'The swing: sweep': fullSwing({ club: 'driver' }) },
+  driver: { 'More speed': fullSwing({ club: 'driver', stance: 'wide' }), 'Hit up and hit the centre': fullSwing({ club: 'driver', stance: 'wide' }) },
   swing: {
     'Takeaway and backswing': fullSwing(),
     'Transition and downswing': fullSwing(),
