@@ -10,6 +10,7 @@ import { SketchThumb, SketchView } from '../training/Sketch';
 import { VideoCard, VideoNote } from '../training/ui';
 import { saveOwnPlan, trainingId } from '../training/store';
 import type { Drill, L } from '../training/types';
+import { DRILL_CLIPS } from '../mobility/anim3d/drills';
 import { CameraTest, gradeName, sideText, unlockAudio } from '../mobility/CameraTest';
 import { valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
@@ -1051,11 +1052,18 @@ function DrillView(props: { id: string; nav: Nav }) {
   );
 }
 
+/** The 3D video of the drill on top (like the tests), the steps, the sketch below; without a video the sketch leads. */
 function DrillHow(props: { d: Drill }) {
   const d = props.d;
+  const clip = DRILL_CLIPS[d.id];
   return (
     <>
-      {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
+      {clip && (
+        <Suspense fallback={<div className="mob-3d-wait" />}>
+          <Anim3D clip={clip} />
+        </Suspense>
+      )}
+      {!clip && d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
       <section className="card tr-section">
         <p className="mob-why">{t(d.goal)}</p>
         <ol className="tr-steps">
@@ -1068,6 +1076,7 @@ function DrillHow(props: { d: Drill }) {
           {d.minutes} {tr('min', 'Min.')}
         </span>
       </section>
+      {clip && d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
     </>
   );
 }

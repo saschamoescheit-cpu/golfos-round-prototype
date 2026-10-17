@@ -7,7 +7,7 @@ import type { L } from '../../training/types';
 // times; between them every joint is eased, the clip loops. Rendering runs only while the video is visible.
 
 export type View = 'front' | 'side' | 'angle' | 'above';
-export type PropId = 'chair' | 'wall' | 'mat' | 'barHands' | 'barChest' | 'clubR' | 'clubLineR' | 'table' | 'sideTable' | 'book' | 'bench';
+export type PropId = 'chair' | 'wall' | 'wallFront' | 'mat' | 'barHands' | 'band' | 'barChest' | 'clubR' | 'clubLineR' | 'table' | 'sideTable' | 'book' | 'bench' | 'benchFront';
 
 export interface Key {
   t: number;
@@ -23,8 +23,8 @@ export interface Clip {
   view: View;
   /** views the player can switch to (default front, side, angle) */
   views?: View[];
-  /** set the feet on the floor (standing tests) */
-  ground?: boolean;
+  /** set the feet on the floor (standing tests); 'all' also knees, hands, elbows (drills on the floor) */
+  ground?: boolean | 'all';
   props?: PropId[];
   /** where the camera looks and how far it is (default 0.9 m high, 3.6 m) */
   focus?: [number, number, number];
@@ -77,11 +77,22 @@ function buildProp(id: PropId, rig: Rig): THREE.Object3D | null {
     case 'wall':
       g.add(box(2.4, 2.2, 0.08, '#e9eef0', [0, 1.1, -0.16]));
       return g;
+    case 'wallFront':
+      // a wall in front of the player (knee to wall)
+      g.add(box(2.4, 2.2, 0.08, '#e9eef0', [0, 1.1, 0.62]));
+      return g;
+    case 'benchFront':
+      // a bench in front of a kneeling player (elbows on it)
+      g.add(box(0.9, 0.05, 0.4, '#8a6a4a', [0, 0.45, 0.78]));
+      g.add(box(0.05, 0.43, 0.35, '#6f5439', [-0.4, 0.215, 0.78]));
+      g.add(box(0.05, 0.43, 0.35, '#6f5439', [0.4, 0.215, 0.78]));
+      return g;
     case 'mat': {
       const m = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.012, 1.9), mat('#3d6e8c', 0.95));
       m.position.set(0, 0.006, 0);
       m.receiveShadow = true;
       g.add(m);
+      g.name = 'mat'; // placed under the body when the clip is set (fitMat)
       return g;
     }
     case 'table':
@@ -130,6 +141,7 @@ function buildProp(id: PropId, rig: Rig): THREE.Object3D | null {
       return null;
     }
     case 'barHands':
+    case 'band':
       return null; // drawn every frame between the hands (see update)
   }
 }
@@ -222,12 +234,28 @@ export function createViewer(canvas: HTMLCanvasElement): Viewer {
     const box = new THREE.Box3();
     const len = clip.length ?? clip.keys[clip.keys.length - 1].t;
     for (let i = 0; i <= 16; i++) {
-      applyPose(rig, sample(clip, (len * i) / 16).pose, clip.ground !== false);
+      applyPose(rig, sample(clip, (len * i) / 16).pose, clip.ground ?? true);
       rig.root.updateMatrixWorld(true);
       box.expandByObject(rig.root);
     }
     if (propGroup.children.length) box.expandByObject(propGroup);
     return box;
+  };
+  /** the mat under the whole body: centre of what the clip shows, the long side along the body */
+  const fitMat = () => {
+    const m = propGroup.getObjectByName('mat');
+    if (!m || !clip) return;
+    const box = new THREE.Box3();
+    const len = clip.length ?? clip.keys[clip.keys.length - 1].t;
+    for (let i = 0; i <= 8; i++) {
+      applyPose(rig, sample(clip, (len * i) / 8).pose, clip.ground ?? true);
+      rig.root.updateMatrixWorld(true);
+      box.expandByObject(rig.root);
+    }
+    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    m.position.set(c.x, 0, c.z);
+    m.rotation.y = size.x > size.z ? Math.PI / 2 : 0;
   };
   const placeCamera = () => {
     bounds ??= clipBounds();
@@ -274,8 +302,10 @@ export function createViewer(canvas: HTMLCanvasElement): Viewer {
     for (const p of clip?.props ?? []) {
       const o = buildProp(p, rig);
       if (o) propGroup.add(o);
-      if (p === 'barHands') {
-        bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 10), mat(COLORS.stick, 0.5));
+      if (p === 'barHands' || p === 'band') {
+        // a stick (orange) or an elastic band (green, thin, only between the hands)
+        bar = new THREE.Mesh(new THREE.CylinderGeometry(p === 'band' ? 0.008 : 0.012, p === 'band' ? 0.008 : 0.012, 1, 10), mat(p === 'band' ? '#79a128' : COLORS.stick, 0.5));
+        bar.userData.extra = p === 'band' ? 0 : 0.6;
         bar.castShadow = true;
         scene.add(bar);
       }
@@ -285,7 +315,7 @@ export function createViewer(canvas: HTMLCanvasElement): Viewer {
   const update = () => {
     if (!clip) return;
     const s = sample(clip, t);
-    applyPose(rig, s.pose, clip.ground !== false);
+    applyPose(rig, s.pose, clip.ground ?? true);
     rig.root.updateMatrixWorld(true);
     if (bar) {
       // a stick held in both hands, 30 cm longer on each side
@@ -295,7 +325,7 @@ export function createViewer(canvas: HTMLCanvasElement): Viewer {
       rig.hands.R.getWorldPosition(b);
       const mid = a.clone().add(b).multiplyScalar(0.5);
       const dir = a.clone().sub(b);
-      const len = dir.length() + 0.6;
+      const len = dir.length() + (bar.userData.extra ?? 0.6);
       bar.position.copy(mid);
       bar.scale.set(1, len, 1);
       bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
@@ -339,6 +369,7 @@ export function createViewer(canvas: HTMLCanvasElement): Viewer {
       view = c.view;
       rebuild();
       bounds = null;
+      fitMat();
       placeCamera();
       update();
     },

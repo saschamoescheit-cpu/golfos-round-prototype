@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { CLIPS } from './anim3d/clips';
-import { createViewer, type View, type Viewer } from './anim3d/scene';
+import { createViewer, type Clip, type View, type Viewer } from './anim3d/scene';
 import type { TestId } from './types';
 import type { L } from '../training/types';
 
@@ -16,8 +16,8 @@ const VIEW_NAMES: Record<View, () => string> = {
   above: () => tr('Above', 'Oben'),
 };
 
-export default function Anim3D(props: { test: TestId }) {
-  const clip = CLIPS[props.test];
+export default function Anim3D(props: { test?: TestId; clip?: Clip }) {
+  const clip = props.clip ?? CLIPS[props.test!];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -52,7 +52,7 @@ export default function Anim3D(props: { test: TestId }) {
       viewerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.test]);
+  }, [clip]);
 
   useEffect(() => viewerRef.current?.setPlaying(playing), [playing]);
   useEffect(() => viewerRef.current?.setSpeed(slow ? 0.4 : 1), [slow]);

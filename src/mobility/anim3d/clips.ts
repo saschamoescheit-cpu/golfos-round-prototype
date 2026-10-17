@@ -7,22 +7,22 @@ import type { TestId } from '../types';
 // worked out from the body angles the test text asks for (e.g. deep squat: thighs 10° past horizontal, shins 35°
 // forward, the trunk parallel to the shins, the arms in line with the trunk). Signs: see rig.ts.
 
-type J = Partial<Record<JointId, Rot>>;
-const P = (j: J, extra: Omit<Pose, 'j'> = {}): Pose => ({ j, ...extra });
+export type J = Partial<Record<JointId, Rot>>;
+export const P = (j: J, extra: Omit<Pose, 'j'> = {}): Pose => ({ j, ...extra });
 
 // ---------- building blocks ----------
 /** arms hanging relaxed beside the body */
-const ARMS_DOWN: J = { shoulderL: [0, 0, 7], shoulderR: [0, 0, -7], elbowL: [-12, 0, 0], elbowR: [-12, 0, 0] };
+export const ARMS_DOWN: J = { shoulderL: [0, 0, 7], shoulderR: [0, 0, -7], elbowL: [-12, 0, 0], elbowR: [-12, 0, 0] };
 /** arms crossed on the chest (relative to the chest) */
-const ARMS_CROSSED: J = { shoulderL: [-30, -80, 5], shoulderR: [-30, 80, -5], elbowL: [-115, 0, 0], elbowR: [-115, 0, 0] };
+export const ARMS_CROSSED: J = { shoulderL: [-30, -80, 5], shoulderR: [-30, 80, -5], elbowL: [-115, 0, 0], elbowR: [-115, 0, 0] };
 /** hands on the hips, elbows out */
-const HANDS_ON_HIPS: J = { shoulderL: [10, -40, 35], shoulderR: [10, 40, -35], elbowL: [-100, 0, 0], elbowR: [-100, 0, 0] };
+export const HANDS_ON_HIPS: J = { shoulderL: [10, -40, 35], shoulderR: [10, 40, -35], elbowL: [-100, 0, 0], elbowR: [-100, 0, 0] };
 
 /** standing tall */
-const stand = (j: J = {}, extra: Omit<Pose, 'j'> = {}): Pose => P({ ...ARMS_DOWN, hipL: [0, 0, 2], hipR: [0, 0, -2], ...j }, extra);
+export const stand = (j: J = {}, extra: Omit<Pose, 'j'> = {}): Pose => P({ ...ARMS_DOWN, hipL: [0, 0, 2], hipR: [0, 0, -2], ...j }, extra);
 
 /** golf posture: hip hinge 35°, knees soft, trunk 40° forward, eyes down */
-const GOLF: J = {
+export const GOLF: J = {
   pelvis: [35, 0, 0],
   spine: [3, 0, 0],
   chest: [2, 0, 0],
@@ -39,13 +39,13 @@ const GOLF: J = {
   elbowL: [-8, 0, 0],
   elbowR: [-8, 0, 0],
 };
-const golf = (j: J = {}): Pose => P({ ...GOLF, ...j });
+export const golf = (j: J = {}): Pose => P({ ...GOLF, ...j });
 
 /** sitting upright on a chair or against the wall (thighs level, knees 90°) */
-const SIT: J = { hipL: [-90, 0, 4], hipR: [-90, 0, -4], kneeL: [90, 0, 0], kneeR: [90, 0, 0] };
-const SIT_Y = -0.42;
+export const SIT: J = { hipL: [-90, 0, 4], hipR: [-90, 0, -4], kneeL: [90, 0, 0], kneeR: [90, 0, 0] };
+export const SIT_Y = -0.42;
 
-const k = (t: number, pose: Pose, label?: L): Key => ({ t, pose, label });
+export const k = (t: number, pose: Pose, label?: L): Key => ({ t, pose, label });
 
 /** a joint list with left and right swapped (the other side of a test) */
 export function mirrorJ(j: J): J {
@@ -191,15 +191,15 @@ export const CLIPS: Record<TestId, Clip> = {
     views: ['side', 'angle'],
     props: ['mat'],
     keys: [
-      k(0, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [-50, 0, 0], ankleR: [-50, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 }), L('On your back, knees bent, feet flat', 'Rückenlage, Knie gebeugt, Füße flach')),
-      k(1.2, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [-50, 0, 0], ankleR: [-50, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 })),
+      k(0, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 }), L('On your back, knees bent, feet flat', 'Rückenlage, Knie gebeugt, Füße flach')),
+      k(1.2, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 })),
       k(2.6, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [112, 0, 0], kneeR: [112, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 }), L('Lift the hips: knees, hips and shoulders in one line', 'Hüfte heben: Knie, Hüfte und Schultern in einer Linie')),
       k(3.4, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [112, 0, 0], kneeR: [112, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 })),
       k(4.6, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [0, 0, 0], kneeR: [112, 0, 0], ankleL: [-20, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 }), L('Stretch one leg, thighs parallel – hold 10 s', 'Ein Bein strecken, Oberschenkel parallel – 10 s halten')),
       k(6.6, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [0, 0, 0], kneeR: [112, 0, 0], ankleL: [-20, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 })),
       k(7.6, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [112, 0, 0], kneeR: [112, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 })),
-      k(8.8, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [-50, 0, 0], ankleR: [-50, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 }), L('Down – then the other leg', 'Ablegen – dann das andere Bein')),
-      k(9.6, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [-50, 0, 0], ankleR: [-50, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 })),
+      k(8.8, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 }), L('Down – then the other leg', 'Ablegen – dann das andere Bein')),
+      k(9.6, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 })),
     ],
   },
   'pelvic-tilt': {

@@ -68,6 +68,8 @@ export interface Rig {
   joints: Record<JointId, THREE.Object3D>;
   /** markers for grounding: soles of heels and toes, the pelvis (sitting) and the back (lying) */
   markers: THREE.Object3D[];
+  /** more contact points for drills on the floor: knees, hands, elbows, the sides of shoulders and hips */
+  contacts: THREE.Object3D[];
   /** where a club or stick is held: the right and left hand */
   hands: { L: THREE.Object3D; R: THREE.Object3D };
   head: THREE.Object3D;
@@ -132,6 +134,7 @@ function marker(parent: THREE.Object3D, at: [number, number, number], list: THRE
 export function buildRig(): Rig {
   const root = new THREE.Group();
   const markers: THREE.Object3D[] = [];
+  const contacts: THREE.Object3D[] = [];
   const B = BODY;
 
   const pelvis = pivot(root, [0, B.hipY, 0], 'YXZ');
@@ -189,6 +192,9 @@ export function buildRig(): Rig {
     // the hand: a flat rounded block (the right hand bare, the left one in the glove as a golfer)
     ball(wrist, 0.045, side === 1 ? COLORS.glove : COLORS.skin, [0, -0.05, 0.005], [0.62, 1.15, 1.0]);
     const grip = pivot(wrist, [0, -0.06, 0.01]);
+    marker(wrist, [0, -0.08, -0.02], contacts); // palm
+    marker(elbow, [0, 0, -0.045], contacts); // back of the elbow
+    marker(shoulder, [side * 0.065, 0, 0], contacts); // side of the shoulder (lying on the side)
     return { shoulder, elbow, wrist, grip, s };
   };
   const aL = arm(1);
@@ -200,6 +206,8 @@ export function buildRig(): Rig {
     limb(hip, B.thigh, 0.085, 0.06, COLORS.trousers);
     const knee = pivot(hip, [0, -B.thigh, 0], 'XYZ');
     ball(knee, 0.06, COLORS.trousers);
+    marker(knee, [0, -0.03, 0.06], contacts); // kneecap (kneeling)
+    marker(hip, [side * 0.09, -0.04, 0], contacts); // side of the hip (lying on the side)
     limb(knee, B.shin, 0.058, 0.042, COLORS.trousers);
     const ankle = pivot(knee, [0, -B.shin, 0], 'XYZ');
     // the shoe: sole and upper, pointing forward (+z)
@@ -220,6 +228,7 @@ export function buildRig(): Rig {
     head,
     eyes,
     markers,
+    contacts,
     hands: { L: aL.grip, R: aR.grip },
     joints: {
       pelvis,
@@ -257,16 +266,18 @@ export interface Pose {
   tip?: number;
   /** 1 = eyes open (default), 0 = closed */
   eyes?: number;
+  /** the whole body rolled to the side (lying on the side: 90 = on the right side) */
+  roll?: number;
 }
 
-/** Puts the rig into a pose; with `ground` the lowest marker is set on the floor. */
-export function applyPose(rig: Rig, p: Pose, ground = true): void {
+/** Puts the rig into a pose; with `ground` the lowest marker is set on the floor ('all': knees, hands, elbows too). */
+export function applyPose(rig: Rig, p: Pose, ground: boolean | 'all' = true): void {
   for (const id of Object.keys(rig.joints) as JointId[]) {
     const r = p.j[id] ?? [0, 0, 0];
     rig.joints[id].rotation.set(D(r[0]), D(r[1]), D(r[2]));
   }
   rig.root.position.set(p.at?.[0] ?? 0, 0, p.at?.[1] ?? 0);
-  rig.root.rotation.set(D(p.tip ?? 0), D(p.turn ?? 0), 0, 'YXZ');
+  rig.root.rotation.set(D(p.tip ?? 0), D(p.turn ?? 0), D(p.roll ?? 0), 'YXZ');
   for (const e of rig.eyes) e.scale.set(1, Math.max(0.12, p.eyes ?? 1), 1);
   if (p.y != null) {
     rig.root.position.y = p.y;
@@ -276,7 +287,7 @@ export function applyPose(rig: Rig, p: Pose, ground = true): void {
   rig.root.updateMatrixWorld(true);
   const v = new THREE.Vector3();
   let low = Infinity;
-  for (const m of rig.markers) {
+  for (const m of ground === 'all' ? [...rig.markers, ...rig.contacts] : rig.markers) {
     m.getWorldPosition(v);
     low = Math.min(low, v.y);
   }
@@ -299,6 +310,7 @@ export function mixPose(a: Pose, b: Pose, k: number): Pose {
     y: a.y != null || b.y != null ? l(a.y, b.y) : undefined,
     turn: l(a.turn, b.turn),
     tip: l(a.tip, b.tip),
+    roll: l(a.roll, b.roll),
     eyes: a.eyes != null || b.eyes != null ? (a.eyes ?? 1) + ((b.eyes ?? 1) - (a.eyes ?? 1)) * k : undefined,
   };
 }
