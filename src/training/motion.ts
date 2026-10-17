@@ -1,5 +1,5 @@
 import { golferJoints, type GolferOptions } from './Golfer';
-import type { L, Motion, MotionFrame } from './types';
+import type { L, Motion, MotionFrame, Shot } from './types';
 
 // The animated figure (Sascha 17.10.2026: "animated videos would be better than still pictures"). The key positions
 // are the figure's poses; between them every limb turns around its joint (angle and length interpolated), so arms,
@@ -65,7 +65,7 @@ export function blend(a: Frame, b: Frame, u: number): Frame {
 }
 
 export interface Timeline {
-  keys: { j: Frame; at: number; hold: number; label?: L }[];
+  keys: { j: Frame; at: number; hold: number; label?: L; hit?: Shot }[];
   /** seconds for one run through the movement */
   total: number;
 }
@@ -74,11 +74,43 @@ export function timeline(base: Omit<GolferOptions, 'pose'>, m: Motion): Timeline
   let at = 0;
   const keys = m.frames.map((f, i) => {
     at += i === 0 ? 0 : f.t;
-    const k = { j: frameJoints(base, f), at, hold: f.hold ?? 0, label: f.label };
+    const k = { j: frameJoints(base, f), at, hold: f.hold ?? 0, label: f.label, hit: f.hit };
     at += k.hold;
     return k;
   });
   return { keys, total: at };
+}
+
+/** The ball after the hit: how long ago and what kind of shot (none before the hit). */
+export function hitAt(tl: Timeline, time: number): { shot: Shot; since: number } | null {
+  const k = tl.keys.find((x) => x.hit);
+  return k && time >= k.at ? { shot: k.hit!, since: time - k.at } : null;
+}
+
+/** Where a ball is, in metres from where it lay, a time after the hit: x towards the target, y up. */
+export function ballFlight(shot: Shot, s: number): [number, number] {
+  const arc = (carry: number, apex: number, dur: number, roll: number, k = 3): [number, number] => {
+    if (s < dur) {
+      const u = s / dur;
+      return [carry * u, apex * 4 * u * (1 - u)];
+    }
+    return [carry + roll * (1 - Math.exp(-k * (s - dur))), 0];
+  };
+  switch (shot) {
+    case 'putt':
+      return [1.8 * (1 - Math.exp(-2.4 * s)), 0];
+    case 'chip':
+      return arc(1.1, 0.25, 0.45, 1.6);
+    case 'punch':
+      return arc(5, 0.45, 0.9, 1.5);
+    case 'pitch':
+      return arc(2.6, 1.0, 0.8, 0.4, 5);
+    case 'bunker':
+      return arc(2.2, 1.1, 0.85, 0.5, 5);
+    case 'full':
+      // long and out of the picture towards the target
+      return [7 * s, Math.max(0, 3.6 * s - 1.1 * s * s)];
+  }
 }
 
 /** The figure at a time of the run (seconds), and what is happening then. */

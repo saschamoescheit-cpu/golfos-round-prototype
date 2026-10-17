@@ -233,7 +233,12 @@ export interface MotionFrame {
   hold?: number;
   /** what happens on the way to this position, shown under the picture while it plays */
   label?: L;
+  /** the club meets the ball on reaching this position – the ball leaves like this shot (Sascha 17.10.2026) */
+  hit?: Shot;
 }
+/** how the ball leaves: rolling (putt), low with roll (chip, punch), high and soft (pitch), up out of the sand
+ *  (bunker), long out of the picture (full swing) */
+export type Shot = 'putt' | 'chip' | 'punch' | 'pitch' | 'bunker' | 'full';
 /** The movement of one figure of a side sketch: the still picture stays, a play button shows the movement. */
 export interface Motion {
   /** the figure that moves (index among the figures; default the one at the ball) */

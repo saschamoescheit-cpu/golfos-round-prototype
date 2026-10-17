@@ -4,7 +4,7 @@ import { isLeftHanded } from '../lib/profile';
 import { sided } from './sides';
 import type { L, P, SideItem, Sketch, SketchItem } from './types';
 import { Golfer, golferJoints, type GolferOptions } from './Golfer';
-import { at, timeline, type Frame } from './motion';
+import { at, ballFlight, hitAt, timeline, type Frame } from './motion';
 import { ballsAt, rollPlan } from './roll';
 
 // Our own drawings for the drills (Sascha 15.10.2026: no pictures copied from the internet). A sketch is described in
@@ -108,7 +108,12 @@ function useMotion(s: Sketch) {
   if (!tls || !motion || s.view !== 'side') return null;
   const now = time === null ? null : tls.map((x) => ({ fig: x.fig, ...at(x.tl, time) }));
   const frames = now ? new Map(now.map((x) => [x.fig, x.j])) : undefined;
-  return { playing, frames, label: now?.[0].label, toggle: () => setTime(playing ? null : 0) };
+  // the ball of each moving figure after its hit: [dx, dy] in metres
+  const balls = time === null ? undefined : new Map(tls.flatMap((x) => {
+    const h = hitAt(x.tl, time);
+    return h ? [[x.fig, ballFlight(h.shot, h.since)] as [number, [number, number]]] : [];
+  }));
+  return { playing, frames, balls, label: now?.[0].label, toggle: () => setTime(playing ? null : 0) };
 }
 
 /** The ball on a top view: rolling or flying along its drawn paths (three runs, a tap stops it earlier). */
@@ -166,7 +171,7 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
         ) : s.view === 'top' ? (
           <Top sketch={s} label={props.label} rolling={roll?.rolling} />
         ) : s.view === 'side' ? (
-          <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} />
+          <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} flying={motion?.playing ? motion.balls : undefined} />
         ) : s.view === 'grip' ? (
           <Grip label={props.label} />
         ) : s.view === 'palm' ? (
@@ -484,7 +489,7 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string; 
   );
 }
 
-function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean; moving?: Map<number, Frame> }) {
+function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string; thumb?: boolean; moving?: Map<number, Frame>; flying?: Map<number, [number, number]> }) {
   const { w, h, items } = props.sketch;
   const W = 340;
   const k = W / w;
@@ -525,8 +530,16 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
         const m = badges.get(it);
         return m ? <Badge key={i} {...m} /> : null;
       }
-      case 'ball':
-        return <circle key={i} cx={X(it.at[0])} cy={Y(it.at[1]) - 4} r={4.5} fill="#ffffff" stroke="#55606a" />;
+      case 'ball': {
+        // after the hit the ball of the nearest moving figure leaves – rolling, low, high or out of the picture
+        let d: [number, number] = [0, 0];
+        if (props.flying?.size) {
+          let best = -1;
+          figs.forEach((f, n) => props.flying!.has(n) && Math.abs(f.at[0] - it.at[0]) < 0.9 && (best < 0 || Math.abs(f.at[0] - it.at[0]) < Math.abs(figs[best].at[0] - it.at[0])) && (best = n));
+          if (best >= 0) d = props.flying.get(best)!;
+        }
+        return <circle key={i} cx={X(it.at[0] + d[0])} cy={Y(it.at[1] + d[1]) - 4} r={4.5} fill="#ffffff" stroke="#55606a" />;
+      }
       case 'flag':
         return (
           <g key={i}>

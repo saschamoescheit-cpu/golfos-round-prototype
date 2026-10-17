@@ -1,11 +1,11 @@
-import { L, type CategoryId, type Motion, type MotionFrame } from '../types';
+import { L, type CategoryId, type Motion, type MotionFrame, type Shot } from '../types';
 
 // The movements of the animated figure (Sascha 17.10.2026: "animated videos would be better than the still
 // pictures"). The still picture with its numbers stays; the play button on it shows the movement. Times are seconds as
 // shown – slowed down so the eye can follow, the proportions kept (full swing 3:1, putting stroke 2:1).
 
 /** the full swing, face-on: back in three counts, down in one (Tour Tempo 3:1), the finish held */
-const fullSwing = (opts?: MotionFrame['opts'], top = 0.3): Motion => ({
+const fullSwing = (opts?: MotionFrame['opts'], top = 0.3, shot: Shot = 'full'): Motion => ({
   // the 3D video where the player swings as usual (no drill aid in the picture)
   video: !opts || (Object.keys(opts).length === 1 && opts.club === 'iron') ? 'full' : opts.club === 'driver' && !opts.heelUp ? 'driver' : undefined,
   frames: [
@@ -14,7 +14,7 @@ const fullSwing = (opts?: MotionFrame['opts'], top = 0.3): Motion => ({
     { pose: 'halfBack', opts, t: 0.45, label: L('wrists hinge – two', 'Handgelenke winkeln an – zwei') },
     { pose: 'frontTop', opts, t: 0.55, hold: top, label: L('the top – three', 'oben – drei') },
     { pose: 'pump', opts, t: 0.3, label: L('down from the ground', 'Abschwung vom Boden') },
-    { pose: 'impact', opts, t: 0.2, label: L('impact: hands ahead – four', 'Treffmoment: Hände vorn – vier') },
+    { pose: 'impact', opts, t: 0.2, label: L('impact: hands ahead – four', 'Treffmoment: Hände vorn – vier'), hit: shot },
     { pose: 'halfThrough', opts, t: 0.25, label: L('through', 'durch') },
     { pose: 'frontFinish', opts, t: 0.45, hold: 1, label: L('hold the finish', 'Finish halten') },
   ],
@@ -28,7 +28,7 @@ const halfSwing = (opts?: MotionFrame['opts']): Motion => ({
     { pose: 'takeaway', opts: { club: 'wedge', ...opts }, t: 0.5, label: L('the body turns back', 'der Körper dreht zurück') },
     { pose: 'halfBack', opts: { club: 'wedge', ...opts }, t: 0.5, hold: 0.4, label: L('9 o’clock: lead arm parallel', '9 Uhr: vorderer Arm waagrecht') },
     { pose: 'pump', opts: { club: 'wedge', ...opts }, t: 0.35, label: L('the body turns through', 'der Körper dreht durch') },
-    { pose: 'impact', opts: { club: 'wedge', ...opts }, t: 0.2, label: L('ball first, then the grass', 'erst der Ball, dann das Gras') },
+    { pose: 'impact', opts: { club: 'wedge', ...opts }, t: 0.2, label: L('ball first, then the grass', 'erst der Ball, dann das Gras'), hit: 'pitch' },
     { pose: 'halfThrough', opts: { club: 'wedge', ...opts }, t: 0.35, hold: 1, label: L('3 o’clock: chest to the target', '3 Uhr: Brust zum Ziel') },
   ],
 });
@@ -39,7 +39,8 @@ const puttStroke = (opts?: MotionFrame['opts'], arc = 9): Motion => ({
   frames: [
     { pose: 'putt', opts, t: 0, hold: 0.6 },
     { pose: 'putt', opts, rock: -arc, t: 0.7, label: L('the shoulders rock back – tick', 'die Schultern schaukeln zurück – Tick') },
-    { pose: 'putt', opts, rock: arc, t: 0.35, label: L('through the ball – tock', 'durch den Ball – Tack') },
+    { pose: 'putt', opts, rock: 0, t: 0.175, label: L('through the ball – tock', 'durch den Ball – Tack'), hit: 'putt' },
+    { pose: 'putt', opts, rock: arc, t: 0.175 },
     { pose: 'putt', opts, rock: arc, t: 0, hold: 1, label: L('the head stays still', 'der Kopf bleibt ruhig') },
     { pose: 'putt', opts, t: 0.7, hold: 0.2 },
   ],
@@ -51,7 +52,7 @@ const chipStroke = (opts?: MotionFrame['opts']): Motion => ({
   frames: [
     { pose: 'chip', opts, t: 0, hold: 0.6 },
     { pose: 'chip', opts, rock: -15, t: 0.6, label: L('the shoulders rock, the wrists stay firm', 'die Schultern schaukeln, die Handgelenke bleiben fest') },
-    { pose: 'chip', opts, rock: 0, t: 0.25, label: L('the club brushes the grass', 'der Schläger streift das Gras') },
+    { pose: 'chip', opts, rock: 0, t: 0.25, label: L('the club brushes the grass', 'der Schläger streift das Gras'), hit: 'chip' },
     { pose: 'chip', opts, rock: 17, t: 0.3, hold: 1, label: L('the grip leads – hold the finish', 'der Griff führt – Finish halten') },
     { pose: 'chip', opts, t: 0.7, hold: 0.2 },
   ],
@@ -64,7 +65,7 @@ const punch = (): Motion => ({
     { pose: 'takeaway', opts: { club: 'iron', shift: 0.04 }, t: 0.6, label: L('short back – to hip or chest height', 'kurz zurück – bis Hüft- oder Brusthöhe') },
     { pose: 'halfBack', opts: { club: 'iron', shift: 0.04 }, t: 0.4, hold: 0.2 },
     { pose: 'pump', opts: { club: 'iron', shift: 0.05 }, t: 0.3 },
-    { pose: 'impact', opts: { club: 'iron', shift: 0.06 }, t: 0.2, label: L('hands ahead, weight forward', 'Hände vorn, Gewicht vorn') },
+    { pose: 'impact', opts: { club: 'iron', shift: 0.06 }, t: 0.2, label: L('hands ahead, weight forward', 'Hände vorn, Gewicht vorn'), hit: 'punch' },
     { pose: 'chipFinish', opts: { club: 'iron', shift: 0.06 }, t: 0.3, hold: 1.2, label: L('a short finish, the hands stay low', 'kurzes Finish, die Hände bleiben tief') },
   ],
 });
@@ -92,7 +93,7 @@ export const DRILL_MOTIONS: Record<string, Motion> = {
       { pose: 'pump', t: 0.45, hold: 0.3, label: L('down – twice', 'runter – zweimal') },
       { pose: 'frontTop', t: 0.45, label: L('up again', 'wieder hoch') },
       { pose: 'pump', t: 0.3, label: L('the third time through to the ball', 'beim dritten Mal durch zum Ball') },
-      { pose: 'impact', t: 0.2 },
+      { pose: 'impact', t: 0.2, hit: 'full' },
       { pose: 'halfThrough', t: 0.25 },
       { pose: 'frontFinish', t: 0.45, hold: 0.8, label: L('hold the finish', 'Finish halten') },
     ],
@@ -107,7 +108,7 @@ export const DRILL_MOTIONS: Record<string, Motion> = {
   'grip-pressure-ball': halfSwing({ club: 'iron' }),
   'splash-no-ball': fullSwing({ club: 'wedge', stance: 'wide' }),
   'sand-on-face': halfSwing(),
-  'one-foot-bunker': fullSwing({ club: 'wedge', stance: 'wide', heelUp: 'trail' }),
+  'one-foot-bunker': fullSwing({ club: 'wedge', stance: 'wide', heelUp: 'trail' }, 0.3, 'bunker'),
   'fairway-bunker': fullSwing({ club: 'iron' }),
   'brush-five': fullSwing({ club: 'iron' }),
   'fried-egg': {
@@ -116,7 +117,7 @@ export const DRILL_MOTIONS: Record<string, Motion> = {
       { pose: 'halfBack', opts: { club: 'wedge' }, t: 0.7, label: L('steep back', 'steil zurück') },
       { pose: 'frontTop', opts: { club: 'wedge' }, t: 0.4, hold: 0.2 },
       { pose: 'pump', opts: { club: 'wedge' }, t: 0.3, label: L('hard down behind the ball', 'kräftig nach unten hinter den Ball') },
-      { pose: 'impact', opts: { club: 'wedge', shift: 0.04 }, t: 0.2, hold: 1.4, label: L('the club stays in the sand – hardly a finish', 'der Schläger bleibt im Sand – kaum ein Finish') },
+      { pose: 'impact', opts: { club: 'wedge', shift: 0.04 }, t: 0.2, hit: 'chip', hold: 1.4, label: L('the club stays in the sand – hardly a finish', 'der Schläger bleibt im Sand – kaum ein Finish') },
     ],
   },
   'punch-gap': punch(),
@@ -128,7 +129,7 @@ export const DRILL_MOTIONS: Record<string, Motion> = {
       { pose: 'takeaway', opts: { club: 'iron', stance: 'together' }, t: 0.6, label: L('start back with the feet together', 'mit geschlossenen Füßen ausholen') },
       { pose: 'halfBack', opts: { club: 'iron', stance: undefined }, t: 0.6, hold: 0.2, label: L('the lead foot steps towards the target', 'der vordere Fuß tritt Richtung Ziel') },
       { pose: 'pump', opts: { club: 'iron', stance: undefined, shift: 0.04 }, t: 0.35, label: L('foot down – the weight is forward first', 'Fuß aufsetzen – zuerst ist das Gewicht vorn') },
-      { pose: 'impact', opts: { club: 'iron', stance: undefined, shift: 0.06 }, t: 0.2 },
+      { pose: 'impact', opts: { club: 'iron', stance: undefined, shift: 0.06 }, t: 0.2, hit: 'full' },
       { pose: 'halfThrough', opts: { club: 'iron', stance: undefined, shift: 0.06 }, t: 0.3, hold: 1, label: L('then the club arrives', 'dann kommt der Schläger') },
     ],
   },
@@ -156,8 +157,8 @@ export const DRILL_MOTIONS: Record<string, Motion> = {
 export const SECTION_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> = {
   putting: { 'The stroke': puttStroke(), 'Short putts (under 2 m)': puttStroke(undefined, 6) },
   chipping: { 'The stroke': chipStroke() },
-  pitching: { 'The motion': halfSwing(), 'The clock system': halfSwing(), 'Lob and flop': fullSwing({ club: 'wedge', stance: 'wide' }) },
-  bunker: { 'The swing': fullSwing({ club: 'wedge', stance: 'wide' }), 'Fairway bunker': fullSwing({ club: 'iron' }) },
+  pitching: { 'The motion': halfSwing(), 'The clock system': halfSwing(), 'Lob and flop': fullSwing({ club: 'wedge', stance: 'wide' }, 0.3, 'pitch') },
+  bunker: { 'The swing': fullSwing({ club: 'wedge', stance: 'wide' }, 0.3, 'bunker'), 'Fairway bunker': fullSwing({ club: 'iron' }) },
   trouble: { 'The punch shot under trees': punch() },
   slopes: { 'Uphill lie': fullSwing(), 'Downhill lie': fullSwing() },
   woods: { 'The swing: sweep': fullSwing({ club: 'driver' }) },
@@ -181,7 +182,7 @@ const swingTo = (end: Opts, say: L | undefined, o: { half?: boolean; top?: Opts;
   { pose: 'halfBack', opts: o.top, t: 0.45, hold: o.half ? 0.3 : 0 },
   ...(o.half ? [] : [{ pose: 'frontTop' as const, opts: o.top, t: 0.55, hold: 0.3, label: say && L('the top', 'oben') }]),
   { pose: 'pump', t: 0.3, label: say && L('down', 'runter') },
-  { pose: 'impact', opts: end, t: 0.2, hold: o.after ? 0 : 1.6, label: say },
+  { pose: 'impact', opts: end, t: 0.2, hold: o.after ? 0 : 1.6, label: say, hit: o.half ? 'pitch' : 'full' },
   ...(o.after ?? []),
 ];
 const pairSwing = (fault: Opts, right: Opts, say: L, o: { half?: boolean } = {}): Motion => ({
@@ -192,7 +193,7 @@ const pairSwing = (fault: Opts, right: Opts, say: L, o: { half?: boolean } = {})
 const chipTo = (end: Opts, say?: L): MotionFrame[] => [
   { pose: 'chip', t: 0, hold: 0.5 },
   { pose: 'chip', rock: -15, t: 0.6, label: say && L('back', 'zurück') },
-  { pose: 'chip', opts: end, t: 0.3, hold: 1.6, label: say },
+  { pose: 'chip', opts: end, t: 0.3, hold: 1.6, label: say, hit: 'chip' },
 ];
 const pairChip = (fault: Opts, right: Opts, say: L): Motion => ({ fig: 0, frames: chipTo(fault, say), with: [{ fig: 1, frames: chipTo(right) }] });
 
@@ -215,7 +216,7 @@ export const FAULT_MOTIONS: Partial<Record<CategoryId, Record<string, Motion>>> 
     'Slowing down at the ball': {
       fig: 0,
       frames: swingTo(undefined, L('left: too long back – it has to brake; right: shorter back, through to 3 o’clock', 'links: zu weit ausgeholt – er muss bremsen; rechts: kürzer aus, durch bis 3 Uhr')),
-      with: [{ fig: 1, frames: [{ pose: 'front', t: 0, hold: 0.5 }, { pose: 'takeaway', t: 0.5 }, { pose: 'halfBack', t: 1, hold: 0.3 }, { pose: 'pump', t: 0.3 }, { pose: 'impact', t: 0.2 }, { pose: 'halfThrough', t: 0.35, hold: 1.25 }] }],
+      with: [{ fig: 1, frames: [{ pose: 'front', t: 0, hold: 0.5 }, { pose: 'takeaway', t: 0.5 }, { pose: 'halfBack', t: 1, hold: 0.3 }, { pose: 'pump', t: 0.3 }, { pose: 'impact', t: 0.2, hit: 'pitch' }, { pose: 'halfThrough', t: 0.35, hold: 1.25 }] }],
     },
   },
   bunker: {

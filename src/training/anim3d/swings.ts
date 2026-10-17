@@ -101,7 +101,7 @@ export const FULL_SWING: Swing = {
   ],
 };
 
-FULL_SWING.hit = { at: 2.8, fly: true };
+FULL_SWING.hit = { at: 2.8, shot: 'full' };
 
 /** the driver: wider stance, the ball forward on a tee, hit on the way up */
 export const DRIVER_SWING: Swing = { ...FULL_SWING, club: 'driver', stance: 0.5, ball: [0.16, 0.72], tee: true };
@@ -111,7 +111,7 @@ export const HALF_SWING: Swing = {
   club: 'wedge',
   stance: 0.3,
   ball: [0, 0.56],
-  hit: { at: 2.1, fly: true },
+  hit: { at: 2.1, shot: 'pitch' },
   keys: [
     k(0, { ...ADDRESS, label: L('Set-up', 'Ansprache') }),
     k(0.5, ADDRESS),
@@ -169,7 +169,7 @@ export const CHIP_STROKE: Swing = {
   club: 'wedge',
   stance: 0.2,
   ball: [-0.03, 0.5],
-  hit: { at: 1.55, roll: 2.4 },
+  hit: { at: 1.55, shot: 'chip' },
   keys: [
     k(0, { ...CHIP_ADDRESS, label: L('Narrow stance, weight and hands forward', 'Schmaler Stand, Gewicht und Hände vorn') }),
     k(0.6, CHIP_ADDRESS),
@@ -208,7 +208,7 @@ export const PUTT_STROKE: Swing = {
   club: 'putter',
   stance: 0.3,
   ball: [0.03, 0.46],
-  hit: { at: 1.7, roll: 3 },
+  hit: { at: 1.7, shot: 'putt' },
   keys: [
     k(0, { ...PUTT_ADDRESS, label: L('Eyes over the ball, arms hanging', 'Augen über dem Ball, die Arme hängen') }),
     k(0.6, PUTT_ADDRESS),
@@ -305,7 +305,7 @@ export const FAT: Swing = fault(FULL_SWING, {
     miss: [-0.09, -0.02, 0],
     label: L('Left: weight back, the club hits the ground first · right: weight forward, ball first', 'Links: Gewicht hinten, der Schläger trifft zuerst den Boden · rechts: Gewicht vorn, erst der Ball'),
   },
-}, { hit: undefined });
+}, { hit: { at: 2.8, shot: 'pitch', scale: 0.35 } });
 /** thin: the body rises – the leading edge hits the middle of the ball */
 export const THIN: Swing = fault(FULL_SWING, {
   2.8: {
@@ -340,7 +340,7 @@ export const CHIP_FAT: Swing = fault(CHIP_STROKE, {
     miss: [-0.07, -0.02, 0],
     label: L('Left: weight back, the wrists flip – the ground first · right: weight forward, the grip leads', 'Links: Gewicht hinten, die Handgelenke klappen – zuerst der Boden · rechts: Gewicht vorn, der Griff führt'),
   },
-}, { hit: { at: 1.55, roll: 0.8 } });
+}, { hit: { at: 1.55, shot: 'chip', scale: 0.35 } });
 export const CHIP_THIN: Swing = fault(CHIP_STROKE, {
   1.55: {
     body: { pelvis: [20, 6, 0], spine: [2, 0, -2], chest: [4, 0, -2] },
@@ -348,12 +348,12 @@ export const CHIP_THIN: Swing = fault(CHIP_STROKE, {
     miss: [0.01, 0.04, 0],
     label: L('Left: the body rises, the edge hits the ball · right: the body stays down', 'Links: der Körper richtet sich auf, die Kante trifft den Ball · rechts: der Körper bleibt unten'),
   },
-}, { hit: { at: 1.55, roll: 4.5 } });
+}, { hit: { at: 1.55, shot: 'punch', scale: 0.7 } });
 export const CHIP_SLOW: Swing = fault(CHIP_STROKE, {
   1.25: { hands: [-0.03, -0.17, 0.43], club: [-0.7, -0.68, 0.2], body: { chest: [8, -20, -2] }, label: L('Left: a long backswing · right: a short one', 'Links: weit ausholen · rechts: kurz ausholen') },
   1.9: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] }, label: L('Left: braking at the ball · right: longer through, finish held', 'Links: am Ball bremsen · rechts: länger durch, Finish halten') },
   3.0: { hands: [0.12, -0.2, 0.43], club: [0.12, -0.98, 0.2], body: { chest: [8, 3, -2] } },
-}, { hit: { at: 1.55, roll: 1.2 } });
+}, { hit: { at: 1.55, shot: 'chip', scale: 0.5 } });
 
 /** the fairway wood: topped (lifting the ball, the body rises) and fat (too steep, weight back) */
 export const WOOD_TOP: Swing = fault(WOOD_SWING, {
@@ -363,7 +363,7 @@ export const WOOD_TOP: Swing = fault(WOOD_SWING, {
     miss: [0.01, 0.05, 0],
     label: L('Left: lifting the ball – the body rises · right: chest over the ball, sweeping the grass', 'Links: den Ball heben wollen – der Körper richtet sich auf · rechts: Brust über dem Ball, das Gras fegen'),
   },
-}, { hit: { at: 2.8, roll: 6 } });
+}, { hit: { at: 2.8, shot: 'putt', scale: 4 } });
 export const WOOD_FAT: Swing = fault(WOOD_SWING, {
   2.8: {
     body: { pelvis: [32, 12, 2], spine: [6, -4, 6], chest: [6, -16, 12] },
@@ -372,7 +372,7 @@ export const WOOD_FAT: Swing = fault(WOOD_SWING, {
     miss: [-0.1, -0.02, 0],
     label: L('Left: weight back, too steep – the club digs · right: wide and flat, sweeping', 'Links: Gewicht hinten, zu steil – der Schläger gräbt · rechts: weit und flach, fegen'),
   },
-}, { hit: undefined });
+}, { hit: { at: 2.8, shot: 'pitch', scale: 0.35 } });
 /** the pitch: fat with the arms only and the weight back */
 export const PITCH_FAT: Swing = fault(HALF_SWING, {
   2.1: {
@@ -382,7 +382,7 @@ export const PITCH_FAT: Swing = fault(HALF_SWING, {
     miss: [-0.08, -0.02, 0],
     label: L('Left: arms only, weight back – the ground first · right: the body turns, weight forward', 'Links: nur die Arme, Gewicht hinten – zuerst der Boden · rechts: der Körper dreht, Gewicht vorn'),
   },
-}, { hit: undefined });
+}, { hit: { at: 2.1, shot: 'pitch', scale: 0.35 } });
 
 /** pairs for the fault pictures: the fault first (left), the right way (right); z: one behind the other for the view from behind */
 export const PAIRS = {

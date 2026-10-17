@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { applyPose, BODY, buildRig, COLORS, type Pose, type Rig, type Rot } from '../../mobility/anim3d/rig';
-import type { L } from '../types';
+import type { L, Shot } from '../types';
+import { ballFlight } from '../motion';
 
 // The 3D swing videos of Training (Sascha 17.10.2026: "3D animated videos would be better than still pictures").
 // The golfer of the Agility 3D videos (same figure, same stage, same camera views), here holding a club with both
@@ -44,7 +45,7 @@ export interface Swing {
   /** the ball, relative to the middle of the feet: x towards the target, z in front of the ankles */
   ball?: [number, number];
   /** the ball leaves at this time: it rolls (putt, chip) this many metres, or flies off (full swing) */
-  hit?: { at: number; roll?: number; fly?: boolean };
+  hit?: { at: number; shot: Shot; scale?: number };
   /** the ball sits on a tee (driver) */
   tee?: boolean;
   /** only the lead hand on the club – the trail hand rests on the chest */
@@ -345,11 +346,11 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     p.ball.visible = true;
     if (h && time > h.at) {
       const s = time - h.at;
-      if (h.fly) {
-        at.x += 9 * s;
-        at.y += 4.5 * s - 3 * s * s;
-        p.ball.visible = s < 0.8;
-      } else at.x += (h.roll ?? 1) * (1 - Math.exp(-2.2 * s));
+      // the same flights as the drawings: rolling, low with roll, high and soft, out of the sand, long away
+      const [dx, dy] = ballFlight(h.shot, s);
+      at.x += dx * (h.scale ?? 1);
+      at.y += dy * (h.scale ?? 1);
+      p.ball.visible = dx < 12;
     }
     p.ball.position.copy(at);
   };
