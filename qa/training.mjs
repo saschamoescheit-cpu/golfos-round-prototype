@@ -74,8 +74,12 @@ await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).cli
 await p.waitForTimeout(300);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'drill shows its sketch');
 ok(await p.locator('.tabbar').isVisible(), 'the menu stays at the bottom on the drill page (Sascha 16.10.2026)');
-ok((await p.locator('.tr-targets .mine').innerText()).includes('Hcp 11–20'), 'target of the player’s band is highlighted (hcp 12.4)');
+// the drill page in tabs (Sascha 17.10.2026: no one-pager)
+ok((await p.getByRole('tab').allInnerTexts()).join('|') === 'Anleitung|Ergebnis|Videos|Zubehör', 'drill page tabs: Anleitung · Ergebnis · Videos · Zubehör');
+ok((await p.locator('.tr-steps li').count()) >= 2 && (await p.locator('.tr-log').count()) === 0, 'Anleitung shows the steps, not the result part');
 await p.locator('.tr-fav').click();
+await p.getByRole('tab', { name: 'Ergebnis' }).click();
+ok((await p.locator('.tr-targets .mine').innerText()).includes('Hcp 11–20'), 'target of the player’s band is highlighted (hcp 12.4)');
 for (let i = 0; i < 11; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Ergebnis speichern' }).click();
 ok(await p.getByRole('button', { name: 'Gespeichert ✓' }).isVisible(), 'result saved');
@@ -86,11 +90,13 @@ ok((await p.locator('.tr-history li').count()) === 0 && (await p.locator('.undo-
 await p.locator('.undo-toast button').click();
 ok((await p.locator('.tr-history li').count()) === 1, 'Undo brings the result back');
 await shot('drill');
+await p.getByRole('tab', { name: 'Videos' }).click();
 // video loads only on tap
 ok((await p.locator('iframe').count()) === 0, 'no video before tapping');
 await p.locator('.tr-video-cover').first().click();
 ok((await p.locator('iframe[src*="youtube-nocookie.com"]').count()) === 1, 'video loads from youtube-nocookie on tap');
 // gear belongs to the drill
+await p.getByRole('tab', { name: 'Zubehör' }).click();
 const gearRows = p.locator('.tr-gear-row');
 ok((await gearRows.count()) >= 1 && (await gearRows.first().innerText()).includes('EyeLine'), 'the drill shows its own gear');
 await gearRows.first().locator('.chip').click();
@@ -99,6 +105,7 @@ await gearRows.first().locator('.tr-gear-row-main').click();
 await p.waitForTimeout(300);
 ok(await p.getByText('Im Warenkorb').isVisible(), 'gear page knows it is in the cart');
 await back();
+ok((await p.getByRole('tab', { name: 'Zubehör' }).getAttribute('aria-selected')) === 'true', 'back from the gear page: the same tab of the drill');
 await back();
 await back();
 await p.waitForTimeout(300);

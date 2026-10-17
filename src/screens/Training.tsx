@@ -1224,6 +1224,9 @@ function Sources(props: { list?: { label: string; url: string }[] }) {
 
 // ---------- drill ----------
 
+type DrillTab = 'learn' | 'result' | 'videos' | 'gear';
+const DRILL_TAB = new Map<string, DrillTab>();
+
 function DrillView(props: { id: string; nav: Nav }) {
   useTrainingTick();
   const d = drillById(props.id);
@@ -1233,6 +1236,11 @@ function DrillView(props: { id: string; nav: Nav }) {
   const [showAll, setShowAll] = useState(false);
   // a removed result can be brought back for 8 seconds – the same "Undo" as for rounds, games and sessions
   const [removed, setRemoved] = useState<LogEntry | null>(null);
+  const [tabState, setTabState] = useState<DrillTab>(() => DRILL_TAB.get(props.id) ?? 'learn');
+  const setTab = (x: DrillTab) => {
+    DRILL_TAB.set(props.id, x);
+    setTabState(x);
+  };
   useEffect(() => {
     if (!removed) return;
     const t = window.setTimeout(() => setRemoved(null), 8000);
@@ -1254,6 +1262,14 @@ function DrillView(props: { id: string; nav: Nav }) {
   // Sascha 16.10.2026: the gear belongs to the drill – shown here, not on the topic page
   const plainNeeds = (d.needs ?? []).filter((n): n is L => typeof n !== 'string');
   const gear = gearForDrill(d);
+  // Sascha 17.10.2026: no one-pager – the drill page in tabs like the topic pages; a tab only when it has something
+  const tabs: { id: DrillTab; label: string }[] = [
+    { id: 'learn', label: tr('How to', 'Anleitung') },
+    ...(scored ? [{ id: 'result' as const, label: tr('Result', 'Ergebnis') }] : []),
+    ...(d.videos?.length ? [{ id: 'videos' as const, label: 'Videos' }] : []),
+    ...(gear.length ? [{ id: 'gear' as const, label: tr('Gear', 'Zubehör') }] : []),
+  ];
+  const tab: DrillTab = tabs.some((x) => x.id === tabState) ? tabState : 'learn';
   return (
     <main className="screen training">
       <TopBar
@@ -1273,229 +1289,259 @@ function DrillView(props: { id: string; nav: Nav }) {
         {d.balls ? <span className="chip fact">{tr(`${d.balls} balls`, `${d.balls} Bälle`)}</span> : null}
       </div>
       {d.review && <p className="tr-review small">{tr('Content still to be checked by our golf pro.', 'Inhalt wird noch von unserem Golfprofi geprüft.')}</p>}
-      {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
-      {d.metronome && <Metronome mode={d.metronome} />}
-      {d.origin && (
-        <p className="muted small">
-          {tr('Known from', 'Bekannt durch')}: {t(d.origin)}
-        </p>
-      )}
-      <section className="card tr-section">
-        <h2>{tr('Set-up', 'Aufbau')}</h2>
-        <p>{t(d.setup)}</p>
-        {plainNeeds.length ? (
-          <div className="tr-needs">
-            <span className="muted small">{tr('You need', 'Du brauchst')}:</span>
-            <div className="chip-set">
-              {plainNeeds.map((n, i) => (
-                <span key={i} className="chip fact">
-                  {t(n)}
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </section>
-      <section className="card tr-section">
-        <h2>{tr('How it works', 'So geht’s')}</h2>
-        <ol className="tr-steps">
-          {d.steps.map((s, i) => (
-            <li key={i}>{t(s)}</li>
-          ))}
-        </ol>
-      </section>
-      <RoundsLinks targets={d.rounds} nav={props.nav} />
-      {d.tips?.length ? (
-        <section className="card tr-section">
-          <h2>{tr('Tips', 'Tipps')}</h2>
-          <ul className="tr-points">
-            {d.tips.map((s, i) => (
-              <li key={i}>{t(s)}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {(d.easier || d.harder) && (
-        <section className="card tr-section tr-variants">
-          {d.easier && (
-            <p>
-              <strong>{tr('Easier', 'Leichter')}:</strong> {t(d.easier)}
-            </p>
-          )}
-          {d.harder && (
-            <p>
-              <strong>{tr('Harder', 'Schwerer')}:</strong> {t(d.harder)}
-            </p>
-          )}
-        </section>
-      )}
-      {d.targets && (
-        <section className="card tr-section">
-          <h2>{tr('Targets by handicap', 'Ziele nach Handicap')}</h2>
-          <div className="tr-targets">
-            {(['high', 'mid', 'low', 'tour'] as const)
-              .filter((b) => d.targets![b] != null)
-              .map((b) => (
-                <div key={b} className={hcp != null && b === band ? 'mine' : ''}>
-                  <strong>{d.scoring?.kind === 'made' ? `${d.targets![b]}/${d.scoring.of}` : dec(d.targets![b]!)}</strong>
-                  <span className="small">{bandName(b)}</span>
-                </div>
-              ))}
-          </div>
-          {hcp == null && <span className="muted small">{tr('Enter your handicap in the profile to see your goal highlighted.', 'Trag dein Handicap im Profil ein, dann ist dein Ziel markiert.')}</span>}
-        </section>
-      )}
-      {/* only drills with a measurable result get the result part (no "done it?" for planning or mobility) */}
-      {scored && (
-        <section className="card tr-section tr-log">
-          <h2>{tr('Enter your result', 'Ergebnis eintragen')}</h2>
-          <ResultInput
-            drill={d}
-            value={value}
-            onChange={(v) => {
-              setValue(v);
-              setSaved(false);
-            }}
-          />
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={scored && value == null}
-            onClick={() => {
-              addLog({ drill: d.id, value: scored ? value : null });
-              setSaved(true);
-            }}
-          >
-            {saved ? tr('Saved ✓', 'Gespeichert ✓') : tr('Save result', 'Ergebnis speichern')}
-          </button>
-        </section>
-      )}
-      {scored && stats && (
-        <section className="card tr-section tr-eval">
-          <h2>{tr('Your evaluation', 'Deine Auswertung')}</h2>
-          <div className="tile-row">
-            <div className="tile">
-              <span className="tile-num">{mainValue(d.scoring, stats.best)}</span>
-              <span className="muted small">{tr('best', 'Bestwert')}</span>
-            </div>
-            <div className="tile">
-              <span className="tile-num">{dec(stats.avg)}</span>
-              <span className="muted small">{stats.count >= 5 ? tr('Ø last 5', 'Ø letzte 5') : tr('average', 'Schnitt')}</span>
-            </div>
-            <div className="tile">
-              <span className={`tile-num tr-trend${stats.trend != null && stats.trend > 0 ? ' good-text' : ''}`}>
-                {stats.trend != null && stats.trend !== 0 && <TrendArrow up={stats.trend > 0} />}
-                {stats.trend == null ? '–' : stats.trend > 0 ? `+${dec(stats.trend)}` : dec(stats.trend)}
-              </span>
-              <span className="muted small">{stats.trend == null ? tr('trend from 4 results', 'Trend ab 4 Ergebnissen') : stats.trend > 0 ? tr('trend: better', 'Trend: besser') : stats.trend < 0 ? tr('trend: weaker', 'Trend: schwächer') : tr('trend: even', 'Trend: gleich')}</span>
-            </div>
-            {d.targets && (
-              <div className={`tile${goalReached ? ' reached' : ''}`}>
-                <span className="tile-num">{mainValue(d.scoring, d.targets[band])}</span>
-                <span className="muted small">
-                  {goalReached ? tr(`✓ goal ${bandName(band)} reached`, `✓ Ziel ${bandName(band)} erreicht`) : tr(`goal ${bandName(band)}`, `Ziel ${bandName(band)}`)}
-                </span>
-              </div>
-            )}
-          </div>
-          <ResultChart
-            entries={chartEntries}
-            goal={d.targets?.[band]}
-            lowerBetter={!higherBetter(d.scoring)}
-            min={d.scoring?.kind === 'made' ? 0 : undefined}
-            max={d.scoring?.kind === 'made' ? d.scoring.of : undefined}
-          />
-        </section>
-      )}
-      {scored && entries.length > 0 && (
-        <section className="card tr-section">
-          <div className="row">
-            <h2>{tr('History', 'Historie')}</h2>
-            <span className="muted small">{tr(`${entries.length}× logged`, `${entries.length}× eingetragen`)}</span>
-          </div>
-          {scored && unitText(d.scoring) && <span className="muted small tr-hist-unit">{unitText(d.scoring)}</span>}
-          <ul className="tr-history">
-            {(showAll ? entries : entries.slice(0, 5)).map((e, k) => {
-              const prev = entries.slice(k + 1).find((x) => x.value != null);
-              const delta = scored && e.value != null && prev?.value != null ? e.value - prev.value : null;
-              const better = delta == null || delta === 0 ? null : higherBetter(d.scoring) ? delta > 0 : delta < 0;
-              const ok = scored ? meets(d.scoring, d.targets, e.value, band) : null;
-              const when = new Date(e.at);
-              return (
-                <li key={e.id}>
-                  <span className="round-date">
-                    <strong>{when.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
-                    <span className="muted small">{when.toLocaleDateString(locale, { weekday: 'short' })}</span>
-                  </span>
-                  <span className="grow">
-                    <strong className="tr-hist-value">{scored && e.value != null ? mainValue(d.scoring, e.value) : tr('done', 'erledigt')}</strong>
-                  </span>
-                  {delta != null && delta !== 0 && (
-                    <span className={`tr-delta${better ? ' up' : ''}`}>
-                      <TrendArrow up={!!better} />
-                      {`${delta > 0 ? '+' : '−'}${dec(Math.abs(delta))}`}
-                    </span>
-                  )}
-                  <span className={`tr-goal-dot${ok ? ' ok' : ''}`} title={ok ? tr('goal reached', 'Ziel erreicht') : undefined} aria-label={ok ? tr('goal reached', 'Ziel erreicht') : undefined}>
-                    {ok ? '✓' : ''}
-                  </span>
-                  <button
-                    type="button"
-                    className="icon-btn tr-hist-remove"
-                    aria-label={tr('Remove this entry', 'Eintrag entfernen')}
-                    onClick={() => {
-                      removeLog(e.id);
-                      setRemoved(e);
-                    }}
-                  >
-                    ✕
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {entries.length > 5 && (
-            <button type="button" className="btn-secondary" onClick={() => setShowAll(!showAll)}>
-              {showAll ? tr('Show fewer', 'Weniger anzeigen') : tr(`Show all ${entries.length}`, `Alle ${entries.length} anzeigen`)}
+      {tabs.length > 1 && (
+        <div className="segmented tr-tabs" role="tablist" aria-label={t(d.name)}>
+          {tabs.map((x) => (
+            <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} aria-pressed={tab === x.id} onClick={() => setTab(x.id)}>
+              {x.label}
             </button>
-          )}
-        </section>
-      )}
-      <div className="tr-actions">
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => {
-            const own = loadOwnPlans();
-            // the newest own plan gets the drill; without one a new plan starts with it
-            const base: OwnPlan = own[0] ?? { id: trainingId(), name: tr('My session', 'Meine Einheit'), items: [], createdAt: new Date().toISOString() };
-            props.nav.push({ name: 'builder', plan: base.items.some((i) => i.drill === d.id) ? base : { ...base, items: [...base.items, { drill: d.id, minutes: d.minutes }] } });
-          }}
-        >
-          {tr('+ Add to my own session', '+ Zu meiner eigenen Einheit hinzufügen')}
-        </button>
-      </div>
-      {d.videos?.length ? (
-        <>
-          <h2>{d.videos.length > 1 ? tr('Videos', 'Videos') : tr('Video', 'Video')}</h2>
-          <VideoNote />
-          {[...d.videos]
-            .sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang()))
-            .slice(0, 2)
-            .map((v) => (
-              <VideoCard key={v.id} v={v} />
-            ))}
-        </>
-      ) : null}
-      {/* the gear after learning, practising and the videos – not between the instructions and the result */}
-      {gear.length > 0 && (
-        <section className="tr-block">
-          <h2>{tr('Gear for this drill', 'Zubehör für diese Übung')}</h2>
-          {gear.map((g) => (
-            <GearRow key={g.id} g={g} nav={props.nav} />
           ))}
-        </section>
+        </div>
       )}
+
+      {tab === 'learn' && (
+        <>
+          {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
+          {d.metronome && <Metronome mode={d.metronome} />}
+          {d.origin && (
+            <p className="muted small">
+              {tr('Known from', 'Bekannt durch')}: {t(d.origin)}
+            </p>
+          )}
+          <section className="card tr-section">
+            <h2>{tr('Set-up', 'Aufbau')}</h2>
+            <p>{t(d.setup)}</p>
+            {plainNeeds.length ? (
+              <div className="tr-needs">
+                <span className="muted small">{tr('You need', 'Du brauchst')}:</span>
+                <div className="chip-set">
+                  {plainNeeds.map((n, i) => (
+                    <span key={i} className="chip fact">
+                      {t(n)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+          <section className="card tr-section">
+            <h2>{tr('How it works', 'So geht’s')}</h2>
+            <ol className="tr-steps">
+              {d.steps.map((s, i) => (
+                <li key={i}>{t(s)}</li>
+              ))}
+            </ol>
+          </section>
+          <RoundsLinks targets={d.rounds} nav={props.nav} />
+          {d.tips?.length ? (
+            <section className="card tr-section">
+              <h2>{tr('Tips', 'Tipps')}</h2>
+              <ul className="tr-points">
+                {d.tips.map((s, i) => (
+                  <li key={i}>{t(s)}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {(d.easier || d.harder) && (
+            <section className="card tr-section tr-variants">
+              {d.easier && (
+                <p>
+                  <strong>{tr('Easier', 'Leichter')}:</strong> {t(d.easier)}
+                </p>
+              )}
+              {d.harder && (
+                <p>
+                  <strong>{tr('Harder', 'Schwerer')}:</strong> {t(d.harder)}
+                </p>
+              )}
+            </section>
+          )}
+          <div className="tr-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                const own = loadOwnPlans();
+                // the newest own plan gets the drill; without one a new plan starts with it
+                const base: OwnPlan = own[0] ?? { id: trainingId(), name: tr('My session', 'Meine Einheit'), items: [], createdAt: new Date().toISOString() };
+                props.nav.push({ name: 'builder', plan: base.items.some((i) => i.drill === d.id) ? base : { ...base, items: [...base.items, { drill: d.id, minutes: d.minutes }] } });
+              }}
+            >
+              {tr('+ Add to my own session', '+ Zu meiner eigenen Einheit hinzufügen')}
+            </button>
+          </div>
+          <Sources list={d.sources} />
+        </>
+      )}
+
+      {tab === 'result' && (
+        <>
+          {/* only drills with a measurable result get the result part (no "done it?" for planning or mobility) */}
+          {scored && (
+            <section className="card tr-section tr-log">
+              <h2>{tr('Enter your result', 'Ergebnis eintragen')}</h2>
+              <ResultInput
+                drill={d}
+                value={value}
+                onChange={(v) => {
+                  setValue(v);
+                  setSaved(false);
+                }}
+              />
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={scored && value == null}
+                onClick={() => {
+                  addLog({ drill: d.id, value: scored ? value : null });
+                  setSaved(true);
+                }}
+              >
+                {saved ? tr('Saved ✓', 'Gespeichert ✓') : tr('Save result', 'Ergebnis speichern')}
+              </button>
+            </section>
+          )}
+          {scored && stats && (
+            <section className="card tr-section tr-eval">
+              <h2>{tr('Your evaluation', 'Deine Auswertung')}</h2>
+              <div className="tile-row">
+                <div className="tile">
+                  <span className="tile-num">{mainValue(d.scoring, stats.best)}</span>
+                  <span className="muted small">{tr('best', 'Bestwert')}</span>
+                </div>
+                <div className="tile">
+                  <span className="tile-num">{dec(stats.avg)}</span>
+                  <span className="muted small">{stats.count >= 5 ? tr('Ø last 5', 'Ø letzte 5') : tr('average', 'Schnitt')}</span>
+                </div>
+                <div className="tile">
+                  <span className={`tile-num tr-trend${stats.trend != null && stats.trend > 0 ? ' good-text' : ''}`}>
+                    {stats.trend != null && stats.trend !== 0 && <TrendArrow up={stats.trend > 0} />}
+                    {stats.trend == null ? '–' : stats.trend > 0 ? `+${dec(stats.trend)}` : dec(stats.trend)}
+                  </span>
+                  <span className="muted small">{stats.trend == null ? tr('trend from 4 results', 'Trend ab 4 Ergebnissen') : stats.trend > 0 ? tr('trend: better', 'Trend: besser') : stats.trend < 0 ? tr('trend: weaker', 'Trend: schwächer') : tr('trend: even', 'Trend: gleich')}</span>
+                </div>
+                {d.targets && (
+                  <div className={`tile${goalReached ? ' reached' : ''}`}>
+                    <span className="tile-num">{mainValue(d.scoring, d.targets[band])}</span>
+                    <span className="muted small">
+                      {goalReached ? tr(`✓ goal ${bandName(band)} reached`, `✓ Ziel ${bandName(band)} erreicht`) : tr(`goal ${bandName(band)}`, `Ziel ${bandName(band)}`)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <ResultChart
+                entries={chartEntries}
+                goal={d.targets?.[band]}
+                lowerBetter={!higherBetter(d.scoring)}
+                min={d.scoring?.kind === 'made' ? 0 : undefined}
+                max={d.scoring?.kind === 'made' ? d.scoring.of : undefined}
+              />
+            </section>
+          )}
+          {scored && entries.length > 0 && (
+            <section className="card tr-section">
+              <div className="row">
+                <h2>{tr('History', 'Historie')}</h2>
+                <span className="muted small">{tr(`${entries.length}× logged`, `${entries.length}× eingetragen`)}</span>
+              </div>
+              {scored && unitText(d.scoring) && <span className="muted small tr-hist-unit">{unitText(d.scoring)}</span>}
+              <ul className="tr-history">
+                {(showAll ? entries : entries.slice(0, 5)).map((e, k) => {
+                  const prev = entries.slice(k + 1).find((x) => x.value != null);
+                  const delta = scored && e.value != null && prev?.value != null ? e.value - prev.value : null;
+                  const better = delta == null || delta === 0 ? null : higherBetter(d.scoring) ? delta > 0 : delta < 0;
+                  const ok = scored ? meets(d.scoring, d.targets, e.value, band) : null;
+                  const when = new Date(e.at);
+                  return (
+                    <li key={e.id}>
+                      <span className="round-date">
+                        <strong>{when.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
+                        <span className="muted small">{when.toLocaleDateString(locale, { weekday: 'short' })}</span>
+                      </span>
+                      <span className="grow">
+                        <strong className="tr-hist-value">{scored && e.value != null ? mainValue(d.scoring, e.value) : tr('done', 'erledigt')}</strong>
+                      </span>
+                      {delta != null && delta !== 0 && (
+                        <span className={`tr-delta${better ? ' up' : ''}`}>
+                          <TrendArrow up={!!better} />
+                          {`${delta > 0 ? '+' : '−'}${dec(Math.abs(delta))}`}
+                        </span>
+                      )}
+                      <span className={`tr-goal-dot${ok ? ' ok' : ''}`} title={ok ? tr('goal reached', 'Ziel erreicht') : undefined} aria-label={ok ? tr('goal reached', 'Ziel erreicht') : undefined}>
+                        {ok ? '✓' : ''}
+                      </span>
+                      <button
+                        type="button"
+                        className="icon-btn tr-hist-remove"
+                        aria-label={tr('Remove this entry', 'Eintrag entfernen')}
+                        onClick={() => {
+                          removeLog(e.id);
+                          setRemoved(e);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {entries.length > 5 && (
+                <button type="button" className="btn-secondary" onClick={() => setShowAll(!showAll)}>
+                  {showAll ? tr('Show fewer', 'Weniger anzeigen') : tr(`Show all ${entries.length}`, `Alle ${entries.length} anzeigen`)}
+                </button>
+              )}
+            </section>
+          )}
+          {d.targets && (
+            <section className="card tr-section">
+              <h2>{tr('Targets by handicap', 'Ziele nach Handicap')}</h2>
+              <div className="tr-targets">
+                {(['high', 'mid', 'low', 'tour'] as const)
+                  .filter((b) => d.targets![b] != null)
+                  .map((b) => (
+                    <div key={b} className={hcp != null && b === band ? 'mine' : ''}>
+                      <strong>{d.scoring?.kind === 'made' ? `${d.targets![b]}/${d.scoring.of}` : dec(d.targets![b]!)}</strong>
+                      <span className="small">{bandName(b)}</span>
+                    </div>
+                  ))}
+              </div>
+              {hcp == null && <span className="muted small">{tr('Enter your handicap in the profile to see your goal highlighted.', 'Trag dein Handicap im Profil ein, dann ist dein Ziel markiert.')}</span>}
+            </section>
+          )}
+        </>
+      )}
+
+      {tab === 'videos' && (
+        <>
+          {d.videos?.length ? (
+            <>
+              <h2>{d.videos.length > 1 ? tr('Videos', 'Videos') : tr('Video', 'Video')}</h2>
+              <VideoNote />
+              {[...d.videos]
+                .sort((a, b) => Number(b.lang === getLang()) - Number(a.lang === getLang()))
+                .slice(0, 2)
+                .map((v) => (
+                  <VideoCard key={v.id} v={v} />
+                ))}
+            </>
+          ) : null}
+        </>
+      )}
+
+      {tab === 'gear' && (
+        <>
+          {gear.length > 0 && (
+            <section className="tr-block">
+              <h2>{tr('Gear for this drill', 'Zubehör für diese Übung')}</h2>
+              {gear.map((g) => (
+                <GearRow key={g.id} g={g} nav={props.nav} />
+              ))}
+            </section>
+          )}
+        </>
+      )}
+
       <TopicRow id={d.cat} nav={props.nav} />
       <ReviewBar itemKey={drillKey(d.id)} />
       {reviewOn() && (
@@ -1510,7 +1556,6 @@ function DrillView(props: { id: string; nav: Nav }) {
           {tr('Next drill to review ›', 'Nächste ungeprüfte Übung ›')}
         </button>
       )}
-      <Sources list={d.sources} />
       {removed && (
         <div className="undo-toast" role="status">
           <span>
