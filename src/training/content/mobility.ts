@@ -1,7 +1,7 @@
 import { L, type Drill, type P, type SideItem, type Sketch, type Video } from '../types';
 import type { GolferOptions, JointName } from '../Golfer';
 
-// Corrective drills of the mobility screen (Sascha 17.10.2026: "Beweglichkeits-Screening"): for every limited test a
+// Corrective drills of the mobility screen (module "Agility", Sascha 17.10.2026): for every limited test a
 // mobility drill and a stability drill, at home in a few minutes, each with its own picture and two videos. They live
 // in the Training library (topic Fitness) so a player finds them there too, and the screen can hand them over as a
 // plan. Sources: TPI corrective exercises (mytpi.com), physio standards (knee-to-wall, toe-touch progression after

@@ -39,14 +39,14 @@ await p.evaluate(() => {
 await p.reload();
 await p.waitForTimeout(800);
 ok((await p.locator('.module-card').count()) === 4, 'four modules on the start page');
-ok(await p.locator('.module-card').filter({ hasText: 'Beweglichkeits-Screening' }).isVisible(), 'the module card says "Beweglichkeits-Screening" (not TPI)');
+ok(await p.locator('.module-card').filter({ hasText: 'Agility' }).isVisible(), 'the module card says "Agility" (not TPI)');
 ok((await p.getByText('TPI').count()) === 0, 'no "TPI" on the start page');
 await shot('start');
-await p.locator('.module-card').filter({ hasText: 'Beweglichkeits-Screening' }).click();
+await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-start').first().waitFor({ timeout: 20000 });
 const tabs = await p.locator('.tabbar button').allInnerTexts();
 ok(tabs.map((x) => x.trim()).join('|') === 'Screening|Ergebnis|Übungen|Verlauf|Profil', `menu: ${tabs.join(' · ')}`);
-ok((await p.locator('.module-tag').textContent()) === 'Beweglichkeit', 'module header');
+ok((await p.locator('.module-tag').textContent()) === 'Agility', 'module header');
 ok((await p.getByText('So funktioniert').count()) === 0, 'no intro card');
 ok((await p.locator('.mob-test-row').count()) === 15, '15 single tests listed');
 await shot('screening-tab');
@@ -64,12 +64,16 @@ ok(await p.locator('.tr-sketch svg').first().isVisible(), 'the test shows its pi
 ok((await p.locator('.tr-video').count()) >= 1, 'the test shows its video');
 await shot('brief');
 let steps = 0;
+let autoSecond = 0;
 for (let i = 0; i < 12; i++) {
   const start = p.getByRole('button', { name: 'Kamera starten' });
-  if (!(await start.isVisible().catch(() => false))) break;
   if (await p.locator('.sheet').isVisible().catch(() => false)) break;
-  const name = await p.locator('.tr-now-name').innerText();
-  await start.click();
+  const camera = await p.locator('.mob-camera').isVisible().catch(() => false);
+  if (!camera && !(await start.isVisible().catch(() => false))) break;
+  // the second side of a test starts the camera by itself (hands-free)
+  if (camera) autoSecond++;
+  const name = camera ? await p.locator('.mob-side-tag').innerText() : await p.locator('.tr-now-name').innerText();
+  if (!camera) await start.click();
   if (i === 0) {
     await p.locator('.mob-live').waitFor({ timeout: 15000 }).catch(() => {});
     await shot('camera-live');
@@ -77,7 +81,10 @@ for (let i = 0; i < 12; i++) {
   const save = p.getByRole('button', { name: 'Speichern und weiter' });
   const again = p.getByRole('button', { name: 'Nochmal versuchen' });
   await Promise.race([save.waitFor({ timeout: 40000 }), again.waitFor({ timeout: 40000 })]).catch(() => {});
-  if (i === 0) await shot('camera-result');
+  if (i === 0) {
+    await shot('camera-result');
+    ok(/\(\d\)/.test(await save.innerText().catch(() => '')), 'the result saves itself after a countdown');
+  }
   if (await save.isVisible().catch(() => false)) {
     steps++;
     const grade = await p.locator('.mob-outcome .mob-grade').innerText();
@@ -92,6 +99,7 @@ for (let i = 0; i < 12; i++) {
   await p.waitForTimeout(300);
 }
 ok(steps === 9, `${steps} of 9 camera steps measured (6 tests, 3 with both sides)`);
+ok(autoSecond === 3, `the second side started the camera by itself ${autoSecond} times`);
 await p.getByRole('button', { name: 'Beenden & Ergebnis zeigen' }).waitFor({ timeout: 5000 }).catch(() => {});
 await shot('finish-sheet');
 await p.getByRole('button', { name: 'Beenden & Ergebnis zeigen' }).click();
@@ -133,13 +141,13 @@ await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.sticky-cta .btn-primary').click();
 ok(await p.getByText('Meine Pläne').isVisible(), 'the plan is in Training');
 const plans = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.training.plans.v1') ?? '[]'));
-ok(plans.length === 1 && plans[0].items.length >= 4 && plans[0].name.startsWith('Beweglichkeit'), `plan "${plans[0]?.name}" with ${plans[0]?.items.length} drills`);
+ok(plans.length === 1 && plans[0].items.length >= 4 && plans[0].name.startsWith('Agility'), `plan "${plans[0]?.name}" with ${plans[0]?.items.length} drills`);
 await p.getByRole('button', { name: 'Training öffnen' }).click();
 await p.waitForTimeout(1500);
 ok((await p.locator('.module-tag').textContent()) === 'Training', 'Training opens');
 ok((await p.getByText(plans[0]?.name ?? '#').count()) >= 1, 'the plan is listed in Training');
 await p.locator('.module-switch').click();
-await p.locator('.module-card').filter({ hasText: 'Beweglichkeits-Screening' }).click();
+await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-start').first().waitFor();
 
 // ---------- history: delete with undo ----------
@@ -174,6 +182,17 @@ await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click
 ok(await p.getByText('selbst eingeschätzt').first().isVisible(), 'the self-judged result is listed');
 await p.locator('.topbar .icon-btn').first().click();
 
+// ---------- hands-free: a sided single test runs through without a tap ----------
+await p.locator('.mob-test-row').filter({ hasText: 'Kopfdrehung' }).click();
+await p.getByRole('button', { name: 'Test starten' }).click();
+await p.getByRole('button', { name: 'Kamera starten' }).click();
+// left side, saved by itself, the right side starts by itself, saved by itself, back on the test page
+await p.locator('.tr-tabs').waitFor({ timeout: 90000 }).catch(() => {});
+await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+const neckRes = await p.locator('.list-item .title').first().innerText().catch(() => '');
+ok(/links .*rechts/.test(neckRes), 'hands-free: both sides measured and saved without a tap (' + neckRes + ')');
+await p.locator('.topbar .icon-btn').first().click();
+
 // ---------- pause and continue ----------
 await p.evaluate(() => localStorage.setItem('golfos.mobility.fake', 'good'));
 await p.locator('.mob-start').filter({ hasText: 'Komplettes Screening' }).click();
@@ -189,7 +208,7 @@ ok(await p.locator('.mob-open').isVisible(), 'the paused screening is offered on
 ok((await p.locator('.tabbar button').first().locator('.tabbar-dot').count()) === 1, 'the menu shows a dot for the paused screening');
 await p.locator('.module-switch').click();
 ok(await p.getByText('Ein Screening ist pausiert').isVisible(), 'the start page says a screening is paused');
-await p.locator('.module-card').filter({ hasText: 'Beweglichkeits-Screening' }).click();
+await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-open').click();
 await p.waitForTimeout(300);
 ok((await p.locator('.tr-now-name').innerText()) === 'Hüftrotation auf einem Bein', 'continues with the next open test');

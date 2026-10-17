@@ -4,7 +4,8 @@ import type { L, Sketch, Video } from '../training/types';
 // The mobility screen (Sascha 17.10.2026): the player copies a test shown on the phone, the camera measures it, and
 // from the results the app foresees the swing patterns and misses the body allows. Modelled on the golf screen of the
 // Titleist Performance Institute (body–swing connection) – the name "TPI" is protected, so the module is called
-// "Beweglichkeits-Screening" / "Mobility screen". Limits marked REVIEW(golf) wait for Chris.
+// "Agility" (Sascha 17.10.2026: first "Beweglichkeits-Screening", then "Nenne das Modul Agility"), in both languages like
+// Rounds, Games and Training. Limits marked REVIEW(golf) wait for Chris.
 
 /** The player's own sides (not the screen's). */
 export type Side = 'left' | 'right';

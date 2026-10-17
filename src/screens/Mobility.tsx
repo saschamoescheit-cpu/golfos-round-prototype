@@ -20,7 +20,7 @@ import type { Area, Grade, Measurement, Screening, Side, TestDef, TestId, TestRe
 import '../training/training.css';
 import '../mobility/mobility.css';
 
-// The module "Beweglichkeits-Screening" / "Mobility screen" (Sascha 17.10.2026): the player copies tests shown on the
+// The module "Agility" (Sascha 17.10.2026, a mobility screen): the player copies tests shown on the
 // phone, the camera measures them (the rest the player judges with pictures), and the app shows what the body allows:
 // the result per body area, the swing patterns and misses it points to (the body–swing connection of TPI – the name
 // is protected, hence our own) and the drills that help, which go into Training as a plan. Built like Rounds,
@@ -158,7 +158,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
             <span className="brand">
               GOLF<span>OS</span>
             </span>
-            <span className="module-tag">{tr('Mobility', 'Beweglichkeit')}</span>
+            <span className="module-tag">Agility</span>
             <span aria-hidden="true">⇄</span>
           </button>
           <TopTools />
@@ -473,6 +473,13 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   const save = (m: Measurement) => {
     const cur = withResult({ ...s, current: testIndex }, step.test, step.side, m);
     store(cur);
+    // the other side of the same test: straight back to the camera, the player stays where they are
+    const open = steps.findIndex((st, i) => i > k && !stepDone(cur, st));
+    if (m.source === 'camera' && open >= 0 && steps[open].test === step.test) {
+      setK(open);
+      setStage('camera');
+      return;
+    }
     setStage('brief');
     next(cur);
   };
@@ -985,7 +992,7 @@ function DrillsTab(props: { nav: Nav }) {
             onClick={() => {
               saveOwnPlan({
                 id: trainingId(),
-                name: tr(`Mobility · ${dateText(new Date().toISOString())}`, `Beweglichkeit · ${dateText(new Date().toISOString())}`),
+                name: `Agility · ${dateText(new Date().toISOString())}`,
                 items: planDrills.map((d) => ({ drill: d.id, minutes: d.minutes })),
                 createdAt: new Date().toISOString(),
               });

@@ -95,6 +95,9 @@ const CUE_TEXT = (kind: MetricKind, cue: Cue): string | null => {
   }
 };
 
+/** Seconds until a result is saved by itself (the player does not have to walk to the phone). */
+const AUTO_SAVE_S = 6;
+
 /** A test with calibration first (the player stands still facing the phone, then moves). */
 const CALIBRATES: MetricKind[] = ['trunkRotation', 'pelvicRotation', 'lowerQuarter', 'neck'];
 
@@ -139,6 +142,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
   const [error, setError] = useState<string | null>(null);
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const [attempt, setAttempt] = useState(0);
+  // hands-free (17./18.10.2026): the result is said aloud and saved after a few seconds – the player stays in position
+  const [auto, setAuto] = useState<number | null>(null);
   const [ratio, setRatio] = useState('9 / 16');
   const fake = fakeLevel();
 
@@ -243,6 +248,10 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
       setOutcome(out);
       if (shotRef.current && out) setShot(shotRef.current.toDataURL('image/jpeg', 0.8));
       go('result');
+      if (out) {
+        say(`${valueText(kind, out.value, tr)}. ${gradeName(out.grade)}.`);
+        setAuto(AUTO_SAVE_S);
+      } else say(tr('Not recognised. Please try again.', 'Nicht erkannt. Bitte nochmal.'));
       // the camera goes off with the result (a new attempt starts it again)
       stopped = true;
       cancelAnimationFrame(raf);
@@ -428,6 +437,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
   }, [attempt, facing]);
 
   const retry = () => {
+    setAuto(null);
     setOutcome(undefined);
     setShot(null);
     setLive({ value: null, best: null, missing: 0, seen: false });
@@ -435,6 +445,19 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
     go('starting');
     setAttempt((a) => a + 1);
   };
+
+  const save = (o: Outcome) => props.onResult({ value: o.value, grade: o.grade, source: 'camera', notes: o.notes.length ? o.notes : undefined, at: new Date().toISOString() });
+  useEffect(() => {
+    if (auto == null || !outcome) return;
+    if (auto <= 0) {
+      setAuto(null);
+      save(outcome);
+      return;
+    }
+    const t = window.setTimeout(() => setAuto((a) => (a == null ? null : a - 1)), 1000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, outcome]);
 
   const unit = (v: number | null) => (v == null ? '–' : kind === 'toeTouch' ? `${Math.max(0, Math.round(v))} cm` : kind === 'balance' || kind === 'bridge' ? `${v.toFixed(1).replace('.', tr('.', ','))} s` : `${Math.round(v)}°`);
 
@@ -490,9 +513,13 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
             <button
               type="button"
               className="btn-primary"
-              onClick={() => props.onResult({ value: done.value, grade: done.grade, source: 'camera', notes: done.notes.length ? done.notes : undefined, at: new Date().toISOString() })}
+              onClick={() => {
+                setAuto(null);
+                save(done);
+              }}
             >
               {tr('Save and continue', 'Speichern und weiter')}
+              {auto != null ? ` (${auto})` : ''}
             </button>
           ) : (
             <button type="button" className="btn-primary" onClick={retry}>
@@ -500,12 +527,24 @@ export function CameraTest(props: { test: TestDef; side: Side | null; onResult: 
             </button>
           )}
           <div className="mob-pills">
+            {auto != null && (
+              <button type="button" className="chip" onClick={() => setAuto(null)}>
+                {tr('Wait', 'Anhalten')}
+              </button>
+            )}
             {done && (
               <button type="button" className="chip" onClick={retry}>
                 {tr('Repeat', 'Wiederholen')}
               </button>
             )}
-            <button type="button" className="chip" onClick={props.onSelf}>
+            <button
+              type="button"
+              className="chip"
+              onClick={() => {
+                setAuto(null);
+                props.onSelf();
+              }}
+            >
               {tr('Judge it myself', 'Selbst einschätzen')}
             </button>
           </div>

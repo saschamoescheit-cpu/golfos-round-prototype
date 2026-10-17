@@ -54,7 +54,7 @@ for (const photo of photos) {
   });
   if (still) await p.evaluate((d) => localStorage.setItem('golfos.mobility.fakeImage', d), dataUrl);
   await p.reload();
-  await p.locator('.module-card').filter({ hasText: 'Beweglichkeits-Screening' }).click();
+  await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
   await p.locator('.mob-test-row').filter({ hasText: testName }).first().click();
   await p.getByRole('button', { name: 'Test starten' }).click();
   await p.getByRole('button', { name: 'Kamera starten' }).click();

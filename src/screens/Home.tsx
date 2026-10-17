@@ -127,7 +127,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
         </span>
         <span aria-hidden="true">›</span>
       </button>
-      {/* the fourth module (Sascha 17.10.2026): the mobility screen with the camera – what the body allows the swing */}
+      {/* the fourth module "Agility" (Sascha 17.10.2026): the mobility screen with the camera – what the body allows the swing */}
       <button type="button" className="module-card" onClick={() => props.onPick('mobility')}>
         <span className="module-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -136,7 +136,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
           </svg>
         </span>
         <span className="grow">
-          <strong>{tr('Mobility screen', 'Beweglichkeits-Screening')}</strong>
+          <strong>Agility</strong>
           {props.mobilityOpen && (
             <span className="small module-live">
               {tr('A screening is paused', 'Ein Screening ist pausiert')}

@@ -25,7 +25,7 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(600);
-await p.locator('.module-card').filter({ hasText: 'Beweglichkeits-Screening' }).click();
+await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-test-row').first().waitFor({ timeout: 30000 });
 const pics = [];
 const grab = async (where, text) => {
