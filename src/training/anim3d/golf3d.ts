@@ -29,6 +29,10 @@ export interface SwingKey {
   heel?: number;
   /** the eyes stay on the ball (default) or the head follows the body to the target (after impact) */
   free?: boolean;
+  /** with club 'ball': the clubhead this far from its place at the ball (m) – behind it (fat), above it (thin) */
+  miss?: V3;
+  /** the pelvis this far towards the ball (m) – standing up into the ball (early extension) */
+  push?: number;
   label?: L;
 }
 
@@ -125,6 +129,8 @@ interface Prepared {
 
 export interface Viewer {
   setSwing(s: Swing): void;
+  /** several golfers side by side (x along the target line, z towards the ball, metres) – the fault and the right way */
+  setSwings(list: { swing: Swing; x?: number; z?: number }[]): void;
   setView(v: View): void;
   setPlaying(on: boolean): void;
   setSpeed(k: number): void;
@@ -168,21 +174,22 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   pad.position.y = 0.001;
   pad.receiveShadow = true;
   scene.add(pad);
-  const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.0215, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
-  ballMesh.castShadow = true;
-  scene.add(ballMesh);
-  const tee = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.04, 8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.6 }));
-  tee.visible = false;
-  scene.add(tee);
 
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
-  let rig: Rig = buildRig();
-  scene.add(rig.root);
-  let club = buildClub('iron');
-  scene.add(club);
 
-  let swing: Swing | null = null;
-  let prep: Prepared | null = null;
+  /** one golfer on the stage: the figure, the club, the ball and its tee, the swing, how far along the target line */
+  interface Player {
+    rig: Rig;
+    club: THREE.Group;
+    ball: THREE.Mesh;
+    tee: THREE.Mesh;
+    swing: Swing;
+    prep: Prepared;
+    x: number;
+    z: number;
+  }
+  let players: Player[] = [];
+
   let view: View = 'front';
   let playing = true;
   let speed = 1;
@@ -193,40 +200,41 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   let labelCb: ((l: L | undefined, step: number) => void) | null = null;
   let lastStep = -1;
   let bounds: THREE.Box3 | null = null;
+  let length = 0;
 
-  const ballPos = () => {
-    const b = swing?.ball ?? [0, 0.6];
-    return new THREE.Vector3(b[0], swing?.tee ? 0.06 : 0.0215, b[1]);
+  const ballPos = (p: { swing: Swing; x: number; z: number }) => {
+    const b = p.swing.ball ?? [0, 0.6];
+    return new THREE.Vector3(p.x + b[0], p.swing.tee ? 0.06 : 0.0215, p.z + b[1]);
   };
 
   /** the trunk of a key (or between two) put on the rig, the limbs left for the solver */
-  const poseTrunk = (body: SwingKey['body'], shift: number, drop: number) => {
-    const p: Pose = { j: { ...body }, at: [shift, 0], y: drop };
-    applyPose(rig, p, false);
-    rig.root.updateMatrixWorld(true);
+  const poseTrunk = (p: { rig: Rig; x: number; z: number }, body: SwingKey['body'], shift: number, drop: number, push = 0) => {
+    const pose: Pose = { j: { ...body }, at: [p.x + shift, p.z + push], y: drop };
+    applyPose(p.rig, pose, false);
+    p.rig.root.updateMatrixWorld(true);
   };
-
-  const chestQ = () => rig.joints.chest.getWorldQuaternion(new THREE.Quaternion());
-  const chestPos = () => rig.joints.chest.getWorldPosition(new THREE.Vector3());
+  const chestQ = (rig: Rig) => rig.joints.chest.getWorldQuaternion(new THREE.Quaternion());
+  const chestPos = (rig: Rig) => rig.joints.chest.getWorldPosition(new THREE.Vector3());
 
   /** each key's club direction in the chest frame – 'ball' worked out with the key's own trunk */
-  const prepare = (s: Swing): Prepared => {
+  const prepare = (p: { rig: Rig; swing: Swing; x: number; z: number }): Prepared => {
+    const s = p.swing;
     const keys = s.keys.map((k) => {
-      poseTrunk(k.body, k.shift ?? 0, -(k.drop ?? 0.05));
-      let hands = new THREE.Vector3(...k.hands).applyQuaternion(chestQ()).add(chestPos());
-      const head = ballPos().add(new THREE.Vector3(0, 0.005, -0.03));
+      poseTrunk(p, k.body, k.shift ?? 0, -(k.drop ?? 0.05), k.push ?? 0);
+      let hands = new THREE.Vector3(...k.hands).applyQuaternion(chestQ(p.rig)).add(chestPos(p.rig));
+      const head = ballPos(p).add(new THREE.Vector3(0, 0.005, -0.03)).add(new THREE.Vector3(...(k.miss ?? [0, 0, 0])));
       const dir = k.club === 'ball' ? head.clone().sub(hands).normalize() : new THREE.Vector3(...k.club).normalize();
       // at the ball the clubhead sits exactly behind it: the hands slide along the shaft to the club's length
       if (k.club === 'ball') hands = head.clone().addScaledVector(dir, -(CLUB_LEN[s.club] - 0.05));
-      const local = hands.clone().sub(chestPos()).applyQuaternion(chestQ().invert());
-      return { ...k, hands: [local.x, local.y, local.z] as V3, clubLocal: dir.applyQuaternion(chestQ().invert()) };
+      const local = hands.clone().sub(chestPos(p.rig)).applyQuaternion(chestQ(p.rig).invert());
+      return { ...k, hands: [local.x, local.y, local.z] as V3, clubLocal: dir.applyQuaternion(chestQ(p.rig).invert()) };
     });
     return { keys, length: keys[keys.length - 1].t };
   };
 
-  /** the figure and the club at a time of the swing */
-  const place = (time: number) => {
-    if (!prep || !swing) return { label: undefined as L | undefined, step: 0 };
+  /** a golfer and the club at a time of the swing */
+  const place = (p: Player, time: number) => {
+    const { rig, swing, prep } = p;
     const keys = prep.keys;
     const tt = Math.min(Math.max(time, 0), prep.length);
     let i = 0;
@@ -236,20 +244,21 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const k = b.t > a.t ? ease((tt - a.t) / (b.t - a.t)) : 0;
     const body: SwingKey['body'] = {};
     for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) body[id] = lerpRot(a.body[id], b.body[id], k);
-    poseTrunk(body, lerp(a.shift ?? 0, b.shift ?? 0, k), -lerp(a.drop ?? 0.05, b.drop ?? 0.05, k));
+    poseTrunk(p, body, lerp(a.shift ?? 0, b.shift ?? 0, k), -lerp(a.drop ?? 0.05, b.drop ?? 0.05, k), lerp(a.push ?? 0, b.push ?? 0, k));
     // the eyes on the ball until the club has passed it, then the head turns with the body
     const look = lerp(a.free ? 0 : 1, b.free ? 0 : 1, k);
     if (look > 0) {
       const head = rig.joints.head;
       const keyed = head.quaternion.clone();
-      head.lookAt(ballPos());
+      head.lookAt(ballPos(p));
       // lookAt points the face (+z) at the ball; tilt it down a little more – the eyes, not the nose
       head.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(12)));
       head.quaternion.copy(keyed.slerp(head.quaternion, look));
       head.updateMatrixWorld(true);
     }
-    const q = chestQ();
-    const handsL = new THREE.Vector3(lerp(a.hands[0], b.hands[0], k), lerp(a.hands[1], b.hands[1], k), lerp(a.hands[2], b.hands[2], k)).applyQuaternion(q).add(chestPos());
+    const q = chestQ(rig);
+    const chestP = chestPos(rig);
+    const handsL = new THREE.Vector3(lerp(a.hands[0], b.hands[0], k), lerp(a.hands[1], b.hands[1], k), lerp(a.hands[2], b.hands[2], k)).applyQuaternion(q).add(chestP);
     // the club turns on the shortest way between the two keys
     const qa = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), a.clubLocal);
     const qb = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clubLocal);
@@ -260,7 +269,6 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const wristL = handsL.clone().addScaledVector(dir, -0.06);
     const wristR = handsR.clone().addScaledVector(dir, -0.06);
     const J = rig.joints;
-    const chestP = chestPos();
     // elbows point down and a little out, away from the body
     const poleL = chestP.clone().add(new THREE.Vector3(0.5, -1, 0.1).applyQuaternion(q));
     const poleR = chestP.clone().add(new THREE.Vector3(-0.5, -1, 0.1).applyQuaternion(q));
@@ -275,8 +283,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // legs: the ankles stay where they stand; the trail heel comes up in the finish
     const half = (swing.stance ?? 0.36) / 2;
     const heel = lerp(a.heel ?? 0, b.heel ?? 0, k);
-    const ankleL = new THREE.Vector3(half, BODY.ankleH, 0);
-    const ankleR = new THREE.Vector3(-half + heel * 0.06, BODY.ankleH + heel * 0.11, -heel * 0.03);
+    const ankleL = new THREE.Vector3(p.x + half, BODY.ankleH, p.z);
+    const ankleR = new THREE.Vector3(p.x - half + heel * 0.06, BODY.ankleH + heel * 0.11, p.z - heel * 0.03);
     const pelvisP = J.pelvis.getWorldPosition(new THREE.Vector3());
     twoBone(J.hipL, J.kneeL, BODY.thigh, BODY.shin, ankleL, pelvisP.clone().add(new THREE.Vector3(0.25, 0, 1)));
     twoBone(J.hipR, J.kneeR, BODY.thigh, BODY.shin, ankleR, pelvisP.clone().add(new THREE.Vector3(-0.25 + heel * 0.5, 0, 1)));
@@ -292,9 +300,9 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     rig.root.updateMatrixWorld(true);
 
     // the club in the hands
-    club.position.copy(handsL).addScaledVector(dir, -0.05);
-    club.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-    club.updateMatrixWorld(true);
+    p.club.position.copy(handsL).addScaledVector(dir, -0.05);
+    p.club.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    p.club.updateMatrixWorld(true);
 
     let label: L | undefined;
     let step = 0;
@@ -306,6 +314,22 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     return { label, step };
   };
 
+  /** the ball: still until the club arrives, then rolling to a stop or flying away towards the target */
+  const placeBall = (p: Player, time: number) => {
+    const at = ballPos(p);
+    const h = p.swing.hit;
+    p.ball.visible = true;
+    if (h && time > h.at) {
+      const s = time - h.at;
+      if (h.fly) {
+        at.x += 9 * s;
+        at.y += 4.5 * s - 3 * s * s;
+        p.ball.visible = s < 0.8;
+      } else at.x += (h.roll ?? 1) * (1 - Math.exp(-2.2 * s));
+    }
+    p.ball.position.copy(at);
+  };
+
   const DIRS: Record<View, THREE.Vector3> = {
     front: new THREE.Vector3(0, 0.12, 1).normalize(),
     side: new THREE.Vector3(-1, 0.12, 0).normalize(),
@@ -313,14 +337,15 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     above: new THREE.Vector3(0, 0.95, 0.62).normalize(),
   };
   const swingBounds = () => {
-    if (!prep) return null;
+    if (!players.length) return null;
     const box = new THREE.Box3();
-    for (let i = 0; i <= 16; i++) {
-      place((prep.length * i) / 16);
-      box.expandByObject(rig.root);
-      box.expandByObject(club);
-    }
-    box.expandByObject(ballMesh);
+    for (let i = 0; i <= 16; i++)
+      for (const p of players) {
+        place(p, (length * i) / 16);
+        box.expandByObject(p.rig.root);
+        box.expandByObject(p.club);
+      }
+    for (const p of players) box.expandByObject(p.ball);
     return box;
   };
   const placeCamera = () => {
@@ -354,29 +379,17 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     camera.lookAt(center);
   };
 
-  /** the ball: still until the club arrives, then rolling to a stop or flying away towards the target */
-  const placeBall = (time: number) => {
-    const p = ballPos();
-    const h = swing?.hit;
-    ballMesh.visible = true;
-    if (h && time > h.at) {
-      const s = time - h.at;
-      if (h.fly) {
-        p.x += 9 * s;
-        p.y += 4.5 * s - 3 * s * s;
-        ballMesh.visible = s < 0.8;
-      } else p.x += (h.roll ?? 1) * (1 - Math.exp(-2.2 * s));
-    }
-    ballMesh.position.copy(p);
-  };
-
   const update = () => {
-    if (!prep) return;
+    if (!players.length) return;
     // the loop: the swing, a rest in the finish, again
-    const loop = prep.length + 1.2;
+    const loop = length + 1.2;
     const tt = ((t % loop) + loop) % loop;
-    const s = place(tt);
-    placeBall(tt);
+    let s = { label: undefined as L | undefined, step: 0 };
+    players.forEach((p, i) => {
+      const r = place(p, tt);
+      if (i === 0) s = r;
+      placeBall(p, tt);
+    });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
       labelCb(s.label, s.step);
@@ -405,27 +418,36 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   resize();
   raf = requestAnimationFrame(frame);
 
+  const setSwings = (list: { swing: Swing; x?: number; z?: number }[]) => {
+    for (const p of players) scene.remove(p.rig.root, p.club, p.ball, p.tee);
+    players = list.map(({ swing, x = 0, z = 0 }) => {
+      const rig = buildRig();
+      const club = buildClub(swing.club);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.0215, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
+      ball.castShadow = true;
+      const tee = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.04, 8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.6 }));
+      tee.visible = !!swing.tee;
+      const at = ballPos({ swing, x, z });
+      ball.position.copy(at);
+      tee.position.set(at.x, 0.02, at.z);
+      scene.add(rig.root, club, ball, tee);
+      return { rig, club, ball, tee, swing, x, z, prep: prepare({ rig, swing, x, z }) };
+    });
+    length = Math.max(...players.map((p) => p.prep.length));
+    const first = list[0].swing;
+    (pad.material as THREE.MeshStandardMaterial).color.set(first.sand ? '#e3cf96' : '#8fc069'); // ci-allow: bunker sand
+    pad.scale.setScalar(list.length > 1 ? 1.8 : 1);
+    bounds = null;
+    t = 0;
+    lastStep = -1;
+    view = first.view ?? 'front';
+    placeCamera();
+    update();
+  };
+
   return {
-    setSwing(s) {
-      swing = s;
-      scene.remove(club);
-      club = buildClub(s.club);
-      scene.add(club);
-      scene.remove(rig.root);
-      rig = buildRig();
-      scene.add(rig.root);
-      ballMesh.position.copy(ballPos());
-      tee.visible = !!s.tee;
-      (pad.material as THREE.MeshStandardMaterial).color.set(s.sand ? '#e3cf96' : '#8fc069'); // ci-allow: bunker sand
-      tee.position.set(ballPos().x, 0.02, ballPos().z);
-      prep = prepare(s);
-      bounds = null;
-      t = 0;
-      lastStep = -1;
-      view = s.view ?? 'front';
-      placeCamera();
-      update();
-    },
+    setSwing: (s) => setSwings([{ swing: s }]),
+    setSwings,
     setView(v) {
       view = v;
       placeCamera();

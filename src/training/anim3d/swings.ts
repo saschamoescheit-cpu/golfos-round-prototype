@@ -274,5 +274,59 @@ export const SETUP_PUTT = setup(PUTT_STROKE, PUTT_ADDRESS, [
 export const PUTT_ONE: Swing = { ...PUTT_STROKE, oneHand: true };
 export const CHIP_ONE: Swing = { ...CHIP_STROKE, oneHand: true };
 
+// ---------- the faults: the faulty swing next to the right one ----------
+
+/** a swing with some keys changed (by their time) and new labels */
+const fault = (sw: Swing, change: Record<number, Partial<SwingKey>>, extra: Partial<Swing> = {}): Swing => ({
+  ...sw,
+  ...extra,
+  keys: sw.keys.map((x) => (change[x.t] ? { ...x, ...change[x.t], body: { ...x.body, ...change[x.t].body } } : x)),
+});
+const quiet = (sw: Swing): Swing => ({ ...sw, keys: sw.keys.map((x) => ({ ...x, label: undefined })) });
+
+/** fat: the weight stays back, the wrists flip – the club hits the ground behind the ball */
+export const FAT: Swing = fault(FULL_SWING, {
+  2.8: {
+    body: { pelvis: [32, 12, 2], spine: [6, -4, 6], chest: [6, -16, 12] },
+    shift: -0.05,
+    drop: 0.08,
+    miss: [-0.09, -0.02, 0],
+    label: L('Left: weight back, the club hits the ground first – right: weight forward, ball first', 'Links: Gewicht hinten, der Schläger trifft zuerst den Boden – rechts: Gewicht vorn, erst der Ball'),
+  },
+}, { hit: undefined });
+/** thin: the body rises – the leading edge hits the middle of the ball */
+export const THIN: Swing = fault(FULL_SWING, {
+  2.8: {
+    body: { pelvis: [18, 26, 4], spine: [2, 2, 2], chest: [2, -10, 6] },
+    drop: -0.02,
+    miss: [0.01, 0.045, 0],
+    label: L('Left: the chest rises, the edge hits the ball – right: the posture stays', 'Links: der Brustkorb hebt sich, die Kante trifft den Ball – rechts: die Haltung bleibt'),
+  },
+});
+/** sway: the hips slide away from the target instead of turning */
+export const SWAY: Swing = fault(FULL_SWING, {
+  2.0: { shift: -0.12, body: { pelvis: [32, -20, -6], chest: [6, -30, 2] }, label: L('Left: the hips slide away – right: they turn', 'Links: die Hüfte gleitet weg – rechts: sie dreht') },
+  2.3: { shift: -0.12, body: { pelvis: [32, -20, -6], chest: [6, -30, 2] } },
+});
+/** early extension: the hips move to the ball, the body stands up – seen from behind */
+export const EARLY_EXT: Swing = fault(FULL_SWING, {
+  2.8: {
+    body: { pelvis: [14, 30, 6], spine: [2, 2, 2], chest: [4, -10, 7] },
+    push: 0.1,
+    drop: -0.02,
+    miss: [0, 0.03, 0.02],
+    label: L('Left: the hips move to the ball, the body stands up – right: the posture stays', 'Links: die Hüfte geht zum Ball, der Körper richtet sich auf – rechts: die Haltung bleibt'),
+  },
+});
+
+/** pairs for the fault pictures: the fault first (left), the right way (right); z: one behind the other for the view from behind */
+export const PAIRS = {
+  fatPair: { fault: FAT, right: quiet(FULL_SWING) },
+  thinPair: { fault: THIN, right: quiet(FULL_SWING) },
+  swayPair: { fault: SWAY, right: quiet(FULL_SWING) },
+  earlyPair: { fault: EARLY_EXT, right: quiet(FULL_SWING), behind: true },
+};
+export type PairId = keyof typeof PAIRS;
+
 export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE };
 export type SwingId = keyof typeof SWINGS;

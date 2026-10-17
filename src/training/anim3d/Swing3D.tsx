@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { tr } from '../../lib/i18n';
 import { isLeftHanded } from '../../lib/profile';
 import { createGolfViewer, type View, type Viewer } from './golf3d';
-import { SWINGS, type SwingId } from './swings';
+import { PAIRS, SWINGS, type PairId, type SwingId } from './swings';
 import type { L } from '../types';
 import { sided } from '../sides';
 
@@ -18,13 +18,17 @@ const VIEW_NAMES: Record<View, () => string> = {
   above: () => tr('Above', 'Oben'),
 };
 
-export default function Swing3D(props: { swing: SwingId; onFail?: () => void }) {
-  const swing = SWINGS[props.swing];
+export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () => void }) {
+  // a fault picture: the fault (left) and the right way (right) side by side – from behind one beside the other in depth
+  const pair = props.swing in PAIRS ? PAIRS[props.swing as PairId] : null;
+  const swing = pair ? pair.fault : SWINGS[props.swing as SwingId];
+  const behind = !!(pair && 'behind' in pair && pair.behind);
+  const views: View[] = !pair ? ['front', 'side', 'angle', 'above'] : behind ? ['side', 'angle', 'above'] : ['front', 'angle', 'above'];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const [playing, setPlaying] = useState(true);
   const [slow, setSlow] = useState(false);
-  const [view, setView] = useState<View>('front');
+  const [view, setView] = useState<View>(behind ? 'side' : 'front');
   const [label, setLabel] = useState<{ l?: L; step: number }>({ step: 0 });
   const left = isLeftHanded();
 
@@ -40,7 +44,10 @@ export default function Swing3D(props: { swing: SwingId; onFail?: () => void }) 
     }
     viewerRef.current = v;
     v.onLabel((l, step) => setLabel({ l, step }));
-    v.setSwing(swing);
+    if (pair) {
+      v.setSwings(behind ? [{ swing: pair.fault, z: -1 }, { swing: pair.right, z: 1 }] : [{ swing: pair.fault, x: -1 }, { swing: pair.right, x: 1 }]);
+      if (behind) v.setView('side');
+    } else v.setSwing(swing);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => v.resize()) : null;
     ro?.observe(c);
     (window as Window & { __golf3d?: Viewer }).__golf3d = v;
@@ -77,7 +84,7 @@ export default function Swing3D(props: { swing: SwingId; onFail?: () => void }) 
           </button>
         </div>
         <div className="tr-3d-views" role="group" aria-label={tr('View', 'Ansicht')}>
-          {(['front', 'side', 'angle', 'above'] as View[]).map((x) => (
+          {views.map((x) => (
             <button
               key={x}
               type="button"

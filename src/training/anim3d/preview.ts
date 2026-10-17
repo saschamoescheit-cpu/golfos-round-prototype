@@ -13,10 +13,13 @@ const canvas = document.getElementById('c') as HTMLCanvasElement;
 const out = document.getElementById('out')!;
 const v = createGolfViewer(canvas);
 v.setPlaying(false);
-const swing = (SW as unknown as Record<string, Swing>)[name];
+const pairs = (SW as unknown as { PAIRS: Record<string, { fault: Swing; right: Swing; behind?: boolean }> }).PAIRS;
+const pair = pairs[name];
+const swing = pair ? pair.fault : (SW as unknown as Record<string, Swing>)[name];
 (async () => {
   for (const view of views) {
-    v.setSwing(swing);
+    if (pair) v.setSwings(pair.behind ? [{ swing: pair.fault, z: -1 }, { swing: pair.right, z: 1 }] : [{ swing: pair.fault, x: -1 }, { swing: pair.right, x: 1 }]);
+    else v.setSwing(swing);
     v.setView(view);
     const len = swing.keys[swing.keys.length - 1].t;
     const div = document.createElement('div');

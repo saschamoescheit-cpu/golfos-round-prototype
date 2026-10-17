@@ -295,3 +295,10 @@ SECTION_MOTIONS.irons = { ...SECTION_MOTIONS.irons, 'Set-up for irons': still3d(
 SECTION_MOTIONS.driver = { ...SECTION_MOTIONS.driver, 'Set-up for the driver': still3d('setupDriver') };
 SECTION_MOTIONS.chipping = { ...SECTION_MOTIONS.chipping, 'The set-up': still3d('setupChip') };
 SECTION_MOTIONS.putting = { ...SECTION_MOTIONS.putting, 'Set-up': still3d('setupPutt') };
+
+// fault pictures in 3D: the fault and the right way side by side (the drawing stays for the others)
+set3d(FAULT_MOTIONS.irons?.['Fat shots'], 'fatPair');
+set3d(FAULT_MOTIONS.irons?.['Thin shots'], 'thinPair');
+set3d(FAULT_MOTIONS.ballflight?.['Topped shots'], 'thinPair');
+set3d(FAULT_MOTIONS.swing?.['Sway instead of turn'], 'swayPair');
+set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');
