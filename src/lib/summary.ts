@@ -1,7 +1,7 @@
 import type { Club, LngLat, Round } from '../types';
 import { distanceM } from './geo';
 import { grossForHole, handicapStrokes, playerTotals, playing18, stablefordPoints } from './scoring';
-import { groupForHandicap, groupSg, GROUPS, holeSg, roundsSg, SG_CATEGORIES, SG_LABELS, type SgCategory } from './sg';
+import { comparisonGroup, groupSg, GROUPS, holeSg, roundsSg, SG_CATEGORIES, SG_LABELS, type SgCategory } from './sg';
 import { firstPuttM, shotsComplete } from './shots';
 import { playedHandicap } from './handicap';
 import { clubCode, dec, tr } from './i18n';
@@ -91,7 +91,7 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
   const ph = playedHandicap(round);
 
   // ---- strokes gained against the player's group ----
-  const groupId = groupForHandicap(playing18(round.holes.length, me.playingHandicap));
+  const groupId = comparisonGroup(playing18(round.holes.length, me.playingHandicap));
   const sgRound = roundsSg([round]);
   const g = groupSg(groupId);
   const sg = sgRound && sgRound.holes >= 9 ? (Object.fromEntries([...SG_CATEGORIES, 'total'].map((c) => [c, r1(sgRound.per18[c as SgCategory | 'total'] - g[c as SgCategory | 'total'])])) as SummaryFacts['sg']) : null;

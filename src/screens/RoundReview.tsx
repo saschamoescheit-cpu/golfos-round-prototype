@@ -17,8 +17,6 @@ import { ShotSheet } from '../components/ShotSheet';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
 import { clubCode, tr } from '../lib/i18n';
-import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
-import { isTestMode } from '../lib/testmode';
 
 // Round check after a detailed round (feature 007): every shot of every hole on the map, with club, shot type,
 // lie, length and strokes gained. Shots detected from the GPS track are marked "check"; the player corrects
@@ -651,25 +649,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </button>
       </div>
 
-      {/* test mode: the round as a file for the analysis of the shot detection */}
-      {isTestMode() && (
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={async () => {
-            const detectedNow = round.holes.map((h, i) => {
-              const m = maps[i];
-              const found = m && parts[i]?.length ? detectWithScore(parts[i], m, h.par, bag, entries[i]) : null;
-              return found ? { shots: found.shots.map((x) => ({ pos: x.pos, club: x.club ?? null })), onGreen: found.onGreen ?? null } : null;
-            });
-            const data = buildExport({ app: __BUILD_TIME__, round, track, caddieLog: cadLog, detectedNow });
-            const how = await shareExport(data, exportFileName(round));
-            if (how === 'downloaded') setNotice(tr('Round saved as a file (Downloads).', 'Runde als Datei gespeichert (Downloads).'));
-          }}
-        >
-          {tr('Export round (test)', 'Runde exportieren (Test)')}
-        </button>
-      )}
       {editing && d && (
         <ShotSheet
           title={tr(`Hole ${hole.label} · shot ${edit! + 1}`, `Loch ${hole.label} · Schlag ${edit! + 1}`)}

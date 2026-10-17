@@ -343,6 +343,7 @@ export function signIn(): void {
   location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(back)}`;
 }
 export function signOut(): void {
+  liveClose();
   saveSession(null);
   browserStore.remove(META);
 }
@@ -514,6 +515,7 @@ export function syncNow(): Promise<SyncResult | null> {
       const res = await syncOnce(browserStore, supabaseRemote(t)).finally(() => (inSync = false));
       browserStore.set(LAST, res.at);
       noteSyncError(res.failed ? tr(`${res.failed} entries were refused (${res.error}) – tried again at the next sync.`, `${res.failed} Einträge abgelehnt (${res.error}) – beim nächsten Abgleich erneut.`) : null);
+      if (res.pushed) nudgeOthers(); // the other open devices fetch it right away
       if (res.pulled) {
         window.dispatchEvent(new Event('golfos:rounds-changed'));
         window.dispatchEvent(new Event('golfos:games-changed'));
@@ -528,9 +530,10 @@ export function syncNow(): Promise<SyncResult | null> {
       return null;
     } finally {
       running = null;
+      liveConnect();
       if (again) {
         again = false;
-        syncSoon(1000);
+        syncSoon(500);
       }
     }
   })();
@@ -540,7 +543,7 @@ export function syncNow(): Promise<SyncResult | null> {
 let soon = 0;
 /** A change was saved: sync in a few seconds (several changes in a row become one sync). Was 20 s – Sascha
  *  17.10.2026: "changed the handicap on the PC, the iPhone does not show it, not even after reloading". */
-export function syncSoon(ms = 3000): void {
+export function syncSoon(ms = 1000): void {
   if (!syncConfigured() || !loadSession()) return;
   window.clearTimeout(soon);
   soon = window.setTimeout(() => syncNow(), ms);
@@ -574,4 +577,77 @@ export function watchChanges(): void {
       else syncSoon();
     }
   };
+}
+
+// ---------- live: a change on one device reaches the others within seconds ----------
+// Sascha 17.10.2026: "every 20 seconds is not enough, it has to be live". After a sync that sent something, the device
+// sends a nudge on the player's own channel (Supabase Realtime broadcast – no data, only "something changed"); every
+// other open device of the player hears it and syncs at once. Plain WebSocket (Phoenix protocol), no library.
+
+let live: WebSocket | null = null;
+let liveTopic = '';
+let liveRef = 1;
+let liveBeat = 0;
+let liveRetry = 0;
+let liveWait = 1000;
+
+/** The player's id from the access token (its "sub") – the name of his channel. */
+function userId(): string | null {
+  const t = loadSession()?.access_token;
+  if (!t) return null;
+  try {
+    const body = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return (JSON.parse(atob(body + '==='.slice((body.length + 3) % 4))) as { sub?: string }).sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Opens the live channel when signed in (again after a drop, with a growing pause); safe to call often. */
+export function liveConnect(): void {
+  if (typeof WebSocket === 'undefined' || !syncConfigured()) return;
+  const id = userId();
+  if (!id) return liveClose();
+  const topic = `realtime:golfos-${id}`;
+  if (live && liveTopic === topic && (live.readyState === WebSocket.OPEN || live.readyState === WebSocket.CONNECTING)) return;
+  liveClose();
+  liveTopic = topic;
+  const ws = new WebSocket(`${SUPABASE_URL.replace(/^http/, 'ws')}/realtime/v1/websocket?apikey=${SUPABASE_KEY}&vsn=1.0.0`);
+  live = ws;
+  const send = (event: string, payload: unknown, t = topic) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ topic: t, event, payload, ref: String(liveRef++) }));
+  ws.onopen = () => {
+    liveWait = 1000;
+    send('phx_join', { config: { broadcast: { self: false }, presence: { key: '' }, private: false } });
+    window.clearInterval(liveBeat);
+    liveBeat = window.setInterval(() => send('heartbeat', {}, 'phoenix'), 25000);
+  };
+  ws.onmessage = (m) => {
+    try {
+      const d = JSON.parse(String(m.data)) as { event?: string; payload?: { event?: string } };
+      if (d.event === 'broadcast' && d.payload?.event === 'changed') syncNow();
+    } catch {
+      /* not for us */
+    }
+  };
+  ws.onclose = () => {
+    if (live !== ws) return;
+    live = null;
+    window.clearInterval(liveBeat);
+    window.clearTimeout(liveRetry);
+    liveRetry = window.setTimeout(liveConnect, liveWait);
+    liveWait = Math.min(liveWait * 2, 30000);
+  };
+}
+
+export function liveClose(): void {
+  window.clearTimeout(liveRetry);
+  window.clearInterval(liveBeat);
+  const ws = live;
+  live = null;
+  ws?.close();
+}
+
+function nudgeOthers(): void {
+  if (!live || live.readyState !== WebSocket.OPEN) return liveConnect();
+  live.send(JSON.stringify({ topic: liveTopic, event: 'broadcast', payload: { type: 'broadcast', event: 'changed', payload: {} }, ref: String(liveRef++) }));
 }

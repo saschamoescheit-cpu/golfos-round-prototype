@@ -4,7 +4,7 @@ import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../
 import { Segmented } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { CoursesCard } from '../components/HistoryCards';
-import { groupForHandicap, roundsSg } from '../lib/sg';
+import { comparisonGroup, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
 import { statRounds, unsignedRounds } from '../lib/signing';
@@ -106,7 +106,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               </section>
 
               {sg ? (
-                <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={base} defaultGroup={groupForHandicap(profileIndex() ?? a.handicap)} />
+                <SgCard title="Strokes gained" values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={base} defaultGroup={comparisonGroup(profileIndex() ?? a.handicap)} />
               ) : (
                 <p className="muted small" style={{ margin: 0 }}>
                   {tr('Check the shots of a round (“Check shots”) to see where you gain and lose strokes.', 'Prüfe die Schläge einer Runde („Schläge prüfen“), dann siehst du, wo du Schläge gewinnst und verlierst.')}

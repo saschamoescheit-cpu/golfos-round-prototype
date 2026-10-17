@@ -4,7 +4,7 @@ import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCache
 import { commitParAt } from './lib/scoring';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
-import { finishSignIn, syncNow, syncSoon, watchChanges } from './lib/sync';
+import { finishSignIn, liveConnect, syncNow, syncSoon, watchChanges } from './lib/sync';
 import { PlayTab, RoundsTopBar } from './screens/Play';
 import { RoundsTab, uncheckedRounds, type RoundsFilter } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
@@ -162,7 +162,10 @@ export function App() {
     watchChanges();
     finishSignIn().finally(() => syncNow());
     // back to the app: fetch what the other devices changed; leaving it (another tab, the phone locked): send ours
-    const onShow = () => syncNow();
+    const onShow = () => {
+      syncNow();
+      liveConnect(); // the phone was locked: the channel may have dropped
+    };
     document.addEventListener('visibilitychange', onShow);
     // while the app is on screen, a look every 20 s: a change on the PC shows on the open iPhone without reloading
     const t = window.setInterval(() => document.visibilityState === 'visible' && syncNow(), 20 * 1000);

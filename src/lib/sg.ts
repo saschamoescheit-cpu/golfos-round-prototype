@@ -3,6 +3,7 @@ import { distanceM } from './geo';
 import { firstPuttM, shotsComplete } from './shots';
 import { tr } from './i18n';
 import { isTeamRound } from './games';
+import { loadProfile } from './profile';
 
 // Strokes gained (feature 007): every shot is measured against the average number of strokes a tour pro
 // needs to hole out from the same distance and lie. Gaining 0.3 means the shot was 0.3 strokes better than
@@ -147,6 +148,13 @@ export function groupSg(id: string): SgValues {
 }
 
 /** The comparison group closest to a playing handicap. */
+/** The group the player compares himself with: the one chosen in the profile (Golf → Strokes-gained comparison),
+ *  else the next better group to the handicap (Sascha 17.10.2026). */
+export function comparisonGroup(hcp: number | null): string {
+  const chosen = loadProfile().sgGroup;
+  return chosen && GROUPS.some((g) => g.id === chosen) ? chosen : groupForHandicap(hcp);
+}
+
 export function groupForHandicap(hcp: number | null): string {
   if (hcp == null) return 'h20';
   if (hcp <= 2) return 'scratch';

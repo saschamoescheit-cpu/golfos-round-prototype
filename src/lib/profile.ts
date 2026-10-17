@@ -12,6 +12,8 @@ export interface Profile {
   photo?: string;
   /** Left- or right-handed (Sascha 17.10.2026): the Training pictures are mirrored for left-handers. Default right. */
   hand?: 'right' | 'left';
+  /** Strokes gained compared with this group (Sascha 17.10.2026); missing = the next better group to the index. */
+  sgGroup?: string;
 }
 
 export const EMPTY_PROFILE: Profile = { firstName: '', lastName: '', hcpIndex: '', homeClub: '' };

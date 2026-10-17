@@ -114,6 +114,19 @@ await p.evaluate(() => {
 });
 await p.waitForTimeout(300);
 ok((await p.locator('#pf-first').inputValue()) === 'Ben', 'profile: a name synced from another device shows at once');
+// no "Test" card any more; Golf → strokes gained comparison (Sascha 17.10.2026)
+const main = await p.locator('main').innerText();
+ok(!/Runden exportieren/.test(main) && (await p.getByRole('heading', { name: 'Test', exact: true }).count()) === 0, 'profile: no "Test" card');
+const sgSet = p.getByRole('group', { name: 'Strokes-Gained-Vergleich' });
+ok((await sgSet.count()) === 1, 'Golf: "Strokes-Gained-Vergleich" is there');
+const auto = sgSet.getByRole('button', { name: /^Nächstbessere/ });
+ok((await auto.getAttribute('aria-pressed')) === 'true', `by default the next better group (${(await auto.innerText()).trim()})`);
+await sgSet.getByRole('button', { name: 'Scratch', exact: true }).click();
+await p.waitForTimeout(200);
+ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).sgGroup)) === 'scratch', 'choosing Scratch keeps it in the profile (synced with it)');
+await auto.click();
+await p.waitForTimeout(200);
+ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')).sgGroup)) == null, 'back to the next better group');
 ok(errs.length === 0, `no page errors in the app ${errs.slice(0, 2).join(' | ')}`); // Google's own page may log its own
 await p.getByRole('button', { name: 'Mit Google anmelden' }).click();
 await p.waitForURL(/accounts\.google\.com/, { timeout: 20000 }).catch(() => {});
