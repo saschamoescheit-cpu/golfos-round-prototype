@@ -104,7 +104,7 @@ export const FULL_SWING: Swing = {
 FULL_SWING.hit = { at: 2.8, shot: 'full' };
 
 /** the driver: wider stance, the ball forward on a tee, hit on the way up */
-export const DRIVER_SWING: Swing = { ...FULL_SWING, club: 'driver', stance: 0.5, ball: [0.16, 0.72], tee: true };
+export const DRIVER_SWING: Swing = { ...FULL_SWING, club: 'driver', stance: 0.5, ball: [0.16, 0.9], tee: true };
 
 /** the wedge swing from 9 to 3 o'clock (L to L, pitch) */
 export const HALF_SWING: Swing = {
@@ -237,7 +237,7 @@ export const PUTT_STROKE: Swing = {
 };
 
 /** a fairway wood from the grass: the driver's swing without a tee */
-export const WOOD_SWING: Swing = { ...DRIVER_SWING, tee: false, stance: 0.44, ball: [0.1, 0.68] };
+export const WOOD_SWING: Swing = { ...DRIVER_SWING, tee: false, stance: 0.44, ball: [0.1, 0.86] };
 /** from a fairway bunker: the full swing from the sand, ball first */
 export const SAND_SWING: Swing = { ...FULL_SWING, sand: true };
 
