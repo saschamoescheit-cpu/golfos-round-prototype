@@ -13,6 +13,7 @@ const ground = (w: number, sand = false): SideItem => ({ k: 'ground', pts: [[0, 
 const slope = (w: number, y0: number, y1: number, sand = false): SideItem => ({ k: 'ground', pts: [[0, y0], [w, y1]], sand });
 const fig = (x: number, pose: GolferOptions['pose'], o: Omit<GolferOptions, 'pose'> & { tilt?: number; y?: number } = {}): SideItem => ({ k: 'figure', at: [x, o.y ?? G0], pose, ...o });
 const co = (on: JointName, t: L, at: P, figIndex?: number): SideItem => ({ k: 'callout', on, t, at, fig: figIndex });
+const mk = (at: P, t: L): SideItem => ({ k: 'mark', at, t });
 const ball = (x: number, y = G0): SideItem => ({ k: 'ball', at: [x, y] });
 const txt = (at: P, t: L | string, size = 11, anchor: 'start' | 'middle' | 'end' = 'middle'): SideItem => ({ k: 'text', at, t, size, anchor });
 const arrow = (from: P, to: P): SideItem => ({ k: 'arrow', from, to });
@@ -40,6 +41,16 @@ const GRIP: Sketch = {
 export const FIGURE_SKETCHES: Record<string, Sketch> = {
   'grip-check': GRIP,
   // ---------- putting ----------
+  'mirror-setup': S(3, 2.2, [
+    ground(3),
+    line([1.22, 0.205], [1.52, 0.205]), line([1.22, 0.215], [1.52, 0.215]),
+    fig(1.0, 'puttSide'),
+    ball(1.37),
+    line([1.36, 1.43], [1.37, 0.3], true),
+    txt([1.37, 0.05], L('putting mirror', 'Puttspiegel'), 10),
+    co('head', L('both eyes on the middle line of the mirror – over the ball', 'beide Augen auf der Mittellinie des Spiegels – über dem Ball'), [2.2, 1.9]),
+    co('leadShoulder', L('shoulders parallel to the target line', 'Schultern parallel zur Ziellinie'), [2.3, 1.4]),
+  ], L('From the side. After the stroke the eyes are still on the line.', 'Von der Seite. Nach der Bewegung sind die Augen noch auf der Linie.')),
   'chalk-line': S(3, 2.2, [
     ground(3),
     fig(1.0, 'puttSide'),
@@ -59,6 +70,14 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     co('trailElbow', L('the other hand stays off the club', 'die andere Hand bleibt weg vom Schläger'), [0.8, 1.6]),
   ], L('Straight putts of 1–2 m: 10 with the lead hand, 10 with the trail hand, then 10 with both.', 'Gerade Putts aus 1–2 m: 10 mit der Führhand, 10 mit der hinteren Hand, dann 10 mit beiden.')),
   // ---------- chipping ----------
+  'hybrid-chip': S(4, 2.4, [
+    ground(4),
+    fig(1.9, 'putt', { club: 'driver' }),
+    ball(1.92),
+    co('hands', L('grip the hybrid down to the shaft', 'den Hybrid bis an den Schaft greifen'), [3.0, 1.3]),
+    co('leadShoulder', L('a putting stroke from the shoulders – it hops and rolls', 'eine Puttbewegung aus den Schultern – der Ball hüpft und rollt'), [3.1, 2.0]),
+    co('trailAnkle', L('stand like for a putt, ball in the middle', 'stehen wie beim Putten, Ball in der Mitte'), [0.7, 0.8]),
+  ], L('Face-on, target to the right: from short grass next to the green.', 'Von vorn, Ziel rechts: von kurzem Gras neben dem Grün.')),
   'trail-toe': S(4, 2.4, [
     ground(4),
     fig(1.9, 'chip', { heelUp: 'trail', shift: 0.05 }),
@@ -109,6 +128,22 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     co('leadShoulder', L('towel under both armpits – it must not fall', 'Handtuch unter beiden Achseln – darf nicht fallen'), [3.0, 2.15]),
   ], L('Arms and chest turn together – a falling towel shows arms swinging away from the body.', 'Arme und Brust drehen zusammen – fällt das Handtuch, schwingen die Arme vom Körper weg.')),
   // ---------- bunker ----------
+  'splash-no-ball': S(4, 2.8, [
+    ground(4, true),
+    fig(1.9, 'halfThrough'),
+    { k: 'flight', pts: [[1.95, 0.25], [2.6, 0.9], [3.3, 0.3]], dashed: true },
+    txt([2.95, 0.95], L('sand onto the green', 'Sand aufs Grün'), 10, 'start'),
+    co('clubHead', L('open face – the bounce glides, a soft “plop”', 'offene Fläche – das Bounce gleitet, ein weiches „Plopp“'), [3.1, 2.4]),
+    mk([1.9, 0.2], L('a long, flat trail in the sand, like a banknote', 'eine lange, flache Spur im Sand, wie ein Geldschein')),
+  ], L('No ball: splash sand ten times with the open face.', 'Kein Ball: zehnmal Sand spritzen mit offener Fläche.')),
+  'fried-egg': S(4, 2.6, [
+    ground(4, true),
+    fig(1.9, 'impact', { club: 'wedge', shift: 0.05 }),
+    { k: 'ball', at: [1.9, 0.14] },
+    co('pelvis', L('weight forward, ball in the middle', 'Gewicht vorn, Ball in der Mitte'), [3.1, 1.3]),
+    co('clubHead', L('face square or a little closed – steep down just behind the ball', 'Fläche square oder leicht geschlossen – steil knapp hinter dem Ball nach unten'), [0.7, 0.6]),
+    co('hands', L('the club stays in the sand – hardly any finish', 'der Schläger bleibt im Sand – kaum ein Finish'), [3.1, 0.8]),
+  ], L('The ball sits buried in the sand. It comes out low and rolls a lot.', 'Der Ball steckt im Sand. Er kommt flach heraus und rollt viel.')),
   'sand-on-face': S(4, 2.8, [
     ground(4, true),
     fig(1.9, 'halfBack'),
@@ -182,6 +217,33 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     txt([2.5, 2.3], L('across the line, eyes closed', 'quer zur Linie, Augen zu'), 10),
   ]),
   // ---------- irons ----------
+  'punch-gap': S(4, 2.8, [
+    ground(4),
+    line([2.5, 1.85], [4.0, 1.85]), txt([3.95, 1.95], L('branch at head height', 'Ast in Kopfhöhe'), 10, 'end'),
+    fig(1.4, 'chipFinish', { club: 'iron', shift: 0.06 }),
+    ball(1.3),
+    { k: 'flight', pts: [[1.3, 0.25], [2.6, 1.1], [3.9, 0.35]], dashed: true },
+    co('hands', L('finish with the hands at hip height', 'Finish mit den Händen auf Hüfthöhe'), [2.6, 1.4]),
+    co('pelvis', L('ball back, hands and weight forward', 'Ball zurück, Hände und Gewicht vorn'), [0.4, 1.3]),
+  ], L('Face-on, target to the right: a short swing, the ball stays under the branch.', 'Von vorn, Ziel rechts: kurzer Schwung, der Ball bleibt unter dem Ast.')),
+  'divot-lie': S(4, 2.6, [
+    ground(4),
+    fig(1.9, 'impact', { shift: 0.06 }),
+    line([1.72, 0.2], [1.95, 0.2]), line([1.72, 0.19], [1.95, 0.19]),
+    ball(1.8, 0.18),
+    co('hands', L('ball a little back, hands ahead', 'Ball etwas zurück, Hände vorn'), [3.0, 1.3]),
+    co('pelvis', L('weight forward – steeper, down and through', 'Gewicht vorn – steiler, nach unten und durch'), [3.0, 1.9]),
+    mk([1.83, 0.2], L('the ball sits in an old divot', 'der Ball liegt in einem alten Divot')),
+  ], L('Short finish – the ball flies lower and rolls more.', 'Kurzes Finish – der Ball fliegt flacher und rollt mehr.')),
+  'bare-lie': S(4, 2.4, [
+    { k: 'ground', pts: [[0, G0], [4, G0]] },
+    line([1.4, 0.2], [2.4, 0.2]),
+    fig(1.9, 'chip', { club: 'iron', shift: 0.04 }),
+    ball(1.84),
+    co('hands', L('hands ahead, a putting-like stroke', 'Hände vorn, eine puttartige Bewegung'), [3.0, 1.2]),
+    co('clubHead', L('PW or 9-iron instead of the lob wedge – the bounce would bounce', 'PW oder Eisen 9 statt Lobwedge – das Bounce würde springen'), [3.0, 0.5]),
+    co('trailAnkle', L('ball back of centre', 'Ball hinter der Mitte'), [0.7, 0.8]),
+  ], L('Bare or hard ground: ball first, no extra loft.', 'Kahler oder harter Boden: erst der Ball, kein zusätzlicher Loft.')),
   'step-drill': S(5, 2.8, [
     ground(5),
     fig(1.9, 'halfBack', { stance: 'together', club: 'iron' }),
@@ -232,6 +294,24 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     co('pelvis', L('belt buckle to the target, 3 s', 'Gürtelschnalle zum Ziel, 3 s'), [4.6, 1.2], 1),
   ]),
   // ---------- basics ----------
+  'grip-pressure': S(4, 2.6, [
+    ground(4),
+    fig(1.5, 'front', { club: 'iron' }),
+    ball(1.54),
+    co('hands', L('4–5 of 10: firm enough to control the club, soft enough for speed', '4–5 von 10: fest genug für die Kontrolle, locker genug für Tempo'), [2.6, 1.0]),
+    txt([3.2, 2.2], '1 · 2 · 5 · 8 · 10', 13),
+    txt([3.2, 1.95], L('test 8, 2 and 5', 'teste 8, 2 und 5'), 10),
+  ], L('Squeeze as hard as you can (10), then as soft as possible (1) – the best contact and speed are usually in the middle.', 'So fest wie möglich (10), dann so locker wie möglich (1) – der beste Treffer und das meiste Tempo liegen meist in der Mitte.')),
+  'backhand': S(4, 2.6, [
+    ground(4),
+    { k: 'line', from: [2.55, 0.2], to: [2.55, 2.4] }, { k: 'line', from: [2.63, 0.2], to: [2.63, 2.4] },
+    txt([2.7, 2.45], L('tree', 'Baum'), 10, 'start'),
+    fig(1.9, 'chip', { club: 'wedge', flip: true }),
+    ball(1.88),
+    co('hands', L('stand on the other side, the club turned over (toe down)', 'auf die andere Seite stellen, den Schläger umgedreht (Spitze nach unten)'), [0.6, 1.4]),
+    co('clubHead', L('grip down, short swing, hit with the toe', 'kurz greifen, kurzer Schwung, mit der Spitze treffen'), [0.6, 0.6]),
+    arrow([1.6, 0.42], [0.6, 0.42]),
+  ], L('The ball lies on the wrong side of a tree: 20–40 m back into play is the goal.', 'Der Ball liegt auf der falschen Seite eines Baums: 20–40 m zurück ins Spiel ist das Ziel.')),
   'posture-club-spine': S(3, 2.4, [
     ground(3),
     fig(1.1, 'address', { spineClub: true, club: 'none' }),
