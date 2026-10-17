@@ -145,64 +145,55 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
   const video = s.view === 'side' ? s.motion?.video : undefined;
   const roll = useRoll(s);
   const [show3d, setShow3d] = useState(false);
+  const player = video
+    ? { on: show3d, close: show3d, toggle: () => setShow3d(!show3d), label: show3d ? tr('Back to the picture', 'Zurück zum Bild') : tr('Play the 3D video', '3D-Video abspielen') }
+    : roll && !motion
+      ? { on: roll.playing, close: false, toggle: roll.toggle, label: roll.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen') }
+      : motion
+        ? { on: motion.playing, close: false, toggle: motion.toggle, label: motion.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen') }
+        : null;
   const callouts: (L | string)[] =
     s.view === 'side' || s.view === 'top' ? (s.items as (SideItem | SketchItem)[]).flatMap((x) => (x.k === 'callout' || x.k === 'mark' ? [x.t] : [])) : s.view === 'grip' || s.view === 'palm' ? s.notes : [];
   return (
     <figure className="tr-sketch">
-      {video && show3d ? (
-        <Suspense fallback={<Side sketch={s as Extract<Sketch, { view: 'side' }>} label={props.label} />}>
-          <Swing3D swing={video} onFail={() => setShow3d(false)} />
-        </Suspense>
-      ) : s.view === 'top' ? <Top sketch={s} label={props.label} rolling={roll?.rolling} /> : s.view === 'side' ? <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} /> : s.view === 'grip' ? <Grip label={props.label} /> : s.view === 'palm' ? <Palm label={props.label} /> : <Face marks={s.marks} label={props.label} />}
-      {video ? (
-        <div className="tr-motion-bar">
-          <button type="button" className={`tr-motion-btn${show3d ? ' on' : ''}`} onClick={() => setShow3d(!show3d)} aria-pressed={show3d}>
-            {show3d ? (
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <rect x="2" y="3" width="12" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      {/* the picture, and in its corner the play symbol (Sascha 17.10.2026: no separate button, a symbol in the
+          picture, bottom right); green while it plays; a 3D video closes with its symbol at the top right */}
+      <div className="tr-sketch-pic">
+        {video && show3d ? (
+          <Suspense fallback={<Side sketch={s as Extract<Sketch, { view: 'side' }>} label={props.label} />}>
+            <Swing3D swing={video} onFail={() => setShow3d(false)} />
+          </Suspense>
+        ) : s.view === 'top' ? (
+          <Top sketch={s} label={props.label} rolling={roll?.rolling} />
+        ) : s.view === 'side' ? (
+          <Side sketch={s} label={props.label} moving={motion?.playing ? motion.frames : undefined} />
+        ) : s.view === 'grip' ? (
+          <Grip label={props.label} />
+        ) : s.view === 'palm' ? (
+          <Palm label={props.label} />
+        ) : (
+          <Face marks={s.marks} label={props.label} />
+        )}
+        {player && (
+          <button type="button" className={`tr-motion-btn${player.on ? ' on' : ''}${player.close ? ' close' : ''}`} onClick={player.toggle} aria-pressed={player.on} aria-label={player.label} title={player.label}>
+            {player.close ? (
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
               </svg>
-            ) : (
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />
-              </svg>
-            )}
-            <span>{show3d ? tr('Back to the picture', 'Zurück zum Bild') : tr('3D video', '3D-Video')}</span>
-          </button>
-        </div>
-      ) : roll && !motion ? (
-        <div className="tr-motion-bar">
-          <button type="button" className={`tr-motion-btn${roll.playing ? ' on' : ''}`} onClick={roll.toggle} aria-pressed={roll.playing}>
-            {roll.playing ? (
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            ) : player.on ? (
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
                 <rect x="3" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
                 <rect x="9.4" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
               </svg>
             ) : (
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <path d="M4.5 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8c-.5-.3-1.2.1-1.2.7z" fill="currentColor" />
               </svg>
             )}
-            <span>{roll.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen')}</span>
           </button>
-        </div>
-      ) : motion && (
-        <div className="tr-motion-bar">
-        <button type="button" className={`tr-motion-btn${motion.playing ? ' on' : ''}`} onClick={motion.toggle} aria-pressed={motion.playing}>
-          {motion.playing ? (
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-              <rect x="3" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
-              <rect x="9.4" y="2" width="3.6" height="12" rx="1" fill="currentColor" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-              <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />
-            </svg>
-          )}
-          <span>{motion.playing ? tr('Stop', 'Stopp') : tr('Play the movement', 'Bewegung abspielen')}</span>
-        </button>
-        {motion.playing && <span className="tr-motion-phase">{motion.label ? txt(motion.label) : ''}</span>}
-        </div>
-      )}
+        )}
+      </div>
+      {motion?.playing && <div className="tr-motion-phase">{motion.label ? txt(motion.label) : '\u00a0'}</div>}
       {callouts.length > 0 && (
         <ol className="tr-callouts">
           {callouts.map((t, n) => (

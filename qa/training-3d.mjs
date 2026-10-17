@@ -59,7 +59,7 @@ for (let ti = 0; ti < topics.length; ti++) {
     await row.click();
     await p.waitForTimeout(250);
     const fig = p.locator('figure.tr-sketch').first();
-    if ((await fig.locator('.tr-motion-btn').innerText().catch(() => '')).includes('3D')) await play(fig, `${name} › ${title}`);
+    if (((await fig.locator('.tr-motion-btn').getAttribute('aria-label').catch(() => '')) ?? '').includes('3D')) await play(fig, `${name} › ${title}`);
     await p.locator('.topbar .icon-btn').first().click();
     await p.waitForTimeout(200);
   }
@@ -72,7 +72,7 @@ for (let ti = 0; ti < topics.length; ti++) {
     const c = colls.nth(i);
     if (!(await c.locator('.tr-coll-body').count())) await c.locator('.tr-coll-head').click();
     const fig = c.locator('figure.tr-sketch').first();
-    if ((await fig.locator('.tr-motion-btn').innerText().catch(() => '')).includes('3D')) await play(fig, `${name} › Grundlagen ${i + 1}`);
+    if (((await fig.locator('.tr-motion-btn').getAttribute('aria-label').catch(() => '')) ?? '').includes('3D')) await play(fig, `${name} › Grundlagen ${i + 1}`);
   }
   // faults
   if (await p.getByRole('tab', { name: 'Fehler' }).count()) {
@@ -84,7 +84,7 @@ for (let ti = 0; ti < topics.length; ti++) {
       await faults.nth(i).click();
       await p.waitForTimeout(250);
       const fig = p.locator('figure.tr-sketch').first();
-      if ((await fig.locator('.tr-motion-btn').innerText().catch(() => '')).includes('3D')) await play(fig, `${name} › Fehler ${i + 1}`);
+      if (((await fig.locator('.tr-motion-btn').getAttribute('aria-label').catch(() => '')) ?? '').includes('3D')) await play(fig, `${name} › Fehler ${i + 1}`);
       await p.locator('.topbar .icon-btn').first().click();
       await p.waitForTimeout(200);
     }

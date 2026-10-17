@@ -67,7 +67,10 @@ ok((await p.locator('.tr-video-thumb img').count()) >= 1, 'video with a preview 
 const stroke = p.locator('.tr-coll').filter({ hasText: 'Die Bewegung' }).first();
 if (!(await stroke.locator('.tr-coll-body').count())) await stroke.locator('.tr-coll-head').click();
 const btn3d = stroke.locator('.tr-motion-btn');
-ok((await btn3d.innerText()).includes('3D-Video'), 'the chip stroke has a 3D video');
+ok((await btn3d.getAttribute('aria-label')) === '3D-Video abspielen' && (await btn3d.innerText()).trim() === '', 'the chip stroke has a 3D video – a symbol in the picture, no text button (Sascha 17.10.2026)');
+const pic = await stroke.locator('.tr-sketch-pic').boundingBox();
+const bb = await btn3d.boundingBox();
+ok(pic && bb && bb.x + bb.width > pic.x + pic.width - 20 && bb.y + bb.height > pic.y + pic.height - 20, 'the play symbol sits in the bottom right corner of the picture');
 const box = await btn3d.boundingBox();
 ok(box && box.height >= 44, 'the 3D button is big enough to tap');
 await btn3d.click();
@@ -76,14 +79,14 @@ await p.waitForTimeout(1500);
 ok((await stroke.locator('.tr-3d canvas').count()) === 1 && (await stroke.locator('.tr-3d-step').innerText()).length > 3, '3D video plays and names the step');
 ok((await stroke.locator('.tr-3d-views .chip').allInnerTexts()).join('|') === 'Vorne|Hinten|Schräg|Oben', 'views: Vorne · Hinten · Schräg · Oben');
 await btn3d.click();
-ok((await stroke.locator('.tr-3d').count()) === 0 && (await stroke.locator('.tr-sketch > svg').count()) === 1, '“Zurück zum Bild” brings back the still picture');
+ok((await stroke.locator('.tr-3d').count()) === 0 && (await stroke.locator('.tr-sketch-pic > svg').count()) === 1, 'the close symbol brings back the still picture');
 await p.getByRole('tab', { name: 'Fehler' }).click();
 await p.locator('.list .list-item').first().click();
 await p.waitForTimeout(200);
 // the fault picture as a 3D video: the fault and the right way side by side
 const faultFig = p.locator('figure.tr-sketch').first();
 const faultBtn = faultFig.locator('.tr-motion-btn');
-ok((await faultBtn.innerText()).includes('3D-Video'), 'the fault picture has a 3D video');
+ok((await faultBtn.getAttribute('aria-label')) === '3D-Video abspielen', 'the fault picture has a 3D video');
 await faultBtn.click();
 await faultFig.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
 await p.waitForTimeout(1200);
