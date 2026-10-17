@@ -43,6 +43,8 @@ export interface Swing {
   hit?: { at: number; roll?: number; fly?: boolean };
   /** the ball sits on a tee (driver) */
   tee?: boolean;
+  /** only the lead hand on the club – the trail hand rests on the chest */
+  oneHand?: boolean;
   /** played from sand (bunker) */
   sand?: boolean;
   view?: View;
@@ -263,9 +265,12 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const poleL = chestP.clone().add(new THREE.Vector3(0.5, -1, 0.1).applyQuaternion(q));
     const poleR = chestP.clone().add(new THREE.Vector3(-0.5, -1, 0.1).applyQuaternion(q));
     twoBone(J.shoulderL, J.elbowL, BODY.upperArm, BODY.forearm, wristL, poleL);
-    twoBone(J.shoulderR, J.elbowR, BODY.upperArm, BODY.forearm, wristR, poleR);
+    // one-handed: the trail hand rests flat on the chest
+    const rest = chestP.clone().add(new THREE.Vector3(0.02, 0.1, 0.17).applyQuaternion(q));
+    twoBone(J.shoulderR, J.elbowR, BODY.upperArm, BODY.forearm, swing.oneHand ? rest : wristR, poleR);
     aim(J.wristL, wristL, wristL.clone().add(dir));
-    aim(J.wristR, wristR, wristR.clone().add(dir));
+    if (swing.oneHand) aim(J.wristR, rest, rest.clone().add(new THREE.Vector3(1, 0.3, 0).applyQuaternion(q)));
+    else aim(J.wristR, wristR, wristR.clone().add(dir));
 
     // legs: the ankles stay where they stand; the trail heel comes up in the finish
     const half = (swing.stance ?? 0.36) / 2;

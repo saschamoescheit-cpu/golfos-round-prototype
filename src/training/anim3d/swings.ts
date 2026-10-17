@@ -270,5 +270,9 @@ export const SETUP_PUTT = setup(PUTT_STROKE, PUTT_ADDRESS, [
   L('Arms hang, light grip pressure', 'Die Arme hängen, leichter Griffdruck'),
 ]);
 
-export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT };
+/** one hand on the club: putting and chipping with the lead hand only */
+export const PUTT_ONE: Swing = { ...PUTT_STROKE, oneHand: true };
+export const CHIP_ONE: Swing = { ...CHIP_STROKE, oneHand: true };
+
+export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE };
 export type SwingId = keyof typeof SWINGS;

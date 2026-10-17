@@ -282,6 +282,8 @@ set3d(DRILL_MOTIONS['fairway-bunker'], 'sand');
 set3d(DRILL_MOTIONS['feet-together-swing'], 'feet');
 set3d(DRILL_MOTIONS['feet-together-pitch'], 'feetHalf');
 set3d(DRILL_MOTIONS['pause-top'], 'pause');
+set3d(DRILL_MOTIONS['one-hand'], 'puttOne');
+set3d(DRILL_MOTIONS['lead-hand-chip'], 'chipOne');
 set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sand');
 set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
 for (const t of ['Uphill lie', 'Downhill lie']) set3d(SECTION_MOTIONS.slopes?.[t], undefined);
