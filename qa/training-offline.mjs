@@ -44,10 +44,12 @@ await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Leiter-Übung' })
 await p.waitForTimeout(300);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'offline: the drill shows its sketch');
 ok(await p.locator('.tr-metronome').isVisible(), 'offline: the metronome is there');
+await p.getByRole('tab', { name: 'Ergebnis' }).click();
 for (let i = 0; i < 6; i++) await p.locator('.tr-result button').nth(1).click();
 await p.getByRole('button', { name: 'Ergebnis speichern' }).click();
 ok(await p.getByRole('button', { name: 'Gespeichert ✓' }).isVisible(), 'offline: a result is saved');
 await p.waitForTimeout(1500);
+await p.getByRole('tab', { name: 'Videos' }).click().catch(() => {});
 const thumbs = await p.locator('.tr-video-thumb img').count();
 ok(thumbs === 0 || (await p.locator('.tr-video-cover').count()) > 0, 'offline: videos show their card without breaking');
 await back();
