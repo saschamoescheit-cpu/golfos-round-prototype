@@ -503,6 +503,27 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
 export const SECTION_DRILL_PICTURES: Partial<Record<CategoryId, Record<string, string>>> = {
   irons: { 'Where to aim on approach shots': 'par3-middle' },
   basics: { 'A set-up routine': 'routine-aim-tee' },
+  // night 17./18.10.2026: the sections that had only a video – the drill picture that shows what the text says
+  putting: { 'Rhythm: the key to length': 'metronome', 'Long putts (over 8 m)': 'lag-circle' },
+  greenreading: {
+    'Overview first, details later': 'low-side',
+    'Speed and break belong together': 'three-speeds',
+    'Aim point and start line': 'apex-tee',
+    'Feeling the slope with the feet': 'feet-feel',
+    'GolfOS green slope': 'green-map-compare',
+  },
+  chipping: { 'Special chips': 'hybrid-chip', 'Practise like this': 'landing-ring' },
+  pitching: { 'Your wedge chart': 'clock-matrix' },
+  bunker: { 'Special lies': 'fried-egg' },
+  trouble: { Wind: 'knockdown-wind', 'Decide first: the escape rule': 'escape-decision' },
+  woods: { 'When to take a wood': 'wood-par5-layup' },
+  driver: { 'Stay in play': 'tee-side', 'More speed': 'speed-training' },
+  swing: { 'Tempo and rhythm': 'tempo-321' },
+  ballflight: { 'The nine ball flights': 'nine-shot', 'Contact faults': 'sweetspot-gate', 'Shape on purpose': 'draw-on-purpose' },
+  strategy: { 'Plan the hole backwards': 'favourite-distance', 'Simple rules': 'par3-middle', 'Your personal par': 'bogey-plan', 'Using the GolfOS caddie': 'two-club-wind' },
+  mental: { 'The pre-shot routine': 'routine-build', 'After the shot': 'ten-second', 'Pressure and nerves': 'box-breathing', 'Thinking on the course': 'visualise' },
+  fitness: { 'Mobility: the golf joints': 'open-books' },
+  practice: { 'Two modes: train and test': 'block-then-random' },
 };
 
 /** Sections with a golfer, by topic and the English section title. */
