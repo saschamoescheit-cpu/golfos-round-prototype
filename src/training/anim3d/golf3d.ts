@@ -411,7 +411,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       scene.add(rig.root);
       ballMesh.position.copy(ballPos());
       tee.visible = !!s.tee;
-      (pad.material as THREE.MeshStandardMaterial).color.set(s.sand ? '#e3cf96' : '#8fc069');
+      (pad.material as THREE.MeshStandardMaterial).color.set(s.sand ? '#e3cf96' : '#8fc069'); // ci-allow: bunker sand
       tee.position.set(ballPos().x, 0.02, ballPos().z);
       prep = prepare(s);
       bounds = null;
