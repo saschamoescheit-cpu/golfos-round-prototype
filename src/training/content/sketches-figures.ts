@@ -1,4 +1,4 @@
-import { L, type CategoryId, type P, type SideItem, type Sketch } from '../types';
+import { L, type CategoryId, type P, type SideItem, type Sketch, type SketchItem } from '../types';
 import type { GolferOptions, JointName } from '../Golfer';
 import { SKETCHES } from './sketches';
 
@@ -499,6 +499,20 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
   ]),
 };
 
+/** a plan as stacked bars: one row per part, its height by the minutes (or equal), the label inside */
+const timeBars = (rows: [L, number][], caption?: L): Sketch => {
+  const total = rows.reduce((n, r) => n + r[1], 0);
+  const H = 6;
+  let y = H;
+  const items: SketchItem[] = [{ k: 'fairway', x: 0, y: 0, w: 4, h: H }];
+  for (const [label, m] of rows) {
+    const h = (m / total) * (H - 0.4);
+    y -= h;
+    items.push({ k: 'zone', x: 0.25, y: y + 0.04, w: 3.5, h: h - 0.08, label });
+  }
+  return { view: 'top', w: 4, h: H, items, caption };
+};
+
 /** Sections that show the picture of a drill (its sketch lives in the drill's content file), by topic and title. */
 export const SECTION_DRILL_PICTURES: Partial<Record<CategoryId, Record<string, string>>> = {
   irons: { 'Where to aim on approach shots': 'par3-middle' },
@@ -533,9 +547,6 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     'From the rough': SKETCHES['rough-reading'],
     'Divots, bare ground, wet grass': SKETCHES['divot-lie'],
   },
-  practice: {
-    'Winter and home practice': SKETCHES['chip-towel-home'],
-  },
   chipping: {
     'The stroke': S(5, 2.4, [
       ground(5),
@@ -555,6 +566,14 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     ], L('Face-on, target to the right.', 'Von vorn, Ziel rechts.')),
   },
   putting: {
+    'How to practise putting': timeBars(
+      [
+        [L('start line – gates', 'Startlinie – Tore'), 1],
+        [L('length – ladder, lag', 'Länge – Leiter, Lag'), 1],
+        [L('short putts under pressure – circles', 'kurze Putts unter Druck – Kreise'), 1],
+      ],
+      L('About a third of the time each. Then one ball like on the course: read, routine, putt.', 'Je etwa ein Drittel der Zeit. Danach ein Ball wie auf dem Platz: lesen, Routine, putten.'),
+    ),
     'Set-up': S(3, 2.2, [
       ground(3),
       fig(1.0, 'puttSide'),
@@ -701,6 +720,55 @@ export const SECTION_FIGURE_SKETCHES: Partial<Record<CategoryId, Record<string, 
     'Strength and speed': FIGURE_SKETCHES['med-ball-throw'],
     'Self tests (TPI-style)': FIGURE_SKETCHES['deep-squat'],
     'Warm-up before the round (10 minutes)': FIGURE_SKETCHES['warmup-10'],
+  },
+  practice: {
+    'Winter and home practice': SKETCHES['chip-towel-home'],
+    'A 60-minute session': timeBars(
+      [
+        [L('warm-up · 5 min', 'Aufwärmen · 5 min'), 5],
+        [L('putting · 15 min', 'Putten · 15 min'), 15],
+        [L('chipping and pitching · 15 min', 'Chippen und Pitchen · 15 min'), 15],
+        [L('full swing · 15 min', 'Voller Schwung · 15 min'), 15],
+        [L('game · 10 min', 'Spiel · 10 min'), 10],
+      ],
+      L('Each part ends with targets and a count.', 'Jeder Teil endet mit Zielen und Zählen.'),
+    ),
+    'Use your data': {
+      view: 'top',
+      w: 4,
+      h: 6,
+      items: [
+        { k: 'fairway', x: 0, y: 0, w: 4, h: 6 },
+        { k: 'zone', x: 0.25, y: 4.7, w: 3.5, h: 1.0, label: L('Rounds: where you lose shots', 'Rounds: wo du Schläge verlierst') },
+        { k: 'zone', x: 0.25, y: 3.2, w: 3.5, h: 1.0, label: L('“From your rounds”: your plan', '„Aus deinen Runden“: dein Plan') },
+        { k: 'zone', x: 0.25, y: 1.7, w: 3.5, h: 1.0, label: L('Training: results of the drills', 'Training: Ergebnisse der Übungen') },
+        { k: 'zone', x: 0.25, y: 0.2, w: 3.5, h: 1.0, label: L('Progress: is it getting better?', 'Verlauf: wird es besser?') },
+        { k: 'path', pts: [[2, 4.68], [2, 4.25]], style: 'roll', arrow: true },
+        { k: 'path', pts: [[2, 3.18], [2, 2.75]], style: 'roll', arrow: true },
+        { k: 'path', pts: [[2, 1.68], [2, 1.25]], style: 'roll', arrow: true },
+      ],
+      caption: L('After a few weeks the next rounds show whether your weakness got smaller.', 'Nach ein paar Wochen zeigen die nächsten Runden, ob deine Schwäche kleiner wird.'),
+    },
+  },
+  slopes: {
+    'Combined slopes and the short game': {
+      view: 'top',
+      w: 4,
+      h: 7,
+      items: [
+        { k: 'fairway', x: 0.3, y: 0, w: 3.4, h: 7 },
+        { k: 'hole', at: [2, 6.4], flag: true },
+        { k: 'path', pts: [[2, 0.6], [2, 6.3]], style: 'aim' },
+        { k: 'path', pts: [[2, 0.6], [1.7, 3.5], [0.9, 5.6]], style: 'flight', arrow: true },
+        { k: 'path', pts: [[2, 0.6], [2.3, 3.5], [3.1, 5.6]], style: 'flight', arrow: true },
+        { k: 'path', pts: [[2, 0.6], [2.05, 3], [2, 5.2]], style: 'flight', arrow: true },
+        { k: 'ball', at: [2, 0.6] },
+        { k: 'mark', at: [0.9, 5.6], t: L('uphill alone: high, short, tends left', 'nur bergauf: hoch, kurz, eher nach links') },
+        { k: 'mark', at: [3.1, 5.6], t: L('ball below the feet alone: tends right', 'nur Ball unter den Füßen: eher nach rechts') },
+        { k: 'mark', at: [2, 5.2], t: L('both together: nearly straight, but short – take more club', 'beides zusammen: fast gerade, aber kurz – mehr Schläger') },
+      ],
+      caption: L('When in doubt: lay up to a flat spot instead of forcing a long club from a steep slope.', 'Im Zweifel: auf eine flache Stelle vorlegen, statt aus einem steilen Hang einen langen Schläger zu erzwingen.'),
+    },
   },
   basics: {
     'Ball position': SKETCHES['ball-position-ladder'],

@@ -83,7 +83,7 @@ export const slopes: Category = {
     {
       title: L('Combined slopes and the short game', 'Kombinierte Hänge und das kurze Spiel'),
       points: [
-        L('On combined slopes (e.g. uphill and ball below the feet) add the effects: here the ball flies high and goes right – often they cancel each other.', 'Bei kombinierten Hängen (z. B. bergauf und Ball unter den Füßen) addieren sich die Effekte: Hier fliegt der Ball hoch und nach rechts – oft heben sie sich teilweise auf.'),
+        L('On combined slopes take both effects together. Uphill with the ball below the feet: the ball flies high and short; uphill pulls it left, below the feet pushes it right – the two often partly cancel out.', 'Bei kombinierten Hängen beide Effekte zusammen nehmen. Bergauf mit Ball unter den Füßen: Der Ball fliegt hoch und kurz; bergauf zieht ihn eher nach links, unter den Füßen eher nach rechts – beides hebt sich oft teilweise auf.'),
         L('Chips and pitches from a slope: same rules, plus – uphill the ball stops quickly, downhill it runs a lot.', 'Chips und Pitches aus dem Hang: dieselben Regeln, außerdem – bergauf bleibt der Ball schnell liegen, bergab rollt er viel.'),
         L('When in doubt: lay up to a flat spot instead of forcing a long club from a steep slope.', 'Im Zweifel: auf eine flache Stelle vorlegen, statt aus einem steilen Hang einen langen Schläger zu erzwingen.'),
       ],
