@@ -138,11 +138,36 @@ function buildClub(kind: Club3D): THREE.Group {
 // ---------- the swing at a time ----------
 const ease = (k: number) => 0.5 - 0.5 * Math.cos(Math.PI * k);
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
-const lerpRot = (a: Rot | undefined, b: Rot | undefined, k: number): Rot => {
-  const x = a ?? [0, 0, 0];
-  const y = b ?? [0, 0, 0];
-  return [lerp(x[0], y[0], k), lerp(x[1], y[1], k), lerp(x[2], y[2], k)];
+/** The swings' trunk angles (swings.ts) lifted to the reference address of the shared figure (Agility 18.10.2026,
+ *  ADDRESS in src/mobility/anim3d/clips.ts: trunk about 45° forward with a straight back, the head in line with the
+ *  spine, the eyes down): a little further forward at the hips, the neck less bent back, the head nodding to the ball –
+ *  the head only while the eyes are on the ball. */
+const POSTURE = { pelvis: 2, spine: 2, chest: 1, neck: 8, head: 10 } as const;
+const postured = (body: SwingKey['body'], look: number): SwingKey['body'] => {
+  const out: SwingKey['body'] = {};
+  for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) {
+    const r = body[id] ?? [0, 0, 0];
+    out[id] = [r[0] + POSTURE[id] * (id === 'neck' || id === 'head' ? look : 1), r[1], r[2]];
+  }
+  return out;
 };
+
+/** A value between the keys t1 and t2 (u from 0 to 1), on a smooth curve through the four keys around it: the
+ *  speed runs on through a key instead of stopping there (a swing flows), but the curve never goes beyond a key –
+ *  where the movement turns (the top, the finish) or holds, it comes to rest (monotone cubic, Fritsch–Butland). */
+export function mono(p0: number, p1: number, p2: number, p3: number, t0: number, t1: number, t2: number, t3: number, u: number): number {
+  const h = t2 - t1;
+  if (h <= 0) return p1;
+  const d0 = t1 > t0 ? (p1 - p0) / (t1 - t0) : 0;
+  const d1 = (p2 - p1) / h;
+  const d2 = t3 > t2 ? (p3 - p2) / (t3 - t2) : 0;
+  const tan = (x: number, y: number) => (x * y > 0 ? (2 * x * y) / (x + y) : 0);
+  const m1 = tan(d0, d1);
+  const m2 = tan(d1, d2);
+  const u2 = u * u;
+  const u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * p1 + (u3 - 2 * u2 + u) * h * m1 + (-2 * u3 + 3 * u2) * p2 + (u3 - u2) * h * m2;
+}
 
 interface Prepared {
   /** clubQ: the club's whole turn in the chest frame – the shaft direction and the face with it */
@@ -223,6 +248,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     extras: THREE.Group;
     /** the divot: the mark in the turf and the bits of grass flying off (none for a putt, a chip, from the tee or thin) */
     divot: { mark: THREE.Mesh; bits: THREE.Mesh[]; from: number; len: number } | null;
+    /** the path of the clubhead, drawn up to now – from behind it shows the swing plane */
+    trace: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     swing: Swing;
     prep: Prepared;
     x: number;
@@ -266,7 +293,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const s = p.swing;
     let address: { dir: THREE.Vector3; q: THREE.Quaternion } | null = null;
     const keys = s.keys.map((k) => {
-      poseTrunk(p, k.body, k.shift ?? 0, -(k.drop ?? 0.05), k.push ?? 0);
+      poseTrunk(p, postured(k.body, k.free ? 0 : 1), k.shift ?? 0, -(k.drop ?? 0.05), k.push ?? 0);
       let hands = new THREE.Vector3(...k.hands).applyQuaternion(chestQ(p.rig)).add(chestPos(p.rig));
       const head = ballPos(p).add(new THREE.Vector3(-0.04, 0.005, 0)).add(new THREE.Vector3(...(k.miss ?? [0, 0, 0])));
       const dir = k.club === 'ball' ? head.clone().sub(hands).normalize() : new THREE.Vector3(...k.club).normalize();
@@ -298,12 +325,17 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     while (i < keys.length - 1 && keys[i + 1].t <= tt) i++;
     const a = keys[i];
     const b = keys[Math.min(i + 1, keys.length - 1)];
-    const k = b.t > a.t ? ease((tt - a.t) / (b.t - a.t)) : 0;
-    const body: SwingKey['body'] = {};
-    for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) body[id] = lerpRot(a.body[id], b.body[id], k);
-    poseTrunk(p, body, lerp(a.shift ?? 0, b.shift ?? 0, k), -lerp(a.drop ?? 0.05, b.drop ?? 0.05, k), lerp(a.push ?? 0, b.push ?? 0, k));
+    const k0 = keys[Math.max(i - 1, 0)];
+    const k3 = keys[Math.min(i + 2, keys.length - 1)];
+    const u = b.t > a.t ? (tt - a.t) / (b.t - a.t) : 0;
+    const k = ease(u);
+    // every number of the pose on the smooth curve through the keys around this moment
+    const mix = (g: (x: Prepared['keys'][number]) => number) => mono(g(k0), g(a), g(b), g(k3), k0.t, a.t, b.t, k3.t, u);
     // the eyes on the ball until the club has passed it, then the head turns with the body
     const look = lerp(a.free ? 0 : 1, b.free ? 0 : 1, k);
+    const body: SwingKey['body'] = {};
+    for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) body[id] = [0, 1, 2].map((c) => mix((x) => x.body[id]?.[c] ?? 0)) as Rot;
+    poseTrunk(p, postured(body, look), mix((x) => x.shift ?? 0), -mix((x) => x.drop ?? 0.05), mix((x) => x.push ?? 0));
     if (look > 0) {
       // the smallest turn of the head that points the face at the ball (no roll, also with the ball right below the
       // eyes when putting); the face points a little below the eyes' line – aim a bit beyond the ball
@@ -320,9 +352,15 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     }
     const q = chestQ(rig);
     const chestP = chestPos(rig);
-    const handsL = new THREE.Vector3(lerp(a.hands[0], b.hands[0], k), lerp(a.hands[1], b.hands[1], k), lerp(a.hands[2], b.hands[2], k)).applyQuaternion(q).add(chestP);
-    // the club turns on the shortest way between the two keys – shaft and face together
-    const clubW = q.clone().multiply(a.clubQ.clone().slerp(b.clubQ, k));
+    const handsL = new THREE.Vector3(...[0, 1, 2].map((c) => mix((x) => x.hands[c]))).applyQuaternion(q).add(chestP);
+    // the club turns with the hands – shaft and face together, on the same smooth curve (the four turns on one side
+    // of the sphere, so the curve takes the short way)
+    const qs = [k0.clubQ, a.clubQ, b.clubQ, k3.clubQ].map((x) => x.clone());
+    if (qs[0].dot(qs[1]) < 0) qs[0].set(-qs[0].x, -qs[0].y, -qs[0].z, -qs[0].w);
+    if (qs[2].dot(qs[1]) < 0) qs[2].set(-qs[2].x, -qs[2].y, -qs[2].z, -qs[2].w);
+    if (qs[3].dot(qs[2]) < 0) qs[3].set(-qs[3].x, -qs[3].y, -qs[3].z, -qs[3].w);
+    const cq = (['x', 'y', 'z', 'w'] as const).map((c) => mono(qs[0][c], qs[1][c], qs[2][c], qs[3][c], k0.t, a.t, b.t, k3.t, u));
+    const clubW = q.clone().multiply(new THREE.Quaternion(cq[0], cq[1], cq[2], cq[3]).normalize());
     const dir = new THREE.Vector3(0, 1, 0).applyQuaternion(clubW).normalize();
     const handsR = handsL.clone().addScaledVector(dir, 0.09);
 
@@ -431,6 +469,45 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     });
   };
 
+  /** the clubhead's path through the swing as a thin tube; it grows with the swing (the share of its length
+   *  reached by each moment) and starts again with every run */
+  const HEAD = (len: number) => new THREE.Vector3(0, len - 0.01, 0.04);
+  const buildTrace = (p: Player): Player['trace'] => {
+    // from the address until shortly after the hit – beyond, the club wraps round the body and the line would only clutter
+    const n = 150;
+    const end = p.swing.hit ? Math.min(p.prep.length, p.swing.hit.at + 0.3) : p.prep.length;
+    const times: number[] = [];
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= n; i++) {
+      const time = (end * i) / n;
+      place(p, time);
+      times.push(time);
+      pts.push(p.club.localToWorld(HEAD(CLUB_LEN[p.swing.club])));
+    }
+    const share = [0];
+    for (let i = 1; i < pts.length; i++) share.push(share[i - 1] + pts[i].distanceTo(pts[i - 1]));
+    const total = share[share.length - 1];
+    if (total < 0.3) return null;
+    for (let i = 0; i < share.length; i++) share[i] /= total;
+    const segs = 240;
+    // the tube needs a direction everywhere: points where the club stands still (address, holds) are left out
+    const path = pts.filter((x, i) => i === 0 || x.distanceTo(pts[i - 1]) > 0.002);
+    const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(path), segs, 0.0045, 5, false);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#79a128', transparent: true, opacity: 0.75, depthWrite: false }));
+    mesh.renderOrder = 1;
+    return { mesh, times, share };
+  };
+  const placeTrace = (p: Player, time: number) => {
+    const tr = p.trace;
+    if (!tr) return;
+    let i = 0;
+    while (i < tr.times.length - 1 && tr.times[i + 1] <= time) i++;
+    const segs = 240;
+    const k = Math.floor(tr.share[i] * segs);
+    tr.mesh.visible = k > 0;
+    tr.mesh.geometry.setDrawRange(0, k * 5 * 6);
+  };
+
   /** the ball: still until the club arrives, then rolling to a stop or flying away towards the target */
   const placeBall = (p: Player, time: number) => {
     const at = ballPos(p);
@@ -513,6 +590,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       if (i === 0) s = r;
       placeBall(p, tt);
       placeDivot(p, tt);
+      placeTrace(p, tt);
     });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
@@ -605,8 +683,12 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       ball.position.copy(at);
       tee.position.set(at.x, 0.02, at.z);
       scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, divot, swing, x, z, prep: prepare({ rig, swing, x, z }) };
+      return { rig, club, ball, tee, extras, divot, trace: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
+    for (const p of players) {
+      p.trace = buildTrace(p);
+      if (p.trace) p.extras.add(p.trace.mesh);
+    }
     length = Math.max(...players.map((p) => p.prep.length));
     const first = list[0].swing;
     (pad.material as THREE.MeshStandardMaterial).color.set(first.sand ? '#e3cf96' : '#8fc069'); // ci-allow: bunker sand
