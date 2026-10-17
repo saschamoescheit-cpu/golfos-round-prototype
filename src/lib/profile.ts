@@ -10,6 +10,8 @@ export interface Profile {
   homeClub: string;
   /** Profile photo: from the Google sign-in (URL) or chosen in the app (small JPEG as data URL). */
   photo?: string;
+  /** Left- or right-handed (Sascha 17.10.2026): the Training pictures are mirrored for left-handers. Default right. */
+  hand?: 'right' | 'left';
 }
 
 export const EMPTY_PROFILE: Profile = { firstName: '', lastName: '', hcpIndex: '', homeClub: '' };
@@ -22,6 +24,9 @@ export function loadProfile(): Profile {
     return EMPTY_PROFILE;
   }
 }
+
+/** The player plays left-handed (from the profile). */
+export const isLeftHanded = (): boolean => loadProfile().hand === 'left';
 
 export function saveProfile(p: Profile): void {
   try {

@@ -418,6 +418,8 @@ export interface GolferOptions {
   crossClub?: boolean;
   /** lower hips and more knee flex (stay down) */
   crouch?: boolean;
+  /** the typical fault: the wrists flip, the hands fall behind the clubhead, the shaft leans away from the target */
+  scoop?: boolean;
 }
 
 /** The joints of a pose in metres (with the options applied), and the feet. */
@@ -448,6 +450,10 @@ export function golferJoints(o: GolferOptions): Record<JointName, P> & { trailHa
   if (o.crouch) {
     for (const k of ['head', 'neck', 'pelvis', 'leadShoulder', 'trailShoulder', 'leadElbow', 'trailElbow', 'hands', 'leadHip', 'trailHip', 'clubHeadNo']) if (j[k]) j[k] = [j[k][0], j[k][1] - 0.07];
     for (const k of ['leadKnee', 'trailKnee']) if (j[k]) j[k] = [j[k][0] + 0.05, j[k][1] - 0.02];
+  }
+  if (o.scoop && j.hands && j.clubHead) {
+    j.hands = [j.clubHead[0] - 0.2, j.hands[1] + 0.03];
+    for (const k of ['leadElbow', 'trailElbow']) if (j[k]) j[k] = [j[k][0] - 0.1, j[k][1]];
   }
   if (o.oneHand) {
     // the trail hand rests on the chest

@@ -150,6 +150,18 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
+        <div className="field">
+          <label>{tr('You play', 'Du spielst')}</label>
+          <Segmented<'right' | 'left'>
+            label={tr('Hand', 'Hand')}
+            value={p.hand ?? 'right'}
+            onChange={(v) => v && set({ hand: v })}
+            options={[
+              { value: 'right', label: tr('Right-handed', 'Rechtshänder') },
+              { value: 'left', label: tr('Left-handed', 'Linkshänder') },
+            ]}
+          />
+        </div>
       </section>
 
       <section className="card stats-card">

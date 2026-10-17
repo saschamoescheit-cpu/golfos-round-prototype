@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode, type SVGProps } from 'react';
 import { getLang, tr } from '../lib/i18n';
+import { isLeftHanded } from '../lib/profile';
 import type { L, P, SideItem, Sketch, SketchItem } from './types';
 import { Golfer, golferJoints } from './Golfer';
 
@@ -8,7 +9,34 @@ import { Golfer, golferJoints } from './Golfer';
 // Balls, tees and holes are drawn larger than to scale, so they stay visible on a phone.
 
 // plain labels are written with a German decimal comma ("1,2 m") – a point in English
-const txt = (t: L | string) => (typeof t === 'string' ? (getLang() === 'en' ? t.replace(/(\d),(\d)/g, '$1.$2') : t) : tr(t.en, t.de));
+const plain = (t: L | string) => (typeof t === 'string' ? (getLang() === 'en' ? t.replace(/(\d),(\d)/g, '$1.$2') : t) : tr(t.en, t.de));
+
+// Left-handers (Sascha 17.10.2026, profile "Du spielst"): every sketch is drawn mirrored – the target is on the other
+// side, so the words for the sides in the sketch texts swap as well (the drill texts say lead/trail and stay as they are)
+const SIDE_WORDS: Record<string, string> = {
+  rechts: 'links', links: 'rechts', Rechts: 'Links', Links: 'Rechts',
+  rechte: 'linke', linke: 'rechte', rechten: 'linken', linken: 'rechten', rechter: 'linker', linker: 'rechter', rechtes: 'linkes', linkes: 'rechtes',
+  Rechtshänder: 'Linkshänder', Linkshänder: 'Rechtshänder',
+  right: 'left', left: 'right', Right: 'Left', Left: 'Right',
+  'right-hander': 'left-hander', 'left-hander': 'right-hander',
+};
+export const swapSides = (s: string) => s.replace(/(?<![\p{L}-])(right-hander|left-hander|Rechtshänder|Linkshänder|rechte[nrs]?|linke[nrs]?|[Rr]echts|[Ll]inks|[Rr]ight|[Ll]eft)(?![\p{L}-])/gu, (w) => SIDE_WORDS[w] ?? w);
+const txt = (t: L | string) => (isLeftHanded() ? swapSides(plain(t)) : plain(t));
+
+/** the drawing of a sketch, mirrored for left-handers; texts inside stay readable (MText) */
+const MirrorCtx = createContext(false);
+function Mirror(props: { w: number; children: ReactNode }) {
+  const m = isLeftHanded();
+  return <MirrorCtx.Provider value={m}>{m ? <g transform={`translate(${props.w} 0) scale(-1 1)`}>{props.children}</g> : props.children}</MirrorCtx.Provider>;
+}
+/** a text in a sketch: in a mirrored drawing it is flipped back around its x and its alignment swaps sides */
+function MText(props: SVGProps<SVGTextElement>) {
+  const m = useContext(MirrorCtx);
+  if (!m) return <text {...props} />;
+  const x = Number(props.x ?? 0);
+  const a = props.textAnchor ?? 'start';
+  return <text {...props} textAnchor={a === 'start' ? 'end' : a === 'end' ? 'start' : a} transform={`matrix(-1 0 0 1 ${2 * x} 0)`} />;
+}
 
 const C = {
   bg: '#5d8f3a',
@@ -116,9 +144,9 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
           <g key={i}>
             <rect x={X(it.x)} y={Y(it.y + it.h)} width={it.w * k} height={it.h * k} rx={4} fill="#ffffff22" stroke={C.line} strokeWidth={2} strokeDasharray="6 4" />
             {it.label && (
-              <text x={X(it.x + it.w / 2)} y={Math.min(Y(it.y + it.h / 2) + 4, Y(it.y + it.h) + 16)} textAnchor="middle" fontSize={12} fontWeight={700} fill={C.text}>
+              <MText x={X(it.x + it.w / 2)} y={Math.min(Y(it.y + it.h / 2) + 4, Y(it.y + it.h) + 16)} textAnchor="middle" fontSize={12} fontWeight={700} fill={C.text}>
                 {txt(it.label)}
-              </text>
+              </MText>
             )}
           </g>
         );
@@ -140,9 +168,9 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
             <circle cx={X(it.at[0])} cy={Y(it.at[1])} r={5.5} fill="#ffffff" stroke="#55606a" strokeWidth={1} />
             {it.n != null && (
               // labels of balls near the right edge go to the left of the ball
-              <text x={X(it.at[0]) + (X(it.at[0]) > W - 70 ? -8 : 8)} y={Y(it.at[1]) - 6} fontSize={11} fontWeight={700} fill={C.text} textAnchor={X(it.at[0]) > W - 70 ? 'end' : 'start'}>
+              <MText x={X(it.at[0]) + (X(it.at[0]) > W - 70 ? -8 : 8)} y={Y(it.at[1]) - 6} fontSize={11} fontWeight={700} fill={C.text} textAnchor={X(it.at[0]) > W - 70 ? 'end' : 'start'}>
                 {typeof it.n === 'object' ? txt(it.n) : it.n}
-              </text>
+              </MText>
             )}
           </g>
         );
@@ -159,9 +187,9 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
           <g key={i}>
             <circle cx={X(it.at[0])} cy={Y(it.at[1])} r={it.r * k} fill={it.fill ? '#ffffff33' : 'none'} stroke={C.ring} strokeWidth={3} />
             {it.label && (
-              <text x={X(it.at[0])} y={Y(it.at[1]) - it.r * k - 4} textAnchor="middle" fontSize={11} fontWeight={700} fill={C.text}>
+              <MText x={X(it.at[0])} y={Y(it.at[1]) - it.r * k - 4} textAnchor="middle" fontSize={11} fontWeight={700} fill={C.text}>
                 {txt(it.label)}
-              </text>
+              </MText>
             )}
           </g>
         );
@@ -232,18 +260,18 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
               <path d="M0,-18 l-6,9 l12,0 z" fill="#16324a" />
             </g>
             {label && (
-              <text x={x + 14 * side} y={y + 18 * sy + 4} fontSize={11} fill="#16324a" fontWeight={700} textAnchor={side > 0 ? 'start' : side < 0 ? 'end' : 'middle'}>
+              <MText x={x + 14 * side} y={y + 18 * sy + 4} fontSize={11} fill="#16324a" fontWeight={700} textAnchor={side > 0 ? 'start' : side < 0 ? 'end' : 'middle'}>
                 {label}
-              </text>
+              </MText>
             )}
           </g>
         );
       }
       case 'text':
         return (
-          <text key={i} x={X(it.at[0])} y={Y(it.at[1])} fontSize={it.size ?? 12} fontWeight={700} fill={C.text} textAnchor={it.anchor ?? 'middle'}>
+          <MText key={i} x={X(it.at[0])} y={Y(it.at[1])} fontSize={it.size ?? 12} fontWeight={700} fill={C.text} textAnchor={it.anchor ?? 'middle'}>
             {txt(it.t)}
-          </text>
+          </MText>
         );
       case 'dim': {
         const [a, b] = [it.from, it.to];
@@ -254,9 +282,9 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
           <g key={i}>
             <line x1={X(a[0])} y1={Y(a[1])} x2={X(b[0])} y2={Y(b[1])} stroke="#16324a" strokeWidth={1.2} markerStart="url(#tr-dim)" markerEnd="url(#tr-dim)" />
             <rect x={mx - label.length * 3.6 - 4} y={my - 9} width={label.length * 7.2 + 8} height={16} rx={4} fill="#ffffffcc" />
-            <text x={mx} y={my + 3} fontSize={11} fontWeight={700} fill="#16324a" textAnchor="middle">
+            <MText x={mx} y={my + 3} fontSize={11} fontWeight={700} fill="#16324a" textAnchor="middle">
               {label}
-            </text>
+            </MText>
           </g>
         );
       }
@@ -264,12 +292,14 @@ function Top(props: { sketch: Extract<Sketch, { view: 'top' }>; label?: string }
   };
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={props.label ?? tr('Sketch of the drill', 'Skizze der Übung')} style={{ display: 'block', background: C.bg, borderRadius: 12 }}>
+      <Mirror w={W}>
       <defs>
         <marker id="tr-dim" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" fill="#16324a" />
         </marker>
       </defs>
       {items.map(draw)}
+    </Mirror>
     </svg>
   );
 }
@@ -319,9 +349,9 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
             <circle cx={jx} cy={jy} r={4} fill="none" stroke="#5e8a14" strokeWidth={2} />
             <line x1={jx + ((mx - jx) / d) * 4} y1={jy + ((my - jy) / d) * 4} x2={mx - ((mx - jx) / d) * 8.5} y2={my - ((my - jy) / d) * 8.5} stroke="#5e8a14" strokeWidth={1.6} />
             <circle cx={mx} cy={my} r={8.5} fill="#5e8a14" stroke="#ffffff" strokeWidth={1.4} />
-            <text x={mx} y={my + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
+            <MText x={mx} y={my + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
               {no}
-            </text>
+            </MText>
           </g>
         );
       }
@@ -352,9 +382,9 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
         return <line key={i} x1={X(it.from[0])} y1={Y(it.from[1])} x2={X(it.to[0])} y2={Y(it.to[1])} stroke={it.stick ? '#ff9d2e' : '#16324a'} strokeWidth={it.stick ? 3 : 1.5} strokeLinecap={it.stick ? 'round' : undefined} strokeDasharray={it.dashed ? '5 4' : undefined} />;
       case 'text':
         return (
-          <text key={i} x={X(it.at[0])} y={Y(it.at[1])} fontSize={it.size ?? 12} fontWeight={700} fill="#16324a" textAnchor={it.anchor ?? 'middle'}>
+          <MText key={i} x={X(it.at[0])} y={Y(it.at[1])} fontSize={it.size ?? 12} fontWeight={700} fill="#16324a" textAnchor={it.anchor ?? 'middle'}>
             {txt(it.t)}
-          </text>
+          </MText>
         );
     }
   };
@@ -373,13 +403,16 @@ function Side(props: { sketch: Extract<Sketch, { view: 'side' }>; label?: string
       const size = Math.min(Math.max(x1 - x0, y1 - y0) + 24, Math.max(W, H));
       const cx = (x0 + x1) / 2;
       const cy = (y0 + y1) / 2;
-      view = `${(cx - size / 2).toFixed(1)} ${(cy - size / 2).toFixed(1)} ${size.toFixed(1)} ${size.toFixed(1)}`;
+      const vx = isLeftHanded() ? W - (cx + size / 2) : cx - size / 2;
+      view = `${vx.toFixed(1)} ${(cy - size / 2).toFixed(1)} ${size.toFixed(1)} ${size.toFixed(1)}`;
     }
   }
   return (
     <svg viewBox={view} width="100%" role="img" aria-label={props.label ?? tr('Sketch', 'Skizze')} style={{ display: 'block', background: C.sky, borderRadius: 12 }}>
+      <Mirror w={W}>
       {/* a thumbnail shows the scene only – numbered marks and texts are unreadable that small */}
       {(props.thumb ? items.filter((it) => it.k !== 'callout' && it.k !== 'text') : items).map(draw)}
+    </Mirror>
     </svg>
   );
 }
@@ -398,23 +431,24 @@ function Grip(props: { label?: string; thumb?: boolean }) {
       <circle cx={jx} cy={jy} r={4} fill="none" stroke="#5e8a14" strokeWidth={2} />
       <line x1={jx} y1={jy} x2={x} y2={y} stroke="#5e8a14" strokeWidth={1.6} />
       <circle cx={x} cy={y} r={9} fill="#5e8a14" stroke="#ffffff" strokeWidth={1.4} />
-      <text x={x} y={y + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
+      <MText x={x} y={y + 4} fontSize={11} fontWeight={800} fill="#ffffff" textAnchor="middle">
         {n}
-      </text>
+      </MText>
     </g>
   );
   return (
     <svg viewBox="0 0 340 300" width="100%" role="img" aria-label={props.label ?? tr('The grip as you see it', 'Der Griff, wie du ihn siehst')} style={{ display: 'block', background: C.sky, borderRadius: 12 }}>
+      <Mirror w={340}>
       {/* your own chest and shoulders, seen from above */}
       <path d="M20,0 L320,0 L320,22 Q300,52 250,54 L90,54 Q40,52 20,22 z" fill="#3f5f73" />
       {!props.thumb && (
         <>
-          <text x={44} y={26} fontSize={11} fontWeight={700} fill="#ffffff">
+          <MText x={44} y={26} fontSize={11} fontWeight={700} fill="#ffffff">
             {tr('lead shoulder', 'vordere Schulter')}
-          </text>
-          <text x={296} y={26} fontSize={11} fontWeight={700} fill="#ffffff" textAnchor="end">
+          </MText>
+          <MText x={296} y={26} fontSize={11} fontWeight={700} fill="#ffffff" textAnchor="end">
             {tr('trail shoulder', 'hintere Schulter')}
-          </text>
+          </MText>
         </>
       )}
       {/* the club: grip, then the shaft down to the ball */}
@@ -440,6 +474,7 @@ function Grip(props: { label?: string; thumb?: boolean }) {
       <path d="M150,170 Q170,188 196,172" fill="none" stroke={skinLine} strokeWidth={1.5} />
       <path d="M160,196 Q170,194 172,206 L170,246 Q168,256 160,256 Q152,254 153,244 z" fill={skin} stroke={skinLine} strokeWidth={1.5} />
       {!props.thumb && [badge(1, 150, 64, 138, 89), badge(2, 222, 112, 186, 118), badge(3, 122, 196, 166, 182), badge(4, 262, 132, 192, 168)]}
+    </Mirror>
     </svg>
   );
 }
@@ -447,6 +482,7 @@ function Grip(props: { label?: string; thumb?: boolean }) {
 function Face(props: { marks: { x: number; y: number; n?: L | string }[]; label?: string }) {
   return (
     <svg viewBox="0 0 340 170" width="100%" role="img" aria-label={props.label ?? tr('Club face', 'Schlagfläche')} style={{ display: 'block', background: '#2a3640', borderRadius: 12 }}>
+      <Mirror w={340}>
       <path d="M40,120 Q40,40 120,38 L270,34 Q312,36 306,92 Q300,130 250,134 L60,136 Q40,136 40,120 z" fill="#c9d0d6" stroke="#8b959d" strokeWidth={2} />
       {[60, 75, 90, 105, 120].map((y) => (
         <line key={y} x1={70} x2={285} y1={y} y2={y - 2} stroke="#9aa4ab" strokeWidth={1} />
@@ -457,18 +493,19 @@ function Face(props: { marks: { x: number; y: number; n?: L | string }[]; label?
         <g key={i}>
           <ellipse cx={175 + m.x * 95} cy={86 - m.y * 40} rx={8} ry={6} fill="#1d5fa8" opacity={0.75} />
           {m.n && (
-            <text x={175 + m.x * 95} y={86 - m.y * 40 + 22} fontSize={11} fill="#16324a" textAnchor="middle" fontWeight={700}>
+            <MText x={175 + m.x * 95} y={86 - m.y * 40 + 22} fontSize={11} fill="#16324a" textAnchor="middle" fontWeight={700}>
               {txt(m.n)}
-            </text>
+            </MText>
           )}
         </g>
       ))}
-      <text x={60} y={160} fontSize={11} fill="#c9d3cc">
+      <MText x={60} y={160} fontSize={11} fill="#c9d3cc">
         {tr('heel', 'Ferse')}
-      </text>
-      <text x={290} y={160} fontSize={11} fill="#c9d3cc" textAnchor="end">
+      </MText>
+      <MText x={290} y={160} fontSize={11} fill="#c9d3cc" textAnchor="end">
         {tr('toe', 'Spitze')}
-      </text>
+      </MText>
+    </Mirror>
     </svg>
   );
 }
