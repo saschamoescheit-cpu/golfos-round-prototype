@@ -4,6 +4,7 @@ import { isLeftHanded } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { TopBar } from '../components/ui';
+import { PausedIcon } from '../components/PausedIcon';
 import { drillById } from '../training/content';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { VideoCard, VideoNote } from '../training/ui';
@@ -210,13 +211,11 @@ function MobilityMenu(props: { current: MobilityTab; onPick: (t: MobilityTab) =>
 
 // ---------- Screening: start, continue, single tests ----------
 
+/** the pause mark of a paused screening – the shared green circle with two bars, as in the rounds list */
 function PausedMark() {
   return (
-    <span className="paused-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-        <rect x="6" y="5" width="4" height="14" rx="1" />
-        <rect x="14" y="5" width="4" height="14" rx="1" />
-      </svg>
+    <span className="paused-mark" role="img" aria-label={tr('paused', 'pausiert')}>
+      <PausedIcon />
     </span>
   );
 }
@@ -1001,12 +1000,47 @@ function DrillsTab(props: { nav: Nav }) {
   );
 }
 
+/** A drill – in tabs like the drill page of Training (Sascha 17.10.2026: no one-pager): how to · videos. */
 function DrillView(props: { id: string; nav: Nav }) {
   const d = drillById(props.id);
+  const [tab, setTab] = useState<'learn' | 'videos'>('learn');
   if (!d) return null;
+  const videos = d.videos ?? [];
   return (
     <main className="screen training mobility">
       <TopBar title={t(d.name)} onBack={props.nav.back} />
+      {videos.length > 0 && (
+        <div className="segmented tr-tabs" role="tablist" aria-label={t(d.name)}>
+          {(
+            [
+              ['learn', tr('How to', 'Anleitung')],
+              ['videos', 'Videos'],
+            ] as const
+          ).map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} aria-pressed={tab === id} onClick={() => setTab(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === 'videos' ? (
+        <>
+          {videos.map((v) => (
+            <VideoCard key={v.id} v={v} />
+          ))}
+          <VideoNote />
+        </>
+      ) : (
+        <DrillHow d={d} />
+      )}
+    </main>
+  );
+}
+
+function DrillHow(props: { d: Drill }) {
+  const d = props.d;
+  return (
+    <>
       {d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}
       <section className="card tr-section">
         <p className="mob-why">{t(d.goal)}</p>
@@ -1020,11 +1054,7 @@ function DrillView(props: { id: string; nav: Nav }) {
           {d.minutes} {tr('min', 'Min.')}
         </span>
       </section>
-      {(d.videos ?? []).map((v) => (
-        <VideoCard key={v.id} v={v} />
-      ))}
-      {(d.videos ?? []).length > 0 && <VideoNote />}
-    </main>
+    </>
   );
 }
 
