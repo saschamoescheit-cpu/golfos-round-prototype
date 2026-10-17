@@ -181,6 +181,9 @@ ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator(
 await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
 await p.waitForTimeout(300);
 ok((await p.getByText(/noch nicht bestätigt/).count()) === 1, 'balance: the unconfirmed games are named');
+await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
+await p.waitForTimeout(300);
+ok((await p.getByText('Ergebnis bestätigen').count()) >= 1, 'start page: the finished games to confirm');
 await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
 await p.locator('.list-item').first().click();
 await p.waitForTimeout(500);

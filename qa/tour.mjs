@@ -22,16 +22,17 @@ const shot = async (name, full = true) => {
 };
 await p.goto(url);
 await p.waitForTimeout(1200);
-await p.evaluate((exp) => {
+await p.evaluate(([exp, sun]) => {
   localStorage.clear();
   sessionStorage.clear();
+  if (sun) localStorage.setItem('golfos.sun.v1', '1'); // SUN=1: the tour in sun mode (light screen)
   localStorage.setItem('golfos.intro.v1', '1');
   localStorage.setItem('golfos.tip.shots.v1', '1');
   localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: 'Sascha', lastName: 'Möscheit', hcpIndex: '12,4', homeClub: 'Golfclub Hetzenhof' }));
   const r = { ...exp.round, signedAt: '2026-10-16T20:00:00Z' };
   localStorage.setItem('golfos.rounds.v1', JSON.stringify([r]));
   localStorage.setItem('golfos.track.v1.' + r.id, JSON.stringify(exp.track.map((x) => [x.t, x.p[0], x.p[1], x.acc, ...(x.open ? [1] : [])])));
-}, exp);
+}, [exp, !!process.env.SUN]);
 await p.reload();
 await p.waitForTimeout(1500);
 await shot('start-modules');

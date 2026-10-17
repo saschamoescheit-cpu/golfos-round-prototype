@@ -4,6 +4,7 @@ import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
 import { TopTools } from '../components/TopTools';
 import { uncheckedRounds } from './Rounds';
+import { unsignedRounds } from '../lib/signing';
 
 // Tab "Play" (Sascha 14.10.2026): start a round, or carry on with, finish or cancel the one in progress.
 // "Continue round" only shows while a started round was neither finished nor cancelled.
@@ -23,6 +24,7 @@ export function PlayTab(props: {
 }) {
   const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const unchecked = uncheckedRounds(props.rounds).length;
+  const toSign = unsignedRounds(props.rounds).length - unchecked;
   const [confirm, setConfirm] = useState<'end' | 'abort' | null>(null);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const played = open ? open.entries[open.players.find((p) => p.isMe)!.id].filter((e) => e.strokes != null || e.pickedUp).length : 0;
@@ -138,6 +140,18 @@ export function PlayTab(props: {
             </span>
           </span>
           <span className="count-badge">{unchecked}</span>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
+      {toSign > 0 && (
+        <button type="button" className="list-item" onClick={props.onCheck}>
+          <span className="grow">
+            <span className="title">{tr('Sign your rounds', 'Runden signieren')}</span>
+            <span className="muted small">
+              {toSign === 1 ? tr('1 round not signed yet', '1 Runde noch nicht signiert') : tr(`${toSign} rounds not signed yet`, `${toSign} Runden noch nicht signiert`)}
+            </span>
+          </span>
+          <span className="count-badge">{toSign}</span>
           <span aria-hidden="true">›</span>
         </button>
       )}

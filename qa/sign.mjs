@@ -48,6 +48,9 @@ await p.reload();
 await p.waitForTimeout(1500);
 // sign the round like a scorecard (Sascha 16.10.2026): only signed rounds count in the statistics
 const tab = (name) => p.locator('.tabbar button').filter({ hasText: name }).click();
+await tab('Spielen');
+await p.waitForTimeout(400);
+ok((await p.getByRole('button', { name: /Runden signieren.*1 Runde noch nicht signiert/ }).count()) === 1, 'start page: "Runden signieren" leads to the open round');
 await tab('Statistik');
 await p.waitForTimeout(600);
 ok((await p.getByText(/1 beendete Runde ist noch nicht signiert/).count()) === 1, 'stats: the unsigned round is named, it does not count yet');
@@ -67,6 +70,9 @@ ok((await p.locator('.signed-mark').count()) === 1, 'rounds list: the seal on th
 await tab('Statistik');
 await p.waitForTimeout(600);
 ok((await p.getByText(/noch nicht signiert/).count()) === 0, 'stats: no unsigned round left');
+await tab('Spielen');
+await p.waitForTimeout(400);
+ok((await p.getByText('Runden signieren').count()) === 0, 'start page: nothing left to sign');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/sign.png', fullPage: true });
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

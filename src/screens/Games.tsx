@@ -238,6 +238,7 @@ function GamesTabs(props: {
   onJoined: (g: Game) => void;
 }) {
   const running = props.games.filter((g) => !g.finishedAt);
+  const toConfirm = props.games.filter((g) => g.finishedAt && !g.signedAt).sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? '')).slice(0, 3);
   // join a friend's game (code or the QR link #join=CODE) – shown once signed in and the shared table exists
   const [canShare, setCanShare] = useState(false);
   const [joinOpen, setJoinOpen] = useState<string | null>(() => (location.hash.startsWith('#join=') ? location.hash.slice(6) : null));
@@ -265,6 +266,7 @@ function GamesTabs(props: {
         <>
           <h1 className="tab-title">{tr('Play a game', 'Spiel starten')}</h1>
           {running.length > 0 && <GameList games={running} onOpen={props.onOpen} title={tr('In play', 'Läuft gerade')} />}
+          {toConfirm.length > 0 && <GameList games={toConfirm} onOpen={props.onOpen} title={tr('Confirm the result', 'Ergebnis bestätigen')} />}
           {/* as "Start a new round" in Rounds (Sascha 15.10.2026: the same in every module) */}
           <section className="card play-card">
             <strong className="play-course">{tr('Start a new game', 'Neues Spiel starten')}</strong>
