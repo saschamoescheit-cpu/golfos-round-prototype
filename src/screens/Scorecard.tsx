@@ -47,6 +47,45 @@ export function Scorecard(props: {
   // chosen after the round: detailed (check the shots) or quick (scorecard only) – the GPS track is there either way
   const scoreOnly = !checksShots(round);
 
+  // sign the round like a paper scorecard (Sascha 16.10.2026) – only signed rounds count in the statistics. Signed it
+  // stands on top, above the result and the card (Sascha 17.10.2026); to sign it follows the card, after checking it.
+  const signCard = finished && !round.preview ? (
+    <section className={`card sign-card${round.signedAt ? ' signed' : ''}`} aria-label={tr('Signature', 'Unterschrift')}>
+      {round.signedAt ? (
+        <>
+          <span className="sign-seal big" aria-hidden="true">
+            <SignedIcon size={34} />
+          </span>
+          <span className="grow">
+            <strong>{tr('Signed', 'Signiert')}</strong>
+            <span className="muted small" style={{ display: 'block' }}>
+              {new Date(round.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your statistics', 'Zählt in deiner Statistik')}</span>
+          </span>
+          <button type="button" className="icon-btn" aria-label={tr('Withdraw the signature', 'Signatur zurücknehmen')} title={tr('Withdraw the signature', 'Signatur zurücknehmen')} onClick={() => props.onChange(unsign(round))}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 14 4 9l5-5" />
+              <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+            </svg>
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="grow">
+            <strong>{tr('Sign your round', 'Runde signieren')}</strong>
+            <span className="muted small" style={{ display: 'block' }}>
+              {tr('Only signed rounds count in your statistics.', 'Nur signierte Runden zählen in deiner Statistik.')}
+            </span>
+          </span>
+          <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
+            {tr('Sign', 'Signieren')}
+          </button>
+        </>
+      )}
+    </section>
+  ) : null;
+
   return (
     <main className="screen">
       <TopBar title={tr('Scorecard', 'Scorekarte')} onBack={finished ? props.onClose : props.onBackToHole} backLabel={finished ? tr('Close', 'Schließen') : tr('Back to hole', 'Zurück zum Loch')} />
@@ -133,6 +172,8 @@ export function Scorecard(props: {
         </section>
       )}
 
+      {round.signedAt && signCard}
+
       <section className="card sc-hero">
         {(() => {
           const t = playerTotals(round.holes, round.entries[me.id], me.playingHandicap);
@@ -179,43 +220,7 @@ export function Scorecard(props: {
       {round.players.length > 1 && <LeaderboardCard round={round} />}
 
       <ScoreTable round={round} onHole={setEditHole} />
-      {/* sign the round like a paper scorecard (Sascha 16.10.2026) – only signed rounds count in the statistics */}
-      {finished && !round.preview && (
-        <section className={`card sign-card${round.signedAt ? ' signed' : ''}`} aria-label={tr('Signature', 'Unterschrift')}>
-          {round.signedAt ? (
-            <>
-              <span className="sign-seal big" aria-hidden="true">
-                <SignedIcon size={34} />
-              </span>
-              <span className="grow">
-                <strong>{tr('Signed', 'Signiert')}</strong>
-                <span className="muted small" style={{ display: 'block' }}>
-                  {new Date(round.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your statistics', 'Zählt in deiner Statistik')}</span>
-              </span>
-              <button type="button" className="icon-btn" aria-label={tr('Withdraw the signature', 'Signatur zurücknehmen')} title={tr('Withdraw the signature', 'Signatur zurücknehmen')} onClick={() => props.onChange(unsign(round))}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M9 14 4 9l5-5" />
-                  <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
-                </svg>
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="grow">
-                <strong>{tr('Sign your round', 'Runde signieren')}</strong>
-                <span className="muted small" style={{ display: 'block' }}>
-                  {tr('Only signed rounds count in your statistics.', 'Nur signierte Runden zählen in deiner Statistik.')}
-                </span>
-              </span>
-              <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
-                {tr('Sign', 'Signieren')}
-              </button>
-            </>
-          )}
-        </section>
-      )}
+      {!round.signedAt && signCard}
 
       {editHole != null && (
         <HoleEditSheet
