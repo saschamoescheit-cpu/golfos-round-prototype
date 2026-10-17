@@ -42,6 +42,18 @@ export function Home(props: {
   );
 }
 
+/** the pause mark (two bars) of a paused round or session – as in the round list (Sascha 17.10.2026) */
+function PausedMark() {
+  return (
+    <span className="paused-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+        <rect x="6" y="5" width="4" height="14" rx="1" />
+        <rect x="14" y="5" width="4" height="14" rx="1" />
+      </svg>
+    </span>
+  );
+}
+
 function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpen: boolean; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training') => void }) {
   return (
     <>
@@ -67,7 +79,12 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
         </span>
         <span className="grow">
           <strong>Rounds</strong>
-          {props.roundOpen && <span className="small module-live">{tr('A round is in play', 'Eine Runde läuft')}</span>}
+          {props.roundOpen && (
+            <span className="small module-live">
+              {tr('A round is paused', 'Eine Runde ist pausiert')}
+              <PausedMark />
+            </span>
+          )}
           {props.toCheck > 0 && (
             <span className="small module-todo">
               {props.toCheck === 1 ? tr('1 round: check your shots', '1 Runde: Schläge prüfen') : tr(`${props.toCheck} rounds: check your shots`, `${props.toCheck} Runden: Schläge prüfen`)}
@@ -102,7 +119,12 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
         </span>
         <span className="grow">
           <strong>Training</strong>
-          {props.trainingOpen && <span className="small module-live">{tr('A session is paused', 'Eine Einheit ist pausiert')}</span>}
+          {props.trainingOpen && (
+            <span className="small module-live">
+              {tr('A session is paused', 'Eine Einheit ist pausiert')}
+              <PausedMark />
+            </span>
+          )}
         </span>
         <span aria-hidden="true">›</span>
       </button>
