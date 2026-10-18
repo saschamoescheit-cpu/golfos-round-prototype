@@ -8,7 +8,7 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/localhost:\d+\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
 let fails = 0;
 const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) fails++; };
 const S = process.env.SHOTS;
