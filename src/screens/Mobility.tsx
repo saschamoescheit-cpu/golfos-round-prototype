@@ -686,8 +686,8 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
     const open = steps.findIndex((st, i) => i > k && !stepDone(cur, st));
     if (open >= 0) goTo(open);
     else if (steps.every((st) => stepDone(cur, st))) {
-      if (single) finish(cur);
-      else setExit('end');
+      // everything done: straight to the result (the trainer mode needs no extra tap)
+      finish(cur);
     } else goTo(steps.findIndex((st) => !stepDone(cur, st)));
   };
   const isCam = (st: { test: TestId }) => testById(st.test).mode === 'camera';
