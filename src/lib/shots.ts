@@ -48,11 +48,19 @@ export function emptyDetail(): DetailEntry {
   return { shots: [], onGreen: null, pin: null, holedOut: false };
 }
 
+/** How far off the green edge counts as fringe, off the fairway edge as semi rough (metres). */
+export const LIE_BAND = { fringeM: 2.5, semiM: 2 };
+
 /** Lie suggested for a shot position from the course map. The player can change it. */
-export function lieAt(pos: LngLat, data: HoleMapData, isFirstShot: boolean): Lie {
+export function lieAt(pos: LngLat, data: HoleMapData, isFirstShot: boolean, fine = false): Lie {
   if (isFirstShot) return 'tee';
   if (data.bunkers.some((r: Ring) => pointInRing(pos, r))) return 'bunker';
   if (data.fairways.some((r: Ring) => pointInRing(pos, r))) return 'fairway';
+  // Just off the green: the fringe; just off the fairway: the first cut (Sascha 18.10.2026 – his "rough" balls lay
+  // 1–2.5 m beside the fairway). GPS is ±3 m, so only a narrow band; the player confirms it in the check.
+  // (only for the shots the player checks – the caddie's cost of a miss keeps fairway / rough / bunker)
+  if (fine && data.green && !pointInRing(pos, data.green) && distToLine(pos, data.green) <= LIE_BAND.fringeM) return 'fringe';
+  if (fine && data.fairways.some((r: Ring) => distToLine(pos, r) <= LIE_BAND.semiM)) return 'semirough';
   // Courses without mapped fairways: close to the playing line counts as fairway.
   if (data.fairways.length === 0 && distToLine(pos, data.line) <= 15) return 'fairway';
   return 'rough';

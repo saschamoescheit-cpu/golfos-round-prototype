@@ -70,3 +70,19 @@ describe('fairway hit from the checked shots', () => {
     expect(fairwayOf({ ...e({ pos: at(25, 230), lie: 'rough' }), fairway: 'hit' })).toBe('hit');
   });
 });
+
+describe('where the misses ended and the short game (Sascha 18.10.2026)', () => {
+  const shot = (lie: 'tee' | 'fairway' | 'semirough' | 'rough' | 'fringe' | 'bunker', club: string | null = null) => ({ pos: at(0, 0), lie, club: club as never, penalty: false });
+  const r = round(18, (k) => ({
+    strokes: 5,
+    putts: 2,
+    detail: { shots: [shot('tee', 'Dr'), shot(k % 3 === 0 ? 'semirough' : k % 3 === 1 ? 'rough' : 'fairway'), ...(k === 0 ? [shot('fringe', 'Pt')] : [])], onGreen: null, pin: null, holedOut: false },
+  }));
+  const a = analyse([r]);
+  it('counts the missed tee shots by the lie of the second shot', () => {
+    expect(a.missLies).toEqual({ semirough: 6, rough: 6, bunker: 0, other: 0 });
+  });
+  it('counts shots from the fringe and the Texas wedge', () => {
+    expect(a.shortGame).toEqual({ fromFringe: 1, texas: 1 });
+  });
+});

@@ -199,6 +199,12 @@ describe('shot detection from the GPS track', () => {
     expect(clubForLength(228, false)).toBe('3W');
     expect(clubForLength(131, false)).toBe('7i');
   });
+
+  it('a short shot is a chip or pitch with the sand wedge (Sascha 18.10.2026)', () => {
+    expect(clubForLength(25, false)).toBe('SW');
+    expect(clubForLength(18, false)).toBe('SW');
+    expect(clubForLength(100, false)).not.toBe('SW');
+  });
 });
 
 import { autoShot } from './track';

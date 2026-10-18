@@ -41,3 +41,17 @@ export const MAX_CLUBS = 14;
 export const catalogEntry = (c: Club) => CLUB_CATALOG.find((x) => x.club === c)!;
 /** Clubs in playing order (longest first). */
 export const byOrder = <T extends { club: Club }>(xs: T[]): T[] => xs.slice().sort((a, b) => CLUB_ORDER.indexOf(a.club) - CLUB_ORDER.indexOf(b.club));
+
+/** Carry → total: what a club rolls on after landing (Sascha's rounds 16./18.10.2026: a driver runs out, a wedge stops).
+ *  The bag holds carries; a shot measured on the course is the whole length. */
+export function rollFactor(club: Club): number {
+  if (club === 'Dr') return 1.12;
+  const g = CLUB_CATALOG.find((c) => c.club === club)?.group;
+  if (g === 'wood') return 1.08;
+  if (g === 'hybrid') return 1.06;
+  if (club === '2i' || club === '3i' || club === '4i' || club === '5i') return 1.05;
+  if (club === '6i' || club === '7i') return 1.04;
+  if (club === '8i' || club === '9i') return 1.03;
+  if (club === 'PW' || club === 'GW') return 1.02;
+  return 1.01;
+}

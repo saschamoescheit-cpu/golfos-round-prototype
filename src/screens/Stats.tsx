@@ -164,6 +164,20 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               <section className="card stats-card">
                 <h2>{tr('Off the tee', 'Vom Abschlag')}</h2>
                 <TeeBar left={a.missLeft} hit={a.fairways} right={a.missRight} />
+                {/* where the missed tee shots ended – semi rough is a small miss, rough a real one (Sascha 18.10.2026) */}
+                {a.missLies.semirough + a.missLies.rough + a.missLies.bunker + a.missLies.other > 0 && (
+                  <p className="muted small" style={{ margin: 0 }}>
+                    {tr('Missed – the ball ended in', 'Verfehlt – der Ball lag')}{' '}
+                    {[
+                      a.missLies.semirough ? `${a.missLies.semirough}× Semi Rough` : null,
+                      a.missLies.rough ? `${a.missLies.rough}× Rough` : null,
+                      a.missLies.bunker ? `${a.missLies.bunker}× Bunker` : null,
+                      a.missLies.other ? tr(`${a.missLies.other}× elsewhere`, `${a.missLies.other}× woanders`) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                )}
               </section>
               <div className="tile-row">
                 <div className="tile">
@@ -196,6 +210,17 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <Ring label="Scrambling" r={a.scrambling} />
                   <Ring label={tr('Sand saves', 'Sand Saves')} r={a.sandSaves} />
                 </div>
+                {/* from the checked shots: the fringe and the putter from off the green (Sascha 18.10.2026) */}
+                {(a.shortGame.fromFringe > 0 || a.shortGame.texas > 0) && (
+                  <p className="muted small" style={{ margin: 0 }}>
+                    {[
+                      a.shortGame.fromFringe ? tr(`${a.shortGame.fromFringe} shots from the fringe`, `${a.shortGame.fromFringe} Schläge vom Vorgrün`) : null,
+                      a.shortGame.texas ? tr(`${a.shortGame.texas}× putter from off the green (Texas wedge)`, `${a.shortGame.texas}× Putter von außerhalb (Texas Wedge)`) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                )}
               </section>
               <section className="card stats-card">
                 <h2>{tr('Results by par', 'Ergebnis nach Par')}</h2>

@@ -86,7 +86,11 @@ function drifts(w: TrackPoint[]): boolean {
 
 /** Club whose typical distance fits the shot length best (driver only for long tee shots). */
 export function clubForLength(lengthM: number, isTeeShot: boolean, bag = BAG): Club {
-  const options = bag.filter((b) => b.club !== 'Dr' || isTeeShot);
+  const options = bag.filter((b) => (b.club !== 'Dr' || isTeeShot) && b.club !== 'Pt');
+  // well short of the shortest full wedge: a chip or a pitch – most players take the sand wedge (Sascha's rounds: 9 of
+  // 10 short shots), not the club whose full length happens to be nearest
+  const wedges = options.filter((b) => b.club === 'PW' || b.club === 'GW' || b.club === 'SW' || b.club === 'LW');
+  if (wedges.length && lengthM < 0.7 * Math.min(...wedges.map((w) => w.m))) return wedges.some((w) => w.club === 'SW') ? 'SW' : wedges.reduce((a, b) => (b.m < a.m ? b : a)).club;
   return options.reduce((best, b) => (Math.abs(b.m - lengthM) < Math.abs(best.m - lengthM) ? b : best)).club;
 }
 
@@ -295,7 +299,7 @@ function detectCore(track: TrackPoint[], hole: HoleMapData, par: number, bag: ty
   const shots: Shot[] = spots.map((p, n) => {
     const next = n + 1 < spots.length ? spots[n + 1] : end;
     const length = next ? distanceM(p, next) : toGreen(p);
-    const lie = lieOf(p, n === 0);
+    const lie = lieAt(p, hole, n === 0, true); // the fine lies (semi rough, fringe) for the player to check; the chain above keeps the coarse ones
     const kind = suggestKind(lie, toGreen(p));
     const club = kind === 'chip' || kind === 'pitch' || kind === 'bunker' ? clubForLength(Math.max(length, 50), false, bag) : clubForLength(length, n === 0 && par >= 4, bag);
     return { pos: p, lie, club, penalty: false, kind, review: true };

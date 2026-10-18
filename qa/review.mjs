@@ -63,7 +63,7 @@ await p.waitForTimeout(1000);
 await p.getByRole('button', { name: /Schläge prüfen/ }).click();
 await p.waitForTimeout(2500);
 const notice = (await p.locator('.notice').first().innerText().catch(() => '')).replace(/\s+/g, ' ');
-ok(/an 9 Löchern erkannt/.test(notice), `shots found on the first visit ("${notice}")`);
+ok(/an 9 Löchern/.test(notice) && /aus deinen „Schlag hier“-Punkten/.test(notice), `shots on the first visit – from the places noted by hand where there are some ("${notice}")`);
 if (process.env.SHOTS) await p.locator('.review-map').screenshot({ path: process.env.SHOTS + '/review-map.png' });
 const counts = await p.evaluate(() => {
   const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0];
@@ -186,14 +186,10 @@ await p.waitForTimeout(1200);
 const det2 = () => p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][1].detail);
 const before2d = JSON.stringify((await det2())?.shots ?? []);
 const take = p.getByRole('button', { name: /von Hand erfassten Schläge übernehmen/ });
-ok((await take.count()) === 1 && /Die 2 von Hand/.test(await take.innerText()), 'hole 2: "Die 2 von Hand erfassten Schläge übernehmen"');
-await take.click();
-await p.waitForTimeout(500);
-const after2 = await det2();
-ok(after2.shots.length === 1 && after2.shots[0].lie === 'tee' && Array.isArray(after2.onGreen), `taken over: the tee shot and the ball on the green (${after2.shots.length} shot)`);
-await p.locator('.notice').getByRole('button', { name: 'Rückgängig' }).click();
-await p.waitForTimeout(400);
-ok(JSON.stringify((await det2())?.shots ?? []) === before2d, 'undo brings the shots before back');
+// the places noted by hand are taken over by themselves on the first visit (Sascha 18.10.2026) – no button any more
+const d2 = await det2();
+ok(d2?.fromHand && d2.shots.length === 1 && d2.shots[0].lie === 'tee' && Array.isArray(d2.onGreen) && (await take.count()) === 0, `hole 2: the shots noted by hand taken over by themselves – the tee shot and the ball on the green, no button (${d2?.shots.length} shot)`);
+void before2d;
 await p.getByRole('button', { name: 'Voriges Loch' }).first().click();
 await p.waitForTimeout(800);
 // hole 7: the penalty from the course

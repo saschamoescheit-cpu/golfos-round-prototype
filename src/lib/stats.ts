@@ -42,6 +42,10 @@ export interface Analysis {
   scrambling: Rate; // par or better after missing the green
   sandSaves: Rate;
   penaltiesPer18: number | null;
+  /** where a missed tee shot (par 4/5) ended – from the checked shots (Sascha 18.10.2026: semi rough and rough apart) */
+  missLies: { semirough: number; rough: number; bunker: number; other: number };
+  /** the short game from the checked shots: shots from the fringe, and the putter from off the green (Texas wedge) */
+  shortGame: { fromFringe: number; texas: number };
   clubs: ClubStat[];
   puttsByFirstPutt: { label: string; avgPutts: number | null; holes: number }[];
   handicap: number | null; // latest playing handicap
@@ -76,6 +80,8 @@ export function analyse(rounds: Round[]): Analysis {
   const sand: Rate = { n: 0, of: 0 };
   let penalties = 0;
   const clubLengths = new Map<Club, number[]>();
+  const missLies = { semirough: 0, rough: 0, bunker: 0, other: 0 };
+  const shortGame = { fromFringe: 0, texas: 0 };
   const buckets = PUTT_BUCKETS.map(() => ({ putts: 0, holes: 0 }));
   let handicap: number | null = null;
 
@@ -142,6 +148,18 @@ export function analyse(rounds: Round[]): Analysis {
       // Detailed tracking: club distances and putts by first-putt length.
       const d = e.detail;
       if (d) {
+        // a missed fairway: where the second shot was played from
+        const second = d.shots[1];
+        if (h.par >= 4 && d.shots[0]?.lie === 'tee' && second && second.lie !== 'fairway' && !d.shots[0].penalty) {
+          if (second.lie === 'semirough') missLies.semirough++;
+          else if (second.lie === 'rough') missLies.rough++;
+          else if (second.lie === 'bunker') missLies.bunker++;
+          else missLies.other++;
+        }
+        for (const s of d.shots) {
+          if (s.lie === 'fringe') shortGame.fromFringe++;
+          if (s.club === 'Pt') shortGame.texas++;
+        }
         const lengths = shotLengths(d);
         d.shots.forEach((s, k) => {
           const len = lengths[k];
@@ -197,6 +215,8 @@ export function analyse(rounds: Round[]): Analysis {
     scrambling: scr,
     sandSaves: sand,
     penaltiesPer18: holes ? per18(penalties) : null,
+    missLies,
+    shortGame,
     clubs,
     puttsByFirstPutt: PUTT_BUCKETS.map((b, k) => ({ label: b.label, holes: buckets[k].holes, avgPutts: buckets[k].holes ? Math.round((buckets[k].putts / buckets[k].holes) * 100) / 100 : null })),
     handicap,

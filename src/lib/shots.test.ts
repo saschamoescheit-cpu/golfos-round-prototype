@@ -20,6 +20,13 @@ describe('detailed tracking', () => {
     expect(lieAt(at(35, 220), hole, false)).toBe('rough');
     expect(lieAt(at(-25, 355), hole, false)).toBe('bunker');
   });
+  it('suggests semi rough beside the fairway and the fringe beside the green (Sascha 18.10.2026)', () => {
+    expect(lieAt(at(21.5, 220), hole, false, true)).toBe('semirough');
+    expect(lieAt(at(21.5, 220), hole, false)).toBe('rough'); // the caddie keeps the coarse lies
+    expect(lieAt(at(25, 220), hole, false, true)).toBe('rough');
+    expect(lieAt(at(0, 343.5), hole, false, true)).toBe('fringe');
+    expect(lieAt(at(0, 325), hole, false)).toBe('fairway');
+  });
   it('suggests driver off the tee and a club for the remaining distance', () => {
     expect(suggestClub(4, true, 360)).toBe('Dr');
     expect(suggestClub(4, false, 128)).toBe('7i');

@@ -107,6 +107,8 @@ export interface DetailEntry {
   onGreen: LngLat | null; // where the ball came to rest on the green (first putt position)
   pin: LngLat | null; // pin position when the ball was marked on the green
   holedOut: boolean; // holed from off the green (chip-in, hole in one): no putts
+  /** the shots are the ones noted by hand on the course ("shot here"), not the GPS detection (Sascha 18.10.2026) */
+  fromHand?: boolean;
 }
 
 export interface HoleEntry {
