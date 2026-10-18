@@ -638,7 +638,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
                   </span>
                 )}
                 <span className="small muted">
-                  {tr('Your goal asks for about', 'Dein Ziel braucht etwa')} {valueText(kind, targetValue(props.test, loadGoal()), tr)}
+                  {loadGoal() ? tr('Your goal asks for about', 'Dein Ziel braucht etwa') : tr('Golf value about', 'Golf-Richtwert etwa')} {valueText(kind, targetValue(props.test, loadGoal()), tr)}
                 </span>
               </span>
             </div>

@@ -448,7 +448,7 @@ function HistoryChart(props: { test: TestDef; history: { s: Screening; r: TestRe
         ))}
       </div>
       <figcaption className="muted small">
-        {tr('Bar: how much movement (the side with less counts) · line: your goal', 'Balken: wie viel Bewegung (die Seite mit weniger zählt) · Strich: dein Ziel')}
+        {goal ? tr('Bar: how much movement (the side with less counts) · line: your goal', 'Balken: wie viel Bewegung (die Seite mit weniger zählt) · Strich: dein Ziel') : tr('Bar: how much movement (the side with less counts) · line: the golf value', 'Balken: wie viel Bewegung (die Seite mit weniger zählt) · Strich: Golf-Richtwert')}
         {tv != null && props.test.metric ? ` (${tr('about', 'etwa')} ${valueText(props.test.metric, tv, tr)})` : ''}
       </figcaption>
     </figure>
@@ -1267,7 +1267,11 @@ function BodyResult(props: { results: Partial<Record<TestId, TestResult>>; nav: 
   const areas = pillar(TESTS, props.results, loadGoal());
   return (
     <>
-      <p className="muted small mob-scale-note">{tr('Each bar runs from little to a lot of movement; the line is where your goal asks for.', 'Jeder Balken reicht von wenig bis viel Bewegung; der Strich zeigt, was dein Ziel braucht.')}</p>
+      <p className="muted small mob-scale-note">
+        {loadGoal()
+          ? tr('Each bar runs from little to a lot of movement; the line is where your goal asks for.', 'Jeder Balken reicht von wenig bis viel Bewegung; der Strich zeigt, was dein Ziel braucht.')
+          : tr('Each bar runs from little to a lot of movement; the line is the golf value – set your goal above.', 'Jeder Balken reicht von wenig bis viel Bewegung; der Strich zeigt den Golf-Richtwert – oben dein Ziel festlegen.')}
+      </p>
       {AREAS.map((a) => {
         const tests = TESTS.filter((x) => x.area === a);
         const st = areas.find((x) => x.area === a);
