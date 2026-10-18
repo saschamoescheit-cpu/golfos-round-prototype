@@ -484,6 +484,17 @@ export const DRIVER_SKY: Swing = fault(DRIVER_SWING, {
   },
 }, { hit: { at: 2.8, shot: 'bunker', scale: 2.6 } });
 
+/** the pitch that brakes: back to the top for a short shot – the body has to slow down at the ball and the club stops
+ *  low; the right one swings back to 9 o'clock only and through to 3 o'clock */
+const PITCH_TOP = { body: { pelvis: [38, -38, 0] as V3, spine: [2, -12, 0] as V3, chest: [2, -36, 8] as V3, neck: [-14, 42, 0] as V3, head: [12, 14, 0] as V3 }, hands: [-0.22, 0.44, 0.16] as V3, club: [0.95, -0.05, 0.1] as V3 };
+const PITCH_BRAKE = { body: { pelvis: [36, 22, 5] as V3, spine: [2, 2, 2] as V3, chest: [2, -6, 6] as V3, neck: [-14, -8, 0] as V3, head: [12, -4, 0] as V3 }, hands: [0.12, -0.21, 0.43] as V3, club: [0.32, -0.92, 0.15] as V3, shift: 0.04, free: false };
+export const PITCH_SLOW: Swing = fault(HALF_SWING, {
+  1.5: { ...PITCH_TOP, label: L('Left: far too long back for a short pitch · right: back to 9 o’clock', 'Links: viel zu weit ausgeholt für einen kurzen Pitch · rechts: bis 9 Uhr') },
+  1.85: PITCH_TOP,
+  2.5: { ...PITCH_BRAKE, label: L('Left: it has to brake at the ball – the club stops low · right: through to 3 o’clock', 'Links: er muss am Ball bremsen – der Schläger bleibt unten stehen · rechts: durch bis 3 Uhr') },
+  3.5: PITCH_BRAKE,
+}, { hit: { at: 2.1, shot: 'pitch', scale: 0.55 } });
+
 /** the putter face at impact: open – the ball starts right of the line and rolls past the hole; closing through the
  *  ball – it starts left; the right one keeps the face square and the putt drops */
 const puttFace = (deg: number, label: SwingKey['label']): Swing =>
@@ -508,6 +519,7 @@ export const PAIRS = {
   slicePair: { fault: OVER_THE_TOP, right: quiet(FULL_SWING), behind: true },
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
+  pitchSlowPair: { fault: PITCH_SLOW, right: quiet(HALF_SWING) },
   skyPair: { fault: DRIVER_SKY, right: quiet(DRIVER_SWING), behind: true },
   bunkerStuckPair: { fault: BUNKER_STUCK, right: quiet(BUNKER_SWING) },
   bunkerThinPair: { fault: BUNKER_THIN, right: quiet(BUNKER_SWING) },

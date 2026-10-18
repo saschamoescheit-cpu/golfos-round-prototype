@@ -307,6 +307,7 @@ set3d(FAULT_MOTIONS.swing?.['Sway instead of turn'], 'swayPair');
 FAULT_MOTIONS.swing = { ...FAULT_MOTIONS.swing, 'Over the top': still3d('slicePair'), 'Rushing the swing': still3d('rushPair') };
 FAULT_MOTIONS.driver = { ...FAULT_MOTIONS.driver, 'Slice off the tee': still3d('driverSlicePair'), 'Sky ball (pop-up)': still3d('skyPair') };
 set3d(FAULT_MOTIONS.bunker?.['Ball stays in the bunker'], 'bunkerStuckPair');
+set3d(FAULT_MOTIONS.pitching?.['Slowing down at the ball'], 'pitchSlowPair');
 set3d(FAULT_MOTIONS.bunker?.['Thin over the green'], 'bunkerThinPair');
 FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Ball starts right of the line': still3d('puttRightPair'), 'Ball starts left of the line': still3d('puttLeftPair') };
 set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');
