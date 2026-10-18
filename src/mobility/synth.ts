@@ -28,6 +28,9 @@ export interface FrontPose {
   head?: number; // head on top of the trunk (°)
   lift?: Side | null; // this foot is in the air (balance)
   liftX?: number; // the standing foot slides sideways (m)
+  er?: number; // both elbows at the sides bent 90°, forearms forward, turned out this far (°) – band external rotation
+  kneeOpen?: number; // the right knee opens away from the left (°, clamshell seen from the front)
+  kneeShift?: number; // both knees shift sideways (m, the 90/90 switch)
 }
 
 /** The 33 points of a player seen from the front. */
@@ -66,6 +69,22 @@ export function frontBody(o: FrontPose): Lm[] {
     lm[he] = [x, 0.38, 0.1];
     lm[to] = [x, 0.38, 0.3];
   }
+  if (o.er != null) {
+    // elbows by the sides, forearms pointing at the camera, turned out (the wrist moves sideways)
+    const a = (o.er * Math.PI) / 180;
+    for (const sg of [1, -1]) {
+      const [el, wr, ...hand] = sg === 1 ? [13, 15, 17, 19, 21] : [14, 16, 18, 20, 22];
+      lm[el] = [sg * 0.2, 1.16, 0];
+      // forearm 0.9 of the upper arm (0.27 m), as a person
+      lm[wr] = [sg * (0.2 + 0.243 * Math.sin(a)), 1.16, 0.243 * Math.cos(a)];
+      for (const i of hand) lm[i] = [sg * (0.2 + 0.29 * Math.sin(a)), 1.15, 0.29 * Math.cos(a)];
+    }
+  }
+  if (o.kneeOpen) {
+    const k = 0.43 * Math.sin((o.kneeOpen * Math.PI) / 180);
+    lm[26] = [lm[26][0] - k, lm[26][1], lm[26][2]];
+  }
+  if (o.kneeShift) for (const i of [25, 26]) lm[i] = [lm[i][0] + o.kneeShift, lm[i][1], lm[i][2]];
   if (o.liftX) {
     const [an, he, to] = o.lift === 'left' ? [28, 30, 32] : [27, 29, 31];
     for (const i of [an, he, to]) lm[i] = [lm[i][0] + o.liftX, lm[i][1], lm[i][2]];

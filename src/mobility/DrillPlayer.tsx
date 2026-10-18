@@ -58,6 +58,13 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
         return s.latBody(80 + (good ? 85 : 55) * x);
       case 'oneLeg':
         return s.frontBody({ lift: ms > 0 ? (side === 'right' ? 'left' : 'right') : null });
+      case 'shoulderEr':
+        return s.frontBody({ er: (good ? 85 : 55) * x });
+      case 'kneeOpen':
+        return s.frontBody({ kneeOpen: (good ? 45 : 25) * x });
+      case 'sideSwitch':
+        // from one side to the other and back: the knees through the middle twice a "rep" of the loop
+        return s.frontBody({ kneeShift: 0.2 * Math.cos(Math.PI * (ms > 0 && !still ? (ms % P) / P : 0)) });
       default:
         return s.frontBody({});
     }
@@ -127,6 +134,7 @@ export function DrillPlayer(props: {
     let counter: RepCounter | null = null;
     let reps = 0;
     let held = 0;
+    let holdBest: number | null = null;
     let setT0 = 0;
     let lastT = 0;
     let onLeg = false;
@@ -206,6 +214,7 @@ export function DrillPlayer(props: {
       counter = signal ? new RepCounter(signal) : null;
       reps = 0;
       held = 0;
+      holdBest = null;
       onLeg = false;
       spokeLeft = false;
       paced = false;
@@ -215,14 +224,14 @@ export function DrillPlayer(props: {
       fakeT0 = setT0;
       go('run');
       beep(1180, 180);
-      say(holdMode ? (sig ? tr('Lift the foot – hold.', 'Fuß heben – halten.') : tr('Hold.', 'Halten.')) : tr('Go.', 'Los.'));
+      say(holdMode ? (plan.signal === 'oneLeg' ? tr('Lift the foot – hold.', 'Fuß heben – halten.') : tr('Hold.', 'Halten.')) : tr('Go.', 'Los.'));
       setLive((x) => ({ ...x, reps: 0, held: 0, best: null, progress: 0 }));
     };
 
     const endSet = () => {
       if (phaseRef.current !== 'run') return;
       const side = sets[k];
-      const best = plan.signal === 'oneLeg' ? Math.round(held / 100) / 10 : (counter?.best ?? null);
+      const best = plan.signal === 'oneLeg' ? Math.round(held / 100) / 10 : signal?.countOnly ? null : holdMode ? holdBest : (counter?.best ?? null);
       const s: DrillSet = { side, reps: holdMode ? 1 : reps, target: holdMode ? 1 : (plan.reps ?? 10), best: best != null ? Math.round(best * 10) / 10 : null, ...(holdMode ? { held: Math.round(held / 100) / 10 } : {}), ...(sig && !holdMode && !paced ? { seen: true } : {}) };
       doneRef.current = [...doneRef.current, s];
       beep(1400, 240);
@@ -301,7 +310,10 @@ export function DrillPlayer(props: {
         value = sig && f ? sig.value(f) : null;
         if (holdMode) {
           const hold = (plan.hold ?? 20) * 1000;
-          if (sig) {
+          if (sig && plan.signal !== 'oneLeg') {
+            held = elapsed;
+            if (value != null && signal) holdBest = holdBest == null ? value : signal.better === 'up' ? Math.max(holdBest, value) : Math.min(holdBest, value);
+          } else if (sig) {
             const up = value === 1;
             if (up) held += dt * sp;
             if (up !== onLeg) {
@@ -348,7 +360,7 @@ export function DrillPlayer(props: {
       }
       if (now - lastUi > 100) {
         lastUi = now;
-        setLive({ reps, held, value, best: plan.signal === 'oneLeg' ? held / 1000 : (counter?.best ?? null), progress: holdMode ? Math.min(1, held / ((plan.hold ?? 20) * 1000)) : counter ? counter.progress(value) : Math.min(1, reps / (plan.reps ?? 10)), seen: !!f, missing: pl.missing, turned: pl.turned, people });
+        setLive({ reps, held, value, best: plan.signal === 'oneLeg' ? held / 1000 : signal?.countOnly ? null : holdMode ? holdBest : (counter?.best ?? null), progress: holdMode ? Math.min(1, held / ((plan.hold ?? 20) * 1000)) : counter ? counter.progress(value) : Math.min(1, reps / (plan.reps ?? 10)), seen: !!f, missing: pl.missing, turned: pl.turned, people });
       }
     };
 

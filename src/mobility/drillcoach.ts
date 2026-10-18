@@ -9,7 +9,7 @@ import type { Side } from './types';
 // so the unit tests run them with synthetic bodies. REVIEW(golf): Chris (reps, holds, what counts as a rep).
 
 /** What the camera follows during a drill, picture by picture. */
-export type SignalId = 'turn' | 'hipTurn' | 'head' | 'squat' | 'reach' | 'shin' | 'hipExt' | 'arms' | 'oneLeg';
+export type SignalId = 'turn' | 'hipTurn' | 'head' | 'squat' | 'reach' | 'shin' | 'hipExt' | 'arms' | 'oneLeg' | 'shoulderEr' | 'kneeOpen' | 'sideSwitch';
 
 export interface DrillCoach {
   /** how the player is placed to the phone: face-on, side-on, or on the floor (only the body has to be seen) */
@@ -42,18 +42,18 @@ export const DRILL_COACH: Record<string, DrillCoach> = {
   'mob-pelvic-tilt': { view: 'floor', where: L('On your back, side-on to the phone, knees bent.', 'Auf den Rücken, seitlich zum Handy, Knie gebeugt.'), reps: 15, tempo: 3 },
   'mob-single-leg-reach': { view: 'front', where: FRONT_STAND, sides: true, reps: 5, tempo: 6 },
   'mob-single-leg-bridge': { view: 'floor', where: L('On your back, side-on to the phone.', 'Auf den Rücken, seitlich zum Handy.'), sides: true, reps: 8, tempo: 4, signal: 'hipExt' },
-  'mob-clamshell': { view: 'floor', where: L('On your side, facing the phone, knees bent.', 'Auf die Seite, das Gesicht zum Handy, Knie gebeugt.'), sides: true, reps: 15, tempo: 3 },
-  'mob-lat-stretch': { view: 'floor', where: L('Kneel in front of a bench, side-on to the phone.', 'Vor einer Bank knien, seitlich zum Handy.'), hold: 30, sets: 3 },
+  'mob-clamshell': { view: 'floor', where: L('On your side, facing the phone, knees bent.', 'Auf die Seite, das Gesicht zum Handy, Knie gebeugt.'), sides: true, reps: 15, tempo: 3, signal: 'kneeOpen' },
+  'mob-lat-stretch': { view: 'floor', where: L('Kneel in front of a bench, side-on to the phone.', 'Vor einer Bank knien, seitlich zum Handy.'), hold: 30, sets: 3, signal: 'arms' },
   'mob-wall-angels': { view: 'front', where: L('Back to a wall, face-on to the phone.', 'Mit dem Rücken an eine Wand, frontal zum Handy.'), reps: 10, tempo: 4, sets: 2, signal: 'arms' },
   'mob-9090-stretch': { view: 'front', where: FRONT_STAND, sides: true, hold: 20, sets: 3 },
-  'mob-band-er': { view: 'front', where: FRONT_STAND, reps: 15, tempo: 3, sets: 2 },
+  'mob-band-er': { view: 'front', where: FRONT_STAND, reps: 15, tempo: 3, sets: 2, signal: 'shoulderEr' },
   'mob-hip-ir': { view: 'floor', where: L('Sit in the 90/90 position, face-on to the phone.', 'Im 90/90-Sitz, frontal zum Handy.'), sides: true, reps: 8, tempo: 4 },
   'mob-prone-y': { view: 'floor', where: L('On your front, side-on to the phone.', 'Auf den Bauch, seitlich zum Handy.'), reps: 10, tempo: 4, sets: 2 },
   'mob-neck-turn': { view: 'front', where: L('Sit or stand face-on to the phone.', 'Setz oder stell dich frontal zum Handy.'), reps: 20, tempo: 3, signal: 'head' },
   'mob-forearm-turn': { view: 'front', where: FRONT_STAND, sides: true, reps: 10, tempo: 3 },
   'mob-wrist-hinge': { view: 'front', where: FRONT_STAND, sides: true, reps: 15, tempo: 2 },
   'mob-wrist-stretch': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), hold: 20, sets: 6 },
-  'hip-9090': { view: 'floor', where: L('Sit on the floor face-on to the phone.', 'Setz dich frontal zum Handy auf den Boden.'), reps: 10, tempo: 5 },
+  'hip-9090': { view: 'floor', where: L('Sit on the floor face-on to the phone.', 'Setz dich frontal zum Handy auf den Boden.'), reps: 10, tempo: 5, signal: 'sideSwitch' },
   'pallof-press': { view: 'front', where: L('Golf posture, face-on to the phone, the band to the side.', 'Golfhaltung frontal zum Handy, das Band seitlich.'), sides: true, reps: 10, tempo: 3, sets: 2 },
   'single-leg-balance': { view: 'front', where: FRONT_STAND, sides: true, hold: 30, signal: 'oneLeg' },
   'open-books': { view: 'floor', where: L('On your side, facing the phone, knees bent.', 'Auf die Seite, das Gesicht zum Handy, Knie gebeugt.'), sides: true, reps: 10, tempo: 5 },
@@ -90,6 +90,8 @@ export interface SignalDef {
   minAmp: number;
   /** what the value means, for the result ("turn", "shin angle") */
   name: Text;
+  /** the camera only counts (the value itself means nothing to the player) */
+  countOnly?: boolean;
 }
 
 export const SIGNALS: Record<SignalId, SignalDef> = {
@@ -102,6 +104,10 @@ export const SIGNALS: Record<SignalId, SignalDef> = {
   hipExt: { unit: '°', better: 'up', minAmp: 18, name: L('hip extension', 'Hüftstreckung') },
   arms: { unit: '°', better: 'up', minAmp: 25, name: L('arms overhead', 'Arme über Kopf') },
   oneLeg: { unit: 's', better: 'up', minAmp: 0.5, name: L('time on one leg', 'Zeit auf einem Bein') },
+  shoulderEr: { unit: '°', better: 'up', minAmp: 20, name: L('external rotation of the shoulders', 'Außenrotation der Schultern') },
+  kneeOpen: { unit: '°', better: 'up', minAmp: 12, name: L('opening of the knees', 'Öffnung der Knie') },
+  // the knees from one side to the other: the middle is "out", a side is "rest" – every switch counts
+  sideSwitch: { unit: '°', better: 'up', minAmp: 0.5, name: L('switches', 'Wechsel'), countOnly: true },
 };
 
 /** The points a signal needs (front view: these; side view: the near side's). */
@@ -117,6 +123,11 @@ function needs(id: SignalId): number[] | ((side: Side) => number[]) {
       return [P.lHip, P.rHip, P.lAn, P.rAn];
     case 'arms':
       return [P.lSh, P.rSh, P.lEl, P.rEl, P.lHip, P.rHip];
+    case 'shoulderEr':
+      return [P.lSh, P.rSh, P.lEl, P.rEl, P.lWr, P.rWr];
+    case 'kneeOpen':
+    case 'sideSwitch':
+      return [P.lHip, P.rHip, P.lKn, P.rKn];
     case 'squat':
       return (s) => [S(s).hip, S(s).kn];
     case 'reach':
@@ -214,6 +225,27 @@ export class Signal {
         const arm = (sh: number, el: number, hip: number) => angleBetween(sub(px(f, hip), px(f, sh)), sub(px(f, el), px(f, sh)));
         return (arm(P.lSh, P.lEl, P.lHip) + arm(P.rSh, P.rEl, P.rHip)) / 2;
       }
+      case 'shoulderEr': {
+        // elbows at the sides, forearms forward: turned out, the wrist moves sideways from the elbow – the angle from how
+        // far, against the forearm length (about 0.9 of the upper arm, the forearm itself points at the camera) – an
+        // estimate; REVIEW(golf): Chris, against a goniometer
+        const er = (sh: number, el: number, wr: number) => {
+          const upper = dist(px(f, sh), px(f, el));
+          return upper > 1 ? deg(Math.asin(Math.min(1, Math.abs(px(f, wr)[0] - px(f, el)[0]) / (0.9 * upper)))) : 0;
+        };
+        return (er(P.lSh, P.lEl, P.lWr) + er(P.rSh, P.rEl, P.rWr)) / 2;
+      }
+      case 'kneeOpen': {
+        // the angle between the thighs from the distance of the knees (thighs of the same length)
+        const thigh = (dist(px(f, P.lHip), px(f, P.lKn)) + dist(px(f, P.rHip), px(f, P.rKn))) / 2;
+        return thigh > 1 ? deg(2 * Math.asin(Math.min(1, dist(px(f, P.lKn), px(f, P.rKn)) / (2 * thigh)))) : null;
+      }
+      case 'sideSwitch': {
+        // where the knees are against the hips, in hip widths: the middle (0) is "out", a side (±1) the rest
+        const hipW = Math.max(1, Math.abs(px(f, P.lHip)[0] - px(f, P.rHip)[0]));
+        const off = ((px(f, P.lKn)[0] + px(f, P.rKn)[0]) / 2 - (px(f, P.lHip)[0] + px(f, P.rHip)[0]) / 2) / hipW;
+        return -Math.abs(off);
+      }
       case 'oneLeg': {
         // one foot clearly higher than the other: 1, both down: 0
         const leg = Math.max(1, (dist(px(f, P.lHip), px(f, P.lAn)) + dist(px(f, P.rHip), px(f, P.rAn))) / 2);
@@ -300,6 +332,8 @@ export function signalValueText(id: SignalId, v: number | null, tr: (en: string,
     }
     case 'oneLeg':
       return `${n(Math.round(v))} s`;
+    case 'sideSwitch':
+      return '';
     default:
       return `${Math.round(v)}°`;
   }

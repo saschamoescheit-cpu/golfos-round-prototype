@@ -93,6 +93,37 @@ describe('drill coach', () => {
     expect(r.best!).toBeGreaterThan(140);
   });
 
+  it('counts band external rotations and measures how far the forearms turn out', () => {
+    const r = run('shoulderEr', (k) => frontBody({ er: 80 * k }), 6);
+    expect(r.n).toBe(6);
+    expect(r.best!).toBeGreaterThan(65);
+    expect(r.best!).toBeLessThan(90);
+    const stiff = run('shoulderEr', (k) => frontBody({ er: 45 * k }), 4);
+    expect(stiff.n).toBe(4);
+    expect(stiff.best!).toBeLessThan(55);
+  });
+
+  it('counts clamshells by the opening of the knees', () => {
+    const r = run('kneeOpen', (k) => frontBody({ kneeOpen: 40 * k }), 5);
+    expect(r.n).toBe(5);
+    expect(r.best!).toBeGreaterThan(40);
+  });
+
+  it('counts the 90/90 switches – every pass through the middle', () => {
+    // from the left to the right and back: two switches per loop
+    const sig = new Signal('sideSwitch');
+    const count = new RepCounter(SIGNALS.sideSwitch);
+    let t = 0;
+    let n = 0;
+    for (let i = 0; i < 5 * 60; i++) {
+      const x = 0.2 * Math.cos((Math.PI * i) / 30);
+      if (count.push(sig.value({ lm: frontBody({ kneeShift: x }), w: W, h: H, t: (t += 50) }))) n++;
+    }
+    expect(n).toBeGreaterThanOrEqual(9);
+    expect(n).toBeLessThanOrEqual(10);
+    expect(SIGNALS.sideSwitch.countOnly).toBe(true);
+  });
+
   it('sees one foot off the floor', () => {
     const sig = new Signal('oneLeg');
     expect(sig.value({ lm: frontBody({}), w: W, h: H, t: 0 })).toBe(0);
