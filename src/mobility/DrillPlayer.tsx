@@ -4,7 +4,7 @@ import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
 import type { Drill } from '../training/types';
 import { BONES, facingOf, type Frame, type Lm } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
-import { RepCounter, SIGNALS, Signal, setsOf, signalValueText, type DrillCoach } from './drillcoach';
+import { CUES, CUE_SHORT, FormCheck, RepCounter, SELF_NAMED, SIGNALS, Signal, setsOf, signalValueText, type DrillCoach, type FormCue } from './drillcoach';
 import type { DrillDone, DrillSet } from './sessions';
 import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
@@ -19,6 +19,12 @@ const Anim3D = lazy(() => import('./Anim3D'));
 // session stays on; nothing is recorded or sent.
 
 type Phase = 'starting' | 'demo' | 'frame' | 'count' | 'run' | 'rest' | 'result' | 'error';
+
+/** the cues of a set in words, e.g. "Hints: 2 × heels up · 1 × arms forward" */
+export function cueText(cues: Partial<Record<FormCue, number>>): string {
+  const parts = (Object.entries(cues) as [FormCue, number][]).filter(([, n]) => n > 0).map(([c, n]) => `${n} × ${tr(CUE_SHORT[c].en, CUE_SHORT[c].de)}`);
+  return parts.length ? `${tr('Hints', 'Hinweise')}: ${parts.join(' · ')}` : '';
+}
 
 const sideWord = (s: Side) => (s === 'left' ? tr('left side', 'linke Seite') : tr('right side', 'rechte Seite'));
 const t = (x: { en: string; de: string }) => tr(x.en, x.de);
@@ -41,15 +47,20 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
     const x = ms > 0 && !still ? k(ms) : 0;
     switch (plan.signal) {
       case 'turn':
-        return s.frontBody({ trunk: (good ? 50 : 30) * x });
+        // stiff: the hips turn along
+        return s.frontBody({ trunk: (good ? 50 : 32) * x, pelvis: good ? 0 : 18 * x });
       case 'hipTurn':
-        return s.frontBody({ pelvis: (good ? 35 : 18) * x });
+        // stiff: the chest turns along
+        return s.frontBody({ pelvis: (good ? 35 : 22) * x, trunk: good ? 0 : 18 * x });
       case 'head':
-        return s.frontBody({ head: (good ? 70 : 50) * x });
+        // stiff: the shoulders turn along
+        return s.frontBody({ head: (good ? 70 : 45) * x, trunk: good ? 0 : 18 * x });
       case 'squat':
-        return s.squatBody(x, good ? 8 : -12);
+        // stiff: heels up, arms forward
+        return s.squatBody(x, good ? 8 : -12, good ? 0 : 0.3, good ? 10 : 40);
       case 'reach':
-        return s.toeTouchBody(x, good ? -0.01 : 0.12);
+        // stiff: knees bent
+        return s.toeTouchBody(x, good ? -0.01 : 0.12, good ? 0 : 30);
       case 'shin':
         return s.squatBody(x * (good ? 0.7 : 0.45), 0);
       case 'hipExt':
@@ -102,6 +113,8 @@ export function DrillPlayer(props: {
   const [live, setLive] = useState<{ reps: number; held: number; value: number | null; best: number | null; progress: number; seen: boolean; missing: number; turned?: boolean; people?: number }>({ reps: 0, held: 0, value: null, best: null, progress: 0, seen: false, missing: 0 });
   const doneRef = useRef<DrillSet[]>([]);
   const [auto, setAuto] = useState<number | null>(null);
+  // the form cue on screen (3 s): what the app just said
+  const [cue, setCue] = useState<FormCue | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ratio, setRatio] = useState('9 / 16');
   const [attempt, setAttempt] = useState(0);
@@ -131,6 +144,9 @@ export function DrillPlayer(props: {
     // the set in play
     let k = 0;
     let sig: Signal | null = plan.signal ? new Signal(plan.signal) : null;
+    // the form while the player does the drill: a cue like a coach (new for every set, set up in its countdown)
+    let form: FormCheck | null = null;
+    let cueUntil = 0;
     let counter: RepCounter | null = null;
     let reps = 0;
     let held = 0;
@@ -189,6 +205,7 @@ export function DrillPlayer(props: {
 
     const startCountdown = () => {
       go('count');
+      form = plan.signal ? new FormCheck(plan.signal) : null;
       const side = sets[k];
       say(side ? (k === 0 || sets[k - 1] !== side ? tr(`The ${sideWord(side)}.`, `Die ${sideWord(side)}.`) : '') : '');
       const t0 = performance.now();
@@ -232,7 +249,9 @@ export function DrillPlayer(props: {
       if (phaseRef.current !== 'run') return;
       const side = sets[k];
       const best = plan.signal === 'oneLeg' ? Math.round(held / 100) / 10 : signal?.countOnly ? null : holdMode ? holdBest : (counter?.best ?? null);
-      const s: DrillSet = { side, reps: holdMode ? 1 : reps, target: holdMode ? 1 : (plan.reps ?? 10), best: best != null ? Math.round(best * 10) / 10 : null, ...(holdMode ? { held: Math.round(held / 100) / 10 } : {}), ...(sig && !holdMode && !paced ? { seen: true } : {}) };
+      const s: DrillSet = { side, reps: holdMode ? 1 : reps, target: holdMode ? 1 : (plan.reps ?? 10), best: best != null ? Math.round(best * 10) / 10 : null, ...(holdMode ? { held: Math.round(held / 100) / 10 } : {}), ...(sig && !holdMode && !paced ? { seen: true } : {}), ...(form && Object.keys(form.counts).length ? { cues: { ...form.counts } } : {}) };
+      setCue(null);
+      cueUntil = 0;
       doneRef.current = [...doneRef.current, s];
       beep(1400, 240);
       k++;
@@ -301,6 +320,7 @@ export function DrillPlayer(props: {
         }
       }
       if (ph === 'count' && sig && f) sig.calibrate(f);
+      if (ph === 'count' && form && f) form.calibrate(f);
       let value: number | null = null;
       if (ph === 'run') {
         const dt = now - lastT;
@@ -308,6 +328,20 @@ export function DrillPlayer(props: {
         const elapsed = (now - setT0) * sp;
         if (sig && f && !sig.calibrated) sig.calibrate(f);
         value = sig && f ? sig.value(f) : null;
+        if (form && f) {
+          if (!form.calibrated) form.calibrate(f);
+          // (the synthetic player of the QA runs faster than the clock: its own time, so a fault lasts as long as in life)
+          const cue = form.push(fake ? { ...f, t: (now - fakeT0) * sp } : f, value);
+          if (cue) {
+            say(t(CUES[cue]));
+            setCue(cue);
+            cueUntil = now + 3000;
+          }
+        }
+        if (cueUntil && now > cueUntil) {
+          cueUntil = 0;
+          setCue(null);
+        }
         if (holdMode) {
           const hold = (plan.hold ?? 20) * 1000;
           if (sig && plan.signal !== 'oneLeg') {
@@ -482,14 +516,16 @@ export function DrillPlayer(props: {
                 <span className="grow">
                   <span className="title">{[x.side ? sideWord(x.side) : tr('Set', 'Satz'), r.sets.filter((y) => y.side === x.side).length > 1 ? String(r.sets.slice(0, i + 1).filter((y) => y.side === x.side).length) : ''].filter(Boolean).join(' ')}</span>
                   <span className="muted small">{x.held != null ? tr(`${x.held} s held`, `${String(x.held).replace('.', ',')} s gehalten`) : tr(`${x.reps} of ${x.target} reps${x.seen ? ' (seen by the camera)' : ''}`, `${x.reps} von ${x.target} Wiederholungen${x.seen ? ' (von der Kamera gezählt)' : ''}`)}</span>
+                  {/* the value under the count (a long one like "thighs 12° above parallel" squeezed the text beside it) */}
+                  {x.best != null && plan.signal && plan.signal !== 'oneLeg' && <strong className="small mob-set-best">{unit(x.best)}</strong>}
+                  {x.cues && <span className="small mob-cue-note">{cueText(x.cues)}</span>}
                 </span>
-                {x.best != null && plan.signal && plan.signal !== 'oneLeg' && <strong className="mob-set-best">{unit(x.best)}</strong>}
               </div>
             ))}
           </div>
           {best != null && plan.signal && (
             <span className="small">
-              {t(SIGNALS[plan.signal].name)}: <strong>{unit(best)}</strong>
+              {SELF_NAMED.includes(plan.signal) ? null : `${t(SIGNALS[plan.signal].name)}: `}<strong>{unit(best)}</strong>
               {change != null && Math.abs(change) >= (SIGNALS[plan.signal].unit === '°' ? 3 : 1) && <span className={better ? ' good-text' : ' muted'}> · {tr(`${change > 0 ? '+' : '−'}${Math.abs(change)} since last time`, `${change > 0 ? '+' : '−'}${String(Math.abs(change)).replace('.', ',')} seit letztem Mal`)}</span>}
             </span>
           )}
@@ -591,6 +627,7 @@ export function DrillPlayer(props: {
               </span>
             </div>
           )}
+          {phase === 'run' && cue && <div className="mob-cue" role="status">{t(CUES[cue])}</div>}
           {(live.people ?? 0) > 1 && <div className="mob-people">{tr('Several people in the picture – please step in alone', 'Mehrere Personen im Bild – bitte allein ins Bild')}</div>}
           <div className="mob-side-tag">{phase === 'demo' ? props.intro : [t(props.drill.name), setLabel].filter(Boolean).join(' · ')}</div>
         </div>

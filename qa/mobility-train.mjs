@@ -116,7 +116,7 @@ ok(taps === 1, `${taps} tap for the whole session (Start)`);
 await shot('summary');
 const summary = await p.locator('.mob-train-summary').innerText();
 ok(/Training fertig/.test(summary) && /Tag/.test(summary), 'the summary: done, the days of the week');
-ok(/(Drehung|Tiefe|Fingerspitzen|Schienbein|Hüftstreckung|Arme)/.test(summary), 'the summary shows what was measured');
+ok(/(Drehung|Oberschenkel|Zehen|Schienbein|Hüftstreckung|Arme|Außenrotation|Öffnung)/.test(summary), 'the summary shows what was measured');
 await p.locator('.mob-train-done').click();
 await p.waitForTimeout(300);
 

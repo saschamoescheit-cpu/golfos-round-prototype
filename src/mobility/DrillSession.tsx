@@ -7,8 +7,9 @@ import { SketchThumb } from '../training/Sketch';
 import type { Drill } from '../training/types';
 import { DRILL_CLIPS } from './anim3d/drills';
 import { isFakeCamera, unlockAudio } from './CameraTest';
-import { coachOf, SIGNALS, signalValueText } from './drillcoach';
-import { DrillPlayer } from './DrillPlayer';
+import { coachOf, SELF_NAMED, SIGNALS, signalValueText } from './drillcoach';
+import { DrillPlayer, cueText } from './DrillPlayer';
+import type { FormCue } from './drillcoach';
 import { PhoneSetup } from './pictures';
 import { loadPose } from './pose';
 import { bestOf, daysThisWeek, drillHistory, saveSession, type DrillDone, type TrainSession } from './sessions';
@@ -270,9 +271,15 @@ function TrainSummary(props: { session: TrainSession; drills: Drill[]; previous:
               <span className="grow">
                 <span className="title">{t(d.name)}</span>
                 <span className="muted small">{x ? doneText(x) : tr('not done', 'nicht gemacht')}</span>
+                {x && (() => {
+                  const all: Partial<Record<FormCue, number>> = {};
+                  for (const st of x.sets) for (const [c, n] of Object.entries(st.cues ?? {}) as [FormCue, number][]) all[c] = (all[c] ?? 0) + n;
+                  const text = cueText(all);
+                  return text ? <span className="small mob-cue-note">{text}</span> : null;
+                })()}
                 {best != null && sig && sig !== 'oneLeg' && (
                   <span className="small">
-                    {t(SIGNALS[sig].name)}: <strong>{signalValueText(sig, best, tr)}</strong>
+                    {SELF_NAMED.includes(sig) ? null : `${t(SIGNALS[sig].name)}: `}<strong>{signalValueText(sig, best, tr)}</strong>
                     {change != null && Math.abs(change) >= (SIGNALS[sig].unit === '°' ? 3 : 1) && <span className={up ? ' good-text' : ' muted'}> · {change > 0 ? '+' : '−'}{String(Math.abs(change)).replace('.', tr('.', ','))}{SIGNALS[sig].unit === '°' ? '°' : ` ${SIGNALS[sig].unit}`}</span>}
                   </span>
                 )}

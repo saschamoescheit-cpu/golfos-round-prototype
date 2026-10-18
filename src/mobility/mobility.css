@@ -192,7 +192,8 @@
 .mob-drill-live .mob-live-value { font-variant-numeric: tabular-nums; }
 .mob-drill-result .mob-drill-done { font: 700 24px/1.2 var(--display, inherit); }
 .mob-set-row { min-height: 0; padding-block: 8px; }
-.mob-set-best { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mob-set-best { font-variant-numeric: tabular-nums; }
+.mob-set-row .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mob-train-list .mob-test-row { cursor: default; }
 .mob-train-summary { display: flex; flex-direction: column; gap: 12px; }
 .mob-train-summary .card { display: flex; flex-direction: column; gap: 4px; }
@@ -210,3 +211,7 @@
 
 .mob-trained { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .mob-trained h2 { margin: 0; }
+
+/* a form cue during a drill: what the app just said, big enough for 3 m */
+.mob-cue { position: absolute; left: 12px; right: 12px; top: 38%; padding: 10px 14px; border-radius: 14px; background: rgba(14, 20, 24, 0.82); color: #ffffff; font: 700 22px/1.25 var(--display, inherit); text-align: center; border: 2px solid var(--brand); }
+.mob-cue-note { color: var(--text-2); }

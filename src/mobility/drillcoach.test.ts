@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRILL_COACH, RepCounter, SIGNALS, Signal, drillSeconds, setsOf, signalValueText, type SignalId } from './drillcoach';
+import { DRILL_COACH, FormCheck, RepCounter, SIGNALS, Signal, drillSeconds, setsOf, signalValueText, type SignalId } from './drillcoach';
 import { bridgeBody, frontBody, latBody, squatBody, toeTouchBody } from './synth';
 import { TESTS } from './tests';
 import type { Frame, Lm } from './measure';
@@ -160,5 +160,64 @@ describe('drill coach', () => {
     expect(signalValueText('reach', -3, tr)).toBe('3 cm über die Zehen hinaus');
     expect(signalValueText('squat', -12, tr)).toBe('Oberschenkel 12° über waagrecht');
     expect(signalValueText('shin', 37.6, tr)).toBe('38°');
+  });
+});
+
+describe('form cues', () => {
+  /** the cues said over a drill done n times (2.5 s a rep, 20 pictures a second) */
+  function cues(id: SignalId, body: (k: number) => Lm[], reps = 4) {
+    const sig = new Signal(id);
+    const form = new FormCheck(id);
+    let t = 0;
+    for (let i = 0; i < 10; i++) {
+      const f = { lm: body(0), w: W, h: H, t: (t += 50) };
+      sig.calibrate(f);
+      form.calibrate(f);
+    }
+    const said: string[] = [];
+    for (let r = 0; r < reps; r++)
+      for (let i = 0; i < 50; i++) {
+        const f: Frame = { lm: body(Math.sin((Math.PI * i) / 50)), w: W, h: H, t: (t += 50) };
+        const c = form.push(f, sig.value(f));
+        if (c) said.push(c);
+      }
+    return { said, counts: form.counts };
+  }
+
+  it('says "hips still" when the hips turn with the chest – and nothing when they stay', () => {
+    expect(cues('turn', (k) => frontBody({ trunk: 50 * k, pelvis: 25 * k })).said).toContain('hipsStill');
+    expect(cues('turn', (k) => frontBody({ trunk: 50 * k })).said).toEqual([]);
+  });
+
+  it('says "chest still" when the chest turns with the hips', () => {
+    expect(cues('hipTurn', (k) => frontBody({ pelvis: 30 * k, trunk: 25 * k })).said).toContain('chestStill');
+    expect(cues('hipTurn', (k) => frontBody({ pelvis: 30 * k })).said).toEqual([]);
+  });
+
+  it('says "shoulders still" when the shoulders turn with the head', () => {
+    expect(cues('head', (k) => frontBody({ trunk: 25 * k, head: 50 * k })).said).toContain('shouldersStill');
+    expect(cues('head', (k) => frontBody({ head: 70 * k })).said).toEqual([]);
+  });
+
+  it('says "heels down" and "arms up" in the squat – and nothing in a good one', () => {
+    // both faults: they take turns over a longer set
+    const bad = cues('squat', (k) => squatBody(k, -12, 0.3, 45), 10);
+    expect(bad.said).toContain('heelsDown');
+    expect(bad.said).toContain('armsUp');
+    expect(cues('squat', (k) => squatBody(k, 8, 0, 45)).said).toEqual(['armsUp', 'armsUp']);
+    expect(cues('squat', (k) => squatBody(k, 8, 0, 10)).said).toEqual([]);
+  });
+
+  it('says "knees straight" when the toe touch bends the knees', () => {
+    expect(cues('reach', (k) => toeTouchBody(k, 0.02, 35)).said).toContain('kneesStraight');
+    expect(cues('reach', (k) => toeTouchBody(k, 0.02, 0)).said).toEqual([]);
+  });
+
+  it('says a cue at most every 6 s and counts it', () => {
+    const r = cues('turn', (k) => frontBody({ trunk: 50 * k, pelvis: 25 * k }), 8);
+    // 8 reps × 2.5 s = 20 s: at most 4 cues
+    expect(r.said.length).toBeGreaterThanOrEqual(2);
+    expect(r.said.length).toBeLessThanOrEqual(4);
+    expect(r.counts.hipsStill).toBe(r.said.length);
   });
 });

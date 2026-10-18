@@ -6,6 +6,8 @@ import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
+// good: a supple player; stiff: one with the faults a coach corrects (hips along, heels up …) – the cues are checked
+const level = process.argv[3] ?? 'good';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
@@ -22,11 +24,11 @@ const MEASURED = ['mob-ankle-wall', 'mob-toe-touch', 'mob-pelvic-turn', 'mob-sin
 
 await p.goto(url);
 await p.waitForTimeout(800);
-await p.evaluate((ids) => {
+await p.evaluate(({ ids, lv }) => {
   localStorage.clear();
   localStorage.setItem('golfos.intro.v1', '1');
   localStorage.setItem('golfos.lang.v1', 'de');
-  localStorage.setItem('golfos.mobility.fake', 'good');
+  localStorage.setItem('golfos.mobility.fake', lv);
   localStorage.setItem('golfos.mobility.fakeSpeed', '8');
   const at = '2026-10-17T18:00:00Z';
   const m = (value) => ({ value, grade: 'limited', source: 'camera', at });
@@ -35,7 +37,7 @@ await p.evaluate((ids) => {
   // a session with every drill, paused after a first one that was skipped
   const started = new Date(Date.now() - 60000).toISOString();
   localStorage.setItem('golfos.mobility.sessions.v1', JSON.stringify([{ id: 'all', startedAt: started, finishedAt: null, minutes: 60, drills: ['skip-me', ...ids], done: [{ drill: 'skip-me', sets: [], skipped: true, at: started }] }]));
-}, IDS);
+}, { ids: IDS, lv: level });
 await p.reload();
 await p.waitForTimeout(800);
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
@@ -70,6 +72,15 @@ for (const id of IDS) {
   ok(!!d && !d.skipped && okSets && valued && counted, `${id}: ${sets.map((s) => (s.held != null ? `${s.held} s` : `${s.reps}/${s.target}${s.seen ? ' cam' : ''}`) + (s.best != null ? ` (${s.best})` : '')).join(', ') || 'not done'}`);
 }
 ok(!!sess?.finishedAt, 'the session is finished');
+if (level === 'stiff') {
+  // the faults of the stiff player: the coach said the cue and the set kept it
+  const want = { 'seated-rotation': 'hipsStill', 'mob-pelvic-turn': 'chestStill', 'mob-neck-turn': 'shouldersStill', 'deep-squat': 'heelsDown', 'mob-toe-touch': 'kneesStraight' };
+  for (const [id, cue] of Object.entries(want)) {
+    const d = sess?.done.find((x) => x.drill === id);
+    const n = (d?.sets ?? []).reduce((k, s) => k + (s.cues?.[cue] ?? 0), 0);
+    ok(n >= 1, `${id}: the cue "${cue}" was given ${n} ×`);
+  }
+}
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all green');

@@ -2,7 +2,7 @@
 // session keeps what the player did per drill and set – the reps, the holds and, where the camera measured, the best
 // value – so the next session and the drill page can show the way there. Nothing is ever deleted by itself.
 import { syncSoon } from '../lib/sync';
-import { SAME_AS_TEST, SIGNALS, coachOf, type SignalId } from './drillcoach';
+import { SAME_AS_TEST, SIGNALS, coachOf, type FormCue, type SignalId } from './drillcoach';
 import type { Side, TestId } from './types';
 
 export interface DrillSet {
@@ -16,6 +16,8 @@ export interface DrillSet {
   best: number | null;
   /** the reps were counted by the camera (not the app's count) */
   seen?: boolean;
+  /** the form cues the app gave in this set, how often */
+  cues?: Partial<Record<FormCue, number>>;
 }
 
 export interface DrillDone {

@@ -330,6 +330,9 @@ export class RepCounter {
   }
 }
 
+/** values that say what they are ("thighs 12° above parallel", "4 cm above the toes") – shown without the name */
+export const SELF_NAMED: SignalId[] = ['squat', 'reach'];
+
 /** The value in words, e.g. "38°", "4 cm above the toes", "24 s". */
 export function signalValueText(id: SignalId, v: number | null, tr: (en: string, de: string) => string): string {
   if (v == null) return '–';
@@ -349,5 +352,138 @@ export function signalValueText(id: SignalId, v: number | null, tr: (en: string,
       return '';
     default:
       return `${Math.round(v)}°`;
+  }
+}
+
+// ---------- form cues: what a coach would say while the player does the drill ----------
+
+/** A fault the camera can see during a drill – said once (at most one cue every 6 s) and counted for the result. */
+export type FormCue = 'hipsStill' | 'chestStill' | 'shouldersStill' | 'heelsDown' | 'armsUp' | 'heelDown' | 'kneesStraight' | 'elbowsIn';
+
+export const CUES: Record<FormCue, Text> = {
+  hipsStill: L('Keep the hips still – only the chest turns.', 'Die Hüfte bleibt ruhig – nur die Brust dreht.'),
+  chestStill: L('Keep the chest still – only the hips turn.', 'Die Brust bleibt ruhig – nur die Hüfte dreht.'),
+  shouldersStill: L('Keep the shoulders still – only the head turns.', 'Die Schultern bleiben ruhig – nur der Kopf dreht.'),
+  heelsDown: L('Heels on the floor.', 'Fersen am Boden lassen.'),
+  armsUp: L('Arms up, in line with the body.', 'Arme nach oben, in Linie mit dem Körper.'),
+  heelDown: L('The front heel stays down.', 'Die vordere Ferse bleibt unten.'),
+  kneesStraight: L('Keep the knees straight.', 'Knie gestreckt lassen.'),
+  elbowsIn: L('Elbows on the body.', 'Ellbogen am Körper.'),
+};
+/** the short form for the result, e.g. "2 × heels up" */
+export const CUE_SHORT: Record<FormCue, Text> = {
+  hipsStill: L('hips turned along', 'Hüfte drehte mit'),
+  chestStill: L('chest turned along', 'Brust drehte mit'),
+  shouldersStill: L('shoulders turned along', 'Schultern drehten mit'),
+  heelsDown: L('heels up', 'Fersen hoch'),
+  armsUp: L('arms forward', 'Arme nach vorn'),
+  heelDown: L('heel up', 'Ferse hoch'),
+  kneesStraight: L('knees bent', 'Knie gebeugt'),
+  elbowsIn: L('elbows off the body', 'Ellbogen vom Körper weg'),
+};
+
+/**
+ * Watches the form while the player does a drill. It needs the still pictures before the drill (widths face-on, the
+ * heels flat) and then says a cue when a fault lasts 0.4 s – at most one cue every 6 s, so the player is not talked
+ * over. The thresholds follow the screen's limits (heels 0.2 of the foot, arms 30° off the trunk). REVIEW(golf): Chris.
+ */
+export class FormCheck {
+  private cal: { w: number; h: number; hy: [number, number]; ft: [number, number] }[] = [];
+  private base = { w: 0, h: 0, hy: [0, 0] as [number, number], ft: [1, 1] as [number, number] };
+  private since: Partial<Record<FormCue, number>> = {};
+  /** when each fault was last seen */
+  private seenAt: Partial<Record<FormCue, number>> = {};
+  private lastSaid = -1e9;
+  /** how often each cue was said */
+  counts: Partial<Record<FormCue, number>> = {};
+  constructor(readonly signal: SignalId) {}
+  get calibrated(): boolean {
+    return this.cal.length >= CAL;
+  }
+  calibrate(f: Frame): void {
+    if (this.calibrated) return;
+    const sides = [S('left'), S('right')];
+    this.cal.push({
+      w: width(f, P.lSh, P.rSh),
+      h: width(f, P.lHip, P.rHip),
+      hy: [px(f, sides[0].heel)[1], px(f, sides[1].heel)[1]],
+      ft: [dist(px(f, sides[0].heel), px(f, sides[0].toe)), dist(px(f, sides[1].heel), px(f, sides[1].toe))],
+    });
+    if (this.calibrated) {
+      const m = (g: (c: (typeof this.cal)[number]) => number) => median(this.cal.map(g));
+      this.base = { w: m((c) => c.w), h: m((c) => c.h), hy: [m((c) => c.hy[0]), m((c) => c.hy[1])], ft: [Math.max(1, m((c) => c.ft[0])), Math.max(1, m((c) => c.ft[1]))] };
+    }
+  }
+  /** the faults in this picture (value: the drill's signal now) */
+  faults(f: Frame, value: number | null): FormCue[] {
+    if (!this.calibrated || value == null) return [];
+    const seen = (...ix: number[]) => ix.every((i) => inFrame(f, i));
+    const out: FormCue[] = [];
+    switch (this.signal) {
+      case 'turn':
+        if (value > 25 && seen(P.lHip, P.rHip) && this.base.h > 0 && turned(width(f, P.lHip, P.rHip), this.base.h) > 15) out.push('hipsStill');
+        break;
+      case 'hipTurn':
+        if (value > 12 && seen(P.lSh, P.rSh) && this.base.w > 0 && turned(width(f, P.lSh, P.rSh), this.base.w) > Math.max(15, value * 0.6)) out.push('chestStill');
+        break;
+      case 'head':
+        if (value > 30 && seen(P.lSh, P.rSh) && this.base.w > 0 && turned(width(f, P.lSh, P.rSh), this.base.w) > 15) out.push('shouldersStill');
+        break;
+      case 'squat': {
+        // on the way down (the thighs at least 50° from upright)
+        if (value < -50) break;
+        const side = nearSide(f);
+        const s = S(side);
+        const i = side === 'left' ? 0 : 1;
+        if (seen(s.heel) && (this.base.hy[i] - px(f, s.heel)[1]) / this.base.ft[i] > 0.2) out.push('heelsDown');
+        if (seen(s.sh, s.hip, s.wr) && angleBetween(sub(px(f, s.sh), px(f, s.hip)), sub(px(f, s.wr), px(f, s.sh))) > 35) out.push('armsUp');
+        break;
+      }
+      case 'shin': {
+        if (value < 10) break;
+        // the front leg: its knee highest above its ankle
+        const legs = (['left', 'right'] as Side[]).filter((sd) => seen(S(sd).kn, S(sd).an, S(sd).heel, S(sd).toe));
+        const front = legs.sort((a, b) => px(f, S(b).an)[1] - px(f, S(b).kn)[1] - (px(f, S(a).an)[1] - px(f, S(a).kn)[1]))[0];
+        if (!front) break;
+        const s = S(front);
+        const foot = dist(px(f, s.heel), px(f, s.toe));
+        if (foot > 1 && (px(f, s.toe)[1] - px(f, s.heel)[1]) / foot > 0.2) out.push('heelDown');
+        break;
+      }
+      case 'reach': {
+        const s = S(nearSide(f));
+        // reaching down (the fingers below the knee) with bent knees
+        if (seen(s.hip, s.kn, s.an, s.idx) && px(f, s.idx)[1] > px(f, s.kn)[1] && jointAngle(px(f, s.hip), px(f, s.kn), px(f, s.an)) < 155) out.push('kneesStraight');
+        break;
+      }
+      case 'shoulderEr': {
+        const away = (sh: number, el: number) => Math.abs(px(f, el)[0] - px(f, sh)[0]) > 0.4 * dist(px(f, sh), px(f, el));
+        if (seen(P.lSh, P.rSh, P.lEl, P.rEl) && (away(P.lSh, P.lEl) || away(P.rSh, P.rEl))) out.push('elbowsIn');
+        break;
+      }
+    }
+    return out;
+  }
+  /** a cue to say now: a fault held 0.4 s, at most one cue every 6 s */
+  push(f: Frame, value: number | null): FormCue | null {
+    const now = f.t;
+    const fs = this.faults(f, value);
+    for (const c of Object.keys(CUES) as FormCue[]) {
+      if (fs.includes(c)) this.since[c] ??= now;
+      else delete this.since[c];
+    }
+    for (const c of fs) this.seenAt[c] = now;
+    if (now - this.lastSaid < 6000) return null;
+    // of the faults held long enough, the one said least so far; a fault seen in the last 3 s that was said less is
+    // waited for a little (2.5 s) – two faults take turns instead of the first one every time
+    const due = fs.filter((c) => now - (this.since[c] ?? now) >= 400).sort((a, b) => (this.counts[a] ?? 0) - (this.counts[b] ?? 0));
+    const c = due[0];
+    if (!c) return null;
+    const recent = (Object.keys(this.seenAt) as FormCue[]).filter((x) => now - (this.seenAt[x] ?? -1e9) < 3000);
+    const least = Math.min(...recent.map((x) => this.counts[x] ?? 0));
+    if ((this.counts[c] ?? 0) > least && now - this.lastSaid < 6000 + 2500) return null;
+    this.lastSaid = now;
+    this.counts[c] = (this.counts[c] ?? 0) + 1;
+    return c;
   }
 }
