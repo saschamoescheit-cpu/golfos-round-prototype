@@ -89,7 +89,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand' | 'rough' | 'alignSticks')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand' | 'rough' | 'alignSticks' | 'alignStation')[];
   /** the ball very low on its tee (fairway wood off a tee) */
   lowTee?: boolean;
   /** no ball: a drill swung into an impact bag */
@@ -647,10 +647,19 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       }
       add(tufts);
     }
-    // alignment sticks on the ground: one along the toes, one along the ball line – parallel, like railway tracks
-    if (props.includes('alignSticks')) {
+    // alignment sticks on the ground: one along the toes, one on the target line just outside the ball – parallel,
+    // like railway tracks; the station adds a third at right angles that shows the ball position
+    if (props.includes('alignSticks') || props.includes('alignStation')) {
       const mat = new THREE.MeshStandardMaterial({ color: COLORS.stick, roughness: 0.5 });
-      for (const z of [p.z + 0.13, bp.z - 0.07]) {
+      if (props.includes('alignStation')) {
+        const s = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, bp.z - 0.1 - (p.z + 0.16), 8), mat);
+        s.rotation.x = Math.PI / 2;
+        const z = (bp.z - 0.1 + p.z + 0.16) / 2;
+        s.position.set(bp.x, heightAt(bp.x, z) + 0.008, z);
+        s.castShadow = true;
+        add(s);
+      }
+      for (const z of [p.z + 0.13, bp.z + 0.07]) {
         const s = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 2.4, 8), mat);
         s.rotation.z = Math.PI / 2;
         s.position.set(bp.x + 0.7, heightAt(bp.x, z) + 0.008, z);

@@ -362,6 +362,8 @@ set3d(SECTION_MOTIONS.pitching?.['Lob and flop'], 'lob');
 set3d(FAULT_MOTIONS.fitness?.['Short, armsy backswing'], 'armsyPair');
 set3d(DRILL_MOTIONS['sand-on-face'], 'sandOnFace');
 set3d(DRILL_MOTIONS['brush-find'], 'brushFind');
+if (DRILL_MOTIONS['alignment-station']) set3d(DRILL_MOTIONS['alignment-station'], 'alignStation');
+else DRILL_MOTIONS['alignment-station'] = { frames: [], video: 'alignStation' };
 // putting faults as 3D pairs from behind: short, the short one missed, the three-putt, missing low
 FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Always short': still3d('puttShortPair'), 'Missing the short ones': still3d('puttPeekPair'), 'Three-putts from distance': still3d('puttLongPair') };
 set3d(FAULT_MOTIONS.trouble?.['Flyer over the green'], 'flyerPair');
