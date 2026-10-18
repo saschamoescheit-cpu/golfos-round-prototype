@@ -239,6 +239,29 @@ const progress = await p.locator('.mob-train-progress').innerText().catch(() => 
 ok(/Fortschritt im Training/.test(progress) && /Hüfte drehen/.test(progress) && /\+\d/.test(progress), `the history shows the progress in the training (${progress.split('\n').slice(1, 4).join(' · ')})`);
 await shot('progress');
 
+// day by day other drills: one more earlier training day moves the plan of today on
+const planNames = async () => {
+  await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
+  await p.locator('.mob-today-start').click();
+  const names = await p.locator('.mob-train-list .title').allInnerTexts();
+  await p.locator('.topbar .icon-btn').first().click();
+  await p.locator('.sheet .btn-secondary').filter({ hasText: 'Pausieren' }).click().catch(() => {});
+  await p.waitForTimeout(300);
+  return names.map((x) => x.replace(/^\d+\.\s*/, ''));
+};
+const before = await planNames();
+await p.evaluate(() => {
+  const ss = JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]');
+  const y = new Date(Date.now() - 864e5).toISOString();
+  ss.push({ id: 'yesterday', startedAt: y, finishedAt: y, minutes: 10, drills: ['seated-rotation'], done: [{ drill: 'seated-rotation', sets: [{ side: null, reps: 20, target: 20, best: null }], at: y }] });
+  localStorage.setItem('golfos.mobility.sessions.v1', JSON.stringify(ss));
+});
+await p.reload();
+await p.waitForTimeout(1200);
+if (await p.locator('.module-card').filter({ hasText: 'Agility' }).isVisible().catch(() => false)) await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
+const after2 = await planNames();
+ok(before.length > 0 && before.join() !== after2.join(), `another training day: other drills today (${before[0]} … → ${after2[0]} …)`);
+
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all green');

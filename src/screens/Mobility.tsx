@@ -1548,11 +1548,20 @@ function pillarPlan(minutes: number) {
   const order: Drill[] = [];
   for (let i = 0; lists.some((l) => l[i]); i++) for (const l of lists) if (l[i] && !order.includes(l[i])) order.push(l[i]);
   const pool = order.length ? order : keep;
-  const planDrills: Drill[] = [];
-  for (const d of pool) {
-    const used = planDrills.reduce((n, x) => n + x.minutes, 0);
-    if (used + d.minutes <= minutes || !planDrills.length) planDrills.push(d);
-  }
+  const fit = (list: Drill[]) => {
+    const out: Drill[] = [];
+    for (const d of list) {
+      const used = out.reduce((n, x) => n + x.minutes, 0);
+      if (used + d.minutes <= minutes || !out.length) out.push(d);
+    }
+    return out;
+  };
+  // day by day through all the drills of the focus (a coach varies them): each earlier training day moves the start
+  // on by one day's worth – the same plan all of today
+  const today = new Date().toISOString().slice(0, 10);
+  const daysBefore = new Set(loadSessions().filter((x) => x.finishedAt && x.startedAt.slice(0, 10) < today).map((x) => x.startedAt.slice(0, 10))).size;
+  const start = pool.length ? (daysBefore * fit(pool).length) % pool.length : 0;
+  const planDrills = fit([...pool.slice(start), ...pool.slice(0, start)]);
   const planMinutes = planDrills.reduce((n, x) => n + x.minutes, 0);
   return { results, goal, keep, drillsFor, focus, rest, planDrills, planMinutes };
 }
@@ -1647,7 +1656,7 @@ function DrillsTab(props: { nav: Nav }) {
             </button>
           ))}
         </div>
-        <span className="muted small">{tr(`${planDrills.length} drills, about ${planMinutes} min – from your focus areas in turn`, `${planDrills.length} Übungen, etwa ${planMinutes} Min. – abwechselnd aus deinen Schwerpunkten`)}</span>
+        <span className="muted small">{tr(`${planDrills.length} drills, about ${planMinutes} min – from your focus areas in turn, other ones each training day`, `${planDrills.length} Übungen, etwa ${planMinutes} Min. – abwechselnd aus deinen Schwerpunkten, jeden Trainingstag andere`)}</span>
       </section>
       <div className="sticky-cta">
         <button type="button" className="btn-primary mob-train-start" onClick={() => props.nav.train(newSession(planDrills.map((d) => d.id), planMinutes))}>
