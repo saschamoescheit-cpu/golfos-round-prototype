@@ -669,11 +669,22 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   const [s, setS] = useState<Screening>(props.screening);
   const steps = stepsOf(s);
   const firstOpen = () => Math.max(0, steps.findIndex((st) => !stepDone(s, st)));
-  const [k, setK] = useState<number>(() => firstOpen());
+  // paused with the camera part done but questions still open: those come first
+  const askFirst = s.ask?.length && !steps.some((st) => testById(st.test).mode === 'camera' && !stepDone(s, st)) ? s.ask[0] : null;
+  const askStep = (q: 'feel' | 'ankle') => steps.findIndex((st) => st.test === (q === 'feel' ? 'bridge' : 'deep-squat'));
+  const [k, setK] = useState<number>(() => (askFirst ? askStep(askFirst) : firstOpen()));
   // the trainer mode (Sascha 17.10.2026): set up once, one tap – then the camera tests run one after the other
-  const [stage, setStage] = useState<'setup' | 'brief' | 'camera' | 'self' | 'feel' | 'retest' | 'ankle' | 'hold'>(() => (testById(steps[firstOpen()]?.test ?? s.tests[0]).mode === 'camera' ? 'setup' : 'brief'));
-  // questions that need a tap, asked after the camera part (the player stays away from the phone until then)
-  const [later, setLater] = useState<('feel' | 'ankle')[]>([]);
+  const [stage, setStage] = useState<'setup' | 'brief' | 'camera' | 'self' | 'feel' | 'retest' | 'ankle' | 'hold'>(() => askFirst ?? (testById(steps[firstOpen()]?.test ?? s.tests[0]).mode === 'camera' ? 'setup' : 'brief'));
+  // questions that need a tap, asked after the camera part (the player stays away from the phone until then); they are
+  // kept in the screening, so a pause does not lose them
+  const [later, setLater] = useState<('feel' | 'ankle')[]>(() => s.ask ?? []);
+  const withAsk = (cur: Screening, q: ('feel' | 'ankle')[]): Screening => (q.length ? { ...cur, ask: q } : cur.ask ? { ...cur, ask: undefined } : cur);
+  // where "Continue" in the pause goes back to: the camera test or the squat retest
+  const [held, setHeld] = useState<'camera' | 'retest'>('camera');
+  const hold = (from: 'camera' | 'retest') => {
+    setHeld(from);
+    setStage('hold');
+  };
   const streamRef = useRef<MediaStream | null>(null);
   const stopStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -693,7 +704,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
     saveScreening(next);
   };
   const finish = (cur: Screening) => {
-    const done = { ...cur, finishedAt: new Date().toISOString() };
+    const done = { ...withAsk(cur, []), finishedAt: new Date().toISOString() };
     saveScreening(done);
     props.onFinished(done);
   };
@@ -731,7 +742,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       speak(tr('The camera tests are done. Now a few taps on the phone.', 'Die Kameratests sind fertig. Zum Schluss noch kurz ans Handy.'));
       if (queue.length) {
         setLater(queue);
-        setK(steps.findIndex((st) => st.test === (queue[0] === 'feel' ? 'bridge' : 'deep-squat')));
+        setK(askStep(queue[0]));
         setStage(queue[0]);
         return;
       }
@@ -747,12 +758,14 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   const answered = (cur: Screening) => {
     const q = later.slice(1);
     setLater(q);
+    const now = withAsk(cur, q);
+    store(now);
     if (q.length) {
-      setK(steps.findIndex((st) => st.test === (q[0] === 'feel' ? 'bridge' : 'deep-squat')));
+      setK(askStep(q[0]));
       setStage(q[0]);
       return;
     }
-    goOn(cur, []);
+    goOn(now, []);
   };
   const startCoach = () => {
     unlockAudio();
@@ -773,11 +786,12 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
     else setStage('camera');
   };
   const save = (m: Measurement) => {
-    const cur = withResult({ ...s, current: testIndex }, step.test, step.side, m);
+    const got = withResult({ ...s, current: testIndex }, step.test, step.side, m);
+    const moreOfIt = steps.some((st, i) => i > k && st.test === step.test && !stepDone(got, st));
+    const q: ('feel' | 'ankle')[] = m.source === 'camera' && step.test === 'bridge' && !m.pain && !moreOfIt && !later.includes('feel') ? [...later, 'feel'] : later;
+    const cur = withAsk(got, q);
     store(cur);
     if (m.source === 'camera') {
-      const moreOfIt = steps.some((st, i) => i > k && st.test === step.test && !stepDone(cur, st));
-      const q: ('feel' | 'ankle')[] = step.test === 'bridge' && !m.pain && !moreOfIt && !later.includes('feel') ? [...later, 'feel'] : later;
       setLater(q);
       // the deep squat missed: the retest follows at once (hands behind the head)
       if (step.test === 'deep-squat' && m.grade !== 'pass' && !m.pain) {
@@ -797,11 +811,11 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   };
   const retested = (m: Measurement) => {
     const cause: SquatCause | null = m.pain || m.source !== 'camera' ? null : m.grade === 'pass' ? 'upper' : m.notes?.some((n) => n.en === NOTE_HEELS.en) ? null : 'hips';
-    const cur = cause ? withCause(s, cause) : s;
-    if (cur !== s) store(cur);
     // the heels still come up: knee to the wall at the end (a tap)
     const heels = !m.pain && m.source === 'camera' && m.grade !== 'pass' && m.notes?.some((n) => n.en === NOTE_HEELS.en);
     const q: ('feel' | 'ankle')[] = heels ? [...later, 'ankle'] : later;
+    const cur = withAsk(cause ? withCause(s, cause) : s, q);
+    if (cur !== s) store(cur);
     setLater(q);
     goOn(cur, q);
   };
@@ -821,7 +835,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
     if (stage === 'camera') return goOn(cur, later);
     next(cur);
   };
-  const coachFor = (intro: string, demo: Clip | undefined): Coach => ({ stream: streamRef.current, intro, demo, onMenu: () => setStage('hold'), onSkip: skip });
+  const coachFor = (intro: string, demo: Clip | undefined, from: 'camera' | 'retest' = 'camera'): Coach => ({ stream: streamRef.current, intro, demo, onMenu: () => hold(from), onSkip: skip });
   const introOf = () => {
     const n = single ? '' : tr(`Test ${testIndex + 1} of ${s.tests.length}: `, `Test ${testIndex + 1} von ${s.tests.length}: `);
     const side = step.side && test.metric ? ` – ${sideText(test.metric, step.side).replace(/\.$/, '')}` : '';
@@ -832,14 +846,14 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   if (stage === 'retest')
     return (
       <main className="screen mobility mob-run-camera">
-        <CameraTest key="squat-retest" test={test} side={null} variant="handsBehind" coach={coachFor(tr('Retest: the same squat with the hands behind the head', 'Nachtest: dieselbe Kniebeuge mit den Händen hinter dem Kopf'), RETEST_CLIPS.squatHands)} onResult={retested} onSelf={() => retested({ value: null, grade: 'limited', source: 'self', at: new Date().toISOString() })} onCancel={() => setStage('hold')} />
+        <CameraTest key="squat-retest" test={test} side={null} variant="handsBehind" coach={coachFor(tr('Retest: the same squat with the hands behind the head', 'Nachtest: dieselbe Kniebeuge mit den Händen hinter dem Kopf'), RETEST_CLIPS.squatHands, 'retest')} onResult={retested} onSelf={() => retested({ value: null, grade: 'limited', source: 'self', at: new Date().toISOString() })} onCancel={() => hold('retest')} />
       </main>
     );
 
   if (stage === 'camera')
     return (
       <main className="screen mobility mob-run-camera">
-        <CameraTest key={`${step.test}-${step.side}`} test={test} side={step.side} previous={previousMeasurement(loadScreenings(), step.test, step.side, s.id)} coach={coachFor(introOf(), CLIPS[step.test])} onResult={save} onSelf={() => setStage('self')} onCancel={() => setStage('hold')} />
+        <CameraTest key={`${step.test}-${step.side}`} test={test} side={step.side} previous={previousMeasurement(loadScreenings(), step.test, step.side, s.id)} coach={coachFor(introOf(), CLIPS[step.test])} onResult={save} onSelf={() => setStage('self')} onCancel={() => hold('camera')} />
       </main>
     );
 
@@ -852,7 +866,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
         <section className="tr-block mob-hold-screen">
           <h2>{tr('Paused', 'Pausiert')}</h2>
           <p className="muted">{tr(`${doneCount} of ${s.tests.length} tests done. Continue goes on with the test where you stopped.`, `${doneCount} von ${s.tests.length} Tests erledigt. Weiter macht mit dem Test weiter, bei dem du aufgehört hast.`)}</p>
-          <button type="button" className="btn-primary" onClick={() => setStage('camera')}>
+          <button type="button" className="btn-primary" onClick={() => setStage(held)}>
             {tr('Continue', 'Weiter')}
           </button>
           {!single && (

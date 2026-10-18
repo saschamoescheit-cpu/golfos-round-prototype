@@ -36,6 +36,7 @@ const t0 = Date.now();
 let stuck = '';
 let lastChange = Date.now();
 let lastTag = '';
+let retestHeld = false;
 while (Date.now() - t0 < 420000) {
   if (await p.locator('.mob-feel, .mob-ankle, .mob-self, .mob-summary').first().isVisible().catch(() => false)) break;
   const tag = await p.locator('.mob-side-tag').innerText().catch(() => '');
@@ -45,6 +46,16 @@ while (Date.now() - t0 < 420000) {
     lastChange = Date.now();
   }
   if (/von 15/.test(tag)) intros.add(tag);
+  // a pause during the squat retest: "Continue" goes back to the retest, not to the squat again
+  if (/^Nachtest/.test(tag) && !retestHeld && (await p.locator('.mob-coach-pause').isVisible().catch(() => false))) {
+    retestHeld = true;
+    await p.locator('.mob-coach-pause').click();
+    await p.getByRole('button', { name: 'Weiter', exact: true }).click();
+    await p.waitForTimeout(300);
+    const back = await p.locator('.mob-side-tag').innerText().catch(() => '');
+    ok(/^Nachtest/.test(back), `Continue after a pause in the retest goes back to the retest (${back})`);
+    taps += 2;
+  }
   if (Date.now() - lastChange > 45000) {
     stuck = `${tag} · ${status}`;
     break;
@@ -53,6 +64,18 @@ while (Date.now() - t0 < 420000) {
 }
 console.log('   ' + [...intros].join('\n   '));
 ok(!stuck, `no test got stuck${stuck ? ' (' + stuck + ')' : ''}`);
+// paused while a question is still open (bridge or knee to wall): it is kept and comes first after resuming
+const asked = (await p.locator('.mob-feel').isVisible().catch(() => false)) ? 'feel' : (await p.locator('.mob-ankle').isVisible().catch(() => false)) ? 'ankle' : null;
+if (asked) {
+  const ask = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]').find((x) => !x.finishedAt)?.ask ?? []);
+  ok(ask[0] === asked, `the open question is kept in the screening (${JSON.stringify(ask)})`);
+  await p.locator('.topbar .icon-btn').first().click();
+  await p.locator('.sheet .btn-secondary').filter({ hasText: 'Pausieren' }).click();
+  await p.locator('.mob-open').click();
+  await p.waitForTimeout(500);
+  ok(await p.locator('.mob-' + asked).isVisible(), 'after the pause the open question (' + asked + ') comes first, without the camera');
+  taps += 2;
+}
 // the end: questions and self checks, each one tap
 for (let i = 0; i < 12; i++) {
   if (await p.locator('.mob-summary').isVisible().catch(() => false)) break;
@@ -71,9 +94,10 @@ await p.locator('.mob-summary').waitFor({ timeout: 15000 }).catch(() => {});
 const sc = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]').at(-1));
 const tested = Object.keys(sc?.results ?? {}).length;
 ok(tested === 15, `${tested} of 15 tests saved`);
+ok(!sc?.ask, 'no open question is left in the finished screening');
 const cam = Object.values(sc?.results ?? {}).reduce((n, r) => n + ['left', 'right', 'both'].filter((k) => r[k]?.source === 'camera').length, 0);
 ok(cam === 16, `${cam} of 16 camera steps measured by themselves (10 tests, 6 with both sides)`);
-ok(taps <= 1 + 1 + 5 + 1, `${taps} taps for the whole full screening (start, the bridge question, 5 self checks${level === 'stiff' ? ', knee to wall' : ''})`);
+ok(taps <= 1 + 1 + 5 + 1 + 2 + (retestHeld ? 2 : 0), `${taps} taps for the whole full screening (start, the bridge question, 5 self checks, pause + resume${level === 'stiff' ? ', knee to wall' : ''})`);
 ok(await p.locator('.mob-summary').isVisible(), 'the result opens at the end');
 // repeat later: an earlier screening with less movement → the history says what changed per area
 await p.evaluate(() => {

@@ -120,4 +120,6 @@ export interface Screening {
   results: Partial<Record<TestId, TestResult>>;
   /** tests the player skipped */
   skipped?: TestId[];
+  /** the questions still to ask after the camera part (kept across a pause) */
+  ask?: ('feel' | 'ankle')[];
 }
