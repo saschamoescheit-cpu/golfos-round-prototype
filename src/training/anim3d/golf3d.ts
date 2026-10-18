@@ -11,7 +11,7 @@ import { ballFlight } from '../motion';
 // World: y up, the player faces +z (the ball lies in front of the toes), the target is +x (to the right face-on).
 
 export type View = 'front' | 'side' | 'angle' | 'above' | 'face';
-export type Club3D = 'iron' | 'wedge' | 'driver' | 'putter';
+export type Club3D = 'iron' | 'wedge' | 'driver' | 'putter' | 'hybrid';
 type V3 = [number, number, number];
 
 export interface SwingKey {
@@ -70,6 +70,10 @@ export interface Swing {
   /** a landing spot and a hole (metres along the target line from the ball): a ring of 1 m where the ball should land,
    *  the hole where it should stop – the ball drops in when it gets there */
   landing?: { carry: number; hole?: number };
+  /** the ball sits this deep in the ground (m): plugged in the sand (fried egg), in an old divot */
+  sunk?: number;
+  /** the trail foot pulled back and up on its toes – the weight on the lead foot (bunker drill) */
+  trailToe?: boolean;
   /** the ball sits on a tee (driver) */
   tee?: boolean;
   /** only the lead hand on the club – the trail hand rests on the chest */
@@ -77,7 +81,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot')[];
   /** the ball very low on its tee (fairway wood off a tee) */
   lowTee?: boolean;
   /** no ball: a drill swung into an impact bag */
@@ -85,9 +89,9 @@ export interface Swing {
   view?: View;
 }
 
-const CLUB_LEN: Record<Club3D, number> = { driver: 1.06, iron: 0.86, wedge: 0.82, putter: 0.8 };
+const CLUB_LEN: Record<Club3D, number> = { driver: 1.06, iron: 0.86, wedge: 0.82, putter: 0.8, hybrid: 0.96 };
 /** the middle of the face from the hosel towards the toe (metres) – that point meets the ball, not the heel */
-const SWEET: Record<Club3D, number> = { driver: 0.055, iron: 0.04, wedge: 0.04, putter: 0.045 };
+const SWEET: Record<Club3D, number> = { driver: 0.055, iron: 0.04, wedge: 0.04, putter: 0.045, hybrid: 0.045 };
 
 // ---------- inverse kinematics ----------
 const tmpQ = new THREE.Quaternion();
@@ -131,7 +135,7 @@ function buildClub(kind: Club3D): THREE.Group {
   cap.rotation.x = Math.PI;
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.0042, len - 0.31, 10), steel);
   shaft.position.y = 0.27 + (len - 0.31) / 2;
-  const hosel = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0075, 0.045, 10), kind === 'driver' ? m('#2a3136', 0.4, 0.3) : steel);
+  const hosel = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0075, 0.045, 10), kind === 'driver' || kind === 'hybrid' ? m('#2a3136', 0.4, 0.3) : steel);
   hosel.position.y = len - 0.02;
   // the head lies flat on the ground at address: tilted against the shaft by the lie angle, toe away from the player
   const head = new THREE.Group();
@@ -141,6 +145,12 @@ function buildClub(kind: Club3D): THREE.Group {
     const crown = new THREE.Mesh(new THREE.SphereGeometry(0.062, 24, 16), m('#2a3136', 0.32, 0.4));
     crown.scale.set(0.9, 0.62, 1.15);
     crown.position.set(0.015, -0.02, 0.055);
+    head.add(crown);
+  } else if (kind === 'hybrid') {
+    // a small wood: a flat, rounded head
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(0.045, 22, 14), m('#2a3136', 0.32, 0.4));
+    crown.scale.set(0.85, 0.55, 1.1);
+    crown.position.set(0.01, -0.016, 0.045);
     head.add(crown);
   } else if (kind === 'putter') {
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.024, 0.11), steel);
@@ -164,7 +174,7 @@ function buildClub(kind: Club3D): THREE.Group {
   g.traverse((o) => (o as THREE.Mesh).isMesh && ((o as THREE.Mesh).castShadow = true));
   g.userData.head = head;
   // the face's plane in the head's frame (where a ball mark sits)
-  g.userData.faceX = kind === 'driver' ? -0.042 : kind === 'putter' ? -0.0105 : -0.0068;
+  g.userData.faceX = kind === 'driver' ? -0.042 : kind === 'hybrid' ? -0.028 : kind === 'putter' ? -0.0105 : -0.0068;
   return g;
 }
 
@@ -329,7 +339,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
 
   const ballPos = (p: { swing: Swing; x: number; z: number }) => {
     const b = p.swing.ball ?? [0, 0.6];
-    return new THREE.Vector3(p.x + b[0], (p.swing.tee ? (p.swing.lowTee ? 0.04 : 0.06) : 0.0215) + heightAt(p.x + b[0], p.z + b[1]), p.z + b[1]);
+    return new THREE.Vector3(p.x + b[0], (p.swing.tee ? (p.swing.lowTee ? 0.04 : 0.06) : 0.0215 - (p.swing.sunk ?? 0)) + heightAt(p.x + b[0], p.z + b[1]), p.z + b[1]);
   };
 
   /** the trunk of a key (or between two) put on the rig, the limbs left for the solver */
@@ -480,9 +490,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const half = s0 / 2;
     const wide = mix((x) => x.stance ?? s0);
     const lift = Math.max(0, mix((x) => x.step ?? 0));
-    const heel = lerp(a.heel ?? 0, b.heel ?? 0, k);
+    const heel = swing.trailToe ? 1 : lerp(a.heel ?? 0, b.heel ?? 0, k);
+    const back = swing.trailToe ? 0.2 : 0;
     const ankleL = new THREE.Vector3(p.x - half + wide, BODY.ankleH + lift + heightAt(p.x - half + wide, p.z), p.z);
-    const ankleR = new THREE.Vector3(p.x - half + heel * 0.06, BODY.ankleH + heel * 0.11 + heightAt(p.x - half, p.z), p.z - heel * 0.03);
+    const ankleR = new THREE.Vector3(p.x - half + heel * 0.06, BODY.ankleH + heel * 0.11 + heightAt(p.x - half, p.z), p.z - heel * 0.03 - back);
     const pelvisP = J.pelvis.getWorldPosition(new THREE.Vector3());
     twoBone(J.hipL, J.kneeL, BODY.thigh, BODY.shin, ankleL, pelvisP.clone().add(new THREE.Vector3(0.25, 0, 1)));
     twoBone(J.hipR, J.kneeR, BODY.thigh, BODY.shin, ankleR, pelvisP.clone().add(new THREE.Vector3(-0.25 + heel * 0.5, 0, 1)));
@@ -598,6 +609,19 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const bp = ballPos(p);
     const fly: { m: THREE.Object3D; from: THREE.Vector3; delay: number }[] = [];
     const add = (m: THREE.Object3D) => (p.extras.add(m), m);
+    // a plugged ball: a ring of sand thrown up around it (the fried egg); an old divot: a bare, sunken strip
+    if (p.swing.sunk && p.swing.sand) {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.01, 8, 24), new THREE.MeshStandardMaterial({ color: '#d9c48f', roughness: 1 }));
+      rim.rotation.x = Math.PI / 2;
+      rim.position.set(bp.x, heightAt(bp.x, bp.z) + 0.002, bp.z);
+      add(rim);
+    }
+    if (props.includes('oldDivot')) {
+      const hole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.004, 0.06), new THREE.MeshStandardMaterial({ color: '#6e5a3c', roughness: 1 }));
+      hole.position.set(bp.x + 0.02, heightAt(bp.x, bp.z) + 0.001, bp.z);
+      hole.receiveShadow = true;
+      add(hole);
+    }
     if (props.includes('teeGate')) {
       // just outside the putter's heel and toe at address – the head passes between them
       standAt(add(teeMesh(0.04)), bp.x - 0.04, bp.z - 0.064);
