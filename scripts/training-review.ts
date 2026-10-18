@@ -48,6 +48,28 @@ for (const c of CATEGORIES) {
   for (const d of DRILLS.filter((x) => x.cat === c.id)) lines.push(`| [ ] | **${d.name.de}** – ${d.goal.de} | ${level[d.level]} | ${place[d.place]} | ${d.minutes} | ${scoring(d)} | ${targets(d)}${d.metronome ? ' · mit Metronom' : ''} | |`);
   lines.push('');
 }
+// the 3D videos (18.10.2026): every movement and every fault pair with its steps and where it is shown – Chris checks
+// posture, club positions and the ball flight
+lines.push('## 3D-Videos (bitte Bewegung und Ballflug prüfen)', '');
+lines.push('Die Schwünge sind von Hand aus Schlüsselhaltungen gebaut (neutrales Grundschwung-Modell). Bitte je Video: stimmen Haltung, Schaftpositionen, Treffmoment und Ballflug? Am besten in der App mit „Zeitlupe“ und den Ansichten Vorne · Hinten · Schräg · Oben ansehen.', '');
+const { SWINGS, PAIRS } = await import('../src/training/anim3d/swings');
+const used = new Map<string, string[]>();
+const use = (video: string | undefined, where: string) => video && used.set(video, [...(used.get(video) ?? []), where]);
+type WithMotion = { sketch?: { motion?: { video?: string } } };
+for (const d of DRILLS) use((d as WithMotion).sketch?.motion?.video, `Übung „${d.name.de}“`);
+for (const c of CATEGORIES) {
+  for (const s of c.sections) use((s as WithMotion).sketch?.motion?.video, `${c.name.de} › Grundlagen „${s.title.de}“`);
+  for (const f of c.faults ?? []) use((f as WithMotion).sketch?.motion?.video, `${c.name.de} › Fehler „${f.name.de}“`);
+}
+const steps = (sw: { keys: { label?: { de: string } }[] }) => sw.keys.flatMap((k) => (k.label ? [k.label.de] : [])).join(' → ');
+lines.push('**Bewegungen:**', '');
+for (const [id, sw] of Object.entries(SWINGS)) if (used.has(id)) lines.push(`- [ ] ${used.get(id)!.join('; ')} – Schritte: ${steps(sw)}`);
+lines.push('', '**Fehler im Vergleich (links Fehler, rechts richtig):**', '');
+for (const [id, p] of Object.entries(PAIRS)) if (used.has(id)) lines.push(`- [ ] ${used.get(id)!.join('; ')} – ${steps(p.fault)}`);
+lines.push('', '**Fachlich korrigiert am 18.10. – bitte bestätigen:**', '');
+lines.push('- [ ] „Tor von innen“: hinterer Tee 5 cm **außerhalb**, vorderer 5 cm **innerhalb** des Balls (vorher umgekehrt – dann lagen beide Tees auf der Bahn von innen und ein Schwung von außen traf keinen).');
+lines.push('- [ ] „Schlägerhaube außerhalb des Balls“: Haube 10 cm außerhalb und 10 cm **hinter** dem Ball (vorher „vor“ – dort trifft sie nur eine Bahn nach außen, nicht den Schwung von außen).');
+lines.push('');
 lines.push('## Pläne', '');
 for (const p of PLANS) lines.push(`- [ ] **${p.name.de}** – ${p.about.de}`);
 lines.push('', '## Zubehör', '');
