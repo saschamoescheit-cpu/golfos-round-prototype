@@ -554,6 +554,35 @@ const SCENES: Record<string, () => JSX.Element> = {
       <Label x={160} y={176} t={tr('lift, clean, place – not nearer the hole', 'aufnehmen, reinigen, hinlegen – nicht näher zum Loch')} />
     </Frame>
   ),
+  // 2.4 – no play zone: relief is a must
+  noPlay: () => (
+    <Frame label={tr('No play zone', 'Spielverbotszone')}>
+      <rect x="150" y="30" width="130" height="120" rx="10" fill="#3d5a2a" stroke={C.white} strokeWidth="2" strokeDasharray="6 4" />
+      {[[150, 30], [280, 30], [150, 150], [280, 150]].map(([x, y]) => (
+        <g key={x * 1000 + y}>
+          <circle cx={x} cy={y} r="6" fill="#3f7fd6" stroke={C.ink} />
+          <circle cx={x} cy={y - 3} r="3" fill={C.fairway} />
+        </g>
+      ))}
+      <Ball x={190} y={90} ghost />
+      <Label x={215} y={70} t={tr('do not play', 'nicht spielen')} c={C.red} />
+      <Ball x={110} y={96} />
+      <Arrow x1={182} y1={90} x2={118} y2={95} dash />
+      <Label x={14} y={174} t={tr('free relief – a must', 'straflose Erleichterung – Pflicht')} c={C.brand} anchor="start" />
+    </Frame>
+  ),
+  // E-1 – dropping zone
+  dropZone: () => (
+    <Frame label={tr('Dropping zone', 'Dropzone')}>
+      <Pond c={C.red} />
+      <Flag x={290} y={40} />
+      <circle cx="240" cy="140" r="26" fill={C.relief} stroke={C.white} strokeWidth="2" strokeDasharray="4 3" />
+      <Label x={240} y={144} t="DZ" />
+      <Ball x={110} y={130} ghost />
+      <Arrow x1={118} y1={130} x2={212} y2={140} dash />
+      <Label x={240} y={182} t={tr('drop in the zone, + 1', 'in der Zone droppen, + 1')} c={C.brand} />
+    </Frame>
+  ),
 };
 
 const BY_RULE: Record<number, string> = {
@@ -565,6 +594,7 @@ const BY_SECTION: Record<string, string> = {
   '6.1': 'tee', '13.3': 'overhang', '14.1': 'mark', '14.3': 'drop', '16.1': 'nearestPoint', '16.2': 'animal', '16.3': 'embedded',
   '17.1': 'penaltyYellow', '18.2': 'ob', '19.2': 'unplayable', '19.3': 'unplayableBunker', '15.1': 'loose', '12.2': 'bunker', '13.1': 'green',
   '2.1': 'boundary', '5.7': 'storm', '6.4': 'order', '13.2': 'flagstick', '18.3': 'provisional', 'E-5': 'e5', 'E-3': 'e3',
+  '2.4': 'noPlay', 'E-1': 'dropZone', '12.3': 'unplayableBunker',
 };
 
 /** The sketch of a rule (always one) or of a section (where a picture helps and it is not the rule's own), or null. */

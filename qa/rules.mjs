@@ -88,7 +88,7 @@ await p.getByRole('button', { name: 'Zurück' }).first().click();
 await p.waitForTimeout(200);
 await book.locator('.rules-group .list-item').filter({ hasText: 'Platzregeln' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.rules-book svg.rule-sketch').count()) >= 3, `local rules: E-5 and preferred lies drawn (${await p.locator('.rules-book svg.rule-sketch').count()})`);
+ok((await p.locator('.rules-book svg.rule-sketch').count()) >= 4, `local rules: E-5, preferred lies and the dropping zone drawn (${await p.locator('.rules-book svg.rule-sketch').count()})`);
 if (S) await p.screenshot({ path: S + '/rules-local.png', fullPage: true });
 await p.getByRole('button', { name: 'Zurück' }).first().click();
 await p.waitForTimeout(200);
