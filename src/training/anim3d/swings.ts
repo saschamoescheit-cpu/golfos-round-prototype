@@ -652,6 +652,23 @@ export const PITCH_8: Swing = clockPitch([-0.04, -0.2, 0.44], [-0.8, 0.55, -0.2]
 });
 export const PITCH_9: Swing = clockPitch([-0.1, -0.12, 0.45], [-0.1, 0.93, -0.36], 30, 0.85);
 export const PITCH_10: Swing = clockPitch([-0.17, 0.12, 0.38], [0.45, 0.85, -0.25], 35, 1.05);
+/** the bunker ladder: the same clock from the sand – face open, into the sand behind the ball, the same speed; the
+ *  length of the swing sets the length of the shot */
+const clockSand = (pitch: Swing, scale: number, labels: Record<number, SwingKey['label']> = {}): Swing => ({
+  ...pitch,
+  stance: 0.44,
+  ball: [0.06, 0.56],
+  sand: true,
+  hit: { at: 2.1, shot: 'bunker', scale },
+  landing: { carry: 2.2 * scale },
+  keys: pitch.keys.map((x) => ({ ...x, face: 18, ...(x.t === 2.1 ? { miss: [-0.045, -0.03, 0] as V3 } : {}), label: labels[x.t] ?? (x.t === 0 ? L('Set-up', 'Ansprache') : undefined) })),
+});
+export const SAND_8: Swing = clockSand(PITCH_8, 0.8, {
+  1.5: L('Left 8 o’clock · middle 9 · right 10 – the same speed', 'Links 8 Uhr · Mitte 9 Uhr · rechts 10 Uhr – dasselbe Tempo'),
+  2.1: L('The length of the swing sets the length – not the speed', 'Die Schwunglänge bestimmt die Länge – nicht das Tempo'),
+});
+export const SAND_9: Swing = clockSand(PITCH_9, 1.1);
+export const SAND_10: Swing = clockSand(PITCH_10, 1.4);
 
 // ---------- bunker drills (18.10.2026) ----------
 /** the line in the sand: the club goes in right at the line, the ball 4 cm in front of it comes out with the sand */
@@ -892,6 +909,7 @@ export const PAIRS = {
   armsyPair: { fault: ARMSY, right: quiet(FULL_SWING) },
   punchPair: { fault: PUNCH_HIGH, right: quiet(PUNCH), behind: true },
   chipLengthPair: { fault: CHIP_SHORT, right: quiet(CHIP_LAND), behind: true },
+  sandTrio: { fault: SAND_8, right: SAND_9, more: [SAND_10], behind: true },
   clockTrio: { fault: PITCH_8, right: PITCH_9, more: [PITCH_10], behind: true },
   shankPair: { fault: SHANK, right: quiet({ ...FULL_SWING, faceView: true }) },
   toePair: { fault: DRIVER_TOE, right: quiet({ ...DRIVER_SWING, faceView: true }) },
