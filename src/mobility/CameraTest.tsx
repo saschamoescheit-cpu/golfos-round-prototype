@@ -524,13 +524,16 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
         if (props.coach) {
           // the 3D golfer shows the test first (about one loop), then: "Now you" and where to stand
           go('demo');
-          say(`${props.coach.intro}. ${tr('Watch.', 'Schau zu.')}`);
-          const t0 = performance.now();
           const clip = props.coach.demo;
+          // what the golfer does, read out while it shows it – at 3 m the words in the picture are too small (the steps
+          // of the clip, up to three, not the "then the other side" ones)
+          const steps = [...new Set((clip?.keys ?? []).map((x) => (x.label ? tr(x.label.en, x.label.de) : '')).filter((x) => x && !/other|andere/i.test(x) && !(props.side && /\b(left|right|links|rechts|linke|rechte|linken|rechten)\b/i.test(x))))].slice(0, 3);
+          say(`${props.coach.intro}. ${tr('Watch.', 'Schau zu.')} ${steps.join('. ')}`);
+          const t0 = performance.now();
           const loop = clip ? (clip.length ?? clip.keys[clip.keys.length - 1].t) * 1000 : 0;
           const toFrame = () => {
             if (stopped) return;
-            if (!fake && isSpeaking() && performance.now() - t0 < 12000) {
+            if (!fake && isSpeaking() && performance.now() - t0 < 20000) {
               demoTimer = window.setTimeout(toFrame, 200);
               return;
             }
