@@ -9,7 +9,9 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: lang === 'de' ? 'de-DE' : 'en-US' });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => errs.push(e.message));
+// WebKit reports an aborted cross-origin load (the weather of the home screen, open-meteo) as a page error on
+// navigation – the app catches it; not an error of the page
+p.on('pageerror', (e) => !/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message) && errs.push(e.message));
 p.on('console', (m) => m.type() === 'error' && errs.push(m.text()));
 await p.goto(url);
 await p.waitForTimeout(1200);
