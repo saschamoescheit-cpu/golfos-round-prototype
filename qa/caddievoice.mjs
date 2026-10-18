@@ -4,10 +4,12 @@
 // tap stops; an engine that never starts does not leave the speaker green.
 // Usage: node qa/caddievoice.mjs [url]   (SHOTS=<dir> for a screenshot)
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
+await mockNet(ctx);
 await ctx.addInitScript(() => {
   const w = window;
   w.__said = [];

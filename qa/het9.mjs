@@ -3,11 +3,13 @@
 // Afterwards: round finished, "Check shots" finds the shots by itself, the caddie's advice is there.
 // Usage: node het9.mjs <app url> [edge|webkit]
 import { chromium, webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const engine = process.argv[3] ?? 'edge';
 const b = engine === 'webkit' ? await webkit.launch() : await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 6 }, permissions: ['geolocation'] });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –

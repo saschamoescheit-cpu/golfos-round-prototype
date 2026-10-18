@@ -2,10 +2,12 @@
 // nicht, das soll der User selbst entscheiden"). A finished 9-hole round with three putts, its scorecard, the button.
 // Usage: node qa/totraining.mjs [url]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –

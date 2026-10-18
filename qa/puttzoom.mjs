@@ -2,9 +2,11 @@
 // the buttons zoom in steps and onto the putts, the free green moves the view, a ball still drags when zoomed, the
 // putts are saved.  Usage: node qa/puttzoom.mjs [url]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –

@@ -2,6 +2,7 @@
 // to look through. Usage: node gallery.mjs <app url> <out dir> ["Course name" or "Course name|loop option" …]
 import { chromium, devices } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { mockNet } from './netmock.mjs';
 
 const [url, out, ...only] = process.argv.slice(2);
 const COURSES = only.length
@@ -13,6 +14,7 @@ const index = [];
 for (const entry of COURSES) {
   const [course, option] = entry.split("|");
   const ctx = await b.newContext({ ...devices['iPhone 13'], deviceScaleFactor: 1, locale: 'de-DE', geolocation: { latitude: 0, longitude: 0, accuracy: 5 }, permissions: ['geolocation'] });
+  await mockNet(ctx);
   const p = await ctx.newPage();
   await p.goto(url);
   await p.waitForTimeout(1500);

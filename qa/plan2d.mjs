@@ -2,9 +2,11 @@
 // as one shape, a bright fairway, drawn tree crowns; back on the aerial image nothing of it is left. Counted in the
 // screenshot's colours (the map canvas itself cannot be read).  Usage: node qa/plan2d.mjs [url]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –

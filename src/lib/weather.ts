@@ -24,10 +24,16 @@ export async function loadWeather(p: LngLat): Promise<Weather | null> {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${p[1].toFixed(4)}&longitude=${p[0].toFixed(4)}` +
       '&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code&wind_speed_unit=kmh&timezone=auto';
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) throw new Error(String(res.status));
-    const c = (await res.json()).current;
-    const data: Weather = { tempC: c.temperature_2m, windKmh: c.wind_speed_10m, gustKmh: c.wind_gusts_10m, windFromDeg: c.wind_direction_10m, code: c.weather_code, at: c.time };
+    let data: Weather | null = null;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(String(res.status));
+      const c = (await res.json()).current;
+      data = { tempC: c.temperature_2m, windKmh: c.wind_speed_10m, gustKmh: c.wind_gusts_10m, windFromDeg: c.wind_direction_10m, code: c.weather_code, at: c.time };
+    } catch {
+      data = await dwdCurrent(p); // Open-Meteo busy (429) or down: in Germany the German weather service
+    }
+    if (!data) throw new Error('no weather');
     try {
       localStorage.setItem(KEY, JSON.stringify({ p, fetchedAt: Date.now(), data }));
     } catch {
@@ -36,6 +42,59 @@ export async function loadWeather(p: LngLat): Promise<Weather | null> {
     return data;
   } catch {
     return cached?.data ?? null; // offline: last known weather
+  }
+}
+
+/** In Germany (bounding box with a little margin). */
+export const inGermany = (p: LngLat) => p[0] > 5.8 && p[0] < 15.1 && p[1] > 47.2 && p[1] < 55.1;
+
+/** WMO weather code from the DWD's condition and cloud cover (Bright Sky). */
+function dwdCode(condition: string | null, cloud: number | null): number {
+  switch (condition) {
+    case 'thunderstorm':
+      return 95;
+    case 'hail':
+      return 96;
+    case 'snow':
+      return 71;
+    case 'sleet':
+      return 66;
+    case 'rain':
+      return 61;
+    case 'fog':
+      return 45;
+  }
+  return cloud == null ? 2 : cloud < 20 ? 0 : cloud < 70 ? 2 : 3;
+}
+
+/** The German weather service's latest measurement at the nearest station (Bright Sky, DWD open data, no key) –
+ *  when Open-Meteo does not answer (18.10.2026: its free quota used up, no weather in Frielinghausen). */
+async function dwdCurrent(p: LngLat): Promise<Weather | null> {
+  if (!inGermany(p)) return null;
+  try {
+    const res = await fetch(`https://api.brightsky.dev/current_weather?lat=${p[1].toFixed(4)}&lon=${p[0].toFixed(4)}`, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const w = (await res.json()).weather;
+    if (w?.temperature == null || w.wind_speed_10 == null) return null;
+    return { tempC: w.temperature, windKmh: w.wind_speed_10, gustKmh: w.wind_gust_speed_10 ?? w.wind_speed_10, windFromDeg: w.wind_direction_10 ?? 0, code: dwdCode(w.condition, w.cloud_cover), at: String(w.timestamp).slice(0, 16) };
+  } catch {
+    return null;
+  }
+}
+
+/** The next hours from the DWD forecast (MOSMIX via Bright Sky) – as dwdCurrent, when Open-Meteo does not answer. */
+async function dwdForecast(p: LngLat): Promise<Forecast | null> {
+  if (!inGermany(p)) return null;
+  try {
+    const from = new Date();
+    const to = new Date(from.getTime() + 5 * 3600000);
+    const res = await fetch(`https://api.brightsky.dev/weather?lat=${p[1].toFixed(4)}&lon=${p[0].toFixed(4)}&date=${from.toISOString()}&last_date=${to.toISOString()}&tz=Europe/Berlin`, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const ws: { timestamp: string; precipitation_probability: number | null; wind_gust_speed: number | null }[] = (await res.json()).weather ?? [];
+    if (!ws.length) return null;
+    return { hours: ws.slice(0, 5).map((w) => ({ time: w.timestamp.slice(0, 16), rainPct: w.precipitation_probability ?? 0, gustKmh: w.wind_gust_speed ?? 0 })) };
+  } catch {
+    return null;
   }
 }
 
@@ -88,12 +147,16 @@ export async function loadForecast(p: LngLat): Promise<Forecast | null> {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${p[1].toFixed(4)}&longitude=${p[0].toFixed(4)}` +
       '&hourly=precipitation_probability,wind_gusts_10m&forecast_hours=5&wind_speed_unit=kmh&timezone=auto';
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) return null;
-    const h = (await res.json()).hourly;
-    const data: Forecast = {
-      hours: h.time.map((t: string, k: number) => ({ time: t, rainPct: h.precipitation_probability[k] ?? 0, gustKmh: h.wind_gusts_10m[k] ?? 0 })),
-    };
+    let data: Forecast | null = null;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(String(res.status));
+      const h = (await res.json()).hourly;
+      data = { hours: h.time.map((t: string, k: number) => ({ time: t, rainPct: h.precipitation_probability[k] ?? 0, gustKmh: h.wind_gusts_10m[k] ?? 0 })) };
+    } catch {
+      data = await dwdForecast(p);
+    }
+    if (!data) return null;
     try {
       localStorage.setItem(FKEY, JSON.stringify({ p, fetchedAt: Date.now(), data }));
     } catch {

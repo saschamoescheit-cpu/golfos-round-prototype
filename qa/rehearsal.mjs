@@ -3,11 +3,13 @@
 // Afterwards: hole detection per ball, the shots the check finds, the caddie's log – and page errors.
 // Usage: node rehearsal.mjs <app url> "<course name to search>" <course id> [seconds standing per ball] ["loop option", e.g. "C + A"]
 import { chromium, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const [url = 'http://localhost:5173/', search, courseId, standArg, option] = process.argv.slice(2);
 const STAND = Number(standArg ?? 12);
 const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.78, longitude: 9.69, accuracy: 6 }, permissions: ['geolocation'] });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –

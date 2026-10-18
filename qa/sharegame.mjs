@@ -2,6 +2,7 @@
 // enter scores, both see both. Supabase is simulated in this script (the table golfos_shared_games), the app is real.
 // Usage: node qa/sharegame.mjs [url]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -39,6 +40,7 @@ async function serve(route) {
 }
 async function phone(name) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+  await mockNet(ctx);
   await ctx.route(/rgisfnilwehnqpmbrxmp\.supabase\.co\/(rest|auth)\//, serve);
   const p = await ctx.newPage();
   const errs = [];

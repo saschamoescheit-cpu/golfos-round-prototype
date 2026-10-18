@@ -3,6 +3,7 @@
 // between them goes over the real Supabase Realtime (a broadcast on a test channel – no data in it).
 // Usage: node qa/synclive.mjs [url]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -14,6 +15,7 @@ const token = 'x.' + Buffer.from(JSON.stringify({ sub })).toString('base64url') 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'apikey, authorization, content-type, prefer', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS' };
 async function device(name, dev) {
   const ctx = await b.newContext({ ...devices[dev], locale: 'de-DE' });
+  await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => { if (!/golfos_items.*access control/.test(e.message)) errs.push(e.message); });

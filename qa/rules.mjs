@@ -2,10 +2,12 @@
 // number and the › at the right, every rule with its sections, a search over everything, the official text linked.
 // Usage: node qa/rules.mjs [url]   (SHOTS=<dir> for screenshots)
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });

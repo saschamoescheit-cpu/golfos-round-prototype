@@ -4,6 +4,7 @@
 // Usage: SHOTS=<dir> node qa/visual.mjs [url]
 import { webkit, devices } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const S = process.env.SHOTS;
@@ -15,6 +16,7 @@ const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) fails++
 
 for (const theme of ['sun', 'dark']) {
   const ctx = await b.newContext({ ...devices['iPhone SE'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
+  await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });

@@ -3,6 +3,7 @@
 // (teams in scramble and foursomes), that team rounds have no putts, and that nothing breaks.
 // Usage: node modes.mjs <app url>
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -33,6 +34,7 @@ const ALL = [
 const CASES = process.argv[3] ? ALL.filter((c) => c.mode.includes(process.argv[3])) : ALL;
 for (const c of CASES) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 5 }, permissions: ['geolocation'] });
+  await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
   // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –

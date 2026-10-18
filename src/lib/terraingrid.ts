@@ -18,6 +18,7 @@ export interface TerrainGrid {
 /** Courses with a grid (file under public/). */
 export const TERRAIN_GRIDS: Record<string, string> = {
   'osm:relation/1326323': 'greens/hetzenhof/terrain.json', // Hetzenhof, DGM1 Baden-Württemberg
+  'osm:way/119442124': 'greens/frielinghausen/terrain.json', // Gut Frielinghausen, DGM1 Nordrhein-Westfalen
 };
 
 const cache = new Map<string, Promise<TerrainGrid | null>>();

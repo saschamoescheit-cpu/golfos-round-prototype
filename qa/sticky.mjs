@@ -4,12 +4,14 @@
 // Usage: node qa/sticky.mjs [url]
 import { webkit, devices } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const shots = process.env.SHOTS ?? '';
 const exp = JSON.parse(readFileSync(new URL('../../_data/golfos-runde-2026-10-16-golfclub-hetzenhof.json', import.meta.url), 'utf-8'));
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone SE'], locale: 'de-DE' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errors = [];
 p.on('pageerror', (e) => errors.push(String(e)));

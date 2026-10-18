@@ -4,6 +4,7 @@
 // Usage: node uniformity.mjs <app url> <out dir> [13|se] [dark|sun]
 import { webkit, devices } from 'playwright';
 import { writeFileSync } from 'node:fs';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const out = process.argv[3] ?? '.';
@@ -12,6 +13,7 @@ const sun = process.argv[5] === 'sun';
 const tag = `${process.argv[4] ?? '13'}-${sun ? 'sun' : 'dark'}`;
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...dev, locale: 'de-DE' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const shots = [];
 const shot = async (group, name, full = false) => {
