@@ -44,6 +44,28 @@ function placeText(test: TestDef): string {
 type Phase = 'starting' | 'demo' | 'frame' | 'count' | 'run' | 'result' | 'error';
 
 let audio: AudioContext | null = null;
+let silence: HTMLAudioElement | null = null;
+/** 50 ms of silence (8 kHz, 8 bit, mono WAV) as a data: address */
+const SILENCE = (() => {
+  const n = 400;
+  const b = new Uint8Array(44 + n);
+  const v = new DataView(b.buffer);
+  const str = (o: number, t: string) => [...t].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
+  str(0, 'RIFF');
+  v.setUint32(4, 36 + n, true);
+  str(8, 'WAVEfmt ');
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true);
+  v.setUint32(28, 8000, true);
+  v.setUint16(32, 1, true);
+  v.setUint16(34, 8, true);
+  str(36, 'data');
+  v.setUint32(40, n, true);
+  b.fill(128, 44);
+  return 'data:audio/wav;base64,' + btoa(String.fromCharCode(...b));
+})();
 /** Call in the tap that starts the camera: iOS only plays sound after a tap. */
 export function unlockAudio(): void {
   try {
@@ -52,6 +74,11 @@ export function unlockAudio(): void {
     // an empty utterance unlocks speech on iOS
     const s = window.speechSynthesis;
     if (s) s.speak(new SpeechSynthesisUtterance(' '));
+    // a moment of silence through an <audio> element, played in the tap: the iPhone then plays the page like a media
+    // app – the voice and the beeps are heard with the ring switch on silent (as the caddie in Rounds does)
+    silence ??= new Audio(SILENCE);
+    silence.currentTime = 0;
+    void silence.play().catch(() => undefined);
   } catch {
     /* no sound – the screen still shows everything */
   }
