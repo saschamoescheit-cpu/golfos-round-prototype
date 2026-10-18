@@ -57,6 +57,9 @@ for (const photo of photos) {
   await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
   await p.locator('.mob-test-row').filter({ hasText: testName }).first().click();
   await p.getByRole('button', { name: 'Test starten' }).click();
+  // the trainer mode loads the body tracking while the phone is set up
+  const modelReady = await p.locator('.mob-model.ready').waitFor({ timeout: 90000 }).then(() => true, () => false);
+  if (photo === photos[0]) ok(modelReady, 'the body tracking is ready on the setup screen, before Start');
   await p.locator('.mob-start-coach').click();
   const t0 = Date.now();
   // the model loads (≈ 22 MB the first time), then the status shows what the camera sees

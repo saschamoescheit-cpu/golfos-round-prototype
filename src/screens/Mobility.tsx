@@ -15,6 +15,7 @@ import { CLIPS } from '../mobility/anim3d/clips';
 import type { Clip } from '../mobility/anim3d/scene';
 import type { Coach } from '../mobility/CameraTest';
 import { CameraTest, isFakeCamera, sideText, unlockAudio } from '../mobility/CameraTest';
+import { loadPose } from '../mobility/pose';
 import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
@@ -537,6 +538,19 @@ function CoachSetup(props: { screening: Screening; single: boolean; onStart: () 
   const cams = props.screening.tests.map(testById).filter((x) => x.mode === 'camera');
   const selfs = props.screening.tests.map(testById).filter((x) => x.mode === 'self');
   const needs = [...new Set(cams.map((x) => (x.needs ? t(x.needs) : '')).filter(Boolean))];
+  // the body tracking loads while the phone is set up (≈ 22 MB the first time) – after Start the first test begins at once
+  const [model, setModel] = useState<'loading' | 'ready' | 'failed'>(() => (isFakeCamera() ? 'ready' : 'loading'));
+  useEffect(() => {
+    if (isFakeCamera()) return;
+    let on = true;
+    loadPose().then(
+      () => on && setModel('ready'),
+      () => on && setModel('failed'),
+    );
+    return () => {
+      on = false;
+    };
+  }, []);
   return (
     <section className="tr-block mob-setup">
       <h2>{tr('Set up the phone – once', 'Handy aufstellen – einmal')}</h2>
@@ -558,6 +572,13 @@ function CoachSetup(props: { screening: Screening; single: boolean; onStart: () 
       </div>
       {!props.single && selfs.length > 0 && <p className="muted small">{tr(`Then ${selfs.length} short questions on the phone.`, `Danach ${selfs.length} kurze Fragen am Handy.`)}</p>}
       <p className="muted small mob-private">{tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}</p>
+      <p className={`small mob-model ${model}`} role="status">
+        {model === 'ready'
+          ? tr('Body tracking ready', 'Körpererkennung bereit')
+          : model === 'loading'
+            ? tr('The body tracking is loading (once, about 22 MB) …', 'Die Körpererkennung lädt (einmalig, etwa 22 MB) …')
+            : tr('The body tracking could not load – Start tries again.', 'Die Körpererkennung konnte nicht laden – Start versucht es nochmal.')}
+      </p>
       <button type="button" className="btn-primary mob-start-coach" onClick={props.onStart}>
         {tr('Start', 'Start')}
       </button>

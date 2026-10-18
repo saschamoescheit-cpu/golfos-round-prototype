@@ -184,3 +184,7 @@
 .mob-bar-track b { position: absolute; left: -3px; right: -3px; height: 3px; margin-bottom: -1.5px; border-radius: 2px; background: var(--text); }
 
 .mob-change { display: flex; flex-direction: column; gap: 8px; }
+
+.mob-model { margin: 0; text-align: center; color: var(--text-2); }
+.mob-model.ready { color: var(--brand); font-weight: 600; }
+.mob-model.ready::before { content: '✓ '; }
