@@ -471,6 +471,18 @@ export const BUNKER_THIN: Swing = fault(BUNKER_SWING, {
   },
 }, { hit: { at: 2.8, shot: 'punch', scale: 1.6 } });
 
+/** the sky ball off the tee: too steep from the top, the body dips – the top of the driver goes under the ball, it
+ *  climbs almost straight up and comes down short; the right one comes from behind, flat, and catches it on the way up */
+export const DRIVER_SKY: Swing = fault(DRIVER_SWING, {
+  2.6: { hands: [-0.1, -0.02, 0.47], club: [-0.15, 0.95, 0.15] },
+  2.7: { hands: [-0.03, -0.13, 0.46], club: [-0.45, 0.85, 0.2] },
+  2.8: {
+    drop: 0.11,
+    miss: [0, -0.035, 0],
+    label: L('Left: steep from above, the body dips – the club goes under the ball, it climbs and falls short · right: flat from behind, the ball caught on the way up', 'Links: steil von oben, der Körper sackt ab – der Schläger geht unter den Ball, er steigt und fällt kurz herunter · rechts: flach von hinten, der Ball im Aufschwung getroffen'),
+  },
+}, { hit: { at: 2.8, shot: 'bunker', scale: 2.6 } });
+
 /** the putter face at impact: open – the ball starts right of the line and rolls past the hole; closing through the
  *  ball – it starts left; the right one keeps the face square and the putt drops */
 const puttFace = (deg: number, label: SwingKey['label']): Swing =>
@@ -495,6 +507,7 @@ export const PAIRS = {
   slicePair: { fault: OVER_THE_TOP, right: quiet(FULL_SWING), behind: true },
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
+  skyPair: { fault: DRIVER_SKY, right: quiet(DRIVER_SWING), behind: true },
   bunkerStuckPair: { fault: BUNKER_STUCK, right: quiet(BUNKER_SWING) },
   bunkerThinPair: { fault: BUNKER_THIN, right: quiet(BUNKER_SWING) },
   puttRightPair: { fault: PUTT_OPEN, right: quiet(PUTT_STROKE), behind: true },
