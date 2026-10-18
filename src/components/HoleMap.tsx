@@ -363,6 +363,8 @@ export function HoleMap(props: HoleMapProps) {
               r.className = 'map-drag-readout';
               m.getContainer().appendChild(r);
             }
+            // where the map window starts on the screen: the readout stays below the phone's status bar
+            r.style.setProperty('--map-top', `${Math.round(m.getContainer().getBoundingClientRect().top)}px`);
             r.textContent = text;
           }
           // the line between the shots follows the finger

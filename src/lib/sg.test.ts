@@ -58,3 +58,13 @@ describe('semi rough (Sascha 18.10.2026)', () => {
     }
   });
 });
+
+describe('fringe (Sascha 18.10.2026)', () => {
+  it('lies between green and fairway', () => {
+    for (const m of [3, 8, 15]) {
+      const s = expectedStrokes(m, 'fringe');
+      expect(s).toBeGreaterThan(expectedStrokes(m, 'green'));
+      expect(s).toBeLessThan(expectedStrokes(m, 'fairway'));
+    }
+  });
+});

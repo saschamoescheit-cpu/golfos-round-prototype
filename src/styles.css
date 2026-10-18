@@ -324,7 +324,7 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .review-map { position: relative; height: 44vh; min-height: 260px; border-radius: 14px; overflow: hidden; }
 .review-view { position: absolute; top: 10px; right: 10px; z-index: 2; min-width: 64px; min-height: 44px; justify-content: center; background: rgba(14, 20, 24, 0.85); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
 /* while a shot is dragged: what it means, large at the top of the map – not under the finger (Sascha 16.10.2026) */
-.map-drag-readout { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 5; width: max-content; max-width: calc(100% - 24px); padding: 8px 14px; border-radius: 18px; background: rgba(14, 20, 24, 0.92); color: #fff; font: 700 15px/1.3 var(--display); text-align: center; white-space: normal; pointer-events: none; }
+.map-drag-readout { position: absolute; top: max(10px, calc(env(safe-area-inset-top, 0px) + 6px - var(--map-top, 0px))); /* below the phone's status bar when the map sits at the top of the screen (Sascha 18.10.2026) */ left: 50%; transform: translateX(-50%); z-index: 5; width: max-content; max-width: calc(100% - 24px); padding: 8px 14px; border-radius: 18px; background: rgba(14, 20, 24, 0.92); color: #fff; font: 700 15px/1.3 var(--display); text-align: center; white-space: normal; pointer-events: none; }
 .review-map .hole-map { position: absolute; inset: 0; }
 .review-list li { grid-template-columns: 28px 1fr auto auto; position: relative; }
 .review-list li.check { background: rgba(155, 197, 61, 0.12); border-radius: 10px; } /* to check: green, never yellow */
@@ -607,7 +607,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 /* elsewhere (round check, previews): MapLibre's ⓘ in the app's look – dark round button, white i */
 .maplibregl-ctrl-attrib.maplibregl-compact { background: rgba(14, 20, 24, 0.9); color: #fff; border-radius: 16px; min-height: 32px; }
 .maplibregl-ctrl-attrib.maplibregl-compact a { color: var(--brand-text); }
-.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button { background-color: transparent; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v6'/%3E%3Ccircle cx='12' cy='7.6' r='0.6' fill='white'/%3E%3C/svg%3E"); background-size: 22px; border-radius: 16px; width: 32px; height: 32px; }
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button { background-color: transparent; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v6'/%3E%3Ccircle cx='12' cy='7.6' r='0.6' fill='white'/%3E%3C/svg%3E"); background-size: 22px; background-repeat: no-repeat; background-position: center; border-radius: 16px; width: 32px; height: 32px; }
 
 .map-from.off { max-width: 92px; text-align: center; line-height: 1.2; color: var(--muted); }
 :root[data-theme='sun'] .map-from.off { color: #7a4d00; }
@@ -1359,3 +1359,33 @@ button.tile:disabled { opacity: 1; }
 .map-sound-shot { position: relative; width: 22px; height: 22px; border-radius: 11px; display: grid; place-items: center; background: #ffffff; color: #0e1418; border: 2px solid #0e1418; }
 .map-sound-shot b { position: absolute; left: 24px; top: 2px; white-space: nowrap; background: rgba(14, 20, 24, 0.85); color: #fff; font: 600 11px/16px var(--body); padding: 0 5px; border-radius: 8px; }
 .map-tool.listening { color: var(--brand-text); }
+.sign-card .sign-later { flex: 1 1 100%; width: 100%; }
+
+/* seven choices (the lie with semi rough and fringe, Sascha 18.10.2026): four and three, the words may wrap */
+.segmented:has(> button:nth-child(7)) { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.segmented:has(> button:nth-child(7)) button { font-size: 15px; white-space: normal; line-height: 1.15; padding: 4px 2px; }
+.segmented:has(> button:nth-child(7)) button:nth-child(n) { border-left: 1px solid var(--line); border-top: 0; }
+.segmented:has(> button:nth-child(7)) button:nth-child(4n + 1) { border-left: 0; }
+.segmented:has(> button:nth-child(7)) button:nth-child(n + 5) { border-top: 1px solid var(--line); }
+
+/* a shot row is held and moved with the finger (Sascha 18.10.2026): no text selection or callout on the long press */
+.review-list li { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.review-list li.dragging { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); background: var(--surface); position: relative; z-index: 2; }
+
+/* My bag (Sascha 18.10.2026: the tracked values next to "PW (43°)" ran over the name): the club and its carry on the
+   first line, what was tracked – and "use" – on a line of its own below, the same for every club */
+.bag-row.full { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
+.bag-row.full > .bag-code { grid-column: 1; grid-row: 1; }
+.bag-row.full > .bag-input { grid-column: 2; grid-row: 1; }
+.bag-row.full > span:empty { display: none; }
+.bag-row.full > .bag-tracked { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; align-items: center; min-width: 0; }
+.bag-row.full .bag-tracked-text { flex-direction: row; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+
+/* an empty hole on the scorecard: a small green pencil – a tap enters the score (Sascha 18.10.2026) */
+.sc-empty { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 13px; border: 1px dashed var(--brand-text); color: var(--brand-text); }
+
+/* the round's actions in one row (Sascha 18.10.2026): symbol over a short word, the same width each */
+.sc-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.sc-action { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 72px; padding: 8px 4px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font: 600 13px/1.2 var(--body); text-align: center; }
+.sc-action svg { color: var(--brand-text); }
+.sc-action.danger, .sc-action.danger svg { color: var(--bad, #e5484d); border-color: color-mix(in srgb, var(--bad, #e5484d) 45%, transparent); }

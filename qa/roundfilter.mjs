@@ -95,6 +95,49 @@ if (process.env.SHOTS) {
   await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).click();
   await p.screenshot({ path: `${process.env.SHOTS}/roundfilter.png` });
 }
+// a missing score: the empty hole has a pencil, a tap enters it – no check, no signing needed (Sascha 18.10.2026)
+await p.evaluate(() => {
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
+  const id = rs[0].players.find((x) => x.isMe).id;
+  rs[0].entries[id][rs[0].holes.length - 1].strokes = null;
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
+});
+await p.reload();
+await p.waitForTimeout(1000);
+await tab('Runden');
+await p.waitForTimeout(400);
+await p.locator('ul.list button.list-item').first().click();
+await p.waitForTimeout(800);
+const pen = p.getByRole('img', { name: /Score für Loch .* eintragen/ });
+ok((await pen.count()) === 1, 'scorecard: the empty hole shows a pencil');
+await pen.click();
+await p.waitForTimeout(400);
+await p.locator('.sheet').getByRole('button', { name: /Schläge plus eins/ }).first().click();
+await p.waitForTimeout(300);
+await p.locator('.sheet').getByRole('button', { name: /Schließen|Fertig/ }).first().click().catch(() => {});
+await p.waitForTimeout(300);
+const filled = await p.evaluate(() => { const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]; const id = r.players.find((x) => x.isMe).id; return r.entries[id][r.holes.length - 1].strokes; });
+ok(filled != null && (await pen.count()) === 0, `a tap enters the score and it is saved (${filled})`);
+// the round's actions in one row: share, check the shots, delete (Sascha 18.10.2026)
+{
+  const acts = await p.locator('.sc-actions .sc-action').allInnerTexts();
+  const tops = await p.locator('.sc-actions .sc-action').evaluateAll((bs) => bs.map((b) => Math.round(b.getBoundingClientRect().top)));
+  ok(acts.map((t) => t.trim()).join('|') === 'Teilen|Schläge prüfen|Löschen' && new Set(tops).size === 1, `scorecard: Teilen · Schläge prüfen · Löschen in one row (${acts.map((t) => t.trim()).join(' · ')})`);
+}
+await p.locator('.topbar').getByRole('button').first().click();
+await p.waitForTimeout(500);
+// a round kept as a round can still go to "check & sign later" from the list (Sascha 18.10.2026)
+await tab('Runden');
+await p.waitForTimeout(400);
+const tileN = async () => Number((await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).innerText()).trim().split(/\s/)[0]);
+const before = await tileN();
+await p.locator('ul.list button.list-item').first().click();
+await p.waitForTimeout(800);
+await p.locator('.sign-card').getByRole('button', { name: 'Später prüfen & signieren' }).click();
+await p.waitForTimeout(300);
+await p.locator('.topbar').getByRole('button').first().click();
+await p.waitForTimeout(600);
+ok((await tileN()) === before + 1, `a kept round set to "Später prüfen & signieren" from the list counts under the tile (${before} → ${await tileN()})`);
 // the module start page: only the rounds to check & sign – a paused round is no task there (Sascha 18.10.2026)
 await p.evaluate(() => {
   const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
@@ -108,7 +151,7 @@ await p.waitForTimeout(300);
 await p.getByRole('button', { name: 'Modul wechseln' }).first().click();
 await p.waitForTimeout(600);
 const card = (await p.locator('.module-card').filter({ hasText: 'Rounds' }).innerText()).replace(/\s+/g, ' ');
-ok(/2 Runden prüfen & signieren/.test(card) && !/pausiert|Schläge prüfen/.test(card), `home: the Rounds card names only the rounds to check & sign (${card})`);
+ok(/3 Runden prüfen & signieren/.test(card) && !/pausiert|Schläge prüfen/.test(card), `home: the Rounds card names only the rounds to check & sign (${card})`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

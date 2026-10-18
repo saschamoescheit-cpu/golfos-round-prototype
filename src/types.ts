@@ -84,7 +84,8 @@ export type FairwayResult = 'left' | 'hit' | 'right' | 'ob';
 
 // ---- Detailed tracking (feature 003) ----
 /** 'semirough': the first cut next to the fairway (Sascha 18.10.2026) – between fairway and rough. */
-export type Lie = 'tee' | 'fairway' | 'semirough' | 'rough' | 'bunker' | 'recovery';
+/** 'fringe': the collar around the green (Vorgrün, Sascha 18.10.2026). */
+export type Lie = 'tee' | 'fairway' | 'semirough' | 'rough' | 'fringe' | 'bunker' | 'recovery';
 /** How the shot was played (feature 007): full swing, punch (low, under trees), pitch, chip, bunker shot. */
 export type ShotKind = 'full' | 'punch' | 'pitch' | 'chip' | 'bunker';
 /** 'Hy' is the 4-hybrid (shown as "4H"; the name stays for older rounds). Full list: lib/clubs.ts. */

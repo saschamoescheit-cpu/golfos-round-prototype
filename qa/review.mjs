@@ -64,6 +64,7 @@ await p.getByRole('button', { name: /Schläge prüfen/ }).click();
 await p.waitForTimeout(2500);
 const notice = (await p.locator('.notice').first().innerText().catch(() => '')).replace(/\s+/g, ' ');
 ok(/an 9 Löchern erkannt/.test(notice), `shots found on the first visit ("${notice}")`);
+if (process.env.SHOTS) await p.locator('.review-map').screenshot({ path: process.env.SHOTS + '/review-map.png' });
 const counts = await p.evaluate(() => {
   const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0];
   return Object.values(r.entries)[0].map((e) => e.detail?.shots.length ?? 0);
@@ -110,7 +111,7 @@ const rb = await p.locator('.map-drag-readout').boundingBox();
 const vw = p.viewportSize().width;
 await p.mouse.up();
 void vw;
-ok(rb && rb.x >= mapBox.x + 4 && rb.x + rb.width <= mapBox.x + mapBox.width - 4 && rb.y >= mapBox.y && rb.y < mapBox.y + 60 && Math.abs(rb.x + rb.width / 2 - (mapBox.x + mapBox.width / 2)) < 3, `the readout in the map window, whole and centred (${rb ? Math.round(rb.x) + '–' + Math.round(rb.x + rb.width) : '–'} in ${Math.round(mapBox.x)}–${Math.round(mapBox.x + mapBox.width)})`);
+ok(rb && rb.x >= mapBox.x + 4 && rb.x + rb.width <= mapBox.x + mapBox.width - 4 && rb.y >= Math.max(mapBox.y, 0) && rb.y < Math.max(mapBox.y, 0) + 60 && /* on the screen, at the top of the visible map */ Math.abs(rb.x + rb.width / 2 - (mapBox.x + mapBox.width / 2)) < 3, `the readout in the map window, whole, centred and on the screen (${rb ? Math.round(rb.x) + '–' + Math.round(rb.x + rb.width) + ' / y ' + Math.round(rb.y) : '–'} in ${Math.round(mapBox.x)}–${Math.round(mapBox.x + mapBox.width)} / y ${Math.round(mapBox.y)})`);
 await p.waitForTimeout(800);
 ok(/^Aus – Strafschlag \+ neuer Schlag/.test(readout), `while dragging out: "${readout}" at the top of the map`);
 const h1 = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots);
@@ -132,7 +133,7 @@ ok((await p.locator('.sheet').count()) === 1, 'its sheet opens for the club');
   // the lies: semi rough next to rough (Sascha 18.10.2026), all on the screen
   const lies = await p.locator('.sheet .segmented').first().locator('button').allInnerTexts();
   const fits = await p.locator('.sheet .segmented').first().evaluate((e) => e.getBoundingClientRect().right <= innerWidth + 1 && [...e.querySelectorAll('button')].every((b) => b.scrollWidth <= b.clientWidth + 1)); // no word cut off
-  ok(lies.includes('Semirough') && lies.indexOf('Semirough') === lies.indexOf('Fairway') + 1 && fits, `lie: "Semirough" between fairway and rough, all visible (${lies.join(' · ')})`);
+  ok(lies.includes('Semi Rough') && lies.indexOf('Semi Rough') === lies.indexOf('Fairway') + 1 && lies.includes('Vorgrün') && fits, `lie: "Semi Rough" after fairway, "Vorgrün" too, nothing cut off (${lies.join(' · ')})`);
   ok((await p.locator('.sheet .club-grid').getByRole('button', { name: /Texas Wedge/ }).count()) === 1, 'club: the putter from off the green (Texas wedge) to choose');
   if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/shot-sheet.png' });
 }
@@ -153,6 +154,27 @@ await p.mouse.up();
 await p.waitForTimeout(400);
 const o1 = await order();
 ok(o1.length === o0.length && o1[0] === o0[o0.length - 1] && o1[1] === o0[0], `the last shot dragged to the top (${o0.length} shots)`);
+// …and by holding the row itself (Sascha 18.10.2026: "take hold of a shot and move it"): a long press lifts it
+{
+  const rows = p.locator('.review-list .shot-row');
+  const rf = await rows.first().boundingBox();
+  const rl = await rows.last().boundingBox();
+  await p.mouse.move(rf.x + 40, rf.y + rf.height / 2);
+  await p.mouse.down();
+  await p.waitForTimeout(650);
+  const lifted = (await p.locator('.review-list li.dragging').count()) === 1;
+  await p.mouse.move(rf.x + 40, rl.y + rl.height / 2 + 4, { steps: 10 });
+  await p.mouse.up();
+  await p.waitForTimeout(400);
+  const o2 = await order();
+  ok(lifted && o2[o2.length - 1] === o1[0] && (await p.locator('.sheet').count()) === 0, `held and moved by the row: the first shot to the end, the sheet stays shut (${o2.length} shots)`);
+  // a short tap still opens the shot
+  await rows.first().click();
+  await p.waitForTimeout(300);
+  ok((await p.locator('.sheet').count()) === 1, 'a short tap still opens the shot');
+  await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
+  await p.waitForTimeout(200);
+}
 // delete in the row, without opening the shot
 const before2 = (await order()).length;
 await p.getByRole('button', { name: 'Schlag 1 löschen' }).click();

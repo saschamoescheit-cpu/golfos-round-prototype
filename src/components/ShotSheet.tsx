@@ -17,7 +17,7 @@ export function ShotSheet(props: {
   kind?: ShotKind; // saved shot type; missing = suggested from lie and distance
   toPinM: number | null;
   editing: boolean;
-  bag?: { club: Club; m: number }[]; // the player's distances (own data or standard)
+  bag?: { club: Club; m: number; carry?: number }[]; // the player's distances – m the total; carry as set in "My bag"
   onSave: (v: { lie: Lie; club: Club | null; penalty: boolean; penaltyKind?: PenaltyKind; kind: ShotKind; review: false }) => void;
   onDelete?: () => void;
   onHoledOut?: () => void; // "holed from here" (chip-in) – only for a new shot
@@ -51,7 +51,7 @@ export function ShotSheet(props: {
         <div className="field">
           <label>{tr('Club', 'Schläger')} {props.editing ? '' : tr('– tap to save', '– antippen zum Speichern')}</label>
           <div className="club-grid" role="group" aria-label={tr('Club', 'Schläger')}>
-            {(props.bag ?? BAG).map((b) => (
+            {((props.bag ?? BAG) as { club: Club; m: number; carry?: number }[]).map((b) => (
               <button
                 key={b.club}
                 type="button"
@@ -63,7 +63,7 @@ export function ShotSheet(props: {
                 }}
               >
                 {clubCode(b.club)}
-                <small>{b.m} m</small>
+                <small>{b.carry ?? b.m} m</small>
               </button>
             ))}
             {/* the putter from off the green – the Texas wedge (Sascha 18.10.2026): a shot, not a putt; no distance */}

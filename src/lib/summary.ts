@@ -46,6 +46,7 @@ export interface SummaryFacts {
   keyShots: { worst: KeyShot[]; best: KeyShot | null };
   trend: { c: SgCategory; change: number } | null; // biggest change against the last rounds (per 18)
   unchecked?: number; // holes with detected shots the player has not checked yet (left out of the shot lines)
+  uncheckedHoles?: string[]; // their labels – named in the summary
 }
 export interface RoundSummary {
   facts: SummaryFacts;
@@ -105,6 +106,7 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
   const shotSg: KeyShot[] = [];
   let detailed = 0;
   let unchecked = 0;
+  const uncheckedHoles: string[] = [];
   round.holes.forEach((h, i) => {
     const e = entries[i];
     if (e.pickedUp) return;
@@ -123,6 +125,7 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
     // only holes the player has checked (as strokes gained): a shot detected wrongly is no "most expensive shot"
     if (!shotsComplete(d) || d.shots.some((s) => s.review)) {
       unchecked++;
+      uncheckedHoles.push(h.label);
       return;
     }
     detailed++;
@@ -201,7 +204,7 @@ export function roundSummary(round: Round, history: Round[] = []): RoundSummary 
     approach: approach.shots >= 3 ? { ...approach, avgLeaveM: approach.leave.length ? r1(approach.leave.reduce((s, x) => s + x, 0) / approach.leave.length) : null } : null,
     around: around.chances ? around : null,
     putting: putting.putts ? { putts: putting.putts, threePutts: putting.threePutts, shortMisses: putting.shortMisses, avgFirstM: putting.first.length ? r1(putting.first.reduce((s, x) => s + x, 0) / putting.first.length) : null } : null,
-    penaltyHoles, keyShots: { worst, best }, trend, unchecked,
+    penaltyHoles, keyShots: { worst, best }, trend, unchecked, uncheckedHoles,
   };
   void detailed;
   return { facts, ...write(facts), plan: planFor(facts) };
@@ -248,8 +251,8 @@ function write(f: SummaryFacts): Pick<RoundSummary, 'headline' | 'lines' | 'next
   if (f.unchecked)
     lines.push({
       text: tr(
-        `${f.unchecked} ${f.unchecked === 1 ? 'hole' : 'holes'} not checked yet – the shot lines use the checked ones only ("Check your shots").`,
-        `${f.unchecked} ${f.unchecked === 1 ? 'Loch' : 'Löcher'} noch nicht geprüft – die Aussagen zu Schlägen nutzen nur die geprüften („Schläge prüfen“).`,
+        `${f.unchecked === 1 ? 'Hole' : 'Holes'} ${(f.uncheckedHoles ?? []).join(', ')} not checked yet – the shot lines use the checked ones only ("Check your shots").`,
+        `${f.unchecked === 1 ? 'Loch' : 'Löcher'} ${(f.uncheckedHoles ?? []).join(', ')} noch nicht geprüft – die Aussagen zu Schlägen nutzen nur die geprüften („Schläge prüfen“).`,
       ),
       tone: 'plain',
     });

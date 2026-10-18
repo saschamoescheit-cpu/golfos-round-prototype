@@ -12,9 +12,6 @@ import { isTeamRound } from '../lib/games';
 import { HoleEditSheet } from '../components/HoleEditSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
-import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
-import { loadTrack } from '../lib/track';
-import { loadCaddieLog } from '../lib/caddielog';
 import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
 import { comparisonGroup, roundsSg } from '../lib/sg';
@@ -23,6 +20,7 @@ import { kindName } from '../lib/roundkind';
 import { getLang, tr } from '../lib/i18n';
 import { sign, unsign } from '../lib/signing';
 import { SignedIcon } from '../components/SignedIcon';
+import { CheckShotsIcon } from '../components/RoundIcons';
 import { profileIndex } from '../lib/profile';
 import { roundWeatherText } from '../lib/weather';
 
@@ -84,14 +82,28 @@ export function Scorecard(props: {
                 : tr('Only signed rounds count in your statistics.', 'Nur signierte Runden zählen in deiner Statistik.')}
             </span>
           </span>
+          {/* the same three ways as at the end of the round, also later from the list (Sascha 18.10.2026: "today's
+              round is not listed under check & sign") */}
           {scoreOnly && canReview ? (
-            <button type="button" className="btn-secondary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
-              {tr('Check & sign', 'Prüfen & signieren')}
-            </button>
+            <>
+              <button type="button" className="btn-primary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
+                {tr('Check & sign', 'Prüfen & signieren')}
+              </button>
+              <button type="button" className="btn-secondary sign-later" onClick={() => props.onChange({ ...round, capture: 'full' })}>
+                {tr('Check & sign later', 'Später prüfen & signieren')}
+              </button>
+            </>
           ) : (
-            <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
-              {tr('Sign', 'Signieren')}
-            </button>
+            <>
+              <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
+                {tr('Sign', 'Signieren')}
+              </button>
+              {canReview && (
+                <button type="button" className="btn-secondary sign-later" onClick={() => props.onChange({ ...round, capture: 'score' })}>
+                  {tr('Keep as a round', 'Als Runde behalten')}
+                </button>
+              )}
+            </>
           )}
         </>
       )}
@@ -266,55 +278,53 @@ export function Scorecard(props: {
         </div>
       </section>
 
-      {finished && (
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() =>
-            shareScorecard(round)
-              .then((r) => setShareMsg(r === 'downloaded' ? tr('Picture saved – you find it in your downloads.', 'Bild gespeichert – du findest es bei deinen Downloads.') : null))
-              .catch(() => setShareMsg(tr('The picture could not be made.', 'Das Bild konnte nicht erstellt werden.')))
-          }
-        >
-          {tr('Share scorecard', 'Scorekarte teilen')}
-        </button>
-      )}
-      {finished && !round.preview && (
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() =>
-            shareExport(buildExport({ app: __BUILD_TIME__, round, track: loadTrack(round.id), caddieLog: loadCaddieLog(round.id), detectedNow: [] }), exportFileName(round))
-              .then((r) => setShareMsg(r === 'downloaded' ? tr('Round data saved as a file (Downloads).', 'Rundendaten als Datei gespeichert (Downloads).') : null))
-              .catch(() => setShareMsg(tr('The file could not be made.', 'Die Datei konnte nicht erstellt werden.')))
-          }
-        >
-          {tr('Export round data', 'Rundendaten exportieren')}
-        </button>
-      )}
-      {shareMsg && <p className="muted small" style={{ margin: 0 }}>{shareMsg}</p>}
-      {canReview && !(finished && props.justFinished) && (
-        // a scorecard-only round can still be checked later (the GPS track stays on the phone)
-        <button type="button" className="btn-secondary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
-          {tr('Check your shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? tr(' · some to check', ' · einige offen') : ''}
-        </button>
-      )}
       {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={round.holes.length <= 9 ? 9 : 18} defaultGroup={comparisonGroup(profileIndex() ?? playing18(round.holes.length, me.playingHandicap))} />}
 
       <span className="spacer" />
       {/* save and delete sit in the card at the top while the round is being finished */}
-      {finished && !props.justFinished && (!confirmDelete ? (
-        <button
-          type="button"
-          className="btn-secondary btn-danger"
-          onClick={() => {
-            deleteRound(round.id, true);
-            props.onDeleted();
-          }}
-        >
-          {tr('Delete round', 'Runde löschen')}
-        </button>
-      ) : (
+      {/* the round's actions in one row with their symbols (Sascha 18.10.2026): share, check the shots, delete */}
+      {finished && !confirmDelete && (
+        <div className="sc-actions" role="group" aria-label={tr('This round', 'Diese Runde')}>
+          <button
+            type="button"
+            className="sc-action"
+            onClick={() =>
+              shareScorecard(round)
+                .then((r) => setShareMsg(r === 'downloaded' ? tr('Picture saved – you find it in your downloads.', 'Bild gespeichert – du findest es bei deinen Downloads.') : null))
+                .catch(() => setShareMsg(tr('The picture could not be made.', 'Das Bild konnte nicht erstellt werden.')))
+            }
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 15V3M8 7l4-4 4 4" />
+              <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
+            </svg>
+            <span>{tr('Share', 'Teilen')}</span>
+          </button>
+          {canReview && !props.justFinished && (
+            <button type="button" className="sc-action" onClick={() => props.onReview({ ...round, capture: 'full' })}>
+              <CheckShotsIcon size={22} />
+              <span>{tr('Check shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' ·' : ''}</span>
+            </button>
+          )}
+          {!props.justFinished && (
+            <button
+              type="button"
+              className="sc-action danger"
+              onClick={() => {
+                deleteRound(round.id, true);
+                props.onDeleted();
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+              </svg>
+              <span>{tr('Delete', 'Löschen')}</span>
+            </button>
+          )}
+        </div>
+      )}
+      {shareMsg && <p className="muted small" style={{ margin: 0 }}>{shareMsg}</p>}
+      {finished && !props.justFinished && (!confirmDelete ? null : (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span>{tr('Delete this round? It stays under "Deleted rounds".', 'Diese Runde löschen? Sie bleibt unter „Gelöschte Runden“.')}</span>
           <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>

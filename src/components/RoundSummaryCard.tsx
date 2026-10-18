@@ -18,11 +18,12 @@ export function RoundSummaryCard(props: { round: Round; history: Round[] }) {
 
 function SummaryBody(props: { round: Round; history: Round[] }) {
   const s = useMemo(() => roundSummary(props.round, props.history), [props.round, props.history]);
+  // every hook before the early return: a summary that appears once a missing score is entered must not change their number
+  const talking = useSpeaking();
+  const [taken, setTaken] = useState<string | null>(null);
   if (!s) return null;
   const minutes = s.plan.reduce((t, d) => t + d.minutes, 0);
-  const talking = useSpeaking();
   const read = () => toggleSpeak([s.headline, ...s.lines.map((l) => l.text), s.nextRound ?? ''].join(' '));
-  const [taken, setTaken] = useState<string | null>(null);
   return (
     <section className="card stats-card round-summary">
       <div className="row">

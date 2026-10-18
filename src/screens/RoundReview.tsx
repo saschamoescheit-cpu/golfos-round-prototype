@@ -44,7 +44,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // the pin the player set with his putts on the course wins, then the one from the hole map
   const pinFor = (index: number): LngLat | null => round.entries[me.id][index]?.puttsAt?.pin ?? coursePins[index]?.pin ?? maps[index]?.greenCenter ?? null;
   const parts = useMemo(() => (track.length > 20 ? splitRound(track, maps) : []), [track, maps]);
-  const bag = useMemo(() => playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id), 3, loadCarryBag()?.map((b) => b.club) ?? null), [round.id]);
+  // the clubs and distances of "My bag" (Sascha 18.10.2026: "the check does not follow the lengths in my bag"): the
+  // carries as set there are shown; for the club from a measured length (carry + roll) the total is carry / 0.93 – the
+  // same roll as the bag uses the other way round. Without a bag: own measured lengths or the standard.
+  const bag = useMemo(() => {
+    const own = loadCarryBag()?.filter((b) => !b.swing || b.swing === 'full');
+    if (own?.length) return own.map((b) => ({ club: b.club, m: Math.round(b.carry / 0.93), carry: b.carry }));
+    return playerBag(loadRounds().filter((r) => r.finishedAt && r.id !== round.id), 3, null);
+  }, [round.id]);
   const unit = loadUnit();
   const course = loadCachedCourse(round.courseId);
   const imageryAt: LngLat = course ? [course.lon, course.lat] : (maps.find(Boolean)?.greenCenter ?? [0, 0]);
@@ -92,9 +99,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const latestShots = useRef<Shot[]>([]);
   const reorderRef = useRef<(from: number, to: number) => void>(() => undefined);
   const [drag, setDrag] = useState<{ from: number; to: number; dy: number } | null>(null);
-  const startDrag = (ev: React.PointerEvent, from: number) => {
-    ev.preventDefault();
-    const y0 = ev.clientY;
+  const justDragged = useRef(false); // the click after a drag does not open the shot
+  /** Moves shot `from` with the finger from y0 until it is lifted. While dragging the page does not scroll (iPhone). */
+  const dragFrom = (y0: number, from: number) => {
     const rows = [...(listRef.current?.children ?? [])].slice(0, latestShots.current.length) as HTMLElement[];
     const mids = rows.map((r) => {
       const b = r.getBoundingClientRect();
@@ -102,21 +109,57 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     });
     let to = from;
     setDrag({ from, to, dy: 0 });
+    navigator.vibrate?.(10);
     const move = (e: PointerEvent) => {
       const y = mids[from] + (e.clientY - y0);
       to = mids.reduce((best, m, j) => (Math.abs(m - y) < Math.abs(mids[best] - y) ? j : best), from);
       setDrag({ from, to, dy: e.clientY - y0 });
     };
+    const noScroll = (e: TouchEvent) => e.preventDefault();
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
+      window.removeEventListener('touchmove', noScroll);
       setDrag(null);
+      justDragged.current = true;
+      setTimeout(() => (justDragged.current = false), 350);
       if (to !== from) reorderRef.current(from, to);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
+    window.addEventListener('touchmove', noScroll, { passive: false });
+  };
+  /** The grip: at once. */
+  const startDrag = (ev: React.PointerEvent, from: number) => {
+    ev.preventDefault();
+    dragFrom(ev.clientY, from);
+  };
+  /** The whole row (Sascha 18.10.2026: "take hold of a shot and move it"): a long press lifts it; moving the finger
+   *  before that scrolls the page as usual, a short tap opens the shot. */
+  const holdRow = (ev: React.PointerEvent, from: number) => {
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    const x0 = ev.clientX;
+    const y0 = ev.clientY;
+    let y = y0;
+    const track = (e: PointerEvent) => {
+      y = e.clientY;
+      if (Math.hypot(e.clientX - x0, e.clientY - y0) > 8) cancel();
+    };
+    const cancel = () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', track);
+      window.removeEventListener('pointerup', cancel);
+      window.removeEventListener('pointercancel', cancel);
+    };
+    const timer = setTimeout(() => {
+      cancel();
+      dragFrom(y, from);
+    }, 450);
+    window.addEventListener('pointermove', track);
+    window.addEventListener('pointerup', cancel);
+    window.addEventListener('pointercancel', cancel);
   };
   // what the caddie said on the course, with the player's verdict
   const [cadLog, setCadLog] = useState<CaddieLog>(() => loadCaddieLog(round.id));
@@ -313,8 +356,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     setEdit(null);
     window.scrollTo(0, 0); // the map is at the top
   };
+  /** Shot 1 is played from the tee – a GPS point a few metres off the tee box must not make it "fairway" (Sascha
+   *  18.10.2026: "it says a hole is not checked, but I checked them all"); a tee shot moved down gets its lie from the map. */
+  const teeFirst = (shots: Shot[]): Shot[] =>
+    shots.map((s, n) => (n === 0 ? { ...s, lie: 'tee' } : s.lie === 'tee' && s.pos && data ? { ...s, lie: lieAt(s.pos, data, false) } : s));
   const confirmHole = () => {
-    if (d) saveDetail(k, { ...d, shots: d.shots.map((s) => ({ ...s, review: false })) });
+    if (d) saveDetail(k, { ...d, shots: teeFirst(d.shots.map((s) => ({ ...s, review: false }))) });
     setNotice(null);
     if (!last) return goTo(k + 1);
     // Last hole: on to the first hole still to check, otherwise the check is done.
@@ -365,7 +412,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     const shots = d.shots.slice();
     const [x] = shots.splice(from, 1);
     shots.splice(to, 0, { ...x, review: false });
-    saveDetail(k, { ...d, shots });
+    saveDetail(k, { ...d, shots: teeFirst(shots) });
   };
   const shotCount = d ? d.shots.length + Math.max(d.shots.filter((s) => s.penalty).length, e.penalties ?? 0) + (d.holedOut ? 0 : (e.putts ?? 0)) : null;
   const unplacedPenalty = d != null && d.shots.length > 0 && (e.penalties ?? 0) > d.shots.filter((s) => s.penalty).length;
@@ -600,9 +647,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             const kind = s.kind ?? suggestKind(s.lie, toPin);
             const cls = [s.review ? 'check' : '', drag?.from === n ? 'dragging' : '', drag && drag.from !== n && drag.to === n ? (drag.to < drag.from ? 'drop-before' : 'drop-after') : ''].join(' ').trim();
             return (
-              <li key={n} className={cls || undefined} style={drag?.from === n ? { transform: `translateY(${drag.dy}px)` } : undefined}>
+              <li key={n} className={cls || undefined} style={drag?.from === n ? { transform: `translateY(${drag.dy}px)` } : undefined} onPointerDown={(ev) => !(ev.target as HTMLElement).closest('.row-grip, .row-delete') && holdRow(ev, n)} onContextMenu={(e) => e.preventDefault()}>
                 <span className="n">{n + 1}</span>
-                <button type="button" className="shot-row" onClick={() => setEdit(n)}>
+                <button type="button" className="shot-row" onClick={() => !justDragged.current && setEdit(n)}>
                   <strong>{s.club ? clubCode(s.club) : '–'}</strong> · {KINDS.find((x) => x.value === kind)!.label}
                   <span className="muted small" style={{ display: 'block' }}>
                     {lieName(s.lie)}
