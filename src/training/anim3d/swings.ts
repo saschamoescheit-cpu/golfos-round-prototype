@@ -428,6 +428,7 @@ const RUSH_TIMES: Record<number, number> = { 0: 0, 0.5: 0.5, 1.0: 0.72, 1.45: 0.
 export const RUSHED: Swing = (() => {
   const back = 2.3 - RUSH_TIMES[2.3];
   const keys = FULL_SWING.keys.map((x) => ({ ...x, t: RUSH_TIMES[x.t] ?? x.t - back, label: undefined as SwingKey['label'] }));
+  keys[0].label = L('Set-up', 'Ansprache');
   keys[4].label = L('Left: short and fast back, snatched from the top · right: three back, one down', 'Links: kurz und schnell zurück, oben sofort gerissen · rechts: drei zurück, eins runter');
   keys[8].label = L('Left: at the ball too soon, the body lags behind · right: in rhythm', 'Links: zu früh am Ball, der Körper hängt hinterher · rechts: im Rhythmus');
   // the finish is held until the right one has finished too

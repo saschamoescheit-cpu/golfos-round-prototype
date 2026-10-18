@@ -62,6 +62,23 @@ await p.waitForTimeout(1500);
 await shot('3d-video-hinten');
 await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.topbar .icon-btn').first().click();
+// the 3D fault videos of the night (18.10.2026): the slice from behind with the ball's tracer, the bunker, the putt at
+// the hole from above – each a moment after the hit
+const fault3d = async (cat, fault, name, wait, view) => {
+  await p.locator('.tr-cat').filter({ hasText: cat }).first().click();
+  await p.getByRole('tab', { name: 'Fehler' }).click();
+  await p.locator('.list .list-item').filter({ hasText: fault }).first().click();
+  await p.locator('figure.tr-sketch .tr-motion-btn').first().click();
+  await p.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
+  if (view) await p.locator('.tr-3d-views .chip').filter({ hasText: view }).click();
+  await p.waitForTimeout(wait);
+  await shot(name);
+  await p.locator('.topbar .icon-btn').first().click();
+  await p.locator('.topbar .icon-btn').first().click();
+};
+await fault3d('Drehung, Ablauf', 'Über die Ebene', '3d-slice-hinten', 4300);
+await fault3d('Bunker', 'Ball bleibt im Bunker', '3d-bunker', 3600);
+await fault3d('Putten', 'Ball startet rechts', '3d-putt-oben', 4000, 'Oben');
 await tab('Üben');
 await p.locator('.list-item').filter({ hasText: 'Putten 30 Min: Startlinie' }).click();
 await p.getByRole('button', { name: 'Einheit starten' }).click();
