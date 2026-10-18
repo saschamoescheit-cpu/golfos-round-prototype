@@ -54,7 +54,7 @@ export interface Swing {
   /** side: the ball's start line and its bend (slice +, hook −), metres to the right per metre and per metre² of
    *  carry – for a right-hander right of the target is away from the player */
   /** lift: the flight higher (uphill, the slope adds loft) or flatter (downhill) */
-  hit?: { at: number; shot: Shot; scale?: number; lift?: number; side?: { start: number; bend: number } };
+  hit?: { at: number; shot: Shot; scale?: number; lift?: number; side?: { start: number; bend: number }; /** the ball hits something (a branch) at this x and drops */ stop?: number };
   /** a lie on a slope (degrees): up – the ground rises towards the target (uphill +, downhill −); side – it rises
    *  towards the ball (ball above the feet +, below the feet −) */
   slope?: { up?: number; side?: number };
@@ -77,7 +77,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees')[];
   /** the ball very low on its tee (fairway wood off a tee) */
   lowTee?: boolean;
   /** no ball: a drill swung into an impact bag */
@@ -276,6 +276,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   cloth.position.set(6.4, 1.92, 0.3 - 0.25);
   cloth.rotation.y = Math.PI / 2;
   scene.add(cloth);
+
+  /** things of the scene itself, rebuilt with every video: two trees with a branch across the gap (the punch) */
+  const sceneProps = new THREE.Group();
+  scene.add(sceneProps);
 
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
 
@@ -723,6 +727,20 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     at.x += dx * k;
     if (h.side) at.z += (h.side.start * dx + h.side.bend * dx * dx) * k;
     at.y = heightAt(at.x, at.z) + start + dy * k * (h.lift ?? 1);
+    if (h.stop != null && at.x > h.stop) {
+      // blocked: find when it got there, then it bounces back a little and drops to the ground
+      let lo = 0;
+      let hi = s;
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        if (ballAt({ ...p, swing: { ...p.swing, hit: { ...h, stop: undefined } } }, mid).x > h.stop) hi = mid;
+        else lo = mid;
+      }
+      const hitAt = ballAt({ ...p, swing: { ...p.swing, hit: { ...h, stop: undefined } } }, lo, sideOf);
+      const t = s - lo;
+      at.set(hitAt.x - 0.6 * (1 - Math.exp(-3 * t)), 0, hitAt.z);
+      at.y = Math.max(heightAt(at.x, at.z) + 0.0215, hitAt.y - 4.9 * t * t);
+    }
     return at;
   };
   /** the tracer: the flight of a shot through the air (no putt, no ball that stays near) as a thin white tube, drawn up
@@ -1078,6 +1096,39 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         s.castShadow = true;
         p.extras.add(s);
       }
+    }
+    // the gap between two trees, 3 m wide, with a branch at head height – a punch stays under it
+    sceneProps.traverse((o) => {
+      const m = o as THREE.Mesh;
+      m.geometry?.dispose();
+      for (const y of Array.isArray(m.material) ? m.material : m.material ? [m.material] : []) y.dispose();
+    });
+    sceneProps.clear();
+    if (players.some((p) => p.swing.props?.includes('trees'))) {
+      const zs = players.map((p) => p.z);
+      const mid = (Math.min(...zs) + Math.max(...zs)) / 2 + 0.6;
+      const half = Math.max(1.5, (Math.max(...zs) - Math.min(...zs)) / 2 + 1.2);
+      const bark = new THREE.MeshStandardMaterial({ color: '#6b5638', roughness: 1 });
+      const leaves = new THREE.MeshStandardMaterial({ color: '#3f7a2e', roughness: 1 });
+      const x = 5.2;
+      for (const z of [mid - half, mid + half]) {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 2.6, 10), bark);
+        trunk.position.set(x, heightAt(x, z) + 1.3, z);
+        const crown = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), leaves);
+        crown.scale.set(1, 0.85, 1);
+        crown.position.set(x, heightAt(x, z) + 2.9, z);
+        trunk.castShadow = crown.castShadow = true;
+        sceneProps.add(trunk, crown);
+      }
+      // the branch across the gap at head height, with leaves along it
+      const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, half * 2, 8), bark);
+      branch.rotation.x = Math.PI / 2;
+      branch.position.set(x, heightAt(x, mid) + 1.9, mid);
+      const leafy = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, half * 2 - 0.6, 10), leaves);
+      leafy.rotation.x = Math.PI / 2;
+      leafy.position.set(x, heightAt(x, mid) + 2.12, mid);
+      leafy.scale.set(1, 1, 0.6);
+      sceneProps.add(branch, leafy);
     }
     length = Math.max(...players.map((p) => p.prep.length));
     const first = list[0].swing;

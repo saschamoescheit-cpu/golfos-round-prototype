@@ -348,6 +348,10 @@ DRILL_MOTIONS['landing-ring'] ??= { frames: [], video: 'chipLand' };
 DRILL_MOTIONS['line-in-sand'] ??= { frames: [], video: 'sandLine' };
 set3d(DRILL_MOTIONS['splash-no-ball'], 'sandSplash');
 DRILL_MOTIONS['dollar-bill'] ??= { frames: [], video: 'sandFrame' };
+// the punch under the branches in 3D: two trees and a branch, the fault goes up into them
+set3d(DRILL_MOTIONS['punch-gap'], 'punch');
+set3d(SECTION_MOTIONS.trouble?.['The punch shot under trees'], 'punch');
+set3d(FAULT_MOTIONS.trouble?.['Punch shot goes up into the branches'], 'punchPair');
 DRILL_MOTIONS['clock-matrix'] ??= { frames: [], video: 'clockTrio' };
 FAULT_MOTIONS.slopes = { ...FAULT_MOTIONS.slopes, 'Losing balance': still3d('slopeBalancePair'), 'Fat shots on uphill lies and above the feet': still3d('slopeFatPair'), 'Thin and right from below the feet': still3d('slopeThinPair') };
 FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Ball starts right of the line': still3d('puttRightPair'), 'Ball starts left of the line': still3d('puttLeftPair') };

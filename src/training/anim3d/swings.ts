@@ -661,6 +661,27 @@ export const SAND_SPLASH: Swing = relabel(BUNKER_SWING, { 2.8: L('Splash the san
 /** the banknote frame: in at the back line, out at the front one – the whole frame of sand flies */
 export const SAND_FRAME: Swing = relabel(BUNKER_SWING, { 2.8: L('In at the back line, out at the front one – the whole frame flies', 'An der hinteren Linie hinein, an der vorderen heraus – der ganze Rahmen fliegt') }, { props: ['sandFrame'], view: 'angle' });
 
+// ---------- the punch under the branches (18.10.2026) ----------
+/** the punch: ball back, a shorter backswing, hands ahead at impact, a short finish with the hands low – the ball
+ *  stays under the branch */
+const PUNCH_FINISH = { hands: [0.14, -0.14, 0.45] as V3, club: [0.9, 0.3, -0.2] as V3, body: { pelvis: [32, 42, 4] as V3, spine: [0, 8, 0] as V3, chest: [0, 12, 2] as V3, neck: [-12, -20, 0] as V3, head: [8, -8, 0] as V3 }, shift: 0.1, free: true };
+export const PUNCH: Swing = {
+  ...fault({ ...HALF_SWING, club: 'iron', ball: [-0.05, 0.6] }, {
+    0: { label: L('Ball back, less loft, weight forward', 'Ball zurück, weniger Loft, Gewicht vorn') },
+    2.1: { shift: 0.08, label: L('Hands ahead at impact', 'Im Treffmoment Hände vorn') },
+    2.5: { ...PUNCH_FINISH, label: L('A short finish with the hands low – the ball stays under the branch', 'Kurzes Finish mit tiefen Händen – der Ball bleibt unter dem Ast') },
+    3.5: PUNCH_FINISH,
+  }, { hit: { at: 2.1, shot: 'punch', scale: 1.3 } }),
+  props: ['trees'],
+  view: 'side',
+};
+/** the punch that goes up: ball too far forward, the hands flip at impact – too much loft, up into the branches */
+export const PUNCH_HIGH: Swing = fault({ ...PUNCH, ball: [0.06, 0.6] }, {
+  2.1: { shift: 0, miss: [0.01, 0.01, 0], label: L('Left: ball forward, the hands flip – up into the branches · right: ball back, hands ahead – under them', 'Links: Ball vorn, die Hände klappen – hoch in die Äste · rechts: Ball zurück, Hände vorn – darunter durch') },
+  2.5: { hands: [0.06, 0.2, 0.36], club: [0.3, 0.9, -0.3], body: { pelvis: [30, 46, 4], spine: [0, 8, 0], chest: [0, 16, 2], neck: [-12, -24, 0], head: [8, -8, 0] }, label: undefined },
+  3.5: { hands: [0.06, 0.2, 0.36], club: [0.3, 0.9, -0.3] },
+}, { hit: { at: 2.1, shot: 'pitch', scale: 3, lift: 0.85, stop: 5.05 } });
+
 // ---------- uneven lies: the ground tilts, the set-up and the flight follow the slope ----------
 
 /** a swing on a slope: every key moved (weight, the labels of the set-up and the finish) */
@@ -749,6 +770,7 @@ export const PAIRS = {
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
   pitchSlowPair: { fault: PITCH_SLOW, right: quiet(HALF_SWING) },
+  punchPair: { fault: PUNCH_HIGH, right: quiet(PUNCH), behind: true },
   chipLengthPair: { fault: CHIP_SHORT, right: quiet(CHIP_LAND), behind: true },
   clockTrio: { fault: PITCH_8, right: PITCH_9, more: [PITCH_10], behind: true },
   shankPair: { fault: SHANK, right: quiet({ ...FULL_SWING, faceView: true }) },
@@ -784,5 +806,5 @@ export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { sandLine: SAND_LINE, sandSplash: SAND_SPLASH, sandFrame: SAND_FRAME, chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { punch: PUNCH, sandLine: SAND_LINE, sandSplash: SAND_SPLASH, sandFrame: SAND_FRAME, chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;
