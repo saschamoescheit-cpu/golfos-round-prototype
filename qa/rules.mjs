@@ -31,7 +31,9 @@ await p.waitForTimeout(600);
 // length with its metres, the boundary near the target, the hazards ahead to reach / to carry
 {
   const facts = (await p.locator('.caddie-facts').innerText().catch(() => '')).replace(/\s+/g, ' ');
-  ok(/°C [+−±]\d+ m/.test(facts) && /(Gegenwind|Rückenwind|windstill)/.test(facts), `caddie: wind and temperature with their metres (${facts.slice(0, 60)})`);
+  // the weather comes from the internet (Open-Meteo): without it there is no wind row – then the card must not pretend one
+  const weather = (await p.locator('.map-weather').count()) > 0;
+  ok(weather ? /°C [+−±]\d+ m/.test(facts) && /(Gegenwind|Rückenwind|windstill)/.test(facts) : !/°C/.test(facts), `caddie: wind and temperature with their metres when the weather is there (${weather ? 'weather' : 'no weather'}: ${facts.slice(0, 60)})`);
   ok(/Bunker (links|rechts|mittig): \d+ m bis · \d+ m drüber/.test(facts), 'caddie: the hazards ahead – to reach and to carry');
   ok(/Aus am Ziel: (links|rechts) \d+ m/.test(facts), 'caddie: out of bounds near the target (1A: left)');
 }

@@ -74,9 +74,11 @@ ok((await pausedTile.count()) === 1 && /^0/.test((await pausedTile.innerText()).
   ok(zero.split('|')[0] === '1' && zero.split('|')[2] === '1' && zero.split('|')[1] === played.split('|')[1], `the 0 tile as solid as the others (${zero} | ${played})`);
 }
 ok(/^5\b/.test(tiles.find((t) => /gespielt/.test(t)) ?? ''), 'gespielt: every finished round, kept and signed (5)');
+ok((await p.locator('.tile-row .tile').count()) === (await p.locator('.tile-row .tile .tile-mark svg').count()), 'every tile with its symbol – gespielt (ball on tee), Löcher (flag), gelöscht (bin) too');
 await tab('Runden');
 await p.waitForTimeout(600);
 ok((await listed()) === 5, `the menu's "Runden" shows all rounds (${await listed()})`);
+ok((await p.locator('ul.list .signed-mark[aria-label="gespielt"]').count()) === 2, 'the two kept rounds show the ball on the tee in the list');
 await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).click();
 await p.waitForTimeout(300);
 ok((await listed()) === 2, 'the tile filters too');

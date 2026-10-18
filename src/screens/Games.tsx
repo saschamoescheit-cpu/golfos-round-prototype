@@ -19,7 +19,7 @@ import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
 import { PausedIcon } from '../components/PausedIcon';
-import { ToSignIcon } from '../components/RoundIcons';
+import { DeletedIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
 
 // The "Games" module (Sascha 15.10.2026): side games as a product of its own – choose a game form, the course and the
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
@@ -1594,7 +1594,10 @@ function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: Ga
         </button>
       )}
       <div className="tile">
-        <span className="tile-num">{props.games.filter((g) => g.finishedAt).length}</span>
+        <span className="tile-head">
+          <span className="tile-num">{props.games.filter((g) => g.finishedAt).length}</span>
+          <span className="tile-mark"><PlayedIcon /></span>
+        </span>
         <span className="muted small">{tr('played', 'gespielt')}</span>
       </div>
       <button type="button" className="tile" aria-pressed={props.filter === 'confirmed'} disabled={!confirmed} onClick={() => props.onFilter('confirmed')}>
@@ -1606,7 +1609,10 @@ function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: Ga
       </button>
       {trash > 0 && (
         <button type="button" className="tile" aria-pressed={props.filter === 'bin'} onClick={() => props.onFilter('bin')}>
-          <span className="tile-num">{trash}</span>
+          <span className="tile-head">
+            <span className="tile-num">{trash}</span>
+            <span className="tile-mark"><DeletedIcon /></span>
+          </span>
           <span className="muted small">{tr('deleted', 'gelöscht')}</span>
         </button>
       )}

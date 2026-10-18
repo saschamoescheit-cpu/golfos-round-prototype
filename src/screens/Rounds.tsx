@@ -11,7 +11,7 @@ import { isTeamRound } from '../lib/games';
 import { SignedIcon } from '../components/SignedIcon';
 import { hasScore } from '../lib/signing';
 import { PausedIcon } from '../components/PausedIcon';
-import { ToSignIcon } from '../components/RoundIcons';
+import { DeletedIcon, HolesIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
 
 // Tab "Rounds": every round, newest first. On top what is still to do – rounds whose shots are not checked yet.
 
@@ -79,7 +79,10 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
           <span className="muted small">{tr('paused', 'pausiert')}</span>
         </button>
         <div className="tile">
-          <span className="tile-num">{finished.length}</span>
+          <span className="tile-head">
+            <span className="tile-num">{finished.length}</span>
+            <span className="tile-mark"><PlayedIcon /></span>
+          </span>
           <span className="muted small">{tr('played', 'gespielt')}</span>
         </div>
         <button type="button" className="tile" aria-pressed={filter === 'signed'} disabled={!signed.length} onClick={() => pick('signed')}>
@@ -90,14 +93,20 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
           <span className="muted small">{tr('signed', 'signiert')}</span>
         </button>
         <div className="tile">
-          <span className="tile-num">{holes}</span>
+          <span className="tile-head">
+            <span className="tile-num">{holes}</span>
+            <span className="tile-mark"><HolesIcon /></span>
+          </span>
           <span className="muted small">{tr('holes', 'Löcher')}</span>
         </div>
         {/* deleted rounds as the fourth tile (Sascha 15.10.2026) – a tap shows them under the list */}
         {trash.length > 0 && (
           // one tile at a time (Sascha 17.10.2026: from "deleted" to "to check" did not switch)
           <button type="button" className="tile" aria-pressed={binOpen} onClick={() => pick('bin')}>
-            <span className="tile-num">{trash.length}</span>
+            <span className="tile-head">
+              <span className="tile-num">{trash.length}</span>
+              <span className="tile-mark"><DeletedIcon /></span>
+            </span>
             <span className="muted small">{tr('deleted', 'gelöscht')}</span>
           </button>
         )}
@@ -183,7 +192,11 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                         <span className="signed-mark" role="img" aria-label={tr('signed', 'signiert')} title={tr('signed', 'signiert')}>
                           <SignedIcon size={16} />
                         </span>
-                      ) : r.capture === 'score' ? null : (
+                      ) : r.capture === 'score' ? (
+                        <span className="signed-mark" role="img" aria-label={tr('played', 'gespielt')} title={tr('played', 'gespielt')}>
+                          <PlayedIcon size={16} />
+                        </span>
+                      ) : (
                         <span className="signed-mark" role="img" aria-label={tr('check & sign', 'prüfen & signieren')} title={tr('check & sign', 'prüfen & signieren')}>
                           <ToSignIcon size={16} />
                         </span>

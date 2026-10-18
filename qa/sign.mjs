@@ -59,7 +59,7 @@ ok((await p.getByText(/1 beendete Runde ist noch nicht signiert/).count()) === 1
 await tab('Runden');
 await p.waitForTimeout(400);
 ok((await p.locator('ul.list .signed-mark[aria-label="signiert"]').count()) === 0 && (await p.locator('ul.list .signed-mark[aria-label="prüfen & signieren"]').count()) === 1, 'rounds list: no seal yet, the mark of an open round');
-ok((await p.locator('.tile .tile-mark svg').count()) === 3, 'the tiles carry the marks (to check, to sign, signed) – the legend');
+ok((await p.locator('.tile').count()) === (await p.locator('.tile .tile-mark svg').count()), 'every tile carries its mark – the legend of the list');
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1200);
 const card = p.locator('.sign-card');
