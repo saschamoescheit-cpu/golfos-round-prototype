@@ -510,7 +510,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
             go('frame');
             say(`${tr('Now you.', 'Jetzt du.')} ${placeText(props.test)}`);
           };
-          demoTimer = window.setTimeout(toFrame, fake ? 200 : Math.min(8000, Math.max(4500, loop)));
+          demoTimer = window.setTimeout(toFrame, fake ? 700 : Math.min(8000, Math.max(4500, loop)));
         } else {
           go('frame');
           say(tr('Step back until your whole body is in the picture.', 'Geh so weit zurück, bis dein ganzer Körper im Bild ist.'));
