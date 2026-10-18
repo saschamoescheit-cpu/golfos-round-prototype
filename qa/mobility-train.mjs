@@ -199,6 +199,16 @@ await p.locator('.mob-side-tag').waitFor({ timeout: 20000 });
 const resumedTag = await p.locator('.mob-side-tag').innerText();
 ok(names.length > 1 && resumedTag.includes(names[1]) && !resumedTag.includes(names[0]), `it goes on with the next drill (${resumedTag}; the drills: ${names.join(', ')})`);
 
+// it hurts in the middle of a set: Pause → "It hurts – stop this drill" → the next drill; the drill is out of the plan
+await p.locator('.mob-coach-pause').click();
+await p.locator('.mob-pain-stop').click();
+await p.waitForTimeout(600);
+const painSess = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]').find((s) => !s.finishedAt));
+const stopped = painSess?.done.find((d) => d.pain);
+ok(!!stopped && stopped.sets.length === 0, `"It hurts": the drill is stopped and marked (${stopped?.drill})`);
+const afterTag = await p.evaluate(() => document.querySelector('.mob-side-tag')?.textContent ?? '');
+ok(names.length < 3 || !afterTag.includes(names[1]), `and the next drill begins (${afterTag})`);
+
 // weeks later: the screening is due again, and the history shows the progress of a measured drill
 await p.evaluate(() => {
   const list = JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]');

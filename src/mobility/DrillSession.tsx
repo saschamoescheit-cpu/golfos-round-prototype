@@ -24,6 +24,7 @@ function DrillThumb(props: { d: Drill }) {
 /** what a drill did, in a line: reps or holds per side */
 export function doneText(d: DrillDone): string {
   if (d.skipped) return tr('skipped', 'übersprungen');
+  if (d.pain && !d.sets.length) return tr('stopped – it hurt', 'abgebrochen – hat wehgetan');
   const holds = d.sets.filter((s) => s.held != null);
   if (holds.length) return tr(`${holds.length} × held, up to ${Math.max(...holds.map((s) => s.held ?? 0))} s`, `${holds.length} × gehalten, bis ${String(Math.max(...holds.map((s) => s.held ?? 0))).replace('.', ',')} s`);
   const reps = d.sets.reduce((n, s) => n + s.reps, 0);
@@ -118,6 +119,10 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
           <p className="muted">{tr(`${doneCount} of ${drills.length} drills done. Continue starts the drill again.`, `${doneCount} von ${drills.length} Übungen erledigt. Weiter startet die Übung neu.`)}</p>
           <button type="button" className="btn-primary" onClick={() => setStage('drill')}>
             {tr('Continue', 'Weiter')}
+          </button>
+          {/* pain in the middle of a set: stop this drill at once (stop sign) – it stays out of the plan for 4 weeks */}
+          <button type="button" className="btn-secondary mob-pain-stop" onClick={() => record({ drill: d.id, sets: [], pain: true, at: new Date().toISOString() })}>
+            {tr('It hurts – stop this drill', 'Es tut weh – Übung abbrechen')}
           </button>
           <button
             type="button"
