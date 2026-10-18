@@ -56,7 +56,7 @@ await p.waitForTimeout(1500);
 ok((await p.locator('.tabbar-dot').count()) === 1, 'menu: dot on "Runden"');
 await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click();
 await p.waitForTimeout(400);
-ok((await p.locator('ul.list .signed-mark[aria-label="Schläge prüfen"]').count()) === 1, 'rounds tab: the green magnifier on the round to check (no text hint)');
+ok((await p.locator('ul.list .signed-mark[aria-label="prüfen & signieren"]').count()) === 1, 'rounds tab: the green pen on the round to check & sign (no text hint)');
 ok((await p.getByText('Schläge prüfen →').count()) === 0, 'rounds tab: no green text hint any more');
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1000);

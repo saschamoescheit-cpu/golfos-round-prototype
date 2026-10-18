@@ -71,7 +71,10 @@ await p.getByText('Runde starten').click();
 await p.waitForTimeout(5000);
 const id = await p.evaluate(async () => {
   const S = await import('/src/lib/storage.ts');
-  const r = S.loadRounds()[0];
+  const r0 = S.loadRounds()[0];
+  // a played round has a result – one without is listed nowhere (Sascha 18.10.2026)
+  const me = r0.players.find((x) => x.isMe).id;
+  const r = { ...r0, entries: { ...r0.entries, [me]: r0.entries[me].map((e, k) => (k === 0 ? { ...e, strokes: 5 } : e)) } };
   localStorage.setItem('golfos.track.v1.' + r.id, JSON.stringify([[1, 2, 3, 4]]));
   S.saveRound({ ...r, finishedAt: new Date().toISOString() });
   S.saveRound({ ...r, id: r.id + '-kept', finishedAt: new Date().toISOString() }); // one that stays in the list

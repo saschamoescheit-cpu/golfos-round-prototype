@@ -216,7 +216,14 @@ export function teeStrategy(o: {
   } else if (Math.abs(pick.side) >= 5 && longMid.e - pick.e >= 0.04) {
     const miss = worstMiss(longMid);
     const away = pick.side > 0 ? 'right' : 'left';
-    const from = miss && Math.abs(longMid.missSide) >= 5 ? `${sideWord(longMid.missSide > 0 ? 'right' : 'left')}: ${missWord(miss)}` : null;
+    const toward = longMid.missSide > 0 ? 'right' : 'left';
+    // out of bounds on both sides (hole notes, e.g. 1A Hetzenhof): say so, and which one is closer (Sascha 18.10.2026)
+    const both = miss === 'ob' && o.note?.obLeft && o.note?.obRight;
+    const from = miss && Math.abs(longMid.missSide) >= 5
+      ? both
+        ? tr(`out of bounds on both sides, closer on the ${toward}`, `Aus auf beiden Seiten, ${sideWord(toward)} näher`)
+        : `${sideWord(toward)}: ${missWord(miss)}`
+      : null;
     text = tr(
       `${clubName(pick.club)} to the ${away} side of the fairway${from ? ` – ${from}` : ''}.`,
       `${clubName(pick.club)} auf die ${away === 'right' ? 'rechte' : 'linke'} Fairwayseite${from ? ` – ${from}` : ''}.`,

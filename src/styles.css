@@ -600,7 +600,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .map-bottom > .map-bottom-tools { pointer-events: none; }
 .map-bottom-tools { align-self: stretch; align-items: flex-end; } /* the map between the buttons stays the map */
 .map-bottom-tools > button, .map-tools-stack > * { pointer-events: auto; }
-.map-tools-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.map-tools-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-left: auto; } /* ⓘ left, shot + centre right */
 .shot-wrap { position: relative; display: inline-flex; }
 .map-credits { font-size: 12px; line-height: 1.4; color: var(--text); cursor: pointer; }
 .map-credits a { color: var(--brand-text); }
@@ -1328,3 +1328,16 @@ button.tile:disabled .tile-mark { opacity: 0.5; }
 
 /* the weather of the round under course and date on its scorecard (GOL-26) */
 .sc-weather { display: block; margin-top: 2px; }
+
+/* a paused round in the rounds list: the row carries on, the bin icon next to it deletes (Sascha 18.10.2026) */
+.paused-row { display: flex; align-items: center; gap: 8px; }
+.paused-row > .list-item { flex: 1; min-width: 0; }
+.paused-delete { flex: none; }
+
+/* the caddie's facts under his advice (Sascha 18.10.2026): length changes, out of bounds, hazards ahead */
+.caddie-facts { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 13px; }
+.caddie-facts .cf-row { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.caddie-facts .cf { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.caddie-facts .cf svg { flex: none; color: var(--brand-text); }
+.caddie-facts .cf b { color: var(--text); font-weight: 600; }
+.caddie-facts .cf.warn svg, .caddie-facts .cf.warn { color: #ff9d8f; }

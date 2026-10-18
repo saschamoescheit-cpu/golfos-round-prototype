@@ -24,7 +24,7 @@ import { greenSource } from '../data/greenSources';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard } from '../components/CaddieCard';
-import { holeBook } from '../lib/holebook';
+import { hazardsAhead, holeBook } from '../lib/holebook';
 import { courseStats } from '../lib/history';
 import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
@@ -1302,6 +1302,11 @@ export function HoleScreen(props: {
             <CaddieCard
               book={book}
               facts={cad.facts}
+              pl={cad.pl}
+              weather={weather ? { tempC: weather.tempC, windKmh: weather.windKmh } : null}
+              ob={cad.ob}
+              ahead={hazardsAhead(mapData, from)}
+              unit={unit}
               lines={cad.lines}
               alt={cad.alt}
               onHide={toggleCaddie}

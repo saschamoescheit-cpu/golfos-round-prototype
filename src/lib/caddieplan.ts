@@ -86,6 +86,8 @@ export interface CaddieOutput {
   alt: string | null;
   facts: CaddieFacts;
   heights: { from: number | null; green: number | null };
+  /** the course boundary near the target, metres left / right (Infinity = none within 30 m) – shown in the card */
+  ob: { left: number; right: number } | null;
   /** around the green for bogey golfers and beginners: the putter or a chip and run instead of the wedge advice */
   shortGame: { club: 'Putter' | '8i' } | null;
 }
@@ -349,7 +351,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
     tip: note.tip ?? null,
     teeShot: o.teeShot,
   };
-  return { ap, ownTarget, target, apName, pl, advice, lie, warning, aim, holePlan, lines, alt, facts, heights: { from: fromH, green: greenH }, shortGame: sgClub ? { club: sgClub.club } : null };
+  return { ap, ownTarget, target, apName, pl, advice, lie, warning, aim, holePlan, lines, alt, facts, heights: { from: fromH, green: greenH }, ob: ob ? { left: ob.left, right: ob.right } : null, shortGame: sgClub ? { club: sgClub.club } : null };
 }
 
 /** A tree in line with the aim, 25–120 m beyond it (behind the green: 10–80 m) – within ±2.5°. */

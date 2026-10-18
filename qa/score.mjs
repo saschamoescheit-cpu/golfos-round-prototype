@@ -40,6 +40,8 @@ ok((await p.locator('.map-toolbar .map-shot-btn').count()) === 0 && (await p.loc
 {
   const sb = await p.locator('.map-shot-btn').boundingBox();
   const ib = await p.getByRole('button', { name: 'Karteninfo' }).boundingBox();
+  const vw = p.viewportSize().width;
+  ok(sb && sb.x + sb.width > vw - 40, `"Schlag hier" at the right edge, the ⓘ stays left (Sascha 18.10.2026) (${Math.round(sb?.x + sb?.width)} of ${vw})`);
   ok(ib && sb && ib.x < 40 && Math.abs(ib.y + ib.height - (sb.y + sb.height)) < 3, `the map ⓘ bottom left at the height of "shot here" (${Math.round(ib?.y + ib?.height)} / ${Math.round(sb?.y + sb?.height)})`);
 }
 ok(await shotTool.isVisible(), '"Schlag hier" is a map tool on every round');

@@ -42,7 +42,10 @@ await p.evaluate(() => {
   r.entries[id] = r.entries[id].map((e, k) => ({ ...e, strokes: r.holes[k].par + 1, putts: 2, penalties: 0 }));
   r.finishedAt = new Date().toISOString();
   const mk = (n, patch) => ({ ...JSON.parse(JSON.stringify(r)), id: `${r.id}-${n}`, createdAt: new Date(Date.now() - n * 3600e3).toISOString(), ...patch });
-  const rs = [mk(1, { capture: 'score' }), mk(2, { capture: 'score' }), mk(3, { capture: 'score', signedAt: new Date().toISOString() }), mk(4, {}), mk(5, {})];
+  // and one finished round without any score – listed nowhere (Sascha 18.10.2026), the counts below stay the same
+  const empty = mk(6, {});
+  empty.entries[id] = empty.entries[id].map((e) => ({ ...e, strokes: null, putts: null }));
+  const rs = [mk(1, { capture: 'score' }), mk(2, { capture: 'score' }), mk(3, { capture: 'score', signedAt: new Date().toISOString() }), mk(4, {}), mk(5, {}), empty];
   localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
 });
 await p.reload();
@@ -51,27 +54,26 @@ const tab = (name) => p.locator('.tabbar button').filter({ hasText: name }).clic
 const listed = () => p.locator('ul.list button.list-item').count();
 await tab('Spielen');
 await p.waitForTimeout(400);
-const sign = p.getByRole('button', { name: /Runden signieren/ });
+// check & sign are one way (Sascha 18.10.2026): one card on the start page, one tile – no separate "to check"
+const sign = p.getByRole('button', { name: /Runden prüfen & signieren/ });
 const signN = Number((await sign.locator('.count-badge').innerText()).trim());
-const check = p.getByRole('button', { name: /Schläge prüfen/ });
-const checkN = Number((await check.locator('.count-badge').innerText()).trim());
-console.log(`· start page: ${signN} to sign, ${checkN} to check`);
+ok((await p.getByRole('button', { name: /Schläge prüfen/ }).count()) === 0, 'start page: no separate "Schläge prüfen" any more');
 await sign.click();
 await p.waitForTimeout(600);
-ok((await listed()) === signN && signN === 2, `"Runden signieren" shows only the ${signN} rounds to sign – the kept ones are not open (${await listed()})`);
-ok((await p.locator('button.tile').filter({ hasText: 'zu signieren' }).getAttribute('aria-pressed')) === 'true', 'the "zu signieren" tile is on');
-await tab('Spielen');
-await p.waitForTimeout(400);
-await check.click();
-await p.waitForTimeout(600);
-ok((await listed()) === checkN && checkN > 0, `"Schläge prüfen" shows only the ${checkN} rounds to check (${await listed()})`);
+ok((await listed()) === signN && signN === 2, `"Runden prüfen & signieren" shows only the ${signN} open rounds – the kept ones are not open (${await listed()})`);
+ok((await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).getAttribute('aria-pressed')) === 'true', 'the "prüfen & signieren" tile is on');
+const tiles = (await p.locator('.tile-row .tile').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+ok(!tiles.some((t) => /zu prüfen/.test(t)) && tiles.some((t) => /^2 prüfen & signieren$/.test(t)), `tiles: one "prüfen & signieren", no "zu prüfen" (${tiles.join(' | ')})`);
+const pausedTile = p.locator('button.tile').filter({ hasText: 'pausiert' });
+ok((await pausedTile.count()) === 1 && /^0/.test((await pausedTile.innerText()).trim()) && (await pausedTile.isDisabled()), 'the "pausiert" tile is there with 0 when nothing is paused');
+ok(/^5\b/.test(tiles.find((t) => /gespielt/.test(t)) ?? ''), 'gespielt: every finished round, kept and signed (5)');
 await tab('Runden');
 await p.waitForTimeout(600);
 ok((await listed()) === 5, `the menu's "Runden" shows all rounds (${await listed()})`);
-await p.locator('button.tile').filter({ hasText: 'zu signieren' }).click();
+await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).click();
 await p.waitForTimeout(300);
 ok((await listed()) === 2, 'the tile filters too');
-await p.locator('button.tile').filter({ hasText: 'zu signieren' }).click();
+await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).click();
 await p.waitForTimeout(300);
 ok((await listed()) === 5, 'tapped again: all rounds');
 // the stats' notice "… not signed yet" leads there too
@@ -79,13 +81,27 @@ await tab('Statistik');
 await p.waitForTimeout(500);
 await p.locator('.notice-link').click();
 await p.waitForTimeout(600);
-ok((await listed()) === 2 && (await p.locator('button.tile').filter({ hasText: 'zu signieren' }).getAttribute('aria-pressed')) === 'true', 'the stats notice opens the rounds to sign');
+ok((await listed()) === 2 && (await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).getAttribute('aria-pressed')) === 'true', 'the stats notice opens the rounds to check & sign');
 await tab('Runden');
 await p.waitForTimeout(400);
 if (process.env.SHOTS) {
-  await p.locator('button.tile').filter({ hasText: 'zu signieren' }).click();
+  await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).click();
   await p.screenshot({ path: `${process.env.SHOTS}/roundfilter.png` });
 }
+// the module start page: only the rounds to check & sign – a paused round is no task there (Sascha 18.10.2026)
+await p.evaluate(() => {
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ ...rs[0], id: rs[0].id + '-p', finishedAt: null, capture: undefined, createdAt: new Date().toISOString() }, ...rs]));
+  sessionStorage.setItem('golfos.paused', rs[0].id + '-p'); // paused: a reload stays on the start page
+});
+await p.reload();
+await p.waitForTimeout(1200);
+await tab('Spielen');
+await p.waitForTimeout(300);
+await p.getByRole('button', { name: 'Modul wechseln' }).first().click();
+await p.waitForTimeout(600);
+const card = (await p.locator('.module-card').filter({ hasText: 'Rounds' }).innerText()).replace(/\s+/g, ' ');
+ok(/2 Runden prüfen & signieren/.test(card) && !/pausiert|Schläge prüfen/.test(card), `home: the Rounds card names only the rounds to check & sign (${card})`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

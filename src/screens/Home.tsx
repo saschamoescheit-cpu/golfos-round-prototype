@@ -16,7 +16,7 @@ export function Home(props: {
   onTab: (t: HomeTab) => void;
   roundOpen: boolean;
   gameOpen: boolean;
-  toCheck: number; // finished rounds whose shots are not checked yet
+  toCheck: number; // finished rounds to check & sign (the same number as the rounds tile)
   profileDot: boolean; // carries to take over into the bag
   trainingOpen: boolean; // a practice session is paused
   onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void;
@@ -78,15 +78,10 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
         </span>
         <span className="grow">
           <strong>Rounds</strong>
-          {props.roundOpen && (
-            <span className="small module-live">
-              {tr('A round is paused', 'Eine Runde ist pausiert')}
-              <PausedMark />
-            </span>
-          )}
+          {/* only what is still to do: the rounds to check & sign – a paused round is no task here (Sascha 18.10.2026) */}
           {props.toCheck > 0 && (
             <span className="small module-todo">
-              {props.toCheck === 1 ? tr('1 round: check your shots', '1 Runde: Schläge prüfen') : tr(`${props.toCheck} rounds: check your shots`, `${props.toCheck} Runden: Schläge prüfen`)}
+              {props.toCheck === 1 ? tr('1 round to check & sign', '1 Runde prüfen & signieren') : tr(`${props.toCheck} rounds to check & sign`, `${props.toCheck} Runden prüfen & signieren`)}
             </span>
           )}
         </span>

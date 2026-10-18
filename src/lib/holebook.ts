@@ -1,4 +1,5 @@
-import { approachFrom, bearingDeg, centroid, formatDistance, hazardToCarry, isAhead, lineLength, pointAt, type HoleMapData, type Unit } from './geo';
+import { approachFrom, bearingDeg, centroid, distanceM, formatDistance, hazardToCarry, isAhead, lineLength, pointAt, type HoleMapData, type Unit } from './geo';
+import type { LngLat } from '../types';
 import { sideOf } from './dispersion';
 import { heightAt } from './terrain';
 import { bestLeave, type GreenGrid } from './greenread';
@@ -64,4 +65,26 @@ export function holeBook(p: {
       ]
     : [];
   return { ...(p.tip ? { tip: p.tip } : {}), rise, hazards, green, record };
+}
+
+export interface HazardAhead {
+  kind: 'bunker' | 'water';
+  side: 'left' | 'right' | 'middle';
+  to: number; // metres to reach it
+  carry: number; // metres to carry it
+}
+
+/** The bunkers and water ahead of the player, nearest first – from where the ball lies, up to the green (Sascha
+ *  18.10.2026: "from the tee into the coming hazards" in the caddie). */
+export function hazardsAhead(data: HoleMapData, from: LngLat, max = 3): HazardAhead[] {
+  const toGreen = distanceM(from, data.greenCenter);
+  return [...data.bunkers.map((r) => ({ r, kind: 'bunker' as const })), ...data.water.map((r) => ({ r, kind: 'water' as const }))]
+    .map((x) => ({ ...x, c: centroid(x.r), ...hazardToCarry(from, x.r) }))
+    .filter((x) => isAhead(from, data.greenCenter, x.c) && x.to >= 15 && x.to <= Math.min(320, toGreen + 15))
+    .sort((a, b) => a.to - b.to)
+    .slice(0, max)
+    .map((x) => {
+      const s = sideOf(from, data.greenCenter, x.c);
+      return { kind: x.kind, side: Math.abs(s) < 8 ? 'middle' : s > 0 ? 'right' : 'left', to: x.to, carry: x.carry };
+    });
 }

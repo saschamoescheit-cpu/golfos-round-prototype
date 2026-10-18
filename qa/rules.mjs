@@ -27,6 +27,14 @@ await p.getByText('Runde starten').click();
 await p.waitForTimeout(5000);
 await p.getByRole('button', { name: /Caddie zeigen/ }).click();
 await p.waitForTimeout(600);
+// the caddie's facts (Sascha 18.10.2026: "out of bounds, the coming hazards, temperature and wind"): what changes the
+// length with its metres, the boundary near the target, the hazards ahead to reach / to carry
+{
+  const facts = (await p.locator('.caddie-facts').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok(/°C [+−±]\d+ m/.test(facts) && /(Gegenwind|Rückenwind|windstill)/.test(facts), `caddie: wind and temperature with their metres (${facts.slice(0, 60)})`);
+  ok(/Bunker (links|rechts|mittig): \d+ m bis · \d+ m drüber/.test(facts), 'caddie: the hazards ahead – to reach and to carry');
+  ok(/Aus am Ziel: (links|rechts) \d+ m/.test(facts), 'caddie: out of bounds near the target (1A: left)');
+}
 await p.getByRole('button', { name: 'Regeln', exact: true }).click();
 await p.waitForTimeout(500);
 const book = p.locator('.rules-book');

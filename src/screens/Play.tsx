@@ -3,7 +3,7 @@ import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
 import { TopTools } from '../components/TopTools';
-import { roundsToSign, uncheckedRounds } from './Rounds';
+import { roundsToSign } from './Rounds';
 
 // Tab "Play" (Sascha 14.10.2026): start a round, or carry on with, finish or cancel the one in progress.
 // "Continue round" only shows while a started round was neither finished nor cancelled.
@@ -14,7 +14,6 @@ export function PlayTab(props: {
   onContinue: (r: Round) => void;
   onEnd: (r: Round) => void;
   onAbort: (r: Round) => void;
-  onCheck: () => void;
   onSign: () => void;
   onModules: () => void;
   /** A paused course preview: continue or end it. */
@@ -23,7 +22,6 @@ export function PlayTab(props: {
   onEndPreview?: () => void;
 }) {
   const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  const unchecked = uncheckedRounds(props.rounds).length;
   const toSign = roundsToSign(props.rounds).length;
   const [confirm, setConfirm] = useState<'end' | 'abort' | null>(null);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
@@ -131,24 +129,12 @@ export function PlayTab(props: {
         </button>
       </section>
 
-      {unchecked > 0 && (
-        <button type="button" className="list-item" onClick={props.onCheck}>
-          <span className="grow">
-            <span className="title">{tr('Check your shots', 'Schläge prüfen')}</span>
-            <span className="muted small">
-              {unchecked === 1 ? tr('1 round has shots to check', '1 Runde hat offene Schläge') : tr(`${unchecked} rounds have shots to check`, `${unchecked} Runden haben offene Schläge`)}
-            </span>
-          </span>
-          <span className="count-badge">{unchecked}</span>
-          <span aria-hidden="true">›</span>
-        </button>
-      )}
       {toSign > 0 && (
         <button type="button" className="list-item" onClick={props.onSign}>
           <span className="grow">
-            <span className="title">{tr('Sign your rounds', 'Runden signieren')}</span>
+            <span className="title">{tr('Check & sign your rounds', 'Runden prüfen & signieren')}</span>
             <span className="muted small">
-              {toSign === 1 ? tr('1 round not signed yet', '1 Runde noch nicht signiert') : tr(`${toSign} rounds not signed yet`, `${toSign} Runden noch nicht signiert`)}
+              {toSign === 1 ? tr('1 round to check and sign', '1 Runde zu prüfen und zu signieren') : tr(`${toSign} rounds to check and sign`, `${toSign} Runden zu prüfen und zu signieren`)}
             </span>
           </span>
           <span className="count-badge">{toSign}</span>

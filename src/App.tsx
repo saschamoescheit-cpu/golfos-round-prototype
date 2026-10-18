@@ -6,7 +6,7 @@ import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
 import { finishSignIn, liveConnect, syncNow, syncSoon, watchChanges } from './lib/sync';
 import { PlayTab, RoundsTopBar } from './screens/Play';
-import { RoundsTab, uncheckedRounds, type RoundsFilter } from './screens/Rounds';
+import { RoundsTab, roundsToSign, type RoundsFilter } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
 import { ProfileTab } from './screens/Profile';
 import { TabBar, type Tab } from './components/TabBar';
@@ -204,7 +204,7 @@ export function App() {
     />
   );
   // open tasks (Sascha 15.10.2026: the yellow dot also on the start page and in Games): shots to check, carries to take over
-  const toCheck = uncheckedRounds(rounds).length;
+  const toCheck = roundsToSign(rounds).length; // the rounds to check & sign – the same number on the home card, the dot and the tile
   const profileDot = carryToReview(rounds, loadCarryBag()).length > 0;
   if (module !== 'rounds' && bagFrom) return <MyBag rounds={rounds} part={bagFrom.part} onBack={() => setBagFrom(null)} />;
   if (!module)
@@ -301,7 +301,6 @@ export function App() {
                 setPaused(null);
                 setRounds(loadRounds());
               }}
-              onCheck={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'check' })}
               onSign={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' })}
               onModules={() => setModule(null)}
             />

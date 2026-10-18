@@ -5,7 +5,10 @@ import { RulesBook } from './RulesBook';
 import type { HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
 import { getLang, tr } from '../lib/i18n';
-import type { HoleBook } from '../lib/holebook';
+import type { HazardAhead, HoleBook } from '../lib/holebook';
+import type { PlaysLike } from '../lib/caddie';
+import { formatDistance, type Unit } from '../lib/geo';
+import { hazardWord, sideWord } from '../lib/i18n';
 
 // The caddie on the hole map (feature 017): appears when he has something new to say, can be hidden completely.
 // Folded it is one glance – club, distance and the one line that matters; tapped open: reasons, lie, read aloud,
@@ -23,6 +26,12 @@ export function CaddieCard(props: {
   lie: LieKind | null; // null on the tee
   onLie: (l: LieKind) => void;
   book?: HoleBook | null; // what the course book knows about the hole
+  /** what makes the shot longer or shorter, the boundary near the target and the hazards ahead (Sascha 18.10.2026) */
+  pl?: PlaysLike;
+  weather?: { tempC: number; windKmh: number } | null;
+  ob?: { left: number; right: number } | null;
+  ahead?: HazardAhead[];
+  unit?: Unit;
 }) {
   // the player opened the caddie: everything at once (Sascha 15.10.2026); no folding – shown or hidden from the
   // map's menu (Sascha 16.10.2026: "den kleinen Einklapppfeil brauchen wir nicht")
@@ -32,7 +41,8 @@ export function CaddieCard(props: {
   // at most three lines (Sascha 16.10.2026: "der Caddie hat viel zu viele Informationen"): the head – club, distance,
   // plays like –, then the instruction (his plan, or the caddie's aim) and the one danger that matters. The rest is
   // still worked out and answered under "Ask".
-  const shown = pickLines(props.lines);
+  // the boundary has its own row below – not twice
+  const shown = pickLines(props.lines).filter((l) => !(props.ob && /^(Out of bounds|Aus) /.test(l.text)));
   const head = `${Math.round(f.distance)} ${f.unit} ${f.targetTo} · ${tr('plays', 'spielt wie')} ${Math.round(f.playsLike)} ${f.unit}`;
   return (
     <>
@@ -48,6 +58,7 @@ export function CaddieCard(props: {
             {l.text}
           </span>
         ))}
+        <CaddieFacts pl={props.pl} weather={props.weather ?? null} ob={props.ob ?? null} ahead={props.ahead ?? []} unit={props.unit ?? 'm'} />
         {SHOW_DETAILS && props.alt && <span className="alt">{props.alt}</span>}
         {SHOW_DETAILS && props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
         {props.lie != null && (
@@ -236,6 +247,73 @@ function BookPart(props: { book: HoleBook; said: string[] }) {
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+const Icon = (p: { d: string }) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={p.d} />
+  </svg>
+);
+const WIND = 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h8';
+const TEMP = 'M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z';
+const HILL = 'M3 19l6-8 4 5 3-3 5 6z';
+const STAKE = 'M7 3v18M17 3v18M7 8h10M7 14h10';
+const SAND = 'M3 16c3-4 6-4 9 0s6 4 9 0M5 11c2-2 5-2 7 0';
+const WATER = 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z';
+
+/** The facts under the caddie's advice (Sascha 18.10.2026: "very little information in the caddie – out of bounds,
+ *  the coming hazards, the influence of temperature and wind"): one row what changes the length, one the boundary
+ *  near the target, one per hazard ahead – short, each with its sign. */
+function CaddieFacts(props: { pl?: PlaysLike; weather: { tempC: number; windKmh: number } | null; ob: { left: number; right: number } | null; ahead: HazardAhead[]; unit: Unit }) {
+  const u = props.unit;
+  const d = (m: number) => `${formatDistance(m, u)} ${u}`;
+  const m = (v: number) => (Math.abs(v) < 1 ? `±0 ${u}` : `${v > 0 ? '+' : '−'}${formatDistance(Math.abs(v), u)} ${u}`);
+  const pl = props.pl;
+  const w = props.weather;
+  // the metres come from the head or tail part of the wind; the cross part moves the ball sideways – both named
+  const head = pl && Math.abs(pl.headKmh) >= 1 ? `${pl.headKmh >= 0 ? tr('into the wind', 'Gegenwind') : tr('downwind', 'Rückenwind')} ${Math.abs(pl.headKmh)} km/h` : null;
+  const cross = pl && Math.abs(pl.crossKmh) >= 5 ? tr(`crosswind ${Math.abs(pl.crossKmh)} from the ${pl.crossKmh > 0 ? 'right' : 'left'}`, `Seitenwind ${Math.abs(pl.crossKmh)} von ${pl.crossKmh > 0 ? 'rechts' : 'links'}`) : null;
+  const windText = !pl || !w ? null : Math.round(w.windKmh) < 5 ? tr('calm', 'windstill') : [head, cross].filter(Boolean).join(' · ') || tr('calm', 'windstill');
+  const obSides = props.ob ? (['left', 'right'] as const).filter((s) => Number.isFinite(props.ob![s])) : [];
+  if (!pl && !obSides.length && !props.ahead.length) return null;
+  return (
+    <div className="caddie-facts" aria-label={tr('What the caddie knows', 'Was der Caddie weiß')}>
+      {pl && (
+        <div className="cf-row">
+          {windText && (
+            <span className="cf">
+              <Icon d={WIND} />
+              {windText} <b>{m(pl.wind)}</b>
+            </span>
+          )}
+          {w && (
+            <span className="cf">
+              <Icon d={TEMP} />
+              {Math.round(w.tempC)} °C <b>{m(pl.temp)}</b>
+            </span>
+          )}
+          {Math.abs(pl.height) >= 1 && (
+            <span className="cf">
+              <Icon d={HILL} />
+              {pl.height > 0 ? tr('uphill', 'bergauf') : tr('downhill', 'bergab')} <b>{m(pl.height)}</b>
+            </span>
+          )}
+        </div>
+      )}
+      {obSides.length > 0 && (
+        <span className="cf warn">
+          <Icon d={STAKE} />
+          {tr('Out of bounds at the target', 'Aus am Ziel')}: {obSides.map((s) => `${sideWord(s)} ${d(props.ob![s])}`).join(' · ')}
+        </span>
+      )}
+      {props.ahead.map((h) => (
+        <span key={`${h.kind}${h.to}`} className="cf">
+          <Icon d={h.kind === 'water' ? WATER : SAND} />
+          {hazardWord(h.kind)} {h.side === 'middle' ? tr('in the middle', 'mittig') : sideWord(h.side)}: <b>{d(h.to)}</b> {tr('to reach', 'bis')} · <b>{d(h.carry)}</b> {tr('to carry', 'drüber')}
+        </span>
+      ))}
     </div>
   );
 }
