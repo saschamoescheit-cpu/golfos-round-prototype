@@ -841,6 +841,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
     const side = step.side && test.metric ? ` – ${sideText(test.metric, step.side).replace(/\.$/, '')}` : '';
     return `${n}${t(test.name)}${side}`;
   };
+  const nowPos = hasPain(s.results[step.test]) ? null : testPos(test, s.results[step.test]);
   const doneCount = s.tests.filter((id) => s.results[id] || s.skipped?.includes(id)).length;
 
   if (stage === 'retest')
@@ -903,13 +904,15 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       <>
       <section className="card tr-now">
         <div className="tr-now-head">
-          <ResultMark r={s.results[step.test]} test={test} />
+          {nowPos == null && <ResultMark r={s.results[step.test]} test={test} />}
           <span className="grow">
             <span className="eyebrow">
               {single ? (test.mode === 'camera' ? tr('Camera test', 'Kameratest') : tr('Self check', 'Selbsttest')) : tr(`Test ${testIndex + 1} of ${s.tests.length}`, `Test ${testIndex + 1} von ${s.tests.length}`)}
               {step.side && ` · ${step.side === 'left' ? tr('left side', 'linke Seite') : tr('right side', 'rechte Seite')}`}
             </span>
             <strong className="tr-now-name">{t(test.name)}</strong>
+            {/* measured: the bar under the name, as wide as the card (beside the name it squeezed it into a column) */}
+            {nowPos != null && <LevelBar pos={nowPos} target={targetPos(test, loadGoal())} />}
           </span>
         </div>
         {step.side && test.metric && (stage === 'brief' || stage === 'self') && <p className="mob-side-now">{sideText(test.metric, step.side)}</p>}
