@@ -45,7 +45,9 @@ export interface Swing {
   /** the ball, relative to the middle of the feet: x towards the target, z in front of the ankles */
   ball?: [number, number];
   /** the ball leaves at this time: it rolls (putt, chip) this many metres, or flies off (full swing) */
-  hit?: { at: number; shot: Shot; scale?: number };
+  /** side: the ball's start line and its bend (slice +, hook −), metres to the right per metre and per metre² of
+   *  carry – for a right-hander right of the target is away from the player */
+  hit?: { at: number; shot: Shot; scale?: number; side?: { start: number; bend: number } };
   /** the ball sits on a tee (driver) */
   tee?: boolean;
   /** only the lead hand on the club – the trail hand rests on the chest */
@@ -250,6 +252,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     divot: { mark: THREE.Mesh; bits: THREE.Mesh[]; from: number; len: number } | null;
     /** the path of the clubhead, drawn up to now – from behind it shows the swing plane */
     trace: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
+    /** the ball's flight drawn behind it, as the tracer on television – so the curve is seen even when the ball is small */
+    tracer: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     swing: Swing;
     prep: Prepared;
     x: number;
@@ -508,6 +512,55 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     tr.mesh.geometry.setDrawRange(0, k * 5 * 6);
   };
 
+  /** where the ball is a time after the hit (the flight of its shot, its start line and bend) */
+  const ballAt = (p: { swing: Swing; x: number; z: number }, s: number) => {
+    const at = ballPos(p);
+    const h = p.swing.hit!;
+    const [dx, dy] = ballFlight(h.shot, s);
+    const k = h.scale ?? 1;
+    at.x += dx * k;
+    at.y += dy * k;
+    if (h.side) at.z += (h.side.start * dx + h.side.bend * dx * dx) * k;
+    return at;
+  };
+  /** the tracer: the flight of a shot through the air (no putt, no ball that stays near) as a thin white tube, drawn up
+   *  to the ball while it flies */
+  const buildTracer = (p: Player): Player['tracer'] => {
+    const h = p.swing.hit;
+    if (!h || h.shot === 'putt') return null;
+    const times: number[] = [];
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 80; i++) {
+      const sec = (2.2 * i) / 80;
+      const at = ballAt(p, sec);
+      if (at.x - ballPos(p).x > 12) break;
+      times.push(sec);
+      pts.push(at);
+    }
+    const share = [0];
+    for (let i = 1; i < pts.length; i++) share.push(share[i - 1] + pts[i].distanceTo(pts[i - 1]));
+    const total = share[share.length - 1];
+    if (total < 1) return null;
+    for (let i = 0; i < share.length; i++) share[i] /= total;
+    const path = pts.filter((x, i) => i === 0 || x.distanceTo(pts[i - 1]) > 0.002);
+    const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(path), 160, 0.012, 5, false);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, depthWrite: false }));
+    mesh.renderOrder = 1;
+    mesh.visible = false;
+    return { mesh, times, share };
+  };
+  const placeTracer = (p: Player, time: number) => {
+    const tr = p.tracer;
+    const h = p.swing.hit;
+    if (!tr || !h) return;
+    const s = time - h.at;
+    let i = 0;
+    while (i < tr.times.length - 1 && tr.times[i + 1] <= s) i++;
+    const k = s <= 0 ? 0 : Math.floor(tr.share[i] * 160);
+    tr.mesh.visible = k > 0;
+    tr.mesh.geometry.setDrawRange(0, k * 5 * 6);
+  };
+
   /** the ball: still until the club arrives, then rolling to a stop or flying away towards the target */
   const placeBall = (p: Player, time: number) => {
     const at = ballPos(p);
@@ -516,10 +569,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     if (h && time > h.at) {
       const s = time - h.at;
       // the same flights as the drawings: rolling, low with roll, high and soft, out of the sand, long away
-      const [dx, dy] = ballFlight(h.shot, s);
-      at.x += dx * (h.scale ?? 1);
-      at.y += dy * (h.scale ?? 1);
-      p.ball.visible = dx < 12;
+      at.copy(ballAt(p, s));
+      p.ball.visible = at.x - ballPos(p).x < 12;
     }
     p.ball.position.copy(at);
   };
@@ -591,6 +642,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       placeBall(p, tt);
       placeDivot(p, tt);
       placeTrace(p, tt);
+      placeTracer(p, tt);
     });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
@@ -683,11 +735,13 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       ball.position.copy(at);
       tee.position.set(at.x, 0.02, at.z);
       scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, divot, trace: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
+      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
     for (const p of players) {
       p.trace = buildTrace(p);
       if (p.trace) p.extras.add(p.trace.mesh);
+      p.tracer = buildTracer(p);
+      if (p.tracer) p.extras.add(p.tracer.mesh);
       // a stick in the ground just behind the seat at address (the coach's check for early extension): the seat stays on
       // it through the swing – or leaves it towards the ball
       if (p.swing.props?.includes('stickSeat')) {

@@ -247,7 +247,7 @@ export interface Motion {
   /** more figures moving at the same time – the fault and the right way side by side */
   with?: { fig: number; frames: MotionFrame[] }[];
   /** the movement as a 3D video (anim3d/swings.ts) – shown instead of the drawn movement */
-  video?: 'full' | 'driver' | 'wood' | 'sand' | 'half' | 'chip' | 'putt' | 'feet' | 'feetHalf' | 'pause' | 'setupIron' | 'setupDriver' | 'setupChip' | 'setupPutt' | 'puttOne' | 'chipOne' | 'hipStick' | 'towelHalf' | 'chipStick' | 'chipToe' | 'fatPair' | 'thinPair' | 'swayPair' | 'earlyPair' | 'chipFatPair' | 'chipThinPair' | 'chipSlowPair' | 'woodTopPair' | 'woodFatPair' | 'pitchFatPair';
+  video?: 'full' | 'driver' | 'wood' | 'sand' | 'half' | 'chip' | 'putt' | 'feet' | 'feetHalf' | 'pause' | 'setupIron' | 'setupDriver' | 'setupChip' | 'setupPutt' | 'puttOne' | 'chipOne' | 'hipStick' | 'towelHalf' | 'chipStick' | 'chipToe' | 'fatPair' | 'thinPair' | 'swayPair' | 'earlyPair' | 'chipFatPair' | 'chipThinPair' | 'chipSlowPair' | 'woodTopPair' | 'woodFatPair' | 'pitchFatPair' | 'slicePair' | 'driverSlicePair';
 }
 
 /** Side view (slopes, ball flight, posture). */
@@ -265,7 +265,8 @@ export type SideItem =
   | { k: 'mark'; at: P; t: L | string } // a numbered detail at a point (like a callout, but not on a joint)
 
 export type Sketch =
-  | { view: 'top'; w: number; h: number; items: SketchItem[]; caption?: L }
+  /** a top view can carry a 3D video (motion without drawn frames) – the drawing stays the still picture */
+  | { view: 'top'; w: number; h: number; items: SketchItem[]; caption?: L; motion?: Motion }
   | { view: 'side'; w: number; h: number; items: SideItem[]; caption?: L; motion?: Motion }
   | { view: 'face'; marks: { x: number; y: number; n?: L | string }[]; caption?: L } // club face, impact marks (-1..1)
   | { view: 'grip'; notes: [L, L, L, L]; caption?: L } // both hands on the grip as the player sees them; notes for the 4 numbered points

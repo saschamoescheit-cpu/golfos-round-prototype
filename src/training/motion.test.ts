@@ -27,6 +27,11 @@ describe('animated pictures', () => {
     for (const [cat, list] of Object.entries(FAULT_MOTIONS)) {
       for (const [name, m] of Object.entries(list!)) {
         const f = CATEGORIES.find((c) => c.id === cat)?.faults?.find((x) => x.name.en === name);
+        // only a 3D video (no drawn movement): any picture can carry it
+        if (!m.frames.length) {
+          expect(!!m.video && (f?.sketch?.view === 'top' || f?.sketch?.view === 'side') && !!f.sketch.motion, `${cat} › ${name}`).toBe(true);
+          continue;
+        }
         const figs = f?.sketch?.view === 'side' ? f.sketch.items.filter((x) => x.k === 'figure').length : 0;
         expect(f?.sketch?.view === 'side' && !!f.sketch.motion, `${cat} › ${name}`).toBe(true);
         expect(figs, `${cat} › ${name}`).toBeGreaterThan(Math.max(m.fig ?? 0, ...(m.with ?? []).map((w) => w.fig)));

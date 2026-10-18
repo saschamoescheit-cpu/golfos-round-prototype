@@ -385,6 +385,41 @@ export const PITCH_FAT: Swing = fault(HALF_SWING, {
   },
 }, { hit: { at: 2.1, shot: 'pitch', scale: 0.35 } });
 
+/** over the top (the slice): the shoulders open first, the club comes down steep from outside and across the ball
+ *  from out to in – the ball starts a little left and bends far right; the right way starts down from the ground and
+ *  the club drops to the inside */
+const overTheTop = (sw: Swing): Swing =>
+  fault(
+    sw,
+    {
+      2.6: {
+        body: { pelvis: [38, -12, 3], spine: [2, -4, 2], chest: [2, -12, 8], neck: [-14, 14, 0], head: [12, 6, 0] },
+        hands: [-0.1, -0.02, 0.5],
+        club: [-0.3, 0.9, 0.22],
+        shift: 0.01,
+        label: L('Left: the shoulders turn first, the club comes from outside · right: down from the ground, the club drops inside', 'Links: die Schultern drehen zuerst auf, der Schläger kommt von außen · rechts: unten beginnen, der Schläger fällt nach innen'),
+      },
+      2.7: {
+        body: { pelvis: [37, 6, 5], spine: [2, 0, 2], chest: [2, -2, 8], neck: [-14, 2, 0], head: [12, 0, 0] },
+        hands: [-0.03, -0.15, 0.49],
+        club: [-0.7, 0.45, 0.48],
+        shift: 0.03,
+      },
+      2.8: {
+        body: { pelvis: [36, 26, 6], spine: [2, 6, 2], chest: [2, 8, 7], neck: [-14, -20, 0], head: [12, -8, 0] },
+        shift: 0.04,
+        label: L('Left: across the ball from out to in – a slice · right: from the inside – straight', 'Links: von außen nach innen quer zum Ball – Slice · rechts: von innen an den Ball – gerade'),
+      },
+      2.92: {
+        hands: [0.12, -0.2, 0.36],
+        club: [0.72, 0.1, -0.62],
+      },
+    },
+    { hit: { at: 2.8, shot: 'full', side: { start: -0.04, bend: 0.02 } } },
+  );
+export const OVER_THE_TOP = overTheTop(FULL_SWING);
+export const DRIVER_SLICE = overTheTop(DRIVER_SWING);
+
 /** pairs for the fault pictures: the fault first (left), the right way (right); z: one behind the other for the view from behind */
 export const PAIRS = {
   fatPair: { fault: FAT, right: quiet(FULL_SWING) },
@@ -398,6 +433,9 @@ export const PAIRS = {
   woodTopPair: { fault: WOOD_TOP, right: quiet(WOOD_SWING) },
   woodFatPair: { fault: WOOD_FAT, right: quiet(WOOD_SWING) },
   pitchFatPair: { fault: PITCH_FAT, right: quiet(HALF_SWING) },
+  // the slice is seen best from behind: the path of the clubhead and the ball bending away
+  slicePair: { fault: OVER_THE_TOP, right: quiet(FULL_SWING), behind: true },
+  driverSlicePair: { fault: DRIVER_SLICE, right: quiet(DRIVER_SWING), behind: true },
 };
 export type PairId = keyof typeof PAIRS;
 
