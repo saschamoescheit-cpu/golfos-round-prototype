@@ -165,7 +165,8 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
           picture, bottom right); green while it plays; a 3D video closes with its symbol at the top right */}
       <div className="tr-sketch-pic">
         {video && show3d ? (
-          <Suspense fallback={<Side sketch={s as Extract<Sketch, { view: 'side' }>} label={props.label} />}>
+          // while three.js loads, the still picture of the sketch's own view (a face or top view has no side figures)
+          <Suspense fallback={s.view === 'side' ? <Side sketch={s} label={props.label} /> : s.view === 'top' ? <Top sketch={s} label={props.label} /> : s.view === 'face' ? <Face marks={s.marks} label={props.label} /> : null}>
             <Swing3D swing={video} onFail={() => setShow3d(false)} />
           </Suspense>
         ) : s.view === 'top' ? (

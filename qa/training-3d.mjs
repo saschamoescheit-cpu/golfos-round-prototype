@@ -33,6 +33,25 @@ await p.getByRole('heading', { name: 'Wissen' }).waitFor({ timeout: 20000 });
 
 /** plays the 3D video of a picture and goes back to it */
 const T0 = Date.now();
+
+// the first 3D video of a session on a picture of the clubface: while three.js loads, the still picture of that view
+// stands in (19.10.2026: the side picture stood in and broke the page – a face view has no figures)
+{
+  await p.locator('.tr-cat').filter({ hasText: 'Ballflug' }).first().click();
+  await p.getByRole('tab', { name: 'Fehler' }).click();
+  await p.locator('.list .list-item').filter({ has: p.locator('.title', { hasText: /^Shank/ }) }).first().click();
+  const fig = p.locator('figure.tr-sketch').first();
+  await fig.locator('.tr-motion-btn').click();
+  await p.waitForTimeout(3000);
+  const drawn = (await fig.locator('.tr-3d canvas').count()) > 0;
+  ok(drawn && !errs.length, `first 3D video on a clubface picture (Shank) loads without an error${errs.length ? ' – ' + errs.join(' | ') : ''}`);
+  errs.length = 0;
+  // back to the start of Training (the page anew, three.js no longer loaded)
+  await p.goto(url);
+  await p.waitForTimeout(800);
+  if (await p.locator('.module-card').filter({ hasText: 'Training' }).count()) await p.locator('.module-card').filter({ hasText: 'Training' }).click();
+  await p.getByRole('heading', { name: 'Wissen' }).waitFor({ timeout: 20000 });
+}
 const play = async (fig, what) => {
   const t1 = Date.now();
   const btn = fig.locator('.tr-motion-btn');
