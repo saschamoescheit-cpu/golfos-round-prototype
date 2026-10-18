@@ -77,7 +77,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame')[];
   /** the ball very low on its tee (fairway wood off a tee) */
   lowTee?: boolean;
   /** no ball: a drill swung into an impact bag */
@@ -617,6 +617,22 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       line.receiveShadow = true;
       add(line);
     }
+    // lines drawn in the sand with the rake handle: a line across the stance 4 cm behind the ball, or a banknote frame
+    // (15 × 6 cm) around it with the ball in its front half
+    const groove = (len: number, wide: number, x: number, z: number, along: boolean) => {
+      const g = new THREE.Mesh(new THREE.BoxGeometry(along ? len : wide, 0.002, along ? wide : len), new THREE.MeshStandardMaterial({ color: '#9c8a62', roughness: 1 }));
+      g.quaternion.copy(groundQ);
+      g.position.set(x, heightAt(x, z) + 0.002, z);
+      g.receiveShadow = true;
+      add(g);
+    };
+    if (props.includes('sandLine')) groove(0.8, 0.012, bp.x - 0.04, bp.z, false);
+    if (props.includes('sandFrame')) {
+      groove(0.15, 0.008, bp.x - 0.025, bp.z - 0.03, true);
+      groove(0.15, 0.008, bp.x - 0.025, bp.z + 0.03, true);
+      groove(0.068, 0.008, bp.x - 0.1, bp.z, false);
+      groove(0.068, 0.008, bp.x + 0.05, bp.z, false);
+    }
     if (props.includes('teeAfter')) {
       // pushed in all the way 6 cm in front of the ball – the divot cuts it out
       const m = add(teeMesh(0.004));
@@ -713,7 +729,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
    *  to the ball while it flies */
   const buildTracer = (p: Player, sideOf?: { start: number; bend: number }): Player['tracer'] => {
     const h = p.swing.hit;
-    if (!h || h.shot === 'putt') return null;
+    if (!h || h.shot === 'putt' || p.swing.noBall) return null;
     const times: number[] = [];
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i <= 80; i++) {

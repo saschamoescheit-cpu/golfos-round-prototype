@@ -344,6 +344,10 @@ FAULT_MOTIONS.driver = { ...FAULT_MOTIONS.driver, 'Toe or heel hits': still3d('t
 FAULT_MOTIONS.chipping = { ...FAULT_MOTIONS.chipping, 'Wrong length': still3d('chipLengthPair') };
 FAULT_MOTIONS.pitching = { ...FAULT_MOTIONS.pitching, 'Every pitch a different length': still3d('clockTrio') };
 DRILL_MOTIONS['landing-ring'] ??= { frames: [], video: 'chipLand' };
+// the bunker drills in 3D: the line in the sand, splashing without a ball, the banknote frame
+DRILL_MOTIONS['line-in-sand'] ??= { frames: [], video: 'sandLine' };
+set3d(DRILL_MOTIONS['splash-no-ball'], 'sandSplash');
+DRILL_MOTIONS['dollar-bill'] ??= { frames: [], video: 'sandFrame' };
 DRILL_MOTIONS['clock-matrix'] ??= { frames: [], video: 'clockTrio' };
 FAULT_MOTIONS.slopes = { ...FAULT_MOTIONS.slopes, 'Losing balance': still3d('slopeBalancePair'), 'Fat shots on uphill lies and above the feet': still3d('slopeFatPair'), 'Thin and right from below the feet': still3d('slopeThinPair') };
 FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Ball starts right of the line': still3d('puttRightPair'), 'Ball starts left of the line': still3d('puttLeftPair') };

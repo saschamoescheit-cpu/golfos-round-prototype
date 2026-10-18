@@ -653,6 +653,14 @@ export const PITCH_8: Swing = clockPitch([-0.04, -0.2, 0.44], [-0.8, 0.55, -0.2]
 export const PITCH_9: Swing = clockPitch([-0.1, -0.12, 0.45], [-0.1, 0.93, -0.36], 30, 0.85);
 export const PITCH_10: Swing = clockPitch([-0.17, 0.12, 0.38], [0.45, 0.85, -0.25], 35, 1.05);
 
+// ---------- bunker drills (18.10.2026) ----------
+/** the line in the sand: the club goes in right at the line, the ball 4 cm in front of it comes out with the sand */
+export const SAND_LINE: Swing = relabel(BUNKER_SWING, { 2.8: L('Into the sand at the line – the ball in front of it comes out', 'An der Linie in den Sand – der Ball davor kommt mit heraus') }, { props: ['sandLine'], view: 'angle' });
+/** splash without a ball: only the sand flies, a long and flat mark */
+export const SAND_SPLASH: Swing = relabel(BUNKER_SWING, { 2.8: L('Splash the sand onto the green – a soft “plop”, a long flat mark', 'Sand aufs Grün spritzen – ein weiches „Plopp“, eine lange flache Spur') }, { noBall: true, view: 'angle' });
+/** the banknote frame: in at the back line, out at the front one – the whole frame of sand flies */
+export const SAND_FRAME: Swing = relabel(BUNKER_SWING, { 2.8: L('In at the back line, out at the front one – the whole frame flies', 'An der hinteren Linie hinein, an der vorderen heraus – der ganze Rahmen fliegt') }, { props: ['sandFrame'], view: 'angle' });
+
 // ---------- uneven lies: the ground tilts, the set-up and the flight follow the slope ----------
 
 /** a swing on a slope: every key moved (weight, the labels of the set-up and the finish) */
@@ -776,5 +784,5 @@ export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { sandLine: SAND_LINE, sandSplash: SAND_SPLASH, sandFrame: SAND_FRAME, chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;
