@@ -317,3 +317,37 @@ function CaddieFacts(props: { pl?: PlaysLike; weather: { tempC: number; windKmh:
     </div>
   );
 }
+
+/** The caddie in a tournament (Rule 4.3, Sascha 18.10.2026): no advice, no wind, no green read – only the player's own
+ *  notes on the hole, the plain distances to the hazards ahead, the rules and the notes to edit. */
+export function TournamentCaddie(props: { holeLabel: string; note: HoleNote; onNote: (n: HoleNote) => void; onHide: () => void; ahead: HazardAhead[]; unit: Unit }) {
+  const [sheet, setSheet] = useState<'rules' | 'notes' | null>(null);
+  const n = props.note;
+  const ob = [n.obLeft ? sideWord('left') : null, n.obRight ? sideWord('right') : null].filter(Boolean);
+  return (
+    <>
+      <section className="caddie-card tournament" aria-label={tr('Caddie – tournament', 'Caddie – Turnier')}>
+        <div className="head">
+          <span className="club">{tr('Tournament', 'Turnier')}</span>
+          <span className="grow">{tr(`Hole ${props.holeLabel} · your notes and distances`, `Loch ${props.holeLabel} · deine Notizen und Entfernungen`)}</span>
+        </div>
+        {n.tip && <span className="plan">{n.tip}</span>}
+        {ob.length > 0 && <span className="plan warn">{tr('Out of bounds', 'Aus')} {ob.join(tr(' and ', ' und '))}</span>}
+        <CaddieFacts weather={null} ob={null} ahead={props.ahead} unit={props.unit} />
+        <div className="caddie-actions">
+          <button type="button" onClick={() => setSheet('rules')}>
+            {tr('Rules', 'Regeln')}
+          </button>
+          <button type="button" onClick={() => setSheet('notes')}>
+            {tr('Hole notes', 'Lochnotizen')}
+          </button>
+          <button type="button" onClick={props.onHide} aria-label={tr('Hide caddie', 'Caddie ausblenden')}>
+            ✕
+          </button>
+        </div>
+      </section>
+      {sheet === 'rules' && <RulesBook onClose={() => setSheet(null)} />}
+      {sheet === 'notes' && <NotesSheet hole={props.holeLabel} note={props.note} onSave={props.onNote} onClose={() => setSheet(null)} />}
+    </>
+  );
+}

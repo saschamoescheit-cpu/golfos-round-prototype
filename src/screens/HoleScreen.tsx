@@ -23,7 +23,7 @@ import { GREEN_CHARTS } from '../data/greenCharts';
 import { greenSource } from '../data/greenSources';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
-import { CaddieCard } from '../components/CaddieCard';
+import { CaddieCard, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { courseStats } from '../lib/history';
 import { holeForTee } from '../lib/teeline';
@@ -342,8 +342,11 @@ export function HoleScreen(props: {
 
   // ---------- AI caddie (feature 008) ----------
   const caddieOn = useMemo(() => loadCaddieSettings().caddie, []);
+  // a tournament (Rule 4.3): no wind, no caddie advice, no green slopes – distances and the player's own notes only
+  // (Sascha 18.10.2026)
+  const tournament = round.kind === 'tournament';
   useMemo(() => setGreenSpeed(loadCaddieSettings().greenSpeed), []); // putt reads at the chosen green speed
-  const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope, []);
+  const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope && round.kind !== 'tournament', []);
   // Green slope: automatic from 120 m before the green (Sascha, 13.10.2026), or any time with the "Green" button.
   // null = automatic; true/false = the player switched it on or off on this hole.
   const [showGreen, setShowGreen] = useState<boolean | null>(null);
@@ -494,7 +497,7 @@ export function HoleScreen(props: {
   const [grids, setGrids] = useState<Record<string, GreenGrid> | null>(null);
   useEffect(() => {
     let alive = true;
-    if (loadCaddieSettings().greenSlope) loadGreenGrids(round.courseId).then((g) => alive && setGrids(g));
+    if (greenSlopeOn) loadGreenGrids(round.courseId).then((g) => alive && setGrids(g));
     return () => {
       alive = false;
     };
@@ -833,7 +836,7 @@ export function HoleScreen(props: {
     const puttAim = putt && ball ? move(pin, bearingDeg(ball, pin) + 90, putt.aimCm / 100) : null;
     const prev = i > 0 ? round.entries[me.id][i - 1] : null;
     const prevHole = i > 0 ? round.holes[i - 1] : null;
-    const cad = caddieOn
+    const cad = caddieOn && !tournament
       ? caddieAdvice({
           data: mapData,
           par: hole.par,
@@ -871,7 +874,7 @@ export function HoleScreen(props: {
 
     // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
     const caddieSig = cad ? `${i}|${cad.advice.club}${cad.advice.swing ?? ''}|${cad.warning ?? ''}|${cad.ap.kind}|${Math.round(cad.pl.distance / 25)}` : '';
-    const caddieShown = cad != null && caddieOpen; // the tool bar is the same on every hole (Sascha 15.10.2026)
+    const caddieShown = (cad != null || (tournament && caddieOn)) && caddieOpen; // the tool bar is the same on every hole (Sascha 15.10.2026)
     // unread: a small green dot until the caddie was opened on this hole – on the next hole it comes back (Sascha 17.10.2026)
     const caddieNews = cad != null && !greenFocus && !caddieOpen && seenSig !== String(i);
     const toggleCaddie = () => {
@@ -969,7 +972,7 @@ export function HoleScreen(props: {
 
 
 
-        {weather && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
+        {weather && !tournament && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
 
         {/* back, middle (large), front one below the other (Sascha 14.10.2026: clearer than one number) */}
         <div className="map-green stacked" aria-label={tr('Distance to the green', 'Distanz zum Grün')}>
@@ -1298,6 +1301,19 @@ export function HoleScreen(props: {
                 </span>
               </div>
             )
+          )}
+          {caddieShown && tournament && (
+            <TournamentCaddie
+              holeLabel={hole.label}
+              note={note}
+              ahead={hazardsAhead(mapData, from)}
+              unit={unit}
+              onHide={toggleCaddie}
+              onNote={(n) => {
+                saveHoleNote(round.courseId, hole.label, n);
+                setNotes({ ...notes, [hole.label]: n });
+              }}
+            />
           )}
           {caddieShown && cad && (
             <CaddieCard

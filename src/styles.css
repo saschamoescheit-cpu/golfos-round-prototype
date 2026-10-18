@@ -1350,3 +1350,6 @@ button.tile:disabled .tile-mark { opacity: 0.5; }
 .segmented:has(> button:nth-child(6)) button { font-size: 16px; }
 .segmented:has(> button:nth-child(6)) button:nth-child(3n + 1) { border-left: 0; }
 .segmented:has(> button:nth-child(6)) button:nth-child(n + 4) { border-top: 1px solid var(--line); }
+
+/* the tournament caddie: rules, hole notes, close (Sascha 18.10.2026) */
+.caddie-card.tournament .caddie-actions { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 40px; }
