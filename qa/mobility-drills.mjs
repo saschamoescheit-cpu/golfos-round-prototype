@@ -3,10 +3,12 @@
 // have a value. Slow (all 26 drills) – run it when the drill plans or the player change.
 // Usage: node mobility-drills.mjs <app url>
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));

@@ -1,6 +1,7 @@
 // All pictures of the mobility screen on contact sheets (tests, self-check options, swing patterns, drills) – each next
 // to the text it has to show. Usage: node mobility-sketches.mjs <app url> <out dir>
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -9,6 +10,7 @@ const url = process.argv[2] ?? 'http://localhost:5173/';
 const out = process.argv[3] ?? '.';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
 const p = await ctx.newPage();
 await p.goto(url);
 await p.waitForTimeout(1000);

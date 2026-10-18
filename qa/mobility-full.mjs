@@ -3,11 +3,13 @@
 // self checks come at the end, then the result. Checks that no test gets stuck (the facing check for side-on tests,
 // the bridge lying) and counts the taps. Usage: node mobility-full.mjs <app url> [good|stiff]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const level = process.argv[3] ?? 'good';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));

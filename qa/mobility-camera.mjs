@@ -3,6 +3,7 @@
 // MediaPipe pose (WASM + model served by the app) → skeleton → framing check, in WebKit (the Safari engine).
 // Usage: node mobility-camera.mjs <app url> <dir with .jpg photos> [test name] [out dir]
 import { webkit, chromium, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -19,6 +20,7 @@ const ok = (cond, what) => {
 };
 for (const photo of photos) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+  await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
   const dataUrl = `data:image/jpeg;base64,${readFileSync(resolve(dir, photo)).toString('base64')}`;
   // the camera: a canvas that keeps drawing the photo (a stream needs new frames)
   await ctx.addInitScript((src) => {

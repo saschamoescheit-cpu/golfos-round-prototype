@@ -3,11 +3,13 @@
 // (swing patterns, misses, body), drills → plan in Training, history with delete + undo, a single self check, pause and
 // continue, English. Usage: node mobility.mjs <app url> [shots dir]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const shots = process.argv[3];
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));

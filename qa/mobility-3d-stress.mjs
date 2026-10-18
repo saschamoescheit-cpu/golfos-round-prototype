@@ -3,11 +3,13 @@
 // context. Checks that each player draws and that the WebGL contexts are given back.
 // Usage: node mobility-3d-stress.mjs <app url> [rounds]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const rounds = Number(process.argv[3] ?? 3);
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));

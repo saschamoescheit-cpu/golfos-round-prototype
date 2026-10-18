@@ -2,6 +2,7 @@
 // again by itself twice with a countdown, without a tap; after the third miss it asks the player to come to the phone.
 // The synthetic player is "not recognised" via golfos.mobility.fakeMiss. Usage: node mobility-retry.mjs <app url>
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -12,6 +13,7 @@ const ok = (cond, what) => {
 };
 const run = async (misses) => {
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+  await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
