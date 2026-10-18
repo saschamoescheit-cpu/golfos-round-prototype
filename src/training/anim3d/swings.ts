@@ -433,6 +433,13 @@ export const RUSHED: Swing = (() => {
   return { ...FULL_SWING, keys, hit: { at: 2.8 - back, shot: 'full' } };
 })();
 
+/** the putter face at impact: open – the ball starts right of the line and rolls past the hole; closing through the
+ *  ball – it starts left; the right one keeps the face square and the putt drops */
+const puttFace = (deg: number, label: SwingKey['label']): Swing =>
+  fault(PUTT_STROKE, { 1.7: { face: deg, label }, 2.05: { face: deg * 1.6 }, 3.2: { face: deg * 1.6 } }, { hit: { at: 1.7, shot: 'putt', side: { start: Math.tan((deg * Math.PI) / 180), bend: 0 } } });
+export const PUTT_OPEN = puttFace(5, L('Left: the face is open at impact – the ball starts right · right: square – it drops', 'Links: die Fläche ist im Treffmoment offen – der Ball startet rechts · rechts: square – er fällt'));
+export const PUTT_CLOSED = puttFace(-5, L('Left: the face closes through the ball – it starts left · right: square – it drops', 'Links: die Fläche schließt sich durch den Ball – er startet links · rechts: square – er fällt'));
+
 /** pairs for the fault pictures: the fault first (left), the right way (right); z: one behind the other for the view from behind */
 export const PAIRS = {
   fatPair: { fault: FAT, right: quiet(FULL_SWING) },
@@ -449,6 +456,9 @@ export const PAIRS = {
   // the slice is seen best from behind: the path of the clubhead and the ball bending away
   slicePair: { fault: OVER_THE_TOP, right: quiet(FULL_SWING), behind: true },
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
+  // from behind: the start line of the putt and the hole
+  puttRightPair: { fault: PUTT_OPEN, right: quiet(PUTT_STROKE), behind: true },
+  puttLeftPair: { fault: PUTT_CLOSED, right: quiet(PUTT_STROKE), behind: true },
   driverSlicePair: { fault: DRIVER_SLICE, right: quiet(DRIVER_SWING), behind: true },
 };
 export type PairId = keyof typeof PAIRS;

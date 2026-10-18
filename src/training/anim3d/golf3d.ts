@@ -32,6 +32,8 @@ export interface SwingKey {
   free?: boolean;
   /** with club 'ball': the clubhead this far from its place at the ball (m) – behind it (fat), above it (thin) */
   miss?: V3;
+  /** the face turned about the shaft (degrees): + open (it looks right of the target), − closed */
+  face?: number;
   /** the pelvis this far towards the ball (m) – standing up into the ball (early extension) */
   push?: number;
   label?: L;
@@ -254,6 +256,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     trace: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     /** the ball's flight drawn behind it, as the tracer on television – so the curve is seen even when the ball is small */
     tracer: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
+    /** a putt's hole and the moment the ball drops in (none when it misses) */
+    cup: { at: THREE.Vector3; drop: number | null } | null;
     swing: Swing;
     prep: Prepared;
     x: number;
@@ -366,6 +370,9 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const cq = (['x', 'y', 'z', 'w'] as const).map((c) => mono(qs[0][c], qs[1][c], qs[2][c], qs[3][c], k0.t, a.t, b.t, k3.t, u));
     const clubW = q.clone().multiply(new THREE.Quaternion(cq[0], cq[1], cq[2], cq[3]).normalize());
     const dir = new THREE.Vector3(0, 1, 0).applyQuaternion(clubW).normalize();
+    // an open or closed face: the club turns about its shaft (the hands turn with it)
+    const face = mix((x) => x.face ?? 0);
+    if (face) clubW.premultiply(new THREE.Quaternion().setFromAxisAngle(dir, THREE.MathUtils.degToRad(face)));
     const handsR = handsL.clone().addScaledVector(dir, 0.09);
 
     // the hands on the grip (a golf grip, not a fist around a stick): the shaft runs diagonally through the fingers –
@@ -575,6 +582,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       // the same flights as the drawings: rolling, low with roll, high and soft, out of the sand, long away
       at.copy(ballAt(p, s));
       p.ball.visible = at.x - ballPos(p).x < 12;
+      if (p.cup?.drop != null && s >= p.cup.drop) at.set(p.cup.at.x, Math.max(-0.05, 0.0215 - (s - p.cup.drop) * 0.6), p.cup.at.z);
     }
     p.ball.position.copy(at);
   };
@@ -739,7 +747,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       ball.position.copy(at);
       tee.position.set(at.x, 0.02, at.z);
       scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
+      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
     const alongLine = players.some((p) => p.x !== players[0].x);
     for (const p of players) {
@@ -748,6 +756,27 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       // golfers side by side along the target line: the left one's ball flies past the right one – no tracer there
       p.tracer = alongLine ? null : buildTracer(p);
       if (p.tracer) p.extras.add(p.tracer.mesh);
+      // a putt rolls to a hole just short of where it would stop: dark, with the white liner at its edge; the ball drops in
+      // when it reaches it (a pushed or pulled putt rolls past and stops beside it)
+      const h = p.swing.hit;
+      if (h?.shot === 'putt' && p.swing.club === 'putter') {
+        const at = ballPos(p);
+        at.x += 1.74 * (h.scale ?? 1);
+        at.y = 0.003;
+        let drop: number | null = null;
+        for (let s = 0; s < 4 && drop === null; s += 0.01) {
+          const b = ballAt(p, s);
+          if (Math.hypot(b.x - at.x, b.z - at.z) < 0.04) drop = s;
+        }
+        p.cup = { at, drop };
+        const hole = new THREE.Mesh(new THREE.CircleGeometry(0.054, 28), new THREE.MeshBasicMaterial({ color: '#1f272c' }));
+        hole.rotation.x = -Math.PI / 2;
+        hole.position.copy(at);
+        const liner = new THREE.Mesh(new THREE.RingGeometry(0.048, 0.054, 28), new THREE.MeshBasicMaterial({ color: '#f2f4f3' }));
+        liner.rotation.x = -Math.PI / 2;
+        liner.position.copy(at).setY(0.0035);
+        p.extras.add(hole, liner);
+      }
       // a stick in the ground just behind the seat at address (the coach's check for early extension): the seat stays on
       // it through the swing – or leaves it towards the ball
       if (p.swing.props?.includes('stickSeat')) {
