@@ -205,7 +205,9 @@ ok(await p.locator('.mob-3d canvas').isVisible(), 'the drill shows its 3D video'
 ok(((await p.locator('.mob-3d-step').textContent()) ?? '').length > 5, 'the drill video names the step');
 await shot('drill');
 await p.locator('.topbar .icon-btn').first().click();
-await p.locator('.sticky-cta .btn-primary').click();
+// the guided session with the camera comes first (qa/mobility-train.mjs runs it), the plan for Training second
+ok(/Jetzt trainieren/.test(await p.locator('.sticky-cta .btn-primary').innerText()), 'the pillar leads with "Jetzt trainieren … mit Kamera"');
+await p.locator('.sticky-cta .btn-secondary').filter({ hasText: 'ins Training' }).click();
 ok(await p.getByText('Meine Pläne').isVisible(), 'the plan is in Training');
 const plans = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.training.plans.v1') ?? '[]'));
 const planMin = (plans[0]?.items ?? []).reduce((n, x) => n + x.minutes, 0);
