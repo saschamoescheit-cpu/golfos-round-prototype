@@ -659,6 +659,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           title={tr(`Hole ${hole.label} · ${e.putts} ${e.putts === 1 ? 'putt' : 'putts'}`, `Loch ${hole.label} · ${e.putts} Putt${e.putts === 1 ? '' : 's'}`)}
           green={data.green}
           greenCenter={data.greenCenter}
+          bunkers={data.bunkers}
           from={approachFrom(data)}
           pin={pin ?? data.greenCenter}
           putts={e.putts!}

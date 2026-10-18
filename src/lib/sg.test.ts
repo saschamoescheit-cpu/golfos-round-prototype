@@ -48,3 +48,13 @@ describe('strokes gained', () => {
     expect(suggestKind('fairway', 150)).toBe('full');
   });
 });
+
+describe('semi rough (Sascha 18.10.2026)', () => {
+  it('lies between fairway and rough', () => {
+    for (const m of [60, 140, 220]) {
+      const s = expectedStrokes(m, 'semirough');
+      expect(s).toBeGreaterThan(expectedStrokes(m, 'fairway'));
+      expect(s).toBeLessThan(expectedStrokes(m, 'rough'));
+    }
+  });
+});

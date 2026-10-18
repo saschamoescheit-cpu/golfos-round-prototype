@@ -18,6 +18,8 @@ export function PuttEditor(props: {
   title: string;
   green: LngLat[] | null; // outline of the green (null: only the centre is known)
   greenCenter: LngLat;
+  /** the bunkers of the hole – those at the green are drawn around it (Sascha 18.10.2026) */
+  bunkers?: LngLat[][];
   from: LngLat; // where the green is played from – the view is turned so this side is at the bottom
   pin: LngLat;
   putts: number;
@@ -77,6 +79,9 @@ export function PuttEditor(props: {
   };
   const ring = props.green ?? Array.from({ length: 24 }, (_, k) => move(c, k * 15, 12));
   const walk = props.walk ?? null;
+  // the greenside bunkers: any corner within 15 m of the green's edge (or 40 m of its centre without an outline)
+  const nearGreen = (b: LngLat[]) => b.some((q) => (props.green ? props.green.some((g) => distanceM(q, g) < 15) : distanceM(q, c) < 40));
+  const bunkers = (props.bunkers ?? []).filter(nearGreen);
   const pts = [...ring, pin, ...balls, ...(walk?.path ?? [])].map(toXY);
   const half = Math.max(14, ...pts.map(([x, y]) => Math.max(Math.abs(x), Math.abs(y)))) + 3;
   const MAX_ZOOM = 10;
@@ -212,6 +217,9 @@ export function PuttEditor(props: {
           role="img"
           aria-label={tr('Green with flag and balls', 'Grün mit Fahne und Bällen')}
         >
+          {bunkers.map((b, k) => (
+            <polygon key={k} points={b.map(toXY).map(([x, y]) => `${x},${y}`).join(' ')} className="putt-bunker" strokeWidth={r * 0.25} />
+          ))}
           <polygon points={ring.map(toXY).map(([x, y]) => `${x},${y}`).join(' ')} className="putt-green-shape" strokeWidth={r * 0.35} />
           {/* where he walked on the green (GPS) and where he stood still */}
           {walk && (

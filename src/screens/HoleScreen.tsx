@@ -1104,6 +1104,7 @@ export function HoleScreen(props: {
             title={tr(`Hole ${hole.label} · ${myEntry.putts} ${myEntry.putts === 1 ? 'putt' : 'putts'}`, `Loch ${hole.label} · ${myEntry.putts} Putt${myEntry.putts === 1 ? '' : 's'}`)}
             green={mapData.green}
             greenCenter={mapData.greenCenter}
+            bunkers={mapData.bunkers}
             from={approachFrom(mapData)}
             pin={myEntry.puttsAt?.pin ?? pin}
             putts={myEntry.putts}

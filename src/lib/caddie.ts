@@ -109,12 +109,12 @@ export function adviseClub(target: number, bag: CarryBag, teeShot = false): Club
 const CLUB_NAMES: Record<Club, string> = {
   Dr: 'Driver', '3W': '3-wood', '4W': '4-wood', '5W': '5-wood', '7W': '7-wood', '9W': '9-wood', '2H': '2-hybrid', '3H': '3-hybrid', Hy: '4-hybrid',
   '5H': '5-hybrid', '6H': '6-hybrid', '2i': '2-iron', '3i': '3-iron', '4i': '4-iron', '5i': '5-iron', '6i': '6-iron', '7i': '7-iron',
-  '8i': '8-iron', '9i': '9-iron', PW: 'Pitching wedge', GW: 'Gap wedge', SW: 'Sand wedge', LW: 'Lob wedge',
+  '8i': '8-iron', '9i': '9-iron', PW: 'Pitching wedge', GW: 'Gap wedge', SW: 'Sand wedge', LW: 'Lob wedge', Pt: 'Putter (Texas wedge)',
 };
 const CLUB_NAMES_DE: Record<Club, string> = {
   Dr: 'Driver', '3W': 'Holz 3', '4W': 'Holz 4', '5W': 'Holz 5', '7W': 'Holz 7', '9W': 'Holz 9', '2H': 'Hybrid 2', '3H': 'Hybrid 3', Hy: 'Hybrid 4',
   '5H': 'Hybrid 5', '6H': 'Hybrid 6', '2i': 'Eisen 2', '3i': 'Eisen 3', '4i': 'Eisen 4', '5i': 'Eisen 5', '6i': 'Eisen 6', '7i': 'Eisen 7',
-  '8i': 'Eisen 8', '9i': 'Eisen 9', PW: 'Pitching Wedge', GW: 'Gap Wedge', SW: 'Sand Wedge', LW: 'Lob Wedge',
+  '8i': 'Eisen 8', '9i': 'Eisen 9', PW: 'Pitching Wedge', GW: 'Gap Wedge', SW: 'Sand Wedge', LW: 'Lob Wedge', Pt: 'Putter (Texas Wedge)',
 };
 export const clubName = (c: Club) => tr(CLUB_NAMES[c], CLUB_NAMES_DE[c]);
 

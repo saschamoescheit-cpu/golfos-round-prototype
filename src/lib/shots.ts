@@ -11,6 +11,7 @@ import { CLUB_CATALOG } from './clubs';
 export const LIES: { value: Lie; label: string }[] = [
   { value: 'tee', label: tr('Tee', 'Abschlag') },
   { value: 'fairway', label: 'Fairway' },
+  { value: 'semirough', label: tr('Semi rough', 'Semirough') },
   { value: 'rough', label: 'Rough' },
   { value: 'bunker', label: 'Bunker' },
   { value: 'recovery', label: tr('Trees', 'Bäume') },

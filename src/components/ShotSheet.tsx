@@ -66,6 +66,20 @@ export function ShotSheet(props: {
                 <small>{b.m} m</small>
               </button>
             ))}
+            {/* the putter from off the green – the Texas wedge (Sascha 18.10.2026): a shot, not a putt; no distance */}
+            <button
+              type="button"
+              aria-pressed={club === 'Pt'}
+              aria-label={tr('Putter from off the green (Texas wedge)', 'Putter von außerhalb des Grüns (Texas Wedge)')}
+              className={props.club === 'Pt' && !props.editing ? 'suggested' : undefined}
+              onClick={() => {
+                setClub('Pt');
+                if (!props.editing) save('Pt');
+              }}
+            >
+              P
+              <small>Texas</small>
+            </button>
           </div>
         </div>
         <div className="field">

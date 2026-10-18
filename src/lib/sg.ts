@@ -14,7 +14,7 @@ type Table = [number, number][]; // [distance, expected strokes]
 const YD = 1.09361; // yards per metre
 const FT = 3.28084; // feet per metre
 
-const TOUR: Record<Lie | 'green', { unit: number; t: Table }> = {
+const TOUR: Record<Exclude<Lie, 'semirough'> | 'green', { unit: number; t: Table }> = {
   tee: { unit: YD, t: [[100, 2.92], [120, 2.99], [140, 2.97], [160, 2.99], [180, 3.05], [200, 3.12], [220, 3.17], [240, 3.25], [260, 3.45], [280, 3.65], [300, 3.71], [320, 3.79], [340, 3.86], [360, 3.92], [380, 3.96], [400, 3.99], [420, 4.02], [440, 4.08], [460, 4.17], [480, 4.28], [500, 4.41], [520, 4.54], [540, 4.65], [560, 4.74], [580, 4.79], [600, 4.82]] },
   fairway: { unit: YD, t: [[0, 1.5], [10, 2.18], [20, 2.4], [40, 2.6], [60, 2.7], [80, 2.75], [100, 2.8], [120, 2.85], [140, 2.91], [160, 2.98], [180, 3.08], [200, 3.19], [220, 3.32], [240, 3.45], [260, 3.58], [280, 3.69], [300, 3.78], [350, 3.95], [400, 4.1], [500, 4.5], [600, 4.85]] },
   rough: { unit: YD, t: [[0, 1.6], [10, 2.34], [20, 2.59], [40, 2.78], [60, 2.91], [80, 2.96], [100, 3.02], [120, 3.08], [140, 3.15], [160, 3.23], [180, 3.31], [200, 3.42], [220, 3.53], [240, 3.64], [260, 3.74], [280, 3.83], [300, 3.9], [400, 4.2], [600, 4.95]] },
@@ -25,6 +25,8 @@ const TOUR: Record<Lie | 'green', { unit: number; t: Table }> = {
 
 /** Expected strokes of a tour pro to hole out from `m` metres in this lie. */
 export function expectedStrokes(m: number, lie: Lie | 'green'): number {
+  // the semi rough has no table of its own: halfway between fairway and rough
+  if (lie === 'semirough') return (expectedStrokes(m, 'fairway') + expectedStrokes(m, 'rough')) / 2;
   // A tee shot shorter than 100 yd (short par 3) plays like the fairway.
   const b = lie === 'tee' && m * YD < 100 ? TOUR.fairway : TOUR[lie];
   const x = m * b.unit;

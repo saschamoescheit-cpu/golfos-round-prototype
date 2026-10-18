@@ -65,13 +65,22 @@ await stand(towards(0.997), 16); // the second, ~1 m
 await p.locator('.map-score').click();
 await p.waitForTimeout(300);
 const me = p.locator('.score-player').first();
+// fewer strokes take the putts along (Sascha 18.10.2026: "a birdie cannot have 2 putts"): par 4, 2 putts, down to 2
 await me.getByRole('button', { name: /Schläge plus eins/ }).click();
-await me.getByRole('button', { name: /Schläge plus eins/ }).click();
+await me.getByRole('button', { name: /Putts plus eins/ }).click();
+await me.getByRole('button', { name: /Schläge minus eins/ }).click();
+await me.getByRole('button', { name: /Schläge minus eins/ }).click();
+await p.waitForTimeout(200);
+const two = await p.evaluate(() => { const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]; const e = Object.values(r.entries)[0][0]; return [e.strokes, e.putts]; });
+ok(two[0] === 2 && two[1] === 1, `a 2 on a par 4: the putts follow down to 1 (${two.join(' / ')})`);
+// back to 5 strokes, 2 putts
+for (let k = 0; k < 3; k++) await me.getByRole('button', { name: /Schläge plus eins/ }).click();
 await me.getByRole('button', { name: /Putts plus eins/ }).click();
 await me.getByRole('button', { name: 'Putts auf dem Grün setzen' }).click();
 await p.waitForTimeout(500);
 const ed = p.locator('.putt-editor');
 ok(await ed.isVisible(), 'the putt editor is open');
+ok((await ed.locator('.putt-bunker').count()) >= 1, `the greenside bunkers around the green (${await ed.locator('.putt-bunker').count()})`);
 const stops = await ed.locator('.putt-walk circle').count();
 ok((await ed.locator('.putt-walk polyline').count()) === 1 && stops >= 2, `the GPS walk on the green with the spots where he stood (${stops})`);
 ok(await ed.getByText('Gestrichelt: dein GPS-Laufweg').isVisible(), 'a line explains the walk');

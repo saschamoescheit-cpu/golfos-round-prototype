@@ -1341,3 +1341,12 @@ button.tile:disabled .tile-mark { opacity: 0.5; }
 .caddie-facts .cf svg { flex: none; color: var(--brand-text); }
 .caddie-facts .cf b { color: var(--text); font-weight: 600; }
 .caddie-facts .cf.warn svg, .caddie-facts .cf.warn { color: #ff9d8f; }
+
+/* the greenside bunkers in the putt editor (Sascha 18.10.2026) */
+.putt-bunker { fill: #e9d9a6; stroke: #c9b57a; } /* ci-allow: bunker sand */
+
+/* six choices (e.g. the lie with semi rough, Sascha 18.10.2026): two rows of three, every word whole */
+.segmented:has(> button:nth-child(6)) { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.segmented:has(> button:nth-child(6)) button { font-size: 16px; }
+.segmented:has(> button:nth-child(6)) button:nth-child(3n + 1) { border-left: 0; }
+.segmented:has(> button:nth-child(6)) button:nth-child(n + 4) { border-top: 1px solid var(--line); }

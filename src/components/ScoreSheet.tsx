@@ -89,8 +89,17 @@ export function ScoreSheet(props: {
         const toPar = props.toPar[p.id];
         const strokes = e.pickedUp ? null : e.strokes;
         const facts = holeFacts(e, h.par);
+        // the strokes besides the putts: the shot from off the green (or every sand shot) and the penalties
+        const offGreen = minStrokes({ ...e, putts: 0 });
         const set = (patch: Partial<HoleEntry>) => {
           let n = { ...e, ...patch };
+          // fewer strokes: the putts follow (Sascha 18.10.2026: "a birdie on a par 3 cannot have 2 putts") – a 2 with
+          // 2 putts set before becomes a 2 with 1 putt instead of jumping back to 3
+          if (p.isMe && !props.team && 'strokes' in patch && n.strokes != null && !n.pickedUp && n.putts != null && n.strokes < minStrokes(n)) {
+            const putts = Math.max(0, n.strokes - minStrokes({ ...n, putts: 0 }));
+            patch = { ...patch, putts, ...(n.puttsAt && putts !== n.puttsAt.balls.length ? { puttsAt: undefined } : {}) };
+            n = { ...n, putts };
+          }
           // the score holds the putts and penalty strokes: it rises with them when they would not fit any more
           if (p.isMe && !props.team && n.strokes != null && !n.pickedUp && n.strokes < minStrokes(n)) {
             patch = { ...patch, strokes: minStrokes(n) };
@@ -122,7 +131,7 @@ export function ScoreSheet(props: {
                 sub={props.team ? undefined : penaltySub}
                 value={strokes}
                 start={Math.max(h.par || 4, p.isMe && !props.team ? minStrokes(e) : 1)}
-                min={p.isMe && !props.team ? minStrokes(e) : 1}
+                min={p.isMe && !props.team ? offGreen : 1}
                 hint={strokes != null && h.par > 0 ? scoreName(strokes - h.par) : null}
                 onChange={(v) => set({ strokes: v, pickedUp: false })}
               />
@@ -143,7 +152,8 @@ export function ScoreSheet(props: {
                     ) : undefined
                   }
                   value={e.putts}
-                  start={2}
+                  // the first tap: 2 putts – or what the score leaves (a 2 on a par 3: 1 putt)
+                  start={strokes != null ? Math.max(0, Math.min(2, strokes - offGreen)) : 2}
                   max={9}
                   onChange={(v) => set({ putts: v, ...(e.puttsAt && v !== e.puttsAt.balls.length ? { puttsAt: undefined } : {}) })}
                 />

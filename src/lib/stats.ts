@@ -145,7 +145,7 @@ export function analyse(rounds: Round[]): Analysis {
         const lengths = shotLengths(d);
         d.shots.forEach((s, k) => {
           const len = lengths[k];
-          if (!s.club || len == null || s.penalty || s.lie === 'recovery') return;
+          if (!s.club || s.club === 'Pt' || len == null || s.penalty || s.lie === 'recovery') return; // the Texas wedge has no distance to learn
           if (s.kind && s.kind !== 'full') return; // chips, pitches, punches are not the club's full distance
           clubLengths.set(s.club, [...(clubLengths.get(s.club) ?? []), len]);
         });
