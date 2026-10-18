@@ -15,7 +15,7 @@ const v = createGolfViewer(canvas);
 v.setPlaying(false);
 const pairs = (SW as unknown as { PAIRS: Record<string, { fault: Swing; right: Swing; behind?: boolean }> }).PAIRS;
 const pair = pairs[name];
-const swing = pair ? pair.fault : (SW as unknown as Record<string, Swing>)[name];
+const swing = pair ? pair.fault : ((SW as unknown as { SWINGS: Record<string, Swing> }).SWINGS[name] ?? (SW as unknown as Record<string, Swing>)[name]);
 (async () => {
   for (const view of views) {
     if (pair) v.setSwings((SW as unknown as { group: (id: string) => { swing: Swing; x?: number; z?: number }[] }).group(name));

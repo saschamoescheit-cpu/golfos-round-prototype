@@ -611,13 +611,13 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const add = (m: THREE.Object3D) => (p.extras.add(m), m);
     // a plugged ball: a ring of sand thrown up around it (the fried egg); an old divot: a bare, sunken strip
     if (p.swing.sunk && p.swing.sand) {
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.01, 8, 24), new THREE.MeshStandardMaterial({ color: '#e3cf96', roughness: 1 })); // ci-allow: bunker sand
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.013, 8, 24), new THREE.MeshStandardMaterial({ color: '#bfae84', roughness: 1 }));
       rim.rotation.x = Math.PI / 2;
       rim.position.set(bp.x, heightAt(bp.x, bp.z) + 0.002, bp.z);
       add(rim);
     }
     if (props.includes('oldDivot')) {
-      const hole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.004, 0.06), new THREE.MeshStandardMaterial({ color: '#6e5a3c', roughness: 1 }));
+      const hole = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.004, 0.075), new THREE.MeshStandardMaterial({ color: '#5e4a30', roughness: 1 }));
       hole.position.set(bp.x + 0.02, heightAt(bp.x, bp.z) + 0.001, bp.z);
       hole.receiveShadow = true;
       add(hole);
