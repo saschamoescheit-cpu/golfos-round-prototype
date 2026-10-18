@@ -30,8 +30,15 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
   const good = level === 'good';
   const P = 800 * speed;
   const k = (ms: number) => Math.sin((Math.PI * (ms % P)) / P);
+  // QA: a player the camera does not see moving (golfos.mobility.fakeStill) – the app has to count along
+  let still = false;
+  try {
+    still = localStorage.getItem('golfos.mobility.fakeStill') === '1';
+  } catch {
+    /* no storage */
+  }
   return (ms: number): Lm[] => {
-    const x = ms > 0 ? k(ms) : 0;
+    const x = ms > 0 && !still ? k(ms) : 0;
     switch (plan.signal) {
       case 'turn':
         return s.frontBody({ trunk: (good ? 50 : 30) * x });
@@ -124,6 +131,9 @@ export function DrillPlayer(props: {
     let lastT = 0;
     let onLeg = false;
     let spokeLeft = false;
+    // the camera saw no rep (the angle, the light, too far): the app counts in the tempo from then on
+    let paced = false;
+    let pacedFrom = 0;
     let framedSince = -1;
     let frameT0 = 0;
     let lastHint = 0;
@@ -198,6 +208,8 @@ export function DrillPlayer(props: {
       held = 0;
       onLeg = false;
       spokeLeft = false;
+      paced = false;
+      pacedFrom = 0;
       setT0 = performance.now();
       lastT = setT0;
       fakeT0 = setT0;
@@ -211,7 +223,7 @@ export function DrillPlayer(props: {
       if (phaseRef.current !== 'run') return;
       const side = sets[k];
       const best = plan.signal === 'oneLeg' ? Math.round(held / 100) / 10 : (counter?.best ?? null);
-      const s: DrillSet = { side, reps: holdMode ? 1 : reps, target: holdMode ? 1 : (plan.reps ?? 10), best: best != null ? Math.round(best * 10) / 10 : null, ...(holdMode ? { held: Math.round(held / 100) / 10 } : {}), ...(sig && !holdMode ? { seen: true } : {}) };
+      const s: DrillSet = { side, reps: holdMode ? 1 : reps, target: holdMode ? 1 : (plan.reps ?? 10), best: best != null ? Math.round(best * 10) / 10 : null, ...(holdMode ? { held: Math.round(held / 100) / 10 } : {}), ...(sig && !holdMode && !paced ? { seen: true } : {}) };
       doneRef.current = [...doneRef.current, s];
       beep(1400, 240);
       k++;
@@ -306,18 +318,25 @@ export function DrillPlayer(props: {
         } else {
           const target = plan.reps ?? 10;
           const tempo = (plan.tempo ?? 4) * 1000;
-          if (counter) {
+          if (counter && !paced) {
             if (counter.push(value)) {
               reps = counter.reps;
               beep(980, 90);
               if (reps < target) say(String(reps));
             }
+            // not one rep seen after about two and a half: the app counts along in the tempo (it never stays at 0)
+            if (counter.reps === 0 && elapsed > tempo * 2.5 + (fake ? 0 : 3000)) {
+              paced = true;
+              pacedFrom = elapsed;
+              say(tr('I count along.', 'Ich zähle mit.'));
+            }
             // never stuck: a set ends after the time it should take (and a bit) with the reps the camera saw
             // (the synthetic player of the QA takes 0.8 s a rep on the clock)
             if (elapsed > target * Math.max(tempo, fake ? 800 * sp : 0) * 1.6 + 6000) endSet();
           } else {
-            // the app's count in the drill's tempo
-            const n = Math.min(target, Math.floor(elapsed / tempo));
+            // the app's count in the drill's tempo (the camera still measures how far it goes, where it can)
+            if (counter) counter.push(value);
+            const n = Math.min(target, Math.floor((elapsed - pacedFrom) / tempo));
             if (n > reps) {
               reps = n;
               beep(980, 90);

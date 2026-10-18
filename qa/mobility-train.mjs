@@ -143,10 +143,15 @@ const startDrill = p.locator('.mob-drill-start');
 ok(await startDrill.isVisible(), 'the drill page offers "Mit Kamera mitmachen"');
 ok(values === 1, 'the page of a measured drill shows "Deine Werte"');
 await shot('drill-page');
+// this time the camera does not see the reps (golfos.mobility.fakeStill): the app has to count along
+await p.evaluate(() => localStorage.setItem('golfos.mobility.fakeStill', '1'));
 await startDrill.click();
 await p.locator('.mob-start-train').click();
 await p.locator('.mob-train-summary').waitFor({ timeout: 90000 }).catch(() => {});
 ok(await p.locator('.mob-train-summary').isVisible(), 'a single drill with the camera ends in its summary');
+const single = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]')[0]?.done?.[0]);
+ok(!!single && single.sets.every((s) => s.reps === s.target && !s.seen), `the camera saw no rep: the app counted along to the end (${JSON.stringify(single)})`);
+await p.evaluate(() => localStorage.removeItem('golfos.mobility.fakeStill'));
 await p.locator('.mob-train-done').click();
 await p.waitForTimeout(300);
 ok(await p.locator('.mob-drill-start').isVisible(), 'after the single drill: back on its page');
