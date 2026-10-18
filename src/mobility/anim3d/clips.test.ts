@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CLIPS } from './clips';
 import { sample } from './scene';
-import { FULL } from '../tests';
+import { FULL, TESTS } from '../tests';
 import { DRILL_CLIPS } from './drills';
 import { drillById } from '../../training/content';
 
@@ -36,6 +36,11 @@ describe('3D test videos', () => {
 });
 
 describe('3D drill videos', () => {
+  it('every drill Agility suggests has its 3D video', () => {
+    const used = new Set([...TESTS.flatMap((x) => x.drills), 'open-books', 'deep-squat', 'glute-bridge', 'single-leg-balance', 'mob-wall-angels', 'mob-lat-stretch', 'mob-ankle-wall', 'hip-9090']);
+    for (const id of used) expect(DRILL_CLIPS[id], id).toBeTruthy();
+  });
+
   it('every video belongs to a drill of Agility', () => {
     for (const id of Object.keys(DRILL_CLIPS)) expect(drillById(id), id).toBeTruthy();
   });

@@ -108,6 +108,17 @@ export const RETEST_CLIPS = {
   } as Clip,
 };
 
+/**
+ * Sitting 90/90 on the floor: the front leg's thigh forward with the shin across in front, the back leg's thigh out to
+ * the side with the shin back (hip twisted about the thigh, knees 90°). Left front, the right one mirrored.
+ */
+const SIT_9090_L: J = { hipL: [-90, 90, 0], kneeL: [90, 0, 0], hipR: [0, 0, -90], kneeR: [90, 0, 0] };
+const SIT_9090_R: J = { hipR: [-90, -90, 0], kneeR: [90, 0, 0], hipL: [0, 0, 90], kneeL: [90, 0, 0] };
+/** sitting with both knees up, feet flat apart (between the two sides of the switch) */
+const SIT_KNEES_UP: J = { hipL: [-135, 0, 22], hipR: [-135, 0, -22], kneeL: [96, 0, 0], kneeR: [96, 0, 0], ankleL: [35, 0, 0], ankleR: [35, 0, 0] };
+/** the hands behind on the floor, leaning back a little */
+const HANDS_BACK: J = { pelvis: [-6, 0, 0], shoulderL: [35, 0, 15], shoulderR: [35, 0, -15], elbowL: [0, 0, 0], elbowR: [0, 0, 0] };
+
 export const DRILL_CLIPS: Record<string, Clip> = {
   // ---------- the tests as drills ----------
   'deep-squat': CLIPS['deep-squat'],
@@ -191,6 +202,37 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(3.2, P({ ...HALF_KNEEL, hipL: [-70, 0, 6], kneeL: [118, 0, 0], ankleL: [-48, 0, 0], pelvis: [0, 0, 0] }, { at: [0, 0.1] })),
       k(4.6, P(HALF_KNEEL), L('Back – 10 times per side', 'Zurück – 10-mal pro Seite')),
       k(5.4, P(HALF_KNEEL)),
+    ],
+  },
+
+  // ---------- sitting 90/90 on the floor ----------
+  'hip-9090': {
+    view: 'angle',
+    views: ['angle', 'front', 'above'],
+    ground: 'all',
+    props: ['mat'],
+    keys: [
+      k(0, P({ ...SIT_9090_L, ...ARMS_CROSSED }), L('Sit 90/90: the left leg in front, the right one to the side', 'Sitz 90/90: das linke Bein vorn, das rechte seitlich')),
+      k(1.2, P({ ...SIT_9090_L, ...ARMS_CROSSED })),
+      k(2.6, P({ ...SIT_KNEES_UP, ...ARMS_CROSSED }), L('Turn both knees to the other side without the hands – sit tall', 'Beide Knie ohne Hände zur anderen Seite drehen – aufrecht sitzen')),
+      k(4.0, P({ ...SIT_9090_R, ...ARMS_CROSSED })),
+      k(5.0, P({ ...SIT_9090_R, ...ARMS_CROSSED }), L('… and back – 10 switches, slowly', '… und zurück – 10 Wechsel, langsam')),
+      k(6.4, P({ ...SIT_KNEES_UP, ...ARMS_CROSSED })),
+      k(7.8, P({ ...SIT_9090_L, ...ARMS_CROSSED })),
+    ],
+  },
+  'mob-hip-ir': {
+    view: 'front',
+    views: ['front', 'angle', 'side'],
+    ground: 'all',
+    props: ['mat'],
+    keys: [
+      k(0, P({ ...SIT_9090_L, ...HANDS_BACK }), L('Sit 90/90, the hands behind you on the floor', 'Sitz 90/90, die Hände hinter dir am Boden')),
+      k(1.0, P({ ...SIT_9090_L, ...HANDS_BACK })),
+      k(2.2, P({ ...SIT_9090_L, ...HANDS_BACK, hipR: [0, 50, -76] }), L('Lift the back knee and foot off the floor – hold 2 s', 'Das hintere Knie mit dem Fuß vom Boden heben – 2 s halten')),
+      k(3.4, P({ ...SIT_9090_L, ...HANDS_BACK, hipR: [0, 50, -76] })),
+      k(4.6, P({ ...SIT_9090_L, ...HANDS_BACK }), L('Lower – 2 × 8 per side', 'Senken – 2 × 8 pro Seite')),
+      k(5.4, P({ ...SIT_9090_L, ...HANDS_BACK })),
     ],
   },
 
