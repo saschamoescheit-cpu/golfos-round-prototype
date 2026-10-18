@@ -130,13 +130,17 @@ for (let i = 0; i < 4; i++) {
     await shot('bridge-feel');
     await p.locator('.mob-feel .mob-option').filter({ hasText: 'Oberschenkel' }).click();
     taps++;
+    await p.locator('.mob-feel').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
   } else if (await p.locator('.mob-ankle').isVisible().catch(() => false)) {
     ankleAsked = true;
     await shot('squat-ankle');
     await p.locator('.mob-ankle .mob-option.fail').click();
     taps++;
+    await p.locator('.mob-ankle').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
   } else break;
-  await p.waitForTimeout(400);
+  // the next question or the result – under load the screen can take longer than a moment to change
+  await p.waitForTimeout(300);
+  await p.locator('.mob-feel, .mob-ankle, .mob-summary').first().waitFor({ timeout: 8000 }).catch(() => {});
 }
 ok(feelAsked, 'at the end: "where did you feel the bridge?"');
 ok(ankleAsked, 'at the end: knee to the wall (the heels came up in the retest)');
