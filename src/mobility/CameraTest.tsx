@@ -83,7 +83,7 @@ export function unlockAudio(): void {
     /* no sound – the screen still shows everything */
   }
 }
-function beep(freq = 880, ms = 130): void {
+export function beep(freq = 880, ms = 130): void {
   try {
     if (!audio) return;
     const o = audio.createOscillator();
@@ -163,7 +163,7 @@ const COACH_RETRY_S = 5;
 /** A test with calibration first (the player stands still facing the phone, then moves). */
 const CALIBRATES: MetricKind[] = ['trunkRotation', 'pelvicRotation', 'lowerQuarter', 'neck'];
 
-const fakeLevel = (): 'good' | 'stiff' | null => {
+export const fakeLevel = (): 'good' | 'stiff' | null => {
   try {
     const v = localStorage.getItem('golfos.mobility.fake');
     return v === 'good' || v === 'stiff' ? v : null;
@@ -191,7 +191,7 @@ const fakeImage = (): string | null => {
     return null;
   }
 };
-const fakeSpeed = (): number => {
+export const fakeSpeed = (): number => {
   try {
     return Number(localStorage.getItem('golfos.mobility.fakeSpeed')) || 1;
   } catch {

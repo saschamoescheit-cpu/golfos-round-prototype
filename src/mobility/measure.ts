@@ -111,11 +111,11 @@ export const LIMITS = {
 };
 
 // ---------- geometry ----------
-type V = [number, number];
-const px = (f: Frame, i: number): V => [f.lm[i].x * f.w, f.lm[i].y * f.h];
-const sub = (a: V, b: V): V => [a[0] - b[0], a[1] - b[1]];
+export type V = [number, number];
+export const px = (f: Frame, i: number): V => [f.lm[i].x * f.w, f.lm[i].y * f.h];
+export const sub = (a: V, b: V): V => [a[0] - b[0], a[1] - b[1]];
 const len = (a: V) => Math.hypot(a[0], a[1]);
-const dist = (a: V, b: V) => len(sub(a, b));
+export const dist = (a: V, b: V) => len(sub(a, b));
 const deg = (r: number) => (r * 180) / Math.PI;
 const clamp = (x: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, x));
 /** angle between two vectors, 0..180° */
@@ -125,13 +125,13 @@ export const angleBetween = (a: V, b: V): number => {
   return deg(Math.acos(clamp((a[0] * b[0] + a[1] * b[1]) / d, -1, 1)));
 };
 /** angle at b in the chain a–b–c */
-const jointAngle = (a: V, b: V, c: V) => angleBetween(sub(a, b), sub(c, b));
-const vis = (f: Frame, i: number) => f.lm[i]?.v ?? 1;
+export const jointAngle = (a: V, b: V, c: V) => angleBetween(sub(a, b), sub(c, b));
+export const vis = (f: Frame, i: number) => f.lm[i]?.v ?? 1;
 /** horizontal distance in px – what is left of a line across the body when the body turns */
-const width = (f: Frame, a: number, b: number) => Math.abs(f.lm[a].x - f.lm[b].x) * f.w;
+export const width = (f: Frame, a: number, b: number) => Math.abs(f.lm[a].x - f.lm[b].x) * f.w;
 /** the rotation from how much shorter a line got: cos(angle) = width / width face-on */
-const turned = (w: number, w0: number) => (w0 > 0 ? deg(Math.acos(clamp(w / w0))) : 0);
-const median = (xs: number[]) => {
+export const turned = (w: number, w0: number) => (w0 > 0 ? deg(Math.acos(clamp(w / w0))) : 0);
+export const median = (xs: number[]) => {
   if (!xs.length) return 0;
   const s = [...xs].sort((a, b) => a - b);
   const m = s.length >> 1;
@@ -143,7 +143,7 @@ export function nearSide(f: Frame): Side {
   const sum = (ix: number[]) => ix.reduce((s, i) => s + vis(f, i), 0);
   return sum([P.lSh, P.lHip, P.lKn, P.lAn, P.lEl]) >= sum([P.rSh, P.rHip, P.rKn, P.rAn, P.rEl]) ? 'left' : 'right';
 }
-const S = (side: Side) =>
+export const S = (side: Side) =>
   side === 'left'
     ? { sh: P.lSh, el: P.lEl, wr: P.lWr, idx: P.lIdx, hip: P.lHip, kn: P.lKn, an: P.lAn, heel: P.lHeel, toe: P.lToe }
     : { sh: P.rSh, el: P.rEl, wr: P.rWr, idx: P.rIdx, hip: P.rHip, kn: P.rKn, an: P.rAn, heel: P.rHeel, toe: P.rToe };
@@ -178,7 +178,7 @@ const SIDE_NEED: Partial<Record<MetricKind, (keyof ReturnType<typeof S>)[]>> = {
   lat: ['sh', 'el', 'wr', 'hip'],
   shoulder9090: ['sh', 'el', 'wr', 'hip'],
 };
-const inFrame = (f: Frame, i: number) => {
+export const inFrame = (f: Frame, i: number) => {
   const l = f.lm[i];
   return !!l && vis(f, i) >= 0.5 && l.x > 0.005 && l.x < 0.995 && l.y > 0.005 && l.y < 0.995;
 };

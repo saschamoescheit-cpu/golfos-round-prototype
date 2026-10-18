@@ -187,3 +187,17 @@
 .mob-model { margin: 0; text-align: center; color: var(--text-2); }
 .mob-model.ready { color: var(--brand); font-weight: 600; }
 .mob-model.ready::before { content: '✓ '; }
+
+/* the guided drill session (Sascha 18.10.2026: lead through the drills and measure meanwhile) */
+.mob-drill-live .mob-live-value { font-variant-numeric: tabular-nums; }
+.mob-drill-result .mob-drill-done { font: 700 24px/1.2 var(--display, inherit); }
+.mob-set-row { min-height: 0; padding-block: 8px; }
+.mob-set-best { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mob-train-list .mob-test-row { cursor: default; }
+.mob-train-summary { display: flex; flex-direction: column; gap: 12px; }
+.mob-train-summary .card { display: flex; flex-direction: column; gap: 4px; }
+.mob-train-row .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mob-train-open { display: flex; align-items: center; gap: 12px; }
+.mob-train-open .grow { display: flex; flex-direction: column; min-width: 0; }
+.mob-drill-values h2 { margin: 0; }
+.mob-train-history .list-item { cursor: default; }

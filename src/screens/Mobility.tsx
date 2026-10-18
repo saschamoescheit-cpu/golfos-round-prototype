@@ -19,6 +19,9 @@ import { loadPose } from '../mobility/pose';
 import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
+import { DrillSession, doneText } from '../mobility/DrillSession';
+import { daysThisWeek, drillHistory, loadSessions, newSession, openSession, painDrills, type TrainSession } from '../mobility/sessions';
+import { coachOf, SIGNALS, signalValueText } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
 import { profileIndex } from '../lib/profile';
@@ -45,7 +48,8 @@ type View =
   | { name: 'run'; id: string }
   | { name: 'screening'; id: string }
   | { name: 'drill'; id: string }
-  | { name: 'pattern'; id: string };
+  | { name: 'pattern'; id: string }
+  | { name: 'train'; session: TrainSession };
 
 const t = (l: L): string => tr(l.en, l.de);
 
@@ -182,7 +186,10 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
     props.onTabChange?.(tab);
     window.scrollTo(0, 0);
   };
-  const nav: Nav = { push, back, toTab, run: (s) => setStack([{ name: 'tab', tab: 'test' }, { name: 'run', id: s.id }]), replace: (v) => setStack([...stack.slice(0, -1), v]), openTraining: props.onOpenTraining };
+  const nav: Nav = { push, back, toTab, run: (s) => setStack([{ name: 'tab', tab: 'test' }, { name: 'run', id: s.id }]), train: (s) => setStack([...stack, { name: 'train', session: s }]), replace: (v) => setStack([...stack.slice(0, -1), v]), openTraining: props.onOpenTraining };
+
+  if (view.name === 'train')
+    return <DrillSession session={view.session} onPause={back} onFinished={back} />;
 
   if (view.name === 'run') {
     const s = screeningById(view.id);
@@ -237,6 +244,8 @@ interface Nav {
   back: () => void;
   toTab: (t: MobilityTab) => void;
   run: (s: Screening) => void;
+  /** a guided drill session (Sascha 18.10.2026: lead through the drills and measure meanwhile) */
+  train: (s: TrainSession) => void;
   replace: (v: View) => void;
   openTraining?: () => void;
 }
@@ -1406,7 +1415,9 @@ function DrillsTab(props: { nav: Nav }) {
   const goal = loadGoal();
   const areas = pillar(TESTS, results, goal);
   const pain = TESTS.filter((x) => hasPain(results[x.id]));
-  const keep = ['open-books', 'deep-squat', 'glute-bridge', 'single-leg-balance'].map(drillById).filter((d): d is Drill => !!d);
+  // a drill that hurt in the last 4 weeks stays out of the plan (stop sign)
+  const hurt = painDrills();
+  const keep = ['open-books', 'deep-squat', 'glute-bridge', 'single-leg-balance'].map(drillById).filter((d): d is Drill => !!d && !hurt.has(d.id));
   // the drills of an area: of its tests below the goal (not those that hurt), what matters most for the swing first
   const drillsFor = (area: AreaState) =>
     [
@@ -1419,8 +1430,9 @@ function DrillsTab(props: { nav: Nav }) {
       ),
     ]
       .map(drillById)
-      .filter((d): d is Drill => !!d);
+      .filter((d): d is Drill => !!d && !hurt.has(d.id));
   const focus = areas.filter((x) => x.focus);
+  const paused = openSession();
   const rest = areas.filter((x) => !x.focus);
   // the plan for home: as many minutes a day as the player has, the focus areas in turn (the first drill of each area,
   // then the second …), so a short plan still works on every focus
@@ -1447,6 +1459,18 @@ function DrillsTab(props: { nav: Nav }) {
   return (
     <>
       <GoalCard />
+      {paused && (
+        <section className="card mob-open mob-train-open">
+          <PausedIcon />
+          <span className="grow">
+            <strong>{tr('Training paused', 'Training pausiert')}</strong>
+            <span className="muted small">{tr(`${paused.done.length} of ${paused.drills.length} drills done`, `${paused.done.length} von ${paused.drills.length} Übungen erledigt`)}</span>
+          </span>
+          <button type="button" className="btn-secondary" onClick={() => props.nav.train(paused)}>
+            {tr('Continue', 'Fortsetzen')}
+          </button>
+        </section>
+      )}
       {pain.length > 0 && <PainNote tests={pain} />}
       <section className="tr-block">
         <h2>{tr('Your mobility pillar', 'Deine Säule Beweglichkeit')}</h2>
@@ -1506,6 +1530,9 @@ function DrillsTab(props: { nav: Nav }) {
         <span className="muted small">{tr(`${planDrills.length} drills, about ${planMinutes} min – from your focus areas in turn`, `${planDrills.length} Übungen, etwa ${planMinutes} Min. – abwechselnd aus deinen Schwerpunkten`)}</span>
       </section>
       <div className="sticky-cta">
+        <button type="button" className="btn-primary mob-train-start" onClick={() => props.nav.train(newSession(planDrills.map((d) => d.id), planMinutes))}>
+          {tr(`Train now – ${planMinutes} min with the camera`, `Jetzt trainieren – ${planMinutes} Min. mit Kamera`)}
+        </button>
         {saved ? (
           <>
             <span className="good-text mob-saved">{tr('The plan is in Training › Practice › My plans.', 'Der Plan liegt in Training › Üben › Meine Pläne.')}</span>
@@ -1518,7 +1545,7 @@ function DrillsTab(props: { nav: Nav }) {
         ) : (
           <button
             type="button"
-            className="btn-primary"
+            className="btn-secondary"
             onClick={() => {
               saveOwnPlan({
                 id: trainingId(),
@@ -1633,9 +1660,47 @@ function DrillView(props: { id: string; nav: Nav }) {
           <VideoNote />
         </>
       ) : (
-        <DrillHow d={d} />
+        <>
+          <DrillHow d={d} />
+          <DrillValues id={d.id} />
+          <div className="sticky-cta">
+            <button type="button" className="btn-primary mob-drill-start" onClick={() => props.nav.train(newSession([d.id], d.minutes))}>
+              {tr('Do it with the camera', 'Mit Kamera mitmachen')}
+            </button>
+          </div>
+        </>
       )}
     </main>
+  );
+}
+
+/** What the camera measured in this drill, session by session (newest first) – the way there. */
+function DrillValues(props: { id: string }) {
+  const sig = coachOf(props.id).signal;
+  if (!sig || sig === 'oneLeg') return null;
+  const def = SIGNALS[sig];
+  const list = drillHistory(props.id, def.better);
+  if (!list.length) return null;
+  const vals = list.map((x) => x.value);
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const pos = (v: number) => (hi === lo ? 1 : def.better === 'up' ? (v - lo) / (hi - lo) : (hi - v) / (hi - lo));
+  return (
+    <section className="card tr-section mob-drill-values">
+      <h2>{tr('Your values', 'Deine Werte')}</h2>
+      <span className="muted small">{t(def.name)}</span>
+      <div className="list">
+        {[...list].reverse().slice(0, 6).map((x) => (
+          <div key={x.at} className="list-item mob-area-row">
+            <span className="grow">
+              <span className="title">{signalValueText(sig, x.value, tr)}</span>
+              <span className="muted small">{dateText(x.at)}</span>
+            </span>
+            <LevelBar pos={0.15 + 0.85 * pos(x.value)} small />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1720,6 +1785,7 @@ function HistoryTab(props: { nav: Nav }) {
   return (
     <>
       <ChangeCard list={list} />
+      <TrainHistory />
       {full.length >= 2 && (
         <figure className="mob-chart" aria-label={tr('Mobility on average per screening', 'Beweglichkeit im Mittel je Screening')}>
           <div className="mob-bars">
@@ -1758,6 +1824,34 @@ function HistoryTab(props: { nav: Nav }) {
         })}
       </div>
     </>
+  );
+}
+
+/** The guided sessions: the days trained in the last week and each session with what was done. */
+function TrainHistory() {
+  const list = loadSessions().filter((s) => s.done.length);
+  if (!list.length) return null;
+  const days = daysThisWeek();
+  return (
+    <section className="tr-block mob-train-history">
+      <h2>{tr('Training', 'Training')}</h2>
+      <span className="muted small">{tr(`${days} ${days === 1 ? 'day' : 'days'} in the last 7`, `${days} ${days === 1 ? 'Tag' : 'Tage'} in den letzten 7`)}</span>
+      <div className="list">
+        {list.slice(0, 10).map((s) => {
+          const done = s.done.filter((d) => !d.skipped);
+          return (
+            <div key={s.id} className="list-item mob-train-row">
+              <span className="grow">
+                <span className="title">
+                  {dateText(s.startedAt)} {!s.finishedAt && <PausedMark />}
+                </span>
+                <span className="muted small">{done.map((d) => `${t(drillById(d.drill)?.name ?? { en: d.drill, de: d.drill })} (${doneText(d)})`).join(' · ')}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
