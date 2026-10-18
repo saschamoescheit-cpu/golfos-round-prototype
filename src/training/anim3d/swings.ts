@@ -680,7 +680,7 @@ export const PUNCH_HIGH: Swing = fault({ ...PUNCH, ball: [0.06, 0.6] }, {
   2.1: { shift: 0, miss: [0.01, 0.01, 0], label: L('Left: ball forward, the hands flip – up into the branches · right: ball back, hands ahead – under them', 'Links: Ball vorn, die Hände klappen – hoch in die Äste · rechts: Ball zurück, Hände vorn – darunter durch') },
   2.5: { hands: [0.06, 0.2, 0.36], club: [0.3, 0.9, -0.3], body: { pelvis: [30, 46, 4], spine: [0, 8, 0], chest: [0, 16, 2], neck: [-12, -24, 0], head: [8, -8, 0] }, label: undefined },
   3.5: { hands: [0.06, 0.2, 0.36], club: [0.3, 0.9, -0.3] },
-}, { hit: { at: 2.1, shot: 'pitch', scale: 3, lift: 0.85, stop: 5.05 } });
+}, { hit: { at: 2.1, shot: 'pitch', scale: 3, lift: 0.72, stop: 5.05 } });
 
 // ---------- the last drawings in 3D (18.10.2026) ----------
 /** the fried egg: face square, ball in the middle, weight forward; steep and hard into the sand just behind the
