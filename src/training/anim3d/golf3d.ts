@@ -53,7 +53,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat')[];
   view?: View;
 }
 
@@ -688,6 +688,16 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     for (const p of players) {
       p.trace = buildTrace(p);
       if (p.trace) p.extras.add(p.trace.mesh);
+      // a stick in the ground just behind the seat at address (the coach's check for early extension): the seat stays on
+      // it through the swing – or leaves it towards the ball
+      if (p.swing.props?.includes('stickSeat')) {
+        place(p, 0);
+        const seat = p.rig.joints.pelvis.getWorldPosition(new THREE.Vector3());
+        const s = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 1.05, 8), new THREE.MeshStandardMaterial({ color: COLORS.stick, roughness: 0.5 }));
+        s.position.set(seat.x, 0.5, seat.z - 0.11);
+        s.castShadow = true;
+        p.extras.add(s);
+      }
     }
     length = Math.max(...players.map((p) => p.prep.length));
     const first = list[0].swing;

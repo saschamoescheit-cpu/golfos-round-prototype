@@ -294,6 +294,7 @@ const fault = (sw: Swing, change: Record<number, Partial<SwingKey>>, extra: Part
   ...extra,
   keys: sw.keys.map((x) => (change[x.t] ? { ...x, ...change[x.t], body: { ...x.body, ...change[x.t].body } } : x)),
 });
+const withProps = (sw: Swing, props: Swing['props']): Swing => ({ ...sw, props });
 const quiet = (sw: Swing): Swing => ({ ...sw, keys: sw.keys.map((x) => ({ ...x, label: undefined })) });
 
 /** fat: the weight stays back, the wrists flip – the club hits the ground behind the ball */
@@ -388,8 +389,9 @@ export const PITCH_FAT: Swing = fault(HALF_SWING, {
 export const PAIRS = {
   fatPair: { fault: FAT, right: quiet(FULL_SWING) },
   thinPair: { fault: THIN, right: quiet(FULL_SWING) },
-  swayPair: { fault: SWAY, right: quiet(FULL_SWING) },
-  earlyPair: { fault: EARLY_EXT, right: quiet(FULL_SWING), behind: true },
+  // the coach's sticks: outside the trail hip (the hip slides into it or turns), behind the seat (it leaves it or stays)
+  swayPair: { fault: withProps(SWAY, ['stickHip']), right: withProps(quiet(FULL_SWING), ['stickHip']) },
+  earlyPair: { fault: withProps(EARLY_EXT, ['stickSeat']), right: withProps(quiet(FULL_SWING), ['stickSeat']), behind: true },
   chipFatPair: { fault: CHIP_FAT, right: quiet(CHIP_STROKE) },
   chipThinPair: { fault: CHIP_THIN, right: quiet(CHIP_STROKE) },
   chipSlowPair: { fault: CHIP_SLOW, right: quiet(CHIP_STROKE) },
