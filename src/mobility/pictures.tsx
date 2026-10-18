@@ -139,7 +139,7 @@ export function PhoneSetup(props: { view: 'front' | 'side'; height: 'floor' | 'k
   // front: the player looks at the phone (left); side: the player looks down the picture, side-on to the phone
   const [nx, ny] = props.view === 'front' ? [bx - 22, py] : [bx, py + 22];
   return (
-    <Frame w={W} h={H} label={tr(`The phone ${props.view === 'front' ? 'in front of you' : 'beside you'}, 2–3 m away, ${height}`, `Das Handy ${props.view === 'front' ? 'vor dir' : 'neben dir'}, 2–3 m entfernt, ${height}`)} thumb={props.thumb}>
+    <Frame w={W} h={H} label={tr(`The phone ${props.view === 'front' ? 'in front of you' : 'beside you'}, 2.5–3 m away, ${height}`, `Das Handy ${props.view === 'front' ? 'vor dir' : 'neben dir'}, 2,5–3 m entfernt, ${height}`)} thumb={props.thumb}>
       <rect x={0} y={0} width={W} height={H} fill={C.ground} opacity={0.25} />
       <text x={12} y={22} fontSize={13} fill={C.text}>
         {tr('seen from above', 'von oben gesehen')}
@@ -148,7 +148,7 @@ export function PhoneSetup(props: { view: 'front' | 'side'; height: 'floor' | 'k
       <path d={`M${px + 5},${py} L${px + 30},${py - 26} M${px + 5},${py} L${px + 30},${py + 26}`} stroke={C.phone} strokeWidth={1.5} opacity={0.5} />
       <line x1={px + 34} y1={py} x2={bx - 48} y2={py} stroke={C.text} strokeWidth={1.5} strokeDasharray="4 4" />
       <text x={(px + bx) / 2} y={py - 10} textAnchor="middle" fontSize={15} fontWeight={700} fill={C.text}>
-        2–3 m
+        {tr('2.5–3 m', '2,5–3 m')}
       </text>
       <text x={(px + bx) / 2} y={py + 22} textAnchor="middle" fontSize={12} fill={C.text}>
         {tr('phone', 'Handy')} {height}
