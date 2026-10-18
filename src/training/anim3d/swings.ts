@@ -611,6 +611,26 @@ export const NINE_FLIGHTS: Swing = relabel(FULL_SWING, {
   ],
 });
 
+// ---------- where the ball meets the face (18.10.2026) ----------
+
+/** the shank: the weight goes to the toes, the club comes closer to the ball than at address – the hosel meets it and
+ *  it shoots off sharply to the right */
+export const SHANK: Swing = fault({ ...FULL_SWING, faceView: true }, {
+  2.8: {
+    push: 0.04,
+    miss: [0, 0, 0.045],
+    label: L('Left: the weight on the toes, the hosel meets the ball – it shoots off right · right: from the middle of the face', 'Links: Gewicht auf den Zehen, der Schlägerhals trifft den Ball – er schießt nach rechts weg · rechts: aus der Mitte der Fläche'),
+  },
+}, { hit: { at: 2.8, shot: 'punch', scale: 0.6, side: { start: 0.7, bend: 0 } } });
+/** a toe hit with the driver: shorter, and the gear effect turns it left (a heel hit: right) */
+export const DRIVER_TOE: Swing = fault({ ...DRIVER_SWING, faceView: true }, {
+  2.8: {
+    push: -0.025,
+    miss: [0, 0, -0.03],
+    label: L('Left: off the toe – shorter, the ball turns left (off the heel: right) · right: from the middle', 'Links: an der Spitze getroffen – kürzer, der Ball dreht nach links (an der Ferse: nach rechts) · rechts: aus der Mitte'),
+  },
+}, { hit: { at: 2.8, shot: 'full', scale: 0.82, side: { start: 0.01, bend: -0.012 } } });
+
 // ---------- uneven lies: the ground tilts, the set-up and the flight follow the slope ----------
 
 /** a swing on a slope: every key moved (weight, the labels of the set-up and the finish) */
@@ -699,6 +719,8 @@ export const PAIRS = {
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
   pitchSlowPair: { fault: PITCH_SLOW, right: quiet(HALF_SWING) },
+  shankPair: { fault: SHANK, right: quiet({ ...FULL_SWING, faceView: true }) },
+  toePair: { fault: DRIVER_TOE, right: quiet({ ...DRIVER_SWING, faceView: true }) },
   drawFadePair: { fault: DRAW_LAWS, right: quiet(FADE_LAWS), behind: true },
   slopeBalancePair: { fault: SLOPE_BALANCE, right: quiet(SLOPE_BELOW), behind: true },
   slopeFatPair: { fault: SLOPE_FAT, right: quiet(UP_ABOVE) },

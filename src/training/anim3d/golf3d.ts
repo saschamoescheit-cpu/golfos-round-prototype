@@ -10,7 +10,7 @@ import { ballFlight } from '../motion';
 //
 // World: y up, the player faces +z (the ball lies in front of the toes), the target is +x (to the right face-on).
 
-export type View = 'front' | 'side' | 'angle' | 'above';
+export type View = 'front' | 'side' | 'angle' | 'above' | 'face';
 export type Club3D = 'iron' | 'wedge' | 'driver' | 'putter';
 type V3 = [number, number, number];
 
@@ -65,6 +65,8 @@ export interface Swing {
   laws?: { path: number; face: number };
   /** more balls from the same spot, each with its own start line and bend (the nine ball flights) */
   fan?: { start: number; bend: number }[];
+  /** offer the close view of the clubface: where the ball met it, marked from impact on */
+  faceView?: boolean;
   /** the ball sits on a tee (driver) */
   tee?: boolean;
   /** only the lead hand on the club – the trail hand rests on the chest */
@@ -157,6 +159,9 @@ function buildClub(kind: Club3D): THREE.Group {
   for (const x of [grip, cap, shaft, hosel]) g.add(x);
   g.add(head);
   g.traverse((o) => (o as THREE.Mesh).isMesh && ((o as THREE.Mesh).castShadow = true));
+  g.userData.head = head;
+  // the face's plane in the head's frame (where a ball mark sits)
+  g.userData.faceX = kind === 'driver' ? -0.042 : kind === 'putter' ? -0.0105 : -0.0068;
   return g;
 }
 
@@ -288,6 +293,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     fan: { ball: THREE.Mesh; side: { start: number; bend: number }; tracer: Player['tracer'] }[];
     /** the arrows of the ball flight laws */
     laws: THREE.Group | null;
+    /** the ball's mark on the face */
+    mark: THREE.Mesh | null;
     /** the ball's flight drawn behind it, as the tracer on television – so the curve is seen even when the ball is small */
     tracer: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     /** a putt's hole and the moment the ball drops in (none when it misses) */
@@ -757,6 +764,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     side: new THREE.Vector3(-1, 0.12, 0).normalize(),
     angle: new THREE.Vector3(-0.72, 0.3, 0.72).normalize(),
     above: new THREE.Vector3(0, 0.95, 0.62).normalize(),
+    face: new THREE.Vector3(1, 0.18, 0.08).normalize(),
   };
   const swingBounds = () => {
     if (!players.length) return null;
@@ -775,6 +783,13 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     if (close) {
       camera.position.copy(close.at).addScaledVector(DIRS[view], close.dist);
       camera.lookAt(close.at);
+      return;
+    }
+    // the face: close at the first golfer's ball, looking back from the target at the clubface
+    if (view === 'face' && players.length) {
+      const at = ballPos(players[0]).add(new THREE.Vector3(-0.03, 0.02, 0));
+      camera.position.copy(at).addScaledVector(DIRS.face, 0.65);
+      camera.lookAt(at);
       return;
     }
     bounds ??= swingBounds();
@@ -840,6 +855,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         }
       }
       if (p.laws) p.laws.visible = sh > -0.02;
+      if (p.mark) p.mark.visible = sh >= 0;
     });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
@@ -939,13 +955,23 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       ball.position.copy(at);
       tee.position.set(at.x, (swing.lowTee ? 0 : 0.02) + heightAt(at.x, at.z), at.z);
       scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, aids: [], fan: [], laws: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
+      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, aids: [], fan: [], laws: null, mark: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
     const alongLine = players.some((p) => p.x !== players[0].x);
     for (const p of players) {
       p.trace = buildTrace(p);
       if (p.trace) p.extras.add(p.trace.mesh);
       p.aids = buildAids(p);
+      // the ball's mark on the face: as far from the hosel as the ball met it (the sweet spot, or towards toe or heel)
+      if (p.swing.faceView && p.swing.hit) {
+        const hk = p.swing.keys.find((k) => Math.abs(k.t - p.swing.hit!.at) < 1e-6);
+        const m = new THREE.Mesh(new THREE.CircleGeometry(0.0095, 20), new THREE.MeshBasicMaterial({ color: '#2b3238', side: THREE.DoubleSide }));
+        m.rotation.y = -Math.PI / 2;
+        m.position.set(p.club.userData.faceX - 0.0004, -0.014, SWEET[p.swing.club] - (hk?.miss?.[2] ?? 0));
+        m.visible = false;
+        (p.club.userData.head as THREE.Object3D).add(m);
+        p.mark = m;
+      }
       // the fan: more balls from the same spot, each with its own flight and tracer
       for (const side of p.swing.fan ?? []) {
         const ball = new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));

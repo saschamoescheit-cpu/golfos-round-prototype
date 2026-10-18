@@ -67,7 +67,7 @@ const RAW_DRILLS = [
 /** a side picture with its movement */
 function withMotion<T extends { sketch?: Sketch }>(x: T, motion?: Motion): T {
   // drawn movements need the side view; a 3D video alone goes with a top view too
-  return motion && (x.sketch?.view === 'side' || (x.sketch?.view === 'top' && !motion.frames.length)) ? { ...x, sketch: { ...x.sketch, motion } } : x;
+  return motion && (x.sketch?.view === 'side' || ((x.sketch?.view === 'top' || x.sketch?.view === 'face') && !motion.frames.length)) ? { ...x, sketch: { ...x.sketch, motion } } : x;
 }
 const drillPicture = (id: string) => {
   const d = RAW_DRILLS.find((x) => x.id === id);

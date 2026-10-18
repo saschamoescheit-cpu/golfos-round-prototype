@@ -147,7 +147,7 @@ export function SketchView(props: { sketch: Sketch; label?: string }) {
   const s = props.sketch;
   const caption = s.caption ? txt(s.caption) : null;
   const motion = useMotion(s);
-  const video = s.view === 'side' || s.view === 'top' ? s.motion?.video : undefined;
+  const video = s.view === 'side' || s.view === 'top' || s.view === 'face' ? s.motion?.video : undefined;
   const roll = useRoll(s);
   const [show3d, setShow3d] = useState(false);
   const player = video
@@ -224,7 +224,7 @@ export function SketchThumb(props: { sketch?: Sketch; fallback?: ReactNode }) {
     <span className="tr-thumb" aria-hidden="true">
       {s.view === 'top' ? <Top sketch={s} thumb /> : s.view === 'side' ? <Side sketch={s} thumb /> : s.view === 'grip' ? <Grip thumb /> : s.view === 'palm' ? <Palm thumb /> : <Face marks={s.marks} />}
       {/* the picture moves: a small play mark, so the moving pictures can be found in the lists */}
-      {(((s.view === 'side' || s.view === 'top') && s.motion) || rollPlan(s)) && (
+      {(((s.view === 'side' || s.view === 'top' || s.view === 'face') && s.motion) || rollPlan(s)) && (
         <span className="tr-thumb-play">
           <svg viewBox="0 0 16 16" width="8" height="8">
             <path d="M4 2.2v11.6c0 .6.7 1 1.2.7l9-5.8c.5-.3.5-1.1 0-1.4l-9-5.8C4.7 1.2 4 1.6 4 2.2z" fill="currentColor" />

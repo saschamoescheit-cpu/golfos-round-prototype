@@ -247,7 +247,7 @@ export interface Motion {
   /** more figures moving at the same time – the fault and the right way side by side */
   with?: { fig: number; frames: MotionFrame[] }[];
   /** the movement as a 3D video (anim3d/swings.ts) – shown instead of the drawn movement */
-  video?: 'sliceLaws' | 'hookLaws' | 'nineFlights' | 'tigerGate' | 'startGate' | 'lineDrill' | 'teeAfter' | 'insideGate' | 'headcover' | 'sweepTee' | 'secondTee' | 'impactBag' | 'stepDrill' | 'pumpDrill' | 'slopeUp' | 'slopeDown' | 'slopeAbove' | 'slopeBelow' | 'bunker' | 'full' | 'driver' | 'wood' | 'sand' | 'half' | 'chip' | 'putt' | 'feet' | 'feetHalf' | 'pause' | 'setupIron' | 'setupDriver' | 'setupChip' | 'setupPutt' | 'puttOne' | 'chipOne' | 'hipStick' | 'towelHalf' | 'chipStick' | 'chipToe' | 'fatPair' | 'thinPair' | 'swayPair' | 'earlyPair' | 'chipFatPair' | 'chipThinPair' | 'chipSlowPair' | 'woodTopPair' | 'woodFatPair' | 'pitchFatPair' | 'slicePair' | 'driverSlicePair' | 'rushPair' | 'puttRightPair' | 'puttLeftPair' | 'bunkerStuckPair' | 'bunkerThinPair' | 'skyPair' | 'pitchSlowPair' | 'slopeBalancePair' | 'slopeFatPair' | 'slopeThinPair' | 'drawFadePair';
+  video?: 'sliceLaws' | 'hookLaws' | 'nineFlights' | 'tigerGate' | 'startGate' | 'lineDrill' | 'teeAfter' | 'insideGate' | 'headcover' | 'sweepTee' | 'secondTee' | 'impactBag' | 'stepDrill' | 'pumpDrill' | 'slopeUp' | 'slopeDown' | 'slopeAbove' | 'slopeBelow' | 'bunker' | 'full' | 'driver' | 'wood' | 'sand' | 'half' | 'chip' | 'putt' | 'feet' | 'feetHalf' | 'pause' | 'setupIron' | 'setupDriver' | 'setupChip' | 'setupPutt' | 'puttOne' | 'chipOne' | 'hipStick' | 'towelHalf' | 'chipStick' | 'chipToe' | 'fatPair' | 'thinPair' | 'swayPair' | 'earlyPair' | 'chipFatPair' | 'chipThinPair' | 'chipSlowPair' | 'woodTopPair' | 'woodFatPair' | 'pitchFatPair' | 'slicePair' | 'driverSlicePair' | 'rushPair' | 'puttRightPair' | 'puttLeftPair' | 'bunkerStuckPair' | 'bunkerThinPair' | 'skyPair' | 'pitchSlowPair' | 'slopeBalancePair' | 'slopeFatPair' | 'slopeThinPair' | 'drawFadePair' | 'shankPair' | 'toePair';
 }
 
 /** Side view (slopes, ball flight, posture). */
@@ -268,6 +268,6 @@ export type Sketch =
   /** a top view can carry a 3D video (motion without drawn frames) – the drawing stays the still picture */
   | { view: 'top'; w: number; h: number; items: SketchItem[]; caption?: L; motion?: Motion }
   | { view: 'side'; w: number; h: number; items: SideItem[]; caption?: L; motion?: Motion }
-  | { view: 'face'; marks: { x: number; y: number; n?: L | string }[]; caption?: L } // club face, impact marks (-1..1)
+  | { view: 'face'; marks: { x: number; y: number; n?: L | string }[]; caption?: L; motion?: Motion } // club face, impact marks (-1..1); a 3D video may go with it
   | { view: 'grip'; notes: [L, L, L, L]; caption?: L } // both hands on the grip as the player sees them; notes for the 4 numbered points
   | { view: 'palm'; notes: [L, L]; caption?: L }; // the open lead hand twice: the grip through the palm (fault) and through the fingers (right)

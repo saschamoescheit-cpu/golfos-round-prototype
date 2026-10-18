@@ -16,6 +16,7 @@ const VIEW_NAMES: Record<View, () => string> = {
   side: () => tr('Behind', 'Hinten'),
   angle: () => tr('Angle', 'Schräg'),
   above: () => tr('Above', 'Oben'),
+  face: () => tr('Face', 'Fläche'),
 };
 
 export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () => void }) {
@@ -23,12 +24,14 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
   const pair = props.swing in PAIRS ? PAIRS[props.swing as PairId] : null;
   const swing = pair ? pair.fault : SWINGS[props.swing as SwingId];
   const behind = !!(pair && 'behind' in pair && pair.behind);
-  const views: View[] = !pair ? ['front', 'side', 'angle', 'above'] : behind ? ['side', 'angle', 'above'] : ['front', 'angle', 'above'];
+  const views: View[] = [...(!pair ? (['front', 'side', 'angle', 'above'] as View[]) : behind ? (['side', 'angle', 'above'] as View[]) : (['front', 'angle', 'above'] as View[])), ...(swing.faceView ? (['face'] as View[]) : [])];
+  // the view the video opens with: its own (e.g. from behind for the slice), else front – from behind for a pair in depth
+  const first: View = behind ? 'side' : (swing.view ?? 'front');
   const stageRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const [playing, setPlaying] = useState(true);
   const [slow, setSlow] = useState(false);
-  const [view, setView] = useState<View>(behind ? 'side' : 'front');
+  const [view, setView] = useState<View>(first);
   const [label, setLabel] = useState<{ l?: L; step: number }>({ step: 0 });
   const left = isLeftHanded();
 
@@ -56,8 +59,8 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
     v.onLabel((l, step) => setLabel({ l, step }));
     if (pair) {
       v.setSwings(behind ? [{ swing: pair.fault, z: -1 }, { swing: pair.right, z: 1 }] : [{ swing: pair.fault, x: -1 }, { swing: pair.right, x: 1 }]);
-      if (behind) v.setView('side');
     } else v.setSwing(swing);
+    v.setView(first);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => v.resize()) : null;
     ro?.observe(c);
     (window as Window & { __golf3d?: Viewer }).__golf3d = v;
