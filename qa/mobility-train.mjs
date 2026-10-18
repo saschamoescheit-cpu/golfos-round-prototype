@@ -46,6 +46,11 @@ await p.evaluate(() => {
 await p.reload();
 await p.waitForTimeout(800);
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
+// the start tab: the training of the day, one tap away
+await p.locator('.mob-today').waitFor({ timeout: 10000 }).catch(() => {});
+const today = await p.locator('.mob-today').innerText().catch(() => '');
+ok(/Dein Training heute/i.test(today) && /Jetzt trainieren/.test(today), `the start tab shows the training of the day (${today.split('\n').slice(0, 2).join(' · ')})`);
+await shot('today');
 await p.locator('.tabbar button').filter({ hasText: 'Übungen' }).click();
 await p.waitForTimeout(400);
 await p.locator('.mob-plan-time .chip').filter({ hasText: '10' }).click();
@@ -112,6 +117,12 @@ ok(/Training fertig/.test(summary) && /Tag/.test(summary), 'the summary: done, t
 ok(/(Drehung|Tiefe|Fingerspitzen|Schienbein|Hüftstreckung|Arme)/.test(summary), 'the summary shows what was measured');
 await p.locator('.mob-train-done').click();
 await p.waitForTimeout(300);
+
+// the start tab knows it was done today (and the 10 minutes chosen in the pillar)
+await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
+await p.waitForTimeout(300);
+const after = await p.locator('.mob-today').innerText().catch(() => '');
+ok(/heute erledigt/.test(after) && /Nochmal trainieren/.test(after) && /10 Min\./.test(after), `the start tab: done today, train again, 10 min (${after.split('\n').slice(0, 2).join(' · ')})`);
 
 // history: the training next to the screenings
 await p.locator('.tabbar button').filter({ hasText: 'Verlauf' }).click();

@@ -201,3 +201,9 @@
 .mob-train-open .grow { display: flex; flex-direction: column; min-width: 0; }
 .mob-drill-values h2 { margin: 0; }
 .mob-train-history .list-item { cursor: default; }
+
+/* the training of the day on the start tab */
+.mob-today { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--brand); }
+.mob-today-pics { display: flex; gap: 6px; overflow: hidden; }
+.mob-today-pics > * { flex: none; width: 52px; height: 52px; }
+.mob-today .btn-primary { margin-top: 6px; }

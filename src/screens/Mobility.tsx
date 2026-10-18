@@ -280,6 +280,45 @@ function PausedMark() {
 
 const minutesOf = (ids: TestId[]) => Math.round(ids.reduce((m, id) => m + (testById(id).mode === 'self' ? 0.7 : testById(id).sides ? 2 : 1.2), 0));
 
+/**
+ * The training of the day on the start tab (Sascha 18.10.2026: the app leads through the drills – not a list to read):
+ * the drills of the pillar for the minutes a day, one tap to start; a paused session comes first.
+ */
+function TodayCard(props: { nav: Nav }) {
+  const paused = openSession();
+  const minutes = loadMinutes();
+  const { planDrills, planMinutes } = pillarPlan(minutes);
+  const days = daysThisWeek();
+  const today = new Date().toISOString().slice(0, 10);
+  const doneToday = loadSessions().some((x) => x.finishedAt && x.startedAt.slice(0, 10) === today);
+  if (!planDrills.length) return null;
+  return (
+    <section className="card mob-today">
+      <span className="eyebrow">{tr('Your training today', 'Dein Training heute')}</span>
+      <strong>{paused ? tr('Training paused', 'Training pausiert') : tr(`${planDrills.length} drills · about ${planMinutes} min`, `${planDrills.length} Übungen · etwa ${planMinutes} Min.`)}</strong>
+      <div className="mob-today-pics" aria-hidden="true">
+        {(paused ? paused.drills.map(drillById).filter((d): d is Drill => !!d) : planDrills).slice(0, 5).map((d) => (
+          <SketchThumb key={d.id} sketch={d.sketch} />
+        ))}
+      </div>
+      <span className="muted small">
+        {paused
+          ? tr(`${paused.done.length} of ${paused.drills.length} drills done`, `${paused.done.length} von ${paused.drills.length} Übungen erledigt`)
+          : [
+              tr('With the camera: the app shows, counts and measures', 'Mit Kamera: die App macht vor, zählt und misst'),
+              days > 0 ? tr(`${days} ${days === 1 ? 'day' : 'days'} in the last 7`, `${days} ${days === 1 ? 'Tag' : 'Tage'} in den letzten 7`) : '',
+              doneToday ? tr('done today', 'heute erledigt') : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+      </span>
+      <button type="button" className="btn-primary mob-today-start" onClick={() => props.nav.train(paused ?? newSession(planDrills.map((d) => d.id), planMinutes))}>
+        {paused ? tr('Continue', 'Fortsetzen') : doneToday ? tr('Train again', 'Nochmal trainieren') : tr('Train now', 'Jetzt trainieren')}
+      </button>
+    </section>
+  );
+}
+
 function TestTab(props: { nav: Nav }) {
   const all = loadScreenings();
   const open = all.filter((s) => !s.finishedAt && s.kind !== 'single');
@@ -294,6 +333,7 @@ function TestTab(props: { nav: Nav }) {
   };
   return (
     <>
+      {Object.keys(results).length > 0 && <TodayCard nav={props.nav} />}
       {open.map((s) => (
         <button key={s.id} type="button" className="list-item mob-open" onClick={() => props.nav.run(s)}>
           <span className="grow">
@@ -1409,12 +1449,33 @@ function PainNote(props: { tests: TestDef[] }) {
   );
 }
 
-function DrillsTab(props: { nav: Nav }) {
+/** the minutes a day the player chose (this device) */
+const MINUTES_KEY = 'golfos.mobility.minutes.v1';
+function loadMinutes(): number {
+  try {
+    const m = Number(localStorage.getItem(MINUTES_KEY));
+    return [10, 15, 20].includes(m) ? m : 15;
+  } catch {
+    return 15;
+  }
+}
+function saveMinutes(m: number): void {
+  try {
+    localStorage.setItem(MINUTES_KEY, String(m));
+  } catch {
+    /* only a preference */
+  }
+}
+
+/**
+ * The pillar and the plan of the day: the areas with the biggest gap to the goal, their drills (what matters most for
+ * the swing first, not those that hurt), and as many minutes as the player has – the focus areas in turn (the first
+ * drill of each area, then the second …), so a short plan still works on every focus.
+ */
+function pillarPlan(minutes: number) {
   const { results } = latestResults(loadScreenings());
-  const [saved, setSaved] = useState(false);
   const goal = loadGoal();
   const areas = pillar(TESTS, results, goal);
-  const pain = TESTS.filter((x) => hasPain(results[x.id]));
   // a drill that hurt in the last 4 weeks stays out of the plan (stop sign)
   const hurt = painDrills();
   const keep = ['open-books', 'deep-squat', 'glute-bridge', 'single-leg-balance'].map(drillById).filter((d): d is Drill => !!d && !hurt.has(d.id));
@@ -1432,11 +1493,7 @@ function DrillsTab(props: { nav: Nav }) {
       .map(drillById)
       .filter((d): d is Drill => !!d && !hurt.has(d.id));
   const focus = areas.filter((x) => x.focus);
-  const paused = openSession();
   const rest = areas.filter((x) => !x.focus);
-  // the plan for home: as many minutes a day as the player has, the focus areas in turn (the first drill of each area,
-  // then the second …), so a short plan still works on every focus
-  const [minutes, setMinutes] = useState(15);
   const lists = focus.map(drillsFor);
   const order: Drill[] = [];
   for (let i = 0; lists.some((l) => l[i]); i++) for (const l of lists) if (l[i] && !order.includes(l[i])) order.push(l[i]);
@@ -1447,6 +1504,19 @@ function DrillsTab(props: { nav: Nav }) {
     if (used + d.minutes <= minutes || !planDrills.length) planDrills.push(d);
   }
   const planMinutes = planDrills.reduce((n, x) => n + x.minutes, 0);
+  return { results, goal, keep, drillsFor, focus, rest, planDrills, planMinutes };
+}
+
+function DrillsTab(props: { nav: Nav }) {
+  const [saved, setSaved] = useState(false);
+  const [minutes, setMinutesState] = useState(loadMinutes);
+  const setMinutes = (m: number) => {
+    setMinutesState(m);
+    saveMinutes(m);
+  };
+  const { results, keep, drillsFor, focus, rest, planDrills, planMinutes } = pillarPlan(minutes);
+  const pain = TESTS.filter((x) => hasPain(results[x.id]));
+  const paused = openSession();
   if (!Object.keys(results).length)
     return (
       <section className="tr-block mob-empty">
