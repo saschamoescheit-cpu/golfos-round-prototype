@@ -192,6 +192,36 @@ await p.locator('.mob-side-tag').waitFor({ timeout: 20000 });
 const resumedTag = await p.locator('.mob-side-tag').innerText();
 ok(names.length > 1 && resumedTag.includes(names[1]) && !resumedTag.includes(names[0]), `it goes on with the next drill (${resumedTag}; the drills: ${names.join(', ')})`);
 
+// weeks later: the screening is due again, and the history shows the progress of a measured drill
+await p.evaluate(() => {
+  const list = JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]');
+  const old = new Date(Date.now() - 40 * 864e5).toISOString();
+  for (const s of list) {
+    s.createdAt = old;
+    s.finishedAt = old;
+  }
+  localStorage.setItem('golfos.mobility.v1', JSON.stringify(list));
+  const ss = JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]');
+  const early = new Date(Date.now() - 20 * 864e5).toISOString();
+  ss.push({ id: 'early', startedAt: early, finishedAt: early, minutes: 10, drills: ['mob-pelvic-turn'], done: [{ drill: 'mob-pelvic-turn', signal: 'hipTurn', sets: [{ side: null, reps: 10, target: 10, best: 20, seen: true }], at: early }] });
+  // only the finished sessions (the paused one of the test above is left out)
+  localStorage.setItem('golfos.mobility.sessions.v1', JSON.stringify(ss.filter((s) => s.finishedAt)));
+});
+await p.reload();
+await p.waitForTimeout(1200);
+// the app may open in Agility again (the last module) or on the start page
+if (await p.locator('.module-card').filter({ hasText: 'Agility' }).isVisible().catch(() => false)) await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
+await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
+await p.locator('.mob-due').waitFor({ timeout: 10000 }).catch(() => {});
+const due = await p.locator('.mob-due').innerText().catch(() => '');
+ok(/Zeit zum Wiederholen/i.test(due) && /Trainingstag/.test(due) && /Kurz-Check starten/.test(due), `four weeks on: time to repeat the screening (${due.split('\n').slice(2, 3).join('')})`);
+await shot('due');
+await p.locator('.tabbar button').filter({ hasText: 'Verlauf' }).click();
+await p.waitForTimeout(300);
+const progress = await p.locator('.mob-train-progress').innerText().catch(() => '');
+ok(/Fortschritt im Training/.test(progress) && /Hüfte drehen/.test(progress) && /\+\d/.test(progress), `the history shows the progress in the training (${progress.split('\n').slice(1, 4).join(' · ')})`);
+await shot('progress');
+
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all green');

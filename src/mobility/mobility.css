@@ -215,3 +215,7 @@
 /* a form cue during a drill: what the app just said, big enough for 3 m */
 .mob-cue { position: absolute; left: 12px; right: 12px; top: 38%; padding: 10px 14px; border-radius: 14px; background: rgba(14, 20, 24, 0.82); color: #ffffff; font: 700 22px/1.25 var(--display, inherit); text-align: center; border: 2px solid var(--brand); }
 .mob-cue-note { color: var(--text-2); }
+
+/* four weeks after the last screening: time to repeat it */
+.mob-due { display: flex; flex-direction: column; gap: 6px; }
+.mob-due .btn-primary { margin-top: 6px; }

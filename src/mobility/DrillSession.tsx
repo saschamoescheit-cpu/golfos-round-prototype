@@ -280,7 +280,7 @@ function TrainSummary(props: { session: TrainSession; drills: Drill[]; previous:
                 {best != null && sig && sig !== 'oneLeg' && (
                   <span className="small">
                     {SELF_NAMED.includes(sig) ? null : `${cap(t(SIGNALS[sig].name))}: `}<strong>{signalValueText(sig, best, tr)}</strong>
-                    {change != null && Math.abs(change) >= (SIGNALS[sig].unit === '°' ? 3 : 1) && <span className={up ? ' good-text' : ' muted'}> · {change > 0 ? '+' : '−'}{String(Math.abs(change)).replace('.', tr('.', ','))}{SIGNALS[sig].unit === '°' ? '°' : ` ${SIGNALS[sig].unit}`}</span>}
+                    {change != null && Math.abs(change) >= (SIGNALS[sig].unit === '°' ? 3 : 1) && <span className={up ? ' good-text' : ' muted'}> · {change > 0 ? '+' : '−'}{String(SIGNALS[sig].unit === '°' ? Math.round(Math.abs(change)) : Math.abs(change)).replace('.', tr('.', ','))}{SIGNALS[sig].unit === '°' ? '°' : ` ${SIGNALS[sig].unit}`}</span>}
                   </span>
                 )}
               </span>

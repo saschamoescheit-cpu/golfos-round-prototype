@@ -22,7 +22,7 @@ import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { DrillSession, doneText } from '../mobility/DrillSession';
 import { cap } from '../mobility/DrillPlayer';
 import { daysThisWeek, drillHistory, loadSessions, newSession, openSession, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
-import { coachOf, SIGNALS, signalValueText } from '../mobility/drillcoach';
+import { coachOf, DRILL_COACH, SIGNALS, signalValueText } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
 import { profileIndex } from '../lib/profile';
@@ -332,8 +332,24 @@ function TestTab(props: { nav: Nav }) {
     saveScreening(s);
     props.nav.run(s);
   };
+  const due = next && Date.now() >= new Date(next.from).getTime() && !open.length;
+  // the days trained since the last screening (what the repeat will show)
+  const trainedSince = next ? new Set(loadSessions().filter((x) => x.finishedAt && x.startedAt > next.last).map((x) => x.startedAt.slice(0, 10))).size : 0;
   return (
     <>
+      {due && (
+        <section className="card mob-due">
+          <span className="eyebrow">{tr('Time to repeat', 'Zeit zum Wiederholen')}</span>
+          <strong>{tr('Your next screening', 'Dein nächstes Screening')}</strong>
+          <span className="muted small">
+            {tr(`The last one was on ${dateText(next!.last)}`, `Das letzte war am ${dateText(next!.last)}`)}
+            {trainedSince > 0 ? tr(` – since then ${trainedSince} ${trainedSince === 1 ? 'day' : 'days'} of training. See what changed.`, ` – seitdem ${trainedSince} ${trainedSince === 1 ? 'Trainingstag' : 'Trainingstage'}. Sieh, was sich verändert hat.`) : tr('. See what changed.', '. Sieh, was sich verändert hat.')}
+          </span>
+          <button type="button" className="btn-primary mob-due-start" onClick={() => start('quick')}>
+            {tr('Start the quick check', 'Kurz-Check starten')}
+          </button>
+        </section>
+      )}
       {Object.keys(results).length > 0 && <TodayCard nav={props.nav} />}
       {open.map((s) => (
         <button key={s.id} type="button" className="list-item mob-open" onClick={() => props.nav.run(s)}>
@@ -1889,6 +1905,7 @@ function HistoryTab(props: { nav: Nav }) {
   return (
     <>
       <ChangeCard list={list} />
+      <TrainProgress />
       <TrainHistory />
       {full.length >= 2 && (
         <figure className="mob-chart" aria-label={tr('Mobility on average per screening', 'Beweglichkeit im Mittel je Screening')}>
@@ -1928,6 +1945,47 @@ function HistoryTab(props: { nav: Nav }) {
         })}
       </div>
     </>
+  );
+}
+
+/** What the guided training measured, first time against the last – per drill with at least two values. */
+function TrainProgress() {
+  const rows = Object.keys(DRILL_COACH)
+    .map((id) => {
+      const sig = coachOf(id).signal;
+      if (!sig || sig === 'oneLeg' || SIGNALS[sig].countOnly) return null;
+      const def = SIGNALS[sig];
+      const h = drillHistory(id, def.better);
+      if (h.length < 2) return null;
+      const first = h[0];
+      const last = h[h.length - 1];
+      const d = Math.round((last.value - first.value) * 10) / 10;
+      return { id, sig, def, first, last, d, n: h.length, better: def.better === 'up' ? d > 0 : d < 0 };
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 6);
+  if (!rows.length) return null;
+  return (
+    <section className="card mob-change mob-train-progress">
+      <strong>{tr('Progress in the training', 'Fortschritt im Training')}</strong>
+      <div className="list">
+        {rows.map((r) => (
+          <div key={r.id} className="list-item mob-area-row">
+            <span className="grow">
+              <span className="title">{t(drillById(r.id)?.name ?? { en: r.id, de: r.id })}</span>
+              <span className="muted small">
+                {dateText(r.first.at)}: {signalValueText(r.sig, r.first.value, tr)} → {dateText(r.last.at)}: {signalValueText(r.sig, r.last.value, tr)}
+              </span>
+            </span>
+            <span className={`small${r.better ? ' good-text' : ' muted'}`}>
+              {Math.abs(r.d) < (r.def.unit === '°' ? 3 : 1) ? tr('the same', 'gleich') : `${r.d > 0 ? '+' : '−'}${String(r.def.unit === '°' ? Math.round(Math.abs(r.d)) : Math.abs(r.d)).replace('.', tr('.', ','))}${r.def.unit === '°' ? '°' : ` ${r.def.unit}`}`}
+            </span>
+          </div>
+        ))}
+      </div>
+      <span className="muted small">{tr(`${rows.length === 1 ? 'The measured drill' : 'The measured drills'}, first time against the last.`, `${rows.length === 1 ? 'Die gemessene Übung' : 'Die gemessenen Übungen'}, das erste gegen das letzte Mal.`)}</span>
+    </section>
   );
 }
 

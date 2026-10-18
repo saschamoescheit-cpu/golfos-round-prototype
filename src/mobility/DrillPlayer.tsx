@@ -542,7 +542,7 @@ export function DrillPlayer(props: {
           {best != null && plan.signal && (
             <span className="small">
               {SELF_NAMED.includes(plan.signal) ? null : `${cap(t(SIGNALS[plan.signal].name))}: `}<strong>{unit(best)}</strong>
-              {change != null && Math.abs(change) >= (SIGNALS[plan.signal].unit === '°' ? 3 : 1) && <span className={better ? ' good-text' : ' muted'}> · {tr(`${change > 0 ? '+' : '−'}${Math.abs(change)} since last time`, `${change > 0 ? '+' : '−'}${String(Math.abs(change)).replace('.', ',')} seit letztem Mal`)}</span>}
+              {change != null && Math.abs(change) >= (SIGNALS[plan.signal].unit === '°' ? 3 : 1) && <span className={better ? ' good-text' : ' muted'}> · {tr(`${change > 0 ? '+' : '−'}${SIGNALS[plan.signal].unit === '°' ? Math.round(Math.abs(change)) : Math.abs(change)} since last time`, `${change > 0 ? '+' : '−'}${String(SIGNALS[plan.signal].unit === '°' ? Math.round(Math.abs(change)) : Math.abs(change)).replace('.', ',')} seit letztem Mal`)}</span>}
             </span>
           )}
         </div>
