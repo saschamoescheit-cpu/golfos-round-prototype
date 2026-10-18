@@ -47,6 +47,9 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(800);
+// the start page of the app: the Agility tile says the training is waiting
+const tile = await p.locator('.module-card').filter({ hasText: 'Agility' }).innerText();
+ok(/Dein Training heute wartet/.test(tile), `the Agility tile on the start page: the training is waiting (${tile.replace(/\n/g, ' · ')})`);
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 // the start tab: the training of the day, one tap away
 await p.locator('.mob-today').waitFor({ timeout: 10000 }).catch(() => {});
@@ -122,6 +125,14 @@ const summary = await p.locator('.mob-train-summary').innerText();
 ok(/Training fertig/.test(summary) && /Tag/.test(summary), 'the summary: done, the days of the week');
 ok(/(Drehung|Oberschenkel|Zehen|Schienbein|Hüftstreckung|Arme|Außenrotation|Öffnung)/.test(summary), 'the summary shows what was measured');
 await p.locator('.mob-train-done').click();
+await p.waitForTimeout(300);
+
+// the app's start page knows too
+await p.locator('.module-switch').click();
+await p.waitForTimeout(300);
+const tileDone = await p.locator('.module-card').filter({ hasText: 'Agility' }).innerText();
+ok(/Training heute erledigt/.test(tileDone), 'the Agility tile: training done today');
+await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.waitForTimeout(300);
 
 // the start tab knows it was done today (and the 10 minutes chosen in the pillar)

@@ -22,10 +22,11 @@ export function Home(props: {
   onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void;
   profile: ReactNode;
   mobilityOpen?: boolean; // a screening is paused
+  mobilityToday?: 'paused' | 'done' | 'today'; // the guided training of the day
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
-      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} toCheck={props.toCheck} onPick={props.onPick} />}
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
       {props.tab === 'friends' && <Friends />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
@@ -53,7 +54,7 @@ function PausedMark() {
   );
 }
 
-function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpen: boolean; mobilityOpen?: boolean; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
+function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
   return (
     <>
       <div className="topbar">
@@ -136,6 +137,21 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
             <span className="small module-live">
               {tr('A screening is paused', 'Ein Screening ist pausiert')}
               <PausedMark />
+            </span>
+          )}
+          {/* the training of the day (Sascha 18.10.2026: the app leads through the drills) – one look at the start */}
+          {!props.mobilityOpen && props.mobilityToday && (
+            <span className={`small${props.mobilityToday === 'done' ? ' muted' : ' module-live'}`}>
+              {props.mobilityToday === 'paused' ? (
+                <>
+                  {tr('A training is paused', 'Ein Training ist pausiert')}
+                  <PausedMark />
+                </>
+              ) : props.mobilityToday === 'done' ? (
+                tr('Training done today', 'Training heute erledigt')
+              ) : (
+                tr('Your training today is waiting', 'Dein Training heute wartet')
+              )}
             </span>
           )}
         </span>

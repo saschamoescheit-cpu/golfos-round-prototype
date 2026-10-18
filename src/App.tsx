@@ -102,6 +102,22 @@ const mobilityPaused = (): boolean => {
     return false;
   }
 };
+/**
+ * The guided training of the mobility module on the start page (read without loading the module): paused, done today,
+ * or waiting (a screening was done, so there is a plan).
+ */
+const mobilityToday = (): 'paused' | 'done' | 'today' | undefined => {
+  try {
+    const sessions = JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]') as { startedAt: string; finishedAt: string | null; done: unknown[] }[];
+    if (sessions.some((s) => !s.finishedAt && s.done.length > 0)) return 'paused';
+    const today = new Date().toISOString().slice(0, 10);
+    if (sessions.some((s) => s.finishedAt && s.startedAt.slice(0, 10) === today)) return 'done';
+    const screenings = JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]') as { finishedAt: string | null; results: object }[];
+    return screenings.some((s) => s.finishedAt && Object.keys(s.results ?? {}).length) ? 'today' : undefined;
+  } catch {
+    return undefined;
+  }
+};
 const Waiting = () => (
   <main className="screen" style={{ justifyContent: 'center', alignItems: 'center' }}>
     <span className="spinner" aria-label="…" />
@@ -218,6 +234,7 @@ export function App() {
         gameOpen={loadGames().some((g) => !g.finishedAt)}
         trainingOpen={trainingPaused()}
         mobilityOpen={mobilityPaused()}
+        mobilityToday={mobilityToday()}
         onPick={(m) => {
           if (m === 'games') setGamesTab(undefined);
           if (m === 'training') setTrainingTab(undefined);
