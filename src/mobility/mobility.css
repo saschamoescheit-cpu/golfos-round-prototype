@@ -1,4 +1,4 @@
-/* The mobility screen (feature 030). Grades: passed = brand green, limited = neutral, not passed = red – no yellow
+/* The mobility screen (feature 030). Values sit on scales in brand green (measuring, not grading); red only for pain – no yellow
    anywhere (Sascha 16.10.2026). Built on the Training styles (cards, steps, sketches, videos). */
 
 .mobility .mob-grade {
@@ -80,7 +80,6 @@
 .mob-summary-nums strong { font-size: 34px; }
 .mob-summary-nums .pass { color: var(--brand-text); }
 .mob-summary-nums .limited { color: #8fa3b0; }
-.mob-summary-nums .fail { color: var(--bad); }
 
 .mob-miss { cursor: default; }
 .mob-pattern {
@@ -89,7 +88,8 @@
 }
 .mob-pattern .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .mob-level { align-self: flex-start; padding: 2px 8px; border-radius: 8px; font: 700 12px var(--body); }
-.mob-level.likely { background: var(--bad); color: var(--bg); }
+/* a hint, not a warning (measuring, not grading): strong but neutral, never red */
+.mob-level.likely { background: var(--text); color: var(--bg); }
 .mob-level.possible { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line-strong); }
 
 .mob-empty { align-items: stretch; text-align: center; }
@@ -101,9 +101,8 @@
 .mob-bar { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
 .mob-bar i { display: block; width: 100%; max-width: 34px; border-radius: 6px 6px 2px 2px; background: #8fa3b0; }
 .mob-bar i.pass { background: var(--brand); }
-.mob-bar i.fail { background: var(--bad); }
 
-:root[data-theme='sun'] .mob-level.likely, :root[data-theme='sun'] .mob-grade { color: #ffffff; }
+:root[data-theme='sun'] .mob-grade { color: #ffffff; }
 .mob-people {
   position: absolute; left: 12px; right: 12px; top: 64px; padding: 6px 10px; border-radius: 10px; text-align: center;
   background: rgba(14, 20, 24, 0.78); color: #ffffff; font: 600 13px var(--body);
