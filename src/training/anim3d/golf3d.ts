@@ -60,6 +60,11 @@ export interface Swing {
   slope?: { up?: number; side?: number };
   /** the club gripped shorter (metres), as above the feet */
   choke?: number;
+  /** the ball flight laws at impact (degrees, + right of the target): the club's path and where the face looks –
+   *  drawn as two arrows on the ground at the ball (green the path, white the face) from impact on */
+  laws?: { path: number; face: number };
+  /** more balls from the same spot, each with its own start line and bend (the nine ball flights) */
+  fan?: { start: number; bend: number }[];
   /** the ball sits on a tee (driver) */
   tee?: boolean;
   /** only the lead hand on the club – the trail hand rests on the chest */
@@ -279,6 +284,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     trace: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     /** drill aids the club sends flying */
     aids: { m: THREE.Object3D; from: THREE.Vector3; delay: number }[];
+    /** the other balls of a fan, each with its tracer */
+    fan: { ball: THREE.Mesh; side: { start: number; bend: number }; tracer: Player['tracer'] }[];
+    /** the arrows of the ball flight laws */
+    laws: THREE.Group | null;
     /** the ball's flight drawn behind it, as the tracer on television – so the curve is seen even when the ball is small */
     tracer: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     /** a putt's hole and the moment the ball drops in (none when it misses) */
@@ -679,9 +688,9 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   };
 
   /** where the ball is a time after the hit (the flight of its shot, its start line and bend) */
-  const ballAt = (p: { swing: Swing; x: number; z: number }, s: number) => {
+  const ballAt = (p: { swing: Swing; x: number; z: number }, s: number, sideOf?: { start: number; bend: number }) => {
     const at = ballPos(p);
-    const h = p.swing.hit!;
+    const h = { ...p.swing.hit!, ...(sideOf ? { side: sideOf } : {}) };
     const [dx, dy] = ballFlight(h.shot, s);
     const k = h.scale ?? 1;
     const start = at.y - heightAt(at.x, at.z);
@@ -692,14 +701,14 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   };
   /** the tracer: the flight of a shot through the air (no putt, no ball that stays near) as a thin white tube, drawn up
    *  to the ball while it flies */
-  const buildTracer = (p: Player): Player['tracer'] => {
+  const buildTracer = (p: Player, sideOf?: { start: number; bend: number }): Player['tracer'] => {
     const h = p.swing.hit;
     if (!h || h.shot === 'putt') return null;
     const times: number[] = [];
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i <= 80; i++) {
       const sec = (2.2 * i) / 80;
-      const at = ballAt(p, sec);
+      const at = ballAt(p, sec, sideOf);
       if (at.x - ballPos(p).x > 12) break;
       times.push(sec);
       pts.push(at);
@@ -817,6 +826,20 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       placeTracer(p, tt);
       placeSplash(p, tt);
       placeAids(p, tt);
+      const h = p.swing.hit;
+      const sh = h ? tt - h.at : -1;
+      for (const f of p.fan) {
+        f.ball.position.copy(sh > 0 ? ballAt(p, sh, f.side) : ballPos(p));
+        f.ball.visible = sh <= 0 || f.ball.position.x - ballPos(p).x < 12;
+        if (f.tracer) {
+          let i = 0;
+          while (i < f.tracer.times.length - 1 && f.tracer.times[i + 1] <= sh) i++;
+          const k = sh <= 0 ? 0 : Math.floor(f.tracer.share[i] * 160);
+          f.tracer.mesh.visible = k > 0;
+          f.tracer.mesh.geometry.setDrawRange(0, k * 5 * 6);
+        }
+      }
+      if (p.laws) p.laws.visible = sh > -0.02;
     });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
@@ -916,13 +939,49 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       ball.position.copy(at);
       tee.position.set(at.x, (swing.lowTee ? 0 : 0.02) + heightAt(at.x, at.z), at.z);
       scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, aids: [], swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
+      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, aids: [], fan: [], laws: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
     const alongLine = players.some((p) => p.x !== players[0].x);
     for (const p of players) {
       p.trace = buildTrace(p);
       if (p.trace) p.extras.add(p.trace.mesh);
       p.aids = buildAids(p);
+      // the fan: more balls from the same spot, each with its own flight and tracer
+      for (const side of p.swing.fan ?? []) {
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
+        ball.castShadow = true;
+        p.extras.add(ball);
+        const tracer = buildTracer(p, side);
+        if (tracer) p.extras.add(tracer.mesh);
+        p.fan.push({ ball, side, tracer });
+      }
+      // the laws: two arrows lying at the ball – the path (green, like the clubhead's line) and the face (white, like
+      // the ball's line, which starts mostly where the face looks)
+      if (p.swing.laws) {
+        const g = new THREE.Group();
+        const arrow = (deg: number, color: string, len: number) => {
+          const a = new THREE.Group();
+          const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false });
+          const shaft = new THREE.Mesh(new THREE.BoxGeometry(len, 0.004, 0.035), mat);
+          shaft.position.x = len / 2 - 0.35;
+          const head = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 3), mat);
+          head.rotation.z = -Math.PI / 2;
+          head.position.x = len - 0.35 + 0.08;
+          a.add(shaft, head);
+          // + right of the target: for a right-hander that is away from the player (+z); the angles drawn three times
+          // as large – a few degrees would not be seen
+          a.rotation.y = -THREE.MathUtils.degToRad(deg * 3);
+          a.renderOrder = 2;
+          return a;
+        };
+        g.add(arrow(p.swing.laws.path, '#79a128', 1.6), arrow(p.swing.laws.face, '#ffffff', 1.3));
+        const bp = ballPos(p);
+        g.position.set(bp.x, heightAt(bp.x, bp.z) + 0.006, bp.z);
+        g.quaternion.premultiply(groundQ);
+        g.visible = false;
+        p.extras.add(g);
+        p.laws = g;
+      }
       // golfers side by side along the target line: the left one's ball flies past the right one – no tracer there
       p.tracer = alongLine ? null : buildTracer(p);
       if (p.tracer) p.extras.add(p.tracer.mesh);

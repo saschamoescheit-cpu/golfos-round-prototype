@@ -291,6 +291,14 @@ set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
 // the slopes in 3D (18.10.2026): the ground tilts under the player
 set3d(SECTION_MOTIONS.slopes?.['Uphill lie'], 'slopeUp');
 // the drills behind the faults in 3D, with their aids in the picture (18.10.2026)
+// the ball flight laws in 3D: path and face as arrows at the ball, the curve that follows
+SECTION_MOTIONS.ballflight = {
+  ...SECTION_MOTIONS.ballflight,
+  'The nine ball flights': { frames: [], video: 'nineFlights' },
+  'The slice': { frames: [], video: 'sliceLaws' },
+  'The hook': { frames: [], video: 'hookLaws' },
+  'Shape on purpose': { frames: [], video: 'drawFadePair' },
+};
 set3d(DRILL_MOTIONS['step-drill'], 'stepDrill');
 set3d(DRILL_MOTIONS['pump-drill'], 'pumpDrill');
 set3d(DRILL_MOTIONS['impact-bag'], 'impactBag');
@@ -330,6 +338,7 @@ FAULT_MOTIONS.driver = { ...FAULT_MOTIONS.driver, 'Slice off the tee': still3d('
 set3d(FAULT_MOTIONS.bunker?.['Ball stays in the bunker'], 'bunkerStuckPair');
 set3d(FAULT_MOTIONS.pitching?.['Slowing down at the ball'], 'pitchSlowPair');
 set3d(FAULT_MOTIONS.bunker?.['Thin over the green'], 'bunkerThinPair');
+FAULT_MOTIONS.ballflight = { ...FAULT_MOTIONS.ballflight, Slice: still3d('sliceLaws'), Hook: still3d('hookLaws') };
 FAULT_MOTIONS.slopes = { ...FAULT_MOTIONS.slopes, 'Losing balance': still3d('slopeBalancePair'), 'Fat shots on uphill lies and above the feet': still3d('slopeFatPair'), 'Thin and right from below the feet': still3d('slopeThinPair') };
 FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Ball starts right of the line': still3d('puttRightPair'), 'Ball starts left of the line': still3d('puttLeftPair') };
 set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');

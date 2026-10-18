@@ -559,6 +559,58 @@ export const PUMP_DRILL: Swing = {
   ],
 };
 
+// ---------- the ball flight laws (18.10.2026) ----------
+
+/** the flight from path and face (degrees, + right of the target): it starts mostly where the face looks and bends
+ *  away from the path – the more the face is open or closed to the path, the more it curves */
+const flight = (path: number, face: number) => ({ start: Math.tan(((0.85 * face + 0.15 * path) * Math.PI) / 180), bend: 0.003 * (face - path) });
+const lawsOf = (sw: Swing, path: number, face: number, labels: Record<number, SwingKey['label']>, extra: Partial<Swing> = {}): Swing =>
+  relabel({ ...sw, keys: sw.keys.map((x) => (x.t >= 2.8 ? { ...x, face: face + (x.t > 2.8 ? (face - path) * 1.5 : 0) } : x)) }, labels, {
+    laws: { path, face },
+    hit: { at: 2.8, shot: 'full', side: flight(path, face) },
+    ...extra,
+  });
+/** the slice: the path from out to in (green), the face open to it (white) – it starts a little left and bends far
+ *  right */
+export const SLICE_LAWS: Swing = lawsOf(OVER_THE_TOP, -8, -2, {
+  2.6: L('The shoulders open first, the club comes from outside', 'Die Schultern drehen zuerst auf, der Schläger kommt von außen'),
+  2.8: L('Path out to in (green), the face open to the path (white; angles drawn larger) – it starts a little left and curves far right', 'Bahn von außen nach innen (grün), die Fläche offen zur Bahn (weiß; Winkel überzeichnet) – er startet leicht links und dreht stark nach rechts'),
+}, { view: 'side' });
+/** in to out: the club drops to the inside and swings out to the right after impact, the hands roll over */
+const IN_TO_OUT: Swing = fault(FULL_SWING, {
+  2.6: { hands: [-0.14, -0.1, 0.4], club: [-0.55, 0.6, -0.58], body: { pelvis: [38, -14, 5], spine: [2, -12, 2], chest: [2, -36, 8], neck: [-14, 34, 0], head: [12, 12, 0] }, label: undefined },
+  2.7: { club: [-0.95, 0.12, -0.28], body: { pelvis: [37, 4, 6], spine: [2, -8, 2], chest: [2, -30, 8], neck: [-14, 18, 0], head: [12, 4, 0] } },
+  2.92: { hands: [0.16, -0.17, 0.48], club: [0.7, 0.1, 0.65] },
+});
+/** the hook: the path from in to out (green), the face closed to it (white) – it starts a little right and bends far
+ *  left */
+export const HOOK_LAWS: Swing = lawsOf(IN_TO_OUT, 8, 2, {
+  2.6: L('The club drops far to the inside', 'Der Schläger fällt weit nach innen'),
+  2.8: L('Path in to out (green), the face closed to the path (white; angles drawn larger) – it starts a little right and curves far left', 'Bahn von innen nach außen (grün), die Fläche geschlossen zur Bahn (weiß; Winkel überzeichnet) – er startet leicht rechts und dreht stark nach links'),
+}, { view: 'side' });
+/** draw and fade on purpose: a little from the inside with the face a little closed to the path, a little from the
+ *  outside with it a little open – both come back to the target */
+export const DRAW_LAWS: Swing = lawsOf(FULL_SWING, 4, 2.2, {
+  2.8: L('Left: draw – path a little in to out, the face slightly closed to it · right: fade – the other way round', 'Links: Draw – Bahn leicht von innen nach außen, die Fläche leicht geschlossen dazu · rechts: Fade – umgekehrt'),
+});
+export const FADE_LAWS: Swing = lawsOf(FULL_SWING, -4, -2.2, {});
+/** the nine ball flights from one spot: straight, fade, draw – push, push-slice, push-draw – pull, pull-hook, pull-fade */
+export const NINE_FLIGHTS: Swing = relabel(FULL_SWING, {
+  2.8: L('Starts straight: straight, fade, draw · starts right: push, push slice, push draw · starts left: pull, pull hook, pull fade', 'Startet gerade: gerade, Fade, Draw · startet rechts: Push, Push-Slice, Push-Draw · startet links: Pull, Pull-Hook, Pull-Fade'),
+}, {
+  view: 'side',
+  fan: [
+    { start: 0, bend: 0.01 },
+    { start: 0, bend: -0.01 },
+    { start: 0.11, bend: 0 },
+    { start: 0.11, bend: 0.014 },
+    { start: 0.11, bend: -0.016 },
+    { start: -0.11, bend: 0 },
+    { start: -0.11, bend: -0.014 },
+    { start: -0.11, bend: 0.016 },
+  ],
+});
+
 // ---------- uneven lies: the ground tilts, the set-up and the flight follow the slope ----------
 
 /** a swing on a slope: every key moved (weight, the labels of the set-up and the finish) */
@@ -647,6 +699,7 @@ export const PAIRS = {
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
   pitchSlowPair: { fault: PITCH_SLOW, right: quiet(HALF_SWING) },
+  drawFadePair: { fault: DRAW_LAWS, right: quiet(FADE_LAWS), behind: true },
   slopeBalancePair: { fault: SLOPE_BALANCE, right: quiet(SLOPE_BELOW), behind: true },
   slopeFatPair: { fault: SLOPE_FAT, right: quiet(UP_ABOVE) },
   slopeThinPair: { fault: SLOPE_THIN, right: quiet(SLOPE_BELOW), behind: true },
@@ -665,5 +718,5 @@ export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;

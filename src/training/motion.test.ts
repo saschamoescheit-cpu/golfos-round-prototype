@@ -20,7 +20,10 @@ describe('animated pictures', () => {
     for (const [cat, list] of Object.entries(SECTION_MOTIONS)) {
       for (const title of Object.keys(list!)) {
         const s = CATEGORIES.find((c) => c.id === cat)?.sections.find((x) => x.title.en === title);
-        expect(s?.sketch?.view === 'side' && !!s.sketch.motion, `${cat} › ${title}`).toBe(true);
+        // a 3D video alone also goes with a top view
+        const m = list![title];
+        if (!m.frames.length) expect((s?.sketch?.view === 'side' || s?.sketch?.view === 'top') && !!s.sketch.motion?.video, `${cat} › ${title}`).toBe(true);
+        else expect(s?.sketch?.view === 'side' && !!s.sketch.motion, `${cat} › ${title}`).toBe(true);
       }
     }
   });
