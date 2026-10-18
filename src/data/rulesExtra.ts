@@ -147,3 +147,22 @@ export const EXTRA: Record<string, Para[]> = {
     ['If the wrong partner plays: general penalty; correct it with the right partner from where the wrong stroke was made (in stroke play before the next tee, otherwise disqualification).', 'Spielt der falsche Partner: Grundstrafe; mit dem richtigen Partner vom Ort des falschen Schlags korrigieren (im Zählspiel vor dem nächsten Abschlag, sonst Disqualifikation).'],
   ],
 };
+
+// Words players search for that the text does not use (a cart path, "second ball", stakes …) – they lead to the right
+// section first.
+export const KEYS: Record<string, string> = {
+  '16.1': 'cartweg weg straße sprinkler pfütze wasser zeitweiliges cart path road puddle casual water',
+  '17.1': 'wasser teich bach see graben gelbe pfähle rote pfähle gelb rot water pond lake creek ditch yellow red stakes',
+  '2.1': 'weiße pfähle zaun mauer grenze white stakes fence wall boundary',
+  '18.2': 'weiße pfähle verloren lost white stakes',
+  '18.3': 'zweiter ball second ball',
+  '20.1': 'zweiter ball zwei bälle second ball two balls',
+  '4.1': 'schläger kaputt zerbrochen 15 schläger zu viele broken club too many clubs',
+  '4.2': 'ball zerbrochen kaputt gesprungen broken ball cracked',
+  '3.3': 'unterschreiben unterschrift handicap vorgabe sign signature',
+  '5.5': 'putten üben chippen übungsschlag practice putt chip',
+  '19.1': 'baum busch wurzel zaun mauer tree bush root fence wall',
+  '19.2': 'baum busch wurzel tree bush root',
+  '16.2': 'schlange bienen wespen alligator snake bees wasps',
+  '15.1': 'blätter steine äste zweige leaves stones twigs',
+};

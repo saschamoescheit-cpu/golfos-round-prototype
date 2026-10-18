@@ -42,6 +42,14 @@ await book.getByRole('searchbox', { name: 'Regeln durchsuchen' }).fill('unspielb
 await p.waitForTimeout(300);
 const hits = await book.locator('.rules-hits .list-item').allInnerTexts();
 ok(hits.length > 0 && /^19\.3/.test(hits[0].trim()), `search "unspielbar bunker": first hit 19.3 (${hits.slice(0, 3).map((h) => h.split('\n')[0]).join(' | ')})`);
+for (const [q, id] of [['Cartweg', '16.1'], ['zweiter Ball', '18.3'], ['gelbe Pfähle', '17.1'], ['Schläger kaputt', '4.1']]) {
+  await book.getByRole('searchbox', { name: 'Regeln durchsuchen' }).fill(q);
+  await p.waitForTimeout(250);
+  const first = (await book.locator('.rules-hits .list-item').first().innerText()).trim();
+  ok(first.startsWith(id), `search in players' words: "${q}" → ${id} (${first.split('\n')[0]})`);
+}
+await book.getByRole('searchbox', { name: 'Regeln durchsuchen' }).fill('unspielbar bunker');
+await p.waitForTimeout(300);
 await book.locator('.rules-hits .list-item').first().click();
 await p.waitForTimeout(500);
 ok((await p.locator('.rule-section.hit').count()) === 1 && /19\.3/.test(await p.locator('.rule-section.hit').innerText()), 'the hit opens the rule at its section, marked');

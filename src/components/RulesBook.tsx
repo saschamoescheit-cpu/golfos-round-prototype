@@ -34,12 +34,14 @@ function search(query: string): Hit[] {
   const look = (rule: Rule | null, sec: RuleSection) => {
     const title = fold(sec.title());
     const ruleTitle = rule ? fold(rule.title()) : '';
-    const body = fold([sec.text().join(' '), sec.penalty?.() ?? '', sec.keys ?? ''].join(' '));
+    const keys = fold(sec.keys ?? '');
+    const body = fold([sec.text().join(' '), sec.penalty?.() ?? ''].join(' '));
     let score = 0;
     for (const w of words) {
       if (sec.id.toLowerCase() === w || sec.id.startsWith(w + '.')) score += 10;
       else if (title.includes(w)) score += 4;
       else if (ruleTitle.includes(w)) score += 3;
+      else if (keys.includes(w)) score += 2; // what players call it
       else if (body.includes(w)) score += 1;
       else return; // every word must be found
     }

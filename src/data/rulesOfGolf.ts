@@ -3,7 +3,7 @@ import { G, GENERAL, s } from './rulesOfGolfParts';
 import { PART2 } from './rulesOfGolf2';
 import { PART3 } from './rulesOfGolf3';
 import { LOCAL_RULES } from './rulesLocal';
-import { EXTRA } from './rulesExtra';
+import { EXTRA, KEYS } from './rulesExtra';
 
 export { ALL_DEFINITIONS as DEFINITIONS } from './rulesDefinitions';
 
@@ -251,7 +251,7 @@ const PART1: Rule[] = [
 const withExtra = (r: Rule): Rule => ({
   ...r,
   sections: r.sections.map((sec) =>
-    EXTRA[sec.id] ? { ...sec, text: () => [...sec.text(), ...EXTRA[sec.id].map(([en, de]) => tr(en, de))] } : sec,
+    ({ ...sec, ...(EXTRA[sec.id] ? { text: () => [...sec.text(), ...EXTRA[sec.id].map(([en, de]) => tr(en, de))] } : {}), ...(KEYS[sec.id] ? { keys: [sec.keys, KEYS[sec.id]].filter(Boolean).join(' ') } : {}) }),
   ),
 });
 

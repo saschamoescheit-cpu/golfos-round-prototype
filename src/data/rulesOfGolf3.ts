@@ -77,8 +77,8 @@ export const PART3: Rule[] = [
     sections: [
       s('25.1', 'Overview', 'Überblick', ['The modifications apply to all players in the categories below, also without a classification.'], ['Die Anpassungen gelten für alle Spieler der genannten Gruppen, auch ohne Klassifizierung.']),
       s('25.2', 'Players who are blind', 'Blinde Spieler', ['An assistant may help with alignment and stance, and the player may ground the club in a bunker.'], ['Ein Assistent darf bei Ausrichtung und Stand helfen; der Spieler darf im Bunker den Schläger aufsetzen.']),
-      s('25.3', 'Players who are amputees', 'Spieler mit Amputationen', ['Prosthetic limbs are allowed; a club may be anchored if needed.'], ['Prothesen sind erlaubt; ein Schläger darf bei Bedarf verankert werden.']),
-      s('25.4', 'Players who use mobility devices', 'Spieler mit Mobilitätshilfen', ['Relief areas and bunkers are adjusted, e.g. two club-lengths for relief in a bunker.'], ['Erleichterungsbereiche und Bunkerregeln sind angepasst, z. B. zwei Schlägerlängen für Erleichterung im Bunker.']),
+      s('25.3', 'Players who are amputees', 'Spieler mit Amputationen', ['Prosthetic limbs are allowed when there is a medical reason, even if they might help the swing.'], ['Prothesen sind bei medizinischem Grund erlaubt, auch wenn sie beim Schwung helfen könnten.']),
+      s('25.4', 'Players who use mobility devices', 'Spieler mit Mobilitätshilfen', ['A wheelchair, cart or other aid may be used; stance, the bunker rules and relief are adapted so the player can play with it, and an assistant may help.'], ['Rollstuhl, Cart oder andere Hilfen sind erlaubt; Stand, Bunkerregeln und Erleichterung sind so angepasst, dass man damit spielen kann, und ein Assistent darf helfen.']),
       s('25.5', 'Players with intellectual disabilities', 'Spieler mit geistigen Behinderungen', ['A supporter may help with applying the Rules.'], ['Ein Betreuer darf beim Anwenden der Regeln helfen.']),
       s('25.6', 'General provisions', 'Allgemeine Bestimmungen', ['The committee may adopt further modifications.'], ['Die Spielleitung kann weitere Anpassungen festlegen.']),
     ],
