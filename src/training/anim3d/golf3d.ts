@@ -81,7 +81,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand')[];
   /** the ball very low on its tee (fairway wood off a tee) */
   lowTee?: boolean;
   /** no ball: a drill swung into an impact bag */
@@ -1032,6 +1032,15 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         m.visible = false;
         (p.club.userData.head as THREE.Object3D).add(m);
         p.mark = m;
+      }
+      // a little sand lying on the open face – it stays there while the face stays open
+      if (p.swing.props?.includes('faceSand')) {
+        const geo = new THREE.SphereGeometry(0.022, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+        geo.scale(1, 0.5, 1.4);
+        const pile = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#e0cc98', roughness: 1 }));
+        pile.rotation.z = Math.PI / 2;
+        pile.position.set(p.club.userData.faceX - 0.0005, -0.016, SWEET[p.swing.club]);
+        (p.club.userData.head as THREE.Object3D).add(pile);
       }
       // the fan: more balls from the same spot, each with its own flight and tracer
       for (const side of p.swing.fan ?? []) {
