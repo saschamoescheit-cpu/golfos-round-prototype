@@ -12,6 +12,9 @@ import { isTeamRound } from '../lib/games';
 import { HoleEditSheet } from '../components/HoleEditSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
+import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
+import { loadTrack } from '../lib/track';
+import { loadCaddieLog } from '../lib/caddielog';
 import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
 import { comparisonGroup, roundsSg } from '../lib/sg';
@@ -304,6 +307,24 @@ export function Scorecard(props: {
             <button type="button" className="sc-action" onClick={() => props.onReview({ ...round, capture: 'full' })}>
               <CheckShotsIcon size={22} />
               <span>{tr('Check shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' ·' : ''}</span>
+            </button>
+          )}
+          {/* the round as a file – score, the shots noted by hand, the GPS track – for the analysis in the Dropbox (Sascha 18.10.2026) */}
+          {!round.preview && (
+            <button
+              type="button"
+              className="sc-action"
+              onClick={() =>
+                shareExport(buildExport({ app: __BUILD_TIME__, round, track: loadTrack(round.id), caddieLog: loadCaddieLog(round.id), detectedNow: [] }), exportFileName(round))
+                  .then((r) => setShareMsg(r === 'downloaded' ? tr('Round data saved as a file (Downloads).', 'Rundendaten als Datei gespeichert (Downloads).') : null))
+                  .catch(() => setShareMsg(tr('The file could not be made.', 'Die Datei konnte nicht erstellt werden.')))
+              }
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3v12M8 11l4 4 4-4" />
+                <path d="M5 21h14" />
+              </svg>
+              <span>Export</span>
             </button>
           )}
           {!props.justFinished && (

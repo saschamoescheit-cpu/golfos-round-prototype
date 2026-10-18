@@ -54,7 +54,7 @@ ok((await mic.count()) === 1, 'switched on in the profile: the microphone tool o
 await mic.click();
 // the file loops (12 s): within 14 s two or three strikes – never the voice
 const count = () => p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].soundShots ?? []).length);
-for (let k = 0; k < 40 && (await count()) === 0; k++) await p.waitForTimeout(250);
+for (let k = 0; k < 64 && (await count()) === 0; k++) await p.waitForTimeout(250); // the file loops every 12 s
 ok(/Knall gehört um/.test(await p.locator('body').innerText()), 'the note "Knall gehört um …"');
 await p.waitForTimeout(500);
 ok((await p.locator('.map-sound-shot').count()) >= 1, `shown on the map as a sound mark with the time (${await p.locator('.map-sound-shot').count()})`);

@@ -119,7 +119,7 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
       await p.waitForTimeout(300);
       const cap = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].capture);
       ok(cap === 'full' && /Später prüfen & signieren ✓/.test(await p.locator('.finish-card').innerText()), `${label}: "Später prüfen & signieren" keeps it open to check & sign (${cap})`);
-      ok((await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.getByRole('button', { name: 'Rundendaten exportieren' }).count()) === 0, `${label}: share in the action row, no data export`);
+      ok((await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Export' }).count()) === 1, `${label}: share and export in the action row`);
     }
   } catch (e) {
     ok(false, `${label} [${step}]: ${String(e.message).split('\n')[0]}`);
