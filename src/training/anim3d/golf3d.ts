@@ -664,7 +664,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         }
     const vf = THREE.MathUtils.degToRad(camera.fov / 2);
     const hf = Math.atan(Math.tan(vf) * camera.aspect);
-    const d = Math.max(hy / Math.tan(vf), hx / Math.tan(hf)) * 1.12 + depth;
+    // room above and below for the buttons over the picture (pause, slow motion at the top, the views at the bottom)
+    const d = Math.max((hy * 1.28) / Math.tan(vf), (hx * 1.12) / Math.tan(hf)) + depth;
     camera.position.copy(center).addScaledVector(dir, Math.max(1.2, d));
     camera.lookAt(center);
   };

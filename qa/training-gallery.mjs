@@ -68,6 +68,7 @@ const fault3d = async (cat, fault, name, wait, view) => {
   await p.locator('.tr-cat').filter({ hasText: cat }).first().click();
   await p.getByRole('tab', { name: 'Fehler' }).click();
   await p.locator('.list .list-item').filter({ hasText: fault }).first().click();
+  await p.locator('figure.tr-sketch').first().scrollIntoViewIfNeeded();
   await p.locator('figure.tr-sketch .tr-motion-btn').first().click();
   await p.locator('.tr-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
   if (view) await p.locator('.tr-3d-views .chip').filter({ hasText: view }).click();
@@ -78,7 +79,7 @@ const fault3d = async (cat, fault, name, wait, view) => {
 };
 await fault3d('Drehung, Ablauf', 'Über die Ebene', '3d-slice-hinten', 4300);
 await fault3d('Bunker', 'Ball bleibt im Bunker', '3d-bunker', 3600);
-await fault3d('Putten', 'Ball startet rechts', '3d-putt-oben', 4000, 'Oben');
+await fault3d('Putten', 'Ball startet rechts', '3d-putt-oben', 3000, 'Oben');
 await tab('Üben');
 await p.locator('.list-item').filter({ hasText: 'Putten 30 Min: Startlinie' }).click();
 await p.getByRole('button', { name: 'Einheit starten' }).click();
