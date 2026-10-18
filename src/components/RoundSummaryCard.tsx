@@ -4,7 +4,7 @@ import type { Round } from '../types';
 import { roundSummary } from '../lib/summary';
 import { SG_LABELS } from '../lib/sg';
 import { toggleSpeak } from '../lib/caddietalk';
-import { tr } from '../lib/i18n';
+import { getLang, tr } from '../lib/i18n';
 
 // Feature 014: the round summary on the scorecard of a finished round – what happened, why, and the practice plan.
 
@@ -100,7 +100,7 @@ async function toTraining(round: Round, plan: { area: string; minutes: number }[
       for (const x of pick) items.push({ drill: x.id, minutes: Math.max(5, Math.round(d.minutes / pick.length)) });
     }
     if (!items.length) return null;
-    const date = new Date(round.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
+    const date = new Date(round.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit' });
     const name = tr(`After the round ${date} · ${round.courseName}`, `Nach der Runde ${date} · ${round.courseName}`);
     store.saveOwnPlan({ id: store.trainingId(), name, items, createdAt: new Date().toISOString() });
     return name;

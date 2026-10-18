@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
 import type { Course } from '../types';
-import { tr } from '../lib/i18n';
+import { getLang, tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { shownName, loadProfile } from '../lib/profile';
 import { newId } from '../lib/storage';
@@ -55,7 +55,7 @@ export function standingText(g: Game, spoken: boolean): string {
   const n = holesPlayed(g);
   const sign = (v: string) => (spoken ? v.replace(/^\+/, tr('plus ', 'plus ')).replace(/^[−-]/, tr('minus ', 'minus ')) : v);
   const lines: string[] = [];
-  if (!spoken) lines.push(`${f.name()} · ${g.courseName} · ${new Date(g.createdAt).toLocaleDateString()}`);
+  if (!spoken) lines.push(`${f.name()} · ${g.courseName} · ${new Date(g.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined)}`);
   const head = g.finishedAt ? tr(`Result after ${n} holes`, `Ergebnis nach ${n} Löchern`) : tr(`Standing after ${n} holes`, `Zwischenstand nach ${n} Löchern`);
   lines.push(spoken ? `${head}.` : head);
   st.rows.forEach((r) => {
@@ -1136,7 +1136,7 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
           <span className="grow">
             <strong>{tr('Result confirmed', 'Ergebnis bestätigt')}</strong>
             <span className="muted small" style={{ display: 'block' }}>
-              {new Date(g.signedAt).toLocaleString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {new Date(g.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
             <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your balance', 'Zählt in deiner Bilanz')}</span>
           </span>
@@ -1166,7 +1166,7 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
     <main className="screen">
       <TopBar title={f.name()} onBack={props.onBack} backLabel={tr('Games', 'Spiele')} />
       <span className="muted small">
-        {g.courseName} · {new Date(g.createdAt).toLocaleDateString()} · {holesPlayed(g)}/{g.holes.length} {tr('holes', 'Löcher')}
+        {g.courseName} · {new Date(g.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined)} · {holesPlayed(g)}/{g.holes.length} {tr('holes', 'Löcher')}
       </span>
       {g.signedAt && confirmCard}
       <section className="card game-winner">
