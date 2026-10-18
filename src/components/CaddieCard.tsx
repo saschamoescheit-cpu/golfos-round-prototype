@@ -50,7 +50,7 @@ export function CaddieCard(props: {
         <div className="head">
           <span className="club">{props.clubCode}</span>
           <span className="grow">
-            {Math.round(f.distance)} {f.unit} {f.targetTo} · {tr('plays', 'spielt wie')} <strong>{Math.round(f.playsLike)} {f.unit}</strong>
+            {Math.round(f.distance)} {f.unit} {f.targetTo} · {tr('plays', 'spielt wie')} <strong className="nowrap">{Math.round(f.playsLike)} {f.unit}</strong>
           </span>
         </div>
         {shown.map((l, k) => (
@@ -84,8 +84,9 @@ export function CaddieCard(props: {
           <button type="button" onClick={() => setSheet('rules')}>
             {tr('Rules', 'Regeln')}
           </button>
-          <button type="button" onClick={() => setSheet('notes')}>
-            {tr('Hole notes', 'Lochnotizen')}
+          <button type="button" onClick={() => setSheet('notes')} aria-label={tr('Hole notes', 'Lochnotizen')}>
+            <span className="wide-only">{tr('Hole notes', 'Lochnotizen')}</span>
+            <span className="narrow-only">{tr('Notes', 'Notizen')}</span>
           </button>
           <button type="button" onClick={props.onHide} aria-label={tr('Hide caddie', 'Caddie ausblenden')}>
             ✕
@@ -338,8 +339,9 @@ export function TournamentCaddie(props: { holeLabel: string; note: HoleNote; onN
           <button type="button" onClick={() => setSheet('rules')}>
             {tr('Rules', 'Regeln')}
           </button>
-          <button type="button" onClick={() => setSheet('notes')}>
-            {tr('Hole notes', 'Lochnotizen')}
+          <button type="button" onClick={() => setSheet('notes')} aria-label={tr('Hole notes', 'Lochnotizen')}>
+            <span className="wide-only">{tr('Hole notes', 'Lochnotizen')}</span>
+            <span className="narrow-only">{tr('Notes', 'Notizen')}</span>
           </button>
           <button type="button" onClick={props.onHide} aria-label={tr('Hide caddie', 'Caddie ausblenden')}>
             ✕

@@ -393,8 +393,8 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
                   <span className="muted small">{new Date(g.createdAt).getFullYear()}</span>
                 </span>
                 <span className="grow">
-                  <span className="title">
-                    {f.name()}
+                  <span className="title with-mark">
+                    <span className="title-text">{f.name()}</span>
                     {/* the same marks as on the rounds: confirmed (seal), to confirm (pen), in play (pause) */}
                     {!g.finishedAt ? (
                       <span className="paused-mark" role="img" aria-label={tr('in play', 'läuft')} title={tr('in play', 'läuft')}>

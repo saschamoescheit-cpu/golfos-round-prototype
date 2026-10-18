@@ -136,8 +136,8 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                     <span className="muted small">{new Date(r.createdAt).getFullYear()}</span>
                   </span>
                   <span className="grow">
-                    <span className="title">
-                      {r.courseName}
+                    <span className="title with-mark">
+                      <span className="title-text">{r.courseName}</span>
                       <span className="paused-mark" aria-hidden="true" title={tr('paused', 'pausiert')}>
                         <PausedIcon size={16} />
                       </span>
@@ -185,8 +185,8 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                     <span className="muted small">{new Date(r.createdAt).getFullYear()}</span>
                   </span>
                   <span className="grow">
-                    <span className="title">
-                      {r.courseName}
+                    <span className="title with-mark">
+                      <span className="title-text">{r.courseName}</span>
                       {/* one mark per round, the same as on the tile above: check & sign (pen) or signed (seal) */}
                       {r.signedAt ? (
                         <span className="signed-mark" role="img" aria-label={tr('signed', 'signiert')} title={tr('signed', 'signiert')}>

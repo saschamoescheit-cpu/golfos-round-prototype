@@ -21,7 +21,11 @@ for (const theme of ['sun', 'dark']) {
   const shot = async (name) => S && (await p.screenshot({ path: `${S}/${theme}-${name}.png`, fullPage: true }));
   // nothing wider than the screen
   const fits = async (what) => {
-    const over = await p.evaluate(() => [...document.querySelectorAll('main *')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > innerWidth + 1 || r.left < -1); }).map((e) => e.className || e.tagName).slice(0, 3));
+    const over = await p.evaluate(() => {
+      // a row that scrolls sideways on purpose (score table, topic chips) may hold more than the screen
+      const scrolls = (e) => { for (let x = e.parentElement; x; x = x.parentElement) { const o = getComputedStyle(x).overflowX; if (o === 'auto' || o === 'scroll') return true; } return false; };
+      return [...document.querySelectorAll('main *')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > innerWidth + 1 || r.left < -1) && !scrolls(e); }).map((e) => `${e.tagName}.${e.className}`).slice(0, 3);
+    });
     ok(over.length === 0, `${theme} · ${what}: nothing runs off the screen ${over.join(', ')}`);
   };
   await p.goto(url);
@@ -45,6 +49,9 @@ for (const theme of ['sun', 'dark']) {
   await shot('rounds');
   await fits('rounds and tiles');
   ok((await p.locator('.tile').count()) === (await p.locator('.tile .tile-mark svg').count()), `${theme} · every tile with its symbol`);
+  // every row's mark is on the screen, also when the course name is cut
+  const marks = await p.locator('ul.list .list-item').evaluateAll((rows) => rows.map((r) => { const m = r.querySelector('.signed-mark, .paused-mark'); if (!m) return 'none'; const a = m.getBoundingClientRect(); const t = r.querySelector('.title').getBoundingClientRect(); return a.width > 0 && a.right <= t.right + 1 ? 'ok' : 'cut'; }));
+  ok(marks.every((m) => m === 'ok'), `${theme} · every round's mark visible next to a cut name (${marks.join(' ')})`);
   // the round with a missing score: the pencil and the action row
   await p.locator('ul.list button.list-item').filter({ hasText: '17.10.' }).first().click();
   await p.waitForTimeout(900);
@@ -91,6 +98,29 @@ for (const theme of ['sun', 'dark']) {
     await shot(name);
   }
   await fits('statistics');
+  // the caddie on the course: every button reads in full, the card never pushes the shot button into the distances
+  await tab('Spielen');
+  await p.waitForTimeout(500);
+  await p.getByRole('button', { name: 'Neue Runde' }).click();
+  await p.waitForTimeout(800);
+  await p.fill('#course-search', 'Hetzenhof');
+  await p.waitForTimeout(2000);
+  await p.locator('button.list-item').first().click();
+  await p.getByText('Runde starten').waitFor({ timeout: 30000 });
+  await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
+  await p.getByText('Runde starten').click();
+  await p.waitForTimeout(5000);
+  await p.getByRole('button', { name: /Caddie zeigen/ }).click();
+  await p.waitForTimeout(900);
+  await shot('caddie');
+  const cad = await p.evaluate(() => {
+    const shotBtn = document.querySelector('.map-shot-btn')?.getBoundingClientRect();
+    const green = document.querySelector('.map-green')?.getBoundingClientRect();
+    const bs = [...document.querySelectorAll('.caddie-actions button')];
+    return { clear: !shotBtn || !green || shotBtn.top >= green.bottom, full: bs.length > 0 && bs.every((x) => x.scrollWidth <= x.clientWidth + 1) };
+  });
+  ok(cad.full, `${theme} · the caddie's buttons read in full`);
+  ok(cad.clear, `${theme} · the shot button stays below the green's distances`);
   ok(errs.length === 0, `${theme} · no page errors ${errs.slice(0, 2).join(' | ')}`);
   await ctx.close();
 }

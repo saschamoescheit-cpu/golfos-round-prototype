@@ -620,6 +620,21 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 /* caddie buttons fit a 320 px phone: columns may shrink, long words get an ellipsis */
 .caddie-actions { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 40px; }
 .caddie-actions button { padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.caddie-actions .narrow-only { display: none; }
+.nowrap { white-space: nowrap; }
+@media (max-width: 359px) {
+  /* a 320 px phone (iPhone SE 1st gen): the words in full instead of "Frag…" – slimmer icons and "Notizen" */
+  .caddie-actions { grid-template-columns: 36px repeat(3, minmax(0, 1fr)) 36px; gap: 4px; }
+  .caddie-card.tournament .caddie-actions { grid-template-columns: repeat(2, minmax(0, 1fr)) 36px; }
+  .caddie-actions button { padding: 0 2px; font-size: 13px; }
+  .caddie-actions .wide-only { display: none; }
+  .caddie-actions .narrow-only { display: inline; }
+}
+/* the caddie never grows into the green's distances: the shot button sits above it – a long note scrolls inside the card,
+   its buttons stay at its foot (visual check 18./19.10.2026) */
+.map-bottom .caddie-card { max-height: calc(100dvh - 308px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
+.map-bottom .caddie-card > .caddie-actions { position: sticky; bottom: -10px; margin-bottom: -10px; padding: 6px 0 10px; background: rgb(14, 20, 24); }
+:root[data-theme='sun'] .map-bottom .caddie-card > .caddie-actions { background: #fff; }
 /* Round summary (feature 014) */
 .round-summary .headline { margin: 0; font: 600 17px/1.35 var(--display); }
 .round-summary h3 { margin: 4px 0 0; font: 600 15px var(--display); }
@@ -1342,6 +1357,8 @@ button.tile:disabled { opacity: 1; }
 .caddie-facts .cf svg { flex: none; color: var(--brand-text); }
 .caddie-facts .cf b { color: var(--text); font-weight: 600; }
 .caddie-facts .cf.warn svg, .caddie-facts .cf.warn { color: #ff9d8f; }
+:root[data-theme='sun'] .caddie-facts .cf.warn svg, :root[data-theme='sun'] .caddie-facts .cf.warn { color: #b42318; } /* readable red in the sun, as the card's warning */
+:root[data-theme='sun'] .caddie-facts { border-top-color: rgba(0, 0, 0, 0.1); }
 
 /* the greenside bunkers in the putt editor (Sascha 18.10.2026) */
 .putt-bunker { fill: #e9d9a6; stroke: #c9b57a; } /* ci-allow: bunker sand */
@@ -1389,3 +1406,10 @@ button.tile:disabled { opacity: 1; }
 .sc-action { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 72px; padding: 8px 4px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font: 600 13px/1.2 var(--body); text-align: center; }
 .sc-action svg { color: var(--brand-text); }
 .sc-action.danger, .sc-action.danger svg { color: var(--bad, #e5484d); border-color: color-mix(in srgb, var(--bad, #e5484d) 45%, transparent); }
+/* seven: the last one spans the empty cell, the second row closes evenly */
+.segmented:has(> button:nth-child(7)):not(:has(> button:nth-child(8))) button:nth-child(7) { grid-column: span 2; }
+
+/* a long course name is cut, its mark stays (small iPhone, Sascha 18.10.2026: every row shows its symbol) */
+.list-item .title.with-mark { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.list-item .title.with-mark > .title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.list-item .title.with-mark > :not(.title-text) { flex: none; }
