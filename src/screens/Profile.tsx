@@ -14,6 +14,7 @@ import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, profileIndex, saveProfile, type Profile } from '../lib/profile';
 import { groupForHandicap, GROUPS } from '../lib/sg';
 import { loadSession, signOut } from '../lib/sync';
+import { setSoundTest, soundTestOn } from '../lib/impact';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
@@ -23,6 +24,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
   const [sgPick, setSgPick] = useState(false);
+  const [soundTest, setSoundTestState] = useState(soundTestOn);
   const photoInput = useRef<HTMLInputElement>(null);
   const [cropping, setCropping] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
@@ -234,6 +236,23 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             <span>{p.sgGroup ? GROUPS.find((g) => g.id === p.sgGroup)?.label : tr(`Next better group (${autoGroup})`, `Nächstbessere Gruppe (${autoGroup})`)}</span>
             <span aria-hidden="true">›</span>
           </button>
+        </div>
+        {/* a test (Sascha 18.10.2026): the microphone listens for the strike while the hole map is open – nothing recorded */}
+        <div className="field">
+          <label>{tr('Shot by sound (test)', 'Schlag per Ton (Test)')}</label>
+          <Segmented<'off' | 'on'>
+            label={tr('Shot by sound (test)', 'Schlag per Ton (Test)')}
+            value={soundTest ? 'on' : 'off'}
+            onChange={(v) => {
+              if (!v) return;
+              setSoundTest(v === 'on');
+              setSoundTestState(v === 'on');
+            }}
+            options={[
+              { value: 'off', label: tr('Off', 'Aus') },
+              { value: 'on', label: tr('On', 'An') },
+            ]}
+          />
         </div>
       </section>
 

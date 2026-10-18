@@ -25,6 +25,7 @@ import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
 import { CaddieCard, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
+import { listen, soundTestOn } from '../lib/impact';
 import { courseStats } from '../lib/history';
 import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
@@ -590,6 +591,39 @@ export function HoleScreen(props: {
   const latestRound = useRef(round); // the round as it is now – for a measurement that finishes seconds later
   latestRound.current = round; // index in round.manualShots offered for removal
   const [testMsg, setTestMsg] = useState<string | null>(null);
+  // shot by sound – a test (Sascha 18.10.2026): listening while this screen is open, every crack kept with time and place
+  const soundTest = useMemo(() => soundTestOn() && !round.preview && !props.game, []);
+  const [listening, setListening] = useState(false);
+  const stopListen = useRef<(() => void) | null>(null);
+  const holeRef = useRef(i);
+  holeRef.current = i;
+  const playerRef = useRef(player);
+  playerRef.current = player;
+  useEffect(() => () => stopListen.current?.(), []);
+  const toggleListen = async () => {
+    if (stopListen.current) {
+      stopListen.current();
+      stopListen.current = null;
+      setListening(false);
+      return;
+    }
+    try {
+      stopListen.current = await listen((hit) => {
+        const pl = playerRef.current;
+        const time = new Date(hit.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (!pl) {
+          setTestMsg(tr(`Crack heard at ${time} – no GPS`, `Knall gehört um ${time} – kein GPS`));
+          return;
+        }
+        const r = latestRound.current;
+        props.onChange({ ...r, soundShots: [...(r.soundShots ?? []), { hole: holeRef.current, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] });
+        setTestMsg(tr(`Crack heard at ${time} (loudness ${Math.round(hit.level * 100)})`, `Knall gehört um ${time} (Lautstärke ${Math.round(hit.level * 100)})`));
+      });
+      setListening(true);
+    } catch {
+      setTestMsg(tr('No microphone – allow it in the settings', 'Kein Mikrofon – bitte in den Einstellungen erlauben'));
+    }
+  };
   useEffect(() => {
     if (!testMsg) return;
     const t = setTimeout(() => setTestMsg(null), 6000);
@@ -621,6 +655,10 @@ export function HoleScreen(props: {
     .map((x, k) => ({ x, k }))
     .filter(({ x }) => x.hole === i)
     .map(({ x, k }, n) => ({ pos: x.pos, label: String(n + 1), tone: 'good' as const, id: `m${k}`, hand: true }));
+  // the cracks the microphone heard on this hole (test) – a small sound mark with the time
+  const soundTrack = (round.soundShots ?? [])
+    .filter((x) => x.hole === i)
+    .map((x) => ({ pos: x.pos, label: new Date(x.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit' }), sound: true }));
   const track: { pos: LngLat; label: string; green?: boolean }[] = detail.shots
     .map((s, k) => (s.pos ? { pos: s.pos, label: `${k + 1}${s.club ? ' ' + clubCode(s.club) : ''}${lengths[k] != null ? ' · ' + fmtU(lengths[k]!) : ''}${s.penalty ? ' +1' : ''}` } : null))
     .filter((t): t is { pos: LngLat; label: string } => t != null);
@@ -926,7 +964,7 @@ export function HoleScreen(props: {
           imagery={imagery}
           // the state's aerial service does not answer: Esri for this visit (the choice stays as it is)
           onImageryFail={() => imagery.id !== 'esri' && setImageryPref('esri')}
-          track={detailMode ? track : manualTrack}
+          track={detailMode ? [...track, ...soundTrack] : [...manualTrack, ...soundTrack]}
           onTrackTap={detailMode ? undefined : (id) => setRemoveShot(Number(id.slice(1)))}
           // a shot noted by hand moves with the finger to the exact spot on the aerial – to the metre (Sascha 17.10.2026)
           onTrackMove={
@@ -1018,6 +1056,22 @@ export function HoleScreen(props: {
                 <path d="M10 9V3.5M12.5 9V2.5M15 9V4" />
                 <path d="M9 3.5h2M11.5 2.5h2.2M14 4h2" />
                 <path d="M16 11c2.5 1 2.5 6 0 7" />
+              </svg>
+            </button>
+          )}
+          {/* shot by sound – a test (Sascha 18.10.2026): a tap starts listening, another stops it */}
+          {soundTest && (
+            <button
+              type="button"
+              className={`map-tool${listening ? ' listening' : ''}`}
+              aria-pressed={listening}
+              aria-label={listening ? tr('Stop listening for shots', 'Mithören beenden') : tr('Listen for shots (test)', 'Schläge per Ton erkennen (Test)')}
+              title={tr('Shot by sound (test)', 'Schlag per Ton (Test)')}
+              onClick={() => void toggleListen()}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
               </svg>
             </button>
           )}

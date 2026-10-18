@@ -66,6 +66,13 @@ const tiles = (await p.locator('.tile-row .tile').allInnerTexts()).map((t) => t.
 ok(!tiles.some((t) => /zu prüfen/.test(t)) && tiles.some((t) => /^2 prüfen & signieren$/.test(t)), `tiles: one "prüfen & signieren", no "zu prüfen" (${tiles.join(' | ')})`);
 const pausedTile = p.locator('button.tile').filter({ hasText: 'pausiert' });
 ok((await pausedTile.count()) === 1 && /^0/.test((await pausedTile.innerText()).trim()) && (await pausedTile.isDisabled()), 'the "pausiert" tile is there with 0 when nothing is paused');
+{
+  // with 0 it looks like the other tiles – not paler (Sascha 18.10.2026)
+  const look = (t) => t.evaluate((e) => [getComputedStyle(e).opacity, getComputedStyle(e).backgroundColor, getComputedStyle(e.querySelector('.tile-mark') ?? e).opacity].join('|'));
+  const zero = await look(pausedTile);
+  const played = await look(p.locator('.tile').filter({ hasText: 'gespielt' }).first());
+  ok(zero.split('|')[0] === '1' && zero.split('|')[2] === '1' && zero.split('|')[1] === played.split('|')[1], `the 0 tile as solid as the others (${zero} | ${played})`);
+}
 ok(/^5\b/.test(tiles.find((t) => /gespielt/.test(t)) ?? ''), 'gespielt: every finished round, kept and signed (5)');
 await tab('Runden');
 await p.waitForTimeout(600);

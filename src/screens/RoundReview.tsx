@@ -17,7 +17,7 @@ import { holeForTee } from '../lib/teeline';
 import { ShotSheet } from '../components/ShotSheet';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
-import { clubCode, tr } from '../lib/i18n';
+import { clubCode, getLang, tr } from '../lib/i18n';
 
 // Round check after a detailed round (feature 007): every shot of every hole on the map, with club, shot type,
 // lie, length and strokes gained. Shots detected from the GPS track are marked "check"; the player corrects
@@ -455,6 +455,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 .map((x, kk) => ({ x, kk }))
                 .filter(({ x }) => x.hole === k)
                 .map(({ x, kk }, n) => ({ id: `hand-${kk}`, pos: x.pos, label: String(n + 1), hand: true })),
+              // the cracks the microphone heard (test, Sascha 18.10.2026) – to compare with the shots
+              ...(round.soundShots ?? [])
+                .filter((x) => x.hole === k)
+                .map((x) => ({ pos: x.pos, label: new Date(x.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit' }), sound: true })),
               // Where strokes are won (green) and lost (red): every shot coloured by its strokes gained.
               ...(d?.shots ?? []).flatMap((s, n) => {
                 const len = lengths[n];

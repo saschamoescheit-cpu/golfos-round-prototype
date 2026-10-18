@@ -22,7 +22,7 @@ export interface HoleMapProps {
   credit?: string | null; // extra data credit for the map's ⓘ (green heights)
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a green line (the app's highlight) with numbered dots. */
   /** hand: a shot noted by hand on the course – a small circle with the club-and-plus, not part of the shot line */
-  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string; hand?: boolean }[];
+  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string; hand?: boolean; sound?: boolean }[];
   /** Review: the path the player walked (GPS) and where he stood still – the places a shot may have been played. */
   walked?: { line: LngLat[]; stops: LngLat[] } | null;
   /** Track points can be dragged (round check); called on release with the point's id. */
@@ -340,7 +340,7 @@ export function HoleMap(props: HoleMapProps) {
     }
     mk.track.forEach((t) => t.remove());
     mk.track = (p.track ?? []).map((t) => {
-      const d = t.hand ? handEl(t.label) : labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
+      const d = t.sound ? soundEl(t.label) : t.hand ? handEl(t.label) : labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       const movable = p.onTrackMove != null && t.id != null;
       if (p.onTrackTap && t.id != null) {
         d.classList.add('tap');
@@ -366,7 +366,7 @@ export function HoleMap(props: HoleMapProps) {
             r.textContent = text;
           }
           // the line between the shots follows the finger
-          const pts = (latest.current.track ?? []).filter((x) => !x.hand).map((x) => (x.id === t.id ? ([ll.lng, ll.lat] as LngLat) : x.pos));
+          const pts = (latest.current.track ?? []).filter((x) => !x.hand && !x.sound).map((x) => (x.id === t.id ? ([ll.lng, ll.lat] as LngLat) : x.pos));
           (m.getSource('track') as maplibregl.GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] });
         });
         marker.on('dragend', () => {
@@ -703,7 +703,7 @@ function walkedData(p: HoleMapProps): GeoJSON.FeatureCollection {
 }
 
 function trackLine(p: HoleMapProps): GeoJSON.FeatureCollection {
-  const pts = (p.track ?? []).filter((t) => !t.hand).map((t) => t.pos);
+  const pts = (p.track ?? []).filter((t) => !t.hand && !t.sound).map((t) => t.pos);
   return { type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] };
 }
 
@@ -741,6 +741,17 @@ function distEl(n: string, unit: Unit, className: string): HTMLDivElement {
   const small = document.createElement('small');
   small.textContent = unit;
   d.append(strong, small);
+  return d;
+}
+
+/** A crack the microphone heard (test, Sascha 18.10.2026): a small white mark with sound waves and its time. */
+function soundEl(time: string): HTMLDivElement {
+  const d = el('map-sound-shot');
+  d.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="2.5" fill="currentColor"/><path d="M11 8a6 6 0 0 1 0 8M15 5a10 10 0 0 1 0 14"/></svg>';
+  const b = document.createElement('b');
+  b.textContent = time;
+  d.append(b);
+  d.setAttribute('aria-label', `Knall gehört um ${time}`);
   return d;
 }
 

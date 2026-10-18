@@ -12,6 +12,9 @@ import { isTeamRound } from '../lib/games';
 import { HoleEditSheet } from '../components/HoleEditSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
+import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
+import { loadTrack } from '../lib/track';
+import { loadCaddieLog } from '../lib/caddielog';
 import { TEE_COLOURS, teeName } from '../data/tees';
 import { PlayedHcpCard } from '../components/PlayedHcp';
 import { comparisonGroup, roundsSg } from '../lib/sg';
@@ -146,6 +149,12 @@ export function Scorecard(props: {
                   </button>
                 )
               )}
+              {/* check & sign later (Sascha 18.10.2026): the round waits under "prüfen & signieren" */}
+              {finished && canReview && (
+                <button type="button" className="btn-secondary" aria-pressed={!scoreOnly} onClick={() => props.onChange({ ...round, capture: 'full' })}>
+                  {!scoreOnly ? tr('Check & sign later ✓', 'Später prüfen & signieren ✓') : tr('Check & sign later', 'Später prüfen & signieren')}
+                </button>
+              )}
               {finished && canReview && (
                 <button type="button" className="btn-secondary" aria-pressed={scoreOnly} onClick={() => props.onChange({ ...round, capture: 'score' })}>
                   {scoreOnly ? tr('Kept as a round ✓', 'Als Runde behalten ✓') : tr('Keep as a round', 'Als Runde behalten')}
@@ -268,6 +277,19 @@ export function Scorecard(props: {
           }
         >
           {tr('Share scorecard', 'Scorekarte teilen')}
+        </button>
+      )}
+      {finished && !round.preview && (
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() =>
+            shareExport(buildExport({ app: __BUILD_TIME__, round, track: loadTrack(round.id), caddieLog: loadCaddieLog(round.id), detectedNow: [] }), exportFileName(round))
+              .then((r) => setShareMsg(r === 'downloaded' ? tr('Round data saved as a file (Downloads).', 'Rundendaten als Datei gespeichert (Downloads).') : null))
+              .catch(() => setShareMsg(tr('The file could not be made.', 'Die Datei konnte nicht erstellt werden.')))
+          }
+        >
+          {tr('Export round data', 'Rundendaten exportieren')}
         </button>
       )}
       {shareMsg && <p className="muted small" style={{ margin: 0 }}>{shareMsg}</p>}

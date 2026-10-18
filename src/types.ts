@@ -170,6 +170,8 @@ export interface Round {
   signedAt?: string | null;
   /** Test mode: where the player said his ball lay, by hand on the course – the truth for the shot detection. */
   manualShots?: { hole: number; pos: LngLat; t: number; acc: number; /** moved on the map to the exact spot */ placed?: boolean }[];
+  /** Test (Sascha 18.10.2026): the cracks the microphone heard – when, where, how loud; kept apart from the detection */
+  soundShots?: { hole: number; pos: LngLat; t: number; level: number; acc: number }[];
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
   format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number };
 }

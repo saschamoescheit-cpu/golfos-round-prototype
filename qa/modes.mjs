@@ -113,6 +113,14 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
     await p.waitForTimeout(800);
     const card = await p.locator('.finish-card').innerText().catch(() => '');
     ok(/gespeichert/.test(card) && (c.team ? !/Prüfen & signieren/.test(card) : /Prüfen & signieren/.test(card) && /Als Runde behalten ✓/.test(card)), `${label}: finished – ${c.team ? 'no shot check (team)' : '"Prüfen & signieren" offered, kept as a round by default'}`);
+    if (!c.team) {
+      // the third way (Sascha 18.10.2026): check & sign later – the round waits under "prüfen & signieren"
+      await p.locator('.finish-card').getByRole('button', { name: /^Später prüfen & signieren/ }).click();
+      await p.waitForTimeout(300);
+      const cap = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].capture);
+      ok(cap === 'full' && /Später prüfen & signieren ✓/.test(await p.locator('.finish-card').innerText()), `${label}: "Später prüfen & signieren" keeps it open to check & sign (${cap})`);
+      ok((await p.getByRole('button', { name: 'Rundendaten exportieren' }).count()) === 1, `${label}: "Rundendaten exportieren" on the scorecard`);
+    }
   } catch (e) {
     ok(false, `${label} [${step}]: ${String(e.message).split('\n')[0]}`);
   }
