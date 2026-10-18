@@ -18,7 +18,7 @@ const pair = pairs[name];
 const swing = pair ? pair.fault : (SW as unknown as Record<string, Swing>)[name];
 (async () => {
   for (const view of views) {
-    if (pair) v.setSwings(pair.behind ? [{ swing: pair.fault, z: -1 }, { swing: pair.right, z: 1 }] : [{ swing: pair.fault, x: -1 }, { swing: pair.right, x: 1 }]);
+    if (pair) v.setSwings((SW as unknown as { group: (id: string) => { swing: Swing; x?: number; z?: number }[] }).group(name));
     else v.setSwing(swing);
     v.setView(view);
     const cu = q.get('close');

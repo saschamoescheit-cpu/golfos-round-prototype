@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { tr } from '../../lib/i18n';
 import { isLeftHanded } from '../../lib/profile';
 import { createGolfViewer, type View, type Viewer } from './golf3d';
-import { PAIRS, SWINGS, type PairId, type SwingId } from './swings';
+import { group, PAIRS, SWINGS, type PairId, type SwingId } from './swings';
 import type { L } from '../types';
 import { sided } from '../sides';
 
@@ -58,7 +58,7 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
     viewerRef.current = v;
     v.onLabel((l, step) => setLabel({ l, step }));
     if (pair) {
-      v.setSwings(behind ? [{ swing: pair.fault, z: -1 }, { swing: pair.right, z: 1 }] : [{ swing: pair.fault, x: -1 }, { swing: pair.right, x: 1 }]);
+      v.setSwings(group(props.swing as PairId));
     } else v.setSwing(swing);
     v.setView(first);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => v.resize()) : null;

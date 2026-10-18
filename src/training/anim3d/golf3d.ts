@@ -67,6 +67,9 @@ export interface Swing {
   fan?: { start: number; bend: number }[];
   /** offer the close view of the clubface: where the ball met it, marked from impact on */
   faceView?: boolean;
+  /** a landing spot and a hole (metres along the target line from the ball): a ring of 1 m where the ball should land,
+   *  the hole where it should stop – the ball drops in when it gets there */
+  landing?: { carry: number; hole?: number };
   /** the ball sits on a tee (driver) */
   tee?: boolean;
   /** only the lead hand on the club – the trail hand rests on the chest */
@@ -1022,10 +1025,19 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       // a putt rolls to a hole just short of where it would stop: dark, with the white liner at its edge; the ball drops in
       // when it reaches it (a pushed or pulled putt rolls past and stops beside it)
       const h = p.swing.hit;
-      if (h?.shot === 'putt' && p.swing.club === 'putter') {
+      // the landing ring of a chip or pitch: 1 m across, flat on the grass where the ball should come down
+      if (p.swing.landing) {
+        const bp = ballPos(p);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.012, 6, 48), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.7 }));
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(bp.x + p.swing.landing.carry, heightAt(bp.x + p.swing.landing.carry, bp.z) + 0.012, bp.z);
+        ring.receiveShadow = true;
+        p.extras.add(ring);
+      }
+      if (h && ((h.shot === 'putt' && p.swing.club === 'putter') || p.swing.landing?.hole)) {
         const at = ballPos(p);
-        at.x += 1.74 * (h.scale ?? 1);
-        at.y = 0.003;
+        at.x += p.swing.landing?.hole ?? 1.74 * (h.scale ?? 1);
+        at.y = heightAt(at.x, at.z) + 0.003;
         let drop: number | null = null;
         for (let s = 0; s < 4 && drop === null; s += 0.01) {
           const b = ballAt(p, s);

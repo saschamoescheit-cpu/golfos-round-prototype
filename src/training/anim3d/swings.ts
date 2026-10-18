@@ -631,6 +631,28 @@ export const DRIVER_TOE: Swing = fault({ ...DRIVER_SWING, faceView: true }, {
   },
 }, { hit: { at: 2.8, shot: 'full', scale: 0.82, side: { start: 0.01, bend: -0.012 } } });
 
+// ---------- length control (18.10.2026) ----------
+
+/** a chip to a landing spot: the ball comes down in the ring and rolls to the hole */
+const CHIP_TARGET = { carry: 1.1, hole: 2.6 };
+export const CHIP_LAND: Swing = relabel(CHIP_STROKE, { 1.55: L('Land it in the ring – it rolls out to the hole', 'Im Ring landen – er rollt zum Loch aus') }, { landing: CHIP_TARGET, view: 'angle' });
+/** the wrong length: no landing spot, a different motion each time – it comes down short of the ring and stops short */
+export const CHIP_SHORT: Swing = fault(CHIP_STROKE, {
+  1.55: { label: L('Left: no landing spot, a different motion – short again · right: down in the ring, out to the hole', 'Links: kein Landepunkt, jedes Mal eine andere Bewegung – wieder zu kurz · rechts: im Ring gelandet, zum Loch ausgerollt') },
+}, { hit: { at: 1.55, shot: 'chip', scale: 0.62 }, landing: CHIP_TARGET });
+/** the clock: the same rhythm, the backswing to 8, 9 or 10 o'clock – three lengths, each landing in its ring */
+const clockPitch = (hands: V3, club: V3, chestTurn: number, scale: number, labels: Record<number, SwingKey['label']> = {}): Swing => {
+  const back = { hands, club, body: { pelvis: [38, -chestTurn * 0.75, 2] as V3, spine: [2, -8, 0] as V3, chest: [2, -chestTurn, 6] as V3, neck: [-14, chestTurn * 0.9, 0] as V3, head: [12, 10, 0] as V3 } };
+  const sw = fault(HALF_SWING, { 1.5: back, 1.85: back }, { hit: { at: 2.1, shot: 'pitch', scale }, landing: { carry: 2.6 * scale } });
+  return { ...sw, keys: sw.keys.map((x) => ({ ...x, label: labels[x.t] ?? (x.t === 0 ? L('Set-up', 'Ansprache') : undefined) })) };
+};
+export const PITCH_8: Swing = clockPitch([-0.04, -0.2, 0.44], [-0.8, 0.55, -0.2], 22, 0.62, {
+  1.5: L('Left 8 o’clock · middle 9 · right 10 – the same rhythm', 'Links 8 Uhr · Mitte 9 Uhr · rechts 10 Uhr – derselbe Rhythmus'),
+  2.1: L('Three backswings, three lengths – your wedge table', 'Drei Ausholweiten, drei Längen – deine Wedge-Tabelle'),
+});
+export const PITCH_9: Swing = clockPitch([-0.1, -0.12, 0.45], [-0.1, 0.93, -0.36], 30, 0.85);
+export const PITCH_10: Swing = clockPitch([-0.17, 0.12, 0.38], [0.45, 0.85, -0.25], 35, 1.05);
+
 // ---------- uneven lies: the ground tilts, the set-up and the flight follow the slope ----------
 
 /** a swing on a slope: every key moved (weight, the labels of the set-up and the finish) */
@@ -719,6 +741,8 @@ export const PAIRS = {
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
   pitchSlowPair: { fault: PITCH_SLOW, right: quiet(HALF_SWING) },
+  chipLengthPair: { fault: CHIP_SHORT, right: quiet(CHIP_LAND), behind: true },
+  clockTrio: { fault: PITCH_8, right: PITCH_9, more: [PITCH_10], behind: true },
   shankPair: { fault: SHANK, right: quiet({ ...FULL_SWING, faceView: true }) },
   toePair: { fault: DRIVER_TOE, right: quiet({ ...DRIVER_SWING, faceView: true }) },
   drawFadePair: { fault: DRAW_LAWS, right: quiet(FADE_LAWS), behind: true },
@@ -734,11 +758,23 @@ export const PAIRS = {
 };
 export type PairId = keyof typeof PAIRS;
 
+/** where the golfers of a pair (or a trio) stand: side by side along the target line, or – seen from behind – one
+ *  beside the other across it */
+export function group(id: PairId): { swing: Swing; x?: number; z?: number }[] {
+  const p = PAIRS[id] as { fault: Swing; right: Swing; more?: Swing[]; behind?: boolean };
+  const all = [p.fault, p.right, ...(p.more ?? [])];
+  const gap = all.length > 2 ? 1.4 : 2;
+  return all.map((swing, i) => {
+    const at = (i - (all.length - 1) / 2) * gap;
+    return p.behind ? { swing, z: at } : { swing, x: at };
+  });
+}
+
 /** drill aids in the picture: the stick at the trail hip, the towel under the arms, the stick with the grip, the trail heel up */
 export const HIP_STICK: Swing = { ...FULL_SWING, props: ['stickHip'] };
 export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;
