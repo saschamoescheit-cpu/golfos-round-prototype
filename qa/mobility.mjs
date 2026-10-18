@@ -83,7 +83,8 @@ while (Date.now() - t0 < 240000) {
   if (await p.locator('.mob-feel, .mob-ankle, .mob-summary, .sheet').first().isVisible().catch(() => false)) break;
   // the retest shows "Retest: …" all the time, not only during the short demo (700 ms with the synthetic player – a
   // loop round with a screenshot can take longer)
-  const always = await p.locator('.mob-side-tag').innerText().catch(() => '');
+  // (read at once – a waiting read hangs while the result shows, where there is no tag)
+  const always = await p.evaluate(() => document.querySelector('.mob-side-tag')?.textContent ?? '').catch(() => '');
   if (/^Nachtest/.test(always)) intros.add(always);
   if (await p.locator('.mob-demo.big').isVisible().catch(() => false)) {
     demoSeen = true;
