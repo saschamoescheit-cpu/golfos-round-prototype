@@ -456,6 +456,104 @@ const SCENES: Record<string, () => JSX.Element> = {
       <Label x={160} y={160} t={tr('assistant, aids, adapted relief', 'Assistent, Hilfsmittel, angepasste Erleichterung')} />
     </Frame>
   ),
+  // 2.1 – the boundary: the whole ball must be outside
+  boundary: () => (
+    <Frame label={tr('Out of bounds: the whole ball outside', 'Aus: der ganze Ball außerhalb')}>
+      <rect x="200" y="0" width="120" height="190" fill="#3d5a2a" />
+      <Stakes x1={200} y1={0} x2={200} y2={190} c={C.white} n={6} />
+      <Ball x={204} y={56} />
+      <Ball x={262} y={128} />
+      <Label x={100} y={60} t={tr('touches the line: in', 'berührt die Grenze: im Spiel')} c={C.brand} />
+      <Label x={262} y={156} t={tr('fully outside: out', 'ganz außerhalb: Aus')} />
+      <Label x={100} y={176} t={tr('course', 'Platz')} />
+      <Label x={262} y={22} t={tr('out of bounds', 'Aus')} />
+    </Frame>
+  ),
+  // 5.7 – suspension of play and its signals
+  storm: () => (
+    <Frame label={tr('Suspension of play', 'Spielunterbrechung')} bg="#24333c">
+      <g transform="translate(-40 0)">
+        <path d="M90 70 a26 26 0 0 1 48 -16 a30 30 0 0 1 56 8 a22 22 0 0 1 4 44 H96 a22 22 0 0 1 -6 -36z" fill="#56656e" />
+        <path d="M150 106 l-14 30 h14 l-10 30 l30 -40 h-14 l10 -20z" fill={C.white} />
+      </g>
+      <Label x={250} y={52} t={tr('1 long tone', '1 langer Ton')} />
+      <Label x={250} y={68} t={tr('stop at once', 'sofort aufhören')} c={C.red} />
+      <Label x={250} y={102} t={tr('3 short tones', '3 kurze Töne')} />
+      <Label x={250} y={118} t={tr('finish the hole', 'Loch beenden')} />
+      <Label x={250} y={152} t={tr('2 short tones', '2 kurze Töne')} />
+      <Label x={250} y={168} t={tr('play on', 'weiterspielen')} c={C.brand} />
+    </Frame>
+  ),
+  // 6.4 – order of play
+  order: () => (
+    <Frame label={tr('Farthest from the hole plays first', 'Wer am weitesten weg ist, spielt zuerst')}>
+      <path d="M20 170 C 110 140, 200 90, 290 50" stroke={C.fairway} strokeWidth="60" fill="none" strokeLinecap="round" />
+      <Green x={280} y={50} r={28} />
+      <Flag x={283} y={52} />
+      {[[70, 150], [140, 118], [205, 92]].map(([x, y], i) => (
+        <g key={i}>
+          <Ball x={x} y={y} />
+          <Label x={x} y={y - 12} t={String(i + 1)} c={C.brand} />
+        </g>
+      ))}
+      <Label x={160} y={184} t={tr('farthest first – ready golf in stroke play', 'der Weiteste zuerst – im Zählspiel Ready Golf')} />
+    </Frame>
+  ),
+  // 13.2 – the flagstick
+  flagstick: () => (
+    <Frame label={tr('Ball hits the flagstick in the hole', 'Ball trifft die steckende Fahne')}>
+      <Green x={160} y={100} r={78} />
+      <circle cx="210" cy="100" r="7" fill={C.ink} />
+      <line x1="210" y1="100" x2="210" y2="30" stroke={C.white} strokeWidth="2.5" />
+      <path d="M210 30 l22 8 -22 8z" fill={C.red} />
+      <Ball x={201} y={103} />
+      <Arrow x1={80} y1={120} x2={190} y2={105} dash />
+      <Label x={110} y={150} t={tr('flag in: no penalty', 'Fahne drin: straflos')} c={C.brand} />
+      <Label x={110} y={168} t={tr('decide before the stroke', 'vor dem Schlag entscheiden')} />
+    </Frame>
+  ),
+  // 18.3 – provisional ball
+  provisional: () => (
+    <Frame label={tr('Provisional ball', 'Provisorischer Ball')}>
+      <path d="M30 145 C 120 125, 200 100, 300 60" stroke={C.fairway} strokeWidth="50" fill="none" strokeLinecap="round" />
+      {[[230, 30], [252, 42], [272, 26], [252, 14]].map(([x, y]) => <circle key={x * 1000 + y} cx={x} cy={y} r="16" fill="#2f6a2a" />)}
+      <rect x="22" y="134" width="28" height="18" rx="3" fill={C.fairway} stroke={C.white} />
+      <Arrow x1={45} y1={134} x2={236} y2={40} dash />
+      <Ball x={242} y={34} ghost />
+      <Arrow x1={48} y1={140} x2={196} y2={116} dash c={C.brand} />
+      <Ball x={202} y={113} />
+      <Label x={250} y={150} t={tr('“provisional ball”', '„provisorischer Ball“')} c={C.brand} />
+      <Label x={160} y={184} t={tr('first one found within 3 min: play it', 'ersten binnen 3 min gefunden: mit ihm weiter')} />
+    </Frame>
+  ),
+  // E-5 – alternative to stroke and distance
+  e5: () => (
+    <Frame label={tr('Local rule E-5', 'Platzregel E-5')}>
+      <path d="M0 112 C 100 104, 220 96, 320 92" stroke={C.fairway} strokeWidth="56" fill="none" />
+      <rect x="0" y="0" width={W} height="28" fill="#3d5a2a" />
+      <Stakes x1={0} y1={28} x2={W} y2={28} c={C.white} n={8} />
+      <Flag x={300} y={96} />
+      <path d="M150 30 L150 80 L108 82 L108 30 Z" fill={C.relief} stroke={C.white} strokeWidth="1.5" strokeDasharray="4 3" />
+      <Ball x={150} y={20} ghost />
+      <Label x={129} y={60} t="+2" c={C.brand} />
+      <Label x={226} y={50} t={tr('lost or out here', 'hier verloren oder Aus')} />
+      <Label x={160} y={162} t={tr('area up to the fairway + 2 club-lengths', 'Bereich bis zum Fairway + 2 Schlägerlängen')} />
+      <Label x={160} y={180} t={tr('two penalty strokes, not nearer the hole', 'zwei Strafschläge, nicht näher zum Loch')} />
+    </Frame>
+  ),
+  // E-3 – preferred lies
+  e3: () => (
+    <Frame label={tr('Preferred lies', 'Besserlegen')}>
+      <rect x="0" y="40" width={W} height="110" fill={C.fairway} />
+      <Relief x={150} y={96} r={40} away={Math.PI} />
+      <Ball x={150} y={96} ghost />
+      <Ball x={128} y={86} />
+      <Label x={130} y={50} t={one()} />
+      <Arrow x1={200} y1={96} x2={290} y2={96} />
+      <Label x={250} y={86} t={tr('to the hole', 'zum Loch')} />
+      <Label x={160} y={176} t={tr('lift, clean, place – not nearer the hole', 'aufnehmen, reinigen, hinlegen – nicht näher zum Loch')} />
+    </Frame>
+  ),
 };
 
 const BY_RULE: Record<number, string> = {
@@ -466,6 +564,7 @@ const BY_RULE: Record<number, string> = {
 const BY_SECTION: Record<string, string> = {
   '6.1': 'tee', '13.3': 'overhang', '14.1': 'mark', '14.3': 'drop', '16.1': 'nearestPoint', '16.2': 'animal', '16.3': 'embedded',
   '17.1': 'penaltyYellow', '18.2': 'ob', '19.2': 'unplayable', '19.3': 'unplayableBunker', '15.1': 'loose', '12.2': 'bunker', '13.1': 'green',
+  '2.1': 'boundary', '5.7': 'storm', '6.4': 'order', '13.2': 'flagstick', '18.3': 'provisional', 'E-5': 'e5', 'E-3': 'e3',
 };
 
 /** The sketch of a rule (always one) or of a section (where a picture helps and it is not the rule's own), or null. */

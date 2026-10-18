@@ -3,6 +3,7 @@ import { G, GENERAL, s } from './rulesOfGolfParts';
 import { PART2 } from './rulesOfGolf2';
 import { PART3 } from './rulesOfGolf3';
 import { LOCAL_RULES } from './rulesLocal';
+import { EXTRA } from './rulesExtra';
 
 export { ALL_DEFINITIONS as DEFINITIONS } from './rulesDefinitions';
 
@@ -246,4 +247,12 @@ const PART1: Rule[] = [
   },
 ];
 
-export const RULES_OF_GOLF: Rule[] = [...PART1, ...PART2, ...PART3, LOCAL_RULES];
+/** The detail of the lettered parts appended to a section's text (rulesExtra.ts). */
+const withExtra = (r: Rule): Rule => ({
+  ...r,
+  sections: r.sections.map((sec) =>
+    EXTRA[sec.id] ? { ...sec, text: () => [...sec.text(), ...EXTRA[sec.id].map(([en, de]) => tr(en, de))] } : sec,
+  ),
+});
+
+export const RULES_OF_GOLF: Rule[] = [...PART1, ...PART2, ...PART3, LOCAL_RULES].map(withExtra);

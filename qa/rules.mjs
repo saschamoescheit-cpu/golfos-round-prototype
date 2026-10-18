@@ -58,6 +58,7 @@ await book.locator('.rules-group .list-item').filter({ hasText: 'Verfahren für 
 await p.waitForTimeout(400);
 ok((await p.locator('.rule-section').count()) === 7, 'Rule 14 with its seven sections');
 ok((await p.locator('.rule-penalty').count()) >= 1, 'penalties named');
+ok(/aus Kniehöhe/.test(await p.locator('.rules-book').innerText()) && /längsten Schläger/.test(await p.locator('.rules-book').innerText()), 'the details behind the points: 14.3 dropping in full');
 ok((await p.locator('.rules-book a[href^="http"]').count()) === 0, 'no link to another website – everything in the app');
 // every rule with its own sketch (Sascha 18.10.2026: "the pictures too – rebuilt")
 await p.getByRole('button', { name: 'Zurück' }).first().click();
@@ -75,6 +76,12 @@ await book.locator('.rules-group .list-item').filter({ hasText: 'Penalty Areas' 
 await p.waitForTimeout(300);
 ok((await p.locator('.rules-book svg.rule-sketch').count()) >= 2, 'Rule 17: red and yellow penalty area drawn');
 if (S) await p.screenshot({ path: S + '/rules-17.png', fullPage: true });
+await p.getByRole('button', { name: 'Zurück' }).first().click();
+await p.waitForTimeout(200);
+await book.locator('.rules-group .list-item').filter({ hasText: 'Platzregeln' }).click();
+await p.waitForTimeout(300);
+ok((await p.locator('.rules-book svg.rule-sketch').count()) >= 3, `local rules: E-5 and preferred lies drawn (${await p.locator('.rules-book svg.rule-sketch').count()})`);
+if (S) await p.screenshot({ path: S + '/rules-local.png', fullPage: true });
 await p.getByRole('button', { name: 'Zurück' }).first().click();
 await p.waitForTimeout(200);
 await book.locator('.rules-group .list-item').filter({ hasText: 'Begriffe' }).click();
