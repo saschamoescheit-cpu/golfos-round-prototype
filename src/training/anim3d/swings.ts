@@ -821,6 +821,44 @@ export const SLOPE_THIN: Swing = fault(SLOPE_BELOW, {
 const puttFace = (deg: number, label: SwingKey['label']): Swing =>
   fault(PUTT_STROKE, { 1.7: { face: deg, label }, 2.05: { face: deg * 1.6 }, 3.2: { face: deg * 1.6 } }, { hit: { at: 1.7, shot: 'putt', side: { start: Math.tan((deg * Math.PI) / 180), bend: 0 } } });
 export const PUTT_OPEN = puttFace(5, L('Left: the face is open at impact – the ball starts right · right: square – it drops', 'Links: die Fläche ist im Treffmoment offen – der Ball startet rechts · rechts: square – er fällt'));
+/** always short: a short backstroke, then braking at the ball – it stops in front of the hole */
+const SHORT_BACK = { club: [-0.17, -0.97, 0.15] as V3, hands: [-0.03, -0.24, 0.38] as V3 };
+const SHORT_THROUGH = { club: [0.12, -0.98, 0.15] as V3, hands: [0.02, -0.24, 0.38] as V3, body: { pelvis: [42, 0, 0] as V3, spine: [4, 0, 0] as V3, chest: [6, 3, 0] as V3, neck: [-16, -3, 0] as V3, head: [18, 0, 0] as V3 } };
+export const PUTT_SHORT: Swing = fault(PUTT_STROKE, {
+  1.35: { ...SHORT_BACK, body: { chest: [6, -4, 0], neck: [-16, 4, 0] }, label: L('Left: a short backstroke … · right: back as far as the putt is long', 'Links: kurz ausgeholt … · rechts: so weit ausgeholt, wie der Putt lang ist') },
+  1.7: { label: L('Left: … and braking at the ball – it stops short of the hole · right: through – it drops', 'Links: … und am Ball abgebremst – er bleibt vor dem Loch liegen · rechts: durchgeschwungen – er fällt') },
+  2.05: { ...SHORT_THROUGH, label: undefined },
+  3.2: SHORT_THROUGH,
+}, { hit: { at: 1.7, shot: 'putt', scale: 0.78 }, hole: { at: 1.74 } });
+/** the short one missed: the head goes with the ball, the shoulders open – the face opens and it slides past right */
+const HEAD_UP = { body: { pelvis: [42, 4, 0] as V3, spine: [4, 2, 0] as V3, chest: [6, 12, 0] as V3, neck: [-12, 18, 0] as V3, head: [0, 20, 0] as V3 } };
+const SHORT_PUTT: Swing = { ...PUTT_STROKE, hit: { at: 1.7, shot: 'putt', scale: 0.6 } };
+export const PUTT_PEEK: Swing = fault(SHORT_PUTT, {
+  1.7: { ...HEAD_UP, face: 3, label: L('Left: the head goes with the ball, the shoulders open – it slides past right · right: the head stays down until the ball is gone', 'Links: der Kopf geht mit zum Ball, die Schultern öffnen – er rutscht rechts vorbei · rechts: der Kopf bleibt unten, bis der Ball weg ist') },
+  2.05: { ...HEAD_UP, face: 5, label: undefined },
+  3.2: { ...HEAD_UP, face: 5 },
+}, { hit: { at: 1.7, shot: 'putt', scale: 0.6, side: { start: 0.07, bend: 0 } }, hole: { at: 1.04 } });
+/** the three-putt from distance: the stroke of a short putt for a long one – two metres short; the right one swings
+ *  back as far as the putt is long */
+const LONG_BACK = { club: [-0.62, -0.78, 0.1] as V3, hands: [-0.12, -0.23, 0.38] as V3, body: { pelvis: [42, -2, 0] as V3, spine: [4, -2, 0] as V3, chest: [6, -16, 0] as V3, neck: [-16, 16, 0] as V3, head: [18, 2, 0] as V3 } };
+const LONG_THROUGH = { club: [0.62, -0.78, 0.1] as V3, hands: [0.12, -0.23, 0.38] as V3, body: { pelvis: [42, 4, 0] as V3, spine: [4, 2, 0] as V3, chest: [6, 16, 0] as V3, neck: [-16, -16, 0] as V3, head: [18, -2, 0] as V3 } };
+export const PUTT_LONG: Swing = fault(PUTT_STROKE, { 1.35: LONG_BACK, 2.05: LONG_THROUGH, 3.2: LONG_THROUGH }, { hit: { at: 1.7, shot: 'putt', scale: 3.9 } });
+export const PUTT_LONG_SHORT: Swing = fault(PUTT_STROKE, {
+  0: { label: L('A putt of 7 metres', 'Ein Putt über 7 Meter') },
+  1.35: { label: L('Left: the stroke of a short putt · right: back as far as the putt is long', 'Links: die Bewegung eines kurzen Putts · rechts: so weit ausgeholt, wie der Putt lang ist') },
+  1.7: { label: L('Left: two metres short – the next putt is not a gimme · right: the ball dies at the hole', 'Links: zwei Meter zu kurz – der nächste Putt ist kein Geschenk · rechts: der Ball stirbt am Loch') },
+  2.05: { label: undefined },
+}, { hit: { at: 1.7, shot: 'putt', scale: 2.8 }, hole: { at: 6.8 }, rollLine: true });
+/** missing low, on the amateur side: too little break read – the ball runs below the hole; the right one aims higher
+ *  and falls in from above (the green falls to the left) */
+const BREAK = 0.11;
+const BREAKING: Swing = { ...PUTT_STROKE, slope: { side: 2.5 }, hole: { at: 1.74 }, rollLine: true, hit: { at: 1.7, shot: 'putt', side: { start: BREAK, bend: -BREAK / 1.74 } } };
+export const PUTT_LOW: Swing = fault(BREAKING, {
+  0: { label: L('The green falls to the left', 'Das Grün fällt nach links') },
+  1.7: { label: L('Left: too little break read – it runs below the hole (the amateur side) · right: aimed higher – it falls in from above', 'Links: zu wenig Break gelesen – er läuft unten vorbei (Amateurseite) · rechts: höher gezielt – er fällt von oben ins Loch') },
+  2.05: { label: undefined },
+}, { hit: { at: 1.7, shot: 'putt', side: { start: 0.035, bend: -BREAK / 1.74 } } });
+
 export const PUTT_CLOSED = puttFace(-5, L('Left: the face closes through the ball – it starts left · right: square – it drops', 'Links: die Fläche schließt sich durch den Ball – er startet links · rechts: square – er fällt'));
 
 /** pairs for the fault pictures: the fault first (left), the right way (right); z: one behind the other for the view from behind */
@@ -854,6 +892,10 @@ export const PAIRS = {
   skyPair: { fault: DRIVER_SKY, right: quiet(DRIVER_SWING), behind: true },
   bunkerStuckPair: { fault: BUNKER_STUCK, right: quiet(BUNKER_SWING) },
   bunkerThinPair: { fault: BUNKER_THIN, right: quiet(BUNKER_SWING) },
+  puttShortPair: { fault: PUTT_SHORT, right: quiet({ ...PUTT_STROKE, hole: { at: 1.74 } }), behind: true },
+  puttPeekPair: { fault: PUTT_PEEK, right: quiet({ ...SHORT_PUTT, hole: { at: 1.04 } }), behind: true },
+  puttLongPair: { fault: PUTT_LONG_SHORT, right: quiet({ ...PUTT_LONG, hole: { at: 6.8 }, rollLine: true }), behind: true },
+  puttLowPair: { fault: PUTT_LOW, right: quiet(BREAKING), behind: true },
   puttRightPair: { fault: PUTT_OPEN, right: quiet(PUTT_STROKE), behind: true },
   puttLeftPair: { fault: PUTT_CLOSED, right: quiet(PUTT_STROKE), behind: true },
   driverSlicePair: { fault: DRIVER_SLICE, right: quiet(DRIVER_SWING), behind: true },

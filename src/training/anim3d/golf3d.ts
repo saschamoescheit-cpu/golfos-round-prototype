@@ -70,6 +70,11 @@ export interface Swing {
   /** a landing spot and a hole (metres along the target line from the ball): a ring of 1 m where the ball should land,
    *  the hole where it should stop – the ball drops in when it gets there */
   landing?: { carry: number; hole?: number };
+  /** the hole of a putt where it is, not where this putt stops (metres along the target line, side + right of it) – a
+   *  short putt and a breaking one play to the same hole as the right stroke beside it */
+  hole?: { at: number; side?: number };
+  /** a putt draws its line on the green as it rolls (the break, the length) */
+  rollLine?: boolean;
   /** the ball sits this deep in the ground (m): plugged in the sand (fried egg), in an old divot */
   sunk?: number;
   /** the trail foot pulled back and up on its toes – the weight on the lead foot (bunker drill) */
@@ -771,7 +776,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
    *  to the ball while it flies */
   const buildTracer = (p: Player, sideOf?: { start: number; bend: number }): Player['tracer'] => {
     const h = p.swing.hit;
-    if (!h || h.shot === 'putt' || p.swing.noBall) return null;
+    if (!h || (h.shot === 'putt' && !p.swing.rollLine) || p.swing.noBall) return null;
     const times: number[] = [];
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i <= 80; i++) {
@@ -1103,7 +1108,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       }
       if (h && ((h.shot === 'putt' && p.swing.club === 'putter') || p.swing.landing?.hole)) {
         const at = ballPos(p);
-        at.x += p.swing.landing?.hole ?? 1.74 * (h.scale ?? 1);
+        at.x += p.swing.hole?.at ?? p.swing.landing?.hole ?? 1.74 * (h.scale ?? 1);
+        at.z += p.swing.hole?.side ?? 0;
         at.y = heightAt(at.x, at.z) + 0.003;
         let drop: number | null = null;
         for (let s = 0; s < 4 && drop === null; s += 0.01) {
