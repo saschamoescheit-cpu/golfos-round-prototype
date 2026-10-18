@@ -303,7 +303,7 @@ set3d(FAULT_MOTIONS.irons?.['Thin shots'], 'thinPair');
 set3d(FAULT_MOTIONS.ballflight?.['Topped shots'], 'thinPair');
 set3d(FAULT_MOTIONS.swing?.['Sway instead of turn'], 'swayPair');
 // the slice faults had only the top view of the flight: now the swing from behind, with the clubhead's path
-FAULT_MOTIONS.swing = { ...FAULT_MOTIONS.swing, 'Over the top': still3d('slicePair') };
+FAULT_MOTIONS.swing = { ...FAULT_MOTIONS.swing, 'Over the top': still3d('slicePair'), 'Rushing the swing': still3d('rushPair') };
 FAULT_MOTIONS.driver = { ...FAULT_MOTIONS.driver, 'Slice off the tee': still3d('driverSlicePair') };
 set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');
 set3d(FAULT_MOTIONS.chipping?.['Fat chip (chunk)'], 'chipFatPair');

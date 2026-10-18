@@ -420,6 +420,19 @@ const overTheTop = (sw: Swing): Swing =>
 export const OVER_THE_TOP = overTheTop(FULL_SWING);
 export const DRIVER_SLICE = overTheTop(DRIVER_SWING);
 
+/** rushing: the same positions, but back short and fast and straight down from the top – no 3:1, no moment at the
+ *  top; the right one swings 3:1 next to it (the keys of the backswing come sooner, the rest follows as fast as before) */
+const RUSH_TIMES: Record<number, number> = { 0: 0, 0.5: 0.5, 1.0: 0.72, 1.45: 0.9, 2.0: 1.1, 2.3: 1.12 };
+export const RUSHED: Swing = (() => {
+  const back = 2.3 - RUSH_TIMES[2.3];
+  const keys = FULL_SWING.keys.map((x) => ({ ...x, t: RUSH_TIMES[x.t] ?? x.t - back, label: undefined as SwingKey['label'] }));
+  keys[4].label = L('Left: short and fast back, snatched from the top · right: three back, one down', 'Links: kurz und schnell zurück, oben sofort gerissen · rechts: drei zurück, eins runter');
+  keys[8].label = L('Left: at the ball too soon, the body lags behind · right: in rhythm', 'Links: zu früh am Ball, der Körper hängt hinterher · rechts: im Rhythmus');
+  // the finish is held until the right one has finished too
+  keys[keys.length - 1] = { ...keys[keys.length - 1], t: FULL_SWING.keys[FULL_SWING.keys.length - 1].t };
+  return { ...FULL_SWING, keys, hit: { at: 2.8 - back, shot: 'full' } };
+})();
+
 /** pairs for the fault pictures: the fault first (left), the right way (right); z: one behind the other for the view from behind */
 export const PAIRS = {
   fatPair: { fault: FAT, right: quiet(FULL_SWING) },
@@ -435,6 +448,7 @@ export const PAIRS = {
   pitchFatPair: { fault: PITCH_FAT, right: quiet(HALF_SWING) },
   // the slice is seen best from behind: the path of the clubhead and the ball bending away
   slicePair: { fault: OVER_THE_TOP, right: quiet(FULL_SWING), behind: true },
+  rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   driverSlicePair: { fault: DRIVER_SLICE, right: quiet(DRIVER_SWING), behind: true },
 };
 export type PairId = keyof typeof PAIRS;

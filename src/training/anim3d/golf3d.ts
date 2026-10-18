@@ -249,7 +249,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     tee: THREE.Mesh;
     extras: THREE.Group;
     /** the divot: the mark in the turf and the bits of grass flying off (none for a putt, a chip, from the tee or thin) */
-    divot: { mark: THREE.Mesh; bits: THREE.Mesh[]; from: number; len: number } | null;
+    divot: { mark: THREE.Mesh; bits: THREE.Mesh[]; from: number; len: number; yaw: number } | null;
     /** the path of the clubhead, drawn up to now – from behind it shows the swing plane */
     trace: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     /** the ball's flight drawn behind it, as the tracer on television – so the curve is seen even when the ball is small */
@@ -437,14 +437,16 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   /** the divot of a swing, relative to the ball (x towards the target, metres): after the ball when the ball is
    *  struck first – the sign of a good iron shot – behind it when fat; none when thin or topped (the edge stays above
    *  the ground), from the tee, with a wood that sweeps, a chip that brushes the grass or a putt */
-  const divotOf = (swing: Swing): { from: number; len: number } | null => {
+  const divotOf = (swing: Swing): { from: number; len: number; yaw: number } | null => {
     const h = swing.hit;
     if (!h || swing.tee || h.shot === 'putt') return null;
     const miss = swing.keys.find((k) => Math.abs(k.t - h.at) < 1e-6)?.miss ?? [0, 0, 0];
+    // the divot points along the club's path: left of the target from out to in (over the top), right from in to out
+    const yaw = h.side ? (h.side.start < 0 ? 0.21 : h.side.start > 0 ? -0.21 : 0) : 0;
     if (miss[1] > 0.015) return null;
-    if (miss[0] < -0.03) return { from: miss[0] - 0.02, len: 0.17 };
+    if (miss[0] < -0.03) return { from: miss[0] - 0.02, len: 0.17, yaw };
     if (swing.club === 'driver' || h.shot === 'chip') return null;
-    return { from: 0.01, len: h.shot === 'full' ? 0.15 : 0.09 };
+    return { from: 0.01, len: h.shot === 'full' ? 0.15 : 0.09, yaw };
   };
   /** the divot opens as the club passes the ground, the bits of turf fly forward and stay where they land */
   const placeDivot = (p: Player, time: number) => {
@@ -454,9 +456,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const s = time - (h.at - 0.03);
     const u = THREE.MathUtils.clamp(s / 0.08, 0, 1);
     const at = ballPos(p);
+    const dir = new THREE.Vector3(Math.cos(d.yaw), 0, -Math.sin(d.yaw));
     d.mark.visible = s > 0;
     d.mark.scale.set(Math.max(0.001, (d.len / 2) * u), 0.026, 1);
-    d.mark.position.set(at.x + d.from + (d.len * u) / 2, 0.003, at.z);
+    d.mark.position.copy(at).addScaledVector(dir, d.from + (d.len * u) / 2).setY(0.003);
     d.bits.forEach((b, i) => {
       b.visible = s > 0.02;
       if (!b.visible) return;
@@ -467,7 +470,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       // flying until it lands, then lying there
       const land = (2 * vy) / 9.81;
       const tt = Math.min(k, land);
-      b.position.set(at.x + d.from + 0.05 + vx * tt, Math.max(0.006, 0.01 + vy * tt - 4.9 * tt * tt), at.z + vz * tt);
+      b.position.copy(at).addScaledVector(dir, d.from + 0.05 + vx * tt).setY(Math.max(0.006, 0.01 + vy * tt - 4.9 * tt * tt));
+      b.position.z += vz * tt;
       b.rotation.set(k * 9 * (i + 1), k * 5, k * 7);
       if (k >= land) b.rotation.set(0, i, 0);
     });
@@ -716,7 +720,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       let divot: Player['divot'] = null;
       if (dv) {
         const mark = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshStandardMaterial({ color: swing.sand ? '#bfae84' : '#6b5638', roughness: 1 }));
-        mark.rotation.x = -Math.PI / 2;
+        mark.rotation.set(-Math.PI / 2, dv.yaw, 0, 'YXZ');
         mark.receiveShadow = true;
         mark.visible = false;
         const turf = new THREE.MeshStandardMaterial({ color: '#6a9e45', roughness: 1 });
@@ -737,10 +741,12 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       scene.add(rig.root, club, ball, tee, extras);
       return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
+    const alongLine = players.some((p) => p.x !== players[0].x);
     for (const p of players) {
       p.trace = buildTrace(p);
       if (p.trace) p.extras.add(p.trace.mesh);
-      p.tracer = buildTracer(p);
+      // golfers side by side along the target line: the left one's ball flies past the right one – no tracer there
+      p.tracer = alongLine ? null : buildTracer(p);
       if (p.tracer) p.extras.add(p.tracer.mesh);
       // a stick in the ground just behind the seat at address (the coach's check for early extension): the seat stays on
       // it through the swing – or leaves it towards the ball
