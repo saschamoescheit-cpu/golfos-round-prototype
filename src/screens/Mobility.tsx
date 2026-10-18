@@ -756,6 +756,11 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   };
   const startCoach = () => {
     unlockAudio();
+    // still on (e.g. back from the pause to another test): use it, never open a second camera
+    if (streamRef.current?.active) {
+      setStage('camera');
+      return;
+    }
     // the camera is opened here, in the tap (iPhone), and stays on for all camera tests
     if (!isFakeCamera() && navigator.mediaDevices?.getUserMedia)
       navigator.mediaDevices
