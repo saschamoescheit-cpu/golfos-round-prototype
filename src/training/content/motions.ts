@@ -288,7 +288,9 @@ set3d(DRILL_MOTIONS['lead-hand-chip'], 'chipOne');
 set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sand');
 set3d(SECTION_MOTIONS.bunker?.['The swing'], 'bunker');
 set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
-for (const t of ['Uphill lie', 'Downhill lie']) set3d(SECTION_MOTIONS.slopes?.[t], undefined);
+// the slopes in 3D (18.10.2026): the ground tilts under the player
+set3d(SECTION_MOTIONS.slopes?.['Uphill lie'], 'slopeUp');
+set3d(SECTION_MOTIONS.slopes?.['Downhill lie'], 'slopeDown');
 
 // the set-up sections: the address in 3D, still – the views show it from the front, from behind, at an angle
 const still3d = (video: Motion['video']): Motion => ({ frames: [], video });
@@ -297,6 +299,7 @@ SECTION_MOTIONS.irons = { ...SECTION_MOTIONS.irons, 'Set-up for irons': still3d(
 SECTION_MOTIONS.driver = { ...SECTION_MOTIONS.driver, 'Set-up for the driver': still3d('setupDriver') };
 SECTION_MOTIONS.chipping = { ...SECTION_MOTIONS.chipping, 'The set-up': still3d('setupChip') };
 SECTION_MOTIONS.putting = { ...SECTION_MOTIONS.putting, 'Set-up': still3d('setupPutt') };
+SECTION_MOTIONS.slopes = { ...SECTION_MOTIONS.slopes, 'Ball above the feet': still3d('slopeAbove'), 'Ball below the feet': still3d('slopeBelow') };
 
 // fault pictures in 3D: the fault and the right way side by side (the drawing stays for the others)
 set3d(FAULT_MOTIONS.irons?.['Fat shots'], 'fatPair');
@@ -309,6 +312,7 @@ FAULT_MOTIONS.driver = { ...FAULT_MOTIONS.driver, 'Slice off the tee': still3d('
 set3d(FAULT_MOTIONS.bunker?.['Ball stays in the bunker'], 'bunkerStuckPair');
 set3d(FAULT_MOTIONS.pitching?.['Slowing down at the ball'], 'pitchSlowPair');
 set3d(FAULT_MOTIONS.bunker?.['Thin over the green'], 'bunkerThinPair');
+FAULT_MOTIONS.slopes = { ...FAULT_MOTIONS.slopes, 'Losing balance': still3d('slopeBalancePair'), 'Fat shots on uphill lies and above the feet': still3d('slopeFatPair'), 'Thin and right from below the feet': still3d('slopeThinPair') };
 FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Ball starts right of the line': still3d('puttRightPair'), 'Ball starts left of the line': still3d('puttLeftPair') };
 set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');
 set3d(FAULT_MOTIONS.chipping?.['Fat chip (chunk)'], 'chipFatPair');

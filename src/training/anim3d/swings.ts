@@ -495,6 +495,69 @@ export const PITCH_SLOW: Swing = fault(HALF_SWING, {
   3.5: PITCH_BRAKE,
 }, { hit: { at: 2.1, shot: 'pitch', scale: 0.55 } });
 
+// ---------- uneven lies: the ground tilts, the set-up and the flight follow the slope ----------
+
+/** a swing on a slope: every key moved (weight, the labels of the set-up and the finish) */
+const onSlope = (sw: Swing, extra: Partial<Swing>, shift: number, labels: Record<number, SwingKey['label']>, keyExtra: Record<number, Partial<SwingKey>> = {}): Swing => ({
+  ...sw,
+  ...extra,
+  keys: sw.keys.map((x) => ({ ...x, shift: (x.shift ?? 0) + shift, ...keyExtra[x.t], ...(labels[x.t] !== undefined ? { label: labels[x.t] } : {}) })),
+});
+/** uphill: shoulders along the slope, weight on the lower trail foot, ball a little forward; the slope adds loft –
+ *  higher and shorter, it tends to go left */
+export const SLOPE_UP: Swing = onSlope(FULL_SWING, { slope: { up: 9 }, ball: [0.06, 0.6], hit: { at: 2.8, shot: 'full', scale: 0.8, lift: 1.45, side: { start: -0.01, bend: -0.003 } } }, -0.04, {
+  0: L('Uphill: shoulders along the slope, weight on the lower trail foot', 'Bergauf: Schultern parallel zum Hang, Gewicht auf dem tieferen hinteren Fuß'),
+  2.8: L('Swing up the slope – the ball flies higher and shorter', 'Den Hang hinauf schwingen – der Ball fliegt höher und kürzer'),
+  3.5: L('The finish may be shorter', 'Das Finish darf kürzer sein'),
+});
+/** downhill: shoulders along the slope, weight on the lower lead foot, ball a little back; flatter and running,
+ *  it tends to go right; after impact the body follows the slope down */
+export const SLOPE_DOWN: Swing = onSlope(FULL_SWING, { slope: { up: -9 }, ball: [-0.04, 0.6], hit: { at: 2.8, shot: 'full', lift: 0.65, side: { start: 0.01, bend: 0.003 } } }, 0.04, {
+  0: L('Downhill: shoulders along the slope, weight on the lower lead foot, ball back', 'Bergab: Schultern parallel zum Hang, Gewicht auf dem tieferen vorderen Fuß, Ball weiter hinten'),
+  2.8: L('The ball flies flatter and runs', 'Der Ball fliegt flacher und rollt'),
+  3.5: L('Follow the ball down the slope', 'Dem Ball den Hang hinunter folgen'),
+}, { 3.05: { shift: 0.2 }, 3.5: { shift: 0.24 }, 4.7: { shift: 0.24 } });
+/** ball above the feet: grip down, stand taller, aim right – the ball curves left back to the target */
+export const SLOPE_ABOVE: Swing = onSlope(FULL_SWING, { slope: { side: 10 }, choke: 0.03, view: 'side', hit: { at: 2.8, shot: 'full', side: { start: 0.05, bend: -0.006 } } }, 0, {
+  0: L('Ball above the feet: grip down, stand a little taller', 'Ball über den Füßen: kürzer greifen, etwas aufrechter stehen'),
+  2.8: L('Aim right – the ball curves left', 'Rechts zielen – der Ball dreht nach links'),
+});
+/** ball below the feet: wider stance, more knee flex, stay down, aim left – the ball curves right */
+export const SLOPE_BELOW: Swing = onSlope(FULL_SWING, { slope: { side: -10 }, stance: 0.46, view: 'side', hit: { at: 2.8, shot: 'full', scale: 0.85, side: { start: -0.05, bend: 0.006 } } }, 0, {
+  0: L('Ball below the feet: wider stance, more knee flex, weight to the heels', 'Ball unter den Füßen: breiter stehen, mehr Kniebeugung, Gewicht Richtung Fersen'),
+  2.8: L('Stay down through impact, aim left – the ball curves right', 'Unten bleiben, links zielen – der Ball dreht nach rechts'),
+});
+
+/** losing balance on the slope: a full swing from a normal stance – the body falls down the slope towards the ball */
+const FALLING = { body: { pelvis: [30, 70, 2] as V3, spine: [8, 10, 0] as V3, chest: [6, 14, -4] as V3, neck: [-10, -20, 0] as V3, head: [6, -8, 0] as V3 }, hands: [0.12, 0.3, 0.32] as V3, club: [-0.7, -0.3, -0.6] as V3, push: 0.16, drop: 0.1, heel: 1, free: true };
+export const SLOPE_BALANCE: Swing = fault({ ...SLOPE_BELOW, stance: 0.36 }, {
+  0: { label: L('Set-up', 'Ansprache') },
+  2.8: { label: L('Left: 100 %, the stance not adapted · right: 80 %, a wider stance', 'Links: 100 %, Stand nicht angepasst · rechts: 80 %, breiter Stand') },
+  3.5: { ...FALLING, label: L('Left: falling down the slope · right: the finish held', 'Links: fällt den Hang hinunter · rechts: das Finish gehalten') },
+  4.7: FALLING,
+});
+/** fat uphill and above the feet: not gripped down, the weight falls back – the club digs into the slope */
+const UP_ABOVE: Swing = onSlope(FULL_SWING, { slope: { up: 7, side: 7 }, choke: 0.03, ball: [0.05, 0.6], view: 'angle', hit: { at: 2.8, shot: 'full', scale: 0.8, lift: 1.4, side: { start: 0.02, bend: -0.004 } } }, -0.03, { 0: L('Set-up', 'Ansprache') });
+export const SLOPE_FAT: Swing = fault({ ...UP_ABOVE, choke: 0, ball: [0.0, 0.6] }, {
+  2.8: {
+    body: { pelvis: [38, 12, 9], spine: [2, -4, 8], chest: [2, -16, 14] },
+    shift: -0.1,
+    drop: 0.08,
+    miss: [-0.09, -0.02, 0],
+    label: L('Left: not gripped down, the weight falls back – the club digs in · right: gripped down, ball first', 'Links: nicht kürzer gegriffen, das Gewicht fällt zurück – der Schläger gräbt sich ein · rechts: kürzer gegriffen, erst der Ball'),
+  },
+}, { hit: { at: 2.8, shot: 'pitch', scale: 0.35 } });
+/** thin and right below the feet: the body rises during the swing – topped or a weak slice */
+export const SLOPE_THIN: Swing = fault(SLOPE_BELOW, {
+  0: { label: L('Set-up', 'Ansprache') },
+  2.8: {
+    body: { pelvis: [14, 26, 4], spine: [0, 2, 2], chest: [0, -10, 6] },
+    drop: -0.03,
+    miss: [0.01, 0.045, 0],
+    label: L('Left: the body rises – thin and to the right · right: knees stay flexed, down through impact', 'Links: der Körper richtet sich auf – dünn und nach rechts · rechts: die Knie bleiben gebeugt, unten durch den Treffmoment'),
+  },
+}, { hit: { at: 2.8, shot: 'punch', scale: 1.3, side: { start: 0.06, bend: 0.01 } } });
+
 /** the putter face at impact: open – the ball starts right of the line and rolls past the hole; closing through the
  *  ball – it starts left; the right one keeps the face square and the putt drops */
 const puttFace = (deg: number, label: SwingKey['label']): Swing =>
@@ -520,6 +583,9 @@ export const PAIRS = {
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
   pitchSlowPair: { fault: PITCH_SLOW, right: quiet(HALF_SWING) },
+  slopeBalancePair: { fault: SLOPE_BALANCE, right: quiet(SLOPE_BELOW), behind: true },
+  slopeFatPair: { fault: SLOPE_FAT, right: quiet(UP_ABOVE) },
+  slopeThinPair: { fault: SLOPE_THIN, right: quiet(SLOPE_BELOW), behind: true },
   skyPair: { fault: DRIVER_SKY, right: quiet(DRIVER_SWING), behind: true },
   bunkerStuckPair: { fault: BUNKER_STUCK, right: quiet(BUNKER_SWING) },
   bunkerThinPair: { fault: BUNKER_THIN, right: quiet(BUNKER_SWING) },
@@ -535,5 +601,5 @@ export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;

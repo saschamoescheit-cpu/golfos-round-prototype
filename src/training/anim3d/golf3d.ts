@@ -49,7 +49,13 @@ export interface Swing {
   /** the ball leaves at this time: it rolls (putt, chip) this many metres, or flies off (full swing) */
   /** side: the ball's start line and its bend (slice +, hook −), metres to the right per metre and per metre² of
    *  carry – for a right-hander right of the target is away from the player */
-  hit?: { at: number; shot: Shot; scale?: number; side?: { start: number; bend: number } };
+  /** lift: the flight higher (uphill, the slope adds loft) or flatter (downhill) */
+  hit?: { at: number; shot: Shot; scale?: number; lift?: number; side?: { start: number; bend: number } };
+  /** a lie on a slope (degrees): up – the ground rises towards the target (uphill +, downhill −); side – it rises
+   *  towards the ball (ball above the feet +, below the feet −) */
+  slope?: { up?: number; side?: number };
+  /** the club gripped shorter (metres), as above the feet */
+  choke?: number;
   /** the ball sits on a tee (driver) */
   tee?: boolean;
   /** only the lead hand on the club – the trail hand rests on the chest */
@@ -219,20 +225,27 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   fill.position.set(-3, 2.5, -2);
   scene.add(fill);
   const floorMat = (c: string) => new THREE.MeshStandardMaterial({ color: c, roughness: 1 });
+  // the ground: flat, or one tilted plane through the players' feet for a lie on a slope
+  const ground = new THREE.Group();
+  scene.add(ground);
+  let groundQ = new THREE.Quaternion();
+  let groundN = new THREE.Vector3(0, 1, 0);
+  /** the height of the ground at a place (0 on the flat) */
+  const heightAt = (x: number, z: number) => -(groundN.x * x + groundN.z * z) / groundN.y;
   const floor = new THREE.Mesh(new THREE.CircleGeometry(30, 64), floorMat('#7cb257'));
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
-  scene.add(floor);
+  ground.add(floor);
   const pad = new THREE.Mesh(new THREE.CircleGeometry(1.5, 48), floorMat('#8fc069'));
   pad.rotation.x = -Math.PI / 2;
   pad.position.y = 0.001;
   pad.receiveShadow = true;
-  scene.add(pad);
+  ground.add(pad);
   // the target: a flag on a small green down the target line – from behind it shows where the ball is meant to go
   const green = new THREE.Mesh(new THREE.CircleGeometry(1.1, 40), floorMat('#93c86c'));
   green.rotation.x = -Math.PI / 2;
   green.position.set(6.4, 0.002, 0.3);
-  scene.add(green);
+  ground.add(green);
   const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 2.1, 8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.5 }));
   pin.position.set(6.4, 1.05, 0.3);
   scene.add(pin);
@@ -281,13 +294,28 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
 
   const ballPos = (p: { swing: Swing; x: number; z: number }) => {
     const b = p.swing.ball ?? [0, 0.6];
-    return new THREE.Vector3(p.x + b[0], p.swing.tee ? 0.06 : 0.0215, p.z + b[1]);
+    return new THREE.Vector3(p.x + b[0], (p.swing.tee ? 0.06 : 0.0215) + heightAt(p.x + b[0], p.z + b[1]), p.z + b[1]);
   };
 
   /** the trunk of a key (or between two) put on the rig, the limbs left for the solver */
-  const poseTrunk = (p: { rig: Rig; x: number; z: number }, body: SwingKey['body'], shift: number, drop: number, push = 0) => {
+  const poseTrunk = (p: { rig: Rig; x: number; z: number; swing?: Swing }, body: SwingKey['body'], shift: number, drop: number, push = 0) => {
+    // on a slope: the shoulders parallel to it (leaning away from the target uphill, towards it downhill); with the
+    // ball above the feet more upright, below the feet more bent at the hips and the knees; the body as high as the
+    // ground under its feet
+    const up = p.swing?.slope?.up ?? 0;
+    const side = p.swing?.slope?.side ?? 0;
+    const j = { ...body };
+    if (up || side) {
+      const add = (id: keyof typeof j, d: [number, number, number]) => {
+        const r = j[id] ?? [0, 0, 0];
+        j[id] = [r[0] + d[0], r[1] + d[1], r[2] + d[2]];
+      };
+      add('pelvis', [side > 0 ? -side * 1.1 : -side * 0.9, 0, up * 0.6]);
+      add('spine', [0, 0, up * 0.4]);
+    }
+    const knees = side < 0 ? -side * 0.006 : 0;
     // both hands closed around the grip (the fingers of the Agility figure)
-    const pose: Pose = { j: { ...body }, at: [p.x + shift, p.z + push - 0.06], y: drop, gripL: 1, gripR: 1 };
+    const pose: Pose = { j, at: [p.x + shift, p.z + push - 0.06], y: drop - knees + heightAt(p.x + shift, p.z), gripL: 1, gripR: 1 };
     applyPose(p.rig, pose, false);
     p.rig.root.updateMatrixWorld(true);
   };
@@ -308,7 +336,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       const head = ballPos(p).add(new THREE.Vector3(-0.04, 0.005, 0)).add(new THREE.Vector3(...(k.miss ?? [0, 0, 0])));
       const dir = k.club === 'ball' ? head.clone().sub(hands).normalize() : new THREE.Vector3(...k.club).normalize();
       // at the ball the clubhead sits exactly behind it: the hands slide along the shaft to the club's length
-      if (k.club === 'ball') hands = head.clone().addScaledVector(dir, -(CLUB_LEN[s.club] - 0.05));
+      if (k.club === 'ball') hands = head.clone().addScaledVector(dir, -(CLUB_LEN[s.club] - 0.05 - (s.choke ?? 0)));
       const local = hands.clone().sub(chestPos(p.rig)).applyQuaternion(chestQ(p.rig).invert());
       const inv = chestQ(p.rig).invert();
       const clubLocal = dir.clone().applyQuaternion(inv);
@@ -415,13 +443,14 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // legs: the ankles stay where they stand; the trail heel comes up in the finish
     const half = (swing.stance ?? 0.36) / 2;
     const heel = lerp(a.heel ?? 0, b.heel ?? 0, k);
-    const ankleL = new THREE.Vector3(p.x + half, BODY.ankleH, p.z);
-    const ankleR = new THREE.Vector3(p.x - half + heel * 0.06, BODY.ankleH + heel * 0.11, p.z - heel * 0.03);
+    const ankleL = new THREE.Vector3(p.x + half, BODY.ankleH + heightAt(p.x + half, p.z), p.z);
+    const ankleR = new THREE.Vector3(p.x - half + heel * 0.06, BODY.ankleH + heel * 0.11 + heightAt(p.x - half, p.z), p.z - heel * 0.03);
     const pelvisP = J.pelvis.getWorldPosition(new THREE.Vector3());
     twoBone(J.hipL, J.kneeL, BODY.thigh, BODY.shin, ankleL, pelvisP.clone().add(new THREE.Vector3(0.25, 0, 1)));
     twoBone(J.hipR, J.kneeR, BODY.thigh, BODY.shin, ankleR, pelvisP.clone().add(new THREE.Vector3(-0.25 + heel * 0.5, 0, 1)));
     // feet flat, toes a little out; the trail foot up on its toes
-    const footQ = (yaw: number, pitch: number) => new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0, 'YXZ'));
+    // the soles flat on the ground, also on a slope
+    const footQ = (yaw: number, pitch: number) => groundQ.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0, 'YXZ')));
     for (const [joint, wq] of [
       [J.ankleL, footQ(14, 0)],
       [J.ankleR, footQ(-14 + heel * 30, heel * 50)],
@@ -432,7 +461,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     rig.root.updateMatrixWorld(true);
 
     // the club in the hands
-    p.club.position.copy(handsL).addScaledVector(dir, -0.05);
+    p.club.position.copy(handsL).addScaledVector(dir, -0.05 - (swing.choke ?? 0));
     p.club.quaternion.copy(clubW);
     p.club.updateMatrixWorld(true);
 
@@ -471,7 +500,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const dir = new THREE.Vector3(Math.cos(d.yaw), 0, -Math.sin(d.yaw));
     d.mark.visible = s > 0;
     d.mark.scale.set(Math.max(0.001, (d.len / 2) * u), 0.026, 1);
-    d.mark.position.copy(at).addScaledVector(dir, d.from + (d.len * u) / 2).setY(0.003);
+    d.mark.position.copy(at).addScaledVector(dir, d.from + (d.len * u) / 2);
+    d.mark.position.y = heightAt(d.mark.position.x, d.mark.position.z) + 0.003;
     d.bits.forEach((b, i) => {
       b.visible = s > 0.02;
       if (!b.visible) return;
@@ -482,7 +512,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       // flying until it lands, then lying there
       const land = (2 * vy) / 9.81;
       const tt = Math.min(k, land);
-      b.position.copy(at).addScaledVector(dir, d.from + 0.05 + vx * tt).setY(Math.max(0.006, 0.01 + vy * tt - 4.9 * tt * tt));
+      b.position.copy(at).addScaledVector(dir, d.from + 0.05 + vx * tt);
+      b.position.y = heightAt(b.position.x, b.position.z) + Math.max(0.006, 0.01 + vy * tt - 4.9 * tt * tt);
       b.position.z += vz * tt;
       b.rotation.set(k * 9 * (i + 1), k * 5, k * 7);
       if (k >= land) b.rotation.set(0, i, 0);
@@ -559,9 +590,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const h = p.swing.hit!;
     const [dx, dy] = ballFlight(h.shot, s);
     const k = h.scale ?? 1;
+    const start = at.y - heightAt(at.x, at.z);
     at.x += dx * k;
-    at.y += dy * k;
     if (h.side) at.z += (h.side.start * dx + h.side.bend * dx * dx) * k;
+    at.y = heightAt(at.x, at.z) + start + dy * k * (h.lift ?? 1);
     return at;
   };
   /** the tracer: the flight of a shot through the air (no putt, no ball that stays near) as a thin white tube, drawn up
@@ -720,6 +752,13 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   raf = requestAnimationFrame(frame);
 
   const setSwings = (list: { swing: Swing; x?: number; z?: number }[]) => {
+    // the ground of this video: flat or the slope of its first swing (the pair stands on the same hill)
+    const sl = list[0].swing.slope;
+    groundQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(-(sl?.side ?? 0)), 0, THREE.MathUtils.degToRad(sl?.up ?? 0), 'XYZ'));
+    groundN = new THREE.Vector3(0, 1, 0).applyQuaternion(groundQ);
+    ground.quaternion.copy(groundQ);
+    pin.position.y = 1.05 + heightAt(pin.position.x, pin.position.z);
+    cloth.position.y = 1.92 + heightAt(pin.position.x, pin.position.z);
     for (const p of players) {
       scene.remove(p.rig.root, p.club, p.ball, p.tee, p.extras);
       for (const o of [p.rig.root, p.club, p.ball, p.tee, p.extras])
@@ -763,7 +802,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       let divot: Player['divot'] = null;
       if (dv) {
         const mark = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshStandardMaterial({ color: swing.sand ? '#bfae84' : '#6b5638', roughness: 1 }));
-        mark.rotation.set(-Math.PI / 2, dv.yaw, 0, 'YXZ');
+        mark.quaternion.copy(groundQ.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, dv.yaw, 0, 'YXZ'))));
         mark.receiveShadow = true;
         mark.visible = false;
         const turf = new THREE.MeshStandardMaterial({ color: '#6a9e45', roughness: 1 });
@@ -780,7 +819,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       }
       const at = ballPos({ swing, x, z });
       ball.position.copy(at);
-      tee.position.set(at.x, 0.02, at.z);
+      tee.position.set(at.x, 0.02 + heightAt(at.x, at.z), at.z);
       scene.add(rig.root, club, ball, tee, extras);
       return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
