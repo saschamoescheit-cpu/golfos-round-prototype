@@ -156,6 +156,9 @@ const CUE_TEXT = (kind: MetricKind, cue: Cue): string | null => {
 
 /** Seconds until a result is saved by itself (the player does not have to walk to the phone). */
 const AUTO_SAVE_S = 6;
+/** trainer mode: a movement not recognised is tried again by itself this often, after this many seconds */
+const COACH_RETRIES = 2;
+const COACH_RETRY_S = 5;
 
 /** A test with calibration first (the player stands still facing the phone, then moves). */
 const CALIBRATES: MetricKind[] = ['trunkRotation', 'pelvicRotation', 'lowerQuarter', 'neck'];
@@ -166,6 +169,16 @@ const fakeLevel = (): 'good' | 'stiff' | null => {
     return v === 'good' || v === 'stiff' ? v : null;
   } catch {
     return null;
+  }
+};
+/** QA: the synthetic player is not recognised this many times (golfos.mobility.fakeMiss), each miss counts down */
+const fakeMiss = (): boolean => {
+  try {
+    const n = Number(localStorage.getItem('golfos.mobility.fakeMiss') ?? 0);
+    if (n > 0) localStorage.setItem('golfos.mobility.fakeMiss', String(n - 1));
+    return n > 0;
+  } catch {
+    return false;
   }
 };
 /** QA: a synthetic player or a photo instead of the camera – the trainer mode then opens no camera itself */
@@ -209,6 +222,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
   const shotRef = useRef<HTMLCanvasElement | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [count, setCount] = useState(3);
+  // trainer mode: how often this test was not recognised and tried again by itself
+  const missesRef = useRef(0);
   const [live, setLive] = useState<{ value: number | null; best: number | null; hold?: number; missing: number; seen: boolean; calibrating?: boolean; people?: number; turned?: boolean }>({ value: null, best: null, missing: 0, seen: false });
   const [outcome, setOutcome] = useState<Outcome | null | undefined>(undefined);
   const finishRef = useRef<(() => void) | null>(null);
@@ -321,7 +336,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     const finish = () => {
       if (stopped || finished) return;
       finished = true;
-      const out = analyzer?.finish() ?? null;
+      const out = fake && fakeMiss() ? null : analyzer?.finish() ?? null;
       setOutcome(out);
       if (shotRef.current && out) setShot(shotRef.current.toDataURL('image/jpeg', 0.8));
       go('result');
@@ -329,7 +344,12 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
         // the value, no grade (Sascha 18.10.2026: measuring, not grading)
         say(`${valueText(kind, out.value, tr)}.`);
         setAuto(props.coach ? 4 : AUTO_SAVE_S);
-      } else say(tr('Not recognised. Please try again.', 'Nicht erkannt. Bitte nochmal.'));
+      } else if (props.coach && missesRef.current < COACH_RETRIES) {
+        // the player is 2.5–3 m away (or lying on the floor): try again by itself, twice, before asking for a tap
+        missesRef.current++;
+        say(tr('Not recognised. Again in a moment – the whole body in the picture, a little slower.', 'Nicht erkannt. Gleich nochmal – der ganze Körper ins Bild, etwas langsamer.'));
+        setAuto(COACH_RETRY_S);
+      } else say(props.coach ? tr('Not recognised. Please come to the phone.', 'Nicht erkannt. Bitte komm kurz ans Handy.') : tr('Not recognised. Please try again.', 'Nicht erkannt. Bitte nochmal.'));
       // the camera goes off with the result (a new attempt starts it again)
       stopped = true;
       cancelAnimationFrame(raf);
@@ -584,10 +604,12 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
 
   const save = (o: Outcome) => props.onResult({ value: o.value, grade: o.grade, source: 'camera', notes: o.notes.length ? o.notes : undefined, at: new Date().toISOString() });
   useEffect(() => {
-    if (auto == null || !outcome) return;
+    if (auto == null || outcome === undefined) return;
     if (auto <= 0) {
       setAuto(null);
-      save(outcome);
+      // a value saves itself; nothing recognised (trainer mode) tries again by itself
+      if (outcome) save(outcome);
+      else retry();
       return;
     }
     const t = window.setTimeout(() => setAuto((a) => (a == null ? null : a - 1)), 1000);
@@ -671,6 +693,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           ) : (
             <button type="button" className="btn-primary" onClick={retry}>
               {tr('Try again', 'Nochmal versuchen')}
+              {auto != null ? ` (${auto})` : ''}
             </button>
           )}
           <div className="mob-pills">

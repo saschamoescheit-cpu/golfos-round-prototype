@@ -103,9 +103,14 @@ while (Date.now() - t0 < 240000) {
     liveShot = true;
     await shot('coach-live');
   }
+  // the save button with its countdown, read at once from the page (with the fast synthetic player the result can save
+  // itself before a waiting read gets to it) – any of the results will do
+  if (!/\(\d\)/.test(autoText)) {
+    const now = await p.evaluate(() => (document.querySelector('.mob-outcome') ? [...document.querySelectorAll('.btn-primary')].map((x) => x.innerText).find((x) => /Speichern und weiter/.test(x)) ?? '' : '')).catch(() => '');
+    if (now) autoText = now;
+  }
   if (!resultShot && (await p.locator('.mob-outcome').isVisible().catch(() => false))) {
     resultShot = true;
-    autoText = await p.getByRole('button', { name: 'Speichern und weiter' }).innerText().catch(() => '');
     await shot('coach-result');
   }
   await p.waitForTimeout(150);
