@@ -86,7 +86,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand' | 'rough')[];
   /** the ball very low on its tee (fairway wood off a tee) */
   lowTee?: boolean;
   /** no ball: a drill swung into an impact bag */
@@ -620,6 +620,27 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       rim.rotation.x = Math.PI / 2;
       rim.position.set(bp.x, heightAt(bp.x, bp.z) + 0.002, bp.z);
       add(rim);
+    }
+    // light rough: blades of longer, darker grass around the ball
+    if (props.includes('rough')) {
+      const blade = new THREE.ConeGeometry(0.004, 1, 3);
+      const mat = new THREE.MeshStandardMaterial({ color: '#4f8a34', roughness: 1 });
+      const n = 140;
+      const tufts = new THREE.InstancedMesh(blade, mat, n);
+      const m = new THREE.Matrix4();
+      const q = new THREE.Quaternion();
+      for (let i = 0; i < n; i++) {
+        // the same tufts every time (no randomness in a video): a golden-angle spiral around the ball
+        const r = 0.03 + 0.2 * Math.sqrt((i + 0.5) / n);
+        const a = i * 2.39996;
+        const x = bp.x + r * Math.cos(a);
+        const z = bp.z + r * Math.sin(a);
+        const h = 0.035 + 0.03 * ((i * 7) % 5) / 4;
+        q.setFromEuler(new THREE.Euler(0.25 * Math.sin(i * 1.7), 0, 0.25 * Math.cos(i * 2.3)));
+        m.compose(new THREE.Vector3(x, heightAt(x, z) + h / 2, z), q, new THREE.Vector3(1, h, 1));
+        tufts.setMatrixAt(i, m);
+      }
+      add(tufts);
     }
     if (props.includes('oldDivot')) {
       const hole = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.004, 0.075), new THREE.MeshStandardMaterial({ color: '#5e4a30', roughness: 1 }));

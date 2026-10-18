@@ -364,6 +364,8 @@ set3d(DRILL_MOTIONS['sand-on-face'], 'sandOnFace');
 set3d(DRILL_MOTIONS['brush-find'], 'brushFind');
 // putting faults as 3D pairs from behind: short, the short one missed, the three-putt, missing low
 FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Always short': still3d('puttShortPair'), 'Missing the short ones': still3d('puttPeekPair'), 'Three-putts from distance': still3d('puttLongPair') };
+set3d(FAULT_MOTIONS.trouble?.['Flyer over the green'], 'flyerPair');
+FAULT_MOTIONS.trouble = { ...FAULT_MOTIONS.trouble, ...(FAULT_MOTIONS.trouble?.['Flyer over the green'] ? {} : { 'Flyer over the green': still3d('flyerPair') }) };
 FAULT_MOTIONS.greenreading = { ...FAULT_MOTIONS.greenreading, 'Missing low (amateur side)': still3d('puttLowPair') };
 DRILL_MOTIONS['clock-matrix'] ??= { frames: [], video: 'clockTrio' };
 FAULT_MOTIONS.slopes = { ...FAULT_MOTIONS.slopes, 'Losing balance': still3d('slopeBalancePair'), 'Fat shots on uphill lies and above the feet': still3d('slopeFatPair'), 'Thin and right from below the feet': still3d('slopeThinPair') };

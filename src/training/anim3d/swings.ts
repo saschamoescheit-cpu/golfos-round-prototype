@@ -737,6 +737,15 @@ export const SAND_ON_FACE: Swing = relabel({ ...HALF_SWING, hit: undefined, noBa
   2.25: L('Slowly back over the trail shoulder – the sand stays on', 'Langsam zurück über die hintere Schulter – der Sand bleibt liegen'),
   3.75: L('Through over the lead shoulder – the face stays open', 'Durch über die vordere Schulter – die Fläche bleibt offen'),
 }, { view: 'angle' });
+/** the flyer: the same wedge from light rough and from the fairway – grass between face and ball takes the spin
+ *  away, the ball flies lower and further and runs on over the green */
+const WEDGE_TO_PIN: Swing = { ...FULL_SWING, club: 'wedge', hit: { at: 2.8, shot: 'pitch', scale: 2.4 } };
+export const FLYER: Swing = relabel(quiet({ ...WEDGE_TO_PIN, props: ['rough'], sunk: 0.004, hit: { at: 2.8, shot: 'pitch', scale: 3.4, lift: 0.5 } }), {
+  0: L('Left: the ball in light rough · right: on the fairway – the same wedge', 'Links: der Ball im leichten Rough · rechts: auf dem Fairway – dasselbe Wedge'),
+  2.8: L('Left: grass between face and ball – less spin, lower and further · right: it comes down at the flag', 'Links: Gras zwischen Fläche und Ball – weniger Spin, flacher und weiter · rechts: er kommt an der Fahne herunter'),
+  3.5: L('Left: over the green – from the rough plan for the ball to run', 'Links: über das Grün – aus dem Rough mit Ausrollen planen'),
+});
+
 /** short and armsy: the upper back hardly turns, the arms swing up past the body */
 export const ARMSY: Swing = fault(FULL_SWING, {
   1.0: { body: { pelvis: [38, -6, 2], spine: [2, -2, 0], chest: [2, -8, 5], neck: [-14, 8, 0], head: [12, 4, 0] }, label: L('Left: only the arms swing · right: the upper back turns', 'Links: nur die Arme schwingen · rechts: der obere Rücken dreht') },
@@ -879,6 +888,7 @@ export const PAIRS = {
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
   pitchSlowPair: { fault: PITCH_SLOW, right: quiet(HALF_SWING) },
+  flyerPair: { fault: FLYER, right: quiet(WEDGE_TO_PIN), behind: true },
   armsyPair: { fault: ARMSY, right: quiet(FULL_SWING) },
   punchPair: { fault: PUNCH_HIGH, right: quiet(PUNCH), behind: true },
   chipLengthPair: { fault: CHIP_SHORT, right: quiet(CHIP_LAND), behind: true },
