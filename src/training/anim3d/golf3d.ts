@@ -640,7 +640,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       return;
     }
     bounds ??= swingBounds();
-    const dir = DIRS[view];
+    // two golfers seen from behind (one beside the other across the target line): from above they are looked at from
+    // behind as well, so the fault stays on the left as the words say
+    const behindPair = players.length > 1 && players.some((p) => p.z !== players[0].z);
+    const dir = view === 'above' && behindPair ? new THREE.Vector3(-0.62, 0.95, 0).normalize() : DIRS[view];
     if (!bounds || bounds.isEmpty()) {
       camera.position.set(0, 1.2, 3.6);
       camera.lookAt(0, 0.9, 0);
