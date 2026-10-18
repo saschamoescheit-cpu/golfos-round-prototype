@@ -12,6 +12,8 @@ import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { PausedIcon } from '../components/PausedIcon';
+import { RulesBook } from '../components/RulesBook';
+import { RULES_OF_GOLF } from '../data/rulesOfGolf';
 import { Metronome } from '../training/Metronome';
 import { FactChart } from '../training/FactChart';
 import { ReviewBar } from '../training/ReviewBar';
@@ -1029,6 +1031,7 @@ function CategoryView(props: { id: CategoryId; nav: Nav }) {
               <ReviewBar itemKey={sectionKey(c.id, s.title)} />
             </Collapsible>
           ))}
+          <RuleLinks id={c.id} />
           {c.see?.length ? (
             <div className="chip-set">
               <span className="muted small">{tr('Related topics', 'Passende Themen')}:</span>
@@ -1137,6 +1140,51 @@ function RoundsLinks(props: { targets?: RoundsTarget[]; nav: Nav }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// the Rules of Golf that belong to a topic – one tap opens the rule book of the caddie at that rule (Sascha 18.10.2026)
+const CAT_RULES: Partial<Record<CategoryId, { n: number; section?: string }[]>> = {
+  bunker: [{ n: 12, section: '12.2' }, { n: 12, section: '12.3' }],
+  putting: [{ n: 13 }],
+  greenreading: [{ n: 13 }],
+  trouble: [{ n: 19 }, { n: 17 }, { n: 16 }],
+  strategy: [{ n: 18 }, { n: 17 }],
+};
+function RuleLinks(props: { id: CategoryId }) {
+  const [open, setOpen] = useState<{ n: number; section?: string } | null>(null);
+  const list = CAT_RULES[props.id];
+  if (!list?.length) return null;
+  return (
+    <section className="tr-rules">
+      <h2>{tr('The rules for it', 'Die Regeln dazu')}</h2>
+      <ul className="list tr-rounds-links">
+        {list.map((r) => {
+          const rule = RULES_OF_GOLF.find((x) => x.n === r.n);
+          if (!rule) return null;
+          const sec = r.section ? rule.sections.find((x) => x.id === r.section) : undefined;
+          return (
+            <li key={r.n + (r.section ?? '')}>
+              <button type="button" className="list-item" onClick={() => setOpen(r)}>
+                <span className="tr-cat-icon small" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z" />
+                    <path d="M4 5.5v16M8 7h8M8 11h6" />
+                  </svg>
+                </span>
+                <span className="grow">
+                  <span className="eyebrow">{tr('Rule', 'Regel') + ' ' + (sec ? sec.id : r.n)}</span>
+                  <span className="title">{sec ? sec.title() : rule.title()}</span>
+                  <span className="muted small">{rule.purpose()}</span>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {open && <RulesBook start={open} onClose={() => setOpen(null)} />}
+    </section>
   );
 }
 

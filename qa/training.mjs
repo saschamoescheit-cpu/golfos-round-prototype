@@ -99,7 +99,8 @@ ok((await p.locator('.tr-fault dt').count()) === 3 && (await p.locator('.tr-dril
 await back();
 ok((await p.getByRole('tab', { name: 'Fehler' }).getAttribute('aria-selected')) === 'true', 'back returns to the same tab');
 await p.getByRole('tab', { name: /^Übungen/ }).click();
-await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).click();
+// (Landering plays its 3D video since 18.10.2026 – the moving top view is checked on a drill that keeps it)
+await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Chips in einen Korb' }).click();
 await p.waitForTimeout(300);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'drill shows its sketch');
 // the ball moves on the top view: it flies onto the ring and rolls to the hole
@@ -111,6 +112,11 @@ ok((await topFig.locator('svg[role="img"]').innerHTML()) !== topStill, 'the ball
 await topFig.locator('.tr-motion-btn').click();
 ok((await topFig.locator('svg[role="img"]').innerHTML()) === topStill, 'Stopp brings back the still top view');
 ok(await p.locator('.tabbar').isVisible(), 'the menu stays at the bottom on the drill page (Sascha 16.10.2026)');
+// Landering: its 3D video with the ring and the hole (18.10.2026); the checks below go on with it
+await back();
+await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Landering' }).click();
+await p.waitForTimeout(300);
+ok((await p.locator('figure.tr-sketch').first().locator('.tr-motion-btn').getAttribute('aria-label')) === '3D-Video abspielen', 'Landering plays a 3D video');
 // the drill page in tabs (Sascha 17.10.2026: no one-pager)
 ok((await p.getByRole('tab').allInnerTexts()).join('|') === 'Anleitung|Ergebnis|Videos|Zubehör', 'drill page tabs: Anleitung · Ergebnis · Videos · Zubehör');
 ok((await p.locator('.tr-steps li').count()) >= 2 && (await p.locator('.tr-log').count()) === 0, 'Anleitung shows the steps, not the result part');
@@ -331,6 +337,21 @@ ok((await p.locator('.tr-review-topics').last().innerText()).includes('Abstände
 const [dl] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'Als Datei speichern (.md)' }).click()]);
 ok(/golfos-training-pruefung-.*\.md/.test(dl.suggestedFilename()), `review list saved as ${dl.suggestedFilename()}`);
 await p.getByRole('button', { name: 'Prüfmodus ist an – ausschalten' }).click();
+await back();
+
+// the rules that belong to a topic: the rule book opens at the rule, back leads to Training again (18.10.2026)
+await tab('Wissen');
+await p.locator('.tr-cat').filter({ hasText: 'Bunker' }).first().click();
+await p.getByRole('tab', { name: 'Grundlagen' }).click();
+const ruleRow = p.locator('.tr-rules .list-item').first();
+ok((await ruleRow.innerText().catch(() => '')).includes('12.2'), 'topic › Grundlagen: „Die Regeln dazu“ names rule 12.2');
+await ruleRow.scrollIntoViewIfNeeded();
+await ruleRow.click();
+await p.waitForTimeout(500);
+ok((await p.locator('.rules-book .rule-section.hit').first().innerText().catch(() => '')).includes('Ball im Bunker spielen'), 'the rule book opens at 12.2, marked');
+await p.locator('.rules-book .topbar .icon-btn').first().click();
+await p.waitForTimeout(300);
+ok((await p.locator('.rules-book').count()) === 0 && (await p.locator('.tr-rules').count()) === 1, 'back from the rule: Training again');
 await back();
 
 // English

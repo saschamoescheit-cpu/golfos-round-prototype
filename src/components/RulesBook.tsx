@@ -52,9 +52,10 @@ function search(query: string): Hit[] {
   return hits.sort((a, b) => b.score - a.score).slice(0, 40);
 }
 
-export function RulesBook(props: { onClose: () => void }) {
+export function RulesBook(props: { onClose: () => void; start?: { n: number; section?: string } }) {
   const [query, setQuery] = useState('');
-  const [open, setOpen] = useState<{ n: number; section?: string } | null>(null);
+  // opened at a rule (from Training): back from it closes the book again
+  const [open, setOpen] = useState<{ n: number; section?: string } | null>(props.start ?? null);
   const hits = useMemo(() => search(query), [query]);
   const rule = open && open.n > 0 ? RULES_OF_GOLF.find((r) => r.n === open.n)! : null;
   const top = useRef<HTMLDivElement>(null);
@@ -84,7 +85,7 @@ export function RulesBook(props: { onClose: () => void }) {
     return (
       <div className="overlay-screen rules-book">
         <main className="screen" ref={top}>
-          <TopBar title={rule.n > 25 ? tr('Local rules', 'Platzregeln') : tr(`Rule ${rule.n}`, `Regel ${rule.n}`)} onBack={() => setOpen(null)} />
+          <TopBar title={rule.n > 25 ? tr('Local rules', 'Platzregeln') : tr(`Rule ${rule.n}`, `Regel ${rule.n}`)} onBack={() => (props.start ? props.onClose() : setOpen(null))} />
           <section className="rule-head">
             <span className="rule-no big">{rule.n > 25 ? 'L' : rule.n}</span>
             <h2>{rule.title()}</h2>
