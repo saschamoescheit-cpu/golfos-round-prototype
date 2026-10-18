@@ -4,8 +4,8 @@ import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
 import type { Drill } from '../training/types';
 import { BONES, facingOf, type Frame, type Lm } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
-import { CUES, CUE_SHORT, FormCheck, RepCounter, SELF_NAMED, SIGNALS, Signal, setsOf, signalValueText, type DrillCoach, type FormCue } from './drillcoach';
-import type { DrillDone, DrillSet } from './sessions';
+import { CUES, CUE_SHORT, FormCheck, RepCounter, SELF_NAMED, SIGNALS, Signal, progressStep, progressed, setsOf, signalValueText, type DrillCoach, type FormCue } from './drillcoach';
+import { isClean, type DrillDone, type DrillSet } from './sessions';
 import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
 import { beep, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow } from './CameraTest';
@@ -94,6 +94,9 @@ export function DrillPlayer(props: {
   intro: string;
   /** the best value of the last time (the result shows the change) */
   previous?: number | null;
+  /** the drill as planned without the progression, and how often in a row it went cleanly (for "next time") */
+  base?: DrillCoach;
+  streak?: number;
   onDone: (d: DrillDone) => void;
   onMenu: () => void;
   onSkip: () => void;
@@ -256,7 +259,7 @@ export function DrillPlayer(props: {
       if (phaseRef.current !== 'run') return;
       const side = sets[k];
       const best = plan.signal === 'oneLeg' ? Math.round(held / 100) / 10 : signal?.countOnly ? null : holdMode ? holdBest : (counter?.best ?? null);
-      const s: DrillSet = { side, reps: holdMode ? 1 : reps, target: holdMode ? 1 : (plan.reps ?? 10), best: best != null ? Math.round(best * 10) / 10 : null, ...(holdMode ? { held: Math.round(held / 100) / 10 } : {}), ...(sig && !holdMode && !paced ? { seen: true } : {}), ...(form && Object.keys(form.counts).length ? { cues: { ...form.counts } } : {}) };
+      const s: DrillSet = { side, reps: holdMode ? 1 : reps, target: holdMode ? 1 : (plan.reps ?? 10), best: best != null ? Math.round(best * 10) / 10 : null, ...(holdMode ? { held: Math.round(held / 100) / 10, goal: plan.hold } : {}), ...(sig && !holdMode && !paced ? { seen: true } : {}), ...(form && Object.keys(form.counts).length ? { cues: { ...form.counts } } : {}) };
       setCue(null);
       cueUntil = 0;
       doneRef.current = [...doneRef.current, s];
@@ -539,6 +542,15 @@ export function DrillPlayer(props: {
               </div>
             ))}
           </div>
+          {(() => {
+            // it sat cleanly: say what comes next time (every two clean times a step, at most three)
+            if (!props.base || !isClean(r)) return null;
+            const now = progressStep(props.streak ?? 0);
+            const next = progressStep((props.streak ?? 0) + 1);
+            if (next <= now) return <span className="small good-text mob-progress-note">{tr('Clean – once more like this and it gets a little harder.', 'Sauber – noch einmal so, dann wird es etwas schwerer.')}</span>;
+            const harder = progressed(props.base, (props.streak ?? 0) + 1);
+            return <span className="small good-text mob-progress-note">{harder.hold != null ? tr(`It sits – next time ${harder.hold} s.`, `Das sitzt – nächstes Mal ${harder.hold} s.`) : tr(`It sits – next time ${harder.reps} reps.`, `Das sitzt – nächstes Mal ${harder.reps} Wiederholungen.`)}</span>;
+          })()}
           {best != null && plan.signal && (
             <span className="small">
               {SELF_NAMED.includes(plan.signal) ? null : `${cap(t(SIGNALS[plan.signal].name))}: `}<strong>{unit(best)}</strong>

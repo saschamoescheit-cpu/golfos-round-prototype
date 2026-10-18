@@ -12,6 +12,8 @@ export interface DrillSet {
   target: number;
   /** seconds held (holds) */
   held?: number;
+  /** the seconds asked for (holds) */
+  goal?: number;
   /** the furthest the camera saw in this set (null: not measured) */
   best: number | null;
   /** the reps were counted by the camera (not the app's count) */
@@ -105,6 +107,23 @@ export function trainingValues(test: TestId): { at: string; value: number; drill
     for (const x of drillHistory(drill, sig ? SIGNALS[sig].better : 'up')) out.push({ ...x, drill });
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+/** a drill done cleanly: every set complete (all reps, the whole hold), no cue, no pain */
+export function isClean(d: DrillDone): boolean {
+  return !d.skipped && !d.pain && d.sets.length > 0 && d.sets.every((s) => (s.held != null ? s.held >= (s.goal ?? 0) - 0.5 : s.reps >= s.target) && !Object.values(s.cues ?? {}).some((n) => (n ?? 0) > 0));
+}
+
+/** how many of the last times (newest first) the drill was done cleanly in a row */
+export function cleanStreak(drill: string): number {
+  let n = 0;
+  for (const s of loadSessions())
+    for (const d of s.done) {
+      if (d.drill !== drill || d.skipped) continue;
+      if (!isClean(d)) return n;
+      n++;
+    }
+  return n;
 }
 
 /** days with a finished session in the 7 days up to now */

@@ -78,6 +78,7 @@ let lastChange = Date.now();
 let stuck = '';
 let demoShot = false;
 let runShot = false;
+let progressNote = '';
 while (Date.now() - t0 < 300000) {
   if (await p.locator('.mob-train-summary').isVisible().catch(() => false)) break;
   const tag = await p.evaluate(() => document.querySelector('.mob-side-tag')?.textContent ?? document.querySelector('.mob-drill-result .eyebrow')?.textContent ?? '').catch(() => '');
@@ -88,6 +89,8 @@ while (Date.now() - t0 < 300000) {
     demoShot = true;
     await shot('drill-demo');
   }
+  const note = await p.evaluate(() => document.querySelector('.mob-progress-note')?.textContent ?? '').catch(() => '');
+  if (note) progressNote = note;
   if (!runShot && /^[3-9] \//.test(live)) {
     runShot = true;
     await shot('drill-run');
@@ -113,6 +116,7 @@ ok(measured.length >= 1 && measured.every((d) => d.sets.some((s) => s.best != nu
 ok(measured.every((d) => d.sets.every((s) => s.reps >= Math.ceil(s.target * 0.8))), `the camera counted the reps of the measured drills (${measured.map((d) => d.sets.map((s) => s.reps + '/' + s.target).join(' ')).join(', ')})`);
 ok((sess?.done ?? []).every((d) => d.sets.length >= 1 && d.sets.every((s) => (s.held != null ? s.held > 0 : s.reps >= 1))), 'every set has reps or a hold');
 ok(taps === 1, `${taps} tap for the whole session (Start)`);
+ok(/Sauber|Das sitzt/.test(progressNote), `a clean drill: the result says what comes next time (${progressNote})`);
 await shot('summary');
 const summary = await p.locator('.mob-train-summary').innerText();
 ok(/Training fertig/.test(summary) && /Tag/.test(summary), 'the summary: done, the days of the week');
@@ -186,6 +190,9 @@ await shot('paused');
 await p.locator('.mob-train-open .btn-secondary').click();
 const names = (await p.locator('.mob-train-list .title').allInnerTexts()).map((x) => x.replace(/^\d+\.\s*/, '').trim());
 const resume = await p.locator('.mob-start-train').innerText();
+// the first drill went cleanly twice now (the session before and this one): a little more next time
+const setupText = await p.locator('.mob-train-list').innerText();
+ok(/etwas mehr – es saß zuletzt/.test(setupText), 'twice clean: the setup says the drill is a little harder now');
 ok(/Fortsetzen/.test(resume), `the setup says "Fortsetzen" (${resume})`);
 await p.locator('.mob-start-train').click();
 await p.locator('.mob-side-tag').waitFor({ timeout: 20000 });

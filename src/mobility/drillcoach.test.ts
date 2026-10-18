@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRILL_COACH, FormCheck, RepCounter, SIGNALS, Signal, drillSeconds, setsOf, signalValueText, type SignalId } from './drillcoach';
+import { DRILL_COACH, FormCheck, RepCounter, SIGNALS, Signal, drillSeconds, progressStep, progressed, setsOf, signalValueText, type SignalId } from './drillcoach';
 import { bridgeBody, frontBody, latBody, squatBody, toeTouchBody } from './synth';
 import { TESTS } from './tests';
 import type { Frame, Lm } from './measure';
@@ -219,5 +219,20 @@ describe('form cues', () => {
     expect(r.said.length).toBeGreaterThanOrEqual(2);
     expect(r.said.length).toBeLessThanOrEqual(4);
     expect(r.counts.hipsStill).toBe(r.said.length);
+  });
+});
+
+describe('progression', () => {
+  it('makes a drill a little harder every two clean times, at most three steps', () => {
+    const reps = { view: 'front' as const, where: { en: '', de: '' }, reps: 10, tempo: 3 };
+    const hold = { view: 'floor' as const, where: { en: '', de: '' }, hold: 30 };
+    expect(progressed(reps, 0).reps).toBe(10);
+    expect(progressed(reps, 1).reps).toBe(10);
+    expect(progressed(reps, 2).reps).toBe(12);
+    expect(progressed(reps, 5).reps).toBe(14);
+    expect(progressed(reps, 20).reps).toBe(16);
+    expect(progressed(hold, 2).hold).toBe(40);
+    expect(progressed(hold, 9).hold).toBe(60);
+    expect(progressStep(3)).toBe(1);
   });
 });

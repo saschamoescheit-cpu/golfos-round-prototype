@@ -78,6 +78,17 @@ export const SAME_AS_TEST: Record<string, TestId> = {
 /** A drill not in the table: led by the clock, 10 reps in a slow tempo. */
 export const coachOf = (id: string): DrillCoach => DRILL_COACH[id] ?? { view: 'front', where: FRONT_STAND, reps: 10, tempo: 4 };
 
+/**
+ * The drill a little harder once it sits (a coach's progression): every two clean sessions in a row – all reps or the
+ * whole hold, no cue – 2 reps or 10 s more, at most three steps. REVIEW(golf): Chris.
+ */
+export function progressed(c: DrillCoach, clean: number): DrillCoach {
+  const step = progressStep(clean);
+  if (!step) return c;
+  return { ...c, ...(c.hold != null ? { hold: c.hold + 10 * step } : { reps: (c.reps ?? 10) + 2 * step }) };
+}
+export const progressStep = (clean: number): number => Math.min(3, Math.floor(clean / 2));
+
 /** The sets of a drill in order: per side all sets of the left, then all of the right. */
 export function setsOf(c: DrillCoach): (Side | null)[] {
   const n = c.sets ?? 1;

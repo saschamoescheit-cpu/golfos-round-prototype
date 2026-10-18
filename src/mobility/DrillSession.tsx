@@ -7,12 +7,12 @@ import { SketchThumb } from '../training/Sketch';
 import type { Drill } from '../training/types';
 import { DRILL_CLIPS } from './anim3d/drills';
 import { isFakeCamera, unlockAudio } from './CameraTest';
-import { coachOf, SELF_NAMED, SIGNALS, signalValueText } from './drillcoach';
+import { coachOf, progressed, SELF_NAMED, SIGNALS, signalValueText } from './drillcoach';
 import { DrillPlayer, cap, cueText } from './DrillPlayer';
 import type { FormCue } from './drillcoach';
 import { PhoneSetup } from './pictures';
 import { loadPose } from './pose';
-import { bestOf, daysThisWeek, drillHistory, saveSession, type DrillDone, type TrainSession } from './sessions';
+import { bestOf, cleanStreak, daysThisWeek, drillHistory, saveSession, type DrillDone, type TrainSession } from './sessions';
 
 const t = (x: { en: string; de: string }) => tr(x.en, x.de);
 
@@ -51,6 +51,10 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
   useEffect(() => stopStream, []);
   // the values of the last time, read once when the session starts (before this session adds its own)
   const [previous] = useState(() => Object.fromEntries(s.drills.map((id) => [id, drillHistory(id, coachOf(id).signal ? SIGNALS[coachOf(id).signal!].better : 'up').filter((x) => !s.done.some((d) => d.at === x.at)).at(-1)?.value ?? null])));
+
+  // how often each drill went cleanly in a row before this session – the plan a little harder where it sits
+  const [streaks] = useState(() => Object.fromEntries(s.drills.map((id) => [id, cleanStreak(id)])));
+  const planOf = (id: string) => progressed(coachOf(id), streaks[id] ?? 0);
 
   const store = (next: TrainSession) => {
     setS(next);
@@ -99,7 +103,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
   if (stage === 'drill' && d)
     return (
       <main className="screen mobility mob-run-camera">
-        <DrillPlayer key={d.id} drill={d} plan={coachOf(d.id)} clip={DRILL_CLIPS[d.id]} stream={streamRef.current} intro={intro} previous={previous[d.id]} onDone={record} onSkip={skip} onMenu={() => setStage('hold')} />
+        <DrillPlayer key={d.id} drill={d} plan={planOf(d.id)} base={coachOf(d.id)} streak={streaks[d.id] ?? 0} clip={DRILL_CLIPS[d.id]} stream={streamRef.current} intro={intro} previous={previous[d.id]} onDone={record} onSkip={skip} onMenu={() => setStage('hold')} />
       </main>
     );
 
@@ -107,7 +111,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
   return (
     <main className="screen game-play training mobility tr-session mob-train">
       <TopBar title={tr('Training', 'Training')} onBack={() => (stage === 'summary' ? props.onFinished() : setExit(true))} backLabel={tr('Leave', 'Verlassen')} />
-      {stage === 'setup' && <TrainSetup drills={drills} minutes={s.minutes} resumed={s.done.length > 0} onStart={start} />}
+      {stage === 'setup' && <TrainSetup drills={drills} minutes={s.minutes} resumed={s.done.length > 0} onStart={start} planOf={planOf} />}
       {stage === 'hold' && (
         <section className="tr-block mob-hold-screen">
           <h2>{tr('Paused', 'Pausiert')}</h2>
@@ -172,7 +176,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
 }
 
 /** Set the phone up once – like the screening: where it stands, what is needed, the drills of the day, Start. */
-function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean; onStart: () => void }) {
+function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean; onStart: () => void; planOf: (id: string) => ReturnType<typeof coachOf> }) {
   const needs = [...new Set(props.drills.flatMap((d) => (d.needs ?? []).map((n) => (typeof n === 'string' ? '' : t(n)))).filter(Boolean))];
   const [model, setModel] = useState<'loading' | 'ready' | 'failed'>(() => (isFakeCamera() ? 'ready' : 'loading'));
   useEffect(() => {
@@ -202,7 +206,8 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean;
       )}
       <div className="list mob-train-list" aria-label={tr('The drills', 'Die Übungen')}>
         {props.drills.map((d, i) => {
-          const c = coachOf(d.id);
+          const c = props.planOf(d.id);
+          const up = (c.reps ?? 0) > (coachOf(d.id).reps ?? 0) || (c.hold ?? 0) > (coachOf(d.id).hold ?? 0);
           return (
             <div key={d.id} className="list-item mob-test-row">
               <DrillThumb d={d} />
@@ -215,6 +220,7 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean;
                   {c.sides ? tr(' per side', ' pro Seite') : ''}
                   {(c.sets ?? 1) > 1 ? ` · ${c.sets} ${tr('sets', 'Sätze')}` : ''}
                   {c.signal ? ` · ${tr('measured', 'gemessen')}: ${t(SIGNALS[c.signal].name)}` : ''}
+                  {up ? tr(' · a little more – it sat last time', ' · etwas mehr – es saß zuletzt') : ''}
                 </span>
               </span>
             </div>

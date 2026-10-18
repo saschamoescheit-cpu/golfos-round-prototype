@@ -219,3 +219,5 @@
 /* four weeks after the last screening: time to repeat it */
 .mob-due { display: flex; flex-direction: column; gap: 6px; }
 .mob-due .btn-primary { margin-top: 6px; }
+
+.mob-progress-note { display: block; }
