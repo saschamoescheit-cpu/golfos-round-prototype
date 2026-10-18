@@ -193,7 +193,7 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean;
       <ol className="card tr-section tr-steps">
         <li>{tr('Phone upright on a stand or against a bottle, at hip height, the screen towards you.', 'Handy hochkant auf ein Stativ oder an eine Flasche lehnen, auf Hüfthöhe, Bildschirm zu dir.')}</li>
         <li>{tr('Step back 2.5–3 m, sound on. The app shows each drill, then you do it.', '2,5–3 m zurückgehen, Ton an. Die App macht jede Übung vor, dann machst du sie.')}</li>
-        <li>{tr('It counts, times the holds, measures how far you get and goes on by itself.', 'Sie zählt mit, stoppt die Haltezeiten, misst, wie weit du kommst, und macht von selbst weiter.')}</li>
+        <li>{tr('It counts, times the holds, measures how far you get, says what to correct and goes on by itself.', 'Sie zählt mit, stoppt die Haltezeiten, misst, wie weit du kommst, sagt dir, was du korrigieren kannst, und macht von selbst weiter.')}</li>
       </ol>
       {needs.length > 0 && (
         <p className="muted small">
