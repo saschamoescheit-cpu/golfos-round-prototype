@@ -182,3 +182,5 @@
 .mob-bar-track { position: relative; flex: 1; width: 100%; max-width: 34px; display: flex; align-items: flex-end; border-radius: 6px; background: var(--surface-2, rgba(255, 255, 255, 0.08)); }
 .mob-bar-track i { width: 100%; border-radius: 6px 6px 2px 2px; background: var(--brand); }
 .mob-bar-track b { position: absolute; left: -3px; right: -3px; height: 3px; margin-bottom: -1.5px; border-radius: 2px; background: var(--text); }
+
+.mob-change { display: flex; flex-direction: column; gap: 8px; }

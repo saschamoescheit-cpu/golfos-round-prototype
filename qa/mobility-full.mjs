@@ -75,6 +75,21 @@ const cam = Object.values(sc?.results ?? {}).reduce((n, r) => n + ['left', 'righ
 ok(cam === 16, `${cam} of 16 camera steps measured by themselves (10 tests, 6 with both sides)`);
 ok(taps <= 1 + 1 + 5 + 1, `${taps} taps for the whole full screening (start, the bridge question, 5 self checks${level === 'stiff' ? ', knee to wall' : ''})`);
 ok(await p.locator('.mob-summary').isVisible(), 'the result opens at the end');
+// repeat later: an earlier screening with less movement → the history says what changed per area
+await p.evaluate(() => {
+  const list = JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]');
+  const last = list.at(-1);
+  const less = (m) => (m && m.value != null ? { ...m, value: m.value - 6, at: '2026-09-18T06:00:00Z' } : m);
+  const results = Object.fromEntries(Object.entries(last.results).map(([id, r]) => [id, { left: less(r.left), right: less(r.right), both: less(r.both) }]));
+  list.unshift({ ...last, id: 'earlier', createdAt: '2026-09-18T06:00:00Z', finishedAt: '2026-09-18T06:20:00Z', results });
+  localStorage.setItem('golfos.mobility.v1', JSON.stringify(list));
+});
+await p.reload();
+await p.waitForTimeout(800);
+await p.locator('.tabbar button').filter({ hasText: 'Verlauf' }).click();
+await p.waitForTimeout(500);
+const change = await p.locator('.mob-change').innerText().catch(() => '');
+ok(/Seit dem/.test(change) && /\+\d+ Punkte/.test(change), `the history says what changed since the screening before (${change.split('\n').slice(0, 3).join(' · ')})`);
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 2).join(' | ') : ''}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all green');

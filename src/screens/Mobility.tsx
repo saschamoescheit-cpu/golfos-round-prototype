@@ -1592,6 +1592,41 @@ function DrillHow(props: { d: Drill }) {
 
 // ---------- history ----------
 
+/**
+ * What changed since the screening before (Sascha 18.10.2026: "repeat the analysis later to see how far the values
+ * changed"): each area measured both times, where it stands now and by how many points of its scale it moved.
+ */
+function ChangeCard(props: { list: Screening[] }) {
+  const done = props.list.filter((s) => s.kind !== 'single' && Object.keys(s.results).length).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  if (done.length < 2) return null;
+  const [prev, last] = done.slice(-2);
+  const goal = loadGoal();
+  const before = pillar(TESTS, prev.results, goal);
+  const now = pillar(TESTS, last.results, goal);
+  const rows = AREAS.map((a) => ({ a, b: before.find((x) => x.area === a), n: now.find((x) => x.area === a) })).filter((x): x is { a: Area; b: AreaState; n: AreaState } => !!x.b && !!x.n);
+  if (!rows.length) return null;
+  return (
+    <section className="card mob-change">
+      <strong>{tr(`Since ${dateText(prev.createdAt)}`, `Seit dem ${dateText(prev.createdAt)}`)}</strong>
+      <div className="list">
+        {rows.map(({ a, b, n }) => {
+          const d = Math.round((n.now - b.now) * 100);
+          return (
+            <div key={a} className="list-item mob-area-row">
+              <span className="grow">
+                <span className="title">{t(AREA_NAMES[a])}</span>
+                <span className={`small${d > 0 ? ' good-text' : ' muted'}`}>{d === 0 ? tr('the same', 'gleich') : tr(`${d > 0 ? '+' : '−'}${Math.abs(d)} points`, `${d > 0 ? '+' : '−'}${Math.abs(d)} Punkte`)}</span>
+              </span>
+              <LevelBar pos={n.now} target={n.target} small />
+            </div>
+          );
+        })}
+      </div>
+      <span className="muted small">{tr('Points: per cent of each scale from little to a lot of movement.', 'Punkte: Prozent der Skala von wenig bis viel Bewegung.')}</span>
+    </section>
+  );
+}
+
 function HistoryTab(props: { nav: Nav }) {
   const list = loadScreenings();
   if (!list.length)
@@ -1606,6 +1641,7 @@ function HistoryTab(props: { nav: Nav }) {
   const full = list.filter((s) => s.kind !== 'single' && Object.keys(s.results).length).reverse();
   return (
     <>
+      <ChangeCard list={list} />
       {full.length >= 2 && (
         <figure className="mob-chart" aria-label={tr('Mobility on average per screening', 'Beweglichkeit im Mittel je Screening')}>
           <div className="mob-bars">
