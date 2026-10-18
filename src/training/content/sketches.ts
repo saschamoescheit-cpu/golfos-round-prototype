@@ -954,10 +954,10 @@ export const SKETCHES: Record<string, Sketch> = {
   // ================= ball flight =================
   'headcover-outside': fairwayPad([
     { k: 'ball', at: [1.2, 1.1] },
-    { k: 'zone', x: 1.35, y: 1.3, w: 0.35, h: 0.3, label: L('cover', 'Haube') },
-    { k: 'path', pts: [[0.2, 0.7], [2.8, 1.2]], style: 'club', arrow: true },
+    { k: 'zone', x: 0.75, y: 1.25, w: 0.35, h: 0.3, label: L('cover', 'Haube') },
+    { k: 'path', pts: [[0.2, 0.9], [2.8, 1.3]], style: 'club', arrow: true },
     { k: 'path', pts: [[0.2, 1.1], [2.8, 1.1]], style: 'aim' },
-    txt([1.5, 0.3], L('from the inside, under the cover', 'von innen, unter der Haube vorbei'), 10),
+    txt([1.5, 0.3], L('from the inside, past the cover', 'von innen, innen an der Haube vorbei'), 10),
   ], L('Seen from above, target to the right.', 'Von oben, Ziel rechts.')),
   'split-grip': S(4, 2.6, [
     ground(0.3, 4),

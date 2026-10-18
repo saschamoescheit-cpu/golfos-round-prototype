@@ -13,7 +13,9 @@ describe('animated pictures', () => {
     for (const id of Object.keys(DRILL_MOTIONS)) {
       const d = DRILLS.find((x) => x.id === id);
       expect(d, id).toBeTruthy();
-      expect(d!.sketch?.view === 'side' && d!.sketch.motion && d!.sketch.items.some((x) => x.k === 'figure'), id).toBe(true);
+      // a 3D video alone (no drawn movement) also goes with a top view
+      if (!DRILL_MOTIONS[id].frames.length) expect((d!.sketch?.view === 'side' || d!.sketch?.view === 'top') && !!d!.sketch.motion?.video, id).toBe(true);
+      else expect(d!.sketch?.view === 'side' && d!.sketch.motion && d!.sketch.items.some((x) => x.k === 'figure'), id).toBe(true);
     }
     for (const [cat, list] of Object.entries(SECTION_MOTIONS)) {
       for (const title of Object.keys(list!)) {

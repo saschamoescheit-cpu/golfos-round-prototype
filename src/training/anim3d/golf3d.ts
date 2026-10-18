@@ -34,6 +34,10 @@ export interface SwingKey {
   miss?: V3;
   /** the face turned about the shaft (degrees): + open (it looks right of the target), − closed */
   face?: number;
+  /** the stance at this key (metres between the ankles): the lead foot steps there from the swing's stance */
+  stance?: number;
+  /** the lead foot lifted this high (metres) – on its way in a step */
+  step?: number;
   /** the pelvis this far towards the ball (m) – standing up into the ball (early extension) */
   push?: number;
   label?: L;
@@ -63,11 +67,17 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag')[];
+  /** the ball very low on its tee (fairway wood off a tee) */
+  lowTee?: boolean;
+  /** no ball: a drill swung into an impact bag */
+  noBall?: boolean;
   view?: View;
 }
 
 const CLUB_LEN: Record<Club3D, number> = { driver: 1.06, iron: 0.86, wedge: 0.82, putter: 0.8 };
+/** the middle of the face from the hosel towards the toe (metres) – that point meets the ball, not the heel */
+const SWEET: Record<Club3D, number> = { driver: 0.055, iron: 0.04, wedge: 0.04, putter: 0.045 };
 
 // ---------- inverse kinematics ----------
 const tmpQ = new THREE.Quaternion();
@@ -267,6 +277,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     divot: { mark: THREE.Mesh; bits: THREE.Mesh[]; from: number; len: number; yaw: number } | null;
     /** the path of the clubhead, drawn up to now – from behind it shows the swing plane */
     trace: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
+    /** drill aids the club sends flying */
+    aids: { m: THREE.Object3D; from: THREE.Vector3; delay: number }[];
     /** the ball's flight drawn behind it, as the tracer on television – so the curve is seen even when the ball is small */
     tracer: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     /** a putt's hole and the moment the ball drops in (none when it misses) */
@@ -294,7 +306,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
 
   const ballPos = (p: { swing: Swing; x: number; z: number }) => {
     const b = p.swing.ball ?? [0, 0.6];
-    return new THREE.Vector3(p.x + b[0], (p.swing.tee ? 0.06 : 0.0215) + heightAt(p.x + b[0], p.z + b[1]), p.z + b[1]);
+    return new THREE.Vector3(p.x + b[0], (p.swing.tee ? (p.swing.lowTee ? 0.04 : 0.06) : 0.0215) + heightAt(p.x + b[0], p.z + b[1]), p.z + b[1]);
   };
 
   /** the trunk of a key (or between two) put on the rig, the limbs left for the solver */
@@ -333,7 +345,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const keys = s.keys.map((k) => {
       poseTrunk(p, postured(k.body, k.free ? 0 : 1), k.shift ?? 0, -(k.drop ?? 0.05), k.push ?? 0);
       let hands = new THREE.Vector3(...k.hands).applyQuaternion(chestQ(p.rig)).add(chestPos(p.rig));
-      const head = ballPos(p).add(new THREE.Vector3(-0.04, 0.005, 0)).add(new THREE.Vector3(...(k.miss ?? [0, 0, 0])));
+      const head = ballPos(p).add(new THREE.Vector3(-0.04, 0.005, -SWEET[s.club])).add(new THREE.Vector3(...(k.miss ?? [0, 0, 0])));
       const dir = k.club === 'ball' ? head.clone().sub(hands).normalize() : new THREE.Vector3(...k.club).normalize();
       // at the ball the clubhead sits exactly behind it: the hands slide along the shaft to the club's length
       if (k.club === 'ball') hands = head.clone().addScaledVector(dir, -(CLUB_LEN[s.club] - 0.05 - (s.choke ?? 0)));
@@ -441,9 +453,12 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     else setHand(J.wristR, handRQ);
 
     // legs: the ankles stay where they stand; the trail heel comes up in the finish
-    const half = (swing.stance ?? 0.36) / 2;
+    const s0 = swing.stance ?? 0.36;
+    const half = s0 / 2;
+    const wide = mix((x) => x.stance ?? s0);
+    const lift = Math.max(0, mix((x) => x.step ?? 0));
     const heel = lerp(a.heel ?? 0, b.heel ?? 0, k);
-    const ankleL = new THREE.Vector3(p.x + half, BODY.ankleH + heightAt(p.x + half, p.z), p.z);
+    const ankleL = new THREE.Vector3(p.x - half + wide, BODY.ankleH + lift + heightAt(p.x - half + wide, p.z), p.z);
     const ankleR = new THREE.Vector3(p.x - half + heel * 0.06, BODY.ankleH + heel * 0.11 + heightAt(p.x - half, p.z), p.z - heel * 0.03);
     const pelvisP = J.pelvis.getWorldPosition(new THREE.Vector3());
     twoBone(J.hipL, J.kneeL, BODY.thigh, BODY.shin, ankleL, pelvisP.clone().add(new THREE.Vector3(0.25, 0, 1)));
@@ -545,6 +560,85 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     sp.instanceMatrix.needsUpdate = true;
   };
 
+  /** a tee standing in the ground: `above` metres of it show */
+  const teeMesh = (above: number) => {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.003, 0.054, 10), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.6 }));
+    m.castShadow = true;
+    m.userData.above = above;
+    return m;
+  };
+  const standAt = (m: THREE.Object3D, x: number, z: number, above = 0.04) => m.position.set(x, heightAt(x, z) + above - 0.027, z);
+  /** the drill aids around the ball (18.10.2026): tee gates, a line on the grass, a tee after the ball, a headcover,
+   *  an impact bag; `fly` are the ones the club sends flying (with the time after the hit they start) */
+  const buildAids = (p: Player) => {
+    const props = p.swing.props ?? [];
+    const bp = ballPos(p);
+    const fly: { m: THREE.Object3D; from: THREE.Vector3; delay: number }[] = [];
+    const add = (m: THREE.Object3D) => (p.extras.add(m), m);
+    if (props.includes('teeGate')) {
+      // just outside the putter's heel and toe at address – the head passes between them
+      standAt(add(teeMesh(0.04)), bp.x - 0.04, bp.z - 0.064);
+      standAt(add(teeMesh(0.04)), bp.x - 0.04, bp.z + 0.064);
+    }
+    if (props.includes('startGate')) {
+      // 40 cm in front of the ball on the start line, a little more than a ball apart
+      standAt(add(teeMesh(0.04)), bp.x + 0.4, bp.z - 0.031);
+      standAt(add(teeMesh(0.04)), bp.x + 0.4, bp.z + 0.031);
+    }
+    if (props.includes('insideGate')) {
+      // behind the ball outside, in front of it inside: only a path from the inside passes
+      standAt(add(teeMesh(0.045)), bp.x - 0.15, bp.z + 0.05);
+      standAt(add(teeMesh(0.045)), bp.x + 0.15, bp.z - 0.05);
+    }
+    if (props.includes('secondTee')) standAt(add(teeMesh(0.01)), bp.x + 0.25, bp.z);
+    if (props.includes('groundLine')) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.002, 0.8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 1 }));
+      line.quaternion.copy(groundQ);
+      line.position.set(bp.x, heightAt(bp.x, bp.z) + 0.002, bp.z);
+      line.receiveShadow = true;
+      add(line);
+    }
+    if (props.includes('teeAfter')) {
+      // pushed in all the way 6 cm in front of the ball – the divot cuts it out
+      const m = add(teeMesh(0.004));
+      standAt(m, bp.x + 0.065, bp.z, 0.004);
+      fly.push({ m, from: m.position.clone(), delay: 0.03 });
+    }
+    if (props.includes('teeFlies')) fly.push({ m: p.tee, from: p.tee.position.clone(), delay: 0.005 });
+    if (props.includes('headcover')) {
+      // 10 cm outside and 10 cm behind the ball – where a path from the outside would come in
+      const cover = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.1, 6, 12), new THREE.MeshStandardMaterial({ color: '#3f5f73', roughness: 0.9 }));
+      cover.rotation.z = Math.PI / 2;
+      cover.position.set(bp.x - 0.1, heightAt(bp.x - 0.1, bp.z + 0.1) + 0.045, bp.z + 0.1);
+      cover.castShadow = true;
+      add(cover);
+    }
+    if (props.includes('impactBag')) {
+      const bag = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.34, 24), new THREE.MeshStandardMaterial({ color: '#4a5560', roughness: 0.95 }));
+      bag.rotation.z = Math.PI / 2;
+      bag.position.set(bp.x + 0.2, heightAt(bp.x + 0.2, bp.z) + 0.17, bp.z);
+      bag.castShadow = true;
+      add(bag);
+    }
+    return fly;
+  };
+  /** a tee the club meets flies forward, tumbling, and lies where it lands */
+  const placeAids = (p: Player, time: number) => {
+    const h = p.swing.hit;
+    for (const a of p.aids) {
+      const k = h ? time - h.at - a.delay : -1;
+      if (k <= 0) {
+        a.m.position.copy(a.from);
+        a.m.rotation.set(0, 0, 0);
+        continue;
+      }
+      const land = (2 * 1.3) / 9.81;
+      const tt = Math.min(k, land);
+      a.m.position.set(a.from.x + 1.4 * tt, Math.max(heightAt(a.from.x + 1.4 * tt, a.from.z) + 0.006, a.from.y + 1.3 * tt - 4.9 * tt * tt), a.from.z);
+      a.m.rotation.set(0, 0, k >= land ? Math.PI / 2 : -k * 14);
+    }
+  };
+
   /** the clubhead's path through the swing as a thin tube; it grows with the swing (the share of its length
    *  reached by each moment) and starts again with every run */
   const HEAD = (len: number) => new THREE.Vector3(0, len - 0.01, 0.04);
@@ -638,12 +732,12 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   const placeBall = (p: Player, time: number) => {
     const at = ballPos(p);
     const h = p.swing.hit;
-    p.ball.visible = true;
+    p.ball.visible = !p.swing.noBall;
     if (h && time > h.at) {
       const s = time - h.at;
       // the same flights as the drawings: rolling, low with roll, high and soft, out of the sand, long away
       at.copy(ballAt(p, s));
-      p.ball.visible = at.x - ballPos(p).x < 12;
+      p.ball.visible = !p.swing.noBall && at.x - ballPos(p).x < 12;
       if (p.cup?.drop != null && s >= p.cup.drop) at.set(p.cup.at.x, Math.max(-0.05, 0.0215 - (s - p.cup.drop) * 0.6), p.cup.at.z);
     }
     p.ball.position.copy(at);
@@ -722,6 +816,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       placeTrace(p, tt);
       placeTracer(p, tt);
       placeSplash(p, tt);
+      placeAids(p, tt);
     });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
@@ -819,14 +914,15 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       }
       const at = ballPos({ swing, x, z });
       ball.position.copy(at);
-      tee.position.set(at.x, 0.02 + heightAt(at.x, at.z), at.z);
+      tee.position.set(at.x, (swing.lowTee ? 0 : 0.02) + heightAt(at.x, at.z), at.z);
       scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
+      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, aids: [], swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
     const alongLine = players.some((p) => p.x !== players[0].x);
     for (const p of players) {
       p.trace = buildTrace(p);
       if (p.trace) p.extras.add(p.trace.mesh);
+      p.aids = buildAids(p);
       // golfers side by side along the target line: the left one's ball flies past the right one – no tracer there
       p.tracer = alongLine ? null : buildTracer(p);
       if (p.tracer) p.extras.add(p.tracer.mesh);

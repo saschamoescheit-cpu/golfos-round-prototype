@@ -290,6 +290,24 @@ set3d(SECTION_MOTIONS.bunker?.['The swing'], 'bunker');
 set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
 // the slopes in 3D (18.10.2026): the ground tilts under the player
 set3d(SECTION_MOTIONS.slopes?.['Uphill lie'], 'slopeUp');
+// the drills behind the faults in 3D, with their aids in the picture (18.10.2026)
+set3d(DRILL_MOTIONS['step-drill'], 'stepDrill');
+set3d(DRILL_MOTIONS['pump-drill'], 'pumpDrill');
+set3d(DRILL_MOTIONS['impact-bag'], 'impactBag');
+set3d(DRILL_MOTIONS['hold-finish-slope'], 'slopeBelow');
+for (const [id, video] of [
+  ['tiger-gate', 'tigerGate'],
+  ['ball-gate', 'startGate'],
+  ['line-drill-irons', 'lineDrill'],
+  ['tee-after-ball', 'teeAfter'],
+  ['slice-gate', 'insideGate'],
+  ['headcover-outside', 'headcover'],
+  ['woods-sweep', 'sweepTee'],
+  ['hit-up-tee', 'secondTee'],
+  ['below-feet-stay', 'slopeBelow'],
+  ['aim-for-slope', 'slopeAbove'],
+] as const)
+  DRILL_MOTIONS[id] ??= { frames: [], video };
 set3d(SECTION_MOTIONS.slopes?.['Downhill lie'], 'slopeDown');
 
 // the set-up sections: the address in 3D, still – the views show it from the front, from behind, at an angle

@@ -495,6 +495,70 @@ export const PITCH_SLOW: Swing = fault(HALF_SWING, {
   3.5: PITCH_BRAKE,
 }, { hit: { at: 2.1, shot: 'pitch', scale: 0.55 } });
 
+// ---------- the drills that fix the faults, with their aids in the picture (18.10.2026) ----------
+
+/** a swing with new labels on some keys (by their time) */
+const relabel = (sw: Swing, labels: Record<number, SwingKey['label']>, extra: Partial<Swing> = {}): Swing => ({
+  ...sw,
+  ...extra,
+  keys: sw.keys.map((x) => (labels[x.t] !== undefined ? { ...x, label: labels[x.t] } : x)),
+});
+/** Tiger Woods' gate: two tees just outside heel and toe of the putter, a straight 1.2 m putt */
+export const TIGER_GATE: Swing = relabel(PUTT_STROKE, { 1.7: L('The putter passes the gate without touching a tee', 'Der Putter passiert das Tor, ohne einen Tee zu berühren') }, { props: ['teeGate'], hit: { at: 1.7, shot: 'putt', scale: 0.69 } });
+/** the start-line gate: two tees 40 cm in front of the ball, a little more than a ball apart */
+export const START_GATE: Swing = relabel(PUTT_STROKE, { 1.7: L('The ball rolls through the gate – the face was square', 'Der Ball rollt durchs Tor – die Fläche war square') }, { props: ['startGate'], hit: { at: 1.7, shot: 'putt', scale: 1.4 } });
+/** the line drill: the ball on a line across the stance, the divot starts at or after the line */
+export const LINE_DRILL: Swing = relabel(FULL_SWING, { 0: L('The ball on the line across the stance', 'Der Ball auf der Linie quer zum Stand'), 2.8: L('The divot starts at the line or after it', 'Das Divot beginnt an oder nach der Linie') }, { props: ['groundLine'], view: 'angle' });
+/** ball, then tee: a tee pushed in 6 cm in front of the ball – the club takes it out after the ball */
+export const TEE_AFTER: Swing = relabel(FULL_SWING, { 2.8: L('Ball first, then the tee – it flies out with the turf', 'Erst der Ball, dann der Tee – er fliegt mit dem Rasen heraus') }, { props: ['teeAfter'], view: 'angle' });
+/** the gate from the inside: the outer tee behind the ball, the inner one in front of it, seen from above */
+export const INSIDE_GATE: Swing = relabel(FULL_SWING, { 2.8: L('From the inside: inside the back tee, outside the front one', 'Von innen: innen am hinteren, außen am vorderen Tee vorbei') }, { props: ['insideGate'], view: 'above' });
+/** the headcover outside and behind the ball: the club comes from the inside and misses it */
+export const HEADCOVER: Swing = relabel(FULL_SWING, { 2.7: L('The club comes from the inside – past the headcover', 'Der Schläger kommt von innen – an der Haube vorbei') }, { props: ['headcover'], view: 'above' });
+/** sweeping the tee: the fairway wood off a very low tee, the tee flies, no divot */
+export const SWEEP_TEE: Swing = relabel(WOOD_SWING, { 2.8: L('Sweep it – the tee flies, no divot', 'Fegen – der Tee fliegt mit, kein Divot') }, { tee: true, lowTee: true, props: ['teeFlies'] });
+/** the second tee: the driver rises through the ball and leaves the low tee in front standing */
+export const SECOND_TEE: Swing = relabel(DRIVER_SWING, { 2.8: L('The club rises – the second tee stays standing', 'Der Schläger steigt – der zweite Tee bleibt stehen') }, { props: ['secondTee'], view: 'angle' });
+/** the impact bag: slow half swings into the bag, stopped at impact */
+export const IMPACT_BAG: Swing = {
+  ...HALF_SWING,
+  noBall: true,
+  hit: undefined,
+  props: ['impactBag'],
+  keys: [
+    ...HALF_SWING.keys.filter((x) => x.t <= 2.1).map((x) => (x.t === 2.1 ? { ...x, label: L('Stop at impact: hands ahead, buckle to the bag, weight forward, lead wrist flat', 'Im Treffmoment stoppen: Hände vorn, Gürtelschnalle zum Sack, Gewicht vorn, vorderes Handgelenk gerade') } : x)),
+    { ...HALF_SWING.keys.find((x) => x.t === 2.1)!, t: 3.6, label: undefined },
+  ],
+};
+/** the step drill: feet together, the lead foot steps towards the target during the backswing, the weight is
+ *  forward before the club comes down */
+export const STEP_DRILL: Swing = {
+  ...FULL_SWING,
+  stance: 0.1,
+  ball: [0.05, 0.6],
+  keys: FULL_SWING.keys.map((x) => {
+    if (x.t === 0) return { ...x, label: L('Feet together, ball opposite the lead foot', 'Füße zusammen, Ball gegenüber dem vorderen Fuß') };
+    if (x.t === 1.45) return { ...x, stance: 0.24, step: 0.07, label: L('During the backswing the lead foot steps towards the target', 'Während des Ausholens tritt der vordere Fuß Richtung Ziel') };
+    if (x.t >= 2.0) return { ...x, stance: 0.38, shift: (x.shift ?? 0) + 0.06, ...(x.t === 2.0 ? { label: L('Foot down – the weight is forward before the club comes', 'Fuß aufsetzen – das Gewicht ist vorn, bevor der Schläger kommt') } : {}) };
+    return x;
+  }),
+};
+/** the pump drill: to the top, down until the hands are at hip height and back up – twice; the third time through */
+const PUMP_DOWN = FULL_SWING.keys.find((x) => x.t === 2.6)!;
+const TOP = FULL_SWING.keys.find((x) => x.t === 2.0)!;
+export const PUMP_DRILL: Swing = {
+  ...FULL_SWING,
+  hit: { at: 2.8 + 1.8, shot: 'full' },
+  keys: [
+    ...FULL_SWING.keys.filter((x) => x.t <= 2.0),
+    { ...PUMP_DOWN, t: 2.45, label: L('Pump: hands to hip height, the butt to the ball line – one', 'Pumpen: Hände bis Hüfthöhe, das Griffende zur Balllinie – eins') },
+    { ...TOP, t: 2.9, label: undefined },
+    { ...PUMP_DOWN, t: 3.35, label: L('And again – two', 'Und noch einmal – zwei') },
+    { ...TOP, t: 3.8, label: L('The third time: through to the ball', 'Beim dritten Mal: durch zum Ball') },
+    ...FULL_SWING.keys.filter((x) => x.t > 2.3).map((x) => ({ ...x, t: x.t + 1.8 })),
+  ],
+};
+
 // ---------- uneven lies: the ground tilts, the set-up and the flight follow the slope ----------
 
 /** a swing on a slope: every key moved (weight, the labels of the set-up and the finish) */
@@ -601,5 +665,5 @@ export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;
