@@ -1,6 +1,8 @@
 import { L } from '../types';
 import type { Swing, SwingKey } from './golf3d';
 
+type V3 = [number, number, number];
+
 // The swings of the 3D videos. Trunk angles in degrees (pelvis, spine, chest – x forward, y + towards the target,
 // z + leaning to the player's right); the lead hand in the chest's frame (x to the player's left, y up the spine, z
 // forward); the club as a world direction (x towards the target, y up, z towards the ball) or 'ball'.
@@ -433,6 +435,42 @@ export const RUSHED: Swing = (() => {
   return { ...FULL_SWING, keys, hit: { at: 2.8 - back, shot: 'full' } };
 })();
 
+/** the bunker shot by the green: stance a little wider, ball forward, the face open, into the sand a hand's width
+ *  behind the ball – the sand carries the ball out, high and soft – and through to a full finish */
+export const BUNKER_SWING: Swing = {
+  ...FULL_SWING,
+  club: 'wedge',
+  stance: 0.44,
+  ball: [0.06, 0.56],
+  sand: true,
+  hit: { at: 2.8, shot: 'bunker' },
+  keys: FULL_SWING.keys.map((x) => ({
+    ...x,
+    face: 18,
+    ...(x.t === 0 ? { label: L('Stance a little wider, ball forward, the face open', 'Etwas breiter stehen, Ball vorn, die Fläche offen') } : {}),
+    ...(x.t === 2.8 ? { miss: [-0.045, -0.03, 0] as V3, label: L('Into the sand behind the ball – the sand carries it out', 'In den Sand hinter dem Ball – der Sand trägt ihn heraus') } : {}),
+    ...(x.t === 3.5 ? { label: L('Through to a full finish', 'Durch bis ins volle Finish') } : {}),
+  })),
+};
+/** the club stops in the sand: no finish, the ball barely leaves */
+const STUCK = { hands: [0.12, -0.22, 0.42] as V3, club: [0.4, -0.92, 0.1] as V3, body: { pelvis: [36, 34, 6] as V3, spine: [2, 4, 2] as V3, chest: [2, -4, 7] as V3, neck: [-14, -14, 0] as V3, head: [12, -6, 0] as V3 }, shift: 0.07, heel: 0, free: false };
+export const BUNKER_STUCK: Swing = fault(BUNKER_SWING, {
+  2.8: { label: L('Left: the club stops in the sand – the ball stays in · right: through to a full finish', 'Links: der Schläger bleibt im Sand stecken – der Ball bleibt drin · rechts: durch bis ins volle Finish') },
+  2.92: STUCK,
+  3.05: STUCK,
+  3.5: { ...STUCK, label: undefined },
+  4.7: STUCK,
+}, { hit: { at: 2.8, shot: 'bunker', scale: 0.3 } });
+/** thin: the body rises, the club hits the ball before the sand – it shoots low over the green */
+export const BUNKER_THIN: Swing = fault(BUNKER_SWING, {
+  2.8: {
+    body: { pelvis: [18, 26, 4], spine: [0, 2, 2], chest: [0, -10, 6] },
+    drop: -0.02,
+    miss: [0.01, 0.045, 0],
+    label: L('Left: the body rises, the club hits the ball first – it shoots over the green · right: down into the sand behind the ball', 'Links: der Körper richtet sich auf, der Schläger trifft zuerst den Ball – er schießt übers Grün · rechts: unten bleiben, in den Sand hinter dem Ball'),
+  },
+}, { hit: { at: 2.8, shot: 'punch', scale: 1.6 } });
+
 /** the putter face at impact: open – the ball starts right of the line and rolls past the hole; closing through the
  *  ball – it starts left; the right one keeps the face square and the putt drops */
 const puttFace = (deg: number, label: SwingKey['label']): Swing =>
@@ -457,6 +495,8 @@ export const PAIRS = {
   slicePair: { fault: OVER_THE_TOP, right: quiet(FULL_SWING), behind: true },
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
+  bunkerStuckPair: { fault: BUNKER_STUCK, right: quiet(BUNKER_SWING) },
+  bunkerThinPair: { fault: BUNKER_THIN, right: quiet(BUNKER_SWING) },
   puttRightPair: { fault: PUTT_OPEN, right: quiet(PUTT_STROKE), behind: true },
   puttLeftPair: { fault: PUTT_CLOSED, right: quiet(PUTT_STROKE), behind: true },
   driverSlicePair: { fault: DRIVER_SLICE, right: quiet(DRIVER_SWING), behind: true },
@@ -469,5 +509,5 @@ export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;

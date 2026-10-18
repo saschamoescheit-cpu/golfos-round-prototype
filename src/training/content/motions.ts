@@ -286,6 +286,7 @@ set3d(DRILL_MOTIONS['pause-top'], 'pause');
 set3d(DRILL_MOTIONS['one-hand'], 'puttOne');
 set3d(DRILL_MOTIONS['lead-hand-chip'], 'chipOne');
 set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sand');
+set3d(SECTION_MOTIONS.bunker?.['The swing'], 'bunker');
 set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'wood');
 for (const t of ['Uphill lie', 'Downhill lie']) set3d(SECTION_MOTIONS.slopes?.[t], undefined);
 
@@ -305,6 +306,8 @@ set3d(FAULT_MOTIONS.swing?.['Sway instead of turn'], 'swayPair');
 // the slice faults had only the top view of the flight: now the swing from behind, with the clubhead's path
 FAULT_MOTIONS.swing = { ...FAULT_MOTIONS.swing, 'Over the top': still3d('slicePair'), 'Rushing the swing': still3d('rushPair') };
 FAULT_MOTIONS.driver = { ...FAULT_MOTIONS.driver, 'Slice off the tee': still3d('driverSlicePair') };
+set3d(FAULT_MOTIONS.bunker?.['Ball stays in the bunker'], 'bunkerStuckPair');
+set3d(FAULT_MOTIONS.bunker?.['Thin over the green'], 'bunkerThinPair');
 FAULT_MOTIONS.putting = { ...FAULT_MOTIONS.putting, 'Ball starts right of the line': still3d('puttRightPair'), 'Ball starts left of the line': still3d('puttLeftPair') };
 set3d(FAULT_MOTIONS.fitness?.['Early extension (standing up)'], 'earlyPair');
 set3d(FAULT_MOTIONS.chipping?.['Fat chip (chunk)'], 'chipFatPair');

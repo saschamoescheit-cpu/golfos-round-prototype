@@ -258,6 +258,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     tracer: { mesh: THREE.Mesh; times: number[]; share: number[] } | null;
     /** a putt's hole and the moment the ball drops in (none when it misses) */
     cup: { at: THREE.Vector3; drop: number | null } | null;
+    /** the sand thrown out when the club enters the sand behind the ball (a bunker shot) */
+    splash: THREE.InstancedMesh | null;
     swing: Swing;
     prep: Prepared;
     x: number;
@@ -484,6 +486,31 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     });
   };
 
+  /** the splash: grains of sand flying forward and up from where the club enters, falling back within a second */
+  const SPLASH = 40;
+  const grain = (i: number, k: number) => {
+    const r = (n: number) => Math.abs(Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1;
+    return { vx: 0.5 + 1.8 * r(1), vy: 0.9 + 1.9 * r(2), vz: (r(3) - 0.5) * 1.1, size: 0.6 + 0.8 * r(4), k };
+  };
+  const tmpM = new THREE.Matrix4();
+  const placeSplash = (p: Player, time: number) => {
+    const sp = p.splash;
+    const h = p.swing.hit;
+    if (!sp || !h) return;
+    const k = time - (h.at - 0.02);
+    sp.visible = k > 0 && k < 1.3;
+    if (!sp.visible) return;
+    const at = ballPos(p);
+    for (let i = 0; i < SPLASH; i++) {
+      const g = grain(i, k);
+      const y = 0.01 + g.vy * k - 4.9 * k * k;
+      const s = y < 0 ? 0 : g.size * Math.max(0.2, 1 - k / 1.3);
+      tmpM.makeScale(s, s, s).setPosition(at.x - 0.04 + g.vx * k, Math.max(0, y), at.z + g.vz * k);
+      sp.setMatrixAt(i, tmpM);
+    }
+    sp.instanceMatrix.needsUpdate = true;
+  };
+
   /** the clubhead's path through the swing as a thin tube; it grows with the swing (the share of its length
    *  reached by each moment) and starts again with every run */
   const HEAD = (len: number) => new THREE.Vector3(0, len - 0.01, 0.04);
@@ -655,6 +682,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       placeDivot(p, tt);
       placeTrace(p, tt);
       placeTracer(p, tt);
+      placeSplash(p, tt);
     });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
@@ -747,7 +775,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       ball.position.copy(at);
       tee.position.set(at.x, 0.02, at.z);
       scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
+      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
     const alongLine = players.some((p) => p.x !== players[0].x);
     for (const p of players) {
@@ -756,6 +784,14 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       // golfers side by side along the target line: the left one's ball flies past the right one – no tracer there
       p.tracer = alongLine ? null : buildTracer(p);
       if (p.tracer) p.extras.add(p.tracer.mesh);
+      // a bunker shot: the club enters the sand behind the ball and throws it out with the sand
+      const hk = p.swing.hit && p.swing.keys.find((k) => Math.abs(k.t - p.swing.hit!.at) < 1e-6);
+      if (p.swing.sand && p.swing.hit?.shot === 'bunker' && (hk?.miss?.[0] ?? 0) < -0.02) {
+        p.splash = new THREE.InstancedMesh(new THREE.SphereGeometry(0.009, 6, 4), new THREE.MeshStandardMaterial({ color: '#cbb88f', roughness: 1 }), SPLASH);
+        p.splash.visible = false;
+        p.splash.frustumCulled = false;
+        p.extras.add(p.splash);
+      }
       // a putt rolls to a hole just short of where it would stop: dark, with the white liner at its edge; the ball drops in
       // when it reaches it (a pushed or pulled putt rolls past and stops beside it)
       const h = p.swing.hit;
