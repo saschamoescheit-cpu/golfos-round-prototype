@@ -1405,8 +1405,19 @@ function DrillsTab(props: { nav: Nav }) {
       .filter((d): d is Drill => !!d);
   const focus = areas.filter((x) => x.focus);
   const rest = areas.filter((x) => !x.focus);
-  const all = [...new Set(focus.flatMap(drillsFor))];
-  const planDrills = all.length ? all.slice(0, 8) : keep;
+  // the plan for home: as many minutes a day as the player has, the focus areas in turn (the first drill of each area,
+  // then the second …), so a short plan still works on every focus
+  const [minutes, setMinutes] = useState(15);
+  const lists = focus.map(drillsFor);
+  const order: Drill[] = [];
+  for (let i = 0; lists.some((l) => l[i]); i++) for (const l of lists) if (l[i] && !order.includes(l[i])) order.push(l[i]);
+  const pool = order.length ? order : keep;
+  const planDrills: Drill[] = [];
+  for (const d of pool) {
+    const used = planDrills.reduce((n, x) => n + x.minutes, 0);
+    if (used + d.minutes <= minutes || !planDrills.length) planDrills.push(d);
+  }
+  const planMinutes = planDrills.reduce((n, x) => n + x.minutes, 0);
   if (!Object.keys(results).length)
     return (
       <section className="tr-block mob-empty">
@@ -1457,6 +1468,26 @@ function DrillsTab(props: { nav: Nav }) {
           </div>
         </section>
       )}
+      <section className="tr-block mob-plan-time">
+        <h2>{tr('Your time a day', 'Deine Zeit am Tag')}</h2>
+        <div className="chip-set">
+          {[10, 15, 20].map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={`chip${minutes === m ? ' on' : ''}`}
+              aria-pressed={minutes === m}
+              onClick={() => {
+                setMinutes(m);
+                setSaved(false);
+              }}
+            >
+              {m} {tr('min', 'Min.')}
+            </button>
+          ))}
+        </div>
+        <span className="muted small">{tr(`${planDrills.length} drills, about ${planMinutes} min – from your focus areas in turn`, `${planDrills.length} Übungen, etwa ${planMinutes} Min. – abwechselnd aus deinen Schwerpunkten`)}</span>
+      </section>
       <div className="sticky-cta">
         {saved ? (
           <>
@@ -1474,14 +1505,14 @@ function DrillsTab(props: { nav: Nav }) {
             onClick={() => {
               saveOwnPlan({
                 id: trainingId(),
-                name: `Agility · ${dateText(new Date().toISOString())}`,
+                name: `Agility · ${minutes} ${tr('min', 'Min.')} · ${dateText(new Date().toISOString())}`,
                 items: planDrills.map((d) => ({ drill: d.id, minutes: d.minutes })),
                 createdAt: new Date().toISOString(),
               });
               setSaved(true);
             }}
           >
-            {tr(`Take ${planDrills.length} drills into Training as a plan`, `${planDrills.length} Übungen als Plan ins Training übernehmen`)}
+            {tr(`Take the ${minutes}-minute plan into Training`, `${minutes}-Minuten-Plan ins Training übernehmen`)}
           </button>
         )}
       </div>
