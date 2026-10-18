@@ -72,6 +72,9 @@ export interface Rig {
   contacts: THREE.Object3D[];
   /** where a club or stick is held: the right and left hand */
   hands: { L: THREE.Object3D; R: THREE.Object3D };
+  /** the axis of what a closed hand holds: in the middle of the curled fingers, the shaft along the pivot's +z (towards
+   * the thumb) – a club or stick through here is wrapped by the fingers at setGrip(…, 1) (see SHAFT_IN_HAND) */
+  shafts: { L: THREE.Object3D; R: THREE.Object3D };
   head: THREE.Object3D;
   /** the eyes (scaled flat when closed – single-leg balance) */
   eyes: THREE.Object3D[];
@@ -81,15 +84,30 @@ export interface Rig {
   setGrip(left: number, right: number): void;
 }
 
-/** a finger: its knuckle and middle joint (a thumb: base and tip) – curled about the hand's z (towards the palm) */
+/** a finger: its knuckle, middle and end joint (a thumb: base and tip) – curled about the hand's z (towards the palm) */
 interface Finger {
   base: THREE.Object3D;
   mid: THREE.Object3D;
-  /** curl of base and mid at a closed grip, degrees */
-  closed: [number, number];
+  tip?: THREE.Object3D;
+  /** curl of each joint at a closed grip, degrees */
+  closed: number[];
   /** curl at an open, relaxed hand */
-  open: [number, number];
+  open: number[];
   thumb?: boolean;
+}
+
+/** the radius of what a closed hand holds (a club grip, a stick): 1.35 cm */
+export const SHAFT_R = 0.0135;
+/** where that shaft runs in the hand (wrist frame, x for the left hand – the right hand mirrors x): the middle of the
+ * curled fingers, at the height of the knuckles; the shaft points along +z (towards the thumb) */
+export const SHAFT_IN_HAND: [number, number, number] = [-0.023, -0.084, 0];
+
+/** the curl of a finger's joints so its parts lie around a shaft: each part a chord of the circle the finger's middle
+ * line follows (shaft radius + finger radius); a joint turns by half of the two chords' angles */
+function wrapCurl(parts: number[], fingerR: number): number[] {
+  const R = SHAFT_R + fingerR;
+  const arc = parts.map((l) => 2 * Math.asin(Math.min(1, l / (2 * R))));
+  return arc.map((a, i) => THREE.MathUtils.radToDeg(i === 0 ? a / 2 : (arc[i - 1] + a) / 2));
 }
 
 function mat(color: string, rough = 0.75) {
@@ -209,32 +227,38 @@ export function buildRig(): Rig {
     const handColor = side === 1 ? COLORS.glove : COLORS.skin;
     ball(wrist, 0.042, handColor, [0, -0.048, 0.004], [0.5, 1.05, 1.0]);
     const fingers: Finger[] = [];
-    // index … little: knuckle across the palm (z), lengths of the two parts, thickness
-    const F: [number, number, number, number][] = [
-      [0.026, 0.046, 0.036, 0.0095],
-      [0.009, 0.05, 0.039, 0.0098],
-      [-0.008, 0.047, 0.036, 0.0092],
-      [-0.024, 0.038, 0.03, 0.0082],
+    // index … little: knuckle across the palm (z), lengths of the three parts, thickness (Training 18.10.2026: with two
+    // parts the fingers could not close around a club grip – the first part was as long as the circle is wide)
+    const F: [number, number, number, number, number][] = [
+      [0.026, 0.04, 0.024, 0.019, 0.0095],
+      [0.009, 0.043, 0.026, 0.02, 0.0098],
+      [-0.008, 0.04, 0.024, 0.019, 0.0092],
+      [-0.024, 0.033, 0.02, 0.016, 0.0082],
     ];
-    for (const [z, l1, l2, r] of F) {
-      const base = pivot(wrist, [0, -0.088 + Math.abs(z) * 0.25, z], 'XYZ');
-      limb(base, l1, r, r * 0.92, handColor);
+    for (const [z, l1, l2, l3, r] of F) {
+      // the knuckles in line at the shaft's height, so every finger wraps the same shaft
+      const base = pivot(wrist, [0, SHAFT_IN_HAND[1], z], 'XYZ');
+      limb(base, l1, r, r * 0.94, handColor);
       const mid = pivot(base, [0, -l1, 0], 'XYZ');
-      limb(mid, l2, r * 0.9, r * 0.8, handColor);
-      fingers.push({ base, mid, closed: [78, 95], open: [14, 16] });
+      limb(mid, l2, r * 0.92, r * 0.86, handColor);
+      const tip = pivot(mid, [0, -l2, 0], 'XYZ');
+      limb(tip, l3, r * 0.84, r * 0.78, handColor);
+      fingers.push({ base, mid, tip, closed: wrapCurl([l1, l2, l3], r), open: [12, 14, 10] });
     }
-    // the thumb: from the heel of the hand forward and down; closed it lies along the grip
+    // the thumb: from the heel of the hand forward and down; closed it lies on the grip, along the shaft (base turned
+    // more forward, the tip nearly straight – it ends about 7 cm along the shaft, on its top)
     const tb = pivot(wrist, [-side * 0.008, -0.03, 0.03], 'XYZ');
     tb.rotation.set(THREE.MathUtils.degToRad(-28), 0, 0);
     limb(tb, 0.036, 0.0115, 0.0105, handColor);
     const tm = pivot(tb, [0, -0.036, 0], 'XYZ');
     limb(tm, 0.03, 0.0102, 0.0088, handColor);
-    fingers.push({ base: tb, mid: tm, closed: [38, 22], open: [8, 10], thumb: true });
+    fingers.push({ base: tb, mid: tm, closed: [22, 6], open: [8, 10], thumb: true });
     const grip = pivot(wrist, [0, -0.06, 0.01]);
+    const shaft = pivot(wrist, [side * SHAFT_IN_HAND[0], SHAFT_IN_HAND[1], SHAFT_IN_HAND[2]]);
     marker(wrist, [0, -0.08, -0.02], contacts); // palm
     marker(elbow, [0, 0, -0.045], contacts); // back of the elbow
     marker(shoulder, [side * 0.065, 0, 0], contacts); // side of the shoulder (lying on the side)
-    return { shoulder, elbow, wrist, grip, s, fingers };
+    return { shoulder, elbow, wrist, grip, shaft, s, fingers };
   };
   const aL = arm(1);
   const aR = arm(-1);
@@ -269,16 +293,20 @@ export function buildRig(): Rig {
     markers,
     contacts,
     hands: { L: aL.grip, R: aR.grip },
+    shafts: { L: aL.shaft, R: aR.shaft },
     fingers: { L: aL.fingers, R: aR.fingers },
     setGrip(left: number, right: number) {
       for (const [list, k, side] of [[aL.fingers, left, 1], [aR.fingers, right, -1]] as [Finger[], number, 1 | -1][]) {
         for (const f of list) {
-          const a = f.open[0] + (f.closed[0] - f.open[0]) * k;
-          const b = f.open[1] + (f.closed[1] - f.open[1]) * k;
+          const at = (i: number) => THREE.MathUtils.degToRad(-side * (f.open[i] + (f.closed[i] - f.open[i]) * k));
           // fingers curl towards the palm (about z); the thumb folds across the palm (about z as well, from its base tilt)
-          f.base.rotation.z = THREE.MathUtils.degToRad(-side * a);
-          f.mid.rotation.z = THREE.MathUtils.degToRad(-side * b);
-          if (f.thumb) f.base.rotation.y = THREE.MathUtils.degToRad(side * 20 * k);
+          f.base.rotation.z = at(0);
+          f.mid.rotation.z = at(1);
+          if (f.tip) f.tip.rotation.z = at(2);
+          if (f.thumb) {
+            f.base.rotation.y = THREE.MathUtils.degToRad(side * 20 * k);
+            f.base.rotation.x = THREE.MathUtils.degToRad(-28 - 17 * k);
+          }
         }
       }
     },

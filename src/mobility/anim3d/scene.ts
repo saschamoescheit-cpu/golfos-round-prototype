@@ -137,7 +137,8 @@ function buildProp(id: PropId, rig: Rig): THREE.Object3D | null {
       head.position.set(0, -0.84, 0.035);
       head.castShadow = true;
       club.add(shaft, grip, head);
-      rig.hands.R.add(club);
+      // through the middle of the curled fingers (the club points along the hand's +z there)
+      rig.shafts.R.add(club);
       return null;
     }
     case 'barHands':
@@ -326,8 +327,8 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
       // a stick held in both hands, 30 cm longer on each side
       const a = new THREE.Vector3();
       const b = new THREE.Vector3();
-      rig.hands.L.getWorldPosition(a);
-      rig.hands.R.getWorldPosition(b);
+      rig.shafts.L.getWorldPosition(a);
+      rig.shafts.R.getWorldPosition(b);
       const mid = a.clone().add(b).multiplyScalar(0.5);
       const dir = a.clone().sub(b);
       const len = dir.length() + (bar.userData.extra ?? 0.6);
