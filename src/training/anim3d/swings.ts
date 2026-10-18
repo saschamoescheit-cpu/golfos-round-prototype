@@ -763,6 +763,17 @@ export const FLYER: Swing = relabel(quiet({ ...WEDGE_TO_PIN, props: ['rough'], s
   3.5: L('Left: over the green – from the rough plan for the ball to run', 'Links: über das Grün – aus dem Rough mit Ausrollen planen'),
 });
 
+/** aiming right without knowing it: the body lined up on the flag – the club and the ball line then point right of
+ *  it; right: the face on the flag, the feet parallel left of it (railway tracks). The pair stands behind each other,
+ *  the flag between them (6.4 m ahead, 1.3 m from either line) – so each is turned by about 11.5° */
+const AIM_TURN = 11.5;
+const AIMED: Swing = { ...FULL_SWING, props: ['alignSticks'], view: 'side', hit: { at: 2.8, shot: 'full', scale: 0.9 } };
+export const AIM_RIGHT: Swing = relabel(quiet({ ...AIMED, aim: AIM_TURN }), {
+  0: L('Left: feet and shoulders point at the flag · right: the face at the flag, the feet parallel left of it – railway tracks', 'Links: Füße und Schultern zeigen auf die Fahne · rechts: die Schlagfläche auf die Fahne, die Füße parallel links daneben – wie Bahngleise'),
+  2.8: L('Left: the ball line points right – it flies right of the flag · right: at the flag', 'Links: die Ball-Linie zeigt nach rechts – er fliegt rechts an der Fahne vorbei · rechts: auf die Fahne'),
+});
+export const AIM_PARALLEL: Swing = quiet({ ...AIMED, aim: -AIM_TURN });
+
 /** short and armsy: the upper back hardly turns, the arms swing up past the body */
 export const ARMSY: Swing = fault(FULL_SWING, {
   1.0: { body: { pelvis: [38, -6, 2], spine: [2, -2, 0], chest: [2, -8, 5], neck: [-14, 8, 0], head: [12, 4, 0] }, label: L('Left: only the arms swing · right: the upper back turns', 'Links: nur die Arme schwingen · rechts: der obere Rücken dreht') },
@@ -905,6 +916,7 @@ export const PAIRS = {
   rushPair: { fault: RUSHED, right: quiet(FULL_SWING) },
   // from behind: the start line of the putt and the hole
   pitchSlowPair: { fault: PITCH_SLOW, right: quiet(HALF_SWING) },
+  aimPair: { fault: AIM_RIGHT, right: AIM_PARALLEL, behind: true },
   flyerPair: { fault: FLYER, right: quiet(WEDGE_TO_PIN), behind: true },
   armsyPair: { fault: ARMSY, right: quiet(FULL_SWING) },
   punchPair: { fault: PUNCH_HIGH, right: quiet(PUNCH), behind: true },

@@ -370,6 +370,7 @@ FAULT_MOTIONS.trouble = { ...FAULT_MOTIONS.trouble, ...(FAULT_MOTIONS.trouble?.[
 FAULT_MOTIONS.bunker = { ...FAULT_MOTIONS.bunker, 'Never the right length': still3d('sandTrio') };
 if (DRILL_MOTIONS['bunker-ladder']) set3d(DRILL_MOTIONS['bunker-ladder'], 'sandTrio');
 else DRILL_MOTIONS['bunker-ladder'] = { frames: [], video: 'sandTrio' };
+FAULT_MOTIONS.basics = { ...FAULT_MOTIONS.basics, 'Aiming right without knowing it': still3d('aimPair') };
 FAULT_MOTIONS.greenreading = { ...FAULT_MOTIONS.greenreading, 'Missing low (amateur side)': still3d('puttLowPair') };
 DRILL_MOTIONS['clock-matrix'] ??= { frames: [], video: 'clockTrio' };
 FAULT_MOTIONS.slopes = { ...FAULT_MOTIONS.slopes, 'Losing balance': still3d('slopeBalancePair'), 'Fat shots on uphill lies and above the feet': still3d('slopeFatPair'), 'Thin and right from below the feet': still3d('slopeThinPair') };

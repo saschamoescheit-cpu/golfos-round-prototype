@@ -73,6 +73,9 @@ export interface Swing {
   /** the hole of a putt where it is, not where this putt stops (metres along the target line, side + right of it) – a
    *  short putt and a breaking one play to the same hole as the right stroke beside it */
   hole?: { at: number; side?: number };
+  /** where the player aims (degrees, + right of the target line): the whole player – body, club, ball line, flight –
+   *  turned about the ball */
+  aim?: number;
   /** a putt draws its line on the green as it rolls (the break, the length) */
   rollLine?: boolean;
   /** the ball sits this deep in the ground (m): plugged in the sand (fried egg), in an old divot */
@@ -86,7 +89,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand' | 'rough')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand' | 'rough' | 'alignSticks')[];
   /** the ball very low on its tee (fairway wood off a tee) */
   lowTee?: boolean;
   /** no ball: a drill swung into an impact bag */
@@ -305,6 +308,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     ball: THREE.Mesh;
     tee: THREE.Mesh;
     extras: THREE.Group;
+    /** all of the player, turned about the ball by the aim (posed unturned, turned for the picture) */
+    frame: THREE.Group;
     /** the divot: the mark in the turf and the bits of grass flying off (none for a putt, a chip, from the tee or thin) */
     divot: { mark: THREE.Mesh; bits: THREE.Mesh[]; from: number; len: number; yaw: number } | null;
     /** the path of the clubhead, drawn up to now – from behind it shows the swing plane */
@@ -642,6 +647,17 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       }
       add(tufts);
     }
+    // alignment sticks on the ground: one along the toes, one along the ball line – parallel, like railway tracks
+    if (props.includes('alignSticks')) {
+      const mat = new THREE.MeshStandardMaterial({ color: COLORS.stick, roughness: 0.5 });
+      for (const z of [p.z + 0.13, bp.z - 0.07]) {
+        const s = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 2.4, 8), mat);
+        s.rotation.z = Math.PI / 2;
+        s.position.set(bp.x + 0.7, heightAt(bp.x, z) + 0.008, z);
+        s.castShadow = true;
+        add(s);
+      }
+    }
     if (props.includes('oldDivot')) {
       const hole = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.004, 0.075), new THREE.MeshStandardMaterial({ color: '#5e4a30', roughness: 1 }));
       hole.position.set(bp.x + 0.02, heightAt(bp.x, bp.z) + 0.001, bp.z);
@@ -920,6 +936,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const tt = ((t % loop) + loop) % loop;
     let s = { label: undefined as L | undefined, step: 0 };
     players.forEach((p, i) => {
+      if (p.swing.aim) {
+        p.frame.rotation.y = 0;
+        p.frame.updateMatrixWorld(true);
+      }
       const r = place(p, tt);
       if (i === 0) s = r;
       placeBall(p, tt);
@@ -943,6 +963,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       }
       if (p.laws) p.laws.visible = sh > -0.02;
       if (p.mark) p.mark.visible = sh >= 0;
+      if (p.swing.aim) p.frame.rotation.y = THREE.MathUtils.degToRad(-p.swing.aim);
     });
     if (labelCb && s.step !== lastStep) {
       lastStep = s.step;
@@ -981,7 +1002,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     pin.position.y = 1.05 + heightAt(pin.position.x, pin.position.z);
     cloth.position.y = 1.92 + heightAt(pin.position.x, pin.position.z);
     for (const p of players) {
-      scene.remove(p.rig.root, p.club, p.ball, p.tee, p.extras);
+      scene.remove(p.frame);
       for (const o of [p.rig.root, p.club, p.ball, p.tee, p.extras])
         o.traverse((x) => {
           const m = x as THREE.Mesh;
@@ -1041,8 +1062,16 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       const at = ballPos({ swing, x, z });
       ball.position.copy(at);
       tee.position.set(at.x, (swing.lowTee ? 0 : 0.02) + heightAt(at.x, at.z), at.z);
-      scene.add(rig.root, club, ball, tee, extras);
-      return { rig, club, ball, tee, extras, divot, trace: null, tracer: null, cup: null, splash: null, aids: [], fan: [], laws: null, mark: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
+      // the player's own frame, pivoting about the ball: posed with no turn (the solver works in plain world
+      // coordinates), then turned by the aim for the picture
+      const frame = new THREE.Group();
+      const inner = new THREE.Group();
+      frame.position.set(at.x, 0, at.z);
+      inner.position.set(-at.x, 0, -at.z);
+      frame.add(inner);
+      inner.add(rig.root, club, ball, tee, extras);
+      scene.add(frame);
+      return { rig, club, ball, tee, extras, frame, divot, trace: null, tracer: null, cup: null, splash: null, aids: [], fan: [], laws: null, mark: null, swing, x, z, prep: prepare({ rig, swing, x, z }) } as Player;
     });
     const alongLine = players.some((p) => p.x !== players[0].x);
     for (const p of players) {
