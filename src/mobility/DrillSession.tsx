@@ -8,7 +8,7 @@ import type { Drill } from '../training/types';
 import { DRILL_CLIPS } from './anim3d/drills';
 import { isFakeCamera, unlockAudio } from './CameraTest';
 import { coachOf, SELF_NAMED, SIGNALS, signalValueText } from './drillcoach';
-import { DrillPlayer, cueText } from './DrillPlayer';
+import { DrillPlayer, cap, cueText } from './DrillPlayer';
 import type { FormCue } from './drillcoach';
 import { PhoneSetup } from './pictures';
 import { loadPose } from './pose';
@@ -279,7 +279,7 @@ function TrainSummary(props: { session: TrainSession; drills: Drill[]; previous:
                 })()}
                 {best != null && sig && sig !== 'oneLeg' && (
                   <span className="small">
-                    {SELF_NAMED.includes(sig) ? null : `${t(SIGNALS[sig].name)}: `}<strong>{signalValueText(sig, best, tr)}</strong>
+                    {SELF_NAMED.includes(sig) ? null : `${cap(t(SIGNALS[sig].name))}: `}<strong>{signalValueText(sig, best, tr)}</strong>
                     {change != null && Math.abs(change) >= (SIGNALS[sig].unit === '°' ? 3 : 1) && <span className={up ? ' good-text' : ' muted'}> · {change > 0 ? '+' : '−'}{String(Math.abs(change)).replace('.', tr('.', ','))}{SIGNALS[sig].unit === '°' ? '°' : ` ${SIGNALS[sig].unit}`}</span>}
                   </span>
                 )}

@@ -20,6 +20,7 @@ import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { DrillSession, doneText } from '../mobility/DrillSession';
+import { cap } from '../mobility/DrillPlayer';
 import { daysThisWeek, drillHistory, loadSessions, newSession, openSession, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
 import { coachOf, SIGNALS, signalValueText } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
@@ -1789,7 +1790,7 @@ function DrillValues(props: { id: string }) {
   return (
     <section className="card tr-section mob-drill-values">
       <h2>{tr('Your values', 'Deine Werte')}</h2>
-      <span className="muted small">{t(def.name)}</span>
+      <span className="muted small">{cap(t(def.name))}</span>
       <div className="list">
         {[...list].reverse().slice(0, 6).map((x) => (
           <div key={x.at} className="list-item mob-area-row">

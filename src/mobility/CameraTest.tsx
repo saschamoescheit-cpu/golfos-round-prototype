@@ -28,6 +28,11 @@ export interface Coach {
 
 /** Once the tracking was too slow with the small golfer on, it stays off for the rest of the session (this phone). */
 let phoneSlow = false;
+/** the tracking was too slow with the small golfer on (this phone, this visit) – the drill player asks too */
+export const isPhoneSlow = (): boolean => phoneSlow;
+export const markPhoneSlow = (): void => {
+  phoneSlow = true;
+};
 
 /** Where to stand, in words – said after the demo. */
 function placeText(test: TestDef): string {

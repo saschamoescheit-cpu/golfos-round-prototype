@@ -8,7 +8,7 @@ import { CUES, CUE_SHORT, FormCheck, RepCounter, SELF_NAMED, SIGNALS, Signal, se
 import type { DrillDone, DrillSet } from './sessions';
 import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
-import { beep, fakeLevel, fakeSpeed } from './CameraTest';
+import { beep, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow } from './CameraTest';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -28,6 +28,8 @@ export function cueText(cues: Partial<Record<FormCue, number>>): string {
 
 const sideWord = (s: Side) => (s === 'left' ? tr('left side', 'linke Seite') : tr('right side', 'rechte Seite'));
 const t = (x: { en: string; de: string }) => tr(x.en, x.de);
+/** a name at the start of a line ("turn of the hips" → "Turn of the hips") */
+export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** The synthetic player for the QA (golfos.mobility.fake): the drill's movement in a loop – about 0.8 s a rep on the
  * clock even when the QA runs faster, so the camera sees enough pictures of every rep (a real one takes 2–4 s). */
@@ -117,6 +119,9 @@ export function DrillPlayer(props: {
   const [cue, setCue] = useState<FormCue | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ratio, setRatio] = useState('9 / 16');
+  // the small 3D golfer and the body tracking share the phone: under 12 pictures a second the golfer goes (accuracy
+  // first), for the rest of the visit – as in the screening
+  const [demoOff, setDemoOff] = useState(isPhoneSlow);
   const [attempt, setAttempt] = useState(0);
   const fake = fakeLevel();
   const resultRef = useRef<DrillDone | null>(null);
@@ -163,6 +168,8 @@ export function DrillPlayer(props: {
     let lastHint = 0;
     let lastUi = 0;
     let lastDetect = 0;
+    let rateT0 = performance.now();
+    let rateN = 0;
     let fakeT0 = 0;
 
     const draw = (lm: Lm[] | null, w: number, h: number, framed: boolean) => {
@@ -286,6 +293,15 @@ export function DrillPlayer(props: {
       const now = performance.now();
       if (now - lastDetect < 30) return;
       lastDetect = now;
+      rateN++;
+      if (now - rateT0 > 3000) {
+        if (!fake && rateN / ((now - rateT0) / 1000) < 12 && (phaseRef.current === 'frame' || phaseRef.current === 'run')) {
+          markPhoneSlow();
+          setDemoOff(true);
+        }
+        rateT0 = now;
+        rateN = 0;
+      }
       let lm: Lm[] | null = null;
       let people = 0;
       let w = 720;
@@ -525,7 +541,7 @@ export function DrillPlayer(props: {
           </div>
           {best != null && plan.signal && (
             <span className="small">
-              {SELF_NAMED.includes(plan.signal) ? null : `${t(SIGNALS[plan.signal].name)}: `}<strong>{unit(best)}</strong>
+              {SELF_NAMED.includes(plan.signal) ? null : `${cap(t(SIGNALS[plan.signal].name))}: `}<strong>{unit(best)}</strong>
               {change != null && Math.abs(change) >= (SIGNALS[plan.signal].unit === '°' ? 3 : 1) && <span className={better ? ' good-text' : ' muted'}> · {tr(`${change > 0 ? '+' : '−'}${Math.abs(change)} since last time`, `${change > 0 ? '+' : '−'}${String(Math.abs(change)).replace('.', ',')} seit letztem Mal`)}</span>}
             </span>
           )}
@@ -603,7 +619,7 @@ export function DrillPlayer(props: {
   return (
     <section className="mob-camera coach mob-drill-player">
       <div className="mob-stage-wrap">
-        {props.clip && (phase === 'demo' || phase === 'frame' || phase === 'count' || phase === 'run' || phase === 'rest') && (
+        {props.clip && (phase === 'demo' || (!demoOff && (phase === 'frame' || phase === 'count' || phase === 'run' || phase === 'rest'))) && (
           <div className={`mob-demo${phase === 'demo' ? ' big' : ''}`}>
             <Suspense fallback={null}>
               <Anim3D clip={props.clip} compact />
