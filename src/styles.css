@@ -1325,3 +1325,6 @@ button.tile:disabled .tile-mark { opacity: 0.5; }
 .rules-note { margin: 0; }
 .rule-sketch { display: block; width: 100%; height: auto; max-width: 520px; border-radius: 14px; }
 .rules-book .list-item .title { white-space: normal; overflow: visible; text-overflow: clip; } /* full rule titles, as in the R&A app */
+
+/* the weather of the round under course and date on its scorecard (GOL-26) */
+.sc-weather { display: block; margin-top: 2px; }

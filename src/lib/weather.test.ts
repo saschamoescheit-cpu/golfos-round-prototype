@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { windOnHole, type Weather } from './weather';
+import { roundWeather, roundWeatherText, windOnHole, type Weather } from './weather';
 
 const w = (windFromDeg: number, windKmh = 20): Weather => ({ tempC: 20, windKmh, gustKmh: 30, windFromDeg, code: 0, at: '' });
 
@@ -17,5 +17,21 @@ describe('wind relative to the hole', () => {
   });
   it('light wind is calm', () => {
     expect(windOnHole(w(90, 3), 0).label).toBe('Calm');
+  });
+});
+
+describe('roundWeather (GOL-26: the weather of a round on its scorecard)', () => {
+  const e = (w?: { tempC: number; windKmh: number; windFromDeg: number }) => ({ weather: w }) as never;
+  it('averages the holes that have weather and keeps the strongest wind', () => {
+    const r = roundWeather([e({ tempC: 15, windKmh: 10, windFromDeg: 270 }), e(), e({ tempC: 18, windKmh: 24, windFromDeg: 250 })]);
+    expect(r).toEqual({ tempC: 17, windKmh: 17, maxWindKmh: 24, holes: 2 });
+  });
+  it('is null without any weather', () => {
+    expect(roundWeather([e(), e()])).toBeNull();
+    expect(roundWeatherText([e()])).toBeNull();
+  });
+  it('names the strongest wind only when it was clearly stronger', () => {
+    expect(roundWeatherText([e({ tempC: 12, windKmh: 10, windFromDeg: 0 }), e({ tempC: 12, windKmh: 12, windFromDeg: 0 })])).toMatch(/11 km\/h$/);
+    expect(roundWeatherText([e({ tempC: 12, windKmh: 8, windFromDeg: 0 }), e({ tempC: 12, windKmh: 30, windFromDeg: 0 })])).toMatch(/19 km\/h \((up to|bis) 30\)$/);
   });
 });

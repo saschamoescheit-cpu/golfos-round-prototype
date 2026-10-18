@@ -30,6 +30,9 @@ await p.waitForTimeout(1200);
 await p.locator('.tabbar button').nth(1).click();
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1200);
+// the weather the round was played in, from its holes (GOL-26) – Hetzenhof 16.10.: about 18 °C, almost no wind
+const wx = (await p.locator('.sc-weather').count()) ? await p.locator('.sc-weather').innerText() : '';
+ok(/^18 °C · Wind 3 km\/h$/.test(wx), `scorecard: the round's weather (${wx})`);
 const card = p.locator('section').filter({ hasText: 'Strokes Gained dieser Runde' }).last();
 const text = await card.innerText();
 ok(/Je 9 Löcher/.test(text) && /je 9 Löcher\./.test(text), '9-hole round: values per 9 holes');

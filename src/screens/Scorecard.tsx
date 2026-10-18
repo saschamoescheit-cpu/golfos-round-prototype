@@ -21,6 +21,7 @@ import { getLang, tr } from '../lib/i18n';
 import { sign, unsign } from '../lib/signing';
 import { SignedIcon } from '../components/SignedIcon';
 import { profileIndex } from '../lib/profile';
+import { roundWeatherText } from '../lib/weather';
 
 export function Scorecard(props: {
   round: Round;
@@ -112,6 +113,8 @@ export function Scorecard(props: {
             </>
           )}
         </span>
+        {/* the weather the round was played in, from its holes (GOL-26) */}
+        {roundWeatherText(round.entries[me.id]) && <span className="muted small sc-weather">{roundWeatherText(round.entries[me.id])}</span>}
       </div>
       {loadProfile().photo && round.players.some((p) => p.isMe) && <Avatar name={round.players.find((p) => p.isMe)!.name} me size={44} />}
       </div>

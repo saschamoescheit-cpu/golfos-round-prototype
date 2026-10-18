@@ -1,4 +1,4 @@
-import type { LngLat } from '../types';
+import type { HoleEntry, LngLat } from '../types';
 import { tr } from './i18n';
 
 // Weather on the course (GOL-26): temperature and wind from Open-Meteo (free for non-commercial use,
@@ -115,4 +115,24 @@ export function forecastNote(f: Forecast | null, nowGustKmh: number): string | n
   if (rain) parts.push(tr(`rain likely from ${hh(rain.time)}`, `Regen wahrscheinlich ab ${hh(rain.time)}`));
   if (wind) parts.push(tr(`gusts up to ${Math.round(wind.gustKmh)} km/h around ${hh(wind.time)}`, `Böen bis ${Math.round(wind.gustKmh)} km/h gegen ${hh(wind.time)}`));
   return parts.length ? `${tr('Coming up', 'Demnächst')}: ${parts.join(', ')}` : null;
+}
+
+/** The weather of a round from what was saved on its holes (GOL-26): average temperature and wind, the strongest wind.
+ *  Null when no hole has weather (played offline, entered later). */
+export function roundWeather(entries: HoleEntry[]): { tempC: number; windKmh: number; maxWindKmh: number; holes: number } | null {
+  const w = entries.map((e) => e.weather).filter((x): x is NonNullable<HoleEntry['weather']> => !!x);
+  if (!w.length) return null;
+  const avg = (f: (x: (typeof w)[number]) => number) => w.reduce((a, x) => a + f(x), 0) / w.length;
+  return { tempC: Math.round(avg((x) => x.tempC)), windKmh: Math.round(avg((x) => x.windKmh)), maxWindKmh: Math.round(Math.max(...w.map((x) => x.windKmh))), holes: w.length };
+}
+
+/** "17 °C · wind 14 km/h" for the round's scorecard; the strongest wind when it was clearly stronger. */
+export function roundWeatherText(entries: HoleEntry[]): string | null {
+  const r = roundWeather(entries);
+  if (!r) return null;
+  const gusty = r.maxWindKmh >= r.windKmh + 8;
+  return tr(
+    `${r.tempC} °C · wind ${r.windKmh} km/h${gusty ? ` (up to ${r.maxWindKmh})` : ''}`,
+    `${r.tempC} °C · Wind ${r.windKmh} km/h${gusty ? ` (bis ${r.maxWindKmh})` : ''}`,
+  );
 }
