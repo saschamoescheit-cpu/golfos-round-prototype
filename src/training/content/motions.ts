@@ -362,6 +362,8 @@ set3d(SECTION_MOTIONS.pitching?.['Lob and flop'], 'lob');
 set3d(FAULT_MOTIONS.fitness?.['Short, armsy backswing'], 'armsyPair');
 set3d(DRILL_MOTIONS['sand-on-face'], 'sandOnFace');
 set3d(DRILL_MOTIONS['brush-find'], 'brushFind');
+set3d(DRILL_MOTIONS['l-to-l'], 'lToL');
+set3d(DRILL_MOTIONS['driver-wide-stance'], 'driverWide');
 if (DRILL_MOTIONS['alignment-station']) set3d(DRILL_MOTIONS['alignment-station'], 'alignStation');
 else DRILL_MOTIONS['alignment-station'] = { frames: [], video: 'alignStation' };
 // putting faults as 3D pairs from behind: short, the short one missed, the three-putt, missing low

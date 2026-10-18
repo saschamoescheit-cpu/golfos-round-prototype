@@ -781,6 +781,22 @@ export const ALIGN_STATION: Swing = relabel(quiet({ ...FULL_SWING, props: ['alig
   2.8: L('Every ball from this station – feet, hips and shoulders parallel to the target line', 'Jeder Ball von dieser Station – Füße, Hüfte und Schultern parallel zur Ziellinie'),
 });
 
+/** L to L: back until the lead arm is level and the shaft points up (the first L), through until the trail arm is
+ *  level and the shaft points up (the second L) */
+export const L_TO_L: Swing = relabel(quiet({ ...HALF_SWING, club: 'iron' }), {
+  0: L('An 8-iron, a normal set-up', 'Eisen 8, normale Ansprache'),
+  1.5: L('The first L: lead arm level, shaft pointing up', 'Das erste L: vorderer Arm waagrecht, Schaft zeigt nach oben'),
+  2.1: L('Through the ball – the body turns', 'Durch den Ball – der Körper dreht'),
+  2.5: L('The second L: trail arm level, shaft pointing up', 'Das zweite L: hinterer Arm waagrecht, Schaft zeigt nach oben'),
+});
+/** the driver from a wide stance: a little wider than the shoulders, ball off the lead heel, a full turn */
+export const DRIVER_WIDE: Swing = relabel(quiet({ ...DRIVER_SWING, stance: 0.58, ball: [0.22, 0.9] }), {
+  0: L('Stance a little wider than the shoulders, ball off the lead heel', 'Stand etwas breiter als die Schultern, Ball gegenüber der vorderen Ferse'),
+  2.0: L('A full turn on a stable base', 'Volle Drehung auf stabiler Basis'),
+  2.8: L('Sweep the ball off the tee', 'Den Ball vom Tee fegen'),
+  3.5: L('Hold the finish in balance', 'Das Finish im Gleichgewicht halten'),
+});
+
 /** short and armsy: the upper back hardly turns, the arms swing up past the body */
 export const ARMSY: Swing = fault(FULL_SWING, {
   1.0: { body: { pelvis: [38, -6, 2], spine: [2, -2, 0], chest: [2, -8, 5], neck: [-14, 8, 0], head: [12, 4, 0] }, label: L('Left: only the arms swing · right: the upper back turns', 'Links: nur die Arme schwingen · rechts: der obere Rücken dreht') },
@@ -967,5 +983,5 @@ export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { alignStation: ALIGN_STATION, sandOnFace: SAND_ON_FACE, brushFind: BRUSH_FIND, friedEgg: FRIED_EGG, sandTrailToe: SAND_TRAIL_TOE, divotLie: DIVOT_LIE, hybridChip: HYBRID_CHIP, lob: LOB, leadArm: LEAD_ARM, punch: PUNCH, sandLine: SAND_LINE, sandSplash: SAND_SPLASH, sandFrame: SAND_FRAME, chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { lToL: L_TO_L, driverWide: DRIVER_WIDE, alignStation: ALIGN_STATION, sandOnFace: SAND_ON_FACE, brushFind: BRUSH_FIND, friedEgg: FRIED_EGG, sandTrailToe: SAND_TRAIL_TOE, divotLie: DIVOT_LIE, hybridChip: HYBRID_CHIP, lob: LOB, leadArm: LEAD_ARM, punch: PUNCH, sandLine: SAND_LINE, sandSplash: SAND_SPLASH, sandFrame: SAND_FRAME, chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;
