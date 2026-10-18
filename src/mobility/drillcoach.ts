@@ -1,6 +1,6 @@
 import { L, type L as Text } from '../training/types';
 import { LEG_CM, NOSE_DEPTH, P, S, angleBetween, dist, inFrame, jointAngle, median, nearSide, px, sub, turned, vis, width, type Frame } from './measure';
-import type { Side } from './types';
+import type { Side, TestId } from './types';
 
 // The drills of the mobility pillar as a guided session (Sascha 18.10.2026: "not a knowledge base like Training – an
 // app that leads a person through exercises and analyses and measures the mobility meanwhile"). For every drill: how
@@ -60,6 +60,19 @@ export const DRILL_COACH: Record<string, DrillCoach> = {
   'seated-rotation': { view: 'front', where: L('Sit face-on to the phone on a chair.', 'Setz dich frontal zum Handy auf einen Stuhl.'), reps: 20, tempo: 3, signal: 'turn' },
   'deep-squat': { view: 'side', where: SIDE_STAND, reps: 10, tempo: 4, signal: 'squat' },
   'glute-bridge': { view: 'floor', where: L('On your back, side-on to the phone, knees bent.', 'Auf den Rücken, seitlich zum Handy, Knie gebeugt.'), reps: 12, tempo: 4, sets: 2, signal: 'hipExt' },
+};
+
+/**
+ * Drills that measure what a test measures, the same way (Sascha 18.10.2026: "repeat later to see how the values
+ * changed") – their values show on the test page between two screenings. The test counts the weaker side; the drill
+ * turns both ways in one set, so its value is the furthest it went.
+ */
+export const SAME_AS_TEST: Record<string, TestId> = {
+  'seated-rotation': 'seated-rotation',
+  'mob-pelvic-turn': 'pelvic-rotation',
+  'deep-squat': 'deep-squat',
+  'mob-toe-touch': 'toe-touch',
+  'mob-neck-turn': 'neck',
 };
 
 /** A drill not in the table: led by the clock, 10 reps in a slow tempo. */

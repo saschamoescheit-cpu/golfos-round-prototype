@@ -20,7 +20,7 @@ import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { DrillSession, doneText } from '../mobility/DrillSession';
-import { daysThisWeek, drillHistory, loadSessions, newSession, openSession, painDrills, type TrainSession } from '../mobility/sessions';
+import { daysThisWeek, drillHistory, loadSessions, newSession, openSession, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
 import { coachOf, SIGNALS, signalValueText } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
@@ -406,6 +406,8 @@ function TestView(props: { id: TestId; nav: Nav }) {
     .filter((x): x is { s: Screening; r: TestResult } => !!x.r)
     .sort((a, b) => b.s.createdAt.localeCompare(a.s.createdAt));
   const drills = drillsOf(test, latestResults(loadScreenings()).results[test.id]).map(drillById).filter((d): d is Drill => !!d);
+  // between two screenings: what the guided training measured for this test
+  const trained = trainingValues(test.id);
   return (
     <main className="screen training mobility">
       <TopBar title={t(test.name)} onBack={props.nav.back} />
@@ -426,7 +428,7 @@ function TestView(props: { id: TestId; nav: Nav }) {
       {tab === 'result' && (
         <section className="tr-block">
           {history.length === 0 ? (
-            <p className="muted">{tr('Not tested yet.', 'Noch nicht getestet.')}</p>
+            !trained.length && <p className="muted">{tr('Not tested yet.', 'Noch nicht getestet.')}</p>
           ) : (
             <>
               {test.metric && <HistoryChart test={test} history={history} />}
@@ -445,6 +447,7 @@ function TestView(props: { id: TestId; nav: Nav }) {
               </div>
             </>
           )}
+          {trained.length > 0 && test.metric && <TrainedValues test={test} values={trained} />}
         </section>
       )}
       {tab === 'drills' && <DrillList drills={drills} nav={props.nav} />}
@@ -502,6 +505,34 @@ function HistoryChart(props: { test: TestDef; history: { s: Screening; r: TestRe
         {tv != null && props.test.metric ? ` (${tr('about', 'etwa')} ${valueText(props.test.metric, tv, tr)})` : ''}
       </figcaption>
     </figure>
+  );
+}
+
+/** The values the guided training measured for a test, on the same scale and with the line of the goal. */
+function TrainedValues(props: { test: TestDef; values: { at: string; value: number; drill: string }[] }) {
+  const goal = loadGoal();
+  const tgt = targetPos(props.test, goal);
+  return (
+    <section className="mob-trained">
+      <h2>{tr('From your training', 'Aus deinem Training')}</h2>
+      <div className="list">
+        {props.values.slice(0, 6).map((x) => {
+          const pos = measurePos(props.test, { value: x.value, grade: 'limited', source: 'camera', at: x.at });
+          return (
+            <div key={x.at + x.drill} className="list-item mob-area-row">
+              <span className="grow">
+                <span className="title">{valueText(props.test.metric!, Math.round(x.value), tr)}</span>
+                <span className="muted small">
+                  {dateText(x.at)} · {t(drillById(x.drill)?.name ?? { en: x.drill, de: x.drill })}
+                </span>
+              </span>
+              {pos != null && <LevelBar pos={pos} target={tgt} small />}
+            </div>
+          );
+        })}
+      </div>
+      <span className="muted small">{tr('Measured in the guided drill – both sides together, not the test procedure; the next screening shows the comparison.', 'Gemessen in der geführten Übung – beide Seiten zusammen, nicht der Testablauf; das nächste Screening zeigt den Vergleich.')}</span>
+    </section>
   );
 }
 

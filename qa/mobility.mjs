@@ -208,7 +208,7 @@ await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Anleitung' }).click(
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'a drill has its picture');
 await p.locator('.mob-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
 ok(await p.locator('.mob-3d canvas').isVisible(), 'the drill shows its 3D video');
-ok(((await p.locator('.mob-3d-step').textContent()) ?? '').length > 5, 'the drill video names the step');
+ok(await p.waitForFunction(() => (document.querySelector('.mob-3d-step')?.textContent ?? '').length > 5, null, { timeout: 10000 }).then(() => true, () => false), 'the drill video names the step');
 await shot('drill');
 await p.locator('.topbar .icon-btn').first().click();
 // the guided session with the camera comes first (qa/mobility-train.mjs runs it), the plan for Training second
@@ -247,7 +247,7 @@ await p.waitForTimeout(2500);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'the test shows its picture');
 ok((await p.locator('.tr-video').count()) >= 1, 'the test shows its video');
 ok(await p.locator('.mob-3d canvas').isVisible(), 'the test shows its 3D video');
-ok(((await p.locator('.mob-3d-step').textContent()) ?? '').length > 5, 'the 3D video names the step of the moment');
+ok(await p.waitForFunction(() => (document.querySelector('.mob-3d-step')?.textContent ?? '').length > 5, null, { timeout: 10000 }).then(() => true, () => false), 'the 3D video names the step of the moment');
 ok(await p.locator('.mob-3d-play').isVisible(), 'play/pause is the round symbol in the picture');
 const painted = await p.evaluate(() => { const c = document.querySelector('.mob-3d canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; });
 ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');

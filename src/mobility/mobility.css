@@ -207,3 +207,6 @@
 .mob-today-pics { display: flex; gap: 6px; overflow: hidden; }
 .mob-today-pics > * { flex: none; width: 52px; height: 52px; }
 .mob-today .btn-primary { margin-top: 6px; }
+
+.mob-trained { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.mob-trained h2 { margin: 0; }

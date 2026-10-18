@@ -2,8 +2,8 @@
 // session keeps what the player did per drill and set – the reps, the holds and, where the camera measured, the best
 // value – so the next session and the drill page can show the way there. Nothing is ever deleted by itself.
 import { syncSoon } from '../lib/sync';
-import type { SignalId } from './drillcoach';
-import type { Side } from './types';
+import { SAME_AS_TEST, SIGNALS, coachOf, type SignalId } from './drillcoach';
+import type { Side, TestId } from './types';
 
 export interface DrillSet {
   side: Side | null;
@@ -92,6 +92,17 @@ export function drillHistory(drill: string, better: 'up' | 'down' = 'up'): { at:
         if (v != null) out.push({ at: d.at, value: v });
       }
   return out.sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** what the training measured for a test (drills that measure the same), newest first */
+export function trainingValues(test: TestId): { at: string; value: number; drill: string }[] {
+  const out: { at: string; value: number; drill: string }[] = [];
+  for (const [drill, t] of Object.entries(SAME_AS_TEST)) {
+    if (t !== test) continue;
+    const sig = coachOf(drill).signal;
+    for (const x of drillHistory(drill, sig ? SIGNALS[sig].better : 'up')) out.push({ ...x, drill });
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at));
 }
 
 /** days with a finished session in the 7 days up to now */

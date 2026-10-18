@@ -126,6 +126,18 @@ await p.waitForTimeout(300);
 const after = await p.locator('.mob-today').innerText().catch(() => '');
 ok(/heute erledigt/.test(after) && /Nochmal trainieren/.test(after) && /10 Min\./.test(after), `the start tab: done today, train again, 10 min (${after.split('\n').slice(0, 2).join(' · ')})`);
 
+// the test page shows what the training measured for it (hip turns in golf posture → pelvic rotation)
+if (sess?.done.some((d) => d.drill === 'mob-pelvic-turn')) {
+  await p.locator('.mob-test-row').filter({ hasText: 'Beckenrotation' }).first().click();
+  await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
+  await p.waitForTimeout(300);
+  const trained = await p.locator('.mob-trained').innerText().catch(() => '');
+  ok(/Aus deinem Training/.test(trained) && /Hüfte drehen/.test(trained), `the test page shows the value from the training (${trained.split('\n').slice(1, 3).join(' · ')})`);
+  await shot('test-trained');
+  await p.locator('.topbar .icon-btn').first().click();
+  await p.waitForTimeout(300);
+}
+
 // history: the training next to the screenings
 await p.locator('.tabbar button').filter({ hasText: 'Verlauf' }).click();
 await p.waitForTimeout(300);
