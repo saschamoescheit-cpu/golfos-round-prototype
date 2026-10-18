@@ -611,7 +611,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const add = (m: THREE.Object3D) => (p.extras.add(m), m);
     // a plugged ball: a ring of sand thrown up around it (the fried egg); an old divot: a bare, sunken strip
     if (p.swing.sunk && p.swing.sand) {
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.01, 8, 24), new THREE.MeshStandardMaterial({ color: '#d9c48f', roughness: 1 }));
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.01, 8, 24), new THREE.MeshStandardMaterial({ color: '#e3cf96', roughness: 1 })); // ci-allow: bunker sand
       rim.rotation.x = Math.PI / 2;
       rim.position.set(bp.x, heightAt(bp.x, bp.z) + 0.002, bp.z);
       add(rim);
@@ -1037,7 +1037,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       if (p.swing.props?.includes('faceSand')) {
         const geo = new THREE.SphereGeometry(0.022, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
         geo.scale(1, 0.5, 1.4);
-        const pile = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#e0cc98', roughness: 1 }));
+        const pile = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#e3cf96', roughness: 1 })); // ci-allow: bunker sand
         pile.rotation.z = Math.PI / 2;
         pile.position.set(p.club.userData.faceX - 0.0005, -0.016, SWEET[p.swing.club]);
         (p.club.userData.head as THREE.Object3D).add(pile);
