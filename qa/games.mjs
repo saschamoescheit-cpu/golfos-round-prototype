@@ -200,9 +200,15 @@ ok((await p.locator('ul.list .signed-mark[aria-label="zu bestätigen"]').count()
 ok((await p.locator('ul.list .round-date').count()) === nConfirm, 'rows with the date block as in the rounds list');
 await p.locator('.list-item').first().click();
 await p.waitForTimeout(500);
+// as on a round's scorecard: to confirm it follows the result and the scores, confirmed it stands on top
+const order = () => p.evaluate(() => [...document.querySelectorAll('.game-winner, .sign-card, .game-grid-card')].map((e) => e.classList.contains('sign-card') ? 'sign' : e.classList.contains('game-winner') ? 'winner' : 'grid').join(' '));
+const before = await order();
+ok(before === 'winner grid sign', `result: "Ergebnis bestätigen" follows the scores (${before})`);
 await p.locator('.sign-card').getByRole('button', { name: 'Bestätigen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.sign-card').innerText()).includes('Ergebnis bestätigt'), 'result: "Ergebnis bestätigen" confirms it');
+const after = await order();
+ok(after === 'sign winner grid', `confirmed: the seal stands on top as on a round (${after})`);
 await p.evaluate(() => {
   const gs = JSON.parse(localStorage.getItem('golfos.games.v1'));
   localStorage.setItem('golfos.games.v1', JSON.stringify(gs.map((g) => (g.finishedAt ? { ...g, signedAt: g.signedAt ?? new Date().toISOString() } : g))));

@@ -1124,51 +1124,55 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
   const st = standingOf(g);
   const pays = st.money ? transfers(st.money) : [];
   const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
+  // confirm the result like a scorecard (Sascha 16.10.2026: as signing a round) – only confirmed games count. As on a
+  // round: confirmed it stands on top, to confirm it follows the result, the settlement and the scores (after checking them)
+  const confirmCard = (
+    <section className={`card sign-card${g.signedAt ? ' signed' : ''}`} aria-label={tr('Confirmation', 'Bestätigung')}>
+      {g.signedAt ? (
+        <>
+          <span className="sign-seal big" aria-hidden="true">
+            <SignedIcon size={34} />
+          </span>
+          <span className="grow">
+            <strong>{tr('Result confirmed', 'Ergebnis bestätigt')}</strong>
+            <span className="muted small" style={{ display: 'block' }}>
+              {new Date(g.signedAt).toLocaleString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your balance', 'Zählt in deiner Bilanz')}</span>
+          </span>
+          <button type="button" className="icon-btn" aria-label={tr('Withdraw the confirmation', 'Bestätigung zurücknehmen')} title={tr('Withdraw the confirmation', 'Bestätigung zurücknehmen')} onClick={() => props.onChange({ ...g, signedAt: null })}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 14 4 9l5-5" />
+                <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+              </svg>
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="grow">
+            <strong>{tr('Confirm the result', 'Ergebnis bestätigen')}</strong>
+            <span className="muted small" style={{ display: 'block' }}>
+              {tr('Like signing a scorecard – only confirmed games count in your balance.', 'Wie das Signieren einer Scorekarte – nur bestätigte Spiele zählen in deiner Bilanz.')}
+            </span>
+          </span>
+          <button type="button" className="btn-primary" onClick={() => props.onChange({ ...g, signedAt: new Date().toISOString() })}>
+            {tr('Confirm', 'Bestätigen')}
+          </button>
+        </>
+      )}
+    </section>
+  );
   return (
     <main className="screen">
       <TopBar title={f.name()} onBack={props.onBack} backLabel={tr('Games', 'Spiele')} />
       <span className="muted small">
         {g.courseName} · {new Date(g.createdAt).toLocaleDateString()} · {holesPlayed(g)}/{g.holes.length} {tr('holes', 'Löcher')}
       </span>
+      {g.signedAt && confirmCard}
       <section className="card game-winner">
         <span className="eyebrow">{winnerOf(st.rows) ? tr('Winner', 'Sieger') : tr('Result', 'Ergebnis')}</span>
         <strong>{winnerOf(st.rows) ?? tr('Tied', 'Unentschieden')}</strong>
         <span className="muted">{winnerOf(st.rows) ? st.rows[0].value : st.status}</span>
-      </section>
-      {/* confirm the result like a scorecard (Sascha 16.10.2026: as signing a round) – only confirmed games count */}
-      <section className={`card sign-card${g.signedAt ? ' signed' : ''}`} aria-label={tr('Confirmation', 'Bestätigung')}>
-        {g.signedAt ? (
-          <>
-            <span className="sign-seal big" aria-hidden="true">
-              <SignedIcon size={34} />
-            </span>
-            <span className="grow">
-              <strong>{tr('Result confirmed', 'Ergebnis bestätigt')}</strong>
-              <span className="muted small" style={{ display: 'block' }}>
-                {new Date(g.signedAt).toLocaleString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </span>
-              <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your balance', 'Zählt in deiner Bilanz')}</span>
-            </span>
-            <button type="button" className="icon-btn" aria-label={tr('Withdraw the confirmation', 'Bestätigung zurücknehmen')} title={tr('Withdraw the confirmation', 'Bestätigung zurücknehmen')} onClick={() => props.onChange({ ...g, signedAt: null })}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M9 14 4 9l5-5" />
-                  <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
-                </svg>
-            </button>
-          </>
-        ) : (
-          <>
-            <span className="grow">
-              <strong>{tr('Confirm the result', 'Ergebnis bestätigen')}</strong>
-              <span className="muted small" style={{ display: 'block' }}>
-                {tr('Like signing a scorecard – only confirmed games count in your balance.', 'Wie das Signieren einer Scorekarte – nur bestätigte Spiele zählen in deiner Bilanz.')}
-              </span>
-            </span>
-            <button type="button" className="btn-primary" onClick={() => props.onChange({ ...g, signedAt: new Date().toISOString() })}>
-              {tr('Confirm', 'Bestätigen')}
-            </button>
-          </>
-        )}
       </section>
       <StandingCard game={g} final />
       {pays.length > 0 && (
@@ -1187,6 +1191,7 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
         </section>
       )}
       <ScoreGrid game={g} />
+      {!g.signedAt && confirmCard}
       <span className="spacer" />
       <ShareResult game={g} />
       <button type="button" className="btn-secondary" onClick={props.onReopen}>
