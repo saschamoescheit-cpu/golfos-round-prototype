@@ -2,11 +2,13 @@
 // session (next, pause, continue, finish – no timer since 16.10.2026), progress, search, own plan, shop → cart → checkout (simulated),
 // delete a session with undo, English. Usage: node training.mjs <app url> [shots dir]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const shots = process.argv[3];
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // WebKit reports an aborted cross-origin load (the weather of the home screen, open-meteo) as a page error on

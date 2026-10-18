@@ -1,5 +1,6 @@
 // Screenshots of the Training module for a visual check. Usage: node training-shots.mjs <app url> <out dir> [de|en] [sun]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const out = process.argv[3] ?? '.';
@@ -7,6 +8,7 @@ const lang = process.argv[4] ?? 'de';
 const sun = process.argv[5] === 'sun';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: lang === 'de' ? 'de-DE' : 'en-US' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // WebKit reports an aborted cross-origin load (the weather of the home screen, open-meteo) as a page error on

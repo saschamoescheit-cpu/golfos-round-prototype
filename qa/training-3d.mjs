@@ -1,10 +1,12 @@
 // Every 3D video of Training (17.10.2026): each drill, basics section and fault picture with a 3D video opens it, the
 // canvas draws, the step is named, no page error; then back to the still picture. Usage: node training-3d.mjs <app url>
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // WebKit reports an aborted cross-origin load (the weather of the home screen, open-meteo) as a page error on

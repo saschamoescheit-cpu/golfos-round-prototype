@@ -1,10 +1,12 @@
 // Usability check like qa/tapsize.mjs (Rounds), for Training: every button and link must be big enough for a thumb –
 // at least 44 × 44 px (Rounds 17.10.2026). Lists the ones that are too small, per screen. Usage: node qa/training-tapsize.mjs [url]
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 await p.goto(url);
 await p.waitForTimeout(1200);

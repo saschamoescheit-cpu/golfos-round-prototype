@@ -1,5 +1,6 @@
 // All Training sketches on contact sheets for a visual check. Usage: node training-sketches.mjs <app url> <out dir>
 import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -9,6 +10,7 @@ const out = process.argv[3] ?? '.';
 const only = process.argv[4] ? new RegExp(process.argv[4]) : null; // only drills whose title matches
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 await p.goto(url);
 await p.waitForTimeout(1000);

@@ -3,10 +3,12 @@
 // session and the drill bar works; videos and product pictures show their stand-ins instead of breaking.
 // Usage: node training-offline.mjs <built app url, e.g. http://localhost:4177/ (vite preview) or the live site>
 import { chromium, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:4177/';
 const b = await chromium.launch({ channel: 'msedge' });
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', serviceWorkers: 'allow' });
+await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
 // WebKit reports an aborted cross-origin load (the weather of the home screen, open-meteo) as a page error on
