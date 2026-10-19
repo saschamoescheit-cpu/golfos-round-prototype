@@ -1,5 +1,5 @@
 import type { LngLat } from '../types';
-import { demProvidersAt, fetchBox, toUtm } from './dem';
+import { demProvidersAt, fetchBox, loadStaticCourse, toUtm, unpackCm } from './dem';
 
 // Heights of a whole course on a 10 m grid (from the 1 m terrain model, lidar/terrain_grid.py): "plays like" from
 // anywhere – the neighbouring fairway, deep in the rough – not only within 40 m of the hole line. Where there is no
@@ -91,6 +91,16 @@ export async function makeTerrainGrid(courseId: string, points: LngLat[], signal
   const k = await kept(courseId);
   if (k) return k;
   if (!points.length) return null;
+  // shipped with the app (Bavaria and the states without a service for the phone): the grid comes ready
+  const shipped = async () => {
+    const c = await loadStaticCourse(courseId);
+    if (!c?.terrain) return null;
+    const g: TerrainGrid = { ...c.terrain, cm: Array.from(await unpackCm(c.terrain.cm)) };
+    await keep(courseId, g);
+    return g;
+  };
+  const providers = demProvidersAt(points[0]);
+  if (!providers.length) return shipped();
   const CELL = 10;
   const MARGIN = 80; // a ball in the trees, the path beside the hole
   const lat0 = points.reduce((a, p) => a + p[1], 0) / points.length;
@@ -100,7 +110,7 @@ export async function makeTerrainGrid(courseId: string, points: LngLat[], signal
   const south = Math.min(...points.map((p) => p[1])) - MARGIN / 111320;
   const north = Math.max(...points.map((p) => p[1])) + MARGIN / 111320;
   if ((east - west) * mLon > 6000 || (north - south) * 111320 > 6000) return null; // not one course
-  for (const d of demProvidersAt([(west + east) / 2, (south + north) / 2])) {
+  for (const d of providers) {
     const zone = d.zone([(west + east) / 2, (south + north) / 2]);
     const corners = [toUtm([west, south], zone), toUtm([east, south], zone), toUtm([west, north], zone), toUtm([east, north], zone)];
     const w = Math.floor(Math.min(...corners.map((c) => c[0])) / CELL) * CELL;
@@ -136,5 +146,5 @@ export async function makeTerrainGrid(courseId: string, points: LngLat[], signal
     await keep(courseId, g);
     return g;
   }
-  return null;
+  return shipped(); // by a state border: the neighbour's service had no heights here
 }

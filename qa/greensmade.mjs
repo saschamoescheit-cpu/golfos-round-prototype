@@ -7,7 +7,7 @@ import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
-const COURSES = process.argv.length > 3 ? process.argv.slice(3) : ['Hubbelrath', 'Nippenburg', 'Frankfurter Golf Club', 'Wilkendorf'];
+const COURSES = process.argv.length > 3 ? process.argv.slice(3) : ['Hubbelrath', 'Nippenburg', 'Frankfurter Golf Club', 'Wilkendorf', 'Golf Club Würzburg'];
 const b = await webkit.launch();
 let bad = 0;
 const ok = (c, m) => { if (!c) bad++; console.log(`${c ? '✓' : '✗'} ${m}`); };
@@ -16,9 +16,9 @@ for (const name of COURSES) {
   await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
-  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|gds-srv\.hessen\.de|wms\.nrw\.de|lgln\.niedersachsen\.de|geobasis-bb\.de|geoservices\.bayern\.de|geodienste\.sachsen\.de|arcgisonline\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); // a map tile the state's server sent without its CORS header (a hiccup there): one tile missing, no fault of the app });
   let dem = 0;
-  p.on('request', (r) => { if (/wcs\.nrw\.de|owsproxy\.lgl-bw\.de\/owsproxy\/wcs|elevation\.nationalmap\.gov|geoservices\.lgln|inspire-hessen\.de|isk\.geobasis-bb\.de\/ows\/dgm_wcs|geodaten-mv\.de/.test(r.url())) dem++; });
+  p.on('request', (r) => { if (/wcs\.nrw\.de|owsproxy\.lgl-bw\.de\/owsproxy\/wcs|elevation\.nationalmap\.gov|geoservices\.lgln|inspire-hessen\.de|isk\.geobasis-bb\.de\/ows\/dgm_wcs|geodaten-mv\.de|\/dem\/(by|rp|sn)\/[\w-]+\.json/.test(r.url())) dem++; });
   await p.goto(url);
   await p.evaluate(() => { localStorage.clear(); localStorage.setItem('golfos.intro.v1', '1'); localStorage.setItem('golfos.tip.shots.v1', '1'); sessionStorage.setItem('golfos.module', 'rounds'); });
   await p.reload();

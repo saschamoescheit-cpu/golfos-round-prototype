@@ -17,6 +17,8 @@ export interface DemProvider {
   zone: (p: LngLat) => number;
   /** URL of a square of heights, west/south/east/north in UTM metres */
   url: (w: number, s: number, e: number, n: number, cells: number) => string;
+  /** heights cut on the PC and shipped with the app (states the phone cannot ask itself): no request */
+  local?: (w: number, s: number, e: number, n: number) => DemSquare | null;
 }
 
 export const DEM_PROVIDERS: DemProvider[] = [
@@ -165,6 +167,7 @@ export async function fetchSquare(d: DemProvider, center: LngLat, half: number, 
 
 /** The heights of a UTM box at a given cell size (metres), row 0 = north; null when the service has none there. */
 export async function fetchBox(d: DemProvider, zone: number, w: number, s: number, e: number, n: number, cell: number, signal?: AbortSignal): Promise<DemSquare | null> {
+  if (d.local) return d.local(w, s, e, n);
   const size = Math.round((e - w) / cell);
   const url = boxUrl(d, w, s, e, n, cell).replaceAll('{sr}', String(32600 + zone));
   const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(30000) });
@@ -180,4 +183,76 @@ export async function fetchBox(d: DemProvider, zone: number, w: number, s: numbe
     h[k] = v == null || v < -1000 || (nodata != null && v === nodata) ? NaN : v;
   }
   return { h, size, cell, w, s, zone };
+}
+
+// ---- heights shipped with the app (19.10.2026): Bavaria and the other states without a service the phone may ask –
+// cut by lidar/de_static.py: per course the squares around its greens (1 m) and a 10 m grid over the course ----
+export interface StaticCourse {
+  course: string;
+  credit: string;
+  zone: number;
+  squares: { w: number; s: number; size: number; base: number; cm: string }[];
+  terrain: { west: number; north: number; dLon: number; dLat: number; cols: number; rows: number; base: number; cm: string } | null;
+}
+
+/** cm values packed by de_static.py: base64 → zlib → int16 differences cell to cell → values */
+export async function unpackCm(b64: string): Promise<Int32Array> {
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+  const d = new Int16Array(await new Response(stream).arrayBuffer());
+  const out = new Int32Array(d.length);
+  let acc = 0;
+  for (let k = 0; k < d.length; k++) out[k] = acc += d[k];
+  return out;
+}
+
+let staticIndex: Promise<Record<string, string>> | null = null;
+const staticCourses = new Map<string, Promise<StaticCourse | null>>();
+/** The shipped heights of a course, or null (most courses: none) – loaded once per session. */
+export function loadStaticCourse(courseId: string): Promise<StaticCourse | null> {
+  if (!staticCourses.has(courseId)) staticCourses.set(courseId, fetchStaticCourse(courseId).then((c) => (c ? c : (staticCourses.delete(courseId), null))));
+  return staticCourses.get(courseId)!;
+}
+async function fetchStaticCourse(courseId: string): Promise<StaticCourse | null> {
+  staticIndex ??= fetch(`${import.meta.env.BASE_URL}dem/index.json`)
+    .then((r) => (r.ok ? r.json() : {}))
+    .catch(() => {
+      staticIndex = null; // offline: next time
+      return {};
+    });
+  const file = (await staticIndex)[courseId];
+  if (!file) return null;
+  try {
+    const r = await fetch(`${import.meta.env.BASE_URL}${file}`);
+    return r.ok ? ((await r.json()) as StaticCourse) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A provider that answers from a course's shipped squares (any box inside one of them). */
+export async function staticProvider(c: StaticCourse): Promise<DemProvider> {
+  const squares = await Promise.all(
+    c.squares.map(async (q) => {
+      const cm = await unpackCm(q.cm);
+      return { ...q, h: Float32Array.from(cm, (v) => q.base + v / 100) };
+    }),
+  );
+  return {
+    id: 'static',
+    credit: c.credit,
+    cell: 1,
+    boxes: [],
+    zone: () => c.zone,
+    url: () => '',
+    local: (w, s, e, n) => {
+      const q = squares.find((x) => x.w <= w && x.s <= s && w + (e - w) <= x.w + x.size && n <= x.s + x.size);
+      if (!q) return null;
+      const size = Math.round(e - w);
+      const h = new Float32Array(size * size);
+      const top = q.s + q.size - n; // stored rows above the box (row 0 = north)
+      for (let r = 0; r < size; r++) for (let x = 0; x < size; x++) h[r * size + x] = q.h[(top + r) * q.size + (w - q.w) + x];
+      return { h, size, cell: 1, w, s, zone: c.zone };
+    },
+  };
 }

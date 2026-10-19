@@ -1,7 +1,7 @@
 import type { LngLat, Ring } from '../types';
 import type { GreenChart } from '../data/greenCharts';
 import type { GreenGrid } from './greenread';
-import { DEM_PROVIDERS, demProvidersAt, fetchSquare, fromUtm, toUtm, type DemProvider } from './dem';
+import { DEM_PROVIDERS, demProvidersAt, fetchSquare, fromUtm, loadStaticCourse, staticProvider, toUtm, type DemProvider } from './dem';
 
 // Green charts made on the phone (Sascha 19.10.2026: "every course should have green slopes"): for a course without
 // built-in charts, the heights of each green come from the official terrain model of the region (dem.ts) and are
@@ -295,8 +295,8 @@ export async function madeChartsFor(
   if (kept && !missing.length) return kept;
   if (!greens.length) return null;
   // the service of the region: the one that made the kept greens, else the first that has heights for a green
-  let d: DemProvider | null = kept ? (DEM_PROVIDERS.find((x) => x.id === kept.provider) ?? null) : null;
-  if (!d)
+  let d: DemProvider | null = kept && kept.provider !== 'static' ? (DEM_PROVIDERS.find((x) => x.id === kept.provider) ?? null) : null;
+  if (!d && kept?.provider !== 'static')
     for (const cand of demProvidersAt(missing[0].ring[0])) {
       if (signal?.aborted) return null;
       if (await makeGreen(cand, missing[0].ring, signal).catch(() => null)) {
@@ -304,6 +304,11 @@ export async function madeChartsFor(
         break;
       }
     }
+  // else the heights shipped with the app (Bavaria and the states without a service for the phone, also by a border)
+  if (!d) {
+    const c = await loadStaticCourse(courseId);
+    if (c) d = await staticProvider(c);
+  }
   if (!d) return kept;
   const m: MadeCharts = kept ?? { version: VERSION, provider: d.id, credit: d.credit, charts: {}, heights: {}, slopes: {} };
   let done = greens.length - missing.length;

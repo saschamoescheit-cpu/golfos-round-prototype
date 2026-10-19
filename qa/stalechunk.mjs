@@ -2,15 +2,17 @@
 // Swing3D-….js", often lately): a part of the app that cannot be loaded makes the app reload once onto the new
 // version – no error screen. If it fails again right after, the error screen shows (no reload loop).
 // Usage: node qa/stalechunk.mjs [url]   (the dev server: the module of Training stands in for a stale part)
-import { webkit, devices } from 'playwright';
+import { chromium, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
-const b = await webkit.launch();
+// Edge: WebKit keeps a module that failed on purpose failed for the same address even after the reload – on the phone the
+// new version has other file names, so the test needs a browser that asks again
+const b = await chromium.launch({ channel: 'msedge' });
 let bad = 0;
 const ok = (c, m) => { if (!c) bad++; console.log(`${c ? '✓' : '✗'} ${m}`); };
 for (const [label, failures] of [['once', 1], ['always', 99]]) {
-  const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', serviceWorkers: 'block' }); // the request must reach the test, not the offline cache
+  const ctx = await b.newContext({ ...devices['iPhone 13'], defaultBrowserType: undefined, locale: 'de-DE', serviceWorkers: 'block' }); // the request must reach the test, not the offline cache
   await mockNet(ctx);
   const p = await ctx.newPage();
   await p.goto(url);
