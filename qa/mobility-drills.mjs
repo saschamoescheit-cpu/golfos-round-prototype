@@ -42,6 +42,11 @@ await p.reload();
 await p.waitForTimeout(800);
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-today-start').click();
+// the list before the start says per drill what the camera does: measures, counts or watches
+const setupText = await p.locator('.mob-train-list').innerText();
+const lineOf = (name) => setupText.split(/\n+/).findIndex((x) => x.includes(name));
+const after = (name) => setupText.split(/\n+/)[lineOf(name) + 1] ?? '';
+ok(/die Kamera achtet auf die Knie zusammen/.test(after('Offene Bücher')) && /von der Kamera gezählt/.test(after('Katze und Kamel')) && /gemessen: Drehung der Hüfte/.test(after('Hüfte drehen')), `the setup says what the camera measures, counts or watches (${after('Offene Bücher')} | ${after('Katze und Kamel')})`);
 await p.locator('.mob-start-train').click();
 const t0 = Date.now();
 let last = '';

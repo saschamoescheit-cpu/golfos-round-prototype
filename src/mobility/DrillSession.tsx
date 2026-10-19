@@ -7,7 +7,7 @@ import { SketchThumb } from '../training/Sketch';
 import type { Drill } from '../training/types';
 import { DRILL_CLIPS } from './anim3d/drills';
 import { isFakeCamera, unlockAudio } from './CameraTest';
-import { coachOf, progressed, SELF_NAMED, SIGNALS, signalValueText } from './drillcoach';
+import { coachOf, progressed, SELF_NAMED, SIGNALS, signalValueText, WATCH_FOCUS } from './drillcoach';
 import { DrillPlayer, cap, cueText } from './DrillPlayer';
 import type { FormCue } from './drillcoach';
 import { PhoneSetup } from './pictures';
@@ -238,7 +238,13 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean;
                   {c.hold ? tr(`hold ${c.hold} s`, `${c.hold} s halten`) : tr(`${c.reps} reps`, `${c.reps} Wiederholungen`)}
                   {c.sides ? tr(' per side', ' pro Seite') : ''}
                   {(c.sets ?? 1) > 1 ? ` · ${c.sets} ${tr('sets', 'Sätze')}` : ''}
-                  {c.signal ? ` · ${tr('measured', 'gemessen')}: ${t(SIGNALS[c.signal].name)}` : ''}
+                  {c.signal
+                    ? SIGNALS[c.signal].countOnly
+                      ? ` · ${tr('counted by the camera', 'von der Kamera gezählt')}`
+                      : ` · ${tr('measured', 'gemessen')}: ${t(SIGNALS[c.signal].name)}`
+                    : c.watch
+                      ? ` · ${tr('the camera watches', 'die Kamera achtet auf')} ${t(WATCH_FOCUS[c.watch])}`
+                      : ''}
                   {up ? tr(' · a little more – it sat last time', ' · etwas mehr – es saß zuletzt') : ''}
                 </span>
               </span>

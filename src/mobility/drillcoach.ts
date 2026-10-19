@@ -425,6 +425,14 @@ export function signalValueText(id: SignalId, v: number | null, tr: (en: string,
 export type FormCue = 'hipsStill' | 'chestStill' | 'shouldersStill' | 'heelsDown' | 'armsUp' | 'heelDown' | 'kneesStraight' | 'elbowsIn' | 'trunkStill' | 'footUp' | 'kneesTogether' | 'hipsOverKnees' | 'elbowHigh';
 /** what the camera watches in a drill it does not measure */
 export type WatchId = 'trunkStill' | 'footUp' | 'elbowsIn' | 'kneesTogether' | 'elbowHigh';
+/** what the camera watches in such a drill, for the list before the session ("the camera watches: …") */
+export const WATCH_FOCUS: Record<WatchId, { en: string; de: string }> = {
+  trunkStill: L('a still trunk', 'den ruhigen Rumpf'),
+  footUp: L('the free foot', 'den freien Fuß'),
+  elbowsIn: L('the elbows at the body', 'die Ellbogen am Körper'),
+  kneesTogether: L('the knees together', 'die Knie zusammen'),
+  elbowHigh: L('the elbow at shoulder height', 'den Ellbogen auf Schulterhöhe'),
+};
 
 export const CUES: Record<FormCue, Text> = {
   hipsStill: L('Keep the hips still – only the chest turns.', 'Die Hüfte bleibt ruhig – nur die Brust dreht.'),

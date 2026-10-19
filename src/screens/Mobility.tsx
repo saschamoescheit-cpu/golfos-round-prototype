@@ -22,7 +22,7 @@ import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { DrillSession, doneText } from '../mobility/DrillSession';
 import { cap } from '../mobility/DrillPlayer';
 import { daysThisWeek, drillHistory, loadSessions, localDay, newSession, openSession, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
-import { coachOf, DRILL_COACH, SIGNALS, signalValueText } from '../mobility/drillcoach';
+import { coachOf, DRILL_COACH, SIGNALS, signalValueText, WATCH_FOCUS } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
 import { profileIndex } from '../lib/profile';
@@ -1496,7 +1496,7 @@ function DrillList(props: { drills: Drill[]; nav: Nav }) {
             <span className="muted small tr-two-lines">
               {d.minutes} {tr('min', 'Min.')}
               {/* the drills the camera measures (or counts) when done with it */}
-              {coachOf(d.id).signal ? ` · ${SIGNALS[coachOf(d.id).signal!].countOnly ? tr('counted by the camera', 'von der Kamera gezählt') : tr('measured by the camera', 'mit Kamera gemessen')}` : ''} · {t(d.goal)}
+              {coachOf(d.id).signal ? ` · ${SIGNALS[coachOf(d.id).signal!].countOnly ? tr('counted by the camera', 'von der Kamera gezählt') : tr('measured by the camera', 'mit Kamera gemessen')}` : coachOf(d.id).watch ? ` · ${tr('the camera watches', 'die Kamera achtet auf')} ${t(WATCH_FOCUS[coachOf(d.id).watch!])}` : ''} · {t(d.goal)}
             </span>
           </span>
           <span aria-hidden="true">›</span>
