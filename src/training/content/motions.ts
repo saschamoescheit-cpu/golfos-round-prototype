@@ -378,6 +378,7 @@ if (DRILL_MOTIONS['feet-feel']) set3d(DRILL_MOTIONS['feet-feel'], 'feetFeel');
 else DRILL_MOTIONS['feet-feel'] = { frames: [], video: 'feetFeel' };
 FAULT_MOTIONS.greenreading = { ...FAULT_MOTIONS.greenreading, 'Not seeing the slope': still3d('feetFeel') };
 // drills with the steps of their own text
+set3d(DRILL_MOTIONS['split-grip'], 'splitGrip');
 set3d(DRILL_MOTIONS['fairway-bunker'], 'sandFairway');
 set3d(DRILL_MOTIONS['brush-five'], 'woodSweep');
 set3d(DRILL_MOTIONS['hold-finish'], 'phaseImpact');

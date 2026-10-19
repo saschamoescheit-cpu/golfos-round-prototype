@@ -73,6 +73,8 @@ export interface Swing {
   /** the hole of a putt where it is, not where this putt stops (metres along the target line, side + right of it) – a
    *  short putt and a breaking one play to the same hole as the right stroke beside it */
   hole?: { at: number; side?: number };
+  /** the hands apart on the grip (m more than in a normal grip) – the split-grip drill */
+  gripGap?: number;
   /** where the player aims (degrees, + right of the target line): the whole player – body, club, ball line, flight –
    *  turned about the ball */
   aim?: number;
@@ -458,7 +460,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // an open or closed face: the club turns about its shaft (the hands turn with it)
     const face = mix((x) => x.face ?? 0);
     if (face) clubW.premultiply(new THREE.Quaternion().setFromAxisAngle(dir, THREE.MathUtils.degToRad(face)));
-    const handsR = handsL.clone().addScaledVector(dir, 0.09);
+    const handsR = handsL.clone().addScaledVector(dir, 0.09 + (swing.gripGap ?? 0));
 
     // the hands on the grip: the fingers of the shared figure close around a shaft that runs along the hand's z axis
     // through SHAFT_IN_HAND (Agility 18.10.2026) – so each hand turns about the shaft until its wrist points to its
