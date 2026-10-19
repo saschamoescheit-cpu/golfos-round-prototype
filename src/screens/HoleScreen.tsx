@@ -19,7 +19,8 @@ import { adviseClub, DEFAULT_CARRY, levelName, readGreen, type LieKind } from '.
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { gridHeight, loadTerrainGrid, type TerrainGrid } from '../lib/terraingrid';
-import { GREEN_CHARTS } from '../data/greenCharts';
+import { GREEN_CHARTS, type GreenChart } from '../data/greenCharts';
+import { madeChartsFor, type MadeCharts } from '../lib/greenmaker';
 import { greenSource } from '../data/greenSources';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
@@ -242,6 +243,9 @@ export function HoleScreen(props: {
 
   // Phone back out of the pocket (or app opened): with the first good GPS fix, move to the hole the player is on.
   const allMaps = useMemo(() => round.holes.map((h) => forTee(holeMapData(geometry, h.loop, h.number), h.label)), [geometry, round.holes, round.tee]);
+  // green charts made on the phone for a course without built-in ones (below, with the green heights)
+  const [made, setMade] = useState<{ m: MadeCharts; urls: Record<string, string> } | null>(null);
+  const [making, setMaking] = useState<{ done: number; total: number } | null>(null);
   const [detected, setDetected] = useState<{ from: number; to: number } | null>(null);
   useEffect(() => {
     const onVisible = () => {
@@ -305,8 +309,11 @@ export function HoleScreen(props: {
     });
     return () => ctrl.abort();
   }, [round.courseId, offlineKey, imagery, allMaps]);
-  const offlineHint =
-    offline === 'ready' ? (
+  const offlineHint = making ? (
+    <div className="map-shot">
+      {tr('Working out the green slopes', 'Grün-Neigungen werden berechnet')} · {making.done}/{making.total}
+    </div>
+  ) : offline === 'ready' ? (
       <div className="map-shot">{tr('Map saved for offline ✓', 'Karte offline gespeichert ✓')}</div>
     ) : offline ? (
       <div className="map-shot">
@@ -496,13 +503,33 @@ export function HoleScreen(props: {
   };
   // Green heights for the putt read and the best leave (feature 024), loaded on demand per course.
   const [grids, setGrids] = useState<Record<string, GreenGrid> | null>(null);
+  // A course without built-in charts: made on the phone from the region's official terrain model (Sascha 19.10.2026:
+  // "every course should have green slopes"), once, then kept on the phone.
+  const greensKey = allMaps.map((m, k) => (m?.green ? round.holes[k].label : '')).join(',');
   useEffect(() => {
     let alive = true;
-    if (greenSlopeOn) loadGreenGrids(round.courseId).then((g) => alive && setGrids(g));
+    const ctrl = new AbortController();
+    let urls: Record<string, string> = {};
+    if (greenSlopeOn && GREEN_CHARTS[round.courseId]) loadGreenGrids(round.courseId).then((g) => alive && setGrids(g));
+    else if (greenSlopeOn) {
+      const greens = allMaps.flatMap((m, k) => (m?.green ? [{ ref: round.holes[k].label, ring: m.green }] : []));
+      madeChartsFor(round.courseId, greens, (done, total) => alive && done < total && setMaking({ done, total }), ctrl.signal).then((m) => {
+        if (!alive) return;
+        setMaking(null);
+        if (!m) return;
+        urls = Object.fromEntries(Object.entries(m.charts).map(([ref, c]) => [ref, URL.createObjectURL(c.png)]));
+        setMade({ m, urls });
+        setGrids(m.heights);
+      });
+    }
     return () => {
       alive = false;
+      ctrl.abort();
+      Object.values(urls).forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [round.courseId]);
+  }, [round.courseId, greensKey]);
+  const chartOf = (label: string): GreenChart | undefined =>
+    GREEN_CHARTS[round.courseId]?.[label] ?? (made?.urls[label] ? { file: made.urls[label], corners: made.m.charts[label].corners } : undefined);
   // The ball on the green: tapped by the player (per hole), else the GPS position when standing on the green.
   const [puttBall, setPuttBall] = useState<{ hole: number; pos: LngLat } | null>(null);
   const greenCache = useRef<{ key: string; putt: PuttRead | null; leave: string | null }>({ key: '', putt: null, leave: null });
@@ -837,19 +864,19 @@ export function HoleScreen(props: {
     const note: HoleNote = notes[hole.label] ?? {};
     const lieSig = `${i}|${Math.round(distanceM(from, pin) / 25)}`;
     // Green slope when the player is on or next to the green (or planning from the sofa).
-    const slope = greenSlopeOn ? geometry.greenSlopes?.[hole.label] : undefined;
+    const slope = greenSlopeOn ? (geometry.greenSlopes?.[hole.label] ?? made?.m.slopes[hole.label]) : undefined;
     const nearGreen = distanceM(from, mapData.greenCenter) <= 40 || (round.preview === true && hole.par === 3);
     // The green slope only when the player asks for it (Sascha 15.10.2026: also on a par 3 the whole hole comes
     // first) – never by itself near the green.
     const greenVisible = showGreen === true;
-    const chart = greenSlopeOn ? GREEN_CHARTS[round.courseId]?.[hole.label] : undefined;
+    const chart = greenSlopeOn ? chartOf(hole.label) : undefined;
     // Green chart on screen: keep the view free (caddie folded, no hint).
     // Only around the green (≤ 40 m) – on the approach the caddie stays at hand next to the green chart.
     const greenFocus = chart != null && greenVisible && nearGreen;
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
     const grid = grids?.[hole.label] ?? null;
     // the course book's facts on this hole, also in the caddie (Sascha 15.10.2026)
-    const book = holeBook({ data: mapData, slopes: geometry.fairwaySlopes?.[hole.label], greenSlope: geometry.greenSlopes?.[hole.label], grid, unit, record: holeRecords.get(hole.label), tip: (notes[hole.label] ?? {}).tip });
+    const book = holeBook({ data: mapData, slopes: geometry.fairwaySlopes?.[hole.label], greenSlope: geometry.greenSlopes?.[hole.label] ?? made?.m.slopes[hole.label], grid, unit, record: holeRecords.get(hole.label), tip: (notes[hole.label] ?? {}).tip });
     const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos)
         ? ([Math.round(player.pos[0] * 1e5) / 1e5, Math.round(player.pos[1] * 1e5) / 1e5] as LngLat) // ~1 m: GPS jitter does not re-roll the putt
         : null;
@@ -953,7 +980,7 @@ export function HoleScreen(props: {
           }
           recenter={recenter}
           onUserCamera={setCamByHand}
-          credit={greenSource(round.courseId, GREEN_CHARTS[round.courseId] != null)}
+          credit={made ? made.m.credit : greenSource(round.courseId, GREEN_CHARTS[round.courseId] != null)}
           holeKey={`${round.id}-${i}`}
           data={mapData}
           player={player?.pos ?? null}

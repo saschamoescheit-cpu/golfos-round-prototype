@@ -3,9 +3,11 @@
 const LGL = 'Grünhöhen: © LGL, www.lgl-bw.de (dl-de/by-2-0)';
 const IDEIB = 'Grünhöhen: IDEIB, Govern de les Illes Balears';
 const USGS = 'Green heights: USGS 3D Elevation Program (3DEP)';
+const NRW = 'Grünhöhen: Geobasis NRW, DGM1 (dl-de/zero-2-0)';
 
 const BY_COURSE: Record<string, string> = {
   'osm:relation/1326323': LGL,
+  'osm:way/119442124': NRW, // Gut Frielinghausen (19.10.2026)
   // Florida (USA trip, 17.10.2026)
   'osm:relation/4039579': USGS,
   'osm:way/311994625': USGS,
@@ -18,5 +20,5 @@ const BY_COURSE: Record<string, string> = {
 /** Credit for the green heights of a course, or null when it has no green charts. */
 export function greenSource(courseId: string, hasCharts: boolean): string | null {
   if (!hasCharts) return null;
-  return BY_COURSE[courseId] ?? IDEIB; // all other courses with charts are on Mallorca
+  return BY_COURSE[courseId] ?? IDEIB; // all other courses with built-in charts are on Mallorca
 }

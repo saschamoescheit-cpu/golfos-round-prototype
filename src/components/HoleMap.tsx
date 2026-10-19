@@ -75,6 +75,14 @@ export interface HoleMapProps {
 export function HoleMap(props: HoleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  const attribRef = useRef<maplibregl.AttributionControl | null>(null);
+  // the green heights' credit can come after the map (charts made on the phone, 19.10.2026): the ⓘ follows it
+  useEffect(() => {
+    const a = attribRef.current as unknown as { options: { customAttribution?: string }; _updateAttributions?: () => void } | null;
+    if (!a || a.options.customAttribution === (props.credit ?? undefined)) return;
+    a.options.customAttribution = props.credit ?? undefined;
+    a._updateAttributions?.();
+  }, [props.credit]);
   const ready = useRef(false);
   const sat = useRef({ ok: 0, fail: 0 }); // imagery tiles loaded / failed (for the fallback)
   const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
@@ -105,6 +113,7 @@ export function HoleMap(props: HoleMapProps) {
     // the credits (ⓘ) bottom left; a tap on the open text closes it too, not only the ⓘ (Sascha 17.10.2026)
     const attrib = new maplibregl.AttributionControl({ compact: true, ...(props.credit ? { customAttribution: props.credit } : {}) });
     m.addControl(attrib, 'bottom-left');
+    attribRef.current = attrib;
     container.current!.addEventListener('click', (ev) => {
       const box = (ev.target as HTMLElement).closest('.maplibregl-ctrl-attrib');
       if (!box || (ev.target as HTMLElement).closest('a, .maplibregl-ctrl-attrib-button')) return;
