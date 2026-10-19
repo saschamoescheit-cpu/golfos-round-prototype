@@ -105,6 +105,106 @@ export const FULL_SWING: Swing = {
 
 FULL_SWING.hit = { at: 2.8, shot: 'full' };
 
+const ADDRESS_REAL: Omit<SwingKey, 't'> = {
+  body: { pelvis: [38, 0, 2], spine: [2, 0, 0], chest: [2, 0, 5], neck: [-14, 0, 0], head: [6, 0, 0] },
+  hands: [0.06, -0.2, 0.42],
+  club: 'ball',
+  lie: 51,
+  lean: 4,
+};
+/** the full swing of the realistic golfer (19.10.2026): its positions measured and set against tour averages – pelvis
+ *  and chest turn, shoulder tilt, head, shaft lean and the arms at address, top and impact (golf3d measure()); real club
+ *  lengths, the ball further away. Used for 'full' when the realistic body is on (for Sascha to judge first). */
+export const FULL_SWING_REAL: Swing = {
+  club: 'iron',
+  stance: 0.38,
+  ball: [0.02, 0.96],
+  keys: [
+    k(0, { ...ADDRESS_REAL, label: L('Set-up', 'Ansprache') }),
+    k(0.5, ADDRESS_REAL),
+    k(1.0, {
+      body: { pelvis: [38, -14, 2], spine: [2, -6, 0], chest: [2, -22, 5], neck: [-14, 18, 0], head: [12, 8, 0] },
+      hands: [-0.02, -0.24, 0.44],
+      club: [-1, 0.08, 0.05],
+      label: L('Back in one piece – one', 'Aus einem Guss zurück – eins'),
+    }),
+    k(1.45, {
+      body: { pelvis: [38, -28, 2], spine: [2, -10, 0], chest: [2, -34, 6], neck: [-14, 32, 0], head: [12, 12, 0] },
+      hands: [-0.1, -0.12, 0.45],
+      club: [-0.1, 0.93, -0.36],
+      label: L('Wrists hinge – two', 'Handgelenke winkeln an – zwei'),
+    }),
+    k(2.0, {
+      body: { pelvis: [38, -42, 0], spine: [2, -12, 0], chest: [2, -36, 8], neck: [-14, 44, 0], head: [12, 14, 0] },
+      hands: [-0.3, 0.42, 0.42],
+      club: [0.95, -0.05, 0.1],
+      label: L('The top – three', 'Oben – drei'),
+    }),
+    k(2.3, {
+      body: { pelvis: [38, -42, 0], spine: [2, -12, 0], chest: [2, -36, 8], neck: [-14, 44, 0], head: [12, 14, 0] },
+      hands: [-0.3, 0.42, 0.42],
+      club: [0.95, -0.05, 0.1],
+    }),
+    k(2.6, {
+      body: { pelvis: [38, -8, 5], spine: [2, -10, 2], chest: [2, -30, 8], neck: [-14, 30, 0], head: [12, 10, 0] },
+      hands: [-0.12, -0.08, 0.42],
+      club: [-0.45, 0.75, -0.45],
+      shift: 0.04,
+      label: L('Down from the ground', 'Abschwung vom Boden'),
+    }),
+    k(2.7, {
+      body: { pelvis: [37, 12, 6], spine: [2, -4, 2], chest: [2, -22, 8], neck: [-14, 10, 0], head: [12, 2, 0] },
+      hands: [-0.05, -0.17, 0.43],
+      club: [-1, 0.06, 0.12],
+      shift: 0.06,
+    }),
+    k(2.8, {
+      body: { pelvis: [36, 46, 8], spine: [2, 2, 12], chest: [2, -8, 8], neck: [-14, -10, 0], head: [12, -6, 0] },
+      hands: [-0.06, -0.22, 0.43],
+      lean: 7,
+      lie: 53,
+      club: 'ball',
+      shift: 0.07,
+      label: L('Impact: hands ahead – four', 'Treffmoment: Hände vorn – vier'),
+    }),
+    k(2.92, {
+      body: { pelvis: [33, 45, 5], spine: [1, 6, 1], chest: [1, 4, 4], neck: [-13, -18, 0], head: [10, -8, 0] },
+      hands: [0.26, -0.28, 0.52],
+      club: [1, 0.06, 0.12],
+      shift: 0.09,
+    }),
+    k(3.05, {
+      body: { pelvis: [30, 55, 4], spine: [0, 8, 0], chest: [0, 18, 2], neck: [-12, -30, 0], head: [8, -10, 0] },
+      hands: [0.12, -0.08, 0.46],
+      club: [0.12, 0.93, -0.34],
+      shift: 0.1,
+      label: L('Through', 'Durch'),
+      free: true,
+    }),
+    k(3.5, {
+      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-10, -20, 0], head: [4, -8, 0] },
+      hands: [0.12, 0.34, 0.3],
+      club: [-0.75, -0.25, -0.6],
+      shift: 0.12,
+      drop: 0.02,
+      heel: 1,
+      free: true,
+      label: L('Hold the finish', 'Finish halten'),
+    }),
+    k(4.7, {
+      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-10, -20, 0], head: [4, -8, 0] },
+      hands: [0.12, 0.34, 0.3],
+      club: [-0.75, -0.25, -0.6],
+      shift: 0.12,
+      drop: 0.02,
+      heel: 1,
+      free: true,
+    }),
+  ],
+};
+
+FULL_SWING_REAL.hit = { at: 2.8, shot: 'full' };
+
 /** the driver: wider stance, the ball forward on a tee, hit on the way up */
 export const DRIVER_SWING: Swing = { ...FULL_SWING, club: 'driver', stance: 0.5, ball: [0.16, 0.9], tee: true };
 

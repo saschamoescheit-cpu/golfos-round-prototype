@@ -1,6 +1,7 @@
 // Development only (golf3d-preview.html, not part of the app build): a swing at several moments as stills, to check
 // every position. Query: ?swing=<name>&view=front|side|angle|above&n=<stills>
-import { createGolfViewer, type View } from './golf3d';
+import { createGolfViewer, wantRealistic, type View } from './golf3d';
+import { loadRealisticBody } from '../../mobility/anim3d/rigSkin';
 import * as SW from './swings';
 import type { Swing } from './golf3d';
 
@@ -9,14 +10,27 @@ const name = q.get('swing') ?? 'FULL_SWING';
 const views = (q.get('view') ?? 'front').split(',') as View[];
 const n = Number(q.get('n') ?? 8);
 if (q.get('big')) document.body.classList.add('big');
+if (q.get('huge')) document.body.classList.add('huge');
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const out = document.getElementById('out')!;
+if (wantRealistic()) await loadRealisticBody();
 const v = createGolfViewer(canvas);
 v.setPlaying(false);
 const pairs = (SW as unknown as { PAIRS: Record<string, { fault: Swing; right: Swing; behind?: boolean }> }).PAIRS;
 const pair = pairs[name];
 const swing = pair ? pair.fault : ((SW as unknown as { SWINGS: Record<string, Swing> }).SWINGS[name] ?? (SW as unknown as Record<string, Swing>)[name]);
 (async () => {
+  if (q.get('measure')) {
+    if (pair) v.setSwings((SW as unknown as { group: (id: string) => { swing: Swing; x?: number; z?: number }[] }).group(name));
+    else v.setSwing(swing);
+    const times = q.get('times')!.split(',').map(Number);
+    const pre = document.createElement('pre');
+    pre.id = 'measure';
+    pre.textContent = JSON.stringify(times.map((t) => ({ t, ...v.measure!(t + 0.0001) })));
+    out.appendChild(pre);
+    document.body.dataset.done = '1';
+    return;
+  }
   for (const view of views) {
     if (pair) v.setSwings((SW as unknown as { group: (id: string) => { swing: Swing; x?: number; z?: number }[] }).group(name));
     else v.setSwing(swing);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyRealisticSkin } from './rigSkin';
 
 // The 3D golfer of the Agility test videos (Sascha 17.10.2026: "3D animated videos"): our own figure in the colours of
 // the Training golfer (green cap, blue-grey shirt, dark trousers, white shoes) – no bought model, so every movement
@@ -94,6 +95,12 @@ interface Finger {
   /** curl at an open, relaxed hand */
   open: number[];
   thumb?: boolean;
+  /** the realistic hull (rigSkin.ts): each joint's turn at rest (as the body's hand lies) – the curl comes on top */
+  rest?: THREE.Quaternion[];
+  /** the realistic hull: the length of each part */
+  lengths?: number[];
+  /** the realistic hull: each joint's whole turn when closed (the thumb lies along the grip) – mixed from rest */
+  closedQ?: THREE.Quaternion[];
 }
 
 /** the radius of what a closed hand holds (a club grip, a stick): 1.35 cm */
@@ -163,8 +170,15 @@ function marker(parent: THREE.Object3D, at: [number, number, number], list: THRE
   return o;
 }
 
-/** The figure. */
-export function buildRig(): Rig {
+/** The figure: the soft shapes (default), or the realistic body (Training 19.10.2026) once it is loaded
+ *  (rigSkin.ts: loadRealisticBody) – the same skeleton and interface. */
+export function buildRig(opts: { skin?: 'classic' | 'realistic' } = {}): Rig {
+  const rig = buildClassic();
+  if (opts.skin === 'realistic') applyRealisticSkin(rig);
+  return rig;
+}
+
+function buildClassic(): Rig {
   const root = new THREE.Group();
   const markers: THREE.Object3D[] = [];
   const contacts: THREE.Object3D[] = [];
@@ -299,6 +313,15 @@ export function buildRig(): Rig {
       for (const [list, k, side] of [[aL.fingers, left, 1], [aR.fingers, right, -1]] as [Finger[], number, 1 | -1][]) {
         for (const f of list) {
           const at = (i: number) => THREE.MathUtils.degToRad(-side * (f.open[i] + (f.closed[i] - f.open[i]) * k));
+          if (f.rest && f.closedQ) {
+            [f.base, f.mid, f.tip].forEach((p, i) => p?.quaternion.copy(f.rest![i]).slerp(f.closedQ![i], k));
+            continue;
+          }
+          if (f.rest) {
+            // the realistic hand: its rest turn, then the curl about the part's own z
+            [f.base, f.mid, f.tip].forEach((p, i) => p?.quaternion.copy(f.rest![i]).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), at(i))));
+            continue;
+          }
           // fingers curl towards the palm (about z); the thumb folds across the palm (about z as well, from its base tilt)
           f.base.rotation.z = at(0);
           f.mid.rotation.z = at(1);

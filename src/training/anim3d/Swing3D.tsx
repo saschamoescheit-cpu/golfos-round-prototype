@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { tr } from '../../lib/i18n';
 import { isLeftHanded } from '../../lib/profile';
-import { createGolfViewer, type View, type Viewer } from './golf3d';
+import { createGolfViewer, wantRealistic, type View, type Viewer } from './golf3d';
+import { loadRealisticBody, realisticBodyReady } from '../../mobility/anim3d/rigSkin';
 import { group, PAIRS, SWINGS, type PairId, type SwingId } from './swings';
 import type { L } from '../types';
 import { sided } from '../sides';
@@ -34,10 +35,15 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
   const [view, setView] = useState<View>(first);
   const [label, setLabel] = useState<{ l?: L; step: number }>({ step: 0 });
   const left = isLeftHanded();
+  // the realistic body loads first when it is switched on
+  const [bodyReady, setBodyReady] = useState(() => !wantRealistic() || realisticBodyReady());
+  useEffect(() => {
+    if (!bodyReady) loadRealisticBody().then(() => setBodyReady(true), () => setBodyReady(true));
+  }, [bodyReady]);
 
   useEffect(() => {
     const stage = stageRef.current;
-    if (!stage) return;
+    if (!stage || !bodyReady) return;
     // a fresh canvas for every start: its WebGL context is released for good when the video closes (many videos one
     // after another must not run the phone out of contexts or memory)
     const c = document.createElement('canvas');
@@ -71,7 +77,7 @@ export default function Swing3D(props: { swing: SwingId | PairId; onFail?: () =>
       viewerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.swing]);
+  }, [props.swing, bodyReady]);
   useEffect(() => viewerRef.current?.setPlaying(playing), [playing]);
   useEffect(() => viewerRef.current?.setSpeed(slow ? 0.4 : 1), [slow]);
 

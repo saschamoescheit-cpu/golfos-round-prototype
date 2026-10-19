@@ -1,7 +1,23 @@
 import * as THREE from 'three';
-import { applyPose, BODY, buildRig, COLORS, SHAFT_IN_HAND, type Pose, type Rig, type Rot } from '../../mobility/anim3d/rig';
+import { applyPose, BODY, buildRig, COLORS, type Pose, type Rig, type Rot } from '../../mobility/anim3d/rig';
+import { realisticBodyReady } from '../../mobility/anim3d/rigSkin';
+
+/** the realistic body (Training 19.10.2026, for Sascha to judge first): on with ?real3d=1, off with ?real3d=0 */
+export const wantRealistic = (): boolean => {
+  try {
+    const q = new URLSearchParams(location.search).get('real3d');
+    if (q === '1') localStorage.setItem('golfos.real3d', '1');
+    if (q === '0') localStorage.removeItem('golfos.real3d');
+    return localStorage.getItem('golfos.real3d') === '1';
+  } catch {
+    return false;
+  }
+};
+/** the lengths of the limbs of a rig: the realistic body has its own */
+const lens = (rig: Rig): { upperArm: number; forearm: number; thigh: number; shin: number; ankleH: number } => ({ ...BODY, ...(rig.root.userData.lengths ?? {}) });
 import type { L, Shot } from '../types';
 import { ballFlight } from '../motion';
+import { FULL_SWING, FULL_SWING_REAL } from './swings';
 
 // The 3D swing videos of Training (Sascha 17.10.2026: "3D animated videos would be better than still pictures").
 // The golfer of the Agility 3D videos (same figure, same stage, same camera views), here holding a club with both
@@ -38,6 +54,10 @@ export interface SwingKey {
   stance?: number;
   /** the lead foot lifted this high (metres) – on its way in a step */
   step?: number;
+  /** at the ball: the shaft leans this far towards the target (degrees, hands ahead +) – instead of following the hands */
+  lean?: number;
+  /** at the ball: the shaft's angle to the ground (degrees) – instead of following the hands */
+  lie?: number;
   /** the pelvis this far towards the ball (m) – standing up into the ball (early extension) */
   push?: number;
   label?: L;
@@ -100,6 +120,9 @@ export interface Swing {
 }
 
 const CLUB_LEN: Record<Club3D, number> = { driver: 1.06, iron: 0.86, wedge: 0.82, putter: 0.8, hybrid: 0.96 };
+/** the realistic golfer holds clubs of real length: driver 45.5", 7-iron 37", wedge 35.5", putter 34", hybrid 40" */
+const REAL_LEN: Record<Club3D, number> = { driver: 1.15, iron: 0.94, wedge: 0.9, putter: 0.86, hybrid: 1.0 };
+const clubLen = (club: Club3D, real: boolean) => (real ? REAL_LEN : CLUB_LEN)[club];
 /** the middle of the face from the hosel towards the toe (metres) – that point meets the ball, not the heel */
 const SWEET: Record<Club3D, number> = { driver: 0.055, iron: 0.04, wedge: 0.04, putter: 0.045, hybrid: 0.045 };
 
@@ -133,11 +156,11 @@ function twoBone(root: THREE.Object3D, mid: THREE.Object3D, a: number, b: number
 }
 
 /** The club: grip, shaft and head along +y of its group (the butt end at 0). */
-function buildClub(kind: Club3D): THREE.Group {
+function buildClub(kind: Club3D, real = false): THREE.Group {
   const g = new THREE.Group();
   const m = (c: string, r = 0.5, metal = 0.2) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: metal });
   const steel = m('#c9d1d6', 0.28, 0.75);
-  const len = CLUB_LEN[kind];
+  const len = clubLen(kind, real);
   // grip with a cap, the shaft narrowing to the hosel
   const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.0135, 0.0105, 0.27, 12), m(COLORS.grip, 0.85));
   grip.position.y = 0.135;
@@ -196,12 +219,21 @@ const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
  *  spine, the eyes down): a little further forward at the hips, the neck less bent back, the head nodding to the ball –
  *  the head only while the eyes are on the ball. */
 const POSTURE = { pelvis: 2, spine: 2, chest: 1, neck: 8, head: 10 } as const;
-const postured = (body: SwingKey['body'], look: number): SwingKey['body'] => {
+/** the forward bend of the keys sits in the pelvis; a golfer bends more in the hips' tilt AND the spine – so part of it
+ *  moves up into spine and chest (19.10.2026, measured: with the whole bend in the pelvis its turn about the vertical
+ *  swung the head 29 cm to the side by the top; turning about the bent spine keeps the head nearly still) */
+const BEND_UP = 0.45;
+const SPINE_UP = 0.1;
+const postured = (body: SwingKey['body'], look: number, real = false): SwingKey['body'] => {
   const out: SwingKey['body'] = {};
   for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) {
     const r = body[id] ?? [0, 0, 0];
     out[id] = [r[0] + POSTURE[id] * (id === 'neck' || id === 'head' ? look : 1), r[1], r[2]];
   }
+  if (!real) return out;
+  const d = Math.max(0, out.pelvis![0]);
+  out.pelvis![0] -= d * BEND_UP;
+  out.spine![0] += d * SPINE_UP;
   return out;
 };
 
@@ -239,6 +271,8 @@ export interface Viewer {
   onLabel(cb: (label: L | undefined, step: number) => void): void;
   /** development: look closer at a point (the preview checks the club head) */
   closeUp?(at: [number, number, number] | null, dist?: number): void;
+  /** development: the measures of the first golfer at a time (degrees, cm) – to check the positions against reference values */
+  measure?(time: number): Record<string, number>;
   resize(): void;
   dispose(): void;
 }
@@ -374,6 +408,13 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // both hands closed around the grip (the fingers of the Agility figure)
     const pose: Pose = { j, at: [p.x + shift, p.z + push - 0.06], y: drop - knees + heightAt(p.x + shift, p.z), gripL: 1, gripR: 1 };
     applyPose(p.rig, pose, false);
+    // the trunk bends towards the ball first and then turns about its bent spine (19.10.2026, measured): turned first
+    // about the vertical, the bend swung with the turn and took the head 30 cm to the side by the top – a golfer's head
+    // stays nearly where it was
+    if (p.rig.root.userData.realistic) for (const id of ['pelvis', 'spine', 'chest'] as const) {
+      const r = j[id] ?? [0, 0, 0];
+      p.rig.joints[id].quaternion.setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(r[0]), THREE.MathUtils.degToRad(r[1]), THREE.MathUtils.degToRad(r[2]), 'XYZ'));
+    }
     p.rig.root.updateMatrixWorld(true);
   };
   const chestQ = (rig: Rig) => rig.joints.chest.getWorldQuaternion(new THREE.Quaternion());
@@ -388,12 +429,26 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const s = p.swing;
     let address: { dir: THREE.Vector3; q: THREE.Quaternion } | null = null;
     const keys = s.keys.map((k) => {
-      poseTrunk(p, postured(k.body, k.free ? 0 : 1), k.shift ?? 0, -(k.drop ?? 0.05), k.push ?? 0);
+      poseTrunk(p, postured(k.body, k.free ? 0 : 1, !!p.rig.root.userData.realistic), k.shift ?? 0, -(k.drop ?? 0.05), k.push ?? 0);
       let hands = new THREE.Vector3(...k.hands).applyQuaternion(chestQ(p.rig)).add(chestPos(p.rig));
       const head = ballPos(p).add(new THREE.Vector3(-0.04, 0.005, -SWEET[s.club])).add(new THREE.Vector3(...(k.miss ?? [0, 0, 0])));
       const dir = k.club === 'ball' ? head.clone().sub(hands).normalize() : new THREE.Vector3(...k.club).normalize();
+      if (k.club === 'ball' && k.lie != null) {
+        const up = dir.clone().negate();
+        const across = Math.hypot(up.y, up.z);
+        up.y = across * Math.sin(THREE.MathUtils.degToRad(k.lie));
+        up.z = -across * Math.cos(THREE.MathUtils.degToRad(k.lie));
+        dir.copy(up.normalize().negate());
+      }
+      if (k.club === 'ball' && k.lean != null) {
+        // the shaft from the head up to the hands: its slope across the target line kept, its lean set
+        const up = dir.clone().negate();
+        const across = Math.hypot(up.y, up.z);
+        up.x = Math.tan(THREE.MathUtils.degToRad(k.lean)) * across;
+        dir.copy(up.normalize().negate());
+      }
       // at the ball the clubhead sits exactly behind it: the hands slide along the shaft to the club's length
-      if (k.club === 'ball') hands = head.clone().addScaledVector(dir, -(CLUB_LEN[s.club] - 0.05 - (s.choke ?? 0)));
+      if (k.club === 'ball') hands = head.clone().addScaledVector(dir, -(clubLen(s.club, !!p.rig.root.userData.realistic) - 0.05 - (s.choke ?? 0)));
       const local = hands.clone().sub(chestPos(p.rig)).applyQuaternion(chestQ(p.rig).invert());
       const inv = chestQ(p.rig).invert();
       const clubLocal = dir.clone().applyQuaternion(inv);
@@ -430,7 +485,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const look = lerp(a.free ? 0 : 1, b.free ? 0 : 1, k);
     const body: SwingKey['body'] = {};
     for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) body[id] = [0, 1, 2].map((c) => mix((x) => x.body[id]?.[c] ?? 0)) as Rot;
-    poseTrunk(p, postured(body, look), mix((x) => x.shift ?? 0), -mix((x) => x.drop ?? 0.05), mix((x) => x.push ?? 0));
+    poseTrunk(p, postured(body, look, !!rig.root.userData.realistic), mix((x) => x.shift ?? 0), -mix((x) => x.drop ?? 0.05), mix((x) => x.push ?? 0));
     if (look > 0) {
       // the smallest turn of the head that points the face at the ball (no roll, also with the ball right below the
       // eyes when putting); the face points a little below the eyes' line – aim a bit beyond the ball
@@ -474,11 +529,26 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       const x = new THREE.Vector3().crossVectors(y, z);
       return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
     };
-    const handLQ = handQ(handsL, J.shoulderL);
-    const handRQ = handQ(handsR, J.shoulderR);
+    // the realistic hands hold the grip as a golfer does (Paket 6, 19.10.2026): the shaft runs diagonally through each
+    // hand (rig.shafts: its direction in the hand, heel pad → index finger = butt → head) and the hands are set by the
+    // clubface – the back of the lead hand and the palm of the trail hand look where the face looks
+    const realHand = (s: 'L' | 'R') => {
+      const c = (rig.shafts[s].userData.dir as THREE.Vector3).clone();
+      const e1 = new THREE.Vector3(1, 0, 0).sub(c.clone().multiplyScalar(c.x)).normalize();
+      const e3 = e1.clone().cross(c);
+      const faceN = new THREE.Vector3(-1, 0, 0).applyQuaternion(clubW);
+      const w1 = faceN.sub(dir.clone().multiplyScalar(faceN.dot(dir))).normalize();
+      const w3 = w1.clone().cross(dir);
+      const mh = new THREE.Matrix4().makeBasis(e1, c, e3);
+      const mw = new THREE.Matrix4().makeBasis(w1, dir, w3);
+      return new THREE.Quaternion().setFromRotationMatrix(mw.multiply(mh.transpose()));
+    };
+    const real = !!rig.root.userData.realistic;
+    const handLQ = real ? realHand('L') : handQ(handsL, J.shoulderL);
+    const handRQ = real ? realHand('R') : handQ(handsR, J.shoulderR);
     // the right hand is the mirror of the left: its shaft point lies on the other side of the palm
-    const wristL = handsL.clone().sub(new THREE.Vector3(SHAFT_IN_HAND[0], SHAFT_IN_HAND[1], SHAFT_IN_HAND[2]).applyQuaternion(handLQ));
-    const wristR = handsR.clone().sub(new THREE.Vector3(-SHAFT_IN_HAND[0], SHAFT_IN_HAND[1], SHAFT_IN_HAND[2]).applyQuaternion(handRQ));
+    const wristL = handsL.clone().sub(rig.shafts.L.position.clone().applyQuaternion(handLQ));
+    const wristR = handsR.clone().sub(rig.shafts.R.position.clone().applyQuaternion(handRQ));
     const setHand = (wrist: THREE.Object3D, hq: THREE.Quaternion) => {
       wrist.parent!.getWorldQuaternion(tmpQ);
       wrist.quaternion.copy(tmpQ.clone().invert().multiply(hq));
@@ -487,10 +557,10 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // elbows point down and a little out, away from the body
     const poleL = chestP.clone().add(new THREE.Vector3(0.5, -1, 0.1).applyQuaternion(q));
     const poleR = chestP.clone().add(new THREE.Vector3(-0.5, -1, 0.1).applyQuaternion(q));
-    twoBone(J.shoulderL, J.elbowL, BODY.upperArm, BODY.forearm, wristL, poleL);
+    twoBone(J.shoulderL, J.elbowL, lens(rig).upperArm, lens(rig).forearm, wristL, poleL);
     // one-handed: the trail hand rests flat on the chest
     const rest = chestP.clone().add(new THREE.Vector3(0.02, 0.1, 0.17).applyQuaternion(q));
-    twoBone(J.shoulderR, J.elbowR, BODY.upperArm, BODY.forearm, swing.oneHand ? rest : wristR, poleR);
+    twoBone(J.shoulderR, J.elbowR, lens(rig).upperArm, lens(rig).forearm, swing.oneHand ? rest : wristR, poleR);
     setHand(J.wristL, handLQ);
     // one-handed the trail hand lies open on the chest
     if (swing.oneHand) rig.setGrip(1, 0.1);
@@ -504,11 +574,11 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const lift = Math.max(0, mix((x) => x.step ?? 0));
     const heel = swing.trailToe ? 1 : lerp(a.heel ?? 0, b.heel ?? 0, k);
     const back = swing.trailToe ? 0.2 : 0;
-    const ankleL = new THREE.Vector3(p.x - half + wide, BODY.ankleH + lift + heightAt(p.x - half + wide, p.z), p.z);
-    const ankleR = new THREE.Vector3(p.x - half + heel * 0.06, BODY.ankleH + heel * 0.11 + heightAt(p.x - half, p.z), p.z - heel * 0.03 - back);
+    const ankleL = new THREE.Vector3(p.x - half + wide, lens(rig).ankleH + lift + heightAt(p.x - half + wide, p.z), p.z);
+    const ankleR = new THREE.Vector3(p.x - half + heel * 0.06, lens(rig).ankleH + heel * 0.11 + heightAt(p.x - half, p.z), p.z - heel * 0.03 - back);
     const pelvisP = J.pelvis.getWorldPosition(new THREE.Vector3());
-    twoBone(J.hipL, J.kneeL, BODY.thigh, BODY.shin, ankleL, pelvisP.clone().add(new THREE.Vector3(0.25, 0, 1)));
-    twoBone(J.hipR, J.kneeR, BODY.thigh, BODY.shin, ankleR, pelvisP.clone().add(new THREE.Vector3(-0.25 + heel * 0.5, 0, 1)));
+    twoBone(J.hipL, J.kneeL, lens(rig).thigh, lens(rig).shin, ankleL, pelvisP.clone().add(new THREE.Vector3(0.25, 0, 1)));
+    twoBone(J.hipR, J.kneeR, lens(rig).thigh, lens(rig).shin, ankleR, pelvisP.clone().add(new THREE.Vector3(-0.25 + heel * 0.5, 0, 1)));
     // feet flat, toes a little out; the trail foot up on its toes
     // the soles flat on the ground, also on a slope
     const footQ = (yaw: number, pitch: number) => groundQ.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0, 'YXZ')));
@@ -783,7 +853,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       const time = (end * i) / n;
       place(p, time);
       times.push(time);
-      pts.push(p.club.localToWorld(HEAD(CLUB_LEN[p.swing.club])));
+      pts.push(p.club.localToWorld(HEAD(clubLen(p.swing.club, !!p.rig.root.userData.realistic))));
     }
     const share = [0];
     for (let i = 1; i < pts.length; i++) share.push(share[i - 1] + pts[i].distanceTo(pts[i - 1]));
@@ -1036,9 +1106,12 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
           for (const y of Array.isArray(m.material) ? m.material : m.material ? [m.material] : []) y.dispose();
         });
     }
-    players = list.map(({ swing, x = 0, z = 0 }) => {
-      const rig = buildRig();
-      const club = buildClub(swing.club);
+    players = list.map(({ swing: given, x = 0, z = 0 }) => {
+      const rig = buildRig({ skin: wantRealistic() && realisticBodyReady() ? 'realistic' : 'classic' });
+      const real = !!rig.root.userData.realistic;
+      // the realistic golfer swings the full swing measured for it
+      const swing = real && given === FULL_SWING ? FULL_SWING_REAL : given;
+      const club = buildClub(swing.club, real);
       const ball = new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
       ball.castShadow = true;
       const tee = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.04, 8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.6 }));
@@ -1277,6 +1350,31 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     },
     onLabel(cb) {
       labelCb = cb;
+    },
+    measure(time) {
+      const p = players[0];
+      place(p, time);
+      const J = p.rig.joints;
+      const R = THREE.MathUtils.radToDeg;
+      const ax = (o: THREE.Object3D, v: THREE.Vector3) => v.applyQuaternion(o.getWorldQuaternion(new THREE.Quaternion()));
+      const turn = (o: THREE.Object3D) => { const x = ax(o, new THREE.Vector3(1, 0, 0)); return R(Math.atan2(-x.z, x.x)); };
+      const cx = ax(J.chest, new THREE.Vector3(1, 0, 0));
+      const cy = ax(J.chest, new THREE.Vector3(0, 1, 0));
+      const py = ax(J.pelvis, new THREE.Vector3(0, 1, 0));
+      const at = (o: THREE.Object3D) => o.getWorldPosition(new THREE.Vector3());
+      const ball = ballPos(p);
+      const club = new THREE.Vector3(0, 1, 0).applyQuaternion(p.club.quaternion);
+      const sL = at(J.shoulderL), eL = at(J.elbowL), wL = at(J.wristL), sR = at(J.shoulderR), eR = at(J.elbowR), wR = at(J.wristR);
+      const ang = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => R(a.clone().sub(b).angleTo(c.clone().sub(b)));
+      const r1 = (x: number) => Math.round(x * 10) / 10;
+      return {
+        pelvisTurn: r1(turn(J.pelvis)), chestTurn: r1(turn(J.chest)), xFactor: r1(turn(J.chest) - turn(J.pelvis)),
+        shoulderTilt: r1(R(Math.asin(cx.y))), chestBend: r1(R(Math.acos(cy.y))), pelvisBend: r1(R(Math.acos(py.y))),
+        pelvisX: r1(at(J.pelvis).x * 100 - p.x * 100), headX: r1((at(J.head).x - ball.x) * 100), headY: r1(at(J.head).y * 100),
+        shaftLean: r1(R(Math.atan2(-club.x, -club.y))), shaftUp: r1(R(Math.asin(-club.y))),
+        leadElbow: r1(ang(sL, eL, wL)), trailElbow: r1(ang(sR, eR, wR)), kneeL: r1(ang(at(J.hipL), at(J.kneeL), at(J.ankleL))), kneeR: r1(ang(at(J.hipR), at(J.kneeR), at(J.ankleR))),
+        handsX: r1((wL.x - ball.x) * 100), handsY: r1(wL.y * 100), reachL: r1(sL.distanceTo(wL) * 100), reachR: r1(sR.distanceTo(wR) * 100), sLx: r1(sL.x * 100), sLy: r1(sL.y * 100), sLz: r1(sL.z * 100), wLx: r1(wL.x * 100), wLy: r1(wL.y * 100), wLz: r1(wL.z * 100), gx: r1(p.club.position.x * 100), gy: r1(p.club.position.y * 100), gz: r1(p.club.position.z * 100),
+      };
     },
     closeUp(at, dist = 0.6) {
       close = at ? { at: new THREE.Vector3(...at), dist } : null;
