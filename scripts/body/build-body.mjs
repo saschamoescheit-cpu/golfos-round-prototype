@@ -71,120 +71,200 @@ L.thigh = len(sub(P.kneeL, P.hipL));
 L.shin = len(sub(P.ankleL, P.kneeL));
 
 // ---------- the mesh ----------
-const V = R.v.map(T);
-const nV = V.length;
-const tris = [];
-const trisFace = [];
-R.f.forEach((poly, fi) => { for (let i = 1; i < poly.length - 1; i++) { tris.push([poly[0], poly[i], poly[i + 1]]); trisFace.push(fi); } });
+const B = R.v.map((p) => p.slice()); // Blender coords (the tests below), grows with the cut edges
 const boneIx = Object.fromEntries(R.bones.map((b, i) => [b, i]));
 const W = R.w.map((ws) => {
   const tot = ws.reduce((s, x) => s + x[0], 0);
   return ws.map(([w, b]) => [boneIx[b], w / tot]);
 });
-const dom = (i) => R.bones[W[i][0][0]];
-// vertex normals and neighbours
-const normals = () => {
-  const N = V.map(() => [0, 0, 0]);
-  for (const [a, b, c] of tris) {
-    const n = cross(sub(V[b], V[a]), sub(V[c], V[a]));
+let tris = [];
+for (const poly of R.f) for (let i = 1; i < poly.length - 1; i++) tris.push([poly[0], poly[i], poly[i + 1]]);
+const domOf = (ws) => R.bones[ws.slice().sort((p, q) => q[1] - p[1])[0][0]];
+const triDom = (t) => {
+  const tot = {};
+  for (const i of t) for (const [bi, w] of W[i]) tot[bi] = (tot[bi] ?? 0) + w;
+  return R.bones[Object.entries(tot).sort((p, q) => q[1] - p[1])[0][0]];
+};
+const mixW = (a, b, k) => {
+  const tot = {};
+  for (const [bi, w] of W[a]) tot[bi] = (tot[bi] ?? 0) + w * (1 - k);
+  for (const [bi, w] of W[b]) tot[bi] = (tot[bi] ?? 0) + w * k;
+  const ws = Object.entries(tot).map(([bi, w]) => [Number(bi), w]).sort((p, q) => q[1] - p[1]).slice(0, 4);
+  const s = ws.reduce((x, y) => x + y[1], 0);
+  return ws.map(([bi, w]) => [bi, w / s]);
+};
+// cuts every triangle that a border crosses along that border (f = 0), so sleeves, belt, glove and hair line end on a
+// clean line instead of the mesh's stairs
+const edgeCut = new Map();
+const cut = (field, applies) => {
+  const out = [];
+  for (const t of tris) {
+    if (!applies(t)) { out.push(t); continue; }
+    const f = t.map((i) => field(B[i]));
+    const pos = f.map((x) => x >= 0);
+    if (pos[0] === pos[1] && pos[1] === pos[2]) { out.push(t); continue; }
+    // the lone vertex on one side
+    const lone = pos[0] === pos[1] ? 2 : pos[0] === pos[2] ? 1 : 0;
+    const a = t[lone], b = t[(lone + 1) % 3], c = t[(lone + 2) % 3];
+    const fa = f[lone], fb = f[(lone + 1) % 3], fc = f[(lone + 2) % 3];
+    const at = (p, q, fp, fq) => {
+      const key = p < q ? `${p}_${q}` : `${q}_${p}`;
+      if (edgeCut.has(key)) return edgeCut.get(key);
+      const k = fp / (fp - fq);
+      B.push(B[p].map((x, i) => x + (B[q][i] - x) * k));
+      W.push(mixW(p, q, k));
+      edgeCut.set(key, B.length - 1);
+      return B.length - 1;
+    };
+    const ab = at(a, b, fa, fb), ac = at(a, c, fa, fc);
+    out.push([a, ab, ac], [ab, b, c], [ab, c, ac]);
+  }
+  tris = out;
+  edgeCut.clear();
+};
+const along = (p, from, to) => { const d = sub(to, from); return dot(sub(p, from), d) / dot(d, d); };
+// the cap line: from the forehead down towards the back of the head
+const capLine = (y) => 1.632 + ((y + 0.1) / 0.16) * (1.565 - 1.632);
+const neckLine = (y) => 1.418 + 0.03 * Math.min(1, Math.max(0, (y + 0.02) / 0.1));
+const isTorso = (d) => /^(pelvis|spine|chest|hip|knee|ankle)/.test(d);
+const isArm = (d) => /^(shoulder|elbow|wrist|index|middle|ring|little|thumb)/.test(d);
+const tDom = (t) => triDom(t);
+cut((p) => p[2] - 0.115, (t) => /^(ankle|knee)/.test(tDom(t)));
+cut((p) => p[2] - 0.022, (t) => /^(ankle|knee)/.test(tDom(t)));
+cut((p) => p[2] - 0.956, (t) => isTorso(tDom(t)) || /^shoulder/.test(tDom(t)));
+cut((p) => p[2] - 0.988, (t) => isTorso(tDom(t)) || /^shoulder/.test(tDom(t)));
+cut((p) => p[2] - neckLine(p[1]), (t) => /^(chest|neck|spine)/.test(tDom(t)));
+for (const sx of [1, -1]) cut((p) => along(p, mir(J.shoulder, sx), mir(J.elbow, sx)) - 0.6, (t) => /^(shoulder|elbow)/.test(tDom(t)) && Math.sign(B[t[0]][0]) === sx);
+cut((p) => along(p, J.elbow, J.wrist) - 0.94, (t) => /^(elbow|wrist)/.test(tDom(t)) && B[t[0]][0] > 0);
+cut((p) => p[2] - (capLine(p[1]) - 0.024), (t) => /^(head|neck)/.test(tDom(t)));
+
+// regions: 0 skin, 1 shirt, 2 trousers, 3 shoe, 4 sole, 5 glove, 6 cap, 7 hair, 8 belt, 9 eye white, 10 iris, 11 visor
+// underside – per triangle, by its centre and its strongest bone
+const classify = (p, d) => {
+  const [x, y, z] = p;
+  const sx = x > 0 ? 1 : -1;
+  if (z < 0.115 && /^(ankle|knee)/.test(d)) return z < 0.022 ? 4 : 3;
+  if (isArm(d)) {
+    const tS = along(p, mir(J.shoulder, sx), mir(J.elbow, sx));
+    const tF = along(p, mir(J.elbow, sx), mir(J.wrist, sx));
+    if (/^shoulder/.test(d) && tS < 0.6) return 1;
+    if (sx > 0 && (/^(wrist|index|middle|ring|little|thumb)/.test(d) || tF > 0.94)) return 5;
+    return 0;
+  }
+  if (/^(pelvis|hip|knee)/.test(d) || (/^spine/.test(d) && z < 0.97)) return z > 0.956 && z < 0.988 && Math.abs(x) < 0.22 ? 8 : z >= 0.988 ? 1 : 2;
+  if (/^(spine|chest)/.test(d)) return z > 0.956 && z < 0.988 ? 8 : z > neckLine(y) ? 0 : 1;
+  if (/^(head|neck)/.test(d) && z > capLine(y) - 0.024 && z > 1.5) return 7;
+  return 0;
+};
+const triReg0 = tris.map((t) => classify([0, 1, 2].map((k) => (B[t[0]][k] + B[t[1]][k] + B[t[2]][k]) / 3), triDom(t)));
+const V = B.map(T);
+const nV = V.length;
+const normalsOf = (P, list) => {
+  const N = P.map(() => [0, 0, 0]);
+  for (const [a, b, c] of list) {
+    const n = cross(sub(P[b], P[a]), sub(P[c], P[a]));
     for (const i of [a, b, c]) for (let k = 0; k < 3; k++) N[i][k] += n[k];
   }
   return N.map((n) => (len(n) ? nrm(n) : [0, 1, 0]));
 };
 const nb = V.map(() => new Set());
-for (const [a, b, c] of tris) { nb[a].add(b).add(c); nb[b].add(a).add(c); nb[c].add(a).add(b); }
-
-// regions: 0 skin, 1 shirt, 2 trousers, 3 shoe, 4 sole, 5 glove, 6 cap, 7 hair, 8 belt, 9 eye white, 10 iris – per FACE
-// (by its centre and its strongest bone), so the edges of sleeves, belt and glove follow the mesh's own loops
-const B = R.v; // Blender coords for the tests below
-const along = (p, from, to) => { const d = sub(to, from); return dot(sub(p, from), d) / dot(d, d); };
-const capLine = (y) => 1.632 + ((y + 0.1) / 0.16) * (1.565 - 1.632);
-const classify = (p, d) => {
-  const [x, y, z] = p;
-  const side = x > 0 ? 'L' : 'R';
-  const sx = x > 0 ? 1 : -1;
-  if (z < 0.115 && /^(ankle|knee)/.test(d)) return z < 0.022 ? 4 : 3;
-  if (/^(shoulder|elbow|wrist|index|middle|ring|little|thumb)/.test(d)) {
-    const tS = along(p, mir(J.shoulder, sx), mir(J.elbow, sx));
-    const tF = along(p, mir(J.elbow, sx), mir(J.wrist, sx));
-    if (/^shoulder/.test(d) && tS < 0.6) return 1;
-    if (side === 'L' && (/^(wrist|index|middle|ring|little|thumb)/.test(d) || tF > 0.94)) return 5;
-    return 0;
-  }
-  if (/^(pelvis|hip|knee)/.test(d) || /^spine/.test(d) && z < 0.97) return z > 0.956 && z < 0.988 && Math.abs(x) < 0.2 ? 8 : z >= 0.988 ? 1 : 2;
-  if (/^(spine|chest)/.test(d)) return z > 0.956 && z < 0.988 ? 8 : (z > 1.415 && Math.abs(x) < 0.08 && y < 0.035) || z > 1.445 ? 0 : 1;
-  if (/^(head|neck)/.test(d) && z > capLine(y) - 0.024 && y > -0.07 && z > 1.5) return 7;
-  return 0;
-};
-const faceReg = R.f.map((poly) => {
-  const c = [0, 1, 2].map((k) => poly.reduce((s, i) => s + B[i][k], 0) / poly.length);
-  const tot = {};
-  for (const i of poly) for (const [bi, w] of W[i]) tot[bi] = (tot[bi] ?? 0) + w;
-  const best = Object.entries(tot).sort((p, q) => q[1] - p[1])[0][0];
-  return classify(c, R.bones[best]);
-});
-const vFaces = V.map(() => []);
-R.f.forEach((poly, fi) => poly.forEach((i) => vFaces[i].push(fi)));
+const vTris = V.map(() => []);
+tris.forEach(([a, b, c], ti) => { nb[a].add(b).add(c); nb[b].add(a).add(c); nb[c].add(a).add(b); for (const i of [a, b, c]) vTris[i].push(ti); });
 const cloth = (r) => r === 1 || r === 2 || r === 8;
 const OFF = { 1: 0.006, 2: 0.008, 8: 0.01, 3: 0.009, 4: 0.011, 5: 0.0015 };
-const REG = new Uint8Array(nV); // the vertex: the thickest cloth around it (for the offset)
-for (let i = 0; i < nV; i++) { let r = 0, o = 0; for (const fi of vFaces[i]) { const q = faceReg[fi]; if ((OFF[q] ?? 0) > o) { o = OFF[q]; r = q; } } REG[i] = r; }
-const allCloth = (i) => vFaces[i].every((fi) => cloth(faceReg[fi]));
-// cloth: smoothed (no muscles through the shirt) and a little away from the skin
+// a vertex inside a region takes its offset; on a border it stays (a sleeve or a trouser leg ends close on the skin)
+const vOff = V.map((_, i) => { const rs = new Set(vTris[i].map((ti) => triReg0[ti])); return rs.size === 1 ? OFF[[...rs][0]] ?? 0 : 0; });
+const allCloth = (i) => vTris[i].every((ti) => cloth(triReg0[ti]));
 for (let it = 0; it < 10; it++) {
   const next = V.map((p) => p.slice());
   for (let i = 0; i < nV; i++) {
-    if (!allCloth(i)) continue;
+    if (!allCloth(i) || vOff[i] === 0) continue;
     const m = [0, 0, 0]; for (const j of nb[i]) for (let k = 0; k < 3; k++) m[k] += V[j][k] / nb[i].size;
     next[i] = add(V[i], mul(sub(m, V[i]), 0.5));
   }
   for (let i = 0; i < nV; i++) V[i] = next[i];
 }
-const N1 = normals();
-for (let i = 0; i < nV; i++) { const off = OFF[REG[i]] ?? 0; if (off) V[i] = add(V[i], mul(N1[i], off)); }
-for (let i = 0; i < nV; i++) if (REG[i] === 4) V[i][1] = Math.max(0, Math.min(V[i][1], 0.012));
+// one more step: the border vertices of cloth half out, so the edge is a soft hem, not a step
+const N1 = normalsOf(V, tris);
+for (let i = 0; i < nV; i++) {
+  let off = vOff[i];
+  if (!off) { const rs = vTris[i].map((ti) => OFF[triReg0[ti]] ?? 0); off = Math.min(...rs) > 0 ? Math.min(...rs) : Math.max(...rs) * 0.35; }
+  if (off) V[i] = add(V[i], mul(N1[i], off));
+}
+for (let i = 0; i < nV; i++) if (vTris[i].some((ti) => triReg0[ti] === 4)) V[i][1] = Math.max(0, Math.min(V[i][1], 0.012));
 
-// ---------- the cap: a shell over the scalp above the cap line, and the visor ----------
-const capV = new Map();
-const capTris = [];
-const inCap = (i) => B[i][2] > capLine(B[i][1]) - 0.004 && /^(head|neck)/.test(dom(i));
-const N2 = normals();
-for (const t of tris) {
-  if (!t.every(inCap)) continue;
-  const ids = t.map((i) => {
-    if (!capV.has(i)) { capV.set(i, V.length); V.push(add(V[i], mul(N2[i], 0.007))); W.push(W[i]); REG.length; }
-    return capV.get(i);
-  });
-  capTris.push(ids);
-}
-// the visor: from the cap's front edge, 7 cm out and a little down, over ±65°
-const headC = T([0, -0.035, 1.6]);
-const rimPts = [...capV.keys()].filter((i) => B[i][2] < capLine(B[i][1]) + 0.012).map((i) => V[capV.get(i)]);
-const visorV = [];
-const steps = 14;
-for (let k = 0; k <= steps; k++) {
-  const ang = ((-65 + (130 * k) / steps) * Math.PI) / 180;
-  const dir = [Math.sin(ang), 0, Math.cos(ang)];
-  // the rim point in this direction: the furthest cap point along dir near the rim
-  let best = null; let bd = -1;
-  for (const p of rimPts) { const d = sub(p, headC); const h = [d[0], 0, d[2]]; const c = dot(nrm(h), dir); if (c > 0.985 && len(h) > bd) { bd = len(h); best = p; } }
-  if (!best) best = add(headC, add(mul(dir, 0.1), [0, 0.03, 0]));
-  const inner = add(best, mul(dir, -0.004));
-  const depth = 0.068 * Math.cos(ang * 0.8);
-  const outer = add(inner, add(mul(dir, depth), [0, -0.012, 0]));
-  visorV.push(inner, outer);
-}
-const vis0 = V.length;
+// ---------- the cap: a smooth shell fitted to the head above the cap line, and a curved visor ----------
 const headBone = boneIx.head;
-for (const p of visorV) { V.push(p); W.push([[headBone, 1]]); }
-const visorTris = [];
-for (let k = 0; k < steps; k++) {
-  const a0 = vis0 + 2 * k, a1 = a0 + 1, b0 = a0 + 2, b1 = a0 + 3;
-  visorTris.push([a0, b0, a1], [a1, b0, b1]);
+const scalp = V.filter((_, i) => B[i][2] > capLine(B[i][1]) - 0.01 && /^(head)/.test(domOf(W[i])));
+const lo = [0, 1, 2].map((k) => Math.min(...scalp.map((p) => p[k]))), hi = [0, 1, 2].map((k) => Math.max(...scalp.map((p) => p[k])));
+const capC = [(lo[0] + hi[0]) / 2, lo[1], (lo[2] + hi[2]) / 2];
+const capR = [(hi[0] - lo[0]) / 2 + 0.008, hi[1] - lo[1] + 0.008, (hi[2] - lo[2]) / 2 + 0.008];
+// the rim plane: the cap line in three coords (y up, z front): height falls from the front to the back
+const rimY = (z) => capLine(-z / S) * S;
+const capV0 = V.length;
+const capTris = [];
+const NU = 40, NV = 12;
+for (let i = 0; i <= NV; i++) {
+  for (let j = 0; j < NU; j++) {
+    const u = (j / NU) * Math.PI * 2;
+    // along the meridian from the top (v=0) down to the rim
+    let lo2 = 0, hi2 = Math.PI * 0.75;
+    const at = (v) => [capC[0] + capR[0] * Math.sin(v) * Math.sin(u), capC[1] + capR[1] * Math.cos(v), capC[2] + capR[2] * Math.sin(v) * Math.cos(u)];
+    for (let k = 0; k < 30; k++) { const m = (lo2 + hi2) / 2; const p = at(m); if (p[1] > rimY(p[2]) - 0.004) lo2 = m; else hi2 = m; }
+    const p = at((lo2 * i) / NV);
+    V.push(p); W.push([[headBone, 1]]);
+  }
 }
+// shrink-wrapped onto the head: each point of the shell pushed out until it lies 6 mm outside every bit of scalp in its
+// direction, then smoothed (the rim stays on its line)
+const scalpAll = V.slice(0, nV).filter((_, i) => /^(head|neck)/.test(domOf(W[i])) && B[i][2] > capLine(B[i][1]) - 0.03);
+for (let i = 0; i <= NV; i++) for (let j = 0; j < NU; j++) {
+  const ix = capV0 + i * NU + j;
+  const d = nrm(sub(V[ix], capC));
+  let r = len(sub(V[ix], capC));
+  for (const q of scalpAll) { const v = sub(q, capC); const l = len(v); if (l > 0 && dot(v, d) / l > 0.985) r = Math.max(r, dot(v, d) + 0.006); }
+  V[ix] = add(capC, mul(d, r));
+}
+for (let it = 0; it < 4; it++) {
+  const next = [];
+  for (let i = 1; i < NV; i++) for (let j = 0; j < NU; j++) {
+    const at = (a, b) => V[capV0 + a * NU + ((b + NU) % NU)];
+    const m = [at(i - 1, j), at(i + 1, j), at(i, j - 1), at(i, j + 1)].reduce((x, y) => add(x, y), [0, 0, 0]);
+    next.push([capV0 + i * NU + j, add(mul(V[capV0 + i * NU + j], 0.5), mul(m, 0.125))]);
+  }
+  for (const [ix, p] of next) V[ix] = p;
+}
+const capIx = (i, j) => capV0 + i * NU + (j % NU);
+for (let i = 0; i < NV; i++) for (let j = 0; j < NU; j++) capTris.push([capIx(i, j), capIx(i + 1, j), capIx(i + 1, j + 1)], [capIx(i, j), capIx(i + 1, j + 1), capIx(i, j + 1)]);
+// the visor: from the front of the rim (±55°), 6.5 cm out, arched across and curved down at its edge; top and underside
+const visTop = [], visBot = [];
+const NS = 16, ND = 5;
+for (let k = 0; k <= NS; k++) {
+  const ang = ((-55 + (110 * k) / NS) * Math.PI) / 180;
+  const j = Math.round((ang / (Math.PI * 2)) * NU + NU) % NU;
+  const rim = V[capIx(NV, j)];
+  const dir = [Math.sin(ang), 0, Math.cos(ang)];
+  for (let d = 0; d <= ND; d++) {
+    const s = d / ND;
+    const reach = 0.066 * Math.cos(ang * 0.9) * s;
+    const drop = 0.006 * s + 0.01 * s * s + 0.008 * Math.abs(Math.sin(ang)) * s; // curved down to the front and the sides
+    const p = add(add(rim, mul(dir, reach - 0.002)), [0, -drop, 0]);
+    visTop.push(V.length); V.push(p); W.push([[headBone, 1]]);
+    visBot.push(V.length); V.push(add(p, [0, -0.003, 0])); W.push([[headBone, 1]]);
+  }
+}
+const vIx = (arr, k, d) => arr[k * (ND + 1) + d];
+const visorTris = [], visorBotTris = [];
+for (let k = 0; k < NS; k++) for (let d = 0; d < ND; d++) {
+  visorTris.push([vIx(visTop, k, d), vIx(visTop, k + 1, d), vIx(visTop, k + 1, d + 1)], [vIx(visTop, k, d), vIx(visTop, k + 1, d + 1), vIx(visTop, k, d + 1)]);
+  visorBotTris.push([vIx(visBot, k, d), vIx(visBot, k + 1, d + 1), vIx(visBot, k + 1, d)], [vIx(visBot, k, d), vIx(visBot, k, d + 1), vIx(visBot, k + 1, d + 1)]);
+}
+// the edge of the visor
+for (let k = 0; k < NS; k++) visorTris.push([vIx(visTop, k, ND), vIx(visTop, k + 1, ND), vIx(visBot, k + 1, ND)], [vIx(visTop, k, ND), vIx(visBot, k + 1, ND), vIx(visBot, k, ND)]);
 // the eyes: on the head, white with a dark iris at the front
 const eyeTris = [];
 const eyeReg = [];
+const eyeBase = V.length;
 for (const e of R.eyes) {
   const base = V.length;
   const pts = e.v.map(T);
@@ -192,9 +272,8 @@ for (const e of R.eyes) {
   for (const p of pts) { V.push(p); W.push([[headBone, 1]]); eyeReg.push(dot(nrm(sub(p, c)), FWD) > 0.82 ? 10 : 9); }
   for (const poly of e.f) for (let i = 1; i < poly.length - 1; i++) eyeTris.push([base + poly[0], base + poly[i], base + poly[i + 1]]);
 }
-const eyeBase = V.length - eyeReg.length;
-const all = [...tris, ...capTris, ...visorTris, ...eyeTris];
-const triReg = [...trisFace.map((fi) => faceReg[fi]), ...capTris.map(() => 6), ...visorTris.map(() => 6), ...eyeTris.map((t) => (t.some((i) => eyeReg[i - eyeBase] === 10) ? 10 : 9))];
+const all = [...tris, ...capTris, ...visorTris, ...visorBotTris, ...eyeTris];
+const triReg = [...triReg0, ...capTris.map(() => 6), ...visorTris.map(() => 6), ...visorBotTris.map(() => 11), ...eyeTris.map((t) => (t.some((i) => eyeReg[i - eyeBase] === 10) ? 10 : 9))];
 const order = all.map((_, i) => i).sort((p, q) => triReg[p] - triReg[q]);
 const groups = [];
 for (const i of order) { const r = triReg[i]; const g = groups[groups.length - 1]; if (g && g.r === r) g.n += 3; else groups.push({ r, start: groups.length ? groups[groups.length - 1].start + groups[groups.length - 1].n : 0, n: 3 }); }
@@ -209,7 +288,10 @@ const sIdx = new Uint8Array(nv * 4), sW = new Uint8Array(nv * 4);
 for (let i = 0; i < nv; i++) {
   const ws = W[i].slice(0, 4);
   let rest = 255;
-  ws.forEach(([b, w], k) => { sIdx[i * 4 + k] = b; const q = k === ws.length - 1 ? rest : Math.round(w * 255); sW[i * 4 + k] = q; rest -= q; });
+  // quantised to 255 in all: floor each, the remainder to the strongest (never below 0 – a wrap-around stretched the neck)
+  const q = ws.map(([, w]) => Math.floor(w * 255));
+  q[0] += 255 - q.reduce((x, y) => x + y, 0);
+  ws.forEach(([b], k) => { sIdx[i * 4 + k] = b; sW[i * 4 + k] = q[k]; });
 }
 const buf = Buffer.concat([Buffer.from(pos.buffer), Buffer.from(idx.buffer), Buffer.from(sIdx.buffer), Buffer.from(sW.buffer)]);
 const round = (a) => a.map((x) => Math.round(x * 100000) / 100000);

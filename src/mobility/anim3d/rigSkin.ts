@@ -53,7 +53,7 @@ export const realisticBodyReady = () => !!body;
 const frameM = (f: Meta['frames'][string]) => new THREE.Matrix4().makeBasis(new THREE.Vector3(...f.x), new THREE.Vector3(...f.y), new THREE.Vector3(...f.z)).setPosition(new THREE.Vector3(...f.o));
 
 // the colours of the regions of the mesh (see build-body.mjs): skin, shirt, trousers, shoe, sole, glove, cap, hair, belt,
-// eye, iris
+// eye, iris, the visor's underside
 const REGION = (): [string, number, number][] => [
   ['#c8946f', 0.55, 0],
   [COLORS.shirt, 0.82, 0],
@@ -66,6 +66,7 @@ const REGION = (): [string, number, number][] => [
   ['#23282c', 0.45, 0],
   ['#f2efe8', 0.25, 0],
   ['#2a221c', 0.2, 0],
+  ['#4f6a24', 0.85, 0],
 ];
 
 /** the pivot of a bone of the body */
@@ -147,8 +148,8 @@ export function applyRealisticSkin(rig: Rig): boolean {
     const lead = s === 'L';
     // the lead hand: the butt end lies in the heel pad, 4 cm below the wrist; the trail hand: at the root of the little finger
     const little = at(`little0${s}`);
-    const heel = lead ? new THREE.Vector3(little.x + palm * (SHAFT_R + 0.017), -0.045, little.z - 0.004) : little.add(new THREE.Vector3(palm * (SHAFT_R + 0.011), 0.004, -0.006));
-    const index = at(`index0${s}`).lerp(at(`index1${s}`), lead ? 0.55 : 0.3).add(new THREE.Vector3(palm * (SHAFT_R + 0.0095), 0, 0));
+    const heel = lead ? new THREE.Vector3(little.x + palm * (SHAFT_R + 0.017), -0.045, little.z - 0.004) : new THREE.Vector3(little.x + palm * (SHAFT_R + 0.012), -0.06, little.z - 0.004);
+    const index = at(`index0${s}`).lerp(at(`index1${s}`), lead ? 0.55 : 0.5).add(new THREE.Vector3(palm * (SHAFT_R + 0.0095), 0, 0));
     const dir = index.clone().sub(heel).normalize();
     rig.shafts[s].position.copy(heel.clone().lerp(index, 0.5));
     rig.shafts[s].userData.dir = dir;

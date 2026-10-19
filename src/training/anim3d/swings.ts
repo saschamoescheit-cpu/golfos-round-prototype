@@ -106,11 +106,12 @@ export const FULL_SWING: Swing = {
 FULL_SWING.hit = { at: 2.8, shot: 'full' };
 
 const ADDRESS_REAL: Omit<SwingKey, 't'> = {
-  body: { pelvis: [38, 0, 2], spine: [2, 0, 0], chest: [2, 0, 5], neck: [-14, 0, 0], head: [6, 0, 0] },
+  body: { pelvis: [38, 0, 2], spine: [2, 0, 3], chest: [2, 9, 9], neck: [-14, 0, 0], head: [6, 0, 0] },
   hands: [0.06, -0.2, 0.42],
   club: 'ball',
   lie: 51,
-  lean: 4,
+  lean: 1,
+  drop: 0.07,
 };
 /** the full swing of the realistic golfer (19.10.2026): its positions measured and set against tour averages – pelvis
  *  and chest turn, shoulder tilt, head, shaft lean and the arms at address, top and impact (golf3d measure()); real club
@@ -118,7 +119,7 @@ const ADDRESS_REAL: Omit<SwingKey, 't'> = {
 export const FULL_SWING_REAL: Swing = {
   club: 'iron',
   stance: 0.38,
-  ball: [0.02, 0.96],
+  ball: [-0.02, 0.8],
   keys: [
     k(0, { ...ADDRESS_REAL, label: L('Set-up', 'Ansprache') }),
     k(0.5, ADDRESS_REAL),
@@ -168,8 +169,8 @@ export const FULL_SWING_REAL: Swing = {
       label: L('Impact: hands ahead – four', 'Treffmoment: Hände vorn – vier'),
     }),
     k(2.92, {
-      body: { pelvis: [33, 45, 5], spine: [1, 6, 1], chest: [1, 4, 4], neck: [-13, -18, 0], head: [10, -8, 0] },
-      hands: [0.26, -0.28, 0.52],
+      body: { pelvis: [33, 48, 5], spine: [1, 8, 6], chest: [1, 14, 8], neck: [-13, -18, 0], head: [10, -8, 0] },
+      hands: [0.0, -0.28, 0.46],
       club: [1, 0.06, 0.12],
       shift: 0.09,
     }),
