@@ -76,8 +76,8 @@ export const greenreading: Category = {
       title: L('Feeling the slope with the feet', 'Das Gefälle mit den Füßen fühlen'),
       text: [
         L(
-          'Stand halfway between ball and hole, with your feet shoulder-width apart, straddling the line and facing the hole’s side (perpendicular to the line). Close your eyes: on which foot do you feel more pressure? That side is lower. With practice you can grade the slope: 1 (hardly), 2 (clear), 3 (strong) or as a percentage. Methods like AimPoint build a full system on this and are taught in courses.',
-          'Stell dich auf halbem Weg zwischen Ball und Loch, Füße schulterbreit, die Linie zwischen den Füßen, Blick quer zur Linie. Schließ die Augen: Auf welchem Fuß spürst du mehr Druck? Diese Seite ist tiefer. Mit Übung kannst du das Gefälle einstufen: 1 (kaum), 2 (deutlich), 3 (stark) oder in Prozent. Methoden wie AimPoint bauen darauf ein ganzes System auf und werden in Kursen gelehrt.',
+          'Stand halfway between ball and hole, with your feet shoulder-width apart, straddling the line and facing the hole. Close your eyes: on which foot do you feel more pressure? That side is lower. With practice you can grade the slope: 1 (hardly), 2 (clear), 3 (strong) or as a percentage. Methods like AimPoint build a full system on this and are taught in courses.',
+          'Stell dich auf halbem Weg zwischen Ball und Loch, Füße schulterbreit, die Linie zwischen den Füßen, Blick zum Loch. Schließ die Augen: Auf welchem Fuß spürst du mehr Druck? Diese Seite ist tiefer. Mit Übung kannst du das Gefälle einstufen: 1 (kaum), 2 (deutlich), 3 (stark) oder in Prozent. Methoden wie AimPoint bauen darauf ein ganzes System auf und werden in Kursen gelehrt.',
         ),
       ],
     },
@@ -189,7 +189,7 @@ export const greenreadingDrills: Drill[] = [
     balls: 3,
     setup: L('Pick 6 putts of 3–5 m on different slopes.', 'Wähle 6 Putts von 3–5 m mit unterschiedlichem Gefälle.'),
     steps: [
-      L('Stand halfway on the line, feet shoulder-width, facing across the line. Close your eyes.', 'Stell dich auf halbem Weg auf die Linie, Füße schulterbreit, Blick quer zur Linie. Augen zu.'),
+      L('Stand halfway on the line, feet shoulder-width, the line between your feet, facing the hole. Close your eyes.', 'Stell dich auf halbem Weg auf die Linie, Füße schulterbreit, die Linie zwischen den Füßen, Blick zum Loch. Augen zu.'),
       L('Feel which foot carries more weight and grade it: 0 flat, 1 slight, 2 clear, 3 strong.', 'Spür, welcher Fuß mehr Gewicht trägt, und stufe ein: 0 flach, 1 leicht, 2 deutlich, 3 stark.'),
       L('Then putt and see if the break matched your grade. Over time you build your own scale.', 'Dann putten und prüfen, ob der Break zu deiner Einstufung passt. Mit der Zeit entsteht deine eigene Skala.'),
     ],

@@ -373,6 +373,10 @@ set3d(SECTION_MOTIONS.driver?.['Hit up and hit the centre'], 'driverUp');
 set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'woodSweep');
 set3d(SECTION_MOTIONS.putting?.['Short putts (under 2 m)'], 'puttShortFirm');
 set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sandFairway');
+// feeling the slope with the feet: standing on the line, facing the hole
+if (DRILL_MOTIONS['feet-feel']) set3d(DRILL_MOTIONS['feet-feel'], 'feetFeel');
+else DRILL_MOTIONS['feet-feel'] = { frames: [], video: 'feetFeel' };
+FAULT_MOTIONS.greenreading = { ...FAULT_MOTIONS.greenreading, 'Not seeing the slope': still3d('feetFeel') };
 // drills with the steps of their own text
 set3d(DRILL_MOTIONS['fairway-bunker'], 'sandFairway');
 set3d(DRILL_MOTIONS['brush-five'], 'woodSweep');

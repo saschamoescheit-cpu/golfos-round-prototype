@@ -214,7 +214,7 @@ export const FIGURE_SKETCHES: Record<string, Sketch> = {
     slope(5, 0.55, 0.2),
     fig(2.5, 'stand', { tilt: -4, y: 0.37 }),
     co('trailAnkle', L('more pressure on the lower foot', 'mehr Druck auf dem tieferen Fuß'), [3.9, 0.95]),
-    txt([2.5, 2.3], L('across the line, eyes closed', 'quer zur Linie, Augen zu'), 10),
+    txt([2.5, 2.3], L('on the line, facing the hole, eyes closed', 'auf der Linie, Blick zum Loch, Augen zu'), 10),
   ]),
   // ---------- irons ----------
   'punch-gap': S(4, 2.8, [

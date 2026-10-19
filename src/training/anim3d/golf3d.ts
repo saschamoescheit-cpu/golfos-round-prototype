@@ -89,7 +89,7 @@ export interface Swing {
   /** played from sand (bunker) */
   sand?: boolean;
   /** drill aids: a stick in the ground outside the trail hip, a towel under both arms, a stick held with the grip */
-  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand' | 'rough' | 'alignSticks' | 'alignStation')[];
+  props?: ('stickHip' | 'towel' | 'stickGrip' | 'stickSeat' | 'teeGate' | 'startGate' | 'groundLine' | 'teeAfter' | 'teeFlies' | 'secondTee' | 'insideGate' | 'headcover' | 'impactBag' | 'sandLine' | 'sandFrame' | 'trees' | 'oldDivot' | 'faceSand' | 'rough' | 'alignSticks' | 'alignStation' | 'puttLine')[];
   /** the ball very low on its tee (fairway wood off a tee) */
   lowTee?: boolean;
   /** no ball: a drill swung into an impact bag */
@@ -666,6 +666,21 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         s.castShadow = true;
         add(s);
       }
+    }
+    // the line of a putt through the player's feet (he stands on it, facing the hole): the ball behind, the hole ahead
+    if (props.includes('puttLine')) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.002, 5), new THREE.MeshBasicMaterial({ color: '#f2f4f3', transparent: true, opacity: 0.8 }));
+      line.quaternion.copy(groundQ);
+      line.position.set(bp.x, heightAt(bp.x, bp.z) + 0.003, bp.z);
+      add(line);
+      const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
+      ballMesh.position.set(bp.x, heightAt(bp.x, bp.z - 2.5) + 0.0215, bp.z - 2.5);
+      ballMesh.castShadow = true;
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(0.054, 28), new THREE.MeshBasicMaterial({ color: '#1f272c' }));
+      hole.rotation.x = -Math.PI / 2;
+      hole.position.set(bp.x, heightAt(bp.x, bp.z + 2.5) + 0.004, bp.z + 2.5);
+      add(ballMesh);
+      add(hole);
     }
     if (props.includes('oldDivot')) {
       const hole = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.004, 0.075), new THREE.MeshStandardMaterial({ color: '#5e4a30', roughness: 1 }));
