@@ -1,10 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { pillar, position, targetPos, targetValue, testPos, type MobilityGoal } from './profile';
+import { mobilityScore, pillar, position, targetPos, targetValue, testPos, type MobilityGoal } from './profile';
 import { TESTS, testById } from './tests';
 import type { Measurement, TestId, TestResult } from './types';
 
 const cam = (value: number): Measurement => ({ value, grade: 'pass', source: 'camera', at: '2026-10-18T06:00:00Z' });
 const goal = (hcp: number, focus: MobilityGoal['focus'] = []): MobilityGoal => ({ id: 'goal', hcp, focus, at: '2026-10-18T06:00:00Z' });
+
+describe('the overall value', () => {
+  it('is 100 with every value at the goal, less the further the values are from it', () => {
+    const at = (k: number): Partial<Record<TestId, TestResult>> => ({
+      'seated-rotation': { left: cam(45 * k), right: cam(45 * k) },
+      'pelvic-rotation': { both: cam(40 * k) },
+      'single-leg': { left: cam(30 * k), right: cam(30 * k) },
+    });
+    expect(mobilityScore(TESTS, at(1), goal(0))!.score).toBe(100);
+    expect(mobilityScore(TESTS, at(1.3), goal(0))!.score).toBe(100);
+    // (half of these values: closer than half to the goals – the goals sit below the values used here)
+    const half = mobilityScore(TESTS, at(0.5), goal(0))!;
+    expect(half.score).toBeGreaterThan(40);
+    expect(half.score).toBeLessThan(75);
+    expect(half.tests).toBe(3);
+  });
+
+  it('a higher handicap goal asks for less – the same values give more', () => {
+    const r: Partial<Record<TestId, TestResult>> = { 'seated-rotation': { left: cam(30), right: cam(32) }, 'pelvic-rotation': { both: cam(25) } };
+    expect(mobilityScore(TESTS, r, goal(28))!.score).toBeGreaterThan(mobilityScore(TESTS, r, goal(0))!.score);
+  });
+
+  it('has no value without a measured test, and a test that hurt does not count', () => {
+    expect(mobilityScore(TESTS, {}, goal(10))).toBeNull();
+    expect(mobilityScore(TESTS, { 'seated-rotation': { both: { ...cam(50), pain: true } } }, goal(10))).toBeNull();
+  });
+});
 
 describe('mobility profile – measuring, not grading', () => {
   it('puts values on a neutral scale (more movement = further right, also where smaller numbers mean more)', () => {

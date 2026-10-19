@@ -24,7 +24,7 @@ import { cap } from '../mobility/DrillPlayer';
 import { daysThisWeek, drillHistory, loadSessions, localDay, newSession, openSession, openToday, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
 import { coachOf, DRILL_COACH, SIGNALS, signalValueText, WATCH_FOCUS } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
-import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
+import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, mobilityScore, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
 import { profileIndex } from '../lib/profile';
 import { hasPain, leadSide, previousMeasurement, likelyMisses, latestResults, MISS_NAMES, PLAY_NOW, swingPatterns, type PatternResult } from '../mobility/swing';
 import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
@@ -1291,10 +1291,31 @@ function ResultTab(props: { nav: Nav }) {
   const patterns = swingPatterns(results, hand);
   const misses = likelyMisses(patterns);
   const newest = Object.values(at).sort().at(-1);
+  const goal = loadGoal();
+  const score = mobilityScore(TESTS, results, goal);
+  // the screening before the newest one, on the same goal: how the overall value changed
+  const done = all.filter((s) => s.kind !== 'single' && s.finishedAt && Object.keys(s.results).length).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const prev = done.length >= 2 ? done[done.length - 2] : null;
+  const before = prev ? mobilityScore(TESTS, prev.results, goal) : null;
+  const change = score && before ? score.score - before.score : null;
   return (
     <>
-      <section className="card mob-summary">
-        <strong>{tr('Your mobility profile', 'Dein Beweglichkeitsprofil')}</strong>
+      <section className="card mob-summary mob-score">
+        {score && <ScoreRing score={score.score} />}
+        <strong>{tr('Your mobility', 'Deine Beweglichkeit')}</strong>
+        {score && (
+          <span className="small">
+            {tr(`100 = every value at the goal for handicap ${goal?.hcp ?? 10}`, `100 = alle Werte am Ziel für Handicap ${goal?.hcp ?? 10}`)}
+            {goal ? '' : tr(' – set your goal below', ' – dein Ziel stellst du unten ein')}
+          </span>
+        )}
+        {change != null && prev && (
+          <span className={`small mob-score-change${change > 0 ? ' good-text' : ' muted'}`}>
+            {change === 0
+              ? tr('the same as the screening before', 'gleich wie beim Screening davor')
+              : tr(`${change > 0 ? '+' : '−'}${Math.abs(change)} since ${dateText(prev.createdAt)}`, `${change > 0 ? '+' : '−'}${Math.abs(change)} seit dem ${dateText(prev.createdAt)}`)}
+          </span>
+        )}
         <span className="muted small">
           {tr(`${tested.length} of ${TESTS.length} tests measured`, `${tested.length} von ${TESTS.length} Tests gemessen`)}
           {newest ? ` · ${tr('as of', 'Stand')} ${dateText(newest)}` : ''} · {hand === 'right' ? tr('right-handed', 'Rechtshänder') : tr('left-handed', 'Linkshänder')}
@@ -1316,6 +1337,24 @@ function ResultTab(props: { nav: Nav }) {
       )}
       <TrainNext nav={props.nav} />
     </>
+  );
+}
+
+/** The overall value as a ring: the share of the goal reached, the number inside. */
+function ScoreRing(props: { score: number }) {
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg className="mob-score-ring" viewBox="0 0 100 100" role="img" aria-label={tr(`${props.score} of 100`, `${props.score} von 100`)}>
+      <circle cx="50" cy="50" r={r} className="track" />
+      <circle cx="50" cy="50" r={r} className="fill" strokeDasharray={`${(c * props.score) / 100} ${c}`} transform="rotate(-90 50 50)" />
+      <text x="50" y="47" className="num">
+        {props.score}
+      </text>
+      <text x="50" y="68" className="of">
+        / 100
+      </text>
+    </svg>
   );
 }
 
@@ -1954,27 +1993,27 @@ function HistoryTab(props: { nav: Nav }) {
       </section>
     );
   const full = list.filter((s) => s.kind !== 'single' && Object.keys(s.results).length).reverse();
+  const goal = loadGoal();
   return (
     <>
       <ChangeCard list={list} />
       <TrainProgress />
       <TrainHistory />
       {full.length >= 2 && (
-        <figure className="mob-chart" aria-label={tr('Mobility on average per screening', 'Beweglichkeit im Mittel je Screening')}>
+        <figure className="mob-chart" aria-label={tr('Your mobility per screening', 'Deine Beweglichkeit je Screening')}>
           <div className="mob-bars">
-            {full.slice(-8).map((s) => {
-              const ps = s.tests.map((id) => testPos(testById(id), s.results[id])).filter((p): p is number => p != null);
-              const avg = ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : 0;
+            {full.slice(-8).map((s, i, shown) => {
+              const sc = mobilityScore(TESTS, s.results, goal)?.score ?? 0;
               return (
                 <div key={s.id} className="mob-bar">
-                  <span className="small">{Math.round(avg * 100)} %</span>
-                  <i style={{ height: `${Math.max(6, avg * 100)}%` }} />
+                  <span className="small">{sc}</span>
+                  <i className={i === shown.length - 1 ? 'pass' : ''} style={{ height: `${Math.max(6, sc)}%` }} />
                   <span className="muted small">{new Date(s.createdAt).toLocaleDateString(tr('en-GB', 'de-DE'), { day: 'numeric', month: 'numeric' })}</span>
                 </div>
               );
             })}
           </div>
-          <figcaption className="muted small">{tr('Where your values sit on average on their scales (100 % = a lot of movement)', 'Wo deine Werte im Mittel auf ihren Skalen liegen (100 % = viel Bewegung)')}</figcaption>
+          <figcaption className="muted small">{tr(`Your mobility per screening (100 = every value at the goal for handicap ${goal?.hcp ?? 10})`, `Deine Beweglichkeit je Screening (100 = alle Werte am Ziel für Handicap ${goal?.hcp ?? 10})`)}</figcaption>
         </figure>
       )}
       <div className="list">
@@ -1989,6 +2028,7 @@ function HistoryTab(props: { nav: Nav }) {
                 </span>
                 <span className="muted small">
                   {dateText(s.createdAt)} · {tr(`${n} tests measured`, `${n} Tests gemessen`)}
+                  {s.kind !== 'single' && mobilityScore(TESTS, s.results, goal) ? ` · ${tr('mobility', 'Beweglichkeit')} ${mobilityScore(TESTS, s.results, goal)!.score}` : ''}
                 </span>
               </span>
               <span aria-hidden="true">›</span>

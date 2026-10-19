@@ -162,7 +162,12 @@ await p.locator('.mob-goal .chip').filter({ hasText: 'Mehr Länge' }).click();
 await shot('goal');
 await p.getByRole('button', { name: 'Ziel speichern' }).click();
 const goalText = await p.locator('.mob-goal').innerText().catch(() => '');
-ok(/Dein Ziel: Handicap 10/.test(goalText) && /Mehr Länge/.test(goalText), `the goal is saved (${goalText.replace(/s+/g, ' ')})`);
+ok(/Dein Ziel: Handicap 10/.test(goalText) && /Mehr Länge/.test(goalText), `the goal is saved (${goalText.replace(/\s+/g, ' ')})`);
+// the overall value (Sascha 19.10.2026): one number 0 … 100 against the goal, as a ring at the top of the result
+const ring = await p.locator('.mob-score-ring').getAttribute('aria-label').catch(() => '');
+const scoreText = await p.locator('.mob-score').innerText().catch(() => '');
+const sc = Number(/^(\d+) von 100$/.exec(ring ?? '')?.[1] ?? NaN);
+ok(sc >= 0 && sc < 100 && /Deine Beweglichkeit/.test(scoreText) && /100 = alle Werte am Ziel für Handicap 10/.test(scoreText), `the overall value: ${sc} / 100 for the goal (${scoreText.split('\n').slice(2, 3).join('')})`);
 ok((await p.locator('.mob-area-head .mob-levelbar').count()) >= 4, 'each measured area shows its bar with the line of the goal');
 ok((await p.locator('.mob-test-row .mob-levelbar').count()) >= 6, 'each measured test shows its value on a scale');
 await shot('result-body');

@@ -152,3 +152,40 @@ export function pillar(tests: TestDef[], results: Partial<Record<TestId, TestRes
   out.forEach((a, i) => (a.focus = i < 3 && a.gap > 0.04));
   return out;
 }
+
+// ---------- the overall value ----------
+/** One number for the mobility (Sascha 19.10.2026: "an overall value – yes"), 0 … 100. */
+export interface MobilityScore {
+  score: number;
+  /** the tests it rests on */
+  tests: number;
+  areas: { area: Area; reach: number }[];
+}
+
+/**
+ * How close the measured values come to the goal for the handicap: 100 = every test at its goal value or beyond. Each
+ * test counts its share of the goal (capped there – more than enough does not make up for a stiff area), the areas by
+ * how much they matter for the swing. Null without a value. REVIEW(golf) – Chris: the weights.
+ */
+export function mobilityScore(tests: TestDef[], results: Partial<Record<TestId, TestResult>>, goal: MobilityGoal | null): MobilityScore | null {
+  const areas: { area: Area; reach: number }[] = [];
+  let sum = 0;
+  let weights = 0;
+  let n = 0;
+  for (const area of [...new Set(tests.map((x) => x.area))]) {
+    const reach: number[] = [];
+    for (const x of tests.filter((y) => y.area === area)) {
+      const p = testPos(x, results[x.id]);
+      if (p == null) continue;
+      const aim = targetPos(x, goal);
+      reach.push(aim > 0 ? Math.min(1, p / aim) : 1);
+    }
+    if (!reach.length) continue;
+    n += reach.length;
+    const r = reach.reduce((a, b) => a + b, 0) / reach.length;
+    areas.push({ area, reach: r });
+    sum += r * AREA_WEIGHT[area];
+    weights += AREA_WEIGHT[area];
+  }
+  return weights ? { score: Math.round((100 * sum) / weights), tests: n, areas } : null;
+}

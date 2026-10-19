@@ -76,6 +76,12 @@
 .mob-option-label { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 
 .mob-summary { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.mob-score { text-align: center; }
+.mob-score-ring { width: 120px; height: 120px; }
+.mob-score-ring .track { fill: none; stroke: var(--line); stroke-width: 9; }
+.mob-score-ring .fill { fill: none; stroke: var(--brand); stroke-width: 9; stroke-linecap: round; }
+.mob-score-ring .num { font: 700 30px var(--display); fill: var(--text); text-anchor: middle; dominant-baseline: middle; }
+.mob-score-ring .of { font-size: 11px; font-weight: 600; fill: var(--muted); text-anchor: middle; }
 .mob-summary-nums { display: flex; gap: 22px; font: 700 18px var(--display); }
 .mob-summary-nums strong { font-size: 34px; }
 .mob-summary-nums .pass { color: var(--brand-text); }
