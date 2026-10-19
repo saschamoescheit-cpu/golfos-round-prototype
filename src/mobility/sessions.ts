@@ -164,4 +164,7 @@ export function painDrills(now = new Date()): Set<string> {
 
 /** a session that was started and not finished (paused) */
 export const openSession = (): TrainSession | undefined => loadSessions().find((s) => !s.finishedAt && s.done.length > 0);
+/** a session paused today – the training of the day goes on with it; one paused on an earlier day does not hold up
+ * today's plan (it stays in the drills tab and the history to continue, nothing is dropped) */
+export const openToday = (): TrainSession | undefined => loadSessions().find((s) => !s.finishedAt && s.done.length > 0 && localDay(s.startedAt) === localDay());
 export const sessionById = (id: string): TrainSession | undefined => loadSessions().find((s) => s.id === id);

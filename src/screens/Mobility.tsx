@@ -21,7 +21,7 @@ import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { DrillSession, doneText } from '../mobility/DrillSession';
 import { cap } from '../mobility/DrillPlayer';
-import { daysThisWeek, drillHistory, loadSessions, localDay, newSession, openSession, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
+import { daysThisWeek, drillHistory, loadSessions, localDay, newSession, openSession, openToday, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
 import { coachOf, DRILL_COACH, SIGNALS, signalValueText, WATCH_FOCUS } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
@@ -286,7 +286,7 @@ const minutesOf = (ids: TestId[]) => Math.round(ids.reduce((m, id) => m + (testB
  * the drills of the pillar for the minutes a day, one tap to start; a paused session comes first.
  */
 function TodayCard(props: { nav: Nav }) {
-  const paused = openSession();
+  const paused = openToday();
   const minutes = loadMinutes();
   const { planDrills, planMinutes } = pillarPlan(minutes);
   const days = daysThisWeek();

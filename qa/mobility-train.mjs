@@ -288,6 +288,24 @@ if (await p.locator('.module-card').filter({ hasText: 'Agility' }).isVisible().c
 const after2 = await planNames();
 ok(before.length > 0 && before.join() !== after2.join(), `another training day: other drills today (${before[0]} … → ${after2[0]} …)`);
 
+// a training paused three days ago does not hold up today's: the card offers today's plan, the drills tab still the old one
+await p.evaluate(() => {
+  const ss = JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]').filter((s) => s.finishedAt);
+  const old = new Date(Date.now() - 3 * 864e5).toISOString();
+  ss.unshift({ id: 'old-paused', startedAt: old, finishedAt: null, minutes: 10, drills: ['seated-rotation', 'deep-squat'], done: [{ drill: 'seated-rotation', sets: [{ side: null, reps: 20, target: 20, best: null }], at: old }] });
+  localStorage.setItem('golfos.mobility.sessions.v1', JSON.stringify(ss));
+});
+await p.reload();
+await p.waitForTimeout(1200);
+const tileOld = await p.locator('.module-card').filter({ hasText: 'Agility' }).innerText().catch(() => '');
+if (tileOld) await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
+await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
+const todayBtn = await p.locator('.mob-today-start').innerText();
+await p.locator('.tabbar button').filter({ hasText: 'Übungen' }).click();
+await p.waitForTimeout(300);
+const oldOpen = await p.locator('.mob-train-open').isVisible();
+ok(!/Fortsetzen/.test(todayBtn) && (!tileOld || !/pausiert/.test(tileOld)) && oldOpen, `paused three days ago: today's plan on the card (${todayBtn}), the old one still in the drills tab`);
+
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all green');
