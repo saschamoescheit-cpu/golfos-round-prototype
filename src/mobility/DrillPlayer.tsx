@@ -129,7 +129,7 @@ export function DrillPlayer(props: {
   };
   const [setIdx, setSetIdx] = useState(0);
   const [count, setCount] = useState(3);
-  const [live, setLive] = useState<{ reps: number; held: number; value: number | null; best: number | null; progress: number; seen: boolean; missing: number; turned?: boolean; people?: number }>({ reps: 0, held: 0, value: null, best: null, progress: 0, seen: false, missing: 0 });
+  const [live, setLive] = useState<{ reps: number; held: number; value: number | null; best: number | null; progress: number; seen: boolean; away?: boolean; missing: number; turned?: boolean; people?: number }>({ reps: 0, held: 0, value: null, best: null, progress: 0, seen: false, missing: 0 });
   const doneRef = useRef<DrillSet[]>([]);
   const [auto, setAuto] = useState<number | null>(null);
   // the form cue on screen (3 s): what the app just said
@@ -180,6 +180,18 @@ export function DrillPlayer(props: {
     // the camera saw no rep (the angle, the light, too far): the app counts in the tempo from then on
     let paced = false;
     let pacedFrom = 0;
+    // out of the picture during a set (fetching the band, setting the phone right): the clock of the set waits
+    let gone = 0;
+    let lostSince = -1;
+    let spokeGone = false;
+    // QA: the synthetic player leaves the picture once, early in the first set (golfos.mobility.fakeAway)
+    let awayDone = false;
+    let fakeAway = false;
+    try {
+      fakeAway = !!fake && localStorage.getItem('golfos.mobility.fakeAway') === '1';
+    } catch {
+      /* no storage */
+    }
     let framedSince = -1;
     let frameT0 = 0;
     let lastHint = 0;
@@ -260,6 +272,9 @@ export function DrillPlayer(props: {
       spokeLeft = false;
       paced = false;
       pacedFrom = 0;
+      gone = 0;
+      lostSince = -1;
+      spokeGone = false;
       setT0 = performance.now();
       lastT = setT0;
       fakeT0 = setT0;
@@ -326,6 +341,12 @@ export function DrillPlayer(props: {
       if (body) {
         lm = body(phaseRef.current === 'run' ? (now - fakeT0) * sp : 0);
         people = 1;
+        if (fakeAway && !awayDone && phaseRef.current === 'run') {
+          if (now - setT0 > 1500 && now - setT0 < 4500) {
+            lm = null;
+            people = 0;
+          } else if (now - setT0 >= 4500) awayDone = true;
+        }
       } else {
         const v = videoRef.current;
         if (!v || v.readyState < 2 || !landmarker) return;
@@ -358,7 +379,19 @@ export function DrillPlayer(props: {
       if (ph === 'run') {
         const dt = now - lastT;
         lastT = now;
-        const elapsed = (now - setT0) * sp;
+        // the time of the set counts only while the player is in the picture (a lost picture now and then does not stop it)
+        if (!f) {
+          if (lostSince < 0) lostSince = now;
+          if (now - lostSince > 500) gone += dt * sp;
+          if (!spokeGone && now - lostSince > 1500) {
+            spokeGone = true;
+            say(tr('Come back into the picture – I will wait.', 'Komm zurück ins Bild – ich warte.'));
+          }
+        } else {
+          lostSince = -1;
+          spokeGone = false;
+        }
+        const elapsed = (now - setT0) * sp - gone;
         if (sig && f && !sig.calibrated) sig.calibrate(f);
         value = sig && f ? sig.value(f) : null;
         if (form && f) {
@@ -427,7 +460,7 @@ export function DrillPlayer(props: {
       }
       if (now - lastUi > 100) {
         lastUi = now;
-        setLive({ reps, held, value, best: plan.signal === 'oneLeg' ? held / 1000 : signal?.countOnly ? null : holdMode ? holdBest : (counter?.best ?? null), progress: holdMode ? Math.min(1, held / ((plan.hold ?? 20) * 1000)) : counter ? counter.progress(value) : Math.min(1, reps / (plan.reps ?? 10)), seen: !!f, missing: pl.missing, turned: pl.turned, people });
+        setLive({ reps, held, value, best: plan.signal === 'oneLeg' ? held / 1000 : signal?.countOnly ? null : holdMode ? holdBest : (counter?.best ?? null), progress: holdMode ? Math.min(1, held / ((plan.hold ?? 20) * 1000)) : counter ? counter.progress(value) : Math.min(1, reps / (plan.reps ?? 10)), seen: !!f, away: lostSince >= 0 && now - lostSince > 500, missing: pl.missing, turned: pl.turned, people });
       }
     };
 
@@ -636,6 +669,8 @@ export function DrillPlayer(props: {
                 : tr('Get ready …', 'Bereit machen …')
           : phase === 'count'
             ? String(count)
+            : phase === 'run' && live.away
+              ? tr('Come back into the picture – the time waits', 'Komm zurück ins Bild – die Zeit wartet')
             : phase === 'rest'
               ? side !== sets[Math.max(0, setIdx - 1)]
                 ? tr('Other side', 'Andere Seite')
