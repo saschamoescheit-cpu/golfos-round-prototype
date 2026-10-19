@@ -79,6 +79,36 @@ if (d) {
   ok(sets.every((s) => s.replayBest != null && Math.abs(s.replayBest - s.appBest) <= 3), `… and measures the same (${sets.map((s) => `${s.appBest}° / ${s.replayBest}°`).join(', ')})`);
   ok(turn?.seen > 0.9, `the body was seen in the log (${Math.round((turn?.seen ?? 0) * 100)} %)`);
 }
+// ---------- the screening: a quick check with the switch on, the log at the result, the replay measures the same ----------
+await p.locator('.mob-train-done').click();
+await p.waitForTimeout(300);
+await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
+await p.locator('.mob-start').filter({ hasText: 'Kurz-Check' }).click();
+await p.locator('.mob-setup').waitFor({ timeout: 15000 });
+ok((await p.locator('.mob-setup .mob-log-switch .drawer-row').getAttribute('aria-checked')) === 'true', 'the screening setup has the switch too – still on');
+await p.locator('.mob-start-coach').click();
+const tq = Date.now();
+while (Date.now() - tq < 300000) {
+  if (await p.locator('.mob-summary').isVisible().catch(() => false)) break;
+  // the questions at the end (where the bridge was felt, knee to the wall): any answer
+  const q = p.locator('.mob-feel .mob-option, .mob-ankle .mob-option').first();
+  if (await q.isVisible().catch(() => false)) await q.click().catch(() => {});
+  await p.waitForTimeout(300);
+}
+const tcard = await p.locator('.mob-log-share').innerText().catch(() => '');
+ok(/Bewegungsprotokoll/.test(tcard) && /\d+ Tests/.test(tcard), `the result after the screening offers its motion log (${tcard.replace(/\s*\n\s*/g, ' · ')})`);
+const dl2 = p.waitForEvent('download', { timeout: 15000 }).catch(() => null);
+await p.locator('.mob-log-share-btn').click().catch(() => {});
+const d2 = await dl2;
+if (d2) {
+  const path2 = join(dir, 'screening-' + d2.suggestedFilename());
+  await d2.saveAs(path2);
+  const out = execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['vite-node', 'qa/replay.ts', path2, '--json'], { cwd: join(import.meta.dirname, '..'), encoding: 'utf8', shell: process.platform === 'win32' });
+  const rep = JSON.parse(out.slice(out.indexOf('\n[') + 1)).filter((x) => x.test);
+  const same = rep.filter((x) => x.app != null && x.replay != null && Math.abs(x.app - x.replay) <= Math.max(1, Math.abs(x.app) * 0.03));
+  ok(rep.length >= 6 && same.length === rep.filter((x) => x.app != null).length && same.length >= 6, `the replay measures the tests as the phone did (${rep.map((x) => `${x.test.id}${x.test.side ? ' ' + x.test.side[0] : ''} ${x.app == null ? '–' : Math.round(x.app * 10) / 10}/${x.replay == null ? '–' : Math.round(x.replay * 10) / 10}`).join(', ')})`);
+} else ok(false, 'the screening log is a file');
+
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all green');

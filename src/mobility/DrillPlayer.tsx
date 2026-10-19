@@ -9,7 +9,7 @@ import { isClean, type DrillDone, type DrillSet } from './sessions';
 import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
 import { beep, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow } from './CameraTest';
-import { logDrill, logFrame, logResult } from './motionlog';
+import { logFrame, logItem, logResult } from './motionlog';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -169,7 +169,7 @@ export function DrillPlayer(props: {
     const later = (fn: () => void, ms: number) => timers.push(window.setTimeout(() => !stopped && fn(), fake ? Math.min(ms, 300) : ms));
     doneRef.current = [];
     // the motion log (when switched on): the points of every picture with what the app made of them
-    logDrill(props.drill.id, plan);
+    logItem({ drill: props.drill.id, plan });
     const logT0 = performance.now();
     let cueNow: string | undefined;
 

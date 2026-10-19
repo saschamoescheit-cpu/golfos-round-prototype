@@ -19,6 +19,8 @@ import { loadPose } from '../mobility/pose';
 import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
+import { LogShare, LogSwitch } from '../mobility/LogUi';
+import { startLog } from '../mobility/motionlog';
 import { DrillSession, doneText } from '../mobility/DrillSession';
 import { cap } from '../mobility/DrillPlayer';
 import { daysThisWeek, drillHistory, loadSessions, localDay, newSession, openSession, openToday, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
@@ -688,7 +690,8 @@ function CoachSetup(props: { screening: Screening; single: boolean; onStart: () 
         ))}
       </div>
       {!props.single && selfs.length > 0 && <p className="muted small">{tr(`Then ${selfs.length} short questions on the phone.`, `Danach ${selfs.length} kurze Fragen am Handy.`)}</p>}
-      <p className="muted small mob-private">{tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}</p>
+      {/* the motion log for checking the measuring on a real body: only the body points, never a picture */}
+      <LogSwitch />
       <p className={`small mob-model ${model}`} role="status">
         {model === 'ready'
           ? tr('Body tracking ready', 'Körpererkennung bereit')
@@ -886,6 +889,8 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
   };
   const startCoach = () => {
     unlockAudio();
+    // the motion log of this screening (when switched on in the setup) starts empty with its first test
+    if (!Object.keys(s.results).length) startLog();
     // still on (e.g. back from the pause to another test): use it, never open a second camera
     if (streamRef.current?.active) {
       setStage('camera');
@@ -1321,6 +1326,7 @@ function ResultTab(props: { nav: Nav }) {
           {newest ? ` · ${tr('as of', 'Stand')} ${dateText(newest)}` : ''} · {hand === 'right' ? tr('right-handed', 'Rechtshänder') : tr('left-handed', 'Linkshänder')}
         </span>
       </section>
+      <LogShare />
       <GoalCard />
       <div className="segmented tr-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'body'} aria-pressed={tab === 'body'} onClick={() => setTab('body')}>

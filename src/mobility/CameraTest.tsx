@@ -6,6 +6,7 @@ import { detect, loadPose, resetTracking } from './pose';
 import type { Grade, Measurement, MetricKind, Side, TestDef } from './types';
 import type { Clip } from './anim3d/scene';
 import { loadGoal, position, targetPos, targetValue } from './profile';
+import { logFrame, logItem, logResult } from './motionlog';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -252,6 +253,9 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     let stopped = false;
     let raf = 0;
     let stream: MediaStream | null = null;
+    // the motion log (when switched on): the points of every picture with what the measuring made of them
+    logItem({ test: { id: props.test.id, kind: props.test.metric!, side: props.side, ...(props.variant ? { variant: props.variant } : {}) } });
+    const logT0 = performance.now();
     // the session's camera stays on between the tests; only a stream the test opened itself is stopped
     let ownStream = true;
     // the player stands 2–3 m away for minutes: the screen must not lock meanwhile (Safari 16.4+)
@@ -342,6 +346,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       if (stopped || finished) return;
       finished = true;
       const out = fake && fakeMiss() ? null : analyzer?.finish() ?? null;
+      logResult(out);
       setOutcome(out);
       if (shotRef.current && out) setShot(shotRef.current.toDataURL('image/jpeg', 0.8));
       go('result');
@@ -432,8 +437,10 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           }
         }
       }
+      let runLog: { v?: number | null; cue?: string } = {};
       if (ph === 'run' && f && analyzer) {
         const l = analyzer.push(f);
+        runLog = { v: l.value == null ? null : Math.round(l.value * 10) / 10, ...(l.cue ? { cue: l.cue } : {}) };
         if (l.cue) say(l.cue === 'go' && CALIBRATES.includes(kind) ? CUE_TEXT(kind, 'go') : l.cue === 'go' ? null : CUE_TEXT(kind, l.cue));
         if (l.cue === 'go' || l.cue === 'eyes' || l.cue === 'hold') beep(l.cue === 'go' ? 1180 : 760, 180);
         // the seconds of a hold, every 5 s
@@ -463,6 +470,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
         lastUi = now;
         setLive((x) => ({ ...x, missing, seen: !!f, people, turned }));
       }
+      // (the time the measuring saw: the synthetic player's own clock in the QA)
+      if (ph === 'frame' || ph === 'count' || ph === 'run') logFrame(fakeScript ? t : t - logT0, ph === 'frame' ? 'f' : ph === 'count' ? 'c' : 'r', 0, lm, w, h, ph === 'run' ? runLog : {});
       if (fakeScript && (now - fakeT0) * speed > fakeScript.ms + 500 && phaseRef.current === 'run') finish();
     };
 

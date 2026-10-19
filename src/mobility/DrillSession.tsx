@@ -10,7 +10,8 @@ import { isFakeCamera, unlockAudio } from './CameraTest';
 import { coachOf, gainSpeech, progressed, SELF_NAMED, SIGNALS, signalValueText, WATCH_FOCUS } from './drillcoach';
 import { DrillPlayer, cap, cueText } from './DrillPlayer';
 import type { FormCue } from './drillcoach';
-import { currentLog, isLogging, setLogging, shareLog, startLog } from './motionlog';
+import { LogShare, LogSwitch } from './LogUi';
+import { currentLog, startLog } from './motionlog';
 import { PhoneSetup } from './pictures';
 import { loadPose } from './pose';
 import { bestOf, cleanStreak, daysThisWeek, drillHistory, gains, saveSession, type DrillDone, type TrainSession } from './sessions';
@@ -200,11 +201,6 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
 function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean; onStart: () => void; planOf: (id: string) => ReturnType<typeof coachOf> }) {
   const needs = [...new Set(props.drills.flatMap((d) => (d.needs ?? []).map((n) => (typeof n === 'string' ? '' : t(n)))).filter(Boolean))];
   const [model, setModel] = useState<'loading' | 'ready' | 'failed'>(() => (isFakeCamera() ? 'ready' : 'loading'));
-  const [log, setLogState] = useState(isLogging);
-  const setLog = (on: boolean) => {
-    setLogging(on);
-    setLogState(on);
-  };
   useEffect(() => {
     if (isFakeCamera()) return;
     let on = true;
@@ -261,20 +257,7 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean;
       </div>
       <p className="muted small">{tr(`About ${props.minutes} min.`, `Etwa ${props.minutes} Min.`)}</p>
       {/* the motion log for checking the measuring on a real body: only the body points, never a picture */}
-      <div className="drawer-list settings-switches mob-log-switch">
-        <button type="button" className="drawer-row" role="switch" aria-checked={log} onClick={() => setLog(!log)}>
-          <span className="switch-label">
-            <span>{tr('Keep a motion log', 'Bewegungsprotokoll mitschreiben')}</span>
-            <span className="muted small">{tr('only the body points, no picture – to check the measuring; you share it at the end', 'nur die Körperpunkte, kein Bild – zum Prüfen der Messung; du teilst es am Ende')}</span>
-          </span>
-          <span className={`drawer-switch${log ? ' on' : ''}`} aria-hidden="true" />
-        </button>
-      </div>
-      <p className="muted small mob-private">
-        {log
-          ? tr('The picture stays on your phone. Only the body points are written down – on this phone, until you share them.', 'Das Bild bleibt auf deinem Handy. Nur die Körperpunkte werden mitgeschrieben – auf diesem Handy, bis du sie teilst.')
-          : tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}
-      </p>
+      <LogSwitch />
       <p className={`small mob-model ${model}`} role="status">
         {model === 'ready'
           ? tr('Body tracking ready', 'Körpererkennung bereit')
@@ -284,36 +267,6 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean;
       </p>
       <button type="button" className="btn-primary mob-start-train" onClick={props.onStart}>
         {props.resumed ? tr('Continue', 'Fortsetzen') : tr('Start', 'Start')}
-      </button>
-    </section>
-  );
-}
-
-/** The motion log of the session, when one was kept: share it (the iPhone's share sheet) or download it. */
-function LogShare() {
-  const [state, setState] = useState<'' | 'busy' | 'shared' | 'downloaded' | 'cancelled'>('');
-  const l = currentLog();
-  if (!l) return null;
-  const frames = l.drills.reduce((n, d) => n + d.frames.length, 0);
-  return (
-    <section className="card mob-log-share">
-      <strong>{tr('Motion log', 'Bewegungsprotokoll')}</strong>
-      <span className="muted small">
-        {tr(`${l.drills.length} drills · body points from ${frames} camera frames – no photo, no video`, `${l.drills.length} Übungen · Körperpunkte aus ${frames} Kamerabildern – kein Foto, kein Video`)}
-      </span>
-      {state === 'shared' || state === 'downloaded' ? (
-        <span className="small good-text">{state === 'shared' ? tr('Shared – thank you.', 'Geteilt – danke.') : tr('Saved in your downloads.', 'In deinen Downloads gespeichert.')}</span>
-      ) : null}
-      <button
-        type="button"
-        className="btn-secondary mob-log-share-btn"
-        disabled={state === 'busy'}
-        onClick={async () => {
-          setState('busy');
-          setState(await shareLog(l));
-        }}
-      >
-        {tr('Share the motion log', 'Bewegungsprotokoll teilen')}
       </button>
     </section>
   );

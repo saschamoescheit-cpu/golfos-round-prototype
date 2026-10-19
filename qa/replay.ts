@@ -1,13 +1,14 @@
-// Replays a motion log of the guided training (Agility → setup → "Keep a motion log" → shared at the end) through the
-// app's own counting, measuring and cues – to check and tune them on a real body. Per drill and set: what the app
-// counted on the phone against the replay, the range of the signal, the best value, the cues, and a line of the
-// signal over the set (▁▂▃▄▅▆▇█) to see the reps the camera saw or missed.
+// Replays a motion log (Agility → the setup of a training or a screening → "Keep a motion log" → shared at the end)
+// through the app's own counting, measuring and cues – to check and tune them on a real body. Per drill and set: what
+// the app counted on the phone against the replay, the best value, the cues, and a line of the signal over the set
+// (▁▂▃▄▅▆▇█) to see the reps the camera saw or missed. Per test of a screening: the value the phone measured against
+// the replay, and the line of the live value.
 // Usage: npx vite-node qa/replay.ts <agility-protokoll-….json(.gz)> [--json]
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { FormCheck, RepCounter, SIGNALS, Signal, setsOf } from '../src/mobility/drillcoach';
-import type { Frame, Lm } from '../src/mobility/measure';
-import type { LogFrame, MotionLog } from '../src/mobility/motionlog';
+import { makeAnalyzer, type Frame, type Lm } from '../src/mobility/measure';
+import type { LogFrame, LogItem, MotionLog } from '../src/mobility/motionlog';
 
 const file = process.argv[2];
 if (!file) {
@@ -15,7 +16,9 @@ if (!file) {
   process.exit(1);
 }
 const raw = readFileSync(file);
-const log = JSON.parse((file.endsWith('.gz') ? gunzipSync(raw) : raw).toString('utf8')) as MotionLog;
+const log = JSON.parse((file.endsWith('.gz') ? gunzipSync(raw) : raw).toString('utf8')) as MotionLog & { drills?: LogItem[] };
+// (the first logs of 19.10. had the drills only)
+const items = log.items ?? log.drills ?? [];
 
 const points = (flat: number[]): Lm[] => {
   const out: Lm[] = [];
@@ -38,11 +41,29 @@ const spark = (xs: (number | null)[], n = 60) => {
 };
 
 const report: unknown[] = [];
-console.log(`motion log ${log.startedAt} · ${log.drills.length} drills · ${log.device}`);
-for (const d of log.drills) {
-  const plan = d.plan;
-  const id = plan.signal ?? plan.watch;
+console.log(`motion log ${log.startedAt} · ${items.length} parts · ${log.device}`);
+for (const d of items) {
   const frame = (x: LogFrame): Frame | null => (x.lm ? { lm: points(x.lm), w: d.w, h: d.h, t: x.t } : null);
+  if (d.test) {
+    // a test of the screening: its measuring gets the pictures of the run, as on the phone
+    const a = makeAnalyzer(d.test.kind, d.test.side ?? 'left', { noArms: d.test.variant === 'handsBehind' });
+    const run = d.frames.filter((x) => x.p === 'r');
+    for (const x of run) {
+      const f = frame(x);
+      if (f) a.push(f);
+    }
+    const out = a.finish();
+    const app = d.result as { value?: number } | null | undefined;
+    const seen = run.filter((x) => x.lm).length / Math.max(1, run.length);
+    const r1 = (v: number | null | undefined) => (v == null ? 'not recognised' : String(Math.round(v * 10) / 10));
+    console.log(`\n${d.test.id}${d.test.side ? ` (${d.test.side})` : ''} · ${d.test.kind} · ${d.w}×${d.h} · ${d.frames.length} pictures · body seen in ${Math.round(seen * 100)} % of the run`);
+    console.log(`  value app ${r1(app?.value)} · replay ${r1(out?.value)} · ${Math.round(((run.at(-1)?.t ?? 0) - (run[0]?.t ?? 0)) / 100) / 10} s`);
+    console.log(`    ${spark(run.map((x) => x.v ?? null))}`);
+    report.push({ test: d.test, seen, app: app?.value ?? null, replay: out?.value ?? null });
+    continue;
+  }
+  const plan = d.plan!;
+  const id = plan.signal ?? plan.watch;
   const sig = plan.signal ? new Signal(plan.signal) : null;
   const sets = setsOf(plan);
   const app = (d.result as { sets?: { reps: number; best: number | null; seen?: boolean; cues?: Record<string, number> }[] } | undefined)?.sets ?? [];
