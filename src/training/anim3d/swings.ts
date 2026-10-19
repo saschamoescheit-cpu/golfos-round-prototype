@@ -818,6 +818,36 @@ export const PHASE_IMPACT: Swing = relabel(quiet(FULL_SWING), {
   3.5: L('Finish: chest to the target, the trail foot on its toes – hold it 3 seconds in balance', 'Finish: Brust zum Ziel, der hintere Fuß auf der Spitze – 3 Sekunden im Gleichgewicht halten'),
 });
 
+/** the driver hits up: ball forward and teed high, the low point before the ball – the club already rises at impact;
+ *  the close view of the face shows the centre strike */
+export const DRIVER_UP: Swing = relabel(quiet({ ...DRIVER_SWING, faceView: true }), {
+  0: L('Ball forward, teed high', 'Ball vorn, hoch aufgeteet'),
+  2.7: L('The low point comes before the ball', 'Der tiefste Punkt liegt vor dem Ball'),
+  2.8: L('At impact the club is already rising – high launch, less spin, from the centre of the face', 'Im Treffmoment steigt der Schläger schon – hoher Abflug, weniger Spin, aus der Mitte der Fläche'),
+  3.5: L('Hold the finish', 'Finish halten'),
+});
+/** the fairway wood sweeps: low and slow away, a full turn, the club brushes the grass like a broom */
+export const WOOD_SWEEP: Swing = relabel(quiet(WOOD_SWING), {
+  0: L('Set-up', 'Ansprache'),
+  1.0: L('Low and slow away from the ball', 'Flach und langsam vom Ball weg'),
+  2.0: L('A full turn', 'Eine volle Drehung'),
+  2.8: L('The club brushes the grass like a broom – the chest over the ball, no lifting', 'Der Schläger streift das Gras wie ein Besen – die Brust über dem Ball, nichts heben'),
+  3.5: L('A full finish', 'Voll ausschwingen'),
+});
+/** the short putt: little break, a firm pace to the back of the hole, the head still until the ball is gone */
+export const PUTT_SHORT_FIRM: Swing = relabel(quiet({ ...PUTT_STROKE, hit: { at: 1.7, shot: 'putt', scale: 0.72 }, hole: { at: 1.04 } }), {
+  0: L('Little break: aim inside the edge of the hole', 'Wenig Break: innerhalb der Lochkante zielen'),
+  1.7: L('A firm pace – into the back of the hole', 'Festes Tempo – an die hintere Lochwand'),
+  2.05: L('Head and eyes still until the ball is gone – hear it drop', 'Kopf und Augen ruhig, bis der Ball weg ist – hör ihn fallen'),
+});
+/** from a fairway bunker: feet only a little dug in, gripped 2–3 cm shorter, ball a little back – ball first */
+export const SAND_FAIRWAY: Swing = relabel(quiet({ ...SAND_SWING, choke: 0.025, ball: [-0.02, 0.6] }), {
+  0: L('Feet only a little dug in, grip 2–3 cm shorter, ball a little back of centre', 'Füße nur leicht eingraben, 2–3 cm kürzer greifen, Ball leicht hinter der Mitte'),
+  2.0: L('A quiet lower body', 'Ruhiger Unterkörper'),
+  2.8: L('Ball first – rather thin than fat', 'Erst der Ball – lieber dünn als fett'),
+  3.5: L('Finish', 'Finish'),
+});
+
 /** short and armsy: the upper back hardly turns, the arms swing up past the body */
 export const ARMSY: Swing = fault(FULL_SWING, {
   1.0: { body: { pelvis: [38, -6, 2], spine: [2, -2, 0], chest: [2, -8, 5], neck: [-14, 8, 0], head: [12, 4, 0] }, label: L('Left: only the arms swing · right: the upper back turns', 'Links: nur die Arme schwingen · rechts: der obere Rücken dreht') },
@@ -1004,5 +1034,5 @@ export const TOWEL_HALF: Swing = { ...HALF_SWING, props: ['towel'] };
 export const CHIP_STICK: Swing = { ...CHIP_STROKE, props: ['stickGrip'] };
 export const CHIP_TOE: Swing = { ...CHIP_STROKE, keys: CHIP_STROKE.keys.map((x) => ({ ...x, heel: 1 })) };
 
-export const SWINGS = { phaseBack: PHASE_BACK, phaseDown: PHASE_DOWN, phaseImpact: PHASE_IMPACT, lToL: L_TO_L, driverWide: DRIVER_WIDE, alignStation: ALIGN_STATION, sandOnFace: SAND_ON_FACE, brushFind: BRUSH_FIND, friedEgg: FRIED_EGG, sandTrailToe: SAND_TRAIL_TOE, divotLie: DIVOT_LIE, hybridChip: HYBRID_CHIP, lob: LOB, leadArm: LEAD_ARM, punch: PUNCH, sandLine: SAND_LINE, sandSplash: SAND_SPLASH, sandFrame: SAND_FRAME, chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
+export const SWINGS = { driverUp: DRIVER_UP, woodSweep: WOOD_SWEEP, puttShortFirm: PUTT_SHORT_FIRM, sandFairway: SAND_FAIRWAY, phaseBack: PHASE_BACK, phaseDown: PHASE_DOWN, phaseImpact: PHASE_IMPACT, lToL: L_TO_L, driverWide: DRIVER_WIDE, alignStation: ALIGN_STATION, sandOnFace: SAND_ON_FACE, brushFind: BRUSH_FIND, friedEgg: FRIED_EGG, sandTrailToe: SAND_TRAIL_TOE, divotLie: DIVOT_LIE, hybridChip: HYBRID_CHIP, lob: LOB, leadArm: LEAD_ARM, punch: PUNCH, sandLine: SAND_LINE, sandSplash: SAND_SPLASH, sandFrame: SAND_FRAME, chipLand: CHIP_LAND, sliceLaws: SLICE_LAWS, hookLaws: HOOK_LAWS, nineFlights: NINE_FLIGHTS, tigerGate: TIGER_GATE, startGate: START_GATE, lineDrill: LINE_DRILL, teeAfter: TEE_AFTER, insideGate: INSIDE_GATE, headcover: HEADCOVER, sweepTee: SWEEP_TEE, secondTee: SECOND_TEE, impactBag: IMPACT_BAG, stepDrill: STEP_DRILL, pumpDrill: PUMP_DRILL, slopeUp: SLOPE_UP, slopeDown: SLOPE_DOWN, slopeAbove: SLOPE_ABOVE, slopeBelow: SLOPE_BELOW, bunker: BUNKER_SWING, full: FULL_SWING, driver: DRIVER_SWING, wood: WOOD_SWING, sand: SAND_SWING, half: HALF_SWING, chip: CHIP_STROKE, putt: PUTT_STROKE, feet: FEET_SWING, feetHalf: FEET_HALF, pause: PAUSE_SWING, setupIron: SETUP_IRON, setupDriver: SETUP_DRIVER, setupChip: SETUP_CHIP, setupPutt: SETUP_PUTT, puttOne: PUTT_ONE, chipOne: CHIP_ONE, hipStick: HIP_STICK, towelHalf: TOWEL_HALF, chipStick: CHIP_STICK, chipToe: CHIP_TOE };
 export type SwingId = keyof typeof SWINGS;
