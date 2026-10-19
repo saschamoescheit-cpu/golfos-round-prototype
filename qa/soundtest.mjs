@@ -62,7 +62,8 @@ await p.waitForTimeout(500);
 ok((await p.locator('.map-sound-shot').count()) >= 1, `shown on the map as a sound mark with the time (${await p.locator('.map-sound-shot').count()})`);
 await p.waitForTimeout(13500);
 const heard = await p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].soundShots ?? []));
-ok(heard.length >= 1 && heard.length <= 3, `strikes heard (${heard.length}: ${heard.map((h) => h.level).join(', ')})`);
+// both strikes of the loop (19.10.2026: the background falls back fast after the voice – before only one was heard)
+ok(heard.length >= 2 && heard.length <= 4, `strikes heard (${heard.length}: ${heard.map((h) => h.level).join(', ')})`);
 // every hit on a strike of the file (3 s and 8 s in a 12 s loop) – none on the voice at 5–6 s
 const off = heard.map((h) => (((h.t - heard[0].t) / 1000) % 12 + 12) % 12);
 ok(off.every((o) => [0, 5, 7, 12].some((x) => Math.abs(o - x) < 0.6)), `only the strikes, not the voice (${off.map((o) => o.toFixed(1)).join(', ')})`);

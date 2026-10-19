@@ -45,4 +45,20 @@ describe('shot by sound (Sascha 18.10.2026)', () => {
   it('two shots a few seconds apart are two', () => {
     expect(run([...quiet(50), crack(0.7), ...quiet(150), crack(0.7), ...quiet(20)])).toBe(2);
   });
+  it('a voice between two shots: both heard, also when the browser hands over 4096 samples at a time (19.10.2026)', () => {
+    // 3 s · strike · 2 s · a voice for a second · 2 s · strike – as the test recording
+    const blocks = [...quiet(140), crack(0.7), ...quiet(94), ...Array.from({ length: 47 }, (_, k) => tone(0.35, 180, k)), ...quiet(94), crack(0.7), ...quiet(40)];
+    expect(run(blocks)).toBe(2);
+    for (const per of [2, 4]) {
+      // the same sound in bigger blocks
+      const core = new ImpactCore();
+      let hits = 0;
+      for (let k = 0; k + per <= blocks.length; k += per) {
+        const big = new Float32Array(N * per);
+        for (let j = 0; j < per; j++) big.set(blocks[k + j], j * N);
+        if (core.feed(big, k * blockMs)) hits++;
+      }
+      expect(hits, `blocks of ${N * per}`).toBe(2);
+    }
+  });
 });

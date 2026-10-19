@@ -16,7 +16,8 @@ for (const name of COURSES) {
   await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
-  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|gds-srv\.hessen\.de|wms\.nrw\.de|lgln\.niedersachsen\.de|geobasis-bb\.de|geoservices\.bayern\.de|geodienste\.sachsen\.de|arcgisonline\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); // a map tile the state's server sent without its CORS header (a hiccup there): one tile missing, no fault of the app });
+  // a map tile a state's server sent without its CORS header (a hiccup there): one tile missing, no fault of the app
+  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|gds-srv\.hessen\.de|wms\.nrw\.de|lgln\.niedersachsen\.de|geobasis-bb\.de|geoservices\.bayern\.de|geodienste\.sachsen\.de|arcgisonline\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
   let dem = 0;
   p.on('request', (r) => { if (/wcs\.nrw\.de|owsproxy\.lgl-bw\.de\/owsproxy\/wcs|elevation\.nationalmap\.gov|geoservices\.lgln|inspire-hessen\.de|isk\.geobasis-bb\.de\/ows\/dgm_wcs|geodaten-mv\.de|\/dem\/(by|rp|sn)\/[\w-]+\.json/.test(r.url())) dem++; });
   await p.goto(url);

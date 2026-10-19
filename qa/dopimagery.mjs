@@ -15,7 +15,8 @@ for (const [name, host, credit] of COURSES) {
   await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
-  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|gds-srv\.hessen\.de|wms\.nrw\.de|lgln\.niedersachsen\.de|geobasis-bb\.de|geoservices\.bayern\.de|geodienste\.sachsen\.de|arcgisonline\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); // a map tile the state's server sent without its CORS header (a hiccup there): one tile missing, no fault of the app });
+  // a map tile a state's server sent without its CORS header (a hiccup there): one tile missing, no fault of the app
+  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|gds-srv\.hessen\.de|wms\.nrw\.de|lgln\.niedersachsen\.de|geobasis-bb\.de|geoservices\.bayern\.de|geodienste\.sachsen\.de|arcgisonline\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
   let tiles = 0;
   let esri = 0;
   p.on('response', (r) => { if (host.test(r.url()) && r.status() === 200) tiles++; if (/arcgisonline/.test(r.url())) esri++; });

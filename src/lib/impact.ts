@@ -15,7 +15,8 @@ export const IMPACT = {
   decayMs: 150, // the energy falls to an eighth within this time
   decayTo: 1 / 8,
   deadMs: 1500, // one shot – the echo and the ball landing nearby are not a second one
-  bgAlpha: 0.05, // how fast the background follows
+  bgAlpha: 0.05, // how fast the background rises – per 1024 samples at 48 kHz (21 ms), scaled to the block's length
+  bgFall: 0.3, // and how fast it falls back once it is quiet again (after a voice the next strike within 2 s is heard)
 };
 
 /** The detector on blocks of samples – pure, so it can be tested without a microphone. */
@@ -23,6 +24,7 @@ export class ImpactCore {
   private bg = 1e-6;
   private pending: { t: number; e: number; level: number } | null = null;
   private last = -Infinity;
+  private prev: number | null = null;
 
   feed(block: Float32Array, now: number): Impact | null {
     let peak = 0;
@@ -37,6 +39,11 @@ export class ImpactCore {
     }
     const e = sum / block.length;
     const zcr = zc / block.length;
+    // the time since the last block: the background follows per time, not per block – the browser hands over 1024 or
+    // 4096 samples, and with big blocks a voice kept the background up too long to hear the next strike (19.10.2026)
+    const dt = this.prev == null ? 21.3 : Math.max(1, now - this.prev);
+    this.prev = now;
+    const rate = (a: number) => 1 - Math.pow(1 - a, dt / 21.3);
     // a sound that is still loud after 150 ms is no strike (a voice, a cart): it becomes the background, so it does not
     // set off again while it lasts
     if (this.pending && now - this.pending.t > IMPACT.decayMs) {
@@ -68,7 +75,7 @@ export class ImpactCore {
       this.pending = { t: now, e, level: peak };
       return null;
     }
-    this.bg += IMPACT.bgAlpha * (e - this.bg);
+    this.bg += rate(e < this.bg ? IMPACT.bgFall : IMPACT.bgAlpha) * (e - this.bg);
     if (this.bg < 1e-7) this.bg = 1e-7;
     return null;
   }
