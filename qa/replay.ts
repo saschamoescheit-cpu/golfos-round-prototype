@@ -83,6 +83,8 @@ for (const d of items) {
       }
     }
     const counter = sig ? new RepCounter(SIGNALS[sig.id]) : null;
+    // the same with half the smallest movement that counts: how many reps a lower threshold would see (for tuning)
+    const loose = sig ? new RepCounter({ ...SIGNALS[sig.id], minAmp: SIGNALS[sig.id].minAmp / 2 }) : null;
     const values: (number | null)[] = [];
     const cues: Record<string, number> = {};
     for (const x of run) {
@@ -91,6 +93,7 @@ for (const d of items) {
       const v = f && sig ? sig.value(f) : null;
       values.push(v);
       counter?.push(v);
+      loose?.push(v);
       if (f && form) {
         if (!form.calibrated) form.calibrate(f);
         const c = form.push(f, v);
@@ -106,6 +109,7 @@ for (const d of items) {
       appSeen: a?.seen ?? false,
       appPaced: run.some((x) => x.paced),
       replayReps: counter?.reps ?? null,
+      halfThreshold: loose?.reps ?? null,
       appBest: a?.best ?? null,
       replayBest: counter?.best != null ? Math.round(counter.best * 10) / 10 : null,
       appCues: appCues.join(', ') || '–',
@@ -113,7 +117,7 @@ for (const d of items) {
       seconds: Math.round(((run.at(-1)?.t ?? 0) - (run[0]?.t ?? 0)) / 100) / 10,
     };
     out.push(row);
-    console.log(`  set ${row.set}${row.side ? ` (${row.side})` : ''} · ${row.seconds} s · reps app ${row.appReps}${row.appSeen ? ' (camera)' : row.appPaced ? ' (counted along)' : ''} · replay ${row.replayReps ?? '–'} · best app ${row.appBest ?? '–'} · replay ${row.replayBest ?? '–'}`);
+    console.log(`  set ${row.set}${row.side ? ` (${row.side})` : ''} · ${row.seconds} s · reps app ${row.appReps}${row.appSeen ? ' (camera)' : row.appPaced ? ' (counted along)' : ''} · replay ${row.replayReps ?? '–'}${row.halfThreshold != null && row.halfThreshold !== row.replayReps ? ` (half the threshold: ${row.halfThreshold})` : ''} · best app ${row.appBest ?? '–'} · replay ${row.replayBest ?? '–'}`);
     console.log(`    cues app ${row.appCues} · replay ${row.replayCues}`);
     if (sig) console.log(`    ${spark(values)}`);
   }
