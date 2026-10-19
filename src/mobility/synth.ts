@@ -205,10 +205,11 @@ export function proneBody(lift: number): Lm[] {
 
 /** On hands and knees, side-on (head to the right): the near arm opens from the floor towards the ceiling (° from
  * straight down) – thread the needle; the far arm supports. */
-export function quadBody(open: number): Lm[] {
+export function quadBody(open: number, sitBack = 0): Lm[] {
   const sh: J2 = [0.55, 0.52];
   const r = (open * Math.PI) / 180;
-  const base: Record<string, J2> = { hip: [0, 0.52], kn: [0, 0.06], an: [-0.38, 0.05], heel: [-0.38, 0.1], toe: [-0.46, 0.03], sh, ear: [0.7, 0.58], nose: [0.78, 0.52], mouth: [0.76, 0.5] };
+  // sitBack: the hips move back towards the heels (m) – the fault in thread the needle
+  const base: Record<string, J2> = { hip: [-sitBack, 0.52 - sitBack * 0.3], kn: [0, 0.06], an: [-0.38, 0.05], heel: [-0.38, 0.1], toe: [-0.46, 0.03], sh, ear: [0.7, 0.58], nose: [0.78, 0.52], mouth: [0.76, 0.5] };
   const near = { ...base, el: add(sh, [0.03 * Math.sin(r), -0.28 * Math.cos(r)]), wr: add(sh, [0.05 * Math.sin(r), -0.55 * Math.cos(r)]), idx: add(sh, [0.06 * Math.sin(r), -0.63 * Math.cos(r)]) };
   const far = { ...base, el: [0.53, 0.27] as J2, wr: [0.53, 0.03] as J2, idx: [0.58, 0.02] as J2 };
   return sideBody(near, far, 400, 0.3);

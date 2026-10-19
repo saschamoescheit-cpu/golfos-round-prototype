@@ -50,6 +50,8 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
     // the watched single-leg reach: the free foot up (stiff: it stays down – the coach says so)
     // the watched Pallof press: stiff, the trunk turns with the band
     if (plan.watch === 'trunkStill') return s.frontBody({ trunk: good ? 0 : 20 * x });
+    // the watched open books: stiff, the knees come apart
+    if (plan.watch === 'kneesTogether') return s.frontBody({ kneeOpen: good ? 0 : 35 * x });
     if (plan.watch === 'footUp') return s.frontBody({ lift: ms > 0 && good ? (side === 'right' ? 'left' : 'right') : null });
     switch (plan.signal) {
       case 'turn':
@@ -78,7 +80,8 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
       case 'armLift':
         return s.proneBody((good ? 22 : 12) * x);
       case 'armOpen':
-        return s.quadBody((good ? 170 : 120) * x);
+        // stiff: the hips sit back towards the heels while the arm opens
+        return s.quadBody((good ? 170 : 120) * x, good ? 0 : 0.25 * x);
       case 'shoulderEr':
         return s.frontBody({ er: (good ? 85 : 55) * x });
       case 'kneeOpen':

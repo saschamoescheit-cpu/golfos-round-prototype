@@ -74,7 +74,7 @@ for (const id of IDS) {
 ok(!!sess?.finishedAt, 'the session is finished');
 if (level === 'stiff') {
   // the faults of the stiff player: the coach said the cue and the set kept it
-  const want = { 'seated-rotation': 'hipsStill', 'mob-pelvic-turn': 'chestStill', 'mob-neck-turn': 'shouldersStill', 'deep-squat': 'heelsDown', 'mob-toe-touch': 'kneesStraight', 'pallof-press': 'trunkStill', 'mob-single-leg-reach': 'footUp' };
+  const want = { 'seated-rotation': 'hipsStill', 'mob-pelvic-turn': 'chestStill', 'mob-neck-turn': 'shouldersStill', 'deep-squat': 'heelsDown', 'mob-toe-touch': 'kneesStraight', 'pallof-press': 'trunkStill', 'mob-single-leg-reach': 'footUp', 'open-books': 'kneesTogether', 'mob-thread-needle': 'hipsOverKnees' };
   for (const [id, cue] of Object.entries(want)) {
     const d = sess?.done.find((x) => x.drill === id);
     const n = (d?.sets ?? []).reduce((k, s) => k + (s.cues?.[cue] ?? 0), 0);

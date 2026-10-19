@@ -249,6 +249,20 @@ describe('form cues', () => {
     expect(watch('footUp', (t) => frontBody({ lift: t > 600 ? 'right' : null }))).toEqual([]);
   });
 
+  it('says "knees together" in the open books and "hips over the knees" in thread the needle', () => {
+    const form = new FormCheck('kneesTogether');
+    let t = 0;
+    for (let i = 0; i < 10; i++) form.calibrate({ lm: frontBody({}), w: W, h: H, t: (t += 50) });
+    const said: string[] = [];
+    for (let i = 0; i < 40; i++) {
+      const c = form.push({ lm: frontBody({ kneeOpen: 35 }), w: W, h: H, t: (t += 50) }, null);
+      if (c) said.push(c);
+    }
+    expect(said).toContain('kneesTogether');
+    expect(cues('armOpen', (k) => quadBody(170 * k, 0.25 * k)).said).toContain('hipsOverKnees');
+    expect(cues('armOpen', (k) => quadBody(170 * k)).said).toEqual([]);
+  });
+
   it('says a cue at most every 6 s and counts it', () => {
     const r = cues('turn', (k) => frontBody({ trunk: 50 * k, pelvis: 25 * k }), 8);
     // 8 reps × 2.5 s = 20 s: at most 4 cues
