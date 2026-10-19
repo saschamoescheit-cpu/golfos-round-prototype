@@ -1,5 +1,6 @@
 import type { LngLat } from '../types';
 import { pointInRing } from './geo';
+import DE_IMAGERY from '../data/deImagery.json';
 
 // Satellite imagery sources. Esri works worldwide but is only free for prototypes.
 // PNOA (Spanish national orthophoto, 25 cm) is sharper and free incl. commercial use (CC BY 4.0, credit IGN).
@@ -70,8 +71,12 @@ export function covers(source: ImagerySource, p: LngLat): boolean {
   return source.coverage.some(([w, s, e, n]) => p[0] >= w && p[0] <= e && p[1] >= s && p[1] <= n);
 }
 
-// ---- the USA: state and county orthoimagery, checked by scripts/us-imagery.py (USA trip, 17.10.2026) ----
-interface UsSource { id: string; name: string; tiles: string; scheme: 'xyz' | 'tms'; maxzoom: number; year: number; best: boolean; attribution: string; coverage: LngLat[][] }
+// ---- the German states' aerial photos (DOP20, 19.10.2026 – Sascha: every course with the best imagery): built in,
+// so the right imagery is there at once and offline; the outlines from OSM, simplified (checked for CORS and imagery)
+const GERMANY: ImagerySource[] = (DE_IMAGERY as unknown as { sources: RegionalSource[] }).sources.map((s) => ({ id: s.id, label: s.name, tiles: s.tiles, scheme: s.scheme, maxzoom: s.maxzoom, attribution: s.attribution, paint: { 'raster-saturation': 0.1, 'raster-contrast': 0.05 }, coverage: { rings: s.coverage } }));
+
+// ---- the USA: state and county orthoimagery, checked by scripts/us-imagery.py (USA trip, 17.10.2026), loaded on demand
+interface RegionalSource { id: string; name: string; tiles: string; scheme: 'xyz' | 'tms'; maxzoom: number; year: number; best: boolean; attribution: string; coverage: LngLat[][] }
 let regional: ImagerySource[] = [];
 let regionalLoad: Promise<void> | null = null;
 const IN_USA = (p: LngLat) => (p[0] >= -125 && p[0] <= -66 && p[1] >= 24 && p[1] <= 50) || (p[0] >= -180 && p[0] <= -129 && p[1] >= 51 && p[1] <= 72) || (p[0] >= -161 && p[0] <= -154 && p[1] >= 18 && p[1] <= 23) || (p[0] >= -68 && p[0] <= -64 && p[1] >= 17 && p[1] <= 19);
@@ -81,7 +86,7 @@ export async function loadRegionalImagery(p: LngLat): Promise<boolean> {
   if (!IN_USA(p)) return false;
   regionalLoad ??= fetch(`${import.meta.env.BASE_URL}imagery/us.json`)
     .then((r) => (r.ok ? r.json() : { sources: [] }))
-    .then((d: { sources: UsSource[] }) => {
+    .then((d: { sources: RegionalSource[] }) => {
       // marked best by the index first, then the newest, then the finest
       regional = [...d.sources]
         .sort((a, b) => Number(b.best) - Number(a.best) || b.year - a.year || b.maxzoom - a.maxzoom)
@@ -96,7 +101,7 @@ export async function loadRegionalImagery(p: LngLat): Promise<boolean> {
 
 /** Sources with imagery at this place, best first (national or county orthophoto before the worldwide fallback). */
 export function imageryOptions(p: LngLat): ImagerySource[] {
-  return [...regional, IMAGERY.pnoa, IMAGERY.lgl, IMAGERY.esri].filter((s) => covers(s, p));
+  return [...regional, ...GERMANY, IMAGERY.pnoa, IMAGERY.lgl, IMAGERY.esri].filter((s) => covers(s, p));
 }
 
 /** The player's choice if it covers this place, else the best source there. */

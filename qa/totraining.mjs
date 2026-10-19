@@ -56,8 +56,12 @@ const btn = p.getByRole('button', { name: 'Ins Training übernehmen' });
 ok((await btn.count()) === 1, 'summary: "Ins Training übernehmen" under the practice plan');
 ok((await plans()).length === 0, 'nothing in Training before the tap');
 await btn.click();
-await p.waitForTimeout(1200);
-const after = await plans();
+// under the load of the parallel gate the plan is written later: wait for it, not a fixed time
+let after = await plans();
+for (let k = 0; k < 20 && !(after.length === 1 && after[0].items?.length); k++) {
+  await p.waitForTimeout(500);
+  after = await plans();
+}
 ok(after.length === 1 && /^Nach der Runde \d\d\.\d\d\. · .*Hetzenhof/.test(after[0].name) && after[0].items.length > 0, `Training: own plan "${after[0]?.name}" with ${after[0]?.items.length} drills`);
 ok((await p.getByRole('button', { name: 'Im Training ✓' }).isDisabled()) && (await p.getByText(/Im Training gespeichert als/).count()) === 1, 'button: "Im Training ✓", note where to find it');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/totraining.png', fullPage: true });

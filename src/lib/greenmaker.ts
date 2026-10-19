@@ -1,7 +1,7 @@
 import type { LngLat, Ring } from '../types';
 import type { GreenChart } from '../data/greenCharts';
 import type { GreenGrid } from './greenread';
-import { demProvidersAt, fetchSquare, fromUtm, toUtm, type DemProvider } from './dem';
+import { DEM_PROVIDERS, demProvidersAt, fetchSquare, fromUtm, toUtm, type DemProvider } from './dem';
 
 // Green charts made on the phone (Sascha 19.10.2026: "every course should have green slopes"): for a course without
 // built-in charts, the heights of each green come from the official terrain model of the region (dem.ts) and are
@@ -16,6 +16,8 @@ export interface MadeCharts {
   charts: Record<string, { png: Blob; corners: GreenChart['corners'] }>;
   heights: Record<string, GreenGrid>;
   slopes: Record<string, { pct: number; downDeg: number }>;
+  /** greens the service had no heights for (the edge of its data, a hole in it): asked again only after a week */
+  failed?: Record<string, number>;
 }
 
 const VERSION = 1;
@@ -288,42 +290,49 @@ export async function madeChartsFor(
   signal?: AbortSignal,
 ): Promise<MadeCharts | null> {
   const kept = await loadMade(courseId);
-  if (kept) return kept;
+  const WEEK = 7 * 24 * 3600 * 1000;
+  const missing = greens.filter((g) => !kept?.charts[g.ref] && !(kept?.failed?.[g.ref] && Date.now() - kept.failed[g.ref] < WEEK));
+  if (kept && !missing.length) return kept;
   if (!greens.length) return null;
-  // the service of the region: the first one that has heights for the first green
-  let d: DemProvider | null = null;
-  for (const cand of demProvidersAt(greens[0].ring[0])) {
-    if (signal?.aborted) return null;
-    if (await makeGreen(cand, greens[0].ring, signal).catch(() => null)) {
-      d = cand;
-      break;
+  // the service of the region: the one that made the kept greens, else the first that has heights for a green
+  let d: DemProvider | null = kept ? (DEM_PROVIDERS.find((x) => x.id === kept.provider) ?? null) : null;
+  if (!d)
+    for (const cand of demProvidersAt(missing[0].ring[0])) {
+      if (signal?.aborted) return null;
+      if (await makeGreen(cand, missing[0].ring, signal).catch(() => null)) {
+        d = cand;
+        break;
+      }
     }
-  }
-  if (!d) return null;
-  const m: MadeCharts = { version: VERSION, provider: d.id, credit: d.credit, charts: {}, heights: {}, slopes: {} };
-  let done = 0;
-  onProgress?.(0, greens.length);
+  if (!d) return kept;
+  const m: MadeCharts = kept ?? { version: VERSION, provider: d.id, credit: d.credit, charts: {}, heights: {}, slopes: {} };
+  let done = greens.length - missing.length;
+  let added = 0;
+  onProgress?.(done, greens.length);
   // three greens at a time: quick, and kind to the services
-  const queue = [...greens];
+  const queue = [...missing];
+  const provider = d;
   const work = async () => {
     for (let g = queue.shift(); g; g = queue.shift()) {
       if (signal?.aborted) return;
       try {
-        const r = await makeGreen(d, g.ring, signal);
+        const r = await makeGreen(provider, g.ring, signal);
         if (r) {
           m.charts[g.ref] = { png: r.png, corners: r.corners };
           m.heights[g.ref] = r.grid;
           m.slopes[g.ref] = r.slope;
-        }
+          if (m.failed) delete m.failed[g.ref];
+        } else (m.failed ??= {})[g.ref] = Date.now(); // the service answered, but without heights there
+        added++;
       } catch {
-        // one green without heights (service hiccup): the others still come
+        // one green without heights (service hiccup on a weak network): the others still come, it comes next time
       }
       onProgress?.(++done, greens.length);
     }
   };
   await Promise.all([work(), work(), work()]);
   if (signal?.aborted || !Object.keys(m.charts).length) return null;
-  // kept only when every green came – a hiccup makes them again next time
-  if (Object.keys(m.charts).length === greens.length) await saveMade(courseId, m);
+  // kept with what came – next time only the missing greens are asked for
+  if (added) await saveMade(courseId, m);
   return m;
 }
