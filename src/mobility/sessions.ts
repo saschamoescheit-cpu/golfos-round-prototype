@@ -87,6 +87,22 @@ export function bestOf(d: DrillDone, better: 'up' | 'down' = 'up'): number | nul
 }
 
 /** every measured time of one drill, oldest first (for the drill page) */
+/** The measured drills of a session that went further than the last time (the clear ones: 3° or 1 cm/s at least),
+ * the biggest first – what the coach says at the end. `previous`: the best value of the last time per drill. */
+export function gains(s: TrainSession, previous: Record<string, number | null>): { drill: string; signal: SignalId; by: number }[] {
+  const out: { drill: string; signal: SignalId; by: number }[] = [];
+  for (const d of s.done) {
+    const sig = d.signal ?? coachOf(d.drill).signal;
+    if (!sig || d.skipped || d.pain || sig === 'oneLeg' || SIGNALS[sig].countOnly) continue;
+    const best = bestOf(d, SIGNALS[sig].better);
+    const prev = previous[d.drill];
+    if (best == null || prev == null) continue;
+    const by = SIGNALS[sig].better === 'up' ? best - prev : prev - best;
+    if (by >= (SIGNALS[sig].unit === '°' ? 3 : 1)) out.push({ drill: d.drill, signal: sig, by });
+  }
+  return out.sort((a, b) => b.by / (SIGNALS[b.signal].unit === '°' ? 3 : 1) - a.by / (SIGNALS[a.signal].unit === '°' ? 3 : 1));
+}
+
 export function drillHistory(drill: string, better: 'up' | 'down' = 'up'): { at: string; value: number }[] {
   const out: { at: string; value: number }[] = [];
   for (const s of loadSessions())

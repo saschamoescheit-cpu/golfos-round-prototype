@@ -12,7 +12,7 @@ import { DrillPlayer, cap, cueText } from './DrillPlayer';
 import type { FormCue } from './drillcoach';
 import { PhoneSetup } from './pictures';
 import { loadPose } from './pose';
-import { bestOf, cleanStreak, daysThisWeek, drillHistory, saveSession, type DrillDone, type TrainSession } from './sessions';
+import { bestOf, cleanStreak, daysThisWeek, drillHistory, gains, saveSession, type DrillDone, type TrainSession } from './sessions';
 
 const t = (x: { en: string; de: string }) => tr(x.en, x.de);
 
@@ -30,6 +30,20 @@ export function doneText(d: DrillDone): string {
   const reps = d.sets.reduce((n, s) => n + s.reps, 0);
   const target = d.sets.reduce((n, s) => n + s.target, 0);
   return tr(`${reps} of ${target} reps`, `${reps} von ${target} Wiederholungen`);
+}
+
+/** What the coach says at the end: done, how many drills, what went further than the last time (two at most), the days. */
+export function doneSpeech(s: TrainSession, previous: Record<string, number | null>, days: number): string {
+  const n = s.done.filter((x) => !x.skipped && !x.pain).length;
+  const unit = (u: string, by: number) => (u === '°' ? tr('degrees', 'Grad') : u === 'cm' ? tr('centimetres', 'Zentimeter') : tr(by === 1 ? 'second' : 'seconds', by === 1 ? 'Sekunde' : 'Sekunden'));
+  const parts = [tr('Training done.', 'Training fertig.'), tr(`${n} ${n === 1 ? 'drill' : 'drills'}.`, `${n} ${n === 1 ? 'Übung' : 'Übungen'}.`)];
+  for (const g of gains(s, previous).slice(0, 2)) {
+    const by = Math.round(g.by);
+    const name = t(drillById(g.drill)?.name ?? { en: g.drill, de: g.drill });
+    parts.push(tr(`${name}: ${by} ${unit(SIGNALS[g.signal].unit, by)} further than last time.`, `${name}: ${by} ${unit(SIGNALS[g.signal].unit, by)} weiter als beim letzten Mal.`));
+  }
+  if (days > 1) parts.push(tr(`${days} days of training in the last 7.`, `${days} Trainingstage in den letzten 7.`));
+  return parts.join(' ');
 }
 
 /**
@@ -67,7 +81,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
     if (!cur.done.length) return props.onFinished();
     const done = { ...cur, finishedAt: new Date().toISOString() };
     store(done);
-    speak(tr('Training done.', 'Training fertig.'));
+    speak(doneSpeech(done, previous, daysThisWeek()));
     setStage('summary');
     window.scrollTo(0, 0);
   };
