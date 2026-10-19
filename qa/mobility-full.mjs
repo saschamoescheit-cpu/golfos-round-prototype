@@ -115,7 +115,7 @@ await p.waitForTimeout(800);
 await p.locator('.tabbar button').filter({ hasText: 'Verlauf' }).click();
 await p.waitForTimeout(500);
 const change = await p.locator('.mob-change').innerText().catch(() => '');
-ok(/Seit dem/.test(change) && /\+\d+ Punkte/.test(change), `the history says what changed since the screening before (${change.split('\n').slice(0, 3).join(' · ')})`);
+ok(/Seit dem/.test(change) && /Deine Beweglichkeit \d+ → \d+/.test(change) && /\+\d+ %/.test(change), `the history says what changed since the screening before – the overall value and each area (${change.split('\n').slice(0, 4).join(' · ')})`);
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 2).join(' | ') : ''}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all green');

@@ -1967,9 +1967,18 @@ function ChangeCard(props: { list: Screening[] }) {
   const now = pillar(TESTS, last.results, goal);
   const rows = AREAS.map((a) => ({ a, b: before.find((x) => x.area === a), n: now.find((x) => x.area === a) })).filter((x): x is { a: Area; b: AreaState; n: AreaState } => !!x.b && !!x.n);
   if (!rows.length) return null;
+  // the overall value then and now (the same goal for both)
+  const s0 = mobilityScore(TESTS, prev.results, goal)?.score;
+  const s1 = mobilityScore(TESTS, last.results, goal)?.score;
   return (
     <section className="card mob-change">
       <strong>{tr(`Since ${dateText(prev.createdAt)}`, `Seit dem ${dateText(prev.createdAt)}`)}</strong>
+      {s0 != null && s1 != null && (
+        <span className="small mob-change-score">
+          {tr('Your mobility', 'Deine Beweglichkeit')} {s0} → <strong>{s1}</strong>
+          <span className={s1 > s0 ? ' good-text' : ' muted'}> ({s1 === s0 ? tr('the same', 'gleich') : `${s1 > s0 ? '+' : '−'}${Math.abs(s1 - s0)}`})</span>
+        </span>
+      )}
       <div className="list">
         {rows.map(({ a, b, n }) => {
           const d = Math.round((n.now - b.now) * 100);
@@ -1977,14 +1986,14 @@ function ChangeCard(props: { list: Screening[] }) {
             <div key={a} className="list-item mob-area-row">
               <span className="grow">
                 <span className="title">{t(AREA_NAMES[a])}</span>
-                <span className={`small${d > 0 ? ' good-text' : ' muted'}`}>{d === 0 ? tr('the same', 'gleich') : tr(`${d > 0 ? '+' : '−'}${Math.abs(d)} points`, `${d > 0 ? '+' : '−'}${Math.abs(d)} Punkte`)}</span>
+                <span className={`small${d > 0 ? ' good-text' : ' muted'}`}>{d === 0 ? tr('the same', 'gleich') : `${d > 0 ? '+' : '−'}${Math.abs(d)} %`}</span>
               </span>
               <LevelBar pos={n.now} target={n.target} small />
             </div>
           );
         })}
       </div>
-      <span className="muted small">{tr('Points: per cent of each scale from little to a lot of movement.', 'Punkte: Prozent der Skala von wenig bis viel Bewegung.')}</span>
+      <span className="muted small">{tr('Areas: per cent of each scale from little to a lot of movement.', 'Bereiche: Prozent der Skala von wenig bis viel Bewegung.')}</span>
     </section>
   );
 }
