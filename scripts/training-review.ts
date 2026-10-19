@@ -69,6 +69,7 @@ for (const [id, p] of Object.entries(PAIRS)) if (used.has(id)) lines.push(`- [ ]
 lines.push('', '**Fachlich korrigiert am 18.10. – bitte bestätigen:**', '');
 lines.push('- [ ] „Tor von innen“: hinterer Tee 5 cm **außerhalb**, vorderer 5 cm **innerhalb** des Balls (vorher umgekehrt – dann lagen beide Tees auf der Bahn von innen und ein Schwung von außen traf keinen).');
 lines.push('- [ ] „Schlägerhaube außerhalb des Balls“: Haube 10 cm außerhalb und 10 cm **hinter** dem Ball (vorher „vor“ – dort trifft sie nur eine Bahn nach außen, nicht den Schwung von außen).');
+lines.push('- [ ] „Gefälle mit den Füßen fühlen“ (Grundlagen und Übung): „die Linie zwischen den Füßen, Blick **zum Loch**“ (vorher „Blick quer zur Linie“ – das widersprach sich; wie bei AimPoint spüren die Füße so das Seitengefälle).');
 lines.push('');
 lines.push('## Pläne', '');
 for (const p of PLANS) lines.push(`- [ ] **${p.name.de}** – ${p.about.de}`);
