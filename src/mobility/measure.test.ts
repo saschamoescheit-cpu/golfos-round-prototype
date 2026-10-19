@@ -31,6 +31,36 @@ const KINDS: [MetricKind, Side][] = [
   ['shoulder9090', 'left'],
 ];
 
+describe('mobility analysers with the shaking of a real pose model', () => {
+  // every point shakes (σ 0.4 % of the picture), 5 % of the pictures are lost, 2 % of the points are wild – 5 random runs
+  // per test: the turns came out 15–20° (ended early on a shaking point at rest) or several degrees too high (the top of a
+  // shaking width, acos near 0°) before 19.10.2026
+  it('measures the turns close to the clean value', () => {
+    let seed = 1;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+    for (const kind of ['trunkRotation', 'pelvicRotation', 'neck'] as MetricKind[])
+      for (const level of ['good', 'stiff'] as const) {
+        const clean = run(kind, 'left', level).out!.value;
+        for (let s = 1; s <= 5; s++) {
+          seed = s * 7919;
+          const a = makeAnalyzer(kind, 'left');
+          for (const f of frames(script(kind, 'left', level), 30)) {
+            if (rnd() < 0.05) continue;
+            const lm = f.lm.map((p) => {
+              const k = rnd() < 0.02 ? 8 : 1;
+              return { ...p, x: p.x + gauss() * 0.004 * k, y: p.y + gauss() * 0.004 * k * (SYNTH_W / SYNTH_H) };
+            });
+            if (a.push({ ...f, lm }).phase === 'done') break;
+          }
+          const v = a.finish()?.value;
+          expect(v, `${kind} ${level} run ${s}`).toBeDefined();
+          expect(Math.abs(v! - clean), `${kind} ${level} run ${s}: ${v} against ${clean}`).toBeLessThanOrEqual(kind === 'trunkRotation' ? 5 : 7);
+        }
+      }
+  });
+});
+
 describe('mobility analysers', () => {
   for (const [kind, side] of KINDS) {
     it(`${kind} (${side}): a mobile player passes`, () => {

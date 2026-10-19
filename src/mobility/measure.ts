@@ -163,6 +163,31 @@ class Roll {
   }
 }
 
+/** A width in the picture (shoulders, hips, ears), the mean of the last three pictures: an angle comes from it by acos,
+ * which turns a little shaking of the width into many degrees near 0° (19.10.2026: a pose model shakes – the stiff
+ * pelvis measured 18° came out at 23–27°, the trunk turn ended early on the shaking) – the width is steadied before. */
+class Steady {
+  private xs: number[] = [];
+  constructor(private n = 3) {}
+  push(x: number): number {
+    this.xs.push(x);
+    if (this.xs.length > this.n) this.xs.shift();
+    return this.xs.reduce((a, b) => a + b, 0) / this.xs.length;
+  }
+}
+
+/** The value held for 0.3 s (the lowest of the last 0.3 s): the top of a test is a position held at the end of the
+ * movement – a shaking or wild point lifts the highest single value, never the held one. */
+class Held {
+  private xs: { t: number; v: number }[] = [];
+  constructor(private ms = 300) {}
+  push(v: number, t: number): number {
+    this.xs.push({ t, v });
+    while (this.xs.length > 1 && t - this.xs[0].t > this.ms) this.xs.shift();
+    return Math.min(...this.xs.map((x) => x.v));
+  }
+}
+
 // ---------- framing: is everything the test needs in the picture? ----------
 const FRONT_NEED: Partial<Record<MetricKind, number[]>> = {
   trunkRotation: [P.lSh, P.rSh, P.nose],
@@ -220,12 +245,17 @@ class TurnAnalyzer implements Analyzer {
   private h0 = 0;
   private roll = new Roll(5);
   private hipRoll = new Roll(5);
+  private lineW = new Steady();
+  private hipW = new Steady();
+  private held = new Held();
   private best = 0;
   private bestHip = 0;
   private hipAtBest = 0;
   private t0 = -1;
   private tBest = 0;
   private done = false;
+  private heldFrom = -1;
+  private turned = false;
   constructor(readonly kind: MetricKind, private line: [number, number], private hips: [number, number] | null, private maxMs = 15000) {}
   focus(): [number, number][] {
     return this.hips ? [this.line, this.hips] : [this.line];
@@ -244,17 +274,24 @@ class TurnAnalyzer implements Analyzer {
       }
       return { value: null, best: null, phase: 'calibrate' };
     }
-    const v = this.roll.push(turned(width(f, ...this.line), this.w0));
-    const hip = this.hips ? this.hipRoll.push(turned(width(f, ...this.hips), this.h0)) : 0;
-    if (v > this.best + 0.5) {
-      this.best = v;
+    const v = this.roll.push(turned(this.lineW.push(width(f, ...this.line)), this.w0));
+    const hip = this.hips ? this.hipRoll.push(turned(this.hipW.push(width(f, ...this.hips)), this.h0)) : 0;
+    const top = this.held.push(v, f.t);
+    if (top > this.best + 0.5) {
+      this.best = top;
       this.hipAtBest = hip;
       this.tBest = f.t;
     }
     this.bestHip = Math.max(this.bestHip, hip);
     // finished: turned back to the middle, no further for 3 s, or the time is up
-    const back = this.best >= 15 && v < this.best * 0.5;
-    const still = this.best >= 15 && f.t - this.tBest > 3000;
+    // a turn is one held near its top for 0.3 s – a shaking point at rest (15–20° from a little noise) is never held, and
+    // must not end the test as "back to the middle" before the player turned at all
+    if (v >= this.best * 0.8 && this.best >= 15) {
+      if (this.heldFrom < 0) this.heldFrom = f.t;
+      if (f.t - this.heldFrom >= 300) this.turned = true;
+    } else this.heldFrom = -1;
+    const back = this.turned && v < this.best * 0.5;
+    const still = this.turned && f.t - this.tBest > 3000;
     if (back || still || f.t - this.t0 > this.maxMs) {
       this.done = true;
       return { value: v, best: this.best, phase: 'done', cue: 'done' };
@@ -285,6 +322,10 @@ class PelvisAnalyzer implements Analyzer {
   private s0 = 0;
   private hRoll = new Roll(5);
   private sRoll = new Roll(5);
+  // (the hips are narrow in the picture: their width shakes most – steadied and held longer)
+  private hW = new Steady(5);
+  private sW = new Steady();
+  private held = new Held(500);
   private best = 0;
   private shAtBest = 0;
   private t0 = -1;
@@ -306,10 +347,11 @@ class PelvisAnalyzer implements Analyzer {
       }
       return { value: null, best: null, phase: 'calibrate' };
     }
-    const h = this.hRoll.push(turned(width(f, P.lHip, P.rHip), this.h0));
-    const s = this.sRoll.push(turned(width(f, P.lSh, P.rSh), this.s0));
-    if (h > this.best + 0.5) {
-      this.best = h;
+    const h = this.hRoll.push(turned(this.hW.push(width(f, P.lHip, P.rHip)), this.h0));
+    const s = this.sRoll.push(turned(this.sW.push(width(f, P.lSh, P.rSh)), this.s0));
+    const top = this.held.push(h, f.t);
+    if (top > this.best + 0.5) {
+      this.best = top;
       this.shAtBest = s;
     }
     if (f.t - this.t0 > this.ms) {
@@ -400,10 +442,15 @@ class NeckAnalyzer implements Analyzer {
   private e0 = 0;
   private n0 = 0;
   private roll = new Roll(5);
+  private earW = new Steady();
+  private noseX = new Steady();
+  private held = new Held();
   private best = 0;
   private t0 = -1;
   private tBest = 0;
   private done = false;
+  private heldFrom = -1;
+  private turned = false;
   constructor(private ms = 12000) {}
   focus(): [number, number][] {
     return [[P.lEar, P.rEar]];
@@ -425,17 +472,24 @@ class NeckAnalyzer implements Analyzer {
       }
       return { value: null, best: null, phase: 'calibrate' };
     }
-    const off = Math.abs(this.noseOff(f) - this.n0);
+    const off = Math.abs(this.noseX.push(this.noseOff(f)) - this.n0);
     const bySide = deg(Math.asin(clamp(off / (NOSE_DEPTH * this.e0))));
     const earsSeen = vis(f, P.lEar) >= 0.5 && vis(f, P.rEar) >= 0.5;
-    const byEars = turned(width(f, P.lEar, P.rEar), this.e0);
+    const byEars = turned(this.earW.push(width(f, P.lEar, P.rEar)), this.e0);
     const v = this.roll.push(earsSeen ? (bySide + byEars) / 2 : bySide);
-    if (v > this.best + 0.5) {
-      this.best = v;
+    const top = this.held.push(v, f.t);
+    if (top > this.best + 0.5) {
+      this.best = top;
       this.tBest = f.t;
     }
-    const back = this.best >= 15 && v < this.best * 0.5;
-    const still = this.best >= 15 && f.t - this.tBest > 3000;
+    // a turn is one held near its top for 0.3 s – a shaking point at rest (15–20° from a little noise) is never held, and
+    // must not end the test as "back to the middle" before the player turned at all
+    if (v >= this.best * 0.8 && this.best >= 15) {
+      if (this.heldFrom < 0) this.heldFrom = f.t;
+      if (f.t - this.heldFrom >= 300) this.turned = true;
+    } else this.heldFrom = -1;
+    const back = this.turned && v < this.best * 0.5;
+    const still = this.turned && f.t - this.tBest > 3000;
     if (back || still || f.t - this.t0 > this.ms) {
       this.done = true;
       return { value: v, best: this.best, phase: 'done', cue: 'done' };
