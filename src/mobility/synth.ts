@@ -31,6 +31,7 @@ export interface FrontPose {
   er?: number; // both elbows at the sides bent 90°, forearms forward, turned out this far (°) – band external rotation
   kneeOpen?: number; // the right knee opens away from the left (°, clamshell seen from the front)
   kneeShift?: number; // both knees shift sideways (m, the 90/90 switch)
+  kneeUp?: number; // the right knee and foot lift this far (m) – the back leg in the 90/90 sit lifting (hip inner rotation)
 }
 
 /** The 33 points of a player seen from the front. */
@@ -84,6 +85,7 @@ export function frontBody(o: FrontPose): Lm[] {
     const k = 0.43 * Math.sin((o.kneeOpen * Math.PI) / 180);
     lm[26] = [lm[26][0] - k, lm[26][1], lm[26][2]];
   }
+  if (o.kneeUp) for (const i of [26, 28, 30, 32]) lm[i] = [lm[i][0], lm[i][1] + o.kneeUp, lm[i][2]];
   if (o.kneeShift) for (const i of [25, 26]) lm[i] = [lm[i][0] + o.kneeShift, lm[i][1], lm[i][2]];
   if (o.liftX) {
     const [an, he, to] = o.lift === 'left' ? [28, 30, 32] : [27, 29, 31];

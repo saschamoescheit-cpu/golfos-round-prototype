@@ -145,6 +145,11 @@ describe('drill coach', () => {
     expect(r.n).toBe(6);
   });
 
+  it('counts the back knee lifting off the floor in the 90/90 sit', () => {
+    expect(run('kneeLift', (k) => frontBody({ kneeUp: 0.1 * k }), 8).n).toBe(8);
+    expect(run('kneeLift', () => frontBody({}), 8).n).toBe(0);
+  });
+
   it('sees one foot off the floor', () => {
     const sig = new Signal('oneLeg');
     expect(sig.value({ lm: frontBody({}), w: W, h: H, t: 0 })).toBe(0);

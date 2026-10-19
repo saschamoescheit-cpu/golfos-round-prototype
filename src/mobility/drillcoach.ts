@@ -9,7 +9,7 @@ import type { Side, TestId } from './types';
 // so the unit tests run them with synthetic bodies. REVIEW(golf): Chris (reps, holds, what counts as a rep).
 
 /** What the camera follows during a drill, picture by picture. */
-export type SignalId = 'turn' | 'hipTurn' | 'head' | 'squat' | 'reach' | 'shin' | 'hipExt' | 'arms' | 'oneLeg' | 'shoulderEr' | 'kneeOpen' | 'sideSwitch' | 'armLift' | 'armOpen' | 'catCow';
+export type SignalId = 'turn' | 'hipTurn' | 'head' | 'squat' | 'reach' | 'shin' | 'hipExt' | 'arms' | 'oneLeg' | 'shoulderEr' | 'kneeOpen' | 'sideSwitch' | 'armLift' | 'armOpen' | 'catCow' | 'kneeLift';
 
 export interface DrillCoach {
   /** how the player is placed to the phone: face-on, side-on, or on the floor (only the body has to be seen) */
@@ -49,7 +49,7 @@ export const DRILL_COACH: Record<string, DrillCoach> = {
   'mob-wall-angels': { view: 'front', where: L('Back to a wall, face-on to the phone.', 'Mit dem Rücken an eine Wand, frontal zum Handy.'), reps: 10, tempo: 4, sets: 2, signal: 'arms' },
   'mob-9090-stretch': { view: 'front', where: FRONT_STAND, sides: true, hold: 20, sets: 3 },
   'mob-band-er': { view: 'front', where: FRONT_STAND, reps: 15, tempo: 3, sets: 2, signal: 'shoulderEr' },
-  'mob-hip-ir': { view: 'floor', where: L('Sit in the 90/90 position, face-on to the phone.', 'Im 90/90-Sitz, frontal zum Handy.'), sides: true, reps: 8, tempo: 4 },
+  'mob-hip-ir': { view: 'floor', where: L('Sit in the 90/90 position, face-on to the phone.', 'Im 90/90-Sitz, frontal zum Handy.'), sides: true, reps: 8, tempo: 4, signal: 'kneeLift' },
   'mob-prone-y': { view: 'floor', where: L('On your front, side-on to the phone.', 'Auf den Bauch, seitlich zum Handy.'), reps: 10, tempo: 4, sets: 2, signal: 'armLift' },
   'mob-neck-turn': { view: 'front', where: L('Sit or stand face-on to the phone.', 'Setz oder stell dich frontal zum Handy.'), reps: 20, tempo: 3, signal: 'head' },
   'mob-forearm-turn': { view: 'front', where: FRONT_STAND, sides: true, reps: 10, tempo: 3, watch: 'elbowsIn' },
@@ -138,6 +138,8 @@ export const SIGNALS: Record<SignalId, SignalDef> = {
   armOpen: { unit: '°', better: 'up', minAmp: 40, name: L('arm open towards the ceiling', 'Arm zur Decke geöffnet') },
   // cat and cow: the camera sees no spine, only the head going down and up with it – counted, not measured
   catCow: { unit: '°', better: 'up', minAmp: 20, name: L('cat and cow', 'Katze und Kuh'), countOnly: true },
+  // the back knee off the floor in the 90/90 sit (in hundredths of the thigh, from the still pictures) – counted, not measured
+  kneeLift: { unit: '°', better: 'up', minAmp: 12, name: L('knee lifts', 'Knie heben'), countOnly: true },
 };
 
 /** The points a signal needs (front view: these; side view: the near side's). */
@@ -157,6 +159,7 @@ function needs(id: SignalId): number[] | ((side: Side) => number[]) {
       return [P.lSh, P.rSh, P.lEl, P.rEl, P.lWr, P.rWr];
     case 'kneeOpen':
     case 'sideSwitch':
+    case 'kneeLift':
       return [P.lHip, P.rHip, P.lKn, P.rKn];
     case 'armLift':
       return (s) => [S(s).sh, S(s).wr, S(s).hip];
@@ -183,8 +186,8 @@ const CAL = 8;
  * from the first pictures while the player stands still (the countdown).
  */
 export class Signal {
-  private cal: { w: number; h: number; e: number; n: number; leg: number; al: number; ar: number }[] = [];
-  private base = { w: 0, h: 0, e: 0, n: 0, leg: 1, al: 1, ar: 1 };
+  private cal: { w: number; h: number; e: number; n: number; leg: number; al: number; ar: number; kl: number; kr: number; th: number }[] = [];
+  private base = { w: 0, h: 0, e: 0, n: 0, leg: 1, al: 1, ar: 1, kl: 0, kr: 0, th: 1 };
   constructor(readonly id: SignalId) {}
   get def(): SignalDef {
     return SIGNALS[this.id];
@@ -205,10 +208,14 @@ export class Signal {
       // the arms straight down (on hands and knees): their length in the picture
       al: dist(px(f, P.lSh), px(f, P.lWr)),
       ar: dist(px(f, P.rSh), px(f, P.rWr)),
+      // the knees on the floor (the 90/90 sit): their height and the length of the thighs
+      kl: px(f, P.lKn)[1],
+      kr: px(f, P.rKn)[1],
+      th: (dist(px(f, P.lHip), px(f, P.lKn)) + dist(px(f, P.rHip), px(f, P.rKn))) / 2,
     });
     if (this.calibrated) {
       const m = (k: keyof (typeof this.cal)[number]) => median(this.cal.map((c) => c[k]));
-      this.base = { w: m('w'), h: m('h'), e: m('e'), n: m('n'), leg: Math.max(1, m('leg')), al: Math.max(1, m('al')), ar: Math.max(1, m('ar')) };
+      this.base = { w: m('w'), h: m('h'), e: m('e'), n: m('n'), leg: Math.max(1, m('leg')), al: Math.max(1, m('al')), ar: Math.max(1, m('ar')), kl: m('kl'), kr: m('kr'), th: Math.max(1, m('th')) };
     }
   }
   private noseOff(f: Frame) {
@@ -285,6 +292,9 @@ export class Signal {
         const off = ((px(f, P.lKn)[0] + px(f, P.rKn)[0]) / 2 - (px(f, P.lHip)[0] + px(f, P.rHip)[0]) / 2) / hipW;
         return -Math.abs(off);
       }
+      case 'kneeLift':
+        // the knee that comes furthest off the floor, against where it was in the still pictures
+        return this.calibrated ? (Math.max(this.base.kl - px(f, P.lKn)[1], this.base.kr - px(f, P.rKn)[1]) / this.base.th) * 100 : null;
       case 'catCow': {
         // on hands and knees: the head against the line of the back, + = up (cow), − = down between the arms (cat)
         const ear = nearSide(f) === 'left' ? P.lEar : P.rEar;
@@ -402,6 +412,7 @@ export function signalValueText(id: SignalId, v: number | null, tr: (en: string,
       return `${n(Math.round(v))} s`;
     case 'sideSwitch':
     case 'catCow':
+    case 'kneeLift':
       return '';
     default:
       return `${Math.round(v)}°`;
