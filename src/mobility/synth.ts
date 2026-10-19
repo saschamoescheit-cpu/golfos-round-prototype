@@ -31,6 +31,7 @@ export interface FrontPose {
   er?: number; // both elbows at the sides bent 90°, forearms forward, turned out this far (°) – band external rotation
   kneeOpen?: number; // the right knee opens away from the left (°, clamshell seen from the front)
   kneeShift?: number; // both knees shift sideways (m, the 90/90 switch)
+  stretch9090?: number; // the right upper arm out at shoulder height, the forearm up (the 90/90 shoulder stretch); the elbow this far below the shoulder (°)
   kneeUp?: number; // the right knee and foot lift this far (m) – the back leg in the 90/90 sit lifting (hip inner rotation)
 }
 
@@ -84,6 +85,13 @@ export function frontBody(o: FrontPose): Lm[] {
   if (o.kneeOpen) {
     const k = 0.43 * Math.sin((o.kneeOpen * Math.PI) / 180);
     lm[26] = [lm[26][0] - k, lm[26][1], lm[26][2]];
+  }
+  if (o.stretch9090 != null) {
+    const a = (o.stretch9090 * Math.PI) / 180;
+    const el: J3 = [-0.19 - 0.27 * Math.cos(a), 1.43 - 0.27 * Math.sin(a), 0];
+    lm[14] = el;
+    lm[16] = [el[0], el[1] + 0.24, -0.05];
+    for (const i of [18, 20, 22]) lm[i] = [el[0], el[1] + 0.31, -0.06];
   }
   if (o.kneeUp) for (const i of [26, 28, 30, 32]) lm[i] = [lm[i][0], lm[i][1] + o.kneeUp, lm[i][2]];
   if (o.kneeShift) for (const i of [25, 26]) lm[i] = [lm[i][0] + o.kneeShift, lm[i][1], lm[i][2]];

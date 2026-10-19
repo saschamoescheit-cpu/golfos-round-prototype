@@ -51,6 +51,8 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
     // the watched Pallof press: stiff, the trunk turns with the band
     if (plan.watch === 'trunkStill') return s.frontBody({ trunk: good ? 0 : 20 * x });
     // the watched open books: stiff, the knees come apart
+    // the watched 90/90 shoulder stretch: stiff, the elbow sinks below the shoulder
+    if (plan.watch === 'elbowHigh') return s.frontBody({ stretch9090: ms > 0 && !good ? 30 : 0 });
     if (plan.watch === 'kneesTogether') return s.frontBody({ kneeOpen: good ? 0 : 35 * x });
     if (plan.watch === 'footUp') return s.frontBody({ lift: ms > 0 && good ? (side === 'right' ? 'left' : 'right') : null });
     switch (plan.signal) {

@@ -47,7 +47,7 @@ export const DRILL_COACH: Record<string, DrillCoach> = {
   'mob-clamshell': { view: 'floor', where: L('On your side, facing the phone, knees bent.', 'Auf die Seite, das Gesicht zum Handy, Knie gebeugt.'), sides: true, reps: 15, tempo: 3, signal: 'kneeOpen' },
   'mob-lat-stretch': { view: 'floor', where: L('Kneel in front of a bench, side-on to the phone.', 'Vor einer Bank knien, seitlich zum Handy.'), hold: 30, sets: 3, signal: 'arms' },
   'mob-wall-angels': { view: 'front', where: L('Back to a wall, face-on to the phone.', 'Mit dem Rücken an eine Wand, frontal zum Handy.'), reps: 10, tempo: 4, sets: 2, signal: 'arms' },
-  'mob-9090-stretch': { view: 'front', where: FRONT_STAND, sides: true, hold: 20, sets: 3 },
+  'mob-9090-stretch': { view: 'front', where: FRONT_STAND, sides: true, hold: 20, sets: 3, watch: 'elbowHigh' },
   'mob-band-er': { view: 'front', where: FRONT_STAND, reps: 15, tempo: 3, sets: 2, signal: 'shoulderEr' },
   'mob-hip-ir': { view: 'floor', where: L('Sit in the 90/90 position, face-on to the phone.', 'Im 90/90-Sitz, frontal zum Handy.'), sides: true, reps: 8, tempo: 4, signal: 'kneeLift' },
   'mob-prone-y': { view: 'floor', where: L('On your front, side-on to the phone.', 'Auf den Bauch, seitlich zum Handy.'), reps: 10, tempo: 4, sets: 2, signal: 'armLift' },
@@ -422,9 +422,9 @@ export function signalValueText(id: SignalId, v: number | null, tr: (en: string,
 // ---------- form cues: what a coach would say while the player does the drill ----------
 
 /** A fault the camera can see during a drill – said once (at most one cue every 6 s) and counted for the result. */
-export type FormCue = 'hipsStill' | 'chestStill' | 'shouldersStill' | 'heelsDown' | 'armsUp' | 'heelDown' | 'kneesStraight' | 'elbowsIn' | 'trunkStill' | 'footUp' | 'kneesTogether' | 'hipsOverKnees';
+export type FormCue = 'hipsStill' | 'chestStill' | 'shouldersStill' | 'heelsDown' | 'armsUp' | 'heelDown' | 'kneesStraight' | 'elbowsIn' | 'trunkStill' | 'footUp' | 'kneesTogether' | 'hipsOverKnees' | 'elbowHigh';
 /** what the camera watches in a drill it does not measure */
-export type WatchId = 'trunkStill' | 'footUp' | 'elbowsIn' | 'kneesTogether';
+export type WatchId = 'trunkStill' | 'footUp' | 'elbowsIn' | 'kneesTogether' | 'elbowHigh';
 
 export const CUES: Record<FormCue, Text> = {
   hipsStill: L('Keep the hips still – only the chest turns.', 'Die Hüfte bleibt ruhig – nur die Brust dreht.'),
@@ -438,6 +438,7 @@ export const CUES: Record<FormCue, Text> = {
   trunkStill: L('Keep the trunk still – do not turn with the band.', 'Der Rumpf bleibt ruhig – nicht mitdrehen.'),
   footUp: L('Keep the free foot off the floor.', 'Den freien Fuß in der Luft lassen.'),
   kneesTogether: L('Keep the knees together.', 'Die Knie bleiben zusammen.'),
+  elbowHigh: L('Keep the elbow at shoulder height.', 'Den Ellbogen auf Schulterhöhe halten.'),
   hipsOverKnees: L('Keep the hips over the knees.', 'Die Hüfte bleibt über den Knien.'),
 };
 /** the short form for the result, e.g. "2 × heels up" */
@@ -453,6 +454,7 @@ export const CUE_SHORT: Record<FormCue, Text> = {
   trunkStill: L('trunk turned along', 'Rumpf drehte mit'),
   footUp: L('foot down', 'Fuß abgesetzt'),
   kneesTogether: L('knees apart', 'Knie auseinander'),
+  elbowHigh: L('elbow dropped', 'Ellbogen gesunken'),
   hipsOverKnees: L('sat back', 'nach hinten gesetzt'),
 };
 
@@ -493,7 +495,7 @@ export class FormCheck {
   /** the faults in this picture (value: the drill's signal now) */
   faults(f: Frame, value: number | null): FormCue[] {
     // a watched drill has no value of its own; a measured one is checked while the camera sees its movement
-    const watched = this.signal === 'trunkStill' || this.signal === 'footUp' || this.signal === 'elbowsIn' || this.signal === 'kneesTogether';
+    const watched = this.signal === 'trunkStill' || this.signal === 'footUp' || this.signal === 'elbowsIn' || this.signal === 'kneesTogether' || this.signal === 'elbowHigh';
     if (!this.calibrated || (value == null && !watched)) return [];
     const v = value ?? 0;
     const seen = (...ix: number[]) => ix.every((i) => inFrame(f, i));
@@ -546,6 +548,16 @@ export class FormCheck {
         if (f.t - this.t0 < 3000 || !seen(P.lHip, P.rHip, P.lAn, P.rAn)) break;
         const leg = Math.max(1, (dist(px(f, P.lHip), px(f, P.lAn)) + dist(px(f, P.rHip), px(f, P.rAn))) / 2);
         if (Math.abs(px(f, P.lAn)[1] - px(f, P.rAn)[1]) / leg < 0.04) out.push('footUp');
+        break;
+      }
+      case 'elbowHigh': {
+        // the 90/90 shoulder stretch: the stretched arm (the hand higher up) keeps the upper arm at shoulder height – more
+        // than 20° below it is the fault (after the first 2 s of the set, while the player gets into it)
+        this.t0 ??= f.t;
+        if (f.t - this.t0 < 2000 || !seen(P.lSh, P.rSh, P.lEl, P.rEl, P.lWr, P.rWr)) break;
+        const sd = px(f, P.lWr)[1] < px(f, P.rWr)[1] ? S('left') : S('right');
+        const up = sub(px(f, sd.el), px(f, sd.sh));
+        if (deg(Math.atan2(up[1], Math.abs(up[0]))) > 20) out.push('elbowHigh');
         break;
       }
       case 'kneesTogether': {

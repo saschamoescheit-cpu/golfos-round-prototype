@@ -240,7 +240,7 @@ describe('form cues', () => {
   });
 
   it('watches drills it does not measure: the trunk in the Pallof press, the free foot in the single-leg reach', () => {
-    const watch = (id: 'trunkStill' | 'footUp', body: (t: number) => Lm[], ms = 8000) => {
+    const watch = (id: 'trunkStill' | 'footUp' | 'elbowHigh', body: (t: number) => Lm[], ms = 8000) => {
       const form = new FormCheck(id);
       let t = 0;
       for (let i = 0; i < 10; i++) form.calibrate({ lm: body(0), w: W, h: H, t: (t += 50) });
@@ -257,6 +257,10 @@ describe('form cues', () => {
     expect(watch('footUp', () => frontBody({}))).toContain('footUp');
     expect(watch('footUp', () => frontBody({}), 2500)).toEqual([]);
     expect(watch('footUp', (t) => frontBody({ lift: t > 600 ? 'right' : null }))).toEqual([]);
+    // the 90/90 shoulder stretch: the elbow sinks 30° – the cue; at shoulder height (or 10° under it) nothing
+    expect(watch('elbowHigh', () => frontBody({ stretch9090: 30 }))).toContain('elbowHigh');
+    expect(watch('elbowHigh', () => frontBody({ stretch9090: 0 }))).toEqual([]);
+    expect(watch('elbowHigh', () => frontBody({ stretch9090: 10 }))).toEqual([]);
   });
 
   it('says "knees together" in the open books and "hips over the knees" in thread the needle', () => {
