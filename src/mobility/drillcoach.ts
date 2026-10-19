@@ -419,6 +419,16 @@ export function signalValueText(id: SignalId, v: number | null, tr: (en: string,
   }
 }
 
+/** "11 degrees further than last time" – the clear gains only (3° or 1 cm/s at least), else null; `by` > 0 is better */
+export function gainSpeech(sig: SignalId, by: number, tr: (en: string, de: string) => string): string | null {
+  const u = SIGNALS[sig].unit;
+  // (the time on one leg is no distance: not "further")
+  if (SIGNALS[sig].countOnly || sig === 'oneLeg' || by < (u === '°' ? 3 : 1)) return null;
+  const n = Math.round(by);
+  const unit = u === '°' ? tr('degrees', 'Grad') : u === 'cm' ? tr('centimetres', 'Zentimeter') : tr(n === 1 ? 'second' : 'seconds', n === 1 ? 'Sekunde' : 'Sekunden');
+  return tr(`${n} ${unit} further than last time`, `${n} ${unit} weiter als beim letzten Mal`);
+}
+
 // ---------- form cues: what a coach would say while the player does the drill ----------
 
 /** A fault the camera can see during a drill – said once (at most one cue every 6 s) and counted for the result. */

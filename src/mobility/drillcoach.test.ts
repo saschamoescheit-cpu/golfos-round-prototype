@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRILL_COACH, FormCheck, RepCounter, SIGNALS, Signal, drillSeconds, progressStep, progressed, setsOf, signalValueText, type SignalId } from './drillcoach';
+import { DRILL_COACH, FormCheck, gainSpeech, RepCounter, SIGNALS, Signal, drillSeconds, progressStep, progressed, setsOf, signalValueText, type SignalId } from './drillcoach';
 import { bridgeBody, catCowBody, frontBody, latBody, proneBody, quadBody, squatBody, toeTouchBody } from './synth';
 import { TESTS } from './tests';
 import type { Frame, Lm } from './measure';
@@ -148,6 +148,15 @@ describe('drill coach', () => {
   it('counts the back knee lifting off the floor in the 90/90 sit', () => {
     expect(run('kneeLift', (k) => frontBody({ kneeUp: 0.1 * k }), 8).n).toBe(8);
     expect(run('kneeLift', () => frontBody({}), 8).n).toBe(0);
+  });
+
+  it('says a clear gain over the last time, and nothing for a small one', () => {
+    const de = (_en: string, de: string) => de;
+    expect(gainSpeech('hipTurn', 11.4, de)).toBe('11 Grad weiter als beim letzten Mal');
+    expect(gainSpeech('reach', 6, de)).toBe('6 Zentimeter weiter als beim letzten Mal');
+    expect(gainSpeech('hipTurn', 2, de)).toBeNull();
+    expect(gainSpeech('hipTurn', -8, de)).toBeNull();
+    expect(gainSpeech('catCow', 30, de)).toBeNull();
   });
 
   it('sees one foot off the floor', () => {

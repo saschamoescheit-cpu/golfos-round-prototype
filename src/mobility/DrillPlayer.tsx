@@ -4,7 +4,7 @@ import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
 import type { Drill } from '../training/types';
 import { BONES, facingOf, type Frame, type Lm } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
-import { CUES, CUE_SHORT, FormCheck, RepCounter, SELF_NAMED, SIGNALS, Signal, progressStep, progressed, setsOf, signalValueText, type DrillCoach, type FormCue } from './drillcoach';
+import { CUES, CUE_SHORT, FormCheck, RepCounter, gainSpeech, SELF_NAMED, SIGNALS, Signal, progressStep, progressed, setsOf, signalValueText, type DrillCoach, type FormCue } from './drillcoach';
 import { isClean, type DrillDone, type DrillSet } from './sessions';
 import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
@@ -320,7 +320,9 @@ export function DrillPlayer(props: {
       if (ownStream) stream?.getTracks().forEach((x) => x.stop());
       const vals = d.sets.map((x) => x.best).filter((v): v is number => v != null);
       const best = vals.length && plan.signal ? (SIGNALS[plan.signal].better === 'up' ? Math.max(...vals) : Math.min(...vals)) : null;
-      say(best != null && plan.signal ? `${tr('Done', 'Fertig')}. ${signalValueText(plan.signal, best, tr)}.` : tr('Done.', 'Fertig.'));
+      // the value, and the gain over the last time when it is a clear one ("4 degrees further than last time")
+      const gain = best != null && plan.signal && props.previous != null ? gainSpeech(plan.signal, SIGNALS[plan.signal].better === 'up' ? best - props.previous : props.previous - best, tr) : null;
+      say(best != null && plan.signal ? `${tr('Done', 'Fertig')}. ${signalValueText(plan.signal, best, tr)}.${gain ? ` ${gain}.` : ''}` : tr('Done.', 'Fertig.'));
       setAuto(4);
     };
 
