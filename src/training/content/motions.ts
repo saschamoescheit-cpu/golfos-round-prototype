@@ -365,6 +365,10 @@ set3d(DRILL_MOTIONS['brush-find'], 'brushFind');
 set3d(DRILL_MOTIONS['l-to-l'], 'lToL');
 // the clock system in the basics: the three golfers at 8, 9 and 10 o'clock
 set3d(SECTION_MOTIONS.pitching?.['The clock system'], 'clockTrio');
+// the swing basics: each phase with the steps of its own text
+set3d(SECTION_MOTIONS.swing?.['Takeaway and backswing'], 'phaseBack');
+set3d(SECTION_MOTIONS.swing?.['Transition and downswing'], 'phaseDown');
+set3d(SECTION_MOTIONS.swing?.['Impact and finish'], 'phaseImpact');
 set3d(DRILL_MOTIONS['driver-wide-stance'], 'driverWide');
 if (DRILL_MOTIONS['alignment-station']) set3d(DRILL_MOTIONS['alignment-station'], 'alignStation');
 else DRILL_MOTIONS['alignment-station'] = { frames: [], video: 'alignStation' };
