@@ -349,6 +349,8 @@ function TestTab(props: { nav: Nav }) {
   // repeat every four weeks (GOWOD 30 days, Amazon Halo 2–4 weeks, TPI coaches 4 weeks) – a hint, no lock
   const lastDone = all.filter((s) => s.finishedAt && s.kind !== 'single' && Object.keys(s.results).length).map((s) => s.finishedAt!).sort().at(-1);
   const next = lastDone ? { last: lastDone, from: new Date(new Date(lastDone).getTime() + 28 * 86400000).toISOString() } : null;
+  // the overall value of the latest results (the same as at the top of the result)
+  const score = next ? mobilityScore(TESTS, results, loadGoal()) : null;
   const start = (kind: 'quick' | 'full') => {
     const s = newScreening(kind, kind === 'quick' ? QUICK : FULL);
     saveScreening(s);
@@ -407,7 +409,7 @@ function TestTab(props: { nav: Nav }) {
         </button>
       </section>
       <p className="muted small mob-when">
-        {next ? tr(`Last screening ${dateText(next.last)} · the next one from ${dateText(next.from)}. `, `Letztes Screening ${dateText(next.last)} · das nächste ab ${dateText(next.from)}. `) : ''}
+        {next ? tr(`Last screening ${dateText(next.last)}${score ? ` · mobility ${score.score} / 100` : ''} · the next one from ${dateText(next.from)}. `, `Letztes Screening ${dateText(next.last)}${score ? ` · Beweglichkeit ${score.score} / 100` : ''} · das nächste ab ${dateText(next.from)}. `) : ''}
         {tr('For values you can compare: not warmed up, about the same time of day.', 'Für vergleichbare Werte: nicht aufgewärmt, etwa zur gleichen Tageszeit.')}
       </p>
       <section className="tr-block">

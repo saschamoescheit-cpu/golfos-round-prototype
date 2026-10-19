@@ -55,6 +55,8 @@ await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-today').waitFor({ timeout: 10000 }).catch(() => {});
 const today = await p.locator('.mob-today').innerText().catch(() => '');
 ok(/Dein Training heute/i.test(today) && /Jetzt trainieren/.test(today), `the start tab shows the training of the day (${today.split('\n').slice(0, 2).join(' · ')})`);
+const when = await p.locator('.mob-when').innerText().catch(() => '');
+ok(/Letztes Screening .* · Beweglichkeit \d+ \/ 100 · das nächste ab/.test(when), `the start tab names the overall value of the last screening (${when.split('.')[0]})`);
 await shot('today');
 await p.locator('.tabbar button').filter({ hasText: 'Übungen' }).click();
 await p.waitForTimeout(400);
