@@ -87,6 +87,8 @@ describe('3D videos', () => {
     for (const v of named) expect(v in SWINGS || v in PAIRS, v).toBe(true);
     for (const [id, sw] of Object.entries(SWINGS)) {
       sw.keys.forEach((k, i) => i && expect(k.t, `${id} key ${i}`).toBeGreaterThan(sw.keys[i - 1].t));
+      // a stance without a stroke (standing on the line to feel the slope) has no ball at the club
+      if (sw.noBall && !sw.hit && !sw.keys.some((k) => k.club === 'ball')) continue;
       expect(sw.keys[0].club, `${id} starts at the ball`).toBe('ball');
       expect(sw.keys.some((k, i) => i > 1 && k.club === 'ball'), `${id} comes back to the ball`).toBe(true);
       if (sw.hit) expect(sw.keys.some((k) => k.t === sw.hit!.at && k.club === 'ball'), `${id}: the ball leaves at impact`).toBe(true);
