@@ -118,11 +118,14 @@ export interface SignalDef {
   name: Text;
   /** the camera only counts (the value itself means nothing to the player) */
   countOnly?: boolean;
+  /** the pictures the counting smooths over (a median; default 5) – more for a signal the pose model shakes a lot */
+  smooth?: number;
 }
 
 export const SIGNALS: Record<SignalId, SignalDef> = {
   turn: { unit: '°', better: 'up', minAmp: 12, name: L('turn of the chest', 'Drehung der Brust') },
-  hipTurn: { unit: '°', better: 'up', minAmp: 8, name: L('turn of the hips', 'Drehung der Hüfte') },
+  // the hips are narrow in the picture: their width shakes, and the angle from it (acos) shakes most near 0° – smoothed longer
+  hipTurn: { unit: '°', better: 'up', minAmp: 8, smooth: 7, name: L('turn of the hips', 'Drehung der Hüfte') },
   head: { unit: '°', better: 'up', minAmp: 15, name: L('head turn', 'Kopfdrehung') },
   squat: { unit: '°', better: 'up', minAmp: 25, name: L('depth of the thighs', 'Tiefe der Oberschenkel') },
   reach: { unit: 'cm', better: 'down', minAmp: 20, name: L('fingertips above the toes', 'Fingerspitzen über den Zehen') },
@@ -218,6 +221,14 @@ export class Signal {
       this.base = { w: m('w'), h: m('h'), e: m('e'), n: m('n'), leg: Math.max(1, m('leg')), al: Math.max(1, m('al')), ar: Math.max(1, m('ar')), kl: m('kl'), kr: m('kr'), th: Math.max(1, m('th')) };
     }
   }
+  /** the width of the shoulders or the hips, the mean of the last three pictures: the angle comes from it by acos, which
+   * turns a little shaking of the width into many degrees near 0° – the width is steadied before, not the angle after */
+  private ws: number[] = [];
+  private steady(w: number): number {
+    this.ws.push(w);
+    if (this.ws.length > 3) this.ws.shift();
+    return this.ws.reduce((a, b) => a + b, 0) / this.ws.length;
+  }
   private noseOff(f: Frame) {
     return (f.lm[P.nose].x - (f.lm[P.lSh].x + f.lm[P.rSh].x) / 2) * f.w;
   }
@@ -233,9 +244,9 @@ export class Signal {
     const s = S(nearSide(f));
     switch (this.id) {
       case 'turn':
-        return this.calibrated ? turned(width(f, P.lSh, P.rSh), this.base.w) : null;
+        return this.calibrated ? turned(this.steady(width(f, P.lSh, P.rSh)), this.base.w) : null;
       case 'hipTurn':
-        return this.calibrated ? turned(width(f, P.lHip, P.rHip), this.base.h) : null;
+        return this.calibrated ? turned(this.steady(width(f, P.lHip, P.rHip)), this.base.h) : null;
       case 'head': {
         if (!this.calibrated || this.base.e <= 0) return null;
         const off = Math.abs(this.noseOff(f) - this.base.n);
@@ -343,17 +354,31 @@ export class RepCounter {
   private out = false;
   private peak = 0;
   private recent: number[] = [];
+  /** a longer window for the value of a rep: the top of a shaking signal is higher than the movement was */
+  private wide: number[] = [];
+  private top = -Infinity;
   /** how far the last reps went (from the rest position) */
   private sizes: number[] = [];
-  constructor(private def: Pick<SignalDef, 'better' | 'minAmp'>) {}
+  /** the pictures of the last reps (how slowly the player moves) */
+  private lengths: number[] = [];
+  private n = 0;
+  private repFrom = 0;
+  constructor(private def: Pick<SignalDef, 'better' | 'minAmp' | 'smooth'>) {}
   /** a new value; true when a repetition was just completed */
   push(v: number | null): boolean {
     if (v == null || !Number.isFinite(v)) return false;
-    // a little smoothing: the median of the last three (one wrong point does not count a rep)
+    // smoothing: the median of the last pictures (one wrong point does not count a rep) – three while the reps are quick
+    // (a turn left – right goes through the middle in one or two pictures), more once they take 20 pictures or more
+    this.n++;
+    const slow = this.lengths.length > 0 && median(this.lengths) >= 20;
     this.recent.push(v);
-    if (this.recent.length > 3) this.recent.shift();
+    while (this.recent.length > (slow ? (this.def.smooth ?? 5) : 3)) this.recent.shift();
+    this.wide.push(v);
+    if (this.wide.length > 9) this.wide.shift();
     const x = median(this.recent);
     const s = this.def.better === 'up' ? x : -x;
+    const wx = median(this.wide);
+    const ws = this.def.better === 'up' ? wx : -wx;
     if (this.rest == null) {
       this.start.push(s);
       if (this.start.length >= 3) this.rest = Math.min(...this.start);
@@ -368,16 +393,23 @@ export class RepCounter {
       if (d > Math.max(this.def.minAmp, 0.55 * usual)) {
         this.out = true;
         this.peak = s;
+        this.top = ws;
       }
       return false;
     }
     if (s > this.peak) this.peak = s;
+    if (ws > this.top) this.top = ws;
     if (d < Math.max(this.def.minAmp * 0.4, 0.4 * (this.peak - this.rest))) {
       this.out = false;
       this.reps++;
+      this.lengths.push(this.n - this.repFrom);
+      if (this.lengths.length > 3) this.lengths.shift();
+      this.repFrom = this.n;
       this.sizes.push(this.peak - this.rest);
       if (this.sizes.length > 3) this.sizes.shift();
-      const p = this.def.better === 'up' ? this.peak : -this.peak;
+      // the value of the rep: the top of the longer window (the counting window's peak, when the rep was too short for it)
+      const t = Number.isFinite(this.top) ? Math.min(this.top, this.peak) : this.peak;
+      const p = this.def.better === 'up' ? t : -t;
       this.best = this.best == null ? p : this.def.better === 'up' ? Math.max(this.best, p) : Math.min(this.best, p);
       return true;
     }

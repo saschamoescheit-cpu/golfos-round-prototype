@@ -182,6 +182,67 @@ describe('drill coach', () => {
     expect(n).toBeLessThanOrEqual(10);
   });
 
+  it('counts right and measures close with the shaking of a real pose model (noise, lost and wild points)', () => {
+    // every point shakes (σ 0.3 % of the picture), 5 % of the pictures are lost, 2 % of the points are wild (8 × the
+    // shaking) – 5 random runs per drill; the value of the best rep stays near the clean one (the top of a shaking signal
+    // is higher than the movement was – the counter takes it from a longer window)
+    let seed = 1;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+    const noisy = (lm: Lm[]): Lm[] | null =>
+      rnd() < 0.05
+        ? null
+        : lm.map((p) => {
+            const k = rnd() < 0.02 ? 8 : 1;
+            return { ...p, x: p.x + gauss() * 0.003 * k, y: p.y + gauss() * 0.003 * k * (W / H) };
+          });
+    const cases: [SignalId, (k: number) => Lm[]][] = [
+      ['turn', (k) => frontBody({ trunk: 50 * k })],
+      ['hipTurn', (k) => frontBody({ pelvis: 35 * k })],
+      ['head', (k) => frontBody({ head: 70 * k })],
+      ['squat', (k) => squatBody(k, 8)],
+      ['shin', (k) => squatBody(k * 0.6, 0)],
+      ['arms', (k) => latBody(80 + 80 * k)],
+      ['shoulderEr', (k) => frontBody({ er: 80 * k })],
+      ['kneeOpen', (k) => frontBody({ kneeOpen: 40 * k })],
+      ['armLift', (k) => proneBody(20 * k)],
+      ['armOpen', (k) => quadBody(170 * k)],
+      ['catCow', (k) => catCowBody(1 - 2 * k)],
+      ['kneeLift', (k) => frontBody({ kneeUp: 0.1 * k })],
+    ];
+    // as run(), a lost picture is "not seen" (null), as in the app
+    const runNoisy = (id: SignalId, body: (k: number) => Lm[]) => {
+      const sig = new Signal(id);
+      const count = new RepCounter(SIGNALS[id]);
+      let t = 0;
+      const value = (lm: Lm[] | null) => (lm ? sig.value({ lm, w: W, h: H, t }) : null);
+      for (let i = 0; i < 10; i++) {
+        const lm = noisy(body(0));
+        t += 50;
+        if (lm) sig.calibrate({ lm, w: W, h: H, t });
+      }
+      for (let r = 0; r < 6; r++)
+        for (let i = 0; i < 50; i++) {
+          t += 50;
+          count.push(value(noisy(body(Math.sin((Math.PI * i) / 50)))));
+        }
+      for (let i = 0; i < 10; i++) {
+        t += 50;
+        count.push(value(noisy(body(0))));
+      }
+      return { n: count.reps, best: count.best };
+    };
+    for (const [id, body] of cases) {
+      const clean = run(id, body, 6).best;
+      for (let s = 1; s <= 5; s++) {
+        seed = s * 7919;
+        const r = runNoisy(id, body);
+        expect(r.n, `${id} run ${s}`).toBe(6);
+        if (clean != null && r.best != null) expect(Math.abs(r.best - clean), `${id} run ${s}: ${r.best} against ${clean}`).toBeLessThan(Math.max(5, Math.abs(clean) * 0.07));
+      }
+    }
+  });
+
   it('does not count a body that stands still or points that are not seen', () => {
     expect(run('turn', () => frontBody({ trunk: 3 }), 4).n).toBe(0);
     const c = new RepCounter(SIGNALS.squat);
