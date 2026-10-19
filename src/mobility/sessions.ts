@@ -126,10 +126,17 @@ export function cleanStreak(drill: string): number {
   return n;
 }
 
+/** the day of a moment on the player's clock (YYYY-MM-DD) – a training at 00:30 belongs to the new day, not to UTC's */
+export function localDay(at: string | number | Date = new Date()): string {
+  const d = new Date(at);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 /** days with a finished session in the 7 days up to now */
 export function daysThisWeek(now = new Date()): number {
   const from = now.getTime() - 7 * 864e5;
-  const days = new Set(loadSessions().filter((s) => s.finishedAt && new Date(s.startedAt).getTime() > from).map((s) => s.startedAt.slice(0, 10)));
+  const days = new Set(loadSessions().filter((s) => s.finishedAt && new Date(s.startedAt).getTime() > from).map((s) => localDay(s.startedAt)));
   return days.size;
 }
 

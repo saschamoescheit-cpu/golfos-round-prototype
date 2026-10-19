@@ -110,8 +110,10 @@ const mobilityToday = (): 'paused' | 'done' | 'today' | undefined => {
   try {
     const sessions = JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]') as { startedAt: string; finishedAt: string | null; done: unknown[] }[];
     if (sessions.some((s) => !s.finishedAt && s.done.length > 0)) return 'paused';
-    const today = new Date().toISOString().slice(0, 10);
-    if (sessions.some((s) => s.finishedAt && s.startedAt.slice(0, 10) === today)) return 'done';
+    // the day on the player's clock (a training at 00:30 belongs to the new day)
+    const day = (at: string | number) => new Date(at).toDateString();
+    const today = day(Date.now());
+    if (sessions.some((s) => s.finishedAt && day(s.startedAt) === today)) return 'done';
     const screenings = JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]') as { finishedAt: string | null; results: object }[];
     return screenings.some((s) => s.finishedAt && Object.keys(s.results ?? {}).length) ? 'today' : undefined;
   } catch {

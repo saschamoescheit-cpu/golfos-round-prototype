@@ -140,6 +140,8 @@ await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
 await p.waitForTimeout(300);
 const after = await p.locator('.mob-today').innerText().catch(() => '');
 ok(/heute erledigt/.test(after) && /Nochmal trainieren/.test(after) && /10 Min\./.test(after), `the start tab: done today, train again, 10 min (${after.split('\n').slice(0, 2).join(' · ')})`);
+ok((await p.locator(".mob-week-day.today.on").count()) === 1 && (await p.locator(".mob-week-day").count()) === 7, "the week dots: 7 days, today filled");
+await shot("today-done");
 
 // the test page shows what the training measured for it (hip turns in golf posture → pelvic rotation)
 if (sess?.done.some((d) => d.drill === 'mob-pelvic-turn')) {

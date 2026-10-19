@@ -221,3 +221,10 @@
 .mob-due .btn-primary { margin-top: 6px; }
 
 .mob-progress-note { display: block; }
+
+/* the last 7 days on the training card: a dot for each day trained */
+.mob-week { display: flex; gap: 6px; }
+.mob-week-day { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--text-2); min-width: 0; }
+.mob-week-day i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); }
+.mob-week-day.on i { background: var(--brand); border-color: var(--brand); }
+.mob-week-day.today span { color: var(--text); font-weight: 700; }

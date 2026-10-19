@@ -21,7 +21,7 @@ import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { DrillSession, doneText } from '../mobility/DrillSession';
 import { cap } from '../mobility/DrillPlayer';
-import { daysThisWeek, drillHistory, loadSessions, newSession, openSession, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
+import { daysThisWeek, drillHistory, loadSessions, localDay, newSession, openSession, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
 import { coachOf, DRILL_COACH, SIGNALS, signalValueText } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
@@ -290,8 +290,8 @@ function TodayCard(props: { nav: Nav }) {
   const minutes = loadMinutes();
   const { planDrills, planMinutes } = pillarPlan(minutes);
   const days = daysThisWeek();
-  const today = new Date().toISOString().slice(0, 10);
-  const doneToday = loadSessions().some((x) => x.finishedAt && x.startedAt.slice(0, 10) === today);
+  const today = localDay();
+  const doneToday = loadSessions().some((x) => x.finishedAt && localDay(x.startedAt) === today);
   if (!planDrills.length) return null;
   return (
     <section className="card mob-today">
@@ -302,6 +302,7 @@ function TodayCard(props: { nav: Nav }) {
           <SketchThumb key={d.id} sketch={d.sketch} />
         ))}
       </div>
+      <WeekDots />
       <span className="muted small">
         {paused
           ? tr(`${paused.done.length} of ${paused.drills.length} drills done`, `${paused.done.length} von ${paused.drills.length} Übungen erledigt`)
@@ -320,6 +321,25 @@ function TodayCard(props: { nav: Nav }) {
   );
 }
 
+/** The last 7 days, today last: a filled dot on each day with a finished training – how regular, not how good. */
+function WeekDots() {
+  const trained = new Set(loadSessions().filter((x) => x.finishedAt).map((x) => localDay(x.startedAt)));
+  const days = [...Array(7)].map((_, i) => new Date(Date.now() - (6 - i) * 864e5));
+  return (
+    <div className="mob-week" aria-label={tr(`${days.filter((d) => trained.has(localDay(d))).length} of the last 7 days trained`, `An ${days.filter((d) => trained.has(localDay(d))).length} der letzten 7 Tage trainiert`)}>
+      {days.map((d, i) => {
+        const on = trained.has(localDay(d));
+        return (
+          <span key={i} className={`mob-week-day${on ? ' on' : ''}${i === 6 ? ' today' : ''}`} aria-hidden="true">
+            <i />
+            <span>{d.toLocaleDateString(tr('en-GB', 'de-DE'), { weekday: 'narrow' })}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function TestTab(props: { nav: Nav }) {
   const all = loadScreenings();
   const open = all.filter((s) => !s.finishedAt && s.kind !== 'single');
@@ -334,7 +354,7 @@ function TestTab(props: { nav: Nav }) {
   };
   const due = next && Date.now() >= new Date(next.from).getTime() && !open.length;
   // the days trained since the last screening (what the repeat will show)
-  const trainedSince = next ? new Set(loadSessions().filter((x) => x.finishedAt && x.startedAt > next.last).map((x) => x.startedAt.slice(0, 10))).size : 0;
+  const trainedSince = next ? new Set(loadSessions().filter((x) => x.finishedAt && x.startedAt > next.last).map((x) => localDay(x.startedAt))).size : 0;
   return (
     <>
       {due && (
@@ -1558,8 +1578,8 @@ function pillarPlan(minutes: number) {
   };
   // day by day through all the drills of the focus (a coach varies them): each earlier training day moves the start
   // on by one day's worth – the same plan all of today
-  const today = new Date().toISOString().slice(0, 10);
-  const daysBefore = new Set(loadSessions().filter((x) => x.finishedAt && x.startedAt.slice(0, 10) < today).map((x) => x.startedAt.slice(0, 10))).size;
+  const today = localDay();
+  const daysBefore = new Set(loadSessions().filter((x) => x.finishedAt && localDay(x.startedAt) < today).map((x) => localDay(x.startedAt))).size;
   const start = pool.length ? (daysBefore * fit(pool).length) % pool.length : 0;
   const planDrills = fit([...pool.slice(start), ...pool.slice(0, start)]);
   const planMinutes = planDrills.reduce((n, x) => n + x.minutes, 0);
