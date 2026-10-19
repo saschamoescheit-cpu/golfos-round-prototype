@@ -1,7 +1,7 @@
 import type { LngLat, Ring } from '../types';
 import type { GreenChart } from '../data/greenCharts';
 import type { GreenGrid } from './greenread';
-import { demProviderAt, fetchSquare, fromUtm, toUtm, type DemProvider } from './dem';
+import { demProvidersAt, fetchSquare, fromUtm, toUtm, type DemProvider } from './dem';
 
 // Green charts made on the phone (Sascha 19.10.2026: "every course should have green slopes"): for a course without
 // built-in charts, the heights of each green come from the official terrain model of the region (dem.ts) and are
@@ -290,7 +290,15 @@ export async function madeChartsFor(
   const kept = await loadMade(courseId);
   if (kept) return kept;
   if (!greens.length) return null;
-  const d = demProviderAt(greens[0].ring[0]);
+  // the service of the region: the first one that has heights for the first green
+  let d: DemProvider | null = null;
+  for (const cand of demProvidersAt(greens[0].ring[0])) {
+    if (signal?.aborted) return null;
+    if (await makeGreen(cand, greens[0].ring, signal).catch(() => null)) {
+      d = cand;
+      break;
+    }
+  }
   if (!d) return null;
   const m: MadeCharts = { version: VERSION, provider: d.id, credit: d.credit, charts: {}, heights: {}, slopes: {} };
   let done = 0;

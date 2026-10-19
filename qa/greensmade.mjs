@@ -1,5 +1,5 @@
 // Green slopes on every course (Sascha 19.10.2026): a course without built-in charts gets them on the phone from the
-// region's official terrain model – here courses in North Rhine-Westphalia and Baden-Württemberg, loaded from
+// region's official terrain model – here courses in German states and the USA, loaded from
 // OpenStreetMap as any course. The slope button on the holes, the chart on the map, the credit in the ⓘ, and the
 // second time without the service (kept on the phone).
 // Usage: node qa/greensmade.mjs [url] [course name …]
@@ -7,7 +7,7 @@ import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
-const COURSES = process.argv.length > 3 ? process.argv.slice(3) : ['Hubbelrath', 'Nippenburg'];
+const COURSES = process.argv.length > 3 ? process.argv.slice(3) : ['Hubbelrath', 'Nippenburg', 'Frankfurter Golf Club', 'Wilkendorf'];
 const b = await webkit.launch();
 let bad = 0;
 const ok = (c, m) => { if (!c) bad++; console.log(`${c ? '✓' : '✗'} ${m}`); };
@@ -18,7 +18,7 @@ for (const name of COURSES) {
   const errs = [];
   p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
   let dem = 0;
-  p.on('request', (r) => { if (/wcs\.nrw\.de|owsproxy\.lgl-bw\.de\/owsproxy\/wcs|elevation\.nationalmap\.gov/.test(r.url())) dem++; });
+  p.on('request', (r) => { if (/wcs\.nrw\.de|owsproxy\.lgl-bw\.de\/owsproxy\/wcs|elevation\.nationalmap\.gov|geoservices\.lgln|inspire-hessen\.de|isk\.geobasis-bb\.de|geodaten-mv\.de/.test(r.url())) dem++; });
   await p.goto(url);
   await p.evaluate(() => { localStorage.clear(); localStorage.setItem('golfos.intro.v1', '1'); localStorage.setItem('golfos.tip.shots.v1', '1'); sessionStorage.setItem('golfos.module', 'rounds'); });
   await p.reload();
@@ -47,7 +47,7 @@ for (const name of COURSES) {
   await p.getByRole('button', { name: 'Karteninfo' }).click();
   await p.waitForTimeout(400);
   const credit = await p.locator('main').innerText();
-  ok(/Grünhöhen: (Geobasis NRW|© LGL)|Green heights: USGS/.test(credit), `${course}: the credit of the terrain model in the ⓘ`);
+  ok(/Grünhöhen: (Geobasis NRW|©)|Green heights: USGS/.test(credit), `${course}: the credit of the terrain model in the ⓘ`);
   // the second time: from the phone, not from the service
   await p.reload();
   dem = 0;

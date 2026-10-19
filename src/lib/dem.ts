@@ -1,5 +1,4 @@
 import type { LngLat } from '../types';
-import { pointInRing } from './geo';
 
 // Heights from the best official terrain model where the course lies (Sascha 19.10.2026: "every course should have
 // green slopes") – fetched by the phone for one green at a time, so no course has to be built by hand any more.
@@ -12,19 +11,13 @@ export interface DemProvider {
   credit: string;
   /** metres per cell the service is asked for */
   cell: number;
-  /** the region it covers: [west, south, east, north] boxes, refined by an outline where a box is too coarse */
+  /** the region it covers: [west, south, east, north] boxes (a state's box takes in its neighbours' edges) */
   boxes: [number, number, number, number][];
-  outline?: LngLat[];
   /** UTM zone of the request (all providers here work in UTM, as the services' own grids) */
   zone: (p: LngLat) => number;
   /** URL of a square of heights, west/south/east/north in UTM metres */
   url: (w: number, s: number, e: number, n: number, cells: number) => string;
 }
-
-// North Rhine-Westphalia, a rough outline (the box around it takes in parts of Hesse and Lower Saxony)
-const NRW: LngLat[] = [[5.87, 51.82], [6.4, 51.87], [6.83, 52.13], [7.06, 52.24], [7.3, 52.24], [7.57, 52.42], [8.0, 52.36], [8.3, 52.46], [8.5, 52.53], [8.7, 52.4], [9.0, 52.28], [9.45, 51.68], [9.16, 51.43], [8.95, 51.4], [8.5, 51.15], [8.3, 50.88], [8.1, 50.73], [7.85, 50.6], [7.2, 50.6], [6.9, 50.33], [6.4, 50.32], [6.03, 50.72], [5.97, 51.05], [6.2, 51.38], [5.87, 51.82]];
-// Baden-Württemberg, a rough outline
-const BW: LngLat[] = [[7.51, 47.54], [7.6, 48.1], [7.75, 48.5], [8.2, 48.98], [8.39, 49.25], [8.47, 49.6], [8.85, 49.66], [9.1, 49.6], [9.3, 49.7], [9.6, 49.78], [9.85, 49.55], [10.13, 49.3], [10.45, 48.95], [10.5, 48.55], [10.2, 48.35], [10.14, 47.75], [9.95, 47.53], [9.55, 47.53], [8.6, 47.6], [8.1, 47.56], [7.51, 47.54]];
 
 export const DEM_PROVIDERS: DemProvider[] = [
   {
@@ -32,7 +25,6 @@ export const DEM_PROVIDERS: DemProvider[] = [
     credit: 'Grünhöhen: Geobasis NRW, DGM1 (dl-de/zero-2-0)',
     cell: 1,
     boxes: [[5.86, 50.32, 9.46, 52.54]],
-    outline: NRW,
     zone: () => 32,
     url: (w, s, e, n) =>
       `https://www.wcs.nrw.de/geobasis/wcs_nw_dgm?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=nw_dgm&FORMAT=image/tiff&SUBSET=x(${w},${e})&SUBSET=y(${s},${n})`,
@@ -42,11 +34,46 @@ export const DEM_PROVIDERS: DemProvider[] = [
     credit: 'Grünhöhen: © LGL, www.lgl-bw.de (dl-de/by-2-0)',
     cell: 1,
     boxes: [[7.5, 47.53, 10.5, 49.8]],
-    outline: BW,
     zone: () => 32,
     // the LGL grid has its cell centres on whole metres: the square runs from half a metre
     url: (w, s, e, n) =>
       `https://owsproxy.lgl-bw.de/owsproxy/wcs/WCS_INSP_BW_Hoehe_Coverage_DGM1?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=EL.ElevationGridCoverage&FORMAT=image/tiff&SUBSET=E(${w - 0.5},${e - 0.5})&SUBSET=N(${s + 0.5},${n + 0.5})`,
+  },
+  {
+    id: 'ni',
+    credit: 'Grünhöhen: © LGLN, DGM1',
+    cell: 1,
+    boxes: [[6.6, 51.29, 11.6, 53.9]],
+    zone: () => 32,
+    url: (w, s, e, n) =>
+      `https://opendata.geoservices.lgln.niedersachsen.de/dgm_wcs?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=ni_dgm1&FORMAT=image/tiff&SUBSET=x(${w},${e})&SUBSET=y(${s},${n})`,
+  },
+  {
+    id: 'he',
+    credit: 'Grünhöhen: © HVBG Hessen, DGM1',
+    cell: 1,
+    boxes: [[7.77, 49.39, 10.24, 51.66]],
+    zone: () => 32,
+    url: (w, s, e, n) =>
+      `https://inspire-hessen.de/raster/dgm1/ows?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=he_dgm1&FORMAT=image/tiff&SUBSET=E(${w},${e})&SUBSET=N(${s},${n})`,
+  },
+  {
+    id: 'bb',
+    credit: 'Grünhöhen: © GeoBasis-DE/LGB, DGM1 (dl-de/by-2-0)',
+    cell: 1,
+    boxes: [[11.26, 51.36, 14.77, 53.56]],
+    zone: () => 33,
+    url: (w, s, e, n) =>
+      `https://isk.geobasis-bb.de/ows/dgm_wcs?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=bb_dgm&FORMAT=image/tiff&SUBSET=x(${w},${e})&SUBSET=y(${s},${n})`,
+  },
+  {
+    id: 'mv',
+    credit: 'Grünhöhen: © GeoBasis-DE/M-V, DGM1',
+    cell: 1,
+    boxes: [[10.59, 53.11, 14.42, 54.69]],
+    zone: () => 33,
+    url: (w, s, e, n) =>
+      `https://www.geodaten-mv.de/dienste/dgm_wcs?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=mv_dgm&FORMAT=image/tiff&SUBSET=x(${w},${e})&SUBSET=y(${s},${n})`,
   },
   {
     id: 'usgs',
@@ -62,14 +89,11 @@ export const DEM_PROVIDERS: DemProvider[] = [
   },
 ];
 
-/** The provider for a point, or null where no fine official model can be fetched. */
-export function demProviderAt(p: LngLat): DemProvider | null {
-  for (const d of DEM_PROVIDERS) {
-    if (!d.boxes.some(([w, s, e, n]) => p[0] >= w && p[0] <= e && p[1] >= s && p[1] <= n)) continue;
-    if (d.outline && !pointInRing(p, d.outline)) continue;
-    return d;
-  }
-  return null;
+/** The services whose region may hold a point, the likeliest first – near a state border more than one: the one
+ *  without heights there gives nothing and the next is asked (fetchSquare). Empty where no fine official model can
+ *  be fetched. */
+export function demProvidersAt(p: LngLat): DemProvider[] {
+  return DEM_PROVIDERS.filter((d) => d.boxes.some(([w, s, e, n]) => p[0] >= w && p[0] <= e && p[1] >= s && p[1] <= n));
 }
 
 // ---- UTM (WGS84 / ETRS89 – the same to a few centimetres) ----
