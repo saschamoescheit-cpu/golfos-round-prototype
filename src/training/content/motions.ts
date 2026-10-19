@@ -373,6 +373,10 @@ set3d(SECTION_MOTIONS.driver?.['Hit up and hit the centre'], 'driverUp');
 set3d(SECTION_MOTIONS.woods?.['The swing: sweep'], 'woodSweep');
 set3d(SECTION_MOTIONS.putting?.['Short putts (under 2 m)'], 'puttShortFirm');
 set3d(SECTION_MOTIONS.bunker?.['Fairway bunker'], 'sandFairway');
+// drills with the steps of their own text
+set3d(DRILL_MOTIONS['fairway-bunker'], 'sandFairway');
+set3d(DRILL_MOTIONS['brush-five'], 'woodSweep');
+set3d(DRILL_MOTIONS['hold-finish'], 'phaseImpact');
 set3d(DRILL_MOTIONS['driver-wide-stance'], 'driverWide');
 if (DRILL_MOTIONS['alignment-station']) set3d(DRILL_MOTIONS['alignment-station'], 'alignStation');
 else DRILL_MOTIONS['alignment-station'] = { frames: [], video: 'alignStation' };
