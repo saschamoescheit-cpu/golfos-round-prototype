@@ -18,7 +18,7 @@ import { WeatherIcon } from '../components/WeatherIcon';
 import { adviseClub, DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
-import { gridHeight, loadTerrainGrid, type TerrainGrid } from '../lib/terraingrid';
+import { gridHeight, loadTerrainGrid, makeTerrainGrid, type TerrainGrid } from '../lib/terraingrid';
 import { GREEN_CHARTS, type GreenChart } from '../data/greenCharts';
 import { madeChartsFor, type MadeCharts } from '../lib/greenmaker';
 import { greenSource } from '../data/greenSources';
@@ -557,7 +557,10 @@ export function HoleScreen(props: {
   const [tgrid, setTgrid] = useState<TerrainGrid | null>(null);
   useEffect(() => {
     let alive = true;
-    loadTerrainGrid(round.courseId).then((g) => alive && setTgrid(g));
+    // built in (Hetzenhof, Frielinghausen) – or made once from the region's terrain model (19.10.2026)
+    loadTerrainGrid(round.courseId)
+      .then((g) => g ?? makeTerrainGrid(round.courseId, allMaps.flatMap((m) => (m ? [m.tee, m.greenCenter, ...m.line] : []))))
+      .then((g) => alive && setTgrid(g));
     return () => {
       alive = false;
     };

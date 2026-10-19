@@ -39,6 +39,14 @@ for (const name of COURSES) {
   await slope.waitFor({ timeout: 90000 }).catch(() => {});
   ok((await slope.count()) === 1 && dem > 0, `${course}: green slopes made on the phone (${dem} requests to the terrain service)`);
   if (!(await slope.count())) { await ctx.close(); continue; }
+  // "plays like" from the same terrain model: the course's 10 m grid, kept on the phone
+  const tgrid = await p.evaluate(() => new Promise((res) => {
+    const r = indexedDB.open('golfos-terrain', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('grids');
+    r.onsuccess = () => { const q = r.result.transaction('grids').objectStore('grids').getAll(); q.onsuccess = () => res(q.result.map((g) => `${g.cols}x${g.rows}`)); q.onerror = () => res([]); };
+    r.onerror = () => res([]);
+  }));
+  ok(tgrid.length === 1, `${course}: the 10 m height grid for "plays like" (${tgrid.join(', ') || 'none'})`);
   await slope.click();
   await p.waitForTimeout(2000);
   const onMap = await p.evaluate(() => [...document.querySelectorAll('.maplibregl-canvas')].length > 0);

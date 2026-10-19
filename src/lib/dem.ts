@@ -134,6 +134,15 @@ export function fromUtm(e: number, n: number, zone: number): LngLat {
   return [Math.round(lon * 1e7) / 1e7, Math.round(lat * 1e7) / 1e7];
 }
 
+/** The URL of a box at a coarser cell than the service's own: the WCS services thin it out themselves (SCALEFACTOR),
+ *  the ArcGIS one is asked for fewer pixels. */
+function boxUrl(d: DemProvider, w: number, s: number, e: number, n: number, cell: number): string {
+  const cells = Math.round((e - w) / cell);
+  const url = d.url(w, s, e, n, cells);
+  if (cell <= d.cell || /ImageServer/.test(url)) return url;
+  return `${url}&SCALEFACTOR=${(d.cell / cell).toFixed(4)}`;
+}
+
 export interface DemSquare {
   /** heights in metres, row 0 = north, `size` × `size`, NaN where the model has none */
   h: Float32Array;
@@ -151,9 +160,14 @@ export async function fetchSquare(d: DemProvider, center: LngLat, half: number, 
   const [ce, cn] = toUtm(center, zone);
   const w = Math.round(ce) - half;
   const s = Math.round(cn) - half;
-  const size = Math.round((2 * half) / d.cell);
-  const url = d.url(w, s, w + 2 * half, s + 2 * half, size).replaceAll('{sr}', String(32600 + zone));
-  const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(20000) });
+  return fetchBox(d, zone, w, s, w + 2 * half, s + 2 * half, d.cell, signal);
+}
+
+/** The heights of a UTM box at a given cell size (metres), row 0 = north; null when the service has none there. */
+export async function fetchBox(d: DemProvider, zone: number, w: number, s: number, e: number, n: number, cell: number, signal?: AbortSignal): Promise<DemSquare | null> {
+  const size = Math.round((e - w) / cell);
+  const url = boxUrl(d, w, s, e, n, cell).replaceAll('{sr}', String(32600 + zone));
+  const res = await fetch(url, { signal: signal ?? AbortSignal.timeout(30000) });
   if (!res.ok || !/tiff/.test(res.headers.get('content-type') ?? '')) return null;
   const { fromArrayBuffer } = await import('geotiff');
   const tif = await fromArrayBuffer(await res.arrayBuffer());
@@ -165,5 +179,5 @@ export async function fetchSquare(d: DemProvider, center: LngLat, half: number, 
     const v = raster[k];
     h[k] = v == null || v < -1000 || (nodata != null && v === nodata) ? NaN : v;
   }
-  return { h, size, cell: d.cell, w, s, zone };
+  return { h, size, cell, w, s, zone };
 }
