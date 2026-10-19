@@ -47,6 +47,10 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
   }
   return (ms: number): Lm[] => {
     const x = ms > 0 && !still ? k(ms) : 0;
+    // the watched single-leg reach: the free foot up (stiff: it stays down – the coach says so)
+    // the watched Pallof press: stiff, the trunk turns with the band
+    if (plan.watch === 'trunkStill') return s.frontBody({ trunk: good ? 0 : 20 * x });
+    if (plan.watch === 'footUp') return s.frontBody({ lift: ms > 0 && good ? (side === 'right' ? 'left' : 'right') : null });
     switch (plan.signal) {
       case 'turn':
         // stiff: the hips turn along
@@ -219,7 +223,7 @@ export function DrillPlayer(props: {
 
     const startCountdown = () => {
       go('count');
-      form = plan.signal ? new FormCheck(plan.signal) : null;
+      form = plan.signal ? new FormCheck(plan.signal) : plan.watch ? new FormCheck(plan.watch) : null;
       const side = sets[k];
       say(side ? (k === 0 || sets[k - 1] !== side ? tr(`The ${sideWord(side)}.`, `Die ${sideWord(side)}.`) : '') : '');
       const t0 = performance.now();

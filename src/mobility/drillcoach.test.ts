@@ -229,6 +229,26 @@ describe('form cues', () => {
     expect(cues('reach', (k) => toeTouchBody(k, 0.02, 0)).said).toEqual([]);
   });
 
+  it('watches drills it does not measure: the trunk in the Pallof press, the free foot in the single-leg reach', () => {
+    const watch = (id: 'trunkStill' | 'footUp', body: (t: number) => Lm[], ms = 8000) => {
+      const form = new FormCheck(id);
+      let t = 0;
+      for (let i = 0; i < 10; i++) form.calibrate({ lm: body(0), w: W, h: H, t: (t += 50) });
+      const said: string[] = [];
+      for (let i = 0; i < ms / 50; i++) {
+        const c = form.push({ lm: body(t), w: W, h: H, t: (t += 50) }, null);
+        if (c) said.push(c);
+      }
+      return said;
+    };
+    expect(watch('trunkStill', (t) => frontBody({ trunk: t > 1000 ? 22 : 0 }))).toContain('trunkStill');
+    expect(watch('trunkStill', () => frontBody({}))).toEqual([]);
+    // both feet down after the start: the cue; the foot up: nothing (and nothing in the first 3 s)
+    expect(watch('footUp', () => frontBody({}))).toContain('footUp');
+    expect(watch('footUp', () => frontBody({}), 2500)).toEqual([]);
+    expect(watch('footUp', (t) => frontBody({ lift: t > 600 ? 'right' : null }))).toEqual([]);
+  });
+
   it('says a cue at most every 6 s and counts it', () => {
     const r = cues('turn', (k) => frontBody({ trunk: 50 * k, pelvis: 25 * k }), 8);
     // 8 reps × 2.5 s = 20 s: at most 4 cues

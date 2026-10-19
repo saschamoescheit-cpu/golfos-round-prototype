@@ -28,6 +28,8 @@ export interface DrillCoach {
   sets?: number;
   /** what the camera measures */
   signal?: SignalId;
+  /** a drill the camera does not measure but watches for its main fault (a cue like a coach) */
+  watch?: WatchId;
 }
 
 const FRONT_STAND = L('Stand face-on to the phone, the whole body in the picture.', 'Stell dich frontal zum Handy, der ganze Körper im Bild.');
@@ -40,7 +42,7 @@ export const DRILL_COACH: Record<string, DrillCoach> = {
   'mob-pelvic-turn': { view: 'front', where: L('Golf posture, face-on to the phone, a club across the chest.', 'Golfhaltung frontal zum Handy, ein Schläger quer vor der Brust.'), reps: 10, tempo: 3, sets: 2, signal: 'hipTurn' },
   'mob-cat-camel': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), reps: 10, tempo: 5 },
   'mob-pelvic-tilt': { view: 'floor', where: L('On your back, side-on to the phone, knees bent.', 'Auf den Rücken, seitlich zum Handy, Knie gebeugt.'), reps: 15, tempo: 3 },
-  'mob-single-leg-reach': { view: 'front', where: FRONT_STAND, sides: true, reps: 5, tempo: 6 },
+  'mob-single-leg-reach': { view: 'front', where: FRONT_STAND, sides: true, reps: 5, tempo: 6, watch: 'footUp' },
   'mob-single-leg-bridge': { view: 'floor', where: L('On your back, side-on to the phone.', 'Auf den Rücken, seitlich zum Handy.'), sides: true, reps: 8, tempo: 4, signal: 'hipExt' },
   'mob-clamshell': { view: 'floor', where: L('On your side, facing the phone, knees bent.', 'Auf die Seite, das Gesicht zum Handy, Knie gebeugt.'), sides: true, reps: 15, tempo: 3, signal: 'kneeOpen' },
   'mob-lat-stretch': { view: 'floor', where: L('Kneel in front of a bench, side-on to the phone.', 'Vor einer Bank knien, seitlich zum Handy.'), hold: 30, sets: 3, signal: 'arms' },
@@ -50,11 +52,11 @@ export const DRILL_COACH: Record<string, DrillCoach> = {
   'mob-hip-ir': { view: 'floor', where: L('Sit in the 90/90 position, face-on to the phone.', 'Im 90/90-Sitz, frontal zum Handy.'), sides: true, reps: 8, tempo: 4 },
   'mob-prone-y': { view: 'floor', where: L('On your front, side-on to the phone.', 'Auf den Bauch, seitlich zum Handy.'), reps: 10, tempo: 4, sets: 2, signal: 'armLift' },
   'mob-neck-turn': { view: 'front', where: L('Sit or stand face-on to the phone.', 'Setz oder stell dich frontal zum Handy.'), reps: 20, tempo: 3, signal: 'head' },
-  'mob-forearm-turn': { view: 'front', where: FRONT_STAND, sides: true, reps: 10, tempo: 3 },
+  'mob-forearm-turn': { view: 'front', where: FRONT_STAND, sides: true, reps: 10, tempo: 3, watch: 'elbowsIn' },
   'mob-wrist-hinge': { view: 'front', where: FRONT_STAND, sides: true, reps: 15, tempo: 2 },
   'mob-wrist-stretch': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), hold: 20, sets: 6 },
   'hip-9090': { view: 'floor', where: L('Sit on the floor face-on to the phone.', 'Setz dich frontal zum Handy auf den Boden.'), reps: 10, tempo: 5, signal: 'sideSwitch' },
-  'pallof-press': { view: 'front', where: L('Golf posture, face-on to the phone, the band to the side.', 'Golfhaltung frontal zum Handy, das Band seitlich.'), sides: true, reps: 10, tempo: 3, sets: 2 },
+  'pallof-press': { view: 'front', where: L('Golf posture, face-on to the phone, the band to the side.', 'Golfhaltung frontal zum Handy, das Band seitlich.'), sides: true, reps: 10, tempo: 3, sets: 2, watch: 'trunkStill' },
   'single-leg-balance': { view: 'front', where: FRONT_STAND, sides: true, hold: 30, signal: 'oneLeg' },
   'open-books': { view: 'floor', where: L('On your side, facing the phone, knees bent.', 'Auf die Seite, das Gesicht zum Handy, Knie gebeugt.'), sides: true, reps: 10, tempo: 5 },
   'seated-rotation': { view: 'front', where: L('Sit face-on to the phone on a chair.', 'Setz dich frontal zum Handy auf einen Stuhl.'), reps: 20, tempo: 3, signal: 'turn' },
@@ -395,7 +397,9 @@ export function signalValueText(id: SignalId, v: number | null, tr: (en: string,
 // ---------- form cues: what a coach would say while the player does the drill ----------
 
 /** A fault the camera can see during a drill – said once (at most one cue every 6 s) and counted for the result. */
-export type FormCue = 'hipsStill' | 'chestStill' | 'shouldersStill' | 'heelsDown' | 'armsUp' | 'heelDown' | 'kneesStraight' | 'elbowsIn';
+export type FormCue = 'hipsStill' | 'chestStill' | 'shouldersStill' | 'heelsDown' | 'armsUp' | 'heelDown' | 'kneesStraight' | 'elbowsIn' | 'trunkStill' | 'footUp';
+/** what the camera watches in a drill it does not measure */
+export type WatchId = 'trunkStill' | 'footUp' | 'elbowsIn';
 
 export const CUES: Record<FormCue, Text> = {
   hipsStill: L('Keep the hips still – only the chest turns.', 'Die Hüfte bleibt ruhig – nur die Brust dreht.'),
@@ -406,6 +410,8 @@ export const CUES: Record<FormCue, Text> = {
   heelDown: L('The front heel stays down.', 'Die vordere Ferse bleibt unten.'),
   kneesStraight: L('Keep the knees straight.', 'Knie gestreckt lassen.'),
   elbowsIn: L('Elbows on the body.', 'Ellbogen am Körper.'),
+  trunkStill: L('Keep the trunk still – do not turn with the band.', 'Der Rumpf bleibt ruhig – nicht mitdrehen.'),
+  footUp: L('Keep the free foot off the floor.', 'Den freien Fuß in der Luft lassen.'),
 };
 /** the short form for the result, e.g. "2 × heels up" */
 export const CUE_SHORT: Record<FormCue, Text> = {
@@ -417,6 +423,8 @@ export const CUE_SHORT: Record<FormCue, Text> = {
   heelDown: L('heel up', 'Ferse hoch'),
   kneesStraight: L('knees bent', 'Knie gebeugt'),
   elbowsIn: L('elbows off the body', 'Ellbogen vom Körper weg'),
+  trunkStill: L('trunk turned along', 'Rumpf drehte mit'),
+  footUp: L('foot down', 'Fuß abgesetzt'),
 };
 
 /**
@@ -428,12 +436,14 @@ export class FormCheck {
   private cal: { w: number; h: number; hy: [number, number]; ft: [number, number] }[] = [];
   private base = { w: 0, h: 0, hy: [0, 0] as [number, number], ft: [1, 1] as [number, number] };
   private since: Partial<Record<FormCue, number>> = {};
+  /** the first picture of the set */
+  private t0: number | undefined;
   /** when each fault was last seen */
   private seenAt: Partial<Record<FormCue, number>> = {};
   private lastSaid = -1e9;
   /** how often each cue was said */
   counts: Partial<Record<FormCue, number>> = {};
-  constructor(readonly signal: SignalId) {}
+  constructor(readonly signal: SignalId | WatchId) {}
   get calibrated(): boolean {
     return this.cal.length >= CAL;
   }
@@ -453,22 +463,25 @@ export class FormCheck {
   }
   /** the faults in this picture (value: the drill's signal now) */
   faults(f: Frame, value: number | null): FormCue[] {
-    if (!this.calibrated || value == null) return [];
+    // a watched drill has no value of its own; a measured one is checked while the camera sees its movement
+    const watched = this.signal === 'trunkStill' || this.signal === 'footUp' || this.signal === 'elbowsIn';
+    if (!this.calibrated || (value == null && !watched)) return [];
+    const v = value ?? 0;
     const seen = (...ix: number[]) => ix.every((i) => inFrame(f, i));
     const out: FormCue[] = [];
     switch (this.signal) {
       case 'turn':
-        if (value > 25 && seen(P.lHip, P.rHip) && this.base.h > 0 && turned(width(f, P.lHip, P.rHip), this.base.h) > 15) out.push('hipsStill');
+        if (v > 25 && seen(P.lHip, P.rHip) && this.base.h > 0 && turned(width(f, P.lHip, P.rHip), this.base.h) > 15) out.push('hipsStill');
         break;
       case 'hipTurn':
-        if (value > 12 && seen(P.lSh, P.rSh) && this.base.w > 0 && turned(width(f, P.lSh, P.rSh), this.base.w) > Math.max(15, value * 0.6)) out.push('chestStill');
+        if (v > 12 && seen(P.lSh, P.rSh) && this.base.w > 0 && turned(width(f, P.lSh, P.rSh), this.base.w) > Math.max(15, v * 0.6)) out.push('chestStill');
         break;
       case 'head':
-        if (value > 30 && seen(P.lSh, P.rSh) && this.base.w > 0 && turned(width(f, P.lSh, P.rSh), this.base.w) > 15) out.push('shouldersStill');
+        if (v > 30 && seen(P.lSh, P.rSh) && this.base.w > 0 && turned(width(f, P.lSh, P.rSh), this.base.w) > 15) out.push('shouldersStill');
         break;
       case 'squat': {
         // on the way down (the thighs at least 50° from upright)
-        if (value < -50) break;
+        if (v < -50) break;
         const side = nearSide(f);
         const s = S(side);
         const i = side === 'left' ? 0 : 1;
@@ -477,7 +490,7 @@ export class FormCheck {
         break;
       }
       case 'shin': {
-        if (value < 10) break;
+        if (v < 10) break;
         // the front leg: its knee highest above its ankle
         const legs = (['left', 'right'] as Side[]).filter((sd) => seen(S(sd).kn, S(sd).an, S(sd).heel, S(sd).toe));
         const front = legs.sort((a, b) => px(f, S(b).an)[1] - px(f, S(b).kn)[1] - (px(f, S(a).an)[1] - px(f, S(a).kn)[1]))[0];
@@ -493,6 +506,20 @@ export class FormCheck {
         if (seen(s.hip, s.kn, s.an, s.idx) && px(f, s.idx)[1] > px(f, s.kn)[1] && jointAngle(px(f, s.hip), px(f, s.kn), px(f, s.an)) < 155) out.push('kneesStraight');
         break;
       }
+      case 'trunkStill':
+        // Pallof press: the band pulls to the side, the shoulders stay square to the phone
+        if (seen(P.lSh, P.rSh) && this.base.w > 0 && turned(width(f, P.lSh, P.rSh), this.base.w) > 15) out.push('trunkStill');
+        break;
+      case 'footUp': {
+        // single-leg reach: both feet on the floor (the ankles level) is the free foot down – after the first 3 s of the
+        // set (the player lifts the foot after "Go")
+        this.t0 ??= f.t;
+        if (f.t - this.t0 < 3000 || !seen(P.lHip, P.rHip, P.lAn, P.rAn)) break;
+        const leg = Math.max(1, (dist(px(f, P.lHip), px(f, P.lAn)) + dist(px(f, P.rHip), px(f, P.rAn))) / 2);
+        if (Math.abs(px(f, P.lAn)[1] - px(f, P.rAn)[1]) / leg < 0.04) out.push('footUp');
+        break;
+      }
+      case 'elbowsIn':
       case 'shoulderEr': {
         const away = (sh: number, el: number) => Math.abs(px(f, el)[0] - px(f, sh)[0]) > 0.4 * dist(px(f, sh), px(f, el));
         if (seen(P.lSh, P.rSh, P.lEl, P.rEl) && (away(P.lSh, P.lEl) || away(P.rSh, P.rEl))) out.push('elbowsIn');
