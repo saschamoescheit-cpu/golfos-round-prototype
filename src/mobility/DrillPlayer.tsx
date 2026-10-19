@@ -9,6 +9,7 @@ import { isClean, type DrillDone, type DrillSet } from './sessions';
 import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
 import { beep, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow } from './CameraTest';
+import { logDrill, logFrame, logResult } from './motionlog';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -167,6 +168,10 @@ export function DrillPlayer(props: {
     const timers: number[] = [];
     const later = (fn: () => void, ms: number) => timers.push(window.setTimeout(() => !stopped && fn(), fake ? Math.min(ms, 300) : ms));
     doneRef.current = [];
+    // the motion log (when switched on): the points of every picture with what the app made of them
+    logDrill(props.drill.id, plan);
+    const logT0 = performance.now();
+    let cueNow: string | undefined;
 
     // the set in play
     let k = 0;
@@ -314,6 +319,7 @@ export function DrillPlayer(props: {
     const finish = () => {
       const d: DrillDone = { drill: props.drill.id, ...(plan.signal ? { signal: plan.signal } : {}), sets: doneRef.current, at: new Date().toISOString() };
       resultRef.current = d;
+      logResult(d);
       go('result');
       stopped = true;
       cancelAnimationFrame(raf);
@@ -367,6 +373,8 @@ export function DrillPlayer(props: {
       const pl = placed(f);
       draw(lm, w, h, pl.framed || phaseRef.current === 'run');
       const ph = phaseRef.current;
+      // (the set of this picture – a set that ends in it moves k on before the picture is logged)
+      const kNow = k;
       if (ph === 'frame') {
         if (pl.framed) {
           if (framedSince < 0) framedSince = now;
@@ -406,6 +414,7 @@ export function DrillPlayer(props: {
           // (the synthetic player of the QA runs faster than the clock: its own time, so a fault lasts as long as in life)
           const cue = form.push(fake ? { ...f, t: (now - fakeT0) * sp } : f, value);
           if (cue) {
+            cueNow = cue;
             say(t(CUES[cue]));
             setCue(cue);
             cueUntil = now + 3000;
@@ -464,6 +473,10 @@ export function DrillPlayer(props: {
           }
           if (reps >= target) endSet();
         }
+      }
+      if (ph === 'frame' || ph === 'count' || ph === 'run') {
+        logFrame(now - logT0, ph === 'frame' ? 'f' : ph === 'count' ? 'c' : 'r', kNow, lm, w, h, ph === 'run' ? { reps, v: value == null ? null : Math.round(value * 10) / 10, ...(cueNow ? { cue: cueNow } : {}), ...(paced ? { paced } : {}) } : {});
+        cueNow = undefined;
       }
       if (now - lastUi > 100) {
         lastUi = now;
