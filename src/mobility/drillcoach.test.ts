@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DRILL_COACH, FormCheck, RepCounter, SIGNALS, Signal, drillSeconds, progressStep, progressed, setsOf, signalValueText, type SignalId } from './drillcoach';
-import { bridgeBody, frontBody, latBody, squatBody, toeTouchBody } from './synth';
+import { bridgeBody, frontBody, latBody, proneBody, quadBody, squatBody, toeTouchBody } from './synth';
 import { TESTS } from './tests';
 import type { Frame, Lm } from './measure';
 
@@ -122,6 +122,22 @@ describe('drill coach', () => {
     expect(n).toBeGreaterThanOrEqual(9);
     expect(n).toBeLessThanOrEqual(10);
     expect(SIGNALS.sideSwitch.countOnly).toBe(true);
+  });
+
+  it('counts Y raises on the front and measures how far the arms come off the floor', () => {
+    const r = run('armLift', (k) => proneBody(20 * k), 6);
+    expect(r.n).toBe(6);
+    expect(r.best!).toBeGreaterThan(15);
+    expect(r.best!).toBeLessThan(25);
+  });
+
+  it('counts thread the needle and measures how far the arm opens to the ceiling', () => {
+    const r = run('armOpen', (k) => quadBody(170 * k), 5);
+    expect(r.n).toBe(5);
+    expect(r.best!).toBeGreaterThan(150);
+    const stiff = run('armOpen', (k) => quadBody(110 * k), 5);
+    expect(stiff.n).toBe(5);
+    expect(stiff.best!).toBeLessThan(125);
   });
 
   it('sees one foot off the floor', () => {

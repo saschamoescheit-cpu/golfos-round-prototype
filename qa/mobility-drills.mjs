@@ -20,7 +20,7 @@ const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
 };
 const IDS = ['mob-ankle-wall', 'mob-toe-touch', 'mob-thread-needle', 'mob-pelvic-turn', 'mob-cat-camel', 'mob-pelvic-tilt', 'mob-single-leg-reach', 'mob-single-leg-bridge', 'mob-clamshell', 'mob-lat-stretch', 'mob-wall-angels', 'mob-9090-stretch', 'mob-band-er', 'mob-hip-ir', 'mob-prone-y', 'mob-neck-turn', 'mob-forearm-turn', 'mob-wrist-hinge', 'mob-wrist-stretch', 'hip-9090', 'pallof-press', 'single-leg-balance', 'open-books', 'seated-rotation', 'deep-squat', 'glute-bridge'];
-const MEASURED = ['mob-ankle-wall', 'mob-toe-touch', 'mob-pelvic-turn', 'mob-single-leg-bridge', 'mob-clamshell', 'mob-lat-stretch', 'mob-wall-angels', 'mob-band-er', 'mob-neck-turn', 'seated-rotation', 'deep-squat', 'glute-bridge'];
+const MEASURED = ['mob-thread-needle', 'mob-prone-y', 'mob-ankle-wall', 'mob-toe-touch', 'mob-pelvic-turn', 'mob-single-leg-bridge', 'mob-clamshell', 'mob-lat-stretch', 'mob-wall-angels', 'mob-band-er', 'mob-neck-turn', 'seated-rotation', 'deep-squat', 'glute-bridge'];
 
 await p.goto(url);
 await p.waitForTimeout(800);

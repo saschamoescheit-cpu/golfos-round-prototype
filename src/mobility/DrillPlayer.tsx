@@ -71,6 +71,10 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
         return s.latBody(80 + (good ? 85 : 55) * x);
       case 'oneLeg':
         return s.frontBody({ lift: ms > 0 ? (side === 'right' ? 'left' : 'right') : null });
+      case 'armLift':
+        return s.proneBody((good ? 22 : 12) * x);
+      case 'armOpen':
+        return s.quadBody((good ? 170 : 120) * x);
       case 'shoulderEr':
         return s.frontBody({ er: (good ? 85 : 55) * x });
       case 'kneeOpen':

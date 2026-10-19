@@ -181,6 +181,39 @@ export function shoulderBody(turn: number): Lm[] {
 }
 
 /** Bridge with the `ext` leg out: the hips sag `sag` m below the line; extended = the leg is up. */
+/** Lying on the front, side-on (head to the right), the arms overhead lifted this far off the floor (°) – Y raises. */
+export function proneBody(lift: number): Lm[] {
+  const sh: J2 = [0.95, 0.13];
+  const r = (lift * Math.PI) / 180;
+  const arm: J2 = [Math.cos(r), Math.sin(r)];
+  const p: Record<string, J2> = {
+    hip: [0.5, 0.12],
+    sh,
+    el: add(sh, arm, 0.3),
+    wr: add(sh, arm, 0.58),
+    idx: add(sh, arm, 0.65),
+    ear: [1.08, 0.18],
+    nose: [1.13, 0.1],
+    mouth: [1.11, 0.11],
+    kn: [0.05, 0.08],
+    an: [-0.38, 0.08],
+    heel: [-0.4, 0.14],
+    toe: [-0.48, 0.03],
+  };
+  return sideBody(p, undefined, 300, 0.23);
+}
+
+/** On hands and knees, side-on (head to the right): the near arm opens from the floor towards the ceiling (° from
+ * straight down) – thread the needle; the far arm supports. */
+export function quadBody(open: number): Lm[] {
+  const sh: J2 = [0.55, 0.52];
+  const r = (open * Math.PI) / 180;
+  const base: Record<string, J2> = { hip: [0, 0.52], kn: [0, 0.06], an: [-0.38, 0.05], heel: [-0.38, 0.1], toe: [-0.46, 0.03], sh, ear: [0.7, 0.58], nose: [0.78, 0.52], mouth: [0.76, 0.5] };
+  const near = { ...base, el: add(sh, [0.03 * Math.sin(r), -0.28 * Math.cos(r)]), wr: add(sh, [0.05 * Math.sin(r), -0.55 * Math.cos(r)]), idx: add(sh, [0.06 * Math.sin(r), -0.63 * Math.cos(r)]) };
+  const far = { ...base, el: [0.53, 0.27] as J2, wr: [0.53, 0.03] as J2, idx: [0.58, 0.02] as J2 };
+  return sideBody(near, far, 400, 0.3);
+}
+
 export function bridgeBody(ext: Side, extended: boolean, sag: number, up = true): Lm[] {
   const sh: J2 = [0, 0.1];
   const hip: J2 = up ? [0.5, 0.38 - sag] : [0.45, 0.1];

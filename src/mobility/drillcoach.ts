@@ -9,7 +9,7 @@ import type { Side, TestId } from './types';
 // so the unit tests run them with synthetic bodies. REVIEW(golf): Chris (reps, holds, what counts as a rep).
 
 /** What the camera follows during a drill, picture by picture. */
-export type SignalId = 'turn' | 'hipTurn' | 'head' | 'squat' | 'reach' | 'shin' | 'hipExt' | 'arms' | 'oneLeg' | 'shoulderEr' | 'kneeOpen' | 'sideSwitch';
+export type SignalId = 'turn' | 'hipTurn' | 'head' | 'squat' | 'reach' | 'shin' | 'hipExt' | 'arms' | 'oneLeg' | 'shoulderEr' | 'kneeOpen' | 'sideSwitch' | 'armLift' | 'armOpen';
 
 export interface DrillCoach {
   /** how the player is placed to the phone: face-on, side-on, or on the floor (only the body has to be seen) */
@@ -36,7 +36,7 @@ const SIDE_STAND = L('Stand side-on to the phone, the whole body in the picture.
 export const DRILL_COACH: Record<string, DrillCoach> = {
   'mob-ankle-wall': { view: 'side', where: L('Kneel side-on to the phone in front of a wall.', 'Knie dich seitlich zum Handy vor eine Wand.'), sides: true, reps: 10, tempo: 3, signal: 'shin' },
   'mob-toe-touch': { view: 'side', where: SIDE_STAND, reps: 10, tempo: 4, signal: 'reach' },
-  'mob-thread-needle': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), sides: true, reps: 8, tempo: 4 },
+  'mob-thread-needle': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), sides: true, reps: 8, tempo: 4, signal: 'armOpen' },
   'mob-pelvic-turn': { view: 'front', where: L('Golf posture, face-on to the phone, a club across the chest.', 'Golfhaltung frontal zum Handy, ein Schläger quer vor der Brust.'), reps: 10, tempo: 3, sets: 2, signal: 'hipTurn' },
   'mob-cat-camel': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), reps: 10, tempo: 5 },
   'mob-pelvic-tilt': { view: 'floor', where: L('On your back, side-on to the phone, knees bent.', 'Auf den Rücken, seitlich zum Handy, Knie gebeugt.'), reps: 15, tempo: 3 },
@@ -48,7 +48,7 @@ export const DRILL_COACH: Record<string, DrillCoach> = {
   'mob-9090-stretch': { view: 'front', where: FRONT_STAND, sides: true, hold: 20, sets: 3 },
   'mob-band-er': { view: 'front', where: FRONT_STAND, reps: 15, tempo: 3, sets: 2, signal: 'shoulderEr' },
   'mob-hip-ir': { view: 'floor', where: L('Sit in the 90/90 position, face-on to the phone.', 'Im 90/90-Sitz, frontal zum Handy.'), sides: true, reps: 8, tempo: 4 },
-  'mob-prone-y': { view: 'floor', where: L('On your front, side-on to the phone.', 'Auf den Bauch, seitlich zum Handy.'), reps: 10, tempo: 4, sets: 2 },
+  'mob-prone-y': { view: 'floor', where: L('On your front, side-on to the phone.', 'Auf den Bauch, seitlich zum Handy.'), reps: 10, tempo: 4, sets: 2, signal: 'armLift' },
   'mob-neck-turn': { view: 'front', where: L('Sit or stand face-on to the phone.', 'Setz oder stell dich frontal zum Handy.'), reps: 20, tempo: 3, signal: 'head' },
   'mob-forearm-turn': { view: 'front', where: FRONT_STAND, sides: true, reps: 10, tempo: 3 },
   'mob-wrist-hinge': { view: 'front', where: FRONT_STAND, sides: true, reps: 15, tempo: 2 },
@@ -132,6 +132,8 @@ export const SIGNALS: Record<SignalId, SignalDef> = {
   kneeOpen: { unit: '°', better: 'up', minAmp: 12, name: L('opening of the knees', 'Öffnung der Knie') },
   // the knees from one side to the other: the middle is "out", a side is "rest" – every switch counts
   sideSwitch: { unit: '°', better: 'up', minAmp: 0.5, name: L('switches', 'Wechsel'), countOnly: true },
+  armLift: { unit: '°', better: 'up', minAmp: 6, name: L('arms off the floor', 'Arme vom Boden') },
+  armOpen: { unit: '°', better: 'up', minAmp: 40, name: L('arm open towards the ceiling', 'Arm zur Decke geöffnet') },
 };
 
 /** The points a signal needs (front view: these; side view: the near side's). */
@@ -152,6 +154,10 @@ function needs(id: SignalId): number[] | ((side: Side) => number[]) {
     case 'kneeOpen':
     case 'sideSwitch':
       return [P.lHip, P.rHip, P.lKn, P.rKn];
+    case 'armLift':
+      return (s) => [S(s).sh, S(s).wr, S(s).hip];
+    case 'armOpen':
+      return (s) => [S(s).sh, S(s).wr];
     case 'squat':
       return (s) => [S(s).hip, S(s).kn];
     case 'reach':
@@ -171,8 +177,8 @@ const CAL = 8;
  * from the first pictures while the player stands still (the countdown).
  */
 export class Signal {
-  private cal: { w: number; h: number; e: number; n: number; leg: number }[] = [];
-  private base = { w: 0, h: 0, e: 0, n: 0, leg: 1 };
+  private cal: { w: number; h: number; e: number; n: number; leg: number; al: number; ar: number }[] = [];
+  private base = { w: 0, h: 0, e: 0, n: 0, leg: 1, al: 1, ar: 1 };
   constructor(readonly id: SignalId) {}
   get def(): SignalDef {
     return SIGNALS[this.id];
@@ -190,10 +196,13 @@ export class Signal {
       e: width(f, P.lEar, P.rEar),
       n: this.noseOff(f),
       leg: dist(px(f, s.hip), px(f, s.an)),
+      // the arms straight down (on hands and knees): their length in the picture
+      al: dist(px(f, P.lSh), px(f, P.lWr)),
+      ar: dist(px(f, P.rSh), px(f, P.rWr)),
     });
     if (this.calibrated) {
       const m = (k: keyof (typeof this.cal)[number]) => median(this.cal.map((c) => c[k]));
-      this.base = { w: m('w'), h: m('h'), e: m('e'), n: m('n'), leg: Math.max(1, m('leg')) };
+      this.base = { w: m('w'), h: m('h'), e: m('e'), n: m('n'), leg: Math.max(1, m('leg')), al: Math.max(1, m('al')), ar: Math.max(1, m('ar')) };
     }
   }
   private noseOff(f: Frame) {
@@ -269,6 +278,23 @@ export class Signal {
         const hipW = Math.max(1, Math.abs(px(f, P.lHip)[0] - px(f, P.rHip)[0]));
         const off = ((px(f, P.lKn)[0] + px(f, P.rKn)[0]) / 2 - (px(f, P.lHip)[0] + px(f, P.rHip)[0]) / 2) / hipW;
         return -Math.abs(off);
+      }
+      case 'armLift':
+        // lying on the front, arms overhead: how far the arm rises off the line of the trunk
+        return angleBetween(sub(px(f, s.sh), px(f, s.hip)), sub(px(f, s.wr), px(f, s.sh)));
+      case 'armOpen': {
+        // on hands and knees: the arm from straight down (0°) towards the ceiling (180°). Side-on the camera sees the
+        // opening only as how high the hand gets – the angle from that height against the arm length of the still
+        // pictures (arms straight down); the arm that opens furthest counts
+        if (!this.calibrated) return null;
+        const open = (sd: Side) => {
+          if (!inFrame(f, S(sd).sh) || !inFrame(f, S(sd).wr)) return -1;
+          const len = sd === 'left' ? this.base.al : this.base.ar;
+          const down = (px(f, S(sd).wr)[1] - px(f, S(sd).sh)[1]) / len;
+          return deg(Math.acos(Math.max(-1, Math.min(1, down))));
+        };
+        const v = Math.max(open('left'), open('right'));
+        return v < 0 ? null : v;
       }
       case 'oneLeg': {
         // one foot clearly higher than the other: 1, both down: 0
