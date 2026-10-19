@@ -1314,7 +1314,30 @@ function ResultTab(props: { nav: Nav }) {
       ) : (
         <BodyResult results={results} nav={props.nav} />
       )}
+      <TrainNext nav={props.nav} />
     </>
+  );
+}
+
+/** After the result: the next step is the training of the pillar – what it holds, and one tap to start. */
+function TrainNext(props: { nav: Nav }) {
+  const minutes = loadMinutes();
+  const { planDrills, planMinutes } = pillarPlan(minutes);
+  if (!planDrills.length) return null;
+  return (
+    <section className="card mob-train-next">
+      <span className="eyebrow">{tr('Next step', 'Nächster Schritt')}</span>
+      <strong>{tr('Your training for it', 'Dein Training dafür')}</strong>
+      <span className="muted small">{tr(`${planDrills.length} drills for the areas with the biggest gap, about ${planMinutes} min – the app shows, counts and measures.`, `${planDrills.length} Übungen für die Bereiche mit dem größten Abstand, etwa ${planMinutes} Min. – die App macht vor, zählt und misst.`)}</span>
+      <div className="mob-today-pics" aria-hidden="true">
+        {planDrills.slice(0, 5).map((d) => (
+          <SketchThumb key={d.id} sketch={d.sketch} />
+        ))}
+      </div>
+      <button type="button" className="btn-primary mob-train-next-start" onClick={() => props.nav.train(newSession(planDrills.map((d) => d.id), planMinutes))}>
+        {tr('Train now', 'Jetzt trainieren')}
+      </button>
+    </section>
   );
 }
 

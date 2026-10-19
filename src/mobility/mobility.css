@@ -228,3 +228,7 @@
 .mob-week-day i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); }
 .mob-week-day.on i { background: var(--brand); border-color: var(--brand); }
 .mob-week-day.today span { color: var(--text); font-weight: 700; }
+
+/* after the result: the training as the next step */
+.mob-train-next { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.mob-train-next .btn-primary { margin-top: 6px; }

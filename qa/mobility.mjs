@@ -166,6 +166,7 @@ ok(/Dein Ziel: Handicap 10/.test(goalText) && /Mehr Länge/.test(goalText), `the
 ok((await p.locator('.mob-area-head .mob-levelbar').count()) >= 4, 'each measured area shows its bar with the line of the goal');
 ok((await p.locator('.mob-test-row .mob-levelbar').count()) >= 6, 'each measured test shows its value on a scale');
 await shot('result-body');
+const nextStep = await p.locator('.mob-train-next').innerText().catch(() => '');ok(/Nächster Schritt/i.test(nextStep) && /Jetzt trainieren/.test(nextStep), 'after the result: the training as the next step, one tap');
 await p.locator('.segmented button').filter({ hasText: 'Dein Schwung' }).click();
 const patterns = await p.locator('.mob-pattern').count();
 ok(patterns >= 3, `${patterns} swing patterns for the stiff player`);
