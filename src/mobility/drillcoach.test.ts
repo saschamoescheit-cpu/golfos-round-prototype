@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DRILL_COACH, FormCheck, RepCounter, SIGNALS, Signal, drillSeconds, progressStep, progressed, setsOf, signalValueText, type SignalId } from './drillcoach';
-import { bridgeBody, frontBody, latBody, proneBody, quadBody, squatBody, toeTouchBody } from './synth';
+import { bridgeBody, catCowBody, frontBody, latBody, proneBody, quadBody, squatBody, toeTouchBody } from './synth';
 import { TESTS } from './tests';
 import type { Frame, Lm } from './measure';
 
@@ -138,6 +138,11 @@ describe('drill coach', () => {
     const stiff = run('armOpen', (k) => quadBody(110 * k), 5);
     expect(stiff.n).toBe(5);
     expect(stiff.best!).toBeLessThan(125);
+  });
+
+  it('counts cat and cow from the head going down and up with the back', () => {
+    const r = run('catCow', (k) => catCowBody(1 - 2 * k), 6);
+    expect(r.n).toBe(6);
   });
 
   it('sees one foot off the floor', () => {

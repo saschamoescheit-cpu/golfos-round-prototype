@@ -215,6 +215,29 @@ export function quadBody(open: number, sitBack = 0): Lm[] {
   return sideBody(near, far, 400, 0.3);
 }
 
+/** On hands and knees, side-on (head to the right): the back rounds (cat, k = 1) or sags (cow, k = -1) – the head
+ * drops between the arms or lifts with it. */
+export function catCowBody(k: number): Lm[] {
+  const sh: J2 = [0.55, 0.52];
+  const head = (-35 * k * Math.PI) / 180;
+  const ear = add(sh, [0.15 * Math.cos(head), 0.15 * Math.sin(head) + 0.06]);
+  const p: Record<string, J2> = {
+    hip: [0, 0.52 + 0.03 * k],
+    kn: [0, 0.06],
+    an: [-0.38, 0.05],
+    heel: [-0.38, 0.1],
+    toe: [-0.46, 0.03],
+    sh,
+    el: [0.55, 0.27],
+    wr: [0.55, 0.03],
+    idx: [0.6, 0.02],
+    ear,
+    nose: add(ear, [0.08, -0.04]),
+    mouth: add(ear, [0.06, -0.06]),
+  };
+  return sideBody(p, undefined, 400, 0.3);
+}
+
 export function bridgeBody(ext: Side, extended: boolean, sag: number, up = true): Lm[] {
   const sh: J2 = [0, 0.1];
   const hip: J2 = up ? [0.5, 0.38 - sag] : [0.45, 0.1];

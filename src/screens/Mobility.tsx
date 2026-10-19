@@ -1496,7 +1496,7 @@ function DrillList(props: { drills: Drill[]; nav: Nav }) {
             <span className="muted small tr-two-lines">
               {d.minutes} {tr('min', 'Min.')}
               {/* the drills the camera measures (or counts) when done with it */}
-              {coachOf(d.id).signal ? ` · ${coachOf(d.id).signal === 'sideSwitch' ? tr('counted by the camera', 'von der Kamera gezählt') : tr('measured by the camera', 'mit Kamera gemessen')}` : ''} · {t(d.goal)}
+              {coachOf(d.id).signal ? ` · ${SIGNALS[coachOf(d.id).signal!].countOnly ? tr('counted by the camera', 'von der Kamera gezählt') : tr('measured by the camera', 'mit Kamera gemessen')}` : ''} · {t(d.goal)}
             </span>
           </span>
           <span aria-hidden="true">›</span>

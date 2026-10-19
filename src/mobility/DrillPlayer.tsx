@@ -79,6 +79,9 @@ async function fakeBody(plan: DrillCoach, side: Side | null, level: 'good' | 'st
         return s.frontBody({ lift: ms > 0 ? (side === 'right' ? 'left' : 'right') : null });
       case 'armLift':
         return s.proneBody((good ? 22 : 12) * x);
+      case 'catCow':
+        // cow – cat – cow: the head up and down with the back
+        return s.catCowBody(1 - 2 * x);
       case 'armOpen':
         // stiff: the hips sit back towards the heels while the arm opens
         return s.quadBody((good ? 170 : 120) * x, good ? 0 : 0.25 * x);

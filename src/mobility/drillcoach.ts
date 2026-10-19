@@ -9,7 +9,7 @@ import type { Side, TestId } from './types';
 // so the unit tests run them with synthetic bodies. REVIEW(golf): Chris (reps, holds, what counts as a rep).
 
 /** What the camera follows during a drill, picture by picture. */
-export type SignalId = 'turn' | 'hipTurn' | 'head' | 'squat' | 'reach' | 'shin' | 'hipExt' | 'arms' | 'oneLeg' | 'shoulderEr' | 'kneeOpen' | 'sideSwitch' | 'armLift' | 'armOpen';
+export type SignalId = 'turn' | 'hipTurn' | 'head' | 'squat' | 'reach' | 'shin' | 'hipExt' | 'arms' | 'oneLeg' | 'shoulderEr' | 'kneeOpen' | 'sideSwitch' | 'armLift' | 'armOpen' | 'catCow';
 
 export interface DrillCoach {
   /** how the player is placed to the phone: face-on, side-on, or on the floor (only the body has to be seen) */
@@ -40,7 +40,7 @@ export const DRILL_COACH: Record<string, DrillCoach> = {
   'mob-toe-touch': { view: 'side', where: SIDE_STAND, reps: 10, tempo: 4, signal: 'reach' },
   'mob-thread-needle': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), sides: true, reps: 8, tempo: 4, signal: 'armOpen' },
   'mob-pelvic-turn': { view: 'front', where: L('Golf posture, face-on to the phone, a club across the chest.', 'Golfhaltung frontal zum Handy, ein Schläger quer vor der Brust.'), reps: 10, tempo: 3, sets: 2, signal: 'hipTurn' },
-  'mob-cat-camel': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), reps: 10, tempo: 5 },
+  'mob-cat-camel': { view: 'floor', where: L('On hands and knees, side-on to the phone.', 'In den Vierfüßlerstand, seitlich zum Handy.'), reps: 10, tempo: 5, signal: 'catCow' },
   'mob-pelvic-tilt': { view: 'floor', where: L('On your back, side-on to the phone, knees bent.', 'Auf den Rücken, seitlich zum Handy, Knie gebeugt.'), reps: 15, tempo: 3 },
   'mob-single-leg-reach': { view: 'front', where: FRONT_STAND, sides: true, reps: 5, tempo: 6, watch: 'footUp' },
   'mob-single-leg-bridge': { view: 'floor', where: L('On your back, side-on to the phone.', 'Auf den Rücken, seitlich zum Handy.'), sides: true, reps: 8, tempo: 4, signal: 'hipExt' },
@@ -136,6 +136,8 @@ export const SIGNALS: Record<SignalId, SignalDef> = {
   sideSwitch: { unit: '°', better: 'up', minAmp: 0.5, name: L('switches', 'Wechsel'), countOnly: true },
   armLift: { unit: '°', better: 'up', minAmp: 6, name: L('arms off the floor', 'Arme vom Boden') },
   armOpen: { unit: '°', better: 'up', minAmp: 40, name: L('arm open towards the ceiling', 'Arm zur Decke geöffnet') },
+  // cat and cow: the camera sees no spine, only the head going down and up with it – counted, not measured
+  catCow: { unit: '°', better: 'up', minAmp: 20, name: L('cat and cow', 'Katze und Kuh'), countOnly: true },
 };
 
 /** The points a signal needs (front view: these; side view: the near side's). */
@@ -160,6 +162,8 @@ function needs(id: SignalId): number[] | ((side: Side) => number[]) {
       return (s) => [S(s).sh, S(s).wr, S(s).hip];
     case 'armOpen':
       return (s) => [S(s).sh, S(s).wr];
+    case 'catCow':
+      return (s) => [S(s).sh, S(s).hip, s === 'left' ? P.lEar : P.rEar];
     case 'squat':
       return (s) => [S(s).hip, S(s).kn];
     case 'reach':
@@ -281,6 +285,15 @@ export class Signal {
         const off = ((px(f, P.lKn)[0] + px(f, P.rKn)[0]) / 2 - (px(f, P.lHip)[0] + px(f, P.rHip)[0]) / 2) / hipW;
         return -Math.abs(off);
       }
+      case 'catCow': {
+        // on hands and knees: the head against the line of the back, + = up (cow), − = down between the arms (cat)
+        const ear = nearSide(f) === 'left' ? P.lEar : P.rEar;
+        const back = sub(px(f, s.sh), px(f, s.hip));
+        const head = sub(px(f, ear), px(f, s.sh));
+        const fwd = back[0] >= 0 ? 1 : -1;
+        const up = (v: number[]) => deg(Math.atan2(-v[1], v[0] * fwd));
+        return up(head) - up(back);
+      }
       case 'armLift':
         // lying on the front, arms overhead: how far the arm rises off the line of the trunk
         return angleBetween(sub(px(f, s.sh), px(f, s.hip)), sub(px(f, s.wr), px(f, s.sh)));
@@ -388,6 +401,7 @@ export function signalValueText(id: SignalId, v: number | null, tr: (en: string,
     case 'oneLeg':
       return `${n(Math.round(v))} s`;
     case 'sideSwitch':
+    case 'catCow':
       return '';
     default:
       return `${Math.round(v)}°`;
