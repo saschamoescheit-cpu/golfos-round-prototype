@@ -16,8 +16,13 @@ import '@fontsource/figtree/latin-700.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './styles.css';
 import { applyTheme } from './lib/theme';
+import { reloadForNewVersion } from './lib/staleChunk';
 
 applyTheme(); // sun mode before the first paint
+// a part of the app from before the last deploy could not be loaded: once onto the new version (19.10.2026)
+window.addEventListener('vite:preloadError', (e) => {
+  if (reloadForNewVersion()) e.preventDefault();
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

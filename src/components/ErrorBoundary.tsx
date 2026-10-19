@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import { shareBackup } from '../lib/backup';
 import { tr } from '../lib/i18n';
+import { isStaleChunk, mayReloadForNewVersion, reloadForNewVersion } from '../lib/staleChunk';
 
 /** Set before reloading so the app opens the start page instead of the round that crashed. */
 export const NO_RESUME = 'golfos.noresume';
@@ -16,6 +17,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
   }
 
   componentDidCatch(error: Error) {
+    // a new version went live while the app was open: reload onto it instead of this screen (once)
+    if (isStaleChunk(error) && reloadForNewVersion()) return;
     try {
       localStorage.setItem('golfos.lasterror.v1', JSON.stringify({ at: new Date().toISOString(), message: String(error?.message ?? error), stack: String(error?.stack ?? '').slice(0, 2000) }));
     } catch {
@@ -25,6 +28,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
 
   render() {
     if (!this.state.error) return this.props.children;
+    if (isStaleChunk(this.state.error) && mayReloadForNewVersion()) return <main className="screen" />; // the reload onto the new version is on its way
     return (
       <main className="screen" style={{ justifyContent: 'center', gap: 16 }}>
         <h1 style={{ margin: 0 }}>{tr('Something went wrong', 'Da ist etwas schiefgelaufen')}</h1>
