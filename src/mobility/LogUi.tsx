@@ -1,8 +1,8 @@
 // The motion log in the screens (Sascha 19.10.2026): the switch in the setup of a training or a screening, and the
 // card to share the log at its end. See motionlog.ts.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
-import { currentLog, isLogging, setLogging, shareLog } from './motionlog';
+import { currentLog, isLogging, logFile, setLogging, shareFile } from './motionlog';
 
 /** The switch in a setup – keep a motion log (only the body points) – and the privacy line that goes with it. */
 export function LogSwitch() {
@@ -34,8 +34,17 @@ export function LogSwitch() {
 /** The motion log of the training or screening just done, when one was kept: share it (the iPhone's share sheet) or
  * download it. */
 export function LogShare() {
-  const [state, setState] = useState<'' | 'busy' | 'shared' | 'downloaded' | 'cancelled'>('');
+  const [state, setState] = useState<'' | 'shared' | 'downloaded' | 'cancelled'>('');
   const l = currentLog();
+  // the file is made as the card shows (Safari opens the share sheet only right after the tap, not after the zip)
+  const [file, setFile] = useState<File | null>(null);
+  useEffect(() => {
+    let on = true;
+    if (l) logFile(l).then((f) => on && setFile(f));
+    return () => {
+      on = false;
+    };
+  }, [l]);
   if (!l) return null;
   const frames = l.items.reduce((n, d) => n + d.frames.length, 0);
   const drills = l.items.filter((x) => x.drill).length;
@@ -53,10 +62,9 @@ export function LogShare() {
       <button
         type="button"
         className="btn-secondary mob-log-share-btn"
-        disabled={state === 'busy'}
+        disabled={!file}
         onClick={async () => {
-          setState('busy');
-          setState(await shareLog(l));
+          if (file) setState(await shareFile(file));
         }}
       >
         {tr('Share the motion log', 'Bewegungsprotokoll teilen')}

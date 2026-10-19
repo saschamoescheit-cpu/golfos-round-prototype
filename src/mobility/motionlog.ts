@@ -122,16 +122,18 @@ export async function logFile(l: MotionLog): Promise<File> {
   return new File([json], `${name}.json`, { type: 'application/json' });
 }
 
-/** share the file (the iPhone's share sheet: AirDrop, mail, files) or download it */
-export async function shareLog(l: MotionLog): Promise<'shared' | 'downloaded' | 'cancelled'> {
-  const file = await logFile(l);
+/** share the file (the iPhone's share sheet: AirDrop, mail, files) or download it. The file is made beforehand: Safari
+ * opens the share sheet only right after the tap – not after waiting for the zip. Not allowed (or no sharing of files):
+ * the download. */
+export async function shareFile(file: File): Promise<'shared' | 'downloaded' | 'cancelled'> {
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
   if (nav.share && nav.canShare?.({ files: [file] })) {
     try {
       await nav.share({ files: [file], title: file.name });
       return 'shared';
-    } catch {
-      return 'cancelled';
+    } catch (e) {
+      // the player closed the sheet: nothing more; the browser did not allow it: the download instead
+      if ((e as { name?: string })?.name === 'AbortError') return 'cancelled';
     }
   }
   const a = document.createElement('a');
