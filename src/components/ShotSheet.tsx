@@ -78,7 +78,7 @@ export function ShotSheet(props: {
               }}
             >
               P
-              <small>Texas</small>
+              <small>Texas Wedge</small>
             </button>
           </div>
         </div>

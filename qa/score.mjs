@@ -157,9 +157,10 @@ await p.getByRole('button', { name: 'Scorekarte' }).first().click();
 await p.waitForTimeout(1200);
 await p.locator('.sc-hole').first().click();
 await p.waitForTimeout(600);
-await p.locator('.sheet').getByRole('button', { name: /Schläge minus eins/ }).first().click();
-await p.locator('.sheet .segmented button').filter({ hasText: /^1$/ }).first().click();
-await p.locator('.sheet').getByRole('button', { name: 'Fertig' }).click();
+// the same score panel as on the course (Sascha 20.10.2026)
+await p.locator('.score-panel').getByRole('button', { name: /Schläge minus eins/ }).first().click();
+for (let k = 0; k < 4 && (await stored(0)).putts !== 1; k++) await p.locator('.score-panel').getByRole('button', { name: (await stored(0)).putts > 1 ? /Putts minus eins/ : /Putts plus eins/ }).first().click();
+await p.locator('.score-panel').getByRole('button', { name: 'Zurück zur Scorekarte' }).click();
 await p.waitForTimeout(600);
 const e1b = await stored(0);
 ok(e1b.strokes === 4 && e1b.putts === 1, `scorecard correction stored (${e1b.strokes}/${e1b.putts})`);

@@ -62,6 +62,8 @@ export interface SettingDef {
   default: number | boolean | string;
   hint?: () => string;
   when?: (settings: Record<string, number | boolean | string>) => boolean; // shown only then
+  /** yes/no settings shown together in one row as switches (Chicago's house rules, Sascha 20.10.2026) */
+  group?: 'house';
 }
 export interface StandingRow {
   id: string;
@@ -251,6 +253,7 @@ function teamNumber(g: Game, ids: string[], i: number, others: string[] = []): n
   // on when chosen (new Chicago games have both on); games from before keep their old reckoning
   const max9 = g.settings.max9 === true || g.settings.max9 === 'true';
   const bonus = g.settings.birdie5 === true || g.settings.birdie5 === 'true';
+  const eagle10 = g.settings.eagle10 === true || g.settings.eagle10 === 'true';
   const v = ids.map((id) => net(g, id, i)!).map((x) => (max9 ? Math.min(9, x) : x)).sort((a, b) => a - b);
   const par = g.holes[i]?.par ?? 4;
   const parOrBetter = (team: string[]) => team.some((id) => net(g, id, i)! <= par);
@@ -259,9 +262,11 @@ function teamNumber(g: Game, ids: string[], i: number, others: string[] = []): n
   // 10 or more goes first: 10 and 4 = 104, not 410
   const turned = max9 && !parOrBetter(ids);
   const num = turned || v[1] >= 10 ? Number(`${v[1]}${v[0]}`) : Number(`${v[0]}${v[1]}`);
-  if (!bonus || !others.length) return num;
-  const birdies = ids.filter((id) => net(g, id, i)! <= par - 1).length;
-  return birdies && !parOrBetter(others) ? num - 5 * birdies : num;
+  if ((!bonus && !eagle10) || !others.length || parOrBetter(others)) return num;
+  // an eagle (or better) takes 10 off with its own house rule (Sascha 20.10.2026), else it counts as a birdie
+  const eagles = ids.filter((id) => net(g, id, i)! <= par - 2).length;
+  const birdies = ids.filter((id) => net(g, id, i)! === par - 1).length;
+  return num - (eagle10 ? 10 * eagles : bonus ? 5 * eagles : 0) - (bonus ? 5 * birdies : 0);
 }
 
 /** Chicago on hole i (Sascha 15.10.2026: "Sascha & Max 44, Simon & Sam 56 – the difference 12"): the two teams with
@@ -482,6 +487,10 @@ export const FORMS: FormDef[] = [
         'Birdie −5 (wenn gewählt): jedes Birdie eines Teams zieht 5 von seiner Zahl ab, solange im anderen Team keiner Par spielt – Par und Birdie = 34 − 5 = 29, zwei Birdies = 33 − 10 = 23.',
       ),
       tr(
+        'Eagle −10 (if chosen): an eagle or better takes 10 off instead of 5, on the same condition – eagle and par = 24 − 10 = 14.',
+        'Eagle −10 (wenn gewählt): ein Eagle oder besser zieht 10 statt 5 ab, unter derselben Bedingung – Eagle und Par = 24 − 10 = 14.',
+      ),
+      tr(
         'The difference is the hole: 56 − 33 = 23. Each player of the lower team gets +23, each of the other −23 – all accounts add up to zero.',
         'Die Differenz ist das Loch: 56 − 33 = 23. Jeder Spieler des Teams mit der kleineren Zahl bekommt +23, jeder des anderen −23 – alle Konten ergeben zusammen null.',
       ),
@@ -502,9 +511,10 @@ export const FORMS: FormDef[] = [
     players: [4, 4],
     input: 'chicago',
     settings: [
-      // the house rules of Sascha's group (17.10.2026) – on by default
-      { key: 'max9', label: () => tr('Highest score 9', 'Höchstes Ergebnis 9'), type: 'bool', default: true },
-      { key: 'birdie5', label: () => tr('Birdie −5 (other team no par)', 'Birdie −5 (anderes Team ohne Par)'), type: 'bool', default: true },
+      // the house rules of Sascha's group (17.10.2026, Eagle −10 on 20.10.2026) – on by default, in one row
+      { key: 'max9', label: () => tr('Highest 9', 'Höchstens 9'), type: 'bool', default: true, group: 'house' },
+      { key: 'birdie5', label: () => tr('Birdie −5', 'Birdie −5'), type: 'bool', default: true, group: 'house' },
+      { key: 'eagle10', label: () => tr('Eagle −10', 'Eagle −10'), type: 'bool', default: true, group: 'house' },
       { key: 'stake', label: () => tr('Start stake per point', 'Starteinsatz je Punkt'), type: 'stake', default: 0.1 },
     ],
     standing: (g) => {

@@ -72,6 +72,8 @@ export function ScoreSheet(props: {
   onChange: (playerId: string, patch: Partial<HoleEntry>) => void;
   onPlacePutts: () => void;
   onClose: () => void;
+  /** what the ✕ goes back to (the map on the course, the scorecard after the round) */
+  closeLabel?: string;
 }) {
   const h = props.hole;
   return (
@@ -80,7 +82,7 @@ export function ScoreSheet(props: {
         <strong>
           {tr('Hole', 'Loch')} {h.label} · Par {h.par} · Hcp {h.strokeIndex || '–'}
         </strong>
-        <button type="button" className="icon-btn" aria-label={tr('Back to the map', 'Zurück zur Karte')} onClick={props.onClose}>
+        <button type="button" className="icon-btn" aria-label={props.closeLabel ?? tr('Back to the map', 'Zurück zur Karte')} onClick={props.onClose}>
           ✕
         </button>
       </div>

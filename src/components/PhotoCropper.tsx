@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 
 // The profile photo placed by hand (Sascha 17.10.2026: "position it, zoom in and out"): the picture in a round frame,
-// moved with one finger, zoomed with two fingers, the slider or the mouse wheel; saved as a small square JPEG.
+// moved with one finger, zoomed with two fingers or the mouse wheel (no slider, 20.10.2026); saved as a small square JPEG.
 const FRAME = 260; // px on screen
 const OUT = 160; // px of the saved photo
 
@@ -98,16 +98,7 @@ export function PhotoCropper(props: { src: string; onCancel: () => void; onSave:
           )}
           <span className="crop-ring" aria-hidden="true" />
         </div>
-        <input
-          type="range"
-          className="crop-zoom"
-          min={1}
-          max={4}
-          step={0.01}
-          value={zoom}
-          aria-label={tr('Zoom', 'Zoom')}
-          onChange={(e) => setZoomTo(Number(e.target.value))}
-        />
+        {/* zoom with two fingers (or the wheel) – no slider (Sascha 20.10.2026) */}
         <button type="button" className="btn-primary" disabled={!img} onClick={save}>
           {tr('Use photo', 'Bild übernehmen')}
         </button>

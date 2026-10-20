@@ -116,17 +116,19 @@ const pen = p.getByRole('img', { name: /Score für Loch .* eintragen/ });
 ok((await pen.count()) === 1, 'scorecard: the empty hole shows a pencil');
 await pen.click();
 await p.waitForTimeout(400);
-await p.locator('.sheet').getByRole('button', { name: /Schläge plus eins/ }).first().click();
+// the same score panel as on the course: strokes, putts, sand shots, penalties (Sascha 20.10.2026)
+ok((await p.locator('.score-panel').getByRole('button', { name: /Strafschläge plus eins/ }).count()) >= 1 && (await p.locator('.score-panel').getByText('Sand Shots').count()) >= 1, 'the empty hole opens the score panel of the course (penalties, sand shots)');
+await p.locator('.score-panel').getByRole('button', { name: /^Schläge plus eins/ }).first().click();
 await p.waitForTimeout(300);
-await p.locator('.sheet').getByRole('button', { name: /Schließen|Fertig/ }).first().click().catch(() => {});
+await p.locator('.score-panel').getByRole('button', { name: 'Zurück zur Scorekarte' }).click();
 await p.waitForTimeout(300);
 const filled = await p.evaluate(() => { const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]; const id = r.players.find((x) => x.isMe).id; return r.entries[id][r.holes.length - 1].strokes; });
 ok(filled != null && (await pen.count()) === 0, `a tap enters the score and it is saved (${filled})`);
-// the round's actions in one row: share, check the shots, delete (Sascha 18.10.2026)
+// the round's actions in one row (Sascha 18.10.2026), in this order (20.10.2026): check the shots, share, export, delete
 {
   const acts = await p.locator('.sc-actions .sc-action').allInnerTexts();
   const tops = await p.locator('.sc-actions .sc-action').evaluateAll((bs) => bs.map((b) => Math.round(b.getBoundingClientRect().top)));
-  ok(acts.map((t) => t.trim()).join('|') === 'Teilen|Schläge prüfen|Export|Löschen' && new Set(tops).size === 1, `scorecard: Teilen · Schläge prüfen · Export · Löschen in one row (${acts.map((t) => t.trim()).join(' · ')})`);
+  ok(acts.map((t) => t.trim()).join('|') === 'Schläge prüfen|Teilen|Export|Löschen' && new Set(tops).size === 1, `scorecard: Schläge prüfen · Teilen · Export · Löschen in one row (${acts.map((t) => t.trim()).join(' · ')})`);
 }
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(500);

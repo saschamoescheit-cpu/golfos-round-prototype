@@ -9,7 +9,7 @@ import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
 import { isTeamRound } from '../lib/games';
-import { HoleEditSheet } from '../components/HoleEditSheet';
+import { ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
 import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
@@ -78,7 +78,7 @@ export function Scorecard(props: {
       ) : (
         <>
           <span className="grow">
-            <strong>{scoreOnly ? tr('Kept as a round', 'Als Runde behalten') : tr('Sign your round', 'Runde signieren')}</strong>
+            <strong>{scoreOnly ? tr('Saved only', 'Nur gespeichert') : tr('Sign your round', 'Runde signieren')}</strong>
             <span className="muted small" style={{ display: 'block' }}>
               {scoreOnly
                 ? tr('It does not count in your statistics – check and sign it to count.', 'Zählt nicht in deiner Statistik – prüfen und signieren, damit sie zählt.')
@@ -103,7 +103,7 @@ export function Scorecard(props: {
               </button>
               {canReview && (
                 <button type="button" className="btn-secondary sign-later" onClick={() => props.onChange({ ...round, capture: 'score' })}>
-                  {tr('Keep as a round', 'Als Runde behalten')}
+                  {tr('Just save the round', 'Runde nur speichern')}
                 </button>
               )}
             </>
@@ -145,8 +145,8 @@ export function Scorecard(props: {
             {finished
               ? canReview
                 ? tr(
-                    'Check & sign: the shots checked, the round signed – it counts in your statistics. Or keep it as a round – it does not count.',
-                    'Prüfen & signieren: Schläge prüfen, Runde signieren – sie zählt in deiner Statistik. Oder als Runde behalten – sie zählt nicht.',
+                    'Check & sign: the shots checked, the round signed – it counts in your statistics. Or just save it – it does not count.',
+                    'Prüfen & signieren: Schläge prüfen, Runde signieren – sie zählt in deiner Statistik. Oder nur speichern – sie zählt nicht.',
                   )
                 : tr('You find it under Rounds – or delete it.', 'Du findest sie unter Runden – oder lösche sie.')
               : tr('Save it for your stats – or delete it.', 'Speichere sie für deine Statistik – oder lösche sie.')}
@@ -165,14 +165,30 @@ export function Scorecard(props: {
                 )
               )}
               {/* check & sign later (Sascha 18.10.2026): the round waits under "prüfen & signieren" */}
+              {/* the other two ways – plain buttons, nothing chosen beforehand (Sascha 20.10.2026): a tap decides and
+                  closes the scorecard */}
               {finished && canReview && (
-                <button type="button" className="btn-secondary" aria-pressed={!scoreOnly} onClick={() => props.onChange({ ...round, capture: 'full' })}>
-                  {!scoreOnly ? tr('Check & sign later ✓', 'Später prüfen & signieren ✓') : tr('Check & sign later', 'Später prüfen & signieren')}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    props.onChange({ ...round, capture: 'full' });
+                    props.onClose();
+                  }}
+                >
+                  {tr('Check & sign later', 'Später prüfen & signieren')}
                 </button>
               )}
               {finished && canReview && (
-                <button type="button" className="btn-secondary" aria-pressed={scoreOnly} onClick={() => props.onChange({ ...round, capture: 'score' })}>
-                  {scoreOnly ? tr('Kept as a round ✓', 'Als Runde behalten ✓') : tr('Keep as a round', 'Als Runde behalten')}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    props.onChange({ ...round, capture: 'score' });
+                    props.onClose();
+                  }}
+                >
+                  {tr('Just save the round', 'Runde nur speichern')}
                 </button>
               )}
               {/* one tap – "Undo" brings it back for a few seconds (Sascha 15.10.2026) */}
@@ -257,13 +273,30 @@ export function Scorecard(props: {
       <ScoreTable round={round} onHole={setEditHole} />
       {!round.signedAt && signCard}
 
+      {/* a hole tapped on the card (or its pencil, an empty hole): the same score panel as on the course – strokes, putts,
+          sand shots, penalties, tee shot (Sascha 20.10.2026: "the same menu as on a round") */}
       {editHole != null && (
-        <HoleEditSheet
-          round={round}
-          index={editHole}
-          onClose={() => setEditHole(null)}
-          onChange={props.onChange}
-        />
+        <div className="score-panel-screen">
+          <ScoreSheet
+            hole={round.holes[editHole]}
+            players={round.players}
+            entries={Object.fromEntries(round.players.map((p) => [p.id, round.entries[p.id][editHole]]))}
+            toPar={Object.fromEntries(
+              round.players.map((p) => {
+                const t = playerTotals(round.holes, round.entries[p.id], p.playingHandicap);
+                return [p.id, t.holesPlayed ? t.toPar : null];
+              }),
+            )}
+            canPlacePutts={false}
+            team={isTeamRound(round)}
+            onChange={(pid, patch) =>
+              props.onChange({ ...round, entries: { ...round.entries, [pid]: round.entries[pid].map((e, k) => (k === editHole ? { ...e, ...patch } : e)) } })
+            }
+            onPlacePutts={() => undefined}
+            onClose={() => setEditHole(null)}
+            closeLabel={tr('Back to the scorecard', 'Zurück zur Scorekarte')}
+          />
+        </div>
       )}
 
       <PlayedHcpCard round={round} onChange={props.onChange} />
@@ -285,9 +318,15 @@ export function Scorecard(props: {
 
       <span className="spacer" />
       {/* save and delete sit in the card at the top while the round is being finished */}
-      {/* the round's actions in one row with their symbols (Sascha 18.10.2026): share, check the shots, delete */}
+      {/* the round's actions in one row with their symbols (Sascha 18.10.2026), in this order (20.10.2026): check the shots, share, export, delete */}
       {finished && !confirmDelete && (
         <div className="sc-actions" role="group" aria-label={tr('This round', 'Diese Runde')}>
+          {canReview && !props.justFinished && (
+            <button type="button" className="sc-action" onClick={() => props.onReview({ ...round, capture: 'full' })}>
+              <CheckShotsIcon size={22} />
+              <span>{tr('Check shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' ·' : ''}</span>
+            </button>
+          )}
           <button
             type="button"
             className="sc-action"
@@ -303,12 +342,6 @@ export function Scorecard(props: {
             </svg>
             <span>{tr('Share', 'Teilen')}</span>
           </button>
-          {canReview && !props.justFinished && (
-            <button type="button" className="sc-action" onClick={() => props.onReview({ ...round, capture: 'full' })}>
-              <CheckShotsIcon size={22} />
-              <span>{tr('Check shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' ·' : ''}</span>
-            </button>
-          )}
           {/* the round as a file – score, the shots noted by hand, the GPS track – for the analysis in the Dropbox (Sascha 18.10.2026) */}
           {!round.preview && (
             <button

@@ -708,7 +708,25 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
-        {f.settings.filter((s) => !s.when || s.when(d.settings)).map((s) => (
+        {/* house rules: one row of switches instead of a yes/no row each (Sascha 20.10.2026: "summarise them sensibly") */}
+        {f.settings.some((s) => s.group === 'house') && (
+          <div className="game-setting">
+            <span className="stepper-label">{tr('House rules', 'Hausregeln')}</span>
+            <div className="chip-set">
+              {f.settings
+                .filter((s) => s.group === 'house')
+                .map((s) => {
+                  const on = d.settings[s.key] === true || d.settings[s.key] === 'true';
+                  return (
+                    <button key={s.key} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} onClick={() => set({ settings: { ...d.settings, [s.key]: !on } })}>
+                      {s.label()}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+        {f.settings.filter((s) => s.group !== 'house' && (!s.when || s.when(d.settings))).map((s) => (
           <div key={s.key} className="game-setting">
             <span className="stepper-label">{s.label()}</span>
             {s.type === 'bool' && (

@@ -72,6 +72,19 @@ export interface HoleMapProps {
   onMapTap: (p: LngLat) => void;
 }
 
+/** The height of the phone's status bar (the safe area at the top), measured once. */
+let statusBar: number | null = null;
+function statusBarHeight(): number {
+  if (statusBar == null) {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top, 0px);visibility:hidden;pointer-events:none';
+    document.body.appendChild(probe);
+    statusBar = probe.getBoundingClientRect().height || 0;
+    probe.remove();
+  }
+  return statusBar;
+}
+
 export function HoleMap(props: HoleMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -359,6 +372,8 @@ export function HoleMap(props: HoleMapProps) {
           latest.current.onTrackTap?.(t.id!);
         });
       }
+      // a shot to move: the finger moves the shot, not the page (iPhone)
+      if (movable) d.style.touchAction = 'none';
       const marker = new maplibregl.Marker({ element: d, draggable: movable }).setLngLat(t.pos).addTo(m);
       if (movable) {
         marker.on('drag', () => {
@@ -372,8 +387,9 @@ export function HoleMap(props: HoleMapProps) {
               r.className = 'map-drag-readout';
               m.getContainer().appendChild(r);
             }
-            // where the map window starts on the screen: the readout stays below the phone's status bar
-            r.style.setProperty('--map-top', `${Math.round(m.getContainer().getBoundingClientRect().top)}px`);
+            // below the phone's status bar when the map window starts above it – worked out here, not in a CSS formula
+            // (Sascha 20.10.2026 on the iPhone: "nothing shown at all")
+            r.style.top = `${Math.max(10, statusBarHeight() + 6 - Math.round(m.getContainer().getBoundingClientRect().top))}px`;
             r.textContent = text;
           }
           // the line between the shots follows the finger

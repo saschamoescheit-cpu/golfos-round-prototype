@@ -230,6 +230,16 @@ await p.locator('.pick-option').filter({ hasText: 'Chicago' }).click();
 await p.getByRole('button', { name: '+ Ben' }).click();
 // Chicago needs four: four rows from the start (Sascha 17.10.2026)
 ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('button', { name: '+ Spieler hinzufügen' }).count()) === 0, 'Chicago: four player rows straight away');
+// the house rules in one row of switches, all on (Sascha 20.10.2026: Eagle −10, "summarise them sensibly")
+{
+  const house = p.locator('.game-setting').filter({ hasText: 'Hausregeln' });
+  const chips = await house.locator('.chip').allInnerTexts();
+  const on = await house.locator('.chip.on').count();
+  ok((await house.count()) === 1 && chips.join('|') === 'Höchstens 9|Birdie −5|Eagle −10' && on === 3, `Chicago: house rules in one row, all on (${chips.join(' · ')})`);
+  await house.getByRole('button', { name: 'Eagle −10' }).click();
+  ok((await house.locator('.chip.on').count()) === 2, 'a tap switches a house rule off');
+  await house.getByRole('button', { name: 'Eagle −10' }).click();
+}
 await p.locator('.game-player-row').nth(2).locator('input').first().fill('Chris');
 await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna');
 ok((await p.locator('.game-player-row').nth(1).locator('input').nth(1).inputValue()) === '12', 'friend Ben added with one tap, handicap 12');

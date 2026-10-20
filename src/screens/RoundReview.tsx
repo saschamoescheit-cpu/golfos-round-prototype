@@ -99,8 +99,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // cannot") – also right beside another shot or on the green's edge, where a plain tap would open that shot
   const [adding, setAdding] = useState(false);
   useEffect(() => setAdding(false), [k]);
-  const [undoHand, setUndoHand] = useState<{ k: number; detail: DetailEntry } | null>(null);
-  useEffect(() => setUndoHand(null), [k]);
   // reorder the shots: hold the grip and move up or down (Sascha 17.10.2026)
   const listRef = useRef<HTMLOListElement>(null);
   const latestShots = useRef<Shot[]>([]);
@@ -117,17 +115,25 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     let to = from;
     setDrag({ from, to, dy: 0 });
     navigator.vibrate?.(10);
-    const move = (e: PointerEvent) => {
-      const y = mids[from] + (e.clientY - y0);
+    const at = (clientY: number) => {
+      const y = mids[from] + (clientY - y0);
       to = mids.reduce((best, m, j) => (Math.abs(m - y) < Math.abs(mids[best] - y) ? j : best), from);
-      setDrag({ from, to, dy: e.clientY - y0 });
+      setDrag({ from, to, dy: clientY - y0 });
     };
-    const noScroll = (e: TouchEvent) => e.preventDefault();
+    const move = (e: PointerEvent) => at(e.clientY);
+    // the iPhone: the finger is followed by its touch events, and the page must not scroll – Safari gives up the
+    // pointer (pointercancel) as soon as it thinks of scrolling, so that is no end of the drag (Sascha 20.10.2026:
+    // "still does not work")
+    const touchMove = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+      if (e.touches[0]) at(e.touches[0].clientY);
+    };
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      window.removeEventListener('pointercancel', up);
-      window.removeEventListener('touchmove', noScroll);
+      window.removeEventListener('touchmove', touchMove);
+      window.removeEventListener('touchend', up);
+      window.removeEventListener('touchcancel', up);
       setDrag(null);
       justDragged.current = true;
       setTimeout(() => (justDragged.current = false), 350);
@@ -135,8 +141,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', up);
-    window.addEventListener('touchmove', noScroll, { passive: false });
+    window.addEventListener('touchmove', touchMove, { passive: false });
+    window.addEventListener('touchend', up);
+    window.addEventListener('touchcancel', up);
   };
   /** The grip: at once. */
   const startDrag = (ev: React.PointerEvent, from: number) => {
@@ -150,15 +157,18 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     const x0 = ev.clientX;
     const y0 = ev.clientY;
     let y = y0;
-    const track = (e: PointerEvent) => {
-      y = e.clientY;
-      if (Math.hypot(e.clientX - x0, e.clientY - y0) > 8) cancel();
+    const follow = (cx: number, cy: number) => {
+      y = cy;
+      if (Math.hypot(cx - x0, cy - y0) > 8) cancel(); // the finger moved first: that is scrolling
     };
+    const track = (e: PointerEvent) => follow(e.clientX, e.clientY);
+    const touchTrack = (e: TouchEvent) => e.touches[0] && follow(e.touches[0].clientX, e.touches[0].clientY);
     const cancel = () => {
       clearTimeout(timer);
       window.removeEventListener('pointermove', track);
       window.removeEventListener('pointerup', cancel);
-      window.removeEventListener('pointercancel', cancel);
+      window.removeEventListener('touchmove', touchTrack);
+      window.removeEventListener('touchend', cancel);
     };
     const timer = setTimeout(() => {
       cancel();
@@ -166,7 +176,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     }, 450);
     window.addEventListener('pointermove', track);
     window.addEventListener('pointerup', cancel);
-    window.addEventListener('pointercancel', cancel);
+    window.addEventListener('touchmove', touchTrack, { passive: true });
+    window.addEventListener('touchend', cancel);
   };
   // what the caddie said on the course, with the player's verdict
   const [cadLog, setCadLog] = useState<CaddieLog>(() => loadCaddieLog(round.id));
@@ -423,15 +434,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     { strokes: 0, par: 0, holes: 0 },
   );
   latestShots.current = d?.shots ?? [];
-  const hand = (round.manualShots ?? []).filter((x) => x.hole === k);
-  const takeHand = () => {
-    if (!data || !hand.length) return;
-    const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
-    const det = handDetail(k, data, base, part);
-    if (!det) return;
-    setUndoHand({ k, detail: base });
-    saveDetail(k, det);
-  };
   reorderRef.current = (from: number, to: number) => {
     if (!d) return;
     const shots = d.shots.slice();
@@ -474,7 +476,18 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       </div>
       {data && (
         <div className="field">
-          <label>{tr('Putts on this hole', 'Putts an diesem Loch')}</label>
+          <div className="field-head">
+            <label>{tr('Putts on this hole', 'Putts an diesem Loch')}</label>
+            {/* the putts on the green: the pencil, as in the score on the course (Sascha 20.10.2026) */}
+            {(e.putts ?? 0) > 0 && (
+              <button type="button" className="pencil" aria-label={placedPutts?.length ? tr('Edit the putts on the green', 'Putts auf dem Grün bearbeiten') : tr('Place the putts on the green', 'Putts auf dem Grün setzen')} onClick={() => setPuttEdit(true)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 20h4L19 9l-4-4L4 16z" />
+                  <path d="M13.5 6.5l4 4" />
+                </svg>
+              </button>
+            )}
+          </div>
           <Segmented<number>
             label="Putts"
             value={e.putts}
@@ -636,27 +649,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           </button>
         </div>
       )}
-      {data && hand.length > 0 && !d?.fromHand && !(undoHand && undoHand.k === k) && (
-        <button type="button" className="btn-ghost hand-take" onClick={takeHand}>
-          <ShotHereIcon size={18} />
-          {tr(`Use the ${hand.length} shots noted by hand`, `Die ${hand.length} von Hand erfassten Schläge übernehmen`)}
-        </button>
-      )}
-      {undoHand && undoHand.k === k && (
-        <div className="notice" role="status">
-          {tr('The shots noted by hand are the hole’s shots now.', 'Die von Hand erfassten Schläge sind jetzt die Schläge des Lochs.')}{' '}
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={() => {
-              saveDetail(k, undoHand.detail);
-              setUndoHand(null);
-            }}
-          >
-            {tr('Undo', 'Rückgängig')}
-          </button>
-        </div>
-      )}
       {adding && (
         <div className="notice" role="status">
           {tr('Tap the map where the shot was played – a grey circle (where you stood) puts it there exactly.', 'Tippe auf die Karte, wo der Schlag gespielt wurde – ein grauer Kreis (wo du standest) setzt ihn genau dorthin.')}
@@ -723,11 +715,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       {d && data && d.shots.length > 0 && (!d.shots[0].pos || !nearTee(d.shots[0].pos, data)) && (
         <button type="button" className="btn-secondary" onClick={addTeeShot}>
           {tr('Tee shot missing – add it at the tee', 'Abschlag fehlt – am Abschlag ergänzen')}
-        </button>
-      )}
-      {data && (e.putts ?? 0) > 0 && (
-        <button type="button" className="btn-secondary" onClick={() => setPuttEdit(true)}>
-          {placedPutts?.length ? tr('Edit the putts on the green', 'Putts auf dem Grün bearbeiten') : tr('Place the putts on the green', 'Putts auf dem Grün setzen')}
         </button>
       )}
       {puttEdit && data && (e.putts ?? 0) > 0 && (

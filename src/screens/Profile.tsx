@@ -228,16 +228,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
-        {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026);
-            a row like the home club, the choice in a sheet like the game form (Sascha: "it does not look like the rest") */}
-        <div className="field">
-          <label>{tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')}</label>
-          <button type="button" className="settings-row home-club sg-row" onClick={() => setSgPick(true)}>
-            <span>{p.sgGroup ? GROUPS.find((g) => g.id === p.sgGroup)?.label : tr(`Next better group (${autoGroup})`, `Nächstbessere Gruppe (${autoGroup})`)}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-        </div>
-        {/* a test (Sascha 18.10.2026): the microphone listens for the strike while the hole map is open – nothing recorded */}
+        {/* a test (Sascha 18.10.2026), above the strokes gained comparison, On left (20.10.2026): the microphone listens for the strike while the hole map is open – nothing recorded */}
         <div className="field">
           <label>{tr('Shot by sound (test)', 'Schlag per Ton (Test)')}</label>
           <Segmented<'off' | 'on'>
@@ -249,10 +240,19 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
               setSoundTestState(v === 'on');
             }}
             options={[
-              { value: 'off', label: tr('Off', 'Aus') },
               { value: 'on', label: tr('On', 'An') },
+              { value: 'off', label: tr('Off', 'Aus') },
             ]}
           />
+        </div>
+        {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026);
+            a row like the home club, the choice in a sheet like the game form (Sascha: "it does not look like the rest") */}
+        <div className="field">
+          <label>{tr('Strokes gained compared with', 'Strokes-Gained-Vergleich')}</label>
+          <button type="button" className="settings-row home-club sg-row" onClick={() => setSgPick(true)}>
+            <span>{p.sgGroup ? GROUPS.find((g) => g.id === p.sgGroup)?.label : tr(`Next better group (${autoGroup})`, `Nächstbessere Gruppe (${autoGroup})`)}</span>
+            <span aria-hidden="true">›</span>
+          </button>
         </div>
       </section>
 

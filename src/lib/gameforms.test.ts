@@ -166,6 +166,31 @@ describe("Chicago as Sascha's group plays it", () => {
   it('house rules: two birdies = 33 − 10 = 23', () => {
     expect(house([3, 3, 5, 6]).a.num).toBe(23);
   });
+  // Eagle −10 (Sascha 20.10.2026), a house rule of its own
+  const eagle = (scores: number[], settings: Record<string, boolean> = {}) => {
+    const g = game('chicago', scores.map((x) => [x]), { stake: 0.1, max9: true, birdie5: true, eagle10: true, ...settings });
+    g.holes = g.holes.map((h) => ({ ...h, par: 4 }));
+    return chicagoHole(g, 0)!;
+  };
+  it('Eagle −10: eagle and par = 24 − 10 = 14 when the other team has no par', () => {
+    expect(eagle([2, 4, 5, 6]).a.num).toBe(14);
+  });
+  it('Eagle −10 and Birdie −5 together: eagle and birdie = 23 − 15 = 8', () => {
+    expect(eagle([2, 3, 5, 6]).a.num).toBe(8);
+  });
+  it('Eagle −10 off: the eagle counts as a birdie (−5)', () => {
+    expect(eagle([2, 4, 5, 6], { eagle10: false }).a.num).toBe(19);
+  });
+  it('Eagle −10: nothing off when the other team makes par', () => {
+    expect(eagle([2, 4, 4, 6]).a.num).toBe(24);
+  });
+  it('Eagle −10 on, Birdie −5 off: only the eagle is taken off', () => {
+    expect(eagle([2, 3, 5, 6], { birdie5: false }).a.num).toBe(13);
+  });
+  it('new Chicago games have all three house rules on', () => {
+    const g = game('chicago', [[4], [4], [4], [4]]);
+    expect([g.settings.max9, g.settings.birdie5, g.settings.eagle10]).toEqual([true, true, true]);
+  });
   it('a score of 10 or more goes first: 10 and 4 = 104 (to be checked again)', () => {
     // A 10, B 4 = 104 against C 5, D 5 = 55 → 49 for C and D
     const st = standingOf(game('chicago', [[10], [4], [5], [5]], { stake: 0.1, allowance: '0', max9: false, birdie5: false }));

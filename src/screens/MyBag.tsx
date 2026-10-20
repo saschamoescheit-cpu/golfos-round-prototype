@@ -243,11 +243,12 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                   <strong className="bag-code">{withLoft(clubCode(c), c, style)}</strong>
                   {t && differs(c) ? (
                     <span className="bag-tracked differs">
-                      <span className="bag-tracked-text">
-                        <span className="bag-tracked-label">{tr(`${t.shots} shots tracked`, `${t.shots} Schläge gemessen`)}</span>
-                        <span>
+                      {/* the tracked carry first, then how often (Sascha 20.10.2026: one line – on the smallest phone too) */}
+                      <span className="bag-tracked-text" title={tr(`${t.shots} shots tracked`, `${t.shots} Schläge gemessen`)}>
+                        <span className="bag-tracked-value">
                           {toU(t.carry)} {uL}
                         </span>
+                        <span className="bag-tracked-label">· {t.shots}×</span>
                       </span>
                       {differs(c) && (
                         <button type="button" className="use-btn" aria-label={tr(`Use tracked ${toU(t.carry)} ${uL} for ${clubCode(c)}`, `Gemessene ${toU(t.carry)} ${uL} für ${clubCode(c)} übernehmen`)} title={tr('Use', 'Übernehmen')} onClick={() => useTracked([c])}>

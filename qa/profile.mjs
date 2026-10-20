@@ -83,7 +83,8 @@ const after = await p.locator('main').innerText();
 ok(after.includes('4i') && after.includes('PW (43°)') && after.includes('SW') && !after.includes('SW (') && !after.includes('LW'), 'pencil: 4i added, LW removed, "PW (43°)" shown');
 await shot('bag-full');
 // tracked carry: shown next to the club, "use" as an icon (Sascha 15.10.2026)
-ok((await p.locator('.use-btn').count()) >= 2 && /18 Schläge gemessen/i.test(await p.locator('main').innerText()), `tracked: "18 Schläge gemessen" with the icon button (${await p.locator('.use-btn').count()})`);
+// one line again (Sascha 20.10.2026): the tracked carry, then how often – "152 m · 18×", the full words in its title
+ok((await p.locator('.use-btn').count()) >= 2 && /· 18×/.test(await p.locator('main').innerText()) && (await p.locator('[title="18 Schläge gemessen"]').count()) >= 1, `tracked: "· 18×" with the icon button (${await p.locator('.use-btn').count()})`);
 ok((await p.locator('.bag-grid ~ .use-all').count()) === 1, '"use all" under the table');
 await p.getByRole('button', { name: 'Gemessene 216 m für D übernehmen' }).click();
 ok((await p.getByRole('textbox', { name: 'D Carry in Metern' }).inputValue()) === '216', 'icon takes over the tracked 216 m for the driver');
@@ -161,8 +162,11 @@ ok(/Sicher/.test(await planRow.innerText()) && (await p.evaluate(() => JSON.pars
   const crop = p.getByRole('dialog', { name: 'Profilbild anpassen' });
   await crop.waitFor({ timeout: 5000 });
   ok(await crop.isVisible(), 'a new photo opens the cropper');
-  await crop.getByRole('slider', { name: 'Zoom' }).fill('2');
+  // no slider (Sascha 20.10.2026): zoom with the wheel here, two fingers on the phone
+  ok((await crop.getByRole('slider').count()) === 0, 'the cropper has no zoom slider');
   const fb = await crop.locator('.crop-frame').boundingBox();
+  await p.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+  for (let k = 0; k < 9; k++) { await crop.locator('.crop-frame').dispatchEvent('wheel', { deltaY: -100, bubbles: true }); await p.waitForTimeout(30); } // mobile WebKit has no wheel to turn
   await p.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
   await p.mouse.down();
   await p.mouse.move(fb.x + fb.width / 2 + 200, fb.y + fb.height / 2, { steps: 6 }); // the left (green) half into the frame

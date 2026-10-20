@@ -114,14 +114,15 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
     await p.getByRole('button', { name: 'Speichern & beenden' }).click();
     await p.waitForTimeout(800);
     const card = await p.locator('.finish-card').innerText().catch(() => '');
-    ok(/gespeichert/.test(card) && (c.team ? !/Prüfen & signieren/.test(card) : /Prüfen & signieren/.test(card) && /Als Runde behalten ✓/.test(card)), `${label}: finished – ${c.team ? 'no shot check (team)' : '"Prüfen & signieren" offered, kept as a round by default'}`);
+    ok(/gespeichert/.test(card) && (c.team ? !/Prüfen & signieren/.test(card) : /Prüfen & signieren/.test(card) && /Runde nur speichern/.test(card) && !/✓/.test(card.replace('Runde gespeichert ✓', ''))), `${label}: finished – ${c.team ? 'no shot check (team)' : '"Prüfen & signieren" and "Runde nur speichern" offered, nothing chosen beforehand'}`);
     if (!c.team) {
       // the third way (Sascha 18.10.2026): check & sign later – the round waits under "prüfen & signieren"
-      await p.locator('.finish-card').getByRole('button', { name: /^Später prüfen & signieren/ }).click();
-      await p.waitForTimeout(300);
-      const cap = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].capture);
-      ok(cap === 'full' && /Später prüfen & signieren ✓/.test(await p.locator('.finish-card').innerText()), `${label}: "Später prüfen & signieren" keeps it open to check & sign (${cap})`);
       ok((await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Export' }).count()) === 1, `${label}: share and export in the action row`);
+      await p.locator('.finish-card').getByRole('button', { name: /^Später prüfen & signieren/ }).click();
+      await p.waitForTimeout(400);
+      const cap = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].capture);
+      // a tap decides and closes the scorecard (Sascha 20.10.2026: no tick, nothing chosen beforehand)
+      ok(cap === 'full' && (await p.locator('.finish-card').count()) === 0, `${label}: "Später prüfen & signieren" keeps it open to check & sign and closes the scorecard (${cap})`);
     }
   } catch (e) {
     ok(false, `${label} [${step}]: ${String(e.message).split('\n')[0]}`);
