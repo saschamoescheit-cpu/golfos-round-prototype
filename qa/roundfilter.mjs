@@ -128,7 +128,9 @@ ok(filled != null && (await pen.count()) === 0, `a tap enters the score and it i
 {
   const acts = await p.locator('.sc-actions .sc-action').allInnerTexts();
   const tops = await p.locator('.sc-actions .sc-action').evaluateAll((bs) => bs.map((b) => Math.round(b.getBoundingClientRect().top)));
-  ok(acts.map((t) => t.trim()).join('|') === 'Schläge prüfen|Teilen|Export|Löschen' && new Set(tops).size === 1, `scorecard: Schläge prüfen · Teilen · Export · Löschen in one row (${acts.map((t) => t.trim()).join(' · ')})`);
+  // the card above offers "Prüfen & signieren" for this saved-only round – then the row has no second "check shots"
+  const offers = (await p.locator('.sign-card').getByRole('button', { name: 'Prüfen & signieren', exact: true }).count()) === 1;
+  ok(acts.map((t) => t.trim()).join('|') === (offers ? 'Teilen|Export|Löschen' : 'Schläge prüfen|Teilen|Export|Löschen') && new Set(tops).size === 1, `scorecard: ${offers ? 'Teilen · Export · Löschen (the card above has Prüfen & signieren)' : 'Schläge prüfen · Teilen · Export · Löschen'} in one row (${acts.map((t) => t.trim()).join(' · ')})`);
 }
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(500);
@@ -140,9 +142,7 @@ const before = await tileN();
 await p.locator('ul.list button.list-item').first().click();
 await p.waitForTimeout(800);
 await p.locator('.sign-card').getByRole('button', { name: 'Später prüfen & signieren' }).click();
-await p.waitForTimeout(300);
-await p.locator('.topbar').getByRole('button').first().click();
-await p.waitForTimeout(600);
+await p.waitForTimeout(600); // a tap decides and closes the scorecard (Sascha 20.10.2026)
 ok((await tileN()) === before + 1, `a kept round set to "Später prüfen & signieren" from the list counts under the tile (${before} → ${await tileN()})`);
 // the module start page: only the rounds to check & sign – a paused round is no task there (Sascha 18.10.2026)
 await p.evaluate(() => {

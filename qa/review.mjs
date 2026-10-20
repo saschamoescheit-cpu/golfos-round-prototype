@@ -79,11 +79,27 @@ console.log('· white circles on the first hole to check:', (await p.getByText(/
 // slim (Sascha 16.10.2026): no explanations, no detect link, no caddie rating; score above the map
 ok((await p.getByText(/Fahne dorthin ziehen|Tippe, wo dein Ball lag|Schläge aus der GPS-Spur erkennen|Caddie: \d+ von/).count()) === 0, 'no explanations, no detect link, no caddie count');
 const top = await p.locator('.review').evaluate((el) => {
-  const score = el.querySelector('.row .stepper')?.getBoundingClientRect().top ?? 9999;
+  const score = el.querySelector('.review-score')?.getBoundingClientRect().top ?? 9999;
   const map = el.querySelector('.review-map')?.getBoundingClientRect().top ?? 0;
   return score < map;
 });
 ok(top, 'score of the hole above the map');
+// the score as entered, edited behind its pencil in the course's score panel (Sascha 20.10.2026)
+{
+  ok((await p.locator('.review .stepper').count()) === 0 && (await p.locator('.review .segmented').count()) === 0, 'the score shown, no steppers or putt buttons above the map');
+  const val = (await p.locator('.review-score-value').innerText()).trim();
+  await p.getByRole('button', { name: /^Score an Loch .* bearbeiten$/ }).click();
+  await p.waitForTimeout(300);
+  const panel = p.locator('.score-panel');
+  ok((await panel.getByRole('button', { name: /Strafschläge plus eins/ }).count()) === 1 && (await panel.getByText('Sand Shots').count()) === 1, 'the pencil opens the score panel of the course (sand shots, penalties)');
+  await panel.getByRole('button', { name: /^Schläge plus eins/ }).click();
+  await p.waitForTimeout(200);
+  await panel.getByRole('button', { name: /^Schläge minus eins/ }).click();
+  await p.waitForTimeout(200);
+  await panel.getByRole('button', { name: 'Zurück zu Schläge prüfen' }).click();
+  await p.waitForTimeout(300);
+  ok((await p.locator('.score-panel').count()) === 0 && (await p.locator('.review-score-value').innerText()).trim() === val, `back in the shot check, the score as before (${val})`);
+}
 ok((await p.locator('.review-map').boundingBox()).height < 0.5 * 844, 'the map leaves room below it on the iPhone');
 const tool = p.locator('.review-tools .map-tool');
 await tool.click();
@@ -107,6 +123,10 @@ const b2 = await m2.boundingBox();
 await p.mouse.move(b2.x + b2.width / 2, b2.y + b2.height / 2);
 await p.mouse.down();
 const mapBox = await p.locator(".review-map").boundingBox();
+// a little way first: only the metres (Sascha 20.10.2026: no "2 ·", no "from … →")
+await p.mouse.move(b2.x + b2.width / 2 + 15, b2.y + b2.height / 2 + 10, { steps: 4 });
+const metres = (await p.locator('.map-drag-readout').innerText().catch(() => '')).trim();
+ok(/^[0-9,]+ (m|yd)$/.test(metres), `while dragging: only the metres ("${metres}")`);
 await p.mouse.move(mapBox.x + 20, b2.y + b2.height / 2, { steps: 8 });
 const readout = (await p.locator('.map-drag-readout').innerText().catch(() => '')).trim();
 const rb = await p.locator('.map-drag-readout').boundingBox();
@@ -176,6 +196,39 @@ ok(o1.length === o0.length && o1[0] === o0[o0.length - 1] && o1[1] === o0[0], `t
   ok((await p.locator('.sheet').count()) === 1, 'a short tap still opens the shot');
   await p.locator('.sheet').getByRole('button', { name: 'Schließen' }).click();
   await p.waitForTimeout(200);
+}
+// the iPhone (Sascha 20.10.2026: "neither holding nor the grip works"): a finger goes by its own touch events – the grip
+// at once, a row after a moment held still
+{
+  const touch = (sel, type, x, y, nth = 'last') =>
+    p.evaluate(({ sel, type, x, y, nth }) => {
+      const els = document.querySelectorAll(sel);
+      const el = sel === 'window' ? window : els[nth === 'last' ? els.length - 1 : 0];
+      const e = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(e, 'touches', { value: type === 'touchend' ? [] : [{ clientX: x, clientY: y }] });
+      el.dispatchEvent(e);
+      return e.defaultPrevented;
+    }, { sel, type, x, y, nth });
+  const drag = async (sel, nth, from, to, hold) => {
+    const kept = await touch(sel, 'touchstart', from.x, from.y, nth);
+    if (hold) await p.waitForTimeout(600);
+    for (let k = 1; k <= 8; k++) await touch('window', 'touchmove', from.x, from.y + ((to.y - from.y) * k) / 8);
+    await touch('window', 'touchend', 0, 0);
+    await p.waitForTimeout(400);
+    return kept;
+  };
+  const centre = async (loc) => { const bb = await loc.boundingBox(); return { x: bb.x + bb.width / 2, y: bb.y + bb.height / 2 }; };
+  const o2 = await order();
+  const g = await centre(p.locator('.review-list .row-grip').last());
+  const top = await centre(p.locator('.review-list .row-grip').first());
+  const still = await drag('.review-list .row-grip', 'last', g, { y: top.y - 4 }, false);
+  const o3 = await order();
+  ok(still && o3[0] === o2[o2.length - 1] && o3[1] === o2[0], 'iPhone: the grip takes the shot at once, the page keeps still, the last shot to the top');
+  const r0 = await centre(p.locator('.review-list .shot-row').first());
+  const rl = await centre(p.locator('.review-list .shot-row').last());
+  await drag('.review-list .shot-row', 'first', r0, { y: rl.y + 4 }, true);
+  const o4 = await order();
+  ok(o4[o4.length - 1] === o3[0] && (await p.locator('.sheet').count()) === 0, 'iPhone: a row held still is lifted and moved to the end');
 }
 // delete in the row, without opening the shot
 const before2 = (await order()).length;

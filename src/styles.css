@@ -1419,3 +1419,8 @@ button.tile:disabled { opacity: 1; }
 /* the score panel of the course over the scorecard (a hole corrected after the round, 20.10.2026) */
 .score-panel-screen { position: fixed; inset: 0; z-index: 10; background: var(--surface); }
 .score-panel-screen .score-panel { padding-bottom: calc(env(safe-area-inset-bottom) + 24px); }
+/* the shot check's score: shown, the pencil opens the course's score panel (20.10.2026) */
+.review-score { gap: 12px; }
+.review-score .row-label { flex: 1; }
+.review-score-value { font: 700 28px var(--display); min-width: 36px; text-align: center; }
+.review-list .row-edit { color: var(--brand-text); } /* the putts' pencil in the shot list */

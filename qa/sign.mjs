@@ -70,8 +70,9 @@ ok(await p.evaluate(() => document.querySelector('.sign-card').getBoundingClient
 await card.getByRole('button', { name: 'Signieren' }).click();
 await p.waitForTimeout(400);
 ok((await card.innerText()).includes('Signiert') && (await p.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), 'signed: the card says so, the round keeps the time');
-const above = await p.evaluate(() => document.querySelector('.sign-card').getBoundingClientRect().top < document.querySelector('.sc-hero').getBoundingClientRect().top);
-ok(above, 'signed: the seal stands on top, above the result and the scorecard (Sascha 17.10.2026)');
+// all the round's cards and buttons at the bottom (Sascha 20.10.2026) – signed too, the seal below the statistics
+const below = await p.evaluate(() => document.querySelector('.sign-card').getBoundingClientRect().top > document.querySelector('.sc-wrap').getBoundingClientRect().top && (document.querySelectorAll('.sign-card').length === 1));
+ok(below, 'signed: the seal at the bottom with the actions of the round, once');
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(600);
 ok((await p.locator('ul.list .signed-mark[aria-label="signiert"]').count()) === 1, 'rounds list: the seal on the signed round');

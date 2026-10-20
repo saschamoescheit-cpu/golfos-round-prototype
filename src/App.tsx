@@ -159,6 +159,12 @@ export function App() {
     if (r && r.id === pausedRound) return HOME;
     return r ? { name: 'hole', round: r } : HOME;
   });
+  // a new screen starts at its top (Sascha 20.10.2026: "Schläge prüfen" from the bottom of the scorecard opened at the
+  // bottom, empty while it loaded) – the hole map keeps its own place
+  const screenKey = screen.name === 'tab' ? `tab-${screen.tab}` : screen.name;
+  useEffect(() => {
+    if (screen.name !== 'hole') window.scrollTo(0, 0);
+  }, [screenKey]); // eslint-disable-line react-hooks/exhaustive-deps
   // Two modules (Sascha 15.10.2026): "Rounds" (round and analysis) and "Games" (side games) – chosen when the app
   // opens; a round in play reopens straight on its hole, a reload stays in the module of this tab.
   const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : sessionModule())); // a join link opens Games

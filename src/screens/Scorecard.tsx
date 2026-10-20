@@ -39,7 +39,6 @@ export function Scorecard(props: {
   finishing?: boolean; // reached past the last hole: save or delete (a look during the round shows only the score)
 }) {
   const { round } = props;
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [editHole, setEditHole] = useState<number | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const me = round.players.find((p) => p.isMe)!;
@@ -51,9 +50,16 @@ export function Scorecard(props: {
   const canReview = !round.preview && !isTeamRound(round);
   // chosen after the round: detailed (check the shots) or quick (scorecard only) – the GPS track is there either way
   const scoreOnly = !checksShots(round);
+  // the card offers "check & sign" (not yet signed, shots to check): then the row below needs no "check shots"
+  const offersCheck = canReview && !round.signedAt && (scoreOnly || !!props.justFinished);
+  /** "later" or "just save": decided – the scorecard closes */
+  const decide = (capture: 'full' | 'score') => {
+    props.onChange({ ...round, capture });
+    props.onClose();
+  };
 
-  // sign the round like a paper scorecard (Sascha 16.10.2026) – only signed rounds count in the statistics. Signed it
-  // stands on top, above the result and the card (Sascha 17.10.2026); to sign it follows the card, after checking it.
+  // sign the round like a paper scorecard (Sascha 16.10.2026) – only signed rounds count in the statistics. Signed or
+  // not, the card stands at the end of the page with the round's actions (Sascha 20.10.2026: all buttons at the bottom).
   const signCard = finished && !round.preview ? (
     <section className={`card sign-card${round.signedAt ? ' signed' : ''}`} aria-label={tr('Signature', 'Unterschrift')}>
       {round.signedAt ? (
@@ -78,35 +84,33 @@ export function Scorecard(props: {
       ) : (
         <>
           <span className="grow">
-            <strong>{scoreOnly ? tr('Saved only', 'Nur gespeichert') : tr('Sign your round', 'Runde signieren')}</strong>
+            <strong>{props.justFinished ? tr('Round saved ✓', 'Runde gespeichert ✓') : scoreOnly ? tr('Saved only', 'Nur gespeichert') : tr('Sign your round', 'Runde signieren')}</strong>
             <span className="muted small" style={{ display: 'block' }}>
-              {scoreOnly
-                ? tr('It does not count in your statistics – check and sign it to count.', 'Zählt nicht in deiner Statistik – prüfen und signieren, damit sie zählt.')
+              {scoreOnly || props.justFinished
+                ? tr('It counts in your statistics once checked and signed.', 'Zählt in deiner Statistik, sobald sie geprüft und signiert ist.')
                 : tr('Only signed rounds count in your statistics.', 'Nur signierte Runden zählen in deiner Statistik.')}
             </span>
           </span>
-          {/* the same three ways as at the end of the round, also later from the list (Sascha 18.10.2026: "today's
-              round is not listed under check & sign") */}
-          {scoreOnly && canReview ? (
-            <>
-              <button type="button" className="btn-primary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
-                {tr('Check & sign', 'Prüfen & signieren')}
-              </button>
-              <button type="button" className="btn-secondary sign-later" onClick={() => props.onChange({ ...round, capture: 'full' })}>
-                {tr('Check & sign later', 'Später prüfen & signieren')}
-              </button>
-            </>
+          {/* one set of ways (Sascha 20.10.2026: "buttons at the top, below the card and at the bottom – put them together,
+              all at the bottom"): a tap decides; "later" and "just save" close the scorecard */}
+          {offersCheck ? (
+            <button type="button" className="btn-primary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
+              {tr('Check & sign', 'Prüfen & signieren')}
+            </button>
           ) : (
-            <>
-              <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
-                {tr('Sign', 'Signieren')}
-              </button>
-              {canReview && (
-                <button type="button" className="btn-secondary sign-later" onClick={() => props.onChange({ ...round, capture: 'score' })}>
-                  {tr('Just save the round', 'Runde nur speichern')}
-                </button>
-              )}
-            </>
+            <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
+              {tr('Sign', 'Signieren')}
+            </button>
+          )}
+          {canReview && (props.justFinished || scoreOnly) && (
+            <button type="button" className="btn-secondary sign-later" onClick={() => decide('full')}>
+              {tr('Check & sign later', 'Später prüfen & signieren')}
+            </button>
+          )}
+          {canReview && (props.justFinished || !scoreOnly) && (
+            <button type="button" className="btn-secondary sign-later" onClick={() => decide('score')}>
+              {tr('Just save the round', 'Runde nur speichern')}
+            </button>
           )}
         </>
       )}
@@ -137,93 +141,6 @@ export function Scorecard(props: {
       {loadProfile().photo && round.players.some((p) => p.isMe) && <Avatar name={round.players.find((p) => p.isMe)!.name} me size={44} />}
       </div>
 
-      {/* only when the round ends – a look at the score during the round needs no save / delete (Sascha 15.10.2026) */}
-      {((!finished && props.finishing) || (finished && props.justFinished)) && !round.preview && (
-        <section className="card finish-card">
-          <strong>{finished ? tr('Round saved ✓', 'Runde gespeichert ✓') : tr('Finish the round', 'Runde abschließen')}</strong>
-          <span className="muted small">
-            {finished
-              ? canReview
-                ? tr(
-                    'Check & sign: the shots checked, the round signed – it counts in your statistics. Or just save it – it does not count.',
-                    'Prüfen & signieren: Schläge prüfen, Runde signieren – sie zählt in deiner Statistik. Oder nur speichern – sie zählt nicht.',
-                  )
-                : tr('You find it under Rounds – or delete it.', 'Du findest sie unter Runden – oder lösche sie.')
-              : tr('Save it for your stats – or delete it.', 'Speichere sie für deine Statistik – oder lösche sie.')}
-          </span>
-          {!confirmDelete ? (
-            <div className="finish-actions">
-              {!finished ? (
-                <button type="button" className="btn-primary" onClick={() => props.onFinish({ ...round, finishedAt: new Date().toISOString(), capture: round.capture ?? 'score' })}>
-                  {tr('Save & finish', 'Speichern & beenden')}
-                </button>
-              ) : (
-                canReview && (
-                  <button type="button" className="btn-primary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
-                    {tr('Check & sign', 'Prüfen & signieren')}
-                  </button>
-                )
-              )}
-              {/* check & sign later (Sascha 18.10.2026): the round waits under "prüfen & signieren" */}
-              {/* the other two ways – plain buttons, nothing chosen beforehand (Sascha 20.10.2026): a tap decides and
-                  closes the scorecard */}
-              {finished && canReview && (
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    props.onChange({ ...round, capture: 'full' });
-                    props.onClose();
-                  }}
-                >
-                  {tr('Check & sign later', 'Später prüfen & signieren')}
-                </button>
-              )}
-              {finished && canReview && (
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    props.onChange({ ...round, capture: 'score' });
-                    props.onClose();
-                  }}
-                >
-                  {tr('Just save the round', 'Runde nur speichern')}
-                </button>
-              )}
-              {/* one tap – "Undo" brings it back for a few seconds (Sascha 15.10.2026) */}
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => {
-                  deleteRound(round.id, true);
-                  props.onDeleted();
-                }}
-              >
-                {tr('Delete round', 'Runde löschen')}
-              </button>
-            </div>
-          ) : (
-            <div className="finish-actions">
-              <button type="button" className="btn-secondary" onClick={() => setConfirmDelete(false)}>
-                {tr('Keep', 'Behalten')}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => {
-                  deleteRound(round.id, true);
-                  props.onDeleted();
-                }}
-              >
-                {tr('Delete', 'Löschen')}
-              </button>
-            </div>
-          )}
-        </section>
-      )}
-
-      {round.signedAt && signCard}
 
       <section className="card sc-hero">
         {(() => {
@@ -271,7 +188,6 @@ export function Scorecard(props: {
       {round.players.length > 1 && <LeaderboardCard round={round} />}
 
       <ScoreTable round={round} onHole={setEditHole} />
-      {!round.signedAt && signCard}
 
       {/* a hole tapped on the card (or its pencil, an empty hole): the same score panel as on the course – strokes, putts,
           sand shots, penalties, tee shot (Sascha 20.10.2026: "the same menu as on a round") */}
@@ -316,12 +232,39 @@ export function Scorecard(props: {
 
       {sg && <SgCard title={tr('Strokes gained this round', 'Strokes Gained dieser Runde')} values={sg.per18} shots={sg.shotsPer18} holes={sg.holes} base={round.holes.length <= 9 ? 9 : 18} defaultGroup={comparisonGroup(profileIndex() ?? playing18(round.holes.length, me.playingHandicap))} />}
 
+      {/* only when the round ends – a look at the score during the round needs no save / delete (Sascha 15.10.2026);
+          at the end of the page, below the statistics (Sascha 20.10.2026) */}
+      {/* while finishing (Sascha 15.10.2026): save or delete – at the end of the page, below the statistics (20.10.2026) */}
+      {!finished && props.finishing && !round.preview && (
+        <section className="card finish-card">
+          <strong>{tr('Finish the round', 'Runde abschließen')}</strong>
+          <span className="muted small">{tr('Save it for your stats – or delete it.', 'Speichere sie für deine Statistik – oder lösche sie.')}</span>
+          <div className="finish-actions">
+            <button type="button" className="btn-primary" onClick={() => props.onFinish({ ...round, finishedAt: new Date().toISOString(), capture: round.capture ?? 'score' })}>
+              {tr('Save & finish', 'Speichern & beenden')}
+            </button>
+            {/* one tap – "Undo" brings it back for a few seconds (Sascha 15.10.2026) */}
+            <button
+              type="button"
+              className="btn-secondary btn-danger"
+              onClick={() => {
+                deleteRound(round.id, true);
+                props.onDeleted();
+              }}
+            >
+              {tr('Delete round', 'Runde löschen')}
+            </button>
+          </div>
+        </section>
+      )}
+      {/* the round's state and its ways – the last card, above the row of actions */}
+      {signCard}
+
       <span className="spacer" />
-      {/* save and delete sit in the card at the top while the round is being finished */}
       {/* the round's actions in one row with their symbols (Sascha 18.10.2026), in this order (20.10.2026): check the shots, share, export, delete */}
-      {finished && !confirmDelete && (
+      {finished && (
         <div className="sc-actions" role="group" aria-label={tr('This round', 'Diese Runde')}>
-          {canReview && !props.justFinished && (
+          {canReview && !offersCheck && (
             <button type="button" className="sc-action" onClick={() => props.onReview({ ...round, capture: 'full' })}>
               <CheckShotsIcon size={22} />
               <span>{tr('Check shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' ·' : ''}</span>
@@ -360,44 +303,22 @@ export function Scorecard(props: {
               <span>Export</span>
             </button>
           )}
-          {!props.justFinished && (
-            <button
-              type="button"
-              className="sc-action danger"
-              onClick={() => {
-                deleteRound(round.id, true);
-                props.onDeleted();
-              }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-              </svg>
-              <span>{tr('Delete', 'Löschen')}</span>
-            </button>
-          )}
+          <button
+            type="button"
+            className="sc-action danger"
+            onClick={() => {
+              deleteRound(round.id, true);
+              props.onDeleted();
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+            </svg>
+            <span>{tr('Delete', 'Löschen')}</span>
+          </button>
         </div>
       )}
       {shareMsg && <p className="muted small" style={{ margin: 0 }}>{shareMsg}</p>}
-      {finished && !props.justFinished && (!confirmDelete ? null : (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span>{tr('Delete this round? It stays under "Deleted rounds".', 'Diese Runde löschen? Sie bleibt unter „Gelöschte Runden“.')}</span>
-          <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>
-            <button type="button" className="btn-secondary" onClick={() => setConfirmDelete(false)}>
-              {tr('Keep', 'Behalten')}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary btn-danger"
-              onClick={() => {
-                deleteRound(round.id, true);
-                props.onDeleted();
-              }}
-            >
-              {tr('Delete', 'Löschen')}
-            </button>
-          </div>
-        </div>
-      ))}
     </main>
   );
 }

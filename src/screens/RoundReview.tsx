@@ -12,11 +12,12 @@ import { rollFactor } from '../lib/clubs';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { PuttEditor } from '../components/PuttEditor';
+import { ScoreSheet } from '../components/ScoreSheet';
 import { greenWalk } from '../lib/greenwalk';
 import { approachFrom } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
 import { ShotSheet } from '../components/ShotSheet';
-import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
+import { TopBar, formatToPar } from '../components/ui';
 import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
 import { clubCode, getLang, tr } from '../lib/i18n';
 
@@ -74,6 +75,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const [edit, setEdit] = useState<number | null>(null);
   // the putts placed on the course, shown and editable here too (Sascha 16.10.2026)
   const [puttEdit, setPuttEdit] = useState(false);
+  const [scoreOpen, setScoreOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // aerial image or the drawn hole – the same choice as on the course (Sascha 16.10.2026)
   const [view2d, setView2d] = useState(() => {
@@ -128,7 +130,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       if (e.cancelable) e.preventDefault();
       if (e.touches[0]) at(e.touches[0].clientY);
     };
+    // the iPhone ends a touch twice – pointerup and touchend: the move counts once (Sascha 20.10.2026: "neither holding
+    // nor the grip works" – the second end moved the next shot as well)
+    let ended = false;
     const up = () => {
+      if (ended) return;
+      ended = true;
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('touchmove', touchMove);
@@ -145,15 +152,57 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     window.addEventListener('touchend', up);
     window.addEventListener('touchcancel', up);
   };
-  /** The grip: at once. */
+  /** The grip: at once (mouse and pen – a finger goes by its touch events, below). */
   const startDrag = (ev: React.PointerEvent, from: number) => {
+    if (ev.pointerType === 'touch') return;
     ev.preventDefault();
     dragFrom(ev.clientY, from);
   };
+  // The finger on the iPhone (Sascha 20.10.2026: "neither holding nor the grip works"): by its own touch events, not
+  // Safari's pointer events – the grip takes the shot at once and keeps the page still, a row is lifted after a moment
+  // held still; moving first scrolls the page as usual.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const start = (ev: TouchEvent) => {
+      const t = ev.target as HTMLElement;
+      const li = t.closest('li');
+      const idx = li ? [...list.children].indexOf(li) : -1;
+      if (idx < 0 || idx >= latestShots.current.length || t.closest('.row-delete') || !ev.touches[0]) return;
+      const t0 = ev.touches[0];
+      if (t.closest('.row-grip')) {
+        ev.preventDefault();
+        dragFrom(t0.clientY, idx);
+        return;
+      }
+      let y = t0.clientY;
+      const follow = (e: TouchEvent) => {
+        const f = e.touches[0];
+        if (!f) return;
+        y = f.clientY;
+        if (Math.hypot(f.clientX - t0.clientX, f.clientY - t0.clientY) > 8) cancel();
+      };
+      const cancel = () => {
+        clearTimeout(timer);
+        window.removeEventListener('touchmove', follow);
+        window.removeEventListener('touchend', cancel);
+        window.removeEventListener('touchcancel', cancel);
+      };
+      const timer = setTimeout(() => {
+        cancel();
+        dragFrom(y, idx);
+      }, 450);
+      window.addEventListener('touchmove', follow, { passive: true });
+      window.addEventListener('touchend', cancel);
+      window.addEventListener('touchcancel', cancel);
+    };
+    list.addEventListener('touchstart', start, { passive: false });
+    return () => list.removeEventListener('touchstart', start);
+  });
   /** The whole row (Sascha 18.10.2026: "take hold of a shot and move it"): a long press lifts it; moving the finger
    *  before that scrolls the page as usual, a short tap opens the shot. */
   const holdRow = (ev: React.PointerEvent, from: number) => {
-    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    if (ev.pointerType === 'touch' || (ev.pointerType === 'mouse' && ev.button !== 0)) return; // a finger: by touch, above
     const x0 = ev.clientX;
     const y0 = ev.clientY;
     let y = y0;
@@ -214,15 +263,15 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
   };
   /** Saves shots and recomputes the derived values; a score the player entered by hand is kept. */
-  const saveDetail = (index: number, detail: DetailEntry, putts = entries[index].putts) => {
+  const saveDetail = (index: number, detail: DetailEntry, putts = entries[index].putts, extra: Partial<HoleEntry> = {}) => {
     const entry = entries[index];
     const derived = deriveFromShots(detail, putts, round.holes[index].par, maps[index]);
     // The score the player entered stays: confirming a hole whose detected shots miss one (or with a penalty not yet
     // placed) must not change it. The score field above changes it; a difference shows the hint to fix the shots.
-    if (entry.strokes != null) delete derived.strokes;
+    if (entry.strokes != null || extra.strokes != null) delete derived.strokes;
     // penalties entered on the course stay until the player marks the shots they belong to
     if ((entry.penalties ?? 0) > (derived.penalties ?? 0) && !detail.shots.some((s) => s.penalty)) delete derived.penalties;
-    save(index, { detail, putts, ...derived });
+    save(index, { detail, putts, ...derived, ...extra });
   };
 
   // ---- Setting shots by hand (Sascha, 13.10.2026: "nothing detected on hole 1 and I cannot set a shot") ----
@@ -319,20 +368,20 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   /** Label of a shot while it is dragged: how far from the spot before, how far to the next spot (or the pin). */
   const dragLabel = (id: string, pos: LngLat): string | null => {
     if (!d) return null;
-    if (id === 'green') return pin ? `${fmt(distanceM(pos, pin))} ${tr('to the pin', 'zur Fahne')}` : null;
+    // only the metres (Sascha 20.10.2026: no "1 ·", no "from … →"): how far the ball flew to here – from the tee how far
+    // to the next shot, on the green how far to the pin
+    if (id === 'green') return pin ? fmt(distanceM(pos, pin)) : null;
     if (id.startsWith('miss-')) {
       const from = d.shots[Number(id.slice(5))]?.pos;
-      return from ? `✕ ${fmt(distanceM(from, pos))}` : null;
+      return from ? fmt(distanceM(from, pos)) : null;
     }
     const n = Number(id.slice(5));
     if (isOut(pos)) return tr(`Out of bounds – penalty + new shot from ${n === 0 ? 'the tee' : `shot ${n}`}`, `Aus – Strafschlag + neuer Schlag ${n === 0 ? 'vom Abschlag' : `von Schlag ${n}`}`);
     const next = n + 1 < d.shots.length ? d.shots[n + 1].pos : d.onGreen;
     const prev = n > 0 ? d.shots[n - 1].pos : null;
-    const parts = [`${n + 1}`];
-    if (prev) parts.push(`${tr('from', 'von')} ${n}: ${fmt(distanceM(prev, pos))}`);
-    if (next) parts.push(`→ ${fmt(distanceM(pos, next))}`);
-    else if (pin) parts.push(`${fmt(distanceM(pos, pin))} ${tr('to pin', 'z. Fahne')}`);
-    return parts.join(' · ');
+    if (prev) return fmt(distanceM(prev, pos));
+    if (next) return fmt(distanceM(pos, next));
+    return pin ? fmt(distanceM(pos, pin)) : null;
   };
 
   const detectAll = () => {
@@ -470,33 +519,40 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </button>
       </div>
 
-      <div className="row">
+      {/* the score as entered – edited behind the pencil in the same panel as on the course: strokes, putts, sand shots,
+          penalties, tee shot (Sascha 20.10.2026) */}
+      <div className="row review-score">
         <span className="row-label">{tr(`Score on hole ${hole.label}`, `Score an Loch ${hole.label}`)}</span>
-        <Stepper label={tr('Score', 'Score')} value={e.strokes} placeholder={hole.par} min={1} onChange={(v) => save(k, { strokes: v, pickedUp: false })} />
+        <strong className="review-score-value">{e.pickedUp ? '–' : (e.strokes ?? '–')}</strong>
+        <button type="button" className="pencil" aria-label={tr(`Edit the score of hole ${hole.label}`, `Score an Loch ${hole.label} bearbeiten`)} onClick={() => setScoreOpen(true)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 20h4L19 9l-4-4L4 16z" />
+            <path d="M13.5 6.5l4 4" />
+          </svg>
+        </button>
       </div>
-      {data && (
-        <div className="field">
-          <div className="field-head">
-            <label>{tr('Putts on this hole', 'Putts an diesem Loch')}</label>
-            {/* the putts on the green: the pencil, as in the score on the course (Sascha 20.10.2026) */}
-            {(e.putts ?? 0) > 0 && (
-              <button type="button" className="pencil" aria-label={placedPutts?.length ? tr('Edit the putts on the green', 'Putts auf dem Grün bearbeiten') : tr('Place the putts on the green', 'Putts auf dem Grün setzen')} onClick={() => setPuttEdit(true)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M4 20h4L19 9l-4-4L4 16z" />
-                  <path d="M13.5 6.5l4 4" />
-                </svg>
-              </button>
-            )}
-          </div>
-          <Segmented<number>
-            label="Putts"
-            value={e.putts}
-            onChange={(v) => {
-              const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
-              // 0 putts = holed from off the green (chip-in)
-              saveDetail(k, { ...base, holedOut: v === 0 }, v);
+      {scoreOpen && (
+        <div className="score-panel-screen">
+          <ScoreSheet
+            hole={hole}
+            players={[me]}
+            entries={{ [me.id]: e }}
+            toPar={{ [me.id]: null }}
+            canPlacePutts={!!data}
+            onChange={(_, patch) => {
+              // putts change the shots' detail too (0 putts = holed from off the green)
+              if ('putts' in patch) {
+                const base: DetailEntry = d ?? { ...emptyDetail(), pin: pinFor(k) };
+                const { putts, ...rest } = patch;
+                saveDetail(k, { ...base, holedOut: putts === 0 }, putts ?? null, rest);
+              } else save(k, patch);
             }}
-            options={[0, 1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4+' : String(n) }))}
+            onPlacePutts={() => {
+              setScoreOpen(false);
+              setPuttEdit(true);
+            }}
+            onClose={() => setScoreOpen(false)}
+            closeLabel={tr('Back to the shot check', 'Zurück zu Schläge prüfen')}
           />
         </div>
       )}
@@ -705,7 +761,17 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     : `${tr('first putt', 'erster Putt')} ${firstPuttM({ ...d, pin: pin ?? d.pin }) != null ? fmt(firstPuttM({ ...d, pin: pin ?? d.pin })!) : '–'}`}
                 </span>
               </span>
-              <span />
+              {/* the putts on the green: the pencil here, where the other shots are edited (Sascha 20.10.2026) */}
+              {data && (e.putts ?? 0) > 0 ? (
+                <button type="button" className="icon-btn row-edit" aria-label={placedPutts?.length ? tr('Edit the putts on the green', 'Putts auf dem Grün bearbeiten') : tr('Place the putts on the green', 'Putts auf dem Grün setzen')} onClick={() => setPuttEdit(true)}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 20h4L19 9l-4-4L4 16z" />
+                    <path d="M13.5 6.5l4 4" />
+                  </svg>
+                </button>
+              ) : (
+                <span />
+              )}
               <span />
             </li>
           )}

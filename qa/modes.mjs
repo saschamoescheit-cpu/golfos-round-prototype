@@ -111,18 +111,21 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
     // the hole overview (pulled up from the hole bar) has "Finish round"
     await p.locator('.hole-bar-handle').click();
     await p.locator('.hole-drawer').getByRole('button', { name: 'Runde beenden' }).click();
+    const y = async (loc) => (await loc.boundingBox())?.y ?? -1;
+    const stats = p.getByRole('heading', { name: 'Deine Statistik' });
     await p.getByRole('button', { name: 'Speichern & beenden' }).click();
     await p.waitForTimeout(800);
-    const card = await p.locator('.finish-card').innerText().catch(() => '');
-    ok(/gespeichert/.test(card) && (c.team ? !/Prüfen & signieren/.test(card) : /Prüfen & signieren/.test(card) && /Runde nur speichern/.test(card) && !/✓/.test(card.replace('Runde gespeichert ✓', ''))), `${label}: finished – ${c.team ? 'no shot check (team)' : '"Prüfen & signieren" and "Runde nur speichern" offered, nothing chosen beforehand'}`);
+    // one card for the saved round and its ways, at the bottom with the row of actions – nothing on top (Sascha 20.10.2026)
+    const card = await p.locator('.sign-card').innerText().catch(() => '');
+    ok((await p.locator('.sign-card').count()) === 1 && (await p.locator('.finish-card').count()) === 0 && /Runde gespeichert ✓/.test(card) && (c.team ? !/Prüfen & signieren/.test(card) : /Prüfen & signieren/.test(card) && /Später prüfen & signieren/.test(card) && /Runde nur speichern/.test(card)), `${label}: finished – one card at the bottom${c.team ? ' (no shot check, team)' : ': Prüfen & signieren · Später · Runde nur speichern'}`);
+    ok((await y(p.locator('.sign-card'))) > (await y(stats)) && (await y(p.locator('.sc-actions'))) > (await y(p.locator('.sign-card'))), `${label}: the card below the statistics, the row of actions below it`);
     if (!c.team) {
-      // the third way (Sascha 18.10.2026): check & sign later – the round waits under "prüfen & signieren"
-      ok((await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Export' }).count()) === 1, `${label}: share and export in the action row`);
-      await p.locator('.finish-card').getByRole('button', { name: /^Später prüfen & signieren/ }).click();
+      ok((await p.locator('.sc-actions').getByRole('button', { name: 'Schläge prüfen' }).count()) === 0 && (await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Löschen' }).count()) === 1, `${label}: the row without a second "check shots", with share and delete`);
+      // check & sign later (Sascha 18.10.2026): the round waits under "prüfen & signieren"; a tap decides and closes
+      await p.locator('.sign-card').getByRole('button', { name: /^Später prüfen & signieren/ }).click();
       await p.waitForTimeout(400);
       const cap = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].capture);
-      // a tap decides and closes the scorecard (Sascha 20.10.2026: no tick, nothing chosen beforehand)
-      ok(cap === 'full' && (await p.locator('.finish-card').count()) === 0, `${label}: "Später prüfen & signieren" keeps it open to check & sign and closes the scorecard (${cap})`);
+      ok(cap === 'full' && (await p.locator('.sign-card').count()) === 0, `${label}: "Später prüfen & signieren" keeps it open to check & sign and closes the scorecard (${cap})`);
     }
   } catch (e) {
     ok(false, `${label} [${step}]: ${String(e.message).split('\n')[0]}`);
