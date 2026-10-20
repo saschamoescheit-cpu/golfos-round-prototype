@@ -1419,16 +1419,9 @@ button.tile:disabled { opacity: 1; }
 /* the score panel of the course over the scorecard (a hole corrected after the round, 20.10.2026) */
 .score-panel-screen { position: fixed; inset: 0; z-index: 10; background: var(--surface); }
 .score-panel-screen .score-panel { padding-bottom: calc(env(safe-area-inset-bottom) + 24px); }
-/* the shot check's score as a tile (Sascha 20.10.2026: "nicer"): label, the score big with its name, the putts and
-   penalties below, the pencil at the right – it opens the course's score panel */
-.review-score { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 16px; background: var(--surface-2); }
-.review-score-main { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.review-score-label { font: 600 11px var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.review-score-line { display: flex; align-items: baseline; gap: 10px; }
-.review-score-value { font: 700 36px/1.05 var(--display); }
-.review-score-name { font: 600 16px var(--display); color: var(--text-2); }
-.review-score-name.under { color: var(--brand-text); }
-.review-score-facts { font-size: 14px; color: var(--muted); }
+/* the shot check's score like the scorecard's result (Sascha 20.10.2026): the numbers in one row, the pencil at the right */
+.review-score { flex-direction: row; align-items: center; gap: 12px; }
+.review-score .sc-hero-main { flex: 1; min-width: 0; }
 .review-score .pencil { width: 44px; height: 44px; border-radius: 22px; flex: none; }
 .review-list .row-edit { color: var(--brand-text); } /* the putts' pencil in the shot list */
 /* a shot noted by hand in the shot check: its club under the hand circle (Sascha 20.10.2026) */

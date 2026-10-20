@@ -86,8 +86,9 @@ const top = await p.locator('.review').evaluate((el) => {
 ok(top, 'score of the hole above the map');
 // the score as entered, edited behind its pencil in the course's score panel (Sascha 20.10.2026)
 {
-  ok((await p.locator('.review .stepper').count()) === 0 && (await p.locator('.review .segmented').count()) === 0, 'the score shown, no steppers or putt buttons above the map');
-  const val = (await p.locator('.review-score-value').innerText()).trim();
+  ok((await p.locator('.review .stepper').count()) === 0 && (await p.locator('.review .segmented').count()) === 0, 'the score shown like the scorecard result (strokes · to par · putts), no steppers above the map');
+  ok((await p.locator('.review-score .sc-big').count()) === 1 && /Schläge/.test(await p.locator('.review-score').innerText()) && /Putts/.test(await p.locator('.review-score').innerText()), 'strokes big, to par and putts beside it');
+  const val = (await p.locator('.review-score').innerText()).trim();
   await p.getByRole('button', { name: /^Score an Loch .* bearbeiten$/ }).click();
   await p.waitForTimeout(300);
   const panel = p.locator('.score-panel');
@@ -98,7 +99,7 @@ ok(top, 'score of the hole above the map');
   await p.waitForTimeout(200);
   await panel.getByRole('button', { name: 'Zurück zu Schläge prüfen' }).click();
   await p.waitForTimeout(300);
-  ok((await p.locator('.score-panel').count()) === 0 && (await p.locator('.review-score-value').innerText()).trim() === val, `back in the shot check, the score as before (${val})`);
+  ok((await p.locator('.score-panel').count()) === 0 && (await p.locator('.review-score').innerText()).trim() === val, `back in the shot check, the score as before (${val})`);
 }
 ok((await p.locator('.review-map').boundingBox()).height < 0.5 * 844, 'the map leaves room below it on the iPhone');
 const tool = p.locator('.review-tools .map-tool');

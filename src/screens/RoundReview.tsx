@@ -535,7 +535,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         <div style={{ textAlign: 'center' }}>
           <strong>{tr('Hole', 'Loch')} {hole.label}</strong>
           <div className="muted small">
-            Par {hole.par} · Score {e.strokes ?? '–'}{e.putts != null ? ` · ${e.putts} Putt${e.putts === 1 ? '' : 's'}` : ''}
+            Par {hole.par}{hole.strokeIndex ? ` · Hcp ${hole.strokeIndex}` : ''}
             {(e.penalties ?? 0) > 0 ? tr(` · ${e.penalties} penalty`, ` · ${e.penalties} Strafschlag${e.penalties === 1 ? '' : 'e'}`) : ''}
           </div>
           <div className="muted small">
@@ -549,24 +549,34 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
 
       {/* the score as entered – edited behind the pencil in the same panel as on the course: strokes, putts, sand shots,
           penalties, tee shot (Sascha 20.10.2026) */}
-      <div className="review-score">
-        <div className="review-score-main">
-          <span className="review-score-label">{tr('Score', 'Score')}</span>
-          <span className="review-score-line">
-            <strong className="review-score-value">{e.pickedUp ? '–' : (e.strokes ?? '–')}</strong>
-            {e.strokes != null && !e.pickedUp && hole.par > 0 && (
-              <span className={`review-score-name${e.strokes < hole.par ? ' under' : ''}`}>{scoreName(e.strokes - hole.par)}</span>
-            )}
-          </span>
-          <span className="review-score-facts">
-            {[
-              e.putts != null ? `${e.putts} Putt${e.putts === 1 ? '' : 's'}` : null,
-              e.sandShots ? `${e.sandShots} Sand Shot${e.sandShots === 1 ? '' : 's'}` : null,
-              e.penalties ? tr(`${e.penalties} penalty`, `${e.penalties} Strafschl${e.penalties === 1 ? 'ag' : 'äge'}`) : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
+      {/* the hole's score as the scorecard shows the round's (Sascha 20.10.2026: "not nice yet"): the numbers in one row,
+          the pencil at the right – it opens the course's score panel */}
+      <section className="card sc-hero review-score">
+        <div className="sc-hero-main">
+          <div>
+            <div className="sc-big">{e.pickedUp ? '–' : (e.strokes ?? '–')}</div>
+            <div className="muted small">{tr('strokes', 'Schläge')}</div>
+          </div>
+          <div>
+            <div className="sc-mid">{e.strokes != null && !e.pickedUp && hole.par > 0 ? scoreName(e.strokes - hole.par) : '–'}</div>
+            <div className="muted small">{tr('to par', 'zu Par')}</div>
+          </div>
+          <div>
+            <div className="sc-mid">{e.putts ?? '–'}</div>
+            <div className="muted small">Putts</div>
+          </div>
+          {(e.sandShots ?? 0) > 0 && (
+            <div>
+              <div className="sc-mid">{e.sandShots}</div>
+              <div className="muted small">Sand</div>
+            </div>
+          )}
+          {(e.penalties ?? 0) > 0 && (
+            <div>
+              <div className="sc-mid">{e.penalties}</div>
+              <div className="muted small">{tr('penalty', 'Strafe')}</div>
+            </div>
+          )}
         </div>
         <button type="button" className="pencil" aria-label={tr(`Edit the score of hole ${hole.label}`, `Score an Loch ${hole.label} bearbeiten`)} onClick={() => setScoreOpen(true)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -574,7 +584,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             <path d="M13.5 6.5l4 4" />
           </svg>
         </button>
-      </div>
+      </section>
       {scoreOpen && (
         <div className="score-panel-screen">
           <ScoreSheet
