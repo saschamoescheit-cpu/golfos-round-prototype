@@ -12,7 +12,7 @@ import { rollFactor } from '../lib/clubs';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { PuttEditor } from '../components/PuttEditor';
-import { ScoreSheet } from '../components/ScoreSheet';
+import { ScoreSheet, scoreName } from '../components/ScoreSheet';
 import { greenWalk } from '../lib/greenwalk';
 import { approachFrom } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
@@ -291,7 +291,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     if (!hs.length) return null;
     const onGreen = hs.map((x) => x.pos).filter((p) => onGreenSpot(p, m));
     const off = hs.map((x) => x.pos).filter((p) => !onGreenSpot(p, m));
-    const shots: Shot[] = off.map((pos, n) => ({ pos, lie: lieFor(pos, n, m), club: null, penalty: false }));
+    const shots: Shot[] = off.map((pos, n) => ({ pos, lie: lieFor(pos, n, m), club: null, penalty: false, byHand: true }));
     if (!shots.length || !nearTee(shots[0].pos!, m)) shots.unshift({ pos: teeSpot(partI, m) ?? m.tee, lie: 'tee', club: null, penalty: false });
     return withClubs({ ...base, shots, onGreen: onGreen[0] ?? base.onGreen, holedOut: false, fromHand: true }, round.holes[i].par);
   };
@@ -368,20 +368,31 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   /** Label of a shot while it is dragged: how far from the spot before, how far to the next spot (or the pin). */
   const dragLabel = (id: string, pos: LngLat): string | null => {
     if (!d) return null;
-    // only the metres (Sascha 20.10.2026: no "1 ·", no "from … →"): how far the ball flew to here – from the tee how far
-    // to the next shot, on the green how far to the pin
-    if (id === 'green') return pin ? fmt(distanceM(pos, pin)) : null;
-    if (id.startsWith('miss-')) {
-      const from = d.shots[Number(id.slice(5))]?.pos;
-      return from ? fmt(distanceM(from, pos)) : null;
-    }
+    // only the metres to the pin – as one measures on the course: how far it is still to the flag (Sascha 20.10.2026)
+    if (id.startsWith('miss-') || id === 'green' || id.startsWith('putt-')) return pin ? fmt(distanceM(pos, pin)) : null;
     const n = Number(id.slice(5));
     if (isOut(pos)) return tr(`Out of bounds – penalty + new shot from ${n === 0 ? 'the tee' : `shot ${n}`}`, `Aus – Strafschlag + neuer Schlag ${n === 0 ? 'vom Abschlag' : `von Schlag ${n}`}`);
-    const next = n + 1 < d.shots.length ? d.shots[n + 1].pos : d.onGreen;
-    const prev = n > 0 ? d.shots[n - 1].pos : null;
-    if (prev) return fmt(distanceM(prev, pos));
-    if (next) return fmt(distanceM(pos, next));
     return pin ? fmt(distanceM(pos, pin)) : null;
+  };
+
+  /** Shots near a place noted by hand go to that place – each place takes the nearest shot within 40 m; with
+   *  `onlyToCheck` only the suggestions not confirmed yet move (what the player set or confirmed stays). */
+  const snapToHand = (shots: Shot[], i: number, m: HoleMapData, onlyToCheck: boolean): Shot[] => {
+    const out = shots.slice();
+    const taken = new Set<number>();
+    for (const x of (round.manualShots ?? []).filter((y) => y.hole === i)) {
+      let best = -1;
+      out.forEach((s, n) => {
+        if (taken.has(n) || !s.pos || (onlyToCheck && !s.review)) return;
+        const dd = distanceM(s.pos, x.pos);
+        if (dd <= 40 && (best < 0 || dd < distanceM(out[best].pos!, x.pos))) best = n;
+      });
+      if (best >= 0) {
+        taken.add(best);
+        if (distanceM(out[best].pos!, x.pos) > 0.5) out[best] = { ...out[best], pos: x.pos, lie: lieFor(x.pos, best, m), byHand: true };
+      }
+    }
+    return out;
   };
 
   const detectAll = () => {
@@ -400,7 +411,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       // the places the player noted by hand on the course are the truth (Sascha 18.10.2026: "take them over by
       // themselves") – the GPS detection only where there are none; still to check like every first suggestion
       const hand = handDetail(i, m, { ...emptyDetail(), pin: pinFor(i) }, part);
-      const found = hand ? { ...hand, shots: hand.shots.map((s) => ({ ...s, review: true })) } : detectWithScore(part, m, h.par, bag, e);
+      const gps = hand ? null : detectWithScore(part, m, h.par, bag, e);
+      // a GPS shot near a place noted by hand goes to that place – the tap is the truth, the GPS is ±15 m (Sascha
+      // 20.10.2026: "the club should show where the shot was noted"); each place takes the nearest shot within 40 m
+      if (gps) gps.shots = snapToHand(gps.shots, i, m, false);
+      const found = hand ? { ...hand, shots: hand.shots.map((s) => ({ ...s, review: true })) } : gps;
       if (!found) return;
       holes++;
       if (hand) byHand++;
@@ -433,6 +448,19 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // First visit after the round: no shots yet but a GPS track – find them right away (no extra button to tap).
   useEffect(() => {
     if (track.length > 20 && !entries.some((x) => x.detail?.shots.length)) detectAll();
+    else if ((round.manualShots ?? []).length) {
+      // shots still to check (suggestions of the detection) go to the places noted by hand nearby (Sascha 20.10.2026)
+      let changed = false;
+      const list = entries.map((x, i) => {
+        const m = maps[i];
+        if (!m || !x.detail?.shots.some((s) => s.review)) return x;
+        const shots = snapToHand(x.detail.shots, i, m, true);
+        if (shots.every((s, n) => s === x.detail!.shots[n])) return x;
+        changed = true;
+        return { ...x, detail: { ...x.detail, shots } };
+      });
+      if (changed) props.onChange({ ...round, entries: { ...round.entries, [me.id]: list } });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -521,9 +549,25 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
 
       {/* the score as entered – edited behind the pencil in the same panel as on the course: strokes, putts, sand shots,
           penalties, tee shot (Sascha 20.10.2026) */}
-      <div className="row review-score">
-        <span className="row-label">{tr(`Score on hole ${hole.label}`, `Score an Loch ${hole.label}`)}</span>
-        <strong className="review-score-value">{e.pickedUp ? '–' : (e.strokes ?? '–')}</strong>
+      <div className="review-score">
+        <div className="review-score-main">
+          <span className="review-score-label">{tr('Score', 'Score')}</span>
+          <span className="review-score-line">
+            <strong className="review-score-value">{e.pickedUp ? '–' : (e.strokes ?? '–')}</strong>
+            {e.strokes != null && !e.pickedUp && hole.par > 0 && (
+              <span className={`review-score-name${e.strokes < hole.par ? ' under' : ''}`}>{scoreName(e.strokes - hole.par)}</span>
+            )}
+          </span>
+          <span className="review-score-facts">
+            {[
+              e.putts != null ? `${e.putts} Putt${e.putts === 1 ? '' : 's'}` : null,
+              e.sandShots ? `${e.sandShots} Sand Shot${e.sandShots === 1 ? '' : 's'}` : null,
+              e.penalties ? tr(`${e.penalties} penalty`, `${e.penalties} Strafschl${e.penalties === 1 ? 'ag' : 'äge'}`) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        </div>
         <button type="button" className="pencil" aria-label={tr(`Edit the score of hole ${hole.label}`, `Score an Loch ${hole.label} bearbeiten`)} onClick={() => setScoreOpen(true)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 20h4L19 9l-4-4L4 16z" />
@@ -591,10 +635,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             }
             walked={walked}
             track={[
-              // the shots noted by hand on the course: shown and movable here too (Sascha 17.10.2026)
+              // the shots noted by hand on the course: shown and movable here too (Sascha 17.10.2026) – unless the hole's
+              // shots are made of them: then each shot is drawn as its hand circle with its club, once (20.10.2026)
               ...(round.manualShots ?? [])
                 .map((x, kk) => ({ x, kk }))
-                .filter(({ x }) => x.hole === k)
+                .filter(({ x }) => x.hole === k && !(d?.shots ?? []).some((sh) => sh.pos && distanceM(sh.pos, x.pos) <= 5))
                 .map(({ x, kk }, n) => ({ id: `hand-${kk}`, pos: x.pos, label: String(n + 1), hand: true })),
               // the cracks the microphone heard (test, Sascha 18.10.2026) – to compare with the shots
               ...(round.soundShots ?? [])
@@ -604,7 +649,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
               ...(d?.shots ?? []).flatMap((s, n) => {
                 const len = lengths[n];
                 void len;
-                const shot = s.pos ? [{ id: `shot-${n}`, pos: s.pos, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${s.review ? ' ?' : ''}` }] : [];
+                const byHand = s.byHand || (!!s.pos && (round.manualShots ?? []).some((x) => x.hole === k && distanceM(x.pos, s.pos!) <= 5));
+                const shot = s.pos
+                  ? [{ id: `shot-${n}`, pos: s.pos, label: `${n + 1}${s.club ? ' ' + clubCode(s.club) : ''}${s.review ? ' ?' : ''}`, ...(byHand ? { shotByHand: { n: String(n + 1), club: s.club ? clubCode(s.club) : null } } : {}) }]
+                  : [];
                 // where the ball went into the water / out of bounds – between this shot and the next
                 const miss = s.penalty && s.missPos ? [{ id: `miss-${n}`, pos: s.missPos, tone: 'bad' as const, label: '✕' }] : [];
                 return [...shot, ...miss];

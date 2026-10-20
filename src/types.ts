@@ -101,6 +101,7 @@ export interface Shot {
   missPos?: LngLat | null; // where the ball went into the water / out of bounds (for the miss statistics)
   kind?: ShotKind; // missing = suggested from lie and distance
   review?: boolean; // detected automatically from the GPS track – the player should check it
+  byHand?: boolean; // noted by hand on the course ("shot here") – drawn as the hand circle with its club (20.10.2026)
 }
 export interface DetailEntry {
   shots: Shot[]; // all shots before the green (putts are counted separately)

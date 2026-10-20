@@ -115,17 +115,20 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
     const stats = p.getByRole('heading', { name: 'Deine Statistik' });
     await p.getByRole('button', { name: 'Speichern & beenden' }).click();
     await p.waitForTimeout(800);
-    // one card for the saved round and its ways, at the bottom with the row of actions – nothing on top (Sascha 20.10.2026)
-    const card = await p.locator('.sign-card').innerText().catch(() => '');
-    ok((await p.locator('.sign-card').count()) === 1 && (await p.locator('.finish-card').count()) === 0 && /Runde gespeichert ✓/.test(card) && (c.team ? !/Prüfen & signieren/.test(card) : /Prüfen & signieren/.test(card) && /Später prüfen & signieren/.test(card) && /Runde nur speichern/.test(card)), `${label}: finished – one card at the bottom${c.team ? ' (no shot check, team)' : ': Prüfen & signieren · Später · Runde nur speichern'}`);
-    ok((await y(p.locator('.sign-card'))) > (await y(stats)) && (await y(p.locator('.sc-actions'))) > (await y(p.locator('.sign-card'))), `${label}: the card below the statistics, the row of actions below it`);
+    // the state on top after saving – changed there (Sascha 20.10.2026: "the state above the scorecard")
+    const st = p.locator('.sc-status');
+    const stText = await st.innerText().catch(() => '');
+    ok((await st.count()) === 1 && /Runde gespeichert ✓/.test(stText) && (await y(st)) < (await y(p.locator('.sc-hero'))) && (await p.locator('.sign-card').count()) === 0, `${label}: finished – the state on top ("${stText.split(String.fromCharCode(10))[0]}")`);
+    void stats;
     if (!c.team) {
-      ok((await p.locator('.sc-actions').getByRole('button', { name: 'Schläge prüfen' }).count()) === 0 && (await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Löschen' }).count()) === 1, `${label}: the row without a second "check shots", with share and delete`);
-      // check & sign later (Sascha 18.10.2026): the round waits under "prüfen & signieren"; a tap decides and closes
-      await p.locator('.sign-card').getByRole('button', { name: /^Später prüfen & signieren/ }).click();
+      ok((await p.locator('.sc-actions').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Löschen' }).count()) === 1, `${label}: the row of actions: check shots, share, delete`);
+      await st.click();
+      const sheet = p.getByRole('dialog', { name: 'Status der Runde' });
+      ok(/Jetzt prüfen & signieren/.test(await sheet.innerText()) && /Nur speichern/.test(await sheet.innerText()), `${label}: the ways in the state's sheet`);
+      await sheet.getByRole('button', { name: /^Später prüfen & signieren/ }).click();
       await p.waitForTimeout(400);
       const cap = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].capture);
-      ok(cap === 'full' && (await p.locator('.sign-card').count()) === 0, `${label}: "Später prüfen & signieren" keeps it open to check & sign and closes the scorecard (${cap})`);
+      ok(cap === 'full' && /Prüfen & signieren/.test(await st.innerText()), `${label}: "Später prüfen & signieren" – the state says so (${cap})`);
     }
   } catch (e) {
     ok(false, `${label} [${step}]: ${String(e.message).split('\n')[0]}`);

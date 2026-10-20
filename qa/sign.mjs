@@ -64,15 +64,18 @@ ok((await p.locator('ul.list .signed-mark[aria-label="signiert"]').count()) === 
 ok((await p.locator('.tile').count()) === (await p.locator('.tile .tile-mark svg').count()), 'every tile carries its mark – the legend of the list');
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1200);
-const card = p.locator('.sign-card');
-ok((await card.innerText()).includes('Runde signieren'), 'scorecard: "Runde signieren"');
-ok(await p.evaluate(() => document.querySelector('.sign-card').getBoundingClientRect().top > document.querySelector('.sc-wrap').getBoundingClientRect().top), 'not signed yet: "Signieren" follows the scorecard');
-await card.getByRole('button', { name: 'Signieren' }).click();
+// the round's state on top of the scorecard, changed from there (Sascha 20.10.2026)
+const state = p.locator('.sc-status');
+ok((await state.count()) === 1 && /Prüfen & signieren/.test(await state.innerText()), `scorecard: the state on top (${(await state.innerText()).split(String.fromCharCode(10))[0]})`);
+ok(await p.evaluate(() => document.querySelector('.sc-status').getBoundingClientRect().top < document.querySelector('.sc-hero').getBoundingClientRect().top), 'the state above the result and the card');
+await state.click();
+await p.waitForTimeout(300);
+const sheet = p.getByRole('dialog', { name: 'Status der Runde' });
+ok((await sheet.locator('.pick-option').allInnerTexts()).map((t) => t.split(String.fromCharCode(10))[0]).join(' | ') === 'Jetzt prüfen & signieren | Signieren | Später prüfen & signieren | Nur speichern', 'a tap shows the ways: check & sign now · sign · later · save only');
+await sheet.getByRole('button', { name: /^Signieren/ }).click();
 await p.waitForTimeout(400);
-ok((await card.innerText()).includes('Signiert') && (await p.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), 'signed: the card says so, the round keeps the time');
-// all the round's cards and buttons at the bottom (Sascha 20.10.2026) – signed too, the seal below the statistics
-const below = await p.evaluate(() => document.querySelector('.sign-card').getBoundingClientRect().top > document.querySelector('.sc-wrap').getBoundingClientRect().top && (document.querySelectorAll('.sign-card').length === 1));
-ok(below, 'signed: the seal at the bottom with the actions of the round, once');
+ok(/Signiert/.test(await state.innerText()) && (await p.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), 'signed: the state says so, the round keeps the time');
+ok((await p.locator('.sign-card').count()) === 0 && (await p.locator('.sc-actions').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1, 'no card at the bottom any more, the row of actions with "Schläge prüfen"');
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(600);
 ok((await p.locator('ul.list .signed-mark[aria-label="signiert"]').count()) === 1, 'rounds list: the seal on the signed round');
@@ -133,7 +136,7 @@ await tab('Runden');
 await p.waitForTimeout(400);
 await p.locator('ul.list .list-item').first().click();
 await p.waitForTimeout(1000);
-await p.getByRole('button', { name: /Schläge prüfen|Prüfen & signieren/ }).first().click();
+await p.locator('.sc-actions').getByRole('button', { name: /Schläge prüfen/ }).click();
 await p.waitForTimeout(2000);
 let lastLabel = '';
 for (let k = 0; k < 14 && (await p.locator('.sc-wrap').count()) === 0; k++) {
@@ -143,7 +146,7 @@ for (let k = 0; k < 14 && (await p.locator('.sc-wrap').count()) === 0; k++) {
   await p.waitForTimeout(700);
 }
 ok(/signieren/.test(lastLabel), `the last step says it signs ("${lastLabel}")`);
-ok((await p.locator('.sign-card.signed').count()) === 1 && (await p.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), 'after the check the round is signed, the seal on the scorecard');
+ok((await p.locator('.sc-status.signed').count()) === 1 && (await p.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), 'after the check the round is signed, the state on the scorecard says so');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

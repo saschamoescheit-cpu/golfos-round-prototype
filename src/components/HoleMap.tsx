@@ -22,7 +22,7 @@ export interface HoleMapProps {
   credit?: string | null; // extra data credit for the map's ⓘ (green heights)
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a green line (the app's highlight) with numbered dots. */
   /** hand: a shot noted by hand on the course – a small circle with the club-and-plus, not part of the shot line */
-  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string; hand?: boolean; sound?: boolean }[];
+  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string; hand?: boolean; sound?: boolean; shotByHand?: { n: string; club: string | null } }[];
   /** Review: the path the player walked (GPS) and where he stood still – the places a shot may have been played. */
   walked?: { line: LngLat[]; stops: LngLat[] } | null;
   /** Track points can be dragged (round check); called on release with the point's id. */
@@ -362,7 +362,8 @@ export function HoleMap(props: HoleMapProps) {
     }
     mk.track.forEach((t) => t.remove());
     mk.track = (p.track ?? []).map((t) => {
-      const d = t.sound ? soundEl(t.label) : t.hand ? handEl(t.label) : labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
+      // a shot noted by hand: the hand circle where it was noted, with its number and club – one mark, not two (Sascha 20.10.2026)
+      const d = t.sound ? soundEl(t.label) : t.hand ? handEl(t.label) : t.shotByHand ? handEl(t.shotByHand.n, t.shotByHand.club) : labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       const movable = p.onTrackMove != null && t.id != null;
       if (p.onTrackTap && t.id != null) {
         d.classList.add('tap');
@@ -783,13 +784,19 @@ function soundEl(time: string): HTMLDivElement {
 }
 
 /** A shot noted by hand: a small green circle with the club-and-plus and its number (Sascha 17.10.2026). */
-function handEl(n: string): HTMLDivElement {
-  const d = el('map-hand-shot');
+function handEl(n: string, club: string | null = null): HTMLDivElement {
+  const d = el(`map-hand-shot${club ? ' with-club' : ''}`);
   d.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l7 14"/><path d="M13 17c-.6 1.6-2.4 2.6-4.6 2.3l-.6-1.6c1.6.1 3-.3 3.8-1.4z"/><path d="M18 5v6M15 8h6"/></svg>';
   const b = document.createElement('b');
   b.textContent = n;
   d.append(b);
-  d.setAttribute('aria-label', `Schlag ${n} von Hand erfasst`);
+  if (club) {
+    const c = document.createElement('i');
+    c.className = 'hand-club';
+    c.textContent = club;
+    d.append(c);
+  }
+  d.setAttribute('aria-label', `Schlag ${n} von Hand erfasst${club ? ` · ${club}` : ''}`);
   return d;
 }
 

@@ -23,7 +23,7 @@ import { kindName } from '../lib/roundkind';
 import { getLang, tr } from '../lib/i18n';
 import { sign, unsign } from '../lib/signing';
 import { SignedIcon } from '../components/SignedIcon';
-import { CheckShotsIcon } from '../components/RoundIcons';
+import { CheckShotsIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
 import { profileIndex } from '../lib/profile';
 import { roundWeatherText } from '../lib/weather';
 
@@ -50,71 +50,107 @@ export function Scorecard(props: {
   const canReview = !round.preview && !isTeamRound(round);
   // chosen after the round: detailed (check the shots) or quick (scorecard only) – the GPS track is there either way
   const scoreOnly = !checksShots(round);
-  // the card offers "check & sign" (not yet signed, shots to check): then the row below needs no "check shots"
-  const offersCheck = canReview && !round.signedAt && (scoreOnly || !!props.justFinished);
-  /** "later" or "just save": decided – the scorecard closes */
-  const decide = (capture: 'full' | 'score') => {
-    props.onChange({ ...round, capture });
-    props.onClose();
+  // The round's state on top, above the result (Sascha 20.10.2026: "the state above the scorecard – changed from there,
+  // that saves the single buttons"): signed / to check & sign / saved only; a tap opens the ways to change it.
+  const [statusOpen, setStatusOpen] = useState(false);
+  const signed = !!round.signedAt;
+  const status = signed
+    ? { icon: <SignedIcon size={22} />, title: tr('Signed', 'Signiert'), sub: `${new Date(round.signedAt!).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${tr('counts in your statistics', 'zählt in deiner Statistik')}` }
+    : !scoreOnly
+      ? { icon: <ToSignIcon size={22} />, title: tr('Check & sign', 'Prüfen & signieren'), sub: tr('open – it counts once signed', 'offen – zählt, sobald signiert') }
+      : { icon: <PlayedIcon size={22} />, title: tr('Saved only', 'Nur gespeichert'), sub: tr('does not count in your statistics', 'zählt nicht in deiner Statistik') };
+  const choose = (r: Round) => {
+    setStatusOpen(false);
+    props.onChange(r);
   };
-
-  // sign the round like a paper scorecard (Sascha 16.10.2026) – only signed rounds count in the statistics. Signed or
-  // not, the card stands at the end of the page with the round's actions (Sascha 20.10.2026: all buttons at the bottom).
-  const signCard = finished && !round.preview ? (
-    <section className={`card sign-card${round.signedAt ? ' signed' : ''}`} aria-label={tr('Signature', 'Unterschrift')}>
-      {round.signedAt ? (
-        <>
-          <span className="sign-seal big" aria-hidden="true">
-            <SignedIcon size={34} />
-          </span>
-          <span className="grow">
-            <strong>{tr('Signed', 'Signiert')}</strong>
-            <span className="muted small" style={{ display: 'block' }}>
-              {new Date(round.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </span>
-            <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your statistics', 'Zählt in deiner Statistik')}</span>
-          </span>
-          <button type="button" className="icon-btn" aria-label={tr('Withdraw the signature', 'Signatur zurücknehmen')} title={tr('Withdraw the signature', 'Signatur zurücknehmen')} onClick={() => props.onChange(unsign(round))}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M9 14 4 9l5-5" />
-              <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
-            </svg>
-          </button>
-        </>
-      ) : (
-        <>
-          <span className="grow">
-            <strong>{props.justFinished ? tr('Round saved ✓', 'Runde gespeichert ✓') : scoreOnly ? tr('Saved only', 'Nur gespeichert') : tr('Sign your round', 'Runde signieren')}</strong>
-            <span className="muted small" style={{ display: 'block' }}>
-              {scoreOnly || props.justFinished
-                ? tr('It counts in your statistics once checked and signed.', 'Zählt in deiner Statistik, sobald sie geprüft und signiert ist.')
-                : tr('Only signed rounds count in your statistics.', 'Nur signierte Runden zählen in deiner Statistik.')}
-            </span>
-          </span>
-          {/* one set of ways (Sascha 20.10.2026: "buttons at the top, below the card and at the bottom – put them together,
-              all at the bottom"): a tap decides; "later" and "just save" close the scorecard */}
-          {offersCheck ? (
-            <button type="button" className="btn-primary" onClick={() => props.onReview({ ...round, capture: 'full' })}>
-              {tr('Check & sign', 'Prüfen & signieren')}
-            </button>
-          ) : (
-            <button type="button" className="btn-primary" onClick={() => props.onChange(sign(round))}>
-              {tr('Sign', 'Signieren')}
-            </button>
-          )}
-          {canReview && (props.justFinished || scoreOnly) && (
-            <button type="button" className="btn-secondary sign-later" onClick={() => decide('full')}>
-              {tr('Check & sign later', 'Später prüfen & signieren')}
-            </button>
-          )}
-          {canReview && (props.justFinished || !scoreOnly) && (
-            <button type="button" className="btn-secondary sign-later" onClick={() => decide('score')}>
-              {tr('Just save the round', 'Runde nur speichern')}
-            </button>
-          )}
-        </>
+  const attention = !!props.justFinished && !signed;
+  const statusRow = finished && !round.preview ? (
+    <>
+      <button type="button" className={`card sc-status${signed ? ' signed' : ''}${attention ? ' attention' : ''}`} aria-label={tr(`State of the round: ${status.title} – change`, `Status der Runde: ${status.title} – ändern`)} onClick={() => setStatusOpen(true)}>
+        <span className="sc-status-icon" aria-hidden="true">{status.icon}</span>
+        <span className="grow">
+          <strong>{attention ? `${tr('Round saved ✓', 'Runde gespeichert ✓')} · ${status.title}` : status.title}</strong>
+          <span className="muted small">{attention ? tr('Tap to choose how it goes on', 'Antippen: wie es weitergeht') : status.sub}</span>
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
+      {statusOpen && (
+        <div className="sheet-backdrop" onClick={() => setStatusOpen(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('State of the round', 'Status der Runde')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('State of the round', 'Status der Runde')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setStatusOpen(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="pick-list">
+              {signed ? (
+                <>
+                  <button type="button" className="pick-option" aria-pressed onClick={() => setStatusOpen(false)}>
+                    <span className="grow">
+                      <strong>{tr('Signed', 'Signiert')}</strong>
+                      <span className="muted small">{status.sub}</span>
+                    </span>
+                    <span className="pick-check" aria-hidden="true">✓</span>
+                  </button>
+                  <button type="button" className="pick-option" onClick={() => choose(unsign(round))}>
+                    <span className="grow">
+                      <strong>{tr('Withdraw the signature', 'Signatur zurücknehmen')}</strong>
+                      <span className="muted small">{tr('It no longer counts in your statistics.', 'Sie zählt dann nicht mehr in deiner Statistik.')}</span>
+                    </span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  {canReview && (
+                    <button
+                      type="button"
+                      className="pick-option"
+                      onClick={() => {
+                        setStatusOpen(false);
+                        props.onReview({ ...round, capture: 'full' });
+                      }}
+                    >
+                      <span className="grow">
+                        <strong>{tr('Check & sign now', 'Jetzt prüfen & signieren')}</strong>
+                        <span className="muted small">{tr('Check the shots, then sign – it counts in your statistics.', 'Schläge prüfen, dann signieren – sie zählt in deiner Statistik.')}</span>
+                      </span>
+                      <span aria-hidden="true">›</span>
+                    </button>
+                  )}
+                  {(!canReview || !scoreOnly) && (
+                    <button type="button" className="pick-option" onClick={() => choose(sign(round))}>
+                      <span className="grow">
+                        <strong>{tr('Sign', 'Signieren')}</strong>
+                        <span className="muted small">{tr('As it is – it counts in your statistics.', 'So wie sie ist – sie zählt in deiner Statistik.')}</span>
+                      </span>
+                    </button>
+                  )}
+                  {canReview && (
+                    <button type="button" className="pick-option" aria-pressed={!scoreOnly} onClick={() => choose({ ...round, capture: 'full' })}>
+                      <span className="grow">
+                        <strong>{tr('Check & sign later', 'Später prüfen & signieren')}</strong>
+                        <span className="muted small">{tr('It waits under "check & sign".', 'Sie wartet unter „prüfen & signieren“.')}</span>
+                      </span>
+                      {!scoreOnly && <span className="pick-check" aria-hidden="true">✓</span>}
+                    </button>
+                  )}
+                  {canReview && (
+                    <button type="button" className="pick-option" aria-pressed={scoreOnly} onClick={() => choose({ ...round, capture: 'score' })}>
+                      <span className="grow">
+                        <strong>{tr('Save only', 'Nur speichern')}</strong>
+                        <span className="muted small">{tr('Under "played" – it does not count in your statistics.', 'Unter „gespielt“ – sie zählt nicht in deiner Statistik.')}</span>
+                      </span>
+                      {scoreOnly && <span className="pick-check" aria-hidden="true">✓</span>}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+        </div>
       )}
-    </section>
+    </>
   ) : null;
 
   return (
@@ -141,6 +177,8 @@ export function Scorecard(props: {
       {loadProfile().photo && round.players.some((p) => p.isMe) && <Avatar name={round.players.find((p) => p.isMe)!.name} me size={44} />}
       </div>
 
+
+      {statusRow}
 
       <section className="card sc-hero">
         {(() => {
@@ -257,14 +295,12 @@ export function Scorecard(props: {
           </div>
         </section>
       )}
-      {/* the round's state and its ways – the last card, above the row of actions */}
-      {signCard}
 
       <span className="spacer" />
       {/* the round's actions in one row with their symbols (Sascha 18.10.2026), in this order (20.10.2026): check the shots, share, export, delete */}
       {finished && (
         <div className="sc-actions" role="group" aria-label={tr('This round', 'Diese Runde')}>
-          {canReview && !offersCheck && (
+          {canReview && (
             <button type="button" className="sc-action" onClick={() => props.onReview({ ...round, capture: 'full' })}>
               <CheckShotsIcon size={22} />
               <span>{tr('Check shots', 'Schläge prüfen')}{round.entries[me.id].some((e) => e.detail?.shots.some((s) => s.review)) ? ' ·' : ''}</span>

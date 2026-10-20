@@ -45,7 +45,7 @@ function Stepper(props: { label: string; sub?: string; extra?: JSX.Element; valu
   );
 }
 
-const scoreName = (d: number): string =>
+export const scoreName = (d: number): string =>
   d <= -3 ? 'Albatross' : d === -2 ? 'Eagle' : d === -1 ? 'Birdie' : d === 0 ? 'Par' : d === 1 ? 'Bogey' : d === 2 ? tr('Double bogey', 'Doppelbogey') : `+${d}`;
 
 /**
