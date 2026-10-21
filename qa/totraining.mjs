@@ -10,7 +10,7 @@ const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); }); // MapLibre's freed tile blobs (WebKit under test)
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|api\.brightsky\.dev|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); }); // MapLibre's freed tile blobs (WebKit under test)
 let fails = 0;
 const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
