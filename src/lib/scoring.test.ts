@@ -63,6 +63,14 @@ describe('loops (Hetzenhof style data)', () => {
     expect(parseHoleRef('Kurzplatz - Loch 3')).toEqual({ loop: 'Kurzplatz', number: 3 });
     expect(parseHoleRef('15 (Old Course)')).toEqual({ loop: 'Old Course', number: 15 });
     expect(parseHoleRef('9/18 - Blindes Loch')).toEqual({ loop: 'Main', number: 9 });
+    expect(parseHoleRef('6, weiss')).toEqual({ loop: 'Weiss', number: 6 });
+    expect(parseHoleRef('9 Blau')).toEqual({ loop: 'Blau', number: 9 });
+    expect(parseHoleRef('3 NORD')).toEqual({ loop: 'NORD', number: 3 });
+    expect(parseHoleRef('Bahn 12 gelb')).toEqual({ loop: 'Gelb', number: 12 });
+    expect(parseHoleRef('7 - rot')).toEqual({ loop: 'Rot', number: 7 });
+    expect(parseHoleRef('18,18-Loch')).toEqual({ loop: '18-Loch', number: 18 });
+    expect(parseHoleRef('4A')).toEqual({ loop: 'A', number: 4 });
+    expect(parseHoleRef('12')).toEqual({ loop: 'Main', number: 12 });
     expect(parseHoleRef('Bahn 1/10 - Terrassenschreck')).toEqual({ loop: 'Main', number: 1 });
     expect(parseHoleRef('8 – Academy Course')).toEqual({ loop: 'Academy Course', number: 8 });
   });

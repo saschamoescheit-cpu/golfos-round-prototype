@@ -19,8 +19,13 @@ export function parseHoleRef(ref: string): { loop: string; number: number } | nu
   if (m) return { loop: 'Main', number: Number(m[1]) };
   // "15 (Old Course)", "8 – Academy Course": the number first, the course's name after it (night check 22.10.2026:
   // Der Öschberghof – no hole was found)
-  m = r.match(/^(\d{1,2})\s*(?:\(([^)]+)\)|[-–:]\s*(.+))$/);
-  if (m) return { loop: (m[2] ?? m[3]).trim(), number: Number(m[1]) };
+  // also "6, weiss", "9 Blau", "3 NORD", "Bahn 12 gelb", "18,18-Loch" (night check 22.10.2026: 17 courses with their
+  // holes in OSM showed none) – the word is the loop; a tee colour then stands for the course played from that tee
+  m = r.match(/^(?:Loch|Hole|Bahn)?\s*(\d{1,2})\s*(?:\(([^)]+)\)|[-–:,]\s*(.+)|\s+([A-Za-zÄÖÜäöüß].*))$/i);
+  if (m) {
+    const name = (m[2] ?? m[3] ?? m[4]).trim();
+    return { loop: name.charAt(0).toUpperCase() + name.slice(1), number: Number(m[1]) };
+  }
   // "Loch 3", "Hole 3", "Bahn Nr. 3", "Hoyo 3", "Loch 3A" – the word alone is no loop (night check 22.10.2026:
   // Freiburger Golfclub had six of its holes as "Loch 3" and lost them)
   m = r.match(/^(?:Loch|Hole|Bahn|Hoyo|Trou|Buca|Tee)\s*(?:Nr\.?|No\.?|#)?\s*(\d{1,2})\s*([A-Za-z])?$/i);
