@@ -35,7 +35,8 @@ for (const [name, host, credit] of COURSES) {
   // the course comes from OpenStreetMap: wait for the imagery, not a fixed time
   for (let k = 0; k < 40 && tiles < 4; k++) await p.waitForTimeout(500);
   if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/dop-${name.replace(/\W+/g, '')}.png` });
-  ok(tiles > 0 && esri === 0, `${course}: aerial photos from the state straight away (${tiles} tiles, ${esri} from Esri)`);
+  // Esri lies underneath since 21.10.2026 (never a black map) – the state's tiles must still come and cover it
+  ok(tiles > 0, `${course}: aerial photos from the state straight away (${tiles} tiles, ${esri} Esri tiles underneath)`);
   await p.getByRole('button', { name: 'Karteninfo' }).click();
   await p.waitForTimeout(400);
   ok(credit.test(await p.locator('main').innerText()), `${course}: the state's credit in the ⓘ`);

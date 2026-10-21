@@ -8,7 +8,10 @@ const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx);
-await ctx.route(/owsproxy\.lgl-bw\.de/, () => {}); // never answered
+// one tile answers (as from the phone's offline store), all others never (Sascha's iPhone 21.10.2026 evening)
+const GRASS = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPwyjPBihiGlgQAE6E7AUXeDRsAAAAASUVORK5CYII=', 'base64');
+let lgl = 0;
+await ctx.route(/owsproxy\.lgl-bw\.de/, (r) => (lgl++ === 0 ? r.fulfill({ status: 200, contentType: 'image/png', body: GRASS }) : undefined));
 let esri = 0;
 const p = await ctx.newPage();
 p.on('request', (r) => { if (/arcgisonline/.test(r.url())) esri++; });
@@ -53,9 +56,10 @@ const drawn = async () => {
   }, shot.toString('base64'));
 };
 const early = await drawn();
+ok(esri > 0, `Esri lies under the state's imagery from the start – never black (${esri} tiles asked at once)`);
 ok(early > 3, `the hole drawn while the aerial service hangs (${early} % of the map lit)`);
 await p.waitForTimeout(9000);
-ok(esri > 0, `no aerial tile after 8 s: Esri instead (${esri} tiles asked)`);
+ok(esri > 0, `the aerial view not loaded after 8 s (one tile came): Esri instead (${esri} tiles asked)`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

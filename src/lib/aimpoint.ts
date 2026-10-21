@@ -248,7 +248,10 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   let note: string | null = null;
   const outside = (p: LngLat) => !!o.boundary?.length && !o.boundary.some((r) => pointInRing(p, r));
   const fromInside = !outside(from);
-  if (blocked(from, pos, o.trees)) {
+  // not from the tee: the hole is laid out to be played from there – a tee box cut into the wood would otherwise read
+  // as "trees in the way" (Sascha 21.10.2026, Frielinghausen 3: a GW to 81 m on a 202 m par 3); the landing spot is
+  // kept clear of trees above
+  if (!o.teeShot && blocked(from, pos, o.trees)) {
     const b0 = bearingDeg(from, pos);
     const d0 = distanceM(from, pos);
     let best: { p: LngLat; score: number; ang: number } | null = null;

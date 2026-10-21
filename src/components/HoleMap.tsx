@@ -101,7 +101,17 @@ export function HoleMap(props: HoleMapProps) {
   }, [props.credit]);
   const ready = useRef(false);
   const sat = useRef({ ok: 0, fail: 0 }); // imagery tiles loaded / failed (for the fallback)
-  const satWait = useRef<number | undefined>(undefined); // the wait for the first aerial tile
+  const satWait = useRef<number | undefined>(undefined); // the wait for the aerial tiles
+  // the aerial view not there after the wait: no tile at all, or still tiles of the view outstanding – a single tile
+  // from the phone's offline store is not enough (Sascha 21.10.2026 evening: still black with LGL hanging)
+  const imageryStuck = (): boolean => {
+    if (sat.current.ok === 0) return true;
+    try {
+      return !!map.current && !map.current.isSourceLoaded('sat');
+    } catch {
+      return false;
+    }
+  };
   const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
   latest.current = props;
@@ -240,7 +250,7 @@ export function HoleMap(props: HoleMapProps) {
     });
     // ... or one that does not answer at all: no tile after a while counts as down too
     satWait.current = window.setTimeout(() => {
-      if (sat.current.ok === 0) latest.current.onImageryFail?.();
+      if (imageryStuck()) latest.current.onImageryFail?.();
     }, IMAGERY_WAIT_MS);
     // The player zooms or pans himself (a real touch, not the camera): leave the view to him.
     const byHand = (e: { originalEvent?: unknown }) => {
@@ -307,7 +317,7 @@ export function HoleMap(props: HoleMapProps) {
     sat.current = { ok: 0, fail: 0 };
     window.clearTimeout(satWait.current);
     satWait.current = window.setTimeout(() => {
-      if (sat.current.ok === 0) latest.current.onImageryFail?.();
+      if (imageryStuck()) latest.current.onImageryFail?.();
     }, IMAGERY_WAIT_MS);
     return () => window.clearTimeout(satWait.current);
   }, [props.imagery]);

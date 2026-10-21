@@ -37,6 +37,15 @@ describe('caddie aim point', () => {
     expect(blocked(from, a.pos, trees)).toBe(false);
     expect(a.note).toMatch(/^Trees in the way – play \d+° left, \d+ m$/);
   });
+  it('from the tee: trees just in front of the tee box are flown over – no punch out on a par 3', () => {
+    const trees: Ring[] = [sq(0, 20, 30, 15)]; // a wood 5–35 m in front of the tee, across the line
+    const from = at(0, 0);
+    expect(blocked(from, at(0, 190), trees)).toBe(true);
+    const a = aimPoint({ ...base, from, par: 3, pin: at(0, 190), teeShot: true, trees });
+    expect(a.kind).not.toBe('recovery');
+    expect(a.note ?? '').not.toMatch(/Trees in the way|punch out/);
+    expect(distanceM(a.pos, at(0, 190))).toBeLessThan(15);
+  });
   it('downhill tee shot: plays shorter by the height difference', () => {
     const slopes: [number, number, number][] = [[0, 0, 446], [100, 0, 438], [200, 0, 429], [300, 0, 428], [380, 0, 427]];
     const a = aimPoint({ ...base, from: at(0, 0), teeShot: true, slopes });

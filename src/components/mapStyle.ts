@@ -1,5 +1,5 @@
 import type maplibregl from 'maplibre-gl';
-import type { ImagerySource } from '../lib/imagery';
+import { IMAGERY, type ImagerySource } from '../lib/imagery';
 
 // Shared map look for the hole map and the hole set-up: satellite imagery with the course drawn on top
 // in soft course colours (fairway, tee, green, bunker, water), like the hole maps of GPS golf apps.
@@ -7,8 +7,21 @@ import type { ImagerySource } from '../lib/imagery';
 /** Credit for the course shapes (OpenStreetMap, ODbL). */
 export const OSM_ATTRIBUTION = '© OpenStreetMap contributors';
 
+/**
+ * The worldwide imagery (Esri) always lies under a regional one (Sascha 21.10.2026: "the GPS maps must always work"):
+ * where the state's service hangs, has a gap or only some tiles come from the phone's store, the map shows Esri there –
+ * never black. The regional tiles cover it wherever they arrive. Coarser tiles (256 px) – it is only the ground below.
+ */
+const BASE = 'base';
+function baseSource(): maplibregl.RasterSourceSpecification {
+  const e = IMAGERY.esri;
+  return { type: 'raster', tiles: [e.tiles], scheme: e.scheme, tileSize: 256, maxzoom: e.maxzoom, attribution: e.attribution };
+}
+const baseLayer = (): maplibregl.RasterLayerSpecification => ({ id: BASE, type: 'raster', source: BASE, paint: { 'raster-fade-duration': 0 } });
+
 export function imageryStyle(source: ImagerySource): maplibregl.StyleSpecification {
-  return { version: 8, sources: { sat: rasterSource(source) }, layers: [imageryLayer(source)] };
+  const under = source.id !== 'esri';
+  return { version: 8, sources: { ...(under ? { [BASE]: baseSource() } : {}), sat: rasterSource(source) }, layers: [...(under ? [baseLayer()] : []), imageryLayer(source)] };
 }
 
 /**
@@ -41,6 +54,15 @@ export function setImagery(m: maplibregl.Map, source: ImagerySource): void {
   m.addSource('sat', rasterSource(source));
   m.addLayer(imageryLayer(source), below);
   if (shown === 'none') m.setLayoutProperty('sat', 'visibility', 'none');
+  // Esri underneath a regional imagery, not under Esri itself
+  if (source.id === 'esri') {
+    if (m.getLayer(BASE)) m.removeLayer(BASE);
+    if (m.getSource(BASE)) m.removeSource(BASE);
+  } else if (!m.getLayer(BASE)) {
+    if (!m.getSource(BASE)) m.addSource(BASE, baseSource());
+    m.addLayer(baseLayer(), 'sat');
+    if (shown === 'none') m.setLayoutProperty(BASE, 'visibility', 'none');
+  }
 }
 
 const FILL: Record<string, { color: string; opacity: number; edge: string; edgeOpacity: number; width: number }> = {
@@ -94,6 +116,7 @@ export function setCourseLook(m: maplibregl.Map, look: 'hidden' | 'overlay' | 'p
   }
   for (const id of PLAN_LAYERS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', plan ? 'visible' : 'none');
   if (m.getLayer('sat')) m.setLayoutProperty('sat', 'visibility', plan ? 'none' : 'visible');
+  if (m.getLayer(BASE)) m.setLayoutProperty(BASE, 'visibility', plan ? 'none' : 'visible');
 }
 
 /** Fill + soft edge per surface; `source` holds polygons with a `kind` property. */

@@ -144,7 +144,12 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // the holes of the chosen loops with a plan – a loop planned once counts in every combination (A+B, C+A, B+C)
   const strategy = loadStrategy(props.course.id);
   const planned = holes.filter((h) => strategy[h.label]).length;
-  const start = (preview = false, planning = false) => {
+  // an HCP other than the profile's: asked once whether it is the new one (Sascha 21.10.2026) – or only for this round
+  const [askHcp, setAskHcp] = useState<{ preview: boolean; planning: boolean } | null>(null);
+  const profileHcp = profile().hcpIndex.trim();
+  const hcpDiffers = me.index.trim() !== '' && profileHcp !== '' && parseIndex(me.index) != null && parseIndex(me.index) !== parseIndex(profileHcp);
+  const begin = (preview = false, planning = false) => (hcpDiffers ? setAskHcp({ preview, planning }) : start(preview, planning, true));
+  const start = (preview = false, planning = false, saveHcp = false) => {
     if (!option) return;
     try {
       const entered = Number(me.handicap.replace(',', '.'));
@@ -153,7 +158,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       localStorage.setItem(ME_KEY, JSON.stringify(r));
       // a changed handicap index is the player's new index – the profile keeps it
       const p = profile();
-      if (me.index.trim() && me.index.trim() !== p.hcpIndex) saveProfile({ ...p, hcpIndex: me.index.trim() });
+      if (saveHcp && me.index.trim() && me.index.trim() !== p.hcpIndex) saveProfile({ ...p, hcpIndex: me.index.trim() });
     } catch {
       /* ignore */
     }
@@ -441,19 +446,48 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       <button type="button" className="btn-secondary" onClick={() => props.onBook(holes, tee, playingHandicap(me))} disabled={!option}>
         {tr('Birdie book', 'Birdiebook')}
       </button>
-      <button type="button" className="btn-secondary" onClick={() => start(true)} disabled={!option}>
+      <button type="button" className="btn-secondary" onClick={() => begin(true)} disabled={!option}>
         {tr('Course preview', 'Platzvorschau')}
       </button>
       {/* plan the round: targets and clubs per hole, used by the caddie in the live round (Sascha 16.10.2026) */}
-      <button type="button" className="btn-secondary" onClick={() => start(true, true)} disabled={!option}>
+      <button type="button" className="btn-secondary" onClick={() => begin(true, true)} disabled={!option}>
         {tr('Plan round', 'Runde planen')}
         {planned > 0 ? <span className="muted small"> · {planned === holes.length ? tr(`all ${planned} holes planned`, `alle ${planned} Löcher geplant`) : tr(`${planned} of ${holes.length} holes planned`, `${planned} von ${holes.length} Löchern geplant`)}</span> : null}
       </button>
       <div className="sticky-cta">
-        <button type="button" className="btn-primary" onClick={() => start()} disabled={!option || !fits}>
+        <button type="button" className="btn-primary" onClick={() => begin()} disabled={!option || !fits}>
           {tr('Start round', 'Runde starten')}
         </button>
       </div>
+      {askHcp && (
+        <div className="sheet-backdrop" onClick={() => setAskHcp(null)}>
+          <section className="sheet" role="dialog" aria-label={tr('Update your HCP?', 'HCP aktualisieren?')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Update your HCP?', 'HCP aktualisieren?')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Back to the settings', 'Zurück zu den Einstellungen')} onClick={() => setAskHcp(null)}>
+                ✕
+              </button>
+            </div>
+            <p className="muted" style={{ margin: 0 }}>
+              {tr(`Your profile says ${profileHcp} – today you entered ${me.index.trim()}.`, `Im Profil steht ${profileHcp} – heute hast du ${me.index.trim()} eingetragen.`)}
+            </p>
+            <div className="pick-list">
+              <button type="button" className="pick-option" onClick={() => { const a = askHcp; setAskHcp(null); start(a.preview, a.planning, true); }}>
+                <span className="grow">
+                  <strong>{tr(`Yes – save HCP ${me.index.trim()} in the profile`, `Ja – HCP ${me.index.trim()} im Profil speichern`)}</strong>
+                  <span className="muted small">{tr('It is your new handicap index.', 'Das ist dein neues Handicap.')}</span>
+                </span>
+              </button>
+              <button type="button" className="pick-option" onClick={() => { const a = askHcp; setAskHcp(null); start(a.preview, a.planning, false); }}>
+                <span className="grow">
+                  <strong>{tr('No – only for this round', 'Nein – nur für diese Runde')}</strong>
+                  <span className="muted small">{tr(`The profile keeps ${profileHcp}.`, `Im Profil bleibt ${profileHcp}.`)}</span>
+                </span>
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
