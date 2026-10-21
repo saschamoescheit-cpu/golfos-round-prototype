@@ -242,7 +242,8 @@ ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('bu
 }
 await p.locator('.game-player-row').nth(2).locator('input').first().fill('Chris');
 await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna');
-ok((await p.locator('.game-player-row').nth(1).locator('input').nth(1).inputValue()) === '12', 'friend Ben added with one tap, handicap 12');
+// the HCP typed, the playing handicap shown beside it – the same row as in the round setup (22.10.2026)
+ok((await p.locator('.game-player-row').nth(1).locator('input').nth(1).inputValue()) === '12,4' && /^\d+$/.test(await p.locator('.game-player-row').nth(1).locator('.playing-hcp').innerText()), 'friend Ben added with one tap: HCP 12,4, the playing handicap follows');
 ok((await p.locator('.game-player-row').count()) === 4, 'the friend took the empty row (then two more players)');
 await course();
 await p.locator('.game-setting').filter({ hasText: 'Vorgabe (WHS)' }).getByRole('button', { name: 'Ohne (brutto)' }).click();

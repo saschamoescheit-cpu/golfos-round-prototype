@@ -197,19 +197,15 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                             {tr(`hits the fairway ${pct(c.hit)}% of the time`, `trifft das Fairway zu ${pct(c.hit)} %`)}
                             <span className="muted">{tr(` · ${c.n} tee shots`, ` · ${c.n} Abschläge`)}</span>
                           </span>
-                          <div className="tee-bar small-bar" role="img" aria-label={tr(`${clubName(c.club)}: ${pct(c.left)}% missed left, ${pct(c.hit)}% fairway, ${pct(c.right)}% missed right`, `${clubName(c.club)}: ${pct(c.left)} % links verfehlt, ${pct(c.hit)} % Fairway, ${pct(c.right)} % rechts verfehlt`)}>
-                            <span className="miss" style={{ flexGrow: c.left + c.ob / 2 || 0.001 }}>{pct(c.left) >= 15 ? `← ${pct(c.left)}%` : ''}</span>
-                            <span className="hit" style={{ flexGrow: c.hit || 0.001 }}>{pct(c.hit) >= 15 ? `${pct(c.hit)}%` : ''}</span>
-                            <span className="miss" style={{ flexGrow: c.right + c.ob / 2 || 0.001 }}>{pct(c.right) >= 15 ? `${pct(c.right)}% →` : ''}</span>
+                          <div className="ring-row">
+                            <Ring label={tr('← missed left', '← links verfehlt')} r={{ n: c.left, of: c.n }} miss />
+                            <Ring label="Fairway" r={{ n: c.hit, of: c.n }} />
+                            <Ring label={tr('missed right →', 'rechts verfehlt →')} r={{ n: c.right, of: c.n }} miss />
                           </div>
+                          {c.ob > 0 && <span className="muted small">{tr(`plus ${c.ob}× out of bounds`, `dazu ${c.ob}× ins Aus`)}</span>}
                         </div>
                       );
                     })}
-                  </div>
-                  <div className="tee-legend small" aria-hidden="true">
-                    <span><i className="miss" />{tr('← missed left', '← links verfehlt')}</span>
-                    <span><i className="hit" />{tr('fairway hit', 'Fairway getroffen')}</span>
-                    <span><i className="miss" />{tr('missed right →', 'rechts verfehlt →')}</span>
                   </div>
                   <p className="muted small" style={{ margin: 0 }}>{tr('From your checked tee shots on par 4 and 5', 'Aus deinen geprüften Abschlägen auf Par 4 und 5')}</p>
                 </section>
@@ -389,14 +385,14 @@ function Big(props: { value: string | number; label: string }) {
 }
 
 /** A ring for a rate (fairways, greens …): the share in the middle, n of m below. */
-function Ring(props: { label: string; r: Rate; bad?: boolean }) {
+function Ring(props: { label: string; r: Rate; bad?: boolean; miss?: boolean }) {
   const p = pct(props.r);
   const c = 2 * Math.PI * 26;
   return (
     <div className="ring" role="img" aria-label={`${props.label}: ${p == null ? '–' : `${p}%`} (${props.r.n}/${props.r.of})`}>
       <svg viewBox="0 0 64 64" width="76" height="76" aria-hidden="true">
         <circle cx="32" cy="32" r="26" className="ring-track" />
-        {p != null && p > 0 && <circle cx="32" cy="32" r="26" className={`ring-fill${props.bad ? ' bad' : ''}`} strokeDasharray={`${(p / 100) * c} ${c}`} transform="rotate(-90 32 32)" />}
+        {p != null && p > 0 && <circle cx="32" cy="32" r="26" className={`ring-fill${props.bad ? ' bad' : props.miss ? ' miss' : ''}`} strokeDasharray={`${(p / 100) * c} ${c}`} transform="rotate(-90 32 32)" />}
         <text x="32" y="37" textAnchor="middle" className="ring-text">
           {p == null ? '–' : `${p}%`}
         </text>
@@ -438,10 +434,10 @@ function TeeBar(props: { left: Rate; hit: Rate; right: Rate }) {
   if (!props.hit.of) return <p className="muted small" style={{ margin: 0 }}>{tr('No fairway data yet.', 'Noch keine Fairway-Daten.')}</p>;
   return (
     <>
-      <div className="tee-bar" role="img" aria-label={tr(`Fairway: ${l}% left, ${h}% hit, ${r}% right`, `Fairway: ${l}% links, ${h}% getroffen, ${r}% rechts`)}>
-        <span className="miss" style={{ flexGrow: l || 0.001 }}>{l >= 10 ? `← ${l}%` : ''}</span>
-        <span className="hit" style={{ flexGrow: h || 0.001 }}>{h >= 10 ? `${h}%` : ''}</span>
-        <span className="miss" style={{ flexGrow: r || 0.001 }}>{r >= 10 ? `${r}% →` : ''}</span>
+      <div className="ring-row" aria-label={tr(`Fairway: ${l}% left, ${h}% hit, ${r}% right`, `Fairway: ${l} % links, ${h} % getroffen, ${r} % rechts`)}>
+        <Ring label={tr('← missed left', '← links verfehlt')} r={props.left} miss />
+        <Ring label="Fairway" r={props.hit} />
+        <Ring label={tr('missed right →', 'rechts verfehlt →')} r={props.right} miss />
       </div>
       <p className="muted small" style={{ margin: 0 }}>
         {tr('Fairways hit', 'Fairways getroffen')} {props.hit.n}/{props.hit.of}

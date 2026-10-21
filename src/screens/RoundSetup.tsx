@@ -18,7 +18,7 @@ const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
 const profile = () => loadProfile();
 
-interface DraftPlayer {
+export interface DraftPlayer {
   id: string;
   name: string;
   index: string; // handicap index as typed – the playing handicap follows from course rating and slope
@@ -492,16 +492,16 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   );
 }
 
-type TeeChoice = { id: string; name: string; colour: string; total: number; rating: TeeRating | null };
+export type TeeChoice = { id: string; name: string; colour: string; total: number; rating: TeeRating | null };
 
-function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean; tees?: TeeChoice[] }) {
+export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean; tees?: TeeChoice[]; className?: string }) {
   const { player } = props;
   const [teeOpen, setTeeOpen] = useState(false);
   const myTee = props.tees?.find((t) => t.id === player.tee);
   const shown = props.playing == null ? '–' : props.playing < 0 ? `+${-props.playing}` : String(props.playing);
   // one line (Sascha 21.10.2026): name, HCP typed, the playing handicap following from it – shown, not typed
   return (
-    <div className="card player-row">
+    <div className={`card player-row${props.className ? ' ' + props.className : ''}`}>
       <div className="field">
         <label htmlFor={`name-${player.id}`}>{props.nameLabel}</label>
         <input id={`name-${player.id}`} className="input" value={player.name} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />

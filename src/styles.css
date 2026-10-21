@@ -1479,3 +1479,6 @@ button.tile:disabled { opacity: 1; }
 .tee-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .tee-legend i.hit { background: #5a8c1c; }
 .tee-legend i.miss { background: #5f6e78; }
+/* a miss as a ring: grey, the hit green (tee shots by side, Sascha 21.10.2026) */
+.ring-fill.miss { stroke: var(--muted); }
+.tee-club-row + .tee-club-row { border-top: 1px solid var(--line); padding-top: 10px; }

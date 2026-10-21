@@ -245,8 +245,11 @@ export function HoleMap(props: HoleMapProps) {
       if (e.sourceId !== 'sat' || sat.current.ok > 0) return;
       if (++sat.current.fail === 6) latest.current.onImageryFail?.();
     });
-    m.on('sourcedata', (e: { sourceId?: string; tile?: unknown }) => {
+    m.on('sourcedata', (e: { sourceId?: string; tile?: unknown; sourceDataType?: string }) => {
       if (e.sourceId === 'sat' && e.tile) sat.current.ok++;
+      // a new aerial source (the Esri ground, a fallback) brings its credit – MapLibre then opens the credits over the
+      // map; keep them behind the ⓘ (night check 22.10.2026: open over the shot check's map)
+      if ((e.sourceId === 'sat' || e.sourceId === 'base') && e.sourceDataType === 'metadata') collapseAttribution(m);
     });
     // ... or one that does not answer at all: no tile after a while counts as down too
     satWait.current = window.setTimeout(() => {

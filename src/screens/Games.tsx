@@ -14,7 +14,10 @@ import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
 import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
-import { FriendChips, roughPlaying } from './Home';
+import { FriendChips } from './Home';
+import { PlayerRow, type TeeChoice } from './RoundSetup';
+import { TEE_COLOURS, TEES, teeName } from '../data/tees';
+import { courseHandicap, parseIndex, ratingFor } from '../lib/handicap';
 import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
@@ -36,7 +39,8 @@ type View =
 interface DraftPlayer {
   id: string;
   name: string;
-  hcp: string;
+  hcp: string; // the handicap index as typed – the playing handicap follows from the course (as in Rounds, 22.10.2026)
+  tee?: string | null;
 }
 interface Draft {
   form: FormId;
@@ -85,11 +89,6 @@ const winnerOf = (rows: { name: string; points: number }[]): string | null => {
 
 const STAKES = [0, 0.1, 0.2, 0.5, 1, 2, 5, 10];
 const defaults = (f: FormDef) => Object.fromEntries(f.settings.map((s) => [s.key, s.default]));
-const parseHcp = (s: string): number | null => {
-  const t = s.trim().replace(',', '.');
-  const n = Number(t.replace('+', ''));
-  return t === '' || !Number.isFinite(n) ? null : Math.round(t.startsWith('+') ? -n : n);
-};
 
 /** The WHS recommendation for the form and the number of players, unless the player chose the share himself. */
 function withWhs(d: Draft): Draft {
@@ -106,7 +105,7 @@ function atLeast(players: DraftPlayer[], n: number): DraftPlayer[] {
 
 function newDraft(form: FormId = 'skins'): Draft {
   const p = loadProfile();
-  const me = { id: 'me', name: shownName(p) || tr('Me', 'Ich'), hcp: p.hcpIndex ? String(parseHcp(p.hcpIndex) ?? '') : '' };
+  const me = { id: 'me', name: shownName(p) || tr('Me', 'Ich'), hcp: p.hcpIndex.trim() };
   return withWhs({ form, course: null, optionId: '', players: atLeast([me], formDef(form).players[0]), settings: defaults(formDef(form)) });
 }
 
@@ -574,6 +573,31 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const holes: GameHole[] = d.course && option
     ? buildRoundHoles(d.course.holes, option).map((h) => ({ label: h.label, par: h.par, si: h.strokeIndex }))
     : Array.from({ length: 18 }, (_, i) => ({ label: String(i + 1), par: 4, si: 0 }));
+  // the playing handicap from each player's HCP, tee, course rating and slope – the same as the round setup
+  const rholes = d.course && option ? buildRoundHoles(d.course.holes, option) : [];
+  const nine = rholes.length === 9;
+  const teeData = d.course ? TEES[d.course.id] : undefined;
+  const defaultTee = teeData ? (teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null;
+  const teeOf = (p: DraftPlayer) => (p.tee && teeData?.tees.includes(p.tee) ? p.tee : defaultTee);
+  const loopHoles = d.course ? d.course.holes.filter((h) => h.loop === rholes[0]?.loop) : [];
+  const parSum = nine ? loopHoles.reduce((s, h) => s + (h.par || 0), 0) * (loopHoles.length <= 9 ? 2 : 1) : rholes.reduce((s, h) => s + (h.par || 0), 0);
+  const ratingOf = (p: DraftPlayer) => (d.course && (rholes.length === 18 || nine) ? ratingFor(d.course.id, teeOf(p) ?? '–', rholes) : null);
+  const playingOf = (p: DraftPlayer): number | null => {
+    const idx = parseIndex(p.hcp);
+    if (idx == null) return null;
+    const r = ratingOf(p);
+    const par = r?.par ?? parSum;
+    if (r) return nine ? Math.round((idx * (r.slope / 113) + (r.cr - par)) / 2) : courseHandicap(idx, r, par);
+    return Math.round(nine ? idx / 2 : idx);
+  };
+  const teeChoices: TeeChoice[] = (teeData?.tees ?? []).map((t) => ({
+    id: t,
+    name: teeName(t),
+    colour: TEE_COLOURS[t] ?? '#999',
+    total: rholes.reduce((s, h) => s + (teeData!.holes[h.label]?.[teeData!.tees.indexOf(t)] ?? 0), 0),
+    rating: d.course && (rholes.length === 18 || nine) ? ratingFor(d.course.id, t, rholes) : null,
+  }));
+  const myRating = d.players[0] ? ratingOf(d.players[0]) : null;
   const n = d.players.length;
   const fits = fitsPlayers(f, n);
   const sides = sidesOf(d.form, n, Number(d.settings.partner ?? 1));
@@ -583,7 +607,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const label = (i: number) => d.players[i].name.trim() || tr(`Player ${i + 1}`, `Spieler ${i + 1}`);
 
   const start = () => {
-    const players = d.players.map((p, i) => ({ id: p.id, name: label(i), hcp: parseHcp(p.hcp) }));
+    const players = d.players.map((p, i) => ({ id: p.id, name: label(i), hcp: playingOf(p) }));
     const g: Game = {
       id: newId(),
       createdAt: new Date().toISOString(),
@@ -648,31 +672,31 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         <span className="eyebrow">
           {tr('Players', 'Spieler')} · {playersText(f)}
         </span>
+        {/* name · tee · HCP · playing handicap – the same row as in the round setup (Sascha 21.10.2026) */}
         {d.players.map((p, i) => (
-          <div key={p.id} className="card game-player-row">
-            <div className="field">
-              <label htmlFor={`gname-${p.id}`}>{tr(`Player ${i + 1}`, `Spieler ${i + 1}`)}</label>
-              <input id={`gname-${p.id}`} className="input" value={p.name} onChange={(e) => setPlayer(p.id, { name: e.target.value })} />
-            </div>
-            <div className="field">
-              <label htmlFor={`ghcp-${p.id}`}>{tr('Playing hcp', 'Spielvorgabe')}</label>
-              <input id={`ghcp-${p.id}`} className="input" inputMode="decimal" value={p.hcp} onChange={(e) => setPlayer(p.id, { hcp: e.target.value })} />
-            </div>
-            {i > 0 ? (
-              <button type="button" className="icon-btn" aria-label={tr(`Remove ${label(i)}`, `${label(i)} entfernen`)} onClick={() => set({ players: d.players.filter((x) => x.id !== p.id) })} style={{ marginBottom: 3 }}>
-                ✕
-              </button>
-            ) : (
-              <span style={{ width: 44 }} />
-            )}
-          </div>
+          <PlayerRow
+            key={p.id}
+            className="game-player-row"
+            player={{ id: `g${p.id}`, name: p.name, index: p.hcp, handicap: '', tee: teeOf(p) }}
+            nameLabel={tr(`Player ${i + 1}`, `Spieler ${i + 1}`)}
+            rating={ratingOf(p)}
+            playing={playingOf(p)}
+            nine={nine}
+            tees={teeChoices.length ? teeChoices : undefined}
+            onChange={(np) => setPlayer(p.id, { name: np.name, hcp: np.index, tee: np.tee })}
+            onRemove={i > 0 ? () => set({ players: d.players.filter((x) => x.id !== p.id) }) : undefined}
+          />
         ))}
+        <p className="muted small" style={{ margin: 0 }}>
+          {myRating ? `Course Rating ${myRating.cr.toFixed(1).replace('.', getLang() === 'de' ? ',' : '.')} · Slope ${myRating.slope}` : tr('Playing handicap from the HCP – estimated without course rating', 'Vorgabe aus dem HCP – ohne Course Rating geschätzt')}
+          {nine ? tr(' · for 9 holes', ' · für 9 Löcher') : ''}
+        </p>
         {(n < 4 || d.players.some((p, k) => k > 0 && !p.name.trim() && !p.hcp.trim())) && (
           // a friend takes the first empty row (Chicago starts with four), else a new one
           <FriendChips
             taken={d.players.map((p) => p.name)}
             onAdd={(fr) => {
-              const row = { id: newId(), name: fr.name, hcp: roughPlaying(fr.hcp) };
+              const row = { id: newId(), name: fr.name, hcp: fr.hcp };
               const k = d.players.findIndex((p, j) => j > 0 && !p.name.trim() && !p.hcp.trim());
               set({ players: k > 0 ? d.players.map((p, j) => (j === k ? row : p)) : [...d.players, row].slice(0, 4) });
             }}

@@ -121,7 +121,8 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   let strategy: PinPlan | null = null;
   // a par 3 is played to the green from the tee – never laid up (night check 22.10.2026, Frielinghausen 3: "lay up to
   // 141 m" on a 202 m par 3 because the 3-wood falls short)
-  const par3Tee = o.teeShot && o.par === 3;
+  // … but only a par 3 that is one: beyond 280 m the map's par is wrong (night check: "par 3" with 479 m in OSM)
+  const par3Tee = o.teeShot && o.par === 3 && toPin.playsLike <= 280;
   if ((toPin.playsLike <= longest + reachMargin || par3Tee) && !driverOk) {
     base = pin;
     kind = 'approach';
