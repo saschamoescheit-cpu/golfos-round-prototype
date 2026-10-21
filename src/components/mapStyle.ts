@@ -54,11 +54,9 @@ export function setImagery(m: maplibregl.Map, source: ImagerySource): void {
   m.addSource('sat', rasterSource(source));
   m.addLayer(imageryLayer(source), below);
   if (shown === 'none') m.setLayoutProperty('sat', 'visibility', 'none');
-  // Esri underneath a regional imagery, not under Esri itself
-  if (source.id === 'esri') {
-    if (m.getLayer(BASE)) m.removeLayer(BASE);
-    if (m.getSource(BASE)) m.removeSource(BASE);
-  } else if (!m.getLayer(BASE)) {
+  // Esri underneath – also once the map switched to Esri itself: removed, the map stayed black until the finer Esri
+  // tiles arrived (the night check 21./22.10.2026, Freiburg); kept, the coarser ground shows meanwhile
+  if (!m.getLayer(BASE)) {
     if (!m.getSource(BASE)) m.addSource(BASE, baseSource());
     m.addLayer(baseLayer(), 'sat');
     if (shown === 'none') m.setLayoutProperty(BASE, 'visibility', 'none');

@@ -261,3 +261,20 @@ describe('hazard start and end (Sascha 17.10.2026: dashed lines outwards)', () =
     expect(t.front.out[0] * 111195).toBeCloseTo(-30, 0);
   });
 });
+
+describe('a hole mapped as an area (night check 22.10.2026, Freiburg)', () => {
+  it('the outline becomes a line from the far tee box to the green inside it', async () => {
+    const { holeLineOf, distanceM } = await import('./geo');
+    const M = 1 / 111195;
+    const at = (e: number, n: number): [number, number] => [7.92 + (e * M) / Math.cos((47.97 * Math.PI) / 180), 47.97 + n * M];
+    const sq = (cx: number, cy: number, r: number) => [at(cx - r, cy - r), at(cx + r, cy - r), at(cx + r, cy + r), at(cx - r, cy + r), at(cx - r, cy - r)];
+    const outline = [at(-30, -10), at(30, -10), at(30, 480), at(-30, 480), at(-30, -10)]; // closed: start = end
+    const geo = { green: [sq(0, 460, 12), sq(200, 0, 12)], tee: [sq(0, 0, 5), sq(0, 60, 5)] }; // the second green belongs to another hole
+    const line = holeLineOf(outline, geo);
+    expect(line.length).toBe(2);
+    expect(distanceM(line[0], at(0, 0))).toBeLessThan(2); // the back tee
+    expect(distanceM(line[1], at(0, 460))).toBeLessThan(2); // the green inside the outline
+    const plain = [at(0, 0), at(0, 450)];
+    expect(holeLineOf(plain, geo)).toBe(plain); // a real line stays
+  });
+});

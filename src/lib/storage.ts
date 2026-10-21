@@ -2,6 +2,7 @@ import type { Course, CourseGeometry, LngLat, Round } from '../types';
 import { SEED_LOADERS } from '../data/seedLoaders';
 import type { ImageryId } from './imagery';
 import type { CarryBag } from './caddie';
+import { holesAsLines } from './geo';
 
 // Everything is stored on the device (localStorage). No account, no cloud – prototype only.
 
@@ -160,8 +161,10 @@ export async function ensureGeometry(courseId: string): Promise<void> {
 }
 
 export function loadGeometry(courseId: string): CourseGeometry {
-  const base: CourseGeometry =
-    seeds.get(courseId) ?? read<CourseGeometry | null>(GEO + courseId, null) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] };
+  // holes mapped as areas become playing lines – for every part of the app that reads the course (22.10.2026)
+  const base: CourseGeometry = holesAsLines(
+    seeds.get(courseId) ?? read<CourseGeometry | null>(GEO + courseId, null) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] },
+  );
   const own = loadHoleLines(courseId);
   if (Object.keys(own).length === 0) return base;
   const ownHoles = Object.entries(own).map(([key, line]) => {

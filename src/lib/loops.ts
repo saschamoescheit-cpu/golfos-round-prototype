@@ -13,6 +13,10 @@ export function parseHoleRef(ref: string): { loop: string; number: number } | nu
   if (m) return { loop: m[1].toUpperCase(), number: Number(m[2]) };
   m = r.match(/^(\d{1,2})$/);
   if (m) return { loop: 'Main', number: Number(m[1]) };
+  // "Loch 3", "Hole 3", "Bahn Nr. 3", "Hoyo 3", "Loch 3A" – the word alone is no loop (night check 22.10.2026:
+  // Freiburger Golfclub had six of its holes as "Loch 3" and lost them)
+  m = r.match(/^(?:Loch|Hole|Bahn|Hoyo|Trou|Buca|Tee)\s*(?:Nr\.?|No\.?|#)?\s*(\d{1,2})\s*([A-Za-z])?$/i);
+  if (m) return { loop: m[2] ? m[2].toUpperCase() : 'Main', number: Number(m[1]) };
   m = r.match(/^(.*?)[\s\-–:]*(?:Loch|Hole|Bahn)?\s*(\d{1,2})$/i);
   if (m && m[1].trim()) return { loop: m[1].trim(), number: Number(m[2]) };
   return null;

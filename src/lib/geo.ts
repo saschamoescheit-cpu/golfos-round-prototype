@@ -323,6 +323,40 @@ export function islandsCut(water: Ring[], greens: Ring[]): Ring[] {
   });
 }
 
+/**
+ * A hole mapped as an area – its closed outline – instead of a line from the tee to the green (night check 22.10.2026:
+ * Freiburger Golfclub, "middle 32 m" on a par 5 – tee and green were the same point): the playing line from the tee
+ * box farthest from the green inside the outline (else the outline's farthest point) to that green. A line stays as it is.
+ */
+export function holeLineOf(raw: LngLat[], geo: Pick<CourseGeometry, 'green' | 'tee'>): LngLat[] {
+  const closed = raw.length >= 4 && distanceM(raw[0], raw[raw.length - 1]) < 3;
+  if (!closed) return raw;
+  const inside = (r: Ring) => r.length >= 3 && pointInRing(centroid(r), raw);
+  const greens = geo.green.filter(inside).map(centroid);
+  const tees = geo.tee.filter(inside).map(centroid);
+  let best: [LngLat, LngLat] | null = null;
+  let far = -1;
+  const pair = (from: LngLat[], to: LngLat[]) => {
+    for (const a of from)
+      for (const b of to) {
+        const d = distanceM(a, b);
+        if (d > far) {
+          far = d;
+          best = [a, b];
+        }
+      }
+  };
+  if (greens.length) pair(tees.length ? tees : raw, greens);
+  else if (tees.length) pair(tees, raw);
+  return best ?? raw;
+}
+
+/** Every hole of the course as a playing line (see holeLineOf). */
+export function holesAsLines(geo: CourseGeometry): CourseGeometry {
+  if (!geo.holes.some((h) => h.line.length >= 4 && distanceM(h.line[0], h.line[h.line.length - 1]) < 3)) return geo;
+  return { ...geo, holes: geo.holes.map((h) => ({ ...h, line: holeLineOf(h.line, geo) })) };
+}
+
 export function holeMapData(geo: CourseGeometry, loop: string, number: number, corridorM = 45): HoleMapData | null {
   const hole = geo.holes.find((h) => {
     const p = parseHoleRef(h.ref);

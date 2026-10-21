@@ -78,11 +78,26 @@ export function suggestClub(par: number, isFirstShot: boolean, toPinM: number, b
 }
 
 /** Length of every shot: to the next shot, or to the ball on the green for the last one – into the water / out of bounds: to where it went in. */
+/** Longer than any golf shot: the two points cannot both be right (a lost GPS fix, a point at 0/0). */
+export const MAX_SHOT_M = 450;
+/** A real place: numbers, inside the world, not the 0/0 of an empty fix. */
+export const realPos = (p: LngLat | null | undefined): p is LngLat =>
+  !!p && Number.isFinite(p[0]) && Number.isFinite(p[1]) && Math.abs(p[1]) <= 90 && Math.abs(p[0]) <= 180 && !(Math.abs(p[0]) < 1e-6 && Math.abs(p[1]) < 1e-6);
+
 export function shotLengths(d: DetailEntry): (number | null)[] {
   return d.shots.map((s, k) => {
     const next = s.penalty && s.missPos ? s.missPos : k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
-    return s.pos && next ? distanceM(s.pos, next) : null;
+    if (!realPos(s.pos) || !realPos(next)) return null;
+    const m = distanceM(s.pos, next);
+    return m <= MAX_SHOT_M ? m : null;
   });
+}
+
+/** A length that fits the club: at most half again its usual total plus 20 m (driver 335 m, 7-iron 215 m) – beyond
+ *  that a point is wrong, and the length stays out of the stats and the measured distances. */
+export function plausibleForClub(club: Club, m: number): boolean {
+  const total = CLUB_CATALOG.find((c) => c.club === club)?.total;
+  return m >= 1 && m <= (total ? total * 1.5 + 20 : MAX_SHOT_M);
 }
 
 /** Side of the playing line a point lies on (seen from the tee towards the green). */

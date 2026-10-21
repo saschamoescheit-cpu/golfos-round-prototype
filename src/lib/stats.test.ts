@@ -53,6 +53,24 @@ describe('analysis across rounds', () => {
     expect(playerBag([det]).find((x) => x.club === 'Dr')!.m).toBe(232);
     expect(playerBag([det]).find((x) => x.club === '7i')!.m).toBe(130); // no own data → standard
   });
+  it('impossible lengths never count: a point at 0/0, 330 km, a 7-iron of 400 m (Sascha 21.10.2026)', () => {
+    const wrong = round(18, (k) => ({
+      strokes: 4, putts: 2,
+      detail: {
+        shots: [
+          { pos: k === 0 ? ([0, 0] as LngLat) : at(0, 0), lie: 'tee', club: 'Dr', penalty: false },
+          { pos: k === 1 ? at(0, 330000) : at(0, 240), lie: 'fairway', club: '7i', penalty: false },
+          { pos: k === 2 ? at(0, 640) : at(0, 360), lie: 'fringe', club: 'SW', penalty: false },
+        ],
+        onGreen: at(0, 365), pin: at(0, 370), holedOut: false,
+      },
+    }));
+    const c = analyse([wrong]).clubs;
+    const dr = c.find((x) => x.club === 'Dr')!;
+    expect(dr.max).toBe(240); // not 330 km
+    expect(dr.shots).toBe(16); // hole 1 (0/0) and hole 2 (330 km) left out
+    expect(c.find((x) => x.club === '7i')!.max).toBe(120); // the 400 m 7-iron of hole 3 is out
+  });
 });
 
 describe('fairway hit from the checked shots', () => {

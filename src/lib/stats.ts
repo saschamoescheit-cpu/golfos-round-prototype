@@ -1,6 +1,6 @@
 import type { Club, FairwayResult, HoleEntry, Round } from '../types';
 import { greenInRegulation, grossForHole, handicapStrokes, playing18, stablefordPoints } from './scoring';
-import { BAG, firstPuttM, shotLengths } from './shots';
+import { BAG, firstPuttM, plausibleForClub, shotLengths } from './shots';
 import { tr } from './i18n';
 import { isTeamRound } from './games';
 import { CLUB_CATALOG } from './clubs';
@@ -165,6 +165,7 @@ export function analyse(rounds: Round[]): Analysis {
           const len = lengths[k];
           if (!s.club || s.club === 'Pt' || len == null || s.penalty || s.lie === 'recovery') return; // the Texas wedge has no distance to learn
           if (s.kind && s.kind !== 'full') return; // chips, pitches, punches are not the club's full distance
+          if (!plausibleForClub(s.club, len)) return; // a wrong point, not a shot – never in the stats
           clubLengths.set(s.club, [...(clubLengths.get(s.club) ?? []), len]);
         });
         const first = firstPuttM(d);

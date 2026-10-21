@@ -90,3 +90,14 @@ describe('18-hole playing handicap', () => {
     expect(playing18(6, -1)).toBe(-2); // short course, plus handicap
   });
 });
+
+describe('hole refs with the word (night check 22.10.2026)', () => {
+  it('"Loch 3", "Hole 12", "Bahn Nr. 4", "Loch 3A" – the main loop or the letter, never a loop "Loch"', async () => {
+    const { parseHoleRef } = await import('./loops');
+    expect(parseHoleRef('Loch 3')).toEqual({ loop: 'Main', number: 3 });
+    expect(parseHoleRef('Hole 12')).toEqual({ loop: 'Main', number: 12 });
+    expect(parseHoleRef('Bahn Nr. 4')).toEqual({ loop: 'Main', number: 4 });
+    expect(parseHoleRef('Loch 3A')).toEqual({ loop: 'A', number: 3 });
+    expect(parseHoleRef('Kurzplatz - Loch 3')).toEqual({ loop: 'Kurzplatz', number: 3 });
+  });
+});
