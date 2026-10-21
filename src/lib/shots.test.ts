@@ -71,3 +71,17 @@ describe('detailed tracking', () => {
     expect(deriveFromShots(d, null, 4, hole).strokes).toBeUndefined();
   });
 });
+
+describe('impossible shots are seen (Sascha 21.10.2026: a drive of 330325 m)', () => {
+  it('a point at 0/0, a jump of 330 km, a 400 m 7-iron – odd; a normal drive – fine; the lengths stay out', async () => {
+    const { shotOdd, shotLengths } = await import('./shots');
+    const M = 1 / 111195;
+    const at = (e: number, n: number): [number, number] => [9.69 + (e * M) / Math.cos((48.78 * Math.PI) / 180), 48.78 + n * M];
+    const d = (shots: unknown[], onGreen = at(0, 400)) => ({ shots, onGreen, pin: at(0, 405), holedOut: false }) as never;
+    expect(shotOdd(d([{ pos: [0, 0], club: 'Dr', lie: 'tee' }]), 0)).toBe(true);
+    expect(shotOdd(d([{ pos: at(0, 0), club: 'Dr', lie: 'tee' }, { pos: at(0, 330000), club: '7i', lie: 'fairway' }]), 0)).toBe(true);
+    expect(shotOdd(d([{ pos: at(0, 0), club: '7i', lie: 'tee' }]), 0)).toBe(true); // 400 m with a 7-iron
+    expect(shotOdd(d([{ pos: at(0, 0), club: 'Dr', lie: 'tee' }, { pos: at(0, 230), club: '8i', lie: 'fairway' }]), 0)).toBe(false);
+    expect(shotLengths(d([{ pos: at(0, 0), club: 'Dr', lie: 'tee' }, { pos: at(0, 330000), club: '7i', lie: 'fairway' }]))[0]).toBeNull();
+  });
+});

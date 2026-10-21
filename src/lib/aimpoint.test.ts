@@ -46,6 +46,13 @@ describe('caddie aim point', () => {
     expect(a.note ?? '').not.toMatch(/Trees in the way|punch out/);
     expect(distanceM(a.pos, at(0, 190))).toBeLessThan(15);
   });
+  it('a long par 3 from the tee: to the green with the longest club, never a lay-up (Frielinghausen 3)', () => {
+    const a = aimPoint({ ...base, from: at(0, 0), par: 3, pin: at(0, 205), teeShot: true });
+    expect(a.kind).toBe('approach');
+    expect(distanceM(a.pos, at(0, 205))).toBeLessThan(15);
+    expect(['Dr', '3W']).toContain(a.club);
+    expect(a.note ?? '').not.toMatch(/Lay up/);
+  });
   it('downhill tee shot: plays shorter by the height difference', () => {
     const slopes: [number, number, number][] = [[0, 0, 446], [100, 0, 438], [200, 0, 429], [300, 0, 428], [380, 0, 427]];
     const a = aimPoint({ ...base, from: at(0, 0), teeShot: true, slopes });

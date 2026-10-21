@@ -1021,7 +1021,9 @@ export function HoleScreen(props: {
           unit={unit}
           imagery={imagery}
           // the state's aerial service does not answer: Esri for this visit (the choice stays as it is)
-          onImageryFail={() => imagery.id !== 'esri' && setImageryPref('esri')}
+          // the state's imagery down: Esri; Esri down too: the drawn hole (not kept for the next round) – never a black
+          // map (night check 22.10.2026)
+          onImageryFail={() => (imagery.id !== 'esri' ? setImageryPref('esri') : view2d ? undefined : (setView2d(true), setTestMsg(tr('No aerial photo right now – the drawn hole instead', 'Gerade kein Luftbild – dafür die gezeichnete Bahn'))))}
           track={detailMode ? [...track, ...soundTrack] : [...manualTrack, ...soundTrack]}
           onTrackTap={detailMode ? undefined : (id) => setRemoveShot(Number(id.slice(1)))}
           // a shot noted by hand moves with the finger to the exact spot on the aerial – to the metre (Sascha 17.10.2026)

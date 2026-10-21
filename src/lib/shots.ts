@@ -93,6 +93,17 @@ export function shotLengths(d: DetailEntry): (number | null)[] {
   });
 }
 
+/** A shot whose point or length cannot be right – shown in the shot check to be placed again (Sascha 21.10.2026:
+ *  "the app has to see that"): a point at 0/0 or outside the world, or a length no golfer hits with that club. */
+export function shotOdd(d: DetailEntry, k: number): boolean {
+  const s = d.shots[k];
+  if (s.pos && !realPos(s.pos)) return true;
+  const next = s.penalty && s.missPos ? s.missPos : k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
+  if (!realPos(s.pos) || !realPos(next)) return false;
+  const m = distanceM(s.pos, next);
+  return m > MAX_SHOT_M || (!!s.club && s.club !== 'Pt' && (!s.kind || s.kind === 'full') && !s.penalty && !plausibleForClub(s.club, m));
+}
+
 /** A length that fits the club: at most half again its usual total plus 20 m (driver 335 m, 7-iron 215 m) – beyond
  *  that a point is wrong, and the length stays out of the stats and the measured distances. */
 export function plausibleForClub(club: Club, m: number): boolean {

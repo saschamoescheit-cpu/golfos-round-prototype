@@ -13,6 +13,14 @@ export function parseHoleRef(ref: string): { loop: string; number: number } | nu
   if (m) return { loop: m[1].toUpperCase(), number: Number(m[2]) };
   m = r.match(/^(\d{1,2})$/);
   if (m) return { loop: 'Main', number: Number(m[1]) };
+  // "9/18 - Blindes Loch", "Bahn 1/10 - Terrassenschreck": a 9-hole course played twice – the first number (night
+  // check 22.10.2026: Bad Herrenalb – no hole was found)
+  m = r.match(/^(?:Loch|Hole|Bahn)?\s*(\d{1,2})\s*\/\s*\d{1,2}(?:\s*[-–:].*)?$/i);
+  if (m) return { loop: 'Main', number: Number(m[1]) };
+  // "15 (Old Course)", "8 – Academy Course": the number first, the course's name after it (night check 22.10.2026:
+  // Der Öschberghof – no hole was found)
+  m = r.match(/^(\d{1,2})\s*(?:\(([^)]+)\)|[-–:]\s*(.+))$/);
+  if (m) return { loop: (m[2] ?? m[3]).trim(), number: Number(m[1]) };
   // "Loch 3", "Hole 3", "Bahn Nr. 3", "Hoyo 3", "Loch 3A" – the word alone is no loop (night check 22.10.2026:
   // Freiburger Golfclub had six of its holes as "Loch 3" and lost them)
   m = r.match(/^(?:Loch|Hole|Bahn|Hoyo|Trou|Buca|Tee)\s*(?:Nr\.?|No\.?|#)?\s*(\d{1,2})\s*([A-Za-z])?$/i);

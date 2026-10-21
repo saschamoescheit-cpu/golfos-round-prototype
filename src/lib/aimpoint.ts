@@ -119,7 +119,10 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   let base: LngLat;
   let kind: AimKind;
   let strategy: PinPlan | null = null;
-  if (toPin.playsLike <= longest + reachMargin && !driverOk) {
+  // a par 3 is played to the green from the tee – never laid up (night check 22.10.2026, Frielinghausen 3: "lay up to
+  // 141 m" on a 202 m par 3 because the 3-wood falls short)
+  const par3Tee = o.teeShot && o.par === 3;
+  if ((toPin.playsLike <= longest + reachMargin || par3Tee) && !driverOk) {
     base = pin;
     kind = 'approach';
     // Flag, middle of the green or short of the flag: what costs the fewest strokes with this player's spread.
@@ -127,7 +130,7 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
     if (strategy) base = strategy.aim;
     // A long shot at the green: would a lay-up to the favourite distance cost fewer strokes? (feature 017)
     const fav = Math.min(200, Math.max(30, o.favourite || 90));
-    const lu = strategy ? layupInstead({ from, pin, data, distM: toPin.playsLike, favourite: fav, playing: o.playing ?? null, style }) : null;
+    const lu = strategy && !par3Tee ? layupInstead({ from, pin, data, distM: toPin.playsLike, favourite: fav, playing: o.playing ?? null, style }) : null;
     if (lu) {
       base = lu.aim;
       kind = 'layup';
@@ -283,7 +286,8 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   const obRight = obNote.obRight || (ob != null && ob.right <= 25);
   const distance = distanceM(from, pos);
   const pl = playsLike(distance, bearingDeg(from, pos), o.conditions, kind === 'approach' ? hd(pin) : hd(pos));
-  const club = adviseClub(pl.playsLike, o.bag, driverOk && kind === 'drive').club;
+  // a long par 3 beyond every other club: the driver too
+  const club = adviseClub(pl.playsLike, o.bag, (driverOk && kind === 'drive') || (par3Tee && pl.playsLike > longest + 5)).club;
   // One wording everywhere: "Out of bounds 18 m left and right" – distance from the map, side from the hole notes.
   const sideText = (k: 'left' | 'right', known: boolean | undefined, m: number | undefined) => (known || m == null || !isFinite(m) ? sideWord(k) : `${Math.round(m)} m ${sideWord(k)}`);
   // Said only when it is in play for this shot (like a caddie): the boundary within 2.5 × the player's sideways

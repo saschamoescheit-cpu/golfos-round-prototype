@@ -61,6 +61,10 @@ describe('loops (Hetzenhof style data)', () => {
     expect(parseHoleRef('4A')).toEqual({ loop: 'A', number: 4 });
     expect(parseHoleRef('12')).toEqual({ loop: 'Main', number: 12 });
     expect(parseHoleRef('Kurzplatz - Loch 3')).toEqual({ loop: 'Kurzplatz', number: 3 });
+    expect(parseHoleRef('15 (Old Course)')).toEqual({ loop: 'Old Course', number: 15 });
+    expect(parseHoleRef('9/18 - Blindes Loch')).toEqual({ loop: 'Main', number: 9 });
+    expect(parseHoleRef('Bahn 1/10 - Terrassenschreck')).toEqual({ loop: 'Main', number: 1 });
+    expect(parseHoleRef('8 – Academy Course')).toEqual({ loop: 'Academy Course', number: 8 });
   });
   it('parses "11/12" stroke index', () => {
     expect(parseStrokeIndex('11/12')).toEqual([11, 12]);

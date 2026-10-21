@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ShotHereIcon } from '../components/RoundIcons';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, distToLine, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
-import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, suggestKind } from '../lib/shots';
+import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
 import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
@@ -63,7 +63,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const unit = loadUnit();
   const course = loadCachedCourse(round.courseId);
   const imageryAt: LngLat = course ? [course.lon, course.lat] : (maps.find(Boolean)?.greenCenter ?? [0, 0]);
-  const imagery = pickImagery(imageryAt, loadImagery());
+  // as on the course: the state's imagery down → Esri, Esri down too → the drawn hole (22.10.2026)
+  const [imageryPref, setImageryPref] = useState(loadImagery);
+  const imagery = pickImagery(imageryAt, imageryPref);
   const [, setImageryTick] = useState(0);
   useEffect(() => {
     loadRegionalImagery(imageryAt).then((found) => found && setImageryTick((t) => t + 1));
@@ -630,6 +632,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             targets={[]}
             unit={unit}
             imagery={imagery}
+            onImageryFail={() => (imagery.id !== 'esri' ? setImageryPref('esri') : setView2d(true))}
             view={view2d ? '2d' : 'aerial'}
             trees={view2d ? [...(geometry.trees ?? []), ...(geometry.canopy ?? [])].filter((r) => r.some((q) => distToLine(q, data.line) <= 60)) : undefined}
             details={
@@ -777,7 +780,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           {d.shots.map((s, n) => {
             const toPin = s.pos && pin ? distanceM(s.pos, pin) : null;
             const kind = s.kind ?? suggestKind(s.lie, toPin);
-            const cls = [s.review ? 'check' : '', drag?.from === n ? 'dragging' : '', drag && drag.from !== n && drag.to === n ? (drag.to < drag.from ? 'drop-before' : 'drop-after') : ''].join(' ').trim();
+            const odd = shotOdd(d, n);
+            const cls = [s.review || odd ? 'check' : '', drag?.from === n ? 'dragging' : '', drag && drag.from !== n && drag.to === n ? (drag.to < drag.from ? 'drop-before' : 'drop-after') : ''].join(' ').trim();
             return (
               <li key={n} className={cls || undefined} style={drag?.from === n ? { transform: `translateY(${drag.dy}px)` } : undefined} onPointerDown={(ev) => !(ev.target as HTMLElement).closest('.row-grip, .row-delete') && holdRow(ev, n)} onContextMenu={(e) => e.preventDefault()}>
                 <span className="n">{n + 1}</span>
@@ -787,8 +791,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     {lieName(s.lie)}
                     {lengths[n] != null ? ` · ${fmt(lengths[n]!)}` : ''}
                     {s.penalty ? (s.penaltyKind === 'ob' ? tr(' · out of bounds (+1)', ' · ins Aus (+1)') : s.penaltyKind === 'water' ? tr(' · water (+1)', ' · ins Wasser (+1)') : tr(' · +1 penalty', ' · +1 Strafschlag')) : ''}
-                    {s.review ? tr(' · check', ' · prüfen') : ''}
+                    {s.review && !odd ? tr(' · check', ' · prüfen') : ''}
                   </span>
+                  {odd && <span className="bad-text small" style={{ display: 'block' }}>{tr('Impossible length – drag the shot to where the ball was', 'Unmögliche Länge – Schlag auf der Karte an die richtige Stelle ziehen')}</span>}
                 </button>
                 <button type="button" className="icon-btn row-delete" aria-label={tr(`Delete shot ${n + 1}`, `Schlag ${n + 1} löschen`)} onClick={() => saveDetail(k, { ...d, shots: d.shots.filter((_, j) => j !== n) })}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
