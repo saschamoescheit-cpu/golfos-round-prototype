@@ -33,7 +33,6 @@ await p.locator('button.list-item').filter({ hasText: /Falcon/ }).first().click(
 await p.getByText('Runde starten').waitFor({ timeout: 60000 });
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(9000);
-await p.getByRole('button', { name: 'Caddie ausblenden' }).first().click().catch(() => {}); // the preview opens with the caddie – hidden for the map
 ok((await p.locator('.map-hole-no').innerText()).trim() === '1', 'on hole 1');
 const attrib = await p.locator('.maplibregl-ctrl-attrib').textContent().catch(() => '');
 console.log('· credits:', attrib.replace(/\s+/g, ' ').slice(0, 160));
@@ -66,11 +65,13 @@ const sd = p.locator('button.list-item').filter({ hasText: /Southern Dunes Golf/
 await sd.waitFor({ timeout: 30000 });
 await sd.click();
 await p.getByText('Runde starten').waitFor({ timeout: 60000 });
-const tees = await p.locator('body').innerText();
+// the tees behind the dot in the player row (Sascha 21.10.2026: the tee per player)
+await p.locator('.player-row .tee-pick').first().click();
+const tees = await p.getByRole('dialog', { name: 'Abschlag' }).innerText();
 ok(/Schwarz/.test(tees) && /Gold/.test(tees), 'Southern Dunes: its tees (Black … Red) to choose');
+await p.getByRole('dialog', { name: 'Abschlag' }).getByRole('button', { name: 'Schließen' }).click();
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(6000);
-await p.getByRole('button', { name: 'Caddie ausblenden' }).first().click().catch(() => {}); // the preview opens with the caddie – hidden for the map
 ok((await p.locator('.map-hole-no').innerText()).trim() === '1', 'Southern Dunes: on hole 1');
 const sdCredit = await p.locator('.maplibregl-ctrl-attrib').textContent().catch(() => '');
 ok(/Polk/i.test(sdCredit), `Southern Dunes: the Polk County orthoimagery (${sdCredit.replace(/\s+/g, ' ').slice(0, 80)})`);
@@ -90,7 +91,6 @@ await p.getByText('Runde starten').waitFor({ timeout: 60000 });
 ok(/18 Löcher|Par 72/.test(await p.locator('body').innerText()), 'StoneGate Oaks: 18 holes, par 72');
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(8000);
-await p.getByRole('button', { name: 'Caddie ausblenden' }).first().click().catch(() => {}); // the preview opens with the caddie – hidden for the map
 ok((await p.locator('.map-hole-no').innerText()).trim() === '1', 'StoneGate Oaks: on hole 1');
 ok(/Par 5/.test(await p.locator('body').innerText()), 'StoneGate Oaks: hole 1 is a par 5');
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/stonegateoaks-1.png` });

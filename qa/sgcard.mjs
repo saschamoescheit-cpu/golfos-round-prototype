@@ -63,6 +63,15 @@ const sgStats = await p.locator('section').filter({ hasText: 'Strokes gained' })
 ok(/Je 9 Löcher/.test(sgStats), 'statistics: strokes gained per 9 holes');
 await p.locator('.tabbar button').filter({ hasText: 'Mein Golf' }).click();
 await p.waitForTimeout(600);
+// the profile opened from "Mein Golf" has a way back at the top (Sascha 21.10.2026)
+await p.locator('.record-who').click();
+await p.waitForTimeout(400);
+const backBtn = p.locator('.topbar').getByRole('button', { name: 'Zurück zu Mein Golf' });
+ok((await backBtn.count()) === 1, 'profile from "Mein Golf": a back arrow at the top');
+await backBtn.click();
+await p.waitForTimeout(400);
+ok((await p.locator('.record-hero').count()) === 1, 'the arrow leads back to "Mein Golf"');
+ok(/Deine Löcher-Scores/.test(await p.locator('main').innerText()), 'the card is called "Deine Löcher-Scores"');
 const hero = await p.locator('.record-hero').innerText();
 ok(/\+8,0\s*Ø zu Par \(9 Loch\)/.test(hero), 'my golf: average to par per 9 holes (+8,0, not +16,0)');
 // how the holes end: the numbers in the bars, the legend alone below (Sascha 17.10.2026)

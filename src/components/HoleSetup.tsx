@@ -42,7 +42,7 @@ export function HoleSetup(props: {
       zoom: props.nearPlayer ? 17 : 15.3,
       attributionControl: { compact: true },
     });
-    m.on('load', () => {
+    m.once('style.load', () => { // not "load": that waits for aerial tiles, which may never come (LGL, 21.10.2026)
       // The whole course in course colours, so the player can find tee and green of the hole.
       const g = props.geometry;
       const kinds = { fairway: g.fairway, tee: g.tee, water: g.water, bunker: g.bunker, green: g.green };

@@ -7,10 +7,14 @@
 // - Alcanada (1golf.eu, GolfAdvisor, GolfPass): yellow 6193 m 73.0 / 135.
 // - Son Quint (GolfPass): yellow 5750 m 70.8 / 133.
 // - Son Vida: published yellow lengths (5529 / 5597 m) differ from our 5470 m – left out, the player enters it.
+// - Hetzenhof (27 holes): one rating per 18-hole combination – key "<tee>@<loops>" (golfingrecord.com scorecards of
+//   A-B, B-C, A-C, men's values; every tee length matches ours to the metre: A+B yellow 5833 m, B+C 5814 m,
+//   A+C 6089 m). Each with the par of its scorecard – blue and red play some holes a par shorter; 9 holes of a loop use it too.
 
 export interface TeeRating {
   cr: number; // course rating
   slope: number;
+  par?: number; // the par this rating is for, where it differs from the holes' par (shorter tees)
 }
 
 const SON_ANTEM_WEST: Record<string, TeeRating> = {
@@ -28,4 +32,9 @@ export const RATINGS: Record<string, Record<string, TeeRating>> = {
   'osm:way/51852280': { White: { cr: 74.1, slope: 133 }, Yellow: { cr: 72.4, slope: 133 } },
   'osm:way/40755710': { Yellow: { cr: 73.0, slope: 135 } },
   'osm:relation/1654444': { Yellow: { cr: 70.8, slope: 133 } },
+  'osm:relation/1326323': {
+    'White@AB': { cr: 74.2, slope: 134, par: 71 }, 'Yellow@AB': { cr: 71.6, slope: 130, par: 71 }, 'Blue@AB': { cr: 68.7, slope: 127, par: 70 }, 'Red@AB': { cr: 66.2, slope: 119, par: 68 },
+    'White@BC': { cr: 73.2, slope: 132, par: 71 }, 'Yellow@BC': { cr: 71.4, slope: 131, par: 71 }, 'Blue@BC': { cr: 68.5, slope: 123, par: 70 }, 'Red@BC': { cr: 66.8, slope: 118, par: 69 },
+    'White@AC': { cr: 74.0, slope: 136, par: 72 }, 'Yellow@AC': { cr: 72.6, slope: 132, par: 72 }, 'Blue@AC': { cr: 69.3, slope: 125, par: 72 }, 'Red@AC': { cr: 67.9, slope: 122, par: 71 },
+  },
 };

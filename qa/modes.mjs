@@ -67,9 +67,28 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
     }
     // the HCP is typed, the playing handicap follows and is shown, not typed (Sascha 21.10.2026); 9 holes: half
     if (c.n === 4 && c.mode === 'Einfaches Spiel') {
+      // Hetzenhof A from yellow: the A+B rating (71.6 / 130, par 71), halved for 9 holes (Sascha 21.10.2026)
       const shown = await p.locator('.playing-hcp').allInnerTexts();
-      const want = PEOPLE.slice(0, c.n).map(([, h]) => String(Math.round(Number(h) / 2)));
-      ok(shown.join() === want.join() && (await p.locator('.playing-hcp input, input.playing-hcp').count()) === 0, `setup: HCP typed, playing handicap shown (${shown.join(' · ')})`);
+      const want = PEOPLE.slice(0, c.n).map(([, h]) => String(Math.round((Number(h) * (130 / 113) + (71.6 - 71)) / 2)));
+      ok(shown.join() === want.join() && (await p.locator('.playing-hcp input, input.playing-hcp').count()) === 0, `setup: HCP typed, playing handicap from course rating and slope (${shown.join(' · ')} – want ${want.join(' · ')})`);
+      const line = (await p.locator('.rating-line').innerText()).replace(/\s+/g, ' ');
+      ok(/Course Rating 71,6 · Slope 130/.test(line), `setup: course rating and slope shown (${line})`);
+      // corrected from the club's scorecard: kept, the playing handicaps follow (with the holes' par – A twice: 72)
+      await p.locator('.rating-line').click();
+      await p.fill('#setup-cr', '73,0');
+      await p.fill('#setup-slope', '140');
+      await p.locator('.rating-form').getByRole('button', { name: 'Speichern' }).click();
+      await p.waitForTimeout(200);
+      const shown2 = await p.locator('.playing-hcp').allInnerTexts();
+      const want2 = PEOPLE.slice(0, c.n).map(([, h]) => String(Math.round((Number(h) * (140 / 113) + (73 - 72)) / 2)));
+      ok(/Course Rating 73,0 · Slope 140/.test(await p.locator('.rating-line').innerText()) && shown2.join() === want2.join(), `setup: own course rating saved, playing handicaps follow (${shown2.join(' · ')})`);
+      // the tee per player: Ben (HCP 10) from red – red A+B 66,2 / 119, par 68: (10 × 119/113 − 1,8) / 2 = 4
+      ok((await p.locator('.player-row .tee-pick').count()) === c.n && (await p.getByText('Abschlag', { exact: true }).count()) === 0, 'setup: the tee as a dot in each player row, no tee block of its own');
+      await p.locator('.player-row').nth(1).locator('.tee-pick').click();
+      await p.getByRole('dialog', { name: 'Abschlag' }).locator('.pick-option').filter({ hasText: 'Rot' }).click();
+      await p.waitForTimeout(200);
+      const shown3 = await p.locator('.playing-hcp').allInnerTexts();
+      ok(shown3[1] === '4' && shown3[0] === shown2[0], `setup: Ben from red gets his own playing handicap (${shown3.join(' · ')})`);
     }
     step = 'mode';
     await p.locator('.settings-row').filter({ hasText: 'Modus' }).click();

@@ -50,6 +50,7 @@ if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan-1A.
 for (let k = 0; k < 3; k++) {
   await p.getByRole('button', { name: 'Nächstes Loch' }).last().click();
   await p.waitForTimeout(1200);
+  if (k === 0) ok((await p.locator('.plan-panel').getByRole('button', { name: '+ Ziel' }).count()) === 0, `par 3 (${(await p.locator('.map-hole-no').innerText()).trim()}): no "+ Ziel" – a par 3 is played to the green`);
 }
 const label4 = (await p.locator('.map-hole-no').innerText()).trim();
 const shots4 = await p.locator('.plan-panel .plan-shot').count();

@@ -185,6 +185,11 @@ function wakeAudio(): void {
 }
 
 let current: SpeechSynthesisUtterance | null = null; // held, so the browser does not drop it before it ends
+let micPause: (() => boolean) | null = null;
+/** Who listens with the microphone pauses it while the caddie talks: returns true when it was listening. */
+export function setMicPause(f: (() => boolean) | null): void {
+  micPause = f;
+}
 let watchdog = 0;
 
 /** Reads text aloud (iPhone Safari supports this). */
@@ -218,6 +223,12 @@ export function speak(text: string): boolean {
       }
     }, 2500);
   };
+  // the microphone off first – the iPhone needs a moment to give the sound back to the loudspeaker
+  if (micPause?.()) {
+    s.cancel();
+    window.setTimeout(go, 400);
+    return true;
+  }
   // cancel and speak in the same moment leaves Safari silent: a short pause between, only when something was talking
   if (s.speaking || s.pending) {
     s.cancel();

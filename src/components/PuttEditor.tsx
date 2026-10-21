@@ -106,8 +106,41 @@ export function PuttEditor(props: {
     setView(clampView(half / span, (Math.max(...xs) + Math.min(...xs)) / 2, (Math.max(...ys) + Math.min(...ys)) / 2));
   };
 
+  // flag and balls on the screen (px) – a finger near one takes it, only farther away it moves the green
+  // (Sascha 21.10.2026: "sometimes the whole green moves although I want to move the flag")
+  const GRAB_PX = 36;
+  const nearest = (cx: number, cy: number): number | 'pin' | null => {
+    const el = svg.current;
+    if (!el) return null;
+    const box = el.getBoundingClientRect();
+    const px = ([x, y]: [number, number]) => [box.left + ((x - (view.cx - vh)) / (vh * 2)) * box.width, box.top + ((y - (view.cy - vh)) / (vh * 2)) * box.height];
+    let best: number | 'pin' | null = null;
+    let bestD = GRAB_PX;
+    const take = (what: number | 'pin', p: LngLat) => {
+      const [x, y] = px(toXY(p));
+      const d = Math.hypot(x - cx, y - cy);
+      if (d < bestD) {
+        bestD = d;
+        best = what;
+      }
+    };
+    balls.forEach((b, k) => take(k, b));
+    take('pin', pin); // the flag wins a tie: it is what is moved most
+    return best;
+  };
   const down = (ev: React.PointerEvent) => {
     touches.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (touches.current.size === 1) {
+      const what = nearest(ev.clientX, ev.clientY);
+      if (what != null) {
+        ev.preventDefault();
+        drag.current = what;
+        grab.current = { x: ev.clientX, y: ev.clientY, at: toXY(what === 'pin' ? pin : balls[what]) };
+        setActive(what);
+        svg.current?.setPointerCapture?.(ev.pointerId);
+        return;
+      }
+    }
     if (touches.current.size === 2) {
       const [a, b] = [...touches.current.values()];
       drag.current = null; // two fingers: zoom, not move a ball
@@ -155,15 +188,35 @@ export function PuttEditor(props: {
       setBalls((b) => b.map((x, j) => (j === k ? p : x)));
     }
   };
-  const start = (what: number | 'pin') => (ev: React.PointerEvent) => {
-    ev.preventDefault();
-    if (touches.current.size >= 2) return; // a second finger zooms
-    drag.current = what;
-    grab.current = { x: ev.clientX, y: ev.clientY, at: toXY(what === 'pin' ? pin : balls[what]) };
-    setActive(what);
-    (ev.target as Element).setPointerCapture?.(ev.pointerId);
-  };
   const fmt = (m: number) => (m < 0.95 ? `${Math.round(m * 100)} cm` : `${dec(m.toFixed(1))} m`);
+  // where the flag stands on the green (Sascha 21.10.2026): from the nearer edge, and from the front or to the back
+  // along the playing line – whichever is nearer
+  const pinSpot = (() => {
+    if (!props.green) return null;
+    const [px, py] = toXY(pin);
+    const q = props.green.map(toXY);
+    let edge = Infinity;
+    let side = '';
+    const ys: number[] = [];
+    for (let k = 0; k < q.length; k++) {
+      const [ax, ay] = q[k];
+      const [bx, by] = q[(k + 1) % q.length];
+      const dx = bx - ax, dy = by - ay;
+      const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1)));
+      const nx = ax + t * dx, ny = ay + t * dy;
+      const d = Math.hypot(nx - px, ny - py);
+      if (d < edge) {
+        edge = d;
+        side = Math.abs(nx - px) >= Math.abs(ny - py) ? (nx > px ? tr('right', 'rechts') : tr('left', 'links')) : ny > py ? tr('front', 'vorne') : tr('back', 'hinten');
+      }
+      if ((ax <= px && bx > px) || (bx <= px && ax > px)) ys.push(ay + ((px - ax) / (bx - ax)) * dy); // the playing line through the flag
+    }
+    if (!Number.isFinite(edge) || ys.length < 2) return null;
+    const front = Math.max(...ys) - py; // +y = towards the player
+    const back = py - Math.min(...ys);
+    const along = front <= back ? tr(`${fmt(front)} from the front`, `${fmt(front)} von vorne`) : tr(`${fmt(back)} to the back`, `${fmt(back)} bis hinten`);
+    return `${along} · ${tr(`${fmt(edge)} from the edge ${side}`, `${fmt(edge)} vom Rand ${side}`)}`;
+  })();
 
   return (
     <div className="sheet-backdrop" onClick={props.onCancel}>
@@ -200,9 +253,14 @@ export function PuttEditor(props: {
         <div className="putt-wrap">
         {active != null && (
           <div className="putt-readout" aria-live="polite">
-            {active === 'pin'
-              ? `${tr('Flag', 'Fahne')} · ${balls.map((b, k) => `${k + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')}`
-              : `${tr('Putt', 'Putt')} ${active + 1}: ${fmt(distanceM(balls[active], pin))}`}
+            {active === 'pin' ? (
+              <>
+                {`${tr('Flag', 'Fahne')} · ${balls.map((b, k) => `${k + 1}: ${fmt(distanceM(b, pin))}`).join(' · ')}`}
+                {pinSpot && <span className="putt-readout-sub">{pinSpot}</span>}
+              </>
+            ) : (
+              `${tr('Putt', 'Putt')} ${active + 1}: ${fmt(distanceM(balls[active], pin))}`
+            )}
           </div>
         )}
         <svg
@@ -235,7 +293,7 @@ export function PuttEditor(props: {
           {(() => {
             const [x, y] = toXY(pin);
             return (
-              <g className="putt-pin" onPointerDown={start('pin')} aria-label={tr('Flag, drag to the hole', 'Fahne, zum Loch ziehen')}>
+              <g className="putt-pin" aria-label={tr('Flag, drag to the hole', 'Fahne, zum Loch ziehen')}>
                 <circle cx={x} cy={y} r={r * 2.2} fill="transparent" />
                 <circle cx={x} cy={y} r={r * 0.55} fill="#0e1418" />
                 <path d={`M${x} ${y}V${y - r * 4}`} stroke="#fff" strokeWidth={r * 0.3} />
@@ -246,7 +304,7 @@ export function PuttEditor(props: {
           {balls.map((b, k) => {
             const [x, y] = toXY(b);
             return (
-              <g key={k} className="putt-ball" onPointerDown={start(k)} aria-label={tr(`Ball before putt ${k + 1}, drag to move`, `Ball vor Putt ${k + 1}, zum Verschieben ziehen`)}>
+              <g key={k} className="putt-ball" aria-label={tr(`Ball before putt ${k + 1}, drag to move`, `Ball vor Putt ${k + 1}, zum Verschieben ziehen`)}>
                 <circle cx={x} cy={y} r={r * 2.4} fill="transparent" />
                 <circle cx={x} cy={y} r={r * 1.1} fill="#fff" stroke="#0e1418" strokeWidth={r * 0.25} />
                 <text x={x} y={y + r * 0.4} textAnchor="middle" fontSize={r * 1.15} fontWeight="700" fill="#0e1418">
@@ -264,6 +322,12 @@ export function PuttEditor(props: {
           })}
         </svg>
         </div>
+        {pinSpot && (
+          <p className="putt-pinspot small" style={{ margin: 0 }}>
+            {tr('Flag: ', 'Fahne: ')}
+            {pinSpot}
+          </p>
+        )}
         {walk && (
           <p className="muted small" style={{ margin: 0 }}>
             {tr('Dashed: your GPS walk on the green · rings: where you stood still', 'Gestrichelt: dein GPS-Laufweg auf dem Grün · Ringe: hier hast du gestanden')}

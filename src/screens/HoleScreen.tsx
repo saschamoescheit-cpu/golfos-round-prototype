@@ -23,7 +23,7 @@ import { GREEN_CHARTS, type GreenChart } from '../data/greenCharts';
 import { madeChartsFor, type MadeCharts } from '../lib/greenmaker';
 import { greenSource } from '../data/greenSources';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
-import { speak, summary } from '../lib/caddietalk';
+import { isSpeaking, onSpeaking, setMicPause, speak, summary } from '../lib/caddietalk';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn } from '../lib/impact';
@@ -36,7 +36,7 @@ import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
 import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
-import { ScoreSheet } from '../components/ScoreSheet';
+import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { PuttEditor } from '../components/PuttEditor';
 import { greenWalk } from '../lib/greenwalk';
 import { LeaderboardSheet } from '../components/Leaderboard';
@@ -369,13 +369,11 @@ export function HoleScreen(props: {
   const caddieSettings = useMemo(() => loadCaddieSettings(), []);
   // Hidden by the player until the caddie has something new to say (new hole, new shot, new warning).
   // The caddie card opens only on a tap; new advice shows as a dot on the caddie button ("!" with a warning).
-  // the course preview opens with the caddie – its hole notes at hand (Sascha 21.10.2026: "note the holes in the
-  // preview"); planning has its own panel
-  const previewCaddie = !!round.preview && !round.planning;
-  const previewCaddieWanted = useRef(true); // hidden by the player in the preview: it stays hidden on the next holes
-  const [caddieOpen, setCaddieOpen] = useState(previewCaddie);
+  // closed in the course preview too (Sascha 21.10.2026, pre-final list: "the caddie off by default in the preview");
+  // its hole notes are behind the caddie button, planning has its own "Hole note"
+  const [caddieOpen, setCaddieOpen] = useState(false);
   const [seenSig, setSeenSig] = useState<string | null>(null);
-  useEffect(() => setCaddieOpen(previewCaddie && previewCaddieWanted.current), [i]); // every hole starts with the map (the preview with its caddie)
+  useEffect(() => setCaddieOpen(false), [i]); // every hole starts with the map
   const [planNoteOpen, setPlanNoteOpen] = useState(false);
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
@@ -635,6 +633,27 @@ export function HoleScreen(props: {
   const playerRef = useRef(player);
   playerRef.current = player;
   useEffect(() => () => stopListen.current?.(), []);
+  // the caddie talks: the microphone pauses and listens again afterwards
+  const resumeMic = useRef(false);
+  useEffect(() => {
+    setMicPause(() => {
+      if (!stopListen.current) return false;
+      stopListen.current();
+      stopListen.current = null;
+      resumeMic.current = true;
+      return true;
+    });
+    const off = onSpeaking(() => {
+      if (!isSpeaking() && resumeMic.current) {
+        resumeMic.current = false;
+        void toggleListenRef.current();
+      }
+    });
+    return () => {
+      setMicPause(null);
+      off();
+    };
+  }, []);
   const toggleListen = async () => {
     if (stopListen.current) {
       stopListen.current();
@@ -659,6 +678,8 @@ export function HoleScreen(props: {
       setTestMsg(tr('No microphone – allow it in the settings', 'Kein Mikrofon – bitte in den Einstellungen erlauben'));
     }
   };
+  const toggleListenRef = useRef(toggleListen);
+  toggleListenRef.current = toggleListen;
   useEffect(() => {
     if (!testMsg) return;
     const t = setTimeout(() => setTestMsg(null), 6000);
@@ -805,7 +826,7 @@ export function HoleScreen(props: {
       const at = L - Math.min(200, Math.max(30, caddieSettings.favourite || 90));
       return at > alongLine(mapData.line, first[0]) + 40 ? [first[0], pointAt(mapData.line, at)] : first;
     };
-    const plan = plans[i] ?? (planned?.targets.length ? { targets: planned.targets, pin: null } : { targets: defaultTargets(), pin: null });
+    const plan = plans[i] ?? (planned?.targets.length && hole.par >= 4 ? { targets: planned.targets, pin: null } : { targets: defaultTargets(), pin: null });
     // every hole looked at counts as planned – a par 3 has no target, nor has a short par 4 whose landing spot lies
     // within 60 m of the green (Sascha 21.10.2026: "16 of 18 holes planned, but I planned every hole"); the live round
     // then takes the caddie's targets of the day
@@ -955,7 +976,6 @@ export function HoleScreen(props: {
     const toggleCaddie = () => {
       setSeenSig(String(i));
       setCaddieOpen(!caddieShown);
-      if (previewCaddie) previewCaddieWanted.current = !caddieShown;
     };
     if (caddieSettings.voice && cad != null && !greenFocus && spokenSig.current !== caddieSig && !round.preview) {
       spokenSig.current = caddieSig;
@@ -1158,6 +1178,7 @@ export function HoleScreen(props: {
             )}
             canPlacePutts={!round.preview && !isTeamRound(round)}
             team={isTeamRound(round)}
+            pickUp={pickUpAllowed(round, !!props.game)}
             onChange={update}
             onPlacePutts={() => setPuttEditor(true)}
             onClose={() => {
@@ -1271,7 +1292,7 @@ export function HoleScreen(props: {
                 </label>
               ))}
               <div className="plan-actions">
-                {plan.targets.length < 3 && (
+                {plan.targets.length < 3 && hole.par >= 4 && (
                   <button
                     type="button"
                     className="btn-secondary"
@@ -1346,7 +1367,8 @@ export function HoleScreen(props: {
               <span className="shot-wrap">
             {/* the ball's spot by hand, at the ball: the truth for the shot detection – on the map for every round, not
                   in the profile, below the tools on its own (Sascha 17.10.2026); the GPS detection runs as always, both kept */}
-              {!round.preview && !props.game && (
+              {/* always bottom right; with the caddie open it is simply not there (Sascha 21.10.2026: it lay over the tools) */}
+              {!round.preview && !props.game && !caddieShown && (
                 <button
                   type="button"
                   className="map-shot-btn"

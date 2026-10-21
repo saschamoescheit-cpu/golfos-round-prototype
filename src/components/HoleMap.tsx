@@ -8,6 +8,9 @@ import { fairwayShapes, holeOutline, smoothRing, treeSpots } from '../lib/plan2d
 import type { ImagerySource } from '../lib/imagery';
 import { tr } from '../lib/i18n';
 
+/** No aerial tile after this long: the imagery service counts as down, the map falls back to Esri. */
+const IMAGERY_WAIT_MS = 8000;
+
 // Satellite hole map: imagery (see lib/imagery.ts) with the hole drawn on top in course colours.
 
 export interface HoleMapProps {
@@ -98,6 +101,7 @@ export function HoleMap(props: HoleMapProps) {
   }, [props.credit]);
   const ready = useRef(false);
   const sat = useRef({ ok: 0, fail: 0 }); // imagery tiles loaded / failed (for the fallback)
+  const satWait = useRef<number | undefined>(undefined); // the wait for the first aerial tile
   const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
   latest.current = props;
@@ -133,7 +137,9 @@ export function HoleMap(props: HoleMapProps) {
       if (box.classList.contains('maplibregl-compact-show')) (attrib as unknown as { _toggleAttribution: () => void })._toggleAttribution();
     });
     m.touchZoomRotate.disableRotation();
-    m.on('load', () => {
+    // the course layers as soon as the style is there – not on "load", which waits for the first aerial tiles: an
+    // imagery service that hangs without an answer (LGL Baden-Württemberg, 21.10.2026) left the whole map black
+    m.once('style.load', () => {
       m.addSource('shapes', { type: 'geojson', data: shapes(latest.current.data), attribution: OSM_ATTRIBUTION });
       // the drawn hole (2D, BeBrassie quality – Sascha 16.10.2026): a light ground, the hole's own dark rough as one
       // smooth shape, the surfaces with soft outlines, trees as drawn crowns – hidden on the aerial view
@@ -232,6 +238,10 @@ export function HoleMap(props: HoleMapProps) {
     m.on('sourcedata', (e: { sourceId?: string; tile?: unknown }) => {
       if (e.sourceId === 'sat' && e.tile) sat.current.ok++;
     });
+    // ... or one that does not answer at all: no tile after a while counts as down too
+    satWait.current = window.setTimeout(() => {
+      if (sat.current.ok === 0) latest.current.onImageryFail?.();
+    }, IMAGERY_WAIT_MS);
     // The player zooms or pans himself (a real touch, not the camera): leave the view to him.
     const byHand = (e: { originalEvent?: unknown }) => {
       if (!e.originalEvent || userCam.current) return;
@@ -295,6 +305,11 @@ export function HoleMap(props: HoleMapProps) {
       setCourseLook(m, props.view === '2d' ? 'plan' : props.clean ? 'hidden' : 'overlay');
     }
     sat.current = { ok: 0, fail: 0 };
+    window.clearTimeout(satWait.current);
+    satWait.current = window.setTimeout(() => {
+      if (sat.current.ok === 0) latest.current.onImageryFail?.();
+    }, IMAGERY_WAIT_MS);
+    return () => window.clearTimeout(satWait.current);
   }, [props.imagery]);
 
   // Aerial image or the drawn hole (2D).

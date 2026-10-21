@@ -9,8 +9,8 @@ import { loadCarryBag, newId } from '../lib/storage';
 import { TopBar } from '../components/ui';
 import { TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
-import { courseHandicap, parseIndex } from '../lib/handicap';
-import { RATINGS, type TeeRating } from '../data/ratings';
+import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
+import type { TeeRating } from '../data/ratings';
 import { shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, type RoundFormat } from '../lib/games';
 
@@ -23,6 +23,7 @@ interface DraftPlayer {
   name: string;
   index: string; // handicap index as typed – the playing handicap follows from course rating and slope
   handicap: string; // playing handicap as typed, where the course has no rating
+  tee: string | null; // each player's own tee (Sascha 21.10.2026) – mine sets the lengths on the map
 }
 
 /** What the setup remembers from the last round: the player, how they track and the tee per course. */
@@ -57,9 +58,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   const mode: CaptureMode = 'quick';
   const teeData = TEES[props.course.id];
   const lastTee = remembered?.tees?.[props.course.id];
-  const [tee, setTee] = useState<string | null>(
-    teeData ? (props.from?.tee && teeData.tees.includes(props.from.tee) ? props.from.tee : lastTee && teeData.tees.includes(lastTee) ? lastTee : teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null,
-  );
+  const startTee: string | null = teeData ? (props.from?.tee && teeData.tees.includes(props.from.tee) ? props.from.tee : lastTee && teeData.tees.includes(lastTee) ? lastTee : teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null;
   // The playing handicap is remembered for 18 holes; a 9-hole round is pre-filled with half of it.
   // Nothing remembered yet: the rounded handicap index from the profile is the start value ("+1,2" = plus handicap).
   const fromProfile = (() => {
@@ -75,9 +74,10 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   const autoHcp = useRef<string | null>(autoFor(false));
   const [me, setMe] = useState<DraftPlayer>(() => {
     const p = profile();
-    return { id: 'me', name: shownName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false) };
+    return { id: 'me', name: shownName(p) || remembered?.name || tr('Me', 'Ich'), index: p.hcpIndex || remembered?.index || '', handicap: autoFor(false), tee: startTee };
   });
   const [others, setOthers] = useState<DraftPlayer[]>([]);
+  const tee = me.tee; // my tee: the lengths, the caddie, the round's course rating
   // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list
   const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
   const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance'>(null);
@@ -98,7 +98,25 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
 
   // Course rating and slope of the chosen tee (18 holes): the playing handicap follows from the handicap index.
   // 9 holes: half the 18-hole course handicap (WHS uses 9-hole ratings; half of the 18-hole one is within a stroke).
-  const rating: TeeRating | null = tee && (holes.length === 18 || holes.length === 9) ? (RATINGS[props.course.id]?.[tee] ?? null) : null;
+  // per combination of loops where the course has them; the player's own values from the club's scorecard first
+  // (Sascha 21.10.2026: "every course has a course rating – it has to count")
+  const teeKey = tee ?? '–'; // a course without tee data: the player's values for "the" tee
+  const [ratingsSeen, setRatingsSeen] = useState(0); // re-read after the player saved his own values
+  const rating: TeeRating | null = useMemo(() => (holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, teeKey, holes) : null), [props.course.id, teeKey, holes.map((h) => h.label).join(), ratingsSeen]);
+  // every player by his own tee
+  const ratingOf = (p: DraftPlayer): TeeRating | null => (p.id === 'me' ? rating : holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, p.tee ?? '–', holes) : null);
+  // the tees to choose from, with their length for the chosen holes and their course rating
+  const teeChoices = (teeData?.tees ?? []).map((t) => {
+    const total = holes.reduce((sum, h) => sum + (teeData!.holes[h.label]?.[teeData!.tees.indexOf(t)] ?? 0), 0);
+    const r = holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, t, holes) : null;
+    return { id: t, name: teeName(t), colour: TEE_COLOURS[t] ?? '#999', total, rating: r };
+  });
+  const [ratingEdit, setRatingEdit] = useState(false);
+  const [crIn, setCrIn] = useState('');
+  const [slopeIn, setSlopeIn] = useState('');
+  const crNum = Number(crIn.replace(',', '.'));
+  const slopeNum = Number(slopeIn);
+  const ratingValid = crNum >= 50 && crNum <= 85 && Number.isInteger(slopeNum) && slopeNum >= 55 && slopeNum <= 155;
   const nine = holes.length === 9;
   // 9 or 18 holes chosen: the remembered playing handicap follows (unless the player typed his own)
   useEffect(() => {
@@ -117,7 +135,9 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   const playingHandicap = (p: DraftPlayer): number | null => {
     const idx = parseIndex(p.index);
     if (idx == null) return null;
-    if (rating) return nine ? Math.round((idx * (rating.slope / 113) + (rating.cr - par)) / 2) : courseHandicap(idx, rating, par);
+    const rating = ratingOf(p);
+    const rPar = rating?.par ?? par; // shorter tees can have their own par
+    if (rating) return nine ? Math.round((idx * (rating.slope / 113) + (rating.cr - rPar)) / 2) : courseHandicap(idx, rating, rPar);
     return Math.round(nine ? idx / 2 : idx);
   };
 
@@ -138,8 +158,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       /* ignore */
     }
     const single: Player[] = [
-      { id: 'me', name: me.name.trim() || tr('Me', 'Ich'), playingHandicap: playingHandicap(me), isMe: true },
-      ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`), playingHandicap: playingHandicap(o), isMe: false })),
+      { id: 'me', name: me.name.trim() || tr('Me', 'Ich'), playingHandicap: playingHandicap(me), isMe: true, ...(me.tee ? { tee: me.tee } : {}) },
+      ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`), playingHandicap: playingHandicap(o), isMe: false, ...(o.tee ? { tee: o.tee } : {}) })),
     ];
     // Scramble and foursomes: one ball per team – the teams are the round's players (one score per hole each)
     const players: Player[] = isTeamMode(shownFormat.mode)
@@ -167,6 +187,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       format: shownFormat,
       kind,
       ...(tee ? { tee } : {}),
+      ...(rating ? { rating: { cr: rating.cr, slope: rating.slope } } : {}),
       ...(preview ? { preview: true } : {}),
       ...(planning ? { planning: true } : {}),
     });
@@ -231,35 +252,19 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {teeData && (
-          <>
-            <span className="eyebrow">{tr('Tee', 'Abschlag')}</span>
-            <div className="tee-row" role="group" aria-label={tr('Tee', 'Abschlag')}>
-              {teeData.tees.map((t) => {
-                const total = holes.reduce((sum, h) => sum + (teeData.holes[h.label]?.[teeData.tees.indexOf(t)] ?? 0), 0);
-                return (
-                  <button key={t} type="button" aria-pressed={tee === t} onClick={() => setTee(t)}>
-                    <span className="tee-dot" style={{ background: TEE_COLOURS[t] ?? '#999' }} />
-                    {teeName(t)}
-                    {total > 0 && <small>{total} m</small>}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
-        <PlayerRow player={me} onChange={setMe} nameLabel={tr('Your name', 'Dein Name')} rating={rating} playing={playingHandicap(me)} nine={nine} />
+        <PlayerRow player={me} onChange={setMe} nameLabel={tr('Your name', 'Dein Name')} rating={rating} playing={playingHandicap(me)} nine={nine} tees={teeChoices} />
         {others.map((p, i) => (
           <PlayerRow
             key={p.id}
             player={p}
             nameLabel={tr(`Player ${i + 2}`, `Spieler ${i + 2}`)}
-            rating={rating}
+            rating={ratingOf(p)}
             playing={playingHandicap(p)}
+            tees={teeChoices}
             onChange={(np) => setOthers(others.map((o) => (o.id === p.id ? np : o)))}
             onRemove={() => setOthers(others.filter((o) => o.id !== p.id))}
           />
@@ -267,18 +272,65 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         {others.length < 3 && (
           <FriendChips
             taken={[me.name, ...others.map((o) => o.name)]}
-            onAdd={(f) => setOthers([...others.filter((o) => o.name.trim() || o.index.trim() || o.handicap.trim()), { id: newId(), name: f.name, index: f.hcp, handicap: roughPlaying(f.hcp) }].slice(0, 3))}
+            onAdd={(f) => setOthers([...others.filter((o) => o.name.trim() || o.index.trim() || o.handicap.trim()), { id: newId(), name: f.name, index: f.hcp, handicap: roughPlaying(f.hcp), tee: me.tee }].slice(0, 3))}
           />
         )}
         {others.length < 3 && (
-          <button type="button" className="btn-secondary" onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '' }])}>
+          <button type="button" className="btn-secondary" onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '', tee: me.tee }])}>
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
-        {rating && (
-          <p className="muted small" style={{ margin: 0 }}>
-            Course Rating {dec(rating.cr.toFixed(1))} · Slope {rating.slope}
-          </p>
+        {/* where the playing handicap comes from – once for all players; missing or wrong: typed from the club's
+            scorecard, kept for this course, these loops and this tee */}
+        {(holes.length === 18 || nine) && !ratingEdit && (
+          <button
+            type="button"
+            className="rating-line"
+            onClick={() => {
+              setCrIn(rating ? dec(rating.cr.toFixed(1)) : '');
+              setSlopeIn(rating ? String(rating.slope) : '');
+              setRatingEdit(true);
+            }}
+          >
+            <span className="grow">
+              {rating ? (
+                <>
+                  Course Rating <strong>{dec(rating.cr.toFixed(1))}</strong> · Slope <strong>{rating.slope}</strong>
+                  {nine ? tr(' · playing handicap for 9 holes', ' · Vorgabe für 9 Löcher') : ''}
+                </>
+              ) : (
+                <>
+                  <strong>{tr('Enter course rating and slope', 'Course Rating und Slope eintragen')}</strong>
+                  <span className="muted small" style={{ display: 'block' }}>{tr('From the club’s scorecard – until then the playing handicap is estimated from the HCP', 'Von der Scorekarte des Clubs – bis dahin ist die Vorgabe aus dem HCP geschätzt')}</span>
+                </>
+              )}
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+        )}
+        {ratingEdit && (
+          <div className="card rating-form">
+            <div className="field">
+              <label htmlFor="setup-cr">Course Rating</label>
+              <input id="setup-cr" className="input" inputMode="decimal" placeholder={dec('71.6')} value={crIn} onChange={(e) => setCrIn(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="setup-slope">Slope</label>
+              <input id="setup-slope" className="input" inputMode="numeric" placeholder="130" value={slopeIn} onChange={(e) => setSlopeIn(e.target.value)} />
+            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!ratingValid}
+              onClick={() => {
+                saveOwnRating(props.course.id, teeKey, holes, { cr: crNum, slope: slopeNum });
+                setRatingsSeen((n) => n + 1);
+                setRatingEdit(false);
+              }}
+            >
+              {tr('Save', 'Speichern')}
+            </button>
+          </div>
         )}
         {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
         {!hasCarries && (
@@ -406,33 +458,77 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   );
 }
 
-function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean }) {
+type TeeChoice = { id: string; name: string; colour: string; total: number; rating: TeeRating | null };
+
+function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean; tees?: TeeChoice[] }) {
   const { player } = props;
+  const [teeOpen, setTeeOpen] = useState(false);
+  const myTee = props.tees?.find((t) => t.id === player.tee);
   const shown = props.playing == null ? '–' : props.playing < 0 ? `+${-props.playing}` : String(props.playing);
+  // one line (Sascha 21.10.2026): name, HCP typed, the playing handicap following from it – shown, not typed
   return (
     <div className="card player-row">
-      <div className="field player-name">
+      <div className="field">
         <label htmlFor={`name-${player.id}`}>{props.nameLabel}</label>
-        <input id={`name-${player.id}`} className="input" value={player.name} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
+        <div className={myTee ? 'name-with-tee' : undefined}>
+          {myTee && (
+            <button type="button" className="tee-pick" aria-label={tr(`Tee of ${player.name || props.nameLabel}: ${myTee.name} – change`, `Abschlag von ${player.name || props.nameLabel}: ${myTee.name} – ändern`)} onClick={() => setTeeOpen(true)}>
+              <span className="tee-dot" style={{ background: myTee.colour }} />
+            </button>
+          )}
+          <input id={`name-${player.id}`} className="input" value={player.name} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
+        </div>
       </div>
-      {props.onRemove && (
+      <div className="field">
+        <label htmlFor={`hcp-${player.id}`}>HCP</label>
+        <input id={`hcp-${player.id}`} className="input player-num" inputMode="decimal" placeholder={dec('18.4')} value={player.index} onChange={(e) => props.onChange({ ...player, index: e.target.value })} />
+      </div>
+      <div className="field">
+        <span className="field-label" id={`pl-${player.id}`}>{tr('Playing', 'Vorgabe')}</span>
+        <output className="playing-hcp" aria-labelledby={`pl-${player.id}`} aria-label={tr(`Playing handicap ${shown}`, `Spielvorgabe ${shown}`)}>{shown}</output>
+      </div>
+      {props.onRemove ? (
         <button type="button" className="icon-btn player-remove" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={props.onRemove}>
           ✕
         </button>
+      ) : (
+        <span aria-hidden="true" />
       )}
-      <div className="field">
-        <label htmlFor={`hcp-${player.id}`}>HCP</label>
-        <input id={`hcp-${player.id}`} className="input" inputMode="decimal" placeholder={dec('18.4')} value={player.index} onChange={(e) => props.onChange({ ...player, index: e.target.value })} />
-      </div>
-      {/* follows from the HCP, the tee and the holes – shown, not typed */}
-      <div className="field">
-        <span className="field-label" id={`pl-${player.id}`}>
-          {tr('Playing hcp', 'Spielvorgabe')}
-          {props.nine ? tr(' (9 holes)', ' (9 Löcher)') : ''}
-        </span>
-        <output className="playing-hcp" aria-labelledby={`pl-${player.id}`}>{shown}</output>
-      </div>
-      {!props.rating && props.playing != null && <span className="muted small player-note">{tr('No course rating for this tee – estimated from the HCP.', 'Ohne Course Rating für diesen Abschlag – aus dem HCP geschätzt.')}</span>}
+      {teeOpen && props.tees && (
+        <div className="sheet-backdrop" onClick={() => setTeeOpen(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Tee', 'Abschlag')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr(`Tee – ${player.name || props.nameLabel}`, `Abschlag – ${player.name || props.nameLabel}`)}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setTeeOpen(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="pick-list">
+              {props.tees.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className="pick-option"
+                  aria-pressed={t.id === player.tee}
+                  onClick={() => {
+                    props.onChange({ ...player, tee: t.id });
+                    setTeeOpen(false);
+                  }}
+                >
+                  <span className="tee-dot" style={{ background: t.colour }} />
+                  <span className="grow">
+                    <strong>{t.name}</strong>
+                    <span className="muted small">
+                      {[t.total > 0 ? `${t.total} m` : '', t.rating ? `Course Rating ${dec(t.rating.cr.toFixed(1))} · Slope ${t.rating.slope}` : ''].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  {t.id === player.tee && <span className="pick-check" aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
       {player.index.trim() !== '' && props.playing == null && (
         <span className="bad-text small player-note" role="alert">
           {tr('Please enter the HCP as a number, e.g. 18.4 or +1.2', 'Bitte das HCP als Zahl eingeben, z. B. 18,4 oder +1,2')}

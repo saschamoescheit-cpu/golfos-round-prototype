@@ -42,7 +42,8 @@ interface PhotonFeature {
 
 async function photon(params: Record<string, string>, endpoint = PHOTON): Promise<CourseSummary[]> {
   const url = `${endpoint}?${new URLSearchParams({ ...params, osm_tag: 'leisure:golf_course', limit: '20' })}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  // 6 s, not 15: when Photon hangs (21.10.2026 evening) the other course database answers the search on its own
+  const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
   if (!res.ok) throw new Error(`Photon ${res.status}`);
   const json = (await res.json()) as { features: PhotonFeature[] };
   const seen = new Set<string>();

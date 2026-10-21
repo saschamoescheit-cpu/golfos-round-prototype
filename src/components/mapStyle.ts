@@ -35,10 +35,12 @@ export function collapseAttribution(m: maplibregl.Map): void {
 export function setImagery(m: maplibregl.Map, source: ImagerySource): void {
   const layers = m.getStyle().layers;
   const below = layers[layers.findIndex((l) => l.id === 'sat') + 1]?.id; // course layers stay on top
+  const shown = m.getLayoutProperty('sat', 'visibility'); // hidden under the drawn hole (2D): it stays hidden
   m.removeLayer('sat');
   m.removeSource('sat');
   m.addSource('sat', rasterSource(source));
   m.addLayer(imageryLayer(source), below);
+  if (shown === 'none') m.setLayoutProperty('sat', 'visibility', 'none');
 }
 
 const FILL: Record<string, { color: string; opacity: number; edge: string; edgeOpacity: number; width: number }> = {

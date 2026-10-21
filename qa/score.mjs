@@ -47,6 +47,13 @@ ok((await p.locator('.map-toolbar .map-shot-btn').count()) === 0 && (await p.loc
   ok(ib && sb && ib.x < 40 && Math.abs(ib.y + ib.height - (sb.y + sb.height)) < 3, `the map ⓘ bottom left at the height of "shot here" (${Math.round(ib?.y + ib?.height)} / ${Math.round(sb?.y + sb?.height)})`);
 }
 ok(await shotTool.isVisible(), '"Schlag hier" is a map tool on every round');
+// with the caddie open the button is not there – it stays bottom right and never lies over the caddie (Sascha 21.10.2026)
+await p.getByRole('button', { name: /^Caddie zeigen/ }).first().click();
+await p.waitForTimeout(400);
+ok((await p.locator('.map-shot-btn').count()) === 0, 'caddie open: no "Schlag hier" over it');
+await p.getByRole('button', { name: 'Caddie ausblenden' }).last().click();
+await p.waitForTimeout(400);
+ok(await shotTool.isVisible(), 'caddie closed: "Schlag hier" back bottom right');
 await shotTool.click();
 await p.waitForTimeout(300);
 const manual = () => p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].manualShots ?? []).length);

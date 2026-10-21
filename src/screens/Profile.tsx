@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Round } from '../types';
-import { Attribution, Segmented } from '../components/ui';
+import { Attribution, Segmented, TopBar } from '../components/ui';
 import { carryToReview } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, loadUnit, saveUnit } from '../lib/storage';
 import { getLang, tr } from '../lib/i18n';
@@ -19,7 +19,7 @@ import { setSoundTest, soundTestOn } from '../lib/impact';
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
 
-export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie: () => void; onChanged: () => void }) {
+export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie: () => void; onChanged: () => void; onBack?: () => void }) {
   const [p, setP] = useState<Profile>(loadProfile);
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
@@ -100,7 +100,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
 
   return (
     <>
-      <h1 className="tab-title">{tr('Profile', 'Profil')}</h1>
+      {props.onBack ? <TopBar title={tr('Profile', 'Profil')} onBack={props.onBack} backLabel={tr('Back to My golf', 'Zurück zu Mein Golf')} /> : <h1 className="tab-title">{tr('Profile', 'Profil')}</h1>}
 
       {/* the Google sign-in first (Sascha 16.10.2026): it brings the name and the photo */}
       <SyncCard onSignedIn={() => { setP(loadProfile()); setSession(loadSession()); }} />

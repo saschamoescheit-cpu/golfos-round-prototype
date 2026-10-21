@@ -1,4 +1,4 @@
-import type { HoleEntry, Player, RoundHole } from '../types';
+import type { HoleEntry, Player, Round, RoundHole } from '../types';
 import { formatToPar } from './ui';
 import { FairwayPicker } from './FairwayPicker';
 import { tr } from '../lib/i18n';
@@ -62,6 +62,12 @@ export function holeFacts(e: HoleEntry, par: number): { gir: boolean | null; upD
   return { gir, upDown, sandSave: upDown && (e.sandShots ?? 0) > 0 };
 }
 
+/** Picking up the ball is allowed in Stableford, match play and the games – in stroke play every hole is holed out
+ *  (Sascha 21.10.2026). */
+export function pickUpAllowed(round: Round, game = false): boolean {
+  return game || round.format?.scoring === 'stableford' || !!round.format?.matchplay;
+}
+
 export function ScoreSheet(props: {
   hole: RoundHole;
   players: Player[];
@@ -74,6 +80,8 @@ export function ScoreSheet(props: {
   onClose: () => void;
   /** what the ✕ goes back to (the map on the course, the scorecard after the round) */
   closeLabel?: string;
+  /** "Picked up" offered – Stableford, match play and games, not stroke play (Sascha 21.10.2026) */
+  pickUp?: boolean;
 }) {
   const h = props.hole;
   return (
@@ -123,9 +131,11 @@ export function ScoreSheet(props: {
                 </span>
               )}
               <span className="spacer" />
-              <button type="button" className={`chip${e.pickedUp ? ' on' : ''}`} aria-pressed={e.pickedUp} onClick={() => set({ pickedUp: !e.pickedUp, strokes: null })}>
-                {tr('Picked up', 'Aufgehoben')}
-              </button>
+              {(props.pickUp !== false || e.pickedUp) && (
+                <button type="button" className={`chip${e.pickedUp ? ' on' : ''}`} aria-pressed={e.pickedUp} onClick={() => set({ pickedUp: !e.pickedUp, strokes: null })}>
+                  {tr('Picked up', 'Aufgehoben')}
+                </button>
+              )}
             </div>
             {!e.pickedUp && (
               <Stepper

@@ -9,7 +9,7 @@ import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
 import { isTeamRound } from '../lib/games';
-import { ScoreSheet } from '../components/ScoreSheet';
+import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { shareScorecard } from '../lib/shareCard';
 import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
@@ -243,6 +243,7 @@ export function Scorecard(props: {
             )}
             canPlacePutts={false}
             team={isTeamRound(round)}
+            pickUp={pickUpAllowed(round)}
             onChange={(pid, patch) =>
               props.onChange({ ...round, entries: { ...round.entries, [pid]: round.entries[pid].map((e, k) => (k === editHole ? { ...e, ...patch } : e)) } })
             }

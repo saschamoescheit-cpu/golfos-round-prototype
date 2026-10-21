@@ -12,7 +12,7 @@ import { rollFactor } from '../lib/clubs';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { PuttEditor } from '../components/PuttEditor';
-import { ScoreSheet, scoreName } from '../components/ScoreSheet';
+import { pickUpAllowed, ScoreSheet, scoreName } from '../components/ScoreSheet';
 import { greenWalk } from '../lib/greenwalk';
 import { approachFrom } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
@@ -593,6 +593,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             entries={{ [me.id]: e }}
             toPar={{ [me.id]: null }}
             canPlacePutts={!!data}
+            pickUp={pickUpAllowed(props.round)}
             onChange={(_, patch) => {
               // putts change the shots' detail too (0 putts = holed from off the green)
               if ('putts' in patch) {

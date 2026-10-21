@@ -136,6 +136,7 @@ export interface Player {
   name: string;
   playingHandicap: number | null; // Spielvorgabe; null = gross only
   isMe: boolean;
+  tee?: string; // the tee this player plays from (Sascha 21.10.2026: a flight with players from other tees)
 }
 
 export type CaptureMode = 'quick' | 'detail';

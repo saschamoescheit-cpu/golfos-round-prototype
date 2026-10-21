@@ -34,7 +34,7 @@ const trainingPaused = (): boolean => {
 };
 
 type Screen =
-  | { name: 'tab'; tab: Tab; filter?: RoundsFilter } // the five menu tabs (play, rounds, record, stats, profile)
+  | { name: 'tab'; tab: Tab; filter?: RoundsFilter; back?: Screen } // the five menu tabs (play, rounds, record, stats, profile); back: opened from another page
   | { name: 'pickCourse' }
   | { name: 'setup'; course: Course; from?: { holes: RoundHole[]; tee: string | null } } // from: the loops and tee chosen before (back from the preview or the birdie book)
   | { name: 'hole'; round: Round }
@@ -337,11 +337,11 @@ export function App() {
             <RecordTab
               rounds={rounds}
               onOpenRound={(round) => setScreen({ name: 'scorecard', round, back: { name: 'tab', tab: 'record' } })}
-              onProfile={() => setScreen({ name: 'tab', tab: 'profile' })}
+              onProfile={() => setScreen({ name: 'tab', tab: 'profile', back: { name: 'tab', tab: 'record' } })}
             />
           )}
           {tab === 'stats' && <Stats rounds={rounds} onOpenCourse={(courseName) => setScreen({ name: 'courseStats', courseName })} onToSign={() => setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' })} />}
-          {tab === 'profile' && profile}
+          {tab === 'profile' && (screen.back ? <ProfileTab {...profile.props} onBack={() => setScreen(screen.back!)} /> : profile)}
           <TabBar
             tab={tab}
             dots={dots}

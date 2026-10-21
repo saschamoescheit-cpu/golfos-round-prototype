@@ -120,6 +120,7 @@ await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
 await p.mouse.down();
 await p.mouse.move(bb.x + bb.width / 2 - 40, bb.y + bb.height / 2 + 30, { steps: 6 });
 // while dragging: the length large above the green; the ball moves half the finger's way (finer)
+await p.waitForTimeout(120); // the moved ball drawn
 const readout = (await ed.locator('.putt-readout').textContent().catch(() => '')).trim();
 const nb = await ball.boundingBox();
 const movedPx = Math.hypot(nb.x - bb.x, nb.y - bb.y);
@@ -148,6 +149,39 @@ const inGreen = await ed.locator('svg.putt-green').evaluate((svg) => {
   return poly.isPointInFill(pt);
 });
 ok(inGreen, 'editor: the flag dragged into the corner stays on the green');
+// where the flag stands (Sascha 21.10.2026): from the front or to the back, and from the nearer edge
+const spot = (await ed.locator('.putt-pinspot').innerText().catch(() => '')).replace(/\s+/g, ' ');
+ok(/^Fahne: [\d,]+ (cm|m) (von vorne|bis hinten) · [\d,]+ (cm|m) vom Rand (links|rechts|vorne|hinten)$/.test(spot), `under the green: where the flag stands ("${spot}")`);
+{
+  // zoomed in, a finger 25 px beside the flag moves the flag – not the green
+  // zoomed in as far as the flag stays in view
+  const sb = await ed.locator('svg.putt-green').boundingBox();
+  const inView = (b) => b && b.x > sb.x + 40 && b.x < sb.x + sb.width - 40 && b.y > sb.y + 40 && b.y < sb.y + sb.height - 40;
+  for (let k = 0; k < 6; k++) {
+    await wheel(-200, 1);
+    await p.waitForTimeout(150);
+    if (!inView(await ed.locator('.putt-pin circle').nth(1).boundingBox())) {
+      await wheel(200, 1);
+      await p.waitForTimeout(150);
+      break;
+    }
+  }
+  await p.waitForTimeout(300);
+  const pg = await ed.locator('.putt-pin circle').nth(1).boundingBox();
+  const vbA = await ed.locator('svg.putt-green').getAttribute('viewBox');
+  const fx = pg.x + pg.width / 2 + 25, fy = pg.y + pg.height / 2;
+  await p.mouse.move(fx, fy);
+  await p.mouse.down();
+  await p.mouse.move(fx - 30, fy + 20, { steps: 6 });
+  const ro = (await ed.locator('.putt-readout').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  await p.mouse.up();
+  const vbB = await ed.locator('svg.putt-green').getAttribute('viewBox');
+  const pg2 = await ed.locator('.putt-pin circle').nth(1).boundingBox();
+  ok(vbA === vbB && Math.hypot(pg2.x - pg.x, pg2.y - pg.y) > 5 && (await width()) < w0 * 0.95, `zoomed in, a finger beside the flag moves the flag, the green stays (view ${(await width()).toFixed(1)} m)`);
+  ok(/^Fahne/.test(ro) && /vom Rand/.test(ro), `while dragging the flag: its spot on the green too ("${ro}")`);
+  await wheel(300, 20);
+  await p.waitForTimeout(300);
+}
 ok(Math.abs((await width()) - w0) < 0.5, 'zoomed out again: the whole green');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/puttzoom.png' });
 await ed.getByRole('button', { name: 'Putts speichern' }).click();

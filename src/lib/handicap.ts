@@ -10,7 +10,46 @@ import { isTeamRound } from './games';
 
 /** Course rating and slope for the round: corrected by the player, else from the bundled scorecard data. */
 export function roundRating(r: Round): TeeRating | null {
-  return r.rating ?? (r.tee ? RATINGS[r.courseId]?.[r.tee] : undefined) ?? null;
+  return r.rating ?? (r.tee ? ratingFor(r.courseId, r.tee, r.holes) : null);
+}
+
+const OWN = 'golfos.ratings.v1';
+const loopsKey = (holes: { loop: string }[]): string => [...new Set(holes.map((h) => h.loop))].sort().join('');
+function ownRatings(): Record<string, TeeRating> {
+  try {
+    return JSON.parse(localStorage.getItem(OWN) ?? '{}') as Record<string, TeeRating>;
+  } catch {
+    return {};
+  }
+}
+
+/** Course rating and slope for a tee and the holes played: what the player entered for them (from the club's
+ *  scorecard), else the bundled values – per 18-hole combination where a course has loops (Hetzenhof A+B …).
+ *  9 holes of a loop: the first combination with that loop (the course handicap is halved, within a stroke). */
+export function ratingFor(courseId: string, tee: string, holes: { loop: string }[]): TeeRating | null {
+  const key = loopsKey(holes);
+  const own = ownRatings()[`${courseId}|${tee}|${key}`];
+  if (own) return own;
+  const all = RATINGS[courseId] ?? {};
+  if (all[`${tee}@${key}`]) return all[`${tee}@${key}`];
+  if (key.length === 1) {
+    const combo = Object.keys(all).filter((k) => k.startsWith(`${tee}@`) && k.slice(tee.length + 1).includes(key)).sort()[0];
+    if (combo) return all[combo];
+  }
+  return all[tee] ?? null;
+}
+
+/** The player's own course rating and slope for this tee and these holes – kept for the next round. */
+export function saveOwnRating(courseId: string, tee: string, holes: { loop: string }[], rating: TeeRating | null): void {
+  try {
+    const all = ownRatings();
+    const k = `${courseId}|${tee}|${loopsKey(holes)}`;
+    if (rating) all[k] = rating;
+    else delete all[k];
+    localStorage.setItem(OWN, JSON.stringify(all));
+  } catch {
+    /* storage full – this round only */
+  }
 }
 
 export interface PlayedHandicap {

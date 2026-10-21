@@ -2,7 +2,7 @@
 // Hundreds of test runs a night had used up Open-Meteo's free quota for the whole home connection – Sascha's iPhone on
 // the same Wi-Fi got no weather in Frielinghausen any more. Fixed values, so a test also no longer depends on the day's
 // weather (wind row, "plays like").
-// Usage: import { mockNet } from './netmock.mjs'; await mockNet(ctx);   (WEATHER=live keeps the real services)
+// Usage: import { mockNet } from './netmock.mjs'; await mockNet(ctx);   (WEATHER=live keeps the real services, aerials too)
 
 export const WEATHER = { tempC: 14, windKmh: 12, gustKmh: 22, windFromDeg: 250, code: 2 };
 
@@ -23,4 +23,9 @@ export async function mockNet(ctx) {
     return r.fulfill({ json: { elevation: lat.map((y) => Math.round((300 + (y % 0.01) * 2000) * 10) / 10) } });
   });
   await ctx.route(/api\.brightsky\.dev\//, (r) => r.fulfill({ status: 503, body: '' }));
+  // the aerial images of Baden-Württemberg (LGL): a plain grass tile – the tests do not depend on the state's service
+  // (21.10.2026 afternoon it hung without an answer, and every test on Hetzenhof reported the cut-off tiles)
+  await ctx.route(/owsproxy\.lgl-bw\.de/, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(GRASS_PNG, 'base64') }));
 }
+
+const GRASS_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPwyjPBihiGlgQAE6E7AUXeDRsAAAAASUVORK5CYII=';

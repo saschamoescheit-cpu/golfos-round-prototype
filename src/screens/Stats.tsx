@@ -9,6 +9,7 @@ import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
 import { statRounds, unsignedRounds } from '../lib/signing';
 import { profileIndex } from '../lib/profile';
+import { teeStats } from '../lib/teestats';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
 // and the focus areas that later feed the training plans (GOL-27).
@@ -38,6 +39,8 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
   const tend = useMemo(() => new Map(clubDispersion(picked).map((d) => [d.club, d])), [picked]);
   const fmtPar = (v: number | null) => (v == null ? '–' : v > 0 ? `+${v}` : String(v));
   const drive = a.clubs.find((c) => c.club === 'Dr');
+  const tee = useMemo(() => teeStats(picked), [picked]);
+  const sgn = (n: number | null) => (n == null ? '–' : `${n > 0 ? '+' : ''}${dec(n.toFixed(1))}`);
   const longest = Math.max(1, ...a.clubs.map((x) => x.max));
   const sections: { id: Section; label: string }[] = [
     { id: 'overview', label: tr('Overview', 'Überblick') },
@@ -179,6 +182,59 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   </p>
                 )}
               </section>
+              {/* by the club off the tee (Sascha 21.10.2026: "more visual elements and analyses") */}
+              {tee.byClub.length > 0 && (
+                <section className="card stats-card">
+                  <h2>{tr('Fairways by club', 'Fairways nach Schläger')}</h2>
+                  <div className="tee-clubs">
+                    {tee.byClub.map((c) => {
+                      const pct = (x: number) => Math.round((x / c.n) * 100);
+                      return (
+                        <div key={c.club} className="tee-club-row">
+                          <strong className="tee-club-name">{clubCode(c.club)}</strong>
+                          <div className="tee-bar small-bar" role="img" aria-label={tr(`${clubCode(c.club)}: ${pct(c.left)}% left, ${pct(c.hit)}% hit, ${pct(c.right)}% right`, `${clubCode(c.club)}: ${pct(c.left)}% links, ${pct(c.hit)}% getroffen, ${pct(c.right)}% rechts`)}>
+                            <span className="miss" style={{ flexGrow: c.left + c.ob / 2 || 0.001 }}>{pct(c.left) >= 15 ? `${pct(c.left)}%` : ''}</span>
+                            <span className="hit" style={{ flexGrow: c.hit || 0.001 }}>{pct(c.hit) >= 15 ? `${pct(c.hit)}%` : ''}</span>
+                            <span className="miss" style={{ flexGrow: c.right + c.ob / 2 || 0.001 }}>{pct(c.right) >= 15 ? `${pct(c.right)}%` : ''}</span>
+                          </div>
+                          <span className="muted small tee-club-n">{c.n}×</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="muted small" style={{ margin: 0 }}>{tr('Left · hit · right, from your checked tee shots on par 4 and 5', 'Links · getroffen · rechts, aus deinen geprüften Abschlägen auf Par 4 und 5')}</p>
+                </section>
+              )}
+              {/* what a missed fairway costs: strokes over par on the hole after a hit or missed tee shot */}
+              {tee.cost.nHit + tee.cost.nMissed > 0 && (
+                <section className="card stats-card">
+                  <h2>{tr('What a missed fairway costs', 'Was ein verfehltes Fairway kostet')}</h2>
+                  <div className="tile-row">
+                    <div className="tile">
+                      <span className="tile-num">{sgn(tee.cost.hit)}</span>
+                      <span className="muted small">{tr(`fairway hit (${tee.cost.nHit})`, `Fairway getroffen (${tee.cost.nHit})`)}</span>
+                    </div>
+                    <div className="tile">
+                      <span className="tile-num">{sgn(tee.cost.missed)}</span>
+                      <span className="muted small">{tr(`missed (${tee.cost.nMissed})`, `verfehlt (${tee.cost.nMissed})`)}</span>
+                    </div>
+                    {tee.cost.nOb > 0 && (
+                      <div className="tile">
+                        <span className="tile-num">{sgn(tee.cost.ob)}</span>
+                        <span className="muted small">{tr(`out of bounds (${tee.cost.nOb})`, `Aus (${tee.cost.nOb})`)}</span>
+                      </div>
+                    )}
+                  </div>
+                  {tee.cost.hit != null && tee.cost.missed != null && (
+                    <p className="small" style={{ margin: 0 }}>
+                      {tee.cost.missed > tee.cost.hit
+                        ? tr(`A missed fairway costs you ${dec((tee.cost.missed - tee.cost.hit).toFixed(1))} strokes on average.`, `Ein verfehltes Fairway kostet dich im Schnitt ${dec((tee.cost.missed - tee.cost.hit).toFixed(1))} Schläge.`)
+                        : tr('Missing the fairway costs you nothing so far – your second shots save it.', 'Ein verfehltes Fairway kostet dich bisher nichts – deine zweiten Schläge retten es.')}
+                    </p>
+                  )}
+                  <p className="muted small" style={{ margin: 0 }}>{tr('Average over par on the hole, par 4 and 5', 'Ø über Par am Loch, Par 4 und 5')}</p>
+                </section>
+              )}
               <div className="tile-row">
                 <div className="tile">
                   <span className="tile-num">{drive ? `${drive.median} m` : '–'}</span>

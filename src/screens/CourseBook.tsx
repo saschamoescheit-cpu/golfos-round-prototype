@@ -135,7 +135,7 @@ function HolePage(p: {
   const terrain = { slopes: p.slopes, boundary: p.boundary, trees: p.trees, woods: p.woods };
   const teeAim = teeAimFor({ data, par: hole.par, pin: data.greenCenter, bag: p.bag, conditions: null, tendency: new Map(), ...terrain, note: p.note, style: p.style, favourite: p.favourite, playing: p.playing });
   // the player's plan wins over the caddie's own point: its targets and every shot's club (or the suggestion)
-  const plan = p.planned?.targets.length ? p.planned : null;
+  const plan = p.planned?.targets.length && hole.par >= 4 ? p.planned : null; // a par 3 is played to the green
   const planPoints = plan ? [data.tee, ...plan.targets, data.greenCenter] : [];
   const planClubs = planPoints.slice(1).map((to, k) => plan!.clubs[k] ?? adviseClub(distanceM(planPoints[k], to), p.bag, k === 0 && hole.par >= 4).club);
   const cad = caddieAdvice({
