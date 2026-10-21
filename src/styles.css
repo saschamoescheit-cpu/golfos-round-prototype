@@ -295,9 +295,10 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .focus-list li:not(.drill) > span:last-child { white-space: nowrap; }
 .bad-text { color: #ff8a7f; }
 .tee-bar, .mix-bar { display: flex; height: 34px; border-radius: 10px; overflow: hidden; font: 600 12px/34px var(--body); }
-.tee-bar span, .mix-bar span { text-align: center; white-space: nowrap; overflow: hidden; color: #0e1418; flex-basis: 0; }
-.tee-bar .hit { background: var(--brand-text); }
-.tee-bar .miss { background: #8fa3b0; }
+/* white numbers in every bar (Sascha 21.10.2026) – the colours are dark enough for them */
+.tee-bar span, .mix-bar span { text-align: center; white-space: nowrap; overflow: hidden; color: #fff; flex-basis: 0; }
+.tee-bar .hit { background: #5a8c1c; }
+.tee-bar .miss { background: #5f6e78; }
 .mini-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .mini-table th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 4px 0; }
 .mini-table td { padding: 6px 0; border-top: 1px solid var(--line); }
@@ -705,7 +706,6 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 :root[data-theme='sun'] .sg-hole-box.good,
 :root[data-theme='sun'] .sg-diff.good,
 :root[data-theme='sun'] .mark.eagle { background: #9fd36a; }
-:root[data-theme='sun'] .tee-bar .hit { background: #6aa531; }
 :root[data-theme='sun'] .sg-badge.bad,
 :root[data-theme='sun'] .mark.double { color: #b42318; }
 :root[data-theme='sun'] .mark.double { border-color: #c2362b; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px #c2362b; }
@@ -762,7 +762,9 @@ button.tile[aria-pressed='true'] { outline: 2px solid var(--brand-text); }
 .tile-num { font: 700 24px var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* the mark of what the tile counts – the legend of the marks in the list below */
 .tile-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
-.tile-mark { display: inline-flex; color: var(--brand-text); }
+/* green = the tile filters; white = it only counts, or there is nothing to filter yet (Sascha 21.10.2026) */
+.tile-mark { display: inline-flex; color: var(--text); }
+button.tile:not(:disabled) .tile-mark { color: var(--brand-text); }
 /* a tile with 0 looks like every other tile (Sascha 18.10.2026) – it only does not filter */
 button.tile:disabled { opacity: 1; }
 

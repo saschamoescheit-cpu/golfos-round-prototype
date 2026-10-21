@@ -13,7 +13,8 @@ import { Avatar } from '../components/Avatar';
 // handicap, average, what you played, how your holes end, your bests and where you are heading.
 
 // in the app's colours (Sascha 17.10.2026): greens for under par, greys for par and over – lighter is better
-export const RESULT_COLOURS = { eaglePlus: '#5f9a1e', birdie: '#9bc53d', par: '#dfe6ea', bogey: '#93a3ae', doublePlus: '#55636d' } as const;
+// dark enough for white numbers in both themes – numbers are white everywhere in the app (Sascha 21.10.2026)
+export const RESULT_COLOURS = { eaglePlus: '#3d7012', birdie: '#5a8c1c', par: '#7d8c96', bogey: '#5f6e78', doublePlus: '#46535d' } as const;
 
 export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => void; onProfile: () => void }) {
   const finished = useMemo(() => statRounds(props.rounds).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [props.rounds]);
@@ -82,7 +83,7 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
               {/* the numbers in the bars, the legend below on its own (Sascha 17.10.2026) */}
               {results.map((x) =>
                 c.mix[x.k] > 0 ? (
-                  <span key={x.k} style={{ flexGrow: c.mix[x.k], background: RESULT_COLOURS[x.k], color: x.k === 'doublePlus' || x.k === 'eaglePlus' ? '#fff' : '#0e1418' }}>
+                  <span key={x.k} style={{ flexGrow: c.mix[x.k], background: RESULT_COLOURS[x.k] }}>
                     {c.mix[x.k]}
                   </span>
                 ) : null,

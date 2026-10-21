@@ -350,7 +350,7 @@ function GamesTabs(props: {
             onPurge={purgeGame}
           />
           {props.games.length ? (
-            !binOpen && <GameList games={props.games.filter((g) => (filter === 'confirm' ? g.finishedAt && !g.signedAt : filter === 'running' ? !g.finishedAt : filter === 'confirmed' ? g.finishedAt && g.signedAt : true))} onOpen={props.onOpen} />
+            !binOpen && <GameList games={props.games.filter((g) => (filter === 'confirm' ? g.finishedAt && !g.signedAt : filter === 'running' ? !g.finishedAt : filter === 'played' ? g.finishedAt : filter === 'confirmed' ? g.finishedAt && g.signedAt : true))} onOpen={props.onOpen} />
           ) : (
             <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>
           )}
@@ -1584,7 +1584,7 @@ function ShareResult(props: { game: Game }) {
   );
 }
 
-type GamesFilter = 'confirm' | 'running' | 'confirmed' | 'bin' | null;
+type GamesFilter = 'confirm' | 'running' | 'played' | 'confirmed' | 'bin' | null;
 
 /** The tiles over the games list – as over the rounds list (Sascha 17.10.2026): to confirm, in play, played,
  *  confirmed and the bin, each with its mark, one at a time filtering the list. */
@@ -1593,6 +1593,7 @@ function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: Ga
   const toConfirm = props.games.filter((g) => g.finishedAt && !g.signedAt).length;
   const running = props.games.filter((g) => !g.finishedAt).length;
   const confirmed = props.games.filter((g) => g.finishedAt && g.signedAt).length;
+  const played = props.games.filter((g) => g.finishedAt).length;
   return (
     <div className="tile-row">
       <button type="button" className="tile" aria-pressed={props.filter === 'confirm'} disabled={!toConfirm} onClick={() => props.onFilter('confirm')}>
@@ -1611,13 +1612,14 @@ function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: Ga
           <span className="muted small">{tr('in play', 'laufen')}</span>
         </button>
       )}
-      <div className="tile">
+      {/* filters like in rounds (Sascha 21.10.2026) */}
+      <button type="button" className="tile" aria-pressed={props.filter === 'played'} disabled={!played} onClick={() => props.onFilter('played')}>
         <span className="tile-head">
-          <span className="tile-num">{props.games.filter((g) => g.finishedAt).length}</span>
+          <span className="tile-num">{played}</span>
           <span className="tile-mark"><PlayedIcon /></span>
         </span>
         <span className="muted small">{tr('played', 'gespielt')}</span>
-      </div>
+      </button>
       <button type="button" className="tile" aria-pressed={props.filter === 'confirmed'} disabled={!confirmed} onClick={() => props.onFilter('confirmed')}>
         <span className="tile-head">
           <span className="tile-num">{confirmed}</span>

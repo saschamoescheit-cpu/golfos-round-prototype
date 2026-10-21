@@ -31,7 +31,7 @@ export const uncheckedRounds = (rounds: Round[]): Round[] => rounds.filter(needs
 export const roundsToSign = (rounds: Round[]): Round[] => rounds.filter((r) => !!r.finishedAt && !r.signedAt && !r.preview && r.capture !== 'score' && hasScore(r));
 
 /** 'check' is the old name of 'sign' (links from before 18.10.2026). */
-export type RoundsFilter = 'check' | 'sign' | 'paused' | 'signed' | 'bin' | null;
+export type RoundsFilter = 'check' | 'sign' | 'paused' | 'played' | 'signed' | 'bin' | null;
 
 export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; onContinue: (r: Round) => void; filter?: RoundsFilter }) {
   // played = every finished round with a result – kept, checked or signed (Sascha 18.10.2026); empty ones nowhere
@@ -54,8 +54,8 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
     if (!trash.length && filter === 'bin') setFilter(null);
   }, [trash.length]);
   useEffect(() => {
-    if ((filter === 'sign' && !toSign.length) || (filter === 'paused' && !paused.length)) setFilter(null); // all done: all rounds again
-  }, [toSign.length, paused.length]);
+    if ((filter === 'sign' && !toSign.length) || (filter === 'paused' && !paused.length) || (filter === 'played' && !finished.length)) setFilter(null); // all done: all rounds again
+  }, [toSign.length, paused.length, finished.length]);
 
   return (
     <>
@@ -78,13 +78,14 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
           </span>
           <span className="muted small">{tr('paused', 'pausiert')}</span>
         </button>
-        <div className="tile">
+        {/* every played round, without the paused ones (Sascha 21.10.2026: "gespielt" filters too) */}
+        <button type="button" className="tile" aria-pressed={filter === 'played'} disabled={!finished.length} onClick={() => pick('played')}>
           <span className="tile-head">
             <span className="tile-num">{finished.length}</span>
             <span className="tile-mark"><PlayedIcon /></span>
           </span>
           <span className="muted small">{tr('played', 'gespielt')}</span>
-        </div>
+        </button>
         <button type="button" className="tile" aria-pressed={filter === 'signed'} disabled={!signed.length} onClick={() => pick('signed')}>
           <span className="tile-head">
             <span className="tile-num">{signed.length}</span>
@@ -92,6 +93,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
           </span>
           <span className="muted small">{tr('signed', 'signiert')}</span>
         </button>
+        {/* counts only – a white mark: green marks are the tiles that filter (Sascha 21.10.2026) */}
         <div className="tile">
           <span className="tile-head">
             <span className="tile-num">{holes}</span>

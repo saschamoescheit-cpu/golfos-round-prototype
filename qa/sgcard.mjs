@@ -69,6 +69,8 @@ ok(/\+8,0\s*Ø zu Par \(9 Loch\)/.test(hero), 'my golf: average to par per 9 hol
 const bars = await p.locator('.mix-bar span').allInnerTexts();
 ok(bars.length > 0 && bars.every((t) => /^\d+$/.test(t.trim())), `the numbers stand in the bars (${bars.join(' · ')})`);
 ok(!/\d/.test(await p.locator('.mix-legend').innerText()), 'the legend has no numbers');
+const inks = await p.locator('.mix-bar span').evaluateAll((es) => es.map((e) => getComputedStyle(e).color));
+ok(inks.every((c) => c === 'rgb(255, 255, 255)'), `the numbers in the bars are white, like everywhere in the app (${[...new Set(inks)].join(' · ')})`);
 if (process.env.SHOTS) await p.locator('.mix-bar').locator('..').screenshot({ path: process.env.SHOTS + '/mixbar.png' });
 // the progress of two 9-hole rounds: per 9 holes too
 await p.evaluate(() => {

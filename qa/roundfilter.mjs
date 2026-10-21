@@ -77,6 +77,13 @@ ok((await pausedTile.count()) === 1 && /^0/.test((await pausedTile.innerText()).
 }
 ok(/^5\b/.test(tiles.find((t) => /gespielt/.test(t)) ?? ''), 'gespielt: every finished round, kept and signed (5)');
 ok((await p.locator('.tile-row .tile').count()) === (await p.locator('.tile-row .tile .tile-mark svg').count()), 'every tile with its symbol – gespielt (ball on tee), Löcher (flag), gelöscht (bin) too');
+{
+  // green mark = the tile filters, white = it only counts or has nothing to show (Sascha 21.10.2026)
+  const markOf = (name) => p.locator('.tile-row .tile').filter({ hasText: name }).first().locator('.tile-mark').evaluate((e) => getComputedStyle(e).color);
+  const text = await p.evaluate(() => getComputedStyle(document.body).color);
+  const [signM, pausedM, playedM, holesM] = [await markOf('prüfen & signieren'), await markOf('pausiert'), await markOf('gespielt'), await markOf('Löcher')];
+  ok(signM !== text && playedM === signM && pausedM === text && holesM === text, `marks: green where a tap filters, white on Löcher and the 0 tile (${signM} · ${playedM} · ${pausedM} · ${holesM})`);
+}
 await tab('Runden');
 await p.waitForTimeout(600);
 ok((await listed()) === 5, `the menu's "Runden" shows all rounds (${await listed()})`);
@@ -87,6 +94,13 @@ ok((await listed()) === 2, 'the tile filters too');
 await p.locator('button.tile').filter({ hasText: 'prüfen & signieren' }).click();
 await p.waitForTimeout(300);
 ok((await listed()) === 5, 'tapped again: all rounds');
+// "gespielt" filters too (Sascha 21.10.2026): every played round, no paused ones
+const playedTile = p.locator('button.tile').filter({ hasText: 'gespielt' });
+await playedTile.click();
+await p.waitForTimeout(300);
+ok((await playedTile.getAttribute('aria-pressed')) === 'true' && (await listed()) === 5 && (await p.locator('.paused-row').count()) === 0, `"gespielt" is a filter: the 5 played rounds, no paused (${await listed()})`);
+await playedTile.click();
+await p.waitForTimeout(300);
 // the stats' notice "… not signed yet" leads there too
 await tab('Statistik');
 await p.waitForTimeout(500);
