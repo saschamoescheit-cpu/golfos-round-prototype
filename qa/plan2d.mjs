@@ -7,6 +7,9 @@ const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx);
+// a real aerial photo for the colour check: the state's service refused (the net mock's flat grass tile would read
+// as drawn ground) – Esri below answers
+await ctx.route(/owsproxy\.lgl-bw\.de/, (r) => r.fulfill({ status: 503, body: '' }));
 const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –
