@@ -10,6 +10,7 @@ import { clubCode, dec, tr } from '../lib/i18n';
 import { statRounds, unsignedRounds } from '../lib/signing';
 import { profileIndex } from '../lib/profile';
 import { teeStats } from '../lib/teestats';
+import { clubName } from '../lib/caddie';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
 // and the focus areas that later feed the training plans (GOL-27).
@@ -191,18 +192,26 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                       const pct = (x: number) => Math.round((x / c.n) * 100);
                       return (
                         <div key={c.club} className="tee-club-row">
-                          <strong className="tee-club-name">{clubCode(c.club)}</strong>
-                          <div className="tee-bar small-bar" role="img" aria-label={tr(`${clubCode(c.club)}: ${pct(c.left)}% left, ${pct(c.hit)}% hit, ${pct(c.right)}% right`, `${clubCode(c.club)}: ${pct(c.left)}% links, ${pct(c.hit)}% getroffen, ${pct(c.right)}% rechts`)}>
-                            <span className="miss" style={{ flexGrow: c.left + c.ob / 2 || 0.001 }}>{pct(c.left) >= 15 ? `${pct(c.left)}%` : ''}</span>
+                          <span className="tee-club-say">
+                            <strong>{clubName(c.club)}</strong>{' '}
+                            {tr(`hits the fairway ${pct(c.hit)}% of the time`, `trifft das Fairway zu ${pct(c.hit)} %`)}
+                            <span className="muted">{tr(` · ${c.n} tee shots`, ` · ${c.n} Abschläge`)}</span>
+                          </span>
+                          <div className="tee-bar small-bar" role="img" aria-label={tr(`${clubName(c.club)}: ${pct(c.left)}% missed left, ${pct(c.hit)}% fairway, ${pct(c.right)}% missed right`, `${clubName(c.club)}: ${pct(c.left)} % links verfehlt, ${pct(c.hit)} % Fairway, ${pct(c.right)} % rechts verfehlt`)}>
+                            <span className="miss" style={{ flexGrow: c.left + c.ob / 2 || 0.001 }}>{pct(c.left) >= 15 ? `← ${pct(c.left)}%` : ''}</span>
                             <span className="hit" style={{ flexGrow: c.hit || 0.001 }}>{pct(c.hit) >= 15 ? `${pct(c.hit)}%` : ''}</span>
-                            <span className="miss" style={{ flexGrow: c.right + c.ob / 2 || 0.001 }}>{pct(c.right) >= 15 ? `${pct(c.right)}%` : ''}</span>
+                            <span className="miss" style={{ flexGrow: c.right + c.ob / 2 || 0.001 }}>{pct(c.right) >= 15 ? `${pct(c.right)}% →` : ''}</span>
                           </div>
-                          <span className="muted small tee-club-n">{c.n}×</span>
                         </div>
                       );
                     })}
                   </div>
-                  <p className="muted small" style={{ margin: 0 }}>{tr('Left · hit · right, from your checked tee shots on par 4 and 5', 'Links · getroffen · rechts, aus deinen geprüften Abschlägen auf Par 4 und 5')}</p>
+                  <div className="tee-legend small" aria-hidden="true">
+                    <span><i className="miss" />{tr('← missed left', '← links verfehlt')}</span>
+                    <span><i className="hit" />{tr('fairway hit', 'Fairway getroffen')}</span>
+                    <span><i className="miss" />{tr('missed right →', 'rechts verfehlt →')}</span>
+                  </div>
+                  <p className="muted small" style={{ margin: 0 }}>{tr('From your checked tee shots on par 4 and 5', 'Aus deinen geprüften Abschlägen auf Par 4 und 5')}</p>
                 </section>
               )}
               {/* what a missed fairway costs: strokes over par on the hole after a hit or missed tee shot */}

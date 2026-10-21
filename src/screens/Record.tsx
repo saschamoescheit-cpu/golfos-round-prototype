@@ -78,7 +78,7 @@ export function RecordTab(props: { rounds: Round[]; onOpenRound: (r: Round) => v
       ) : (
         <>
           <section className="card stats-card">
-            <h2>{tr('Your hole scores', 'Deine Löcher-Scores')}</h2>
+            <h2>{tr('Your holes played', 'Deine gespielten Löcher')}</h2>
             <div className="mix-bar" role="img" aria-label={results.map((x) => `${x.label} ${c.mix[x.k]}`).join(', ')}>
               {/* the numbers in the bars, the legend below on its own (Sascha 17.10.2026) */}
               {results.map((x) =>

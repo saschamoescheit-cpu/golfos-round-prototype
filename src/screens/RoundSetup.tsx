@@ -504,14 +504,19 @@ function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => v
     <div className="card player-row">
       <div className="field">
         <label htmlFor={`name-${player.id}`}>{props.nameLabel}</label>
-        <div className={myTee ? 'name-with-tee' : undefined}>
-          {myTee && (
-            <button type="button" className="tee-pick" aria-label={tr(`Tee of ${player.name || props.nameLabel}: ${myTee.name} – change`, `Abschlag von ${player.name || props.nameLabel}: ${myTee.name} – ändern`)} onClick={() => setTeeOpen(true)}>
-              <span className="tee-dot" style={{ background: myTee.colour }} />
-            </button>
-          )}
-          <input id={`name-${player.id}`} className="input" value={player.name} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
-        </div>
+        <input id={`name-${player.id}`} className="input" value={player.name} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
+      </div>
+      {/* the tee: its colour, a tap chooses it */}
+      <div className="field">
+        <span className="field-label">{tr('Tee', 'Abschlag')}</span>
+        {myTee ? (
+          <button type="button" className="tee-pick" aria-label={tr(`Tee of ${player.name || props.nameLabel}: ${myTee.name} – change`, `Abschlag von ${player.name || props.nameLabel}: ${myTee.name} – ändern`)} onClick={() => setTeeOpen(true)}>
+            <span className="tee-dot" style={{ background: myTee.colour }} />
+            <span className="tee-pick-chev" aria-hidden="true">▾</span>
+          </button>
+        ) : (
+          <span className="tee-pick none" aria-label={tr('No tees known', 'Keine Abschläge bekannt')}>–</span>
+        )}
       </div>
       <div className="field">
         <label htmlFor={`hcp-${player.id}`}>HCP</label>
@@ -521,12 +526,10 @@ function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => v
         <span className="field-label" id={`pl-${player.id}`}>{tr('Playing', 'Vorgabe')}</span>
         <output className="playing-hcp" aria-labelledby={`pl-${player.id}`} aria-label={tr(`Playing handicap ${shown}`, `Spielvorgabe ${shown}`)}>{shown}</output>
       </div>
-      {props.onRemove ? (
+      {props.onRemove && (
         <button type="button" className="icon-btn player-remove" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={props.onRemove}>
           ✕
         </button>
-      ) : (
-        <span aria-hidden="true" />
       )}
       {teeOpen && props.tees && (
         <div className="sheet-backdrop" onClick={() => setTeeOpen(false)}>

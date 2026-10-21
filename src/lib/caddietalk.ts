@@ -185,6 +185,21 @@ function wakeAudio(): void {
 }
 
 let current: SpeechSynthesisUtterance | null = null; // held, so the browser does not drop it before it ends
+
+function utterance(text: string, lang: string, voice: SpeechSynthesisVoice | null): SpeechSynthesisUtterance {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  if (voice) u.voice = voice;
+  u.rate = 1;
+  return u;
+}
+
+/** The voice for the language: the device's default one, else one on the device itself (not a network or novelty
+ *  voice), else none – then the system picks by the language. */
+function pickVoice(s: SpeechSynthesis, lang: string): SpeechSynthesisVoice | null {
+  const mine = s.getVoices().filter((x) => x.lang.replace('_', '-').toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()));
+  return mine.find((x) => x.default) ?? mine.find((x) => x.localService && /^(Anna|Helena|Markus|Petra|Yannick|Viktor|Martin|Samantha|Daniel|Karen|Moira|Tessa|Alex)\b/.test(x.name)) ?? null;
+}
 let micPause: (() => boolean) | null = null;
 /** Who listens with the microphone pauses it while the caddie talks: returns true when it was listening. */
 export function setMicPause(f: (() => boolean) | null): void {
@@ -197,12 +212,8 @@ export function speak(text: string): boolean {
   const s = synth();
   if (!s || !text.trim()) return false;
   wakeAudio();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = speechLang();
-  // a voice of that language, when the device has one (Safari otherwise sometimes stays silent)
-  const voice = s.getVoices().find((x) => x.lang.replace('_', '-').toLowerCase().startsWith(u.lang.slice(0, 2).toLowerCase()));
-  if (voice) u.voice = voice;
-  u.rate = 1;
+  const lang = speechLang();
+  const u = utterance(text, lang, pickVoice(s, lang));
   u.onstart = () => window.clearTimeout(watchdog);
   u.onend = () => {
     window.clearTimeout(watchdog);
@@ -214,14 +225,34 @@ export function speak(text: string): boolean {
   const go = () => {
     if (s.paused) s.resume();
     s.speak(u);
-    // never started (Safari's speech engine stuck): not green for ever – the next tap tries again
+    // never started: once more without a chosen voice – the system's own for the language (a listed voice may not be
+    // downloaded on the iPhone and stays silent); then not green for ever – the next tap tries again
     window.clearTimeout(watchdog);
     watchdog = window.setTimeout(() => {
-      if (current === u && !s.speaking) {
-        s.cancel();
+      if (current !== u || s.speaking) return;
+      s.cancel();
+      if (!u.voice) {
         setTalking(false);
+        return;
       }
-    }, 2500);
+      const again = utterance(text, lang, null);
+      again.onstart = () => window.clearTimeout(watchdog);
+      again.onend = () => {
+        window.clearTimeout(watchdog);
+        if (current === again) setTalking(false);
+      };
+      again.onerror = again.onend;
+      current = again;
+      window.setTimeout(() => {
+        s.speak(again);
+        watchdog = window.setTimeout(() => {
+          if (current === again && !s.speaking) {
+            s.cancel();
+            setTalking(false);
+          }
+        }, 2500);
+      }, 120);
+    }, 1500);
   };
   // the microphone off first – the iPhone needs a moment to give the sound back to the loudspeaker
   if (micPause?.()) {

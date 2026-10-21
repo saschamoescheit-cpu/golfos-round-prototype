@@ -1464,3 +1464,18 @@ button.tile:disabled { opacity: 1; }
 .tee-club-name { font: 700 15px var(--display); }
 .tee-club-n { text-align: right; font-variant-numeric: tabular-nums; }
 .tee-bar.small-bar { height: 26px; line-height: 26px; border-radius: 8px; }
+/* four elements per player – name · tee · HCP · playing handicap; remove small at the top right (Sascha 21.10.2026) */
+.player-row { grid-template-columns: minmax(0, 1fr) 58px 50px 50px; position: relative; }
+.player-row label, .player-row .field-label { font-size: 12px; }
+.player-row .player-remove { position: absolute; top: -9px; right: -9px; width: 28px; height: 28px; min-height: 28px; margin: 0; font-size: 12px; background: var(--surface-2); border: 1px solid var(--line-strong); z-index: 1; }
+.player-row .tee-pick { position: static; transform: none; width: 100%; height: 50px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg); display: inline-flex; align-items: center; justify-content: center; gap: 4px; color: var(--muted); }
+.player-row .tee-pick .tee-dot { width: 18px; height: 18px; border-radius: 9px; box-shadow: none; }
+.player-row .tee-pick-chev { font-size: 11px; }
+.player-row .tee-pick.none { font: 600 15px var(--body); }
+.tee-club-row { grid-template-columns: 1fr; gap: 4px; }
+.tee-club-say { font-size: 14px; }
+.tee-legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: var(--muted); }
+.tee-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.tee-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.tee-legend i.hit { background: #5a8c1c; }
+.tee-legend i.miss { background: #5f6e78; }

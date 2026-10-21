@@ -71,7 +71,7 @@ ok((await backBtn.count()) === 1, 'profile from "Mein Golf": a back arrow at the
 await backBtn.click();
 await p.waitForTimeout(400);
 ok((await p.locator('.record-hero').count()) === 1, 'the arrow leads back to "Mein Golf"');
-ok(/Deine Löcher-Scores/.test(await p.locator('main').innerText()), 'the card is called "Deine Löcher-Scores"');
+ok(/Deine gespielten Löcher/.test(await p.locator('main').innerText()), 'the card is called "Deine gespielten Löcher"');
 const hero = await p.locator('.record-hero').innerText();
 ok(/\+8,0\s*Ø zu Par \(9 Loch\)/.test(hero), 'my golf: average to par per 9 holes (+8,0, not +16,0)');
 // how the holes end: the numbers in the bars, the legend alone below (Sascha 17.10.2026)
