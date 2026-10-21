@@ -11,7 +11,8 @@ const url = process.argv[3] ?? 'http://localhost:5173/';
 mkdirSync(out, { recursive: true });
 const exp = JSON.parse(readFileSync(new URL('../../_data/golfos-runde-2026-10-16-golfclub-hetzenhof.json', import.meta.url), 'utf-8'));
 const b = await webkit.launch();
-const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
+// DEVICE="iPhone SE" and COLOR=light|dark for the night check of every screen (22.10.2026)
+const ctx = await b.newContext({ ...devices[process.env.DEVICE ?? 'iPhone 13'], locale: 'de-DE', colorScheme: process.env.COLOR === 'light' ? 'light' : 'dark' });
 await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
