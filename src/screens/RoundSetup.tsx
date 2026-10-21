@@ -520,7 +520,7 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
       </div>
       <div className="field">
         <label htmlFor={`hcp-${player.id}`}>HCP</label>
-        <input id={`hcp-${player.id}`} className="input player-num" inputMode="decimal" placeholder={dec('18.4')} value={player.index} onChange={(e) => props.onChange({ ...player, index: e.target.value })} />
+        <input id={`hcp-${player.id}`} className="input player-num" inputMode="decimal" value={player.index} onChange={(e) => props.onChange({ ...player, index: e.target.value })} />
       </div>
       <div className="field">
         <span className="field-label" id={`pl-${player.id}`}>{tr('Playing', 'Vorgabe')}</span>
