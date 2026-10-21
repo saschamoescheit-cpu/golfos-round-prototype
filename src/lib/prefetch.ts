@@ -76,17 +76,38 @@ export async function prefetchTiles(urls: string[], onProgress: (done: number, t
   let next = 0;
   let done = 0;
   let failed = 0;
+  // every tile at most 15 s, and a service that answers none of the first dozen is down – the rest is not tried
+  // (night check 22.10.2026: with LGL hanging, "saving the map for offline · 7 %" stood for ever and kept six
+  // connections to the service busy)
+  let ok = 0;
   const worker = async () => {
     while (next < urls.length && !signal.aborted) {
+      if (ok === 0 && failed >= 12) {
+        failed += urls.length - next;
+        next = urls.length;
+        done = urls.length;
+        onProgress(done, urls.length);
+        return;
+      }
       const url = urls[next++];
+      const ctrl = new AbortController();
+      const stop = () => ctrl.abort();
+      signal.addEventListener('abort', stop);
+      const timer = setTimeout(stop, 15000);
       try {
-        const res = await fetch(url, { mode: 'cors', signal });
+        const res = await fetch(url, { mode: 'cors', signal: ctrl.signal });
         if (!res.ok) failed++;
-        else await res.arrayBuffer();
+        else {
+          await res.arrayBuffer();
+          ok++;
+        }
       } catch {
         failed++;
+      } finally {
+        clearTimeout(timer);
+        signal.removeEventListener('abort', stop);
       }
-      onProgress(++done, urls.length);
+      onProgress(Math.min(++done, urls.length), urls.length);
     }
   };
   await Promise.all(Array.from({ length: 6 }, worker));

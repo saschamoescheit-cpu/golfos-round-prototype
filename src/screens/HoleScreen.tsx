@@ -303,9 +303,12 @@ export function HoleScreen(props: {
     setOffline({ done: 0, total: urls.length });
     prefetchTiles(urls, (done, total) => setOffline({ done, total }), ctrl.signal).then((failed) => {
       if (ctrl.signal.aborted) return;
-      if (failed < urls.length * 0.05) saveOfflineStamp(offlineKey, imagery.id);
-      setOffline('ready');
-      setTimeout(() => setOffline(null), 4000);
+      // "saved ✓" only when it is (nearly) all there – else no promise; the next opening tries again
+      if (failed < urls.length * 0.05) {
+        saveOfflineStamp(offlineKey, imagery.id);
+        setOffline('ready');
+        setTimeout(() => setOffline(null), 4000);
+      } else setOffline(null);
     });
     return () => ctrl.abort();
   }, [round.courseId, offlineKey, imagery, allMaps]);

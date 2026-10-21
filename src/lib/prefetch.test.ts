@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { holeTileUrls } from './prefetch';
 import { holeMapData } from './geo';
 import { IMAGERY } from './imagery';
@@ -23,5 +23,33 @@ describe('offline tiles for a round', () => {
     expect(ex).toBeGreaterThan(0);
     expect(2 ** 18 - 1 - tmsY).toBeGreaterThan(y - 20);
     expect(2 ** 18 - 1 - tmsY).toBeLessThan(y + 20);
+  });
+});
+
+describe('saving tiles when the service is down or hangs (night check 22.10.2026)', () => {
+  it('a service that answers none of the first dozen is not asked for the rest', async () => {
+    const { prefetchTiles } = await import('./prefetch');
+    let asked = 0;
+    vi.stubGlobal('fetch', async () => {
+      asked++;
+      throw new Error('down');
+    });
+    const urls = Array.from({ length: 200 }, (_, k) => `https://tiles.example/${k}`);
+    let last = 0;
+    const failed = await prefetchTiles(urls, (d) => (last = d), new AbortController().signal);
+    expect(failed).toBe(200);
+    expect(asked).toBeLessThan(20);
+    expect(last).toBe(200);
+    vi.unstubAllGlobals();
+  });
+  it('a tile that never answers gives up after 15 s', async () => {
+    vi.useFakeTimers();
+    const { prefetchTiles } = await import('./prefetch');
+    vi.stubGlobal('fetch', (_u: string, o: { signal: AbortSignal }) => new Promise((_, rej) => o.signal.addEventListener('abort', () => rej(new Error('aborted')))));
+    const run = prefetchTiles(['https://tiles.example/a'], () => {}, new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(15001);
+    expect(await run).toBe(1);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 });
