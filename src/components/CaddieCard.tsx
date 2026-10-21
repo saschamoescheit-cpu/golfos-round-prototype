@@ -178,7 +178,7 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
   );
 }
 
-function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: HoleNote) => void; onClose: () => void }) {
+export function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: HoleNote) => void; onClose: () => void }) {
   const [n, setN] = useState<HoleNote>(props.note);
   const flip = (k: 'obLeft' | 'obRight' | 'obLong') => setN({ ...n, [k]: !n[k] });
   return (

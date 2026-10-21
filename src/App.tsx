@@ -36,7 +36,7 @@ const trainingPaused = (): boolean => {
 type Screen =
   | { name: 'tab'; tab: Tab; filter?: RoundsFilter } // the five menu tabs (play, rounds, record, stats, profile)
   | { name: 'pickCourse' }
-  | { name: 'setup'; course: Course }
+  | { name: 'setup'; course: Course; from?: { holes: RoundHole[]; tee: string | null } } // from: the loops and tee chosen before (back from the preview or the birdie book)
   | { name: 'hole'; round: Round }
   | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean; finishing?: boolean }
   | { name: 'courseStats'; courseName: string }
@@ -400,8 +400,9 @@ export function App() {
       return (
         <RoundSetup
           course={screen.course}
+          from={screen.from}
           onBack={() => setScreen({ name: 'pickCourse' })}
-          onBook={(holes, tee, playing) => setScreen({ name: 'book', course: screen.course, holes, tee, playing })}
+          onBook={(holes, tee, playing) => setScreen({ name: 'book', course: screen.course, holes, tee, playing, back: { name: 'setup', course: screen.course, from: { holes, tee } } })}
           onStart={(round) => {
             if (!round.preview) {
               persist(round);
@@ -443,7 +444,9 @@ export function App() {
               if (round.preview) storePreview(null);
               else deleteRound(round.id, true);
               setRounds(loadRounds());
-              setScreen(HOME);
+              // the preview ends where it was started: the round setup, with its loops and tee (Sascha 21.10.2026)
+              const course = round.preview ? loadCachedCourse(round.courseId) : null;
+              setScreen(course ? { name: 'setup', course, from: { holes: round.holes, tee: round.tee ?? null } } : HOME);
             }}
             onBook={
               screen.round.preview && loadCachedCourse(screen.round.courseId)

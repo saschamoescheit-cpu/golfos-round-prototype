@@ -38,10 +38,16 @@ export function HoleSketch(props: Props) {
   const cx = (minx0 + maxx0) / 2;
   const minx = cx - w / 2;
   const h = maxy - miny;
-  const near = (r: Ring) => r.some((p) => {
-    const [x, y] = pr(p);
-    return x > minx - 60 && x < minx + w + 60 && y > miny - 60 && y < maxy + 60;
-  });
+  // a ring or line reaching into the sketch – by its segments, not only its corners: a long straight boundary passes
+  // the hole with both ends far away (Sascha 21.10.2026: 1A "out left and right", but no line drawn)
+  const near = (r: Ring) => {
+    const q = r.map(pr);
+    const x0 = minx - 60, x1 = minx + w + 60, y0 = miny - 60, y1 = maxy + 60;
+    return q.some(([x, y], k) => {
+      const [px, py] = k > 0 ? q[k - 1] : [x, y];
+      return Math.max(x, px) > x0 && Math.min(x, px) < x1 && Math.max(y, py) > y0 && Math.min(y, py) < y1;
+    });
+  };
   const path = (r: Ring, close = true) => {
     const q = r.map(pr);
     return q.length < 2 ? '' : 'M' + q.map(([x, y]) => `${x.toFixed(0)} ${y.toFixed(0)}`).join(' L') + (close ? ' Z' : '');

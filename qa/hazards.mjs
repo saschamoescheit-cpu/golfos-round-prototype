@@ -34,6 +34,7 @@ await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 await p.getByRole('button', { name: /^C · 9 Löcher/ }).click();
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(4000);
+await p.getByRole('button', { name: 'Caddie ausblenden' }).first().click().catch(() => {}); // the preview opens with the caddie – hidden for the map
 for (let k = 0; k < 2; k++) {
   await p.locator('.hole-bar').getByRole('button', { name: 'Nächstes Loch' }).click();
   await p.waitForTimeout(2500);

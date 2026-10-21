@@ -35,6 +35,7 @@ await p.locator('button.list-item').first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(9000);
+await p.getByRole('button', { name: 'Caddie ausblenden' }).first().click().catch(() => {}); // the preview opens with the caddie – hidden for the map
 
 /** Share of the map area (between the top boxes and the hole bar) near each colour. */
 const shares = async (colours) => {

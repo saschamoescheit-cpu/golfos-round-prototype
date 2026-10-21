@@ -437,7 +437,8 @@ table.scorecard { border-collapse: collapse; width: 100%; font-variant-numeric: 
 .book-text .lbl { margin: 4px 0 0; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
 .sk-rough { fill: #2c4a26; } .sk-trees { fill: #1b3317; } .sk-fw { fill: #4f8a36; } .sk-tee { fill: #6aa548; }
 .sk-water { fill: #2f6f9c; } .sk-bunker { fill: #d9c58b; } /* ci-allow: bunker sand */ .sk-green { fill: #7ccf55; stroke: #e9f0e6; stroke-width: 0.8; }
-.sk-ob { fill: none; stroke: #ff6b5e; stroke-width: 2.2; stroke-dasharray: 6 4; }
+/* out of bounds is white, like the stakes on the course (Sascha 21.10.2026) – red means a penalty area */
+.sk-ob { fill: none; stroke: #ffffff; stroke-width: 2.2; stroke-dasharray: 6 4; }
 .sk-line { fill: none; stroke: #ffffff; stroke-width: 1.2; stroke-dasharray: 4 4; opacity: 0.7; }
 .sk-shot { stroke: #9bc53d; stroke-width: 1.6; } .sk-aim { fill: #9bc53d; stroke: #0e1418; stroke-width: 1.2; }
 .sk-dot { fill: #ffffff; } .sk-mark { font: 600 10px var(--body); fill: #ffffff; paint-order: stroke; stroke: #0e1418; stroke-width: 2.4px; }
@@ -1435,3 +1436,10 @@ button.tile:disabled { opacity: 1; }
 .sc-status.signed { border: 1px solid var(--brand); background: color-mix(in srgb, var(--brand-soft) 45%, var(--surface)); }
 .sc-status.signed .sc-status-icon { background: var(--brand-soft); }
 .sc-status.attention { border: 2px solid var(--brand); }
+/* a player in the round setup: name (and remove) on top, HCP typed and the playing handicap shown below (Sascha 21.10.2026) */
+.player-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px 12px; align-items: end; }
+.player-row .player-name { grid-column: 1 / 3; }
+.player-row .player-remove { grid-column: 3; grid-row: 1; margin-bottom: 3px; }
+.player-row .player-note { grid-column: 1 / -1; }
+.field-label { font: inherit; color: var(--muted); font-size: 14px; }
+.playing-hcp { display: flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: 12px; background: var(--surface-2); font: 700 20px var(--display); font-variant-numeric: tabular-nums; }

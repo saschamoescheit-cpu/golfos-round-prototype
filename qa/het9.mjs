@@ -31,7 +31,7 @@ await p.waitForTimeout(2000);
 await p.locator('button.list-item').first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
-await p.fill('input[id^="hcp-"]', '4').catch(() => {}); // 9-hole playing handicap
+await p.fill('input[id^="hcp-"]', '8').catch(() => {}); // HCP 8 – the 9-hole playing handicap 4 follows
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(4000);
 

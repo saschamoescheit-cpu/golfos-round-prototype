@@ -24,7 +24,7 @@ import { madeChartsFor, type MadeCharts } from '../lib/greenmaker';
 import { greenSource } from '../data/greenSources';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { speak, summary } from '../lib/caddietalk';
-import { CaddieCard, TournamentCaddie } from '../components/CaddieCard';
+import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn } from '../lib/impact';
 import { courseStats } from '../lib/history';
@@ -369,9 +369,14 @@ export function HoleScreen(props: {
   const caddieSettings = useMemo(() => loadCaddieSettings(), []);
   // Hidden by the player until the caddie has something new to say (new hole, new shot, new warning).
   // The caddie card opens only on a tap; new advice shows as a dot on the caddie button ("!" with a warning).
-  const [caddieOpen, setCaddieOpen] = useState(false);
+  // the course preview opens with the caddie – its hole notes at hand (Sascha 21.10.2026: "note the holes in the
+  // preview"); planning has its own panel
+  const previewCaddie = !!round.preview && !round.planning;
+  const previewCaddieWanted = useRef(true); // hidden by the player in the preview: it stays hidden on the next holes
+  const [caddieOpen, setCaddieOpen] = useState(previewCaddie);
   const [seenSig, setSeenSig] = useState<string | null>(null);
-  useEffect(() => setCaddieOpen(false), [i]); // every hole starts with the map
+  useEffect(() => setCaddieOpen(previewCaddie && previewCaddieWanted.current), [i]); // every hole starts with the map (the preview with its caddie)
+  const [planNoteOpen, setPlanNoteOpen] = useState(false);
   const [notes, setNotes] = useState(() => loadHoleNotes(round.courseId));
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   // score after the hole over the map (Hole19); 'next': opened by "→" without a score – done = on to the next hole
@@ -801,8 +806,10 @@ export function HoleScreen(props: {
       return at > alongLine(mapData.line, first[0]) + 40 ? [first[0], pointAt(mapData.line, at)] : first;
     };
     const plan = plans[i] ?? (planned?.targets.length ? { targets: planned.targets, pin: null } : { targets: defaultTargets(), pin: null });
-    // a par 3 has no target; a longer hole waits for the caddie's landing spot (the bag may still be loading)
-    planDefault.current = round.planning && !planned && (hole.par < 4 || plan.targets.length > 0) ? { label: hole.label, targets: plan.targets } : null;
+    // every hole looked at counts as planned – a par 3 has no target, nor has a short par 4 whose landing spot lies
+    // within 60 m of the green (Sascha 21.10.2026: "16 of 18 holes planned, but I planned every hole"); the live round
+    // then takes the caddie's targets of the day
+    planDefault.current = round.planning && !planned ? { label: hole.label, targets: plan.targets } : null;
     // The flag stays on the green (Sascha 15.10.2026: it stood 50 m short on the fairway after a stray drag): a pin
     // off the green – dragged there or saved so – counts as not set.
     const pinOk = (p: LngLat) => (mapData.green ? pointInRing(p, mapData.green) || distToLine(p, mapData.green) <= 3 : distanceM(p, mapData.greenCenter) <= 25);
@@ -948,6 +955,7 @@ export function HoleScreen(props: {
     const toggleCaddie = () => {
       setSeenSig(String(i));
       setCaddieOpen(!caddieShown);
+      if (previewCaddie) previewCaddieWanted.current = !caddieShown;
     };
     if (caddieSettings.voice && cad != null && !greenFocus && spokenSig.current !== caddieSig && !round.preview) {
       spokenSig.current = caddieSig;
@@ -1283,7 +1291,23 @@ export function HoleScreen(props: {
                     − {tr(`Target ${plan.targets.length}`, `Ziel ${plan.targets.length}`)}
                   </button>
                 )}
+                {/* the hole note while planning (Sascha 21.10.2026) – the same as the caddie's "Hole notes" */}
+                <button type="button" className="btn-secondary" aria-pressed={!!(note.text || note.obLeft || note.obRight || note.obLong)} onClick={() => setPlanNoteOpen(true)}>
+                  {tr('Hole note', 'Lochnotiz')}
+                  {note.text || note.obLeft || note.obRight || note.obLong ? ' ✓' : ''}
+                </button>
               </div>
+              {planNoteOpen && (
+                <NotesSheet
+                  hole={hole.label}
+                  note={note}
+                  onSave={(n) => {
+                    saveHoleNote(round.courseId, hole.label, n);
+                    setNotes({ ...notes, [hole.label]: n });
+                  }}
+                  onClose={() => setPlanNoteOpen(false)}
+                />
+              )}
               <span className="muted small">{tr('Drag the targets on the map.', 'Ziele auf der Karte ziehen.')}</span>
             </section>
           )}

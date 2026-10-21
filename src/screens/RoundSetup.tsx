@@ -44,9 +44,13 @@ function loadRemembered(): Remembered | null {
   }
 }
 
-export function RoundSetup(props: { course: Course; onBack: () => void; onStart: (r: Round) => void; onBook: (holes: RoundHole[], tee: string | null, playing: number | null) => void }) {
+export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[]; tee: string | null }; onBack: () => void; onStart: (r: Round) => void; onBook: (holes: RoundHole[], tee: string | null, playing: number | null) => void }) {
   const options = useMemo(() => loopOptions(props.course.holes), [props.course]);
-  const [optionId, setOptionId] = useState(options[0]?.id ?? '');
+  // back from the preview or the birdie book: the loops chosen before
+  const [optionId, setOptionId] = useState(() => {
+    const want = props.from?.holes.map((h) => h.label).join();
+    return (want && options.find((o) => buildRoundHoles(props.course.holes, o).map((h) => h.label).join() === want)?.id) || (options[0]?.id ?? '');
+  });
   const remembered = useMemo(loadRemembered, []);
   // One way to play (13.10.2026): the score on the course, the shots afterwards from the GPS track – the old choice
   // "quick / detailed" promised shot-by-shot buttons that are gone. Rounds keep the field for older data.
@@ -54,7 +58,7 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   const teeData = TEES[props.course.id];
   const lastTee = remembered?.tees?.[props.course.id];
   const [tee, setTee] = useState<string | null>(
-    teeData ? (lastTee && teeData.tees.includes(lastTee) ? lastTee : teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null,
+    teeData ? (props.from?.tee && teeData.tees.includes(props.from.tee) ? props.from.tee : lastTee && teeData.tees.includes(lastTee) ? lastTee : teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null,
   );
   // The playing handicap is remembered for 18 holes; a 9-hole round is pre-filled with half of it.
   // Nothing remembered yet: the rounded handicap index from the profile is the start value ("+1,2" = plus handicap).
@@ -107,18 +111,14 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
   // the rating is for 18 holes: its par too (a loop of 9 holes counts twice)
   const loopHoles = props.course.holes.filter((h) => h.loop === holes[0]?.loop);
   const par = nine ? loopHoles.reduce((sum, h) => sum + (h.par || 0), 0) * (loopHoles.length <= 9 ? 2 : 1) : holes.reduce((sum, h) => sum + (h.par || 0), 0);
-  const parseHcp = (s: string): number | null => {
-    const n = Number(s.replace(',', '.'));
-    return s.trim() === '' || !Number.isFinite(n) ? null : Math.round(n);
-  };
+  // Always from the handicap index (Sascha 21.10.2026: "you do not always know your partners' playing handicap –
+  // enter the HCP, the playing handicap follows and cannot be edited"). Without course rating and slope for the tee
+  // it is estimated with slope 113 and rating = par, i.e. the rounded index (half of it for 9 holes).
   const playingHandicap = (p: DraftPlayer): number | null => {
-    if (rating) {
-      const idx = parseIndex(p.index);
-      if (idx == null) return null;
-      if (!nine) return courseHandicap(idx, rating, par);
-      return Math.round((idx * (rating.slope / 113) + (rating.cr - par)) / 2);
-    }
-    return parseHcp(p.handicap);
+    const idx = parseIndex(p.index);
+    if (idx == null) return null;
+    if (rating) return nine ? Math.round((idx * (rating.slope / 113) + (rating.cr - par)) / 2) : courseHandicap(idx, rating, par);
+    return Math.round(nine ? idx / 2 : idx);
   };
 
   // the holes of the chosen loops with a plan – a loop planned once counts in every combination (A+B, C+A, B+C)
@@ -408,47 +408,35 @@ export function RoundSetup(props: { course: Course; onBack: () => void; onStart:
 
 function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean }) {
   const { player } = props;
+  const shown = props.playing == null ? '–' : props.playing < 0 ? `+${-props.playing}` : String(props.playing);
   return (
-    <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 110px auto', gap: 8, alignItems: 'end' }}>
-      <div className="field">
+    <div className="card player-row">
+      <div className="field player-name">
         <label htmlFor={`name-${player.id}`}>{props.nameLabel}</label>
         <input id={`name-${player.id}`} className="input" value={player.name} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
       </div>
-      <div className="field">
-        <label htmlFor={`hcp-${player.id}`}>{props.rating ? 'Handicap' : tr('Playing hcp', 'Spielvorgabe')}</label>
-        <input
-          id={`hcp-${player.id}`}
-          className="input"
-          inputMode="decimal"
-          placeholder={props.rating ? dec('7.4') : ''}
-          value={props.rating ? player.index : player.handicap}
-          onChange={(e) => props.onChange(props.rating ? { ...player, index: e.target.value } : { ...player, handicap: e.target.value })}
-        />
-      </div>
-      {!props.rating && props.nine && (
-        <span className="muted small" style={{ gridColumn: '1 / -1' }}>
-          {tr('Playing handicap for 9 holes', 'Spielvorgabe für 9 Löcher')}
-        </span>
-      )}
-      {props.rating && props.playing != null && (
-        <span className="muted small" style={{ gridColumn: '1 / -1' }}>
-          {tr('Playing handicap here: ', 'Spielvorgabe hier: ')}
-          {props.playing < 0 ? `+${-props.playing}` : props.playing}
-        </span>
-      )}
-      {(props.rating ? player.index : player.handicap).trim() !== '' && props.playing == null && (
-        <span className="bad-text small" style={{ gridColumn: '1 / -1' }} role="alert">
-          {props.rating
-            ? tr('Please enter your handicap as a number, e.g. 7.4 or +1.2', 'Bitte das Handicap als Zahl eingeben, z. B. 7,4 oder +1,2')
-            : tr('Please enter the playing handicap as a number, e.g. 12', 'Bitte die Spielvorgabe als Zahl eingeben, z. B. 12')}
-        </span>
-      )}
-      {props.onRemove ? (
-        <button type="button" className="icon-btn" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={props.onRemove} style={{ marginBottom: 3 }}>
+      {props.onRemove && (
+        <button type="button" className="icon-btn player-remove" aria-label={tr(`Remove ${player.name || 'player'}`, `${player.name || 'Spieler'} entfernen`)} onClick={props.onRemove}>
           ✕
         </button>
-      ) : (
-        <span style={{ width: 44 }} />
+      )}
+      <div className="field">
+        <label htmlFor={`hcp-${player.id}`}>HCP</label>
+        <input id={`hcp-${player.id}`} className="input" inputMode="decimal" placeholder={dec('18.4')} value={player.index} onChange={(e) => props.onChange({ ...player, index: e.target.value })} />
+      </div>
+      {/* follows from the HCP, the tee and the holes – shown, not typed */}
+      <div className="field">
+        <span className="field-label" id={`pl-${player.id}`}>
+          {tr('Playing hcp', 'Spielvorgabe')}
+          {props.nine ? tr(' (9 holes)', ' (9 Löcher)') : ''}
+        </span>
+        <output className="playing-hcp" aria-labelledby={`pl-${player.id}`}>{shown}</output>
+      </div>
+      {!props.rating && props.playing != null && <span className="muted small player-note">{tr('No course rating for this tee – estimated from the HCP.', 'Ohne Course Rating für diesen Abschlag – aus dem HCP geschätzt.')}</span>}
+      {player.index.trim() !== '' && props.playing == null && (
+        <span className="bad-text small player-note" role="alert">
+          {tr('Please enter the HCP as a number, e.g. 18.4 or +1.2', 'Bitte das HCP als Zahl eingeben, z. B. 18,4 oder +1,2')}
+        </span>
       )}
     </div>
   );

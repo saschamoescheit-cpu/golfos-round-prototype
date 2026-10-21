@@ -60,12 +60,21 @@ ok((await p.locator('.plan-panel .plan-shot').count()) === 2, '"− Ziel 2" remo
 await p.locator('.plan-panel').getByRole('button', { name: '+ Ziel' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.plan-panel .plan-shot').count()) === 3, '"+ Ziel" adds it back');
+// the hole note while planning (Sascha 21.10.2026)
+await p.locator('.plan-panel').getByRole('button', { name: /^Lochnotiz/ }).click();
+await p.waitForTimeout(300);
+await p.fill('#hole-note', 'Blind – auf den linken Baum');
+await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
+await p.waitForTimeout(300);
+const notes4 = await p.evaluate(() => Object.entries(localStorage).filter(([k]) => /note/i.test(k)).map(([, v]) => v).join(' '));
+ok(/Lochnotiz ✓/.test(await p.locator('.plan-panel').innerText()) && /linken Baum/.test(notes4), 'planning: "Lochnotiz" opens the hole note, saved for the course');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan-4A.png' });
 await p.locator('.hole-bar-handle').click();
 await p.waitForTimeout(400);
 await p.locator('.hole-drawer').getByRole('button', { name: 'Vorschau beenden' }).click();
 await p.waitForTimeout(800);
-await pick();
+// ending the preview leads back to the round setup it was started from, its loops still chosen (Sascha 21.10.2026)
+ok((await p.getByRole('button', { name: 'Runde starten' }).isVisible()) && (await p.locator('button.choice-loop[aria-pressed="true"]').first().innerText()).includes('A'), `preview ended: back in the round setup, A+B still chosen (${(await p.locator('button.choice-loop[aria-pressed="true"]').first().innerText().catch(() => '?')).replace(/\s+/g, ' ')})`);
 // every hole looked at counts – also the two only seen (Sascha 16.10.2026: "nur 13 Löcher geplant, obwohl ich alle
 // 18 geplant habe"); a loop planned once counts in every combination
 const planLabel = async () => (await p.getByRole('button', { name: /Runde planen/ }).innerText()).replace(/\s+/g, ' ');
@@ -78,6 +87,22 @@ ok((await planLabel()).includes('4 von 18 Löchern geplant'), `setup C+A: the A 
 await p.locator('button.choice-loop').filter({ hasText: /B.*C/ }).first().click();
 await p.waitForTimeout(300);
 ok(!(await planLabel()).includes('geplant'), `setup B+C: nothing planned yet (${await planLabel()})`);
+// every hole looked at counts, short par 4s without a target too (Sascha 21.10.2026: "16 of 18 holes planned, but I
+// planned every hole")
+await p.getByRole('button', { name: /Runde planen/ }).click();
+await p.waitForTimeout(3500);
+for (let k = 0; k < 17; k++) {
+  await p.getByRole('button', { name: 'Nächstes Loch' }).last().click();
+  await p.waitForTimeout(900);
+}
+await p.waitForTimeout(600);
+await p.locator('.hole-bar-handle').click();
+await p.waitForTimeout(400);
+await p.locator('.hole-drawer').getByRole('button', { name: 'Vorschau beenden' }).click();
+await p.waitForTimeout(800);
+await p.locator('button.choice-loop').filter({ hasText: /B.*C/ }).first().click();
+await p.waitForTimeout(300);
+ok((await planLabel()).includes('alle 18 Löcher geplant'), `setup B+C: every hole looked at is planned (${await planLabel()})`);
 await p.locator('button.choice-loop').first().click();
 await p.waitForTimeout(300);
 // the birdie book shows the plan
@@ -85,6 +110,10 @@ await p.getByRole('button', { name: 'Birdiebook', exact: true }).click();
 await p.waitForTimeout(4000);
 const book1 = await p.locator('.book-hole').first().innerText();
 ok(/5i vom Abschlag · dein Plan/.test(book1.replace(/\s+/g, ' ')) && /Dein Plan: 5i auf Ziel 1 – danach 9i ins Grün/.test(book1), 'birdie book 1A: the plan');
+// out of bounds in the sketch: white, and on 1A too, where the boundary passes with its corners far away (Sascha 21.10.2026)
+const ob1 = await p.locator('.book-hole').first().locator('.sk-ob').evaluateAll((es) => es.map((e) => getComputedStyle(e).stroke));
+const obAll = await p.locator('.sk-ob').evaluateAll((es) => [...new Set(es.map((e) => getComputedStyle(e).stroke))]);
+ok(ob1.length > 0 && obAll.join() === 'rgb(255, 255, 255)', `birdie book: out of bounds drawn white, 1A too (${ob1.length} on 1A · ${obAll.join(' ')})`);
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(800);
 // the live round: the planned target is there, the caddie says the plan

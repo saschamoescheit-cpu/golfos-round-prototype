@@ -65,6 +65,12 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
       await p.locator('input[id^="name-"]').last().fill(PEOPLE[k][0]);
       await p.locator('input[id^="hcp-"]').last().fill(PEOPLE[k][1]);
     }
+    // the HCP is typed, the playing handicap follows and is shown, not typed (Sascha 21.10.2026); 9 holes: half
+    if (c.n === 4 && c.mode === 'Einfaches Spiel') {
+      const shown = await p.locator('.playing-hcp').allInnerTexts();
+      const want = PEOPLE.slice(0, c.n).map(([, h]) => String(Math.round(Number(h) / 2)));
+      ok(shown.join() === want.join() && (await p.locator('.playing-hcp input, input.playing-hcp').count()) === 0, `setup: HCP typed, playing handicap shown (${shown.join(' · ')})`);
+    }
     step = 'mode';
     await p.locator('.settings-row').filter({ hasText: 'Modus' }).click();
     await p.locator('.pick-option strong').getByText(c.mode, { exact: true }).click();
