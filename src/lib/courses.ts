@@ -174,6 +174,15 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
     if (summary.source === 'osm' && !seed && !hasGeometry(summary.id)) await refetchGeometry({ ...summary, bbox: summary.bbox ?? cached.bbox }, cached);
     return cached;
   }
+  // an OpenGolfAPI entry carries no map (in Germany not even holes): the OSM course at its place instead – with map,
+  // greens and holes (night check 22.10.2026: with Photon down the search found only these entries, the round had no map)
+  if (summary.source === 'opengolfapi' && !forceRefresh) {
+    const osm = await osmCourseAt(summary).catch(() => null);
+    if (osm) {
+      const course = await loadCourse(osm).catch(() => null);
+      if (course && course.holes.length >= 9) return course;
+    }
+  }
   const holes = seed
     ? holesFromTags(seed.holeTags)
     : summary.source === 'osm'
@@ -183,6 +192,53 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
   const course: Course = { id: summary.id, source: summary.source, name: seed?.name ?? summary.name, lat: summary.lat, lon: summary.lon, holes, loops, ...(summary.bbox ? { bbox: summary.bbox } : {}) };
   if (holes.length > 0) saveCachedCourse(course);
   return course;
+}
+
+// words that say nothing about which course it is
+const GENERIC = new Set(['golf', 'club', 'golfclub', 'golfanlage', 'golfpark', 'golfplatz', 'course', 'country', 'resort', 'land', 'e.v.', 'gc', 'the', 'der', 'die', 'das', 'und', 'am', 'im', 'von', 'auf']);
+
+/** The OSM course area at an OpenGolfAPI entry's point: the one with a word of its name, else the one the point lies
+ *  in – never a neighbour by guess. From the OSM API, which also brings the map (Overpass and Photon can be down). */
+export async function osmCourseAt(s: CourseSummary): Promise<CourseSummary | null> {
+  const box = [s.lon - 0.006, s.lat - 0.004, s.lon + 0.006, s.lat + 0.004].map((n) => n.toFixed(5)).join(',');
+  const res = await fetch(`${OSM_API}?bbox=${box}`, { signal: AbortSignal.timeout(20000) });
+  if (!res.ok) return null;
+  return pickCourseArea(parseOsmXml(await res.text()), s);
+}
+
+export function pickCourseArea(osm: ReturnType<typeof parseOsmXml>, s: CourseSummary): CourseSummary | null {
+  const coords = (ids: string[]) => ids.map((id) => osm.nodes.get(id)).filter((p): p is LngLat => p != null);
+  const byId = new Map(osm.ways.map((w) => [w.id, w]));
+  const areas: { id: string; name: string; rings: LngLat[][] }[] = [
+    ...osm.ways.filter((w) => w.tags.leisure === 'golf_course').map((w) => ({ id: `osm:way/${w.id}`, name: w.tags.name ?? '', rings: [coords(w.nodes)] })),
+    ...osm.relations
+      .filter((r) => r.tags.leisure === 'golf_course' && r.id)
+      .map((r) => ({
+        id: `osm:relation/${r.id}`,
+        name: r.tags.name ?? '',
+        rings: joinRings(r.members.filter((m) => m.type === 'way' && (m.role === 'outer' || m.role === '')).map((m) => byId.get(m.ref)?.nodes ?? [])).map(coords),
+      })),
+  ].filter((a) => a.rings.some((r) => r.length >= 4));
+  const words = fold(s.name)
+    .split(/[\s,()/-]+/)
+    .filter((w) => w.length >= 4 && !GENERIC.has(w));
+  const named = areas.filter((a) => words.some((w) => fold(a.name).includes(w)));
+  const p: LngLat = [s.lon, s.lat];
+  const inside = areas.filter((a) => a.rings.some((r) => r.length >= 4 && pointInRing(p, r)));
+  const pick = named.length === 1 ? named[0] : named.find((a) => inside.includes(a)) ?? (named.length === 0 && inside.length === 1 ? inside[0] : null);
+  if (!pick) return null;
+  const all = pick.rings.flat();
+  const lons = all.map((q) => q[0]);
+  const lats = all.map((q) => q[1]);
+  return {
+    id: pick.id,
+    source: 'osm',
+    name: s.name,
+    place: s.place,
+    lat: s.lat,
+    lon: s.lon,
+    bbox: [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)],
+  };
 }
 
 // once per course and session: a course without a map in OSM is not asked again on every opening

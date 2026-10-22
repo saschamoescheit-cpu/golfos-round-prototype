@@ -79,9 +79,8 @@ await p.evaluate(() => {
 await p.goto(url);
 await p.waitForTimeout(1500);
 await p.getByRole('button', { name: 'Neue Runde' }).click();
-await p.fill('#course-search', 'Frielinghausen');
-await p.waitForTimeout(3000);
-await p.locator('button.list-item').first().click();
+// from "played last" – the usual way back to a course, and without the course search
+await p.locator('button.list-item', { hasText: 'Frielinghausen' }).first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 45000 });
 ok((await geoOf()).length === 1, 'the map copy gone: fetched again when the course is picked');
 ok((await p.getByText(/Speicher auf dem Handy voll/).count()) === 0, 'no "storage full" note – there was room to make');
