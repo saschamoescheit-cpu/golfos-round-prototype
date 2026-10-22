@@ -141,7 +141,8 @@ const isHair = (x, y, z) => {
 const isTorso = (d) => /^(pelvis|spine|chest|hip|knee|ankle)/.test(d);
 const isArm = (d) => /^(shoulder|elbow|wrist|index|middle|ring|little|thumb)/.test(d);
 const tDom = (t) => triDom(t);
-cut((p) => p[2] - 0.115, (t) => /^(ankle|knee)/.test(tDom(t)));
+const shoeTop = (p) => 0.072 + 0.022 * Math.min(1, Math.max(0, (p[1] - 0.0) / 0.08));
+cut((p) => p[2] - shoeTop(p), (t) => /^(ankle|knee)/.test(tDom(t)));
 cut((p) => p[2] - 0.022, (t) => /^(ankle|knee)/.test(tDom(t)));
 cut((p) => p[2] - 0.956, (t) => isTorso(tDom(t)) || /^shoulder/.test(tDom(t)));
 cut((p) => p[2] - 0.988, (t) => isTorso(tDom(t)) || /^shoulder/.test(tDom(t)));
@@ -155,7 +156,8 @@ cut((p) => p[2] - (capLine(p[1]) - 0.024), (t) => /^(head|neck)/.test(tDom(t)));
 const classify = (p, d) => {
   const [x, y, z] = p;
   const sx = x > 0 ? 1 : -1;
-  if (z < 0.115 && /^(ankle|knee)/.test(d)) return z < 0.022 ? 4 : 3;
+  if (z < shoeTop(p) && /^(ankle|knee)/.test(d)) return z < 0.022 ? 4 : 3;
+  if (/^ankle/.test(d)) return 2; // above the shoe: the trouser leg reaches down to it
   if (isArm(d)) {
     const tS = along(p, mir(J.shoulder, sx), mir(J.elbow, sx));
     const tF = along(p, mir(J.elbow, sx), mir(J.wrist, sx));
@@ -204,6 +206,70 @@ for (let i = 0; i < nV; i++) {
   if (off) V[i] = add(V[i], mul(N1[i], off));
 }
 for (let i = 0; i < nV; i++) if (vTris[i].some((ti) => triReg0[ti] === 4)) V[i][1] = Math.max(0, Math.min(V[i][1], 0.012));
+// the trousers hang straight from the thigh down, wider than the leg (golf trousers, not leggings): every trouser
+// vertex of a leg is pushed out from the leg's axis to at least the trouser's own radius there, the hem a little
+// wider and resting on the shoe
+{
+  const legAxis = (sx) => [T(mir(J.hip, sx)), T(mir(J.knee, sx)), T(mir(J.ankle, sx))];
+  const axes = { 1: legAxis(1), [-1]: legAxis(-1) };
+  const nearest = (p, a, b) => { const d = sub(b, a); const t = Math.min(1, Math.max(0, dot(sub(p, a), d) / dot(d, d))); return [add(a, mul(d, t)), t]; };
+  for (let i = 0; i < nV; i++) {
+    if (!vTris[i].length || !vTris[i].every((ti) => triReg0[ti] === 2)) continue;
+    const d = domOf(W[i]);
+    if (!/^(hip|knee|ankle)/.test(d)) continue;
+    const sx = B[i][0] > 0 ? 1 : -1;
+    const [h, k, an] = axes[sx];
+    const p = V[i];
+    if (p[1] > h[1] - 0.18) continue; // the seat and the top of the thigh follow the body
+    const [q1, t1] = nearest(p, h, k);
+    const [q2, t2] = nearest(p, k, an);
+    const onShin = len(sub(p, q2)) < len(sub(p, q1)) || p[1] < k[1];
+    const q = onShin ? q2 : q1;
+    // the radius: 9 cm at mid-thigh down to 7.2 cm at the knee, 7 cm at the hem
+    const R = onShin ? 0.072 - 0.004 * t2 : 0.09 - 0.018 * Math.max(0, (t1 - 0.4) / 0.6);
+    const off = sub(p, q);
+    const r = len(off);
+    // the inner sides of the legs stay where they are (the legs would run into each other)
+    const inward = (off[0] * sx) < -0.4 * r;
+    const want = Math.max(r, inward ? r : R);
+    const blend = Math.min(1, (h[1] - 0.18 - p[1]) / 0.08);
+    V[i] = add(q, mul(off, (r + (want - r) * blend) / Math.max(r, 1e-6)));
+  }
+}
+// smooth what the push left uneven (the trouser legs), the borders kept
+for (let it = 0; it < 6; it++) {
+  const next = V.map((p) => p.slice());
+  for (let i = 0; i < nV; i++) {
+    if (!vTris[i].length || !vTris[i].every((ti) => triReg0[ti] === 2) || !/^(hip|knee|ankle)/.test(domOf(W[i]))) continue;
+    if (B[i][2] > 0.6) continue;
+    const m = [0, 0, 0]; for (const j of nb[i]) for (let k = 0; k < 3; k++) m[k] += V[j][k] / nb[i].size;
+    next[i] = add(V[i], mul(sub(m, V[i]), 0.5));
+  }
+  for (let i = 0; i < nV; i++) V[i] = next[i];
+}
+// the shoes: the toes smoothed away into one rounded shoe (many passes, the edge at the trouser hem kept), a little
+// fuller than the foot, the sole flat
+{
+  const shoe = (i) => vTris[i].length && vTris[i].every((ti) => triReg0[ti] === 3 || triReg0[ti] === 4);
+  // only outward: the grooves between the toes fill up, the outer shape stays (a toe cap, not five toes)
+  for (let it = 0; it < 120; it++) {
+    const NI = normalsOf(V, tris);
+    const next = V.map((p) => p.slice());
+    for (let i = 0; i < nV; i++) {
+      if (!shoe(i)) continue;
+      const m = [0, 0, 0]; for (const j of nb[i]) for (let k = 0; k < 3; k++) m[k] += V[j][k] / nb[i].size;
+      const step = mul(sub(m, V[i]), 0.5);
+      const outward = dot(step, NI[i]);
+      // the part along the surface always (it evens the mesh out); the part across only outwards
+      const along = sub(step, mul(NI[i], outward));
+      next[i] = add(V[i], add(along, mul(NI[i], Math.max(0, outward))));
+    }
+    for (let i = 0; i < nV; i++) V[i] = next[i];
+  }
+  const NS = normalsOf(V, tris);
+  for (let i = 0; i < nV; i++) if (shoe(i)) V[i] = add(V[i], mul(NS[i], 0.006));
+  for (let i = 0; i < nV; i++) if (vTris[i].some((ti) => triReg0[ti] === 4)) V[i][1] = Math.max(0, Math.min(V[i][1], 0.014));
+}
 
 // ---------- the cap: a smooth shell fitted to the head above the cap line, and a curved visor ----------
 const headBone = boneIx.head;
@@ -337,6 +403,83 @@ for (const yb of [1.405, 1.375, 1.345]) {
   for (let k = 0; k < NB; k++) { const t = (k / NB) * Math.PI * 2; V.push(add(c, [Math.cos(t) * 0.0048, Math.sin(t) * 0.0048, 0])); W.push([[chestBone, 1]]); }
   for (let k = 0; k < NB; k++) buttonTris.push([base, base + 1 + k, base + 1 + ((k + 1) % NB)]);
 }
+// the golf shoes: in place of the feet a smooth shoe of their own, lofted along the foot – its footprint and height
+// taken from the foot (a little fuller), a flat sole with an edge, a rounded toe; skinned to the ankle
+const shoeTris = [], soleTris = [];
+const shoeCentres = [];
+for (const sx of [1, -1]) {
+  const ankleBone = boneIx['ankle' + (sx > 0 ? 'L' : 'R')];
+  const footIdx = [];
+  for (let i = 0; i < nV; i++) if (vTris[i].length && vTris[i].every((ti) => triReg0[ti] === 3 || triReg0[ti] === 4) && Math.sign(B[i][0]) === sx) footIdx.push(i);
+  const pts = footIdx.map((i) => V[i]);
+  const heel3 = T(mir(J.ankle, sx)), toe3 = T(mir(J.toe, sx));
+  const fwd = nrm([toe3[0] - heel3[0], 0, toe3[2] - heel3[2]]);
+  const lat = [fwd[2], 0, -fwd[0]];
+  const along = pts.map((p) => dot(sub(p, heel3), fwd));
+  const a0 = Math.min(...along) - 0.006, a1 = Math.max(...along) + 0.01;
+  const NU = 28, NVs = 22;
+  const rows = [];
+  // the measures of the foot along its length, smoothed (no dents from the toes)
+  const prm = [];
+  for (let u = 0; u <= NU; u++) {
+    const t = u / NU;
+    const a = a0 + (a1 - a0) * t;
+    const near = pts.filter((p, k) => Math.abs(along[k] - a) < 0.02);
+    const ls = near.map((p) => dot(sub(p, heel3), lat));
+    const lo = near.length ? Math.min(...ls) : -0.03, hi = near.length ? Math.max(...ls) : 0.03;
+    const top = near.length ? Math.max(...near.map((p) => p[1])) + 0.006 : 0.05;
+    prm.push({ t, a, cen: (lo + hi) / 2, half: Math.min(0.05, (hi - lo) / 2 + 0.006), height: Math.min(Math.max(0.03, top), 0.098) });
+  }
+  for (let pass = 0; pass < 6; pass++) for (const key of ['cen', 'half', 'height']) {
+    const v = prm.map((x) => x[key]);
+    for (let u = 1; u < NU; u++) prm[u][key] = (v[u - 1] + 2 * v[u] + v[u + 1]) / 4;
+  }
+  for (const pr of prm) {
+    const { t, a } = pr;
+    // a rounded toe and heel: the outline an ellipse at both ends, the toe box lower towards the tip
+    const toe = Math.max(0, (t - 0.74) / 0.26), heel = Math.max(0, (0.1 - t) / 0.1);
+    const half = pr.half * Math.sqrt(Math.max(0.0025, 1 - toe * toe)) * Math.sqrt(Math.max(0.09, 1 - heel * heel));
+    const height = 0.014 + (pr.height - 0.014) * (1 - 0.6 * Math.pow(Math.max(0, (t - 0.55) / 0.45), 1.4)) * Math.sqrt(Math.max(0.05, 1 - toe * toe * 0.9));
+    const cen = pr.cen;
+    const ring = [];
+    for (let v = 0; v < NVs; v++) {
+      const th = (v / NVs) * Math.PI * 2;
+      // a rounded box in the cross-section: flat underneath, rounded on top
+      const c = Math.cos(th), sn = Math.sin(th);
+      const x = half * Math.sign(c) * Math.pow(Math.abs(c), 2 / 3);
+      const y = sn >= 0 ? 0.014 + (height - 0.014) * Math.pow(sn, 2 / 2.4) : 0.014;
+      const p = add(add(heel3, mul(fwd, a)), mul(lat, cen + x));
+      ring.push([p[0], y, p[2]]);
+    }
+    { const cc = add(add(heel3, mul(fwd, a)), mul(lat, cen)); shoeCentres.push([cc[0], Math.max(0.012, height * 0.45), cc[2]]); }
+    rows.push(ring);
+  }
+  const base = V.length;
+  for (const ring of rows) for (const p of ring) { V.push(p); W.push([[ankleBone, 1]]); }
+  const ix = (u, v) => base + u * NVs + (v % NVs);
+  for (let u = 0; u < NU; u++) for (let v = 0; v < NVs; v++) shoeTris.push([ix(u, v), ix(u + 1, v), ix(u + 1, v + 1)], [ix(u, v), ix(u + 1, v + 1), ix(u, v + 1)]);
+  // close the heel and the toe
+  for (const [u, flip] of [[0, true], [NU, false]]) { const c = V.length; const m = rows[u].reduce((s2, p) => add(s2, p), [0, 0, 0]).map((x) => x / NVs); V.push(m); W.push([[ankleBone, 1]]); for (let v = 0; v < NVs; v++) shoeTris.push(flip ? [c, ix(u, v + 1), ix(u, v)] : [c, ix(u, v), ix(u, v + 1)]); }
+  // the sole: a slab a little wider, 1.4 cm high
+  const sb = V.length;
+  for (const ring of rows) {
+    const cx = ring.reduce((s2, p) => s2 + p[0], 0) / NVs, cz = ring.reduce((s2, p) => s2 + p[2], 0) / NVs;
+    for (let v = 0; v < NVs; v++) { const p = ring[v]; const k = 1.06; V.push([cx + (p[0] - cx) * k, 0.0, cz + (p[2] - cz) * k]); W.push([[ankleBone, 1]]); V.push([cx + (p[0] - cx) * k, 0.016, cz + (p[2] - cz) * k]); W.push([[ankleBone, 1]]); }
+  }
+  const sx2 = (u, v, top) => sb + (u * NVs + (v % NVs)) * 2 + (top ? 1 : 0);
+  for (let u = 0; u < NU; u++) for (let v = 0; v < NVs; v++) {
+    soleTris.push([sx2(u, v, 0), sx2(u, v, 1), sx2(u + 1, v, 1)], [sx2(u, v, 0), sx2(u + 1, v, 1), sx2(u + 1, v, 0)]);
+  }
+}
+// every shoe and sole triangle facing outwards: away from the nearest point of its shoe's middle line
+for (const list of [shoeTris, soleTris]) for (const t of list) {
+  const [p0, p1, p2] = t.map((i) => V[i]);
+  const n = cross(sub(p1, p0), sub(p2, p0));
+  const c = mul(add(add(p0, p1), p2), 1 / 3);
+  let best = shoeCentres[0], bd = Infinity;
+  for (const q of shoeCentres) { const d = (q[0] - c[0]) ** 2 + (q[2] - c[2]) ** 2; if (d < bd) { bd = d; best = q; } }
+  if (dot(n, sub(c, best)) < 0) { const tmp = t[1]; t[1] = t[2]; t[2] = tmp; }
+}
 // the eyes: on the head, white with a dark iris at the front
 const eyeTris = [];
 const eyeReg = [];
@@ -348,8 +491,10 @@ for (const e of R.eyes) {
   for (const p of pts) { V.push(p); W.push([[headBone, 1]]); eyeReg.push(dot(nrm(sub(p, c)), FWD) > 0.82 ? 10 : 9); }
   for (const poly of e.f) for (let i = 1; i < poly.length - 1; i++) eyeTris.push([base + poly[0], base + poly[i], base + poly[i + 1]]);
 }
-const all = [...tris, ...capTris, ...visorTris, ...visorBotTris, ...eyeTris, ...collarTris, ...buttonTris];
-const triReg = [...triReg0, ...capTris.map(() => 6), ...visorTris.map(() => 6), ...visorBotTris.map(() => 11), ...eyeTris.map((t) => (t.some((i) => eyeReg[i - eyeBase] === 10) ? 10 : 9)), ...collarTris.map(() => 13), ...buttonTris.map(() => 12)];
+// the feet themselves stay hidden in the shoes
+const keepTri = tris.map((_, ti) => triReg0[ti] !== 3 && triReg0[ti] !== 4);
+const all = [...tris.filter((_, ti) => keepTri[ti]), ...shoeTris, ...soleTris, ...capTris, ...visorTris, ...visorBotTris, ...eyeTris, ...collarTris, ...buttonTris];
+const triReg = [...triReg0.filter((_, ti) => keepTri[ti]), ...shoeTris.map(() => 3), ...soleTris.map(() => 4), ...capTris.map(() => 6), ...visorTris.map(() => 6), ...visorBotTris.map(() => 11), ...eyeTris.map((t) => (t.some((i) => eyeReg[i - eyeBase] === 10) ? 10 : 9)), ...collarTris.map(() => 13), ...buttonTris.map(() => 12)];
 const order = all.map((_, i) => i).sort((p, q) => triReg[p] - triReg[q]);
 const groups = [];
 for (const i of order) { const r = triReg[i]; const g = groups[groups.length - 1]; if (g && g.r === r) g.n += 3; else groups.push({ r, start: groups.length ? groups[groups.length - 1].start + groups[groups.length - 1].n : 0, n: 3 }); }
