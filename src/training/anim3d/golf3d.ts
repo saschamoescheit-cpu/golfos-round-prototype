@@ -19,6 +19,7 @@ import type { L, Shot } from '../types';
 import { ballFlight } from '../motion';
 import { FULL_SWING, FULL_SWING_REAL } from './swings';
 import { buildRealClub } from './club3d';
+import { grassMaterial, skyTexture, treeLine } from './scene3d';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 // The 3D swing videos of Training (Sascha 17.10.2026: "3D animated videos would be better than still pictures").
@@ -293,7 +294,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   let envMap: THREE.Texture | null = null;
   scene.background = new THREE.Color('#cfe6f5');
   scene.fog = new THREE.Fog('#cfe6f5', 9, 26);
-  scene.add(new THREE.HemisphereLight('#ffffff', '#7cb257', 1.5));
+  const hemi = new THREE.HemisphereLight('#ffffff', '#7cb257', 1.5);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight('#ffffff', 2.1);
   sun.position.set(2.2, 4.5, 3.2);
   sun.castShadow = true;
@@ -313,7 +315,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   let groundN = new THREE.Vector3(0, 1, 0);
   /** the height of the ground at a place (0 on the flat) */
   const heightAt = (x: number, z: number) => -(groundN.x * x + groundN.z * z) / groundN.y;
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(30, 64), floorMat('#7cb257'));
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(60, 64), floorMat('#7cb257'));
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   ground.add(floor);
@@ -334,6 +336,41 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   cloth.position.set(6.4, 1.92, 0.3 - 0.25);
   cloth.rotation.y = Math.PI / 2;
   scene.add(cloth);
+
+  /** the stage of the realistic golfer: grass with stripes and blades, a sky, trees around the range, soft light from
+   *  the surroundings and finer shadows – set once, when the first realistic golfer comes on */
+  let realStage = false;
+  const setRealStage = () => {
+    if (realStage) return;
+    realStage = true;
+    floor.material = grassMaterial('#5c973a');
+    pad.material = grassMaterial('#69a443', { fine: true, stripes: 0 });
+    green.material = grassMaterial('#5fa83d', { fine: true, stripes: 0.03 });
+    for (const m of [floor, pad, green]) m.material.needsUpdate = true;
+    scene.background = skyTexture();
+    scene.fog = new THREE.Fog('#d9e7ee', 16, 55);
+    hemi.intensity = 1.1;
+    // the flag waves a little
+    const fg = new THREE.PlaneGeometry(0.5, 0.32, 12, 4);
+    const fp = fg.attributes.position;
+    for (let i = 0; i < fp.count; i++) { const x = fp.getX(i) + 0.25; fp.setZ(i, Math.sin(x * 9) * 0.035 * x * 2); }
+    fg.computeVertexNormals();
+    cloth.geometry.dispose();
+    cloth.geometry = fg;
+    scene.add(treeLine());
+    if (!envMap) {
+      const pm = new THREE.PMREMGenerator(renderer);
+      envMap = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+      pm.dispose();
+    }
+    scene.environment = envMap;
+    scene.environmentIntensity = 0.35;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.map?.dispose();
+    sun.shadow.map = null;
+    sun.shadow.radius = 3;
+    sun.intensity = 2.4;
+  };
 
   /** things of the scene itself, rebuilt with every video: two trees with a branch across the gap (the punch) */
   const sceneProps = new THREE.Group();
@@ -1150,6 +1187,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       const swing = real && given === FULL_SWING ? FULL_SWING_REAL : given;
       const club = buildClub(swing.club, real);
       // polished steel mirrors its surroundings: an environment for the realistic golfer
+      if (real) setRealStage();
       if (real) {
         if (!envMap) {
           const pm = new THREE.PMREMGenerator(renderer);
@@ -1369,7 +1407,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     }
     length = Math.max(...players.map((p) => p.prep.length));
     const first = list[0].swing;
-    (pad.material as THREE.MeshStandardMaterial).color.set(first.sand ? '#e3cf96' : '#8fc069'); // ci-allow: bunker sand
+    (pad.material as THREE.MeshStandardMaterial).color.set(first.sand ? '#e3cf96' : realStage ? '#64a040' : '#8fc069'); // ci-allow: bunker sand
     pad.scale.setScalar(list.length > 1 ? 1.8 : 1);
     bounds = null;
     t = 0;
