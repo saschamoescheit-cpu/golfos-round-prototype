@@ -53,8 +53,9 @@ export const loadTrash = (): TrashedRound[] => read<TrashedRound[]>(TRASH, []);
 let undoSnap: { round: Round; keys: Record<string, string> } | null = null;
 
 /** Deletes a round the player wants gone – with its GPS track, plan and caddie notes, so it does not come back.
- *  `undoable`: the player deleted it himself – it can be brought back for a few seconds ("Undo"). */
-export function deleteRound(id: string, undoable = false): void {
+ *  `undoable`: the player deleted it himself – it can be brought back for a few seconds ("Undo").
+ *  `toBin`: the app tidies up – the round goes to the bin without a word, never gone without the player. */
+export function deleteRound(id: string, undoable = false, toBin = false): void {
   const round = loadRounds().find((r) => r.id === id);
   const keys: Record<string, string> = {};
   write(ROUNDS, loadRounds().filter((r) => r.id !== id));
@@ -67,10 +68,12 @@ export function deleteRound(id: string, undoable = false): void {
   } catch {
     /* storage blocked */
   }
-  if (undoable && round && !round.preview) {
+  if ((undoable || toBin) && round && !round.preview) {
     write(TRASH, [{ round, keys, deletedAt: new Date().toISOString() }, ...loadTrash().filter((t) => t.round.id !== id)]);
-    undoSnap = { round, keys };
-    window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'round', id, label: round.courseName } }));
+    if (undoable) {
+      undoSnap = { round, keys };
+      window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'round', id, label: round.courseName } }));
+    }
   }
 }
 
@@ -267,7 +270,7 @@ export function newId(): string {
 /**
  * Rounds left open by accident (Sascha 14.10.2026: after cancelling a round an older one showed "Continue round"):
  * open rounds other than `keep` and older than `maxAgeH` hours are finished. Only a round with neither a score nor a
- * GPS track is deleted – a round played without entering a score is still a round (15.10.2026: Son Gual was lost).
+ * GPS track goes – into the bin – a round played without entering a score is still a round (15.10.2026: Son Gual was lost).
  */
 export function closeStaleRounds(maxAgeH: number, keep: string | null = null): void {
   for (const r of loadRounds()) {
@@ -280,6 +283,8 @@ export function closeStaleRounds(maxAgeH: number, keep: string | null = null): v
       tracked = false;
     }
     if (scored || tracked) saveRound({ ...r, finishedAt: r.createdAt });
-    else deleteRound(r.id);
+    // not even a score: into the bin, not gone – the player empties the bin himself (night check 22.10.2026; the app
+    // deletes nothing of the player's on its own since Son Gual, 14.10.)
+    else deleteRound(r.id, false, true);
   }
 }
