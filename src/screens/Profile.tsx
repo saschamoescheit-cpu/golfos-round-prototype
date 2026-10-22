@@ -15,6 +15,7 @@ import { loadProfile, profileIndex, saveProfile, type Profile } from '../lib/pro
 import { STANDARD_TEES, TEE_COLOURS, teeName } from '../data/tees';
 import { groupForHandicap, GROUPS } from '../lib/sg';
 import { deleteAccount, loadSession, signOut } from '../lib/sync';
+import { shareBackup } from '../lib/backup';
 import { setSoundTest, soundTestOn } from '../lib/impact';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
@@ -330,10 +331,24 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       )}
       {/* delete the account (final list, Sascha 22.10.2026): at the end, signed in only, asked once more – the data on this
           phone stay */}
-      {session && (
-        <section className="card stats-card">
-          <h2>{tr('Account', 'Konto')}</h2>
-          {!deleting ? (
+      {/* your data (final list, Sascha 22.10.2026): everything on this phone as one file – and with an account, delete it */}
+      <section className="card stats-card">
+        <h2>{tr('Your data', 'Deine Daten')}</h2>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={async () => {
+            try {
+              await shareBackup();
+            } catch {
+              // the share sheet closed – nothing to say
+            }
+          }}
+        >
+          {tr('Download my data', 'Meine Daten herunterladen')}
+        </button>
+        <span className="muted small">{tr('Rounds, games, profile, bag and settings as one file.', 'Runden, Spiele, Profil, Bag und Einstellungen als eine Datei.')}</span>
+        {session && (!deleting ? (
             <button type="button" className="btn-secondary btn-danger" onClick={() => { setDeleting(true); setDeleteMsg(null); }}>
               {tr('Delete account', 'Konto löschen')}
             </button>
@@ -367,11 +382,9 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
                 </button>
               </div>
             </div>
-          )}
-          {deleteMsg && <span className="muted small" role="status">{deleteMsg}</span>}
-        </section>
-      )}
-      {!session && deleteMsg && <p className="muted small" role="status">{deleteMsg}</p>}
+          ))}
+        {deleteMsg && <span className="muted small" role="status">{deleteMsg}</span>}
+      </section>
       <div className="home-foot">
         <Attribution />
         <span className="muted small" title={__BUILD_TIME__}>

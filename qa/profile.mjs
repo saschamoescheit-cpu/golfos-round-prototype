@@ -184,6 +184,20 @@ ok((await p.locator('.drawer-row').filter({ hasText: 'Vorlesen testen' }).count(
   });
   ok(centre.w === 160 && centre.px[1] > 100 && centre.px[0] < 120, `the photo saved as placed: 160 px, the green half in the middle (${centre.px.slice(0, 3).join(',')})`);
 }
+// "Meine Daten herunterladen" (final list, Sascha 22.10.2026): everything on the phone as one file
+{
+  const btn = p.getByRole('button', { name: 'Meine Daten herunterladen' });
+  await btn.scrollIntoViewIfNeeded();
+  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), btn.click()]);
+  let okFile = false;
+  if (dl) {
+    const path = await dl.path();
+    const { readFileSync } = await import('node:fs');
+    const b = JSON.parse(readFileSync(path, 'utf-8'));
+    okFile = b.app === 'golfos-rounds' && Object.keys(b.data).some((k) => k.startsWith('golfos.profile'));
+  }
+  ok(okFile, `"Meine Daten herunterladen" gives one file with the profile in it (${dl ? dl.suggestedFilename() : 'no download'})`);
+}
 ok(errs.length === 0, `no page errors in the app ${errs.slice(0, 2).join(' | ')}`); // Google's own page may log its own
 await p.getByRole('button', { name: 'Mit Google anmelden' }).click();
 await p.waitForURL(/accounts\.google\.com/, { timeout: 20000 }).catch(() => {});
