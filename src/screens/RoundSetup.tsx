@@ -11,6 +11,7 @@ import { TopBar } from '../components/ui';
 import { courseTees, defaultTee, profileTee, TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
+import { fetchShared } from '../lib/sharedratings';
 import type { TeeRating } from '../data/ratings';
 import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, type RoundFormat } from '../lib/games';
@@ -116,6 +117,14 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // (Sascha 21.10.2026: "every course has a course rating – it has to count")
   const teeKey = tee ?? '–'; // a course without tee data: the player's values for "the" tee
   const [ratingsSeen, setRatingsSeen] = useState(0); // re-read after the player saved his own values
+  // the values other players entered for this course – read again when new ones came (night run 22./23.10.2026)
+  useEffect(() => {
+    let alive = true;
+    fetchShared(props.course.id).then((news) => alive && news && setRatingsSeen((n) => n + 1));
+    return () => {
+      alive = false;
+    };
+  }, [props.course.id]);
   const rating: TeeRating | null = useMemo(() => (holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, teeKey, holes, lady) : null), [props.course.id, teeKey, holes.map((h) => h.label).join(), ratingsSeen, lady]);
   // every player by his own tee
   const ratingOf = (p: DraftPlayer): TeeRating | null => (p.id === 'me' ? rating : holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, p.tee ?? '–', holes) : null);

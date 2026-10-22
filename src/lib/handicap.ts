@@ -3,6 +3,7 @@ import { RATINGS, type TeeRating } from '../data/ratings';
 import { grossForHole, handicapStrokes, netDoubleBogey } from './scoring';
 import { isTeamRound } from './games';
 import { isLady } from './profile';
+import { shareRating, sharedRating } from './sharedratings';
 
 // The handicap played today (World Handicap System): the score differential of an 18-hole round,
 //   differential = 113 / slope × (adjusted gross score − course rating),
@@ -33,15 +34,16 @@ export function ratingFor(courseId: string, tee: string, holes: { loop: string }
   const own = ownRatings()[`${courseId}|${tee}|${key}`] ?? ownRatings()[`${courseId}|–|${key}`];
   if (own) return own;
   // the bundled values are the men's: a lady's course rating from the same tee is higher (Hetzenhof red ~66 men, ~71
-  // ladies) – no wrong playing handicap, she enters hers from the scorecard (Sascha 22.10.2026)
-  if (lady) return null;
+  // ladies) – no wrong playing handicap, she enters hers from the scorecard (Sascha 22.10.2026); or another lady did
+  if (lady) return sharedRating(courseId, tee, key, true);
   const all = RATINGS[courseId] ?? {};
   if (all[`${tee}@${key}`]) return all[`${tee}@${key}`];
   if (key.length === 1) {
     const combo = Object.keys(all).filter((k) => k.startsWith(`${tee}@`) && k.slice(tee.length + 1).includes(key)).sort()[0];
     if (combo) return all[combo];
   }
-  return all[tee] ?? null;
+  // nothing bundled: what other players entered for this course, loops and tee (night run 22./23.10.2026)
+  return all[tee] ?? sharedRating(courseId, tee, key, false);
 }
 
 /** The player's own course rating and slope for this tee and these holes – kept for the next round. */
@@ -52,6 +54,7 @@ export function saveOwnRating(courseId: string, tee: string, holes: { loop: stri
     if (rating) all[k] = rating;
     else delete all[k];
     localStorage.setItem(OWN, JSON.stringify(all));
+    if (rating) void shareRating(courseId, tee, loopsKey(holes), isLady(), rating); // for the other players
   } catch {
     /* storage full – this round only */
   }
