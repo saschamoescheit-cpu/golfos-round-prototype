@@ -1539,3 +1539,16 @@ button.tile:disabled { opacity: 1; }
 .tee-clubs { gap: 24px; }
 .tee-club-row { gap: 14px; }
 .tee-club-row + .tee-club-row { padding-top: 22px; }
+
+/* the round check (Sascha 22.10.2026): progress, "Loch passt", questions with their fix, strokes gained per shot */
+.review-progress { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+.review-progress-bar { width: 90px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; display: inline-block; }
+.review-progress-bar i { display: block; height: 100%; background: var(--brand-text); border-radius: 3px; }
+.notice-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.notice-actions .btn-secondary { min-height: 44px; padding: 0 14px; font-size: 14px; flex: 1 1 auto; }
+.shot-row { width: 100%; }
+.shot-row-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.shot-sg { font: 700 13px var(--body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.shot-more { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.chips-field { overflow: visible; }
+.putt-miss { display: flex; flex-direction: column; gap: 8px; }

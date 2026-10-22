@@ -263,7 +263,7 @@ ok(!/Dein Score war/.test(notices), 'no false score difference on hole 7');
 ok((await p.locator('.review-list li').filter({ hasText: /Putts/ }).count()) === 1, 'putts in the list');
 // confirming the hole keeps the score from the course (the detection may miss a shot, the penalty is not placed yet)
 const before = e7.strokes;
-await p.locator('.btn-primary').filter({ hasText: /bestätigen/ }).click();
+await p.locator('.btn-primary').filter({ hasText: /passt/ }).click();
 await p.waitForTimeout(600);
 const after = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][6].strokes);
 ok(after === before, `confirming hole 7 keeps the score from the course (${before} → ${after})`);

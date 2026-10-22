@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { Club, Lie, PenaltyKind, ShotKind } from '../types';
+import type { Club, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike } from '../types';
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
-import { Segmented } from './ui';
+import { alwaysAgain, INTENTS, PENALTIES, SLOPES, STRIKES } from '../lib/shotfacts';
+import { Chips, Segmented } from './ui';
 import { clubCode, tr } from '../lib/i18n';
 
 // Bottom sheet for one shot of the detailed tracking: lie (suggested from the map), shot type (suggested
@@ -19,7 +20,23 @@ export function ShotSheet(props: {
   editing: boolean;
   bag?: { club: Club; m: number; carry?: number }[]; // the player's distances – m the total; carry as set in "My bag"
   replay?: boolean;
-  onSave: (v: { lie: Lie; club: Club | null; penalty: boolean; penaltyKind?: PenaltyKind; replay?: boolean; kind: ShotKind; review: false }) => void;
+  provisional?: boolean;
+  strike?: Strike;
+  intent?: Intent;
+  slope?: SlopeLie;
+  onSave: (v: {
+    lie: Lie;
+    club: Club | null;
+    penalty: boolean;
+    penaltyKind?: PenaltyKind;
+    replay?: boolean;
+    provisional?: boolean;
+    strike?: Strike;
+    intent?: Intent;
+    slope?: SlopeLie;
+    kind: ShotKind;
+    review: false;
+  }) => void;
   onDelete?: () => void;
   onHoledOut?: () => void; // "holed from here" (chip-in) – only for a new shot
   onCancel: () => void;
@@ -31,10 +48,30 @@ export function ShotSheet(props: {
   // water: a drop, or the next shot again from here (Sascha 22.10.2026: two balls off the tee into the water, each time
   // again from the tee – stroke and distance, as out of bounds always is)
   const [replay, setReplay] = useState(!!props.replay);
+  // out of bounds or lost off the tee: the second ball was often a provisional one – the same stroke and distance
+  const [provisional, setProvisional] = useState(!!props.provisional);
+  // what the player tells after the round (Sascha 22.10.2026): strike, intent, stance – optional, one tap each
+  const [strike, setStrike] = useState<Strike | null>(props.strike ?? null);
+  const [intent, setIntent] = useState<Intent | null>(props.intent ?? null);
+  const [slope, setSlope] = useState<SlopeLie | null>(props.slope ?? null);
+  const again = penalty && (alwaysAgain(pk as PenaltyKind) || replay);
   const [club, setClub] = useState<Club | null>(props.club);
   const [kind, setKind] = useState<ShotKind | null>(props.kind ?? null); // null = follow the suggestion
   const shownKind = kind ?? suggestKind(lie, props.toPinM);
-  const save = (c: Club | null) => props.onSave({ lie, club: c, penalty, penaltyKind: penalty ? (pk as PenaltyKind) : undefined, replay: pk === 'water' ? replay : pk === 'ob' ? true : undefined, kind: shownKind, review: false });
+  const save = (c: Club | null) =>
+    props.onSave({
+      lie,
+      club: c,
+      penalty,
+      penaltyKind: penalty ? (pk as PenaltyKind) : undefined,
+      replay: !penalty ? undefined : alwaysAgain(pk as PenaltyKind) ? true : replay,
+      provisional: again && alwaysAgain(pk as PenaltyKind) ? provisional : undefined,
+      strike: strike ?? undefined,
+      intent: intent ?? undefined,
+      slope: slope ?? undefined,
+      kind: shownKind,
+      review: false,
+    });
   return (
     <div className="sheet-backdrop" onClick={props.onCancel}>
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
@@ -88,18 +125,29 @@ export function ShotSheet(props: {
         </div>
         <div className="field">
           <label>{tr('Penalty after this shot (+1)', 'Strafschlag nach diesem Schlag (+1)')}</label>
-          <Segmented<PenaltyKind | 'none'>
+          {/* water, out of bounds, lost, unplayable – they wrap on a small phone (Rules 17, 18, 19) */}
+          <Chips<PenaltyKind | 'none'>
             label={tr('Penalty', 'Strafschlag')}
             value={pk}
             onChange={(v) => v && setPk(v)}
-            options={[
-              { value: 'none', label: tr('None', 'Keiner') },
-              { value: 'water', label: tr('Water', 'Wasser') },
-              { value: 'ob', label: tr('Out of bounds', 'Aus') },
-            ]}
+            options={[{ value: 'none', label: tr('None', 'Keiner') }, ...PENALTIES.map((x) => ({ value: x.value, label: x.label() }))]}
           />
         </div>
-        {pk === 'water' && (
+        {(pk === 'ob' || pk === 'lost') && (
+          <div className="field">
+            <label>{tr('Then – stroke and distance', 'Danach – Schlag und Distanz')}</label>
+            <Segmented<'again' | 'provisional'>
+              label={tr('Then', 'Danach')}
+              value={provisional ? 'provisional' : 'again'}
+              onChange={(v) => v && setProvisional(v === 'provisional')}
+              options={[
+                { value: 'again', label: tr('Again from here', 'Erneut von hier') },
+                { value: 'provisional', label: tr('Provisional ball', 'Provisorischer Ball') },
+              ]}
+            />
+          </div>
+        )}
+        {(pk === 'water' || pk === 'unplayable') && (
           <div className="field">
             <label>{tr('Then', 'Danach')}</label>
             <Segmented<'drop' | 'replay'>
@@ -111,6 +159,23 @@ export function ShotSheet(props: {
                 { value: 'replay', label: tr('Again from here', 'Erneut von hier') },
               ]}
             />
+          </div>
+        )}
+        {props.editing && (
+          // more about the shot – optional; the bag learns its distances from good strikes (Sascha 22.10.2026)
+          <div className="shot-more">
+            <div className="field">
+              <label>{tr('Strike (optional)', 'Treffer (optional)')}</label>
+              <Chips<Strike> label={tr('Strike', 'Treffer')} value={strike} onChange={setStrike} options={STRIKES.map((x) => ({ value: x.value, label: x.label() }))} />
+            </div>
+            <div className="field">
+              <label>{tr('Meant to (optional)', 'Absicht (optional)')}</label>
+              <Chips<Intent> label={tr('Meant to', 'Absicht')} value={intent} onChange={setIntent} options={INTENTS.map((x) => ({ value: x.value, label: x.label() }))} />
+            </div>
+            <div className="field">
+              <label>{tr('Stance (optional)', 'Stand (optional)')}</label>
+              <Chips<SlopeLie> label={tr('Stance', 'Stand')} value={slope} onChange={setSlope} options={SLOPES.map((x) => ({ value: x.value, label: x.label() }))} />
+            </div>
           </div>
         )}
         <div className="sheet-actions">

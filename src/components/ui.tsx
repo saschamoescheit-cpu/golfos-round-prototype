@@ -48,7 +48,31 @@ export function Segmented<T extends string | number>(props: {
   );
 }
 
-export function TopBar(props: { title: ReactNode; onBack?: () => void; backLabel?: string; right?: ReactNode }) {
+/** Like Segmented, but the options wrap to further lines – for more options than fit side by side on a small phone
+ *  (the app's chips: green when chosen). A second tap clears the choice. */
+export function Chips<T extends string | number>(props: {
+  options: { value: T; label: string }[];
+  value: T | null;
+  onChange: (v: T | null) => void;
+  label: string;
+}) {
+  return (
+    <div className="chip-row wrap chips-field" role="group" aria-label={props.label}>
+      {props.options.map((o) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          aria-pressed={props.value === o.value}
+          onClick={() => props.onChange(props.value === o.value ? null : o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function TopBar(props:{ title: ReactNode; onBack?: () => void; backLabel?: string; right?: ReactNode }) {
   return (
     <div className="topbar">
       {props.onBack && (

@@ -1,12 +1,14 @@
 // The QA gate of Rounds & Games before going live (night 18./19.10.2026): all browser tests, several at a time, then the
 // unit tests. Prints only what failed – and a line per test with its time.
-// Usage: node qa/gate.mjs [parallel=4] [test …]   (the dev server on :5173 must run)
+// Usage: node qa/gate.mjs [parallel=4] [http://localhost:PORT/] [test …]   (the dev server on :5173 must run, or the one
+// at the given address – a second copy of the app, so work goes on while the gate runs)
 import { spawn } from 'node:child_process';
 
-const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows'];
+const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1'];
 const args = process.argv.slice(2);
 const par = Number(args.find((a) => /^\d+$/.test(a)) ?? 3);
-const only = args.filter((a) => !/^\d+$/.test(a));
+const base = args.find((a) => /^https?:/.test(a));
+const only = args.filter((a) => !/^\d+$/.test(a) && !/^https?:/.test(a));
 // the longest first, so the run ends together
 const SLOW = ['games', 'modes', 'het9', 'training', 'puttzoom', 'score', 'review', 'bin'];
 const queue = (only.length ? only : ALL).slice().sort((a, b) => (SLOW.indexOf(a) < 0 ? 99 : SLOW.indexOf(a)) - (SLOW.indexOf(b) < 0 ? 99 : SLOW.indexOf(b)));
@@ -34,7 +36,7 @@ async function worker() {
   while (queue.length) {
     const name = queue.shift();
     const s = Date.now();
-    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`], name === 'games' || name === 'modes' ? 1800000 : 900000);
+    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...(base && name !== 'offline' ? [base] : [])], name === 'games' || name === 'modes' ? 1800000 : 900000);
     const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
     const secs = Math.round((Date.now() - s) / 1000);
     if (bad.length || code) {
@@ -48,7 +50,7 @@ await Promise.all(Array.from({ length: par }, worker));
 // a test that failed among others runs once more on its own – the load of four browsers at a time can make a test
 // miss a timing; a real failure fails again
 for (const name of failed.splice(0)) {
-  const { code, out } = await run(process.execPath, [`qa/${name}.mjs`], name === 'games' || name === 'modes' ? 1800000 : 900000);
+  const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...(base && name !== 'offline' ? [base] : [])], name === 'games' || name === 'modes' ? 1800000 : 900000);
   const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
   if (bad.length || code) {
     failed.push(name);

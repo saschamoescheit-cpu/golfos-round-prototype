@@ -149,7 +149,7 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
       ok((await p.locator('.sc-actions').getByRole('button', { name: 'Schläge prüfen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Teilen' }).count()) === 1 && (await p.locator('.sc-actions').getByRole('button', { name: 'Löschen' }).count()) === 1, `${label}: the row of actions: check shots, share, delete`);
       // right after finishing the choice is open by itself (Sascha 22.10.2026)
       const sheet = p.getByRole('dialog', { name: 'Status der Runde' });
-      ok((await sheet.count()) === 1 && /wie geht es weiter/.test(await sheet.innerText()), `${label}: the choice opens by itself after finishing`);
+      ok((await sheet.count()) === 1 && /Wie geht es weiter/.test(await sheet.innerText()), `${label}: the choice opens by itself after finishing`);
       ok(/Jetzt prüfen & signieren/.test(await sheet.innerText()) && /Nur speichern/.test(await sheet.innerText()), `${label}: the ways in the state's sheet`);
       await sheet.getByRole('button', { name: /^Später prüfen & signieren/ }).click();
       await p.waitForTimeout(400);

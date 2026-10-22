@@ -155,9 +155,13 @@ function holeNotes(entries: HoleEntry[], par: number): string[] {
   const pens = entries.flatMap((e) => (e.detail ? e.detail.shots.filter((x) => x.penalty) : Array.from({ length: e.penalties }, () => null)));
   const water = pens.filter((x) => x?.penaltyKind === 'water').length;
   const ob = pens.filter((x) => x?.penaltyKind === 'ob').length;
-  const other = pens.length - water - ob;
+  const lost = pens.filter((x) => x?.penaltyKind === 'lost').length;
+  const unplayable = pens.filter((x) => x?.penaltyKind === 'unplayable').length;
+  const other = pens.length - water - ob - lost - unplayable;
   if (water) out.push(tr(`${water}× water`, `${water}× Wasser`));
   if (ob) out.push(tr(`${ob}× out of bounds`, `${ob}× Aus`));
+  if (lost) out.push(tr(`${lost}× lost ball`, `${lost}× Ball verloren`));
+  if (unplayable) out.push(tr(`${unplayable}× unplayable`, `${unplayable}× unspielbar`));
   if (other) out.push(tr(`${other}× penalty`, `${other}× Strafschlag`));
   const bunker = entries.filter((e) => e.greensideBunker || e.detail?.shots.some((x) => x.lie === 'bunker')).length;
   if (bunker >= 2) out.push(tr(`${bunker}× bunker`, `${bunker}× Bunker`));

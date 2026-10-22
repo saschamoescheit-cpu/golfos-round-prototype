@@ -57,7 +57,7 @@ await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(800);
 await p.getByRole('button', { name: /Schläge prüfen/ }).click();
 await p.waitForTimeout(2500);
-await inView(/^Loch .* bestätigen|Runde .*fertig|bestätigen/, 'round-check');
+await inView(/^Loch .* passt|Runde .*fertig|passt/, 'round-check');
 await toModule('games');
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
 await p.waitForTimeout(600);

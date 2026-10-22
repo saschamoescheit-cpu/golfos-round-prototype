@@ -94,8 +94,15 @@ export type Lie = 'tee' | 'fairway' | 'semirough' | 'rough' | 'fringe' | 'bunker
 export type ShotKind = 'full' | 'punch' | 'pitch' | 'chip' | 'bunker';
 /** 'Hy' is the 4-hybrid (shown as "4H"; the name stays for older rounds). Full list: lib/clubs.ts. */
 export type Club = 'Dr' | '3W' | '4W' | '5W' | '7W' | '9W' | '2H' | '3H' | 'Hy' | '5H' | '6H' | '2i' | '3i' | '4i' | '5i' | '6i' | '7i' | '8i' | '9i' | 'PW' | 'GW' | 'SW' | 'LW' | 'Pt'; // 'Pt': the putter from off the green – the Texas wedge (Sascha 18.10.2026), not in the bag's distances
-/** Penalty after a shot: water (drop near where it went in) or out of bounds (stroke and distance). */
-export type PenaltyKind = 'water' | 'ob';
+/** Penalty after a shot: water (drop near where it went in), out of bounds and lost ball (stroke and distance),
+ *  unplayable (Rule 19: drop or again – Sascha 22.10.2026). */
+export type PenaltyKind = 'water' | 'ob' | 'lost' | 'unplayable';
+/** How the shot was struck (Sascha 22.10.2026: the bag learns from good strikes; misses per club). */
+export type Strike = 'good' | 'fat' | 'thin' | 'slice' | 'hook' | 'shank';
+/** What the shot was meant to do – a layup is no missed green. */
+export type Intent = 'attack' | 'layup' | 'recovery';
+/** The stance: flat, uphill, downhill, ball above / below the feet. */
+export type SlopeLie = 'flat' | 'up' | 'down' | 'above' | 'below';
 export interface Shot {
   pos: LngLat | null; // where the shot was hit from (GPS or tapped); null when entered without position
   lie: Lie;
@@ -105,6 +112,11 @@ export interface Shot {
   missPos?: LngLat | null; // where the ball went into the water / out of bounds (for the miss statistics)
   /** water, then played again from the same spot (stroke and distance) instead of a drop (Sascha 22.10.2026) */
   replay?: boolean;
+  /** the ball played again was a provisional ball (out of bounds / lost off the tee) */
+  provisional?: boolean;
+  strike?: Strike;
+  intent?: Intent;
+  slope?: SlopeLie;
   kind?: ShotKind; // missing = suggested from lie and distance
   review?: boolean; // detected automatically from the GPS track – the player should check it
   byHand?: boolean; // noted by hand on the course ("shot here") – drawn as the hand circle with its club (20.10.2026)
@@ -135,6 +147,10 @@ export interface HoleEntry {
   puttsAt?: { pin: LngLat; balls: LngLat[] };
   /** Weather when the player was on the hole (GOL-26). */
   weather?: { tempC: number; windKmh: number; windFromDeg: number };
+  /** The player confirmed the hole in the round check ("Loch passt", Sascha 22.10.2026). */
+  checked?: boolean;
+  /** How the first putt missed, told after the round when the putts were not placed on the green. */
+  firstPuttMiss?: { length: 'short' | 'long' | null; line: 'left' | 'right' | null };
 }
 
 export interface Player {
