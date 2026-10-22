@@ -191,8 +191,80 @@ export function applyRealisticSkin(rig: Rig): boolean {
   rig.root.add(mesh);
   rig.root.updateMatrixWorld(true);
   mesh.bind(new THREE.Skeleton(bones, inverses), new THREE.Matrix4());
+  dualQuaternionSkinning(mesh, mats);
   rig.root.userData.realistic = true;
   return true;
+}
+
+/** Dual quaternion skinning (22.10.2026): the bones' turns blended as turns, not as matrices – where a joint turns far
+ *  (the arm across the chest at the top, up in the finish, the twist of the forearm) the skin keeps its volume instead of
+ *  collapsing into folds. Each frame the bones' moves (relative to the body, so a mirrored or moved golfer stays the
+ *  same) as dual quaternions into a small texture; the vertex shader blends those. */
+function dualQuaternionSkinning(mesh: THREE.SkinnedMesh, mats: THREE.Material[]) {
+  const n = mesh.skeleton.bones.length;
+  const data = new Float32Array(n * 2 * 4);
+  const tex = new THREE.DataTexture(data, 2, n, THREE.RGBAFormat, THREE.FloatType);
+  // the neck and the head keep the plain blend: turned far against the chest, the collar and the neckline fit it better
+  const names = mesh.skeleton.bones.map((b) => b.name);
+  const plain = new THREE.Vector2(names.indexOf('neck'), names.indexOf('head'));
+  tex.needsUpdate = true;
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), t = new THREE.Vector3(), sc = new THREE.Vector3();
+  let frame = -1;
+  mesh.onBeforeRender = (renderer) => {
+    if (renderer.info.render.frame === frame) return;
+    frame = renderer.info.render.frame;
+    const bm = mesh.skeleton.boneMatrices;
+    for (let i = 0; i < n; i++) {
+      m.fromArray(bm, i * 16).premultiply(mesh.bindMatrixInverse).multiply(mesh.bindMatrix);
+      m.decompose(t, q, sc);
+      // the dual part: half the move times the turn
+      const dx = 0.5 * (t.x * q.w + t.y * q.z - t.z * q.y);
+      const dy = 0.5 * (-t.x * q.z + t.y * q.w + t.z * q.x);
+      const dz = 0.5 * (t.x * q.y - t.y * q.x + t.z * q.w);
+      const dw = -0.5 * (t.x * q.x + t.y * q.y + t.z * q.z);
+      data.set([q.x, q.y, q.z, q.w, dx, dy, dz, dw], i * 8);
+    }
+    tex.needsUpdate = true;
+  };
+  const DQ = /* glsl */ `
+uniform sampler2D dqTexture;
+uniform ivec2 dqPlain;
+vec4 dqReal; vec4 dqDual;
+// how much of a vertex follows the neck or the head (those keep the plain blend)
+float dqPlainShare(ivec4 idx, vec4 w) {
+  float s = 0.0;
+  for (int k = 0; k < 4; k++) if (idx[k] == dqPlain.x || idx[k] == dqPlain.y) s += w[k];
+  return clamp(s * 2.0, 0.0, 1.0);
+}
+void dqBlend(ivec4 idx, vec4 w) {
+  vec4 r0 = texelFetch(dqTexture, ivec2(0, idx.x), 0), d0 = texelFetch(dqTexture, ivec2(1, idx.x), 0);
+  vec4 r1 = texelFetch(dqTexture, ivec2(0, idx.y), 0), d1 = texelFetch(dqTexture, ivec2(1, idx.y), 0);
+  vec4 r2 = texelFetch(dqTexture, ivec2(0, idx.z), 0), d2 = texelFetch(dqTexture, ivec2(1, idx.z), 0);
+  vec4 r3 = texelFetch(dqTexture, ivec2(0, idx.w), 0), d3 = texelFetch(dqTexture, ivec2(1, idx.w), 0);
+  // the shortest way: each turn on the same side as the first
+  float s1 = dot(r0, r1) < 0.0 ? -1.0 : 1.0, s2 = dot(r0, r2) < 0.0 ? -1.0 : 1.0, s3 = dot(r0, r3) < 0.0 ? -1.0 : 1.0;
+  vec4 r = w.x * r0 + w.y * s1 * r1 + w.z * s2 * r2 + w.w * s3 * r3;
+  vec4 d = w.x * d0 + w.y * s1 * d1 + w.z * s2 * d2 + w.w * s3 * d3;
+  float l = length(r);
+  dqReal = r / l; dqDual = d / l;
+}
+vec3 dqTurn(vec3 v) { return v + 2.0 * cross(dqReal.xyz, cross(dqReal.xyz, v) + dqReal.w * v); }
+vec3 dqMove(vec3 p) { return dqTurn(p) + 2.0 * (dqReal.w * dqDual.xyz - dqDual.w * dqReal.xyz + cross(dqReal.xyz, dqDual.xyz)); }
+`;
+  for (const mat of mats) {
+    const before = mat.onBeforeCompile.bind(mat);
+    const key = mat.customProgramCacheKey.bind(mat);
+    mat.onBeforeCompile = (sh, r) => {
+      before(sh, r);
+      sh.uniforms.dqTexture = { value: tex };
+      sh.uniforms.dqPlain = { value: plain };
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <skinning_pars_vertex>', `#include <skinning_pars_vertex>\n${DQ}`)
+        .replace('#include <skinnormal_vertex>', 'vec3 dqRestN = objectNormal;\n#include <skinnormal_vertex>\ndqBlend(ivec4(skinIndex), skinWeight);\nfloat dqP = dqPlainShare(ivec4(skinIndex), skinWeight);\nobjectNormal = normalize(mix(dqTurn(dqRestN), objectNormal, dqP));')
+        .replace('#include <skinning_vertex>', 'vec3 dqRestP = transformed;\n#include <skinning_vertex>\ntransformed = mix(dqMove(dqRestP), transformed, dqP);');
+    };
+    mat.customProgramCacheKey = () => key() + '-dq';
+  }
 }
 
 /** the closed hand, worked out once (the same body every time): per side, per finger the three turns */
