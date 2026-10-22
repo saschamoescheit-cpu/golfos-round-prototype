@@ -1179,7 +1179,7 @@ button.tile:disabled { opacity: 1; }
 .chicago-team strong:last-child { min-width: 44px; text-align: right; }
 
 /* Profile: home club searched like a course; the caddie's settings under the unit */
-.home-club { width: 100%; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface-2); }
+.home-club, .std-tee { width: 100%; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface-2); }
 .settings-sub { margin: 6px 0 0; font: 700 16px var(--body); }
 .overlay-screen { position: fixed; inset: 0; z-index: 60; background: var(--bg); overflow-y: auto; }
 
@@ -1499,3 +1499,12 @@ button.tile:disabled { opacity: 1; }
 .insight.bad .insight-num { color: var(--bad); }
 .tee-club-name { margin: 0; font: 600 16px var(--display); }
 .speech-test { white-space: normal; overflow-wrap: anywhere; }
+
+/* the standard tee in the profile (Sascha 22.10.2026) */
+.std-tee-name { display: inline-flex; align-items: center; gap: 10px; }
+.tee-dot.none { background: transparent; border: 1.5px dashed var(--line-strong); }
+
+/* sign in with a user name and password (Sascha 22.10.2026) */
+.account-form { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.account-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.account-or { text-align: center; }

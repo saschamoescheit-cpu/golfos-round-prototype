@@ -352,6 +352,8 @@ export interface Session {
   expires_at: number; // seconds
   email: string | null;
   name: string | null;
+  /** the account's user name for signing in with user name + password (null: Google only, none set yet) */
+  username?: string | null;
 }
 export const loadSession = (): Session | null => parse<Session | null>(browserStore.get(AUTH), null);
 const saveSession = (s: Session | null) => (s ? browserStore.set(AUTH, JSON.stringify(s)) : browserStore.remove(AUTH));
@@ -380,6 +382,7 @@ export async function finishSignIn(): Promise<Session | null> {
     const u = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${access}` } }).then((r) => r.json());
     s.email = u.email ?? null;
     s.name = u.user_metadata?.full_name ?? u.user_metadata?.name ?? null;
+    s.username = await ownName(access);
     // the first name, last name and photo from Google into the profile – fields the player filled stay his
     const p = loadProfile();
     const parts = (s.name ?? '').trim().split(/\s+/).filter(Boolean);
@@ -395,6 +398,106 @@ export async function finishSignIn(): Promise<Session | null> {
   }
   saveSession(s);
   return s;
+}
+
+// ---------- Sign in with a user name (or e-mail) and password, besides Google ----------
+// Sascha 22.10.2026: "as in Schlaufuchs". An account once (user name, e-mail, password), then on every device with user
+// name + password. Supabase knows e-mail + password only: the server finds the e-mail to a user name – only with the
+// right password (supabase/golfos-login.sql). Signed in with Google, a user name and password can be set later.
+
+export const USERNAME_RULE = /^[a-z0-9][a-z0-9._-]{2,19}$/;
+export const PASSWORD_MIN = 8;
+export const normName = (s: string): string => s.trim().toLowerCase();
+
+const authHeaders = (bearer?: string): Record<string, string> => ({ apikey: SUPABASE_KEY, 'Content-Type': 'application/json', ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}) });
+
+/** What Supabase answered, in the player's words. */
+async function authProblem(r: Response): Promise<Error> {
+  const j = (await r.json().catch(() => ({}))) as { error_code?: string; code?: string | number; msg?: string; message?: string; error_description?: string };
+  const code = String(j.error_code ?? j.code ?? '');
+  const text = `${j.msg ?? j.message ?? j.error_description ?? ''}`;
+  const say = (en: string, de: string) => new Error(tr(en, de));
+  if (code === 'user_already_exists' || /already registered/i.test(text)) return say('There is an account with this e-mail already – please sign in.', 'Mit dieser E-Mail gibt es schon ein Konto – bitte anmelden.');
+  if (code === 'invalid_credentials' || /invalid login/i.test(text)) return say('User name or password is not right.', 'Benutzername oder Passwort stimmt nicht.');
+  if (code === 'weak_password' || (/password/i.test(text) && /least|short|weak/i.test(text))) return say(`The password is too short – at least ${PASSWORD_MIN} characters.`, `Das Passwort ist zu kurz – mindestens ${PASSWORD_MIN} Zeichen.`);
+  if (code === 'email_address_invalid' || /email.*invalid/i.test(text)) return say('This e-mail address does not work.', 'Diese E-Mail-Adresse funktioniert nicht.');
+  if (code === 'over_request_rate_limit' || r.status === 429) return say('Too many tries – please again in a few minutes.', 'Zu viele Versuche – bitte in ein paar Minuten noch einmal.');
+  if (code === 'email_not_confirmed') return say('The e-mail is not confirmed yet.', 'Die E-Mail ist noch nicht bestätigt.');
+  if (code === 'signup_disabled' || code === 'email_provider_disabled') return say('Accounts with e-mail are not switched on yet.', 'Konten mit E-Mail sind noch nicht eingeschaltet.');
+  if (code === '23505' || /duplicate|unique/i.test(text) || /database error saving new user/i.test(text)) return say('This user name is taken.', 'Dieser Benutzername ist schon vergeben.');
+  if (/too_many_attempts/.test(text)) return say('Too many wrong tries – please again in 15 minutes.', 'Zu viele falsche Versuche – bitte in 15 Minuten noch einmal.');
+  if (r.status === 404 && /function|golfos_/i.test(text)) return say('Signing in with a user name is not set up on the server yet.', 'Die Anmeldung mit Benutzername ist auf dem Server noch nicht eingerichtet.');
+  return say(`Sign-in failed (${r.status}).`, `Anmeldung fehlgeschlagen (${r.status}${text ? `: ${text.slice(0, 80)}` : ''}).`);
+}
+
+async function rpc<T>(fn: string, args: Record<string, unknown>, bearer?: string): Promise<T> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers: authHeaders(bearer), body: JSON.stringify(args) });
+  if (!r.ok) throw await authProblem(r);
+  const text = await r.text();
+  return (text ? JSON.parse(text) : null) as T;
+}
+
+/** The account's user name (null: none set). */
+async function ownName(bearer: string): Promise<string | null> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/golfos_names?select=username`, { headers: authHeaders(bearer) });
+    if (!r.ok) return null;
+    return ((await r.json()) as { username: string }[])[0]?.username ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Supabase answered with the keys: signed in, then sync at once. */
+async function startSession(j: { access_token?: string; refresh_token?: string; expires_in?: number; user?: { email?: string } }): Promise<void> {
+  if (!j.access_token || !j.refresh_token) throw new Error(tr('The account is created but has to be confirmed by e-mail first.', 'Das Konto ist angelegt, muss aber erst per E-Mail bestätigt werden.'));
+  browserStore.remove(META); // possibly another account than before on this device: a full sync
+  saveSession({ access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (j.expires_in ?? 3600), email: j.user?.email ?? null, name: null, username: await ownName(j.access_token) });
+  noteSyncError(null);
+  void syncNow();
+}
+
+/** Sign in: user name (or e-mail) and password. */
+export async function signInWithPassword(login: string, password: string): Promise<void> {
+  let email = login.trim();
+  if (!email.includes('@')) {
+    const found = await rpc<string | null>('golfos_login_email', { p_username: normName(login), p_password: password });
+    if (!found) throw new Error(tr('User name or password is not right.', 'Benutzername oder Passwort stimmt nicht.'));
+    email = found;
+  }
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ email, password }) });
+  if (!r.ok) throw await authProblem(r);
+  await startSession(await r.json());
+}
+
+/** A new account: user name, e-mail, password – this device is signed in afterwards. */
+export async function signUp(username: string, email: string, password: string): Promise<void> {
+  const name = normName(username);
+  if (!USERNAME_RULE.test(name)) throw new Error(tr('User name: 3–20 characters, letters a–z, digits, dot, dash.', 'Benutzername: 3–20 Zeichen, nur Buchstaben a–z, Ziffern, Punkt, Strich.'));
+  if (password.length < PASSWORD_MIN) throw new Error(tr(`The password is too short – at least ${PASSWORD_MIN} characters.`, `Das Passwort ist zu kurz – mindestens ${PASSWORD_MIN} Zeichen.`));
+  if (!(await rpc<boolean>('golfos_name_free', { p_username: name }))) throw new Error(tr('This user name is taken.', 'Dieser Benutzername ist schon vergeben.'));
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/signup`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ email: email.trim(), password, data: { golfos_username: name } }) });
+  if (!r.ok) throw await authProblem(r);
+  const j = await r.json();
+  await startSession(j.access_token ? j : { ...j, user: j });
+}
+
+/** Signed in (e.g. with Google): set or change user name and password – for signing in on the other devices. */
+export async function setLogin(username: string | null, password: string | null): Promise<void> {
+  const t = await authToken();
+  if (!t) throw new Error(tr('Please sign in again first.', 'Bitte zuerst neu anmelden.'));
+  if (username != null) {
+    const name = normName(username);
+    if (!USERNAME_RULE.test(name)) throw new Error(tr('User name: 3–20 characters, letters a–z, digits, dot, dash.', 'Benutzername: 3–20 Zeichen, nur Buchstaben a–z, Ziffern, Punkt, Strich.'));
+    if (name !== loadSession()?.username) await rpc('golfos_set_username', { p_username: name }, t);
+  }
+  if (password != null) {
+    if (password.length < PASSWORD_MIN) throw new Error(tr(`The password is too short – at least ${PASSWORD_MIN} characters.`, `Das Passwort ist zu kurz – mindestens ${PASSWORD_MIN} Zeichen.`));
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, { method: 'PUT', headers: authHeaders(t), body: JSON.stringify({ password }) });
+    if (!r.ok) throw await authProblem(r);
+  }
+  const s = loadSession();
+  if (s) saveSession({ ...s, username: await ownName(t) });
 }
 
 /** A valid access token – refreshed when it runs out (a token lives an hour). One refresh at a time: two at once

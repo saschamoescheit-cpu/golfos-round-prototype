@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { dropReplaced, keepThisDevice, lastSync, lastSyncError, loadSession, replacedSettings, signIn, signOut, syncConfigured, syncNow } from '../lib/sync';
 import { getLang, tr } from '../lib/i18n';
+import { AccountForm } from './AccountForm';
 
 // "On all your devices" in the profile (feature 013): sign in with Google, then rounds, games, profile, bag and
 // friends are the same on iPhone, iPad and PC. Hidden until the Supabase project is set up.
@@ -49,6 +50,14 @@ export function SyncCard(props: { onSignedIn?: () => void }) {
             </svg>
             {tr('Sign in with Google', 'Mit Google anmelden')}
           </button>
+          {/* or with a user name and password (Sascha 22.10.2026, as in Schlaufuchs) */}
+          <span className="muted small account-or">{tr('or with a user name', 'oder mit Benutzername')}</span>
+          <AccountForm
+            onDone={() => {
+              setSession(loadSession());
+              props.onSignedIn?.();
+            }}
+          />
         </>
       ) : (
         <>

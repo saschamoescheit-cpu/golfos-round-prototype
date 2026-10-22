@@ -14,6 +14,11 @@ export interface Profile {
   hand?: 'right' | 'left';
   /** Strokes gained compared with this group (Sascha 17.10.2026); missing = the next better group to the index. */
   sgGroup?: string;
+  /** Men's or ladies' values (Sascha 22.10.2026): the bundled course ratings are men's – a lady enters her own. */
+  gender?: 'm' | 'f';
+  /** The tee the player usually plays (Sascha 22.10.2026: "yellow as a rule, white now and then") – each round starts
+   *  with it where the course has it, and can be changed before the start. */
+  tee?: string;
 }
 
 export const EMPTY_PROFILE: Profile = { firstName: '', lastName: '', hcpIndex: '', homeClub: '' };
@@ -26,6 +31,9 @@ export function loadProfile(): Profile {
     return EMPTY_PROFILE;
   }
 }
+
+/** The player plays from the ladies' values (from the profile). */
+export const isLady = (): boolean => loadProfile().gender === 'f';
 
 /** The player plays left-handed (from the profile). */
 export const isLeftHanded = (): boolean => loadProfile().hand === 'left';

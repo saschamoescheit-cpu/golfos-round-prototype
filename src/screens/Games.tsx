@@ -3,7 +3,7 @@ import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
 import type { Course } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
-import { shownName, loadProfile } from '../lib/profile';
+import { isLady, shownName, loadProfile } from '../lib/profile';
 import { loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
@@ -16,7 +16,7 @@ import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { FriendChips } from './Home';
 import { PlayerRow, teeChoicesFor } from './RoundSetup';
-import { courseTees, defaultTee } from '../data/tees';
+import { courseTees, defaultTee, profileTee } from '../data/tees';
 import { courseHandicap, parseIndex, ratingFor } from '../lib/handicap';
 import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
@@ -578,11 +578,14 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   // the playing handicap from each player's HCP, tee, course rating and slope – the same as the round setup
   const rholes = d.course && option ? buildRoundHoles(d.course.holes, option) : [];
   const nine = rholes.length === 9;
+  const lady = isLady();
   const startTee = offered?.known ? defaultTee(offered.tees) : null;
-  const teeOf = (p: DraftPlayer) => p.tee ?? startTee;
+  // me: the standard tee from my profile where the course has it (Sascha 22.10.2026)
+  const myTee = offered ? profileTee(offered, loadProfile().tee) ?? (offered.known ? defaultTee(offered.tees, lady) : null) : null;
+  const teeOf = (p: DraftPlayer) => p.tee ?? (p.id === 'me' ? myTee : startTee);
   const loopHoles = d.course ? d.course.holes.filter((h) => h.loop === rholes[0]?.loop) : [];
   const parSum = nine ? loopHoles.reduce((s, h) => s + (h.par || 0), 0) * (loopHoles.length <= 9 ? 2 : 1) : rholes.reduce((s, h) => s + (h.par || 0), 0);
-  const ratingOf = (p: DraftPlayer) => (d.course && (rholes.length === 18 || nine) ? ratingFor(d.course.id, teeOf(p) ?? '–', rholes) : null);
+  const ratingOf = (p: DraftPlayer) => (d.course && (rholes.length === 18 || nine) ? ratingFor(d.course.id, teeOf(p) ?? '–', rholes, p.id === 'me' && lady) : null);
   const playingOf = (p: DraftPlayer): number | null => {
     const idx = parseIndex(p.hcp);
     if (idx == null) return null;

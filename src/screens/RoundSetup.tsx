@@ -8,11 +8,11 @@ import { emptyEntry } from '../lib/scoring';
 import { loadCarryBag, loadGeometry, newId } from '../lib/storage';
 import { ensureCourseMap } from '../lib/courses';
 import { TopBar } from '../components/ui';
-import { courseTees, defaultTee, TEE_COLOURS, TEES, teeId, teeName } from '../data/tees';
+import { courseTees, defaultTee, profileTee, TEE_COLOURS, TEES, teeId, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import type { TeeRating } from '../data/ratings';
-import { shownName, loadProfile, saveProfile } from '../lib/profile';
+import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, type RoundFormat } from '../lib/games';
 
 const ME_KEY = 'golfos.me.v1';
@@ -67,7 +67,10 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
     ensureCourseMap(props.course.id, true).then((came) => came && setGeoTick((t) => t + 1));
   }, [props.course.id]);
   const lastTee = remembered?.tees?.[props.course.id];
-  const startTee: string | null = props.from?.tee ?? lastTee ?? (offered.known ? defaultTee(offered.tees) : null);
+  // the standard tee from the profile first (Sascha 22.10.2026: "yellow as a rule, white now and then" – a round from
+  // white does not make white the start of the next), else the one played here last, else yellow / red
+  const lady = isLady();
+  const startTee: string | null = props.from?.tee ?? profileTee(offered, loadProfile().tee) ?? lastTee ?? (offered.known ? defaultTee(offered.tees, lady) : null);
   // The playing handicap is remembered for 18 holes; a 9-hole round is pre-filled with half of it.
   // Nothing remembered yet: the rounded handicap index from the profile is the start value ("+1,2" = plus handicap).
   const fromProfile = (() => {
@@ -111,11 +114,11 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // (Sascha 21.10.2026: "every course has a course rating – it has to count")
   const teeKey = tee ?? '–'; // a course without tee data: the player's values for "the" tee
   const [ratingsSeen, setRatingsSeen] = useState(0); // re-read after the player saved his own values
-  const rating: TeeRating | null = useMemo(() => (holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, teeKey, holes) : null), [props.course.id, teeKey, holes.map((h) => h.label).join(), ratingsSeen]);
+  const rating: TeeRating | null = useMemo(() => (holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, teeKey, holes, lady) : null), [props.course.id, teeKey, holes.map((h) => h.label).join(), ratingsSeen, lady]);
   // every player by his own tee
   const ratingOf = (p: DraftPlayer): TeeRating | null => (p.id === 'me' ? rating : holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, p.tee ?? '–', holes) : null);
   // the tees to choose from, with their length for the chosen holes and their course rating
-  const teeChoices = teeChoicesFor(props.course.id, holes, [...offered.tees, ...[me, ...others].map((p) => p.tee ?? '')]);
+  const teeChoices = teeChoicesFor(props.course.id, holes, [...offered.tees, ...[me, ...others].map((p) => p.tee ?? '')], lady);
   const [ratingEdit, setRatingEdit] = useState(false);
   const [crIn, setCrIn] = useState('');
   const [slopeIn, setSlopeIn] = useState('');
@@ -500,12 +503,12 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
 export type TeeChoice = { id: string; name: string; colour: string; total: number; rating: TeeRating | null };
 
 /** The tees to choose from, with their length for these holes (where the scorecard has it) and their course rating. */
-export function teeChoicesFor(courseId: string, holes: RoundHole[], ids: string[]): TeeChoice[] {
+export function teeChoicesFor(courseId: string, holes: RoundHole[], ids: string[], lady = false): TeeChoice[] {
   const data = TEES[courseId];
   const rated = holes.length === 18 || holes.length === 9;
   return [...new Set(ids.filter(Boolean))].map((t) => {
     const i = data ? data.tees.indexOf(t) : -1;
-    return { id: t, name: teeName(t), colour: TEE_COLOURS[t] ?? '#999', total: i >= 0 ? holes.reduce((s, h) => s + (data!.holes[h.label]?.[i] ?? 0), 0) : 0, rating: rated ? ratingFor(courseId, t, holes) : null };
+    return { id: t, name: teeName(t), colour: TEE_COLOURS[t] ?? '#999', total: i >= 0 ? holes.reduce((s, h) => s + (data!.holes[h.label]?.[i] ?? 0), 0) : 0, rating: rated ? ratingFor(courseId, t, holes, lady) : null };
   });
 }
 

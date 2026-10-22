@@ -51,5 +51,14 @@ export function courseTees(courseId: string, mapped?: string[]): { tees: string[
   return { tees: STANDARD_TEES, known: false };
 }
 
-/** The tee a player starts with: yellow where there is one, else the middle one. */
-export const defaultTee = (tees: string[]): string | null => (tees.includes('Yellow') ? 'Yellow' : tees[Math.floor((tees.length - 1) / 2)] ?? null);
+/** The tee a player starts with: yellow for men, red for ladies where there is one, else the middle one. */
+export const defaultTee = (tees: string[], lady = false): string | null => {
+  const want = lady ? 'Red' : 'Yellow';
+  return tees.includes(want) ? want : tees[Math.floor((tees.length - 1) / 2)] ?? null;
+};
+
+/** The player's standard tee from the profile, where this course has it (a course of unknown tees: always). */
+export function profileTee(offered: { tees: string[]; known: boolean }, tee: string | undefined): string | null {
+  if (!tee) return null;
+  return !offered.known || offered.tees.includes(tee) ? tee : null;
+}

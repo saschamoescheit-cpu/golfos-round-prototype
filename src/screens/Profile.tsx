@@ -12,8 +12,10 @@ import { PhotoCropper } from '../components/PhotoCropper';
 import { STANDARD_CLUBS } from '../lib/clubs';
 import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, profileIndex, saveProfile, type Profile } from '../lib/profile';
+import { STANDARD_TEES, TEE_COLOURS, teeName } from '../data/tees';
 import { groupForHandicap, GROUPS } from '../lib/sg';
 import { loadSession, signOut } from '../lib/sync';
+import { LoginEditor } from '../components/AccountForm';
 import { setSoundTest, soundTestOn } from '../lib/impact';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
@@ -24,11 +26,13 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
   const [sgPick, setSgPick] = useState(false);
+  const [teePick, setTeePick] = useState(false);
   const [soundTest, setSoundTestState] = useState(soundTestOn);
   const photoInput = useRef<HTMLInputElement>(null);
   const [cropping, setCropping] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
   const [session, setSession] = useState(loadSession);
+  const [loginEdit, setLoginEdit] = useState(false);
   useEffect(() => {
     const on = () => {
       const a = document.activeElement;
@@ -114,8 +118,12 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           </button>
           {session ? (
             <span className="profile-account">
-              <span className="small">{tr('Signed in with Google', 'Mit Google angemeldet')}</span>
+              <span className="small">{session.username ? tr(`Signed in as ${session.username}`, `Angemeldet als ${session.username}`) : tr('Signed in with Google', 'Mit Google angemeldet')}</span>
               {session.email && <span className="muted small">{session.email}</span>}
+              {/* a user name and password for the other devices – set later after Google, or changed (Sascha 22.10.2026) */}
+              <button type="button" className="btn-ghost" onClick={() => setLoginEdit(true)}>
+                {session.username ? tr('User name & password', 'Benutzername & Passwort') : tr('Set a user name', 'Benutzername festlegen')}
+              </button>
               <button
                 type="button"
                 className="btn-ghost"
@@ -129,6 +137,15 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             </span>
           ) : (
             <span />
+          )}
+          {loginEdit && session && (
+            <LoginEditor
+              current={session.username ?? null}
+              onDone={() => {
+                setLoginEdit(false);
+                setSession(loadSession());
+              }}
+            />
           )}
           {p.photo && !session && (
             <button type="button" className="btn-ghost" onClick={() => set({ photo: undefined })}>
@@ -176,6 +193,19 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             placeholder={tr('e.g. 18.4', 'z. B. 18,4')}
             value={p.hcpIndex}
             onChange={(e) => set({ hcpIndex: e.target.value.replace(/[^0-9.,+-]/g, '').slice(0, 5) })}
+          />
+        </div>
+        {/* men's or ladies' values (Sascha 22.10.2026): course rating and the tee to start with follow from it */}
+        <div className="field">
+          <label>{tr('Gender', 'Geschlecht')}</label>
+          <Segmented<'m' | 'f'>
+            label={tr('Gender', 'Geschlecht')}
+            value={p.gender ?? null}
+            onChange={(v) => set({ gender: v ?? undefined })}
+            options={[
+              { value: 'm', label: tr('Man', 'Herr') },
+              { value: 'f', label: tr('Lady', 'Dame') },
+            ]}
           />
         </div>
         <div className="field">
@@ -228,6 +258,17 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
+        {/* the tee every round starts with – changed before the start when needed (Sascha 22.10.2026) */}
+        <div className="field">
+          <label>{tr('Standard tee', 'Standard-Tee')}</label>
+          <button type="button" className="settings-row std-tee" aria-haspopup="dialog" onClick={() => setTeePick(true)}>
+            <span className="std-tee-name">
+              {p.tee && <span className="tee-dot" style={{ background: TEE_COLOURS[p.tee] ?? '#999' }} />}
+              <span className={p.tee ? '' : 'muted'}>{p.tee ? teeName(p.tee) : tr('none – yellow (ladies red)', 'keins – Gelb (Damen Rot)')}</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
         {/* a test (Sascha 18.10.2026), above the strokes gained comparison, On left (20.10.2026): the microphone listens for the strike while the hole map is open – nothing recorded */}
         <div className="field">
           <label>{tr('Shot by sound (test)', 'Schlag per Ton (Test)')}</label>
@@ -264,6 +305,39 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
 
 
       {sgSheet}
+      {teePick && (
+        <div className="sheet-backdrop" onClick={() => setTeePick(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Standard tee', 'Standard-Tee')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Standard tee', 'Standard-Tee')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setTeePick(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="pick-list">
+              {[...STANDARD_TEES, ''].map((t) => (
+                <button
+                  key={t || 'none'}
+                  type="button"
+                  className="pick-option"
+                  aria-pressed={(p.tee ?? '') === t}
+                  onClick={() => {
+                    set({ tee: t || undefined });
+                    setTeePick(false);
+                  }}
+                >
+                  {t ? <span className="tee-dot" style={{ background: TEE_COLOURS[t] ?? '#999' }} /> : <span className="tee-dot none" />}
+                  <span className="grow">
+                    <strong>{t ? teeName(t) : tr('None', 'Keins')}</strong>
+                    {!t && <span className="muted small">{tr('yellow for men, red for ladies', 'Herren Gelb, Damen Rot')}</span>}
+                  </span>
+                  {(p.tee ?? '') === t && <span className="pick-check" aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
       <div className="home-foot">
         <Attribution />
         <span className="muted small" title={__BUILD_TIME__}>

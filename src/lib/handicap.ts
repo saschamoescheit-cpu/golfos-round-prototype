@@ -2,6 +2,7 @@ import type { Round } from '../types';
 import { RATINGS, type TeeRating } from '../data/ratings';
 import { grossForHole, handicapStrokes, netDoubleBogey } from './scoring';
 import { isTeamRound } from './games';
+import { isLady } from './profile';
 
 // The handicap played today (World Handicap System): the score differential of an 18-hole round,
 //   differential = 113 / slope × (adjusted gross score − course rating),
@@ -10,7 +11,7 @@ import { isTeamRound } from './games';
 
 /** Course rating and slope for the round: corrected by the player, else from the bundled scorecard data. */
 export function roundRating(r: Round): TeeRating | null {
-  return r.rating ?? (r.tee ? ratingFor(r.courseId, r.tee, r.holes) : null);
+  return r.rating ?? (r.tee ? ratingFor(r.courseId, r.tee, r.holes, isLady()) : null);
 }
 
 const OWN = 'golfos.ratings.v1';
@@ -26,11 +27,14 @@ function ownRatings(): Record<string, TeeRating> {
 /** Course rating and slope for a tee and the holes played: what the player entered for them (from the club's
  *  scorecard), else the bundled values – per 18-hole combination where a course has loops (Hetzenhof A+B …).
  *  9 holes of a loop: the first combination with that loop (the course handicap is halved, within a stroke). */
-export function ratingFor(courseId: string, tee: string, holes: { loop: string }[]): TeeRating | null {
+export function ratingFor(courseId: string, tee: string, holes: { loop: string }[], lady = false): TeeRating | null {
   const key = loopsKey(holes);
   // a value entered before a tee could be chosen ("–") counts until there is one for this tee (22.10.2026)
   const own = ownRatings()[`${courseId}|${tee}|${key}`] ?? ownRatings()[`${courseId}|–|${key}`];
   if (own) return own;
+  // the bundled values are the men's: a lady's course rating from the same tee is higher (Hetzenhof red ~66 men, ~71
+  // ladies) – no wrong playing handicap, she enters hers from the scorecard (Sascha 22.10.2026)
+  if (lady) return null;
   const all = RATINGS[courseId] ?? {};
   if (all[`${tee}@${key}`]) return all[`${tee}@${key}`];
   if (key.length === 1) {
