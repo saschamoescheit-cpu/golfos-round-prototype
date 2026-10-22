@@ -10,6 +10,8 @@
 // - Hetzenhof (27 holes): one rating per 18-hole combination – key "<tee>@<loops>" (golfingrecord.com scorecards of
 //   A-B, B-C, A-C, men's values; every tee length matches ours to the metre: A+B yellow 5833 m, B+C 5814 m,
 //   A+C 6089 m). Each with the par of its scorecard – blue and red play some holes a par shorter; 9 holes of a loop use it too.
+// - Southern Dunes (Florida): GolfPass scorecard, Black and Blue also on 18Birdies; every hole of every tee matches ours
+//   to the metre (Black 7192 yd, Blue 6737, White 6220, Gold 5498). Men's values; red has only a women's rating – left out.
 
 export interface TeeRating {
   cr: number; // course rating
@@ -32,6 +34,7 @@ export const RATINGS: Record<string, Record<string, TeeRating>> = {
   'osm:way/51852280': { White: { cr: 74.1, slope: 133 }, Yellow: { cr: 72.4, slope: 133 } },
   'osm:way/40755710': { Yellow: { cr: 73.0, slope: 135 } },
   'osm:relation/1654444': { Yellow: { cr: 70.8, slope: 133 } },
+  'southerndunes:fl': { Black: { cr: 75.0, slope: 140 }, Blue: { cr: 72.9, slope: 136 }, White: { cr: 70.4, slope: 133 }, Gold: { cr: 67.2, slope: 121 } },
   'osm:relation/1326323': {
     'White@AB': { cr: 74.2, slope: 134, par: 71 }, 'Yellow@AB': { cr: 71.6, slope: 130, par: 71 }, 'Blue@AB': { cr: 68.7, slope: 127, par: 70 }, 'Red@AB': { cr: 66.2, slope: 119, par: 68 },
     'White@BC': { cr: 73.2, slope: 132, par: 71 }, 'Yellow@BC': { cr: 71.4, slope: 131, par: 71 }, 'Blue@BC': { cr: 68.5, slope: 123, par: 70 }, 'Red@BC': { cr: 66.8, slope: 118, par: 69 },
