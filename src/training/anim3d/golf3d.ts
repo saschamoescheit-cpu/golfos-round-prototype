@@ -364,13 +364,17 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   const setRealStage = () => {
     if (realStage) return;
     realStage = true;
-    floor.material = grassMaterial('#5c973a');
-    pad.material = grassMaterial('#69a443', { fine: true, stripes: 0 });
-    green.material = grassMaterial('#5fa83d', { fine: true, stripes: 0.03 });
+    floor.material = grassMaterial('#4b8a2f');
+    pad.material = grassMaterial('#589a3a', { fine: true, stripes: 0 });
+    green.material = grassMaterial('#4f9a34', { fine: true, stripes: 0.03 });
     for (const m of [floor, pad, green]) m.material.needsUpdate = true;
     scene.background = skyTexture();
     scene.fog = new THREE.Fog('#cfe0e9', 25, 110);
-    hemi.intensity = 1.1;
+    // the light of a sunny afternoon: a warm sun, a cooler sky in the shadows
+    hemi.color.set('#cfe3ff');
+    hemi.groundColor.set('#6e8f4a');
+    hemi.intensity = 0.65;
+    fill.intensity = 0.35;
     // the flag waves a little
     const fg = new THREE.PlaneGeometry(0.5, 0.32, 12, 4);
     const fp = fg.attributes.position;
@@ -390,7 +394,8 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     sun.shadow.map?.dispose();
     sun.shadow.map = null;
     sun.shadow.radius = 3;
-    sun.intensity = 2.4;
+    sun.color.set('#fff1dc');
+    sun.intensity = 3.0;
   };
 
   /** things of the scene itself, rebuilt with every video: two trees with a branch across the gap (the punch) */
