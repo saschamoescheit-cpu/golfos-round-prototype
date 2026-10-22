@@ -184,29 +184,30 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             <input id="pf-last" className="input" autoComplete="family-name" value={p.lastName} onChange={(e) => set({ lastName: e.target.value })} />
           </div>
         </div>
-        <div className="field">
-          <label htmlFor="pf-hcp">{tr('Handicap index', 'Handicap-Index')}</label>
-          <input
-            id="pf-hcp"
-            className="input"
-            inputMode="decimal"
-            placeholder={tr('e.g. 18.4', 'z. B. 18,4')}
-            value={p.hcpIndex}
-            onChange={(e) => set({ hcpIndex: e.target.value.replace(/[^0-9.,+-]/g, '').slice(0, 5) })}
-          />
-        </div>
-        {/* men's or ladies' values (Sascha 22.10.2026): course rating and the tee to start with follow from it */}
-        <div className="field">
-          <label>{tr('Gender', 'Geschlecht')}</label>
-          <Segmented<'m' | 'f'>
-            label={tr('Gender', 'Geschlecht')}
-            value={p.gender ?? null}
-            onChange={(v) => set({ gender: v ?? undefined })}
-            options={[
-              { value: 'm', label: tr('Man', 'Herr') },
-              { value: 'f', label: tr('Lady', 'Dame') },
-            ]}
-          />
+        {/* gender left of the handicap index, as a menu (Sascha 22.10.2026): course rating and the tee to start with follow from it */}
+        <div className="form-grid">
+          <div className="field">
+            <label htmlFor="pf-gender">{tr('Gender', 'Geschlecht')}</label>
+            <span className="select-wrap">
+              <select id="pf-gender" className="input" value={p.gender ?? ''} onChange={(e) => set({ gender: (e.target.value || undefined) as Profile['gender'] })}>
+                <option value="">–</option>
+                <option value="m">{tr('male', 'männlich')}</option>
+                <option value="f">{tr('female', 'weiblich')}</option>
+                <option value="d">{tr('diverse', 'divers')}</option>
+              </select>
+            </span>
+          </div>
+          <div className="field">
+            <label htmlFor="pf-hcp">{tr('Handicap index', 'Handicap-Index')}</label>
+            <input
+              id="pf-hcp"
+              className="input"
+              inputMode="decimal"
+              placeholder={tr('e.g. 18.4', 'z. B. 18,4')}
+              value={p.hcpIndex}
+              onChange={(e) => set({ hcpIndex: e.target.value.replace(/[^0-9.,+-]/g, '').slice(0, 5) })}
+            />
+          </div>
         </div>
         <div className="field">
           <label>{tr('Home club', 'Heimatclub')}</label>
@@ -230,6 +231,17 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           {review > 0 && <span className="badge-dot">{tr(`${review} new`, `${review} neu`)}</span>}
           <span aria-hidden="true">›</span>
         </button>
+        {/* the tee every round starts with – changed before the start when needed (Sascha 22.10.2026) */}
+        <div className="field">
+          <label>{tr('Standard tee', 'Standard-Tee')}</label>
+          <button type="button" className="settings-row std-tee" aria-haspopup="dialog" onClick={() => setTeePick(true)}>
+            <span className="std-tee-name">
+              {p.tee && <span className="tee-dot" style={{ background: TEE_COLOURS[p.tee] ?? '#999' }} />}
+              <span className={p.tee ? '' : 'muted'}>{p.tee ? teeName(p.tee) : tr('none – yellow (ladies red)', 'keins – Gelb (Damen Rot)')}</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
         <div className="field">
           <label>{tr('Distances in', 'Distanzen in')}</label>
           <Segmented<'m' | 'yd'>
@@ -257,17 +269,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
               { value: 'left', label: tr('Left-handed', 'Linkshänder') },
             ]}
           />
-        </div>
-        {/* the tee every round starts with – changed before the start when needed (Sascha 22.10.2026) */}
-        <div className="field">
-          <label>{tr('Standard tee', 'Standard-Tee')}</label>
-          <button type="button" className="settings-row std-tee" aria-haspopup="dialog" onClick={() => setTeePick(true)}>
-            <span className="std-tee-name">
-              {p.tee && <span className="tee-dot" style={{ background: TEE_COLOURS[p.tee] ?? '#999' }} />}
-              <span className={p.tee ? '' : 'muted'}>{p.tee ? teeName(p.tee) : tr('none – yellow (ladies red)', 'keins – Gelb (Damen Rot)')}</span>
-            </span>
-            <span aria-hidden="true">›</span>
-          </button>
         </div>
         {/* a test (Sascha 18.10.2026), above the strokes gained comparison, On left (20.10.2026): the microphone listens for the strike while the hole map is open – nothing recorded */}
         <div className="field">

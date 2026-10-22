@@ -1508,3 +1508,8 @@ button.tile:disabled { opacity: 1; }
 .account-form { display: flex; flex-direction: column; gap: 12px; width: 100%; }
 .account-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .account-or { text-align: center; }
+
+/* a menu field (gender in the profile): the field's look with a chevron */
+.select-wrap { position: relative; display: block; }
+.select-wrap select { appearance: none; -webkit-appearance: none; width: 100%; padding-right: 34px; }
+.select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }

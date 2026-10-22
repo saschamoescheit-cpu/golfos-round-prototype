@@ -32,7 +32,18 @@ await p.waitForTimeout(1000);
 // the profile: gender and standard tee
 await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 await p.waitForTimeout(500);
-await p.getByRole('group', { name: 'Geschlecht' }).getByRole('button', { name: 'Herr' }).click();
+// gender as a menu left of the handicap index (Sascha 22.10.2026): männlich, weiblich, divers
+const opts = await p.locator('#pf-gender option').allInnerTexts();
+ok(opts.join(',') === '–,männlich,weiblich,divers', `gender menu: ${opts.join(', ')}`);
+const gBox = await p.locator('#pf-gender').boundingBox();
+const hBox = await p.locator('#pf-hcp').boundingBox();
+ok(gBox && hBox && gBox.x < hBox.x && Math.abs(gBox.y - hBox.y) < 4, 'gender left of the handicap index, in one row');
+await p.selectOption('#pf-gender', 'm');
+// the standard tee below "Mein Bag", above "Distanzen in"
+const bagY = (await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).boundingBox()).y;
+const teeY = (await p.locator('.std-tee').boundingBox()).y;
+const distY = (await p.getByText('Distanzen in', { exact: true }).boundingBox()).y;
+ok(bagY < teeY && teeY < distY, 'standard tee between "Mein Bag" and "Distanzen in"');
 await p.locator('.std-tee').click();
 await p.getByRole('dialog', { name: 'Standard-Tee' }).locator('.pick-option').filter({ hasText: 'Weiß' }).click();
 const prof = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.profile.v1')));

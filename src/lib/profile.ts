@@ -14,8 +14,8 @@ export interface Profile {
   hand?: 'right' | 'left';
   /** Strokes gained compared with this group (Sascha 17.10.2026); missing = the next better group to the index. */
   sgGroup?: string;
-  /** Men's or ladies' values (Sascha 22.10.2026): the bundled course ratings are men's – a lady enters her own. */
-  gender?: 'm' | 'f';
+  /** male, female, diverse (Sascha 22.10.2026): the bundled course ratings are men's – a woman enters her own. */
+  gender?: 'm' | 'f' | 'd';
   /** The tee the player usually plays (Sascha 22.10.2026: "yellow as a rule, white now and then") – each round starts
    *  with it where the course has it, and can be changed before the start. */
   tee?: string;
