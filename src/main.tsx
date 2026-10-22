@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { UndoToast } from './components/UndoToast';
+import { StorageFullToast, UndoToast } from './components/UndoToast';
 // Fonts ship with the app (static weights, latin incl. umlauts): same look on every phone, offline on the course,
 // and no request to Google Fonts (privacy).
 import '@fontsource/lexend/latin-500.css';
@@ -17,8 +17,10 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './styles.css';
 import { applyTheme } from './lib/theme';
 import { reloadForNewVersion } from './lib/staleChunk';
+import { guardStorage } from './lib/storageguard';
 
 applyTheme(); // sun mode before the first paint
+guardStorage(); // storage full: course map copies make room, nothing the player entered is lost silently
 // a part of the app from before the last deploy could not be loaded: once onto the new version (19.10.2026)
 window.addEventListener('vite:preloadError', (e) => {
   if (reloadForNewVersion()) e.preventDefault();
@@ -29,6 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <App />
       <UndoToast />
+      <StorageFullToast />
     </ErrorBoundary>
   </React.StrictMode>,
 );

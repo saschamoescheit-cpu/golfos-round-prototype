@@ -46,3 +46,33 @@ export function UndoToast() {
     </div>
   );
 }
+
+/** The device storage is full and nothing that may go is left (storageguard): say so, once per session, instead of
+ *  losing what was just entered without a word. */
+export function StorageFullToast() {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    let once = false;
+    const on = () => {
+      if (once) return;
+      once = true;
+      setShown(true);
+    };
+    window.addEventListener('golfos:storagefull', on);
+    return () => window.removeEventListener('golfos:storagefull', on);
+  }, []);
+  if (!shown) return null;
+  return (
+    <div className="undo-toast" role="alert">
+      <span>
+        {tr(
+          'Storage on this phone is full – the latest entries are kept only while the app stays open. Deleting rounds from the bin for good makes room.',
+          'Speicher auf dem Handy voll – das Neueste bleibt nur, solange die App offen ist. Runden im Papierkorb endgültig löschen schafft Platz.',
+        )}
+      </span>
+      <button type="button" onClick={() => setShown(false)}>
+        OK
+      </button>
+    </div>
+  );
+}

@@ -3,6 +3,7 @@ import { SEED_LOADERS } from '../data/seedLoaders';
 import type { ImageryId } from './imagery';
 import type { CarryBag } from './caddie';
 import { holesAsLines } from './geo';
+import { GEO, touchGeometry } from './storageguard';
 
 // Everything is stored on the device (localStorage). No account, no cloud – prototype only.
 
@@ -121,7 +122,6 @@ export function saveHoleCorrection(courseId: string, loop: string, number: numbe
   saveCachedCourse(course);
 }
 
-const GEO = 'golfos.geo.v1.';
 
 // v2 (2026-10-10): Son Quint now ships with all 18 holes; hand-made v1 lines from the course test are dropped.
 const LINES = 'golfos.holelines.v2.';
@@ -161,6 +161,7 @@ export async function ensureGeometry(courseId: string): Promise<void> {
 }
 
 export function loadGeometry(courseId: string): CourseGeometry {
+  touchGeometry(courseId); // used now – a map not used for long makes room first when the storage is full
   // holes mapped as areas become playing lines – for every part of the app that reads the course (22.10.2026)
   const base: CourseGeometry = holesAsLines(
     seeds.get(courseId) ?? read<CourseGeometry | null>(GEO + courseId, null) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] },
@@ -176,7 +177,16 @@ export function loadGeometry(courseId: string): CourseGeometry {
 }
 
 export function saveGeometry(courseId: string, geometry: CourseGeometry): void {
-  write(GEO + courseId, geometry);
+  if (write(GEO + courseId, geometry)) touchGeometry(courseId);
+}
+
+/** The course map copy is on the device (it may have made room for a round, or never fitted). */
+export function hasGeometry(courseId: string): boolean {
+  try {
+    return localStorage.getItem(GEO + courseId) != null;
+  } catch {
+    return false;
+  }
 }
 
 const UNIT = 'golfos.unit.v1';

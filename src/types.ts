@@ -55,6 +55,8 @@ export interface Course {
   holes: CourseHole[];
   /** Loops in display order, each with its holes sorted by number. */
   loops: string[];
+  /** The course area (west, south, east, north) – to fetch the map again when its copy is gone. */
+  bbox?: [number, number, number, number];
 }
 
 export interface CourseSummary {

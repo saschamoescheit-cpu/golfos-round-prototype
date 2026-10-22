@@ -1,7 +1,7 @@
 import type { Course, CourseGeometry, CourseHole, CourseSummary, LngLat, Ring } from '../types';
 import { parseHoleRef, parseStrokeIndex } from './loops';
 import { distToLine, dropNestedRings, pointInRing } from './geo';
-import { loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
+import { hasGeometry, loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
 import { SEED_COURSES } from '../data/seedCourses';
 
 // Course data sources (all ODbL – attribution in the app footer):
@@ -168,16 +168,39 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
   const seed = SEED_COURSES[summary.id];
   // A course first played without data (18 empty holes) gets the bundled data once it exists.
   const emptyCache = cached != null && seed != null && cached.holes.every((h) => h.par == null);
-  if (cached && cached.holes.length > 0 && !forceRefresh && !emptyCache) return cached;
+  if (cached && cached.holes.length > 0 && !forceRefresh && !emptyCache) {
+    // the map copy is gone (it made room when the storage was full, or never fitted): fetch the map again – the course
+    // itself stays as it is, with the player's own par and stroke index (night check 22.10.2026)
+    if (summary.source === 'osm' && !seed && !hasGeometry(summary.id)) await refetchGeometry({ ...summary, bbox: summary.bbox ?? cached.bbox }, cached);
+    return cached;
+  }
   const holes = seed
     ? holesFromTags(seed.holeTags)
     : summary.source === 'osm'
       ? await osmHoles(summary, (geo) => saveGeometry(summary.id, geo))
       : await ogaHoles(summary.id);
   const loops = [...new Set(holes.map((h) => h.loop))];
-  const course: Course = { id: summary.id, source: summary.source, name: seed?.name ?? summary.name, lat: summary.lat, lon: summary.lon, holes, loops };
+  const course: Course = { id: summary.id, source: summary.source, name: seed?.name ?? summary.name, lat: summary.lat, lon: summary.lon, holes, loops, ...(summary.bbox ? { bbox: summary.bbox } : {}) };
   if (holes.length > 0) saveCachedCourse(course);
   return course;
+}
+
+// once per course and session: a course without a map in OSM is not asked again on every opening
+const refetched = new Set<string>();
+async function refetchGeometry(summary: CourseSummary, course: Course): Promise<void> {
+  if (refetched.has(summary.id)) return;
+  refetched.add(summary.id);
+  // without the area (courses saved before 22.10.2026): about 1.5 km around the course's point
+  const bbox = summary.bbox ?? ([course.lon - 0.01, course.lat - 0.007, course.lon + 0.01, course.lat + 0.007] as [number, number, number, number]);
+  try {
+    const pad = 0.002;
+    const box = [bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad].map((n) => n.toFixed(5)).join(',');
+    const res = await fetch(`${OSM_API}?bbox=${box}`, { signal: AbortSignal.timeout(20000) });
+    if (!res.ok) return;
+    saveGeometry(summary.id, geometryFromOsm(ownHoles(parseOsmXml(await res.text()), summary.id)));
+  } catch {
+    // offline or busy: the course plays as before (the map can be set up on the aerial photo)
+  }
 }
 
 async function osmHoles(summary: CourseSummary, onGeometry: (g: CourseGeometry) => void): Promise<CourseHole[]> {
