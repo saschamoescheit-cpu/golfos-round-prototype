@@ -113,7 +113,8 @@ const ADDRESS_REAL: Omit<SwingKey, 't'> = {
   lean: 1,
   drop: 0.07,
 };
-/** the full swing of the realistic golfer (19.10.2026): its positions measured and set against tour averages – pelvis
+/** the full swing of the realistic golfer (19.10.2026; through impact 22.10.: the turn runs on and slows evenly to
+ *  the finish, the body sinks a little in the downswing and rises slowly after – no stop at the ball): its positions measured and set against tour averages – pelvis
  *  and chest turn, shoulder tilt, head, shaft lean and the arms at address, top and impact (golf3d measure()); real club
  *  lengths, the ball further away. Used for 'full' when the realistic body is on (for Sascha to judge first). */
 export const FULL_SWING_REAL: Swing = {
@@ -151,6 +152,7 @@ export const FULL_SWING_REAL: Swing = {
       hands: [-0.12, -0.08, 0.42],
       club: [-0.45, 0.75, -0.45],
       shift: 0.04,
+      drop: 0.06,
       label: L('Down from the ground', 'Abschwung vom Boden'),
     }),
     k(2.7, {
@@ -158,34 +160,37 @@ export const FULL_SWING_REAL: Swing = {
       hands: [-0.05, -0.17, 0.43],
       club: [-1, 0.06, 0.12],
       shift: 0.06,
+      drop: 0.065,
     }),
     k(2.8, {
       body: { pelvis: [36, 46, 8], spine: [2, 0, 11], chest: [2, -14, 7], neck: [-14, -8, 0], head: [12, -6, 0] },
       hands: [-0.06, -0.22, 0.43],
       lean: 7,
-      lie: 53,
-      push: 0.0,
-      drop: 0.1,
+      lie: 50,
+      push: -0.03,
+      drop: 0.065,
       club: 'ball',
       shift: 0.07,
       label: L('Impact: hands ahead – four', 'Treffmoment: Hände vorn – vier'),
     }),
     k(2.92, {
-      body: { pelvis: [33, 48, 5], spine: [1, 8, 6], chest: [1, 14, 8], neck: [-13, -18, 0], head: [10, -8, 0] },
-      hands: [0.0, -0.28, 0.46],
+      body: { pelvis: [33, 56, 5], spine: [1, 8, 6], chest: [1, 0, 8], neck: [-13, -18, 0], head: [10, -8, 0] },
+      hands: [0.04, -0.21, 0.45],
       club: [1, 0.06, 0.12],
       shift: 0.09,
+      drop: 0.065,
     }),
     k(3.05, {
-      body: { pelvis: [30, 55, 4], spine: [0, 8, 0], chest: [0, 18, 2], neck: [-12, -30, 0], head: [8, -10, 0] },
+      body: { pelvis: [30, 66, 4], spine: [0, 8, 0], chest: [0, 8, 2], neck: [-12, -30, 0], head: [8, -10, 0] },
       hands: [0.12, -0.08, 0.46],
-      club: [0.12, 0.93, -0.34],
+      club: [0.15, 0.65, -0.75],
       shift: 0.1,
+      drop: 0.055,
       label: L('Through', 'Durch'),
       free: true,
     }),
     k(3.5, {
-      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-10, -20, 0], head: [4, -8, 0] },
+      body: { pelvis: [8, 88, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-10, -20, 0], head: [4, -8, 0] },
       hands: [0.12, 0.34, 0.3],
       club: [-0.75, -0.25, -0.6],
       shift: 0.12,
@@ -195,7 +200,7 @@ export const FULL_SWING_REAL: Swing = {
       label: L('Hold the finish', 'Finish halten'),
     }),
     k(4.7, {
-      body: { pelvis: [8, 85, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-10, -20, 0], head: [4, -8, 0] },
+      body: { pelvis: [8, 88, 0], spine: [-4, 10, -2], chest: [-6, 14, -6], neck: [-10, -20, 0], head: [4, -8, 0] },
       hands: [0.12, 0.34, 0.3],
       club: [-0.75, -0.25, -0.6],
       shift: 0.12,
