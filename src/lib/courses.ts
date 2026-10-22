@@ -121,10 +121,12 @@ export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Pr
     photon({ q: 'golf', ...near, location_bias_scale: '0.1' }),
   ]);
   const bundled = bundledCourses().filter((c) => distanceKm(lat, lon, c.lat, c.lon) <= radiusKm);
+  // the German courses in the app nearby – also when Photon is down or there is no signal (22.10.2026)
+  const german = (await germanCourses()).filter((c) => distanceKm(lat, lon, c.lat, c.lon) <= radiusKm);
   // Without the course database (no signal on the course) the bundled courses nearby still show.
-  if (byType.status === 'rejected' && byName.status === 'rejected' && !bundled.length) throw byName.reason;
+  if (byType.status === 'rejected' && byName.status === 'rejected' && !bundled.length && !german.length) throw byName.reason;
   const seen = new Set<string>();
-  const list = [...(byType.status === 'fulfilled' ? byType.value : []), ...(byName.status === 'fulfilled' ? byName.value : []), ...bundled].filter((c) =>
+  const list = [...(byType.status === 'fulfilled' ? byType.value : []), ...(byName.status === 'fulfilled' ? byName.value : []), ...bundled, ...german].filter((c) =>
     seen.has(c.id) ? false : (seen.add(c.id), true),
   );
   return tidy(list)
@@ -133,15 +135,54 @@ export async function nearbyCourses(lat: number, lon: number, radiusKm = 40): Pr
     .sort((a, b) => a.distanceKm - b.distanceKm);
 }
 
-/** Name search: OSM via Photon (worldwide) plus OpenGolfAPI (USA). */
+// ---------- Every course in Germany, in the app ----------
+// Sascha 22.10.2026: "the list of all German courses into the app, so the search works when the search service is down"
+// (Photon down three times in one day). Loaded when first searched, kept offline with the app.
+let germanList: Promise<CourseSummary[]> | null = null;
+function germanCourses(): Promise<CourseSummary[]> {
+  germanList ??= import('../data/coursesDe')
+    .then(({ COURSES_DE, STATES_DE }) =>
+      COURSES_DE.map(([id, name, st, lat, lon, w, s, e, n]) => ({ id: `osm:${id}`, source: 'osm' as const, name, place: STATES_DE[st], lat, lon, bbox: [w, s, e, n] as [number, number, number, number] })),
+    )
+    .catch(() => {
+      germanList = null; // try again next time
+      return [];
+    });
+  return germanList;
+}
+
+/** The words of a search or a name: no accents, case or dashes ("Golfclub München-Riem" → golfclub, munchen, riem). */
+const words = (s: string): string[] => fold(s).replace(/[-–_.,/()&+]/g, ' ').split(/\s+/).filter(Boolean);
+
+/** German courses whose name (or state) has every word searched – words like "Golfclub" or "e.V." only count when
+ *  nothing else is searched ("Golfclub München-Riem" finds "Golfzentrum München Riem"). */
+export async function searchGerman(text: string, limit = 25): Promise<CourseSummary[]> {
+  const all = words(text);
+  const telling = all.filter((w) => w.length > 1 && !GENERIC.has(w) && w !== 'gcc');
+  const want = telling.length ? telling : all;
+  if (!want.length || text.trim().length < 3) return [];
+  const list = await germanCourses();
+  return list.filter((c) => {
+    const have = words(`${c.name} ${c.place}`);
+    return want.every((w) => have.some((h) => h.startsWith(w)));
+  }).slice(0, limit);
+}
+
+/** The bundled courses and the German list at once – shown while the course databases are still asked. */
+export async function quickSearch(text: string): Promise<CourseSummary[]> {
+  return tidy([...searchBundled(text), ...(await searchGerman(text))]);
+}
+
+/** Name search: OSM via Photon (worldwide) plus OpenGolfAPI (USA) plus every German course in the app. */
 export async function searchCourses(text: string, near?: { lat: number; lon: number }): Promise<CourseSummary[]> {
   const q = text.trim();
   if (q.length < 3) return [];
   const bias: Record<string, string> = near ? { lat: String(near.lat), lon: String(near.lon) } : {};
-  const [osm, oga] = await Promise.allSettled([photon({ q, ...bias }), searchOga(q)]);
+  const [osm, oga, de] = await Promise.allSettled([photon({ q, ...bias }), searchOga(q), searchGerman(q)]);
   const local = searchBundled(q);
-  if (osm.status === 'rejected' && oga.status === 'rejected' && !local.length) throw osm.reason;
-  return tidy([...local, ...(osm.status === 'fulfilled' ? osm.value : []), ...(oga.status === 'fulfilled' ? oga.value : [])]);
+  const german = de.status === 'fulfilled' ? de.value : [];
+  if (osm.status === 'rejected' && oga.status === 'rejected' && !local.length && !german.length) throw osm.reason;
+  return tidy([...local, ...(osm.status === 'fulfilled' ? osm.value : []), ...german, ...(oga.status === 'fulfilled' ? oga.value : [])]);
 }
 
 async function searchOga(q: string): Promise<CourseSummary[]> {

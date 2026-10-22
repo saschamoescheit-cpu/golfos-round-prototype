@@ -45,6 +45,21 @@ ok(holes >= 9, `the round has the course's holes (${holes})`);
 const slope = p.getByRole('button', { name: 'Grün-Neigung zeigen' });
 await slope.waitFor({ timeout: 90000 }).catch(() => {});
 ok((await slope.count()) === 1, 'the green slopes made on the phone (the greens came with the map)');
+// a course OpenGolfAPI does not know: found in the app's list of every German course (Sascha 22.10.2026)
+await p.goto(url);
+await p.evaluate(() => {
+  sessionStorage.clear();
+  sessionStorage.setItem('golfos.module', 'rounds');
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]');
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs.map((r) => ({ ...r, finishedAt: r.finishedAt ?? new Date().toISOString() }))));
+});
+await p.reload();
+await p.waitForTimeout(1200);
+await p.getByRole('button', { name: 'Neue Runde' }).click();
+await p.fill('#course-search', 'Golfclub München-Riem');
+await p.waitForTimeout(2500);
+const found = (await p.locator('button.list-item').allInnerTexts()).join(' | ');
+ok(/München Riem/.test(found), `without Photon: "Golfclub München-Riem" found in the app's list (${found.replace(/\s+/g, ' ').slice(0, 80)})`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Course, CourseSummary } from '../types';
 import { loadCachedCourse, loadRounds, saveCachedCourse } from '../lib/storage';
-import { loadCourse, nearbyCourses, searchBundled, searchCourses } from '../lib/courses';
+import { loadCourse, nearbyCourses, searchBundled, searchCourses, quickSearch } from '../lib/courses';
 import { Attribution, TopBar } from '../components/ui';
 import { tr } from '../lib/i18n';
 
@@ -66,6 +66,10 @@ export function CoursePicker(props: { onBack: () => void; onPicked: (c: Course) 
     setSearchError(false);
     searchTimer.current = window.setTimeout(async () => {
       setSearching(true);
+      // every German course in the app at once – the course databases add theirs a moment later (22.10.2026)
+      quickSearch(query)
+        .then((r) => setResults((cur) => (cur && cur.length > r.length ? cur : r)))
+        .catch(() => undefined);
       try {
         setResults(await searchCourses(query, position.current));
       } catch {
