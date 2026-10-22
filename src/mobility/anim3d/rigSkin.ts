@@ -21,7 +21,7 @@ type Meta = {
   lengths: number[];
   fingers: Record<string, number[]>;
 };
-type Body = { meta: Meta; pos: Float32Array; idx: Uint16Array; sIdx: Uint8Array; sW: Uint8Array };
+type Body = { meta: Meta; pos: Float32Array; idx: Uint16Array; sIdx: Uint8Array; sW: Uint8Array; tint: Uint8Array | null };
 
 let body: Body | null = null;
 let loading: Promise<void> | null = null;
@@ -44,7 +44,8 @@ export function loadRealisticBody(): Promise<void> {
     const idx = take((b, o, n) => new Uint16Array(b, o, n), m.indices, 2);
     const sIdx = take((b, o, n) => new Uint8Array(b, o, n), m.vertices * 4, 1);
     const sW = take((b, o, n) => new Uint8Array(b, o, n), m.vertices * 4, 1);
-    body = { meta: m, pos, idx, sIdx, sW };
+    const tint = at < bin.length ? take((b, o, n) => new Uint8Array(b, o, n), m.vertices * 3, 1) : null;
+    body = { meta: m, pos, idx, sIdx, sW, tint };
   });
   return loading;
 }
@@ -164,8 +165,10 @@ export function applyRealisticSkin(rig: Rig): boolean {
   g.setIndex(new THREE.BufferAttribute(body.idx, 1));
   g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(Uint16Array.from(body.sIdx), 4));
   g.setAttribute('skinWeight', new THREE.BufferAttribute(Float32Array.from(body.sW, (x) => x / 255), 4));
+  // the face's tones (eyebrows, lips, stubble) as vertex colours – only the skin uses them
+  if (body.tint) g.setAttribute('color', new THREE.BufferAttribute(Float32Array.from(body.tint, (x) => x / 255), 3));
   g.computeVertexNormals();
-  const mats: THREE.Material[] = REGION().map(([kind, color, roughness]) => surfaceMaterial(kind, color, roughness));
+  const mats: THREE.Material[] = REGION().map(([kind, color, roughness]) => surfaceMaterial(kind, color, roughness, kind === 'skin' && body!.tint ? { vertexColors: true } : {}));
   mats[6].side = THREE.DoubleSide;
   // the collar: a single band, seen from both sides
   mats[13].side = THREE.DoubleSide;

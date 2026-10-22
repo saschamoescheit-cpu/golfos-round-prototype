@@ -126,6 +126,18 @@ const along = (p, from, to) => { const d = sub(to, from); return dot(sub(p, from
 // the cap line: from the forehead down towards the back of the head
 const capLine = (y) => 1.632 + ((y + 0.1) / 0.16) * (1.565 - 1.632);
 const neckLine = (y) => 1.418 + 0.03 * Math.min(1, Math.max(0, (y + 0.02) / 0.1));
+const isEar = (x, y, z) => Math.abs(x) > 0.079 && z > 1.515 && z < 1.625 && y > -0.075 && y < 0.012;
+const isHair = (x, y, z) => {
+  if (isEar(x, y, z)) return false;
+  const ax = Math.abs(x);
+  // the back of the head down to the nape (the hairline curves up a little at the sides of the neck)
+  if (y > 0.005 && z > 1.495 + 0.25 * Math.max(0, ax - 0.03)) return true;
+  // the sides: behind a line in front of the ear (a short sideburn), above the middle of the ear
+  if (ax > 0.055 && y > -0.078 && z > 1.555) return true;
+  // the temples up to the cap
+  if (ax > 0.05 && y > -0.1 && z > 1.6) return true;
+  return false;
+};
 const isTorso = (d) => /^(pelvis|spine|chest|hip|knee|ankle)/.test(d);
 const isArm = (d) => /^(shoulder|elbow|wrist|index|middle|ring|little|thumb)/.test(d);
 const tDom = (t) => triDom(t);
@@ -357,7 +369,40 @@ for (let i = 0; i < nv; i++) {
   q[0] += 255 - q.reduce((x, y) => x + y, 0);
   ws.forEach(([b], k) => { sIdx[i * 4 + k] = b; sW[i * 4 + k] = q[k]; });
 }
-const buf = Buffer.concat([Buffer.from(pos.buffer), Buffer.from(idx.buffer), Buffer.from(sIdx.buffer), Buffer.from(sW.buffer)]);
+// the face's tones (a colour factor per vertex, used by the skin): eyebrows, the lips, a shadow of stubble on the jaw –
+// placed by the eyes and the nose of this body (Blender coords: eyes at z 1.574, x ±0.033; nose tip z 1.539)
+const tint = new Uint8Array(nv * 3).fill(255);
+const smooth01 = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+for (let i = 0; i < Math.min(nv, B.length); i++) {
+  const [x, y, z] = B[i];
+  if (z < 1.44 || z > 1.7) continue;
+  if (!/^(head|neck)/.test(domOf(W[i]))) continue;
+  const ax = Math.abs(x);
+  let c = [1, 1, 1];
+  const mixC = (col, k) => { c = c.map((v, j) => v * (1 - k) + col[j] * k); };
+  // stubble: chin, jaw and upper lip, a faint grey-blue shadow
+  const st = smooth01(1.535, 1.52, z) * smooth01(1.455, 1.47, z) * smooth01(0.075, 0.055, Math.abs(x)) * smooth01(-0.07, -0.1, y);
+  mixC([0.78, 0.76, 0.78], st * 0.55);
+  // the lips
+  const lip = smooth01(0.027, 0.018, Math.abs(x)) * smooth01(1.494, 1.5, z) * smooth01(1.52, 1.513, z) * smooth01(-0.14, -0.148, y);
+  mixC([0.78, 0.5, 0.48], lip * 0.85);
+  // the eyebrows: an arch above each eye
+  const browZ = 1.6 - 0.04 * (ax - 0.035) ** 2 / 0.0009 * 0.06;
+  const brow = smooth01(0.012, 0.018, ax) * smooth01(0.062, 0.054, ax) * smooth01(0.007, 0.002, Math.abs(z - browZ)) * smooth01(-0.115, -0.128, y);
+  mixC([0.28, 0.21, 0.17], brow * 0.9);
+  // short hair on the sides and the back of the head, blended into the skin with a soft hairline; the ears left free
+  {
+    const back = smooth01(-0.006, 0.012, y) * smooth01(1.488, 1.506, z - 0.25 * Math.max(0, ax - 0.03));
+    const sideH = smooth01(0.048, 0.06, ax) * smooth01(-0.086, -0.072, y) * smooth01(1.546, 1.564, z);
+    const temple = smooth01(0.042, 0.055, ax) * smooth01(-0.106, -0.094, y) * smooth01(1.592, 1.606, z);
+    const ear = smooth01(0.072, 0.081, ax) * smooth01(1.505, 1.518, z) * smooth01(1.632, 1.62, z) * smooth01(-0.082, -0.07, y) * smooth01(0.018, 0.008, y);
+    const hair = Math.max(back, sideH, temple) * (1 - ear);
+    // the hair's colour as a factor on the skin (#3a2b20 over #c8946f, in linear light), with a little noise of strands
+    mixC([0.075, 0.08, 0.095], hair * 0.97);
+  }
+  for (let k = 0; k < 3; k++) tint[i * 3 + k] = Math.round(Math.min(1, c[k]) * 255);
+}
+const buf = Buffer.concat([Buffer.from(pos.buffer), Buffer.from(idx.buffer), Buffer.from(sIdx.buffer), Buffer.from(sW.buffer), Buffer.from(tint.buffer)]);
 const round = (a) => a.map((x) => Math.round(x * 100000) / 100000);
 const frames = Object.fromEntries(R.bones.map((b) => [b, { o: round(F[b].o), x: round(F[b].x), y: round(F[b].y), z: round(F[b].z) }]));
 const fingerData = {};
