@@ -1,8 +1,8 @@
 import { Avatar } from '../components/Avatar';
 import { loadProfile } from '../lib/profile';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Round } from '../types';
-import { checksShots, fmtHcp, playerTotals, playing18, roundStats } from '../lib/scoring';
+import { checksShots, fmtHcp, playerTotals, playing18, roundStats, finishRound } from '../lib/scoring';
 import { deleteRound, loadRounds } from '../lib/storage';
 import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
@@ -52,7 +52,13 @@ export function Scorecard(props: {
   const scoreOnly = !checksShots(round);
   // The round's state on top, above the result (Sascha 20.10.2026: "the state above the scorecard – changed from there,
   // that saves the single buttons"): signed / to check & sign / saved only; a tap opens the ways to change it.
-  const [statusOpen, setStatusOpen] = useState(false);
+  // right after finishing the choice opens by itself – how it goes on (Sascha 22.10.2026)
+  const [statusOpen, setStatusOpen] = useState(() => !!props.justFinished && !round.signedAt && !round.preview && round.finishedAt != null);
+  // finished on this scorecard (past the last hole): the same screen with the finished round – open it then too
+  useEffect(() => {
+    if (props.justFinished && !round.signedAt && !round.preview && round.finishedAt != null) setStatusOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.justFinished, round.finishedAt]);
   const signed = !!round.signedAt;
   const status = signed
     ? { icon: <SignedIcon size={22} />, title: tr('Signed', 'Signiert'), sub: `${new Date(round.signedAt!).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${tr('counts in your statistics', 'zählt in deiner Statistik')}` }
@@ -78,7 +84,7 @@ export function Scorecard(props: {
         <div className="sheet-backdrop" onClick={() => setStatusOpen(false)}>
           <section className="sheet" role="dialog" aria-label={tr('State of the round', 'Status der Runde')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
-              <strong>{tr('State of the round', 'Status der Runde')}</strong>
+              <strong>{attention ? tr('Round saved ✓ – how does it go on?', 'Runde gespeichert ✓ – wie geht es weiter?') : tr('State of the round', 'Status der Runde')}</strong>
               <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setStatusOpen(false)}>
                 ✕
               </button>
@@ -279,7 +285,7 @@ export function Scorecard(props: {
           <strong>{tr('Finish the round', 'Runde abschließen')}</strong>
           <span className="muted small">{tr('Save it for your stats – or delete it.', 'Speichere sie für deine Statistik – oder lösche sie.')}</span>
           <div className="finish-actions">
-            <button type="button" className="btn-primary" onClick={() => props.onFinish({ ...round, finishedAt: new Date().toISOString(), capture: round.capture ?? 'score' })}>
+            <button type="button" className="btn-primary" onClick={() => props.onFinish(finishRound(round, !canReview))}>
               {tr('Save & finish', 'Speichern & beenden')}
             </button>
             {/* one tap – "Undo" brings it back for a few seconds (Sascha 15.10.2026) */}

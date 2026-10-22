@@ -140,6 +140,12 @@ export function roundStats(holes: RoundHole[], entries: HoleEntry[]): RoundStats
 /** Detailed tracking: the shots are found in the GPS track and checked after the round (quick tracking: score only). */
 export const checksShots = (r: Pick<Round, 'capture'>): boolean => r.capture !== 'score';
 
+/** A round finished now. Without a choice it waits under "check & sign" (Sascha 22.10.2026: "at the end of the round
+ *  'check & sign later' was missing – I had to change the state by hand"); a team round has no own shots: saved only. */
+export function finishRound(r: Round, team: boolean): Round {
+  return { ...r, finishedAt: new Date().toISOString(), capture: r.capture ?? (team ? 'score' : 'full') };
+}
+
 export function emptyEntry(): HoleEntry {
   return {
     strokes: null, pickedUp: false, putts: null, fairway: null,

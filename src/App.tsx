@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round, RoundHole } from './types';
 import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCachedCourse, loadCarryBag, loadRounds, saveRound } from './lib/storage';
-import { commitParAt } from './lib/scoring';
+import { commitParAt, finishRound } from './lib/scoring';
+import { isTeamRound } from './lib/games';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
 import { finishSignIn, liveConnect, syncNow, syncSoon, watchChanges } from './lib/sync';
@@ -318,7 +319,7 @@ export function App() {
               onNewRound={() => setScreen({ name: 'pickCourse' })}
               onContinue={(round) => setScreen({ name: 'hole', round })}
               onEnd={(round) => {
-                const done = { ...round, finishedAt: new Date().toISOString(), capture: round.capture ?? 'score' };
+                const done = finishRound(round, isTeamRound(round));
                 persist(done);
                 setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
               }}
@@ -436,7 +437,7 @@ export function App() {
               setScreen(HOME);
             }}
             onEnd={(round) => {
-              const done = { ...round, finishedAt: new Date().toISOString(), capture: round.capture ?? 'score' };
+              const done = finishRound(round, isTeamRound(round));
               persist(done);
               setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
             }}

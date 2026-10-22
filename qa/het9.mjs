@@ -118,6 +118,8 @@ console.log('round:', JSON.stringify(state));
 // finish the round on the scorecard, then the check
 await p.getByRole('button', { name: /Speichern & beenden|Runde beenden/ }).first().click().catch(() => {});
 await p.waitForTimeout(1200);
+// the choice after finishing (open by itself since 22.10.2026): later
+await p.getByRole('dialog', { name: 'Status der Runde' }).getByRole('button', { name: /^Später prüfen/ }).click().catch(() => {});
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/review-0-scorecard.png', fullPage: true });
 await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click().catch(() => {});
 await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click().catch(() => {});
