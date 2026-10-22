@@ -103,6 +103,8 @@ export interface Shot {
   penalty: boolean; // ball in water / out of bounds after this shot: +1 stroke
   penaltyKind?: PenaltyKind; // what the penalty was for (missing on older rounds: unknown)
   missPos?: LngLat | null; // where the ball went into the water / out of bounds (for the miss statistics)
+  /** water, then played again from the same spot (stroke and distance) instead of a drop (Sascha 22.10.2026) */
+  replay?: boolean;
   kind?: ShotKind; // missing = suggested from lie and distance
   review?: boolean; // detected automatically from the GPS track – the player should check it
   byHand?: boolean; // noted by hand on the course ("shot here") – drawn as the hand circle with its club (20.10.2026)

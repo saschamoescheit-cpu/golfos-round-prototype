@@ -8,7 +8,7 @@ import { emptyEntry } from '../lib/scoring';
 import { loadCarryBag, loadGeometry, newId } from '../lib/storage';
 import { ensureCourseMap } from '../lib/courses';
 import { TopBar } from '../components/ui';
-import { courseTees, defaultTee, profileTee, TEE_COLOURS, TEES, teeId, teeName } from '../data/tees';
+import { courseTees, defaultTee, profileTee, TEE_COLOURS, TEES, teeName } from '../data/tees';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import type { TeeRating } from '../data/ratings';
@@ -70,7 +70,9 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // the standard tee from the profile first (Sascha 22.10.2026: "yellow as a rule, white now and then" – a round from
   // white does not make white the start of the next), else the one played here last, else yellow / red
   const lady = isLady();
-  const startTee: string | null = props.from?.tee ?? profileTee(offered, loadProfile().tee) ?? lastTee ?? (offered.known ? defaultTee(offered.tees, lady) : null);
+  // only the course's own tees (Sascha 22.10.2026: "we show only the official tees")
+  const own = (t: string | null | undefined) => (t && offered.tees.includes(t) ? t : null);
+  const startTee: string | null = own(props.from?.tee) ?? profileTee(offered, loadProfile().tee) ?? own(lastTee) ?? defaultTee(offered.tees, lady);
   // The playing handicap is remembered for 18 holes; a 9-hole round is pre-filled with half of it.
   // Nothing remembered yet: the rounded handicap index from the profile is the start value ("+1,2" = plus handicap).
   const fromProfile = (() => {
@@ -118,7 +120,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // every player by his own tee
   const ratingOf = (p: DraftPlayer): TeeRating | null => (p.id === 'me' ? rating : holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, p.tee ?? '–', holes) : null);
   // the tees to choose from, with their length for the chosen holes and their course rating
-  const teeChoices = teeChoicesFor(props.course.id, holes, [...offered.tees, ...[me, ...others].map((p) => p.tee ?? '')], lady);
+  const teeChoices = teeChoicesFor(props.course.id, holes, offered.tees, lady);
   const [ratingEdit, setRatingEdit] = useState(false);
   const [crIn, setCrIn] = useState('');
   const [slopeIn, setSlopeIn] = useState('');
@@ -515,7 +517,6 @@ export function teeChoicesFor(courseId: string, holes: RoundHole[], ids: string[
 export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean; tees?: TeeChoice[]; className?: string }) {
   const { player } = props;
   const [teeOpen, setTeeOpen] = useState(false);
-  const [otherTee, setOtherTee] = useState('');
   const myTee = props.tees?.find((t) => t.id === player.tee);
   const shown = props.playing == null ? '–' : props.playing < 0 ? `+${-props.playing}` : String(props.playing);
   // one line (Sascha 21.10.2026): name, HCP typed, the playing handicap following from it – shown, not typed
@@ -587,25 +588,7 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
                 </button>
               ))}
             </div>
-            {/* a tee the list does not have – another colour, or a number (Spain: tees named 62, 58, …) */}
-            <div className="field tee-other">
-              <label htmlFor={`tee-other-${player.id}`}>{tr('Another tee (colour or number)', 'Anderer Tee (Farbe oder Zahl)')}</label>
-              <div className="tee-other-row">
-                <input id={`tee-other-${player.id}`} className="input" value={otherTee} maxLength={20} onChange={(e) => setOtherTee(e.target.value)} />
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  disabled={!otherTee.trim()}
-                  onClick={() => {
-                    props.onChange({ ...player, tee: teeId(otherTee) ?? otherTee.trim() });
-                    setOtherTee('');
-                    setTeeOpen(false);
-                  }}
-                >
-                  {tr('Use', 'Übernehmen')}
-                </button>
-              </div>
-            </div>
+
           </section>
         </div>
       )}

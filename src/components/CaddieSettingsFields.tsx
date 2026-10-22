@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { loadCaddieSettings, saveCaddieSettings, type CaddieSettings } from '../lib/storage';
 import { tr } from '../lib/i18n';
-import { lastSpeech, speak } from '../lib/caddietalk';
 
 // The caddie's few settings (Sascha 15.10.2026): on/off, green slope, reading aloud by itself (with headphones),
 // and how he plans (green speed dropped, Sascha 15.10.2026). The miss map is gone until it is good; language and sun mode sit in
@@ -16,28 +15,6 @@ const STYLES: { value: CaddieSettings['style']; label: () => string; hint: () =>
 export function CaddieSettingsFields() {
   const [s, setS] = useState<CaddieSettings>(loadCaddieSettings);
   const [picking, setPicking] = useState(false);
-  const [test, setTest] = useState<string | null>(null);
-  // a sentence read aloud, then what the phone reported (Sascha 22.10.2026: still silent on his iPhone)
-  const testSpeech = () => {
-    if (!speak(tr('Hello, this is your caddie. Can you hear me?', 'Hallo, hier ist dein Caddie. Hörst du mich?'))) {
-      setTest(tr('This browser cannot read aloud.', 'Dieser Browser kann nicht vorlesen.'));
-      return;
-    }
-    setTest(tr('Reading aloud …', 'Liest vor …'));
-    window.setTimeout(() => {
-      const r = lastSpeech();
-      if (!r) return;
-      const parts = [
-        r.started ? tr('started ✓', 'gestartet ✓') : tr('did not start', 'nicht gestartet'),
-        `${tr('voice', 'Stimme')}: ${r.voice}`,
-        `${r.voices} ${tr('voices on the phone', 'Stimmen auf dem Handy')}`,
-        r.retried ? tr('second try without a chosen voice', 'zweiter Versuch ohne feste Stimme') : null,
-        r.micPaused ? tr('microphone paused first', 'Mikrofon vorher pausiert') : null,
-        r.error ? `${tr('error', 'Fehler')}: ${r.error}` : null,
-      ];
-      setTest(parts.filter(Boolean).join(' · '));
-    }, 4000);
-  };
   const set = (patch: Partial<CaddieSettings>) => {
     const next = { ...s, ...patch };
     setS(next);
@@ -62,19 +39,6 @@ export function CaddieSettingsFields() {
             <span className={`drawer-switch${s[k] ? ' on' : ''}`} aria-hidden="true" />
           </button>
         ))}
-        <button type="button" className="drawer-row" onClick={testSpeech}>
-          <span className="switch-label">
-            <span>{tr('Test read-aloud', 'Vorlesen testen')}</span>
-            {test && (
-              <span className="muted small speech-test" role="status">
-                {test}
-              </span>
-            )}
-          </span>
-          <span className="drawer-value" aria-hidden="true">
-            ›
-          </span>
-        </button>
         {/* how the caddie plans: a row of the same list, the choice in a sheet (Sascha 17.10.2026: "does not fit the style") */}
         <button type="button" className="drawer-row" aria-haspopup="dialog" onClick={() => setPicking(true)}>
           <span className="switch-label">

@@ -45,11 +45,10 @@ const fr = (await sheet().locator('.pick-option strong').allInnerTexts()).join('
 ok(fr === 'Gelb, Rot', `Frielinghausen: the tees its map knows (${fr})`);
 await sheet().locator('.pick-option').filter({ hasText: 'Rot' }).click();
 ok((await row.getByRole('button', { name: /Tee von Sascha: Rot/ }).count()) === 1, 'red chosen');
-// a tee by number, typed in
+// only the official tees: nothing to type in (Sascha 22.10.2026)
 await row.locator('.tee-pick').click();
-await sheet().getByLabel('Anderer Tee (Farbe oder Zahl)').fill('58');
-await sheet().getByRole('button', { name: 'Übernehmen' }).click();
-ok((await row.getByRole('button', { name: /Tee von Sascha: Tee 58/ }).count()) === 1, 'a tee by number typed in: "Tee 58"');
+ok((await sheet().locator('input').count()) === 0, 'no "Anderer Tee" field – only the official tees');
+await sheet().getByRole('button', { name: 'Schließen' }).click();
 await p.getByRole('button', { name: 'Zurück' }).first().click();
 await p.getByRole('button', { name: 'Zurück' }).first().click().catch(() => {});
 await p.waitForTimeout(800);
@@ -61,9 +60,9 @@ await open('Hubbelrath');
 const row2 = p.locator('.player-row').first();
 await row2.locator('.tee-pick').click();
 const hb = (await sheet().locator('.pick-option strong').allInnerTexts()).join(', ');
-ok(/Schwarz/.test(hb) && /Grün/.test(hb) && /Gelb/.test(hb), `a course without known tees: the usual colours (${hb})`);
-await sheet().locator('.pick-option').filter({ hasText: 'Grün' }).click();
-ok((await row2.getByRole('button', { name: /Tee von Sascha: Grün/ }).count()) === 1, 'green chosen (children)');
+ok(hb === 'Weiß, Gelb, Blau, Rot', `a course without known tees: the four usual ones, no black or green (${hb})`);
+await sheet().locator('.pick-option').filter({ hasText: 'Rot' }).click();
+ok((await row2.getByRole('button', { name: /Tee von Sascha: Rot/ }).count()) === 1, 'red chosen');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

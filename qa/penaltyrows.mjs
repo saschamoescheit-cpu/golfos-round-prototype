@@ -61,7 +61,10 @@ const iPen = rowsText.findIndex((t) => /Strafschlag · Wasser/.test(t));
 ok(iPen === 1 && /nach Schlag 1/.test(rowsText[iPen]), `the penalty under shot 1: "${(rowsText[iPen] ?? '').replace(/\s+/g, ' ')}"`);
 // the open one dragged by its grip under shot 2 (Sascha 22.10.2026: "penalty strokes must move like shots")
 {
+  await p.waitForTimeout(800); // the map scrolls into view for "where it went in" first
   const grip = p.locator('.penalty-row.open .row-grip').first();
+  await grip.scrollIntoViewIfNeeded();
+  await p.waitForTimeout(200);
   const g = await grip.boundingBox();
   const shot2 = await p.locator('.review-list li[data-shot="1"]').boundingBox();
   await p.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
@@ -71,6 +74,28 @@ ok(iPen === 1 && /nach Schlag 1/.test(rowsText[iPen]), `the penalty under shot 1
   await p.waitForTimeout(600);
   const texts = await p.locator('.review-list li').allInnerTexts();
   ok((await open()) === 0 && texts.some((t) => /Strafschlag/.test(t) && /nach Schlag 2/.test(t)), `dragged by its grip under shot 2: tied to shot 2 (${await open()} open)`);
+  // then shot 2's sheet opens by itself: water or out of bounds (Sascha 22.10.2026, hole 8C)
+  const pen = p.getByRole('group', { name: 'Strafschlag' });
+  ok((await pen.count()) === 1, "after the drag the shot's sheet opens: water or out of bounds");
+  // water, played again from the same spot (stroke and distance) – then where it went in
+  await pen.getByRole('button', { name: 'Wasser' }).click();
+  const then = p.getByRole('group', { name: 'Danach' });
+  ok((await then.getByRole('button', { name: 'Gedroppt' }).count()) === 1 && (await then.getByRole('button', { name: 'Erneut von hier' }).count()) === 1, 'water: "Gedroppt" or "Erneut von hier"');
+  await then.getByRole('button', { name: 'Erneut von hier' }).click();
+  const before = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]);
+  const me = before.players.find((x) => x.isMe).id;
+  const n0 = before.entries[me][0].detail.shots.length;
+  await p.getByRole('button', { name: /^Speichern/ }).last().click();
+  await p.waitForTimeout(600);
+  ok(/ins Wasser ging/.test(await p.locator('main').innerText()), 'then: tap the map where it went into the water');
+  await p.waitForTimeout(300);
+  const map = await p.locator('.maplibregl-canvas').first().boundingBox();
+  await p.mouse.click(map.x + map.width * 0.5, map.y + map.height * 0.35);
+  await p.waitForTimeout(800);
+  const after = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]);
+  const sh = after.entries[me][0].detail.shots;
+  const d = (a, b) => Math.hypot((a[0] - b[0]) * 70000, (a[1] - b[1]) * 111000);
+  ok(sh.length === n0 + 1 && sh[1].replay === true && sh[1].missPos && d(sh[2].pos, sh[1].pos) < 1, `again from here: the next shot from the same spot (${n0} → ${sh.length} shots)`);
 }
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

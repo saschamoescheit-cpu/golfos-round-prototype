@@ -84,7 +84,7 @@ export function Scorecard(props: {
         <div className="sheet-backdrop" onClick={() => setStatusOpen(false)}>
           <section className="sheet" role="dialog" aria-label={tr('State of the round', 'Status der Runde')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
-              <strong>{attention ? tr('Round saved ✓ – how does it go on?', 'Runde gespeichert ✓ – wie geht es weiter?') : tr('State of the round', 'Status der Runde')}</strong>
+              <strong>{attention ? tr('Round saved ✓ How does it go on?', 'Runde gespeichert ✓ Wie geht es weiter?') : tr('State of the round', 'Status der Runde')}</strong>
               <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setStatusOpen(false)}>
                 ✕
               </button>
@@ -109,9 +109,11 @@ export function Scorecard(props: {
               ) : (
                 <>
                   {canReview && (
+                    // right after finishing "now" is the choice (Sascha 22.10.2026: "the standard is always check & sign now")
                     <button
                       type="button"
                       className="pick-option"
+                      aria-pressed={attention}
                       onClick={() => {
                         setStatusOpen(false);
                         props.onReview({ ...round, capture: 'full' });
@@ -121,7 +123,7 @@ export function Scorecard(props: {
                         <strong>{tr('Check & sign now', 'Jetzt prüfen & signieren')}</strong>
                         <span className="muted small">{tr('Check the shots, then sign – it counts in your statistics.', 'Schläge prüfen, dann signieren – sie zählt in deiner Statistik.')}</span>
                       </span>
-                      <span aria-hidden="true">›</span>
+                      {attention ? <span className="pick-check" aria-hidden="true">✓</span> : <span aria-hidden="true">›</span>}
                     </button>
                   )}
                   {(!canReview || !scoreOnly) && (
@@ -133,12 +135,12 @@ export function Scorecard(props: {
                     </button>
                   )}
                   {canReview && (
-                    <button type="button" className="pick-option" aria-pressed={!scoreOnly} onClick={() => choose({ ...round, capture: 'full' })}>
+                    <button type="button" className="pick-option" aria-pressed={!scoreOnly && !attention} onClick={() => choose({ ...round, capture: 'full' })}>
                       <span className="grow">
                         <strong>{tr('Check & sign later', 'Später prüfen & signieren')}</strong>
                         <span className="muted small">{tr('It waits under "check & sign".', 'Sie wartet unter „prüfen & signieren“.')}</span>
                       </span>
-                      {!scoreOnly && <span className="pick-check" aria-hidden="true">✓</span>}
+                      {!scoreOnly && !attention && <span className="pick-check" aria-hidden="true">✓</span>}
                     </button>
                   )}
                   {canReview && (

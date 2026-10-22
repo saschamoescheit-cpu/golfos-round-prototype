@@ -15,6 +15,7 @@ export interface HoleNote {
 }
 
 const KEY = 'golfos.holenotes.v1.';
+const COURSE = 'golfos.course.v1.'; // the course cache (storage.ts)
 
 /** Known from players (Sascha, 11.10.2026). */
 const DEFAULTS: Record<string, Record<string, HoleNote>> = {
@@ -55,13 +56,45 @@ const DEFAULTS: Record<string, Record<string, HoleNote>> = {
   'osm:relation/3977168': { '10': { obRight: true }, '11': { obLong: true }, '12': { obRight: true } },
 };
 
-export function loadHoleNotes(courseId: string): Record<string, HoleNote> {
-  let own: Record<string, HoleNote> = {};
+/** The same course found under another id (Sascha 22.10.2026: "hole notes for the course, not for one round"): the search
+ *  may give the relation, the map the way, another source its own id – the same name within 2 km is the same course.
+ *  Two courses of one resort (Son Antem East and West) have different names and stay apart. */
+function sameCourseIds(courseId: string): string[] {
+  const out: string[] = [];
   try {
-    own = JSON.parse(localStorage.getItem(KEY + courseId) ?? '{}');
+    const me = JSON.parse(localStorage.getItem(COURSE + courseId) ?? 'null') as { name?: string; lat?: number; lon?: number } | null;
+    if (!me?.name || me.lat == null || me.lon == null) return out;
+    const fold = (t: string) => t.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '');
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(KEY)) continue;
+      const id = key.slice(KEY.length);
+      if (id === courseId) continue;
+      const c = JSON.parse(localStorage.getItem(COURSE + id) ?? 'null') as { name?: string; lat?: number; lon?: number } | null;
+      if (!c?.name || c.lat == null || c.lon == null || fold(c.name) !== fold(me.name)) continue;
+      const dy = (c.lat - me.lat) * 111;
+      const dx = (c.lon - me.lon) * 111 * Math.cos((me.lat * Math.PI) / 180);
+      if (Math.hypot(dx, dy) <= 2) out.push(id);
+    }
   } catch {
     // storage blocked
   }
+  return out;
+}
+
+/** The notes of a course – every hole by its own label ("8C"), so one note counts in every combination of loops
+ *  (C alone, B + C, C + A) and in every later round. */
+export function loadHoleNotes(courseId: string): Record<string, HoleNote> {
+  let own: Record<string, HoleNote> = {};
+  const read = (id: string): Record<string, HoleNote> => {
+    try {
+      return JSON.parse(localStorage.getItem(KEY + id) ?? '{}');
+    } catch {
+      return {}; // storage blocked
+    }
+  };
+  for (const id of sameCourseIds(courseId)) own = { ...own, ...read(id) };
+  own = { ...own, ...read(courseId) };
   return { ...(DEFAULTS[courseId] ?? {}), ...own };
 }
 

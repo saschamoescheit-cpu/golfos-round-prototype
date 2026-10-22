@@ -17,9 +17,13 @@ export const teeName = (t: string): string =>
 // Courses that name their tees by length (Son Antem East: 62/58/52/48) get grey shades, longest darkest.
 export const TEE_COLOURS: Record<string, string> = { White: '#f2f2f2', Yellow: '#f5d042', Blue: '#3d8bfd', Red: '#e5484d', Orange: '#f59e0b', Green: '#1f7a4a', Pink: '#e48fc0', Black: '#22272b', Gold: '#c9a227', Silver: '#b8bec4', '62': '#5b6770', '58': '#87939b', '52': '#b3bdc3', '48': '#dfe5e8' }; // ci-allow: the colours of the tee markers themselves
 
-/** The usual tee colours, longest first – offered where a course's tees are not known (Sascha 22.10.2026: black tees,
- *  green ones for children, …). */
+/** Every tee colour, longest first – the standard tee in the profile (Sascha 22.10.2026: black tees, green ones for
+ *  children, …). */
 export const STANDARD_TEES = ['Black', 'White', 'Yellow', 'Blue', 'Red', 'Orange', 'Green'];
+
+/** A course whose tees are not known: the four nearly every course has (Sascha 22.10.2026: "only the official tees –
+ *  no black ones where a course has none"). */
+export const COMMON_TEES = ['White', 'Yellow', 'Blue', 'Red'];
 
 const ORDER = ['Black', 'White', 'Gold', 'Yellow', 'Blue', 'Silver', 'Red', 'Orange', 'Pink', 'Green'];
 const WORDS: Record<string, string> = {
@@ -48,7 +52,7 @@ export function courseTees(courseId: string, mapped?: string[]): { tees: string[
   const data = TEES[courseId];
   if (data) return { tees: data.tees, known: true };
   if (mapped?.length) return { tees: sortTees(mapped), known: true };
-  return { tees: STANDARD_TEES, known: false };
+  return { tees: COMMON_TEES, known: false };
 }
 
 /** The tee a player starts with: yellow for men, red for ladies where there is one, else the middle one. */
@@ -59,6 +63,5 @@ export const defaultTee = (tees: string[], lady = false): string | null => {
 
 /** The player's standard tee from the profile, where this course has it (a course of unknown tees: always). */
 export function profileTee(offered: { tees: string[]; known: boolean }, tee: string | undefined): string | null {
-  if (!tee) return null;
-  return !offered.known || offered.tees.includes(tee) ? tee : null;
+  return tee && offered.tees.includes(tee) ? tee : null;
 }

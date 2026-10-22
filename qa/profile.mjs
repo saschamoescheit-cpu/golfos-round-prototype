@@ -147,14 +147,7 @@ ok((await planSheet.locator('.pick-option').count()) === 3, 'the choice in a she
 await planSheet.locator('.pick-option').filter({ hasText: /^Sicher/ }).click();
 await p.waitForTimeout(200);
 ok(/Sicher/.test(await planRow.innerText()) && (await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.caddie.v1')).style)) === 'safe', 'Sicher chosen and kept');
-// "test read-aloud": a sentence, then what the phone reported (Sascha 22.10.2026: still silent on his iPhone)
-{
-  const testRow = p.locator('.drawer-row').filter({ hasText: 'Vorlesen testen' });
-  await testRow.click();
-  await p.waitForTimeout(4600);
-  const said = (await testRow.locator('.speech-test').innerText().catch(() => '')).trim();
-  ok(/gestartet|nicht vorlesen/.test(said) && (/Stimme/.test(said) || /nicht vorlesen/.test(said)), `"Vorlesen testen" says what the phone reported (${said})`);
-}
+ok((await p.locator('.drawer-row').filter({ hasText: 'Vorlesen testen' }).count()) === 0, 'no "Vorlesen testen" in the profile (Sascha 22.10.2026)');
 // a new photo: placed and zoomed by hand before it is used (Sascha 17.10.2026)
 {
   // a 400 × 300 test picture: left half green, right half white

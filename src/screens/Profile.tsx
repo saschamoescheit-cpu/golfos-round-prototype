@@ -15,7 +15,6 @@ import { loadProfile, profileIndex, saveProfile, type Profile } from '../lib/pro
 import { STANDARD_TEES, TEE_COLOURS, teeName } from '../data/tees';
 import { groupForHandicap, GROUPS } from '../lib/sg';
 import { loadSession, signOut } from '../lib/sync';
-import { LoginEditor } from '../components/AccountForm';
 import { setSoundTest, soundTestOn } from '../lib/impact';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
@@ -32,7 +31,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [cropping, setCropping] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
   const [session, setSession] = useState(loadSession);
-  const [loginEdit, setLoginEdit] = useState(false);
   useEffect(() => {
     const on = () => {
       const a = document.activeElement;
@@ -120,10 +118,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             <span className="profile-account">
               <span className="small">{session.username ? tr(`Signed in as ${session.username}`, `Angemeldet als ${session.username}`) : tr('Signed in with Google', 'Mit Google angemeldet')}</span>
               {session.email && <span className="muted small">{session.email}</span>}
-              {/* a user name and password for the other devices – set later after Google, or changed (Sascha 22.10.2026) */}
-              <button type="button" className="btn-ghost" onClick={() => setLoginEdit(true)}>
-                {session.username ? tr('User name & password', 'Benutzername & Passwort') : tr('Set a user name', 'Benutzername festlegen')}
-              </button>
+              {/* signed in: only "Abmelden" (Sascha 22.10.2026: "the two ways to sign in only when not signed in") */}
               <button
                 type="button"
                 className="btn-ghost"
@@ -138,16 +133,8 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           ) : (
             <span />
           )}
-          {loginEdit && session && (
-            <LoginEditor
-              current={session.username ?? null}
-              onDone={() => {
-                setLoginEdit(false);
-                setSession(loadSession());
-              }}
-            />
-          )}
-          {p.photo && !session && (
+          {/* the photo as with Google – chosen, placed and removed by the player (a Google photo comes from Google) */}
+          {p.photo && (!session || !!session.username) && (
             <button type="button" className="btn-ghost" onClick={() => set({ photo: undefined })}>
               {tr('Remove', 'Entfernen')}
             </button>

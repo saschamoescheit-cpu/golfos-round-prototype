@@ -579,10 +579,11 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const rholes = d.course && option ? buildRoundHoles(d.course.holes, option) : [];
   const nine = rholes.length === 9;
   const lady = isLady();
-  const startTee = offered?.known ? defaultTee(offered.tees) : null;
+  const startTee = offered ? defaultTee(offered.tees) : null;
   // me: the standard tee from my profile where the course has it (Sascha 22.10.2026)
-  const myTee = offered ? profileTee(offered, loadProfile().tee) ?? (offered.known ? defaultTee(offered.tees, lady) : null) : null;
-  const teeOf = (p: DraftPlayer) => p.tee ?? (p.id === 'me' ? myTee : startTee);
+  const myTee = offered ? profileTee(offered, loadProfile().tee) ?? defaultTee(offered.tees, lady) : null;
+  // only the course's own tees (Sascha 22.10.2026)
+  const teeOf = (p: DraftPlayer) => (p.tee && offered?.tees.includes(p.tee) ? p.tee : p.id === 'me' ? myTee : startTee);
   const loopHoles = d.course ? d.course.holes.filter((h) => h.loop === rholes[0]?.loop) : [];
   const parSum = nine ? loopHoles.reduce((s, h) => s + (h.par || 0), 0) * (loopHoles.length <= 9 ? 2 : 1) : rholes.reduce((s, h) => s + (h.par || 0), 0);
   const ratingOf = (p: DraftPlayer) => (d.course && (rholes.length === 18 || nine) ? ratingFor(d.course.id, teeOf(p) ?? '–', rholes, p.id === 'me' && lady) : null);
@@ -594,7 +595,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
     if (r) return nine ? Math.round((idx * (r.slope / 113) + (r.cr - par)) / 2) : courseHandicap(idx, r, par);
     return Math.round(nine ? idx / 2 : idx);
   };
-  const teeChoices = d.course && offered ? teeChoicesFor(d.course.id, rholes, [...offered.tees, ...d.players.map((p) => p.tee ?? '')]) : [];
+  const teeChoices = d.course && offered ? teeChoicesFor(d.course.id, rholes, offered.tees) : [];
   const myRating = d.players[0] ? ratingOf(d.players[0]) : null;
   const n = d.players.length;
   const fits = fitsPlayers(f, n);

@@ -1527,3 +1527,15 @@ button.tile:disabled { opacity: 1; }
 
 .undo-toast.hold-ask .hold-cancel { color: var(--text-2); }
 .review-list li.penalty-row.dragging { z-index: 3; background: var(--surface-2); border-radius: 10px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); position: relative; }
+
+/* a text button with its symbol – the caddie's "Per Sprache fragen" as the sheet's main action, green as every one */
+.icon-text { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.icon-text svg { flex: none; }
+
+/* the statistics with air between heading, tiles and charts (Sascha 22.10.2026: "they stick to each other") */
+.stats-card.airy { gap: 18px; }
+.stats-card h2 + .stats-sub { margin: -12px 0 0; }
+.stats-card.airy .insight-row, .stats-card.airy .tile-row { gap: 10px; }
+.tee-clubs { gap: 24px; }
+.tee-club-row { gap: 14px; }
+.tee-club-row + .tee-club-row { padding-top: 22px; }

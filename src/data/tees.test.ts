@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { courseTees, defaultTee, sortTees, STANDARD_TEES, teeId, teeName } from './tees';
+import { COMMON_TEES, courseTees, defaultTee, sortTees, STANDARD_TEES, teeId, teeName } from './tees';
 import { geometryFromOsm, parseOsmXml } from '../lib/courses';
 
 describe('the tees a course offers (Sascha 22.10.2026)', () => {
@@ -11,10 +11,10 @@ describe('the tees a course offers (Sascha 22.10.2026)', () => {
     expect(courseTees('osm:way/1', ['Red', 'Yellow'])).toEqual({ tees: ['Yellow', 'Red'], known: true });
     expect(sortTees(['Green', 'Black', 'Red', 'White'])).toEqual(['Black', 'White', 'Red', 'Green']);
   });
-  it('nothing known: the usual colours with black and green', () => {
-    expect(courseTees('osm:way/1')).toEqual({ tees: STANDARD_TEES, known: false });
-    expect(STANDARD_TEES).toContain('Black');
-    expect(STANDARD_TEES).toContain('Green');
+  it('nothing known: the four nearly every course has – no black or green (only official tees)', () => {
+    expect(courseTees('osm:way/1')).toEqual({ tees: COMMON_TEES, known: false });
+    expect(COMMON_TEES).not.toContain('Black');
+    expect(STANDARD_TEES).toContain('Green'); // the profile's choice keeps every colour
   });
   it('written in any way: "gelb", "Yellow", "Schwarz", "58"', () => {
     expect(['gelb', 'Yellow', ' YELLOW '].map(teeId)).toEqual(['Yellow', 'Yellow', 'Yellow']);

@@ -117,6 +117,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   };
   // after a penalty: the next tap on the map is where the ball went into the water / out of bounds
   const [placingMiss, setPlacingMiss] = useState<number | null>(null);
+  // "tap the map where it went in": the map into view (after a drag far down the list it may be above the screen)
+  useEffect(() => {
+    if (placingMiss != null) document.querySelector('.review-map')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [placingMiss]);
   // "add a shot": the next tap on the map places a new shot there (Sascha 17.10.2026: "it says add a shot, but I
   // cannot") – also right beside another shot or on the green's edge, where a plain tap would open that shot
   const [adding, setAdding] = useState(false);
@@ -325,6 +329,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     if (src != null && shots[src]) shots[src] = { ...shots[src], penalty: false, penaltyKind: undefined, missPos: null };
     shots[to] = { ...shots[to], penalty: true, ...(kind ? { penaltyKind: kind } : {}), review: false };
     saveDetail(k, { ...d, shots });
+    if (src == null) setEdit(to); // a penalty from the course: water or out of bounds (and again from here?) in its sheet
   };
   // the flag the player set with his putts wins
   const pin = e?.puttsAt?.pin ?? d?.pin ?? data?.greenCenter ?? null;
@@ -420,9 +425,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       const n = placingMiss;
       const shots = d.shots.slice();
       shots[n] = { ...shots[n], missPos: pos };
-      // out of bounds = stroke and distance: the next shot is played from the same spot again
+      // out of bounds = stroke and distance, water when played again from here: the next shot from the same spot
       const from = shots[n].pos;
-      if (shots[n].penaltyKind === 'ob' && from && !(shots[n + 1]?.pos && distanceM(shots[n + 1].pos!, from) <= 10))
+      const again = shots[n].penaltyKind === 'ob' || (shots[n].penaltyKind === 'water' && shots[n].replay);
+      if (again && from && !(shots[n + 1]?.pos && distanceM(shots[n + 1].pos!, from) <= 10))
         shots.splice(n + 1, 0, { pos: from, lie: shots[n].lie, club: null, penalty: false });
       setPlacingMiss(null);
       saveDetail(k, withClubs({ ...d, shots }));
@@ -1180,9 +1186,14 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           bag={bag}
           onCancel={() => setEdit(null)}
           penaltyKind={editing.penaltyKind}
+          replay={editing.replay}
           onSave={(v) => {
             const shots = d.shots.slice();
             shots[edit!] = { ...shots[edit!], ...v, missPos: v.penalty ? shots[edit!].missPos : null };
+            // played again from here and the spot of the miss known already: the next shot from here at once
+            const from = shots[edit!].pos;
+            if (v.penalty && v.replay && shots[edit!].missPos && from && !(shots[edit! + 1]?.pos && distanceM(shots[edit! + 1].pos!, from) <= 10))
+              shots.splice(edit! + 1, 0, { pos: from, lie: shots[edit!].lie, club: null, penalty: false });
             saveDetail(k, { ...d, shots });
             if (v.penalty && !shots[edit!].missPos) setPlacingMiss(edit);
             setEdit(null);

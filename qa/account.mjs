@@ -130,11 +130,8 @@ await ipad.fill('#acc-pw', 'geheim123');
 await ipad.locator('.account-form button[type=submit]').click();
 ok(await signedAs(ipad, 'sascha.m'), 'iPad: signed in with user name + password');
 
-// change the password on the iPad
-await ipad.getByRole('button', { name: 'Benutzername & Passwort' }).click();
-await ipad.fill('#ed-pw', 'neuesPasswort1');
-await ipad.getByRole('button', { name: 'Speichern' }).click();
-ok(await until(async () => users.get('sascha@example.com').password === 'neuesPasswort1'), 'the password changed');
+// signed in: only "Abmelden" – no user name / password editor (Sascha 22.10.2026)
+ok((await ipad.getByRole('button', { name: /Benutzername & Passwort|Benutzername festlegen/ }).count()) === 0 && (await ipad.getByRole('button', { name: 'Abmelden' }).count()) >= 1, 'iPad signed in: only "Abmelden"');
 
 // a third device: the user name is taken; then the e-mail with the new password
 const pc = await device('PC', 'Desktop Chrome');
@@ -146,7 +143,7 @@ await pc.locator('.account-form button[type=submit]').click();
 ok(await until(() => pc.getByRole('alert').filter({ hasText: 'schon vergeben' }).isVisible()), 'a taken user name is said');
 await pc.getByRole('group', { name: 'Anmelden oder Konto anlegen' }).getByRole('button', { name: 'Anmelden' }).click();
 await pc.fill('#acc-name', 'sascha@example.com');
-await pc.fill('#acc-pw', 'neuesPasswort1');
+await pc.fill('#acc-pw', 'geheim123');
 await pc.locator('.account-form button[type=submit]').click();
 ok(await signedAs(pc, 'sascha.m'), 'PC: signed in with the e-mail and the new password');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);

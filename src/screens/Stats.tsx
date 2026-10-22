@@ -100,7 +100,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                 <Big value={dec(per(a.stablefordPer18) ?? '–')} label="Stableford" />
                 <Big value={dec(per(a.puttsPer18) ?? '–')} label="Putts" />
               </section>
-              <section className="card stats-card">
+              <section className="card stats-card airy">
                 <h2>{tr('Your key figures', 'Deine Kennzahlen')}</h2>
                 <div className="ring-row">
                   <Ring label="Fairways" r={a.fairways} />
@@ -118,7 +118,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               )}
 
               {f && f.focus.length > 0 && (
-                <section className="card stats-card">
+                <section className="card stats-card airy">
                   <h2>{tr('Where you lose strokes', 'Wo du Schläge verlierst')}</h2>
                   <p className="muted small" style={{ margin: 0 }}>
                     {tr(`Compared with players of ${f.target} (you: ${f.band}).`, `Verglichen mit Spielern mit ${f.target} (du: ${f.band}).`)}
@@ -140,7 +140,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               )}
 
               {f && f.focus.length > 0 && (
-                <section className="card stats-card">
+                <section className="card stats-card airy">
                   <h2>{tr('Practice plan', 'Trainingsplan')}</h2>
                   <p className="muted small" style={{ margin: 0 }}>
                     {tr(`About ${practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} minutes, built from the areas above.`, `Etwa ${practicePlan(f.focus).reduce((t, d) => t + d.minutes, 0)} Minuten, aus den Bereichen oben.`)}
@@ -165,7 +165,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
 
           {section === 'tee' && (
             <>
-              <section className="card stats-card">
+              <section className="card stats-card airy">
                 <h2>{tr('Off the tee', 'Vom Abschlag')}</h2>
                 {/* the findings as tiles above the rings (Sascha 22.10.2026: "the text hints more visual, as tiles") */}
                 {a.fairways.of > 0 && <TeeInsights left={a.missLeft} hit={a.fairways} right={a.missRight} lies={a.missLies} />}
@@ -173,8 +173,10 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               </section>
               {/* by the club off the tee (Sascha 21.10.2026: "more visual elements and analyses") */}
               {tee.byClub.length > 0 && (
-                <section className="card stats-card">
-                  <h2>{tr('Fairways by club', 'Fairways nach Schläger')}</h2>
+                <section className="card stats-card airy">
+                  {/* the heading, its source right below (Sascha 22.10.2026) */}
+                  <h2>{tr('Fairway hits off the tee', 'Fairway-Treffer vom Tee')}</h2>
+                  <p className="muted small stats-sub">{tr('From your checked tee shots on par 4 and 5', 'Aus deinen geprüften Abschlägen auf Par 4 und 5')}</p>
                   <div className="tee-clubs">
                     {tee.byClub.map((c) => {
                       return (
@@ -194,12 +196,11 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                       );
                     })}
                   </div>
-                  <p className="muted small" style={{ margin: 0 }}>{tr('From your checked tee shots on par 4 and 5', 'Aus deinen geprüften Abschlägen auf Par 4 und 5')}</p>
                 </section>
               )}
               {/* what a missed fairway costs: strokes over par on the hole after a hit or missed tee shot */}
               {tee.cost.nHit + tee.cost.nMissed > 0 && (
-                <section className="card stats-card">
+                <section className="card stats-card airy">
                   <h2>{tr('What a missed fairway costs', 'Was ein verfehltes Fairway kostet')}</h2>
                   {tee.cost.hit != null && tee.cost.missed != null && (
                     <div className="insight-row">
@@ -253,7 +254,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
 
           {section === 'green' && (
             <>
-              <section className="card stats-card">
+              <section className="card stats-card airy">
                 <h2>{tr('Approach & short game', 'Annäherung & kurzes Spiel')}</h2>
                 <div className="ring-row">
                   <Ring label="GIR" r={a.gir} />
@@ -272,7 +273,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   </p>
                 )}
               </section>
-              <section className="card stats-card">
+              <section className="card stats-card airy">
                 <h2>{tr('Results by par', 'Ergebnis nach Par')}</h2>
                 <ParBars byPar={a.byPar} />
               </section>
@@ -291,7 +292,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <span className="muted small">{tr('Putts per green hit', 'Putts je getroffenem Grün')}</span>
                 </div>
               </div>
-              <section className="card stats-card">
+              <section className="card stats-card airy">
                 <h2>Putting</h2>
                 <div className="ring-row two">
                   <Ring label={tr('1-putts', '1-Putts')} r={a.onePutts} />
@@ -299,7 +300,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                 </div>
               </section>
               {a.puttsByFirstPutt.some((b) => b.holes > 0) && (
-                <section className="card stats-card">
+                <section className="card stats-card airy">
                   <h2>{tr('Putts by length of the first putt', 'Putts nach Länge des ersten Putts')}</h2>
                   <div className="hbars">
                     {a.puttsByFirstPutt.map((b) => (
@@ -321,7 +322,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
           )}
 
           {section === 'clubs' && (
-            <section className="card stats-card">
+            <section className="card stats-card airy">
               <h2>{tr('Your club distances', 'Deine Schlägerweiten')}</h2>
               {a.clubs.length === 0 ? (
                 <p className="muted small" style={{ margin: 0 }}>

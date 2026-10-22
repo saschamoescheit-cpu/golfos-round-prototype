@@ -159,7 +159,7 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
       {canListen() && (
         <button
           type="button"
-          className="btn-secondary"
+          className="btn-primary icon-text"
           disabled={busy}
           onClick={async () => {
             setBusy(true);
@@ -169,7 +169,12 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
             else setA(tr('I did not catch that – tap a question instead.', 'Das habe ich nicht verstanden – tippe stattdessen eine Frage an.'));
           }}
         >
-          {busy ? tr('Listening …', 'Ich höre zu …') : tr('🎤 Ask with your voice', '🎤 Per Sprache fragen')}
+          {/* a symbol as the app's others, no emoji (Sascha 22.10.2026: "every new button in the app's design") */}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="11" rx="3" />
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+          </svg>
+          {busy ? tr('Listening …', 'Ich höre zu …') : tr('Ask with your voice', 'Per Sprache fragen')}
         </button>
       )}
       {q && <p className="muted small" style={{ margin: 0 }}>{tr(`“${q}”`, `„${q}“`)}</p>}
@@ -206,6 +211,9 @@ export function NotesSheet(props: { hole: string; note: HoleNote; onSave: (n: Ho
       >
         {tr('Save for this course', 'Für diesen Platz speichern')}
       </button>
+      <p className="muted small" style={{ margin: 0 }}>
+        {tr(`Kept with the course, not the round: hole ${props.hole} shows it in every round and every combination of loops.`, `Gilt für den Platz, nicht nur diese Runde: Loch ${props.hole} zeigt sie in jeder Runde und jeder Schleifen-Kombination.`)}
+      </p>
     </Sheet>
   );
 }

@@ -18,7 +18,8 @@ export function ShotSheet(props: {
   toPinM: number | null;
   editing: boolean;
   bag?: { club: Club; m: number; carry?: number }[]; // the player's distances – m the total; carry as set in "My bag"
-  onSave: (v: { lie: Lie; club: Club | null; penalty: boolean; penaltyKind?: PenaltyKind; kind: ShotKind; review: false }) => void;
+  replay?: boolean;
+  onSave: (v: { lie: Lie; club: Club | null; penalty: boolean; penaltyKind?: PenaltyKind; replay?: boolean; kind: ShotKind; review: false }) => void;
   onDelete?: () => void;
   onHoledOut?: () => void; // "holed from here" (chip-in) – only for a new shot
   onCancel: () => void;
@@ -27,10 +28,13 @@ export function ShotSheet(props: {
   // none / water / out of bounds – an older penalty without a kind shows as water
   const [pk, setPk] = useState<PenaltyKind | 'none'>(props.penalty ? (props.penaltyKind ?? 'water') : 'none');
   const penalty = pk !== 'none';
+  // water: a drop, or the next shot again from here (Sascha 22.10.2026: two balls off the tee into the water, each time
+  // again from the tee – stroke and distance, as out of bounds always is)
+  const [replay, setReplay] = useState(!!props.replay);
   const [club, setClub] = useState<Club | null>(props.club);
   const [kind, setKind] = useState<ShotKind | null>(props.kind ?? null); // null = follow the suggestion
   const shownKind = kind ?? suggestKind(lie, props.toPinM);
-  const save = (c: Club | null) => props.onSave({ lie, club: c, penalty, penaltyKind: penalty ? (pk as PenaltyKind) : undefined, kind: shownKind, review: false });
+  const save = (c: Club | null) => props.onSave({ lie, club: c, penalty, penaltyKind: penalty ? (pk as PenaltyKind) : undefined, replay: pk === 'water' ? replay : pk === 'ob' ? true : undefined, kind: shownKind, review: false });
   return (
     <div className="sheet-backdrop" onClick={props.onCancel}>
       <section className="sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
@@ -95,6 +99,20 @@ export function ShotSheet(props: {
             ]}
           />
         </div>
+        {pk === 'water' && (
+          <div className="field">
+            <label>{tr('Then', 'Danach')}</label>
+            <Segmented<'drop' | 'replay'>
+              label={tr('Then', 'Danach')}
+              value={replay ? 'replay' : 'drop'}
+              onChange={(v) => v && setReplay(v === 'replay')}
+              options={[
+                { value: 'drop', label: tr('Dropped', 'Gedroppt') },
+                { value: 'replay', label: tr('Again from here', 'Erneut von hier') },
+              ]}
+            />
+          </div>
+        )}
         <div className="sheet-actions">
           {props.onDelete && (
             <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
