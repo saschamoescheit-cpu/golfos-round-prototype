@@ -120,10 +120,12 @@ export function HoleScreen(props: {
   /** Strokes are pre-filled with par: leaving a hole commits par for players who did not change it. */
   const commitPar = (r: Round): Round => commitParAt(r, i);
 
-  /** `byGps`: the GPS moved the round on – the player confirmed nothing, so no par is written for the last hole. */
+  /** `byGps`: the GPS moved the round on – the player confirmed nothing, so no par is written for the last hole.
+   *  Back to an earlier hole writes nothing either: the hole left is not played yet (Sascha 22.10.2026: back to a hole
+   *  to correct its score, then forward again – the score sheet no longer opened, the unplayed hole had got par). */
   const goTo = (target: number, byGps = false, base: Round = round) => {
     setDetected(null);
-    const committed = byGps ? base : commitPar(base);
+    const committed = byGps || target < i ? base : commitPar(base);
     if (target >= round.holes.length) {
       props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 }, true);
       return;
@@ -399,6 +401,8 @@ export function HoleScreen(props: {
     if (!entered) setDetected({ from, to: k });
   };
   useEffect(() => setScoreSheet(false), [i]); // on to the next hole: the sheet closes, the map shows (Sascha 15.10.2026)
+  /** On to the next hole: a hole without a score first opens its score sheet ("→" and the swipe alike). */
+  const forward = () => (pendingHole != null ? onAfterScore(true) : myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1));
   const [puttEditor, setPuttEditor] = useState(false);
   const [hazardsOn, setHazardsOn] = useState(false); // distances to bunkers and water, on demand
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
@@ -1677,7 +1681,7 @@ export function HoleScreen(props: {
                 </span>
               )}
             </button>
-            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={() => (pendingHole != null ? onAfterScore(true) : myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1))}>
+            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={forward}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
@@ -1696,7 +1700,10 @@ export function HoleScreen(props: {
         if (touchX.current == null) return;
         const dx = e.changedTouches[0].clientX - touchX.current;
         touchX.current = null;
-        if (Math.abs(dx) > 70) goTo(dx < 0 ? i + 1 : i - 1);
+        if (Math.abs(dx) > 70) {
+          if (dx < 0) forward();
+          else goTo(i - 1);
+        }
       }}
     >
       <TopBar
