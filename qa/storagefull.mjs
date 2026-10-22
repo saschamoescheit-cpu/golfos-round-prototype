@@ -11,7 +11,7 @@ const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|photon\.komoot\.io|lgl-bw\.de|www\.wms\.nrw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); }); // tile fetches cut off by the reload (WebKit under test)
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|photon\.komoot\.io|lgl-bw\.de|www\.wms\.nrw\.de)\/\S* due to access control|sw\.js load failed/.test(e.message)) errs.push(e.message); }); // tile fetches and the service worker script cut off by the reload (WebKit under test, as in outages)
 let fails = 0;
 const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
