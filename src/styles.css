@@ -1579,3 +1579,8 @@ button.tile:disabled { opacity: 1; }
     width: calc(55vw - 24px); height: auto; min-height: 0;
   }
 }
+
+/* Every mark on the map is placed by the map (absolute, moved with transform). A mark's own "position: relative"
+   (the hand circles, the sound shots) put them into the page flow: each further mark sat one mark's height lower –
+   30 px, some 60 m in the overview, right only when zoomed in (Sascha 22.10.2026, round of 22.10. on Hetzenhof). */
+.maplibregl-map .maplibregl-marker { position: absolute; }
