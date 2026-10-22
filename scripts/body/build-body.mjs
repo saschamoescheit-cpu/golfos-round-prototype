@@ -407,7 +407,18 @@ const rows = (c) => {
   const out = nrm([c.n[0], 0, c.n[2]]);
   return [c.p, add(c.p, add(mul(up, 0.016), mul(out, 0.002))), add(c.p, add(mul(up, 0.012), mul(out, 0.011))), add(c.p, add(mul(up, -0.022), mul(out, 0.016)))];
 };
-const colIdx = curve.map((c) => rows(c).map((p) => { V.push(p); W.push(c.wts); return V.length - 1; }));
+// the collar's weights: its foot on the neckline as the shirt's edge there, the fold lying on the shirt moving with the
+// chest – the neck turns inside the collar (as in a real one), the collar does not turn with the head
+const blendW = (wa, wb, t) => {
+  const m = new Map();
+  for (const [b, w] of wa) m.set(b, (m.get(b) ?? 0) + w * (1 - t));
+  for (const [b, w] of wb) m.set(b, (m.get(b) ?? 0) + w * t);
+  const top = [...m].sort((x, y) => y[1] - x[1]).slice(0, 4);
+  const sum = top.reduce((x, [, w]) => x + w, 0);
+  return top.map(([b, w]) => [b, w / sum]);
+};
+const chestW = [[boneIx.chest, 1]];
+const colIdx = curve.map((c) => rows(c).map((p, r) => { V.push(p); W.push(blendW(c.wts, chestW, [0, 0.5, 0.9, 1][r])); return V.length - 1; }));
 for (let k = 0; k < colIdx.length; k++) {
   const A = colIdx[k], Bq = colIdx[(k + 1) % colIdx.length];
   // leave out the front: the collar opens there (the placket)
