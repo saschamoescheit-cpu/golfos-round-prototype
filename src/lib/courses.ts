@@ -180,7 +180,12 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
     const osm = await osmCourseAt(summary).catch(() => null);
     if (osm) {
       const course = await loadCourse(osm).catch(() => null);
-      if (course && course.holes.length >= 9) return course;
+      if (course && course.holes.length >= 9) {
+        // par and Hcp the OSM holes lack come from the OpenGolfAPI scorecard (in the USA often complete there)
+        const merged = withCardValues(course, await ogaHoles(summary.id).catch(() => []));
+        if (merged !== course) saveCachedCourse(merged);
+        return merged;
+      }
     }
   }
   const holes = seed
@@ -192,6 +197,23 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
   const course: Course = { id: summary.id, source: summary.source, name: seed?.name ?? summary.name, lat: summary.lat, lon: summary.lon, holes, loops, ...(summary.bbox ? { bbox: summary.bbox } : {}) };
   if (holes.length > 0) saveCachedCourse(course);
   return course;
+}
+
+/** Fills the par and Hcp a course's holes lack from a scorecard, hole by hole – only for a course of one loop, where the
+ *  numbers mean the same; what the course has stays. The same course when nothing was missing. */
+export function withCardValues(course: Course, card: CourseHole[]): Course {
+  if (course.loops.length !== 1 || card.length === 0) return course;
+  let changed = false;
+  const holes = course.holes.map((h) => {
+    const c = card.find((x) => x.number === h.number);
+    if (!c) return h;
+    const par = h.par ?? c.par;
+    const strokeIndex = h.strokeIndex.length ? h.strokeIndex : c.strokeIndex;
+    if (par === h.par && strokeIndex === h.strokeIndex) return h;
+    changed = true;
+    return { ...h, par, strokeIndex };
+  });
+  return changed ? { ...course, holes } : course;
 }
 
 // words that say nothing about which course it is
