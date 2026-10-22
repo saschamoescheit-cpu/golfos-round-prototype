@@ -618,6 +618,15 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     }
     const body: SwingKey['body'] = {};
     for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) body[id] = [0, 1, 2].map((c) => mix((x) => x.body[id]?.[c] ?? 0)) as Rot;
+    // the realistic golfer is never quite still (22.10.2026): he breathes – the chest rises a little every 3.2 s – and
+    // keeps his balance with a slight sway of the hips; too small to change a position, enough that a hold looks alive
+    if (rig.root.userData.realistic) {
+      const breath = Math.sin((2 * Math.PI * time) / 3.2);
+      const sway = Math.sin((2 * Math.PI * time) / 2.7 + 1.1);
+      body.chest = [body.chest![0] - 1.0 * breath, body.chest![1], body.chest![2]];
+      body.spine = [body.spine![0] - 0.4 * breath, body.spine![1], body.spine![2]];
+      body.pelvis = [body.pelvis![0], body.pelvis![1] + 0.35 * sway, body.pelvis![2] + 0.25 * sway];
+    }
     poseTrunk(p, postured(body, look, !!rig.root.userData.realistic), mix((x) => x.shift ?? 0), -mix((x) => x.drop ?? 0.05), mix((x) => x.push ?? 0));
     if (look > 0) {
       // the smallest turn of the head that points the face at the ball (no roll, also with the ball right below the
