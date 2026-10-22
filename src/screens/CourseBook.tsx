@@ -8,6 +8,7 @@ import { courseStats, type CourseHoleStat } from '../lib/history';
 import { adviseClub, DEFAULT_CARRY } from '../lib/caddie';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { loadHoleNotes } from '../lib/holenotes';
+import { historyLines } from '../lib/holehistory';
 import { loadGreenGrids, setGreenSpeed, type GreenGrid } from '../lib/greenread';
 import { playing18 } from '../lib/scoring';
 import { HoleSketch } from '../components/HoleSketch';
@@ -40,6 +41,11 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
   const strategy = useMemo(() => loadStrategy(props.course.id), [props.course.id]); // the player's round plan
   // the player's record per hole from earlier rounds here (feature 012)
   const record = useMemo(() => new Map(courseStats(statRounds(loadRounds()), props.course.name).holes.map((h) => [h.hole.label, h])), [props.course.name]);
+  // which tee club served the player best on each hole (Sascha 22.10.2026: the strategy per hole)
+  const history = useMemo(() => {
+    const rs = statRounds(loadRounds());
+    return (label: string) => historyLines(rs, props.course.id, label);
+  }, [props.course.id]);
   // The caddie plans every hole (tee strategy, feature 017) – a few holes at a time, so the first pages show at once
   // and the phone never freezes for seconds.
   const [shown, setShown] = useState(3);
@@ -79,6 +85,7 @@ export function CourseBook(props: { course: Course; holes: RoundHole[]; tee: str
             playing={playing18(props.holes.length, props.playing ?? null)} // 18-hole value for the spread
             note={notes[h.label] ?? {}}
             record={record.get(h.label)}
+            history={history(h.label)}
             planned={strategy[h.label]}
           />
         );
@@ -104,6 +111,7 @@ function HolePage(p: {
   favourite: number;
   note: import('../lib/holenotes').HoleNote;
   record?: CourseHoleStat;
+  history?: string[];
   /** The player's round plan for this hole (Sascha 16.10.2026: "plan a round") */
   planned?: PlannedHole;
 }) {
@@ -145,7 +153,7 @@ function HolePage(p: {
     planned: plan ? { clubs: planClubs, shot: 0 } : null,
   });
   const lines = cad.lines.filter((l) => l.tone === 'warn' || l.tone === 'plan' || /^Fairway \d/.test(l.text)).map((l) => l.text);
-  const book = holeBook({ data, slopes: p.slopes, greenSlope: p.greenSlope, grid: p.grid, unit: p.unit, record: p.record });
+  const book = holeBook({ data, slopes: p.slopes, greenSlope: p.greenSlope, grid: p.grid, unit: p.unit, record: p.record, history: p.history });
   return (
     <section className="card book-hole">
       {head}

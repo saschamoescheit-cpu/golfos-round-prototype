@@ -100,3 +100,26 @@ describe('safe landing (020)', () => {
     expect(distanceM(a.pos, at(-8, 200))).toBeGreaterThan(5);
   });
 });
+
+// the player's corridor per club (Sascha 22.10.2026): water inside it moves the landing spot away – as little as needed
+describe('the corridor per club', () => {
+  const pond: Ring = sq(26, 205, 14, 25); // water 12–40 m right of the drive's landing spot
+  const wet = { ...hole, water: [pond] };
+  it('without a corridor the drive stays on the line', () => {
+    const a = aimPoint({ ...base, data: wet, from: at(0, 0), teeShot: true });
+    expect(Math.abs(a.landing[0] - at(0, 0)[0])).toBeLessThan(at(3, 0)[0] - at(0, 0)[0]);
+  });
+  it('a driver that misses up to 20 m right: the landing spot moves left until the water is out of the corridor', () => {
+    const corridor = new Map([['Dr' as const, { lo: -5, hi: 20 }]]);
+    const a = aimPoint({ ...base, data: wet, from: at(0, 0), teeShot: true, corridor });
+    const east = (a.landing[0] - at(0, 0)[0]) / (at(1, 0)[0] - at(0, 0)[0]);
+    expect(east).toBeLessThan(-7);
+    expect(east).toBeGreaterThan(-16);
+    expect(a.reasons.some((r) => /corridor/.test(r))).toBe(true);
+  });
+  it('a corridor that misses the water: nothing moves', () => {
+    const corridor = new Map([['Dr' as const, { lo: -10, hi: 8 }]]);
+    const a = aimPoint({ ...base, data: wet, from: at(0, 0), teeShot: true, corridor });
+    expect(a.reasons.some((r) => /corridor/.test(r))).toBe(false);
+  });
+});

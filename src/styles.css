@@ -1567,3 +1567,15 @@ button.tile:disabled { opacity: 1; }
 .report-area-value { text-align: right; font: 700 14px var(--body); font-variant-numeric: tabular-nums; }
 .report-area-last { grid-column: 2 / -1; margin-top: -4px; }
 .report-drill { display: flex; flex-direction: column; gap: 4px; background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+/* plan against played off the tee (Sascha 22.10.2026) */
+.plan-vs { display: flex; flex-direction: column; gap: 4px; }
+
+/* "Schläge prüfen" on an iPad or a computer (Sascha 22.10.2026): the map large on the left and staying there, the
+   shots, questions and the score on the right – the phone keeps its one column */
+@media (min-width: 800px) {
+  .screen.review { max-width: none; margin: 0; padding-left: calc(55vw + 8px); padding-right: max(24px, env(safe-area-inset-right)); }
+  .screen.review > .review-map {
+    position: fixed; z-index: 1; left: max(16px, env(safe-area-inset-left)); top: calc(env(safe-area-inset-top) + 16px); bottom: 16px;
+    width: calc(55vw - 24px); height: auto; min-height: 0;
+  }
+}

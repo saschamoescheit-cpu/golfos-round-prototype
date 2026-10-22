@@ -42,6 +42,8 @@ export interface CaddieInput {
   bag: CarryBag;
   conditions: Conditions | null;
   tendency: Map<Club, number>;
+  /** the player's corridor per club – the landing spot keeps it out of water and out of bounds (22.10.2026) */
+  corridor?: Map<Club, { lo: number; hi: number }>;
   note: HoleNote;
   style?: PlayStyle;
   favourite?: number;
@@ -106,15 +108,15 @@ function sameSide(plan: string, fairwaySide: number | undefined): string {
   return (fairwaySide > 0 && left) || (fairwaySide < 0 && right) ? '' : plan;
 }
 
-export function teeAimFor(o: Pick<CaddieInput, 'data' | 'par' | 'pin' | 'bag' | 'conditions' | 'tendency' | 'slopes' | 'boundary' | 'trees' | 'woods' | 'note' | 'style' | 'favourite' | 'playing'>): AimPoint | null {
+export function teeAimFor(o: Pick<CaddieInput, 'data' | 'par' | 'pin' | 'bag' | 'conditions' | 'tendency' | 'corridor' | 'slopes' | 'boundary' | 'trees' | 'woods' | 'note' | 'style' | 'favourite' | 'playing'>): AimPoint | null {
   if (o.par < 4) return null;
-  return aimPoint({ data: o.data, from: o.data.tee, pin: o.pin, par: o.par, teeShot: true, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, woods: o.woods, note: o.note, style: o.style, favourite: o.favourite, playing: o.playing });
+  return aimPoint({ data: o.data, from: o.data.tee, pin: o.pin, par: o.par, teeShot: true, bag: o.bag, conditions: o.conditions, tendency: o.tendency, corridor: o.corridor, slopes: o.slopes, boundary: o.boundary, trees: o.trees, woods: o.woods, note: o.note, style: o.style, favourite: o.favourite, playing: o.playing });
 }
 
 export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const { data, from, pin, note, unit } = o;
   const fmt = (m: number) => formatDistance(m, unit);
-  const ap = aimPoint({ data, from, pin, par: o.par, teeShot: o.teeShot, bag: o.bag, conditions: o.conditions, tendency: o.tendency, slopes: o.slopes, boundary: o.boundary, trees: o.trees, woods: o.woods, note, style: o.style, favourite: o.favourite, playing: o.playing, grid: o.grid });
+  const ap = aimPoint({ data, from, pin, par: o.par, teeShot: o.teeShot, bag: o.bag, conditions: o.conditions, tendency: o.tendency, corridor: o.corridor, slopes: o.slopes, boundary: o.boundary, trees: o.trees, woods: o.woods, note, style: o.style, favourite: o.favourite, playing: o.playing, grid: o.grid });
   // Own planned target still ahead (dragged or added by the player) wins over the caddie's point.
   const ownTarget = o.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15 && !(o.teeAim && distanceM(t, o.teeAim.pos) < 3)) ?? null;
   const target = ownTarget ?? ap.pos;

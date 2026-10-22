@@ -75,6 +75,10 @@ export interface AimInput {
   favourite?: number; // favourite approach distance in metres
   playing?: number | null; // playing handicap – the player's spread for the pin strategy
   grid?: GreenGrid | null; // heights of this green – uphill or downhill putts
+  /** Per club: 80 % of the player's balls end between `lo` and `hi` metres off the target line (− left, + right) – the
+   *  landing spot moves so this corridor keeps out of water and out of bounds, as tour players plan their misses
+   *  (Sascha 22.10.2026). */
+  corridor?: Map<Club, { lo: number; hi: number }>;
 }
 
 export function aimPoint(input: AimInput): AimPoint {
@@ -246,6 +250,35 @@ function aimPointOn(input: AimInput, useSide: boolean): AimPoint {
   }
   side *= zone.k;
   base = zone.landing;
+  // The player's corridor with this club (tee shots and layups): where 80 % of the balls end around the landing spot,
+  // the own tendency already taken off by the aim. Water or out of bounds inside it: the landing spot moves sideways,
+  // as little as needed (at most 15 m), until the corridor is clear.
+  const cor = kind !== 'approach' ? o.corridor?.get(club0) : undefined;
+  if (cor) {
+    const across = bearingDeg(from, base) + 90;
+    const lo = cor.lo - tend; // the aim already moved against the tendency: the balls spread around the landing spot
+    const hi = cor.hi - tend;
+    const wet = (p: LngLat) => data.water.some((r) => pointInRing(p, r)) || (!!o.boundary?.length && !o.boundary.some((r) => pointInRing(p, r)));
+    const clear = (shift: number) => {
+      for (let x = lo; x <= hi + 0.1; x += 3) if (wet(move(base, across, shift + x))) return false;
+      return !wet(move(base, across, shift + hi));
+    };
+    if (!clear(0)) {
+      let best: number | null = null;
+      for (let d = 1; d <= 15 && best == null; d++) {
+        if (clear(d)) best = d;
+        else if (clear(-d)) best = -d;
+      }
+      if (best != null && Math.abs(best) >= 2) {
+        base = move(base, across, best);
+        reasons.push(
+          tr(`your corridor with this club`, `dein Korridor mit diesem Schläger`) +
+            ` (${-cor.lo > 0 ? `${-cor.lo} m ${sideWord('left')}` : ''}${-cor.lo > 0 && cor.hi > 0 ? ' – ' : ''}${cor.hi > 0 ? `${cor.hi} m ${sideWord('right')}` : ''}): ` +
+            `${Math.abs(best)} m ${sideWord(best > 0 ? 'right' : 'left')}`,
+        );
+      }
+    }
+  }
   let pos = Math.abs(side) >= 2 ? move(base, bearingDeg(from, base) + 90, side) : base;
 
   // Trees: keep the shot if the line is free; else the free line closest to the plan (never into water or out).

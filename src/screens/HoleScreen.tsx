@@ -24,6 +24,9 @@ import { GREEN_CHARTS, type GreenChart } from '../data/greenCharts';
 import { madeChartsFor, type MadeCharts } from '../lib/greenmaker';
 import { greenSource } from '../data/greenSources';
 import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
+import { historyLines } from '../lib/holehistory';
+import { clubReports } from '../lib/clubstats';
+import { lineOfStored } from '../lib/holelines';
 import { isSpeaking, onSpeaking, setMicPause, speak, summary } from '../lib/caddietalk';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
@@ -167,6 +170,11 @@ export function HoleScreen(props: {
   const [unit] = useState<Unit>(loadUnit);
   // the player's record per hole from earlier rounds here (course book, feature 012)
   const holeRecords = useMemo(() => new Map(courseStats(statRounds(loadRounds()), round.courseName).holes.map((h) => [h.hole.label, h])), [round.courseName]);
+  // the player's strategy per hole from his rounds here – shown with the caddie (Sascha 22.10.2026)
+  const holeHistories = useMemo(() => {
+    const rs = statRounds(loadRounds());
+    return new Map(round.holes.map((h) => [h.label, historyLines(rs, round.courseId, h.label)]));
+  }, [round.courseId, round.holes]);
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number; still?: boolean } | null>(null);
   const detectArmed = useRef(true); // the next good fix may move the round to the hole the player is on
@@ -376,6 +384,11 @@ export function HoleScreen(props: {
   const carryBag = useMemo(() => withPartials(loadCarryBag() ?? DEFAULT_CARRY), []); // with the wedges' partial swings
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
+  // Own corridor per club (≥ 5 checked shots): the caddie keeps water and out of bounds out of it (Sascha 22.10.2026)
+  const corridor = useMemo(
+    () => new Map(clubReports(statRounds(loadRounds()), lineOfStored()).flatMap((c) => (c.corridor ? [[c.club, { lo: c.corridor.lo, hi: c.corridor.hi }] as const] : []))),
+    [],
+  );
   const caddieSettings = useMemo(() => loadCaddieSettings(), []);
   // Hidden by the player until the caddie has something new to say (new hole, new shot, new warning).
   // The caddie card opens only on a tap; new advice shows as a dot on the caddie button ("!" with a warning).
@@ -827,7 +840,7 @@ export function HoleScreen(props: {
     const terrain = { slopes: geometry.fairwaySlopes?.[hole.label], boundary: geometry.boundary, trees: geometry.trees, woods };
     // Par 4/5: target 1 is there from the start – the caddie's landing spot from the tee (driver carry, moved for
     // wind, slope and tendency, clear of trees). The player can drag or remove it; his own plan is kept then.
-    const teeAim = teeAimFor({ data: mapData, par: hole.par, pin: plans[i]?.pin ?? mapData.greenCenter, bag: carryBag, conditions, tendency, ...terrain, note: notes[hole.label] ?? {}, style: caddieSettings.style, favourite: caddieSettings.favourite, playing: caddiePlaying });
+    const teeAim = teeAimFor({ data: mapData, par: hole.par, pin: plans[i]?.pin ?? mapData.greenCenter, bag: carryBag, conditions, tendency, corridor, ...terrain, note: notes[hole.label] ?? {}, style: caddieSettings.style, favourite: caddieSettings.favourite, playing: caddiePlaying });
     const planned = strategy[hole.label];
     // planning a par 5 (Sascha 16.10.2026): three shots – two targets from the start, the second where the
     // favourite distance is left
@@ -919,7 +932,7 @@ export function HoleScreen(props: {
     const green_ = slope && greenVisible ? readGreen(slope, bearingDeg(from, pin)) : null;
     const grid = grids?.[hole.label] ?? null;
     // the course book's facts on this hole, also in the caddie (Sascha 15.10.2026)
-    const book = holeBook({ data: mapData, slopes: geometry.fairwaySlopes?.[hole.label], greenSlope: geometry.greenSlopes?.[hole.label] ?? made?.m.slopes[hole.label], grid, unit, record: holeRecords.get(hole.label), tip: (notes[hole.label] ?? {}).tip });
+    const book = holeBook({ data: mapData, slopes: geometry.fairwaySlopes?.[hole.label], greenSlope: geometry.greenSlopes?.[hole.label] ?? made?.m.slopes[hole.label], grid, unit, record: holeRecords.get(hole.label), tip: (notes[hole.label] ?? {}).tip, history: holeHistories.get(hole.label) });
     const gpsBall = player && onHole && grid && distanceM(player.pos, mapData.greenCenter) <= 25 && onThisGreen(grid, player.pos)
         ? ([Math.round(player.pos[0] * 1e5) / 1e5, Math.round(player.pos[1] * 1e5) / 1e5] as LngLat) // ~1 m: GPS jitter does not re-roll the putt
         : null;
@@ -959,6 +972,7 @@ export function HoleScreen(props: {
           bag: carryBag,
           conditions,
           tendency,
+          corridor,
           note,
           style: caddieSettings.style,
           favourite: caddieSettings.favourite,

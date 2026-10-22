@@ -83,3 +83,9 @@ export function adviceText(h: HoleHistory): string | null {
     `Mit dem Abschlag-Schläger des Caddies im Schnitt ${toParText(h.followed.avgToPar)}, mit einem anderen ${toParText(h.other.avgToPar)}.`,
   );
 }
+
+/** The lines for the birdie book and the caddie: the tee club that served best here, what following the caddie was worth. */
+export function historyLines(rounds: Round[], courseId: string, label: string): string[] {
+  const h = holeHistory(rounds, courseId, label);
+  return [bestTeeClub(h)?.text, adviceText(h)].filter((x): x is string => !!x);
+}

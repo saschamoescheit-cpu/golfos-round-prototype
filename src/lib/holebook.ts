@@ -27,6 +27,8 @@ export function holeBook(p: {
   unit: Unit;
   record?: CourseHoleStat;
   tip?: string;
+  /** the player's own strategy here: the tee club that served best, what the caddie's advice was worth (22.10.2026) */
+  history?: string[];
 }): HoleBook {
   const { data } = p;
   const fmt = (m: number) => formatDistance(m, p.unit);
@@ -64,7 +66,7 @@ export function holeBook(p: {
         ...(rec.notes.length ? [rec.notes.join(' · ')] : []),
       ]
     : [];
-  return { ...(p.tip ? { tip: p.tip } : {}), rise, hazards, green, record };
+  return { ...(p.tip ? { tip: p.tip } : {}), rise, hazards, green, record: [...record, ...(p.history ?? [])] };
 }
 
 export interface HazardAhead {

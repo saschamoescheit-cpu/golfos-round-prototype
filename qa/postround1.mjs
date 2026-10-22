@@ -38,6 +38,9 @@ await p.evaluate((exp) => {
   // hole 4C: putts not placed on the green – the first putt is told after the round
   delete es[3].puttsAt;
   localStorage.setItem('golfos.rounds.v1', JSON.stringify([r]));
+  // the caddie advised a 7-iron off the first tee (the round shows an 8-iron)
+  const tee = es[0].detail.shots[0].pos;
+  localStorage.setItem('golfos.caddielog.v1.' + r.id, JSON.stringify({ 0: [{ t: 1, pos: tee, toPin: 150, club: '7i', playsLike: 152, aim: null, plan: null, warning: null }] }));
 }, exp);
 await p.reload();
 await p.waitForTimeout(1200);
@@ -51,6 +54,8 @@ const round = () => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rou
 const mine = async (i) => { const r = await round(); return r.entries[r.players.find((x) => x.isMe).id][i]; };
 
 ok(/0\/9 geprüft/.test(await p.locator('.review-progress').innerText()), 'the progress: "0/9 geprüft"');
+const vs = await p.locator('.plan-vs').innerText().catch(() => '');
+ok(/Caddie: 7i/.test(vs) && /gespielt: 8i/.test(vs), `plan against played off the tee ("${vs.replace(/\s+/g, ' ')}")`);
 
 // 1 · strike, intent, stance on shot 1
 await p.locator('.review-list li[data-shot="0"] .shot-row').click();
