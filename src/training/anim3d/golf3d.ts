@@ -19,7 +19,7 @@ import type { L, Shot } from '../types';
 import { ballFlight } from '../motion';
 import { realSwing } from './swings';
 import { buildRealClub } from './club3d';
-import { grassMaterial, realBall, skyTexture, treeLine } from './scene3d';
+import { grassMaterial, grassTuft, realBall, skyTexture, treeLine } from './scene3d';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 // The 3D swing videos of Training (Sascha 17.10.2026: "3D animated videos would be better than still pictures").
@@ -1405,6 +1405,13 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       }
       const at = ballPos({ swing, x, z });
       ball.position.copy(at);
+      // the realistic golfer's ball sits in the fairway's grass (not in the sand, not on the green)
+      if (real && !swing.sand && !swing.noBall && swing.club !== 'putter') {
+        const tuft = grassTuft(0.4, 2600);
+        tuft.position.set(at.x, heightAt(at.x, at.z), at.z);
+        tuft.quaternion.copy(groundQ);
+        extras.add(tuft);
+      }
       tee.position.set(at.x, (swing.lowTee ? 0 : 0.02) + heightAt(at.x, at.z), at.z);
       // the player's own frame, pivoting about the ball: posed with no turn (the solver works in plain world
       // coordinates), then turned by the aim for the picture

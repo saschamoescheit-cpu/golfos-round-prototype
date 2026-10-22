@@ -211,3 +211,41 @@ vec2 dimple(vec3 n) {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 32), m);
   return ball;
 }
+
+/** the fairway's grass round the ball (22.10.2026): a ball sits among blades 1–2 cm high, not on a flat plane – a few
+ *  thousand thin blades in one instanced mesh, each turned and leaning its own way, in slightly different greens; the
+ *  densest at the ball, thinning out to the edge */
+export function grassTuft(radius: number, count: number): THREE.InstancedMesh {
+  // one blade: tapered, a little bent, 1 unit high (scaled per blade)
+  const g = new THREE.BufferGeometry();
+  const w = 0.0016;
+  g.setAttribute('position', new THREE.Float32BufferAttribute([-w, 0, 0, w, 0, 0, -w * 0.6, 0.55, 0.08, w * 0.6, 0.55, 0.08, 0, 1, 0.22], 3));
+  g.setIndex([0, 1, 2, 1, 3, 2, 2, 3, 4]);
+  // lit as the ground is (the normals up): the blades take the colour of the turf they stand on, not a dark patch
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(Array.from({ length: 5 }, () => [0, 0.98, 0.2]).flat(), 3));
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9, side: THREE.DoubleSide });
+  // seen from behind a blade keeps its upward normal (three.js would turn it round, and half the blades went dark)
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('gl_FrontFacing ? 1.0 : - 1.0', '1.0'));
+  };
+  m.customProgramCacheKey = () => 'grass-blade';
+  const mesh = new THREE.InstancedMesh(g, m, count);
+  let seed = 11;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const greens = ['#5a9c3c', '#63a443', '#529436', '#6aab49', '#5d9f3e'].map((c) => new THREE.Color(c));
+  const mat = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  for (let i = 0; i < count; i++) {
+    const r = radius * Math.sqrt(rnd()) * (0.3 + 0.7 * rnd());
+    const a = rnd() * Math.PI * 2;
+    // shorter towards the edge, so the tuft runs out into the turf
+    const h = (0.011 + rnd() * 0.012) * Math.sqrt(Math.max(0.05, 1 - r / radius));
+    q.setFromEuler(e.set((rnd() - 0.5) * 0.5, rnd() * Math.PI * 2, (rnd() - 0.5) * 0.5));
+    mat.compose(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r), q, new THREE.Vector3(1, h, h));
+    mesh.setMatrixAt(i, mat);
+    mesh.setColorAt(i, greens[Math.floor(rnd() * greens.length)].clone().multiplyScalar(0.85 + rnd() * 0.3));
+  }
+  mesh.receiveShadow = true;
+  // the instances spread round the origin: bounds of the one blade would cull them
+  mesh.frustumCulled = false;
+  return mesh;
+}
