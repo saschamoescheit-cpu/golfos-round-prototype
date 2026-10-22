@@ -30,6 +30,8 @@ export interface HoleMapProps {
   walked?: { line: LngLat[]; stops: LngLat[] } | null;
   /** Track points can be dragged (round check); called on release with the point's id. */
   onTrackMove?: (id: string, pos: LngLat) => void;
+  /** a shot held down on the map (Sascha 22.10.2026: "hold a shot on the hole to remove it") */
+  onTrackHold?: (id: string) => void;
   /** A tap on a track point (the shots noted by hand on the course: to remove one). */
   onTrackTap?: (id: string) => void;
   /** While a shot is dragged: the text its marker shows (e.g. the shot length), null = keep the label. */
@@ -403,6 +405,43 @@ export function HoleMap(props: HoleMapProps) {
       // a shot noted by hand: the hand circle where it was noted, with its number and club – one mark, not two (Sascha 20.10.2026)
       const d = t.sound ? soundEl(t.label) : t.hand ? handEl(t.label) : t.shotByHand ? handEl(t.shotByHand.n, t.shotByHand.club) : labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       const movable = p.onTrackMove != null && t.id != null;
+      // held down for a moment without moving: the hold action (asks to remove the shot) – no tap after it
+      let held = false;
+      if (p.onTrackHold && t.id != null) {
+        let timer = 0;
+        let start: [number, number] | null = null;
+        const stop = () => {
+          window.clearTimeout(timer);
+          start = null;
+        };
+        d.addEventListener('pointerdown', (ev) => {
+          held = false;
+          start = [ev.clientX, ev.clientY];
+          window.clearTimeout(timer);
+          timer = window.setTimeout(() => {
+            held = true;
+            start = null;
+            (navigator as Navigator & { vibrate?: (ms: number) => boolean }).vibrate?.(25);
+            latest.current.onTrackHold?.(t.id!);
+          }, 650);
+        });
+        d.addEventListener('pointermove', (ev) => {
+          if (start && Math.hypot(ev.clientX - start[0], ev.clientY - start[1]) > 8) stop();
+        });
+        d.addEventListener('pointerup', stop);
+        d.addEventListener('pointercancel', stop);
+        d.addEventListener('contextmenu', (ev) => ev.preventDefault()); // no callout on the iPhone
+        d.addEventListener(
+          'click',
+          (ev) => {
+            if (!held) return;
+            ev.stopPropagation();
+            ev.preventDefault();
+          },
+          true,
+        );
+        d.classList.add('holdable');
+      }
       if (p.onTrackTap && t.id != null) {
         d.classList.add('tap');
         d.setAttribute('role', 'button');

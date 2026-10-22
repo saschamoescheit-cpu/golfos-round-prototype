@@ -148,6 +148,7 @@ const listeners = new Set<() => void>();
 const setTalking = (v: boolean) => {
   if (talking === v) return;
   talking = v;
+  if (!v) releaseAudio(); // done: the phone's sound as before (music goes on, the ring switch counts again)
   listeners.forEach((l) => l());
 };
 export const isSpeaking = () => talking;
@@ -159,12 +160,32 @@ export function onSpeaking(l: () => void): () => void {
 const synth = () => (typeof window === 'undefined' ? undefined : (window as Window & { speechSynthesis?: SpeechSynthesis }).speechSynthesis);
 
 /**
- * A moment of silence through an <audio> element, played from the tap: on the iPhone the page then plays sound like a
- * media app – the read-aloud is heard with the ring switch on silent, which mutes it otherwise (Sascha 17.10.2026:
- * "I tap read aloud, nothing happens").
+ * Silence through an <audio> element, played from the tap and kept playing while the caddie talks: on the iPhone the
+ * page then plays sound like a media app – the read-aloud is heard with the ring switch on silent / vibrate, which mutes
+ * it otherwise (Sascha 17.10.2026: "I tap read aloud, nothing happens"; 22.10.2026: "it works when the key clicks are
+ * loud – it has to work on vibrate too": 50 ms of silence were over before the speech began). Since iOS 17 the page
+ * says so itself too (navigator.audioSession "playback").
  */
 let silence: HTMLAudioElement | null = null;
+type AudioSessionNav = Navigator & { audioSession?: { type: string } };
+function audioSession(type: 'playback' | 'auto'): void {
+  try {
+    const a = (navigator as AudioSessionNav).audioSession;
+    if (a && a.type !== type) a.type = type;
+  } catch {
+    /* not this browser */
+  }
+}
+function releaseAudio(): void {
+  try {
+    silence?.pause();
+  } catch {
+    /* gone */
+  }
+  audioSession('auto');
+}
 function wakeAudio(): void {
+  audioSession('playback');
   try {
     if (!silence) {
       // 50 ms of silence as a data: address (not a blob: one – a revoked blob address showed as an error in WebKit)
@@ -177,6 +198,7 @@ function wakeAudio(): void {
       b.fill(128, 44);
       silence = new Audio('data:audio/wav;base64,' + btoa(String.fromCharCode(...b)));
     }
+    silence.loop = true; // on while he talks – stopped when he is done (releaseAudio)
     silence.currentTime = 0;
     void silence.play().catch(() => undefined);
   } catch {

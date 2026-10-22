@@ -81,10 +81,22 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const firstToCheck = entries.findIndex((e) => e.detail?.shots.some((s) => s.review));
   const [k, setK] = useState(firstToCheck >= 0 ? firstToCheck : 0);
   const [edit, setEdit] = useState<number | null>(null);
+  // a penalty stroke from the course not tied to a shot yet: which shot it belongs to (then that shot's sheet)
+  const [penaltyPick, setPenaltyPick] = useState(false);
   // the putts placed on the course, shown and editable here too (Sascha 16.10.2026)
   const [puttEdit, setPuttEdit] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // a shot removed by holding it on the map – "Undo" for a few seconds (Sascha 22.10.2026)
+  const [removed, setRemoved] = useState<{ k: number; n: number; detail: DetailEntry } | null>(null);
+  // held: asks first – pressed and then dragged, the shot only moves (the question goes)
+  const [holdAsk, setHoldAsk] = useState<number | null>(null);
+  useEffect(() => setHoldAsk(null), [k]);
+  useEffect(() => {
+    if (!removed) return;
+    const t = window.setTimeout(() => setRemoved(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [removed]);
   // aerial image or the drawn hole – the same choice as on the course (Sascha 16.10.2026)
   const [view2d, setView2d] = useState(() => {
     try {
@@ -117,7 +129,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const justDragged = useRef(false); // the click after a drag does not open the shot
   /** Moves shot `from` with the finger from y0 until it is lifted. While dragging the page does not scroll (iPhone). */
   const dragFrom = (y0: number, from: number) => {
-    const rows = [...(listRef.current?.children ?? [])].slice(0, latestShots.current.length) as HTMLElement[];
+    // the shots' rows only – the penalty strokes have lines of their own between them (22.10.2026)
+    const rows = [...(listRef.current?.querySelectorAll(':scope > li[data-shot]') ?? [])] as HTMLElement[];
     const mids = rows.map((r) => {
       const b = r.getBoundingClientRect();
       return b.top + b.height / 2;
@@ -175,7 +188,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     const start = (ev: TouchEvent) => {
       const t = ev.target as HTMLElement;
       const li = t.closest('li');
-      const idx = li ? [...list.children].indexOf(li) : -1;
+      const idx = li?.dataset.shot != null ? Number(li.dataset.shot) : -1;
       if (idx < 0 || idx >= latestShots.current.length || t.closest('.row-delete') || !ev.touches[0]) return;
       const t0 = ev.touches[0];
       if (t.closest('.row-grip')) {
@@ -277,8 +290,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     // The score the player entered stays: confirming a hole whose detected shots miss one (or with a penalty not yet
     // placed) must not change it. The score field above changes it; a difference shows the hint to fix the shots.
     if (entry.strokes != null || extra.strokes != null) delete derived.strokes;
-    // penalties entered on the course stay until the player marks the shots they belong to
-    if ((entry.penalties ?? 0) > (derived.penalties ?? 0) && !detail.shots.some((s) => s.penalty)) delete derived.penalties;
+    // penalties entered on the course stay until the shots carry as many (Sascha 22.10.2026: two from the course, one
+    // tied to a shot – the other must not vanish); a penalty taken off a shot (or its shot deleted) lowers the count
+    const before = (entry.detail?.shots ?? []).filter((s) => s.penalty).length;
+    const now = derived.penalties ?? 0;
+    const course = entry.penalties ?? 0;
+    derived.penalties = now >= before ? Math.max(now, course) : Math.max(now, course - (before - now));
     save(index, { detail, putts, ...derived, ...extra });
   };
 
@@ -535,6 +552,75 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     <main className="screen review">
       <TopBar title={tr('Check your shots', 'Schläge prüfen')} onBack={props.onDone} backLabel={tr('Done', 'Fertig')} />
       {notice && <div className="notice">{notice}</div>}
+      {penaltyPick && d && (
+        <div className="sheet-backdrop" onClick={() => setPenaltyPick(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Which shot was the penalty for?', 'Zu welchem Schlag gehört der Strafschlag?')} onClick={(ev) => ev.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Which shot was the penalty for?', 'Zu welchem Schlag gehört der Strafschlag?')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPenaltyPick(false)}>
+                ✕
+              </button>
+            </div>
+            <span className="muted small">{tr('Then choose water or out of bounds.', 'Danach Wasser oder Aus wählen.')}</span>
+            <div className="pick-list">
+              {d.shots.map((sh, n) =>
+                sh.penalty ? null : (
+                  <button
+                    key={n}
+                    type="button"
+                    className="pick-option"
+                    onClick={() => {
+                      setPenaltyPick(false);
+                      setEdit(n);
+                    }}
+                  >
+                    <span className="grow">
+                      <strong>
+                        {tr(`Shot ${n + 1}`, `Schlag ${n + 1}`)} · {sh.club ? clubCode(sh.club) : '–'}
+                      </strong>
+                      <span className="muted small">{lieName(sh.lie)}</span>
+                    </span>
+                    <span aria-hidden="true">›</span>
+                  </button>
+                ),
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+      {holdAsk != null && d?.shots[holdAsk] && (
+        <div className="undo-toast hold-ask" role="dialog" aria-label={tr(`Remove shot ${holdAsk + 1}?`, `Schlag ${holdAsk + 1} entfernen?`)}>
+          <span>{tr(`Remove shot ${holdAsk + 1}?`, `Schlag ${holdAsk + 1} entfernen?`)}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const n = holdAsk;
+              setHoldAsk(null);
+              setRemoved({ k, n, detail: d });
+              saveDetail(k, { ...d, shots: d.shots.filter((_, j) => j !== n) });
+            }}
+          >
+            {tr('Remove', 'Entfernen')}
+          </button>
+          <button type="button" className="hold-cancel" onClick={() => setHoldAsk(null)}>
+            {tr('Cancel', 'Abbrechen')}
+          </button>
+        </div>
+      )}
+      {removed && (
+        <div className="undo-toast" role="status">
+          <span>{tr(`Shot ${removed.n + 1} removed`, `Schlag ${removed.n + 1} entfernt`)}</span>
+          <button
+            type="button"
+            onClick={() => {
+              saveDetail(removed.k, removed.detail);
+              setRemoved(null);
+            }}
+          >
+            {tr('Undo', 'Rückgängig')}
+          </button>
+        </div>
+      )}
 
       <div className="review-nav">
         <button type="button" className="icon-btn" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={k === 0} onClick={() => goTo(k - 1)}>
@@ -692,7 +778,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             onTargetsChange={() => {}}
             onTargetRemove={() => {}}
             onPinChange={(p) => d && saveDetail(k, { ...d, pin: p })}
+            onTrackHold={(id) => {
+              if (!d || !id.startsWith('shot-')) return;
+              const n = Number(id.slice(5));
+              if (d.shots[n]) setHoldAsk(n);
+            }}
             onTrackMove={(id, pos) => {
+              setHoldAsk(null);
               if (id.startsWith('hand-')) {
                 const kk = Number(id.slice(5));
                 const list = (round.manualShots ?? []).slice();
@@ -789,7 +881,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             const odd = shotOdd(d, n);
             const cls = [s.review || odd ? 'check' : '', drag?.from === n ? 'dragging' : '', drag && drag.from !== n && drag.to === n ? (drag.to < drag.from ? 'drop-before' : 'drop-after') : ''].join(' ').trim();
             return (
-              <li key={n} className={cls || undefined} style={drag?.from === n ? { transform: `translateY(${drag.dy}px)` } : undefined} onPointerDown={(ev) => !(ev.target as HTMLElement).closest('.row-grip, .row-delete') && holdRow(ev, n)} onContextMenu={(e) => e.preventDefault()}>
+              <li key={n} data-shot={n} className={cls || undefined} style={drag?.from === n ? { transform: `translateY(${drag.dy}px)` } : undefined} onPointerDown={(ev) => !(ev.target as HTMLElement).closest('.row-grip, .row-delete') && holdRow(ev, n)} onContextMenu={(e) => e.preventDefault()}>
                 <span className="n">{n + 1}</span>
                 <button type="button" className="shot-row" onClick={() => !justDragged.current && setEdit(n)}>
                   <strong>{s.club ? clubCode(s.club) : '–'}</strong> · {KINDS.find((x) => x.value === kind)!.label}
@@ -819,7 +911,37 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 </span>
               </li>
             );
+          }).flatMap((row, n) => {
+            // the penalty stroke as its own line under its shot – which strokes were penalties (Sascha 22.10.2026)
+            const s = d.shots[n];
+            if (!s.penalty) return [row];
+            const what = s.penaltyKind === 'ob' ? tr('out of bounds', 'Aus') : s.penaltyKind === 'water' ? tr('water', 'Wasser') : null;
+            return [
+              row,
+              <li key={`pen-${n}`} className="penalty-row">
+                <span className="n pen">+1</span>
+                <button type="button" className="shot-row" onClick={() => setEdit(n)}>
+                  <strong>{tr('Penalty stroke', 'Strafschlag')}</strong>
+                  {what ? ` · ${what}` : ''}
+                  <span className="muted small" style={{ display: 'block' }}>
+                    {tr(`after shot ${n + 1}`, `nach Schlag ${n + 1}`)}
+                  </span>
+                </button>
+              </li>,
+            ];
           })}
+          {/* penalty strokes entered on the course, not tied to a shot yet: one line each, a tap asks which shot */}
+          {Array.from({ length: Math.max(0, (e.penalties ?? 0) - d.shots.filter((s) => s.penalty).length) }, (_, j) => (
+            <li key={`pen-open-${j}`} className="penalty-row open">
+              <span className="n pen">+1</span>
+              <button type="button" className="shot-row" onClick={() => setPenaltyPick(true)}>
+                <strong>{tr('Penalty stroke from the course', 'Strafschlag vom Platz')}</strong>
+                <span className="muted small" style={{ display: 'block' }}>
+                  {tr('Not tied to a shot yet – tap to choose which', 'Noch keinem Schlag zugeordnet – antippen und Schlag wählen')}
+                </span>
+              </button>
+            </li>
+          ))}
           {d.onGreen && (
             <li>
               <span className="n">⛳</span>

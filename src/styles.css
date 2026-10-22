@@ -1513,3 +1513,16 @@ button.tile:disabled { opacity: 1; }
 .select-wrap { position: relative; display: block; }
 .select-wrap select { appearance: none; -webkit-appearance: none; width: 100%; padding-right: 34px; }
 .select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+
+/* a shot on the map held down to remove it: no text selection or callout on the iPhone (Sascha 22.10.2026) */
+.holdable { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* the hole's score in the shot check: a long name ("Doppelbogey") takes the room it needs, never over the putts */
+.review-score .sc-hero-main { grid-auto-columns: auto; justify-content: space-between; column-gap: 14px; }
+.review-score .sc-mid { overflow-wrap: anywhere; }
+
+/* a penalty stroke as its own line in the shot check (Sascha 22.10.2026) */
+.shot-list .n.pen { background: var(--bad); color: var(--bg); font-size: 11px; }
+.review-list li.penalty-row { grid-template-columns: 28px 1fr; }
+.review-list li.penalty-row.open { background: rgba(255, 107, 94, 0.10); border-radius: 10px; }
+
+.undo-toast.hold-ask .hold-cancel { color: var(--text-2); }
