@@ -1094,9 +1094,17 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const segs = 240;
     // the tube needs a direction everywhere: points where the club stands still (address, holds) are left out
     const path = pts.filter((x, i) => i === 0 || x.distanceTo(pts[i - 1]) > 0.002);
-    const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(path), segs, 0.0045, 5, false);
-    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#79a128', transparent: true, opacity: 0.75, depthWrite: false }));
+    const real = !!p.rig.root.userData.realistic;
+    const curve = new THREE.CatmullRomCurve3(path);
+    const geo = new THREE.TubeGeometry(curve, segs, real ? 0.006 : 0.0045, 5, false);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#79a128', transparent: true, opacity: real ? 0.95 : 0.75, depthWrite: false }));
     mesh.renderOrder = 1;
+    // on the realistic range (green turf, a wood behind) the green line needs a light edge to be seen
+    if (real) {
+      const halo = new THREE.Mesh(new THREE.TubeGeometry(curve, segs, 0.011, 5, false), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.45, depthWrite: false }));
+      halo.renderOrder = 0.9;
+      mesh.add(halo);
+    }
     return { mesh, times, share };
   };
   const placeTrace = (p: Player, time: number) => {
@@ -1107,7 +1115,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const segs = 240;
     const k = Math.floor(tr.share[i] * segs);
     tr.mesh.visible = k > 0;
-    tr.mesh.geometry.setDrawRange(0, k * 5 * 6);
+    for (const m of [tr.mesh, ...tr.mesh.children] as THREE.Mesh[]) m.geometry.setDrawRange(0, k * 5 * 6);
   };
 
   /** where the ball is a time after the hit (the flight of its shot, its start line and bend) */
