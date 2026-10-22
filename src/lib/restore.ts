@@ -3,6 +3,7 @@ import { loadCachedCourse, loadRounds, saveRound } from './storage';
 import { loadGames, loadGameTrash } from './gamestore';
 import { holesFromTags } from './courses';
 import { buildRoundHoles, loopOptions } from './loops';
+import { decodeTrack, type Row } from './trackcodec';
 import { emptyEntry } from './scoring';
 import { distanceM } from './geo';
 import { shownName, loadProfile } from './profile';
@@ -15,7 +16,6 @@ import { tr } from './i18n';
 // them (storage.deleteRound) and do not come back.
 
 const TRACK = 'golfos.track.v1.';
-type Row = [number, number, number, number, 1?];
 
 function coursesOnPhone(): Course[] {
   const out = new Map<string, Course>();
@@ -59,7 +59,7 @@ export function restoreLostRounds(): number {
       }
     })();
     for (const key of keys) {
-      const rows = JSON.parse(localStorage.getItem(key) ?? '[]') as Row[];
+      const rows: Row[] = decodeTrack(localStorage.getItem(key));
       if (rows.length < 30) continue; // a few fixes are no round
       const mid = rows[rows.length >> 1];
       const at: [number, number] = [mid[1], mid[2]];

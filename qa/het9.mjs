@@ -110,7 +110,9 @@ console.log(log.join('\n') || 'every ball on the right hole');
 const state = await p.evaluate(() => {
   const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0];
   const id = Object.keys(r.entries)[0];
-  const track = JSON.parse(localStorage.getItem('golfos.track.v1.' + r.id) ?? '[]');
+  // a list of fixes, or the compact form { v: 2, d: [differences] } – the app-opens are the fifth value in both
+  const stored = JSON.parse(localStorage.getItem('golfos.track.v1.' + r.id) ?? '[]');
+  const track = Array.isArray(stored) ? stored : (stored.d ?? []);
   const cl = JSON.parse(localStorage.getItem('golfos.caddielog.v1.' + r.id) ?? '{}');
   return { strokes: r.entries[id].map((e) => e.strokes).join(','), track: track.length, opens: track.filter((x) => x[4]).length, caddie: Object.values(cl).map((x) => x.length).join(',') };
 });

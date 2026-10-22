@@ -4,6 +4,7 @@ import type { ImageryId } from './imagery';
 import type { CarryBag } from './caddie';
 import { holesAsLines } from './geo';
 import { GEO, touchGeometry } from './storageguard';
+import { decodeTrack } from './trackcodec';
 
 // Everything is stored on the device (localStorage). No account, no cloud – prototype only.
 
@@ -278,7 +279,7 @@ export function closeStaleRounds(maxAgeH: number, keep: string | null = null): v
     const scored = Object.values(r.entries).some((list) => list.some((e) => e.strokes != null || e.pickedUp));
     let tracked = false;
     try {
-      tracked = JSON.parse(localStorage.getItem('golfos.track.v1.' + r.id) ?? '[]').length >= 30;
+      tracked = decodeTrack(localStorage.getItem('golfos.track.v1.' + r.id)).length >= 30;
     } catch {
       tracked = false;
     }

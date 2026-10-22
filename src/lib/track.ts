@@ -3,6 +3,7 @@ import { distanceM, distToLine, pointInRing, type HoleMapData } from './geo';
 import { BAG, lieAt, onGreenAt, suggestKind } from './shots';
 import { expectedStrokes } from './sg';
 import { nearestOnSegment } from './terrain';
+import { decodeTrack, encodeTrack, type Row } from './trackcodec';
 
 // Shot detection from the GPS track (features 004/007). A golfer walks to the ball, stands there while
 // choosing the club and hitting, then walks on towards the green. "Stand still, then move on towards the
@@ -415,7 +416,6 @@ const MAX_POINTS = 12000; // 18 holes with the screen on all round (a fix every 
 
 // The track of the running round stays in memory: reading and parsing the whole stored track on every fix
 // (once a second, thousands of points late in the round) costs battery.
-type Row = [number, number, number, number] | [number, number, number, number, 1];
 let mem: { id: string; raw: Row[]; pts: TrackPoint[] } | null = null;
 
 function cached(roundId: string) {
@@ -423,7 +423,7 @@ function cached(roundId: string) {
     flushTrack(); // another round: the last fixes of the one in memory first
     let raw: Row[] = [];
     try {
-      raw = JSON.parse(localStorage.getItem(KEY + roundId) ?? '[]');
+      raw = decodeTrack(localStorage.getItem(KEY + roundId));
     } catch {
       raw = [];
     }
@@ -463,7 +463,7 @@ export function flushTrack(): void {
   dirty = false;
   savedAt = Date.now();
   try {
-    localStorage.setItem(KEY + mem.id, JSON.stringify(mem.raw));
+    localStorage.setItem(KEY + mem.id, encodeTrack(mem.raw));
   } catch {
     // storage full – the track is a bonus, the round itself is saved separately
   }
