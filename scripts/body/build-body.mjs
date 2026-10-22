@@ -206,6 +206,24 @@ for (let i = 0; i < nV; i++) {
   if (off) V[i] = add(V[i], mul(N1[i], off));
 }
 for (let i = 0; i < nV; i++) if (vTris[i].some((ti) => triReg0[ti] === 4)) V[i][1] = Math.max(0, Math.min(V[i][1], 0.012));
+// the shirt hangs over the chest (22.10.2026): spanned from the chest's high points down to the belt, as cloth does,
+// not drawn into the hollows under and between the chest muscles; the trousers likewise over the seat and the hips –
+// these points of the cloth only ever move out, to the mean of their neighbours where that lies further out, many times
+// (the hollows fill, the high points stay)
+{
+  const trunk = (i) => vTris[i].length && ((vTris[i].every((ti) => triReg0[ti] === 1) && /^(chest|spine|pelvis)/.test(domOf(W[i]))) || (vTris[i].every((ti) => triReg0[ti] === 2) && /^(pelvis|hip)/.test(domOf(W[i])) && B[i][2] > 0.7));
+  for (let it = 0; it < 40; it++) {
+    const NS = normalsOf(V, tris);
+    const next = V.map((q) => q.slice());
+    for (let i = 0; i < nV; i++) {
+      if (!trunk(i)) continue;
+      const m = [0, 0, 0]; for (const j of nb[i]) for (let k = 0; k < 3; k++) m[k] += V[j][k] / nb[i].size;
+      const out = dot(sub(m, V[i]), NS[i]);
+      if (out > 0) next[i] = add(V[i], mul(NS[i], out * 0.8));
+    }
+    for (let i = 0; i < nV; i++) V[i] = next[i];
+  }
+}
 // the trousers hang straight from the thigh down, wider than the leg (golf trousers, not leggings): every trouser
 // vertex of a leg is pushed out from the leg's axis to at least the trouser's own radius there, the hem a little
 // wider and resting on the shoe
@@ -584,6 +602,26 @@ for (let i = 0; i < Math.min(nv, B.length); i++) {
     mixC([0.075, 0.08, 0.095], hair * 0.97);
   }
   for (let k = 0; k < 3; k++) tint[i * 3 + k] = Math.round(Math.min(1, c[k]) * 255);
+}
+// shade in the hollows (22.10.2026): where the surface lies below its surroundings – the ears, round the eyes and the
+// nose, between the fingers, the armpits, folds of the clothes – a little darker, as the light from the sky reaches it
+// less. Worked out from the shape at rest: how far each point lies below the mean of its neighbourhood (two sizes), along
+// its normal; kept in the vertex colours with the face's tones
+{
+  const adj = Array.from({ length: nv }, () => new Set());
+  for (const t of all) for (let k = 0; k < 3; k++) { adj[t[k]].add(t[(k + 1) % 3]); adj[t[k]].add(t[(k + 2) % 3]); }
+  const NA = normalsOf(V, all);
+  const blur = (P, n) => {
+    let cur = P;
+    for (let it = 0; it < n; it++) cur = cur.map((q, i) => { if (!adj[i].size) return q; const m = [0, 0, 0]; for (const j of adj[i]) for (let c = 0; c < 3; c++) m[c] += cur[j][c]; return mul(m, 1 / adj[i].size); });
+    return cur;
+  };
+  const near = blur(V, 3), wide = blur(near, 12);
+  for (let i = 0; i < nv; i++) {
+    const d1 = dot(NA[i], sub(near[i], V[i])), d2 = dot(NA[i], sub(wide[i], V[i]));
+    const ao = Math.max(0.6, 1 - Math.max(0, d1) * 55 - Math.max(0, d2) * 22);
+    for (let k = 0; k < 3; k++) tint[i * 3 + k] = Math.round(tint[i * 3 + k] * ao);
+  }
 }
 const buf = Buffer.concat([Buffer.from(pos.buffer), Buffer.from(idx.buffer), Buffer.from(sIdx.buffer), Buffer.from(sW.buffer), Buffer.from(tint.buffer)]);
 const round = (a) => a.map((x) => Math.round(x * 100000) / 100000);

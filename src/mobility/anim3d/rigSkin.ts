@@ -169,10 +169,10 @@ export function applyRealisticSkin(rig: Rig): boolean {
   g.setIndex(new THREE.BufferAttribute(body.idx, 1));
   g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(Uint16Array.from(body.sIdx), 4));
   g.setAttribute('skinWeight', new THREE.BufferAttribute(Float32Array.from(body.sW, (x) => x / 255), 4));
-  // the face's tones (eyebrows, lips, stubble) as vertex colours – only the skin uses them
+  // the face's tones (eyebrows, lips, stubble) and the shade in the hollows as vertex colours
   if (body.tint) g.setAttribute('color', new THREE.BufferAttribute(Float32Array.from(body.tint, (x) => x / 255), 3));
   g.computeVertexNormals();
-  const mats: THREE.Material[] = REGION().map(([kind, color, roughness], r) => surfaceMaterial(kind, color, roughness, kind === 'skin' && body!.tint ? { vertexColors: true } : {}, r === 6 ? meta.capCentre : undefined));
+  const mats: THREE.Material[] = REGION().map(([kind, color, roughness], r) => surfaceMaterial(kind, color, roughness, body!.tint ? { vertexColors: true } : {}, r === 6 ? meta.capCentre : undefined));
   mats[6].side = THREE.DoubleSide;
   // the collar: a single band, seen from both sides
   mats[13].side = THREE.DoubleSide;
