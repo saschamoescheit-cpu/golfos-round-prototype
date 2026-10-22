@@ -228,6 +228,8 @@ const POSTURE = { pelvis: 2, spine: 2, chest: 1, neck: 8, head: 10 } as const;
  *  swung the head 29 cm to the side by the top; turning about the bent spine keeps the head nearly still) */
 /** how far a shoulder of the realistic golfer may reach forward (m) */
 const PROTRACT = 0.045;
+/** the realistic hands along the grip: the trail hand's middle this far below the lead hand's (they overlap a little) */
+const HAND_GAP = 0.072;
 const BEND_UP = 0.45;
 const SPINE_UP = 0.1;
 const postured = (body: SwingKey['body'], look: number, real = false): SwingKey['body'] => {
@@ -529,7 +531,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         const clubW = q.clone().multiply(clubQ);
         if (k.face) clubW.premultiply(new THREE.Quaternion().setFromAxisAngle(dir, THREE.MathUtils.degToRad(k.face)));
         const offL = p.rig.shafts.L.position.clone().applyQuaternion(realHandQ(p.rig, 'L', dir, clubW)).negate();
-        const offR = p.rig.shafts.R.position.clone().applyQuaternion(realHandQ(p.rig, 'R', dir, clubW)).negate().addScaledVector(dir, 0.09 + (s.gripGap ?? 0));
+        const offR = p.rig.shafts.R.position.clone().applyQuaternion(realHandQ(p.rig, 'R', dir, clubW)).negate().addScaledVector(dir, HAND_GAP + (s.gripGap ?? 0));
         const sL = p.rig.joints.shoulderL.getWorldPosition(new THREE.Vector3());
         const sR = p.rig.joints.shoulderR.getWorldPosition(new THREE.Vector3());
         const L = lens(p.rig);
@@ -606,7 +608,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // an open or closed face: the club turns about its shaft (the hands turn with it)
     const face = mix((x) => x.face ?? 0);
     if (face) clubW.premultiply(new THREE.Quaternion().setFromAxisAngle(dir, THREE.MathUtils.degToRad(face)));
-    const handsR = handsL.clone().addScaledVector(dir, 0.09 + (swing.gripGap ?? 0));
+    const handsR = handsL.clone().addScaledVector(dir, (rig.root.userData.realistic ? HAND_GAP : 0.09) + (swing.gripGap ?? 0));
 
     // the hands on the grip: the fingers of the shared figure close around a shaft that runs along the hand's z axis
     // through SHAFT_IN_HAND (Agility 18.10.2026) – so each hand turns about the shaft until its wrist points to its

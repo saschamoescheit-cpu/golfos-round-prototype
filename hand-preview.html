@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hand am Griff – Vorschau (nur Entwicklung)</title>
+    <style>
+      body { margin: 0; background: #0e1418; color: #eef2ec; font: 12px system-ui; }
+      #out { display: grid; grid-template-columns: repeat(3, 400px); gap: 4px; }
+      img { width: 400px; height: 400px; display: block; }
+      canvas { position: absolute; left: -9999px; width: 400px; height: 400px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="400" height="400"></canvas>
+    <div id="out"></div>
+    <script type="module" src="/src/mobility/anim3d/handPreview.ts"></script>
+  </body>
+</html>

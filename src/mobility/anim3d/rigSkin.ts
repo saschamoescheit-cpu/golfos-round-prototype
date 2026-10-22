@@ -188,51 +188,77 @@ export function applyRealisticSkin(rig: Rig): boolean {
   return true;
 }
 
-/** The closed fingers: each finger turns at its three joints (about their z, towards the palm) until its parts lie
- *  around the shaft that runs through rig.shafts – a short search per joint, done once. */
+/** the closed hand, worked out once (the same body every time): per side, per finger the three turns */
+const closedCache: Record<string, THREE.Quaternion[][]> = {};
+
+/** The closed fingers (19.10.2026): each finger turns at its three joints, about each part's own z (towards the palm),
+ *  so that its parts lie on the grip – points along every part as close to the grip's surface as can be, none inside
+ *  it; a coarse search, then a finer one around the best. The thumb: see fitThumb. Done once per side and kept. */
 function computeClosed(rig: Rig) {
   for (const s of ['L', 'R'] as const) {
     const side = s === 'L' ? 1 : -1;
     const shaft = rig.shafts[s].position.clone();
     const axis = (rig.shafts[s].userData.dir as THREE.Vector3 | undefined) ?? new THREE.Vector3(0, 0, 1);
+    const cached = closedCache[s];
     rig.fingers[s].forEach((f, k) => {
-      if (k === 4) {
-        f.closedQ = fitThumb(f, shaft, axis);
-        return;
-      }
-      const R = SHAFT_R + 0.0095;
-      const angles: number[] = [];
-      const piv = [f.base, f.mid, f.tip!];
-      // forward kinematics in the wrist frame
-      const end = (n: number, a: number[]) => {
-        let m = new THREE.Matrix4();
-        for (let i = 0; i <= n; i++) {
-          const local = new THREE.Matrix4().compose(piv[i].position, f.rest![i].clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(-side * (a[i] ?? 0)))), new THREE.Vector3(1, 1, 1));
-          m = m.multiply(local);
-        }
-        return new THREE.Vector3(0, -f.lengths![n], 0).applyMatrix4(m);
-      };
-      const dist = (p: THREE.Vector3) => {
-        const d = p.clone().sub(shaft);
-        return d.sub(axis.clone().multiplyScalar(d.dot(axis))).length();
-      };
-      for (let i = 0; i < 3; i++) {
-        let best = 0, err = Infinity;
-        for (let a = 0; a <= 110; a += 1) {
-          const tryA = [...angles, a];
-          const e = Math.abs(dist(end(i, tryA)) - R);
-          if (e < err) { err = e; best = a; }
-        }
-        angles.push(best);
-      }
-      f.closed = angles;
+      if (cached) { f.closedQ = cached[k].map((q) => q.clone()); return; }
+      f.closedQ = k === 4 ? fitThumb(f, shaft, axis, side) : fitFinger(f, shaft, axis, side);
     });
+    if (!cached) closedCache[s] = rig.fingers[s].map((f) => f.closedQ!.map((q) => q.clone()));
   }
+}
+
+const Z = new THREE.Vector3(0, 0, 1);
+/** the distance of a point from the grip's axis */
+const axisDist = (p: THREE.Vector3, shaft: THREE.Vector3, axis: THREE.Vector3) => {
+  const d = p.clone().sub(shaft);
+  return d.sub(axis.clone().multiplyScalar(d.dot(axis))).length();
+};
+/** points along a finger's three parts (in the wrist frame) for its joint turns */
+function fingerPoints(f: Rig['fingers']['L'][number], qs: THREE.Quaternion[]): THREE.Vector3[] {
+  const piv = [f.base, f.mid, f.tip!];
+  let m = new THREE.Matrix4();
+  const out: THREE.Vector3[] = [];
+  for (let i = 0; i < 3; i++) {
+    m = m.multiply(new THREE.Matrix4().compose(piv[i].position, qs[i], new THREE.Vector3(1, 1, 1)));
+    for (const t of [0.35, 0.7, 1]) out.push(new THREE.Vector3(0, -f.lengths![i] * t, 0).applyMatrix4(m));
+  }
+  return out;
+}
+function fitFinger(f: Rig['fingers']['L'][number], shaft: THREE.Vector3, axis: THREE.Vector3, side: number): THREE.Quaternion[] {
+  const D = THREE.MathUtils.degToRad;
+  // the finger's own thickness: the part lies on the grip with its middle a finger's radius off the surface
+  const R = SHAFT_R + 0.0085;
+  const pose = (a: number[]) => [0, 1, 2].map((i) => f.rest![i].clone().multiply(new THREE.Quaternion().setFromAxisAngle(Z, D(-side * a[i]))));
+  const cost = (a: number[]) => {
+    let c = 0;
+    for (const p of fingerPoints(f, pose(a))) {
+      const d = axisDist(p, shaft, axis);
+      c += d > R ? (d - R) ** 2 : 25 * (R - d) ** 2;
+    }
+    // a little preference for even curls (as a finger closes), so the search does not find odd zigzags
+    return c + 1e-7 * ((a[0] - a[1]) ** 2 + (a[1] - a[2]) ** 2);
+  };
+  let best = [0, 0, 0], bc = Infinity;
+  for (let a = 0; a <= 100; a += 5) for (let b = 0; b <= 110; b += 5) for (let c = 0; c <= 90; c += 5) {
+    const k = cost([a, b, c]);
+    if (k < bc) { bc = k; best = [a, b, c]; }
+  }
+  const c0 = best.slice();
+  for (let a = -4; a <= 4; a++) for (let b = -4; b <= 4; b++) for (let c = -4; c <= 4; c++) {
+    const t = [c0[0] + a, c0[1] + b, c0[2] + c];
+    const k = cost(t);
+    if (k < bc) { bc = k; best = t; }
+  }
+  return pose(best);
 }
 
 /** The closed thumb: lying on the grip along the shaft, its tip towards the clubhead – a coarse, then a fine search over
  *  the turn at its base and the bend of its two joints. */
-function fitThumb(f: Rig['fingers']['L'][number], shaft: THREE.Vector3, axis: THREE.Vector3): THREE.Quaternion[] {
+function fitThumb(f: Rig['fingers']['L'][number], shaft: THREE.Vector3, axis: THREE.Vector3, _side: number): THREE.Quaternion[] {
+  // the side of the grip the thumb lies on: where its base is (it lies along the grip there, it does not wrap round)
+  const b0 = f.base.position.clone().sub(shaft);
+  const onSide = b0.sub(axis.clone().multiplyScalar(b0.dot(axis))).normalize();
   const piv = [f.base, f.mid, f.tip!];
   const D = THREE.MathUtils.degToRad;
   const dist = (p: THREE.Vector3) => {
@@ -258,7 +284,8 @@ function fitThumb(f: Rig['fingers']['L'][number], shaft: THREE.Vector3, axis: TH
   const cost = (e: number[]) => {
     const [, ip, tip] = ends(pose(e));
     const run = tip.clone().sub(ip).normalize();
-    return ((dist(ip) - R) ** 2 + (dist(tip) - R) ** 2) * 1e4 + (1 - run.dot(axis)) * 0.6;
+    const sideOf = (p: THREE.Vector3) => { const d = p.clone().sub(shaft); return d.sub(axis.clone().multiplyScalar(d.dot(axis))).normalize().dot(onSide); };
+    return ((dist(ip) - R) ** 2 + (dist(tip) - R) ** 2) * 1e4 + (1 - run.dot(axis)) * 0.6 + (2 - sideOf(ip) - sideOf(tip)) * 0.4;
   };
   let best = [0, 0, 0, 0, 0];
   let bc = cost(best);
