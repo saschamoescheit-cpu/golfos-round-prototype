@@ -261,6 +261,70 @@ for (let k = 0; k < NS; k++) for (let d = 0; d < ND; d++) {
 }
 // the edge of the visor
 for (let k = 0; k < NS; k++) visorTris.push([vIx(visTop, k, ND), vIx(visTop, k + 1, ND), vIx(visBot, k + 1, ND)], [vIx(visTop, k, ND), vIx(visBot, k + 1, ND), vIx(visBot, k, ND)]);
+// the polo collar: along the neckline (where shirt meets skin above the chest), a band standing up 1.6 cm and folded
+// down outside over 3 cm; and three buttons on the placket
+const NN = normalsOf(V, tris);
+const edgeTris = new Map();
+tris.forEach((t, ti) => { for (let k = 0; k < 3; k++) { const a = t[k], b = t[(k + 1) % 3]; const key = a < b ? a + '_' + b : b + '_' + a; (edgeTris.get(key) ?? edgeTris.set(key, []).get(key)).push([ti, a, b]); } });
+const collarTris = [];
+// the boundary vertices of the neckline, in order around the neck, smoothed into one even curve
+const ring = new Set();
+for (const [, list] of edgeTris) {
+  if (list.length !== 2) continue;
+  const [x, y] = list;
+  const rx = triReg0[x[0]], ry = triReg0[y[0]];
+  if (!((rx === 1 && ry === 0) || (rx === 0 && ry === 1))) continue;
+  const [, a, b] = rx === 1 ? x : y;
+  for (const i of [a, b]) if (B[i][2] > 1.36 && Math.abs(B[i][0]) < 0.16) ring.add(i);
+}
+const rp = [...ring];
+const cx = rp.reduce((t, i) => t + V[i][0], 0) / rp.length, cz = rp.reduce((t, i) => t + V[i][2], 0) / rp.length;
+const angOf = (i) => Math.atan2(V[i][0] - cx, V[i][2] - cz);
+const NC = 72;
+const curve = [];
+for (let k = 0; k < NC; k++) {
+  const a0 = -Math.PI + ((k + 0.5) / NC) * Math.PI * 2;
+  // the neighbours within ±12°, weighted by closeness
+  let w = 0; const p = [0, 0, 0]; const n = [0, 0, 0]; let best = rp[0], bd = 9;
+  for (const i of rp) {
+    let d = Math.abs(angOf(i) - a0); if (d > Math.PI) d = Math.PI * 2 - d;
+    if (d < bd) { bd = d; best = i; }
+    if (d > 0.21) continue;
+    const ww = 1 - d / 0.21; w += ww;
+    for (let c = 0; c < 3; c++) { p[c] += V[i][c] * ww; n[c] += NN[i][c] * ww; }
+  }
+  if (!w) continue;
+  curve.push({ p: mul(p, 1 / w), n: nrm(n), wts: W[best] });
+}
+// the band: up 1.6 cm, then folded down outside over 3 cm; a small gap at the front (the collar's two tips)
+const rows = (c) => {
+  const up = [0, 1, 0];
+  const out = nrm([c.n[0], 0, c.n[2]]);
+  return [c.p, add(c.p, add(mul(up, 0.016), mul(out, 0.002))), add(c.p, add(mul(up, 0.012), mul(out, 0.011))), add(c.p, add(mul(up, -0.022), mul(out, 0.016)))];
+};
+const colIdx = curve.map((c) => rows(c).map((p) => { V.push(p); W.push(c.wts); return V.length - 1; }));
+for (let k = 0; k < colIdx.length; k++) {
+  const A = colIdx[k], Bq = colIdx[(k + 1) % colIdx.length];
+  // leave out the front: the collar opens there (the placket)
+  const am = Math.atan2(curve[k].p[0] - cx, curve[k].p[2] - cz);
+  if (Math.abs(am) < 0.09) continue;
+  for (let r = 0; r < 3; r++) collarTris.push([A[r], Bq[r], Bq[r + 1]], [A[r], Bq[r + 1], A[r + 1]]);
+}
+// buttons: on the front of the chest, below the neckline, 3 cm apart
+const chestBone = boneIx.chest;
+const front = V.slice(0, nV).map((p, i) => [p, i]).filter(([p, i]) => Math.abs(p[0]) < 0.012 && triReg0.length && /^(chest|spine)/.test(domOf(W[i])) && p[1] > 1.3 && p[1] < 1.43);
+const buttonTris = [];
+for (const yb of [1.405, 1.375, 1.345]) {
+  const near = front.filter(([p]) => Math.abs(p[1] - yb) < 0.01);
+  if (!near.length) continue;
+  const zf = Math.max(...near.map(([p]) => p[2]));
+  const c = [0, yb, zf + 0.002];
+  const base = V.length;
+  const NB = 10;
+  V.push(add(c, [0, 0, 0.0025])); W.push([[chestBone, 1]]);
+  for (let k = 0; k < NB; k++) { const t = (k / NB) * Math.PI * 2; V.push(add(c, [Math.cos(t) * 0.0048, Math.sin(t) * 0.0048, 0])); W.push([[chestBone, 1]]); }
+  for (let k = 0; k < NB; k++) buttonTris.push([base, base + 1 + k, base + 1 + ((k + 1) % NB)]);
+}
 // the eyes: on the head, white with a dark iris at the front
 const eyeTris = [];
 const eyeReg = [];
@@ -272,8 +336,8 @@ for (const e of R.eyes) {
   for (const p of pts) { V.push(p); W.push([[headBone, 1]]); eyeReg.push(dot(nrm(sub(p, c)), FWD) > 0.82 ? 10 : 9); }
   for (const poly of e.f) for (let i = 1; i < poly.length - 1; i++) eyeTris.push([base + poly[0], base + poly[i], base + poly[i + 1]]);
 }
-const all = [...tris, ...capTris, ...visorTris, ...visorBotTris, ...eyeTris];
-const triReg = [...triReg0, ...capTris.map(() => 6), ...visorTris.map(() => 6), ...visorBotTris.map(() => 11), ...eyeTris.map((t) => (t.some((i) => eyeReg[i - eyeBase] === 10) ? 10 : 9))];
+const all = [...tris, ...capTris, ...visorTris, ...visorBotTris, ...eyeTris, ...collarTris, ...buttonTris];
+const triReg = [...triReg0, ...capTris.map(() => 6), ...visorTris.map(() => 6), ...visorBotTris.map(() => 11), ...eyeTris.map((t) => (t.some((i) => eyeReg[i - eyeBase] === 10) ? 10 : 9)), ...collarTris.map(() => 13), ...buttonTris.map(() => 12)];
 const order = all.map((_, i) => i).sort((p, q) => triReg[p] - triReg[q]);
 const groups = [];
 for (const i of order) { const r = triReg[i]; const g = groups[groups.length - 1]; if (g && g.r === r) g.n += 3; else groups.push({ r, start: groups.length ? groups[groups.length - 1].start + groups[groups.length - 1].n : 0, n: 3 }); }

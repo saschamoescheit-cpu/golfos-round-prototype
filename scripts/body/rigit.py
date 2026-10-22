@@ -1,8 +1,18 @@
-import bpy, json, math, mathutils
-D='C:/Users/SMOESC~1/AppData/Local/Temp/claude/C--Users-SMoescheit/44d898c0-1bc7-4c77-9714-0c345791eaef/scratchpad/dl/'
+import bpy, json, math, mathutils, sys
+# usage: blender -b human_base_meshes_bundle.blend --python rigit.py -- <work dir> <multires level 0|1|2>
+A=sys.argv[sys.argv.index('--')+1:]
+D=A[0].rstrip('/')+'/'
+LEVEL=int(A[1]) if len(A)>1 else 0
 J=json.load(open(D+'joints.json'))
 body=bpy.data.objects['GEO-body_male_realistic']; body.location=(0,0,0)
-for m in list(body.modifiers): body.modifiers.remove(m)   # base level only
+# the multires level: 0 = base mesh, 1 = four times the faces (smoother hands, face, ears)
+bpy.context.view_layer.objects.active=body
+for m in list(body.modifiers):
+    if m.type=='MULTIRES' and LEVEL>0:
+        m.levels=LEVEL
+        bpy.ops.object.modifier_apply(modifier=m.name)
+    else:
+        body.modifiers.remove(m)
 # armature
 ad=bpy.data.armatures.new('rig'); arm=bpy.data.objects.new('rig',ad); bpy.context.scene.collection.objects.link(arm)
 bpy.context.view_layer.objects.active=arm

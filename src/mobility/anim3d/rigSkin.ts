@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { COLORS, SHAFT_R, type Rig } from './rig';
+import { surfaceMaterial, type Surface } from './skinMaterials';
 
 // The realistic hull of the shared 3D golfer (Sascha 19.10.2026: "the most realistic that is technically possible"):
 // instead of the soft capsules a smooth human body – Blender Foundation's CC0 "Human Base Meshes" (realistic male), its
@@ -54,19 +55,21 @@ const frameM = (f: Meta['frames'][string]) => new THREE.Matrix4().makeBasis(new 
 
 // the colours of the regions of the mesh (see build-body.mjs): skin, shirt, trousers, shoe, sole, glove, cap, hair, belt,
 // eye, iris, the visor's underside
-const REGION = (): [string, number, number][] => [
-  ['#c8946f', 0.55, 0],
-  [COLORS.shirt, 0.82, 0],
-  [COLORS.trousers, 0.78, 0],
-  [COLORS.shoe, 0.45, 0],
-  [COLORS.sole, 0.8, 0],
-  [COLORS.glove, 0.6, 0],
-  [COLORS.cap, 0.7, 0],
-  ['#3a2b20', 0.9, 0],
-  ['#23282c', 0.45, 0],
-  ['#f2efe8', 0.25, 0],
-  ['#2a221c', 0.2, 0],
-  ['#4f6a24', 0.85, 0],
+const REGION = (): [Surface, string, number][] => [
+  ['skin', '#c8946f', 0.55],
+  ['pique', COLORS.shirt, 0.85],
+  ['twill', COLORS.trousers, 0.8],
+  ['shoe', COLORS.shoe, 0.42],
+  ['sole', COLORS.sole, 0.8],
+  ['glove', COLORS.glove, 0.62],
+  ['cap', COLORS.cap, 0.75],
+  ['hair', '#3a2b20', 0.85],
+  ['belt', '#23282c', 0.45],
+  ['plain', '#f2efe8', 0.15],
+  ['plain', '#2a221c', 0.1],
+  ['cap', '#4f6a24', 0.85],
+  ['plain', '#f4f2ec', 0.35],
+  ['pique', COLORS.shirt, 0.85],
 ];
 
 /** the pivot of a bone of the body */
@@ -162,8 +165,10 @@ export function applyRealisticSkin(rig: Rig): boolean {
   g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(Uint16Array.from(body.sIdx), 4));
   g.setAttribute('skinWeight', new THREE.BufferAttribute(Float32Array.from(body.sW, (x) => x / 255), 4));
   g.computeVertexNormals();
-  const mats = REGION().map(([color, roughness]) => new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 }));
+  const mats: THREE.Material[] = REGION().map(([kind, color, roughness]) => surfaceMaterial(kind, color, roughness));
   mats[6].side = THREE.DoubleSide;
+  // the collar: a single band, seen from both sides
+  mats[13].side = THREE.DoubleSide;
   for (const [r, start, n] of meta.groups) g.addGroup(start, n, r);
   const mesh = new THREE.SkinnedMesh(g, mats);
   mesh.castShadow = true;
