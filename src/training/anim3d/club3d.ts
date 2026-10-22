@@ -51,12 +51,13 @@ export function buildRealClub(kind: Club3D, len: number): THREE.Group {
   const rubber = mat('#1b2024', 0.85, 0);
   const wood = kind === 'driver' || kind === 'hybrid';
   // the grip: 27 cm of rubber, a little thicker at the butt, with its cap and a lighter band near the cap
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.0145, 0.0108, 0.27, 24, 1), rubber);
+  // (+y runs to the head: the top of the cylinder is the thin end; at the hands as thick as the fingers close round)
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.0112, 0.0142, 0.27, 24, 1), rubber);
   grip.position.y = 0.135;
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.0146, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), rubber);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.0143, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), rubber);
   cap.scale.y = 0.35;
   cap.rotation.x = Math.PI;
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.01465, 0.0145, 0.012, 24), mat('#3c464d', 0.7, 0));
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.01435, 0.01445, 0.012, 24), mat('#3c464d', 0.7, 0));
   band.position.y = 0.022;
   // the shaft: steel with step-downs (irons), graphite (woods); narrowing to the hosel
   const sLen = len - 0.27 - (wood ? 0.03 : 0.06);

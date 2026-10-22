@@ -20,6 +20,8 @@ type Meta = {
   groups: [number, number, number][];
   lengths: number[];
   fingers: Record<string, number[]>;
+  /** the middle of the cap's shell (its six panels meet above it) */
+  capCentre?: number[];
 };
 type Body = { meta: Meta; pos: Float32Array; idx: Uint16Array; sIdx: Uint8Array; sW: Uint8Array; tint: Uint8Array | null };
 
@@ -71,6 +73,8 @@ const REGION = (): [Surface, string, number][] => [
   ['cap', '#4f6a24', 0.85],
   ['plain', '#f4f2ec', 0.35],
   ['pique', COLORS.shirt, 0.85],
+  // the visor's top (no panel seams)
+  ['cap', COLORS.cap, 0.75],
 ];
 
 /** the pivot of a bone of the body */
@@ -168,7 +172,7 @@ export function applyRealisticSkin(rig: Rig): boolean {
   // the face's tones (eyebrows, lips, stubble) as vertex colours – only the skin uses them
   if (body.tint) g.setAttribute('color', new THREE.BufferAttribute(Float32Array.from(body.tint, (x) => x / 255), 3));
   g.computeVertexNormals();
-  const mats: THREE.Material[] = REGION().map(([kind, color, roughness]) => surfaceMaterial(kind, color, roughness, kind === 'skin' && body!.tint ? { vertexColors: true } : {}));
+  const mats: THREE.Material[] = REGION().map(([kind, color, roughness], r) => surfaceMaterial(kind, color, roughness, kind === 'skin' && body!.tint ? { vertexColors: true } : {}, r === 6 ? meta.capCentre : undefined));
   mats[6].side = THREE.DoubleSide;
   // the collar: a single band, seen from both sides
   mats[13].side = THREE.DoubleSide;

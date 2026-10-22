@@ -1483,7 +1483,44 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       const sL = at(J.shoulderL), eL = at(J.elbowL), wL = at(J.wristL), sR = at(J.shoulderR), eR = at(J.elbowR), wR = at(J.wristR);
       const ang = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => R(a.clone().sub(b).angleTo(c.clone().sub(b)));
       const r1 = (x: number) => Math.round(x * 10) / 10;
+      // each hand on the club: how far the wrist misses its target, how far the hand's grip line is off the shaft (cm)
+      // and turned from it (degrees)
+      const onClub = (s: 'L' | 'R') => {
+        const sh = p.rig.shafts[s];
+        const hp = sh.getWorldPosition(new THREE.Vector3());
+        const hd = ((sh.userData.dir as THREE.Vector3) ?? new THREE.Vector3(0, 0, 1)).clone().applyQuaternion(sh.parent!.getWorldQuaternion(new THREE.Quaternion()));
+        const rel = hp.clone().sub(p.club.position);
+        const off = rel.sub(club.clone().multiplyScalar(rel.dot(club))).length();
+        return { miss: r1(at(s === 'L' ? J.wristL : J.wristR).distanceTo(p.rig.root.userData.ik[s]) * 100), off: r1(off * 100), turn: r1(R(Math.acos(Math.min(1, Math.abs(hd.dot(club)))))) };
+      };
+      const oL = onClub('L'), oR = onClub('R');
+      // the skinned fingers (realistic golfer): mean distance of their vertices from the club's axis (mm)
+      const skinOff: Record<string, number> = {};
+      let sm: THREE.SkinnedMesh | null = null;
+      p.rig.root.traverse((o) => { if ((o as THREE.SkinnedMesh).isSkinnedMesh) sm = o as THREE.SkinnedMesh; });
+      if (sm) {
+        const m = sm as THREE.SkinnedMesh;
+        m.skeleton.update();
+        const si = m.geometry.attributes.skinIndex, sw = m.geometry.attributes.skinWeight;
+        const acc: Record<string, [number, number]> = {};
+        const v = new THREE.Vector3();
+        for (let i = 0; i < si.count; i++) {
+          let bi = 0, bw = -1;
+          for (let c = 0; c < 4; c++) if (sw.getComponent(i, c) > bw) { bw = sw.getComponent(i, c); bi = si.getComponent(i, c); }
+          const name = m.skeleton.bones[bi].name;
+          const k = /^(index|middle)\d([LR])$/.exec(name) ? 'fing' + name.slice(-1) : /^wrist[LR]$/.test(name) ? 'palm' + name.slice(-1) : '';
+          if (!k) continue;
+          m.getVertexPosition(i, v);
+          v.applyMatrix4(m.matrixWorld);
+          const d = v.clone().sub(p.club.position);
+          (acc[k] ??= [0, 0])[0] += d.sub(club.clone().multiplyScalar(d.dot(club))).length() * 1000;
+          acc[k][1]++;
+        }
+        for (const [k, [s, n]] of Object.entries(acc)) skinOff[k] = r1(s / n);
+      }
       return {
+        ...skinOff,
+        missL: oL.miss, offL2: oL.off, turnL: oL.turn, missR: oR.miss, offR2: oR.off, turnR: oR.turn,
         pelvisTurn: r1(turn(J.pelvis)), chestTurn: r1(turn(J.chest)), xFactor: r1(turn(J.chest) - turn(J.pelvis)),
         shoulderTilt: r1(R(Math.asin(cx.y))), chestBend: r1(R(Math.acos(cy.y))), pelvisBend: r1(R(Math.acos(py.y))),
         pelvisX: r1(at(J.pelvis).x * 100 - p.x * 100), headX: r1((at(J.head).x - ball.x) * 100), headY: r1(at(J.head).y * 100),

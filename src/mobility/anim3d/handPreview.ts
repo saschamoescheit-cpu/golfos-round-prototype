@@ -59,4 +59,31 @@ for (const [name, d] of views) {
   f.innerHTML = `<img src="${canvas.toDataURL('image/png')}"><figcaption>${side} · ${name}</figcaption>`;
   out.appendChild(f);
 }
+// the skinned skin of each finger against the grip: per part (0 base … 2 tip) the vertices' mean and least distance
+// from the grip's axis in mm (the grip's surface at SHAFT_R)
+let skinned: THREE.SkinnedMesh | null = null;
+rig.root.traverse((o) => { if ((o as THREE.SkinnedMesh).isSkinnedMesh) skinned = o as THREE.SkinnedMesh; });
+if (skinned) {
+  const sm = skinned as THREE.SkinnedMesh;
+  sm.skeleton.update();
+  const axisW = dir.clone().applyQuaternion(wq).normalize();
+  const si = sm.geometry.attributes.skinIndex, sw = sm.geometry.attributes.skinWeight;
+  const stats: Record<string, number[]> = {};
+  const v = new THREE.Vector3();
+  for (let i = 0; i < si.count; i++) {
+    let bi = 0, bw = -1;
+    for (let c = 0; c < 4; c++) if (sw.getComponent(i, c) > bw) { bw = sw.getComponent(i, c); bi = si.getComponent(i, c); }
+    const name = sm.skeleton.bones[bi].name;
+    if (!/^(index|middle|ring|little)\d/.test(name) || !name.endsWith(side)) continue;
+    sm.getVertexPosition(i, v);
+    v.applyMatrix4(sm.matrixWorld);
+    const d = v.clone().sub(centre);
+    const r = d.sub(axisW.clone().multiplyScalar(d.dot(axisW))).length() * 1000;
+    (stats[name] ??= []).push(r);
+  }
+  const pre = document.createElement('pre');
+  pre.id = 'stats';
+  pre.textContent = Object.entries(stats).sort().map(([n, a]) => `${n.padEnd(9)} mean ${(a.reduce((x, y) => x + y, 0) / a.length).toFixed(1)}  min ${Math.min(...a).toFixed(1)}  max ${Math.max(...a).toFixed(1)}  n ${a.length}`).join('\n') + `\ngrip r ${(SHAFT_R * 1000).toFixed(1)}`;
+  document.body.appendChild(pre);
+}
 document.body.dataset.done = '1';

@@ -52,7 +52,32 @@ const AMOUNT: Record<Surface, [number, number]> = {
   plain: [0, 0],
 };
 
-export function surfaceMaterial(kind: Surface, color: string, roughness: number, extra: Partial<THREE.MeshPhysicalMaterialParameters> = {}): THREE.MeshStandardMaterial {
+/** the six panels of a cap round its centre (rest position): a stitched seam between each two, meeting at the button on
+ *  top, and an embroidered eyelet in each panel */
+const CAP_PANELS = /* glsl */ `
+  vec3 q = p - CAP_C;
+  float rxz = length(q.xz);
+  float az = atan(q.x, q.z);
+  float seg = 1.0471976;
+  float sd = abs(fract(az / seg + 0.5) - 0.5) * seg * rxz;
+  // seen from afar (a pixel wider than the seam) the seam widens and fades instead of flickering
+  float px = fwidth(sd);
+  float groove = (1.0 - smoothstep(0.0005, 0.0016 + px, sd)) / (1.0 + px / 0.0012);
+  // two rows of stitches beside the seam – only close up
+  float st = atan(q.y, rxz) * 160.0;
+  float stitch = (1.0 - smoothstep(0.0002, 0.0005, abs(sd - 0.0028))) * step(0.5, fract(st)) * (1.0 - smoothstep(0.25, 0.5, fwidth(st))) * (1.0 - smoothstep(0.0004, 0.0008, px));
+  // the eyelet: a small ring half way up each panel
+  float pc = (floor(az / seg) + 0.5) * seg;
+  vec3 e = vec3(sin(pc) * 0.6, 0.8, cos(pc) * 0.6);
+  float ed = acos(clamp(dot(normalize(q), e), -1.0, 1.0)) * length(q);
+  float far = 1.0 - smoothstep(0.0006, 0.0015, fwidth(ed));
+  float eye = (1.0 - smoothstep(0.0018, 0.0026, ed)) * smoothstep(0.0008, 0.0014, ed) * far;
+  float hole = (1.0 - smoothstep(0.0007, 0.001, ed)) * far;
+  h = h * (1.0 - groove) - groove * 0.9 + stitch * 0.35 + eye * 0.6 - hole * 0.8;
+  tone = tone - groove * 2.0 - hole * 5.0 + eye * 0.8;
+`;
+
+export function surfaceMaterial(kind: Surface, color: string, roughness: number, extra: Partial<THREE.MeshPhysicalMaterialParameters> = {}, capCentre?: number[]): THREE.MeshStandardMaterial {
   const physical = kind === 'skin' || kind === 'pique' || kind === 'twill' || kind === 'cap';
   const m = physical
     ? new THREE.MeshPhysicalMaterial({ color, roughness, metalness: 0, ...(kind === 'skin' ? { sheen: 0.25, sheenRoughness: 0.6, sheenColor: new THREE.Color('#ffd9c4') } : { sheen: 0.6, sheenRoughness: 0.8, sheenColor: new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.35) }), ...extra })
@@ -64,7 +89,8 @@ export function surfaceMaterial(kind: Surface, color: string, roughness: number,
       .replace('#include <common>', '#include <common>\nvarying vec3 vRest;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vRest;\n${NOISE}\nvoid surfaceAt(vec3 p, out float h, out float tone) { ${HEIGHT[kind]} }`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vRest;\n${NOISE}\n${capCentre ? `#define CAP_C vec3(${capCentre.map((x) => x.toFixed(5)).join(', ')})` : ''}
+void surfaceAt(vec3 p, out float h, out float tone) { ${HEIGHT[kind]}${capCentre ? CAP_PANELS : ''} }`)
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
@@ -87,6 +113,6 @@ export function surfaceMaterial(kind: Surface, color: string, roughness: number,
         }`,
       );
   };
-  m.customProgramCacheKey = () => `surface-${kind}`;
+  m.customProgramCacheKey = () => `surface-${kind}${capCentre ? '-panels' : ''}`;
   return m;
 }
