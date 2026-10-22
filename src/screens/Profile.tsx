@@ -14,7 +14,7 @@ import { loadBagStyle } from '../lib/bagstyle';
 import { loadProfile, profileIndex, saveProfile, type Profile } from '../lib/profile';
 import { STANDARD_TEES, TEE_COLOURS, teeName } from '../data/tees';
 import { groupForHandicap, GROUPS } from '../lib/sg';
-import { loadSession, signOut } from '../lib/sync';
+import { deleteAccount, loadSession, signOut } from '../lib/sync';
 import { setSoundTest, soundTestOn } from '../lib/impact';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
@@ -28,6 +28,8 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [teePick, setTeePick] = useState(false);
   const [soundTest, setSoundTestState] = useState(soundTestOn);
   const photoInput = useRef<HTMLInputElement>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
   const [session, setSession] = useState(loadSession);
@@ -326,6 +328,50 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           </section>
         </div>
       )}
+      {/* delete the account (final list, Sascha 22.10.2026): at the end, signed in only, asked once more – the data on this
+          phone stay */}
+      {session && (
+        <section className="card stats-card">
+          <h2>{tr('Account', 'Konto')}</h2>
+          {!deleting ? (
+            <button type="button" className="btn-secondary btn-danger" onClick={() => { setDeleting(true); setDeleteMsg(null); }}>
+              {tr('Delete account', 'Konto löschen')}
+            </button>
+          ) : (
+            <div className="delete-ask" role="group" aria-label={tr('Delete account?', 'Konto löschen?')}>
+              <span>
+                {tr(
+                  'Delete your account and all your data on the server? Rounds, games and settings on this phone stay – your other devices keep theirs too.',
+                  'Konto und alle deine Daten auf dem Server löschen? Runden, Spiele und Einstellungen auf diesem Handy bleiben – auch deine anderen Geräte behalten ihre.',
+                )}
+              </span>
+              <div className="nav-bottom" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <button type="button" className="btn-secondary" onClick={() => setDeleting(false)}>
+                  {tr('Cancel', 'Abbrechen')}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-danger"
+                  onClick={async () => {
+                    try {
+                      await deleteAccount();
+                      setSession(null);
+                      setDeleting(false);
+                      setDeleteMsg(tr('Your account is deleted. The data on this phone stay.', 'Dein Konto ist gelöscht. Die Daten auf diesem Handy bleiben.'));
+                    } catch (e) {
+                      setDeleteMsg(e instanceof Error ? e.message : String(e));
+                    }
+                  }}
+                >
+                  {tr('Delete for good', 'Endgültig löschen')}
+                </button>
+              </div>
+            </div>
+          )}
+          {deleteMsg && <span className="muted small" role="status">{deleteMsg}</span>}
+        </section>
+      )}
+      {!session && deleteMsg && <p className="muted small" role="status">{deleteMsg}</p>}
       <div className="home-foot">
         <Attribution />
         <span className="muted small" title={__BUILD_TIME__}>

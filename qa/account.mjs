@@ -61,6 +61,13 @@ async function server(route) {
       const e = [...users].find(([, x]) => x.id === uid && x.password === body.p_password);
       return json(200, e ? e[0] : null);
     }
+    // delete the own account (final list, 22.10.2026): its rows, its name, the account
+    if (fn === 'golfos_delete_me') {
+      const uid = subOf(req);
+      for (const [e, x] of users) if (x.id === uid) users.delete(e);
+      for (const [n, id] of names) if (id === uid) names.delete(n);
+      return route.fulfill({ status: 204, headers: cors, body: '' });
+    }
     if (fn === 'golfos_set_username') {
       for (const [n, id] of names) if (id === subOf(req)) names.delete(n);
       names.set(body.p_username, subOf(req));
@@ -146,6 +153,17 @@ await pc.fill('#acc-name', 'sascha@example.com');
 await pc.fill('#acc-pw', 'geheim123');
 await pc.locator('.account-form button[type=submit]').click();
 ok(await signedAs(pc, 'sascha.m'), 'PC: signed in with the e-mail and the new password');
+
+// delete the account (final list, Sascha 22.10.2026): at the end of the profile, asked once more; the phone keeps its data
+await pc.evaluate(() => localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ id: 'keep-me' }])));
+await pc.getByRole('button', { name: 'Konto löschen' }).click();
+const ask = pc.getByRole('group', { name: 'Konto löschen?' });
+ok(/auf diesem Handy bleiben/.test(await ask.innerText()), 'deleting asks once more: the data on this phone stay');
+await ask.getByRole('button', { name: 'Endgültig löschen' }).click();
+ok(await until(() => pc.getByText('Dein Konto ist gelöscht').isVisible()), 'the account deleted, said so');
+ok(!users.has('sascha@example.com') && ![...names.keys()].includes('sascha.m'), 'on the server: the account and its user name gone');
+ok((await pc.evaluate(() => localStorage.getItem('golfos.rounds.v1'))).includes('keep-me'), 'the rounds on the phone kept');
+ok((await pc.getByRole('button', { name: 'Konto löschen' }).count()) === 0, 'signed out: no "Konto löschen" any more');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

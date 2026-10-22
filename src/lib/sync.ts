@@ -483,6 +483,21 @@ export async function signUp(username: string, email: string, password: string):
 }
 
 /** Signed in (e.g. with Google): set or change user name and password – for signing in on the other devices. */
+/** Deletes the own account on the server – synced data, user name, the account (final list, Sascha 22.10.2026). The
+ *  data on this phone stay; afterwards the player is signed out. Needs supabase/golfos-delete-account.sql once. */
+export async function deleteAccount(): Promise<void> {
+  const t = await authToken();
+  if (!t) throw new Error(tr('Please sign in again first.', 'Bitte zuerst neu anmelden.'));
+  try {
+    await rpc('golfos_delete_me', {}, t);
+  } catch (e) {
+    const m = e instanceof Error ? e.message : String(e);
+    if (/not set up|nicht eingerichtet|404/.test(m)) throw new Error(tr('Deleting the account is not set up on the server yet.', 'Konto löschen ist auf dem Server noch nicht eingerichtet.'));
+    throw e;
+  }
+  signOut();
+}
+
 export async function setLogin(username: string | null, password: string | null): Promise<void> {
   const t = await authToken();
   if (!t) throw new Error(tr('Please sign in again first.', 'Bitte zuerst neu anmelden.'));

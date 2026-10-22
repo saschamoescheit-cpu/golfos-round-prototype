@@ -1584,3 +1584,4 @@ button.tile:disabled { opacity: 1; }
    (the hand circles, the sound shots) put them into the page flow: each further mark sat one mark's height lower –
    30 px, some 60 m in the overview, right only when zoomed in (Sascha 22.10.2026, round of 22.10. on Hetzenhof). */
 .maplibregl-map .maplibregl-marker { position: absolute; }
+.delete-ask { display: flex; flex-direction: column; gap: 10px; }
