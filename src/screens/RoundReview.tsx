@@ -40,7 +40,8 @@ const puttVerdicts = () => [
   { note: 'bricht mehr', label: tr('Breaks more', 'Bricht mehr') },
 ];
 
-export function RoundReview(props: { round: Round; onChange: (r: Round) => void; onDone: () => void }) {
+/** `onDone(sign)`: sign = the last step after every hole was checked; leaving with "Fertig" never signs. */
+export function RoundReview(props: { round: Round; onChange: (r: Round) => void; onDone: (sign: boolean) => void }) {
   const { round } = props;
   const me = round.players.find((p) => p.isMe)!;
   // a round looked at later whose course map made room when the storage was full: the map comes again (22.10.2026)
@@ -600,7 +601,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       );
       return goTo(openHoles[0]);
     }
-    props.onDone();
+    props.onDone(true);
   };
 
   // The caddie's advice at the player's own shots first (that is what the verdict is about); advice given where he
@@ -644,7 +645,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
 
   return (
     <main className="screen review">
-      <TopBar title={tr('Check your shots', 'Schläge prüfen')} onBack={props.onDone} backLabel={tr('Done', 'Fertig')} />
+      <TopBar title={tr('Check your shots', 'Schläge prüfen')} onBack={() => props.onDone(false)} backLabel={tr('Done', 'Fertig')} />
       {notice && <div className="notice">{notice}</div>}
       {penaltyPick && d && (
         <div className="sheet-backdrop" onClick={() => setPenaltyPick(false)}>

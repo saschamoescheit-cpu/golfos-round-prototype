@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import type { Round } from '../types';
+import type { Round, Strike } from '../types';
 import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
 import { Segmented } from '../components/ui';
 import { SgCard } from '../components/SgCard';
@@ -8,6 +8,10 @@ import { comparisonGroup, roundsSg } from '../lib/sg';
 import { clubDispersion } from '../lib/dispersion';
 import { clubCode, dec, tr } from '../lib/i18n';
 import { statRounds, unsignedRounds } from '../lib/signing';
+import { clubReports, corridorText } from '../lib/clubstats';
+import { approachBands, puttMisses } from '../lib/approachstats';
+import { lineOfStored } from '../lib/holelines';
+import { strikeName } from '../lib/shotfacts';
 import { profileIndex } from '../lib/profile';
 import { teeStats } from '../lib/teestats';
 import { clubName } from '../lib/caddie';
@@ -38,6 +42,13 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
   const f = focusAreas(a);
   const sg = useMemo(() => roundsSg(picked), [picked]);
   const tend = useMemo(() => new Map(clubDispersion(picked).map((d) => [d.club, d])), [picked]);
+  // per club: good strikes, misses, corridor; approaches by distance; how the putts miss (Sascha 22.10.2026)
+  const reports = useMemo(() => clubReports(picked, lineOfStored()), [picked]);
+  const bands = useMemo(() => approachBands(picked).filter((b) => b.shots > 0), [picked]);
+  const misses = useMemo(() => puttMisses(picked), [picked]);
+  const waiting = unsignedRounds(props.rounds);
+  const week = 7 * 24 * 3600 * 1000;
+  const old = waiting.filter((r) => Date.now() - new Date(r.finishedAt ?? r.createdAt).getTime() > week).length;
   const fmtPar = (v: number | null) => (v == null ? '–' : v > 0 ? `+${v}` : String(v));
   const drive = a.clubs.find((c) => c.club === 'Dr');
   const tee = useMemo(() => teeStats(picked), [picked]);
@@ -56,13 +67,18 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
     <>
       <h1 className="tab-title">{tr('Stats', 'Statistik')}</h1>
       {/* only signed rounds count (Sascha 16.10.2026) – say how many still wait for the signature */}
-      {unsignedRounds(props.rounds).length > 0 && (
-        // a tap: the rounds to sign, filtered (Sascha 17.10.2026)
+      {waiting.length > 0 && (
+        // a tap: the rounds to sign, filtered (Sascha 17.10.2026); waiting a week: said so (Sascha 22.10.2026)
         <button type="button" className="notice notice-link" onClick={props.onToSign}>
           <span className="grow">
             {tr(
-              `${unsignedRounds(props.rounds).length} finished ${unsignedRounds(props.rounds).length === 1 ? 'round is' : 'rounds are'} not signed yet – they count once you sign them.`,
-              `${unsignedRounds(props.rounds).length} beendete ${unsignedRounds(props.rounds).length === 1 ? 'Runde ist noch nicht signiert – sie zählt' : 'Runden sind noch nicht signiert – sie zählen'}, sobald du sie signierst.`,
+              `${waiting.length} finished ${waiting.length === 1 ? 'round is' : 'rounds are'} not signed yet – they count once you sign them.`,
+              `${waiting.length} beendete ${waiting.length === 1 ? 'Runde ist noch nicht signiert – sie zählt' : 'Runden sind noch nicht signiert – sie zählen'}, sobald du sie signierst.`,
+            )}
+            {old > 0 && (
+              <span style={{ display: 'block' }}>
+                {tr(`${old === waiting.length ? (old === 1 ? 'It has' : 'They have') : `${old} of them have`} been waiting for more than a week.`, `${old === waiting.length ? (old === 1 ? 'Sie wartet' : 'Sie warten') : `${old} davon warten`} schon über eine Woche.`)}
+              </span>
             )}
           </span>
           <span aria-hidden="true">›</span>
@@ -90,7 +106,10 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
             ))}
           </div>
           <p className="muted small" style={{ margin: 0 }}>
-            {tr(`${a.rounds} ${a.rounds === 1 ? 'round' : 'rounds'} · ${a.holes} holes · values per ${base} holes`, `${a.rounds} ${a.rounds === 1 ? 'Runde' : 'Runden'} · ${a.holes} Löcher · Werte je ${base} Löcher`)}
+            {/* what the numbers rest on (Sascha 22.10.2026: "aus 6 geprüften Runden · 2 warten noch") */}
+            {tr(`From ${a.rounds} checked ${a.rounds === 1 ? 'round' : 'rounds'}`, `Aus ${a.rounds} geprüften ${a.rounds === 1 ? 'Runde' : 'Runden'}`)}
+            {waiting.length ? tr(` · ${waiting.length} still waiting`, ` · ${waiting.length} ${waiting.length === 1 ? 'wartet' : 'warten'} noch`) : ''}
+            {tr(` · ${a.holes} holes · values per ${base} holes`, ` · ${a.holes} Löcher · Werte je ${base} Löcher`)}
           </p>
 
           {section === 'overview' && (
@@ -273,6 +292,28 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   </p>
                 )}
               </section>
+              {bands.length > 0 && (
+                <section className="card stats-card airy">
+                  <h2>{tr('Approach by distance', 'Annäherung nach Entfernung')}</h2>
+                  <p className="muted small stats-sub">{tr('Greens hit and how close to the pin, from your checked shots – a layup does not count', 'Grüns getroffen und wie nah an der Fahne, aus deinen geprüften Schlägen – Vorlegen zählt nicht')}</p>
+                  <div className="hbars">
+                    {bands.map((b) => (
+                      <div key={b.label} className="hbar band-row">
+                        <span className="hbar-label">{b.label}</span>
+                        <span className="hbar-track">
+                          <span className="hbar-fill" style={{ width: `${Math.round((b.greens / b.shots) * 100)}%` }} />
+                        </span>
+                        <span className="hbar-value">
+                          {Math.round((b.greens / b.shots) * 100)} %
+                          <span className="muted small" style={{ display: 'block' }}>
+                            {b.avgProximity != null ? tr(`⌀ ${dec(b.avgProximity)} m`, `⌀ ${dec(b.avgProximity)} m`) : '–'} · {b.greens}/{b.shots}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
               <section className="card stats-card airy">
                 <h2>{tr('Results by par', 'Ergebnis nach Par')}</h2>
                 <ParBars byPar={a.byPar} />
@@ -299,6 +340,21 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <Ring label={tr('3-putts', '3-Putts')} r={a.threePutts} bad />
                 </div>
               </section>
+              {misses.missed >= 3 && (
+                <section className="card stats-card airy">
+                  <h2>{tr('How your putts miss', 'Wie deine Putts verfehlen')}</h2>
+                  <p className="muted small stats-sub">{tr(`From ${misses.missed} missed putts`, `Aus ${misses.missed} verfehlten Putts`)}</p>
+                  <div className="ring-row">
+                    <Ring label={tr('short', 'zu kurz')} r={{ n: misses.short, of: misses.short + misses.long }} miss />
+                    <Ring label={tr('long', 'zu lang')} r={{ n: misses.long, of: misses.short + misses.long }} miss />
+                    <Ring label={tr('on line', 'auf Linie')} r={{ n: misses.missed - misses.left - misses.right, of: misses.missed }} />
+                  </div>
+                  <div className="insight-row">
+                    <Insight num={`${misses.left}×`} label={tr('missed left', 'links vorbei')} />
+                    <Insight num={`${misses.right}×`} label={tr('missed right', 'rechts vorbei')} />
+                  </div>
+                </section>
+              )}
               {a.puttsByFirstPutt.some((b) => b.holes > 0) && (
                 <section className="card stats-card airy">
                   <h2>{tr('Putts by length of the first putt', 'Putts nach Länge des ersten Putts')}</h2>
@@ -351,10 +407,34 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                     ))}
                   </div>
                   <p className="muted small" style={{ margin: 0 }}>
-                    {tr('Line: typical length · band: shortest to longest shot · below the length: where your approaches end up.', 'Strich: typische Länge · Band: kürzester bis längster Schlag · unter der Länge: wo deine Annäherungen landen.')}
+                    {tr('Line: typical length from good strikes, in calm air at 20 °C · band: shortest to longest shot · below the length: where your approaches end up.', 'Strich: typische Länge aus guten Treffern, auf Windstille und 20 °C umgerechnet · Band: kürzester bis längster Schlag · unter der Länge: wo deine Annäherungen landen.')}
                   </p>
                 </>
               )}
+            </section>
+          )}
+          {section === 'clubs' && reports.some((c) => c.rated > 0 || c.corridor) && (
+            // how each club is struck and where its balls end (Sascha 22.10.2026: the misses and the corridor)
+            <section className="card stats-card airy">
+              <h2>{tr('Strikes and corridor per club', 'Treffer und Korridor je Schläger')}</h2>
+              <p className="muted small stats-sub">{tr('Corridor: 80 % of your balls end in it, measured from the target line', 'Korridor: 80 % deiner Bälle landen darin, gemessen an der Ziellinie')}</p>
+              <div className="tee-clubs">
+                {reports
+                  .filter((c) => c.rated > 0 || c.corridor)
+                  .map((c) => {
+                    const top = Object.entries(c.misses).sort((x, y) => (y[1] ?? 0) - (x[1] ?? 0))[0];
+                    return (
+                      <div key={c.club} className="tee-club-row">
+                        <h3 className="tee-club-name">{clubName(c.club)}</h3>
+                        <div className="insight-row">
+                          {c.rated > 0 && <Insight num={`${Math.round((c.good / c.rated) * 100)} %`} label={tr(`good strikes (${c.good} of ${c.rated})`, `gute Treffer (${c.good} von ${c.rated})`)} tone={c.good / c.rated >= 0.6 ? 'good' : undefined} />}
+                          {top && <Insight num={strikeName(top[0] as Strike)} label={tr(`most frequent miss (${top[1]}×)`, `häufigster Fehlschlag (${top[1]}×)`)} tone="bad" />}
+                          {c.corridor && <Insight wide num={corridorText(c.corridor, tr)} label={tr(`corridor from ${c.corridor.shots} shots`, `Korridor aus ${c.corridor.shots} Schlägen`)} />}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
             </section>
           )}
 

@@ -1,9 +1,10 @@
-import type { Club, FairwayResult, HoleEntry, Round } from '../types';
+import type { Club, FairwayResult, HoleEntry, Round, Strike } from '../types';
 import { greenInRegulation, grossForHole, handicapStrokes, playing18, stablefordPoints } from './scoring';
 import { BAG, firstPuttM, plausibleForClub, shotLengths } from './shots';
 import { tr } from './i18n';
 import { isTeamRound } from './games';
 import { CLUB_CATALOG } from './clubs';
+import { calmLength, learnFrom } from './clubstats';
 
 // Analysis across rounds (feature 005): the player's ("me") key figures, tendencies, club distances
 // and the focus areas compared with the next better handicap band – the input for training plans (GOL-27).
@@ -79,7 +80,8 @@ export function analyse(rounds: Round[]): Analysis {
   const scr: Rate = { n: 0, of: 0 };
   const sand: Rate = { n: 0, of: 0 };
   let penalties = 0;
-  const clubLengths = new Map<Club, number[]>();
+  // per club: the length as played, the same in calm air at 20 °C, and how it was struck (Sascha 22.10.2026)
+  const clubLengths = new Map<Club, { calm: number; strike?: Strike }[]>();
   const missLies = { semirough: 0, rough: 0, bunker: 0, other: 0 };
   const shortGame = { fromFringe: 0, texas: 0 };
   const buckets = PUTT_BUCKETS.map(() => ({ putts: 0, holes: 0 }));
@@ -165,8 +167,11 @@ export function analyse(rounds: Round[]): Analysis {
           const len = lengths[k];
           if (!s.club || s.club === 'Pt' || len == null || s.penalty || s.lie === 'recovery') return; // the Texas wedge has no distance to learn
           if (s.kind && s.kind !== 'full') return; // chips, pitches, punches are not the club's full distance
+          if (s.intent === 'recovery') return; // punched out: not the club's distance
           if (!plausibleForClub(s.club, len)) return; // a wrong point, not a shot – never in the stats
-          clubLengths.set(s.club, [...(clubLengths.get(s.club) ?? []), len]);
+          const end = k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
+          const calm = end && s.pos ? calmLength(len, s.pos, end, e.weather) : len;
+          clubLengths.set(s.club, [...(clubLengths.get(s.club) ?? []), { calm, strike: s.strike }]);
         });
         const first = firstPuttM(d);
         if (first != null && e.putts != null && e.putts > 0) {
@@ -181,8 +186,9 @@ export function analyse(rounds: Round[]): Analysis {
   const per18 = (v: number) => (holes ? Math.round((v / holes) * 18 * 10) / 10 : 0);
   const share = (n: number) => (holes ? Math.round((n / holes) * 100) : 0);
   // every club of the catalog with shots (also clubs outside the standard bag, e.g. a 2-iron)
-  const clubs: ClubStat[] = CLUB_CATALOG.filter((b) => clubLengths.has(b.club)).map((b) => {
-    const xs = clubLengths.get(b.club)!.slice().sort((a, c) => a - c);
+  const clubs: ClubStat[] = CLUB_CATALOG.filter((b) => clubLengths.has(b.club) && learnFrom(clubLengths.get(b.club)!).length > 0).map((b) => {
+    // good strikes once there are three, else every shot but the mishits (fat, thin, shank)
+    const xs = learnFrom(clubLengths.get(b.club)!).map((x) => x.calm).sort((a, c) => a - c);
     const mid = xs.length >> 1;
     return {
       club: b.club,

@@ -244,7 +244,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                   {t && differs(c) ? (
                     <span className="bag-tracked differs">
                       {/* the tracked carry first, then how often (Sascha 20.10.2026: one line – on the smallest phone too) */}
-                      <span className="bag-tracked-text" title={tr(`${t.shots} shots tracked`, `${t.shots} Schläge gemessen`)}>
+                      <span className="bag-tracked-text" title={tr(`${t.shots} shots tracked – good strikes, in calm air`, `${t.shots} Schläge gemessen – gute Treffer, auf Windstille umgerechnet`)}>
                         <span className="bag-tracked-value">
                           {toU(t.carry)} {uL}
                         </span>

@@ -54,6 +54,8 @@ function causeOf(round: Round, i: number): string {
       sg.forEach((x, j) => (x.sg < sg[k].sg ? (k = j) : null));
       const worst = sg[k];
       if (worst.category === 'putting') return tr(`putting ${sgText(worst.sg)}`, `Putten ${sgText(worst.sg)}`);
+      // the first shot is the tee shot – on a par 3 too
+      if (k === 0) return tr(`tee shot ${sgText(worst.sg)}`, `Abschlag ${sgText(worst.sg)}`);
       return tr(`shot ${k + 1} (${SG_LABELS[worst.category]}) ${sgText(worst.sg)}`, `Schlag ${k + 1} (${SG_LABELS[worst.category]}) ${sgText(worst.sg)}`);
     }
   }

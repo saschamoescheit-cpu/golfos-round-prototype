@@ -25,7 +25,8 @@ export async function mockNet(ctx) {
   await ctx.route(/api\.brightsky\.dev\//, (r) => r.fulfill({ status: 503, body: '' }));
   // the aerial images of Baden-Württemberg (LGL): a plain grass tile – the tests do not depend on the state's service
   // (21.10.2026 afternoon it hung without an answer, and every test on Hetzenhof reported the cut-off tiles)
-  await ctx.route(/owsproxy\.lgl-bw\.de/, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(GRASS_PNG, 'base64') }));
+  // – the aerial images only: the heights (WCS) stay real, a grass picture is no terrain model (greensmade, 22.10.2026)
+  await ctx.route(/owsproxy\.lgl-bw\.de\/(?!owsproxy\/wcs)/, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(GRASS_PNG, 'base64') }));
 }
 
 const GRASS_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPwyjPBihiGlgQAE6E7AUXeDRsAAAAASUVORK5CYII=';

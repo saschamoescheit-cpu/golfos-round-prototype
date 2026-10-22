@@ -11,6 +11,7 @@ import { LeaderboardCard } from '../components/Leaderboard';
 import { isTeamRound } from '../lib/games';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
+import { RoundReportCard } from '../components/RoundReportCard';
 import { shareScorecard } from '../lib/shareCard';
 import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
 import { loadTrack } from '../lib/track';
@@ -37,6 +38,8 @@ export function Scorecard(props: {
   onChange: (r: Round) => void;
   justFinished?: boolean; // opened right after finishing: what next – check the shots or delete
   finishing?: boolean; // reached past the last hole: save or delete (a look during the round shows only the score)
+  justSigned?: boolean; // signed with the last step of the check: the round report on top (Sascha 22.10.2026)
+  onOpenTraining?: () => void;
 }) {
   const { round } = props;
   const [editHole, setEditHole] = useState<number | null>(null);
@@ -264,6 +267,7 @@ export function Scorecard(props: {
 
       <PlayedHcpCard round={round} onChange={props.onChange} />
 
+      {finished && round.signedAt && <RoundReportCard round={round} history={loadRounds()} highlight={props.justSigned} onOpenTraining={props.onOpenTraining} />}
       {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

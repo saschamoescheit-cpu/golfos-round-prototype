@@ -1552,3 +1552,18 @@ button.tile:disabled { opacity: 1; }
 .shot-more { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .chips-field { overflow: visible; }
 .putt-miss { display: flex; flex-direction: column; gap: 8px; }
+
+/* the round report after signing (Sascha 22.10.2026): strokes gained per area as bars from the middle */
+.round-report.fresh { outline: 2px solid var(--brand-text); outline-offset: -2px; }
+.round-report h3 { margin: 0; font: 600 16px var(--display); }
+.report-areas { display: flex; flex-direction: column; gap: 10px; }
+.report-area { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 52px; align-items: center; gap: 4px 10px; }
+.report-area-name { font-size: 14px; min-width: 0; }
+.report-bar { position: relative; height: 12px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.report-bar::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--line-strong); }
+.report-bar i { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+.report-bar i.up { left: 50%; background: var(--brand-text); }
+.report-bar i.down { right: 50%; background: #ff8a7f; }
+.report-area-value { text-align: right; font: 700 14px var(--body); font-variant-numeric: tabular-nums; }
+.report-area-last { grid-column: 2 / -1; margin-top: -4px; }
+.report-drill { display: flex; flex-direction: column; gap: 4px; background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }

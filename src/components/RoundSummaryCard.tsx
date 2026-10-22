@@ -91,7 +91,7 @@ class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
 
 /** The week's plan as an own plan in the Training module: per weak area the matching drills (Training loads only
  *  now – it is not part of the round screens). Returns the plan's name. */
-async function toTraining(round: Round, plan: { area: string; minutes: number }[]): Promise<string | null> {
+export async function toTraining(round: Round, plan: { area: string; minutes: number }[]): Promise<string | null> {
   try {
     const [{ DRILLS }, store] = await Promise.all([import('../training/content'), import('../training/store')]);
     const cat: Record<string, string> = { tee: 'driver', long: 'woods', approach: 'irons', around: 'chipping', putting: 'putting', strategy: 'strategy' };

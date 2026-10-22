@@ -23,6 +23,8 @@ export function PlayTab(props: {
 }) {
   const open = props.rounds.filter((r) => !r.finishedAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const toSign = roundsToSign(props.rounds).length;
+  // waiting more than a week: said so – they do not count in the stats until signed (Sascha 22.10.2026)
+  const weekOld = roundsToSign(props.rounds).filter((r) => Date.now() - new Date(r.finishedAt ?? r.createdAt).getTime() > 7 * 24 * 3600 * 1000).length;
   const [confirm, setConfirm] = useState<'end' | 'abort' | null>(null);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const played = open ? open.entries[open.players.find((p) => p.isMe)!.id].filter((e) => e.strokes != null || e.pickedUp).length : 0;
@@ -135,6 +137,7 @@ export function PlayTab(props: {
             <span className="title">{tr('Check & sign your rounds', 'Runden prüfen & signieren')}</span>
             <span className="muted small">
               {toSign === 1 ? tr('1 round to check and sign', '1 Runde zu prüfen und zu signieren') : tr(`${toSign} rounds to check and sign`, `${toSign} Runden zu prüfen und zu signieren`)}
+              {weekOld > 0 ? tr(` · ${weekOld === toSign && toSign === 1 ? 'waiting' : `${weekOld} waiting`} over a week – not in your stats yet`, ` · ${weekOld === toSign && toSign === 1 ? 'wartet' : `${weekOld} ${weekOld === 1 ? 'wartet' : 'warten'}`} über eine Woche – noch nicht in deiner Statistik`) : ''}
             </span>
           </span>
           <span className="count-badge">{toSign}</span>

@@ -39,7 +39,7 @@ type Screen =
   | { name: 'pickCourse' }
   | { name: 'setup'; course: Course; from?: { holes: RoundHole[]; tee: string | null } } // from: the loops and tee chosen before (back from the preview or the birdie book)
   | { name: 'hole'; round: Round }
-  | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean; finishing?: boolean }
+  | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean; finishing?: boolean; justSigned?: boolean }
   | { name: 'courseStats'; courseName: string }
   | { name: 'bag'; part: 'bag' | 'caddie'; back?: Screen }
   | { name: 'review'; round: Round }
@@ -364,13 +364,15 @@ export function App() {
               setScreen({ name: 'review', round });
             }}
             // the latest round, also when it was saved in the same click
-            onDone={() =>
+            onDone={(signIt) =>
               setScreen((s) => {
                 if (s.name !== 'review') return s;
-                // checked and chosen to sign: signed with the last step of the check (Sascha 17.10.2026)
-                const done = !s.round.signedAt && s.round.capture !== 'score' ? sign(s.round) : s.round;
+                // checked and chosen to sign: signed with the last step of the check (Sascha 17.10.2026) – only when
+                // every hole was checked; "Fertig" leaves without signing (Sascha 22.10.2026)
+                const done = signIt && !s.round.signedAt && s.round.capture !== 'score' ? sign(s.round) : s.round;
                 if (done !== s.round) persist(done);
-                return { name: 'scorecard', round: done };
+                // just signed: the round report on top of the scorecard
+                return { name: 'scorecard', round: done, justSigned: done !== s.round };
               })
             }
           />
@@ -471,6 +473,12 @@ export function App() {
           onBackToHole={() => setScreen({ name: 'hole', round: screen.round })}
           justFinished={screen.justFinished}
           finishing={screen.finishing}
+          justSigned={screen.justSigned}
+          onOpenTraining={() => {
+            // the plan from the report waits in Training › Practice › My plans
+            setTrainingTab('train');
+            setModule('training');
+          }}
           onFinish={(round) => {
             // Finishing on the last hole is leaving it: its untouched score counts as par (quick tracking).
             const done = round.currentHole === round.holes.length - 1 ? commitParAt(round, round.currentHole) : round;
