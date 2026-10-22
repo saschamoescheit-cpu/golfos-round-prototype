@@ -28,7 +28,8 @@ function ownRatings(): Record<string, TeeRating> {
  *  9 holes of a loop: the first combination with that loop (the course handicap is halved, within a stroke). */
 export function ratingFor(courseId: string, tee: string, holes: { loop: string }[]): TeeRating | null {
   const key = loopsKey(holes);
-  const own = ownRatings()[`${courseId}|${tee}|${key}`];
+  // a value entered before a tee could be chosen ("–") counts until there is one for this tee (22.10.2026)
+  const own = ownRatings()[`${courseId}|${tee}|${key}`] ?? ownRatings()[`${courseId}|–|${key}`];
   if (own) return own;
   const all = RATINGS[courseId] ?? {};
   if (all[`${tee}@${key}`]) return all[`${tee}@${key}`];

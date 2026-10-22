@@ -1,6 +1,7 @@
 import type { Course, CourseGeometry, CourseHole, CourseSummary, LngLat, Ring } from '../types';
 import { parseHoleRef, parseStrokeIndex } from './loops';
 import { distToLine, dropNestedRings, pointInRing } from './geo';
+import { sortTees, teeId } from '../data/tees';
 import { hasGeometry, loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
 import { SEED_COURSES } from '../data/seedCourses';
 
@@ -265,8 +266,8 @@ export function pickCourseArea(osm: ReturnType<typeof parseOsmXml>, s: CourseSum
 
 /** The course's map copy is gone (it made room when the storage was full): fetch it again – for a round looked at
  *  later, not only when the course is picked. True when a map came. */
-export async function ensureCourseMap(courseId: string): Promise<boolean> {
-  if (!courseId.startsWith('osm:') || SEED_COURSES[courseId] || hasGeometry(courseId)) return false;
+export async function ensureCourseMap(courseId: string, again = false): Promise<boolean> {
+  if (!courseId.startsWith('osm:') || SEED_COURSES[courseId] || (!again && hasGeometry(courseId))) return false;
   const course = loadCachedCourse(courseId);
   if (!course) return false;
   await refetchGeometry({ id: courseId, source: 'osm', name: course.name, place: '', lat: course.lat, lon: course.lon, bbox: course.bbox }, course);
@@ -400,8 +401,15 @@ export function geometryFromOsm(osm: ReturnType<typeof parseOsmXml>): CourseGeom
   const geo: CourseGeometry = { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] };
   const coords = (ids: string[]) => ids.map((id) => osm.nodes.get(id)).filter((p): p is LngLat => p != null);
   const byId = new Map(osm.ways.map((w) => [w.id, w]));
+  const tees = new Set<string>();
   for (const w of osm.ways) {
     const line = coords(w.nodes);
+    // which tees the course has (Frielinghausen: tee=yellow, tee=red) – offered in the round setup (Sascha 22.10.2026)
+    if (w.tags.golf === 'tee')
+      for (const v of (w.tags.tee ?? w.tags['golf:tee'] ?? w.tags.colour ?? '').split(/[;,]/)) {
+        const id = teeId(v);
+        if (id) tees.add(id);
+      }
     if (w.tags.golf === 'hole' && line.length >= 2) {
       geo.holes.push({ ref: w.tags.ref ?? w.tags.name ?? '', par: w.tags.par ?? null, handicap: w.tags.handicap ?? null, line });
       continue;
@@ -429,6 +437,7 @@ export function geometryFromOsm(osm: ReturnType<typeof parseOsmXml>): CourseGeom
     for (const ring of joinRings(outer)) geo[k].push(coords(ring));
   }
   if (geo.boundary) geo.boundary = dropNestedRings(geo.boundary);
+  geo.teeColours = sortTees([...tees]); // also empty: a map read since 22.10.2026 (older ones are fetched again once)
   Object.assign(geo, planDetails(osm, geo));
   return geo;
 }

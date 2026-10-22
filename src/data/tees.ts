@@ -15,4 +15,41 @@ export const teeName = (t: string): string =>
   /^\d+$/.test(t) ? `Tee ${t}` : tr(t, ({ White: 'Weiß', Yellow: 'Gelb', Blue: 'Blau', Red: 'Rot', Orange: 'Orange', Green: 'Grün', Pink: 'Rosa', Black: 'Schwarz', Gold: 'Gold' } as Record<string, string>)[t] ?? t);
 
 // Courses that name their tees by length (Son Antem East: 62/58/52/48) get grey shades, longest darkest.
-export const TEE_COLOURS: Record<string, string> = { White: '#f2f2f2', Yellow: '#f5d042', Blue: '#3d8bfd', Red: '#e5484d', Orange: '#f59e0b', Green: '#1f7a4a', Pink: '#e48fc0', Black: '#22272b', Gold: '#c9a227', '62': '#5b6770', '58': '#87939b', '52': '#b3bdc3', '48': '#dfe5e8' }; // ci-allow: the colours of the tee markers themselves
+export const TEE_COLOURS: Record<string, string> = { White: '#f2f2f2', Yellow: '#f5d042', Blue: '#3d8bfd', Red: '#e5484d', Orange: '#f59e0b', Green: '#1f7a4a', Pink: '#e48fc0', Black: '#22272b', Gold: '#c9a227', Silver: '#b8bec4', '62': '#5b6770', '58': '#87939b', '52': '#b3bdc3', '48': '#dfe5e8' }; // ci-allow: the colours of the tee markers themselves
+
+/** The usual tee colours, longest first – offered where a course's tees are not known (Sascha 22.10.2026: black tees,
+ *  green ones for children, …). */
+export const STANDARD_TEES = ['Black', 'White', 'Yellow', 'Blue', 'Red', 'Orange', 'Green'];
+
+const ORDER = ['Black', 'White', 'Gold', 'Yellow', 'Blue', 'Silver', 'Red', 'Orange', 'Pink', 'Green'];
+const WORDS: Record<string, string> = {
+  black: 'Black', schwarz: 'Black', white: 'White', weiss: 'White', 'weiß': 'White', yellow: 'Yellow', gelb: 'Yellow',
+  blue: 'Blue', blau: 'Blue', red: 'Red', rot: 'Red', orange: 'Orange', green: 'Green', 'grün': 'Green', gruen: 'Green',
+  gold: 'Gold', pink: 'Pink', rosa: 'Pink', silver: 'Silver', silber: 'Silver',
+};
+
+/** A tee as OpenStreetMap or a player writes it ("yellow", "Gelb", "58") – the app's name for it, else null. */
+export function teeId(v: string): string | null {
+  const t = v.trim().toLowerCase();
+  if (WORDS[t]) return WORDS[t];
+  return /^\d{1,3}$/.test(t) ? t : null;
+}
+
+/** Longest first: numbered tees (Spain: 62, 58, … – the length in hundreds of metres) high to low, colours as on
+ *  scorecards. */
+export function sortTees(ids: string[]): string[] {
+  const rank = (t: string) => (/^\d+$/.test(t) ? -Number(t) : 1000 + (ORDER.includes(t) ? ORDER.indexOf(t) : 99));
+  return [...new Set(ids)].sort((a, b) => rank(a) - rank(b));
+}
+
+/** The tees a course offers: its scorecard (bundled courses), else the tees OpenStreetMap knows for it, else the usual
+ *  colours. `known` = from the course itself. */
+export function courseTees(courseId: string, mapped?: string[]): { tees: string[]; known: boolean } {
+  const data = TEES[courseId];
+  if (data) return { tees: data.tees, known: true };
+  if (mapped?.length) return { tees: sortTees(mapped), known: true };
+  return { tees: STANDARD_TEES, known: false };
+}
+
+/** The tee a player starts with: yellow where there is one, else the middle one. */
+export const defaultTee = (tees: string[]): string | null => (tees.includes('Yellow') ? 'Yellow' : tees[Math.floor((tees.length - 1) / 2)] ?? null);

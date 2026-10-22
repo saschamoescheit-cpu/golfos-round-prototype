@@ -67,9 +67,9 @@ await sd.click();
 await p.getByText('Runde starten').waitFor({ timeout: 60000 });
 // the tees behind the dot in the player row (Sascha 21.10.2026: the tee per player)
 await p.locator('.player-row .tee-pick').first().click();
-const tees = await p.getByRole('dialog', { name: 'Abschlag' }).innerText();
+const tees = await p.getByRole('dialog', { name: 'Tee' }).innerText();
 ok(/Schwarz/.test(tees) && /Gold/.test(tees), 'Southern Dunes: its tees (Black … Red) to choose');
-await p.getByRole('dialog', { name: 'Abschlag' }).getByRole('button', { name: 'Schließen' }).click();
+await p.getByRole('dialog', { name: 'Tee' }).getByRole('button', { name: 'Schließen' }).click();
 await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(6000);
 ok((await p.locator('.map-hole-no').innerText()).trim() === '1', 'Southern Dunes: on hole 1');

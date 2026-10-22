@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { Round } from '../types';
 import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
 import { Segmented } from '../components/ui';
@@ -167,21 +167,9 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
             <>
               <section className="card stats-card">
                 <h2>{tr('Off the tee', 'Vom Abschlag')}</h2>
+                {/* the findings as tiles above the rings (Sascha 22.10.2026: "the text hints more visual, as tiles") */}
+                {a.fairways.of > 0 && <TeeInsights left={a.missLeft} hit={a.fairways} right={a.missRight} lies={a.missLies} />}
                 <TeeBar left={a.missLeft} hit={a.fairways} right={a.missRight} />
-                {/* where the missed tee shots ended – semi rough is a small miss, rough a real one (Sascha 18.10.2026) */}
-                {a.missLies.semirough + a.missLies.rough + a.missLies.bunker + a.missLies.other > 0 && (
-                  <p className="muted small" style={{ margin: 0 }}>
-                    {tr('Missed – the ball ended in', 'Verfehlt – der Ball lag')}{' '}
-                    {[
-                      a.missLies.semirough ? `${a.missLies.semirough}× Semi Rough` : null,
-                      a.missLies.rough ? `${a.missLies.rough}× Rough` : null,
-                      a.missLies.bunker ? `${a.missLies.bunker}× Bunker` : null,
-                      a.missLies.other ? tr(`${a.missLies.other}× elsewhere`, `${a.missLies.other}× woanders`) : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
-                )}
               </section>
               {/* by the club off the tee (Sascha 21.10.2026: "more visual elements and analyses") */}
               {tee.byClub.length > 0 && (
@@ -189,20 +177,19 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                   <h2>{tr('Fairways by club', 'Fairways nach Schläger')}</h2>
                   <div className="tee-clubs">
                     {tee.byClub.map((c) => {
-                      const pct = (x: number) => Math.round((x / c.n) * 100);
                       return (
                         <div key={c.club} className="tee-club-row">
-                          <span className="tee-club-say">
-                            <strong>{clubName(c.club)}</strong>{' '}
-                            {tr(`hits the fairway ${pct(c.hit)}% of the time`, `trifft das Fairway zu ${pct(c.hit)} %`)}
-                            <span className="muted">{tr(` · ${c.n} tee shots`, ` · ${c.n} Abschläge`)}</span>
-                          </span>
+                          <h3 className="tee-club-name">{clubName(c.club)}</h3>
+                          <div className="insight-row">
+                            <Insight num={String(c.n)} label={tr('tee shots', 'Abschläge')} />
+                            {c.left + c.right > 0 && <Insight {...tendency(c.left, c.right)} />}
+                            {c.ob > 0 && <Insight num={`${c.ob}×`} label={tr('out of bounds', 'ins Aus')} tone="bad" />}
+                          </div>
                           <div className="ring-row">
                             <Ring label={tr('← missed left', '← links verfehlt')} r={{ n: c.left, of: c.n }} miss />
                             <Ring label="Fairway" r={{ n: c.hit, of: c.n }} />
                             <Ring label={tr('missed right →', 'rechts verfehlt →')} r={{ n: c.right, of: c.n }} miss />
                           </div>
-                          {c.ob > 0 && <span className="muted small">{tr(`plus ${c.ob}× out of bounds`, `dazu ${c.ob}× ins Aus`)}</span>}
                         </div>
                       );
                     })}
@@ -214,6 +201,15 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               {tee.cost.nHit + tee.cost.nMissed > 0 && (
                 <section className="card stats-card">
                   <h2>{tr('What a missed fairway costs', 'Was ein verfehltes Fairway kostet')}</h2>
+                  {tee.cost.hit != null && tee.cost.missed != null && (
+                    <div className="insight-row">
+                      {tee.cost.missed > tee.cost.hit ? (
+                        <Insight wide num={tr(`+${dec((tee.cost.missed - tee.cost.hit).toFixed(1))} strokes`, `+${dec((tee.cost.missed - tee.cost.hit).toFixed(1))} Schläge`)} label={tr('a missed fairway costs you on average', 'kostet dich ein verfehltes Fairway im Schnitt')} tone="bad" />
+                      ) : (
+                        <Insight wide num={tr('nothing', 'nichts')} label={tr('a missed fairway costs you so far – your second shots save it', 'kostet dich ein verfehltes Fairway bisher – deine zweiten Schläge retten es')} tone="good" />
+                      )}
+                    </div>
+                  )}
                   <div className="tile-row">
                     <div className="tile">
                       <span className="tile-num">{sgn(tee.cost.hit)}</span>
@@ -230,13 +226,6 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                       </div>
                     )}
                   </div>
-                  {tee.cost.hit != null && tee.cost.missed != null && (
-                    <p className="small" style={{ margin: 0 }}>
-                      {tee.cost.missed > tee.cost.hit
-                        ? tr(`A missed fairway costs you ${dec((tee.cost.missed - tee.cost.hit).toFixed(1))} strokes on average.`, `Ein verfehltes Fairway kostet dich im Schnitt ${dec((tee.cost.missed - tee.cost.hit).toFixed(1))} Schläge.`)
-                        : tr('Missing the fairway costs you nothing so far – your second shots save it.', 'Ein verfehltes Fairway kostet dich bisher nichts – deine zweiten Schläge retten es.')}
-                    </p>
-                  )}
                   <p className="muted small" style={{ margin: 0 }}>{tr('Average over par on the hole, par 4 and 5', 'Ø über Par am Loch, Par 4 und 5')}</p>
                 </section>
               )}
@@ -439,11 +428,49 @@ function TeeBar(props: { left: Rate; hit: Rate; right: Rate }) {
         <Ring label="Fairway" r={props.hit} />
         <Ring label={tr('missed right →', 'rechts verfehlt →')} r={props.right} miss />
       </div>
-      <p className="muted small" style={{ margin: 0 }}>
-        {tr('Fairways hit', 'Fairways getroffen')} {props.hit.n}/{props.hit.of}
-        {l !== r && tr(` · you miss more often ${l > r ? 'left' : 'right'}`, ` · du verfehlst öfter ${l > r ? 'links' : 'rechts'}`)}
-      </p>
     </>
+  );
+}
+
+/** One finding as a tile: the number big, what it means below (Sascha 22.10.2026). */
+function Insight(props: { num: ReactNode; label: string; tone?: 'good' | 'bad'; wide?: boolean }) {
+  return (
+    <div className={['insight', props.tone ?? '', props.wide ? 'wide' : ''].filter(Boolean).join(' ')}>
+      <span className="insight-num">{props.num}</span>
+      <span className="insight-label">{props.label}</span>
+    </div>
+  );
+}
+
+/** Which side the misses go: an arrow, the words below. */
+function tendency(left: number, right: number): { num: string; label: string } {
+  if (left === right) return { num: '← →', label: tr('missed left as often as right', 'links wie rechts verfehlt') };
+  return left > right ? { num: '←', label: tr('missed more often left', 'öfter links verfehlt') } : { num: '→', label: tr('missed more often right', 'öfter rechts verfehlt') };
+}
+
+/** Off the tee in three tiles: fairways hit, which side the misses go, where they end up. */
+function TeeInsights(props: { left: Rate; hit: Rate; right: Rate; lies: { semirough: number; rough: number; bunker: number; other: number } }) {
+  const l = props.left.n;
+  const r = props.right.n;
+  const lies = [
+    { n: props.lies.rough, name: 'Rough' },
+    { n: props.lies.semirough, name: 'Semi Rough' },
+    { n: props.lies.bunker, name: 'Bunker' },
+    { n: props.lies.other, name: tr('elsewhere', 'woanders') },
+  ]
+    .filter((x) => x.n > 0)
+    .sort((x, y) => y.n - x.n);
+  return (
+    <div className="insight-row">
+      <Insight num={`${props.hit.n}/${props.hit.of}`} label={tr('fairways hit', 'Fairways getroffen')} tone="good" />
+      {l + r > 0 && <Insight {...tendency(l, r)} />}
+      {lies.length > 0 && (
+        <Insight
+          num={`${lies[0].n}×`}
+          label={tr(`missed into ${lies[0].name}`, `verfehlt im ${lies[0].name}`) + (lies.length > 1 ? tr(` · plus ${lies.slice(1).map((x) => `${x.n}× ${x.name}`).join(', ')}`, ` · dazu ${lies.slice(1).map((x) => `${x.n}× ${x.name}`).join(', ')}`) : '')}
+        />
+      )}
+    </div>
   );
 }
 

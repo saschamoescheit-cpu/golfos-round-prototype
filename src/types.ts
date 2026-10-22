@@ -20,6 +20,8 @@ export interface CourseGeometry {
   trees?: Ring[];
   /** Outline of the golf course (OSM leisure=golf_course) – beyond it is usually out of bounds. */
   boundary?: Ring[];
+  /** The tees the course's map knows (OSM golf=tee + tee=yellow …), the app's names ("Yellow", "58"). */
+  teeColours?: string[];
   /** Details for the drawn hole (2D, Sascha 14.10.2026), from OSM: single trees, tree rows and hedges, paths, rough. */
   treePoints?: LngLat[];
   treeRows?: LngLat[][];

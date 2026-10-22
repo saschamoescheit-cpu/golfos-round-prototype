@@ -83,9 +83,9 @@ p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due t
       const want2 = PEOPLE.slice(0, c.n).map(([, h]) => String(Math.round((Number(h) * (140 / 113) + (73 - 72)) / 2)));
       ok(/Course Rating 73,0 · Slope 140/.test(await p.locator('.rating-line').innerText()) && shown2.join() === want2.join(), `setup: own course rating saved, playing handicaps follow (${shown2.join(' · ')})`);
       // the tee per player: Ben (HCP 10) from red – red A+B 66,2 / 119, par 68: (10 × 119/113 − 1,8) / 2 = 4
-      ok((await p.locator('.player-row .tee-pick').count()) === c.n && (await p.locator('.tee-row').count()) === 0 && (await p.locator('.player-row').first().locator('.field-label').first().innerText()) === 'Abschlag', 'setup: name · tee · HCP · playing handicap in each player row, no tee block of its own');
+      ok((await p.locator('.player-row .tee-pick').count()) === c.n && (await p.locator('.tee-row').count()) === 0 && (await p.locator('.player-row').first().locator('.field-label').first().innerText()) === 'Tee', 'setup: name · tee · HCP · playing handicap in each player row, no tee block of its own');
       await p.locator('.player-row').nth(1).locator('.tee-pick').click();
-      await p.getByRole('dialog', { name: 'Abschlag' }).locator('.pick-option').filter({ hasText: 'Rot' }).click();
+      await p.getByRole('dialog', { name: 'Tee' }).locator('.pick-option').filter({ hasText: 'Rot' }).click();
       await p.waitForTimeout(200);
       const shown3 = await p.locator('.playing-hcp').allInnerTexts();
       ok(shown3[1] === '4' && shown3[0] === shown2[0], `setup: Ben from red gets his own playing handicap (${shown3.join(' · ')})`);

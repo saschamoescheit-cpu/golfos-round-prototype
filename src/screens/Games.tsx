@@ -4,7 +4,7 @@ import type { Course } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { shownName, loadProfile } from '../lib/profile';
-import { newId } from '../lib/storage';
+import { loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame } from '../lib/gamestore';
@@ -15,8 +15,8 @@ import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { FriendChips } from './Home';
-import { PlayerRow, type TeeChoice } from './RoundSetup';
-import { TEE_COLOURS, TEES, teeName } from '../data/tees';
+import { PlayerRow, teeChoicesFor } from './RoundSetup';
+import { courseTees, defaultTee } from '../data/tees';
 import { courseHandicap, parseIndex, ratingFor } from '../lib/handicap';
 import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
@@ -569,6 +569,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const f = formDef(d.form);
   const [picker, setPicker] = useState(false);
   const options = useMemo(() => (d.course ? loopOptions(d.course.holes) : []), [d.course]);
+  // the tees the course offers – as in the round setup
+  const offered = useMemo(() => (d.course ? courseTees(d.course.id, loadGeometry(d.course.id).teeColours) : null), [d.course]);
   const option = options.find((o) => o.id === d.optionId) ?? options[0];
   const holes: GameHole[] = d.course && option
     ? buildRoundHoles(d.course.holes, option).map((h) => ({ label: h.label, par: h.par, si: h.strokeIndex }))
@@ -576,9 +578,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   // the playing handicap from each player's HCP, tee, course rating and slope – the same as the round setup
   const rholes = d.course && option ? buildRoundHoles(d.course.holes, option) : [];
   const nine = rholes.length === 9;
-  const teeData = d.course ? TEES[d.course.id] : undefined;
-  const defaultTee = teeData ? (teeData.tees.includes('Yellow') ? 'Yellow' : teeData.tees[Math.floor((teeData.tees.length - 1) / 2)]) : null;
-  const teeOf = (p: DraftPlayer) => (p.tee && teeData?.tees.includes(p.tee) ? p.tee : defaultTee);
+  const startTee = offered?.known ? defaultTee(offered.tees) : null;
+  const teeOf = (p: DraftPlayer) => p.tee ?? startTee;
   const loopHoles = d.course ? d.course.holes.filter((h) => h.loop === rholes[0]?.loop) : [];
   const parSum = nine ? loopHoles.reduce((s, h) => s + (h.par || 0), 0) * (loopHoles.length <= 9 ? 2 : 1) : rholes.reduce((s, h) => s + (h.par || 0), 0);
   const ratingOf = (p: DraftPlayer) => (d.course && (rholes.length === 18 || nine) ? ratingFor(d.course.id, teeOf(p) ?? '–', rholes) : null);
@@ -590,13 +591,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
     if (r) return nine ? Math.round((idx * (r.slope / 113) + (r.cr - par)) / 2) : courseHandicap(idx, r, par);
     return Math.round(nine ? idx / 2 : idx);
   };
-  const teeChoices: TeeChoice[] = (teeData?.tees ?? []).map((t) => ({
-    id: t,
-    name: teeName(t),
-    colour: TEE_COLOURS[t] ?? '#999',
-    total: rholes.reduce((s, h) => s + (teeData!.holes[h.label]?.[teeData!.tees.indexOf(t)] ?? 0), 0),
-    rating: d.course && (rholes.length === 18 || nine) ? ratingFor(d.course.id, t, rholes) : null,
-  }));
+  const teeChoices = d.course && offered ? teeChoicesFor(d.course.id, rholes, [...offered.tees, ...d.players.map((p) => p.tee ?? '')]) : [];
   const myRating = d.players[0] ? ratingOf(d.players[0]) : null;
   const n = d.players.length;
   const fits = fitsPlayers(f, n);
