@@ -19,7 +19,7 @@ import type { L, Shot } from '../types';
 import { ballFlight } from '../motion';
 import { realSwing } from './swings';
 import { buildRealClub } from './club3d';
-import { grassMaterial, skyTexture, treeLine } from './scene3d';
+import { grassMaterial, realBall, skyTexture, treeLine } from './scene3d';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 // The 3D swing videos of Training (Sascha 17.10.2026: "3D animated videos would be better than still pictures").
@@ -1337,7 +1337,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
           if (m?.metalness) { m.envMap = envMap; m.envMapIntensity = 0.9; }
         });
       }
-      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
+      const ball = real ? realBall(0.027) : new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
       ball.castShadow = true;
       const tee = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.04, 8), new THREE.MeshStandardMaterial({ color: '#f2f4f3', roughness: 0.6 }));
       tee.visible = !!swing.tee;
@@ -1425,7 +1425,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
       }
       // the fan: more balls from the same spot, each with its own flight and tracer
       for (const side of p.swing.fan ?? []) {
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
+        const ball = p.rig.root.userData.realistic ? realBall(0.027) : new THREE.Mesh(new THREE.SphereGeometry(0.027, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4 }));
         ball.castShadow = true;
         p.extras.add(ball);
         const tracer = buildTracer(p, side);

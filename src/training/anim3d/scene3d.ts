@@ -160,3 +160,54 @@ diffuseColor.rgb *= (0.62 + lf * 0.55) * (0.8 + leafH * 0.35);`,
   g.add(trunks, crowns);
   return g;
 }
+
+/** a golf ball as close up it is (22.10.2026): round (finely divided), a soft white cover with a little shine, and its
+ *  dimples – some 400 round cups packed close with a thin land between, worked out in the shader from the point on the ball (cells of a grid on the
+ *  sphere), as bump; they fade out where they would be finer than a pixel */
+export function realBall(radius: number): THREE.Mesh {
+  const m = new THREE.MeshPhysicalMaterial({ color: '#fbfbf8', roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.25 });
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vBall;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBall = normalize(position);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vBall;
+vec3 bHash(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }
+// the dimples packed as on a ball: each fills its cell (a jittered grid through the ball's surface) up to a thin land
+// towards the next – the distance to the nearest centre and to the second nearest
+vec2 dimple(vec3 n) {
+  vec3 p = n * 7.0;
+  vec3 i = floor(p);
+  float d1 = 9.0, d2 = 9.0;
+  for (int x = -1; x <= 1; x++) for (int y = -1; y <= 1; y++) for (int z = -1; z <= 1; z++) {
+    vec3 c = i + vec3(x, y, z);
+    float d = length(p - (c + 0.35 + 0.3 * bHash(c)));
+    if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+  }
+  return vec2(d1, d2);
+}`,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+{
+  vec2 d = dimple(normalize(vBall));
+  // a round cup: deepest in the middle, rising to its rim; a thin flat land where two cups meet
+  float t = min(1.0, d.x / 0.5);
+  float h = -(1.0 - t * t) * smoothstep(0.02, 0.07, d.y - d.x);
+  vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition);
+  float hx = dFdx(h), hy = dFdy(h);
+  float fade = 1.0 - smoothstep(0.4, 0.9, abs(hx) + abs(hy));
+  vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx);
+  float det = dot(dpx, r1);
+  normal = normalize(abs(det) * normal - sign(det) * (hx * r1 + hy * r2) * ${(radius * 0.012).toExponential(3)} * fade);
+}`,
+      );
+  };
+  m.customProgramCacheKey = () => 'golf-ball';
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 32), m);
+  return ball;
+}
