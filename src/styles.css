@@ -1498,3 +1498,4 @@ button.tile:disabled { opacity: 1; }
 .insight.good .insight-num { color: var(--brand-text); }
 .insight.bad .insight-num { color: var(--bad); }
 .tee-club-name { margin: 0; font: 600 16px var(--display); }
+.speech-test { white-space: normal; overflow-wrap: anywhere; }

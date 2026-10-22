@@ -207,6 +207,20 @@ export function setMicPause(f: (() => boolean) | null): void {
 }
 let watchdog = 0;
 
+/** What happened at the last read-aloud – shown by "Test read-aloud" in the profile (Sascha 22.10.2026: still silent
+ *  on his iPhone, the settings there all right – this says what the phone reports). */
+export interface SpeechReport {
+  voices: number;
+  voice: string;
+  started: boolean;
+  error: string | null;
+  retried: boolean;
+  micPaused: boolean;
+}
+let report: SpeechReport | null = null;
+export const lastSpeech = (): SpeechReport | null => report;
+const voiceText = (v: SpeechSynthesisVoice | null, lang: string) => (v ? `${v.name} (${v.lang}${v.localService ? '' : ', Netz'})` : tr(`system voice (${lang})`, `Systemstimme (${lang})`));
+
 /** Reads text aloud (iPhone Safari supports this). */
 export function speak(text: string): boolean {
   const s = synth();
@@ -214,12 +228,20 @@ export function speak(text: string): boolean {
   wakeAudio();
   const lang = speechLang();
   const u = utterance(text, lang, pickVoice(s, lang));
-  u.onstart = () => window.clearTimeout(watchdog);
+  const rep: SpeechReport = { voices: s.getVoices().length, voice: voiceText(u.voice, lang), started: false, error: null, retried: false, micPaused: false };
+  report = rep;
+  u.onstart = () => {
+    rep.started = true;
+    window.clearTimeout(watchdog);
+  };
   u.onend = () => {
     window.clearTimeout(watchdog);
     if (current === u) setTalking(false);
   };
-  u.onerror = u.onend;
+  u.onerror = (e) => {
+    rep.error = (e as SpeechSynthesisErrorEvent).error ?? 'error';
+    u.onend?.(e as unknown as SpeechSynthesisEvent);
+  };
   current = u;
   setTalking(true);
   const go = () => {
@@ -236,12 +258,19 @@ export function speak(text: string): boolean {
         return;
       }
       const again = utterance(text, lang, null);
-      again.onstart = () => window.clearTimeout(watchdog);
+      rep.retried = true;
+      again.onstart = () => {
+        rep.started = true;
+        window.clearTimeout(watchdog);
+      };
       again.onend = () => {
         window.clearTimeout(watchdog);
         if (current === again) setTalking(false);
       };
-      again.onerror = again.onend;
+      again.onerror = (e) => {
+        rep.error = (e as SpeechSynthesisErrorEvent).error ?? 'error';
+        again.onend?.(e as unknown as SpeechSynthesisEvent);
+      };
       current = again;
       window.setTimeout(() => {
         s.speak(again);
@@ -256,6 +285,7 @@ export function speak(text: string): boolean {
   };
   // the microphone off first – the iPhone needs a moment to give the sound back to the loudspeaker
   if (micPause?.()) {
+    rep.micPaused = true;
     s.cancel();
     window.setTimeout(go, 400);
     return true;
