@@ -31,7 +31,8 @@ export async function loadWeather(p: LngLat): Promise<Weather | null> {
       const c = (await res.json()).current;
       data = { tempC: c.temperature_2m, windKmh: c.wind_speed_10m, gustKmh: c.wind_gusts_10m, windFromDeg: c.wind_direction_10m, code: c.weather_code, at: c.time };
     } catch {
-      data = await dwdCurrent(p); // Open-Meteo busy (429) or down: in Germany the German weather service
+      // Open-Meteo busy (429) or down: in Germany the German weather service, in the USA the National Weather Service
+      data = (await dwdCurrent(p)) ?? (await nwsHours(p))?.now ?? null;
     }
     if (!data) throw new Error('no weather');
     try {
@@ -42,6 +43,46 @@ export async function loadWeather(p: LngLat): Promise<Weather | null> {
     return data;
   } catch {
     return cached?.data ?? null; // offline: last known weather
+  }
+}
+
+/** In the USA without Alaska and Hawaii (bounding box) – the National Weather Service answers there. */
+export const inUsa = (p: LngLat) => p[0] > -125 && p[0] < -66.5 && p[1] > 24.3 && p[1] < 49.5;
+
+const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+/** "10 km/h", "5 to 15 km/h" → the higher value. */
+const kmh = (t: string | null | undefined): number | null => {
+  const xs = String(t ?? '').match(/\d+(?:\.\d+)?/g);
+  return xs ? Math.max(...xs.map(Number)) : null;
+};
+
+/**
+ * The USA's National Weather Service (Sascha 22.10.2026, the trip to Florida): when Open-Meteo does not answer, the
+ * hourly forecast of the grid cell – this hour as "now" (the stations' last report can be hours old), the next five
+ * for rain and gusts. Free, no key, open to the browser.
+ */
+async function nwsHours(p: LngLat): Promise<{ now: Weather; forecast: Forecast } | null> {
+  if (!inUsa(p)) return null;
+  try {
+    const pt = await fetch(`https://api.weather.gov/points/${p[1].toFixed(4)},${p[0].toFixed(4)}`, { signal: AbortSignal.timeout(10000) });
+    if (!pt.ok) return null;
+    const hourly: string | undefined = (await pt.json()).properties?.forecastHourly;
+    if (!hourly) return null;
+    const res = await fetch(hourly + '?units=si', { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const periods: { startTime: string; temperature: number; windSpeed: string; windGust?: string | null; windDirection: string; probabilityOfPrecipitation?: { value: number | null }; shortForecast?: string }[] =
+      (await res.json()).properties?.periods ?? [];
+    if (!periods.length) return null;
+    const h = periods[0];
+    const wind = kmh(h.windSpeed) ?? 0;
+    const dir = COMPASS.indexOf(h.windDirection);
+    const rainy = /rain|shower|storm|drizzle/i.test(h.shortForecast ?? '');
+    return {
+      now: { tempC: h.temperature, windKmh: wind, gustKmh: kmh(h.windGust) ?? wind, windFromDeg: dir >= 0 ? dir * 22.5 : 0, code: rainy ? 61 : /cloud/i.test(h.shortForecast ?? '') ? 3 : 1, at: h.startTime.slice(0, 16) },
+      forecast: { hours: periods.slice(0, 5).map((x) => ({ time: x.startTime.slice(0, 16), rainPct: x.probabilityOfPrecipitation?.value ?? 0, gustKmh: kmh(x.windGust) ?? kmh(x.windSpeed) ?? 0 })) },
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -154,7 +195,7 @@ export async function loadForecast(p: LngLat): Promise<Forecast | null> {
       const h = (await res.json()).hourly;
       data = { hours: h.time.map((t: string, k: number) => ({ time: t, rainPct: h.precipitation_probability[k] ?? 0, gustKmh: h.wind_gusts_10m[k] ?? 0 })) };
     } catch {
-      data = await dwdForecast(p);
+      data = (await dwdForecast(p)) ?? (await nwsHours(p))?.forecast ?? null;
     }
     if (!data) return null;
     try {
