@@ -11,7 +11,7 @@ const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await chromium.launch({ channel: 'msedge' });
 let bad = 0;
 const ok = (c, m) => { if (!c) bad++; console.log(`${c ? '✓' : '✗'} ${m}`); };
-for (const [label, failures] of [['once', 1], ['always', 99]]) {
+for (const [label, failures] of [['once', 1], ['twice', 2], ['always', 99]]) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], defaultBrowserType: undefined, locale: 'de-DE', serviceWorkers: 'block' }); // the request must reach the test, not the offline cache
   await mockNet(ctx);
   const p = await ctx.newPage();
@@ -23,7 +23,7 @@ for (const [label, failures] of [['once', 1], ['always', 99]]) {
   let loads = 0;
   // the Training module as a part of the old version that is gone – after the reload the new version asks for other
   // file names (here: the same one, now there), or it is gone again ('always')
-  await ctx.route(/\/src\/screens\/Training\.tsx|\/assets\/Training-[\w-]+\.js/, (r) => (failures > 1 || loads === 0 ? r.abort('failed') : r.continue({ url: r.request().url() + (r.request().url().includes('?') ? '&' : '?') + 'v=new' })));
+  await ctx.route(/\/src\/screens\/Training\.tsx|\/assets\/Training-[\w-]+\.js/, (r) => (loads < failures ? r.abort('failed') : r.continue({ url: r.request().url() + (r.request().url().includes('?') ? '&' : '?') + 'v=new' })));
   p.on('load', () => loads++);
   await p.locator('.module-card').filter({ hasText: 'Training' }).first().click();
   await p.waitForTimeout(6000);
@@ -31,8 +31,12 @@ for (const [label, failures] of [['once', 1], ['always', 99]]) {
   if (label === 'once') {
     ok(!errorScreen && loads === 1, `fails once: the app reloads by itself onto the new version, no error screen (${loads} reload)`);
     ok((await p.locator('.tabbar').count()) > 0, 'fails once: Training opens after the reload');
+  } else if (label === 'twice') {
+    // the phone opened the old version once more from its offline store: the second time from the server (22.10.2026)
+    ok(!errorScreen && loads === 2, `fails twice: a second reload from the server, no error screen (${loads} reloads)`);
+    ok((await p.locator('.tabbar').count()) > 0, 'fails twice: Training opens after the second reload');
   } else {
-    ok(errorScreen && loads <= 1, `fails again: the error screen, no reload loop (${loads} reload)`);
+    ok(errorScreen && loads <= 2, `fails every time: the error screen, no reload loop (${loads} reloads)`);
   }
   await ctx.close();
 }

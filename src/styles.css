@@ -1522,7 +1522,8 @@ button.tile:disabled { opacity: 1; }
 
 /* a penalty stroke as its own line in the shot check (Sascha 22.10.2026) */
 .shot-list .n.pen { background: var(--bad); color: var(--bg); font-size: 11px; }
-.review-list li.penalty-row { grid-template-columns: 28px 1fr; }
+.review-list li.penalty-row { grid-template-columns: 28px 1fr auto; }
 .review-list li.penalty-row.open { background: rgba(255, 107, 94, 0.10); border-radius: 10px; }
 
 .undo-toast.hold-ask .hold-cancel { color: var(--text-2); }
+.review-list li.penalty-row.dragging { z-index: 3; background: var(--surface-2); border-radius: 10px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); position: relative; }

@@ -173,6 +173,54 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     window.addEventListener('touchend', up);
     window.addEventListener('touchcancel', up);
   };
+  // A penalty stroke moved like a shot (Sascha 22.10.2026: "penalty strokes must move by holding or the grip – a player
+  // hits several off the tee as well as during a hole"): dropped, it belongs to the shot just above.
+  const penaltyRef = useRef<(src: number | null, to: number) => void>(() => undefined);
+  const [penDrag, setPenDrag] = useState<{ key: string; to: number; dy: number } | null>(null);
+  const dragPenalty = (y0: number, key: string, src: number | null) => {
+    const rows = [...(listRef.current?.querySelectorAll(':scope > li[data-shot]') ?? [])] as HTMLElement[];
+    if (!rows.length) return;
+    const mids = rows.map((r) => {
+      const b = r.getBoundingClientRect();
+      return b.top + b.height / 2;
+    });
+    let to = src ?? rows.length - 1;
+    setPenDrag({ key, to, dy: 0 });
+    navigator.vibrate?.(10);
+    const at = (clientY: number) => {
+      to = Math.max(0, mids.filter((m) => m < clientY).length - 1); // the shot above the finger
+      setPenDrag({ key, to, dy: clientY - y0 });
+    };
+    const move = (e: PointerEvent) => at(e.clientY);
+    const touchMove = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+      if (e.touches[0]) at(e.touches[0].clientY);
+    };
+    let ended = false;
+    const up = () => {
+      if (ended) return;
+      ended = true;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('touchmove', touchMove);
+      window.removeEventListener('touchend', up);
+      window.removeEventListener('touchcancel', up);
+      setPenDrag(null);
+      justDragged.current = true;
+      setTimeout(() => (justDragged.current = false), 350);
+      if (to !== src) penaltyRef.current(src, to);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('touchmove', touchMove, { passive: false });
+    window.addEventListener('touchend', up);
+    window.addEventListener('touchcancel', up);
+  };
+  const startPenDrag = (ev: React.PointerEvent, key: string, src: number | null) => {
+    if (ev.pointerType === 'touch') return;
+    ev.preventDefault();
+    dragPenalty(ev.clientY, key, src);
+  };
   /** The grip: at once (mouse and pen – a finger goes by its touch events, below). */
   const startDrag = (ev: React.PointerEvent, from: number) => {
     if (ev.pointerType === 'touch') return;
@@ -189,11 +237,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       const t = ev.target as HTMLElement;
       const li = t.closest('li');
       const idx = li?.dataset.shot != null ? Number(li.dataset.shot) : -1;
-      if (idx < 0 || idx >= latestShots.current.length || t.closest('.row-delete') || !ev.touches[0]) return;
+      const pen = li?.dataset.pen ?? null;
+      if ((pen == null && (idx < 0 || idx >= latestShots.current.length)) || t.closest('.row-delete') || !ev.touches[0]) return;
+      const lift = (y: number) => (pen != null ? dragPenalty(y, pen, li!.dataset.penSrc ? Number(li!.dataset.penSrc) : null) : dragFrom(y, idx));
       const t0 = ev.touches[0];
       if (t.closest('.row-grip')) {
         ev.preventDefault();
-        dragFrom(t0.clientY, idx);
+        lift(t0.clientY);
         return;
       }
       let y = t0.clientY;
@@ -211,7 +261,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       };
       const timer = setTimeout(() => {
         cancel();
-        dragFrom(y, idx);
+        lift(y);
       }, 450);
       window.addEventListener('touchmove', follow, { passive: true });
       window.addEventListener('touchend', cancel);
@@ -222,7 +272,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   });
   /** The whole row (Sascha 18.10.2026: "take hold of a shot and move it"): a long press lifts it; moving the finger
    *  before that scrolls the page as usual, a short tap opens the shot. */
-  const holdRow = (ev: React.PointerEvent, from: number) => {
+  const holdRow = (ev: React.PointerEvent, from: number, lift: (y: number) => void = (y) => dragFrom(y, from)) => {
     if (ev.pointerType === 'touch' || (ev.pointerType === 'mouse' && ev.button !== 0)) return; // a finger: by touch, above
     const x0 = ev.clientX;
     const y0 = ev.clientY;
@@ -242,7 +292,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     };
     const timer = setTimeout(() => {
       cancel();
-      dragFrom(y, from);
+      lift(y);
     }, 450);
     window.addEventListener('pointermove', track);
     window.addEventListener('pointerup', cancel);
@@ -259,6 +309,23 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const data = maps[k];
   const e = entries[k];
   const d: DetailEntry | null = e.detail ?? null;
+  penaltyRef.current = (src, to) => {
+    if (!d || !d.shots[to]) return;
+    if (d.shots[to].penalty) {
+      setNotice(
+        tr(
+          `Shot ${to + 1} has a penalty stroke already. Two balls out of bounds off the tee are two tee shots – add the second with "+".`,
+          `Schlag ${to + 1} hat schon einen Strafschlag. Zwei Bälle vom Abschlag ins Aus sind zwei Abschläge – den zweiten mit „+“ ergänzen.`,
+        ),
+      );
+      return;
+    }
+    const shots = d.shots.slice();
+    const kind = src != null ? shots[src]?.penaltyKind : undefined;
+    if (src != null && shots[src]) shots[src] = { ...shots[src], penalty: false, penaltyKind: undefined, missPos: null };
+    shots[to] = { ...shots[to], penalty: true, ...(kind ? { penaltyKind: kind } : {}), review: false };
+    saveDetail(k, { ...d, shots });
+  };
   // the flag the player set with his putts wins
   const pin = e?.puttsAt?.pin ?? d?.pin ?? data?.greenCenter ?? null;
   const placedPutts = e?.puttsAt?.balls ?? null;
@@ -879,7 +946,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             const toPin = s.pos && pin ? distanceM(s.pos, pin) : null;
             const kind = s.kind ?? suggestKind(s.lie, toPin);
             const odd = shotOdd(d, n);
-            const cls = [s.review || odd ? 'check' : '', drag?.from === n ? 'dragging' : '', drag && drag.from !== n && drag.to === n ? (drag.to < drag.from ? 'drop-before' : 'drop-after') : ''].join(' ').trim();
+            const cls = [s.review || odd ? 'check' : '', drag?.from === n ? 'dragging' : '', drag && drag.from !== n && drag.to === n ? (drag.to < drag.from ? 'drop-before' : 'drop-after') : '', penDrag?.to === n ? 'drop-after' : ''].join(' ').trim();
             return (
               <li key={n} data-shot={n} className={cls || undefined} style={drag?.from === n ? { transform: `translateY(${drag.dy}px)` } : undefined} onPointerDown={(ev) => !(ev.target as HTMLElement).closest('.row-grip, .row-delete') && holdRow(ev, n)} onContextMenu={(e) => e.preventDefault()}>
                 <span className="n">{n + 1}</span>
@@ -918,28 +985,45 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             const what = s.penaltyKind === 'ob' ? tr('out of bounds', 'Aus') : s.penaltyKind === 'water' ? tr('water', 'Wasser') : null;
             return [
               row,
-              <li key={`pen-${n}`} className="penalty-row">
+              <li
+                key={`pen-${n}`}
+                data-pen={`pen-${n}`}
+                data-pen-src={n}
+                className={`penalty-row${penDrag?.key === `pen-${n}` ? ' dragging' : ''}`}
+                style={penDrag?.key === `pen-${n}` ? { transform: `translateY(${penDrag.dy}px)` } : undefined}
+                onPointerDown={(ev) => !(ev.target as HTMLElement).closest('.row-grip') && holdRow(ev, n, (y) => dragPenalty(y, `pen-${n}`, n))}
+                onContextMenu={(ev) => ev.preventDefault()}
+              >
                 <span className="n pen">+1</span>
-                <button type="button" className="shot-row" onClick={() => setEdit(n)}>
+                <button type="button" className="shot-row" onClick={() => !justDragged.current && setEdit(n)}>
                   <strong>{tr('Penalty stroke', 'Strafschlag')}</strong>
                   {what ? ` · ${what}` : ''}
                   <span className="muted small" style={{ display: 'block' }}>
                     {tr(`after shot ${n + 1}`, `nach Schlag ${n + 1}`)}
                   </span>
                 </button>
+                <PenaltyGrip onPointerDown={(ev) => startPenDrag(ev, `pen-${n}`, n)} />
               </li>,
             ];
           })}
           {/* penalty strokes entered on the course, not tied to a shot yet: one line each, a tap asks which shot */}
           {Array.from({ length: Math.max(0, (e.penalties ?? 0) - d.shots.filter((s) => s.penalty).length) }, (_, j) => (
-            <li key={`pen-open-${j}`} className="penalty-row open">
+            <li
+              key={`pen-open-${j}`}
+              data-pen={`open-${j}`}
+              className={`penalty-row open${penDrag?.key === `open-${j}` ? ' dragging' : ''}`}
+              style={penDrag?.key === `open-${j}` ? { transform: `translateY(${penDrag.dy}px)` } : undefined}
+              onPointerDown={(ev) => !(ev.target as HTMLElement).closest('.row-grip') && holdRow(ev, -1, (y) => dragPenalty(y, `open-${j}`, null))}
+              onContextMenu={(ev) => ev.preventDefault()}
+            >
               <span className="n pen">+1</span>
-              <button type="button" className="shot-row" onClick={() => setPenaltyPick(true)}>
+              <button type="button" className="shot-row" onClick={() => !justDragged.current && setPenaltyPick(true)}>
                 <strong>{tr('Penalty stroke from the course', 'Strafschlag vom Platz')}</strong>
                 <span className="muted small" style={{ display: 'block' }}>
-                  {tr('Not tied to a shot yet – tap to choose which', 'Noch keinem Schlag zugeordnet – antippen und Schlag wählen')}
+                  {tr('Not tied to a shot yet – tap or drag it under its shot', 'Noch keinem Schlag zugeordnet – antippen oder unter seinen Schlag ziehen')}
                 </span>
               </button>
+              <PenaltyGrip onPointerDown={(ev) => startPenDrag(ev, `open-${j}`, null)} />
             </li>
           ))}
           {d.onGreen && (
@@ -1110,5 +1194,21 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         />
       )}
     </main>
+  );
+}
+
+/** The grip of a penalty stroke's line – the same as a shot's. */
+function PenaltyGrip(props: { onPointerDown: (ev: React.PointerEvent) => void }) {
+  return (
+    <span className="row-grip" role="button" tabIndex={-1} aria-label={tr('Move the penalty stroke', 'Strafschlag verschieben')} onPointerDown={props.onPointerDown}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="9" cy="6" r="1.6" />
+        <circle cx="15" cy="6" r="1.6" />
+        <circle cx="9" cy="12" r="1.6" />
+        <circle cx="15" cy="12" r="1.6" />
+        <circle cx="9" cy="18" r="1.6" />
+        <circle cx="15" cy="18" r="1.6" />
+      </svg>
+    </span>
   );
 }

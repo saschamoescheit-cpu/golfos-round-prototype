@@ -27,6 +27,25 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # The files of the versions before stay for 14 days (Sascha 22.10.2026: "error loading dynamically imported module
+      # … RoundReview-….js" after a deploy, "has to be fixed for good"): an app opened before still finds its parts.
+      - uses: actions/cache/restore@v6
+        with:
+          path: old-assets
+          key: pages-assets-${{ github.run_id }}
+          restore-keys: pages-assets-
+      - name: Keep the old versions' files
+        run: |
+          mkdir -p old-assets
+          find old-assets -type f -mtime +14 -delete
+          # --update=none: never overwrite, and no error when a file is skipped (cp -n fails then on Ubuntu 24.04)
+          cp -r --update=none dist/assets/. old-assets/
+          cp -r --update=none old-assets/. dist/assets/
+          echo "assets now: $(ls dist/assets | wc -l) files, $(du -sh dist/assets | cut -f1)"
+      - uses: actions/cache/save@v6
+        with:
+          path: old-assets
+          key: pages-assets-${{ github.run_id }}
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

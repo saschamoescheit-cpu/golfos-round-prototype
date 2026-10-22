@@ -59,6 +59,19 @@ ok((await open()) === 1 && (await tied()) === 1, `one tied, one still open (${aw
 const rowsText = await p.locator('.review-list li').allInnerTexts();
 const iPen = rowsText.findIndex((t) => /Strafschlag · Wasser/.test(t));
 ok(iPen === 1 && /nach Schlag 1/.test(rowsText[iPen]), `the penalty under shot 1: "${(rowsText[iPen] ?? '').replace(/\s+/g, ' ')}"`);
+// the open one dragged by its grip under shot 2 (Sascha 22.10.2026: "penalty strokes must move like shots")
+{
+  const grip = p.locator('.penalty-row.open .row-grip').first();
+  const g = await grip.boundingBox();
+  const shot2 = await p.locator('.review-list li[data-shot="1"]').boundingBox();
+  await p.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await p.mouse.down();
+  for (let s = 1; s <= 8; s++) await p.mouse.move(g.x + g.width / 2, g.y + g.height / 2 + ((shot2.y + shot2.height * 0.75 - (g.y + g.height / 2)) * s) / 8);
+  await p.mouse.up();
+  await p.waitForTimeout(600);
+  const texts = await p.locator('.review-list li').allInnerTexts();
+  ok((await open()) === 0 && texts.some((t) => /Strafschlag/.test(t) && /nach Schlag 2/.test(t)), `dragged by its grip under shot 2: tied to shot 2 (${await open()} open)`);
+}
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
