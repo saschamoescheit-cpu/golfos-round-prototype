@@ -84,7 +84,7 @@ ok(after.includes('4i') && after.includes('PW (43°)') && after.includes('SW') &
 await shot('bag-full');
 // tracked carry: shown next to the club, "use" as an icon (Sascha 15.10.2026)
 // one line again (Sascha 20.10.2026): the tracked carry, then how often – "152 m · 18×", the full words in its title
-ok((await p.locator('.use-btn').count()) >= 2 && /· 18×/.test(await p.locator('main').innerText()) && (await p.locator('[title="18 Schläge gemessen"]').count()) >= 1, `tracked: "· 18×" with the icon button (${await p.locator('.use-btn').count()})`);
+ok((await p.locator('.use-btn').count()) >= 2 && /· 18×/.test(await p.locator('main').innerText()) && (await p.locator('[title^="18 Schläge gemessen"]').count()) >= 1, `tracked: "· 18×" with the icon button (${await p.locator('.use-btn').count()})`);
 ok((await p.locator('.bag-grid ~ .use-all').count()) === 1, '"use all" under the table');
 await p.getByRole('button', { name: 'Gemessene 216 m für D übernehmen' }).click();
 ok((await p.getByRole('textbox', { name: 'D Carry in Metern' }).inputValue()) === '216', 'icon takes over the tracked 216 m for the driver');
