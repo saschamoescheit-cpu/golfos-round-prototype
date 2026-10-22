@@ -124,46 +124,48 @@ export const FULL_SWING_REAL: Swing = {
     k(0, { ...ADDRESS_REAL, label: L('Set-up', 'Ansprache') }),
     k(0.5, ADDRESS_REAL),
     k(1.0, {
-      body: { pelvis: [38, -14, 2], spine: [2, -6, 0], chest: [2, -22, 5], neck: [-14, 18, 0], head: [12, 8, 0] },
+      body: { pelvis: [38, -14, 2], spine: [6, -6, 0], chest: [6, -22, 5], neck: [-14, 18, 0], head: [12, 8, 0] },
       hands: [-0.02, -0.24, 0.44],
       club: [-1, 0.08, 0.05],
       label: L('Back in one piece – one', 'Aus einem Guss zurück – eins'),
     }),
     k(1.45, {
-      body: { pelvis: [38, -28, 2], spine: [2, -10, 0], chest: [2, -34, 6], neck: [-14, 32, 0], head: [12, 12, 0] },
+      body: { pelvis: [38, -28, 2], spine: [6, -10, 0], chest: [6, -34, 6], neck: [-14, 32, 0], head: [12, 12, 0] },
       hands: [-0.1, -0.12, 0.45],
       club: [-0.1, 0.93, -0.36],
       label: L('Wrists hinge – two', 'Handgelenke winkeln an – zwei'),
     }),
     k(2.0, {
-      body: { pelvis: [38, -42, 0], spine: [2, -12, 0], chest: [2, -36, 8], neck: [-14, 44, 0], head: [12, 14, 0] },
-      hands: [-0.3, 0.42, 0.42],
+      body: { pelvis: [38, -46, 0], spine: [6, -12, 0], chest: [6, -34, 0], neck: [-14, 44, 0], head: [12, 14, 0] },
+      hands: [-0.18, 0.56, 0.3],
       club: [0.95, -0.05, 0.1],
       label: L('The top – three', 'Oben – drei'),
     }),
     k(2.3, {
-      body: { pelvis: [38, -42, 0], spine: [2, -12, 0], chest: [2, -36, 8], neck: [-14, 44, 0], head: [12, 14, 0] },
-      hands: [-0.3, 0.42, 0.42],
+      body: { pelvis: [38, -46, 0], spine: [6, -12, 0], chest: [6, -34, 0], neck: [-14, 44, 0], head: [12, 14, 0] },
+      hands: [-0.18, 0.56, 0.3],
       club: [0.95, -0.05, 0.1],
     }),
     k(2.6, {
-      body: { pelvis: [38, -8, 5], spine: [2, -10, 2], chest: [2, -30, 8], neck: [-14, 30, 0], head: [12, 10, 0] },
+      body: { pelvis: [38, -8, 5], spine: [6, -10, 2], chest: [6, -30, 8], neck: [-14, 30, 0], head: [12, 10, 0] },
       hands: [-0.12, -0.08, 0.42],
       club: [-0.45, 0.75, -0.45],
       shift: 0.04,
       label: L('Down from the ground', 'Abschwung vom Boden'),
     }),
     k(2.7, {
-      body: { pelvis: [37, 12, 6], spine: [2, -4, 2], chest: [2, -22, 8], neck: [-14, 10, 0], head: [12, 2, 0] },
+      body: { pelvis: [37, 12, 6], spine: [6, -4, 2], chest: [6, -22, 8], neck: [-14, 10, 0], head: [12, 2, 0] },
       hands: [-0.05, -0.17, 0.43],
       club: [-1, 0.06, 0.12],
       shift: 0.06,
     }),
     k(2.8, {
-      body: { pelvis: [36, 46, 8], spine: [2, 2, 12], chest: [2, -8, 8], neck: [-14, -10, 0], head: [12, -6, 0] },
+      body: { pelvis: [36, 46, 8], spine: [2, 0, 11], chest: [2, -14, 7], neck: [-14, -8, 0], head: [12, -6, 0] },
       hands: [-0.06, -0.22, 0.43],
       lean: 7,
       lie: 53,
+      push: 0.0,
+      drop: 0.1,
       club: 'ball',
       shift: 0.07,
       label: L('Impact: hands ahead – four', 'Treffmoment: Hände vorn – vier'),
@@ -205,6 +207,49 @@ export const FULL_SWING_REAL: Swing = {
 };
 
 FULL_SWING_REAL.hit = { at: 2.8, shot: 'full' };
+
+/** the ball further away for the realistic golfer (its arms and clubs are longer than the old figure's): by club */
+const REAL_BALL: Record<Swing['club'], number> = { iron: 1.33, wedge: 1.3, driver: 1.22, hybrid: 1.28, putter: 1.12 };
+/** the shaft's angle to the ground at address, by club */
+const REAL_LIE: Record<Swing['club'], number> = { iron: 51, wedge: 53, driver: 47, hybrid: 49, putter: 68 };
+const sameKeys = (s: Swing, base: Swing) => s.keys.length === base.keys.length && s.keys.every((k, i) => k.t === base.keys[i].t);
+const sameV = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const realCache = new WeakMap<Swing, Swing>();
+/** A swing for the realistic golfer (19.10.2026): a swing built on the full swing (the driver, the woods, most fault
+ *  pairs) takes the measured realistic full swing and keeps its own differences – every angle, hand and club position
+ *  it changes is changed by the same amount on the realistic one; any other swing keeps its keys with the ball further
+ *  away and the club's own lie at the ball. */
+export function realSwing(s: Swing): Swing {
+  if (s === FULL_SWING) return FULL_SWING_REAL;
+  const hit = realCache.get(s);
+  if (hit) return hit;
+  const ball: [number, number] = s.ball ? [s.ball[0], s.ball[1] * REAL_BALL[s.club]] : [0, 0.6 * REAL_BALL[s.club]];
+  let out: Swing;
+  if (sameKeys(s, FULL_SWING)) {
+    const B = FULL_SWING.keys, Rk = FULL_SWING_REAL.keys;
+    const realBall: [number, number] = [FULL_SWING_REAL.ball![0] + ((s.ball ?? FULL_SWING.ball!)[0] - FULL_SWING.ball![0]), FULL_SWING_REAL.ball![1] * ((s.ball ?? FULL_SWING.ball!)[1] / FULL_SWING.ball![1])];
+    out = {
+      ...s,
+      ball: realBall,
+      keys: s.keys.map((k, i) => {
+        const b = B[i], r = Rk[i];
+        const body: SwingKey['body'] = {};
+        for (const id of ['pelvis', 'spine', 'chest', 'neck', 'head'] as const) {
+          const kv = k.body[id] ?? [0, 0, 0], bv = b.body[id] ?? [0, 0, 0], rv = r.body[id] ?? [0, 0, 0];
+          body[id] = [0, 1, 2].map((c) => rv[c] + kv[c] - bv[c]) as V3;
+        }
+        const hands = sameV(k.hands, b.hands) ? r.hands : ([0, 1, 2].map((c) => r.hands[c] + k.hands[c] - b.hands[c]) as V3);
+        const club = sameV(k.club, b.club) ? r.club : k.club;
+        const num = (f: 'shift' | 'drop' | 'push' | 'heel') => (k[f] ?? 0) - (b[f] ?? 0) + (r[f] ?? 0);
+        return { ...r, ...k, body, hands, club, shift: num('shift'), drop: num('drop') || r.drop || k.drop, push: num('push'), heel: num('heel'), lie: k.lie ?? r.lie, lean: k.lean ?? r.lean, label: k.label };
+      }),
+    };
+  } else {
+    out = { ...s, ball, keys: s.keys.map((k, i) => (k.club === 'ball' && k.lie == null && i < 2 ? { ...k, lie: REAL_LIE[s.club] } : k)) };
+  }
+  realCache.set(s, out);
+  return out;
+}
 
 /** the driver: wider stance, the ball forward on a tee, hit on the way up */
 export const DRIVER_SWING: Swing = { ...FULL_SWING, club: 'driver', stance: 0.5, ball: [0.16, 0.9], tee: true };

@@ -12,6 +12,8 @@ const n = Number(q.get('n') ?? 8);
 if (q.get('big')) document.body.classList.add('big');
 if (q.get('huge')) document.body.classList.add('huge');
 const canvas = document.getElementById('c') as HTMLCanvasElement;
+// a video: the canvas at its own size, frames grabbed one by one (qa/.video3d.mjs)
+if (q.get('vw')) Object.assign(canvas.style, { width: q.get('vw') + 'px', height: q.get('vh') + 'px' });
 const out = document.getElementById('out')!;
 if (wantRealistic()) await loadRealisticBody();
 const v = createGolfViewer(canvas);
@@ -20,6 +22,20 @@ const pairs = (SW as unknown as { PAIRS: Record<string, { fault: Swing; right: S
 const pair = pairs[name];
 const swing = pair ? pair.fault : ((SW as unknown as { SWINGS: Record<string, Swing> }).SWINGS[name] ?? (SW as unknown as Record<string, Swing>)[name]);
 (async () => {
+  if (q.get('vw')) {
+    if (pair) v.setSwings((SW as unknown as { group: (id: string) => { swing: Swing; x?: number; z?: number }[] }).group(name));
+    else v.setSwing(swing);
+    v.setView(views[0]);
+    v.resize();
+    let label = '';
+    v.onLabel((l) => (label = l?.de ?? ''));
+    (window as unknown as { grab: (t: number) => [string, string] }).grab = (t: number) => {
+      v.seek(t);
+      return [canvas.toDataURL('image/jpeg', 0.92), label];
+    };
+    document.body.dataset.done = '1';
+    return;
+  }
   if (q.get('measure')) {
     if (pair) v.setSwings((SW as unknown as { group: (id: string) => { swing: Swing; x?: number; z?: number }[] }).group(name));
     else v.setSwing(swing);

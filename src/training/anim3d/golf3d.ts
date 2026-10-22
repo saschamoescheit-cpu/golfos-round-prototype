@@ -17,7 +17,7 @@ export const wantRealistic = (): boolean => {
 const lens = (rig: Rig): { upperArm: number; forearm: number; thigh: number; shin: number; ankleH: number } => ({ ...BODY, ...(rig.root.userData.lengths ?? {}) });
 import type { L, Shot } from '../types';
 import { ballFlight } from '../motion';
-import { FULL_SWING, FULL_SWING_REAL } from './swings';
+import { realSwing } from './swings';
 import { buildRealClub } from './club3d';
 import { grassMaterial, skyTexture, treeLine } from './scene3d';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -226,6 +226,8 @@ const POSTURE = { pelvis: 2, spine: 2, chest: 1, neck: 8, head: 10 } as const;
 /** the forward bend of the keys sits in the pelvis; a golfer bends more in the hips' tilt AND the spine – so part of it
  *  moves up into spine and chest (19.10.2026, measured: with the whole bend in the pelvis its turn about the vertical
  *  swung the head 29 cm to the side by the top; turning about the bent spine keeps the head nearly still) */
+/** how far a shoulder of the realistic golfer may reach forward (m) */
+const PROTRACT = 0.045;
 const BEND_UP = 0.45;
 const SPINE_UP = 0.1;
 const postured = (body: SwingKey['body'], look: number, real = false): SwingKey['body'] => {
@@ -532,9 +534,17 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         const sR = p.rig.joints.shoulderR.getWorldPosition(new THREE.Vector3());
         const L = lens(p.rig);
         const max = L.upperArm + L.forearm - 0.004;
+        // the shoulders can reach forward a little (protraction): a hand that far out is still fine
+        const slack = PROTRACT;
+        // before impact the lead arm is straight (a golfer's lead arm stays long to the top and down): the hands go out
+        // along the line from the lead shoulder until it is
+        if (s.hit && k.t > 0.6 && k.t < s.hit.at) {
+          const wL = hands.clone().add(offL);
+          hands.copy(sL.clone().add(wL.sub(sL).normalize().multiplyScalar(max - 0.002)).sub(offL));
+        }
         for (let it = 0; it < 30; it++) {
           const wL = hands.clone().add(offL), wR = hands.clone().add(offR);
-          const eL = wL.distanceTo(sL) - max, eR = wR.distanceTo(sR) - max;
+          const eL = wL.distanceTo(sL) - max - slack, eR = wR.distanceTo(sR) - max - slack;
           if (eL <= 0 && eR <= 0) break;
           const [w, sh, e] = eL > eR ? [wL, sL, eL] : [wR, sR, eR];
           hands.addScaledVector(sh.clone().sub(w).normalize(), e * 0.8 + 0.001);
@@ -629,6 +639,24 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     // elbows point down and a little out, away from the body
     const poleL = chestP.clone().add(new THREE.Vector3(0.5, -1, 0.1).applyQuaternion(q));
     const poleR = chestP.clone().add(new THREE.Vector3(-0.5, -1, 0.1).applyQuaternion(q));
+    // the realistic golfer: a shoulder reaches forward (up to PROTRACT) when its hand is out of the arm's reach – as a
+    // golfer's shoulder blade slides round the chest
+    if (rig.root.userData.realistic) {
+      for (const [sh, w] of [[J.shoulderL, wristL], [J.shoulderR, wristR]] as const) {
+        const rest = (sh.userData.rest ??= sh.position.clone()) as THREE.Vector3;
+        sh.position.copy(rest);
+        sh.updateMatrixWorld(true);
+        const at = sh.getWorldPosition(new THREE.Vector3());
+        const over = at.distanceTo(w) - (lens(rig).upperArm + lens(rig).forearm - 0.004);
+        if (over > 0) {
+          const step = w.clone().sub(at).normalize().multiplyScalar(Math.min(over, PROTRACT));
+          sh.parent!.updateMatrixWorld(true);
+          const local = sh.parent!.worldToLocal(at.clone().add(step));
+          sh.position.copy(local);
+          sh.updateMatrixWorld(true);
+        }
+      }
+    }
     twoBone(J.shoulderL, J.elbowL, lens(rig).upperArm, lens(rig).forearm, wristL, poleL);
     // one-handed: the trail hand rests flat on the chest
     const rest = chestP.clone().add(new THREE.Vector3(0.02, 0.1, 0.17).applyQuaternion(q));
@@ -1179,12 +1207,11 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
         });
     }
     players = list.map(({ swing: given, x = 0, z = 0 }) => {
-      // the realistic golfer for now only in the full swing – the one movement measured and set for it (Sascha judges it
-      // first, 19.10.2026)
-      const rig = buildRig({ skin: wantRealistic() && realisticBodyReady() && given === FULL_SWING ? 'realistic' : 'classic' });
+      // the realistic golfer (switched on with ?real3d=1): every swing in its realistic form (swings.ts realSwing)
+      const rig = buildRig({ skin: wantRealistic() && realisticBodyReady() ? 'realistic' : 'classic' });
       const real = !!rig.root.userData.realistic;
       // the realistic golfer swings the full swing measured for it
-      const swing = real && given === FULL_SWING ? FULL_SWING_REAL : given;
+      const swing = real ? realSwing(given) : given;
       const club = buildClub(swing.club, real);
       // polished steel mirrors its surroundings: an environment for the realistic golfer
       if (real) setRealStage();

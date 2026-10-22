@@ -66,24 +66,41 @@ export function skyTexture(): THREE.Texture {
   return t;
 }
 
-/** a line of trees around the range, far away (the fog makes it hazy) */
+/** a line of trees around the range, far away (the fog makes it hazy): each crown a few lumpy clumps of leaves in
+ *  slightly different greens, on a thin trunk */
 export function treeLine(): THREE.Group {
   const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: '#3d6a33', roughness: 1 });
-  const trunk = new THREE.MeshStandardMaterial({ color: '#4a3b2a', roughness: 1 });
   // the same trees every time (no randomness in a video)
   let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 70; i++) {
-    const a = (i / 70) * Math.PI * 2 + rnd() * 0.05;
-    const r = 36 + rnd() * 6;
-    const h = 6 + rnd() * 6;
-    const crown = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), mat);
-    crown.scale.set(1.6 + rnd() * 1.4, h * 0.45, 1.6 + rnd() * 1.4);
-    crown.position.set(Math.cos(a) * r, h * 0.62, Math.sin(a) * r);
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, h * 0.45, 6), trunk);
-    t.position.set(Math.cos(a) * r, h * 0.22, Math.sin(a) * r);
-    g.add(crown, t);
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // one lumpy clump, reused: an icosphere pushed in and out
+  const clump = new THREE.IcosahedronGeometry(1, 2);
+  const cp = clump.attributes.position;
+  for (let i = 0; i < cp.count; i++) {
+    const v = new THREE.Vector3().fromBufferAttribute(cp, i);
+    const k = 1 + 0.18 * Math.sin(v.x * 5.1 + v.y * 3.3) * Math.cos(v.z * 4.7 - v.y * 2.1);
+    cp.setXYZ(i, v.x * k, v.y * k, v.z * k);
+  }
+  clump.computeVertexNormals();
+  const greens = ['#3f6b31', '#4a7a36', '#36602b', '#557f3c'].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 1, flatShading: true }));
+  const bark = new THREE.MeshStandardMaterial({ color: '#4a3b2a', roughness: 1 });
+  for (let i = 0; i < 80; i++) {
+    const a = (i / 80) * Math.PI * 2 + rnd() * 0.04;
+    const r = 36 + rnd() * 7;
+    const h = 7 + rnd() * 6;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.24, h * 0.55, 6), bark);
+    t.position.set(x, h * 0.27, z);
+    g.add(t);
+    const w = 1.8 + rnd() * 1.6;
+    for (let c = 0; c < 5; c++) {
+      const m = new THREE.Mesh(clump, greens[Math.floor(rnd() * greens.length)]);
+      const s = w * (0.55 + rnd() * 0.35);
+      m.scale.set(s, s * (0.8 + rnd() * 0.3), s);
+      m.position.set(x + (rnd() - 0.5) * w, h * (0.55 + rnd() * 0.35), z + (rnd() - 0.5) * w);
+      m.rotation.y = rnd() * 6;
+      g.add(m);
+    }
   }
   return g;
 }
