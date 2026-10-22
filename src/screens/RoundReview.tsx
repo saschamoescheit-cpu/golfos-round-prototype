@@ -11,6 +11,7 @@ import { analyse, playerBag } from '../lib/stats';
 import { rollFactor } from '../lib/clubs';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
+import { ensureCourseMap } from '../lib/courses';
 import { PuttEditor } from '../components/PuttEditor';
 import { pickUpAllowed, ScoreSheet, scoreName } from '../components/ScoreSheet';
 import { greenWalk } from '../lib/greenwalk';
@@ -37,7 +38,12 @@ const puttVerdicts = () => [
 export function RoundReview(props: { round: Round; onChange: (r: Round) => void; onDone: () => void }) {
   const { round } = props;
   const me = round.players.find((p) => p.isMe)!;
-  const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId]);
+  // a round looked at later whose course map made room when the storage was full: the map comes again (22.10.2026)
+  const [geoTick, setGeoTick] = useState(0);
+  useEffect(() => {
+    ensureCourseMap(round.courseId).then((came) => came && setGeoTick((t) => t + 1));
+  }, [round.courseId]);
+  const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId, geoTick]);
   // the same holes as on the course: from the tee the player played (yellow, red …), not the back tee of the map
   const maps = useMemo(() => round.holes.map((h) => holeForTee(holeMapData(geometry, h.loop, h.number), round.courseId, h.label, round.tee, geometry.tee)), [geometry, round.holes, round.courseId, round.tee]);
   const track = useMemo(() => loadTrack(round.id), [round.id]);

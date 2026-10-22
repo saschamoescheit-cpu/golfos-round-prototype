@@ -12,6 +12,7 @@ import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
+import { ensureCourseMap } from '../lib/courses';
 import { loadRegionalImagery, pickImagery, type ImageryId } from '../lib/imagery';
 import { loadForecast, loadWeather, windOnHole, type Forecast, type Weather } from '../lib/weather';
 import { WeatherIcon } from '../components/WeatherIcon';
@@ -148,6 +149,10 @@ export function HoleScreen(props: {
   // ---------- Map view ----------
   const [geoVersion, setGeoVersion] = useState(0); // bumps after the player set up a hole
   const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId, geoVersion]);
+  // the course map gone (storage full, the round was finished then): it comes again (22.10.2026)
+  useEffect(() => {
+    ensureCourseMap(round.courseId).then((came) => came && setGeoVersion((v) => v + 1));
+  }, [round.courseId]);
   // The hole from the tee the player chose (courses with tee data); the map line starts at one of the tees.
   const forTee = (d: ReturnType<typeof holeMapData>, label: string) => holeForTee(d, round.courseId, label, round.tee, geometry.tee);
   const woods = useMemo(() => woodsOf(geometry), [geometry]);

@@ -73,6 +73,8 @@ if (fr[0]) await p.evaluate((k) => localStorage.removeItem(k), fr[0]);
 await p.evaluate(() => {
   const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
   rs[0].finishedAt = new Date().toISOString(); // the round over – its course is not protected any more
+  const me = rs[0].players.find((x) => x.isMe).id;
+  rs[0].entries[me][0].strokes = 5; // one hole played, so the round shows in the list
   localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
   sessionStorage.setItem('golfos.module', 'rounds');
 });
@@ -81,8 +83,21 @@ await p.waitForTimeout(1500);
 await p.getByRole('button', { name: 'Neue Runde' }).click();
 // from "played last" – the usual way back to a course, and without the course search
 await p.locator('button.list-item', { hasText: 'Frielinghausen' }).first().click();
+await p.waitForTimeout(1000);
 await p.getByText('Runde starten').waitFor({ timeout: 45000 });
 ok((await geoOf()).length === 1, 'the map copy gone: fetched again when the course is picked');
+// a finished round looked at later, its course map gone: the map comes again in "Schläge prüfen"
+await p.evaluate((k) => localStorage.removeItem(k), (await geoOf())[0]);
+await p.evaluate(() => { sessionStorage.clear(); sessionStorage.setItem('golfos.module', 'rounds'); });
+await p.goto(url);
+await p.waitForTimeout(1500);
+await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click();
+await p.waitForTimeout(400);
+await p.locator('button').filter({ hasText: /Frielinghausen/ }).first().click();
+await p.waitForTimeout(1000);
+await p.getByRole('button', { name: /Schläge prüfen/ }).first().click();
+for (let k = 0; k < 30 && (await geoOf()).length === 0; k++) await p.waitForTimeout(500);
+ok((await geoOf()).length === 1, 'a round looked at later: its course map fetched again');
 ok((await p.getByText(/Speicher auf dem Handy voll/).count()) === 0, 'no "storage full" note – there was room to make');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

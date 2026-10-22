@@ -241,6 +241,16 @@ export function pickCourseArea(osm: ReturnType<typeof parseOsmXml>, s: CourseSum
   };
 }
 
+/** The course's map copy is gone (it made room when the storage was full): fetch it again – for a round looked at
+ *  later, not only when the course is picked. True when a map came. */
+export async function ensureCourseMap(courseId: string): Promise<boolean> {
+  if (!courseId.startsWith('osm:') || SEED_COURSES[courseId] || hasGeometry(courseId)) return false;
+  const course = loadCachedCourse(courseId);
+  if (!course) return false;
+  await refetchGeometry({ id: courseId, source: 'osm', name: course.name, place: '', lat: course.lat, lon: course.lon, bbox: course.bbox }, course);
+  return hasGeometry(courseId);
+}
+
 // once per course and session: a course without a map in OSM is not asked again on every opening
 const refetched = new Set<string>();
 async function refetchGeometry(summary: CourseSummary, course: Course): Promise<void> {
