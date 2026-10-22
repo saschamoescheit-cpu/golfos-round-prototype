@@ -352,7 +352,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     green.material = grassMaterial('#5fa83d', { fine: true, stripes: 0.03 });
     for (const m of [floor, pad, green]) m.material.needsUpdate = true;
     scene.background = skyTexture();
-    scene.fog = new THREE.Fog('#d9e7ee', 16, 55);
+    scene.fog = new THREE.Fog('#cfe0e9', 25, 110);
     hemi.intensity = 1.1;
     // the flag waves a little
     const fg = new THREE.PlaneGeometry(0.5, 0.32, 12, 4);
@@ -380,7 +380,7 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
   const sceneProps = new THREE.Group();
   scene.add(sceneProps);
 
-  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 150);
 
   /** one golfer on the stage: the figure, the club, the ball and its tee, the swing, how far along the target line */
   interface Player {
