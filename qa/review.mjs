@@ -35,8 +35,11 @@ await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await p.getByText('Runde starten').click();
 await p.waitForTimeout(3000);
-// the round as played: the simulated track, score = shots + 2 putts (hole 7: + a penalty), finished
-await p.evaluate(
+// the round as played: the simulated track, score = shots + 2 putts (hole 7: + a penalty), finished – set twice: under
+// load the hole screen may still save its own copy right after the first time
+for (let pass = 0; pass < 2; pass++) {
+  if (pass) await p.waitForTimeout(800);
+  await p.evaluate(
   ([track, truth]) => {
     const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
     const r = rs[0];
@@ -52,10 +55,14 @@ await p.evaluate(
     sessionStorage.setItem('golfos.paused', r.id);
   },
   [sim.track, sim.truth],
-);
+  );
+}
 await p.reload();
 await p.waitForTimeout(1500);
-ok((await p.locator('.tabbar-dot').count()) === 1, 'menu: dot on "Runden"');
+// the dot on "Runden" (a round to check) – the profile may have its own (the bag's measured distances)
+const roundsTab = p.locator('.tabbar button').filter({ hasText: 'Runden' });
+await roundsTab.locator('.tabbar-dot').waitFor({ timeout: 8000 }).catch(() => {});
+ok((await roundsTab.locator('.tabbar-dot').count()) === 1, 'menu: dot on "Runden"');
 await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click();
 await p.waitForTimeout(400);
 ok((await p.locator('ul.list .signed-mark[aria-label="prüfen & signieren"]').count()) === 1, 'rounds tab: the green pen on the round to check & sign (no text hint)');
@@ -119,6 +126,7 @@ await p.locator('.putt-editor').getByRole('button', { name: /Abbrechen/ }).click
 await p.waitForTimeout(300);
 // a shot dragged out of bounds (Sascha 16.10.2026, 6C): penalty stroke and a new shot from the same spot
 const before1 = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots.length);
+await p.waitForTimeout(1200); // the map at rest before a mark is taken
 const m2 = p.locator('.map-shot-dot').filter({ hasText: /^2/ }).first();
 const b2 = await m2.boundingBox();
 await p.mouse.move(b2.x + b2.width / 2, b2.y + b2.height / 2);
