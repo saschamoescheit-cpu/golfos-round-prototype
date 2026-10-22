@@ -102,12 +102,22 @@ export function HoleMap(props: HoleMapProps) {
   const ready = useRef(false);
   const sat = useRef({ ok: 0, fail: 0 }); // imagery tiles loaded / failed (for the fallback)
   const satWait = useRef<number | undefined>(undefined); // the wait for the aerial tiles
-  // the aerial view not there after the wait: no tile at all, or still tiles of the view outstanding – a single tile
-  // from the phone's offline store is not enough (Sascha 21.10.2026 evening: still black with LGL hanging)
+  // the aerial view not there after the wait: no tile at all, or most tiles of the view still outstanding – a single
+  // tile from the phone's offline store is not enough (Sascha 21.10.2026 evening: still black with LGL hanging). A few
+  // tiles at the edge still on their way are no reason: on the course with weak reception the hole comes from the
+  // offline store and only the edges hang – switching then would throw the saved map away (night check 22.10.2026).
   const imageryStuck = (): boolean => {
     if (sat.current.ok === 0) return true;
+    const m = map.current;
+    if (!m) return false;
     try {
-      return !!map.current && !map.current.isSourceLoaded('sat');
+      const cache = (m.style as unknown as { sourceCaches?: Record<string, { _tiles?: Record<string, { state: string }> }> }).sourceCaches?.sat;
+      const tiles = cache?._tiles ? Object.values(cache._tiles) : null;
+      if (tiles && tiles.length) {
+        const there = tiles.filter((t) => t.state === 'loaded' || t.state === 'errored').length;
+        return there / tiles.length < 0.75;
+      }
+      return !m.isSourceLoaded('sat');
     } catch {
       return false;
     }
