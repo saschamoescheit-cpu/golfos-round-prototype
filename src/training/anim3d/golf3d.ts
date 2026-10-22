@@ -1049,10 +1049,25 @@ export function createGolfViewer(canvas: HTMLCanvasElement): Viewer {
     const N = 160;
     const down = Array.from({ length: N + 1 }, (_, i) => rawAt(sA, i0, A * (i / N) ** P));
     const through = Array.from({ length: N + 1 }, (_, i) => rawAt(sB, ih, B * (1 - (1 - i / N) ** Q)));
-    return [
+    const out = [
       { from: i0 * dt, to: hit, raw: down },
       { from: hit, to: i1 * dt, raw: through },
     ];
+    // the backswing, from where the club leaves its rest at the ball to where it comes to rest at the top: speeding up
+    // and slowing down evenly (it stuttered at each key on the way)
+    const still = 0.05;
+    let j1 = i0;
+    while (j1 > 1 && speed[j1] >= still) j1--;
+    while (j1 > 1 && speed[j1] < still) j1--;
+    let j0 = j1;
+    while (j0 > 1 && speed[j0] >= still) j0--;
+    if (j1 - j0 > 25 && speed[j0] < still) {
+      const sC = along(j0, j1 + 1);
+      const C = sC[sC.length - 1];
+      const back = Array.from({ length: N + 1 }, (_, i) => { const x = i / N; return rawAt(sC, j0, C * x * x * (3 - 2 * x)); });
+      out.unshift({ from: j0 * dt, to: (j1 + 1) * dt, raw: back });
+    }
+    return out;
   };
   const buildTrace = (p: Player): Player['trace'] => {
     // from the address until shortly after the hit – beyond, the club wraps round the body and the line would only clutter
