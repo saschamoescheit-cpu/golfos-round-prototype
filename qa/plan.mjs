@@ -68,7 +68,7 @@ await p.fill('#hole-note', 'Blind – auf den linken Baum');
 await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
 await p.waitForTimeout(300);
 const notes4 = await p.evaluate(() => Object.entries(localStorage).filter(([k]) => /note/i.test(k)).map(([, v]) => v).join(' '));
-ok(/Lochnotiz ✓/.test(await p.locator('.plan-panel').innerText()) && /linken Baum/.test(notes4), 'planning: "Lochnotiz" opens the hole note, saved for the course');
+ok((await p.locator('.plan-panel').getByRole('button', { name: /^Lochnotiz – eine ist gespeichert/ }).locator('.note-dot').count()) === 1 && /linken Baum/.test(notes4), 'planning: "Lochnotiz" opens the hole note, saved for the course – a green dot on the button (Sascha 23.10.2026)');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan-4A.png' });
 await p.locator('.hole-bar-handle').click();
 await p.waitForTimeout(400);

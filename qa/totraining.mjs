@@ -54,6 +54,14 @@ await p.locator('button').filter({ hasText: /Hetzenhof/ }).first().click();
 await p.waitForTimeout(1200);
 const btn = p.getByRole('button', { name: 'Ins Training übernehmen' });
 ok((await btn.count()) === 1, 'summary: "Ins Training übernehmen" under the practice plan');
+// the tip for the next round in a card of its own (Sascha 23.10.2026) – never inside the summary any more
+const tipCard = p.locator('section.next-round-card');
+ok((await p.locator('.round-summary .next-round').count()) === 0, 'no tip inside the round summary');
+if (await tipCard.count()) {
+  const t = await tipCard.innerText();
+  ok(/^Tipp für die nächste Runde/i.test(t.trim()) && !/Nächste Runde:/.test(t), `the tip as its own card: "${t.split(String.fromCharCode(10)).slice(1).join(' ').slice(0, 70)}"`);
+  if (process.env.SHOTS) await tipCard.screenshot({ path: `${process.env.SHOTS}/tip-card.png` });
+}
 ok((await plans()).length === 0, 'nothing in Training before the tap');
 await btn.click();
 // under the load of the parallel gate the plan is written later: wait for it, not a fixed time

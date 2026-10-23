@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SpeakerIcon, useSpeaking } from './SpeakerIcon';
-import { answer, canListen, listen, speak, summary, toggleSpeak, type CaddieFacts } from '../lib/caddietalk';
+import { answer, canListen, speak, startListening, summary, toggleSpeak, type CaddieFacts, type Listening } from '../lib/caddietalk';
 import { RulesBook } from './RulesBook';
-import type { HoleNote } from '../lib/holenotes';
+import { hasNote, type HoleNote } from '../lib/holenotes';
 import { LIE_OPTIONS, type LieKind } from '../lib/caddie';
 import { getLang, tr } from '../lib/i18n';
 import type { HazardAhead, HoleBook } from '../lib/holebook';
@@ -42,7 +42,9 @@ export function CaddieCard(props: {
   // plays like –, then the instruction (his plan, or the caddie's aim) and the one danger that matters. The rest is
   // still worked out and answered under "Ask".
   // the boundary has its own row below – not twice
-  const shown = pickLines(props.lines).filter((l) => !(props.ob && /^(Out of bounds|Aus) /.test(l.text)));
+  // the hole note has its own row below – its words not again as a line (Sascha 23.10.2026)
+  const noted = noteParts(props.note);
+  const shown = pickLines(props.lines.filter((l) => !noted.includes(l.text))).filter((l) => !(props.ob && /^(Out of bounds|Aus) /.test(l.text)));
   const head = `${Math.round(f.distance)} ${f.unit} ${f.targetTo} · ${tr('plays', 'spielt wie')} ${Math.round(f.playsLike)} ${f.unit}`;
   return (
     <>
@@ -58,6 +60,7 @@ export function CaddieCard(props: {
             {l.text}
           </span>
         ))}
+        <NoteRow note={props.note} />
         <CaddieFacts pl={props.pl} weather={props.weather ?? null} ob={props.ob ?? null} ahead={props.ahead ?? []} unit={props.unit ?? 'm'} />
         {SHOW_DETAILS && props.alt && <span className="alt">{props.alt}</span>}
         {SHOW_DETAILS && props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
@@ -84,10 +87,7 @@ export function CaddieCard(props: {
           <button type="button" onClick={() => setSheet('rules')}>
             {tr('Rules', 'Regeln')}
           </button>
-          <button type="button" onClick={() => setSheet('notes')} aria-label={tr('Hole notes', 'Lochnotizen')}>
-            <span className="wide-only">{tr('Hole notes', 'Lochnotizen')}</span>
-            <span className="narrow-only">{tr('Notes', 'Notizen')}</span>
-          </button>
+          <NotesButton note={props.note} onClick={() => setSheet('notes')} />
           <button type="button" onClick={props.onHide} aria-label={tr('Hide caddie', 'Caddie ausblenden')}>
             ✕
           </button>
@@ -97,6 +97,37 @@ export function CaddieCard(props: {
       {sheet === 'rules' && <RulesBook onClose={() => setSheet(null)} />}
       {sheet === 'notes' && <NotesSheet hole={props.holeLabel} note={props.note} onSave={props.onNote} onClose={() => setSheet(null)} />}
     </>
+  );
+}
+
+/** What the player noted for the hole, in the caddie (Sascha 23.10.2026: "a saved hole note shows in the caddie"). */
+export function noteParts(n: HoleNote): string[] {
+  const ob = [n.obLeft ? sideWord('left') : null, n.obRight ? sideWord('right') : null].filter(Boolean);
+  const lost = [n.lostLeft ? sideWord('left') : null, n.lostRight ? sideWord('right') : null].filter(Boolean);
+  return [
+    n.text?.trim() || null,
+    ob.length ? `${tr('Out of bounds', 'Aus')} ${ob.join(tr(' and ', ' und '))}` : null,
+    n.obLong ? tr('Out of bounds behind the green', 'Aus hinter dem Grün') : null,
+    lost.length ? `${tr('Balls get lost', 'Bälle gehen verloren')} ${lost.join(tr(' and ', ' und '))}` : null,
+  ].filter((x): x is string => !!x);
+}
+function NoteRow(props: { note: HoleNote }) {
+  if (!hasNote(props.note)) return null;
+  return (
+    <span className="caddie-note">
+      <span className="caddie-note-lbl">{tr('Your note', 'Deine Notiz')}</span> {noteParts(props.note).join(' · ')}
+    </span>
+  );
+}
+/** "Hole notes" with a green dot when the hole has one (Sascha 23.10.2026). */
+function NotesButton(props: { note: HoleNote; onClick: () => void }) {
+  const has = hasNote(props.note);
+  return (
+    <button type="button" className="has-dot" onClick={props.onClick} aria-label={has ? tr('Hole notes – there is one', 'Lochnotizen – eine ist gespeichert') : tr('Hole notes', 'Lochnotizen')}>
+      <span className="wide-only">{tr('Hole notes', 'Lochnotizen')}</span>
+      <span className="narrow-only">{tr('Notes', 'Notizen')}</span>
+      {has && <i className="note-dot" aria-hidden="true" />}
+    </button>
   );
 }
 
@@ -137,7 +168,10 @@ const QUESTIONS = (): string[] =>
 function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () => void }) {
   const [q, setQ] = useState<string | null>(null);
   const [a, setA] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [heard, setHeard] = useState(false); // listening right now
+  const [words, setWords] = useState<string | null>(null); // what was heard so far
+  const listening = useRef<Listening | null>(null);
+  useEffect(() => () => listening.current?.stop(), []); // the sheet closed: the microphone off
   const ask = (text: string) => {
     setQ(text);
     const reply = answer(text, props.facts);
@@ -160,22 +194,41 @@ function AskSheet(props: { facts: CaddieFacts; onClose: () => void; onRules: () 
         <button
           type="button"
           className="btn-primary icon-text"
-          disabled={busy}
+          aria-pressed={!!heard}
           onClick={async () => {
-            setBusy(true);
-            const heard = await listen();
-            setBusy(false);
-            if (heard) ask(heard);
+            // listening: a second tap ends the question ("Fertig") – the answer follows (Sascha 23.10.2026)
+            if (listening.current) return listening.current.stop();
+            const l = startListening((words) => setWords(words));
+            if (!l) return;
+            listening.current = l;
+            setWords('');
+            setHeard(true);
+            const text = await l.result;
+            listening.current = null;
+            setHeard(false);
+            setWords(null);
+            if (text) ask(text);
             else setA(tr('I did not catch that – tap a question instead.', 'Das habe ich nicht verstanden – tippe stattdessen eine Frage an.'));
           }}
         >
           {/* a symbol as the app's others, no emoji (Sascha 22.10.2026: "every new button in the app's design") */}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="9" y="3" width="6" height="11" rx="3" />
-            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-          </svg>
-          {busy ? tr('Listening …', 'Ich höre zu …') : tr('Ask with your voice', 'Per Sprache fragen')}
+          {heard ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+          )}
+          {heard ? tr('Done – ask', 'Fertig – fragen') : tr('Ask with your voice', 'Per Sprache fragen')}
         </button>
+      )}
+      {heard && (
+        <p className="muted small" role="status" style={{ margin: 0 }}>
+          {words ? tr(`“${words}” …`, `„${words}“ …`) : tr('Listening … ask your question – a short pause ends it.', 'Ich höre zu … stell deine Frage – eine kurze Pause beendet sie.')}
+        </p>
       )}
       {q && <p className="muted small" style={{ margin: 0 }}>{tr(`“${q}”`, `„${q}“`)}</p>}
       {a && <p style={{ margin: 0, fontSize: 17 }}>{a}</p>}
@@ -342,15 +395,13 @@ export function TournamentCaddie(props: { holeLabel: string; note: HoleNote; onN
         </div>
         {n.tip && <span className="plan">{n.tip}</span>}
         {ob.length > 0 && <span className="plan warn">{tr('Out of bounds', 'Aus')} {ob.join(tr(' and ', ' und '))}</span>}
+        {n.text?.trim() && <NoteRow note={{ text: n.text }} />}
         <CaddieFacts weather={null} ob={null} ahead={props.ahead} unit={props.unit} />
         <div className="caddie-actions">
           <button type="button" onClick={() => setSheet('rules')}>
             {tr('Rules', 'Regeln')}
           </button>
-          <button type="button" onClick={() => setSheet('notes')} aria-label={tr('Hole notes', 'Lochnotizen')}>
-            <span className="wide-only">{tr('Hole notes', 'Lochnotizen')}</span>
-            <span className="narrow-only">{tr('Notes', 'Notizen')}</span>
-          </button>
+          <NotesButton note={props.note} onClick={() => setSheet('notes')} />
           <button type="button" onClick={props.onHide} aria-label={tr('Hide caddie', 'Caddie ausblenden')}>
             ✕
           </button>

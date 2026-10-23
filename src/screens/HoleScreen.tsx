@@ -23,7 +23,7 @@ import { gridHeight, loadTerrainGrid, makeTerrainGrid, type TerrainGrid } from '
 import { GREEN_CHARTS, type GreenChart } from '../data/greenCharts';
 import { madeChartsFor, type MadeCharts } from '../lib/greenmaker';
 import { greenSource } from '../data/greenSources';
-import { loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
+import { hasNote, loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/holenotes';
 import { historyLines } from '../lib/holehistory';
 import { clubReports } from '../lib/clubstats';
 import { lineOfStored } from '../lib/holelines';
@@ -1347,9 +1347,10 @@ export function HoleScreen(props: {
                   </button>
                 )}
                 {/* the hole note while planning (Sascha 21.10.2026) – the same as the caddie's "Hole notes" */}
-                <button type="button" className="btn-secondary" aria-pressed={!!(note.text || note.obLeft || note.obRight || note.obLong)} onClick={() => setPlanNoteOpen(true)}>
+                {/* a green dot when the hole has a note (Sascha 23.10.2026) */}
+                <button type="button" className="btn-secondary has-dot" aria-label={hasNote(note) ? tr('Hole note – there is one', 'Lochnotiz – eine ist gespeichert') : tr('Hole note', 'Lochnotiz')} onClick={() => setPlanNoteOpen(true)}>
                   {tr('Hole note', 'Lochnotiz')}
-                  {note.text || note.obLeft || note.obRight || note.obLong ? ' ✓' : ''}
+                  {hasNote(note) && <i className="note-dot" aria-hidden="true" />}
                 </button>
               </div>
               {planNoteOpen && (

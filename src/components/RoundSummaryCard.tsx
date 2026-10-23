@@ -24,7 +24,10 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
   if (!s) return null;
   const minutes = s.plan.reduce((t, d) => t + d.minutes, 0);
   const read = () => toggleSpeak([s.headline, ...s.lines.map((l) => l.text), s.nextRound ?? ''].join(' '));
+  // the tip for the next round in a card of its own (Sascha 23.10.2026) – the heading says "next round", the text the tip
+  const tip = s.nextRound ? s.nextRound.replace(/^(Next round|Nächste Runde):\s*/, '') : null;
   return (
+    <>
     <section className="card stats-card round-summary">
       <div className="row">
         <h2>{tr('Your round summary', 'Dein Rundenfazit')}</h2>
@@ -73,8 +76,14 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
           {taken && <span className="muted small">{taken}</span>}
         </>
       )}
-      {s.nextRound && <p className="next-round">{s.nextRound}</p>}
     </section>
+    {tip && (
+      <section className="card stats-card next-round-card">
+        <h2>{tr('Tip for the next round', 'Tipp für die nächste Runde')}</h2>
+        <p className="next-round">{tip.charAt(0).toUpperCase() + tip.slice(1)}</p>
+      </section>
+    )}
+    </>
   );
 }
 

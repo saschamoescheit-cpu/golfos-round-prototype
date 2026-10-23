@@ -1606,3 +1606,14 @@ button.tile:disabled { opacity: 1; }
 .stats-card h2 + .stats-sub.data-sub { margin: -4px 0 4px; }
 /* a switch with a two-line hint keeps air above and below (Sascha 23.10.2026) */
 .settings-switches .drawer-row { padding-block: 10px; }
+
+/* hole notes (Sascha 23.10.2026): the note in the caddie, a green dot on the notes button */
+.caddie-note { font-size: 14px; line-height: 1.35; }
+.caddie-note-lbl { font-weight: 700; color: var(--brand-text); }
+.has-dot { position: relative; }
+.note-dot { position: absolute; top: 5px; right: 6px; width: 9px; height: 9px; border-radius: 5px; background: var(--brand-text); border: 2px solid var(--surface-2); }
+.btn-secondary.has-dot .note-dot { top: 6px; right: 8px; border-color: var(--surface); }
+
+/* check the shots: only the open holes or all (Sascha 23.10.2026) */
+.review-filter { display: flex; flex-direction: column; gap: 8px; }
+.review-filter .chip[aria-pressed='true'] { border-color: var(--brand); background: var(--brand-soft); }

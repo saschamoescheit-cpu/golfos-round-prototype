@@ -14,6 +14,10 @@ export interface HoleNote {
   tip?: string;
 }
 
+/** The hole has a note – the player's own text or one of the choices (Sascha 23.10.2026: the green dot). */
+export const hasNote = (n: HoleNote | null | undefined): boolean =>
+  !!n && !!(n.text?.trim() || n.obLeft || n.obRight || n.obLong || n.lostLeft || n.lostRight);
+
 const KEY = 'golfos.holenotes.v1.';
 const COURSE = 'golfos.course.v1.'; // the course cache (storage.ts)
 

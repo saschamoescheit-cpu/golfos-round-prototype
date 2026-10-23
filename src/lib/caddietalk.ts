@@ -335,24 +335,82 @@ export function toggleSpeak(text: string): void {
 }
 
 /** Listens once (Safari: webkitSpeechRecognition); resolves the recognised text or null. */
-export function listen(): Promise<string | null> {
-  type Rec = { lang: string; interimResults: boolean; onresult: (e: { results: { 0: { transcript: string } }[] }) => void; onerror: () => void; onend: () => void; start: () => void };
+/** Listening for a spoken question (Sascha 23.10.2026: "it must stop by itself when I stop talking – or I end it"):
+ *  the words show while spoken; a pause of 1.5 s after the last word ends it (Safari on the iPhone often never ends
+ *  on its own), so does `stop()` ("Fertig"), at the latest after 15 s. The question is what was heard by then. */
+export interface Listening {
+  result: Promise<string | null>;
+  stop: () => void;
+}
+export const PAUSE_MS = 1500;
+export function startListening(onWords?: (text: string) => void, pauseMs = PAUSE_MS): Listening | null {
+  type Alt = { transcript: string };
+  type Res = { 0: Alt; isFinal?: boolean; length: number };
+  type Rec = {
+    lang: string;
+    interimResults: boolean;
+    continuous: boolean;
+    onresult: (e: { results: ArrayLike<Res> }) => void;
+    onerror: () => void;
+    onend: () => void;
+    start: () => void;
+    stop: () => void;
+    abort?: () => void;
+  };
   const W = window as unknown as { SpeechRecognition?: new () => Rec; webkitSpeechRecognition?: new () => Rec };
   const C = W.SpeechRecognition ?? W.webkitSpeechRecognition;
-  if (!C) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const r = new C();
-    let done = false;
-    r.lang = speechLang();
-    r.interimResults = false;
-    r.onresult = (e) => {
-      done = true;
-      resolve(e.results[0][0].transcript);
-    };
-    r.onerror = () => !done && resolve(null);
-    r.onend = () => !done && resolve(null);
+  if (!C) return null;
+  const r = new C();
+  let text = '';
+  let finished = false;
+  let resolveFn: (v: string | null) => void = () => {};
+  const result = new Promise<string | null>((res) => (resolveFn = res));
+  let pause: number | undefined;
+  const hard = window.setTimeout(() => finish(), 15000);
+  function finish() {
+    if (finished) return;
+    finished = true;
+    window.clearTimeout(pause);
+    window.clearTimeout(hard);
+    try {
+      r.stop();
+    } catch {
+      /* already stopped */
+    }
+    // some browsers never call onend after stop(): cut it off a moment later
+    window.setTimeout(() => {
+      try {
+        r.abort?.();
+      } catch {
+        /* gone */
+      }
+    }, 800);
+    resolveFn(text.trim() || null);
+  }
+  r.lang = speechLang();
+  r.interimResults = true;
+  r.continuous = true;
+  r.onresult = (e) => {
+    let t = '';
+    for (let n = 0; n < e.results.length; n++) t += e.results[n][0].transcript;
+    text = t;
+    onWords?.(t.trim());
+    window.clearTimeout(pause);
+    pause = window.setTimeout(() => finish(), pauseMs); // quiet for a moment: the question is complete
+  };
+  r.onerror = () => finish();
+  r.onend = () => finish();
+  try {
     r.start();
-  });
+  } catch {
+    finish();
+  }
+  return { result, stop: finish };
+}
+
+/** The old way – one question, the answer when it has been heard. */
+export function listen(): Promise<string | null> {
+  return startListening()?.result ?? Promise.resolve(null);
 }
 
 export const canListen = () => {

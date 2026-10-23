@@ -27,7 +27,7 @@ import { greenWalk } from '../lib/greenwalk';
 import { approachFrom } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
 import { ShotSheet } from '../components/ShotSheet';
-import { TopBar, formatToPar } from '../components/ui';
+import { Segmented, TopBar, formatToPar } from '../components/ui';
 import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
 import { clubCode, dec, getLang, tr } from '../lib/i18n';
 
@@ -97,6 +97,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const [puttEdit, setPuttEdit] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // only the holes still to check (Sascha 23.10.2026) – from the moment the last hole was confirmed with open ones left
+  const [onlyOpen, setOnlyOpen] = useState(false);
+  const [reachedEnd, setReachedEnd] = useState(false); // the choice stays once the end was reached
   // a shot removed by holding it on the map – "Undo" for a few seconds (Sascha 22.10.2026)
   const [removed, setRemoved] = useState<{ k: number; n: number; detail: DetailEntry } | null>(null);
   // held: asks first – pressed and then dragged, the shot only moves (the question goes)
@@ -580,6 +583,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const checkedCount = entries.filter((x) => played(x) && isChecked(x)).length;
   const playedCount = entries.filter(played).length;
   const last = k === round.holes.length - 1;
+  // the holes still to check, this one included – the steps of "only the open ones"
+  const stillOpen = entries.flatMap((x, i) => (played(x) && !isChecked(x) ? [i] : []));
+  const steps = onlyOpen ? [...new Set([...stillOpen, k])].sort((a, b) => a - b) : null;
+  const prevHole = steps ? ([...steps].reverse().find((i) => i < k) ?? null) : k > 0 ? k - 1 : null;
+  const nextHole = steps ? (steps.find((i) => i > k) ?? null) : !last ? k + 1 : null;
   const goTo = (i: number) => {
     setK(i);
     setEdit(null);
@@ -593,9 +601,17 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     if (d) saveDetail(k, { ...d, shots: teeFirst(d.shots.map((s) => ({ ...s, review: false }))) }, undefined, { checked: true });
     else save(k, { checked: true });
     setNotice(null);
+    if (onlyOpen) {
+      // only the open ones: the next open hole after this one, then from the start; none left – done
+      if (!openHoles.length) return props.onDone(true);
+      return goTo(openHoles.find((i) => i > k) ?? openHoles[0]);
+    }
     if (!last) return goTo(k + 1);
-    // Last hole: on to the first hole still to check, otherwise the check is done.
+    // Last hole: on to the first hole still to check – from now on only the open ones (Sascha 23.10.2026) – otherwise
+    // the check is done.
     if (openHoles.length) {
+      setOnlyOpen(true);
+      setReachedEnd(true);
       const labels = openHoles.map((i) => round.holes[i].label).join(', ');
       setNotice(
         tr(
@@ -724,7 +740,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       )}
 
       <div className="review-nav">
-        <button type="button" className="icon-btn" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={k === 0} onClick={() => goTo(k - 1)}>
+        <button type="button" className="icon-btn" aria-label={tr('Previous hole', 'Voriges Loch')} disabled={prevHole == null} onClick={() => prevHole != null && goTo(prevHole)}>
           ←
         </button>
         <div style={{ textAlign: 'center' }}>
@@ -749,10 +765,34 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
             </div>
           )}
         </div>
-        <button type="button" className="icon-btn" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={last} onClick={() => goTo(k + 1)}>
+        <button type="button" className="icon-btn" aria-label={tr('Next hole', 'Nächstes Loch')} disabled={nextHole == null} onClick={() => nextHole != null && goTo(nextHole)}>
           →
         </button>
       </div>
+
+      {/* only the open holes or all (Sascha 23.10.2026): shown once the end was reached with holes left to check */}
+      {(onlyOpen || reachedEnd || (last && openHoles.length > 0)) && stillOpen.length > 0 && (
+        <div className="review-filter">
+          <Segmented<'open' | 'all'>
+            label={tr('Holes', 'Löcher')}
+            value={onlyOpen ? 'open' : 'all'}
+            onChange={(v) => v && setOnlyOpen(v === 'open')}
+            options={[
+              { value: 'open', label: tr(`Still to check (${stillOpen.length})`, `Noch zu prüfen (${stillOpen.length})`) },
+              { value: 'all', label: tr('All holes', 'Alle Löcher') },
+            ]}
+          />
+          {onlyOpen && (
+            <div className="chip-row wrap" role="group" aria-label={tr('Holes still to check', 'Noch zu prüfende Löcher')}>
+              {stillOpen.map((i) => (
+                <button key={i} type="button" className="chip" aria-pressed={i === k} onClick={() => goTo(i)}>
+                  {round.holes[i].label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* the score as entered – edited behind the pencil in the same panel as on the course: strokes, putts, sand shots,
           penalties, tee shot (Sascha 20.10.2026) */}
@@ -1281,7 +1321,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       <span className="spacer" />
       <div className="sticky-cta">
         <button type="button" className="btn-primary" onClick={confirmHole}>
-          {!last
+          {onlyOpen && openHoles.length
+            ? tr(`Hole ${hole.label} fits ✓ → next open one`, `Loch ${hole.label} passt ✓ → nächstes offenes`)
+            : !last && !onlyOpen
             ? tr(`Hole ${hole.label} fits ✓ →`, `Loch ${hole.label} passt ✓ →`)
             : openHoles.length
               ? tr(`Hole ${hole.label} fits ✓ → check the open ones`, `Loch ${hole.label} passt ✓ → offene prüfen`)
