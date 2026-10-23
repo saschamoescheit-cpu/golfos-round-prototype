@@ -96,9 +96,10 @@ export function plantShift(rig: Rig, clip: Clip): { x: number[]; z: number[] } |
     rig.root.updateMatrixWorld(true);
     pos.push(parts.map((j) => rig.joints[j].getWorldPosition(new THREE.Vector3())));
   }
-  // resting: within 2 cm of the lowest the part comes in the clip
+  // resting: within 2 cm of the lowest the part comes in the clip – and that near the floor (a joint at rest is no higher
+  // than 12 cm; the free leg of a one-leg drill never comes down)
   const low = parts.map((_, k) => Math.min(...pos.map((p) => p[k].y)));
-  const on = (i: number, k: number) => pos[i % N][k].y < low[k] + 0.02;
+  const on = (i: number, k: number) => low[k] < 0.12 && pos[i % N][k].y < low[k] + 0.02;
   const mid = (a: number[]) => {
     const s = [...a].sort((p, q) => p - q);
     return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;

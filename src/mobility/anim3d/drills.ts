@@ -32,6 +32,10 @@ const QUAD: J = {
   wristL: [-62, 0, 0],
   wristR: [-62, 0, 0],
 };
+/** cat and cow: the back rounded from the pelvis / let sag, the hands and knees in their place (fitted on the realistic
+ * golfer 24.10.2026 – before, the hands slid 16 cm forward in the cat and 14 cm back in the cow) */
+const CAT: J = { pelvis: [46, 0, 0], hipL: [-46, 0, 3], hipR: [-46, 0, -3], spine: [22, 0, 0], chest: [16, 0, 0], neck: [32, 0, 0], shoulderL: [-88, 0, 5], shoulderR: [-88, 0, -5], wristL: [-38, 0, 0], wristR: [-38, 0, 0] };
+const COW: J = { pelvis: [94, 0, 0], hipL: [-94, 0, 3], hipR: [-94, 0, -3], spine: [-16, 0, 0], chest: [-10, 0, 0], neck: [-18, 0, 0], shoulderL: [-67, 0, 5], shoulderR: [-67, 0, -5], wristL: [-67, 0, 0], wristR: [-67, 0, 0] };
 /** the wrist stretch rocked back: the hips 15 cm back towards the heels, the shins flat, the hands where they were on the
  * floor (fitted on the realistic golfer 24.10.2026 – before, the feet rose 15 cm and the hands slid 27 cm away) */
 const ROCK_BACK: J = {
@@ -105,7 +109,7 @@ const HALF_KNEEL: J = {
 };
 
 /** standing on the left leg, the right foot up beside the left calf, arms crossed */
-const REACH_START = stand({ ...ARMS_CROSSED, kneeL: [10, 0, 0], hipR: [-30, 0, -2], kneeR: [65, 0, 0] });
+const REACH_START = stand({ ...ARMS_CROSSED, kneeL: [10, 0, 0], ankleL: [-10, 0, 0], hipR: [-30, 0, -2], kneeR: [65, 0, 0] });
 /** the left hand holds a stick in front of the body (90/90 stretch) */
 const STICK_L: J = { shoulderL: [-55, 0, -20], elbowL: [-25, 0, 0] };
 
@@ -171,10 +175,10 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     keys: [
       k(0, quad(), L('On hands and knees', 'Im Vierfüßlerstand')),
       k(1.0, quad()),
-      k(2.6, quad({ pelvis: [62, 0, 0], hipL: [-62, 0, 3], hipR: [-62, 0, -3], spine: [22, 0, 0], chest: [16, 0, 0], neck: [32, 0, 0], shoulderL: [-119, 0, 5], shoulderR: [-119, 0, -5] }), L('Round the back like a cat – from the pelvis', 'Rücken rund wie eine Katze – aus dem Becken heraus')),
-      k(3.4, quad({ pelvis: [62, 0, 0], hipL: [-62, 0, 3], hipR: [-62, 0, -3], spine: [22, 0, 0], chest: [16, 0, 0], neck: [32, 0, 0], shoulderL: [-119, 0, 5], shoulderR: [-119, 0, -5] })),
-      k(5.0, quad({ pelvis: [86, 0, 0], hipL: [-86, 0, 3], hipR: [-86, 0, -3], spine: [-16, 0, 0], chest: [-10, 0, 0], neck: [-18, 0, 0], shoulderL: [-45, 0, 5], shoulderR: [-45, 0, -5] }), L('… then let it sag slowly', '… dann langsam durchhängen lassen')),
-      k(5.8, quad({ pelvis: [86, 0, 0], hipL: [-86, 0, 3], hipR: [-86, 0, -3], spine: [-16, 0, 0], chest: [-10, 0, 0], neck: [-18, 0, 0], shoulderL: [-45, 0, 5], shoulderR: [-45, 0, -5] })),
+      k(2.6, quad(CAT), L('Round the back like a cat – from the pelvis', 'Rücken rund wie eine Katze – aus dem Becken heraus')),
+      k(3.4, quad(CAT)),
+      k(5.0, quad(COW), L('… then let it sag slowly', '… dann langsam durchhängen lassen')),
+      k(5.8, quad(COW)),
       k(7.0, quad()),
     ],
   },
@@ -373,11 +377,11 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(2.4, stand({ pelvis: [45, 0, 0], hipL: [-50, 0, 2], kneeL: [15, 0, 0], ankleL: [-10, 0, 0], hipR: [10, 0, -2], kneeR: [10, 0, 0], shoulderL: [-80, 0, 8], shoulderR: [-80, 0, -8], neck: [-10, 0, 0] }), L('Reach forward, the free leg goes back', 'Nach vorn greifen, das freie Bein geht nach hinten')),
       k(3.0, stand({ pelvis: [45, 0, 0], hipL: [-50, 0, 2], kneeL: [15, 0, 0], ankleL: [-10, 0, 0], hipR: [10, 0, -2], kneeR: [10, 0, 0], shoulderL: [-80, 0, 8], shoulderR: [-80, 0, -8], neck: [-10, 0, 0] })),
       k(4.0, REACH_START),
-      k(5.2, stand({ pelvis: [25, 0, 0], spine: [0, 0, 8], chest: [0, 0, 8], hipL: [-30, 0, 6], kneeL: [25, 0, 0], ankleL: [-8, 0, 0], hipR: [20, 0, -14], kneeR: [45, 0, 0], shoulderL: [-30, 0, 80], shoulderR: [-30, 0, -80] }), L('… to the side', '… zur Seite')),
-      k(5.8, stand({ pelvis: [25, 0, 0], spine: [0, 0, 8], chest: [0, 0, 8], hipL: [-30, 0, 6], kneeL: [25, 0, 0], ankleL: [-8, 0, 0], hipR: [20, 0, -14], kneeR: [45, 0, 0], shoulderL: [-30, 0, 80], shoulderR: [-30, 0, -80] })),
+      k(5.2, stand({ pelvis: [25, 0, 0], spine: [0, 0, 8], chest: [0, 0, 8], hipL: [-30, 0, 6], kneeL: [25, 0, 0], ankleL: [-20, 0, 0], hipR: [20, 0, -14], kneeR: [45, 0, 0], shoulderL: [-30, 0, 80], shoulderR: [-30, 0, -80] }), L('… to the side', '… zur Seite')),
+      k(5.8, stand({ pelvis: [25, 0, 0], spine: [0, 0, 8], chest: [0, 0, 8], hipL: [-30, 0, 6], kneeL: [25, 0, 0], ankleL: [-20, 0, 0], hipR: [20, 0, -14], kneeR: [45, 0, 0], shoulderL: [-30, 0, 80], shoulderR: [-30, 0, -80] })),
       k(6.8, REACH_START),
-      k(8.2, stand({ pelvis: [55, 0, 0], spine: [12, 0, 0], hipL: [-80, 0, 2], kneeL: [55, 0, 0], ankleL: [-25, 0, 0], hipR: [15, 0, -2], kneeR: [30, 0, 0], shoulderL: [-45, 0, 6], shoulderR: [-45, 0, -6], neck: [10, 0, 0] }), L('… and down – 5 rounds per leg', '… und nach unten – 5 Runden pro Bein')),
-      k(8.8, stand({ pelvis: [55, 0, 0], spine: [12, 0, 0], hipL: [-80, 0, 2], kneeL: [55, 0, 0], ankleL: [-25, 0, 0], hipR: [15, 0, -2], kneeR: [30, 0, 0], shoulderL: [-45, 0, 6], shoulderR: [-45, 0, -6], neck: [10, 0, 0] })),
+      k(8.2, stand({ pelvis: [55, 0, 0], spine: [12, 0, 0], hipL: [-80, 0, 2], kneeL: [55, 0, 0], ankleL: [-30, 0, 0], hipR: [15, 0, -2], kneeR: [30, 0, 0], shoulderL: [-45, 0, 6], shoulderR: [-45, 0, -6], neck: [10, 0, 0] }), L('… and down – 5 rounds per leg', '… und nach unten – 5 Runden pro Bein')),
+      k(8.8, stand({ pelvis: [55, 0, 0], spine: [12, 0, 0], hipL: [-80, 0, 2], kneeL: [55, 0, 0], ankleL: [-30, 0, 0], hipR: [15, 0, -2], kneeR: [30, 0, 0], shoulderL: [-45, 0, 6], shoulderR: [-45, 0, -6], neck: [10, 0, 0] })),
       k(10.0, REACH_START),
     ],
   },
@@ -424,12 +428,12 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     view: 'side',
     views: ['side', 'angle', 'front'],
     keys: [
-      k(0, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] }), L('Athletic posture, the band at chest height from the side', 'Golfhaltung, das Band seitlich auf Brusthöhe')),
-      k(1.0, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] })),
-      k(2.4, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], shoulderL: [-85, -8, -6], shoulderR: [-85, 8, 6], elbowL: [-5, 0, 0], elbowR: [-5, 0, 0], head: [0, 0, 0] }), L('Press straight forward – the body does not turn', 'Gerade nach vorn drücken – der Körper dreht nicht mit')),
-      k(3.4, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], shoulderL: [-85, -8, -6], shoulderR: [-85, 8, 6], elbowL: [-5, 0, 0], elbowR: [-5, 0, 0], head: [0, 0, 0] })),
-      k(4.6, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] }), L('… and back – 3 × 10 per side', '… und zurück – 3 × 10 pro Seite')),
-      k(5.2, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] })),
+      k(0, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], ankleL: [-25, 0, 0], ankleR: [-25, 0, 0], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] }), L('Athletic posture, the band at chest height from the side', 'Golfhaltung, das Band seitlich auf Brusthöhe')),
+      k(1.0, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], ankleL: [-25, 0, 0], ankleR: [-25, 0, 0], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] })),
+      k(2.4, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], ankleL: [-25, 0, 0], ankleR: [-25, 0, 0], shoulderL: [-85, -8, -6], shoulderR: [-85, 8, 6], elbowL: [-5, 0, 0], elbowR: [-5, 0, 0], head: [0, 0, 0] }), L('Press straight forward – the body does not turn', 'Gerade nach vorn drücken – der Körper dreht nicht mit')),
+      k(3.4, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], ankleL: [-25, 0, 0], ankleR: [-25, 0, 0], shoulderL: [-85, -8, -6], shoulderR: [-85, 8, 6], elbowL: [-5, 0, 0], elbowR: [-5, 0, 0], head: [0, 0, 0] })),
+      k(4.6, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], ankleL: [-25, 0, 0], ankleR: [-25, 0, 0], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] }), L('… and back – 3 × 10 per side', '… und zurück – 3 × 10 pro Seite')),
+      k(5.2, golf({ ...GOLF, pelvis: [20, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], ankleL: [-25, 0, 0], ankleR: [-25, 0, 0], shoulderL: [-50, -30, -10], shoulderR: [-50, 30, 10], elbowL: [-110, 0, 0], elbowR: [-110, 0, 0], head: [0, 0, 0] })),
     ],
   }),
 };
