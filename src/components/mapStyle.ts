@@ -53,6 +53,12 @@ function checkTiles(): void {
     const url = params.url.slice(CHECKED.length + 3);
     const r = await fetch(url, { signal: ctrl.signal, mode: 'cors' });
     if (!r.ok) throw new Error(`tile ${r.status}`);
+    // no picture at all (24.10.2026: the LGL answered "200 OK" with an XML error – "dataset not found")
+    const type = r.headers.get('content-type') ?? '';
+    if (type && !type.startsWith('image/')) {
+      emptyTiles.count++;
+      throw new Error('no picture');
+    }
     const data = await r.arrayBuffer();
     if (await isEmptyTile(data, r.headers.get('content-type'))) {
       emptyTiles.count++;

@@ -11,7 +11,8 @@ const p = await ctx.newPage();
 const errs = [];
 // a same-origin load cut off by the next page load (a freed tile blob, a heights file while the test navigates) –
 // WebKit under test reports it as "…localhost:5173/… due to access control checks"; nothing is wrong in the app
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+// a refused answer of an outside service (the course search Photon, the OSM API) is its outage, not the app's error
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|photon\.komoot\.io|api\.openstreetmap\.org)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
 let fails = 0;
 const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);

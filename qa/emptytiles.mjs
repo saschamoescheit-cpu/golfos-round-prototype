@@ -44,7 +44,7 @@ async function look(p) {
 async function run(lglBody, label) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
   await mockNet(ctx);
-  await ctx.route(/owsproxy\.lgl-bw\.de\/(?!owsproxy\/wcs)/, (r) => r.fulfill({ status: 200, contentType: 'image/jpeg', headers: { 'Access-Control-Allow-Origin': '*' }, body: lglBody }));
+  await ctx.route(/owsproxy\.lgl-bw\.de\/(?!owsproxy\/wcs)/, (r) => r.fulfill({ status: 200, contentType: lglBody.subarray(0, 5).toString() === '<?xml' ? 'text/xml;charset=UTF-8' : 'image/jpeg', headers: { 'Access-Control-Allow-Origin': '*' }, body: lglBody }));
   await ctx.route(/server\.arcgisonline\.com/, (r) => r.fulfill({ status: 200, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: GRASS }));
   const p = await ctx.newPage();
   const errs = [];
@@ -60,8 +60,15 @@ async function run(lglBody, label) {
   await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
   await p.getByText('Runde starten').click();
   await p.locator('.map-hole-no').first().waitFor({ timeout: 30000 });
-  await p.waitForTimeout(6000);
-  const seen = await look(p);
+  // the map settled: look again until the picture stops changing (at most 25 s – under load the tiles come late)
+  let seen = await look(p);
+  for (let k = 0; k < 10; k++) {
+    await p.waitForTimeout(2500);
+    const again = await look(p);
+    const steady = Math.abs(again.grass - seen.grass) < 2 && Math.abs(again.white - seen.white) < 2;
+    seen = again;
+    if (steady && k >= 1) break;
+  }
   await ctx.close();
   return { seen, errs, label };
 }
@@ -70,6 +77,10 @@ async function run(lglBody, label) {
 const w = await run(WHITE, 'white');
 ok(w.seen.white < 5 && w.seen.grass > 60, `LGL sends empty white tiles: the map shows Esri, not white (white ${w.seen.white} %, Esri grass ${w.seen.grass} %)`);
 ok(w.errs.length === 0, `no page errors ${w.errs.slice(0, 2).join(' | ')}`);
+// the LGL answers "200 OK" with an XML error instead of a picture (24.10.2026: "dataset not found"): Esri too
+const XML = Buffer.from('<?xml version="1.0"?><ServiceExceptionReport><ServiceException code="LayerNotDefined">Dataset IMAGES_DOP_20_RGB not found in the datastore</ServiceException></ServiceExceptionReport>');
+const x = await run(XML, 'xml');
+ok(x.seen.white < 5 && x.seen.grass > 60, `LGL sends an XML error with "200 OK": the map shows Esri (white ${x.seen.white} %, Esri grass ${x.seen.grass} %)`);
 // a real picture from the LGL is still shown (here: a plain brown tile – not white)
 const BROWN = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAFElEQVR4nGPsDNdkwAZYsIoOWgkA2dYBJzaJeDgAAAAASUVORK5CYII=', 'base64');
 const r = await run(BROWN, 'picture');

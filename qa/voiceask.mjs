@@ -41,7 +41,9 @@ await ctx.addInitScript(() => {
 });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+// leaving the hole map while it still loads parts of the app: WebKit reports the cut-off load – only then (as photondown)
+let leaving = false;
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message) && !(leaving && /Importing a module script failed/.test(e.message))) errs.push(e.message); });
 let fails = 0;
 const ok = (c, m) => {
   console.log(`${c ? '✓' : '✗'} ${m}`);
@@ -132,6 +134,7 @@ await p.waitForTimeout(300);
 ok((await p.evaluate(() => window.__recStops)) > stops, 'the sheet closed while listening: the microphone off');
 
 // ---------- the Birdiebook ----------
+leaving = true;
 await p.goto(url);
 await p.evaluate(() => {
   sessionStorage.setItem('golfos.module', 'rounds');
@@ -140,6 +143,7 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(1200);
+leaving = false;
 await p.getByRole('button', { name: 'Neue Runde' }).click();
 await p.fill('#course-search', 'Hetzenhof');
 await p.waitForTimeout(2000);
