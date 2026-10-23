@@ -12,6 +12,16 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
 const p = await ctx.newPage();
+// the page samples the count itself while it asks the player back into the picture (every 100 ms – under load a check
+// from outside got one look in 3 s, 24.10.2026)
+await p.addInitScript(() => {
+  const w = window;
+  w.__away = [];
+  setInterval(() => {
+    const st = document.querySelector('.mob-status')?.textContent ?? '';
+    if (st.startsWith('Komm zurück ins Bild')) w.__away.push(document.querySelector('.mob-drill-live .mob-live-value')?.textContent ?? '');
+  }, 100);
+});
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 let bad = 0;
@@ -192,6 +202,7 @@ while (Date.now() - tAway < 60000 && !(await p.locator('.mob-train-summary').isV
   if (awaySeen.length && !st.startsWith('Komm zurück')) break;
   await p.waitForTimeout(100);
 }
+awaySeen.push(...(await p.evaluate(() => window.__away ?? []).catch(() => [])));
 ok(awaySeen.length >= 3 && new Set(awaySeen).size === 1, `out of the picture in a set: "Komm zurück ins Bild – die Zeit wartet", the count stands still (${awaySeen.length} × ${[...new Set(awaySeen)].join(', ')})`);
 await p.locator('.mob-train-summary').waitFor({ timeout: 90000 }).catch(() => {});
 ok(await p.locator('.mob-train-summary').isVisible(), 'a single drill with the camera ends in its summary');
