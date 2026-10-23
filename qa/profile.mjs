@@ -184,9 +184,14 @@ ok((await p.locator('.drawer-row').filter({ hasText: 'Vorlesen testen' }).count(
   });
   ok(centre.w === 160 && centre.px[1] > 100 && centre.px[0] < 120, `the photo saved as placed: 160 px, the green half in the middle (${centre.px.slice(0, 3).join(',')})`);
 }
-// "Meine Daten herunterladen" (final list, Sascha 22.10.2026): everything on the phone as one file
+// "Deine Daten" (final list, Sascha 22.10.2026): everything on the phone as one file – the text under the heading, the
+// button as the round's export (Sascha 23.10.2026)
 {
-  const btn = p.getByRole('button', { name: 'Meine Daten herunterladen' });
+  const data = p.locator('section.card').filter({ has: p.getByRole('heading', { name: 'Deine Daten' }) });
+  const order = await data.evaluate((el) => [...el.children].map((c) => c.tagName + (c.className ? '.' + c.className.split(' ')[0] : '')));
+  ok(order[0] === 'H2' && order[1].startsWith('P') && /Runden, Spiele, Profil/.test(await data.locator('p').innerText()), `"Deine Daten": the text right under the heading (${order.join(' · ')})`);
+  const btn = data.getByRole('button', { name: 'Export' });
+  ok((await btn.getAttribute('class')) === 'sc-action' && (await btn.locator('svg').count()) === 1, 'the button as the export of a round: a tile with the download symbol');
   await btn.scrollIntoViewIfNeeded();
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), btn.click()]);
   let okFile = false;
@@ -196,7 +201,7 @@ ok((await p.locator('.drawer-row').filter({ hasText: 'Vorlesen testen' }).count(
     const b = JSON.parse(readFileSync(path, 'utf-8'));
     okFile = b.app === 'golfos-rounds' && Object.keys(b.data).some((k) => k.startsWith('golfos.profile'));
   }
-  ok(okFile, `"Meine Daten herunterladen" gives one file with the profile in it (${dl ? dl.suggestedFilename() : 'no download'})`);
+  ok(okFile, `"Export" gives one file with the profile in it (${dl ? dl.suggestedFilename() : 'no download'})`);
 }
 ok(errs.length === 0, `no page errors in the app ${errs.slice(0, 2).join(' | ')}`); // Google's own page may log its own
 await p.getByRole('button', { name: 'Mit Google anmelden' }).click();

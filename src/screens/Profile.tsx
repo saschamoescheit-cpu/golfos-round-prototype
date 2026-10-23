@@ -261,22 +261,25 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
-        {/* a test (Sascha 18.10.2026), above the strokes gained comparison, On left (20.10.2026): the microphone listens for the strike while the hole map is open – nothing recorded */}
-        <div className="field">
-          <label>{tr('Shot by sound (test)', 'Schlag per Ton (Test)')}</label>
-          <Segmented<'off' | 'on'>
-            label={tr('Shot by sound (test)', 'Schlag per Ton (Test)')}
-            value={soundTest ? 'on' : 'off'}
-            onChange={(v) => {
-              if (!v) return;
-              setSoundTest(v === 'on');
-              setSoundTestState(v === 'on');
+        {/* a test (Sascha 18.10.2026), above the strokes gained comparison – a slider as every on/off (23.10.2026): the
+            microphone listens for the strike while the hole map is open – nothing recorded */}
+        <div className="drawer-list settings-switches">
+          <button
+            type="button"
+            className="drawer-row"
+            role="switch"
+            aria-checked={soundTest}
+            onClick={() => {
+              setSoundTest(!soundTest);
+              setSoundTestState(!soundTest);
             }}
-            options={[
-              { value: 'on', label: tr('On', 'An') },
-              { value: 'off', label: tr('Off', 'Aus') },
-            ]}
-          />
+          >
+            <span className="switch-label">
+              <span>{tr('Shot by sound (test)', 'Schlag per Ton (Test)')}</span>
+              <span className="muted small">{tr('Hears the strike on the hole map', 'Hört auf der Lochkarte den Treffmoment')}</span>
+            </span>
+            <span className={`drawer-switch${soundTest ? ' on' : ''}`} aria-hidden="true" />
+          </button>
         </div>
         {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026);
             a row like the home club, the choice in a sheet like the game form (Sascha: "it does not look like the rest") */}
@@ -332,31 +335,40 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       )}
       {/* notifications on this phone (final list, Sascha 23.10.2026) */}
       <PushCard signedIn={!!session} key={session ? 'in' : 'out'} />
-      {/* delete the account (final list, Sascha 22.10.2026): at the end, signed in only, asked once more – the data on this
-          phone stay */}
-      {/* your data (final list, Sascha 22.10.2026): everything on this phone as one file – and with an account, delete it */}
+      {/* your data (final list 22.10.2026; Sascha 23.10.2026: the text under the heading, the button as the round's export) */}
       <section className="card stats-card">
         <h2>{tr('Your data', 'Deine Daten')}</h2>
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={async () => {
-            try {
-              await shareBackup();
-            } catch {
-              // the share sheet closed – nothing to say
-            }
-          }}
-        >
-          {tr('Download my data', 'Meine Daten herunterladen')}
-        </button>
-        <span className="muted small">{tr('Rounds, games, profile, bag and settings as one file.', 'Runden, Spiele, Profil, Bag und Einstellungen als eine Datei.')}</span>
-        {session && (!deleting ? (
+        <p className="stats-sub data-sub muted small">{tr('Rounds, games, profile, bag and settings as one file.', 'Runden, Spiele, Profil, Bag und Einstellungen als eine Datei.')}</p>
+        <div className="sc-actions data-actions">
+          <button
+            type="button"
+            className="sc-action"
+            onClick={async () => {
+              try {
+                await shareBackup();
+              } catch {
+                // the share sheet closed – nothing to say
+              }
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3v12M8 11l4 4 4-4" />
+              <path d="M5 21h14" />
+            </svg>
+            <span>Export</span>
+          </button>
+        </div>
+      </section>
+      {/* delete the account: its own place, the button alone, apart from "your data" (Sascha 23.10.2026) – signed in only,
+          asked once more; the data on this phone stay */}
+      {session && (
+        <div className="account-delete">
+          {!deleting ? (
             <button type="button" className="btn-secondary btn-danger" onClick={() => { setDeleting(true); setDeleteMsg(null); }}>
               {tr('Delete account', 'Konto löschen')}
             </button>
           ) : (
-            <div className="delete-ask" role="group" aria-label={tr('Delete account?', 'Konto löschen?')}>
+            <div className="delete-ask card" role="group" aria-label={tr('Delete account?', 'Konto löschen?')}>
               <span>
                 {tr(
                   'Delete your account and all your data on the server? Rounds, games and settings on this phone stay – your other devices keep theirs too.',
@@ -385,9 +397,10 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
                 </button>
               </div>
             </div>
-          ))}
-        {deleteMsg && <span className="muted small" role="status">{deleteMsg}</span>}
-      </section>
+          )}
+        </div>
+      )}
+      {deleteMsg && <span className="muted small account-delete-msg" role="status">{deleteMsg}</span>}
       <div className="home-foot">
         <Attribution />
         <span className="muted small" title={__BUILD_TIME__}>

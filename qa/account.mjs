@@ -156,6 +156,15 @@ ok(await signedAs(pc, 'sascha.m'), 'PC: signed in with the e-mail and the new pa
 
 // delete the account (final list, Sascha 22.10.2026): at the end of the profile, asked once more; the phone keeps its data
 await pc.evaluate(() => localStorage.setItem('golfos.rounds.v1', JSON.stringify([{ id: 'keep-me' }])));
+// its own place: the button alone, apart from "Deine Daten" (Sascha 23.10.2026)
+{
+  const del = pc.getByRole('button', { name: 'Konto löschen' });
+  await del.scrollIntoViewIfNeeded();
+  const inData = await del.evaluate((el) => !!el.closest('section.card'));
+  const card = await pc.locator('section.card').filter({ has: pc.getByRole('heading', { name: 'Deine Daten' }) }).boundingBox();
+  const box = await del.boundingBox();
+  ok(!inData && !!card && !!box && box.y - (card.y + card.height) >= 20, `"Konto löschen" alone, ${box && card ? Math.round(box.y - card.y - card.height) : '?'} px below "Deine Daten"`);
+}
 await pc.getByRole('button', { name: 'Konto löschen' }).click();
 const ask = pc.getByRole('group', { name: 'Konto löschen?' });
 ok(/auf diesem Handy bleiben/.test(await ask.innerText()), 'deleting asks once more: the data on this phone stay');

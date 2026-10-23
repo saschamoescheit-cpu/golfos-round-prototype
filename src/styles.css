@@ -1597,3 +1597,12 @@ button.tile:disabled { opacity: 1; }
 .card-head h2 { margin: 0; }
 .switch-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; }
 .switch-btn:disabled { opacity: 0.6; }
+
+/* "your data": the export as the round's tile (a quarter of the row, as on the scorecard); delete the account apart (Sascha 23.10.2026) */
+.data-actions { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.account-delete { margin-top: 28px; display: flex; flex-direction: column; }
+.account-delete .delete-ask { padding: 16px; }
+.account-delete-msg { display: block; margin-top: 8px; }
+.stats-card h2 + .stats-sub.data-sub { margin: -4px 0 4px; }
+/* a switch with a two-line hint keeps air above and below (Sascha 23.10.2026) */
+.settings-switches .drawer-row { padding-block: 10px; }
