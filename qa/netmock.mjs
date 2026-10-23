@@ -26,7 +26,8 @@ export async function mockNet(ctx) {
     const lat = (u.searchParams.get('latitude') ?? '').split(',').map(Number);
     return r.fulfill({ json: { elevation: lat.map((y) => Math.round((300 + (y % 0.01) * 2000) * 10) / 10) } });
   });
-  await ctx.route(/api\.brightsky\.dev\//, (r) => r.fulfill({ status: 503, body: '' }));
+  // DWD (Bright Sky) "down" – with the CORS header, else WebKit reports the refused answer as a page error (night run 23./24.10.2026)
+  await ctx.route(/api\.brightsky\.dev\//, (r) => r.fulfill({ status: 503, headers: { 'Access-Control-Allow-Origin': '*' }, body: '' }));
   // the aerial images of Baden-Württemberg (LGL): a plain grass tile – the tests do not depend on the state's service
   // (21.10.2026 afternoon it hung without an answer, and every test on Hetzenhof reported the cut-off tiles)
   // – the aerial images only: the heights (WCS) stay real, a grass picture is no terrain model (greensmade, 22.10.2026)
