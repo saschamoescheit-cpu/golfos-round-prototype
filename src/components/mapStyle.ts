@@ -1,4 +1,4 @@
-import type maplibregl from 'maplibre-gl';
+import maplibregl from 'maplibre-gl';
 import { IMAGERY, type ImagerySource } from '../lib/imagery';
 
 // Shared map look for the hole map and the hole set-up: satellite imagery with the course drawn on top
@@ -19,6 +19,55 @@ function baseSource(): maplibregl.RasterSourceSpecification {
 }
 const baseLayer = (): maplibregl.RasterLayerSpecification => ({ id: BASE, type: 'raster', source: BASE, paint: { 'raster-fade-duration': 0 } });
 
+/**
+ * A state's aerial service that answers with empty pictures (23.10.2026: the LGL sent pure white JPEGs with "200 OK"
+ * all afternoon – laid over Esri they turned the map white). Every tile of a regional source is looked at before it is
+ * shown: all white (or see-through) counts as a failed tile, so Esri below stays visible, and enough of them make the
+ * map switch to Esri like any outage. Catches such tiles from the phone's offline store too.
+ */
+const CHECKED = 'golfos-tile';
+let checking = false;
+/** Tiles the regional service sent empty (for the tests and the error count). */
+export const emptyTiles = { count: 0 };
+export async function isEmptyTile(data: ArrayBuffer, type: string | null): Promise<boolean> {
+  try {
+    const bmp = await createImageBitmap(new Blob([data], { type: type || 'image/jpeg' }));
+    const N = 16;
+    const c: OffscreenCanvas | HTMLCanvasElement =
+      typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(N, N) : Object.assign(document.createElement('canvas'), { width: N, height: N });
+    const g = c.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+    if (!g) return false;
+    g.drawImage(bmp, 0, 0, N, N);
+    bmp.close?.();
+    const d = g.getImageData(0, 0, N, N).data;
+    for (let k = 0; k < d.length; k += 4) if (d[k + 3] > 10 && (d[k] < 242 || d[k + 1] < 242 || d[k + 2] < 242)) return false;
+    return true; // every pixel white or see-through: no picture
+  } catch {
+    return false; // cannot look at it: show it as it is
+  }
+}
+function checkTiles(): void {
+  if (checking) return;
+  checking = true;
+  maplibregl.addProtocol(CHECKED, async (params, ctrl) => {
+    const url = params.url.slice(CHECKED.length + 3);
+    const r = await fetch(url, { signal: ctrl.signal, mode: 'cors' });
+    if (!r.ok) throw new Error(`tile ${r.status}`);
+    const data = await r.arrayBuffer();
+    if (await isEmptyTile(data, r.headers.get('content-type'))) {
+      emptyTiles.count++;
+      throw new Error('empty tile');
+    }
+    return { data };
+  });
+}
+/** The tile address MapLibre asks for: a regional source through the check, Esri as it is. */
+export function satTiles(source: ImagerySource): string {
+  if (source.id === 'esri') return source.tiles;
+  checkTiles();
+  return `${CHECKED}://${source.tiles}`;
+}
+
 export function imageryStyle(source: ImagerySource): maplibregl.StyleSpecification {
   const under = source.id !== 'esri';
   return { version: 8, sources: { ...(under ? { [BASE]: baseSource() } : {}), sat: rasterSource(source) }, layers: [...(under ? [baseLayer()] : []), imageryLayer(source)] };
@@ -30,7 +79,7 @@ export function imageryStyle(source: ImagerySource): maplibregl.StyleSpecificati
  */
 function rasterSource(source: ImagerySource): maplibregl.RasterSourceSpecification {
   const wms = source.tiles.includes('{bbox-epsg-3857}');
-  return { type: 'raster', tiles: [source.tiles], scheme: source.scheme, tileSize: wms ? 256 : 128, maxzoom: source.maxzoom, attribution: source.attribution };
+  return { type: 'raster', tiles: [satTiles(source)], scheme: source.scheme, tileSize: wms ? 256 : 128, maxzoom: source.maxzoom, attribution: source.attribution };
 }
 
 export function imageryLayer(source: ImagerySource): maplibregl.RasterLayerSpecification {

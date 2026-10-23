@@ -4,7 +4,7 @@
 // at the given address – a second copy of the app, so work goes on while the gate runs)
 import { spawn } from 'node:child_process';
 
-const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify', 'voiceask', 'openholes'];
+const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify', 'voiceask', 'openholes', 'emptytiles'];
 const args = process.argv.slice(2);
 const par = Number(args.find((a) => /^\d+$/.test(a)) ?? 3);
 const base = args.find((a) => /^https?:/.test(a));

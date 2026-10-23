@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import type { LngLat, Ring } from '../types';
 import { bearingDeg, centroid, distanceM, distToLine, formatDistance, groupHazards, hazardTicks, hazardToCarry, isAhead, type HoleMapData, type Unit, keepOnGreen } from '../lib/geo';
-import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, PLAN_COLOURS, setCourseLook, setImagery } from './mapStyle';
+import { collapseAttribution, courseLayers, imageryStyle, OSM_ATTRIBUTION, PLAN_COLOURS, satTiles, setCourseLook, setImagery } from './mapStyle';
 import { treeImage, TREE_LOOKS } from './treeSprite';
 import { fairwayShapes, holeOutline, smoothRing, treeSpots } from '../lib/plan2d';
 import type { ImagerySource } from '../lib/imagery';
@@ -246,7 +246,7 @@ export function HoleMap(props: HoleMapProps) {
       m.addLayer({ id: 'putt', type: 'line', source: 'putt', paint: { 'line-color': '#9BC53D', 'line-width': 2.5 }, layout: { 'line-cap': 'round' } });
       ready.current = true;
       // imagery chosen while the map was loading (a US county's, once its list arrived): take it now
-      if ((m.getSource('sat') as maplibregl.RasterTileSource | undefined)?.tiles?.[0] !== latest.current.imagery.tiles) setImagery(m, latest.current.imagery);
+      if ((m.getSource('sat') as maplibregl.RasterTileSource | undefined)?.tiles?.[0] !== satTiles(latest.current.imagery)) setImagery(m, latest.current.imagery);
       m.on('moveend', () => render()); // labels are spaced out for the current view
       collapseAttribution(m);
       autoCamera(m, 0);
