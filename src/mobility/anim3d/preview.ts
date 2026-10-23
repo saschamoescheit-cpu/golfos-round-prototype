@@ -3,7 +3,8 @@
 import { CLIPS } from './clips';
 import { LAB } from './lab';
 import { DRILL_CLIPS, RETEST_CLIPS } from './drills';
-import { createViewer, type View } from './scene';
+import { createViewer, wantRealistic, type View } from './scene';
+import { loadRealisticBody } from './rigSkin';
 import type { TestId } from '../types';
 
 const q = new URLSearchParams(location.search);
@@ -13,6 +14,8 @@ const n = Number(q.get('n') ?? 6);
 if (only) document.body.classList.add('big');
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const out = document.getElementById('out')!;
+// (?real3d=1: the realistic golfer – loaded before the first still)
+if (wantRealistic()) await loadRealisticBody();
 const v = createViewer(canvas);
 v.setPlaying(false);
 (async () => {

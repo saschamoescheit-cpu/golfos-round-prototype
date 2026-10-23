@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { applyPose, buildRig, COLORS, mixPose, type Pose, type Rig } from './rig';
+import { loadRealisticBody, realisticBodyReady } from './rigSkin';
 import type { L } from '../../training/types';
 
 // The stage of the 3D test videos: the golfer, the floor, light with soft shadows, the props of a test (chair, wall,
@@ -29,6 +30,59 @@ export interface Clip {
   /** where the camera looks and how far it is (default 0.9 m high, 3.6 m) */
   focus?: [number, number, number];
   dist?: number;
+}
+
+/** the realistic golfer of Training (23.10.2026, for Sascha to judge first): on with ?real3d=1, off with ?real3d=0 – the
+ * same switch as Training's swing videos (localStorage golfos.real3d) */
+export function wantRealistic(): boolean {
+  try {
+    const q = new URLSearchParams(location.search).get('real3d');
+    if (q === '1') localStorage.setItem('golfos.real3d', '1');
+    if (q === '0') localStorage.removeItem('golfos.real3d');
+    return localStorage.getItem('golfos.real3d') === '1';
+  } catch {
+    return false;
+  }
+}
+const skin = () => (wantRealistic() && realisticBodyReady() ? 'realistic' : 'classic');
+
+/** The lowest point of the realistic golfer's skin (its bones applied; every n-th vertex), or null for the classic one.
+ * Its contact points were placed for the classic figure: knees, ankles and hands of the realistic body reach further. */
+export function skinLow(rig: Rig, every = 7): number | null {
+  rig.root.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  let low = Infinity;
+  rig.root.traverse((o) => {
+    const m = o as THREE.SkinnedMesh;
+    if (!m.isSkinnedMesh) return;
+    const pos = m.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i += every) {
+      v.fromBufferAttribute(pos, i);
+      m.applyBoneTransform(i, v);
+      v.applyMatrix4(m.matrixWorld);
+      if (v.y < low) low = v.y;
+    }
+  });
+  return Number.isFinite(low) ? low : null;
+}
+
+/** How much a clip lifts (or lowers) the realistic golfer so its skin, not the classic contact points, rests on the floor:
+ * 24 moments of the loop, eased between (null: nothing to do – the classic figure, or a clip not on the floor). */
+export function skinFloor(rig: Rig, clip: Clip): number[] | null {
+  if (!rig.root.userData.lengths || clip.ground === false) return null;
+  const len = clip.length ?? clip.keys[clip.keys.length - 1].t;
+  const out: number[] = [];
+  for (let i = 0; i < 24; i++) {
+    applyPose(rig, sample(clip, (len * i) / 24).pose, clip.ground ?? true);
+    out.push(-(skinLow(rig) ?? 0));
+  }
+  return out;
+}
+export function floorAt(offs: number[], clip: Clip, t: number): number {
+  const len = clip.length ?? clip.keys[clip.keys.length - 1].t;
+  const x = ((((t % len) + len) % len) / len) * offs.length;
+  const i = Math.floor(x) % offs.length;
+  return offs[i] + (offs[(i + 1) % offs.length] - offs[i]) * (x - Math.floor(x));
 }
 
 const ease = (k: number) => 0.5 - 0.5 * Math.cos(Math.PI * k);
@@ -205,13 +259,21 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
   scene.add(pad);
 
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
-  let rig = buildRig();
+  let rig = buildRig({ skin: skin() });
   scene.add(rig.root);
   let propGroup = new THREE.Group();
   scene.add(propGroup);
   let bar: THREE.Mesh | null = null;
 
   let clip: Clip | null = null;
+  /** the realistic golfer: lifted so its skin rests on the floor (see skinFloor) */
+  let floorOffs: number[] | null = null;
+  const place = (c: Clip, tt: number) => {
+    const s = sample(c, tt);
+    applyPose(rig, s.pose, c.ground ?? true);
+    if (floorOffs) rig.root.position.y += floorAt(floorOffs, c, tt);
+    return s;
+  };
   let view: View = 'front';
   let playing = true;
   let speed = 1;
@@ -236,7 +298,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
     const box = new THREE.Box3();
     const len = clip.length ?? clip.keys[clip.keys.length - 1].t;
     for (let i = 0; i <= 16; i++) {
-      applyPose(rig, sample(clip, (len * i) / 16).pose, clip.ground ?? true);
+      place(clip, (len * i) / 16);
       rig.root.updateMatrixWorld(true);
       box.expandByObject(rig.root);
     }
@@ -250,7 +312,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
     const box = new THREE.Box3();
     const len = clip.length ?? clip.keys[clip.keys.length - 1].t;
     for (let i = 0; i <= 8; i++) {
-      applyPose(rig, sample(clip, (len * i) / 8).pose, clip.ground ?? true);
+      place(clip, (len * i) / 8);
       rig.root.updateMatrixWorld(true);
       box.expandByObject(rig.root);
     }
@@ -296,8 +358,11 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
     scene.remove(rig.root);
     scene.remove(propGroup);
     if (bar) scene.remove(bar);
-    rig = buildRig();
+    rig = buildRig({ skin: skin() });
     scene.add(rig.root);
+    floorOffs = clip ? skinFloor(rig, clip) : null;
+    // (for the checks: which golfer is shown)
+    canvas.dataset.body = rig.root.userData.lengths ? 'realistic' : 'classic';
     propGroup = new THREE.Group();
     scene.add(propGroup);
     bar = null;
@@ -316,8 +381,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
 
   const update = () => {
     if (!clip) return;
-    const s = sample(clip, t);
-    applyPose(rig, s.pose, clip.ground ?? true);
+    const s = place(clip, t);
     // hands around what they hold (a stick, a band, the club in the right hand) unless the clip says otherwise
     const props = clip.props ?? [];
     const both = props.includes('barHands') || props.includes('band');
@@ -367,6 +431,18 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
   resize();
   raf = requestAnimationFrame(frame);
 
+  // the realistic body loads on its own (≈ 400 kB, once): the classic figure shows meanwhile, then the clip is set up again
+  let disposed = false;
+  if (wantRealistic() && !realisticBodyReady())
+    loadRealisticBody().then(() => {
+      if (disposed) return;
+      rebuild();
+      bounds = null;
+      fitMat();
+      placeCamera();
+      update();
+    });
+
   return {
     setClip(c) {
       clip = c;
@@ -402,6 +478,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
       placeCamera();
     },
     dispose() {
+      disposed = true;
       cancelAnimationFrame(raf);
       io?.disconnect();
       scene.traverse((o) => {

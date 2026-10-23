@@ -1,12 +1,14 @@
 // Many 3D videos in a row (WebKit, like an iPhone): every test page opened three times – 45 WebGL players one after
 // the other. Before the fix the page crashed after a few dozen ("Target crashed"): closed players kept their WebGL
 // context. Checks that each player draws and that the WebGL contexts are given back.
-// Usage: node mobility-3d-stress.mjs <app url> [rounds]
+// With "real": the realistic golfer (golfos.real3d, 23.10.2026) – every player shows it.
+// Usage: node mobility-3d-stress.mjs <app url> [rounds] [real]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const rounds = Number(process.argv[3] ?? 3);
+const real = process.argv[4] === 'real';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
@@ -37,12 +39,14 @@ await p.evaluate(() => {
   localStorage.setItem('golfos.intro.v1', '1');
   localStorage.setItem('golfos.lang.v1', 'de');
 });
+if (real) await p.evaluate(() => localStorage.setItem('golfos.real3d', '1'));
 await p.reload();
 await p.waitForTimeout(800);
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-test-row').first().waitFor({ timeout: 20000 });
 let opened = 0;
 let drawn = 0;
+let realistic = 0;
 outer: for (let r = 0; r < rounds; r++) {
   for (let i = 0; i < 15; i++) {
     if (crashed) break outer;
@@ -51,6 +55,8 @@ outer: for (let r = 0; r < rounds; r++) {
     await p.waitForTimeout(400);
     opened++;
     if (await p.locator('.mob-3d canvas').isVisible().catch(() => false)) drawn++;
+    // the realistic body loads once, then every player starts with it
+    if (real && (await p.locator('.mob-3d canvas[data-body="realistic"]').waitFor({ timeout: 8000 }).then(() => true).catch(() => false))) realistic++;
     await p.locator('.topbar .icon-btn').first().click().catch(() => {});
     await p.locator('.mob-test-row').first().waitFor({ timeout: 10000 }).catch(() => {});
   }
@@ -64,6 +70,7 @@ const ok = (cond, what) => {
 };
 ok(!crashed, `no crash after ${opened} 3D videos`);
 ok(drawn === opened, `${drawn} of ${opened} players shown`);
+if (real) ok(realistic === opened, `${realistic} of ${opened} players show the realistic golfer`);
 ok(live >= 0 && live <= 2, `WebGL contexts given back (${gl?.made} made, ${gl?.lost} lost, ${live} alive)`);
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 2).join(' | ') : ''}`);
 await b.close();

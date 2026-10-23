@@ -28,8 +28,12 @@ const QUAD: J = {
   shoulderR: [-74, 0, -5],
   elbowL: [-4, 0, 0],
   elbowR: [-4, 0, 0],
+  // the hands flat on the floor, fingers forward (23.10.2026: the realistic golfer's fingers hung into the mat)
+  wristL: [-62, 0, 0],
+  wristR: [-62, 0, 0],
 };
-const quad = (j: J = {}, extra: Omit<Pose, 'j'> = {}): Pose => P({ ...QUAD, ...j }, extra);
+/** (the hands open: flat on the floor) */
+const quad = (j: J = {}, extra: Omit<Pose, 'j'> = {}): Pose => P({ ...QUAD, ...j }, { gripL: 0, gripR: 0, ...extra });
 
 /** sitting back on the heels, chest on the thighs, forehead down (child's pose) */
 const CHILD: J = {
@@ -70,15 +74,16 @@ const HOOK: J = { hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kne
 const BRIDGE_UP: J = { neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [112, 0, 0], kneeR: [112, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] };
 
 /** lying on the belly, arms overhead in a Y */
-const PRONE: J = { shoulderL: [-170, 0, 32], shoulderR: [-170, 0, -32], ankleL: [40, 0, 0], ankleR: [40, 0, 0] };
+// (the forehead and the belly on the floor – 23.10.2026: the realistic golfer lay on its face, the belly in the air)
+const PRONE: J = { neck: [-7, 0, 0], head: [-8, 0, 0], shoulderL: [-170, 0, 32], shoulderR: [-170, 0, -32], ankleL: [40, 0, 0], ankleR: [40, 0, 0] };
 
 /** half-kneeling: left foot in front, right knee on the floor */
 const HALF_KNEEL: J = {
   hipL: [-82, 0, 6],
   kneeL: [88, 0, 0],
   ankleL: [-6, 0, 0],
-  hipR: [12, 0, -4],
-  kneeR: [96, 0, 0],
+  hipR: [-3, 0, -4],
+  kneeR: [88, 0, 0],
   ankleR: [60, 0, 0],
   shoulderL: [-75, 0, 8],
   shoulderR: [-75, 0, -8],
@@ -115,9 +120,21 @@ export const RETEST_CLIPS = {
 const SIT_9090_L: J = { hipL: [-90, 90, 0], kneeL: [90, 0, 0], hipR: [0, 0, -90], kneeR: [90, 0, 0] };
 const SIT_9090_R: J = { hipR: [-90, -90, 0], kneeR: [90, 0, 0], hipL: [0, 0, 90], kneeL: [90, 0, 0] };
 /** sitting with both knees up, feet flat apart (between the two sides of the switch) */
-const SIT_KNEES_UP: J = { hipL: [-135, 0, 22], hipR: [-135, 0, -22], kneeL: [96, 0, 0], kneeR: [96, 0, 0], ankleL: [35, 0, 0], ankleR: [35, 0, 0] };
-/** the hands behind on the floor, leaning back a little */
-const HANDS_BACK: J = { pelvis: [-6, 0, 0], shoulderL: [35, 0, 15], shoulderR: [35, 0, -15], elbowL: [0, 0, 0], elbowR: [0, 0, 0] };
+const SIT_KNEES_UP: J = { hipL: [-135, 0, 22], hipR: [-135, 0, -22], kneeL: [89, 0, 0], kneeR: [89, 0, 0], ankleL: [35, 0, 0], ankleR: [35, 0, 0] };
+/** halfway between two positions (each angle) – a key between them, fitted so the body stays where it should */
+const mid = (a: J, b: J, extra: J = {}): J => {
+  const out: J = {};
+  for (const id of new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof J>) {
+    const x = a[id] ?? [0, 0, 0];
+    const y = b[id] ?? [0, 0, 0];
+    out[id] = [(x[0] + y[0]) / 2, (x[1] + y[1]) / 2, (x[2] + y[2]) / 2];
+  }
+  return { ...out, ...extra };
+};
+/** open hands (flat on the floor) */
+const OPEN = { gripL: 0, gripR: 0 };
+/** the hands behind on the floor, fingers back, leaning back a little */
+const HANDS_BACK: J = { pelvis: [-6, 0, 0], shoulderL: [35, 0, 15], shoulderR: [35, 0, -15], elbowL: [0, 0, 0], elbowR: [0, 0, 0], wristL: [62, 0, 0], wristR: [62, 0, 0] };
 
 export const DRILL_CLIPS: Record<string, Clip> = {
   // ---------- the tests as drills ----------
@@ -139,10 +156,10 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     keys: [
       k(0, quad(), L('On hands and knees', 'Im Vierfüßlerstand')),
       k(1.0, quad()),
-      k(2.6, quad({ pelvis: [62, 0, 0], hipL: [-62, 0, 3], hipR: [-62, 0, -3], spine: [22, 0, 0], chest: [16, 0, 0], neck: [32, 0, 0], shoulderL: [-100, 0, 5], shoulderR: [-100, 0, -5] }), L('Round the back like a cat – from the pelvis', 'Rücken rund wie eine Katze – aus dem Becken heraus')),
-      k(3.4, quad({ pelvis: [62, 0, 0], hipL: [-62, 0, 3], hipR: [-62, 0, -3], spine: [22, 0, 0], chest: [16, 0, 0], neck: [32, 0, 0], shoulderL: [-100, 0, 5], shoulderR: [-100, 0, -5] })),
-      k(5.0, quad({ pelvis: [86, 0, 0], hipL: [-86, 0, 3], hipR: [-86, 0, -3], spine: [-16, 0, 0], chest: [-10, 0, 0], neck: [-18, 0, 0], shoulderL: [-60, 0, 5], shoulderR: [-60, 0, -5] }), L('… then let it sag slowly', '… dann langsam durchhängen lassen')),
-      k(5.8, quad({ pelvis: [86, 0, 0], hipL: [-86, 0, 3], hipR: [-86, 0, -3], spine: [-16, 0, 0], chest: [-10, 0, 0], neck: [-18, 0, 0], shoulderL: [-60, 0, 5], shoulderR: [-60, 0, -5] })),
+      k(2.6, quad({ pelvis: [62, 0, 0], hipL: [-62, 0, 3], hipR: [-62, 0, -3], spine: [22, 0, 0], chest: [16, 0, 0], neck: [32, 0, 0], shoulderL: [-119, 0, 5], shoulderR: [-119, 0, -5] }), L('Round the back like a cat – from the pelvis', 'Rücken rund wie eine Katze – aus dem Becken heraus')),
+      k(3.4, quad({ pelvis: [62, 0, 0], hipL: [-62, 0, 3], hipR: [-62, 0, -3], spine: [22, 0, 0], chest: [16, 0, 0], neck: [32, 0, 0], shoulderL: [-119, 0, 5], shoulderR: [-119, 0, -5] })),
+      k(5.0, quad({ pelvis: [86, 0, 0], hipL: [-86, 0, 3], hipR: [-86, 0, -3], spine: [-16, 0, 0], chest: [-10, 0, 0], neck: [-18, 0, 0], shoulderL: [-45, 0, 5], shoulderR: [-45, 0, -5] }), L('… then let it sag slowly', '… dann langsam durchhängen lassen')),
+      k(5.8, quad({ pelvis: [86, 0, 0], hipL: [-86, 0, 3], hipR: [-86, 0, -3], spine: [-16, 0, 0], chest: [-10, 0, 0], neck: [-18, 0, 0], shoulderL: [-45, 0, 5], shoulderR: [-45, 0, -5] })),
       k(7.0, quad()),
     ],
   },
@@ -154,11 +171,11 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     keys: [
       k(0, quad(), L('On hands and knees', 'Im Vierfüßlerstand')),
       k(1.0, quad()),
-      k(2.6, quad({ spine: [0, -18, 0], chest: [0, -26, 0], shoulderR: [-40, 0, 90], elbowR: [-4, 0, 0], neck: [10, -20, 0], shoulderL: [-80, 0, 5], elbowL: [-30, 0, 0] }), L('Slide the right arm under the body, shoulder towards the floor', 'Rechten Arm unter dem Körper durchschieben, Schulter Richtung Boden')),
-      k(3.4, quad({ spine: [0, -18, 0], chest: [0, -26, 0], shoulderR: [-40, 0, 90], elbowR: [-4, 0, 0], neck: [10, -20, 0], shoulderL: [-80, 0, 5], elbowL: [-30, 0, 0] })),
+      k(2.6, quad({ spine: [0, -18, 0], chest: [0, -26, 0], shoulderR: [-36, 0, 70], elbowR: [-4, 0, 0], wristR: [0, 0, 0], neck: [10, -20, 0], shoulderL: [-40, 0, 5], elbowL: [-30, 0, 0] }), L('Slide the right arm under the body, shoulder towards the floor', 'Rechten Arm unter dem Körper durchschieben, Schulter Richtung Boden')),
+      k(3.4, quad({ spine: [0, -18, 0], chest: [0, -26, 0], shoulderR: [-36, 0, 70], elbowR: [-4, 0, 0], wristR: [0, 0, 0], neck: [10, -20, 0], shoulderL: [-40, 0, 5], elbowL: [-30, 0, 0] })),
       k(4.4, quad()),
-      k(5.8, quad({ spine: [0, 22, 0], chest: [0, 30, 0], shoulderR: [58, 0, 66], elbowR: [0, 0, 0], neck: [10, 25, 0] }), L('… then open it up to the ceiling, eyes follow', '… dann zur Decke öffnen, der Blick folgt')),
-      k(6.6, quad({ spine: [0, 22, 0], chest: [0, 30, 0], shoulderR: [58, 0, 66], elbowR: [0, 0, 0], neck: [10, 25, 0] })),
+      k(5.8, quad({ spine: [0, 6, 0], chest: [0, 14, 0], shoulderR: [58, 0, 66], elbowR: [0, 0, 0], wristR: [0, 0, 0], neck: [10, 25, 0], shoulderL: [-69, 0, 4], elbowL: [4, 0, 0] }, { roll: -17 }), L('… then open it up to the ceiling, eyes follow', '… dann zur Decke öffnen, der Blick folgt')),
+      k(6.6, quad({ spine: [0, 6, 0], chest: [0, 14, 0], shoulderR: [58, 0, 66], elbowR: [0, 0, 0], wristR: [0, 0, 0], neck: [10, 25, 0], shoulderL: [-69, 0, 4], elbowL: [4, 0, 0] }, { roll: -17 })),
       k(8.0, quad()),
     ],
   },
@@ -168,11 +185,11 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     ground: 'all',
     props: ['mat'],
     keys: [
-      k(0, quad({ wristL: [0, 180, 0], wristR: [0, 180, 0] }), L('On hands and knees, fingers pointing to the knees', 'Im Vierfüßlerstand, die Finger zeigen zu den Knien')),
-      k(1.2, quad({ wristL: [0, 180, 0], wristR: [0, 180, 0] })),
-      k(2.8, quad({ pelvis: [68, 0, 0], hipL: [-46, 0, 3], hipR: [-46, 0, -3], shoulderL: [-96, 0, 5], shoulderR: [-96, 0, -5], wristL: [-20, 180, 0], wristR: [-20, 180, 0] }), L('Rock gently back – 20 s', 'Sanft nach hinten wippen – 20 s')),
-      k(4.2, quad({ pelvis: [68, 0, 0], hipL: [-46, 0, 3], hipR: [-46, 0, -3], shoulderL: [-96, 0, 5], shoulderR: [-96, 0, -5], wristL: [-20, 180, 0], wristR: [-20, 180, 0] })),
-      k(5.6, quad({ wristL: [0, 180, 0], wristR: [0, 180, 0] })),
+      k(0, quad({ wristL: [66, 180, 0], wristR: [66, 180, 0] }), L('On hands and knees, fingers pointing to the knees', 'Im Vierfüßlerstand, die Finger zeigen zu den Knien')),
+      k(1.2, quad({ wristL: [66, 180, 0], wristR: [66, 180, 0] })),
+      k(2.8, quad({ pelvis: [68, 0, 0], hipL: [-46, 0, 3], hipR: [-46, 0, -3], shoulderL: [-82, 0, 5], shoulderR: [-82, 0, -5], wristL: [86, 180, 0], wristR: [86, 180, 0] }), L('Rock gently back – 20 s', 'Sanft nach hinten wippen – 20 s')),
+      k(4.2, quad({ pelvis: [68, 0, 0], hipL: [-46, 0, 3], hipR: [-46, 0, -3], shoulderL: [-82, 0, 5], shoulderR: [-82, 0, -5], wristL: [86, 180, 0], wristR: [86, 180, 0] })),
+      k(5.6, quad({ wristL: [66, 180, 0], wristR: [66, 180, 0] })),
     ],
   },
 
@@ -214,10 +231,15 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     keys: [
       k(0, P({ ...SIT_9090_L, ...ARMS_CROSSED }), L('Sit 90/90: the left leg in front, the right one to the side', 'Sitz 90/90: das linke Bein vorn, das rechte seitlich')),
       k(1.2, P({ ...SIT_9090_L, ...ARMS_CROSSED })),
+      // (the seat stays on the floor through the switch: the legs turn in the hips – keys between, fitted)
+      k(1.9, P({ ...mid(SIT_9090_L, SIT_KNEES_UP, { hipL: [-148, 34, 11], hipR: [-103, 24, -56], kneeL: [80, 0, 0], kneeR: [80, 0, 0] }), ...ARMS_CROSSED })),
       k(2.6, P({ ...SIT_KNEES_UP, ...ARMS_CROSSED }), L('Turn both knees to the other side without the hands – sit tall', 'Beide Knie ohne Hände zur anderen Seite drehen – aufrecht sitzen')),
+      k(3.3, P({ ...mid(SIT_KNEES_UP, SIT_9090_R, { hipL: [-101, -24, 56], hipR: [-146, -29, -11], kneeL: [73, 0, 0], kneeR: [73, 0, 0] }), ...ARMS_CROSSED })),
       k(4.0, P({ ...SIT_9090_R, ...ARMS_CROSSED })),
       k(5.0, P({ ...SIT_9090_R, ...ARMS_CROSSED }), L('… and back – 10 switches, slowly', '… und zurück – 10 Wechsel, langsam')),
+      k(5.7, P({ ...mid(SIT_9090_R, SIT_KNEES_UP, { hipL: [-101, -24, 56], hipR: [-146, -29, -11], kneeL: [73, 0, 0], kneeR: [73, 0, 0] }), ...ARMS_CROSSED })),
       k(6.4, P({ ...SIT_KNEES_UP, ...ARMS_CROSSED })),
+      k(7.1, P({ ...mid(SIT_KNEES_UP, SIT_9090_L, { hipL: [-148, 34, 11], hipR: [-103, 24, -56], kneeL: [80, 0, 0], kneeR: [80, 0, 0] }), ...ARMS_CROSSED })),
       k(7.8, P({ ...SIT_9090_L, ...ARMS_CROSSED })),
     ],
   },
@@ -227,12 +249,12 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     ground: 'all',
     props: ['mat'],
     keys: [
-      k(0, P({ ...SIT_9090_L, ...HANDS_BACK }), L('Sit 90/90, the hands behind you on the floor', 'Sitz 90/90, die Hände hinter dir am Boden')),
-      k(1.0, P({ ...SIT_9090_L, ...HANDS_BACK })),
-      k(2.2, P({ ...SIT_9090_L, ...HANDS_BACK, hipR: [0, 50, -76] }), L('Lift the back knee and foot off the floor – hold 2 s', 'Das hintere Knie mit dem Fuß vom Boden heben – 2 s halten')),
-      k(3.4, P({ ...SIT_9090_L, ...HANDS_BACK, hipR: [0, 50, -76] })),
-      k(4.6, P({ ...SIT_9090_L, ...HANDS_BACK }), L('Lower – 2 × 8 per side', 'Senken – 2 × 8 pro Seite')),
-      k(5.4, P({ ...SIT_9090_L, ...HANDS_BACK })),
+      k(0, P({ ...SIT_9090_L, ...HANDS_BACK }, OPEN), L('Sit 90/90, the hands behind you on the floor', 'Sitz 90/90, die Hände hinter dir am Boden')),
+      k(1.0, P({ ...SIT_9090_L, ...HANDS_BACK }, OPEN)),
+      k(2.2, P({ ...SIT_9090_L, ...HANDS_BACK, shoulderL: [17, 0, 15], shoulderR: [17, 0, -15], hipR: [0, 50, -76] }, OPEN), L('Lift the back knee and foot off the floor – hold 2 s', 'Das hintere Knie mit dem Fuß vom Boden heben – 2 s halten')),
+      k(3.4, P({ ...SIT_9090_L, ...HANDS_BACK, shoulderL: [17, 0, 15], shoulderR: [17, 0, -15], hipR: [0, 50, -76] }, OPEN)),
+      k(4.6, P({ ...SIT_9090_L, ...HANDS_BACK }, OPEN), L('Lower – 2 × 8 per side', 'Senken – 2 × 8 pro Seite')),
+      k(5.4, P({ ...SIT_9090_L, ...HANDS_BACK }, OPEN)),
     ],
   },
 
@@ -246,8 +268,8 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(0, side(), L('On the side, knees bent, arms forward', 'Auf der Seite, Knie gebeugt, Arme nach vorn')),
       k(1.0, side()),
       k(2.4, side({ shoulderL: [0, 0, 92], chest: [0, 35, 0], spine: [0, 15, 0], neck: [0, 20, 0] }), L('Open the top arm like a book, eyes follow', 'Den oberen Arm wie ein Buch öffnen, der Blick folgt')),
-      k(3.6, side({ shoulderL: [88, 0, 0], chest: [0, 60, 0], spine: [0, 25, 0], neck: [0, 30, 0] }), L('Knees stay together – breathe out, 2 s', 'Knie bleiben zusammen – ausatmen, 2 s')),
-      k(4.6, side({ shoulderL: [88, 0, 0], chest: [0, 60, 0], spine: [0, 25, 0], neck: [0, 30, 0] })),
+      k(3.6, side({ shoulderL: [72, 0, 21], chest: [0, 36, 0], spine: [0, 1, 0], neck: [0, 30, 0] }), L('Knees stay together – breathe out, 2 s', 'Knie bleiben zusammen – ausatmen, 2 s')),
+      k(4.6, side({ shoulderL: [72, 0, 21], chest: [0, 36, 0], spine: [0, 1, 0], neck: [0, 30, 0] })),
       k(5.8, side({ shoulderL: [0, 0, 92], chest: [0, 35, 0], spine: [0, 15, 0], neck: [0, 20, 0] })),
       k(7.0, side()),
     ],
@@ -316,8 +338,8 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     keys: [
       k(0, P(PRONE, { tip: 90 }), L('On your belly, arms overhead in a Y, thumbs up', 'Bauchlage, Arme über dem Kopf im Y, Daumen oben')),
       k(1.0, P(PRONE, { tip: 90 })),
-      k(2.4, P({ ...PRONE, shoulderL: [-205, 0, 32], shoulderR: [-205, 0, -32], neck: [-10, 0, 0] }, { tip: 90 }), L('Shoulder blades down and back – lift the arms', 'Schulterblätter nach hinten unten – Arme anheben')),
-      k(3.4, P({ ...PRONE, shoulderL: [-205, 0, 32], shoulderR: [-205, 0, -32], neck: [-10, 0, 0] }, { tip: 90 })),
+      k(2.4, P({ ...PRONE, shoulderL: [-205, 0, 32], shoulderR: [-205, 0, -32], neck: [-16, 0, 0], head: [7, 0, 0] }, { tip: 90 }), L('Shoulder blades down and back – lift the arms', 'Schulterblätter nach hinten unten – Arme anheben')),
+      k(3.4, P({ ...PRONE, shoulderL: [-205, 0, 32], shoulderR: [-205, 0, -32], neck: [-16, 0, 0], head: [7, 0, 0] }, { tip: 90 })),
       k(4.6, P(PRONE, { tip: 90 }), L('Lower – 2 × 10', 'Ablegen – 2 × 10')),
       k(5.2, P(PRONE, { tip: 90 })),
     ],
