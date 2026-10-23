@@ -68,6 +68,24 @@ describe('drill coach', () => {
     expect(stiff.best!).toBeLessThan(0);
   });
 
+  it('measures the squat depth from heights – also with the knees out to the side', () => {
+    // side-on, thighs 200 px long: standing (thighs down), then 15° below level with the knees turned 60° out – the
+    // thigh looks short side-on, its angle in the picture would be 28° (23.10.2026, real squats of motion capture)
+    const body = (dx: number, dy: number): Lm[] => {
+      const lm = frontBody({});
+      for (const [hip, kn] of [[23, 25], [24, 26]]) {
+        lm[hip] = { ...lm[hip], x: 0.5, y: 0.5 };
+        lm[kn] = { ...lm[kn], x: 0.5 + dx / W, y: 0.5 + dy / H };
+      }
+      return lm;
+    };
+    const sig = new Signal('squat');
+    for (let i = 0; i < 10; i++) sig.calibrate({ lm: body(0, 200), w: W, h: H, t: i * 50 });
+    const r = (15 * Math.PI) / 180;
+    const v = sig.value({ lm: body(200 * Math.cos(r) * Math.cos(Math.PI / 3), -200 * Math.sin(r)), w: W, h: H, t: 600 })!;
+    expect(Math.abs(v - 15)).toBeLessThan(1);
+  });
+
   it('counts toe touches – less is better (nearer the toes)', () => {
     const r = run('reach', (k) => toeTouchBody(k, 0.05), 4);
     expect(r.n).toBe(4);

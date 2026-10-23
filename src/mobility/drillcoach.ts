@@ -255,9 +255,19 @@ export class Signal {
         return ears ? (bySide + turned(width(f, P.lEar, P.rEar), this.base.e)) / 2 : bySide;
       }
       case 'squat': {
-        // thigh angle to the horizontal: + = the hip below the knee (y grows downwards)
+        // thigh angle to the horizontal: + = the hip below the knee (y grows downwards) – from how high the hip is against
+        // the knee and the thigh's length standing (23.10.2026, real squats of motion capture: knees out to the side, the
+        // thigh looked short and steep side-on – 16° below level came out 35–50° above). The height of the hip against
+        // the knee is the same seen from any side.
         const hip = px(f, s.hip);
         const kn = px(f, s.kn);
+        // (both legs, where both are seen: a knee out to the side is nearer to the phone or further from it – the mean
+        // undoes most of the perspective)
+        if (this.calibrated && this.base.th > 1) {
+          const both = inFrame(f, P.lHip) && inFrame(f, P.rHip) && inFrame(f, P.lKn) && inFrame(f, P.rKn);
+          const drop = both ? (px(f, P.lHip)[1] - px(f, P.lKn)[1] + px(f, P.rHip)[1] - px(f, P.rKn)[1]) / 2 : hip[1] - kn[1];
+          return deg(Math.asin(Math.max(-1, Math.min(1, drop / this.base.th))));
+        }
         return deg(Math.atan2(hip[1] - kn[1], Math.abs(hip[0] - kn[0])));
       }
       case 'reach':

@@ -538,8 +538,15 @@ class SquatAnalyzer implements Analyzer {
       }
       return { value: null, best: null, phase: 'calibrate' };
     }
-    // thigh angle to the horizontal: + = the hip is below the knee (y grows downwards in the picture)
-    const depth = this.roll.push(deg(Math.atan2(hip[1] - kn[1], Math.abs(hip[0] - kn[0]))));
+    // thigh angle to the horizontal: + = the hip is below the knee (y grows downwards in the picture) – from how high the
+    // hip is against the knee and the thigh's length standing: knees out to the side make the thigh look short and steep
+    // side-on (23.10.2026, real squats of motion capture: 23° below level came out 32° above); heights are the same seen
+    // from any side
+    // (both legs, where both are seen: a knee out to the side is nearer to the phone or further from it – the mean undoes
+    // most of the perspective)
+    const both = inFrame(f, P.lHip) && inFrame(f, P.rHip) && inFrame(f, P.lKn) && inFrame(f, P.rKn);
+    const drop = both ? (px(f, P.lHip)[1] - px(f, P.lKn)[1] + px(f, P.rHip)[1] - px(f, P.rKn)[1]) / 2 : hip[1] - kn[1];
+    const depth = this.roll.push(deg(Math.asin(clamp(drop / this.base.thigh, -1))));
     const down = hip[1] - this.base.hipY;
     if (down > 0.25 * this.base.thigh) this.started = true;
     if (this.started) {
