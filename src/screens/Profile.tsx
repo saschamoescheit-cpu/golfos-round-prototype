@@ -7,6 +7,7 @@ import { getLang, tr } from '../lib/i18n';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { CoursePicker } from './CoursePicker';
 import { SyncCard } from '../components/SyncCard';
+import { PushCard } from '../components/PushCard';
 import { Avatar } from '../components/Avatar';
 import { PhotoCropper } from '../components/PhotoCropper';
 import { STANDARD_CLUBS } from '../lib/clubs';
@@ -329,6 +330,8 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           </section>
         </div>
       )}
+      {/* notifications on this phone (final list, Sascha 23.10.2026) */}
+      <PushCard signedIn={!!session} key={session ? 'in' : 'out'} />
       {/* delete the account (final list, Sascha 22.10.2026): at the end, signed in only, asked once more – the data on this
           phone stay */}
       {/* your data (final list, Sascha 22.10.2026): everything on this phone as one file – and with an account, delete it */}

@@ -1,6 +1,7 @@
 import type { Game } from './gameforms';
 import { emptyEntry } from './scoring';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
+import { pushGame } from './push';
 
 // One game on several phones (Sascha 15.10.2026: "four players, everyone with the web app – join by a code or a QR
 // code; everyone sees the standing and can enter his shot details"). The host shares the game: a 6-letter code and a
@@ -108,7 +109,9 @@ export async function joinGame(code: string): Promise<Game | null> {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_join_game`, { method: 'POST', headers: h, body: JSON.stringify({ join_code: cleanCode(code) }) });
     if (!r.ok) return null;
     const g = (await r.json()) as Game | null;
-    return g && g.id ? { ...g, shared: { code: cleanCode(code) } } : null;
+    if (!g || !g.id) return null;
+    pushGame('joined', cleanCode(code)); // the host hears of it (push, final list 23.10.2026)
+    return { ...g, shared: { code: cleanCode(code) } };
   } catch {
     return null;
   }

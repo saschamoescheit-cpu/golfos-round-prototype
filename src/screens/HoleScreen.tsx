@@ -51,6 +51,7 @@ import { swingMark, withPartials } from '../lib/partials';
 import { FairwayPicker } from '../components/FairwayPicker';
 import { HoleDrawer } from '../components/HoleDrawer';
 import { statRounds } from '../lib/signing';
+import { pushRound } from '../lib/push';
 
 const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f));
 
@@ -302,6 +303,11 @@ export function HoleScreen(props: {
     loadRegionalImagery(courseCenter).then((found) => found && setImageryTick((t) => t + 1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [`${courseCenter[0].toFixed(3)},${courseCenter[1].toFixed(3)}`]); // again once the course's position is known
+  // a round on the course: the push function watches the forecast there for thunderstorms (final list, Sascha 23.10.2026)
+  useEffect(() => {
+    if (round.preview || round.finishedAt || (!courseCenter[0] && !courseCenter[1])) return;
+    pushRound({ id: round.id, course: round.courseName, lat: courseCenter[1], lng: courseCenter[0] });
+  }, [round.id, round.preview, !!round.finishedAt, `${courseCenter[0].toFixed(2)},${courseCenter[1].toFixed(2)}`]); // eslint-disable-line react-hooks/exhaustive-deps
   // Offline map: save the imagery of all holes of the round once (again after 30 days, or for another imagery source).
   const [offline, setOffline] = useState<{ done: number; total: number } | 'ready' | null>(null);
   // saved per course AND loops (Sascha 16.10.2026: "C much worse than A and B" – after an A+B round the course counted

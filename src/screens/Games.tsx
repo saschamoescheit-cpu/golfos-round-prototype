@@ -11,6 +11,7 @@ import { deleteGame, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame 
 import { Bin } from '../components/Bin';
 import { InviteSheet, JoinSheet } from '../components/ShareGame';
 import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
+import { pushGame } from '../lib/push';
 import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
@@ -182,6 +183,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
             onPause={() => setView({ name: 'tab', tab: 'play' })}
             onFinish={(g) => {
               const done = { ...g, finishedAt: new Date().toISOString() };
+              if (done.shared) pushGame('finished', done.shared.code); // the others hear of it (push, final list 23.10.2026)
               store(done);
               setView({ name: 'result', game: done });
             }}
@@ -202,6 +204,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           onBack={() => setView({ name: 'tab', tab: 'play' })}
           onFinish={(g) => {
             const done = { ...g, finishedAt: new Date().toISOString() };
+            if (done.shared) pushGame('finished', done.shared.code); // the others hear of it (push, final list 23.10.2026)
             store(done);
             setView({ name: 'result', game: done });
           }}

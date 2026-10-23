@@ -4,7 +4,7 @@
 // at the given address – a second copy of the app, so work goes on while the gate runs)
 import { spawn } from 'node:child_process';
 
-const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating'];
+const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify'];
 const args = process.argv.slice(2);
 const par = Number(args.find((a) => /^\d+$/.test(a)) ?? 3);
 const base = args.find((a) => /^https?:/.test(a));
@@ -36,7 +36,7 @@ async function worker() {
   while (queue.length) {
     const name = queue.shift();
     const s = Date.now();
-    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...(base && !/^offline/.test(name) ? [base] : [])], name === 'games' || name === 'modes' ? 1800000 : 900000);
+    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...(base && !/^(offline|push)/.test(name) ? [base] : [])], name === 'games' || name === 'modes' ? 1800000 : 900000);
     const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
     const secs = Math.round((Date.now() - s) / 1000);
     if (bad.length || code) {
@@ -50,7 +50,7 @@ await Promise.all(Array.from({ length: par }, worker));
 // a test that failed among others runs once more on its own – the load of four browsers at a time can make a test
 // miss a timing; a real failure fails again
 for (const name of failed.splice(0)) {
-  const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...(base && !/^offline/.test(name) ? [base] : [])], name === 'games' || name === 'modes' ? 1800000 : 900000);
+  const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...(base && !/^(offline|push)/.test(name) ? [base] : [])], name === 'games' || name === 'modes' ? 1800000 : 900000);
   const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
   if (bad.length || code) {
     failed.push(name);

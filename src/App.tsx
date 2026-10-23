@@ -24,6 +24,7 @@ import { loadGames, sessionModule, setSessionModule, type AppModule } from './li
 import type { TrainingTab } from './screens/Training';
 import type { MobilityTab } from './screens/Mobility';
 import { sign, statRounds, unsignedRounds } from './lib/signing';
+import { pushRound, takePushTarget } from './lib/push';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -191,6 +192,7 @@ export function App() {
   // Every change to a round is saved immediately, so closing the app never loses a hole.
   const persist = (round: Round) => {
     saveRound(round);
+    if (round.finishedAt) pushRound(null, round.id); // the round is over: no thunderstorm warnings for it any more
     setRounds(loadRounds());
     syncSoon();
   };
@@ -212,6 +214,27 @@ export function App() {
       window.clearInterval(t);
     };
   }, []);
+
+  // a tapped push notification (final list, Sascha 23.10.2026): the round to check, the rounds to sign, or Games
+  useEffect(() => {
+    const go = () => {
+      const t = takePushTarget();
+      if (!t) return;
+      if (t.games) {
+        setGamesTab(undefined);
+        setModule('games');
+        return;
+      }
+      setModule('rounds');
+      const r = t.review ? loadRounds().find((x) => x.id === t.review) : undefined;
+      if (r && r.signedAt) setScreen({ name: 'scorecard', round: r, back: ROUNDS }); // signed meanwhile on another device
+      else if (r) setScreen({ name: 'review', round: r });
+      else setScreen({ name: 'tab', tab: 'rounds', filter: 'sign' }); // not on this phone yet: the list of rounds to sign
+    };
+    go();
+    window.addEventListener('hashchange', go);
+    return () => window.removeEventListener('hashchange', go);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hole map and round check need the course geometry – bundled courses load it on demand (a moment, once).
   const geoId = screen.name === 'hole' || screen.name === 'review' ? screen.round.courseId : screen.name === 'book' ? screen.course.id : null;

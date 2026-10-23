@@ -37,6 +37,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // push notifications: shown and opened by public/push-sw.js (final list, Sascha 23.10.2026)
+        importScripts: ['push-sw.js'],
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
         globIgnores: ['greens/**', 'mediapipe/**', 'models/**'], // green charts and the pose model load on demand (runtime cache below)
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // map library is > 2 MB
