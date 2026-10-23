@@ -11,6 +11,17 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
 await mockNet(ctx); // no weather calls from the tests (Open-Meteo quota of the home line)
 const p = await ctx.newPage();
+// the page writes down each test and side it shows (the demo is 700 ms with the synthetic player – the first run after a
+// build is slow, and a loop that looks every 150 ms missed some, 24.10.2026)
+await p.addInitScript(() => {
+  const w = window;
+  w.__intros = [];
+  const look = () => {
+    const tag = document.querySelector('.mob-side-tag')?.textContent ?? '';
+    if (tag && (document.querySelector('.mob-demo.big') || /^Nachtest/.test(tag)) && !w.__intros.includes(tag)) w.__intros.push(tag);
+  };
+  new MutationObserver(look).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+});
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 let bad = 0;
@@ -118,6 +129,7 @@ while (Date.now() - t0 < 240000) {
   }
   await p.waitForTimeout(150);
 }
+for (const x of await p.evaluate(() => window.__intros ?? []).catch(() => [])) intros.add(x);
 console.log('   intros:', [...intros].join(' | '));
 ok(demoSeen && demoDrawn > 12, `the 3D golfer shows each test over the camera first (${demoDrawn} colours)`);
 ok(intros.size >= 9, `${intros.size} tests and sides shown and measured without a tap (6 tests, 3 with both sides, + the squat retest)`);
