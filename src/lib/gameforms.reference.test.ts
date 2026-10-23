@@ -169,3 +169,171 @@ describe('Nassau recomputed independently (no press)', () => {
     }
   });
 });
+
+// Night run 23.10.2026 (Games 1, second part): the remaining forms after the rule table of spec 021, recomputed
+// the same independent way – net scores from the WHS strokes above, money "difference × stake, everyone with everyone".
+const pairwise = (g: Game, pts: Record<string, number>, stake: number) =>
+  Object.fromEntries(g.players.map((p) => [p.id, g.players.reduce((a, q) => a + (pts[p.id] - pts[q.id]) * stake, 0)]));
+const netOf = (g: Game) => {
+  const st = Object.fromEntries(g.players.map((p) => [p.id, refStrokes(g, p.hcp ?? 0)]));
+  return (id: string, i: number) => (g.scores[id][i] == null ? null : g.scores[id][i]! - st[id][i]);
+};
+const allIn = (g: Game, i: number) => g.players.every((p) => g.scores[p.id][i] != null);
+
+describe('Wolf, Las Vegas, Sixes recomputed independently', () => {
+  it('Wolf: the wolf rotates, partner or lone wolf, blind doubles – points and money as the rules say', () => {
+    let lone = 0;
+    for (let k = 0; k < 300; k++) {
+      seed = 29 + k * 151;
+      const g = game('wolf', 4, k % 2 ? 9 : 18, { stake: 1 });
+      const ids = g.players.map((p) => p.id);
+      g.extra = g.holes.map((_, i) => {
+        const x = rnd();
+        if (x < 0.1) return {}; // the wolf did not choose: the hole does not count
+        const others = ids.filter((id) => id !== ids[i % 4]);
+        return x < 0.35 ? { wolfPartner: null, wolfBlind: x < 0.2 } : { wolfPartner: others[Math.floor(rnd() * 3)] };
+      });
+      const net = netOf(g);
+      const pts: Record<string, number> = Object.fromEntries(ids.map((id) => [id, 0]));
+      g.holes.forEach((_, i) => {
+        const x = g.extra[i];
+        if (!allIn(g, i) || x.wolfPartner === undefined) return;
+        const wolf = ids[i % 4];
+        const team = x.wolfPartner ? [wolf, x.wolfPartner] : [wolf];
+        const rest = ids.filter((id) => !team.includes(id));
+        const a = Math.min(...team.map((id) => net(id, i)!));
+        const b = Math.min(...rest.map((id) => net(id, i)!));
+        if (a === b) return;
+        const k2 = x.wolfBlind ? 2 : 1;
+        if (team.length === 2) for (const id of a < b ? team : rest) pts[id] += k2;
+        else if (a < b) {
+          pts[wolf] += 2 * 3 * k2; // 2 points per opponent
+          lone++;
+        } else for (const id of rest) pts[id] += k2;
+      });
+      const app = standingOf(g);
+      for (const r of app.rows) expect(r.points, `game ${k}: points of ${r.name}`).toBe(pts[r.id]);
+      const money = pairwise(g, pts, 1);
+      for (const id of ids) expect(near(app.money![id], money[id]), `game ${k}: money`).toBe(true);
+    }
+    expect(lone).toBeGreaterThan(20);
+  });
+
+  for (const flip of [true, false])
+    it(`Las Vegas (birdie flip ${flip ? 'on' : 'off'}): team numbers, 10 goes first, the difference in points`, () => {
+      for (let k = 0; k < 300; k++) {
+        seed = 31 + k * 157;
+        const g = game('vegas', 4, k % 2 ? 9 : 18, { stake: 0.1, flip });
+        const net = netOf(g);
+        const [A, B] = [['p0', 'p1'], ['p2', 'p3']];
+        let diff = 0;
+        g.holes.forEach((h, i) => {
+          if (!allIn(g, i)) return;
+          const lowFirst = (t: string[]) => {
+            const [lo, hi] = t.map((id) => net(id, i)!).sort((x, y) => x - y);
+            return hi >= 10 ? Number(`${hi}${lo}`) : Number(`${lo}${hi}`);
+          };
+          const highFirst = (t: string[]) => {
+            const [lo, hi] = t.map((id) => net(id, i)!).sort((x, y) => x - y);
+            return Number(`${hi}${lo}`);
+          };
+          const birdie = (t: string[]) => t.some((id) => net(id, i)! < h.par);
+          let a = lowFirst(A);
+          let b = lowFirst(B);
+          if (flip && birdie(A) && !birdie(B)) b = highFirst(B);
+          if (flip && birdie(B) && !birdie(A)) a = highFirst(A);
+          diff += b - a;
+        });
+        const app = standingOf(g);
+        expect(app.rows.find((r) => r.id === 'A')!.points, `game ${k}`).toBe(diff);
+        expect(near(app.money!.p0, diff * 0.1) && near(app.money!.p3, -diff * 0.1), `game ${k}: money`).toBe(true);
+      }
+    });
+
+  it('Sixes: new pairs every six holes (three on 9), better ball, a point for each winner', () => {
+    for (let k = 0; k < 300; k++) {
+      seed = 37 + k * 163;
+      const n = k % 2 ? 9 : 18;
+      const g = game('sixes', 4, n, { stake: 2 });
+      const net = netOf(g);
+      const pts: Record<string, number> = { p0: 0, p1: 0, p2: 0, p3: 0 };
+      const seg = n / 3;
+      const pairs = [[['p0', 'p1'], ['p2', 'p3']], [['p0', 'p2'], ['p1', 'p3']], [['p0', 'p3'], ['p1', 'p2']]];
+      pairs.forEach(([A, B], s) => {
+        let d = 0;
+        let all = true;
+        for (let i = s * seg; i < (s + 1) * seg; i++) {
+          if (!allIn(g, i)) {
+            all = false;
+            continue;
+          }
+          const a = Math.min(...A.map((id) => net(id, i)!));
+          const b = Math.min(...B.map((id) => net(id, i)!));
+          d += a < b ? 1 : a > b ? -1 : 0;
+        }
+        if (all && d) for (const id of d > 0 ? A : B) pts[id]++;
+      });
+      const app = standingOf(g);
+      for (const r of app.rows) expect(r.points, `game ${k}: points of ${r.name}`).toBe(pts[r.id]);
+      const money = pairwise(g, pts, 2);
+      for (const id of Object.keys(pts)) expect(near(app.money![id], money[id]), `game ${k}: money`).toBe(true);
+    }
+  });
+});
+
+describe('Snake, Dots, Bingo Bango Bongo recomputed independently', () => {
+  it('Snake: the last three-putter holds it and pays its length to each of the others', () => {
+    for (let k = 0; k < 300; k++) {
+      seed = 41 + k * 167;
+      const g = game('snake', 2 + (k % 3), 18, { stake: 1 });
+      const ids = g.players.map((p) => p.id);
+      g.extra = g.holes.map(() => (rnd() < 0.3 ? { threePutt: ids.filter(() => rnd() < 0.4) } : {}));
+      const order = g.extra.flatMap((x) => x.threePutt ?? []);
+      const holder = order.length ? order[order.length - 1] : null;
+      const app = standingOf(g);
+      for (const id of ids) {
+        const want = !holder ? 0 : id === holder ? -order.length * (ids.length - 1) : order.length;
+        expect(near(app.money![id], want), `game ${k}: money of ${id}`).toBe(true);
+      }
+      if (holder) expect(app.rows[app.rows.length - 1].id, `game ${k}: the holder last`).toBe(holder);
+    }
+  });
+
+  it('Dots: birdie 1, eagle 2 by itself (gross), plus the chosen dots', () => {
+    for (let k = 0; k < 300; k++) {
+      seed = 43 + k * 173;
+      const g = game('dots', 2 + (k % 3), 18, { stake: 0.5 });
+      const ids = g.players.map((p) => p.id);
+      const kinds = ['sandy', 'greenie', 'chipin', 'longputt'];
+      g.extra = g.holes.map(() => ({ dots: Object.fromEntries(ids.map((id) => [id, kinds.filter(() => rnd() < 0.08)])) }));
+      const pts: Record<string, number> = Object.fromEntries(ids.map((id) => [id, 0]));
+      g.holes.forEach((h, i) => {
+        for (const id of ids) {
+          const v = g.scores[id][i];
+          if (v != null) pts[id] += v === h.par - 1 ? 1 : v <= h.par - 2 ? 2 : 0;
+          pts[id] += g.extra[i].dots![id].length;
+        }
+      });
+      const app = standingOf(g);
+      for (const r of app.rows) expect(r.points, `game ${k}: dots of ${r.name}`).toBe(pts[r.id]);
+      const money = pairwise(g, pts, 0.5);
+      for (const id of ids) expect(near(app.money![id], money[id]), `game ${k}: money`).toBe(true);
+    }
+  });
+
+  it('Bingo Bango Bongo: one point for each of the three, the difference times the stake', () => {
+    for (let k = 0; k < 300; k++) {
+      seed = 47 + k * 179;
+      const g = game('bbb', 2 + (k % 3), 18, { stake: 0.5 });
+      const ids = g.players.map((p) => p.id);
+      const pick = () => (rnd() < 0.1 ? null : ids[Math.floor(rnd() * ids.length)]);
+      g.extra = g.holes.map(() => ({ bingo: pick(), bango: pick(), bongo: pick() }));
+      const pts: Record<string, number> = Object.fromEntries(ids.map((id) => [id, 0]));
+      for (const x of g.extra) for (const id of [x.bingo, x.bango, x.bongo]) if (id) pts[id]++;
+      const app = standingOf(g);
+      for (const r of app.rows) expect(r.points, `game ${k}: points of ${r.name}`).toBe(pts[r.id]);
+      const money = pairwise(g, pts, 0.5);
+      for (const id of ids) expect(near(app.money![id], money[id]), `game ${k}: money`).toBe(true);
+    }
+  });
+});
