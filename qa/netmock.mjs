@@ -31,7 +31,9 @@ export async function mockNet(ctx) {
   // the aerial images of Baden-Württemberg (LGL): a plain grass tile – the tests do not depend on the state's service
   // (21.10.2026 afternoon it hung without an answer, and every test on Hetzenhof reported the cut-off tiles)
   // – the aerial images only: the heights (WCS) stay real, a grass picture is no terrain model (greensmade, 22.10.2026)
-  await ctx.route(/owsproxy\.lgl-bw\.de\/(?!owsproxy\/wcs)/, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(GRASS_PNG, 'base64') }));
+  // with the CORS header: since 23.10.2026 the app checks each regional tile with fetch() (empty tiles) – without it
+  // WebKit reports the answer as a page error ("due to access control checks")
+  await ctx.route(/owsproxy\.lgl-bw\.de\/(?!owsproxy\/wcs)/, (r) => r.fulfill({ status: 200, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: Buffer.from(GRASS_PNG, 'base64') }));
 }
 
 const GRASS_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPwyjPBihiGlgQAE6E7AUXeDRsAAAAASUVORK5CYII=';
