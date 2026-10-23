@@ -101,3 +101,43 @@ describe('game forms recomputed independently', () => {
     }
   });
 });
+
+/** Match play the rules' way: hole by hole, over the moment a side leads by more than the holes left. */
+function refMatch(g: Game): { diff: number; left: number; decided: boolean } {
+  const strokes = Object.fromEntries(g.players.map((p) => [p.id, refStrokes(g, p.hcp ?? 0)]));
+  const [a, b] = [g.players[0].id, g.players[1].id];
+  let d = 0;
+  for (let i = 0; i < g.holes.length; i++) {
+    const sa = g.scores[a][i];
+    const sb = g.scores[b][i];
+    if (sa == null || sb == null) return { diff: d, left: g.holes.length - i, decided: false };
+    const na = sa - strokes[a][i];
+    const nb = sb - strokes[b][i];
+    d += na < nb ? 1 : na > nb ? -1 : 0;
+    const left = g.holes.length - 1 - i;
+    if (Math.abs(d) > left) return { diff: d, left, decided: true };
+  }
+  return { diff: d, left: 0, decided: d !== 0 };
+}
+
+describe('match play recomputed independently', () => {
+  it('one against one: the winner, "3&2" at the moment it is decided, the stake', () => {
+    let decidedEarly = 0;
+    for (let k = 0; k < 400; k++) {
+      seed = 17 + k * 211;
+      // whole rounds (no picked-up hole), so the match runs to its decision
+      const g = game('match', 2, k % 2 ? 9 : 18, { stake: 5 });
+      for (const p of g.players) g.scores[p.id] = g.scores[p.id].map((v, i) => v ?? g.holes[i].par + 2);
+      const app = standingOf(g);
+      const ref = refMatch(g);
+      const a = app.rows.find((r) => r.id === 'A')!;
+      expect(a.points, `game ${k}: holes up`).toBe(ref.diff);
+      if (ref.decided && ref.left > 0) {
+        decidedEarly++;
+        expect(app.status, `game ${k}`).toMatch(new RegExp(`gewinnt ${Math.abs(ref.diff)}&${ref.left}|wins ${Math.abs(ref.diff)}&${ref.left}`));
+      }
+      expect(app.money![g.players[0].id]).toBe(ref.decided ? Math.sign(ref.diff) * 5 : 0);
+    }
+    expect(decidedEarly).toBeGreaterThan(50);
+  });
+});

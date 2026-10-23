@@ -737,9 +737,21 @@ export const FORMS: FormDef[] = [
       const [A, B] = teamsOf(g);
       const nA = A.map((id) => name(g, id)).join(' & ');
       const nB = B.map((id) => name(g, id)).join(' & ');
-      const res = g.holes.map((_, i) => holeWinner(best(g, A, i), best(g, B, i)));
+      const all = g.holes.map((_, i) => holeWinner(best(g, A, i), best(g, B, i)));
+      // the match is over the moment one side leads by more holes than are left (Rule 3.2a): holes played after that
+      // do not count – "3&2" stays "3&2" when the players finish the round anyway (night run 22./23.10.2026)
+      let cut = all.length;
+      for (let i = 0, d = 0; i < all.length; i++) {
+        if (all[i] == null) break;
+        d += all[i]!;
+        if (Math.abs(d) > all.length - 1 - i) {
+          cut = i + 1;
+          break;
+        }
+      }
+      const res = all.map((r, i) => (i < cut ? r : null));
       const m = matchText(res, nA, nB);
-      const left = res.filter((r) => r == null).length;
+      const left = cut < all.length ? all.length - cut : res.filter((r) => r == null).length;
       const over = Math.abs(m.diff) > left;
       const status = over && m.diff ? tr(`${m.diff > 0 ? nA : nB} wins ${Math.abs(m.diff)}${left ? `&${left}` : ' up'}`, `${m.diff > 0 ? nA : nB} gewinnt ${Math.abs(m.diff)}${left ? `&${left}` : ' auf'}`) : m.text;
       const money: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
