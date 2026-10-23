@@ -30,5 +30,28 @@ for (const dev of ['iPhone SE', 'iPhone 13']) {
   console.log(`${good ? '✓' : '✗'} ${dev}: the tools (${Math.round(tb.y)}–${Math.round(tb.y + tb.height)}) between the green's distances (${Math.round(green.y + green.height)}) and the game bar (${Math.round(gb.y)})`);
   await ctx.close();
 }
+// Rounds on the small iPhone too: five tools since the spread (24.10.2026) – the last one ("2D") above "shot here"
+{
+  const ctx = await b.newContext({ ...devices['iPhone SE'], locale: 'de-DE', colorScheme: 'dark', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
+  await mockNet(ctx);
+  const p = await ctx.newPage();
+  await p.goto(url); await p.waitForTimeout(1200);
+  await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); localStorage.setItem('golfos.intro.v1', '1'); sessionStorage.setItem('golfos.module', 'rounds'); localStorage.setItem('golfos.tip.shots.v1', '1'); });
+  await p.reload(); await p.waitForTimeout(1500);
+  await p.getByRole('button', { name: 'Neue Runde' }).click();
+  await p.fill('#course-search', 'Hetzenhof');
+  await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
+  await p.getByText('Runde starten').click();
+  await p.locator('.map-hole-no').first().waitFor({ timeout: 30000 });
+  await p.waitForTimeout(3000);
+  const tb = await p.locator('.map-toolbar').boundingBox();
+  const green = await p.locator('.map-green').first().boundingBox();
+  const shot = await p.locator('.map-shot-btn').first().boundingBox();
+  const tools = await p.locator('.map-toolbar .map-tool').count();
+  const good = tb.y >= green.y + green.height && tb.y + tb.height <= shot.y;
+  if (!good) fails++;
+  console.log(`${good ? '✓' : '✗'} iPhone SE, Rounds: ${tools} tools (${Math.round(tb.y)}–${Math.round(tb.y + tb.height)}) between the green's distances (${Math.round(green.y + green.height)}) and "shot here" (${Math.round(shot.y)})`);
+  await ctx.close();
+}
 await b.close();
 process.exit(fails ? 1 : 0);

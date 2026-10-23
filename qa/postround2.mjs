@@ -93,7 +93,7 @@ ok((await p.getByRole('heading', { name: 'Wie deine Putts verfehlen' }).count())
 await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click();
 await p.waitForTimeout(400);
 const clubs = await p.locator('main').innerText();
-ok(/Treffer und Korridor je Schläger/.test(clubs) && /gute Treffer/.test(clubs) && /Slice/.test(clubs), 'strikes per club: good strikes and the most frequent miss');
+ok(/Treffer und Streuung je Schläger/.test(clubs) && /gute Treffer/.test(clubs) && /Slice/.test(clubs), 'strikes and spread per club: good strikes and the most frequent flight off line');
 ok(/auf Windstille/.test(clubs), 'the distances say they are from good strikes in calm air');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

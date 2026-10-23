@@ -1206,7 +1206,8 @@ export function HoleScreen(props: {
               </svg>
             </button>
           )}
-          {cad && !tournament && (
+          {/* not in Games on a small phone (iPhone SE): the tool bar would reach under the game bar – the spread keeps its setting */}
+          {cad && !tournament && !(props.game && window.innerHeight < 620) && (
             <button type="button" className="map-tool" aria-pressed={spreadOn} aria-label={spreadOn ? tr('Hide the spread', 'Streuung ausblenden') : tr('Show the spread of the club', 'Streuung des Schlägers zeigen')} title={tr('Spread', 'Streuung')} onClick={() => setSpreadOn(!spreadOn)}>
               {/* spread: the cone from the ball to the ellipse where 80 % of the balls land */}
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

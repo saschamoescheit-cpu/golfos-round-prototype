@@ -1673,3 +1673,9 @@ button.tile:disabled { opacity: 1; }
 .help-player-tools { display: inline-flex; gap: 8px; }
 /* the subtitles over the video's lower part: the app's type, white on a dark band */
 .help-player video::cue { font-family: var(--body, system-ui), sans-serif; font-size: 17px; line-height: 1.35; color: #fff; background: rgba(14, 20, 24, 0.82); }
+/* a short phone (568 px, iPhone SE 1st generation): five map tools fit between the green's distances and "shot here"
+   only a little closer and smaller (the spread tool came 24.10.2026) */
+@media (max-height: 620px) {
+  .map-side, .map-toolbar { top: calc(env(safe-area-inset-top) + 168px); }
+  .map-toolbar .map-tool { height: 40px; }
+}
