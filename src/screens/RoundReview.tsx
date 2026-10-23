@@ -100,6 +100,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // only the holes still to check (Sascha 23.10.2026) – from the moment the last hole was confirmed with open ones left
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [reachedEnd, setReachedEnd] = useState(false); // the choice stays once the end was reached
+  // the last open hole confirmed after the end: sign, or look at the holes once more (Sascha 23.10.2026)
+  const [askDone, setAskDone] = useState(false);
   // a shot removed by holding it on the map – "Undo" for a few seconds (Sascha 22.10.2026)
   const [removed, setRemoved] = useState<{ k: number; n: number; detail: DetailEntry } | null>(null);
   // held: asks first – pressed and then dragged, the shot only moves (the question goes)
@@ -601,11 +603,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     if (d) saveDetail(k, { ...d, shots: teeFirst(d.shots.map((s) => ({ ...s, review: false }))) }, undefined, { checked: true });
     else save(k, { checked: true });
     setNotice(null);
-    if (onlyOpen) {
-      // only the open ones: the next open hole after this one, then from the start; none left – done
-      if (!openHoles.length) return props.onDone(true);
-      return goTo(openHoles.find((i) => i > k) ?? openHoles[0]);
-    }
+    // after the end, the last open hole confirmed: ask – sign the round or check the holes (Sascha 23.10.2026)
+    if (reachedEnd && !openHoles.length) return setAskDone(true);
+    if (onlyOpen) return goTo(openHoles.find((i) => i > k) ?? openHoles[0]); // the next open hole, then from the start
     if (!last) return goTo(k + 1);
     // Last hole: on to the first hole still to check – from now on only the open ones (Sascha 23.10.2026) – otherwise
     // the check is done.
@@ -1322,7 +1322,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       <span className="spacer" />
       <div className="sticky-cta">
         <button type="button" className="btn-primary" onClick={confirmHole}>
-          {onlyOpen && openHoles.length
+          {reachedEnd && !openHoles.length
+            ? tr(`Hole ${hole.label} fits ✓`, `Loch ${hole.label} passt ✓`)
+            : onlyOpen && openHoles.length
             ? tr(`Hole ${hole.label} fits ✓ → next open one`, `Loch ${hole.label} passt ✓ → nächstes offenes`)
             : !last && !onlyOpen
             ? tr(`Hole ${hole.label} fits ✓ →`, `Loch ${hole.label} passt ✓ →`)
@@ -1333,6 +1335,34 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 : tr(`Hole ${hole.label} fits ✓ · sign the round`, `Loch ${hole.label} passt ✓ · Runde signieren`)}
         </button>
       </div>
+
+      {askDone && (
+        <div className="sheet-backdrop" onClick={() => setAskDone(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Every hole checked', 'Alle Löcher geprüft')} onClick={(ev) => ev.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Every hole checked ✓', 'Alle Löcher geprüft ✓')}</strong>
+            </div>
+            <span className="muted small">
+              {round.signedAt
+                ? tr('The round is signed already.', 'Die Runde ist schon signiert.')
+                : tr('"Confirm round" signs it – then it counts in your statistics.', '„Runde bestätigen“ signiert sie – dann zählt sie in deiner Statistik.')}
+            </span>
+            <button type="button" className="btn-primary" onClick={() => props.onDone(true)}>
+              {tr('Confirm round', 'Runde bestätigen')}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setAskDone(false);
+                setOnlyOpen(false); // every hole again
+              }}
+            >
+              {tr('Check the holes', 'Löcher prüfen')}
+            </button>
+          </section>
+        </div>
+      )}
 
       {editing && d && (
         <ShotSheet

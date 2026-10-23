@@ -83,18 +83,35 @@ await p.waitForTimeout(400);
 ok((await at('2A')) === '2A', '"Alle Löcher": the arrows go through every hole again (3A ← 2A, checked)');
 await filter.getByRole('button', { name: /Noch zu prüfen/ }).click();
 await p.waitForTimeout(300);
-// confirm the remaining open holes: the last one signs the round
+// confirm the remaining open holes; the last one asks: confirm the round or check the holes (Sascha 23.10.2026)
 let guard = 0;
 while ((await p.getByRole('button', { name: /passt ✓ → nächstes offenes/ }).count()) > 0 && guard++ < 12) {
   await p.getByRole('button', { name: /passt ✓ → nächstes offenes/ }).click();
   await p.waitForTimeout(400);
 }
-const lastBtn = p.getByRole('button', { name: /passt ✓ · Runde signieren/ });
-ok((await lastBtn.count()) === 1, `the last open hole: "… passt ✓ · Runde signieren" (${await holeNow()})`);
+const lastHole = await holeNow();
+const lastBtn = p.locator('.sticky-cta .btn-primary');
+ok(/^Loch \w+ passt ✓$/.test((await lastBtn.innerText()).trim()), `the last open hole: "${(await lastBtn.innerText()).trim()}" – no signing on the button`);
 await lastBtn.click();
+await p.waitForTimeout(500);
+const ask = p.getByRole('dialog', { name: 'Alle Löcher geprüft' });
+ok(await ask.isVisible(), 'then the question: every hole checked');
+ok((await ask.getByRole('button', { name: 'Runde bestätigen' }).count()) === 1 && (await ask.getByRole('button', { name: 'Löcher prüfen' }).count()) === 1, '"Runde bestätigen" or "Löcher prüfen"');
+let r = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]);
+ok(!r.signedAt && r.entries.me.every((e) => e.checked), `every hole checked (${lastHole} last), not signed yet`);
+// "Löcher prüfen": back to the holes, nothing signed
+await ask.getByRole('button', { name: 'Löcher prüfen' }).click();
+await p.waitForTimeout(400);
+ok((await ask.count()) === 0 && !(await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), '"Löcher prüfen": the holes again, nothing signed');
+await p.getByRole('button', { name: 'Voriges Loch' }).click().catch(() => {});
+await p.waitForTimeout(300);
+// any hole confirmed again: the question again – "Runde bestätigen" signs
+await p.locator('.sticky-cta .btn-primary').click();
+await p.waitForTimeout(500);
+await p.getByRole('dialog', { name: 'Alle Löcher geprüft' }).getByRole('button', { name: 'Runde bestätigen' }).click();
 await p.waitForTimeout(1500);
 const signed = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]);
-ok(!!signed.signedAt && signed.entries.me.every((e) => e.checked), 'every hole checked, the round signed');
+ok(!!signed.signedAt && signed.entries.me.every((e) => e.checked), '"Runde bestätigen": the round signed');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
