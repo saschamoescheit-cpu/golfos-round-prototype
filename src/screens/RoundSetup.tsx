@@ -121,7 +121,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // the values other players entered for this course – read again when new ones came (night run 22./23.10.2026)
   useEffect(() => {
     let alive = true;
-    fetchShared(props.course.id).then((news) => alive && news && setRatingsSeen((n) => n + 1));
+    // read again after every answer: a second request (React's double start in development) finds nothing new itself
+    fetchShared(props.course.id).then(() => alive && setRatingsSeen((n) => n + 1));
     return () => {
       alive = false;
     };
