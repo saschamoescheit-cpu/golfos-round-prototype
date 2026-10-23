@@ -321,6 +321,68 @@ describe('Snake, Dots, Bingo Bango Bongo recomputed independently', () => {
     }
   });
 
+  it('Rabbit: an outright net win catches the free rabbit, another sets it free; held after 9 and 18, each other pays', () => {
+    let caught = 0;
+    for (let k = 0; k < 300; k++) {
+      seed = 53 + k * 181;
+      const n = k % 2 ? 9 : 18;
+      const g = game('rabbit', 2 + (k % 3), n, { stake: 2 });
+      const ids = g.players.map((p) => p.id);
+      // the last hole of each nine with a score from everyone, so the nine is settled
+      for (const end of n === 18 ? [8, 17] : [8]) for (const id of ids) g.scores[id][end] ??= g.holes[end].par;
+      const net = netOf(g);
+      const won: Record<string, number> = Object.fromEntries(ids.map((id) => [id, 0]));
+      let holder: string | null = null;
+      for (let i = 0; i < n; i++) {
+        if (allIn(g, i)) {
+          const v = ids.map((id) => net(id, i)!);
+          const low = Math.min(...v);
+          if (v.filter((x) => x === low).length === 1) {
+            const w = ids[v.indexOf(low)];
+            holder = holder == null ? w : holder === w ? w : null;
+          }
+        }
+        if (i === 8 || i === n - 1) {
+          if (holder) {
+            won[holder]++;
+            caught++;
+          }
+          holder = null;
+        }
+      }
+      const app = standingOf(g);
+      for (const r of app.rows) expect(r.points, `game ${k}: rabbits of ${r.name}`).toBe(won[r.id]);
+      for (const id of ids) {
+        const want = won[id] * 2 * (ids.length - 1) - ids.filter((q) => q !== id).reduce((a, q) => a + won[q] * 2, 0);
+        expect(near(app.money![id], want), `game ${k}: money of ${id}`).toBe(true);
+      }
+    }
+    expect(caught).toBeGreaterThan(100);
+  });
+
+  it('Acey Deucey: the outright best collects from each, the outright worst pays each – the accounts add up to zero', () => {
+    for (let k = 0; k < 300; k++) {
+      seed = 59 + k * 191;
+      const g = game('acey', 3 + (k % 2), k % 3 ? 18 : 9, { stake: 0.5 });
+      const ids = g.players.map((p) => p.id);
+      const net = netOf(g);
+      const pts: Record<string, number> = Object.fromEntries(ids.map((id) => [id, 0]));
+      g.holes.forEach((_, i) => {
+        if (!allIn(g, i)) return;
+        const v = ids.map((id) => net(id, i)!);
+        const lo = Math.min(...v);
+        const hi = Math.max(...v);
+        if (lo === hi) return;
+        if (v.filter((x) => x === lo).length === 1) ids.forEach((id, j) => (pts[id] += v[j] === lo ? ids.length - 1 : -1));
+        if (v.filter((x) => x === hi).length === 1) ids.forEach((id, j) => (pts[id] += v[j] === hi ? -(ids.length - 1) : 1));
+      });
+      const app = standingOf(g);
+      for (const r of app.rows) expect(r.points, `game ${k}: points of ${r.name}`).toBe(pts[r.id]);
+      for (const id of ids) expect(near(app.money![id], pts[id] * 0.5), `game ${k}: money`).toBe(true);
+      expect(Math.abs(ids.reduce((a, id) => a + app.money![id], 0)) < 1e-9, `game ${k}: zero sum`).toBe(true);
+    }
+  });
+
   it('Bingo Bango Bongo: one point for each of the three, the difference times the stake', () => {
     for (let k = 0; k < 300; k++) {
       seed = 47 + k * 179;

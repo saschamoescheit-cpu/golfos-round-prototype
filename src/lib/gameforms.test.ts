@@ -267,6 +267,22 @@ describe('hammer, rabbit, acey deucey and free teams (night run 15./16.10.2026)'
     expect(st.rows[0]).toMatchObject({ id: 'p2', points: 1 });
     expect(st.money).toEqual({ p0: -2, p1: -2, p2: 4 });
   });
+  it('the rabbit of the front nine is paid even when hole 9 has no score from everyone (night run 23.10.2026)', () => {
+    // P0 catches it on hole 1 and holds it; hole 9 lacks P1's score; P0 should not take it into the back nine
+    const front = (a: number[]) => a.concat(Array(9).fill(4));
+    const scores = [front([3, 4, 4, 4, 4, 4, 4, 4, 4]), front([4, 4, 4, 4, 4, 4, 4, 4, 4]), front([4, 4, 4, 4, 4, 4, 4, 4, 4])];
+    scores[1][8] = null as unknown as number;
+    scores[0][10] = 3; // P0 wins hole 11 alone: with a fresh back nine that catches the free rabbit
+    scores[1][11] = 3; // P1 sets it free again on hole 12
+    const g = game('rabbit', scores, { stake: 1 });
+    const st = formDef('rabbit').standing(g);
+    expect(Object.fromEntries(st.rows.map((r) => [r.id, r.points]))).toEqual({ p0: 1, p1: 0, p2: 0 });
+    // a game finished with the last hole open: the rabbit of the nine is paid all the same
+    const short = game('rabbit', [[3, 4, 4], [4, 4, null], [4, 4, 4]], { stake: 1 });
+    expect(formDef('rabbit').standing({ ...short, finishedAt: '2026-10-23T10:00:00Z' }).rows[0]).toMatchObject({ id: 'p0', points: 1 });
+    // still running: nothing paid before the nine is over
+    expect(formDef('rabbit').standing(short).rows[0].points).toBe(0);
+  });
   it('acey deucey: the best collects from each, the worst pays each', () => {
     const st = formDef('acey').standing(game('acey', [[3], [4], [4], [6]], { stake: 1 }));
     // ace P0 +3, the others −1; deuce P3 −3, the others +1

@@ -840,7 +840,9 @@ export const FORMS: FormDef[] = [
           const w = nets.filter((x) => x.v === low);
           if (w.length === 1) holder = holder == null ? w[0].id : holder === w[0].id ? holder : null;
         }
-        if (ends.includes(i) && played(g, i)) {
+        // the nine is over with its last hole – or, when that hole lacks a score, once a later hole is played or the
+        // game is finished (night run 23.10.2026: the holder took the rabbit of the front nine into the back nine)
+        if (ends.includes(i) && (played(g, i) || !!g.finishedAt || g.holes.some((_, j) => j > i && played(g, j)))) {
           if (holder) won[holder]++;
           holder = null;
         }
