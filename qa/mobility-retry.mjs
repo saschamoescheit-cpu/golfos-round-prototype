@@ -17,6 +17,19 @@ const run = async (misses) => {
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
+  // the page writes down every "not recognised" screen and its button as it shows (with the synthetic player it shows
+  // for a moment only – a check that looks every 150 ms missed it under load, 23.10.2026)
+  await p.addInitScript(() => {
+    const w = window;
+    w.__missed = [];
+    const look = () => {
+      const res = document.querySelector('.mob-result');
+      if (!res || !/nicht erkannt/.test(res.textContent ?? '')) return;
+      const btn = [...document.querySelectorAll('.btn-primary')].map((x) => x.innerText).find((x) => /Nochmal versuchen/.test(x)) ?? '';
+      if (btn && !w.__missed.includes(btn)) w.__missed.push(btn);
+    };
+    new MutationObserver(look).observe(document, { subtree: true, childList: true, characterData: true });
+  });
   await p.goto(url);
   await p.evaluate((n) => {
     localStorage.clear();
@@ -55,6 +68,11 @@ const run = async (misses) => {
     await p.waitForTimeout(150);
   }
   const results = await p.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]').at(-1)?.results ?? {}));
+  // what the page saw itself (every screen, however short)
+  for (const btn of await p.evaluate(() => window.__missed ?? [])) {
+    seen.add(btn);
+    if (/\(\d\)/.test(btn)) countdown = btn;
+  }
   const waiting = await p.locator('.mob-result').filter({ hasText: 'nicht erkannt' }).isVisible().catch(() => false);
   const btn = await p.evaluate(() => [...document.querySelectorAll('.btn-primary')].map((x) => x.innerText).find((x) => /Nochmal versuchen/.test(x)) ?? '');
   await ctx.close();
