@@ -383,6 +383,38 @@ describe('Snake, Dots, Bingo Bango Bongo recomputed independently', () => {
     }
   });
 
+  it('Hammer: every accepted hammer doubles the hole, a declined one gives the hole up at its value before', () => {
+    for (let k = 0; k < 300; k++) {
+      seed = 61 + k * 193;
+      const four = k % 2 === 1;
+      const g = game('hammer', four ? 4 : 2, 18, { stake: 1 });
+      g.extra = g.holes.map(() => {
+        const hammer = Math.floor(rnd() * 4);
+        const c = rnd();
+        return { hammer, conceded: c < 0.06 ? ('A' as const) : c < 0.12 ? ('B' as const) : undefined };
+      });
+      const net = netOf(g);
+      const [A, B] = four ? [['p0', 'p1'], ['p2', 'p3']] : [['p0'], ['p1']];
+      let units = 0;
+      g.holes.forEach((_, i) => {
+        const x = g.extra[i];
+        const worth = 2 ** x.hammer!;
+        if (x.conceded) {
+          units += x.conceded === 'B' ? worth : -worth; // the side giving up pays the hole's value
+          return;
+        }
+        if (!allIn(g, i)) return;
+        const a = Math.min(...A.map((id) => net(id, i)!));
+        const b = Math.min(...B.map((id) => net(id, i)!));
+        units += a < b ? worth : a > b ? -worth : 0;
+      });
+      const app = standingOf(g);
+      expect(app.rows.find((r) => r.id === 'A')!.points, `game ${k}`).toBe(units);
+      for (const id of A) expect(near(app.money![id], units), `game ${k}: money`).toBe(true);
+      for (const id of B) expect(near(app.money![id], -units), `game ${k}: money`).toBe(true);
+    }
+  });
+
   it('Bingo Bango Bongo: one point for each of the three, the difference times the stake', () => {
     for (let k = 0; k < 300; k++) {
       seed = 47 + k * 179;
