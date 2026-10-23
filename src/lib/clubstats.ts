@@ -1,8 +1,8 @@
-import type { Club, LngLat, Round, Shot, Strike } from '../types';
+import type { Club, Flight, LngLat, Round, Shot, Strike } from '../types';
 import { bearingDeg, distanceM, pointAt } from './geo';
 import { playsLike, type Conditions } from './caddie';
 import { sideOf } from './dispersion';
-import { mishit } from './shotfacts';
+import { flightOf, mishit } from './shotfacts';
 import { plausibleForClub, shotLengths } from './shots';
 
 // Per club from the checked shots (Sascha 22.10.2026): the bag's distances from good strikes only, taken back to calm
@@ -34,6 +34,7 @@ export interface ClubShot {
   len: number; // as played
   calm: number; // in calm air at 20 °C
   strike?: Strike;
+  flight?: Flight;
   side: number | null; // metres off the target line where the ball ended (+ right), null without a target
 }
 
@@ -65,7 +66,7 @@ export function clubShots(rounds: Round[], lineOf?: LineOf): ClubShot[] {
           const line = lineOf?.(r, i);
           if (line && line.length >= 2) side = sideOf(from, pointAt(line, distanceM(from, end)), end);
         } else if (d.pin && distanceM(from, d.pin) >= 40) side = sideOf(from, d.pin, end);
-        out.push({ club: s.club, len, calm: s.penalty ? len : calmLength(len, from, end, e.weather), strike: s.strike, side });
+        out.push({ club: s.club, len, calm: s.penalty ? len : calmLength(len, from, end, e.weather), strike: s.strike, flight: s.flight, side });
       });
     });
   }
@@ -92,7 +93,10 @@ export interface ClubReport {
   basis: 'good' | 'all';
   rated: number; // shots with a strike set
   good: number; // of them good
-  misses: Partial<Record<Strike, number>>;
+  misses: Partial<Record<Strike, number>>; // the contact: fat, thin, shank
+  /** the flights other than straight (Sascha 23.10.2026) – with "slice"/"hook" set as strike before */
+  flights: Partial<Record<Flight, number>>;
+  flown: number; // shots with a flight set
   /** 80 % of the balls between `lo` and `hi` metres off the target line (− left, + right), from 5 shots on. */
   corridor: { lo: number; hi: number; shots: number } | null;
 }
@@ -104,7 +108,15 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
     const learn = learnFrom(xs);
     const rated = xs.filter((x) => x.strike);
     const misses: Partial<Record<Strike, number>> = {};
-    for (const x of rated) if (x.strike !== 'good') misses[x.strike!] = (misses[x.strike!] ?? 0) + 1;
+    for (const x of rated) if (x.strike !== 'good' && x.strike !== 'slice' && x.strike !== 'hook') misses[x.strike!] = (misses[x.strike!] ?? 0) + 1;
+    const flights: Partial<Record<Flight, number>> = {};
+    let flown = 0;
+    for (const x of xs) {
+      const f = flightOf(x);
+      if (!f) continue;
+      flown++;
+      if (f !== 'straight') flights[f] = (flights[f] ?? 0) + 1;
+    }
     const sides = xs.map((x) => x.side).filter((v): v is number => v != null);
     return {
       club,
@@ -114,6 +126,8 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
       rated: rated.length,
       good: rated.filter((x) => x.strike === 'good').length,
       misses,
+      flights,
+      flown,
       corridor: sides.length >= 5 ? { lo: Math.round(quantile(sides, 0.1)), hi: Math.round(quantile(sides, 0.9)), shots: sides.length } : null,
     };
   });

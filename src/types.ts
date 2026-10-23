@@ -98,7 +98,11 @@ export type Club = 'Dr' | '3W' | '4W' | '5W' | '7W' | '9W' | '2H' | '3H' | 'Hy' 
  *  unplayable (Rule 19: drop or again – Sascha 22.10.2026). */
 export type PenaltyKind = 'water' | 'ob' | 'lost' | 'unplayable';
 /** How the shot was struck (Sascha 22.10.2026: the bag learns from good strikes; misses per club). */
+/** How the ball was struck (contact). 'slice' and 'hook' only in shots checked before 23.10.2026 – now the flight says it. */
 export type Strike = 'good' | 'fat' | 'thin' | 'slice' | 'hook' | 'shank';
+/** The ball's flight (Sascha 23.10.2026: "all the flights are needed to judge a swing") – the nine of the ball flight laws:
+ *  where it starts (pull = left, push = right for a right-hander) and how it curves (hook left, slice right). */
+export type Flight = 'pullHook' | 'pull' | 'pullSlice' | 'hook' | 'straight' | 'slice' | 'pushHook' | 'push' | 'pushSlice';
 /** What the shot was meant to do – a layup is no missed green. */
 export type Intent = 'attack' | 'layup' | 'recovery';
 /** The stance: flat, uphill, downhill, ball above / below the feet. */
@@ -115,6 +119,7 @@ export interface Shot {
   /** the ball played again was a provisional ball (out of bounds / lost off the tee) */
   provisional?: boolean;
   strike?: Strike;
+  flight?: Flight;
   intent?: Intent;
   slope?: SlopeLie;
   kind?: ShotKind; // missing = suggested from lie and distance

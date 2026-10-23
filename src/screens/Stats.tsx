@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import type { Round, Strike } from '../types';
+import type { Flight, Round, Strike } from '../types';
 import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
 import { Segmented } from '../components/ui';
 import { SgCard } from '../components/SgCard';
@@ -11,7 +11,7 @@ import { statRounds, unsignedRounds } from '../lib/signing';
 import { clubReports, corridorText } from '../lib/clubstats';
 import { approachBands, puttMisses } from '../lib/approachstats';
 import { lineOfStored } from '../lib/holelines';
-import { strikeName } from '../lib/shotfacts';
+import { flightName, strikeName } from '../lib/shotfacts';
 import { profileIndex } from '../lib/profile';
 import { teeStats } from '../lib/teestats';
 import { clubName } from '../lib/caddie';
@@ -420,15 +420,17 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               <p className="muted small stats-sub">{tr('Corridor: 80 % of your balls end in it, measured from the target line', 'Korridor: 80 % deiner Bälle landen darin, gemessen an der Ziellinie')}</p>
               <div className="tee-clubs">
                 {reports
-                  .filter((c) => c.rated > 0 || c.corridor)
+                  .filter((c) => c.rated > 0 || c.flown > 0 || c.corridor)
                   .map((c) => {
                     const top = Object.entries(c.misses).sort((x, y) => (y[1] ?? 0) - (x[1] ?? 0))[0];
+                    const topFlight = Object.entries(c.flights).sort((x, y) => (y[1] ?? 0) - (x[1] ?? 0))[0];
                     return (
                       <div key={c.club} className="tee-club-row">
                         <h3 className="tee-club-name">{clubName(c.club)}</h3>
                         <div className="insight-row">
                           {c.rated > 0 && <Insight num={`${Math.round((c.good / c.rated) * 100)} %`} label={tr(`good strikes (${c.good} of ${c.rated})`, `gute Treffer (${c.good} von ${c.rated})`)} tone={c.good / c.rated >= 0.6 ? 'good' : undefined} />}
                           {top && <Insight num={strikeName(top[0] as Strike)} label={tr(`most frequent miss (${top[1]}×)`, `häufigster Fehlschlag (${top[1]}×)`)} tone="bad" />}
+                          {topFlight && <Insight num={flightName(topFlight[0] as Flight)} label={tr(`most frequent flight off line (${topFlight[1]} of ${c.flown})`, `häufigste Flugbahn neben der Linie (${topFlight[1]} von ${c.flown})`)} tone="bad" />}
                           {c.corridor && <Insight wide num={corridorText(c.corridor, tr)} label={tr(`corridor from ${c.corridor.shots} shots`, `Korridor aus ${c.corridor.shots} Schlägen`)} />}
                         </div>
                       </div>

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { Club, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike } from '../types';
+import type { Club, Flight, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike } from '../types';
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
-import { alwaysAgain, INTENTS, PENALTIES, SLOPES, STRIKES } from '../lib/shotfacts';
+import { alwaysAgain, FLIGHTS, flightOf, INTENTS, PENALTIES, SLOPES, STRIKES } from '../lib/shotfacts';
+import { isLeftHanded } from '../lib/profile';
 import { Chips, Segmented } from './ui';
 import { clubCode, tr } from '../lib/i18n';
 
@@ -22,6 +23,7 @@ export function ShotSheet(props: {
   replay?: boolean;
   provisional?: boolean;
   strike?: Strike;
+  flight?: Flight;
   intent?: Intent;
   slope?: SlopeLie;
   /** the stance read off the terrain model when the player has not set one (Sascha 22.10.2026) */
@@ -34,6 +36,7 @@ export function ShotSheet(props: {
     replay?: boolean;
     provisional?: boolean;
     strike?: Strike;
+    flight?: Flight;
     intent?: Intent;
     slope?: SlopeLie;
     kind: ShotKind;
@@ -53,7 +56,9 @@ export function ShotSheet(props: {
   // out of bounds or lost off the tee: the second ball was often a provisional one – the same stroke and distance
   const [provisional, setProvisional] = useState(!!props.provisional);
   // what the player tells after the round (Sascha 22.10.2026): strike, intent, stance – optional, one tap each
-  const [strike, setStrike] = useState<Strike | null>(props.strike ?? null);
+  // the contact; "slice"/"hook" of a shot checked before 23.10.2026 is its flight now
+  const [strike, setStrike] = useState<Strike | null>(props.strike === 'slice' || props.strike === 'hook' ? null : (props.strike ?? null));
+  const [flight, setFlight] = useState<Flight | null>(flightOf(props) ?? null);
   const [intent, setIntent] = useState<Intent | null>(props.intent ?? null);
   const [slope, setSlope] = useState<SlopeLie | null>(props.slope ?? props.slopeSuggested ?? null);
   const again = penalty && (alwaysAgain(pk as PenaltyKind) || replay);
@@ -69,6 +74,7 @@ export function ShotSheet(props: {
       replay: !penalty ? undefined : alwaysAgain(pk as PenaltyKind) ? true : replay,
       provisional: again && alwaysAgain(pk as PenaltyKind) ? provisional : undefined,
       strike: strike ?? undefined,
+      flight: flight ?? undefined,
       intent: intent ?? undefined,
       slope: slope ?? undefined,
       kind: shownKind,
@@ -170,6 +176,11 @@ export function ShotSheet(props: {
               <label>{tr('Strike (optional)', 'Treffer (optional)')}</label>
               <Chips<Strike> label={tr('Strike', 'Treffer')} value={strike} onChange={setStrike} options={STRIKES.map((x) => ({ value: x.value, label: x.label() }))} />
             </div>
+            {/* the ball's flight: all nine (Sascha 23.10.2026: "all the flights are needed to judge a swing") */}
+            <div className="field">
+              <label>{tr('Flight (optional)', 'Flugbahn (optional)')}</label>
+              <FlightPicker value={flight} onChange={setFlight} />
+            </div>
             <div className="field">
               <label>{tr('Meant to (optional)', 'Absicht (optional)')}</label>
               <Chips<Intent> label={tr('Meant to', 'Absicht')} value={intent} onChange={setIntent} options={INTENTS.map((x) => ({ value: x.value, label: x.label() }))} />
@@ -243,6 +254,34 @@ export function GreenSheet(props: {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** The nine flights as a 3 × 3 grid – rows: starting left, straight, right; columns: curving left, not, right – each
+ *  with its line from the ball upward (mirrored for a left-hander, whose pull goes right). */
+function FlightPicker(props: { value: Flight | null; onChange: (f: Flight | null) => void }) {
+  const lefty = isLeftHanded();
+  return (
+    <div className="flight-grid" role="group" aria-label={tr('Flight', 'Flugbahn')}>
+      {FLIGHTS.map((f) => {
+        // the path: from the ball (bottom middle) off in the start direction, then the curve
+        // the start line points at (20 + s, 5); the control point lies on it, so without a curve the path is straight and
+        // with one the end bends away to that side
+        const s = f.start * 8;
+        const c = f.curve * 10;
+        const d = `M20 34 Q${(20 + s * 0.55).toFixed(1)} 19 ${20 + s + c} 5`;
+        return (
+          <button key={f.value} type="button" className="flight-opt" aria-pressed={props.value === f.value} onClick={() => props.onChange(props.value === f.value ? null : f.value)}>
+            <svg width="40" height="38" viewBox="0 0 40 38" aria-hidden="true" style={lefty ? { transform: 'scaleX(-1)' } : undefined}>
+              <line x1="20" y1="36" x2="20" y2="3" stroke="currentColor" strokeOpacity="0.25" strokeDasharray="2 3" />
+              <path d={d} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+              <circle cx="20" cy="34" r="2.6" fill="currentColor" />
+            </svg>
+            <span>{f.label()}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

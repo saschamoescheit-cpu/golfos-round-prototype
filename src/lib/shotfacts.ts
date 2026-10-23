@@ -1,19 +1,36 @@
-import type { Intent, PenaltyKind, Shot, SlopeLie, Strike } from '../types';
+import type { Flight, Intent, PenaltyKind, Shot, SlopeLie, Strike } from '../types';
 import { tr } from './i18n';
 
 // What the player tells about a shot after the round (Sascha 22.10.2026, round check): how it was struck, what it was
 // meant to do, the stance – all optional, one tap each in the shot's sheet. The bag's distances learn from good
 // strikes only, the stats show the misses per club, an intended layup is no missed green.
 
+/** The contact (Sascha 23.10.2026: slice and hook are flights, they moved to FLIGHTS). */
 export const STRIKES: { value: Strike; label: () => string }[] = [
   { value: 'good', label: () => tr('Good', 'Gut') },
   { value: 'fat', label: () => tr('Fat', 'Fett') },
   { value: 'thin', label: () => tr('Thin', 'Dünn') },
-  { value: 'slice', label: () => 'Slice' },
-  { value: 'hook', label: () => 'Hook' },
   { value: 'shank', label: () => 'Shank' },
 ];
-export const strikeName = (s: Strike): string => STRIKES.find((x) => x.value === s)?.label() ?? s;
+export const strikeName = (s: Strike): string => (s === 'slice' ? 'Slice' : s === 'hook' ? 'Hook' : (STRIKES.find((x) => x.value === s)?.label() ?? s));
+
+/** The nine flights (ball flight laws), row by row: starting left, straight, right – curving left, not, right
+ *  (for a right-hander; a left-hander's are the mirror image, the names stay). */
+export const FLIGHTS: { value: Flight; label: () => string; start: -1 | 0 | 1; curve: -1 | 0 | 1 }[] = [
+  { value: 'pullHook', label: () => 'Pull Hook', start: -1, curve: -1 },
+  { value: 'pull', label: () => 'Pull', start: -1, curve: 0 },
+  { value: 'pullSlice', label: () => 'Pull Slice', start: -1, curve: 1 },
+  { value: 'hook', label: () => 'Hook', start: 0, curve: -1 },
+  { value: 'straight', label: () => tr('Straight', 'Gerade'), start: 0, curve: 0 },
+  { value: 'slice', label: () => 'Slice', start: 0, curve: 1 },
+  { value: 'pushHook', label: () => 'Push Hook', start: 1, curve: -1 },
+  { value: 'push', label: () => 'Push', start: 1, curve: 0 },
+  { value: 'pushSlice', label: () => 'Push Slice', start: 1, curve: 1 },
+];
+export const flightName = (f: Flight): string => FLIGHTS.find((x) => x.value === f)?.label() ?? f;
+/** A shot's flight – also from a shot checked before 23.10.2026, where "slice"/"hook" was set as the strike. */
+export const flightOf = (s: { flight?: Flight; strike?: Strike }): Flight | undefined =>
+  s.flight ?? (s.strike === 'slice' ? 'slice' : s.strike === 'hook' ? 'hook' : undefined);
 
 export const INTENTS: { value: Intent; label: () => string }[] = [
   { value: 'attack', label: () => tr('Went for it', 'Angegriffen') },

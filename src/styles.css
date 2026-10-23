@@ -1642,3 +1642,10 @@ button.tile:disabled { opacity: 1; }
 .help-player { position: fixed; inset: 0; z-index: 80; background: #000; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .help-player-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; color: #fff; }
 .help-player video { flex: 1; min-height: 0; width: 100%; background: #000; }
+
+/* the nine flights (Sascha 23.10.2026): a 3 × 3 grid with each path drawn */
+.flight-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.flight-opt { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 10px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body); }
+.flight-opt svg { color: var(--muted); }
+.flight-opt[aria-pressed='true'] { border-color: var(--brand); background: var(--brand-soft); }
+.flight-opt[aria-pressed='true'] svg { color: var(--brand-text); }

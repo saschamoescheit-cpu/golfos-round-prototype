@@ -6,7 +6,7 @@ import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLe
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
 import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
-import { fromDrop, intentName, penaltyName, playedAgain, strikeName } from '../lib/shotfacts';
+import { flightName, flightOf, fromDrop, intentName, penaltyName, playedAgain, strikeName } from '../lib/shotfacts';
 import { shotChecks } from '../lib/reviewchecks';
 import { stanceAt } from '../lib/terrain';
 import { isLeftHanded } from '../lib/profile';
@@ -1076,7 +1076,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     {lengths[n] != null ? ` · ${fmt(lengths[n]!)}` : ''}
                     {proximity(d, n) != null && proximity(d, n)! > 0 ? tr(` · ${fmt(proximity(d, n)!)} from the pin`, ` · auf ${fmt(proximity(d, n)!)} an der Fahne`) : ''}
                     {s.penalty ? ` · ${penaltyName(s.penaltyKind) ?? tr('penalty', 'Strafschlag')} (+1)` : ''}
-                    {s.strike ? ` · ${strikeName(s.strike)}` : ''}
+                    {s.strike && s.strike !== 'slice' && s.strike !== 'hook' ? ` · ${strikeName(s.strike)}` : ''}
+                    {flightOf(s) ? ` · ${flightName(flightOf(s)!)}` : ''}
                     {s.intent ? ` · ${intentName(s.intent)}` : ''}
                     {s.review && !odd ? tr(' · check', ' · prüfen') : ''}
                   </span>
@@ -1348,6 +1349,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           replay={editing.replay}
           provisional={editing.provisional}
           strike={editing.strike}
+          flight={editing.flight}
           intent={editing.intent}
           slope={editing.slope}
           slopeSuggested={(() => {

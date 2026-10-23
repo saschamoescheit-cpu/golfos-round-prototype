@@ -62,11 +62,19 @@ await p.locator('.review-list li[data-shot="0"] .shot-row').click();
 await p.waitForTimeout(300);
 // a tee box is level: "Eben" suggested (Sascha 22.10.2026: the stance suggested from the heights)
 ok((await p.getByRole('group', { name: 'Stand' }).getByRole('button', { name: 'Eben' }).getAttribute('aria-pressed')) === 'true', 'the tee shot: stance "Eben" suggested');
-for (const [g, v] of [['Treffer', 'Gut'], ['Absicht', 'Angegriffen'], ['Stand', 'Bergauf']]) await p.getByRole('group', { name: g }).getByRole('button', { name: v }).click();
+// the contact without slice and hook – those are flights now: all nine of them (Sascha 23.10.2026)
+const strikes = await p.getByRole('group', { name: 'Treffer' }).getByRole('button').allInnerTexts();
+ok(strikes.join(' ') === 'Gut Fett Dünn Shank', `"Treffer": the contact only (${strikes.join(' · ')})`);
+const flights = await p.getByRole('group', { name: 'Flugbahn' }).getByRole('button').allInnerTexts();
+ok(flights.map((t) => t.trim()).join(' · ') === 'Pull Hook · Pull · Pull Slice · Hook · Gerade · Slice · Push Hook · Push · Push Slice', `"Flugbahn": all nine (${flights.length})`);
+ok((await p.locator('.flight-opt svg path').count()) === 9, 'each flight with its path drawn');
+if (process.env.SHOTS) await p.locator('.shot-more').screenshot({ path: process.env.SHOTS + '/flights.png' });
+for (const [g, v] of [['Treffer', 'Gut'], ['Flugbahn', 'Push Slice'], ['Absicht', 'Angegriffen'], ['Stand', 'Bergauf']]) await p.getByRole('group', { name: g }).getByRole('button', { name: v, exact: true }).click();
 await p.getByRole('button', { name: /^Speichern/ }).last().click();
 await p.waitForTimeout(400);
 let e = await mine(0);
-ok(e.detail.shots[0].strike === 'good' && e.detail.shots[0].intent === 'attack' && e.detail.shots[0].slope === 'up', 'strike, intent and stance kept with the shot');
+ok(e.detail.shots[0].strike === 'good' && e.detail.shots[0].flight === 'pushSlice' && e.detail.shots[0].intent === 'attack' && e.detail.shots[0].slope === 'up', 'strike, flight, intent and stance kept with the shot');
+ok(/Push Slice/.test(await p.locator('.review-list li[data-shot="0"]').innerText()), 'the row shows the flight');
 ok(/Gut/.test(await p.locator('.review-list li[data-shot="0"]').innerText()) && /Angegriffen/.test(await p.locator('.review-list li[data-shot="0"]').innerText()), 'the row shows "Gut · Angegriffen"');
 
 // 2 · shot 2 lost, a provisional ball played
