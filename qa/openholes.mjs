@@ -31,21 +31,28 @@ await p.evaluate((r) => {
   localStorage.setItem('golfos.rounds.v1', JSON.stringify([r]));
   sessionStorage.setItem('golfos.module', 'rounds');
 }, round);
-await p.goto(`${url}#review=qa-open`); // the round's check (as a tapped notification opens it)
-await p.reload();
-await p.waitForTimeout(3500);
+// the round's check opened afresh, as a tapped notification opens the app
+await p.goto('about:blank');
+await p.goto(`${url}#review=qa-open`);
+// under load the course map takes a moment: wait for the check itself, not a fixed time
+await p.locator('.review-nav strong').first().waitFor({ timeout: 90000 });
 const holeNow = async () => (await p.locator('.review-nav strong').first().innerText()).replace('Loch ', '').trim();
-ok((await holeNow()) === '1A', 'the check starts at 1A');
+/** Waits until the check shows this hole (at most 15 s) – then reads it. */
+const at = async (label) => {
+  await p.waitForFunction((l) => document.querySelector('.review-nav strong')?.textContent?.replace('Loch ', '').trim() === l, label, { timeout: 15000 }).catch(() => {});
+  return holeNow();
+};
+ok((await at('1A')) === '1A', 'the check starts at 1A');
 ok((await p.locator('.review-filter').count()) === 0, 'at the start: no choice yet – every hole in turn');
 // to the last hole with the arrow, then confirm it: 8 holes open
 for (let n = 0; n < 8; n++) {
   await p.getByRole('button', { name: 'Nächstes Loch' }).click();
   await p.waitForTimeout(150);
 }
-ok((await holeNow()) === '9A', 'on to 9A with the arrow (nothing confirmed)');
+ok((await at('9A')) === '9A', 'on to 9A with the arrow (nothing confirmed)');
 await p.getByRole('button', { name: /Loch 9A passt/ }).click();
 await p.waitForTimeout(800);
-ok((await holeNow()) === '1A', 'last hole confirmed with holes open: back to the first open one');
+ok((await at('1A')) === '1A', 'last hole confirmed with holes open: back to the first open one');
 const filter = p.locator('.review-filter');
 ok((await filter.getByRole('button', { name: 'Noch zu prüfen (8)' }).getAttribute('aria-pressed')) === 'true', 'from now on only the open holes: "Noch zu prüfen (8)" chosen');
 const chips = await filter.getByRole('group', { name: 'Noch zu prüfende Löcher' }).getByRole('button').allInnerTexts();
@@ -53,16 +60,16 @@ ok(chips.join(' ') === '1A 2A 3A 4A 5A 6A 7A 8A', `the open holes as chips: ${ch
 // confirm 1A and 2A: on to the next open one
 await p.getByRole('button', { name: /Loch 1A passt ✓ → nächstes offenes/ }).click();
 await p.waitForTimeout(500);
-ok((await holeNow()) === '2A', '"Loch passt" → the next open hole');
+ok((await at('2A')) === '2A', '"Loch passt" → the next open hole');
 await p.getByRole('button', { name: /Loch 2A passt/ }).click();
 await p.waitForTimeout(500);
 // a chip jumps; the arrows skip the checked holes
 await filter.getByRole('button', { name: '7A' }).click();
 await p.waitForTimeout(400);
-ok((await holeNow()) === '7A', 'a chip jumps to its hole');
+ok((await at('7A')) === '7A', 'a chip jumps to its hole');
 await p.getByRole('button', { name: 'Nächstes Loch' }).click();
 await p.waitForTimeout(400);
-ok((await holeNow()) === '8A', '→ the next open hole');
+ok((await at('8A')) === '8A', '→ the next open hole');
 ok(await p.getByRole('button', { name: 'Nächstes Loch' }).isDisabled(), 'after 8A no open hole further on (9A is done)');
 await filter.getByRole('button', { name: '3A' }).click();
 await p.waitForTimeout(300);
@@ -73,7 +80,7 @@ await p.waitForTimeout(300);
 ok((await filter.getByRole('group', { name: 'Noch zu prüfende Löcher' }).count()) === 0 && (await filter.getByRole('button', { name: /Noch zu prüfen/ }).count()) === 1, '"Alle Löcher": the chips go, the choice stays');
 await p.getByRole('button', { name: 'Voriges Loch' }).click();
 await p.waitForTimeout(400);
-ok((await holeNow()) === '2A', '"Alle Löcher": the arrows go through every hole again (3A ← 2A, checked)');
+ok((await at('2A')) === '2A', '"Alle Löcher": the arrows go through every hole again (3A ← 2A, checked)');
 await filter.getByRole('button', { name: /Noch zu prüfen/ }).click();
 await p.waitForTimeout(300);
 // confirm the remaining open holes: the last one signs the round
