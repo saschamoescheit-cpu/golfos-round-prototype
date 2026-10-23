@@ -36,6 +36,7 @@ import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
+import { clubSpread, spreadShape } from '../lib/spread';
 import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
 import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
@@ -391,10 +392,8 @@ export function HoleScreen(props: {
   // Own tendency per club (≥ 5 tracked shots) – the caddie aims against it.
   const tendency = useMemo(() => new Map(clubDispersion(loadRounds().filter((r) => r.finishedAt)).filter((d) => d.shots >= 5).map((d) => [d.club, d.sideMean])), []);
   // Own corridor per club (≥ 5 checked shots): the caddie keeps water and out of bounds out of it (Sascha 22.10.2026)
-  const corridor = useMemo(
-    () => new Map(clubReports(statRounds(loadRounds()), lineOfStored()).flatMap((c) => (c.corridor ? [[c.club, { lo: c.corridor.lo, hi: c.corridor.hi }] as const] : []))),
-    [],
-  );
+  const clubReps = useMemo(() => new Map(clubReports(statRounds(loadRounds()), lineOfStored()).map((c) => [c.club, c] as const)), []);
+  const corridor = useMemo(() => new Map([...clubReps.values()].flatMap((c) => (c.corridor ? [[c.club, { lo: c.corridor.lo, hi: c.corridor.hi }] as const] : []))), [clubReps]);
   const caddieSettings = useMemo(() => loadCaddieSettings(), []);
   // Hidden by the player until the caddie has something new to say (new hole, new shot, new warning).
   // The caddie card opens only on a tap; new advice shows as a dot on the caddie button ("!" with a warning).
@@ -424,6 +423,22 @@ export function HoleScreen(props: {
   const forward = () => (pendingHole != null ? onAfterScore(true) : myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1));
   const [puttEditor, setPuttEditor] = useState(false);
   const [hazardsOn, setHazardsOn] = useState(false); // distances to bunkers and water, on demand
+  // the spread of the caddie's club on the map (Sascha 23.10.2026) – a map tool, remembered; on at first
+  const [spreadOn, setSpreadOnState] = useState(() => {
+    try {
+      return localStorage.getItem('golfos.spread.v1') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const setSpreadOn = (on: boolean) => {
+    setSpreadOnState(on);
+    try {
+      localStorage.setItem('golfos.spread.v1', on ? '1' : '0');
+    } catch {
+      // storage full – the switch holds for this round
+    }
+  };
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
   const [drawerOpen, setDrawerOpen] = useState(false); // hole overview pulled up from the hole bar (Hole19)
   const barTouch = useRef<number | null>(null);
@@ -1003,6 +1018,13 @@ export function HoleScreen(props: {
     // Something new to say = new hole, other club, new warning, or the player moved on (≈ 25 m steps).
     const caddieSig = cad ? `${i}|${cad.advice.club}${cad.advice.swing ?? ''}|${cad.warning ?? ''}|${cad.ap.kind}|${Math.round(cad.pl.distance / 25)}` : '';
     const caddieShown = (cad != null || (tournament && caddieOn)) && caddieOpen; // the tool bar is the same on every hole (Sascha 15.10.2026)
+    // the spread of the caddie's club around his landing spot – on the map and in the card (Sascha 23.10.2026: "plan
+    // holes and single shots with the dispersion"); own shots from 5 on, else estimated from the handicap
+    // (the caddie aims against the club's own tendency already – the balls spread around his spot less that tendency)
+    const spread0 = cad && !cad.shortGame && !putt && !greenFocus ? clubSpread(cad.advice.club, distanceM(from, cad.target), clubReps.get(cad.advice.club), caddiePlaying) : null;
+    const tend = spread0 ? (tendency.get(spread0.club) ?? 0) : 0;
+    const spreadNow = spread0 ? { ...spread0, side: { lo: spread0.side.lo - tend, hi: spread0.side.hi - tend } } : null;
+    const spreadOnMap = spreadNow && cad && spreadOn ? { ...spreadShape(from, cad.target, spreadNow), own: spreadNow.shots > 0 } : null;
     // unread: a small green dot until the caddie was opened on this hole – on the next hole it comes back (Sascha 17.10.2026)
     const caddieNews = cad != null && !greenFocus && !caddieOpen && seenSig !== String(i);
     const toggleCaddie = () => {
@@ -1072,6 +1094,7 @@ export function HoleScreen(props: {
                 }
           }
           aimPoint={null}
+          spread={spreadOnMap}
           greenChart={chart && greenVisible ? { url: chart.file, corners: chart.corners, roomy: !greenFocus && showGreen !== true, fit: showGreen === true && mapData.green ? mapData.green : undefined } : null}
           putt={putt && ball ? { ball, line: putt.path, aim: Math.abs(putt.aimCm) >= 5 ? puttAim : null } : null}
           greenSlope={!chart && slope && green_ && green_.level !== 'flat' ? { pos: mapData.greenCenter, downDeg: slope.downDeg, label: levelName(green_.level, true) } : undefined}
@@ -1180,6 +1203,15 @@ export function HoleScreen(props: {
                 <ellipse cx="12" cy="13" rx="9.5" ry="6.5" />
                 <path d="M7.5 10.5l8 4.5" />
                 <path d="M15.5 15l-3.4.3M15.5 15l-1.4-3.1" />
+              </svg>
+            </button>
+          )}
+          {cad && !tournament && (
+            <button type="button" className="map-tool" aria-pressed={spreadOn} aria-label={spreadOn ? tr('Hide the spread', 'Streuung ausblenden') : tr('Show the spread of the club', 'Streuung des Schlägers zeigen')} title={tr('Spread', 'Streuung')} onClick={() => setSpreadOn(!spreadOn)}>
+              {/* spread: the cone from the ball to the ellipse where 80 % of the balls land */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <ellipse cx="12" cy="7" rx="8" ry="3.5" />
+                <path d="M12 21L4.6 8.4M12 21l7.4-12.6" strokeDasharray="2 2.4" />
               </svg>
             </button>
           )}
@@ -1489,6 +1521,7 @@ export function HoleScreen(props: {
               ob={cad.ob}
               ahead={hazardsAhead(mapData, from)}
               unit={unit}
+              spread={spreadNow}
               lines={cad.lines}
               alt={cad.alt}
               onHide={toggleCaddie}

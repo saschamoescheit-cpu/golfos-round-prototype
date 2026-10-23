@@ -112,6 +112,10 @@ export interface ClubReport {
   flown: number; // shots with a flight set
   /** 80 % of the balls between `lo` and `hi` metres off the target line (− left, + right), from 5 shots on. */
   corridor: { lo: number; hi: number; shots: number } | null;
+  /** 80 % of the lengths (calm air) between `lo` and `hi` metres short / long of the median, from 5 shots on */
+  lenBand: { lo: number; hi: number } | null;
+  /** every shot with a target line: metres off it (+ right) and its length in calm air – the dispersion chart */
+  points: { side: number; len: number; strike: 'good' | 'miss' | null }[];
 }
 
 export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
@@ -133,10 +137,12 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
       if (f !== 'straight') flights[f] = (flights[f] ?? 0) + 1;
     }
     const sides = xs.map((x) => x.side).filter((v): v is number => v != null);
+    const med = median(learn.map((x) => x.calm));
+    const lens = xs.filter((x) => !mishit(x.strike)).map((x) => x.calm - med);
     return {
       club,
       shots: xs.length,
-      median: Math.round(median(learn.map((x) => x.calm))),
+      median: Math.round(med),
       basis: learn.length && learn.every((x) => x.strike === 'good') ? 'good' : 'all',
       rated: rated.length,
       good: rated.filter((x) => x.strike === 'good').length,
@@ -144,6 +150,8 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
       flights,
       flown,
       corridor: sides.length >= 5 ? { lo: Math.round(quantile(sides, 0.1)), hi: Math.round(quantile(sides, 0.9)), shots: sides.length } : null,
+      lenBand: lens.length >= 5 ? { lo: Math.round(quantile(lens, 0.1)), hi: Math.round(quantile(lens, 0.9)) } : null,
+      points: xs.flatMap((x) => (x.side != null ? [{ side: Math.round(x.side), len: Math.round(x.calm), strike: x.strike === 'good' ? ('good' as const) : mishit(x.strike) ? ('miss' as const) : null }] : [])),
     };
   });
 }

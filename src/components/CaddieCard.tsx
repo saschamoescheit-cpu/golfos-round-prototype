@@ -9,6 +9,8 @@ import type { HazardAhead, HoleBook } from '../lib/holebook';
 import type { PlaysLike } from '../lib/caddie';
 import { formatDistance, type Unit } from '../lib/geo';
 import { hazardWord, sideWord } from '../lib/i18n';
+import { corridorText } from '../lib/clubstats';
+import type { ClubSpread } from '../lib/spread';
 
 // The caddie on the hole map (feature 017): appears when he has something new to say, can be hidden completely.
 // Folded it is one glance – club, distance and the one line that matters; tapped open: reasons, lie, read aloud,
@@ -32,6 +34,8 @@ export function CaddieCard(props: {
   ob?: { left: number; right: number } | null;
   ahead?: HazardAhead[];
   unit?: Unit;
+  /** the spread of the advised club – also drawn on the map (Sascha 23.10.2026) */
+  spread?: ClubSpread | null;
 }) {
   // the player opened the caddie: everything at once (Sascha 15.10.2026); no folding – shown or hidden from the
   // map's menu (Sascha 16.10.2026: "den kleinen Einklapppfeil brauchen wir nicht")
@@ -61,7 +65,7 @@ export function CaddieCard(props: {
           </span>
         ))}
         <NoteRow note={props.note} />
-        <CaddieFacts pl={props.pl} weather={props.weather ?? null} ob={props.ob ?? null} ahead={props.ahead ?? []} unit={props.unit ?? 'm'} />
+        <CaddieFacts pl={props.pl} weather={props.weather ?? null} ob={props.ob ?? null} ahead={props.ahead ?? []} unit={props.unit ?? 'm'} spread={props.spread ?? null} />
         {SHOW_DETAILS && props.alt && <span className="alt">{props.alt}</span>}
         {SHOW_DETAILS && props.book && <BookPart book={props.book} said={props.lines.map((l) => l.text)} />}
         {props.lie != null && (
@@ -324,11 +328,12 @@ const HILL = 'M3 19l6-8 4 5 3-3 5 6z';
 const STAKE = 'M7 3v18M17 3v18M7 8h10M7 14h10';
 const SAND = 'M3 16c3-4 6-4 9 0s6 4 9 0M5 11c2-2 5-2 7 0';
 const WATER = 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z';
+const SPREAD = 'M12 21L5 6M12 21l7-15M4 6a8 3 0 0 0 16 0a8 3 0 0 0-16 0';
 
 /** The facts under the caddie's advice (Sascha 18.10.2026: "very little information in the caddie – out of bounds,
  *  the coming hazards, the influence of temperature and wind"): one row what changes the length, one the boundary
  *  near the target, one per hazard ahead – short, each with its sign. */
-function CaddieFacts(props: { pl?: PlaysLike; weather: { tempC: number; windKmh: number } | null; ob: { left: number; right: number } | null; ahead: HazardAhead[]; unit: Unit }) {
+function CaddieFacts(props: { pl?: PlaysLike; weather: { tempC: number; windKmh: number } | null; ob: { left: number; right: number } | null; ahead: HazardAhead[]; unit: Unit; spread?: ClubSpread | null }) {
   const u = props.unit;
   const d = (m: number) => `${formatDistance(m, u)} ${u}`;
   const m = (v: number) => (Math.abs(v) < 1 ? `±0 ${u}` : `${v > 0 ? '+' : '−'}${formatDistance(Math.abs(v), u)} ${u}`);
@@ -339,7 +344,8 @@ function CaddieFacts(props: { pl?: PlaysLike; weather: { tempC: number; windKmh:
   const cross = pl && Math.abs(pl.crossKmh) >= 5 ? tr(`crosswind ${Math.abs(pl.crossKmh)} from the ${pl.crossKmh > 0 ? 'right' : 'left'}`, `Seitenwind ${Math.abs(pl.crossKmh)} von ${pl.crossKmh > 0 ? 'rechts' : 'links'}`) : null;
   const windText = !pl || !w ? null : Math.round(w.windKmh) < 5 ? tr('calm', 'windstill') : [head, cross].filter(Boolean).join(' · ') || tr('calm', 'windstill');
   const obSides = props.ob ? (['left', 'right'] as const).filter((s) => Number.isFinite(props.ob![s])) : [];
-  if (!pl && !obSides.length && !props.ahead.length) return null;
+  if (!pl && !obSides.length && !props.ahead.length && !props.spread) return null;
+  const sp = props.spread;
   return (
     <div className="caddie-facts" aria-label={tr('What the caddie knows', 'Was der Caddie weiß')}>
       {pl && (
@@ -363,6 +369,15 @@ function CaddieFacts(props: { pl?: PlaysLike; weather: { tempC: number; windKmh:
             </span>
           )}
         </div>
+      )}
+      {sp && (
+        // the spread of this club: 80 % of the balls – own shots, or estimated from the handicap (Sascha 23.10.2026)
+        <span className="cf">
+          <Icon d={SPREAD} />
+          <span>
+            {tr('Spread', 'Streuung')} <b>{corridorText(sp.side, tr)}</b> · <b>±{formatDistance((sp.len.hi - sp.len.lo) / 2, u)} {u}</b> {tr('long', 'lang')} · {sp.shots ? tr(`${sp.shots} shots`, `${sp.shots} Schläge`) : tr('estimate', 'geschätzt')}
+          </span>
+        </span>
       )}
       {obSides.length > 0 && (
         <span className="cf warn">

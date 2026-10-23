@@ -46,6 +46,9 @@ export interface HoleMapProps {
   greenSlope?: { pos: LngLat; downDeg: number; label: string };
   /** Putt read on the green: the ball, the rolling line and the point to aim at next to the hole. */
   putt?: { ball: LngLat; line: LngLat[]; aim: LngLat | null } | null;
+  /** The spread of the caddie's club (Sascha 23.10.2026): where 80 % of the balls end around the landing spot, and the
+   *  cone from the ball to it – own shots solid, an estimate from the handicap dashed. */
+  spread?: { ellipse: LngLat[]; cone: [LngLat, LngLat][]; own: boolean } | null;
   /** Round check: only the shots – no plan line, no distance or hazard labels that would cover the shot labels. */
   plain?: boolean;
   /**
@@ -241,6 +244,11 @@ export function HoleMap(props: HoleMapProps) {
       m.addSource('hazard-ticks', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       m.addLayer({ id: 'hazard-ticks-casing', type: 'line', source: 'hazard-ticks', paint: { 'line-color': '#0E1418', 'line-width': 3.5, 'line-opacity': 0.5 } });
       m.addLayer({ id: 'hazard-ticks', type: 'line', source: 'hazard-ticks', paint: { 'line-color': '#FFFFFF', 'line-width': 1.75 } });
+      m.addSource('spread', { type: 'geojson', data: spreadData(latest.current) });
+      m.addLayer({ id: 'spread-fill', type: 'fill', source: 'spread', filter: ['==', 'kind', 'ellipse'], paint: { 'fill-color': '#9BC53D', 'fill-opacity': 0.22 } });
+      m.addLayer({ id: 'spread-line', type: 'line', source: 'spread', filter: ['all', ['==', 'kind', 'ellipse'], ['==', 'own', true]], paint: { 'line-color': '#9BC53D', 'line-width': 2 } });
+      m.addLayer({ id: 'spread-line-est', type: 'line', source: 'spread', filter: ['all', ['==', 'kind', 'ellipse'], ['==', 'own', false]], paint: { 'line-color': '#9BC53D', 'line-width': 2, 'line-dasharray': [2, 1.5] } });
+      m.addLayer({ id: 'spread-cone', type: 'line', source: 'spread', filter: ['==', 'kind', 'cone'], paint: { 'line-color': '#9BC53D', 'line-width': 1.5, 'line-opacity': 0.8, 'line-dasharray': [1.5, 1.5] } });
       m.addSource('putt', { type: 'geojson', data: puttLine(latest.current) });
       m.addLayer({ id: 'putt-casing', type: 'line', source: 'putt', paint: { 'line-color': '#0E1418', 'line-width': 5, 'line-opacity': 0.55 }, layout: { 'line-cap': 'round' } });
       m.addLayer({ id: 'putt', type: 'line', source: 'putt', paint: { 'line-color': '#9BC53D', 'line-width': 2.5 }, layout: { 'line-cap': 'round' } });
@@ -359,6 +367,7 @@ export function HoleMap(props: HoleMapProps) {
     const p = latest.current;
     (m.getSource('plan') as maplibregl.GeoJSONSource | undefined)?.setData(planLine(p));
     (m.getSource('putt') as maplibregl.GeoJSONSource | undefined)?.setData(puttLine(p));
+    (m.getSource('spread') as maplibregl.GeoJSONSource | undefined)?.setData(spreadData(p));
     // putt: white ball and a small ring where to aim
     const pm = markers.current;
     if (p.putt) {
@@ -810,6 +819,18 @@ function walkedData(p: HoleMapProps): GeoJSON.FeatureCollection {
 function trackLine(p: HoleMapProps): GeoJSON.FeatureCollection {
   const pts = (p.track ?? []).filter((t) => !t.hand && !t.sound).map((t) => t.pos);
   return { type: 'FeatureCollection', features: pts.length < 2 ? [] : [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts } }] };
+}
+
+function spreadData(p: HoleMapProps): GeoJSON.FeatureCollection {
+  const s = p.spread;
+  if (!s || p.putt || p.plain) return { type: 'FeatureCollection', features: [] };
+  return {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: { kind: 'ellipse', own: s.own }, geometry: { type: 'Polygon', coordinates: [s.ellipse] } },
+      ...s.cone.map((c): GeoJSON.Feature => ({ type: 'Feature', properties: { kind: 'cone', own: s.own }, geometry: { type: 'LineString', coordinates: c } })),
+    ],
+  };
 }
 
 function puttLine(p: HoleMapProps): GeoJSON.FeatureCollection {

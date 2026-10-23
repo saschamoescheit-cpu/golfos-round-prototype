@@ -1655,3 +1655,18 @@ button.tile:disabled { opacity: 1; }
 .data-row { display: flex; align-items: center; gap: 16px; }
 .data-row .sc-action { flex: none; width: 88px; }
 .data-row .data-text { margin: 0; min-width: 0; line-height: 1.45; }
+
+/* the spread charts (Sascha 23.10.2026): the cone over all clubs and each club's shots around the target line */
+.spread-chart { width: 100%; height: auto; display: block; background: var(--surface-2); border-radius: 12px; }
+.spread-chart.dots { margin-bottom: 4px; }
+.spread-grid { stroke: var(--line); stroke-width: 1; }
+.spread-mid { stroke: var(--text); stroke-opacity: 0.55; stroke-width: 1.5; }
+.spread-axis { fill: var(--muted); font-size: 10px; }
+.spread-label { fill: var(--text); font-size: 11px; font-weight: 700; }
+.spread-cone { stroke: var(--brand-text); stroke-width: 1.5; stroke-dasharray: 4 4; opacity: 0.8; }
+.spread-ell { fill: var(--brand-text); fill-opacity: 0.2; stroke: var(--brand-text); stroke-width: 1.5; }
+.spread-ell.est { fill: var(--muted); fill-opacity: 0.12; stroke: var(--muted); stroke-dasharray: 4 3; }
+.spread-ball { fill: var(--text); }
+.spread-dot { fill: var(--text); fill-opacity: 0.7; stroke: var(--surface); stroke-width: 1; }
+.spread-dot.miss { fill: var(--bad); fill-opacity: 0.85; }
+.spread-dot.good { fill: var(--brand-text); fill-opacity: 0.9; }

@@ -15,6 +15,8 @@ import { flightName, strikeName } from '../lib/shotfacts';
 import { profileIndex } from '../lib/profile';
 import { teeStats } from '../lib/teestats';
 import { clubName } from '../lib/caddie';
+import { clubSpread } from '../lib/spread';
+import { SpreadCone, SpreadDots } from '../components/SpreadCharts';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
 // and the focus areas that later feed the training plans (GOL-27).
@@ -414,20 +416,30 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               )}
             </section>
           )}
-          {section === 'clubs' && reports.some((c) => c.rated > 0 || c.corridor) && (
-            // how each club is struck and where its balls end (Sascha 22.10.2026: the misses and the corridor)
+          {section === 'clubs' && reports.some((c) => c.median >= 40) && (
+            // the spread over all clubs as one cone – to plan holes and shots with it (Sascha 23.10.2026)
             <section className="card stats-card airy">
-              <h2>{tr('Strikes and corridor per club', 'Treffer und Korridor je Schläger')}</h2>
-              <p className="muted small stats-sub">{tr('Corridor: 80 % of your balls end in it, measured from the target line', 'Korridor: 80 % deiner Bälle landen darin, gemessen an der Ziellinie')}</p>
+              <h2>{tr('Your spread', 'Deine Streuung')}</h2>
+              <p className="muted small stats-sub">{tr('80 % of your balls land in each club’s ellipse · solid: from your checked shots, dashed: estimated from your handicap', 'In der Ellipse je Schläger landen 80 % deiner Bälle · durchgezogen: aus deinen geprüften Schlägen, gestrichelt: geschätzt nach Handicap')}</p>
+              <SpreadCone reports={reports} playing={profileIndex()} />
+            </section>
+          )}
+          {section === 'clubs' && reports.some((c) => c.rated > 0 || c.corridor || c.points.length > 0) && (
+            // how each club is struck and where its balls end (Sascha 22.10.2026: the misses and the corridor; 23.10.: the spread)
+            <section className="card stats-card airy">
+              <h2>{tr('Strikes and spread per club', 'Treffer und Streuung je Schläger')}</h2>
+              <p className="muted small stats-sub">{tr('Each dot a shot around the target line – green a good strike, red a mishit · the ellipse holds 80 % of your balls', 'Jeder Punkt ein Schlag um die Ziellinie – grün ein guter Treffer, rot ein Fehlschlag · in der Ellipse landen 80 % deiner Bälle')}</p>
               <div className="tee-clubs">
                 {reports
-                  .filter((c) => c.rated > 0 || c.flown > 0 || c.corridor)
+                  .filter((c) => c.rated > 0 || c.flown > 0 || c.corridor || c.points.length > 0)
                   .map((c) => {
+                    const spread = clubSpread(c.club, c.median, c, profileIndex());
                     const top = Object.entries(c.misses).sort((x, y) => (y[1] ?? 0) - (x[1] ?? 0))[0];
                     const topFlight = Object.entries(c.flights).sort((x, y) => (y[1] ?? 0) - (x[1] ?? 0))[0];
                     return (
                       <div key={c.club} className="tee-club-row">
                         <h3 className="tee-club-name">{clubName(c.club)}</h3>
+                        {c.points.length > 0 && <SpreadDots report={c} spread={spread} />}
                         <div className="insight-row">
                           {/* every club with the same tiles – a dash or a 0 where there is nothing yet (Sascha 23.10.2026) */}
                           {c.rated > 0 ? <Insight num={`${Math.round((c.good / c.rated) * 100)} %`} label={tr(`good strikes (${c.good} of ${c.rated})`, `gute Treffer (${c.good} von ${c.rated})`)} tone={c.good / c.rated >= 0.6 ? 'good' : undefined} /> : <Insight num="–" label={tr('good strikes (none rated yet)', 'gute Treffer (noch keiner bewertet)')} />}
@@ -435,7 +447,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                           {topFlight ? <Insight num={flightName(topFlight[0] as Flight)} label={tr(`most frequent flight off line (${topFlight[1]} of ${c.flown})`, `häufigste Flugbahn neben der Linie (${topFlight[1]} von ${c.flown})`)} tone="bad" /> : <Insight num={c.flown > 0 ? '0×' : '–'} label={c.flown > 0 ? tr(`flight off line (of ${c.flown})`, `Flugbahn neben der Linie (von ${c.flown})`) : tr('no flight noted yet', 'noch keine Flugbahn erfasst')} />}
                         </div>
                         <div className="insight-row">
-                          {c.corridor ? <Insight wide num={corridorText(c.corridor, tr)} label={tr(`corridor from ${c.corridor.shots} shots`, `Korridor aus ${c.corridor.shots} Schlägen`)} /> : <Insight wide num="–" label={tr('corridor from 5 checked shots', 'Korridor ab 5 geprüften Schlägen')} />}
+                          {spread.shots ? <Insight wide num={corridorText(spread.side, tr)} label={tr(`spread from ${spread.shots} shots · ±${Math.round((spread.len.hi - spread.len.lo) / 2)} m in length`, `Streuung aus ${spread.shots} Schlägen · ±${Math.round((spread.len.hi - spread.len.lo) / 2)} m in der Länge`)} /> : <Insight wide num="–" label={tr('your spread from 5 checked shots', 'eigene Streuung ab 5 geprüften Schlägen')} />}
                         </div>
                       </div>
                     );
