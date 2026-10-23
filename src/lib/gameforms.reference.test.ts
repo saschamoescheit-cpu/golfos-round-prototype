@@ -141,3 +141,31 @@ describe('match play recomputed independently', () => {
     expect(decidedEarly).toBeGreaterThan(50);
   });
 });
+
+describe('Nassau recomputed independently (no press)', () => {
+  it('front, back and total: three bets, each counted once its holes are all played', () => {
+    for (let k = 0; k < 300; k++) {
+      seed = 23 + k * 173;
+      const g = game('nassau', 2, 18, { stake: 2, press: false });
+      const strokes = Object.fromEntries(g.players.map((p) => [p.id, refStrokes(g, p.hcp ?? 0)]));
+      const [a, b] = [g.players[0].id, g.players[1].id];
+      const res = g.holes.map((_, i) => {
+        const sa = g.scores[a][i];
+        const sb = g.scores[b][i];
+        if (sa == null || sb == null) return null;
+        const na = sa - strokes[a][i];
+        const nb = sb - strokes[b][i];
+        return na < nb ? 1 : na > nb ? -1 : 0;
+      });
+      let bets = 0;
+      for (const [from, to] of [[0, 9], [9, 18], [0, 18]]) {
+        const part = res.slice(from, to);
+        const d = part.reduce<number>((t, r) => t + (r ?? 0), 0);
+        if (part.every((r) => r != null) && d) bets += Math.sign(d);
+      }
+      const app = standingOf(g);
+      expect(app.rows.find((r) => r.id === 'A')!.points, `game ${k}: bets`).toBe(bets);
+      expect(app.money![a], `game ${k}: money`).toBe(bets * 2);
+    }
+  });
+});
