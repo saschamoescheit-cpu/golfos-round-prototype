@@ -143,7 +143,8 @@ const vw = p.viewportSize().width;
 await p.mouse.up();
 void vw;
 ok(rb && rb.x >= mapBox.x + 4 && rb.x + rb.width <= mapBox.x + mapBox.width - 4 && rb.y >= Math.max(mapBox.y, 0) && rb.y < Math.max(mapBox.y, 0) + 60 && /* on the screen, at the top of the visible map */ Math.abs(rb.x + rb.width / 2 - (mapBox.x + mapBox.width / 2)) < 3, `the readout in the map window, whole, centred and on the screen (${rb ? Math.round(rb.x) + '–' + Math.round(rb.x + rb.width) + ' / y ' + Math.round(rb.y) : '–'} in ${Math.round(mapBox.x)}–${Math.round(mapBox.x + mapBox.width)} / y ${Math.round(mapBox.y)})`);
-await p.waitForTimeout(800);
+// under load the drop is saved a moment later – wait for it (up to 4 s) instead of a fixed pause
+await p.waitForFunction(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots[0].penalty === true, null, { timeout: 4000 }).catch(() => {});
 ok(/^Aus – Strafschlag \+ neuer Schlag/.test(readout), `while dragging out: "${readout}" at the top of the map`);
 const h1 = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].entries)[0][0].detail.shots);
 const sameSpot = h1[1]?.pos && h1[0].pos && Math.abs(h1[1].pos[0] - h1[0].pos[0]) < 1e-9 && Math.abs(h1[1].pos[1] - h1[0].pos[1]) < 1e-9;
