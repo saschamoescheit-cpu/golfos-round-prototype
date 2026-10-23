@@ -46,7 +46,8 @@ ok((await p.getByText('So funktioniert').count()) === 0, 'no intro card (Sascha 
 const cats = await p.locator('.tr-cat').count();
 ok(cats >= 17, `${cats} topics`);
 await p.reload();
-await p.waitForTimeout(800);
+// (the app needs about a second to boot after a reload in the dev server – wait for the heading, not a fixed time)
+await p.getByRole('heading', { name: 'Wissen' }).waitFor({ timeout: 10000 }).catch(() => {});
 ok(await p.getByRole('heading', { name: 'Wissen' }).isVisible(), 'a reload stays in Training');
 
 // category and drill
