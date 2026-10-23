@@ -31,17 +31,28 @@ await card.getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1500);
 ok(await p.getByRole('heading', { name: 'Hilfe' }).isVisible(), 'the help page opens');
 const vids = p.locator('.help-video');
-ok((await vids.count()) === 8, `the whole tour and 7 chapters (${await vids.count()})`);
+ok((await vids.count()) === 9, `the whole tour and 8 videos (${await vids.count()})`);
 const titles = await p.locator('.help-video strong').allInnerTexts();
-ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[7] === 'Profil & Konto', `in order: ${titles.join(' · ')}`);
+ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto', `in order: ${titles.join(' · ')}`);
+// no chapter numbers (Sascha 23.10.2026 evening)
+ok(!/Kapitel/.test(await p.locator('.help-videos').innerText()), 'no "Kapitel" in the list');
 const posters = await p.locator('.help-video img').evaluateAll((imgs) => imgs.map((i) => i.complete && i.naturalWidth > 100));
-ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/8)`);
-ok((await p.locator('.help-video .help-play').count()) === 8, 'the round play symbol at the bottom right of each picture');
+ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/9)`);
+ok((await p.locator('.help-video .help-play').count()) === 9, 'the round play symbol at the bottom right of each picture');
 // play chapter 3
 await p.getByRole('button', { name: 'Video abspielen: Der Caddie' }).click();
 await p.waitForTimeout(2500);
 const v = await p.locator('.help-player video').evaluate((el) => ({ src: el.currentSrc, dur: el.duration, w: el.videoWidth, h: el.videoHeight, t: el.currentTime }));
 ok(/help\/caddie\.mp4$/.test(v.src) && v.dur > 30 && v.w === 780, `the video plays: ${v.src.split('/').pop()}, ${Math.round(v.dur)} s, ${v.w}×${v.h}`);
+// the subtitles: their own track, on at first – a tap switches them off, remembered (Sascha 23.10.2026 evening)
+const track = () => p.locator('.help-player video').evaluate((el) => ({ n: el.textTracks.length, mode: el.textTracks[0]?.mode, cues: el.textTracks[0]?.cues?.length ?? 0 }));
+const t1 = await track();
+ok(t1.n === 1 && t1.mode === 'showing' && t1.cues > 3, `subtitles shown (${t1.cues} lines)`);
+await p.getByRole('button', { name: 'Untertitel aus' }).click();
+await p.waitForTimeout(300);
+ok((await track()).mode === 'hidden' && (await p.getByRole('button', { name: 'Untertitel an' }).count()) === 1, 'subtitles off with one tap');
+ok((await p.evaluate(() => localStorage.getItem('golfos.help.subs.v1'))) === '0', 'the choice is remembered');
+await p.getByRole('button', { name: 'Untertitel an' }).click();
 await p.getByRole('dialog', { name: 'Der Caddie' }).getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.help-player').count()) === 0, 'closed again');

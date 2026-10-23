@@ -14,19 +14,38 @@ export interface HelpVideo {
 }
 
 export const HELP_VIDEOS: HelpVideo[] = [
-  { id: 'start', title: () => tr('Start a round', 'Runde starten'), about: () => tr('Course, loops, tee, players, birdie book', 'Platz, Schleifen, Tee, Spieler, Birdiebook'), length: '1:00' },
-  { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, all holes', 'Entfernungen, Wetter, Werkzeuge, alle Löcher'), length: '0:46' },
-  { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:42' },
-  { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:41' },
-  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club and lie, "hole fits", summary', 'Schläge auf der Karte, Schläger und Lage, „Loch passt“, Fazit'), length: '0:54' },
-  { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and corridor, progress', 'Strokes Gained, Schläger und Korridor, Verlauf'), length: '0:29' },
-  { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:41' },
+  { id: 'start', title: () => tr('Start a round', 'Runde starten'), about: () => tr('Course, loops, your tee, playing handicap, birdie book', 'Platz, Schleifen, dein Tee, Vorgabe, Birdiebook'), length: '1:24' },
+  { id: 'flight', title: () => tr('Flight & format', 'Flight & Spielform'), about: () => tr('Players, their tees, kind of round, mode, scoring', 'Spieler, ihre Tees, Rundenart, Modus, Scoring'), length: '1:07' },
+  { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, your spread, all holes', 'Entfernungen, Wetter, Werkzeuge, Streuung, alle Löcher'), length: '0:47' },
+  { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:36' },
+  { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:40' },
+  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '0:58' },
+  { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:38' },
+  { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:35' },
 ];
 /** The whole tour in one video. */
-export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('All chapters in one video', 'Alle Kapitel in einem Video'), length: '5:14' };
+export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:45' };
 
 export const helpVideoUrl = (id: string): string => `help/${id}.mp4`;
 export const helpPosterUrl = (id: string): string => `help/${id}.jpg`;
+/** The subtitles as their own track – to switch on and off (Sascha 23.10.2026). */
+export const helpSubsUrl = (id: string): string => `help/${id}.vtt`;
+
+const SUBS_KEY = 'golfos.help.subs.v1';
+export function loadSubs(): boolean {
+  try {
+    return localStorage.getItem(SUBS_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+export function saveSubs(on: boolean): void {
+  try {
+    localStorage.setItem(SUBS_KEY, on ? '1' : '0');
+  } catch {
+    // storage full – the choice holds while the page is open
+  }
+}
 
 export interface Faq {
   q: () => string;
