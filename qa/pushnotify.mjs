@@ -24,8 +24,9 @@ const HOLES = [3, 4, 5, 4, 3, 4, 4, 5, 4].map((par, i) => ({ index: i, label: `$
 const entry = (strokes) => ({ strokes, pickedUp: false, putts: strokes ? 2 : null, fairway: null, penalties: 0, greensideBunker: false, upAndDown: null });
 const round = (id, finished) => ({
   id,
-  createdAt: '2026-10-23T08:00:00.000Z',
-  finishedAt: finished ? '2026-10-23T11:00:00.000Z' : null,
+  // started an hour ago (a round in play resumes only within 8 hours of its start)
+  createdAt: new Date(Date.now() - 3600e3).toISOString(),
+  finishedAt: finished ? new Date(Date.now() - 600e3).toISOString() : null,
   courseId: 'osm:relation/1326323',
   courseName: 'Golfclub Hetzenhof',
   loopOrder: ['C'],
