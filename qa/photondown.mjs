@@ -12,7 +12,9 @@ await mockNet(ctx);
 await ctx.route(/photon\.komoot\.io/, (r) => r.abort());
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/due to access control|sw\.js/.test(e.message)) errs.push(e.message); });
+// leaving the hole map while it still loads parts of the app: WebKit reports the cut-off load – only then, it is the test's own doing
+let leaving = false;
+p.on('pageerror', (e) => { if (!/due to access control|sw\.js/.test(e.message) && !(leaving && /Importing a module script failed/.test(e.message))) errs.push(e.message); });
 let fails = 0;
 const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
@@ -46,6 +48,7 @@ const slope = p.getByRole('button', { name: 'Grün-Neigung zeigen' });
 await slope.waitFor({ timeout: 90000 }).catch(() => {});
 ok((await slope.count()) === 1, 'the green slopes made on the phone (the greens came with the map)');
 // a course OpenGolfAPI does not know: found in the app's list of every German course (Sascha 22.10.2026)
+leaving = true;
 await p.goto(url);
 await p.evaluate(() => {
   sessionStorage.clear();
@@ -55,6 +58,7 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(1200);
+leaving = false;
 await p.getByRole('button', { name: 'Neue Runde' }).click();
 await p.fill('#course-search', 'Golfclub München-Riem');
 await p.waitForTimeout(2500);
