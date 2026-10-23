@@ -39,7 +39,7 @@ for (const [name, host, credit] of COURSES) {
   ok(tiles > 0, `${course}: aerial photos from the state straight away (${tiles} tiles, ${esri} Esri tiles underneath)`);
   await p.getByRole('button', { name: 'Karteninfo' }).click();
   await p.waitForTimeout(400);
-  ok(credit.test(await p.locator('main').innerText()), `${course}: the state's credit in the ⓘ`);
+  ok(credit.test((await p.locator('main').allInnerTexts()).join(' ')), `${course}: the state's credit in the ⓘ`);
   ok(errs.length === 0, `${course}: no page errors ${errs.slice(0, 2).join(' | ')}`);
   await ctx.close();
 }

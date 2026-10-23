@@ -87,7 +87,7 @@ ok(iPen === 1 && /nach Schlag 1/.test(rowsText[iPen]), `the penalty under shot 1
   const n0 = before.entries[me][0].detail.shots.length;
   await p.getByRole('button', { name: /^Speichern/ }).last().click();
   await p.waitForTimeout(600);
-  ok(/ins Wasser ging/.test(await p.locator('main').innerText()), 'then: tap the map where it went into the water');
+  ok(/ins Wasser ging/.test((await p.locator('main').allInnerTexts()).join(' ')), 'then: tap the map where it went into the water');
   await p.waitForTimeout(300);
   const map = await p.locator('.maplibregl-canvas').first().boundingBox();
   await p.mouse.click(map.x + map.width * 0.5, map.y + map.height * 0.35);

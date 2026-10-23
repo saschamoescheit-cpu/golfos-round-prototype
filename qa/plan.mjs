@@ -29,14 +29,17 @@ await p.waitForTimeout(1500);
 const pick = async () => {
   await p.getByRole('button', { name: 'Neue Runde' }).click();
   await p.fill('#course-search', 'Hetzenhof');
-  await p.waitForTimeout(2000);
-  await p.locator('button.list-item').first().click();
-  await p.waitForTimeout(1200);
+  // wait for the hit itself, not a fixed time – under load (three tests at once) the search took longer (night 23./24.10.)
+  await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().waitFor({ timeout: 30000 });
+  await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
+  await p.getByRole('button', { name: /^Runde planen/ }).waitFor({ timeout: 30000 });
+  await p.waitForTimeout(600);
 };
 await pick();
 await p.getByRole('button', { name: 'Runde planen' }).click();
-await p.waitForTimeout(3500);
 const panel = p.locator('.plan-panel');
+await panel.waitFor({ timeout: 30000 }).catch(() => {});
+await panel.locator('.plan-shot').nth(1).waitFor({ timeout: 15000 }).catch(() => {});
 ok(await panel.isVisible(), 'planning: the plan of 1A over the hole bar');
 const shots = await panel.locator('.plan-shot').count();
 ok(shots === 2, `1A: ${shots} shots (tee → target 1 → green)`);

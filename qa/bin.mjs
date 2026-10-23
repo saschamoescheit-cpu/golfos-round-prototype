@@ -55,7 +55,7 @@ ok(acts === 'Birdiebook | Pausieren | Beenden', `preview drawer: ${acts}`);
 // the birdie book and back to the hole
 await p.locator('.hole-drawer').getByRole('button', { name: 'Birdiebook' }).click();
 await p.waitForTimeout(1500);
-ok(/Birdiebook|1A/.test(await p.locator('main').innerText()), 'birdie book opens from the preview');
+ok(/Birdiebook|1A/.test((await p.locator('main').allInnerTexts()).join(' ')), 'birdie book opens from the preview');
 await p.locator('.topbar').getByRole('button').first().click();
 await p.waitForTimeout(1500);
 ok((await p.locator('.map-hole-no').count()) === 1, 'back from the birdie book on the hole');
