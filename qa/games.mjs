@@ -184,7 +184,7 @@ ok((await p.locator('.tile').filter({ hasText: 'gelöscht' }).innerText()).repla
 await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).count()) === 0, 'restored from the bin');
+ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).isDisabled()), 'restored from the bin – the tile stays with 0');
 // only confirmed games count in the balance (Sascha 16.10.2026, as signed rounds)
 await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
 await p.waitForTimeout(300);

@@ -1,4 +1,4 @@
-import type { Club, Flight, LngLat, Round, Shot, Strike } from '../types';
+import type { Club, DetailEntry, Flight, LngLat, Round, Shot, Strike } from '../types';
 import { bearingDeg, distanceM, pointAt } from './geo';
 import { playsLike, type Conditions } from './caddie';
 import { sideOf } from './dispersion';
@@ -12,13 +12,14 @@ import { plausibleForClub, shotLengths } from './shots';
 export interface HoleWeather {
   tempC: number;
   windKmh: number;
+  gustKmh?: number; // stored from 23.10.2026 on
   windFromDeg: number;
 }
 
 /** A shot's length in calm air at 20 °C: what the same swing would have flown without this wind and temperature. */
 export function calmLength(len: number, from: LngLat, to: LngLat, w: HoleWeather | undefined): number {
   if (!w) return len;
-  const c: Conditions = { windKmh: w.windKmh, gustKmh: w.windKmh, windFromDeg: w.windFromDeg, tempC: w.tempC };
+  const c: Conditions = { windKmh: w.windKmh, gustKmh: w.gustKmh ?? w.windKmh, windFromDeg: w.windFromDeg, tempC: w.tempC };
   const p = playsLike(len, bearingDeg(from, to), c, null);
   return len + p.wind + p.temp;
 }
@@ -27,6 +28,18 @@ export function calmLength(len: number, from: LngLat, to: LngLat, w: HoleWeather
 export function learnFrom<T extends { strike?: Strike }>(xs: T[]): T[] {
   const good = xs.filter((x) => x.strike === 'good');
   return good.length >= 3 ? good : xs.filter((x) => !mishit(x.strike));
+}
+
+/** Each shot's length as it played with the hole's wind and temperature (Sascha 23.10.2026: 130 m into a strong
+ *  headwind played like 160 m – the 6-iron was right): null where the length is unknown. Without weather the length. */
+export function playedLengths(d: DetailEntry, w: HoleWeather | undefined): (number | null)[] {
+  const lengths = shotLengths(d);
+  return d.shots.map((s, k) => {
+    const len = lengths[k];
+    if (len == null || !s.pos) return len;
+    const end = s.penalty && s.missPos ? s.missPos : k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
+    return end ? Math.round(calmLength(len, s.pos, end, w)) : len;
+  });
 }
 
 export interface ClubShot {
@@ -106,9 +119,11 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
   for (const s of clubShots(rounds, lineOf)) by.set(s.club, [...(by.get(s.club) ?? []), s]);
   return [...by.entries()].map(([club, xs]) => {
     const learn = learnFrom(xs);
-    const rated = xs.filter((x) => x.strike);
+    // the contact only: an old "slice"/"hook" strike is a flight, it says nothing about the contact – else "0 % good" stood
+    // next to "0× missed" (Sascha 23.10.2026)
+    const rated = xs.filter((x) => x.strike && x.strike !== 'slice' && x.strike !== 'hook');
     const misses: Partial<Record<Strike, number>> = {};
-    for (const x of rated) if (x.strike !== 'good' && x.strike !== 'slice' && x.strike !== 'hook') misses[x.strike!] = (misses[x.strike!] ?? 0) + 1;
+    for (const x of rated) if (x.strike !== 'good') misses[x.strike!] = (misses[x.strike!] ?? 0) + 1;
     const flights: Partial<Record<Flight, number>> = {};
     let flown = 0;
     for (const x of xs) {

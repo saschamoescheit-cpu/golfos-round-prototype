@@ -15,7 +15,7 @@ export interface HelpVideo {
 
 export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'start', title: () => tr('Start a round', 'Runde starten'), about: () => tr('Course, loops, tee, players, birdie book', 'Platz, Schleifen, Tee, Spieler, Birdiebook'), length: '1:00' },
-  { id: 'map', title: () => tr('The hole map', 'Die Lochkarte'), about: () => tr('Distances, weather, tools, all holes', 'Entfernungen, Wetter, Werkzeuge, alle Löcher'), length: '0:46' },
+  { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, all holes', 'Entfernungen, Wetter, Werkzeuge, alle Löcher'), length: '0:46' },
   { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:42' },
   { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:41' },
   { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club and lie, "hole fits", summary', 'Schläge auf der Karte, Schläger und Lage, „Loch passt“, Fazit'), length: '0:54' },

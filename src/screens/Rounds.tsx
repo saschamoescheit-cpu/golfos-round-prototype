@@ -102,16 +102,15 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
           <span className="muted small">{tr('holes', 'Löcher')}</span>
         </div>
         {/* deleted rounds as the fourth tile (Sascha 15.10.2026) – a tap shows them under the list */}
-        {trash.length > 0 && (
-          // one tile at a time (Sascha 17.10.2026: from "deleted" to "to check" did not switch)
-          <button type="button" className="tile" aria-pressed={binOpen} onClick={() => pick('bin')}>
-            <span className="tile-head">
-              <span className="tile-num">{trash.length}</span>
-              <span className="tile-mark"><DeletedIcon /></span>
-            </span>
-            <span className="muted small">{tr('deleted', 'gelöscht')}</span>
-          </button>
-        )}
+        {/* always there – with 0 and white like "paused" when the bin is empty (Sascha 23.10.2026);
+            one tile at a time (Sascha 17.10.2026: from "deleted" to "to check" did not switch) */}
+        <button type="button" className="tile" aria-pressed={binOpen} disabled={!trash.length} onClick={() => pick('bin')}>
+          <span className="tile-head">
+            <span className="tile-num">{trash.length}</span>
+            <span className="tile-mark"><DeletedIcon /></span>
+          </span>
+          <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+        </button>
       </div>
 
       <Bin

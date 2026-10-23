@@ -123,7 +123,9 @@ ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ??
 await p.getByRole('button', { name: 'Endgültig löschen' }).last().click();
 await p.waitForTimeout(400);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 0, 'deleted for good after confirming');
-ok((await p.locator('.tile').filter({ hasText: 'gelöscht' }).count()) === 0, 'bin tile gone when empty');
+// the tile stays, 0 and disabled like 'pausiert' (Sascha 23.10.2026)
+const empty = p.locator('.tile').filter({ hasText: 'gelöscht' });
+ok((await empty.innerText()).replace(/\s+/g, ' ').trim() === '0 gelöscht' && (await empty.isDisabled()), 'bin tile stays when empty: "0 gelöscht", not tappable');
 
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

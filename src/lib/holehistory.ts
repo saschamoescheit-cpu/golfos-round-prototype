@@ -1,4 +1,5 @@
 import type { Club, Round } from '../types';
+import { CLUB_ORDER } from './clubs';
 import { distanceM } from './geo';
 import { loadCaddieLog, type CaddieLogEntry } from './caddielog';
 import { clubCode, dec, tr } from './i18n';
@@ -21,10 +22,16 @@ export interface HoleHistory {
 }
 
 /** The caddie's club for the tee shot of a hole in one round (the advice given within 30 m of the tee shot). */
-export function adviceAtTee(log: CaddieLogEntry[] | undefined, teePos: [number, number] | null): string | null {
+export function adviceAtTee(log: CaddieLogEntry[] | undefined, teePos: [number, number] | null): Club | null {
   if (!log?.length || !teePos) return null;
   const at = log.filter((c) => c.club !== 'Putt' && distanceM(c.pos, teePos) <= 30);
-  return at.length ? at[at.length - 1].club.split(' ')[0] : null;
+  return at.length ? clubOf(at[at.length - 1].club.split(' ')[0]) : null;
+}
+
+/** The caddie log keeps the short label ("D", "7i", "4H") – back to the club ("Dr", "7i", "Hy"); older logs kept the club. */
+function clubOf(label: string): Club | null {
+  if ((CLUB_ORDER as string[]).includes(label)) return label as Club;
+  return CLUB_ORDER.find((c) => clubCode(c) === label) ?? null;
 }
 
 const avg = (xs: number[]) => Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10;

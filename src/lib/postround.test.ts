@@ -4,7 +4,7 @@ import { fromDrop, playedAgain } from './shotfacts';
 import { shotChecks } from './reviewchecks';
 import { calmLength, clubReports, corridorText, learnFrom } from './clubstats';
 import { roundReport } from './roundreport';
-import { bestTeeClub, holeHistory } from './holehistory';
+import { adviceAtTee, bestTeeClub, holeHistory } from './holehistory';
 import { approachBands, puttMiss, puttMisses } from './approachstats';
 import type { HoleMapData } from './geo';
 
@@ -123,6 +123,18 @@ describe('a hole over all rounds', () => {
     expect(h.rounds).toBe(4);
     expect(h.byTeeClub[0]).toMatchObject({ club: '4i', rounds: 2, avgToPar: 0.5 });
     expect(bestTeeClub(h)?.club).toBe('4i');
+  });
+  // the caddie log keeps the short label ("D", "4H", "SW ¾") – the round check showed "Caddie:  · gespielt: D" (Sascha 23.10.2026)
+  it('the caddie advice on the tee as a club, from its short label', () => {
+    const log = (club: string) => [{ t: 1, pos: at(0, 5), toPin: 380, club, playsLike: 380, aim: null, plan: null, warning: null }];
+    expect(adviceAtTee(log('D'), at(0, 0))).toBe('Dr');
+    expect(adviceAtTee(log('4H'), at(0, 0))).toBe('Hy');
+    expect(adviceAtTee(log('SW ¾'), at(0, 0))).toBe('SW');
+    expect(adviceAtTee(log('Dr'), at(0, 0))).toBe('Dr'); // an older log kept the club
+    const rs = [mk('a', 'Dr', 4), mk('b', '4i', 6)];
+    const h = holeHistory(rs, 'c1', '1', () => ({ 0: log('D') }));
+    expect(h.followed).toMatchObject({ rounds: 1, avgToPar: 0 });
+    expect(h.other).toMatchObject({ rounds: 1, avgToPar: 2 });
   });
 });
 

@@ -368,7 +368,7 @@ export function HoleScreen(props: {
   }, [round.courseId]);
   const onThisHole = player != null && mapData != null && distToLine(player.pos, mapData.line) < 150;
   useEffect(() => {
-    if (weather && onThisHole && !myEntry.weather) update(me.id, { weather: { tempC: weather.tempC, windKmh: weather.windKmh, windFromDeg: weather.windFromDeg } });
+    if (weather && onThisHole && !myEntry.weather) update(me.id, { weather: { tempC: weather.tempC, windKmh: weather.windKmh, gustKmh: weather.gustKmh, windFromDeg: weather.windFromDeg } }); // gusts too: a shot's length as it played (Sascha 23.10.2026)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weather, onThisHole, i]);
 
@@ -1733,7 +1733,7 @@ export function HoleScreen(props: {
         backLabel={tr('Leave round', 'Runde verlassen')}
         right={
           <>
-            <button type="button" className="icon-btn" aria-label={mapData ? tr('Hole map', 'Lochkarte') : tr('Set up hole map', 'Lochkarte einrichten')} onClick={() => setView('map')}>
+            <button type="button" className="icon-btn" aria-label={mapData ? tr('Hole map', 'Karte') : tr('Set up the hole', 'Loch einrichten')} onClick={() => setView('map')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" />
                 <path d="M9 4v14M15 6v14" />
@@ -1775,7 +1775,7 @@ export function HoleScreen(props: {
 
       {!mapData && (
         <button type="button" className="btn-secondary" onClick={() => setSetupOpen(true)}>
-          {tr('Set up hole map (tee + green)', 'Lochkarte einrichten (Abschlag + Grün)')}
+          {tr('Set up the hole (tee + green)', 'Loch einrichten (Abschlag + Grün)')}
         </button>
       )}
 
@@ -1792,7 +1792,7 @@ export function HoleScreen(props: {
           </div>
           {mapData && (
             <button type="button" className="btn-ghost" onClick={() => setSetupOpen(true)}>
-              {tr('Hole map wrong? Mark tee and green again', 'Lochkarte falsch? Abschlag und Grün neu markieren')}
+              {tr('Hole drawn wrong? Mark tee and green again', 'Loch falsch eingezeichnet? Abschlag und Grün neu markieren')}
             </button>
           )}
         </section>

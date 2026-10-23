@@ -1654,15 +1654,14 @@ function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: Ga
         </span>
         <span className="muted small">{tr('confirmed', 'bestätigt')}</span>
       </button>
-      {trash > 0 && (
-        <button type="button" className="tile" aria-pressed={props.filter === 'bin'} onClick={() => props.onFilter('bin')}>
-          <span className="tile-head">
-            <span className="tile-num">{trash}</span>
-            <span className="tile-mark"><DeletedIcon /></span>
-          </span>
-          <span className="muted small">{tr('deleted', 'gelöscht')}</span>
-        </button>
-      )}
+      {/* always there, 0 and white when empty – like the rounds page (Sascha 23.10.2026) */}
+      <button type="button" className="tile" aria-pressed={props.filter === 'bin'} disabled={!trash} onClick={() => props.onFilter('bin')}>
+        <span className="tile-head">
+          <span className="tile-num">{trash}</span>
+          <span className="tile-mark"><DeletedIcon /></span>
+        </span>
+        <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+      </button>
     </div>
   );
 }

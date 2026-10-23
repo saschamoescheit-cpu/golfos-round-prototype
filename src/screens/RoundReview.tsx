@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ShotHereIcon } from '../components/RoundIcons';
-import type { Club, DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
+import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
@@ -18,6 +18,7 @@ import { Chips } from '../components/ui';
 import { loadRegionalImagery, pickImagery } from '../lib/imagery';
 import { analyse, playerBag } from '../lib/stats';
 import { rollFactor } from '../lib/clubs';
+import { playedLengths } from '../lib/clubstats';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
 import { ensureCourseMap } from '../lib/courses';
@@ -350,6 +351,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const pin = e?.puttsAt?.pin ?? d?.pin ?? data?.greenCenter ?? null;
   const placedPutts = e?.puttsAt?.balls ?? null;
   const lengths = d ? shotLengths(d) : [];
+  const playedLen = d ? playedLengths(d, e?.weather) : [];
   const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
   const fmt = (m: number) => `${formatDistance(m, unit)} ${unit}`;
   // The GPS track of this hole: the walked path and where the player stood still – a shot the detection missed
@@ -391,9 +393,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   // Shots stay in playing order (further from the pin first); the tee shot is added by itself.
   const nearTee = (pos: LngLat, m: HoleMapData) => distanceM(pos, m.tee) <= 25;
   const lieFor = (pos: LngLat, n: number, m: HoleMapData) => (n === 0 && nearTee(pos, m) ? 'tee' : lieAt(pos, m, false, true));
-  /** Clubs for shots without one, from their length (the player can change them). */
-  const withClubs = (det: DetailEntry, par = round.holes[k].par): DetailEntry => {
-    const len = shotLengths(det);
+  /** Clubs for shots without one, from the length as it played – with the hole's wind (Sascha 23.10.2026: 130 m into
+   *  the wind wanted the 6-iron, not the 9-iron) – the player can change them. */
+  const withClubs = (det: DetailEntry, par = round.holes[k].par, w = entries[k]?.weather): DetailEntry => {
+    const len = playedLengths(det, w);
     return { ...det, shots: det.shots.map((x, n) => (x.club || len[n] == null ? x : { ...x, club: clubForLength(len[n]!, n === 0 && par >= 4, bag) })) };
   };
   /** The shots of hole i from the places noted by hand ("shot here") – in the order they were noted, the tee shot
@@ -405,7 +408,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     const off = hs.map((x) => x.pos).filter((p) => !onGreenSpot(p, m));
     const shots: Shot[] = off.map((pos, n) => ({ pos, lie: lieFor(pos, n, m), club: null, penalty: false, byHand: true }));
     if (!shots.length || !nearTee(shots[0].pos!, m)) shots.unshift({ pos: teeSpot(partI, m) ?? m.tee, lie: 'tee', club: null, penalty: false });
-    return withClubs({ ...base, shots, onGreen: onGreen[0] ?? base.onGreen, holedOut: false, fromHand: true }, round.holes[i].par);
+    return withClubs({ ...base, shots, onGreen: onGreen[0] ?? base.onGreen, holedOut: false, fromHand: true }, round.holes[i].par, entries[i]?.weather);
   };
   /** Outside the course boundary = out of bounds (only where the course outline is known). */
   const isOut = (p: LngLat) => (geometry.boundary?.length ? !geometry.boundary.some((r) => pointInRing(p, r)) : false);
@@ -528,6 +531,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       // a GPS shot near a place noted by hand goes to that place – the tap is the truth, the GPS is ±15 m (Sascha
       // 20.10.2026: "the club should show where the shot was noted"); each place takes the nearest shot within 40 m
       if (gps) gps.shots = snapToHand(gps.shots, i, m, false);
+      // the detected clubs from the length as it played, with this hole's wind (Sascha 23.10.2026)
+      if (gps && e.weather) {
+        const played = playedLengths(gps, e.weather);
+        gps.shots = gps.shots.map((s, n) => (s.review && s.club && s.club !== 'Pt' && (!s.kind || s.kind === 'full') && played[n] != null ? { ...s, club: clubForLength(played[n]!, n === 0 && h.par >= 4, bag) } : s));
+      }
       const found = hand ? { ...hand, shots: hand.shots.map((s) => ({ ...s, review: true })) } : gps;
       if (!found) return;
       holes++;
@@ -1074,6 +1082,8 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     {n > 0 && d.shots[n - 1].penalty && d.shots[n - 1].provisional ? tr('provisional ball · ', 'provisorischer Ball · ') : ''}
                     {lieName(s.lie)}
                     {lengths[n] != null ? ` · ${fmt(lengths[n]!)}` : ''}
+                    {/* how long it played with the wind – the reason for a longer club (Sascha 23.10.2026) */}
+                    {lengths[n] != null && playedLen[n] != null && s.club && s.club !== 'Pt' && (!s.kind || s.kind === 'full') && Math.abs(playedLen[n]! - lengths[n]!) >= 5 ? tr(` (played like ${fmt(playedLen[n]!)})`, ` (spielte wie ${fmt(playedLen[n]!)})`) : ''}
                     {proximity(d, n) != null && proximity(d, n)! > 0 ? tr(` · ${fmt(proximity(d, n)!)} from the pin`, ` · auf ${fmt(proximity(d, n)!)} an der Fahne`) : ''}
                     {s.penalty ? ` · ${penaltyName(s.penaltyKind) ?? tr('penalty', 'Strafschlag')} (+1)` : ''}
                     {s.strike && s.strike !== 'slice' && s.strike !== 'hook' ? ` · ${strikeName(s.strike)}` : ''}
@@ -1236,7 +1246,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           <span className="eyebrow">{tr('Off the tee', 'Vom Tee')}</span>
           {teeAdvice && (
             <span>
-              {tr('Caddie', 'Caddie')}: <strong>{clubCode(teeAdvice as Club)}</strong> · {tr('played', 'gespielt')}: <strong>{d?.shots[0]?.club ? clubCode(d.shots[0].club) : '–'}</strong>
+              {tr('Caddie', 'Caddie')}: <strong>{clubCode(teeAdvice)}</strong> · {tr('played', 'gespielt')}: <strong>{d?.shots[0]?.club ? clubCode(d.shots[0].club) : '–'}</strong>
               {d?.shots[0]?.club && d.shots[0].club === teeAdvice ? <span className="good-text"> ✓</span> : null}
             </span>
           )}

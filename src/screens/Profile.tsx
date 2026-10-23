@@ -285,7 +285,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           >
             <span className="switch-label">
               <span>{tr('Shot by sound (test)', 'Schlag per Ton (Test)')}</span>
-              <span className="muted small">{tr('Hears the strike on the hole map', 'Hört auf der Lochkarte den Treffmoment')}</span>
+              <span className="muted small">{tr('Hears the strike during the round', 'Hört während der Runde den Treffmoment')}</span>
             </span>
             <span className={`drawer-switch${soundTest ? ' on' : ''}`} aria-hidden="true" />
           </button>

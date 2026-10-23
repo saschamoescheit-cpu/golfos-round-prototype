@@ -203,7 +203,8 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                           <h3 className="tee-club-name">{clubName(c.club)}</h3>
                           <div className="insight-row">
                             <Insight num={String(c.n)} label={tr('tee shots', 'Abschläge')} />
-                            {c.left + c.right > 0 && <Insight {...tendency(c.left, c.right)} />}
+                            {/* always the second tile, also without a miss to a side – the clubs look alike (Sascha 23.10.2026) */}
+                            <Insight {...tendency(c.left, c.right)} />
                             {c.ob > 0 && <Insight num={`${c.ob}×`} label={tr('out of bounds', 'ins Aus')} tone="bad" />}
                           </div>
                           <div className="ring-row">
@@ -428,10 +429,13 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                       <div key={c.club} className="tee-club-row">
                         <h3 className="tee-club-name">{clubName(c.club)}</h3>
                         <div className="insight-row">
-                          {c.rated > 0 && <Insight num={`${Math.round((c.good / c.rated) * 100)} %`} label={tr(`good strikes (${c.good} of ${c.rated})`, `gute Treffer (${c.good} von ${c.rated})`)} tone={c.good / c.rated >= 0.6 ? 'good' : undefined} />}
-                          {top && <Insight num={strikeName(top[0] as Strike)} label={tr(`most frequent miss (${top[1]}×)`, `häufigster Fehlschlag (${top[1]}×)`)} tone="bad" />}
-                          {topFlight && <Insight num={flightName(topFlight[0] as Flight)} label={tr(`most frequent flight off line (${topFlight[1]} of ${c.flown})`, `häufigste Flugbahn neben der Linie (${topFlight[1]} von ${c.flown})`)} tone="bad" />}
-                          {c.corridor && <Insight wide num={corridorText(c.corridor, tr)} label={tr(`corridor from ${c.corridor.shots} shots`, `Korridor aus ${c.corridor.shots} Schlägen`)} />}
+                          {/* every club with the same tiles – a dash or a 0 where there is nothing yet (Sascha 23.10.2026) */}
+                          {c.rated > 0 ? <Insight num={`${Math.round((c.good / c.rated) * 100)} %`} label={tr(`good strikes (${c.good} of ${c.rated})`, `gute Treffer (${c.good} von ${c.rated})`)} tone={c.good / c.rated >= 0.6 ? 'good' : undefined} /> : <Insight num="–" label={tr('good strikes (none rated yet)', 'gute Treffer (noch keiner bewertet)')} />}
+                          {top ? <Insight num={strikeName(top[0] as Strike)} label={tr(`most frequent miss (${top[1]}×)`, `häufigster Fehlschlag (${top[1]}×)`)} tone="bad" /> : <Insight num={c.rated > 0 ? '0×' : '–'} label={tr('missed strikes', 'Fehlschläge')} />}
+                          {topFlight ? <Insight num={flightName(topFlight[0] as Flight)} label={tr(`most frequent flight off line (${topFlight[1]} of ${c.flown})`, `häufigste Flugbahn neben der Linie (${topFlight[1]} von ${c.flown})`)} tone="bad" /> : <Insight num={c.flown > 0 ? '0×' : '–'} label={c.flown > 0 ? tr(`flight off line (of ${c.flown})`, `Flugbahn neben der Linie (von ${c.flown})`) : tr('no flight noted yet', 'noch keine Flugbahn erfasst')} />}
+                        </div>
+                        <div className="insight-row">
+                          {c.corridor ? <Insight wide num={corridorText(c.corridor, tr)} label={tr(`corridor from ${c.corridor.shots} shots`, `Korridor aus ${c.corridor.shots} Schlägen`)} /> : <Insight wide num="–" label={tr('corridor from 5 checked shots', 'Korridor ab 5 geprüften Schlägen')} />}
                         </div>
                       </div>
                     );
@@ -527,6 +531,7 @@ function Insight(props: { num: ReactNode; label: string; tone?: 'good' | 'bad'; 
 
 /** Which side the misses go: an arrow, the words below. */
 function tendency(left: number, right: number): { num: string; label: string } {
+  if (left + right === 0) return { num: '↑', label: tr('never missed to a side', 'nie seitlich verfehlt') };
   if (left === right) return { num: '← →', label: tr('missed left as often as right', 'links wie rechts verfehlt') };
   return left > right ? { num: '←', label: tr('missed more often left', 'öfter links verfehlt') } : { num: '→', label: tr('missed more often right', 'öfter rechts verfehlt') };
 }
@@ -546,7 +551,7 @@ function TeeInsights(props: { left: Rate; hit: Rate; right: Rate; lies: { semiro
   return (
     <div className="insight-row">
       <Insight num={`${props.hit.n}/${props.hit.of}`} label={tr('fairways hit', 'Fairways getroffen')} tone="good" />
-      {l + r > 0 && <Insight {...tendency(l, r)} />}
+      <Insight {...tendency(l, r)} />
       {lies.length > 0 && (
         <Insight
           num={`${lies[0].n}×`}

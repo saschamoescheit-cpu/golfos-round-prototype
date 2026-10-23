@@ -1490,7 +1490,8 @@ button.tile:disabled { opacity: 1; }
 .tee-none { color: var(--muted); }
 
 /* findings as tiles above the charts (Sascha 22.10.2026) – green = good, red = costs strokes, never yellow */
-.insight-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+/* one column per tile, all the same width (auto-fit with a 0 minimum split three tiles into slivers, 23.10.2026) */
+.insight-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
 .insight { display: flex; flex-direction: column; gap: 2px; min-width: 0; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
 .insight.wide { grid-column: 1 / -1; }
 .insight-num { font: 700 20px var(--display); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

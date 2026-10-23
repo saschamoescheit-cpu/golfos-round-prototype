@@ -151,7 +151,7 @@ export interface HoleEntry {
   /** Putts placed on the course (putt editor after the hole): the pin and where the ball lay before each putt. */
   puttsAt?: { pin: LngLat; balls: LngLat[] };
   /** Weather when the player was on the hole (GOL-26). */
-  weather?: { tempC: number; windKmh: number; windFromDeg: number };
+  weather?: { tempC: number; windKmh: number; gustKmh?: number; windFromDeg: number };
   /** The player confirmed the hole in the round check ("Loch passt", Sascha 22.10.2026). */
   checked?: boolean;
   /** How the first putt missed, told after the round when the putts were not placed on the green. */
