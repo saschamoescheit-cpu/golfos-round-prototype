@@ -8,6 +8,7 @@ import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { CoursePicker } from './CoursePicker';
 import { SyncCard } from '../components/SyncCard';
 import { PushCard } from '../components/PushCard';
+import { Help, type HelpTab } from './Help';
 import { Avatar } from '../components/Avatar';
 import { PhotoCropper } from '../components/PhotoCropper';
 import { STANDARD_CLUBS } from '../lib/clubs';
@@ -26,6 +27,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [p, setP] = useState<Profile>(loadProfile);
   const [unit, setUnit] = useState(loadUnit);
   const [picking, setPicking] = useState(false);
+  const [help, setHelp] = useState<HelpTab | null>(null);
   const [sgPick, setSgPick] = useState(false);
   const [teePick, setTeePick] = useState(false);
   const [soundTest, setSoundTestState] = useState(soundTestOn);
@@ -91,6 +93,13 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
     </div>
   );
 
+  // help: the tutorial videos and the frequent questions (Sascha 23.10.2026)
+  if (help)
+    return (
+      <div className="overlay-screen">
+        <Help tab={help} onBack={() => setHelp(null)} />
+      </div>
+    );
   if (picking)
     return (
       <div className="overlay-screen">
@@ -335,6 +344,26 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       )}
       {/* notifications on this phone (final list, Sascha 23.10.2026) */}
       <PushCard signedIn={!!session} key={session ? 'in' : 'out'} />
+      {/* help (Sascha 23.10.2026): the tutorial as videos and the frequent questions */}
+      <section className="card stats-card">
+        <h2>{tr('Help', 'Hilfe')}</h2>
+        <div className="drawer-list">
+          <button type="button" className="drawer-row" onClick={() => setHelp('videos')}>
+            <span className="switch-label">
+              <span>{tr('Videos', 'Videos')}</span>
+              <span className="muted small">{tr('The app in 7 short chapters', 'Die App in 7 kurzen Kapiteln')}</span>
+            </span>
+            <span className="drawer-value" aria-hidden="true">›</span>
+          </button>
+          <button type="button" className="drawer-row" onClick={() => setHelp('faq')}>
+            <span className="switch-label">
+              <span>{tr('Frequent questions', 'Häufige Fragen')}</span>
+              <span className="muted small">{tr('Answers by topic, each with its video', 'Antworten nach Themen, jede mit ihrem Video')}</span>
+            </span>
+            <span className="drawer-value" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </section>
       {/* your data (final list 22.10.2026; Sascha 23.10.2026: the text under the heading, the button as the round's export) */}
       <section className="card stats-card">
         <h2>{tr('Your data', 'Deine Daten')}</h2>
