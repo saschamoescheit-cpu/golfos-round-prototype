@@ -7,6 +7,10 @@
 export const WEATHER = { tempC: 14, windKmh: 12, gustKmh: 22, windFromDeg: 250, code: 2 };
 
 export async function mockNet(ctx) {
+  // the push function (supabase/functions/golfos-push): "not deployed" unless a test answers it itself (pushnotify)
+  await ctx.route(/supabase\.co\/functions\/v1\/golfos-push/, (r) =>
+    r.fulfill({ status: r.request().method() === 'OPTIONS' ? 204 : 404, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }, body: '' }),
+  );
   if (process.env.WEATHER === 'live') return;
   const now = new Date().toISOString().slice(0, 16);
   await ctx.route(/api\.open-meteo\.com\/v1\/forecast/, (r) => {
