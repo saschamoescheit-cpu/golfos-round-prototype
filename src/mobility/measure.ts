@@ -444,7 +444,8 @@ class NeckAnalyzer implements Analyzer {
   private roll = new Roll(5);
   private earW = new Steady();
   private noseX = new Steady();
-  private held = new Held();
+  // (a head turns quickly and is seldom held: the top held for 0.15 s – still more than a shaking point or two)
+  private held = new Held(150);
   private best = 0;
   private t0 = -1;
   private tBest = 0;
