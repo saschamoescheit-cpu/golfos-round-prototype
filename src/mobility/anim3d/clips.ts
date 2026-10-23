@@ -56,6 +56,15 @@ export const SIT_Y = -0.42;
 
 export const k = (t: number, pose: Pose, label?: L): Key => ({ t, pose, label });
 
+/** the bottom of the deep squat: the feet where they stood, the knees out over the toes, the pelvis 20 cm back (fitted on
+ * the realistic golfer 24.10.2026 – before, the pelvis stayed and the feet slid 21 cm, forward and together) */
+/** the pelvis turned left / right in golf posture over feet that stay where they stand (the hips turn in, the knees stay
+ * over the feet – fitted on the realistic golfer 24.10.2026; before, the legs turned with the pelvis and the feet slid
+ * 15 cm) */
+const PELVIS_LEFT: J = { pelvis: [40, 32, 0], chest: [3, -30, 0], hipL: [-62, -35, -12], hipR: [-52, -37, -15], ankleL: [-20, -10, 0], ankleR: [-20, -4, 0] };
+const PELVIS_RIGHT: J = { pelvis: [40, -32, 0], chest: [3, 30, 0], hipL: [-52, 37, 16], hipR: [-62, 35, 12], ankleL: [-20, 4, 0], ankleR: [-20, 11, 0] };
+const SQUAT_DEEP: J ={ pelvis: [30, 0, 0], spine: [5, 0, 0], chest: [5, 0, 0], head: [-20, 0, 0], hipL: [-130, -16, 5], hipR: [-130, 16, -5], kneeL: [135, 0, 0], kneeR: [135, 0, 0], ankleL: [-35, -5, 0], ankleR: [-35, 5, 0], shoulderL: [-178, 0, 12], shoulderR: [-178, 0, -12] };
+
 /** a joint list with left and right swapped (the other side of a test) */
 export function mirrorJ(j: J): J {
   const out: J = {};
@@ -70,19 +79,21 @@ export function mirrorJ(j: J): J {
 export const CLIPS: Record<TestId, Clip> = {
   'pelvic-rotation': {
     view: 'angle',
+    plant: ['ankleL', 'ankleR'],
     views: ['angle', 'above', 'front'],
     keys: [
       k(0, golf(ARMS_CROSSED), L('Golf posture, arms crossed', 'Golfhaltung, Arme verschränkt')),
       k(1.2, golf(ARMS_CROSSED)),
-      k(2.4, golf({ ...ARMS_CROSSED, pelvis: [40, 32, 0], chest: [3, -30, 0], hipL: [-60, -28, 4], hipR: [-60, -28, -4] }), L('Turn the hips to the left – the chest stays', 'Hüfte nach links drehen – die Brust bleibt')),
-      k(3.2, golf({ ...ARMS_CROSSED, pelvis: [40, 32, 0], chest: [3, -30, 0], hipL: [-60, -28, 4], hipR: [-60, -28, -4] })),
-      k(4.4, golf({ ...ARMS_CROSSED, pelvis: [40, -32, 0], chest: [3, 30, 0], hipL: [-60, 28, 4], hipR: [-60, 28, -4] }), L('… and to the right', '… und nach rechts')),
-      k(5.2, golf({ ...ARMS_CROSSED, pelvis: [40, -32, 0], chest: [3, 30, 0], hipL: [-60, 28, 4], hipR: [-60, 28, -4] })),
+      k(2.4, golf({ ...ARMS_CROSSED, ...PELVIS_LEFT }), L('Turn the hips to the left – the chest stays', 'Hüfte nach links drehen – die Brust bleibt')),
+      k(3.2, golf({ ...ARMS_CROSSED, ...PELVIS_LEFT })),
+      k(4.4, golf({ ...ARMS_CROSSED, ...PELVIS_RIGHT }), L('… and to the right', '… und nach rechts')),
+      k(5.2, golf({ ...ARMS_CROSSED, ...PELVIS_RIGHT })),
       k(6.4, golf(ARMS_CROSSED)),
     ],
   },
   'lower-quarter': {
     view: 'front',
+    plant: ['ankleL', 'ankleR'],
     views: ['front', 'above', 'angle'],
     keys: [
       k(0, stand(HANDS_ON_HIPS), L('Hands on the hips', 'Hände an die Hüfte')),
@@ -98,6 +109,7 @@ export const CLIPS: Record<TestId, Clip> = {
   },
   'single-leg': {
     view: 'angle',
+    plant: ['ankleL', 'ankleR'],
     views: ['angle', 'front', 'side'],
     keys: [
       k(0, stand(ARMS_CROSSED), L('Arms crossed on the chest', 'Arme vor der Brust verschränken')),
@@ -145,12 +157,13 @@ export const CLIPS: Record<TestId, Clip> = {
   },
   'deep-squat': {
     view: 'side',
+    plant: ['ankleL', 'ankleR'],
     props: ['barHands'],
     keys: [
       k(0, stand({ shoulderL: [-172, 0, 12], shoulderR: [-172, 0, -12], elbowL: [0, 0, 0], elbowR: [0, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6] }), L('Arms straight up, a stick in the hands', 'Arme gestreckt nach oben, Stab in den Händen')),
       k(1.2, stand({ shoulderL: [-172, 0, 12], shoulderR: [-172, 0, -12], elbowL: [0, 0, 0], elbowR: [0, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6] })),
-      k(3.2, P({ pelvis: [30, 0, 0], spine: [5, 0, 0], chest: [5, 0, 0], head: [-20, 0, 0], hipL: [-130, 0, 10], hipR: [-130, 0, -10], kneeL: [135, 0, 0], kneeR: [135, 0, 0], ankleL: [-35, 0, 0], ankleR: [-35, 0, 0], shoulderL: [-178, 0, 12], shoulderR: [-178, 0, -12] }), L('Squat as deep as you can – heels down, arms stay up', 'So tief wie möglich in die Hocke – Fersen unten, Arme bleiben oben')),
-      k(4.4, P({ pelvis: [30, 0, 0], spine: [5, 0, 0], chest: [5, 0, 0], head: [-20, 0, 0], hipL: [-130, 0, 10], hipR: [-130, 0, -10], kneeL: [135, 0, 0], kneeR: [135, 0, 0], ankleL: [-35, 0, 0], ankleR: [-35, 0, 0], shoulderL: [-178, 0, 12], shoulderR: [-178, 0, -12] })),
+      k(3.2, P({ ...SQUAT_DEEP }, { at: [0, -0.2] }), L('Squat as deep as you can – heels down, arms stay up', 'So tief wie möglich in die Hocke – Fersen unten, Arme bleiben oben')),
+      k(4.4, P({ ...SQUAT_DEEP }, { at: [0, -0.2] })),
       k(6.2, stand({ shoulderL: [-172, 0, 12], shoulderR: [-172, 0, -12], elbowL: [0, 0, 0], elbowR: [0, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6] }), L('Stand up again', 'Wieder aufstehen')),
       k(7.0, stand({ shoulderL: [-172, 0, 12], shoulderR: [-172, 0, -12], elbowL: [0, 0, 0], elbowR: [0, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6] })),
     ],

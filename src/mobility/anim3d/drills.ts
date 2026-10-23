@@ -180,6 +180,7 @@ export const DRILL_CLIPS: Record<string, Clip> = {
   },
   'mob-thread-needle': {
     view: 'angle',
+    plant: ['kneeL', 'kneeR', 'ankleL', 'ankleR'],
     views: ['angle', 'front', 'side'],
     ground: 'all',
     props: ['mat'],
@@ -196,6 +197,7 @@ export const DRILL_CLIPS: Record<string, Clip> = {
   },
   'mob-wrist-stretch': {
     view: 'side',
+    plant: ['kneeL', 'kneeR', 'wristL', 'wristR'],
     views: ['side', 'angle'],
     ground: 'all',
     props: ['mat'],
@@ -363,6 +365,7 @@ export const DRILL_CLIPS: Record<string, Clip> = {
   // ---------- standing ----------
   'mob-single-leg-reach': {
     view: 'angle',
+    plant: ['ankleL', 'ankleR'],
     views: ['angle', 'side', 'front'],
     keys: [
       k(0, REACH_START, L('Stand on the left leg, the knee slightly bent', 'Auf dem linken Bein stehen, das Knie leicht gebeugt')),

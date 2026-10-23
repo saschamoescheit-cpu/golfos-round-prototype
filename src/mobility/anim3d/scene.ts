@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { applyPose, buildRig, COLORS, mixPose, type Pose, type Rig } from './rig';
+import { applyPose, buildRig, COLORS, mixPose, type JointId, type Pose, type Rig } from './rig';
 import { loadRealisticBody, realisticBodyReady } from './rigSkin';
 import type { L } from '../../training/types';
 
@@ -26,6 +26,9 @@ export interface Clip {
   views?: View[];
   /** set the feet on the floor (standing tests); 'all' also knees, hands, elbows (drills on the floor) */
   ground?: boolean | 'all';
+  /** the parts that stay where they are while they rest on the floor (the feet in a squat, hands and knees on all
+   * fours): the body moves over them – a pose keeps the pelvis in its place (see plantShift) */
+  plant?: JointId[];
   props?: PropId[];
   /** where the camera looks and how far it is (default 0.9 m high, 3.6 m) */
   focus?: [number, number, number];
@@ -77,6 +80,45 @@ export function skinFloor(rig: Rig, clip: Clip): number[] | null {
     out.push(-(skinLow(rig) ?? 0));
   }
   return out;
+}
+/** How far a clip moves the body along the floor so its planted parts (clip.plant) stay in their place while they rest on
+ * the floor – a pose keeps the pelvis in its place, so the feet slid 25 cm forward in the deep squat (24.10.2026). 48
+ * moments: step by step the median move of the planted parts resting in both moments is taken back; what is left at the
+ * end of the loop is spread over it (no jump when it starts again). Null: nothing planted. */
+export function plantShift(rig: Rig, clip: Clip): { x: number[]; z: number[] } | null {
+  const parts = clip.plant;
+  if (!parts?.length) return null;
+  const len = clip.length ?? clip.keys[clip.keys.length - 1].t;
+  const N = 48;
+  const pos: THREE.Vector3[][] = [];
+  for (let i = 0; i < N; i++) {
+    applyPose(rig, sample(clip, (len * i) / N).pose, clip.ground ?? true);
+    rig.root.updateMatrixWorld(true);
+    pos.push(parts.map((j) => rig.joints[j].getWorldPosition(new THREE.Vector3())));
+  }
+  // resting: within 2 cm of the lowest the part comes in the clip
+  const low = parts.map((_, k) => Math.min(...pos.map((p) => p[k].y)));
+  const on = (i: number, k: number) => pos[i % N][k].y < low[k] + 0.02;
+  const mid = (a: number[]) => {
+    const s = [...a].sort((p, q) => p - q);
+    return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+  };
+  const x = [0];
+  const z = [0];
+  for (let i = 1; i <= N; i++) {
+    const dx: number[] = [];
+    const dz: number[] = [];
+    for (let k = 0; k < parts.length; k++)
+      if (on(i - 1, k) && on(i, k)) {
+        dx.push(pos[i % N][k].x - pos[i - 1][k].x);
+        dz.push(pos[i % N][k].z - pos[i - 1][k].z);
+      }
+    x.push(x[i - 1] - (dx.length ? mid(dx) : 0));
+    z.push(z[i - 1] - (dz.length ? mid(dz) : 0));
+  }
+  const ex = x.pop()!;
+  const ez = z.pop()!;
+  return { x: x.map((v, i) => v - (ex * i) / N), z: z.map((v, i) => v - (ez * i) / N) };
 }
 export function floorAt(offs: number[], clip: Clip, t: number): number {
   const len = clip.length ?? clip.keys[clip.keys.length - 1].t;
@@ -268,10 +310,16 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
   let clip: Clip | null = null;
   /** the realistic golfer: lifted so its skin rests on the floor (see skinFloor) */
   let floorOffs: number[] | null = null;
+  /** the body moved along the floor so the planted parts stay (see plantShift) */
+  let shift: { x: number[]; z: number[] } | null = null;
   const place = (c: Clip, tt: number) => {
     const s = sample(c, tt);
     applyPose(rig, s.pose, c.ground ?? true);
     if (floorOffs) rig.root.position.y += floorAt(floorOffs, c, tt);
+    if (shift) {
+      rig.root.position.x += floorAt(shift.x, c, tt);
+      rig.root.position.z += floorAt(shift.z, c, tt);
+    }
     return s;
   };
   let view: View = 'front';
@@ -361,6 +409,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
     rig = buildRig({ skin: skin() });
     scene.add(rig.root);
     floorOffs = clip ? skinFloor(rig, clip) : null;
+    shift = clip ? plantShift(rig, clip) : null;
     // (for the checks: which golfer is shown)
     canvas.dataset.body = rig.root.userData.lengths ? 'realistic' : 'classic';
     propGroup = new THREE.Group();
