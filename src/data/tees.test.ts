@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COMMON_TEES, courseTees, defaultTee, sortTees, STANDARD_TEES, teeId, teeName } from './tees';
+import { COMMON_TEES, courseTees, defaultTee, profileTee, sortTees, STANDARD_TEES, teeId, teeName } from './tees';
 import { geometryFromOsm, parseOsmXml } from '../lib/courses';
 
 describe('the tees a course offers (Sascha 22.10.2026)', () => {
@@ -42,5 +42,17 @@ describe('Florida: the scorecards', () => {
   it("Falcon's Fire and Orange Lake Legends: their tees, longest first", () => {
     expect(courseTees('osm:way/311994625').tees).toEqual(['Gold', 'Blue', 'White', 'Red']);
     expect(courseTees('osm:relation/4039887').tees).toEqual(['Green', 'Black', 'Blue', 'White', 'Yellow']);
+  });
+});
+
+// abroad the colours mean other lengths (night 22./23.10.2026): the standard tee "Yellow" by its length at home
+describe('the standard tee in the USA', () => {
+  it('Orange Lake (yellow = shortest) and Falcon\'s Fire: blue; Southern Dunes: white', () => {
+    expect(profileTee(courseTees('osm:relation/4039887'), 'Yellow', 'osm:relation/4039887', true)).toBe('Blue');
+    expect(profileTee(courseTees('osm:way/311994625'), 'Yellow', 'osm:way/311994625', true)).toBe('Blue');
+    expect(profileTee(courseTees('southerndunes:fl'), 'Yellow', 'southerndunes:fl', true)).toBe('White');
+  });
+  it('at home the colour stays the colour', () => {
+    expect(profileTee(courseTees('osm:relation/1326323'), 'Yellow', 'osm:relation/1326323', false)).toBe('Yellow');
   });
 });

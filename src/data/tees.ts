@@ -62,6 +62,25 @@ export const defaultTee = (tees: string[], lady = false): string | null => {
 };
 
 /** The player's standard tee from the profile, where this course has it (a course of unknown tees: always). */
-export function profileTee(offered: { tees: string[]; known: boolean }, tee: string | undefined): string | null {
-  return tee && offered.tees.includes(tee) ? tee : null;
+/** What a tee colour means at home: its typical 18-hole length on a German course (m). */
+const TYPICAL_M: Record<string, number> = { Black: 6300, White: 6000, Yellow: 5700, Blue: 5100, Red: 4900, Orange: 4300, Green: 3900 };
+
+/**
+ * The player's standard tee on this course. Abroad (the USA) the colours mean other lengths – at Orange Lake yellow is
+ * the shortest tee (night 22./23.10.2026, the trip to Florida): where the course's scorecard is in the app, the tee whose
+ * length is closest to what the player's colour means at home.
+ */
+export function profileTee(offered: { tees: string[]; known: boolean }, tee: string | undefined, courseId?: string, abroad = false): string | null {
+  if (!tee) return null;
+  const card = courseId ? TEES[courseId] : undefined;
+  if (abroad && card && TYPICAL_M[tee]) {
+    const total = (k: number) => Object.values(card.holes).reduce((a, h) => a + (h[k] ?? 0), 0);
+    const full = Object.keys(card.holes).length >= 18 ? 1 : 2; // a 9-hole card counts twice
+    let best: string | null = null;
+    card.tees.forEach((t, k) => {
+      if (best == null || Math.abs(total(k) * full - TYPICAL_M[tee]) < Math.abs(total(card.tees.indexOf(best)) * full - TYPICAL_M[tee])) best = t;
+    });
+    if (best && offered.tees.includes(best)) return best;
+  }
+  return offered.tees.includes(tee) ? tee : null;
 }

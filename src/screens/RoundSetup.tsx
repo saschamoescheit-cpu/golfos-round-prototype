@@ -9,6 +9,7 @@ import { loadCarryBag, loadGeometry, newId } from '../lib/storage';
 import { ensureCourseMap } from '../lib/courses';
 import { TopBar } from '../components/ui';
 import { courseTees, defaultTee, profileTee, TEE_COLOURS, TEES, teeName } from '../data/tees';
+import { inUsa } from '../lib/weather';
 import { dec, tr } from '../lib/i18n';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import { fetchShared } from '../lib/sharedratings';
@@ -73,7 +74,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   const lady = isLady();
   // only the course's own tees (Sascha 22.10.2026: "we show only the official tees")
   const own = (t: string | null | undefined) => (t && offered.tees.includes(t) ? t : null);
-  const startTee: string | null = own(props.from?.tee) ?? profileTee(offered, loadProfile().tee) ?? own(lastTee) ?? defaultTee(offered.tees, lady);
+  const startTee: string | null = own(props.from?.tee) ?? profileTee(offered, loadProfile().tee, props.course.id, inUsa([props.course.lon, props.course.lat])) ?? own(lastTee) ?? defaultTee(offered.tees, lady);
   // The playing handicap is remembered for 18 holes; a 9-hole round is pre-filled with half of it.
   // Nothing remembered yet: the rounded handicap index from the profile is the start value ("+1,2" = plus handicap).
   const fromProfile = (() => {

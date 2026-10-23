@@ -17,6 +17,7 @@ import { TopTools } from '../components/TopTools';
 import { FriendChips } from './Home';
 import { PlayerRow, teeChoicesFor } from './RoundSetup';
 import { courseTees, defaultTee, profileTee } from '../data/tees';
+import { inUsa } from '../lib/weather';
 import { courseHandicap, parseIndex, ratingFor } from '../lib/handicap';
 import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
@@ -581,7 +582,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const lady = isLady();
   const startTee = offered ? defaultTee(offered.tees) : null;
   // me: the standard tee from my profile where the course has it (Sascha 22.10.2026)
-  const myTee = offered ? profileTee(offered, loadProfile().tee) ?? defaultTee(offered.tees, lady) : null;
+  const myTee = offered ? profileTee(offered, loadProfile().tee, d.course?.id, d.course ? inUsa([d.course.lon, d.course.lat]) : false) ?? defaultTee(offered.tees, lady) : null;
   // only the course's own tees (Sascha 22.10.2026)
   const teeOf = (p: DraftPlayer) => (p.tee && offered?.tees.includes(p.tee) ? p.tee : p.id === 'me' ? myTee : startTee);
   const loopHoles = d.course ? d.course.holes.filter((h) => h.loop === rholes[0]?.loop) : [];
