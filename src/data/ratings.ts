@@ -34,6 +34,8 @@ export const RATINGS: Record<string, Record<string, TeeRating>> = {
   'osm:way/51852280': { White: { cr: 74.1, slope: 133 }, Yellow: { cr: 72.4, slope: 133 } },
   'osm:way/40755710': { Yellow: { cr: 73.0, slope: 135 } },
   'osm:relation/1654444': { Yellow: { cr: 70.8, slope: 133 } },
+  'osm:way/311994625': { Gold: { cr: 74.1, slope: 138 }, Blue: { cr: 71.0, slope: 128 }, White: { cr: 68.9, slope: 121 }, Red: { cr: 66.3, slope: 114 } }, // Falcon's Fire: GolfCourseAPI (night 22./23.10.2026), men's values; Southern Dunes checked the same way: identical
+  'osm:relation/4039887': { Green: { cr: 73.7, slope: 135 }, Black: { cr: 71.9, slope: 131 }, Blue: { cr: 70.1, slope: 126 }, White: { cr: 67.5, slope: 121 }, Yellow: { cr: 65.0, slope: 112 } }, // Orange Lake – Legends: GolfCourseAPI (night 22./23.10.2026), men's values; Southern Dunes checked the same way: identical
   'southerndunes:fl': { Black: { cr: 75.0, slope: 140 }, Blue: { cr: 72.9, slope: 136 }, White: { cr: 70.4, slope: 133 }, Gold: { cr: 67.2, slope: 121 } },
   'osm:relation/1326323': {
     'White@AB': { cr: 74.2, slope: 134, par: 71 }, 'Yellow@AB': { cr: 71.6, slope: 130, par: 71 }, 'Blue@AB': { cr: 68.7, slope: 127, par: 70 }, 'Red@AB': { cr: 66.2, slope: 119, par: 68 },

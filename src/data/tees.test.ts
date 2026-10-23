@@ -36,3 +36,11 @@ describe('the tees a course offers (Sascha 22.10.2026)', () => {
     expect(geometryFromOsm(parseOsmXml(xml)).teeColours).toEqual(['Yellow', 'Red']);
   });
 });
+
+// the trip to Florida (final list, Sascha 22.10.2026): tees and course ratings from the scorecards (GolfCourseAPI)
+describe('Florida: the scorecards', () => {
+  it("Falcon's Fire and Orange Lake Legends: their tees, longest first", () => {
+    expect(courseTees('osm:way/311994625').tees).toEqual(['Gold', 'Blue', 'White', 'Red']);
+    expect(courseTees('osm:relation/4039887').tees).toEqual(['Green', 'Black', 'Blue', 'White', 'Yellow']);
+  });
+});

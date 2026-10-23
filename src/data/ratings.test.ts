@@ -24,3 +24,10 @@ describe('course ratings of the bundled courses', () => {
     expect(RATINGS['southerndunes:fl'].Red).toBeUndefined(); // only a women's rating published
   });
 });
+
+describe('Florida: course rating and slope (GolfCourseAPI, 22./23.10.2026)', () => {
+  it("Falcon's Fire blue and Orange Lake Legends black", () => {
+    expect(RATINGS['osm:way/311994625'].Blue).toEqual({ cr: 71.0, slope: 128 });
+    expect(RATINGS['osm:relation/4039887'].Black).toEqual({ cr: 71.9, slope: 131 });
+  });
+});
