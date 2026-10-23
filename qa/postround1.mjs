@@ -60,11 +60,13 @@ ok(/Caddie: 7i/.test(vs) && /gespielt: 8i/.test(vs), `plan against played off th
 // 1 · strike, intent, stance on shot 1
 await p.locator('.review-list li[data-shot="0"] .shot-row').click();
 await p.waitForTimeout(300);
-for (const [g, v] of [['Treffer', 'Gut'], ['Absicht', 'Angegriffen'], ['Stand', 'Eben']]) await p.getByRole('group', { name: g }).getByRole('button', { name: v }).click();
+// a tee box is level: "Eben" suggested (Sascha 22.10.2026: the stance suggested from the heights)
+ok((await p.getByRole('group', { name: 'Stand' }).getByRole('button', { name: 'Eben' }).getAttribute('aria-pressed')) === 'true', 'the tee shot: stance "Eben" suggested');
+for (const [g, v] of [['Treffer', 'Gut'], ['Absicht', 'Angegriffen'], ['Stand', 'Bergauf']]) await p.getByRole('group', { name: g }).getByRole('button', { name: v }).click();
 await p.getByRole('button', { name: /^Speichern/ }).last().click();
 await p.waitForTimeout(400);
 let e = await mine(0);
-ok(e.detail.shots[0].strike === 'good' && e.detail.shots[0].intent === 'attack' && e.detail.shots[0].slope === 'flat', 'strike, intent and stance kept with the shot');
+ok(e.detail.shots[0].strike === 'good' && e.detail.shots[0].intent === 'attack' && e.detail.shots[0].slope === 'up', 'strike, intent and stance kept with the shot');
 ok(/Gut/.test(await p.locator('.review-list li[data-shot="0"]').innerText()) && /Angegriffen/.test(await p.locator('.review-list li[data-shot="0"]').innerText()), 'the row shows "Gut · Angegriffen"');
 
 // 2 · shot 2 lost, a provisional ball played

@@ -91,3 +91,26 @@ export function obAdvice(boundary: Ring[] | undefined, from: LngLat, target: Lng
   const parts = (Object.keys(near) as (keyof typeof near)[]).filter((k) => near[k] < Infinity).map((k) => `${Math.round(near[k])} m ${sideWord(k)}`);
   return parts.length ? { text: `${tr('Out of bounds', 'Aus')} ${parts.join(', ')}`, left: near.left, right: near.right } : null;
 }
+
+/**
+ * The stance a shot was played from, read off the terrain model along the hole (Sascha 22.10.2026, round check: "Stand"
+ * suggested from the heights where there are any): uphill / downhill in the shot's direction, or the ball above / below
+ * the feet from the side slope – a right-hander stands left of the line to the target, a left-hander right of it.
+ * Flat under 2 %, a suggestion from 4 % (the stronger of the two), nothing in between or off the hole's profile.
+ */
+export function stanceAt(samples: Samples | undefined, along: number, alongTo: number | null, leftHanded: boolean): 'flat' | 'up' | 'down' | 'above' | 'below' | null {
+  const dir = alongTo == null || alongTo >= along ? 1 : -1; // played towards the green, or back towards the tee
+  const h0 = heightAt(samples, along - 5 * dir);
+  const h1 = heightAt(samples, along + 5 * dir);
+  const grade = h0 != null && h1 != null ? ((h1 - h0) / 10) * 100 : null;
+  const crossRaw = crossSlopeAt(samples, along);
+  if (grade == null && crossRaw == null) return null;
+  // seen in the shot's direction: + = the right side higher
+  const cross = crossRaw == null ? 0 : crossRaw * dir;
+  const g = grade ?? 0;
+  if (Math.abs(g) < 2 && Math.abs(cross) < 2) return 'flat';
+  if (Math.max(Math.abs(g), Math.abs(cross)) < 4) return null;
+  if (Math.abs(g) >= Math.abs(cross)) return g > 0 ? 'up' : 'down';
+  // right side higher: a right-hander's ball lies higher than his feet, a left-hander's lower
+  return (cross > 0) !== leftHanded ? 'above' : 'below';
+}

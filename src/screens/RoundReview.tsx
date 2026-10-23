@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ShotHereIcon } from '../components/RoundIcons';
 import type { Club, DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
-import { distanceM, distToLine, holeMapData, pointInRing, type HoleMapData } from '../lib/geo';
+import { distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
 import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
 import { fromDrop, intentName, penaltyName, playedAgain, strikeName } from '../lib/shotfacts';
 import { shotChecks } from '../lib/reviewchecks';
+import { stanceAt } from '../lib/terrain';
+import { isLeftHanded } from '../lib/profile';
 import { adviceAtTee, historyLines } from '../lib/holehistory';
 import { statRounds } from '../lib/signing';
 import { holeSg } from '../lib/sg';
@@ -1306,6 +1308,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           strike={editing.strike}
           intent={editing.intent}
           slope={editing.slope}
+          slopeSuggested={(() => {
+            // the stance from the terrain model along the hole – near the hole's line only (Sascha 22.10.2026)
+            if (editing.lie === 'tee') return 'flat'; // a tee box is level
+            if (!data || !editing.pos || distToLine(editing.pos, data.line) > 40) return null;
+            const next = edit! + 1 < d.shots.length ? d.shots[edit! + 1].pos : d.onGreen;
+            return stanceAt(geometry.fairwaySlopes?.[hole.label], profileAlong(data, editing.pos), next ? profileAlong(data, next) : null, isLeftHanded());
+          })()}
           onSave={(v) => {
             const shots = d.shots.slice();
             shots[edit!] = { ...shots[edit!], ...v, missPos: v.penalty ? shots[edit!].missPos : null };

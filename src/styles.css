@@ -1585,3 +1585,9 @@ button.tile:disabled { opacity: 1; }
    30 px, some 60 m in the overview, right only when zoomed in (Sascha 22.10.2026, round of 22.10. on Hetzenhof). */
 .maplibregl-map .maplibregl-marker { position: absolute; }
 .delete-ask { display: flex; flex-direction: column; gap: 10px; }
+
+/* a game on the map (Games): its bar sits above the hole bar – on a short phone (iPhone SE) the tools move up under the
+   green's distances so the bar never covers the last tool ("2D", night 22./23.10.2026) */
+@media (max-height: 700px) {
+  body:has(.game-bar) .map-side { top: calc(env(safe-area-inset-top) + 168px); }
+}

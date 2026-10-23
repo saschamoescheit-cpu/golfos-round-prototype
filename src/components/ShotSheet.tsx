@@ -24,6 +24,8 @@ export function ShotSheet(props: {
   strike?: Strike;
   intent?: Intent;
   slope?: SlopeLie;
+  /** the stance read off the terrain model when the player has not set one (Sascha 22.10.2026) */
+  slopeSuggested?: SlopeLie | null;
   onSave: (v: {
     lie: Lie;
     club: Club | null;
@@ -53,7 +55,7 @@ export function ShotSheet(props: {
   // what the player tells after the round (Sascha 22.10.2026): strike, intent, stance – optional, one tap each
   const [strike, setStrike] = useState<Strike | null>(props.strike ?? null);
   const [intent, setIntent] = useState<Intent | null>(props.intent ?? null);
-  const [slope, setSlope] = useState<SlopeLie | null>(props.slope ?? null);
+  const [slope, setSlope] = useState<SlopeLie | null>(props.slope ?? props.slopeSuggested ?? null);
   const again = penalty && (alwaysAgain(pk as PenaltyKind) || replay);
   const [club, setClub] = useState<Club | null>(props.club);
   const [kind, setKind] = useState<ShotKind | null>(props.kind ?? null); // null = follow the suggestion
@@ -173,7 +175,10 @@ export function ShotSheet(props: {
               <Chips<Intent> label={tr('Meant to', 'Absicht')} value={intent} onChange={setIntent} options={INTENTS.map((x) => ({ value: x.value, label: x.label() }))} />
             </div>
             <div className="field">
-              <label>{tr('Stance (optional)', 'Stand (optional)')}</label>
+              <label>
+                {tr('Stance (optional)', 'Stand (optional)')}
+                {!props.slope && props.slopeSuggested ? <span className="muted small"> · {tr('suggested from the heights', 'aus den Höhen vorgeschlagen')}</span> : null}
+              </label>
               <Chips<SlopeLie> label={tr('Stance', 'Stand')} value={slope} onChange={setSlope} options={SLOPES.map((x) => ({ value: x.value, label: x.label() }))} />
             </div>
           </div>

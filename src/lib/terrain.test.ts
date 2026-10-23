@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crossSlopeAt, heightAt, obAdvice, slopeAdvice } from './terrain';
+import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, stanceAt } from './terrain';
 import type { LngLat, Ring } from '../types';
 
 const M = 1 / 111195;
@@ -29,5 +29,24 @@ describe('caddie: ground', () => {
     const boundary: Ring[] = [[at(20, 0), at(20, 400), at(200, 400), at(200, 0), at(20, 0)]];
     expect(obAdvice(boundary, at(0, 0), at(0, 220))!.text).toBe('Out of bounds 20 m right');
     expect(obAdvice(boundary, at(0, 0), at(-40, 220))).toBeNull();
+  });
+});
+
+// the stance from the terrain model (Sascha 22.10.2026, round check)
+describe('stance from the heights', () => {
+  const rise: [number, number, number][] = Array.from({ length: 30 }, (_, k) => [k * 10, 0, 100 + k * 0.6]); // 6 % uphill
+  const side: [number, number, number][] = Array.from({ length: 30 }, (_, k) => [k * 10, 6, 100]); // right side 6 % higher
+  const flat: [number, number, number][] = Array.from({ length: 30 }, (_, k) => [k * 10, 0.5, 100]);
+  it('uphill towards the green, downhill back to the tee', () => {
+    expect(stanceAt(rise, 150, 250, false)).toBe('up');
+    expect(stanceAt(rise, 150, 50, false)).toBe('down');
+  });
+  it('right side higher: ball above the feet of a right-hander, below a left-hander\'s', () => {
+    expect(stanceAt(side, 150, 250, false)).toBe('above');
+    expect(stanceAt(side, 150, 250, true)).toBe('below');
+  });
+  it('flat ground, and nothing off the profile', () => {
+    expect(stanceAt(flat, 150, 250, false)).toBe('flat');
+    expect(stanceAt(undefined, 150, 250, false)).toBeNull();
   });
 });
