@@ -32,6 +32,19 @@ const QUAD: J = {
   wristL: [-62, 0, 0],
   wristR: [-62, 0, 0],
 };
+/** the wrist stretch rocked back: the hips 15 cm back towards the heels, the shins flat, the hands where they were on the
+ * floor (fitted on the realistic golfer 24.10.2026 – before, the feet rose 15 cm and the hands slid 27 cm away) */
+const ROCK_BACK: J = {
+  pelvis: [66, 0, 0],
+  hipL: [-86, 0, 3],
+  hipR: [-86, 0, -3],
+  kneeL: [110, 0, 0],
+  kneeR: [110, 0, 0],
+  shoulderL: [-84, 0, 5],
+  shoulderR: [-84, 0, -5],
+  wristL: [39, 180, 0],
+  wristR: [39, 180, 0],
+};
 /** (the hands open: flat on the floor) */
 const quad = (j: J = {}, extra: Omit<Pose, 'j'> = {}): Pose => P({ ...QUAD, ...j }, { gripL: 0, gripR: 0, ...extra });
 
@@ -50,13 +63,15 @@ const CHILD: J = {
   ankleR: [60, 0, 0],
 };
 
-/** kneeling in front of a bench, elbows on it, hands behind the head: hips over the knees … */
+/** kneeling in front of a bench, elbows on it, hands behind the head … (both fitted on the realistic golfer 24.10.2026:
+ * the elbows on the bench top, the shins flat and the knees in their place – before, the knees hung 5 cm in the air, the
+ * elbows over the bench and, sitting back, the arms in the air in front of it while the knees slid 8 cm) */
 const LAT_START = P(
-  { ...CHILD, pelvis: [76, 0, 0], hipL: [-100, 0, 8], hipR: [-100, 0, -8], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [75, 0, 0], ankleR: [75, 0, 0], shoulderL: [-180, 0, 12], shoulderR: [-180, 0, -12], elbowL: [-150, 0, 0], elbowR: [-150, 0, 0] },
+  { ...CHILD, pelvis: [76, 0, 0], hipL: [-104, 0, 8], hipR: [-104, 0, -8], kneeL: [118, 0, 0], kneeR: [118, 0, 0], ankleL: [75, 0, 0], ankleR: [75, 0, 0], shoulderL: [-179, 0, 12], shoulderR: [-179, 0, -12], elbowL: [-150, 0, 0], elbowR: [-150, 0, 0] },
   { at: [0, -0.17] },
 );
 /** … and sitting back towards the heels, the chest sinking between the arms */
-const LAT_END = P({ ...CHILD, pelvis: [84, 0, 0], spine: [-6, 0, 0], chest: [-8, 0, 0], shoulderL: [-168, 0, 12], shoulderR: [-168, 0, -12], elbowL: [-150, 0, 0], elbowR: [-150, 0, 0] }, { at: [0, -0.3] });
+const LAT_END = P({ ...CHILD, pelvis: [92, 0, 0], spine: [-6, 0, 0], chest: [-8, 0, 0], hipL: [-134, 0, 8], hipR: [-134, 0, -8], kneeL: [133, 0, 0], kneeR: [133, 0, 0], shoulderL: [-176, 0, 12], shoulderR: [-176, 0, -12], elbowL: [-150, 0, 0], elbowR: [-150, 0, 0] }, { at: [0, -0.225] });
 
 /** lying on the right side, knees bent 90° in front, arms forward (seen from above or the front) */
 const SIDE: J = {
@@ -187,8 +202,8 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     keys: [
       k(0, quad({ wristL: [66, 180, 0], wristR: [66, 180, 0] }), L('On hands and knees, fingers pointing to the knees', 'Im Vierfüßlerstand, die Finger zeigen zu den Knien')),
       k(1.2, quad({ wristL: [66, 180, 0], wristR: [66, 180, 0] })),
-      k(2.8, quad({ pelvis: [68, 0, 0], hipL: [-46, 0, 3], hipR: [-46, 0, -3], shoulderL: [-82, 0, 5], shoulderR: [-82, 0, -5], wristL: [86, 180, 0], wristR: [86, 180, 0] }), L('Rock gently back – 20 s', 'Sanft nach hinten wippen – 20 s')),
-      k(4.2, quad({ pelvis: [68, 0, 0], hipL: [-46, 0, 3], hipR: [-46, 0, -3], shoulderL: [-82, 0, 5], shoulderR: [-82, 0, -5], wristL: [86, 180, 0], wristR: [86, 180, 0] })),
+      k(2.8, quad(ROCK_BACK), L('Rock gently back – 20 s', 'Sanft nach hinten wippen – 20 s')),
+      k(4.2, quad(ROCK_BACK)),
       k(5.6, quad({ wristL: [66, 180, 0], wristR: [66, 180, 0] })),
     ],
   },
