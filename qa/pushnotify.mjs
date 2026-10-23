@@ -113,9 +113,13 @@ const openProfile = async (p) => {
   await p.waitForFunction(() => navigator.serviceWorker?.controller != null || navigator.serviceWorker?.ready, null, { timeout: 15000 }).catch(() => {});
   const card = await openProfile(p);
   ok(await card.getByRole('heading', { name: 'Mitteilungen' }).isVisible(), 'profile: a section "Mitteilungen"');
-  const on = card.getByRole('button', { name: 'Mitteilungen einschalten' });
-  ok(await on.isVisible(), 'the button to turn them on');
-  ok((await on.evaluate((el) => el.className)).includes('btn-primary') && (await on.locator('svg').count()) === 1, 'in the design of the app: main button with a symbol, no emoji');
+  // a slider right of the heading (Sascha 23.10.2026), as the caddie's switches
+  const on = card.getByRole('switch', { name: 'Mitteilungen auf diesem Handy' });
+  ok(await on.isVisible() && (await on.getAttribute('aria-checked')) === 'false', 'a slider beside the heading, off');
+  const head = await card.locator('h2').boundingBox();
+  const sw = await on.boundingBox();
+  ok(!!head && !!sw && Math.abs(head.y + head.height / 2 - (sw.y + sw.height / 2)) < 12 && sw.x > head.x + head.width, 'right of "Mitteilungen", on the same line');
+  ok((await on.locator('.drawer-switch').count()) === 1, 'in the design of the app: the switch of the caddie settings');
   await on.click();
   await p.waitForTimeout(1500);
   const sub = calls.find((c) => c.action === 'subscribe');
@@ -126,18 +130,21 @@ const openProfile = async (p) => {
   ok(sub?.lang === 'de' && typeof sub?.tz === 'string' && sub.tz.length > 2, `language and time zone of the phone (${sub?.lang}, ${sub?.tz})`);
   ok(sub?.kinds?.rounds && sub?.kinds?.games && sub?.kinds?.weather, 'all three kinds on at first');
   ok(await card.getByRole('status').filter({ hasText: 'Mitteilungen sind an' }).isVisible(), 'said: on – a first one on its way');
-  ok((await card.getByRole('group').count()) === 3, 'three switches: rounds, games, thunderstorm');
-  const storm = card.locator('.field').filter({ hasText: 'Gewitter auf dem Platz' });
-  await storm.getByRole('button', { name: 'Aus' }).click();
+  ok((await on.getAttribute('aria-checked')) === 'true', 'the slider on');
+  if (process.env.SHOTS) await card.screenshot({ path: `${process.env.SHOTS}/push-card.png` });
+  ok((await card.locator('.drawer-row[role="switch"]').count()) === 3 && (await card.getByRole('group').count()) === 0, 'one slider per kind: rounds, games, thunderstorm (no An/Aus buttons)');
+  const storm = card.getByRole('switch', { name: /Gewitter auf dem Platz/ });
+  await storm.click();
   await p.waitForTimeout(600);
   const set1 = calls.filter((c) => c.action === 'settings').pop();
   ok(set1?.kinds?.weather === false && set1?.kinds?.rounds === true && set1?.endpoint === sub?.subscription?.endpoint, 'thunderstorm off: told to the function');
-  await storm.getByRole('button', { name: 'An' }).click();
+  ok((await storm.getAttribute('aria-checked')) === 'false', 'its slider off');
+  await storm.click();
   await p.waitForTimeout(600);
   ok(calls.filter((c) => c.action === 'settings').pop()?.kinds?.weather === true, 'and on again');
   // after a reload still on
   await openProfile(p);
-  ok(await card.getByRole('button', { name: 'Mitteilungen auf diesem Handy ausschalten' }).isVisible(), 'after a reload: still on');
+  ok((await card.getByRole('switch', { name: 'Mitteilungen auf diesem Handy' }).getAttribute('aria-checked')) === 'true', 'after a reload: still on');
 
   // a round on the course: the function learns where (for the thunderstorm warning)
   await p.evaluate((r) => localStorage.setItem('golfos.rounds.v1', JSON.stringify([r])), round('qa-live', false));
@@ -183,11 +190,11 @@ const openProfile = async (p) => {
   // the round ended: no thunderstorm warnings for it any more – told once the round is finished
   // (the finish itself is covered by the round tests; here: off)
   const card2 = await openProfile(p);
-  await card2.getByRole('button', { name: 'Mitteilungen auf diesem Handy ausschalten' }).click();
+  await card2.getByRole('switch', { name: 'Mitteilungen auf diesem Handy' }).click();
   await p.waitForTimeout(800);
   ok(calls.some((c) => c.action === 'unsubscribe' && c.endpoint === sub?.subscription?.endpoint), 'turned off: the function forgets this phone');
   ok(Number(await p.evaluate(() => localStorage.getItem('qa.unsubscribed'))) >= 1, 'and the phone unsubscribes');
-  ok(await card2.getByRole('button', { name: 'Mitteilungen einschalten' }).isVisible(), 'the button to turn on again');
+  ok((await card2.getByRole('switch', { name: 'Mitteilungen auf diesem Handy' }).getAttribute('aria-checked')) === 'false' && (await card2.locator('.drawer-row').count()) === 0, 'the slider off, the kinds hidden');
   ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
   await ctx.close();
 }
@@ -198,10 +205,10 @@ const openProfile = async (p) => {
   await ctx.unroute(/supabase\.co\/functions\/v1\/golfos-push/);
   await ctx.route(/supabase\.co\/functions\/v1\/golfos-push/, (r) => r.fulfill({ status: 404, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }, body: '' }));
   const card = await openProfile(p);
-  await card.getByRole('button', { name: 'Mitteilungen einschalten' }).click();
+  await card.getByRole('switch', { name: 'Mitteilungen auf diesem Handy' }).click();
   await p.waitForTimeout(1200);
   ok(await card.getByRole('status').filter({ hasText: 'noch nicht eingerichtet' }).isVisible(), 'function not there yet: "Auf dem Server noch nicht eingerichtet."');
-  ok(await card.getByRole('button', { name: 'Mitteilungen einschalten' }).isVisible(), 'and stays off');
+  ok((await card.getByRole('switch', { name: 'Mitteilungen auf diesem Handy' }).getAttribute('aria-checked')) === 'false', 'and stays off');
   await ctx.close();
 }
 
@@ -210,7 +217,7 @@ const openProfile = async (p) => {
   const { ctx, p } = await context(devices['iPhone 13']);
   const card = await openProfile(p);
   ok(await card.getByText('Zum Home-Bildschirm').isVisible(), 'iPhone in the browser: how to add GolfOS to the home screen');
-  ok((await card.getByRole('button', { name: 'Mitteilungen einschalten' }).count()) === 0, 'no button that cannot work');
+  ok((await card.getByRole('switch').count()) === 0, 'no slider that cannot work');
   await ctx.close();
 }
 {

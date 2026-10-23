@@ -1,17 +1,9 @@
 import { useState } from 'react';
-import { Segmented } from './ui';
 import { tr } from '../lib/i18n';
 import { disablePush, enablePush, loadPush, pushAvailability, PushError, setPushKind, type PushKind } from '../lib/push';
 
-// Notifications in the profile (final list, Sascha 23.10.2026): one button turns them on for this phone, then each kind
-// on or off – as the other switches of the profile, "On" left. Where it cannot work, one line says why.
-
-const BELL = (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
-    <path d="M10 20.5a2 2 0 0 0 4 0" />
-  </svg>
-);
+// Notifications in the profile (final list, Sascha 23.10.2026): a slider right of the heading turns them on for this
+// phone, then one slider per kind – the switches of the caddie settings. Where it cannot work, one line says why.
 
 const KINDS: { kind: PushKind; label: () => string; hint: () => string }[] = [
   { kind: 'rounds', label: () => tr('Round not checked yet', 'Runde noch nicht geprüft'), hint: () => tr('Once, two hours after the round', 'Einmal, zwei Stunden nach der Runde') },
@@ -24,6 +16,7 @@ export function PushCard(props: { signedIn: boolean }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const why = pushAvailability();
+  const can = why === 'ok' && props.signedIn;
 
   const turnOn = async () => {
     setBusy(true);
@@ -44,10 +37,32 @@ export function PushCard(props: { signedIn: boolean }) {
       setBusy(false);
     }
   };
+  const turnOff = async () => {
+    setBusy(true);
+    setMsg(null);
+    setState(await disablePush());
+    setBusy(false);
+  };
 
   return (
     <section className="card stats-card push-card">
-      <h2>{tr('Notifications', 'Mitteilungen')}</h2>
+      {/* sliders, the main one right of the heading (Sascha 23.10.2026) – as the caddie's switches */}
+      <div className="card-head">
+        <h2>{tr('Notifications', 'Mitteilungen')}</h2>
+        {can && (
+          <button
+            type="button"
+            className="switch-btn"
+            role="switch"
+            aria-checked={state.on}
+            aria-label={tr('Notifications on this phone', 'Mitteilungen auf diesem Handy')}
+            disabled={busy}
+            onClick={() => (state.on ? turnOff() : turnOn())}
+          >
+            <span className={`drawer-switch${state.on ? ' on' : ''}`} aria-hidden="true" />
+          </button>
+        )}
+      </div>
       {why === 'homescreen' && (
         <span className="muted small">
           {tr(
@@ -58,49 +73,28 @@ export function PushCard(props: { signedIn: boolean }) {
       )}
       {why === 'unsupported' && <span className="muted small">{tr('This browser cannot receive notifications.', 'Dieser Browser kann keine Mitteilungen empfangen.')}</span>}
       {why === 'signin' && <span className="muted small">{tr('Notifications come with an account – sign in above.', 'Mitteilungen gehen mit einem Konto – oben anmelden.')}</span>}
-      {why === 'ok' && props.signedIn && !state.on && (
-        <>
-          <span className="muted small">{tr('A round not checked yet, games on several phones, a thunderstorm on the course.', 'Runde noch nicht geprüft, Spiele auf mehreren Handys, Gewitter auf dem Platz.')}</span>
-          <button type="button" className="btn-primary icon-text" disabled={busy} onClick={turnOn}>
-            {BELL}
-            {busy ? tr('Turning on …', 'Schalte ein …') : tr('Turn on notifications', 'Mitteilungen einschalten')}
-          </button>
-        </>
+      {can && !state.on && (
+        <span className="muted small">{tr('A round not checked yet, games on several phones, a thunderstorm on the course.', 'Runde noch nicht geprüft, Spiele auf mehreren Handys, Gewitter auf dem Platz.')}</span>
       )}
-      {why === 'ok' && props.signedIn && state.on && (
-        <>
+      {can && state.on && (
+        <div className="drawer-list settings-switches">
           {KINDS.map((k) => (
-            <div className="field" key={k.kind}>
-              <label>{k.label()}</label>
-              <Segmented<'on' | 'off'>
-                label={k.label()}
-                value={state.kinds[k.kind] ? 'on' : 'off'}
-                onChange={async (v) => {
-                  if (!v) return;
-                  setState(await setPushKind(k.kind, v === 'on'));
-                }}
-                options={[
-                  { value: 'on', label: tr('On', 'An') },
-                  { value: 'off', label: tr('Off', 'Aus') },
-                ]}
-              />
-              <span className="muted small">{k.hint()}</span>
-            </div>
+            <button
+              key={k.kind}
+              type="button"
+              className="drawer-row"
+              role="switch"
+              aria-checked={state.kinds[k.kind]}
+              onClick={async () => setState(await setPushKind(k.kind, !state.kinds[k.kind]))}
+            >
+              <span className="switch-label">
+                <span>{k.label()}</span>
+                <span className="muted small">{k.hint()}</span>
+              </span>
+              <span className={`drawer-switch${state.kinds[k.kind] ? ' on' : ''}`} aria-hidden="true" />
+            </button>
           ))}
-          <button
-            type="button"
-            className="btn-secondary"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setState(await disablePush());
-              setBusy(false);
-              setMsg(null);
-            }}
-          >
-            {tr('Turn off notifications on this phone', 'Mitteilungen auf diesem Handy ausschalten')}
-          </button>
-        </>
+        </div>
       )}
       {msg && <span className="muted small" role="status">{msg}</span>}
     </section>

@@ -45,6 +45,20 @@ await p.waitForTimeout(400);
 const prof = await p.locator('main').innerText();
 ok(!/Auf allen Geräten/.test(prof) && /Mit Google angemeldet/.test(prof) && /test@example\.com/.test(prof), 'signed in: the account by the photo, no sync card');
 ok(await p.getByRole('button', { name: 'Abmelden' }).isVisible(), '"Abmelden" by the photo');
+// a new device that just took the other device's profile, and a refused entry on the last sync: still no card and
+// nothing to click (Sascha 23.10.2026: "the whole sync without this section") – this device's old profile stays stored
+await p.evaluate(() => {
+  localStorage.setItem('golfos.sync.replaced.v1', JSON.stringify({ 'golfos.profile.v1': { value: '{"firstName":"Alt"}', at: new Date().toISOString() } }));
+  localStorage.setItem('golfos.sync.error.v1', JSON.stringify({ at: new Date().toISOString(), text: '1 Einträge abgelehnt (x) – beim nächsten Abgleich erneut.' }));
+});
+await p.locator('.tabbar button').filter({ hasText: 'Runden' }).click();
+await p.waitForTimeout(300);
+await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
+await p.waitForTimeout(400);
+const prof2 = await p.locator('main').innerText();
+ok(!/Auf allen Geräten|Passt so|diesem Gerät behalten|Jetzt abgleichen|abgelehnt/.test(prof2), 'settings taken from the other device, a refused entry: no card, no question, no button');
+ok(!!(await p.evaluate(() => localStorage.getItem('golfos.sync.replaced.v1'))), 'this device\'s earlier profile stays stored (never deleted)');
+await p.evaluate(() => localStorage.removeItem('golfos.sync.error.v1'));
 const t0 = Date.now();
 const field = p.getByLabel('Handicap-Index');
 await field.fill('6,8');

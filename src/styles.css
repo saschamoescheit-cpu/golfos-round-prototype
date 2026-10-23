@@ -1591,3 +1591,9 @@ button.tile:disabled { opacity: 1; }
 @media (max-height: 700px) {
   body:has(.game-bar) .map-side { top: calc(env(safe-area-inset-top) + 168px); }
 }
+
+/* a card's heading with a slider at its right (notifications, Sascha 23.10.2026) */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.card-head h2 { margin: 0; }
+.switch-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; }
+.switch-btn:disabled { opacity: 0.6; }
