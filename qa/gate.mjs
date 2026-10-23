@@ -3,8 +3,20 @@
 // Usage: node qa/gate.mjs [parallel=4] [http://localhost:PORT/] [test …]   (the dev server on :5173 must run, or the one
 // at the given address – a second copy of the app, so work goes on while the gate runs)
 import { spawn } from 'node:child_process';
+import { appendFileSync } from 'node:fs';
 
-const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify', 'voiceask', 'openholes', 'emptytiles', 'help'];
+// every failure with its lines – which tests wobble under load, and why (night run 23./24.10.2026)
+const FLAKY_LOG = new URL('./gate-flaky.log', import.meta.url);
+const logFail = (name, phase, out) => {
+  try {
+    const lines = out.split('\n').filter((l) => /^✗|TimeoutError|Error:|waiting for/.test(l.trim())).slice(0, 8).map((l) => '    ' + l.trim().slice(0, 240));
+    appendFileSync(FLAKY_LOG, `${new Date().toISOString()} ${name} [${phase}]\n${lines.join('\n')}\n`);
+  } catch {
+    /* the log is a help only */
+  }
+};
+
+const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify', 'voiceask', 'openholes', 'emptytiles', 'help', 'offlineus'];
 const args = process.argv.slice(2);
 const par = Number(args.find((a) => /^\d+$/.test(a)) ?? 3);
 const base = args.find((a) => /^https?:/.test(a));
@@ -41,6 +53,7 @@ async function worker() {
     const secs = Math.round((Date.now() - s) / 1000);
     if (bad.length || code) {
       failed.push(name);
+      logFail(name, "pool", out);
       console.log(`✗ ${name} (${secs} s)\n   ${bad.slice(0, 6).join('\n   ') || 'exit ' + code}`);
     } else console.log(`✓ ${name} (${secs} s)`);
   }
@@ -54,6 +67,7 @@ for (const name of failed.splice(0)) {
   const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
   if (bad.length || code) {
     failed.push(name);
+    logFail(name, "alone", out);
     console.log(`✗ ${name} again on its own\n   ${bad.slice(0, 6).join('\n   ')}`);
   } else console.log(`✓ ${name} on its own (it failed among the others)`);
 }

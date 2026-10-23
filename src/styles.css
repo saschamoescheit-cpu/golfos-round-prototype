@@ -1649,3 +1649,8 @@ button.tile:disabled { opacity: 1; }
 .flight-opt svg { color: var(--muted); }
 .flight-opt[aria-pressed='true'] { border-color: var(--brand); background: var(--brand-soft); }
 .flight-opt[aria-pressed='true'] svg { color: var(--brand-text); }
+
+/* "your data": the export tile with its text to the right (Sascha 23.10.2026) */
+.data-row { display: flex; align-items: center; gap: 16px; }
+.data-row .sc-action { flex: none; width: 88px; }
+.data-row .data-text { margin: 0; min-width: 0; line-height: 1.45; }

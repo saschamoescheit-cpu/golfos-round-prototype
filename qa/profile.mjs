@@ -188,9 +188,11 @@ ok((await p.locator('.drawer-row').filter({ hasText: 'Vorlesen testen' }).count(
 // button as the round's export (Sascha 23.10.2026)
 {
   const data = p.locator('section.card').filter({ has: p.getByRole('heading', { name: 'Deine Daten' }) });
-  const order = await data.evaluate((el) => [...el.children].map((c) => c.tagName + (c.className ? '.' + c.className.split(' ')[0] : '')));
-  ok(order[0] === 'H2' && order[1].startsWith('P') && /Runden, Spiele, Profil/.test(await data.locator('p').innerText()), `"Deine Daten": the text right under the heading (${order.join(' · ')})`);
   const btn = data.getByRole('button', { name: 'Export' });
+  // the text to the right of the tile, on its line (Sascha 23.10.2026 evening)
+  const tb = await btn.boundingBox();
+  const pb = await data.locator('p').boundingBox();
+  ok(!!tb && !!pb && pb.x > tb.x + tb.width && Math.abs(pb.y + pb.height / 2 - (tb.y + tb.height / 2)) < 20 && /Runden, Spiele, Profil/.test(await data.locator('p').innerText()), '"Deine Daten": the text right of the "Export" tile');
   ok((await btn.getAttribute('class')) === 'sc-action' && (await btn.locator('svg').count()) === 1, 'the button as the export of a round: a tile with the download symbol');
   await btn.scrollIntoViewIfNeeded();
   const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), btn.click()]);

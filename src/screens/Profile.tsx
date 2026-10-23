@@ -367,8 +367,8 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
       {/* your data (final list 22.10.2026; Sascha 23.10.2026: the text under the heading, the button as the round's export) */}
       <section className="card stats-card">
         <h2>{tr('Your data', 'Deine Daten')}</h2>
-        <p className="stats-sub data-sub muted small">{tr('Rounds, games, profile, bag and settings as one file.', 'Runden, Spiele, Profil, Bag und Einstellungen als eine Datei.')}</p>
-        <div className="sc-actions data-actions">
+        {/* the export tile, its text to the right (Sascha 23.10.2026) */}
+        <div className="data-row">
           <button
             type="button"
             className="sc-action"
@@ -386,6 +386,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             </svg>
             <span>Export</span>
           </button>
+          <p className="data-text muted small">{tr('Rounds, games, profile, bag and settings as one file.', 'Runden, Spiele, Profil, Bag und Einstellungen als eine Datei.')}</p>
         </div>
       </section>
       {/* delete the account: its own place, the button alone, apart from "your data" (Sascha 23.10.2026) – signed in only,

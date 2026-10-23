@@ -3,12 +3,14 @@
 // it, the check of every hole ("Schläge prüfen" loads from the phone, not the net), signed, the scorecard and the
 // stats. Back online nothing is lost.
 // Usage: node qa/offlineround.mjs <built app url, e.g. http://localhost:4173/ (vite preview) or the live site>
+//        [course to search] [lat] [lon] [loop choice]  – e.g. "Orange Lake" 28.336 -81.596 (night run 23./24.10.2026: the US test)
 import { chromium, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:4173/';
+const [search = 'Hetzenhof', lat = '48.7808', lon = '9.689', loop = 'A · 9 Löcher'] = process.argv.slice(3);
 const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 6 }, permissions: ['geolocation'], serviceWorkers: 'allow' });
+const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: Number(lat), longitude: Number(lon), accuracy: 6 }, permissions: ['geolocation'], serviceWorkers: 'allow' });
 await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
@@ -35,10 +37,10 @@ ok(await p.evaluate(() => navigator.serviceWorker?.controller != null), 'the ser
 await p.waitForFunction(async () => (await caches.keys()).some((k) => /precache/.test(k)), null, { timeout: 60000 }).catch(() => {});
 await p.waitForTimeout(4000);
 await p.getByRole('button', { name: 'Neue Runde' }).click();
-await p.fill('#course-search', 'Hetzenhof');
+await p.fill('#course-search', search);
 await p.waitForTimeout(2000);
 await p.locator('button.list-item').first().click();
-await p.getByRole('button', { name: /A · 9 Löcher/ }).click().catch(() => {});
+await p.getByRole('button', { name: new RegExp(loop) }).click({ timeout: 5000 }).catch(() => {});
 await p.getByText('Runde starten').click();
 await p.waitForFunction(() => document.body.innerText.includes('offline gespeichert ✓'), null, { timeout: 240000 }).catch(() => {});
 ok(await p.evaluate(() => JSON.stringify(Object.keys(localStorage)).includes('golfos.offline')), 'the course map kept for offline');
@@ -47,7 +49,8 @@ ok(await p.evaluate(() => JSON.stringify(Object.keys(localStorage)).includes('go
 await ctx.setOffline(true);
 await p.reload();
 await p.waitForTimeout(4000);
-ok((await p.locator('.map-hole-no').innerText().catch(() => '')).trim() === '1A', 'offline: the round opens on hole 1A');
+const first = (await round()).holes[0].label;
+ok((await p.locator('.map-hole-no').innerText().catch(() => '')).trim() === first, `offline: the round opens on hole ${first}`);
 // nine holes: the score of each entered on the course (par + one), on to the next
 for (let h = 0; h < 9; h++) {
   await p.locator('.map-score').first().click();
@@ -61,7 +64,7 @@ for (let h = 0; h < 9; h++) {
 }
 let r = await round();
 const me = r.players.find((x) => x.isMe).id;
-ok(r.entries[me].every((e) => e.strokes != null), `offline: all 9 scores saved (${r.entries[me].map((e) => e.strokes).join(' ')})`);
+ok(r.entries[me].slice(0, 9).every((e) => e.strokes != null), `offline: 9 scores saved (${r.entries[me].slice(0, 9).map((e) => e.strokes).join(' ')})`);
 // finish from the hole menu; the choice after it
 await p.locator('.hole-bar-handle').click();
 await p.locator('.hole-drawer').getByRole('button', { name: 'Runde beenden' }).click();
@@ -73,7 +76,7 @@ await choice.getByRole('button', { name: /^Jetzt prüfen/ }).click();
 await p.waitForTimeout(2500);
 ok((await p.getByRole('heading', { name: 'Schläge prüfen' }).count()) + (await p.locator('.review-nav').count()) > 0, 'offline: "Schläge prüfen" opens (loaded from the phone)');
 let last = '';
-for (let k = 0; k < 14 && (await p.locator('.sc-wrap').count()) === 0; k++) {
+for (let k = 0; k < 24 && (await p.locator('.sc-wrap').count()) === 0; k++) {
   const btn = p.locator('.sticky-cta .btn-primary');
   last = (await btn.innerText().catch(() => '')).trim();
   await btn.click().catch(() => {});
@@ -92,7 +95,7 @@ await ctx.setOffline(false);
 await p.reload();
 await p.waitForTimeout(3000);
 r = await round();
-ok(!!r.signedAt && r.entries[me].every((e) => e.strokes != null), 'online again: the signed round with all scores is there');
+ok(!!r.signedAt && r.entries[me].slice(0, 9).every((e) => e.strokes != null), 'online again: the signed round with all scores is there');
 ok(errs.filter((e) => !/Failed to fetch|NetworkError|Load failed|weather|open-meteo|ERR_INTERNET_DISCONNECTED/i.test(e)).length === 0, `no page errors ${errs.slice(0, 3).join(' | ')}`);
 console.log(bad ? `${bad} FAILED` : 'all ok');
 await b.close();

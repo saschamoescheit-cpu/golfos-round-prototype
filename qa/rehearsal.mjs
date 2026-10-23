@@ -116,13 +116,17 @@ const state = await p.evaluate(() => {
   return { caddie: Object.values(cl).map((x) => x.length).join(',') };
 });
 out.caddie = state.caddie;
-// finish, then the shot check
-await p.locator('.hole-bar-handle').click().catch(() => {});
-await p.locator('.hole-drawer').getByRole('button', { name: 'Runde beenden' }).click().catch(() => {});
-await p.getByRole('button', { name: 'Speichern & beenden' }).first().click().catch(() => {});
-await p.waitForTimeout(1500);
-await p.getByRole('button', { name: /Schläge prüfen/ }).first().click().catch(() => {});
-await p.waitForTimeout(4000);
+// finish (the round ends now), then the shot check – opened as a tapped notification does (#review=<id>)
+const rid = await p.evaluate(() => {
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
+  rs[0] = { ...rs[0], finishedAt: new Date().toISOString(), capture: 'full' };
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
+  return rs[0].id;
+});
+await p.goto('about:blank');
+await p.goto(`${url}#review=${rid}`);
+await p.locator('.review-nav strong').first().waitFor({ timeout: 90000 }).catch(() => out.wrongHole.push('no shot check'));
+await p.waitForTimeout(5000);
 const det = await p.evaluate(() => {
   const r = JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0];
   const id = Object.keys(r.entries)[0];
