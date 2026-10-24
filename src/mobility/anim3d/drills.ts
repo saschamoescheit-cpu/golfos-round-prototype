@@ -105,6 +105,9 @@ const HALF_KNEEL: J = {
   shoulderL: [-75, 0, 8],
   shoulderR: [-75, 0, -8],
 };
+/** knee to the wall: the front knee over the toes to the wall, the front foot and the back knee where they were (fitted on
+ * the realistic golfer 24.10.2026 – the front foot slid 19 cm and the back knee 10 cm; the toes are at the wall, so the knee goes 9 cm, the hands stay on it) */
+const KNEE_AT_WALL: J = { ...HALF_KNEEL, hipL: [-85, 0, 6], kneeL: [100, 0, 0], ankleL: [-20, 0, 0], hipR: [5, 0, -4], kneeR: [75, 0, 0], pelvis: [5, 0, 0], chest: [13, 0, 0], shoulderL: [-58, 0, 8], shoulderR: [-58, 0, -8] };
 
 /** standing on the left leg, the right foot up beside the left calf, arms crossed */
 const REACH_START = stand({ ...ARMS_CROSSED, kneeL: [10, 0, 0], ankleL: [-10, 0, 0], hipR: [-30, 0, -2], kneeR: [65, 0, 0] });
@@ -228,14 +231,15 @@ export const DRILL_CLIPS: Record<string, Clip> = {
   },
   'mob-ankle-wall': {
     view: 'side',
+    plant: ['ankleL', 'kneeR'],
     views: ['side', 'angle'],
     ground: 'all',
     props: ['wallFront'],
     keys: [
       k(0, P(HALF_KNEEL), L('Left foot in front of the wall, right knee down', 'Linker Fuß vor der Wand, rechtes Knie am Boden')),
       k(1.0, P(HALF_KNEEL)),
-      k(2.4, P({ ...HALF_KNEEL, hipL: [-70, 0, 6], kneeL: [118, 0, 0], ankleL: [-48, 0, 0], pelvis: [0, 0, 0] }, { at: [0, 0.1] }), L('Push the knee over the toes to the wall – the heel stays down', 'Knie über die Zehen zur Wand schieben – die Ferse bleibt unten')),
-      k(3.2, P({ ...HALF_KNEEL, hipL: [-70, 0, 6], kneeL: [118, 0, 0], ankleL: [-48, 0, 0], pelvis: [0, 0, 0] }, { at: [0, 0.1] })),
+      k(2.4, P(KNEE_AT_WALL, { at: [0, 0.098] }), L('Push the knee over the toes to the wall – the heel stays down', 'Knie über die Zehen zur Wand schieben – die Ferse bleibt unten')),
+      k(3.2, P(KNEE_AT_WALL, { at: [0, 0.098] })),
       k(4.6, P(HALF_KNEEL), L('Back – 10 times per side', 'Zurück – 10-mal pro Seite')),
       k(5.4, P(HALF_KNEEL)),
     ],
