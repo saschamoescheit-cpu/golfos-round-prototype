@@ -55,8 +55,9 @@ outer: for (let r = 0; r < rounds; r++) {
     await p.waitForTimeout(400);
     opened++;
     if (await p.locator('.mob-3d canvas').isVisible().catch(() => false)) drawn++;
-    // the realistic body loads once, then every player starts with it
-    if (real && (await p.locator('.mob-3d canvas[data-body="realistic"]').waitFor({ timeout: 8000 }).then(() => true).catch(() => false))) realistic++;
+    // the realistic body loads once (the first player waits for it – over 8 s in the test browser under load), then every
+    // player starts with it
+    if (real && (await p.locator('.mob-3d canvas[data-body="realistic"]').waitFor({ timeout: opened === 1 ? 25000 : 8000 }).then(() => true).catch(() => false))) realistic++;
     await p.locator('.topbar .icon-btn').first().click().catch(() => {});
     await p.locator('.mob-test-row').first().waitFor({ timeout: 10000 }).catch(() => {});
   }
