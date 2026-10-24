@@ -92,6 +92,22 @@ for (const [n, h] of holes.entries()) {
     await stand(ball, STAND);
     const holeNo = (await p.locator('.map-hole-no').innerText().catch(() => '?')).trim();
     if (holeNo !== h.ref) out.wrongHole.push(`${h.ref} ball ${k + 1}: screen ${holeNo}`);
+    // the new parts on the tee (night 24./25.10.2026): a par 3's target, the spread's club picker, green slope and hazards
+    if (k === 0) {
+      const f = (out.features ??= { tees: 0, par3: 0, par3Target: 0, spreadChip: 0, slope: 0, hazards: 0, slopeToggle: null });
+      f.tees++;
+      if (h.par === 3) {
+        f.par3++;
+        if ((await p.locator('.map-crosshair').count()) >= 1) f.par3Target++;
+      }
+      if ((await p.locator('.map-spread-chip').count()) >= 1) f.spreadChip++;
+      if ((await p.getByRole('button', { name: /Grün-Neigung (zeigen|ausblenden)/ }).count()) >= 1) f.slope++;
+      if ((await p.getByRole('button', { name: /Distanzen zu Hindernissen/ }).count()) >= 1) f.hazards++;
+      if (n === 0) {
+        const on = p.getByRole('button', { name: 'Grün-Neigung zeigen' });
+        f.slopeToggle = (await on.count()) ? await on.click().then(async () => { await p.waitForTimeout(1500); await p.getByRole('button', { name: 'Grün-Neigung ausblenden' }).click(); return true; }).catch(() => false) : 'no slope';
+      }
+    }
   }
   await visibility('hidden');
   await walk(h.balls[h.balls.length - 1], h.green);

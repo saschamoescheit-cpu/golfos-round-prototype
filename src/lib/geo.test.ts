@@ -87,6 +87,15 @@ describe('hole detection after taking the phone out of the pocket', () => {
     expect(detectHole(holes[1]!.tee, holes, 0)).toBe(1);
     expect(detectHole(mid(2), holes, 0)).toBe(2);
   });
+  // Hetzenhof 4A and 5A side by side (Sascha's round 24.10.2026): his ball 36 m beside 4A lay 28 m from 5A's line – the
+  // app jumped to 5A in the middle of 4A; on 5A's own fairway it still switches
+  it('holes side by side: stays on the current hole unless clearly on the other one', () => {
+    const het = SEED_GEOMETRY['osm:relation/1326323'];
+    const a = Array.from({ length: 9 }, (_, k) => holeMapData(het, 'A', k + 1));
+    expect(detectHole([9.70554, 48.78279], a, 3)).toBeNull();
+    const on5 = pointAt(a[4]!.line, lineLength(a[4]!.line) / 2);
+    expect(detectHole(on5, a, 3)).toBe(4);
+  });
   it('never jumps back and ignores positions off the course', () => {
     expect(detectHole(mid(0), holes, 3)).toBeNull();
     expect(detectHole([9.0, 48.0], holes, 0)).toBeNull();

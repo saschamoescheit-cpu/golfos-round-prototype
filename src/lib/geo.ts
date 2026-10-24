@@ -422,6 +422,7 @@ export function detectHole(pos: LngLat, holes: (HoleMapData | null)[], current: 
   const TEE_M = 25; // standing on a tee
   const ON_HOLE_M = 30; // inside the hole's corridor
   const NEXT_TEE_M = 80; // around a tee: on the way there or still close by
+  const CLEARLY_M = 20; // nearer to a later hole's line than to the current one by this much
   const cur = holes[current];
   const next = holes[current + 1];
   const ahead: number[] = [];
@@ -442,7 +443,10 @@ export function detectHole(pos: LngLat, holes: (HoleMapData | null)[], current: 
     if (onTee != null && !onCurTee && distanceM(pos, cur.greenCenter) > 25) return onTee;
     if (distToLine(pos, cur.line) <= ON_HOLE_M) return null;
   } else if (onTee != null) return onTee;
-  return ahead.find((k) => allowed(k) && distToLine(pos, holes[k]!.line) <= ON_HOLE_M) ?? null;
+  // on a later hole's fairway only when clearly nearer to it than to the current one – holes side by side (Hetzenhof 4A
+  // and 5A, Sascha 24.10.2026): a ball 36 m beside 4A lay 28 m from 5A's line, and the app jumped to 5A
+  const curLine = cur ? distToLine(pos, cur.line) : Infinity;
+  return ahead.find((k) => allowed(k) && distToLine(pos, holes[k]!.line) <= ON_HOLE_M && distToLine(pos, holes[k]!.line) + CLEARLY_M <= curLine) ?? null;
 }
 
 export type Unit = 'm' | 'yd';
