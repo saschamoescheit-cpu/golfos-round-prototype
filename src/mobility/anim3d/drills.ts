@@ -1,7 +1,7 @@
 import { L } from '../../training/types';
 import type { Pose } from './rig';
 import type { Clip } from './scene';
-import { ARMS_CROSSED, CLIPS, golf, GOLF, k, P, stand, type J } from './clips';
+import { ARMS_CROSSED, BRIDGE_UP, CLIPS, golf, GOLF, HOOK, k, P, stand, type J } from './clips';
 
 // The 3D videos of the corrective drills in Agility (17./18.10.2026): the same golfer as in the tests. Drills that are
 // a test done as practice reuse the test's clip (with their props); the floor drills get their own: on all fours, on
@@ -89,8 +89,6 @@ const SIDE: J = {
 const side = (j: J = {}): Pose => P({ ...SIDE, ...j }, { roll: 90 });
 
 /** lying on the back, knees bent, feet flat */
-const HOOK: J = { hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] };
-const BRIDGE_UP: J = { neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [112, 0, 0], kneeR: [112, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] };
 
 /** lying on the belly, arms overhead in a Y */
 // (the forehead and the belly on the floor – 23.10.2026: the realistic golfer lay on its face, the belly in the air)
@@ -313,26 +311,28 @@ export const DRILL_CLIPS: Record<string, Clip> = {
   // ---------- on the back / on the belly ----------
   'glute-bridge': {
     view: 'side',
+    plant: ['ankleL', 'ankleR'],
     views: ['side', 'angle'],
     props: ['mat'],
     keys: [
       k(0, P(HOOK, { tip: -90 }), L('On your back, knees bent, feet flat', 'Rückenlage, Knie gebeugt, Füße flach')),
       k(1.0, P(HOOK, { tip: -90 })),
-      k(2.4, P(BRIDGE_UP, { tip: -112 }), L('Lift the hips, squeeze the glutes – 2 s', 'Hüfte heben, Gesäß anspannen – 2 s')),
-      k(3.6, P(BRIDGE_UP, { tip: -112 })),
+      k(2.4, P(BRIDGE_UP, { tip: -114 }), L('Lift the hips, squeeze the glutes – 2 s', 'Hüfte heben, Gesäß anspannen – 2 s')),
+      k(3.6, P(BRIDGE_UP, { tip: -114 })),
       k(5.0, P(HOOK, { tip: -90 }), L('Lower slowly – 3 × 12', 'Langsam senken – 3 × 12')),
       k(5.6, P(HOOK, { tip: -90 })),
     ],
   },
   'mob-single-leg-bridge': {
     view: 'side',
+    plant: ['ankleL', 'ankleR'],
     views: ['side', 'angle'],
     props: ['mat'],
     keys: [
       k(0, P({ ...HOOK, hipL: [-55, 0, 6], kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -90 }), L('On your back, the left leg straight in line with the thigh', 'Rückenlage, das linke Bein gestreckt in Linie mit dem Oberschenkel')),
       k(1.0, P({ ...HOOK, hipL: [-55, 0, 6], kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -90 })),
-      k(2.4, P({ ...BRIDGE_UP, kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -112 }), L('Push the hips up on one leg – 2 s at the top', 'Hüfte auf einem Bein hochdrücken – oben 2 s')),
-      k(3.6, P({ ...BRIDGE_UP, kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -112 })),
+      k(2.4, P({ ...BRIDGE_UP, kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -114 }), L('Push the hips up on one leg – 2 s at the top', 'Hüfte auf einem Bein hochdrücken – oben 2 s')),
+      k(3.6, P({ ...BRIDGE_UP, kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -114 })),
       k(5.0, P({ ...HOOK, hipL: [-55, 0, 6], kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -90 }), L('Lower slowly, the pelvis stays level', 'Langsam senken, das Becken bleibt waagrecht')),
       k(5.6, P({ ...HOOK, hipL: [-55, 0, 6], kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -90 })),
     ],
@@ -344,10 +344,10 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     keys: [
       k(0, P(HOOK, { tip: -90 }), L('On your back, knees bent', 'Rückenlage, Knie gebeugt')),
       k(1.0, P(HOOK, { tip: -90 })),
-      k(2.2, P({ ...HOOK, pelvis: [-14, 0, 0], hipL: [-41, 0, 6], hipR: [-41, 0, -6], spine: [14, 0, 0] }, { tip: -90 }), L('Press the low back into the floor', 'Unteren Rücken in den Boden drücken')),
-      k(2.8, P({ ...HOOK, pelvis: [-14, 0, 0], hipL: [-41, 0, 6], hipR: [-41, 0, -6], spine: [14, 0, 0] }, { tip: -90 })),
-      k(4.0, P({ ...HOOK, pelvis: [14, 0, 0], hipL: [-69, 0, 6], hipR: [-69, 0, -6], spine: [-14, 0, 0] }, { tip: -90 }), L('… then arch it – only the pelvis moves', '… dann ins Hohlkreuz – nur das Becken bewegt sich')),
-      k(4.6, P({ ...HOOK, pelvis: [14, 0, 0], hipL: [-69, 0, 6], hipR: [-69, 0, -6], spine: [-14, 0, 0] }, { tip: -90 })),
+      k(2.2, P({ ...HOOK, pelvis: [-14, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], spine: [14, 0, 0] }, { tip: -90 }), L('Press the low back into the floor', 'Unteren Rücken in den Boden drücken')),
+      k(2.8, P({ ...HOOK, pelvis: [-14, 0, 0], hipL: [-35, 0, 6], hipR: [-35, 0, -6], spine: [14, 0, 0] }, { tip: -90 })),
+      k(4.0, P({ ...HOOK, pelvis: [14, 0, 0], hipL: [-63, 0, 6], hipR: [-63, 0, -6], spine: [-14, 0, 0] }, { tip: -90 }), L('… then arch it – only the pelvis moves', '… dann ins Hohlkreuz – nur das Becken bewegt sich')),
+      k(4.6, P({ ...HOOK, pelvis: [14, 0, 0], hipL: [-63, 0, 6], hipR: [-63, 0, -6], spine: [-14, 0, 0] }, { tip: -90 })),
       k(5.8, P(HOOK, { tip: -90 })),
     ],
   },

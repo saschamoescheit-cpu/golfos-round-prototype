@@ -58,6 +58,11 @@ export const k = (t: number, pose: Pose, label?: L): Key => ({ t, pose, label })
 
 /** the bottom of the deep squat: the feet where they stood, the knees out over the toes, the pelvis 20 cm back (fitted on
  * the realistic golfer 24.10.2026 – before, the pelvis stayed and the feet slid 21 cm, forward and together) */
+/** on the back, knees bent, the feet flat on the floor, and the bridge up: the shoulders and the feet stay where they lie,
+ * the pelvis rises between them (fitted on the realistic golfer 24.10.2026 – the feet hung 10 cm over the mat, and lifting
+ * the hips slid the shoulders 10 cm towards the feet) */
+export const HOOK: J = { hipL: [-49, 0, 6], hipR: [-49, 0, -6], kneeL: [120, 0, 0], kneeR: [120, 0, 0], ankleL: [22, 0, 0], ankleR: [22, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] };
+export const BRIDGE_UP: J = { neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [104, 0, 0], kneeR: [104, 0, 0], ankleL: [9, 0, 0], ankleR: [9, 0, 0], shoulderL: [28, 0, 14], shoulderR: [28, 0, -14] };
 /** the pelvis turned left / right in golf posture over feet that stay where they stand (the hips turn in, the knees stay
  * over the feet – fitted on the realistic golfer 24.10.2026; before, the legs turned with the pelvis and the feet slid
  * 15 cm) */
@@ -210,18 +215,19 @@ export const CLIPS: Record<TestId, Clip> = {
   },
   bridge: {
     view: 'side',
+    plant: ['ankleL', 'ankleR'],
     views: ['side', 'angle'],
     props: ['mat'],
     keys: [
-      k(0, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 }), L('On your back, knees bent, feet flat', 'Rückenlage, Knie gebeugt, Füße flach')),
-      k(1.2, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 })),
-      k(2.6, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [112, 0, 0], kneeR: [112, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 }), L('Lift the hips: knees, hips and shoulders in one line', 'Hüfte heben: Knie, Hüfte und Schultern in einer Linie')),
-      k(3.4, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [112, 0, 0], kneeR: [112, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 })),
-      k(4.6, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [0, 0, 0], kneeR: [112, 0, 0], ankleL: [-20, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 }), L('Stretch one leg, thighs parallel – hold 10 s', 'Ein Bein strecken, Oberschenkel parallel – 10 s halten')),
-      k(6.6, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [0, 0, 0], kneeR: [112, 0, 0], ankleL: [-20, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 })),
-      k(7.6, P({ neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6], kneeL: [112, 0, 0], kneeR: [112, 0, 0], shoulderL: [24, 0, 14], shoulderR: [24, 0, -14] }, { tip: -112 })),
-      k(8.8, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 }), L('Down – then the other leg', 'Ablegen – dann das andere Bein')),
-      k(9.6, P({ hipL: [-55, 0, 6], hipR: [-55, 0, -6], kneeL: [105, 0, 0], kneeR: [105, 0, 0], ankleL: [40, 0, 0], ankleR: [40, 0, 0], shoulderL: [8, 0, 14], shoulderR: [8, 0, -14] }, { tip: -90 })),
+      k(0, P(HOOK, { tip: -90 }), L('On your back, knees bent, feet flat', 'Rückenlage, Knie gebeugt, Füße flach')),
+      k(1.2, P(HOOK, { tip: -90 })),
+      k(2.6, P(BRIDGE_UP, { tip: -114 }), L('Lift the hips: knees, hips and shoulders in one line', 'Hüfte heben: Knie, Hüfte und Schultern in einer Linie')),
+      k(3.4, P(BRIDGE_UP, { tip: -114 })),
+      k(4.6, P({ ...BRIDGE_UP, kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -114 }), L('Stretch one leg, thighs parallel – hold 10 s', 'Ein Bein strecken, Oberschenkel parallel – 10 s halten')),
+      k(6.6, P({ ...BRIDGE_UP, kneeL: [0, 0, 0], ankleL: [-20, 0, 0] }, { tip: -114 })),
+      k(7.6, P(BRIDGE_UP, { tip: -114 })),
+      k(8.8, P(HOOK, { tip: -90 }), L('Down – then the other leg', 'Ablegen – dann das andere Bein')),
+      k(9.6, P(HOOK, { tip: -90 })),
     ],
   },
   'pelvic-tilt': {
