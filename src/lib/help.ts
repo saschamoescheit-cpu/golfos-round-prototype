@@ -113,6 +113,15 @@ export const FAQ: FaqTopic[] = [
     title: () => tr('On the course', 'Auf dem Platz'),
     items: [
       {
+        q: () => tr('What is the green ellipse on the map?', 'Was ist die grüne Ellipse auf der Karte?'),
+        a: () =>
+          tr(
+            'Your spread with the club: 8 of 10 balls land in it. From 5 checked shots it is yours (solid line), before that an estimate from your handicap (dashed). The cone symbol switches it on and off; top left you pick another club.',
+            'Deine Streuung mit dem Schläger: 8 von 10 Bällen landen darin. Ab 5 geprüften Schlägen ist sie deine eigene (durchgezogen), vorher nach Handicap geschätzt (gestrichelt). Das Kegel-Symbol schaltet sie an und aus, oben links wählst du einen anderen Schläger.',
+          ),
+        video: 'map',
+      },
+      {
         q: () => tr('What do the numbers top right mean?', 'Was bedeuten die Zahlen oben rechts?'),
         a: () => tr('The distances from where you stand to the back, middle and front of the green (GPS).', 'Die Entfernungen von deinem Standort bis hinten, Mitte und vorne aufs Grün (GPS).'),
         video: 'map',
@@ -187,6 +196,25 @@ export const FAQ: FaqTopic[] = [
     id: 'after',
     title: () => tr('After the round', 'Nach der Runde'),
     items: [
+      {
+        // Sascha 23.10.2026: "Was bedeutet der Hinweis ‚Vom Tee‘ und wofür brauchen wir diesen?"
+        q: () => tr('What does "Off the tee" mean when I check a hole?', 'Was bedeutet „Vom Tee“ beim Prüfen?'),
+        a: () =>
+          tr(
+            'Which club the caddie advised on the tee and which one you played (✓ when they match) – and below it your record on this hole with each tee club. Over several rounds it shows whether following the caddie pays off here.',
+            'Welchen Schläger der Caddie am Abschlag empfohlen hat und welchen du gespielt hast (✓ wenn gleich) – darunter deine Bilanz an diesem Loch je Abschlag-Schläger. Über mehrere Runden siehst du so, ob sich die Empfehlung hier lohnt.',
+          ),
+        video: 'review',
+      },
+      {
+        q: () => tr('Why does a shot say "played like 152 m"?', 'Warum steht bei einem Schlag „spielte wie 152 m“?'),
+        a: () =>
+          tr(
+            'Wind and temperature made the shot play longer or shorter. Into a strong wind 130 m can play like 150 m – then a 6-iron was right. The club suggested and your measured distances count with the wind taken out.',
+            'Wind und Temperatur haben den Schlag länger oder kürzer gemacht. In starken Gegenwind spielen 130 m wie 150 m – dann war das Eisen 6 richtig. Der vorgeschlagene Schläger und deine gemessenen Weiten rechnen den Wind heraus.',
+          ),
+        video: 'review',
+      },
       {
         q: () => tr('Why check and sign a round?', 'Warum prüfen und signieren?'),
         a: () => tr('Only signed rounds count in the statistics. Checking puts the shots right – club, lie and how you hit them.', 'Nur signierte Runden zählen in der Statistik. Beim Prüfen stimmen danach Schläge, Schläger, Lage und Treffer.'),
