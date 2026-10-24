@@ -127,7 +127,7 @@ await p.waitForTimeout(6000);
 await p.getByRole('button', { name: /Caddie zeigen/ }).click().catch(() => {});
 await p.waitForTimeout(800);
 const card = await p.locator('.caddie-card').innerText().catch(() => '');
-ok(/Dein Plan: 5i auf Ziel 1 – danach 9i ins Grün/.test(card), `caddie: ${card.split('\n').find((l) => l.includes('Plan')) ?? '–'}`);
+ok(/Dein Plan:? 5i auf Ziel 1 – danach 9i ins Grün/.test(card) && (await p.locator('.caddie-card .caddie-note-lbl').filter({ hasText: 'Dein Plan' }).count()) === 1, `caddie: ${card.split('\n').find((l) => l.includes('Plan')) ?? '–'}`);
 ok((await p.locator('.plan-panel').count()) === 0, 'live round: no plan panel');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan-live.png' });
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
