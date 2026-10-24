@@ -1,5 +1,5 @@
 import { hasNote } from '../lib/holenotes';
-import { noteParts } from '../components/CaddieCard';
+import { noteParts, sameText } from '../components/CaddieCard';
 import { useEffect, useMemo, useState } from 'react';
 import { loadStrategy, type PlannedHole } from '../lib/strategy';
 import type { Course, LngLat, RoundHole } from '../types';
@@ -156,7 +156,7 @@ function HolePage(p: {
   });
   // the note's own words stand under "Deine Lochnotiz" – not twice (Sascha 23.10.2026)
   const noted = noteParts(p.note);
-  const lines = cad.lines.filter((l) => l.tone === 'warn' || l.tone === 'plan' || /^Fairway \d/.test(l.text)).map((l) => l.text).filter((t) => !noted.includes(t));
+  const lines = cad.lines.filter((l) => l.tone === 'warn' || l.tone === 'plan' || /^Fairway \d/.test(l.text)).map((l) => l.text).filter((t) => !noted.some((n) => sameText(n) === sameText(t)));
   const book = holeBook({ data, slopes: p.slopes, greenSlope: p.greenSlope, grid: p.grid, unit: p.unit, record: p.record, history: p.history });
   return (
     <section className="card book-hole">

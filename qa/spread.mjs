@@ -45,7 +45,7 @@ await cone.scrollIntoViewIfNeeded();
 await shot('spread-cone');
 ok((await p.getByRole('heading', { name: 'Treffer und Streuung je Schläger' }).count()) === 1, 'per club: "Treffer und Streuung je Schläger"');
 const dots = p.locator('.spread-chart.dots');
-ok((await dots.count()) >= 1 && (await dots.first().locator('circle').count()) >= 1, `per club: the shots as dots (${await dots.count()} clubs)`);
+ok((await dots.count()) >= 1 && (await p.locator('.spread-chart.dots circle.spread-dot').count()) >= 1, `per club: the shots as dots (${await dots.count()} clubs, ${await p.locator('.spread-chart.dots circle.spread-dot').count()} shots)`);
 await dots.first().scrollIntoViewIfNeeded();
 await shot('spread-dots');
 // the tiles of a club never overlap: each row's tiles side by side in its width
@@ -57,6 +57,16 @@ const rowOk = await p.evaluate(() =>
   }),
 );
 ok(rowOk, 'per club: the tiles side by side, none squeezed');
+// every club of the bag but the putter, also without a shot (Sascha 24.10.2026) – then the putter
+const bagClubs = await p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.bag.v1') ?? 'null') ?? []).filter((b) => !b.swing && b.club !== 'Pt').length);
+const names = await p.locator('.tee-clubs .tee-club-name').allInnerTexts();
+ok(names.length >= Math.max(bagClubs, 8) && names.at(-1) === 'Putter', `all clubs of the bag (${names.length - 1}, bag ${bagClubs || 'standard'}), the putter last`);
+ok((await p.locator('.spread-chart.dots').count()) === names.length - 1, 'each club with its dispersion chart');
+const putterRow = p.locator('.putter-row');
+ok((await putterRow.getByRole('img', { name: 'Eingelocht nach Entfernung' }).count()) === 1 && (await putterRow.getByRole('img', { name: /Putts je Loch nach Länge/ }).count()) === 1, 'the putter: holed by distance and putts by the first putt');
+ok(/Putts je Loch/.test(await putterRow.innerText()), `the putter's tiles: ${(await putterRow.locator('.insight').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ')).join(' | ')}`);
+await putterRow.scrollIntoViewIfNeeded();
+await shot('putter');
 
 // 2 · on the round: the caddie's club and its spread on the map
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();

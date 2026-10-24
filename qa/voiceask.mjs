@@ -79,6 +79,19 @@ await p.waitForTimeout(500);
 const cardText = await card.innerText();
 ok(/Deine Notiz\s+Blinder Abschlag – auf den rechten Baum · Aus links und rechts/.test(cardText), 'the own text shows in the caddie at once');
 ok(cardText.split('Blinder Abschlag').length === 2, 'once in the card, not also as a caddie line');
+// typed with a line break and a space at the end: still once (Sascha 24.10.2026: the note stood twice, once in red)
+await notesBtn.click();
+await p.waitForTimeout(300);
+await p.fill('#hole-note', 'Ball unbedingt ins Spiel bringen.\n ');
+await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
+await p.waitForTimeout(500);
+const cardText2 = await card.innerText();
+ok(cardText2.split('Ball unbedingt ins Spiel').length === 2 && (await card.locator('.plan.warn').filter({ hasText: 'Ball unbedingt' }).count()) === 0, 'a note with a line break at the end: once, not in red too');
+await notesBtn.click();
+await p.waitForTimeout(300);
+await p.fill('#hole-note', 'Blinder Abschlag – auf den rechten Baum');
+await p.getByRole('button', { name: 'Für diesen Platz speichern' }).click();
+await p.waitForTimeout(500);
 // no note at all (text emptied, choices off): no dot, no row – then the text again
 await notesBtn.click();
 await p.waitForTimeout(300);

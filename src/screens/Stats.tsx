@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import type { Flight, Round, Strike } from '../types';
+import type { Club, Flight, Round, Strike } from '../types';
 import { analyse, areaName, focusAreas, pct, practicePlan, type Rate } from '../lib/stats';
 import { Segmented } from '../components/ui';
 import { SgCard } from '../components/SgCard';
@@ -17,6 +17,12 @@ import { teeStats } from '../lib/teestats';
 import { clubName } from '../lib/caddie';
 import { clubSpread } from '../lib/spread';
 import { SpreadCone, SpreadDots } from '../components/SpreadCharts';
+import { PuttCountChart, PuttMakeChart } from '../components/PutterCharts';
+import { puttStats } from '../lib/puttstats';
+import { loadCarryBag } from '../lib/storage';
+import { DEFAULT_CARRY } from '../lib/caddie';
+import { CLUB_ORDER } from '../lib/clubs';
+import type { ClubReport } from '../lib/clubstats';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
 // and the focus areas that later feed the training plans (GOL-27).
@@ -46,6 +52,17 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
   const tend = useMemo(() => new Map(clubDispersion(picked).map((d) => [d.club, d])), [picked]);
   // per club: good strikes, misses, corridor; approaches by distance; how the putts miss (Sascha 22.10.2026)
   const reports = useMemo(() => clubReports(picked, lineOfStored()), [picked]);
+  // every club of the bag but the putter, in the bag's order – also without a shot yet (Sascha 24.10.2026): its length
+  // from the bag, the spread estimated from the handicap
+  const bagReports = useMemo(() => {
+    const bag = (loadCarryBag() ?? DEFAULT_CARRY).filter((b) => !b.swing && b.club !== 'Pt');
+    const clubs = new Set<Club>([...bag.map((b) => b.club), ...reports.map((r) => r.club)].filter((c) => c !== 'Pt'));
+    return CLUB_ORDER.filter((c) => clubs.has(c)).map(
+      (c): ClubReport =>
+        reports.find((r) => r.club === c) ?? { club: c, shots: 0, median: bag.find((b) => b.club === c)?.carry ?? 0, basis: 'all', rated: 0, good: 0, misses: {}, flights: {}, flown: 0, corridor: null, lenBand: null, points: [] },
+    ).filter((r) => r.median > 0);
+  }, [reports]);
+  const putter = useMemo(() => puttStats(picked), [picked]);
   const bands = useMemo(() => approachBands(picked).filter((b) => b.shots > 0), [picked]);
   const misses = useMemo(() => puttMisses(picked), [picked]);
   const waiting = unsignedRounds(props.rounds);
@@ -424,14 +441,13 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               <SpreadCone reports={reports} playing={profileIndex()} />
             </section>
           )}
-          {section === 'clubs' && reports.some((c) => c.rated > 0 || c.corridor || c.points.length > 0) && (
+          {section === 'clubs' && bagReports.length > 0 && (
             // how each club is struck and where its balls end (Sascha 22.10.2026: the misses and the corridor; 23.10.: the spread)
             <section className="card stats-card airy">
               <h2>{tr('Strikes and spread per club', 'Treffer und Streuung je Schläger')}</h2>
               <p className="muted small stats-sub">{tr('Each dot a shot around the target line – green a good strike, red a mishit · the ellipse holds 80 % of your balls', 'Jeder Punkt ein Schlag um die Ziellinie – grün ein guter Treffer, rot ein Fehlschlag · in der Ellipse landen 80 % deiner Bälle')}</p>
               <div className="tee-clubs">
-                {reports
-                  .filter((c) => c.rated > 0 || c.flown > 0 || c.corridor || c.points.length > 0)
+                {bagReports
                   .map((c) => {
                     const spread = clubSpread(c.club, c.median, c, profileIndex());
                     const top = Object.entries(c.misses).sort((x, y) => (y[1] ?? 0) - (x[1] ?? 0))[0];
@@ -439,7 +455,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                     return (
                       <div key={c.club} className="tee-club-row">
                         <h3 className="tee-club-name">{clubName(c.club)}</h3>
-                        {c.points.length > 0 && <SpreadDots report={c} spread={spread} />}
+                        <SpreadDots report={c} spread={spread} />
                         <div className="insight-row">
                           {/* every club with the same tiles – a dash or a 0 where there is nothing yet (Sascha 23.10.2026) */}
                           {c.rated > 0 ? <Insight num={`${Math.round((c.good / c.rated) * 100)} %`} label={tr(`good strikes (${c.good} of ${c.rated})`, `gute Treffer (${c.good} von ${c.rated})`)} tone={c.good / c.rated >= 0.6 ? 'good' : undefined} /> : <Insight num="–" label={tr('good strikes (none rated yet)', 'gute Treffer (noch keiner bewertet)')} />}
@@ -452,6 +468,26 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                       </div>
                     );
                   })}
+                {/* the putter as the last club (Sascha 24.10.2026): how often a putt goes in from each distance, how many
+                    putts from each length of the first one, from where the 3-putts come */}
+                <div className="tee-club-row putter-row">
+                  <h3 className="tee-club-name">Putter</h3>
+                  <span className="muted small">{tr('Holed by distance', 'Eingelocht nach Entfernung')}</span>
+                  <PuttMakeChart stats={putter} />
+                  <span className="muted small">{tr('Putts per hole by the length of the first putt', 'Putts je Loch nach Länge des ersten Putts')}</span>
+                  <PuttCountChart stats={putter} />
+                  <div className="putt-legend muted small">
+                    <span><i className="putt-one" /> {tr('1 putt', '1 Putt')}</span>
+                    <span><i className="putt-two" /> {tr('2 putts', '2 Putts')}</span>
+                    <span><i className="putt-three" /> {tr('3 and more', '3 und mehr')}</span>
+                  </div>
+                  <div className="insight-row">
+                    {putter.halfIn ? <Insight num={dec(putter.halfIn.to === Infinity ? `> ${putter.halfIn.from} m` : `${putter.halfIn.to} m`)} label={tr('up to here every second putt goes in', 'bis hier geht jeder zweite Putt rein')} tone="good" /> : <Insight num="–" label={tr('half go in up to … (from 3 putts per distance)', 'jeder zweite rein bis … (ab 3 Putts je Entfernung)')} />}
+                    {putter.threeFrom ? <Insight num={putter.threeFrom.m === 0 ? "< 1 m" : `${putter.threeFrom.m} m`} label={tr(`3-putts from here (${putter.threeFrom.n} of ${putter.threeFrom.of})`, `ab hier 3-Putts (${putter.threeFrom.n} von ${putter.threeFrom.of})`)} tone="bad" /> : <Insight num={putter.holes ? '0×' : '–'} label={tr('3-putts', '3-Putts')} />}
+                    <Insight num={putter.holes ? dec((putter.bands.reduce((s, b) => s + b.one + 2 * b.two + 3 * b.three, 0) / putter.holes).toFixed(1)) : '–'} label={tr(`putts per hole (${putter.holes} holes)`, `Putts je Loch (${putter.holes} Löcher)`)} />
+                  </div>
+                  {!putter.holes && <p className="muted small" style={{ margin: 0 }}>{tr('Place the ball on the green in “Check shots” – then the putter has its numbers.', 'Setze beim Prüfen den Ball auf dem Grün – dann bekommt der Putter seine Zahlen.')}</p>}
+                </div>
               </div>
             </section>
           )}

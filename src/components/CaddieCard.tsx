@@ -48,7 +48,9 @@ export function CaddieCard(props: {
   // the boundary has its own row below – not twice
   // the hole note has its own row below – its words not again as a line (Sascha 23.10.2026)
   const noted = noteParts(props.note);
-  const shown = pickLines(props.lines.filter((l) => !noted.includes(l.text))).filter((l) => !(props.ob && /^(Out of bounds|Aus) /.test(l.text)));
+  // compared without spaces or the full stop at the end – a note typed with a line break came twice (Sascha 24.10.2026)
+  const notedSet = new Set(noted.map(sameText));
+  const shown = pickLines(props.lines.filter((l) => !notedSet.has(sameText(l.text)))).filter((l) => !(props.ob && /^(Out of bounds|Aus) /.test(l.text)));
   const head = `${Math.round(f.distance)} ${f.unit} ${f.targetTo} · ${tr('plays', 'spielt wie')} ${Math.round(f.playsLike)} ${f.unit}`;
   return (
     <>
@@ -61,7 +63,14 @@ export function CaddieCard(props: {
         </div>
         {shown.map((l, k) => (
           <span key={k} className={l.tone === 'warn' ? 'plan warn' : l.tone === 'plan' ? 'plan' : l.tone === 'mental' ? 'mental' : 'why'}>
-            {l.text}
+            {/* "Dein Plan" as a green label, like "Deine Notiz" (Sascha 24.10.2026) */}
+            {PLAN_LABEL.test(l.text) ? (
+              <>
+                <span className="caddie-note-lbl">{l.text.match(PLAN_LABEL)![1]}</span> {l.text.replace(PLAN_LABEL, '')}
+              </>
+            ) : (
+              l.text
+            )}
           </span>
         ))}
         <NoteRow note={props.note} />
@@ -105,6 +114,10 @@ export function CaddieCard(props: {
 }
 
 /** What the player noted for the hole, in the caddie (Sascha 23.10.2026: "a saved hole note shows in the caddie"). */
+/** A line and a note are the same text when they differ only in spaces, line breaks or the full stop at the end. */
+export const sameText = (s: string): string => s.trim().replace(/\s+/g, ' ').replace(/[.!]+$/, '').toLowerCase();
+const PLAN_LABEL = /^(Your plan|Dein Plan):\s*/;
+
 export function noteParts(n: HoleNote): string[] {
   const ob = [n.obLeft ? sideWord('left') : null, n.obRight ? sideWord('right') : null].filter(Boolean);
   const lost = [n.lostLeft ? sideWord('left') : null, n.lostRight ? sideWord('right') : null].filter(Boolean);

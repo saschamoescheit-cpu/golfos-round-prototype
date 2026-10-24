@@ -1688,3 +1688,14 @@ button.tile:disabled { opacity: 1; }
 .map-spread-chip svg { color: var(--brand-text); flex: none; }
 .map-spread-chip .muted { font-weight: 500; }
 :root[data-theme='sun'] .map-spread-chip { background: rgba(255, 255, 255, 0.95); color: var(--text); }
+
+/* the putter in the clubs list (Sascha 24.10.2026) */
+.putter-row { gap: 8px; }
+.putt-bar { fill: var(--brand-text); fill-opacity: 0.85; }
+.putt-track { fill: var(--surface); }
+.putt-one { fill: var(--brand-text); background: var(--brand-text); }
+.putt-two { fill: var(--muted); fill-opacity: 0.55; background: var(--muted); }
+.putt-three { fill: var(--bad); background: var(--bad); }
+.putt-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.putt-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.putt-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
