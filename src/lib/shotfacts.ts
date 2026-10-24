@@ -10,13 +10,14 @@ export const STRIKES: { value: Strike; label: () => string }[] = [
   { value: 'good', label: () => tr('Good', 'Gut') },
   { value: 'fat', label: () => tr('Fat', 'Fett') },
   { value: 'thin', label: () => tr('Thin', 'Dünn') },
+  { value: 'topped', label: () => tr('Topped', 'Getoppt') }, // Sascha 24.10.2026
   { value: 'shank', label: () => 'Shank' },
 ];
 export const strikeName = (s: Strike): string => (s === 'slice' ? 'Slice' : s === 'hook' ? 'Hook' : (STRIKES.find((x) => x.value === s)?.label() ?? s));
 
 /** The nine flights (ball flight laws), row by row: starting left, straight, right – curving left, not, right
  *  (for a right-hander; a left-hander's are the mirror image, the names stay). */
-export const FLIGHTS: { value: Flight; label: () => string; start: -1 | 0 | 1; curve: -1 | 0 | 1 }[] = [
+export const FLIGHTS: { value: Flight; label: () => string; start: number; curve: number; shape?: boolean }[] = [
   { value: 'pullHook', label: () => 'Pull Hook', start: -1, curve: -1 },
   { value: 'pull', label: () => 'Pull', start: -1, curve: 0 },
   { value: 'pullSlice', label: () => 'Pull Slice', start: -1, curve: 1 },
@@ -26,7 +27,12 @@ export const FLIGHTS: { value: Flight; label: () => string; start: -1 | 0 | 1; c
   { value: 'pushHook', label: () => 'Push Hook', start: 1, curve: -1 },
   { value: 'push', label: () => 'Push', start: 1, curve: 0 },
   { value: 'pushSlice', label: () => 'Push Slice', start: 1, curve: 1 },
+  // the two played shapes (Sascha 24.10.2026): a little beside the line, curving back onto it – no miss off the line
+  { value: 'draw', label: () => 'Draw', start: 1, curve: -0.8, shape: true },
+  { value: 'fade', label: () => 'Fade', start: -1, curve: 0.8, shape: true },
 ];
+/** The flights that end on the target line: straight and the two shapes. */
+export const onLine = (f: Flight): boolean => f === 'straight' || f === 'draw' || f === 'fade';
 export const flightName = (f: Flight): string => FLIGHTS.find((x) => x.value === f)?.label() ?? f;
 /** A shot's flight – also from a shot checked before 23.10.2026, where "slice"/"hook" was set as the strike. */
 export const flightOf = (s: { flight?: Flight; strike?: Strike }): Flight | undefined =>
@@ -68,4 +74,4 @@ export const fromDrop = (shots: Shot[], n: number): boolean => {
   return !!prev && prev.penalty && (prev.penaltyKind === 'water' || prev.penaltyKind === 'unplayable') && !prev.replay;
 };
 /** The shots that do not show the club's full distance: a mishit (fat, thin, shank). */
-export const mishit = (s: Strike | undefined): boolean => s === 'fat' || s === 'thin' || s === 'shank';
+export const mishit = (s: Strike | undefined): boolean => s === 'fat' || s === 'thin' || s === 'topped' || s === 'shank';

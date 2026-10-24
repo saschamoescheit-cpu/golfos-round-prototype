@@ -1714,3 +1714,6 @@ button.tile:disabled { opacity: 1; }
 /* the tip for the next round: the whole card green – heading and tip (Sascha 24.10.2026) */
 .card.next-round-card { background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand-text) 35%, transparent); }
 .next-round-card .next-round { padding: 0; background: none; }
+/* the flights: nine 3 × 3, draw and fade as their own row below (Sascha 24.10.2026) */
+.flight-picker { display: flex; flex-direction: column; gap: 8px; }
+.flight-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }

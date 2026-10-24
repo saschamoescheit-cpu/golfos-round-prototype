@@ -2,7 +2,7 @@ import type { Club, DetailEntry, Flight, LngLat, Round, Shot, Strike } from '../
 import { bearingDeg, distanceM, pointAt } from './geo';
 import { playsLike, type Conditions } from './caddie';
 import { sideOf } from './dispersion';
-import { flightOf, mishit } from './shotfacts';
+import { flightOf, mishit, onLine } from './shotfacts';
 import { plausibleForClub, shotLengths } from './shots';
 
 // Per club from the checked shots (Sascha 22.10.2026): the bag's distances from good strikes only, taken back to calm
@@ -134,7 +134,7 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
       const f = flightOf(x);
       if (!f) continue;
       flown++;
-      if (f !== 'straight') flights[f] = (flights[f] ?? 0) + 1;
+      if (!onLine(f)) flights[f] = (flights[f] ?? 0) + 1; // a draw or a fade is played on purpose – not off the line
     }
     const sides = xs.map((x) => x.side).filter((v): v is number => v != null);
     const med = median(learn.map((x) => x.calm));

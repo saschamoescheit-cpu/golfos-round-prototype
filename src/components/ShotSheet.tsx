@@ -262,9 +262,7 @@ export function GreenSheet(props: {
  *  with its line from the ball upward (mirrored for a left-hander, whose pull goes right). */
 function FlightPicker(props: { value: Flight | null; onChange: (f: Flight | null) => void }) {
   const lefty = isLeftHanded();
-  return (
-    <div className="flight-grid" role="group" aria-label={tr('Flight', 'Flugbahn')}>
-      {FLIGHTS.map((f) => {
+  const tile = (f: (typeof FLIGHTS)[number]) => {
         // the path: from the ball (bottom middle) off in the start direction, then the curve
         // the start line points at (20 + s, 5); the control point lies on it, so without a curve the path is straight and
         // with one the end bends away to that side
@@ -281,7 +279,12 @@ function FlightPicker(props: { value: Flight | null; onChange: (f: Flight | null
             <span>{f.label()}</span>
           </button>
         );
-      })}
+  };
+  // the nine flights 3 × 3, below them draw and fade (Sascha 24.10.2026)
+  return (
+    <div className="flight-picker" role="group" aria-label={tr('Flight', 'Flugbahn')}>
+      <div className="flight-grid">{FLIGHTS.filter((f) => !f.shape).map(tile)}</div>
+      <div className="flight-grid two">{FLIGHTS.filter((f) => f.shape).map(tile)}</div>
     </div>
   );
 }
