@@ -64,7 +64,7 @@ await p.waitForTimeout(300);
 ok((await p.getByRole('group', { name: 'Stand' }).getByRole('button', { name: 'Eben' }).getAttribute('aria-pressed')) === 'true', 'the tee shot: stance "Eben" suggested');
 // the contact without slice and hook – those are flights now: all nine of them (Sascha 23.10.2026)
 const strikes = await p.getByRole('group', { name: 'Treffer' }).getByRole('button').allInnerTexts();
-ok(strikes.join(' ') === 'Gut Fett Dünn Getoppt Shank', `"Treffer": the contact only (${strikes.join(' · ')})`);
+ok(strikes.join(' ') === 'Gut Fett Dünn Getoppt Spitze Hacke Shank', `"Treffer": the contact only (${strikes.join(' · ')})`);
 const flights = await p.getByRole('group', { name: 'Flugbahn' }).getByRole('button').allInnerTexts();
 ok(flights.map((t) => t.trim()).join(' · ') === 'Pull Hook · Pull · Pull Slice · Hook · Gerade · Slice · Push Hook · Push · Push Slice · Draw · Fade', `"Flugbahn": all nine, draw and fade (${flights.length})`);
 ok((await p.locator('.flight-opt svg path').count()) === 11, 'each flight with its path drawn');

@@ -99,7 +99,7 @@ export type Club = 'Dr' | '3W' | '4W' | '5W' | '7W' | '9W' | '2H' | '3H' | 'Hy' 
 export type PenaltyKind = 'water' | 'ob' | 'lost' | 'unplayable';
 /** How the shot was struck (Sascha 22.10.2026: the bag learns from good strikes; misses per club). */
 /** How the ball was struck (contact). 'slice' and 'hook' only in shots checked before 23.10.2026 – now the flight says it. */
-export type Strike = 'good' | 'fat' | 'thin' | 'topped' | 'slice' | 'hook' | 'shank';
+export type Strike = 'good' | 'fat' | 'thin' | 'topped' | 'toe' | 'heel' | 'slice' | 'hook' | 'shank';
 /** The ball's flight (Sascha 23.10.2026: "all the flights are needed to judge a swing") – the nine of the ball flight laws:
  *  where it starts (pull = left, push = right for a right-hander) and how it curves (hook left, slice right). */
 export type Flight = 'pullHook' | 'pull' | 'pullSlice' | 'hook' | 'straight' | 'slice' | 'pushHook' | 'push' | 'pushSlice' | 'draw' | 'fade';

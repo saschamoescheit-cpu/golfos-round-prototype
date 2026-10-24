@@ -26,8 +26,8 @@ describe('flights', () => {
     expect(onLine('slice')).toBe(false);
   });
   it('the contact has no slice and hook any more', () => {
-    expect(STRIKES.map((s) => s.value)).toEqual(['good', 'fat', 'thin', 'topped', 'shank']);
-    expect(mishit('topped')).toBe(true);
+    expect(STRIKES.map((s) => s.value)).toEqual(['good', 'fat', 'thin', 'topped', 'toe', 'heel', 'shank']);
+    for (const s of ['topped', 'toe', 'heel'] as const) expect(mishit(s)).toBe(true);
   });
   it('an older shot with "slice"/"hook" as strike reads as that flight – a new flight wins', () => {
     expect(flightOf({ strike: 'slice' })).toBe('slice');

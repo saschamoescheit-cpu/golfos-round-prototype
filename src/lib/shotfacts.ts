@@ -11,6 +11,8 @@ export const STRIKES: { value: Strike; label: () => string }[] = [
   { value: 'fat', label: () => tr('Fat', 'Fett') },
   { value: 'thin', label: () => tr('Thin', 'Dünn') },
   { value: 'topped', label: () => tr('Topped', 'Getoppt') }, // Sascha 24.10.2026
+  { value: 'toe', label: () => tr('Toe', 'Spitze') }, // Sascha 24.10.2026 evening
+  { value: 'heel', label: () => tr('Heel', 'Hacke') },
   { value: 'shank', label: () => 'Shank' },
 ];
 export const strikeName = (s: Strike): string => (s === 'slice' ? 'Slice' : s === 'hook' ? 'Hook' : (STRIKES.find((x) => x.value === s)?.label() ?? s));
@@ -74,4 +76,4 @@ export const fromDrop = (shots: Shot[], n: number): boolean => {
   return !!prev && prev.penalty && (prev.penaltyKind === 'water' || prev.penaltyKind === 'unplayable') && !prev.replay;
 };
 /** The shots that do not show the club's full distance: a mishit (fat, thin, shank). */
-export const mishit = (s: Strike | undefined): boolean => s === 'fat' || s === 'thin' || s === 'topped' || s === 'shank';
+export const mishit = (s: Strike | undefined): boolean => s === 'fat' || s === 'thin' || s === 'topped' || s === 'toe' || s === 'heel' || s === 'shank';
