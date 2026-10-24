@@ -4,6 +4,7 @@ import { playsLike, type Conditions } from './caddie';
 import { sideOf } from './dispersion';
 import { flightOf, mishit, onLine } from './shotfacts';
 import { plausibleForClub, shotLengths } from './shots';
+import { CLUB_CATALOG } from './clubs';
 
 // Per club from the checked shots (Sascha 22.10.2026): the bag's distances from good strikes only, taken back to calm
 // air and 20 °C with the caddie's own rules; how often the club is struck well and how it misses; the corridor in
@@ -71,6 +72,9 @@ export function clubShots(rounds: Round[], lineOf?: LineOf): ClubShot[] {
         if (s.kind && s.kind !== 'full') return;
         if (s.intent === 'recovery') return;
         if (!plausibleForClub(s.club, len)) return;
+        // far too short for a full swing with this club (a chip without its kind set – Sascha's SW at 19 m, 25.10.2026)
+        const std = CLUB_CATALOG.find((c) => c.club === s.club)?.total;
+        if (std && len < 0.35 * std) return;
         const from = s.pos!;
         const end = s.penalty && s.missPos ? s.missPos : k + 1 < d.shots.length ? d.shots[k + 1].pos : d.onGreen;
         if (!end) return;
@@ -138,7 +142,9 @@ export function clubReports(rounds: Round[], lineOf?: LineOf): ClubReport[] {
     }
     const sides = xs.map((x) => x.side).filter((v): v is number => v != null);
     const med = median(learn.map((x) => x.calm));
-    const lens = xs.filter((x) => !mishit(x.strike)).map((x) => x.calm - med);
+    // the length band from the good strikes once there are 5 of them – unrated topped drives made it -70 m (25.10.2026)
+    const goodOnes = xs.filter((x) => x.strike === 'good');
+    const lens = (goodOnes.length >= 5 ? goodOnes : xs.filter((x) => !mishit(x.strike))).map((x) => x.calm - med);
     return {
       club,
       shots: xs.length,
