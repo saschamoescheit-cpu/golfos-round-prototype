@@ -1143,18 +1143,6 @@ export function HoleScreen(props: {
 
 
         {weather && !tournament && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
-        {/* whose spread the map shows – the caddie's club or one the player picks (Sascha 23.10.2026) */}
-        {spreadOnMap && mapSpread && (
-          <button type="button" className="map-spread-chip" aria-label={tr(`Spread of ${clubName(mapSpread.club)} – choose a club`, `Streuung von ${clubName(mapSpread.club)} – Schläger wählen`)} onClick={() => setSpreadPick(true)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <ellipse cx="12" cy="7" rx="8" ry="3.5" />
-              <path d="M12 21L4.6 8.4M12 21l7.4-12.6" strokeDasharray="2 2.4" />
-            </svg>
-            <span>{clubCode(mapSpread.club)}</span>
-            <span className="muted">{picked ? tr('chosen', 'gewählt') : 'Caddie'}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-        )}
         {spreadPick && cad && (
           <div className="sheet-backdrop" onClick={() => setSpreadPick(false)}>
             <section className="sheet" role="dialog" aria-label={tr('Spread of which club?', 'Streuung welches Schlägers?')} onClick={(e) => e.stopPropagation()}>
@@ -1272,13 +1260,26 @@ export function HoleScreen(props: {
           )}
           {/* not in Games on a small phone (iPhone SE): the tool bar would reach under the game bar – the spread keeps its setting */}
           {cad && !tournament && !(props.game && window.innerHeight < 620) && (
-            <button type="button" className="map-tool" aria-pressed={spreadOn} aria-label={spreadOn ? tr('Hide the spread', 'Streuung ausblenden') : tr('Show the spread of the club', 'Streuung des Schlägers zeigen')} title={tr('Spread', 'Streuung')} onClick={() => setSpreadOn(!spreadOn)}>
-              {/* spread: the cone from the ball to the ellipse where 80 % of the balls land */}
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <ellipse cx="12" cy="7" rx="8" ry="3.5" />
-                <path d="M12 21L4.6 8.4M12 21l7.4-12.6" strokeDasharray="2 2.4" />
-              </svg>
-            </button>
+            <span className="map-tool-wrap">
+              {/* whose spread the map shows, beside its tool (Sascha 24.10.2026): the club and an arrow – a tap picks another */}
+              {spreadOnMap && mapSpread && (
+                <button type="button" className="map-spread-chip" aria-label={tr(`Spread of ${clubName(mapSpread.club)} – choose a club`, `Streuung von ${clubName(mapSpread.club)} – Schläger wählen`)} onClick={() => setSpreadPick(true)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <ellipse cx="12" cy="7" rx="8" ry="3.5" />
+                    <path d="M12 21L4.6 8.4M12 21l7.4-12.6" strokeDasharray="2 2.4" />
+                  </svg>
+                  <span>{clubCode(mapSpread.club)}</span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              )}
+              <button type="button" className="map-tool" aria-pressed={spreadOn} aria-label={spreadOn ? tr('Hide the spread', 'Streuung ausblenden') : tr('Show the spread of the club', 'Streuung des Schlägers zeigen')} title={tr('Spread', 'Streuung')} onClick={() => setSpreadOn(!spreadOn)}>
+                {/* spread: the cone from the ball to the ellipse where 80 % of the balls land */}
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <ellipse cx="12" cy="7" rx="8" ry="3.5" />
+                  <path d="M12 21L4.6 8.4M12 21l7.4-12.6" strokeDasharray="2 2.4" />
+                </svg>
+              </button>
+            </span>
           )}
           {(mapData.bunkers.length > 0 || mapData.water.length > 0) && (
             <button type="button" className="map-tool" aria-pressed={hazardsOn} aria-label={hazardsOn ? tr('Hide hazard distances', 'Distanzen zu Hindernissen ausblenden') : tr('Show hazard distances', 'Distanzen zu Hindernissen zeigen')} title={tr('Hazards', 'Hindernisse')} onClick={() => setHazardsOn(!hazardsOn)}>

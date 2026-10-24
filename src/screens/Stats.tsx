@@ -472,9 +472,9 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                     putts from each length of the first one, from where the 3-putts come */}
                 <div className="tee-club-row putter-row">
                   <h3 className="tee-club-name">Putter</h3>
-                  <span className="muted small">{tr('Holed by distance', 'Eingelocht nach Entfernung')}</span>
+                  <span className="putt-title">{tr('Holed by distance', 'Eingelocht nach Entfernung')}</span>
                   <PuttMakeChart stats={putter} />
-                  <span className="muted small">{tr('Putts per hole by the length of the first putt', 'Putts je Loch nach Länge des ersten Putts')}</span>
+                  <span className="putt-title">{tr('Putts per hole by the first putt', 'Putts je Loch nach dem ersten Putt')}</span>
                   <PuttCountChart stats={putter} />
                   <div className="putt-legend muted small">
                     <span><i className="putt-one" /> {tr('1 putt', '1 Putt')}</span>
@@ -579,7 +579,7 @@ function Insight(props: { num: ReactNode; label: string; tone?: 'good' | 'bad'; 
 
 /** Which side the misses go: an arrow, the words below. */
 function tendency(left: number, right: number): { num: string; label: string } {
-  if (left + right === 0) return { num: '↑', label: tr('never missed to a side', 'nie seitlich verfehlt') };
+  if (left + right === 0) return { num: '↑', label: tr('fairway hit', 'Fairway getroffen') }; // Sascha 24.10.2026: rather than "never missed to a side"
   if (left === right) return { num: '← →', label: tr('missed left as often as right', 'links wie rechts verfehlt') };
   return left > right ? { num: '←', label: tr('missed more often left', 'öfter links verfehlt') } : { num: '→', label: tr('missed more often right', 'öfter rechts verfehlt') };
 }

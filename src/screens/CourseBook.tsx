@@ -162,9 +162,24 @@ function HolePage(p: {
     <section className="card book-hole">
       {head}
       <div className="book-body">
-        <figure className="book-sketch">
-          <HoleSketch data={data} trees={p.trees} boundary={p.boundary} marks={marks} aim={plan ? plan.targets[0] : hole.par >= 4 ? cad.ap.landing : null} />
-        </figure>
+        <div className="book-side">
+          <figure className="book-sketch">
+            <HoleSketch data={data} trees={p.trees} boundary={p.boundary} marks={marks} aim={plan ? plan.targets[0] : hole.par >= 4 ? cad.ap.landing : null} />
+          </figure>
+          {/* the record right under the hole's picture (Sascha 24.10.2026) */}
+          {book.record.length > 0 && (
+            <div className="book-record">
+              <p className="lbl">{tr('Your record', 'Deine Bilanz')}</p>
+              <ul className="book-lines">
+                {book.record.map((t, k) => (
+                  <li key={t} className={k ? 'muted' : undefined}>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
         <div className="book-text">
           <p className="book-club">
             <strong>{clubCode(plan ? planClubs[0] : cad.advice.club)}</strong> {tr('off the tee', 'vom Abschlag')}
@@ -203,18 +218,6 @@ function HolePage(p: {
               <ul className="book-lines book-note">
                 {noteParts(p.note).map((t) => (
                   <li key={t}>{t}</li>
-                ))}
-              </ul>
-            </>
-          )}
-          {book.record.length > 0 && (
-            <>
-              <p className="lbl">{tr('Your record', 'Deine Bilanz')}</p>
-              <ul className="book-lines">
-                {book.record.map((t, k) => (
-                  <li key={t} className={k ? 'muted' : undefined}>
-                    {t}
-                  </li>
                 ))}
               </ul>
             </>

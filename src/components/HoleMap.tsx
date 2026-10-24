@@ -129,6 +129,7 @@ export function HoleMap(props: HoleMapProps) {
   };
   const markers = useRef<{ player?: maplibregl.Marker; pin?: maplibregl.Marker; targets: maplibregl.Marker[]; labels: maplibregl.Marker[]; track: maplibregl.Marker[]; slope?: maplibregl.Marker; aim?: maplibregl.Marker; puttBall?: maplibregl.Marker; puttAim?: maplibregl.Marker }>({ targets: [], labels: [], track: [] });
   const latest = useRef(props);
+  const lastSpread = useRef<string>('');
   latest.current = props;
   const userCam = useRef(false);
 
@@ -367,7 +368,14 @@ export function HoleMap(props: HoleMapProps) {
     const p = latest.current;
     (m.getSource('plan') as maplibregl.GeoJSONSource | undefined)?.setData(planLine(p));
     (m.getSource('putt') as maplibregl.GeoJSONSource | undefined)?.setData(puttLine(p));
-    (m.getSource('spread') as maplibregl.GeoJSONSource | undefined)?.setData(spreadData(p));
+    // the spread changes with a club picked while the map stands still: paint it now (WebKit kept the old one, 24.10.2026)
+    const sd = spreadData(p);
+    const sk = JSON.stringify(sd.features[0]?.geometry ?? null);
+    if (sk !== lastSpread.current) {
+      lastSpread.current = sk;
+      (m.getSource('spread') as maplibregl.GeoJSONSource | undefined)?.setData(sd);
+      m.triggerRepaint();
+    }
     // putt: white ball and a small ring where to aim
     const pm = markers.current;
     if (p.putt) {

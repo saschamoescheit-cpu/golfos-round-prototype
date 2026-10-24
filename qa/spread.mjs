@@ -99,7 +99,10 @@ await shot('spread-map');
 // any club of the bag, not only the caddie's (Sascha 23.10.2026: "depending on a club or the caddie's advice")
 const chip = p.locator('.map-spread-chip');
 const before = (await chip.innerText()).replace(/\s+/g, ' ');
-ok(/Caddie/.test(before), `the chip names the caddie's club (${before})`);
+// beside the spread tool, the club and an arrow (Sascha 24.10.2026)
+const toolBox = await p.getByRole('button', { name: 'Streuung ausblenden' }).boundingBox();
+const chipBox = await chip.boundingBox();
+ok(/^\S+ ›$/.test(before.trim()) && !/Caddie|gewählt/.test(before) && chipBox.x + chipBox.width <= toolBox.x && Math.abs(chipBox.y + chipBox.height / 2 - (toolBox.y + toolBox.height / 2)) < 4, `the chip beside the tool: "${before.trim()}"`);
 await chip.click();
 await p.waitForTimeout(400);
 const sheet = p.getByRole('dialog', { name: 'Streuung welches Schlägers?' });
@@ -107,12 +110,14 @@ ok((await sheet.locator('.pick-option').count()) >= 8, `the bag to choose from (
 await sheet.locator('.pick-option').filter({ hasText: 'Eisen 7' }).click();
 await p.waitForTimeout(500);
 const after = (await chip.innerText()).replace(/\s+/g, ' ');
-ok(/7i/.test(after) && /gewählt/.test(after), `iron 7 chosen: ${after}`);
+ok(/7i/.test(after), `iron 7 chosen: ${after}`);
+await p.waitForTimeout(1500);
 await shot('spread-7i');
 await chip.click();
 await p.getByRole('dialog', { name: 'Streuung welches Schlägers?' }).locator('.pick-option').first().click();
 await p.waitForTimeout(300);
-ok(/Caddie/.test(await chip.innerText()), "back to the caddie's club");
+const back = (await chip.innerText()).replace(/\s+/g, ' ').trim();
+ok(back === before.trim(), `back to the caddie's club: "${back}"`);
 await tool.click();
 await p.waitForTimeout(300);
 ok((await p.getByRole('button', { name: 'Streuung des Schlägers zeigen' }).count()) === 1, 'the tool switches the spread off');
