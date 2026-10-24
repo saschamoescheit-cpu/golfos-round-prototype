@@ -26,6 +26,10 @@ export async function mockNet(ctx) {
     const lat = (u.searchParams.get('latitude') ?? '').split(',').map(Number);
     return r.fulfill({ json: { elevation: lat.map((y) => Math.round((300 + (y % 0.01) * 2000) * 10) / 10) } });
   });
+  // the course search (Photon) – answered here (night 23./24.10.2026): five test runs a night had Photon answer the home
+  // connection with empty pages; the app finds the courses in its own lists (built-in and every German course), as when
+  // Photon is down. A test that needs Photon's answers routes it itself.
+  await ctx.route(/photon\.komoot\.io\//, (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ type: 'FeatureCollection', features: [] }) }));
   // DWD (Bright Sky) "down" – with the CORS header, else WebKit reports the refused answer as a page error (night run 23./24.10.2026)
   await ctx.route(/api\.brightsky\.dev\//, (r) => r.fulfill({ status: 503, headers: { 'Access-Control-Allow-Origin': '*' }, body: '' }));
   // the aerial images of Baden-Württemberg (LGL): a plain grass tile – the tests do not depend on the state's service
