@@ -19,12 +19,12 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'map', title: () => tr('On the round', 'Auf der Runde'), about: () => tr('Distances, weather, tools, your spread, all holes', 'Entfernungen, Wetter, Werkzeuge, Streuung, alle Löcher'), length: '0:54' },
   { id: 'caddie', title: () => tr('The caddie', 'Der Caddie'), about: () => tr('Club, plays like, ask, rules, hole notes', 'Schläger, spielt wie, Fragen, Regeln, Lochnotizen'), length: '0:36' },
   { id: 'score', title: () => tr('Shots & score', 'Schläge & Score'), about: () => tr('"Shot here", score and putts, next hole, finish', '„Schlag hier“, Score und Putts, nächstes Loch, beenden'), length: '0:40' },
-  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '0:58' },
+  { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '0:55' },
   { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:38' },
   { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:35' },
 ];
 /** The whole tour in one video. */
-export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:52' };
+export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:49' };
 
 export const helpVideoUrl = (id: string): string => `help/${id}.mp4`;
 export const helpPosterUrl = (id: string): string => `help/${id}.jpg`;
@@ -196,16 +196,6 @@ export const FAQ: FaqTopic[] = [
     id: 'after',
     title: () => tr('After the round', 'Nach der Runde'),
     items: [
-      {
-        // Sascha 23.10.2026: "Was bedeutet der Hinweis ‚Vom Tee‘ und wofür brauchen wir diesen?"
-        q: () => tr('What does "Off the tee" mean when I check a hole?', 'Was bedeutet „Vom Tee“ beim Prüfen?'),
-        a: () =>
-          tr(
-            'Which club the caddie advised on the tee and which one you played (✓ when they match) – and below it your record on this hole with each tee club. Over several rounds it shows whether following the caddie pays off here.',
-            'Welchen Schläger der Caddie am Abschlag empfohlen hat und welchen du gespielt hast (✓ wenn gleich) – darunter deine Bilanz an diesem Loch je Abschlag-Schläger. Über mehrere Runden siehst du so, ob sich die Empfehlung hier lohnt.',
-          ),
-        video: 'review',
-      },
       {
         q: () => tr('Why does a shot say "played like 152 m"?', 'Warum steht bei einem Schlag „spielte wie 152 m“?'),
         a: () =>

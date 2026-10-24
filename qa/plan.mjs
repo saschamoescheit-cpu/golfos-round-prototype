@@ -53,7 +53,8 @@ if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/plan-1A.
 for (let k = 0; k < 3; k++) {
   await p.getByRole('button', { name: 'Nächstes Loch' }).last().click();
   await p.waitForTimeout(1200);
-  if (k === 0) ok((await p.locator('.plan-panel').getByRole('button', { name: '+ Ziel' }).count()) === 0, `par 3 (${(await p.locator('.map-hole-no').innerText()).trim()}): no "+ Ziel" – a par 3 is played to the green`);
+  // a par 3 has its target too – to aim beside the flag or lay up (Sascha 24.10.2026): one to move, "+ Ziel" for a second
+  if (k === 0) ok((await p.locator('.map-target, .map-crosshair').count()) >= 1 && (await p.locator('.plan-panel .plan-shot').count()) === 2 && (await p.locator('.plan-panel').getByRole('button', { name: '+ Ziel' }).count()) === 1, `par 3 (${(await p.locator('.map-hole-no').innerText()).trim()}): a target to move (${await p.locator('.plan-panel .plan-shot').count()} shots), "+ Ziel" for a layup`);
 }
 const label4 = (await p.locator('.map-hole-no').innerText()).trim();
 const shots4 = await p.locator('.plan-panel .plan-shot').count();

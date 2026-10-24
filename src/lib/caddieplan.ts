@@ -34,6 +34,8 @@ export interface CaddieInput {
   pin: LngLat;
   targets: LngLat[]; // the player's planned targets (target 1 may be the caddie's tee point)
   teeAim: AimPoint | null;
+  /** the target a par 3 starts with (the middle of the green) – the caddie's own plan until the player moves it */
+  defaultTarget?: LngLat | null;
   slopes?: Samples;
   boundary?: Ring[];
   trees?: Ring[];
@@ -118,7 +120,7 @@ export function caddieAdvice(o: CaddieInput): CaddieOutput {
   const fmt = (m: number) => formatDistance(m, unit);
   const ap = aimPoint({ data, from, pin, par: o.par, teeShot: o.teeShot, bag: o.bag, conditions: o.conditions, tendency: o.tendency, corridor: o.corridor, slopes: o.slopes, boundary: o.boundary, trees: o.trees, woods: o.woods, note, style: o.style, favourite: o.favourite, playing: o.playing, grid: o.grid });
   // Own planned target still ahead (dragged or added by the player) wins over the caddie's point.
-  const ownTarget = o.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15 && !(o.teeAim && distanceM(t, o.teeAim.pos) < 3)) ?? null;
+  const ownTarget = o.targets.find((t) => distanceM(t, pin) < distanceM(from, pin) - 15 && !(o.teeAim && distanceM(t, o.teeAim.pos) < 3) && !(o.defaultTarget && distanceM(t, o.defaultTarget) < 3)) ?? null;
   const target = ownTarget ?? ap.pos;
   // The caddie's point is target 1 when that sits on it (tee); otherwise there is no marker – it is said as a distance.
   const apKey: TargetKey = o.targets.some((t) => distanceM(t, ap.pos) < 15) ? 't1' : 'spot';

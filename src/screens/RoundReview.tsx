@@ -10,8 +10,6 @@ import { flightName, flightOf, fromDrop, intentName, penaltyName, playedAgain, s
 import { shotChecks } from '../lib/reviewchecks';
 import { stanceAt } from '../lib/terrain';
 import { isLeftHanded } from '../lib/profile';
-import { adviceAtTee, historyLines } from '../lib/holehistory';
-import { statRounds } from '../lib/signing';
 import { holeSg } from '../lib/sg';
 import { proximity } from '../lib/approachstats';
 import { Chips } from '../components/ui';
@@ -656,8 +654,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     saveDetail(k, { ...d, shots: teeFirst(shots) });
   };
   const checks = shotChecks(d, data, geometry.boundary);
-  const teeAdvice = d?.shots[0] ? adviceAtTee(cadLog[k], d.shots[0].pos) : null;
-  const teeLines = useMemo(() => historyLines(statRounds(loadRounds()).concat(round.signedAt ? [] : [round]), round.courseId, hole.label), [round, hole.label]);
   const sgs = d && !d.shots.some((s) => s.review) && e.strokes != null ? holeSg({ ...d, pin: pin ?? d.pin }, e.putts, hole.par) : null;
   const sgFmt = (v: number) => (v >= 0 ? '+' : '−') + dec(Math.abs(v).toFixed(1));
   /** Two points at one spot are one shot: the later one stays (it is where the ball was hit), the club carried over. */
@@ -1240,23 +1236,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         />
       )}
 
-      {(teeAdvice || teeLines.length > 0) && (
-        // plan against what was played (Sascha 22.10.2026): the caddie's tee club, the player's, and the record here
-        <section className="card plan-vs" aria-label={tr('Plan and played', 'Plan und gespielt')}>
-          <span className="eyebrow">{tr('Off the tee', 'Vom Tee')}</span>
-          {teeAdvice && (
-            <span>
-              {tr('Caddie', 'Caddie')}: <strong>{clubCode(teeAdvice)}</strong> · {tr('played', 'gespielt')}: <strong>{d?.shots[0]?.club ? clubCode(d.shots[0].club) : '–'}</strong>
-              {d?.shots[0]?.club && d.shots[0].club === teeAdvice ? <span className="good-text"> ✓</span> : null}
-            </span>
-          )}
-          {teeLines.map((l) => (
-            <span key={l} className="muted small">
-              {l}
-            </span>
-          ))}
-        </section>
-      )}
+      {/* "Vom Tee" (caddie club against played, the record on the hole) taken out – not important enough (Sascha 24.10.2026) */}
       {SHOW_CADDIE_REVIEW && (cadLog[k]?.length ?? 0) > 0 && (
         <section className="caddie-review" aria-label={tr('What the caddie said', 'Was der Caddie gesagt hat')}>
           <h3>{tr('What the caddie said – and you?', 'Was der Caddie gesagt hat – und du?')}</h3>

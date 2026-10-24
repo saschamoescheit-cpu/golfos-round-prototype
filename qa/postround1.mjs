@@ -54,8 +54,8 @@ const round = () => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rou
 const mine = async (i) => { const r = await round(); return r.entries[r.players.find((x) => x.isMe).id][i]; };
 
 ok(/0\/9 geprüft/.test(await p.locator('.review-progress').innerText()), 'the progress: "0/9 geprüft"');
-const vs = await p.locator('.plan-vs').innerText().catch(() => '');
-ok(/Caddie: 7i/.test(vs) && /gespielt: 8i/.test(vs), `plan against played off the tee ("${vs.replace(/\s+/g, ' ')}")`);
+// "Vom Tee" is gone (Sascha 24.10.2026)
+ok((await p.locator('.plan-vs').count()) === 0, 'no "Vom Tee" card');
 
 // 1 · strike, intent, stance on shot 1
 await p.locator('.review-list li[data-shot="0"] .shot-row').click();

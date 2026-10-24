@@ -869,13 +869,16 @@ export function HoleScreen(props: {
     // planning a par 5 (Sascha 16.10.2026): three shots – two targets from the start, the second where the
     // favourite distance is left
     const defaultTargets = (): LngLat[] => {
+      // a par 3 too has a target to move – aim left, or lay up (Sascha 24.10.2026); it starts in the middle of the green
+      // and leaves the caddie as he is until it is moved
+      if (hole.par === 3) return [mapData.greenCenter];
       const first = teeAim && distanceM(teeAim.pos, mapData.greenCenter) > 60 ? [teeAim.pos] : [];
       if (!round.planning || hole.par < 5 || !first.length) return first;
       const L = lineLength(mapData.line);
       const at = L - Math.min(200, Math.max(30, caddieSettings.favourite || 90));
       return at > alongLine(mapData.line, first[0]) + 40 ? [first[0], pointAt(mapData.line, at)] : first;
     };
-    const plan = plans[i] ?? (planned?.targets.length && hole.par >= 4 ? { targets: planned.targets, pin: null } : { targets: defaultTargets(), pin: null });
+    const plan = plans[i] ?? (planned?.targets.length ? { targets: planned.targets, pin: null } : { targets: defaultTargets(), pin: null });
     // every hole looked at counts as planned – a par 3 has no target, nor has a short par 4 whose landing spot lies
     // within 60 m of the green (Sascha 21.10.2026: "16 of 18 holes planned, but I planned every hole"); the live round
     // then takes the caddie's targets of the day
@@ -992,6 +995,7 @@ export function HoleScreen(props: {
           pin,
           targets: plan.targets,
           teeAim,
+          defaultTarget: hole.par === 3 ? mapData.greenCenter : null,
           ...terrain,
           bag: carryBag,
           conditions,
@@ -1419,7 +1423,7 @@ export function HoleScreen(props: {
                 </label>
               ))}
               <div className="plan-actions">
-                {plan.targets.length < 3 && hole.par >= 4 && (
+                {plan.targets.length < (hole.par === 3 ? 2 : 3) && (
                   <button
                     type="button"
                     className="btn-secondary"
