@@ -16,7 +16,7 @@ import { ensureCourseMap } from '../lib/courses';
 import { loadRegionalImagery, pickImagery, type ImageryId } from '../lib/imagery';
 import { loadForecast, loadWeather, windOnHole, type Forecast, type Weather } from '../lib/weather';
 import { WeatherIcon } from '../components/WeatherIcon';
-import { adviseClub, DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
+import { adviseClub, clubName, DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
 import { clubDispersion } from '../lib/dispersion';
 import { heights } from '../lib/elevation';
 import { gridHeight, loadTerrainGrid, makeTerrainGrid, type TerrainGrid } from '../lib/terraingrid';
@@ -431,6 +431,9 @@ export function HoleScreen(props: {
       return true;
     }
   });
+  const [spreadClub, setSpreadClub] = useState<Club | null>(null); // a club picked for the spread – null: the caddie's
+  const [spreadPick, setSpreadPick] = useState(false);
+  useEffect(() => setSpreadClub(null), [i]); // each hole starts with the caddie's club again
   const setSpreadOn = (on: boolean) => {
     setSpreadOnState(on);
     try {
@@ -1024,7 +1027,17 @@ export function HoleScreen(props: {
     const spread0 = cad && !cad.shortGame && !putt && !greenFocus ? clubSpread(cad.advice.club, distanceM(from, cad.target), clubReps.get(cad.advice.club), caddiePlaying) : null;
     const tend = spread0 ? (tendency.get(spread0.club) ?? 0) : 0;
     const spreadNow = spread0 ? { ...spread0, side: { lo: spread0.side.lo - tend, hi: spread0.side.hi - tend } } : null;
-    const spreadOnMap = spreadNow && cad && spreadOn ? { ...spreadShape(from, cad.target, spreadNow), own: spreadNow.shots > 0 } : null;
+    // any club of the bag on the map, not only the caddie's (Sascha 23.10.2026: "depending on a club or the caddie's
+    // advice"): its typical length along the line to the caddie's spot
+    const lenOf = (c: Club) => clubReps.get(c)?.median || carryBag.find((b) => b.club === c && !b.swing)?.carry || 0;
+    const picked = spreadClub && spread0 && cad && lenOf(spreadClub) > 0 ? spreadClub : null;
+    const pickedTarget = picked && cad ? move(from, bearingDeg(from, cad.target), lenOf(picked)) : null;
+    const pickedSpread0 = picked ? clubSpread(picked, lenOf(picked), clubReps.get(picked), caddiePlaying) : null;
+    const pickedTend = picked ? (tendency.get(picked) ?? 0) : 0;
+    const mapSpread = pickedSpread0 ? { ...pickedSpread0, side: { lo: pickedSpread0.side.lo - pickedTend, hi: pickedSpread0.side.hi - pickedTend } } : spreadNow;
+    const mapTarget = pickedTarget ?? cad?.target ?? null;
+    const spreadOnMap = mapSpread && mapTarget && spreadOn ? { ...spreadShape(from, mapTarget, mapSpread), own: mapSpread.shots > 0 } : null;
+    const spreadChoices = carryBag.filter((b) => !b.swing && b.club !== 'Pt' && lenOf(b.club) > 0).sort((a, b) => lenOf(b.club) - lenOf(a.club));
     // unread: a small green dot until the caddie was opened on this hole – on the next hole it comes back (Sascha 17.10.2026)
     const caddieNews = cad != null && !greenFocus && !caddieOpen && seenSig !== String(i);
     const toggleCaddie = () => {
@@ -1126,6 +1139,53 @@ export function HoleScreen(props: {
 
 
         {weather && !tournament && <WeatherBadge weather={weather} holeBearing={bearingDeg(mapData.tee, mapData.greenCenter)} below={false} />}
+        {/* whose spread the map shows – the caddie's club or one the player picks (Sascha 23.10.2026) */}
+        {spreadOnMap && mapSpread && (
+          <button type="button" className="map-spread-chip" aria-label={tr(`Spread of ${clubName(mapSpread.club)} – choose a club`, `Streuung von ${clubName(mapSpread.club)} – Schläger wählen`)} onClick={() => setSpreadPick(true)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <ellipse cx="12" cy="7" rx="8" ry="3.5" />
+              <path d="M12 21L4.6 8.4M12 21l7.4-12.6" strokeDasharray="2 2.4" />
+            </svg>
+            <span>{clubCode(mapSpread.club)}</span>
+            <span className="muted">{picked ? tr('chosen', 'gewählt') : 'Caddie'}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        )}
+        {spreadPick && cad && (
+          <div className="sheet-backdrop" onClick={() => setSpreadPick(false)}>
+            <section className="sheet" role="dialog" aria-label={tr('Spread of which club?', 'Streuung welches Schlägers?')} onClick={(e) => e.stopPropagation()}>
+              <div className="sheet-head">
+                <strong>{tr('Spread of which club?', 'Streuung welches Schlägers?')}</strong>
+                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setSpreadPick(false)}>
+                  ✕
+                </button>
+              </div>
+              <div className="pick-list">
+                <button type="button" className="pick-option" aria-pressed={!picked} onClick={() => { setSpreadClub(null); setSpreadPick(false); }}>
+                  <span className="grow">
+                    <strong>{tr(`The caddie's club (${clubCode(cad.advice.club)})`, `Schläger des Caddies (${clubCode(cad.advice.club)})`)}</strong>
+                    <span className="muted small">{tr('follows his advice for each shot', 'folgt seiner Empfehlung bei jedem Schlag')}</span>
+                  </span>
+                  {!picked && <span className="pick-check" aria-hidden="true">✓</span>}
+                </button>
+                {spreadChoices.map((b) => {
+                  const n = clubReps.get(b.club)?.corridor?.shots ?? 0;
+                  return (
+                    <button key={b.club} type="button" className="pick-option" aria-pressed={picked === b.club} onClick={() => { setSpreadClub(b.club); setSpreadPick(false); }}>
+                      <span className="grow">
+                        <strong>{clubName(b.club)}</strong>
+                        <span className="muted small">
+                          {fmt(lenOf(b.club))} {unit} · {n >= 5 ? tr(`spread from ${n} shots`, `Streuung aus ${n} Schlägen`) : tr('spread estimated from your handicap', 'Streuung nach Handicap geschätzt')}
+                        </span>
+                      </span>
+                      {picked === b.club && <span className="pick-check" aria-hidden="true">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        )}
 
         {/* back, middle (large), front one below the other (Sascha 14.10.2026: clearer than one number) */}
         <div className="map-green stacked" aria-label={tr('Distance to the green', 'Distanz zum Grün')}>
