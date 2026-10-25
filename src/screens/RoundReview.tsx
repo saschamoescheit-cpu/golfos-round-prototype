@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ShotHereIcon } from '../components/RoundIcons';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
-import { distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
+import { bearingDeg, distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
 import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
 import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
@@ -19,6 +19,7 @@ import { rollFactor } from '../lib/clubs';
 import { playedLengths } from '../lib/clubstats';
 import { formatDistance } from '../lib/geo';
 import { HoleMap } from '../components/HoleMap';
+import { WindTag } from '../components/WindTag';
 import { ensureCourseMap } from '../lib/courses';
 import { PuttEditor } from '../components/PuttEditor';
 import { pickUpAllowed, ScoreSheet, scoreName } from '../components/ScoreSheet';
@@ -350,6 +351,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const placedPutts = e?.puttsAt?.balls ?? null;
   const lengths = d ? shotLengths(d) : [];
   const playedLen = d ? playedLengths(d, e?.weather) : [];
+  // the direction a shot was played in: to the next ball, the miss of a penalty, or the green
+  const shotBearing = (n: number): number | null => {
+    const s = d?.shots[n];
+    if (!d || !s?.pos) return null;
+    const end = s.penalty && s.missPos ? s.missPos : n + 1 < d.shots.length ? d.shots[n + 1].pos : d.onGreen;
+    return end ? bearingDeg(s.pos, end) : null;
+  };
   const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
   const fmt = (m: number) => `${formatDistance(m, unit)} ${unit}`;
   // The GPS track of this hole: the walked path and where the player stood still – a shot the detection missed
@@ -1054,6 +1062,12 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </div>
       )}
 
+      {e?.weather && data && (
+        <p className="review-wind small">
+          <span className="muted">{tr('Wind on this hole', 'Wind an diesem Loch')}</span>
+          <WindTag w={e.weather} bearing={bearingDeg(data.tee, data.greenCenter)} gusts />
+        </p>
+      )}
       {!d || d.shots.length === 0 ? (
         <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>
       ) : (
@@ -1073,20 +1087,27 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     </span>
                     {sgs?.[n] && <span className={`shot-sg ${sgs[n].sg >= 0 ? 'good-text' : 'bad-text'}`}>{sgFmt(sgs[n].sg)}</span>}
                   </span>
+                  {/* one line each (Sascha 25.10.2026: wind with direction and strength, but kept clear): where and how
+                      far, then the wind it played in, then the contact */}
                   <span className="muted small" style={{ display: 'block' }}>
                     {fromDrop(d.shots, n) ? tr('Drop · ', 'Drop · ') : ''}
                     {n > 0 && d.shots[n - 1].penalty && d.shots[n - 1].provisional ? tr('provisional ball · ', 'provisorischer Ball · ') : ''}
                     {lieName(s.lie)}
                     {lengths[n] != null ? ` · ${fmt(lengths[n]!)}` : ''}
-                    {/* how long it played with the wind – the reason for a longer club (Sascha 23.10.2026) */}
-                    {lengths[n] != null && playedLen[n] != null && s.club && s.club !== 'Pt' && (!s.kind || s.kind === 'full') && Math.abs(playedLen[n]! - lengths[n]!) >= 5 ? tr(` (played like ${fmt(playedLen[n]!)})`, ` (spielte wie ${fmt(playedLen[n]!)})`) : ''}
                     {proximity(d, n) != null && proximity(d, n)! > 0 ? tr(` · ${fmt(proximity(d, n)!)} from the pin`, ` · auf ${fmt(proximity(d, n)!)} an der Fahne`) : ''}
                     {s.penalty ? ` · ${penaltyName(s.penaltyKind) ?? tr('penalty', 'Strafschlag')} (+1)` : ''}
-                    {s.strike && s.strike !== 'slice' && s.strike !== 'hook' ? ` · ${strikeName(s.strike)}` : ''}
-                    {flightOf(s) ? ` · ${flightName(flightOf(s)!)}` : ''}
-                    {s.intent ? ` · ${intentName(s.intent)}` : ''}
-                    {s.review && !odd ? tr(' · check', ' · prüfen') : ''}
                   </span>
+                  {/* how long it played with the wind – the reason for a longer club (Sascha 23.10.2026) */}
+                  {e?.weather && lengths[n] != null && playedLen[n] != null && s.club && s.club !== 'Pt' && (!s.kind || s.kind === 'full') && Math.abs(playedLen[n]! - lengths[n]!) >= 5 && shotBearing(n) != null && (
+                    <span className="shot-wind small">
+                      {tr(`played like ${fmt(playedLen[n]!)}`, `spielte wie ${fmt(playedLen[n]!)}`)} · <WindTag w={e.weather} bearing={shotBearing(n)!} />
+                    </span>
+                  )}
+                  {(s.strike && s.strike !== 'slice' && s.strike !== 'hook') || flightOf(s) || s.intent || (s.review && !odd) ? (
+                    <span className="muted small" style={{ display: 'block' }}>
+                      {[s.strike && s.strike !== 'slice' && s.strike !== 'hook' ? strikeName(s.strike) : '', flightOf(s) ? flightName(flightOf(s)!) : '', s.intent ? intentName(s.intent) : '', s.review && !odd ? tr('check', 'prüfen') : ''].filter(Boolean).join(' · ')}
+                    </span>
+                  ) : null}
                   {odd && <span className="bad-text small" style={{ display: 'block' }}>{tr('Impossible length – drag the shot to where the ball was', 'Unmögliche Länge – Schlag auf der Karte an die richtige Stelle ziehen')}</span>}
                 </button>
                 <button type="button" className="icon-btn row-delete" aria-label={tr(`Delete shot ${n + 1}`, `Schlag ${n + 1} löschen`)} onClick={() => saveDetail(k, { ...d, shots: d.shots.filter((_, j) => j !== n) })}>

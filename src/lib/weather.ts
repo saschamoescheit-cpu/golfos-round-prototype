@@ -150,7 +150,7 @@ function readCache(p: LngLat): { fetchedAt: number; data: Weather } | null {
 }
 
 /** Wind relative to the playing direction (bearing tee → green). Head > 0 = into the wind; cross > 0 = from the right. */
-export function windOnHole(w: Weather, holeBearingDeg: number): { headKmh: number; crossKmh: number; label: string } {
+export function windOnHole(w: Pick<Weather, 'windKmh' | 'windFromDeg'>, holeBearingDeg: number): { headKmh: number; crossKmh: number; label: string } {
   const a = ((w.windFromDeg - holeBearingDeg) * Math.PI) / 180;
   const head = w.windKmh * Math.cos(a);
   const cross = w.windKmh * Math.sin(a);

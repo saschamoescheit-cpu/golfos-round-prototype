@@ -17,6 +17,8 @@ export interface HoleBook {
   hazards: string[]; // "Water left: 180 / 205"
   green: string[];
   record: string[];
+  /** the first line of record is the average (own rounds) – else only notes from the history */
+  hasRecord: boolean;
 }
 
 export function holeBook(p: {
@@ -59,14 +61,13 @@ export function holeBook(p: {
   const rec = p.record;
   const record = rec
     ? [
-        tr(
-          `Ø ${dec(rec.avg.toFixed(1))} (${rec.toPar > 0 ? '+' : ''}${dec(rec.toPar.toFixed(1))}) in ${rec.played} ${rec.played === 1 ? 'round' : 'rounds'} · best ${rec.best}`,
-          `Ø ${dec(rec.avg.toFixed(1))} (${rec.toPar > 0 ? '+' : ''}${dec(rec.toPar.toFixed(1))}) aus ${rec.played} ${rec.played === 1 ? 'Runde' : 'Runden'} · beste ${rec.best}`,
-        ),
+        // three lines in a green tile (Sascha 25.10.2026): the average, then where it comes from – no best score
+        `Ø ${dec(rec.avg.toFixed(1))} (${rec.toPar > 0 ? '+' : ''}${dec(rec.toPar.toFixed(1))})`,
+        tr(`in ${rec.played} ${rec.played === 1 ? 'round' : 'rounds'}`, `aus ${rec.played} ${rec.played === 1 ? 'Runde' : 'Runden'}`),
         ...(rec.notes.length ? [rec.notes.join(' · ')] : []),
       ]
     : [];
-  return { ...(p.tip ? { tip: p.tip } : {}), rise, hazards, green, record: [...record, ...(p.history ?? [])] };
+  return { ...(p.tip ? { tip: p.tip } : {}), rise, hazards, green, record: [...record, ...(p.history ?? [])], hasRecord: record.length > 0 };
 }
 
 export interface HazardAhead {

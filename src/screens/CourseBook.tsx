@@ -168,11 +168,11 @@ function HolePage(p: {
           </figure>
           {/* the record right under the hole's picture (Sascha 24.10.2026) */}
           {book.record.length > 0 && (
-            <div className="book-record">
+            <div className="book-record">{/* a small green tile like the tip for the next round (Sascha 25.10.2026) */}
               <p className="lbl">{tr('Your record', 'Deine Bilanz')}</p>
               <ul className="book-lines">
                 {book.record.map((t, k) => (
-                  <li key={t} className={k ? 'muted' : undefined}>
+                  <li key={t} className={k === 0 && book.hasRecord ? 'book-avg' : 'muted'}>
                     {t}
                   </li>
                 ))}

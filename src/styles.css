@@ -1715,9 +1715,19 @@ button.tile:disabled { opacity: 1; }
 .book-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .book-record .lbl { margin: 0 0 2px; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
 .book-record .book-lines { font-size: 13px; }
+/* the record as a small green tile, three lines: label, average, rounds (Sascha 25.10.2026) */
+.book-record { background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand-text) 35%, transparent); border-radius: 12px; padding: 8px 12px; }
+.book-record .book-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.book-record .book-avg { font: 700 15px var(--display); font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+.book-record .book-avg ~ li ~ li { font-size: 12px; } /* notes from the history under the three lines, smaller */
 /* the tip for the next round: the whole card green – heading and tip (Sascha 24.10.2026) */
 .card.next-round-card { background: var(--brand-soft); border: 1px solid color-mix(in srgb, var(--brand-text) 35%, transparent); }
 .next-round-card .next-round { padding: 0; background: none; }
 /* the flights: nine 3 × 3, draw and fade as their own row below (Sascha 24.10.2026) */
 .flight-picker { display: flex; flex-direction: column; gap: 8px; }
 .flight-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* the wind when checking the round (Sascha 25.10.2026): arrow against the line of play, strength, gusts */
+.review-wind { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; }
+.wind-tag { color: var(--text); font-weight: 600; }
+.wind-tag svg { display: inline-block; vertical-align: -2px; margin-right: 4px; color: var(--brand-text); }
+.shot-wind { display: block; color: var(--muted); }
