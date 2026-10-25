@@ -71,8 +71,27 @@ export function holeTileUrls(source: ImagerySource, holes: HoleMapData[]): strin
   return [...urls];
 }
 
-/** Fetches the tiles a few at a time; the service worker stores them. Failed tiles are skipped. */
-export async function prefetchTiles(urls: string[], onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<number> {
+/** The offline stores of the aerial tiles (vite.config.ts). */
+const TILE_CACHES = ['imagery', 'imagery-us'];
+/**
+ * Drops a tile from the offline store – a service that answered "200 OK" with an error page or an empty picture
+ * (LGL 23.–25.10.2026: "Dataset not found" as XML) must not stand there as the course's map for 60 days.
+ */
+export async function forgetTile(url: string): Promise<void> {
+  try {
+    if (typeof caches === 'undefined') return;
+    await Promise.all(TILE_CACHES.map(async (name) => (await caches.open(name)).delete(url)));
+  } catch {
+    /* no store – nothing kept */
+  }
+}
+
+/**
+ * Fetches the tiles a few at a time; the service worker stores them. Failed tiles are skipped; an answer that is no
+ * picture counts as failed and is dropped from the store. onTile hears every tile that arrived, so a restart can
+ * leave them out.
+ */
+export async function prefetchTiles(urls: string[], onProgress: (done: number, total: number) => void, signal: AbortSignal, onTile?: (url: string) => void): Promise<number> {
   let next = 0;
   let done = 0;
   let failed = 0;
@@ -96,10 +115,16 @@ export async function prefetchTiles(urls: string[], onProgress: (done: number, t
       const timer = setTimeout(stop, 15000);
       try {
         const res = await fetch(url, { mode: 'cors', signal: ctrl.signal });
+        const type = res.headers.get('content-type') ?? '';
         if (!res.ok) failed++;
-        else {
+        else if (type && !type.startsWith('image/')) {
+          failed++;
+          await res.arrayBuffer().catch(() => undefined);
+          void forgetTile(url);
+        } else {
           await res.arrayBuffer();
           ok++;
+          onTile?.(url);
         }
       } catch {
         failed++;
@@ -107,6 +132,8 @@ export async function prefetchTiles(urls: string[], onProgress: (done: number, t
         clearTimeout(timer);
         signal.removeEventListener('abort', stop);
       }
+      // nothing more after a stop – a late answer set the hint again and left a percentage standing (25.10.2026)
+      if (signal.aborted) return;
       onProgress(Math.min(++done, urls.length), urls.length);
     }
   };

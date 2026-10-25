@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import { IMAGERY, type ImagerySource } from '../lib/imagery';
+import { forgetTile } from '../lib/prefetch';
 
 // Shared map look for the hole map and the hole set-up: satellite imagery with the course drawn on top
 // in soft course colours (fairway, tee, green, bunker, water), like the hole maps of GPS golf apps.
@@ -57,11 +58,13 @@ function checkTiles(): void {
     const type = r.headers.get('content-type') ?? '';
     if (type && !type.startsWith('image/')) {
       emptyTiles.count++;
+      void forgetTile(url); // not kept as the course map for offline
       throw new Error('no picture');
     }
     const data = await r.arrayBuffer();
     if (await isEmptyTile(data, r.headers.get('content-type'))) {
       emptyTiles.count++;
+      void forgetTile(url);
       throw new Error('empty tile');
     }
     return { data };

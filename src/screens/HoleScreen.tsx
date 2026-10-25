@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Avatar } from '../components/Avatar';
 import { loadStrategy, savePlannedHole, type CourseStrategy } from '../lib/strategy';
 import type { Club, DetailEntry, HoleEntry, LngLat, Round } from '../types';
@@ -13,7 +13,7 @@ import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
 import { holeTileUrls, prefetchTiles } from '../lib/prefetch';
 import { ensureCourseMap } from '../lib/courses';
-import { loadRegionalImagery, pickImagery, type ImageryId } from '../lib/imagery';
+import { IMAGERY, loadRegionalImagery, pickImagery, type ImageryId } from '../lib/imagery';
 import { loadForecast, loadWeather, windOnHole, type Forecast, type Weather } from '../lib/weather';
 import { WeatherIcon } from '../components/WeatherIcon';
 import { adviseClub, clubName, DEFAULT_CARRY, levelName, readGreen, type LieKind } from '../lib/caddie';
@@ -83,6 +83,15 @@ const MANUAL_SHOTS = false;
 
 /** The one-time tip how the shots are found – off: no introductions in the app (Sascha 16.10.2026). */
 const SHOW_SHOT_TIP = false;
+
+/** Whether the app is on screen – in the background iOS cuts running downloads. */
+const onVisibility = (cb: () => void) => {
+  document.addEventListener('visibilitychange', cb);
+  return () => document.removeEventListener('visibilitychange', cb);
+};
+function usePageVisible(): boolean {
+  return useSyncExternalStore(onVisibility, () => document.visibilityState !== 'hidden', () => true);
+}
 
 export function HoleScreen(props: {
   round: Round;
@@ -314,26 +323,61 @@ export function HoleScreen(props: {
   // saved per course AND loops (Sascha 16.10.2026: "C much worse than A and B" – after an A+B round the course counted
   // as saved, so the C holes were never fetched and showed coarse tiles on a weak network)
   const offlineKey = round.loopOrder?.length ? `${round.courseId}.${[...round.loopOrder].sort().join('')}` : round.courseId;
-  useEffect(() => {
+  // the tiles to keep – the effect below starts again only when this list really changes (25.10.2026: a game's sync, a
+  // new geometry or a saved score gave new hole objects, and every new object started the download from 0)
+  const offlineUrls = useMemo(() => {
     const holes = allMaps.filter((m): m is NonNullable<typeof m> => m != null);
-    const fresh = Date.now() - loadOfflineStamp(offlineKey, imagery.id) < 30 * 24 * 3600 * 1000;
-    if (holes.length === 0 || fresh || !navigator.serviceWorker?.controller) return; // without service worker nothing is kept
-    const ctrl = new AbortController();
+    if (holes.length === 0) return [];
     // the green charts and green heights of the course too, so the green read works without network (feature 028)
     const charts = Object.values(GREEN_CHARTS[round.courseId] ?? {}).map((c) => c.file);
-    const urls = [...holeTileUrls(imagery, holes), ...charts, ...(charts.length ? [charts[0].replace(/[^/]+$/, 'heights.json')] : [])];
-    setOffline({ done: 0, total: urls.length });
-    prefetchTiles(urls, (done, total) => setOffline({ done, total }), ctrl.signal).then((failed) => {
-      if (ctrl.signal.aborted) return;
+    const extra = [...charts, ...(charts.length ? [charts[0].replace(/[^/]+$/, 'heights.json')] : [])];
+    return [...holeTileUrls(imagery, holes), ...extra];
+  }, [allMaps, imagery, round.courseId]);
+  const urlsKey = `${offlineUrls.length}:${offlineUrls[0] ?? ''}:${offlineUrls[offlineUrls.length - 1] ?? ''}`;
+  const urlsRef = useRef(offlineUrls);
+  urlsRef.current = offlineUrls;
+  const holesRef = useRef(allMaps);
+  holesRef.current = allMaps;
+  // tiles that arrived – a restart (the app was in the background, the list changed) goes on from there
+  const offlineGot = useRef(new Set<string>());
+  const visible = usePageVisible();
+  useEffect(() => {
+    const fresh = Date.now() - loadOfflineStamp(offlineKey, imagery.id) < 30 * 24 * 3600 * 1000;
+    const urls = urlsRef.current;
+    // without service worker nothing is kept; in the background iOS cuts the downloads – go on when the app is back
+    if (urls.length === 0 || fresh || !navigator.serviceWorker?.controller || !visible) return;
+    const ctrl = new AbortController();
+    const got = offlineGot.current;
+    const todo = urls.filter((u) => !got.has(u));
+    const before = urls.length - todo.length;
+    setOffline({ done: before, total: urls.length });
+    const finish = (failed: number) => {
       // "saved ✓" only when it is (nearly) all there – else no promise; the next opening tries again
       if (failed < urls.length * 0.05) {
         saveOfflineStamp(offlineKey, imagery.id);
         setOffline('ready');
         setTimeout(() => setOffline(null), 4000);
       } else setOffline(null);
+    };
+    prefetchTiles(todo, (done) => !ctrl.signal.aborted && setOffline({ done: before + done, total: urls.length }), ctrl.signal, (u) => got.add(u)).then(async (failed) => {
+      if (ctrl.signal.aborted) return;
+      // the state's service is down (LGL 25.10.2026: error pages instead of pictures): the map shows Esri then – keep Esri
+      if (imagery.id !== 'esri' && failed > todo.length * 0.5) {
+        const holes = holesRef.current.filter((m): m is NonNullable<typeof m> => m != null);
+        const esri = holeTileUrls(IMAGERY.esri, holes).filter((u) => !got.has(u));
+        setOffline({ done: 0, total: esri.length });
+        await prefetchTiles(esri, (done) => !ctrl.signal.aborted && setOffline({ done, total: esri.length }), ctrl.signal, (u) => got.add(u));
+        if (!ctrl.signal.aborted) setOffline(null); // no stamp: the next opening tries the state's pictures again
+        return;
+      }
+      finish(failed);
     });
-    return () => ctrl.abort();
-  }, [round.courseId, offlineKey, imagery, allMaps]);
+    return () => {
+      ctrl.abort();
+      setOffline((o) => (o === 'ready' ? o : null)); // never a percentage left standing
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offlineKey, imagery.id, urlsKey, visible]);
   const offlineHint = making ? (
     <div className="map-shot">
       {tr('Working out the green slopes', 'Grün-Neigungen werden berechnet')} · {making.done}/{making.total}

@@ -3,15 +3,29 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'node:fs';
 
-// hosts of the checked US imagery sources (public/imagery/us.json) – their tiles are kept like the others
-const usHosts = (() => {
+// Every aerial service the map uses – Esri, Spain, Baden-Württemberg, the other German states (src/data/deImagery.json)
+// and the checked US sources (public/imagery/us.json) – as patterns written out at build time. The service worker gets
+// a pattern as it is: the function with an outer variable (usHosts) used before arrived there without it and threw on
+// every request, so from 17.10. to 25.10.2026 no aerial tile was kept for offline (Sascha 25.10.: "Karte wird offline
+// gespeichert bleibt hängen").
+const hostsOf = (file: string): string[] => {
   try {
-    const d = JSON.parse(readFileSync('public/imagery/us.json', 'utf-8')) as { sources: { tiles: string }[] };
-    return [...new Set(d.sources.map((s) => new URL(s.tiles.replace(/\{[^}]+\}/g, '0')).host))];
+    const d = JSON.parse(readFileSync(file, 'utf-8')) as { sources: { tiles: string }[] };
+    return d.sources.map((s) => new URL(s.tiles.replace(/\{[^}]+\}/g, '0')).host);
   } catch {
     return [];
   }
-})();
+};
+const hostPattern = (hosts: string[]) => new RegExp(`^https://(${[...new Set(hosts)].map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') || '-'})/`);
+// only pictures go into the offline store – a service answering "200 OK" with an error page (LGL 23.–25.10.2026:
+// "Dataset not found" as XML) would else stand there as the course map for 60 days. Written out into the service
+// worker as it is, so it uses nothing from outside.
+const picturesOnly = {
+  cacheWillUpdate: async ({ response }: { response: Response }) =>
+    response.type === 'opaque' || (response.headers.get('content-type') || 'image/').startsWith('image/') ? response : null,
+};
+const IMAGERY_PATTERN = hostPattern(['server.arcgisonline.com', 'tms-pnoa-ma.idee.es', 'owsproxy.lgl-bw.de', ...hostsOf('src/data/deImagery.json')]);
+const US_IMAGERY_PATTERN = hostPattern(hostsOf('public/imagery/us.json'));
 
 // base './' so the build works under any GitHub Pages sub-path.
 export default defineConfig({
@@ -57,9 +71,9 @@ export default defineConfig({
           },
           {
             // tiles of the US state and county orthoimagery – kept for the course, as the other imagery
-            urlPattern: ({ url }) => usHosts.includes(url.host),
+            urlPattern: US_IMAGERY_PATTERN,
             handler: 'CacheFirst',
-            options: { cacheName: 'imagery-us', expiration: { maxEntries: 5000, maxAgeSeconds: 60 * 60 * 24 * 60 }, cacheableResponse: { statuses: [0, 200] } },
+            options: { cacheName: 'imagery-us', expiration: { maxEntries: 5000, maxAgeSeconds: 60 * 60 * 24 * 60 }, cacheableResponse: { statuses: [0, 200] }, plugins: [picturesOnly] },
           },
           {
             urlPattern: /\/greens\/.*\.webp$/,
@@ -75,12 +89,13 @@ export default defineConfig({
           },
           {
             // Satellite tiles: keep what the player has seen, so the map works with poor reception on the course.
-            urlPattern: /^https:\/\/(server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery|tms-pnoa-ma\.idee\.es\/1\.0\.0\/pnoa-ma|owsproxy\.lgl-bw\.de\/owsproxy\/ows\/WMS_LGL-BW_ATKIS_DOP_20_C)/,
+            urlPattern: IMAGERY_PATTERN,
             handler: 'CacheFirst',
             options: {
               cacheName: 'imagery',
               expiration: { maxEntries: 5000, maxAgeSeconds: 60 * 60 * 24 * 60 },
               cacheableResponse: { statuses: [0, 200] },
+              plugins: [picturesOnly],
             },
           },
         ],

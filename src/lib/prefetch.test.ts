@@ -53,3 +53,23 @@ describe('saving tiles when the service is down or hangs (night check 22.10.2026
     vi.unstubAllGlobals();
   });
 });
+
+describe('a service that answers with an error page (LGL 23.–25.10.2026)', () => {
+  it('counts it as failed, drops it from the offline store and tells only the pictures', async () => {
+    const { prefetchTiles } = await import('./prefetch');
+    const dropped: string[] = [];
+    vi.stubGlobal('caches', { open: async () => ({ delete: async (u: string) => (dropped.push(u), true) }) });
+    vi.stubGlobal('fetch', async (u: string) =>
+      u.endsWith('xml')
+        ? new Response('<ServiceExceptionReport/>', { status: 200, headers: { 'content-type': 'text/xml;charset=UTF-8' } })
+        : new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/jpeg' } }),
+    );
+    const got: string[] = [];
+    const failed = await prefetchTiles(['https://t.example/1.jpg', 'https://t.example/2.xml', 'https://t.example/3.jpg'], () => {}, new AbortController().signal, (u) => got.push(u));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(failed).toBe(1);
+    expect(got.sort()).toEqual(['https://t.example/1.jpg', 'https://t.example/3.jpg']);
+    expect(dropped).toContain('https://t.example/2.xml');
+    vi.unstubAllGlobals();
+  });
+});
