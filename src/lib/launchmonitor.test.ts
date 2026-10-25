@@ -153,3 +153,21 @@ describe('Foresight FSX as it really exports', () => {
     expect(r.shots.map((s) => [s.club, s.carry, s.side])).toEqual([['Dr', 214.6, -7.3], ['7i', 138.2, null]]);
   });
 });
+
+// Rapsodo and SkyTrak as an open importer documents them (26.10.2026): Rapsodo with "Average" rows per club, SkyTrak with L/R
+describe('Rapsodo and SkyTrak as they really export', () => {
+  it('Rapsodo: the "Average" rows are no shots', () => {
+    const csv = 'Shot Number,Date,Club Type,Club Brand,Club Model,Ball Speed,Club Speed,Carry Distance,Total Distance,Side Carry\n1,d,7 Iron,X,Y,110,80,150,158,-3\n2,d,7 Iron,X,Y,111,81,154,160,2\nAverage,,7 Iron,,,110.5,80.5,152,159,-0.5';
+    const r = parseLaunchCsv(csv);
+    expect(r.shots.length).toBe(2);
+    expect(r.skipped).toBe(1);
+  });
+  it('SkyTrak: "Carry (yds)", "Offline (yds)" with L/R', () => {
+    const csv = 'Shot,Date,Club,Ball Speed (mph),Club Speed (mph),Launch Angle (deg),Side Angle (deg),Back Spin (rpm),Side Spin (rpm),Carry (yds),Roll (yds),Total (yds),Offline (yds)\n1,d,PW,95,75,26,1,8000,200,112,4,116,3.2 R\n2,d,PW,94,74,27,-1,8200,-300,109,3,112,5.1 L';
+    const r = parseLaunchCsv(csv);
+    expect(r.unit).toBe('yd');
+    expect(r.shots.map((s) => s.club)).toEqual(['PW', 'PW']);
+    expect(r.shots[0].side!).toBeGreaterThan(0);
+    expect(r.shots[1].side!).toBeLessThan(0);
+  });
+});

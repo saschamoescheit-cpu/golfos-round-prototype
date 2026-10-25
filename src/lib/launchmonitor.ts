@@ -199,6 +199,11 @@ export function parseLaunchCsv(text: string, forceUnit?: 'yd' | 'm'): LmImport {
   let skipped = 0;
   for (const line of lines.slice(first)) {
     const c = cells(line, sep);
+    // summary rows (Rapsodo writes an "Average" per club, others "Mean", "Std. Dev.", "Total") are no shots
+    if (c.some((x) => /^(average|avg\.?|mean|median|std\.?( ?dev\.?)?|standard deviation|total|summe|durchschnitt|mittelwert|promedio|gemiddelde)$/i.test(x.trim()))) {
+      skipped++;
+      continue;
+    }
     const carry = num(c[cols.carry!.i]);
     // the first club column that names a club the app knows – else the first one with anything in it (reported)
     const names = cols.clubs.map((x) => (c[x.i] ?? '').trim()).filter(Boolean);
