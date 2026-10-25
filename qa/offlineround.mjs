@@ -52,7 +52,14 @@ await p.waitForTimeout(4000);
 const first = (await round()).holes[0].label;
 ok((await p.locator('.map-hole-no').innerText().catch(() => '')).trim() === first, `offline: the round opens on hole ${first}`);
 // nine holes: the score of each entered on the course (par + one), on to the next
+const parts = { holes: 0, chip: 0, par3: 0, par3Target: 0 }; // the new parts offline too (night 24./25.10.2026)
 for (let h = 0; h < 9; h++) {
+  parts.holes++;
+  if ((await p.locator('.map-spread-chip').count()) >= 1) parts.chip++;
+  if (/Par 3/.test(await p.locator('.hole-bar').innerText().catch(() => ''))) {
+    parts.par3++;
+    if ((await p.locator('.map-crosshair').count()) >= 1) parts.par3Target++;
+  }
   await p.locator('.map-score').first().click();
   await p.locator('.score-panel').getByRole('button', { name: 'Schläge plus eins', exact: true }).first().click();
   await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
@@ -62,6 +69,7 @@ for (let h = 0; h < 9; h++) {
     await p.waitForTimeout(900);
   }
 }
+ok(parts.chip === parts.holes && parts.par3Target === parts.par3, `offline: the spread's club picker on every hole (${parts.chip}/${parts.holes}), a target on every par 3 (${parts.par3Target}/${parts.par3})`);
 let r = await round();
 const me = r.players.find((x) => x.isMe).id;
 ok(r.entries[me].slice(0, 9).every((e) => e.strokes != null), `offline: 9 scores saved (${r.entries[me].slice(0, 9).map((e) => e.strokes).join(' ')})`);
@@ -89,6 +97,9 @@ ok((await p.locator('.sc-wrap').count()) === 1, 'offline: the scorecard after si
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click().catch(() => {});
 await p.waitForTimeout(1200);
 ok(/Aus 1 geprüften Runde/.test(await p.locator('main').innerText().catch(() => '')), 'offline: the stats count the round');
+await p.getByRole('group', { name: 'Thema' }).getByRole('button', { name: 'Schläger' }).click().catch(() => {});
+await p.waitForTimeout(800);
+ok((await p.locator('.putter-row').count()) === 1 && (await p.getByRole('heading', { name: 'Deine Streuung' }).count()) === 1, 'offline: the clubs with their spread and the putter');
 
 // —— back online: nothing lost ——
 await ctx.setOffline(false);

@@ -433,12 +433,12 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
               )}
             </section>
           )}
-          {section === 'clubs' && reports.some((c) => c.median >= 40) && (
+          {section === 'clubs' && bagReports.some((c) => c.median >= 40) && (
             // the spread over all clubs as one cone – to plan holes and shots with it (Sascha 23.10.2026)
             <section className="card stats-card airy">
               <h2>{tr('Your spread', 'Deine Streuung')}</h2>
               <p className="muted small stats-sub">{tr('80 % of your balls land in each club’s ellipse · solid: from your checked shots, dashed: estimated from your handicap', 'In der Ellipse je Schläger landen 80 % deiner Bälle · durchgezogen: aus deinen geprüften Schlägen, gestrichelt: geschätzt nach Handicap')}</p>
-              <SpreadCone reports={reports} playing={profileIndex()} />
+              <SpreadCone reports={bagReports} playing={profileIndex()} />
             </section>
           )}
           {section === 'clubs' && bagReports.length > 0 && (
