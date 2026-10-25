@@ -81,7 +81,17 @@ export function num(raw: string | undefined): number | null {
   return v;
 }
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9äöüß ]+/g, ' ').replace(/\s+/g, ' ').trim();
+/** Lower case, without accents and umlauts ("Schlägerart" → "schlagerart", "Híbrido" → "hibrido"), without the invisible
+ *  spaces some exports carry ("Dist.​vuelo"), anything else a space. */
+const norm = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/ß/g, 'ss')
+    .normalize('NFD')
+    .replace(/[̀-ͯ​-‍﻿]/g, '')
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 /** The app's club for a launch monitor's name: "Driver", "3 Wood", "7 Iron", "7i", "Eisen 7", "Pitching Wedge", "56°" … */
 export function clubOf(name: string): Club | null {
@@ -89,17 +99,17 @@ export function clubOf(name: string): Club | null {
   if (!s) return null;
   if (/^(dr|driver|1w|1wood|holz1)$/.test(s) || s.includes('driver')) return 'Dr';
   if (/putter|^pt$/.test(s)) return 'Pt';
-  const wood = /^(\d)(w|wood|fw|fairway|fairwaywood|holz)$|^(wood|holz|fw)(\d)$/.exec(s);
+  const wood = /^(\d)(w|wood|fw|fairway|fairwaywood|holz|madera|hout)$|^(wood|holz|fw|madera|hout)(\d)$/.exec(s);
   if (wood) {
     const n = Number(wood[1] ?? wood[4]);
     return n === 3 ? '3W' : n === 4 ? '4W' : n === 5 ? '5W' : n === 7 ? '7W' : n === 9 ? '9W' : null;
   }
-  const hyb = /^(\d)(h|hy|hyb|hybrid|rescue)$|^(h|hy|hybrid|rescue)(\d)$/.exec(s);
+  const hyb = /^(\d)(h|hy|hyb|hybrid|rescue|hibrido)$|^(h|hy|hybrid|rescue|hibrido)(\d)$/.exec(s);
   if (hyb) {
     const n = Number(hyb[1] ?? hyb[4]);
     return n === 2 ? '2H' : n === 3 ? '3H' : n === 4 ? 'Hy' : n === 5 ? '5H' : n === 6 ? '6H' : null;
   }
-  const iron = /^(\d)(i|iron|eisen)$|^(i|iron|eisen)(\d)$/.exec(s);
+  const iron = /^(\d)(i|iron|eisen|hierro|ijzer)$|^(i|iron|eisen|hierro|ijzer)(\d)$/.exec(s);
   if (iron) {
     const n = Number(iron[1] ?? iron[4]);
     return n >= 2 && n <= 9 ? (`${n}i` as Club) : null;
@@ -118,22 +128,27 @@ export function clubOf(name: string): Club | null {
 }
 
 type Col = { i: number; h: string };
-/** The columns by their names – the carry, its distance off the line, the club. */
-function columns(head: string[]): { club: Col | null; carry: Col | null; side: Col | null } {
+/**
+ * The columns by their names – the carry, its distance off the line, the club – in English, German, Spanish and Dutch
+ * (Garmin exports in the phone's language: "Carry-Distanz", "Carry-Abweichungsdistanz", "Schlägerart"; "Dist. vuelo",
+ * "Tipo de palo"; "Carry-afstand", "Type club" – as the open R10Progress project reads them, 26.10.2026).
+ */
+function columns(head: string[]): { clubs: Col[]; carry: Col | null; side: Col | null } {
   const h = head.map((x, i) => ({ i, h: norm(x) }));
-  const isSide = (s: string) => /side|offline|lateral|deviation|abweichung|seit|links rechts|left right|dispersion/.test(s);
+  const isSide = (s: string) => /side|offline|lateral|deviation|abweichung|seit|desviacion|afwijking|links rechts|left right|dispersion/.test(s);
   const carry =
     h.find((c) => /^carry( distance| dist| flat)?( yds| yards| m| meters| metres)?$/.test(c.h)) ??
-    h.find((c) => /carry|tragweite|flugweite/.test(c.h) && !isSide(c.h) && !/angle|time|winkel|height|apex/.test(c.h)) ??
+    h.find((c) => /carry|tragweite|flugweite|vuelo/.test(c.h) && !isSide(c.h) && !/angle|time|winkel|height|apex|ziel|target|objetivo|doel/.test(c.h)) ??
     null;
   // off the line: the carry's first (where the ball landed), else any lateral distance – not an angle
-  const sides = h.filter((c) => isSide(c.h) && !/angle|winkel|spin|deg/.test(c.h));
-  const side = sides.find((c) => /carry/.test(c.h)) ?? sides.find((c) => !/total|gesamt/.test(c.h)) ?? sides[0] ?? null;
-  const club =
-    h.find((c) => /^(club|club name|club type|schläger|schlaeger|clubtype|club model)$/.test(c.h)) ??
-    h.find((c) => /club|schläger/.test(c.h) && !/speed|path|face|angle|head|brand|loft/.test(c.h)) ??
-    null;
-  return { club, carry, side };
+  const sides = h.filter((c) => isSide(c.h) && !/angle|winkel|spin|deg|angulo|hoek/.test(c.h));
+  const side = sides.find((c) => /carry|vuelo/.test(c.h)) ?? sides.find((c) => !/total|gesamt|totale/.test(c.h)) ?? sides[0] ?? null;
+  // the club: its type first ("Driver", "7 Iron"), then its name – Garmin leaves the name empty or puts the model there
+  const kind = (c: Col) => /^(club type|clubtype|type club|schlagerart|tipo de palo|club)$/.test(c.h);
+  const named = (c: Col) => /^(club name|club model|schlagername|schlager|schlaeger|clubnaam|nombre del palo|palo)$/.test(c.h);
+  const other = (c: Col) => /club|schlager|palo/.test(c.h) && !/speed|path|face|angle|head|brand|loft|snelh|gsch|marke|velocidad|cara/.test(c.h);
+  const clubs = [...h.filter(kind), ...h.filter(named), ...h.filter((c) => !kind(c) && !named(c) && other(c))];
+  return { clubs, carry, side };
 }
 
 function makerOf(head: string[], text: string): string {
@@ -144,7 +159,7 @@ function makerOf(head: string[], text: string): string {
   if (/skytrak/.test(all)) return 'SkyTrak';
   if (/flightscope|mevo/.test(all)) return 'FlightScope';
   if (/uneekor/.test(all)) return 'Uneekor';
-  if (/carry deviation distance|garmin|approach r10|r50/.test(all)) return 'Garmin';
+  if (/carry deviation distance|carry-abweichungsdistanz|carry-afwijkingsafstand|desviación de vuelo|garmin|approach r10|r50/.test(all)) return 'Garmin';
   return 'CSV';
 }
 
@@ -155,11 +170,11 @@ export function parseLaunchCsv(text: string, forceUnit?: 'yd' | 'm'): LmImport {
   // the header: the first line that names a carry and a club (title lines and settings may stand above it)
   let hi = -1;
   let sep = ',';
-  let cols: ReturnType<typeof columns> = { club: null, carry: null, side: null };
+  let cols: ReturnType<typeof columns> = { clubs: [], carry: null, side: null };
   for (let k = 0; k < Math.min(lines.length, 30); k++) {
     const s = sepOf(lines[k]);
     const c = columns(cells(lines[k], s));
-    if (c.carry && c.club) {
+    if (c.carry && c.clubs.length) {
       hi = k;
       sep = s;
       cols = c;
@@ -184,15 +199,18 @@ export function parseLaunchCsv(text: string, forceUnit?: 'yd' | 'm'): LmImport {
   for (const line of lines.slice(first)) {
     const c = cells(line, sep);
     const carry = num(c[cols.carry!.i]);
-    const name = c[cols.club!.i] ?? '';
+    // the first club column that names a club the app knows – else the first one with anything in it (reported)
+    const names = cols.clubs.map((x) => (c[x.i] ?? '').trim()).filter(Boolean);
+    const name = names.find((x) => clubOf(x)) ?? names[0] ?? '';
     if (carry == null || carry <= 0 || !name) {
       skipped++;
       continue;
     }
     raw.push({ club: name, carry, side: cols.side ? num(c[cols.side.i]) : null });
   }
-  // no unit anywhere: the US makers' default is yards – a driver over 280 or a 7-iron over 200 would be metres only by mistake
-  if (!unit) unit = 'yd';
+  // no unit anywhere: exports in German, Spanish or Dutch come in metres (Garmin: km/h and metres), English ones in yards –
+  // the player sees it and can switch
+  if (!unit) unit = /distanz|abweichung|schlager|distancia|desviacion|palo|afstand|afwijking/.test(norm(head.join(' '))) ? 'm' : 'yd';
   const k = unit === 'yd' ? YD : 1;
   const unknown = new Set<string>();
   const shots: LmShot[] = [];

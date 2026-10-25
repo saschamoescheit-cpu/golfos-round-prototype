@@ -96,3 +96,35 @@ describe('per club', () => {
     expect(c.side!.hi).toBeGreaterThan(0);
   });
 });
+
+// Garmin's real exports (26.10.2026, as the open project R10Progress reads them): in the phone's language, tab-separated, the
+// club in "Club Type" while "Club Name" is often empty – German ones in metres (club speed 113 km/h, 9-iron carry 88.6 m).
+const T = '\t';
+const DE_HEAD = ['Datum', 'Spieler', 'Schlägername', 'Schlägerart', 'Schl.gsch.', 'Anstellwinkel', 'Schwungbahn', 'Schlagfläche', 'Schlagflächenstellung', 'Ballgeschwindigkeit', 'Smash-Faktor', 'Abflugwinkel', 'Abflugrichtung', 'Backspin', 'Sidespin', 'Drehrate', 'Drehratentyp', 'Drehachse', 'Höhe des Scheitelpunkts', 'Carry-Distanz', 'Carry-Abweichungswinkel', 'Carry-Abweichungsdistanz', 'Gesamtstrecke', 'Gesamtabweichungswinkel', 'Gesamtabweichungsdistanz', 'Notiz', 'Markierung', 'Luftdichte', 'Temperatur', 'Luftdruck', 'Relative Luftfeuchtigkeit'].join(T);
+const DE_ROW = '14.02.24 13:33:18\tAron Schüler\t\tEisen 9\t113.42900776786246\t-3.3086297512054443\t-4.047730445861816\t-1.0483050346374512\t2.9994254112243652\t128.24671443709485\t1.1306341910312527\t22.974985122680664\t-1.3675819635391235\t4863.04638671875\t-644.055908203125\t4905.51025390625\tBerechnet\t7.544279098510742\t14.848843574523926\t88.6080322265625\t1.0706405639648438\t1.655823826789856\t96.77474212646484\t1.2754888534545898\t2.154283046722412\t\t\t1.2277452\t12.777778\t101.169624\t72';
+
+describe('Garmin as it really exports', () => {
+  it('German, tab-separated: "Eisen 9" from "Schlägerart" (the name empty), the carry and the deviation, metres', () => {
+    const r = parseLaunchCsv(`${DE_HEAD}\n${DE_ROW}\n${DE_ROW.replace('Eisen 9', 'Holz 3').replace('88.6080322265625', '171.2')}\n${DE_ROW.replace('Eisen 9', 'Sandwedge').replace('88.6080322265625', '64.0')}`);
+    expect(r.source).toBe('Garmin');
+    expect(r.unit).toBe('m');
+    expect(r.unitSure).toBe(false); // the file says no unit – shown, switchable
+    expect(r.shots.map((s) => s.club)).toEqual(['9i', '3W', 'SW']);
+    expect(r.shots[0].carry).toBeCloseTo(88.6, 1);
+    expect(r.shots[0].side).toBeCloseTo(1.7, 1);
+  });
+  it('English: "Club Name" empty or a model, the club from "Club Type"', () => {
+    const csv = 'Date,Player,Club Name,Club Type,Club Speed,Carry Distance,Carry Deviation Distance\n1,A,,Driver,98,221,-4\n2,A,Stealth 2,7 Iron,78,148,2';
+    expect(parseLaunchCsv(csv).shots.map((s) => s.club)).toEqual(['Dr', '7i']);
+  });
+  it('Spanish and Dutch headers and club names', () => {
+    const es = 'Fecha\tJugador\tTipo de palo\tVel. palo\tDist.​vuelo\tDistancia de desviación de vuelo\tÁngulo de desviación de vuelo\n1\tA\tHierro 7\t120\t135,5\t-3,2\t-1,1\n2\tA\tHíbrido 4\t140\t165\t4\t2';
+    const r = parseLaunchCsv(es);
+    expect(r.shots.map((s) => s.club)).toEqual(['7i', 'Hy']);
+    expect(r.shots[0].carry).toBeCloseTo(135.5, 1);
+    expect(r.shots[0].side).toBeCloseTo(-3.2, 1);
+    expect(r.unit).toBe('m');
+    const nl = 'Datum,Speler,Clubnaam,Type club,Clubsnelh.,Carry-afstand,Carry-afwijkingshoek,Carry-afwijkingsafstand\n1,A,,Driver,150,205,1,6\n2,A,,7 ijzer,120,130,-1,-2';
+    expect(parseLaunchCsv(nl).shots.map((s) => [s.club, s.carry, s.side])).toEqual([['Dr', 205, 6], ['7i', 130, -2]]);
+  });
+});
