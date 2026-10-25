@@ -4,8 +4,11 @@
 // stats. Back online nothing is lost.
 // Usage: node qa/offlineround.mjs <built app url, e.g. http://localhost:4173/ (vite preview) or the live site>
 //        [course to search] [lat] [lon] [loop choice]  – e.g. "Orange Lake" 28.336 -81.596 (night run 23./24.10.2026: the US test)
-import { chromium, devices } from 'playwright';
-import { mockNet } from './netmock.mjs';
+// the tiles go through the service worker: its requests reach the mocks only with this switch – without it they went to
+// the real services, and since 25.10.2026 the app rightly keeps no error page of a hanging LGL as the course map
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
+const { chromium, devices } = await import('playwright');
+const { mockNet } = await import('./netmock.mjs');
 
 const url = process.argv[2] ?? 'http://localhost:4173/';
 const [search = 'Hetzenhof', lat = '48.7808', lon = '9.689', loop = 'A · 9 Löcher'] = process.argv.slice(3);

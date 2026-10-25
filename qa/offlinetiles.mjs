@@ -103,14 +103,15 @@ const store = (p) =>
 {
   const { ctx, p, errs } = await phone({ lgl: 'xml' });
   const t0 = Date.now();
-  let stuck = '';
-  await p
-    .waitForFunction(() => !/offline gespeichert ·/.test(document.body.innerText), null, { timeout: 180000, polling: 500 })
-    .catch(async () => (stuck = await hint(p)));
-  // a moment for the first percentages to come and go
-  await p.waitForTimeout(500);
-  await p.waitForFunction(() => !/offline gespeichert ·/.test(document.body.innerText), null, { timeout: 180000, polling: 500 }).catch(async () => (stuck = await hint(p)));
-  ok(!stuck, `the hint ends (${Math.round((Date.now() - t0) / 1000)} s)${stuck ? ' – stood at ' + stuck : ''}`);
+  // done: the hint gone for 6 s on end – it goes for a moment when the app turns to Esri and comes back with Esri's tiles
+  let gone = 0;
+  let last = '';
+  while (Date.now() - t0 < 300000 && gone < 6000) {
+    last = await hint(p);
+    gone = /offline gespeichert ·/.test(last) ? 0 : gone + 500;
+    await p.waitForTimeout(500);
+  }
+  ok(gone >= 6000, `the hint ends (${Math.round((Date.now() - t0) / 1000)} s)${gone < 6000 ? ' – stood at ' + last : ''}`);
   await p.waitForTimeout(1500);
   const s = await store(p);
   ok(s.notPicture === 0, `no error page kept as a map tile (${s.notPicture})`);
