@@ -1030,6 +1030,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </div>
       ))}
 
+      {/* the hole's wind straight away – arrow, strength, gusts, no heading, above "Schläge" right under the map (Sascha 25.10.2026) */}
+      {e?.weather && data && (
+        <p className="review-wind small">
+          <WindTag w={e.weather} bearing={bearingDeg(data.tee, data.greenCenter)} gusts />
+        </p>
+      )}
+
       {/* the shots: add one with the "shot here" symbol, delete in the row, reorder by the grip (Sascha 17.10.2026) */}
       {data && (
         <div className="review-shots-head">
@@ -1055,12 +1062,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </div>
       )}
 
-      {/* the hole's wind straight away – arrow, strength, gusts, no heading (Sascha 25.10.2026) */}
-      {e?.weather && data && (
-        <p className="review-wind small">
-          <WindTag w={e.weather} bearing={bearingDeg(data.tee, data.greenCenter)} gusts />
-        </p>
-      )}
       {!d || d.shots.length === 0 ? (
         <p className="muted">{tr('No shots yet – tap the map.', 'Noch keine Schläge – tippe auf die Karte.')}</p>
       ) : (

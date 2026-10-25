@@ -46,6 +46,13 @@ await p.waitForTimeout(2500);
 
 const line = p.locator('.review-wind');
 ok((await line.count()) === 1, 'the hole\'s wind above the shots');
+// above the heading "Schläge", right under the map (Sascha 25.10.2026 evening)
+const above = await p.evaluate(() => {
+  const w = document.querySelector('.review-wind');
+  const h = document.querySelector('.review-shots-head');
+  return !!w && !!h && !!(w.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING);
+});
+ok(above, 'the wind stands above the heading "Schläge"');
 const txt = (await line.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
 ok(!/Wind an diesem Loch/.test(txt) && /^(Gegenwind|Rückenwind|Wind)( von (links|rechts))? 30 km\/h/.test(txt), `straight away, no heading: "${txt}"`);
 ok(/Böen 45/.test(txt), 'the gusts when clearly stronger');
