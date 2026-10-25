@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alongLine, bearingDeg, detectHole, distanceM, greenFrontBack, hazardTicks, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, suggestTarget } from './geo';
+import { alongLine, bearingDeg, detectHole, distanceM, distToLine, greenFrontBack, hazardTicks, hazardToCarry, holeMapData, isAhead, lineLength, pointAt, suggestTarget } from './geo';
 import type { LngLat, Ring } from '../types';
 import { SEED_GEOMETRY } from '../data/seedGeometry';
 
@@ -95,6 +95,24 @@ describe('hole detection after taking the phone out of the pocket', () => {
     expect(detectHole([9.70554, 48.78279], a, 3)).toBeNull();
     const on5 = pointAt(a[4]!.line, lineLength(a[4]!.line) / 2);
     expect(detectHole(on5, a, 3)).toBe(4);
+  });
+  // the replay of his GPS tracks found one more: 43 m beside 4A, 23 m from 5A – a wide ball stays on its own hole up to 50 m
+  it('holes side by side: a wide shot up to 50 m off the line stays on the current hole', () => {
+    const het = SEED_GEOMETRY['osm:relation/1326323'];
+    const a = Array.from({ length: 9 }, (_, k) => holeMapData(het, 'A', k + 1));
+    const [lng, lat] = [9.70554, 48.78279];
+    const k = 1 / (111195 * Math.cos((lat * Math.PI) / 180));
+    let wide = 0;
+    for (let e = -60; e <= 60; e += 3)
+      for (let n = -60; n <= 60; n += 3) {
+        const p: LngLat = [lng + e * k, lat + n * M];
+        const d4 = distToLine(p, a[3]!.line);
+        const d5 = distToLine(p, a[4]!.line);
+        if (d4 < 40 || d4 > 50 || d5 + 20 > d4) continue;
+        wide++;
+        expect(detectHole(p, a, 3)).toBeNull();
+      }
+    expect(wide).toBeGreaterThan(0);
   });
   it('never jumps back and ignores positions off the course', () => {
     expect(detectHole(mid(0), holes, 3)).toBeNull();
