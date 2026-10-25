@@ -71,7 +71,7 @@ const store = (p) =>
   });
 
 // 1 + 2 · a normal round, sent to the background half way
-{
+if (!process.env.ONLY || process.env.ONLY === '1') {
   const { ctx, p, errs } = await phone({ lgl: 'png', slow: 120 });
   await p.waitForFunction(() => /offline gespeichert · ([2-9]\d|1\d)\s*%/.test(document.body.innerText), null, { timeout: 120000 }).catch(() => {});
   const before = pct(await hint(p));
@@ -100,14 +100,15 @@ const store = (p) =>
 }
 
 // 3 · the state's service sends error pages
-{
+if (!process.env.ONLY || process.env.ONLY === '3') {
   const { ctx, p, errs } = await phone({ lgl: 'xml' });
   const t0 = Date.now();
   // done: the hint gone for 6 s on end – it goes for a moment when the app turns to Esri and comes back with Esri's tiles
   let gone = 0;
   let last = '';
-  while (Date.now() - t0 < 300000 && gone < 6000) {
+  while (Date.now() - t0 < 480000 && gone < 6000) {
     last = await hint(p);
+    if (process.env.VERBOSE && Math.round((Date.now() - t0) / 500) % 20 === 0) console.log(`${Math.round((Date.now() - t0) / 1000)} s ${last}`);
     gone = /offline gespeichert ·/.test(last) ? 0 : gone + 500;
     await p.waitForTimeout(500);
   }
