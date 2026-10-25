@@ -142,7 +142,7 @@ function drawNine(
       g.beginPath();
       g.arc(mx, my, r, 0, Math.PI * 2);
       g.fill();
-      colour = C.dark;
+      colour = '#fff';
     } else if (d === -1) {
       g.strokeStyle = C.brand;
       g.lineWidth = 3;
@@ -156,7 +156,7 @@ function drawNine(
       g.strokeRect(mx - r, my - r, r * 2, r * 2);
     } else if (d >= 2) {
       roundRect(g, mx - r, my - r, r * 2, r * 2, 5, C.bad);
-      colour = C.dark;
+      colour = '#fff';
     }
     cell(g, String(v), mx, my + 11, `700 32px ${BODY}`, colour);
     const e = extra(h);
