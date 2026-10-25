@@ -125,10 +125,19 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('What is the green ellipse on the map?', 'Was ist die grüne Ellipse auf der Karte?'),
         a: () =>
           tr(
-            'Your spread with the club: 8 of 10 balls land in it. From 5 checked shots it is yours (solid line), before that an estimate from your handicap (dashed). The cone symbol switches it on and off; top left you pick another club.',
-            'Deine Streuung mit dem Schläger: 8 von 10 Bällen landen darin. Ab 5 geprüften Schlägen ist sie deine eigene (durchgezogen), vorher nach Handicap geschätzt (gestrichelt). Das Kegel-Symbol schaltet sie an und aus, oben links wählst du einen anderen Schläger.',
+            'Your spread with the club: 8 of 10 balls land in it. From 5 checked shots it is yours (solid line); before that from your launch monitor data if you imported some, else an estimate from your handicap (dashed) – short clubs spread more in length, long ones more to the side. The cone symbol switches it on and off; the club next to it picks another one.',
+            'Deine Streuung mit dem Schläger: 8 von 10 Bällen landen darin. Ab 5 geprüften Schlägen ist sie deine eigene (durchgezogen); vorher aus deinen Launch-Monitor-Daten, wenn du welche importiert hast, sonst nach Handicap geschätzt (gestrichelt) – kurze Schläger streuen mehr in der Länge, lange mehr zur Seite. Das Kegel-Symbol schaltet sie an und aus, der Schläger links daneben wählt einen anderen.',
           ),
         video: 'map',
+      },
+      {
+        q: () => tr('Can I use the data of my launch monitor?', 'Kann ich Daten von meinem Launch-Monitor übernehmen?'),
+        a: () =>
+          tr(
+            'Yes: export the session as CSV in your launch monitor’s app (Trackman, Foresight, Garmin R10, Rapsodo, SkyTrak …) and load it under Profile → My bag → "Import launch monitor data". You see carry and spread per club; "Use" sets the bag’s carries, and the ellipse uses the spread until 5 of your own shots on the course are checked.',
+            'Ja: Exportiere die Sitzung in der App deines Launch-Monitors als CSV (Trackman, Foresight, Garmin R10, Rapsodo, SkyTrak …) und lade sie unter Profil → Mein Bag → „Launch-Monitor-Daten importieren“. Je Schläger siehst du Carry und Streuung; „Übernehmen“ setzt die Carry-Weiten im Bag, und die Ellipse nutzt die Streuung, bis 5 eigene Schläge auf der Runde geprüft sind.',
+          ),
+        video: 'profile',
       },
       {
         q: () => tr('What do the numbers top right mean?', 'Was bedeuten die Zahlen oben rechts?'),

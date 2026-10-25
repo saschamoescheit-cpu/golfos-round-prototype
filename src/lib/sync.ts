@@ -38,7 +38,7 @@ const GAMES = 'golfos.games.v1';
 const GAME_TRASH = 'golfos.games.trash.v1';
 /** Single settings: the key on the device is the row id. */
 const SETTINGS = [
-  'golfos.profile.v1', 'golfos.bag.v1', 'golfos.bagstyle.v1', 'golfos.caddie.v1', 'golfos.partials.v1', 'golfos.unit.v1', 'golfos.lang.v1', 'golfos.me.v1',
+  'golfos.profile.v1', 'golfos.bag.v1', 'golfos.launch.v1', 'golfos.bagstyle.v1', 'golfos.caddie.v1', 'golfos.partials.v1', 'golfos.unit.v1', 'golfos.lang.v1', 'golfos.me.v1',
 ];
 /** Per round or per course: a key prefix, the rest is the row id. */
 const PER = [

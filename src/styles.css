@@ -1735,3 +1735,9 @@ button.tile:disabled { opacity: 1; }
 .list-item .grow { min-width: 0; }
 .game-row-result { display: flex; flex-direction: column; align-items: flex-end; text-align: right; max-width: 40%; min-width: 0; }
 .game-row-result strong { font: 700 18px var(--display); max-width: 100%; }
+/* launch monitor import in "My bag" (feature 037) */
+.launch-card { display: flex; flex-direction: column; gap: 10px; }
+.launch-import { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.launch-table { display: grid; grid-template-columns: auto auto auto auto minmax(0, 1fr); gap: 6px 12px; align-items: baseline; font-variant-numeric: tabular-nums; }
+.launch-row { display: contents; }
+.launch-row.off > * { opacity: 0.55; }

@@ -10,6 +10,7 @@ import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, type Partials } from '../lib/partials';
 import { DEFAULT_LOFTS, loadBagStyle, saveBagStyle, withLoft, type BagStyle } from '../lib/bagstyle';
 import { statRounds } from '../lib/signing';
+import { LaunchImport } from '../components/LaunchImport';
 
 // "My bag" (feature 008, reached from the profile and the round's drawer), as Sascha wants it (15.10.2026): two tabs –
 // full swing and pitches (¾, ½ and the favourite approach distance) –, short club codes (2i, not "Eisen 2"), the
@@ -374,6 +375,19 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
             {!wedges.length && <p className="muted small">{tr('No wedges in your bag.', 'Keine Wedges in deinem Bag.')}</p>}
           </section>
         </>
+      )}
+      {/* measured on a launch monitor (Sascha 25.10.2026, feature 037): the carries into the bag, the spread for the ellipse */}
+      {!editing && tab === 'full' && (
+        <LaunchImport
+          bag={inBag.map((c) => ({ club: c, carry: fullOf(c) }))}
+          unit={unit === 'yd' ? 'yd' : 'm'}
+          onApply={(carries) => {
+            const next = { ...bag };
+            for (const x of carries) next[x.club] = String(toU(x.carry));
+            persist(next);
+            setNote(null);
+          }}
+        />
       )}
     </main>
   );

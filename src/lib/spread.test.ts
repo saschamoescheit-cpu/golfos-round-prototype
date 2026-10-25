@@ -37,3 +37,34 @@ describe('the spread of a club', () => {
     expect(cone[0][0]).toEqual(from);
   });
 });
+
+// Sascha 25.10.2026: the estimate for short clubs longer than wide (amateurs miss wedges in length more than to the side)
+describe('the estimated shape by length', () => {
+  it('a wedge longer than wide, a driver wider than long, the 7-iron about round', () => {
+    const w = estimatedSpread('SW', 70, 18);
+    expect(w.len.hi).toBeGreaterThan(w.side.hi * 1.3);
+    const d = estimatedSpread('Dr', 220, 18);
+    expect(d.side.hi).toBeGreaterThan(d.len.hi);
+    const i7 = estimatedSpread('7i', 143, 18);
+    expect(Math.abs(i7.side.hi - i7.len.hi)).toBeLessThanOrEqual(Math.max(2, i7.side.hi * 0.1));
+  });
+});
+
+// feature 037: own shots on the course first, then the launch monitor, then the estimate
+describe('where the spread comes from', () => {
+  const lm = { club: '7i' as const, shots: 24, carry: 137, len: { lo: -6, hi: 5 }, side: { lo: -7, hi: 4 } };
+  it('the launch monitor before the estimate', () => {
+    const s = clubSpread('7i', 137, undefined, 18, lm);
+    expect(s.source).toBe('lm');
+    expect(s.shots).toBe(24);
+    expect(s.side).toEqual({ lo: -7, hi: 4 });
+    expect(s.len).toEqual({ lo: -6, hi: 5 });
+  });
+  it('own shots on the course before the launch monitor', () => {
+    const report = { club: '7i', shots: 9, median: 135, basis: 'good', rated: 9, good: 7, misses: {}, flights: {}, flown: 0, corridor: { lo: -12, hi: 9, shots: 9 }, lenBand: { lo: -10, hi: 8 }, points: [] } as never;
+    expect(clubSpread('7i', 137, report, 18, lm).source).toBe('own');
+  });
+  it('without either: the estimate', () => {
+    expect(clubSpread('7i', 137, undefined, 18, null).source).toBe('est');
+  });
+});

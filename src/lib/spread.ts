@@ -3,6 +3,7 @@ import type { ClubReport } from './clubstats';
 import { move } from './aimpoint';
 import { bearingDeg } from './geo';
 import { spreadFactor } from './hcp';
+import { launchFor, type LmClub } from './launchmonitor';
 
 // The spread of a club (Sascha 23.10.2026: "with such a dispersion triangle you can plan courses, holes and single
 // shots – in the stats and on the round, for the club or the caddie's club"): where 80 % of the balls end around the
@@ -17,26 +18,33 @@ export interface ClubSpread {
   len: { lo: number; hi: number };
   /** shots it rests on – 0 = estimated from the handicap */
   shots: number;
+  /** where it comes from: the checked rounds, the launch monitor (037), or the estimate */
+  source?: 'own' | 'lm' | 'est';
 }
 
 export const OWN_SPREAD_FROM = 5;
 
 /** The estimate: sideways ±1.28 σ with σ = (6.5 % of the length + 2 m) × the handicap's factor (as aimPoint and
- *  caddieplan reckon), in length a little tighter. */
+ *  caddieplan reckon); in length σ = (3 % of the length + 7 m) × the factor. Long clubs miss more to the side, short ones
+ *  more in length (Sascha 25.10.2026: "a wedge as a circle is not realistic" – launch monitor and shot tracking data of
+ *  amateurs): from about 143 m down the ellipse is longer than wide – a wedge at 70 m ±8 m wide and ±12 m long, a driver at
+ *  220 m ±21 m wide and ±17 m long (handicap factor 1). */
 export function estimatedSpread(club: Club, lengthM: number, playing: number | null | undefined): ClubSpread {
   const k = spreadFactor(playing);
   const side = Math.round(1.28 * (0.065 * lengthM + 2) * k);
-  const len = Math.round(1.28 * (0.05 * lengthM + 3) * k);
-  return { club, side: { lo: -side, hi: side }, len: { lo: -len, hi: len }, shots: 0 };
+  const len = Math.round(1.28 * (0.03 * lengthM + 7) * k);
+  return { club, side: { lo: -side, hi: side }, len: { lo: -len, hi: len }, shots: 0, source: 'est' };
 }
 
-/** The player's spread with this club: own shots when there are enough, else the estimate. */
-export function clubSpread(club: Club, lengthM: number, report: ClubReport | undefined, playing: number | null | undefined): ClubSpread {
+/** The player's spread with this club: own shots on the course when there are enough, else the launch monitor's (from
+ *  5 measured shots, feature 037), else the estimate. */
+export function clubSpread(club: Club, lengthM: number, report: ClubReport | undefined, playing: number | null | undefined, lm: LmClub | null = launchFor(club)): ClubSpread {
+  const est = estimatedSpread(club, lengthM, playing);
   if (report?.corridor && report.corridor.shots >= OWN_SPREAD_FROM) {
-    const est = estimatedSpread(club, lengthM, playing);
-    return { club, side: { lo: report.corridor.lo, hi: report.corridor.hi }, len: report.lenBand ?? est.len, shots: report.corridor.shots };
+    return { club, side: { lo: report.corridor.lo, hi: report.corridor.hi }, len: report.lenBand ?? est.len, shots: report.corridor.shots, source: 'own' };
   }
-  return estimatedSpread(club, lengthM, playing);
+  if (lm) return { club, side: lm.side ?? est.side, len: lm.len, shots: lm.shots, source: 'lm' };
+  return est;
 }
 
 /** The spread on the map: an ellipse around the landing spot (along the shot), and the cone from the ball to it. */

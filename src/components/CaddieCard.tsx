@@ -388,7 +388,7 @@ function CaddieFacts(props: { pl?: PlaysLike; weather: { tempC: number; windKmh:
         <span className="cf">
           <Icon d={SPREAD} />
           <span>
-            {tr('Spread', 'Streuung')} <b>{corridorText(sp.side, tr)}</b> · <b>±{formatDistance((sp.len.hi - sp.len.lo) / 2, u)} {u}</b> {tr('long', 'lang')} · {sp.shots ? tr(`${sp.shots} shots`, `${sp.shots} Schläge`) : tr('estimate', 'geschätzt')}
+            {tr('Spread', 'Streuung')} <b>{corridorText(sp.side, tr)}</b> · <b>±{formatDistance((sp.len.hi - sp.len.lo) / 2, u)} {u}</b> {tr('long', 'lang')} · {sp.shots ? (sp.source === 'lm' ? tr(`${sp.shots} launch monitor shots`, `${sp.shots} Launch-Monitor-Schläge`) : tr(`${sp.shots} shots`, `${sp.shots} Schläge`)) : tr('estimate', 'geschätzt')}
           </span>
         </span>
       )}
