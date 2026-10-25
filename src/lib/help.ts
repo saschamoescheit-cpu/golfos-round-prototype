@@ -113,6 +113,15 @@ export const FAQ: FaqTopic[] = [
     title: () => tr('On the course', 'Auf dem Platz'),
     items: [
       {
+        q: () => tr('Can I aim elsewhere or lay up on a par 3?', 'Kann ich auf einem Par 3 woanders hinzielen oder vorlegen?'),
+        a: () =>
+          tr(
+            'Yes: drag the ring on the green – beside the flag or short of the green. Untouched, the caddie plans as usual; moved, he plays to your target.',
+            'Ja: Zieh den Ring auf dem Grün – neben die Fahne oder vor das Grün. Unbewegt plant der Caddie wie gewohnt, verschoben spielt er auf dein Ziel.',
+          ),
+        video: 'map',
+      },
+      {
         q: () => tr('What is the green ellipse on the map?', 'Was ist die grüne Ellipse auf der Karte?'),
         a: () =>
           tr(
@@ -196,6 +205,24 @@ export const FAQ: FaqTopic[] = [
     id: 'after',
     title: () => tr('After the round', 'Nach der Runde'),
     items: [
+      {
+        q: () => tr('Which strike and flight should I choose?', 'Welchen Treffer und welche Flugbahn wähle ich?'),
+        a: () =>
+          tr(
+            'Strike is the contact: good, fat, thin, topped, toe, heel or shank – only good strikes teach the app your distances. Flight is where the ball went: the nine of the ball flight laws plus draw and fade. Both are optional.',
+            'Treffer ist der Kontakt: gut, fett, dünn, getoppt, Spitze, Hacke oder Shank – nur gute Treffer lehren die App deine Weiten. Flugbahn ist, wohin der Ball flog: die neun der Ballflug-Gesetze plus Draw und Fade. Beides ist freiwillig.',
+          ),
+        video: 'review',
+      },
+      {
+        q: () => tr('What does the putter show in the statistics?', 'Was zeigt der Putter in der Statistik?'),
+        a: () =>
+          tr(
+            'How often your putts go in from each distance, how many putts a hole took by the length of the first one, up to where every second putt drops and from where 3-putts come. It learns from the putts you place on the green when checking.',
+            'Wie oft deine Putts aus welcher Entfernung fallen, wie viele Putts ein Loch nach der Länge des ersten brauchte, bis wohin jeder zweite fällt und ab wo 3-Putts kommen. Er lernt aus den Putts, die du beim Prüfen auf dem Grün setzt.',
+          ),
+        video: 'stats',
+      },
       {
         q: () => tr('Why does a shot say "played like 152 m"?', 'Warum steht bei einem Schlag „spielte wie 152 m“?'),
         a: () =>
