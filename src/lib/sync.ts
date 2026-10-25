@@ -55,6 +55,7 @@ const LISTS = [
   { kind: 'game', key: GAMES, idOf: (x: { id: string }) => x.id },
   { kind: 'trash-round', key: TRASH, idOf: (x: { round: { id: string } }) => x.round.id },
   { kind: 'trash-game', key: GAME_TRASH, idOf: (x: { game: { id: string } }) => x.game.id },
+  { kind: 'game-fav', key: 'golfos.games.fav.v1', idOf: (x: string) => x },
   // friends one by one: a friend added on the iPad and one added on the phone are both kept
   { kind: 'friend', key: 'golfos.friends.v1', idOf: (x: { id: string }) => x.id },
   // Training (feature 022): every entry its own row, so both devices' entries are kept (never lose data)

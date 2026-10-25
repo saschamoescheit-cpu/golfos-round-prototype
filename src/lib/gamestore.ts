@@ -89,3 +89,25 @@ export function setSessionModule(m: AppModule | null): void {
     /* ignore */
   }
 }
+
+// favourite game forms (Sascha 23.10.2026): at the top of the picker in their own group, the rest alphabetical
+const FAVS = 'golfos.games.fav.v1';
+export function loadFormFavs(): string[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(FAVS) ?? '[]') as string[];
+    return Array.isArray(list) ? list.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+export function toggleFormFav(id: string): string[] {
+  const f = loadFormFavs();
+  const next = f.includes(id) ? f.filter((x) => x !== id) : [...f, id];
+  try {
+    localStorage.setItem(FAVS, JSON.stringify(next));
+  } catch {
+    /* storage full or blocked */
+  }
+  syncSoon();
+  return next;
+}

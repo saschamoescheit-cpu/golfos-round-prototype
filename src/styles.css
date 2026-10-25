@@ -958,6 +958,12 @@ button.tile:disabled { opacity: 1; }
 .pick-option .grow { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .pick-option[aria-pressed='true'] { border: 2px solid var(--brand); }
 .pick-check { color: var(--brand-text); font: 700 20px var(--body); }
+/* game forms: favourites on top, a star beside each (23.10.2026) */
+.pick-group { display: flex; flex-direction: column; gap: 8px; }
+.pick-row { display: flex; align-items: center; gap: 8px; }
+.pick-row .pick-option { flex: 1; min-width: 0; }
+.icon-btn.fav-star { color: var(--muted); flex: none; }
+.icon-btn.fav-star.on, .icon-btn.fav-star[aria-pressed='true'] { color: var(--brand); background: transparent; border-color: var(--brand); }
 
 /* green distances one below the other again (14.10.2026) */
 .map-green.stacked { align-items: center; min-width: 84px; padding: 8px 12px; }

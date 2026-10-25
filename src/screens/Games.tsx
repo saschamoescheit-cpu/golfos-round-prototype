@@ -7,7 +7,7 @@ import { isLady, shownName, loadProfile } from '../lib/profile';
 import { loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
-import { deleteGame, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame } from '../lib/gamestore';
+import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
 import { Bin } from '../components/Bin';
 import { InviteSheet, JoinSheet } from '../components/ShareGame';
 import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
@@ -572,6 +572,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const d = props.draft;
   const f = formDef(d.form);
   const [picker, setPicker] = useState(false);
+  const [favs, setFavs] = useState(loadFormFavs);
+  const byName = [...FORMS].sort((a, b) => a.name().localeCompare(b.name(), getLang()));
   const options = useMemo(() => (d.course ? loopOptions(d.course.holes) : []), [d.course]);
   // the tees the course offers – as in the round setup
   const offered = useMemo(() => (d.course ? courseTees(d.course.id, loadGeometry(d.course.id).teeColours) : null), [d.course]);
@@ -807,27 +809,51 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                 ✕
               </button>
             </div>
-            <div className="pick-list">
-              {FORMS.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className="pick-option"
-                  aria-pressed={o.id === d.form}
-                  onClick={() => {
-                    props.onChange(withWhs({ ...d, form: o.id, players: atLeast(d.players, o.players[0]), settings: { ...defaults(o), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
-                    setPicker(false);
-                  }}
-                >
-                  <span className="grow">
-                    <strong>{o.name()}</strong>
-                    <span className="muted small">{o.short()}</span>
-                    <span className="small" style={{ color: 'var(--muted)' }}>{playersText(o)}</span>
-                  </span>
-                  {o.id === d.form && <span className="pick-check" aria-hidden="true">✓</span>}
-                </button>
+            {/* favourites first in their own group, then the rest alphabetically (Sascha 23.10.2026) */}
+            {[
+              { key: 'fav', title: tr('Favourites', 'Favoriten'), forms: byName.filter((o) => favs.includes(o.id)) },
+              { key: 'all', title: favs.length ? tr('More game forms', 'Weitere Spielformen') : '', forms: byName.filter((o) => !favs.includes(o.id)) },
+            ]
+              .filter((g) => g.forms.length)
+              .map((g) => (
+                <div key={g.key} className="pick-group" data-group={g.key}>
+                  {g.title && <span className="eyebrow">{g.title}</span>}
+                  <div className="pick-list">
+                    {g.forms.map((o) => {
+                      const fav = favs.includes(o.id);
+                      return (
+                        <div key={o.id} className="pick-row">
+                          <button
+                            type="button"
+                            className="pick-option"
+                            aria-pressed={o.id === d.form}
+                            onClick={() => {
+                              props.onChange(withWhs({ ...d, form: o.id, players: atLeast(d.players, o.players[0]), settings: { ...defaults(o), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
+                              setPicker(false);
+                            }}
+                          >
+                            <span className="grow">
+                              <strong>{o.name()}</strong>
+                              <span className="muted small">{o.short()}</span>
+                              <span className="small" style={{ color: 'var(--muted)' }}>{playersText(o)}</span>
+                            </span>
+                            {o.id === d.form && <span className="pick-check" aria-hidden="true">✓</span>}
+                          </button>
+                          <button
+                            type="button"
+                            className={`icon-btn fav-star${fav ? ' on' : ''}`}
+                            aria-pressed={fav}
+                            aria-label={fav ? tr(`Remove ${o.name()} from favourites`, `${o.name()} aus den Favoriten`) : tr(`Mark ${o.name()} as favourite`, `${o.name()} als Favorit`)}
+                            onClick={() => setFavs(toggleFormFav(o.id))}
+                          >
+                            <StarIcon on={fav} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               ))}
-            </div>
           </section>
         </div>
       )}
@@ -840,6 +866,15 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         </button>
       </div>
     </main>
+  );
+}
+
+// the favourite mark of a game form: outline, filled in the brand green once marked
+function StarIcon(props: { on: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill={props.on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
   );
 }
 
