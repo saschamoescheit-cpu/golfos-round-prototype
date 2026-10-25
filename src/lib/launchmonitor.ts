@@ -75,7 +75,8 @@ export function num(raw: string | undefined): number | null {
   const m = /-?\d+(?:[.,]\d+)?/.exec(s);
   if (!m) return null;
   let v = Number(m[0].replace(',', '.'));
-  if (!Number.isFinite(v)) return null;
+  // not measured: Foresight writes 16777215 (0xFFFFFF), others FLT_MAX – no value, not a giant one
+  if (!Number.isFinite(v) || Math.abs(v) >= 1e6) return null;
   // left/right as a letter: left is negative
   if (/(^|[^a-z])l(eft|inks)?([^a-z]|$)/i.test(s.replace(m[0], ' ')) && v > 0) v = -v;
   return v;

@@ -128,3 +128,28 @@ describe('Garmin as it really exports', () => {
     expect(parseLaunchCsv(nl).shots.map((s) => [s.club, s.carry, s.side])).toEqual([['Dr', 205, 6], ['7i', 130, -2]]);
   });
 });
+
+// Trackman's newer export (as an open fitting app reads it, 26.10.2026): "Carry Flat - Length [yds]", "Carry Flat - Side [yds]";
+// "Club" sometimes empty, the club then in "Club (Description)"
+describe('Trackman as it really exports', () => {
+  it('"Carry Flat - Length/Side [yds]", the club from another column when "Club" is empty', () => {
+    const csv = 'Date,Player,Club,Club (Description),Club Speed [mph],Carry Flat - Length [yds],Carry Flat - Side [yds],Carry Flat - Land. Angle [deg],Carry Flat - Hang Time [s]\n1,A,,Driver,102,232.1,-6.4,38,6.2\n2,A,7i,7 Iron,80,152.0,3.1,46,5.8';
+    const r = parseLaunchCsv(csv);
+    expect(r.unit).toBe('yd');
+    expect(r.unitSure).toBe(true);
+    expect(r.shots.map((s) => s.club)).toEqual(['Dr', '7i']);
+    expect(r.shots[0].carry).toBeCloseTo(232.1 * 0.9144, 0);
+    expect(r.shots[0].side).toBeCloseTo(-6.4 * 0.9144, 0);
+  });
+});
+
+// Foresight FSX's LastShot.CSV (as an open studio project describes it, 26.10.2026): metric, "1w" for the driver, 16777215 where
+// the device measured nothing
+describe('Foresight FSX as it really exports', () => {
+  it('"Carry (m)", "Offline (m)", "1w", the not-measured sentinel as no value', () => {
+    const csv = 'Shot ID,Club,Club head Speed (m/s),Ball Speed (m/s),Launch Angle (deg),Azimuth (deg),Side Spin (rpm),Back Spin (rpm),Total Spin (rpm),Descent Angle (deg),Carry (m),Total Distance (m),Offline (m),Peak Height (m)\n1,1w,16777215.000000,68.2,12.1,-1.0,-300,2600,2620,38,214.6,236.0,-7.3,31\n2,7i,16777215.000000,49.1,18.2,0.5,200,6200,6210,47,138.2,145.0,16777215.000000,28';
+    const r = parseLaunchCsv(csv);
+    expect(r.unit).toBe('m');
+    expect(r.shots.map((s) => [s.club, s.carry, s.side])).toEqual([['Dr', 214.6, -7.3], ['7i', 138.2, null]]);
+  });
+});
