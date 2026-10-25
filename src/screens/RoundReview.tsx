@@ -351,13 +351,6 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   const placedPutts = e?.puttsAt?.balls ?? null;
   const lengths = d ? shotLengths(d) : [];
   const playedLen = d ? playedLengths(d, e?.weather) : [];
-  // the direction a shot was played in: to the next ball, the miss of a penalty, or the green
-  const shotBearing = (n: number): number | null => {
-    const s = d?.shots[n];
-    if (!d || !s?.pos) return null;
-    const end = s.penalty && s.missPos ? s.missPos : n + 1 < d.shots.length ? d.shots[n + 1].pos : d.onGreen;
-    return end ? bearingDeg(s.pos, end) : null;
-  };
   const onGreenSpot = (pos: LngLat, m: HoleMapData) => (m.green ? pointInRing(pos, m.green) : distanceM(pos, m.greenCenter) <= 12);
   const fmt = (m: number) => `${formatDistance(m, unit)} ${unit}`;
   // The GPS track of this hole: the walked path and where the player stood still – a shot the detection missed
@@ -1062,9 +1055,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
         </div>
       )}
 
+      {/* the hole's wind straight away – arrow, strength, gusts, no heading (Sascha 25.10.2026) */}
       {e?.weather && data && (
         <p className="review-wind small">
-          <span className="muted">{tr('Wind on this hole', 'Wind an diesem Loch')}</span>
           <WindTag w={e.weather} bearing={bearingDeg(data.tee, data.greenCenter)} gusts />
         </p>
       )}
@@ -1094,15 +1087,13 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                     {n > 0 && d.shots[n - 1].penalty && d.shots[n - 1].provisional ? tr('provisional ball · ', 'provisorischer Ball · ') : ''}
                     {lieName(s.lie)}
                     {lengths[n] != null ? ` · ${fmt(lengths[n]!)}` : ''}
+                    {/* how long it played with the wind – the wind itself stands over the shots (Sascha 25.10.2026) */}
+                    {e?.weather && lengths[n] != null && playedLen[n] != null && s.club && s.club !== 'Pt' && (!s.kind || s.kind === 'full') && Math.abs(playedLen[n]! - lengths[n]!) >= 5
+                      ? tr(` · played like ${fmt(playedLen[n]!)}`, ` · spielte sich wie ${fmt(playedLen[n]!)}`)
+                      : ''}
                     {proximity(d, n) != null && proximity(d, n)! > 0 ? tr(` · ${fmt(proximity(d, n)!)} from the pin`, ` · auf ${fmt(proximity(d, n)!)} an der Fahne`) : ''}
                     {s.penalty ? ` · ${penaltyName(s.penaltyKind) ?? tr('penalty', 'Strafschlag')} (+1)` : ''}
                   </span>
-                  {/* how long it played with the wind – the reason for a longer club (Sascha 23.10.2026) */}
-                  {e?.weather && lengths[n] != null && playedLen[n] != null && s.club && s.club !== 'Pt' && (!s.kind || s.kind === 'full') && Math.abs(playedLen[n]! - lengths[n]!) >= 5 && shotBearing(n) != null && (
-                    <span className="shot-wind small">
-                      {tr(`played like ${fmt(playedLen[n]!)}`, `spielte wie ${fmt(playedLen[n]!)}`)} · <WindTag w={e.weather} bearing={shotBearing(n)!} />
-                    </span>
-                  )}
                   {(s.strike && s.strike !== 'slice' && s.strike !== 'hook') || flightOf(s) || s.intent || (s.review && !odd) ? (
                     <span className="muted small" style={{ display: 'block' }}>
                       {[s.strike && s.strike !== 'slice' && s.strike !== 'hook' ? strikeName(s.strike) : '', flightOf(s) ? flightName(flightOf(s)!) : '', s.intent ? intentName(s.intent) : '', s.review && !odd ? tr('check', 'prüfen') : ''].filter(Boolean).join(' · ')}

@@ -224,7 +224,7 @@ export const FAQ: FaqTopic[] = [
         video: 'stats',
       },
       {
-        q: () => tr('Why does a shot say "played like 152 m"?', 'Warum steht bei einem Schlag „spielte wie 152 m“?'),
+        q: () => tr('Why does a shot say "played like 152 m"?', 'Warum steht bei einem Schlag „spielte sich wie 152 m“?'),
         a: () =>
           tr(
             'Wind and temperature made the shot play longer or shorter. Into a strong wind 130 m can play like 150 m – then a 6-iron was right. The club suggested and your measured distances count with the wind taken out.',

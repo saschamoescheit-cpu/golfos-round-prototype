@@ -1730,4 +1730,3 @@ button.tile:disabled { opacity: 1; }
 .review-wind { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; }
 .wind-tag { color: var(--text); font-weight: 600; }
 .wind-tag svg { display: inline-block; vertical-align: -2px; margin-right: 4px; color: var(--brand-text); }
-.shot-wind { display: block; color: var(--muted); }
