@@ -72,16 +72,18 @@ await shot('putter');
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 await p.getByRole('button', { name: 'Neue Runde' }).click();
 await p.fill('#course-search', 'Hetzenhof');
-await p.locator('button.list-item').first().waitFor({ timeout: 30000 });
-await p.locator('button.list-item').first().click();
+// the hit itself, not the first row – under load (three tests at once) the list was still the nearby courses (25.10.)
+await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().waitFor({ timeout: 30000 });
+await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
 await p.getByText('Runde starten').click();
 await p.locator('.map-hole-no').first().waitFor({ timeout: 30000 });
-await p.waitForTimeout(3000);
-await p.getByRole('button', { name: /Caddie zeigen/ }).click();
+await p.getByRole('button', { name: /Caddie zeigen/ }).waitFor({ timeout: 30000 });
 await p.waitForTimeout(1500);
+await p.getByRole('button', { name: /Caddie zeigen/ }).click();
 const line = p.locator('.caddie-card .cf').filter({ hasText: 'Streuung' });
+await line.waitFor({ timeout: 15000 }).catch(() => {});
 ok((await line.count()) === 1, `caddie card: "${(await line.innerText().catch(() => '')).replace(/\s+/g, ' ')}"`);
 const feats = await p.evaluate(() => {
   const m = window.__golfosMap;

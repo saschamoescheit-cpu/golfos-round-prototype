@@ -262,8 +262,11 @@ export function HoleMap(props: HoleMapProps) {
       render();
     });
     // Imagery server down (e.g. the state's aerial service): several tile errors before any tile arrived.
-    m.on('error', (e: { sourceId?: string }) => {
+    m.on('error', (e: { sourceId?: string; error?: { name?: string; message?: string } }) => {
       if (e.sourceId !== 'sat' || sat.current.ok > 0) return;
+      // a tile the map no longer wanted (it moved on) is no failed tile – on a slow phone six of them came before the first
+      // picture and the state's aerial gave way to Esri for nothing (25.10.2026)
+      if (e.error?.name === 'AbortError' || /abort/i.test(e.error?.message ?? '')) return;
       if (++sat.current.fail === 6) latest.current.onImageryFail?.();
     });
     m.on('sourcedata', (e: { sourceId?: string; tile?: unknown; sourceDataType?: string }) => {

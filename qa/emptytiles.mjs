@@ -60,14 +60,15 @@ async function run(lglBody, label) {
   await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
   await p.getByText('Runde starten').click();
   await p.locator('.map-hole-no').first().waitFor({ timeout: 30000 });
-  // the map settled: look again until the picture stops changing (at most 25 s – under load the tiles come late)
+  // the map settled: look again until the picture stays the same three times running (at most 40 s – under load, three
+  // tests at once, the tiles came so late that a half-drawn map looked steady, 25.10.2026)
   let seen = await look(p);
-  for (let k = 0; k < 10; k++) {
+  let same = 0;
+  for (let k = 0; k < 16 && same < 3; k++) {
     await p.waitForTimeout(2500);
     const again = await look(p);
-    const steady = Math.abs(again.grass - seen.grass) < 2 && Math.abs(again.white - seen.white) < 2;
+    same = Math.abs(again.grass - seen.grass) < 2 && Math.abs(again.white - seen.white) < 2 ? same + 1 : 0;
     seen = again;
-    if (steady && k >= 1) break;
   }
   await ctx.close();
   return { seen, errs, label };
