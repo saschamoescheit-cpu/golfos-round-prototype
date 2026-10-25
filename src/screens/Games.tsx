@@ -16,10 +16,11 @@ import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { FriendChips } from './Home';
-import { PlayerRow, teeChoicesFor } from './RoundSetup';
+import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { courseTees, defaultTee, profileTee } from '../data/tees';
 import { inUsa } from '../lib/weather';
-import { courseHandicap, parseIndex, ratingFor } from '../lib/handicap';
+import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
+import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
@@ -694,6 +695,16 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const myTee = offered ? profileTee(offered, loadProfile().tee, d.course?.id, d.course ? inUsa([d.course.lon, d.course.lat]) : false) ?? defaultTee(offered.tees, lady) : null;
   // only the course's own tees (Sascha 22.10.2026)
   const teeOf = (p: DraftPlayer) => (p.tee && offered?.tees.includes(p.tee) ? p.tee : p.id === 'me' ? myTee : startTee);
+  // the values other players entered for this course, and the player's own – read again when new ones came (as the round setup)
+  const [, setRatingsSeen] = useState(0);
+  useEffect(() => {
+    if (!d.course) return;
+    let alive = true;
+    fetchShared(d.course.id).then(() => alive && setRatingsSeen((k) => k + 1));
+    return () => {
+      alive = false;
+    };
+  }, [d.course?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const loopHoles = d.course ? d.course.holes.filter((h) => h.loop === rholes[0]?.loop) : [];
   const parSum = nine ? loopHoles.reduce((s, h) => s + (h.par || 0), 0) * (loopHoles.length <= 9 ? 2 : 1) : rholes.reduce((s, h) => s + (h.par || 0), 0);
   const ratingOf = (p: DraftPlayer) => (d.course && (rholes.length === 18 || nine) ? ratingFor(d.course.id, teeOf(p) ?? '–', rholes, p.id === 'me' && lady) : null);
@@ -796,10 +807,17 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             onRemove={i > 0 ? () => set({ players: d.players.filter((x) => x.id !== p.id) }) : undefined}
           />
         ))}
-        <p className="muted small" style={{ margin: 0 }}>
-          {myRating ? `Course Rating ${myRating.cr.toFixed(1).replace('.', getLang() === 'de' ? ',' : '.')} · Slope ${myRating.slope}` : tr('Playing handicap from the HCP – estimated without course rating', 'Vorgabe aus dem HCP – ohne Course Rating geschätzt')}
-          {nine ? tr(' · for 9 holes', ' · für 9 Löcher') : ''}
-        </p>
+        {/* course rating and slope as in the round setup – shown, or typed from the club's scorecard (Sascha 25.10.2026) */}
+        {d.course && (rholes.length === 18 || nine) && (
+          <RatingLine
+            rating={myRating}
+            nine={nine}
+            onSave={(v) => {
+              saveOwnRating(d.course!.id, teeOf(d.players[0]) ?? '–', rholes, v);
+              setRatingsSeen((k) => k + 1);
+            }}
+          />
+        )}
         {(n < 4 || d.players.some((p, k) => k > 0 && !p.name.trim() && !p.hcp.trim())) && (
           // a friend takes the first empty row (Chicago starts with four), else a new one
           <FriendChips

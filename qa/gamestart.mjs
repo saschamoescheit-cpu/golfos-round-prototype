@@ -69,6 +69,27 @@ ok(labels.join('|') === 'zu bestätigen|pausiert|gespielt|bestätigt|Löcher|gel
 const top = await p.locator('.tile-row .tile').evaluateAll((ts) => ts.map((t) => Math.round(t.getBoundingClientRect().top)));
 ok(new Set(top).size === 2 && top.filter((y) => y === top[0]).length === 3, 'three by two, as on the rounds list');
 
+// 1b · course rating and slope in the game setup as in the round setup: shown, typed, the playing handicaps follow
+await tab('Spielen');
+await p.getByRole('button', { name: 'Neues Spiel' }).click();
+await p.locator('.game-player-row').first().locator('input').nth(1).fill('15,4');
+await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
+await p.fill('#course-search', 'Hetzenhof');
+await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
+await p.waitForTimeout(800);
+const rline = () => p.locator('.rating-line').innerText().then((s) => s.replace(/\s+/g, ' ')).catch(() => '');
+ok(/Course Rating \d+,\d · Slope \d+/.test(await rline()), `game setup: course rating and slope as in Rounds (${await rline()})`);
+const vg = () => p.locator('.game-player-row').first().innerText().then((s) => s.replace(/\s+/g, ' '));
+const before = await vg();
+await p.locator('.rating-line').click();
+await p.fill('#setup-cr', '74,0');
+await p.fill('#setup-slope', '145');
+await p.getByRole('button', { name: 'Speichern' }).click();
+await p.waitForTimeout(300);
+ok(/Course Rating 74,0 · Slope 145/.test(await rline()) && (await vg()) !== before, `game setup: own values saved, the playing handicap follows (${before} → ${await vg()})`);
+await p.locator('.topbar').getByRole('button').first().click();
+await p.waitForTimeout(400);
+
 // 2 · a game, two holes, paused: the card on the start page
 await newGame('Skins');
 await playHole();

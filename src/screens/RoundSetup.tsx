@@ -132,12 +132,6 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   const ratingOf = (p: DraftPlayer): TeeRating | null => (p.id === 'me' ? rating : holes.length === 18 || holes.length === 9 ? ratingFor(props.course.id, p.tee ?? '–', holes) : null);
   // the tees to choose from, with their length for the chosen holes and their course rating
   const teeChoices = teeChoicesFor(props.course.id, holes, offered.tees, lady);
-  const [ratingEdit, setRatingEdit] = useState(false);
-  const [crIn, setCrIn] = useState('');
-  const [slopeIn, setSlopeIn] = useState('');
-  const crNum = Number(crIn.replace(',', '.'));
-  const slopeNum = Number(slopeIn);
-  const ratingValid = crNum >= 50 && crNum <= 85 && Number.isInteger(slopeNum) && slopeNum >= 55 && slopeNum <= 155;
   const nine = holes.length === 9;
   // 9 or 18 holes chosen: the remembered playing handicap follows (unless the player typed his own)
   useEffect(() => {
@@ -308,55 +302,15 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         )}
         {/* where the playing handicap comes from – once for all players; missing or wrong: typed from the club's
             scorecard, kept for this course, these loops and this tee */}
-        {(holes.length === 18 || nine) && !ratingEdit && (
-          <button
-            type="button"
-            className="rating-line"
-            onClick={() => {
-              setCrIn(rating ? dec(rating.cr.toFixed(1)) : '');
-              setSlopeIn(rating ? String(rating.slope) : '');
-              setRatingEdit(true);
+        {(holes.length === 18 || nine) && (
+          <RatingLine
+            rating={rating}
+            nine={nine}
+            onSave={(v) => {
+              saveOwnRating(props.course.id, teeKey, holes, v);
+              setRatingsSeen((n) => n + 1);
             }}
-          >
-            <span className="grow">
-              {rating ? (
-                <>
-                  Course Rating <strong>{dec(rating.cr.toFixed(1))}</strong> · Slope <strong>{rating.slope}</strong>
-                  {nine ? tr(' · playing handicap for 9 holes', ' · Vorgabe für 9 Löcher') : ''}
-                </>
-              ) : (
-                <>
-                  <strong>{tr('Enter course rating and slope', 'Course Rating und Slope eintragen')}</strong>
-                  <span className="muted small" style={{ display: 'block' }}>{tr('From the club’s scorecard – until then the playing handicap is estimated from the HCP', 'Von der Scorekarte des Clubs – bis dahin ist die Vorgabe aus dem HCP geschätzt')}</span>
-                </>
-              )}
-            </span>
-            <span aria-hidden="true">›</span>
-          </button>
-        )}
-        {ratingEdit && (
-          <div className="card rating-form">
-            <div className="field">
-              <label htmlFor="setup-cr">Course Rating</label>
-              <input id="setup-cr" className="input" inputMode="decimal" placeholder={dec('71.6')} value={crIn} onChange={(e) => setCrIn(e.target.value)} />
-            </div>
-            <div className="field">
-              <label htmlFor="setup-slope">Slope</label>
-              <input id="setup-slope" className="input" inputMode="numeric" placeholder="130" value={slopeIn} onChange={(e) => setSlopeIn(e.target.value)} />
-            </div>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={!ratingValid}
-              onClick={() => {
-                saveOwnRating(props.course.id, teeKey, holes, { cr: crNum, slope: slopeNum });
-                setRatingsSeen((n) => n + 1);
-                setRatingEdit(false);
-              }}
-            >
-              {tr('Save', 'Speichern')}
-            </button>
-          </div>
+          />
         )}
         {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
         {!hasCarries && (
@@ -608,6 +562,71 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
           {tr('Please enter the HCP as a number, e.g. 18.4 or +1.2', 'Bitte das HCP als Zahl eingeben, z. B. 18,4 oder +1,2')}
         </span>
       )}
+    </div>
+  );
+}
+
+/**
+ * Where the playing handicap comes from – once for all players; missing or wrong: typed from the club's scorecard,
+ * kept for this course, these loops and this tee (Sascha 21.10.2026). The round setup and the game setup use the same
+ * (Sascha 25.10.2026: Games like Rounds).
+ */
+export function RatingLine(props: { rating: TeeRating | null; nine: boolean; onSave: (v: { cr: number; slope: number }) => void }) {
+  const { rating, nine } = props;
+  const [edit, setEdit] = useState(false);
+  const [crIn, setCrIn] = useState('');
+  const [slopeIn, setSlopeIn] = useState('');
+  const crNum = Number(crIn.replace(',', '.'));
+  const slopeNum = Number(slopeIn);
+  const valid = crNum >= 50 && crNum <= 85 && Number.isInteger(slopeNum) && slopeNum >= 55 && slopeNum <= 155;
+  if (!edit)
+    return (
+      <button
+        type="button"
+        className="rating-line"
+        onClick={() => {
+          setCrIn(rating ? dec(rating.cr.toFixed(1)) : '');
+          setSlopeIn(rating ? String(rating.slope) : '');
+          setEdit(true);
+        }}
+      >
+        <span className="grow">
+          {rating ? (
+            <>
+              Course Rating <strong>{dec(rating.cr.toFixed(1))}</strong> · Slope <strong>{rating.slope}</strong>
+              {nine ? tr(' · playing handicap for 9 holes', ' · Vorgabe für 9 Löcher') : ''}
+            </>
+          ) : (
+            <>
+              <strong>{tr('Enter course rating and slope', 'Course Rating und Slope eintragen')}</strong>
+              <span className="muted small" style={{ display: 'block' }}>{tr('From the club’s scorecard – until then the playing handicap is estimated from the HCP', 'Von der Scorekarte des Clubs – bis dahin ist die Vorgabe aus dem HCP geschätzt')}</span>
+            </>
+          )}
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
+    );
+  return (
+    <div className="card rating-form">
+      <div className="field">
+        <label htmlFor="setup-cr">Course Rating</label>
+        <input id="setup-cr" className="input" inputMode="decimal" placeholder={dec('71.6')} value={crIn} onChange={(e) => setCrIn(e.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor="setup-slope">Slope</label>
+        <input id="setup-slope" className="input" inputMode="numeric" placeholder="130" value={slopeIn} onChange={(e) => setSlopeIn(e.target.value)} />
+      </div>
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={!valid}
+        onClick={() => {
+          props.onSave({ cr: crNum, slope: slopeNum });
+          setEdit(false);
+        }}
+      >
+        {tr('Save', 'Speichern')}
+      </button>
     </div>
   );
 }
