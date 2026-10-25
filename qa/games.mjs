@@ -211,6 +211,17 @@ await p.waitForTimeout(300);
 ok((await p.locator('.sign-card').innerText()).includes('Ergebnis bestätigt'), 'result: "Ergebnis bestätigen" confirms it');
 const after = await order();
 ok(after === 'sign winner grid', `confirmed: the seal stands on top as on a round (${after})`);
+// as on Rounds: the module choice names the results still to confirm, with the dot (Sascha 25.10.2026)
+{
+  const toConfirm = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1')).filter((g) => g.finishedAt && !g.signedAt).length);
+  await p.locator('.topbar').getByRole('button', { name: /Spiele/ }).first().click();
+  await p.waitForTimeout(400);
+  await p.locator('.module-switch').click();
+  const card = p.locator('.module-card').filter({ hasText: 'Games' });
+  ok((await card.getByText(`${toConfirm} Ergebnisse bestätigen`).count()) === 1 && (await card.locator('.module-dot').count()) === 1, `module choice: "${toConfirm} Ergebnisse bestätigen" with the dot`);
+  await card.click();
+  await p.waitForTimeout(600);
+}
 await p.evaluate(() => {
   const gs = JSON.parse(localStorage.getItem('golfos.games.v1'));
   localStorage.setItem('golfos.games.v1', JSON.stringify(gs.map((g) => (g.finishedAt ? { ...g, signedAt: g.signedAt ?? new Date().toISOString() } : g))));
@@ -313,7 +324,9 @@ await p.locator('.hole-drawer .drawer-handle').click();
 // a running game: the module choice says so; back to Rounds
 await pause();
 await p.locator('.module-switch').click();
-ok(await p.getByText('Ein Spiel läuft').isVisible(), 'module choice shows the running game');
+// as on Rounds: the Games card names only what is to do – results to confirm, with the dot; a paused game is no task (25.10.2026)
+const gcard = p.locator('.module-card').filter({ hasText: 'Games' });
+ok((await gcard.getByText(/Ergebnisse? bestätigen/).count()) === 0 && (await gcard.locator('.module-dot').count()) === 0 && (await p.getByText('Ein Spiel läuft').count()) === 0, `module choice: a paused game is no task, all results confirmed – no dot (${(await gcard.innerText()).replace(/\s+/g, ' ')})`);
 await p.locator('.module-card').filter({ hasText: 'Rounds' }).click();
 ok(await p.getByRole('button', { name: 'Neue Runde' }).isVisible(), 'Rounds start page');
 

@@ -265,6 +265,7 @@ export function App() {
         toCheck={toCheck}
         profileDot={profileDot}
         gameOpen={loadGames().some((g) => !g.finishedAt)}
+        gamesToConfirm={loadGames().filter((g) => g.finishedAt && !g.signedAt).length}
         trainingOpen={trainingPaused()}
         mobilityOpen={mobilityPaused()}
         mobilityToday={mobilityToday()}

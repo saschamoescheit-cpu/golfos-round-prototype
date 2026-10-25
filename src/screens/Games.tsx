@@ -24,7 +24,7 @@ import { CoursePicker } from './CoursePicker';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
 import { PausedIcon } from '../components/PausedIcon';
-import { DeletedIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
+import { DeletedIcon, HolesIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
 
 // The "Games" module (Sascha 15.10.2026): side games as a product of its own – choose a game form, the course and the
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
@@ -149,6 +149,13 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
             setView({ name: 'play', game: g });
           }}
           onOpen={(g) => setView(g.finishedAt ? { name: 'result', game: g } : { name: 'play', game: g })}
+          onFinish={(g) => {
+            const done = { ...g, finishedAt: new Date().toISOString(), ...(g.round ? { round: { ...g.round, finishedAt: new Date().toISOString() } } : {}) };
+            if (done.shared) pushGame('finished', done.shared.code); // the others hear of it (push, final list 23.10.2026)
+            store(done);
+            setView({ name: 'result', game: done });
+          }}
+          onDelete={(g) => remove(g)}
         />
       );
     case 'course':
@@ -249,6 +256,8 @@ function GamesTabs(props: {
   onNew: (form?: FormId) => void;
   onOpen: (g: Game) => void;
   onJoined: (g: Game) => void;
+  onFinish: (g: Game) => void;
+  onDelete: (g: Game) => void;
 }) {
   const running = props.games.filter((g) => !g.finishedAt);
   // join a friend's game (code or the QR link #join=CODE) – shown once signed in and the shared table exists
@@ -288,7 +297,10 @@ function GamesTabs(props: {
       {props.tab === 'play' && (
         <>
           <h1 className="tab-title">{tr('Play a game', 'Spiel starten')}</h1>
-          {running.length > 0 && <GameList games={running} onOpen={props.onOpen} title={tr('In play', 'Läuft gerade')} />}
+          {/* the game in progress as the round in progress on Rounds (Sascha 25.10.2026: Rounds is the pattern) */}
+          {running.map((g) => (
+            <RunningGame key={g.id} game={g} onContinue={() => props.onOpen(g)} onFinish={() => props.onFinish(g)} onDelete={() => props.onDelete(g)} />
+          ))}
           {/* as "Start a new round" in Rounds (Sascha 15.10.2026: the same in every module) */}
           <section className="card play-card">
             <strong className="play-course">{tr('Start a new game', 'Neues Spiel starten')}</strong>
@@ -388,55 +400,147 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
           const f = formDef(g.form);
           const st = standingOf(g);
           const winner = g.finishedAt ? winnerOf(st.rows) : null;
-          return (
-            <li key={g.id}>
-              <button type="button" className={`list-item${g.finishedAt ? '' : ' live'}`} onClick={() => props.onOpen(g)}>
-                <span className="round-date">
-                  <strong>{new Date(g.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
-                  <span className="muted small">{new Date(g.createdAt).getFullYear()}</span>
-                </span>
-                <span className="grow">
-                  <span className="title with-mark">
-                    <span className="title-text">{f.name()}</span>
-                    {/* the same marks as on the rounds: confirmed (seal), to confirm (pen), in play (pause) */}
-                    {!g.finishedAt ? (
-                      <span className="paused-mark" role="img" aria-label={tr('in play', 'läuft')} title={tr('in play', 'läuft')}>
-                        <PausedIcon size={16} />
-                      </span>
-                    ) : g.signedAt ? (
-                      <span className="signed-mark" role="img" aria-label={tr('confirmed', 'bestätigt')} title={tr('confirmed', 'bestätigt')}>
-                        <SignedIcon size={16} />
-                      </span>
-                    ) : (
-                      <span className="signed-mark" role="img" aria-label={tr('to confirm', 'zu bestätigen')} title={tr('to confirm', 'zu bestätigen')}>
-                        <ToSignIcon size={16} />
-                      </span>
-                    )}
-                  </span>
-                  <span className="muted small">
-                    {g.courseName} · {g.players.map((p) => p.name).join(', ')}
-                  </span>
-                </span>
-                <span style={{ textAlign: 'right' }}>
-                  {g.finishedAt ? (
-                    <>
-                      <span style={{ font: '700 16px var(--display)', display: 'block' }}>{winner ?? tr('Tied', 'Unentschieden')}</span>
-                      <span className="muted small">{winner ? tr('winner', 'Sieger') : ''}</span>
-                    </>
+          const row = (
+            <button type="button" className="list-item" aria-label={g.finishedAt ? undefined : tr(`${f.name()} at ${g.courseName}, paused – continue`, `${f.name()} ${g.courseName}, pausiert – fortsetzen`)} onClick={() => props.onOpen(g)}>
+              <span className="round-date">
+                <strong>{new Date(g.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
+                <span className="muted small">{new Date(g.createdAt).getFullYear()}</span>
+              </span>
+              <span className="grow">
+                <span className="title with-mark">
+                  <span className="title-text">{f.name()}</span>
+                  {/* the same marks as on the rounds: confirmed (seal), to confirm (pen), paused (pause) */}
+                  {!g.finishedAt ? (
+                    <span className="paused-mark" role="img" aria-label={tr('paused', 'pausiert')} title={tr('paused', 'pausiert')}>
+                      <PausedIcon size={16} />
+                    </span>
+                  ) : g.signedAt ? (
+                    <span className="signed-mark" role="img" aria-label={tr('confirmed', 'bestätigt')} title={tr('confirmed', 'bestätigt')}>
+                      <SignedIcon size={16} />
+                    </span>
                   ) : (
-                    <>
-                      <span style={{ font: '700 20px var(--display)', display: 'block' }}>
-                        {holesPlayed(g)}/{g.holes.length}
-                      </span>
-                      <span className="muted small">{tr('holes', 'Löcher')}</span>
-                    </>
+                    <span className="signed-mark" role="img" aria-label={tr('to confirm', 'zu bestätigen')} title={tr('to confirm', 'zu bestätigen')}>
+                      <ToSignIcon size={16} />
+                    </span>
                   )}
                 </span>
+                {/* one line as on the rounds list (Sascha 25.10.2026: Games like Rounds) */}
+                <span className="muted small one-line">
+                  {g.finishedAt
+                    ? `${g.courseName} · ${g.players.length} ${tr('players', 'Spieler')}`
+                    : tr(`Paused · hole ${g.holes[Math.min(g.current, g.holes.length - 1)]?.label ?? ''}`, `Pausiert · Loch ${g.holes[Math.min(g.current, g.holes.length - 1)]?.label ?? ''}`)}
+                </span>
+              </span>
+              <span className="game-row-result">
+                {g.finishedAt ? (
+                  <>
+                    <strong className="one-line">{winner ?? '–'}</strong>
+                    <span className="muted small">{winner ? tr('winner', 'Sieger') : tr('tied', 'unentschieden')}</span>
+                  </>
+                ) : (
+                  <>
+                    <strong>
+                      {holesPlayed(g)}/{g.holes.length}
+                    </strong>
+                    <span className="muted small">{tr('holes', 'Löcher')}</span>
+                  </>
+                )}
+              </span>
+            </button>
+          );
+          return g.finishedAt ? (
+            <li key={g.id}>{row}</li>
+          ) : (
+            // carry on (tap the row) or delete – into the bin, "Undo" brings it back – as a paused round
+            <li key={g.id} className="paused-row">
+              {row}
+              <button
+                type="button"
+                className="icon-btn paused-delete"
+                aria-label={tr(`Delete the paused game at ${g.courseName}`, `Pausiertes Spiel ${g.courseName} löschen`)}
+                title={tr('Delete', 'Löschen')}
+                onClick={() => {
+                  deleteGame(g.id);
+                  window.dispatchEvent(new Event('golfos:games-changed'));
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+                </svg>
               </button>
             </li>
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+/** A game in progress on the start page – the same card as "Laufende Runde" on Rounds: continue, finish (asked
+ *  first, saves the holes with scores), cancel (asked first, into the bin). */
+function RunningGame(props: { game: Game; onContinue: () => void; onFinish: () => void; onDelete: () => void }) {
+  const g = props.game;
+  const f = formDef(g.form);
+  const [confirm, setConfirm] = useState<'end' | 'abort' | null>(null);
+  const locale = getLang() === 'de' ? 'de-DE' : undefined;
+  const at = Math.min(g.current, g.holes.length - 1);
+  const played = holesPlayed(g);
+  return (
+    <section className="card play-card" aria-label={tr('Game in progress', 'Laufendes Spiel')}>
+      <span className="eyebrow">{tr('Game in progress', 'Laufendes Spiel')}</span>
+      <div className="play-course">{f.name()}</div>
+      <span className="muted small">
+        {[
+          g.courseName,
+          tr(`hole ${g.holes[at]?.label ?? at + 1} · ${at + 1} of ${g.holes.length}`, `Loch ${g.holes[at]?.label ?? at + 1} · ${at + 1} von ${g.holes.length}`),
+          tr(`started ${new Date(g.createdAt).toLocaleString(locale, { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}`, `begonnen ${new Date(g.createdAt).toLocaleString(locale, { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}`),
+        ].join(' · ')}
+      </span>
+      {confirm === null && (
+        <>
+          <button type="button" className="btn-primary" onClick={props.onContinue}>
+            {tr('Continue game', 'Spiel fortsetzen')}
+          </button>
+          <div className="play-actions">
+            <button type="button" className="btn-secondary" onClick={() => setConfirm('end')}>
+              {tr('Finish game', 'Spiel beenden')}
+            </button>
+            <button type="button" className="btn-secondary btn-danger" onClick={() => setConfirm('abort')}>
+              {tr('Cancel game', 'Spiel abbrechen')}
+            </button>
+          </div>
+        </>
+      )}
+      {confirm === 'end' && (
+        <div className="play-confirm">
+          <span>
+            {played < g.holes.length
+              ? tr(`Finish now? ${played} of ${g.holes.length} holes have all scores – they count, the others stay empty.`, `Jetzt beenden? ${played} von ${g.holes.length} Löchern haben alle Scores – sie zählen, die anderen bleiben leer.`)
+              : tr('Finish and settle the game?', 'Spiel beenden und abrechnen?')}
+          </span>
+          <div className="play-actions">
+            <button type="button" className="btn-secondary" onClick={() => setConfirm(null)}>
+              {tr('Back', 'Zurück')}
+            </button>
+            <button type="button" className="btn-primary" onClick={props.onFinish}>
+              {tr('Finish & settle', 'Beenden & abrechnen')}
+            </button>
+          </div>
+        </div>
+      )}
+      {confirm === 'abort' && (
+        <div className="play-confirm">
+          <span>{tr('Cancel and delete the game? You can restore it under "deleted".', 'Spiel abbrechen und löschen? Unter „gelöscht“ kannst du es wiederherstellen.')}</span>
+          <div className="play-actions">
+            <button type="button" className="btn-secondary" onClick={() => setConfirm(null)}>
+              {tr('Back', 'Zurück')}
+            </button>
+            <button type="button" className="btn-secondary btn-danger" onClick={() => { setConfirm(null); props.onDelete(); }}>
+              {tr('Delete game', 'Spiel löschen')}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1656,6 +1760,7 @@ function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: Ga
   const running = props.games.filter((g) => !g.finishedAt).length;
   const confirmed = props.games.filter((g) => g.finishedAt && g.signedAt).length;
   const played = props.games.filter((g) => g.finishedAt).length;
+  const holes = props.games.filter((g) => g.finishedAt).reduce((n, g) => n + holesPlayed(g), 0);
   return (
     <div className="tile-row">
       <button type="button" className="tile" aria-pressed={props.filter === 'confirm'} disabled={!toConfirm} onClick={() => props.onFilter('confirm')}>
@@ -1665,15 +1770,14 @@ function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: Ga
         </span>
         <span className="muted small">{tr('to confirm', 'zu bestätigen')}</span>
       </button>
-      {running > 0 && (
-        <button type="button" className="tile" aria-pressed={props.filter === 'running'} onClick={() => props.onFilter('running')}>
-          <span className="tile-head">
-            <span className="tile-num good-text">{running}</span>
-            <span className="tile-mark"><PausedIcon /></span>
-          </span>
-          <span className="muted small">{tr('in play', 'laufen')}</span>
-        </button>
-      )}
+      {/* always there, as "pausiert" on the rounds page – 0 and white when no game waits (Sascha 25.10.2026) */}
+      <button type="button" className="tile" aria-pressed={props.filter === 'running'} disabled={!running} onClick={() => props.onFilter('running')}>
+        <span className="tile-head">
+          <span className={`tile-num${running ? ' good-text' : ''}`}>{running}</span>
+          <span className="tile-mark"><PausedIcon /></span>
+        </span>
+        <span className="muted small">{tr('paused', 'pausiert')}</span>
+      </button>
       {/* filters like in rounds (Sascha 21.10.2026) */}
       <button type="button" className="tile" aria-pressed={props.filter === 'played'} disabled={!played} onClick={() => props.onFilter('played')}>
         <span className="tile-head">
@@ -1689,6 +1793,14 @@ function GameTiles(props: { games: Game[]; filter: GamesFilter; onFilter: (f: Ga
         </span>
         <span className="muted small">{tr('confirmed', 'bestätigt')}</span>
       </button>
+      {/* the holes played – counts only, a white mark as on the rounds page */}
+      <div className="tile">
+        <span className="tile-head">
+          <span className="tile-num">{holes}</span>
+          <span className="tile-mark"><HolesIcon /></span>
+        </span>
+        <span className="muted small">{tr('holes', 'Löcher')}</span>
+      </div>
       {/* always there, 0 and white when empty – like the rounds page (Sascha 23.10.2026) */}
       <button type="button" className="tile" aria-pressed={props.filter === 'bin'} disabled={!trash} onClick={() => props.onFilter('bin')}>
         <span className="tile-head">

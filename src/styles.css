@@ -1730,3 +1730,8 @@ button.tile:disabled { opacity: 1; }
 .review-wind { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; }
 .wind-tag { color: var(--text); font-weight: 600; }
 .wind-tag svg { display: inline-block; vertical-align: -2px; margin-right: 4px; color: var(--brand-text); }
+/* the games list like the rounds list (Sascha 25.10.2026): one line under the title, a short result on the right */
+.one-line { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.list-item .grow { min-width: 0; }
+.game-row-result { display: flex; flex-direction: column; align-items: flex-end; text-align: right; max-width: 40%; min-width: 0; }
+.game-row-result strong { font: 700 18px var(--display); max-width: 100%; }

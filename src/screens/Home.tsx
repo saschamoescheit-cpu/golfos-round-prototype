@@ -16,6 +16,8 @@ export function Home(props: {
   onTab: (t: HomeTab) => void;
   roundOpen: boolean;
   gameOpen: boolean;
+  /** finished games whose result is not confirmed yet – the task shown on the Games card, as on Rounds */
+  gamesToConfirm?: number;
   toCheck: number; // finished rounds to check & sign (the same number as the rounds tile)
   profileDot: boolean; // carries to take over into the bag
   trainingOpen: boolean; // a practice session is paused
@@ -26,7 +28,7 @@ export function Home(props: {
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
-      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
       {props.tab === 'friends' && <Friends />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
@@ -54,7 +56,7 @@ function PausedMark() {
   );
 }
 
-function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
+function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
   return (
     <>
       <div className="topbar">
@@ -90,6 +92,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
       </button>
       <button type="button" className="module-card" onClick={() => props.onPick('games')}>
         <span className="module-icon" aria-hidden="true">
+          {props.gamesToConfirm > 0 && <i className="tabbar-dot module-dot" />}
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="7" width="18" height="12" rx="3" />
             <path d="M8 11v4M6 13h4" />
@@ -99,7 +102,12 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; trainingOpe
         </span>
         <span className="grow">
           <strong>Games</strong>
-          {props.gameOpen && <span className="small module-live">{tr('A game is in play', 'Ein Spiel läuft')}</span>}
+          {/* as on Rounds: only what is still to do – the results to confirm; a paused game is no task here (Sascha 25.10.2026) */}
+          {props.gamesToConfirm > 0 && (
+            <span className="small module-todo">
+              {props.gamesToConfirm === 1 ? tr('1 result to confirm', '1 Ergebnis bestätigen') : tr(`${props.gamesToConfirm} results to confirm`, `${props.gamesToConfirm} Ergebnisse bestätigen`)}
+            </span>
+          )}
         </span>
         <span aria-hidden="true">›</span>
       </button>
