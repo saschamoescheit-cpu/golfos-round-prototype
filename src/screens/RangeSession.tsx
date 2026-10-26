@@ -14,10 +14,11 @@ import { closeGaps, clubsOf, flightOf, medianOf, mishits, offTour, outOfOrder, s
 
 type RangeTab = 'spread' | 'gaps' | 'flight' | 'swing';
 
-export function RangeSession(props: { session: LmSession; bag: { club: Club; carry: number }[]; unit: 'm' | 'yd'; onBack: () => void }) {
+export function RangeSession(props: { session: LmSession; bag: { club: Club; carry: number }[]; unit: 'm' | 'yd'; onBack: () => void; onDelete: () => void }) {
   const { session } = props;
   const clubs = clubsOf(session.shots);
   const [tab, setTab] = useState<RangeTab>('spread');
+  const [deleting, setDeleting] = useState(false);
   // the club with the most shots first
   const [club, setClub] = useState<Club | null>(() => [...clubs].sort((a, b) => b.shots.length - a.shots.length)[0]?.club ?? null);
   const yd = props.unit === 'yd';
@@ -59,6 +60,24 @@ export function RangeSession(props: { session: LmSession; bag: { club: Club; car
       {tab === 'gaps' && <GapsTab session={session} bag={props.bag} dist={dist} />}
       {tab === 'flight' && club && <FlightTab club={club} shots={shots} fmt={fmt} />}
       {tab === 'swing' && club && <SwingTab club={club} shots={shots} fmt={fmt} speed={speed} dist={dist} yd={yd} />}
+      {/* a wrong file or a test: the player deletes the session – the bag stays as it is */}
+      {deleting ? (
+        <section className="card play-confirm" aria-label={tr('Delete session', 'Sitzung löschen')}>
+          <span>{tr(`Delete the session ${day ? `of ${day}` : ''}? The carries in your bag stay as they are.`, `Sitzung ${day ? `vom ${day} ` : ''}löschen? Die Weiten in deinem Bag bleiben, wie sie sind.`)}</span>
+          <div className="play-actions">
+            <button type="button" className="btn-secondary" onClick={() => setDeleting(false)}>
+              {tr('Back', 'Zurück')}
+            </button>
+            <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
+              {tr('Delete', 'Löschen')}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <button type="button" className="btn-secondary btn-danger" onClick={() => setDeleting(true)}>
+          {tr('Delete session', 'Sitzung löschen')}
+        </button>
+      )}
     </main>
   );
 }

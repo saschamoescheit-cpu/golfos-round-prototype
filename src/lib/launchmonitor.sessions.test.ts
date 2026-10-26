@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { measuredAtOf, mergeLaunch, parseLaunchCsv, proposeNew, whenOf, type LmClub, type LmData, type LmSession } from './launchmonitor';
+import { measuredAtOf, mergeLaunch, parseLaunchCsv, proposeNew, removeSession, whenOf, type LmClub, type LmData, type LmSession } from './launchmonitor';
 
 // Every measurement, the day, sessions (Sascha 26.10.2026: Garmin R10, Trackman, Foresight to begin with; new sessions add
 // to the old ones, a club measured again: the newer proposed, the player decides; the values 1:1).
@@ -88,6 +88,17 @@ describe('sessions add up', () => {
     expect(proposeNew(old, '2025-01-02T10:00:00')).toBe(false);
     expect(proposeNew(old, null)).toBe(true);
     expect(proposeNew({ ...old, measuredAt: null }, '2025-01-02T10:00:00')).toBe(true);
+  });
+  it('a session deleted: its clubs from the newest other session that has them, or gone', () => {
+    const shots = (club: '7i' | 'PW', carry: number) => Array.from({ length: 6 }, (_, k) => ({ club, carry: carry + k - 3, side: k - 3 }));
+    const a = { ...sess('a', '2025-11-15T22:00:00'), shots: [...shots('7i', 159), ...shots('PW', 117)] };
+    const b = { ...sess('b', '2026-10-28T18:00:00'), shots: shots('7i', 163) };
+    let d = mergeLaunch(null, a, [club('7i', 159), club('PW', 117)]);
+    d = mergeLaunch(d, b, [club('7i', 163)]);
+    const left = removeSession(d, 'b')!;
+    expect(left.sessions!.map((s) => s.id)).toEqual(['a']);
+    expect(left.clubs.find((c) => c.club === '7i')).toMatchObject({ carry: 159, session: 'a' });
+    expect(removeSession(left, 'a')).toBeNull();
   });
   it('data kept before sessions existed still works', () => {
     const before: LmData = { importedAt: '2026-10-25T20:00:00Z', source: 'Garmin', file: 'x.csv', clubs: [club('7i', 150)] };

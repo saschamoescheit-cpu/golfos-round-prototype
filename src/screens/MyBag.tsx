@@ -11,7 +11,7 @@ import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, 
 import { DEFAULT_LOFTS, loadBagStyle, saveBagStyle, withLoft, type BagStyle } from '../lib/bagstyle';
 import { statRounds } from '../lib/signing';
 import { LaunchImport } from '../components/LaunchImport';
-import { loadLaunch } from '../lib/launchmonitor';
+import { loadLaunch, removeSession, saveLaunch } from '../lib/launchmonitor';
 import { RangeSession } from './RangeSession';
 
 // "My bag" (feature 008, reached from the profile and the round's drawer), as Sascha wants it (15.10.2026): two tabs –
@@ -152,7 +152,17 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
   );
 
   const open = session ? loadLaunch()?.sessions?.find((x) => x.id === session) : null;
-  if (open) return <RangeSession session={open} bag={inBag.map((c) => ({ club: c, carry: fullOf(c) }))} unit={unit === 'yd' ? 'yd' : 'm'} onBack={() => setSession(null)} />;
+  if (open)
+    return (
+      <RangeSession
+        session={open} bag={inBag.map((c) => ({ club: c, carry: fullOf(c) }))} unit={unit === 'yd' ? 'yd' : 'm'} onBack={() => setSession(null)}
+        onDelete={() => {
+          const d = loadLaunch();
+          if (d) saveLaunch(removeSession(d, open.id));
+          setSession(null);
+        }}
+      />
+    );
 
   return (
     <main className="screen">

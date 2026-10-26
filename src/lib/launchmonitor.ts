@@ -447,6 +447,22 @@ export function saveLaunch(d: LmData | null): void {
     /* storage full or blocked */
   }
 }
+/**
+ * A session deleted by the player (a wrong file, a test): its clubs come from the newest other session that has them, or
+ * go. The bag's carries are not touched – they are the player's.
+ */
+export function removeSession(d: LmData, id: string): LmData | null {
+  const sessions = (d.sessions ?? []).filter((s) => s.id !== id);
+  const clubs = d.clubs.filter((c) => c.session !== id);
+  for (const gone of d.clubs.filter((c) => c.session === id)) {
+    const from = [...sessions].sort((a, b) => (b.measuredAt ?? b.importedAt).localeCompare(a.measuredAt ?? a.importedAt)).find((s) => s.shots.some((x) => x.club === gone.club));
+    const again = from && summarize(from.shots.filter((x) => x.club === gone.club))[0];
+    if (from && again) clubs.push({ ...again, measuredAt: from.measuredAt, session: from.id });
+  }
+  if (!clubs.length && !sessions.length) return null;
+  return { ...d, clubs: clubs.sort((a, b) => ORDER.indexOf(a.club) - ORDER.indexOf(b.club)), sessions };
+}
+
 /** A club's launch monitor data when it rests on enough shots to say something about the spread. */
 export const LM_SPREAD_FROM = 5;
 export function launchFor(club: Club, d: LmData | null = loadLaunch()): LmClub | null {

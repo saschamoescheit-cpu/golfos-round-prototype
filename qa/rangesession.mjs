@@ -139,6 +139,17 @@ await card.locator('.launch-sessions .list-item').filter({ hasText: 'Garmin' }).
 await p.waitForTimeout(400);
 ok((await pressed()) === 'Streuung', 'opened again: the spread first again');
 await p.getByRole('button', { name: 'Zurück zu Mein Bag' }).click();
+await p.waitForTimeout(300);
+// a session deleted by the player (a test, a wrong file) – asked first, the bag stays
+await card.locator('.launch-sessions .list-item').filter({ hasText: 'Trackman' }).click();
+await p.waitForTimeout(400);
+await p.getByRole('button', { name: 'Sitzung löschen' }).click();
+const conf = p.getByRole('region', { name: 'Sitzung löschen' });
+ok(/Sitzung vom 28\.10\.2026 löschen\? Die Weiten in deinem Bag bleiben/.test(await conf.innerText()), 'delete: asked first – "die Weiten in deinem Bag bleiben"');
+await conf.getByRole('button', { name: 'Löschen' }).click();
+await p.waitForTimeout(500);
+const after = (await card.locator('.launch-sessions .list-item').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+ok(after.length === 1 && /^Garmin/.test(after[0]) && (await inBag('7i')) === carry7, `deleted: one session left (${after.join(' | ')}), iron 7 in the bag unchanged`);
 
 // 4 · the stats: the range's shots as rings, off at first, remembered
 await p.locator('.tabbar button').filter({ hasText: 'Statistik' }).click();
