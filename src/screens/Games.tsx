@@ -6,7 +6,7 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { isLady, shownName, loadProfile } from '../lib/profile';
 import { loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
-import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
+import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, pairShare, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
 import { Bin } from '../components/Bin';
 import { InviteSheet, JoinSheet } from '../components/ShareGame';
@@ -561,7 +561,6 @@ function Balance(props: { games: Game[] }) {
     // a team game's rows are the sides (A = player 1's side) or every player
     if (top.includes(me.id) || (top.length === 1 && top[0] === 'A')) wins++;
     money += st.money?.[me.id] ?? 0;
-    const pays = st.money ? transfers(st.money) : [];
     for (const p of g.players.filter((x) => x.id !== me.id)) {
       const key = p.name.trim().toLowerCase();
       const row = vs.get(key) ?? { name: p.name, games: 0, money: 0, won: 0, lost: 0 };
@@ -572,10 +571,7 @@ function Balance(props: { games: Game[] }) {
         if (mine > his) row.won++;
         else row.lost++;
       }
-      for (const t of pays) {
-        if (t.from === p.id && t.to === me.id) row.money += t.amount;
-        if (t.from === me.id && t.to === p.id) row.money -= t.amount;
-      }
+      if (st.money) row.money += pairShare(st.money, me.id, p.id);
       vs.set(key, row);
     }
   }

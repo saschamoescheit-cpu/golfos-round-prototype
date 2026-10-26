@@ -31,14 +31,14 @@ await card.getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1500);
 ok(await p.getByRole('heading', { name: 'Hilfe' }).isVisible(), 'the help page opens');
 const vids = p.locator('.help-video');
-ok((await vids.count()) === 9, `the whole tour and 8 videos (${await vids.count()})`);
+ok((await vids.count()) === 10, `the whole tour and 9 videos (${await vids.count()})`);
 const titles = await p.locator('.help-video strong').allInnerTexts();
-ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto', `in order: ${titles.join(' · ')}`);
+ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto' && titles[9] === 'Games spielen', `in order: ${titles.join(' · ')}`);
 // no chapter numbers (Sascha 23.10.2026 evening)
 ok(!/Kapitel/.test(await p.locator('.help-videos').innerText()), 'no "Kapitel" in the list');
 const posters = await p.locator('.help-video img').evaluateAll((imgs) => imgs.map((i) => i.complete && i.naturalWidth > 100));
-ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/9)`);
-ok((await p.locator('.help-video .help-play').count()) === 9, 'the round play symbol at the bottom right of each picture');
+ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/10)`);
+ok((await p.locator('.help-video .help-play').count()) === 10, 'the round play symbol at the bottom right of each picture');
 // play chapter 3
 await p.getByRole('button', { name: 'Video abspielen: Der Caddie' }).click();
 await p.waitForTimeout(2500);
@@ -56,11 +56,18 @@ await p.getByRole('button', { name: 'Untertitel an' }).click();
 await p.getByRole('dialog', { name: 'Der Caddie' }).getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.help-player').count()) === 0, 'closed again');
+// the Games video (night 25./26.10.2026)
+await p.getByRole('button', { name: 'Video abspielen: Games spielen' }).click();
+await p.waitForTimeout(2500);
+const gv = await p.locator('.help-player video').evaluate((el) => ({ src: el.currentSrc, dur: el.duration }));
+ok(/help\/games\.mp4$/.test(gv.src) && gv.dur > 60, `the Games video plays: ${gv.src.split('/').pop()}, ${Math.round(gv.dur)} s`);
+await p.getByRole('dialog', { name: 'Games spielen' }).getByRole('button', { name: 'Schließen' }).click();
+await p.waitForTimeout(300);
 // the questions
 await p.getByRole('button', { name: 'Häufige Fragen' }).click();
 await p.waitForTimeout(500);
 const topics = await p.locator('.help-faq h2').allInnerTexts();
-ok(topics.join(' · ') === 'Vor der Runde · Auf dem Platz · Der Caddie · Nach der Runde · Konto & Daten', `the questions by topic: ${topics.join(' · ')}`);
+ok(topics.join(' · ') === 'Vor der Runde · Auf dem Platz · Der Caddie · Nach der Runde · Games · Konto & Daten', `the questions by topic: ${topics.join(' · ')}`);
 const q = p.getByRole('button', { name: 'Warum prüfen und signieren?' });
 await q.click();
 await p.waitForTimeout(400);

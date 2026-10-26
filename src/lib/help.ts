@@ -22,6 +22,8 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '0:54' },
   { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:42' },
   { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:35' },
+  // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
+  { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz'), length: '1:06' },
 ];
 /** The whole tour in one video. */
 export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:05' };
@@ -264,6 +266,39 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Where are my distances per club?', 'Wo finde ich meine Weiten je Schläger?'),
         a: () => tr('Profile → My bag. The app learns them from your good strikes in calm weather and suggests them.', 'Profil → Mein Bag. Die App lernt sie aus deinen guten Treffern bei Windstille und schlägt sie vor.'),
         video: 'profile',
+      },
+    ],
+  },
+  {
+    id: 'games',
+    title: () => tr('Games', 'Games'),
+    items: [
+      {
+        q: () => tr('Which games are there?', 'Welche Spiele gibt es?'),
+        a: () =>
+          tr(
+            'Skins, Wolf, Nassau, Las Vegas, Chicago, match play and more – each explains its rules, to read or to listen to. A star keeps your favourites on top.',
+            'Skins, Wolf, Nassau, Las Vegas, Chicago, Lochspiel und mehr – jedes erklärt seine Regeln, zum Lesen oder Vorlesen. Mit dem Stern stehen deine Lieblingsspiele oben.',
+          ),
+        video: 'games',
+      },
+      {
+        q: () => tr('How is it settled?', 'Wie wird abgerechnet?'),
+        a: () =>
+          tr(
+            'At the end the app works out who pays whom – with as few payments as possible. Confirmed games count in your balance, against each friend.',
+            'Am Ende rechnet die App aus, wer wem wie viel zahlt – mit möglichst wenigen Zahlungen. Bestätigte Spiele zählen in deiner Bilanz, gegen jeden Mitspieler.',
+          ),
+        video: 'games',
+      },
+      {
+        q: () => tr('Can my friends keep score on their own phones?', 'Können Mitspieler auf ihrem Handy mitzählen?'),
+        a: () =>
+          tr(
+            'Yes, signed in: in the game\'s menu "Invite players" makes a code and a QR code; your friends enter it under "Join a game".',
+            'Ja, angemeldet: Im Menü des Spiels erzeugt „Mitspieler einladen“ einen Code und einen QR-Code; deine Mitspieler geben ihn unter „Spiel beitreten“ ein.',
+          ),
+        video: 'games',
       },
     ],
   },

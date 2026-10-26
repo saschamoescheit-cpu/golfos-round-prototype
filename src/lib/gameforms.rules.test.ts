@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { setLang } from './i18n';
-import { FORMS, chicagoHole, fitsPlayers, formDef, stakeAt, standingOf, transfers, type FormId, type Game, type HoleExtra } from './gameforms';
+import { FORMS, chicagoHole, fitsPlayers, formDef, stakeAt, pairShare, standingOf, transfers, type FormId, type Game, type HoleExtra } from './gameforms';
 
 // Games before the next test round (Sascha 25.10.2026: "alle Spiele simulieren und testen"): Chicago and the presses
 // recomputed independently from the written rules, and every form with every player number, 9 and 18 holes and random
@@ -220,5 +220,39 @@ describe('every form, every player number, 9 and 18 holes, random settings', () 
       }
     }
     expect(games).toBeGreaterThan(2000);
+  });
+});
+
+describe('the balance per friend (pairShare)', () => {
+  it('the Wolf game of the help video: 1× ahead of each opponent is 1 € each, the partner 0 €', () => {
+    const m = { alex: 2, ben: 2, chris: -2, thomas: -2 };
+    expect(pairShare(m, 'alex', 'chris')).toBe(1);
+    expect(pairShare(m, 'alex', 'thomas')).toBe(1);
+    expect(pairShare(m, 'alex', 'ben')).toBe(0);
+    expect(pairShare(m, 'thomas', 'alex')).toBe(-1);
+    expect(pairShare({ a: 3, b: -3 }, 'a', 'b')).toBe(3);
+  });
+  it('over every form: symmetric to the cent, adds up to the player’s money', () => {
+    for (const f of FORMS) {
+      for (let n = 2; n <= 4; n++) {
+        if (!fitsPlayers(f, n)) continue;
+        for (let r = 0; r < 30; r++) {
+          const g = randomGame(f.id, n, 18);
+          const st = standingOf(g);
+          if (!st.money) continue;
+          for (const a of g.players) {
+            let sum = 0;
+            for (const b of g.players) {
+              if (b.id === a.id) continue;
+              const s = pairShare(st.money, a.id, b.id);
+              expect(Number.isFinite(s)).toBe(true);
+              expect(s).toBeCloseTo(-pairShare(st.money, b.id, a.id), 9);
+              sum += s;
+            }
+            expect(Math.abs(sum - st.money[a.id])).toBeLessThanOrEqual(0.005 * n + 1e-9);
+          }
+        }
+      }
+    }
   });
 });

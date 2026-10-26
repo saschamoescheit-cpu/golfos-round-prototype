@@ -232,6 +232,14 @@ await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
 await p.waitForTimeout(300);
 const bal = await p.locator('main').innerText();
 ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal) && /\d+× vorne · \d+× hinten/.test(bal), 'balance with games, wins, the other players and head to head');
+// the money per friend is the share of each game, not who happened to pay whom – it adds up to the total (night 25./26.10.2026)
+{
+  const eur = (t) => Number(t.replace(/[−–]/g, '-').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+  const total = eur(await p.locator('.balance-totals strong').nth(2).innerText());
+  const per = await p.locator('.game-pays li > strong').allInnerTexts();
+  const sum = per.reduce((s, t) => s + eur(t), 0);
+  ok(per.length > 0 && Math.abs(sum - total) <= 0.01 * per.length * 3, `balance: per friend ${per.join(' ')} adds up to ${total} €`);
+}
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 
 // Chicago for money: gross, press doubles 0,10 € up to the cap (Sascha 15.10.2026)

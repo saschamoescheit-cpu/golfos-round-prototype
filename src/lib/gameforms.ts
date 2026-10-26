@@ -962,6 +962,17 @@ export function transfers(money: Record<string, number>): { from: string; to: st
   return out;
 }
 
+/** What one player won from (or lost to) another in a game, for the balance per friend: their difference shared by all
+ *  players. For the points games it is exactly points difference × stake, and over all friends it adds up to the
+ *  player's money – unlike the transfers, where it is chance who pays whom (night 25./26.10.2026: 1× ahead of Thomas
+ *  showed 0 € because Thomas paid Ben). */
+export function pairShare(money: Record<string, number>, me: string, other: string): number {
+  const n = Object.keys(money).length;
+  if (n < 2) return 0;
+  const d = ((money[me] ?? 0) - (money[other] ?? 0)) / n;
+  return (Math.sign(d) * Math.round(Math.abs(d) * 100)) / 100 || 0;
+}
+
 /** Players per side for the team forms (shown in the setup and the standing). */
 export function sidesOf(form: FormId, n: number, partner = 1): [number[], number[]] | null {
   if (n === 4 && ['vegas', 'nassau', 'match', 'hammer'].includes(form)) {
