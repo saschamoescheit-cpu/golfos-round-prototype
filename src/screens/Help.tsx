@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Segmented, TopBar } from '../components/ui';
 import { tr } from '../lib/i18n';
 import { FAQ, HELP_TOUR, HELP_VIDEOS, helpPosterUrl, helpSubsUrl, helpVideoUrl, loadSubs, saveSubs, type HelpVideo } from '../lib/help';
+import { sessionModule } from '../lib/gamestore';
 
 // "Hilfe" from the profile (Sascha 23.10.2026): the tutorial as videos and the frequent questions – in two tabs (no
 // one-pager). Every answer shows the chapter that explains it; a video plays from the round symbol at the bottom right of
@@ -44,6 +45,10 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
     if (t) t.mode = subs ? 'showing' : 'hidden';
   }, [subs, playing]);
   const byId = (id: string) => (id === HELP_TOUR.id ? HELP_TOUR : HELP_VIDEOS.find((v) => v.id === id) ?? HELP_TOUR);
+  // opened in Games, its own video and questions come first (night 25./26.10.2026 – before them eight Rounds videos)
+  const inGames = sessionModule() === 'games';
+  const videos = [HELP_TOUR, ...HELP_VIDEOS].sort((a, b) => (inGames ? Number(b.id === 'games') - Number(a.id === 'games') : 0));
+  const topics = [...FAQ].sort((a, b) => (inGames ? Number(b.id === 'games') - Number(a.id === 'games') : 0));
   return (
     <main className="screen help">
       <TopBar title={tr('Help', 'Hilfe')} onBack={props.onBack} backLabel={tr('Back to the profile', 'Zurück zum Profil')} />
@@ -58,11 +63,11 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
       />
       {tab === 'videos' && (
         <div className="help-videos">
-          {[HELP_TOUR, ...HELP_VIDEOS].map((v, k) => (
-            <div key={v.id} className={`card help-video${k === 0 ? ' tour' : ''}`}>
+          {videos.map((v) => (
+            <div key={v.id} className={`card help-video${v.id === HELP_TOUR.id ? ' tour' : ''}`}>
               <Thumb v={v} onPlay={setPlaying} />
               <div className="help-video-text">
-                <span className="help-video-no muted small">{k === 0 ? `${tr('All in one', 'Alles am Stück')} · ${v.length}` : v.length}</span>
+                <span className="help-video-no muted small">{v.id === HELP_TOUR.id ? `${tr('All in one', 'Alles am Stück')} · ${v.length}` : v.length}</span>
                 <strong>{v.title()}</strong>
                 <span className="muted small">{v.about()}</span>
               </div>
@@ -72,7 +77,7 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
       )}
       {tab === 'faq' && (
         <div className="help-faq">
-          {FAQ.map((t) => (
+          {topics.map((t) => (
             <section key={t.id} className="card stats-card">
               <h2>{t.title()}</h2>
               <div className="faq-list">
