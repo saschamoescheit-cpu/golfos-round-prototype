@@ -56,6 +56,22 @@ await p.getByRole('button', { name: 'Untertitel an' }).click();
 await p.getByRole('dialog', { name: 'Der Caddie' }).getByRole('button', { name: 'Schließen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.help-player').count()) === 0, 'closed again');
+// every subtitle fits in two lines and is placed by lines, not by percent – Chrome showed only the first line of a cue
+// placed by percent (night 25./26.10.2026)
+{
+  const subs = await p.evaluate(async () => {
+    const ids = ['tour', 'start', 'flight', 'map', 'caddie', 'score', 'review', 'stats', 'profile', 'games'];
+    const out = [];
+    for (const id of ids) {
+      const txt = await (await fetch(`help/${id}.vtt`)).text();
+      for (const m of txt.matchAll(/--> \S+([^\n]*)\n([^\n]+)/g)) out.push({ id, set: m[1], len: m[2].length });
+    }
+    return out;
+  });
+  const long = subs.filter((s) => s.len > 90);
+  const pct = subs.filter((s) => /%/.test(s.set.replace(/size:\d+%|position:\d+%/g, '')));
+  ok(subs.length > 150 && long.length === 0 && pct.length === 0, `subtitles: ${subs.length} cues, none longer than two lines (${long.map((s) => `${s.id} ${s.len}`).join(', ') || 'ok'}), none placed by percent (${pct.length})`);
+}
 // the Games video (night 25./26.10.2026)
 await p.getByRole('button', { name: 'Video abspielen: Games spielen' }).click();
 await p.waitForTimeout(2500);
