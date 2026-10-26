@@ -38,7 +38,7 @@ describe('reading launch monitor CSV files', () => {
   });
   it('Trackman: "sep=", quoted cells, the side as "5.1 R" / "2.3 L"', () => {
     const r = parseLaunchCsv(TRACKMAN);
-    expect(r.source).toBe('CSV'); // Trackman's file does not name itself
+    expect(r.source).toBe('Trackman'); // the file does not name itself – its columns do ("Carry Side", 26.10.2026)
     expect(r.shots.map((s) => s.club)).toEqual(['Dr', '7i']);
     expect(r.shots[0].side).toBeGreaterThan(0);
     expect(r.shots[1].side).toBeLessThan(0);

@@ -136,8 +136,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Can I use the data of my launch monitor?', 'Kann ich Daten von meinem Launch-Monitor übernehmen?'),
         a: () =>
           tr(
-            'Yes: export the session as CSV in your launch monitor’s app (Trackman, Foresight, Garmin R10, Rapsodo, SkyTrak …) and load it under Profile → My bag → "Import launch monitor data". You see carry and spread per club; "Use" sets the bag’s carries, and the ellipse uses the spread until 5 of your own shots on the course are checked.',
-            'Ja: Exportiere die Sitzung in der App deines Launch-Monitors als CSV (Trackman, Foresight, Garmin R10, Rapsodo, SkyTrak …) und lade sie unter Profil → Mein Bag → „Launch-Monitor-Daten importieren“. Je Schläger siehst du Carry und Streuung; „Übernehmen“ setzt die Carry-Weiten im Bag, und die Ellipse nutzt die Streuung, bis 5 eigene Schläge auf der Runde geprüft sind.',
+            'Yes – Garmin R10, Trackman and Foresight: export the session as CSV in the device’s app and load it under Profile → My bag → "Import launch monitor data". "Use" takes the carries as measured; clubs not in the file stay as you entered them, a club the bag lacks can be added. Each session gets its own page – spread, gaps, flight, swing – and in Statistics the range shots can be shown beside the course’s.',
+            'Ja – Garmin R10, Trackman und Foresight: Exportiere die Sitzung in der App des Geräts als CSV und lade sie unter Profil → Mein Bag → „Launch-Monitor-Daten importieren“. „Übernehmen“ setzt die Weiten so, wie gemessen; Schläger, die nicht in der Datei stehen, bleiben, wie du sie eingetragen hast, ein fehlender Schläger lässt sich hinzufügen. Jede Sitzung hat ihre eigene Seite – Streuung, Abstände, Flugbahn, Schwung –, und in der Statistik lassen sich die Range-Schläge neben die vom Platz legen.',
           ),
         video: 'profile',
       },

@@ -22,6 +22,8 @@ import { puttStats } from '../lib/puttstats';
 import { loadCarryBag } from '../lib/storage';
 import { DEFAULT_CARRY } from '../lib/caddie';
 import { CLUB_ORDER } from '../lib/clubs';
+import { loadLaunch } from '../lib/launchmonitor';
+import { clubsOf, mishits } from '../lib/rangesession';
 import type { ClubReport } from '../lib/clubstats';
 
 // Feature 005: the player's analysis across finished rounds – key figures, tendencies, club distances
@@ -34,6 +36,23 @@ type Section = 'overview' | 'tee' | 'green' | 'putting' | 'clubs' | 'courses';
 export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: string) => void; onToSign?: () => void }) {
   const [range, setRange] = useState<Range>(5);
   const [section, setSection] = useState<Section>('overview');
+  // the range's launch monitor shots beside the course's (Sascha 26.10.2026: optional) – off at first, remembered
+  const rangeShots = useMemo(() => rangeByClub(), []);
+  const [withRange, setWithRangeState] = useState(() => {
+    try {
+      return localStorage.getItem(RANGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setWithRange = (on: boolean) => {
+    setWithRangeState(on);
+    try {
+      localStorage.setItem(RANGE_KEY, on ? '1' : '0');
+    } catch {
+      /* the choice holds while the page is open */
+    }
+  };
   const finished = useMemo(
     () => statRounds(props.rounds).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [props.rounds],
@@ -446,6 +465,17 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
             <section className="card stats-card airy">
               <h2>{tr('Strikes and spread per club', 'Treffer und Streuung je Schläger')}</h2>
               <p className="muted small stats-sub">{tr('Each dot a shot around the target line – green a good strike, red a mishit · the ellipse holds 80 % of your balls', 'Jeder Punkt ein Schlag um die Ziellinie – grün ein guter Treffer, rot ein Fehlschlag · in der Ellipse landen 80 % deiner Bälle')}</p>
+              {rangeShots.size > 0 && (
+                <div className="drawer-list settings-switches range-switch">
+                  <button type="button" className="drawer-row" role="switch" aria-checked={withRange} onClick={() => setWithRange(!withRange)}>
+                    <span className="switch-label">
+                      <span>{tr('Show range shots', 'Range-Schläge zeigen')}</span>
+                      <span className="muted small">{tr('from the launch monitor, as rings', 'vom Launch-Monitor, als Ringe')}</span>
+                    </span>
+                    <span className={`drawer-switch${withRange ? ' on' : ''}`} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
               <div className="tee-clubs">
                 {bagReports
                   .map((c) => {
@@ -455,7 +485,7 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
                     return (
                       <div key={c.club} className="tee-club-row">
                         <h3 className="tee-club-name">{clubName(c.club)}</h3>
-                        <SpreadDots report={c} spread={spread} />
+                        <SpreadDots report={c} spread={spread} range={withRange ? rangeShots.get(c.club) : undefined} />
                         <div className="insight-row">
                           {/* every club with the same tiles – a dash or a 0 where there is nothing yet (Sascha 23.10.2026) */}
                           {c.rated > 0 ? <Insight num={`${Math.round((c.good / c.rated) * 100)} %`} label={tr(`good strikes (${c.good} of ${c.rated})`, `gute Treffer (${c.good} von ${c.rated})`)} tone={c.good / c.rated >= 0.6 ? 'good' : undefined} /> : <Insight num="–" label={tr('good strikes (none rated yet)', 'gute Treffer (noch keiner bewertet)')} />}
@@ -497,6 +527,18 @@ export function Stats(props: { rounds: Round[]; onOpenCourse: (courseName: strin
       )}
     </>
   );
+}
+
+const RANGE_KEY = 'golfos.stats.range.v1';
+/** Every imported session's shots per club – carry and side as measured, the clear mishits left out. */
+function rangeByClub(): Map<Club, { len: number; side: number }[]> {
+  const out = new Map<Club, { len: number; side: number }[]>();
+  for (const { club, shots } of clubsOf((loadLaunch()?.sessions ?? []).flatMap((s) => s.shots))) {
+    const miss = mishits(shots);
+    const pts = shots.filter((s) => !miss.has(s) && s.side != null).map((s) => ({ len: s.carry, side: s.side! }));
+    if (pts.length) out.set(club, pts);
+  }
+  return out;
 }
 
 function Big(props: { value: string | number; label: string }) {

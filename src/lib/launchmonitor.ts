@@ -12,6 +12,33 @@ export interface LmShot {
   carry: number;
   /** metres off the target line at the carry, − left / + right; null when the file has none */
   side: number | null;
+  // what else the device measured (Sascha 26.10.2026, the "Range-Sitzung" page) – each only when the file has it
+  /** when the shot was hit, local time "2025-11-15T22:09:37" */
+  at?: string;
+  /** metres */
+  total?: number;
+  apex?: number;
+  /** km/h */
+  clubSpeed?: number;
+  ballSpeed?: number;
+  smash?: number;
+  /** degrees: attack angle, club path, face to the target, face to the path (+ open/right) */
+  attack?: number;
+  path?: number;
+  face?: number;
+  faceToPath?: number;
+  /** degrees: launch angle up, launch direction (+ right), the carry's angle off the line (+ right) */
+  launch?: number;
+  dir?: number;
+  sideAngle?: number;
+  /** revolutions per minute */
+  spin?: number;
+  /** °C */
+  temp?: number;
+  /** seconds, and their ratio */
+  backSec?: number;
+  downSec?: number;
+  tempo?: number;
 }
 export interface LmImport {
   /** the maker the columns point to, or "CSV" */
@@ -34,12 +61,28 @@ export interface LmClub {
   len: { lo: number; hi: number };
   /** 80 % of the balls off the line, metres (− left / + right); null without side data */
   side: { lo: number; hi: number } | null;
+  /** the day of the session it comes from (from the file), and that session */
+  measuredAt?: string | null;
+  session?: string;
+}
+/** One imported file: its shots as measured (in metres and km/h), for the session's own page. */
+export interface LmSession {
+  id: string;
+  source: string;
+  file: string;
+  importedAt: string;
+  /** the first shot's time from the file; null when the file has no dates */
+  measuredAt: string | null;
+  shots: LmShot[];
 }
 export interface LmData {
   importedAt: string;
   source: string;
   file: string;
+  /** per club the values in use – a newer session's club replaces an older one's only when the player says so */
   clubs: LmClub[];
+  /** every session imported (Sascha 26.10.2026: "new sessions add to the old ones") */
+  sessions?: LmSession[];
 }
 
 const YD = 0.9144;
@@ -152,6 +195,59 @@ function columns(head: string[]): { clubs: Col[]; carry: Col | null; side: Col |
   return { clubs, carry, side };
 }
 
+type Extra = Exclude<keyof LmShot, 'club' | 'carry' | 'side' | 'at'>;
+/**
+ * The other measurements by their column names – Garmin (English and German, as the R10 exports them), Trackman, Foresight
+ * (FSX), Rapsodo, SkyTrak. The more exact names first; a field takes the first column that fits.
+ */
+const EXTRAS: [Extra, RegExp][] = [
+  ['clubSpeed', /^(club speed|club head speed|clubhead speed|schl gsch|schlagergeschwindigkeit|schlagerkopfgeschwindigkeit|velocidad del palo|clubsnelheid)\b/],
+  ['ballSpeed', /^(ball speed|ballgeschwindigkeit|velocidad de la bola|balsnelheid)\b/],
+  ['smash', /^(smash factor|smash|efficiency)\b/],
+  ['attack', /^(attack angle|angle of attack|aoa|anstellwinkel|angulo de ataque|aanvalshoek)\b/],
+  ['faceToPath', /^(face to path|schlagflachenstellung|cara a trayectoria|face naar baan)\b/],
+  ['path', /^(club path|schwungbahn|trayectoria del palo|clubbaan)\b/],
+  ['face', /^(face angle|club face|face to target|schlagflache|cara del palo|clubface)\b/],
+  ['launch', /^(launch angle|vla|vertical launch|abflugwinkel|angulo de salida|lanceerhoek)\b/],
+  ['dir', /^(launch direction|hla|horizontal launch|azimuth|abflugrichtung|direccion de salida|lanceerrichting)\b/],
+  ['spin', /^(spin rate|total spin|drehrate|velocidad de giro|spinrate)\b/],
+  ['spin', /^(backspin|back spin)\b/],
+  ['apex', /^(apex height|apex|peak height|max height|height|hohe des scheitelpunkts|scheitelpunkt|altura maxima|altura|hoogte)\b/],
+  ['total', /^(total distance|total|gesamtstrecke|gesamtdistanz|distancia total|totale afstand)( yds| yards| m)?$/],
+  ['sideAngle', /^(carry deviation angle|carry abweichungswinkel|angulo de desviacion de vuelo|carry afwijkingshoek|carry side angle)\b/],
+  ['temp', /^(temperature|temperatur|temperatura|temp)\b/],
+  ['backSec', /^(backswing time|ruckschw zeit|ruckschwungzeit|tiempo de backswing)\b/],
+  ['downSec', /^(downswing time|durchschw zeit|abschwungzeit|tiempo de downswing)\b/],
+  ['tempo', /^(swing tempo|schwungtempo|tempo)\b/],
+];
+const DATE = /^(date|datum|fecha|timestamp|datetime|date time|datum tijd)$/;
+
+/** A shot's time as the devices write it: "2025-11-15 22:09", "15.11.25 22:09:37" (German Garmin), "10/25/26 9:00 AM". */
+export function whenOf(raw: string | undefined): string | null {
+  const s = (raw ?? '').trim();
+  if (!s) return null;
+  const two = (n: number) => String(n).padStart(2, '0');
+  const year = (y: string) => (y.length === 2 ? 2000 + Number(y) : Number(y));
+  let d: number, m: number, y: number;
+  let rest = '';
+  let hit = /^(\d{4})-(\d{1,2})-(\d{1,2})(.*)$/.exec(s);
+  if (hit) [y, m, d, rest] = [Number(hit[1]), Number(hit[2]), Number(hit[3]), hit[4]];
+  else if ((hit = /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})(.*)$/.exec(s))) [d, m, y, rest] = [Number(hit[1]), Number(hit[2]), year(hit[3]), hit[4]];
+  else if ((hit = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(.*)$/.exec(s))) {
+    // US order unless the first number cannot be a month
+    const a = Number(hit[1]);
+    const b = Number(hit[2]);
+    [m, d] = a > 12 ? [b, a] : [a, b];
+    y = year(hit[3]);
+    rest = hit[4];
+  } else return null;
+  if (m < 1 || m > 12 || d < 1 || d > 31 || y < 2000 || y > 2100) return null;
+  const t = /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i.exec(rest);
+  let h = t ? Number(t[1]) : 0;
+  if (t?.[4]) h = (h % 12) + (/pm/i.test(t[4]) ? 12 : 0);
+  return `${y}-${two(m)}-${two(d)}T${two(h)}:${two(t ? Number(t[2]) : 0)}:${two(t?.[3] ? Number(t[3]) : 0)}`;
+}
+
 function makerOf(head: string[], text: string): string {
   const all = `${head.join(' ')} ${text.slice(0, 400)}`.toLowerCase();
   if (/trackman/.test(all)) return 'Trackman';
@@ -161,6 +257,11 @@ function makerOf(head: string[], text: string): string {
   if (/flightscope|mevo/.test(all)) return 'FlightScope';
   if (/uneekor/.test(all)) return 'Uneekor';
   if (/carry deviation distance|carry-abweichungsdistanz|carry-afwijkingsafstand|desviación de vuelo|garmin|approach r10|r50/.test(all)) return 'Garmin';
+  // by their own columns when the file does not name them (Sascha 26.10.2026: Trackman and Foresight exports to come)
+  const cols = head.map(norm).join('|');
+  const has = (names: string) => new RegExp(`(^|\\|)(${names})( yds| yards| m| ft| deg| mph| rpm)?(\\||$)`).test(cols);
+  if (has('dyn loft|spin loft|swing plane|swing direction|land angle|carry side')) return 'Trackman';
+  if (has('azimuth|efficiency|face to target|descent angle|angle of attack')) return 'Foresight';
   return 'CSV';
 }
 
@@ -190,12 +291,27 @@ export function parseLaunchCsv(text: string, forceUnit?: 'yd' | 'm'): LmImport {
   let unit: 'yd' | 'm' | null = forceUnit ?? unitFrom(head[cols.carry!.i] ?? '');
   let first = hi + 1;
   const next = lines[first] ? cells(lines[first], sep) : [];
+  let unitsRow: string[] = [];
   if (next.length && num(next[cols.carry!.i]) == null) {
     unit = unit ?? unitFrom(next[cols.carry!.i] ?? '');
+    unitsRow = next;
     first++;
   }
   const unitSure = unit != null;
-  const raw: { club: string; carry: number; side: number | null }[] = [];
+  // the other measurements and the time, each in its own column
+  const hn = head.map(norm);
+  const extras = new Map<Extra, number>();
+  const used = new Set<number>([cols.carry!.i, ...(cols.side ? [cols.side.i] : []), ...cols.clubs.map((c) => c.i)]);
+  for (const [field, re] of EXTRAS) {
+    if (extras.has(field)) continue;
+    const i = hn.findIndex((h, k) => !used.has(k) && re.test(h));
+    if (i >= 0) {
+      extras.set(field, i);
+      used.add(i);
+    }
+  }
+  const dateCol = hn.findIndex((h) => DATE.test(h));
+  const raw: { club: string; carry: number; side: number | null; c: string[] }[] = [];
   let skipped = 0;
   for (const line of lines.slice(first)) {
     const c = cells(line, sep);
@@ -212,12 +328,36 @@ export function parseLaunchCsv(text: string, forceUnit?: 'yd' | 'm'): LmImport {
       skipped++;
       continue;
     }
-    raw.push({ club: name, carry, side: cols.side ? num(c[cols.side.i]) : null });
+    raw.push({ club: name, carry, side: cols.side ? num(c[cols.side.i]) : null, c });
   }
   // no unit anywhere: exports in German, Spanish or Dutch come in metres (Garmin: km/h and metres), English ones in yards –
   // the player sees it and can switch
   if (!unit) unit = /distanz|abweichung|schlager|distancia|desviacion|palo|afstand|afwijking/.test(norm(head.join(' '))) ? 'm' : 'yd';
   const k = unit === 'yd' ? YD : 1;
+  // each measurement's unit from its header or the units row: speeds to km/h, heights and distances to metres, °F to °C
+  const unitText = (i: number) => `${head[i] ?? ''} ${unitsRow[i] ?? ''}`.toLowerCase();
+  const speedK = (i: number) => (/km\/?h|kph/.test(unitText(i)) ? 1 : /m\/s/.test(unitText(i)) ? 3.6 : /mph/.test(unitText(i)) ? 1.609344 : unit === 'yd' ? 1.609344 : 1);
+  const distK = (i: number) => (/\b(yds?|yards?)\b/.test(unitText(i)) ? YD : /\b(ft|feet)\b/.test(unitText(i)) ? 0.3048 : /\[m\]|\(m\)|\bm\b|meter|metre/.test(unitText(i)) ? 1 : k);
+  const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
+  const extraOf = (c: string[]): Partial<LmShot> => {
+    const out: Partial<LmShot> = {};
+    for (const [field, i] of extras) {
+      const v = num(c[i]);
+      if (v == null) continue;
+      if (field === 'clubSpeed' || field === 'ballSpeed') out[field] = round(v * speedK(i), 1);
+      else if (field === 'total' || field === 'apex') out[field] = round(v * distK(i), 1);
+      else if (field === 'temp') out.temp = round(/°f|deg f|\bf\b|fahrenheit/.test(unitText(i)) ? ((v - 32) * 5) / 9 : v, 1);
+      // Garmin writes the swing times in hundredths ("094" = 0.94 s)
+      else if (field === 'backSec' || field === 'downSec') out[field] = round(v > 5 ? v / 100 : v, 2);
+      else if (field === 'spin') out.spin = Math.round(Math.abs(v));
+      else out[field] = round(v, 2);
+    }
+    if (dateCol >= 0) {
+      const at = whenOf(c[dateCol]);
+      if (at) out.at = at;
+    }
+    return out;
+  };
   const unknown = new Set<string>();
   const shots: LmShot[] = [];
   for (const r of raw) {
@@ -227,7 +367,7 @@ export function parseLaunchCsv(text: string, forceUnit?: 'yd' | 'm'): LmImport {
       skipped++;
       continue;
     }
-    shots.push({ club, carry: Math.round(r.carry * k * 10) / 10, side: r.side == null ? null : Math.round(r.side * k * 10) / 10 });
+    shots.push({ club, carry: Math.round(r.carry * k * 10) / 10, side: r.side == null ? null : Math.round(r.side * k * 10) / 10, ...extraOf(r.c) });
   }
   return { source: makerOf(head, text), unit, unitSure, shots, skipped, unknownClubs: [...unknown] };
 }
@@ -259,8 +399,33 @@ export function summarize(shots: LmShot[]): LmClub[] {
       side: sides.length >= 3 ? { lo: Math.round(quantile(sides, 0.1)), hi: Math.round(quantile(sides, 0.9)) } : null,
     });
   }
-  const order: Club[] = ['Dr', '3W', '4W', '5W', '7W', '9W', '2H', '3H', 'Hy', '5H', '6H', '2i', '3i', '4i', '5i', '6i', '7i', '8i', '9i', 'PW', 'GW', 'SW', 'LW'];
-  return out.sort((a, b) => order.indexOf(a.club) - order.indexOf(b.club));
+  return out.sort((a, b) => ORDER.indexOf(a.club) - ORDER.indexOf(b.club));
+}
+const ORDER: Club[] = ['Dr', '3W', '4W', '5W', '7W', '9W', '2H', '3H', 'Hy', '5H', '6H', '2i', '3i', '4i', '5i', '6i', '7i', '8i', '9i', 'PW', 'GW', 'SW', 'LW'];
+
+/** The session's day: its first shot's time from the file, or null when the file has no dates. */
+export const measuredAtOf = (shots: LmShot[]): string | null => shots.map((s) => s.at).filter((t): t is string => !!t).sort()[0] ?? null;
+
+/**
+ * A club measured before and again in this session (Sascha 26.10.2026: "the newer one replaces the older – or the app
+ * says so and the player decides"): the newer is proposed – a session without dates counts as the newest.
+ */
+export function proposeNew(old: LmClub, measuredAt: string | null): boolean {
+  if (!measuredAt || !old.measuredAt) return true;
+  return measuredAt >= old.measuredAt;
+}
+
+/** A new session added to what is kept: its clubs in, except those the player keeps from before; the session kept too. */
+export function mergeLaunch(prev: LmData | null, session: LmSession, clubs: LmClub[], keepOld: Club[] = []): LmData {
+  const byClub = new Map((prev?.clubs ?? []).map((c) => [c.club, c] as const));
+  for (const c of clubs) if (!(byClub.has(c.club) && keepOld.includes(c.club))) byClub.set(c.club, { ...c, measuredAt: session.measuredAt, session: session.id });
+  return {
+    importedAt: session.importedAt,
+    source: session.source,
+    file: session.file,
+    clubs: [...byClub.values()].sort((a, b) => ORDER.indexOf(a.club) - ORDER.indexOf(b.club)),
+    sessions: [...(prev?.sessions ?? []), session],
+  };
 }
 
 // ---------- kept on the phone (and synced like the bag) ----------

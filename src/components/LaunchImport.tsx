@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react';
 import type { Club } from '../types';
-import { clubCode, tr } from '../lib/i18n';
-import { loadLaunch, parseLaunchCsv, saveLaunch, summarize, type LmClub, type LmData, type LmImport } from '../lib/launchmonitor';
+import { clubCode, getLang, tr } from '../lib/i18n';
+import { clubName } from '../lib/caddie';
+import { loadLaunch, measuredAtOf, mergeLaunch, parseLaunchCsv, proposeNew, saveLaunch, summarize, type LmClub, type LmData, type LmImport, type LmSession } from '../lib/launchmonitor';
 import { Segmented } from './ui';
 
 // Launch monitor data in "My bag" (Sascha 25.10.2026: "carry distances backed by measured launch monitor data"): a session
-// exported as CSV (Trackman, Foresight, Garmin, Rapsodo, SkyTrak, FlightScope, Uneekor) – read, shown per club, and on
-// "Übernehmen" the carries go into the bag and the spread is kept for the ellipse.
+// exported as CSV – Garmin R10, Trackman, Foresight to begin with (Sascha 26.10.2026) – read, shown per club, and on
+// "Übernehmen" the carries go into the bag as measured (1:1), the spread is kept for the ellipse and the session for its
+// own page. Sessions add up; a club measured before is replaced only as the player chooses (the newer proposed), a club
+// not in the bag can be added. Clubs not in the file stay as the player entered them.
 
 const UploadIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -18,20 +21,29 @@ export function LaunchImport(props: {
   /** clubs in the bag and their carry now (metres) */
   bag: { club: Club; carry: number }[];
   unit: 'm' | 'yd';
-  /** the measured carries of the bag's clubs, metres */
-  onApply: (carries: { club: Club; carry: number }[]) => void;
+  /** the measured carries going into the bag, metres – "add" for a club not in the bag yet */
+  onApply: (carries: { club: Club; carry: number; add?: boolean }[]) => void;
+  onOpenSession: (id: string) => void;
 }) {
   const [data, setData] = useState<LmData | null>(loadLaunch);
   const [file, setFile] = useState<{ name: string; text: string } | null>(null);
   const [unit, setUnit] = useState<'yd' | 'm' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // per club: keep the earlier measurement instead of the new one; add a club that is not in the bag
+  const [keepOld, setKeepOld] = useState<Club[]>([]);
+  const [noAdd, setNoAdd] = useState<Club[]>([]);
   const input = useRef<HTMLInputElement>(null);
+  const locale = getLang() === 'de' ? 'de-DE' : 'en-US';
   const U = props.unit === 'yd' ? 1.09361 : 1;
   const show = (m: number) => `${Math.round(m * U)} ${props.unit === 'yd' ? 'yd' : 'm'}`;
+  const day = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString(locale) : tr('no date', 'ohne Datum'));
   const parsed: LmImport | null = file ? parseLaunchCsv(file.text, unit ?? undefined) : null;
   const clubs: LmClub[] = parsed ? summarize(parsed.shots) : [];
+  const measuredAt = parsed ? measuredAtOf(parsed.shots) : null;
   const inBag = (c: Club) => props.bag.some((b) => b.club === c);
   const now = (c: Club) => props.bag.find((b) => b.club === c)?.carry ?? null;
+  const before = (c: Club) => data?.clubs.find((x) => x.club === c) ?? null;
+  const sessions = [...(data?.sessions ?? [])].sort((a, b) => (b.measuredAt ?? b.importedAt).localeCompare(a.measuredAt ?? a.importedAt));
 
   const read = (f: File) => {
     setError(null);
@@ -43,33 +55,62 @@ export function LaunchImport(props: {
       if (!p.shots.length) {
         setError(tr('No shots found – the file needs a club and a carry column (CSV export of the session).', 'Keine Schläge gefunden – die Datei braucht eine Spalte für den Schläger und eine für den Carry (CSV-Export der Sitzung).'));
         setFile(null);
-      } else setFile({ name: f.name, text });
+        return;
+      }
+      // the proposal per club measured before: the newer measurement
+      const m = measuredAtOf(p.shots);
+      setKeepOld(summarize(p.shots).filter((c) => before(c.club) && !proposeNew(before(c.club)!, m)).map((c) => c.club));
+      setNoAdd([]);
+      setFile({ name: f.name, text });
     };
     r.onerror = () => setError(tr('The file could not be read.', 'Die Datei ließ sich nicht lesen.'));
     r.readAsText(f);
   };
   const apply = () => {
-    if (!parsed) return;
-    const d: LmData = { importedAt: new Date().toISOString(), source: parsed.source, file: file!.name, clubs };
+    if (!parsed || !file) return;
+    const importedAt = new Date().toISOString();
+    const session: LmSession = { id: `lm-${Date.now().toString(36)}`, source: parsed.source, file: file.name, importedAt, measuredAt, shots: parsed.shots };
+    const d = mergeLaunch(data, session, clubs, keepOld);
     saveLaunch(d);
     setData(d);
-    props.onApply(clubs.filter((c) => inBag(c.club)).map((c) => ({ club: c.club, carry: c.carry })));
+    props.onApply(
+      clubs
+        .filter((c) => !keepOld.includes(c.club) && (inBag(c.club) || !noAdd.includes(c.club)))
+        .map((c) => ({ club: c.club, carry: c.carry, add: !inBag(c.club) || undefined })),
+    );
     setFile(null);
   };
+  const toggle = (list: Club[], set: (x: Club[]) => void, c: Club) => set(list.includes(c) ? list.filter((x) => x !== c) : [...list, c]);
+  const twice = clubs.filter((c) => before(c.club));
+  const missing = clubs.filter((c) => !inBag(c.club));
 
   return (
     <section className="card stats-card launch-card" aria-label="Launch-Monitor">
       <h2>Launch-Monitor</h2>
-      {data ? (
-        <p className="muted small" style={{ margin: 0 }}>
-          {data.source} · {new Date(data.importedAt).toLocaleDateString()} · {data.clubs.length} {tr('clubs', 'Schläger')}, {data.clubs.reduce((n, c) => n + c.shots, 0)} {tr('shots', 'Schläge')}
-          {' · '}
-          {tr('carries and spread from the measured shots', 'Carry und Streuung aus den gemessenen Schlägen')}
-        </p>
+      <p className="muted small" style={{ margin: 0 }}>
+        {tr('Garmin R10, Trackman, Foresight – export the session as CSV and load it here. The carries go into the bag as measured.', 'Garmin R10, Trackman, Foresight – die Sitzung als CSV exportieren und hier laden. Die Weiten kommen so in den Bag, wie gemessen.')}
+      </p>
+      {sessions.length > 0 ? (
+        <div className="launch-sessions" role="list" aria-label={tr('Sessions', 'Sitzungen')}>
+          {sessions.map((s) => (
+            <button key={s.id} type="button" role="listitem" className="list-item" onClick={() => props.onOpenSession(s.id)}>
+              <span>
+                <strong>{s.source}</strong>
+                <span className="muted small">
+                  {' · '}
+                  {day(s.measuredAt)} · {tr(`${s.shots.length} shots`, `${s.shots.length} Schläge`)}
+                </span>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+          ))}
+        </div>
       ) : (
-        <p className="muted small" style={{ margin: 0 }}>
-          {tr('Trackman, Foresight, Garmin R10, Rapsodo … – export the session as CSV and load it here.', 'Trackman, Foresight, Garmin R10, Rapsodo … – die Sitzung als CSV exportieren und hier laden.')}
-        </p>
+        data && (
+          <p className="muted small" style={{ margin: 0 }}>
+            {data.source} · {day(data.importedAt)} · {data.clubs.length} {tr('clubs', 'Schläger')}, {data.clubs.reduce((n, c) => n + c.shots, 0)} {tr('shots', 'Schläge')}
+          </p>
+        )
       )}
       <input ref={input} type="file" accept=".csv,text/csv,text/plain" hidden onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} data-qa="launch-file" />
       <button type="button" className="btn-secondary launch-import" onClick={() => input.current?.click()}>
@@ -89,7 +130,9 @@ export function LaunchImport(props: {
                 ✕
               </button>
             </div>
-            <span className="muted small">{file.name}</span>
+            <span className="muted small">
+              {file.name} · {measuredAt ? tr(`measured ${day(measuredAt)}`, `gemessen am ${day(measuredAt)}`) : tr('no date in the file', 'ohne Datum in der Datei')}
+            </span>
             {/* the unit: from the file, or the player says it */}
             {!parsed.unitSure && <span className="small good-text">{tr('The file names no unit – choose it:', 'Die Datei nennt keine Einheit – bitte wählen:')}</span>}
             <Segmented<'yd' | 'm'>
@@ -108,7 +151,7 @@ export function LaunchImport(props: {
               <span className="muted small" role="columnheader">{tr('so far', 'bisher')}</span>
               <span className="muted small" role="columnheader">{tr('spread', 'Streuung')}</span>
               {clubs.map((c) => (
-                <div key={c.club} className={`launch-row${inBag(c.club) ? '' : ' off'}`} role="row">
+                <div key={c.club} className={`launch-row${inBag(c.club) || !noAdd.includes(c.club) ? '' : ' off'}`} role="row">
                   <strong role="cell">{clubCode(c.club)}</strong>
                   <span role="cell">{c.shots}×</span>
                   <strong role="cell">{show(c.carry)}</strong>
@@ -120,6 +163,45 @@ export function LaunchImport(props: {
                 </div>
               ))}
             </div>
+            {(twice.length > 0 || missing.length > 0) && (
+              <div className="launch-choices">
+                {/* measured before: the newer proposed, the player chooses (Sascha 26.10.2026) */}
+                {twice.map((c) => {
+                  const old = before(c.club)!;
+                  const keep = keepOld.includes(c.club);
+                  return (
+                    <div key={c.club} className="launch-choice" role="group" aria-label={tr(`${clubName(c.club)} measured before`, `${clubName(c.club)} schon gemessen`)}>
+                      <span className="small">
+                        {tr(`${clubName(c.club)} was measured before (${day(old.measuredAt)}).`, `${clubName(c.club)} wurde schon gemessen (${day(old.measuredAt)}).`)}
+                        {proposeNew(old, measuredAt) ? tr(' This session is newer.', ' Diese Sitzung ist neuer.') : tr(' This session is older.', ' Diese Sitzung ist älter.')}
+                      </span>
+                      <div className="chip-row">
+                        <button type="button" aria-pressed={!keep} onClick={() => keep && toggle(keepOld, setKeepOld, c.club)}>
+                          {tr(`New ${show(c.carry)}`, `Neu ${show(c.carry)}`)}
+                        </button>
+                        <button type="button" aria-pressed={keep} onClick={() => !keep && toggle(keepOld, setKeepOld, c.club)}>
+                          {tr(`Keep ${show(old.carry)}`, `Bisher ${show(old.carry)}`)}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* a club the file names but the bag has not: "if it says iron 4, it was an iron 4" (Sascha 26.10.2026) */}
+                {missing
+                  .filter((c) => !keepOld.includes(c.club))
+                  .map((c) => (
+                    <div key={c.club} className="launch-choice">
+                      <button type="button" className="drawer-row" role="switch" aria-checked={!noAdd.includes(c.club)} onClick={() => toggle(noAdd, setNoAdd, c.club)}>
+                        <span className="switch-label">
+                          <span>{tr(`Add ${clubName(c.club)} to the bag`, `${clubName(c.club)} zum Bag hinzufügen`)}</span>
+                          <span className="muted small">{tr(`not in your bag yet · ${show(c.carry)}`, `noch nicht in deinem Bag · ${show(c.carry)}`)}</span>
+                        </span>
+                        <span className={`drawer-switch${noAdd.includes(c.club) ? '' : ' on'}`} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
             {parsed.unknownClubs.length > 0 && (
               <span className="muted small">
                 {tr('Not recognised: ', 'Nicht erkannt: ')}
@@ -127,7 +209,7 @@ export function LaunchImport(props: {
               </span>
             )}
             <span className="muted small">
-              {tr('Carry: the median of each club; clear mishits (under 60 %) left out. Spread: where 8 of 10 balls land.', 'Carry: der Median je Schläger, klare Fehlschläge (unter 60 %) ohne. Streuung: wo 8 von 10 Bällen landen.')}
+              {tr('Carry: the median of each club as measured; clear mishits (under 60 %) left out. Spread: where 8 of 10 balls land. Clubs not in the file stay as they are.', 'Carry: der Median je Schläger, wie gemessen; klare Fehlschläge (unter 60 %) ohne. Streuung: wo 8 von 10 Bällen landen. Schläger, die nicht in der Datei stehen, bleiben, wie sie sind.')}
             </span>
             <button type="button" className="btn-primary" onClick={apply}>
               {tr('Use', 'Übernehmen')}

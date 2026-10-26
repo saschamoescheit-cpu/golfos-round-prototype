@@ -11,6 +11,8 @@ import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, 
 import { DEFAULT_LOFTS, loadBagStyle, saveBagStyle, withLoft, type BagStyle } from '../lib/bagstyle';
 import { statRounds } from '../lib/signing';
 import { LaunchImport } from '../components/LaunchImport';
+import { loadLaunch } from '../lib/launchmonitor';
+import { RangeSession } from './RangeSession';
 
 // "My bag" (feature 008, reached from the profile and the round's drawer), as Sascha wants it (15.10.2026): two tabs –
 // full swing and pitches (¾, ½ and the favourite approach distance) –, short club codes (2i, not "Eisen 2"), the
@@ -51,6 +53,8 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
   const [style, setStyle] = useState<BagStyle>(loadBagStyle);
   const [tab, setTab] = useState<Tab>('full');
   const [editing, setEditing] = useState(false);
+  // a launch monitor session opened on its own page (Sascha 26.10.2026)
+  const [session, setSession] = useState<string | null>(null);
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
   // Wedges: three-quarter and half swing – empty = suggested from the full carry.
   const [partials, setPartials] = useState<Partials>(loadPartials);
@@ -146,6 +150,9 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
       )}
     </button>
   );
+
+  const open = session ? loadLaunch()?.sessions?.find((x) => x.id === session) : null;
+  if (open) return <RangeSession session={open} bag={inBag.map((c) => ({ club: c, carry: fullOf(c) }))} unit={unit === 'yd' ? 'yd' : 'm'} onBack={() => setSession(null)} />;
 
   return (
     <main className="screen">
@@ -384,9 +391,14 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
           onApply={(carries) => {
             const next = { ...bag };
             for (const x of carries) next[x.club] = String(toU(x.carry));
-            persist(next);
+            // a club from the file that was not in the bag comes in (Sascha 26.10.2026)
+            const added = carries.filter((x) => x.add && !inBag.includes(x.club)).map((x) => x.club);
+            const clubs = added.length ? byOrder([...inBag, ...added].map((club) => ({ club }))).map((x) => x.club) : inBag;
+            if (added.length) setInBag(clubs);
+            persist(next, clubs);
             setNote(null);
           }}
+          onOpenSession={setSession}
         />
       )}
     </main>

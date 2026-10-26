@@ -64,15 +64,17 @@ export function SpreadCone(props: { reports: ClubReport[]; playing: number | nul
   );
 }
 
-/** One club: its shots around the target line (length in calm air) and the 80 % ellipse. */
-export function SpreadDots(props: { report: ClubReport; spread: ClubSpread }) {
+/** One club: its shots around the target line (length in calm air) and the 80 % ellipse – and, when asked, the range's
+ *  launch monitor shots as rings beside them (Sascha 26.10.2026: "range and course together", optional). */
+export function SpreadDots(props: { report: ClubReport; spread: ClubSpread; range?: { len: number; side: number }[] }) {
   const { report: c, spread: s } = props;
   const pts = c.points;
+  const range = props.range ?? [];
   const H = 150;
-  const lens = pts.map((p) => p.len);
+  const lens = [...pts.map((p) => p.len), ...range.map((p) => p.len)];
   const lo = Math.min(c.median + s.len.lo, ...lens) - 10;
   const hi = Math.max(c.median + s.len.hi, ...lens) + 10;
-  const maxSide = Math.max(20, ...pts.map((p) => Math.abs(p.side) + 5), -s.side.lo + 5, s.side.hi + 5);
+  const maxSide = Math.max(20, ...pts.map((p) => Math.abs(p.side) + 5), ...range.map((p) => Math.abs(p.side) + 5), -s.side.lo + 5, s.side.hi + 5);
   const x = (m: number) => W / 2 + (m / maxSide) * (W / 2 - 12);
   const y = (m: number) => H - 16 - ((m - lo) / (hi - lo)) * (H - 28);
   const tick = maxSide > 45 ? 40 : 20;
@@ -92,6 +94,9 @@ export function SpreadDots(props: { report: ClubReport; spread: ClubSpread }) {
         ry={Math.max(3, ((s.len.hi - s.len.lo) / 2 / (hi - lo)) * (H - 28))}
         className={s.shots ? 'spread-ell' : 'spread-ell est'}
       />
+      {range.map((p, k) => (
+        <circle key={`r${k}`} cx={x(Math.max(-maxSide, Math.min(maxSide, p.side)))} cy={y(p.len)} r={4} className="spread-dot range" />
+      ))}
       {pts.map((p, k) => (
         <circle key={k} cx={x(Math.max(-maxSide, Math.min(maxSide, p.side)))} cy={y(p.len)} r={4.5} className={p.strike === 'good' ? 'spread-dot good' : p.strike === 'miss' ? 'spread-dot miss' : 'spread-dot'} />
       ))}

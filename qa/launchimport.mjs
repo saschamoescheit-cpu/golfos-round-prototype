@@ -41,7 +41,7 @@ await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
 await p.locator('.list-item').filter({ hasText: 'Mein Bag' }).click();
 await p.waitForTimeout(400);
 const card = p.getByRole('region', { name: 'Launch-Monitor' });
-ok((await card.count()) === 1 && /Trackman, Foresight, Garmin R10, Rapsodo/.test(await card.innerText()), 'Mein Bag: the launch monitor card under the carries');
+ok((await card.count()) === 1 && /Garmin R10, Trackman, Foresight/.test(await card.innerText()), 'Mein Bag: the launch monitor card under the carries – Garmin R10, Trackman, Foresight (Sascha 26.10.2026)');
 const btn = card.getByRole('button', { name: 'Launch-Monitor-Daten importieren' });
 ok((await btn.getAttribute('class')).includes('btn-secondary') && (await btn.locator('svg').count()) === 1, 'the import button in the app\'s style, with a symbol');
 
@@ -64,7 +64,7 @@ await sheet.getByRole('button', { name: 'Übernehmen' }).click();
 await p.waitForTimeout(300);
 const carry = (code) => p.getByLabel(`${code} Carry in Metern`).inputValue();
 ok((await carry('D')) === '209' && (await carry('7i')) === '137' && (await carry('PW')) === '107', `the bag took the carries (D ${await carry('D')}, 7i ${await carry('7i')}, PW ${await carry('PW')})`);
-ok(/Garmin · .* 3 Schläger, 23 Schläge/.test(await card.innerText()), 'the card says where the data comes from');
+ok(/Garmin · 25\.10\.2026 · 24 Schläge/.test(await card.innerText()), `the card lists the session with its day: ${(await card.locator('.launch-sessions').innerText()).replace(/\s+/g, ' ')}`);
 const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.launch.v1') ?? 'null'));
 ok(kept?.clubs?.length === 3 && kept.clubs.every((c) => c.len && c.side), 'kept: per club carry, length and side spread');
 
