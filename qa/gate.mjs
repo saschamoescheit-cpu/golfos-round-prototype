@@ -17,7 +17,7 @@ const logFail = (name, phase, out) => {
   }
 };
 
-const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify', 'voiceask', 'openholes', 'emptytiles', 'help', 'offlineus', 'spread', 'par3target', 'gamefavs', 'whitenumbers', 'offlinetiles', 'reviewwind', 'bookrecord', 'gamestart', 'launchimport', 'rangesession', 'remotesetup', 'hawkslanding', 'octettiles'];
+const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'profile', 'bin', 'review', 'sign', 'score', 'roundfilter', 'games', 'gamemap', 'modes', 'sticky', 'sgcard', 'hazards', 'usflorida', 'synclive', 'syncpush', 'sharegame', 'het9', 'plan', 'puttzoom', 'plan2d', 'totraining', 'training', 'offline', 'visual', 'gameround', 'weatherdwd', 'greensmade', 'dopimagery', 'stalechunk', 'imageryhang', 'hcpask', 'outages', 'edgehang', 'storagefull', 'photondown', 'staletobin', 'teepick', 'stdtee', 'account', 'holeback', 'finishchoice', 'shothold', 'penaltyrows', 'postround1', 'postround2', 'markerpos', 'offlineround', 'gamebar', 'sharedrating', 'pushnotify', 'voiceask', 'openholes', 'emptytiles', 'help', 'offlineus', 'spread', 'par3target', 'gamefavs', 'whitenumbers', 'offlinetiles', 'reviewwind', 'bookrecord', 'gamestart', 'launchimport', 'rangesession', 'remotesetup', 'hawkslanding', 'octettiles', 'ustrip'];
 const args = process.argv.slice(2);
 const par = Number(args.find((a) => /^\d+$/.test(a)) ?? 3);
 const base = args.find((a) => /^https?:/.test(a));
@@ -27,8 +27,9 @@ const built = args.find((a) => a.startsWith('--built='))?.slice(8);
 const only = args.filter((a) => !/^\d+$/.test(a) && !/^https?:/.test(a) && !a.startsWith('--'));
 // these import src/… in the page – they need the dev server; and those whose answers from a simulated server (Supabase,
 // tiles) the built app's service worker takes over on localhost after the first load – its requests pass the test's
-// routes (gate 27.10.2026: 401 from the real server; against the live site and the dev server they pass)
-const DEV_ONLY = ['bin', 'games', 'gamesim', 'het9', 'rehearsal', 'score', 'synclive', 'syncpush', 'sharegame', 'plan2d', 'usflorida'];
+// routes (gate 27.10.2026: 401 from the real server; against the live site and the dev server they pass; par3target fails
+// the same way with the build of the live state 10559e0 – no regression)
+const DEV_ONLY = ['bin', 'games', 'gamesim', 'het9', 'rehearsal', 'score', 'synclive', 'syncpush', 'sharegame', 'plan2d', 'usflorida', 'octettiles', 'par3target', 'ustrip'];
 const urlFor = (name) => (/^(offline|push)/.test(name) ? [] : built && !DEV_ONLY.includes(name) ? [built] : base ? [base] : []);
 const TIMES_LOG = new URL('./gate-times.log', import.meta.url);
 // the longest first, so the run ends together
