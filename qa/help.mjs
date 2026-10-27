@@ -33,12 +33,12 @@ ok(await p.getByRole('heading', { name: 'Hilfe' }).isVisible(), 'the help page o
 const vids = p.locator('.help-video');
 ok((await vids.count()) === 11, `the whole tour and 10 videos – the launch monitor too (${await vids.count()})`);
 const titles = await p.locator('.help-video strong').allInnerTexts();
-ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto' && titles[9] === 'Games spielen', `in order: ${titles.join(' · ')}`);
+ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto' && titles[9] === 'Launch-Monitor' && titles[10] === 'Games spielen', `in order: ${titles.join(' · ')}`);
 // no chapter numbers (Sascha 23.10.2026 evening)
 ok(!/Kapitel/.test(await p.locator('.help-videos').innerText()), 'no "Kapitel" in the list');
 const posters = await p.locator('.help-video img').evaluateAll((imgs) => imgs.map((i) => i.complete && i.naturalWidth > 100));
-ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/10)`);
-ok((await p.locator('.help-video .help-play').count()) === 10, 'the round play symbol at the bottom right of each picture');
+ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/11)`);
+ok((await p.locator('.help-video .help-play').count()) === 11, 'the round play symbol at the bottom right of each picture');
 // play chapter 3
 await p.getByRole('button', { name: 'Video abspielen: Der Caddie' }).click();
 await p.waitForTimeout(2500);
@@ -105,7 +105,7 @@ await p.waitForTimeout(500);
 await p.locator('section.card').filter({ has: p.getByRole('heading', { name: 'Hilfe' }) }).getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1200);
 const gTitles = await p.locator('.help-video strong').allInnerTexts();
-ok(gTitles.length === 10 && gTitles[0] === 'Games spielen' && gTitles[1] === 'Der ganze Rundgang' && gTitles[9] === 'Profil & Konto', `in Games the Games video first: ${gTitles.slice(0, 3).join(' · ')} …`);
+ok(gTitles.length === 11 && gTitles[0] === 'Games spielen' && gTitles[1] === 'Der ganze Rundgang' && gTitles[9] === 'Profil & Konto' && gTitles[10] === 'Launch-Monitor', `in Games the Games video first: ${gTitles.slice(0, 3).join(' · ')} …`);
 await p.getByRole('button', { name: 'Häufige Fragen' }).click();
 await p.waitForTimeout(500);
 const gTopics = await p.locator('.help-faq h2').allInnerTexts();
