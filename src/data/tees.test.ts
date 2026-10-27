@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getLang, useLangForTests } from '../lib/i18n';
 import { COMMON_TEES, courseTees, defaultTee, profileTee, sortTees, STANDARD_TEES, teeId, teeName } from './tees';
 import { geometryFromOsm, parseOsmXml } from '../lib/courses';
 
@@ -6,6 +7,13 @@ describe('the tees a course offers (Sascha 22.10.2026)', () => {
   it('a bundled course: the tees of its scorecard – numbers too', () => {
     expect(courseTees('sonantem:east').tees).toEqual(['62', '58', '52', '48']);
     expect(teeName('58')).toBe('Tee 58');
+    // Hawks Landing (Orlando) has a silver tee – in German "Silber" (27./28.10.2026)
+    const was = getLang();
+    useLangForTests('de');
+    expect(teeName('Silver')).toBe('Silber');
+    useLangForTests('en');
+    expect(teeName('Silver')).toBe('Silver');
+    useLangForTests(was);
   });
   it('another course: the tees its map knows, longest first', () => {
     expect(courseTees('osm:way/1', ['Red', 'Yellow'])).toEqual({ tees: ['Yellow', 'Red'], known: true });
