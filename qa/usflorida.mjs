@@ -74,8 +74,9 @@ await p.getByRole('button', { name: 'Platzvorschau' }).click();
 await p.waitForTimeout(6000);
 ok((await p.locator('.map-hole-no').innerText()).trim() === '1', 'Southern Dunes: on hole 1');
 const sdCredit = await p.locator('.maplibregl-ctrl-attrib').textContent().catch(() => '');
-ok(/Polk/i.test(sdCredit), `Southern Dunes: the Polk County orthoimagery (${sdCredit.replace(/\s+/g, ' ').slice(0, 80)})`);
-await p.waitForTimeout(14000); // the county server draws each tile on request
+// the Polk County orthoimagery is gone (27.10.2026: its server sends every request to its home page) – Esri's aerial
+ok(/Esri/i.test(sdCredit) && !/Polk/i.test(sdCredit), `Southern Dunes: Esri's aerial since the Polk County service is gone (${sdCredit.replace(/\s+/g, ' ').slice(0, 80)})`);
+await p.waitForTimeout(3000);
 const par = await p.locator('body').innerText();
 ok(/Par 4/.test(par), 'Southern Dunes: hole 1 is a par 4');
 if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/southerndunes-1.png` });
