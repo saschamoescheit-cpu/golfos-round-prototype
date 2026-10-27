@@ -1,7 +1,8 @@
 // The QA gate of Rounds & Games before going live (night 18./19.10.2026): all browser tests, several at a time, then the
 // unit tests. Prints only what failed – and a line per test with its time.
-// Usage: node qa/gate.mjs [parallel=4] [http://localhost:PORT/] [test …]   (the dev server on :5173 must run, or the one
-// at the given address – a second copy of the app, so work goes on while the gate runs)
+// Usage: node qa/gate.mjs [parallel=4] [http://localhost:PORT/] [--built=http://localhost:PORT2/] [test …]   (the dev
+// server on :5173 must run, or the one at the given address – a second copy of the app, so work goes on while the gate
+// runs; with --built the vite preview of the same state for the tests that need no source modules)
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 
@@ -20,7 +21,14 @@ const ALL = ['rules', 'tournament', 'soundtest', 'chevrons', 'caddievoice', 'pro
 const args = process.argv.slice(2);
 const par = Number(args.find((a) => /^\d+$/.test(a)) ?? 3);
 const base = args.find((a) => /^https?:/.test(a));
-const only = args.filter((a) => !/^\d+$/.test(a) && !/^https?:/.test(a));
+// --built=URL: the built app (vite preview of the same state) for every test that does not load the app's source
+// modules itself – under load the dev server dropped single modules ("Importing a module script failed", 27.10.2026)
+const built = args.find((a) => a.startsWith('--built='))?.slice(8);
+const only = args.filter((a) => !/^\d+$/.test(a) && !/^https?:/.test(a) && !a.startsWith('--'));
+// these import src/… in the page – they need the dev server
+const DEV_ONLY = ['bin', 'games', 'gamesim', 'het9', 'rehearsal', 'score'];
+const urlFor = (name) => (/^(offline|push)/.test(name) ? [] : built && !DEV_ONLY.includes(name) ? [built] : base ? [base] : []);
+const TIMES_LOG = new URL('./gate-times.log', import.meta.url);
 // the longest first, so the run ends together
 const SLOW = ['games', 'modes', 'het9', 'training', 'puttzoom', 'score', 'review', 'bin'];
 const queue = (only.length ? only : ALL).slice().sort((a, b) => (SLOW.indexOf(a) < 0 ? 99 : SLOW.indexOf(a)) - (SLOW.indexOf(b) < 0 ? 99 : SLOW.indexOf(b)));
@@ -48,9 +56,14 @@ async function worker() {
   while (queue.length) {
     const name = queue.shift();
     const s = Date.now();
-    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...(base && !/^(offline|push)/.test(name) ? [base] : [])], name === 'games' || name === 'modes' ? 1800000 : 900000);
+    const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], name === 'games' || name === 'modes' ? 1800000 : 900000);
     const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
     const secs = Math.round((Date.now() - s) / 1000);
+    try {
+      appendFileSync(TIMES_LOG, `${new Date().toISOString()} ${name} ${secs}s ${bad.length || code ? 'fail' : 'ok'}${built && !DEV_ONLY.includes(name) ? ' built' : ''}\n`);
+    } catch {
+      /* the log is a help only */
+    }
     if (bad.length || code) {
       failed.push(name);
       logFail(name, "pool", out);
@@ -63,7 +76,7 @@ await Promise.all(Array.from({ length: par }, worker));
 // a test that failed among others runs once more on its own – the load of four browsers at a time can make a test
 // miss a timing; a real failure fails again
 for (const name of failed.splice(0)) {
-  const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...(base && !/^(offline|push)/.test(name) ? [base] : [])], name === 'games' || name === 'modes' ? 1800000 : 900000);
+  const { code, out } = await run(process.execPath, [`qa/${name}.mjs`, ...urlFor(name)], name === 'games' || name === 'modes' ? 1800000 : 900000);
   const bad = out.split('\n').filter((l) => /^✗|TimeoutError|Error:/.test(l.trim()));
   if (bad.length || code) {
     failed.push(name);
