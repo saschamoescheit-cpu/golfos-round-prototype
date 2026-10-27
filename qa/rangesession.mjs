@@ -109,6 +109,8 @@ ok(kept.sessions.length === 2 && kept.clubs.find((c) => c.club === '7i').measure
 await card.locator('.launch-sessions .list-item').filter({ hasText: 'Garmin' }).click();
 await p.waitForTimeout(600);
 ok(await p.getByRole('heading', { name: 'Range-Sitzung' }).isVisible(), 'the session opens: "Range-Sitzung"');
+// at its top – not scrolled down where the card stood in the bag (night run 27./28.10.2026)
+ok((await p.evaluate(() => window.scrollY)) < 5, `the session's page opens at its top (scrollY ${await p.evaluate(() => window.scrollY)})`);
 const tabs = p.getByRole('group', { name: 'Sitzung' });
 const pressed = async () => (await tabs.locator('button[aria-pressed="true"]').innerText()).trim();
 ok((await tabs.locator('button').allInnerTexts()).join('|') === 'Streuung|Abstände|Flugbahn|Schwung' && (await pressed()) === 'Streuung', 'four tabs, "Streuung" chosen');
@@ -135,6 +137,8 @@ ok(/Schlägerkopf 14\d km\/h 145 km\/h/.test(swing) && /Backspin/.test(swing) &&
 await shot('06-schwung');
 await p.getByRole('button', { name: 'Zurück zu Mein Bag' }).click();
 await p.waitForTimeout(400);
+const cardBox = await card.locator('.launch-sessions').boundingBox();
+ok(cardBox && cardBox.y > 0 && cardBox.y < 844, `back in the bag at the launch monitor card (${cardBox ? Math.round(cardBox.y) : '–'})`);
 await card.locator('.launch-sessions .list-item').filter({ hasText: 'Garmin' }).click();
 await p.waitForTimeout(400);
 ok((await pressed()) === 'Streuung', 'opened again: the spread first again');

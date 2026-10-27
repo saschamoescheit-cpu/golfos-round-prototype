@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Club, Round } from '../types';
 import { clubName, type CarryBag } from '../lib/caddie';
 import { byOrder, catalogEntry, CLUB_CATALOG, MAX_CLUBS, STANDARD_CLUBS, type ClubGroup } from '../lib/clubs';
@@ -55,6 +55,16 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
   const [editing, setEditing] = useState(false);
   // a launch monitor session opened on its own page (Sascha 26.10.2026)
   const [session, setSession] = useState<string | null>(null);
+  // the session's page opens at its top, "back" returns to the card where it was (night run 27./28.10.2026: it opened
+  // scrolled down to the bottom of the bag – the place of the launch monitor card)
+  const bagY = useRef(0);
+  const openSession = (id: string) => {
+    bagY.current = window.scrollY;
+    setSession(id);
+  };
+  useEffect(() => {
+    window.scrollTo(0, session ? 0 : bagY.current);
+  }, [session]);
   const [settings, setSettings] = useState<CaddieSettings>(loadCaddieSettings);
   // Wedges: three-quarter and half swing – empty = suggested from the full carry.
   const [partials, setPartials] = useState<Partials>(loadPartials);
@@ -408,7 +418,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
             persist(next, clubs);
             setNote(null);
           }}
-          onOpenSession={setSession}
+          onOpenSession={openSession}
         />
       )}
     </main>
