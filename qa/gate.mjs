@@ -25,8 +25,10 @@ const base = args.find((a) => /^https?:/.test(a));
 // modules itself – under load the dev server dropped single modules ("Importing a module script failed", 27.10.2026)
 const built = args.find((a) => a.startsWith('--built='))?.slice(8);
 const only = args.filter((a) => !/^\d+$/.test(a) && !/^https?:/.test(a) && !a.startsWith('--'));
-// these import src/… in the page – they need the dev server
-const DEV_ONLY = ['bin', 'games', 'gamesim', 'het9', 'rehearsal', 'score'];
+// these import src/… in the page – they need the dev server; and those whose answers from a simulated server (Supabase,
+// tiles) the built app's service worker takes over on localhost after the first load – its requests pass the test's
+// routes (gate 27.10.2026: 401 from the real server; against the live site and the dev server they pass)
+const DEV_ONLY = ['bin', 'games', 'gamesim', 'het9', 'rehearsal', 'score', 'synclive', 'syncpush', 'sharegame', 'plan2d', 'usflorida'];
 const urlFor = (name) => (/^(offline|push)/.test(name) ? [] : built && !DEV_ONLY.includes(name) ? [built] : base ? [base] : []);
 const TIMES_LOG = new URL('./gate-times.log', import.meta.url);
 // the longest first, so the run ends together
