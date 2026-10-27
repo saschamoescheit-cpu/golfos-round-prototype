@@ -136,11 +136,23 @@ export function HoleSetup(props: {
         <div className="setup-card">
           {step === 1 && (
             <>
-              <strong>{tr('1 · Where is the tee?', '1 · Wo ist der Abschlag?')}</strong>
-              <span>{tr('Stand on the tee and use your GPS position, or tap the tee on the map.', 'Stell dich auf den Abschlag und nimm deine GPS-Position, oder tippe den Abschlag auf der Karte an.')}</span>
-              <button type="button" className="btn-primary" disabled={!props.player} onClick={() => props.player && setTee(props.player)}>
-                {tr('I’m on the tee', 'Ich stehe am Abschlag')}
-              </button>
+              <strong>{tr(`1 · Where is the tee of hole ${props.holeLabel}?`, `1 · Wo ist der Abschlag von Loch ${props.holeLabel}?`)}</strong>
+              {props.nearPlayer ? (
+                <>
+                  <span>{tr('Stand on the tee and use your GPS position, or tap the tee on the map.', 'Stell dich auf den Abschlag und nimm deine GPS-Position, oder tippe den Abschlag auf der Karte an.')}</span>
+                  <button type="button" className="btn-primary" disabled={!props.player} onClick={() => props.player && setTee(props.player)}>
+                    {tr('I’m on the tee', 'Ich stehe am Abschlag')}
+                  </button>
+                </>
+              ) : (
+                // away from the course (Sascha 27.10.2026: "it must work when you are not there"): the map, not the GPS
+                <span>
+                  {tr(
+                    'This course’s holes are not on the map yet. Tap the tee on the aerial photo – from home too, best with the club’s course map at hand. Once drawn, the hole is there for every round.',
+                    'Die Bahnen dieses Platzes sind noch nicht in der Karte. Tippe den Abschlag auf dem Luftbild an – geht auch von zu Hause, am besten mit dem Platzplan des Clubs. Einmal eingezeichnet, ist die Bahn bei jeder Runde da.',
+                  )}
+                </span>
+              )}
             </>
           )}
           {step === 2 && (

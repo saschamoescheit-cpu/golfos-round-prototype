@@ -1,4 +1,5 @@
-// QA (Sascha 22.10.2026): back to an earlier hole to correct its score, then forward again – the score sheet opens on
+// QA (Sascha 22.10.2026, 27.10.2026): back to an earlier hole to correct its score, then forward again – its score sheet
+// opens again (once), then the score sheet opens on
 // the hole without a score as before, and going back wrote no par for the unplayed hole.
 // Usage: node qa/holeback.mjs [url]
 import { webkit, devices } from 'playwright';
@@ -50,10 +51,18 @@ await p.getByRole('button', { name: 'Voriges Loch' }).click();
 await p.waitForTimeout(800);
 ok((await hole()) === '1A', 'back on 1A');
 ok((await strokes(1)) == null, `going back wrote no par for 2A, not played yet (${await strokes(1)})`);
-// forward again: 1A has its score – on to 2A; there "→" opens the score sheet again
+// forward again (Sascha 27.10.2026: "back a hole and forward again – the score entry should open again"): on 1A its
+// score sheet opens with the score entered, the next "→" goes on to 2A
+const s1 = await strokes(0);
+await next();
+await p.waitForTimeout(600);
+ok((await sheet()) === 1 && (await hole()) === '1A', `forward from the hole gone back to: 1A's score sheet opens again (score ${s1})`);
+await p.locator('.score-panel').getByRole('button', { name: 'Schläge minus eins', exact: true }).first().click();
+await p.waitForTimeout(200);
+ok((await strokes(0)) === s1 - 1, `corrected there: ${s1} → ${await strokes(0)}`);
 await next();
 await p.waitForTimeout(800);
-ok((await hole()) === '2A' && (await sheet()) === 0, 'forward from 1A (score entered): on 2A');
+ok((await hole()) === '2A' && (await sheet()) === 0, 'the next "→": on 2A');
 await next();
 await p.waitForTimeout(500);
 ok((await sheet()) === 1 && (await hole()) === '2A', '"→" on 2A without a score opens the score sheet again');

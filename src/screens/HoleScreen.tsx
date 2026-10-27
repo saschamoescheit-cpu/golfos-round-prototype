@@ -122,6 +122,8 @@ export function HoleScreen(props: {
   const me = round.players.find((p) => p.isMe)!;
   const others = round.players.filter((p) => !p.isMe);
   const touchX = useRef<number | null>(null);
+  /** the hole the player went back to – its score sheet opens again on the way forward */
+  const revisit = useRef<number | null>(null);
 
   const entry = (playerId: string): HoleEntry => round.entries[playerId][i];
 
@@ -139,6 +141,8 @@ export function HoleScreen(props: {
    *  to correct its score, then forward again – the score sheet no longer opened, the unplayed hole had got par). */
   const goTo = (target: number, byGps = false, base: Round = round) => {
     setDetected(null);
+    // a hole gone back to asks for its score again on the way forward (Sascha 27.10.2026)
+    revisit.current = target < i ? target : null;
     const committed = byGps || target < i ? base : commitPar(base);
     if (target >= round.holes.length) {
       props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 }, true);
@@ -463,8 +467,17 @@ export function HoleScreen(props: {
     if (!entered) setDetected({ from, to: k });
   };
   useEffect(() => setScoreSheet(false), [i]); // on to the next hole: the sheet closes, the map shows (Sascha 15.10.2026)
-  /** On to the next hole: a hole without a score first opens its score sheet ("→" and the swipe alike). */
-  const forward = () => (pendingHole != null ? onAfterScore(true) : myEntry.strokes == null && !myEntry.pickedUp && !round.preview && !scoreSheet ? setScoreSheet('next') : goTo(i + 1));
+  /** On to the next hole: a hole without a score first opens its score sheet ("→" and the swipe alike) – and so does a
+   *  hole gone back to (Sascha 27.10.2026: "back a hole and forward again – the score entry should open again"), once:
+   *  the next "→" goes on. A hole with shots opens its score page. */
+  const forward = () => {
+    if (pendingHole != null) return onAfterScore(true);
+    const ask = !round.preview && !scoreSheet && ((myEntry.strokes == null && !myEntry.pickedUp) || revisit.current === i);
+    revisit.current = null;
+    if (!ask) return goTo(i + 1);
+    if (hasShots) setView('score');
+    else setScoreSheet('next');
+  };
   const [puttEditor, setPuttEditor] = useState(false);
   const [hazardsOn, setHazardsOn] = useState(false); // distances to bunkers and water, on demand
   // the spread of the caddie's club on the map (Sascha 23.10.2026) – a map tool, remembered; on at first
@@ -1794,7 +1807,7 @@ export function HoleScreen(props: {
               >
                 {detail.onGreen ? 'Putts' : tr('Green', 'Grün')}
               </button>
-              <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={() => goTo(i + 1)}>
+              <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={forward}>
                 →
               </button>
             </div>

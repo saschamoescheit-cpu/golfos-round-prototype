@@ -186,10 +186,10 @@ for (const c of cases) {
       await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
       await p.locator('.hole-bar').getByRole('button', { name: 'Nächstes Loch' }).click();
       await p.waitForTimeout(500);
-      if ((await p.locator('.score-sheet, .score-panel').count()) > 0 && (await p.locator('.score-panel').isVisible().catch(() => false))) {
-        flow = false; // the hole has its scores – the sheet must not open by itself
-        await p.getByRole('button', { name: 'Zurück zur Karte' }).click().catch(() => {});
-      }
+      // the hole gone back to opens its score sheet again, once (Sascha 27.10.2026) – the next "→" goes on
+      if (!(await p.locator('.score-panel').isVisible().catch(() => false))) flow = false;
+      await p.locator('.hole-bar').getByRole('button', { name: 'Nächstes Loch' }).click();
+      await p.waitForTimeout(500);
     }
     // after the 9th hole: pause, back to the list, carry on
     if (i === 8 && holes > 9) {
