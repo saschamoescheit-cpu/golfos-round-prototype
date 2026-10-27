@@ -4,6 +4,7 @@ import { distToLine, dropNestedRings, pointInRing } from './geo';
 import { sortTees, teeId } from '../data/tees';
 import { hasGeometry, loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
 import { SEED_COURSES } from '../data/seedCourses';
+import { CARDS } from '../data/cards';
 
 // Course data sources (all ODbL – attribution in the app footer):
 //  - Photon (komoot): course search by name and courses nearby, filtered to leisure=golf_course.
@@ -230,11 +231,13 @@ export async function loadCourse(summary: CourseSummary, forceRefresh = false): 
       }
     }
   }
-  const holes = seed
+  let holes = seed
     ? holesFromTags(seed.holeTags)
     : summary.source === 'osm'
       ? await osmHoles(summary, (geo) => saveGeometry(summary.id, geo))
       : await ogaHoles(summary.id);
+  // no holes in OpenStreetMap, but the scorecard known: par and stroke index from it (the holes are drawn on the map)
+  if (!holes.length && CARDS[summary.id]) holes = holesFromTags(CARDS[summary.id]);
   const loops = [...new Set(holes.map((h) => h.loop))];
   const course: Course = { id: summary.id, source: summary.source, name: seed?.name ?? summary.name, lat: summary.lat, lon: summary.lon, holes, loops, ...(summary.bbox ? { bbox: summary.bbox } : {}) };
   if (holes.length > 0) saveCachedCourse(course);
