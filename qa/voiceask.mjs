@@ -43,7 +43,7 @@ const p = await ctx.newPage();
 const errs = [];
 // leaving the hole map while it still loads parts of the app: WebKit reports the cut-off load – only then (as photondown)
 let leaving = false;
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message) && !(leaving && /Importing a module script failed/.test(e.message))) errs.push(e.message); });
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message) && !(leaving && /Importing a module script failed/.test(e.message))) errs.push(e.message); });
 let fails = 0;
 const ok = (c, m) => {
   console.log(`${c ? '✓' : '✗'} ${m}`);

@@ -16,7 +16,7 @@ await ctx.route(/api\.brightsky\.dev\/current_weather/, (r) => {
 await ctx.route(/api\.brightsky\.dev\/weather/, (r) => r.fulfill({ json: { weather: [0, 1, 2, 3, 4].map((k) => ({ timestamp: `2026-10-19T1${k}:00:00+02:00`, precipitation_probability: k === 2 ? 70 : 10, wind_gust_speed: 30 })) } }));
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|api\.brightsky\.dev)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|api\.brightsky\.dev|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
 let bad = 0;
 const ok = (c, m) => { if (!c) bad++; console.log(`${c ? '✓' : '✗'} ${m}`); };
 

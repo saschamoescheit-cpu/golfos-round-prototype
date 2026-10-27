@@ -11,7 +11,7 @@ const p = await ctx.newPage();
 const errs = [];
 // WebKit reports an aborted cross-origin load (the weather of the home screen, open-meteo) as a page error on
 // navigation – the app catches it; not an error of the page
-p.on('pageerror', (e) => !/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message) && errs.push(e.message));
+p.on('pageerror', (e) => !/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message) && errs.push(e.message));
 p.on('console', (m) => m.type() === 'error' && /3D|WebGL|three/i.test(m.text()) && errs.push(m.text()));
 let bad = 0;
 const ok = (cond, what) => {

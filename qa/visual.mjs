@@ -19,7 +19,7 @@ for (const theme of ['sun', 'dark']) {
   await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
-  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
   const shot = async (name) => S && (await p.screenshot({ path: `${S}/${theme}-${name}.png`, fullPage: true }));
   // nothing wider than the screen
   const fits = async (what) => {

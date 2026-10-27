@@ -10,7 +10,7 @@ const ctx = await b.newContext({ ...devices['iPhone SE'], locale: 'de-DE' });
 await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/(localhost:\d+)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+p.on('pageerror', (e) => { if (!/(localhost:\d+|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
 let bad = 0;
 const ok = (cond, what) => {
   if (!cond) bad++;

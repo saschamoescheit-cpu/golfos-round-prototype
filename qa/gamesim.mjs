@@ -18,7 +18,7 @@ const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolo
 await mockNet(ctx);
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|photon\.komoot\.io)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|photon\.komoot\.io|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
 let bad = 0;
 const ok = (cond, what) => {
   if (!cond) bad++;
