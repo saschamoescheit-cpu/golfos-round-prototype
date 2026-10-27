@@ -20,9 +20,17 @@ const hostPattern = (hosts: string[]) => new RegExp(`^https://(${[...new Set(hos
 // only pictures go into the offline store – a service answering "200 OK" with an error page (LGL 23.–25.10.2026:
 // "Dataset not found" as XML) would else stand there as the course map for 60 days. Written out into the service
 // worker as it is, so it uses nothing from outside.
+// A generic "application/octet-stream" (ArcGIS-hosted US services, 27.10.2026) counts by its first bytes: JPEG, PNG, GIF, WebP.
 const picturesOnly = {
-  cacheWillUpdate: async ({ response }: { response: Response }) =>
-    response.type === 'opaque' || (response.headers.get('content-type') || 'image/').startsWith('image/') ? response : null,
+  cacheWillUpdate: async ({ response }: { response: Response }) => {
+    if (response.type === 'opaque') return response;
+    const type = response.headers.get('content-type') || 'image/';
+    if (type.startsWith('image/')) return response;
+    if (!/octet-stream/.test(type)) return null;
+    const b = new Uint8Array(await response.clone().arrayBuffer()).subarray(0, 12);
+    const pic = (b[0] === 0xff && b[1] === 0xd8) || (b[0] === 0x89 && b[1] === 0x50) || (b[0] === 0x47 && b[1] === 0x49) || (b[0] === 0x52 && b[8] === 0x57);
+    return pic ? response : null;
+  },
 };
 const IMAGERY_PATTERN = hostPattern(['server.arcgisonline.com', 'tms-pnoa-ma.idee.es', 'owsproxy.lgl-bw.de', ...hostsOf('src/data/deImagery.json')]);
 const US_IMAGERY_PATTERN = hostPattern(hostsOf('public/imagery/us.json'));

@@ -1,6 +1,7 @@
 import maplibregl from 'maplibre-gl';
 import { IMAGERY, type ImagerySource } from '../lib/imagery';
 import { forgetTile } from '../lib/prefetch';
+import { pictureType } from '../lib/tiletype';
 
 // Shared map look for the hole map and the hole set-up: satellite imagery with the course drawn on top
 // in soft course colours (fairway, tee, green, bunker, water), like the hole maps of GPS golf apps.
@@ -55,14 +56,16 @@ function checkTiles(): void {
     const r = await fetch(url, { signal: ctrl.signal, mode: 'cors' });
     if (!r.ok) throw new Error(`tile ${r.status}`);
     // no picture at all (24.10.2026: the LGL answered "200 OK" with an XML error – "dataset not found")
+    // – by its type, or by its first bytes where a service sends pictures as "application/octet-stream" (lib/tiletype)
     const type = r.headers.get('content-type') ?? '';
-    if (type && !type.startsWith('image/')) {
+    const data = await r.arrayBuffer();
+    const picture = pictureType(type, data);
+    if (type && !picture) {
       emptyTiles.count++;
       void forgetTile(url); // not kept as the course map for offline
       throw new Error('no picture');
     }
-    const data = await r.arrayBuffer();
-    if (await isEmptyTile(data, r.headers.get('content-type'))) {
+    if (await isEmptyTile(data, picture ?? type)) {
       emptyTiles.count++;
       void forgetTile(url);
       throw new Error('empty tile');

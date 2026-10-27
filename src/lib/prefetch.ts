@@ -1,6 +1,7 @@
 import type { LngLat } from '../types';
 import type { HoleMapData } from './geo';
 import type { ImagerySource } from './imagery';
+import { pictureType } from './tiletype';
 
 // Offline map for the course: when a round starts, the satellite tiles of every hole are fetched once.
 // The service worker keeps them (runtime cache "imagery"), so the map works on the course without reception.
@@ -117,14 +118,16 @@ export async function prefetchTiles(urls: string[], onProgress: (done: number, t
         const res = await fetch(url, { mode: 'cors', signal: ctrl.signal });
         const type = res.headers.get('content-type') ?? '';
         if (!res.ok) failed++;
-        else if (type && !type.startsWith('image/')) {
-          failed++;
-          await res.arrayBuffer().catch(() => undefined);
-          void forgetTile(url);
-        } else {
-          await res.arrayBuffer();
-          ok++;
-          onTile?.(url);
+        else {
+          // a picture by its type or its first bytes ("application/octet-stream" of US services, lib/tiletype)
+          const data = await res.arrayBuffer().catch(() => new ArrayBuffer(0));
+          if (type && !pictureType(type, data)) {
+            failed++;
+            void forgetTile(url);
+          } else {
+            ok++;
+            onTile?.(url);
+          }
         }
       } catch {
         failed++;
