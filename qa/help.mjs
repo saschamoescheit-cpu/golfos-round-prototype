@@ -31,7 +31,7 @@ await card.getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1500);
 ok(await p.getByRole('heading', { name: 'Hilfe' }).isVisible(), 'the help page opens');
 const vids = p.locator('.help-video');
-ok((await vids.count()) === 10, `the whole tour and 9 videos (${await vids.count()})`);
+ok((await vids.count()) === 11, `the whole tour and 10 videos – the launch monitor too (${await vids.count()})`);
 const titles = await p.locator('.help-video strong').allInnerTexts();
 ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto' && titles[9] === 'Games spielen', `in order: ${titles.join(' · ')}`);
 // no chapter numbers (Sascha 23.10.2026 evening)

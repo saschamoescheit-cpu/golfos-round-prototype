@@ -22,6 +22,8 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'review', title: () => tr('Check & sign', 'Prüfen & signieren'), about: () => tr('Shots on the map, club, strike and flight, "hole fits", summary', 'Schläge auf der Karte, Schläger, Treffer und Flugbahn, „Loch passt“, Fazit'), length: '0:54' },
   { id: 'stats', title: () => tr('Statistics & My golf', 'Statistik & Mein Golf'), about: () => tr('Strokes gained, clubs and spread, progress', 'Strokes Gained, Schläger und Streuung, Verlauf'), length: '0:42' },
   { id: 'profile', title: () => tr('Profile & account', 'Profil & Konto'), about: () => tr('My bag, all devices, notifications, help', 'Mein Bag, alle Geräte, Mitteilungen, Hilfe'), length: '0:35' },
+  // the launch monitor (night run 27./28.10.2026): a session into the bag, its own page, the range in the stats
+  { id: 'launch', title: () => tr('Launch monitor', 'Launch-Monitor'), about: () => tr('Import a session, the range page, range shots in the stats', 'Sitzung importieren, die Range-Seite, Range-Schläge in der Statistik'), length: '1:02' },
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz'), length: '1:06' },
 ];
