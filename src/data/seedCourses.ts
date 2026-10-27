@@ -456,7 +456,7 @@ export const SEED_COURSES: Record<string, { name: string; lat: number; lon: numb
       {"handicap": "7", "par": "4", "ref": "7"},
       {"handicap": "16", "par": "3", "ref": "8"},
       {"handicap": "5", "par": "5", "ref": "9"},
-      {"handicap": "3", "par": "4", "ref": "10"},
+      {"handicap": "18", "par": "4", "ref": "10"}, // OSM: 3 (twice) – every scorecard: 18
       {"handicap": "4", "par": "5", "ref": "11"},
       {"handicap": "11", "par": "4", "ref": "12"},
       {"handicap": "17", "par": "3", "ref": "13"},
