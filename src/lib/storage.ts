@@ -3,6 +3,7 @@ import { SEED_LOADERS } from '../data/seedLoaders';
 import type { ImageryId } from './imagery';
 import type { CarryBag } from './caddie';
 import { holesAsLines } from './geo';
+import { CARDS, LINES as COURSE_LINES } from '../data/cards';
 import { GEO, touchGeometry } from './storageguard';
 import { decodeTrack } from './trackcodec';
 
@@ -167,9 +168,14 @@ export async function ensureGeometry(courseId: string): Promise<void> {
 export function loadGeometry(courseId: string): CourseGeometry {
   touchGeometry(courseId); // used now – a map not used for long makes room first when the storage is full
   // holes mapped as areas become playing lines – for every part of the app that reads the course (22.10.2026)
-  const base: CourseGeometry = holesAsLines(
+  let base: CourseGeometry = holesAsLines(
     seeds.get(courseId) ?? read<CourseGeometry | null>(GEO + courseId, null) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] },
   );
+  // no holes in the map, but worked out for this course (Hawks Landing, 27.10.2026): those, with par and stroke index
+  if (!base.holes.length && COURSE_LINES[courseId]) {
+    const card = CARDS[courseId] ?? [];
+    base = { ...base, holes: COURSE_LINES[courseId].map((line, k) => ({ ref: String(k + 1), par: card[k]?.par ?? null, handicap: card[k]?.handicap ?? null, line })) };
+  }
   const own = loadHoleLines(courseId);
   if (Object.keys(own).length === 0) return base;
   const ownHoles = Object.entries(own).map(([key, line]) => {

@@ -305,3 +305,18 @@ describe('a hole mapped as an area (night check 22.10.2026, Freiburg)', () => {
     expect(holeLineOf(plain, geo)).toBe(plain); // a real line stays
   });
 });
+
+describe('which end of a hole line is the green (27.10.2026)', () => {
+  // a 300 m hole north from (0,0), metres turned into lon/lat
+  const ll = (x: number, y: number): LngLat => [9 + x / 73000, 48 + y / 111200];
+  const square = (x: number, y: number, r: number): Ring => [ll(x - r, y - r), ll(x + r, y - r), ll(x + r, y + r), ll(x - r, y + r), ll(x - r, y - r)];
+  const geo = (line: LngLat[], greens: Ring[]) => ({ holes: [{ ref: '1', line }], green: greens, tee: [], bunker: [], fairway: [], water: [] });
+  it('a line drawn from the pin to the tee is turned round – its pin end lies on a mapped green', () => {
+    const d = holeMapData(geo([ll(0, 300), ll(0, 0)], [square(0, 300, 12)]) as never, 'Main', 1)!;
+    expect(distanceM(d.line[0], ll(0, 0))).toBeLessThan(1);
+  });
+  it('a line whose green is not mapped keeps its order – even when another green lies nearer its tee (Hawks Landing 18)', () => {
+    const d = holeMapData(geo([ll(0, 0), ll(0, 300)], [square(0, -400, 12)]) as never, 'Main', 1)!;
+    expect(distanceM(d.line[0], ll(0, 0))).toBeLessThan(1);
+  });
+});

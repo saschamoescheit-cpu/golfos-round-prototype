@@ -366,7 +366,10 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
   // OSM mappers sometimes draw the hole from pin to tee. The end nearer to a green is the pin.
   const nearestGreen = (p: LngLat) => Math.min(...geo.green.map((g) => (pointInRing(p, g) ? 0 : distanceM(p, centroid(g)))));
   const raw = hole.line;
-  const line = nearestGreen(raw[0]) < nearestGreen(raw[raw.length - 1]) ? raw.slice().reverse() : raw;
+  // only when that end really is at a green (27.10.2026, Hawks Landing 18: its island green is not in the map – the nearest
+  // mapped green lay a little nearer the tee, and the hole was turned round)
+  const toStart = nearestGreen(raw[0]);
+  const line = toStart < nearestGreen(raw[raw.length - 1]) && toStart < 60 ? raw.slice().reverse() : raw;
   const end = line[line.length - 1];
   const green =
     geo.green.find((g) => pointInRing(end, g)) ??
