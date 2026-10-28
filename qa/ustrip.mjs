@@ -21,8 +21,9 @@ await mockNet(ctx);
 await ctx.route(/overpass|api\.openstreetmap\.org|opengolfapi/, (r) => r.abort());
 const p = await ctx.newPage();
 const errs = [];
-// a same-origin load (a green picture) cut off by the next page load – on the live site too, not only on localhost
-p.on('pageerror', (e) => { if (!/(localhost:\d+|saschamoescheit-cpu\.github\.io\/golfos-round-prototype|api\.open-meteo\.com|owsproxy\.lgl-bw\.de|paags\.property-appraiser\.org|server\.arcgisonline\.com|overpass|openstreetmap|opengolfapi)\S* due to access control|sw\.js load failed/.test(e.message)) errs.push(e.message); });
+// a same-origin load (a green picture – also one made on the phone, a blob address) cut off by the next page load – on
+// the live site too, not only on localhost
+p.on('pageerror', (e) => { if (!/(localhost:\d+|saschamoescheit-cpu\.github\.io\/(golfos-round-prototype|[0-9a-f-]{36})|api\.open-meteo\.com|owsproxy\.lgl-bw\.de|paags\.property-appraiser\.org|server\.arcgisonline\.com|overpass|openstreetmap|opengolfapi)\S* due to access control|sw\.js load failed/.test(e.message)) errs.push(e.message); });
 let fails = 0;
 const ok = (c, m) => {
   console.log(`${c ? '✓' : '✗'} ${m}`);

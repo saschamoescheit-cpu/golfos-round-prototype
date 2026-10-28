@@ -51,8 +51,14 @@ ok(labels.length > 0 && labels.every((t) => /^\d+\s*m$/.test(t.trim())), 'every 
 ok(bunkers >= 6 && bunkers <= 10, `the bunkers in play with start and end (${bunkers} labels)`);
 ok(values.every((v) => v >= 80), 'nothing by the tee (all past 80 m)');
 ok(values.includes(128) && values.includes(147), 'the right bunker pair as one group (128–147)');
-const colours = await p.locator('.map-label.hazard').evaluateAll((els) => [...new Set(els.map((e) => getComputedStyle(e).color))]);
-ok(colours.every((c) => c === 'rgb(255, 255, 255)'), `white distance type, no yellow (${colours.join(', ')})`);
+// the labels are drawn anew while the map settles – read the colour again if they were away at that moment (gate 28.10.2026)
+let colours = [];
+const away = (cs) => !cs.length || cs.includes('');
+for (let i = 0; i < 6 && away(colours); i++) {
+  colours = await p.locator('.map-label.hazard').evaluateAll((els) => [...new Set(els.map((e) => getComputedStyle(e).color))]);
+  if (away(colours)) await p.waitForTimeout(500);
+}
+ok(colours.length > 0 && colours.every((c) => c === 'rgb(255, 255, 255)'), `white distance type, no yellow (${colours.join(', ')})`);
 const edges = await p.locator('.map-label.hazard').evaluateAll((els) => [...new Set(els.map((e) => getComputedStyle(e).boxShadow))]);
 ok(edges.every((x) => x === 'none'), `no coloured edge behind the distances (${edges.join(' | ')})`);
 // the player walks onto the hole: every hazard distance counts from where he stands now (Sascha 17.10.2026: "dynamic,
