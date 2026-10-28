@@ -349,7 +349,7 @@ export function HoleScreen(props: {
     // walked on to a later hole without a score for this one (Sascha 16.10.2026: "beim Weiterschalten sollte die
     // Erfassung des Scores aufklappen"): first this hole's score, then on to the hole the GPS found – not when holes
     // were left out on purpose (more than three on: the ones between are not played)
-    if (gap > 0 && gap <= 3 && !round.preview && scoreToAsk(i)) {
+    if (gap > 0 && gap <= 3 && !round.preview && (scoreToAsk(i) || (!myScoreElsewhere && !scoreSeen.current.has(i)))) {
       setPendingHole(k);
       setScoreSheet('next');
       return;
@@ -529,12 +529,19 @@ export function HoleScreen(props: {
     if (!entered) setDetected({ from, to: k });
   };
   useEffect(() => setScoreSheet(false), [i]); // on to the next hole: the sheet closes, the map shows (Sascha 15.10.2026)
-  /** On to the next hole: a hole without a score first opens its score sheet ("→" and the swipe alike) – and so does a
-   *  hole gone back to (Sascha 27.10.2026: "back a hole and forward again – the score entry should open again"), once:
-   *  the next "→" goes on. A hole with shots opens its score page. */
+  // the holes whose score entry was open on this phone (Sascha 28.10.2026: "the score entry does not always open when I
+  // change hole" – a score from another phone of the game, or one entered on someone else's sheet, counted as done)
+  const scoreSeen = useRef(new Set<number>());
+  useEffect(() => {
+    if (scoreSheet || view === 'score') scoreSeen.current.add(i);
+  }, [scoreSheet, view, i]);
+  /** On to the next hole: a hole without a score first opens its score sheet ("→" and the swipe alike) – so does a
+   *  hole whose score entry was not open on this phone yet, and a hole gone back to (Sascha 27.10.2026: "back a hole
+   *  and forward again – the score entry should open again"), once: the next "→" goes on. A hole with shots opens its
+   *  score page. */
   const forward = () => {
     if (pendingHole != null) return onAfterScore(true);
-    const ask = !round.preview && !scoreSheet && (scoreToAsk(i) || (!myScoreElsewhere && revisit.current.has(i)));
+    const ask = !round.preview && !scoreSheet && (scoreToAsk(i) || (!myScoreElsewhere && (revisit.current.has(i) || !scoreSeen.current.has(i))));
     revisit.current.delete(i);
     if (!ask) return goTo(nextHole(round, i) ?? round.holes.length);
     if (hasShots) setView('score');
