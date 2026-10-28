@@ -122,8 +122,9 @@ export function HoleScreen(props: {
   const me = round.players.find((p) => p.isMe)!;
   const others = round.players.filter((p) => !p.isMe);
   const touchX = useRef<number | null>(null);
-  /** the hole the player went back to – its score sheet opens again on the way forward */
-  const revisit = useRef<number | null>(null);
+  /** the holes the player went back to – each one's score sheet opens again on the way forward (Sascha 28.10.2026:
+   *  two holes back and forward again – the first of them did not ask any more) */
+  const revisit = useRef(new Set<number>());
 
   const entry = (playerId: string): HoleEntry => round.entries[playerId][i];
 
@@ -142,7 +143,8 @@ export function HoleScreen(props: {
   const goTo = (target: number, byGps = false, base: Round = round) => {
     setDetected(null);
     // a hole gone back to asks for its score again on the way forward (Sascha 27.10.2026)
-    revisit.current = target < i ? target : null;
+    if (target < i) revisit.current.add(target);
+    else revisit.current.delete(i); // the hole left forward is done with
     const committed = byGps || target < i ? base : commitPar(base);
     if (target >= round.holes.length) {
       props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 }, true);
@@ -472,8 +474,8 @@ export function HoleScreen(props: {
    *  the next "→" goes on. A hole with shots opens its score page. */
   const forward = () => {
     if (pendingHole != null) return onAfterScore(true);
-    const ask = !round.preview && !scoreSheet && ((myEntry.strokes == null && !myEntry.pickedUp) || revisit.current === i);
-    revisit.current = null;
+    const ask = !round.preview && !scoreSheet && ((myEntry.strokes == null && !myEntry.pickedUp) || revisit.current.has(i));
+    revisit.current.delete(i);
     if (!ask) return goTo(i + 1);
     if (hasShots) setView('score');
     else setScoreSheet('next');
@@ -1383,7 +1385,15 @@ export function HoleScreen(props: {
             current={i}
             onGo={(k) => {
               setDrawerOpen(false);
-              if (k !== i) goTo(k, true); // jumping to a hole writes no par for this one
+              if (k === i) return;
+              // on to the next hole from the overview: a hole without a score first asks for it, as "→" does (Sascha
+              // 28.10.2026) – then on to the hole picked, as after the GPS found the next hole
+              if (k === i + 1 && !round.preview && myEntry.strokes == null && !myEntry.pickedUp) {
+                setPendingHole(k);
+                setScoreSheet('next');
+                return;
+              }
+              goTo(k, true); // jumping to a hole writes no par for this one
             }}
             onClose={() => setDrawerOpen(false)}
             onBag={() => props.onOpenBag?.('bag')}
