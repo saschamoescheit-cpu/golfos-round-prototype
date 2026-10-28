@@ -1395,9 +1395,11 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           onSave={(v) => {
             const shots = d.shots.slice();
             shots[edit!] = { ...shots[edit!], ...v, missPos: v.penalty ? shots[edit!].missPos : null };
-            // played again from here and the spot of the miss known already: the next shot from here at once
+            // played again from here (out of bounds, lost, water "again from here"): the next shot from here at once – also
+            // when the spot of the miss is skipped (Sascha 28.10.2026: out of bounds off the tee, the third shot is a tee
+            // shot again, to edit)
             const from = shots[edit!].pos;
-            if (v.penalty && v.replay && shots[edit!].missPos && from && !(shots[edit! + 1]?.pos && distanceM(shots[edit! + 1].pos!, from) <= 10))
+            if (v.penalty && v.replay && from && !(shots[edit! + 1]?.pos && distanceM(shots[edit! + 1].pos!, from) <= 10))
               shots.splice(edit! + 1, 0, { pos: from, lie: shots[edit!].lie, club: null, penalty: false });
             saveDetail(k, { ...d, shots });
             if (v.penalty && !shots[edit!].missPos) setPlacingMiss(edit);
