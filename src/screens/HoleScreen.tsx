@@ -788,14 +788,17 @@ export function HoleScreen(props: {
     }
     try {
       stopListen.current = await listen((hit) => {
-        const pl = playerRef.current;
+        // the newest fix, not the one on the screen: in pocket mode the screen is not redrawn (28.10.2026)
+        const pl = lastFix.current ?? playerRef.current;
         const time = new Date(hit.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         if (!pl) {
           setTestMsg(tr(`Crack heard at ${time} – no GPS`, `Knall gehört um ${time} – kein GPS`));
           return;
         }
+        // walked on to the next hole in the pocket: the hole where the crack was heard
+        const hole = pocketRef.current ? (detectHole(pl.pos, allMaps, holeRef.current) ?? holeRef.current) : holeRef.current;
         const r = latestRound.current;
-        props.onChange({ ...r, soundShots: [...(r.soundShots ?? []), { hole: holeRef.current, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] });
+        props.onChange({ ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] });
         setTestMsg(tr(`Crack heard at ${time} (loudness ${Math.round(hit.level * 100)})`, `Knall gehört um ${time} (Lautstärke ${Math.round(hit.level * 100)})`));
       });
       setListening(true);

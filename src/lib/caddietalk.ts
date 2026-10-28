@@ -110,7 +110,7 @@ const dot = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`)
  *  (and why it is another club than usual), the wind, the flag, the danger, the aim, where to miss – and on the tee
  *  the plan for the hole. Also read aloud. */
 export function summary(f: CaddieFacts): string {
-  const parts = [`${Math.round(f.distance)} ${f.unit} ${f.targetTo}, ${tr('plays like', 'spielt sich wie')} ${Math.round(f.playsLike)}.`];
+  const parts = [`${Math.round(f.distance)} ${f.unit} ${f.targetTo}, ${tr('plays like', 'spielt sich wie')} ${Math.round(f.playsLike)} ${f.unit}.`];
   parts.push(f.clubTalk ? dot(f.clubTalk) : `${f.club}.`);
   if (f.wind && !f.clubTalk && !f.calm) parts.push(dot(`${tr('Wind', 'Wind')}: ${f.wind}`));
   if (f.pinSpot) parts.push(dot(tr(`The flag is ${f.pinSpot}`, `Die Fahne steht ${f.pinSpot}`)));
@@ -243,9 +243,34 @@ let report: SpeechReport | null = null;
 export const lastSpeech = (): SpeechReport | null => report;
 const voiceText = (v: SpeechSynthesisVoice | null, lang: string) => (v ? `${v.name} (${v.lang}${v.localService ? '' : ', Netz'})` : tr(`system voice (${lang})`, `Systemstimme (${lang})`));
 
+/**
+ * A text as a voice should say it (Sascha 28.10.2026: "check that the read-aloud works everywhere"): the signs the
+ * screen uses read as words – "·" a pause, "−11 m" "minus 11 m", "1 & 2" "1 und 2", "km/h" in full, "→" a pause, "×"
+ * "mal" – a voice spells them out or skips them otherwise. Every read-aloud goes through here.
+ */
+export function forSpeech(text: string): string {
+  return text
+    .replace(/\s*·\s*/g, ', ')
+    .replace(/\s*→\s*/g, ', ')
+    .replace(/[−–-](?=\d)/g, (m, i: number, s: string) => (i === 0 || /[\s(:]/.test(s[i - 1]) ? tr('minus ', 'minus ') : m))
+    .replace(/\+(?=\d)/g, (m, i: number, s: string) => (i === 0 || /[\s(:]/.test(s[i - 1]) ? tr('plus ', 'plus ') : m))
+    .replace(/±\s*/g, tr('plus or minus ', 'plus minus '))
+    .replace(/\s*×\s*/g, tr(' times ', ' mal '))
+    .replace(/[≈~]\s*(?=\d)/g, tr('about ', 'etwa '))
+    .replace(/\s*&\s*/g, tr(' and ', ' und ')) // also match play's "3&2"
+    .replace(/km\/h/g, tr('kilometres per hour', 'Kilometer pro Stunde'))
+    .replace(/…/g, '')
+    .replace(/\s+([,.!?])/g, '$1')
+    .replace(/([,.])\1+/g, '$1')
+    .replace(/,\s*\./g, '.')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 /** Reads text aloud (iPhone Safari supports this). */
-export function speak(text: string): boolean {
+export function speak(raw: string): boolean {
   const s = synth();
+  const text = forSpeech(raw);
   if (!s || !text.trim()) return false;
   wakeAudio();
   const lang = speechLang();

@@ -31,6 +31,26 @@ writeFileSync(file, wav);
 const b = await chromium.launch({ channel: 'msedge', args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${file}`, '--autoplay-policy=no-user-gesture-required'] });
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation', 'microphone'] });
 await mockNet(ctx);
+// the speech engine recorded (as qa/caddievoice.mjs): he talks for 1.5 s
+await ctx.addInitScript(() => {
+  const w = window;
+  w.__said = [];
+  let cur = null;
+  const fake = {
+    speaking: false, pending: false, paused: false,
+    getVoices: () => [{ lang: 'de-DE', name: 'Anna', default: true, localService: true }],
+    speak(u) { w.__said.push(u.text); cur = u; fake.speaking = true; setTimeout(() => u.onstart?.(), 50); setTimeout(() => { if (cur === u) { fake.speaking = false; u.onend?.(); } }, 1500); },
+    cancel() { if (cur) { const u = cur; cur = null; fake.speaking = false; u.onend?.(); } },
+    resume() {},
+  };
+  Object.defineProperty(w, 'speechSynthesis', { value: fake, configurable: true });
+  w.SpeechSynthesisUtterance = function (t) { this.text = t; };
+  // the microphone's streams: how many were opened, how many are live
+  w.__streams = [];
+  const gum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  navigator.mediaDevices.getUserMedia = async (c) => { const s = await gum(c); w.__streams.push(s); return s; };
+  w.__micLive = () => w.__streams.filter((s) => s.getTracks().some((t) => t.readyState === 'live')).length;
+});
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
@@ -65,9 +85,21 @@ await p.waitForTimeout(2000);
 const pocketBtn = p.getByRole('button', { name: /Taschenmodus: Bildschirm schwarz/ });
 ok((await pocketBtn.count()) === 1, 'the pocket tool on the map');
 
-// listening, then into the pocket
+// listening; the caddie reads aloud: the microphone pauses while he talks and listens again afterwards
 await p.getByRole('button', { name: /Schläge per Ton erkennen/ }).click();
 await p.waitForTimeout(500);
+await p.getByRole('button', { name: /Caddie zeigen/ }).click().catch(() => {});
+await p.waitForTimeout(600);
+await p.getByRole('button', { name: 'Vorlesen oder stoppen' }).click();
+await p.waitForTimeout(700);
+const mic = () => p.evaluate(() => ({ opened: window.__streams.length, live: window.__micLive() }));
+const during = await mic();
+ok((await p.evaluate(() => window.__said.length)) === 1 && during.live === 0, `the caddie talks: the microphone paused (${JSON.stringify(during)})`);
+await p.waitForTimeout(2500);
+const afterTalk = await mic();
+ok(afterTalk.live === 1 && afterTalk.opened === 2, `he is done: the microphone listens again (${JSON.stringify(afterTalk)})`);
+await p.getByRole('button', { name: /Caddie ausblenden/ }).click().catch(() => {});
+await p.waitForTimeout(300);
 await pocketBtn.click();
 await p.waitForTimeout(800);
 const pocket = p.locator('.pocket');
@@ -84,6 +116,10 @@ const after = await pts();
 ok(after > before, `the GPS track keeps growing in the pocket (${before} → ${after} points)`);
 for (let k = 0; k < 60 && !/[1-9]\d* Knall/.test(await pocket.innerText()); k++) await p.waitForTimeout(250);
 ok(/[1-9]\d* Knall/.test(await pocket.innerText()), `a strike heard in the pocket (${((await pocket.innerText()).match(/\d+ Knall\w*/) ?? [''])[0]})`);
+// kept where the player is now – not where pocket mode began (the screen is not redrawn meanwhile)
+const crack = await p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].soundShots ?? []).at(-1));
+// (the walk goes on while it is heard: any of its places, not the start)
+ok(crack && crack.pos[1] > 48.781065 + 0.0003, `the crack kept where the player walked to, not at the start (${crack ? crack.pos[1].toFixed(6) : '–'}; start 48.781065, walked to ${(48.781065 + 6 * 0.0002).toFixed(6)})`);
 // a short tap does nothing (touches in the pocket)
 const box = await pocket.boundingBox();
 await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
