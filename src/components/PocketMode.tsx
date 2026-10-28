@@ -4,12 +4,31 @@ import { tr } from '../lib/i18n';
 
 // Pocket mode: a web app gets no GPS while the iPhone is locked – so the screen is kept awake (Wake Lock) and turned
 // black (OLED: almost no power), touches in the pocket do nothing, and the GPS track keeps growing for the shot
-// detection after the round. Hold for 1 second to leave.
+// detection after the round – and the microphone keeps listening for "shot by sound". Hold for 1 second to leave.
+// Taken out on 13.10.2026, back as a test on 28.10.2026 (Sascha: "test it on my next round"), switched on in the profile.
 
 type WakeLockSentinel = { release: () => Promise<void>; addEventListener?: (t: 'release', f: () => void) => void };
 type WakeLockApi = { request: (type: 'screen') => Promise<WakeLockSentinel> };
 
-export function PocketMode(props: { roundId: string; onExit: () => void }) {
+const KEY = 'golfos.pockettest.v1';
+/** The test switch in the profile ("Pocket mode (test)"): the button on the hole map. */
+export function pocketTestOn(): boolean {
+  try {
+    return localStorage.getItem(KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+export function setPocketTest(on: boolean): void {
+  try {
+    if (on) localStorage.setItem(KEY, '1');
+    else localStorage.removeItem(KEY);
+  } catch {
+    /* storage blocked */
+  }
+}
+
+export function PocketMode(props: { roundId: string; onExit: () => void; listening?: boolean; cracks?: number }) {
   const [awake, setAwake] = useState<'on' | 'unsupported' | 'pending'>('pending');
   const [points, setPoints] = useState(() => loadTrack(props.roundId).length);
   const [lastAgo, setLastAgo] = useState<number | null>(null);
@@ -81,6 +100,11 @@ export function PocketMode(props: { roundId: string; onExit: () => void }) {
           {tr('GPS recording', 'GPS zeichnet auf')} · {points} {tr('points', 'Punkte')}
           {lastAgo != null ? tr(` · last ${lastAgo} s ago`, ` · letzter vor ${lastAgo} s`) : ''}
         </span>
+        {props.listening && (
+          <span>
+            {tr('Microphone listening', 'Mikrofon hört mit')} · {props.cracks ?? 0} {tr(props.cracks === 1 ? 'crack' : 'cracks', props.cracks === 1 ? 'Knall' : 'Knalle')}
+          </span>
+        )}
         {awake === 'unsupported' && (
           <span className="pocket-warn">
             {tr(

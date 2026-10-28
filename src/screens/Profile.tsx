@@ -19,6 +19,7 @@ import { groupForHandicap, GROUPS } from '../lib/sg';
 import { deleteAccount, loadSession, signOut } from '../lib/sync';
 import { shareBackup } from '../lib/backup';
 import { setSoundTest, soundTestOn } from '../lib/impact';
+import { pocketTestOn, setPocketTest } from '../components/PocketMode';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
@@ -31,6 +32,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [sgPick, setSgPick] = useState(false);
   const [teePick, setTeePick] = useState(false);
   const [soundTest, setSoundTestState] = useState(soundTestOn);
+  const [pocketTest, setPocketTestState] = useState(pocketTestOn);
   const photoInput = useRef<HTMLInputElement>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
@@ -288,6 +290,23 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
               <span className="muted small">{tr('Hears the strike during the round', 'Hört während der Runde den Treffmoment')}</span>
             </span>
             <span className={`drawer-switch${soundTest ? ' on' : ''}`} aria-hidden="true" />
+          </button>
+          {/* back as a test (Sascha 28.10.2026): the screen stays on but black, so GPS and the microphone keep going */}
+          <button
+            type="button"
+            className="drawer-row"
+            role="switch"
+            aria-checked={pocketTest}
+            onClick={() => {
+              setPocketTest(!pocketTest);
+              setPocketTestState(!pocketTest);
+            }}
+          >
+            <span className="switch-label">
+              <span>{tr('Pocket mode (test)', 'Taschenmodus (Test)')}</span>
+              <span className="muted small">{tr('Screen black instead of locked – GPS and the shot by sound keep going', 'Bildschirm schwarz statt gesperrt – GPS und Schlag per Ton laufen weiter')}</span>
+            </span>
+            <span className={`drawer-switch${pocketTest ? ' on' : ''}`} aria-hidden="true" />
           </button>
         </div>
         {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026);

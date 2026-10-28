@@ -31,6 +31,7 @@ import { isSpeaking, onSpeaking, setMicPause, speak, summary } from '../lib/cadd
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn } from '../lib/impact';
+import { PocketMode, pocketTestOn } from '../components/PocketMode';
 import { courseStats } from '../lib/history';
 import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
@@ -208,6 +209,20 @@ export function HoleScreen(props: {
   // a strong hint for the shot detection – and the hole is looked up again.
   const reopened = useRef(true);
   const visibleAt = useRef(Date.now());
+  // pocket mode – a test again (Sascha 28.10.2026): the screen stays awake but black, the GPS keeps recording and the
+  // microphone listening; nothing is drawn meanwhile (battery). Leaving it is like unlocking the phone.
+  const pocketTest = useMemo(() => pocketTestOn() && !round.preview, []);
+  const [pocket, setPocket] = useState(false);
+  const pocketRef = useRef(false);
+  pocketRef.current = pocket;
+  const lastFix = useRef<{ pos: LngLat; accuracy: number; t: number; still?: boolean } | null>(null);
+  const leavePocket = () => {
+    setPocket(false);
+    detectArmed.current = true; // the hole the player is on now (and the score of the last one, if missing)
+    reopened.current = true; // the next fresh fix: "phone out at the ball" for the shot detection
+    visibleAt.current = Date.now();
+    if (lastFix.current) showFix({ ...lastFix.current });
+  };
   const [gpsError, setGpsError] = useState<string | null>(null);
   // Targets, pin and the marked ball survive a reload (iOS may drop the page while the phone is in the pocket).
   const [live, setLive] = useState(() => loadLive(round.id));
@@ -244,7 +259,9 @@ export function HoleScreen(props: {
         const fix = filter.current.push({ pos: [p.coords.longitude, p.coords.latitude] as LngLat, accuracy: p.coords.accuracy, t: Date.now() });
         feedFix({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy, t: p.timestamp });
         const was = shownFix.current;
-        if (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still) showFix(fix);
+        lastFix.current = fix;
+        // in pocket mode nothing is drawn – the fixes only go into the track
+        if (!pocketRef.current && (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still)) showFix(fix);
         // Every round keeps the GPS track (while the app is open, raw fixes): automatic shot length, shot detection.
         // only a fresh fix: right after unlocking, iOS may first hand out the old position (where the phone was put away)
         const open = reopened.current && p.coords.accuracy <= 30 && p.timestamp >= visibleAt.current - 2000;
@@ -1301,6 +1318,16 @@ export function HoleScreen(props: {
               </svg>
             </button>
           )}
+          {/* pocket mode – a test (Sascha 28.10.2026): the screen black instead of locked */}
+          {pocketTest && (
+            <button type="button" className="map-tool" aria-label={tr('Pocket mode: screen black, GPS keeps recording (test)', 'Taschenmodus: Bildschirm schwarz, GPS zeichnet weiter auf (Test)')} title={tr('Pocket mode (test)', 'Taschenmodus (Test)')} onClick={() => setPocket(true)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 4h14v8a7 7 0 0 1-14 0z" />
+                <path d="M5 8h14" />
+                <circle cx="12" cy="13" r="1.6" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+          )}
           {(slope || chart) && (
             <button type="button" className="map-tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')}
               onClick={() => {
@@ -1875,6 +1902,7 @@ export function HoleScreen(props: {
           )}
         </div>
         {sheetEl}
+        {pocket && <PocketMode roundId={round.id} onExit={leavePocket} listening={listening} cracks={(round.soundShots ?? []).length} />}
       </main>
     );
   }
