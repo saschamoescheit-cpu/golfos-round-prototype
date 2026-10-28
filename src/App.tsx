@@ -393,7 +393,7 @@ export function App() {
                 if (s.name !== 'review') return s;
                 // checked and chosen to sign: signed with the last step of the check (Sascha 17.10.2026) – only when
                 // every hole was checked; "Fertig" leaves without signing (Sascha 22.10.2026)
-                const done = signIt && !s.round.signedAt && s.round.capture !== 'score' ? sign(s.round) : s.round;
+                const done = signIt && !s.round.signedAt && s.round.capture !== 'score' ? sign(s.round, signIt) : s.round;
                 if (done !== s.round) persist(done);
                 // just signed: the round report on top of the scorecard
                 return { name: 'scorecard', round: done, justSigned: done !== s.round };

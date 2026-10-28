@@ -44,8 +44,9 @@ const puttVerdicts = () => [
   { note: 'bricht mehr', label: tr('Breaks more', 'Bricht mehr') },
 ];
 
-/** `onDone(sign)`: sign = the last step after every hole was checked; leaving with "Fertig" never signs. */
-export function RoundReview(props: { round: Round; onChange: (r: Round) => void; onDone: (sign: boolean) => void }) {
+/** `onDone(sign)`: sign = the last step after every hole was checked ('check'), or "Runde bestätigen" ('confirm');
+ *  leaving with "Fertig" never signs. */
+export function RoundReview(props: { round: Round; onChange: (r: Round) => void; onDone: (sign: false | 'check' | 'confirm') => void }) {
   const { round } = props;
   const me = round.players.find((p) => p.isMe)!;
   // a round looked at later whose course map made room when the storage was full: the map comes again (22.10.2026)
@@ -628,7 +629,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
       );
       return goTo(openHoles[0]);
     }
-    props.onDone(true);
+    props.onDone('check');
   };
 
   // The caddie's advice at the player's own shots first (that is what the verdict is about); advice given where he
@@ -1350,7 +1351,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
                 ? tr('The round is signed already.', 'Die Runde ist schon signiert.')
                 : tr('"Confirm round" signs it – then it counts in your statistics.', '„Runde bestätigen“ signiert sie – dann zählt sie in deiner Statistik.')}
             </span>
-            <button type="button" className="btn-primary" onClick={() => props.onDone(true)}>
+            <button type="button" className="btn-primary" onClick={() => props.onDone('confirm')}>
               {tr('Confirm round', 'Runde bestätigen')}
             </button>
             <button

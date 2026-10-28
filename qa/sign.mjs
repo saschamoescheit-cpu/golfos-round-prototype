@@ -148,6 +148,15 @@ for (let k = 0; k < 14 && (await p.locator('.sc-wrap').count()) === 0; k++) {
 }
 ok(/signieren/.test(lastLabel), `the last step says it signs ("${lastLabel}")`);
 ok((await p.locator('.sc-status.signed').count()) === 1 && (await p.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signedAt)), 'after the check the round is signed, the state on the scorecard says so');
+// where the signature came from (Sascha 28.10.2026: a round "jumped to signed by itself"): kept with the round, said in
+// the state
+const trace = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].signLog ?? []);
+// (the round is a copy of the one signed in the state above – its trace came along)
+ok(trace.at(-1)?.how === 'check' && trace.at(-1)?.device === 'iPhone' && trace.at(-2)?.how === 'status', `the round keeps how and where it was signed (${JSON.stringify(trace.map((x) => [x.how, x.device]))})`);
+await p.locator('.sc-status').click();
+await p.waitForTimeout(300);
+const how = (await p.locator('.sign-how').innerText().catch(() => '')).trim();
+ok(how === 'Auf dem iPhone beim letzten Prüfschritt', `the state says where: "${how}"`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

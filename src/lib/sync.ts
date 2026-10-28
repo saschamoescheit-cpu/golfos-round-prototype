@@ -119,6 +119,28 @@ export function conflictCopies(store: LocalStore = browserStore): { kind: string
   return parse(store.get(CONFLICTS), []);
 }
 
+/** Every time the sync changed a round's signature on this device – when, which round, from what to what, and whether
+ *  both devices had changed it (Sascha 28.10.2026: a round "jumped to signed by itself"). Stays on the device (the
+ *  backup takes it along), the last 30. */
+const SIGNLOG = 'golfos.sync.signlog.v1';
+export interface SignChange {
+  at: string;
+  id: string;
+  course: string;
+  from: string | null;
+  to: string | null;
+  conflict: boolean;
+}
+export function signChanges(store: LocalStore = browserStore): SignChange[] {
+  return parse(store.get(SIGNLOG), []);
+}
+function noteSignChange(store: LocalStore, at: string, id: string, here: string, there: string, conflict: boolean): void {
+  const a = parse<{ signedAt?: string | null; courseName?: string }>(here, {});
+  const b = parse<{ signedAt?: string | null }>(there, {});
+  if ((a.signedAt ?? null) === (b.signedAt ?? null)) return;
+  store.set(SIGNLOG, JSON.stringify([...signChanges(store), { at, id, course: a.courseName ?? '', from: a.signedAt ?? null, to: b.signedAt ?? null, conflict }].slice(-30)));
+}
+
 /** Settings the app stores as plain text, not JSON (the language: "de"). They travel as a JSON string. */
 const RAW_SETTINGS = new Set(['golfos.lang.v1']);
 /** A stored value as JSON for the server – null when it is no JSON at all (skipped: one odd value must never stop
@@ -272,6 +294,7 @@ export async function syncOnce(store: LocalStore, remote: Remote, now = () => ne
       if (raw != null) kept[r.id] = { value: raw, at };
       store.set(REPLACED, JSON.stringify(kept));
     }
+    if (r.kind === 'round' && l != null) noteSignChange(store, at, r.id, l.json, json, conflict);
     apply(store, r.kind, r.id, json);
     meta[key] = { hash: hashOf(localItems(store).get(key)?.json ?? json), at: r.updated_at };
     pulled++;

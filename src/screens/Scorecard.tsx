@@ -63,6 +63,17 @@ export function Scorecard(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.justFinished, round.finishedAt]);
   const signed = !!round.signedAt;
+  const lastSign = [...(round.signLog ?? [])].reverse().find((x) => x.how !== 'withdraw');
+  const signedHow =
+    signed && lastSign
+      ? [
+          lastSign.device ? tr(`on the ${lastSign.device}`, `auf dem ${lastSign.device}`) : '',
+          lastSign.how === 'check' ? tr('with the last step of the check', 'beim letzten Prüfschritt') : lastSign.how === 'confirm' ? tr('with "Confirm round"', 'mit „Runde bestätigen“') : tr('here in the state', 'hier im Status'),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .replace(/^./, (c) => c.toUpperCase())
+      : null;
   const status = signed
     ? { icon: <SignedIcon size={22} />, title: tr('Signed', 'Signiert'), sub: `${new Date(round.signedAt!).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${tr('counts in your statistics', 'zählt in deiner Statistik')}` }
     : !scoreOnly
@@ -99,6 +110,8 @@ export function Scorecard(props: {
                     <span className="grow">
                       <strong>{tr('Signed', 'Signiert')}</strong>
                       <span className="muted small">{status.sub}</span>
+                      {/* where the signature came from (Sascha 28.10.2026: a round "jumped to signed by itself") */}
+                      {signedHow && <span className="muted small sign-how">{signedHow}</span>}
                     </span>
                     <span className="pick-check" aria-hidden="true">✓</span>
                   </button>

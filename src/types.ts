@@ -202,6 +202,9 @@ export interface Round {
   kind?: 'tournament' | 'social' | 'training';
   /** When the player signed the scorecard (Sascha 16.10.2026) – only signed rounds count in statistics. */
   signedAt?: string | null;
+  /** Every signature and withdrawal: when, how (last check step, "Runde bestätigen", the state) and on which device
+   *  (Sascha 28.10.2026: a round "jumped to signed" – the trace says where from). The last 10. */
+  signLog?: { at: string; how: 'check' | 'confirm' | 'status' | 'withdraw'; device: string }[];
   /** Test mode: where the player said his ball lay, by hand on the course – the truth for the shot detection. */
   manualShots?: { hole: number; pos: LngLat; t: number; acc: number; /** moved on the map to the exact spot */ placed?: boolean }[];
   /** Test (Sascha 18.10.2026): the cracks the microphone heard – when, where, how loud; kept apart from the detection */

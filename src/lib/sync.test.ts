@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { packets, syncOnce, type LocalStore, type Remote, type Row } from './sync';
+import { packets, signChanges, syncOnce, type LocalStore, type Remote, type Row } from './sync';
 
 // Two devices and one server, all in memory: what Sascha does with iPhone, iPad and PC.
 
@@ -204,6 +204,29 @@ describe('signed rounds (night 17.10.2026)', () => {
     await syncOnce(pc, srv, clock);
     expect(signed(phone)).toBe('2026-10-16T20:00:00Z');
     expect(signed(pc)).toBe('2026-10-16T20:00:00Z');
+  });
+  // Sascha 28.10.2026: a round "jumped to signed by itself" on the iPad – each change of the signature by the sync is
+  // noted on the device, with the round, from what to what and whether both sides had changed it
+  it('the sync notes on the device every signature it changes – and only those', async () => {
+    const srv = server();
+    const phone = device({ 'golfos.rounds.v1': [round('r1', [4, 5, 3], true)] });
+    const ipad = device();
+    await syncOnce(phone, srv, clock);
+    await syncOnce(ipad, srv, clock);
+    expect(signChanges(ipad)).toEqual([]); // new on the iPad: no change of a signature
+    phone.set('golfos.rounds.v1', JSON.stringify([{ ...round('r1', [4, 5, 3], true), signedAt: '2026-10-28T20:50:00Z' }]));
+    ipad.set('golfos.rounds.v1', JSON.stringify([{ ...round('r1', [4, 5, 3], true), details: [{ shots: [{ pos: { lat: 50, lon: 8 } }] }] }]));
+    await syncOnce(phone, srv, clock);
+    await syncOnce(ipad, srv, clock);
+    const notes = signChanges(ipad);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ id: 'r1', course: 'Hetzenhof', from: null, to: '2026-10-28T20:50:00Z', conflict: true });
+    expect(signChanges(phone)).toEqual([]);
+    // a score changed elsewhere, the signature the same: nothing noted
+    phone.set('golfos.rounds.v1', JSON.stringify([{ ...round('r1', [4, 5, 4], true), signedAt: '2026-10-28T20:50:00Z' }]));
+    await syncOnce(phone, srv, clock);
+    await syncOnce(ipad, srv, clock);
+    expect(signChanges(ipad)).toHaveLength(1);
   });
 });
 
