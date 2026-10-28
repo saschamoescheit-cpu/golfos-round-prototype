@@ -40,6 +40,11 @@ const SAMPLES: [number, number][] = (() => {
 })();
 
 export const TEE_STRATEGY = { minCarry: 140, offsets: [-15, -10, -5, 0, 5, 10, 15], shorterMustSave: 0.1 };
+/** The favourite distance off the tee of a par 4 (Sascha 28.10.2026: "is the favourite distance from my bag taken into
+ *  account?"): a half wedge from 60 m is no easier for an amateur than the full one from 90 m – a distance left between
+ *  30 m and the favourite one counts as the favourite one. A club that leaves it (±12 m) is taken when it costs no more
+ *  than the plan (0.02 strokes: noise). */
+export const FAVOURITE = { from: 30, window: 12, noise: 0.02 };
 
 const move = (p: LngLat, bearing: number, m: number): LngLat => {
   const r = (bearing * Math.PI) / 180;
@@ -71,6 +76,7 @@ export function teeStrategy(o: {
   woods?: Ring[]; // where a ball is lost: OSM woods plus large crown areas (deeper than LOST_IN_WOODS_M)
   slopes?: Samples; // cross slope along the hole – a flat stance is worth something
   note?: HoleNote;
+  favourite?: number; // favourite approach distance in metres (My bag) – par 4 only
 }): TeePlan | null {
   const { data } = o;
   if (o.par < 4 || !data.fairways.length) return null;
@@ -78,7 +84,9 @@ export function teeStrategy(o: {
   const dir0 = bearingDeg(data.tee, pointAt(data.line, Math.min(200, L / 2)));
   const ratio = 100 / playsLike(100, dir0, o.conditions, null).playsLike;
   const shape = (rings: Ring[] | undefined) => (rings ?? []).map((r) => `${r.length}:${r[0]?.join()}`).join(';');
-  const key = [data.tee.join(), data.greenCenter.join(), o.par, o.playing, o.style, ratio.toFixed(2), o.bag.map((b) => `${b.club}${b.carry}`).join(), o.note?.obLeft, o.note?.obRight, o.note?.lostLeft, o.note?.lostRight, shape(data.water), shape(data.bunkers), shape(data.fairways), shape(o.boundary), (o.trees ?? []).length, (o.woods ?? []).length, (o.slopes ?? []).length].join('|');
+  // par 4: the second shot is the approach – the distance it is played from (30–200 m, whatever was typed)
+  const fav = o.par === 4 && o.favourite ? Math.min(200, Math.max(30, o.favourite)) : null;
+  const key = [data.tee.join(), data.greenCenter.join(), o.par, o.playing, o.style, ratio.toFixed(2), fav, o.bag.map((b) => `${b.club}${b.carry}`).join(), o.note?.obLeft, o.note?.obRight, o.note?.lostLeft, o.note?.lostRight, shape(data.water), shape(data.bunkers), shape(data.fairways), shape(o.boundary), (o.trees ?? []).length, (o.woods ?? []).length, (o.slopes ?? []).length].join('|');
   if (cache.has(key)) return cache.get(key)!;
 
   const ph = clampHcp(o.playing);
@@ -117,7 +125,9 @@ export function teeStrategy(o: {
   const fromTee = expectedStrokes(L, 'tee');
   /** Strokes still needed after the tee shot when the ball finishes at p – and what kind of spot it is. */
   const value = (p: LngLat, side: number): { v: number; miss: Miss } => {
-    const d = distanceM(p, pin);
+    const d0 = distanceM(p, pin);
+    // closer than the favourite distance is no gain until chipping range (a half wedge is no easier than a full one)
+    const d = fav != null && d0 > FAVOURITE.from && d0 < fav ? fav : d0;
     if (bound.length && teeInside && !inBound(p)) return { v: 1 + fromTee, miss: 'ob' };
     // out of bounds the map does not know (hole notes): more than 25 m to that side
     if ((o.note?.obLeft && side < -25) || (o.note?.obRight && side > 25)) return { v: 1 + fromTee, miss: 'ob' };
@@ -190,6 +200,13 @@ export function teeStrategy(o: {
   let pick = best.club !== top && longBest.e - best.e < TEE_STRATEGY.shorterMustSave ? longBest : best;
   // a side for a few hundredths of a stroke is noise: then the middle (the dogleg rule may still pick a side)
   if (pick.club === top && longMid.e - pick.e < 0.04) pick = longMid;
+  // the favourite distance: a club that leaves it, at the middle, for no more strokes than the plan – said so
+  const leaves = (c: Cand) => L - c.total;
+  const onFav = (c: Cand) => fav != null && Math.abs(leaves(c) - fav) <= FAVOURITE.window;
+  const favCand = onFav(pick)
+    ? null
+    : cands.filter((c) => c.side === 0 && onFav(c) && c.e <= pick.e + FAVOURITE.noise).sort((a, b) => Math.abs(leaves(a) - fav!) - Math.abs(leaves(b) - fav!))[0];
+  if (favCand) pick = favCand;
 
   // ---- the sentence ----
   const fmt = (m: number) => Math.round(m);
@@ -201,14 +218,20 @@ export function teeStrategy(o: {
   };
   let text: string | null = null;
   const saved = Math.round((longMid.e - pick.e) * 100) / 100;
-  if (pick.club !== top) {
+  if (favCand) {
+    const rest = Math.round(leaves(pick) / 5) * 5;
+    text = tr(`${clubName(pick.club)} – leaves ${rest} m, your favourite distance.`, `${clubName(pick.club)} – lässt ${rest} m, deine Lieblingsdistanz.`);
+  } else if (pick.club !== top) {
     const wLong = fairwayWidth(data, longBest.total);
     const wPick = fairwayWidth(data, pick.total);
     const miss = worstMiss(longMid);
     const where = miss && Math.abs(longMid.missSide) >= 5 ? ` ${sideWord(longMid.missSide > 0 ? 'right' : 'left')}` : '';
     const widths = wLong != null && wPick != null && wPick - wLong >= 5 ? tr(`at ${fmt(pick.total)} m the fairway is ${fmt(wPick)} m wide, at ${fmt(longBest.total)} m only ${fmt(wLong)} m`, `bei ${fmt(pick.total)} m ist das Fairway ${fmt(wPick)} m breit, bei ${fmt(longBest.total)} m nur ${fmt(wLong)} m`) : null;
     const hazard = miss ? tr(`${missWord(miss)}${where} in driver range`, `${missWord(miss)}${where} in Driver-Weite`) : null;
-    const why = [widths, hazard].filter(Boolean).join(', ');
+    // the longer club would leave a half shot shorter than the favourite distance, this one a full one
+    const half = fav != null && leaves(longMid) > FAVOURITE.from && leaves(longMid) < fav - FAVOURITE.window && leaves(pick) >= fav - FAVOURITE.window;
+    const full = half ? tr(`leaves a full shot of ${Math.round(leaves(pick) / 5) * 5} m instead of ${Math.round(leaves(longMid) / 5) * 5} m`, `lässt einen vollen Schlag von ${Math.round(leaves(pick) / 5) * 5} m statt ${Math.round(leaves(longMid) / 5) * 5} m`) : null;
+    const why = [widths, hazard, full].filter(Boolean).join(', ');
     text = tr(
       `${clubName(pick.club)} instead of the ${clubName(top)}${why ? `: ${why}` : ''} – saves about ${saved.toFixed(1)} strokes on average.`,
       `${clubName(pick.club)} statt ${clubName(top)}${why ? `: ${why}` : ''} – spart im Schnitt ${saved.toFixed(1).replace('.', ',')} Schläge.`,
