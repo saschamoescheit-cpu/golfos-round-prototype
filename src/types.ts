@@ -121,7 +121,9 @@ export interface Shot {
   strike?: Strike;
   flight?: Flight;
   intent?: Intent;
-  slope?: SlopeLie;
+  /** the stance – since 28.10.2026 a list (Sascha: "downhill with the ball below the feet"): one of up/down and one of
+   *  above/below, or flat; a single value on shots checked before (read with stanceOf) */
+  slope?: SlopeLie[] | SlopeLie;
   kind?: ShotKind; // missing = suggested from lie and distance
   review?: boolean; // detected automatically from the GPS track – the player should check it
   byHand?: boolean; // noted by hand on the course ("shot here") – drawn as the hand circle with its club (20.10.2026)

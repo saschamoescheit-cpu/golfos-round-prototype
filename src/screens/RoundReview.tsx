@@ -8,7 +8,7 @@ import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, lo
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
 import { flightName, flightOf, fromDrop, intentName, penaltyName, playedAgain, strikeName } from '../lib/shotfacts';
 import { shotChecks } from '../lib/reviewchecks';
-import { stanceAt } from '../lib/terrain';
+import { stancesAt } from '../lib/terrain';
 import { isLeftHanded } from '../lib/profile';
 import { holeSg } from '../lib/sg';
 import { proximity } from '../lib/approachstats';
@@ -1387,10 +1387,10 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           slope={editing.slope}
           slopeSuggested={(() => {
             // the stance from the terrain model along the hole – near the hole's line only (Sascha 22.10.2026)
-            if (editing.lie === 'tee') return 'flat'; // a tee box is level
+            if (editing.lie === 'tee') return ['flat']; // a tee box is level
             if (!data || !editing.pos || distToLine(editing.pos, data.line) > 40) return null;
             const next = edit! + 1 < d.shots.length ? d.shots[edit! + 1].pos : d.onGreen;
-            return stanceAt(geometry.fairwaySlopes?.[hole.label], profileAlong(data, editing.pos), next ? profileAlong(data, next) : null, isLeftHanded());
+            return stancesAt(geometry.fairwaySlopes?.[hole.label], profileAlong(data, editing.pos), next ? profileAlong(data, next) : null, isLeftHanded());
           })()}
           onSave={(v) => {
             const shots = d.shots.slice();

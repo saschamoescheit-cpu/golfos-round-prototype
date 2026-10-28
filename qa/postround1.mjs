@@ -69,11 +69,24 @@ const flights = await p.getByRole('group', { name: 'Flugbahn' }).getByRole('butt
 ok(flights.map((t) => t.trim()).join(' · ') === 'Pull Hook · Pull · Pull Slice · Hook · Gerade · Slice · Push Hook · Push · Push Slice · Draw · Fade', `"Flugbahn": all nine, draw and fade (${flights.length})`);
 ok((await p.locator('.flight-opt svg path').count()) === 11, 'each flight with its path drawn');
 if (process.env.SHOTS) await p.locator('.shot-more').screenshot({ path: process.env.SHOTS + '/flights.png' });
-for (const [g, v] of [['Treffer', 'Gut'], ['Flugbahn', 'Push Slice'], ['Absicht', 'Angegriffen'], ['Stand', 'Bergauf']]) await p.getByRole('group', { name: g }).getByRole('button', { name: v, exact: true }).click();
+for (const [g, v] of [['Treffer', 'Gut'], ['Flugbahn', 'Push Slice'], ['Absicht', 'Angegriffen'], ['Stand', 'Bergab'], ['Stand', 'Ball unter den Füßen']]) await p.getByRole('group', { name: g }).getByRole('button', { name: v, exact: true }).click();
+// more than one stance (Sascha 28.10.2026: "downhill with the ball below the feet"); "Eben" went off by itself
+const stance = p.getByRole('group', { name: 'Stand' });
+const pressed = async () => (await stance.locator('button[aria-pressed="true"]').allInnerTexts()).map((t) => t.trim()).join(' + ');
+ok((await pressed()) === 'Bergab + Ball unter den Füßen', `stance: downhill and the ball below the feet together (${await pressed()})`);
+// uphill takes downhill's place, the ball below the feet stays
+await stance.getByRole('button', { name: 'Bergauf', exact: true }).click();
+ok((await pressed()) === 'Bergauf + Ball unter den Füßen', `stance: uphill replaces downhill (${await pressed()})`);
 await p.getByRole('button', { name: /^Speichern/ }).last().click();
 await p.waitForTimeout(400);
 let e = await mine(0);
-ok(e.detail.shots[0].strike === 'good' && e.detail.shots[0].flight === 'pushSlice' && e.detail.shots[0].intent === 'attack' && e.detail.shots[0].slope === 'up', 'strike, flight, intent and stance kept with the shot');
+ok(e.detail.shots[0].strike === 'good' && e.detail.shots[0].flight === 'pushSlice' && e.detail.shots[0].intent === 'attack' && JSON.stringify(e.detail.shots[0].slope) === '["up","below"]', `strike, flight, intent and stance kept with the shot (${JSON.stringify(e.detail.shots[0].slope)})`);
+// opened again: both stances still chosen
+await p.locator('.review-list li[data-shot="0"] .shot-row').click();
+await p.waitForTimeout(300);
+ok((await pressed()) === 'Bergauf + Ball unter den Füßen', `opened again: both stances chosen (${await pressed()})`);
+await p.getByRole('button', { name: 'Schließen' }).last().click();
+await p.waitForTimeout(300);
 ok(/Push Slice/.test(await p.locator('.review-list li[data-shot="0"]').innerText()), 'the row shows the flight');
 ok(/Gut/.test(await p.locator('.review-list li[data-shot="0"]').innerText()) && /Angegriffen/.test(await p.locator('.review-list li[data-shot="0"]').innerText()), 'the row shows "Gut · Angegriffen"');
 

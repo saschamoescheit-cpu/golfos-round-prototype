@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Club, Flight, Intent, Lie, PenaltyKind, ShotKind, SlopeLie, Strike } from '../types';
 import { BAG, KINDS, LIES, suggestKind } from '../lib/shots';
-import { alwaysAgain, FLIGHTS, flightOf, INTENTS, PENALTIES, SLOPES, STRIKES } from '../lib/shotfacts';
+import { alwaysAgain, FLIGHTS, flightOf, INTENTS, PENALTIES, SLOPES, stanceOf, STRIKES, toggleStance } from '../lib/shotfacts';
 import { isLeftHanded } from '../lib/profile';
 import { Chips, Segmented } from './ui';
 import { clubCode, tr } from '../lib/i18n';
@@ -25,9 +25,9 @@ export function ShotSheet(props: {
   strike?: Strike;
   flight?: Flight;
   intent?: Intent;
-  slope?: SlopeLie;
+  slope?: SlopeLie[] | SlopeLie;
   /** the stance read off the terrain model when the player has not set one (Sascha 22.10.2026) */
-  slopeSuggested?: SlopeLie | null;
+  slopeSuggested?: SlopeLie[] | null;
   onSave: (v: {
     lie: Lie;
     club: Club | null;
@@ -38,7 +38,7 @@ export function ShotSheet(props: {
     strike?: Strike;
     flight?: Flight;
     intent?: Intent;
-    slope?: SlopeLie;
+    slope?: SlopeLie[];
     kind: ShotKind;
     review: false;
   }) => void;
@@ -60,7 +60,10 @@ export function ShotSheet(props: {
   const [strike, setStrike] = useState<Strike | null>(props.strike === 'slice' || props.strike === 'hook' ? null : (props.strike ?? null));
   const [flight, setFlight] = useState<Flight | null>(flightOf(props) ?? null);
   const [intent, setIntent] = useState<Intent | null>(props.intent ?? null);
-  const [slope, setSlope] = useState<SlopeLie | null>(props.slope ?? props.slopeSuggested ?? null);
+  const [slope, setSlope] = useState<SlopeLie[]>(() => {
+    const own = stanceOf(props);
+    return own.length ? own : (props.slopeSuggested ?? []);
+  });
   const again = penalty && (alwaysAgain(pk as PenaltyKind) || replay);
   const [club, setClub] = useState<Club | null>(props.club);
   const [kind, setKind] = useState<ShotKind | null>(props.kind ?? null); // null = follow the suggestion
@@ -76,7 +79,7 @@ export function ShotSheet(props: {
       strike: strike ?? undefined,
       flight: flight ?? undefined,
       intent: intent ?? undefined,
-      slope: slope ?? undefined,
+      slope: slope.length ? slope : undefined,
       kind: shownKind,
       review: false,
     });
@@ -188,9 +191,16 @@ export function ShotSheet(props: {
             <div className="field">
               <label>
                 {tr('Stance (optional)', 'Stand (optional)')}
-                {!props.slope && props.slopeSuggested ? <span className="muted small"> · {tr('suggested from the heights', 'aus den Höhen vorgeschlagen')}</span> : null}
+                {!stanceOf(props).length && props.slopeSuggested?.length ? <span className="muted small"> · {tr('suggested from the heights', 'aus den Höhen vorgeschlagen')}</span> : null}
               </label>
-              <Chips<SlopeLie> label={tr('Stance', 'Stand')} value={slope} onChange={setSlope} options={SLOPES.map((x) => ({ value: x.value, label: x.label() }))} />
+              {/* more than one (Sascha 28.10.2026): uphill or downhill together with the ball above or below the feet */}
+              <div className="chip-row wrap chips-field" role="group" aria-label={tr('Stance', 'Stand')}>
+                {SLOPES.map((x) => (
+                  <button key={x.value} type="button" aria-pressed={slope.includes(x.value)} onClick={() => setSlope(toggleStance(slope, x.value))}>
+                    {x.label()}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

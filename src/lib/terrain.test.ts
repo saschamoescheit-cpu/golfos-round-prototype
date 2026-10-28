@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, stanceAt } from './terrain';
+import { crossSlopeAt, heightAt, obAdvice, slopeAdvice, stanceAt, stancesAt } from './terrain';
+import { stanceOf, toggleStance } from './shotfacts';
 import type { LngLat, Ring } from '../types';
 
 const M = 1 / 111195;
@@ -48,5 +49,32 @@ describe('stance from the heights', () => {
   it('flat ground, and nothing off the profile', () => {
     expect(stanceAt(flat, 150, 250, false)).toBe('flat');
     expect(stanceAt(undefined, 150, 250, false)).toBeNull();
+  });
+  // both at once (Sascha 28.10.2026: "downhill with the ball below the feet")
+  it('as a list: downhill and the ball below the feet together', () => {
+    const both: [number, number, number][] = Array.from({ length: 30 }, (_, k) => [k * 10, -6, 100 - k * 0.6]); // 6 % downhill, left side 6 % higher
+    expect(stancesAt(both, 150, 250, false)).toEqual(['down', 'below']);
+    expect(stancesAt(rise, 150, 250, false)).toEqual(['up']);
+    expect(stancesAt(side, 150, 250, true)).toEqual(['below']);
+    expect(stancesAt(flat, 150, 250, false)).toEqual(['flat']);
+    expect(stancesAt(undefined, 150, 250, false)).toEqual([]);
+  });
+});
+
+describe('stance chosen by hand', () => {
+  it('one of uphill/downhill and one of above/below, flat alone', () => {
+    expect(toggleStance([], 'down')).toEqual(['down']);
+    expect(toggleStance(['down'], 'below')).toEqual(['down', 'below']);
+    expect(toggleStance(['below'], 'down')).toEqual(['down', 'below']); // in the list's order
+    expect(toggleStance(['down', 'below'], 'up')).toEqual(['up', 'below']);
+    expect(toggleStance(['down', 'below'], 'above')).toEqual(['down', 'above']);
+    expect(toggleStance(['down', 'below'], 'flat')).toEqual(['flat']);
+    expect(toggleStance(['flat'], 'up')).toEqual(['up']);
+    expect(toggleStance(['down', 'below'], 'down')).toEqual(['below']); // a second tap takes it off
+  });
+  it('a stance saved before 28.10.2026 (one value) reads as a list', () => {
+    expect(stanceOf({ slope: 'above' })).toEqual(['above']);
+    expect(stanceOf({ slope: ['up', 'below'] })).toEqual(['up', 'below']);
+    expect(stanceOf({})).toEqual([]);
   });
 });

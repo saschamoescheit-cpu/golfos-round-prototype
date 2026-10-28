@@ -114,3 +114,24 @@ export function stanceAt(samples: Samples | undefined, along: number, alongTo: n
   // right side higher: a right-hander's ball lies higher than his feet, a left-hander's lower
   return (cross > 0) !== leftHanded ? 'above' : 'below';
 }
+
+/**
+ * The stance as a list (Sascha 28.10.2026: "downhill with the ball below the feet" – both at once): uphill / downhill
+ * from 4 % in the shot's direction and the ball above / below the feet from 4 % across, each on its own; flat when both
+ * are under 2 %. Empty in between or off the hole's profile.
+ */
+export function stancesAt(samples: Samples | undefined, along: number, alongTo: number | null, leftHanded: boolean): ('flat' | 'up' | 'down' | 'above' | 'below')[] {
+  const dir = alongTo == null || alongTo >= along ? 1 : -1;
+  const h0 = heightAt(samples, along - 5 * dir);
+  const h1 = heightAt(samples, along + 5 * dir);
+  const grade = h0 != null && h1 != null ? ((h1 - h0) / 10) * 100 : null;
+  const crossRaw = crossSlopeAt(samples, along);
+  if (grade == null && crossRaw == null) return [];
+  const cross = crossRaw == null ? 0 : crossRaw * dir;
+  const g = grade ?? 0;
+  if (Math.abs(g) < 2 && Math.abs(cross) < 2) return ['flat'];
+  const out: ('up' | 'down' | 'above' | 'below')[] = [];
+  if (Math.abs(g) >= 4) out.push(g > 0 ? 'up' : 'down');
+  if (Math.abs(cross) >= 4) out.push((cross > 0) !== leftHanded ? 'above' : 'below');
+  return out;
+}

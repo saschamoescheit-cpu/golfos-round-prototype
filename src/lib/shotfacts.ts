@@ -55,6 +55,20 @@ export const SLOPES: { value: SlopeLie; label: () => string }[] = [
   { value: 'below', label: () => tr('Ball below feet', 'Ball unter den Füßen') },
 ];
 export const slopeName = (s: SlopeLie): string => SLOPES.find((x) => x.value === s)?.label() ?? s;
+/** The stance of a shot as a list – a single value of a shot checked before 28.10.2026 too. */
+export const stanceOf = (s: { slope?: SlopeLie[] | SlopeLie | null }): SlopeLie[] => (s.slope == null ? [] : Array.isArray(s.slope) ? s.slope : [s.slope]);
+/**
+ * A tap on a stance (Sascha 28.10.2026: "downhill with the ball below the feet"): uphill and downhill exclude each
+ * other, and so do the ball above and below the feet – one of each goes together; flat stands alone. A second tap
+ * takes it off. The list keeps the order of SLOPES.
+ */
+export function toggleStance(list: SlopeLie[], v: SlopeLie): SlopeLie[] {
+  if (list.includes(v)) return list.filter((x) => x !== v);
+  if (v === 'flat') return ['flat'];
+  const other: Record<Exclude<SlopeLie, 'flat'>, SlopeLie> = { up: 'down', down: 'up', above: 'below', below: 'above' };
+  const next = [...list.filter((x) => x !== 'flat' && x !== other[v]), v];
+  return SLOPES.map((x) => x.value).filter((x) => next.includes(x));
+}
 
 /** The kinds of penalty (Rules 17, 18, 19): water – drop or again; out of bounds and lost ball – stroke and distance
  *  (always again from the same spot); unplayable – drop or again. */
