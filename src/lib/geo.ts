@@ -404,6 +404,10 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
     const byGreen = green != null && ring.some((p) => distanceM(p, centroid(green)) < 35);
     return e <= 30 || byGreen || (e <= 45 && mine(ring));
   };
+  // The forward tees too (Sascha 28.10.2026, 4B Hetzenhof: "no tee drawn" – the line starts at the back tee, yellow lies
+  // 105 m ahead beside it, red 176 m): on the first part of the hole, by its line, no other hole's line nearer.
+  const length = line.slice(1).reduce((s, p, i) => s + distanceM(line[i], p), 0);
+  const forwardTee = (ring: Ring) => edge(ring) <= 30 && alongLine(line, centroid(ring)) <= Math.min(220, length * 0.45) && mine(ring);
   return {
     line,
     tee: line[0],
@@ -412,7 +416,7 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
     bunkers: geo.bunker.filter((r) => near(r) || ownBunker(r)),
     water: islandsCut(geo.water.filter(ownWater), geo.green),
     fairways: geo.fairway.filter((r) => r.some((p) => distToLine(p, line) <= 20)),
-    tees: geo.tee.filter((r) => r.some((p) => distanceM(p, line[0]) <= 60)),
+    tees: geo.tee.filter((r) => r.some((p) => distanceM(p, line[0]) <= 60) || forwardTee(r)),
   };
 }
 
