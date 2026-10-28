@@ -30,7 +30,9 @@ await p.waitForTimeout(800);
 await p.getByRole('button', { name: 'Neue Runde' }).click();
 await p.fill('#course-search', search);
 await p.waitForTimeout(2000);
-await p.locator('button.list-item').filter({ hasText: search }).first().click();
+// PICK: the text of the right hit when the search finds several of the name (Hawks Landing: Verona WI comes first,
+// the trip's is Orlando FL – night run 28./29.10.2026)
+await p.locator('button.list-item').filter({ hasText: search }).filter({ hasText: process.env.PICK ?? search }).first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 30000 });
 if (option) await p.locator('button.choice-loop').filter({ hasText: option }).first().click();
 await p.getByText('Runde starten').click();

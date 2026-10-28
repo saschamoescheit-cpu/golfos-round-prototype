@@ -64,6 +64,55 @@ for (let k = 1; k < 18; k++) {
   await p.waitForTimeout(500);
 }
 ok((await p.locator('.setup-card').count()) === 0 && (await p.locator('.map-hole-no').first().innerText()).trim() === '18' && /Par 3/.test(await p.locator('body').innerText()), 'all 18 holes on the map – 18 the par 3 to the island green');
+
+// Photon down (night run 28./29.10.2026): OpenGolfAPI alone has Hawks Landing at the hotel, 650 m from the course, and
+// Verona (Wisconsin) first – the app's own entry with the holes is found all the same, once, and plays without set-up
+{
+  const ctx2 = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
+  await mockNet(ctx2); // Photon answers nothing
+  await ctx2.route(/api\.opengolfapi\.org\/v1\/courses\/search/, (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ courses: [
+        { id: 'a2e5c0a3-4087-4349-8c3b-70be0c889d43', name: 'Hawks Landing Golf Club', city: 'Verona', state: 'WI', latitude: 43.0346938, longitude: -89.5452696 },
+        { id: '0add94c9-cfe6-4401-8647-bbe0a45b06c1', name: 'Hawks Landing Golf Club', city: 'Orlando', state: 'FL', latitude: 28.3618866, longitude: -81.5076057 },
+      ] }),
+    }),
+  );
+  // the OSM course area around the hotel point holds no course (as it is); the course's own box brings its map
+  // (the hotel's box reaches 600 m west to −81.5136, the course's box of its holes further, beyond −81.515)
+  await ctx2.route(/api\.openstreetmap\.org\/api\/0\.6\/map/, (r) => {
+    const west = Number(new URL(r.request().url()).searchParams.get('bbox')?.split(',')[0]);
+    return r.fulfill({ status: 200, contentType: 'text/xml', headers: { 'Access-Control-Allow-Origin': '*' }, body: west < -81.515 ? OSM : '<?xml version="1.0"?><osm version="0.6"></osm>' });
+  });
+  await ctx2.route(/overpass/, (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ elements: [] }) }));
+  const q = await ctx2.newPage();
+  q.on('pageerror', (e) => { if (!/due to access control|sw\.js load failed/.test(e.message)) errs.push(e.message); });
+  await q.goto(url);
+  await q.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('golfos.intro.v1', '1');
+    localStorage.setItem('golfos.tip.shots.v1', '1');
+    sessionStorage.setItem('golfos.module', 'rounds');
+  });
+  await q.reload();
+  await q.waitForTimeout(1000);
+  await q.getByRole('button', { name: 'Neue Runde' }).click();
+  await q.fill('#course-search', 'Hawks Landing');
+  await q.waitForTimeout(3000);
+  const rows = (await q.locator('button.list-item').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+  const orl = rows.filter((t) => /Hawks Landing/.test(t) && /Orlando/.test(t));
+  ok(orl.length === 1, `Photon down: Hawks Landing Orlando once in the list (${rows.join(' | ')})`);
+  await q.locator('button.list-item').filter({ hasText: 'Hawks Landing' }).filter({ hasText: 'Orlando' }).first().click();
+  await q.getByText('Platzvorschau').waitFor({ timeout: 30000 });
+  await q.getByText('Platzvorschau').click();
+  await q.waitForTimeout(3000);
+  const id = await q.evaluate(() => JSON.parse(sessionStorage.getItem('golfos.preview.v1') ?? localStorage.getItem('golfos.preview.v1') ?? 'null')?.courseId ?? null);
+  ok((await q.locator('.setup-card').count()) === 0 && (await q.locator('.map-hole-no').first().innerText()).trim() === '1', `Photon down: the preview opens on hole 1 without set-up (${id ?? 'course id not stored'})`);
+  await ctx2.close();
+}
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

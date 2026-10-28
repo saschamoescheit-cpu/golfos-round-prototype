@@ -4,7 +4,7 @@ import { distToLine, dropNestedRings, pointInRing } from './geo';
 import { sortTees, teeId } from '../data/tees';
 import { hasGeometry, loadCachedCourse, saveCachedCourse, saveGeometry } from './storage';
 import { SEED_COURSES } from '../data/seedCourses';
-import { CARDS } from '../data/cards';
+import { CARD_COURSES, CARDS, LINES } from '../data/cards';
 
 // Course data sources (all ODbL – attribution in the app footer):
 //  - Photon (komoot): course search by name and courses nearby, filtered to leisure=golf_course.
@@ -79,8 +79,9 @@ function tidy(list: CourseSummary[]): CourseSummary[] {
     const sibling = seed.shownWith && list.find((x) => seed.shownWith!.includes(x.id));
     if (sibling && !list.some((x) => x.id === id)) list = [...list, { ...sibling, id, name: seed.name, lat: seed.lat, lon: seed.lon }];
   }
-  // bundled courses first, so they win over the plain database entries
-  const ordered = list.map((x) => (SEED_COURSES[x.id] ? { ...x, name: SEED_COURSES[x.id].name } : x)).sort((x, y) => Number(!SEED_COURSES[x.id]) - Number(!SEED_COURSES[y.id]));
+  // bundled courses first, so they win over the plain database entries (a course with its scorecard in the app too)
+  const own = (id: string) => SEED_COURSES[id] != null || CARD_COURSES[id] != null;
+  const ordered = list.map((x) => (SEED_COURSES[x.id] ? { ...x, name: SEED_COURSES[x.id].name } : x)).sort((x, y) => Number(!own(x.id)) - Number(!own(y.id)));
   for (const c of ordered) {
     // same name within 2 km = the same course; a bundled "… West" also covers the plain "…" entry
     const same = (k: CourseSummary) => distanceKm(k.lat, k.lon, c.lat, c.lon) < 2 && (k.name === c.name || (SEED_COURSES[k.id] != null && k.name.startsWith(c.name)));
@@ -97,14 +98,23 @@ function tidy(list: CourseSummary[]): CourseSummary[] {
 
 const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-/** The bundled courses as list entries (a course mapped twice in OSM appears once). */
+/** The bundled courses as list entries (a course mapped twice in OSM appears once) – and the courses whose holes the app
+ *  has from their scorecard (Hawks Landing), with the box of their holes for the map. */
 export function bundledCourses(): CourseSummary[] {
   const seen = new Set<string>();
-  return Object.entries(SEED_COURSES).flatMap(([id, s]) => {
+  const seeds = Object.entries(SEED_COURSES).flatMap(([id, s]) => {
     if (seen.has(s.name)) return [];
     seen.add(s.name);
     return [{ id, source: 'osm' as const, name: s.name, place: '', lat: s.lat, lon: s.lon }];
   });
+  const cards = Object.entries(CARD_COURSES).map(([id, s]) => {
+    const pts = (LINES[id] ?? []).flat();
+    const lons = pts.map((p) => p[0]);
+    const lats = pts.map((p) => p[1]);
+    const bbox = pts.length ? ([Math.min(...lons) - 0.003, Math.min(...lats) - 0.003, Math.max(...lons) + 0.003, Math.max(...lats) + 0.003] as [number, number, number, number]) : undefined;
+    return { id, source: 'osm' as const, name: s.name, place: s.place, lat: s.lat, lon: s.lon, ...(bbox ? { bbox } : {}) };
+  });
+  return [...seeds, ...cards];
 }
 
 /** Bundled courses whose name contains every word of the query (accents and case ignored). */

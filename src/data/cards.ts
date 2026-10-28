@@ -5,6 +5,13 @@ import type { LngLat } from '../types';
 // drawn on the aerial photo once (from home too).
 // Each from the course's published scorecard, checked against a second source.
 
+/** Such courses in the search as the bundled ones are (night run 28./29.10.2026): found offline and with Photon down –
+ *  OpenGolfAPI alone had Hawks Landing at the hotel, 650 m from the course, where no OSM course area was found, and the
+ *  round had no holes. The OSM course id, so the map and the holes below go with it. */
+export const CARD_COURSES: Record<string, { name: string; place: string; lat: number; lon: number }> = {
+  'osm:relation/4053362': { name: 'Hawks Landing Golf Club', place: 'Orlando, FL, USA', lat: 28.3619114, lon: -81.5143193 },
+};
+
 export const CARDS: Record<string, Record<string, string>[]> = {
   // Hawk's Landing Golf Club, Orlando (World Center Marriott): GolfPass scorecard, par 70, 6255 yd from the Black tees –
   // GolfNow the same (27.10.2026)
