@@ -61,7 +61,13 @@ for (let k = 0; k < 2; k++) {
   await p.waitForTimeout(3000);
 }
 ok(served > 10, `the county's tiles asked for (${served})`);
-const attrib = (await p.locator('.maplibregl-ctrl-attrib').textContent().catch(() => '')) ?? '';
+// right after a hole change the map is built anew and the credits come back a moment later – a fallback to Esri
+// would stay, so wait for them up to 10 s
+let attrib = '';
+for (let k = 0; k < 20 && !/Osceola/i.test(attrib); k++) {
+  if (k) await p.waitForTimeout(500);
+  attrib = (await p.locator('.maplibregl-ctrl-attrib').textContent().catch(() => '')) ?? '';
+}
 // Esri lies below every regional aerial and is credited too – the county's credit goes when the app gives it up
 ok(/Osceola/i.test(attrib), `the county's aerial stays (${attrib.replace(/\s+/g, ' ').slice(0, 100)})`);
 ok(!/Luftbild.*(nicht|aus)/i.test(await p.locator('body').innerText()), 'no hint of a failed aerial');

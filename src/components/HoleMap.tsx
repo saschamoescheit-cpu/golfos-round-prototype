@@ -113,6 +113,10 @@ export function HoleMap(props: HoleMapProps) {
   // offline store and only the edges hang – switching then would throw the saved map away (night check 22.10.2026).
   const imageryStuck = (): boolean => {
     if (sat.current.ok === 0) return true;
+    // a service that has sent a dozen tiles answers – what is still on its way comes, and Esri lies below meanwhile. Only
+    // the share of the view counted, a working county aerial gave way to Esri for nothing whenever the camera still moved
+    // or the phone was slow checking its tiles at the 8 s mark (night run 27./28.10.2026: 30 tiles there, "stuck")
+    if (sat.current.ok >= 12) return false;
     const m = map.current;
     if (!m) return false;
     try {
