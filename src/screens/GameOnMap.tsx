@@ -1,9 +1,9 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Round } from '../types';
 import { ensureGeometry, geometryReady } from '../lib/storage';
 import { formDef, holeTeams, standingOf, type Game, type HoleExtra } from '../lib/gameforms';
-import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
-import { InviteSheet } from '../components/ShareGame';
+import { sharingAvailable, stamp } from '../lib/sharedgame';
+import { InviteSheet, useGameExchange } from '../components/ShareGame';
 import { emptyEntry } from '../lib/scoring';
 import { tr } from '../lib/i18n';
 import { FormRules, HoleExtras, PressCard, ScoreGrid, StandingCard } from './Games';
@@ -86,20 +86,9 @@ export function GameOnMap(props: {
   useEffect(() => {
     if (!ready) ensureGeometry(r.courseId).then(() => setReady(true));
   }, [ready, r.courseId]);
-  // a shared game: exchange with the other phones every 5 s
-  const latest = useRef(g);
-  latest.current = g;
-  useEffect(() => {
-    if (!g.shared) return;
-    const tick = async () => {
-      const m = await exchange(latest.current);
-      if (m && JSON.stringify(m) !== JSON.stringify(latest.current)) props.onChange(scoresIntoRound(m));
-    };
-    tick();
-    const t = window.setInterval(tick, 5000);
-    return () => window.clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [g.shared?.code]);
+  // a shared game: exchange with the other phones every 5 s – the others' scores into the round's entries, and the
+  // round as it is now (a score, a shot or the GPS track that came meanwhile stays)
+  useGameExchange(g, props.onChange, scoresIntoRound);
   if (!ready) return <main className="screen"><p className="muted">{tr('Loading the course …', 'Platz wird geladen …')}</p></main>;
   const f = formDef(g.form);
   const st = standingOf(g);

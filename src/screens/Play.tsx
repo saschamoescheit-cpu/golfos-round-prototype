@@ -15,6 +15,8 @@ export function PlayTab(props: {
   onNewRound: () => void;
   /** Joined a friend's round or a tournament: the phone's own round of it. */
   onJoined: (r: Round) => void;
+  /** A game's code typed here: on to Games, which joins it. */
+  onJoinGame?: (code: string) => void;
   onContinue: (r: Round) => void;
   onEnd: (r: Round) => void;
   onAbort: (r: Round) => void;
@@ -157,6 +159,13 @@ export function PlayTab(props: {
               setJoin(null);
               props.onJoined(r);
             }}
+            onGameCode={
+              props.onJoinGame &&
+              ((c) => {
+                setJoin(null);
+                props.onJoinGame!(c);
+              })
+            }
           />
         ) : (
           <div className="sheet-backdrop" onClick={() => setJoin(null)}>

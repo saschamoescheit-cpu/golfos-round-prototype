@@ -1,5 +1,8 @@
 // QA: one game on two phones (Sascha 15.10.2026) – the host invites (code + QR), the guest joins with the code, both
 // enter scores, both see both. Supabase is simulated in this script (the table golfos_shared_games), the app is real.
+// Since 29.10.2026 as in Rounds (Sascha: "in Games we need the invitation of the flight's players as in Rounds"): the
+// server takes a write only if nobody wrote since it was read (as the real table with updated_at), the link looks the
+// game up at once, finishing reaches the other phone, a round's code under "Spiel beitreten" goes on to Rounds.
 // Usage: node qa/sharegame.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
@@ -11,7 +14,8 @@ const ok = (cond, what) => {
   if (!cond) fails++;
 };
 // ---------- the simulated server ----------
-const shared = new Map(); // code → { game, members }
+const shared = new Map(); // code → { game, updated_at }
+let refused = 0; // writes refused because another phone wrote in between
 async function serve(route) {
   const req = route.request();
   const u = new URL(req.url());
@@ -24,16 +28,24 @@ async function serve(route) {
   }
   if (u.pathname.endsWith('/golfos_shared_games')) {
     const code = (u.searchParams.get('code') ?? '').replace(/^eq\./, '');
-    if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game }] : []) : []);
+    if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game, updated_at: shared.get(code).updated_at }] : []) : []);
     if (req.method() === 'POST') {
       const row = JSON.parse(req.postData());
       if (shared.has(row.code)) return json(409, { code: '23505' });
-      shared.set(row.code, { game: row.game });
+      shared.set(row.code, { game: row.game, updated_at: new Date().toISOString() });
       return json(201, null);
     }
     if (req.method() === 'PATCH') {
-      shared.get(code).game = JSON.parse(req.postData()).game;
-      return json(204, null);
+      const row = shared.get(code);
+      const at = (u.searchParams.get('updated_at') ?? '').replace(/^eq./, '');
+      if (!row || !at || at !== row.updated_at) {
+        refused++;
+        return json(200, []);
+      }
+      const body = JSON.parse(req.postData());
+      row.game = body.game;
+      row.updated_at = body.updated_at;
+      return json(200, [{ code }]);
     }
   }
   return json(404, { message: 'not simulated' });
@@ -90,9 +102,7 @@ await G.goto('about:blank');
 await G.goto(url + '#join=' + code);
 await G.waitForTimeout(2000);
 ok(await G.getByRole('dialog', { name: 'Spiel beitreten' }).isVisible(), 'guest: the QR link opens "Spiel beitreten" with the code');
-await G.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Beitreten', exact: true }).click();
-await G.waitForTimeout(1500);
-ok(await G.getByText('wer bist du?').isVisible(), 'guest: "who are you?" after joining');
+ok(await G.getByText('wer bist du?').isVisible(), 'guest: the link looks the game up at once – "who are you?" (as in Rounds)');
 await G.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Ben', exact: true }).click();
 await G.waitForTimeout(4500);
 // games are on the GPS map (Sascha 16.10.2026): the guest plays on the map too, with his own round
@@ -125,6 +135,46 @@ const gv = await vals(G);
 ok(hv === '4,5', `host sees both scores: ${hv}`);
 ok(gv === '4,5', `guest sees both scores: ${gv}`);
 ok((await G.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1'))[0].shared.me)) !== 'me', 'guest: Ben is his own player (not player 1)');
+
+// both enter on the same hole at the same moment: nothing is lost (the server refuses the second write, it reads again)
+await H.locator('.map-score').click();
+await G.locator('.map-score').click();
+await H.waitForTimeout(250);
+await Promise.all([block(H, 'Sascha').getByRole('button', { name: /Schläge plus eins/ }).click(), block(G, 'Ben').getByRole('button', { name: /Schläge plus eins/ }).click()]);
+await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
+await G.getByRole('button', { name: 'Zurück zur Karte' }).click();
+await H.waitForTimeout(12000);
+const hv2 = await vals(H);
+const gv2 = await vals(G);
+ok(hv2 === '5,6' && gv2 === '5,6', `both enter at once: host ${hv2}, guest ${gv2} (refused writes read again: ${refused})`);
+
+// the host finishes: the guest's phone hears of it (as a round in Rounds), the last scores with it
+await H.locator('.hole-bar-handle').click();
+await H.locator('.hole-drawer').getByRole('button', { name: 'Spiel beenden' }).click();
+await H.getByRole('button', { name: /Speichern & beenden/ }).click();
+await H.waitForTimeout(1500);
+ok([...shared.values()].some((v) => v.game.finishedAt), 'host finished: "finished" is on the server');
+await G.waitForTimeout(7000);
+ok(await G.evaluate(() => !!JSON.parse(localStorage.getItem('golfos.games.v1'))[0].finishedAt), 'guest: the game is finished on his phone too');
+
+// one code for both modules: a round's code typed under "Spiel beitreten" goes on to Rounds' "Runde beitreten"
+shared.set('RND234', {
+  updated_at: new Date().toISOString(),
+  game: {
+    kind: 'round-event', id: 'ev1', name: 'Hetzenhof · 29.10.', tournament: false,
+    course: { id: 'osm:test', source: 'osm', name: 'Hetzenhof', lat: 48.78, lon: 9.69 },
+    loopOrder: ['A'], holes: [{ id: 'h1', label: '1A', par: 4, si: 1 }], createdAt: new Date().toISOString(),
+    flights: { f1: { id: 'f1', name: 'Max · Tom', players: [{ id: 'me', name: 'Max', playingHandicap: null }, { id: 'p2', name: 'Tom', playingHandicap: null }], scores: { me: [null], p2: [null] }, finishedAt: null } },
+  },
+});
+const third = await phone('Tom');
+const T = third.p;
+await T.getByRole('button', { name: 'Spiel beitreten' }).click();
+await T.getByRole('textbox', { name: 'Code des Spiels' }).fill('RND234');
+await T.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Beitreten', exact: true }).click();
+await T.waitForTimeout(2500);
+ok((await T.getByRole('dialog', { name: 'Runde beitreten' }).count()) === 1 && (await T.getByRole('dialog', { name: 'Runde beitreten' }).getByRole('button', { name: 'Tom', exact: true }).count()) === 1, "a round's code in Games: on to Runde beitreten in Rounds, who are you?");
+ok(third.errs.length === 0, `third phone: no page errors ${third.errs.slice(0, 2).join(' | ')}`);
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

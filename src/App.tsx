@@ -185,6 +185,19 @@ export function App() {
     window.scrollTo(0, 0);
   };
 
+  // one code for both modules (Sascha 29.10.2026: Games as Rounds): a round's code typed under "Join a game" opens
+  // "Join a round" in Rounds, a game's code under "Join a round" "Join a game" in Games – as their links do
+  const joinRoundByCode = (code: string) => {
+    history.replaceState(null, '', `${location.pathname}${location.search}#round=${code}`);
+    setScreen(HOME);
+    setModule('rounds');
+  };
+  const joinGameByCode = (code: string) => {
+    history.replaceState(null, '', `${location.pathname}${location.search}#join=${code}`);
+    setGamesTab(undefined);
+    setModule('games');
+  };
+
   // "Undo" after a delete brings the round back: show it again
   useEffect(() => {
     const reload = () => setRounds(loadRounds());
@@ -284,7 +297,7 @@ export function App() {
         profile={profile}
       />
     );
-  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} />;
+  if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
   if (module === 'mobility')
     return (
       <Suspense fallback={<Waiting />}>
@@ -353,6 +366,7 @@ export function App() {
                 setRounds(loadRounds());
                 setScreen({ name: 'hole', round });
               }}
+              onJoinGame={joinGameByCode}
               onContinue={(round) => setScreen({ name: 'hole', round })}
               onEnd={(round) => {
                 const done = finishRound(round, isTeamRound(round));

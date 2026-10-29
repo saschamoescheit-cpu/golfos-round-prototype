@@ -2,7 +2,7 @@ import type { CourseSummary, HoleEntry, Player, Round, RoundHole, SharedCell } f
 import { emptyEntry } from './scoring';
 import { newId } from './storage';
 import { DEFAULT_FORMAT, isTeamMode, leaderboard, type Board } from './games';
-import { cleanCode, newCode } from './sharedgame';
+import { cleanCode, isGame, newCode } from './sharedgame';
 import { authToken, SUPABASE_KEY, SUPABASE_URL } from './sync';
 
 // A round on several phones (Sascha 29.10.2026: "invite to a round – on Saturday we play in the same scramble team, but
@@ -261,15 +261,16 @@ export async function shareRound(round: Round, course: CourseSummary, o: { name:
   return null;
 }
 
-/** Joins an event with its code (the phone becomes a member): the event, 'none' for no event with this code (or a
- *  game's code), null for no connection. */
-export async function joinEvent(code: string): Promise<RoundEvent | 'none' | null> {
+/** Joins an event with its code (the phone becomes a member): the event, 'game' for a game's code (join it under
+ *  Games), 'none' for nothing with this code, null for no connection. */
+export async function joinEvent(code: string): Promise<RoundEvent | 'game' | 'none' | null> {
   const h = await headers();
   if (!h) return null;
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_join_game`, { method: 'POST', headers: h, body: JSON.stringify({ join_code: cleanCode(code) }) });
     if (!r.ok) return null;
     const ev = await r.json();
+    if (isGame(ev)) return 'game';
     if (!isEvent(ev)) return 'none';
     keepEvent(cleanCode(code), ev);
     return ev;

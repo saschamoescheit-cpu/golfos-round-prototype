@@ -113,7 +113,7 @@ export function RoundInviteSheet(props: { round: Round; onShared: (r: Round) => 
 
 type NewPlayer = { name: string; hcp: string };
 
-export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) => void; onClose: () => void }) {
+export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) => void; onClose: () => void; /** a game's code: join it in Games */ onGameCode?: (code: string) => void }) {
   const [code, setCode] = useState(cleanCode(props.initial ?? ''));
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -123,7 +123,10 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
     setBusy(tr('Joining …', 'Trete bei …'));
     const found = await joinEvent(c);
     setBusy(null);
-    if (found === 'none') setMsg(tr('No round with this code – a game? Join it under Games.', 'Keine Runde mit diesem Code – ein Spiel? Das unter Games beitreten.'));
+    // a game's code here (Sascha 29.10.2026: Games as Rounds): on to Games, which joins it
+    if (found === 'game' && props.onGameCode) props.onGameCode(cleanCode(c));
+    else if (found === 'game') setMsg(tr('This code is a game – join it under Games.', 'Dieser Code ist ein Spiel – das unter Games beitreten.'));
+    else if (found === 'none') setMsg(tr('No round with this code – check the code.', 'Keine Runde mit diesem Code – Code prüfen.'));
     else if (!found) setMsg(tr('No connection – check the code or the connection.', 'Keine Verbindung – Code oder Verbindung prüfen.'));
     else setEv(found);
   };

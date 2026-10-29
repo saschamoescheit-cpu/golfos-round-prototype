@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanCode, guestRound, mergeGames, newCode, onWire, stamp } from './sharedgame';
+import { cleanCode, guestRound, isGame, mergeGames, newCode, onWire, settleGame, stamp } from './sharedgame';
 import { roundForGame } from '../screens/GameOnMap';
 import type { Game } from './gameforms';
 
@@ -72,5 +72,29 @@ describe('a game on the map, shared', () => {
     expect(g.round!.players.find((p) => p.isMe)?.id).toBe('b');
     expect(g.round!.entries.me[0].strokes).toBe(4);
     expect(g.round!.entries.b[0].strokes).toBeNull();
+  });
+});
+
+// As in Rounds (Sascha 29.10.2026): nothing typed during an exchange is lost, a round's code is no game.
+describe('a game on several phones, as a round in Rounds', () => {
+  it('a score entered while the exchange was under way stays, the others\' score comes in', () => {
+    const sent = set(base(), 'me', 0, 4, '2026-10-29T10:00:00Z');
+    const remote = set(base(), 'b', 0, 5, '2026-10-29T10:00:01Z');
+    const got = mergeGames(sent, remote); // what the exchange brought back
+    const now = set(sent, 'me', 1, 3, '2026-10-29T10:00:02Z'); // typed meanwhile
+    const next = settleGame(now, got);
+    expect(next.scores.me).toEqual([4, 3, null]);
+    expect(next.scores.b[0]).toBe(5);
+    expect(settleGame(sent, got).scores).toEqual(got.scores); // nothing typed meanwhile: what came back
+  });
+  it('a game on the map keeps its round as it is now (shots, the GPS track since the exchange began)', () => {
+    const sent = { ...base(), round: { id: 'r', entries: {} } as never };
+    const now = { ...sent, round: { id: 'r', entries: {}, track: [[9.1, 48.7]] } as never };
+    expect(settleGame(now, mergeGames(sent, base())).round).toBe(now.round);
+  });
+  it('a round\'s event in the shared table is no game', () => {
+    expect(isGame(base())).toBe(true);
+    expect(isGame({ kind: 'round-event', id: 'e1', flights: {} })).toBe(false);
+    expect(isGame(null)).toBe(false);
   });
 });

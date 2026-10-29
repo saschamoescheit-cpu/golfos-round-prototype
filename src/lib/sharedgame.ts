@@ -101,15 +101,20 @@ export async function shareGame(g: Game): Promise<Game | null> {
   return null;
 }
 
-/** Joins with a code: the game as the host shared it (null: wrong code or no connection). */
-export async function joinGame(code: string): Promise<Game | null> {
+/** A game in the table – not a round's event (Rounds keeps its rounds on several phones in the same table). */
+export const isGame = (x: unknown): x is Game => !!x && (x as { kind?: string }).kind !== 'round-event' && !!(x as Game).id && Array.isArray((x as Game).players) && !!(x as Game).form;
+
+/** Joins with a code: the game as the host shared it; 'round' when the code is a round's (join it under Rounds),
+ *  'none' for no game with this code, null for no connection. */
+export async function joinGame(code: string): Promise<Game | 'round' | 'none' | null> {
   const h = await headers();
   if (!h) return null;
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_join_game`, { method: 'POST', headers: h, body: JSON.stringify({ join_code: cleanCode(code) }) });
     if (!r.ok) return null;
-    const g = (await r.json()) as Game | null;
-    if (!g || !g.id) return null;
+    const g = (await r.json()) as unknown;
+    if (g && (g as { kind?: string }).kind === 'round-event') return 'round';
+    if (!isGame(g)) return 'none';
     pushGame('joined', cleanCode(code)); // the host hears of it (push, final list 23.10.2026)
     return { ...g, shared: { code: cleanCode(code) } };
   } catch {
@@ -117,24 +122,38 @@ export async function joinGame(code: string): Promise<Game | null> {
   }
 }
 
-/** One exchange: fetch the shared copy, merge, send the merged one back. Null when offline. */
+/**
+ * One exchange: fetch the shared copy, merge, send the merged one back – as in Rounds (Sascha 29.10.2026) the server
+ * takes the write only if nobody wrote since it was read, else it reads again (up to four times). Null when offline.
+ */
 export async function exchange(g: Game): Promise<Game | null> {
   if (!g.shared) return null;
   const h = await headers();
   if (!h) return null;
-  try {
-    const r = await fetch(`${table()}?code=eq.${encodeURIComponent(g.shared.code)}&select=game`, { headers: h });
-    if (!r.ok) return null;
-    const rows = (await r.json()) as { game: Game }[];
-    if (!rows.length) return null;
-    const merged = mergeGames(g, rows[0].game);
-    if (JSON.stringify(onWire(merged)) !== JSON.stringify(rows[0].game))
-      await fetch(`${table()}?code=eq.${encodeURIComponent(g.shared.code)}`, { method: 'PATCH', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ game: onWire(merged), updated_at: new Date().toISOString() }) });
-    return merged;
-  } catch {
-    return null;
+  const at = `${table()}?code=eq.${encodeURIComponent(g.shared.code)}`;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const r = await fetch(`${at}&select=game,updated_at`, { headers: h });
+      if (!r.ok) return null;
+      const rows = (await r.json()) as { game: unknown; updated_at?: string | null }[];
+      if (!rows.length || !isGame(rows[0].game)) return null;
+      const merged = mergeGames(g, rows[0].game);
+      if (JSON.stringify(onWire(merged)) === JSON.stringify(rows[0].game)) return merged;
+      const seen = rows[0].updated_at ? `updated_at=eq.${encodeURIComponent(rows[0].updated_at)}` : 'updated_at=is.null';
+      const w = await fetch(`${at}&${seen}`, { method: 'PATCH', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify({ game: onWire(merged), updated_at: new Date().toISOString() }) });
+      if (!w.ok) return null;
+      if (((await w.json()) as unknown[]).length) return merged;
+      // another phone wrote in between: read again
+    } catch {
+      return null;
+    }
   }
+  return null;
 }
+
+/** The exchange took a moment: the game as it is now with what the exchange brought – an entry made meanwhile is
+ *  newer and stays (it goes with the next exchange), as in Rounds. */
+export const settleGame = (now: Game, got: Game): Game => mergeGames(now, got);
 
 /** The link in the QR code: opens the app and asks to join. */
 export const joinLink = (code: string): string => `${location.origin}${location.pathname}#join=${code}`;

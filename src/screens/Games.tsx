@@ -9,7 +9,7 @@ import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddie
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, pairShare, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
 import { Bin } from '../components/Bin';
-import { InviteSheet, JoinSheet } from '../components/ShareGame';
+import { InviteSheet, JoinSheet, useGameExchange } from '../components/ShareGame';
 import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
 import { pushGame } from '../lib/push';
 import { TopBar } from '../components/ui';
@@ -112,12 +112,15 @@ function newDraft(form: FormId = 'skins'): Draft {
   return withWhs({ form, course: null, optionId: '', players: atLeast([me], formDef(form).players[0]), settings: defaults(formDef(form)) });
 }
 
-export function GamesApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void }) {
+export function GamesApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void; /** a round's code under "Join a game": on to Rounds */ onJoinRound?: (code: string) => void }) {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
   const [view, setView] = useState<View>(() => (running[0] && !props.tab && !location.hash.startsWith('#join=') ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' }));
   const store = (g: Game) => {
     saveGame(g);
+    // a shared game, finished (or corrected afterwards): its scores and "finished" to the others once more – while it
+    // is played the game's screen exchanges them (as in Rounds, Sascha 29.10.2026)
+    if (g.finishedAt && g.shared) void exchange(g);
     setGames(loadGames());
   };
   useEffect(() => {
@@ -144,6 +147,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
             window.scrollTo(0, 0);
           }}
           onModules={props.onModules}
+          onJoinRound={props.onJoinRound}
           onNew={(form) => setView({ name: 'setup', draft: newDraft(form) })}
           onJoined={(g) => {
             store(g);
@@ -257,12 +261,13 @@ function GamesTabs(props: {
   onNew: (form?: FormId) => void;
   onOpen: (g: Game) => void;
   onJoined: (g: Game) => void;
+  onJoinRound?: (code: string) => void;
   onFinish: (g: Game) => void;
   onDelete: (g: Game) => void;
 }) {
   const running = props.games.filter((g) => !g.finishedAt);
   // join a friend's game (code or the QR link #join=CODE) – shown once signed in and the shared table exists
-  const [canShare, setCanShare] = useState(false);
+  const [canShare, setCanShare] = useState<boolean | null>(null); // null: still asking
   const [joinOpen, setJoinOpen] = useState<string | null>(() => (location.hash.startsWith('#join=') ? location.hash.slice(6) : null));
   useEffect(() => {
     sharingAvailable().then(setCanShare);
@@ -326,7 +331,7 @@ function GamesTabs(props: {
               <span aria-hidden="true">›</span>
             </button>
           )}
-          {joinOpen != null && (
+          {joinOpen != null && canShare != null && (
             <>
               {canShare ? (
                 <JoinSheet
@@ -336,6 +341,13 @@ function GamesTabs(props: {
                     setJoinOpen(null);
                     props.onJoined(g);
                   }}
+                  onRoundCode={
+                    props.onJoinRound &&
+                    ((c) => {
+                      setJoinOpen(null);
+                      props.onJoinRound!(c);
+                    })
+                  }
                 />
               ) : (
                 <div className="sheet-backdrop" onClick={() => setJoinOpen(null)}>
@@ -1022,25 +1034,13 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
   // every entry with its time – two phones in one shared game keep the later entry (sharedgame.ts)
   const setScore = (pid: string, v: number | null) => props.onChange(stamp({ ...g, scores: { ...g.scores, [pid]: g.scores[pid].map((s, k) => (k === i ? v : s)) } }, `s:${pid}:${i}`));
   const setExtra = (patch: Partial<HoleExtra>) => props.onChange(stamp({ ...g, extra: g.extra.map((e, k) => (k === i ? { ...e, ...patch } : e)) }, `x:${i}`));
-  // a shared game: exchange with the others every 5 s
-  const latest = useRef(g);
-  latest.current = g;
+  // a shared game: exchange with the others every 5 s (an entry made meanwhile stays)
   const [canShare, setCanShare] = useState(false);
   const [invite, setInvite] = useState(false);
   useEffect(() => {
     sharingAvailable().then(setCanShare);
   }, []);
-  useEffect(() => {
-    if (!g.shared) return;
-    const tick = async () => {
-      const m = await exchange(latest.current);
-      if (m && JSON.stringify(m) !== JSON.stringify(latest.current)) props.onChange(m);
-    };
-    tick();
-    const t = window.setInterval(tick, 5000);
-    return () => window.clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [g.shared?.code]);
+  useGameExchange(g, props.onChange);
   const setPar = (par: number) => props.onChange({ ...g, holes: g.holes.map((h, k) => (k === i ? { ...h, par } : h)) });
   const go = (k: number) => props.onChange({ ...g, current: Math.max(0, Math.min(g.holes.length - 1, k)) });
   const allPar = () => props.onChange({ ...g, scores: Object.fromEntries(g.players.map((p) => [p.id, g.scores[p.id].map((s, k) => (k === i && s == null ? hole.par || 4 : s))])) });

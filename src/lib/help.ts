@@ -307,8 +307,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Can my friends keep score on their own phones?', 'Können Mitspieler auf ihrem Handy mitzählen?'),
         a: () =>
           tr(
-            'Yes, signed in: in the game\'s menu "Invite players" makes a code and a QR code; your friends enter it under "Join a game".',
-            'Ja, angemeldet: Im Menü des Spiels erzeugt „Mitspieler einladen“ einen Code und einen QR-Code; deine Mitspieler geben ihn unter „Spiel beitreten“ ein.',
+            'Yes, signed in: pull up the bar → "Invite players" makes a code and a QR code. Your friends scan it or tap "Join a friend\'s game" and pick who they are. The scores and the standing reach every phone within seconds – as a round in Rounds.',
+            'Ja, angemeldet: Leiste hochziehen → „Mitspieler einladen“ erzeugt einen Code und einen QR-Code. Deine Mitspieler scannen ihn oder tippen „Spiel beitreten“ und wählen, wer sie sind. Scores und Stand sind in Sekunden auf allen Handys – wie bei einer Runde in Rounds.',
           ),
         video: 'games',
       },
