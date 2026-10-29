@@ -167,8 +167,15 @@ ok(/^Fahne: [\d,]+ (cm|m) (von vorne|bis hinten) · [\d,]+ (cm|m) vom Rand (link
     }
   }
   await p.waitForTimeout(300);
+  // the zoom settled: the view the same twice (night 28./29.10.2026 – read while it still moved, one run in three failed)
+  let vbA = await ed.locator('svg.putt-green').getAttribute('viewBox');
+  for (let k = 0; k < 12; k++) {
+    await p.waitForTimeout(250);
+    const v = await ed.locator('svg.putt-green').getAttribute('viewBox');
+    if (v === vbA) break;
+    vbA = v;
+  }
   const pg = await ed.locator('.putt-pin circle').nth(1).boundingBox();
-  const vbA = await ed.locator('svg.putt-green').getAttribute('viewBox');
   const fx = pg.x + pg.width / 2 + 25, fy = pg.y + pg.height / 2;
   await p.mouse.move(fx, fy);
   await p.mouse.down();
@@ -177,7 +184,7 @@ ok(/^Fahne: [\d,]+ (cm|m) (von vorne|bis hinten) · [\d,]+ (cm|m) vom Rand (link
   await p.mouse.up();
   const vbB = await ed.locator('svg.putt-green').getAttribute('viewBox');
   const pg2 = await ed.locator('.putt-pin circle').nth(1).boundingBox();
-  ok(vbA === vbB && Math.hypot(pg2.x - pg.x, pg2.y - pg.y) > 5 && (await width()) < w0 * 0.95, `zoomed in, a finger beside the flag moves the flag, the green stays (view ${(await width()).toFixed(1)} m)`);
+  ok(vbA === vbB && Math.hypot(pg2.x - pg.x, pg2.y - pg.y) > 5 && (await width()) < w0 * 0.95, `zoomed in, a finger beside the flag moves the flag, the green stays (view ${(await width()).toFixed(1)} m)${vbA === vbB ? '' : ` · view moved ${vbA} → ${vbB}`}${Math.hypot(pg2.x - pg.x, pg2.y - pg.y) > 5 ? '' : ` · flag moved only ${Math.hypot(pg2.x - pg.x, pg2.y - pg.y).toFixed(1)} px`}${(await width()) < w0 * 0.95 ? '' : ` · not zoomed (${w0.toFixed(1)} m before)`}`);
   ok(/^Fahne/.test(ro) && /vom Rand/.test(ro), `while dragging the flag: its spot on the green too ("${ro}")`);
   await wheel(300, 20);
   await p.waitForTimeout(300);
