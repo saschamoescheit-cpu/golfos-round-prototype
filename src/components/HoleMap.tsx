@@ -25,7 +25,8 @@ export interface HoleMapProps {
   credit?: string | null; // extra data credit for the map's ⓘ (green heights)
   /** Detailed tracking: recorded shots (and the ball on the green), drawn as a green line (the app's highlight) with numbered dots. */
   /** hand: a shot noted by hand on the course – a small circle with the club-and-plus, not part of the shot line */
-  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string; hand?: boolean; sound?: boolean; shotByHand?: { n: string; club: string | null } }[];
+  /** sound: a crack the microphone heard (test) – label its number on the hole, time when it was heard */
+  track?: { pos: LngLat; label: string; green?: boolean; tone?: 'good' | 'bad'; id?: string; hand?: boolean; sound?: boolean; time?: string; shotByHand?: { n: string; club: string | null } }[];
   /** Review: the path the player walked (GPS) and where he stood still – the places a shot may have been played. */
   walked?: { line: LngLat[]; stops: LngLat[] } | null;
   /** Track points can be dragged (round check); called on release with the point's id. */
@@ -427,7 +428,7 @@ export function HoleMap(props: HoleMapProps) {
     mk.track.forEach((t) => t.remove());
     mk.track = (p.track ?? []).map((t) => {
       // a shot noted by hand: the hand circle where it was noted, with its number and club – one mark, not two (Sascha 20.10.2026)
-      const d = t.sound ? soundEl(t.label) : t.hand ? handEl(t.label) : t.shotByHand ? handEl(t.shotByHand.n, t.shotByHand.club) : labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
+      const d = t.sound ? soundEl(t.label, t.time ?? '') : t.hand ? handEl(t.label) : t.shotByHand ? handEl(t.shotByHand.n, t.shotByHand.club) : labelEl(t.label, `map-shot-dot${t.green ? ' green' : ''}${t.tone ? ' ' + t.tone : ''}`);
       const movable = p.onTrackMove != null && t.id != null;
       // held down for a moment without moving: the hold action (asks to remove the shot) – no tap after it
       let held = false;
@@ -885,14 +886,19 @@ function distEl(n: string, unit: Unit, className: string): HTMLDivElement {
   return d;
 }
 
-/** A crack the microphone heard (test, Sascha 18.10.2026): a small white mark with sound waves and its time. */
-function soundEl(time: string): HTMLDivElement {
+/** A crack the microphone heard (test, Sascha 18.10.2026): a white mark with sound waves – as big as a shot noted by
+ *  hand, with its number on the hole and its time below (29.10.2026: "shown like the manual shot, to check it on the
+ *  course"). */
+function soundEl(n: string, time: string): HTMLDivElement {
   const d = el('map-sound-shot');
-  d.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="2.5" fill="currentColor"/><path d="M11 8a6 6 0 0 1 0 8M15 5a10 10 0 0 1 0 14"/></svg>';
+  d.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="2.5" fill="currentColor"/><path d="M11 8a6 6 0 0 1 0 8M15 5a10 10 0 0 1 0 14"/></svg>';
   const b = document.createElement('b');
-  b.textContent = time;
-  d.append(b);
-  d.setAttribute('aria-label', `Knall gehört um ${time}`);
+  b.textContent = n;
+  const t = document.createElement('i');
+  t.className = 'sound-time';
+  t.textContent = time;
+  d.append(b, t);
+  d.setAttribute('aria-label', `Schlag ${n} per Ton erfasst um ${time}`);
   return d;
 }
 

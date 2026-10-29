@@ -28,7 +28,7 @@ export function setPocketTest(on: boolean): void {
   }
 }
 
-export function PocketMode(props: { roundId: string; onExit: () => void; listening?: boolean; cracks?: number }) {
+export function PocketMode(props: { roundId: string; onExit: () => void; listening?: boolean; cracks?: number; lastCrack?: number | null }) {
   const [awake, setAwake] = useState<'on' | 'unsupported' | 'pending'>('pending');
   const [points, setPoints] = useState(() => loadTrack(props.roundId).length);
   const [lastAgo, setLastAgo] = useState<number | null>(null);
@@ -103,6 +103,9 @@ export function PocketMode(props: { roundId: string; onExit: () => void; listeni
         {props.listening && (
           <span>
             {tr('Microphone listening', 'Mikrofon hört mit')} · {props.cracks ?? 0} {tr(props.cracks === 1 ? 'crack' : 'cracks', props.cracks === 1 ? 'Knall' : 'Knalle')}
+            {/* the last one with its time: hit, look – heard? (Sascha 29.10.2026: check it on the course) */}
+            {props.lastCrack != null &&
+              tr(` · last at ${new Date(props.lastCrack).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`, ` · letzter um ${new Date(props.lastCrack).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`)}
           </span>
         )}
         {awake === 'unsupported' && (

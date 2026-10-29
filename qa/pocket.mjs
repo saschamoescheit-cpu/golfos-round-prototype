@@ -117,7 +117,7 @@ for (let k = 1; k <= 6; k++) {
 const after = await pts();
 ok(after > before, `the GPS track keeps growing in the pocket (${before} → ${after} points)`);
 for (let k = 0; k < 60 && !/[1-9]\d* Knall/.test(await pocket.innerText()); k++) await p.waitForTimeout(250);
-ok(/[1-9]\d* Knall/.test(await pocket.innerText()), `a strike heard in the pocket (${((await pocket.innerText()).match(/\d+ Knall\w*/) ?? [''])[0]})`);
+ok(/[1-9]\d* Knalle? · letzter um \d\d:\d\d:\d\d/.test(await pocket.innerText()), `a strike heard in the pocket, the last with its time (${((await pocket.innerText()).match(/\d+ Knall[^\n]*/) ?? [''])[0]})`);
 // kept where the player is now – not where pocket mode began (the screen is not redrawn meanwhile)
 const crack = await p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].soundShots ?? []).at(-1));
 // (the walk goes on while it is heard: any of its places, not the start)

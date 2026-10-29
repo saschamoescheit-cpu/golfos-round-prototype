@@ -15,25 +15,52 @@ export interface PushState {
   kinds: PushKinds;
 }
 
-const KEY = 'golfos.push.v1'; // this phone only – every phone subscribes for itself
+const KEY = 'golfos.push.v1'; // this phone only – every phone subscribes for itself; its kinds: what the server was told
+// which notifications the player wants – the same on all his devices (Sascha 29.10.2026), synced as a setting
+const KINDS = 'golfos.pushkinds.v1';
 const ALL_ON: PushKinds = { rounds: true, games: true, weather: true };
 const fn = () => `${SUPABASE_URL}/functions/v1/golfos-push`;
 
-export function loadPush(): PushState {
+function phoneState(): PushState | null {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) ?? 'null') as PushState | null;
-    return s ? { ...s, kinds: { ...ALL_ON, ...s.kinds } } : { on: false, kinds: ALL_ON };
+    return JSON.parse(localStorage.getItem(KEY) ?? 'null') as PushState | null;
   } catch {
-    return { on: false, kinds: ALL_ON };
+    return null;
   }
+}
+function chosenKinds(): Partial<PushKinds> | null {
+  try {
+    return JSON.parse(localStorage.getItem(KINDS) ?? 'null') as Partial<PushKinds> | null;
+  } catch {
+    return null;
+  }
+}
+export function loadPush(): PushState {
+  const s = phoneState();
+  // the kinds chosen on any device; before 29.10.2026 they were kept with this phone's switch only
+  const kinds = { ...ALL_ON, ...(chosenKinds() ?? s?.kinds ?? {}) };
+  return s ? { ...s, kinds } : { on: false, kinds };
 }
 function savePush(s: PushState): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
+    if (JSON.stringify(chosenKinds()) !== JSON.stringify(s.kinds)) localStorage.setItem(KINDS, JSON.stringify(s.kinds));
   } catch {
     /* storage full – the switch shows off again next time */
   }
 }
+/** After a sync: the kinds chosen on another device go to this phone's subscription on the server too. */
+export function pushKindsFromSync(): void {
+  const s = phoneState();
+  const kinds = chosenKinds();
+  if (!s?.on || !s.endpoint || !kinds || !loadSession()) return;
+  const want = { ...ALL_ON, ...kinds };
+  if (JSON.stringify({ ...ALL_ON, ...s.kinds }) === JSON.stringify(want)) return;
+  void call({ action: 'settings', endpoint: s.endpoint, kinds: want })
+    .then((r) => r.ok && savePush({ ...s, kinds: want }))
+    .catch(() => null); // offline: after the next sync
+}
+if (typeof window !== 'undefined') window.addEventListener('golfos:synced', pushKindsFromSync);
 
 /** The browser can receive pushes at all (service worker, push manager, notifications). */
 export const pushSupported = (): boolean => typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;

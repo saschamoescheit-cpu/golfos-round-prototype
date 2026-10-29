@@ -80,10 +80,13 @@ ok((await mic()).live === 1, `listening by itself (${JSON.stringify(await mic())
 // the file loops (12 s): within 14 s two or three strikes – never the voice
 const count = () => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).flatMap((r) => r.soundShots ?? []).length);
 for (let k = 0; k < 64 && (await count()) === 0; k++) await p.waitForTimeout(250); // the file loops every 12 s
-const note = ((await p.locator('body').innerText()).match(/Knall gehört um[^\n]*/) ?? [''])[0];
-ok(/Knall gehört um [\d:]+ \(Lautstärke/.test(note), `the note "${note}"`);
+const note = ((await p.locator('body').innerText()).match(/Schlag \d+ an [^\n]*/) ?? [''])[0];
+ok(/^Schlag 1 an \S+ per Ton – Knall gehört um [\d:]+ \(Lautstärke/.test(note), `the note as for a shot by hand: "${note}"`);
 await p.waitForTimeout(500);
-ok((await p.locator('.map-sound-shot').count()) >= 1, `shown on the map as a sound mark with the time (${await p.locator('.map-sound-shot').count()})`);
+const mark = p.locator('.map-sound-shot').first();
+const markBox = await mark.boundingBox();
+ok((await mark.locator('b').innerText()) === '1' && /^\d\d:\d\d$/.test(await mark.locator('.sound-time').innerText()) && markBox && markBox.width >= 30,
+  `shown on the map as big as a shot by hand, numbered, with the time (${await mark.locator('b').innerText().catch(() => '–')} · ${await mark.locator('.sound-time').innerText().catch(() => '–')} · ${markBox && Math.round(markBox.width)} px)`);
 await p.waitForTimeout(13500);
 const heard = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).flatMap((r) => r.soundShots ?? []));
 // both strikes of the loop (19.10.2026: the background falls back fast after the voice – before only one was heard)

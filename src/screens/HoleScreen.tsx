@@ -811,7 +811,15 @@ export function HoleScreen(props: {
         const hole = pocketRef.current ? (detectHole(pl.pos, allMaps, holeRef.current) ?? holeRef.current) : holeRef.current;
         const r = latestRound.current;
         onChangeNow.current({ ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] });
-        setTestMsg(tr(`Crack heard at ${time} (loudness ${Math.round(hit.level * 100)})`, `Knall gehört um ${time} (Lautstärke ${Math.round(hit.level * 100)})`));
+        // as a shot noted by hand: its number on the hole and a short buzz (Sascha 29.10.2026: "check it on the course")
+        const n = (r.soundShots ?? []).filter((x) => x.hole === hole).length + 1;
+        const label = r.holes[hole]?.label ?? String(hole + 1);
+        setTestMsg(tr(`Shot ${n} on ${label} by sound – crack at ${time} (loudness ${Math.round(hit.level * 100)})`, `Schlag ${n} an ${label} per Ton – Knall gehört um ${time} (Lautstärke ${Math.round(hit.level * 100)})`));
+        try {
+          navigator.vibrate?.(25);
+        } catch {
+          /* no vibration */
+        }
       });
       if (gone.current) {
         stopListen.current();
@@ -874,10 +882,11 @@ export function HoleScreen(props: {
     .map((x, k) => ({ x, k }))
     .filter(({ x }) => x.hole === i)
     .map(({ x, k }, n) => ({ pos: x.pos, label: String(n + 1), tone: 'good' as const, id: `m${k}`, hand: true }));
-  // the cracks the microphone heard on this hole (test) – a small sound mark with the time
+  // the cracks the microphone heard on this hole (test) – numbered as the shots by hand, with the time (29.10.2026)
   const soundTrack = (round.soundShots ?? [])
     .filter((x) => x.hole === i)
-    .map((x) => ({ pos: x.pos, label: new Date(x.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit' }), sound: true }));
+    .sort((a, b) => a.t - b.t)
+    .map((x, n) => ({ pos: x.pos, label: String(n + 1), time: new Date(x.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit' }), sound: true }));
   const track: { pos: LngLat; label: string; green?: boolean }[] = detail.shots
     .map((s, k) => (s.pos ? { pos: s.pos, label: `${k + 1}${s.club ? ' ' + clubCode(s.club) : ''}${lengths[k] != null ? ' · ' + fmtU(lengths[k]!) : ''}${s.penalty ? ' +1' : ''}` } : null))
     .filter((t): t is { pos: LngLat; label: string } => t != null);
@@ -1925,7 +1934,7 @@ export function HoleScreen(props: {
           )}
         </div>
         {sheetEl}
-        {pocket && <PocketMode roundId={round.id} onExit={leavePocket} listening={listening} cracks={(round.soundShots ?? []).length} />}
+        {pocket && <PocketMode roundId={round.id} onExit={leavePocket} listening={listening} cracks={(round.soundShots ?? []).length} lastCrack={round.soundShots?.length ? Math.max(...round.soundShots.map((x) => x.t)) : null} />}
       </main>
     );
   }

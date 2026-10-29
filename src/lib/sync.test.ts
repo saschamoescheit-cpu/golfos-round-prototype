@@ -40,6 +40,33 @@ describe('sync between devices', () => {
     await syncOnce(phone, srv, phoneClock);
     expect(JSON.parse(phone.get('golfos.profile.v1')!).hcpIndex).toBe('7.8');
   });
+  it('every setting of the app reaches the other device – switched on and off (Sascha 29.10.2026)', async () => {
+    const srv = server();
+    const phone = device({
+      'golfos.soundtest.v1': '1', 'golfos.pockettest.v1': '1', 'golfos.mapview.v1': '2d', 'golfos.training.swingtempo.v1': 'tour',
+      'golfos.pushkinds.v1': { rounds: true, games: false, weather: true }, 'golfos.caddie.v1': { voice: true }, 'golfos.spread.v1': '0',
+    });
+    const ipad = device();
+    await syncOnce(phone, srv, clock);
+    await syncOnce(ipad, srv, clock);
+    expect(ipad.get('golfos.soundtest.v1')).toBe('1');
+    expect(ipad.get('golfos.pockettest.v1')).toBe('1');
+    expect(ipad.get('golfos.mapview.v1')).toBe('2d'); // plain text stays plain text, as the app reads it
+    expect(ipad.get('golfos.training.swingtempo.v1')).toBe('tour');
+    expect(ipad.get('golfos.spread.v1')).toBe('0');
+    expect(JSON.parse(ipad.get('golfos.pushkinds.v1')!).games).toBe(false);
+    expect(JSON.parse(ipad.get('golfos.caddie.v1')!).voice).toBe(true);
+    // switched off on the phone (the key removed): off on the iPad too
+    phone.remove('golfos.soundtest.v1');
+    await syncOnce(phone, srv, clock);
+    await syncOnce(ipad, srv, clock);
+    expect(ipad.get('golfos.soundtest.v1')).toBeNull();
+    // and on again from the iPad
+    ipad.set('golfos.soundtest.v1', '1');
+    await syncOnce(ipad, srv, clock);
+    await syncOnce(phone, srv, clock);
+    expect(phone.get('golfos.soundtest.v1')).toBe('1');
+  });
   it('a round and the profile from the phone appear on the iPad; the iPad keeps the bag from the server', async () => {
     const srv = server();
     const phone = device({ 'golfos.rounds.v1': [round('r1', [4, 5, 3], true)], 'golfos.profile.v1': { firstName: 'Sascha' }, 'golfos.bag.v1': [{ club: 'Dr', carry: 230 }], 'golfos.track.v1.r1': [[1, 2, 3, 4]] });

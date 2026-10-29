@@ -39,6 +39,12 @@ const GAME_TRASH = 'golfos.games.trash.v1';
 /** Single settings: the key on the device is the row id. */
 const SETTINGS = [
   'golfos.profile.v1', 'golfos.bag.v1', 'golfos.launch.v1', 'golfos.bagstyle.v1', 'golfos.caddie.v1', 'golfos.partials.v1', 'golfos.unit.v1', 'golfos.lang.v1', 'golfos.me.v1',
+  // every other setting of the app too (Sascha 29.10.2026: "all settings in the app synced between all devices – the
+  // caddie and the notification settings etc."): the test switches, the look, the map, the notifications chosen (their
+  // switch stays per device: every phone allows them itself), the own course ratings, Training and Mobility
+  'golfos.soundtest.v1', 'golfos.pockettest.v1', 'golfos.testmode.v1', 'golfos.sun.v1', 'golfos.spread.v1', 'golfos.mapview.v1', 'golfos.imagery.v1',
+  'golfos.tip.shots.v1', 'golfos.help.subs.v1', 'golfos.pushkinds.v1', 'golfos.stats.range.v1', 'golfos.ratings.v1',
+  'golfos.training.reviewmode.v1', 'golfos.training.review.v1', 'golfos.training.bpm.v1', 'golfos.training.swingtempo.v1', 'golfos.mobility.minutes.v1',
 ];
 /** Per round or per course: a key prefix, the rest is the row id. */
 const PER = [
@@ -142,7 +148,7 @@ function noteSignChange(store: LocalStore, at: string, id: string, here: string,
 }
 
 /** Settings the app stores as plain text, not JSON (the language: "de"). They travel as a JSON string. */
-const RAW_SETTINGS = new Set(['golfos.lang.v1']);
+const RAW_SETTINGS = new Set(['golfos.lang.v1', 'golfos.mapview.v1', 'golfos.training.swingtempo.v1']);
 /** A stored value as JSON for the server – null when it is no JSON at all (skipped: one odd value must never stop
  *  the whole sync – Sascha 16.10.2026, the iPhone's "de" did exactly that). */
 function asJson(key: string, v: string): string | null {
