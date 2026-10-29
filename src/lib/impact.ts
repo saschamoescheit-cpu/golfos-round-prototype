@@ -82,10 +82,17 @@ export class ImpactCore {
 }
 
 /** Listening with the microphone: raw sound (no echo cancelling, no noise suppression), blocks of 1024 samples. */
-export async function listen(onImpact: (i: Impact) => void): Promise<() => void> {
+export async function listen(onImpact: (i: Impact) => void): Promise<(() => void) & { alive: () => boolean }> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
   const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new Ctx();
+  // started without a tap (on by itself from the profile, 29.10.2026): Safari keeps the sound suspended until the next
+  // touch – that touch wakes it
+  const wake = () => {
+    if (ctx.state !== 'running' && ctx.state !== 'closed') void ctx.resume().catch(() => {});
+  };
+  wake();
+  document.addEventListener('pointerdown', wake, true);
   const src = ctx.createMediaStreamSource(stream);
   const proc = ctx.createScriptProcessor(1024, 1, 1);
   const core = new ImpactCore();
@@ -107,13 +114,16 @@ export async function listen(onImpact: (i: Impact) => void): Promise<() => void>
   } catch {
     lock = null;
   }
-  return () => {
+  const stop = () => {
+    document.removeEventListener('pointerdown', wake, true);
     proc.disconnect();
     src.disconnect();
     stream.getTracks().forEach((t) => t.stop());
     void ctx.close();
     void lock?.release().catch(() => {});
   };
+  // iOS ends the microphone when the app goes to the background: then it has to be opened again
+  return Object.assign(stop, { alive: () => ctx.state !== 'closed' && stream.getAudioTracks().some((t) => t.readyState === 'live') });
 }
 
 const KEY = 'golfos.soundtest.v1';

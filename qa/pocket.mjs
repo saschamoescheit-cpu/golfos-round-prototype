@@ -83,11 +83,13 @@ await p.getByText('Runde starten').click();
 await p.locator('.map-hole-no').waitFor({ timeout: 20000 });
 await p.waitForTimeout(2000);
 const pocketBtn = p.getByRole('button', { name: /Taschenmodus: Bildschirm schwarz/ });
-ok((await pocketBtn.count()) === 1, 'the pocket tool on the map');
+// on its own above "shot here", not in the tool bar (Sascha 29.10.2026)
+ok((await pocketBtn.count()) === 1 && (await p.locator('.map-toolbar').getByRole('button', { name: /Taschenmodus/ }).count()) === 0, 'the pocket button on the map, out of the tool bar');
+const [pb, sb] = [await pocketBtn.boundingBox(), await p.getByRole('button', { name: 'Schlag hier erfassen' }).boundingBox()];
+ok(pb && sb && pb.y + pb.height <= sb.y && Math.abs(pb.x + pb.width - (sb.x + sb.width)) < 4, `above "shot here", right-aligned (${pb && Math.round(pb.y)} / ${sb && Math.round(sb.y)})`);
 
-// listening; the caddie reads aloud: the microphone pauses while he talks and listens again afterwards
-await p.getByRole('button', { name: /Schläge per Ton erkennen/ }).click();
-await p.waitForTimeout(500);
+// listening by itself (the profile switch); the caddie reads aloud: the microphone pauses while he talks and listens again afterwards
+ok((await p.evaluate(() => window.__micLive())) === 1, 'the microphone listens by itself');
 await p.getByRole('button', { name: /Caddie zeigen/ }).click().catch(() => {});
 await p.waitForTimeout(600);
 await p.getByRole('button', { name: 'Vorlesen oder stoppen' }).click();
@@ -132,7 +134,7 @@ await p.waitForTimeout(1300);
 await p.mouse.up();
 await p.waitForTimeout(500);
 ok((await pocket.count()) === 0 && (await p.locator('.map-hole-no').count()) === 1, 'held for 1 s: the map again');
-ok((await p.getByRole('button', { name: 'Mithören beenden' }).count()) === 1, 'the microphone still listening');
+ok((await p.evaluate(() => window.__micLive())) === 1, 'the microphone still listening');
 // the next fix: "phone out at the ball" in the track
 await ctx.setGeolocation({ latitude: 48.7824, longitude: 9.689329, accuracy: 5 });
 await p.waitForTimeout(2500);

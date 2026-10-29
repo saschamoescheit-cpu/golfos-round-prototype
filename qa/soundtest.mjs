@@ -28,48 +28,80 @@ const file = fileURLToPath(new URL('./fixtures/cracks.wav', import.meta.url));
 writeFileSync(file, wav);
 
 const b = await chromium.launch({ channel: 'msedge', args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${file}`, '--autoplay-policy=no-user-gesture-required'] });
-const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation', 'microphone'] });
-await mockNet(ctx);
-const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
 let fails = 0;
 const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) fails++; };
-await p.goto(url);
-await p.evaluate(() => { localStorage.clear(); localStorage.setItem('golfos.intro.v1', '1'); localStorage.setItem('golfos.tip.shots.v1', '1'); sessionStorage.setItem('golfos.module', 'rounds'); });
-await p.reload();
-await p.waitForTimeout(800);
-ok((await p.getByRole('button', { name: /Schläge per Ton erkennen/ }).count()) === 0, 'off by default – no microphone tool');
-await p.evaluate(() => localStorage.setItem('golfos.soundtest.v1', '1'));
-await p.getByRole('button', { name: 'Neue Runde' }).click();
-await p.waitForTimeout(1500);
-await p.fill('#course-search', 'Hetzenhof');
-await p.waitForTimeout(2000);
-await p.locator('button.list-item').first().click();
-await p.getByText('Runde starten').waitFor({ timeout: 30000 });
-await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
-await p.getByText('Runde starten').click();
-await p.locator('.map-hole-no').waitFor({ timeout: 20000 });
-await p.waitForTimeout(2000);
-const mic = p.getByRole('button', { name: /Schläge per Ton erkennen/ });
-ok((await mic.count()) === 1, 'switched on in the profile: the microphone tool on the map');
-await mic.click();
+// a fresh phone with a round started on Hetzenhof A – the switch in the profile on or off
+async function roundOn(soundTest) {
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation', 'microphone'] });
+  await mockNet(ctx);
+  // the microphone's streams: how many were opened, how many are live (no button any more, 29.10.2026)
+  await ctx.addInitScript(() => {
+    const w = window;
+    w.__streams = [];
+    const gum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = async (c) => { const s = await gum(c); w.__streams.push(s); return s; };
+    w.__micLive = () => w.__streams.filter((s) => s.getTracks().some((t) => t.readyState === 'live')).length;
+  });
+  const p = await ctx.newPage();
+  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+  await p.goto(url);
+  await p.evaluate((on) => {
+    localStorage.clear();
+    localStorage.setItem('golfos.intro.v1', '1');
+    localStorage.setItem('golfos.tip.shots.v1', '1');
+    if (on) localStorage.setItem('golfos.soundtest.v1', '1');
+    sessionStorage.setItem('golfos.module', 'rounds');
+  }, soundTest);
+  await p.reload();
+  await p.waitForTimeout(800);
+  await p.getByRole('button', { name: 'Neue Runde' }).click();
+  await p.waitForTimeout(1500);
+  await p.fill('#course-search', 'Hetzenhof');
+  await p.waitForTimeout(2000);
+  await p.locator('button.list-item').first().click();
+  await p.getByText('Runde starten').waitFor({ timeout: 30000 });
+  await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
+  await p.getByText('Runde starten').click();
+  await p.locator('.map-hole-no').waitFor({ timeout: 20000 });
+  await p.waitForTimeout(2000);
+  return { ctx, p };
+}
+const micOf = (p) => p.evaluate(() => ({ opened: window.__streams.length, live: window.__micLive() }));
+// off by default: on the map nothing listens
+const quiet = await roundOn(false);
+ok((await micOf(quiet.p)).opened === 0, `off by default – the microphone stays closed (${JSON.stringify(await micOf(quiet.p))})`);
+await quiet.ctx.close();
+// switched on in the profile: the map listens by itself – no microphone button (Sascha 29.10.2026)
+const { p } = await roundOn(true);
+const mic = () => micOf(p);
+ok((await p.locator('.map-tool[aria-label*="per Ton"], button[aria-label*="Mithören"]').count()) === 0, 'no microphone button on the map');
+ok((await mic()).live === 1, `listening by itself (${JSON.stringify(await mic())})`);
 // the file loops (12 s): within 14 s two or three strikes – never the voice
-const count = () => p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].soundShots ?? []).length);
+const count = () => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).flatMap((r) => r.soundShots ?? []).length);
 for (let k = 0; k < 64 && (await count()) === 0; k++) await p.waitForTimeout(250); // the file loops every 12 s
-ok(/Knall gehört um/.test(await p.locator('body').innerText()), 'the note "Knall gehört um …"');
+const note = ((await p.locator('body').innerText()).match(/Knall gehört um[^\n]*/) ?? [''])[0];
+ok(/Knall gehört um [\d:]+ \(Lautstärke/.test(note), `the note "${note}"`);
 await p.waitForTimeout(500);
 ok((await p.locator('.map-sound-shot').count()) >= 1, `shown on the map as a sound mark with the time (${await p.locator('.map-sound-shot').count()})`);
 await p.waitForTimeout(13500);
-const heard = await p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].soundShots ?? []));
+const heard = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).flatMap((r) => r.soundShots ?? []));
 // both strikes of the loop (19.10.2026: the background falls back fast after the voice – before only one was heard)
 ok(heard.length >= 2 && heard.length <= 4, `strikes heard (${heard.length}: ${heard.map((h) => h.level).join(', ')})`);
 // every hit on a strike of the file (3 s and 8 s in a 12 s loop) – none on the voice at 5–6 s
 const off = heard.map((h) => (((h.t - heard[0].t) / 1000) % 12 + 12) % 12);
 ok(off.every((o) => [0, 5, 7, 12].some((x) => Math.abs(o - x) < 0.6)), `only the strikes, not the voice (${off.map((o) => o.toFixed(1)).join(', ')})`);
 ok(heard.every((h) => h.hole === 0 && Math.abs(h.pos[1] - 48.781065) < 0.001), 'each kept with the hole and the GPS position');
-await p.getByRole('button', { name: 'Mithören beenden' }).click();
-ok((await p.getByRole('button', { name: /Schläge per Ton erkennen/ }).getAttribute('aria-pressed')) === 'false', 'a second tap stops listening');
+// iOS ends the microphone in the background: back in the foreground it listens again
+await p.evaluate(() => window.__streams.forEach((s) => s.getTracks().forEach((t) => t.stop())));
+ok((await mic()).live === 0, 'the microphone ended (as iOS in the background)');
+await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+await p.waitForTimeout(1000);
+const back = await mic();
+ok(back.live === 1 && back.opened === 2, `back in the foreground: listening again (${JSON.stringify(back)})`);
+await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+await p.waitForTimeout(600);
+ok((await mic()).opened === 2, 'still listening: not opened once more');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

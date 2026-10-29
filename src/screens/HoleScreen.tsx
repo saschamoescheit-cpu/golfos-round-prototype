@@ -752,12 +752,19 @@ export function HoleScreen(props: {
   // shot by sound – a test (Sascha 18.10.2026): listening while this screen is open, every crack kept with time and place
   const soundTest = useMemo(() => soundTestOn() && !round.preview && !props.game, []);
   const [listening, setListening] = useState(false);
-  const stopListen = useRef<(() => void) | null>(null);
+  const stopListen = useRef<((() => void) & { alive?: () => boolean }) | null>(null);
   const holeRef = useRef(i);
   holeRef.current = i;
   const playerRef = useRef(player);
   playerRef.current = player;
-  useEffect(() => () => stopListen.current?.(), []);
+  const gone = useRef(false); // the screen closed – a microphone opened only now is closed again
+  useEffect(() => {
+    gone.current = false; // React's test run mounts twice
+    return () => {
+      gone.current = true;
+      stopListen.current?.();
+    };
+  }, []);
   // the caddie talks: the microphone pauses and listens again afterwards
   const resumeMic = useRef(false);
   useEffect(() => {
@@ -779,6 +786,9 @@ export function HoleScreen(props: {
       off();
     };
   }, []);
+  const starting = useRef(false); // the microphone is being opened (the iPhone may be asking for it)
+  const onChangeNow = useRef(props.onChange); // opened by itself at the start: a crack saved with today's handler
+  onChangeNow.current = props.onChange;
   const toggleListen = async () => {
     if (stopListen.current) {
       stopListen.current();
@@ -786,6 +796,8 @@ export function HoleScreen(props: {
       setListening(false);
       return;
     }
+    if (starting.current) return;
+    starting.current = true;
     try {
       stopListen.current = await listen((hit) => {
         // the newest fix, not the one on the screen: in pocket mode the screen is not redrawn (28.10.2026)
@@ -798,16 +810,39 @@ export function HoleScreen(props: {
         // walked on to the next hole in the pocket: the hole where the crack was heard
         const hole = pocketRef.current ? (detectHole(pl.pos, allMaps, holeRef.current) ?? holeRef.current) : holeRef.current;
         const r = latestRound.current;
-        props.onChange({ ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] });
+        onChangeNow.current({ ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] });
         setTestMsg(tr(`Crack heard at ${time} (loudness ${Math.round(hit.level * 100)})`, `Knall gehört um ${time} (Lautstärke ${Math.round(hit.level * 100)})`));
       });
+      if (gone.current) {
+        stopListen.current();
+        stopListen.current = null;
+        return;
+      }
       setListening(true);
     } catch {
       setTestMsg(tr('No microphone – allow it in the settings', 'Kein Mikrofon – bitte in den Einstellungen erlauben'));
+    } finally {
+      starting.current = false;
     }
   };
   const toggleListenRef = useRef(toggleListen);
   toggleListenRef.current = toggleListen;
+  // on by itself when the profile switch is on – no microphone button on the map (Sascha 29.10.2026); back from the
+  // background (iOS ends the microphone there) it listens again
+  useEffect(() => {
+    if (!soundTest) return;
+    void toggleListenRef.current();
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || resumeMic.current) return;
+      if (starting.current || (stopListen.current?.alive?.() ?? false)) return;
+      stopListen.current?.();
+      stopListen.current = null;
+      setListening(false);
+      void toggleListenRef.current();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
   useEffect(() => {
     if (!testMsg) return;
     const t = setTimeout(() => setTestMsg(null), 6000);
@@ -1305,32 +1340,6 @@ export function HoleScreen(props: {
               </svg>
             </button>
           )}
-          {/* shot by sound – a test (Sascha 18.10.2026): a tap starts listening, another stops it */}
-          {soundTest && (
-            <button
-              type="button"
-              className={`map-tool${listening ? ' listening' : ''}`}
-              aria-pressed={listening}
-              aria-label={listening ? tr('Stop listening for shots', 'Mithören beenden') : tr('Listen for shots (test)', 'Schläge per Ton erkennen (Test)')}
-              title={tr('Shot by sound (test)', 'Schlag per Ton (Test)')}
-              onClick={() => void toggleListen()}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="9" y="3" width="6" height="11" rx="3" />
-                <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
-              </svg>
-            </button>
-          )}
-          {/* pocket mode – a test (Sascha 28.10.2026): the screen black instead of locked */}
-          {pocketTest && (
-            <button type="button" className="map-tool" aria-label={tr('Pocket mode: screen black, GPS keeps recording (test)', 'Taschenmodus: Bildschirm schwarz, GPS zeichnet weiter auf (Test)')} title={tr('Pocket mode (test)', 'Taschenmodus (Test)')} onClick={() => setPocket(true)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M5 4h14v8a7 7 0 0 1-14 0z" />
-                <path d="M5 8h14" />
-                <circle cx="12" cy="13" r="1.6" fill="currentColor" stroke="none" />
-              </svg>
-            </button>
-          )}
           {(slope || chart) && (
             <button type="button" className="map-tool" aria-pressed={greenVisible} aria-label={greenVisible ? tr('Hide green slope', 'Grün-Neigung ausblenden') : tr('Show green slope', 'Grün-Neigung zeigen')} title={tr('Green slope', 'Grün-Neigung')}
               onClick={() => {
@@ -1585,6 +1594,17 @@ export function HoleScreen(props: {
             </button>
             <span className="grow" />
             <div className="map-tools-stack">
+              {/* pocket mode – a test (Sascha 28.10.2026): the screen black instead of locked; on its own above "shot
+                  here", out of the tool bar (29.10.2026) */}
+              {pocketTest && (
+                <button type="button" className="map-btn round tool" aria-label={tr('Pocket mode: screen black, GPS keeps recording (test)', 'Taschenmodus: Bildschirm schwarz, GPS zeichnet weiter auf (Test)')} title={tr('Pocket mode (test)', 'Taschenmodus (Test)')} onClick={() => setPocket(true)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 4h14v8a7 7 0 0 1-14 0z" />
+                    <path d="M5 8h14" />
+                    <circle cx="12" cy="13" r="1.6" fill="currentColor" stroke="none" />
+                  </svg>
+                </button>
+              )}
               {camByHand && (
                 <button type="button" className="map-btn round tool" aria-label={tr('Centre the map again', 'Karte wieder zentrieren')} title={tr('Centre', 'Zentrieren')} onClick={() => setRecenter((n) => n + 1)}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
