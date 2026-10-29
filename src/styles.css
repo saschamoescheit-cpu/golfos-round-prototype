@@ -1257,6 +1257,12 @@ button.tile:disabled { opacity: 1; }
 .qr-box svg { display: block; width: 100%; height: auto; }
 .join-code { align-self: center; font: 800 34px var(--display); letter-spacing: 0.18em; }
 .join-input { font: 700 26px var(--display); letter-spacing: 0.2em; text-align: center; text-transform: uppercase; }
+/* Rounds on several phones (Sascha 29.10.2026): a flight of one's own – name and playing handicap; the own team on the
+   tournament's board */
+.new-flight-row { display: grid; grid-template-columns: minmax(0, 1fr) 76px; gap: 8px; }
+.new-flight-row .hcp-input { text-align: center; }
+.lb-rows li.lb-mine { box-shadow: inset 0 0 0 2px var(--brand); }
+.invite-sheet .chip-set .chip { min-height: 44px; }
 
 /* profile photo and the small pictures next to the names (Sascha 16.10.2026) */
 .avatar { border-radius: 50%; object-fit: cover; flex: none; display: inline-block; vertical-align: middle; }

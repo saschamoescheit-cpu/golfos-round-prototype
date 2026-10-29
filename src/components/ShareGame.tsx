@@ -7,7 +7,7 @@ import { tr } from '../lib/i18n';
 // Invite and join (Sascha 15.10.2026: "join the game by a code or a QR code"): the host shows the code and the QR
 // code, the others scan it with the phone camera or type the code.
 
-function Qr(props: { text: string }) {
+export function Qr(props: { text: string }) {
   const svg = useMemo(() => {
     const q = qrcode(0, 'M');
     q.addData(props.text);

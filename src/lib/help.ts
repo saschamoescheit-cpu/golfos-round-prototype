@@ -173,6 +173,16 @@ export const FAQ: FaqTopic[] = [
         video: 'map',
       },
       {
+        // Sascha 29.10.2026: a scramble team on two phones, a tournament over several flights
+        q: () => tr('Can my flight play on their phones too – or several flights as a tournament?', 'Kann mein Flight auf seinen Handys mitspielen – oder mehrere Flights als Turnier?'),
+        a: () =>
+          tr(
+            'Yes, signed in: pull up the bar → "Invite players · tournament" makes a code and a QR code (switch on "Tournament" for several flights). The others tap "Join a friend\'s round" on the start page: your flight picks who it is – the same team works on two phones – another flight starts its own. The scores reach every phone within seconds; in a tournament the leaderboard shows all flights.',
+            'Ja, angemeldet: Leiste hochziehen → „Mitspieler einladen · Turnier“ erzeugt einen Code und einen QR-Code (für mehrere Flights „Turnier“ einschalten). Die anderen tippen auf der Startseite „Runde beitreten“: Dein Flight wählt, wer er ist – dasselbe Team geht auch auf zwei Handys –, ein anderer Flight legt seinen eigenen an. Die Scores sind in Sekunden auf allen Handys; im Turnier zeigt das Leaderboard alle Flights.',
+          ),
+        video: 'map',
+      },
+      {
         q: () => tr('Why do I see a drawn hole instead of the aerial image?', 'Warum sehe ich eine gezeichnete Bahn statt des Luftbilds?'),
         a: () => tr('When the aerial image service does not answer, the app draws the hole. "2D" switches by hand.', 'Wenn der Luftbild-Dienst gerade nicht antwortet, zeichnet die App die Bahn. Mit „2D“ wechselst du von Hand.'),
         video: 'map',

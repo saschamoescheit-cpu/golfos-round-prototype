@@ -211,4 +211,10 @@ export interface Round {
   soundShots?: { hole: number; pos: LngLat; t: number; level: number; acc: number }[];
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
   format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number };
+  /** Played on several phones (Sascha 29.10.2026, lib/sharedround.ts): the event's code, this round's flight, and the
+   *  flight's scores as last exchanged (what changed here, what elsewhere). */
+  shared?: { code: string; flight: string; tournament?: boolean; base: Record<string, SharedCell[]> };
 }
+
+/** One hole's score as shared between phones: strokes, picked up, or nothing yet (null). */
+export type SharedCell = { s: number | null; p?: true } | null;

@@ -25,6 +25,7 @@ import type { TrainingTab } from './screens/Training';
 import type { MobilityTab } from './screens/Mobility';
 import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
+import { exchangeRound } from './lib/sharedround';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -157,6 +158,7 @@ export function App() {
     return loadRounds();
   });
   const [screen, setScreen] = useState<Screen>(() => {
+    if (location.hash.startsWith('#round=')) return HOME; // a round's join link: Rounds' start page asks to join
     const r = SKIP_RESUME ? undefined : roundInPlay(rounds);
     if (r && r.id === pausedRound) return HOME;
     return r ? { name: 'hole', round: r } : HOME;
@@ -169,7 +171,8 @@ export function App() {
   }, [screenKey]); // eslint-disable-line react-hooks/exhaustive-deps
   // Two modules (Sascha 15.10.2026): "Rounds" (round and analysis) and "Games" (side games) – chosen when the app
   // opens; a round in play reopens straight on its hole, a reload stays in the module of this tab.
-  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : sessionModule())); // a join link opens Games
+  // a join link opens Games – a round's (#round=) Rounds
+  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' || location.hash.startsWith('#round=') ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : sessionModule()));
   const [homeTab, setHomeTab] = useState<HomeTab>('start');
   const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(undefined);
   const [trainingTab, setTrainingTab] = useState<TrainingTab | undefined>(undefined);
@@ -193,6 +196,9 @@ export function App() {
   const persist = (round: Round) => {
     saveRound(round);
     if (round.finishedAt) pushRound(null, round.id); // the round is over: no thunderstorm warnings for it any more
+    // a round on several phones, finished (or corrected in the round check): its scores and "finished" to the others –
+    // during the round the hole map exchanges them (Sascha 29.10.2026)
+    if (round.finishedAt && round.shared) void exchangeRound(round);
     setRounds(loadRounds());
     syncSoon();
   };
@@ -341,6 +347,12 @@ export function App() {
               onPreview={(r) => setScreen({ name: 'hole', round: r })}
               onEndPreview={() => storePreview(null)}
               onNewRound={() => setScreen({ name: 'pickCourse' })}
+              onJoined={(round) => {
+                persist(round);
+                closeStaleRounds(0, round.id); // a new round: no other one stays "in progress"
+                setRounds(loadRounds());
+                setScreen({ name: 'hole', round });
+              }}
               onContinue={(round) => setScreen({ name: 'hole', round })}
               onEnd={(round) => {
                 const done = finishRound(round, isTeamRound(round));

@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
+import { sharingAvailable } from '../lib/sharedgame';
 import { TopTools } from '../components/TopTools';
+import { JoinRoundSheet } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
 
 // Tab "Play" (Sascha 14.10.2026): start a round, or carry on with, finish or cancel the one in progress.
@@ -11,6 +13,8 @@ import { roundsToSign } from './Rounds';
 export function PlayTab(props: {
   rounds: Round[];
   onNewRound: () => void;
+  /** Joined a friend's round or a tournament: the phone's own round of it. */
+  onJoined: (r: Round) => void;
   onContinue: (r: Round) => void;
   onEnd: (r: Round) => void;
   onAbort: (r: Round) => void;
@@ -28,6 +32,13 @@ export function PlayTab(props: {
   const [confirm, setConfirm] = useState<'end' | 'abort' | null>(null);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const played = open ? open.entries[open.players.find((p) => p.isMe)!.id].filter((e) => e.strokes != null || e.pickedUp).length : 0;
+  // join a round (code or the QR link #round=CODE)
+  const [canShare, setCanShare] = useState<boolean | null>(null); // null: still asking
+  const [join, setJoin] = useState<string | null>(() => (location.hash.startsWith('#round=') ? location.hash.slice(7) : null));
+  useEffect(() => {
+    sharingAvailable().then(setCanShare);
+    if (location.hash.startsWith('#round=')) history.replaceState(null, '', location.pathname + location.search);
+  }, []);
 
   return (
     <>
@@ -129,7 +140,37 @@ export function PlayTab(props: {
         <button type="button" className={open ? 'btn-secondary' : 'btn-primary'} onClick={props.onNewRound}>
           {tr('New round', 'Neue Runde')}
         </button>
+        {/* a friend's round or a tournament (Sascha 29.10.2026) – shown once signed in */}
+        {canShare && (
+          <button type="button" className="btn-secondary" onClick={() => setJoin('')}>
+            {tr("Join a friend's round", 'Runde beitreten')}
+          </button>
+        )}
       </section>
+      {join != null &&
+        canShare != null &&
+        (canShare ? (
+          <JoinRoundSheet
+            initial={join}
+            onClose={() => setJoin(null)}
+            onJoined={(r) => {
+              setJoin(null);
+              props.onJoined(r);
+            }}
+          />
+        ) : (
+          <div className="sheet-backdrop" onClick={() => setJoin(null)}>
+            <section className="sheet" role="dialog" aria-label={tr('Join a round', 'Runde beitreten')} onClick={(e) => e.stopPropagation()}>
+              <strong>{tr('Join a round', 'Runde beitreten')}</strong>
+              <span className="muted">
+                {tr('Sign in first: Profile → "On all your devices" → "Sign in with Google". Then open the link again.', 'Melde dich zuerst an: Profil → „Auf allen Geräten“ → „Mit Google anmelden“. Dann den Link noch einmal öffnen.')}
+              </span>
+              <button type="button" className="btn-secondary" onClick={() => setJoin(null)}>
+                OK
+              </button>
+            </section>
+          </div>
+        ))}
 
       {toSign > 0 && (
         <button type="button" className="list-item" onClick={props.onSign}>

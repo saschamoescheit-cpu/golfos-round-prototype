@@ -2,6 +2,7 @@ import type { Round } from '../types';
 import { leaderboard } from '../lib/games';
 import { tr } from '../lib/i18n';
 import { Avatar } from './Avatar';
+import { EventBoardCard } from './ShareRound';
 
 // Live leaderboard of the flight (Sascha 14.10.2026): everyone entered on this phone, after every hole.
 
@@ -40,7 +41,9 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void }) {
             ✕
           </button>
         </div>
-        <LeaderboardCard round={props.round} />
+        {/* a tournament (Sascha 29.10.2026): all flights live, the own flight below */}
+        {props.round.shared?.tournament && <EventBoardCard code={props.round.shared.code} myFlight={props.round.shared.flight} />}
+        {props.round.players.length > 1 && <LeaderboardCard round={props.round} />}
       </section>
     </div>
   );

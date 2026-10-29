@@ -8,6 +8,7 @@ import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
+import { EventBoardCard } from '../components/ShareRound';
 import { isTeamRound } from '../lib/games';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
@@ -247,6 +248,8 @@ export function Scorecard(props: {
         {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {fmtHcp(me.playingHandicap)}</div>}
       </section>
 
+      {/* a tournament: the board of all flights as last exchanged (Sascha 29.10.2026) */}
+      {round.shared?.tournament && <EventBoardCard code={round.shared.code} myFlight={round.shared.flight} />}
       {round.players.length > 1 && <LeaderboardCard round={round} />}
 
       <ScoreTable round={round} onHole={setEditHole} />

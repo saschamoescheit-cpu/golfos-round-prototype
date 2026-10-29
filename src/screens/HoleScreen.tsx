@@ -32,6 +32,9 @@ import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCa
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn } from '../lib/impact';
 import { PocketMode, pocketTestOn } from '../components/PocketMode';
+import { RoundInviteSheet } from '../components/ShareRound';
+import { exchangeRound, settle } from '../lib/sharedround';
+import { sharingAvailable } from '../lib/sharedgame';
 import { courseStats } from '../lib/history';
 import { holeForTee } from '../lib/teeline';
 import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type GreenGrid, type PuttRead } from '../lib/greenread';
@@ -519,6 +522,12 @@ export function HoleScreen(props: {
     }
   };
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
+  // the round on several phones (Sascha 29.10.2026): invite the flight, or other flights to a tournament
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [canShareRound, setCanShareRound] = useState(false);
+  useEffect(() => {
+    if (!round.preview && !props.game) void sharingAvailable().then(setCanShareRound);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [drawerOpen, setDrawerOpen] = useState(false); // hole overview pulled up from the hole bar (Hole19)
   const barTouch = useRef<number | null>(null);
   // aerial image or the drawn hole (2D, as in BeBrassie) – kept for the next round
@@ -748,6 +757,31 @@ export function HoleScreen(props: {
   useEffect(() => setShotList(false), [i]);
   const latestRound = useRef(round); // the round as it is now – for a measurement that finishes seconds later
   latestRound.current = round; // index in round.manualShots offered for removal
+  // a round on several phones: the flight's scores exchanged every few seconds while the map is on screen (and at once
+  // when the app comes back) – a score entered meanwhile stays
+  const shareCode = round.shared?.code ?? null;
+  const exchangeChange = useRef(props.onChange);
+  exchangeChange.current = props.onChange;
+  useEffect(() => {
+    if (!shareCode) return;
+    let busy = false;
+    const tick = async () => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
+      const sent = latestRound.current;
+      const got = await exchangeRound(sent).finally(() => (busy = false));
+      if (!got) return;
+      const next = settle(latestRound.current, sent, got);
+      if (JSON.stringify(next) !== JSON.stringify(latestRound.current)) exchangeChange.current(next);
+    };
+    void tick();
+    const t = window.setInterval(() => void tick(), 5000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [shareCode]);
   const [testMsg, setTestMsg] = useState<string | null>(null);
   // shot by sound – a test (Sascha 18.10.2026): listening while this screen is open, every crack kept with time and place
   const soundTest = useMemo(() => soundTestOn() && !round.preview && !props.game, []);
@@ -1427,6 +1461,7 @@ export function HoleScreen(props: {
           />
         )}
         {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
+        {inviteOpen && <RoundInviteSheet round={round} onShared={(r) => props.onChange(r)} onClose={() => setInviteOpen(false)} />}
         {drawerOpen && (
           <HoleDrawer
             round={round}
@@ -1447,9 +1482,15 @@ export function HoleScreen(props: {
             onBag={() => props.onOpenBag?.('bag')}
             onCaddie={() => props.onOpenBag?.('caddie')}
             onScorecard={() => props.onShowScorecard(round)}
-            onLeaderboard={props.game ? () => { setDrawerOpen(false); props.game!.onOpen(); } : round.players.length > 1 && !round.preview ? () => { setDrawerOpen(false); setBoardOpen(true); } : null}
-            leaderboardLabel={props.game ? `${props.game.name} · ${tr('standing', 'Stand')}` : undefined}
-            extraRows={props.game?.onInvite ? [{ label: props.game.shared ? tr(`Players' phones · code ${props.game.shared}`, `Handys der Mitspieler · Code ${props.game.shared}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); props.game!.onInvite!(); } }] : undefined}
+            onLeaderboard={props.game ? () => { setDrawerOpen(false); props.game!.onOpen(); } : (round.players.length > 1 || round.shared?.tournament) && !round.preview ? () => { setDrawerOpen(false); setBoardOpen(true); } : null}
+            leaderboardLabel={props.game ? `${props.game.name} · ${tr('standing', 'Stand')}` : round.shared?.tournament ? tr('Leaderboard · tournament', 'Leaderboard · Turnier') : undefined}
+            extraRows={
+              props.game?.onInvite
+                ? [{ label: props.game.shared ? tr(`Players' phones · code ${props.game.shared}`, `Handys der Mitspieler · Code ${props.game.shared}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); props.game!.onInvite!(); } }]
+                : !props.game && !round.preview && (round.shared || canShareRound)
+                  ? [{ label: round.shared ? tr(`${round.shared.tournament ? 'Tournament' : "Players' phones"} · code ${round.shared.code}`, `${round.shared.tournament ? 'Turnier' : 'Handys der Mitspieler'} · Code ${round.shared.code}`) : tr('Invite players · tournament', 'Mitspieler einladen · Turnier'), onClick: () => { setDrawerOpen(false); setInviteOpen(true); } }]
+                  : undefined
+            }
             preview={round.preview}
             onBook={props.onBook}
             onPause={props.onExit}
