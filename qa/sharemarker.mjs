@@ -37,6 +37,7 @@ async function serve(route) {
       const at = (u.searchParams.get('updated_at') ?? '').replace(/^eq\./, '');
       if (!row || (at && at !== row.updated_at)) return json(200, []);
       const body = JSON.parse(req.postData());
+      if (body.near_lat != null) return json(204, null); // shown nearby – the event itself unchanged
       row.game = body.game;
       row.updated_at = body.updated_at;
       return json(200, [{ code }]);

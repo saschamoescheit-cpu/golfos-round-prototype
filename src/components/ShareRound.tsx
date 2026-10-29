@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, cachedEvent, differences, eventBoard, joinEvent, newFlightRound, roundFromEvent, roundJoinLink, shareRound, writerOf, type RoundEvent } from '../lib/sharedround';
-import { isTeamMode } from '../lib/games';
+import { addFlight, cachedEvent, differences, eventBoard, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, roundJoinLink, shareRound, showNearby, writerOf, type NearbyRound, type RoundEvent } from '../lib/sharedround';
+import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
 import { loadProfile, shownName } from '../lib/profile';
@@ -26,6 +26,18 @@ function courseSummary(round: Round): CourseSummary {
 /** The phone's owner as the others see him ("kept by Sascha"). */
 export const myName = (): string => shownName(loadProfile()) || tr('a player', 'ein Spieler');
 
+/** Where this phone is now (for rounds nearby) – null without GPS or when it takes too long. */
+function here(): Promise<{ lat: number; lon: number } | null> {
+  if (!('geolocation' in navigator)) return Promise.resolve(null);
+  return new Promise((done) => {
+    navigator.geolocation.getCurrentPosition(
+      (p) => done({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      () => done(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  });
+}
+
 /**
  * The invitation: before the code the choice "tournament" (with its name), then the code, the QR code and "share the
  * link". `round` is the round – or, in the setup, the round as it would start now (its players and holes go to the
@@ -37,7 +49,16 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
   const [name, setName] = useState(() => `${props.round.courseName} · ${new Date(props.round.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // the round shown to signed-in phones nearby (Sascha 29.10.2026) – here, or (no GPS) on the course
+  const [near, setNear] = useState(true);
+  const [nearState, setNearState] = useState<'here' | 'course' | 'failed' | null>(null);
   const team = isTeamMode(props.round.format?.mode);
+  const putNearby = async (code: string) => {
+    const pos = await here();
+    const course = courseSummary(props.round);
+    const at = pos ? { ...pos, radius: 300 } : course.lat || course.lon ? { lat: course.lat, lon: course.lon, radius: 2000 } : null;
+    setNearState(at && (await showNearby(code, at, myName())) ? (pos ? 'here' : 'course') : 'failed');
+  };
   const share = async () => {
     if (!shared) return;
     const url = roundJoinLink(shared.code);
@@ -75,6 +96,13 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
             </span>
             <span className={`drawer-switch${tournament ? ' on' : ''}`} aria-hidden="true" />
           </button>
+          <button type="button" className="drawer-row" role="switch" aria-checked={near} onClick={() => setNear(!near)}>
+            <span className="switch-label">
+              <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
+              <span className="muted small">{tr(`Signed-in players within about 300 m see the round under "Join a round" and join with a tap – for ${NEARBY_HOURS} hours`, `Angemeldete Spieler im Umkreis von etwa 300 m sehen die Runde unter „Runde beitreten“ und treten mit einem Tipp bei – ${NEARBY_HOURS} Stunden lang`)}</span>
+            </span>
+            <span className={`drawer-switch${near ? ' on' : ''}`} aria-hidden="true" />
+          </button>
         </div>
         {tournament && (
           <div className="field">
@@ -90,8 +118,10 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
             setBusy(true);
             const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament, who: myName() });
             setBusy(false);
-            if (r) props.onShared(r);
-            else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+            if (r) {
+              props.onShared(r);
+              if (near && r.shared) void putNearby(r.shared.code);
+            } else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
           }}
         >
           {busy ? tr('Creating …', 'Erzeuge …') : tr('Create a code', 'Code erzeugen')}
@@ -111,6 +141,15 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
           : tr('Scan, or type the code under "Join a round" – then pick who you are.', 'Scannen oder Code unter „Runde beitreten“ eingeben – dann wählen, wer man ist.')}
         {props.compact ? tr(' They can join now already; what you change here goes with the start.', ' Sie können schon jetzt beitreten; was du hier noch änderst, geht beim Start mit.') : ''}
       </span>
+      {nearState && (
+        <span className={`small ${nearState === 'failed' ? 'muted' : 'near-state'}`}>
+          {nearState === 'here'
+            ? tr(`Shown nearby for ${NEARBY_HOURS} hours – your partners find it under "Join a round".`, `In der Nähe sichtbar, ${NEARBY_HOURS} Stunden lang – deine Partner finden sie unter „Runde beitreten“.`)
+            : nearState === 'course'
+              ? tr(`No GPS – shown on the course for ${NEARBY_HOURS} hours.`, `Kein GPS – auf dem Platz sichtbar, ${NEARBY_HOURS} Stunden lang.`)
+              : tr('Not shown nearby – the code and the QR code work as ever.', 'In der Nähe nicht sichtbar – Code und QR-Code gehen wie gewohnt.')}
+        </span>
+      )}
       <button type="button" className="btn-secondary" onClick={share}>
         {tr('Share the link', 'Link teilen')}
       </button>
@@ -154,9 +193,15 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
     else if (!found) setMsg(tr('No connection – check the code or the connection.', 'Keine Verbindung – Code oder Verbindung prüfen.'));
     else setEv(found);
   };
+  // the rounds shown nearby (Sascha 29.10.2026): null while looking, [] none – not when opened by the link
+  const [near, setNear] = useState<NearbyRound[] | null>(null);
   // opened by the link: look it up straight away
   useEffect(() => {
     if (props.initial && cleanCode(props.initial).length === 6) void find(cleanCode(props.initial));
+    else
+      void here().then(async (pos) => {
+        setNear(pos ? await nearbyRounds(pos.lat, pos.lon) : []);
+      });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // the course on this phone before the round starts: its map, par and stroke index
   const ready = async (e: RoundEvent) => {
@@ -174,6 +219,37 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
             ✕
           </button>
         </div>
+        {!ev && !props.initial && (
+          <div className="near-rounds" aria-label={tr('Rounds nearby', 'Runden in der Nähe')}>
+            <span className="eyebrow">{tr('Nearby', 'In der Nähe')}</span>
+            {near == null && <span className="muted small">{tr('Looking for rounds nearby …', 'Suche Runden in der Nähe …')}</span>}
+            {near?.length === 0 && <span className="muted small">{tr('No round nearby – type the code instead.', 'Keine Runde in der Nähe – dann den Code eingeben.')}</span>}
+            {near?.map((n) => (
+              <button
+                key={n.code}
+                type="button"
+                className="list-item near-round"
+                disabled={busy != null}
+                onClick={() => {
+                  setCode(n.code);
+                  setMsg(null);
+                  void find(n.code);
+                }}
+              >
+                <span className="grow">
+                  <span className="title">
+                    {n.tournament ? n.name : n.host ? tr(`${n.host}'s round`, `Runde von ${n.host}`) : n.name}
+                    {n.mode ? ` · ${modeName(n.mode as GameMode)}` : ''}
+                  </span>
+                  <span className="muted small">
+                    {n.course} · {n.dist < 1000 ? `${n.dist} m` : `${(n.dist / 1000).toFixed(1).replace('.', ',')} km`}
+                  </span>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+          </div>
+        )}
         {!ev && (
           <>
             <input

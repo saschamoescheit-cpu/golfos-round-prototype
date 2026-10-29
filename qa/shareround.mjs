@@ -29,6 +29,17 @@ async function serve(route) {
     const row = shared.get(join_code);
     return json(200, row ? row.game : null);
   }
+  // rounds nearby: those shown within their circle, nearest first (the equirectangular distance, as the SQL)
+  if (u.pathname.endsWith('/rpc/golfos_nearby_rounds')) {
+    const { at_lat, at_lon } = JSON.parse(req.postData() ?? '{}');
+    const rad = (d) => (d * Math.PI) / 180;
+    const out = [...shared.entries()]
+      .filter(([, r]) => r.near && new Date(r.near.near_until) > new Date())
+      .map(([code, r]) => ({ code, r, d: 6371000 * Math.hypot(rad(r.near.near_lat - at_lat), Math.cos(rad(at_lat)) * rad(r.near.near_lon - at_lon)) }))
+      .filter((x) => x.d <= x.r.near.near_radius)
+      .map(({ code, r, d }) => ({ code, name: r.game.name, course: r.game.course.name, host: r.near.near_host, tournament: !!r.game.tournament, mode: r.game.format?.mode, dist: Math.round(d) }));
+    return json(200, out);
+  }
   if (u.pathname.endsWith('/golfos_shared_games')) {
     const code = (u.searchParams.get('code') ?? '').replace(/^eq\./, '');
     if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game, updated_at: shared.get(code).updated_at }] : []) : []);
@@ -46,6 +57,10 @@ async function serve(route) {
         return json(200, []);
       }
       const body = JSON.parse(req.postData());
+      if (body.near_lat != null) {
+        row.near = body; // shown nearby – the event itself unchanged
+        return json(204, null);
+      }
       row.game = body.game;
       row.updated_at = body.updated_at;
       return json(200, [{ code }]);
@@ -95,12 +110,15 @@ await H.locator('input[id^="hcp-"]').first().fill('10'); // as in the profile �
 await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.locator('input[id^="name-"]').last().fill('Ben');
 await H.locator('input[id^="hcp-"]').last().fill('16');
+// a plain social round invites as well (Sascha 29.10.2026: "not only scramble or a tournament")
+await H.locator('.invite-card').waitFor({ timeout: 10000 }).catch(() => {});
+ok((await H.locator('.invite-card').count()) === 1 && /Social/.test(await H.locator('.settings-row').filter({ hasText: 'Rundenart' }).innerText().catch(() => '')), `setup: the invitation in a social round too (${(await H.locator('.settings-row').filter({ hasText: 'Rundenart' }).innerText().catch(() => '?')).replace(/\s+/g, ' ')})`);
 await H.locator('.settings-row').filter({ hasText: 'Modus' }).click();
 await H.locator('.pick-option strong').getByText('Scramble', { exact: true }).click();
 // the invitation in the setup, with the flight partners – before the round begins (Sascha 29.10.2026)
 const card = H.locator('.invite-card');
 await card.waitFor({ timeout: 10000 });
-ok(await card.isVisible(), 'setup: "Mitspieler auf eigenen Handys" with the players, before the start');
+ok(await card.isVisible() && /^Mitspieler einladen/.test(await card.innerText()), 'setup: "Mitspieler einladen" with the players, before the start');
 await card.getByRole('switch', { name: /Turnier über mehrere Flights/ }).click();
 await card.locator('#event-name').fill('Scramble Samstag');
 await card.getByRole('button', { name: 'Code erzeugen' }).click();
@@ -111,6 +129,11 @@ ok(event()?.kind === 'round-event' && event().tournament && event().name === 'Sc
 const f1 = Object.values(event().flights)[0];
 ok(f1.players.length === 1 && f1.players[0].name === 'Sascha & Ben', `server: flight 1 – the team "${f1.players.map((p) => p.name).join()}"`);
 ok(Object.values(f1.phones ?? {}).map((p) => p.name).join() === 'Sascha', 'server: Sascha\'s phone in the flight – it keeps the card');
+// shown nearby (Sascha 29.10.2026: "only players signed in and nearby – by GPS"): where Sascha's phone is, for two hours
+await H.waitForTimeout(1200);
+const near = [...shared.values()][0]?.near;
+ok(near && Math.abs(near.near_lat - 48.7808) < 1e-4 && near.near_radius === 300 && near.near_host === 'Sascha' && new Date(near.near_until) - Date.now() > 1.9 * 3600e3, `server: the round shown nearby – Sascha's position, 300 m, two hours (${JSON.stringify(near ?? null).slice(0, 90)})`);
+ok(/In der Nähe sichtbar/.test(await card.innerText()), 'setup: "In der Nähe sichtbar" under the code');
 if (process.env.SHOTS) await card.screenshot({ path: process.env.SHOTS + '/round-invite.png' });
 
 // ---------- Ben: the same team, with the link – before Sascha starts ----------
@@ -137,13 +160,24 @@ await H.locator('.map-hole-no').waitFor({ timeout: 30000 }).catch(async () => {
 ok((await round(H)).shared?.code === code, 'Sascha: the round starts with the code from the setup');
 await H.waitForTimeout(2000);
 
-// ---------- Max: a flight of his own ----------
+// ---------- Max: nearby, a flight of his own ----------
 const third = await phone('Max');
 const M = third.p;
-await M.getByRole('button', { name: 'Runde beitreten' }).click();
 const mj = M.getByRole('dialog', { name: 'Runde beitreten' });
-await mj.getByRole('textbox', { name: 'Code der Runde' }).fill(code);
-await mj.getByRole('button', { name: 'Beitreten', exact: true }).click();
+// a kilometre away: nothing shown
+await M.context().setGeolocation({ latitude: 48.7898, longitude: 9.689, accuracy: 5 });
+await M.getByRole('button', { name: 'Runde beitreten' }).click();
+await mj.getByText('Keine Runde in der Nähe').waitFor({ timeout: 10000 }).catch(() => {});
+ok((await mj.locator('.near-round').count()) === 0 && (await mj.getByText('Keine Runde in der Nähe').isVisible()), 'Max, 1 km away: no round nearby');
+await mj.getByRole('button', { name: 'Schließen' }).click();
+// no code typed: the round nearby, a tap (Max stands ~100 m from Sascha's phone)
+await M.context().setGeolocation({ latitude: 48.7817, longitude: 9.689, accuracy: 5 });
+await M.getByRole('button', { name: 'Runde beitreten' }).click();
+const nearRow = mj.locator('.near-round');
+await nearRow.first().waitFor({ timeout: 10000 }).catch(() => {});
+const nearText = (await nearRow.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+ok(nearText.length === 1 && /Scramble Samstag · Scramble/.test(nearText[0]) && /\b(9\d|10\d) m\b/.test(nearText[0]), `Max: "In der Nähe" – ${nearText.join(' | ') || 'nothing'}`);
+await nearRow.first().click();
 await M.waitForTimeout(1500);
 await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).click();
 ok((await mj.getByRole('textbox', { name: 'Spieler 1', exact: true }).inputValue()) === 'Max', 'Max: his own flight – his name first, from the profile');

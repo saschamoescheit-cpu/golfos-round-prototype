@@ -526,5 +526,51 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
 }
 const pickFrame = (e: RoundEvent): Partial<Round> => ({ loopOrder: e.loopOrder, holes: e.holes, format: e.format, tee: e.tee, rating: e.rating, kind: e.roundKind });
 
+// ---------- rounds nearby (Sascha 29.10.2026: "invite only people signed in with Google and nearby – by GPS") ----------
+// Not the people – the round: the host's phone puts where it is beside the code (for two hours); a phone signed in and
+// within ~300 m sees it under "Join a round" and joins with a tap, no code typed. Nothing else of anyone's position is
+// kept; the server forgets it when the two hours are over (golfos_nearby_rounds, supabase/golfos-shared-games.sql).
+
+export interface NearbyRound {
+  code: string;
+  name: string;
+  course: string;
+  host: string;
+  tournament: boolean;
+  mode?: string;
+  /** metres from here */
+  dist: number;
+}
+export const NEARBY_HOURS = 2;
+/** The host's phone shows its round nearby: where it is (no GPS: the course, with a wider circle). False when it did
+ *  not get through – the code still works. */
+export async function showNearby(code: string, at: { lat: number; lon: number; radius: number }, host: string): Promise<boolean> {
+  const h = await headers();
+  if (!h) return false;
+  try {
+    const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}`, {
+      method: 'PATCH',
+      headers: { ...h, Prefer: 'return=minimal' },
+      body: JSON.stringify({ near_lat: at.lat, near_lon: at.lon, near_radius: Math.round(at.radius), near_host: host, near_until: new Date(Date.now() + NEARBY_HOURS * 3600 * 1000).toISOString() }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+/** The rounds shown near here, nearest first – none when offline or not signed in. */
+export async function nearbyRounds(lat: number, lon: number): Promise<NearbyRound[]> {
+  const h = await headers();
+  if (!h) return [];
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_nearby_rounds`, { method: 'POST', headers: h, body: JSON.stringify({ at_lat: lat, at_lon: lon }) });
+    if (!r.ok) return [];
+    const rows = (await r.json()) as NearbyRound[] | null;
+    return Array.isArray(rows) ? rows.filter((x) => x && typeof x.code === 'string').sort((a, b) => a.dist - b.dist) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The link in the QR code: opens Rounds and asks to join. */
 export const roundJoinLink = (code: string): string => `${location.origin}${location.pathname}#round=${code}`;

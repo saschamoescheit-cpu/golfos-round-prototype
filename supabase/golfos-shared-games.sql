@@ -33,3 +33,41 @@ begin
 end $$;
 revoke all on function public.golfos_join_game(text) from public, anon;
 grant execute on function public.golfos_join_game(text) to authenticated;
+
+-- Rounds nearby (Sascha 29.10.2026: "invite only people signed in with Google and nearby – by GPS"). The host's phone
+-- puts where it is beside the code, for two hours; a signed-in phone within the circle sees the round under "Join a
+-- round" and joins with a tap. Only the round is shown (name, course, the host's first name, the distance) – never a
+-- position; a position past its two hours is forgotten by the next look-up.
+alter table public.golfos_shared_games add column if not exists near_lat double precision;
+alter table public.golfos_shared_games add column if not exists near_lon double precision;
+alter table public.golfos_shared_games add column if not exists near_radius integer;
+alter table public.golfos_shared_games add column if not exists near_host text check (length(near_host) <= 60);
+alter table public.golfos_shared_games add column if not exists near_until timestamptz;
+
+create or replace function public.golfos_nearby_rounds(at_lat double precision, at_lon double precision) returns jsonb
+  language plpgsql security definer set search_path = public as $$
+declare found_rounds jsonb;
+begin
+  update golfos_shared_games set near_lat = null, near_lon = null, near_until = null where near_until < now();
+  select coalesce(jsonb_agg(x order by (x->>'dist')::numeric), '[]'::jsonb) into found_rounds from (
+    select jsonb_build_object(
+      'code', code,
+      'name', game->>'name',
+      'course', game->'course'->>'name',
+      'host', coalesce(near_host, ''),
+      'tournament', coalesce((game->>'tournament')::boolean, false),
+      'mode', game->'format'->>'mode',
+      'dist', round(d)) as x
+    from (
+      select *, 6371000 * sqrt(power(radians(near_lat - at_lat), 2) + power(cos(radians(at_lat)) * radians(near_lon - at_lon), 2)) as d
+      from golfos_shared_games
+      where near_until > now() and game->>'kind' = 'round-event'
+    ) g
+    where d <= coalesce(near_radius, 300)
+    order by d
+    limit 8
+  ) t;
+  return found_rounds;
+end $$;
+revoke all on function public.golfos_nearby_rounds(double precision, double precision) from public, anon;
+grant execute on function public.golfos_nearby_rounds(double precision, double precision) to authenticated;

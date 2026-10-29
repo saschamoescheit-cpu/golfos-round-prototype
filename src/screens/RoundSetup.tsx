@@ -317,10 +317,11 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
-        {/* the flight on their own phones – or a tournament over several flights (Sascha 29.10.2026) */}
+        {/* the flight on their own phones – or a tournament over several flights (Sascha 29.10.2026); every round, social
+            or competition, any format ("not only scramble or a tournament") */}
         {invitable && (
-          <div className="card invite-card" aria-label={tr('Players on their own phones', 'Mitspieler auf eigenen Handys')}>
-            <strong>{share?.tournament ? tr('Tournament', 'Turnier') : tr('Players on their own phones', 'Mitspieler auf eigenen Handys')}</strong>
+          <div className="card invite-card" aria-label={tr('Invite players', 'Mitspieler einladen')}>
+            <strong>{share?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</strong>
             <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact />
           </div>
         )}
