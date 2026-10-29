@@ -33,7 +33,8 @@ await ctx.addInitScript(() => {
 });
 const p = await ctx.newPage();
 const errs = [];
-p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+// (headless WebKit refuses the live site's service worker – as in the other tests, no fault of the app)
+p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control|sw\.js load failed/.test(e.message)) errs.push(e.message); });
 let fails = 0;
 const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) fails++; };
 const said = () => p.evaluate(() => window.__said);
