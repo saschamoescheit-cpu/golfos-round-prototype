@@ -18,7 +18,8 @@ import { tr } from './i18n';
 // - a player with a phone of his own keeps his own score – the others' phones show it, they cannot change it;
 // - scramble and foursomes: one phone keeps the team's card (at first the one that joined first – the host); another
 //   phone of the team can take it over (the keeper's battery is empty);
-// - a tournament: every player keeps his own score and marks one other player (pairs in the flight: 1 ↔ 2, 3 ↔ 4;
+// - single balls (a tournament or not – Sascha, the evening of 29.10.2026, "Sascha keeps his own score and, as marker,
+//   Cedric's"): every player keeps his own score and marks one other player (pairs in the flight: 1 ↔ 2, 3 ↔ 4;
 //   with three 1 → 2 → 3 → 1); the marker's count is kept apart and shown beside the player's own – a difference shows;
 // - a player without a phone: any phone of the flight keeps his score (as on one phone before).
 // The event lives in the table of the shared games (golfos_shared_games: the code, the JSON, host and members) – no
@@ -105,7 +106,7 @@ export function flightOf(round: Round, id: string, name: string, phone: string, 
     name,
     players: framePlayers(round),
     scores: scoresOf(round),
-    ...(tournament ? { marks: {}, markers: defaultMarkers(round.players.map((p) => p.id)) } : {}),
+    ...(tournament || !isTeamEvent(round.format) ? { marks: {}, markers: defaultMarkers(round.players.map((p) => p.id)) } : {}),
     phones: me ? { [phone]: { player: me, name: who, at: new Date().toISOString() } } : {},
     by: phone,
     finishedAt: round.finishedAt,
@@ -153,7 +154,9 @@ export function writerOf(f: Flight, player: string, team: boolean): string | nul
 export function roleOf(f: Flight, player: string, phone: string, team: boolean, tournament: boolean): Role {
   const w = writerOf(f, player, team);
   if (w === phone) return 'own';
-  if (tournament) {
+  // every player marks a partner – in a tournament and in any round of single balls (Sascha 29.10.2026, testing
+  // with Cedric: "Sascha keeps his own score and, as marker, Cedric's; Cedric his own and, as marker, Sascha's")
+  if (tournament || !team) {
     const m = f.markers?.[player];
     if (m && m !== player && writerOf(f, m, team) === phone) return 'mark';
   }
@@ -177,13 +180,14 @@ export function shareView(round: Round, f: Flight | undefined, tournament: boole
   const team = isTeamEvent(round.format);
   const me = round.players.find((p) => p.isMe)?.id;
   const nameOf = (id: string | undefined) => round.players.find((p) => p.id === id)?.name ?? '';
+  const marking = tournament || !team;
   return Object.fromEntries(
     round.players.map((p) => {
       const role = roleOf(f, p.id, phone, team, tournament);
       const w = writerOf(f, p.id, team);
       const marker = f.markers?.[p.id];
       const other =
-        !tournament || !marker
+        !marking || !marker
           ? null
           : role === 'own'
             ? { label: `${nameOf(marker)} (${tr('marker', 'Zähler')})`, cells: f.marks?.[p.id] ?? [] }
@@ -208,6 +212,7 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
   let changedHere = !remote;
   let changedThere = false;
   let f: Flight = remote ?? flightOf(round, share.flight, flightName(round), phone, tournament, who);
+  const marking = tournament || !team;
   // this phone in the flight: which player (or team) it is
   const me = round.players.find((p) => p.isMe)?.id;
   if (me && !f.phones?.[phone]) {
@@ -217,8 +222,9 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
   // the players: from the phone that set the flight up – the others take them over
   let players = round.players;
   if (f.by === phone || !f.by) {
-    if (!sameFrame(f.players, framePlayers(round))) {
-      f = { ...f, players: framePlayers(round), ...(tournament ? { markers: defaultMarkers(round.players.map((p) => p.id)) } : {}) };
+    // a flight from before every round was marked (29.10.2026, evening): its markers now
+    if (!sameFrame(f.players, framePlayers(round)) || (marking && !f.markers)) {
+      f = { ...f, players: framePlayers(round), ...(marking ? { markers: defaultMarkers(round.players.map((p) => p.id)) } : {}) };
       changedHere = true;
     }
   } else if (!sameFrame(f.players, framePlayers(round))) {
@@ -259,7 +265,7 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
   }
   const finishedAt = round.finishedAt ?? f.finishedAt ?? null;
   if ((f.finishedAt ?? null) !== finishedAt) changedHere = true;
-  const flight: Flight = { ...f, scores, ...(tournament || f.marks ? { marks } : {}), finishedAt };
+  const flight: Flight = { ...f, scores, ...(marking || f.marks ? { marks } : {}), finishedAt };
   const next = changedThere ? { ...round, players, entries } : round;
   return { round: next, flight, changedHere, base, roles };
 }

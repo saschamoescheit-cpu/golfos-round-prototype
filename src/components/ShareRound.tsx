@@ -84,8 +84,8 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
                 'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Mehrere Flights: ein Turnier mit Live-Leaderboard.',
               )
             : tr(
-                'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others. Several flights: a tournament with a live leaderboard, everyone also marks a partner.',
-                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen. Mehrere Flights: ein Turnier mit Live-Leaderboard, jeder zählt dazu einen Mitspieler.',
+                'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and, as marker, a partner\'s; the scorecard shows both live. Several flights: a tournament with a live leaderboard.',
+                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und als Zähler den eines Mitspielers; die Scorekarte zeigt beides live. Mehrere Flights: ein Turnier mit Live-Leaderboard.',
               )}
         </span>
         <div className="drawer-list settings-switches">
@@ -410,7 +410,7 @@ export function EventBoardCard(props: { code: string; myFlight: string }) {
     <section className="card stats-card leaderboard event-board">
       <h2>{ev.name}</h2>
       <span className="muted small">
-        {tr(`Tournament · ${flights} ${flights === 1 ? 'flight' : 'flights'}`, `Turnier · ${flights} ${flights === 1 ? 'Flight' : 'Flights'}`)} · {b.title}
+        {ev.tournament ? tr(`Tournament · ${flights} ${flights === 1 ? 'flight' : 'flights'}`, `Turnier · ${flights} ${flights === 1 ? 'Flight' : 'Flights'}`) : tr('Live · the phones of the flight', 'Live · alle Handys des Flights')} · {b.title}
       </span>
       <ol className="lb-rows">
         {b.rows.map((r) => {

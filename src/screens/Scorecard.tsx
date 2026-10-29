@@ -43,6 +43,8 @@ export function Scorecard(props: {
   onOpenTraining?: () => void;
 }) {
   const { round } = props;
+  // on several phones: the players this phone counts as their marker (its entries of them are its counts)
+  const marked = round.players.filter((p) => round.shared?.roles?.[p.id] === 'mark').map((p) => p.name);
   const [editHole, setEditHole] = useState<number | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const me = round.players.find((p) => p.isMe)!;
@@ -248,9 +250,18 @@ export function Scorecard(props: {
         {me.playingHandicap != null && round.players.length > 1 && <div className="muted small">{me.name} · {tr('hcp', 'SV')} {fmtHcp(me.playingHandicap)}</div>}
       </section>
 
-      {/* a tournament: the board of all flights as last exchanged (Sascha 29.10.2026) */}
-      {round.shared?.tournament && <EventBoardCard code={round.shared.code} myFlight={round.shared.flight} />}
-      {round.players.length > 1 && <LeaderboardCard round={round} />}
+      {/* the board of all phones as last exchanged – own scores ranked, a marker's differing count flagged; a
+          tournament all flights (Sascha 29.10.2026: "a scorecard with both players and their scores") */}
+      {round.shared && <EventBoardCard code={round.shared.code} myFlight={round.shared.flight} />}
+      {round.players.length > 1 && !round.shared && <LeaderboardCard round={round} />}
+      {round.shared && marked.length > 0 && (
+        <span className="muted small">
+          {tr(
+            `The card below: your own score and your count of ${marked.join(', ')} as marker – their own scores are on the board above.`,
+            `Die Karte unten: dein eigener Score und deine Zählung von ${marked.join(', ')} als Zähler – deren eigene Scores stehen oben im Live-Stand.`,
+          )}
+        </span>
+      )}
 
       <ScoreTable round={round} onHole={setEditHole} />
 

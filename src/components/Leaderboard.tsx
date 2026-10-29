@@ -41,9 +41,10 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void }) {
             ✕
           </button>
         </div>
-        {/* a tournament (Sascha 29.10.2026): all flights live, the own flight below */}
-        {props.round.shared?.tournament && <EventBoardCard code={props.round.shared.code} myFlight={props.round.shared.flight} />}
-        {props.round.players.length > 1 && <LeaderboardCard round={props.round} />}
+        {/* on several phones (Sascha 29.10.2026): everyone's own score live – this phone's entries of the others are
+            its counts as their marker, so not its own board */}
+        {props.round.shared && <EventBoardCard code={props.round.shared.code} myFlight={props.round.shared.flight} />}
+        {props.round.players.length > 1 && !props.round.shared && <LeaderboardCard round={props.round} />}
       </section>
     </div>
   );

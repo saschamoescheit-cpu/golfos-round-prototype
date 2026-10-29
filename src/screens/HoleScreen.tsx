@@ -319,8 +319,7 @@ export function HoleScreen(props: {
     if (k == null) return;
     // walked on to a later hole without a score for this one (Sascha 16.10.2026: "beim Weiterschalten sollte die
     // Erfassung des Scores aufklappen"): first this hole's score, then on to the hole the GPS found
-    const mine = round.entries[me.id][i];
-    if (k > i && !round.preview && !myScoreElsewhere && mine && mine.strokes == null && !mine.pickedUp) {
+    if (k > i && !round.preview && scoreToAsk(i)) {
       setPendingHole(k);
       setScoreSheet('next');
       return;
@@ -495,7 +494,7 @@ export function HoleScreen(props: {
    *  the next "→" goes on. A hole with shots opens its score page. */
   const forward = () => {
     if (pendingHole != null) return onAfterScore(true);
-    const ask = !round.preview && !scoreSheet && !myScoreElsewhere && ((myEntry.strokes == null && !myEntry.pickedUp) || revisit.current.has(i));
+    const ask = !round.preview && !scoreSheet && (scoreToAsk(i) || (!myScoreElsewhere && revisit.current.has(i)));
     revisit.current.delete(i);
     if (!ask) return goTo(i + 1);
     if (hasShots) setView('score');
@@ -798,6 +797,13 @@ export function HoleScreen(props: {
   const views = useMemo(() => (round.shared ? shareView(round, shareEvent?.flights[round.shared.flight], !!shareEvent?.tournament) : {}), [round, shareEvent]);
   /** this phone does not keep its own score (the team's card is kept on another phone): no score asked on the way on */
   const myScoreElsewhere = views[me.id]?.role === 'view';
+  /** a hole still wanting a score from this phone: its own (unless kept elsewhere) – and the partner it marks (Sascha
+   *  29.10.2026: "Sascha keeps his own score and, as marker, Cedric's") */
+  const scoreToAsk = (k: number): boolean =>
+    [...(myScoreElsewhere ? [] : [me.id]), ...round.players.filter((p) => views[p.id]?.role === 'mark').map((p) => p.id)].some((pid) => {
+      const e = round.entries[pid]?.[k];
+      return !!e && e.strokes == null && !e.pickedUp;
+    });
   const takeTheCard = async (team: string) => {
     if (!(await takeOver(round, team))) return setTestMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
     await exchangeNow.current();
@@ -1502,7 +1508,7 @@ export function HoleScreen(props: {
               if (k === i) return;
               // on to the next hole from the overview: a hole without a score first asks for it, as "→" does (Sascha
               // 28.10.2026) – then on to the hole picked, as after the GPS found the next hole
-              if (k === i + 1 && !round.preview && !myScoreElsewhere && myEntry.strokes == null && !myEntry.pickedUp) {
+              if (k === i + 1 && !round.preview && scoreToAsk(i)) {
                 setPendingHole(k);
                 setScoreSheet('next');
                 return;
