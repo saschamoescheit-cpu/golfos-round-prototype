@@ -1,4 +1,5 @@
-import type { HoleEntry, Player, Round, RoundHole } from '../types';
+import type { HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
+import { cellOf, sameCell } from '../lib/sharedround';
 import { formatToPar } from './ui';
 import { FairwayPicker } from './FairwayPicker';
 import { tr } from '../lib/i18n';
@@ -45,6 +46,19 @@ function Stepper(props: { label: string; sub?: string; extra?: JSX.Element; valu
   );
 }
 
+/** A tournament: the other count of the same hole – the marker's beside the player's own, or his own beside the
+ *  marker's – flagged when both are in and differ (Sascha 29.10.2026: "the player counts himself and a partner"). */
+function OtherCount(props: { label: string; cell: SharedCell; mine: SharedCell }) {
+  const text = (c: SharedCell) => (c == null ? '–' : c.p ? tr('picked up', 'aufgehoben') : String(c.s ?? '–'));
+  const differs = props.cell != null && props.mine != null && !sameCell(props.cell, props.mine);
+  return (
+    <span className={`other-count${differs ? ' differs' : ''}`} role={differs ? 'alert' : undefined}>
+      {props.label}: <strong>{text(props.cell)}</strong>
+      {differs && <> · {tr('differs – agree on the score', 'weicht ab – Score abstimmen')}</>}
+    </span>
+  );
+}
+
 export const scoreName = (d: number): string =>
   d <= -3 ? 'Albatross' : d === -2 ? 'Eagle' : d === -1 ? 'Birdie' : d === 0 ? 'Par' : d === 1 ? 'Bogey' : d === 2 ? tr('Double bogey', 'Doppelbogey') : `+${d}`;
 
@@ -82,6 +96,9 @@ export function ScoreSheet(props: {
   closeLabel?: string;
   /** "Picked up" offered – Stableford, match play and games, not stroke play (Sascha 21.10.2026) */
   pickUp?: boolean;
+  /** a round on several phones (Sascha 29.10.2026), per player: kept on another phone (its owner's name – shown, not
+   *  changed here), the team's card to take over, and in a tournament the other count beside this one */
+  shared?: Record<string, { keptBy: string | null; takeOver?: () => void; other?: { label: string; cell: SharedCell } }>;
 }) {
   const h = props.hole;
   return (
@@ -121,6 +138,34 @@ export function ScoreSheet(props: {
         };
         const penaltySub =
           (e.penalties ?? 0) > 0 ? tr(`incl. ${e.penalties} penalty ${e.penalties === 1 ? 'stroke' : 'strokes'}`, `inkl. ${e.penalties} ${e.penalties === 1 ? 'Strafschlag' : 'Strafschläge'}`) : tr('incl. penalty strokes', 'inkl. Strafschläge');
+        const sh = props.shared?.[p.id];
+        // kept on another phone: shown, not changed here – the team's card can be taken over
+        if (sh?.keptBy != null)
+          return (
+            <div key={p.id} className="score-player kept-elsewhere">
+              <div className="score-player-head">
+                <strong>{p.name}</strong>
+                {toPar != null && (
+                  <span className="muted small">
+                    {tr('round', 'Runde')} {formatToPar(toPar)}
+                  </span>
+                )}
+                <span className="spacer" />
+                <strong className="kept-value" aria-label={tr(`Score ${p.name}`, `Score ${p.name}`)}>
+                  {e.pickedUp ? tr('picked up', 'aufgehoben') : (e.strokes ?? '–')}
+                </strong>
+              </div>
+              <span className="muted small">
+                {props.team ? tr(`${sh.keptBy || 'Another phone'} keeps the team's card`, `${sh.keptBy || 'Ein anderes Handy'} führt die Scorecard des Teams`) : tr(`${sh.keptBy || p.name} keeps this score on his phone`, `${sh.keptBy || p.name} erfasst diesen Score auf seinem Handy`)}
+              </span>
+              {sh.takeOver && (
+                <button type="button" className="btn-secondary" onClick={sh.takeOver}>
+                  {tr('Take the card over', 'Scorecard übernehmen')}
+                </button>
+              )}
+              {sh.other && <OtherCount label={sh.other.label} cell={sh.other.cell} mine={cellOf(e)} />}
+            </div>
+          );
         return (
           <div key={p.id} className="score-player">
             <div className="score-player-head">
@@ -148,6 +193,7 @@ export function ScoreSheet(props: {
                 onChange={(v) => set({ strokes: v, pickedUp: false })}
               />
             )}
+            {sh?.other && <OtherCount label={sh.other.label} cell={sh.other.cell} mine={cellOf(e)} />}
             {p.isMe && !e.pickedUp && !props.team && (
               <>
                 <Stepper

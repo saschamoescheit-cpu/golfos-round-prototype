@@ -1263,6 +1263,17 @@ button.tile:disabled { opacity: 1; }
 .new-flight-row .hcp-input { text-align: center; }
 .lb-rows li.lb-mine { box-shadow: inset 0 0 0 2px var(--brand); }
 .invite-sheet .chip-set .chip { min-height: 44px; }
+/* who keeps which score: the invitation in the setup, a score kept on another phone, the marker's count, the chips of
+   who is on which phone (29.10.2026) */
+.invite-card { display: flex; flex-direction: column; gap: 10px; }
+.score-player.kept-elsewhere { gap: 6px; }
+.kept-value { font: 800 22px var(--display); }
+.other-count { display: block; font-size: 13px; color: var(--muted); }
+.other-count strong { color: var(--text); }
+.other-count.differs { color: var(--bad, #e5484d); font-weight: 600; }
+.join-chip { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0; }
+.join-chip small { font-size: 11px; }
+.lb-diff { display: block; font-size: 11px; color: var(--bad, #e5484d); }
 
 /* profile photo and the small pictures next to the names (Sascha 16.10.2026) */
 .avatar { border-radius: 50%; object-fit: cover; flex: none; display: inline-block; vertical-align: middle; }

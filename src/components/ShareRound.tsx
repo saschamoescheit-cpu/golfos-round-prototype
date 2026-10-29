@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, cachedEvent, eventBoard, joinEvent, newFlightRound, roundFromEvent, roundJoinLink, shareRound, type RoundEvent } from '../lib/sharedround';
-import { loadCachedCourse } from '../lib/storage';
+import { addFlight, cachedEvent, differences, eventBoard, joinEvent, newFlightRound, roundFromEvent, roundJoinLink, shareRound, writerOf, type RoundEvent } from '../lib/sharedround';
+import { isTeamMode } from '../lib/games';
+import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
 import { loadProfile, shownName } from '../lib/profile';
 import { tr } from '../lib/i18n';
 import { Qr } from './ShareGame';
 import { Avatar } from './Avatar';
 
-// Invite to a round and join one (Sascha 29.10.2026): the same scramble team on two phones, or a tournament over several
-// flights with a live leaderboard. The host shows the code and the QR code; the others scan it or type the code under
-// "Join a round" and play in a flight that is there – or start their own.
+// Invite to a round and join one (Sascha 29.10.2026): the flight partners on their own phones – each keeps his own
+// score, a team's card one of the team – or a tournament over several flights with a live leaderboard. The invitation
+// sits where the round is set up, with the flight partners ("not only once the round has begun"), and stays in the
+// round's menu. The host shows the code and the QR code; the others scan it or type the code under "Join a round".
 
 /** Where the course comes from, for the phones that join (they load it themselves). */
 function courseSummary(round: Round): CourseSummary {
@@ -21,12 +23,21 @@ function courseSummary(round: Round): CourseSummary {
     : { id: round.courseId, source: 'osm', name: round.courseName, lat: 0, lon: 0 };
 }
 
-export function RoundInviteSheet(props: { round: Round; onShared: (r: Round) => void; onClose: () => void }) {
+/** The phone's owner as the others see him ("kept by Sascha"). */
+export const myName = (): string => shownName(loadProfile()) || tr('a player', 'ein Spieler');
+
+/**
+ * The invitation: before the code the choice "tournament" (with its name), then the code, the QR code and "share the
+ * link". `round` is the round – or, in the setup, the round as it would start now (its players and holes go to the
+ * event; what changes before the start follows with the first exchange).
+ */
+export function InvitePanel(props: { round: Round; onShared: (r: Round) => void; compact?: boolean }) {
   const shared = props.round.shared;
   const [tournament, setTournament] = useState(false);
   const [name, setName] = useState(() => `${props.round.courseName} · ${new Date(props.round.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const team = isTeamMode(props.round.format?.mode);
   const share = async () => {
     if (!shared) return;
     const url = roundJoinLink(shared.code);
@@ -42,70 +53,83 @@ export function RoundInviteSheet(props: { round: Round; onShared: (r: Round) => 
       /* cancelled */
     }
   };
+  if (!shared)
+    return (
+      <>
+        <span className="muted small">
+          {team
+            ? tr(
+                'Your flight on their own phones (signed in with Google): one of the team keeps the card – another can take it over. Several flights: a tournament with a live leaderboard.',
+                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Mehrere Flights: ein Turnier mit Live-Leaderboard.',
+              )
+            : tr(
+                'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others. Several flights: a tournament with a live leaderboard, everyone also marks a partner.',
+                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen. Mehrere Flights: ein Turnier mit Live-Leaderboard, jeder zählt dazu einen Mitspieler.',
+              )}
+        </span>
+        <div className="drawer-list settings-switches">
+          <button type="button" className="drawer-row" role="switch" aria-checked={tournament} onClick={() => setTournament(!tournament)}>
+            <span className="switch-label">
+              <span>{tr('Tournament over several flights', 'Turnier über mehrere Flights')}</span>
+              <span className="muted small">{tr('Other flights join with the code and start their own flight; everyone marks a partner', 'Weitere Flights treten mit dem Code bei und legen ihren eigenen Flight an; jeder zählt einen Mitspieler')}</span>
+            </span>
+            <span className={`drawer-switch${tournament ? ' on' : ''}`} aria-hidden="true" />
+          </button>
+        </div>
+        {tournament && (
+          <div className="field">
+            <label htmlFor="event-name">{tr('Name of the tournament', 'Name des Turniers')}</label>
+            <input id="event-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+        )}
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament, who: myName() });
+            setBusy(false);
+            if (r) props.onShared(r);
+            else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+          }}
+        >
+          {busy ? tr('Creating …', 'Erzeuge …') : tr('Create a code', 'Code erzeugen')}
+        </button>
+        {msg && <span className="muted small">{msg}</span>}
+      </>
+    );
+  return (
+    <>
+      <Qr text={roundJoinLink(shared.code)} />
+      <strong className="join-code" aria-label={tr(`Code ${shared.code}`, `Code ${shared.code}`)}>
+        {shared.code}
+      </strong>
+      <span className="muted small">
+        {shared.tournament
+          ? tr('Scan, or type the code under "Join a round": your flight picks who it is, another flight starts its own.', 'Scannen oder Code unter „Runde beitreten“ eingeben: Dein Flight wählt, wer er ist – ein anderer Flight legt seinen eigenen an.')
+          : tr('Scan, or type the code under "Join a round" – then pick who you are.', 'Scannen oder Code unter „Runde beitreten“ eingeben – dann wählen, wer man ist.')}
+        {props.compact ? tr(' They can join now already; what you change here goes with the start.', ' Sie können schon jetzt beitreten; was du hier noch änderst, geht beim Start mit.') : ''}
+      </span>
+      <button type="button" className="btn-secondary" onClick={share}>
+        {tr('Share the link', 'Link teilen')}
+      </button>
+      {msg && <span className="muted small">{msg}</span>}
+    </>
+  );
+}
+
+export function RoundInviteSheet(props: { round: Round; onShared: (r: Round) => void; onClose: () => void }) {
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet invite-sheet" role="dialog" aria-label={tr('Invite players', 'Mitspieler einladen')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <strong>{shared?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</strong>
+          <strong>{props.round.shared?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</strong>
           <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
             ✕
           </button>
         </div>
-        {!shared ? (
-          <>
-            <span className="muted">
-              {tr(
-                'Your flight on other phones: everyone enters the scores, everyone sees them (signed in with Google). Several flights: a tournament with a live leaderboard.',
-                'Dein Flight auf weiteren Handys: Jeder trägt ein, jeder sieht die Scores (mit Google angemeldet). Mehrere Flights: ein Turnier mit Live-Leaderboard.',
-              )}
-            </span>
-            <div className="drawer-list settings-switches">
-              <button type="button" className="drawer-row" role="switch" aria-checked={tournament} onClick={() => setTournament(!tournament)}>
-                <span className="switch-label">
-                  <span>{tr('Tournament over several flights', 'Turnier über mehrere Flights')}</span>
-                  <span className="muted small">{tr('Other flights join with the code and start their own flight', 'Weitere Flights treten mit dem Code bei und legen ihren eigenen Flight an')}</span>
-                </span>
-                <span className={`drawer-switch${tournament ? ' on' : ''}`} aria-hidden="true" />
-              </button>
-            </div>
-            {tournament && (
-              <div className="field">
-                <label htmlFor="event-name">{tr('Name of the tournament', 'Name des Turniers')}</label>
-                <input id="event-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-            )}
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament });
-                setBusy(false);
-                if (r) props.onShared(r);
-                else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
-              }}
-            >
-              {busy ? tr('Creating …', 'Erzeuge …') : tr('Create a code', 'Code erzeugen')}
-            </button>
-          </>
-        ) : (
-          <>
-            <Qr text={roundJoinLink(shared.code)} />
-            <strong className="join-code" aria-label={tr(`Code ${shared.code}`, `Code ${shared.code}`)}>
-              {shared.code}
-            </strong>
-            <span className="muted small">
-              {shared.tournament
-                ? tr('Scan, or type the code under "Join a round": your flight picks who it is, another flight starts its own.', 'Scannen oder Code unter „Runde beitreten“ eingeben: Dein Flight wählt, wer er ist – ein anderer Flight legt seinen eigenen an.')
-                : tr('Scan, or type the code under "Join a round" – then pick who you are.', 'Scannen oder Code unter „Runde beitreten“ eingeben – dann wählen, wer man ist.')}
-            </span>
-            <button type="button" className="btn-secondary" onClick={share}>
-              {tr('Share the link', 'Link teilen')}
-            </button>
-          </>
-        )}
-        {msg && <span className="muted small">{msg}</span>}
+        <InvitePanel round={props.round} onShared={props.onShared} />
       </section>
     </div>
   );
@@ -140,6 +164,7 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
     await loadCourse(e.course).catch(() => null); // offline: the round still plays, the map as far as the phone has it
   };
   const flights = ev ? Object.values(ev.flights) : [];
+  const team = isTeamMode(ev?.format?.mode);
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet invite-sheet" role="dialog" aria-label={tr('Join a round', 'Runde beitreten')} onClick={(e) => e.stopPropagation()}>
@@ -176,21 +201,27 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
               <div className="field" key={f.id}>
                 <label>{flights.length > 1 ? tr(`Flight ${f.name} – who are you?`, `Flight ${f.name} – wer bist du?`) : tr('Who are you?', 'Wer bist du?')}</label>
                 <div className="chip-set">
-                  {f.players.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className="chip"
-                      disabled={busy != null}
-                      onClick={async () => {
-                        await ready(ev);
-                        setBusy(null);
-                        props.onJoined(roundFromEvent(ev, f.id, p.id, code));
-                      }}
-                    >
-                      {p.name}
-                    </button>
-                  ))}
+                  {f.players.map((p) => {
+                    // already on a phone: a single player is taken; a team's second phone joins it (and can take the card over)
+                    const w = writerOf(f, p.id, team);
+                    const on = w ? (f.phones?.[w]?.name ?? '') : '';
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className="chip join-chip"
+                        disabled={busy != null}
+                        onClick={async () => {
+                          await ready(ev);
+                          setBusy(null);
+                          props.onJoined(roundFromEvent(ev, f.id, p.id, code, newId(), myName()));
+                        }}
+                      >
+                        <span>{p.name}</span>
+                        {on && <small className="muted">{team ? tr(`card: ${on}`, `Scorecard: ${on}`) : tr(`on ${on}'s phone`, `auf dem Handy von ${on}`)}</small>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -223,7 +254,7 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
                 const players = own
                   .filter((p, k) => k === 0 || p.name.trim())
                   .map((p) => ({ name: p.name.trim(), playingHandicap: p.hcp.trim() && Number.isFinite(Number(p.hcp.replace(',', '.'))) ? Math.round(Number(p.hcp.replace(',', '.'))) : null }));
-                const { round, flight } = newFlightRound(ev, players, code);
+                const { round, flight } = newFlightRound(ev, players, code, newId(), myName());
                 await ready(ev);
                 setBusy(tr('Joining …', 'Trete bei …'));
                 const ok = await addFlight(code, flight);
@@ -246,7 +277,8 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
   );
 }
 
-/** The live leaderboard of all flights of a tournament (updated with every exchange). */
+/** The live leaderboard of all flights of a tournament (updated with every exchange); a player whose own score and his
+ *  marker's differ is flagged with the holes. */
 export function EventBoardCard(props: { code: string; myFlight: string }) {
   const [ev, setEv] = useState(() => cachedEvent(props.code));
   useEffect(() => {
@@ -258,6 +290,12 @@ export function EventBoardCard(props: { code: string; myFlight: string }) {
   const b = eventBoard(ev);
   const mine = new Set((ev.flights[props.myFlight]?.players ?? []).map((p) => `${props.myFlight}/${p.id}`));
   const flights = Object.keys(ev.flights).length;
+  const diff = (key: string): string | null => {
+    const [fid, pid] = key.split('/');
+    const f = ev.flights[fid];
+    const holes = f ? differences(f, pid) : [];
+    return holes.length ? holes.map((i) => ev.holes[i]?.label ?? String(i + 1)).join(', ') : null;
+  };
   return (
     <section className="card stats-card leaderboard event-board">
       <h2>{ev.name}</h2>
@@ -265,17 +303,23 @@ export function EventBoardCard(props: { code: string; myFlight: string }) {
         {tr(`Tournament · ${flights} ${flights === 1 ? 'flight' : 'flights'}`, `Turnier · ${flights} ${flights === 1 ? 'Flight' : 'Flights'}`)} · {b.title}
       </span>
       <ol className="lb-rows">
-        {b.rows.map((r) => (
-          <li key={r.key} className={mine.has(r.key) ? 'lb-mine' : undefined}>
-            <span className="lb-rank">{r.rank}</span>
-            <span className="lb-name">
-              <Avatar name={r.name} me={mine.has(r.key)} size={24} />
-              {r.name}
-            </span>
-            <span className="lb-value">{r.value}</span>
-            <span className="lb-thru muted small">{r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
-          </li>
-        ))}
+        {b.rows.map((r) => {
+          const d = diff(r.key);
+          return (
+            <li key={r.key} className={mine.has(r.key) ? 'lb-mine' : undefined}>
+              <span className="lb-rank">{r.rank}</span>
+              <span className="lb-name">
+                <Avatar name={r.name} me={mine.has(r.key)} size={24} />
+                <span>
+                  {r.name}
+                  {d && <small className="lb-diff">{tr(`marker differs: ${d}`, `Zähler weicht ab: ${d}`)}</small>}
+                </span>
+              </span>
+              <span className="lb-value">{r.value}</span>
+              <span className="lb-thru muted small">{r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

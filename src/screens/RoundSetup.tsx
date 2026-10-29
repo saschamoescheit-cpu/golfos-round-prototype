@@ -16,6 +16,8 @@ import { fetchShared } from '../lib/sharedratings';
 import type { TeeRating } from '../data/ratings';
 import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, type RoundFormat } from '../lib/games';
+import { sharingAvailable } from '../lib/sharedgame';
+import { InvitePanel } from '../components/ShareRound';
 
 const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
@@ -177,6 +179,13 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
     } catch {
       /* ignore */
     }
+    const r = draft(preview, planning);
+    // invited in the setup: the round is the event's (the preview of the course stays on this phone)
+    if (r) props.onStart(share && !preview ? { ...r, shared: share } : r);
+  };
+  /** The round as it would start now – for the start, and for the invitation made before it. */
+  const draft = (preview = false, planning = false): Round | null => {
+    if (!option) return null;
     const single: Player[] = [
       { id: 'me', name: me.name.trim() || tr('Me', 'Ich'), playingHandicap: playingHandicap(me), isMe: true, ...(me.tee ? { tee: me.tee } : {}) },
       ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`), playingHandicap: playingHandicap(o), isMe: false, ...(o.tee ? { tee: o.tee } : {}) })),
@@ -192,7 +201,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       : single;
     const entries: Round['entries'] = {};
     for (const p of players) entries[p.id] = holes.map(() => emptyEntry());
-    props.onStart({
+    return {
       id: newId(),
       createdAt: new Date().toISOString(),
       finishedAt: null,
@@ -210,8 +219,16 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       ...(rating ? { rating: { cr: rating.cr, slope: rating.slope } } : {}),
       ...(preview ? { preview: true } : {}),
       ...(planning ? { planning: true } : {}),
-    });
+    };
   };
+  // the flight partners on their own phones (Sascha 29.10.2026: "invite where the round is set up, with the flight
+  // partners – not only once it has begun"): the code made here, the round starts with it
+  const [share, setShare] = useState<Round['shared'] | null>(null);
+  const [canShare, setCanShare] = useState<boolean | null>(null);
+  useEffect(() => {
+    void sharingAvailable().then(setCanShare);
+  }, []);
+  const invitable = useMemo(() => (canShare ? draft() : null), [canShare, share, me, others, format, optionId, kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <main className="screen">
@@ -299,6 +316,16 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           <button type="button" className="btn-secondary" onClick={() => setOthers([...others, { id: newId(), name: '', index: '', handicap: '', tee: me.tee }])}>
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
+        )}
+        {/* the flight on their own phones – or a tournament over several flights (Sascha 29.10.2026) */}
+        {invitable && (
+          <div className="card invite-card" aria-label={tr('Players on their own phones', 'Mitspieler auf eigenen Handys')}>
+            <strong>{share?.tournament ? tr('Tournament', 'Turnier') : tr('Players on their own phones', 'Mitspieler auf eigenen Handys')}</strong>
+            <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact />
+          </div>
+        )}
+        {canShare === false && (
+          <span className="muted small">{tr('To invite your flight to their own phones: sign in with Google (Profile → "On all your devices").', 'Flightpartner auf ihre eigenen Handys einladen: mit Google anmelden (Profil → „Auf allen Geräten“).')}</span>
         )}
         {/* where the playing handicap comes from – once for all players; missing or wrong: typed from the club's
             scorecard, kept for this course, these loops and this tee */}

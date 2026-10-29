@@ -33,7 +33,8 @@ import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn } from '../lib/impact';
 import { PocketMode, pocketTestOn } from '../components/PocketMode';
 import { RoundInviteSheet } from '../components/ShareRound';
-import { exchangeRound, settle } from '../lib/sharedround';
+import { cachedEvent, exchangeRound, settle, shareView, takeOver } from '../lib/sharedround';
+import { myName } from '../components/ShareRound';
 import { sharingAvailable } from '../lib/sharedgame';
 import { courseStats } from '../lib/history';
 import { holeForTee } from '../lib/teeline';
@@ -319,7 +320,7 @@ export function HoleScreen(props: {
     // walked on to a later hole without a score for this one (Sascha 16.10.2026: "beim Weiterschalten sollte die
     // Erfassung des Scores aufklappen"): first this hole's score, then on to the hole the GPS found
     const mine = round.entries[me.id][i];
-    if (k > i && !round.preview && mine && mine.strokes == null && !mine.pickedUp) {
+    if (k > i && !round.preview && !myScoreElsewhere && mine && mine.strokes == null && !mine.pickedUp) {
       setPendingHole(k);
       setScoreSheet('next');
       return;
@@ -494,7 +495,7 @@ export function HoleScreen(props: {
    *  the next "→" goes on. A hole with shots opens its score page. */
   const forward = () => {
     if (pendingHole != null) return onAfterScore(true);
-    const ask = !round.preview && !scoreSheet && ((myEntry.strokes == null && !myEntry.pickedUp) || revisit.current.has(i));
+    const ask = !round.preview && !scoreSheet && !myScoreElsewhere && ((myEntry.strokes == null && !myEntry.pickedUp) || revisit.current.has(i));
     revisit.current.delete(i);
     if (!ask) return goTo(i + 1);
     if (hasShots) setView('score');
@@ -762,6 +763,7 @@ export function HoleScreen(props: {
   const shareCode = round.shared?.code ?? null;
   const exchangeChange = useRef(props.onChange);
   exchangeChange.current = props.onChange;
+  const exchangeNow = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
     if (!shareCode) return;
     let busy = false;
@@ -769,11 +771,12 @@ export function HoleScreen(props: {
       if (busy || document.visibilityState !== 'visible') return;
       busy = true;
       const sent = latestRound.current;
-      const got = await exchangeRound(sent).finally(() => (busy = false));
+      const got = await exchangeRound(sent, myName()).finally(() => (busy = false));
       if (!got) return;
       const next = settle(latestRound.current, sent, got);
       if (JSON.stringify(next) !== JSON.stringify(latestRound.current)) exchangeChange.current(next);
     };
+    exchangeNow.current = tick;
     void tick();
     const t = window.setInterval(() => void tick(), 5000);
     document.addEventListener('visibilitychange', tick);
@@ -782,6 +785,24 @@ export function HoleScreen(props: {
       document.removeEventListener('visibilitychange', tick);
     };
   }, [shareCode]);
+  // who keeps which score (Sascha 29.10.2026): a player's own phone his, a team's card one phone of the team, in a
+  // tournament everyone also marks a partner – the score panel locks what another phone keeps and shows both counts
+  const [shareEvent, setShareEvent] = useState(() => (shareCode ? cachedEvent(shareCode) : null));
+  useEffect(() => {
+    if (!shareCode) return;
+    const on = () => setShareEvent(cachedEvent(shareCode));
+    on();
+    window.addEventListener('golfos:event-changed', on);
+    return () => window.removeEventListener('golfos:event-changed', on);
+  }, [shareCode]);
+  const views = useMemo(() => (round.shared ? shareView(round, shareEvent?.flights[round.shared.flight], !!shareEvent?.tournament) : {}), [round, shareEvent]);
+  /** this phone does not keep its own score (the team's card is kept on another phone): no score asked on the way on */
+  const myScoreElsewhere = views[me.id]?.role === 'view';
+  const takeTheCard = async (team: string) => {
+    if (!(await takeOver(round, team))) return setTestMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+    await exchangeNow.current();
+    setTestMsg(tr('You keep the card now.', 'Du führst jetzt die Scorecard.'));
+  };
   const [testMsg, setTestMsg] = useState<string | null>(null);
   // shot by sound – a test (Sascha 18.10.2026): listening while this screen is open, every crack kept with time and place
   const soundTest = useMemo(() => soundTestOn() && !round.preview && !props.game, []);
@@ -1452,6 +1473,16 @@ export function HoleScreen(props: {
             canPlacePutts={!round.preview && !isTeamRound(round)}
             team={isTeamRound(round)}
             pickUp={pickUpAllowed(round, !!props.game)}
+            shared={Object.fromEntries(
+              Object.entries(views).map(([pid, v]) => [
+                pid,
+                {
+                  keptBy: v.role === 'view' ? (v.keptBy ?? '') : null,
+                  takeOver: v.canTakeOver ? () => void takeTheCard(pid) : undefined,
+                  other: v.other ? { label: v.other.label, cell: v.other.cells[i] ?? null } : undefined,
+                },
+              ]),
+            )}
             onChange={update}
             onPlacePutts={() => setPuttEditor(true)}
             onClose={() => {
@@ -1471,7 +1502,7 @@ export function HoleScreen(props: {
               if (k === i) return;
               // on to the next hole from the overview: a hole without a score first asks for it, as "→" does (Sascha
               // 28.10.2026) – then on to the hole picked, as after the GPS found the next hole
-              if (k === i + 1 && !round.preview && myEntry.strokes == null && !myEntry.pickedUp) {
+              if (k === i + 1 && !round.preview && !myScoreElsewhere && myEntry.strokes == null && !myEntry.pickedUp) {
                 setPendingHole(k);
                 setScoreSheet('next');
                 return;

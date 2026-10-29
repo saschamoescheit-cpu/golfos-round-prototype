@@ -213,7 +213,16 @@ export interface Round {
   format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number };
   /** Played on several phones (Sascha 29.10.2026, lib/sharedround.ts): the event's code, this round's flight, and the
    *  flight's scores as last exchanged (what changed here, what elsewhere). */
-  shared?: { code: string; flight: string; tournament?: boolean; base: Record<string, SharedCell[]> };
+  shared?: {
+    code: string;
+    flight: string;
+    tournament?: boolean;
+    base: Record<string, SharedCell[]>;
+    /** this phone in the event (which scores it writes – its own, a team's card it keeps, the player it marks) */
+    phone?: string;
+    /** what this phone did with each player's score at the last exchange (keeps, marks, shows – lib/sharedround.ts) */
+    roles?: Record<string, 'own' | 'mark' | 'view' | 'free'>;
+  };
 }
 
 /** One hole's score as shared between phones: strokes, picked up, or nothing yet (null). */

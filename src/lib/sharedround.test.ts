@@ -1,117 +1,194 @@
 import { describe, expect, it } from 'vitest';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
-import { eventBoard, eventOf, mergeFlight, newFlightRound, roundFromEvent, scoresOf, settle, type RoundEvent } from './sharedround';
+import { defaultMarkers, differences, eventBoard, eventOf, mergeFlight, newFlightRound, roundFromEvent, settle, shareView, type RoundEvent } from './sharedround';
 
-// A round on several phones (Sascha 29.10.2026): the same scramble team on two phones, and a tournament of flights.
+// A round on several phones (Sascha 29.10.2026): the flight partners on their own phones – everyone keeps his own
+// score, a team's card one phone of the team (another can take it over), in a tournament everyone also marks a partner.
 
 const holes = Array.from({ length: 3 }, (_, i) => ({ index: i, label: String(i + 1), loop: 'A', number: i + 1, par: 4, strokeIndex: i + 1 }));
-function hostRound(): Round {
+const course = { id: 'osm:way/1', source: 'osm' as const, name: 'Hetzenhof', lat: 48.78, lon: 9.69 };
+function round(players: { id: string; name: string; hcp?: number }[], mode: 'single' | 'scramble' = 'single'): Round {
   return {
-    id: 'r-host', createdAt: '2026-11-01T09:00:00Z', finishedAt: null, courseId: 'osm:way/1', courseName: 'Hetzenhof', loopOrder: ['A'], holes, mode: 'detail',
-    players: [{ id: 'me', name: 'Sascha & Ben', playingHandicap: 3, isMe: true }],
-    entries: { me: holes.map(() => emptyEntry()) },
+    id: 'r-host', createdAt: '2026-11-01T09:00:00Z', finishedAt: null, courseId: course.id, courseName: 'Hetzenhof', loopOrder: ['A'], holes, mode: 'detail',
+    players: players.map((p, k) => ({ id: p.id, name: p.name, playingHandicap: p.hcp ?? null, isMe: k === 0 })),
+    entries: Object.fromEntries(players.map((p) => [p.id, holes.map(() => emptyEntry())])),
     currentHole: 0,
-    format: { mode: 'scramble', scoring: 'stroke' },
+    format: { mode, scoring: 'stroke' },
   };
 }
-const course = { id: 'osm:way/1', source: 'osm' as const, name: 'Hetzenhof', lat: 48.78, lon: 9.69 };
 const score = (r: Round, pid: string, i: number, s: number | null): Round => ({ ...r, entries: { ...r.entries, [pid]: r.entries[pid].map((e, k) => (k === i ? { ...e, strokes: s } : e)) } });
-const strokes = (r: Round, pid = 'me') => r.entries[pid].map((e) => e.strokes);
+const strokes = (r: Round, pid: string) => r.entries[pid].map((e) => e.strokes);
 
-/** The server's copy and one exchange of a phone with it (as exchangeRound does, without the network). */
-function exchange(ev: RoundEvent, r: Round): { ev: RoundEvent; r: Round } {
-  const m = mergeFlight(r, ev.flights[r.shared!.flight]);
-  const next = m.changedHere ? { ...ev, flights: { ...ev.flights, [r.shared!.flight]: m.flight } } : ev;
-  return { ev: next, r: { ...m.round, shared: { ...r.shared!, base: m.flight.scores } } };
+/** The host's round shared (as shareRound does, without the network). */
+function host(r: Round, tournament = false, who = 'Sascha'): { ev: RoundEvent; r: Round } {
+  const ev = eventOf(r, course, { name: 'Runde', tournament, flight: 'f1', phone: 'ph-host', who });
+  return { ev, r: { ...r, shared: { code: 'ABCDEF', flight: 'f1', tournament, phone: 'ph-host', base: ev.flights.f1.scores } } };
 }
-function shared(): { ev: RoundEvent; host: Round } {
-  const h = hostRound();
-  const ev = eventOf(h, course, { name: 'Scramble', tournament: false, flight: 'f1' });
-  return { ev, host: { ...h, shared: { code: 'ABCDEF', flight: 'f1', base: ev.flights.f1.scores } } };
+/** One exchange of a phone with the server's copy (as exchangeRound does, without the network). */
+function exchange(ev: RoundEvent, r: Round, who = ''): { ev: RoundEvent; r: Round } {
+  const f = r.shared!.flight;
+  const m = mergeFlight(r, ev.flights[f], ev.tournament, who);
+  const next = m.changedHere ? { ...ev, flights: { ...ev.flights, [f]: m.flight } } : ev;
+  return { ev: next, r: { ...m.round, shared: { ...r.shared!, base: m.base, roles: m.roles } } };
 }
 
-describe('a round on several phones', () => {
-  it('the same team on two phones: a score entered on either reaches the other', () => {
-    let { ev, host } = shared();
-    let ben = roundFromEvent(ev, 'f1', 'me', 'ABCDEF');
-    expect(ben.players[0]).toMatchObject({ name: 'Sascha & Ben', isMe: true });
-    expect(ben.id).not.toBe(host.id); // every phone its own round
-    host = score(host, 'me', 0, 4);
-    ({ ev, r: host } = exchange(ev, host));
-    ({ ev, r: ben } = exchange(ev, ben));
-    expect(strokes(ben)).toEqual([4, null, null]);
-    ben = score(ben, 'me', 1, 3);
-    ({ ev, r: ben } = exchange(ev, ben));
-    ({ ev, r: host } = exchange(ev, host));
-    expect(strokes(host)).toEqual([4, 3, null]);
-    // nothing changed: nothing to write
-    expect(mergeFlight(host, ev.flights.f1).changedHere).toBe(false);
+describe('the same scramble team on two phones', () => {
+  it('the host keeps the card, the other phone shows it and cannot change it', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha & Cedric', hcp: 3 }], 'scramble'));
+    let cedric = roundFromEvent(ev, 'f1', 'me', 'ABCDEF', 'ph-cedric', 'Cedric');
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    expect(Object.values(ev.flights.f1.phones!).map((p) => p.name).sort()).toEqual(['Cedric', 'Sascha']);
+    expect(cedric.shared!.roles!.me).toBe('view');
+    sascha = score(sascha, 'me', 0, 4);
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    expect(strokes(cedric, 'me')).toEqual([4, null, null]);
+    // Cedric types a 6 on hole 1: not taken – the card is Sascha's – and his phone shows Sascha's 4 again
+    cedric = score(cedric, 'me', 0, 6);
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    expect(ev.flights.f1.scores.me[0]).toEqual({ s: 4 });
+    expect(strokes(cedric, 'me')[0]).toBe(4);
+    const v = shareView(cedric, ev.flights.f1, false).me;
+    expect(v).toMatchObject({ role: 'view', keptBy: 'Sascha', canTakeOver: true });
   });
-  it('a score corrected on one phone wins over the old value on the other – never back', () => {
-    let { ev, host } = shared();
-    let ben = roundFromEvent(ev, 'f1', 'me', 'ABCDEF');
-    host = score(host, 'me', 0, 5);
-    ({ ev, r: host } = exchange(ev, host));
-    ({ ev, r: ben } = exchange(ev, ben));
-    ben = score(ben, 'me', 0, 4); // Ben corrects the 5 to a 4
-    ({ ev, r: ben } = exchange(ev, ben));
-    ({ ev, r: host } = exchange(ev, host));
-    expect(strokes(host)[0]).toBe(4);
-    ({ ev, r: host } = exchange(ev, host));
-    ({ ev, r: ben } = exchange(ev, ben));
-    expect(strokes(ben)[0]).toBe(4);
-    // a hole cleared on one phone is cleared on the other
-    host = score(host, 'me', 0, null);
-    ({ ev, r: host } = exchange(ev, host));
-    ({ ev, r: ben } = exchange(ev, ben));
-    expect(strokes(ben)[0]).toBeNull();
+  it('Sascha\'s battery is empty: Cedric takes the card over and goes on – Sascha\'s phone then shows Cedric\'s', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha & Cedric' }], 'scramble'));
+    let cedric = roundFromEvent(ev, 'f1', 'me', 'ABCDEF', 'ph-cedric', 'Cedric');
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    sascha = score(sascha, 'me', 0, 4);
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    // the take-over (as takeOver writes it)
+    ev = { ...ev, flights: { f1: { ...ev.flights.f1, keeper: { me: 'ph-cedric' } } } };
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    expect(cedric.shared!.roles!.me).toBe('own');
+    cedric = score(cedric, 'me', 1, 5);
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    expect(ev.flights.f1.scores.me.map((c) => c?.s ?? null)).toEqual([4, 5, null]); // hole 1 from Sascha stays
+    // Sascha's phone comes back: it shows Cedric's card, its own late edit is not taken
+    sascha = score(sascha, 'me', 1, 7);
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(strokes(sascha, 'me')).toEqual([4, 5, null]);
+    expect(shareView(sascha, ev.flights.f1, false).me).toMatchObject({ role: 'view', keptBy: 'Cedric', canTakeOver: true });
+  });
+});
+
+describe('a flight of single players on their own phones', () => {
+  it('everyone keeps his own score – the host cannot change Cedric\'s once Cedric plays on his phone', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]));
+    // before Cedric joins, the host keeps Cedric's score too (as on one phone)
+    expect(sascha.players.map((p) => shareView(sascha, ev.flights.f1, false)[p.id].role)).toEqual(['own', 'free']);
+    sascha = score(sascha, 'c', 0, 5);
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    expect(strokes(cedric, 'c')[0]).toBe(5); // he goes on from there
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    cedric = score(cedric, 'c', 1, 4);
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(strokes(sascha, 'c')).toEqual([5, 4, null]);
+    expect(sascha.shared!.roles!.c).toBe('view');
+    sascha = score(sascha, 'c', 1, 9); // not his to change
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(ev.flights.f1.scores.c[1]).toEqual({ s: 4 });
+    expect(strokes(sascha, 'c')[1]).toBe(4);
+    // and Cedric's own phone keeps his details (putts, penalties) – only the score travels
+    expect(JSON.stringify(ev)).not.toContain('putts');
   });
   it('a score entered while the exchange was on its way stays', () => {
-    const { ev, host } = shared();
-    const sent = host;
-    const got = exchange({ ...ev, flights: { f1: { ...ev.flights.f1, scores: { me: [{ s: 6 }, null, null] } } } }, sent).r; // another phone: 6 on hole 1
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]));
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    cedric = score(cedric, 'c', 0, 6);
+    ({ ev } = exchange(ev, cedric));
+    const sent = sascha;
+    const got = exchange(ev, sent).r; // brings Cedric's 6
     const now = score(sent, 'me', 1, 4); // meanwhile here: 4 on hole 2
     const r = settle(now, sent, got);
-    expect(strokes(r)).toEqual([6, 4, null]);
-    expect(mergeFlight(r, { ...ev.flights.f1, scores: r.shared!.base }).changedHere).toBe(true); // the 4 goes with the next one
+    expect(strokes(r, 'c')[0]).toBe(6);
+    expect(strokes(r, 'me')).toEqual([null, 4, null]);
+    expect(mergeFlight(r, ev.flights.f1, false).changedHere).toBe(true); // the 4 goes with the next one
   });
   it('a picked-up hole travels as picked up', () => {
-    let { ev, host } = shared();
-    let ben = roundFromEvent(ev, 'f1', 'me', 'ABCDEF');
-    host = { ...host, entries: { me: host.entries.me.map((e, k) => (k === 2 ? { ...e, pickedUp: true } : e)) } };
-    ({ ev, r: host } = exchange(ev, host));
-    ({ ev, r: ben } = exchange(ev, ben));
-    expect(ben.entries.me[2]).toMatchObject({ pickedUp: true, strokes: null });
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]));
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    sascha = { ...sascha, entries: { ...sascha.entries, me: sascha.entries.me.map((e, k) => (k === 2 ? { ...e, pickedUp: true } : e)) } };
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    expect(cedric.entries.me[2]).toMatchObject({ pickedUp: true, strokes: null });
   });
-  it('a tournament: a second flight joins with its own players – the leaderboard ranks all teams', () => {
-    let { ev, host } = shared();
-    ev = { ...ev, tournament: true };
-    const { round: other, flight } = newFlightRound(ev, [{ name: 'Max', playingHandicap: 10 }, { name: 'Simon', playingHandicap: 20 }], 'ABCDEF');
-    expect(flight.players).toEqual([{ id: 'me', name: 'Max & Simon', playingHandicap: 7 }]); // one scramble team, 35/15 %: 3.5 + 3
-    expect(other.players[0].isMe).toBe(true);
-    ev = { ...ev, flights: { ...ev.flights, [flight.id]: flight } };
-    let o = other;
-    host = score(score(host, 'me', 0, 4), 'me', 1, 4);
-    o = score(o, 'me', 0, 3);
-    ({ ev, r: host } = exchange(ev, host));
-    ({ ev, r: o } = exchange(ev, o));
-    expect(Object.keys(ev.flights)).toHaveLength(2);
-    expect(scoresOf(o).me[0]).toEqual({ s: 3 });
-    const b = eventBoard(ev);
-    expect(b.rows.map((x) => [x.name, x.value, x.thru])).toEqual([
-      ['Max & Simon', '-1', 1],
-      ['Sascha & Ben', 'Par', 2],
-    ]);
-    // the host's phone never touches the other flight's scores
-    expect(strokes(host)).toEqual([4, 4, null]);
+  it('a player added in the setup after the code: the phone that joined earlier gets him', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]));
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    sascha = { ...sascha, players: [...sascha.players, { id: 'b', name: 'Ben', playingHandicap: null, isMe: false }], entries: { ...sascha.entries, b: holes.map(() => emptyEntry()) } };
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    expect(cedric.players.map((p) => [p.name, p.isMe])).toEqual([['Sascha', false], ['Cedric', true], ['Ben', false]]);
   });
-  it('a stroke play tournament of single players: every player of every flight on the board', () => {
-    const h = { ...hostRound(), format: { mode: 'single' as const, scoring: 'stroke' as const }, players: [{ id: 'me', name: 'Sascha', playingHandicap: 8, isMe: true }, { id: 'p2', name: 'Ben', playingHandicap: 12, isMe: false }], entries: { me: holes.map(() => emptyEntry()), p2: holes.map(() => emptyEntry()) } };
-    let ev = eventOf(h, course, { name: 'Clubturnier', tournament: true, flight: 'f1' });
-    const { flight } = newFlightRound(ev, [{ name: 'Max', playingHandicap: null }, { name: 'Simon', playingHandicap: null }], 'ABCDEF');
+});
+
+describe('a tournament: everyone counts himself and a partner', () => {
+  it('pairs in a flight: 1 ↔ 2, 3 ↔ 4 – three in a ring, nobody marks himself', () => {
+    expect(defaultMarkers(['a', 'b', 'c', 'd'])).toEqual({ a: 'b', b: 'a', c: 'd', d: 'c' });
+    const ring = defaultMarkers(['a', 'b', 'c']);
+    expect(Object.entries(ring).every(([p, m]) => p !== m) && new Set(Object.values(ring)).size === 3).toBe(true);
+    expect(defaultMarkers(['a'])).toEqual({});
+  });
+  it('Sascha keeps his own score and marks Cedric; Cedric his own and marks Sascha – a difference shows', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]), true);
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.shared!.roles).toEqual({ me: 'own', c: 'mark' });
+    expect(cedric.shared!.roles).toEqual({ me: 'mark', c: 'own' });
+    sascha = score(score(sascha, 'me', 0, 4), 'c', 0, 5); // Sascha: himself 4, Cedric 5
+    cedric = score(score(cedric, 'c', 0, 5), 'me', 0, 5); // Cedric: himself 5, Sascha 5 (!)
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    const f = ev.flights.f1;
+    expect(f.scores.me[0]).toEqual({ s: 4 });
+    expect(f.marks!.me[0]).toEqual({ s: 5 });
+    expect(differences(f, 'me')).toEqual([0]);
+    expect(differences(f, 'c')).toEqual([]);
+    // each phone keeps its own counts – the marker's count of Sascha does not overwrite Sascha's own
+    expect(strokes(sascha, 'me')[0]).toBe(4);
+    expect(strokes(sascha, 'c')[0]).toBe(5);
+    const v = shareView(sascha, f, true);
+    expect(v.me.other!.label).toMatch(/^Cedric \((Zähler|marker)\)$/);
+    expect(v.me.other!.cells[0]).toEqual({ s: 5 });
+    expect(v.c.other!.cells[0]).toEqual({ s: 5 });
+    // the leaderboard takes each player's own score
+    expect(eventBoard(ev).rows.map((x) => [x.name, x.value])).toEqual([['Sascha', 'Par'], ['Cedric', '+1']]);
+  });
+  it('a player without a phone: his marker\'s count stands on the board', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]), true);
+    // nobody plays Cedric on a phone – Sascha marks him, his count is Cedric's score
+    expect(sascha.players.map((p) => shareView(sascha, ev.flights.f1, true)[p.id].role)).toEqual(['own', 'mark']);
+    sascha = score(sascha, 'c', 0, 6);
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(eventBoard(ev).rows.find((x) => x.name === 'Cedric')!.value).toBe('+2');
+    // Cedric joins after all: what Sascha entered for him stays Sascha's marker count, Cedric keeps his own
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.shared!.roles!.c).toBe('mark');
+    expect(ev.flights.f1.marks!.c[0]).toEqual({ s: 6 });
+  });
+  it('a second flight starts its own – the leaderboard ranks every player of both, each marks within his flight', () => {
+    let { ev } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]), true);
+    const { round: max, flight } = newFlightRound(ev, [{ name: 'Max', playingHandicap: null }, { name: 'Simon', playingHandicap: null }], 'ABCDEF', 'ph-max', 'Max');
     expect(flight.players.map((p) => p.name)).toEqual(['Max', 'Simon']);
+    expect(flight.markers).toEqual({ me: 't2', t2: 'me' });
+    expect(max.shared!.roles).toEqual({ me: 'own', t2: 'mark' });
     ev = { ...ev, flights: { ...ev.flights, [flight.id]: { ...flight, scores: { me: [{ s: 3 }, null, null], t2: [{ s: 6 }, null, null] } } } };
-    expect(eventBoard(ev).rows.map((r) => r.name)).toEqual(['Max', 'Simon', 'Sascha', 'Ben']);
+    expect(eventBoard(ev).rows.map((r) => r.name)).toEqual(['Max', 'Simon', 'Sascha', 'Cedric']);
+  });
+  it('a scramble tournament: a flight\'s team is one entry on the board', () => {
+    let { ev } = host(round([{ id: 'me', name: 'Sascha & Cedric', hcp: 3 }], 'scramble'), true);
+    const { flight } = newFlightRound(ev, [{ name: 'Max', playingHandicap: 10 }, { name: 'Simon', playingHandicap: 20 }], 'ABCDEF', 'ph-max', 'Max');
+    expect(flight.players).toEqual([{ id: 'me', name: 'Max & Simon', playingHandicap: 7 }]); // 35/15 %: 3.5 + 3
+    ev = { ...ev, flights: { ...ev.flights, [flight.id]: { ...flight, scores: { me: [{ s: 3 }, null, null] } } } };
+    expect(eventBoard(ev).rows.map((x) => [x.name, x.value, x.thru])).toEqual([['Max & Simon', '-1', 1], ['Sascha & Cedric', '–', 0]]);
   });
 });
