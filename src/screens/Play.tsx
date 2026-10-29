@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
-import { sharingAvailable } from '../lib/sharedgame';
+import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { TopTools } from '../components/TopTools';
 import { JoinRoundSheet } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
@@ -172,7 +172,11 @@ export function PlayTab(props: {
             <section className="sheet" role="dialog" aria-label={tr('Join a round', 'Runde beitreten')} onClick={(e) => e.stopPropagation()}>
               <strong>{tr('Join a round', 'Runde beitreten')}</strong>
               <span className="muted">
-                {tr('Sign in first: Profile → "On all your devices" → "Sign in with Google". Then open the link again.', 'Melde dich zuerst an: Profil → „Auf allen Geräten“ → „Mit Google anmelden“. Dann den Link noch einmal öffnen.')}
+                {sharingMissing() === 'server'
+                  ? tr('Joining is not set up on the server yet – the host runs the SQL "golfos-shared-games" once in Supabase.', 'Beitreten ist auf dem Server noch nicht eingerichtet – der Gastgeber führt das SQL „golfos-shared-games“ einmal in Supabase aus.')
+                  : sharingMissing() === 'offline'
+                    ? tr('No connection – open the link again in a moment.', 'Keine Verbindung – den Link gleich noch einmal öffnen.')
+                    : tr('Sign in first: Profile → "On all your devices" → "Sign in with Google". Then open the link again.', 'Melde dich zuerst an: Profil → „Auf allen Geräten“ → „Mit Google anmelden“. Dann den Link noch einmal öffnen.')}
               </span>
               <button type="button" className="btn-secondary" onClick={() => setJoin(null)}>
                 OK

@@ -1277,6 +1277,12 @@ button.tile:disabled { opacity: 1; }
 .near-rounds { display: flex; flex-direction: column; gap: 6px; }
 .near-round { min-height: 56px; }
 .near-state { color: var(--brand-text); font-weight: 600; }
+/* "Cedric wants to join – Decline / Let in" over everything, also the hole map (Sascha 29.10.2026) */
+.undo-toast.join-request { z-index: 60; top: calc(12px + env(safe-area-inset-top)); bottom: auto; flex-wrap: wrap; }
+.join-request-actions { display: flex; gap: 16px; margin-left: auto; }
+.join-request-actions button { min-height: 44px; padding: 6px 10px; }
+.undo-toast .join-no { color: var(--text-2); font-weight: 600; }
+.join-wait { display: flex; flex-direction: column; gap: 8px; }
 
 /* profile photo and the small pictures next to the names (Sascha 16.10.2026) */
 .avatar { border-radius: 50%; object-fit: cover; flex: none; display: inline-block; vertical-align: middle; }

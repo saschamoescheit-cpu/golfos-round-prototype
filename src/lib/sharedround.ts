@@ -528,11 +528,13 @@ const pickFrame = (e: RoundEvent): Partial<Round> => ({ loopOrder: e.loopOrder, 
 
 // ---------- rounds nearby (Sascha 29.10.2026: "invite only people signed in with Google and nearby – by GPS") ----------
 // Not the people – the round: the host's phone puts where it is beside the code (for two hours); a phone signed in and
-// within ~300 m sees it under "Join a round" and joins with a tap, no code typed. Nothing else of anyone's position is
-// kept; the server forgets it when the two hours are over (golfos_nearby_rounds, supabase/golfos-shared-games.sql).
+// within ~300 m sees it under "Join a round" and asks to join with a tap, no code typed – the host lets him in (then
+// the phone gets the code) or not. Nothing else of anyone's position is kept; the server forgets it when the two hours
+// are over (golfos_nearby_rounds, golfos_request_join, golfos_answer_join – supabase/golfos-shared-games.sql).
 
 export interface NearbyRound {
-  code: string;
+  /** not the code – the host lets each one in first (Sascha 29.10.2026: "the host must confirm the joining") */
+  ref: string;
   name: string;
   course: string;
   host: string;
@@ -547,13 +549,91 @@ export const NEARBY_HOURS = 2;
 export async function showNearby(code: string, at: { lat: number; lon: number; radius: number }, host: string): Promise<boolean> {
   const h = await headers();
   if (!h) return false;
+  const until = Date.now() + NEARBY_HOURS * 3600 * 1000;
+  const ref = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : newId() + newId();
   try {
     const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}`, {
       method: 'PATCH',
       headers: { ...h, Prefer: 'return=minimal' },
-      body: JSON.stringify({ near_lat: at.lat, near_lon: at.lon, near_radius: Math.round(at.radius), near_host: host, near_until: new Date(Date.now() + NEARBY_HOURS * 3600 * 1000).toISOString() }),
+      body: JSON.stringify({ near_lat: at.lat, near_lon: at.lon, near_radius: Math.round(at.radius), near_host: host, near_until: new Date(until).toISOString(), near_ref: ref, near_requests: {} }),
     });
+    if (r.ok) keepNear(code, until);
     return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+// the rounds this phone shows nearby, till when – its requests are looked for while shown (JoinRequests)
+const NEAR = 'golfos.near.v1.';
+function keepNear(code: string, until: number): void {
+  try {
+    localStorage.setItem(NEAR + code, String(until));
+    window.dispatchEvent(new Event('golfos:near-changed'));
+  } catch {
+    /* storage full – the requests wait */
+  }
+}
+/** The codes shown nearby right now (the ones past their time forgotten). */
+export function shownNearby(): string[] {
+  const out: string[] = [];
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (!k.startsWith(NEAR)) continue;
+      if (Number(localStorage.getItem(k)) > Date.now()) out.push(k.slice(NEAR.length));
+      else localStorage.removeItem(k);
+    }
+  } catch {
+    /* no storage */
+  }
+  return out;
+}
+
+export type JoinAnswer = { state: 'asked' | 'no' | 'gone' } | { state: 'ok'; code: string };
+/** Asks to join a round nearby – asked again, how it stands ('ok' with the code once the host let this phone in).
+ *  Null when offline. */
+export async function askToJoin(ref: string, who: string): Promise<JoinAnswer | null> {
+  const h = await headers();
+  if (!h) return null;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_request_join`, { method: 'POST', headers: h, body: JSON.stringify({ join_ref: ref, who }) });
+    if (!r.ok) return null;
+    const a = (await r.json()) as { state?: string; code?: string } | null;
+    if (a?.state === 'ok' && typeof a.code === 'string') return { state: 'ok', code: a.code };
+    return a?.state === 'asked' || a?.state === 'no' ? { state: a.state } : { state: 'gone' };
+  } catch {
+    return null;
+  }
+}
+export interface JoinRequest {
+  /** the asking player's account */
+  id: string;
+  name: string;
+  at: string;
+}
+/** The requests to join a round shown nearby, not answered yet – oldest first. */
+export async function joinRequests(code: string): Promise<JoinRequest[]> {
+  const h = await headers();
+  if (!h) return [];
+  try {
+    const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}&select=near_requests`, { headers: h });
+    if (!r.ok) return [];
+    const rows = (await r.json()) as { near_requests?: Record<string, { name?: string; at?: string; state?: string }> | null }[];
+    return Object.entries(rows[0]?.near_requests ?? {})
+      .filter(([, x]) => x?.state === 'asked')
+      .map(([id, x]) => ({ id, name: x.name || tr('A player', 'Ein Spieler'), at: x.at ?? '' }))
+      .sort((a, b) => a.at.localeCompare(b.at));
+  } catch {
+    return [];
+  }
+}
+/** The host lets him in (he becomes a member and gets the code) or not. */
+export async function answerJoin(code: string, player: string, yes: boolean): Promise<boolean> {
+  const h = await headers();
+  if (!h) return false;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_answer_join`, { method: 'POST', headers: h, body: JSON.stringify({ join_code: code, player, yes }) });
+    return r.ok && (await r.json()) === true;
   } catch {
     return false;
   }
@@ -566,7 +646,7 @@ export async function nearbyRounds(lat: number, lon: number): Promise<NearbyRoun
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_nearby_rounds`, { method: 'POST', headers: h, body: JSON.stringify({ at_lat: lat, at_lon: lon }) });
     if (!r.ok) return [];
     const rows = (await r.json()) as NearbyRound[] | null;
-    return Array.isArray(rows) ? rows.filter((x) => x && typeof x.code === 'string').sort((a, b) => a.dist - b.dist) : [];
+    return Array.isArray(rows) ? rows.filter((x) => x && typeof x.ref === 'string').sort((a, b) => a.dist - b.dist) : [];
   } catch {
     return [];
   }

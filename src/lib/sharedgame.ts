@@ -72,20 +72,35 @@ async function headers(): Promise<Record<string, string> | null> {
 }
 
 let availableCache: boolean | null = null;
+/** Why sharing is not there: not signed in, the server without the table (the SQL not run yet), or no connection. */
+export type SharingMissing = 'signin' | 'server' | 'offline';
+let missing: SharingMissing | null = null;
 /** Signed in and the table exists (Sascha ran the SQL). */
 export async function sharingAvailable(): Promise<boolean> {
-  if (!syncConfigured() || !loadSession()) return false;
+  if (!syncConfigured() || !loadSession()) {
+    missing = 'signin';
+    return false;
+  }
   if (availableCache != null) return availableCache;
   try {
     const h = await headers();
-    if (!h) return false;
+    if (!h) {
+      missing = 'signin'; // the sign-in ran out
+      return false;
+    }
     const r = await fetch(`${table()}?select=code&limit=1`, { headers: h });
     availableCache = r.ok;
+    // Sascha 29.10.2026, signed in, saw "sign in with Google": the table was missing on the server – said as it is
+    missing = r.ok ? null : r.status === 401 || r.status === 403 ? 'signin' : 'server';
+    if (missing === 'signin') availableCache = null; // signed in again: asked anew
   } catch {
+    missing = 'offline';
     return false; // offline – ask again later
   }
-  return availableCache;
+  return availableCache ?? false;
 }
+/** After sharingAvailable() said no: why. */
+export const sharingMissing = (): SharingMissing | null => missing;
 
 /** Shares the game: a new code, the game on the server. Returns the game with its code. */
 export async function shareGame(g: Game): Promise<Game | null> {

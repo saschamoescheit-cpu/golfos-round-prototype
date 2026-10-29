@@ -23,11 +23,31 @@ async function serve(route) {
   const req = route.request();
   const u = new URL(req.url());
   const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: body == null ? '' : JSON.stringify(body) });
+  const uid = (req.headers()['authorization'] ?? '').replace(/^Bearer tok-/, ''); // each phone its account
   if (u.pathname.endsWith('/golfos_items')) return json(200, []);
   if (u.pathname.endsWith('/rpc/golfos_join_game')) {
     const { join_code } = JSON.parse(req.postData() ?? '{}');
     const row = shared.get(join_code);
+    if (row && row.owner !== uid && !row.members.includes(uid)) row.members.push(uid);
     return json(200, row ? row.game : null);
+  }
+  // asking to join a round nearby, and the host's answer (as the SQL)
+  if (u.pathname.endsWith('/rpc/golfos_request_join')) {
+    const { join_ref, who } = JSON.parse(req.postData() ?? '{}');
+    const [code, row] = [...shared.entries()].find(([, r]) => r.near?.near_ref === join_ref && new Date(r.near.near_until) > new Date()) ?? [];
+    if (!row) return json(200, { state: 'gone' });
+    if (row.owner === uid || row.members.includes(uid)) return json(200, { state: 'ok', code });
+    if (row.requests[uid]) return json(200, { state: row.requests[uid].state });
+    row.requests[uid] = { name: who, at: new Date().toISOString(), state: 'asked' };
+    return json(200, { state: 'asked' });
+  }
+  if (u.pathname.endsWith('/rpc/golfos_answer_join')) {
+    const { join_code, player, yes } = JSON.parse(req.postData() ?? '{}');
+    const row = shared.get(join_code);
+    if (!row || (row.owner !== uid && !row.members.includes(uid)) || !row.requests[player]) return json(200, false);
+    row.requests[player].state = yes ? 'ok' : 'no';
+    if (yes && !row.members.includes(player)) row.members.push(player);
+    return json(200, true);
   }
   // rounds nearby: those shown within their circle, nearest first (the equirectangular distance, as the SQL)
   if (u.pathname.endsWith('/rpc/golfos_nearby_rounds')) {
@@ -37,16 +57,17 @@ async function serve(route) {
       .filter(([, r]) => r.near && new Date(r.near.near_until) > new Date())
       .map(([code, r]) => ({ code, r, d: 6371000 * Math.hypot(rad(r.near.near_lat - at_lat), Math.cos(rad(at_lat)) * rad(r.near.near_lon - at_lon)) }))
       .filter((x) => x.d <= x.r.near.near_radius)
-      .map(({ code, r, d }) => ({ code, name: r.game.name, course: r.game.course.name, host: r.near.near_host, tournament: !!r.game.tournament, mode: r.game.format?.mode, dist: Math.round(d) }));
+      .map(({ r, d }) => ({ ref: r.near.near_ref, name: r.game.name, course: r.game.course.name, host: r.near.near_host, tournament: !!r.game.tournament, mode: r.game.format?.mode, dist: Math.round(d) }));
     return json(200, out);
   }
   if (u.pathname.endsWith('/golfos_shared_games')) {
     const code = (u.searchParams.get('code') ?? '').replace(/^eq\./, '');
+    if (req.method() === 'GET' && /near_requests/.test(u.searchParams.get('select') ?? '')) return json(200, shared.has(code) ? [{ near_requests: shared.get(code).requests }] : []);
     if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game, updated_at: shared.get(code).updated_at }] : []) : []);
     if (req.method() === 'POST') {
       const row = JSON.parse(req.postData());
       if (shared.has(row.code)) return json(409, { code: '23505' });
-      shared.set(row.code, { game: row.game, updated_at: new Date().toISOString() });
+      shared.set(row.code, { game: row.game, updated_at: new Date().toISOString(), owner: uid, members: [], requests: {} });
       return json(201, null);
     }
     if (req.method() === 'PATCH') {
@@ -59,6 +80,7 @@ async function serve(route) {
       const body = JSON.parse(req.postData());
       if (body.near_lat != null) {
         row.near = body; // shown nearby – the event itself unchanged
+        row.requests = {};
         return json(204, null);
       }
       row.game = body.game;
@@ -85,7 +107,7 @@ async function phone(name) {
     localStorage.setItem('golfos.tip.shots.v1', '1');
     localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: name, lastName: '', hcpIndex: '10', homeClub: '' }));
     // signed in (the token is only checked by the simulated server)
-    localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: 'x', refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
+    localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: `tok-${name}`, refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
     sessionStorage.setItem('golfos.module', 'rounds');
   }, name);
   await p.reload();
@@ -132,7 +154,7 @@ ok(Object.values(f1.phones ?? {}).map((p) => p.name).join() === 'Sascha', 'serve
 // shown nearby (Sascha 29.10.2026: "only players signed in and nearby – by GPS"): where Sascha's phone is, for two hours
 await H.waitForTimeout(1200);
 const near = [...shared.values()][0]?.near;
-ok(near && Math.abs(near.near_lat - 48.7808) < 1e-4 && near.near_radius === 300 && near.near_host === 'Sascha' && new Date(near.near_until) - Date.now() > 1.9 * 3600e3, `server: the round shown nearby – Sascha's position, 300 m, two hours (${JSON.stringify(near ?? null).slice(0, 90)})`);
+ok(near && Math.abs(near.near_lat - 48.7808) < 1e-4 && near.near_radius === 300 && near.near_host === 'Sascha' && near.near_ref?.length >= 20 && new Date(near.near_until) - Date.now() > 1.9 * 3600e3, `server: the round shown nearby – Sascha's position, 300 m, two hours (${JSON.stringify(near ?? null).slice(0, 90)})`);
 ok(/In der Nähe sichtbar/.test(await card.innerText()), 'setup: "In der Nähe sichtbar" under the code');
 if (process.env.SHOTS) await card.screenshot({ path: process.env.SHOTS + '/round-invite.png' });
 
@@ -178,13 +200,39 @@ await nearRow.first().waitFor({ timeout: 10000 }).catch(() => {});
 const nearText = (await nearRow.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
 ok(nearText.length === 1 && /Scramble Samstag · Scramble/.test(nearText[0]) && /\b(9\d|10\d) m\b/.test(nearText[0]), `Max: "In der Nähe" – ${nearText.join(' | ') || 'nothing'}`);
 await nearRow.first().click();
-await M.waitForTimeout(1500);
+// the host must let him in (Sascha 29.10.2026): Max waits, Sascha's phone – on the hole map – asks
+await mj.getByText('Anfrage an Sascha gesendet').waitFor({ timeout: 8000 }).catch(() => {});
+ok(await mj.getByText('Anfrage an Sascha gesendet').isVisible(), 'Max: "Anfrage an Sascha gesendet" – waiting, no code yet');
+const ask = H.getByRole('alertdialog', { name: 'Max möchte beitreten' });
+await ask.waitFor({ timeout: 12000 }).catch(() => {});
+ok(await ask.isVisible(), 'Sascha, on the hole map: "Max möchte deiner Runde beitreten"');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/round-join-ask.png' });
+await ask.getByRole('button', { name: 'Zulassen' }).click();
+await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).waitFor({ timeout: 10000 }).catch(() => {});
+ok(await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).isVisible(), 'Max: let in – the round opens on his phone');
+ok((await ask.count()) === 0, 'Sascha: the request gone once answered');
 await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).click();
 ok((await mj.getByRole('textbox', { name: 'Spieler 1', exact: true }).inputValue()) === 'Max', 'Max: his own flight – his name first, from the profile');
 await mj.getByRole('textbox', { name: 'Spieler 2', exact: true }).fill('Simon');
 await mj.getByRole('button', { name: 'Flight starten' }).click();
 await M.locator('.map-hole-no').waitFor({ timeout: 30000 });
 ok(Object.keys(event().flights).length === 2 && Object.values(event().flights).some((f) => f.players[0]?.name === 'Max & Simon'), 'server: the second flight – the team "Max & Simon"');
+
+// ---------- Tom, a stranger on the course: asks, Sascha declines ----------
+const fourth = await phone('Tom');
+const T = fourth.p;
+await T.context().setGeolocation({ latitude: 48.7812, longitude: 9.6895, accuracy: 5 });
+await T.getByRole('button', { name: 'Runde beitreten' }).click();
+const tj = T.getByRole('dialog', { name: 'Runde beitreten' });
+await tj.locator('.near-round').first().waitFor({ timeout: 10000 }).catch(() => {});
+await tj.locator('.near-round').first().click();
+const askT = H.getByRole('alertdialog', { name: 'Tom möchte beitreten' });
+await askT.waitFor({ timeout: 12000 }).catch(() => {});
+await askT.getByRole('button', { name: 'Ablehnen' }).click();
+await tj.getByText('Sascha hat den Beitritt abgelehnt').waitFor({ timeout: 10000 }).catch(() => {});
+ok(await tj.getByText('Sascha hat den Beitritt abgelehnt').isVisible(), 'Tom: declined – "Sascha hat den Beitritt abgelehnt"');
+ok(Object.keys(event().flights).length === 2 && ![...shared.values()][0].members.includes('Tom'), 'server: Tom not in the event');
+await fourth.p.context().close();
 
 // ---------- scores: one keeps the team's card ----------
 const enter = async (p, clicks) => {

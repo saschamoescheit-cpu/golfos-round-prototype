@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, cachedEvent, differences, eventBoard, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, roundJoinLink, shareRound, showNearby, writerOf, type NearbyRound, type RoundEvent } from '../lib/sharedround';
+import { addFlight, askToJoin, cachedEvent, differences, eventBoard, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, roundJoinLink, shareRound, showNearby, writerOf, type NearbyRound, type RoundEvent } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -99,7 +99,7 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
           <button type="button" className="drawer-row" role="switch" aria-checked={near} onClick={() => setNear(!near)}>
             <span className="switch-label">
               <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
-              <span className="muted small">{tr(`Signed-in players within about 300 m see the round under "Join a round" and join with a tap – for ${NEARBY_HOURS} hours`, `Angemeldete Spieler im Umkreis von etwa 300 m sehen die Runde unter „Runde beitreten“ und treten mit einem Tipp bei – ${NEARBY_HOURS} Stunden lang`)}</span>
+              <span className="muted small">{tr(`Signed-in players within about 300 m see the round under "Join a round" and ask with a tap – you let each one in. For ${NEARBY_HOURS} hours`, `Angemeldete Spieler im Umkreis von etwa 300 m sehen die Runde unter „Runde beitreten“ und fragen mit einem Tipp an – du bestätigst jeden. ${NEARBY_HOURS} Stunden lang`)}</span>
             </span>
             <span className={`drawer-switch${near ? ' on' : ''}`} aria-hidden="true" />
           </button>
@@ -144,7 +144,7 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
       {nearState && (
         <span className={`small ${nearState === 'failed' ? 'muted' : 'near-state'}`}>
           {nearState === 'here'
-            ? tr(`Shown nearby for ${NEARBY_HOURS} hours – your partners find it under "Join a round".`, `In der Nähe sichtbar, ${NEARBY_HOURS} Stunden lang – deine Partner finden sie unter „Runde beitreten“.`)
+            ? tr(`Shown nearby for ${NEARBY_HOURS} hours – your partners find it under "Join a round"; you let each one in.`, `In der Nähe sichtbar, ${NEARBY_HOURS} Stunden lang – deine Partner finden sie unter „Runde beitreten“, du bestätigst jeden.`)
             : nearState === 'course'
               ? tr(`No GPS – shown on the course for ${NEARBY_HOURS} hours.`, `Kein GPS – auf dem Platz sichtbar, ${NEARBY_HOURS} Stunden lang.`)
               : tr('Not shown nearby – the code and the QR code work as ever.', 'In der Nähe nicht sichtbar – Code und QR-Code gehen wie gewohnt.')}
@@ -195,6 +195,32 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
   };
   // the rounds shown nearby (Sascha 29.10.2026): null while looking, [] none – not when opened by the link
   const [near, setNear] = useState<NearbyRound[] | null>(null);
+  // asked to join a round nearby: waiting till the host lets this phone in (Sascha 29.10.2026)
+  const [asking, setAsking] = useState<NearbyRound | null>(null);
+  useEffect(() => {
+    if (!asking) return;
+    let gone = false;
+    const look = async () => {
+      const a = await askToJoin(asking.ref, myName());
+      if (gone || !a || a.state === 'asked') return;
+      setAsking(null);
+      if (a.state === 'ok') {
+        setCode(a.code);
+        void find(a.code);
+      } else
+        setMsg(
+          a.state === 'no'
+            ? tr(`${asking.host || 'The host'} did not let you in.`, `${asking.host || 'Der Gastgeber'} hat den Beitritt abgelehnt.`)
+            : tr('The round is no longer shown nearby – ask for the code.', 'Die Runde ist nicht mehr in der Nähe sichtbar – nach dem Code fragen.'),
+        );
+    };
+    void look();
+    const t = window.setInterval(() => void look(), 3000);
+    return () => {
+      gone = true;
+      window.clearInterval(t);
+    };
+  }, [asking]); // eslint-disable-line react-hooks/exhaustive-deps
   // opened by the link: look it up straight away
   useEffect(() => {
     if (props.initial && cleanCode(props.initial).length === 6) void find(cleanCode(props.initial));
@@ -219,21 +245,29 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
             ✕
           </button>
         </div>
-        {!ev && !props.initial && (
+        {asking && (
+          <div className="join-wait" role="status">
+            <strong>{asking.host ? tr(`Asked ${asking.host} to let you in …`, `Anfrage an ${asking.host} gesendet …`) : tr('Asked to join …', 'Anfrage gesendet …')}</strong>
+            <span className="muted small">{tr('As soon as the host lets you in, the round opens here.', 'Sobald der Gastgeber zustimmt, geht es hier weiter.')}</span>
+            <button type="button" className="btn-secondary" onClick={() => setAsking(null)}>
+              {tr('Cancel', 'Abbrechen')}
+            </button>
+          </div>
+        )}
+        {!ev && !asking && !props.initial && (
           <div className="near-rounds" aria-label={tr('Rounds nearby', 'Runden in der Nähe')}>
             <span className="eyebrow">{tr('Nearby', 'In der Nähe')}</span>
             {near == null && <span className="muted small">{tr('Looking for rounds nearby …', 'Suche Runden in der Nähe …')}</span>}
             {near?.length === 0 && <span className="muted small">{tr('No round nearby – type the code instead.', 'Keine Runde in der Nähe – dann den Code eingeben.')}</span>}
             {near?.map((n) => (
               <button
-                key={n.code}
+                key={n.ref}
                 type="button"
                 className="list-item near-round"
                 disabled={busy != null}
                 onClick={() => {
-                  setCode(n.code);
                   setMsg(null);
-                  void find(n.code);
+                  setAsking(n);
                 }}
               >
                 <span className="grow">
@@ -250,7 +284,7 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
             ))}
           </div>
         )}
-        {!ev && (
+        {!ev && !asking && (
           <>
             <input
               className="input join-input"

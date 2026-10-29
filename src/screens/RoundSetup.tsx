@@ -16,7 +16,7 @@ import { fetchShared } from '../lib/sharedratings';
 import type { TeeRating } from '../data/ratings';
 import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, type RoundFormat } from '../lib/games';
-import { sharingAvailable } from '../lib/sharedgame';
+import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { InvitePanel } from '../components/ShareRound';
 
 const ME_KEY = 'golfos.me.v1';
@@ -326,7 +326,13 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           </div>
         )}
         {canShare === false && (
-          <span className="muted small">{tr('To invite your flight to their own phones: sign in with Google (Profile → "On all your devices").', 'Flightpartner auf ihre eigenen Handys einladen: mit Google anmelden (Profil → „Auf allen Geräten“).')}</span>
+          <span className="muted small">
+            {sharingMissing() === 'server'
+              ? tr('Inviting is not set up on the server yet: run the SQL "golfos-shared-games" once in Supabase, then open the app again.', 'Einladen ist auf dem Server noch nicht eingerichtet: das SQL „golfos-shared-games“ einmal in Supabase ausführen, dann die App neu öffnen.')
+              : sharingMissing() === 'offline'
+                ? tr('Inviting needs a connection – no connection right now.', 'Einladen braucht eine Verbindung – gerade keine Verbindung.')
+                : tr('To invite your flight to their own phones: sign in with Google (Profile → "On all your devices").', 'Flightpartner auf ihre eigenen Handys einladen: mit Google anmelden (Profil → „Auf allen Geräten“).')}
+          </span>
         )}
         {/* where the playing handicap comes from – once for all players; missing or wrong: typed from the club's
             scorecard, kept for this course, these loops and this tee */}
