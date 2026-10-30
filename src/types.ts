@@ -210,7 +210,7 @@ export interface Round {
   /** Test (Sascha 18.10.2026): the cracks the microphone heard – when, where, how loud; kept apart from the detection */
   soundShots?: { hole: number; pos: LngLat; t: number; level: number; acc: number }[];
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
-  format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number };
+  format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number; marker?: boolean };
   /** Played on several phones (Sascha 29.10.2026, lib/sharedround.ts): the event's code, this round's flight, and the
    *  flight's scores as last exchanged (what changed here, what elsewhere). */
   shared?: {

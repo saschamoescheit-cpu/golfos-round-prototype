@@ -31,6 +31,8 @@ await H.locator('input[id^="name-"]').last().fill('Cedric');
 await H.locator('input[id^="hcp-"]').last().fill('18');
 const card = H.locator('.invite-card');
 await card.waitFor({ timeout: 10000 });
+// with a marker – chosen (Sascha 30.10.2026: by default everyone keeps only his own)
+await card.getByRole('switch', { name: /Mit Zähler spielen/ }).click();
 await card.getByRole('button', { name: 'Code erzeugen' }).click();
 await card.locator('.join-code').waitFor({ timeout: 8000 });
 const code = (await card.locator('.join-code').innerText()).trim();
@@ -47,9 +49,10 @@ const guest = await phone('Cedric');
 const G = guest.p;
 await G.goto('about:blank');
 await G.goto(url + '#round=' + code);
-const join = G.getByRole('dialog', { name: 'Runde beitreten' });
-await join.getByText('Wer bist du?').waitFor({ timeout: 10000 });
-await join.getByRole('button', { name: /^Cedric/ }).click();
+// Cedric asks, Sascha lets him in – his name is in the flight: in at once
+const ask = H.getByRole('alertdialog', { name: 'Cedric möchte beitreten' });
+await ask.waitFor({ timeout: 15000 });
+await ask.getByRole('button', { name: 'Zulassen' }).click();
 await G.locator('.map-hole-no').waitFor({ timeout: 30000 });
 if (!late) {
   await H.getByRole('button', { name: 'Runde starten' }).click();

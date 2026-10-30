@@ -18,8 +18,8 @@ import { tr } from './i18n';
 // - a player with a phone of his own keeps his own score – the others' phones show it, they cannot change it;
 // - scramble and foursomes: one phone keeps the team's card (at first the one that joined first – the host); another
 //   phone of the team can take it over (the keeper's battery is empty);
-// - single balls (a tournament or not – Sascha, the evening of 29.10.2026, "Sascha keeps his own score and, as marker,
-//   Cedric's"): every player keeps his own score and marks one other player (pairs in the flight: 1 ↔ 2, 3 ↔ 4;
+// - with a marker (a tournament always; a round of single balls when chosen – Sascha 29./30.10.2026, "Sascha keeps
+//   his own score and, as marker, Cedric's"): every player keeps his own score and marks one other player (pairs in the flight: 1 ↔ 2, 3 ↔ 4;
 //   with three 1 → 2 → 3 → 1); the marker's count is kept apart and shown beside the player's own – a difference shows;
 // - a player without a phone: any phone of the flight keeps his score (as on one phone before).
 // The event lives in the table of the shared games (golfos_shared_games: the code, the JSON, host and members) – no
@@ -82,6 +82,9 @@ export const sameCell = (a: Cell | undefined, b: Cell | undefined): boolean => (
 const withCell = (e: HoleEntry, c: Cell): HoleEntry => ({ ...e, strokes: c?.s ?? null, pickedUp: !!c?.p });
 const nulls = (n: number): Cell[] => Array.from({ length: n }, () => null);
 const isTeamEvent = (f: Round['format'] | undefined): boolean => isTeamMode(f?.mode);
+/** Does every player mark a partner: in a tournament always; a round of single balls when chosen (Sascha 30.10.2026:
+ *  "it must be selectable whether one only enters one's own score or plays with a marker" – by default his own). */
+export const marksIn = (f: Round['format'] | undefined, tournament: boolean): boolean => tournament || (!isTeamEvent(f) && !!f?.marker);
 
 /** The flight's scores in a round: per player, per hole. */
 export function scoresOf(round: Round): Record<string, Cell[]> {
@@ -106,7 +109,7 @@ export function flightOf(round: Round, id: string, name: string, phone: string, 
     name,
     players: framePlayers(round),
     scores: scoresOf(round),
-    ...(tournament || !isTeamEvent(round.format) ? { marks: {}, markers: defaultMarkers(round.players.map((p) => p.id)) } : {}),
+    ...(marksIn(round.format, tournament) ? { marks: {}, markers: defaultMarkers(round.players.map((p) => p.id)) } : {}),
     phones: me ? { [phone]: { player: me, name: who, at: new Date().toISOString() } } : {},
     by: phone,
     finishedAt: round.finishedAt,
@@ -151,12 +154,12 @@ export function writerOf(f: Flight, player: string, team: boolean): string | nul
   return ph[0]?.[0] ?? null;
 }
 
-export function roleOf(f: Flight, player: string, phone: string, team: boolean, tournament: boolean): Role {
+export function roleOf(f: Flight, player: string, phone: string, team: boolean, marking: boolean): Role {
   const w = writerOf(f, player, team);
   if (w === phone) return 'own';
-  // every player marks a partner – in a tournament and in any round of single balls (Sascha 29.10.2026, testing
-  // with Cedric: "Sascha keeps his own score and, as marker, Cedric's; Cedric his own and, as marker, Sascha's")
-  if (tournament || !team) {
+  // marking (marksIn): every player marks a partner (Sascha 29.10.2026, testing with Cedric: "Sascha keeps his own
+  // score and, as marker, Cedric's; Cedric his own and, as marker, Sascha's")
+  if (marking) {
     const m = f.markers?.[player];
     if (m && m !== player && writerOf(f, m, team) === phone) return 'mark';
   }
@@ -180,10 +183,10 @@ export function shareView(round: Round, f: Flight | undefined, tournament: boole
   const team = isTeamEvent(round.format);
   const me = round.players.find((p) => p.isMe)?.id;
   const nameOf = (id: string | undefined) => round.players.find((p) => p.id === id)?.name ?? '';
-  const marking = tournament || !team;
+  const marking = marksIn(round.format, tournament);
   return Object.fromEntries(
     round.players.map((p) => {
-      const role = roleOf(f, p.id, phone, team, tournament);
+      const role = roleOf(f, p.id, phone, team, marking);
       const w = writerOf(f, p.id, team);
       const marker = f.markers?.[p.id];
       const other =
@@ -212,7 +215,7 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
   let changedHere = !remote;
   let changedThere = false;
   let f: Flight = remote ?? flightOf(round, share.flight, flightName(round), phone, tournament, who);
-  const marking = tournament || !team;
+  const marking = marksIn(round.format, tournament);
   // this phone in the flight: which player (or team) it is
   const me = round.players.find((p) => p.isMe)?.id;
   if (me && !f.phones?.[phone]) {
@@ -238,7 +241,7 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
   const roles: Record<string, Role> = {};
   for (const p of players) {
     const list = (round.entries[p.id] ?? round.holes.map(() => emptyEntry())).slice();
-    const role = roleOf(f, p.id, phone, team, tournament);
+    const role = roleOf(f, p.id, phone, team, marking);
     roles[p.id] = role;
     const was = share.roles?.[p.id];
     const field = role === 'mark' ? marks : scores;
@@ -295,7 +298,7 @@ export function roundFromEvent(ev: RoundEvent, flightId: string, me: string, cod
   const f: Flight = { ...f0, phones: { ...f0.phones, [phone]: { player: me, name: who, at: new Date().toISOString() } } };
   const players: Player[] = f.players.map((p) => ({ id: p.id, name: p.name, playingHandicap: p.playingHandicap, isMe: p.id === me, ...(p.tee ? { tee: p.tee } : {}) }));
   const team = isTeamEvent(ev.format);
-  const roles = Object.fromEntries(players.map((p) => [p.id, roleOf(f, p.id, phone, team, ev.tournament)]));
+  const roles = Object.fromEntries(players.map((p) => [p.id, roleOf(f, p.id, phone, team, marksIn(ev.format, ev.tournament))]));
   // what this phone shows of each player: his score – or, marking him, its own count of him
   const cells = (pid: string): Cell[] => ev.holes.map((_, i) => (roles[pid] === 'mark' ? (f.marks?.[pid]?.[i] ?? null) : roles[pid] === 'view' ? (f.scores[pid]?.[i] ?? f.marks?.[pid]?.[i] ?? null) : (f.scores[pid]?.[i] ?? null)));
   const entries = Object.fromEntries(players.map((p) => [p.id, cells(p.id).map((c) => withCell(emptyEntry(), c))]));
@@ -421,7 +424,8 @@ export async function shareRound(round: Round, course: CourseSummary, o: { name:
       const r = await fetch(table(), { method: 'POST', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ code, game: ev }) });
       if (r.ok) {
         keepEvent(code, ev);
-        const roles = Object.fromEntries(round.players.map((p) => [p.id, roleOf(ev.flights[flight], p.id, phone, isTeamEvent(round.format), o.tournament)]));
+        keepHosted(code, Date.now() + HOSTED_HOURS * 3600 * 1000); // the host lets the others in
+        const roles = Object.fromEntries(round.players.map((p) => [p.id, roleOf(ev.flights[flight], p.id, phone, isTeamEvent(round.format), marksIn(round.format, o.tournament))]));
         return { ...round, shared: { code, flight, tournament: o.tournament, phone, roles, base: ev.flights[flight].scores } };
       }
       if (r.status !== 409) return null; // 409: the code is taken – another one
@@ -432,9 +436,10 @@ export async function shareRound(round: Round, course: CourseSummary, o: { name:
   return null;
 }
 
-/** Joins an event with its code (the phone becomes a member): the event, 'game' for a game's code (join it under
- *  Games), 'none' for nothing with this code, null for no connection. */
-export async function joinEvent(code: string): Promise<RoundEvent | 'game' | 'none' | null> {
+/** Joins an event with its code: the event (host, or let in), 'ask' when the host has to let this phone in first
+ *  (askByCode), 'game' for a game's code (join it under Games), 'none' for nothing with this code, null for no
+ *  connection. */
+export async function joinEvent(code: string): Promise<RoundEvent | 'ask' | 'game' | 'none' | null> {
   const h = await headers();
   if (!h) return null;
   try {
@@ -442,6 +447,7 @@ export async function joinEvent(code: string): Promise<RoundEvent | 'game' | 'no
     if (!r.ok) return null;
     const ev = await r.json();
     if (isGame(ev)) return 'game';
+    if ((ev as { kind?: string } | null)?.kind === 'ask-host') return 'ask';
     if (!isEvent(ev)) return 'none';
     keepEvent(cleanCode(code), ev);
     return ev;
@@ -561,52 +567,76 @@ export async function showNearby(code: string, at: { lat: number; lon: number; r
     const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}`, {
       method: 'PATCH',
       headers: { ...h, Prefer: 'return=minimal' },
-      body: JSON.stringify({ near_lat: at.lat, near_lon: at.lon, near_radius: Math.round(at.radius), near_host: host, near_until: new Date(until).toISOString(), near_ref: ref, near_requests: {} }),
+      body: JSON.stringify({ near_lat: at.lat, near_lon: at.lon, near_radius: Math.round(at.radius), near_host: host, near_until: new Date(until).toISOString(), near_ref: ref }),
     });
-    if (r.ok) keepNear(code, until);
+    if (r.ok) keepHosted(code, until);
     return r.ok;
   } catch {
     return false;
   }
 }
 
-// the rounds this phone shows nearby, till when – its requests are looked for while shown (JoinRequests)
-const NEAR = 'golfos.near.v1.';
-function keepNear(code: string, until: number): void {
+// the rounds this phone hosts, till when – their join requests are looked for meanwhile (JoinRequests): 12 hours from
+// the code, or as long as shown nearby (Sascha 30.10.2026: "the host confirms every joining")
+const HOSTED = 'golfos.hosted.v1.';
+const NEAR_OLD = 'golfos.near.v1.'; // 29.10.2026: only the rounds shown nearby
+export const HOSTED_HOURS = 12;
+export function keepHosted(code: string, until: number): void {
   try {
-    localStorage.setItem(NEAR + code, String(until));
+    if (Number(localStorage.getItem(HOSTED + code) ?? 0) >= until) return;
+    localStorage.setItem(HOSTED + code, String(until));
     window.dispatchEvent(new Event('golfos:near-changed'));
   } catch {
     /* storage full – the requests wait */
   }
 }
-/** The codes shown nearby right now (the ones past their time forgotten). */
-export function shownNearby(): string[] {
-  const out: string[] = [];
+/** The codes this phone hosts right now (the ones past their time forgotten). */
+export function hostedCodes(): string[] {
+  const out = new Set<string>();
   try {
     for (const k of Object.keys(localStorage)) {
-      if (!k.startsWith(NEAR)) continue;
-      if (Number(localStorage.getItem(k)) > Date.now()) out.push(k.slice(NEAR.length));
+      const pre = k.startsWith(HOSTED) ? HOSTED : k.startsWith(NEAR_OLD) ? NEAR_OLD : null;
+      if (!pre) continue;
+      if (Number(localStorage.getItem(k)) > Date.now()) out.add(k.slice(pre.length));
       else localStorage.removeItem(k);
     }
   } catch {
     /* no storage */
   }
-  return out;
+  return [...out];
 }
 
 export type JoinAnswer = { state: 'asked' | 'no' | 'gone' } | { state: 'ok'; code: string };
-/** Asks to join a round nearby – asked again, how it stands ('ok' with the code once the host let this phone in).
- *  Null when offline. */
-export async function askToJoin(ref: string, who: string): Promise<JoinAnswer | null> {
+const answerOf = (a: { state?: string; code?: string } | null): JoinAnswer =>
+  a?.state === 'ok' && typeof a.code === 'string' ? { state: 'ok', code: a.code } : a?.state === 'asked' || a?.state === 'no' ? { state: a.state } : { state: 'gone' };
+/** A request, with the handicap index for the host's list – a server from before 30.10.2026 takes it without. */
+async function askRpc(fn: string, args: Record<string, unknown>, hcp: string): Promise<Response | null> {
   const h = await headers();
   if (!h) return null;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers: h, body: JSON.stringify({ ...args, hcp }) });
+  return r.status === 404 && fn === 'golfos_request_join' ? fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers: h, body: JSON.stringify(args) }) : r;
+}
+/** Asks to join a round nearby – asked again, how it stands ('ok' with the code once the host let this phone in).
+ *  Null when offline. */
+export async function askToJoin(ref: string, who: string, hcp = ''): Promise<JoinAnswer | null> {
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_request_join`, { method: 'POST', headers: h, body: JSON.stringify({ join_ref: ref, who }) });
+    const r = await askRpc('golfos_request_join', { join_ref: ref, who }, hcp);
+    if (!r?.ok) return null;
+    return answerOf(await r.json());
+  } catch {
+    return null;
+  }
+}
+/** Asks to join a round by its code (QR, link, typed) – asked again, how it stands. 'none' for no round with this
+ *  code; 'direct' when the server lets everyone in with the code (the SQL of 30.10.2026 not run yet). */
+export async function askByCode(code: string, who: string, hcp = ''): Promise<JoinAnswer | { state: 'none' | 'direct' } | null> {
+  try {
+    const r = await askRpc('golfos_ask_join', { join_code: cleanCode(code), who }, hcp);
+    if (!r) return null;
+    if (r.status === 404) return { state: 'direct' };
     if (!r.ok) return null;
     const a = (await r.json()) as { state?: string; code?: string } | null;
-    if (a?.state === 'ok' && typeof a.code === 'string') return { state: 'ok', code: a.code };
-    return a?.state === 'asked' || a?.state === 'no' ? { state: a.state } : { state: 'gone' };
+    return a?.state === 'none' ? { state: 'none' } : answerOf(a);
   } catch {
     return null;
   }
@@ -615,19 +645,21 @@ export interface JoinRequest {
   /** the asking player's account */
   id: string;
   name: string;
+  /** his handicap index as in his profile ('' unknown) */
+  hcp: string;
   at: string;
 }
-/** The requests to join a round shown nearby, not answered yet – oldest first. */
+/** The requests to join a round (by its code or nearby), not answered yet – oldest first. */
 export async function joinRequests(code: string): Promise<JoinRequest[]> {
   const h = await headers();
   if (!h) return [];
   try {
     const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}&select=near_requests`, { headers: h });
     if (!r.ok) return [];
-    const rows = (await r.json()) as { near_requests?: Record<string, { name?: string; at?: string; state?: string }> | null }[];
+    const rows = (await r.json()) as { near_requests?: Record<string, { name?: string; hcp?: string; at?: string; state?: string }> | null }[];
     return Object.entries(rows[0]?.near_requests ?? {})
       .filter(([, x]) => x?.state === 'asked')
-      .map(([id, x]) => ({ id, name: x.name || tr('A player', 'Ein Spieler'), at: x.at ?? '' }))
+      .map(([id, x]) => ({ id, name: x.name || tr('A player', 'Ein Spieler'), hcp: x.hcp ?? '', at: x.at ?? '' }))
       .sort((a, b) => a.at.localeCompare(b.at));
   } catch {
     return [];

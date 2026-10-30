@@ -8,13 +8,13 @@ import { defaultMarkers, differences, eventBoard, eventOf, mergeFlight, newFligh
 
 const holes = Array.from({ length: 3 }, (_, i) => ({ index: i, label: String(i + 1), loop: 'A', number: i + 1, par: 4, strokeIndex: i + 1 }));
 const course = { id: 'osm:way/1', source: 'osm' as const, name: 'Hetzenhof', lat: 48.78, lon: 9.69 };
-function round(players: { id: string; name: string; hcp?: number }[], mode: 'single' | 'scramble' = 'single'): Round {
+function round(players: { id: string; name: string; hcp?: number }[], mode: 'single' | 'scramble' = 'single', marker = false): Round {
   return {
     id: 'r-host', createdAt: '2026-11-01T09:00:00Z', finishedAt: null, courseId: course.id, courseName: 'Hetzenhof', loopOrder: ['A'], holes, mode: 'detail',
     players: players.map((p, k) => ({ id: p.id, name: p.name, playingHandicap: p.hcp ?? null, isMe: k === 0 })),
     entries: Object.fromEntries(players.map((p) => [p.id, holes.map(() => emptyEntry())])),
     currentHole: 0,
-    format: { mode, scoring: 'stroke' },
+    format: { mode, scoring: 'stroke', ...(marker ? { marker: true } : {}) },
   };
 }
 const score = (r: Round, pid: string, i: number, s: number | null): Round => ({ ...r, entries: { ...r.entries, [pid]: r.entries[pid].map((e, k) => (k === i ? { ...e, strokes: s } : e)) } });
@@ -76,8 +76,8 @@ describe('the same scramble team on two phones', () => {
 describe('a flight of single players on their own phones', () => {
   // Sascha, the evening of 29.10.2026, testing with Cedric: "Sascha keeps his own score and, as marker, Cedric's;
   // Cedric his own and, as marker, Sascha's" – in any round of single balls, not only in a tournament
-  it('a social round: everyone keeps his own score and marks his partner – two counts, kept apart', () => {
-    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]));
+  it('a social round with a marker: everyone keeps his own score and marks his partner – two counts, kept apart', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }], 'single', true));
     expect(sascha.players.map((p) => shareView(sascha, ev.flights.f1, false)[p.id].role)).toEqual(['own', 'mark']);
     sascha = score(sascha, 'me', 0, 4);
     sascha = score(sascha, 'c', 0, 5); // his count of Cedric
@@ -103,8 +103,28 @@ describe('a flight of single players on their own phones', () => {
     // and Cedric's own phone keeps his details (putts, penalties) – only the score travels
     expect(JSON.stringify(ev)).not.toContain('putts');
   });
-  it('a flight from before every round was marked gets its markers', () => {
+  // Sascha 30.10.2026: "selectable whether one only enters one's own score or plays with a marker" – by default his own
+  it('a social round without a marker (the default): everyone keeps only his own score, the others are shown', () => {
     let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]));
+    // Cedric not on a phone yet: the host keeps his score too (as on one phone)
+    expect(sascha.players.map((p) => shareView(sascha, ev.flights.f1, false)[p.id].role)).toEqual(['own', 'free']);
+    sascha = score(sascha, 'c', 0, 5);
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    expect(strokes(cedric, 'c')[0]).toBe(5); // he goes on from there
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    cedric = score(cedric, 'c', 1, 4);
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.shared!.roles!.c).toBe('view');
+    expect(strokes(sascha, 'c')).toEqual([5, 4, null]);
+    sascha = score(sascha, 'c', 1, 9); // not his to change
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(ev.flights.f1.scores.c[1]).toEqual({ s: 4 });
+    expect(ev.flights.f1.markers).toBeUndefined();
+  });
+  it('a flight from before the marker was chosen gets its markers', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }], 'single', true));
     const { markers: _m, marks: _k, ...old } = ev.flights.f1;
     ev = { ...ev, flights: { f1: old } };
     ({ ev, r: sascha } = exchange(ev, sascha));
@@ -133,7 +153,7 @@ describe('a flight of single players on their own phones', () => {
     ({ ev, r: sascha } = exchange(ev, sascha));
     expect(ev.flights.f1.scores.me[2]).toEqual({ s: null, p: true });
     ({ ev, r: cedric } = exchange(ev, cedric));
-    expect(shareView(cedric, ev.flights.f1, false).me.other?.cells[2]).toEqual({ s: null, p: true });
+    expect(cedric.entries.me[2]).toMatchObject({ pickedUp: true, strokes: null }); // shown on Cedric's phone (no marker)
   });
   it('a player added in the setup after the code: the phone that joined earlier gets him', () => {
     let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]));

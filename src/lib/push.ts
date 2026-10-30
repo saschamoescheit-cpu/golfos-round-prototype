@@ -162,6 +162,12 @@ export function pushGame(action: 'joined' | 'finished', code: string): void {
   void call({ action, code }).catch(() => null);
 }
 
+/** A round: this phone asked to join – the host hears of it (Sascha 30.10.2026; the function says it once). */
+export function pushAsked(to: { code?: string; ref?: string }): void {
+  if (!loadSession() || !syncConfigured()) return;
+  void call({ action: 'asked', ...to }).catch(() => null);
+}
+
 /** Where a tapped notification leads: "#review=<round>", "#sign", "#games" (read once, then removed). */
 export function takePushTarget(): { review?: string; sign?: boolean; games?: boolean } | null {
   const h = location.hash;

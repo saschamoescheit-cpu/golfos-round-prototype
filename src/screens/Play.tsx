@@ -4,7 +4,7 @@ import { getLang, tr } from '../lib/i18n';
 import { loopsText } from '../lib/loops';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { TopTools } from '../components/TopTools';
-import { JoinRoundSheet } from '../components/ShareRound';
+import { JoinRoundSheet, PENDING_JOIN } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
 
 // Tab "Play" (Sascha 14.10.2026): start a round, or carry on with, finish or cancel the one in progress.
@@ -36,7 +36,19 @@ export function PlayTab(props: {
   const played = open ? open.entries[open.players.find((p) => p.isMe)!.id].filter((e) => e.strokes != null || e.pickedUp).length : 0;
   // join a round (code or the QR link #round=CODE)
   const [canShare, setCanShare] = useState<boolean | null>(null); // null: still asking
-  const [join, setJoin] = useState<string | null>(() => (location.hash.startsWith('#round=') ? location.hash.slice(7) : null));
+  const [join, setJoin] = useState<string | null>(() => {
+    if (location.hash.startsWith('#round=')) return location.hash.slice(7);
+    // back from signing in with Google in the middle of joining: on with that code
+    try {
+      const p = sessionStorage.getItem(PENDING_JOIN);
+      sessionStorage.removeItem(PENDING_JOIN);
+      return p;
+    } catch {
+      return null;
+    }
+  });
+  // joining needs no account (Sascha 30.10.2026): the name is enough – only a server without sharing stops it
+  const canJoin = canShare === true || (canShare === false && sharingMissing() === 'signin');
   useEffect(() => {
     sharingAvailable().then(setCanShare);
     if (location.hash.startsWith('#round=')) history.replaceState(null, '', location.pathname + location.search);
@@ -143,7 +155,7 @@ export function PlayTab(props: {
           {tr('New round', 'Neue Runde')}
         </button>
         {/* a friend's round or a tournament (Sascha 29.10.2026) – shown once signed in */}
-        {canShare && (
+        {canJoin && (
           <button type="button" className="btn-secondary" onClick={() => setJoin('')}>
             {tr("Join a friend's round", 'Runde beitreten')}
           </button>
@@ -151,7 +163,7 @@ export function PlayTab(props: {
       </section>
       {join != null &&
         canShare != null &&
-        (canShare ? (
+        (canJoin ? (
           <JoinRoundSheet
             initial={join}
             onClose={() => setJoin(null)}

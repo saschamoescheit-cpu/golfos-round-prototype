@@ -128,6 +128,14 @@ export const joinedNote = (course: string, lang?: string | null): Note => ({
   url: './#games',
 });
 
+/** Someone asks to join the host's round (Sascha 30.10.2026: "ideally a push that someone wants to join"). */
+export const askedNote = (who: string, course: string, lang?: string | null): Note => ({
+  title: T(lang, 'Wants to join', 'Beitrittsanfrage'),
+  body: T(lang, `${who || 'A player'} wants to join your round at ${course} – tap to let in.`, `${who || 'Ein Spieler'} möchte deiner Runde in ${course} beitreten – tippen zum Bestätigen.`),
+  tag: 'golfos-join',
+  url: './#rounds',
+});
+
 export const finishedNote = (course: string, lang?: string | null): Note => ({
   title: T(lang, 'Game over', 'Spiel beendet'),
   body: T(lang, `The game at ${course} is over – the result is in Games.`, `Das Spiel in ${course} ist beendet – das Ergebnis steht in Games.`),
@@ -380,6 +388,28 @@ export async function handle(req: Request): Promise<Response> {
           if (await send(s, (action === 'joined' ? joinedNote : finishedNote)(g.game?.courseName ?? 'GolfOS', s.lang))) n++;
         }
       await d.insertIgnore('golfos_push_sent', to.map((u) => ({ user_id: u, key })));
+      return json({ ok: true, sent: n });
+    }
+    // a round's join request (by its code, or by the reference of a round shown nearby): the host hears of it – only
+    // from a phone that really asked, once per phone
+    if (action === 'asked') {
+      const code = String(body.code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      const ref = String(body.ref ?? '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 64);
+      if (!code && !ref) return json({ error: 'no round' }, 400);
+      const [g] = await d.get<{ code: string; owner: string; near_requests: Record<string, { name?: string; state?: string }> | null; game: { course?: { name?: string } } }[]>(
+        `golfos_shared_games?select=code,owner,near_requests,game&${code ? `code=eq.${code}` : `near_ref=eq.${ref}`}`,
+      );
+      const asked = g?.near_requests?.[user];
+      if (!g || asked?.state !== 'asked') return json({ error: 'no request' }, 403);
+      const key = `asked:${g.code}:${user}`;
+      let n = 0;
+      for (const s of await subsOf([g.owner])) {
+        if (s.kinds?.games === false) continue;
+        const done = await d.get<unknown[]>(`golfos_push_sent?select=key&user_id=eq.${s.user_id}&key=eq.${encodeURIComponent(key)}`);
+        if (done.length) continue;
+        if (await send(s, askedNote(String(asked.name ?? '').slice(0, 60), g.game?.course?.name ?? 'GolfOS', s.lang), 3600, 'high')) n++;
+      }
+      await d.insertIgnore('golfos_push_sent', [{ user_id: g.owner, key }]);
       return json({ ok: true, sent: n });
     }
     return json({ error: 'unknown action' }, 400);

@@ -2,10 +2,10 @@
 // tournament the player always counts himself and a partner"): two phones, a stroke play tournament flight Sascha +
 // Cedric. Each keeps his own score (the other's phone shows it, no steppers for it in a friendly round – here each
 // marks the other), each marks the other; a difference between the own count and the marker's shows on the score
-// panel and on the leaderboard. Supabase is simulated (as in qa/shareround.mjs), the app is real.
+// panel and on the leaderboard. Supabase is simulated (qa/sharesim.mjs), the app is real.
 // Usage: node qa/sharemarker.mjs [url]
-import { webkit, devices } from 'playwright';
-import { mockNet } from './netmock.mjs';
+import { webkit } from 'playwright';
+import { sharedServer } from './sharesim.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -13,61 +13,7 @@ const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
   if (!cond) fails++;
 };
-const shared = new Map(); // code → { game, updated_at }
-async function serve(route) {
-  const req = route.request();
-  const u = new URL(req.url());
-  const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: body == null ? '' : JSON.stringify(body) });
-  if (u.pathname.endsWith('/golfos_items')) return json(200, []);
-  if (u.pathname.endsWith('/rpc/golfos_join_game')) {
-    const { join_code } = JSON.parse(req.postData() ?? '{}');
-    return json(200, shared.get(join_code)?.game ?? null);
-  }
-  if (u.pathname.endsWith('/golfos_shared_games')) {
-    const code = (u.searchParams.get('code') ?? '').replace(/^eq\./, '');
-    if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game, updated_at: shared.get(code).updated_at }] : []) : []);
-    if (req.method() === 'POST') {
-      const row = JSON.parse(req.postData());
-      if (shared.has(row.code)) return json(409, { code: '23505' });
-      shared.set(row.code, { game: row.game, updated_at: new Date().toISOString() });
-      return json(201, null);
-    }
-    if (req.method() === 'PATCH') {
-      const row = shared.get(code);
-      const at = (u.searchParams.get('updated_at') ?? '').replace(/^eq\./, '');
-      if (!row || (at && at !== row.updated_at)) return json(200, []);
-      const body = JSON.parse(req.postData());
-      if (body.near_lat != null) return json(204, null); // shown nearby – the event itself unchanged
-      row.game = body.game;
-      row.updated_at = body.updated_at;
-      return json(200, [{ code }]);
-    }
-  }
-  return json(404, { message: 'not simulated' });
-}
-async function phone(name) {
-  const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 5 }, permissions: ['geolocation'] });
-  await mockNet(ctx);
-  await ctx.route(/rgisfnilwehnqpmbrxmp\.supabase\.co\/(rest|auth)\//, serve);
-  const p = await ctx.newPage();
-  const errs = [];
-  p.on('pageerror', (e) => { if (!/golfos_items.*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
-  await p.goto(url);
-  await p.waitForTimeout(1200);
-  await p.evaluate((name) => {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem('golfos.intro.v1', '1');
-    localStorage.setItem('golfos.tip.shots.v1', '1');
-    localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: name, lastName: '', hcpIndex: '10', homeClub: '' }));
-    localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: 'x', refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
-    sessionStorage.setItem('golfos.module', 'rounds');
-  }, name);
-  await p.reload();
-  await p.waitForTimeout(1500);
-  return { p, errs };
-}
-const event = () => [...shared.values()][0]?.game;
+const { phone, event } = sharedServer(b, url);
 const flight = () => Object.values(event().flights)[0];
 
 // Sascha: a stroke play round with Cedric, a tournament – the code in the setup
@@ -100,8 +46,10 @@ const guest = await phone('Cedric');
 const G = guest.p;
 await G.goto('about:blank');
 await G.goto(url + '#round=' + code);
-await G.waitForTimeout(2500);
-await G.getByRole('dialog', { name: 'Runde beitreten' }).getByRole('button', { name: /^Cedric/ }).click();
+// Sascha lets him in on the hole map; Cedric's name is in the flight – in at once
+const ask = H.getByRole('alertdialog', { name: 'Cedric möchte beitreten' });
+await ask.waitFor({ timeout: 15000 });
+await ask.getByRole('button', { name: 'Zulassen' }).click();
 await G.locator('.map-hole-no').waitFor({ timeout: 30000 });
 await G.waitForTimeout(6000); // both phones in the flight
 

@@ -18,6 +18,8 @@ export interface RoundFormat {
   scoring: Scoring;
   matchplay?: boolean; // teams play hole by hole against each other ('match' = singles match play)
   allowance?: number; // handicap allowance in % (100 = full)
+  /** on several phones, single balls: everyone also marks a partner (Sascha 30.10.2026 – chosen, by default not) */
+  marker?: boolean;
 }
 export const DEFAULT_FORMAT: RoundFormat = { mode: 'single', scoring: 'net', allowance: 100 };
 

@@ -213,7 +213,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       players,
       entries,
       currentHole: 0,
-      format: shownFormat,
+      // on several phones: with a marker, when chosen (Sascha 30.10.2026 – by default everyone keeps only his own)
+      format: withMarker && !isTeamMode(shownFormat.mode) ? { ...shownFormat, marker: true } : shownFormat,
       kind,
       ...(tee ? { tee } : {}),
       ...(rating ? { rating: { cr: rating.cr, slope: rating.slope } } : {}),
@@ -224,11 +225,29 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // the flight partners on their own phones (Sascha 29.10.2026: "invite where the round is set up, with the flight
   // partners – not only once it has begun"): the code made here, the round starts with it
   const [share, setShare] = useState<Round['shared'] | null>(null);
+  const [withMarker, setWithMarker] = useState(false);
   const [canShare, setCanShare] = useState<boolean | null>(null);
   useEffect(() => {
     void sharingAvailable().then(setCanShare);
   }, []);
-  const invitable = useMemo(() => (canShare ? draft() : null), [canShare, share, me, others, format, optionId, kind]); // eslint-disable-line react-hooks/exhaustive-deps
+  const invitable = useMemo(() => (canShare ? draft() : null), [canShare, share, me, others, format, optionId, kind, withMarker]); // eslint-disable-line react-hooks/exhaustive-deps
+  // let in and not in the list yet (Sascha 30.10.2026: scanned, asked, let in – no typing for the host): he becomes a
+  // player here, with the handicap index from his profile; the joining phone finds its name and is in
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ code: string; name: string; hcp: string }>).detail;
+      if (!share || d.code !== share.code || !d.name.trim()) return;
+      const known = (n: string) => n.trim().toLowerCase() === d.name.trim().toLowerCase();
+      setOthers((os) => {
+        if (known(me.name) || os.some((o) => known(o.name)) || os.length >= 3) return os;
+        const blank = os.findIndex((o) => !o.name.trim() && !o.index.trim());
+        const p = { id: newId(), name: d.name.trim(), index: d.hcp, handicap: roughPlaying(d.hcp), tee: me.tee };
+        return blank >= 0 ? os.map((o, k) => (k === blank ? { ...p, id: o.id } : o)) : [...os, p];
+      });
+    };
+    window.addEventListener('golfos:join-approved', on);
+    return () => window.removeEventListener('golfos:join-approved', on);
+  }, [share, me.name, me.tee]);
 
   return (
     <main className="screen">
@@ -322,6 +341,17 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         {invitable && (
           <div className="card invite-card" aria-label={tr('Invite players', 'Mitspieler einladen')}>
             <strong>{share?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</strong>
+            {!isTeamMode(shownFormat.mode) && (
+              <div className="drawer-list settings-switches">
+                <button type="button" className="drawer-row" role="switch" aria-checked={withMarker} onClick={() => setWithMarker(!withMarker)}>
+                  <span className="switch-label">
+                    <span>{tr('Play with a marker', 'Mit Zähler spielen')}</span>
+                    <span className="muted small">{withMarker ? tr('Everyone enters his own score and his partner\'s – a difference shows', 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt') : tr('Off: everyone enters only his own score and sees the others', 'Aus: Jeder trägt nur seinen eigenen Score ein und sieht die anderen')}</span>
+                  </span>
+                  <span className={`drawer-switch${withMarker ? ' on' : ''}`} aria-hidden="true" />
+                </button>
+              </div>
+            )}
             <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact />
           </div>
         )}

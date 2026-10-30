@@ -206,6 +206,22 @@ describe('the push function, end to end against a copy of the database', () => {
     expect((await iphone.inbox()).length).toBe(before);
   });
 
+  it('a round: the host hears who asks to join – only from a phone that asked, once (Sascha 30.10.2026)', async () => {
+    tables.golfos_shared_games = [
+      { code: 'RND234', owner: 'u-sascha', members: [], near_ref: 'ref-abc', near_requests: { 'u-max': { name: 'Max', state: 'asked' }, 'u-tim': { name: 'Tim', state: 'ok' } }, game: { kind: 'round-event', course: { name: 'Golfclub Hetzenhof' } } },
+    ];
+    const iphone = await sascha();
+    const n = (await iphone.inbox()).length;
+    expect((await post({ action: 'asked', code: 'rnd234' }, 'token-max')).status).toBe(200);
+    await post({ action: 'asked', ref: 'ref-abc' }, 'token-max'); // by the round nearby, again: said once
+    const heard = (await iphone.inbox()).slice(n);
+    expect(heard).toEqual([expect.objectContaining({ title: 'Beitrittsanfrage', tag: 'golfos-join' })]);
+    expect(heard[0].body).toContain('Max möchte deiner Runde in Golfclub Hetzenhof beitreten');
+    // let in already, or never asked: nothing
+    expect((await post({ action: 'asked', code: 'RND234' }, 'token-tim')).status).toBe(403);
+    expect((await post({ action: 'asked' }, 'token-tim')).status).toBe(400);
+  });
+
   it('a phone the push service no longer knows is forgotten; turned off, it is gone', async () => {
     const old = await phone(GONE);
     await post({ action: 'subscribe', subscription: old.subscription }, 'token-max'); // the hello comes back 410

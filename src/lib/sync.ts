@@ -384,6 +384,8 @@ export interface Session {
   name: string | null;
   /** the account's user name for signing in with user name + password (null: Google only, none set yet) */
   username?: string | null;
+  /** an account without Google or password (playing along with a round, Sascha 30.10.2026) */
+  anonymous?: boolean;
 }
 export const loadSession = (): Session | null => parse<Session | null>(browserStore.get(AUTH), null);
 const saveSession = (s: Session | null) => (s ? browserStore.set(AUTH, JSON.stringify(s)) : browserStore.remove(AUTH));
@@ -426,6 +428,8 @@ export async function finishSignIn(): Promise<Session | null> {
   } catch {
     /* the name comes later */
   }
+  // played along without an account before: everything on this phone goes to the Google account – a full sync
+  if (loadSession()?.anonymous) browserStore.remove(META);
   saveSession(s);
   return s;
 }
@@ -485,6 +489,29 @@ async function startSession(j: { access_token?: string; refresh_token?: string; 
   saveSession({ access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (j.expires_in ?? 3600), email: j.user?.email ?? null, name: null, username: await ownName(j.access_token) });
   noteSyncError(null);
   void syncNow();
+}
+
+/**
+ * Playing along without an account (Sascha 30.10.2026: "inviting must be very simple – not many taps and sign-ins"): an
+ * anonymous account in the background, with the name typed. Signing in with Google later moves this phone's rounds to
+ * that account (they are on the phone and sync). False when the server does not allow it (Supabase → Authentication →
+ * "Allow anonymous sign-ins") or there is no connection.
+ */
+export async function signInAnonymously(name: string): Promise<boolean> {
+  if (!syncConfigured()) return false;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/signup`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ data: { golfos_guest: true, name: name.trim().slice(0, 60) } }) });
+    if (!r.ok) return false;
+    const j = (await r.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
+    if (!j.access_token || !j.refresh_token) return false;
+    browserStore.remove(META);
+    saveSession({ access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Math.floor(Date.now() / 1000) + (j.expires_in ?? 3600), email: null, name: name.trim() || null, anonymous: true });
+    noteSyncError(null);
+    void syncNow();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Sign in: user name (or e-mail) and password. */

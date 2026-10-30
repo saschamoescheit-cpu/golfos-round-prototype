@@ -173,7 +173,10 @@ await T.getByRole('button', { name: 'Spiel beitreten' }).click();
 await T.getByRole('textbox', { name: 'Code des Spiels' }).fill('RND234');
 await T.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Beitreten', exact: true }).click();
 await T.waitForTimeout(2500);
-ok((await T.getByRole('dialog', { name: 'Runde beitreten' }).count()) === 1 && (await T.getByRole('dialog', { name: 'Runde beitreten' }).getByRole('button', { name: 'Tom', exact: true }).count()) === 1, "a round's code in Games: on to Runde beitreten in Rounds, who are you?");
+// Tom's name is in the flight: in the round at once, no "who are you?" (Sascha 30.10.2026: "not many taps")
+await T.locator('.map-hole-no').waitFor({ timeout: 30000 }).catch(() => {});
+const tr = await T.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').find((r) => r.shared?.code === 'RND234') ?? null).catch(() => null);
+ok(tr?.players?.find((p) => p.isMe)?.name === 'Tom', "a round's code in Games: on to Runde beitreten in Rounds – Tom in the round as himself");
 ok(third.errs.length === 0, `third phone: no page errors ${third.errs.slice(0, 2).join(' | ')}`);
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, askToJoin, cachedEvent, differences, eventBoard, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, roundJoinLink, shareRound, showNearby, writerOf, type NearbyRound, type RoundEvent } from '../lib/sharedround';
+import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventBoard, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, roundJoinLink, shareRound, showNearby, writerOf, type Flight, type NearbyRound, type RoundEvent } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
-import { loadProfile, shownName } from '../lib/profile';
+import { loadProfile, saveProfile, shownName } from '../lib/profile';
+import { loadSession, signIn, signInAnonymously } from '../lib/sync';
+import { pushAsked } from '../lib/push';
 import { tr } from '../lib/i18n';
 import { Qr } from './ShareGame';
 import { Avatar } from './Avatar';
@@ -84,8 +86,8 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
                 'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Mehrere Flights: ein Turnier mit Live-Leaderboard.',
               )
             : tr(
-                'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and, as marker, a partner\'s; the scorecard shows both live. Several flights: a tournament with a live leaderboard.',
-                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und als Zähler den eines Mitspielers; die Scorekarte zeigt beides live. Mehrere Flights: ein Turnier mit Live-Leaderboard.',
+                'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others live; with a marker also a partner\'s. Several flights: a tournament with a live leaderboard.',
+                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen live; mit Zähler auch den eines Mitspielers. Mehrere Flights: ein Turnier mit Live-Leaderboard.',
               )}
         </span>
         <div className="drawer-list settings-switches">
@@ -137,8 +139,8 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
       </strong>
       <span className="muted small">
         {shared.tournament
-          ? tr('Scan, or type the code under "Join a round": your flight picks who it is, another flight starts its own.', 'Scannen oder Code unter „Runde beitreten“ eingeben: Dein Flight wählt, wer er ist – ein anderer Flight legt seinen eigenen an.')
-          : tr('Scan, or type the code under "Join a round" – then pick who you are.', 'Scannen oder Code unter „Runde beitreten“ eingeben – dann wählen, wer man ist.')}
+          ? tr('Scan, or type the code under "Join a round" – no account needed. You let each one in; another flight starts its own.', 'Scannen oder Code unter „Runde beitreten“ eingeben – ohne Konto. Du bestätigst jeden; ein anderer Flight legt seinen eigenen an.')
+          : tr('Scan, or type the code under "Join a round" – no account needed. You let each one in, and he is in the round.', 'Scannen oder Code unter „Runde beitreten“ eingeben – ohne Konto. Du bestätigst jeden, dann ist er in der Runde.')}
         {props.compact ? tr(' They can join now already; what you change here goes with the start.', ' Sie können schon jetzt beitreten; was du hier noch änderst, geht beim Start mit.') : ''}
       </span>
       {nearState && (
@@ -175,6 +177,8 @@ export function RoundInviteSheet(props: { round: Round; onShared: (r: Round) => 
 }
 
 type NewPlayer = { name: string; hcp: string };
+/** A code being joined when the player went off to sign in with Google: Play opens it again on the way back. */
+export const PENDING_JOIN = 'golfos.join.pending';
 
 export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) => void; onClose: () => void; /** a game's code: join it in Games */ onGameCode?: (code: string) => void }) {
   const [code, setCode] = useState(cleanCode(props.initial ?? ''));
@@ -182,37 +186,94 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
   const [msg, setMsg] = useState<string | null>(null);
   const [ev, setEv] = useState<RoundEvent | null>(null);
   const [own, setOwn] = useState<NewPlayer[] | null>(null); // a flight of one's own (tournament)
+  // joining must be simple (Sascha 30.10.2026): no account needed – the name is enough (an anonymous account in the
+  // background); the host lets every phone in, by code, QR, link or nearby
+  const [name, setName] = useState(() => shownName(loadProfile()));
+  const [signedIn, setSignedIn] = useState(() => loadSession() != null);
+  const [needGoogle, setNeedGoogle] = useState(false);
+  const hcp = (loadProfile().hcpIndex ?? '').trim();
+  const account = async (): Promise<boolean> => {
+    if (loadSession()) return true;
+    if (!name.trim()) {
+      setMsg(tr('Your name first – the host sees who asks.', 'Zuerst dein Name – der Gastgeber sieht, wer anfragt.'));
+      return false;
+    }
+    setBusy(tr('One moment …', 'Einen Moment …'));
+    const ok = await signInAnonymously(name);
+    setBusy(null);
+    if (!ok) {
+      setNeedGoogle(true);
+      setMsg(tr('Without an account it does not work yet – sign in with Google, it goes on by itself afterwards.', 'Ohne Konto geht es gerade nicht – mit Google anmelden, danach geht es von selbst weiter.'));
+      return false;
+    }
+    const p = loadProfile();
+    if (!p.firstName.trim()) saveProfile({ ...p, firstName: name.trim().split(/\s+/)[0], lastName: p.lastName || name.trim().split(/\s+/).slice(1).join(' ') });
+    setSignedIn(true);
+    return true;
+  };
+  const who = () => name.trim() || myName();
   const find = async (c = code) => {
+    if (!(await account())) return;
     setBusy(tr('Joining …', 'Trete bei …'));
     const found = await joinEvent(c);
     setBusy(null);
+    // a round: the host lets this phone in first
+    if (found === 'ask') {
+      setBusy(tr('Asking …', 'Frage an …'));
+      const a = await askByCode(c, who(), hcp);
+      setBusy(null);
+      if (a?.state === 'asked') {
+        pushAsked({ code: cleanCode(c) });
+        setAsking({ code: cleanCode(c) });
+      } else if (a?.state === 'ok') {
+        const again = await joinEvent(c);
+        if (again && typeof again === 'object') setEv(again);
+      } else if (a?.state === 'no') setMsg(tr('The host did not let you in.', 'Der Gastgeber hat den Beitritt abgelehnt.'));
+      else if (a?.state === 'none') setMsg(tr('No round with this code – check the code.', 'Keine Runde mit diesem Code – Code prüfen.'));
+      else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+    }
     // a game's code here (Sascha 29.10.2026: Games as Rounds): on to Games, which joins it
-    if (found === 'game' && props.onGameCode) props.onGameCode(cleanCode(c));
+    else if (found === 'game' && props.onGameCode) props.onGameCode(cleanCode(c));
     else if (found === 'game') setMsg(tr('This code is a game – join it under Games.', 'Dieser Code ist ein Spiel – das unter Games beitreten.'));
     else if (found === 'none') setMsg(tr('No round with this code – check the code.', 'Keine Runde mit diesem Code – Code prüfen.'));
     else if (!found) setMsg(tr('No connection – check the code or the connection.', 'Keine Verbindung – Code oder Verbindung prüfen.'));
-    else setEv(found);
+    else {
+      setEv(found);
+      if (let_in.current) awaitName.current = Date.now(); // let in just now: the host's phone adds the name in a moment
+    }
   };
   // the rounds shown nearby (Sascha 29.10.2026): null while looking, [] none – not when opened by the link
   const [near, setNear] = useState<NearbyRound[] | null>(null);
-  // asked to join a round nearby: waiting till the host lets this phone in (Sascha 29.10.2026)
-  const [asking, setAsking] = useState<NearbyRound | null>(null);
+  // asked to join (nearby or by code): waiting till the host lets this phone in (Sascha 29./30.10.2026)
+  const [asking, setAsking] = useState<{ near?: NearbyRound; code?: string } | null>(null);
+  const let_in = useRef(false);
+  const awaitName = useRef(0);
   useEffect(() => {
     if (!asking) return;
     let gone = false;
+    let told = false;
     const look = async () => {
-      const a = await askToJoin(asking.ref, myName());
-      if (gone || !a || a.state === 'asked') return;
+      const a = asking.near ? await askToJoin(asking.near.ref, who(), hcp) : await askByCode(asking.code!, who(), hcp);
+      if (gone || !a || a.state === 'asked') {
+        if (a?.state === 'asked' && asking.near && !told) pushAsked({ ref: asking.near.ref });
+        told = true;
+        return;
+      }
       setAsking(null);
       if (a.state === 'ok') {
+        let_in.current = true;
         setCode(a.code);
         void find(a.code);
-      } else
+      } else {
+        const host = asking.near?.host;
         setMsg(
           a.state === 'no'
-            ? tr(`${asking.host || 'The host'} did not let you in.`, `${asking.host || 'Der Gastgeber'} hat den Beitritt abgelehnt.`)
-            : tr('The round is no longer shown nearby – ask for the code.', 'Die Runde ist nicht mehr in der Nähe sichtbar – nach dem Code fragen.'),
+            ? tr(`${host || 'The host'} did not let you in.`, `${host || 'Der Gastgeber'} hat den Beitritt abgelehnt.`)
+            : a.state === 'none' || a.state === 'direct'
+              ? tr('No round with this code – check the code.', 'Keine Runde mit diesem Code – Code prüfen.')
+              : tr('The round is no longer shown nearby – ask for the code.', 'Die Runde ist nicht mehr in der Nähe sichtbar – nach dem Code fragen.'),
         );
+      }
     };
     void look();
     const t = window.setInterval(() => void look(), 3000);
@@ -221,10 +282,11 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
       window.clearInterval(t);
     };
   }, [asking]); // eslint-disable-line react-hooks/exhaustive-deps
-  // opened by the link: look it up straight away
+  // opened by the link: look it up straight away (without an account: once the name is in)
   useEffect(() => {
-    if (props.initial && cleanCode(props.initial).length === 6) void find(cleanCode(props.initial));
-    else
+    if (props.initial && cleanCode(props.initial).length === 6) {
+      if (loadSession()) void find(cleanCode(props.initial));
+    } else if (loadSession())
       void here().then(async (pos) => {
         setNear(pos ? await nearbyRounds(pos.lat, pos.lon) : []);
       });
@@ -236,6 +298,37 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
   };
   const flights = ev ? Object.values(ev.flights) : [];
   const team = isTeamMode(ev?.format?.mode);
+  const join = async (e: RoundEvent, f: Flight, pid: string) => {
+    await ready(e);
+    setBusy(null);
+    props.onJoined(roundFromEvent(e, f.id, pid, code, newId(), who()));
+  };
+  // the own name in the flight: in at once – no "who are you?" (Sascha 30.10.2026: "not many taps"); let in just now
+  // and not there yet: the host's phone adds it in a moment, looked for a little while
+  const mine = (e: RoundEvent): { f: Flight; pid: string } | null => {
+    const me = who().toLowerCase();
+    const t = isTeamMode(e.format?.mode);
+    const hits = Object.values(e.flights).flatMap((f) =>
+      f.players.filter((p) => (t ? p.name.toLowerCase().split(' & ').includes(me) : p.name.toLowerCase() === me && writerOf(f, p.id, false) == null)).map((p) => ({ f, pid: p.id })),
+    );
+    return hits.length === 1 ? hits[0] : null;
+  };
+  useEffect(() => {
+    if (!ev || own || busy) return;
+    const hit = mine(ev);
+    if (hit) {
+      void join(ev, hit.f, hit.pid);
+      return;
+    }
+    // (in the setup the host's players reach the round with its start – looked for while this sheet is open)
+    if (!awaitName.current || Date.now() - awaitName.current > 15 * 60000) return;
+    const t = window.setTimeout(async () => {
+      const again = await joinEvent(code);
+      if (again && typeof again === 'object') setEv({ ...again });
+    }, 3000);
+    return () => window.clearTimeout(t);
+  }, [ev]); // eslint-disable-line react-hooks/exhaustive-deps
+  const nameField = !signedIn || !shownName(loadProfile());
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet invite-sheet" role="dialog" aria-label={tr('Join a round', 'Runde beitreten')} onClick={(e) => e.stopPropagation()}>
@@ -245,16 +338,38 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
             ✕
           </button>
         </div>
+        {/* no account yet: the name is all it takes */}
+        {!ev && !asking && nameField && (
+          <div className="field join-name">
+            <label htmlFor="join-name">{tr('Your name', 'Dein Name')}</label>
+            <input id="join-name" className="input" value={name} autoComplete="name" placeholder={tr('e.g. Cedric', 'z. B. Cedric')} onChange={(e) => { setName(e.target.value); setMsg(null); }} />
+            {!signedIn && <span className="muted small">{tr('No account needed – the host lets you in.', 'Kein Konto nötig – der Gastgeber lässt dich rein.')}</span>}
+          </div>
+        )}
         {asking && (
           <div className="join-wait" role="status">
-            <strong>{asking.host ? tr(`Asked ${asking.host} to let you in …`, `Anfrage an ${asking.host} gesendet …`) : tr('Asked to join …', 'Anfrage gesendet …')}</strong>
+            <strong>{asking.near?.host ? tr(`Asked ${asking.near.host} to let you in …`, `Anfrage an ${asking.near.host} gesendet …`) : tr('Asked the host to let you in …', 'Anfrage an den Gastgeber gesendet …')}</strong>
             <span className="muted small">{tr('As soon as the host lets you in, the round opens here.', 'Sobald der Gastgeber zustimmt, geht es hier weiter.')}</span>
             <button type="button" className="btn-secondary" onClick={() => setAsking(null)}>
               {tr('Cancel', 'Abbrechen')}
             </button>
           </div>
         )}
-        {!ev && !asking && !props.initial && (
+        {!ev && !asking && !props.initial && !signedIn && (
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={busy != null || !name.trim()}
+            onClick={async () => {
+              if (!(await account())) return;
+              const pos = await here();
+              setNear(pos ? await nearbyRounds(pos.lat, pos.lon) : []);
+            }}
+          >
+            {tr('Find rounds nearby', 'Runden in der Nähe suchen')}
+          </button>
+        )}
+        {!ev && !asking && !props.initial && signedIn && (
           <div className="near-rounds" aria-label={tr('Rounds nearby', 'Runden in der Nähe')}>
             <span className="eyebrow">{tr('Nearby', 'In der Nähe')}</span>
             {near == null && <span className="muted small">{tr('Looking for rounds nearby …', 'Suche Runden in der Nähe …')}</span>}
@@ -267,7 +382,7 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
                 disabled={busy != null}
                 onClick={() => {
                   setMsg(null);
-                  setAsking(n);
+                  setAsking({ near: n });
                 }}
               >
                 <span className="grow">
@@ -299,14 +414,36 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
                 setMsg(null);
               }}
             />
-            <button type="button" className="btn-primary" disabled={busy != null || code.length !== 6} onClick={() => void find()}>
+            <button type="button" className="btn-primary" disabled={busy != null || code.length !== 6 || (nameField && !name.trim())} onClick={() => void find()}>
               {busy ?? tr('Join', 'Beitreten')}
             </button>
+            {needGoogle && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  // back from Google: on with this code by itself (Play reads it)
+                  try {
+                    sessionStorage.setItem(PENDING_JOIN, code);
+                  } catch {
+                    /* private mode */
+                  }
+                  signIn();
+                }}
+              >
+                {tr('Sign in with Google', 'Mit Google anmelden')}
+              </button>
+            )}
           </>
         )}
         {ev && !own && (
           <>
             <span className="muted small">{ev.course.name}</span>
+            {awaitName.current > 0 && !mine(ev) && (
+              <span className="near-state small" role="status">
+                {tr('You are in – the host adds your name in a moment (at the latest when he starts). Or tap it below.', 'Du bist zugelassen – der Gastgeber trägt dich gleich ein (spätestens beim Start). Oder tippe unten deinen Namen an.')}
+              </span>
+            )}
             {flights.map((f) => (
               <div className="field" key={f.id}>
                 <label>{flights.length > 1 ? tr(`Flight ${f.name} – who are you?`, `Flight ${f.name} – wer bist du?`) : tr('Who are you?', 'Wer bist du?')}</label>
@@ -320,12 +457,9 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
                         key={p.id}
                         type="button"
                         className="chip join-chip"
-                        disabled={busy != null}
-                        onClick={async () => {
-                          await ready(ev);
-                          setBusy(null);
-                          props.onJoined(roundFromEvent(ev, f.id, p.id, code, newId(), myName()));
-                        }}
+                        // a single player already on his phone is his – nobody else takes his score over by a tap
+                        disabled={busy != null || (!team && w != null)}
+                        onClick={() => void join(ev, f, p.id)}
                       >
                         <span>{p.name}</span>
                         {on && <small className="muted">{team ? tr(`card: ${on}`, `Scorecard: ${on}`) : tr(`on ${on}'s phone`, `auf dem Handy von ${on}`)}</small>}

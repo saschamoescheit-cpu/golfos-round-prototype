@@ -4,7 +4,7 @@ import { loadStrategy, savePlannedHole, type CourseStrategy } from '../lib/strat
 import type { Club, DetailEntry, HoleEntry, LngLat, Round } from '../types';
 import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
-import { commitParAt, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
+import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
@@ -42,7 +42,7 @@ import { bestLeave, loadGreenGrids, onThisGreen, readPutt, setGreenSpeed, type G
 import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { clubSpread, spreadShape } from '../lib/spread';
-import { loadCaddieSettings, loadCarryBag } from '../lib/storage';
+import { loadCaddieSettings, loadCarryBag, newId } from '../lib/storage';
 import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
@@ -50,7 +50,7 @@ import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { PuttEditor } from '../components/PuttEditor';
 import { greenWalk } from '../lib/greenwalk';
 import { LeaderboardSheet } from '../components/Leaderboard';
-import { isTeamRound } from '../lib/games';
+import { isTeamMode, isTeamRound } from '../lib/games';
 import { HoleSetup } from '../components/HoleSetup';
 import { clubCode, dec, getLang, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
@@ -804,6 +804,27 @@ export function HoleScreen(props: {
       const e = round.entries[pid]?.[k];
       return !!e && e.strokes == null && !e.pickedUp;
     });
+  // let in during the round and not in the flight yet (Sascha 30.10.2026): a player here – on the phone that sets the
+  // flight's players up; the joining phone finds its name with the next exchange (teams: the host picks the team)
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ code: string; name: string; hcp: string }>).detail;
+      const r = latestRound.current;
+      if (!r.shared || d.code !== r.shared.code || !d.name.trim() || isTeamMode(r.format?.mode) || r.players.length >= 4) return;
+      const ev = cachedEvent(d.code);
+      if (ev?.flights[r.shared.flight]?.by && ev.flights[r.shared.flight].by !== r.shared.phone) return;
+      if (r.players.some((p) => p.name.trim().toLowerCase() === d.name.trim().toLowerCase())) return;
+      const idx = Number(d.hcp.replace(',', '.').replace('+', '-'));
+      const id = newId();
+      onChangeNow.current({
+        ...r,
+        players: [...r.players, { id, name: d.name.trim(), playingHandicap: d.hcp.trim() && Number.isFinite(idx) ? Math.round(idx) : null, isMe: false }],
+        entries: { ...r.entries, [id]: r.holes.map(() => emptyEntry()) },
+      });
+    };
+    window.addEventListener('golfos:join-approved', on);
+    return () => window.removeEventListener('golfos:join-approved', on);
+  }, []);
   const takeTheCard = async (team: string) => {
     if (!(await takeOver(round, team))) return setTestMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
     await exchangeNow.current();

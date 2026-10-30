@@ -7,8 +7,8 @@
 // takes it over; then Ben's scores reach Sascha's phone. The leaderboard ranks both teams. Supabase is simulated in
 // this script (the table golfos_shared_games, with its write rule "only if nobody wrote in between"), the app is real.
 // Usage: node qa/shareround.mjs [url]
-import { webkit, devices } from 'playwright';
-import { mockNet } from './netmock.mjs';
+import { webkit } from 'playwright';
+import { sharedServer } from './sharesim.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -16,106 +16,7 @@ const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
   if (!cond) fails++;
 };
-// ---------- the simulated server ----------
-const shared = new Map(); // code → { game, updated_at }
-let refused = 0; // writes refused because another phone wrote in between
-async function serve(route) {
-  const req = route.request();
-  const u = new URL(req.url());
-  const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: body == null ? '' : JSON.stringify(body) });
-  const uid = (req.headers()['authorization'] ?? '').replace(/^Bearer tok-/, ''); // each phone its account
-  if (u.pathname.endsWith('/golfos_items')) return json(200, []);
-  if (u.pathname.endsWith('/rpc/golfos_join_game')) {
-    const { join_code } = JSON.parse(req.postData() ?? '{}');
-    const row = shared.get(join_code);
-    if (row && row.owner !== uid && !row.members.includes(uid)) row.members.push(uid);
-    return json(200, row ? row.game : null);
-  }
-  // asking to join a round nearby, and the host's answer (as the SQL)
-  if (u.pathname.endsWith('/rpc/golfos_request_join')) {
-    const { join_ref, who } = JSON.parse(req.postData() ?? '{}');
-    const [code, row] = [...shared.entries()].find(([, r]) => r.near?.near_ref === join_ref && new Date(r.near.near_until) > new Date()) ?? [];
-    if (!row) return json(200, { state: 'gone' });
-    if (row.owner === uid || row.members.includes(uid)) return json(200, { state: 'ok', code });
-    if (row.requests[uid]) return json(200, { state: row.requests[uid].state });
-    row.requests[uid] = { name: who, at: new Date().toISOString(), state: 'asked' };
-    return json(200, { state: 'asked' });
-  }
-  if (u.pathname.endsWith('/rpc/golfos_answer_join')) {
-    const { join_code, player, yes } = JSON.parse(req.postData() ?? '{}');
-    const row = shared.get(join_code);
-    if (!row || (row.owner !== uid && !row.members.includes(uid)) || !row.requests[player]) return json(200, false);
-    row.requests[player].state = yes ? 'ok' : 'no';
-    if (yes && !row.members.includes(player)) row.members.push(player);
-    return json(200, true);
-  }
-  // rounds nearby: those shown within their circle, nearest first (the equirectangular distance, as the SQL)
-  if (u.pathname.endsWith('/rpc/golfos_nearby_rounds')) {
-    const { at_lat, at_lon } = JSON.parse(req.postData() ?? '{}');
-    const rad = (d) => (d * Math.PI) / 180;
-    const out = [...shared.entries()]
-      .filter(([, r]) => r.near && new Date(r.near.near_until) > new Date())
-      .map(([code, r]) => ({ code, r, d: 6371000 * Math.hypot(rad(r.near.near_lat - at_lat), Math.cos(rad(at_lat)) * rad(r.near.near_lon - at_lon)) }))
-      .filter((x) => x.d <= x.r.near.near_radius)
-      .map(({ r, d }) => ({ ref: r.near.near_ref, name: r.game.name, course: r.game.course.name, host: r.near.near_host, tournament: !!r.game.tournament, mode: r.game.format?.mode, dist: Math.round(d) }));
-    return json(200, out);
-  }
-  if (u.pathname.endsWith('/golfos_shared_games')) {
-    const code = (u.searchParams.get('code') ?? '').replace(/^eq\./, '');
-    if (req.method() === 'GET' && /near_requests/.test(u.searchParams.get('select') ?? '')) return json(200, shared.has(code) ? [{ near_requests: shared.get(code).requests }] : []);
-    if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game, updated_at: shared.get(code).updated_at }] : []) : []);
-    if (req.method() === 'POST') {
-      const row = JSON.parse(req.postData());
-      if (shared.has(row.code)) return json(409, { code: '23505' });
-      shared.set(row.code, { game: row.game, updated_at: new Date().toISOString(), owner: uid, members: [], requests: {} });
-      return json(201, null);
-    }
-    if (req.method() === 'PATCH') {
-      const row = shared.get(code);
-      const at = (u.searchParams.get('updated_at') ?? '').replace(/^eq\./, '');
-      if (!row || (at && at !== row.updated_at)) {
-        refused++;
-        return json(200, []);
-      }
-      const body = JSON.parse(req.postData());
-      if (body.near_lat != null) {
-        row.near = body; // shown nearby – the event itself unchanged
-        row.requests = {};
-        return json(204, null);
-      }
-      row.game = body.game;
-      row.updated_at = body.updated_at;
-      return json(200, [{ code }]);
-    }
-  }
-  return json(404, { message: 'not simulated' });
-}
-async function phone(name) {
-  const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 5 }, permissions: ['geolocation'] });
-  await mockNet(ctx);
-  await ctx.route(/rgisfnilwehnqpmbrxmp\.supabase\.co\/(rest|auth)\//, serve);
-  const p = await ctx.newPage();
-  const errs = [];
-  // the simulated server: WebKit does not route the CORS preflight of the sync – not the app
-  p.on('pageerror', (e) => { if (!/golfos_items.*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
-  await p.goto(url);
-  await p.waitForTimeout(1200);
-  await p.evaluate((name) => {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem('golfos.intro.v1', '1');
-    localStorage.setItem('golfos.tip.shots.v1', '1');
-    localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: name, lastName: '', hcpIndex: '10', homeClub: '' }));
-    // signed in (the token is only checked by the simulated server)
-    localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: `tok-${name}`, refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
-    sessionStorage.setItem('golfos.module', 'rounds');
-  }, name);
-  await p.reload();
-  await p.waitForTimeout(1500);
-  return { p, errs };
-}
-const round = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((r) => !r.finishedAt));
-const event = () => [...shared.values()][0]?.game;
+const { shared, pushes, phone, round, event, refused } = sharedServer(b, url);
 
 // ---------- Sascha: a scramble round with Ben, made a tournament ----------
 const host = await phone('Sascha');
@@ -166,10 +67,16 @@ await G.goto(url + '#round=' + code);
 await G.waitForTimeout(2500);
 const join = G.getByRole('dialog', { name: 'Runde beitreten' });
 ok(await join.isVisible(), 'Ben: the link opens "Runde beitreten" in Rounds');
-ok(await join.getByText('wer bist du?').isVisible(), 'Ben: the code looked up at once – "who are you?"');
-ok(/Scorecard: Sascha/.test(await join.innerText()), 'Ben: the team chip says who keeps the card');
-await join.getByRole('button', { name: /^Sascha & Ben/ }).click();
+// the host lets every phone in, by the link too (Sascha 30.10.2026) – Sascha, still in the setup, is asked
+ok(await join.getByText('Anfrage an den Gastgeber gesendet').isVisible(), 'Ben: asked at once – "Anfrage an den Gastgeber gesendet"');
+ok(pushes.some((x) => x.action === 'asked' && x.code === code && x.from === 'Ben'), 'push: the host hears that Ben asks');
+const askBen = H.getByRole('alertdialog', { name: 'Ben möchte beitreten' });
+await askBen.waitFor({ timeout: 12000 }).catch(() => {});
+ok(await askBen.isVisible(), 'Sascha, in the setup: "Ben möchte deiner Runde beitreten"');
+await askBen.getByRole('button', { name: 'Zulassen' }).click();
+// let in: his name is in the team "Sascha & Ben" – in at once, no "who are you?"
 await G.locator('.map-hole-no').waitFor({ timeout: 30000 });
+ok(shared.get(code).members.includes('Ben'), 'server: Ben let in – a member now');
 const gr = await round(G);
 ok(gr.shared?.code === code && gr.players.length === 1 && gr.players[0].isMe && gr.format?.mode === 'scramble', 'Ben: his own round of the event – the team is "me", scramble');
 
@@ -210,6 +117,7 @@ if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/round-jo
 await ask.getByRole('button', { name: 'Zulassen' }).click();
 await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).waitFor({ timeout: 10000 }).catch(() => {});
 ok(await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).isVisible(), 'Max: let in – the round opens on his phone');
+ok(pushes.some((x) => x.action === 'asked' && x.ref && x.from === 'Max'), 'push: the host hears that Max asks (nearby)');
 ok((await ask.count()) === 0, 'Sascha: the request gone once answered');
 await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).click();
 ok((await mj.getByRole('textbox', { name: 'Spieler 1', exact: true }).inputValue()) === 'Max', 'Max: his own flight – his name first, from the profile');
@@ -287,7 +195,7 @@ ok(rows.length === 2 && /Sascha & Ben/.test(rows[0]) && /Max & Simon/.test(rows[
 ok(/Turnier · 2 Flights/.test(await board.innerText()), 'leaderboard: "Turnier · 2 Flights"');
 ok((await board.locator('li.lb-mine').count()) === 1 && /Sascha & Ben/.test(await board.locator('li.lb-mine').innerText()), 'leaderboard: the own team marked');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/round-leaderboard.png' });
-console.log(`(writes refused because another phone wrote in between: ${refused})`);
+console.log(`(writes refused because another phone wrote in between: ${refused()})`);
 ok(host.errs.length === 0 && guest.errs.length === 0 && third.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs, ...third.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
