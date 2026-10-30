@@ -8,7 +8,7 @@ import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
-import { EventBoardCard } from '../components/ShareRound';
+import { EventBoardCard, SignCard } from '../components/ShareRound';
 import { isTeamRound } from '../lib/games';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
@@ -252,7 +252,8 @@ export function Scorecard(props: {
 
       {/* the board of all phones as last exchanged – own scores ranked, a marker's differing count flagged; a
           tournament all flights (Sascha 29.10.2026: "a scorecard with both players and their scores") */}
-      {round.shared && <EventBoardCard code={round.shared.code} myFlight={round.shared.flight} />}
+      {round.shared && <EventBoardCard code={round.shared.code} myFlight={round.shared.flight} refresh />}
+      {round.shared && <SignCard round={round} />}
       {round.players.length > 1 && !round.shared && <LeaderboardCard round={round} />}
       {round.shared && marked.length > 0 && (
         <span className="muted small">

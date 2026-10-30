@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightStatus, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, roundJoinLink, shareRound, showNearby, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent } from '../lib/sharedround';
+import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightStatus, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -571,7 +571,7 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
 
 /** The live leaderboard of all flights of a tournament (updated with every exchange); a player whose own score and his
  *  marker's differ is flagged with the holes. */
-export function EventBoardCard(props: { code: string; myFlight: string }) {
+export function EventBoardCard(props: { code: string; myFlight: string; /** away from the hole map: read the event now and then */ refresh?: boolean }) {
   const [ev, setEv] = useState(() => cachedEvent(props.code));
   // a tournament (Sascha's concept 30.10.2026): gross or net, one class or all
   const [gross, setGross] = useState(false);
@@ -579,8 +579,13 @@ export function EventBoardCard(props: { code: string; myFlight: string }) {
   useEffect(() => {
     const on = () => setEv(cachedEvent(props.code));
     window.addEventListener('golfos:event-changed', on);
-    return () => window.removeEventListener('golfos:event-changed', on);
-  }, [props.code]);
+    const t = props.refresh ? window.setInterval(() => document.visibilityState === 'visible' && void refreshEvent(props.code), 10000) : 0;
+    if (props.refresh) void refreshEvent(props.code);
+    return () => {
+      window.removeEventListener('golfos:event-changed', on);
+      window.clearInterval(t);
+    };
+  }, [props.code, props.refresh]);
   if (!ev) return null;
   const b = eventStandings(ev, { gross, cls });
   const mine = new Set((ev.flights[props.myFlight]?.players ?? []).map((p) => `${props.myFlight}/${p.id}`));
@@ -654,6 +659,7 @@ export function EventBoardCard(props: { code: string; myFlight: string }) {
                   {r.cls && <small className="muted"> · {r.cls}</small>}
                   {d && <small className="lb-diff">{tr(`marker differs: ${d}`, `Zähler weicht ab: ${d}`)}</small>}
                   {r.countback && <small className="muted lb-cb">{tr('placed by countback', 'nach Stechen')}</small>}
+                  {r.signed && <small className="lb-signed">{tr('✓ signed', '✓ unterschrieben')}</small>}
                 </span>
               </span>
               <span className="lb-value">{r.value}</span>
@@ -687,3 +693,78 @@ export function EventBoardCard(props: { code: string; myFlight: string }) {
   );
 }
 const CLASS_LETTERS = ['A', 'B', 'C', 'D'];
+
+/**
+ * Handing the card in (Sascha's concept 30.10.2026: "player and marker confirm – then it is locked"): on the scorecard
+ * of a round with a marker, the own card to sign as the player and the partner's as his marker – once every hole has
+ * both counts and none differs. Signed by both, the score is locked on every phone.
+ */
+export function SignCard(props: { round: Round }) {
+  const s = props.round.shared;
+  const [ev, setEv] = useState(() => (s ? cachedEvent(s.code) : null));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!s) return;
+    const on = () => setEv(cachedEvent(s.code));
+    window.addEventListener('golfos:event-changed', on);
+    // away from the hole map (no exchange there): the partner's signature read every few seconds
+    const t = window.setInterval(() => document.visibilityState === 'visible' && void refreshEvent(s.code), 5000);
+    void refreshEvent(s.code);
+    return () => {
+      window.removeEventListener('golfos:event-changed', on);
+      window.clearInterval(t);
+    };
+  }, [s?.code]); // eslint-disable-line react-hooks/exhaustive-deps
+  const f = s && ev?.flights[s.flight];
+  if (!s || !f || !f.markers) return null;
+  const me = props.round.players.find((p) => p.isMe);
+  const marked = props.round.players.filter((p) => !p.isMe && s.roles?.[p.id] === 'mark');
+  const cards: { pid: string; name: string; as: 'player' | 'marker' }[] = [
+    ...(me ? [{ pid: me.id, name: me.name, as: 'player' as const }] : []),
+    ...marked.map((p) => ({ pid: p.id, name: p.name, as: 'marker' as const })),
+  ];
+  const label = (i: number) => ev!.holes[i]?.label ?? String(i + 1);
+  const sign = async (pid: string, as: 'player' | 'marker') => {
+    setBusy(true);
+    const ok = await signCard(props.round, pid, as);
+    setBusy(false);
+    setMsg(ok ? null : tr('Not signed – check the holes, or no connection.', 'Nicht unterschrieben – Löcher prüfen oder keine Verbindung.'));
+  };
+  return (
+    <section className="card sign-card" aria-label={tr('Hand the card in', 'Scorekarte abgeben')}>
+      <h2>{tr('Hand the card in', 'Scorekarte abgeben')}</h2>
+      {cards.map((c) => {
+        const done = f.signed?.[c.pid]?.[c.as];
+        const locked = isSigned(f, c.pid);
+        const can = signable(f, c.pid, ev!.holes.length);
+        return (
+          <div key={c.pid + c.as} className="sign-row">
+            <span className="grow">
+              <strong>{c.as === 'player' ? tr('Your card', 'Deine Karte') : tr(`As marker of ${c.name}`, `Als Zähler von ${c.name}`)}</strong>
+              <span className="muted small">
+                {locked
+                  ? tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
+                  : done
+                    ? c.as === 'player'
+                      ? tr('Signed by you – the marker signs next', 'Von dir unterschrieben – jetzt unterschreibt der Zähler')
+                      : tr(`Signed by you – ${c.name} signs his own next`, `Von dir unterschrieben – jetzt unterschreibt ${c.name} selbst`)
+                    : can.ok
+                      ? tr('All holes agree – ready to sign', 'Alle Löcher stimmen überein – bereit zum Unterschreiben')
+                      : can.differ.length
+                        ? tr(`Counts differ on ${can.differ.map(label).join(', ')} – agree first`, `Zählung weicht ab auf ${can.differ.map(label).join(', ')} – erst abstimmen`)
+                        : tr(`Still open: ${can.missing.map(label).join(', ')}`, `Noch offen: ${can.missing.map(label).join(', ')}`)}
+              </span>
+            </span>
+            {!done && !locked && (
+              <button type="button" className="btn-primary" disabled={busy || !can.ok} onClick={() => void sign(c.pid, c.as)}>
+                {tr('Sign', 'Unterschreiben')}
+              </button>
+            )}
+          </div>
+        );
+      })}
+      {msg && <span className="small bad-text">{msg}</span>}
+    </section>
+  );
+}

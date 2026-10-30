@@ -1821,3 +1821,9 @@ button.tile:disabled { opacity: 1; }
 .lb-filters { margin: 4px 0; }
 .lb-cb { display: block; font-size: 11px; }
 .flight-status { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+/* the card handed in (Sascha's concept 30.10.2026) */
+.sign-card { display: flex; flex-direction: column; gap: 10px; }
+.sign-row { display: flex; align-items: center; gap: 10px; }
+.sign-row .grow { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.sign-row button { flex: none; width: auto; padding: 0 16px; min-height: 44px; }
+.lb-signed { display: block; font-size: 11px; color: var(--brand-text); }

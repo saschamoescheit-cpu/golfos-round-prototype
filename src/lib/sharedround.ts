@@ -48,6 +48,8 @@ export interface Flight {
   phones?: Record<string, { player: string; name: string; at: string; /** last heard of (every two minutes at most) */ seen?: string }>;
   /** scramble and foursomes: the phone keeping the team's card (missing: the team's first phone) */
   keeper?: Record<string, string>;
+  /** a tournament: the card signed – by the player and by his marker (when) */
+  signed?: Record<string, { player?: string; marker?: string }>;
   /** the phone that set the flight up – its players come from there */
   by?: string;
   finishedAt?: string | null;
@@ -158,6 +160,7 @@ export function writerOf(f: Flight, player: string, team: boolean): string | nul
 }
 
 export function roleOf(f: Flight, player: string, phone: string, team: boolean, marking: boolean): Role {
+  if (isSigned(f, player)) return 'view'; // signed by player and marker: nobody changes it any more
   const w = writerOf(f, player, team);
   if (w === phone) return 'own';
   // marking (marksIn): every player marks a partner (Sascha 29.10.2026, testing with Cedric: "Sascha keeps his own
@@ -167,6 +170,32 @@ export function roleOf(f: Flight, player: string, phone: string, team: boolean, 
     if (m && m !== player && writerOf(f, m, team) === phone) return 'mark';
   }
   return w == null ? 'free' : 'view';
+}
+
+// ---------- the card handed in (Sascha's concept 30.10.2026: "player and marker confirm, then it is locked") ----------
+/** Signed by the player and by his marker (a player without a marker: by himself) – locked. */
+export function isSigned(f: Flight, pid: string): boolean {
+  const s = f.signed?.[pid];
+  return !!s?.player && (!!s.marker || !f.markers?.[pid]);
+}
+/** May the card be signed now: every hole with the own score and the marker's count, none differing. */
+export function signable(f: Flight, pid: string, holes: number): { ok: true } | { ok: false; missing: number[]; differ: number[] } {
+  const own = f.scores[pid] ?? [];
+  const mark = f.marks?.[pid] ?? [];
+  const marked = !!f.markers?.[pid];
+  const missing = Array.from({ length: holes }, (_, i) => i).filter((i) => own[i] == null || (marked && mark[i] == null));
+  const differ = differences(f, pid);
+  return missing.length || differ.length ? { ok: false, missing, differ } : { ok: true };
+}
+/** Signs a player's card – as the player himself or as his marker. False when not signable (yet) or offline. */
+export async function signCard(round: Round, pid: string, as: 'player' | 'marker'): Promise<boolean> {
+  const s = round.shared;
+  if (!s) return false;
+  const at = new Date().toISOString();
+  const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) =>
+    !f || f.signed?.[pid]?.[as] || !signable(f, pid, round.holes.length).ok ? null : { ...f, signed: { ...f.signed, [pid]: { ...f.signed?.[pid], [as]: at } } },
+  );
+  return !!ev?.flights[s.flight]?.signed?.[pid]?.[as];
 }
 
 /** A phone tells the flight it is still there at most this often (a write of its own otherwise only with a score). */
@@ -194,6 +223,8 @@ export interface ShareView {
   canTakeOver: boolean;
   /** a tournament: the other count beside this one – the marker's (own) or the player's own (mark) */
   other: { label: string; cells: Cell[] } | null;
+  /** the card signed by player and marker – locked */
+  locked: boolean;
 }
 export function shareView(round: Round, f: Flight | undefined, tournament: boolean): Record<string, ShareView> {
   const share = round.shared;
@@ -216,7 +247,8 @@ export function shareView(round: Round, f: Flight | undefined, tournament: boole
             : role === 'mark'
               ? { label: tr(`${p.name} himself`, `${p.name} selbst`), cells: f.scores[p.id] ?? [] }
               : null;
-      return [p.id, { role, keptBy: role === 'view' && w ? (f.phones?.[w]?.name ?? null) : null, canTakeOver: team && role === 'view' && p.id === me, other }];
+      const locked = isSigned(f, p.id);
+      return [p.id, { role, keptBy: role === 'view' && w ? (f.phones?.[w]?.name ?? null) : null, canTakeOver: !locked && team && role === 'view' && p.id === me, other, locked }];
     }),
   );
 }
@@ -417,6 +449,8 @@ export interface Standing {
   pos: string;
   /** placed by countback */
   countback: boolean;
+  /** the card signed by player and marker */
+  signed: boolean;
 }
 const CLASS_NAMES = ['A', 'B', 'C', 'D'];
 /** The class of a playing handicap: limits [18] – A up to 18, B above; [12, 24] – A, B, C. */
@@ -428,13 +462,13 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
   const fmt = ev.format ?? DEFAULT_FORMAT;
   const players: Player[] = [];
   const entries: Round['entries'] = {};
-  const meta: Record<string, { flight: string; cls: string }> = {};
+  const meta: Record<string, { flight: string; cls: string; signed: boolean }> = {};
   for (const f of Object.values(ev.flights)) {
     for (const p of f.players) {
       const id = `${f.id}/${p.id}`;
       players.push({ id, name: p.name, playingHandicap: p.playingHandicap, isMe: false });
       entries[id] = ev.holes.map((_, i) => withCell(emptyEntry(), scoreAt(f, p.id, i)));
-      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, ev.classes) };
+      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, ev.classes), signed: isSigned(f, p.id) };
     }
   }
   const round: Round = { id: ev.id, createdAt: ev.createdAt, finishedAt: null, courseId: ev.course.id, courseName: ev.course.name, loopOrder: ev.loopOrder, holes: ev.holes, mode: 'quick', players, entries, currentHole: 0 };
@@ -474,6 +508,7 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
       finished: x.thru === n,
       pos: x.sort == null ? '–' : `${tied ? 'T' : ''}${first + 1}`,
       countback: everyoneIn && sameScore && !tied,
+      signed: meta[x.p.id].signed,
       _k: k,
     };
   });
@@ -649,6 +684,14 @@ async function readEvent(code: string, h: Record<string, string>): Promise<{ ev:
   const game = ((await r.json()) as { game: unknown }[])[0]?.game;
   if (!isEvent(game)) return null;
   return { ev: rows === 'legacy' ? game : withRows(game, rows), rows };
+}
+/** The event as it stands, read only (the scorecard, away from the hole map's exchange) – kept for the boards. */
+export async function refreshEvent(code: string): Promise<RoundEvent | null> {
+  const h = await headers();
+  if (!h) return null;
+  const read = await readEvent(code, h);
+  if (read) keepEvent(code, read.ev);
+  return read?.ev ?? null;
 }
 /**
  * A flight's row changed by `change` – only if nobody wrote in between (else read again, up to four times); a flight

@@ -1548,6 +1548,7 @@ export function HoleScreen(props: {
                   keptBy: v.role === 'view' ? (v.keptBy ?? '') : null,
                   takeOver: v.canTakeOver ? () => void takeTheCard(pid) : undefined,
                   other: v.other ? { label: v.other.label, cell: v.other.cells[i] ?? null } : undefined,
+                  locked: v.locked,
                 },
               ]),
             )}

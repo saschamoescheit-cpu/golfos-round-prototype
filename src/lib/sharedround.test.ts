@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
-import { classOf, defaultMarkers, differences, eventBoard, eventOf, eventStandings, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, standingsCsv, type RoundEvent } from './sharedround';
+import { classOf, defaultMarkers, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
 
 // A round on several phones (Sascha 29.10.2026): the flight partners on their own phones – everyone keeps his own
 // score, a team's card one phone of the team (another can take it over), in a tournament everyone also marks a partner.
@@ -282,5 +282,33 @@ describe('a tournament: the standings', () => {
     expect(lines[1]).toBe('"Place";"Player";"Flight";"Class";"To par";"Holes";"Countback"'); // the tests speak English
     expect(lines[2]).toBe('"1";"A";"A · B";"A";"0";"3";""');
     expect(lines[3]).toBe('"2";"B";"A · B";"B";"3";"3";""');
+  });
+});
+// Sascha's concept 30.10.2026: the card handed in – player and marker sign, then it is locked
+describe('a tournament: the card signed and locked', () => {
+  it('signable once every hole has both counts and none differs; signed by both, nobody changes it', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }]), true);
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    for (let i = 0; i < 3; i++) {
+      sascha = score(score(sascha, 'me', i, 4), 'c', i, 5);
+      cedric = score(score(cedric, 'c', i, i === 2 ? 6 : 5), 'me', i, 4);
+    }
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    ({ ev, r: cedric } = exchange(ev, cedric));
+    expect(signable(ev.flights.f1, 'me', 3)).toEqual({ ok: true });
+    expect(signable(ev.flights.f1, 'c', 3)).toEqual({ ok: false, missing: [], differ: [2] }); // Cedric 6, Sascha counted 5
+    // signed by Sascha and by Cedric as his marker: locked – a late change on Sascha's phone is not taken
+    const f = { ...ev.flights.f1, signed: { me: { player: 't1', marker: 't2' } } };
+    expect(isSigned(f, 'me') && !isSigned(f, 'c')).toBe(true);
+    ev = { ...ev, flights: { f1: f } };
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.shared!.roles!.me).toBe('view');
+    expect(shareView(sascha, ev.flights.f1, true).me.locked).toBe(true);
+    sascha = score(sascha, 'me', 0, 3);
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(ev.flights.f1.scores.me[0]).toEqual({ s: 4 });
+    expect(strokes(sascha, 'me')[0]).toBe(4);
+    expect(eventStandings(ev).rows.find((r) => r.key === 'f1/me')?.signed).toBe(true);
   });
 });

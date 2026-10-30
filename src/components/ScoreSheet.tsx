@@ -127,7 +127,7 @@ export function ScoreSheet(props: {
   pickUp?: boolean;
   /** a round on several phones (Sascha 29.10.2026), per player: kept on another phone (its owner's name – shown, not
    *  changed here), the team's card to take over, and in a tournament the other count beside this one */
-  shared?: Record<string, { keptBy: string | null; takeOver?: () => void; other?: { label: string; cell: SharedCell } }>;
+  shared?: Record<string, { keptBy: string | null; takeOver?: () => void; other?: { label: string; cell: SharedCell }; /** signed by player and marker */ locked?: boolean }>;
   /** Texas scramble (Sascha's concept 30.10.2026), per team: whose drive – the counts so far and who gets tight */
   texas?: Record<string, TexasDrives | null>;
 }) {
@@ -187,7 +187,7 @@ export function ScoreSheet(props: {
                 </strong>
               </div>
               <span className="muted small">
-                {props.team ? tr(`${sh.keptBy || 'Another phone'} keeps the team's card`, `${sh.keptBy || 'Ein anderes Handy'} führt die Scorecard des Teams`) : tr(`${sh.keptBy || p.name} keeps this score on his phone`, `${sh.keptBy || p.name} erfasst diesen Score auf seinem Handy`)}
+                {sh.locked ? tr('Signed by player and marker – locked', 'Von Spieler und Zähler unterschrieben – gesperrt') : props.team ? tr(`${sh.keptBy || 'Another phone'} keeps the team's card`, `${sh.keptBy || 'Ein anderes Handy'} führt die Scorecard des Teams`) : tr(`${sh.keptBy || p.name} keeps this score on his phone`, `${sh.keptBy || p.name} erfasst diesen Score auf seinem Handy`)}
               </span>
               {sh.takeOver && (
                 <button type="button" className="btn-secondary" onClick={sh.takeOver}>
