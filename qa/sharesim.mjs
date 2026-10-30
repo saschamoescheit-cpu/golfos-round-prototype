@@ -11,6 +11,7 @@ export function sharedServer(b, url, o = {}) {
   const pushes = []; // { action, code, ref, from }
   let refused = 0; // writes refused because another phone wrote in between
   let anon = 0;
+  let flightReads = 0;
   const askRow = (code, row, uid, who, hcp) => {
     if (row.owner === uid || row.members.includes(uid)) return { state: 'ok', code };
     if (row.requests[uid]) return { state: row.requests[uid].state };
@@ -77,13 +78,23 @@ export function sharedServer(b, url, o = {}) {
     if (u.pathname.endsWith('/golfos_shared_games')) {
       const code = (u.searchParams.get('code') ?? '').replace(/^eq\./, '');
       const row = shared.get(code);
-      const mine = row && (row.owner === uid || row.members.includes(uid)); // the row rule: host and members
+      // the row rules: host and members – a flight's row (a tournament): whoever is in its event
+      const inEvent = (ev) => !!shared.get(ev) && (shared.get(ev).owner === uid || shared.get(ev).members.includes(uid));
+      const mine = row && (row.event_code ? inEvent(row.event_code) : row.owner === uid || row.members.includes(uid));
+      const evCode = (u.searchParams.get('event_code') ?? '').replace(/^eq\./, '');
+      if (req.method() === 'GET' && u.searchParams.has('event_code')) {
+        if (o.noSplit) return json(400, { code: '42703', message: 'column golfos_shared_games.event_code does not exist' });
+        flightReads++;
+        return json(200, inEvent(evCode) ? [...shared.values()].filter((r) => r.event_code === evCode).map((r) => ({ game: r.game, updated_at: r.updated_at })) : []);
+      }
       if (req.method() === 'GET' && /near_requests/.test(u.searchParams.get('select') ?? '')) return json(200, mine ? [{ near_requests: row.requests }] : []);
       if (req.method() === 'GET') return json(200, mine ? [{ game: row.game, updated_at: row.updated_at }] : []);
       if (req.method() === 'POST') {
         const r = body();
         if (shared.has(r.code)) return json(409, { code: '23505' });
-        shared.set(r.code, { game: r.game, updated_at: new Date().toISOString(), owner: uid, members: [], requests: {} });
+        if (r.event_code && (o.noSplit || !inEvent(r.event_code))) return json(o.noSplit ? 400 : 403, { message: 'not in the event' });
+        shared.set(r.code, { game: r.game, updated_at: new Date().toISOString(), owner: uid, members: [], requests: {}, ...(r.event_code ? { event_code: r.event_code } : {}) });
+        if (r.event_code) return json(201, [{ code: r.code }]);
         return json(201, null);
       }
       if (req.method() === 'PATCH') {
@@ -132,6 +143,12 @@ export function sharedServer(b, url, o = {}) {
     return { p, errs };
   }
   const round = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((r) => !r.finishedAt));
-  const event = () => [...shared.values()][0]?.game;
-  return { shared, pushes, phone, round, event, refused: () => refused };
+  // the (first) event, with its flights' own rows over the ones in its row
+  const event = () => {
+    const [code, row] = [...shared.entries()].find(([, r]) => !r.event_code) ?? [];
+    if (!row) return undefined;
+    const own = [...shared.values()].filter((r) => r.event_code === code).map((r) => r.game.flight);
+    return { ...row.game, flights: { ...row.game.flights, ...Object.fromEntries(own.map((f) => [f.id, f])) } };
+  };
+  return { shared, pushes, phone, round, event, refused: () => refused, flightReads: () => flightReads };
 }

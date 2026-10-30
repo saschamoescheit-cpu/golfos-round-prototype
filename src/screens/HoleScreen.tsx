@@ -50,7 +50,7 @@ import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { PuttEditor } from '../components/PuttEditor';
 import { greenWalk } from '../lib/greenwalk';
 import { LeaderboardSheet } from '../components/Leaderboard';
-import { isTeamMode, isTeamRound } from '../lib/games';
+import { isTeamMode, isTeamRound, texasDrives } from '../lib/games';
 import { HoleSetup } from '../components/HoleSetup';
 import { clubCode, dec, getLang, tr } from '../lib/i18n';
 import { swingMark, withPartials } from '../lib/partials';
@@ -1499,6 +1499,7 @@ export function HoleScreen(props: {
             )}
             canPlacePutts={!round.preview && !isTeamRound(round)}
             team={isTeamRound(round)}
+            texas={round.format?.minDrives ? Object.fromEntries(round.players.map((p) => [p.id, texasDrives(round, p.id, i)])) : undefined}
             pickUp={pickUpAllowed(round, !!props.game)}
             shared={Object.fromEntries(
               Object.entries(views).map(([pid, v]) => [

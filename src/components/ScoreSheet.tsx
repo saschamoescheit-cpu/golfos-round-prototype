@@ -1,6 +1,7 @@
 import type { HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
 import { cellOf, sameCell } from '../lib/sharedround';
 import { formatToPar } from './ui';
+import { drivesShort, type TexasDrives } from '../lib/games';
 import { FairwayPicker } from './FairwayPicker';
 import { tr } from '../lib/i18n';
 
@@ -82,6 +83,34 @@ export function pickUpAllowed(round: Round, game = false): boolean {
   return game || round.format?.scoring === 'stableford' || !!round.format?.matchplay;
 }
 
+/** Texas scramble: whose drive the team plays on this hole – each member with his count, a warning when it gets tight. */
+function TexasPick(props: { t: TexasDrives; picked: number | undefined; onPick: (k: number) => void }) {
+  const { t } = props;
+  const short = drivesShort(t, props.picked);
+  return (
+    <div className="texas-pick" role="group" aria-label={tr('Whose drive', 'Wessen Drive')}>
+      <span className="muted small">{tr(`Drive played – at least ${t.min} each`, `Gespielter Drive – je mindestens ${t.min}`)}</span>
+      <div className="chip-set">
+        {t.members.map((m, k) => {
+          const n = t.counts[k] + (props.picked === k ? 1 : 0);
+          return (
+            <button key={k} type="button" className={`chip${props.picked === k ? ' on' : ''}`} aria-pressed={props.picked === k} onClick={() => props.onPick(k)}>
+              {m} <small>{n}/{t.min}</small>
+            </button>
+          );
+        })}
+      </div>
+      {short.length > 0 && (
+        <span className="small bad-text" role="status">
+          {short
+            .map((x) => tr(`${x.name} still needs ${x.need} ${x.need === 1 ? 'drive' : 'drives'} – ${t.left} ${t.left === 1 ? 'hole' : 'holes'} left`, `${x.name} braucht noch ${x.need} ${x.need === 1 ? 'Drive' : 'Drives'} – noch ${t.left} ${t.left === 1 ? 'Loch' : 'Löcher'}`))
+            .join(' · ')}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function ScoreSheet(props: {
   hole: RoundHole;
   players: Player[];
@@ -99,6 +128,8 @@ export function ScoreSheet(props: {
   /** a round on several phones (Sascha 29.10.2026), per player: kept on another phone (its owner's name – shown, not
    *  changed here), the team's card to take over, and in a tournament the other count beside this one */
   shared?: Record<string, { keptBy: string | null; takeOver?: () => void; other?: { label: string; cell: SharedCell } }>;
+  /** Texas scramble (Sascha's concept 30.10.2026), per team: whose drive – the counts so far and who gets tight */
+  texas?: Record<string, TexasDrives | null>;
 }) {
   const h = props.hole;
   return (
@@ -194,6 +225,7 @@ export function ScoreSheet(props: {
               />
             )}
             {sh?.other && <OtherCount label={sh.other.label} cell={sh.other.cell} mine={cellOf(e)} />}
+            {props.team && props.texas?.[p.id] && <TexasPick t={props.texas[p.id]!} picked={e.drive} onPick={(k) => set({ drive: e.drive === k ? undefined : k })} />}
             {p.isMe && !e.pickedUp && !props.team && (
               <>
                 <Stepper

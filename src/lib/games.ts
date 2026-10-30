@@ -10,7 +10,7 @@ import { tr } from './i18n';
 // Scramble and foursomes have no single scores: each team plays one ball. The round then holds the teams as its
 // "players" (one score per hole, one row on the scorecard), with the team handicap from the players' handicaps.
 
-export type GameMode = 'single' | 'match' | 'fourball' | 'scramble' | 'foursome';
+export type GameMode = 'single' | 'match' | 'fourball' | 'scramble' | 'foursome' | 'greensome' | 'chapman';
 /** 'stroke' = stroke play gross, 'net' = stroke play with handicap (allowance > 0), 'stableford'. */
 export type Scoring = 'stroke' | 'net' | 'stableford';
 export interface RoundFormat {
@@ -20,6 +20,8 @@ export interface RoundFormat {
   allowance?: number; // handicap allowance in % (100 = full)
   /** on several phones, single balls: everyone also marks a partner (Sascha 30.10.2026 – chosen, by default not) */
   marker?: boolean;
+  /** Texas scramble: every player's drive used at least this often (0 / missing: an ordinary scramble) */
+  minDrives?: number;
 }
 export const DEFAULT_FORMAT: RoundFormat = { mode: 'single', scoring: 'net', allowance: 100 };
 
@@ -44,6 +46,17 @@ export const FORMATS: { id: string; mode: GameMode; matchplay: boolean; name: ()
     id: 'foursome', mode: 'foursome', matchplay: false, fits: (n) => n === 2 || n === 4, need: () => tr('2 or 4 players', '2 oder 4 Spieler'),
     name: () => tr('Foursomes', 'Vierer'),
     text: () => tr('A team shares one ball, the partners hit in turn until holed – one team score per hole.', 'Ein Team teilt sich einen Ball, die Partner schlagen abwechselnd, bis eingelocht ist – ein Team-Score je Loch.'),
+  },
+  // Sascha's concept, 30.10.2026: greensome and Chapman – one ball per team after the tee shots
+  {
+    id: 'greensome', mode: 'greensome', matchplay: false, fits: (n) => n === 2 || n === 4, need: () => tr('2 or 4 players', '2 oder 4 Spieler'),
+    name: () => 'Greensome',
+    text: () => tr('Both tee off, the team picks one drive and plays it in turn until holed – team handicap 60/40 %.', 'Beide schlagen ab, das Team wählt einen Drive und spielt ihn abwechselnd zu Ende – Team-Vorgabe 60/40 %.'),
+  },
+  {
+    id: 'chapman', mode: 'chapman', matchplay: false, fits: (n) => n === 2 || n === 4, need: () => tr('2 or 4 players', '2 oder 4 Spieler'),
+    name: () => 'Chapman',
+    text: () => tr('Both tee off, each plays the partner\'s ball for the second shot, then one ball in turn – team handicap 60/40 %.', 'Beide schlagen ab, jeder spielt den zweiten Schlag mit dem Ball des Partners, dann ein Ball abwechselnd – Team-Vorgabe 60/40 %.'),
   },
   {
     id: 'fourball-match', mode: 'fourball', matchplay: true, fits: (n) => n === 4, need: () => tr('4 players', '4 Spieler'),
@@ -72,28 +85,67 @@ export const modeName = (m: GameMode, matchplay = false): string => formatOf({ m
 export const scoringName = (s: Scoring, allowance = 100): string =>
   s === 'stableford' ? 'Stableford' : s === 'net' && allowance > 0 ? tr(`Stroke play net (${allowance} %)`, `Zählspiel netto (${allowance} %)`) : tr('Stroke play gross', 'Zählspiel brutto');
 
+/**
+ * The handicap allowance the WHS recommends for a format (Sascha's concept 30.10.2026) – the start value in the setup,
+ * to be changed: single stroke play and Stableford 95 % in a competition (100 % with friends, as before), singles
+ * match play 100 %, better ball 85 % (stroke play) / 90 % (match play). Team balls (scramble, foursomes, greensome,
+ * Chapman) carry their share in the team handicap already: 100 %.
+ */
+export function whsAllowance(mode: GameMode, matchplay: boolean, competition: boolean): number {
+  if (mode === 'fourball') return matchplay ? 90 : 85;
+  if (mode === 'single') return competition ? 95 : 100;
+  return 100;
+}
+
+/** Texas scramble on a hole: the team's members, how often each one's drive was played on the other holes, the
+ *  minimum, and the holes still to come after this one. Null for an ordinary scramble. */
+export interface TexasDrives {
+  members: string[];
+  counts: number[];
+  min: number;
+  left: number;
+}
+export function texasDrives(round: Pick<Round, 'format' | 'entries' | 'holes' | 'players'>, team: string, hole: number): TexasDrives | null {
+  const min = round.format?.mode === 'scramble' ? (round.format.minDrives ?? 0) : 0;
+  const p = round.players.find((x) => x.id === team);
+  if (!min || !p) return null;
+  const members = p.name.split(' & ');
+  if (members.length < 2) return null;
+  const counts = members.map((_, k) => (round.entries[team] ?? []).filter((e, i) => i !== hole && e.drive === k).length);
+  return { members, counts, min, left: round.holes.length - 1 - hole };
+}
+/** Who gets tight: still needs as many drives as holes are left, or more (with this hole's pick counted). */
+export function drivesShort(t: TexasDrives, picked: number | undefined): { name: string; need: number }[] {
+  return t.members
+    .map((name, k) => ({ name, need: t.min - t.counts[k] - (picked === k ? 1 : 0) }))
+    .filter((x) => x.need > 0 && x.need >= t.left);
+}
+
 /** Which modes fit the number of players. */
 export const modesFor = (players: number): GameMode[] => [...new Set(FORMATS.filter((f) => f.fits(players)).map((f) => f.mode))];
 
 /** Scramble and foursomes: one ball per team, no single scores. */
-export const isTeamMode = (m: GameMode | undefined): boolean => m === 'scramble' || m === 'foursome';
+export const isTeamMode = (m: GameMode | undefined): boolean => m === 'scramble' || m === 'foursome' || m === 'greensome' || m === 'chapman';
 /** A round played as a team (its scores are not the player's own – kept out of his stats and handicap). */
 export const isTeamRound = (r: Pick<Round, 'format'>): boolean => isTeamMode(r.format?.mode);
 
 /** The teams by player position: four players = 1 & 2 against 3 & 4, else one team. */
 export function teamsOf(mode: GameMode, players: number): number[][] {
   const all = Array.from({ length: players }, (_, k) => k);
-  return players === 4 && (mode === 'scramble' || mode === 'foursome' || mode === 'fourball') ? [[0, 1], [2, 3]] : [all];
+  return players === 4 && (isTeamMode(mode) || mode === 'fourball') ? [[0, 1], [2, 3]] : [all];
 }
 
 /**
- * Team handicap (WHS recommendations): foursomes 50 % of the combined playing handicaps; scramble weighted from the
+ * Team handicap (WHS recommendations): foursomes 50 % of the combined playing handicaps; greensome and Chapman 60 %
+ * of the lower and 40 % of the higher; scramble weighted from the
  * lowest – 2 players 35/15 %, 3 players 30/20/10 %, 4 players 25/20/15/10 %. Without every handicap: gross only.
  */
 export function teamHandicap(mode: GameMode, hcps: (number | null)[]): number | null {
   if (hcps.some((h) => h == null)) return null;
   const hs = (hcps as number[]).slice().sort((a, b) => a - b);
   if (mode === 'foursome') return Math.round(hs.reduce((s, h) => s + h, 0) * 0.5);
+  // greensome and Chapman (Sascha's concept 30.10.2026): 60 % of the lower, 40 % of the higher
+  if (mode === 'greensome' || mode === 'chapman') return Math.round(hs[0] * 0.6 + (hs[1] ?? 0) * 0.4);
   const w = hs.length === 2 ? [0.35, 0.15] : hs.length === 3 ? [0.3, 0.2, 0.1] : [0.25, 0.2, 0.15, 0.1];
   return Math.round(hs.reduce((s, h, k) => s + h * (w[k] ?? 0), 0));
 }

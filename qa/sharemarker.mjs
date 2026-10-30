@@ -13,7 +13,8 @@ const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
   if (!cond) fails++;
 };
-const { phone, event } = sharedServer(b, url);
+// a server without the SQL of 30.10.2026: the tournament's flights stay in the event's row
+const { phone, event, shared } = sharedServer(b, url, { noSplit: true });
 const flight = () => Object.values(event().flights)[0];
 
 // Sascha: a stroke play round with Cedric, a tournament – the code in the setup
@@ -88,6 +89,7 @@ await H.locator('.hole-drawer').getByRole('button', { name: 'Leaderboard · Turn
 await H.waitForTimeout(400);
 const board = (await H.locator('.event-board').innerText()).replace(/\s+/g, ' ');
 ok(/Sascha Zähler weicht ab: 1A/.test(board) && /Sascha.*Par/.test(board), `leaderboard: "${board}"`);
+ok([...shared.values()].every((r) => !r.event_code), 'old server: no rows of their own – the tournament as before');
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

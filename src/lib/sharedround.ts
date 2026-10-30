@@ -1,7 +1,7 @@
 import type { CourseSummary, HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
 import { emptyEntry } from './scoring';
 import { newId } from './storage';
-import { DEFAULT_FORMAT, isTeamMode, leaderboard, type Board } from './games';
+import { DEFAULT_FORMAT, isTeamMode, leaderboard, teamHandicap, type Board } from './games';
 import { cleanCode, isGame, newCode } from './sharedgame';
 import { authToken, SUPABASE_KEY, SUPABASE_URL } from './sync';
 import { tr } from './i18n';
@@ -332,7 +332,7 @@ export function newFlightRound(ev: RoundEvent, players: { name: string; playingH
   const fp: FlightPlayer[] = sides.map((s, k) => ({
     id: k === 0 ? 'me' : `t${k + 1}`,
     name: s.map((p) => p.name).join(' & '),
-    playingHandicap: s.length === 1 ? s[0].playingHandicap : teamHcp(fmt.mode, s.map((p) => p.playingHandicap)),
+    playingHandicap: s.length === 1 ? s[0].playingHandicap : teamHandicap(fmt.mode, s.map((p) => p.playingHandicap)),
   }));
   const id = newId();
   const flight: Flight = {
@@ -347,13 +347,6 @@ export function newFlightRound(ev: RoundEvent, players: { name: string; playingH
     finishedAt: null,
   };
   return { round: roundFromEvent({ ...ev, tournament: true, flights: { ...ev.flights, [id]: flight } }, id, 'me', code, phone, who), flight };
-}
-function teamHcp(mode: string, hcps: (number | null)[]): number | null {
-  if (hcps.some((h) => h == null)) return null;
-  const hs = (hcps as number[]).slice().sort((a, b) => a - b);
-  if (mode === 'foursome') return Math.round(hs.reduce((s, h) => s + h, 0) * 0.5);
-  const w = hs.length === 2 ? [0.35, 0.15] : hs.length === 3 ? [0.3, 0.2, 0.1] : [0.25, 0.2, 0.15, 0.1];
-  return Math.round(hs.reduce((s, h, k) => s + h * (w[k] ?? 0), 0));
 }
 
 /** The score a player stands with: his own – without one (no phone of his), the marker's. */
@@ -449,8 +442,11 @@ export async function joinEvent(code: string): Promise<RoundEvent | 'ask' | 'gam
     if (isGame(ev)) return 'game';
     if ((ev as { kind?: string } | null)?.kind === 'ask-host') return 'ask';
     if (!isEvent(ev)) return 'none';
-    keepEvent(cleanCode(code), ev);
-    return ev;
+    // a tournament: its flights as their own rows have them (who is where, the scores)
+    const rows = ev.tournament ? await flightRows(cleanCode(code), h) : 'legacy';
+    const out = rows && rows !== 'legacy' ? withRows(ev, rows) : ev;
+    keepEvent(cleanCode(code), out);
+    return out;
   } catch {
     return null;
   }
@@ -492,20 +488,114 @@ async function update(code: string, change: (ev: RoundEvent) => RoundEvent | nul
   return null;
 }
 
-/** A tournament's new flight goes into the event. */
+// ---------- a tournament: one row per flight (Sascha 30.10.2026, the night run: "12 or more phones must not slow each
+// other down") ----------
+// The event's row keeps the frame (name, holes, format); each flight has a row "<code>-<flight>" of its own, written
+// by its phones only – a tournament's phones no longer queue for one row. The leaderboard reads all of them. A round
+// of one flight stays in the event's row (as before – the Saturday's scramble); so does a tournament on a server
+// without the SQL of 30.10.2026 (event_code) – it is asked once.
+interface FlightRow {
+  kind: 'round-flight';
+  flight: Flight;
+}
+const isFlightRow = (x: unknown): x is FlightRow => !!x && (x as FlightRow).kind === 'round-flight' && !!(x as FlightRow).flight;
+const flightCode = (code: string, fid: string) => `${code}-${fid}`;
+let split: boolean | null = null; // the server keeps flights apart: unknown yet / yes / no
+type Rows = Record<string, { flight: Flight; at: string }>;
+/** The flights' own rows of an event – 'legacy' for a server without them, null when offline. */
+async function flightRows(code: string, h: Record<string, string>): Promise<Rows | 'legacy' | null> {
+  if (split === false) return 'legacy';
+  try {
+    const r = await fetch(`${table()}?event_code=eq.${encodeURIComponent(code)}&select=game,updated_at`, { headers: h });
+    if (r.status === 400) {
+      split = false; // no column event_code: the SQL not run yet
+      return 'legacy';
+    }
+    if (!r.ok) return null;
+    split = true;
+    const out: Rows = {};
+    for (const row of (await r.json()) as { game: unknown; updated_at: string }[]) if (isFlightRow(row.game)) out[row.game.flight.id] = { flight: row.game.flight, at: row.updated_at };
+    return out;
+  } catch {
+    return null;
+  }
+}
+const withRows = (ev: RoundEvent, rows: Rows): RoundEvent => ({ ...ev, flights: { ...ev.flights, ...Object.fromEntries(Object.entries(rows).map(([k, v]) => [k, v.flight])) } });
+/** The event with its flights' own rows (kept for the leaderboard). */
+async function readEvent(code: string, h: Record<string, string>): Promise<{ ev: RoundEvent; rows: Rows | 'legacy' } | null> {
+  const [r, rows] = await Promise.all([fetch(`${table()}?code=eq.${encodeURIComponent(code)}&select=game`, { headers: h }).catch(() => null), flightRows(code, h)]);
+  if (!r?.ok || rows == null) return null;
+  const game = ((await r.json()) as { game: unknown }[])[0]?.game;
+  if (!isEvent(game)) return null;
+  return { ev: rows === 'legacy' ? game : withRows(game, rows), rows };
+}
+/**
+ * A flight's row changed by `change` – only if nobody wrote in between (else read again, up to four times); a flight
+ * without a row yet gets one. The event with all flights; 'legacy' when the server keeps flights in the event's row,
+ * null when offline.
+ */
+async function updateFlight(code: string, fid: string, change: (f: Flight | undefined, ev: RoundEvent) => Flight | null): Promise<RoundEvent | 'legacy' | null> {
+  const h = await headers();
+  if (!h) return null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const read = await readEvent(code, h);
+    if (!read) return null;
+    if (read.rows === 'legacy') return 'legacy';
+    const own = read.rows[fid];
+    const next = change(own?.flight ?? read.ev.flights[fid], read.ev);
+    if (!next) {
+      keepEvent(code, read.ev);
+      return read.ev;
+    }
+    try {
+      const w = own
+        ? await fetch(`${table()}?code=eq.${encodeURIComponent(flightCode(code, fid))}&updated_at=eq.${encodeURIComponent(own.at)}`, {
+            method: 'PATCH',
+            headers: { ...h, Prefer: 'return=representation' },
+            body: JSON.stringify({ game: { kind: 'round-flight', flight: next }, updated_at: new Date().toISOString() }),
+          })
+        : await fetch(table(), { method: 'POST', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify({ code: flightCode(code, fid), event_code: code, game: { kind: 'round-flight', flight: next } }) });
+      if (!w.ok && w.status !== 409) return null;
+      if (w.ok && ((await w.json()) as unknown[]).length) {
+        const ev = { ...read.ev, flights: { ...read.ev.flights, [fid]: next } };
+        keepEvent(code, ev);
+        return ev;
+      }
+      // another phone wrote (or made the row) in between: read again
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+/** The flight changed by `change`: its own row in a tournament (if the server has them), else in the event's row. */
+async function changeFlight(code: string, fid: string, tournament: boolean, change: (f: Flight | undefined, ev: RoundEvent) => Flight | null): Promise<RoundEvent | null> {
+  if (tournament) {
+    const ev = await updateFlight(code, fid, change);
+    if (ev !== 'legacy') return ev;
+  }
+  return update(code, (e) => {
+    const f = change(e.flights[fid], e);
+    return f ? { ...e, flights: { ...e.flights, [fid]: f } } : null;
+  });
+}
+
+/** A tournament's new flight goes into the event (its own row, the event marked a tournament). */
 export async function addFlight(code: string, flight: Flight): Promise<boolean> {
-  return (await update(code, (ev) => ({ ...ev, tournament: true, flights: { ...ev.flights, [flight.id]: flight } }))) != null;
+  const h = await headers();
+  if (!h) return false;
+  const rows = await flightRows(code, h);
+  if (rows == null) return false;
+  if (rows === 'legacy') return (await update(code, (ev) => ({ ...ev, tournament: true, flights: { ...ev.flights, [flight.id]: flight } }))) != null;
+  if ((await update(code, (ev) => (ev.tournament ? null : { ...ev, tournament: true }))) == null) return false;
+  return (await updateFlight(code, flight.id, () => flight)) != null;
 }
 
 /** Scramble and foursomes: this phone takes the team's card over (Sascha: "Sascha's battery is empty – Cedric goes on"). */
 export async function takeOver(round: Round, team: string): Promise<boolean> {
   const s = round.shared;
   if (!s?.phone) return false;
-  const ev = await update(s.code, (e) => {
-    const f = e.flights[s.flight];
-    if (!f || f.keeper?.[team] === s.phone) return null;
-    return { ...e, flights: { ...e.flights, [s.flight]: { ...f, keeper: { ...f.keeper, [team]: s.phone! } } } };
-  });
+  const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) => (!f || f.keeper?.[team] === s.phone ? null : { ...f, keeper: { ...f.keeper, [team]: s.phone! } }));
   return ev != null && ev.flights[s.flight]?.keeper?.[team] === s.phone;
 }
 
@@ -521,12 +611,27 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
   const share = s0.phone ? s0 : { ...s0, phone: newId() };
   const r0 = share === s0 ? round : { ...round, shared: share };
   let merged: ReturnType<typeof mergeFlight> | null = null;
-  const ev = await update(share.code, (e) => {
-    merged = mergeFlight(r0, e.flights[share.flight], e.tournament, who);
-    // the holes and the format from the phone that set the event up (changed in the setup after the code was made)
-    const frame = e.by === share.phone && JSON.stringify(eventFrame(r0)) !== JSON.stringify(eventFrame({ ...r0, ...pickFrame(e) })) ? eventFrame(r0) : null;
-    return merged.changedHere || frame ? { ...e, ...(frame ?? {}), flights: { ...e.flights, [share.flight]: merged.flight } } : null;
-  });
+  // the holes and the format from the phone that set the event up (changed in the setup after the code was made)
+  const frameOf = (e: RoundEvent) => (e.by === share.phone && JSON.stringify(eventFrame(r0)) !== JSON.stringify(eventFrame({ ...r0, ...pickFrame(e) })) ? eventFrame(r0) : null);
+  let ev: RoundEvent | null = null;
+  // a tournament: the flight's own row (the frame, rarely changed, in the event's row)
+  const own = share.tournament ? await updateFlight(share.code, share.flight, (f, e) => ((merged = mergeFlight(r0, f, e.tournament, who)).changedHere ? merged.flight : null)) : 'legacy';
+  if (own === null) return null;
+  if (own !== 'legacy') {
+    ev = own;
+    if (frameOf(own)) {
+      const framed = await update(share.code, (e) => (frameOf(e) ? { ...e, ...frameOf(e)! } : null));
+      if (framed) {
+        ev = { ...framed, flights: own.flights }; // the flights as their own rows have them
+        keepEvent(share.code, ev);
+      }
+    }
+  } else
+    ev = await update(share.code, (e) => {
+      merged = mergeFlight(r0, e.flights[share.flight], e.tournament, who);
+      const frame = frameOf(e);
+      return merged.changedHere || frame ? { ...e, ...(frame ?? {}), flights: { ...e.flights, [share.flight]: merged.flight } } : null;
+    });
   if (!ev || !merged) return null;
   const m = merged as ReturnType<typeof mergeFlight>;
   // another phone set the holes: taken over while nothing is entered yet

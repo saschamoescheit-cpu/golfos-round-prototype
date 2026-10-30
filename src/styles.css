@@ -1289,6 +1289,9 @@ button.tile:disabled { opacity: 1; }
 .join-list-rows .grow { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .join-list-rows button { flex: none; width: auto; min-height: 44px; padding: 0 14px; }
 .join-name { display: flex; flex-direction: column; gap: 6px; }
+/* Texas scramble: whose drive (Sascha's concept 30.10.2026) */
+.texas-pick { display: flex; flex-direction: column; gap: 6px; }
+.texas-pick .chip small { margin-left: 4px; opacity: 0.75; }
 
 /* profile photo and the small pictures next to the names (Sascha 16.10.2026) */
 .avatar { border-radius: 50%; object-fit: cover; flex: none; display: inline-block; vertical-align: middle; }

@@ -16,7 +16,7 @@ const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
   if (!cond) fails++;
 };
-const { shared, pushes, phone, round, event, refused } = sharedServer(b, url);
+const { shared, pushes, phone, round, event, refused, flightReads } = sharedServer(b, url);
 
 // ---------- Sascha: a scramble round with Ben, made a tournament ----------
 const host = await phone('Sascha');
@@ -195,6 +195,9 @@ ok(rows.length === 2 && /Sascha & Ben/.test(rows[0]) && /Max & Simon/.test(rows[
 ok(/Turnier · 2 Flights/.test(await board.innerText()), 'leaderboard: "Turnier · 2 Flights"');
 ok((await board.locator('li.lb-mine').count()) === 1 && /Sascha & Ben/.test(await board.locator('li.lb-mine').innerText()), 'leaderboard: the own team marked');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/round-leaderboard.png' });
+// a tournament: each flight in its own row (Sascha 30.10.2026: "12 phones must not slow each other down")
+const own = [...shared.values()].filter((r) => r.event_code === code);
+ok(own.length === 2 && own.every((r) => r.game.kind === 'round-flight') && flightReads() > 0, `server: the tournament's two flights in rows of their own (${own.map((r) => r.game.flight.name).join(' | ')})`);
 console.log(`(writes refused because another phone wrote in between: ${refused()})`);
 ok(host.errs.length === 0 && guest.errs.length === 0 && third.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs, ...third.errs].slice(0, 2).join(' | ')}`);
 await b.close();

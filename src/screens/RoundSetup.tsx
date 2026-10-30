@@ -15,7 +15,7 @@ import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/han
 import { fetchShared } from '../lib/sharedratings';
 import type { TeeRating } from '../data/ratings';
 import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
-import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, type RoundFormat } from '../lib/games';
+import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type RoundFormat } from '../lib/games';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { InvitePanel } from '../components/ShareRound';
 
@@ -98,7 +98,9 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   const tee = me.tee; // my tee: the lengths, the caddie, the round's course rating
   // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list
   const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
-  const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance'>(null);
+  const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance' | 'drives'>(null);
+  // the allowance chosen by hand stays; else the WHS value of the format (Sascha's concept 30.10.2026)
+  const [allowanceSet, setAllowanceSet] = useState(false);
   // the kind of round – the first row of the format block, chosen like the game mode (Sascha 15.10.2026)
   const [kind, setKind] = useState<RoundKind>('social');
   const [kindOpen, setKindOpen] = useState(false);
@@ -271,6 +273,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
                   aria-pressed={kind === k.id}
                   onClick={() => {
                     setKind(k.id);
+                    // single play: 95 % in a competition, 100 % with friends – unless chosen by hand
+                    if (!allowanceSet) setFormat((f) => ({ ...f, allowance: whsAllowance(f.mode, formatOf(f).matchplay, k.id === 'tournament') }));
                     setKindOpen(false);
                   }}
                 >
@@ -411,6 +415,14 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             <span className="settings-value">{allowance > 0 ? `${allowance} %` : tr('0 % (gross)', '0 % (brutto)')}</span>
             <span aria-hidden="true">›</span>
           </button>
+          {/* Texas scramble (Sascha's concept 30.10.2026): every player's drive used at least so often */}
+          {format.mode === 'scramble' && (
+            <button type="button" className="settings-row" onClick={() => setPicker('drives')}>
+              <span>{tr('Texas: drives per player', 'Texas: Drives je Spieler')}</span>
+              <span className="settings-value">{format.minDrives ? tr(`at least ${format.minDrives}`, `mindestens ${format.minDrives}`) : tr('free', 'frei')}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          )}
         </div>
         {!fits && (
           <p className="small good-text" style={{ margin: 0 }}>
@@ -421,9 +433,9 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       </section>
       {picker && (
         <div className="sheet-backdrop" onClick={() => setPicker(null)}>
-          <section className="sheet" role="dialog" aria-label={picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : tr('Handicap allowance', 'HCP-Vorgabe')} onClick={(e) => e.stopPropagation()}>
+          <section className="sheet" role="dialog" aria-label={picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : picker === 'drives' ? tr('Texas scramble', 'Texas Scramble') : tr('Handicap allowance', 'HCP-Vorgabe')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
-              <strong>{picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : tr('Handicap allowance', 'HCP-Vorgabe')}</strong>
+              <strong>{picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : picker === 'drives' ? tr('Texas scramble', 'Texas Scramble') : tr('Handicap allowance', 'HCP-Vorgabe')}</strong>
               <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPicker(null)}>
                 ✕
               </button>
@@ -431,7 +443,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             <div className="pick-list">
               {picker === 'mode' &&
                 FORMATS.map((o) => (
-                  <button key={o.id} type="button" className="pick-option" aria-pressed={o.id === fmt.id} onClick={() => { setFormat({ ...format, mode: o.mode, matchplay: o.matchplay }); setPicker(null); }}>
+                  <button key={o.id} type="button" className="pick-option" aria-pressed={o.id === fmt.id} onClick={() => { setFormat({ ...format, mode: o.mode, matchplay: o.matchplay, ...(allowanceSet ? {} : { allowance: whsAllowance(o.mode, o.matchplay, kind === 'tournament') }), ...(o.mode === 'scramble' ? {} : { minDrives: undefined }) }); setPicker(null); }}>
                     <span className="grow">
                       <strong>{o.name()}</strong>
                       <span className="muted small">{o.text()}</span>
@@ -458,12 +470,14 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
                 })}
               {picker === 'allowance' &&
                 [100, 95, 90, 85, 75, 50, 0].map((v) => (
-                  <button key={v} type="button" className="pick-option" aria-pressed={allowance === v} onClick={() => { setFormat({ ...format, allowance: v }); setPicker(null); }}>
+                  <button key={v} type="button" className="pick-option" aria-pressed={allowance === v} onClick={() => { setFormat({ ...format, allowance: v }); setAllowanceSet(true); setPicker(null); }}>
                     <span className="grow">
                       <strong>{v} %</strong>
                       <span className="muted small">
                         {v === 100
                           ? tr('Full handicap – usual for single play.', 'Volle Vorgabe – üblich im Einzel.')
+                          : v === 95
+                            ? tr('WHS recommendation for single stroke play and Stableford in a competition.', 'WHS-Empfehlung für Einzel-Zählspiel und Stableford im Wettspiel.')
                           : v === 85
                             ? tr('WHS recommendation for four-ball stroke play.', 'WHS-Empfehlung für Better Ball im Zählspiel.')
                             : v === 90
@@ -474,6 +488,20 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
                       </span>
                     </span>
                     {allowance === v && <span className="pick-check" aria-hidden="true">✓</span>}
+                  </button>
+                ))}
+              {picker === 'drives' &&
+                [0, 2, 3, 4, 6].map((v) => (
+                  <button key={v} type="button" className="pick-option" aria-pressed={(format.minDrives ?? 0) === v} onClick={() => { setFormat({ ...format, minDrives: v || undefined }); setPicker(null); }}>
+                    <span className="grow">
+                      <strong>{v ? tr(`At least ${v} drives each`, `Mindestens ${v} Drives je Spieler`) : tr('Free (ordinary scramble)', 'Frei (normaler Scramble)')}</strong>
+                      <span className="muted small">
+                        {v
+                          ? tr('On every hole the team notes whose drive it plays – the app counts and warns in time.', 'An jedem Loch hält das Team fest, wessen Drive es spielt – die App zählt mit und warnt rechtzeitig.')
+                          : tr('Any drive, as often as you like.', 'Jeder Drive, so oft ihr wollt.')}
+                      </span>
+                    </span>
+                    {(format.minDrives ?? 0) === v && <span className="pick-check" aria-hidden="true">✓</span>}
                   </button>
                 ))}
             </div>

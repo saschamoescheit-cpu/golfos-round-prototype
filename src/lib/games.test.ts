@@ -97,3 +97,43 @@ describe('team modes', () => {
     expect(m.status).toBe('A & B 1 up after 2');
   });
 });
+
+// Sascha's concept 30.10.2026: greensome and Chapman, the WHS allowances, Texas scramble
+describe('more formats', () => {
+  it('greensome and Chapman: one ball per team, 60 % of the lower and 40 % of the higher playing handicap', async () => {
+    const { teamHandicap, isTeamMode, teamsOf, modesFor } = await import('./games');
+    expect(teamHandicap('greensome', [20, 10])).toBe(14); // 0.6 × 10 + 0.4 × 20
+    expect(teamHandicap('chapman', [5, 5])).toBe(5);
+    expect(teamHandicap('chapman', [8, null])).toBeNull();
+    expect(isTeamMode('greensome') && isTeamMode('chapman')).toBe(true);
+    expect(teamsOf('greensome', 4)).toEqual([[0, 1], [2, 3]]);
+    expect(modesFor(2)).toEqual(expect.arrayContaining(['greensome', 'chapman']));
+    expect(modesFor(3)).not.toContain('greensome');
+  });
+  it('the WHS allowance of a format: 95 % single play in a competition, 100 % with friends, better ball 85 / 90 %', async () => {
+    const { whsAllowance } = await import('./games');
+    expect(whsAllowance('single', false, true)).toBe(95);
+    expect(whsAllowance('single', false, false)).toBe(100);
+    expect(whsAllowance('match', true, true)).toBe(100);
+    expect(whsAllowance('fourball', false, true)).toBe(85);
+    expect(whsAllowance('fourball', true, false)).toBe(90);
+    expect(whsAllowance('scramble', false, true)).toBe(100); // the share is in the team handicap
+  });
+  it('Texas scramble: whose drive – counted, and a warning when a player gets tight', async () => {
+    const { texasDrives, drivesShort } = await import('./games');
+    const holes = Array.from({ length: 6 }, (_, i) => ({ index: i, label: String(i + 1), loop: 'A', number: i + 1, par: 4, strokeIndex: i + 1 }));
+    const e = (drive?: number) => ({ ...emptyEntry(), strokes: 4, ...(drive != null ? { drive } : {}) });
+    const round = {
+      holes,
+      players: [{ id: 'me', name: 'Sascha & Cedric', playingHandicap: 3, isMe: true }],
+      format: { mode: 'scramble' as const, scoring: 'stroke' as const, minDrives: 2 },
+      entries: { me: [e(0), e(0), e(0), emptyEntry(), emptyEntry(), emptyEntry()] },
+    };
+    const t = texasDrives(round, 'me', 3)!;
+    expect(t).toEqual({ members: ['Sascha', 'Cedric'], counts: [3, 0], min: 2, left: 2 });
+    // Cedric needs 2, two holes are left after this one: tight now – his drive here makes it 1 of 2 left
+    expect(drivesShort(t, 0)).toEqual([{ name: 'Cedric', need: 2 }]);
+    expect(drivesShort(t, 1)).toEqual([]);
+    expect(texasDrives({ ...round, format: { mode: 'scramble', scoring: 'stroke' } }, 'me', 3)).toBeNull();
+  });
+});
