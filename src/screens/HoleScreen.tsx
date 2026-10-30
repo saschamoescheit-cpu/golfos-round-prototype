@@ -30,7 +30,7 @@ import { lineOfStored } from '../lib/holelines';
 import { isSpeaking, onSpeaking, setMicPause, speak, summary } from '../lib/caddietalk';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
-import { listen, soundTestOn } from '../lib/impact';
+import { listen, soundTestOn, type Listening } from '../lib/impact';
 import { PocketMode, pocketTestOn } from '../components/PocketMode';
 import { RoundInviteSheet } from '../components/ShareRound';
 import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
@@ -873,8 +873,11 @@ export function HoleScreen(props: {
   }, [shareEvent, views]); // eslint-disable-line react-hooks/exhaustive-deps
   // shot by sound – a test (Sascha 18.10.2026): listening while this screen is open, every crack kept with time and place
   const soundTest = useMemo(() => soundTestOn() && !round.preview && !props.game, []);
-  const [listening, setListening] = useState(false);
-  const stopListen = useRef<((() => void) & { alive?: () => boolean }) | null>(null);
+  // what the pocket screen says: hearing, held up (being restarted), or off (never allowed)
+  const [mic, setMic] = useState<'on' | 'stalled' | 'off'>('off');
+  const [micRestarts, setMicRestarts] = useState(0);
+  const micEverOn = useRef(false); // allowed once on this screen – only then it is opened again by itself (no asking over and over)
+  const stopListen = useRef<Listening | null>(null);
   const holeRef = useRef(i);
   holeRef.current = i;
   const playerRef = useRef(player);
@@ -915,7 +918,7 @@ export function HoleScreen(props: {
     if (stopListen.current) {
       stopListen.current();
       stopListen.current = null;
-      setListening(false);
+      setMic('off');
       return;
     }
     if (starting.current) return;
@@ -948,9 +951,11 @@ export function HoleScreen(props: {
         stopListen.current = null;
         return;
       }
-      setListening(true);
+      micEverOn.current = true;
+      setMic('on');
     } catch {
-      setTestMsg(tr('No microphone – allow it in the settings', 'Kein Mikrofon – bitte in den Einstellungen erlauben'));
+      // opened again by the watch below: it says "held up" on the pocket screen, no message each time
+      if (!micEverOn.current) setTestMsg(tr('No microphone – allow it in the settings', 'Kein Mikrofon – bitte in den Einstellungen erlauben'));
     } finally {
       starting.current = false;
     }
@@ -964,14 +969,49 @@ export function HoleScreen(props: {
     void toggleListenRef.current();
     const onVisible = () => {
       if (document.visibilityState !== 'visible' || resumeMic.current) return;
-      if (starting.current || (stopListen.current?.alive?.() ?? false)) return;
+      if (starting.current || (stopListen.current?.alive() ?? false)) return;
       stopListen.current?.();
       stopListen.current = null;
-      setListening(false);
       void toggleListenRef.current();
     };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    // the watch (Sascha 30.10.2026: "fix it tonight"): iOS may hold the microphone up without the page going away – a
+    // call, Siri, Guided Access coming up. Every second: is sound really arriving? Held up: wake the sound (a page that
+    // is recording may do so without a touch – with Guided Access no touch reaches it); still held up after 3 s, or
+    // ended: open the microphone again – after 5 s, then 10, 20 … at most every minute while it does not come back.
+    let badSince: number | null = null;
+    let lastTry = 0;
+    let wait = 5000;
+    const watch = window.setInterval(() => {
+      if (document.visibilityState !== 'visible' || resumeMic.current || starting.current) return;
+      const l = stopListen.current;
+      const h = l ? l.health() : 'dead';
+      if (h === 'on') {
+        badSince = null;
+        wait = 5000;
+        setMic('on');
+        return;
+      }
+      if (!micEverOn.current) return; // never allowed: it stays "off"
+      setMic('stalled');
+      const now = Date.now();
+      if (badSince == null) badSince = now;
+      if (h === 'stalled') {
+        l?.wake();
+        if (now - badSince < 3000) return;
+      }
+      if (now - lastTry < wait) return;
+      if (lastTry) wait = Math.min(wait * 2, 60000);
+      lastTry = now;
+      stopListen.current?.();
+      stopListen.current = null;
+      setMicRestarts((n) => n + 1);
+      void toggleListenRef.current();
+    }, 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.clearInterval(watch);
+    };
   }, []);
   useEffect(() => {
     if (!testMsg) return;
@@ -2094,7 +2134,7 @@ export function HoleScreen(props: {
           )}
         </div>
         {sheetEl}
-        {pocket && <PocketMode roundId={round.id} onExit={leavePocket} listening={listening} cracks={(round.soundShots ?? []).length} lastCrack={round.soundShots?.length ? Math.max(...round.soundShots.map((x) => x.t)) : null} />}
+        {pocket && <PocketMode roundId={round.id} onExit={leavePocket} mic={soundTest ? mic : undefined} micRestarts={micRestarts} cracks={(round.soundShots ?? []).length} lastCrack={round.soundShots?.length ? Math.max(...round.soundShots.map((x) => x.t)) : null} />}
       </main>
     );
   }

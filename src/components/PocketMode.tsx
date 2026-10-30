@@ -30,7 +30,7 @@ export function setPocketTest(on: boolean): void {
   }
 }
 
-export function PocketMode(props: { roundId: string; onExit: () => void; listening?: boolean; cracks?: number; lastCrack?: number | null }) {
+export function PocketMode(props: { roundId: string; onExit: () => void; mic?: 'on' | 'stalled' | 'off'; micRestarts?: number; cracks?: number; lastCrack?: number | null }) {
   const [awake, setAwake] = useState<'on' | 'unsupported' | 'pending'>('pending');
   const [points, setPoints] = useState(() => loadTrack(props.roundId).length);
   const [lastAgo, setLastAgo] = useState<number | null>(null);
@@ -102,12 +102,19 @@ export function PocketMode(props: { roundId: string; onExit: () => void; listeni
           {tr('GPS recording', 'GPS zeichnet auf')} · {points} {tr('points', 'Punkte')}
           {lastAgo != null ? tr(` · last ${lastAgo} s ago`, ` · letzter vor ${lastAgo} s`) : ''}
         </span>
-        {props.listening && (
-          <span>
-            {tr('Microphone listening', 'Mikrofon hört mit')} · {props.cracks ?? 0} {tr(props.cracks === 1 ? 'crack' : 'cracks', props.cracks === 1 ? 'Knall' : 'Knalle')}
+        {/* what the microphone really does – not just that it was switched on (Sascha 30.10.2026) */}
+        {props.mic && (
+          <span className={props.mic === 'on' ? undefined : 'pocket-warn'}>
+            {props.mic === 'on'
+              ? tr('Microphone listening', 'Mikrofon hört mit')
+              : props.mic === 'stalled'
+                ? tr('Microphone interrupted – restarting …', 'Mikrofon unterbrochen – startet neu …')
+                : tr('Microphone off – allow it in the settings', 'Mikrofon aus – bitte in den Einstellungen erlauben')}{' '}
+            · {props.cracks ?? 0} {tr(props.cracks === 1 ? 'crack' : 'cracks', props.cracks === 1 ? 'Knall' : 'Knalle')}
             {/* the last one with its time: hit, look – heard? (Sascha 29.10.2026: check it on the course) */}
             {props.lastCrack != null &&
               tr(` · last at ${new Date(props.lastCrack).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`, ` · letzter um ${new Date(props.lastCrack).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`)}
+            {props.micRestarts ? tr(` · restarted ${props.micRestarts}×`, ` · neu gestartet ${props.micRestarts}×`) : ''}
           </span>
         )}
         {awake === 'unsupported' && (

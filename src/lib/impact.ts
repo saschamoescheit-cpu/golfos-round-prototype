@@ -81,8 +81,13 @@ export class ImpactCore {
   }
 }
 
+/** How the microphone is really doing: hearing, held up (iOS suspended the sound or muted the microphone – a call, Siri,
+ *  Guided Access coming up – or no sound arrives any more), or ended (it has to be opened again). */
+export type MicHealth = 'on' | 'stalled' | 'dead';
+export type Listening = (() => void) & { alive: () => boolean; health: () => MicHealth; wake: () => void };
+
 /** Listening with the microphone: raw sound (no echo cancelling, no noise suppression), blocks of 1024 samples. */
-export async function listen(onImpact: (i: Impact) => void): Promise<(() => void) & { alive: () => boolean }> {
+export async function listen(onImpact: (i: Impact) => void): Promise<Listening> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
   const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new Ctx();
@@ -99,7 +104,9 @@ export async function listen(onImpact: (i: Impact) => void): Promise<(() => void
   // time from the samples, not the clock: the blocks may arrive in bursts, the sound itself keeps exact time
   const t0 = Date.now();
   let samples = 0;
+  let lastBlock = performance.now(); // the sound really arriving – the context may say "running" and still hand nothing
   proc.onaudioprocess = (ev) => {
+    lastBlock = performance.now();
     const block = ev.inputBuffer.getChannelData(0);
     const hit = core.feed(block, t0 + (samples * 1000) / ctx.sampleRate);
     samples += block.length;
@@ -123,7 +130,16 @@ export async function listen(onImpact: (i: Impact) => void): Promise<(() => void
     void lock?.release().catch(() => {});
   };
   // iOS ends the microphone when the app goes to the background: then it has to be opened again
-  return Object.assign(stop, { alive: () => ctx.state !== 'closed' && stream.getAudioTracks().some((t) => t.readyState === 'live') });
+  const alive = () => ctx.state !== 'closed' && stream.getAudioTracks().some((t) => t.readyState === 'live');
+  // (Sascha 30.10.2026: the pocket screen said "listening" although iOS had stopped it – the test would have looked as if
+  // the detection hears nothing)
+  const health = (): MicHealth => {
+    if (!alive()) return 'dead';
+    // ("interrupted" is Safari's own state: a call or Siri)
+    if (ctx.state !== 'running' || stream.getAudioTracks().every((t) => t.muted) || performance.now() - lastBlock > 2500) return 'stalled';
+    return 'on';
+  };
+  return Object.assign(stop, { alive, health, wake });
 }
 
 const KEY = 'golfos.soundtest.v1';

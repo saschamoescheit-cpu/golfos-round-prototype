@@ -50,6 +50,10 @@ await ctx.addInitScript(() => {
   const gum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
   navigator.mediaDevices.getUserMedia = async (c) => { const s = await gum(c); w.__streams.push(s); return s; };
   w.__micLive = () => w.__streams.filter((s) => s.getTracks().some((t) => t.readyState === 'live')).length;
+  // the sound contexts – to hold one up as iOS does (a call, Siri, Guided Access coming up)
+  w.__ctxs = [];
+  const AC = w.AudioContext;
+  w.AudioContext = class extends AC { constructor(...a) { super(...a); w.__ctxs.push(this); } };
 });
 const p = await ctx.newPage();
 const errs = [];
@@ -123,6 +127,27 @@ const crack = await p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.ro
 // (the walk goes on while it is heard: any of its places, not the start)
 ok(crack && crack.pos[1] > 48.781065 + 0.0003, `the crack kept where the player walked to, not at the start (${crack ? crack.pos[1].toFixed(6) : '–'}; start 48.781065, walked to ${(48.781065 + 6 * 0.0002).toFixed(6)})`);
 ok(/Seitentaste 3× drücken → Geführter Zugriff/.test(await pocket.innerText()), 'the hint: Guided Access with the side button');
+// iOS holds the microphone up in the pocket (Sascha 30.10.2026: the screen said "listening" all the same): the screen
+// says so, and it is opened again by itself – and hears the next strike
+const text = async () => (await pocket.innerText()).replace(/\s+/g, ' ');
+const crackCount = async () => Number(((await text()).match(/(\d+) Knall/) ?? [])[1] ?? -1);
+const waitFor = async (re, ms) => { for (let k = 0; k < ms / 250 && !re.test(await text()); k++) await p.waitForTimeout(250); return re.test(await text()); };
+const opened0 = (await mic()).opened;
+await p.evaluate(async () => { const c = window.__ctxs.at(-1); c.resume = () => Promise.resolve(); await c.suspend(); });
+ok(await waitFor(/Mikrofon unterbrochen – startet neu/, 2500), `held up: the screen says so (${(await text()).match(/Mikrofon[^·]*/)?.[0]})`);
+ok(await waitFor(/Mikrofon hört mit .* neu gestartet 1×/, 8000), `opened again by itself: "${(await text()).match(/Mikrofon.*?(?= Zum)/)?.[0]}"`);
+const m1 = await mic();
+ok(m1.opened === opened0 + 1 && m1.live === 1, `a new microphone, the old one closed (${JSON.stringify(m1)})`);
+let c0 = await crackCount();
+for (let k = 0; k < 60 && (await crackCount()) <= c0; k++) await p.waitForTimeout(250);
+ok((await crackCount()) > c0, `after the restart a strike is heard again (${c0} → ${await crackCount()})`);
+// iOS ends the microphone (the track ends): opened again, too
+await p.evaluate(() => window.__streams.at(-1).getTracks().forEach((t) => t.stop()));
+ok(await waitFor(/Mikrofon hört mit .* neu gestartet 2×/, 12000), `the microphone ended: opened again ("${(await text()).match(/Mikrofon.*?(?= Zum)/)?.[0]}")`);
+ok((await mic()).live === 1, 'listening again');
+c0 = await crackCount();
+for (let k = 0; k < 60 && (await crackCount()) <= c0; k++) await p.waitForTimeout(250);
+ok((await crackCount()) > c0, `and hears (${c0} → ${await crackCount()})`);
 // a short tap does nothing (touches in the pocket)
 const box = await pocket.boundingBox();
 await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
