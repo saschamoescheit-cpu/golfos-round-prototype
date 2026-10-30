@@ -119,6 +119,14 @@ export function PocketMode(props: { roundId: string; onExit: () => void; listeni
           </span>
         )}
         <span className={`pocket-hold${holding ? ' on' : ''}`}>{tr('Hold for 3 seconds to leave', 'Zum Beenden 3 Sekunden gedrückt halten')}</span>
+        {/* the iPhone switches apps when the cloth brushes the bottom edge – Guided Access stops it (Sascha 30.10.2026:
+            "I take the phone out and another app is open") */}
+        <span className="pocket-tip">
+          {tr(
+            'iPhone: press the side button 3× → Guided Access (Options: Touch off) – then nothing happens in the pocket. To end it, press 3× again.',
+            'iPhone: Seitentaste 3× drücken → Geführter Zugriff (Optionen: Berührung aus) – dann passiert in der Tasche nichts. Zum Beenden wieder 3× drücken.',
+          )}
+        </span>
       </div>
     </div>
   );

@@ -122,6 +122,7 @@ ok(/[1-9]\d* Knalle? · letzter um \d\d:\d\d:\d\d/.test(await pocket.innerText()
 const crack = await p.evaluate(() => (JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].soundShots ?? []).at(-1));
 // (the walk goes on while it is heard: any of its places, not the start)
 ok(crack && crack.pos[1] > 48.781065 + 0.0003, `the crack kept where the player walked to, not at the start (${crack ? crack.pos[1].toFixed(6) : '–'}; start 48.781065, walked to ${(48.781065 + 6 * 0.0002).toFixed(6)})`);
+ok(/Seitentaste 3× drücken → Geführter Zugriff/.test(await pocket.innerText()), 'the hint: Guided Access with the side button');
 // a short tap does nothing (touches in the pocket)
 const box = await pocket.boundingBox();
 await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);

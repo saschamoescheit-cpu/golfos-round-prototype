@@ -684,6 +684,7 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .pocket-warn { color: #b8893a; }
 .pocket-hold { margin-top: 16px; padding: 10px 16px; border: 1px solid #333; border-radius: 999px; color: #666; transition: color 3s, border-color 3s, background 3s; }
 .pocket-hold.on { color: #ddd; border-color: #ddd; background: #111; }
+.pocket-tip { margin-top: 14px; max-width: 300px; font-size: 13px; line-height: 1.45; color: #5a5a5a; }
 /* Small addition to "From tee": the last recognised shot */
 .map-shot-last { margin-left: 8px; color: var(--muted); font-size: 12px; }
 /* Scorecard: tap a hole to correct it */
