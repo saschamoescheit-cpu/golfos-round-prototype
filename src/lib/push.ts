@@ -162,6 +162,22 @@ export function pushGame(action: 'joined' | 'finished', code: string): void {
   void call({ action, code }).catch(() => null);
 }
 
+/** A round: invite a player by his GolfOS user name (Sascha 30.10.2026) – let in at once, told by push. 'sent',
+ *  'silent' (no notifications on his phones – send him the link), 'unknown' (no such user name), 'not-set-up' (the
+ *  function on the server is older), null (no connection). */
+export async function inviteByName(code: string, username: string, who: string): Promise<'sent' | 'silent' | 'unknown' | 'not-set-up' | null> {
+  if (!loadSession() || !syncConfigured()) return null;
+  try {
+    const r = await call({ action: 'invite', code, username: username.trim().replace(/^@/, ''), who });
+    if (r.status === 400) return 'not-set-up';
+    if (!r.ok) return null;
+    const j = (await r.json()) as { found?: boolean; sent?: number };
+    return !j.found ? 'unknown' : (j.sent ?? 0) > 0 ? 'sent' : 'silent';
+  } catch {
+    return null;
+  }
+}
+
 /** A round: this phone asked to join – the host hears of it (Sascha 30.10.2026; the function says it once). */
 export function pushAsked(to: { code?: string; ref?: string }): void {
   if (!loadSession() || !syncConfigured()) return;

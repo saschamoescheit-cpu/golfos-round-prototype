@@ -1812,3 +1812,8 @@ button.tile:disabled { opacity: 1; }
 /* the range's shots beside the course's in the stats: rings (Sascha 26.10.2026, optional) */
 .spread-dot.range { fill: none; stroke: var(--text); stroke-width: 1.6; stroke-opacity: 0.8; }
 .range-switch { margin: 0 -16px; }
+.invite-name { display: flex; flex-direction: column; gap: 6px; }
+.invite-name-row { display: flex; gap: 8px; }
+.invite-name-row .input { flex: 1; min-width: 0; }
+.invite-name-row button { flex: none; width: auto; padding: 0 16px; }
+.share-note { flex-wrap: wrap; }

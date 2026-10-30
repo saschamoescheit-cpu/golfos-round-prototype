@@ -222,6 +222,25 @@ describe('the push function, end to end against a copy of the database', () => {
     expect((await post({ action: 'asked' }, 'token-tim')).status).toBe(400);
   });
 
+  it('a round: the host invites by user name – the player is let in at once and told by push (Sascha 30.10.2026)', async () => {
+    const max = await phone('https://fcm.googleapis.com/fcm/send/max-invite');
+    await post({ action: 'subscribe', subscription: max.subscription, lang: 'de' }, 'token-max');
+    tables.golfos_names = [{ username: 'max.m', user_id: 'u-max' }];
+    tables.golfos_shared_games = [{ code: 'INV234', owner: 'u-sascha', members: [], near_requests: {}, game: { kind: 'round-event', course: { name: 'Golfclub Hetzenhof' } } }];
+    const n = (await max.inbox()).length;
+    const r = await (await post({ action: 'invite', code: 'inv234', username: 'Max.M', who: 'Sascha' }, 'token-sascha')).json();
+    expect(r).toMatchObject({ ok: true, found: true });
+    expect(r.sent).toBeGreaterThan(0); // every phone of his (his Android from before too)
+    expect(tables.golfos_shared_games[0].members).toEqual(['u-max']);
+    expect((tables.golfos_shared_games[0].near_requests as Record<string, { state: string }>)['u-max'].state).toBe('ok');
+    const note = (await max.inbox()).slice(n)[0];
+    expect(note).toMatchObject({ title: 'Einladung zur Runde', url: './#round=INV234' });
+    expect(note.body).toContain('Sascha lädt dich zu seiner Runde in Golfclub Hetzenhof ein');
+    // no such user name; not his round to invite to
+    expect(await (await post({ action: 'invite', code: 'INV234', username: 'nobody', who: 'Sascha' }, 'token-sascha')).json()).toMatchObject({ ok: false, found: false });
+    expect((await post({ action: 'invite', code: 'INV234', username: 'max.m' }, 'token-tim')).status).toBe(403);
+  });
+
   it('a phone the push service no longer knows is forgotten; turned off, it is gone', async () => {
     const old = await phone(GONE);
     await post({ action: 'subscribe', subscription: old.subscription }, 'token-max'); // the hello comes back 410

@@ -136,6 +136,14 @@ export const askedNote = (who: string, course: string, lang?: string | null): No
   url: './#rounds',
 });
 
+/** The host invites a player by his GolfOS user name (Sascha 30.10.2026): a tap and he is in. */
+export const inviteNote = (who: string, course: string, code: string, lang?: string | null): Note => ({
+  title: T(lang, 'Invitation to a round', 'Einladung zur Runde'),
+  body: T(lang, `${who || 'A player'} invites you to his round at ${course} – tap to join.`, `${who || 'Ein Spieler'} lädt dich zu seiner Runde in ${course} ein – tippen zum Beitreten.`),
+  tag: `golfos-invite-${code}`,
+  url: `./#round=${code}`,
+});
+
 export const finishedNote = (course: string, lang?: string | null): Note => ({
   title: T(lang, 'Game over', 'Spiel beendet'),
   body: T(lang, `The game at ${course} is over – the result is in Games.`, `Das Spiel in ${course} ist beendet – das Ergebnis steht in Games.`),
@@ -411,6 +419,21 @@ export async function handle(req: Request): Promise<Response> {
       }
       await d.insertIgnore('golfos_push_sent', [{ user_id: g.owner, key }]);
       return json({ ok: true, sent: n });
+    }
+    // the host (or a member) invites a player by his user name: let in at once (he becomes a member), told by push
+    if (action === 'invite') {
+      const code = String(body.code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      const name = String(body.username ?? '').trim().toLowerCase().slice(0, 20);
+      const who = String(body.who ?? '').slice(0, 60);
+      const [g] = await d.get<{ owner: string; members: string[]; near_requests: Record<string, unknown> | null; game: { kind?: string; course?: { name?: string } } }[]>(`golfos_shared_games?select=owner,members,near_requests,game&code=eq.${code}`);
+      if (!g || g.game?.kind !== 'round-event' || (g.owner !== user && !g.members.includes(user))) return json({ error: 'not in this round' }, 403);
+      const [n] = name ? await d.get<{ user_id: string }[]>(`golfos_names?select=user_id&username=eq.${encodeURIComponent(name)}`) : [];
+      if (!n) return json({ ok: false, found: false });
+      if (n.user_id !== g.owner && !g.members.includes(n.user_id))
+        await d.patch(`golfos_shared_games?code=eq.${code}`, { members: [...g.members, n.user_id], near_requests: { ...(g.near_requests ?? {}), [n.user_id]: { name, at: new Date().toISOString(), state: 'ok' } } });
+      let sent = 0;
+      for (const s of await subsOf([n.user_id])) if (s.kinds?.games !== false && (await send(s, inviteNote(who, g.game?.course?.name ?? 'GolfOS', code, s.lang), 6 * 3600, 'high'))) sent++;
+      return json({ ok: true, found: true, sent });
     }
     return json({ error: 'unknown action' }, 400);
   } catch (e) {

@@ -45,7 +45,7 @@ export interface Flight {
   /** a tournament: who marks whom – markers[player] = the player who marks him */
   markers?: Record<string, string>;
   /** the phones playing in the flight: which player (or team) each one is */
-  phones?: Record<string, { player: string; name: string; at: string }>;
+  phones?: Record<string, { player: string; name: string; at: string; /** last heard of (every two minutes at most) */ seen?: string }>;
   /** scramble and foursomes: the phone keeping the team's card (missing: the team's first phone) */
   keeper?: Record<string, string>;
   /** the phone that set the flight up – its players come from there */
@@ -166,6 +166,22 @@ export function roleOf(f: Flight, player: string, phone: string, team: boolean, 
   return w == null ? 'free' : 'view';
 }
 
+/** A phone tells the flight it is still there at most this often (a write of its own otherwise only with a score). */
+export const SEEN_EVERY = 2 * 60000;
+/** Quiet this long, a team's keeper is likely gone (battery) – the others are offered the card. */
+export const QUIET_AFTER = 10 * 60000;
+/** Scramble and foursomes: the keeper of a team's card when his phone has been quiet a while – his name and the
+ *  minutes; null while he is there (or this phone keeps it). */
+export function quietKeeper(f: Flight | undefined, team: string, phone: string, now = Date.now()): { name: string; minutes: number } | null {
+  if (!f || f.finishedAt) return null;
+  const w = writerOf(f, team, true);
+  if (!w || w === phone) return null;
+  const ph = f.phones?.[w];
+  if (!ph) return null;
+  const quiet = now - new Date(ph.seen ?? ph.at).getTime();
+  return quiet >= QUIET_AFTER ? { name: ph.name, minutes: Math.floor(quiet / 60000) } : null;
+}
+
 /** For the score panel: per player, what this phone may do, who keeps the score, and the other count beside it. */
 export interface ShareView {
   role: Role;
@@ -220,6 +236,10 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
   const me = round.players.find((p) => p.isMe)?.id;
   if (me && !f.phones?.[phone]) {
     f = { ...f, phones: { ...f.phones, [phone]: { player: me, name: who, at: new Date().toISOString() } } };
+    changedHere = true;
+  } else if (me && f.phones?.[phone] && Date.now() - new Date(f.phones[phone].seen ?? f.phones[phone].at).getTime() > SEEN_EVERY) {
+    // still here (Sascha 30.10.2026: the keeper's battery – the others see when his phone went quiet)
+    f = { ...f, phones: { ...f.phones, [phone]: { ...f.phones[phone], seen: new Date().toISOString() } } };
     changedHere = true;
   }
   // the players: from the phone that set the flight up – the others take them over

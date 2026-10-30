@@ -34,6 +34,15 @@ export function sharedServer(b, url, o = {}) {
     if (u.pathname.endsWith('/functions/v1/golfos-push')) {
       const b = body();
       pushes.push({ ...b, from: uid });
+      // invited by user name (o.users: user name → account): let in at once
+      if (b.action === 'invite') {
+        const to = o.users?.[String(b.username).toLowerCase()];
+        const row = shared.get(b.code);
+        if (!to) return json(200, { ok: false, found: false });
+        if (row && !row.members.includes(to)) row.members.push(to);
+        if (row) row.requests[to] = { name: b.username, state: 'ok' };
+        return json(200, { ok: true, found: true, sent: 1 });
+      }
       return json(200, { ok: true, sent: 1 });
     }
     if (u.pathname.endsWith('/rpc/golfos_join_game')) {

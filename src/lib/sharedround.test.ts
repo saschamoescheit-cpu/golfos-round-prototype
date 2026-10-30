@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
-import { defaultMarkers, differences, eventBoard, eventOf, mergeFlight, newFlightRound, roundFromEvent, settle, shareView, type RoundEvent } from './sharedround';
+import { defaultMarkers, differences, eventBoard, eventOf, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, type RoundEvent } from './sharedround';
 
 // A round on several phones (Sascha 29.10.2026): the flight partners on their own phones – everyone keeps his own
 // score, a team's card one phone of the team (another can take it over), in a tournament everyone also marks a partner.
@@ -228,5 +228,26 @@ describe('a tournament: everyone counts himself and a partner', () => {
     expect(flight.players).toEqual([{ id: 'me', name: 'Max & Simon', playingHandicap: 7 }]); // 35/15 %: 3.5 + 3
     ev = { ...ev, flights: { ...ev.flights, [flight.id]: { ...flight, scores: { me: [{ s: 3 }, null, null] } } } };
     expect(eventBoard(ev).rows.map((x) => [x.name, x.value, x.thru])).toEqual([['Max & Simon', '-1', 1], ['Sascha & Cedric', '–', 0]]);
+  });
+});
+
+// Sascha 30.10.2026, the night run: the keeper's battery – the team sees when his phone went quiet
+describe('a team keeper gone quiet', () => {
+  it('a phone tells the flight it is still there every two minutes; quiet for ten, the others are offered the card', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha & Cedric' }], 'scramble'));
+    let cedric = roundFromEvent(ev, 'f1', 'me', 'ABCDEF', 'ph-cedric', 'Cedric');
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    expect(quietKeeper(ev.flights.f1, 'me', 'ph-cedric')).toBeNull(); // Sascha's phone just there
+    // twelve minutes without a word from Sascha's phone
+    const later = Date.now() + 12 * 60000;
+    expect(quietKeeper(ev.flights.f1, 'me', 'ph-cedric', later)).toEqual({ name: 'Sascha', minutes: 12 });
+    expect(quietKeeper(ev.flights.f1, 'me', 'ph-host', later)).toBeNull(); // the keeper himself is not told
+    // Sascha's phone comes back: three minutes after it was last seen it says so (and only then)
+    const f = ev.flights.f1;
+    const stale = { ...f, phones: { ...f.phones, 'ph-host': { ...f.phones!['ph-host'], at: new Date(Date.now() - 3 * 60000).toISOString() } } };
+    const m = mergeFlight(sascha, stale, false, 'Sascha');
+    expect(m.changedHere).toBe(true);
+    expect(Date.now() - new Date(m.flight.phones!['ph-host'].seen!).getTime()).toBeLessThan(5000);
+    expect(mergeFlight(sascha, m.flight, false, 'Sascha').changedHere).toBe(false); // not again at once
   });
 });

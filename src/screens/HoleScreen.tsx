@@ -33,7 +33,7 @@ import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn } from '../lib/impact';
 import { PocketMode, pocketTestOn } from '../components/PocketMode';
 import { RoundInviteSheet } from '../components/ShareRound';
-import { cachedEvent, exchangeRound, settle, shareView, takeOver } from '../lib/sharedround';
+import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
 import { sharingAvailable } from '../lib/sharedgame';
 import { courseStats } from '../lib/history';
@@ -831,6 +831,45 @@ export function HoleScreen(props: {
     setTestMsg(tr('You keep the card now.', 'Du führst jetzt die Scorecard.'));
   };
   const [testMsg, setTestMsg] = useState<string | null>(null);
+  // on several phones, on the map (Sascha 30.10.2026, the night run): a count that differs as soon as it does – not
+  // only at the end; and a team's keeper quiet for ten minutes (battery) – the card offered
+  const [shareNote, setShareNote] = useState<{ text: string; act?: { label: string; run: () => void } } | null>(null);
+  useEffect(() => {
+    if (!shareNote) return;
+    const t = setTimeout(() => setShareNote(null), 12000);
+    return () => clearTimeout(t);
+  }, [shareNote]);
+  const toldDiffs = useRef<Set<string> | null>(null);
+  const toldQuiet = useRef(false);
+  useEffect(() => {
+    const s = round.shared;
+    const f = s ? shareEvent?.flights[s.flight] : undefined;
+    if (!s || !f) return;
+    const counted = round.players.filter((p) => (views[p.id]?.role === 'own' || views[p.id]?.role === 'mark') && f.markers?.[p.id]).map((p) => p.id);
+    const now = new Set(counted.flatMap((pid) => differences(f, pid).map((k) => `${pid}:${k}`)));
+    const fresh = toldDiffs.current ? [...now].filter((x) => !toldDiffs.current!.has(x)) : [];
+    toldDiffs.current = now; // what differed when the map opened is on the score panel – not said again
+    if (fresh.length) {
+      const [pid, at] = fresh[0].split(':');
+      const k = Number(at);
+      const name = round.players.find((p) => p.id === pid)?.name ?? '';
+      const own = f.scores[pid]?.[k]?.s ?? '–';
+      const mark = f.marks?.[pid]?.[k]?.s ?? '–';
+      const label = round.holes[k]?.label ?? String(k + 1);
+      navigator.vibrate?.(40);
+      setShareNote({ text: tr(`Hole ${label}: the counts of ${name} differ (${own} / ${mark}) – agree on the score`, `Loch ${label}: Die Zählung bei ${name} weicht ab (${own} / ${mark}) – Score abstimmen`) });
+      return;
+    }
+    const quiet = isTeamRound(round) && views[me.id]?.role === 'view' ? quietKeeper(f, me.id, s.phone ?? '') : null;
+    if (!quiet) toldQuiet.current = false;
+    else if (!toldQuiet.current) {
+      toldQuiet.current = true;
+      setShareNote({
+        text: tr(`${quiet.name}'s phone has been quiet for ${quiet.minutes} min – take the card over?`, `Das Handy von ${quiet.name} meldet sich seit ${quiet.minutes} Min. nicht – Scorecard übernehmen?`),
+        act: { label: tr('Take over', 'Übernehmen'), run: () => void takeTheCard(me.id) },
+      });
+    }
+  }, [shareEvent, views]); // eslint-disable-line react-hooks/exhaustive-deps
   // shot by sound – a test (Sascha 18.10.2026): listening while this screen is open, every crack kept with time and place
   const soundTest = useMemo(() => soundTestOn() && !round.preview && !props.game, []);
   const [listening, setListening] = useState(false);
@@ -1913,6 +1952,25 @@ export function HoleScreen(props: {
                 <button type="button" className="icon-btn" aria-label={tr('Keep it', 'Behalten')} onClick={() => setRemoveShot(null)}>
                   ✕
                 </button>
+              </span>
+            </div>
+          )}
+          {shareNote && !scoreSheet && (
+            <div className="test-shot-row">
+              <span className="map-hint detected share-note" role="status">
+                <span>{shareNote.text}</span>
+                {shareNote.act && (
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => {
+                      shareNote.act!.run();
+                      setShareNote(null);
+                    }}
+                  >
+                    {shareNote.act.label}
+                  </button>
+                )}
               </span>
             </div>
           )}

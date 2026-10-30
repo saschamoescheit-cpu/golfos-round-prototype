@@ -7,7 +7,7 @@ import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
 import { loadProfile, saveProfile, shownName } from '../lib/profile';
 import { loadSession, signIn, signInAnonymously } from '../lib/sync';
-import { pushAsked } from '../lib/push';
+import { inviteByName, pushAsked } from '../lib/push';
 import { tr } from '../lib/i18n';
 import { Qr } from './ShareGame';
 import { Avatar } from './Avatar';
@@ -155,8 +155,46 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
       <button type="button" className="btn-secondary" onClick={share}>
         {tr('Share the link', 'Link teilen')}
       </button>
+      <InviteByName code={shared.code} />
       {msg && <span className="muted small">{msg}</span>}
     </>
+  );
+}
+
+/** A player with a GolfOS account invited by his user name (Sascha 30.10.2026): a push, a tap – he is in, no asking. */
+function InviteByName(props: { code: string }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState<string | null>(null);
+  const go = async () => {
+    setBusy(true);
+    const r = await inviteByName(props.code, name, myName());
+    setBusy(false);
+    const n = name.trim().replace(/^@/, '');
+    setSaid(
+      r === 'sent'
+        ? tr(`Invited – ${n} gets a notification and is in with a tap.`, `Eingeladen – ${n} bekommt eine Mitteilung und ist mit einem Tipp dabei.`)
+        : r === 'silent'
+          ? tr(`Invited – ${n} has notifications off: send him the link, he is in at once.`, `Eingeladen – ${n} hat Mitteilungen aus: schick ihm den Link, er ist sofort drin.`)
+          : r === 'unknown'
+            ? tr(`No GolfOS account with the user name "${n}".`, `Kein GolfOS-Konto mit dem Benutzernamen „${n}“.`)
+            : r === 'not-set-up'
+              ? tr('Inviting by user name is not set up on the server yet – share the link instead.', 'Einladen per Benutzername ist auf dem Server noch nicht eingerichtet – teile den Link.')
+              : tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'),
+    );
+    if (r === 'sent' || r === 'silent') setName('');
+  };
+  return (
+    <div className="field invite-name">
+      <label htmlFor="invite-name">{tr('Or invite by GolfOS user name', 'Oder per GolfOS-Benutzername einladen')}</label>
+      <div className="invite-name-row">
+        <input id="invite-name" className="input" value={name} autoCapitalize="none" autoComplete="off" placeholder="cedric.m" onChange={(e) => { setName(e.target.value); setSaid(null); }} />
+        <button type="button" className="btn-secondary" disabled={busy || name.trim().length < 3} onClick={() => void go()}>
+          {busy ? '…' : tr('Invite', 'Einladen')}
+        </button>
+      </div>
+      {said && <span className="muted small" role="status">{said}</span>}
+    </div>
   );
 }
 
