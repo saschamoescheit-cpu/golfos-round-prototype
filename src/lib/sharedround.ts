@@ -1,7 +1,7 @@
 import type { CourseSummary, HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
 import { emptyEntry } from './scoring';
 import { newId } from './storage';
-import { DEFAULT_FORMAT, isTeamMode, leaderboard, teamHandicap, type Board } from './games';
+import { DEFAULT_FORMAT, formatOf, holeScoresOf, isTeamMode, leaderboard, teamHandicap, type Board } from './games';
 import { cleanCode, isGame, newCode } from './sharedgame';
 import { authToken, SUPABASE_KEY, SUPABASE_URL } from './sync';
 import { tr } from './i18n';
@@ -68,6 +68,8 @@ export interface RoundEvent {
   createdAt: string;
   /** the phone that set the event up – holes and format come from there */
   by?: string;
+  /** a tournament's net classes: limits on the playing handicap ([18]: A up to 18, B above) */
+  classes?: number[];
   flights: Record<string, Flight>;
 }
 /** A round that is part of an event: the code, its flight, this phone, and the flight's scores as last exchanged (the
@@ -120,7 +122,7 @@ export function flightOf(round: Round, id: string, name: string, phone: string, 
 export const flightName = (round: Pick<Round, 'players'>): string => round.players.map((p) => p.name).join(' · ');
 
 /** The event of a round being shared. */
-export function eventOf(round: Round, course: CourseSummary, o: { name: string; tournament: boolean; flight: string; phone: string; who: string }): RoundEvent {
+export function eventOf(round: Round, course: CourseSummary, o: { name: string; tournament: boolean; flight: string; phone: string; who: string; classes?: number[] }): RoundEvent {
   return {
     kind: 'round-event',
     id: newId(),
@@ -130,6 +132,7 @@ export function eventOf(round: Round, course: CourseSummary, o: { name: string; 
     ...eventFrame(round),
     createdAt: new Date().toISOString(),
     by: o.phone,
+    ...(o.classes?.length ? { classes: o.classes } : {}),
     flights: { [o.flight]: flightOf(round, o.flight, flightName(round), o.phone, o.tournament, o.who) },
   };
 }
@@ -396,6 +399,104 @@ export function eventBoard(ev: RoundEvent): Board {
   return leaderboard(round, { ...fmt, mode: isTeamMode(fmt.mode) ? fmt.mode : 'single', matchplay: false });
 }
 
+// ---------- a tournament's standings (Sascha's concept 30.10.2026, the night run) ----------
+// Gross or net, net classes by playing handicap, "T3" for a tie, "F" for a round finished – and once everyone is in,
+// a tie broken by countback (R&A: the last 9, 6, 3 and the last hole, the holes' own net values with the handicap).
+
+export interface Standing {
+  key: string; // "<flight>/<player>"
+  name: string;
+  flight: string;
+  /** the class by playing handicap: "A", "B" … ('' without classes) */
+  cls: string;
+  value: string;
+  sort: number | null;
+  thru: number;
+  finished: boolean;
+  /** "1", "T3", "–" */
+  pos: string;
+  /** placed by countback */
+  countback: boolean;
+}
+const CLASS_NAMES = ['A', 'B', 'C', 'D'];
+/** The class of a playing handicap: limits [18] – A up to 18, B above; [12, 24] – A, B, C. */
+export const classOf = (hcp: number | null, limits: number[] | undefined): string => (!limits?.length ? '' : CLASS_NAMES[limits.filter((l) => (hcp ?? 54) > l).length] ?? '');
+/** Countback sums of a player's hole values: the last 9, 6, 3, 1 holes (fewer holes: as many as there are). */
+const countbackOf = (per: (number | null)[]): number[] => [9, 6, 3, 1].map((n) => per.slice(-Math.min(n, per.length)).reduce<number>((s, v) => s + (v ?? 0), 0));
+
+export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: string | null } = {}): { title: string; higherBetter: boolean; rows: Standing[] } {
+  const fmt = ev.format ?? DEFAULT_FORMAT;
+  const players: Player[] = [];
+  const entries: Round['entries'] = {};
+  const meta: Record<string, { flight: string; cls: string }> = {};
+  for (const f of Object.values(ev.flights)) {
+    for (const p of f.players) {
+      const id = `${f.id}/${p.id}`;
+      players.push({ id, name: p.name, playingHandicap: p.playingHandicap, isMe: false });
+      entries[id] = ev.holes.map((_, i) => withCell(emptyEntry(), scoreAt(f, p.id, i)));
+      meta[id] = { flight: f.name, cls: classOf(p.playingHandicap, ev.classes) };
+    }
+  }
+  const round: Round = { id: ev.id, createdAt: ev.createdAt, finishedAt: null, courseId: ev.course.id, courseName: ev.course.name, loopOrder: ev.loopOrder, holes: ev.holes, mode: 'quick', players, entries, currentHole: 0 };
+  const hb = fmt.scoring === 'stableford';
+  const gross = !!o.gross || (fmt.allowance ?? 100) === 0;
+  const n = ev.holes.length;
+  const all = players
+    .filter((p) => !o.cls || meta[p.id].cls === o.cls)
+    .map((p) => {
+      const per = holeScoresOf(round, p.id, fmt, gross);
+      const xs = per.filter((v): v is number => v != null);
+      return { p, per, sort: xs.length ? xs.reduce((s, v) => s + v, 0) : null, thru: xs.length, cb: countbackOf(per) };
+    });
+  const better = (a: number, b: number) => (hb ? b - a : a - b);
+  const everyoneIn = all.length > 0 && all.every((x) => x.thru === n);
+  const cmp = (a: (typeof all)[number], b: (typeof all)[number]): number => {
+    if (a.sort == null || b.sort == null) return a.sort == null ? (b.sort == null ? 0 : 1) : -1;
+    if (a.sort !== b.sort) return better(a.sort, b.sort);
+    if (!everyoneIn) return 0;
+    for (let k = 0; k < 4; k++) if (a.cb[k] !== b.cb[k]) return better(a.cb[k], b.cb[k]);
+    return 0;
+  };
+  const sorted = all.slice().sort(cmp);
+  const unit = (v: number) => (hb ? tr(`${v} pts`, `${v} Pkt.`) : v === 0 ? 'Par' : v > 0 ? `+${v}` : String(v));
+  const rows = sorted.map((x, k) => {
+    const first = sorted.findIndex((y) => cmp(x, y) === 0);
+    const tied = sorted.filter((y) => cmp(x, y) === 0).length > 1;
+    const sameScore = sorted.filter((y) => y.sort != null && y.sort === x.sort).length > 1;
+    return {
+      key: x.p.id,
+      name: x.p.name,
+      flight: meta[x.p.id].flight,
+      cls: meta[x.p.id].cls,
+      value: x.sort == null ? '–' : unit(x.sort),
+      sort: x.sort,
+      thru: x.thru,
+      finished: x.thru === n,
+      pos: x.sort == null ? '–' : `${tied ? 'T' : ''}${first + 1}`,
+      countback: everyoneIn && sameScore && !tied,
+      _k: k,
+    };
+  });
+  const title = `${formatOf({ ...fmt, mode: isTeamMode(fmt.mode) ? fmt.mode : 'single', matchplay: false }).name()} · ${gross ? (hb ? tr('Stableford gross', 'Stableford brutto') : tr('gross', 'brutto')) : hb ? tr('Stableford net', 'Stableford netto') : tr('net', 'netto')}`;
+  return { title, higherBetter: hb, rows: rows.map(({ _k, ...r }) => r) };
+}
+/** The results as a list to keep or pass on (CSV, semicolons as a spreadsheet in German takes them). */
+export function standingsCsv(ev: RoundEvent, gross = false): string {
+  const s = eventStandings(ev, { gross });
+  const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const head = [tr('Place', 'Platz'), tr('Player', 'Spieler'), 'Flight', ...(ev.classes?.length ? [tr('Class', 'Klasse')] : []), s.higherBetter ? tr('Points', 'Punkte') : tr('To par', 'Zu Par'), tr('Holes', 'Löcher'), tr('Countback', 'Stechen')];
+  const lines = s.rows.map((r) => [r.pos, r.name, r.flight, ...(ev.classes?.length ? [r.cls] : []), r.sort ?? '', r.thru, r.countback ? tr('yes', 'ja') : ''].map(q).join(';'));
+  return [`${q(ev.name)};${q(s.title)}`, head.map(q).join(';'), ...lines].join('\n');
+}
+/** A tournament's flights as they stand: holes played, and when a phone of the flight was last heard of. */
+export function flightStatus(ev: RoundEvent, now = Date.now()): { id: string; name: string; thru: number; quietMin: number | null; finished: boolean }[] {
+  return Object.values(ev.flights).map((f) => {
+    const thru = Math.max(0, ...f.players.map((p) => ev.holes.filter((_, i) => scoreAt(f, p.id, i) != null).length));
+    const last = Math.max(0, ...Object.values(f.phones ?? {}).map((ph) => new Date(ph.seen ?? ph.at).getTime()));
+    return { id: f.id, name: f.name, thru, quietMin: last ? Math.floor((now - last) / 60000) : null, finished: !!f.finishedAt || thru === ev.holes.length };
+  });
+}
+
 // ---------- the server (the table of the shared games) ----------
 
 const table = () => `${SUPABASE_URL}/rest/v1/golfos_shared_games`;
@@ -425,7 +526,7 @@ function keepEvent(code: string, ev: RoundEvent): void {
 
 /** Shares a round (or the round being set up): a new code, the event on the server. The round with its share, or null
  *  (no connection). */
-export async function shareRound(round: Round, course: CourseSummary, o: { name: string; tournament: boolean; who: string }): Promise<Round | null> {
+export async function shareRound(round: Round, course: CourseSummary, o: { name: string; tournament: boolean; who: string; classes?: number[] }): Promise<Round | null> {
   const h = await headers();
   if (!h) return null;
   const flight = newId();

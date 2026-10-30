@@ -810,7 +810,8 @@ export function HoleScreen(props: {
     const on = (e: Event) => {
       const d = (e as CustomEvent<{ code: string; name: string; hcp: string }>).detail;
       const r = latestRound.current;
-      if (!r.shared || d.code !== r.shared.code || !d.name.trim() || isTeamMode(r.format?.mode) || r.players.length >= 4) return;
+      // (a tournament: the one let in plays in his own flight, or picks his name in one)
+      if (!r.shared || d.code !== r.shared.code || r.shared.tournament || !d.name.trim() || isTeamMode(r.format?.mode) || r.players.length >= 4) return;
       const ev = cachedEvent(d.code);
       if (ev?.flights[r.shared.flight]?.by && ev.flights[r.shared.flight].by !== r.shared.phone) return;
       if (r.players.some((p) => p.name.trim().toLowerCase() === d.name.trim().toLowerCase())) return;

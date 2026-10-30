@@ -1817,3 +1817,7 @@ button.tile:disabled { opacity: 1; }
 .invite-name-row .input { flex: 1; min-width: 0; }
 .invite-name-row button { flex: none; width: auto; padding: 0 16px; }
 .share-note { flex-wrap: wrap; }
+/* a tournament's board: gross / net, classes, the flights as they stand (Sascha's concept 30.10.2026) */
+.lb-filters { margin: 4px 0; }
+.lb-cb { display: block; font-size: 11px; }
+.flight-status { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }

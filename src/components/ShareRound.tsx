@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventBoard, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, roundJoinLink, shareRound, showNearby, writerOf, type Flight, type NearbyRound, type RoundEvent } from '../lib/sharedround';
+import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightStatus, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, roundJoinLink, shareRound, showNearby, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -48,6 +48,8 @@ function here(): Promise<{ lat: number; lon: number } | null> {
 export function InvitePanel(props: { round: Round; onShared: (r: Round) => void; compact?: boolean }) {
   const shared = props.round.shared;
   const [tournament, setTournament] = useState(false);
+  // a tournament's net classes by playing handicap (Sascha's concept 30.10.2026)
+  const [classes, setClasses] = useState<number[]>([]);
   const [name, setName] = useState(() => `${props.round.courseName} · ${new Date(props.round.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -110,6 +112,14 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
           <div className="field">
             <label htmlFor="event-name">{tr('Name of the tournament', 'Name des Turniers')}</label>
             <input id="event-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            <span className="muted small">{tr('Net classes by playing handicap', 'Netto-Klassen nach Spielvorgabe')}</span>
+            <div className="chip-set">
+              {([[], [18], [12, 24]] as number[][]).map((c) => (
+                <button key={c.join()} type="button" className={`chip${classes.join() === c.join() ? ' on' : ''}`} aria-pressed={classes.join() === c.join()} onClick={() => setClasses(c)}>
+                  {!c.length ? tr('None', 'Keine') : c.length === 1 ? tr(`A up to ${c[0]} · B`, `A bis ${c[0]} · B`) : tr(`A up to ${c[0]} · B up to ${c[1]} · C`, `A bis ${c[0]} · B bis ${c[1]} · C`)}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <button
@@ -118,7 +128,7 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
           disabled={busy}
           onClick={async () => {
             setBusy(true);
-            const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament, who: myName() });
+            const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament, who: myName(), ...(tournament && classes.length ? { classes } : {}) });
             setBusy(false);
             if (r) {
               props.onShared(r);
@@ -563,46 +573,117 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
  *  marker's differ is flagged with the holes. */
 export function EventBoardCard(props: { code: string; myFlight: string }) {
   const [ev, setEv] = useState(() => cachedEvent(props.code));
+  // a tournament (Sascha's concept 30.10.2026): gross or net, one class or all
+  const [gross, setGross] = useState(false);
+  const [cls, setCls] = useState<string | null>(null);
   useEffect(() => {
     const on = () => setEv(cachedEvent(props.code));
     window.addEventListener('golfos:event-changed', on);
     return () => window.removeEventListener('golfos:event-changed', on);
   }, [props.code]);
   if (!ev) return null;
-  const b = eventBoard(ev);
+  const b = eventStandings(ev, { gross, cls });
   const mine = new Set((ev.flights[props.myFlight]?.players ?? []).map((p) => `${props.myFlight}/${p.id}`));
   const flights = Object.keys(ev.flights).length;
+  const net = (ev.format?.allowance ?? 100) > 0;
+  const classes = ev.classes?.length ? CLASS_LETTERS.slice(0, ev.classes.length + 1) : [];
   const diff = (key: string): string | null => {
     const [fid, pid] = key.split('/');
     const f = ev.flights[fid];
     const holes = f ? differences(f, pid) : [];
     return holes.length ? holes.map((i) => ev.holes[i]?.label ?? String(i + 1)).join(', ') : null;
   };
+  const csv = async () => {
+    const text = standingsCsv(ev, gross);
+    const file = new File([`\uFEFF${text}`], `${ev.name.replace(/[^\p{L}\p{N} ._-]+/gu, '').trim() || 'Ergebnis'}.csv`, { type: 'text/csv' });
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean; share?: (d: { files: File[]; title?: string }) => Promise<void> };
+    try {
+      if (nav.canShare?.({ files: [file] }) && nav.share) return await nav.share({ files: [file], title: ev.name });
+    } catch {
+      return; // cancelled
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+  const status = ev.tournament && flights > 1 ? flightStatus(ev) : [];
   return (
     <section className="card stats-card leaderboard event-board">
       <h2>{ev.name}</h2>
       <span className="muted small">
         {ev.tournament ? tr(`Tournament · ${flights} ${flights === 1 ? 'flight' : 'flights'}`, `Turnier · ${flights} ${flights === 1 ? 'Flight' : 'Flights'}`) : tr('Live · the phones of the flight', 'Live · alle Handys des Flights')} · {b.title}
       </span>
+      {ev.tournament && (net || classes.length > 0) && (
+        <div className="chip-set lb-filters">
+          {net && (
+            <>
+              <button type="button" className={`chip${!gross ? ' on' : ''}`} aria-pressed={!gross} onClick={() => setGross(false)}>
+                {tr('Net', 'Netto')}
+              </button>
+              <button type="button" className={`chip${gross ? ' on' : ''}`} aria-pressed={gross} onClick={() => setGross(true)}>
+                {tr('Gross', 'Brutto')}
+              </button>
+            </>
+          )}
+          {classes.length > 0 && (
+            <>
+              <button type="button" className={`chip${cls == null ? ' on' : ''}`} aria-pressed={cls == null} onClick={() => setCls(null)}>
+                {tr('All', 'Alle')}
+              </button>
+              {classes.map((c) => (
+                <button key={c} type="button" className={`chip${cls === c ? ' on' : ''}`} aria-pressed={cls === c} onClick={() => setCls(c)}>
+                  {tr(`Class ${c}`, `Klasse ${c}`)}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
       <ol className="lb-rows">
         {b.rows.map((r) => {
           const d = diff(r.key);
           return (
             <li key={r.key} className={mine.has(r.key) ? 'lb-mine' : undefined}>
-              <span className="lb-rank">{r.rank}</span>
+              <span className="lb-rank">{r.pos}</span>
               <span className="lb-name">
                 <Avatar name={r.name} me={mine.has(r.key)} size={24} />
                 <span>
                   {r.name}
+                  {r.cls && <small className="muted"> · {r.cls}</small>}
                   {d && <small className="lb-diff">{tr(`marker differs: ${d}`, `Zähler weicht ab: ${d}`)}</small>}
+                  {r.countback && <small className="muted lb-cb">{tr('placed by countback', 'nach Stechen')}</small>}
                 </span>
               </span>
               <span className="lb-value">{r.value}</span>
-              <span className="lb-thru muted small">{r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
+              <span className="lb-thru muted small">{r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '–'}</span>
             </li>
           );
         })}
       </ol>
+      {/* the flights as they stand – who is where, a flight gone quiet (Sascha's concept: the organiser's view) */}
+      {status.length > 0 && (
+        <div className="flight-status">
+          <span className="eyebrow">{tr('Flights', 'Flights')}</span>
+          {status.map((s) => (
+            <span key={s.id} className="small">
+              <strong>{s.name}</strong>
+              <span className="muted">
+                {' · '}
+                {s.finished ? tr('finished', 'fertig') : s.thru ? tr(`thru ${s.thru}`, `nach ${s.thru} ${s.thru === 1 ? 'Loch' : 'Löchern'}`) : tr('not started', 'noch nicht gestartet')}
+                {!s.finished && s.quietMin != null && s.quietMin >= 15 ? tr(` · quiet for ${s.quietMin} min`, ` · seit ${s.quietMin} Min. still`) : ''}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
+      {ev.tournament && (
+        <button type="button" className="btn-secondary" onClick={() => void csv()}>
+          {tr('Results as a list (CSV)', 'Ergebnisliste (CSV)')}
+        </button>
+      )}
     </section>
   );
 }
+const CLASS_LETTERS = ['A', 'B', 'C', 'D'];

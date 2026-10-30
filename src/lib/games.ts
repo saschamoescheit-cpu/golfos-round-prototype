@@ -184,6 +184,16 @@ function holeScore(v: ReturnType<typeof holeValues>[number], scoring: Scoring): 
   return scoring === 'stableford' ? v.points : scoring === 'net' ? v.net - v.par : v.gross - v.par;
 }
 
+/** A player's value on every hole as the format counts it – to par (gross or net) or Stableford points; null where
+ *  no score. `gross`: without the handicap (strokes, or Stableford points without strokes received). */
+export function holeScoresOf(round: Round, playerId: string, format: RoundFormat, gross = false): (number | null)[] {
+  const allowance = gross ? 0 : (format.allowance ?? 100);
+  const scoring: Scoring = format.scoring === 'stableford' ? 'stableford' : allowance > 0 ? 'net' : 'stroke';
+  // Stableford without the handicap: the points of a player with none (0 strokes received)
+  const r = gross && scoring === 'stableford' ? { ...round, players: round.players.map((p) => (p.id === playerId ? { ...p, playingHandicap: 0 } : p)) } : round;
+  return holeValues(r, playerId, allowance).map((v) => holeScore(v, scoring));
+}
+
 function rank<T extends { sort: number | null }>(rows: T[], higherBetter: boolean): (T & { rank: number })[] {
   const sorted = rows.slice().sort((a, b) => (a.sort == null ? 1 : b.sort == null ? -1 : higherBetter ? b.sort - a.sort : a.sort - b.sort));
   return sorted.map((r) => ({ ...r, rank: r.sort == null ? sorted.length : sorted.findIndex((x) => x.sort === r.sort) + 1 }));

@@ -238,7 +238,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   useEffect(() => {
     const on = (e: Event) => {
       const d = (e as CustomEvent<{ code: string; name: string; hcp: string }>).detail;
-      if (!share || d.code !== share.code || !d.name.trim()) return;
+      if (!share || d.code !== share.code || share.tournament || !d.name.trim()) return; // a tournament: his own flight
       const known = (n: string) => n.trim().toLowerCase() === d.name.trim().toLowerCase();
       setOthers((os) => {
         if (known(me.name) || os.some((o) => known(o.name)) || os.length >= 3) return os;

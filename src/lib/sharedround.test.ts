@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
-import { defaultMarkers, differences, eventBoard, eventOf, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, type RoundEvent } from './sharedround';
+import { classOf, defaultMarkers, differences, eventBoard, eventOf, eventStandings, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, standingsCsv, type RoundEvent } from './sharedround';
 
 // A round on several phones (Sascha 29.10.2026): the flight partners on their own phones – everyone keeps his own
 // score, a team's card one phone of the team (another can take it over), in a tournament everyone also marks a partner.
@@ -249,5 +249,38 @@ describe('a team keeper gone quiet', () => {
     expect(m.changedHere).toBe(true);
     expect(Date.now() - new Date(m.flight.phones!['ph-host'].seen!).getTime()).toBeLessThan(5000);
     expect(mergeFlight(sascha, m.flight, false, 'Sascha').changedHere).toBe(false); // not again at once
+  });
+});
+// Sascha's concept 30.10.2026 (the night run): a tournament's standings – gross / net, classes, ties, countback
+describe('a tournament: the standings', () => {
+  const cell = (s: number) => ({ s });
+  function event(scores: Record<string, number[]>, hcps: Record<string, number>, o: { allowance?: number; classes?: number[] } = {}): RoundEvent {
+    const r = round(Object.keys(scores).map((id) => ({ id, name: id.toUpperCase(), hcp: hcps[id] })));
+    const ev = eventOf({ ...r, format: { mode: 'single', scoring: 'net', allowance: o.allowance ?? 100 } }, course, { name: 'Clubturnier', tournament: true, flight: 'f1', phone: 'ph', who: 'Sascha', classes: o.classes });
+    const f = ev.flights.f1;
+    return { ...ev, flights: { f1: { ...f, scores: Object.fromEntries(Object.entries(scores).map(([id, xs]) => [id, holes.map((_, i) => (xs[i] != null ? cell(xs[i]) : null))])) } } };
+  }
+  it('gross: a tie is "T1" while not everyone is in – then broken by countback (the last hole)', () => {
+    const open = eventStandings(event({ a: [4, 4, 4], b: [5, 4, 3], c: [5, 5] }, { a: 3, b: 10, c: 20 }, { allowance: 0 }));
+    expect(open.rows.map((r) => [r.name, r.pos, r.value, r.finished])).toEqual([['A', 'T1', 'Par', true], ['B', 'T1', 'Par', true], ['C', '3', '+2', false]]);
+    const done = eventStandings(event({ a: [4, 4, 4], b: [5, 4, 3], c: [5, 5, 5] }, { a: 3, b: 10, c: 20 }, { allowance: 0 }));
+    expect(done.rows.map((r) => [r.name, r.pos, r.countback])).toEqual([['B', '1', true], ['A', '2', true], ['C', '3', false]]);
+  });
+  it('net with the handicap, or gross by choice; classes by playing handicap', () => {
+    const ev = event({ a: [5, 5, 5], b: [4, 4, 4] }, { a: 18, b: 0 }, { classes: [12] });
+    expect(eventStandings(ev).rows.map((r) => [r.name, r.value, r.cls])).toEqual([['A', '-15', 'B'], ['B', 'Par', 'A']]); // 18 strokes on 3 holes: 6 each – a 5 is net -1, 5 under par
+    expect(eventStandings(ev, { gross: true }).rows.map((r) => r.name)).toEqual(['B', 'A']);
+    expect(eventStandings(ev, { cls: 'A' }).rows.map((r) => r.name)).toEqual(['B']);
+    expect(classOf(12, [12])).toBe('A');
+    expect(classOf(12.5, [12, 24])).toBe('B');
+    expect(classOf(null, [12, 24])).toBe('C');
+  });
+  it('the results as CSV: place, player, flight, class, score, holes', () => {
+    const csv = standingsCsv(event({ a: [4, 4, 4], b: [5, 5, 5] }, { a: 3, b: 30 }, { allowance: 0, classes: [18] }), true);
+    const lines = csv.split('\n');
+    expect(lines[0]).toContain('"Clubturnier"');
+    expect(lines[1]).toBe('"Place";"Player";"Flight";"Class";"To par";"Holes";"Countback"'); // the tests speak English
+    expect(lines[2]).toBe('"1";"A";"A · B";"A";"0";"3";""');
+    expect(lines[3]).toBe('"2";"B";"A · B";"B";"3";"3";""');
   });
 });
