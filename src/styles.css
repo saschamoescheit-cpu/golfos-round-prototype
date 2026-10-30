@@ -677,12 +677,12 @@ table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 /* GPS problem on the hole map: the reason and a retry */
 .map-hint.gps-hint { display: flex; align-items: center; gap: 8px; max-width: 100%; }
 .map-hint.gps-hint .btn-ghost { min-height: 44px; color: var(--brand-text); white-space: nowrap; }
-/* Pocket mode: black, swallows touches, hold 1 s to leave (GPS keeps recording) */
+/* Pocket mode: black, swallows touches, hold 3 s to leave (GPS keeps recording) – the hint lights up over the 3 s */
 .pocket { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; align-items: flex-end; justify-content: center; padding: 0 24px calc(48px + env(safe-area-inset-bottom)); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .pocket-info { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: #555; font: 500 13px var(--body); max-width: 320px; }
 .pocket-info strong { color: #777; font: 600 15px var(--display, var(--body)); }
 .pocket-warn { color: #b8893a; }
-.pocket-hold { margin-top: 16px; padding: 10px 16px; border: 1px solid #333; border-radius: 999px; color: #666; transition: color 1s, border-color 1s, background 1s; }
+.pocket-hold { margin-top: 16px; padding: 10px 16px; border: 1px solid #333; border-radius: 999px; color: #666; transition: color 3s, border-color 3s, background 3s; }
 .pocket-hold.on { color: #ddd; border-color: #ddd; background: #111; }
 /* Small addition to "From tee": the last recognised shot */
 .map-shot-last { margin-left: 8px; color: var(--muted); font-size: 12px; }

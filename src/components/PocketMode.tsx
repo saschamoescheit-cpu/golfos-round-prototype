@@ -4,12 +4,14 @@ import { tr } from '../lib/i18n';
 
 // Pocket mode: a web app gets no GPS while the iPhone is locked – so the screen is kept awake (Wake Lock) and turned
 // black (OLED: almost no power), touches in the pocket do nothing, and the GPS track keeps growing for the shot
-// detection after the round – and the microphone keeps listening for "shot by sound". Hold for 1 second to leave.
+// detection after the round – and the microphone keeps listening for "shot by sound". Hold for 3 seconds to leave
+// (Sascha 30.10.2026: "too sensitive – it ends by itself in the trouser pocket"; it was 1 second).
 // Taken out on 13.10.2026, back as a test on 28.10.2026 (Sascha: "test it on my next round"), switched on in the profile.
 
 type WakeLockSentinel = { release: () => Promise<void>; addEventListener?: (t: 'release', f: () => void) => void };
 type WakeLockApi = { request: (type: 'screen') => Promise<WakeLockSentinel> };
 
+const HOLD_MS = 3000;
 const KEY = 'golfos.pockettest.v1';
 /** The test switch in the profile ("Pocket mode (test)"): the button on the hole map. */
 export function pocketTestOn(): boolean {
@@ -76,7 +78,7 @@ export function PocketMode(props: { roundId: string; onExit: () => void; listeni
 
   const start = () => {
     setHolding(true);
-    hold.current = window.setTimeout(() => props.onExit(), 1000);
+    hold.current = window.setTimeout(() => props.onExit(), HOLD_MS);
   };
   const stop = () => {
     setHolding(false);
@@ -116,7 +118,7 @@ export function PocketMode(props: { roundId: string; onExit: () => void; listeni
             )}
           </span>
         )}
-        <span className={`pocket-hold${holding ? ' on' : ''}`}>{tr('Hold for 1 second to leave', 'Zum Beenden 1 Sekunde gedrückt halten')}</span>
+        <span className={`pocket-hold${holding ? ' on' : ''}`}>{tr('Hold for 3 seconds to leave', 'Zum Beenden 3 Sekunden gedrückt halten')}</span>
       </div>
     </div>
   );

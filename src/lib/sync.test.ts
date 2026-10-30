@@ -43,29 +43,49 @@ describe('sync between devices', () => {
   it('every setting of the app reaches the other device – switched on and off (Sascha 29.10.2026)', async () => {
     const srv = server();
     const phone = device({
-      'golfos.soundtest.v1': '1', 'golfos.pockettest.v1': '1', 'golfos.mapview.v1': '2d', 'golfos.training.swingtempo.v1': 'tour',
+      'golfos.testmode.v1': '1', 'golfos.mapview.v1': '2d', 'golfos.training.swingtempo.v1': 'tour',
       'golfos.pushkinds.v1': { rounds: true, games: false, weather: true }, 'golfos.caddie.v1': { voice: true }, 'golfos.spread.v1': '0',
     });
     const ipad = device();
     await syncOnce(phone, srv, clock);
     await syncOnce(ipad, srv, clock);
-    expect(ipad.get('golfos.soundtest.v1')).toBe('1');
-    expect(ipad.get('golfos.pockettest.v1')).toBe('1');
+    expect(ipad.get('golfos.testmode.v1')).toBe('1');
     expect(ipad.get('golfos.mapview.v1')).toBe('2d'); // plain text stays plain text, as the app reads it
     expect(ipad.get('golfos.training.swingtempo.v1')).toBe('tour');
     expect(ipad.get('golfos.spread.v1')).toBe('0');
     expect(JSON.parse(ipad.get('golfos.pushkinds.v1')!).games).toBe(false);
     expect(JSON.parse(ipad.get('golfos.caddie.v1')!).voice).toBe(true);
     // switched off on the phone (the key removed): off on the iPad too
-    phone.remove('golfos.soundtest.v1');
+    phone.remove('golfos.testmode.v1');
     await syncOnce(phone, srv, clock);
     await syncOnce(ipad, srv, clock);
-    expect(ipad.get('golfos.soundtest.v1')).toBeNull();
+    expect(ipad.get('golfos.testmode.v1')).toBeNull();
     // and on again from the iPad
-    ipad.set('golfos.soundtest.v1', '1');
+    ipad.set('golfos.testmode.v1', '1');
     await syncOnce(ipad, srv, clock);
     await syncOnce(phone, srv, clock);
+    expect(phone.get('golfos.testmode.v1')).toBe('1');
+  });
+  it('shot by sound and pocket mode stay on the phone – off on the iPad does not switch them off (Sascha 30.10.2026)', async () => {
+    const srv = server();
+    // rows from the days they were synced: off on the iPad (deleted), on from the phone
+    srv.rows.set('setting|golfos.soundtest.v1', { kind: 'setting', id: 'golfos.soundtest.v1', data: {}, updated_at: '2026-10-29T20:00:00Z', deleted: true });
+    srv.rows.set('setting|golfos.pockettest.v1', { kind: 'setting', id: 'golfos.pockettest.v1', data: 1, updated_at: '2026-10-29T20:00:00Z', deleted: false });
+    const phone = device({ 'golfos.soundtest.v1': '1', 'golfos.pockettest.v1': '1' });
+    const ipad = device();
+    await syncOnce(phone, srv, clock);
+    await syncOnce(ipad, srv, clock);
     expect(phone.get('golfos.soundtest.v1')).toBe('1');
+    expect(phone.get('golfos.pockettest.v1')).toBe('1');
+    expect(ipad.get('golfos.pockettest.v1')).toBeNull();
+    // switched off on the iPad: the phone keeps them
+    ipad.set('golfos.pockettest.v1', '1');
+    await syncOnce(ipad, srv, clock);
+    ipad.remove('golfos.pockettest.v1');
+    await syncOnce(ipad, srv, clock);
+    await syncOnce(phone, srv, clock);
+    expect(phone.get('golfos.pockettest.v1')).toBe('1');
+    expect(srv.rows.get('setting|golfos.pockettest.v1')!.updated_at).toBe('2026-10-29T20:00:00Z'); // never sent again
   });
   it('a round and the profile from the phone appear on the iPad; the iPad keeps the bag from the server', async () => {
     const srv = server();

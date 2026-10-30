@@ -287,7 +287,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           >
             <span className="switch-label">
               <span>{tr('Shot by sound (test)', 'Schlag per Ton (Test)')}</span>
-              <span className="muted small">{tr('Hears the strike during the round', 'Hört während der Runde den Treffmoment')}</span>
+              <span className="muted small">{tr('Hears the strike during the round · this device only', 'Hört während der Runde den Treffmoment · nur auf diesem Gerät')}</span>
             </span>
             <span className={`drawer-switch${soundTest ? ' on' : ''}`} aria-hidden="true" />
           </button>
@@ -304,7 +304,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           >
             <span className="switch-label">
               <span>{tr('Pocket mode (test)', 'Taschenmodus (Test)')}</span>
-              <span className="muted small">{tr('Screen black instead of locked – GPS and the shot by sound keep going', 'Bildschirm schwarz statt gesperrt – GPS und Schlag per Ton laufen weiter')}</span>
+              <span className="muted small">{tr('Screen black instead of locked – GPS and the shot by sound keep going · this device only','Bildschirm schwarz statt gesperrt – GPS und Schlag per Ton laufen weiter · nur auf diesem Gerät')}</span>
             </span>
             <span className={`drawer-switch${pocketTest ? ' on' : ''}`} aria-hidden="true" />
           </button>

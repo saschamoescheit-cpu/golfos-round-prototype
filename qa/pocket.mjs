@@ -1,6 +1,6 @@
 // QA (Sascha 28.10.2026: "the screen not locked but inactive, so GPS and the shot detection work – I want to test it on
 // my next round", and shot by sound with it): pocket mode as a test, switched on in the profile. The screen black, the
-// GPS track keeps growing, the microphone keeps listening (Edge plays a sound file as the microphone); hold 1 s to leave –
+// GPS track keeps growing, the microphone keeps listening (Edge plays a sound file as the microphone); hold 3 s to leave –
 // like unlocking: the next fix is marked "phone out at the ball" for the shot detection, the map shows again.
 // Usage: node qa/pocket.mjs [url]
 import { chromium } from 'playwright';
@@ -127,13 +127,19 @@ const box = await pocket.boundingBox();
 await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 await p.waitForTimeout(400);
 ok((await pocket.count()) === 1, 'a short touch does nothing');
-// hold for 1 s: out of the pocket
+// held for 1.5 s – a knock in the trouser pocket (Sascha 30.10.2026: "too sensitive"): still in the pocket
 await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 await p.mouse.down();
-await p.waitForTimeout(1300);
+await p.waitForTimeout(1500);
+await p.mouse.up();
+await p.waitForTimeout(400);
+ok((await pocket.count()) === 1, 'held for 1.5 s: still in the pocket');
+// hold for 3 s: out of the pocket
+await p.mouse.down();
+await p.waitForTimeout(3300);
 await p.mouse.up();
 await p.waitForTimeout(500);
-ok((await pocket.count()) === 0 && (await p.locator('.map-hole-no').count()) === 1, 'held for 1 s: the map again');
+ok((await pocket.count()) === 0 && (await p.locator('.map-hole-no').count()) === 1, 'held for 3 s: the map again');
 ok((await p.evaluate(() => window.__micLive())) === 1, 'the microphone still listening');
 // the next fix: "phone out at the ball" in the track
 await ctx.setGeolocation({ latitude: 48.7824, longitude: 9.689329, accuracy: 5 });
