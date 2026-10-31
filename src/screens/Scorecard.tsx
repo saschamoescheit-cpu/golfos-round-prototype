@@ -13,6 +13,7 @@ import { isTeamRound } from '../lib/games';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { RoundReportCard } from '../components/RoundReportCard';
+import { TestLogCard } from '../components/TestLogCard';
 import { shareScorecard } from '../lib/shareCard';
 import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
 import { loadTrack } from '../lib/track';
@@ -297,6 +298,8 @@ export function Scorecard(props: {
 
       {finished && round.signedAt && <RoundReportCard round={round} history={loadRounds()} highlight={props.justSigned} onOpenTraining={props.onOpenTraining} />}
       {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
+      {/* only a round with test data: microphone, GPS, pocket mode, read-aloud (Sascha 30.10.2026) */}
+      {!round.preview && <TestLogCard round={round} />}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h2>{tr('Your stats', 'Deine Statistik')}</h2>

@@ -172,6 +172,13 @@ export interface Player {
 
 export type CaptureMode = 'quick' | 'detail';
 
+/** One line of the test protocol: when, what, and the details as the phone reported them. */
+export interface TestEvent {
+  t: number; // ms
+  what: 'mic-on' | 'mic-stalled' | 'mic-restart' | 'mic-failed' | 'pocket-on' | 'pocket-off' | 'app-hidden' | 'app-back' | 'speech';
+  text?: string;
+}
+
 export interface Round {
   id: string;
   createdAt: string; // ISO
@@ -211,6 +218,9 @@ export interface Round {
   manualShots?: { hole: number; pos: LngLat; t: number; acc: number; /** moved on the map to the exact spot */ placed?: boolean }[];
   /** Test (Sascha 18.10.2026): the cracks the microphone heard – when, where, how loud; kept apart from the detection */
   soundShots?: { hole: number; pos: LngLat; t: number; level: number; acc: number }[];
+  /** Test protocol (Sascha 30.10.2026, for the tournament on 31.10.): what the microphone, pocket mode and the read-aloud
+   *  really did during the round – shown on the scorecard (components/TestLogCard.tsx). The last 150. */
+  testLog?: TestEvent[];
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
   format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome' | 'greensome' | 'chapman'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number; marker?: boolean; minDrives?: number };
   /** Played on several phones (Sascha 29.10.2026, lib/sharedround.ts): the event's code, this round's flight, and the

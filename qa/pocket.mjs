@@ -148,6 +148,10 @@ ok((await mic()).live === 1, 'listening again');
 c0 = await crackCount();
 for (let k = 0; k < 60 && (await crackCount()) <= c0; k++) await p.waitForTimeout(250);
 ok((await crackCount()) > c0, `and hears (${c0} → ${await crackCount()})`);
+// no new position for 20 s: said in orange (the last walk step was a while ago); the next fix: recording again
+ok(await waitFor(/GPS: seit \d+ s keine neue Position/, 25000), `no GPS for 20 s: the screen says so ("${(await text()).match(/GPS[^·]*/)?.[0]}")`);
+await ctx.setGeolocation({ latitude: 48.7823, longitude: 9.689329, accuracy: 5 });
+ok(await waitFor(/GPS zeichnet auf · \d+ Punkte · letzter vor \d s/, 4000), `a new fix: "GPS zeichnet auf" again ("${(await text()).match(/GPS[^·]*/)?.[0]}")`);
 // a short tap does nothing (touches in the pocket)
 const box = await pocket.boundingBox();
 await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
@@ -177,6 +181,28 @@ const open = await p.evaluate(async () => {
   return { opens: tr.filter((x) => x.open).length, last: tr.slice(-3).map((x) => !!x.open) };
 });
 ok(open.last.includes(true), `leaving the pocket marks the next fix as "phone out" (${JSON.stringify(open)})`);
+// the test protocol kept with the round (Sascha 30.10.2026): the read-aloud, pocket mode, both interruptions and their end
+const log = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].testLog ?? []);
+const whats = log.map((e) => e.what);
+ok(whats[0] === 'mic-on' && whats.includes('speech') && whats.includes('pocket-on') && whats.includes('pocket-off'), `protocol: microphone on, read-aloud, pocket mode on and off (${whats.join(', ')})`);
+const speech = log.find((e) => e.what === 'speech')?.text ?? '';
+ok(/gestartet ✓/.test(speech) && /gesprochen/.test(speech) && /Stimme: Anna/.test(speech) && /Mikrofon vorher pausiert/.test(speech), `the read-aloud as the phone reported it ("${speech}")`);
+const stalled = log.filter((e) => e.what === 'mic-stalled').map((e) => e.text);
+ok(stalled.length === 2 && /Ton angehalten/.test(stalled[0]) && /Mikrofon beendet/.test(stalled[1]), `both interruptions with their reason (${stalled.join(' | ')})`);
+ok(log.filter((e) => e.what === 'mic-on' && /wieder da nach \d+ s \(neu gestartet\)/.test(e.text)).length === 2, 'and both "back after … (restarted)"');
+// on the scorecard
+await p.locator('.hole-bar-handle').click();
+await p.locator('.hole-drawer').getByRole('button', { name: 'Scorekarte' }).click();
+const card = p.locator('.testlog');
+await card.waitFor({ timeout: 10000 });
+const cardText = (await card.innerText()).replace(/\s+/g, ' ');
+const heard = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].soundShots.length);
+const sumRow = (await card.locator('.testlog-sum td').allInnerTexts()).map((x) => x.trim());
+ok(sumRow[0] === 'Summe' && Number(sumRow[3]) === heard, `the card: cracks per hole, the total ${sumRow[3]} = ${heard} heard`);
+ok(/Mikrofon: 2× unterbrochen, insgesamt \d+ s/.test(cardText) && /GPS: \d+ Punkte/.test(cardText), `the summary: "${cardText.match(/Mikrofon: [^G]*/)?.[0]?.trim()}" / "${cardText.match(/GPS: \d+ Punkte[^\d]*[^A-Z]*/)?.[0]?.trim()}"`);
+ok(/Vorlesen – gestartet ✓/.test(cardText) && /Taschenmodus an/.test(cardText) && /Mikrofon unterbrochen – Ton angehalten/.test(cardText), 'the lines with their time: read-aloud, pocket mode, interruption');
+ok((await card.locator('.testlog-lines li.bad').count()) >= 2, 'the interruptions in red');
+if (process.env.SHOT) await card.screenshot({ path: process.env.SHOT }); // to look at it
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

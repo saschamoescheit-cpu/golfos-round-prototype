@@ -12,6 +12,7 @@ type WakeLockSentinel = { release: () => Promise<void>; addEventListener?: (t: '
 type WakeLockApi = { request: (type: 'screen') => Promise<WakeLockSentinel> };
 
 const HOLD_MS = 3000;
+const GPS_STALE_S = 20;
 const KEY = 'golfos.pockettest.v1';
 /** The test switch in the profile ("Pocket mode (test)"): the button on the hole map. */
 export function pocketTestOn(): boolean {
@@ -98,10 +99,17 @@ export function PocketMode(props: { roundId: string; onExit: () => void; mic?: '
     >
       <div className="pocket-info">
         <strong>{tr('Pocket mode', 'Taschenmodus')}</strong>
-        <span>
-          {tr('GPS recording', 'GPS zeichnet auf')} · {points} {tr('points', 'Punkte')}
-          {lastAgo != null ? tr(` · last ${lastAgo} s ago`, ` · letzter vor ${lastAgo} s`) : ''}
-        </span>
+        {/* no new position for 20 s (one comes every 5 s at the latest): said in orange, as the microphone (Sascha 30.10.2026) */}
+        {lastAgo != null && lastAgo >= GPS_STALE_S ? (
+          <span className="pocket-warn">
+            {tr(`GPS: no new position for ${lastAgo} s`, `GPS: seit ${lastAgo} s keine neue Position`)} · {points} {tr('points', 'Punkte')}
+          </span>
+        ) : (
+          <span>
+            {tr('GPS recording', 'GPS zeichnet auf')} · {points} {tr('points', 'Punkte')}
+            {lastAgo != null ? tr(` · last ${lastAgo} s ago`, ` · letzter vor ${lastAgo} s`) : ''}
+          </span>
+        )}
         {/* what the microphone really does – not just that it was switched on (Sascha 30.10.2026) */}
         {props.mic && (
           <span className={props.mic === 'on' ? undefined : 'pocket-warn'}>

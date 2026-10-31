@@ -184,7 +184,7 @@ function releaseAudio(): void {
   }
   audioSession('auto');
 }
-function wakeAudio(): void {
+function wakeAudio(onPlay?: (ok: boolean) => void): void {
   audioSession('playback');
   try {
     if (!silence) {
@@ -200,7 +200,10 @@ function wakeAudio(): void {
     }
     silence.loop = true; // on while he talks – stopped when he is done (releaseAudio)
     silence.currentTime = 0;
-    void silence.play().catch(() => undefined);
+    void Promise.resolve(silence.play()).then(
+      () => onPlay?.(true),
+      () => onPlay?.(false),
+    );
   } catch {
     /* no audio element: speak anyway */
   }
@@ -238,9 +241,29 @@ export interface SpeechReport {
   error: string | null;
   retried: boolean;
   micPaused: boolean;
+  /** for the round's test protocol (Sascha 30.10.2026: "green, but silent"): when, how long it spoke, how it ended,
+   *  whether the phone let the page play sound, and the sound mode the page asked for */
+  at: number;
+  spokeMs: number | null;
+  end: 'end' | 'error' | 'silent' | 'stopped' | null;
+  audio: 'played' | 'blocked' | null;
+  session: string | null;
 }
 let report: SpeechReport | null = null;
 export const lastSpeech = (): SpeechReport | null => report;
+let startedAt = 0;
+const doneListeners = new Set<(r: SpeechReport) => void>();
+/** Told once per read-aloud when it is over – spoken, failed, never started or stopped by the player. */
+export function onSpeechDone(l: (r: SpeechReport) => void): () => void {
+  doneListeners.add(l);
+  return () => doneListeners.delete(l);
+}
+function finish(rep: SpeechReport, end: NonNullable<SpeechReport['end']>): void {
+  if (rep.end) return;
+  rep.end = rep.error && end === 'end' ? 'error' : end;
+  if (rep.started) rep.spokeMs = Date.now() - startedAt;
+  doneListeners.forEach((l) => l(rep));
+}
 const voiceText = (v: SpeechSynthesisVoice | null, lang: string) => (v ? `${v.name} (${v.lang}${v.localService ? '' : ', Netz'})` : tr(`system voice (${lang})`, `Systemstimme (${lang})`));
 
 /**
@@ -272,18 +295,25 @@ export function speak(raw: string): boolean {
   const s = synth();
   const text = forSpeech(raw);
   if (!s || !text.trim()) return false;
-  wakeAudio();
+  if (report && !report.end) finish(report, 'stopped'); // the one before, cut off by this one
+  const rep: SpeechReport = { voices: s.getVoices().length, voice: '', started: false, error: null, retried: false, micPaused: false, at: Date.now(), spokeMs: null, end: null, audio: null, session: null };
+  report = rep;
+  wakeAudio((ok) => (rep.audio = ok ? 'played' : 'blocked'));
+  rep.session = (navigator as AudioSessionNav).audioSession?.type ?? null;
   const lang = speechLang();
   const u = utterance(text, lang, pickVoice(s, lang));
-  const rep: SpeechReport = { voices: s.getVoices().length, voice: voiceText(u.voice, lang), started: false, error: null, retried: false, micPaused: false };
-  report = rep;
+  rep.voice = voiceText(u.voice, lang);
   u.onstart = () => {
     rep.started = true;
+    startedAt = Date.now();
     window.clearTimeout(watchdog);
   };
   u.onend = () => {
     window.clearTimeout(watchdog);
-    if (current === u) setTalking(false);
+    if (current === u) {
+      setTalking(false);
+      finish(rep, 'end');
+    }
   };
   u.onerror = (e) => {
     rep.error = (e as SpeechSynthesisErrorEvent).error ?? 'error';
@@ -299,20 +329,28 @@ export function speak(raw: string): boolean {
     window.clearTimeout(watchdog);
     watchdog = window.setTimeout(() => {
       if (current !== u || s.speaking) return;
+      // let go of it first: its "end" on cancelling is no end of the read-aloud (it switched the microphone back on
+      // while the second try was about to speak)
+      current = null;
       s.cancel();
       if (!u.voice) {
         setTalking(false);
+        finish(rep, 'silent');
         return;
       }
       const again = utterance(text, lang, null);
       rep.retried = true;
       again.onstart = () => {
         rep.started = true;
+        startedAt = Date.now();
         window.clearTimeout(watchdog);
       };
       again.onend = () => {
         window.clearTimeout(watchdog);
-        if (current === again) setTalking(false);
+        if (current === again) {
+          setTalking(false);
+          finish(rep, 'end');
+        }
       };
       again.onerror = (e) => {
         rep.error = (e as SpeechSynthesisErrorEvent).error ?? 'error';
@@ -323,8 +361,10 @@ export function speak(raw: string): boolean {
         s.speak(again);
         watchdog = window.setTimeout(() => {
           if (current === again && !s.speaking) {
+            current = null;
             s.cancel();
             setTalking(false);
+            finish(rep, 'silent');
           }
         }, 2500);
       }, 120);
@@ -351,6 +391,7 @@ export function stopSpeaking(): void {
   window.clearTimeout(watchdog);
   synth()?.cancel();
   setTalking(false);
+  if (report && !report.end) finish(report, 'stopped');
 }
 
 /** The read-aloud buttons: a second tap stops him. */

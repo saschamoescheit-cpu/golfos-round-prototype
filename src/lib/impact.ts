@@ -3,6 +3,8 @@
 // gone again within ~150 ms. Nothing is recorded: only the moment and the loudness are kept. A web app hears only
 // while the page is open and the screen on – the test is for the cart, the hand or the driving range (spec 004).
 
+import { tr } from './i18n';
+
 export interface Impact {
   t: number; // ms since 1970
   level: number; // peak 0…1
@@ -84,7 +86,7 @@ export class ImpactCore {
 /** How the microphone is really doing: hearing, held up (iOS suspended the sound or muted the microphone – a call, Siri,
  *  Guided Access coming up – or no sound arrives any more), or ended (it has to be opened again). */
 export type MicHealth = 'on' | 'stalled' | 'dead';
-export type Listening = (() => void) & { alive: () => boolean; health: () => MicHealth; wake: () => void };
+export type Listening = (() => void) & { alive: () => boolean; health: () => MicHealth; why: () => string; wake: () => void };
 
 /** Listening with the microphone: raw sound (no echo cancelling, no noise suppression), blocks of 1024 samples. */
 export async function listen(onImpact: (i: Impact) => void): Promise<Listening> {
@@ -139,7 +141,14 @@ export async function listen(onImpact: (i: Impact) => void): Promise<Listening> 
     if (ctx.state !== 'running' || stream.getAudioTracks().every((t) => t.muted) || performance.now() - lastBlock > 2500) return 'stalled';
     return 'on';
   };
-  return Object.assign(stop, { alive, health, wake });
+  // for the test protocol: why it is held up, as the phone reports it
+  const why = (): string => {
+    if (ctx.state === 'closed' || !stream.getAudioTracks().some((t) => t.readyState === 'live')) return tr('microphone ended', 'Mikrofon beendet');
+    if (ctx.state !== 'running') return tr(`sound ${ctx.state}`, `Ton ${ctx.state === 'suspended' ? 'angehalten' : ctx.state}`);
+    if (stream.getAudioTracks().every((t) => t.muted)) return tr('microphone muted by the phone', 'Mikrofon vom Handy stummgeschaltet');
+    return tr(`no sound for ${Math.round((performance.now() - lastBlock) / 1000)} s`, `seit ${Math.round((performance.now() - lastBlock) / 1000)} s kein Ton`);
+  };
+  return Object.assign(stop, { alive, health, why, wake });
 }
 
 const KEY = 'golfos.soundtest.v1';

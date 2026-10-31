@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Avatar } from '../components/Avatar';
 import { loadStrategy, savePlannedHole, type CourseStrategy } from '../lib/strategy';
-import type { Club, DetailEntry, HoleEntry, LngLat, Round } from '../types';
+import type { Club, DetailEntry, HoleEntry, LngLat, Round, TestEvent } from '../types';
 import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
@@ -27,7 +27,8 @@ import { hasNote, loadHoleNotes, saveHoleNote, type HoleNote } from '../lib/hole
 import { historyLines } from '../lib/holehistory';
 import { clubReports } from '../lib/clubstats';
 import { lineOfStored } from '../lib/holelines';
-import { isSpeaking, onSpeaking, setMicPause, speak, summary } from '../lib/caddietalk';
+import { isSpeaking, onSpeaking, onSpeechDone, setMicPause, speak, summary } from '../lib/caddietalk';
+import { addTestEvent, speechText } from '../lib/testlog';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
@@ -914,6 +915,42 @@ export function HoleScreen(props: {
   const starting = useRef(false); // the microphone is being opened (the iPhone may be asking for it)
   const onChangeNow = useRef(props.onChange); // opened by itself at the start: a crack saved with today's handler
   onChangeNow.current = props.onChange;
+  // the test protocol (Sascha 30.10.2026, for the tournament): what the microphone, pocket mode, the app and the read-
+  // aloud really did – kept with the round while a test switch is on, shown on the scorecard
+  const testing = soundTest || pocketTest;
+  const logTest = (what: TestEvent['what'], text?: string) => {
+    if (!testing) return;
+    latestRound.current = addTestEvent(latestRound.current, what, text); // two in one moment: both kept
+    onChangeNow.current(latestRound.current);
+  };
+  const logTestRef = useRef(logTest);
+  logTestRef.current = logTest;
+  useEffect(() => {
+    if (!testing) return;
+    let hiddenAt: number | null = null;
+    // another app in front (Sascha 30.10.2026: "I take the phone out and another app is open") – how long
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+        logTestRef.current('app-hidden', pocketRef.current ? tr('in pocket mode', 'im Taschenmodus') : undefined);
+      } else if (hiddenAt != null) {
+        logTestRef.current('app-back', tr(`after ${Math.round((Date.now() - hiddenAt) / 1000)} s`, `nach ${Math.round((Date.now() - hiddenAt) / 1000)} s`));
+        hiddenAt = null;
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    const off = onSpeechDone((r) => logTestRef.current('speech', speechText(r)));
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      off();
+    };
+  }, []);
+  const pocketSeen = useRef(false);
+  useEffect(() => {
+    if (!pocket && !pocketSeen.current) return;
+    pocketSeen.current = true;
+    logTestRef.current(pocket ? 'pocket-on' : 'pocket-off');
+  }, [pocket]);
   const toggleListen = async () => {
     if (stopListen.current) {
       stopListen.current();
@@ -935,7 +972,9 @@ export function HoleScreen(props: {
         // walked on to the next hole in the pocket: the hole where the crack was heard
         const hole = pocketRef.current ? (detectHole(pl.pos, allMaps, holeRef.current) ?? holeRef.current) : holeRef.current;
         const r = latestRound.current;
-        onChangeNow.current({ ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] });
+        // kept as the latest at once: a protocol line in the same moment must not drop the crack
+        latestRound.current = { ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] };
+        onChangeNow.current(latestRound.current);
         // as a shot noted by hand: its number on the hole and a short buzz (Sascha 29.10.2026: "check it on the course")
         const n = (r.soundShots ?? []).filter((x) => x.hole === hole).length + 1;
         const label = r.holes[hole]?.label ?? String(hole + 1);
@@ -951,11 +990,13 @@ export function HoleScreen(props: {
         stopListen.current = null;
         return;
       }
+      if (!micEverOn.current) logTest('mic-on', tr('listening', 'hört mit'));
       micEverOn.current = true;
       setMic('on');
-    } catch {
+    } catch (e) {
       // opened again by the watch below: it says "held up" on the pocket screen, no message each time
       if (!micEverOn.current) setTestMsg(tr('No microphone – allow it in the settings', 'Kein Mikrofon – bitte in den Einstellungen erlauben'));
+      logTest('mic-failed', `${tr('could not open', 'ließ sich nicht öffnen')}: ${(e as Error)?.name ?? e}`);
     } finally {
       starting.current = false;
     }
@@ -972,6 +1013,7 @@ export function HoleScreen(props: {
       if (starting.current || (stopListen.current?.alive() ?? false)) return;
       stopListen.current?.();
       stopListen.current = null;
+      logTestRef.current('mic-restart', tr('app in front again – microphone opened again', 'App wieder vorne – Mikrofon neu geöffnet'));
       void toggleListenRef.current();
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -980,6 +1022,7 @@ export function HoleScreen(props: {
     // is recording may do so without a touch – with Guided Access no touch reaches it); still held up after 3 s, or
     // ended: open the microphone again – after 5 s, then 10, 20 … at most every minute while it does not come back.
     let badSince: number | null = null;
+    let restarted = false;
     let lastTry = 0;
     let wait = 5000;
     const watch = window.setInterval(() => {
@@ -987,7 +1030,13 @@ export function HoleScreen(props: {
       const l = stopListen.current;
       const h = l ? l.health() : 'dead';
       if (h === 'on') {
+        // in the protocol: how long it was gone, and whether it took a restart
+        if (badSince != null) {
+          const s = Math.round((Date.now() - badSince) / 1000);
+          logTestRef.current('mic-on', tr(`back after ${s} s${restarted ? ' (restarted)' : ' (woken)'}`, `wieder da nach ${s} s${restarted ? ' (neu gestartet)' : ' (geweckt)'}`));
+        }
         badSince = null;
+        restarted = false;
         wait = 5000;
         setMic('on');
         return;
@@ -995,7 +1044,10 @@ export function HoleScreen(props: {
       if (!micEverOn.current) return; // never allowed: it stays "off"
       setMic('stalled');
       const now = Date.now();
-      if (badSince == null) badSince = now;
+      if (badSince == null) {
+        badSince = now;
+        logTestRef.current('mic-stalled', l ? l.why() : tr('microphone ended', 'Mikrofon beendet'));
+      }
       if (h === 'stalled') {
         l?.wake();
         if (now - badSince < 3000) return;
@@ -1005,6 +1057,7 @@ export function HoleScreen(props: {
       lastTry = now;
       stopListen.current?.();
       stopListen.current = null;
+      restarted = true;
       setMicRestarts((n) => n + 1);
       void toggleListenRef.current();
     }, 1000);
