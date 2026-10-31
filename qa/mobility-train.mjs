@@ -126,8 +126,13 @@ ok(seen.size === rows, `every drill was shown and done by itself (${[...seen].jo
 ok(!!counted, `the app counted the reps (e.g. ${counted})`);
 const sess = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]')[0]);
 ok(!!sess?.finishedAt && sess.done.length === rows, `the session is saved and finished (${sess?.done.length} drills)`);
-const measured = (sess?.done ?? []).filter((d) => d.signal && d.signal !== 'oneLeg');
+// (count-only signals – the 90/90 switch, cat and cow, knee lifts – are counted by the camera, without a value; the
+// 15-min plan of 31.10.2026 has the 90/90 switch, the 10-min plan before had none)
+const COUNT_ONLY = ['sideSwitch', 'catCow', 'kneeLift'];
+const measured = (sess?.done ?? []).filter((d) => d.signal && d.signal !== 'oneLeg' && !COUNT_ONLY.includes(d.signal));
 ok(measured.length >= 1 && measured.every((d) => d.sets.some((s) => s.best != null && s.seen)), `the camera counted and measured the measured drills (${measured.map((d) => d.drill + ' ' + d.sets.map((s) => s.best).join('/')).join(', ')})`);
+const countedOnly = (sess?.done ?? []).filter((d) => COUNT_ONLY.includes(d.signal));
+ok(countedOnly.every((d) => d.sets.some((s) => s.reps > 0)), `the count-only drills were counted (${countedOnly.map((d) => d.drill + ' ' + d.sets.map((s) => s.reps).join('/')).join(', ') || 'none in this plan'})`);
 ok(measured.every((d) => d.sets.every((s) => s.reps >= Math.ceil(s.target * 0.8))), `the camera counted the reps of the measured drills (${measured.map((d) => d.sets.map((s) => s.reps + '/' + s.target).join(' ')).join(', ')})`);
 ok((sess?.done ?? []).every((d) => d.sets.length >= 1 && d.sets.every((s) => (s.held != null ? s.held > 0 : s.reps >= 1))), 'every set has reps or a hold');
 ok(taps === 1, `${taps} tap for the whole session (Start)`);
