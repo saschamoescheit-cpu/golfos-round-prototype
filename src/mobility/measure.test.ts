@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { facingOf, LIMITS, makeAnalyzer, missingPoints, nearSide, NOTE_HEELS, pickMainPerson, type Frame, type Lm } from './measure';
+import { facingOf, LIMITS, makeAnalyzer, missingPoints, nearSide, NOTE_CRAMP, NOTE_HEELS, NOTE_HELD, pickMainPerson, type Frame, type Lm } from './measure';
 import { frames, frontBody, script, SYNTH_H, SYNTH_W } from './synth';
 import type { MetricKind, Side } from './types';
 
@@ -115,6 +115,12 @@ describe('mobility analysers', () => {
     const { out } = run('bridge', 'right', 'stiff');
     expect(out!.grade).toBe('fail');
     expect(out!.notes.some((n) => n.en.startsWith('The pelvis sinks'))).toBe(true);
+    expect(out!.notes).toContainEqual(NOTE_CRAMP);
+  });
+
+  it('a pelvis that does not turn far enough is tried again with the shoulders held (the physio, 29.10.2026)', () => {
+    expect(run('pelvicRotation', 'left', 'stiff').out!.notes).toContainEqual(NOTE_HELD);
+    expect(run('pelvicRotation', 'left', 'good').out!.notes).not.toContainEqual(NOTE_HELD);
   });
 
   it('the bridge finds the stretched leg even when left and right are swapped', () => {

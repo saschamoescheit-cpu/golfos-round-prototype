@@ -329,6 +329,9 @@ class TurnAnalyzer implements Analyzer {
   }
 }
 
+/** Better with someone holding the shoulders? Then the hips can turn – what is missing is the control (the physio, 29.10.2026). */
+export const NOTE_HELD = L('Try again while someone holds your shoulders: if it goes better, the hips can turn – what is missing is the control, practise it slowly in front of a mirror', 'Probier es noch einmal, während jemand deine Schultern festhält: Geht es dann besser, kann die Hüfte drehen – es fehlt die Ansteuerung, die übst du langsam vor dem Spiegel');
+
 /** Pelvic rotation: the hips turn both ways, the chest stays still. */
 class PelvisAnalyzer implements Analyzer {
   readonly kind = 'pelvicRotation' as const;
@@ -384,6 +387,7 @@ class PelvisAnalyzer implements Analyzer {
     const notes: Text[] = follows ? [L('The chest turns along – the hips do not move on their own', 'Die Brust dreht mit – die Hüfte bewegt sich nicht allein')] : [];
     let grade: Grade = this.best >= lim.pass ? 'pass' : this.best >= lim.limited ? 'limited' : 'fail';
     if (follows && grade === 'pass') grade = 'limited';
+    if (grade !== 'pass') notes.push(NOTE_HELD);
     const checks = [check('turn', `The pelvis turns ${lim.pass}° or more`, `Das Becken dreht ${lim.pass}° oder mehr`, this.best >= lim.pass), check('chestStill', 'The chest stays still', 'Die Brust bleibt ruhig', !follows)];
     return { value: Math.round(this.best), grade, notes, checks };
   }
@@ -758,6 +762,9 @@ class BalanceAnalyzer implements Analyzer {
   }
 }
 
+/** A cramp at the back of the thigh: the hamstrings do the work of the glutes (the physio, 29.10.2026). */
+export const NOTE_CRAMP = L('A cramp at the back of the thigh means the hamstrings do the work of the glutes – that is what the drills train', 'Krampft es hinten im Oberschenkel, übernimmt er die Arbeit des Gesäßmuskels – genau das trainieren die Übungen');
+
 /** Bridge with one leg out (side view, lying): hold 10 s, the pelvis must not sink. `ext` = the leg stretched out. */
 class BridgeAnalyzer implements Analyzer {
   readonly kind = 'bridge' as const;
@@ -854,7 +861,7 @@ class BridgeAnalyzer implements Analyzer {
     const held = Math.round(this.held * 10) / 10;
     const notes: Text[] = [];
     if (drop > lim.drop) notes.push(L(`The pelvis sinks by ${drop}°`, `Das Becken sinkt um ${drop}°`));
-    if (held < lim.hold) notes.push(L(`Held for ${held} s`, `${held} s gehalten`));
+    if (held < lim.hold) notes.push(L(`Held for ${held} s`, `${held} s gehalten`), NOTE_CRAMP);
     const grade: Grade = held >= lim.hold && drop <= lim.drop ? 'pass' : (held >= lim.hold && drop <= lim.dropLimited) || (held >= 6 && drop <= lim.drop) ? 'limited' : 'fail';
     const checks = [check('hold', `Held ${lim.hold} s with the leg stretched`, `${lim.hold} s mit gestrecktem Bein gehalten`, held >= lim.hold), check('pelvis', 'The pelvis stays up', 'Das Becken bleibt oben', drop <= lim.drop)];
     return { value: held, grade, notes, checks };
