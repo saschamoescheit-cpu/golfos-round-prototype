@@ -1,5 +1,5 @@
 import { L, type L as Text } from '../training/types';
-import type { Grade, MetricKind, Side } from './types';
+import type { Check, Grade, MetricKind, Side } from './types';
 
 // What the camera measures in each test – pure functions over the 33 body points of the pose model (MediaPipe
 // BlazePose: x, y in 0..1 of the picture, v = visibility). Nothing here knows about React or the camera, so every
@@ -42,7 +42,12 @@ export interface Outcome {
   value: number;
   grade: Grade;
   notes: Text[];
+  /** the criteria of the test, each met or not */
+  checks: Check[];
 }
+
+/** A criterion of a test (see Check). */
+const check = (id: string, en: string, de: string, ok: boolean): Check => ({ id, label: L(en, de), ok });
 
 export interface Analyzer {
   readonly kind: MetricKind;
@@ -100,8 +105,9 @@ export const LIMITS = {
   balance: { pass: 20, limited: 10 },
   /** bridge with one leg out: hold 10 s, the pelvis may sink ≤ 10° (pass) or ≤ 20° (limited) */
   bridge: { hold: 10, drop: 10, dropLimited: 20 },
-  /** lat test, wall sit, arms overhead: > 169° = the arms reach the wall, ≥ 120° = at least to the nose (published) */
-  lat: { pass: 170, limited: 120 },
+  /** lat test, wall sit, arms overhead: > 169° = the arms reach the wall, ≥ 120° = at least to the nose (published) – on
+   *  the picture 165° (31.10.2026, the TPI video: the physio's "touches the wall" measured 162–176° from an angle) */
+  lat: { pass: 165, limited: 120, elbow: 140 },
   /** 90/90: the forearm parallel to the spine in golf posture = pass (≤ 10° off), ≤ 25° limited */
   shoulder: { pass: 10, limited: 25 },
   /** overhead deep squat: thighs at least parallel (0°), heels down, arms in line with the trunk (≤ 30°) */
@@ -148,6 +154,8 @@ export const S = (side: Side) =>
     ? { sh: P.lSh, el: P.lEl, wr: P.lWr, idx: P.lIdx, hip: P.lHip, kn: P.lKn, an: P.lAn, heel: P.lHeel, toe: P.lToe }
     : { sh: P.rSh, el: P.rEl, wr: P.rWr, idx: P.rIdx, hip: P.rHip, kn: P.rKn, an: P.rAn, heel: P.rHeel, toe: P.rToe };
 const other = (s: Side): Side => (s === 'left' ? 'right' : 'left');
+/** the arm the camera sees better (shoulder, elbow and wrist) */
+const armSide = (f: Frame): Side => (vis(f, P.lSh) + vis(f, P.lEl) + vis(f, P.lWr) >= vis(f, P.rSh) + vis(f, P.rEl) + vis(f, P.rWr) ? 'left' : 'right');
 
 /** Smoothing over the last few pictures (a median: one wrong point does not count). */
 class Roll {
@@ -234,6 +242,10 @@ export function facingOf(f: Frame): 'front' | 'side' | null {
 }
 
 // ---------- the analysers ----------
+/** A turn measured from the width of the shoulders comes out about 3° short on a real body (the shoulder points of the
+ *  pose model move inside the outline when the body turns): the TPI video of 31.10.2026 measured 44° where the physio
+ *  saw a good turn of 45° or more, the motion capture check of 23.10.2026 3–11° short. The grade allows for it. */
+export const TURN_TOL = 3;
 const CAL_FRAMES = 10;
 
 /** A turn measured in the front view: the width of a line face-on first, then how far it turns. */
@@ -247,7 +259,8 @@ class TurnAnalyzer implements Analyzer {
   private hipRoll = new Roll(5);
   private lineW = new Steady();
   private hipW = new Steady();
-  private held = new Held();
+  // (0.15 s: a trunk turns back and forth and is seldom held – 31.10.2026, the TPI video)
+  private held = new Held(150);
   private best = 0;
   private bestHip = 0;
   private hipAtBest = 0;
@@ -302,13 +315,17 @@ class TurnAnalyzer implements Analyzer {
     if (this.cal.length < CAL_FRAMES || this.best < 3) return null;
     const notes: Text[] = [];
     const lim = LIMITS.trunk;
-    let grade: Grade = this.best >= lim.pass ? 'pass' : this.best >= lim.limited ? 'limited' : 'fail';
+    // a turn from the width of the shoulders comes out a few degrees short (TURN_TOL)
+    const reached = this.best + TURN_TOL;
+    let grade: Grade = reached >= lim.pass ? 'pass' : reached >= lim.limited ? 'limited' : 'fail';
     // seated, the hips should stay where they are
     if (this.hips && this.hipAtBest > 15) {
       notes.push(L('The hips turn along', 'Die Hüfte dreht mit'));
       if (grade === 'pass') grade = 'limited';
     }
-    return { value: Math.round(this.best), grade, notes };
+    const checks = [check('turn', `The chest turns ${lim.pass}° or more`, `Die Brust dreht ${lim.pass}° oder mehr`, reached >= lim.pass)];
+    if (this.hips) checks.push(check('hipsStill', 'The hips stay still', 'Die Hüfte bleibt ruhig', this.hipAtBest <= 15));
+    return { value: Math.round(this.best), grade, notes, checks };
   }
 }
 
@@ -367,7 +384,8 @@ class PelvisAnalyzer implements Analyzer {
     const notes: Text[] = follows ? [L('The chest turns along – the hips do not move on their own', 'Die Brust dreht mit – die Hüfte bewegt sich nicht allein')] : [];
     let grade: Grade = this.best >= lim.pass ? 'pass' : this.best >= lim.limited ? 'limited' : 'fail';
     if (follows && grade === 'pass') grade = 'limited';
-    return { value: Math.round(this.best), grade, notes };
+    const checks = [check('turn', `The pelvis turns ${lim.pass}° or more`, `Das Becken dreht ${lim.pass}° oder mehr`, this.best >= lim.pass), check('chestStill', 'The chest stays still', 'Die Brust bleibt ruhig', !follows)];
+    return { value: Math.round(this.best), grade, notes, checks };
   }
 }
 
@@ -428,7 +446,11 @@ class LowerQuarterAnalyzer implements Analyzer {
     const notes: Text[] = [];
     if (!(this.maxPos >= 10 && this.maxNeg >= 10)) notes.push(L('Only one direction was seen', 'Nur eine Richtung wurde gemessen'));
     else if (Math.abs(this.maxPos - this.maxNeg) >= 15) notes.push(L(`One direction ${Math.round(Math.abs(this.maxPos - this.maxNeg))}° shorter`, `Eine Richtung ${Math.round(Math.abs(this.maxPos - this.maxNeg))}° kürzer`));
-    return { value: Math.round(b), grade: b >= lim.pass ? 'pass' : b >= lim.limited ? 'limited' : 'fail', notes };
+    // the nose moves to the left of the picture when the player turns to their right (the picture is not mirrored)
+    const right = this.maxNeg;
+    const left = this.maxPos;
+    const checks = [check('right', `Turns ${lim.pass}° or more to the right`, `Dreht ${lim.pass}° oder mehr nach rechts`, right >= lim.pass), check('left', `Turns ${lim.pass}° or more to the left`, `Dreht ${lim.pass}° oder mehr nach links`, left >= lim.pass)];
+    return { value: Math.round(b), grade: b >= lim.pass ? 'pass' : b >= lim.limited ? 'limited' : 'fail', notes, checks };
   }
 }
 
@@ -500,7 +522,8 @@ class NeckAnalyzer implements Analyzer {
   finish(): Outcome | null {
     if (this.calE.length < CAL_FRAMES || this.best < 3) return null;
     const lim = LIMITS.neck;
-    return { value: Math.round(this.best), grade: this.best >= lim.pass ? 'pass' : this.best >= lim.limited ? 'limited' : 'fail', notes: [] };
+    const checks = [check('turn', `The chin turns ${lim.pass}° or more – to the middle of the collarbone`, `Das Kinn dreht ${lim.pass}° oder mehr – bis zur Mitte des Schlüsselbeins`, this.best >= lim.pass)];
+    return { value: Math.round(this.best), grade: this.best >= lim.pass ? 'pass' : this.best >= lim.limited ? 'limited' : 'fail', notes: [], checks };
   }
 }
 
@@ -576,12 +599,17 @@ class SquatAnalyzer implements Analyzer {
     if (this.heelRise > lim.heel) notes.push(NOTE_HEELS);
     if (this.arms && this.armsAtBest > lim.arms) notes.push(L('The arms tip forward', 'Die Arme kippen nach vorn'));
     const grade: Grade = !notes.length ? 'pass' : this.best < lim.depthFail || notes.length >= 2 ? 'fail' : 'limited';
-    return { value: Math.round(this.best), grade, notes };
+    const checks = [check('depth', 'The thighs reach level or below', 'Die Oberschenkel kommen bis waagrecht oder tiefer', this.best >= lim.depth), check('heels', 'The heels stay down', 'Die Fersen bleiben am Boden', this.heelRise <= lim.heel)];
+    if (this.arms) checks.push(check('arms', 'The arms stay overhead, in line with the trunk', 'Die Arme bleiben über dem Kopf, in Linie mit dem Rumpf', this.armsAtBest <= lim.arms));
+    return { value: Math.round(this.best), grade, notes, checks };
   }
 }
 
 /** Toe touch from the side: how far the fingertips stay above the toes, with straight knees. */
 export const LEG_CM = 85; // hip joint to ankle of a 1.75 m player – turns picture px into cm
+/** The hand point of the pose model sits at the base of the index finger, not at its tip (31.10.2026, the TPI video: the
+ *  physio's "fingertips at the ankles" measured 27 cm above the toes) – the finger is about this long. */
+export const FINGER_CM = 7;
 class ToeTouchAnalyzer implements Analyzer {
   readonly kind = 'toeTouch' as const;
   readonly unit = 'cm' as const;
@@ -618,7 +646,7 @@ class ToeTouchAnalyzer implements Analyzer {
     const kn = px(f, s.kn);
     if (finger[1] > kn[1]) this.started = true;
     // + = the fingertips are above the toes (y grows downwards)
-    const gap = this.roll.push(((px(f, s.toe)[1] - finger[1]) / this.leg) * LEG_CM);
+    const gap = this.roll.push(((px(f, s.toe)[1] - finger[1]) / this.leg) * LEG_CM - FINGER_CM);
     if (this.started && gap < this.best) {
       this.best = gap;
       this.kneeAtBest = jointAngle(hip, kn, an);
@@ -638,7 +666,8 @@ class ToeTouchAnalyzer implements Analyzer {
     if (knees) notes.push(L('The knees bend', 'Die Knie beugen sich'));
     let grade: Grade = this.best <= lim.pass ? 'pass' : this.best <= lim.limited ? 'limited' : 'fail';
     if (knees && grade === 'pass') grade = 'limited';
-    return { value: Math.max(0, Math.round(this.best)), grade, notes };
+    const checks = [check('reach', 'The fingertips reach the toes', 'Die Fingerspitzen erreichen die Zehen', this.best <= lim.pass), check('knees', 'The knees stay straight', 'Die Knie bleiben gestreckt', !knees)];
+    return { value: Math.max(0, Math.round(this.best)), grade, notes, checks };
   }
 }
 
@@ -657,6 +686,7 @@ class BalanceAnalyzer implements Analyzer {
   private startT = -1;
   private wrongSince = -1;
   private told = false;
+  private hopped = false;
   constructor(private stand: Side, private ms = 30000) {}
   focus(): [number, number][] {
     const a = S(this.stand);
@@ -710,6 +740,7 @@ class BalanceAnalyzer implements Analyzer {
       if (this.downSince < 0) this.downSince = f.t;
     } else this.downSince = -1;
     const hopped = Math.abs(px(f, a.an)[0] - this.standX) > 0.15 * this.leg;
+    if (hopped) this.hopped = true;
     if ((this.downSince >= 0 && f.t - this.downSince > 300) || hopped || this.held >= goal) {
       if (this.downSince >= 0) this.held = Math.max(0, (this.downSince - this.t1) / 1000);
       this.held = Math.min(goal, this.held);
@@ -722,7 +753,8 @@ class BalanceAnalyzer implements Analyzer {
     if (this.t1 < 0) return null;
     const lim = LIMITS.balance;
     const s = Math.round(this.held * 10) / 10;
-    return { value: s, grade: s >= lim.pass ? 'pass' : s >= lim.limited ? 'limited' : 'fail', notes: [] };
+    const checks = [check('hold', `Held ${lim.pass} s with the eyes closed`, `${lim.pass} s mit geschlossenen Augen gehalten`, s >= lim.pass), check('foot', 'The standing foot stays where it is', 'Der Standfuß bleibt, wo er steht', !this.hopped)];
+    return { value: s, grade: s >= lim.pass ? 'pass' : s >= lim.limited ? 'limited' : 'fail', notes: [], checks };
   }
 }
 
@@ -824,7 +856,8 @@ class BridgeAnalyzer implements Analyzer {
     if (drop > lim.drop) notes.push(L(`The pelvis sinks by ${drop}°`, `Das Becken sinkt um ${drop}°`));
     if (held < lim.hold) notes.push(L(`Held for ${held} s`, `${held} s gehalten`));
     const grade: Grade = held >= lim.hold && drop <= lim.drop ? 'pass' : (held >= lim.hold && drop <= lim.dropLimited) || (held >= 6 && drop <= lim.drop) ? 'limited' : 'fail';
-    return { value: held, grade, notes };
+    const checks = [check('hold', `Held ${lim.hold} s with the leg stretched`, `${lim.hold} s mit gestrecktem Bein gehalten`, held >= lim.hold), check('pelvis', 'The pelvis stays up', 'Das Becken bleibt oben', drop <= lim.drop)];
+    return { value: held, grade, notes, checks };
   }
 }
 
@@ -836,8 +869,11 @@ class LatAnalyzer implements Analyzer {
   private roll = new Roll(5);
   private best = 0;
   private elbowAtBest = 180;
+  // (the elbow of one picture shakes by 30–90° from an angle – 31.10.2026, the TPI video: the median of a few pictures)
+  private elbowRoll = new Roll(7);
   private tBest = 0;
   private t0 = -1;
+  private lowSince = -1;
   private done = false;
   constructor(private ms = 12000) {}
   focus(): [number, number][] {
@@ -846,7 +882,8 @@ class LatAnalyzer implements Analyzer {
   }
   push(f: Frame): Live {
     if (this.done) return { value: null, best: this.best, phase: 'done' };
-    this.side ??= nearSide(f);
+    // the arm towards the camera, picture by picture (from an angle the far arm is hidden and its points jump)
+    this.side = armSide(f);
     const s = S(this.side);
     if (this.t0 < 0) {
       this.t0 = f.t;
@@ -855,12 +892,17 @@ class LatAnalyzer implements Analyzer {
     }
     const sh = px(f, s.sh);
     const flex = this.roll.push(angleBetween(sub(px(f, s.hip), sh), sub(px(f, s.wr), sh)));
+    const elbow = this.elbowRoll.push(jointAngle(sh, px(f, s.el), px(f, s.wr)));
     if (flex > this.best + 0.5) {
       this.best = flex;
       this.tBest = f.t;
-      this.elbowAtBest = jointAngle(sh, px(f, s.el), px(f, s.wr));
+      this.elbowAtBest = elbow;
     }
-    const down = this.best >= 100 && flex < this.best - 40;
+    // the arms down again – for 0.6 s: a hand of a helper over the arm or one wrong point is not the end
+    if (this.best >= 100 && flex < this.best - 40) {
+      if (this.lowSince < 0) this.lowSince = f.t;
+    } else this.lowSince = -1;
+    const down = this.lowSince >= 0 && f.t - this.lowSince >= 600;
     const still = this.best >= 100 && f.t - this.tBest > 2500;
     if (down || still || f.t - this.t0 > this.ms) {
       this.done = true;
@@ -873,11 +915,12 @@ class LatAnalyzer implements Analyzer {
     const lim = LIMITS.lat;
     const notes: Text[] = [];
     let grade: Grade = this.best >= lim.pass ? 'pass' : this.best >= lim.limited ? 'limited' : 'fail';
-    if (this.elbowAtBest < 150) {
+    if (this.elbowAtBest < lim.elbow) {
       notes.push(L('The elbows bend', 'Die Ellbogen beugen sich'));
       if (grade === 'pass') grade = 'limited';
     }
-    return { value: Math.round(Math.min(180, this.best)), grade, notes };
+    const checks = [check('wall', 'The arms reach the wall', 'Die Arme erreichen die Wand', this.best >= lim.pass), check('elbows', 'The elbows stay straight', 'Die Ellbogen bleiben gestreckt', this.elbowAtBest >= lim.elbow)];
+    return { value: Math.round(Math.min(180, this.best)), grade, notes, checks };
   }
 }
 
@@ -919,7 +962,8 @@ class ShoulderAnalyzer implements Analyzer {
   finish(): Outcome | null {
     if (this.best > 90) return null;
     const lim = LIMITS.shoulder;
-    return { value: Math.round(this.best), grade: this.best <= lim.pass ? 'pass' : this.best <= lim.limited ? 'limited' : 'fail', notes: [] };
+    const checks = [check('spine', 'The forearm reaches the line of the spine', 'Der Unterarm erreicht die Linie der Wirbelsäule', this.best <= lim.pass)];
+    return { value: Math.round(this.best), grade: this.best <= lim.pass ? 'pass' : this.best <= lim.limited ? 'limited' : 'fail', notes: [], checks };
   }
 }
 
@@ -985,9 +1029,15 @@ export function personCenter(lm: Lm[] | null): { x: number; y: number } | null {
   return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
 }
 
+/** The trunk and the legs of the player – a person cut off by the edge of the picture lacks some of them. */
+const BODY_POINTS = [P.lSh, P.rSh, P.lHip, P.rHip, P.lKn, P.rKn, P.lAn, P.rAn];
+
 /**
  * The player when several people are in the picture (a partner holding the phone, a child walking past): the largest,
- * most central person, and the one seen before stays the player (as in the Coach prototype).
+ * most central person, and the one seen before stays the player (as in the Coach prototype). A person cut off by the
+ * edge of the picture is a helper or someone passing, not the player standing in front of the phone – and one standing
+ * at the side near the phone neither (31.10.2026, the TPI videos: the physio stood at the right edge close to the phone,
+ * looked twice as big and was followed instead of the player in the middle): the middle of the picture counts strongly.
  */
 export function pickMainPerson(people: Lm[][], prev?: { x: number; y: number } | null): number {
   if (people.length <= 1) return 0;
@@ -1001,7 +1051,11 @@ export function pickMainPerson(people: Lm[][], prev?: { x: number; y: number } |
     const h = Math.max(...ys) - Math.min(...ys);
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
     const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-    let score = h * (1 - Math.min(1, Math.abs(cx - 0.5)));
+    const whole = BODY_POINTS.filter((i) => {
+      const p = lm[i];
+      return !!p && (p.v ?? 1) >= 0.5 && p.x > 0.01 && p.x < 0.99 && p.y > 0.01 && p.y < 0.99;
+    }).length / BODY_POINTS.length;
+    let score = h * Math.max(0.05, 1 - 2 * Math.abs(cx - 0.5)) * (0.25 + 0.75 * whole);
     if (prev) score -= 2 * Math.hypot(cx - prev.x, cy - prev.y);
     if (score > bestScore) {
       bestScore = score;
@@ -1009,4 +1063,31 @@ export function pickMainPerson(people: Lm[][], prev?: { x: number; y: number } |
     }
   });
   return best;
+}
+
+/**
+ * Following the player from picture to picture (pose.ts live, the TPI checks offline): the person seen before stays the
+ * player, and a jump across the picture from one picture to the next is someone else – the player was not seen in it
+ * (31.10.2026, the TPI videos: when the model missed the player for a moment, the physio in front of the phone was the
+ * only person seen and became the "player" for the rest of the test). After 1.5 s without the player anyone may be the
+ * player again (they walked away and came back elsewhere).
+ */
+export class Follower {
+  private prev: { x: number; y: number } | null = null;
+  private lastT = -Infinity;
+  reset(): void {
+    this.prev = null;
+    this.lastT = -Infinity;
+  }
+  /** the player's points in this picture, or null (nobody, or only someone else) */
+  pick(people: Lm[][], t: number): Lm[] | null {
+    if (!people.length) return null;
+    const lm = people[pickMainPerson(people, this.prev)];
+    const c = personCenter(lm);
+    if (!c) return null;
+    if (this.prev && t - this.lastT < 1500 && Math.hypot(c.x - this.prev.x, c.y - this.prev.y) > 0.2) return null;
+    this.prev = c;
+    this.lastT = t;
+    return lm;
+  }
 }

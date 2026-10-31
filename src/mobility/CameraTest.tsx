@@ -3,7 +3,7 @@ import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
 import { BONES, facingOf, makeAnalyzer, missingPoints, valueText, type Analyzer, type Cue, type Frame, type Lm, type Outcome } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
-import type { Grade, Measurement, MetricKind, Side, TestDef } from './types';
+import type { Check, Grade, Measurement, MetricKind, Side, TestDef } from './types';
 import type { Clip } from './anim3d/scene';
 import { loadGoal, position, targetPos, targetValue } from './profile';
 import { logFrame, logItem, logResult } from './motionlog';
@@ -616,7 +616,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     setAttempt((a) => a + 1);
   };
 
-  const save = (o: Outcome) => props.onResult({ value: o.value, grade: o.grade, source: 'camera', notes: o.notes.length ? o.notes : undefined, at: new Date().toISOString() });
+  const save = (o: Outcome) => props.onResult({ value: o.value, grade: o.grade, source: 'camera', notes: o.notes.length ? o.notes : undefined, checks: o.checks.length ? o.checks : undefined, at: new Date().toISOString() });
   useEffect(() => {
     if (auto == null || outcome === undefined) return;
     if (auto <= 0) {
@@ -682,6 +682,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
               const since = sinceText(kind, done.value, props.previous);
               return <span className={`small mob-since${since.better ? ' better' : ''}`}>{since.text}</span>;
             })()}
+            {done.checks.length > 0 && <CheckList checks={done.checks} />}
             {done.notes.length > 0 && (
               <ul className="mob-notes">
                 {done.notes.map((n, i) => (
@@ -847,4 +848,18 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
 
 function trLang(): 'en' | 'de' {
   return tr('en', 'de') as 'en' | 'de';
+}
+
+/** The criteria of a test as the camera judged them – met (✓) or not yet (–), neutral, no red (measuring, not grading). */
+export function CheckList(props: { checks: Check[] }) {
+  return (
+    <ul className="mob-checks" aria-label={tr('The criteria', 'Die Prüfkriterien')}>
+      {props.checks.map((c) => (
+        <li key={c.id} className={c.ok ? 'ok' : 'no'} aria-label={`${tr(c.label.en, c.label.de)}: ${c.ok ? tr('met', 'erfüllt') : tr('not yet', 'noch nicht')}`}>
+          <span className="mob-check-mark" aria-hidden="true">{c.ok ? '✓' : '–'}</span>
+          <span>{tr(c.label.en, c.label.de)}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }

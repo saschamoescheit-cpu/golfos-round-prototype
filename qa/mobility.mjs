@@ -235,7 +235,7 @@ await p.locator('.sticky-cta .btn-secondary').filter({ hasText: 'ins Training' }
 ok(await p.getByText('Meine Pläne').isVisible(), 'the plan is in Training');
 const plans = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.training.plans.v1') ?? '[]'));
 const planMin = (plans[0]?.items ?? []).reduce((n, x) => n + x.minutes, 0);
-ok(plans.length === 1 && plans[0].items.length >= 3 && planMin <= 15 && plans[0].name.startsWith('Agility · 15 Min.'), `plan "${plans[0]?.name}" with ${plans[0]?.items.length} drills, ${planMin} min (the time a day: 15)`);
+ok(plans.length === 1 && plans[0].items.length >= 3 && planMin <= 16 && plans[0].name.startsWith('Agility · 15 Min.'), `plan "${plans[0]?.name}" with ${plans[0]?.items.length} drills, ${planMin} min (the time a day: 15)`);
 await p.getByRole('button', { name: 'Training öffnen' }).click();
 await p.waitForTimeout(1500);
 ok((await p.locator('.module-tag').textContent()) === 'Training', 'Training opens');

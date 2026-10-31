@@ -160,7 +160,8 @@ export function squatBody(k: number, depth: number, heelLift = 0, armDev = 0): L
 export function toeTouchBody(k: number, gap: number, kneeBend = 0): Lm[] {
   const stand: Record<string, J2> = { an: [0, 0.08], heel: [-0.06, 0.03], toe: [0.17, 0.02], kn: [0.01, 0.5], hip: [-0.01, 0.92], sh: [0, 1.43], el: [0.02, 1.15], wr: [0.03, 0.88], idx: [0.03, 0.8], ear: [0, 1.63], nose: [0.1, 1.62], mouth: [0.09, 1.57] };
   const knee: J2 = [-0.04 + Math.sin((kneeBend * Math.PI) / 180) * 0.21, 0.49 - (1 - Math.cos((kneeBend * Math.PI) / 180)) * 0.21];
-  const fingerY = 0.02 + gap;
+  // the hand point of the pose model sits at the base of the index finger, a finger length above the tip (FINGER_CM)
+  const fingerY = 0.02 + gap + 0.07;
   const bottom: Record<string, J2> = { an: [0, 0.08], heel: [-0.06, 0.03], toe: [0.17, 0.02], kn: knee, hip: [-0.08, 0.9], sh: [0.22, 0.5], el: [0.21, 0.3], wr: [0.2, fingerY + 0.08], idx: [0.2, fingerY], ear: [0.3, 0.4], nose: [0.33, 0.33], mouth: [0.3, 0.33] };
   const p: Record<string, J2> = {};
   for (const key of Object.keys(stand)) p[key] = lerp(stand[key], bottom[key], k);

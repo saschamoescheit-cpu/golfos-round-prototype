@@ -1,5 +1,5 @@
 import { L, type L as Text } from '../training/types';
-import { LEG_CM, NOSE_DEPTH, P, S, angleBetween, dist, inFrame, jointAngle, median, nearSide, px, sub, turned, vis, width, type Frame } from './measure';
+import { FINGER_CM, LEG_CM, NOSE_DEPTH, P, S, angleBetween, dist, inFrame, jointAngle, median, nearSide, px, sub, turned, vis, width, type Frame } from './measure';
 import type { Side, TestId } from './types';
 
 // The drills of the mobility pillar as a guided session (Sascha 18.10.2026: "not a knowledge base like Training – an
@@ -272,7 +272,7 @@ export class Signal {
       }
       case 'reach':
         // + = the fingertips above the toes, in cm (the leg length of the first pictures sets the scale)
-        return this.calibrated ? ((px(f, s.toe)[1] - px(f, s.idx)[1]) / this.base.leg) * LEG_CM : null;
+        return this.calibrated ? ((px(f, s.toe)[1] - px(f, s.idx)[1]) / this.base.leg) * LEG_CM - FINGER_CM : null;
       case 'shin': {
         // the front leg (its knee highest above its ankle): how far the shin leans forward from upright
         const lean = (sd: Side) => {

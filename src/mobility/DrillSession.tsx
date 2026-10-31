@@ -8,6 +8,7 @@ import type { Drill } from '../training/types';
 import { DRILL_CLIPS } from './anim3d/drills';
 import { isFakeCamera, unlockAudio } from './CameraTest';
 import { coachOf, gainSpeech, progressed, SELF_NAMED, SIGNALS, signalValueText, WATCH_FOCUS } from './drillcoach';
+import { withSets } from './dayplan';
 import { DrillPlayer, cap, cueText } from './DrillPlayer';
 import type { FormCue } from './drillcoach';
 import { LogShare, LogSwitch } from './LogUi';
@@ -70,7 +71,8 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
 
   // how often each drill went cleanly in a row before this session – the plan a little harder where it sits
   const [streaks] = useState(() => Object.fromEntries(s.drills.map((id) => [id, cleanStreak(id)])));
-  const planOf = (id: string) => progressed(coachOf(id), streaks[id] ?? 0);
+  // (a long day: more sets of the focus drills – dayplan.ts)
+  const planOf = (id: string) => withSets(progressed(coachOf(id), streaks[id] ?? 0), s.extraSets?.[id]);
 
   const store = (next: TrainSession) => {
     setS(next);
@@ -129,7 +131,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
   return (
     <main className="screen game-play training mobility tr-session mob-train">
       <TopBar title={tr('Training', 'Training')} onBack={() => (stage === 'summary' ? props.onFinished() : setExit(true))} backLabel={tr('Leave', 'Verlassen')} />
-      {stage === 'setup' && <TrainSetup drills={drills} minutes={s.minutes} resumed={s.done.length > 0} onStart={start} planOf={planOf} />}
+      {stage === 'setup' && <TrainSetup drills={drills} minutes={s.minutes} warm={s.warm ?? []} resumed={s.done.length > 0} onStart={start} planOf={planOf} />}
       {stage === 'hold' && (
         <section className="tr-block mob-hold-screen">
           <h2>{tr('Paused', 'Pausiert')}</h2>
@@ -198,7 +200,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
 }
 
 /** Set the phone up once – like the screening: where it stands, what is needed, the drills of the day, Start. */
-function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean; onStart: () => void; planOf: (id: string) => ReturnType<typeof coachOf> }) {
+function TrainSetup(props: { drills: Drill[]; minutes: number; warm: string[]; resumed: boolean; onStart: () => void; planOf: (id: string) => ReturnType<typeof coachOf> }) {
   const needs = [...new Set(props.drills.flatMap((d) => (d.needs ?? []).map((n) => (typeof n === 'string' ? '' : t(n)))).filter(Boolean))];
   const [model, setModel] = useState<'loading' | 'ready' | 'failed'>(() => (isFakeCamera() ? 'ready' : 'loading'));
   useEffect(() => {
@@ -236,6 +238,7 @@ function TrainSetup(props: { drills: Drill[]; minutes: number; resumed: boolean;
               <span className="grow">
                 <span className="title">
                   {i + 1}. {t(d.name)}
+                  {props.warm.includes(d.id) && <span className="muted small mob-warm-tag"> · {tr('to move through', 'zum Durchbewegen')}</span>}
                 </span>
                 <span className="muted small">
                   {c.hold ? tr(`hold ${c.hold} s`, `${c.hold} s halten`) : tr(`${c.reps} reps`, `${c.reps} Wiederholungen`)}

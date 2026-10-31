@@ -393,7 +393,7 @@ export const TESTS: TestDef[] = [
     needs: L('a wall', 'eine Wand'),
     setup: L('Sit against a wall side-on to the phone, knees almost 90°, the low back flat on the wall.', 'Lehn dich seitlich zum Handy an eine Wand, Knie fast 90°, der untere Rücken flach an der Wand.'),
     steps: [L('Arms straight forward, thumbs up.', 'Arme gestreckt nach vorn, Daumen oben.'), L('Raise them overhead towards the wall – elbows straight, the back stays flat.', 'Über den Kopf zur Wand heben – Ellbogen gestreckt, der Rücken bleibt flach.')],
-    target: L('The arms reach the wall (170°)', 'Die Arme erreichen die Wand (170°)'),
+    target: L('The arms reach the wall (165° on the picture)', 'Die Arme erreichen die Wand (165° im Bild)'),
     sketch: lat,
     drills: ['mob-lat-stretch', 'mob-wall-angels'],
     video: v('yRZJ3W-265o', 'Lat test', 'Advanced Physical Therapy'),
@@ -432,6 +432,8 @@ export const TESTS: TestDef[] = [
     sketch: pelvicTilt('both'),
     options: [
       { grade: 'pass', label: L('Smooth both ways, the chest stays still', 'Flüssig in beide Richtungen, die Brust bleibt ruhig'), picture: picture(pelvicTilt('both'), L('both ways', 'beide Richtungen')) },
+      // (the TPI form asks for it too – 31.10.2026, the physio's verdict on Sascha: both ways, shaking when flattening)
+      { grade: 'limited', label: L('Both ways, but it shakes when flattening the back', 'Beide Richtungen, aber es zittert beim Flachmachen des Rückens'), picture: picture(pelvicTilt('both'), L('it shakes', 'es zittert')) },
       { grade: 'limited', label: L('Only one way works well', 'Nur eine Richtung geht gut'), picture: picture(pelvicTilt('one'), L('one way', 'eine Richtung')) },
       { grade: 'fail', label: L('Hardly – the chest moves along', 'Kaum – die Brust bewegt sich mit'), picture: picture(pelvicTilt('none'), L('hardly', 'kaum')) },
     ],

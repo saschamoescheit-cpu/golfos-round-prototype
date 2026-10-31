@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { facingOf, LIMITS, makeAnalyzer, missingPoints, nearSide, NOTE_HEELS, type Frame } from './measure';
+import { facingOf, LIMITS, makeAnalyzer, missingPoints, nearSide, NOTE_HEELS, pickMainPerson, type Frame, type Lm } from './measure';
 import { frames, frontBody, script, SYNTH_H, SYNTH_W } from './synth';
 import type { MetricKind, Side } from './types';
 
@@ -180,5 +180,34 @@ describe('mobility analysers', () => {
 
   it('finds the side of the body towards the camera', () => {
     expect(nearSide({ lm: script('squat', 'left', 'good').at(0), w: SYNTH_W, h: SYNTH_H, t: 0 })).toBe('left');
+  });
+});
+
+describe('who is the player', () => {
+  // the TPI videos (31.10.2026): the player stands in the middle, small; a helper stands close to the phone at the edge of
+  // the picture, larger and cut off by it
+  const player = frontBody({}).map((p) => ({ ...p, x: 0.45 + (p.x - 0.5) * 0.45, y: 0.3 + p.y * 0.45 }));
+  const helper: Lm[] = frontBody({}).map((p) => ({ ...p, x: 0.97 + (p.x - 0.5) * 0.9, y: -0.05 + p.y * 1.0 }));
+  it('the whole person in the picture, not the larger one cut off at the edge', () => {
+    expect(pickMainPerson([helper, player])).toBe(1);
+    expect(pickMainPerson([player, helper])).toBe(0);
+  });
+  it('alone, or two whole people: the larger, more central one as before', () => {
+    const far = frontBody({}).map((p) => ({ ...p, x: 0.8 + (p.x - 0.5) * 0.2, y: 0.4 + p.y * 0.2 }));
+    expect(pickMainPerson([far, player])).toBe(1);
+    expect(pickMainPerson([player])).toBe(0);
+  });
+});
+
+describe('the criteria of each test', () => {
+  it('every camera test names its criteria in both languages – all met for a mobile body, not all for a stiff one', () => {
+    for (const [kind, side] of KINDS) {
+      const good = run(kind, side, 'good').out!;
+      const stiff = run(kind, side, 'stiff').out;
+      expect(good.checks.length, kind).toBeGreaterThan(0);
+      for (const c of good.checks) expect(c.label.en && c.label.de, `${kind} ${c.id}`).toBeTruthy();
+      if (kind !== 'lowerQuarter') expect(good.checks.every((c) => c.ok), `${kind} good: ${good.checks.filter((c) => !c.ok).map((c) => c.id)}`).toBe(true);
+      if (stiff) expect(stiff.checks.some((c) => !c.ok), `${kind} stiff`).toBe(true);
+    }
   });
 });

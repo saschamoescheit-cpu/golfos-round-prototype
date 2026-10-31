@@ -78,6 +78,14 @@ export interface TestDef {
   needs?: L;
 }
 
+/** One criterion of a test as a physio checks it (the TPI form: "touches the wall", "heels stay down"), judged by the
+ *  camera: met or not (Sascha 31.10.2026: "the single criteria have to be judged"). */
+export interface Check {
+  id: string;
+  label: L;
+  ok: boolean;
+}
+
 /** One measured or chosen result. */
 export interface Measurement {
   /** the measured value in the unit of the metric (°, s, cm) – null for a self check */
@@ -86,6 +94,8 @@ export interface Measurement {
   source: 'camera' | 'self';
   /** checks that did not hold (e.g. "the heels come up") – English/German */
   notes?: L[];
+  /** the criteria of the test, each met or not (camera tests, from 31.10.2026) */
+  checks?: Check[];
   /** it hurt (TPI scores pain as its own result): graded ✕, but no swing pattern and no drill follow from it – a
    * physio should look at it first */
   pain?: boolean;

@@ -238,3 +238,21 @@
 /* after the result: the training as the next step */
 .mob-train-next { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .mob-train-next .btn-primary { margin-top: 6px; }
+
+/* the range warm-up (31.10.2026): the figure large, the move and the clock under it – no camera picture */
+.mob-warmup-stage { width: 100%; border-radius: 16px; overflow: hidden; }
+.mob-warmup-info { display: flex; flex-direction: column; gap: 6px; }
+.mob-warmup-name { font: 700 22px var(--display); line-height: 1.2; }
+.mob-warmup-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; color: var(--text-2); }
+.mob-warmup-clock { color: var(--brand); }
+.mob-warmup-info .mob-hold { background: var(--surface-2, rgba(255, 255, 255, 0.12)); }
+.mob-warmup-info .mob-hold i { background: var(--brand); }
+.mob-warmup-hold { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.mob-warmup-num { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2, rgba(255, 255, 255, 0.12)); font: 700 15px var(--display); }
+.mob-warmup-card { display: flex; flex-direction: column; gap: 8px; }
+
+/* the criteria of a test (31.10.2026): met ✓ in the brand colour, not yet – neutral */
+.mob-checks { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mob-checks li { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; }
+.mob-check-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--display); background: var(--surface-2, rgba(255, 255, 255, 0.12)); color: var(--text-2); }
+.mob-checks li.ok .mob-check-mark { background: var(--brand); color: #ffffff; }

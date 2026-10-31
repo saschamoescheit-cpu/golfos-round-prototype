@@ -66,8 +66,8 @@ export const BRIDGE_UP: J = { neck: [22, 0, 0], hipL: [0, 0, 6], hipR: [0, 0, -6
 /** the pelvis turned left / right in golf posture over feet that stay where they stand (the hips turn in, the knees stay
  * over the feet – fitted on the realistic golfer 24.10.2026; before, the legs turned with the pelvis and the feet slid
  * 15 cm) */
-const PELVIS_LEFT: J = { pelvis: [40, 32, 0], chest: [3, -30, 0], hipL: [-62, -35, -12], hipR: [-52, -37, -15], ankleL: [-20, -10, 0], ankleR: [-20, -4, 0] };
-const PELVIS_RIGHT: J = { pelvis: [40, -32, 0], chest: [3, 30, 0], hipL: [-52, 37, 16], hipR: [-62, 35, 12], ankleL: [-20, 4, 0], ankleR: [-20, 11, 0] };
+export const PELVIS_LEFT: J = { pelvis: [40, 32, 0], chest: [3, -30, 0], hipL: [-62, -35, -12], hipR: [-52, -37, -15], ankleL: [-20, -10, 0], ankleR: [-20, -4, 0] };
+export const PELVIS_RIGHT: J = { pelvis: [40, -32, 0], chest: [3, 30, 0], hipL: [-52, 37, 16], hipR: [-62, 35, 12], ankleL: [-20, 4, 0], ankleR: [-20, 11, 0] };
 const SQUAT_DEEP: J ={ pelvis: [30, 0, 0], spine: [5, 0, 0], chest: [5, 0, 0], head: [-20, 0, 0], hipL: [-130, -16, 5], hipR: [-130, 16, -5], kneeL: [135, 0, 0], kneeR: [135, 0, 0], ankleL: [-35, -5, 0], ankleR: [-35, 5, 0], shoulderL: [-178, 0, 12], shoulderR: [-178, 0, -12] };
 
 /** a joint list with left and right swapped (the other side of a test) */

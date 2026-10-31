@@ -14,7 +14,7 @@ import { DRILL_CLIPS, RETEST_CLIPS } from '../mobility/anim3d/drills';
 import { CLIPS } from '../mobility/anim3d/clips';
 import type { Clip } from '../mobility/anim3d/scene';
 import type { Coach } from '../mobility/CameraTest';
-import { CameraTest, isFakeCamera, sideText, unlockAudio } from '../mobility/CameraTest';
+import { CameraTest, isFakeCamera, sideText, unlockAudio, CheckList } from '../mobility/CameraTest';
 import { loadPose } from '../mobility/pose';
 import { speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
@@ -24,6 +24,9 @@ import { startLog } from '../mobility/motionlog';
 import { DrillSession, doneText } from '../mobility/DrillSession';
 import { cap } from '../mobility/DrillPlayer';
 import { daysThisWeek, drillHistory, loadSessions, localDay, newSession, openSession, openToday, painDrills, trainingValues, type TrainSession } from '../mobility/sessions';
+import { buildDayPlan, DAY_MINUTES, drillTime, type DayPlan } from '../mobility/dayplan';
+import { buildWarmup } from '../mobility/rangewarmup';
+import { RangeWarmup, warmupFor, warmupMinutes } from '../mobility/WarmupPlayer';
 import { coachOf, DRILL_COACH, SIGNALS, signalValueText, WATCH_FOCUS } from '../mobility/drillcoach';
 import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, mobilityScore, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
@@ -52,7 +55,8 @@ type View =
   | { name: 'screening'; id: string }
   | { name: 'drill'; id: string }
   | { name: 'pattern'; id: string }
-  | { name: 'train'; session: TrainSession };
+  | { name: 'train'; session: TrainSession }
+  | { name: 'warmup' };
 
 const t = (l: L): string => tr(l.en, l.de);
 
@@ -193,6 +197,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
 
   if (view.name === 'train')
     return <DrillSession session={view.session} onPause={back} onFinished={back} />;
+  if (view.name === 'warmup') return <RangeWarmup warmup={buildWarmup(pillarPlan(loadMinutes()).areas)} onClose={back} />;
 
   if (view.name === 'run') {
     const s = screeningById(view.id);
@@ -290,7 +295,7 @@ const minutesOf = (ids: TestId[]) => Math.round(ids.reduce((m, id) => m + (testB
 function TodayCard(props: { nav: Nav }) {
   const paused = openToday();
   const minutes = loadMinutes();
-  const { planDrills, planMinutes } = pillarPlan(minutes);
+  const { planDrills, planMinutes, planSession } = pillarPlan(minutes);
   const days = daysThisWeek();
   const today = localDay();
   const doneToday = loadSessions().some((x) => x.finishedAt && localDay(x.startedAt) === today);
@@ -316,7 +321,7 @@ function TodayCard(props: { nav: Nav }) {
               .filter(Boolean)
               .join(' · ')}
       </span>
-      <button type="button" className="btn-primary mob-today-start" onClick={() => props.nav.train(paused ?? newSession(planDrills.map((d) => d.id), planMinutes))}>
+      <button type="button" className="btn-primary mob-today-start" onClick={() => props.nav.train(paused ?? planSession())}>
         {paused ? tr('Continue', 'Fortsetzen') : doneToday ? tr('Train again', 'Nochmal trainieren') : tr('Train now', 'Jetzt trainieren')}
       </button>
     </section>
@@ -472,6 +477,7 @@ function TestView(props: { id: TestId; nav: Nav }) {
             !trained.length && <p className="muted">{tr('Not tested yet.', 'Noch nicht getestet.')}</p>
           ) : (
             <>
+              <LatestChecks r={history[0].r} />
               {test.metric && <HistoryChart test={test} history={history} />}
               <div className="list">
                 {history.map(({ s, r }) => (
@@ -506,6 +512,29 @@ function TestView(props: { id: TestId; nav: Nav }) {
         </button>
       </div>
     </main>
+  );
+}
+
+/** The criteria of the last time, per side (31.10.2026: "the single criteria have to be judged"). */
+function LatestChecks(props: { r: TestResult }) {
+  const parts = (
+    [
+      ['left', props.r.left, tr('Left', 'Links')],
+      ['right', props.r.right, tr('Right', 'Rechts')],
+      ['both', props.r.both, ''],
+    ] as const
+  ).filter(([, m]) => m?.checks?.length && !m.pain);
+  if (!parts.length) return null;
+  return (
+    <section className="card mob-latest-checks">
+      <strong>{tr('The criteria last time', 'Die Prüfkriterien beim letzten Mal')}</strong>
+      {parts.map(([k, m, label]) => (
+        <div key={k}>
+          {label && <span className="muted small">{label}</span>}
+          <CheckList checks={m!.checks!} />
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -1369,7 +1398,7 @@ function ScoreRing(props: { score: number }) {
 /** After the result: the next step is the training of the pillar – what it holds, and one tap to start. */
 function TrainNext(props: { nav: Nav }) {
   const minutes = loadMinutes();
-  const { planDrills, planMinutes } = pillarPlan(minutes);
+  const { planDrills, planMinutes, planSession } = pillarPlan(minutes);
   if (!planDrills.length) return null;
   return (
     <section className="card mob-train-next">
@@ -1381,7 +1410,7 @@ function TrainNext(props: { nav: Nav }) {
           <SketchThumb key={d.id} sketch={d.sketch} />
         ))}
       </div>
-      <button type="button" className="btn-primary mob-train-next-start" onClick={() => props.nav.train(newSession(planDrills.map((d) => d.id), planMinutes))}>
+      <button type="button" className="btn-primary mob-train-next-start" onClick={() => props.nav.train(planSession())}>
         {tr('Train now', 'Jetzt trainieren')}
       </button>
     </section>
@@ -1594,10 +1623,19 @@ const MINUTES_KEY = 'golfos.mobility.minutes.v1';
 function loadMinutes(): number {
   try {
     const m = Number(localStorage.getItem(MINUTES_KEY));
-    return [10, 15, 20].includes(m) ? m : 15;
+    // (before 31.10.2026 the choice was 10, 15 or 20 min)
+    return (DAY_MINUTES as readonly number[]).includes(m) ? m : m === 20 ? 30 : 15;
   } catch {
     return 15;
   }
+}
+/** How a long day is built, in one line: "2 to move through · 6 for your focus (3 with more sets) · 2 for the other areas". */
+function dayBlocksText(day: DayPlan, tr: (en: string, de: string) => string): string {
+  const more = Object.keys(day.extraSets).length;
+  const parts: string[] = [];
+  if (day.warm.length) parts.push(tr(`${day.warm.length} to move through`, `${day.warm.length} zum Durchbewegen`));
+  parts.push(tr(`then your focus`, `dann deine Schwerpunkte`) + (more ? tr(` (${more} with more sets)`, ` (${more} mit mehr Sätzen)`) : ''));
+  return parts.join(' · ');
 }
 function saveMinutes(m: number): void {
   try {
@@ -1610,7 +1648,8 @@ function saveMinutes(m: number): void {
 /**
  * The pillar and the plan of the day: the areas with the biggest gap to the goal, their drills (what matters most for
  * the swing first, not those that hurt), and as many minutes as the player has – the focus areas in turn (the first
- * drill of each area, then the second …), so a short plan still works on every focus.
+ * drill of each area, then the second …), so a short plan still works on every focus. A longer day (30–60 min) adds
+ * moving through first, the other areas below the goal and more sets of the focus drills (dayplan.ts).
  */
 function pillarPlan(minutes: number) {
   const { results } = latestResults(loadScreenings());
@@ -1638,22 +1677,36 @@ function pillarPlan(minutes: number) {
   const order: Drill[] = [];
   for (let i = 0; lists.some((l) => l[i]); i++) for (const l of lists) if (l[i] && !order.includes(l[i])) order.push(l[i]);
   const pool = order.length ? order : keep;
-  const fit = (list: Drill[]) => {
-    const out: Drill[] = [];
-    for (const d of list) {
-      const used = out.reduce((n, x) => n + x.minutes, 0);
-      if (used + d.minutes <= minutes || !out.length) out.push(d);
-    }
-    return out;
-  };
+  // the other areas below the goal (biggest gap first), then the drills to keep – what a long day adds after the focus
+  const more = [...rest.filter((x) => x.gap > 0).flatMap(drillsFor), ...keep].filter((d) => !pool.includes(d));
+  const ids = (list: Drill[]) => list.map((d) => d.id);
+  const build = (focusList: Drill[]) => buildDayPlan({ minutes, focus: ids(focusList), more: ids(more) });
   // day by day through all the drills of the focus (a coach varies them): each earlier training day moves the start
   // on by one day's worth – the same plan all of today
   const today = localDay();
   const daysBefore = new Set(loadSessions().filter((x) => x.finishedAt && localDay(x.startedAt) < today).map((x) => localDay(x.startedAt))).size;
-  const start = pool.length ? (daysBefore * fit(pool).length) % pool.length : 0;
-  const planDrills = fit([...pool.slice(start), ...pool.slice(0, start)]);
-  const planMinutes = planDrills.reduce((n, x) => n + x.minutes, 0);
-  return { results, goal, keep, drillsFor, focus, rest, planDrills, planMinutes };
+  const perDay = build(pool).drills.filter((id) => pool.some((d) => d.id === id)).length || 1;
+  const start = pool.length ? (daysBefore * perDay) % pool.length : 0;
+  const day = build([...pool.slice(start), ...pool.slice(0, start)]);
+  const planDrills = day.drills.map(drillById).filter((d): d is Drill => !!d);
+  const planMinutes = Math.round(day.seconds / 60);
+  /** the session of today's plan (with its extra sets and warm-up) */
+  const planSession = () => newSession(day.drills, planMinutes, { extraSets: day.extraSets, warm: day.warm });
+  return { results, goal, areas, keep, drillsFor, focus, rest, planDrills, planMinutes, planSession, day };
+}
+
+/** The range warm-up (31.10.2026): 5–7 min before the first ball, made for the areas with the biggest gap. */
+function WarmupCard(props: { nav: Nav }) {
+  const w = buildWarmup(pillarPlan(loadMinutes()).areas);
+  return (
+    <section className="tr-block mob-warmup-card">
+      <h2>{tr('Range warm-up', 'Range-Warmup')}</h2>
+      <span className="muted small">{tr(`About ${warmupMinutes(w)} min ${warmupFor(w.areas)} – before the first ball, standing, with a club. The app says each step.`, `Etwa ${warmupMinutes(w)} Min. ${warmupFor(w.areas)} – vor dem ersten Ball, im Stehen, mit Schläger. Die App sagt jeden Schritt an.`)}</span>
+      <button type="button" className="btn-secondary mob-warmup-open" onClick={() => props.nav.push({ name: 'warmup' })}>
+        {tr('Start the warm-up', 'Warmup starten')}
+      </button>
+    </section>
+  );
 }
 
 function DrillsTab(props: { nav: Nav }) {
@@ -1663,7 +1716,7 @@ function DrillsTab(props: { nav: Nav }) {
     setMinutesState(m);
     saveMinutes(m);
   };
-  const { results, keep, drillsFor, focus, rest, planDrills, planMinutes } = pillarPlan(minutes);
+  const { results, keep, drillsFor, focus, rest, planDrills, planMinutes, planSession, day } = pillarPlan(minutes);
   const pain = TESTS.filter((x) => hasPain(results[x.id]));
   const paused = openSession();
   if (!Object.keys(results).length)
@@ -1728,10 +1781,11 @@ function DrillsTab(props: { nav: Nav }) {
           </div>
         </section>
       )}
+      <WarmupCard nav={props.nav} />
       <section className="tr-block mob-plan-time">
         <h2>{tr('Your time a day', 'Deine Zeit am Tag')}</h2>
         <div className="chip-set">
-          {[10, 15, 20].map((m) => (
+          {DAY_MINUTES.map((m) => (
             <button
               key={m}
               type="button"
@@ -1747,9 +1801,10 @@ function DrillsTab(props: { nav: Nav }) {
           ))}
         </div>
         <span className="muted small">{tr(`${planDrills.length} drills, about ${planMinutes} min – from your focus areas in turn, other ones each training day`, `${planDrills.length} Übungen, etwa ${planMinutes} Min. – abwechselnd aus deinen Schwerpunkten, jeden Trainingstag andere`)}</span>
+        {minutes >= 30 && <span className="muted small mob-plan-blocks">{dayBlocksText(day, tr)}</span>}
       </section>
       <div className="sticky-cta">
-        <button type="button" className="btn-primary mob-train-start" onClick={() => props.nav.train(newSession(planDrills.map((d) => d.id), planMinutes))}>
+        <button type="button" className="btn-primary mob-train-start" onClick={() => props.nav.train(planSession())}>
           {tr(`Train now – ${planMinutes} min with the camera`, `Jetzt trainieren – ${planMinutes} Min. mit Kamera`)}
         </button>
         {saved ? (
@@ -1769,7 +1824,7 @@ function DrillsTab(props: { nav: Nav }) {
               saveOwnPlan({
                 id: trainingId(),
                 name: `Agility · ${minutes} ${tr('min', 'Min.')} · ${dateText(new Date().toISOString())}`,
-                items: planDrills.map((d) => ({ drill: d.id, minutes: d.minutes })),
+                items: planDrills.map((d) => ({ drill: d.id, minutes: Math.max(1, Math.round(drillTime(d.id, day.extraSets[d.id]) / 60)) })),
                 createdAt: new Date().toISOString(),
               });
               setSaved(true);

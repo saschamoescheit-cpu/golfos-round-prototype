@@ -4,10 +4,11 @@ import { applyPose, buildRig, type JointId } from './rig';
 import { floorAt, plantShift, sample, type Clip } from './scene';
 import { CLIPS } from './clips';
 import { DRILL_CLIPS, RETEST_CLIPS } from './drills';
+import { WARMUP_CLIPS } from './warmup';
 
 // The figure is placed by its pelvis: a pose that moves the hips (a squat, rocking back on all fours) slid the feet, hands
 // or knees over the floor. Clips name their planted parts (plant) and the body moves over them (24.10.2026).
-const ALL = { ...CLIPS, ...DRILL_CLIPS, ...RETEST_CLIPS } as Record<string, Clip>;
+const ALL = { ...CLIPS, ...DRILL_CLIPS, ...RETEST_CLIPS, ...WARMUP_CLIPS } as Record<string, Clip>;
 const rig = buildRig();
 
 /** how far each planted part moves along the floor while it rests on it (cm), the clip as the scene shows it */

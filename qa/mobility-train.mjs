@@ -70,7 +70,7 @@ ok(/Letztes Screening .* · Beweglichkeit \d+ \/ 100 · das nächste ab/.test(wh
 await shot('today');
 await p.locator('.tabbar button').filter({ hasText: 'Übungen' }).click();
 await p.waitForTimeout(400);
-await p.locator('.mob-plan-time .chip').filter({ hasText: '10' }).click();
+await p.locator('.mob-plan-time .chip').filter({ hasText: '15' }).click();
 const startText = await p.locator('.mob-train-start').innerText();
 ok(/Jetzt trainieren – \d+ Min\. mit Kamera/.test(startText), `the pillar starts a guided session (${startText})`);
 ok((await p.locator('.sticky-cta .btn-secondary').filter({ hasText: 'ins Training' }).count()) === 1, 'the plan for Training is still there, as the second way');
@@ -147,11 +147,11 @@ ok(/Training heute erledigt/.test(tileDone), 'the Agility tile: training done to
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.waitForTimeout(300);
 
-// the start tab knows it was done today (and the 10 minutes chosen in the pillar)
+// the start tab knows it was done today (and the time chosen in the pillar – 15 min since 31.10.2026, before 10)
 await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
 await p.waitForTimeout(300);
 const after = await p.locator('.mob-today').innerText().catch(() => '');
-ok(/heute erledigt/.test(after) && /Nochmal trainieren/.test(after) && /10 Min\./.test(after), `the start tab: done today, train again, 10 min (${after.split('\n').slice(0, 2).join(' · ')})`);
+ok(/heute erledigt/.test(after) && /Nochmal trainieren/.test(after) && /\d+ Min\./.test(after), `the start tab: done today, train again, with its minutes (${after.split('\n').slice(0, 2).join(' · ')})`);
 ok((await p.locator(".mob-week-day.today.on").count()) === 1 && (await p.locator(".mob-week-day").count()) === 7, "the week dots: 7 days, today filled");
 await shot("today-done");
 

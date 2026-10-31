@@ -1,4 +1,4 @@
-import { personCenter, pickMainPerson, type Lm } from './measure';
+import { Follower, type Lm } from './measure';
 
 // The pose model in the browser (MediaPipe Pose Landmarker, as in the Coach prototype): the WASM runtime and the model
 // come from the app itself (public/mediapipe – copied from node_modules by scripts/mediapipe-assets.mjs – and
@@ -52,10 +52,10 @@ export function loadPose(): Promise<Landmarker> {
   return shared;
 }
 
-let lastCenter: { x: number; y: number } | null = null;
+const follower = new Follower();
 /** A new test: forget whom we followed. */
 export function resetTracking(): void {
-  lastCenter = null;
+  follower.reset();
 }
 
 /** The player's body points in the current picture (null: nobody seen) and how many people were seen. */
@@ -66,7 +66,5 @@ export function detect(lm: Landmarker, source: HTMLVideoElement | HTMLCanvasElem
   const res = lm.detectForVideo(source, ts);
   const all = (res.landmarks ?? []).map((p) => p.map((l) => ({ x: l.x, y: l.y, z: l.z, v: (l as { visibility?: number }).visibility ?? 1 })));
   if (!all.length) return { lm: null, people: 0 };
-  const main = all[pickMainPerson(all, lastCenter)];
-  lastCenter = personCenter(main);
-  return { lm: main, people: all.length };
+  return { lm: follower.pick(all, now), people: all.length };
 }

@@ -88,7 +88,12 @@ describe('the tests', () => {
       if (t.mode === 'camera') {
         expect(t.metric, t.id).toBeTruthy();
         expect(t.sketch.view === 'side' && t.sketch.items.length > 0, `${t.id} picture`).toBe(true);
-      } else expect(t.options?.length, t.id).toBe(3);
+      } else {
+        // three pictures, or four when the TPI form has a second limited answer (the pelvic tilt that shakes, 31.10.2026)
+        expect(t.options!.length, t.id).toBeGreaterThanOrEqual(3);
+        expect(t.options!.length, t.id).toBeLessThanOrEqual(4);
+        expect(new Set(t.options!.map((o) => o.grade)), t.id).toEqual(new Set(['pass', 'limited', 'fail']));
+      }
       expect(t.drills.length, t.id).toBeGreaterThanOrEqual(1);
       for (const d of t.drills) expect(drillById(d), `${t.id} → ${d}`).toBeTruthy();
     }

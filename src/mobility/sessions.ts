@@ -36,10 +36,14 @@ export interface TrainSession {
   id: string;
   startedAt: string;
   finishedAt: string | null;
-  /** the time a day the player chose (10, 15, 20 min) or the length of a single drill */
+  /** the time a day the player chose (15, 30, 45, 60 min – before 31.10.2026 10, 15, 20) or the length of a single drill */
   minutes: number;
   drills: string[];
   done: DrillDone[];
+  /** sets on top of a drill's plan (focus drills on a long day, dayplan.ts) */
+  extraSets?: Record<string, number>;
+  /** the moving-through drills at the start of a long day */
+  warm?: string[];
 }
 
 const KEY = 'golfos.mobility.sessions.v1';
@@ -69,8 +73,10 @@ export const loadSessions = (): TrainSession[] => read().sort((a, b) => b.starte
 export function saveSession(s: TrainSession): void {
   write([s, ...read().filter((x) => x.id !== s.id)]);
 }
-export function newSession(drills: string[], minutes: number): TrainSession {
-  return { id: newId(), startedAt: new Date().toISOString(), finishedAt: null, minutes, drills, done: [] };
+export function newSession(drills: string[], minutes: number, plan: { extraSets?: Record<string, number>; warm?: string[] } = {}): TrainSession {
+  const extra = plan.extraSets && Object.keys(plan.extraSets).length ? { extraSets: plan.extraSets } : {};
+  const warm = plan.warm?.length ? { warm: plan.warm } : {};
+  return { id: newId(), startedAt: new Date().toISOString(), finishedAt: null, minutes, drills, done: [], ...extra, ...warm };
 }
 
 /** the best value of a drill in a session (both sides: the weaker counts, as in the screening) */
