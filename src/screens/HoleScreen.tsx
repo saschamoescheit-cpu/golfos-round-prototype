@@ -386,14 +386,22 @@ export function HoleScreen(props: {
         setTimeout(() => setOffline(null), 4000);
       } else setOffline(null);
     };
-    prefetchTiles(todo, (done) => !ctrl.signal.aborted && setOffline({ done: before + done, total: urls.length }), ctrl.signal, (u) => got.add(u)).then(async (failed) => {
+    // the count at most twice a second (31.10.2026): each one drew the whole hole again – every mark on the map ~30 times
+    // a second while the tiles came in
+    let shownAt = 0;
+    const progress = (done: number, total: number) => {
+      if (ctrl.signal.aborted || (done < total && Date.now() - shownAt < 500)) return;
+      shownAt = Date.now();
+      setOffline({ done, total });
+    };
+    prefetchTiles(todo, (done) => progress(before + done, urls.length), ctrl.signal, (u) => got.add(u)).then(async (failed) => {
       if (ctrl.signal.aborted) return;
       // the state's service is down (LGL 25.10.2026: error pages instead of pictures): the map shows Esri then – keep Esri
       if (imagery.id !== 'esri' && failed > todo.length * 0.5) {
         const holes = holesRef.current.filter((m): m is NonNullable<typeof m> => m != null);
         const esri = holeTileUrls(IMAGERY.esri, holes).filter((u) => !got.has(u));
         setOffline({ done: 0, total: esri.length });
-        await prefetchTiles(esri, (done) => !ctrl.signal.aborted && setOffline({ done, total: esri.length }), ctrl.signal, (u) => got.add(u));
+        await prefetchTiles(esri, (done) => progress(done, esri.length), ctrl.signal, (u) => got.add(u));
         if (!ctrl.signal.aborted) setOffline(null); // no stamp: the next opening tries the state's pictures again
         return;
       }
@@ -875,7 +883,14 @@ export function HoleScreen(props: {
   // shot by sound – a test (Sascha 18.10.2026): listening while this screen is open, every crack kept with time and place
   const soundTest = useMemo(() => soundTestOn() && !round.preview && !props.game, []);
   // what the pocket screen says: hearing, held up (being restarted), or off (never allowed)
-  const [mic, setMic] = useState<'on' | 'stalled' | 'off'>('off');
+  const [mic, setMicState] = useState<'on' | 'stalled' | 'off'>('off');
+  // set only when it changes: the watch below asks every second, and a render redraws every mark on the map
+  const micNow = useRef(mic);
+  const setMic = (v: typeof mic) => {
+    if (micNow.current === v) return;
+    micNow.current = v;
+    setMicState(v);
+  };
   const [micRestarts, setMicRestarts] = useState(0);
   const micEverOn = useRef(false); // allowed once on this screen – only then it is opened again by itself (no asking over and over)
   const stopListen = useRef<Listening | null>(null);
