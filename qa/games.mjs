@@ -43,7 +43,7 @@ await p.locator('.module-card').filter({ hasText: 'Games' }).click();
 await p.waitForTimeout(300);
 ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'Games start page');
 const gtabs = await p.locator('.tabbar button').allInnerTexts();
-ok(gtabs.join('|') === 'Spielen|Spiele|Wetten|Bilanz|Profil', `Games menu without "Regeln", with "Wetten": ${gtabs.join(' · ')}`);
+ok(gtabs.join('|') === 'Spielen|Spiele|Wetten|Profil', `Games menu without "Regeln", with "Wetten", the balance on "Spiele": ${gtabs.join(' · ')}`);
 await p.reload();
 await p.waitForTimeout(800);
 ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'a reload stays in Games');
@@ -186,9 +186,9 @@ await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).isDisabled()), 'restored from the bin – the tile stays with 0');
 // only confirmed games count in the balance (Sascha 16.10.2026, as signed rounds)
-await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
+await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
 await p.waitForTimeout(300);
-ok((await p.getByText(/noch nicht bestätigt/).count()) === 1, 'balance: the unconfirmed games are named');
+ok((await p.getByText(/noch nicht bestätigt/).count()) === 1, 'balance (on "Spiele"): the unconfirmed games are named');
 await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 await p.waitForTimeout(300);
 // as "sign your rounds" in Rounds (Sascha 17.10.2026): a card with the count under "new game", it opens the list filtered
@@ -228,9 +228,10 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(1200);
-await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
+await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
 await p.waitForTimeout(300);
-const bal = await p.locator('main').innerText();
+ok((await p.locator('.tab-title + .tile-row').count()) === 1 && (await p.locator('.tile-row ~ .balance').count()) === 1, 'Spiele: the tiles at the top, the balance below them');
+const bal = await p.locator('.balance').innerText();
 ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal) && /\d+× vorne · \d+× hinten/.test(bal), 'balance with games, wins, the other players and head to head');
 // the money per friend is the share of each game, not who happened to pay whom – it adds up to the total (night 25./26.10.2026)
 {
