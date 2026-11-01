@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
 import { LiveCam } from './livecam';
+import { PlayActions } from '../components/PlayActions';
 import { BONES, facingOf, makeAnalyzer, missingPoints, valueText, type Analyzer, type Cue, type Frame, type Lm, type Outcome } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
 import type { Check, Grade, Measurement, MetricKind, Side, TestDef } from './types';
@@ -27,6 +28,8 @@ export interface Coach {
   /** pause (the menu of the session) and skip this test */
   onMenu: () => void;
   onSkip: () => void;
+  /** finish the screening (or leave the single test) now */
+  onEnd: () => void;
 }
 
 /** Once the tracking was too slow with the small golfer on, it stays off for the rest of the session (this phone). */
@@ -813,37 +816,31 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       </div>
       {phase !== 'run' && !props.coach && <p className="muted small mob-private">{tr('The picture stays on your phone – nothing is recorded or sent.', 'Das Bild bleibt auf deinem Handy – nichts wird aufgenommen oder gesendet.')}</p>}
       {props.coach ? (
-        <div className="mob-camera-actions">
-          {phase === 'run' ? (
-            <button type="button" className="btn-primary" onClick={() => finishRef.current?.()}>
-              {tr('Done', 'Fertig')}
-            </button>
-          ) : (
-            <button type="button" className="btn-secondary" onClick={props.coach.onSkip}>
-              {tr('Skip', 'Überspringen')}
-            </button>
-          )}
-          <button type="button" className="btn-secondary mob-coach-pause" onClick={props.coach.onMenu}>
-            {tr('Pause', 'Pause')}
-          </button>
-        </div>
+        <PlayActions
+          className="mob-camera-actions"
+          buttons={[
+            phase === 'run'
+              ? { act: 'done', label: tr('Done', 'Fertig'), aria: tr('Done – measure now', 'Fertig – jetzt messen'), onClick: () => finishRef.current?.() }
+              : { act: 'skip', label: tr('Skip', 'Überspringen'), aria: tr('Skip this test – on to the next', 'Diesen Test überspringen – weiter zum nächsten'), onClick: props.coach.onSkip },
+            { act: 'pause', label: tr('Pause', 'Pause'), onClick: props.coach.onMenu },
+            { act: 'end', label: tr('Finish', 'Beenden'), onClick: props.coach.onEnd },
+          ]}
+        />
       ) : (
-      <div className="mob-camera-actions">
-        {phase === 'run' ? (
-          <button type="button" className="btn-primary" onClick={() => finishRef.current?.()}>
-            {tr('Done', 'Fertig')}
-          </button>
-        ) : (
-          !fake && (
-            <button type="button" className="btn-secondary" onClick={() => setFacing(facing === 'user' ? 'environment' : 'user')}>
-              {facing === 'user' ? tr('Use the back camera', 'Rückkamera nutzen') : tr('Use the front camera', 'Frontkamera nutzen')}
-            </button>
-          )
-        )}
-        <button type="button" className="btn-secondary" onClick={props.onCancel}>
-          {tr('Cancel', 'Abbrechen')}
-        </button>
-      </div>
+      <PlayActions
+        className="mob-camera-actions"
+        buttons={[
+          phase === 'run'
+            ? { act: 'done', label: tr('Done', 'Fertig'), aria: tr('Done – measure now', 'Fertig – jetzt messen'), onClick: () => finishRef.current?.() }
+            : !fake && {
+                act: 'flip',
+                label: facing === 'user' ? tr('Back camera', 'Rückkamera') : tr('Front camera', 'Frontkamera'),
+                aria: facing === 'user' ? tr('Use the back camera', 'Rückkamera nutzen') : tr('Use the front camera', 'Frontkamera nutzen'),
+                onClick: () => setFacing(facing === 'user' ? 'environment' : 'user'),
+              },
+          { act: 'end', label: tr('Finish', 'Beenden'), aria: tr('Leave the test', 'Test verlassen'), onClick: props.onCancel },
+        ]}
+      />
       )}
     </section>
   );

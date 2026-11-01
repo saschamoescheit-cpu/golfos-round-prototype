@@ -224,8 +224,8 @@ await p.waitForTimeout(300);
 await p.locator('.mob-train-start').click();
 await p.locator('.mob-start-train').click();
 await p.locator('.mob-drill-result').waitFor({ timeout: 90000 });
-await p.locator('.mob-coach-pause').waitFor({ timeout: 30000 });
-await p.locator('.mob-coach-pause').click();
+await p.locator('.mob-camera-actions .pause').waitFor({ timeout: 30000 });
+await p.locator('.mob-camera-actions .pause').click();
 await p.locator('.mob-hold-screen').waitFor({ timeout: 10000 });
 await p.locator('.mob-hold-screen .btn-secondary').filter({ hasText: 'Pausieren' }).click();
 await p.waitForTimeout(400);
@@ -244,7 +244,7 @@ const resumedTag = await p.locator('.mob-side-tag').innerText();
 ok(names.length > 1 && resumedTag.includes(names[1]) && !resumedTag.includes(names[0]), `it goes on with the next drill (${resumedTag}; the drills: ${names.join(', ')})`);
 
 // it hurts in the middle of a set: Pause → "It hurts – stop this drill" → the next drill; the drill is out of the plan
-await p.locator('.mob-coach-pause').click();
+await p.locator('.mob-camera-actions .pause').click();
 await p.locator('.mob-pain-stop').click();
 await p.waitForTimeout(600);
 const painSess = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]').find((s) => !s.finishedAt));

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
 import { LiveCam } from './livecam';
+import { PlayActions } from '../components/PlayActions';
 import type { Drill } from '../training/types';
 import { BONES, facingOf, type Frame, type Lm } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
@@ -122,6 +123,8 @@ export function DrillPlayer(props: {
   onDone: (d: DrillDone) => void;
   onMenu: () => void;
   onSkip: () => void;
+  /** finish the training now (asks first: pause for later or finish) */
+  onEnd: () => void;
 }) {
   const { plan } = props;
   const sets = setsOf(plan);
@@ -731,14 +734,14 @@ export function DrillPlayer(props: {
           <div className="mob-side-tag">{phase === 'demo' ? props.intro : [t(props.drill.name), setLabel].filter(Boolean).join(' · ')}</div>
         </div>
       </div>
-      <div className="mob-camera-actions">
-        <button type="button" className="btn-secondary" onClick={props.onSkip}>
-          {tr('Skip', 'Überspringen')}
-        </button>
-        <button type="button" className="btn-secondary mob-coach-pause" onClick={props.onMenu}>
-          {tr('Pause', 'Pause')}
-        </button>
-      </div>
+      <PlayActions
+        className="mob-camera-actions"
+        buttons={[
+          { act: 'skip', label: tr('Skip', 'Überspringen'), aria: tr('Skip this drill – on to the next', 'Diese Übung überspringen – weiter zur nächsten'), onClick: props.onSkip },
+          { act: 'pause', label: tr('Pause', 'Pause'), onClick: props.onMenu },
+          { act: 'end', label: tr('Finish', 'Beenden'), aria: tr('Finish the training', 'Training beenden'), onClick: props.onEnd },
+        ]}
+      />
     </section>
   );
 }

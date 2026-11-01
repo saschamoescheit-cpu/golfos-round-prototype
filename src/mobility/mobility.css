@@ -52,7 +52,7 @@
   background: rgba(14, 20, 24, 0.78); color: #ffffff; font: 600 13px var(--body); text-align: right;
 }
 .mob-camera-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.mob-camera-actions button { min-height: 52px; }
+.mob-camera-actions button:not(.drawer-action) { min-height: 52px; }
 .mob-error p { color: var(--text-2); }
 
 .mob-result { display: flex; flex-direction: column; gap: 12px; }
