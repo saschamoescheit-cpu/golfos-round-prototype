@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
-import { LiveCam } from './livecam';
+import { LiveCam, cameraWish } from './livecam';
 import { PlayActions } from '../components/PlayActions';
 import type { Drill } from '../training/types';
 import { BONES, facingOf, type Frame, type Lm } from './measure';
@@ -505,7 +505,7 @@ export function DrillPlayer(props: {
         } else {
           const shared = props.stream?.active ? props.stream : null;
           if (!shared && !navigator.mediaDevices?.getUserMedia) throw new Error('nocamera');
-          const [s, l] = await Promise.all([shared ? Promise.resolve(shared) : navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false }), loadPose()]);
+          const [s, l] = await Promise.all([shared ? Promise.resolve(shared) : navigator.mediaDevices.getUserMedia(cameraWish()), loadPose()]);
           stream = s;
           ownStream = !shared;
           landmarker = l;
@@ -520,14 +520,14 @@ export function DrillPlayer(props: {
         // the 3D golfer shows the drill, the app reads the steps (at 3 m the words are too small)
         go('demo');
         const clip = props.clip;
-        const steps = [...new Set((clip?.keys ?? []).map((x) => (x.label ? tr(x.label.en, x.label.de) : '')).filter((x) => x && !/other|andere/i.test(x)))].slice(0, 3);
         const how = plan.hold ? tr(`Hold ${plan.hold} seconds`, `${plan.hold} Sekunden halten`) : tr(`${plan.reps} times`, `${plan.reps}-mal`);
         const sideNote = plan.sides ? tr(', each side', ', jede Seite') : '';
-        say(`${props.intro}. ${tr('Watch.', 'Schau zu.')} ${(steps.length ? steps : [t(props.drill.steps[0])]).join('. ')}. ${how}${sideNote}.`);
+        // the whole how-to while the golfer shows it: where to stand, every step, how long (Sascha 1.11.2026)
+        say([`${props.intro}.`, tr('Watch.', 'Schau zu.'), t(props.drill.setup), ...props.drill.steps.map(t), `${how}${sideNote}.`].join(' '));
         const t0 = performance.now();
         const loop = clip ? (clip.length ?? clip.keys[clip.keys.length - 1].t) * 1000 : 0;
         const toFrame = () => {
-          if (!fake && isSpeaking() && performance.now() - t0 < 25000) return later(toFrame, 200);
+          if (!fake && isSpeaking() && performance.now() - t0 < 60000) return later(toFrame, 200);
           go('frame');
           frameT0 = performance.now();
           say(`${tr('Now you.', 'Jetzt du.')} ${t(plan.where)}`);

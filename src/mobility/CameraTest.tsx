@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
-import { LiveCam } from './livecam';
+import { LiveCam, cameraWish } from './livecam';
 import { PlayActions } from '../components/PlayActions';
 import { BONES, facingOf, makeAnalyzer, missingPoints, valueText, type Analyzer, type Cue, type Frame, type Lm, type Outcome } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
@@ -553,7 +553,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
         } else {
           const shared = props.coach?.stream?.active ? props.coach.stream : null;
           if (!shared && !navigator.mediaDevices?.getUserMedia) throw new Error('nocamera');
-          const [s, l] = await Promise.all([shared ? Promise.resolve(shared) : navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false }), loadPose()]);
+          const [s, l] = await Promise.all([shared ? Promise.resolve(shared) : navigator.mediaDevices.getUserMedia(cameraWish(facing)), loadPose()]);
           stream = s;
           ownStream = !shared;
           landmarker = l;
@@ -569,15 +569,14 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           // the 3D golfer shows the test first (about one loop), then: "Now you" and where to stand
           go('demo');
           const clip = props.coach.demo;
-          // what the golfer does, read out while it shows it – at 3 m the words in the picture are too small (the steps
-          // of the clip, up to three, not the "then the other side" ones)
-          const steps = [...new Set((clip?.keys ?? []).map((x) => (x.label ? tr(x.label.en, x.label.de) : '')).filter((x) => x && !/other|andere/i.test(x) && !(props.side && /\b(left|right|links|rechts|linke|rechte|linken|rechten)\b/i.test(x))))].slice(0, 3);
-          say(`${props.coach.intro}. ${tr('Watch.', 'Schau zu.')} ${steps.join('. ')}`);
+          // what to do, read out in full while the golfer shows it – where to stand and every step, as on the test's page
+          // (Sascha 1.11.2026: "while it is shown a voice should say what to do – that matters most here")
+          say([`${props.coach.intro}.`, tr('Watch.', 'Schau zu.'), tr(props.test.setup.en, props.test.setup.de), ...props.test.steps.map((x) => tr(x.en, x.de))].join(' '));
           const t0 = performance.now();
           const loop = clip ? (clip.length ?? clip.keys[clip.keys.length - 1].t) * 1000 : 0;
           const toFrame = () => {
             if (stopped) return;
-            if (!fake && isSpeaking() && performance.now() - t0 < 20000) {
+            if (!fake && isSpeaking() && performance.now() - t0 < 60000) {
               demoTimer = window.setTimeout(toFrame, 200);
               return;
             }

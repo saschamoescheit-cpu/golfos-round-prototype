@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { LiveCam } from './livecam';
+import { LiveCam, cameraWish, shapeOf } from './livecam';
 
 const stream = (state: 'live' | 'ended' = 'live') => {
   const track = { readyState: state, stop: vi.fn() };
@@ -45,6 +45,34 @@ describe('the camera picture stays live', () => {
     cam.stop();
     expect((first as unknown as { track: { stop: () => void } }).track.stop).not.toHaveBeenCalled();
     expect((fresh as unknown as { track: { stop: () => void } }).track.stop).toHaveBeenCalled();
+  });
+
+  it('upright like the phone: a lying picture on an upright phone asks for other sizes, one after the other', () => {
+    expect(shapeOf(720, 1280)).toBe('tall');
+    expect(shapeOf(480, 640)).toBe('upright');
+    expect(shapeOf(1280, 720)).toBe('wide');
+    expect(cameraWish('environment').video).toMatchObject({ facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } });
+    vi.stubGlobal('window', { innerWidth: 390, innerHeight: 844 });
+    const s = stream();
+    const applyConstraints = vi.fn(async () => undefined);
+    (s as unknown as { track: Record<string, unknown> }).track.applyConstraints = applyConstraints;
+    const stage = { setAttribute: vi.fn() };
+    const v = { ...video(s), videoWidth: 1280, videoHeight: 720, parentElement: stage };
+    const cam = new LiveCam(v as unknown as HTMLVideoElement, s);
+    const t0 = performance.now();
+    cam.check(t0 + 10);
+    expect(stage.setAttribute).toHaveBeenCalledWith('data-shape', 'wide');
+    expect(applyConstraints).toHaveBeenCalledTimes(1);
+    cam.check(t0 + 300);
+    expect(applyConstraints).toHaveBeenCalledTimes(1);
+    cam.check(t0 + 900);
+    expect(applyConstraints).toHaveBeenCalledTimes(2);
+    // upright now: it fills the screen, nothing more is asked
+    v.videoWidth = 720;
+    v.videoHeight = 1280;
+    cam.check(t0 + 1800);
+    expect(stage.setAttribute).toHaveBeenLastCalledWith('data-shape', 'tall');
+    expect(applyConstraints).toHaveBeenCalledTimes(2);
   });
 
   it('an ended camera is opened again at once', () => {
