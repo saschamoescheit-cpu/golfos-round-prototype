@@ -275,6 +275,24 @@ describe('the push function, end to end against a copy of the database', () => {
     expect((await post({ action: 'bet', code: 'GAM234', wager: 'w-run' }, 'token-tim')).status).toBe(403);
   });
 
+  it('a tournament planned in Games: the tee time of your flight, about 45 minutes before – once (Sascha 01.11.2026)', async () => {
+    const iphone = await sascha();
+    const s0 = (await iphone.inbox()).length;
+    tables.golfos_shared_games.push(
+      { code: 'TOU234', owner: 'u-tim', members: ['u-sascha'], event_code: null, game: { kind: 'round-event', planned: true, date: '2026-11-06', name: 'USA Tag 1', course: { name: 'Bethpage Black' } } },
+      { code: 'TOU234-f1', owner: 'u-tim', members: [], event_code: 'TOU234', game: { kind: 'round-flight', flight: { id: 'f1', teeTime: '09:20', players: [{ id: 'p1', name: 'Sascha' }, { id: 'p2', name: 'Tim' }], phones: { ph: { player: 'p1', uid: 'u-sascha' } } } } },
+    );
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-11-06T07:35:00Z')); // 08:35 on Sascha's phone (Berlin): 45 minutes before 09:20
+      expect((await (await post({ action: 'tick' })).json()).tees).toBeGreaterThanOrEqual(1);
+      expect((await (await post({ action: 'tick' })).json()).tees).toBe(0); // said once
+    } finally {
+      vi.useRealTimers();
+    }
+    expect((await iphone.inbox()).slice(s0)).toContainEqual(expect.objectContaining({ title: 'USA Tag 1 · Startzeit 09:20', body: 'Dein Flight (Sascha · Tim) startet in etwa 45 Min. · Bethpage Black', url: './#rounds' }));
+  });
+
   it('a phone the push service no longer knows is forgotten; turned off, it is gone', async () => {
     const old = await phone(GONE);
     await post({ action: 'subscribe', subscription: old.subscription }, 'token-max'); // the hello comes back 410

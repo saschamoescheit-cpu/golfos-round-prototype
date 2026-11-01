@@ -352,7 +352,7 @@ export const FAQ: FaqTopic[] = [
       },
       {
         q: () => tr('Which notifications are there?', 'Welche Mitteilungen gibt es?'),
-        a: () => tr('A round not checked yet, games on several phones, a thunderstorm on the course. Profile → Notifications.', 'Runde noch nicht geprüft, Spiele auf mehreren Handys, Gewitter auf dem Platz. Profil → Mitteilungen.'),
+        a: () => tr('A round not checked yet, games on several phones, a bet made, your tee time about 45 minutes ahead, a thunderstorm on the course. Profile → Notifications.', 'Runde noch nicht geprüft, Spiele auf mehreren Handys, eine geschaffte Wette, deine Startzeit etwa 45 Minuten vorher, Gewitter auf dem Platz. Profil → Mitteilungen.'),
         video: 'profile',
       },
       {
