@@ -1,26 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { betLabel, betNote } from '../../supabase/functions/golfos-push/index';
-import { wagerLabel, type Wager } from './wagers';
+import { LIBRARY, wagerLabel, type Wager } from './wagers';
 import { setLang } from './i18n';
 
 // The push about a bet made (Sascha 01.11.2026): the server says the bet as the app does.
 const w = (patch: Partial<Wager>): Wager => ({ id: 'w1', player: 'chris', kind: 'birdieRun', target: 3, stake: 20, payout: 'success', attempts: 'any', ...patch });
 
 describe('the push about a bet made', () => {
-  it('the bet in the words of the app, in German and in English', () => {
-    const bets: Partial<Wager>[] = [
-      { kind: 'birdieRun', target: 3 },
-      { kind: 'parRun', target: 12 },
-      { kind: 'birdies', target: 5 },
-      { kind: 'greens', target: 16, holes: 9 },
-      { kind: 'score', target: -5 },
-      { kind: 'score', target: 2, net: true },
-      { kind: 'score', target: 0 },
-      { kind: 'free', text: 'Längster Drive an Loch 7' },
-    ];
+  it('every bet of the library in the words of the app – numbers, 9 holes, the whole trip, German and English', () => {
     for (const lang of ['de', 'en'] as const) {
       setLang(lang);
-      for (const b of bets) expect(betLabel(w(b), lang)).toBe(wagerLabel(w(b)));
+      for (const b of LIBRARY)
+        for (const target of [0, 1, 3, b.start])
+          for (const holes of [18, 9] as const)
+            for (const scope of [undefined, 'trip'] as const) {
+              const bet = w({ kind: b.kind, ...b.patch, target, holes, ...(scope ? { scope } : {}), ...(b.kind === 'free' ? { text: 'Längster Drive an Loch 7' } : {}) });
+              expect(betLabel(bet, lang)).toBe(wagerLabel(bet));
+            }
     }
     setLang('de');
   });

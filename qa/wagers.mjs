@@ -1,7 +1,7 @@
 // QA (Sascha 01.11.2026: "in America we have bets running – Chris 3 birdies in a row, 12 pars in a row, 5 birdies on
 // 18, 16 greens, −5 …; individual bets in Games, everything adjustable, invite people, and the flight counts each other
 // as in a real tournament"): two phones. Sascha sets up a pool of bets with four players, adds Chris's five bets with
-// the "Zocker-Pool" template (−5 for the score) and a free bet for Erik, and invites. Chris joins with the link, picks
+// five bets from his library (−5 for the score), a free bet for Erik and Chris's −5 for Cedric as a template, and invites. Chris joins with the link, picks
 // himself; a round of his – played with a marker, the card signed by both – is on his phone: his phone judges his bets
 // and reports them. Sascha sees what Chris made, decides Erik's free bet by hand, and the settlement says who pays whom.
 // Supabase is simulated in this script (the table golfos_shared_games with its write rule), the app is real.
@@ -111,31 +111,45 @@ ok((await H.locator('.pool-player').count()) === 4 && (await H.locator('.topbar 
 const code = [...shared.keys()][0];
 ok(/^[A-Z0-9]{6}$/.test(code ?? '') && shared.get(code).game.kind === 'wager-pool', `the pool on the server, code ${code}`);
 
-// the "Zocker-Pool" template for Chris: five bets, the score −5
-await H.getByRole('button', { name: 'Vorlage Zocker-Pool' }).click();
-const tpl = H.getByRole('dialog', { name: 'Vorlage Zocker-Pool' });
-await tpl.getByRole('group', { name: 'Wessen Wetten' }).getByRole('button', { name: 'Chris', exact: true }).click();
-const minus = tpl.getByRole('group', { name: 'Ergebnis zu Par' }).getByRole('button', { name: /minus eins/ });
-for (let k = 0; k < 5; k++) await minus.click();
-if (process.env.SHOTS) await tpl.screenshot({ path: process.env.SHOTS + '/wagers-template.png' });
-await tpl.getByRole('button', { name: /5 Wetten für Chris anlegen/ }).click();
+// Chris's bets from his library (Sascha 01.11.2026: "per person a library to pick single bets from"): five of them,
+// the score −5
+await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
+const lib = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
+ok((await lib.getByRole('group', { name: 'Auswählen aus' }).count()) === 0, 'library: no "set up before" while there are no bets yet');
+ok((await lib.locator('.lib-row').count()) >= 20, `library: ${await lib.locator('.lib-row').count()} bets to pick from`);
+for (const name of [/^Birdies in Folge/, /^Pars in Folge/, /^Birdies Birdie oder besser/, /^Grüns getroffen/, /^Brutto zu Par/]) await lib.getByRole('button', { name }).click();
+const minus = lib.getByRole('group', { name: 'Brutto zu Par' }).getByRole('button', { name: /minus eins/ });
+for (let k = 0; k < 15; k++) await minus.click(); // +10 → −5
+if (process.env.SHOTS) await lib.screenshot({ path: process.env.SHOTS + '/wagers-library.png' });
+await lib.getByRole('button', { name: '5 Wetten für Chris anlegen' }).click();
 await H.waitForTimeout(1000);
 const chrisCard = H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Chris$/ }) });
 const rows = await chrisCard.locator('.pool-wager .title').allInnerTexts();
-ok(rows.length === 5 && rows.includes('2 Birdies in Folge') && rows.includes('−5 brutto'), `Chris's five bets: ${rows.join(' · ')}`);
+ok(rows.length === 5 && rows.includes('2 Birdies in Folge') && rows.includes('9 Grüns auf 18') && rows.includes('−5 brutto'), `Chris's five bets: ${rows.join(' · ')}`);
 ok((await chrisCard.locator('.pool-wager').first().innerText()).includes('20 € · nur bei Erfolg · mit Zähler'), 'the rules in the row: 20 €, paid when made, with marker');
 
-// a free bet for Erik
-await H.getByRole('button', { name: '+ Wette' }).click();
-const ws = H.getByRole('dialog', { name: 'Neue Wette' });
-await ws.getByRole('group', { name: 'Wessen Wette' }).getByRole('button', { name: 'Erik', exact: true }).click();
-await ws.getByRole('group', { name: 'Was' }).getByRole('button', { name: 'Freie Wette' }).click();
-await ws.getByRole('textbox', { name: 'Die Wette in Worten' }).fill('Längster Drive an Loch 7');
-if (process.env.SHOTS) await ws.screenshot({ path: process.env.SHOTS + '/wagers-bet.png' });
-await ws.getByRole('button', { name: 'Wette anlegen' }).click();
+// a free bet for Erik – from his library
+await H.getByRole('button', { name: 'Wetten für Erik hinzufügen' }).click();
+const libE = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
+await libE.getByRole('button', { name: /^Freie Wette/ }).click();
+await libE.getByRole('textbox', { name: 'Die Wette in Worten' }).fill('Längster Drive an Loch 7');
+await libE.getByRole('button', { name: '1 Wette für Erik anlegen' }).click();
 await H.waitForTimeout(1000);
 ok((await H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Erik$/ }) }).innerText()).includes('Längster Drive an Loch 7'), "Erik's free bet in the pool");
-ok(shared.get(code).game.wagers.length === 6, `the server has the 6 bets (${shared.get(code).game.wagers.length})`);
+
+// bets set up before as templates ("once I have set up bets, pick from those"): Chris's −5 for Cedric
+await H.getByRole('button', { name: 'Wetten für Cedric hinzufügen' }).click();
+const libC = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
+await libC.getByRole('group', { name: 'Auswählen aus' }).getByRole('button', { name: 'Schon angelegt' }).click();
+const groups = await libC.locator('.lib-from').allInnerTexts();
+ok(groups.includes('USA 2026 · Chris') && groups.includes('USA 2026 · Erik'), `"set up before": ${groups.join(' · ')}`);
+if (process.env.SHOTS) await libC.screenshot({ path: process.env.SHOTS + '/wagers-earlier.png' });
+await libC.locator('.lib-group').filter({ hasText: 'USA 2026 · Chris' }).getByRole('button', { name: /^−5 brutto/ }).click();
+await libC.getByRole('button', { name: '1 Wette für Cedric anlegen' }).click();
+await H.waitForTimeout(1000);
+const cedric = await H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Cedric$/ }) }).locator('.pool-wager .title').allInnerTexts();
+ok(cedric.length === 1 && cedric[0] === '−5 brutto', `Cedric took Chris's −5 as a template: ${cedric.join(' · ')}`);
+ok(shared.get(code).game.wagers.length === 7, `the server has the 7 bets (${shared.get(code).game.wagers.length})`);
 
 // invite: the code with a QR code
 await H.getByRole('button', { name: new RegExp(`Mitspieler einladen · Code ${code}`) }).click();
@@ -177,7 +191,7 @@ await H.waitForTimeout(1200);
 const settle = (await H.locator('.card').filter({ hasText: 'Abrechnung' }).innerText()).replace(/\s+/g, ' ');
 // Chris 4 × 20 € from each of three = +240; Erik's free bet +60; Sascha and Cedric −100, Erik −20, Chris +220
 ok(/Sascha → Chris 100 €/.test(settle) && /Cedric → Chris 100 €/.test(settle) && /Erik → Chris 20 €/.test(settle), `settlement: ${settle.slice(0, 140)}`);
-ok(/5 von 6 Wetten entschieden/.test(settle), '5 of 6 bets decided (the −5 still open)');
+ok(/5 von 7 Wetten entschieden/.test(settle), "5 of 7 bets decided (Chris's and Cedric's −5 still open)");
 const erikFree = shared.get(code).game.wagers.find((w) => w.kind === 'free').id;
 ok(pushes.some((x) => x.phone === 'Sascha' && x.body.action === 'bet' && x.body.wager === erikFree), "push: Erik's free bet decided as made – Sascha's phone told of it");
 

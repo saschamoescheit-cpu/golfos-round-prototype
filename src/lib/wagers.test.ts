@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { balances, judge, stateOf, wagerLabel, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { LIBRARY, balances, earlierGroups, fromEarlier, fromLibrary, judge, progressText, stateOf, wagerLabel, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 
 // Sascha's "Zocker-Pool" (01.11.2026): Chris 3 birdies in a row, 12 pars in a row, 5 birdies on 18, 16 greens, −5 …
@@ -74,6 +75,80 @@ describe('the bets judged from the rounds', () => {
   it("words: the bet as on Sascha's list", () => {
     expect(wagerLabel(bet({}))).toMatch(/3 (birdies in a row|Birdies in Folge)/);
     expect(wagerLabel(bet({ kind: 'score', target: -5 }))).toMatch(/−5/);
+  });
+});
+
+// the library (Sascha 01.11.2026: "extend it with further sensible bets")
+describe('the further bets of the library', () => {
+  const e = (strokes: number | null, o: Partial<HoleEntry> = {}): HoleEntry => ({ ...emptyEntry(), strokes, putts: 2, ...o });
+  const played = (entries: HoleEntry[], o: Partial<PlayedRound> = {}): PlayedRound => ({ id: o.id ?? 'r', day: o.day ?? '2026-11-05', course: 'Bethpage', pars: PARS.slice(0, entries.length), entries, hcp: 10, counted: true, ...o });
+  const base = () => PARS.map((p) => e(p));
+  it('counts in a round: pars, fairways, one-putts, up & downs, eagles, a hole-in-one', () => {
+    const h = base();
+    h[0] = e(3, { fairway: 'hit', putts: 1 }); // birdie on a par 4: a par or better too
+    h[1] = e(4, { fairway: 'hit', upAndDown: true, putts: 1 });
+    h[2] = e(1, { putts: 0 }); // a hole-in-one on the par 3
+    h[3] = e(3, { fairway: 'left', putts: 1 }); // an eagle on the par 5
+    h[4] = e(6); // a double bogey
+    const r = [played(h)];
+    expect(judge(bet({ kind: 'pars', target: 17 }), pool, r).best).toBe(17);
+    expect(judge(bet({ kind: 'pars', target: 17, orBetter: false }), pool, r).best).toBe(14);
+    expect(judge(bet({ kind: 'fairways', target: 2 }), pool, r).best).toBe(2);
+    expect(judge(bet({ kind: 'oneputts', target: 3 }), pool, r).best).toBe(3);
+    expect(judge(bet({ kind: 'updowns', target: 1 }), pool, r).done).toBe(true);
+    expect(judge(bet({ kind: 'eagles', target: 2 }), pool, r).best).toBe(2); // the ace on a par 3 is an eagle as well
+    expect(judge(bet({ kind: 'holeInOne', target: 1, scope: 'trip' }), pool, r).done).toBe(true);
+  });
+  it('at most in a complete round: putts, three-putts, double bogeys, penalty strokes', () => {
+    const h = base(); // 36 putts
+    h[5] = e(5, { putts: 3, penalties: 1 });
+    h[6] = e(6, { putts: 3 }); // double bogey on the par 3, a three-putt
+    const r = [played(h)];
+    expect(judge(bet({ kind: 'putts', target: 36 }), pool, r).best).toBe(38);
+    expect(judge(bet({ kind: 'putts', target: 38 }), pool, r).done).toBe(true);
+    expect(judge(bet({ kind: 'threeputts', target: 0 }), pool, r).best).toBe(2);
+    expect(judge(bet({ kind: 'doubles', target: 1 }), pool, r).done).toBe(true);
+    expect(judge(bet({ kind: 'penalties', target: 0 }), pool, r).done).toBe(false);
+    const unknown = base();
+    unknown[9] = e(4, { putts: null });
+    expect(judge(bet({ kind: 'putts', target: 40 }), pool, [played(unknown)]).best).toBeNull(); // a putt missing: no total
+    expect(judge(bet({ kind: 'putts', target: 18, holes: 9 }), pool, [played(unknown)]).best).toBe(18); // the front nine is complete
+  });
+  it('Stableford points with the strokes he receives; counts added up over the trip', () => {
+    const r = played(base(), { received: PARS.map((_, i) => (i < 10 ? 1 : 0)) }); // par everywhere: 2 points, +1 on 10 holes
+    expect(judge(bet({ kind: 'stableford', target: 46 }), pool, [r]).best).toBe(46);
+    const b1 = base();
+    b1[0] = e(3);
+    const b2 = base();
+    b2[0] = e(3);
+    b2[1] = e(3);
+    const trip = [played(b1, { id: 'a' }), played(b2, { id: 'b', day: '2026-11-06' })];
+    expect(judge(bet({ kind: 'birdies', target: 3, scope: 'trip' }), pool, trip).done).toBe(true);
+    expect(judge(bet({ kind: 'birdies', target: 3 }), pool, trip).best).toBe(2); // in one round only 2
+    expect(progressText(bet({ kind: 'birdies', target: 10, scope: 'trip' }), judge(bet({ kind: 'birdies', target: 10, scope: 'trip' }), pool, trip))).toMatch(/3 \((target|Ziel) 10\)/);
+  });
+  it('every entry of the library makes a bet with its own name', () => {
+    const names = LIBRARY.map((b) => wagerLabel(fromLibrary(b, { player: 'chris', stake: 20, payout: 'success', attempts: 'any' }, b.start, b.id, 'Nearest the pin')));
+    expect(new Set(names).size).toBe(LIBRARY.length);
+  });
+});
+
+// "once I have set up bets, I want to pick from those as templates" (Sascha 01.11.2026)
+describe('bets set up before as templates', () => {
+  const p = { players: [{ id: 'erik', name: 'Erik' }, { id: 'sascha', name: 'Sascha' }], from: '2026-11-04', to: '2026-11-10' };
+  it('grouped by where they were, each bet once per group', () => {
+    const g = earlierGroups([
+      { from: 'USA 2026 · Chris', wager: bet({ id: 'a' }) },
+      { from: 'USA 2026 · Chris', wager: bet({ id: 'b' }) }, // the same bet again
+      { from: 'USA 2026 · Chris', wager: bet({ id: 'c', kind: 'greens', target: 16 }) },
+      { from: 'Hetzenhof · Erik', wager: bet({ id: 'd', player: 'erik' }) },
+    ]);
+    expect(g.map((x) => [x.from, x.wagers.length])).toEqual([['USA 2026 · Chris', 2], ['Hetzenhof · Erik', 1]]);
+  });
+  it('a template for another player: a new bet with the same rules; what does not fit this pool made plain', () => {
+    const t = fromEarlier(bet({ id: 'a', payout: 'opponent', opponent: 'cedric', attempts: 'day', day: '2026-10-01', stake: 50 }), 'erik', p, 'n1');
+    expect(t).toMatchObject({ id: 'n1', player: 'erik', kind: 'birdieRun', target: 3, stake: 50, payout: 'success', attempts: 'any' });
+    expect(fromEarlier(bet({ payout: 'opponent', opponent: 'sascha' }), 'erik', p, 'n2')).toMatchObject({ payout: 'opponent', opponent: 'sascha' });
   });
 });
 

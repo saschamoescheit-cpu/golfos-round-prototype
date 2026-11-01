@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { newId } from '../lib/storage';
 import { loadProfile, shownName } from '../lib/profile';
 import { joinLink } from '../lib/sharedgame';
 import { money, transfers } from '../lib/gameforms';
-import { Chips, Stepper, TopBar } from '../components/ui';
+import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
-import { KINDS, TEMPLATE, balances, dayOf, progressText, stateOf, wagerLabel, wagerRules, type Payout, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
-import { changePool, createPool, forgetPool, joinPool, loadPools, refreshPool, reportWagers, type PoolEntry } from '../lib/wagerstore';
+import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, earlierGroups, fromEarlier, fromLibrary, progressText, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { changePool, createPool, earlierBets, forgetPool, joinPool, loadPools, refreshPool, rememberBets, reportWagers, type PoolEntry } from '../lib/wagerstore';
 import { pushBet } from '../lib/push';
 
 // Bets in Games (Sascha 01.11.2026: "in America we have bets running – it must be possible to set up individual bets in
@@ -187,7 +187,7 @@ function StateBadge(props: { state: WagerState }) {
 export function PoolScreen(props: { code: string; onBack: () => void }) {
   const pools = usePools();
   const entry = pools.find((e) => e.code === props.code);
-  const [sheet, setSheet] = useState<null | { edit: Wager | null } | 'template' | 'invite' | 'finish'>(null);
+  const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | 'invite' | 'finish'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [seen, setSeen] = useState(seenSet);
   // not on this phone yet (a push tapped on another phone of the same account): fetched from the server
@@ -294,6 +294,7 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
               <span className="muted small">{p.id === entry.me ? tr('you', 'du') : p.joined ? tr('joined', 'dabei') : tr('not joined yet', 'noch nicht beigetreten')}</span>
             </div>
             {!ws.length && <span className="muted small">{tr('No bets yet.', 'Noch keine Wetten.')}</span>}
+            {/* per person a library to pick single bets from (Sascha 01.11.2026) – below the bets there are */}
             {ws.map((w) => (
               <button key={w.id} type="button" className="list-item pool-wager" onClick={() => setSheet({ edit: w })}>
                 <span className="grow">
@@ -304,19 +305,14 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
                 <StateBadge state={stateOf(w, pool, today)} />
               </button>
             ))}
+            {!pool.finishedAt && (
+              <button type="button" className="btn-secondary pool-add" aria-label={tr(`Add bets for ${p.name}`, `Wetten für ${p.name} hinzufügen`)} onClick={() => setSheet({ library: p.id })}>
+                {tr('+ Bets', '+ Wetten')}
+              </button>
+            )}
           </section>
         );
       })}
-      {!pool.finishedAt && (
-        <div className="play-actions">
-          <button type="button" className="btn-primary" onClick={() => setSheet({ edit: null })}>
-            {tr('+ Bet', '+ Wette')}
-          </button>
-          <button type="button" className="btn-secondary" onClick={() => setSheet('template')}>
-            {tr('Zocker pool template', 'Vorlage Zocker-Pool')}
-          </button>
-        </div>
-      )}
       <button type="button" className="btn-secondary" onClick={() => setSheet('invite')}>
         {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
       </button>
@@ -368,7 +364,7 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
           {tr('Remove from this phone', 'Von diesem Handy entfernen')}
         </button>
       )}
-      {sheet && typeof sheet === 'object' && (
+      {sheet && typeof sheet === 'object' && 'edit' in sheet && (
         <WagerSheet
           pool={pool}
           me={entry.me}
@@ -399,13 +395,14 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
           }}
         />
       )}
-      {sheet === 'template' && (
-        <TemplateSheet
+      {sheet && typeof sheet === 'object' && 'library' in sheet && (
+        <LibrarySheet
           pool={pool}
-          me={entry.me}
+          player={sheet.library}
           onClose={() => setSheet(null)}
           onAdd={async (ws) => {
             if (await change((p) => ({ ...p, wagers: [...p.wagers, ...ws] }))) {
+              rememberBets(pool, ws);
               setSheet(null);
               void reportWagers();
             }
@@ -514,7 +511,7 @@ function CountFields(props: { w: Wager; set: (patch: Partial<Wager>) => void }) 
   const { w, set } = props;
   return (
     <>
-      {w.kind === 'parRun' && (
+      {(w.kind === 'parRun' || w.kind === 'pars') && (
         <Chips<'better' | 'exact'>
           label={tr('Which holes count', 'Welche Löcher zählen')}
           value={w.orBetter === false ? 'exact' : 'better'}
@@ -558,7 +555,18 @@ function CountFields(props: { w: Wager; set: (patch: Partial<Wager>) => void }) 
           ]}
         />
       )}
-      {(w.kind === 'birdies' || w.kind === 'greens' || w.kind === 'score') && (
+      {shapeOf(w.kind) === 'count' && (
+        <Chips<'round' | 'trip'>
+          label={tr('Counted', 'Gezählt')}
+          value={w.scope === 'trip' ? 'trip' : 'round'}
+          onChange={(v) => v && set({ scope: v === 'trip' ? 'trip' : undefined })}
+          options={[
+            { value: 'round', label: tr('In one round', 'In einer Runde') },
+            { value: 'trip', label: tr('All rounds of the trip added up', 'Alle Runden der Reise zusammen') },
+          ]}
+        />
+      )}
+      {(shapeOf(w.kind) === 'most' || shapeOf(w.kind) === 'points' || shapeOf(w.kind) === 'score' || (shapeOf(w.kind) === 'count' && w.scope !== 'trip')) && (
         <Chips<18 | 9>
           label={tr('Holes', 'Löcher')}
           value={w.holes ?? 18}
@@ -573,9 +581,10 @@ function CountFields(props: { w: Wager; set: (patch: Partial<Wager>) => void }) 
   );
 }
 
+/** The number a block starts with: the library's suggestion. */
+const startOf = (kind: WagerKind): number => LIBRARY.find((b) => b.kind === kind && !b.patch)?.start ?? LIBRARY.find((b) => b.kind === kind)?.start ?? 1;
 function newWager(pool: WagerPool, me: string, kind: WagerKind = 'birdieRun'): Wager {
-  const k = KINDS.find((x) => x.kind === kind)!;
-  return { id: newId(), player: pool.players.some((p) => p.id === me) ? me : pool.players[0].id, kind, target: k.start, stake: 20, payout: 'success', attempts: 'any', counted: true };
+  return { id: newId(), player: pool.players.some((p) => p.id === me) ? me : pool.players[0].id, kind, target: startOf(kind), stake: 20, payout: 'success', attempts: 'any', counted: true };
 }
 
 export function WagerSheet(props: {
@@ -606,7 +615,7 @@ export function WagerSheet(props: {
           <Chips<string> label={tr('Whose bet', 'Wessen Wette')} value={w.player} onChange={(v) => v && set({ player: v, ...(w.opponent === v ? { opponent: undefined } : {}) })} options={pool.players.map((p) => ({ value: p.id, label: p.name }))} />
         </Field>
         <Field label={tr('What', 'Was')}>
-          <Chips<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => v && setW({ ...w, kind: v, target: KINDS.find((x) => x.kind === v)!.start })} options={KINDS.map((x) => ({ value: x.kind, label: x.name() }))} />
+          <Chips<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => v && setW({ ...w, kind: v, target: startOf(v), ...(shapeOf(v) !== 'count' ? { scope: undefined } : {}) })} options={KINDS.map((x) => ({ value: x.kind, label: x.name() }))} />
         </Field>
         {w.kind === 'free' ? (
           <Field label={tr('The bet in words', 'Die Wette in Worten')}>
@@ -614,7 +623,7 @@ export function WagerSheet(props: {
           </Field>
         ) : (
           <Field label={k.number()}>
-            <Stepper label={k.number()} value={w.target} min={w.kind === 'score' ? -30 : 1} onChange={(v) => set({ target: v })} />
+            <Stepper label={k.number()} value={w.target} min={k.min} onChange={(v) => set({ target: v })} />
           </Field>
         )}
         <CountFields w={w} set={set} />
@@ -647,39 +656,122 @@ export function WagerSheet(props: {
   );
 }
 
-/** The "Zocker-Pool" (Sascha's list): five bets for one player at once – only the numbers differ per player. */
-export function TemplateSheet(props: { pool: WagerPool; me: string; onAdd: (ws: Wager[]) => void; onClose: () => void }) {
+/** A person's library (Sascha 01.11.2026: "per person a library to pick single bets from; once bets are set up, pick
+ *  from those as templates too"): tick the bets, set each one's number, the stake and the rest for all of them. */
+export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (ws: Wager[]) => void; onClose: () => void }) {
   const { pool } = props;
-  const [base, setBase] = useState<Wager>(() => newWager(pool, props.me));
-  const [targets, setTargets] = useState<Record<string, number>>(() => Object.fromEntries(TEMPLATE.map((k) => [k, KINDS.find((x) => x.kind === k)!.start])));
-  const set = (patch: Partial<Wager>) => setBase({ ...base, ...patch });
-  const ok = base.payout !== 'opponent' || (!!base.opponent && base.opponent !== base.player);
+  const [player, setPlayer] = useState(props.player);
+  const [picked, setPicked] = useState<Record<string, number>>({}); // library entry → its number
+  const [text, setText] = useState(''); // the free bet in words
+  const [base, setBase] = useState<Wager>(() => ({ ...newWager(pool, props.player), player: props.player }));
+  const earlier = useMemo(() => earlierGroups(earlierBets()), []);
+  const [tab, setTab] = useState<'library' | 'earlier'>('library');
+  const [taken, setTaken] = useState<Set<string>>(new Set()); // earlier bets ticked: "group|index"
+  const name = pool.players.find((p) => p.id === player)?.name ?? '';
+  const toggle = (id: string, start: number) => setPicked((x) => (id in x ? Object.fromEntries(Object.entries(x).filter(([k]) => k !== id)) : { ...x, [id]: start }));
+  const lib = LIBRARY.filter((b) => b.id in picked);
+  const ticked = earlier.flatMap((g, gi) => g.wagers.filter((_, wi) => taken.has(`${gi}|${wi}`)));
+  const n = lib.length + ticked.length;
+  const ok = n > 0 && (!('free' in picked) || !!text.trim()) && (base.payout !== 'opponent' || (!!base.opponent && base.opponent !== player));
+  const flip = (keys: string[], on: boolean) => {
+    const s = new Set(taken);
+    keys.forEach((k) => (on ? s.add(k) : s.delete(k)));
+    setTaken(s);
+  };
+  const add = () => {
+    const { id: _i, kind: _k, target: _t, ...rest } = base;
+    props.onAdd([...lib.map((b) => fromLibrary(b, { ...rest, player }, picked[b.id], newId(), text)), ...ticked.map((w) => fromEarlier(w, player, pool, newId()))]);
+  };
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
-      <section className="sheet wager-sheet" role="dialog" aria-label={tr('Zocker pool template', 'Vorlage Zocker-Pool')} onClick={(e) => e.stopPropagation()}>
+      <section className="sheet wager-sheet" role="dialog" aria-label={tr('Bets library', 'Wetten-Bibliothek')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <strong>{tr('Zocker pool template', 'Vorlage Zocker-Pool')}</strong>
+          <strong>{tr(`Bets for ${name}`, `Wetten für ${name}`)}</strong>
           <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
             ✕
           </button>
         </div>
-        <span className="muted small">{tr('Five bets for one player – then the next player.', 'Fünf Wetten für einen Spieler – danach der nächste.')}</span>
-        <Field label={tr('Whose bets', 'Wessen Wetten')}>
-          <Chips<string> label={tr('Whose bets', 'Wessen Wetten')} value={base.player} onChange={(v) => v && set({ player: v })} options={pool.players.map((p) => ({ value: p.id, label: p.name }))} />
-        </Field>
-        {TEMPLATE.map((kind) => {
-          const k = KINDS.find((x) => x.kind === kind)!;
-          return (
-            <div className="template-row" key={kind}>
-              <span>{k.name()}</span>
-              <Stepper compact label={k.name()} value={targets[kind]} min={kind === 'score' ? -30 : 1} onChange={(v) => setTargets({ ...targets, [kind]: v })} />
+        <Chips<string> label={tr('Whose bets', 'Wessen Wetten')} value={player} onChange={(v) => v && setPlayer(v)} options={pool.players.map((p) => ({ value: p.id, label: p.name }))} />
+        {/* bets set up before as templates – only once there are any (Sascha 01.11.2026) */}
+        {earlier.length > 0 && (
+          <Segmented<'library' | 'earlier'>
+            label={tr('Choose from', 'Auswählen aus')}
+            value={tab}
+            onChange={(v) => v && setTab(v)}
+            options={[
+              { value: 'library', label: tr('Library', 'Bibliothek') },
+              { value: 'earlier', label: tr('Set up before', 'Schon angelegt') },
+            ]}
+          />
+        )}
+        {tab === 'library' &&
+          LIBRARY_GROUPS.map((g) => (
+            <div key={g.group} className="lib-group">
+              <span className="eyebrow">{g.name()}</span>
+              {LIBRARY.filter((b) => b.group === g.group).map((b) => {
+                const on = b.id in picked;
+                const k = KINDS.find((x) => x.kind === b.kind)!;
+                return (
+                  <div key={b.id} className={`lib-row${on ? ' on' : ''}`}>
+                    <button type="button" className="lib-pick" aria-pressed={on} onClick={() => toggle(b.id, b.start)}>
+                      <span className="lib-check" aria-hidden="true">
+                        {on ? '✓' : ''}
+                      </span>
+                      <span className="grow">
+                        <span className="title">{b.name()}</span>
+                        <span className="muted small">{b.hint()}</span>
+                      </span>
+                    </button>
+                    {on && b.kind !== 'free' && <Stepper compact label={b.name()} value={picked[b.id]} min={k.min} onChange={(v) => setPicked({ ...picked, [b.id]: v })} />}
+                    {on && b.kind === 'free' && (
+                      <input className="input" aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('Longest drive on hole 7', 'Längster Drive an Loch 7')} value={text} onChange={(e) => setText(e.target.value)} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-        <span className="muted small">{tr('Pars: par or better; runs within a round; birdies, greens and the score on 18 holes, gross. Each bet can be changed afterwards.', 'Pars: Par oder besser; Serien innerhalb einer Runde; Birdies, Grüns und Ergebnis auf 18 Löchern, brutto. Jede Wette lässt sich danach ändern.')}</span>
-        <PayFields pool={pool} w={{ ...base, kind: 'birdies' }} set={set} />
-        <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onAdd(TEMPLATE.map((kind) => ({ ...base, id: newId(), kind, target: targets[kind] })))}>
-          {tr(`Add 5 bets for ${pool.players.find((p) => p.id === base.player)?.name ?? ''}`, `5 Wetten für ${pool.players.find((p) => p.id === base.player)?.name ?? ''} anlegen`)}
+          ))}
+        {tab === 'earlier' &&
+          earlier.map((g, gi) => {
+            const keys = g.wagers.map((_, wi) => `${gi}|${wi}`);
+            const all = keys.every((k) => taken.has(k));
+            return (
+              <div key={g.from} className="lib-group">
+                <div className="lib-group-head">
+                  <strong className="lib-from">{g.from}</strong>
+                  <button type="button" className="link-btn small" onClick={() => flip(keys, !all)}>
+                    {all ? tr('none', 'keine') : tr('all', 'alle')}
+                  </button>
+                </div>
+                {g.wagers.map((w, wi) => {
+                  const key = `${gi}|${wi}`;
+                  const on = taken.has(key);
+                  return (
+                    <div key={key} className={`lib-row${on ? ' on' : ''}`}>
+                      <button type="button" className="lib-pick" aria-pressed={on} onClick={() => flip([key], !on)}>
+                        <span className="lib-check" aria-hidden="true">
+                          {on ? '✓' : ''}
+                        </span>
+                        <span className="grow">
+                          <span className="title">{wagerLabel(w)}</span>
+                          <span className="muted small">{wagerRules(w, pool)}</span>
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        {lib.length > 0 && (
+          <>
+            <span className="eyebrow">{tr('For the bets from the library', 'Für die Wetten aus der Bibliothek')}</span>
+            <PayFields pool={pool} w={{ ...base, player, kind: lib.every((b) => b.kind === 'free') ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
+          </>
+        )}
+        <span className="muted small">{tr('Each bet can be changed afterwards – tap it.', 'Jede Wette lässt sich danach ändern – antippen.')}</span>
+        <button type="button" className="btn-primary" disabled={!ok} onClick={add}>
+          {n === 1 ? tr(`Add 1 bet for ${name}`, `1 Wette für ${name} anlegen`) : tr(`Add ${n} bets for ${name}`, `${n} Wetten für ${name} anlegen`)}
         </button>
       </section>
     </div>

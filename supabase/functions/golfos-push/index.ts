@@ -160,25 +160,49 @@ export interface BetWager {
   target: number;
   holes?: number;
   net?: boolean;
+  scope?: string;
   text?: string;
 }
+const COUNTS = ['birdies', 'pars', 'greens', 'fairways', 'oneputts', 'updowns', 'eagles', 'holeInOne'];
 export function betLabel(w: BetWager, lang?: string | null): string {
   const n = w.target;
-  const nine = w.holes === 9;
   const par = n === 0 ? T(lang, 'even', 'Par') : n > 0 ? `+${n}` : `−${-n}`;
+  const on = w.scope === 'trip' && COUNTS.includes(w.kind) ? T(lang, 'on the trip', 'auf der Reise') : w.holes === 9 ? T(lang, 'on 9', 'auf 9') : T(lang, 'on 18', 'auf 18');
   switch (w.kind) {
     case 'birdieRun':
       return T(lang, `${n} birdies in a row`, `${n} Birdies in Folge`);
     case 'parRun':
       return T(lang, `${n} pars in a row`, `${n} Pars in Folge`);
     case 'birdies':
-      return nine ? T(lang, `${n} birdies on 9`, `${n} Birdies auf 9`) : T(lang, `${n} birdies on 18`, `${n} Birdies auf 18`);
+      return T(lang, `${n} birdies ${on}`, `${n} Birdies ${on}`);
+    case 'pars':
+      return T(lang, `${n} pars ${on}`, `${n} Pars ${on}`);
     case 'greens':
-      return nine ? T(lang, `${n} greens on 9`, `${n} Grüns auf 9`) : T(lang, `${n} greens on 18`, `${n} Grüns auf 18`);
+      return T(lang, `${n} greens ${on}`, `${n} Grüns ${on}`);
+    case 'fairways':
+      return T(lang, `${n} fairways ${on}`, `${n} Fairways ${on}`);
+    case 'oneputts':
+      return T(lang, `${n} one-putts ${on}`, `${n} Ein-Putts ${on}`);
+    case 'updowns':
+      return T(lang, `${n} up & downs ${on}`, `${n} Up & Downs ${on}`);
+    case 'eagles':
+      return n === 1 ? T(lang, `An eagle ${on}`, `Ein Eagle ${on}`) : T(lang, `${n} eagles ${on}`, `${n} Eagles ${on}`);
+    case 'holeInOne':
+      return n === 1 ? T(lang, `A hole-in-one ${on}`, `Ein Hole-in-One ${on}`) : T(lang, `${n} holes-in-one ${on}`, `${n} Hole-in-Ones ${on}`);
+    case 'stableford':
+      return T(lang, `${n} Stableford points ${on}`, `${n} Stableford-Punkte ${on}`);
+    case 'putts':
+      return T(lang, `At most ${n} putts ${on}`, `Höchstens ${n} Putts ${on}`);
+    case 'threeputts':
+      return n === 0 ? T(lang, `No three-putt ${on}`, `Kein Drei-Putt ${on}`) : T(lang, `At most ${n} three-putts ${on}`, `Höchstens ${n} Drei-Putts ${on}`);
+    case 'doubles':
+      return n === 0 ? T(lang, `No double bogey ${on}`, `Kein Doppelbogey ${on}`) : T(lang, `At most ${n} double bogeys ${on}`, `Höchstens ${n} Doppelbogeys ${on}`);
+    case 'penalties':
+      return n === 0 ? T(lang, `No penalty stroke ${on}`, `Kein Strafschlag ${on}`) : T(lang, `At most ${n} penalty strokes ${on}`, `Höchstens ${n} Strafschläge ${on}`);
     case 'score':
-      return `${par} ${w.net ? T(lang, 'net', 'netto') : T(lang, 'gross', 'brutto')}${nine ? T(lang, ' on 9', ' auf 9') : ''}`;
+      return `${par} ${w.net ? T(lang, 'net', 'netto') : T(lang, 'gross', 'brutto')}${w.holes === 9 ? T(lang, ' on 9', ' auf 9') : ''}`;
     default:
-      return String(w.text ?? '').slice(0, 80) || T(lang, 'Free bet', 'Freie Wette');
+      return String(w.text ?? '').trim().slice(0, 80) || T(lang, 'Free bet', 'Freie Wette');
   }
 }
 

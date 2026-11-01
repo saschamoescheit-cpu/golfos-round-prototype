@@ -3,7 +3,7 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { isPool, judge, playedRounds, sameProgress, type PoolPlayer, type WagerPool } from './wagers';
+import { isPool, judge, playedRounds, sameProgress, type EarlierBet, type PoolPlayer, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
 
 // The pools of bets on this phone and on the server (Sascha 01.11.2026). A pool lives in the table of the shared games
@@ -173,4 +173,31 @@ export function reportWagers(): Promise<void> {
     }
   })();
   return running;
+}
+
+// ---------- bets set up before, as templates (Sascha 01.11.2026) ----------
+
+const HISTORY = 'golfos.wagerhistory.v1'; // bets set up on this phone – kept when a pool is removed
+/** Keeps bets set up on this phone as templates for later ("USA 2026 · Chris"). */
+export function rememberBets(pool: WagerPool, wagers: Wager[]): void {
+  const name = (id: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
+  try {
+    const old = JSON.parse(localStorage.getItem(HISTORY) ?? '[]') as EarlierBet[];
+    const add = wagers.map((w) => ({ from: `${pool.name} · ${name(w.player)}`, wager: w }));
+    localStorage.setItem(HISTORY, JSON.stringify([...add, ...(Array.isArray(old) ? old : [])].slice(0, 300)));
+  } catch {
+    /* storage full – the pools on this phone still offer their bets */
+  }
+}
+/** The bets to pick from as templates: those of the pools on this phone (newest first), then those kept before. */
+export function earlierBets(): EarlierBet[] {
+  const fromPools = loadPools().flatMap((e) => e.pool.wagers.map((w) => ({ from: `${e.pool.name} · ${e.pool.players.find((p) => p.id === w.player)?.name ?? '?'}`, wager: w })));
+  let kept: EarlierBet[] = [];
+  try {
+    const x = JSON.parse(localStorage.getItem(HISTORY) ?? '[]') as EarlierBet[];
+    kept = Array.isArray(x) ? x.filter((b) => b && b.wager && typeof b.from === 'string') : [];
+  } catch {
+    /* nothing kept */
+  }
+  return [...fromPools, ...kept];
 }
