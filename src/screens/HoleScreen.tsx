@@ -9,6 +9,7 @@ import { playerBag } from '../lib/stats';
 import { autoShot, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
+import { SpecialsAtHole } from '../components/Specials';
 import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
@@ -2100,6 +2101,18 @@ export function HoleScreen(props: {
             </div>
           )}
           {/* the ball's spot by hand noted (the map tool) – a toast with undo */}
+          {/* a planned tournament's special prizes on this hole: the leader, the own entry (Sascha 01.11.2026) */}
+          {shareEvent?.specials?.length && round.shared && !scoreSheet && !round.preview ? (
+            <SpecialsAtHole
+              ev={shareEvent}
+              code={round.shared.code}
+              flight={round.shared.flight}
+              player={me.id}
+              phone={round.shared.phone ?? ''}
+              hole={i}
+              fromTee={onThisHole && player ? Math.round(distanceM(teeSpot(loadTrack(round.id), mapData) ?? mapData.tee, player.pos)) : null}
+            />
+          ) : null}
           {testMsg && !scoreSheet && (
             <div className="test-shot-row">
               <span className="map-hint detected" role="status">

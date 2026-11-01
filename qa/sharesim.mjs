@@ -194,17 +194,21 @@ export function sharedServer(b, url, o = {}) {
       const sr = await import('/src/lib/sharedround.ts');
       const { searchBundled, loadCourse } = await import('/src/lib/courses.ts');
       const { loopOptions, buildRoundHoles } = await import('/src/lib/loops.ts');
+      const sp = await import('/src/lib/specials.ts');
       const summary = searchBundled(o.course ?? 'Hetzenhof')[0];
       const course = await loadCourse(summary);
       const opt = loopOptions(course.holes).find((x) => new RegExp(o.option ?? 'A · 9').test(x.label)) ?? loopOptions(course.holes)[0];
+      const holes = buildRoundHoles(course.holes, opt);
       const ev = sr.plannedEvent({
         name: o.name,
         date: o.date ?? sr.localDay(),
         course: summary,
-        holes: buildRoundHoles(course.holes, opt),
+        holes,
         loopOrder: opt.loops,
         format: o.format ?? { mode: 'single', scoring: 'net', allowance: 100 },
         ...(o.classes ? { classes: o.classes } : {}),
+        // the special prizes: on the hole given, else the first that fits (Nearest to the Pin a par 3, Long Drive a par 4 or 5)
+        ...(o.specials ? { specials: o.specials.map((s, k) => ({ id: s.id ?? `s${k + 1}`, kind: s.kind, hole: s.hole ?? sp.holesFor(s.kind, holes)[0] })) } : {}),
         flights: o.flights,
       });
       return sr.publishPlannedEvent(ev);

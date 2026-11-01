@@ -7,6 +7,7 @@ import { isPool } from './wagers';
 import { authToken, SUPABASE_KEY, SUPABASE_URL, userId } from './sync';
 import { tr } from './i18n';
 import { linkBase } from './native';
+import type { Special, SpecialEntries, SpecialEntry } from './specials';
 
 // A round on several phones (Sascha 29.10.2026: "invite to a round – on Saturday we play in the same scramble team, but
 // it must also be possible to set up a kind of tournament over several flights, with a live leaderboard").
@@ -59,6 +60,8 @@ export interface Flight {
   finishedAt?: string | null;
   /** a planned tournament: the flight's tee time, "HH:MM" on the course (Sascha 01.11.2026) */
   teeTime?: string;
+  /** the special prizes' entries of the flight's players (lib/specials) */
+  specials?: SpecialEntries;
 }
 export interface RoundEvent {
   kind: 'round-event';
@@ -85,6 +88,8 @@ export interface RoundEvent {
   planned?: true;
   /** called off by the host (kept, as the bets) */
   deletedAt?: string | null;
+  /** the special prizes – Long Drive, Nearest to the Pin – each on a hole (lib/specials) */
+  specials?: Special[];
 }
 /** A round that is part of an event: the code, its flight, this phone, and the flight's scores as last exchanged (the
  *  base of the three-way merge – what changed here, what changed elsewhere). */
@@ -832,6 +837,8 @@ export function plannedEvent(o: {
   roundKind?: Round['kind'];
   classes?: number[];
   flights: PlanFlight[];
+  /** Long Drive, Nearest to the Pin (lib/specials) */
+  specials?: Special[];
 }): RoundEvent {
   const by = newId(); // the planner – never a playing phone: every phone takes the players from the plan
   const flights = Object.fromEntries(o.flights.map((pf) => planFlight(pf, o.holes.length, by)).map((f) => [f.id, f]));
@@ -848,6 +855,7 @@ export function plannedEvent(o: {
     ...(o.rating ? { rating: o.rating } : {}),
     ...(o.roundKind ? { roundKind: o.roundKind } : {}),
     ...(o.classes?.length ? { classes: o.classes } : {}),
+    ...(o.specials?.length ? { specials: o.specials } : {}),
     createdAt: new Date().toISOString(),
     by,
     flights,
@@ -902,6 +910,19 @@ export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<
     if (!done) return null;
   }
   return refreshEvent(code);
+}
+
+/** A special prize's entry of a player – by his phone at the hole, or the host's correction from Games; null takes it
+ *  back. Written into the flight's own row, as the scores. The event as written, or null (no connection). */
+export function setSpecial(code: string, fid: string, sid: string, pid: string, entry: SpecialEntry | null): Promise<RoundEvent | null> {
+  return changeFlight(code, fid, true, (f) => {
+    if (!f) return null;
+    const now = { ...(f.specials?.[sid] ?? {}) };
+    if (entry) now[pid] = entry;
+    else if (now[pid]) delete now[pid];
+    else return null;
+    return { ...f, specials: { ...f.specials, [sid]: now } };
+  });
 }
 
 /** The flights that play – a flight the host took out of the plan keeps its row, empty (updatePlannedEvent). */

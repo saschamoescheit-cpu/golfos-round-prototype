@@ -32,6 +32,8 @@ const code = await sim.plan(P('Sascha'), {
     { teeTime: '09:20', players: [{ name: 'Sascha', playingHandicap: 4 }, { name: 'Chris', playingHandicap: 6 }] },
     { teeTime: '09:30', players: [{ name: 'Erik', playingHandicap: 8 }, { name: 'Cedric', playingHandicap: 5 }] },
   ],
+  // the special prizes: Long Drive on the first hole, Nearest to the Pin on the first par 3
+  specials: [{ id: 'ld', kind: 'longDrive', hole: 0 }, { id: 'ntp', kind: 'nearestPin' }],
 });
 ok(/^[A-Z0-9]{6}$/.test(code ?? ''), `the tournament planned: ${code}`);
 // the link sent ahead: the others are in (a planned tournament asks nobody)
@@ -52,6 +54,32 @@ for (const n of NAMES) {
 await P('Sascha').waitForTimeout(7000);
 const flightsNow = Object.values(sim.event().flights);
 ok(flightsNow.every((f) => Object.values(f.phones ?? {}).length === 2 && Object.values(f.phones).every((x) => x.uid === x.name)), `every phone in its flight, with its account (${flightsNow.map((f) => Object.values(f.phones ?? {}).map((x) => `${x.name}:${x.uid ?? '–'}`).join('+')).join(' / ')})`);
+
+// ---------- special prizes: Long Drive at the first hole by the hint on the map, Nearest to the Pin from the phones ----------
+const ld = async (n, m, fairway) => {
+  const p = P(n);
+  const hint = p.getByRole('status', { name: 'Long Drive' });
+  await hint.waitFor({ timeout: 10000 });
+  await hint.getByRole('button').click();
+  const sheet = p.getByRole('dialog', { name: 'Long Drive' });
+  await sheet.locator('#special-m').fill(String(m));
+  if (!fairway) await sheet.getByRole('checkbox').uncheck();
+  await sheet.getByRole('button', { name: 'Eintragen' }).click();
+  await sheet.waitFor({ state: 'detached', timeout: 10000 });
+};
+ok(/Long Drive · führend: noch keiner/.test((await P('Sascha').getByRole('status', { name: 'Long Drive' }).innerText().catch(() => '')).replace(/\s+/g, ' ')), 'the hint at the Long Drive hole: "Long Drive · führend: noch keiner"');
+await ld('Sascha', 245, true);
+await ld('Erik', 262, false); // longer – but in the rough: it does not count
+await ld('Cedric', 251, true);
+for (const [n, m] of [['Chris', 2.1], ['Cedric', 3.4]])
+  await P(n).evaluate(async ({ code, m }) => {
+    const sr = await import('/src/lib/sharedround.ts');
+    const r = JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((x) => !x.finishedAt);
+    await sr.setSpecial(code, r.shared.flight, 'ntp', r.players.find((p) => p.isMe).id, { m, at: new Date().toISOString(), by: r.shared.phone });
+  }, { code, m });
+await P('Sascha').waitForTimeout(8000);
+const hintNow = (await P('Sascha').getByRole('status', { name: 'Long Drive' }).innerText().catch(() => '')).replace(/\s+/g, ' ');
+ok(/führend: Cedric 251 m/.test(hintNow) && /deins 245 m/.test(hintNow), `Sascha's hint follows: "${hintNow}"`);
 
 // ---------- 3 · played with markers ----------
 const block = (p, name) => p.locator('.score-player').filter({ has: p.locator('.score-player-head strong', { hasText: new RegExp(`^${name}$`) }) });
@@ -85,8 +113,10 @@ const closeBoard = async (n) => {
   await p.locator('.sheet-backdrop').getByRole('button', { name: 'Schließen' }).first().click().catch(() => {});
 };
 for (const n of NAMES) {
-  const { rows } = await board(n);
+  const { bd, rows } = await board(n);
   ok(rows.length === 4 && rows.every((r) => /nach 3/.test(r)), `${n}'s live leaderboard after 3 holes: ${rows.join(' | ')}`);
+  const sp = (await bd.locator('.special-leaders').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  ok(/Long Drive · Loch \S+: Cedric 251 m/.test(sp) && /Nearest to the Pin · Loch \S+: Chris 2,1 m/.test(sp), `${n}: the special prizes' leaders – "${sp}"`);
   await closeBoard(n);
 }
 for (let i = 3; i < holes; i++) for (const n of NAMES) await enterHole(n, i);

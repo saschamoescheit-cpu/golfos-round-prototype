@@ -14,6 +14,8 @@ import { Qr } from './ShareGame';
 /** A planned tournament's day: "Fr., 6.11." */
 export const dayText = (d: string): string => new Date(`${d}T12:00:00`).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
 import { Avatar } from './Avatar';
+import { leaderText } from './Specials';
+import { specialName } from '../lib/specials';
 
 // Invite to a round and join one (Sascha 29.10.2026): the flight partners on their own phones – each keeps his own
 // score, a team's card one of the team – or a tournament over several flights with a live leaderboard. The invitation
@@ -678,6 +680,17 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
           );
         })}
       </ol>
+      {/* the special prizes with their leaders (Sascha 01.11.2026) */}
+      {(ev.specials?.length ?? 0) > 0 && (
+        <div className="flight-status special-leaders">
+          <span className="eyebrow">{tr('Special prizes', 'Sonderwertungen')}</span>
+          {ev.specials!.map((s) => (
+            <span key={s.id} className="small">
+              {specialName(s.kind)} · {tr('hole', 'Loch')} {ev.holes[s.hole]?.label}: <strong>{leaderText(ev, s)}</strong>
+            </span>
+          ))}
+        </div>
+      )}
       {/* the flights as they stand – who is where, a flight gone quiet (Sascha's concept: the organiser's view) */}
       {status.length > 0 && (
         <div className="flight-status">

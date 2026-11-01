@@ -1920,3 +1920,7 @@ button.tile:disabled { opacity: 1; }
 .lib-pick .title { font-weight: 600; }
 .lib-check { flex: none; width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--muted); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
 .lib-row.on .lib-check { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+/* special prizes at their hole (01.11.2026): "in the fairway" in the entry */
+.check-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.check-row input { width: 22px; height: 22px; margin: 0; accent-color: var(--brand); }
