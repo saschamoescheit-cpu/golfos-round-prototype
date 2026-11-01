@@ -19,7 +19,8 @@ export const WEB_HOME = 'https://saschamoescheit-cpu.github.io/golfos-round-prot
 export const linkBase = (): string => (isNative() ? WEB_HOME : location.origin + location.pathname);
 
 /** In the app the iPhone's share sheet stands in for the browser's sharing (navigator.share) and for downloads
- *  (`<a download>` of a blob) – WKWebView has neither. So the code everywhere stays the website's. Once, at the start. */
+ *  (`<a download>` of a blob), iOS's own for the Wake Lock – WKWebView has none of them. So the code everywhere stays
+ *  the website's. Once, at the start. */
 export function installNativeShims(): void {
   if (!isNative()) return;
   const share = async (d: ShareData): Promise<void> => {
@@ -35,6 +36,7 @@ export function installNativeShims(): void {
   };
   Object.defineProperty(navigator, 'share', { configurable: true, value: share });
   Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+  Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: wakeLock() });
   const click = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
     if (!this.download || !this.href.startsWith('blob:')) return click.call(this);
@@ -58,16 +60,27 @@ async function toCache(f: File): Promise<string> {
   return (await Filesystem.writeFile({ path: f.name, data, directory: Directory.Cache })).uri;
 }
 
-/** Keeps the screen on (pocket mode) – the app's way; null on the website, where the browser's Wake Lock does it. */
-export async function keepAwake(on: boolean): Promise<boolean | null> {
-  if (!isNative()) return null;
-  const { KeepAwake } = await import('@capacitor-community/keep-awake');
-  try {
-    await (on ? KeepAwake.keepAwake() : KeepAwake.allowSleep());
-    return true;
-  } catch {
-    return false;
-  }
+/** The browser's Wake Lock (pocket mode, the camera tests with the phone 2–3 m away) – in the app iOS's own: the
+ *  screen stays on while any lock is held. */
+function wakeLock(): { request: (type: 'screen') => Promise<{ release: () => Promise<void>; addEventListener: () => void }> } {
+  let held = 0;
+  const plugin = async () => (await import('@capacitor-community/keep-awake')).KeepAwake;
+  return {
+    request: async () => {
+      await (await plugin()).keepAwake();
+      held += 1;
+      let released = false;
+      return {
+        release: async () => {
+          if (released) return;
+          released = true;
+          held -= 1;
+          if (held === 0) await (await plugin()).allowSleep();
+        },
+        addEventListener: () => undefined, // iOS never takes it away by itself
+      };
+    },
+  };
 }
 
 /** Opens the Google sign-in in the system's browser sheet – Google refuses its sign-in inside an app's web view. */
