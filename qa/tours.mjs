@@ -133,7 +133,32 @@ for (const n of ['Chris', 'Erik', 'Cedric']) {
 await H.locator('input[id^="hcp-"]').first().fill('0');
 await H.getByRole('group', { name: 'Anzahl Flights' }).getByRole('button', { name: '2', exact: true }).click();
 const fl = (k) => H.locator('.tour-flight').nth(k);
-ok((await fl(0).locator('.tour-flight-player strong').allInnerTexts()).join(',') === 'Sascha,Chris' && (await fl(1).locator('.tour-flight-player strong').allInnerTexts()).join(',') === 'Erik,Cedric', 'two flights: Sascha and Chris, Erik and Cedric');
+const chips = async (k) => (await fl(k).locator('.tour-chip').allInnerTexts()).join(',');
+ok((await chips(0)) === 'Sascha,Chris' && (await chips(1)) === 'Erik,Cedric', 'two flights: Sascha and Chris, Erik and Cedric');
+ok((await fl(0).locator('.tour-markers').innerText()).includes('Sascha ↔ Chris') && (await fl(0).locator('select').count()) === 1, 'the markers one line per flight ("Sascha ↔ Chris"), no dropdown per player');
+// Sascha 01.11.2026: "drag and drop" – Cedric dragged into flight 1
+{
+  await fl(0).evaluate((e) => e.scrollIntoView({ block: 'start' }));
+  await H.waitForTimeout(300);
+  const from = await fl(1).locator('.tour-chip', { hasText: 'Cedric' }).boundingBox();
+  const to = await fl(0).locator('.tour-chips').boundingBox();
+  await H.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await H.mouse.down();
+  await H.mouse.move(from.x + from.width / 2, from.y - 20, { steps: 4 });
+  await H.mouse.move(to.x + to.width - 10, to.y + to.height / 2, { steps: 10 });
+  await H.mouse.up();
+}
+ok((await chips(0)) === 'Sascha,Chris,Cedric' && (await chips(1)) === 'Erik', `dragged: Cedric into flight 1 (${await chips(0)} | ${await chips(1)})`);
+const ring = await fl(0).locator('.tour-markers').innerText();
+ok(/zählt/.test(ring) && ring.split('zählt').length - 1 === 3, `three in a flight: a ring, each one marked (${ring.replace(/\s+/g, ' ')})`);
+await fl(0).getByRole('button', { name: 'Andere Paarung' }).click();
+ok((await fl(0).locator('.tour-markers').innerText()) !== ring, 'other pairing: the ring the other way');
+ok(await H.getByText('Jeder Flight braucht mindestens zwei Spieler').isVisible(), 'flight 2 with Erik alone: told, no tournament like this');
+// and back by tapping: Cedric, then "here" on flight 2
+await fl(0).locator('.tour-chip', { hasText: 'Cedric' }).click();
+await fl(1).getByRole('button', { name: 'Cedric hierher' }).click();
+ok((await chips(0)) === 'Sascha,Chris' && (await chips(1)) === 'Erik,Cedric', 'tapped, then "hierher": Cedric back in flight 2');
+ok((await fl(0).locator('.tour-markers').innerText()).includes('Sascha ↔ Chris') && (await fl(1).locator('.tour-markers').innerText()).includes('Erik ↔ Cedric'), 'the pairs again');
 ok((await fl(0).locator('select').first().inputValue()) === '09:00' && (await fl(1).locator('select').first().inputValue()) === '09:10', 'tee times: 09:00, then 10 minutes on');
 const options = await H.locator('#tour-first option').allInnerTexts();
 ok(options[0] === '06:00' && options.includes('07:35') && options.at(-1) === '18:00', `the usual tee times: every 5 minutes, ${options[0]}–${options.at(-1)}`);

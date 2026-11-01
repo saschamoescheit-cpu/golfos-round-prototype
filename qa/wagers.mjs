@@ -236,7 +236,8 @@ ok(chrisBets.length === 4 && madeIds.length === 4 && madeIds.every((id) => chris
 // ---------- Sascha: sees it, decides Erik's free bet, the settlement ----------
 await H.reload();
 await H.waitForTimeout(1500);
-ok((await H.locator('.list-item').filter({ hasText: '1 Wett-Pool läuft' }).count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 0, 'start page: only "1 Wett-Pool läuft" – the pool itself in the menu "Wetten"');
+// Sascha 01.11.2026: "following the bets belongs into the menu Bets" – on the start page only the start, the dot on "Wetten"
+ok((await H.locator('.list-item').filter({ hasText: /Wett-Pool läuft|USA 2026/ }).count()) === 0 && (await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).locator('.tabbar-dot').count()) === 1, 'start page: no pool, no "follow" row – the dot on "Wetten"');
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
 await H.waitForTimeout(500);
 ok((await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.locator('.tab-title + .tile-row').count()) === 1 && (await H.getByRole('button', { name: 'Wette beitreten' }).count()) === 0, 'menu "Wetten": the tiles at the top as on Rounds and Games, then the pools (new and join on "Spielen")');

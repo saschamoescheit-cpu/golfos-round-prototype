@@ -55,15 +55,12 @@ export const BETS_ICON = (
 const live = isLive;
 
 /** On the start page of Games (Sascha 01.11.2026: "from the start page both 'start a game' and 'start a bet'"): only the
- *  start – setting up, changing and deleting the bets is in the menu "Bets". */
-export function StartBetCard(props: { canShare: boolean; onNew: () => void; onJoin: () => void; onList: () => void }) {
-  const pools = usePools().filter((e) => !e.pool.deletedAt);
-  const running = pools.filter((e) => live(e, dayOf(new Date()))).length;
+ *  start – following, changing and deleting the bets is in the menu "Bets" (its dot shows bets running). */
+export function StartBetCard(props: { canShare: boolean; onNew: () => void; onJoin: () => void }) {
   useEffect(() => {
     void syncPools(); // a phone emptied or new: the pools come back from the server
   }, []);
   return (
-    <>
     <section className="card play-card" aria-label={tr('Start a bet', 'Wette starten')}>
       <strong className="play-course">{tr('Start a new bet', 'Neue Wette starten')}</strong>
       {props.canShare ? (
@@ -79,17 +76,6 @@ export function StartBetCard(props: { canShare: boolean; onNew: () => void; onJo
         <span className="muted small">{tr('Sign in to set up bets: Profile → "On all your devices".', 'Für Wetten anmelden: Profil → „Auf allen Geräten“.')}</span>
       )}
     </section>
-    {running > 0 && (
-      <button type="button" className="list-item" onClick={props.onList}>
-        <span className="grow">
-          <span className="title">{tr('Follow the bets', 'Wetten verfolgen')}</span>
-          <span className="muted small">{running === 1 ? tr('1 pool of bets running', '1 Wett-Pool läuft') : tr(`${running} pools of bets running`, `${running} Wett-Pools laufen`)}</span>
-        </span>
-        <span className="count-badge">{running}</span>
-        <span aria-hidden="true">›</span>
-      </button>
-    )}
-    </>
   );
 }
 
