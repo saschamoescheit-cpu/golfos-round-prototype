@@ -1,6 +1,6 @@
 import type { Round } from '../types';
 import { loadRounds, newId } from './storage';
-import { cachedEvent, isSigned } from './sharedround';
+import { cachedEvent, isSigned, type Cell } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { dayOf, isPool, judge, playedRounds, sameProgress, type EarlierBet, type PoolPlayer, type Wager, type WagerPool } from './wagers';
@@ -239,6 +239,13 @@ export function countedRound(r: Round, pid: string): boolean {
   return !!f && !!f.markers?.[pid] && isSigned(f, pid);
 }
 
+/** The marker's count of a player in a round with a marker, as the event has it (his flight's row): each hole's score
+ *  and details – what a bet "with marker" counts. */
+export function markerCount(r: Round, pid: string): Cell[] | null {
+  if (!r.shared) return null;
+  return cachedEvent(r.shared.code)?.flights[r.shared.flight]?.marks?.[pid] ?? null;
+}
+
 let running: Promise<void> | null = null;
 /**
  * Judges the bets of this phone's owner in every pool from his rounds and reports what changed (Sascha 01.11.2026:
@@ -250,7 +257,7 @@ export function reportWagers(): Promise<void> {
     try {
       const pools = loadPools().filter((e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt);
       if (!pools.length || !(await headers())) return;
-      const rounds = playedRounds(loadRounds(), countedRound);
+      const rounds = playedRounds(loadRounds(), countedRound, markerCount);
       for (const e of pools) {
         const mine = e.pool.wagers.filter((w) => w.player === e.me && w.kind !== 'free');
         const fresh = Object.fromEntries(mine.map((w) => [w.id, judge(w, e.pool, rounds)]));

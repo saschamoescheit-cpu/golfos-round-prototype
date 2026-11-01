@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, balances, isPool, earlierGroups, fromEarlier, fromLibrary, judge, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { LIBRARY, balances, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -18,6 +18,29 @@ const round = (scores: (number | null)[], o: Partial<PlayedRound> & { putts?: nu
 const par = (d = 0) => PARS.map((p) => p + d);
 const pool: Pick<WagerPool, 'from' | 'to'> = { from: '2026-11-04', to: '2026-11-10' };
 const bet = (patch: Partial<Wager>): Wager => ({ id: 'w', player: 'chris', kind: 'birdieRun', target: 3, stake: 20, payout: 'success', attempts: 'any', ...patch });
+
+// Sascha 01.11.2026: a bet "with marker" counts the marker's figures, as in a tournament
+describe('a bet with marker counts the marker\'s figures', () => {
+  it('the marker\'s putts decide the greens; a difference is shown; without marker the player\'s own count', () => {
+    const own = round(par(), { putts: PARS.map(() => 2) }); // par everywhere, 2 putts: 18 greens by his own count
+    const marker = own.entries.map((e, i) => ({ s: e!.strokes, d: { pu: i < 3 ? 1 : 2 } })); // the marker: 1 putt on 1–3 – green missed, chipped close
+    const r: PlayedRound = { ...own, marked: own.entries.map((e, i) => markedEntry(e, marker[i])), differ: [0, 1, 2] };
+    const counted = judge(bet({ kind: 'greens', target: 16, counted: true }), pool, [r]);
+    expect(counted.best).toBe(15);
+    expect(counted.done).toBe(false);
+    expect(counted.differ).toBe(3);
+    expect(progressText(bet({ kind: 'greens', target: 16, counted: true }), counted)).toContain('the marker counted 3 holes differently');
+    const free = judge(bet({ kind: 'greens', target: 16 }), pool, [r]);
+    expect(free.best).toBe(18);
+    expect(free.differ).toBeUndefined();
+  });
+  it('a hole the marker did not enter stays the player\'s own; only the score from an older app keeps his details', () => {
+    const e = { ...emptyEntry(), strokes: 4, putts: 2, fairway: 'hit' as const };
+    expect(markedEntry(e, null)).toBe(e);
+    expect(markedEntry(e, { s: 5 })).toMatchObject({ strokes: 5, putts: 2, fairway: 'hit' });
+    expect(markedEntry(e, { s: 4, d: { pu: 1, fw: 'left' } })).toMatchObject({ strokes: 4, putts: 1, fairway: 'left', sandShots: 0, penalties: 0 });
+  });
+});
 
 describe('the bets judged from the rounds', () => {
   it('birdies in a row: the longest run; an eagle counts unless "exactly birdie"', () => {

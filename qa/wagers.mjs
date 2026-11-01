@@ -105,7 +105,7 @@ const chrisRound = {
 const event = {
   kind: 'round-event', id: 'ev', name: 'Bethpage', tournament: false, course: { id: 'osm:test', source: 'osm', name: 'Bethpage Black', lat: 40.74, lon: -73.45 },
   loopOrder: ['A'], holes: chrisRound.holes, createdAt: now,
-  flights: { f1: { id: 'f1', name: 'Chris · Erik', players: [{ id: 'me', name: 'Chris', playingHandicap: 2 }, { id: 'p2', name: 'Erik', playingHandicap: 9 }], scores: {}, markers: { me: 'p2', p2: 'me' }, signed: { me: { player: now, marker: now }, p2: { player: now, marker: now } } } },
+  flights: { f1: { id: 'f1', name: 'Chris · Erik', players: [{ id: 'me', name: 'Chris', playingHandicap: 2 }, { id: 'p2', name: 'Erik', playingHandicap: 9 }], scores: {}, markers: { me: 'p2', p2: 'me' }, marks: { me: strokes.map((st, i) => ({ s: st, d: { pu: i === 3 ? 2 : putts[i] } })) }, signed: { me: { player: now, marker: now }, p2: { player: now, marker: now } } } },
 };
 
 const host = await phone('Sascha');
@@ -214,6 +214,7 @@ ok(/Chris: 2 Birdies in Folge/.test(made) && /Bethpage Black/.test(made), `Chris
 const gChris = G.locator('.pool-player').filter({ has: G.locator('h2', { hasText: /^Chris$/ }) });
 const badges = await gChris.locator('.pool-wager').filter({ hasNotText: 'gegen ' }).locator('.badge').allInnerTexts(); // the 5+5+10 rows show money
 ok(badges.filter((x) => x === 'Geschafft').length === 4 && badges.filter((x) => x === 'Offen').length === 1, `Chris: 4 made, the −5 open (${badges.join(', ')})`);
+ok((await gChris.innerText()).includes('der Zähler hat 1 Loch anders gezählt – seine Zahlen zählen'), "Chris: Erik counted hole 4 with 2 putts – the bets count the marker's figures and say so");
 ok((await gChris.innerText()).includes('beste Runde −2 (Ziel −5)'), 'Chris: the score bet shows his best round −2 against −5');
 ok(shared.get(code).game.players.find((p) => p.name === 'Chris')?.joined, 'the server knows Chris joined');
 // only the host changes the bets (Sascha 01.11.2026): Chris sees them and his phone reports his – nothing to change
