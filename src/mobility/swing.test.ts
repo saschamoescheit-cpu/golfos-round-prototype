@@ -71,11 +71,11 @@ describe('body–swing connection', () => {
 });
 
 describe('the tests', () => {
-  it('15 tests, 10 measured by the camera, 6 in the quick check', () => {
+  it('15 tests, all measured by the camera (since 1.11.2026), 6 in the quick check', () => {
     expect(TESTS).toHaveLength(15);
     expect(FULL).toHaveLength(15);
     expect(new Set(FULL).size).toBe(15);
-    expect(TESTS.filter((t) => t.mode === 'camera')).toHaveLength(10);
+    expect(TESTS.filter((t) => t.mode === 'camera')).toHaveLength(15);
     expect(QUICK).toHaveLength(6);
     expect(QUICK.every((id) => TESTS.find((t) => t.id === id)!.mode === 'camera')).toBe(true);
   });
@@ -87,7 +87,8 @@ describe('the tests', () => {
       for (const s of [t.name, t.why, t.setup, t.target, ...t.steps]) expect(s.en && s.de, t.id).toBeTruthy();
       if (t.mode === 'camera') {
         expect(t.metric, t.id).toBeTruthy();
-        expect(t.sketch.view === 'side' && t.sketch.items.length > 0, `${t.id} picture`).toBe(true);
+        // (the hand tests draw their own picture – a forearm end-on, a wrist – instead of a body sketch)
+        expect((t.sketch.view === 'side' && t.sketch.items.length > 0) || ['forearm', 'wrist-hinge', 'wrist-flex'].includes(t.id), `${t.id} picture`).toBe(true);
       } else {
         // three pictures, or four when the TPI form has a second limited answer (the pelvic tilt that shakes, 31.10.2026)
         expect(t.options!.length, t.id).toBeGreaterThanOrEqual(3);

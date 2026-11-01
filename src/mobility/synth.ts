@@ -1,4 +1,4 @@
-import type { Frame, Lm } from './measure';
+import { LIMITS, P, type Frame, type Lm } from './measure';
 import type { MetricKind, Side } from './types';
 
 // Synthetic players for the tests and the QA run (no camera, no person): a body of 1.75 m that does a test with a
@@ -269,6 +269,110 @@ export function bridgeBody(ext: Side, extended: boolean, sag: number, up = true)
   return sideBody(near, far, 400, 0.22);
 }
 
+// ---------- the five tests measured by the camera from 01.11.2026 (forearm, wrists, pelvic tilt, reach-roll-lift) ----------
+const W = SYNTH_W;
+const H = SYNTH_H;
+type Px = [number, number];
+/** 33 points, all hidden (v 0.1) – a test sets the ones it needs */
+const blank = (): Lm[] => Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, v: 0.1 }));
+export const put = (lm: Lm[], i: number, p: Px, v = 1) => (lm[i] = { x: p[0] / W, y: p[1] / H, v });
+const rad = (d: number) => (d * Math.PI) / 180;
+/** a script of keyframes [ms, value] with linear steps between */
+export const keys = (k: [number, number][]) => (t: number) => {
+  for (let i = 1; i < k.length; i++) if (t <= k[i][0]) return k[i - 1][1] + ((k[i][1] - k[i - 1][1]) * (t - k[i - 1][0])) / (k[i][0] - k[i - 1][0]);
+  return k[k.length - 1][1];
+};
+
+/** front view, elbows at the sides, forearms at the phone; the turn per hand (° from thumb up, + = palm up) */
+export const forearmBody = (left: number, right: number, elbowOut = 0): Lm[] => {
+  const lm = frontBody({});
+  for (const [side, a] of [['left', left], ['right', right]] as const) {
+    const out = side === 'left' ? 1 : -1;
+    const [el, wr, pi, ix, th] = side === 'left' ? [13, 15, 17, 19, 21] : [14, 16, 18, 20, 22];
+    const e: Px = [W / 2 + out * (110 + elbowOut), 620];
+    const w: Px = [e[0], e[1] + 25];
+    const u: Px = [out * Math.sin(rad(a)), -Math.cos(rad(a))];
+    put(lm, el, e);
+    put(lm, wr, w);
+    put(lm, th, [w[0] + 14 * u[0], w[1] + 14 * u[1]]);
+    put(lm, ix, [w[0] + 8 * u[0], w[1] + 8 * u[1] + 4]);
+    put(lm, pi, [w[0] - 8 * u[0], w[1] - 8 * u[1] + 4]);
+  }
+  return lm;
+};
+/** thumbs up 1 s, palm down, back, palm up, back */
+export const forearmScript = (pro: number, sup: number, proR = pro, supR = sup) => (t: number) => {
+  const k = (p: number, s: number) => keys([[0, 0], [1000, 0], [2000, -p], [3500, -p], [4500, 0], [5500, s], [7000, s], [8000, 0]])(t);
+  return forearmBody(k(pro, sup), k(proR, supR));
+};
+
+/** side view, the left arm towards the phone: forearm level (pointing right, or left), the hand `bend` ° up from it */
+export const wristBody = (bend: number, faceLeft = false): Lm[] => {
+  const lm = blank();
+  const dir = faceLeft ? -1 : 1;
+  const w: Px = [360 + dir * 70, 640];
+  put(lm, P.lSh, [360 - dir * 110, 420]);
+  put(lm, P.lHip, [360 - dir * 110, 760]);
+  put(lm, P.lEl, [360 - dir * 80, 640]);
+  put(lm, P.lWr, w);
+  const m: Px = [w[0] + dir * 40 * Math.cos(rad(bend)), w[1] - 40 * Math.sin(rad(bend))];
+  // pinky and index either side of the knuckles
+  const n: Px = [-Math.sin(rad(bend)) * 7, -Math.cos(rad(bend)) * 7];
+  put(lm, P.lIdx, [m[0] + n[0], m[1] + n[1]]);
+  put(lm, P.lPinky, [m[0] - n[0], m[1] - n[1]]);
+  put(lm, P.lThumb, [m[0] + n[0] * 1.5, m[1] + n[1] * 1.5]);
+  // the far shoulder and hip just behind the near ones (seen side-on – the camera screen checks the turn)
+  for (const i of [P.rSh, P.rHip]) lm[i] = { ...lm[i - 1], v: 0.3 };
+  return lm;
+};
+/** in line 1 s, up, hold, back, down, hold, back – up and down on the picture (before the gain) */
+export const wristScript = (up: number, down: number, faceLeft = false) => (t: number) => wristBody(keys([[0, 0], [1000, 0], [2000, up], [3500, up], [4500, 0], [5500, -down], [7000, -down], [8000, 0]])(t), faceLeft);
+
+/** side view, golf posture, the left side towards the phone (facing right): the hip point `dx` px forward (+ = flat back,
+ *  − = hollow back), the shoulder `chest` px forward */
+export const tiltBody = (dx: number, chest = 0): Lm[] => {
+  const lm = blank();
+  const pts: [number, Px][] = [
+    [P.lSh, [500 + chest, 420]],
+    [P.lHip, [360 + dx, 650]],
+    [P.lKn, [430, 900]],
+    [P.lAn, [400, 1150]],
+    [P.lEl, [540, 520]],
+    [P.lEar, [560, 360]],
+  ];
+  for (const [i, p] of pts) put(lm, i, p);
+  for (const i of [P.rSh, P.rHip, P.rKn, P.rAn, P.rEl]) lm[i] = { ...lm[i - 1], v: 0.3 };
+  return lm;
+};
+export const tiltScript = (hollow: number, flat: number, o: { chest?: number; shake?: number } = {}) => (t: number) => {
+  const k = keys([[0, 0], [1200, 0], [2200, -hollow], [3200, -hollow], [4200, 0], [5200, flat], [6200, flat], [7200, 0]])(t);
+  const shaking = o.shake && k > flat * 0.3 ? (Math.round(t / 50) % 2 ? o.shake : -o.shake) : 0;
+  const chest = o.chest ? (Math.abs(k) / Math.max(hollow, flat)) * o.chest : 0;
+  return tiltBody(k + shaking, chest);
+};
+
+/** side view, kneeling, chest on the thighs (facing right): the left arm forward, `lift` ° above where it lay (−17°) */
+export const reachBody = (lift: number, elbowBend = 0): Lm[] => {
+  const lm = blank();
+  const sh: Px = [400, 900];
+  const e = rad(-17 + lift);
+  const el: Px = [sh[0] + 130 * Math.cos(e), sh[1] - 130 * Math.sin(e)];
+  const fe = e - rad(elbowBend);
+  put(lm, P.lSh, sh);
+  put(lm, P.lEl, el);
+  put(lm, P.lWr, [el[0] + 130 * Math.cos(fe), el[1] - 130 * Math.sin(fe)]);
+  put(lm, P.lHip, [240, 960]);
+  put(lm, P.lKn, [330, 1060]);
+  put(lm, P.lAn, [150, 1080]);
+  put(lm, P.lEar, [470, 940]);
+  return lm;
+};
+export const reachScript = (lift: number, elbowBend = 0) => (t: number) => {
+  const k = keys([[0, 0], [1000, 0], [2500, lift], [4000, lift], [5000, 0]])(t);
+  return reachBody(k, elbowBend * (k / Math.max(1, lift)));
+};
+
+
 /** A scripted test: the frames of a player doing it with the given result. */
 export interface Script {
   ms: number;
@@ -322,6 +426,20 @@ export function script(kind: MetricKind, side: Side, level: SynthLevel): Script 
       const a = good ? 86 : 55;
       return { ms: 9000, at: (t) => shoulderBody(a * ramp(t, 800, 3000)) };
     }
+    case 'forearm':
+      return { ms: 16000, at: good ? forearmScript(88, 88) : forearmScript(45, 40) };
+    case 'wristHinge': {
+      const g = LIMITS.wristHinge.gain;
+      return { ms: 22000, at: good ? wristScript(30 / g, 40 / g) : wristScript(6 / g, 8 / g) };
+    }
+    case 'wristFlex': {
+      const g = LIMITS.wristFlex.gain;
+      return { ms: 22000, at: good ? wristScript(75 / g, 75 / g) : wristScript(25 / g, 25 / g) };
+    }
+    case 'pelvicTilt':
+      return { ms: 20000, at: good ? tiltScript(40, 40) : tiltScript(1, 1) };
+    case 'reachRollLift':
+      return { ms: 13000, at: good ? reachScript(40) : reachScript(4) };
   }
 }
 

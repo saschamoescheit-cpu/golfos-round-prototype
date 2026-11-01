@@ -23,6 +23,12 @@ export const SCALE: Record<MetricKind, { lo: number; hi: number }> = {
   shoulder9090: { lo: 60, hi: 0 },
   squat: { lo: -40, hi: 20 },
   toeTouch: { lo: 30, hi: 0 },
+  // the five from 01.11.2026: each way (forearm, wrist bend), both ways together (wrist hinge, pelvic tilt), the lift
+  forearm: { lo: 0, hi: 100 },
+  wristHinge: { lo: 0, hi: 70 },
+  wristFlex: { lo: 0, hi: 80 },
+  pelvicTilt: { lo: 0, hi: 20 },
+  reachRollLift: { lo: 0, hi: 45 },
 };
 
 /** Where a value sits on its scale, 0 … 1. */
@@ -96,6 +102,11 @@ const GOLF_VALUE: Record<MetricKind, number> = {
   shoulder9090: LIMITS.shoulder.pass,
   squat: LIMITS.squat.depth,
   toeTouch: LIMITS.toeTouch.pass,
+  forearm: LIMITS.forearm.pass / 2,
+  wristHinge: LIMITS.wristHinge.radial + LIMITS.wristHinge.ulnar,
+  wristFlex: LIMITS.wristFlex.pass,
+  pelvicTilt: LIMITS.pelvicTilt.clear * 2,
+  reachRollLift: LIMITS.reachRollLift.pass,
 };
 
 /** The position to aim for in a test, for the goal. */

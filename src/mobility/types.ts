@@ -20,7 +20,7 @@ export type CameraView = 'front' | 'side';
 export type Area = 'hips' | 'spine' | 'shoulders' | 'stability' | 'legs' | 'neck' | 'wrists';
 
 /** What the camera measures – one analyser each (measure.ts). */
-export type MetricKind = 'squat' | 'toeTouch' | 'trunkRotation' | 'pelvicRotation' | 'lowerQuarter' | 'balance' | 'bridge' | 'lat' | 'shoulder9090' | 'neck';
+export type MetricKind = 'squat' | 'toeTouch' | 'trunkRotation' | 'pelvicRotation' | 'lowerQuarter' | 'balance' | 'bridge' | 'lat' | 'shoulder9090' | 'neck' | 'pelvicTilt' | 'forearm' | 'wristHinge' | 'wristFlex' | 'reachRollLift';
 
 export type TestId =
   | 'deep-squat'

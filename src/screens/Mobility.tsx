@@ -683,7 +683,7 @@ function TestBrief(props: { test: TestDef; side: Side | null; noPicture?: boolea
       {/* the drawing with the numbered details the text is about (the self checks show theirs as the choices) */}
       {!props.noPicture && <TestPicture test={test} />}
       {top}
-      {test.mode === 'camera' && <PhoneSetup view={test.view ?? 'front'} height={test.metric === 'bridge' ? 'floor' : test.metric === 'trunkRotation' || test.metric === 'lat' ? 'knee' : 'hip'} />}
+      {test.mode === 'camera' && <PhoneSetup view={test.view ?? 'front'} height={test.metric === 'bridge' || test.metric === 'reachRollLift' ? 'floor' : test.metric === 'trunkRotation' || test.metric === 'lat' ? 'knee' : test.metric === 'forearm' || test.metric === 'wristHinge' || test.metric === 'wristFlex' ? 'chest' : 'hip'} />}
       <VideoCard v={test.video} />
       <VideoNote />
     </>

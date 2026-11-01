@@ -145,6 +145,17 @@ export function sideText(kind: MetricKind, side: Side | null): string {
       return tr('Golf posture, arms crossed.', 'Golfhaltung, Arme verschränkt.');
     case 'lat':
       return tr('Back to the wall, arms straight forward.', 'Rücken an die Wand, Arme gestreckt nach vorn.');
+    // the five measured by the camera from 1.11.2026 (before: self checks – Sascha: "every test has to start")
+    case 'pelvicTilt':
+      return tr('Golf posture, arms crossed.', 'Golfhaltung, Arme verschränkt.');
+    case 'forearm':
+      return tr('Elbows at your sides, forearms to the phone, thumbs up.', 'Ellbogen am Körper, Unterarme zum Handy, Daumen oben.');
+    case 'wristHinge':
+      return l ? tr('The left arm towards the phone, fist, thumb up.', 'Der linke Arm zum Handy, Faust, Daumen oben.') : tr('The right arm towards the phone, fist, thumb up.', 'Der rechte Arm zum Handy, Faust, Daumen oben.');
+    case 'wristFlex':
+      return l ? tr('The left arm towards the phone, palm down.', 'Der linke Arm zum Handy, Handfläche nach unten.') : tr('The right arm towards the phone, palm down.', 'Der rechte Arm zum Handy, Handfläche nach unten.');
+    case 'reachRollLift':
+      return l ? tr('The left arm forward on the floor, thumb up.', 'Der linke Arm nach vorn auf den Boden, Daumen oben.') : tr('The right arm forward on the floor, thumb up.', 'Der rechte Arm nach vorn auf den Boden, Daumen oben.');
   }
 }
 
@@ -169,6 +180,16 @@ const CUE_TEXT = (kind: MetricKind, cue: Cue): string | null => {
       return tr('Now raise the arms.', 'Jetzt die Arme heben.');
     case 'shoulder9090':
       return tr('Now turn the forearm back.', 'Jetzt den Unterarm nach hinten drehen.');
+    case 'pelvicTilt':
+      return tr('Now tilt the pelvis forward and back – slowly, the chest stays still.', 'Jetzt das Becken nach vorn und zurück kippen – langsam, die Brust bleibt ruhig.');
+    case 'forearm':
+      return tr('Now turn the palms down – and up.', 'Jetzt die Handflächen nach unten drehen – und nach oben.');
+    case 'wristHinge':
+      return tr('Now hinge the fist up – then down.', 'Jetzt die Faust nach oben anwinkeln – dann nach unten.');
+    case 'wristFlex':
+      return tr('Now bend the hand up – then down.', 'Jetzt die Hand nach oben beugen – dann nach unten.');
+    case 'reachRollLift':
+      return tr('Now lift the straight arm.', 'Jetzt den gestreckten Arm heben.');
     default:
       return null;
   }
@@ -181,7 +202,9 @@ const COACH_RETRIES = 2;
 const COACH_RETRY_S = 5;
 
 /** A test with calibration first (the player stands still facing the phone, then moves). */
-const CALIBRATES: MetricKind[] = ['trunkRotation', 'pelvicRotation', 'lowerQuarter', 'neck'];
+const CALIBRATES: MetricKind[] = ['trunkRotation', 'pelvicRotation', 'lowerQuarter', 'neck', 'pelvicTilt', 'forearm', 'wristHinge', 'wristFlex', 'reachRollLift'];
+/** facing the phone while it measures the still start (the side-view ones only hold still) */
+const LOOKS: MetricKind[] = ['trunkRotation', 'pelvicRotation', 'lowerQuarter', 'neck', 'forearm'];
 
 export const fakeLevel = (): 'good' | 'stiff' | null => {
   try {
@@ -430,7 +453,8 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       const missing = f ? missIdx.length : 99;
       const want = kind === 'bridge' ? null : (props.test.view ?? null);
       const facingNow = f ? facingOf(f) : null;
-      const turned = !want || facingNow === want;
+      // (kneeling for the reach-roll-lift the shoulders give no clear side – it counts as turned)
+      const turned = !want || facingNow === want || kind === 'reachRollLift';
       const framed = !!f && missing === 0 && turned;
       const fit = fitOf(f, missIdx, turned);
       draw(lm, w, h, framed || phaseRef.current === 'run');
@@ -501,7 +525,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     const startCountdown = () => {
       go('count');
       analyzer = makeAnalyzer(kind, sideParam, { noArms: props.variant === 'handsBehind' });
-      const instruction = `${props.variant === 'handsBehind' ? tr('Hands behind the head.', 'Hände hinter den Kopf.') : sideText(kind, props.side)} ${CALIBRATES.includes(kind) ? tr('Look at the phone and hold still.', 'Schau zum Handy und halte still.') : ''}`;
+      const instruction = `${props.variant === 'handsBehind' ? tr('Hands behind the head.', 'Hände hinter den Kopf.') : sideText(kind, props.side)} ${CALIBRATES.includes(kind) ? (LOOKS.includes(kind) ? tr('Look at the phone and hold still.', 'Schau zum Handy und halte still.') : tr('Hold still.', 'Halte still.')) : ''}`;
       beep(980, 120);
       say(`${fitSpeech('ok', null, tr)} ${instruction}`);
       // wait for the sentence (max 6 s), then 3 – 2 – 1

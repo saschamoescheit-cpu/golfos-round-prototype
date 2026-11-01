@@ -129,17 +129,19 @@ function Phone(props: { x: number; y: number; side?: boolean }) {
  * Where the phone goes, seen from above: the phone on the left, the player on the right (an oval with the nose), the
  * distance between them and how high the phone stands.
  */
-export function PhoneSetup(props: { view: 'front' | 'side'; height: 'floor' | 'knee' | 'hip'; thumb?: boolean }) {
+export function PhoneSetup(props: { view: 'front' | 'side'; height: 'floor' | 'knee' | 'hip' | 'chest'; thumb?: boolean }) {
   const W = 340;
   const H = 150;
   const px = 42;
   const py = 72;
   const bx = 262;
-  const height = props.height === 'floor' ? tr('on the floor', 'auf dem Boden') : props.height === 'knee' ? tr('at knee height', 'auf Kniehöhe') : tr('at hip height', 'auf Hüfthöhe');
+  const height = props.height === 'floor' ? tr('on the floor', 'auf dem Boden') : props.height === 'knee' ? tr('at knee height', 'auf Kniehöhe') : props.height === 'chest' ? tr('at chest height', 'auf Brusthöhe') : tr('at hip height', 'auf Hüfthöhe');
+  // the hand tests from closer: the hands have to be big enough in the picture
+  const far = props.height === 'chest' ? tr('1.5–2 m', '1,5–2 m') : tr('2.5–3 m', '2,5–3 m');
   // front: the player looks at the phone (left); side: the player looks down the picture, side-on to the phone
   const [nx, ny] = props.view === 'front' ? [bx - 22, py] : [bx, py + 22];
   return (
-    <Frame w={W} h={H} label={tr(`The phone ${props.view === 'front' ? 'in front of you' : 'beside you'}, 2.5–3 m away, ${height}`, `Das Handy ${props.view === 'front' ? 'vor dir' : 'neben dir'}, 2,5–3 m entfernt, ${height}`)} thumb={props.thumb}>
+    <Frame w={W} h={H} label={tr(`The phone ${props.view === 'front' ? 'in front of you' : 'beside you'}, ${far} away, ${height}`, `Das Handy ${props.view === 'front' ? 'vor dir' : 'neben dir'}, ${far} entfernt, ${height}`)} thumb={props.thumb}>
       <rect x={0} y={0} width={W} height={H} fill={C.ground} opacity={0.25} />
       <text x={12} y={22} fontSize={13} fill={C.text}>
         {tr('seen from above', 'von oben gesehen')}
@@ -148,7 +150,7 @@ export function PhoneSetup(props: { view: 'front' | 'side'; height: 'floor' | 'k
       <path d={`M${px + 5},${py} L${px + 30},${py - 26} M${px + 5},${py} L${px + 30},${py + 26}`} stroke={C.phone} strokeWidth={1.5} opacity={0.5} />
       <line x1={px + 34} y1={py} x2={bx - 48} y2={py} stroke={C.text} strokeWidth={1.5} strokeDasharray="4 4" />
       <text x={(px + bx) / 2} y={py - 10} textAnchor="middle" fontSize={15} fontWeight={700} fill={C.text}>
-        {tr('2.5–3 m', '2,5–3 m')}
+        {far}
       </text>
       <text x={(px + bx) / 2} y={py + 22} textAnchor="middle" fontSize={12} fill={C.text}>
         {tr('phone', 'Handy')} {height}
