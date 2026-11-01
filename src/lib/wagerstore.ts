@@ -16,7 +16,13 @@ export interface PoolEntry {
   /** the pool player this phone's owner is */
   me: string;
   pool: WagerPool;
+  /** the account that set the pool up (the row's owner on the server) – only it changes the bets (Sascha 01.11.2026) */
+  owner?: string;
 }
+
+/** Is this phone's account the host of the pool – the one who set it up? The others see the bets and their phones
+ *  report theirs, but only the host adds, changes, decides, deletes (Sascha 01.11.2026). */
+export const isHost = (e: PoolEntry): boolean => !!e.owner && e.owner === myAccount();
 
 const KEY = 'golfos.pools.v1';
 export function loadPools(): PoolEntry[] {
@@ -35,12 +41,13 @@ function savePools(list: PoolEntry[]): void {
   }
   window.dispatchEvent(new Event('golfos:pools-changed'));
 }
-function keep(code: string, pool: WagerPool, me?: string): void {
+function keep(code: string, pool: WagerPool, me?: string, owner?: string): void {
   const list = loadPools();
   const old = list.find((e) => e.code === code);
   const mine = me || old?.me || meIn(code);
   if (mine) rememberMe(code, mine);
-  savePools([{ code, me: mine, pool }, ...list.filter((e) => e.code !== code)]);
+  const host = owner ?? old?.owner;
+  savePools([{ code, me: mine, pool, ...(host ? { owner: host } : {}) }, ...list.filter((e) => e.code !== code)]);
 }
 
 // Who this account is in each pool – synced between its devices (lib/sync.ts, kind 'pool-me'): a new phone or the app
@@ -111,9 +118,9 @@ export async function syncPools(): Promise<boolean> {
   const h = await headers();
   if (!h) return false;
   try {
-    const r = await fetch(`${table()}?select=code,game&game->>kind=eq.wager-pool`, { headers: h });
+    const r = await fetch(`${table()}?select=code,game,owner&game->>kind=eq.wager-pool`, { headers: h });
     if (!r.ok) return false;
-    const rows = (await r.json()) as { code: string; game: unknown }[];
+    const rows = (await r.json()) as { code: string; game: unknown; owner?: string }[];
     const me = myAccount();
     const hidden = hiddenCodes();
     const list = loadPools();
@@ -123,8 +130,8 @@ export async function syncPools(): Promise<boolean> {
       const old = list.find((e) => e.code === row.code);
       const mine = old?.me || meIn(row.code) || (me ? (row.game.players.find((p) => p.joined?.uid === me)?.id ?? '') : '');
       if (mine) rememberMe(row.code, mine); // also for a pool unchanged – to the account's other devices
-      if (old && old.me === mine && JSON.stringify(old.pool) === JSON.stringify(row.game)) continue;
-      const entry = { code: row.code, me: mine, pool: row.game };
+      if (old && old.me === mine && old.owner === row.owner && JSON.stringify(old.pool) === JSON.stringify(row.game)) continue;
+      const entry: PoolEntry = { code: row.code, me: mine, pool: row.game, ...(row.owner ? { owner: row.owner } : {}) };
       const at = list.findIndex((e) => e.code === row.code);
       if (at >= 0) list[at] = entry;
       else list.push(entry);
@@ -158,8 +165,9 @@ export async function createPool(pool: WagerPool, me: string): Promise<PoolEntry
     try {
       const r = await fetch(table(), { method: 'POST', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ code, game: pool }) });
       if (r.ok) {
-        keep(code, pool, me);
-        return { code, me, pool };
+        const owner = myAccount() ?? undefined;
+        keep(code, pool, me, owner);
+        return { code, me, pool, ...(owner ? { owner } : {}) };
       }
       if (r.status !== 409) return null; // 409: the code is taken – another one
     } catch {
@@ -179,20 +187,21 @@ export async function changePool(code: string, change: (p: WagerPool) => WagerPo
   const at = `${table()}?code=eq.${encodeURIComponent(code)}`;
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const r = await fetch(`${at}&select=game,updated_at`, { headers: h });
+      const r = await fetch(`${at}&select=game,updated_at,owner`, { headers: h });
       if (!r.ok) return null;
-      const rows = (await r.json()) as { game: unknown; updated_at?: string | null }[];
+      const rows = (await r.json()) as { game: unknown; updated_at?: string | null; owner?: string }[];
       if (!rows.length || !isPool(rows[0].game)) return null;
+      const owner = rows[0].owner;
       const next = change(rows[0].game);
       if (!next) {
-        keep(code, rows[0].game);
+        keep(code, rows[0].game, undefined, owner);
         return rows[0].game;
       }
       const seen = rows[0].updated_at ? `updated_at=eq.${encodeURIComponent(rows[0].updated_at)}` : 'updated_at=is.null';
       const w = await fetch(`${at}&${seen}`, { method: 'PATCH', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify({ game: next, updated_at: new Date().toISOString() }) });
       if (!w.ok) return null;
       if (((await w.json()) as unknown[]).length) {
-        keep(code, next);
+        keep(code, next, undefined, owner);
         return next;
       }
       // another phone wrote in between: read again
@@ -251,6 +260,11 @@ export function reportWagers(): Promise<void> {
           let changed = false;
           made = [];
           const progress = { ...p.progress };
+          // the server takes a report only from the player's own account (supabase/golfos-shared-games.sql, the pool's
+          // guard): a join from before the account was kept in "joined" gets it now
+          const uid = myAccount();
+          const stamp = !!uid && p.players.some((x) => x.id === e.me && x.joined && !x.joined.uid);
+          const players = stamp ? p.players.map((x) => (x.id === e.me && x.joined && !x.joined.uid ? { ...x, joined: { ...x.joined, uid: uid! } } : x)) : p.players;
           for (const w of p.wagers.filter((x) => x.player === e.me && x.kind !== 'free')) {
             const now = judge(w, p, rounds); // the bet as it is on the server (changed meanwhile, maybe)
             if (sameProgress(progress[w.id], now)) continue;
@@ -258,7 +272,7 @@ export function reportWagers(): Promise<void> {
             progress[w.id] = { ...now, ...(progress[w.id]?.manual ? { manual: progress[w.id].manual } : {}) };
             changed = true;
           }
-          return changed ? { ...p, progress } : null;
+          return changed ? { ...p, progress, players } : null;
         });
         if (written) for (const id of made) pushBet(e.code, id);
       }

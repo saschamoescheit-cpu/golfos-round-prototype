@@ -8,7 +8,7 @@ import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
 import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, earlierGroups, fromEarlier, fromLibrary, progressText, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
-import { changePool, createPool, earlierBets, forgetPool, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
@@ -19,6 +19,7 @@ import { pushBet } from '../lib/push';
 // tournament"). A pool over a period, its players and their bets; the standing comes from the rounds played in Rounds.
 
 const NO_NET = () => tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.');
+const ONLY_HOST = () => tr('Only whoever set up the pool changes its bets – you see them, and your phone reports yours.', 'Nur wer den Pool angelegt hat, ändert die Wetten – du siehst sie, und dein Handy meldet deine.');
 const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
 
 /** The pool a tapped push asks for (App puts it here) – once. */
@@ -181,7 +182,11 @@ export function BetsTab(props: { onOpen: (code: string) => void }) {
         open={filter === 'bin' && deleted.length > 0}
         title={tr('Deleted pools', 'Gelöschte Pools')}
         items={deleted.map((e) => ({ id: e.code, date: e.pool.createdAt, title: e.pool.name, meta: e.pool.players.map((p) => p.name).join(', '), deletedAt: e.pool.deletedAt! }))}
-        onRestore={async (code) => setMsg((await restorePool(code)) ? null : NO_NET())}
+        onRestore={async (code) => {
+          const e = deleted.find((x) => x.code === code);
+          if (e && !isHost(e)) return setMsg(ONLY_HOST());
+          setMsg((await restorePool(code)) ? null : NO_NET());
+        }}
         onPurge={forgetPool}
       />
       {msg && (
@@ -382,14 +387,20 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
     );
   }
   const pool = entry.pool;
+  // only the host changes the pool (Sascha 01.11.2026: "the invited ones cannot edit the bets – only the host")
+  const host = isHost(entry);
   if (pool.deletedAt) {
     return (
       <main className="screen">
         <TopBar title={pool.name} onBack={props.onBack} backLabel={tr('Bets', 'Wetten')} />
         <p className="muted">{tr('This pool of bets was deleted. Its bets are kept – it can be restored.', 'Dieser Wett-Pool wurde gelöscht. Seine Wetten sind noch da – er lässt sich wiederherstellen.')}</p>
-        <button type="button" className="btn-secondary" onClick={async () => setMsg((await restorePool(props.code)) ? null : NO_NET())}>
-          {tr('Restore', 'Wiederherstellen')}
-        </button>
+        {host ? (
+          <button type="button" className="btn-secondary" onClick={async () => setMsg((await restorePool(props.code)) ? null : NO_NET())}>
+            {tr('Restore', 'Wiederherstellen')}
+          </button>
+        ) : (
+          <p className="muted small">{tr('Whoever set it up can restore it.', 'Wer ihn angelegt hat, kann ihn wiederherstellen.')}</p>
+        )}
         {msg && (
           <span className="small bad-text" role="alert">
             {msg}
@@ -417,18 +428,21 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
         onBack={props.onBack}
         backLabel={tr('Bets', 'Wetten')}
         right={
-          <button type="button" className="icon-btn" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={() => setSheet('pool')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 20h4L19 9l-4-4L4 16z" />
-              <path d="M13.5 6.5l4 4" />
-            </svg>
-          </button>
+          host ? (
+            <button type="button" className="icon-btn" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={() => setSheet('pool')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 20h4L19 9l-4-4L4 16z" />
+                <path d="M13.5 6.5l4 4" />
+              </svg>
+            </button>
+          ) : undefined
         }
       />
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
         {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
       </span>
+      {!host && <span className="muted small">{ONLY_HOST()}</span>}
       {!entry.me && (
         <section className="card play-card">
           <span className="eyebrow">{tr('Who are you?', 'Wer bist du?')}</span>
@@ -481,17 +495,29 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
             </div>
             {!ws.length && <span className="muted small">{tr('No bets yet.', 'Noch keine Wetten.')}</span>}
             {/* per person a library to pick single bets from (Sascha 01.11.2026) – below the bets there are */}
-            {ws.map(({ w, shown, prog }) => (
-              <button key={w.id} type="button" className="list-item pool-wager" onClick={() => setSheet({ edit: w })}>
-                <span className="grow">
-                  <span className="title">{wagerLabel(shown)}</span>
-                  <span className="muted small">{wagerRules(shown, pool)}</span>
-                  {w.kind !== 'free' && <span className="small">{progressText(shown, prog, pool.currency)}</span>}
-                </span>
-                {shapeOf(w.kind) === 'duel' ? <DuelBadge amount={prog?.amount ?? 0} played={!!prog?.duels?.length} sym={currencySymbol(pool.currency)} /> : <StateBadge state={stateOf(w, pool, today)} />}
-              </button>
-            ))}
-            {!pool.finishedAt && (
+            {ws.map(({ w, shown, prog }) => {
+              const row = (
+                <>
+                  <span className="grow">
+                    <span className="title">{wagerLabel(shown)}</span>
+                    <span className="muted small">{wagerRules(shown, pool)}</span>
+                    {w.kind !== 'free' && <span className="small">{progressText(shown, prog, pool.currency)}</span>}
+                  </span>
+                  {shapeOf(w.kind) === 'duel' ? <DuelBadge amount={prog?.amount ?? 0} played={!!prog?.duels?.length} sym={currencySymbol(pool.currency)} /> : <StateBadge state={stateOf(w, pool, today)} />}
+                </>
+              );
+              // the host taps a bet to change, decide or delete it; the others only see it
+              return host ? (
+                <button key={w.id} type="button" className="list-item pool-wager" onClick={() => setSheet({ edit: w })}>
+                  {row}
+                </button>
+              ) : (
+                <div key={w.id} className="list-item pool-wager">
+                  {row}
+                </div>
+              );
+            })}
+            {host && !pool.finishedAt && (
               <button type="button" className="btn-secondary pool-add" aria-label={tr(`Add bets for ${p.name}`, `Wetten für ${p.name} hinzufügen`)} onClick={() => setSheet({ library: p.id })}>
                 {tr('+ Bets', '+ Wetten')}
               </button>
@@ -499,9 +525,11 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
           </section>
         );
       })}
-      <button type="button" className="btn-secondary" onClick={() => setSheet('invite')}>
-        {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
-      </button>
+      {host && (
+        <button type="button" className="btn-secondary" onClick={() => setSheet('invite')}>
+          {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
+        </button>
+      )}
       <section className="card">
         <span className="eyebrow">{tr('Settlement', 'Abrechnung')}</span>
         {pays.length ? (
@@ -524,8 +552,8 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
         <summary>{tr('How the bets are counted', 'So werden die Wetten gezählt')}</summary>
         <p className="small">
           {tr(
-            'Play your rounds in Rounds as usual – your phone judges your bets from them (greens from the putts) and reports them here. Bets "with marker" count only rounds in which a flight partner marked you: in Rounds invite the flight, switch on "Play with a marker", and at the end you and your marker sign the card. A free bet is decided by hand – tap it.',
-            'Spielt eure Runden ganz normal in Rounds – dein Handy wertet deine Wetten daraus aus (Grüns aus den Putts) und meldet sie hierher. Wetten „mit Zähler“ zählen nur Runden, in denen dich ein Flightpartner gezählt hat: in Rounds den Flight einladen, „Mit Zähler spielen“ einschalten, am Ende unterschreiben du und dein Zähler die Karte. Eine freie Wette wird von Hand entschieden – antippen.',
+            'Play your rounds in Rounds as usual – your phone judges your bets from them (greens from the putts) and reports them here. Bets "with marker" count only rounds in which a flight partner marked you: in Rounds invite the flight, switch on "Play with a marker", and at the end you and your marker sign the card. Whoever set up the pool decides a free bet by hand – tapping it.',
+            'Spielt eure Runden ganz normal in Rounds – dein Handy wertet deine Wetten daraus aus (Grüns aus den Putts) und meldet sie hierher. Wetten „mit Zähler“ zählen nur Runden, in denen dich ein Flightpartner gezählt hat: in Rounds den Flight einladen, „Mit Zähler spielen“ einschalten, am Ende unterschreiben du und dein Zähler die Karte. Eine freie Wette entscheidet von Hand, wer den Pool angelegt hat – antippen.',
           )}
         </p>
       </details>
@@ -534,7 +562,7 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
           {msg}
         </span>
       )}
-      {!pool.finishedAt && (
+      {host && !pool.finishedAt && (
         <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet('finish')}>
           {tr('Finish the pool', 'Pool beenden')}
         </button>

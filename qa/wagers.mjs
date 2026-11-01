@@ -22,6 +22,14 @@ async function serve(route) {
   const req = route.request();
   const u = new URL(req.url());
   const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: body == null ? '' : JSON.stringify(body) });
+  // the account asking (the token's sub) – the owner of a row it creates, as auth.uid() in the real table
+  const who = () => {
+    try {
+      return JSON.parse(atob((req.headers()['authorization'] ?? '').split(' ')[1].split('.')[1])).sub;
+    } catch {
+      return null;
+    }
+  };
   if (u.pathname.endsWith('/golfos_items')) return json(200, []);
   if (u.pathname.endsWith('/rpc/golfos_join_game')) {
     const { join_code } = JSON.parse(req.postData() ?? '{}');
@@ -32,12 +40,12 @@ async function serve(route) {
     const code = (u.searchParams.get('code') ?? '').replace(/^eq\./, '');
     // every pool of the account (the row rule of the real table: host or member – here simply all pools)
     const kind = (u.searchParams.get('game->>kind') ?? '').replace(/^eq\./, '');
-    if (req.method() === 'GET' && !code && kind) return json(200, [...shared.entries()].filter(([, v]) => v.game.kind === kind).map(([c, v]) => ({ code: c, game: v.game })));
-    if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game, updated_at: shared.get(code).updated_at }] : []) : []);
+    if (req.method() === 'GET' && !code && kind) return json(200, [...shared.entries()].filter(([, v]) => v.game.kind === kind).map(([c, v]) => ({ code: c, game: v.game, owner: v.owner })));
+    if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game, updated_at: shared.get(code).updated_at, owner: shared.get(code).owner }] : []) : []);
     if (req.method() === 'POST') {
       const row = JSON.parse(req.postData());
       if (shared.has(row.code)) return json(409, { code: '23505' });
-      shared.set(row.code, { game: row.game, updated_at: new Date().toISOString() });
+      shared.set(row.code, { game: row.game, updated_at: new Date().toISOString(), owner: who() });
       return json(201, null);
     }
     if (req.method() === 'PATCH') {
@@ -103,7 +111,7 @@ const event = {
 const host = await phone('Sascha');
 const H = host.p;
 // Sascha 01.11.2026: the bets a menu of their own – on the start page "start a game" and "start a bet"
-ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Bilanz|Profil', 'the menu has "Wetten"');
+ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Profil', 'the menu has "Wetten"');
 ok((await H.getByText('Neues Spiel starten').isVisible()) && (await H.getByText('Neue Wette starten').isVisible()), 'start page: "Neues Spiel starten" and "Neue Wette starten"');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-start.png' });
 // a game in dollars (Sascha 01.11.2026: "besides the euro the dollar to choose") – the stakes in dollars
@@ -208,6 +216,17 @@ const badges = await gChris.locator('.pool-wager').filter({ hasNotText: 'gegen '
 ok(badges.filter((x) => x === 'Geschafft').length === 4 && badges.filter((x) => x === 'Offen').length === 1, `Chris: 4 made, the −5 open (${badges.join(', ')})`);
 ok((await gChris.innerText()).includes('beste Runde −2 (Ziel −5)'), 'Chris: the score bet shows his best round −2 against −5');
 ok(shared.get(code).game.players.find((p) => p.name === 'Chris')?.joined, 'the server knows Chris joined');
+// only the host changes the bets (Sascha 01.11.2026): Chris sees them and his phone reports his – nothing to change
+ok(
+  (await G.getByRole('button', { name: 'Pool bearbeiten' }).count()) === 0 &&
+    (await G.getByRole('button', { name: /^Wetten für .* hinzufügen$/ }).count()) === 0 &&
+    (await G.getByRole('button', { name: 'Pool beenden' }).count()) === 0 &&
+    (await G.getByRole('button', { name: /Mitspieler einladen/ }).count()) === 0 &&
+    (await G.locator('button.pool-wager').count()) === 0 &&
+    (await G.locator('div.pool-wager').count()) > 0 &&
+    (await G.getByText('Nur wer den Pool angelegt hat, ändert die Wetten').isVisible()),
+  'Chris (invited): sees the bets, cannot change, add, decide, end or invite – only the host',
+);
 // a push to everyone in the pool for each bet made (Sascha 01.11.2026) – asked of the push function by Chris's phone
 const chrisBets = pushes.filter((x) => x.phone === 'Chris' && x.body.action === 'bet' && x.body.code === code).map((x) => x.body.wager);
 const madeIds = shared.get(code).game.wagers.filter((w) => shared.get(code).game.progress[w.id]?.done).map((w) => w.id);
@@ -303,7 +322,7 @@ ok(!!shared.get(code).game.deletedAt && (await H.getByRole('heading', { name: 'W
 await G.goto('about:blank');
 await G.goto(url + '#pool=' + code);
 await G.waitForTimeout(3000);
-ok(await G.getByText(/Dieser Wett-Pool wurde gelöscht/).isVisible(), "Chris's phone: the pool was deleted – its bets kept");
+ok((await G.getByText(/Dieser Wett-Pool wurde gelöscht/).isVisible()) && (await G.getByRole('button', { name: 'Wiederherstellen' }).count()) === 0, "Chris's phone: the pool was deleted – its bets kept; only the host restores it");
 // restored from the bin of the menu "Wetten": back for everyone, with all bets
 await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await H.getByRole('button', { name: 'Wiederherstellen' }).click();

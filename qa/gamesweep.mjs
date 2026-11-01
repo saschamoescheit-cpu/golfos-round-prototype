@@ -38,8 +38,6 @@ for (const sun of [false, true]) {
   await shot('start-leer');
   await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
   await shot('spiele-leer');
-  await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
-  await shot('bilanz-leer');
   await p.locator('.tabbar button').filter({ hasText: 'Spielen' }).click();
 
   // a Wolf game with four, played three holes
@@ -101,8 +99,7 @@ for (const sun of [false, true]) {
   await p.getByRole('button', { name: 'Spiele' }).first().click();
   await p.waitForTimeout(400);
   await shot('spiele-ein-spiel');
-  await p.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
-  await shot('bilanz');
+  await shot('bilanz', true); // on "Spiele" below the tiles
   await p.locator('.tabbar button').filter({ hasText: 'Profil' }).click();
   await shot('profil');
   await shot('profil-ganz', true);

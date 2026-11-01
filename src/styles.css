@@ -1142,6 +1142,10 @@ button.tile:disabled { opacity: 1; }
 
 /* friends to add with a tap; the Games balance */
 .friend-chips { display: flex; flex-direction: column; gap: 6px; }
+/* the balance on "Games" below the tiles (Sascha 01.11.2026) */
+.balance { display: flex; flex-direction: column; gap: 10px; }
+.balance-title { margin: 6px 0 0; font: 700 20px var(--display); }
+.bet-pays li > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .balance-totals { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; gap: 8px; }
 .balance-totals div { display: flex; flex-direction: column; gap: 2px; }
 .balance-totals strong { font: 700 24px var(--display); font-variant-numeric: tabular-nums; }
