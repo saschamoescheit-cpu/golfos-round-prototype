@@ -239,8 +239,8 @@ await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Anleitung' }).click(
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'a drill has its picture');
 await p.locator('.mob-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
 ok(await p.locator('.mob-3d canvas').isVisible(), 'the drill shows its 3D video');
-// no step line below the video, a voice reads the steps (Sascha 1.11.2026)
-ok(!(await p.locator('.mob-3d-step').count()) && (await p.locator('.mob-3d[data-said]').count()) === 1 && (await p.locator('.mob-3d-voice[aria-pressed="true"]').isVisible()), 'the drill video reads its steps aloud (loudspeaker on), no step line below');
+// no step line below the video; the voice is there but muted until the loudspeaker is tapped (Sascha 1.11.2026)
+ok(!(await p.locator('.mob-3d-step').count()) && !(await p.locator('.mob-3d[data-said]').count()) && (await p.locator('.mob-3d-voice[aria-pressed="false"]').isVisible()), 'the drill video: loudspeaker there but muted, no step line below');
 await shot('drill');
 await p.locator('.topbar .icon-btn').first().click();
 // the guided session with the camera comes first (qa/mobility-train.mjs runs it), the plan for Training second
@@ -279,14 +279,15 @@ await p.waitForTimeout(2500);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'the test shows its picture');
 ok((await p.locator('.tr-video').count()) >= 1, 'the test shows its video');
 ok(await p.locator('.mob-3d canvas').isVisible(), 'the test shows its 3D video');
-ok(!(await p.locator('.mob-3d-step').count()) && (await p.locator('.mob-3d[data-said]').count()) === 1, 'the 3D video of the test reads its steps aloud, no step line below');
-// the loudspeaker switches the voice off – remembered for the next video
-const saidBefore = Number(await p.locator('.mob-3d[data-said]').getAttribute('data-said'));
+ok(!(await p.locator('.mob-3d-step').count()) && !(await p.locator('.mob-3d[data-said]').count()) && (await p.locator('.mob-3d-voice[aria-pressed="false"]').isVisible()), 'the 3D video of the test starts muted, no step line below');
+// the loudspeaker reads it, tapped again it stops, tapped once more it reads from the beginning
+await p.locator('.mob-3d-voice').click();
+ok(await p.waitForFunction(() => document.querySelector('.mob-3d')?.getAttribute('data-said') === '1', null, { timeout: 5000 }).then(() => true, () => false), 'the loudspeaker reads the steps aloud');
 await p.locator('.mob-3d-voice').click();
 await p.locator('.mob-3d-voice[aria-pressed="false"]').waitFor({ timeout: 5000 }).catch(() => {});
-ok((await p.locator('.mob-3d-voice').getAttribute('aria-pressed')) === 'false' && (await p.evaluate(() => localStorage.getItem('golfos.mobility.voice'))) === 'off', 'the loudspeaker switches the voice off (remembered)');
+ok((await p.locator('.mob-3d-voice').getAttribute('aria-pressed')) === 'false', 'tapped again the voice stops');
 await p.locator('.mob-3d-voice').click();
-ok(await p.waitForFunction((n) => Number(document.querySelector('.mob-3d[data-said]')?.getAttribute('data-said')) === n + 1, saidBefore, { timeout: 5000 }).then(() => true, () => false), 'switched on again it reads from the beginning');
+ok(await p.waitForFunction(() => document.querySelector('.mob-3d')?.getAttribute('data-said') === '2', null, { timeout: 5000 }).then(() => true, () => false), 'switched on again it reads from the beginning');
 ok(await p.locator('.mob-3d-play').isVisible(), 'play/pause is the round symbol in the picture');
 const painted = await p.evaluate(() => { const c = document.querySelector('.mob-3d canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; });
 ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');

@@ -9,23 +9,9 @@ import type { TestId } from './types';
 // motion and the view (front, side, at an angle, from above) can be changed. Loaded only with the Agility module
 // (three.js); without WebGL the drawing below stays the picture. A voice says how it goes while the golfer shows it
 // (Sascha 1.11.2026: the steps are written below the video anyway – a step line under it is not needed, a voice is
-// better); the loudspeaker bottom left switches it off and on (remembered), on again it starts from the beginning.
-
-const VOICE_KEY = 'golfos.mobility.voice';
-const voiceWanted = (): boolean => {
-  try {
-    return localStorage.getItem(VOICE_KEY) !== 'off';
-  } catch {
-    return true;
-  }
-};
-const keepVoice = (on: boolean) => {
-  try {
-    localStorage.setItem(VOICE_KEY, on ? 'on' : 'off');
-  } catch {
-    /* private mode: on for this page only */
-  }
-};
+// better). On a test's or drill's page it starts muted every time (Sascha 1.11.2026: "the sound should always be off
+// here by default"); the loudspeaker bottom left reads it from the beginning, tapped again it stops. (When the test
+// or drill runs with the camera, the voice reads the how-to anyway – there it matters most.)
 
 const VIEW_NAMES: Record<View, () => string> = {
   front: () => tr('Front', 'Vorne'),
@@ -47,7 +33,7 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip; compact?: bo
   const [playing, setPlaying] = useState(!reduce);
   const [slow, setSlow] = useState(false);
   const [view, setView] = useState<View>(clip.view);
-  const [voice, setVoice] = useState(voiceWanted);
+  const [voice, setVoice] = useState(false);
   const [said, setSaid] = useState(0);
   const ownRef = useRef(false);
   const text = props.compact ? '' : (props.say ?? []).filter(Boolean).join(' ');
@@ -128,7 +114,6 @@ export default function Anim3D(props: { test?: TestId; clip?: Clip; compact?: bo
             aria-label={voice ? tr('Voice off', 'Stimme aus') : tr('Read it aloud', 'Vorlesen')}
             aria-pressed={voice}
             onClick={() => {
-              keepVoice(!voice);
               if (voice) stopSpeaking();
               setVoice(!voice);
             }}
