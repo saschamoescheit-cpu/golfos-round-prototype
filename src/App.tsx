@@ -242,6 +242,18 @@ export function App() {
     const go = () => {
       const t = takePushTarget();
       if (!t) return;
+      // a bet made in a pool (Sascha 01.11.2026): Games opens that pool
+      if (t.pool) {
+        try {
+          sessionStorage.setItem('golfos.openPool', t.pool);
+        } catch {
+          /* Games opens on its start page */
+        }
+        setGamesTab(undefined);
+        setModule('games');
+        window.dispatchEvent(new CustomEvent('golfos:open-pool', { detail: t.pool }));
+        return;
+      }
       if (t.games) {
         setGamesTab(undefined);
         setModule('games');

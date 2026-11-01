@@ -17,6 +17,7 @@ const ok = (cond, what) => {
 };
 // ---------- the simulated server ----------
 const shared = new Map(); // code → { game, updated_at }
+const pushes = []; // the calls to the push function: { phone, body }
 async function serve(route) {
   const req = route.request();
   const u = new URL(req.url());
@@ -52,6 +53,10 @@ async function phone(name, seed) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE' });
   await mockNet(ctx);
   await ctx.route(/rgisfnilwehnqpmbrxmp\.supabase\.co\/(rest|auth)\//, serve);
+  await ctx.route(/rgisfnilwehnqpmbrxmp\.supabase\.co\/functions\/v1\/golfos-push/, (route) => {
+    pushes.push({ phone: name, body: JSON.parse(route.request().postData() ?? '{}') });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"sent":1}' });
+  });
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => { if (!/golfos_items.*access control/.test(e.message)) errs.push(e.message); });
@@ -154,6 +159,10 @@ const badges = await gChris.locator('.badge').allInnerTexts();
 ok(badges.filter((x) => x === 'Geschafft').length === 4 && badges.filter((x) => x === 'Offen').length === 1, `Chris: 4 made, the −5 open (${badges.join(', ')})`);
 ok((await gChris.innerText()).includes('beste Runde −2 (Ziel −5)'), 'Chris: the score bet shows his best round −2 against −5');
 ok(shared.get(code).game.players.find((p) => p.name === 'Chris')?.joined, 'the server knows Chris joined');
+// a push to everyone in the pool for each bet made (Sascha 01.11.2026) – asked of the push function by Chris's phone
+const chrisBets = pushes.filter((x) => x.phone === 'Chris' && x.body.action === 'bet' && x.body.code === code).map((x) => x.body.wager);
+const madeIds = shared.get(code).game.wagers.filter((w) => shared.get(code).game.progress[w.id]?.done).map((w) => w.id);
+ok(chrisBets.length === 4 && madeIds.length === 4 && madeIds.every((id) => chrisBets.includes(id)), `push: Chris's phone told of his 4 bets made (${chrisBets.length})`);
 
 // ---------- Sascha: sees it, decides Erik's free bet, the settlement ----------
 await H.reload();
@@ -169,6 +178,23 @@ const settle = (await H.locator('.card').filter({ hasText: 'Abrechnung' }).inner
 // Chris 4 × 20 € from each of three = +240; Erik's free bet +60; Sascha and Cedric −100, Erik −20, Chris +220
 ok(/Sascha → Chris 100 €/.test(settle) && /Cedric → Chris 100 €/.test(settle) && /Erik → Chris 20 €/.test(settle), `settlement: ${settle.slice(0, 140)}`);
 ok(/5 von 6 Wetten entschieden/.test(settle), '5 of 6 bets decided (the −5 still open)');
+const erikFree = shared.get(code).game.wagers.find((w) => w.kind === 'free').id;
+ok(pushes.some((x) => x.phone === 'Sascha' && x.body.action === 'bet' && x.body.wager === erikFree), "push: Erik's free bet decided as made – Sascha's phone told of it");
+
+// the push tapped: the app opens the pool – on a phone without it too (another phone of the account): loaded, who are you
+await H.goto('about:blank');
+await H.goto(url + '#pool=' + code);
+await H.waitForTimeout(2500);
+ok((await H.locator('.topbar h1').innerText()).includes('USA 2026'), 'push tapped: the pool opens');
+const other = await phone('Erik');
+await other.p.goto('about:blank');
+await other.p.goto(url + '#pool=' + code);
+await other.p.waitForTimeout(3000);
+ok((await other.p.locator('.topbar h1').innerText()).includes('USA 2026') && (await other.p.getByText('Wer bist du?').isVisible()), 'push tapped on a phone without the pool: loaded – "who are you?"');
+await other.p.locator('.chip-set').getByRole('button', { name: 'Erik', exact: true }).click();
+await other.p.waitForTimeout(1500);
+ok(await other.p.evaluate(() => JSON.parse(localStorage.getItem('golfos.pools.v1'))[0].me !== ''), 'Erik picked himself: this phone reports his bets');
+ok(other.errs.length === 0, `third phone: no page errors ${other.errs.slice(0, 2).join(' | ')}`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-pool.png', fullPage: true });
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);

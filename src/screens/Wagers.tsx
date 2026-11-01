@@ -7,7 +7,8 @@ import { money, transfers } from '../lib/gameforms';
 import { Chips, Stepper, TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
 import { KINDS, TEMPLATE, balances, dayOf, progressText, stateOf, wagerLabel, wagerRules, type Payout, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
-import { changePool, createPool, forgetPool, loadPools, refreshPool, reportWagers, type PoolEntry } from '../lib/wagerstore';
+import { changePool, createPool, forgetPool, joinPool, loadPools, refreshPool, reportWagers, type PoolEntry } from '../lib/wagerstore';
+import { pushBet } from '../lib/push';
 
 // Bets in Games (Sascha 01.11.2026: "in America we have bets running – it must be possible to set up individual bets in
 // Games, everything selectable and adjustable, invite people to the bets, and the flight counts each other as in a real
@@ -15,6 +16,17 @@ import { changePool, createPool, forgetPool, loadPools, refreshPool, reportWager
 
 const NO_NET = () => tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.');
 const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
+
+/** The pool a tapped push asks for (App puts it here) – once. */
+export function takeOpenPool(): string | null {
+  try {
+    const code = sessionStorage.getItem('golfos.openPool');
+    if (code) sessionStorage.removeItem('golfos.openPool');
+    return code;
+  } catch {
+    return null;
+  }
+}
 
 /** The pools on this phone, kept fresh when another screen changes them. */
 export function usePools(): PoolEntry[] {
@@ -178,6 +190,13 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
   const [sheet, setSheet] = useState<null | { edit: Wager | null } | 'template' | 'invite' | 'finish'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [seen, setSeen] = useState(seenSet);
+  // not on this phone yet (a push tapped on another phone of the same account): fetched from the server
+  const [lookup, setLookup] = useState<'busy' | 'none' | null>(null);
+  useEffect(() => {
+    if (entry) return;
+    setLookup('busy');
+    void refreshPool(props.code).then((p) => setLookup(p ? null : 'none'));
+  }, [props.code]); // eslint-disable-line react-hooks/exhaustive-deps
   // the own bets judged from the rounds, then the pool as it is on the server – at once and every 20 s on screen
   useEffect(() => {
     let alive = true;
@@ -199,7 +218,11 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
     return (
       <main className="screen">
         <TopBar title={tr('Bets', 'Wetten')} onBack={props.onBack} backLabel={tr('Games', 'Spiele')} />
-        <p className="muted">{tr('This pool is not on this phone any more.', 'Dieser Pool ist nicht mehr auf diesem Handy.')}</p>
+        <p className="muted">
+          {lookup === 'busy'
+            ? tr('Loading the pool …', 'Lade den Pool …')
+            : tr('The pool could not be loaded – no connection, or this account is not in it. Join it with its code under "Join a game".', 'Der Pool ließ sich nicht laden – keine Verbindung, oder dieses Konto ist nicht dabei. Mit dem Code unter „Spiel beitreten“ beitreten.')}
+        </p>
       </main>
     );
   }
@@ -223,6 +246,19 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
         {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
       </span>
+      {!entry.me && (
+        <section className="card play-card">
+          <span className="eyebrow">{tr('Who are you?', 'Wer bist du?')}</span>
+          <span className="muted small">{tr('Then this phone reports your bets.', 'Dann meldet dieses Handy deine Wetten.')}</span>
+          <div className="chip-set">
+            {pool.players.map((p) => (
+              <button key={p.id} type="button" className="chip" onClick={async () => setMsg((await joinPool(props.code, { id: p.id }, shownName(loadProfile()) || p.name)) ? null : NO_NET())}>
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       {fresh.length > 0 && (
         <section className="card pool-made" role="status">
           <span className="eyebrow">{tr('Made it', 'Geschafft')}</span>
@@ -349,14 +385,17 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
           }}
           onJudge={async (id, done) => {
             const by = name(entry.me);
+            const was = stateOf(pool.wagers.find((x) => x.id === id)!, pool, today) === 'done';
             if (
               await change((p) => {
                 const prev = p.progress[id] ?? { best: null, done: false, rounds: 0, at: new Date().toISOString() };
                 const { manual: _m, ...rest } = prev;
                 return { ...p, progress: { ...p.progress, [id]: done == null ? rest : { ...prev, manual: { done, by } } } };
               })
-            )
+            ) {
               setSheet(null);
+              if (done && !was) pushBet(props.code, id); // decided as made: everyone in the pool hears of it
+            }
           }}
         />
       )}

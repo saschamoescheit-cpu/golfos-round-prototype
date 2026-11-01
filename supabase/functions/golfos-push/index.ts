@@ -5,6 +5,7 @@
 // What it sends:
 // - a round not yet checked and signed: once per round, 2 hours after it ended, between 9 and 20 o'clock of the phone
 // - games on several phones: a fellow player joined your game; a game ended
+// - bets in Games: a player of the pool made a bet – to everyone in the pool (Sascha 01.11.2026)
 // - a thunderstorm while a round is played: the forecast for the course, checked every 15 minutes
 //
 // Web Push as the standards say – the message encrypted for the phone (RFC 8291, aes128gcm), the sender signed
@@ -149,6 +150,45 @@ export const finishedNote = (course: string, lang?: string | null): Note => ({
   body: T(lang, `The game at ${course} is over – the result is in Games.`, `Das Spiel in ${course} ist beendet – das Ergebnis steht in Games.`),
   tag: 'golfos-games',
   url: './#games',
+});
+
+/** A bet of a pool as the app shows it ("3 birdies in a row", "−5 gross") – the pool's JSON, read on the server. */
+export interface BetWager {
+  id: string;
+  player: string;
+  kind: string;
+  target: number;
+  holes?: number;
+  net?: boolean;
+  text?: string;
+}
+export function betLabel(w: BetWager, lang?: string | null): string {
+  const n = w.target;
+  const nine = w.holes === 9;
+  const par = n === 0 ? T(lang, 'even', 'Par') : n > 0 ? `+${n}` : `−${-n}`;
+  switch (w.kind) {
+    case 'birdieRun':
+      return T(lang, `${n} birdies in a row`, `${n} Birdies in Folge`);
+    case 'parRun':
+      return T(lang, `${n} pars in a row`, `${n} Pars in Folge`);
+    case 'birdies':
+      return nine ? T(lang, `${n} birdies on 9`, `${n} Birdies auf 9`) : T(lang, `${n} birdies on 18`, `${n} Birdies auf 18`);
+    case 'greens':
+      return nine ? T(lang, `${n} greens on 9`, `${n} Grüns auf 9`) : T(lang, `${n} greens on 18`, `${n} Grüns auf 18`);
+    case 'score':
+      return `${par} ${w.net ? T(lang, 'net', 'netto') : T(lang, 'gross', 'brutto')}${nine ? T(lang, ' on 9', ' auf 9') : ''}`;
+    default:
+      return String(w.text ?? '').slice(0, 80) || T(lang, 'Free bet', 'Freie Wette');
+  }
+}
+
+/** A player of the pool made a bet (Sascha 01.11.2026: "the fellow players get a push when someone of the group won a
+ *  bet"). A tap opens the pool. */
+export const betNote = (player: string, w: BetWager, where: string | undefined, pool: string, code: string, lang?: string | null): Note => ({
+  title: T(lang, `Bet made: ${player}`, `Wette geschafft: ${player}`),
+  body: [betLabel(w, lang), where, pool].filter(Boolean).join(' · '),
+  tag: `golfos-bet-${w.id}`,
+  url: `./#pool=${code}`,
 });
 
 export const stormNote = (course: string, lang?: string | null): Note => ({
@@ -396,6 +436,31 @@ export async function handle(req: Request): Promise<Response> {
           if (await send(s, (action === 'joined' ? joinedNote : finishedNote)(g.game?.courseName ?? 'GolfOS', s.lang))) n++;
         }
       await d.insertIgnore('golfos_push_sent', to.map((u) => ({ user_id: u, key })));
+      return json({ ok: true, sent: n });
+    }
+    // a bet made in a pool of bets: everyone in the pool hears of it once – only when the pool says it is made (by the
+    // app's judgement or by hand)
+    if (action === 'bet') {
+      const code = String(body.code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      const id = String(body.wager ?? '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 64);
+      type Pool = { kind?: string; name?: string; players?: { id: string; name: string }[]; wagers?: BetWager[]; progress?: Record<string, { done?: boolean; where?: string; manual?: { done: boolean } }> };
+      const [g] = await d.get<{ owner: string; members: string[]; game: Pool }[]>(`golfos_shared_games?select=owner,members,game&code=eq.${code}`);
+      if (!g || g.game?.kind !== 'wager-pool' || (g.owner !== user && !g.members.includes(user))) return json({ error: 'not in this pool' }, 403);
+      const w = g.game.wagers?.find((x) => x.id === id);
+      const p = g.game.progress?.[id];
+      const made = !!w && (p?.manual ? p.manual.done : w.kind !== 'free' && !!p?.done);
+      if (!w || !made) return json({ error: 'not made' }, 409);
+      const player = g.game.players?.find((x) => x.id === w.player)?.name ?? '?';
+      const key = `bet:${code}:${id}`;
+      const to = [...new Set([g.owner, ...g.members])].filter((u) => u !== user); // the phone that told sees it already
+      let n = 0;
+      if (to.length) for (const s of await subsOf(to)) {
+        if (s.kinds?.games === false) continue;
+        const done = await d.get<unknown[]>(`golfos_push_sent?select=key&user_id=eq.${s.user_id}&key=eq.${encodeURIComponent(key)}`);
+        if (done.length) continue;
+        if (await send(s, betNote(player, w, p?.where, String(g.game.name ?? 'GolfOS').slice(0, 60), code, s.lang), 24 * 3600, 'high')) n++;
+      }
+      if (to.length) await d.insertIgnore('golfos_push_sent', to.map((u) => ({ user_id: u, key })));
       return json({ ok: true, sent: n });
     }
     // a round's join request (by its code, or by the reference of a round shown nearby): the host hears of it – only

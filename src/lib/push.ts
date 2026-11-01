@@ -156,6 +156,13 @@ export function pushRound(round: { id: string; course: string; lat: number; lng:
   void call({ action: 'round', endpoint: s.endpoint, round: round && { lat: round.lat, lng: round.lng, course: round.course } }).catch(() => told.delete(key));
 }
 
+/** A bet made in a pool of bets (Sascha 01.11.2026): everyone in the pool hears of it – the server sends it once and
+ *  only when the pool says it is made. */
+export function pushBet(code: string, wager: string): void {
+  if (!loadSession() || !syncConfigured()) return;
+  void call({ action: 'bet', code, wager }).catch(() => null);
+}
+
 /** A shared game: this phone joined it, or the game ended – the others hear of it. */
 export function pushGame(action: 'joined' | 'finished', code: string): void {
   if (!loadSession() || !syncConfigured()) return;
@@ -185,12 +192,13 @@ export function pushAsked(to: { code?: string; ref?: string }): void {
 }
 
 /** Where a tapped notification leads: "#review=<round>", "#sign", "#games" (read once, then removed). */
-export function takePushTarget(): { review?: string; sign?: boolean; games?: boolean } | null {
+export function takePushTarget(): { review?: string; sign?: boolean; games?: boolean; pool?: string } | null {
   const h = location.hash;
-  let out: { review?: string; sign?: boolean; games?: boolean } | null = null;
+  let out: { review?: string; sign?: boolean; games?: boolean; pool?: string } | null = null;
   if (h.startsWith('#review=')) out = { review: decodeURIComponent(h.slice(8)) };
   else if (h === '#sign') out = { sign: true };
   else if (h === '#games') out = { games: true };
+  else if (h.startsWith('#pool=')) out = { pool: decodeURIComponent(h.slice(6)).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) }; // a bet made: its pool in Games
   if (out) history.replaceState(null, '', location.pathname + location.search);
   return out;
 }

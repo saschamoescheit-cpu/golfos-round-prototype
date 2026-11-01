@@ -22,7 +22,7 @@ import { inUsa } from '../lib/weather';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
-import { PoolScreen, PoolSetup, PoolsCard } from './Wagers';
+import { PoolScreen, PoolSetup, PoolsCard, takeOpenPool } from './Wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
 import { PausedIcon } from '../components/PausedIcon';
@@ -118,7 +118,20 @@ function newDraft(form: FormId = 'skins'): Draft {
 export function GamesApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void; /** a round's code under "Join a game": on to Rounds */ onJoinRound?: (code: string) => void }) {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
-  const [view, setView] = useState<View>(() => (running[0] && !props.tab && !location.hash.startsWith('#join=') ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' }));
+  const [view, setView] = useState<View>(() => {
+    const pool = takeOpenPool(); // a push about a bet made: its pool
+    if (pool) return { name: 'pool', code: pool };
+    return running[0] && !props.tab && !location.hash.startsWith('#join=') ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' };
+  });
+  // the push tapped while Games is open already
+  useEffect(() => {
+    const open = () => {
+      const pool = takeOpenPool();
+      if (pool) setView({ name: 'pool', code: pool });
+    };
+    window.addEventListener('golfos:open-pool', open);
+    return () => window.removeEventListener('golfos:open-pool', open);
+  }, []);
   const store = (g: Game) => {
     saveGame(g);
     // a shared game, finished (or corrected afterwards): its scores and "finished" to the others once more – while it

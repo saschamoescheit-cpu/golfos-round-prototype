@@ -4,6 +4,7 @@ import { cachedEvent, isSigned } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { isPool, judge, playedRounds, sameProgress, type PoolPlayer, type WagerPool } from './wagers';
+import { pushBet } from './push';
 
 // The pools of bets on this phone and on the server (Sascha 01.11.2026). A pool lives in the table of the shared games
 // (golfos_shared_games, JSON kind 'wager-pool', a 6-letter code as a game) – no new table. Every change is a function
@@ -149,17 +150,21 @@ export function reportWagers(): Promise<void> {
         const mine = e.pool.wagers.filter((w) => w.player === e.me && w.kind !== 'free');
         const fresh = Object.fromEntries(mine.map((w) => [w.id, judge(w, e.pool, rounds)]));
         if (mine.every((w) => sameProgress(e.pool.progress[w.id], fresh[w.id]))) continue;
-        await changePool(e.code, (p) => {
+        let made: string[] = []; // bets made with this report – everyone in the pool hears of it (push)
+        const written = await changePool(e.code, (p) => {
           let changed = false;
+          made = [];
           const progress = { ...p.progress };
           for (const w of p.wagers.filter((x) => x.player === e.me && x.kind !== 'free')) {
             const now = judge(w, p, rounds); // the bet as it is on the server (changed meanwhile, maybe)
             if (sameProgress(progress[w.id], now)) continue;
+            if (now.done && !progress[w.id]?.done && !progress[w.id]?.manual) made.push(w.id);
             progress[w.id] = { ...now, ...(progress[w.id]?.manual ? { manual: progress[w.id].manual } : {}) };
             changed = true;
           }
           return changed ? { ...p, progress } : null;
         });
+        if (written) for (const id of made) pushBet(e.code, id);
       }
     } catch {
       /* offline or the server unsure – the next round or the next look at the pool tries again */

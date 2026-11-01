@@ -241,6 +241,40 @@ describe('the push function, end to end against a copy of the database', () => {
     expect((await post({ action: 'invite', code: 'INV234', username: 'max.m' }, 'token-tim')).status).toBe(403);
   });
 
+  it('bets: a bet made – everyone in the pool hears of it once, not the phone that told; only when it is made (Sascha 01.11.2026)', async () => {
+    const max = await phone('https://fcm.googleapis.com/fcm/send/max-bets');
+    const tim = await phone('https://fcm.googleapis.com/fcm/send/tim-bets');
+    await post({ action: 'subscribe', subscription: max.subscription, lang: 'de' }, 'token-max');
+    await post({ action: 'subscribe', subscription: tim.subscription, lang: 'en' }, 'token-tim');
+    const wagers = [
+      { id: 'w-run', player: 'p-max', kind: 'birdieRun', target: 3 },
+      { id: 'w-free', player: 'p-tim', kind: 'free', target: 0, text: 'Longest drive on 7' },
+      { id: 'w-open', player: 'p-tim', kind: 'score', target: -5 },
+    ];
+    const progress = { 'w-run': { done: true, where: 'Bethpage Black · 05.11.' }, 'w-free': { done: false, manual: { done: true } }, 'w-open': { done: false } };
+    tables.golfos_shared_games = [{ code: 'BET234', owner: 'u-sascha', members: ['u-max', 'u-tim'], game: { kind: 'wager-pool', name: 'USA 2026', players: [{ id: 'p-max', name: 'Max' }, { id: 'p-tim', name: 'Tim' }], wagers, progress } }];
+    const iphone = await sascha();
+    const [s0, m0, t0] = [(await iphone.inbox()).length, (await max.inbox()).length, (await tim.inbox()).length];
+    // Max's phone reports his bet made: Sascha and Tim hear of it, Max's phone not
+    expect((await post({ action: 'bet', code: 'bet234', wager: 'w-run' }, 'token-max')).status).toBe(200);
+    await post({ action: 'bet', code: 'BET234', wager: 'w-run' }, 'token-max'); // again: said once
+    const toSascha = (await iphone.inbox()).slice(s0);
+    expect(toSascha).toEqual([expect.objectContaining({ title: 'Wette geschafft: Max', url: './#pool=BET234', tag: 'golfos-bet-w-run' })]);
+    expect(toSascha[0].body).toBe('3 Birdies in Folge · Bethpage Black · 05.11. · USA 2026');
+    expect((await tim.inbox()).slice(t0)).toEqual([expect.objectContaining({ title: 'Bet made: Max', body: '3 birdies in a row · Bethpage Black · 05.11. · USA 2026' })]);
+    expect((await max.inbox()).length).toBe(m0);
+    // a free bet decided by hand as made (by Sascha): Max and Tim hear of it
+    await post({ action: 'bet', code: 'BET234', wager: 'w-free' }, 'token-sascha');
+    expect((await max.inbox()).slice(m0)).toEqual([expect.objectContaining({ title: 'Wette geschafft: Tim', body: 'Longest drive on 7 · USA 2026' })]);
+    // not made, no such bet, not in the pool, a game's code: nothing
+    expect((await post({ action: 'bet', code: 'BET234', wager: 'w-open' }, 'token-tim')).status).toBe(409);
+    expect((await post({ action: 'bet', code: 'BET234', wager: 'nope' }, 'token-tim')).status).toBe(409);
+    tables.golfos_shared_games[0].members = ['u-max'];
+    expect((await post({ action: 'bet', code: 'BET234', wager: 'w-run' }, 'token-tim')).status).toBe(403);
+    tables.golfos_shared_games = [{ code: 'GAM234', owner: 'u-sascha', members: ['u-tim'], game: { courseName: 'Hetzenhof' } }];
+    expect((await post({ action: 'bet', code: 'GAM234', wager: 'w-run' }, 'token-tim')).status).toBe(403);
+  });
+
   it('a phone the push service no longer knows is forgotten; turned off, it is gone', async () => {
     const old = await phone(GONE);
     await post({ action: 'subscribe', subscription: old.subscription }, 'token-max'); // the hello comes back 410
