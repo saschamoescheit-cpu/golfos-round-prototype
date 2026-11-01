@@ -10,7 +10,7 @@ import { CUES, CUE_SHORT, FormCheck, RepCounter, gainSpeech, SELF_NAMED, SIGNALS
 import { isClean, type DrillDone, type DrillSet } from './sessions';
 import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
-import { beep, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow } from './CameraTest';
+import { beep, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow, speechMs } from './CameraTest';
 import { logFrame, logItem, logResult } from './motionlog';
 import { FitVoice, fitOf, fitScreen, fitSpeech, type Fit } from './framing';
 
@@ -523,11 +523,14 @@ export function DrillPlayer(props: {
         const how = plan.hold ? tr(`Hold ${plan.hold} seconds`, `${plan.hold} Sekunden halten`) : tr(`${plan.reps} times`, `${plan.reps}-mal`);
         const sideNote = plan.sides ? tr(', each side', ', jede Seite') : '';
         // the whole how-to while the golfer shows it: where to stand, every step, how long (Sascha 1.11.2026)
-        say([`${props.intro}.`, tr('Watch.', 'Schau zu.'), t(props.drill.setup), ...props.drill.steps.map(t), `${how}${sideNote}.`].join(' '));
+        const words = [`${props.intro}.`, tr('Watch.', 'Schau zu.'), t(props.drill.setup), ...props.drill.steps.map(t), `${how}${sideNote}.`].join(' ');
+        say(words);
+        // waits for the voice, but never longer than the words take – a voice the phone keeps silent does not hold the demo
+        const talkMs = speechMs(words);
         const t0 = performance.now();
         const loop = clip ? (clip.length ?? clip.keys[clip.keys.length - 1].t) * 1000 : 0;
         const toFrame = () => {
-          if (!fake && isSpeaking() && performance.now() - t0 < 60000) return later(toFrame, 200);
+          if (!fake && isSpeaking() && performance.now() - t0 < talkMs) return later(toFrame, 200);
           go('frame');
           frameT0 = performance.now();
           say(`${tr('Now you.', 'Jetzt du.')} ${t(plan.where)}`);

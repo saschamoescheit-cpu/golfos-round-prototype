@@ -168,7 +168,7 @@ const synth = () => (typeof window === 'undefined' ? undefined : (window as Wind
  */
 let silence: HTMLAudioElement | null = null;
 type AudioSessionNav = Navigator & { audioSession?: { type: string } };
-function audioSession(type: 'playback' | 'play-and-record' | 'auto'): void {
+function audioSession(type: 'playback' | 'auto'): void {
   try {
     const a = (navigator as AudioSessionNav).audioSession;
     if (a && a.type !== type) a.type = type;
@@ -177,11 +177,11 @@ function audioSession(type: 'playback' | 'play-and-record' | 'auto'): void {
   }
 }
 /**
- * A camera that runs (Agility): the iPhone may stop its picture when the page switches the sound to "playback" while it
+ * A camera that runs (Agility): the iPhone stops its picture when the page switches the sound to "playback" while it
  * films – the player saw a still picture of the moment the first sentence was read (Sascha 1.11.2026: "it looks like a
- * photo"). While a camera of the page runs the read-aloud asks for "play-and-record" instead – the sound of a video
- * call, made for a running camera and not muted by the ring switch either (Sascha 1.11.2026: "while the golfer shows
- * the exercise a voice should say what to do – that matters most here").
+ * photo"). While a camera of the page runs the sound stays as it is – the camera picture lives then. ("play-and-record"
+ * instead silenced the voice on his iPhone and hung the read-aloud, 1.11.2026 15:03.) On silent the voice is not heard
+ * while the camera runs.
  */
 const cameras = new Set<MediaStream>();
 const filming = (): boolean => {
@@ -191,10 +191,10 @@ const filming = (): boolean => {
   }
   return false;
 };
-/** A camera of the page starts: the read-aloud takes the sound of a video call while it runs. */
+/** A camera of the page starts: the read-aloud no longer switches the phone's sound while it runs. */
 export function cameraOn(s: MediaStream): void {
   cameras.add(s);
-  if (talking) audioSession('play-and-record');
+  releaseAudio();
 }
 function releaseAudio(): void {
   try {
@@ -205,7 +205,8 @@ function releaseAudio(): void {
   audioSession('auto');
 }
 function wakeAudio(onPlay?: (ok: boolean) => void): void {
-  audioSession(filming() ? 'play-and-record' : 'playback');
+  if (filming()) return;
+  audioSession('playback');
   try {
     if (!silence) {
       // 50 ms of silence as a data: address (not a blob: one – a revoked blob address showed as an error in WebKit)
