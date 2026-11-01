@@ -219,7 +219,7 @@ await H.waitForTimeout(1500);
 ok((await H.locator('.list-item').filter({ hasText: '1 Wett-Pool läuft' }).count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 0, 'start page: only "1 Wett-Pool läuft" – the pool itself in the menu "Wetten"');
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
 await H.waitForTimeout(500);
-ok((await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.getByRole('button', { name: 'Wett-Pool beitreten' }).isVisible()), 'menu "Wetten": new pool, join a pool, the pools');
+ok((await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.locator('.tab-title + .tile-row').count()) === 1 && (await H.getByRole('button', { name: 'Wette beitreten' }).count()) === 0, 'menu "Wetten": the tiles at the top as on Rounds and Games, then the pools (new and join on "Spielen")');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-tab.png' });
 await H.locator('.list-item').filter({ hasText: 'USA 2026' }).click();
 await H.waitForTimeout(2000);

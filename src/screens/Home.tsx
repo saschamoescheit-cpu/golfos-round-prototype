@@ -18,6 +18,7 @@ export function Home(props: {
   gameOpen: boolean;
   /** finished games whose result is not confirmed yet – the task shown on the Games card, as on Rounds */
   gamesToConfirm?: number;
+  betsRunning?: string[]; // the names of the pools of bets running
   toCheck: number; // finished rounds to check & sign (the same number as the rounds tile)
   profileDot: boolean; // carries to take over into the bag
   trainingOpen: boolean; // a practice session is paused
@@ -28,7 +29,7 @@ export function Home(props: {
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
-      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} betsRunning={props.betsRunning ?? []} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
       {props.tab === 'friends' && <Friends />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
@@ -56,7 +57,7 @@ function PausedMark() {
   );
 }
 
-function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
+function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; betsRunning: string[]; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
   return (
     <>
       <div className="topbar">
@@ -106,6 +107,12 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
           {props.gamesToConfirm > 0 && (
             <span className="small module-todo">
               {props.gamesToConfirm === 1 ? tr('1 result to confirm', '1 Ergebnis bestätigen') : tr(`${props.gamesToConfirm} results to confirm`, `${props.gamesToConfirm} Ergebnisse bestätigen`)}
+            </span>
+          )}
+          {/* the bets running (Sascha 01.11.2026: "show in Games when bets are running") – as Training's paused session */}
+          {props.betsRunning.length > 0 && (
+            <span className="small module-live">
+              {props.betsRunning.length === 1 ? tr(`Bets running: ${props.betsRunning[0]}`, `Wetten laufen: ${props.betsRunning[0]}`) : tr(`${props.betsRunning.length} pools of bets running`, `${props.betsRunning.length} Wett-Pools laufen`)}
             </span>
           )}
         </span>

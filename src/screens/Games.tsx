@@ -23,7 +23,9 @@ import { inUsa } from '../lib/weather';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
-import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool } from './Wagers';
+import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
+import { isLive } from '../lib/wagerstore';
+import { dayOf } from '../lib/wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
 import { PausedIcon } from '../components/PausedIcon';
@@ -303,6 +305,8 @@ function GamesTabs(props: {
   onDelete: (g: Game) => void;
 }) {
   const running = props.games.filter((g) => !g.finishedAt);
+  const today = dayOf(new Date());
+  const betsRunning = usePools().some((e) => isLive(e, today)); // the dot on "Bets", as on "Play" for a game running
   // join a friend's game (code or the QR link #join=CODE) – shown once signed in and the shared table exists
   const [canShare, setCanShare] = useState<boolean | null>(null); // null: still asking
   const [joinOpen, setJoinOpen] = useState<string | null>(() => (location.hash.startsWith('#join=') ? location.hash.slice(6) : null));
@@ -357,7 +361,7 @@ function GamesTabs(props: {
             )}
           </section>
           {/* start a bet beside starting a game – the bets themselves are kept in the menu "Bets" (Sascha 01.11.2026) */}
-          <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onList={() => props.onTab('bets')} />
+          <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} onList={() => props.onTab('bets')} />
           {confirmCount > 0 && (
             <button type="button" className="list-item" onClick={() => openList('confirm')}>
               <span className="grow">
@@ -409,7 +413,7 @@ function GamesTabs(props: {
               )}
             </>
           )}
-      {props.tab === 'bets' && <BetsTab canShare={!!canShare} onOpen={props.onOpenPool} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} />}
+      {props.tab === 'bets' && <BetsTab onOpen={props.onOpenPool} />}
       {props.tab === 'games' && (
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
@@ -434,7 +438,7 @@ function GamesTabs(props: {
         items={[
           { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
           { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
-          { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON },
+          { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON, dot: betsRunning },
           { id: 'balance' as GamesTab, label: tr('Balance', 'Bilanz'), icon: MENU_ICONS.balance },
           { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}

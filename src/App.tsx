@@ -27,7 +27,7 @@ import type { MobilityTab } from './screens/Mobility';
 import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
 import { exchangeRound } from './lib/sharedround';
-import { reportWagers } from './lib/wagerstore';
+import { reportWagers, runningPools } from './lib/wagerstore';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -309,6 +309,7 @@ export function App() {
         profileDot={profileDot}
         gameOpen={loadGames().some((g) => !g.finishedAt)}
         gamesToConfirm={loadGames().filter((g) => g.finishedAt && !g.signedAt).length}
+        betsRunning={runningPools().map((e) => e.pool.name)}
         trainingOpen={trainingPaused()}
         mobilityOpen={mobilityPaused()}
         mobilityToday={mobilityToday()}

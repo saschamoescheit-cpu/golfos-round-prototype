@@ -3,7 +3,7 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { isPool, judge, playedRounds, sameProgress, type EarlierBet, type PoolPlayer, type Wager, type WagerPool } from './wagers';
+import { dayOf, isPool, judge, playedRounds, sameProgress, type EarlierBet, type PoolPlayer, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
 
 // The pools of bets on this phone and on the server (Sascha 01.11.2026). A pool lives in the table of the shared games
@@ -66,6 +66,11 @@ function rememberMe(code: string, me: string): void {
   }
 }
 /** Leaves a pool on this phone (it stays on the server) – and does not fetch it again (deleted for good from the bin). */
+/** A pool still running – not ended, not deleted, its last day not past. */
+export const isLive = (e: PoolEntry, today: string): boolean => !e.pool.deletedAt && !e.pool.finishedAt && e.pool.to >= today;
+/** The pools running on this phone – on the start page and in the menu of Games (Sascha 01.11.2026). */
+export const runningPools = (): PoolEntry[] => loadPools().filter((e) => isLive(e, dayOf(new Date())));
+
 export function forgetPool(code: string): void {
   try {
     const hidden = new Set(JSON.parse(localStorage.getItem(HIDDEN) ?? '[]') as string[]);

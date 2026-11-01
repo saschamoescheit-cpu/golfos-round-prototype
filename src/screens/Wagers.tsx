@@ -8,7 +8,7 @@ import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
 import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, earlierGroups, fromEarlier, fromLibrary, progressText, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
-import { changePool, createPool, earlierBets, forgetPool, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { changePool, createPool, earlierBets, forgetPool, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
@@ -51,11 +51,11 @@ export const BETS_ICON = (
   </svg>
 );
 
-const live = (e: PoolEntry, today: string) => !e.pool.finishedAt && e.pool.to >= today;
+const live = isLive;
 
 /** On the start page of Games (Sascha 01.11.2026: "from the start page both 'start a game' and 'start a bet'"): only the
  *  start – setting up, changing and deleting the bets is in the menu "Bets". */
-export function StartBetCard(props: { canShare: boolean; onNew: () => void; onList: () => void }) {
+export function StartBetCard(props: { canShare: boolean; onNew: () => void; onJoin: () => void; onList: () => void }) {
   const pools = usePools().filter((e) => !e.pool.deletedAt);
   const running = pools.filter((e) => live(e, dayOf(new Date()))).length;
   useEffect(() => {
@@ -66,9 +66,14 @@ export function StartBetCard(props: { canShare: boolean; onNew: () => void; onLi
     <section className="card play-card" aria-label={tr('Start a bet', 'Wette starten')}>
       <strong className="play-course">{tr('Start a new bet', 'Neue Wette starten')}</strong>
       {props.canShare ? (
-        <button type="button" className="btn-secondary" onClick={props.onNew}>
-          {tr('New bet', 'Neue Wette')}
-        </button>
+        <>
+          <button type="button" className="btn-secondary" onClick={props.onNew}>
+            {tr('New bet', 'Neue Wette')}
+          </button>
+          <button type="button" className="btn-secondary" onClick={props.onJoin}>
+            {tr('Join a bet', 'Wette beitreten')}
+          </button>
+        </>
       ) : (
         <span className="muted small">{tr('Sign in to set up bets: Profile → "On all your devices".', 'Für Wetten anmelden: Profil → „Auf allen Geräten“.')}</span>
       )}
@@ -114,9 +119,10 @@ function PoolRow(props: { e: PoolEntry; today: string; onOpen: () => void }) {
 }
 
 /** The menu "Bets" (Sascha 01.11.2026: "setting up, deleting, changing bets in a menu of its own") – built like the
- *  list of the rounds and of the games: tiles to filter by, the list, the bin with "restore". The pools come from the
- *  server too ("they must never vanish"): a phone without them – emptied, new – gets them back here. */
-export function BetsTab(props: { canShare: boolean; onOpen: (code: string) => void; onNew: () => void; onJoin: () => void }) {
+ *  list of the rounds and of the games: the tiles at the top (Sascha: "as on Rounds and Games"), the list, the bin
+ *  with "restore"; a new bet and joining one start on "Play". The pools come from the server too ("they must never
+ *  vanish"): a phone without them – emptied, new – gets them back here. */
+export function BetsTab(props: { onOpen: (code: string) => void }) {
   const all = usePools();
   const [filter, setFilter] = useState<'running' | 'over' | 'bin' | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -134,18 +140,6 @@ export function BetsTab(props: { canShare: boolean; onOpen: (code: string) => vo
   return (
     <>
       <h1 className="tab-title">{tr('Bets', 'Wetten')}</h1>
-      {props.canShare ? (
-        <section className="card play-card">
-          <button type="button" className="btn-primary" onClick={props.onNew}>
-            {tr('New bet', 'Neue Wette')}
-          </button>
-          <button type="button" className="btn-secondary" onClick={props.onJoin}>
-            {tr('Join a pool of bets', 'Wett-Pool beitreten')}
-          </button>
-        </section>
-      ) : (
-        <p className="muted">{tr('Sign in to set up bets: Profile → "On all your devices".', 'Für Wetten anmelden: Profil → „Auf allen Geräten“.')}</p>
-      )}
       {/* tiles as on the rounds and the games (Sascha: "the same usability everywhere") */}
       <div className="tile-row">
         <button type="button" className="tile" aria-pressed={filter === 'running'} disabled={!running.length} onClick={() => pick('running')}>
@@ -205,7 +199,7 @@ export function BetsTab(props: { canShare: boolean; onOpen: (code: string) => vo
             ))}
           </ul>
         ) : (
-          <p className="muted">{tr('No pool of bets yet.', 'Noch kein Wett-Pool.')}</p>
+          <p className="muted">{tr('No bets yet – "New bet" is on "Play".', 'Noch keine Wetten – „Neue Wette“ unter „Spielen“.')}</p>
         ))}
     </>
   );
