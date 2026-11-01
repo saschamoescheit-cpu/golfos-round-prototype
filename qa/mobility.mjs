@@ -336,6 +336,10 @@ await p.waitForTimeout(300);
 await p.locator('.mob-test-row').filter({ hasText: 'Kopfdrehung' }).click();
 await p.getByRole('button', { name: 'Test starten' }).click();
 await p.locator('.mob-start-coach').click();
+// a single test: nothing to skip to – Pause and Finish only (Sascha 1.11.2026)
+await p.locator('.mob-camera-actions .pause').waitFor({ timeout: 30000 });
+const singleActs = await p.locator('.mob-camera-actions .drawer-action').evaluateAll((bs) => bs.map((b) => b.classList[1]));
+ok(!singleActs.includes('skip') && singleActs.includes('end'), `a single test has no Skip, a Finish (${singleActs.join(' ')})`);
 // left side, saved by itself, the right side starts by itself, saved by itself, back on the test page
 await p.locator('.tr-tabs').waitFor({ timeout: 90000 }).catch(() => {});
 await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();

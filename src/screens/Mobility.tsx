@@ -1011,7 +1011,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
       setExit('end');
     }
   };
-  const coachFor = (intro: string, demo: Clip | undefined, from: 'camera' | 'retest' = 'camera'): Coach => ({ stream: streamRef.current, intro, demo, onMenu: () => hold(from), onSkip: skip, onEnd: () => endNow(from) });
+  const coachFor = (intro: string, demo: Clip | undefined, from: 'camera' | 'retest' = 'camera'): Coach => ({ stream: streamRef.current, intro, demo, onMenu: () => hold(from), onSkip: single ? undefined : skip, onEnd: () => endNow(from) });
   const introOf = () => {
     const n = single ? '' : tr(`Test ${testIndex + 1} of ${s.tests.length}: `, `Test ${testIndex + 1} von ${s.tests.length}: `);
     const side = step.side && test.metric ? ` – ${sideText(test.metric, step.side).replace(/\.$/, '')}` : '';

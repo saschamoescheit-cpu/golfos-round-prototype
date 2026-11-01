@@ -25,9 +25,10 @@ export interface Coach {
   intro: string;
   /** the test shown by the 3D golfer */
   demo?: Clip;
-  /** pause (the menu of the session) and skip this test */
+  /** pause (the menu of the session) and skip this test – only in a check of several tests (Sascha 1.11.2026: "skip
+   *  makes no sense for a single test") */
   onMenu: () => void;
-  onSkip: () => void;
+  onSkip?: () => void;
   /** finish the screening (or leave the single test) now */
   onEnd: () => void;
 }
@@ -821,7 +822,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           buttons={[
             phase === 'run'
               ? { act: 'done', label: tr('Done', 'Fertig'), aria: tr('Done – measure now', 'Fertig – jetzt messen'), onClick: () => finishRef.current?.() }
-              : { act: 'skip', label: tr('Skip', 'Überspringen'), aria: tr('Skip this test – on to the next', 'Diesen Test überspringen – weiter zum nächsten'), onClick: props.coach.onSkip },
+              : !!props.coach.onSkip && { act: 'skip', label: tr('Skip', 'Überspringen'), aria: tr('Skip this test – on to the next', 'Diesen Test überspringen – weiter zum nächsten'), onClick: props.coach.onSkip },
             { act: 'pause', label: tr('Pause', 'Pause'), onClick: props.coach.onMenu },
             { act: 'end', label: tr('Finish', 'Beenden'), onClick: props.coach.onEnd },
           ]}
