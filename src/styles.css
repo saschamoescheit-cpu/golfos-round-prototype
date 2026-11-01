@@ -1852,7 +1852,11 @@ button.tile:disabled { opacity: 1; }
 
 /* Bets in Games (Sascha 01.11.2026): a pool over a trip, each player's targets with the standing */
 .pool-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pool-dates .input { min-width: 0; }
+.pool-dates > .field { min-width: 0; }
+/* a date on the iPhone (Sascha 01.11.2026): Safari gives it its own width and centres the day – here it fills its
+   column, starts left and is as high as every other field (Safari ignores min-height on it) */
+.input[type='date'], .input[type='time'] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; height: 50px; line-height: 48px; text-align: left; }
+.input[type='date']::-webkit-date-and-time-value { text-align: left; }
 .pool-player { display: flex; flex-direction: column; gap: 6px; }
 .pool-player-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .pool-player-head h2 { margin: 0; font-size: 18px; }
