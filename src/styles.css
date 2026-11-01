@@ -1155,6 +1155,11 @@ button.tile:disabled { opacity: 1; }
 .tour-flight-player .grow { flex: 1 1 120px; min-width: 0; }
 .tour-flight-player .select-wrap { flex: 1 1 140px; min-width: 0; }
 .tour-howto { display: flex; flex-direction: column; gap: 4px; }
+.tour-special { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tour-special .grow { flex: 1 1 140px; min-width: 0; }
+.tour-special .select-wrap { flex: 1 1 160px; min-width: 0; }
+.tour-special-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.tour-special-board { display: flex; flex-direction: column; gap: 4px; }
 
 /* the balance on "Games" below the tiles (Sascha 01.11.2026) */
 .balance { display: flex; flex-direction: column; gap: 10px; }

@@ -12,6 +12,7 @@ import { scoringName, type Scoring } from '../lib/games';
 import { eventStandings, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, type RoundEvent } from '../lib/sharedround';
 import { changeTour, createTour, forgetTour, isPlanned, isTourHost, keepTour, loadTours, syncTours, tourState, type PlannedEvent, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
+import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
@@ -223,6 +224,8 @@ export interface TourDraft {
   times: string[];
   first: string;
   gap: number;
+  /** the special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional") */
+  specials: Special[];
 }
 
 /** The common tee times: every 5 minutes from 6 to 18 o'clock (Sascha 01.11.2026: "the usual choice of times"). */
@@ -274,6 +277,7 @@ export function newTourDraft(): TourDraft {
     times: ['09:00'],
     first: '09:00',
     gap: 10,
+    specials: [],
   };
 }
 
@@ -312,6 +316,7 @@ export function draftOf(e: TourEntry): TourDraft {
     times,
     first: times[0] ?? '09:00',
     gap: 10,
+    specials: ev.specials ?? [],
   };
 }
 
@@ -400,6 +405,10 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           ),
         }
       : fresh;
+    // the special prizes on holes the course still has
+    const specials = d.specials.filter((s) => s.hole < holes.length);
+    if (specials.length) ev.specials = specials;
+    else delete ev.specials;
     const code = d.code ? ((await changeTour(d.code, ev)) ? d.code : null) : await createTour(ev);
     setBusy(false);
     if (code) props.onSaved(code);
@@ -592,6 +601,59 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         {small && <span className="small bad-text">{tr('Every flight needs at least two players – they mark each other.', 'Jeder Flight braucht mindestens zwei Spieler – sie zählen sich gegenseitig.')}</span>}
       </section>
 
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Special prizes (optional)', 'Sonderwertungen (optional)')}</span>
+        {d.specials.map((s, k) => (
+          <div key={s.id} className="card tour-special">
+            <strong className="grow">{specialName(s.kind)}</strong>
+            <div className="select-wrap">
+              <select
+                className="input"
+                aria-label={tr(`Hole of ${specialName(s.kind)}`, `Loch für ${specialName(s.kind)}`)}
+                value={s.hole}
+                onChange={(e) => set({ specials: d.specials.map((x, j) => (j === k ? { ...x, hole: Number(e.target.value) } : x)) })}
+              >
+                {holesFor(s.kind, holes).map((i) => (
+                  <option key={i} value={i}>
+                    {tr(`Hole ${holes[i].label} · par ${holes[i].par ?? '–'}`, `Loch ${holes[i].label} · Par ${holes[i].par ?? '–'}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button type="button" className="icon-btn" aria-label={tr(`Remove ${specialName(s.kind)}`, `${specialName(s.kind)} entfernen`)} onClick={() => set({ specials: d.specials.filter((_, j) => j !== k) })}>
+              ✕
+            </button>
+          </div>
+        ))}
+        {holes.length > 0 ? (
+          <div className="tour-special-add">
+            {(['longDrive', 'nearestPin'] as SpecialKind[]).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  const free = holesFor(kind, holes).filter((i) => !d.specials.some((x) => x.hole === i));
+                  set({ specials: [...d.specials, { id: newId(), kind, hole: free[0] ?? holesFor(kind, holes)[0] }] });
+                }}
+              >
+                + {specialName(kind)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="muted small">{tr('Choose the course first.', 'Zuerst den Platz wählen.')}</span>
+        )}
+        {d.specials.length > 0 && (
+          <span className="muted small">
+            {tr(
+              'On the day the players enter their figure at the hole in Rounds – Nearest to the Pin the distance to the hole, Long Drive the length from the tee (GPS suggests it; only a ball in the fairway counts).',
+              'Am Turniertag tragen die Spieler am Loch in Rounds ein – Nearest to the Pin den Abstand zur Fahne, Long Drive die Weite vom Abschlag (GPS schlägt sie vor; nur ein Ball im Fairway zählt).',
+            )}
+          </span>
+        )}
+      </section>
+
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}
@@ -714,6 +776,29 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
           </ul>
         </section>
       )}
+      {(ev.specials ?? []).length > 0 &&
+        specialBoard(live ?? ev).map(({ special, rows }) => (
+          <section key={special.id} className="card tour-special-board" aria-label={specialName(special.kind)}>
+            <span className="eyebrow">
+              {specialName(special.kind)} · {tr(`hole ${ev.holes[special.hole]?.label ?? special.hole + 1}`, `Loch ${ev.holes[special.hole]?.label ?? special.hole + 1}`)}
+            </span>
+            {rows.length ? (
+              <ul className="game-pays">
+                {rows.map((r, k) => (
+                  <li key={`${r.flight}/${r.player}`}>
+                    <span>
+                      {`${k + 1} · `}
+                      {r.name}
+                    </span>
+                    <strong>{metres(r.m, special.kind)}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="muted small">{started ? tr('No entry yet.', 'Noch kein Eintrag.') : tr('Entered at the hole on the day.', 'Wird am Turniertag am Loch eingetragen.')}</span>
+            )}
+          </section>
+        ))}
       {flightsOf(ev).map((f, k) => (
         <section key={f.id} className="card tour-flight" aria-label={`Flight ${k + 1}`}>
           <div className="tour-flight-head">
