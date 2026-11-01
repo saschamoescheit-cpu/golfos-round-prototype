@@ -394,7 +394,7 @@ export function App() {
               onJoinGame={joinGameByCode}
               // a planned tournament joined before its day: Games → Tournaments (its tab "tours")
               onTours={() => {
-                setGamesTab('tours' as string as GamesTab);
+                setGamesTab('tours');
                 setModule('games');
               }}
               onContinue={(round) => setScreen({ name: 'hole', round })}
