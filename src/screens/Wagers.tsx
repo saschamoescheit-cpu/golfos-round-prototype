@@ -7,7 +7,10 @@ import { money, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
 import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, earlierGroups, fromEarlier, fromLibrary, progressText, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
-import { changePool, createPool, earlierBets, forgetPool, joinPool, loadPools, refreshPool, rememberBets, reportWagers, type PoolEntry } from '../lib/wagerstore';
+import { changePool, createPool, earlierBets, forgetPool, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { Bin } from '../components/Bin';
+import { SignedIcon } from '../components/SignedIcon';
+import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet } from '../lib/push';
 
 // Bets in Games (Sascha 01.11.2026: "in America we have bets running – it must be possible to set up individual bets in
@@ -54,6 +57,9 @@ const live = (e: PoolEntry, today: string) => !e.pool.finishedAt && e.pool.to >=
 export function StartBetCard(props: { canShare: boolean; onNew: () => void; onList: () => void }) {
   const pools = usePools().filter((e) => !e.pool.deletedAt);
   const running = pools.filter((e) => live(e, dayOf(new Date()))).length;
+  useEffect(() => {
+    void syncPools(); // a phone emptied or new: the pools come back from the server
+  }, []);
   return (
     <section className="card play-card" aria-label={tr('Start a bet', 'Wette starten')}>
       <strong className="play-course">{tr('Start a new bet', 'Neue Wette starten')}</strong>
@@ -79,28 +85,48 @@ export function StartBetCard(props: { canShare: boolean; onNew: () => void; onLi
 
 function PoolRow(props: { e: PoolEntry; today: string; onOpen: () => void }) {
   const { pool } = props.e;
-  const open = pool.wagers.filter((w) => stateOf(w, pool, props.today) === 'open').length;
   const made = pool.wagers.filter((w) => stateOf(w, pool, props.today) === 'done').length;
+  // one row as a game's row on the games list (Sascha: "Games and the bets like Rounds")
   return (
     <button type="button" className="list-item" onClick={props.onOpen}>
+      <span className="round-date">
+        <strong>{dm(pool.from)}</strong>
+        <span className="muted small">{pool.from.slice(0, 4)}</span>
+      </span>
       <span className="grow">
         <span className="title">{pool.name}</span>
-        <span className="muted small">
-          {dm(pool.from)}–{dm(pool.to)} · {pool.players.map((p) => p.name).join(', ')}
+        <span className="muted small one-line">
+          {tr(`until ${dm(pool.to)}`, `bis ${dm(pool.to)}`)} · {pool.players.map((p) => p.name).join(', ')}
         </span>
-        <span className="muted small">{tr(`${pool.wagers.length} bets · ${made} made · ${open} open`, `${pool.wagers.length} Wetten · ${made} geschafft · ${open} offen`)}</span>
       </span>
-      <span aria-hidden="true">›</span>
+      <span className="game-row-result">
+        <strong>
+          {made}/{pool.wagers.length}
+        </strong>
+        <span className="muted small">{tr('made', 'geschafft')}</span>
+      </span>
     </button>
   );
 }
 
-/** The menu "Bets" (Sascha 01.11.2026: "setting up, deleting, changing bets in a menu of its own"). */
+/** The menu "Bets" (Sascha 01.11.2026: "setting up, deleting, changing bets in a menu of its own") – built like the
+ *  list of the rounds and of the games: tiles to filter by, the list, the bin with "restore". The pools come from the
+ *  server too ("they must never vanish"): a phone without them – emptied, new – gets them back here. */
 export function BetsTab(props: { canShare: boolean; onOpen: (code: string) => void; onNew: () => void; onJoin: () => void }) {
-  const pools = usePools().filter((e) => !e.pool.deletedAt);
+  const all = usePools();
+  const [filter, setFilter] = useState<'running' | 'over' | 'bin' | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    void syncPools();
+  }, []);
   const today = dayOf(new Date());
+  const pools = all.filter((e) => !e.pool.deletedAt);
+  const deleted = all.filter((e) => e.pool.deletedAt);
   const running = pools.filter((e) => live(e, today));
   const over = pools.filter((e) => !live(e, today));
+  const made = running.reduce((n, e) => n + e.pool.wagers.filter((w) => stateOf(w, e.pool, today) === 'done').length, 0);
+  const pick = (f: 'running' | 'over' | 'bin') => setFilter(filter === f ? null : f);
+  const shown = filter === 'running' ? running : filter === 'over' ? over : pools;
   return (
     <>
       <h1 className="tab-title">{tr('Bets', 'Wetten')}</h1>
@@ -116,16 +142,67 @@ export function BetsTab(props: { canShare: boolean; onOpen: (code: string) => vo
       ) : (
         <p className="muted">{tr('Sign in to set up bets: Profile → "On all your devices".', 'Für Wetten anmelden: Profil → „Auf allen Geräten“.')}</p>
       )}
-      <span className="eyebrow">{tr('Running', 'Laufend')}</span>
-      {running.length ? running.map((e) => <PoolRow key={e.code} e={e} today={today} onOpen={() => props.onOpen(e.code)} />) : <p className="muted small">{tr('No pool of bets running.', 'Kein Wett-Pool läuft.')}</p>}
-      {over.length > 0 && (
-        <>
-          <span className="eyebrow">{tr('Finished', 'Beendet')}</span>
-          {over.map((e) => (
-            <PoolRow key={e.code} e={e} today={today} onOpen={() => props.onOpen(e.code)} />
-          ))}
-        </>
+      {/* tiles as on the rounds and the games (Sascha: "the same usability everywhere") */}
+      <div className="tile-row">
+        <button type="button" className="tile" aria-pressed={filter === 'running'} disabled={!running.length} onClick={() => pick('running')}>
+          <span className="tile-head">
+            <span className={`tile-num${running.length ? ' good-text' : ''}`}>{running.length}</span>
+            <span className="tile-mark">{BETS_ICON}</span>
+          </span>
+          <span className="muted small">{tr('running', 'laufend')}</span>
+        </button>
+        <div className="tile">
+          <span className="tile-head">
+            <span className="tile-num">{made}</span>
+            <span className="tile-mark">
+              <SignedIcon />
+            </span>
+          </span>
+          <span className="muted small">{tr('bets made', 'geschafft')}</span>
+        </div>
+        <button type="button" className="tile" aria-pressed={filter === 'over'} disabled={!over.length} onClick={() => pick('over')}>
+          <span className="tile-head">
+            <span className="tile-num">{over.length}</span>
+            <span className="tile-mark">
+              <PlayedIcon />
+            </span>
+          </span>
+          <span className="muted small">{tr('finished', 'beendet')}</span>
+        </button>
+        <button type="button" className="tile" aria-pressed={filter === 'bin'} disabled={!deleted.length} onClick={() => pick('bin')}>
+          <span className="tile-head">
+            <span className="tile-num">{deleted.length}</span>
+            <span className="tile-mark">
+              <DeletedIcon />
+            </span>
+          </span>
+          <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+        </button>
+      </div>
+      <Bin
+        open={filter === 'bin' && deleted.length > 0}
+        title={tr('Deleted pools', 'Gelöschte Pools')}
+        items={deleted.map((e) => ({ id: e.code, date: e.pool.createdAt, title: e.pool.name, meta: e.pool.players.map((p) => p.name).join(', '), deletedAt: e.pool.deletedAt! }))}
+        onRestore={async (code) => setMsg((await restorePool(code)) ? null : NO_NET())}
+        onPurge={forgetPool}
+      />
+      {msg && (
+        <span className="small bad-text" role="alert">
+          {msg}
+        </span>
       )}
+      {filter !== 'bin' &&
+        (shown.length ? (
+          <ul className="list">
+            {shown.map((e) => (
+              <li key={e.code}>
+                <PoolRow e={e} today={today} onOpen={() => props.onOpen(e.code)} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{tr('No pool of bets yet.', 'Noch kein Wett-Pool.')}</p>
+        ))}
     </>
   );
 }
@@ -192,7 +269,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
         onClick={async () => {
           setBusy(true);
           const account = shownName(loadProfile()) || names[0].trim();
-          const players = names.map((n) => n.trim()).filter((n, k) => k === 0 || n).map((n, k) => ({ id: newId(), name: n, ...(k === 0 ? { joined: { name: account, at: new Date().toISOString() } } : {}) }));
+          const players = names.map((n) => n.trim()).filter((n, k) => k === 0 || n).map((n, k) => ({ id: newId(), name: n, ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(myAccount() ? { uid: myAccount()! } : {}) } } : {}) }));
           const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {} };
           const e = await createPool(pool, players[0].id);
           setBusy(false);
@@ -270,17 +347,15 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
     return (
       <main className="screen">
         <TopBar title={pool.name} onBack={props.onBack} backLabel={tr('Bets', 'Wetten')} />
-        <p className="muted">{tr('This pool of bets was deleted.', 'Dieser Wett-Pool wurde gelöscht.')}</p>
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => {
-            forgetPool(props.code);
-            props.onBack();
-          }}
-        >
-          OK
+        <p className="muted">{tr('This pool of bets was deleted. Its bets are kept – it can be restored.', 'Dieser Wett-Pool wurde gelöscht. Seine Wetten sind noch da – er lässt sich wiederherstellen.')}</p>
+        <button type="button" className="btn-secondary" onClick={async () => setMsg((await restorePool(props.code)) ? null : NO_NET())}>
+          {tr('Restore', 'Wiederherstellen')}
         </button>
+        {msg && (
+          <span className="small bad-text" role="alert">
+            {msg}
+          </span>
+        )}
       </main>
     );
   }
@@ -417,20 +492,9 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
           {msg}
         </span>
       )}
-      {!pool.finishedAt ? (
+      {!pool.finishedAt && (
         <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet('finish')}>
           {tr('Finish the pool', 'Pool beenden')}
-        </button>
-      ) : (
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => {
-            forgetPool(props.code);
-            props.onBack();
-          }}
-        >
-          {tr('Remove from this phone', 'Von diesem Handy entfernen')}
         </button>
       )}
       {sheet && typeof sheet === 'object' && 'edit' in sheet && (
@@ -495,10 +559,8 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
             }
           }}
           onDelete={async () => {
-            if (await change((p) => ({ ...p, deletedAt: new Date().toISOString() }))) {
-              forgetPool(props.code);
-              props.onBack();
-            }
+            // only marked deleted – the bin of the menu "Bets" brings it back on every phone
+            if (await change((p) => ({ ...p, deletedAt: new Date().toISOString() }))) props.onBack();
           }}
         />
       )}
@@ -691,6 +753,7 @@ export function WagerSheet(props: {
 }) {
   const { pool } = props;
   const [w, setW] = useState<Wager>(() => props.wager ?? newWager(pool, props.me));
+  const [asking, setAsking] = useState(false);
   const set = (patch: Partial<Wager>) => setW({ ...w, ...patch });
   const k = KINDS.find((x) => x.kind === w.kind)!;
   const manual = props.wager ? pool.progress[props.wager.id]?.manual : undefined;
@@ -739,9 +802,23 @@ export function WagerSheet(props: {
               />
               {manual && <span className="muted small">{tr(`set by ${manual.by}`, `gesetzt von ${manual.by}`)}</span>}
             </Field>
-            <button type="button" className="btn-secondary btn-danger" onClick={() => props.onDelete(props.wager!.id)}>
-              {tr('Delete the bet', 'Wette löschen')}
-            </button>
+            {!asking ? (
+              <button type="button" className="btn-secondary btn-danger" onClick={() => setAsking(true)}>
+                {tr('Delete the bet', 'Wette löschen')}
+              </button>
+            ) : (
+              <div className="play-confirm" role="group" aria-label={tr('Delete the bet?', 'Wette löschen?')}>
+                <span>{tr(`Delete "${wagerLabel(props.wager)}" – for everyone in the pool?`, `„${wagerLabel(props.wager)}“ löschen – für alle im Pool?`)}</span>
+                <div className="play-actions">
+                  <button type="button" className="btn-secondary" onClick={() => setAsking(false)}>
+                    {tr('Keep', 'Behalten')}
+                  </button>
+                  <button type="button" className="btn-secondary btn-danger" onClick={() => props.onDelete(props.wager!.id)}>
+                    {tr('Delete', 'Löschen')}
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </section>

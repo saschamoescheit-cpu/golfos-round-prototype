@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, balances, earlierGroups, fromEarlier, fromLibrary, judge, progressText, stateOf, wagerLabel, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { LIBRARY, balances, isPool, earlierGroups, fromEarlier, fromLibrary, judge, progressText, stateOf, wagerLabel, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
+import { setLang } from './i18n';
 
 // Sascha's "Zocker-Pool" (01.11.2026): Chris 3 birdies in a row, 12 pars in a row, 5 birdies on 18, 16 greens, −5 …
 const PARS = [4, 4, 3, 5, 4, 4, 3, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 5];
@@ -149,6 +150,45 @@ describe('bets set up before as templates', () => {
     const t = fromEarlier(bet({ id: 'a', payout: 'opponent', opponent: 'cedric', attempts: 'day', day: '2026-10-01', stake: 50 }), 'erik', p, 'n1');
     expect(t).toMatchObject({ id: 'n1', player: 'erik', kind: 'birdieRun', target: 3, stake: 50, payout: 'success', attempts: 'any' });
     expect(fromEarlier(bet({ payout: 'opponent', opponent: 'sascha' }), 'erik', p, 'n2')).toMatchObject({ payout: 'opponent', opponent: 'sascha' });
+  });
+});
+
+// Sascha 01.11.2026: "I have set up the bets now – they must never vanish with updates, changes and so on". A pool as
+// the live app wrote it on 01.11.2026 (the "Zocker-Pool" template, the library, a free bet, before "deletedAt" and the
+// account in "joined") – every later version must still read and judge it. Do not change this pool; add new ones.
+describe('a pool written on 01.11.2026 stays readable', () => {
+  const OLD = {
+    kind: 'wager-pool',
+    id: 'p1',
+    name: 'USA 2026',
+    from: '2026-11-04',
+    to: '2026-11-12',
+    createdAt: '2026-11-01T09:00:00.000Z',
+    players: [
+      { id: 's', name: 'Sascha', joined: { name: 'Sascha', at: '2026-11-01T09:00:00.000Z' } },
+      { id: 'c', name: 'Chris' },
+      { id: 'e', name: 'Erik', joined: { name: 'Erik', at: '2026-11-01T10:00:00.000Z' } },
+      { id: 'd', name: 'Cedric' },
+    ],
+    wagers: [
+      { id: 'w1', player: 'c', kind: 'birdieRun', target: 3, stake: 20, payout: 'success', attempts: 'any', counted: true },
+      { id: 'w2', player: 'c', kind: 'parRun', target: 12, stake: 20, payout: 'success', attempts: 'any', counted: true },
+      { id: 'w3', player: 'c', kind: 'birdies', target: 5, stake: 20, payout: 'success', attempts: 'any', counted: true },
+      { id: 'w4', player: 'c', kind: 'greens', target: 16, stake: 20, payout: 'success', attempts: 'any', counted: true },
+      { id: 'w5', player: 'c', kind: 'score', target: -5, stake: 20, payout: 'success', attempts: 'any', counted: true },
+      { id: 'w6', player: 'e', kind: 'free', target: 0, stake: 20, payout: 'both', attempts: 'any', text: 'Längster Drive' },
+      { id: 'w7', player: 's', kind: 'putts', target: 32, stake: 10, payout: 'opponent', opponent: 'e', attempts: 'day', day: '2026-11-06', counted: false },
+    ],
+    progress: { w1: { best: 3, done: true, where: 'Bethpage Black · 05.11.', rounds: 1, at: '2026-11-05T20:00:00.000Z' }, w6: { best: null, done: false, rounds: 0, at: '', manual: { done: true, by: 'Sascha' } } },
+  };
+  it('read, worded, judged and settled as on that day', () => {
+    setLang('de');
+    expect(isPool(OLD)).toBe(true);
+    const pool = OLD as unknown as WagerPool;
+    expect(pool.wagers.map(wagerLabel)).toEqual(['3 Birdies in Folge', '12 Pars in Folge', '5 Birdies auf 18', '16 Grüns auf 18', '−5 brutto', 'Längster Drive', 'Höchstens 32 Putts auf 18']);
+    expect(pool.wagers.map((w) => stateOf(w, pool, '2026-11-08'))).toEqual(['done', 'open', 'open', 'open', 'open', 'done', 'missed']);
+    expect(balances(pool, '2026-11-08')).toEqual({ s: -20 - 20 - 10, c: 60 - 20, e: -20 + 60 + 10, d: -20 - 20 });
+    expect(judge(pool.wagers[2], pool, [round(par(-1).map((s, i) => (i < 5 ? s : PARS[i])))]).done).toBe(true);
   });
 });
 

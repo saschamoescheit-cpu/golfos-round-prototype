@@ -113,8 +113,8 @@ export interface Progress {
 export interface PoolPlayer {
   id: string;
   name: string;
-  /** a phone plays as him (the name of the account, when) */
-  joined?: { name: string; at: string };
+  /** a phone plays as him (the name of the account, when, its account – to find him again on a new phone) */
+  joined?: { name: string; at: string; uid?: string };
 }
 
 export interface WagerPool {
@@ -134,6 +134,9 @@ export interface WagerPool {
   progress: Record<string, Progress>;
 }
 
+// The pools live on the server (Sascha 01.11.2026: "I have set up the bets now – they must never vanish with updates,
+// changes and so on"): what is read there must stay readable by every later version – new fields only optional, no
+// field renamed or dropped, a block (kind) never removed. wagers.test.ts reads a pool as written on 01.11.2026.
 export const isPool = (x: unknown): x is WagerPool => !!x && (x as WagerPool).kind === 'wager-pool' && Array.isArray((x as WagerPool).wagers);
 
 /** A day as YYYY-MM-DD in local time. */

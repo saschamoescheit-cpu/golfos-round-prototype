@@ -30,6 +30,9 @@ async function serve(route) {
   }
   if (u.pathname.endsWith('/golfos_shared_games')) {
     const code = (u.searchParams.get('code') ?? '').replace(/^eq\./, '');
+    // every pool of the account (the row rule of the real table: host or member – here simply all pools)
+    const kind = (u.searchParams.get('game->>kind') ?? '').replace(/^eq\./, '');
+    if (req.method() === 'GET' && !code && kind) return json(200, [...shared.entries()].filter(([, v]) => v.game.kind === kind).map(([c, v]) => ({ code: c, game: v.game })));
     if (req.method() === 'GET') return json(200, code ? (shared.has(code) ? [{ game: shared.get(code).game, updated_at: shared.get(code).updated_at }] : []) : []);
     if (req.method() === 'POST') {
       const row = JSON.parse(req.postData());
@@ -67,7 +70,8 @@ async function phone(name, seed) {
     sessionStorage.clear();
     localStorage.setItem('golfos.intro.v1', '1');
     localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: name, lastName: '', hcpIndex: '10', homeClub: '' }));
-    localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: 'x', refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
+    // a token whose account (sub) the app reads to find its own player in a pool on a new phone
+    localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: `h.${btoa(JSON.stringify({ sub: 'u-' + name }))}.s`, refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
     for (const [k, v] of Object.entries(seed ?? {})) localStorage.setItem(k, JSON.stringify(v));
     sessionStorage.setItem('golfos.module', 'games');
   }, { name, seed });
@@ -201,6 +205,18 @@ const settle = (await H.locator('.card').filter({ hasText: 'Abrechnung' }).inner
 // Chris 4 × 20 € from each of three = +240; Erik's free bet +60; Sascha and Cedric −100, Erik −20, Chris +220
 ok(/Sascha → Chris 100 €/.test(settle) && /Cedric → Chris 100 €/.test(settle) && /Erik → Chris 20 €/.test(settle), `settlement: ${settle.slice(0, 140)}`);
 ok(/5 von 7 Wetten entschieden/.test(settle), "5 of 7 bets decided (Chris's and Cedric's −5 still open)");
+
+// Sascha 01.11.2026: "the bets must never vanish" – the phone's list emptied (Safari clears a web app's storage after a
+// week unused; a new phone has none): the menu "Wetten" fetches the pool from the server, Sascha is himself again
+await H.evaluate(() => localStorage.removeItem('golfos.pools.v1'));
+await H.reload();
+await H.waitForTimeout(1500);
+await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
+await H.waitForTimeout(1500);
+ok((await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 1, 'storage emptied: the pool comes back from the server');
+const back = await H.evaluate(() => JSON.parse(localStorage.getItem('golfos.pools.v1') ?? '[]'));
+ok(back.length === 1 && back[0].me === shared.get(code).game.players.find((p) => p.name === 'Sascha').id && back[0].pool.wagers.length === 7, 'storage emptied: Sascha found again by his account, all 7 bets there');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-tab-tiles.png' });
 const erikFree = shared.get(code).game.wagers.find((w) => w.kind === 'free').id;
 ok(pushes.some((x) => x.phone === 'Sascha' && x.body.action === 'bet' && x.body.wager === erikFree), "push: Erik's free bet decided as made – Sascha's phone told of it");
 
@@ -219,6 +235,17 @@ await other.p.waitForTimeout(1500);
 ok(await other.p.evaluate(() => JSON.parse(localStorage.getItem('golfos.pools.v1'))[0].me !== ''), 'Erik picked himself: this phone reports his bets');
 ok(other.errs.length === 0, `third phone: no page errors ${other.errs.slice(0, 2).join(' | ')}`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-pool.png', fullPage: true });
+
+// deleting a bet asks first – "Behalten" keeps it
+await H.goto('about:blank');
+await H.goto(url + '#pool=' + code);
+await H.waitForTimeout(2500);
+await H.locator('.pool-wager').filter({ hasText: 'Längster Drive an Loch 7' }).click();
+await H.getByRole('button', { name: 'Wette löschen' }).click();
+ok(await H.getByText('„Längster Drive an Loch 7“ löschen – für alle im Pool?').isVisible(), 'delete a bet: asked first');
+await H.getByRole('button', { name: 'Behalten' }).click();
+await H.getByRole('dialog', { name: 'Wette' }).getByRole('button', { name: 'Schließen' }).click();
+ok(shared.get(code).game.wagers.length === 7, '"Behalten": the bet is kept');
 
 // change the pool: rename it, add a player; Chris (joined, bets) cannot be removed, Dave can
 await H.goto('about:blank');
@@ -243,7 +270,14 @@ ok(!!shared.get(code).game.deletedAt && (await H.getByRole('heading', { name: 'W
 await G.goto('about:blank');
 await G.goto(url + '#pool=' + code);
 await G.waitForTimeout(3000);
-ok(await G.getByText('Dieser Wett-Pool wurde gelöscht.').isVisible(), "Chris's phone: the pool was deleted");
+ok(await G.getByText(/Dieser Wett-Pool wurde gelöscht/).isVisible(), "Chris's phone: the pool was deleted – its bets kept");
+// restored from the bin of the menu "Wetten": back for everyone, with all bets
+await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
+await H.getByRole('button', { name: 'Wiederherstellen' }).click();
+await H.waitForTimeout(1500);
+ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 7, 'restored from the bin: back for everyone, all 7 bets');
+await H.locator('.tile').filter({ hasText: 'laufend' }).click();
+ok((await H.locator('.list-item').filter({ hasText: 'USA 2026 Florida' }).count()) === 1, 'restored: in the list again');
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
