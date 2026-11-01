@@ -160,3 +160,76 @@ create policy "the event's players start a flight" on public.golfos_shared_games
 drop policy if exists "the event's players write its flights" on public.golfos_shared_games;
 create policy "the event's players write its flights" on public.golfos_shared_games for update to authenticated
   using (event_code is not null and golfos_in_event(event_code));
+
+-- Only the host changes a pool of bets (Sascha 01.11.2026: "the invited cannot edit or change the bets – only the host
+-- who set them up; watertight"). A pool (kind 'wager-pool') is written by its host – the row's owner – as he likes; the
+-- members only as the app does for them:
+--   * joining: a player's "joined" set to their own account (a player not taken by another account), or themselves
+--     added as a new player;
+--   * reporting: the progress of their own bets (a bet of the player whose "joined" is their account) – never a decision
+--     by hand, which is the host's.
+-- Everything else – the name, the days, the money, the players, the bets, ended, deleted – stays as it was. The other
+-- rows (games, rounds) are not touched by this.
+create or replace function public.golfos_pool_guard() returns trigger
+  language plpgsql set search_path = public as $$
+declare
+  o jsonb := old.game;
+  n jsonb := new.game;
+  me text := auth.uid()::text;
+  had int;
+  p jsonb;
+  q jsonb;
+  k text;
+begin
+  if o->>'kind' is distinct from 'wager-pool' then return new; end if;
+  if auth.uid() is null or auth.uid() = old.owner then return new; end if; -- the host (or the server itself)
+  if new.owner is distinct from old.owner or new.code is distinct from old.code then
+    raise exception 'only the host changes the pool' using errcode = '42501';
+  end if;
+  if (n - 'progress' - 'players') is distinct from (o - 'progress' - 'players') then
+    raise exception 'only the host changes the pool' using errcode = '42501';
+  end if;
+  -- the players: each one as before, but for joining
+  had := coalesce(jsonb_array_length(o->'players'), 0);
+  if coalesce(jsonb_array_length(n->'players'), 0) < had then
+    raise exception 'only the host removes a player' using errcode = '42501';
+  end if;
+  for i in 0 .. had - 1 loop
+    p := o->'players'->i;
+    q := n->'players'->i;
+    if (q - 'joined') is distinct from (p - 'joined') then
+      raise exception 'only the host changes a player' using errcode = '42501';
+    end if;
+    if (q->'joined') is distinct from (p->'joined') and (
+      coalesce(q->'joined'->>'uid', '') <> me or coalesce(p->'joined'->>'uid', me) <> me
+    ) then
+      raise exception 'a player is joined only by their own account' using errcode = '42501';
+    end if;
+  end loop;
+  for i in had .. coalesce(jsonb_array_length(n->'players'), 0) - 1 loop
+    if coalesce(n->'players'->i->'joined'->>'uid', '') <> me then
+      raise exception 'a new player only by joining' using errcode = '42501';
+    end if;
+  end loop;
+  -- the progress: only of the own bets, and never a decision by hand
+  for k in
+    select jsonb_object_keys(coalesce(n->'progress', '{}'::jsonb))
+    union
+    select jsonb_object_keys(coalesce(o->'progress', '{}'::jsonb))
+  loop
+    if (n->'progress'->k) is not distinct from (o->'progress'->k) then continue; end if;
+    if (n->'progress'->k->'manual') is distinct from (o->'progress'->k->'manual') then
+      raise exception 'only the host decides a bet by hand' using errcode = '42501';
+    end if;
+    if not exists (
+      select 1 from jsonb_array_elements(n->'wagers') w, jsonb_array_elements(n->'players') pl
+      where w->>'id' = k and w->>'kind' <> 'free' and pl->>'id' = w->>'player' and pl->'joined'->>'uid' = me
+    ) then
+      raise exception 'a phone reports only its own bets' using errcode = '42501';
+    end if;
+  end loop;
+  return new;
+end $$;
+drop trigger if exists golfos_pool_guard on public.golfos_shared_games;
+create trigger golfos_pool_guard before update on public.golfos_shared_games
+  for each row execute function public.golfos_pool_guard();
