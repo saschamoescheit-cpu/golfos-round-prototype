@@ -20,7 +20,7 @@ import { loadPose } from '../mobility/pose';
 import { cameraOn, speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
-import { LogShare, LogSwitch } from '../mobility/LogUi';
+import { KeptLogs, LogShare, LogSwitch } from '../mobility/LogUi';
 import { startLog } from '../mobility/motionlog';
 import { DrillSession, doneText } from '../mobility/DrillSession';
 import { cap } from '../mobility/DrillPlayer';
@@ -2131,6 +2131,7 @@ function HistoryTab(props: { nav: Nav }) {
         <button type="button" className="btn-primary" onClick={() => props.nav.toTab('test')}>
           {tr('To the screening', 'Zum Screening')}
         </button>
+        <KeptLogs />
       </section>
     );
   const full = list.filter((s) => s.kind !== 'single' && Object.keys(s.results).length).reverse();
@@ -2177,6 +2178,7 @@ function HistoryTab(props: { nav: Nav }) {
           );
         })}
       </div>
+      <KeptLogs />
     </>
   );
 }
