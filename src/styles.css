@@ -1169,6 +1169,29 @@ button.tile:disabled { opacity: 1; }
 .tour-special-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .tour-special-board { display: flex; flex-direction: column; gap: 4px; }
 /* the settlement of a pool: the title, the payments, the bets decided – one below the other */
+/* the rounds of the trip in a pool (Sascha 01.11.2026) */
+.trip-round { display: flex; align-items: center; gap: 10px; }
+.trip-round .grow { flex: 1; min-width: 0; }
+.trip-tours { display: flex; flex-direction: column; gap: 6px; }
+.trip-add-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+/* the live standing of a pool: the blocks down, the players across (Sascha 01.11.2026) */
+.pool-standings { display: flex; flex-direction: column; gap: 10px; }
+.matrix-wrap { overflow-x: auto; margin: 0 -4px; }
+.bet-matrix { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.bet-matrix th, .bet-matrix td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.bet-matrix thead th { font: 700 14px var(--body); color: var(--muted); white-space: nowrap; }
+.bet-matrix thead th.me { color: var(--text); }
+.bet-matrix tbody th { text-align: left; font: 600 13px var(--body); color: var(--muted); max-width: 120px; }
+.bet-matrix td { white-space: nowrap; }
+.bet-matrix-made td, .bet-matrix-made th { border-bottom: 0; }
+.bet-cell { display: inline-block; min-width: 46px; padding: 3px 6px; border-radius: 8px; background: var(--surface-2); font: 700 14px var(--body); }
+.bet-cell + .bet-cell { margin-left: 4px; }
+.bet-cell.done { background: var(--brand); color: #fff; }
+.bet-cell.missed { color: var(--muted); text-decoration: line-through; }
+.bet-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.bet-lines li { display: flex; align-items: center; gap: 10px; }
+.bet-lines .grow { flex: 1; min-width: 0; }
+.full-overlay { position: fixed; inset: 0; z-index: 60; background: var(--bg); overflow-y: auto; }
 .pool-settle { display: flex; flex-direction: column; gap: 12px; }
 .pool-settle-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
 .pool-settle-head h2 { margin: 0; font-size: 18px; }
