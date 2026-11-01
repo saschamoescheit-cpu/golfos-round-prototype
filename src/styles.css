@@ -1842,3 +1842,15 @@ button.tile:disabled { opacity: 1; }
 .sign-row .grow { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .sign-row button { flex: none; width: auto; padding: 0 16px; min-height: 44px; }
 .lb-signed { display: block; font-size: 11px; color: var(--brand-text); }
+
+/* Bets in Games (Sascha 01.11.2026): a pool over a trip, each player's targets with the standing */
+.pool-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pool-dates .input { min-width: 0; }
+.pool-player { display: flex; flex-direction: column; gap: 6px; }
+.pool-player-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pool-player-head h2 { margin: 0; font-size: 18px; }
+.pool-wager { align-items: center; gap: 10px; }
+.pool-wager .grow > span { white-space: normal; }
+.pool-made { display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 0 0 2px var(--brand); }
+.wager-sheet { gap: 10px; }
+.template-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

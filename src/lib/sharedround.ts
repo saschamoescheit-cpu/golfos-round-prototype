@@ -3,6 +3,7 @@ import { emptyEntry } from './scoring';
 import { newId } from './storage';
 import { DEFAULT_FORMAT, formatOf, holeScoresOf, isTeamMode, leaderboard, teamHandicap, type Board } from './games';
 import { cleanCode, isGame, newCode } from './sharedgame';
+import { isPool } from './wagers';
 import { authToken, SUPABASE_KEY, SUPABASE_URL } from './sync';
 import { tr } from './i18n';
 
@@ -595,7 +596,7 @@ export async function joinEvent(code: string): Promise<RoundEvent | 'ask' | 'gam
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/golfos_join_game`, { method: 'POST', headers: h, body: JSON.stringify({ join_code: cleanCode(code) }) });
     if (!r.ok) return null;
     const ev = await r.json();
-    if (isGame(ev)) return 'game';
+    if (isGame(ev) || isPool(ev)) return 'game'; // a pool of bets lives in Games too (01.11.2026)
     if ((ev as { kind?: string } | null)?.kind === 'ask-host') return 'ask';
     if (!isEvent(ev)) return 'none';
     // a tournament: its flights as their own rows have them (who is where, the scores)

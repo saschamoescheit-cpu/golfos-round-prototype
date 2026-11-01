@@ -22,6 +22,7 @@ import { inUsa } from '../lib/weather';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
+import { PoolScreen, PoolSetup, PoolsCard } from './Wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
 import { PausedIcon } from '../components/PausedIcon';
@@ -37,7 +38,9 @@ type View =
   | { name: 'setup'; draft: Draft }
   | { name: 'course'; draft: Draft }
   | { name: 'play'; game: Game }
-  | { name: 'result'; game: Game };
+  | { name: 'result'; game: Game }
+  | { name: 'poolSetup' }
+  | { name: 'pool'; code: string };
 
 interface DraftPlayer {
   id: string;
@@ -148,6 +151,8 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           }}
           onModules={props.onModules}
           onJoinRound={props.onJoinRound}
+          onNewPool={() => setView({ name: 'poolSetup' })}
+          onOpenPool={(code) => setView({ name: 'pool', code })}
           onNew={(form) => setView({ name: 'setup', draft: newDraft(form) })}
           onJoined={(g) => {
             store(g);
@@ -226,6 +231,11 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           }}
         />
       );
+    // bets over a trip (Sascha 01.11.2026)
+    case 'poolSetup':
+      return <PoolSetup onBack={() => setView({ name: 'tab', tab: 'play' })} onCreated={(code) => setView({ name: 'pool', code })} />;
+    case 'pool':
+      return <PoolScreen code={view.code} onBack={() => setView({ name: 'tab', tab: 'play' })} />;
     case 'result':
       return (
         <GameResult
@@ -262,6 +272,8 @@ function GamesTabs(props: {
   onOpen: (g: Game) => void;
   onJoined: (g: Game) => void;
   onJoinRound?: (code: string) => void;
+  onNewPool: () => void;
+  onOpenPool: (code: string) => void;
   onFinish: (g: Game) => void;
   onDelete: (g: Game) => void;
 }) {
@@ -319,6 +331,8 @@ function GamesTabs(props: {
               </button>
             )}
           </section>
+          {/* bets over a trip – everyone his own targets, judged from the rounds (Sascha 01.11.2026) */}
+          <PoolsCard canShare={!!canShare} onOpen={props.onOpenPool} onNew={props.onNewPool} />
           {confirmCount > 0 && (
             <button type="button" className="list-item" onClick={() => openList('confirm')}>
               <span className="grow">
@@ -340,6 +354,10 @@ function GamesTabs(props: {
                   onJoined={(g) => {
                     setJoinOpen(null);
                     props.onJoined(g);
+                  }}
+                  onPool={(c) => {
+                    setJoinOpen(null);
+                    props.onOpenPool(c);
                   }}
                   onRoundCode={
                     props.onJoinRound &&

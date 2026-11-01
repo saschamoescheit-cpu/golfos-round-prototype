@@ -2,6 +2,7 @@ import type { Game } from './gameforms';
 import { emptyEntry } from './scoring';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { pushGame } from './push';
+import { isPool, type WagerPool } from './wagers';
 
 // One game on several phones (Sascha 15.10.2026: "four players, everyone with the web app – join by a code or a QR
 // code; everyone sees the standing and can enter his shot details"). The host shares the game: a 6-letter code and a
@@ -119,9 +120,9 @@ export async function shareGame(g: Game): Promise<Game | null> {
 /** A game in the table – not a round's event (Rounds keeps its rounds on several phones in the same table). */
 export const isGame = (x: unknown): x is Game => !!x && (x as { kind?: string }).kind !== 'round-event' && !!(x as Game).id && Array.isArray((x as Game).players) && !!(x as Game).form;
 
-/** Joins with a code: the game as the host shared it; 'round' when the code is a round's (join it under Rounds),
- *  'none' for no game with this code, null for no connection. */
-export async function joinGame(code: string): Promise<Game | 'round' | 'none' | null> {
+/** Joins with a code: the game as the host shared it – or a pool of bets (Games, 01.11.2026); 'round' when the code is
+ *  a round's (join it under Rounds), 'none' for no game with this code, null for no connection. */
+export async function joinGame(code: string): Promise<Game | WagerPool | 'round' | 'none' | null> {
   const h = await headers();
   if (!h) return null;
   try {
@@ -129,6 +130,7 @@ export async function joinGame(code: string): Promise<Game | 'round' | 'none' | 
     if (!r.ok) return null;
     const g = (await r.json()) as unknown;
     if (g && (g as { kind?: string }).kind === 'round-event') return 'round';
+    if (isPool(g)) return g;
     if (!isGame(g)) return 'none';
     pushGame('joined', cleanCode(code)); // the host hears of it (push, final list 23.10.2026)
     return { ...g, shared: { code: cleanCode(code) } };

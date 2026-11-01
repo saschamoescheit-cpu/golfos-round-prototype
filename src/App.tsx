@@ -26,6 +26,7 @@ import type { MobilityTab } from './screens/Mobility';
 import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
 import { exchangeRound } from './lib/sharedround';
+import { reportWagers } from './lib/wagerstore';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -212,6 +213,8 @@ export function App() {
     // a round on several phones, finished (or corrected in the round check): its scores and "finished" to the others –
     // during the round the hole map exchanges them (Sascha 29.10.2026)
     if (round.finishedAt && round.shared) void exchangeRound(round);
+    // the bets of Games judged from the round (Sascha 01.11.2026) – in the background, it never holds up saving
+    if (round.finishedAt && !round.preview) void reportWagers().catch(() => null);
     setRounds(loadRounds());
     syncSoon();
   };

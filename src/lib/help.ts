@@ -312,6 +312,16 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'games',
       },
+      {
+        // Sascha 01.11.2026: the bets of the US trip – everyone his own targets
+        q: () => tr('Can we set up bets over a trip – everyone his own targets?', 'Können wir Wetten über eine Reise anlegen – jeder seine eigenen Ziele?'),
+        a: () =>
+          tr(
+            'Yes: Games → "New pool of bets" – a name, the days, the players. Then "+ Bet" (birdies or pars in a row, birdies or greens in a round, the score to par, or a free bet in words) or "Zocker pool template" (five bets per player at once); stake, payout, attempts and how it counts are adjustable. Invite with the code; everyone plays his rounds in Rounds and his phone reports his bets. "With marker": only rounds where a flight partner marked him and both signed the card. The settlement says who pays whom.',
+            'Ja: Games → „Neuer Wett-Pool“ – Name, Tage, Spieler. Dann „+ Wette“ (Birdies oder Pars in Folge, Birdies oder Grüns in einer Runde, Ergebnis zu Par oder eine freie Wette in Worten) oder „Vorlage Zocker-Pool“ (fünf Wetten je Spieler auf einmal); Einsatz, Auszahlung, Versuche und Zählweise sind einstellbar. Mit dem Code einladen; jeder spielt seine Runden in Rounds, sein Handy meldet seine Wetten. „Mit Zähler“: nur Runden, in denen ihn ein Flightpartner gezählt hat und beide die Karte unterschrieben haben. Die Abrechnung sagt, wer wem zahlt.',
+          ),
+        video: 'games',
+      },
     ],
   },
   {

@@ -3,6 +3,9 @@ import qrcode from 'qrcode-generator';
 import type { Game } from '../lib/gameforms';
 import { cleanCode, exchange, joinGame, joinLink, settleGame, shareGame, guestRound } from '../lib/sharedgame';
 import { tr } from '../lib/i18n';
+import { isPool, type WagerPool } from '../lib/wagers';
+import { joinPool } from '../lib/wagerstore';
+import { loadProfile, shownName } from '../lib/profile';
 
 // Invite and join (Sascha 15.10.2026: "join the game by a code or a QR code"): the host shows the code and the QR
 // code, the others scan it with the phone camera or type the code. Since 29.10.2026 as in Rounds (Sascha: "in Games
@@ -121,17 +124,35 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
   );
 }
 
-export function JoinSheet(props: { initial?: string; onJoined: (g: Game) => void; onClose: () => void; /** a round's code: join it in Rounds */ onRoundCode?: (code: string) => void }) {
+export function JoinSheet(props: {
+  initial?: string;
+  onJoined: (g: Game) => void;
+  onClose: () => void;
+  /** a round's code: join it in Rounds */
+  onRoundCode?: (code: string) => void;
+  /** joined a pool of bets (01.11.2026): open it */
+  onPool?: (code: string) => void;
+}) {
   const [code, setCode] = useState(cleanCode(props.initial ?? ''));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   // joined: who is this phone's owner? (his own balance, his own row)
   const [found, setFound] = useState<Game | null>(null);
+  const [pool, setPool] = useState<WagerPool | null>(null); // a pool of bets: who are you – or new in it
+  const [newName, setNewName] = useState(() => shownName(loadProfile()));
+  const enterPool = async (who: { id: string } | { name: string }) => {
+    setBusy(true);
+    const e = await joinPool(cleanCode(code), who, shownName(loadProfile()) || ('name' in who ? who.name : ''));
+    setBusy(false);
+    if (e) props.onPool?.(e.code);
+    else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+  };
   const find = async (c = code) => {
     setBusy(true);
     const g = await joinGame(c);
     setBusy(false);
-    if (g === 'round' && props.onRoundCode) props.onRoundCode(cleanCode(c));
+    if (isPool(g)) setPool(g);
+    else if (g === 'round' && props.onRoundCode) props.onRoundCode(cleanCode(c));
     else if (g === 'round') setMsg(tr('This code is a round – join it under Rounds.', 'Dieser Code ist eine Runde – die unter Rounds beitreten.'));
     else if (g === 'none') setMsg(tr('No game with this code – check the code.', 'Kein Spiel mit diesem Code – Code prüfen.'));
     else if (!g) setMsg(tr('No connection – check the code or the connection.', 'Keine Verbindung – Code oder Verbindung prüfen.'));
@@ -150,7 +171,7 @@ export function JoinSheet(props: { initial?: string; onJoined: (g: Game) => void
             ✕
           </button>
         </div>
-        {!found && (
+        {!found && !pool && (
           <>
             <input
               className="input join-input"
@@ -181,6 +202,27 @@ export function JoinSheet(props: { initial?: string; onJoined: (g: Game) => void
               ))}
             </div>
           </div>
+        )}
+        {pool && (
+          <>
+            <div className="field">
+              <label>{tr(`Bets "${pool.name}" – who are you?`, `Wetten „${pool.name}“ – wer bist du?`)}</label>
+              <div className="chip-set">
+                {pool.players.map((p) => (
+                  <button key={p.id} type="button" className="chip" disabled={busy} onClick={() => void enterPool({ id: p.id })}>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="pool-new-name">{tr('Not in the list – join as', 'Nicht in der Liste – dabei als')}</label>
+              <input id="pool-new-name" className="input" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            </div>
+            <button type="button" className="btn-secondary" disabled={busy || !newName.trim()} onClick={() => void enterPool({ name: newName })}>
+              {tr('Join as a new player', 'Als neuer Spieler beitreten')}
+            </button>
+          </>
         )}
         {msg && (
           <span className="small bad-text" role="alert">
