@@ -6,6 +6,7 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { isLady, shownName, loadProfile } from '../lib/profile';
 import { loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
+import { setCurrency, currencySymbol, type Currency } from '../lib/gameforms';
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, pairShare, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
 import { Bin } from '../components/Bin';
@@ -22,7 +23,7 @@ import { inUsa } from '../lib/weather';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
-import { PoolScreen, PoolSetup, PoolsCard, takeOpenPool } from './Wagers';
+import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool } from './Wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
 import { PausedIcon } from '../components/PausedIcon';
@@ -32,14 +33,14 @@ import { DeletedIcon, HolesIcon, PlayedIcon, ToSignIcon } from '../components/Ro
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
 // who pays whom. Not linked to the round analysis yet; a side game next to a round may follow later.
 
-export type GamesTab = 'play' | 'games' | 'balance' | 'profile';
+export type GamesTab = 'play' | 'games' | 'bets' | 'balance' | 'profile';
 type View =
   | { name: 'tab'; tab: GamesTab }
   | { name: 'setup'; draft: Draft }
   | { name: 'course'; draft: Draft }
   | { name: 'play'; game: Game }
   | { name: 'result'; game: Game }
-  | { name: 'poolSetup' }
+  | { name: 'poolSetup'; back: GamesTab }
   | { name: 'pool'; code: string };
 
 interface DraftPlayer {
@@ -149,6 +150,8 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
     setGames(loadGames());
   };
 
+  // the money on screen in the currency of the game shown (euro or dollar – Sascha 01.11.2026)
+  setCurrency(view.name === 'play' || view.name === 'result' ? view.game.settings.currency : view.name === 'setup' || view.name === 'course' ? view.draft.settings.currency : undefined);
   switch (view.name) {
     case 'tab':
       return (
@@ -164,7 +167,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           }}
           onModules={props.onModules}
           onJoinRound={props.onJoinRound}
-          onNewPool={() => setView({ name: 'poolSetup' })}
+          onNewPool={() => setView({ name: 'poolSetup', back: view.tab })}
           onOpenPool={(code) => setView({ name: 'pool', code })}
           onNew={(form) => setView({ name: 'setup', draft: newDraft(form) })}
           onJoined={(g) => {
@@ -246,9 +249,18 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
       );
     // bets over a trip (Sascha 01.11.2026)
     case 'poolSetup':
-      return <PoolSetup onBack={() => setView({ name: 'tab', tab: 'play' })} onCreated={(code) => setView({ name: 'pool', code })} />;
+      return <PoolSetup onBack={() => setView({ name: 'tab', tab: view.back })} onCreated={(code) => setView({ name: 'pool', code })} />;
     case 'pool':
-      return <PoolScreen code={view.code} onBack={() => setView({ name: 'tab', tab: 'play' })} />;
+      // back to the menu "Bets" – the pools are kept there (Sascha 01.11.2026)
+      return (
+        <PoolScreen
+          code={view.code}
+          onBack={() => {
+            setView({ name: 'tab', tab: 'bets' });
+            props.onTabChange?.('bets');
+          }}
+        />
+      );
     case 'result':
       return (
         <GameResult
@@ -344,8 +356,8 @@ function GamesTabs(props: {
               </button>
             )}
           </section>
-          {/* bets over a trip – everyone his own targets, judged from the rounds (Sascha 01.11.2026) */}
-          <PoolsCard canShare={!!canShare} onOpen={props.onOpenPool} onNew={props.onNewPool} />
+          {/* start a bet beside starting a game – the bets themselves are kept in the menu "Bets" (Sascha 01.11.2026) */}
+          <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onList={() => props.onTab('bets')} />
           {confirmCount > 0 && (
             <button type="button" className="list-item" onClick={() => openList('confirm')}>
               <span className="grow">
@@ -358,7 +370,9 @@ function GamesTabs(props: {
               <span aria-hidden="true">›</span>
             </button>
           )}
-          {joinOpen != null && canShare != null && (
+        </>
+      )}
+      {joinOpen != null && canShare != null && (
             <>
               {canShare ? (
                 <JoinSheet
@@ -395,8 +409,7 @@ function GamesTabs(props: {
               )}
             </>
           )}
-        </>
-      )}
+      {props.tab === 'bets' && <BetsTab canShare={!!canShare} onOpen={props.onOpenPool} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} />}
       {props.tab === 'games' && (
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
@@ -421,6 +434,7 @@ function GamesTabs(props: {
         items={[
           { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
           { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
+          { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON },
           { id: 'balance' as GamesTab, label: tr('Balance', 'Bilanz'), icon: MENU_ICONS.balance },
           { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}
@@ -594,19 +608,21 @@ function Balance(props: { games: Game[] }) {
   const done = props.games.filter((g) => g.finishedAt && g.signedAt);
   const unconfirmed = props.games.filter((g) => g.finishedAt && !g.signedAt).length;
   let wins = 0;
-  let money = 0;
+  // euros and dollars apart (Sascha 01.11.2026: a game in dollars in the USA)
+  const money: Record<string, number> = {};
+  const add = (m: Record<string, number>, g: Game, v: number) => (m[currencySymbol(g.settings.currency)] = (m[currencySymbol(g.settings.currency)] ?? 0) + v);
   // head to head per friend (Sascha 15.10.2026): games, who finished ahead, money
-  const vs = new Map<string, { name: string; games: number; money: number; won: number; lost: number }>();
+  const vs = new Map<string, { name: string; games: number; money: Record<string, number>; won: number; lost: number }>();
   for (const g of done) {
     const me = g.players.find((p) => p.id === g.shared?.me) ?? g.players[0]; // a joined game: the player chosen on joining
     const st = standingOf(g);
     const top = topRows(st.rows).map((r) => r.id);
     // a team game's rows are the sides (A = player 1's side) or every player
     if (top.includes(me.id) || (top.length === 1 && top[0] === 'A')) wins++;
-    money += st.money?.[me.id] ?? 0;
+    add(money, g, st.money?.[me.id] ?? 0);
     for (const p of g.players.filter((x) => x.id !== me.id)) {
       const key = p.name.trim().toLowerCase();
-      const row = vs.get(key) ?? { name: p.name, games: 0, money: 0, won: 0, lost: 0 };
+      const row = vs.get(key) ?? { name: p.name, games: 0, money: {}, won: 0, lost: 0 };
       row.games++;
       const mine = st.rows.find((r) => r.id === me.id)?.points;
       const his = st.rows.find((r) => r.id === p.id)?.points;
@@ -614,11 +630,16 @@ function Balance(props: { games: Game[] }) {
         if (mine > his) row.won++;
         else row.lost++;
       }
-      if (st.money) row.money += pairShare(st.money, me.id, p.id);
+      if (st.money) add(row.money, g, pairShare(st.money, me.id, p.id));
       vs.set(key, row);
     }
   }
   const cls = (v: number) => (v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted');
+  // "+12 € · −5 $" – one amount per currency played in
+  const amounts = (m: Record<string, number>) => {
+    const parts = Object.entries(m).filter(([, v]) => Math.abs(v) > 0.004);
+    return parts.length ? parts.map(([sym, v]) => <span key={sym} className={cls(v)}>{formatEuro(v, sym)}</span>).reduce<ReactNode[]>((a, x, k) => (k ? [...a, ' · ', x] : [x]), []) : <span className="muted">{formatEuro(0, '€')}</span>;
+  };
   return (
     <>
       <h1 className="tab-title">{tr('Balance', 'Bilanz')}</h1>
@@ -644,7 +665,7 @@ function Balance(props: { games: Game[] }) {
               <span className="muted small">{tr('wins', 'Siege')}</span>
             </div>
             <div>
-              <strong className={cls(money)}>{formatEuro(money)}</strong>
+              <strong>{amounts(money)}</strong>
               <span className="muted small">{tr('money', 'Geld')}</span>
             </div>
           </section>
@@ -661,7 +682,7 @@ function Balance(props: { games: Game[] }) {
                         · {r.games} {r.games === 1 ? tr('game', 'Spiel') : tr('games', 'Spiele')} · {tr(`${r.won}× ahead · ${r.lost}× behind`, `${r.won}× vorne · ${r.lost}× hinten`)}
                       </span>
                     </span>
-                    <strong className={cls(r.money)}>{formatEuro(r.money)}</strong>
+                    <strong>{amounts(r.money)}</strong>
                   </li>
                 ))}
             </ul>
@@ -714,6 +735,9 @@ export function FormRules(props: { form: FormDef }) {
 
 function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: () => void; onCourse: () => void; onStart: (g: Game) => void }) {
   const d = props.draft;
+  // euro or dollar (Sascha 01.11.2026): as chosen – else the dollar on a course in the USA; the stakes shown in it
+  const currency: Currency = d.settings.currency === 'USD' || d.settings.currency === 'EUR' ? d.settings.currency : d.course && inUsa([d.course.lon, d.course.lat]) ? 'USD' : 'EUR';
+  setCurrency(currency);
   const f = formDef(d.form);
   const [picker, setPicker] = useState(false);
   const [favs, setFavs] = useState(loadFormFavs);
@@ -775,7 +799,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       holes,
       players,
       form: d.form,
-      settings: d.settings,
+      settings: { ...d.settings, currency },
       scores: Object.fromEntries(players.map((p) => [p.id, holes.map(() => null)])),
       extra: holes.map(() => ({})),
       current: 0,
@@ -898,6 +922,17 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+        {/* euro or dollar (Sascha 01.11.2026) – dollar first on a course in the USA */}
+        <div className="game-setting">
+          <span className="stepper-label">{tr('Currency', 'Währung')}</span>
+          <div className="chip-set">
+            {(['EUR', 'USD'] as Currency[]).map((c) => (
+              <button key={c} type="button" className={`chip${currency === c ? ' on' : ''}`} aria-pressed={currency === c} onClick={() => set({ settings: { ...d.settings, currency: c } })}>
+                {c === 'EUR' ? tr('Euro (€)', 'Euro (€)') : tr('Dollar ($)', 'Dollar ($)')}
+              </button>
+            ))}
+          </div>
+        </div>
         {/* house rules: one row of switches instead of a yes/no row each (Sascha 20.10.2026: "summarise them sensibly") */}
         {f.settings.some((s) => s.group === 'house') && (
           <div className="game-setting">
@@ -1523,9 +1558,9 @@ function StakePicker(props: { value: number; onChange: (v: number) => void }) {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const take = () => {
-    const v = Number(text.replace('€', '').replace(/\s/g, '').replace(',', '.'));
+    const v = Number(text.replace(/[€$]/g, '').replace(/\s/g, '').replace(',', '.'));
     if (!text.trim() || !Number.isFinite(v) || v <= 0) return setError(tr('Type an amount, e.g. 3', 'Gib einen Betrag ein, z. B. 3'));
-    if (v > 1000) return setError(tr('At most 1000 €.', 'Höchstens 1000 €.'));
+    if (v > 1000) return setError(tr(`At most ${money(1000)}.`, `Höchstens ${money(1000)}.`));
     setError(null);
     setTyping(false);
     props.onChange(Math.round(v * 100) / 100);
@@ -1538,7 +1573,7 @@ function StakePicker(props: { value: number; onChange: (v: number) => void }) {
             {v ? money(v) : tr('none', 'ohne')}
           </button>
         ))}
-        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(' €', '') : ''); }}>
+        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(/ [€$]$/, '') : ''); }}>
           {custom && !typing ? money(props.value) : tr('other …', 'anderer …')}
         </button>
       </div>
@@ -1575,7 +1610,7 @@ function CapPicker(props: { stake: number; value: number; onChange: (v: number) 
     return [top * 2, top * 4, top * 8].map((v) => money(Math.round(v * 100) / 100)).join(', ');
   })();
   const take = () => {
-    const v = Number(text.replace('€', '').replace(/\s/g, '').replace(',', '.'));
+    const v = Number(text.replace(/[€$]/g, '').replace(/\s/g, '').replace(',', '.'));
     if (!text.trim() || !Number.isFinite(v)) return setError(tr('Type an amount, e.g. ' + next.split(', ')[0], 'Gib einen Betrag ein, z. B. ' + next.split(', ')[0]));
     if (!onChain(props.stake, v))
       return setError(tr(`Only doublings of ${money(props.stake)} – e.g. ${next}.`, `Nur Verdopplungen von ${money(props.stake)} möglich – z. B. ${next}.`));
@@ -1592,7 +1627,7 @@ function CapPicker(props: { stake: number; value: number; onChange: (v: number) 
             {money(v)}
           </button>
         ))}
-        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(' €', '') : ''); }}>
+        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(/ [€$]$/, '') : ''); }}>
           {custom && !typing ? money(props.value) : tr('more …', 'höher …')}
         </button>
         <button type="button" className={`chip${!typing && props.value === 0 ? ' on' : ''}`} aria-pressed={props.value === 0} onClick={() => { setTyping(false); setError(null); props.onChange(0); }}>

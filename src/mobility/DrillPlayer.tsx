@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
+import { LiveCam } from './livecam';
 import type { Drill } from '../training/types';
 import { BONES, facingOf, type Frame, type Lm } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
@@ -155,6 +156,7 @@ export function DrillPlayer(props: {
     let raf = 0;
     let stream: MediaStream | null = null;
     let ownStream = true;
+    let cam: LiveCam | null = null;
     let wake: { release: () => Promise<void> } | null = null;
     (navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock
       ?.request('screen')
@@ -326,6 +328,7 @@ export function DrillPlayer(props: {
       go('result');
       stopped = true;
       cancelAnimationFrame(raf);
+      cam?.stop();
       if (ownStream) stream?.getTracks().forEach((x) => x.stop());
       const vals = d.sets.map((x) => x.best).filter((v): v is number => v != null);
       const best = vals.length && plan.signal ? (SIGNALS[plan.signal].better === 'up' ? Math.max(...vals) : Math.min(...vals)) : null;
@@ -365,7 +368,7 @@ export function DrillPlayer(props: {
         }
       } else {
         const v = videoRef.current;
-        if (!v || v.readyState < 2 || !landmarker) return;
+        if (!v || !cam?.check(now) || v.readyState < 2 || !landmarker) return;
         w = v.videoWidth;
         h = v.videoHeight;
         const d = detect(landmarker, v);
@@ -506,6 +509,7 @@ export function DrillPlayer(props: {
           const v = videoRef.current!;
           v.srcObject = s;
           await v.play();
+          cam = new LiveCam(v, s);
           if (v.videoWidth && v.videoHeight) setRatio(`${v.videoWidth} / ${v.videoHeight}`);
         }
         if (stopped) return;
@@ -543,6 +547,7 @@ export function DrillPlayer(props: {
       stopped = true;
       cancelAnimationFrame(raf);
       timers.forEach((x) => window.clearTimeout(x));
+      cam?.stop();
       if (ownStream) stream?.getTracks().forEach((x) => x.stop());
       void wake?.release().catch(() => {});
       stopSpeaking();

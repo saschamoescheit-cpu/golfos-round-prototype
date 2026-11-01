@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { isSpeaking, speak, stopSpeaking } from '../lib/caddietalk';
+import { LiveCam } from './livecam';
 import { BONES, facingOf, makeAnalyzer, missingPoints, valueText, type Analyzer, type Cue, type Frame, type Lm, type Outcome } from './measure';
 import { detect, loadPose, resetTracking } from './pose';
 import type { Check, Grade, Measurement, MetricKind, Side, TestDef } from './types';
@@ -254,6 +255,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     let stopped = false;
     let raf = 0;
     let stream: MediaStream | null = null;
+    let cam: LiveCam | null = null;
     // the motion log (when switched on): the points of every picture with what the measuring made of them
     logItem({ test: { id: props.test.id, kind: props.test.metric!, side: props.side, ...(props.variant ? { variant: props.variant } : {}) } });
     const logT0 = performance.now();
@@ -403,7 +405,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
         people = d.people;
       } else {
         const v = videoRef.current;
-        if (!v || v.readyState < 2 || !landmarker) return;
+        if (!v || !cam?.check(now) || v.readyState < 2 || !landmarker) return;
         w = v.videoWidth;
         h = v.videoHeight;
         const d = detect(landmarker, v);
@@ -555,6 +557,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           const v = videoRef.current!;
           v.srcObject = s;
           await v.play();
+          cam = new LiveCam(v, s, facing);
           if (v.videoWidth && v.videoHeight) setRatio(`${v.videoWidth} / ${v.videoHeight}`);
         }
         if (stopped) return;
@@ -601,6 +604,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       cancelAnimationFrame(raf);
       window.clearTimeout(countTimer);
       window.clearTimeout(demoTimer);
+      cam?.stop();
       if (ownStream) stream?.getTracks().forEach((t) => t.stop());
       void wake?.release().catch(() => {});
       stopSpeaking();

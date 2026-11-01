@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
-import { speak } from '../lib/caddietalk';
+import { cameraOn, speak } from '../lib/caddietalk';
 import { TopBar } from '../components/ui';
 import { drillById } from '../training/content';
 import { SketchThumb } from '../training/Sketch';
@@ -105,6 +105,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
         .getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false })
         .then((st) => {
           streamRef.current = st;
+          cameraOn(st);
           setStage('drill');
         })
         .catch(() => setStage('drill'));

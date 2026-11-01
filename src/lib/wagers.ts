@@ -2,6 +2,7 @@ import type { HoleEntry, Round } from '../types';
 import { isTeamRound } from './games';
 import { greenInRegulation, handicapStrokes, stablefordPoints } from './scoring';
 import { tr } from './i18n';
+import { currencySymbol, money } from './gameforms';
 
 // Bets over a trip (Sascha 01.11.2026: "in America we have bets running – every player his own targets, 20 € each:
 // Chris 3 birdies in a row, 12 pars in a row, 5 birdies on 18, 16 greens, −5 …; it must be possible to set up
@@ -31,10 +32,12 @@ export type WagerKind =
   | 'doubles'
   | 'penalties'
   | 'score'
+  | 'nassau'
   | 'free';
 /** run: N holes in a row; count: at least N holes (in a round, or on the whole trip); most: at most N in a complete
- *  round; points: at least N Stableford points in a round; score: the score to par at most N. */
-type Shape = 'run' | 'count' | 'most' | 'points' | 'score' | 'free';
+ *  round; points: at least N Stableford points in a round; score: the score to par at most N; duel: against one player,
+ *  front nine, back nine and the 18 each won by the better score ("5+5+10"). */
+type Shape = 'run' | 'count' | 'most' | 'points' | 'score' | 'duel' | 'free';
 const SHAPE: Record<WagerKind, Shape> = {
   birdieRun: 'run',
   parRun: 'run',
@@ -52,6 +55,7 @@ const SHAPE: Record<WagerKind, Shape> = {
   doubles: 'most',
   penalties: 'most',
   score: 'score',
+  nassau: 'duel',
   free: 'free',
 };
 export const shapeOf = (k: WagerKind): Shape => SHAPE[k] ?? 'free';
@@ -91,6 +95,8 @@ export interface Wager {
   counted?: boolean;
   /** free: the bet in words */
   text?: string;
+  /** "5+5+10" (Sascha 01.11.2026): the stake of the front nine, the back nine and the 18 – against `opponent` */
+  parts?: { front: number; back: number; total: number };
   /** who set it up (a name) */
   by?: string;
 }
@@ -107,14 +113,18 @@ export interface Progress {
   rounds: number;
   /** judged by hand (a free bet, or an argument) – wins over the app's judgement */
   manual?: { done: boolean; by: string };
+  /** "5+5+10": what the player won (+) or lost (−) against his opponent so far, and per round who won front, back, total
+   *  (1 he, −1 the opponent, 0 tied, null not complete) */
+  amount?: number;
+  duels?: { day: string; course: string; front: number | null; back: number | null; total: number | null }[];
   at: string;
 }
 
 export interface PoolPlayer {
   id: string;
   name: string;
-  /** a phone plays as him (the name of the account, when) */
-  joined?: { name: string; at: string };
+  /** a phone plays as him (the name of the account, when, its account – to find him again on a new phone) */
+  joined?: { name: string; at: string; uid?: string };
 }
 
 export interface WagerPool {
@@ -127,11 +137,18 @@ export interface WagerPool {
   createdAt: string;
   /** finished by hand: open bets are missed */
   finishedAt?: string | null;
+  /** deleted (for everyone): gone from every phone */
+  deletedAt?: string | null;
   players: PoolPlayer[];
   wagers: Wager[];
   progress: Record<string, Progress>;
+  /** the pool's money: euro (default) or dollar (Sascha 01.11.2026) */
+  currency?: 'EUR' | 'USD';
 }
 
+// The pools live on the server (Sascha 01.11.2026: "I have set up the bets now – they must never vanish with updates,
+// changes and so on"): what is read there must stay readable by every later version – new fields only optional, no
+// field renamed or dropped, a block (kind) never removed. wagers.test.ts reads a pool as written on 01.11.2026.
 export const isPool = (x: unknown): x is WagerPool => !!x && (x as WagerPool).kind === 'wager-pool' && Array.isArray((x as WagerPool).wagers);
 
 /** A day as YYYY-MM-DD in local time. */
@@ -155,6 +172,8 @@ export interface PlayedRound {
   received?: number[];
   /** with a marker, the card signed by player and marker */
   counted: boolean;
+  /** the others of his flight in that round – for "5+5+10" against one of them */
+  others?: { name: string; entries: (HoleEntry | undefined)[]; hcp: number | null; received: number[]; counted: boolean }[];
 }
 
 /** The player's rounds for the bets: his own rounds on this phone (not a preview, not a team's card), oldest first. */
@@ -172,6 +191,9 @@ export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) =
         hcp: me.playingHandicap ?? null,
         received: handicapStrokes(r.holes, me.playingHandicap ?? null),
         counted: counted(r, me.id),
+        others: r.players
+          .filter((p) => !p.isMe)
+          .map((p) => ({ name: p.name, entries: r.holes.map((_, i) => r.entries[p.id]?.[i]), hcp: p.playingHandicap ?? null, received: handicapStrokes(r.holes, p.playingHandicap ?? null), counted: counted(r, p.id) })),
         at: r.createdAt,
       };
     })
@@ -306,8 +328,53 @@ function bestOf(w: Wager, rs: PlayedRound[]): { best: number | null; where?: str
 
 const reached = (w: Wager, best: number | null): boolean => best != null && (lower(w) ? best <= w.target : best >= w.target);
 
+const sameName = (a: string, b: string): boolean => {
+  const x = a.trim().toLowerCase();
+  const y = b.trim().toLowerCase();
+  return !!x && !!y && (x === y || x.split(/\s+/)[0] === y.split(/\s+/)[0]);
+};
+/** A nine's or the 18's score – gross, or net with the strokes received on its holes; null when a hole is missing. */
+function partScore(entries: (HoleEntry | undefined)[], received: number[], from: number, to: number, net: boolean): number | null {
+  let sum = 0;
+  for (let i = from; i < to; i++) {
+    const s = strokesOf(entries[i]);
+    if (s == null) return null;
+    sum += s - (net ? (received[i] ?? 0) : 0);
+  }
+  return sum;
+}
+const beats = (a: number | null, b: number | null): number | null => (a == null || b == null ? null : a < b ? 1 : a > b ? -1 : 0);
+
+/** "5+5+10" (Sascha 01.11.2026: "stroke play over 18 – the better score on the first nine wins the 5 dollars, the same on
+ *  the second nine, and then who wins over 18; a tie wins nothing"): every round both played in one flight (or the one
+ *  of its day), each part settled on its own. */
+function judgeDuel(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players?: PoolPlayer[] }, rounds: PlayedRound[], now: string): Progress {
+  const opp = pool.players?.find((p) => p.id === w.opponent)?.name ?? '';
+  const parts = w.parts ?? { front: 0, back: 0, total: 0 };
+  const inTime = rounds.filter((r) => r.day >= pool.from && r.day <= pool.to && (w.attempts !== 'day' || r.day === w.day) && r.pars.length >= 18);
+  const pairs = inTime
+    .map((r) => ({ r, o: r.others?.find((x) => sameName(x.name, opp)) }))
+    .filter((x): x is { r: PlayedRound; o: NonNullable<PlayedRound['others']>[number] } => !!x.o && (!w.counted || (x.r.counted && x.o.counted)));
+  const take = w.attempts === 'day' ? pairs.slice(0, 1) : pairs;
+  let amount = 0;
+  const duels = take.map(({ r, o }) => {
+    const mine = r.received ?? r.pars.map(() => 0);
+    const d = {
+      day: r.day,
+      course: r.course,
+      front: beats(partScore(r.entries, mine, 0, 9, !!w.net), partScore(o.entries, o.received, 0, 9, !!w.net)),
+      back: beats(partScore(r.entries, mine, 9, 18, !!w.net), partScore(o.entries, o.received, 9, 18, !!w.net)),
+      total: beats(partScore(r.entries, mine, 0, 18, !!w.net), partScore(o.entries, o.received, 0, 18, !!w.net)),
+    };
+    amount += (d.front ?? 0) * parts.front + (d.back ?? 0) * parts.back + (d.total ?? 0) * parts.total;
+    return d;
+  });
+  return { best: null, done: false, rounds: take.length, amount, duels, at: now };
+}
+
 /** A bet judged from the player's rounds: the rounds of the period (of its day), counted ones only when it asks. */
-export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'>, rounds: PlayedRound[], now = new Date().toISOString()): Progress {
+export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players?: PoolPlayer[] }, rounds: PlayedRound[], now = new Date().toISOString()): Progress {
+  if (shapeOf(w.kind) === 'duel') return judgeDuel(w, pool, rounds, now);
   const inTime = rounds.filter((r) => r.day >= pool.from && r.day <= pool.to && (w.attempts !== 'day' || r.day === w.day));
   const counting = w.counted ? inTime.filter((r) => r.counted) : inTime;
   const b = bestOf(w, counting);
@@ -324,6 +391,11 @@ export type WagerState = 'done' | 'missed' | 'open';
 /** Made, missed or still open: by hand if judged so; missed once its day or the period is over, or the pool finished. */
 export function stateOf(w: Wager, pool: WagerPool, today = dayOf(new Date())): WagerState {
   const p = pool.progress[w.id];
+  if (shapeOf(w.kind) === 'duel') {
+    // settled round by round; decided once its day or the period is over (or its one round played)
+    const over = !!pool.finishedAt || today > pool.to || (w.attempts === 'day' && ((!!w.day && today > w.day) || (p?.duels?.some((d) => d.total != null) ?? false)));
+    return over ? 'done' : 'open';
+  }
   if (p?.manual) return p.manual.done ? 'done' : 'missed';
   if (w.kind !== 'free' && p?.done) return 'done';
   const over = !!pool.finishedAt || today > pool.to || (w.attempts === 'day' && !!w.day && today > w.day);
@@ -335,6 +407,15 @@ export function balances(pool: WagerPool, today?: string): Record<string, number
   const money: Record<string, number> = Object.fromEntries(pool.players.map((p) => [p.id, 0]));
   const add = (id: string, v: number) => (money[id] = (money[id] ?? 0) + v);
   for (const w of pool.wagers) {
+    if (shapeOf(w.kind) === 'duel') {
+      // "5+5+10": what the rounds played so far settled, between the two
+      const v = pool.progress[w.id]?.amount ?? 0;
+      if (w.opponent && w.opponent !== w.player && v) {
+        add(w.player, v);
+        add(w.opponent, -v);
+      }
+      continue;
+    }
     const st = stateOf(w, pool, today);
     if (st === 'open' || !(w.stake > 0)) continue;
     const others = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
@@ -390,21 +471,36 @@ export function wagerLabel(w: Wager): string {
       return n === 0 ? tr(`No penalty stroke ${on}`, `Kein Strafschlag ${on}`) : tr(`At most ${n} penalty strokes ${on}`, `Höchstens ${n} Strafschläge ${on}`);
     case 'score':
       return `${fmtPar(n)} ${w.net ? tr('net', 'netto') : tr('gross', 'brutto')}${(w.holes ?? 18) === 9 ? tr(' on 9', ' auf 9') : ''}`;
+    case 'nassau': {
+      const p = w.parts ?? { front: 0, back: 0, total: 0 };
+      return `${p.front}+${p.back}+${p.total} ${w.net ? tr('net', 'netto') : tr('gross', 'brutto')}`;
+    }
     case 'free':
       return w.text?.trim() || tr('Free bet', 'Freie Wette');
   }
 }
 
 /** How it is counted and paid, in a line. */
-export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players'>): string {
+export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency'>): string {
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
+  const sym = currencySymbol(pool.currency);
+  if (shapeOf(w.kind) === 'duel') {
+    const p = w.parts ?? { front: 0, back: 0, total: 0 };
+    const bits = [
+      tr(`against ${name(w.opponent)}`, `gegen ${name(w.opponent)}`),
+      tr(`front ${money(p.front, sym)} · back ${money(p.back, sym)} · 18 ${money(p.total, sym)}`, `vorne ${money(p.front, sym)} · hinten ${money(p.back, sym)} · gesamt ${money(p.total, sym)}`),
+      w.attempts === 'day' && w.day ? tr(`only on ${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`, `nur am ${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`) : tr('every round together', 'jede gemeinsame Runde'),
+    ];
+    if (w.counted) bits.push(tr('with marker', 'mit Zähler'));
+    return bits.join(' · ');
+  }
   const pay =
     w.payout === 'opponent'
       ? tr(`against ${name(w.opponent)}`, `gegen ${name(w.opponent)}`)
       : w.payout === 'both'
         ? tr('both ways', 'beidseitig')
         : tr('paid when made', 'nur bei Erfolg');
-  const bits = [`${w.stake} €`, pay];
+  const bits = [money(w.stake, sym), pay];
   if (w.attempts === 'day' && w.day) bits.push(tr(`only on ${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`, `nur am ${w.day.slice(8, 10)}.${w.day.slice(5, 7)}.`));
   if ((w.kind === 'parRun' || w.kind === 'pars') && w.orBetter === false) bits.push(tr('exactly par', 'genau Par'));
   if ((w.kind === 'birdieRun' || w.kind === 'birdies') && w.orBetter === false) bits.push(tr('exactly birdie', 'genau Birdie'));
@@ -414,8 +510,18 @@ export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players'>): string {
 }
 
 /** The standing of a bet in words: "best 2 (target 3)", "best round +3 (target −5)", "so far 7 (target 10)". */
-export function progressText(w: Wager, p: Progress | undefined): string {
+export function progressText(w: Wager, p: Progress | undefined, currency?: 'EUR' | 'USD'): string {
   if (w.kind === 'free') return '';
+  if (shapeOf(w.kind) === 'duel') {
+    if (!p?.duels?.length) return tr('no round together yet', 'noch keine gemeinsame Runde');
+    const sign = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(v, currencySymbol(currency))}`;
+    const mark = (v: number | null) => (v == null ? '–' : v > 0 ? '✓' : v < 0 ? '✗' : '=');
+    const last = p.duels[p.duels.length - 1];
+    return tr(
+      `${p.duels.length} ${p.duels.length === 1 ? 'round' : 'rounds'} · ${sign(p.amount ?? 0)} · last: front ${mark(last.front)} back ${mark(last.back)} 18 ${mark(last.total)}`,
+      `${p.duels.length} ${p.duels.length === 1 ? 'Runde' : 'Runden'} · ${sign(p.amount ?? 0)} · zuletzt: vorne ${mark(last.front)} hinten ${mark(last.back)} gesamt ${mark(last.total)}`,
+    );
+  }
   const shape = shapeOf(w.kind);
   const show = (v: number): string => (shape === 'score' ? fmtPar(v) : String(v));
   const pend = p?.pending != null ? tr(` · ${show(p.pending)} not signed yet`, ` · ${show(p.pending)} noch nicht unterschrieben`) : '';
@@ -444,6 +550,7 @@ export const KINDS: { kind: WagerKind; name: () => string; number: () => string;
   { kind: 'doubles', name: () => tr('At most double bogeys', 'Höchstens Doppelbogeys'), number: () => tr('Double bogeys at most', 'Höchstens Doppelbogeys'), min: 0 },
   { kind: 'penalties', name: () => tr('At most penalty strokes', 'Höchstens Strafschläge'), number: () => tr('Penalty strokes at most', 'Höchstens Strafschläge'), min: 0 },
   { kind: 'score', name: () => tr('Score to par', 'Ergebnis zu Par'), number: () => tr('To par (−5, +2 …)', 'Zu Par (−5, +2 …)'), min: -30 },
+  { kind: 'nassau', name: () => tr('Front · back · 18 (5+5+10)', 'Vorne · hinten · gesamt (5+5+10)'), number: () => '', min: 0 },
   { kind: 'free', name: () => tr('Free bet', 'Freie Wette'), number: () => '', min: 0 },
 ];
 
@@ -451,7 +558,7 @@ export const KINDS: { kind: WagerKind; name: () => string; number: () => string;
 
 export interface LibraryBet {
   id: string;
-  group: 'runs' | 'round' | 'roundMost' | 'score' | 'trip' | 'own';
+  group: 'runs' | 'round' | 'roundMost' | 'score' | 'duel' | 'trip' | 'own';
   kind: WagerKind;
   /** the options this entry sets (net, the whole trip …) */
   patch?: Partial<Wager>;
@@ -465,6 +572,7 @@ export const LIBRARY_GROUPS: { group: LibraryBet['group']; name: () => string }[
   { group: 'round', name: () => tr('In one round – at least', 'In einer Runde – mindestens') },
   { group: 'roundMost', name: () => tr('In one round – at most', 'In einer Runde – höchstens') },
   { group: 'score', name: () => tr('Score of a round', 'Ergebnis einer Runde') },
+  { group: 'duel', name: () => tr('Against each other', 'Gegeneinander') },
   { group: 'trip', name: () => tr('On the whole trip', 'Auf der ganzen Reise') },
   { group: 'own', name: () => tr('Your own', 'Eigene') },
 ];
@@ -485,6 +593,7 @@ export const LIBRARY: LibraryBet[] = [
   { id: 'penalties', group: 'roundMost', kind: 'penalties', start: 0, name: () => tr('Penalty strokes', 'Strafschläge'), hint: () => tr('Water, out of bounds, unplayable', 'Wasser, Aus, unspielbar') },
   { id: 'scoreGross', group: 'score', kind: 'score', start: 10, name: () => tr('Gross to par', 'Brutto zu Par'), hint: () => tr('e.g. +2: at most 2 over par', 'z. B. +2: höchstens 2 über Par') },
   { id: 'scoreNet', group: 'score', kind: 'score', patch: { net: true }, start: 0, name: () => tr('Net to par', 'Netto zu Par'), hint: () => tr('Minus his playing handicap – 0: play to his handicap', 'Minus Spielvorgabe – 0: die Vorgabe spielen') },
+  { id: 'nassau', group: 'duel', kind: 'nassau', patch: { payout: 'opponent', parts: { front: 5, back: 5, total: 10 } }, start: 0, name: () => tr('5+5+10 – front, back, 18', '5+5+10 – vorne, hinten, gesamt'), hint: () => tr('Against each chosen player: the better score on the front nine, the back nine and the 18 wins its stake – a tie wins nothing', 'Gegen jeden gewählten Spieler: der bessere Score vorne, hinten und über 18 gewinnt den Einsatz – Gleichstand gewinnt nichts') },
   { id: 'birdiesTrip', group: 'trip', kind: 'birdies', patch: { scope: 'trip' }, start: 10, name: () => tr('Birdies on the trip', 'Birdies auf der Reise'), hint: () => tr('All rounds added up', 'Alle Runden zusammen') },
   { id: 'parsTrip', group: 'trip', kind: 'pars', patch: { scope: 'trip' }, start: 40, name: () => tr('Pars on the trip', 'Pars auf der Reise'), hint: () => tr('Par or better, all rounds added up', 'Par oder besser, alle Runden zusammen') },
   { id: 'eaglesTrip', group: 'trip', kind: 'eagles', patch: { scope: 'trip' }, start: 1, name: () => tr('Eagle on the trip', 'Eagle auf der Reise'), hint: () => tr('In any round', 'In irgendeiner Runde') },

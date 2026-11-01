@@ -165,9 +165,17 @@ export const canPress = (g: Game): boolean => !!g.settings.double && Number(g.se
 const stake = stakeNow;
 const played = (g: Game, i: number) => g.players.every((p) => g.scores[p.id]?.[i] != null);
 const holesDone = (g: Game) => g.holes.filter((_, i) => played(g, i)).length;
-/** An amount in euros – comma in German, point in English; cents only when there are any. */
-export const money = (v: number): string => `${dec(Math.abs(v) % 1 ? Math.abs(v).toFixed(2) : String(Math.abs(v)))} €`;
-const euro = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${money(v)}`;
+/** Euro or dollar (Sascha 01.11.2026: "besides the euro the dollar should be there to choose") – per game and per pool. */
+export type Currency = 'EUR' | 'USD';
+export const currencySymbol = (c?: unknown): string => (c === 'USD' ? '$' : '€');
+let SYMBOL = '€';
+/** The money on screen is in this currency – the game's being shown (Games sets it before drawing a game). */
+export function setCurrency(c?: unknown): void {
+  SYMBOL = currencySymbol(c);
+}
+/** An amount – comma in German, point in English; cents only when there are any; in the currency on screen (or given). */
+export const money = (v: number, sym: string = SYMBOL): string => `${dec(Math.abs(v) % 1 ? Math.abs(v).toFixed(2) : String(Math.abs(v)))} ${sym}`;
+const euro = (v: number, sym?: string) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${money(v, sym)}`;
 const rank = (rows: StandingRow[]) => rows.sort((a, b) => b.points - a.points);
 const name = (g: Game, id: string) => g.players.find((p) => p.id === id)?.name ?? '?';
 

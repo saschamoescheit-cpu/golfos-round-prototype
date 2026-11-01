@@ -176,6 +176,24 @@ function audioSession(type: 'playback' | 'auto'): void {
     /* not this browser */
   }
 }
+/**
+ * A camera that runs (Agility): the iPhone stops its picture when the page switches the sound to "playback" while it
+ * films – the player saw a still picture of the moment the first sentence was read (Sascha 1.11.2026: "it looks like a
+ * photo"). While a camera of the page runs the sound stays as the camera wants it (it is not muted on silent then).
+ */
+const cameras = new Set<MediaStream>();
+const filming = (): boolean => {
+  for (const c of cameras) {
+    if (c.getVideoTracks().some((t) => t.readyState === 'live')) return true;
+    cameras.delete(c);
+  }
+  return false;
+};
+/** A camera of the page starts: the read-aloud no longer switches the phone's sound while it runs. */
+export function cameraOn(s: MediaStream): void {
+  cameras.add(s);
+  releaseAudio();
+}
 function releaseAudio(): void {
   try {
     silence?.pause();
@@ -185,6 +203,7 @@ function releaseAudio(): void {
   audioSession('auto');
 }
 function wakeAudio(onPlay?: (ok: boolean) => void): void {
+  if (filming()) return;
   audioSession('playback');
   try {
     if (!silence) {

@@ -16,7 +16,7 @@ import type { Clip } from '../mobility/anim3d/scene';
 import type { Coach } from '../mobility/CameraTest';
 import { CameraTest, isFakeCamera, sideText, unlockAudio, CheckList } from '../mobility/CameraTest';
 import { loadPose } from '../mobility/pose';
-import { speak } from '../lib/caddietalk';
+import { cameraOn, speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
 import { LogShare, LogSwitch } from '../mobility/LogUi';
@@ -938,6 +938,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
         .getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false })
         .then((st) => {
           streamRef.current = st;
+          cameraOn(st);
           setStage('camera');
         })
         .catch(() => setStage('camera'));
