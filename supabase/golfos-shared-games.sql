@@ -23,7 +23,9 @@ create policy "host and members write" on public.golfos_shared_games for update 
 
 -- join with the code only (no listing): a game adds the caller to the members and returns it; a round (Sascha
 -- 30.10.2026: "the host must confirm every joining, by QR or code too") only to its host and the ones let in –
--- the others ask first (golfos_ask_join) and get {"kind": "ask-host"}
+-- the others ask first (golfos_ask_join) and get {"kind": "ask-host"}; a tournament planned in Games (Sascha
+-- 01.11.2026) as a game: its host hands out the code or the link on purpose – whoever has it is in at once, while it
+-- is not deleted
 create or replace function public.golfos_join_game(join_code text) returns jsonb
   language plpgsql security definer set search_path = public as $$
 declare r golfos_shared_games;
@@ -32,6 +34,12 @@ begin
   if not found or r.event_code is not null then return null; end if; -- a flight's row: only through its event
   if r.game->>'kind' = 'round-event' then
     if auth.uid() = r.owner or auth.uid() = any(r.members) then return r.game; end if;
+    if r.game->'planned' = 'true'::jsonb then
+      if coalesce(r.game->>'deletedAt', '') <> '' then return null; end if;
+      update golfos_shared_games set members = array_append(members, auth.uid())
+        where code = r.code and not (auth.uid() = any(members));
+      return r.game;
+    end if;
     return jsonb_build_object('kind', 'ask-host');
   end if;
   update golfos_shared_games set members = array_append(members, auth.uid())
