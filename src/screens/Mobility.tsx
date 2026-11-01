@@ -37,7 +37,7 @@ import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
 import type { Area, Grade, Measurement, Screening, Side, SquatCause, TestDef, TestId, TestResult } from '../mobility/types';
 import '../training/training.css';
 import { PhysioCard, PhysioRun, PhysioView, importPlan } from '../mobility/PhysioPlan';
-import { loadPhysio } from '../mobility/physio';
+import { dueToday, loadPhysio, routineSec, weekCount } from '../mobility/physio';
 import '../mobility/mobility.css';
 
 // the 3D video of a test (three.js, loaded with the first test page)
@@ -317,6 +317,30 @@ function TodayCard(props: { nav: Nav }) {
   const days = daysThisWeek();
   const today = localDay();
   const doneToday = loadSessions().some((x) => x.finishedAt && localDay(x.startedAt) === today);
+  // a training day of the physio's routine (Sascha 1.11.2026): the routine is today's training, Agility's plan stays a tap away
+  const physio = loadPhysio();
+  if (physio && !paused && dueToday(physio)) {
+    const goal = physio.schedule?.perWeek;
+    return (
+      <section className="card mob-today mob-today-physio">
+        <span className="eyebrow">{tr('Your training today', 'Dein Training heute')}</span>
+        <strong>
+          {physio.routine.name} · {tr(`about ${Math.round(routineSec(physio) / 60)} min`, `etwa ${Math.round(routineSec(physio) / 60)} Min.`)}
+        </strong>
+        <span className="muted small">
+          {[tr('Your physio plan', 'Dein Physio-Plan'), tr(`${physio.routine.exercises.length} exercises`, `${physio.routine.exercises.length} Übungen`), goal ? tr(`this week ${weekCount(physio.log)} of ${goal}`, `diese Woche ${weekCount(physio.log)} von ${goal}`) : ''].filter(Boolean).join(' · ')}
+        </span>
+        <button type="button" className="btn-primary mob-today-start" onClick={() => props.nav.push({ name: 'physio-run' })}>
+          {tr('Start the routine', 'Routine starten')}
+        </button>
+        {planDrills.length > 0 && (
+          <button type="button" className="link-btn mob-today-alt" onClick={() => props.nav.train(planSession())}>
+            {tr(`Agility's plan instead (${planMinutes} min)`, `Stattdessen Agility-Plan (${planMinutes} Min.)`)}
+          </button>
+        )}
+      </section>
+    );
+  }
   if (!planDrills.length) return null;
   return (
     <section className="card mob-today">
