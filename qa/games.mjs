@@ -43,7 +43,7 @@ await p.locator('.module-card').filter({ hasText: 'Games' }).click();
 await p.waitForTimeout(300);
 ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'Games start page');
 const gtabs = await p.locator('.tabbar button').allInnerTexts();
-ok(gtabs.join('|') === 'Spielen|Spiele|Wetten|Profil', `Games menu without "Regeln", with "Wetten", the balance on "Spiele": ${gtabs.join(' · ')}`);
+ok(gtabs.join('|') === 'Spielen|Spiele|Wetten|Turniere|Profil', `Games menu without "Regeln", with "Wetten" and "Turniere", the balance on "Spiele": ${gtabs.join(' · ')}`);
 await p.reload();
 await p.waitForTimeout(800);
 ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'a reload stays in Games');

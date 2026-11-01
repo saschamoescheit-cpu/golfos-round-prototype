@@ -1,0 +1,818 @@
+import { useEffect, useMemo, useState } from 'react';
+import type { Course, CourseSummary } from '../types';
+import { tr } from '../lib/i18n';
+import { buildRoundHoles, loopOptions } from '../lib/loops';
+import { loadCachedCourse, loadGeometry, newId } from '../lib/storage';
+import { courseTees, defaultTee, profileTee } from '../data/tees';
+import { inUsa } from '../lib/weather';
+import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib/handicap';
+import { fetchShared } from '../lib/sharedratings';
+import { isLady, loadProfile, shownName } from '../lib/profile';
+import { scoringName, type Scoring } from '../lib/games';
+import { eventStandings, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, type RoundEvent } from '../lib/sharedround';
+import { changeTour, createTour, forgetTour, isPlanned, isTourHost, keepTour, loadTours, syncTours, tourState, type PlannedEvent, type TourEntry } from '../lib/tourstore';
+import { dayOf } from '../lib/wagers';
+import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
+import { FriendChips } from './Home';
+import { TopBar } from '../components/ui';
+import { Qr } from '../components/ShareGame';
+import { Bin } from '../components/Bin';
+import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
+
+// Tournaments in Games (Sascha 01.11.2026: "tournaments can be planned ahead just like bets – set them up for the USA
+// now, put the flights together, choose the markers and send the invitations; in the USA everyone has it ready").
+// Planned here, played in Rounds: a tournament is a round's event set up ahead (lib/tourstore.ts); on its day Rounds
+// offers "take part" and every phone plays its flight – marks, signing, leaderboard as ever. Only the host changes it.
+
+const NO_NET = () => tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.');
+
+/** The menu's icon of the tournaments: a cup. */
+export const TOURS_ICON = (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
+    <path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4M17 6h2.5a2.5 2.5 0 0 1-2.6 4" />
+    <path d="M12 14v3M8.5 20h7M9.5 17h5v3h-5z" />
+  </svg>
+);
+
+export function useTours(): TourEntry[] {
+  const [list, setList] = useState(loadTours);
+  useEffect(() => {
+    const reload = () => setList(loadTours());
+    window.addEventListener('golfos:tours-changed', reload);
+    return () => window.removeEventListener('golfos:tours-changed', reload);
+  }, []);
+  return list;
+}
+
+const dm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
+const longDate = (d: string) => {
+  try {
+    return new Date(`${d}T12:00:00`).toLocaleDateString(tr('en-GB', 'de-DE'), { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return d;
+  }
+};
+const playersOf = (ev: RoundEvent) => Object.values(ev.flights).flatMap((f) => f.players);
+const flightsOf = (ev: RoundEvent) => Object.values(ev.flights).filter((f) => f.players.length);
+const teeTimeOf = (f: unknown): string => ((f as { teeTime?: string }).teeTime ?? '');
+
+// ---------- the start page and the menu ----------
+
+/** On "Play": plan a tournament; the ones to come one tap away. */
+export function TourStartCard(props: { canShare: boolean; onNew: () => void; onList: () => void }) {
+  const today = dayOf(new Date());
+  const coming = useTours().filter((e) => ['planned', 'today'].includes(tourState(e, today))).length;
+  useEffect(() => {
+    void syncTours();
+  }, []);
+  return (
+    <>
+      <section className="card play-card" aria-label={tr('Plan a tournament', 'Turnier planen')}>
+        <strong className="play-course">{tr('Plan a new tournament', 'Neues Turnier planen')}</strong>
+        {props.canShare ? (
+          <button type="button" className="btn-secondary" onClick={props.onNew}>
+            {tr('New tournament', 'Neues Turnier')}
+          </button>
+        ) : (
+          <span className="muted small">{tr('Sign in to plan tournaments: Profile → "On all your devices".', 'Für Turniere anmelden: Profil → „Auf allen Geräten“.')}</span>
+        )}
+      </section>
+      {coming > 0 && (
+        <button type="button" className="list-item" onClick={props.onList}>
+          <span className="grow">
+            <span className="title">{tr('Tournaments ahead', 'Anstehende Turniere')}</span>
+            <span className="muted small">{coming === 1 ? tr('1 tournament planned', '1 Turnier geplant') : tr(`${coming} tournaments planned`, `${coming} Turniere geplant`)}</span>
+          </span>
+          <span className="count-badge">{coming}</span>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
+    </>
+  );
+}
+
+function TourRow(props: { e: TourEntry; onOpen: () => void }) {
+  const { ev } = props.e;
+  const n = playersOf(ev).length;
+  const k = flightsOf(ev).length;
+  return (
+    <button type="button" className="list-item" onClick={props.onOpen}>
+      <span className="round-date">
+        <strong>{dm(ev.date)}</strong>
+        <span className="muted small">{ev.date.slice(0, 4)}</span>
+      </span>
+      <span className="grow">
+        <span className="title">{ev.name}</span>
+        <span className="muted small one-line">
+          {ev.course.name} · {n === 1 ? tr('1 player', '1 Spieler') : tr(`${n} players`, `${n} Spieler`)}
+        </span>
+      </span>
+      <span className="game-row-result">
+        <strong>{k}</strong>
+        <span className="muted small">{k === 1 ? 'Flight' : 'Flights'}</span>
+      </span>
+    </button>
+  );
+}
+
+/** The menu "Tournaments": the tiles at the top as Rounds, Games and Bets – planned, played, deleted – then the list. */
+export function ToursTab(props: { onOpen: (code: string) => void }) {
+  const all = useTours();
+  const [filter, setFilter] = useState<'planned' | 'played' | 'bin' | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    void syncTours();
+  }, []);
+  const today = dayOf(new Date());
+  const live = all.filter((e) => !e.ev.deletedAt);
+  const deleted = all.filter((e) => e.ev.deletedAt);
+  const planned = live.filter((e) => tourState(e, today) !== 'played');
+  const played = live.filter((e) => tourState(e, today) === 'played');
+  const pick = (f: 'planned' | 'played' | 'bin') => setFilter(filter === f ? null : f);
+  const shown = filter === 'planned' ? planned : filter === 'played' ? [...played].reverse() : [...planned, ...[...played].reverse()];
+  return (
+    <>
+      <h1 className="tab-title">{tr('Tournaments', 'Turniere')}</h1>
+      <div className="tile-row tile-row-3">
+        <button type="button" className="tile" aria-pressed={filter === 'planned'} disabled={!planned.length} onClick={() => pick('planned')}>
+          <span className="tile-head">
+            <span className={`tile-num${planned.length ? ' good-text' : ''}`}>{planned.length}</span>
+            <span className="tile-mark">{TOURS_ICON}</span>
+          </span>
+          <span className="muted small">{tr('planned', 'geplant')}</span>
+        </button>
+        <button type="button" className="tile" aria-pressed={filter === 'played'} disabled={!played.length} onClick={() => pick('played')}>
+          <span className="tile-head">
+            <span className="tile-num">{played.length}</span>
+            <span className="tile-mark">
+              <PlayedIcon />
+            </span>
+          </span>
+          <span className="muted small">{tr('played', 'gespielt')}</span>
+        </button>
+        <button type="button" className="tile" aria-pressed={filter === 'bin'} disabled={!deleted.length} onClick={() => pick('bin')}>
+          <span className="tile-head">
+            <span className="tile-num">{deleted.length}</span>
+            <span className="tile-mark">
+              <DeletedIcon />
+            </span>
+          </span>
+          <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+        </button>
+      </div>
+      <Bin
+        open={filter === 'bin' && deleted.length > 0}
+        title={tr('Deleted tournaments', 'Gelöschte Turniere')}
+        items={deleted.map((e) => ({ id: e.code, date: e.ev.createdAt, title: e.ev.name, meta: `${longDate(e.ev.date)} · ${e.ev.course.name}`, deletedAt: e.ev.deletedAt! }))}
+        onRestore={async (code) => {
+          const e = deleted.find((x) => x.code === code);
+          if (!e) return;
+          if (!isTourHost(e)) return setMsg(tr('Whoever set it up can restore it.', 'Wer es angelegt hat, kann es wiederherstellen.'));
+          setMsg((await changeTour(code, { ...e.ev, deletedAt: null })) ? null : NO_NET());
+        }}
+        onPurge={forgetTour}
+      />
+      {msg && (
+        <span className="small bad-text" role="alert">
+          {msg}
+        </span>
+      )}
+      {filter !== 'bin' &&
+        (shown.length ? (
+          <ul className="list">
+            {shown.map((e) => (
+              <li key={e.code}>
+                <TourRow e={e} onOpen={() => props.onOpen(e.code)} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{tr('No tournaments yet – "New tournament" is on "Play".', 'Noch keine Turniere – „Neues Turnier“ unter „Spielen“.')}</p>
+        ))}
+    </>
+  );
+}
+
+// ---------- planning ----------
+
+export interface TourPlayer {
+  id: string;
+  name: string;
+  hcp: string; // the handicap index as typed
+  tee: string | null;
+  flight: number; // 0, 1, 2 …
+  /** the playing handicap kept from before (a tournament changed later, its index unknown) */
+  fixed?: number | null;
+}
+export interface TourDraft {
+  /** set: the tournament changed, not a new one */
+  code?: string;
+  base?: PlannedEvent;
+  name: string;
+  date: string;
+  course: Course | null;
+  optionId: string;
+  scoring: Scoring;
+  classes: number[];
+  players: TourPlayer[];
+  flights: number;
+  /** who marks whom – markers[player] = the player who marks him (draft ids) */
+  markers: Record<string, string>;
+  /** the tee time of each flight, "HH:MM" */
+  times: string[];
+  first: string;
+  gap: number;
+}
+
+/** The common tee times: every 5 minutes from 6 to 18 o'clock (Sascha 01.11.2026: "the usual choice of times"). */
+export const TEE_TIMES = Array.from({ length: (18 - 6) * 12 + 1 }, (_, k) => {
+  const m = 6 * 60 + k * 5;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+});
+/** The gaps between two flights on a tee sheet. */
+export const TEE_GAPS = [8, 9, 10, 12];
+export const addMinutes = (t: string, min: number): string => {
+  const [h, m] = t.split(':').map(Number);
+  const x = Math.min(23 * 60 + 59, h * 60 + m + min);
+  return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
+};
+export const timesFrom = (first: string, gap: number, k: number): string[] => Array.from({ length: k }, (_, i) => addMinutes(first, i * gap));
+
+/** n players into k flights, as even as can be (7 in 2: 4 and 3), in their order. */
+export function dealFlights<T extends { flight: number }>(players: T[], k: number): T[] {
+  const sizes = Array.from({ length: k }, (_, i) => Math.floor(players.length / k) + (i < players.length % k ? 1 : 0));
+  let f = 0;
+  let left = sizes[0] ?? 0;
+  return players.map((p) => {
+    while (left === 0 && f < k - 1) left = sizes[++f];
+    left--;
+    return { ...p, flight: f };
+  });
+}
+
+/** Who marks whom in a flight: as chosen where it still fits, else pairs (1 ↔ 2, 3 ↔ 4), three in a ring. */
+export function markersOf(ids: string[], chosen: Record<string, string>): Record<string, string> {
+  const pairs: Record<string, string> =
+    ids.length < 2 ? {} : ids.length % 2 === 1 ? Object.fromEntries(ids.map((id, k) => [id, ids[(k + ids.length - 1) % ids.length]])) : Object.fromEntries(ids.map((id, k) => [id, ids[k % 2 === 0 ? k + 1 : k - 1]]));
+  return Object.fromEntries(ids.map((id) => [id, chosen[id] && chosen[id] !== id && ids.includes(chosen[id]) ? chosen[id] : pairs[id]]).filter(([, m]) => m));
+}
+
+export function newTourDraft(): TourDraft {
+  const prof = loadProfile();
+  const today = dayOf(new Date());
+  return {
+    name: '',
+    date: today,
+    course: null,
+    optionId: '',
+    scoring: 'net',
+    classes: [],
+    players: [{ id: newId(), name: shownName(prof) || '', hcp: prof.hcpIndex ?? '', tee: null, flight: 0 }],
+    flights: 1,
+    markers: {},
+    times: ['09:00'],
+    first: '09:00',
+    gap: 10,
+  };
+}
+
+/** A tournament to change: its players, flights, markers and times back into a draft. */
+export function draftOf(e: TourEntry): TourDraft {
+  const ev = e.ev;
+  const course = loadCachedCourse(ev.course.id);
+  const flights = flightsOf(ev);
+  const players: TourPlayer[] = [];
+  const markers: Record<string, string> = {};
+  flights.forEach((f, k) => {
+    const ids = new Map<string, string>();
+    for (const p of f.players) {
+      const id = newId();
+      ids.set(p.id, id);
+      const idx = (p as { hcpIndex?: number | null }).hcpIndex;
+      players.push({ id, name: p.name, hcp: idx == null ? '' : String(idx).replace('.', tr('.', ',')), tee: p.tee ?? null, flight: k, fixed: p.playingHandicap });
+    }
+    for (const [pl, mk] of Object.entries(f.markers ?? {})) if (ids.has(pl) && ids.has(mk)) markers[ids.get(pl)!] = ids.get(mk)!;
+  });
+  const options = course ? loopOptions(course.holes) : [];
+  const option = options.find((o) => o.loops.join() === ev.loopOrder.join() && buildRoundHoles(course!.holes, o).length === ev.holes.length);
+  const times = flights.map((f) => teeTimeOf(f) || '09:00');
+  return {
+    code: e.code,
+    base: ev,
+    name: ev.name,
+    date: ev.date,
+    course,
+    optionId: option?.id ?? options[0]?.id ?? '',
+    scoring: ev.format?.scoring ?? 'net',
+    classes: ev.classes ?? [],
+    players,
+    flights: Math.max(1, flights.length),
+    markers,
+    times,
+    first: times[0] ?? '09:00',
+    gap: 10,
+  };
+}
+
+export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) => void; onBack: () => void; onCourse: () => void; onSaved: (code: string) => void }) {
+  const d = props.draft;
+  const set = (patch: Partial<TourDraft>) => props.onChange({ ...d, ...patch });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const options = useMemo(() => (d.course ? loopOptions(d.course.holes) : []), [d.course]);
+  const option = options.find((o) => o.id === d.optionId) ?? options[0];
+  const rholes = d.course && option ? buildRoundHoles(d.course.holes, option) : [];
+  const holes = rholes.length ? rholes : (d.base?.holes ?? []);
+  const nine = holes.length === 9;
+  const offered = useMemo(() => (d.course ? courseTees(d.course.id, loadGeometry(d.course.id).teeColours) : null), [d.course]);
+  const lady = isLady();
+  const startTee = offered ? defaultTee(offered.tees) : null;
+  const myTee = offered && d.course ? (profileTee(offered, loadProfile().tee, d.course.id, inUsa([d.course.lon, d.course.lat])) ?? defaultTee(offered.tees, lady)) : null;
+  const teeOf = (p: TourPlayer, k: number) => (p.tee && offered?.tees.includes(p.tee) ? p.tee : k === 0 ? myTee : startTee);
+  const [, setRatingsSeen] = useState(0);
+  useEffect(() => {
+    if (!d.course) return;
+    let alive = true;
+    fetchShared(d.course.id).then(() => alive && setRatingsSeen((k) => k + 1));
+    return () => {
+      alive = false;
+    };
+  }, [d.course?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const courseId = d.course?.id ?? d.base?.course.id ?? '';
+  const ratingOf = (p: TourPlayer, k: number) => (courseId && (holes.length === 18 || nine) ? ratingFor(courseId, teeOf(p, k) ?? '–', holes, k === 0 && lady) : null);
+  const playingOf = (p: TourPlayer, k: number): number | null => (parseIndex(p.hcp) == null ? (p.fixed ?? null) : playingHandicapFor(courseId, holes, teeOf(p, k) ?? '–', p.hcp, k === 0 && lady));
+  const teeChoices = d.course && offered ? teeChoicesFor(d.course.id, rholes, offered.tees) : [];
+  const label = (p: TourPlayer, k: number) => p.name.trim() || tr(`Player ${k + 1}`, `Spieler ${k + 1}`);
+  const flight = (f: number) => d.players.filter((p) => p.flight === f);
+  const markers = Object.assign({}, ...Array.from({ length: d.flights }, (_, f) => markersOf(flight(f).map((p) => p.id), d.markers))) as Record<string, string>;
+  const setPlayers = (players: TourPlayer[]) => set({ players });
+  const setFlights = (k: number) => set({ flights: k, players: dealFlights(d.players, k), times: timesFrom(d.first, d.gap, k), markers: {} });
+  const small = Array.from({ length: d.flights }, (_, f) => flight(f).length).some((n) => n < 2);
+  const ready = !!d.name.trim() && !!d.date && holes.length > 0 && d.players.length >= 2 && d.players.every((p) => p.name.trim()) && !small;
+
+  const save = async () => {
+    if (!ready) return;
+    setBusy(true);
+    setMsg(null);
+    const summary: CourseSummary = d.course ? { id: d.course.id, source: d.course.source, name: d.course.name, lat: d.course.lat, lon: d.course.lon, ...(d.course.bbox ? { bbox: d.course.bbox } : {}) } : d.base!.course;
+    const plan = Array.from({ length: d.flights }, (_, f) => {
+      const ps = flight(f);
+      const pid = (id: string) => `p${ps.findIndex((p) => p.id === id) + 1}`;
+      return {
+        name: ps.map((p) => label(p, d.players.indexOf(p))).join(' · '),
+        teeTime: d.times[f],
+        players: ps.map((p) => {
+          const k = d.players.indexOf(p);
+          const tee = teeOf(p, k);
+          return { name: label(p, k), playingHandicap: playingOf(p, k), hcpIndex: parseIndex(p.hcp), ...(tee ? { tee } : {}) };
+        }),
+        markers: Object.fromEntries(ps.map((p) => [pid(p.id), pid(markers[p.id])])),
+      };
+    });
+    const fresh = plannedEvent({
+      name: d.name.trim(),
+      date: d.date,
+      course: summary,
+      holes,
+      loopOrder: option?.loops ?? d.base!.loopOrder,
+      format: { mode: 'single', scoring: d.scoring, allowance: d.scoring === 'stroke' ? 100 : 95 },
+      ...(myTee ? { tee: myTee } : {}),
+      roundKind: 'tournament',
+      ...(d.classes.length ? { classes: d.classes } : {}),
+      flights: plan,
+    }) as PlannedEvent;
+    // changed: the flights keep their ids in order – a phone that joined flight 2 is still in flight 2
+    const base = d.base;
+    const ev: PlannedEvent = base
+      ? {
+          ...fresh,
+          id: base.id,
+          createdAt: base.createdAt,
+          ...(base.by ? { by: base.by } : {}),
+          deletedAt: base.deletedAt ?? null,
+          flights: Object.fromEntries(
+            plan.map((pf, f) => {
+              const fl = plannedFlight(base, pf);
+              const id = flightsOf(base)[f]?.id ?? fl.id;
+              return [id, { ...fl, id }];
+            }),
+          ),
+        }
+      : fresh;
+    const code = d.code ? ((await changeTour(d.code, ev)) ? d.code : null) : await createTour(ev);
+    setBusy(false);
+    if (code) props.onSaved(code);
+    else setMsg(NO_NET());
+  };
+
+  return (
+    <main className="screen">
+      <TopBar title={d.code ? tr('Change the tournament', 'Turnier bearbeiten') : tr('New tournament', 'Neues Turnier')} onBack={props.onBack} backLabel={tr('Back', 'Zurück')} />
+
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Tournament', 'Turnier')}</span>
+        <div className="card setup-part">
+          <div className="field">
+            <label htmlFor="tour-name">{tr('Name', 'Name')}</label>
+            <input id="tour-name" className="input" placeholder={tr('USA day 1', 'USA Tag 1')} value={d.name} onChange={(e) => set({ name: e.target.value })} />
+          </div>
+          <div className="field">
+            <label htmlFor="tour-date">{tr('Day', 'Tag')}</label>
+            <input id="tour-date" type="date" className="input" value={d.date} onChange={(e) => set({ date: e.target.value })} />
+          </div>
+        </div>
+      </section>
+
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Course', 'Platz')}</span>
+        <div className="settings-list">
+          <button type="button" className="settings-row" onClick={props.onCourse}>
+            <span>{tr('Course', 'Platz')}</span>
+            <span className={`settings-value${d.course || d.base ? '' : ' good-text'}`}>{d.course?.name ?? d.base?.course.name ?? tr('Choose a course', 'Platz wählen')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+        {d.course && options.length > 1 && (
+          <div className="choice-grid">
+            {options.map((o) => (
+              <button key={o.id} type="button" className="choice choice-loop" aria-pressed={o.id === option?.id} onClick={() => set({ optionId: o.id })}>
+                <strong>{o.label.split(' · ')[0]}</strong>
+                {o.label.includes(' · ') && <span className="small muted">{o.label.split(' · ').slice(1).join(' · ')}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Format', 'Spielform')}</span>
+        <div className="chip-set" role="group" aria-label={tr('Format', 'Spielform')}>
+          {(['net', 'stroke', 'stableford'] as Scoring[]).map((s) => (
+            <button key={s} type="button" className={`chip${d.scoring === s ? ' on' : ''}`} aria-pressed={d.scoring === s} onClick={() => set({ scoring: s })}>
+              {scoringName(s, s === 'stroke' ? 100 : 95)}
+            </button>
+          ))}
+        </div>
+        <span className="muted small">{tr('Net classes by playing handicap', 'Netto-Klassen nach Spielvorgabe')}</span>
+        <div className="chip-set" role="group" aria-label={tr('Net classes', 'Netto-Klassen')}>
+          {([[], [18], [12, 24]] as number[][]).map((c) => (
+            <button key={c.join()} type="button" className={`chip${d.classes.join() === c.join() ? ' on' : ''}`} aria-pressed={d.classes.join() === c.join()} onClick={() => set({ classes: c })}>
+              {!c.length ? tr('None', 'Keine') : c.length === 1 ? tr(`A up to ${c[0]} · B`, `A bis ${c[0]} · B`) : tr(`A up to ${c[0]} · B up to ${c[1]} · C`, `A bis ${c[0]} · B bis ${c[1]} · C`)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Players', 'Spieler')}</span>
+        {d.players.map((p, k) => (
+          <PlayerRow
+            key={p.id}
+            className="game-player-row"
+            player={{ id: `t${p.id}`, name: p.name, index: p.hcp, handicap: '', tee: teeOf(p, k) }}
+            nameLabel={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
+            rating={ratingOf(p, k)}
+            playing={playingOf(p, k)}
+            nine={nine}
+            tees={teeChoices.length ? teeChoices : undefined}
+            onChange={(np) => setPlayers(d.players.map((x) => (x.id === p.id ? { ...x, name: np.name, hcp: np.index, tee: np.tee, fixed: np.index !== x.hcp ? null : x.fixed } : x)))}
+            onRemove={d.players.length > 1 ? () => setPlayers(d.players.filter((x) => x.id !== p.id)) : undefined}
+          />
+        ))}
+        {courseId && (holes.length === 18 || nine) && (
+          <RatingLine
+            rating={d.players[0] ? ratingOf(d.players[0], 0) : null}
+            nine={nine}
+            onSave={(v) => {
+              saveOwnRating(courseId, teeOf(d.players[0], 0) ?? '–', holes, v);
+              setRatingsSeen((k) => k + 1);
+            }}
+          />
+        )}
+        <FriendChips taken={d.players.map((p) => p.name)} onAdd={(fr) => setPlayers([...d.players, { id: newId(), name: fr.name, hcp: fr.hcp, tee: null, flight: d.flights - 1 }])} />
+        <button type="button" className="btn-secondary" onClick={() => setPlayers([...d.players, { id: newId(), name: '', hcp: '', tee: null, flight: d.flights - 1 }])}>
+          {tr('+ Add player', '+ Spieler hinzufügen')}
+        </button>
+      </section>
+
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Flights and tee times', 'Flights und Startzeiten')}</span>
+        <div className="card setup-part">
+          <div className="game-setting">
+            <span className="stepper-label">{tr('Flights', 'Flights')}</span>
+            <div className="chip-set" role="group" aria-label={tr('Number of flights', 'Anzahl Flights')}>
+              {Array.from({ length: Math.max(1, Math.min(8, Math.floor(d.players.length / 2))) }, (_, i) => i + 1).map((k) => (
+                <button key={k} type="button" className={`chip${d.flights === k ? ' on' : ''}`} aria-pressed={d.flights === k} onClick={() => setFlights(k)}>
+                  {k}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="tour-times">
+            <div className="field">
+              <label htmlFor="tour-first">{tr('First tee time', 'Erste Startzeit')}</label>
+              <div className="select-wrap">
+                <select id="tour-first" className="input" value={d.first} onChange={(e) => set({ first: e.target.value, times: timesFrom(e.target.value, d.gap, d.flights) })}>
+                  {TEE_TIMES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="tour-gap">{tr('Interval', 'Abstand')}</label>
+              <div className="select-wrap">
+                <select id="tour-gap" className="input" value={d.gap} onChange={(e) => set({ gap: Number(e.target.value), times: timesFrom(d.first, Number(e.target.value), d.flights) })}>
+                  {TEE_GAPS.map((g) => (
+                    <option key={g} value={g}>
+                      {tr(`${g} min`, `${g} Min.`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        {Array.from({ length: d.flights }, (_, f) => (
+          <section key={f} className="card tour-flight" aria-label={`Flight ${f + 1}`}>
+            <div className="tour-flight-head">
+              <h2>Flight {f + 1}</h2>
+              <div className="select-wrap tour-time">
+                <select
+                  className="input"
+                  aria-label={tr(`Tee time of flight ${f + 1}`, `Startzeit Flight ${f + 1}`)}
+                  value={d.times[f] ?? d.first}
+                  onChange={(e) => set({ times: Array.from({ length: d.flights }, (_, i) => (i === f ? e.target.value : (d.times[i] ?? addMinutes(d.first, i * d.gap)))) })}
+                >
+                  {TEE_TIMES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {!flight(f).length && <span className="muted small">{tr('Nobody in this flight yet.', 'Noch niemand in diesem Flight.')}</span>}
+            {flight(f).map((p) => {
+              const k = d.players.indexOf(p);
+              const mates = flight(f).filter((x) => x.id !== p.id);
+              return (
+                <div key={p.id} className="tour-flight-player">
+                  <strong className="grow">{label(p, k)}</strong>
+                  {d.flights > 1 && (
+                    <div className="select-wrap">
+                      <select className="input" aria-label={tr(`Flight of ${label(p, k)}`, `Flight von ${label(p, k)}`)} value={p.flight} onChange={(e) => set({ players: d.players.map((x) => (x.id === p.id ? { ...x, flight: Number(e.target.value) } : x)) })}>
+                        {Array.from({ length: d.flights }, (_, i) => (
+                          <option key={i} value={i}>
+                            Flight {i + 1}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {mates.length > 0 && (
+                    <div className="select-wrap">
+                      <select className="input" aria-label={tr(`Marker of ${label(p, k)}`, `Zähler von ${label(p, k)}`)} value={markers[p.id] ?? ''} onChange={(e) => set({ markers: { ...d.markers, ...markers, [p.id]: e.target.value } })}>
+                        {mates.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {tr(`marked by ${label(m, d.players.indexOf(m))}`, `Zähler: ${label(m, d.players.indexOf(m))}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </section>
+        ))}
+        {small && <span className="small bad-text">{tr('Every flight needs at least two players – they mark each other.', 'Jeder Flight braucht mindestens zwei Spieler – sie zählen sich gegenseitig.')}</span>}
+      </section>
+
+      {msg && (
+        <span className="small bad-text" role="alert">
+          {msg}
+        </span>
+      )}
+      <span className="spacer" />
+      <div className="sticky-cta">
+        <button type="button" className="btn-primary" disabled={!ready || busy} onClick={() => void save()}>
+          {d.code ? tr('Save', 'Speichern') : tr('Set up the tournament', 'Turnier anlegen')}
+        </button>
+      </div>
+    </main>
+  );
+}
+
+// ---------- one tournament ----------
+
+export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d: TourDraft) => void }) {
+  const entry = useTours().find((e) => e.code === props.code);
+  const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [live, setLive] = useState<RoundEvent | null>(null);
+  const today = dayOf(new Date());
+  // the tournament with its flights as they are on the server (each flight has its own row) – and on its day and
+  // after, every 30 s for the leaderboard
+  const started = !!entry && entry.ev.date <= today;
+  useEffect(() => {
+    let alive = true;
+    const tick = () =>
+      void refreshEvent(props.code).then((ev) => {
+        if (!alive || !ev) return;
+        setLive(ev);
+        if (isPlanned(ev)) keepTour(props.code, ev);
+      });
+    if (!entry) void syncTours();
+    tick();
+    const t = started ? window.setInterval(tick, 30000) : 0;
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [props.code, started]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!entry) {
+    return (
+      <main className="screen">
+        <TopBar title={tr('Tournament', 'Turnier')} onBack={props.onBack} backLabel={tr('Tournaments', 'Turniere')} />
+        <p className="muted">{tr('Loading the tournament …', 'Lade das Turnier …')}</p>
+      </main>
+    );
+  }
+  const ev = entry.ev;
+  const host = isTourHost(entry);
+  const fmt = ev.format ?? { mode: 'single', scoring: 'net' as Scoring, allowance: 95 };
+  if (ev.deletedAt) {
+    return (
+      <main className="screen">
+        <TopBar title={ev.name} onBack={props.onBack} backLabel={tr('Tournaments', 'Turniere')} />
+        <p className="muted">{tr('This tournament was deleted.', 'Dieses Turnier wurde gelöscht.')}</p>
+        {host ? (
+          <button type="button" className="btn-secondary" onClick={async () => setMsg((await changeTour(props.code, { ...ev, deletedAt: null })) ? null : NO_NET())}>
+            {tr('Restore', 'Wiederherstellen')}
+          </button>
+        ) : (
+          <p className="muted small">{tr('Whoever set it up can restore it.', 'Wer es angelegt hat, kann es wiederherstellen.')}</p>
+        )}
+        {msg && (
+          <span className="small bad-text" role="alert">
+            {msg}
+          </span>
+        )}
+      </main>
+    );
+  }
+  const board = live && started ? eventStandings(live) : null;
+  return (
+    <main className="screen tour-screen">
+      <TopBar
+        title={ev.name}
+        onBack={props.onBack}
+        backLabel={tr('Tournaments', 'Turniere')}
+        right={
+          host ? (
+            <button type="button" className="icon-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => props.onEdit(draftOf(entry))}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 20h4L19 9l-4-4L4 16z" />
+                <path d="M13.5 6.5l4 4" />
+              </svg>
+            </button>
+          ) : undefined
+        }
+      />
+      <span className="muted small">
+        {longDate(ev.date)} · {ev.course.name} · {scoringName(fmt.scoring, fmt.allowance)}
+        {ev.classes?.length ? ` · ${tr(`${ev.classes.length + 1} classes`, `${ev.classes.length + 1} Klassen`)}` : ''}
+      </span>
+      {!host && <span className="muted small">{tr('Only whoever set up the tournament changes it.', 'Nur wer das Turnier angelegt hat, ändert es.')}</span>}
+      <section className="card tour-howto">
+        <span className="eyebrow">{tr('On the day', 'Am Turniertag')}</span>
+        <span className="small">
+          {tr(
+            'Open Rounds – "Tournament · take part" is on its start page. One tap sets up your flight with its players, markers and course.',
+            'Rounds öffnen – auf der Startseite steht „Turnier · teilnehmen“. Ein Tipp richtet deinen Flight mit Mitspielern, Zählern und Platz ein.',
+          )}
+        </span>
+      </section>
+      {board && board.rows.length > 0 && (
+        <section className="card">
+          <span className="eyebrow">
+            {board.rows.every((r) => r.finished) ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Rangliste')} · {scoringName(fmt.scoring, fmt.allowance)}
+          </span>
+          <ul className="game-pays">
+            {board.rows.map((r) => (
+              <li key={r.key}>
+                <span>
+                  {r.pos} · {r.name} <span className="muted small">{r.finished ? '' : r.thru ? tr(`· after ${r.thru}`, `· nach ${r.thru}`) : ''}</span>
+                </span>
+                <strong>{r.value}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {flightsOf(ev).map((f, k) => (
+        <section key={f.id} className="card tour-flight" aria-label={`Flight ${k + 1}`}>
+          <div className="tour-flight-head">
+            <h2>Flight {k + 1}</h2>
+            {teeTimeOf(f) && <strong className="tour-tee">{teeTimeOf(f)}</strong>}
+          </div>
+          {f.players.map((p) => {
+            const marker = f.players.find((x) => x.id === f.markers?.[p.id]);
+            return (
+              <div key={p.id} className="tour-flight-player">
+                <span className="grow">
+                  <strong>{p.name}</strong>
+                  {marker && <span className="muted small"> · {tr(`marked by ${marker.name}`, `Zähler: ${marker.name}`)}</span>}
+                </span>
+                <span className="muted small">{p.playingHandicap == null ? '' : tr(`PH ${p.playingHandicap}`, `SV ${p.playingHandicap}`)}</span>
+              </div>
+            );
+          })}
+        </section>
+      ))}
+      {host && (
+        <button type="button" className="btn-secondary" onClick={() => setSheet('invite')}>
+          {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
+        </button>
+      )}
+      {msg && (
+        <span className="small bad-text" role="alert">
+          {msg}
+        </span>
+      )}
+      {host && (
+        <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet('delete')}>
+          {tr('Delete the tournament', 'Turnier löschen')}
+        </button>
+      )}
+      {sheet === 'invite' && <TourInviteSheet code={props.code} name={ev.name} date={ev.date} onClose={() => setSheet(null)} />}
+      {sheet === 'delete' && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <section className="sheet" role="dialog" aria-label={tr('Delete the tournament', 'Turnier löschen')} onClick={(e) => e.stopPropagation()}>
+            <strong>{tr(`Delete "${ev.name}" – for everyone?`, `„${ev.name}“ löschen – für alle?`)}</strong>
+            <span className="muted">{tr('It is only marked deleted: the bin of "Tournaments" brings it back.', 'Es wird nur als gelöscht markiert: Der Papierkorb unter „Turniere“ holt es zurück.')}</span>
+            <button
+              type="button"
+              className="btn-primary btn-danger-fill"
+              onClick={async () => {
+                if (await changeTour(props.code, { ...ev, deletedAt: new Date().toISOString() })) props.onBack();
+                else setMsg(NO_NET());
+                setSheet(null);
+              }}
+            >
+              {tr('Delete for everyone', 'Für alle löschen')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
+              {tr('Cancel', 'Abbrechen')}
+            </button>
+          </section>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function TourInviteSheet(props: { code: string; name: string; date: string; onClose: () => void }) {
+  const url = roundJoinLink(props.code);
+  const text = tr(`Tournament "${props.name}" on ${longDate(props.date)} in GolfOS – join with code ${props.code}: ${url}`, `Turnier „${props.name}“ am ${longDate(props.date)} in GolfOS – mit Code ${props.code} beitreten: ${url}`);
+  const [done, setDone] = useState<string | null>(null);
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet" role="dialog" aria-label={tr('Invite players', 'Mitspieler einladen')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Invite players', 'Mitspieler einladen')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <span className="muted small">{tr('With the link or the code everyone sees the tournament in Rounds and takes part on its day.', 'Mit dem Link oder dem Code sieht jeder das Turnier in Rounds und nimmt am Turniertag teil.')}</span>
+        <div className="qr-box">
+          <Qr text={url} />
+        </div>
+        <strong className="join-code">{props.code}</strong>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={async () => {
+            try {
+              if (navigator.share) await navigator.share({ title: props.name, text });
+              else {
+                await navigator.clipboard.writeText(text);
+                setDone(tr('Copied', 'Kopiert'));
+              }
+            } catch {
+              /* the sheet closed without sharing */
+            }
+          }}
+        >
+          {tr('Send the invitation', 'Einladung senden')}
+        </button>
+        {done && <span className="small good-text">{done}</span>}
+      </section>
+    </div>
+  );
+}

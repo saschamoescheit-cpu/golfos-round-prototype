@@ -24,6 +24,8 @@ import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/han
 import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
 import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
+import { TOURS_ICON, TourScreen, TourSetup, TourStartCard, ToursTab, newTourDraft, useTours, type TourDraft } from './Tournaments';
+import { tourState } from '../lib/tourstore';
 import { isLive } from '../lib/wagerstore';
 import { balances, dayOf } from '../lib/wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
@@ -35,7 +37,7 @@ import { DeletedIcon, HolesIcon, PlayedIcon, ToSignIcon } from '../components/Ro
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
 // who pays whom. Not linked to the round analysis yet; a side game next to a round may follow later.
 
-export type GamesTab = 'play' | 'games' | 'bets' | 'balance' | 'profile';
+export type GamesTab = 'play' | 'games' | 'bets' | 'tours' | 'profile';
 type View =
   | { name: 'tab'; tab: GamesTab }
   | { name: 'setup'; draft: Draft }
@@ -43,7 +45,10 @@ type View =
   | { name: 'play'; game: Game }
   | { name: 'result'; game: Game }
   | { name: 'poolSetup'; back: GamesTab }
-  | { name: 'pool'; code: string };
+  | { name: 'pool'; code: string }
+  | { name: 'tourSetup'; draft: TourDraft; back: View }
+  | { name: 'tourCourse'; draft: TourDraft; back: View }
+  | { name: 'tour'; code: string };
 
 interface DraftPlayer {
   id: string;
@@ -171,6 +176,8 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           onJoinRound={props.onJoinRound}
           onNewPool={() => setView({ name: 'poolSetup', back: view.tab })}
           onOpenPool={(code) => setView({ name: 'pool', code })}
+          onNewTour={() => setView({ name: 'tourSetup', draft: newTourDraft(), back: view })}
+          onOpenTour={(code) => setView({ name: 'tour', code })}
           onNew={(form) => setView({ name: 'setup', draft: newDraft(form) })}
           onJoined={(g) => {
             store(g);
@@ -263,6 +270,35 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           }}
         />
       );
+    // tournaments planned here, played in Rounds (Sascha 01.11.2026)
+    case 'tourSetup':
+      return (
+        <TourSetup
+          draft={view.draft}
+          onChange={(draft) => setView({ ...view, draft })}
+          onBack={() => setView(view.back)}
+          onCourse={() => setView({ name: 'tourCourse', draft: view.draft, back: view.back })}
+          onSaved={(code) => setView({ name: 'tour', code })}
+        />
+      );
+    case 'tourCourse':
+      return (
+        <CoursePicker
+          onBack={() => setView({ name: 'tourSetup', draft: view.draft, back: view.back })}
+          onPicked={(course) => setView({ name: 'tourSetup', draft: { ...view.draft, course, optionId: loopOptions(course.holes)[0]?.id ?? '' }, back: view.back })}
+        />
+      );
+    case 'tour':
+      return (
+        <TourScreen
+          code={view.code}
+          onBack={() => {
+            setView({ name: 'tab', tab: 'tours' });
+            props.onTabChange?.('tours');
+          }}
+          onEdit={(draft) => setView({ name: 'tourSetup', draft, back: view })}
+        />
+      );
     case 'result':
       return (
         <GameResult
@@ -301,12 +337,15 @@ function GamesTabs(props: {
   onJoinRound?: (code: string) => void;
   onNewPool: () => void;
   onOpenPool: (code: string) => void;
+  onNewTour: () => void;
+  onOpenTour: (code: string) => void;
   onFinish: (g: Game) => void;
   onDelete: (g: Game) => void;
 }) {
   const running = props.games.filter((g) => !g.finishedAt);
   const today = dayOf(new Date());
   const betsRunning = usePools().some((e) => isLive(e, today)); // the dot on "Bets", as on "Play" for a game running
+  const tourToday = useTours().some((e) => tourState(e, today) === 'today'); // the dot on "Tournaments" on its day
   // join a friend's game (code or the QR link #join=CODE) – shown once signed in and the shared table exists
   const [canShare, setCanShare] = useState<boolean | null>(null); // null: still asking
   const [joinOpen, setJoinOpen] = useState<string | null>(() => (location.hash.startsWith('#join=') ? location.hash.slice(6) : null));
@@ -362,6 +401,7 @@ function GamesTabs(props: {
           </section>
           {/* start a bet beside starting a game – the bets themselves are kept in the menu "Bets" (Sascha 01.11.2026) */}
           <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} onList={() => props.onTab('bets')} />
+          <TourStartCard canShare={!!canShare} onNew={props.onNewTour} onList={() => props.onTab('tours')} />
           {confirmCount > 0 && (
             <button type="button" className="list-item" onClick={() => openList('confirm')}>
               <span className="grow">
@@ -414,6 +454,7 @@ function GamesTabs(props: {
             </>
           )}
       {props.tab === 'bets' && <BetsTab onOpen={props.onOpenPool} />}
+      {props.tab === 'tours' && <ToursTab onOpen={props.onOpenTour} />}
       {props.tab === 'games' && (
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
@@ -439,6 +480,7 @@ function GamesTabs(props: {
           { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
           { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
           { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON, dot: betsRunning },
+          { id: 'tours' as GamesTab, label: tr('Tournaments', 'Turniere'), icon: TOURS_ICON, dot: tourToday },
           { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}
         current={props.tab}

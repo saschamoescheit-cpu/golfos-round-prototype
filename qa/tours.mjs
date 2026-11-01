@@ -1,0 +1,220 @@
+// QA (Sascha 01.11.2026): tournaments planned in Games, played in Rounds. "I could set up the tournaments for the USA
+// now, put the flights together and choose the markers, and send the invitations – in the USA everyone has it ready";
+// "for the flights the tee times, with the usual choice of times"; only the host changes it; the live leaderboard.
+// Sascha plans "USA Tag 1" on a course: four players, two flights (tee times 09:00 and, changed, 09:20), markers in
+// pairs; the server gets the event and a row per flight. Chris (in by the code) sees it, cannot change it. The flights'
+// scores come in (as Rounds writes them) – the leaderboard on the tournament's page. Changed by the host: the flights
+// keep their ids. Deleted – only marked – and restored. Supabase is simulated, the app is real.
+// Usage: node qa/tours.mjs [url]
+import { webkit, devices } from 'playwright';
+import { mockNet } from './netmock.mjs';
+
+const url = process.argv[2] ?? 'http://localhost:5173/';
+const b = await webkit.launch();
+let fails = 0;
+const ok = (cond, what) => {
+  console.log(`${cond ? '✓' : '✗'} ${what}`);
+  if (!cond) fails++;
+};
+
+// ---------- the simulated server: the table of the shared games as supabase/golfos-shared-games.sql ----------
+const shared = new Map(); // code → { game, updated_at, owner, members, event_code? }
+async function serve(route) {
+  const req = route.request();
+  const u = new URL(req.url());
+  const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: body == null ? '' : JSON.stringify(body) });
+  // the account asking: the token's sub, as auth.uid()
+  const uid = (() => {
+    try {
+      return JSON.parse(atob((req.headers()['authorization'] ?? '').split(' ')[1].split('.')[1])).sub;
+    } catch {
+      return null;
+    }
+  })();
+  const body = () => JSON.parse(req.postData() ?? '{}');
+  if (u.pathname.endsWith('/golfos_items')) return json(200, []);
+  if (u.pathname.endsWith('/functions/v1/golfos-push')) return json(200, { ok: true, sent: 0 });
+  if (u.pathname.endsWith('/rpc/golfos_join_game')) {
+    const row = shared.get(String(body().join_code ?? '').toUpperCase());
+    if (!row || row.event_code) return json(200, null);
+    if (row.game.kind === 'round-event' && row.owner !== uid && !row.members.includes(uid)) {
+      if (row.game.planned !== true) return json(200, { kind: 'ask-host' });
+      if (row.game.deletedAt) return json(200, null);
+    }
+    if (row.owner !== uid && !row.members.includes(uid)) row.members.push(uid);
+    return json(200, row.game);
+  }
+  if (!u.pathname.endsWith('/golfos_shared_games')) return json(404, { message: 'not simulated' });
+  const p = (k) => (u.searchParams.get(k) ?? '').replace(/^(eq|is)\./, '');
+  const inRow = (r) => !!r && (r.owner === uid || r.members.includes(uid));
+  const inEvent = (code) => inRow(shared.get(code));
+  const mine = (code) => {
+    const r = shared.get(code);
+    return !!r && (r.event_code ? inEvent(r.event_code) : inRow(r));
+  };
+  if (req.method() === 'GET') {
+    if (u.searchParams.has('event_code') && p('event_code') !== 'null')
+      return json(200, inEvent(p('event_code')) ? [...shared.values()].filter((r) => r.event_code === p('event_code')).map((r) => ({ game: r.game, updated_at: r.updated_at })) : []);
+    if (u.searchParams.has('code')) {
+      const r = shared.get(p('code'));
+      return json(200, mine(p('code')) ? [{ game: r.game, updated_at: r.updated_at, owner: r.owner }] : []);
+    }
+    // the account's rows of a kind (the pools, the planned tournaments): host or member, not a flight's row
+    const kind = p('game->>kind');
+    const planned = u.searchParams.has('game->>planned');
+    return json(
+      200,
+      [...shared.entries()]
+        .filter(([, r]) => !r.event_code && inRow(r) && r.game.kind === kind && (!planned || r.game.planned === true))
+        .map(([code, r]) => ({ code, game: r.game, owner: r.owner })),
+    );
+  }
+  if (req.method() === 'POST') {
+    const r = body();
+    if (shared.has(r.code)) return json(409, { code: '23505' });
+    if (r.event_code && !inEvent(r.event_code)) return json(403, { message: 'not in the event' });
+    shared.set(r.code, { game: r.game, updated_at: new Date().toISOString(), owner: uid, members: [], ...(r.event_code ? { event_code: r.event_code } : {}) });
+    return json(201, (req.headers()['prefer'] ?? '').includes('representation') ? [{ code: r.code }] : null);
+  }
+  if (req.method() === 'PATCH') {
+    const code = p('code');
+    const r = shared.get(code);
+    const at = p('updated_at');
+    if (!mine(code) || (at && at !== r.updated_at)) return json(200, []);
+    const nb = body();
+    r.game = nb.game;
+    r.updated_at = nb.updated_at;
+    return json(200, [{ code }]);
+  }
+  return json(404, { message: 'not simulated' });
+}
+async function phone(name) {
+  const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.7808, longitude: 9.689, accuracy: 5 }, permissions: ['geolocation'] });
+  await mockNet(ctx);
+  await ctx.route(/rgisfnilwehnqpmbrxmp\.supabase\.co\/(rest|auth|functions)\//, serve);
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => { if (!/golfos_items.*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+  await p.goto(url);
+  await p.waitForTimeout(1200);
+  await p.evaluate((name) => {
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem('golfos.intro.v1', '1');
+    localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: name, lastName: '', hcpIndex: '0', homeClub: '' }));
+    localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: `h.${btoa(JSON.stringify({ sub: 'u-' + name }))}.s`, refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
+    sessionStorage.setItem('golfos.module', 'games');
+  }, name);
+  await p.reload();
+  await p.waitForTimeout(1500);
+  return { p, errs };
+}
+const flightsOf = (code) => [...shared.entries()].filter(([, r]) => r.event_code === code).map(([c, r]) => ({ code: c, ...r.game.flight }));
+
+// ---------- Sascha plans the tournament ----------
+const host = await phone('Sascha');
+const H = host.p;
+ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Turniere|Profil', `Games menu with "Turniere": ${(await H.locator('.tabbar button').allInnerTexts()).join(' · ')}`);
+ok(await H.getByText('Neues Turnier planen').isVisible(), 'start page: "Neues Turnier planen" beside a new game and a new bet');
+await H.getByRole('button', { name: 'Neues Turnier', exact: true }).click();
+await H.waitForTimeout(500);
+await H.fill('#tour-name', 'USA Tag 1');
+await H.getByRole('button', { name: /Platz wählen/ }).click();
+await H.fill('#course-search', 'Hetzenhof');
+await H.waitForTimeout(2000);
+await H.locator('button.list-item').first().click();
+await H.locator('#tour-name').waitFor({ timeout: 30000 });
+ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the course: the name kept');
+for (const n of ['Chris', 'Erik', 'Cedric']) {
+  await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+  await H.locator('input[id^="name-"]').last().fill(n);
+  await H.locator('input[id^="hcp-"]').last().fill('0');
+}
+await H.locator('input[id^="hcp-"]').first().fill('0');
+await H.getByRole('group', { name: 'Anzahl Flights' }).getByRole('button', { name: '2', exact: true }).click();
+const fl = (k) => H.locator('.tour-flight').nth(k);
+ok((await fl(0).locator('.tour-flight-player strong').allInnerTexts()).join(',') === 'Sascha,Chris' && (await fl(1).locator('.tour-flight-player strong').allInnerTexts()).join(',') === 'Erik,Cedric', 'two flights: Sascha and Chris, Erik and Cedric');
+ok((await fl(0).locator('select').first().inputValue()) === '09:00' && (await fl(1).locator('select').first().inputValue()) === '09:10', 'tee times: 09:00, then 10 minutes on');
+const options = await H.locator('#tour-first option').allInnerTexts();
+ok(options[0] === '06:00' && options.includes('07:35') && options.at(-1) === '18:00', `the usual tee times: every 5 minutes, ${options[0]}–${options.at(-1)}`);
+await fl(1).getByRole('combobox', { name: 'Startzeit Flight 2' }).selectOption('09:20');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-setup.png', fullPage: true });
+await H.getByRole('button', { name: 'Turnier anlegen' }).click();
+await H.waitForTimeout(2500);
+const code = [...shared.entries()].find(([, r]) => !r.event_code && r.game.kind === 'round-event')?.[0];
+const ev = code && shared.get(code).game;
+ok(!!ev && ev.planned === true && ev.tournament === true && ev.name === 'USA Tag 1' && ev.date === new Date().toLocaleDateString('sv-SE') && ev.course?.name, `server: the planned tournament (${code}, ${ev?.date}, ${ev?.course?.name})`);
+const fs1 = code ? flightsOf(code) : [];
+const byTime = [...fs1].sort((x, y) => x.teeTime.localeCompare(y.teeTime));
+ok(fs1.length === 2 && byTime[0].teeTime === '09:00' && byTime[1].teeTime === '09:20', `server: a row per flight with its tee time (${fs1.map((f) => f.teeTime).join(', ')})`);
+ok(byTime[0].players.map((p) => p.name).join(',') === 'Sascha,Chris' && byTime[0].markers.p1 === 'p2' && byTime[0].markers.p2 === 'p1' && byTime[0].players.every((p) => p.hcpIndex === 0), 'server: flight 1 Sascha and Chris, marking each other, the HCP kept');
+ok((await H.locator('.topbar h1').innerText()).includes('USA Tag 1') && (await H.locator('.tour-tee').allInnerTexts()).join(',') === '09:00,09:20', 'the tournament page: the flights with their tee times');
+ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Zähler: Sascha').count()) === 1, 'the tournament page: who marks whom');
+await H.getByRole('button', { name: new RegExp(`Mitspieler einladen · Code ${code}`) }).click();
+ok((await H.locator('.qr-box svg').count()) === 1 && (await H.locator('.join-code').innerText()).trim() === code, 'invite: code and QR code');
+await H.getByRole('dialog', { name: 'Mitspieler einladen' }).getByRole('button', { name: 'Schließen' }).click();
+
+// ---------- the scores come in (as Rounds writes them on the day): the leaderboard ----------
+const put = (f, scores) => {
+  const row = shared.get(f.code);
+  row.game = { kind: 'round-flight', flight: { ...row.game.flight, scores: Object.fromEntries(Object.entries(scores).map(([pid, ss]) => [pid, row.game.flight.scores[pid].map((_, i) => (ss[i] == null ? null : { s: ss[i] }))])) } };
+  row.updated_at = new Date().toISOString();
+};
+put(byTime[0], { p1: [4, 4, 4], p2: [3, 4, 4] }); // Sascha 12, Chris 11
+put(byTime[1], { p1: [5, 5, 5], p2: [4, 5, 4] }); // Erik 15, Cedric 13
+await H.goto('about:blank');
+await H.goto(url);
+await H.waitForTimeout(1500);
+await H.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
+await H.waitForTimeout(800);
+ok((await H.locator('.tab-title + .tile-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 1, 'menu "Turniere": the tiles at the top, the tournament in the list');
+await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
+await H.waitForTimeout(2500);
+const board = H.locator('.card').filter({ has: H.locator('.game-pays') }).first();
+const rows = (await board.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+ok(/^Live-Rangliste/i.test(await board.locator('.eyebrow').innerText()), 'the leaderboard is named "Live-Rangliste" while it is played');
+ok(rows.length === 4 && /Chris/.test(rows[0]) && /Erik/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Chris first, Erik last, all "nach 3" (${rows.join(' | ')})`);
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-page.png', fullPage: true });
+
+// ---------- Chris: in by the code – sees it, cannot change it ----------
+shared.get(code).members.push('u-Chris'); // joined with the link in Rounds (golfos_join_game: a planned one at once)
+const guest = await phone('Chris');
+const G = guest.p;
+await G.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
+await G.waitForTimeout(1500);
+ok((await G.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 1, 'Chris: the tournament in his list (from the server, by his account)');
+await G.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
+await G.waitForTimeout(2000);
+ok(
+  (await G.getByRole('button', { name: 'Turnier bearbeiten' }).count()) === 0 &&
+    (await G.getByRole('button', { name: /Mitspieler einladen/ }).count()) === 0 &&
+    (await G.getByRole('button', { name: 'Turnier löschen' }).count()) === 0 &&
+    (await G.getByText('Nur wer das Turnier angelegt hat, ändert es.').isVisible()),
+  'Chris: sees the tournament, cannot change, invite or delete – only the host',
+);
+ok((await G.locator('.tour-tee').allInnerTexts()).join(',') === '09:00,09:20', 'Chris: the flights with their tee times');
+
+// ---------- the host changes it: the flights keep their ids ----------
+const ids = fs1.map((f) => f.id).sort().join();
+await H.getByRole('button', { name: 'Turnier bearbeiten' }).click();
+await H.waitForTimeout(800);
+await H.fill('#tour-name', 'USA Tag 1 · Bethpage');
+await H.getByRole('button', { name: 'Speichern' }).click();
+await H.waitForTimeout(2500);
+const after = flightsOf(code);
+ok(shared.get(code).game.name === 'USA Tag 1 · Bethpage' && after.filter((f) => f.players.length).map((f) => f.id).sort().join() === ids, 'changed: renamed, the flights the same (their ids kept)');
+ok(after.find((f) => f.id === byTime[1].id)?.teeTime === '09:20' && after.find((f) => f.id === byTime[0].id)?.scores.p2?.[0]?.s === 3, 'changed: the tee times and the scores kept');
+
+// ---------- deleted – only marked – and restored ----------
+await H.getByRole('button', { name: 'Turnier löschen' }).click();
+await H.getByRole('button', { name: 'Für alle löschen' }).click();
+await H.waitForTimeout(1500);
+ok(!!shared.get(code).game.deletedAt && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 0, 'deleted: marked for everyone, gone from the list');
+await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
+await H.getByRole('button', { name: 'Wiederherstellen' }).click();
+await H.waitForTimeout(1500);
+ok(!shared.get(code).game.deletedAt, 'restored from the bin');
+
+ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
+await b.close();
+process.exit(fails ? 1 : 0);
