@@ -109,7 +109,7 @@ const first = await p.locator('.mob-warmup-name').innerText();
 ok(first === moves[0], `the first move: ${first}`);
 await shot('warmup-run');
 // pause and on
-await p.locator('.mob-coach-pause').click();
+await p.locator('.mob-camera-actions .pause').click();
 ok(await p.getByText('Pausiert').isVisible(), 'pause holds the clock');
 const held = await p.locator('.mob-warmup-clock').innerText();
 await p.waitForTimeout(1200);

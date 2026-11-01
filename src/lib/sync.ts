@@ -46,6 +46,8 @@ const SETTINGS = [
   'golfos.testmode.v1', 'golfos.sun.v1', 'golfos.spread.v1', 'golfos.mapview.v1', 'golfos.imagery.v1',
   'golfos.tip.shots.v1', 'golfos.help.subs.v1', 'golfos.pushkinds.v1', 'golfos.stats.range.v1', 'golfos.ratings.v1',
   'golfos.training.reviewmode.v1', 'golfos.training.review.v1', 'golfos.training.bpm.v1', 'golfos.training.swingtempo.v1', 'golfos.mobility.minutes.v1',
+  // the bets: made ones already announced, pools deleted for good on this account
+  'golfos.pools.seen.v1', 'golfos.pools.hidden.v1',
 ];
 /** Per device again (Sascha 30.10.2026: "switched on in the profile yesterday, off again today" – off on the other
  *  device came over): shot by sound and pocket mode are the phone's own, as the push switch. Rows of them still on the
@@ -84,6 +86,12 @@ const LISTS = [
   { kind: 'mobility-goal', key: 'golfos.mobility.goal.v1', idOf: (x: { id: string }) => x.id },
   // the guided drill sessions of the mobility pillar – every session its own row
   { kind: 'mobility-session', key: 'golfos.mobility.sessions.v1', idOf: (x: { id: string }) => x.id },
+  // the bets of Games (Sascha 01.11.2026: "they must never vanish"): the pools live in the shared table and come back
+  // from there by account (lib/wagerstore.ts syncPools) – never a copy of a pool here, so no older copy can overwrite a
+  // newer one; only who this account is in each pool (its code), for a new device (the app, a new phone); and the bets
+  // set up on this account's phones, the templates
+  { kind: 'pool-me', key: 'golfos.pools.me.v1', idOf: (x: { code: string }) => x.code },
+  { kind: 'bet-template', key: 'golfos.wagerhistory.v1', idOf: (x: { from: string; wager: { id: string } }) => `${x.from}|${x.wager.id}` },
 ] as const;
 
 type Meta = Record<string, { hash: string; at: string }>; // per "kind|id": what was in sync last time

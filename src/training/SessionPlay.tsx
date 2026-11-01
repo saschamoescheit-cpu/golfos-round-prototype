@@ -199,8 +199,8 @@ export function SessionPlay(props: { session: Session; onPause: () => void; onFi
                   setExit('end');
                 }}
               >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                  <rect x="5" y="5" width="14" height="14" rx="2" />
+                <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor" />
                 </svg>
                 <span>{tr('Finish', 'Beenden')}</span>
               </button>

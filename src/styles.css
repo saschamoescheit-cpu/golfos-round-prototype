@@ -1077,6 +1077,7 @@ button.tile:disabled { opacity: 1; }
   border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 13px var(--body);
 }
 .drawer-action.end svg { color: var(--bad); }
+.drawer-action.done svg { color: var(--brand); }
 .hole-drawer > * { flex-shrink: 0; }
 :root[data-theme='sun'] .hole-bar .map-score { border: 0; background: transparent; box-shadow: none; }
 

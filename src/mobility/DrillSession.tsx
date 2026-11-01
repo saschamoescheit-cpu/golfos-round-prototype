@@ -124,7 +124,13 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
   if (stage === 'drill' && d)
     return (
       <main className="screen mobility mob-run-camera">
-        <DrillPlayer key={d.id} drill={d} plan={planOf(d.id)} base={coachOf(d.id)} streak={streaks[d.id] ?? 0} clip={DRILL_CLIPS[d.id]} stream={streamRef.current} intro={intro} previous={previous[d.id]} onDone={record} onSkip={skip} onMenu={() => setStage('hold')} />
+        <DrillPlayer key={d.id} drill={d} plan={planOf(d.id)} base={coachOf(d.id)} streak={streaks[d.id] ?? 0} clip={DRILL_CLIPS[d.id]} stream={streamRef.current} intro={intro} previous={previous[d.id]} onDone={record} onSkip={skip}
+          onMenu={() => setStage('hold')}
+          onEnd={() => {
+            setStage('hold');
+            setExit(true);
+          }}
+        />
       </main>
     );
 

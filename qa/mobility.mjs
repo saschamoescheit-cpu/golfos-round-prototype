@@ -350,7 +350,10 @@ await p.locator('.mob-start-coach').click();
 // the first test is measured and saved by itself; during the next one: Pause
 await p.locator('.mob-outcome').waitFor({ timeout: 60000 });
 await p.locator('.mob-demo.big').waitFor({ timeout: 30000 });
-await p.locator('.mob-coach-pause').click();
+// the buttons of every module: icon above the word – Skip, Pause, Finish (Sascha 1.11.2026)
+const acts = await p.locator('.mob-camera-actions .drawer-action').evaluateAll((bs) => bs.map((b) => `${b.classList[1]}:${!!b.querySelector('svg')}:${b.textContent}`));
+ok(acts.join(' ') === 'skip:true:Überspringen pause:true:Pause end:true:Beenden', `the camera buttons with icons: Skip, Pause, Finish (${acts.join(' ')})`);
+await p.locator('.mob-camera-actions .pause').click();
 await p.locator('.mob-hold-screen').waitFor({ timeout: 10000 });
 ok(await p.getByRole('button', { name: 'Weiter' }).isVisible(), 'Pause in the trainer mode: continue, pause for later, finish');
 await shot('coach-hold');

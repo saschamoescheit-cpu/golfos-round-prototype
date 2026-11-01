@@ -994,7 +994,24 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
     if (stage === 'camera') return goOn(cur, later);
     next(cur);
   };
-  const coachFor = (intro: string, demo: Clip | undefined, from: 'camera' | 'retest' = 'camera'): Coach => ({ stream: streamRef.current, intro, demo, onMenu: () => hold(from), onSkip: skip });
+  // "Finish" in the camera: the single test is left (kept when measured), the screening asks "finish now?"
+  const leaveSingle = () => {
+    stopStream();
+    if (Object.keys(s.results).length) finish(s);
+    else {
+      discardEmpty(s.id);
+      props.onPause();
+    }
+  };
+  const endNow = (from: 'camera' | 'retest') => {
+    hold(from);
+    if (single) leaveSingle();
+    else {
+      stopStream();
+      setExit('end');
+    }
+  };
+  const coachFor = (intro: string, demo: Clip | undefined, from: 'camera' | 'retest' = 'camera'): Coach => ({ stream: streamRef.current, intro, demo, onMenu: () => hold(from), onSkip: skip, onEnd: () => endNow(from) });
   const introOf = () => {
     const n = single ? '' : tr(`Test ${testIndex + 1} of ${s.tests.length}: `, `Test ${testIndex + 1} von ${s.tests.length}: `);
     const side = step.side && test.metric ? ` – ${sideText(test.metric, step.side).replace(/\.$/, '')}` : '';
@@ -1047,13 +1064,8 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
             className="btn-secondary"
             onClick={() => {
               stopStream();
-              if (single) {
-                if (Object.keys(s.results).length) finish(s);
-                else {
-                  discardEmpty(s.id);
-                  props.onPause();
-                }
-              } else setExit('end');
+              if (single) leaveSingle();
+              else setExit('end');
             }}
           >
             {single ? tr('Leave the test', 'Test verlassen') : tr('Finish screening', 'Screening beenden')}
@@ -1205,8 +1217,8 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
                   setExit('end');
                 }}
               >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                  <rect x="5" y="5" width="14" height="14" rx="2" />
+                <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor" />
                 </svg>
                 <span>{tr('Finish', 'Beenden')}</span>
               </button>

@@ -49,9 +49,9 @@ while (Date.now() - t0 < 420000) {
   }
   if (/von 15/.test(tag)) intros.add(tag);
   // a pause during the squat retest: "Continue" goes back to the retest, not to the squat again
-  if (/^Nachtest/.test(tag) && !retestHeld && (await p.locator('.mob-coach-pause').isVisible().catch(() => false))) {
+  if (/^Nachtest/.test(tag) && !retestHeld && (await p.locator('.mob-camera-actions .pause').isVisible().catch(() => false))) {
     retestHeld = true;
-    await p.locator('.mob-coach-pause').click();
+    await p.locator('.mob-camera-actions .pause').click();
     await p.getByRole('button', { name: 'Weiter', exact: true }).click();
     await p.waitForTimeout(300);
     const back = await p.locator('.mob-side-tag').innerText().catch(() => '');

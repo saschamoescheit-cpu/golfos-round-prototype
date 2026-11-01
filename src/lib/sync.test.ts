@@ -21,6 +21,36 @@ const clock = () => new Date(Date.UTC(2026, 9, 16, 8, 0, t++)).toISOString();
 const round = (id: string, strokes: (number | null)[], finished = false) => ({ id, courseName: 'Hetzenhof', createdAt: '2026-10-16T08:00:00Z', finishedAt: finished ? '2026-10-16T10:00:00Z' : null, entries: { me: strokes.map((s) => ({ strokes: s })) } });
 const rounds = (d: LocalStore) => JSON.parse(d.get('golfos.rounds.v1') ?? '[]') as { id: string; entries: { me: { strokes: number | null }[] } }[];
 
+// The bets of Games (Sascha 01.11.2026: "they must never vanish") – Rounds' question before the move to the app: the
+// pools come from the shared table only; between the devices travels who this account is in each pool, and nothing
+// that could overwrite a newer pool; a pool removed for good on one phone is hidden on the others, not deleted.
+describe('the bets between the devices', () => {
+  it('who he is in a pool reaches the new device; the pool itself never travels by the sync', async () => {
+    const srv = server();
+    const pool = { kind: 'wager-pool', id: 'p1', name: 'USA 2026', wagers: [{ id: 'w1' }], players: [{ id: 's', name: 'Sascha' }] };
+    const phone = device({ 'golfos.pools.v1': [{ code: 'K7P4QX', me: 's', pool }], 'golfos.pools.me.v1': [{ code: 'K7P4QX', me: 's' }], 'golfos.wagerhistory.v1': [{ from: 'USA 2026 · Chris', wager: { id: 'w1' } }] });
+    const app = device();
+    await syncOnce(phone, srv, clock);
+    await syncOnce(app, srv, clock);
+    expect(JSON.parse(app.get('golfos.pools.me.v1')!)).toEqual([{ code: 'K7P4QX', me: 's' }]);
+    expect(JSON.parse(app.get('golfos.wagerhistory.v1')!)).toEqual([{ from: 'USA 2026 · Chris', wager: { id: 'w1' } }]);
+    expect(app.get('golfos.pools.v1')).toBeNull(); // the pool comes from the shared table, by account
+    expect([...srv.rows.keys()].some((k) => k.includes('golfos.pools.v1'))).toBe(false);
+  });
+  it('a pool removed for good on one phone: hidden on the other, its entry kept', async () => {
+    const srv = server();
+    const phone = device({ 'golfos.pools.me.v1': [{ code: 'K7P4QX', me: 's' }] });
+    const app = device();
+    await syncOnce(phone, srv, clock);
+    await syncOnce(app, srv, clock);
+    phone.set('golfos.pools.hidden.v1', JSON.stringify(['K7P4QX']));
+    await syncOnce(phone, srv, clock);
+    await syncOnce(app, srv, clock);
+    expect(JSON.parse(app.get('golfos.pools.hidden.v1')!)).toEqual(['K7P4QX']);
+    expect(JSON.parse(app.get('golfos.pools.me.v1')!)).toEqual([{ code: 'K7P4QX', me: 's' }]);
+  });
+});
+
 describe('sync between devices', () => {
   it('a change on a device whose clock is behind still reaches the other (Sascha 17.10.2026: handicap PC → iPhone)', async () => {
     const srv = server();

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { speak, stopSpeaking } from '../lib/caddietalk';
+import { PlayActions } from '../components/PlayActions';
 import { TopBar } from '../components/ui';
 import { WARMUP_CLIPS } from './anim3d/warmup';
 import { beep, fakeSpeed, unlockAudio } from './CameraTest';
@@ -158,21 +159,21 @@ export function RangeWarmup(props: { warmup: Warmup; onClose: () => void }) {
             )}
           </div>
           {stage === 'run' && (
-            <div className="mob-camera-actions">
-              <button type="button" className="btn-secondary" onClick={() => goTo(i + 1)}>
-                {tr('Skip', 'Überspringen')}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary mob-coach-pause"
-                onClick={() => {
-                  stopSpeaking();
-                  setStage('hold');
-                }}
-              >
-                {tr('Pause', 'Pause')}
-              </button>
-            </div>
+            <PlayActions
+              className="mob-camera-actions"
+              buttons={[
+                { act: 'skip', label: tr('Skip', 'Überspringen'), aria: tr('Skip this move – on to the next', 'Diese Übung überspringen – weiter zur nächsten'), onClick: () => goTo(i + 1) },
+                {
+                  act: 'pause',
+                  label: tr('Pause', 'Pause'),
+                  onClick: () => {
+                    stopSpeaking();
+                    setStage('hold');
+                  },
+                },
+                { act: 'end', label: tr('Finish', 'Beenden'), aria: tr('End warm-up', 'Warmup beenden'), onClick: close },
+              ]}
+            />
           )}
         </section>
       </main>
