@@ -86,6 +86,8 @@ const LISTS = [
   { kind: 'mobility-goal', key: 'golfos.mobility.goal.v1', idOf: (x: { id: string }) => x.id },
   // the guided drill sessions of the mobility pillar – every session its own row
   { kind: 'mobility-session', key: 'golfos.mobility.sessions.v1', idOf: (x: { id: string }) => x.id },
+  // the physio's plan, imported by the player (results, swing characteristics, routine) – every plan its own row
+  { kind: 'mobility-physio', key: 'golfos.mobility.physio.v1', idOf: (x: { id: string }) => x.id },
   // the bets of Games (Sascha 01.11.2026: "they must never vanish"): the pools live in the shared table and come back
   // from there by account (lib/wagerstore.ts syncPools) – never a copy of a pool here, so no older copy can overwrite a
   // newer one; only who this account is in each pool (its code), for a new device (the app, a new phone); and the bets

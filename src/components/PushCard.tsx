@@ -9,6 +9,7 @@ const KINDS: { kind: PushKind; label: () => string; hint: () => string }[] = [
   { kind: 'rounds', label: () => tr('Round not checked yet', 'Runde noch nicht geprüft'), hint: () => tr('Once, two hours after the round', 'Einmal, zwei Stunden nach der Runde') },
   { kind: 'games', label: () => tr('Games on several phones', 'Spiele auf mehreren Handys'), hint: () => tr('A player joins, the game ends', 'Ein Mitspieler kommt dazu, das Spiel endet') },
   { kind: 'weather', label: () => tr('Thunderstorm on the course', 'Gewitter auf dem Platz'), hint: () => tr('While you play a round', 'Während du eine Runde spielst') },
+  { kind: 'agility', label: () => tr('Training day (Agility)', 'Trainingstag (Agility)'), hint: () => tr('At the time set in your physio plan', 'Zur Uhrzeit aus deinem Physio-Plan') },
 ];
 
 export function PushCard(props: { signedIn: boolean }) {

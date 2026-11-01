@@ -78,6 +78,8 @@ const SILENCE = (() => {
   b.fill(128, 44);
   return 'data:audio/wav;base64,' + btoa(String.fromCharCode(...b));
 })();
+/** About how long a sentence takes aloud (13 letters a second, a little more for the start). */
+export const speechMs = (text: string): number => Math.min(45000, 2500 + text.length * 75);
 /** Call in the tap that starts the camera: iOS only plays sound after a tap. */
 export function unlockAudio(): void {
   try {
@@ -571,12 +573,15 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           const clip = props.coach.demo;
           // what to do, read out in full while the golfer shows it – where to stand and every step, as on the test's page
           // (Sascha 1.11.2026: "while it is shown a voice should say what to do – that matters most here")
-          say([`${props.coach.intro}.`, tr('Watch.', 'Schau zu.'), tr(props.test.setup.en, props.test.setup.de), ...props.test.steps.map((x) => tr(x.en, x.de))].join(' '));
+          const how = [`${props.coach.intro}.`, tr('Watch.', 'Schau zu.'), tr(props.test.setup.en, props.test.setup.de), ...props.test.steps.map((x) => tr(x.en, x.de))].join(' ');
+          say(how);
+          // waits for the voice, but never longer than the words take – a voice the phone keeps silent does not hold the demo
+          const talkMs = speechMs(how);
           const t0 = performance.now();
           const loop = clip ? (clip.length ?? clip.keys[clip.keys.length - 1].t) * 1000 : 0;
           const toFrame = () => {
             if (stopped) return;
-            if (!fake && isSpeaking() && performance.now() - t0 < 60000) {
+            if (!fake && isSpeaking() && performance.now() - t0 < talkMs) {
               demoTimer = window.setTimeout(toFrame, 200);
               return;
             }
