@@ -24,7 +24,7 @@ import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/han
 import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
 import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
-import { TOURS_ICON, TourScreen, TourSetup, TourStartCard, ToursTab, newTourDraft, useTours, type TourDraft } from './Tournaments';
+import { SeriesScreen, TOURS_ICON, TourScreen, TourSetup, TourStartCard, ToursTab, newTourDraft, useTours, type TourDraft } from './Tournaments';
 import { tourState } from '../lib/tourstore';
 import { isLive } from '../lib/wagerstore';
 import { balances, dayOf } from '../lib/wagers';
@@ -48,7 +48,8 @@ type View =
   | { name: 'pool'; code: string }
   | { name: 'tourSetup'; draft: TourDraft; back: View }
   | { name: 'tourCourse'; draft: TourDraft; back: View }
-  | { name: 'tour'; code: string };
+  | { name: 'tour'; code: string }
+  | { name: 'series'; code: string };
 
 interface DraftPlayer {
   id: string;
@@ -178,6 +179,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           onOpenPool={(code) => setView({ name: 'pool', code })}
           onNewTour={() => setView({ name: 'tourSetup', draft: newTourDraft(), back: view })}
           onOpenTour={(code) => setView({ name: 'tour', code })}
+          onOpenSeries={(code) => setView({ name: 'series', code })}
           onNew={(form) => setView({ name: 'setup', draft: newDraft(form) })}
           onJoined={(g) => {
             store(g);
@@ -297,6 +299,19 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
             props.onTabChange?.('tours');
           }}
           onEdit={(draft) => setView({ name: 'tourSetup', draft, back: view })}
+          onOpenSeries={(code) => setView({ name: 'series', code })}
+        />
+      );
+    case 'series':
+      return (
+        <SeriesScreen
+          code={view.code}
+          onBack={() => {
+            setView({ name: 'tab', tab: 'tours' });
+            props.onTabChange?.('tours');
+          }}
+          onOpen={(code) => setView({ name: 'tour', code })}
+          onAddRound={(draft) => setView({ name: 'tourSetup', draft, back: view })}
         />
       );
     case 'result':
@@ -339,6 +354,7 @@ function GamesTabs(props: {
   onOpenPool: (code: string) => void;
   onNewTour: () => void;
   onOpenTour: (code: string) => void;
+  onOpenSeries: (code: string) => void;
   onFinish: (g: Game) => void;
   onDelete: (g: Game) => void;
 }) {
@@ -454,7 +470,7 @@ function GamesTabs(props: {
             </>
           )}
       {props.tab === 'bets' && <BetsTab onOpen={props.onOpenPool} />}
-      {props.tab === 'tours' && <ToursTab onOpen={props.onOpenTour} />}
+      {props.tab === 'tours' && <ToursTab onOpen={props.onOpenTour} onOpenSeries={props.onOpenSeries} />}
       {props.tab === 'games' && (
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>

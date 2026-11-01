@@ -10,7 +10,7 @@ import { fetchShared } from '../lib/sharedratings';
 import { isLady, loadProfile, shownName } from '../lib/profile';
 import { scoringName, type Scoring } from '../lib/games';
 import { eventStandings, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, type RoundEvent } from '../lib/sharedround';
-import { changeTour, createTour, forgetTour, isPlanned, isTourHost, keepTour, loadTours, syncTours, tourState, type PlannedEvent, type TourEntry } from '../lib/tourstore';
+import { addToSeries, changeTour, createSeries, createTour, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
@@ -35,6 +35,16 @@ export const TOURS_ICON = (
     <path d="M12 14v3M8.5 20h7M9.5 17h5v3h-5z" />
   </svg>
 );
+
+export function useSeries(): SeriesEntry[] {
+  const [list, setList] = useState(loadSeries);
+  useEffect(() => {
+    const reload = () => setList(loadSeries());
+    window.addEventListener('golfos:tours-changed', reload);
+    return () => window.removeEventListener('golfos:tours-changed', reload);
+  }, []);
+  return list;
+}
 
 export function useTours(): TourEntry[] {
   const [list, setList] = useState(loadTours);
@@ -104,8 +114,99 @@ function TourRow(props: { e: TourEntry; onOpen: () => void }) {
 }
 
 /** The menu "Tournaments": the tiles at the top as Rounds, Games and Bets – planned, played, deleted – then the list. */
-export function ToursTab(props: { onOpen: (code: string) => void }) {
+function SeriesRow(props: { s: SeriesEntry; onOpen: () => void }) {
+  const { series } = props.s;
+  const first = series.rounds[0]?.date ?? '';
+  const last = series.rounds[series.rounds.length - 1]?.date ?? '';
+  return (
+    <button type="button" className="list-item tour-series-row" onClick={props.onOpen}>
+      <span className="round-date">
+        <strong>{first ? dm(first) : '–'}</strong>
+        <span className="muted small">{first.slice(0, 4)}</span>
+      </span>
+      <span className="grow">
+        <span className="title">{series.name}</span>
+        <span className="muted small one-line">
+          {tr('Series', 'Serie')} · {first && last ? `${dm(first)}–${dm(last)}` : ''} · {[...new Set(series.rounds.map((r) => r.course.name))].join(', ')}
+        </span>
+      </span>
+      <span className="game-row-result">
+        <strong>{series.rounds.length}</strong>
+        <span className="muted small">{tr('rounds', 'Runden')}</span>
+      </span>
+    </button>
+  );
+}
+
+/** Single tournaments made a series (Sascha 01.11.2026): pick them, name it. */
+function SeriesSheet(props: { tours: TourEntry[]; onDone: (code: string) => void; onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const toggle = (c: string) => {
+    const n = new Set(picked);
+    if (n.has(c)) n.delete(c);
+    else n.add(c);
+    setPicked(n);
+  };
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet wager-sheet" role="dialog" aria-label={tr('Make a tournament series', 'Turnierserie zusammenstellen')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Make a tournament series', 'Turnierserie zusammenstellen')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="field">
+          <label htmlFor="series-name">{tr('Name of the series', 'Name der Serie')}</label>
+          <input id="series-name" className="input" placeholder={tr('Golf trip 2026', 'Golfreise 2026')} value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <span className="eyebrow">{tr('Its rounds', 'Ihre Runden')}</span>
+        {props.tours.map((e) => (
+          <label key={e.code} className="list-item series-pick">
+            <input type="checkbox" checked={picked.has(e.code)} onChange={() => toggle(e.code)} />
+            <span className="grow">
+              <span className="title">{e.ev.name}</span>
+              <span className="muted small">
+                {longDate(e.ev.date)} · {e.ev.course.name}
+              </span>
+            </span>
+          </label>
+        ))}
+        <span className="muted small">{tr('The tournaments stay as they are – codes, players, scores; the series adds them up and has one code for all.', 'Die Turniere bleiben, wie sie sind – Codes, Spieler, Scores; die Serie zählt sie zusammen und hat einen Code für alle.')}</span>
+        {msg && (
+          <span className="small bad-text" role="alert">
+            {msg}
+          </span>
+        )}
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={busy || !name.trim() || picked.size < 2}
+          onClick={async () => {
+            setBusy(true);
+            const code = await createSeries(name.trim(), props.tours.filter((e) => picked.has(e.code)).map((e) => e.code));
+            setBusy(false);
+            if (code) props.onDone(code);
+            else setMsg(NO_NET());
+          }}
+        >
+          {picked.size < 2 ? tr('Pick at least two', 'Mindestens zwei wählen') : tr(`Make the series of ${picked.size}`, `Serie aus ${picked.size} Runden anlegen`)}
+        </button>
+      </section>
+    </div>
+  );
+}
+
+export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: (code: string) => void }) {
   const all = useTours();
+  const series = useSeries().filter((s) => !s.series.deletedAt);
+  const [making, setMaking] = useState(false);
+  const inSeries = new Set(series.flatMap((s) => s.series.rounds.map((r) => r.code)));
+  const single = (e: TourEntry) => !e.ev.series?.code && !inSeries.has(e.code);
+  const groupable = all.filter((e) => !e.ev.deletedAt && single(e) && isTourHost(e));
   const [filter, setFilter] = useState<'planned' | 'played' | 'bin' | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -168,15 +269,39 @@ export function ToursTab(props: { onOpen: (code: string) => void }) {
       {filter !== 'bin' &&
         (shown.length ? (
           <ul className="list">
-            {shown.map((e) => (
-              <li key={e.code}>
-                <TourRow e={e} onOpen={() => props.onOpen(e.code)} />
-              </li>
-            ))}
+            {/* a series once (its rounds inside), then the single tournaments */}
+            {!filter &&
+              series.map((s) => (
+                <li key={s.code}>
+                  <SeriesRow s={s} onOpen={() => props.onOpenSeries(s.code)} />
+                </li>
+              ))}
+            {shown
+              .filter((e) => filter || single(e))
+              .map((e) => (
+                <li key={e.code}>
+                  <TourRow e={e} onOpen={() => props.onOpen(e.code)} />
+                </li>
+              ))}
           </ul>
         ) : (
           <p className="muted">{tr('No tournaments yet – "New tournament" is on "Play".', 'Noch keine Turniere – „Neues Turnier“ unter „Spielen“.')}</p>
         ))}
+      {filter !== 'bin' && groupable.length >= 2 && (
+        <button type="button" className="btn-secondary" onClick={() => setMaking(true)}>
+          {tr('Make a tournament series', 'Zu einer Turnierserie zusammenfassen')}
+        </button>
+      )}
+      {making && (
+        <SeriesSheet
+          tours={[...groupable].sort((a, b) => a.ev.date.localeCompare(b.ev.date))}
+          onClose={() => setMaking(false)}
+          onDone={(code) => {
+            setMaking(false);
+            props.onOpenSeries(code);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -197,6 +322,8 @@ export interface TourDraft {
   /** set: the tournament changed, not a new one */
   code?: string;
   base?: PlannedEvent;
+  /** a new round of this series (its code) */
+  series?: string;
   name: string;
   date: string;
   course: Course | null;
@@ -417,6 +544,8 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
     else delete ev.specials;
     const code = d.code ? ((await changeTour(d.code, ev)) ? d.code : null) : await createTour(ev);
     setBusy(false);
+    if (code && d.series) await addToSeries(d.series, code);
+    else if (code && d.base?.series?.code) await addToSeries(d.base.series.code, code); // its day or course in the series' list
     if (code) props.onSaved(code);
     else setMsg(NO_NET());
   };
@@ -825,9 +954,211 @@ function FlightBoard(props: {
   );
 }
 
+// ---------- a tournament series ----------
+
+/** The total of a series (Sascha 01.11.2026: "the sum of all rounds"): each player's results of the rounds played added
+ *  up – to par, or Stableford points – with the rounds counted. Players are the same by name. */
+export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; rows: { name: string; sum: number; rounds: number; pos: string }[] } {
+  const by = new Map<string, { name: string; sum: number; rounds: number }>();
+  let hb = false;
+  for (const ev of evs) {
+    const st = eventStandings(ev);
+    hb = st.higherBetter;
+    for (const r of st.rows) {
+      if (r.sort == null || !r.thru) continue;
+      const k = r.name.trim().toLowerCase();
+      const x = by.get(k) ?? { name: r.name, sum: 0, rounds: 0 };
+      x.sum += r.sort;
+      x.rounds++;
+      by.set(k, x);
+    }
+  }
+  const rows = [...by.values()].sort((a, b) => (hb ? b.sum - a.sum : a.sum - b.sum));
+  return { higherBetter: hb, rows: rows.map((x) => ({ ...x, pos: `${rows.filter((y) => y.sum === x.sum).length > 1 ? 'T' : ''}${rows.findIndex((y) => y.sum === x.sum) + 1}` })) };
+}
+
+export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void }) {
+  const entry = useSeries().find((e) => e.code === props.code);
+  const tours = useTours();
+  const [evs, setEvs] = useState<RoundEvent[]>([]);
+  const [sheet, setSheet] = useState<null | 'invite' | 'rename' | 'dissolve'>(null);
+  const [name, setName] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
+  const today = dayOf(new Date());
+  const codes = entry?.series.rounds.map((r) => r.code).join() ?? '';
+  useEffect(() => {
+    void syncTours();
+  }, []);
+  // the rounds as the server has them – from the first day on every 30 s, for the total
+  useEffect(() => {
+    if (!codes) return;
+    let alive = true;
+    const tick = () => void Promise.all(codes.split(',').map((c) => refreshEvent(c))).then((xs) => alive && setEvs(xs.filter((x): x is RoundEvent => !!x)));
+    tick();
+    const t = window.setInterval(tick, 30000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [codes]);
+  if (!entry) {
+    return (
+      <main className="screen">
+        <TopBar title={tr('Series', 'Serie')} onBack={props.onBack} backLabel={tr('Tournaments', 'Turniere')} />
+        <p className="muted">{tr('Loading the series …', 'Lade die Serie …')}</p>
+      </main>
+    );
+  }
+  const s = entry.series;
+  const host = isSeriesHost(entry);
+  const total = seriesStandings(evs.filter((e) => (e as PlannedEvent).date <= today));
+  const fmtSum = (v: number) => (total.higherBetter ? tr(`${v} pts`, `${v} Pkt.`) : v === 0 ? 'Par' : v > 0 ? `+${v}` : `−${-v}`);
+  const lastRound = [...s.rounds].reverse().map((r) => tours.find((t) => t.code === r.code)).find(Boolean);
+  return (
+    <main className="screen tour-screen">
+      <TopBar
+        title={s.name}
+        onBack={props.onBack}
+        backLabel={tr('Tournaments', 'Turniere')}
+        right={
+          host ? (
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={tr('Rename the series', 'Serie umbenennen')}
+              onClick={() => {
+                setName(s.name);
+                setSheet('rename');
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 20h4L19 9l-4-4L4 16z" />
+                <path d="M13.5 6.5l4 4" />
+              </svg>
+            </button>
+          ) : undefined
+        }
+      />
+      <span className="muted small">
+        {tr('Tournament series', 'Turnierserie')} · {s.rounds.length} {tr('rounds', 'Runden')}
+        {s.rounds.length ? ` · ${dm(s.rounds[0].date)}–${dm(s.rounds[s.rounds.length - 1].date)}` : ''}
+      </span>
+      <section className="card" aria-label={tr('Total standing', 'Gesamtwertung')}>
+        <span className="eyebrow">{tr('Total standing – all rounds added up', 'Gesamtwertung – alle Runden zusammen')}</span>
+        {total.rows.length ? (
+          <ul className="game-pays">
+            {total.rows.map((r) => (
+              <li key={r.name}>
+                <span>
+                  {r.pos} · {r.name} <span className="muted small">· {tr(`${r.rounds} ${r.rounds === 1 ? 'round' : 'rounds'}`, `${r.rounds} ${r.rounds === 1 ? 'Runde' : 'Runden'}`)}</span>
+                </span>
+                <strong>{fmtSum(r.sum)}</strong>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span className="muted small">{tr('Shows once the first round is played.', 'Erscheint, sobald die erste Runde gespielt ist.')}</span>
+        )}
+      </section>
+      <span className="eyebrow">{tr('Rounds', 'Runden')}</span>
+      <ul className="list">
+        {s.rounds.map((r, k) => (
+          <li key={r.code}>
+            <button type="button" className="list-item" onClick={() => props.onOpen(r.code)}>
+              <span className="round-date">
+                <strong>{dm(r.date)}</strong>
+                <span className="muted small">{tr(`Round ${k + 1}`, `Runde ${k + 1}`)}</span>
+              </span>
+              <span className="grow">
+                <span className="title">{r.name}</span>
+                <span className="muted small one-line">{r.course.name}</span>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {host && lastRound && (
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => {
+            // a new round: the flights, markers and tee times of the last one (Sascha: "taken from round 1, changeable")
+            const d = draftOf(lastRound);
+            const next = dayOf(new Date(new Date(`${lastRound.ev.date}T12:00:00`).getTime() + 864e5));
+            props.onAddRound({ ...d, code: undefined, base: undefined, series: props.code, date: next, name: `${s.name} · ${tr(`Round ${s.rounds.length + 1}`, `Runde ${s.rounds.length + 1}`)}` });
+          }}
+        >
+          {tr('+ Round', '+ Runde')}
+        </button>
+      )}
+      {host && (
+        <button type="button" className="btn-secondary" onClick={() => setSheet('invite')}>
+          {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
+        </button>
+      )}
+      {!host && <span className="muted small">{tr('Only whoever set up the series changes it.', 'Nur wer die Serie angelegt hat, ändert sie.')}</span>}
+      {msg && (
+        <span className="small bad-text" role="alert">
+          {msg}
+        </span>
+      )}
+      {host && (
+        <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet('dissolve')}>
+          {tr('Undo the series', 'Serie auflösen')}
+        </button>
+      )}
+      {sheet === 'invite' && <TourInviteSheet code={props.code} name={s.name} date={s.rounds[0]?.date ?? today} onClose={() => setSheet(null)} />}
+      {sheet === 'rename' && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <section className="sheet" role="dialog" aria-label={tr('Rename the series', 'Serie umbenennen')} onClick={(e) => e.stopPropagation()}>
+            <div className="field">
+              <label htmlFor="series-rename">{tr('Name of the series', 'Name der Serie')}</label>
+              <input id="series-rename" className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!name.trim()}
+              onClick={async () => {
+                setMsg((await renameSeries(props.code, name.trim())) ? null : NO_NET());
+                setSheet(null);
+              }}
+            >
+              {tr('Save', 'Speichern')}
+            </button>
+          </section>
+        </div>
+      )}
+      {sheet === 'dissolve' && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <section className="sheet" role="dialog" aria-label={tr('Undo the series', 'Serie auflösen')} onClick={(e) => e.stopPropagation()}>
+            <strong>{tr(`Undo "${s.name}"?`, `„${s.name}“ auflösen?`)}</strong>
+            <span className="muted">{tr('Its rounds stay as single tournaments – with their players and scores.', 'Ihre Runden bleiben als einzelne Turniere – mit Spielern und Scores.')}</span>
+            <button
+              type="button"
+              className="btn-primary btn-danger-fill"
+              onClick={async () => {
+                if (await dissolveSeries(props.code)) props.onBack();
+                else setMsg(NO_NET());
+                setSheet(null);
+              }}
+            >
+              {tr('Undo the series', 'Serie auflösen')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
+              {tr('Cancel', 'Abbrechen')}
+            </button>
+          </section>
+        </div>
+      )}
+    </main>
+  );
+}
+
 // ---------- one tournament ----------
 
-export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d: TourDraft) => void }) {
+export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d: TourDraft) => void; onOpenSeries?: (code: string) => void }) {
   const entry = useTours().find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -908,6 +1239,15 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
         {ev.classes?.length ? ` · ${tr(`${ev.classes.length + 1} classes`, `${ev.classes.length + 1} Klassen`)}` : ''}
       </span>
       {!host && <span className="muted small">{tr('Only whoever set up the tournament changes it.', 'Nur wer das Turnier angelegt hat, ändert es.')}</span>}
+      {ev.series?.code && props.onOpenSeries && (
+        <button type="button" className="list-item" onClick={() => props.onOpenSeries!(ev.series!.code)}>
+          <span className="grow">
+            <span className="title">{ev.series.name}</span>
+            <span className="muted small">{tr('Round of the series – the total standing', 'Runde der Serie – zur Gesamtwertung')}</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
       <section className="card tour-howto">
         <span className="eyebrow">{tr('On the day', 'Am Turniertag')}</span>
         <span className="small">

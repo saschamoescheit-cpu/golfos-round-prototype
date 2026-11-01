@@ -1,4 +1,5 @@
-import { publishPlannedEvent, updatePlannedEvent, type RoundEvent } from './sharedround';
+import { publishPlannedEvent, refreshEvent, updatePlannedEvent, type RoundEvent } from './sharedround';
+import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { myAccount } from './wagerstore';
 import type { Special } from './specials';
@@ -11,7 +12,33 @@ import type { Special } from './specials';
 
 /** A tournament set up ahead: the day it is played; deleted only marked (the bin brings it back); its special prizes
  *  (Long Drive, Nearest to the Pin – lib/specials.ts). */
-export type PlannedEvent = RoundEvent & { date: string; planned: true; deletedAt?: string | null; specials?: Special[] };
+export type PlannedEvent = RoundEvent & { date: string; planned: true; deletedAt?: string | null; specials?: Special[]; series?: { code: string; name: string } | null };
+
+/** A tournament series (Sascha 01.11.2026: "our golf trip is a tournament series of six tournament rounds"): its own
+ *  row with its own code – one code for all its rounds – and a copy of the rounds for showing them (the rounds' events
+ *  are what counts; each points back to its series). */
+export interface SeriesRound {
+  code: string;
+  /** YYYY-MM-DD */
+  date: string;
+  name: string;
+  course: { id: string; name: string };
+}
+export interface TourSeries {
+  kind: 'tour-series';
+  id: string;
+  name: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  /** by date */
+  rounds: SeriesRound[];
+}
+export interface SeriesEntry {
+  code: string;
+  series: TourSeries;
+  owner?: string;
+}
+export const isSeries = (x: unknown): x is TourSeries => !!x && (x as TourSeries).kind === 'tour-series' && Array.isArray((x as TourSeries).rounds);
 
 export interface TourEntry {
   code: string;
@@ -48,6 +75,28 @@ export function keepTour(code: string, ev: PlannedEvent, owner?: string): void {
   saveTours([{ code, ev, ...(host ? { owner: host } : {}) }, ...list.filter((e) => e.code !== code)]);
 }
 
+const SERIES = 'golfos.tourseries.v1';
+export function loadSeries(): SeriesEntry[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(SERIES) ?? '[]') as SeriesEntry[];
+    return Array.isArray(list) ? list.filter((e) => e && e.code && isSeries(e.series)) : [];
+  } catch {
+    return [];
+  }
+}
+function keepSeries(code: string, series: TourSeries, owner?: string): void {
+  const list = loadSeries();
+  const host = owner ?? list.find((e) => e.code === code)?.owner;
+  try {
+    localStorage.setItem(SERIES, JSON.stringify([{ code, series, ...(host ? { owner: host } : {}) }, ...list.filter((e) => e.code !== code)]));
+  } catch {
+    /* the server keeps it */
+  }
+  window.dispatchEvent(new Event('golfos:tours-changed'));
+}
+export const isSeriesHost = (e: SeriesEntry): boolean => !!e.owner && e.owner === myAccount();
+const roundOf = (code: string, ev: PlannedEvent): SeriesRound => ({ code, date: ev.date, name: ev.name, course: { id: ev.course.id, name: ev.course.name } });
+
 /** Is this phone's account the host of the tournament – the one who set it up. */
 export const isTourHost = (e: TourEntry): boolean => !!e.owner && e.owner === myAccount();
 
@@ -68,6 +117,9 @@ export async function syncTours(): Promise<boolean> {
   const h = await headers();
   if (!h) return false;
   try {
+    // the series this account is in
+    const sr = await fetch(`${table()}?select=code,game,owner&event_code=is.null&game->>kind=eq.tour-series`, { headers: h });
+    if (sr.ok) for (const row of (await sr.json()) as { code: string; game: unknown; owner?: string }[]) if (row?.code && isSeries(row.game)) keepSeries(row.code, row.game, row.owner);
     const r = await fetch(`${table()}?select=code,game,owner&event_code=is.null&game->>kind=eq.round-event&game->>planned=eq.true`, { headers: h });
     if (!r.ok) return false;
     const rows = (await r.json()) as { code: string; game: unknown; owner?: string }[];
@@ -104,6 +156,98 @@ export async function changeTour(code: string, ev: PlannedEvent): Promise<boolea
   const written = await updatePlannedEvent(code, ev);
   if (written) keepTour(code, isPlanned(written) ? written : ev);
   return !!written;
+}
+
+/** A row of the table changed by `change` – only if nobody wrote in between (else read again, up to four times). */
+async function changeRow<T>(code: string, ok: (x: unknown) => x is T, change: (x: T) => T): Promise<{ game: T; owner?: string } | null> {
+  const h = await headers();
+  if (!h) return null;
+  const at = `${table()}?code=eq.${encodeURIComponent(code)}`;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const r = await fetch(`${at}&select=game,updated_at,owner`, { headers: h });
+      if (!r.ok) return null;
+      const rows = (await r.json()) as { game: unknown; updated_at?: string | null; owner?: string }[];
+      if (!rows.length || !ok(rows[0].game)) return null;
+      const next = change(rows[0].game);
+      const seen = rows[0].updated_at ? `updated_at=eq.${encodeURIComponent(rows[0].updated_at)}` : 'updated_at=is.null';
+      const w = await fetch(`${at}&${seen}`, { method: 'PATCH', headers: { ...h, Prefer: 'return=representation' }, body: JSON.stringify({ game: next, updated_at: new Date().toISOString() }) });
+      if (!w.ok) return null;
+      if (((await w.json()) as unknown[]).length) return { game: next, owner: rows[0].owner };
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+/** The tournament as the server has it now (its flights' own rows too) – or as kept here. */
+async function freshTour(code: string): Promise<PlannedEvent | null> {
+  const ev = await refreshEvent(code);
+  return isPlanned(ev) ? ev : (loadTours().find((e) => e.code === code)?.ev ?? null);
+}
+
+/** Tournaments set up one by one made a series (Sascha 01.11.2026: "copy six single tournaments into a tournament
+ *  series"): the series' row with its own code, and each tournament points to it. Its code, or null. */
+export async function createSeries(name: string, codes: string[]): Promise<string | null> {
+  const h = await headers();
+  if (!h) return null;
+  const evs: { code: string; ev: PlannedEvent }[] = [];
+  for (const c of codes) {
+    const ev = await freshTour(c);
+    if (ev) evs.push({ code: c, ev });
+  }
+  if (evs.length < 2) return null;
+  const series: TourSeries = { kind: 'tour-series', id: crypto.randomUUID?.() ?? newCode() + Date.now(), name, createdAt: new Date().toISOString(), rounds: evs.map((x) => roundOf(x.code, x.ev)).sort((a, b) => a.date.localeCompare(b.date)) };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const code = newCode();
+    try {
+      const r = await fetch(table(), { method: 'POST', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ code, game: series }) });
+      if (r.status === 409) continue;
+      if (!r.ok) return null;
+      keepSeries(code, series, myAccount() ?? undefined);
+      for (const x of evs) await changeTour(x.code, { ...x.ev, series: { code, name } });
+      return code;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** A tournament into a series (a round added later) – or its series' copy brought up to date (a round changed). */
+export async function addToSeries(seriesCode: string, tourCode: string): Promise<boolean> {
+  const ev = await freshTour(tourCode);
+  if (!ev) return false;
+  const s = await changeRow(seriesCode, isSeries, (x) => ({ ...x, rounds: [...x.rounds.filter((r) => r.code !== tourCode), roundOf(tourCode, ev)].sort((a, b) => a.date.localeCompare(b.date)) }));
+  if (!s) return false;
+  keepSeries(seriesCode, s.game, s.owner);
+  if (ev.series?.code !== seriesCode || ev.series.name !== s.game.name) await changeTour(tourCode, { ...ev, series: { code: seriesCode, name: s.game.name } });
+  return true;
+}
+
+/** The host renames the series (its rounds say it too). */
+export async function renameSeries(code: string, name: string): Promise<boolean> {
+  const s = await changeRow(code, isSeries, (x) => ({ ...x, name }));
+  if (!s) return false;
+  keepSeries(code, s.game, s.owner);
+  for (const r of s.game.rounds) {
+    const ev = await freshTour(r.code);
+    if (ev) await changeTour(r.code, { ...ev, series: { code, name } });
+  }
+  return true;
+}
+
+/** The series undone: its tournaments stay as single ones, the series is gone (marked deleted). */
+export async function dissolveSeries(code: string): Promise<boolean> {
+  const s = await changeRow(code, isSeries, (x) => ({ ...x, deletedAt: new Date().toISOString() }));
+  if (!s) return false;
+  keepSeries(code, s.game, s.owner);
+  for (const r of s.game.rounds) {
+    const ev = await freshTour(r.code);
+    // null, not left out: the server keeps what a change leaves out
+    if (ev?.series?.code === code) await changeTour(r.code, { ...ev, series: null });
+  }
+  return true;
 }
 
 /** Gone for good from this phone (it stays on the server, marked deleted). */

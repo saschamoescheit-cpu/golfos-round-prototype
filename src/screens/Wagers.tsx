@@ -13,7 +13,7 @@ import { Bin } from '../components/Bin';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet } from '../lib/push';
-import { loadTours } from '../lib/tourstore';
+import { loadSeries, loadTours } from '../lib/tourstore';
 import { CoursePicker } from './CoursePicker';
 
 // Bets in Games (Sascha 01.11.2026: "in America we have bets running – it must be possible to set up individual bets in
@@ -313,6 +313,11 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
   const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string } } | null>(null);
   const [picking, setPicking] = useState(false);
   const tours = loadTours().filter((e) => !e.ev.deletedAt && e.ev.date >= props.from && e.ev.date <= props.to && !props.rounds.some((r) => r.tour === e.code));
+  // a tournament series: all its rounds in one tap (Sascha 01.11.2026: "the bets tied to the tournaments")
+  const series = loadSeries()
+    .filter((x) => !x.series.deletedAt)
+    .map((x) => ({ ...x, add: x.series.rounds.filter((r) => r.date >= props.from && r.date <= props.to && !props.rounds.some((y) => y.tour === r.code)) }))
+    .filter((x) => x.add.length > 0);
   const sorted = [...props.rounds].sort((a, b) => a.day.localeCompare(b.day));
   const last = sorted[sorted.length - 1]?.day;
   if (picking && adding)
@@ -341,10 +346,20 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           </button>
         </div>
       ))}
-      {tours.length > 0 && (
+      {(tours.length > 0 || series.length > 0) && (
         <div className="trip-tours">
           <span className="muted small">{tr('From the tournaments planned', 'Aus den geplanten Turnieren')}</span>
           <div className="chip-set">
+            {series.map((x) => (
+              <button
+                key={x.code}
+                type="button"
+                className="chip"
+                onClick={() => props.onChange([...props.rounds, ...x.add.map((r) => ({ id: newId(), day: r.date, course: r.course.name, courseId: r.course.id, tour: r.code }))])}
+              >
+                + {x.series.name} · {tr(`${x.add.length} rounds`, `${x.add.length} Runden`)}
+              </button>
+            ))}
             {tours.map((e) => (
               <button
                 key={e.code}

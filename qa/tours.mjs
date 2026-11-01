@@ -37,6 +37,11 @@ async function serve(route) {
   if (u.pathname.endsWith('/rpc/golfos_join_game')) {
     const row = shared.get(String(body().join_code ?? '').toUpperCase());
     if (!row || row.event_code) return json(200, null);
+    if (row.game.kind === 'tour-series') {
+      if (row.game.deletedAt) return json(200, null);
+      for (const r of [row, ...row.game.rounds.map((x) => shared.get(x.code)).filter(Boolean)]) if (r.owner !== uid && !r.members.includes(uid)) r.members.push(uid);
+      return json(200, row.game);
+    }
     if (row.game.kind === 'round-event' && row.owner !== uid && !row.members.includes(uid)) {
       if (row.game.planned !== true) return json(200, { kind: 'ask-host' });
       if (row.game.deletedAt) return json(200, null);
@@ -277,6 +282,45 @@ await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await H.getByRole('button', { name: 'Wiederherstellen' }).click();
 await H.waitForTimeout(1500);
 ok(!shared.get(code).game.deletedAt, 'restored from the bin');
+
+// ---------- a tournament series (Sascha 01.11.2026: "six single tournaments copied into a tournament series") ----------
+const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString('sv-SE');
+shared.set('TOUR22', { game: { ...JSON.parse(JSON.stringify(shared.get(code).game)), id: 'ev-2', name: 'USA Tag 2', date: tomorrow, flights: {}, specials: [] }, updated_at: new Date().toISOString(), owner: 'u-Sascha', members: [] });
+await H.goto('about:blank');
+await H.goto(url);
+await H.waitForTimeout(1500);
+await H.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
+await H.waitForTimeout(1200);
+await H.getByRole('button', { name: 'Zu einer Turnierserie zusammenfassen' }).click();
+const ss = H.getByRole('dialog', { name: 'Turnierserie zusammenstellen' });
+await ss.locator('#series-name').fill('USA 2026');
+await ss.locator('label', { hasText: 'USA Tag 2' }).click();
+await ss.locator('label', { hasText: 'USA Tag 1 · Bethpage' }).click();
+await ss.getByRole('button', { name: 'Serie aus 2 Runden anlegen' }).click();
+await H.waitForTimeout(2500);
+const scode = [...shared.entries()].find(([, r]) => r.game.kind === 'tour-series')?.[0];
+const srow = scode && shared.get(scode).game;
+ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() === `${code},TOUR22` && shared.get(code).game.series?.code === scode && shared.get('TOUR22').game.series?.code === scode, `server: the series ${scode} with its two rounds, each pointing to it`);
+ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
+const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+ok(total.length === 4 && /Chris/.test(total[0]) && total.every((t) => /1 Runde/.test(t)), `the total standing: the round played added up (${total.join(' | ')})`);
+await H.getByRole('button', { name: 'Turniere' }).first().click();
+await H.waitForTimeout(800);
+ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 2' }).count()) === 0, 'the list: the series once, its rounds inside');
+// Chris: in with the series' code – a member of every round
+await G.evaluate(async (c) => {
+  const a = JSON.parse(localStorage.getItem('golfos.auth.v1'));
+  await fetch('https://rgisfnilwehnqpmbrxmp.supabase.co/rest/v1/rpc/golfos_join_game', { method: 'POST', headers: { apikey: 'x', Authorization: `Bearer ${a.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ join_code: c }) });
+}, scode);
+ok(shared.get('TOUR22').members.includes('u-Chris') && shared.get(scode).members.includes('u-Chris'), 'one code for the whole series: Chris in every round');
+await G.goto('about:blank');
+await G.goto(url);
+await G.waitForTimeout(1500);
+await G.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
+await G.waitForTimeout(1500);
+await G.locator('.tour-series-row').click();
+await G.waitForTimeout(1500);
+ok((await G.getByRole('button', { name: 'Serie umbenennen' }).count()) === 0 && (await G.getByRole('button', { name: /Mitspieler einladen/ }).count()) === 0 && (await G.getByText('Nur wer die Serie angelegt hat, ändert sie.').isVisible()), 'Chris: sees the series, cannot change it');
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
