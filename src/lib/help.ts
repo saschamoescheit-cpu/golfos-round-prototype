@@ -99,15 +99,10 @@ export const FAQ: FaqTopic[] = [
       {
         q: () => tr('Does the app work without a connection?', 'Geht die App ohne Netz?'),
         a: () =>
-          isNative()
-            ? tr(
-                'The round, the scores and GPS work without network, everything is sent later. The aerial map is kept for offline use only on the website so far – the app gets it with one of its next versions.',
-                'Runde, Ergebnisse und GPS laufen ohne Netz, abgeglichen wird später. Das Luftbild wird bisher nur auf der Webseite offline gespeichert – die App bekommt das mit einer der nächsten Versionen.',
-              )
-            : tr(
-                'Yes. Open the course once with a connection (e.g. at the hotel) and wait for "map kept offline ✓" – then the round works without network, and everything is sent later.',
-                'Ja. Öffne den Platz einmal mit Netz (z. B. im Hotel-WLAN) und warte auf „Karte offline gespeichert ✓“ – dann läuft die Runde ohne Netz, abgeglichen wird später.',
-              ),
+          tr(
+            'Yes. Open the course once with a connection (e.g. at the hotel) and wait for "map kept offline ✓" – then the round works without network, and everything is sent later.',
+            'Ja. Öffne den Platz einmal mit Netz (z. B. im Hotel-WLAN) und warte auf „Karte offline gespeichert ✓“ – dann läuft die Runde ohne Netz, abgeglichen wird später.',
+          ),
         video: 'start',
       },
       {

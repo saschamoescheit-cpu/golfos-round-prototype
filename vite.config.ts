@@ -38,7 +38,8 @@ const US_IMAGERY_PATTERN = hostPattern(hostsOf('public/imagery/us.json'));
 // base './' so the build works under any GitHub Pages sub-path.
 export default defineConfig({
   base: './',
-  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
+  // the iOS app has no service worker: its own tile store (src/lib/tilestore.ts) keeps the same services' tiles
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()), __TILE_PATTERNS__: JSON.stringify([IMAGERY_PATTERN.source, US_IMAGERY_PATTERN.source]) },
   plugins: [
     react(),
     VitePWA({

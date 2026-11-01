@@ -2,6 +2,8 @@ import type { LngLat } from '../types';
 import type { HoleMapData } from './geo';
 import type { ImagerySource } from './imagery';
 import { pictureType } from './tiletype';
+import { isNative } from './native';
+import { dropTile } from './tilestore';
 
 // Offline map for the course: when a round starts, the satellite tiles of every hole are fetched once.
 // The service worker keeps them (runtime cache "imagery"), so the map works on the course without reception.
@@ -79,6 +81,7 @@ const TILE_CACHES = ['imagery', 'imagery-us'];
  * (LGL 23.–25.10.2026: "Dataset not found" as XML) must not stand there as the course's map for 60 days.
  */
 export async function forgetTile(url: string): Promise<void> {
+  if (isNative()) return void (await dropTile(url)); // the app's own store (lib/tilestore)
   try {
     if (typeof caches === 'undefined') return;
     await Promise.all(TILE_CACHES.map(async (name) => (await caches.open(name)).delete(url)));

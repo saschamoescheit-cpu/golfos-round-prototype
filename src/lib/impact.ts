@@ -4,6 +4,7 @@
 // while the page is open and the screen on – the test is for the cart, the hand or the driving range (spec 004).
 
 import { tr } from './i18n';
+import { isNative, listenShots } from './native';
 
 export interface Impact {
   t: number; // ms since 1970
@@ -90,6 +91,8 @@ export type Listening = (() => void) & { alive: () => boolean; health: () => Mic
 
 /** Listening with the microphone: raw sound (no echo cancelling, no noise suppression), blocks of 1024 samples. */
 export async function listen(onImpact: (i: Impact) => void): Promise<Listening> {
+  // the iOS app: iOS's own audio engine, which hears on with the phone locked (01.11.2026)
+  if (isNative()) return listenShots(onImpact);
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
   const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new Ctx();

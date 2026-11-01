@@ -346,3 +346,19 @@ describe('round split', () => {
     expect(a[a.length - 1].t).toBeGreaterThanOrEqual(putting - 5000);
   });
 });
+
+import { fixAt } from './track';
+describe('where the track was at a crack (the app, 01.11.2026)', () => {
+  const pts: TrackPoint[] = [
+    { t: 1000, p: [9.1, 48.1], acc: 5 },
+    { t: 11000, p: [9.2, 48.2], acc: 8 },
+    { t: 50000, p: [9.3, 48.3], acc: 4 },
+  ];
+  it('takes the nearest fix in time', () => {
+    expect(fixAt(pts, 9000)).toEqual({ pos: [9.2, 48.2], accuracy: 8 });
+  });
+  it('none further than 15 s away', () => {
+    expect(fixAt(pts, 26500)).toBeNull();
+    expect(fixAt([], 1000)).toBeNull();
+  });
+});

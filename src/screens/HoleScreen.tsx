@@ -6,7 +6,7 @@ import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
-import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
+import { autoShot, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
 import { ShotHereIcon } from '../components/RoundIcons';
@@ -262,7 +262,12 @@ export function HoleScreen(props: {
         setGpsError(null);
         // Just unlocked: a fix from before the phone went into the pocket is the old place, not where the player stands
         // (only right after unlocking, so a phone with an odd GPS clock is never locked out).
-        if (Date.now() - visibleAt.current < 5000 && p.timestamp < visibleAt.current - 10000) return;
+        if (Date.now() - visibleAt.current < 5000 && p.timestamp < visibleAt.current - 10000) {
+          // the app measured on in the pocket: a fix handed over late is still where the player was then – into the
+          // track with its own time, only not shown
+          if (isNative() && !round.preview) recordFix(round.id, { t: p.timestamp, p: [p.coords.longitude, p.coords.latitude], acc: p.coords.accuracy });
+          return;
+        }
         const fix = filter.current.push({ pos: [p.coords.longitude, p.coords.latitude] as LngLat, accuracy: p.coords.accuracy, t: Date.now() });
         feedFix({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy, t: p.timestamp });
         const was = shownFix.current;
@@ -378,8 +383,9 @@ export function HoleScreen(props: {
   useEffect(() => {
     const fresh = Date.now() - loadOfflineStamp(offlineKey, imagery.id) < 30 * 24 * 3600 * 1000;
     const urls = urlsRef.current;
-    // without service worker nothing is kept; in the background iOS cuts the downloads – go on when the app is back
-    if (urls.length === 0 || fresh || !navigator.serviceWorker?.controller || !visible) return;
+    // without service worker nothing is kept (the iOS app: its own tile store); in the background iOS cuts the
+    // downloads – go on when the app is back
+    if (urls.length === 0 || fresh || !(navigator.serviceWorker?.controller || isNative()) || !visible) return;
     const ctrl = new AbortController();
     const got = offlineGot.current;
     const todo = urls.filter((u) => !got.has(u));
@@ -984,8 +990,9 @@ export function HoleScreen(props: {
     starting.current = true;
     try {
       stopListen.current = await listen((hit) => {
-        // the newest fix, not the one on the screen: in pocket mode the screen is not redrawn (28.10.2026)
-        const pl = lastFix.current ?? playerRef.current;
+        // the newest fix, not the one on the screen: in pocket mode the screen is not redrawn (28.10.2026). The app hears
+        // with the phone locked and may hand the crack over later: where the track was at the crack's time
+        const pl = (isNative() ? fixAt(loadTrack(round.id), hit.t) : null) ?? lastFix.current ?? playerRef.current;
         const time = new Date(hit.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         if (!pl) {
           setTestMsg(tr(`Crack heard at ${time} – no GPS`, `Knall gehört um ${time} – kein GPS`));

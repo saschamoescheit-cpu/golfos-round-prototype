@@ -11,6 +11,10 @@ const config: CapacitorConfig = {
     contentInset: 'never', // the app lays out the safe areas itself, as on the website
     backgroundColor: '#0E1418',
   },
+  plugins: {
+    // a notification arriving while the app is open is shown too (iOS hides it there otherwise)
+    PushNotifications: { presentationOptions: ['badge', 'sound', 'alert'] },
+  },
 };
 
 export default config;

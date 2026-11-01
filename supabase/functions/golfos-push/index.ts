@@ -7,6 +7,7 @@
 // - games on several phones: a fellow player joined your game; a game ended
 // - bets in Games: a player of the pool made a bet – to everyone in the pool (Sascha 01.11.2026)
 // - a thunderstorm while a round is played: the forecast for the course, checked every 15 minutes
+// - the iOS app's phones get the same as Apple's notifications (APNs, see "Apple's notifications" below – 01.11.2026)
 //
 // Web Push as the standards say – the message encrypted for the phone (RFC 8291, aes128gcm), the sender signed
 // (VAPID, RFC 8292) – with the Web Crypto of the platform, no library. The key pair of the sender is made by the function
@@ -387,8 +388,59 @@ async function senderKeys(): Promise<VapidKeys> {
   return senderKeys(); // the one that was stored first wins
 }
 
+// ---------- Apple's notifications for the iOS app (Sascha 01.11.2026) ----------
+// The app has no web push: its phones are kept in golfos_push as "apns:<device token>" (p256dh and auth "apns") and
+// get Apple's notifications, sent with Apple's key for them (developer.apple.com → Certificates, IDs & Profiles → Keys,
+// "Apple Push Notifications service (APNs)"), set as the function's secrets: APNS_KEY_P8 (the whole .p8 file),
+// APNS_KEY_ID, APNS_TEAM_ID. Without them the app's phones get nothing – the website's go on as before.
+
+const BUNDLE_ID = 'de.moescheit.golfos';
+export const isApnsEndpoint = (e: string): boolean => /^apns:[0-9a-f]{64,200}$/i.test(e);
+
+/** What Apple shows: title, text, one sound; a tap opens the app at the note's place (its url). */
+export function apnsPayload(note: Note): string {
+  return JSON.stringify({ aps: { alert: { title: note.title, body: note.body }, sound: 'default', 'thread-id': note.tag }, url: note.url });
+}
+
+/** The sender's token for Apple (ES256, the .p8 key) – Apple wants a new one at most every 20 minutes, at least every hour. */
+export async function apnsJwt(p8: string, keyId: string, teamId: string, now = Date.now()): Promise<string> {
+  const der = Uint8Array.from(atob(p8.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const header = b64u(utf8(JSON.stringify({ alg: 'ES256', kid: keyId })));
+  const claims = b64u(utf8(JSON.stringify({ iss: teamId, iat: Math.floor(now / 1000) })));
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, utf8(`${header}.${claims}`)));
+  return `${header}.${claims}.${b64u(sig)}`;
+}
+
+let apnsToken: { jwt: string; at: number } | null = null;
+async function sendApns(sub: Sub, note: Note, ttl: number, urgency: 'normal' | 'high'): Promise<boolean> {
+  const p8 = env('APNS_KEY_P8');
+  const keyId = env('APNS_KEY_ID');
+  const team = env('APNS_TEAM_ID');
+  if (!p8 || !keyId || !team) return false;
+  if (!apnsToken || Date.now() - apnsToken.at > 40 * 60 * 1000) apnsToken = { jwt: await apnsJwt(p8, keyId, team), at: Date.now() };
+  // TestFlight and the App Store: Apple's production service (a build from Xcode on a Mac would need the sandbox)
+  const host = env('APNS_HOST') || 'api.push.apple.com';
+  const r = await fetch(`https://${host}/3/device/${sub.endpoint.slice(5)}`, {
+    method: 'POST',
+    headers: {
+      authorization: `bearer ${apnsToken.jwt}`,
+      'apns-topic': BUNDLE_ID,
+      'apns-push-type': 'alert',
+      'apns-priority': urgency === 'high' ? '10' : '5',
+      'apns-expiration': String(Math.floor(Date.now() / 1000) + ttl),
+      'apns-collapse-id': note.tag.slice(0, 64),
+    },
+    body: apnsPayload(note),
+  });
+  // the app deleted, or a token of another app: the phone is gone
+  if (r.status === 410 || (r.status === 400 && /BadDeviceToken|DeviceTokenNotForTopic/.test(await r.text()))) await db().del(`golfos_push?endpoint=eq.${encodeURIComponent(sub.endpoint)}`);
+  return r.ok;
+}
+
 /** Sends one notification to one phone; a subscription the push service no longer knows is removed. */
 async function send(sub: Sub, note: Note, ttl = 24 * 3600, urgency: 'normal' | 'high' = 'normal'): Promise<boolean> {
+  if (isApnsEndpoint(sub.endpoint)) return sendApns(sub, note, ttl, urgency);
   const keys = await senderKeys();
   const body = await encrypt(utf8(JSON.stringify(note)), fromB64u(sub.p256dh), fromB64u(sub.auth));
   const r = await fetch(sub.endpoint, {
@@ -487,7 +539,8 @@ export async function handle(req: Request): Promise<Response> {
     const d = db();
     if (action === 'subscribe') {
       const s = body.subscription as { endpoint?: string; keys?: { p256dh?: string; auth?: string } } | undefined;
-      if (!s?.endpoint || !/^https:\/\//.test(s.endpoint) || !s.keys?.p256dh || !s.keys?.auth) return json({ error: 'no subscription' }, 400);
+      // a browser's subscription, or the iOS app's phone (apns:<device token>)
+      if (!s?.endpoint || !(/^https:\/\//.test(s.endpoint) || isApnsEndpoint(s.endpoint)) || !s.keys?.p256dh || !s.keys?.auth) return json({ error: 'no subscription' }, 400);
       const row = { endpoint: s.endpoint, user_id: user, p256dh: s.keys.p256dh, auth: s.keys.auth, kinds: body.kinds ?? null, tz: String(body.tz ?? '').slice(0, 60) || null, lang: body.lang === 'en' ? 'en' : 'de', updated_at: new Date().toISOString() };
       await d.del(`golfos_push?endpoint=eq.${encodeURIComponent(s.endpoint)}&user_id=neq.${user}`); // the phone of another account before
       await d.upsert('golfos_push', row, 'endpoint');

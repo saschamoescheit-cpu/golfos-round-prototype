@@ -1,0 +1,12 @@
+{
+  "name": "golfos-shot-listener",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GolfOS: the shot by sound in the iOS app, with the phone locked",
+  "files": ["ios/", "Package.swift"],
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  }
+}

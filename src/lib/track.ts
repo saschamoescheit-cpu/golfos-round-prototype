@@ -436,6 +436,14 @@ export function loadTrack(roundId: string): TrackPoint[] {
   return cached(roundId).pts;
 }
 
+/** Where the track was at a moment: the fix nearest to it, at most 15 s away (a crack heard in the pocket, handed over
+ *  by the app later – 01.11.2026). */
+export function fixAt(track: TrackPoint[], t: number): { pos: LngLat; accuracy: number } | null {
+  let best: TrackPoint | null = null;
+  for (const p of track) if (Math.abs(p.t - t) <= 15000 && (!best || Math.abs(p.t - t) < Math.abs(best.t - t))) best = p;
+  return best ? { pos: best.p, accuracy: best.acc } : null;
+}
+
 /** Appends a GPS fix when the player moved ≥ 3 m or 5 s passed (compact storage). */
 export function recordFix(roundId: string, fix: TrackPoint): void {
   const c = cached(roundId);

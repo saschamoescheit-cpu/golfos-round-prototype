@@ -1,5 +1,7 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation';
+import type { Impact, Listening, MicHealth } from './impact';
+import { tidyTiles, withTileStore } from './tilestore';
 
 // GolfOS as an iOS app (Sascha 01.11.2026: TestFlight, so GPS and the shot by sound keep running with the phone
 // locked). The same code as the website; what only the app can do goes through here. The plugins load on demand,
@@ -19,8 +21,8 @@ export const WEB_HOME = 'https://saschamoescheit-cpu.github.io/golfos-round-prot
 export const linkBase = (): string => (isNative() ? WEB_HOME : location.origin + location.pathname);
 
 /** In the app the iPhone's share sheet stands in for the browser's sharing (navigator.share) and for downloads
- *  (`<a download>` of a blob), iOS's own for the Wake Lock – WKWebView has none of them. So the code everywhere stays
- *  the website's. Once, at the start. */
+ *  (`<a download>` of a blob), iOS's own for the Wake Lock, the app's tile store for the service worker's – WKWebView
+ *  has none of them. So the code everywhere stays the website's. Once, at the start. */
 export function installNativeShims(): void {
   if (!isNative()) return;
   const share = async (d: ShareData): Promise<void> => {
@@ -37,6 +39,10 @@ export function installNativeShims(): void {
   Object.defineProperty(navigator, 'share', { configurable: true, value: share });
   Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
   Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: wakeLock() });
+  // the aerial tiles for offline – the website's service worker does that, the app has none
+  window.fetch = withTileStore(window.fetch.bind(window));
+  setTimeout(() => void tidyTiles(), 20000);
+  onPushTap();
   const click = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
     if (!this.download || !this.href.startsWith('blob:')) return click.call(this);
@@ -122,6 +128,101 @@ export function watchPosition(ok: (p: Position) => void, fail: (e: { code: numbe
     stopped = true;
     if (id) void Background.removeWatcher({ id });
   };
+}
+
+/** GolfOS' own plugin (native-plugins/shot-listener): the shot by sound by iOS's audio engine. */
+interface ShotHit {
+  seq: number;
+  t: number;
+  level: number;
+}
+interface ShotListener {
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  status(): Promise<{ health: MicHealth; why: string; restarts: number }>;
+  take(): Promise<{ impacts: ShotHit[] }>;
+  addListener(event: 'impact', fn: (hit: ShotHit) => void): Promise<PluginListenerHandle>;
+}
+const Shots = registerPlugin<ShotListener>('ShotListener');
+
+/** The shot by sound in the app – as lib/impact listen(), but it hears on with the phone locked in the pocket. A crack
+ *  heard while the page slept comes when it wakes (with its own time), each one once. */
+export async function listenShots(onImpact: (i: Impact) => void): Promise<Listening> {
+  const seen = new Set<number>();
+  const hand = (h: ShotHit) => {
+    if (seen.has(h.seq)) return;
+    seen.add(h.seq);
+    onImpact({ t: h.t, level: h.level });
+  };
+  const handle = await Shots.addListener('impact', hand);
+  try {
+    await Shots.start();
+  } catch (e) {
+    void handle.remove();
+    throw e;
+  }
+  let state: { health: MicHealth; why: string } = { health: 'on', why: '' };
+  let stopped = false;
+  const poll = window.setInterval(() => void Shots.status().then((s) => (state = s), () => undefined), 1000);
+  const catchUp = () => {
+    if (document.visibilityState === 'visible') void Shots.take().then((r) => r.impacts.forEach(hand), () => undefined);
+  };
+  document.addEventListener('visibilitychange', catchUp);
+  const stop = () => {
+    stopped = true;
+    window.clearInterval(poll);
+    document.removeEventListener('visibilitychange', catchUp);
+    void handle.remove();
+    void Shots.stop().catch(() => undefined);
+  };
+  return Object.assign(stop, {
+    alive: () => !stopped && state.health !== 'dead',
+    health: () => (stopped ? 'dead' : state.health),
+    why: () => state.why || state.health,
+    wake: () => undefined,
+  });
+}
+
+/** Apple's notifications for this phone (the app has no web push): asks the player, then the phone's address for them
+ *  (its device token) – null when not allowed. */
+export async function nativePushToken(): Promise<string | null> {
+  const { PushNotifications } = await import('@capacitor/push-notifications');
+  let perm = await PushNotifications.checkPermissions();
+  if (perm.receive !== 'granted' && perm.receive !== 'denied') perm = await PushNotifications.requestPermissions();
+  if (perm.receive !== 'granted') return null;
+  return new Promise((ok, fail) => {
+    let done = false;
+    const handles: Promise<PluginListenerHandle>[] = [];
+    const end = (then: () => void) => {
+      if (done) return;
+      done = true;
+      handles.forEach((h) => void h.then((x) => x.remove()));
+      then();
+    };
+    handles.push(PushNotifications.addListener('registration', (t) => end(() => ok(t.value))));
+    handles.push(PushNotifications.addListener('registrationError', (e) => end(() => fail(new Error(e.error)))));
+    void PushNotifications.register().catch((e) => end(() => fail(e)));
+    setTimeout(() => end(() => fail(new Error('no answer from Apple'))), 20000);
+  });
+}
+
+/** No more of Apple's notifications for this phone. */
+export async function dropNativePush(): Promise<void> {
+  const { PushNotifications } = await import('@capacitor/push-notifications');
+  await PushNotifications.unregister().catch(() => undefined);
+}
+
+/** A notification tapped: the app opens where it says (the same places as the website's: #review=…, #games …). */
+function onPushTap(): void {
+  void import('@capacitor/push-notifications').then(({ PushNotifications }) =>
+    PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
+      const url = String((a.notification.data as { url?: string } | undefined)?.url ?? '');
+      const hash = url.includes('#') ? url.slice(url.indexOf('#')) : '';
+      if (!hash) return;
+      location.hash = hash;
+      location.reload(); // App reads the place at its start (lib/push takePushTarget)
+    }),
+  );
 }
 
 /** The app opened by a link (back from Google): `fn` gets the whole address; the browser sheet closes. */

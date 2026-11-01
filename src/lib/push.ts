@@ -1,12 +1,13 @@
 import { getLang } from './i18n';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { isNative } from './native';
+import { dropNativePush, isNative, nativePushToken } from './native';
 
 // Push notifications (final list, Sascha 23.10.2026: "push in the web prototype"): a round not yet checked, a fellow
 // player joining a game or a game ending, a thunderstorm while a round is played. The server side is the function
 // supabase/functions/golfos-push (with supabase/golfos-push.sql); this phone subscribes with the function's key, the
 // service worker (public/push-sw.js) shows what arrives and opens the app at the right place.
-// On the iPhone this works only for the app added to the home screen (iOS 16.4 and later) – the profile says so.
+// On the iPhone this works only for the app added to the home screen (iOS 16.4 and later) – the profile says so. The
+// iOS app gets Apple's notifications instead (01.11.2026): the same switches, the same function, its phone as "apns:…".
 
 export type PushKind = 'rounds' | 'games' | 'weather' | 'agility';
 export type PushKinds = Record<PushKind, boolean>;
@@ -72,9 +73,10 @@ export const standalone = (): boolean =>
   (navigator as Navigator & { standalone?: boolean }).standalone === true || (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
 
 /** What the profile offers: the switch, or why not. */
-export function pushAvailability(): 'ok' | 'signin' | 'homescreen' | 'unsupported' | 'app' {
+export function pushAvailability(): 'ok' | 'signin' | 'homescreen' | 'unsupported' {
   if (!syncConfigured()) return 'unsupported';
-  if (isNative()) return 'app'; // the iOS app has no web push – its own (Apple's) comes later
+  // the iOS app: Apple's notifications (lib/native) instead of the browser's
+  if (isNative()) return loadSession() ? 'ok' : 'signin';
   if (isIos() && !standalone()) return 'homescreen';
   if (!pushSupported()) return 'unsupported';
   if (!loadSession()) return 'signin';
@@ -99,6 +101,7 @@ export class PushError extends Error {
 
 /** Turns notifications on for this phone: asks the player, subscribes, tells the server (which says hello). */
 export async function enablePush(): Promise<PushState> {
+  if (isNative()) return enableAppPush();
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new PushError('denied', 'denied');
   let publicKey: string;
@@ -123,10 +126,29 @@ export async function enablePush(): Promise<PushState> {
   return state;
 }
 
+/** The iOS app: Apple's notifications – the phone's device token goes to the function as "apns:<token>". */
+async function enableAppPush(): Promise<PushState> {
+  let token: string | null;
+  try {
+    token = await nativePushToken();
+  } catch (e) {
+    throw new PushError('failed', String(e));
+  }
+  if (!token) throw new PushError('denied', 'denied');
+  const endpoint = `apns:${token}`;
+  const state: PushState = { on: true, endpoint, kinds: loadPush().kinds };
+  const r = await call({ action: 'subscribe', subscription: { endpoint, keys: { p256dh: 'apns', auth: 'apns' } }, kinds: state.kinds, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, lang: getLang() });
+  // 400: the function on the server is older than the app (it knows only the browser's subscriptions)
+  if (!r.ok) throw new PushError(r.status === 404 || r.status === 400 ? 'setup' : 'failed', String(r.status));
+  savePush(state);
+  return state;
+}
+
 /** Turns them off for this phone. */
 export async function disablePush(): Promise<PushState> {
   const s = loadPush();
-  try {
+  if (isNative()) await dropNativePush();
+  else try {
     const reg = await navigator.serviceWorker.ready;
     await (await reg.pushManager.getSubscription())?.unsubscribe();
   } catch {
