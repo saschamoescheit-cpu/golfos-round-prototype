@@ -6,7 +6,7 @@
 import { syncSoon } from '../lib/sync';
 import { isLeftHanded } from '../lib/profile';
 import { TESTS } from './tests';
-import type { Grade, Measurement, Screening, TestId, TestResult } from './types';
+import type { Grade, Measurement, Screening, Side, TestId, TestResult } from './types';
 
 export type Light = 'red' | 'yellow' | 'green';
 
@@ -46,6 +46,8 @@ export interface PhysioExercise {
   perSide: boolean;
   /** the tests it works on */
   targets?: TestId[];
+  /** the 3D video to show (a drill's or a test's clip id) – else found by the exercise's name, see clipIdOf */
+  clip?: string;
 }
 export interface PhysioPlan {
   id: string;
@@ -109,6 +111,24 @@ export const TPI_NAMES: Record<string, TestId> = {
 };
 export const testOf = (t: PhysioTest): TestId | undefined => t.test ?? TPI_NAMES[t.name.trim().toLowerCase()];
 
+/** The 3D videos of Agility that show an exercise of the TPI library well enough (by its English name) – what has no
+ *  fitting one is told by the voice and the steps alone. */
+export const PHYSIO_CLIPS: Record<string, string> = {
+  'deer in the headlights': 'phys-glute-squeeze',
+  'bridge (palms down)': 'glute-bridge',
+  bridge: 'glute-bridge',
+  'comerford hip complex': 'mob-clamshell',
+  'toe touch toes up': 'mob-toe-touch',
+  'toe touch heels up': 'toe-touch',
+  'single leg stance with pattern assistance': 'single-leg-balance',
+  'supine pelvic tilts': 'mob-pelvic-tilt',
+  'targeted cats and dogs': 'mob-cat-camel',
+  'cats and dogs': 'mob-cat-camel',
+  'pelvic powerhouse': 'pelvic-rotation',
+  'pelvic powerhouse supported': 'pelvic-rotation',
+};
+export const clipIdOf = (e: PhysioExercise): string | undefined => e.clip ?? PHYSIO_CLIPS[e.name.trim().toLowerCase().replace(/\s+/g, ' ')];
+
 export const GRADE_OF: Record<Light, Grade> = { red: 'fail', yellow: 'limited', green: 'pass' };
 
 /** "High" from 66 %, "Moderate" from 33 %, else "Low" – as the TPI app labels them */
@@ -154,6 +174,7 @@ export function parsePlan(text: string, now = new Date()): PhysioPlan | { error:
       sets,
       perSide: e.perSide === true,
       ...(Array.isArray(e.targets) ? { targets: (e.targets as unknown[]).filter((x): x is TestId => TESTS.some((t) => t.id === x)) } : {}),
+      ...(typeof e.clip === 'string' ? { clip: e.clip } : {}),
     });
   }
   const tests: PhysioTest[] = Array.isArray(raw.tests)
@@ -319,4 +340,64 @@ export function retestDue(p: PhysioPlan, lastScreenAt: string | null, now = new 
   const days = Math.floor((now.getTime() - Date.parse(since)) / 864e5);
   const sessions = (p.log ?? []).filter((e) => e.at >= since).length;
   return { due: days >= 28 && sessions >= 8, days, sessions };
+}
+
+// ---------- before and after: the physio's screen against the app's tests since ----------
+
+/** A measurement of the app as a light, the way the physio's form reads: pain or failed red, limited yellow, passed green. */
+export const measuredLight = (m: Measurement | undefined): Light | null => (!m ? null : m.pain || m.grade === 'fail' ? 'red' : m.grade === 'limited' ? 'yellow' : 'green');
+const RANK: Record<Light, number> = { red: 0, yellow: 1, green: 2 };
+
+export type Change = 'better' | 'same' | 'worse' | 'mixed' | 'open';
+export interface Compared {
+  test: TestId;
+  /** the physio's light and the newest of the app since, per side (one row without a side for the tests of both) */
+  sides: { side: Side | null; before: Light; after: Light | null }[];
+  change: Change;
+  /** when the newest of the app was measured */
+  at: string | null;
+}
+
+/** Each test of the physio's screen against the newest of the app since (Sascha 1.11.2026: "the tests again after a
+ *  month, to see how far the results improved") – per side; and the sessions trained in between. */
+export function compareRetest(p: PhysioPlan, list: Screening[]): { rows: Compared[]; at: string | null; days: number; sessions: number } {
+  // the newest measurement of each test and side since the physio's screen, not the physio's own
+  const newest = new Map<string, Measurement>();
+  for (const s of list) {
+    if (s.from) continue;
+    for (const [id, r] of Object.entries(s.results) as [TestId, TestResult][]) {
+      for (const k of ['both', 'left', 'right'] as const) {
+        const m = r[k];
+        if (!m || m.source === 'physio' || m.at <= p.screenedAt) continue;
+        const key = `${id}:${k}`;
+        if (!newest.has(key) || m.at > newest.get(key)!.at) newest.set(key, m);
+      }
+    }
+  }
+  const rows: Compared[] = [];
+  for (const t of p.tests) {
+    const test = testOf(t);
+    const def = test && TESTS.find((x) => x.id === test);
+    if (!test || !def) continue;
+    const of = (k: 'both' | 'left' | 'right') => newest.get(`${test}:${k}`);
+    const sides = def.sides
+      ? (['left', 'right'] as Side[]).map((side) => ({ side, before: t[side] ?? t.light, m: of(side) ?? of('both') }))
+      : [{ side: null, before: t.light, m: of('both') ?? of('left') ?? of('right') }];
+    const deltas = sides.filter((x) => x.m).map((x) => RANK[measuredLight(x.m)!] - RANK[x.before]);
+    const change: Change = !deltas.length
+      ? 'open'
+      : deltas.every((d) => d === 0)
+        ? 'same'
+        : deltas.every((d) => d >= 0)
+          ? 'better'
+          : deltas.every((d) => d <= 0)
+            ? 'worse'
+            : 'mixed';
+    const at = sides.map((x) => x.m?.at).filter((x): x is string => !!x).sort().at(-1) ?? null;
+    rows.push({ test, sides: sides.map((x) => ({ side: x.side, before: x.before, after: measuredLight(x.m) })), change, at });
+  }
+  const at = rows.map((r) => r.at).filter((x): x is string => !!x).sort().at(-1) ?? null;
+  const days = at ? Math.floor((Date.parse(at) - Date.parse(p.screenedAt)) / 864e5) : 0;
+  const sessions = at ? (p.log ?? []).filter((e) => e.at > p.screenedAt && e.at <= at).length : 0;
+  return { rows, at, days, sessions };
 }

@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { speak, stopSpeaking } from '../lib/caddietalk';
 import { PlayActions } from '../components/PlayActions';
 import { TopBar } from '../components/ui';
 import { beep, fakeSpeed, speechMs, unlockAudio } from './CameraTest';
 import {
+  clipIdOf,
   clock,
+  compareRetest,
   dueToday,
   exerciseSec,
   faultLevel,
@@ -22,6 +24,8 @@ import {
   unlogSession,
   weekCount,
   weeksOf,
+  type Change,
+  type Compared,
   type Light,
   type PhysioEntry,
   type PhysioExercise,
@@ -31,6 +35,11 @@ import {
 } from './physio';
 import { loadScreenings, saveScreening } from './store';
 import { TESTS } from './tests';
+import { CLIPS } from './anim3d/clips';
+import { DRILL_CLIPS } from './anim3d/drills';
+import type { TestId } from './types';
+
+const Anim3D = lazy(() => import('./Anim3D'));
 
 // "My physio plan" (Sascha 1.11.2026): what the physio's screening found, the swing characteristics that follow, the
 // routine the physio put together – run step by step with the clock and a voice, every session confirmed in a diary;
@@ -67,6 +76,12 @@ function introText(p: PhysioPlan, ex: number): string {
   const side = e.perSide ? tr(' Start with the right side.', ' Beginne mit der rechten Seite.') : '';
   return [head, ...e.steps, e.note ?? '', `${dose}.${side}`].filter(Boolean).join(' ');
 }
+
+/** The 3D video of an exercise, when Agility has one that shows it. */
+const clipOf = (e: PhysioExercise) => {
+  const id = clipIdOf(e);
+  return id ? (DRILL_CLIPS[id] ?? CLIPS[id as TestId]) : undefined;
+};
 
 // ---------- the card on the drills tab ----------
 
@@ -231,6 +246,11 @@ function RoutineTab(props: { p: PhysioPlan; onRun: () => void; onChange: (p: Phy
             </button>
             {open === i && (
               <div className="mob-physio-ex-body">
+                {clipOf(e) && (
+                  <Suspense fallback={<div className="mob-3d-wait" />}>
+                    <Anim3D key={e.id} clip={clipOf(e)} say={[e.note ?? '', ...e.steps]} />
+                  </Suspense>
+                )}
                 {e.note && <p className="small">{e.note}</p>}
                 <ol className="small">
                   {e.steps.map((s, j) => (
@@ -381,8 +401,10 @@ const FEEL = [() => tr('very hard', 'sehr schwer'), () => tr('hard', 'schwer'), 
 
 function ResultsTab(props: { p: PhysioPlan; onRetest: () => void }) {
   const p = props.p;
-  const own = loadScreenings().filter((s) => s.finishedAt && !s.from && s.finishedAt > p.screenedAt);
+  const all = loadScreenings();
+  const own = all.filter((s) => s.finishedAt && !s.from && s.finishedAt > p.screenedAt);
   const re = retestDue(p, own[0]?.finishedAt ?? null);
+  const cmp = compareRetest(p, all);
   const order: Light[] = ['red', 'yellow', 'green'];
   const tests = [...p.tests].sort((a, b) => order.indexOf(a.light) - order.indexOf(b.light));
   return (
@@ -406,11 +428,13 @@ function ResultsTab(props: { p: PhysioPlan; onRetest: () => void }) {
           {tr('To the screening', 'Zum Screening')}
         </button>
       </section>
+      {cmp.at && <CompareSum c={cmp} p={p} />}
       <div className="list mob-physio-tests">
         {tests.map((x) => {
           const sided = x.left || x.right;
+          const row = cmp.rows.find((r) => r.test === testOf(x));
           return (
-            <div key={x.name} className="list-item">
+            <div key={x.name} className={`list-item${row && row.change !== 'open' ? ' mob-cmp-row' : ''}`}>
               <span className={`mob-light ${x.light}`} aria-hidden="true" />
               <span className="grow">
                 <span className="title">{testName(x.name, testOf(x))}</span>
@@ -418,12 +442,76 @@ function ResultsTab(props: { p: PhysioPlan; onRetest: () => void }) {
                   {sided ? `${tr('left', 'links')} ${LIGHT_NAME[x.left ?? x.light]()} · ${tr('right', 'rechts')} ${LIGHT_NAME[x.right ?? x.light]()}` : LIGHT_NAME[x.light]()}
                   {x.note ? ` · ${x.note}` : ''}
                 </span>
+                {row && row.change !== 'open' && <CompareSides row={row} />}
               </span>
+              {row && cmp.at && <span className={`mob-cmp-change ${row.change}`}>{CHANGE_NAME[row.change]()}</span>}
             </div>
           );
         })}
       </div>
     </>
+  );
+}
+
+// before and after (Sascha 1.11.2026: "the tests again after a month – to see how far the results improved")
+const CHANGE_NAME: Record<Change, () => string> = {
+  better: () => tr('▲ better', '▲ besser'),
+  same: () => tr('= same', '= gleich'),
+  worse: () => tr('▼ worse', '▼ schlechter'),
+  mixed: () => tr('◆ mixed', '◆ gemischt'),
+  open: () => tr('not yet', 'noch offen'),
+};
+
+/** The retest at a glance: how many tests got better, stayed, got worse – after how many days and sessions. */
+function CompareSum(props: { c: ReturnType<typeof compareRetest>; p: PhysioPlan }) {
+  const { c, p } = props;
+  const n = (k: Change) => c.rows.filter((r) => r.change === k).length;
+  const kinds = (['better', 'same', 'worse', 'mixed', 'open'] as Change[]).filter((k) => n(k));
+  return (
+    <section className="card mob-cmp-sum">
+      <strong>{tr('Before – after', 'Vorher – nachher')}</strong>
+      <span className="muted small">
+        {tr(
+          `The physio on ${dateText(p.screenedAt)} → your tests until ${dateText(c.at!)} · ${c.days} days · ${c.sessions} sessions`,
+          `Physio am ${dateText(p.screenedAt)} → deine Tests bis ${dateText(c.at!)} · ${c.days} Tage · ${c.sessions} Einheiten`,
+        )}
+      </span>
+      <div className="mob-cmp-counts">
+        {kinds.map((k) => (
+          <span key={k} className={`mob-cmp-change ${k}`}>
+            {CHANGE_NAME[k]()} <b>{n(k)}</b>
+          </span>
+        ))}
+      </div>
+      <span className="muted small">
+        {tr(
+          'The camera measures differently from the physio’s hands and eyes – one step up or down can also come from that. For a sure answer: the physio’s retest.',
+          'Die Kamera misst anders als Hände und Augen des Physios – ein Schritt auf oder ab kann auch daher kommen. Sicher ist der Nachtest beim Physio.',
+        )}
+      </span>
+    </section>
+  );
+}
+
+/** Physio → now, per side: the two lights with an arrow. */
+function CompareSides(props: { row: Compared }) {
+  const name = (l: Light | null) => (l ? LIGHT_NAME[l]() : tr('not tested', 'nicht getestet'));
+  return (
+    <span className="mob-cmp-sides">
+      {props.row.sides.map((s) => (
+        <span
+          key={s.side ?? 'both'}
+          className="mob-cmp-side"
+          role="img"
+          aria-label={`${s.side ? (s.side === 'left' ? tr('left', 'links') : tr('right', 'rechts')) + ': ' : ''}${tr('physio', 'Physio')} ${name(s.before)}, ${tr('now', 'jetzt')} ${name(s.after)}`}
+        >
+          {s.side && <small>{s.side === 'left' ? 'L' : 'R'}</small>}
+          <i className={`mob-dot ${s.before}`} />
+          <span aria-hidden="true">→</span>
+          <i className={`mob-dot ${s.after ?? 'none'}`} />
+        </span>
+      ))}
+    </span>
   );
 }
 const testName = (name: string, id: string | undefined) => {
@@ -609,6 +697,13 @@ export function PhysioRun(props: { plan: PhysioPlan; onClose: (p: PhysioPlan) =>
   return (
     <main className="screen mobility mob-run-camera mob-warmup-run mob-physio-run">
       <section className="mob-camera coach mob-warmup-player">
+        {clipOf(e) && (
+          <div className="mob-warmup-stage">
+            <Suspense fallback={<div className="mob-3d-wait" />}>
+              <Anim3D key={e.id} clip={clipOf(e)} compact />
+            </Suspense>
+          </div>
+        )}
         <div className="mob-warmup-info mob-physio-info">
           <span className="muted small">{tr(`Exercise ${st.ex + 1} of ${p.routine.exercises.length}`, `Übung ${st.ex + 1} von ${p.routine.exercises.length}`)}</span>
           <strong className="mob-warmup-name">{e.name}</strong>

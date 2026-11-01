@@ -360,3 +360,16 @@
 .mob-tpi-opt.on.pass i { background: #7fb236; }
 .mob-tpi-opt.on.limited i { background: #e8b931; }
 .mob-tpi-opt.on.fail i { background: #e5544b; }
+/* before – after: the physio's screen against the retest */
+.mob-cmp-sum { display: flex; flex-direction: column; gap: 8px; }
+.mob-cmp-counts { display: flex; flex-wrap: wrap; gap: 8px; }
+.mob-cmp-change { flex: none; font: 600 13px var(--body); padding: 3px 9px; border-radius: 999px; background: var(--surface-2, rgba(127, 127, 127, 0.12)); color: var(--text-2); white-space: nowrap; }
+.mob-cmp-change.better { color: var(--brand-text); }
+.mob-cmp-change.worse { color: var(--bad); }
+.mob-cmp-sides { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+.mob-cmp-side { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-2); }
+.mob-cmp-side small { font-size: 11px; }
+/* the physio's routine with its 3D video: a flatter picture, the steps below stay readable (scroll when long) */
+.mob-physio-run .mob-warmup-stage .mob-3d-stage, .mob-physio-run .mob-warmup-stage .mob-3d-wait { aspect-ratio: 16 / 9; }
+.mob-physio-run .mob-warmup-info { min-height: 0; overflow-y: auto; }
+.mob-physio-run .mob-warmup-stage + .mob-warmup-info .mob-physio-clock { font-size: 48px; }

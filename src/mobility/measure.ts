@@ -523,13 +523,17 @@ class LowerQuarterAnalyzer implements Analyzer {
     if (this.cal.length < CAL_FRAMES || b < 3) return null;
     const lim = LIMITS.lowerQuarter;
     const notes: Text[] = [];
-    if (!(this.maxPos >= 10 && this.maxNeg >= 10)) notes.push(L('Only one direction was seen', 'Nur eine Richtung wurde gemessen'));
+    const both = this.maxPos >= 10 && this.maxNeg >= 10;
+    if (!both) notes.push(L('Only one direction was seen', 'Nur eine Richtung wurde gemessen'));
     else if (Math.abs(this.maxPos - this.maxNeg) >= 15) notes.push(L(`One direction ${Math.round(Math.abs(this.maxPos - this.maxNeg))}° shorter`, `Eine Richtung ${Math.round(Math.abs(this.maxPos - this.maxNeg))}° kürzer`));
     // the nose moves to the left of the picture when the player turns to their right (the picture is not mirrored)
     const right = this.maxNeg;
     const left = this.maxPos;
     const checks = [check('right', `Turns ${lim.pass}° or more to the right`, `Dreht ${lim.pass}° oder mehr nach rechts`, right >= lim.pass), check('left', `Turns ${lim.pass}° or more to the left`, `Dreht ${lim.pass}° oder mehr nach links`, left >= lim.pass)];
-    return { value: Math.round(b), grade: b >= lim.pass ? 'pass' : b >= lim.limited ? 'limited' : 'fail', notes, checks };
+    // the goal is each direction: one direction alone is at most limited (02.11.2026, the TPI video: one turn of 85° and
+    // none the other way had come out "pass")
+    const grade: Grade = b >= lim.pass && both ? 'pass' : b >= lim.limited ? 'limited' : 'fail';
+    return { value: Math.round(b), grade, notes, checks };
   }
 }
 
@@ -1056,6 +1060,8 @@ class ShoulderAnalyzer implements Analyzer {
  * back (its change from the posture at the start is the value, both ways together). The physio also looks at how smooth
  * it is ("shake and bake" while flattening, 29.10.2026): the jitter of the hip angle while flattening against the jitter
  * standing still. Not a measured pelvic angle – a proxy, REVIEW(golf).
+ * Both ways count from the posture held still at the start: a player who tilts at once is measured from the first still
+ * moment, often a held tilt (02.11.2026, the TPI video: started in the hollow hold, "hollowing does not work").
  */
 class PelvicTiltAnalyzer implements Analyzer {
   readonly kind = 'pelvicTilt' as const;
@@ -1070,6 +1076,9 @@ class PelvicTiltAnalyzer implements Analyzer {
   private chest = 0;
   /** the last two raw hip angles (for the jitter) */
   private prev: number[] = [];
+  /** the last hip angle taken, and since when the pictures jump away from it (ms) */
+  private lastRaw: number | null = null;
+  private slipFrom = -1;
   private calJit: number[] = [];
   private flatJit: number[] = [];
   private hollowJit: number[] = [];
@@ -1101,6 +1110,15 @@ class PelvicTiltAnalyzer implements Analyzer {
     this.lastT = f.t;
     if ([s.sh, s.hip, s.kn, s.an].some((i) => vis(f, i) < 0.5)) return { value: null, best: null, phase: this.t0 < 0 ? 'calibrate' : 'move' };
     const raw = this.hipAngle(f, s);
+    // a jump of the hip angle by more than 20° from one picture to the next is the tracking slipping (to someone close by,
+    // a wrong point), not a tilt: left out for up to 0.5 s, then the new angle counts (02.11.2026, the TPI video: the
+    // tracking jumped to the physio beside the player for half a second – 40° "tilts" and a "moving chest")
+    if (this.lastRaw != null && Math.abs(raw - this.lastRaw) > 20) {
+      if (this.slipFrom < 0) this.slipFrom = f.t;
+      if (f.t - this.slipFrom < 500) return { value: null, best: this.t0 < 0 ? null : this.best(), phase: this.t0 < 0 ? 'calibrate' : 'move' };
+    }
+    this.slipFrom = -1;
+    this.lastRaw = raw;
     const lean = this.lean(f, s);
     // the shoulder against the ankle: the phone stands still, the feet too – what the shoulder moves, the chest moved
     const sh = sub(px(f, s.sh), px(f, s.an));

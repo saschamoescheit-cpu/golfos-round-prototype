@@ -38,7 +38,7 @@ import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
 import type { Area, Grade, Measurement, Screening, Side, SquatCause, TestDef, TestId, TestResult } from '../mobility/types';
 import '../training/training.css';
 import { PhysioCard, PhysioRun, PhysioView, importPlan } from '../mobility/PhysioPlan';
-import { dueToday, loadPhysio, routineSec, weekCount } from '../mobility/physio';
+import { dueToday, loadPhysio, measuredLight, routineSec, weekCount } from '../mobility/physio';
 import '../mobility/mobility.css';
 
 // the 3D video of a test (three.js, loaded with the first test page)
@@ -1667,7 +1667,7 @@ function PatternView(props: { id: string; nav: Nav }) {
 /** The traffic light of a measurement as the TPI form has it (Sascha 1.11.2026: "rated per test as in the original
  *  TPI – visible in the app"): pass green, limited yellow, fail or pain red. */
 type Light = 'green' | 'yellow' | 'red' | 'none';
-const lightOf = (m: Measurement | undefined): Light => (!m ? 'none' : m.pain || m.grade === 'fail' ? 'red' : m.grade === 'limited' ? 'yellow' : 'green');
+const lightOf = (m: Measurement | undefined): Light => measuredLight(m) ?? 'none';
 const LIGHT_RANK: Record<Light, number> = { red: 0, yellow: 1, green: 2, none: 3 };
 /** the lights of a test: one, or left and right */
 const lightsOf = (test: TestDef, r: TestResult | undefined): { side: Side | null; light: Light }[] =>

@@ -43,7 +43,7 @@ const PLAN = {
     name: 'Testroutine',
     exercises: [
       { name: 'Gesäß anspannen', steps: ['Rückenlage.', 'Gesäß anspannen.'], sets: [{ reps: 2, repSec: 3, restSec: 2 }] },
-      { name: 'Brücke', steps: ['Becken heben.'], sets: [{ reps: 2, repSec: 2, restSec: 2 }, { reps: 2, repSec: 2, restSec: 2 }], targets: ['bridge'] },
+      { name: 'Brücke', steps: ['Becken heben.'], sets: [{ reps: 2, repSec: 2, restSec: 2 }, { reps: 2, repSec: 2, restSec: 2 }], targets: ['bridge'], clip: 'glute-bridge' },
       { name: 'Einbeinstand', steps: ['Auf einem Bein stehen.'], perSide: true, sets: [{ reps: 1, repSec: 4, restSec: 2 }] },
     ],
   },
@@ -79,6 +79,12 @@ const sum = await p.locator('.mob-physio-sum').first().innerText();
 ok(/3 Übungen · 0:32 Min\./.test(sum), `the routine with its time (${sum.split('\n')[1]})`);
 await p.locator('.mob-physio-ex-head').nth(1).click();
 ok((await p.locator('.mob-physio-sets tbody tr').count()) === 2 && /Für: Brücke/.test(await p.locator('.mob-physio-ex-body').innerText()), 'an exercise opens: its sets and what it is for');
+await p.locator('.mob-physio-ex-body .mob-3d').waitFor({ timeout: 15000 }).catch(() => {});
+ok(await p.locator('.mob-physio-ex-body .mob-3d').isVisible(), 'the exercise shows its 3D video (the bridge)');
+ok((await p.locator('.mob-physio-ex-body .mob-3d-voice[aria-pressed="false"]').count()) === 1, 'its loudspeaker there but muted');
+await p.locator('.mob-physio-ex-head').nth(0).click();
+ok(!(await p.locator('.mob-physio-ex-body .mob-3d').count()), 'an exercise without a fitting video: its steps only');
+await p.locator('.mob-physio-ex-head').nth(0).click();
 
 // daily: today is a training day – the start page's "training today" is the routine, Agility's plan a tap away
 await p.locator('.mob-physio-per button').filter({ hasText: 'täglich' }).click();
@@ -127,14 +133,18 @@ ok(acts === 'skip pause end', `the routine's buttons: Skip, Pause, Finish (${act
 await shot('physio-run');
 const phases = new Set();
 const names = new Set();
+const shown3d = new Set();
 for (let i = 0; i < 120 && !(await p.locator('.mob-physio-end').isVisible().catch(() => false)); i++) {
   const ph = await p.locator('.mob-physio-phase').innerText().catch(() => '');
   if (ph) phases.add(ph.replace(/\d+\/\d+/g, '#'));
-  names.add(await p.locator('.mob-warmup-name').innerText().catch(() => ''));
+  const nm = await p.locator('.mob-warmup-name').innerText().catch(() => '');
+  names.add(nm);
+  if (await p.locator('.mob-physio-run .mob-3d').count()) shown3d.add(nm);
   await p.waitForTimeout(150);
 }
 ok(await p.locator('.mob-physio-end').isVisible(), 'the routine runs to its end by itself');
 ok(names.has('Gesäß anspannen') && names.has('Brücke') && names.has('Einbeinstand'), 'every exercise in turn');
+ok(shown3d.has('Brücke') && !shown3d.has('Gesäß anspannen'), `the guided routine shows the 3D video where there is one (${[...shown3d].join(', ')})`);
 ok(['Vorbereiten', 'Pause', 'Andere Seite'].every((x) => phases.has(x)) && [...phases].some((x) => /rechts/.test(x)) && [...phases].some((x) => /links/.test(x)), `get ready, reps, rest, the other side (${[...phases].join(' / ')})`);
 ok(/Die ganze Routine – geschafft/.test(await p.locator('.mob-physio-end').innerText()), 'all done');
 await p.locator('.mob-physio-feel button').filter({ hasText: 'okay' }).click();
@@ -160,6 +170,25 @@ await p.locator('.mob-physio-run .drawer-action.end').click();
 await p.locator('.mob-physio-end').waitFor({ timeout: 5000 });
 ok(/0 von 3 Übungen/.test(await p.locator('.mob-physio-end').innerText()) && !(await p.locator('.mob-physio-confirm').count()), 'skipped and finished: nothing to enter');
 await p.getByRole('button', { name: 'Schließen' }).click();
+
+// before – after: the tests again in the app, compared with the physio's (Sascha 1.11.2026)
+await p.evaluate(() => {
+  const at = new Date().toISOString();
+  const m = (grade) => ({ value: 1, grade, source: 'camera', at });
+  const list = JSON.parse(localStorage.getItem('golfos.mobility.v1'));
+  list.push({ id: 'retest', kind: 'quick', tests: ['toe-touch', 'single-leg'], createdAt: at, finishedAt: at, current: 2, hand: 'right', results: { 'toe-touch': { both: m('limited') }, 'single-leg': { left: m('fail'), right: m('fail') } } });
+  localStorage.setItem('golfos.mobility.v1', JSON.stringify(list));
+});
+await p.locator('.mob-physio-card .mob-physio-open').click();
+await p.locator('.mob-physio .tr-tabs button').filter({ hasText: 'Ergebnisse' }).click();
+await p.locator('.mob-cmp-sum').waitFor({ timeout: 5000 }).catch(() => {});
+const cmp = await p.locator('.mob-cmp-sum').innerText().catch(() => '');
+ok(/Vorher – nachher/.test(cmp) && /besser 1/.test(cmp) && /schlechter 1/.test(cmp) && /2 Einheiten/.test(cmp), `before – after: one better, one worse, the sessions in between (${cmp.replace(/\n/g, ' · ').slice(0, 140)})`);
+const toe = await p.locator('.mob-physio-tests .list-item').filter({ hasText: 'Zehen berühren' }).innerText();
+ok(/besser/.test(toe), 'the toe touch: red at the physio, yellow now – better');
+const legDots = await p.locator('.mob-physio-tests .list-item').filter({ hasText: 'Einbeinstand' }).locator('.mob-cmp-side .mob-dot').evaluateAll((xs) => xs.map((x) => x.classList[1]).join(' '));
+ok(legDots === 'red red yellow red', `the balance per side: left red → red, right yellow → red (${legDots})`);
+await shot('physio-compare');
 
 ok(!errs.length, `no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
 await b.close();
