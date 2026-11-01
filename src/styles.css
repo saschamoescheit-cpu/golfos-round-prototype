@@ -1862,6 +1862,9 @@ button.tile:disabled { opacity: 1; }
 /* a long sheet scrolls – its parts keep their height instead of being squeezed over each other */
 .wager-sheet > *, .lib-group > * { flex-shrink: 0; }
 .pool-add { align-self: flex-start; min-height: 40px; padding: 0 16px; }
+.pool-edit-player { display: flex; align-items: center; gap: 8px; }
+.pool-edit-player .input { flex: 1; min-width: 0; }
+.btn-danger-fill { background: var(--bad); color: #fff; }
 /* the library of a person: tick a bet, its number beside it */
 .lib-group { display: flex; flex-direction: column; gap: 6px; }
 .lib-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }

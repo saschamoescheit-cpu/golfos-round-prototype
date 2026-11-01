@@ -6,7 +6,7 @@ import { joinLink } from '../lib/sharedgame';
 import { money, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
-import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, earlierGroups, fromEarlier, fromLibrary, progressText, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, earlierGroups, fromEarlier, fromLibrary, progressText, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { changePool, createPool, earlierBets, forgetPool, joinPool, loadPools, refreshPool, rememberBets, reportWagers, type PoolEntry } from '../lib/wagerstore';
 import { pushBet } from '../lib/push';
 
@@ -39,29 +39,25 @@ export function usePools(): PoolEntry[] {
   return list;
 }
 
-/** On the play tab of Games: the pools running, and a new one. */
-export function PoolsCard(props: { canShare: boolean; onOpen: (code: string) => void; onNew: () => void }) {
-  const pools = usePools();
-  const today = dayOf(new Date());
-  const running = pools.filter((e) => !e.pool.finishedAt && e.pool.to >= today);
+/** The menu's icon of the bets: a ticket. */
+export const BETS_ICON = (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3.5 7.5a1 1 0 0 1 1-1h15a1 1 0 0 1 1 1v2.2a2.3 2.3 0 0 0 0 4.6v2.2a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-2.2a2.3 2.3 0 0 0 0-4.6z" />
+    <path d="M15 6.5v11" strokeDasharray="1.6 2" />
+  </svg>
+);
+
+const live = (e: PoolEntry, today: string) => !e.pool.finishedAt && e.pool.to >= today;
+
+/** On the start page of Games (Sascha 01.11.2026: "from the start page both 'start a game' and 'start a bet'"): only the
+ *  start – setting up, changing and deleting the bets is in the menu "Bets". */
+export function StartBetCard(props: { canShare: boolean; onNew: () => void; onList: () => void }) {
+  const pools = usePools().filter((e) => !e.pool.deletedAt);
+  const running = pools.filter((e) => live(e, dayOf(new Date()))).length;
   return (
-    <section className="card play-card" aria-label={tr('Bets', 'Wetten')}>
-      <strong className="play-course">{tr('Bets', 'Wetten')}</strong>
-      <span className="muted small">{tr('Everyone his own targets – birdies in a row, greens, the score … The app judges them from the rounds in Rounds.', 'Jeder seine eigenen Ziele – Birdies in Folge, Grüns, Ergebnis … Die App wertet sie aus den Runden in Rounds aus.')}</span>
-      {running.map((e) => {
-        const open = e.pool.wagers.filter((w) => stateOf(w, e.pool, today) === 'open').length;
-        return (
-          <button key={e.code} type="button" className="list-item" onClick={() => props.onOpen(e.code)}>
-            <span className="grow">
-              <span className="title">{e.pool.name}</span>
-              <span className="muted small">
-                {dm(e.pool.from)}–{dm(e.pool.to)} · {tr(`${e.pool.wagers.length} bets, ${open} open`, `${e.pool.wagers.length} Wetten, ${open} offen`)}
-              </span>
-            </span>
-            <span aria-hidden="true">›</span>
-          </button>
-        );
-      })}
+    <section className="card play-card" aria-label={tr('Start a bet', 'Wette starten')}>
+      <strong className="play-course">{tr('Start a new bet', 'Neue Wette starten')}</strong>
+      <span className="muted small">{tr('Everyone his own targets – birdies in a row, greens, the score … judged from the rounds in Rounds.', 'Jeder seine eigenen Ziele – Birdies in Folge, Grüns, Ergebnis … ausgewertet aus den Runden in Rounds.')}</span>
       {props.canShare ? (
         <button type="button" className="btn-secondary" onClick={props.onNew}>
           {tr('New pool of bets', 'Neuer Wett-Pool')}
@@ -69,25 +65,68 @@ export function PoolsCard(props: { canShare: boolean; onOpen: (code: string) => 
       ) : (
         <span className="muted small">{tr('Sign in to set up bets: Profile → "On all your devices".', 'Für Wetten anmelden: Profil → „Auf allen Geräten“.')}</span>
       )}
-      {pools.length > running.length && (
-        <details>
-          <summary className="muted small">{tr('Finished pools', 'Beendete Pools')}</summary>
-          {pools
-            .filter((e) => !running.includes(e))
-            .map((e) => (
-              <button key={e.code} type="button" className="list-item" onClick={() => props.onOpen(e.code)}>
-                <span className="grow">
-                  <span className="title">{e.pool.name}</span>
-                  <span className="muted small">
-                    {dm(e.pool.from)}–{dm(e.pool.to)}
-                  </span>
-                </span>
-                <span aria-hidden="true">›</span>
-              </button>
-            ))}
-        </details>
+      {running > 0 && (
+        <button type="button" className="list-item" onClick={props.onList}>
+          <span className="grow">
+            <span className="title">{running === 1 ? tr('1 pool of bets running', '1 Wett-Pool läuft') : tr(`${running} pools of bets running`, `${running} Wett-Pools laufen`)}</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
       )}
     </section>
+  );
+}
+
+function PoolRow(props: { e: PoolEntry; today: string; onOpen: () => void }) {
+  const { pool } = props.e;
+  const open = pool.wagers.filter((w) => stateOf(w, pool, props.today) === 'open').length;
+  const made = pool.wagers.filter((w) => stateOf(w, pool, props.today) === 'done').length;
+  return (
+    <button type="button" className="list-item" onClick={props.onOpen}>
+      <span className="grow">
+        <span className="title">{pool.name}</span>
+        <span className="muted small">
+          {dm(pool.from)}–{dm(pool.to)} · {pool.players.map((p) => p.name).join(', ')}
+        </span>
+        <span className="muted small">{tr(`${pool.wagers.length} bets · ${made} made · ${open} open`, `${pool.wagers.length} Wetten · ${made} geschafft · ${open} offen`)}</span>
+      </span>
+      <span aria-hidden="true">›</span>
+    </button>
+  );
+}
+
+/** The menu "Bets" (Sascha 01.11.2026: "setting up, deleting, changing bets in a menu of its own"). */
+export function BetsTab(props: { canShare: boolean; onOpen: (code: string) => void; onNew: () => void; onJoin: () => void }) {
+  const pools = usePools().filter((e) => !e.pool.deletedAt);
+  const today = dayOf(new Date());
+  const running = pools.filter((e) => live(e, today));
+  const over = pools.filter((e) => !live(e, today));
+  return (
+    <>
+      <h1 className="tab-title">{tr('Bets', 'Wetten')}</h1>
+      {props.canShare ? (
+        <section className="card play-card">
+          <button type="button" className="btn-primary" onClick={props.onNew}>
+            {tr('New pool of bets', 'Neuer Wett-Pool')}
+          </button>
+          <button type="button" className="btn-secondary" onClick={props.onJoin}>
+            {tr('Join a pool of bets', 'Wett-Pool beitreten')}
+          </button>
+        </section>
+      ) : (
+        <p className="muted">{tr('Sign in to set up bets: Profile → "On all your devices".', 'Für Wetten anmelden: Profil → „Auf allen Geräten“.')}</p>
+      )}
+      <span className="eyebrow">{tr('Running', 'Laufend')}</span>
+      {running.length ? running.map((e) => <PoolRow key={e.code} e={e} today={today} onOpen={() => props.onOpen(e.code)} />) : <p className="muted small">{tr('No pool of bets running.', 'Kein Wett-Pool läuft.')}</p>}
+      {over.length > 0 && (
+        <>
+          <span className="eyebrow">{tr('Finished', 'Beendet')}</span>
+          {over.map((e) => (
+            <PoolRow key={e.code} e={e} today={today} onOpen={() => props.onOpen(e.code)} />
+          ))}
+        </>
+      )}
+    </>
   );
 }
 
@@ -187,7 +226,7 @@ function StateBadge(props: { state: WagerState }) {
 export function PoolScreen(props: { code: string; onBack: () => void }) {
   const pools = usePools();
   const entry = pools.find((e) => e.code === props.code);
-  const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | 'invite' | 'finish'>(null);
+  const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | 'invite' | 'finish' | 'pool'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [seen, setSeen] = useState(seenSet);
   // not on this phone yet (a push tapped on another phone of the same account): fetched from the server
@@ -217,7 +256,7 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
   if (!entry) {
     return (
       <main className="screen">
-        <TopBar title={tr('Bets', 'Wetten')} onBack={props.onBack} backLabel={tr('Games', 'Spiele')} />
+        <TopBar title={tr('Bets', 'Wetten')} onBack={props.onBack} backLabel={tr('Bets', 'Wetten')} />
         <p className="muted">
           {lookup === 'busy'
             ? tr('Loading the pool …', 'Lade den Pool …')
@@ -227,6 +266,24 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
     );
   }
   const pool = entry.pool;
+  if (pool.deletedAt) {
+    return (
+      <main className="screen">
+        <TopBar title={pool.name} onBack={props.onBack} backLabel={tr('Bets', 'Wetten')} />
+        <p className="muted">{tr('This pool of bets was deleted.', 'Dieser Wett-Pool wurde gelöscht.')}</p>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => {
+            forgetPool(props.code);
+            props.onBack();
+          }}
+        >
+          OK
+        </button>
+      </main>
+    );
+  }
   const today = dayOf(new Date());
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
   const change = async (fn: (p: WagerPool) => WagerPool | null) => {
@@ -241,7 +298,19 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
   const settled = pool.wagers.filter((w) => stateOf(w, pool, today) !== 'open').length;
   return (
     <main className="screen pool-screen">
-      <TopBar title={pool.name} onBack={props.onBack} backLabel={tr('Games', 'Spiele')} />
+      <TopBar
+        title={pool.name}
+        onBack={props.onBack}
+        backLabel={tr('Bets', 'Wetten')}
+        right={
+          <button type="button" className="icon-btn" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={() => setSheet('pool')}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 20h4L19 9l-4-4L4 16z" />
+              <path d="M13.5 6.5l4 4" />
+            </svg>
+          </button>
+        }
+      />
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
         {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
@@ -405,6 +474,30 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
               rememberBets(pool, ws);
               setSheet(null);
               void reportWagers();
+            }
+          }}
+        />
+      )}
+      {sheet === 'pool' && (
+        <PoolEditSheet
+          pool={pool}
+          onClose={() => setSheet(null)}
+          onSave={async (x) => {
+            const ok = await change((p) => {
+              // the players as changed here; one added meanwhile on another phone stays, one with bets now too
+              const keep = (id: string) => p.players.find((q) => q.id === id)?.joined || p.wagers.some((w) => w.player === id || w.opponent === id);
+              const players = [...x.players.map((q) => ({ ...p.players.find((o) => o.id === q.id), ...q })), ...p.players.filter((q) => !x.players.some((y) => y.id === q.id) && (keep(q.id) || !pool.players.some((o) => o.id === q.id)))];
+              return { ...p, name: x.name, from: x.from, to: x.to, players };
+            });
+            if (ok) {
+              setSheet(null);
+              void reportWagers(); // other days: other rounds count
+            }
+          }}
+          onDelete={async () => {
+            if (await change((p) => ({ ...p, deletedAt: new Date().toISOString() }))) {
+              forgetPool(props.code);
+              props.onBack();
             }
           }}
         />
@@ -773,6 +866,81 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
         <button type="button" className="btn-primary" disabled={!ok} onClick={add}>
           {n === 1 ? tr(`Add 1 bet for ${name}`, `1 Wette für ${name} anlegen`) : tr(`Add ${n} bets for ${name}`, `${n} Wetten für ${name} anlegen`)}
         </button>
+      </section>
+    </div>
+  );
+}
+
+/** Change a pool (Sascha 01.11.2026: "setting up, deleting, changing in a menu of its own"): name, days, players – a
+ *  player with bets or a phone of his stays (his bets would be lost); or delete the pool for everyone. */
+function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[] }) => void; onDelete: () => void; onClose: () => void }) {
+  const { pool } = props;
+  const [name, setName] = useState(pool.name);
+  const [from, setFrom] = useState(pool.from);
+  const [to, setTo] = useState(pool.to);
+  const [players, setPlayers] = useState<PoolPlayer[]>(pool.players);
+  const [del, setDel] = useState(false);
+  const keeps = (p: PoolPlayer) => !!p.joined || pool.wagers.some((w) => w.player === p.id || w.opponent === p.id);
+  const ok = !!name.trim() && from <= to && players.length > 0 && players.every((p) => p.name.trim());
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet wager-sheet" role="dialog" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Change the pool', 'Pool bearbeiten')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        {!del ? (
+          <>
+            <div className="field">
+              <label htmlFor="pool-edit-name">{tr('Name', 'Name')}</label>
+              <input id="pool-edit-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="pool-dates">
+              <div className="field">
+                <label htmlFor="pool-edit-from">{tr('From', 'Von')}</label>
+                <input id="pool-edit-from" type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="pool-edit-to">{tr('To', 'Bis')}</label>
+                <input id="pool-edit-to" type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} />
+              </div>
+            </div>
+            <span className="eyebrow">{tr('Players', 'Spieler')}</span>
+            {players.map((p, k) => (
+              <div className="pool-edit-player" key={p.id}>
+                <input className="input" aria-label={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)} value={p.name} onChange={(e) => setPlayers(players.map((x) => (x.id === p.id ? { ...x, name: e.target.value } : x)))} />
+                {!keeps(p) && (
+                  <button type="button" className="icon-btn" aria-label={tr(`Remove ${p.name}`, `${p.name} entfernen`)} onClick={() => setPlayers(players.filter((x) => x.id !== p.id))}>
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button type="button" className="btn-secondary" onClick={() => setPlayers([...players, { id: newId(), name: '' }])}>
+              {tr('+ Player', '+ Spieler')}
+            </button>
+            <span className="muted small">{tr('A player who joined or has bets stays – delete his bets first.', 'Wer beigetreten ist oder Wetten hat, bleibt – erst seine Wetten löschen.')}</span>
+            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, players: players.map((p) => ({ ...p, name: p.name.trim() })) })}>
+              {tr('Save', 'Speichern')}
+            </button>
+            <button type="button" className="btn-secondary btn-danger" onClick={() => setDel(true)}>
+              {tr('Delete the pool', 'Pool löschen')}
+            </button>
+          </>
+        ) : (
+          <>
+            <strong>{tr(`Delete "${pool.name}"?`, `„${pool.name}“ löschen?`)}</strong>
+            <span className="muted">{tr('For everyone in the pool: its bets and the settlement are gone on every phone.', 'Für alle im Pool: Wetten und Abrechnung sind auf jedem Handy weg.')}</span>
+            <button type="button" className="btn-primary btn-danger-fill" onClick={props.onDelete}>
+              {tr('Delete for everyone', 'Für alle löschen')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setDel(false)}>
+              {tr('Keep', 'Behalten')}
+            </button>
+          </>
+        )}
       </section>
     </div>
   );

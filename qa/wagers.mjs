@@ -98,6 +98,10 @@ const event = {
 
 const host = await phone('Sascha');
 const H = host.p;
+// Sascha 01.11.2026: the bets a menu of their own – on the start page "start a game" and "start a bet"
+ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Bilanz|Profil', 'the menu has "Wetten"');
+ok((await H.getByText('Neues Spiel starten').isVisible()) && (await H.getByText('Neue Wette starten').isVisible()), 'start page: "Neues Spiel starten" and "Neue Wette starten"');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-start.png' });
 // ---------- Sascha: a pool of bets, four players ----------
 await H.getByRole('button', { name: 'Neuer Wett-Pool' }).click();
 await H.fill('#pool-name', 'USA 2026');
@@ -181,6 +185,11 @@ ok(chrisBets.length === 4 && madeIds.length === 4 && madeIds.every((id) => chris
 // ---------- Sascha: sees it, decides Erik's free bet, the settlement ----------
 await H.reload();
 await H.waitForTimeout(1500);
+ok((await H.locator('.list-item').filter({ hasText: '1 Wett-Pool läuft' }).count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 0, 'start page: only "1 Wett-Pool läuft" – the pool itself in the menu "Wetten"');
+await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
+await H.waitForTimeout(500);
+ok((await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.getByRole('button', { name: 'Wett-Pool beitreten' }).isVisible()), 'menu "Wetten": new pool, join a pool, the pools');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-tab.png' });
 await H.locator('.list-item').filter({ hasText: 'USA 2026' }).click();
 await H.waitForTimeout(2000);
 const hChris = H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Chris$/ }) });
@@ -210,6 +219,31 @@ await other.p.waitForTimeout(1500);
 ok(await other.p.evaluate(() => JSON.parse(localStorage.getItem('golfos.pools.v1'))[0].me !== ''), 'Erik picked himself: this phone reports his bets');
 ok(other.errs.length === 0, `third phone: no page errors ${other.errs.slice(0, 2).join(' | ')}`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-pool.png', fullPage: true });
+
+// change the pool: rename it, add a player; Chris (joined, bets) cannot be removed, Dave can
+await H.goto('about:blank');
+await H.goto(url + '#pool=' + code);
+await H.waitForTimeout(2500);
+await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
+const ed = H.getByRole('dialog', { name: 'Pool bearbeiten' });
+await ed.locator('#pool-edit-name').fill('USA 2026 Florida');
+await ed.getByRole('button', { name: '+ Spieler' }).click();
+await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');
+ok((await ed.getByRole('button', { name: 'Chris entfernen' }).count()) === 0, 'edit: Chris (joined, with bets) cannot be removed');
+await ed.getByRole('button', { name: 'Speichern' }).click();
+await H.waitForTimeout(1200);
+const after = shared.get(code).game;
+ok(after.name === 'USA 2026 Florida' && after.players.map((p) => p.name).join(',') === 'Sascha,Chris,Erik,Cedric,Dave' && after.wagers.length === 7, `edit: renamed, Dave added, the bets kept (${after.players.map((p) => p.name).join(', ')})`);
+// delete the pool – for everyone: gone from the menu here, on Chris's phone it says so
+await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
+await H.getByRole('dialog', { name: 'Pool bearbeiten' }).getByRole('button', { name: 'Pool löschen' }).click();
+await H.getByRole('button', { name: 'Für alle löschen' }).click();
+await H.waitForTimeout(1200);
+ok(!!shared.get(code).game.deletedAt && (await H.getByRole('heading', { name: 'Wetten' }).isVisible()) && (await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 0, 'delete: marked deleted for everyone, gone from the menu');
+await G.goto('about:blank');
+await G.goto(url + '#pool=' + code);
+await G.waitForTimeout(3000);
+ok(await G.getByText('Dieser Wett-Pool wurde gelöscht.').isVisible(), "Chris's phone: the pool was deleted");
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

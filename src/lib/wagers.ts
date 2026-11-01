@@ -127,6 +127,8 @@ export interface WagerPool {
   createdAt: string;
   /** finished by hand: open bets are missed */
   finishedAt?: string | null;
+  /** deleted (for everyone): gone from every phone */
+  deletedAt?: string | null;
   players: PoolPlayer[];
   wagers: Wager[];
   progress: Record<string, Progress>;

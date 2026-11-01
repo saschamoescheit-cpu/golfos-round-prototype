@@ -22,7 +22,7 @@ import { inUsa } from '../lib/weather';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
-import { PoolScreen, PoolSetup, PoolsCard, takeOpenPool } from './Wagers';
+import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool } from './Wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
 import { PausedIcon } from '../components/PausedIcon';
@@ -32,14 +32,14 @@ import { DeletedIcon, HolesIcon, PlayedIcon, ToSignIcon } from '../components/Ro
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
 // who pays whom. Not linked to the round analysis yet; a side game next to a round may follow later.
 
-export type GamesTab = 'play' | 'games' | 'balance' | 'profile';
+export type GamesTab = 'play' | 'games' | 'bets' | 'balance' | 'profile';
 type View =
   | { name: 'tab'; tab: GamesTab }
   | { name: 'setup'; draft: Draft }
   | { name: 'course'; draft: Draft }
   | { name: 'play'; game: Game }
   | { name: 'result'; game: Game }
-  | { name: 'poolSetup' }
+  | { name: 'poolSetup'; back: GamesTab }
   | { name: 'pool'; code: string };
 
 interface DraftPlayer {
@@ -164,7 +164,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
           }}
           onModules={props.onModules}
           onJoinRound={props.onJoinRound}
-          onNewPool={() => setView({ name: 'poolSetup' })}
+          onNewPool={() => setView({ name: 'poolSetup', back: view.tab })}
           onOpenPool={(code) => setView({ name: 'pool', code })}
           onNew={(form) => setView({ name: 'setup', draft: newDraft(form) })}
           onJoined={(g) => {
@@ -246,9 +246,18 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
       );
     // bets over a trip (Sascha 01.11.2026)
     case 'poolSetup':
-      return <PoolSetup onBack={() => setView({ name: 'tab', tab: 'play' })} onCreated={(code) => setView({ name: 'pool', code })} />;
+      return <PoolSetup onBack={() => setView({ name: 'tab', tab: view.back })} onCreated={(code) => setView({ name: 'pool', code })} />;
     case 'pool':
-      return <PoolScreen code={view.code} onBack={() => setView({ name: 'tab', tab: 'play' })} />;
+      // back to the menu "Bets" – the pools are kept there (Sascha 01.11.2026)
+      return (
+        <PoolScreen
+          code={view.code}
+          onBack={() => {
+            setView({ name: 'tab', tab: 'bets' });
+            props.onTabChange?.('bets');
+          }}
+        />
+      );
     case 'result':
       return (
         <GameResult
@@ -344,8 +353,8 @@ function GamesTabs(props: {
               </button>
             )}
           </section>
-          {/* bets over a trip – everyone his own targets, judged from the rounds (Sascha 01.11.2026) */}
-          <PoolsCard canShare={!!canShare} onOpen={props.onOpenPool} onNew={props.onNewPool} />
+          {/* start a bet beside starting a game – the bets themselves are kept in the menu "Bets" (Sascha 01.11.2026) */}
+          <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onList={() => props.onTab('bets')} />
           {confirmCount > 0 && (
             <button type="button" className="list-item" onClick={() => openList('confirm')}>
               <span className="grow">
@@ -358,7 +367,9 @@ function GamesTabs(props: {
               <span aria-hidden="true">›</span>
             </button>
           )}
-          {joinOpen != null && canShare != null && (
+        </>
+      )}
+      {joinOpen != null && canShare != null && (
             <>
               {canShare ? (
                 <JoinSheet
@@ -395,8 +406,7 @@ function GamesTabs(props: {
               )}
             </>
           )}
-        </>
-      )}
+      {props.tab === 'bets' && <BetsTab canShare={!!canShare} onOpen={props.onOpenPool} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} />}
       {props.tab === 'games' && (
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
@@ -421,6 +431,7 @@ function GamesTabs(props: {
         items={[
           { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
           { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
+          { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON },
           { id: 'balance' as GamesTab, label: tr('Balance', 'Bilanz'), icon: MENU_ICONS.balance },
           { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}

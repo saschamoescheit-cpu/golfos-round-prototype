@@ -143,7 +143,7 @@ export function reportWagers(): Promise<void> {
   if (running) return running;
   running = (async () => {
     try {
-      const pools = loadPools().filter((e) => e.me && !e.pool.finishedAt);
+      const pools = loadPools().filter((e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt);
       if (!pools.length || !(await headers())) return;
       const rounds = playedRounds(loadRounds(), countedRound);
       for (const e of pools) {
