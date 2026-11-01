@@ -1,4 +1,5 @@
 import { tr } from './i18n';
+import { isNative } from './native';
 
 // Help in the profile (Sascha 23.10.2026: "an introduction video – a kind of tutorial – and an FAQ, anchored in the
 // profile"): the tutorial in chapters plus the whole tour (made in GolfOS/tutorial: recorded in the app, subtitles and
@@ -98,16 +99,23 @@ export const FAQ: FaqTopic[] = [
       {
         q: () => tr('Does the app work without a connection?', 'Geht die App ohne Netz?'),
         a: () =>
-          tr(
-            'Yes. Open the course once with a connection (e.g. at the hotel) and wait for "map kept offline ✓" – then the round works without network, and everything is sent later.',
-            'Ja. Öffne den Platz einmal mit Netz (z. B. im Hotel-WLAN) und warte auf „Karte offline gespeichert ✓“ – dann läuft die Runde ohne Netz, abgeglichen wird später.',
-          ),
+          isNative()
+            ? tr(
+                'The round, the scores and GPS work without network, everything is sent later. The aerial map is kept for offline use only on the website so far – the app gets it with one of its next versions.',
+                'Runde, Ergebnisse und GPS laufen ohne Netz, abgeglichen wird später. Das Luftbild wird bisher nur auf der Webseite offline gespeichert – die App bekommt das mit einer der nächsten Versionen.',
+              )
+            : tr(
+                'Yes. Open the course once with a connection (e.g. at the hotel) and wait for "map kept offline ✓" – then the round works without network, and everything is sent later.',
+                'Ja. Öffne den Platz einmal mit Netz (z. B. im Hotel-WLAN) und warte auf „Karte offline gespeichert ✓“ – dann läuft die Runde ohne Netz, abgeglichen wird später.',
+              ),
         video: 'start',
       },
       {
         q: () => tr('How do I put GolfOS on the home screen?', 'Wie lege ich GolfOS auf den Home-Bildschirm?'),
         a: () =>
-          tr('iPhone: open GolfOS in Safari → Share → "Add to Home Screen". It then opens like an app – needed for notifications.', 'iPhone: GolfOS in Safari öffnen → Teilen → „Zum Home-Bildschirm“. Dann öffnet es sich wie eine App – nötig für Mitteilungen.'),
+          isNative()
+            ? tr('You are using the app already – nothing to do.', 'Du nutzt schon die App – hier ist nichts zu tun.')
+            : tr('iPhone: open GolfOS in Safari → Share → "Add to Home Screen". It then opens like an app – needed for notifications.', 'iPhone: GolfOS in Safari öffnen → Teilen → „Zum Home-Bildschirm“. Dann öffnet es sich wie eine App – nötig für Mitteilungen.'),
         video: 'profile',
       },
     ],

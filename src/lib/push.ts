@@ -1,5 +1,6 @@
 import { getLang } from './i18n';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
+import { isNative } from './native';
 
 // Push notifications (final list, Sascha 23.10.2026: "push in the web prototype"): a round not yet checked, a fellow
 // player joining a game or a game ending, a thunderstorm while a round is played. The server side is the function
@@ -71,8 +72,9 @@ export const standalone = (): boolean =>
   (navigator as Navigator & { standalone?: boolean }).standalone === true || (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
 
 /** What the profile offers: the switch, or why not. */
-export function pushAvailability(): 'ok' | 'signin' | 'homescreen' | 'unsupported' {
+export function pushAvailability(): 'ok' | 'signin' | 'homescreen' | 'unsupported' | 'app' {
   if (!syncConfigured()) return 'unsupported';
+  if (isNative()) return 'app'; // the iOS app has no web push – its own (Apple's) comes later
   if (isIos() && !standalone()) return 'homescreen';
   if (!pushSupported()) return 'unsupported';
   if (!loadSession()) return 'signin';

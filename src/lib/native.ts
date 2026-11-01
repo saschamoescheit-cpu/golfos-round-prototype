@@ -11,6 +11,65 @@ export const isNative = (): boolean => Capacitor.isNativePlatform();
 /** Where Google sends the player back to the app – registered in Info.plist and in Supabase (Auth → URL Configuration). */
 export const AUTH_BACK = 'de.moescheit.golfos://auth';
 
+/** The website. Links sent to others (join a round, a game, a pool) open it – the app's own address (capacitor://localhost)
+ *  opens on no other phone. */
+export const WEB_HOME = 'https://saschamoescheit-cpu.github.io/golfos-round-prototype/';
+
+/** The address a link for others starts with: this page on the website, the website in the app. */
+export const linkBase = (): string => (isNative() ? WEB_HOME : location.origin + location.pathname);
+
+/** In the app the iPhone's share sheet stands in for the browser's sharing (navigator.share) and for downloads
+ *  (`<a download>` of a blob) – WKWebView has neither. So the code everywhere stays the website's. Once, at the start. */
+export function installNativeShims(): void {
+  if (!isNative()) return;
+  const share = async (d: ShareData): Promise<void> => {
+    const { Share } = await import('@capacitor/share');
+    const files = d.files?.length ? await Promise.all(d.files.map(toCache)) : undefined;
+    try {
+      await Share.share({ title: d.title, text: d.text, url: d.url, files });
+    } catch (e) {
+      // closed without sharing: as the browser says it
+      if (/cancel/i.test(String((e as Error)?.message ?? e))) throw new DOMException('Share canceled', 'AbortError');
+      throw e;
+    }
+  };
+  Object.defineProperty(navigator, 'share', { configurable: true, value: share });
+  Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+  const click = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+    if (!this.download || !this.href.startsWith('blob:')) return click.call(this);
+    const name = this.download;
+    void fetch(this.href)
+      .then((r) => r.blob())
+      .then((b) => share({ files: [new File([b], name, { type: b.type })] }))
+      .catch(() => null);
+  };
+}
+
+/** A file into the app's cache, for the share sheet – its address there. */
+async function toCache(f: File): Promise<string> {
+  const { Directory, Filesystem } = await import('@capacitor/filesystem');
+  const data = await new Promise<string>((ok, fail) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).slice(String(r.result).indexOf(',') + 1));
+    r.onerror = () => fail(r.error);
+    r.readAsDataURL(f);
+  });
+  return (await Filesystem.writeFile({ path: f.name, data, directory: Directory.Cache })).uri;
+}
+
+/** Keeps the screen on (pocket mode) – the app's way; null on the website, where the browser's Wake Lock does it. */
+export async function keepAwake(on: boolean): Promise<boolean | null> {
+  if (!isNative()) return null;
+  const { KeepAwake } = await import('@capacitor-community/keep-awake');
+  try {
+    await (on ? KeepAwake.keepAwake() : KeepAwake.allowSleep());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Opens the Google sign-in in the system's browser sheet – Google refuses its sign-in inside an app's web view. */
 export async function openSignIn(url: string): Promise<void> {
   const { Browser } = await import('@capacitor/browser');

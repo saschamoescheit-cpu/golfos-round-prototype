@@ -1,5 +1,6 @@
 import { SUPABASE_KEY, SUPABASE_URL, loadSession, syncConfigured } from './sync';
 import { isStaleChunk } from './staleChunk';
+import { isNative } from './native';
 
 // App errors reported by themselves (final list, Sascha 22.10.2026 – the test in the USA): what went wrong, where in the
 // app, which version and phone – never a round, a position or a name of a course. Only from the live app (not the
@@ -27,7 +28,7 @@ export function isNoise(message: string): boolean {
   return /due to access control|ResizeObserver loop|^Script error\.?$|Load failed$|NetworkError|AbortError|The operation was aborted|signal timed out/i.test(message);
 }
 
-const live = () => typeof location !== 'undefined' && /github\.io$/.test(location.hostname) && import.meta.env.PROD;
+const live = () => typeof location !== 'undefined' && (/github\.io$/.test(location.hostname) || isNative()) && import.meta.env.PROD;
 
 function row(kind: ErrorRow['kind'], e: unknown): ErrorRow {
   const err = e instanceof Error ? e : new Error(typeof e === 'string' ? e : JSON.stringify(e)?.slice(0, 300) ?? String(e));

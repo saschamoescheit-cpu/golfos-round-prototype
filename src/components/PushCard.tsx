@@ -71,7 +71,12 @@ export function PushCard(props: { signedIn: boolean }) {
           )}
         </span>
       )}
-      {why === 'unsupported' && <span className="muted small">{tr('This browser cannot receive notifications.', 'Dieser Browser kann keine Mitteilungen empfangen.')}</span>}
+      {why === 'app' && (
+        <span className="muted small">
+          {tr('Notifications come to the app with one of its next versions – until then on the website.', 'Mitteilungen kommen mit einer der nächsten App-Versionen – bis dahin auf der Webseite.')}
+        </span>
+      )}
+      {why === 'unsupported' &&<span className="muted small">{tr('This browser cannot receive notifications.', 'Dieser Browser kann keine Mitteilungen empfangen.')}</span>}
       {why === 'signin' && <span className="muted small">{tr('Notifications come with an account – sign in above.', 'Mitteilungen gehen mit einem Konto – oben anmelden.')}</span>}
       {can && !state.on && (
         <span className="muted small">{tr('A round not checked yet, games on several phones, a thunderstorm on the course.', 'Runde noch nicht geprüft, Spiele auf mehreren Handys, Gewitter auf dem Platz.')}</span>

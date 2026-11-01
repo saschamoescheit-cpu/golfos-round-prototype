@@ -6,6 +6,7 @@ import { cleanCode, isGame, newCode } from './sharedgame';
 import { isPool } from './wagers';
 import { authToken, SUPABASE_KEY, SUPABASE_URL } from './sync';
 import { tr } from './i18n';
+import { linkBase } from './native';
 
 // A round on several phones (Sascha 29.10.2026: "invite to a round – on Saturday we play in the same scramble team, but
 // it must also be possible to set up a kind of tournament over several flights, with a live leaderboard").
@@ -961,4 +962,4 @@ export async function nearbyRounds(lat: number, lon: number): Promise<NearbyRoun
 }
 
 /** The link in the QR code: opens Rounds and asks to join. */
-export const roundJoinLink = (code: string): string => `${location.origin}${location.pathname}#round=${code}`;
+export const roundJoinLink = (code: string): string => `${linkBase()}#round=${code}`;

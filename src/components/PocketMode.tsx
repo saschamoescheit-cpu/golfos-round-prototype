@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadTrack } from '../lib/track';
 import { tr } from '../lib/i18n';
+import { keepAwake } from '../lib/native';
 
 // Pocket mode: a web app gets no GPS while the iPhone is locked – so the screen is kept awake (Wake Lock) and turned
 // black (OLED: almost no power), touches in the pocket do nothing, and the GPS track keeps growing for the shot
@@ -44,6 +45,8 @@ export function PocketMode(props: { roundId: string; onExit: () => void; mic?: '
     const api = (navigator as Navigator & { wakeLock?: WakeLockApi }).wakeLock;
     let alive = true;
     const take = async () => {
+      const app = await keepAwake(true); // the iOS app keeps it on itself
+      if (app != null) return alive ? setAwake(app ? 'on' : 'unsupported') : void keepAwake(false);
       if (!api) return setAwake('unsupported');
       try {
         const l = await api.request('screen');
@@ -62,6 +65,7 @@ export function PocketMode(props: { roundId: string; onExit: () => void; mic?: '
       document.removeEventListener('visibilitychange', onVisible);
       void lock.current?.release().catch(() => {});
       lock.current = null;
+      void keepAwake(false);
     };
   }, []);
 

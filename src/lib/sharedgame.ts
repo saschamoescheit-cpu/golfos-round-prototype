@@ -3,6 +3,7 @@ import { emptyEntry } from './scoring';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { pushGame } from './push';
 import { isPool, type WagerPool } from './wagers';
+import { linkBase } from './native';
 
 // One game on several phones (Sascha 15.10.2026: "four players, everyone with the web app – join by a code or a QR
 // code; everyone sees the standing and can enter his shot details"). The host shares the game: a 6-letter code and a
@@ -173,4 +174,4 @@ export async function exchange(g: Game): Promise<Game | null> {
 export const settleGame = (now: Game, got: Game): Game => mergeGames(now, got);
 
 /** The link in the QR code: opens the app and asks to join. */
-export const joinLink = (code: string): string => `${location.origin}${location.pathname}#join=${code}`;
+export const joinLink = (code: string): string => `${linkBase()}#join=${code}`;
