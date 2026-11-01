@@ -108,6 +108,21 @@ export function courseHandicap(index: number, rating: TeeRating, par: number): n
   return Math.round(index * (rating.slope / 113) + (rating.cr - par));
 }
 
+/** The playing handicap of a player from his handicap index, for a course, its holes (9 or 18) and his tee – the round
+ *  setup's way, also for a tournament planned in Games (Sascha 01.11.2026). Without course rating and slope for the
+ *  tee: estimated with slope 113 and rating = par, i.e. the rounded index (half of it for 9 holes). */
+export function playingHandicapFor(courseId: string, holes: { loop: string; par: number }[], tee: string | null, index: string, lady = false): number | null {
+  const idx = parseIndex(index);
+  if (idx == null) return null;
+  const nine = holes.length === 9;
+  const rating = holes.length === 18 || nine ? ratingFor(courseId, tee ?? '–', holes, lady) : null;
+  // the rating is for 18 holes: its par too (a loop of 9 holes counts twice)
+  const par = holes.reduce((sum, h) => sum + (h.par || 0), 0) * (nine ? 2 : 1);
+  const rPar = rating?.par ?? par; // shorter tees can have their own par
+  if (rating) return nine ? Math.round((idx * (rating.slope / 113) + (rating.cr - rPar)) / 2) : courseHandicap(idx, rating, rPar);
+  return Math.round(nine ? idx / 2 : idx);
+}
+
 /** Handicap index as typed: "7,4", "7.4", "+1,2" (plus handicap → −1.2); null when empty or not a number. */
 export function parseIndex(s: string): number | null {
   const t = s.trim().replace(',', '.');

@@ -75,6 +75,12 @@ export interface RoundEvent {
   /** a tournament's net classes: limits on the playing handicap ([18]: A up to 18, B above) */
   classes?: number[];
   flights: Record<string, Flight>;
+  /** a tournament planned ahead in Games (Sascha 01.11.2026: "planned in Games, played in Rounds"): its day
+   *  (YYYY-MM-DD) – played in Rounds on that day */
+  date?: string;
+  planned?: true;
+  /** called off by the host (kept, as the bets) */
+  deletedAt?: string | null;
 }
 /** A round that is part of an event: the code, its flight, this phone, and the flight's scores as last exchanged (the
  *  base of the three-way merge – what changed here, what changed elsewhere). */
@@ -769,6 +775,116 @@ async function changeFlight(code: string, fid: string, tournament: boolean, chan
     const f = change(e.flights[fid], e);
     return f ? { ...e, flights: { ...e.flights, [fid]: f } } : null;
   });
+}
+
+// ---------- a tournament planned ahead in Games (Sascha 01.11.2026: "tournaments planned in Games, played in Rounds")
+// The host sets the day, the course, the format and the flights with their markers; Rounds joins a flight on the day
+// ("which player am I") and plays it as any tournament – marks, signing, the leaderboard. Only the host changes the plan.
+
+export interface PlanFlight {
+  name?: string;
+  /** in scramble and foursomes the teams */
+  players: { name: string; playingHandicap: number | null; tee?: string | null }[];
+  /** markers[player] = who marks him, by the players' places "p1", "p2" … – missing: in pairs (1 ↔ 2, 3 ↔ 4) */
+  markers?: Record<string, string>;
+}
+const planFlight = (pf: PlanFlight, holes: number, by: string, id = newId()): Flight => {
+  const players: FlightPlayer[] = pf.players.map((p, k) => ({ id: `p${k + 1}`, name: p.name, playingHandicap: p.playingHandicap, ...(p.tee ? { tee: p.tee } : {}) }));
+  return {
+    id,
+    name: pf.name?.trim() || players.map((p) => p.name).join(' · '),
+    players,
+    scores: Object.fromEntries(players.map((p) => [p.id, nulls(holes)])),
+    marks: {},
+    markers: pf.markers ?? defaultMarkers(players.map((p) => p.id)),
+    phones: {},
+    by,
+    finishedAt: null,
+  };
+};
+
+/** A tournament planned ahead: the event with its flights – nobody playing yet. `holes` and `loopOrder` from
+ *  lib/loops (buildRoundHoles, the option's loops), the playing handicaps from lib/handicap playingHandicapFor. */
+export function plannedEvent(o: {
+  name: string;
+  date: string;
+  course: CourseSummary;
+  holes: RoundHole[];
+  loopOrder: string[];
+  format: NonNullable<Round['format']>;
+  tee?: string;
+  rating?: Round['rating'];
+  roundKind?: Round['kind'];
+  classes?: number[];
+  flights: PlanFlight[];
+}): RoundEvent {
+  const by = newId(); // the planner – never a playing phone: every phone takes the players from the plan
+  const flights = Object.fromEntries(o.flights.map((pf) => planFlight(pf, o.holes.length, by)).map((f) => [f.id, f]));
+  return {
+    kind: 'round-event',
+    id: newId(),
+    name: o.name,
+    tournament: true,
+    course: o.course,
+    loopOrder: o.loopOrder,
+    holes: o.holes,
+    format: o.format,
+    ...(o.tee ? { tee: o.tee } : {}),
+    ...(o.rating ? { rating: o.rating } : {}),
+    ...(o.roundKind ? { roundKind: o.roundKind } : {}),
+    ...(o.classes?.length ? { classes: o.classes } : {}),
+    createdAt: new Date().toISOString(),
+    by,
+    flights,
+    date: o.date,
+    planned: true,
+  };
+}
+
+/** One more flight for a planned tournament (the host adds it later) – then updatePlannedEvent. */
+export const plannedFlight = (ev: RoundEvent, pf: PlanFlight): Flight => planFlight(pf, ev.holes.length, ev.by ?? newId());
+
+/** Puts a planned tournament on the server: the event and a row per flight. Its code, or null (no connection). */
+export async function publishPlannedEvent(ev: RoundEvent): Promise<string | null> {
+  const h = await headers();
+  if (!h) return null;
+  const { flights, ...frame } = ev;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const code = newCode();
+    try {
+      // the frame first with its flights (a server without flight rows keeps them there), then each flight's own row
+      const r = await fetch(table(), { method: 'POST', headers: { ...h, Prefer: 'return=minimal' }, body: JSON.stringify({ code, game: { ...frame, flights } }) });
+      if (r.status === 409) continue; // the code is taken – another one
+      if (!r.ok) return null;
+      for (const f of Object.values(flights)) if (!(await addFlight(code, f))) return null;
+      keepEvent(code, ev);
+      return code;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** The host changes the plan: name, day, course, format, flights (players, markers) – and calls it off (deletedAt). A
+ *  flight already played keeps its scores, marks and phones; a flight left out is emptied (no players). The event as
+ *  written, or null (no connection, or another change came in between four times). */
+export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<RoundEvent | null> {
+  const { flights, ...frame } = ev;
+  const written = await update(code, (now) => ({ ...now, ...frame, flights: now.flights }));
+  if (!written) return null;
+  const ids = new Set([...Object.keys(written.flights), ...Object.keys(flights)]);
+  for (const fid of ids) {
+    const want = flights[fid];
+    const done = await changeFlight(code, fid, true, (f) => {
+      if (!want) return f && f.players.length ? { ...f, players: [], markers: {} } : null;
+      const players = want.players;
+      const next: Flight = { ...(f ?? want), name: want.name, players, markers: want.markers, scores: Object.fromEntries(players.map((p) => [p.id, f?.scores[p.id] ?? nulls(ev.holes.length)])) };
+      return f && JSON.stringify(f) === JSON.stringify(next) ? null : next;
+    });
+    if (!done) return null;
+  }
+  return refreshEvent(code);
 }
 
 /** A tournament's new flight goes into the event (its own row, the event marked a tournament). */

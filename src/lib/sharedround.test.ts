@@ -343,3 +343,46 @@ describe('the marker enters everything for the player he marks (Sascha 01.11.202
     expect(sascha.entries.c[0]).toMatchObject({ strokes: 4, putts: 2 });
   });
 });
+import { plannedEvent, plannedFlight } from './sharedround';
+import { playingHandicapFor } from './handicap';
+describe('a tournament planned in Games, played in Rounds (Sascha 01.11.2026)', () => {
+  const plan = () =>
+    plannedEvent({
+      name: 'Herbstpreis', date: '2026-11-06', course, holes, loopOrder: ['A'], format: { mode: 'single', scoring: 'stableford' },
+      flights: [
+        { players: [{ name: 'Sascha', playingHandicap: 12 }, { name: 'Cedric', playingHandicap: 20 }] },
+        { players: [{ name: 'Ben', playingHandicap: 8 }, { name: 'Max', playingHandicap: 15 }, { name: 'Erik', playingHandicap: 30 }] },
+      ],
+    });
+  it('the plan: a tournament with its day, flights, players and markers – nobody playing yet', () => {
+    const ev = plan();
+    expect(ev).toMatchObject({ kind: 'round-event', tournament: true, planned: true, date: '2026-11-06', name: 'Herbstpreis' });
+    const [f1, f2] = Object.values(ev.flights);
+    expect(f1.players.map((p) => [p.id, p.name])).toEqual([['p1', 'Sascha'], ['p2', 'Cedric']]);
+    expect(f1.markers).toEqual({ p1: 'p2', p2: 'p1' });
+    expect(Object.keys(f2.markers!)).toHaveLength(3);
+    expect(f1.scores.p1).toEqual([null, null, null]);
+    expect(f1.phones).toEqual({});
+  });
+  it('on the day Cedric joins his flight as "p2": he keeps his score and marks Sascha; the plan stays as it was', () => {
+    let ev = plan();
+    const fid = Object.keys(ev.flights)[0];
+    let cedric = roundFromEvent(ev, fid, 'p2', 'ABCDEF', 'ph-cedric', 'Cedric');
+    expect(cedric.players.find((p) => p.isMe)?.name).toBe('Cedric');
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    expect(cedric.shared!.roles).toEqual({ p1: 'mark', p2: 'own' });
+    expect(ev.flights[fid].players.map((p) => p.name)).toEqual(['Sascha', 'Cedric']);
+    expect(ev.flights[fid].phones!['ph-cedric'].player).toBe('p2');
+  });
+  it('the host adds a flight later', () => {
+    const ev = plan();
+    const f = plannedFlight(ev, { players: [{ name: 'Tom', playingHandicap: 4 }] });
+    expect(f).toMatchObject({ by: ev.by, players: [{ id: 'p1', name: 'Tom' }], scores: { p1: [null, null, null] } });
+  });
+  it('the playing handicap from the index: without course rating the rounded index – half for 9 holes', () => {
+    const h18 = Array.from({ length: 18 }, (_, i) => ({ loop: 'A', par: 4 + (i % 2) }));
+    expect(playingHandicapFor('osm:way/none', h18, 'yellow', '12,4')).toBe(12);
+    expect(playingHandicapFor('osm:way/none', h18.slice(0, 9), 'yellow', '12,4')).toBe(6);
+    expect(playingHandicapFor('osm:way/none', h18, 'yellow', '')).toBeNull();
+  });
+});
