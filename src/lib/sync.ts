@@ -807,8 +807,8 @@ let liveBeat = 0;
 let liveRetry = 0;
 let liveWait = 1000;
 
-/** The player's id from the access token (its "sub") – the name of his channel. */
-function userId(): string | null {
+/** The player's id from the access token (its "sub") – the name of his channel, the account in a flight. */
+export function userId(): string | null {
   const t = loadSession()?.access_token;
   if (!t) return null;
   try {

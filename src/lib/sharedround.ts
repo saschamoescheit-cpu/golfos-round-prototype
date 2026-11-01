@@ -4,7 +4,7 @@ import { newId } from './storage';
 import { DEFAULT_FORMAT, formatOf, holeScoresOf, isTeamMode, leaderboard, teamHandicap, type Board } from './games';
 import { cleanCode, isGame, newCode } from './sharedgame';
 import { isPool } from './wagers';
-import { authToken, SUPABASE_KEY, SUPABASE_URL } from './sync';
+import { authToken, SUPABASE_KEY, SUPABASE_URL, userId } from './sync';
 import { tr } from './i18n';
 import { linkBase } from './native';
 
@@ -49,7 +49,7 @@ export interface Flight {
   /** a tournament: who marks whom – markers[player] = the player who marks him */
   markers?: Record<string, string>;
   /** the phones playing in the flight: which player (or team) each one is */
-  phones?: Record<string, { player: string; name: string; at: string; /** last heard of (every two minutes at most) */ seen?: string }>;
+  phones?: Record<string, { player: string; name: string; at: string; /** last heard of (every two minutes at most) */ seen?: string; /** the account playing on it (the tee time reminder of its flight – 01.11.2026) */ uid?: string }>;
   /** scramble and foursomes: the phone keeping the team's card (missing: the team's first phone) */
   keeper?: Record<string, string>;
   /** a tournament: the card signed – by the player and by his marker (when) */
@@ -92,6 +92,12 @@ export type RoundShare = NonNullable<Round['shared']>;
 /** What this phone does with a player's score: keeps it (own), marks him (mark – a tournament), only shows it (view –
  *  his own phone or the team's keeper writes it), or keeps it with the others (free – a player without a phone). */
 export type Role = 'own' | 'mark' | 'view' | 'free';
+
+/** The account on this phone, for its entry in a flight (Games' tee time reminder: who plays in which flight). */
+const account = (): { uid?: string } => {
+  const uid = userId();
+  return uid ? { uid } : {};
+};
 
 /** A hole's details (putts, tee shot, sand, penalties) as they go with the score – the marker's count of a player has
  *  them too (Sascha 01.11.2026); undefined when none was entered. */
@@ -153,7 +159,7 @@ export function flightOf(round: Round, id: string, name: string, phone: string, 
     players: framePlayers(round),
     scores: scoresOf(round),
     ...(marksIn(round.format, tournament) ? { marks: {}, markers: defaultMarkers(round.players.map((p) => p.id)) } : {}),
-    phones: me ? { [phone]: { player: me, name: who, at: new Date().toISOString() } } : {},
+    phones: me ? { [phone]: { player: me, name: who, at: new Date().toISOString(), ...account() } } : {},
     by: phone,
     finishedAt: round.finishedAt,
   };
@@ -309,7 +315,7 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
   // this phone in the flight: which player (or team) it is
   const me = round.players.find((p) => p.isMe)?.id;
   if (me && !f.phones?.[phone]) {
-    f = { ...f, phones: { ...f.phones, [phone]: { player: me, name: who, at: new Date().toISOString() } } };
+    f = { ...f, phones: { ...f.phones, [phone]: { player: me, name: who, at: new Date().toISOString(), ...account() } } };
     changedHere = true;
   } else if (me && f.phones?.[phone] && Date.now() - new Date(f.phones[phone].seen ?? f.phones[phone].at).getTime() > SEEN_EVERY) {
     // still here (Sascha 30.10.2026: the keeper's battery – the others see when his phone went quiet)
@@ -389,7 +395,7 @@ export function settle(now: Round, sent: Round, got: Round): Round {
 /** A phone's own round in an event's flight: the flight's players and scores, `me` the player (or team) it plays. */
 export function roundFromEvent(ev: RoundEvent, flightId: string, me: string, code: string, phone = newId(), who = ''): Round {
   const f0 = ev.flights[flightId];
-  const f: Flight = { ...f0, phones: { ...f0.phones, [phone]: { player: me, name: who, at: new Date().toISOString() } } };
+  const f: Flight = { ...f0, phones: { ...f0.phones, [phone]: { player: me, name: who, at: new Date().toISOString(), ...account() } } };
   const players: Player[] = f.players.map((p) => ({ id: p.id, name: p.name, playingHandicap: p.playingHandicap, isMe: p.id === me, ...(p.tee ? { tee: p.tee } : {}) }));
   const team = isTeamEvent(ev.format);
   const roles = Object.fromEntries(players.map((p) => [p.id, roleOf(f, p.id, phone, team, marksIn(ev.format, ev.tournament))]));
@@ -436,7 +442,7 @@ export function newFlightRound(ev: RoundEvent, players: { name: string; playingH
     scores: Object.fromEntries(fp.map((p) => [p.id, nulls(ev.holes.length)])),
     marks: {},
     markers: defaultMarkers(fp.map((p) => p.id)),
-    phones: { [phone]: { player: 'me', name: who, at: new Date().toISOString() } },
+    phones: { [phone]: { player: 'me', name: who, at: new Date().toISOString(), ...account() } },
     by: phone,
     finishedAt: null,
   };

@@ -6,6 +6,17 @@
 import { devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
 
+// an account's token as Supabase hands it out: a JWT whose "sub" is the account (here its name) – myAccount() and the
+// phone's account in a flight read it
+export const tokenOf = (name) => `h.${Buffer.from(JSON.stringify({ sub: name })).toString('base64url')}.s`;
+const accountOf = (t) => {
+  try {
+    return JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toString()).sub ?? '';
+  } catch {
+    return '';
+  }
+};
+
 export function sharedServer(b, url, o = {}) {
   const shared = new Map(); // code → { game, updated_at, owner, members, requests, near }
   const pushes = []; // { action, code, ref, from }
@@ -22,14 +33,14 @@ export function sharedServer(b, url, o = {}) {
     const req = route.request();
     const u = new URL(req.url());
     const json = (status, body) => route.fulfill({ status, contentType: 'application/json', body: body == null ? '' : JSON.stringify(body) });
-    const uid = (req.headers()['authorization'] ?? '').replace(/^Bearer tok-/, ''); // each phone its account
+    const uid = accountOf((req.headers()['authorization'] ?? '').replace(/^Bearer /, '')); // each phone its account
     const body = () => JSON.parse(req.postData() ?? '{}');
     if (u.pathname.endsWith('/golfos_items')) return json(200, []);
     // an account without Google: its token is its name
     if (u.pathname.endsWith('/auth/v1/signup')) {
       if (o.noAnonymous) return json(422, { error_code: 'anonymous_provider_disabled' });
       const name = (body().data?.name ?? `guest${++anon}`).replace(/\s+/g, '');
-      return json(200, { access_token: `tok-${name}`, refresh_token: 'y', expires_in: 3600, user: { id: name, is_anonymous: true } });
+      return json(200, { access_token: tokenOf(name), refresh_token: 'y', expires_in: 3600, user: { id: name, is_anonymous: true } });
     }
     if (u.pathname.endsWith('/functions/v1/golfos-push')) {
       const b = body();
@@ -94,6 +105,11 @@ export function sharedServer(b, url, o = {}) {
       const inEvent = (ev) => !!shared.get(ev) && (shared.get(ev).owner === uid || shared.get(ev).members.includes(uid));
       const mine = row && (row.event_code ? inEvent(row.event_code) : row.owner === uid || row.members.includes(uid));
       const evCode = (u.searchParams.get('event_code') ?? '').replace(/^eq\./, '');
+      // the rows of a kind this account may read (the pools of bets: lib/wagerstore syncPools) – with their host
+      if (req.method() === 'GET' && u.searchParams.has('game->>kind')) {
+        const kind = (u.searchParams.get('game->>kind') ?? '').replace(/^eq\./, '');
+        return json(200, [...shared.entries()].filter(([, r]) => !r.event_code && r.game.kind === kind && (r.owner === uid || r.members.includes(uid))).map(([c, r]) => ({ code: c, game: r.game, owner: r.owner, updated_at: r.updated_at })));
+      }
       // the planned tournaments of a day this account may read (Rounds' start page)
       if (req.method() === 'GET' && u.searchParams.has('game->>planned')) {
         const day = (u.searchParams.get('game->>date') ?? '').replace(/^eq\./, '');
@@ -106,7 +122,7 @@ export function sharedServer(b, url, o = {}) {
         return json(200, inEvent(evCode) ? [...shared.values()].filter((r) => r.event_code === evCode).map((r) => ({ game: r.game, updated_at: r.updated_at })) : []);
       }
       if (req.method() === 'GET' && /near_requests/.test(u.searchParams.get('select') ?? '')) return json(200, mine ? [{ near_requests: row.requests }] : []);
-      if (req.method() === 'GET') return json(200, mine ? [{ game: row.game, updated_at: row.updated_at }] : []);
+      if (req.method() === 'GET') return json(200, mine ? [{ game: row.game, updated_at: row.updated_at, owner: row.owner }] : []);
       if (req.method() === 'POST') {
         const r = body();
         if (shared.has(r.code)) return json(409, { code: '23505' });
@@ -144,7 +160,7 @@ export function sharedServer(b, url, o = {}) {
     p.on('pageerror', (e) => { if (!/golfos_items.*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
     await p.goto(url);
     await p.waitForTimeout(1200);
-    await p.evaluate(({ name, guest }) => {
+    await p.evaluate(({ name, guest, token }) => {
       localStorage.clear();
       sessionStorage.clear();
       localStorage.setItem('golfos.intro.v1', '1');
@@ -152,10 +168,10 @@ export function sharedServer(b, url, o = {}) {
       if (!guest) {
         localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: name, lastName: '', hcpIndex: '10', homeClub: '' }));
         // signed in (the token is only checked by the simulated server)
-        localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: `tok-${name}`, refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
+        localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: token, refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
       }
       sessionStorage.setItem('golfos.module', 'rounds');
-    }, { name, guest: !!opt.guest });
+    }, { name, guest: !!opt.guest, token: tokenOf(name) });
     await p.reload();
     await p.waitForTimeout(1500);
     return { p, errs };
