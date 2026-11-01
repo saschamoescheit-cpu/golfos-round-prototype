@@ -133,7 +133,7 @@ const openProfile = async (p) => {
   ok(await card.getByRole('status').filter({ hasText: 'Mitteilungen sind an' }).isVisible(), 'said: on – a first one on its way');
   ok((await on.getAttribute('aria-checked')) === 'true', 'the slider on');
   if (process.env.SHOTS) await card.screenshot({ path: `${process.env.SHOTS}/push-card.png` });
-  ok((await card.locator('.drawer-row[role="switch"]').count()) === 3 && (await card.getByRole('group').count()) === 0, 'one slider per kind: rounds, games, thunderstorm (no An/Aus buttons)');
+  ok((await card.locator('.drawer-row[role="switch"]').count()) === 4 && (await card.getByRole('group').count()) === 0, 'one slider per kind: rounds, games, thunderstorm, Agility training day (no An/Aus buttons)');
   const storm = card.getByRole('switch', { name: /Gewitter auf dem Platz/ });
   await storm.click();
   await p.waitForTimeout(600);
