@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, joinEvent, liveFlights, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent } from '../lib/sharedround';
+import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -222,6 +222,17 @@ export function JoinRoundSheet(props: {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [ev, setEv] = useState<RoundEvent | null>(null);
+  const [series, setSeries] = useState<TourSeries | null>(null);
+  // the own flight in the series' first round: "dein Flight in Runde 1 · 09:20"
+  const [seriesFlight, setSeriesFlight] = useState<string | null>(null);
+  useEffect(() => {
+    const first = series?.rounds[0];
+    if (!first) return setSeriesFlight(null);
+    void refreshEvent(first.code).then((e) => {
+      const f = e ? flightOfName(e, who()) : null;
+      setSeriesFlight(f ? tr(`your flight in round 1${f.teeTime ? ` ${f.teeTime}` : ''}`, `dein Flight in Runde 1${f.teeTime ? ` ${f.teeTime}` : ''}`) : null);
+    });
+  }, [series]); // eslint-disable-line react-hooks/exhaustive-deps
   const [own, setOwn] = useState<NewPlayer[] | null>(null); // a flight of one's own (tournament)
   // joining must be simple (Sascha 30.10.2026): no account needed – the name is enough (an anonymous account in the
   // background); the host lets every phone in, by code, QR, link or nearby
@@ -264,7 +275,7 @@ export function JoinRoundSheet(props: {
         setAsking({ code: cleanCode(c) });
       } else if (a?.state === 'ok') {
         const again = await joinEvent(c);
-        if (again && typeof again === 'object') setEv(again);
+        if (again && typeof again === 'object' && !isSeries(again)) setEv(again);
       } else if (a?.state === 'no') setMsg(tr('The host did not let you in.', 'Der Gastgeber hat den Beitritt abgelehnt.'));
       else if (a?.state === 'none') setMsg(tr('No round with this code – check the code.', 'Keine Runde mit diesem Code – Code prüfen.'));
       else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
@@ -274,6 +285,8 @@ export function JoinRoundSheet(props: {
     else if (found === 'game') setMsg(tr('This code is a game – join it under Games.', 'Dieser Code ist ein Spiel – das unter Games beitreten.'));
     else if (found === 'none') setMsg(tr('No round with this code – check the code.', 'Keine Runde mit diesem Code – Code prüfen.'));
     else if (!found) setMsg(tr('No connection – check the code or the connection.', 'Keine Verbindung – Code oder Verbindung prüfen.'));
+    // a series of tournaments (Sascha 01.11.2026): in all its rounds now – which, when, the own flight
+    else if (isSeries(found)) setSeries(found);
     else {
       setEv(found);
       if (let_in.current) awaitName.current = Date.now(); // let in just now: the host's phone adds the name in a moment
@@ -361,7 +374,7 @@ export function JoinRoundSheet(props: {
     if (!awaitName.current || Date.now() - awaitName.current > 15 * 60000) return;
     const t = window.setTimeout(async () => {
       const again = await joinEvent(code);
-      if (again && typeof again === 'object') setEv({ ...again });
+      if (again && typeof again === 'object' && !isSeries(again)) setEv({ ...again });
     }, 3000);
     return () => window.clearTimeout(t);
   }, [ev]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -376,7 +389,7 @@ export function JoinRoundSheet(props: {
           </button>
         </div>
         {/* no account yet: the name is all it takes */}
-        {!ev && !asking && nameField && (
+        {!ev && !series && !asking && nameField && (
           <div className="field join-name">
             <label htmlFor="join-name">{tr('Your name', 'Dein Name')}</label>
             <input id="join-name" className="input" value={name} autoComplete="name" placeholder={tr('e.g. Cedric', 'z. B. Cedric')} onChange={(e) => { setName(e.target.value); setMsg(null); }} />
@@ -392,7 +405,7 @@ export function JoinRoundSheet(props: {
             </button>
           </div>
         )}
-        {!ev && !asking && !props.initial && !signedIn && (
+        {!ev && !series && !asking && !props.initial && !signedIn && (
           <button
             type="button"
             className="btn-secondary"
@@ -406,7 +419,7 @@ export function JoinRoundSheet(props: {
             {tr('Find rounds nearby', 'Runden in der Nähe suchen')}
           </button>
         )}
-        {!ev && !asking && !props.initial && signedIn && (
+        {!ev && !series && !asking && !props.initial && signedIn && (
           <div className="near-rounds" aria-label={tr('Rounds nearby', 'Runden in der Nähe')}>
             <span className="eyebrow">{tr('Nearby', 'In der Nähe')}</span>
             {near == null && <span className="muted small">{tr('Looking for rounds nearby …', 'Suche Runden in der Nähe …')}</span>}
@@ -436,7 +449,7 @@ export function JoinRoundSheet(props: {
             ))}
           </div>
         )}
-        {!ev && !asking && (
+        {!ev && !series && !asking && (
           <>
             <input
               className="input join-input"
@@ -472,6 +485,48 @@ export function JoinRoundSheet(props: {
               </button>
             )}
           </>
+        )}
+        {/* a series of tournaments (Sascha 01.11.2026): in every round – its days and courses, the own flight; a round
+            today: on to it */}
+        {series && series.deletedAt && (
+          <span className="small bad-text" role="alert">
+            {tr('The host has called this series off.', 'Der Gastgeber hat diese Serie abgesagt.')}
+          </span>
+        )}
+        {series && !series.deletedAt && (
+          <div className="join-wait" role="status" aria-label={tr('Series', 'Serie')}>
+            <strong>{tr(`You're in: ${series.name}`, `Du bist dabei: ${series.name}`)}</strong>
+            <span className="muted small">{tr(`${series.rounds.length} rounds`, `${series.rounds.length} Runden`)}{seriesFlight ? ` · ${seriesFlight}` : ''}</span>
+            <ul className="series-rounds">
+              {series.rounds.map((r) => (
+                <li key={r.code} className="small">
+                  {dayText(r.date)} · {r.course.name}
+                  {r.name && r.name !== series.name ? ` · ${r.name}` : ''}
+                </li>
+              ))}
+            </ul>
+            {((today) =>
+              today ? (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    setSeries(null);
+                    setCode(today.code);
+                    void find(today.code);
+                  }}
+                >
+                  {tr('Take part today', 'Heute teilnehmen')}
+                </button>
+              ) : (
+                <span className="muted small">{tr('On each day of the series it is in Rounds from 00:01 – before that under Games → Tournaments.', 'An jedem Spieltag ab 00:01 in Rounds – vorab unter Games → Turniere.')}</span>
+              ))(series.rounds.find((r) => r.date === localDay()))}
+            {props.onTours && (
+              <button type="button" className="btn-secondary" onClick={props.onTours}>
+                {tr('To the tournaments', 'Zu den Turnieren')}
+              </button>
+            )}
+          </div>
         )}
         {/* a tournament planned in Games (Sascha 01.11.2026): called off – or joined before its day, played on the day */}
         {ev?.planned && ev.deletedAt && (

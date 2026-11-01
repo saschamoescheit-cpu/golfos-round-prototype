@@ -61,6 +61,15 @@ export function sharedServer(b, url, o = {}) {
       const row = shared.get(join_code);
       if (!row) return json(200, null);
       if (row.event_code) return json(200, null); // a flight's row: only through its event
+      // a series of tournaments (01.11.2026, Games' SQL): in the series and in every round of it – unless called off
+      if (row.game.kind === 'tour-series') {
+        if (row.game.deletedAt) return json(200, row.game);
+        for (const c of [join_code, ...row.game.rounds.map((x) => x.code)]) {
+          const rr = shared.get(c);
+          if (rr && rr.owner !== uid && !rr.members.includes(uid)) rr.members.push(uid);
+        }
+        return json(200, row.game);
+      }
       // a tournament planned in Games (01.11.2026): the code is the host's invitation – in at once, unless called off
       if (row.game.planned && row.game.deletedAt) return json(200, row.game);
       if (!o.old && row.game.kind === 'round-event' && !row.game.planned && row.owner !== uid && !row.members.includes(uid)) return json(200, { kind: 'ask-host' });
@@ -220,5 +229,12 @@ export function sharedServer(b, url, o = {}) {
     await p.goto(url + '#round=' + code);
     await p.locator('.map-hole-no').waitFor({ timeout: 30000 });
   }
-  return { shared, pushes, phone, round, event, plan, joinPlanned, refused: () => refused, flightReads: () => flightReads };
+  /** A series of planned tournaments (as Games makes it): its own code, its rounds copied from their events. */
+  function series(owner, name, codes, o2 = {}) {
+    const code = 'S' + Math.random().toString(36).slice(2, 7).toUpperCase();
+    const rounds = codes.map((c) => ({ code: c, date: shared.get(c).game.date, name: shared.get(c).game.name, course: { id: shared.get(c).game.course.id, name: shared.get(c).game.course.name } })).sort((a, b) => a.date.localeCompare(b.date));
+    shared.set(code, { game: { kind: 'tour-series', id: code.toLowerCase(), name, createdAt: new Date().toISOString(), rounds, ...(o2.deletedAt ? { deletedAt: o2.deletedAt } : {}) }, updated_at: new Date().toISOString(), owner, members: [], requests: {} });
+    return code;
+  }
+  return { shared, pushes, phone, round, event, plan, joinPlanned, series, refused: () => refused, flightReads: () => flightReads };
 }

@@ -635,10 +635,22 @@ export async function shareRound(round: Round, course: CourseSummary, o: { name:
   return null;
 }
 
-/** Joins an event with its code: the event (host, or let in), 'ask' when the host has to let this phone in first
+/** A series of planned tournaments (Sascha 01.11.2026: "several tournaments as a series, one code for all"): its
+ *  rounds as the series' row shows them – the events themselves are the truth (Games keeps this list in step). */
+export interface TourSeries {
+  kind: 'tour-series';
+  id: string;
+  name: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  rounds: { code: string; date: string; name: string; course: { id: string; name: string } }[];
+}
+export const isSeries = (x: unknown): x is TourSeries => !!x && (x as TourSeries).kind === 'tour-series' && Array.isArray((x as TourSeries).rounds);
+
+/** Joins an event with its code: the event (host, or let in), a series (in all its rounds), 'ask' when the host has to let this phone in first
  *  (askByCode), 'game' for a game's code (join it under Games), 'none' for nothing with this code, null for no
  *  connection. */
-export async function joinEvent(code: string): Promise<RoundEvent | 'ask' | 'game' | 'none' | null> {
+export async function joinEvent(code: string): Promise<RoundEvent | TourSeries | 'ask' | 'game' | 'none' | null> {
   const h = await headers();
   if (!h) return null;
   try {
@@ -647,6 +659,7 @@ export async function joinEvent(code: string): Promise<RoundEvent | 'ask' | 'gam
     const ev = await r.json();
     if (isGame(ev) || isPool(ev)) return 'game'; // a pool of bets lives in Games too (01.11.2026)
     if ((ev as { kind?: string } | null)?.kind === 'ask-host') return 'ask';
+    if (isSeries(ev)) return ev; // a series of tournaments: this account is in all its rounds now
     if (!isEvent(ev)) return 'none';
     // a tournament: its flights as their own rows have them (who is where, the scores)
     const rows = ev.tournament ? await flightRows(cleanCode(code), h) : 'legacy';
