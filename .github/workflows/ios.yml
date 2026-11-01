@@ -1,0 +1,99 @@
+# Builds GolfOS as an iOS app and uploads it to TestFlight (Sascha 01.11.2026: no Mac – a Mac of GitHub builds and
+# signs it). Runs by hand ("Run workflow") and on every push to the app's branch. Without the Apple key in the
+# repository's secrets it builds nothing and says so – never a red cross for a missing key.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   ASC_KEY_ID      the key's id (App Store Connect → Users and Access → Integrations → App Store Connect API)
+#   ASC_ISSUER_ID   the issuer id above the keys there
+#   ASC_KEY_P8      the whole content of the downloaded AuthKey_….p8 file
+#   APPLE_TEAM_ID   the team id (developer.apple.com/account → Membership details)
+name: iOS app to TestFlight
+
+on:
+  push:
+    branches: [native/ios]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - name: The Apple key is there?
+        id: ready
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8" ] || [ -z "$APPLE_TEAM_ID" ]; then
+            echo "::notice::No Apple key in the secrets yet (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID) – nothing built."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.ready.outputs.go == 'true'
+        uses: actions/checkout@v7
+      - if: steps.ready.outputs.go == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      # Apple takes only builds made with the newest Xcode
+      - if: steps.ready.outputs.go == 'true'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - if: steps.ready.outputs.go == 'true'
+        run: npm ci
+      - if: steps.ready.outputs.go == 'true'
+        run: npm test
+      - if: steps.ready.outputs.go == 'true'
+        run: npm run build
+      - if: steps.ready.outputs.go == 'true'
+        run: npx cap sync ios
+      - name: Archive, signed by Apple's cloud with the key
+        if: steps.ready.outputs.go == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          KEY="$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8" > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            "${AUTH[@]}" archive | tail -n 60
+          test "${PIPESTATUS[0]}" -eq 0
+      - name: Upload to TestFlight
+        if: steps.ready.outputs.go == 'true'
+        run: |
+          KEY="$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8"
+          cat > "$RUNNER_TEMP/export.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export" -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0
+          echo "::notice::Build $GITHUB_RUN_NUMBER uploaded – in TestFlight after Apple's processing (about 10–30 min)."
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

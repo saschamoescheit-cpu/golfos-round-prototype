@@ -6,6 +6,7 @@ import { isTeamRound } from './lib/games';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
 import { finishSignIn, liveConnect, syncNow, syncSoon, watchChanges } from './lib/sync';
+import { isNative, onAppLink } from './lib/native';
 import { PlayTab, RoundsTopBar } from './screens/Play';
 import { RoundsTab, roundsToSign, type RoundsFilter } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
@@ -223,6 +224,8 @@ export function App() {
   useEffect(() => {
     watchChanges();
     finishSignIn().finally(() => syncNow());
+    // the iOS app back from Google by its own link: keep the tokens, then start again as the website does after Google
+    if (isNative()) void onAppLink((url) => void finishSignIn(url).then((s) => s && location.reload()));
     // back to the app: fetch what the other devices changed; leaving it (another tab, the phone locked): send ours
     const onShow = () => {
       syncNow();

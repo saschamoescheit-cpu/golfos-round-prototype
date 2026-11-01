@@ -1,5 +1,6 @@
 import { loadProfile, saveProfile } from './profile';
 import { tr } from './i18n';
+import { AUTH_BACK, isNative, openSignIn } from './native';
 
 // Sync between the player's devices (feature 013, Sascha 15.10.2026: "iPhone, iPad and PC should show the same").
 // Offline first: the app keeps saving to the device as before; with a Google login and a network the data is
@@ -394,10 +395,13 @@ export interface Session {
 export const loadSession = (): Session | null => parse<Session | null>(browserStore.get(AUTH), null);
 const saveSession = (s: Session | null) => (s ? browserStore.set(AUTH, JSON.stringify(s)) : browserStore.remove(AUTH));
 
-/** "Sign in with Google": Supabase sends the player to Google and back to the app with the tokens in the address. */
+/** "Sign in with Google": Supabase sends the player to Google and back to the app with the tokens in the address.
+ *  In the iOS app in the system's browser sheet, back by the app's own link (Sascha 01.11.2026). */
 export function signIn(): void {
-  const back = location.origin + location.pathname;
-  location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(back)}`;
+  const back = isNative() ? AUTH_BACK : location.origin + location.pathname;
+  const url = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(back)}`;
+  if (isNative()) void openSignIn(url);
+  else location.href = url;
 }
 export function signOut(): void {
   liveClose();
@@ -405,11 +409,13 @@ export function signOut(): void {
   browserStore.remove(META);
 }
 
-/** Back from Google: the tokens stand in the address (#access_token=…) – keep them, clean the address. */
-export async function finishSignIn(): Promise<Session | null> {
-  if (!location.hash.includes('access_token=')) return null;
-  const p = new URLSearchParams(location.hash.slice(1));
-  history.replaceState(null, '', location.pathname + location.search);
+/** Back from Google: the tokens stand in the address (#access_token=…) – keep them, clean the address.
+ *  `hash`: the app's link back from Google (iOS app) instead of the page's own address. */
+export async function finishSignIn(hash?: string): Promise<Session | null> {
+  const h = hash ?? location.hash;
+  if (!h.includes('access_token=')) return null;
+  const p = new URLSearchParams(h.slice(h.indexOf('#') + 1));
+  if (hash == null) history.replaceState(null, '', location.pathname + location.search);
   const access = p.get('access_token');
   const refresh = p.get('refresh_token');
   if (!access || !refresh) return null;

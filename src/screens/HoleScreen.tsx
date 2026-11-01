@@ -8,6 +8,7 @@ import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTota
 import { playerBag } from '../lib/stats';
 import { autoShot, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
+import { isNative, watchPosition } from '../lib/native';
 import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
@@ -255,7 +256,8 @@ export function HoleScreen(props: {
       return;
     }
     let restart: number | undefined;
-    const id = navigator.geolocation.watchPosition(
+    // in the iOS app iOS's own watch: it goes on with the phone locked (Sascha 01.11.2026)
+    const stop = watchPosition(
       (p) => {
         setGpsError(null);
         // Just unlocked: a fix from before the phone went into the pocket is the old place, not where the player stands
@@ -276,10 +278,15 @@ export function HoleScreen(props: {
       (err) => {
         if (err.code === 1) {
           setGpsError(
-            tr(
-              'Location not allowed. iPhone: Settings → Privacy & Security → Location Services → Safari Websites → “While Using” and Precise Location on. Then reload.',
-              'Standort nicht erlaubt. iPhone: Einstellungen → Datenschutz & Sicherheit → Ortungsdienste → Safari-Websites → „Beim Verwenden“ und „Genauer Standort“ an. Dann neu laden.',
-            ),
+            isNative()
+              ? tr(
+                  'Location not allowed. iPhone: Settings → GolfOS → Location → “Always” and Precise Location on.',
+                  'Standort nicht erlaubt. iPhone: Einstellungen → GolfOS → Standort → „Immer“ und „Genauer Standort“ an.',
+                )
+              : tr(
+                  'Location not allowed. iPhone: Settings → Privacy & Security → Location Services → Safari Websites → “While Using” and Precise Location on. Then reload.',
+                  'Standort nicht erlaubt. iPhone: Einstellungen → Datenschutz & Sicherheit → Ortungsdienste → Safari-Websites → „Beim Verwenden“ und „Genauer Standort“ an. Dann neu laden.',
+                ),
           );
           return;
         }
@@ -291,7 +298,7 @@ export function HoleScreen(props: {
     );
     return () => {
       window.clearTimeout(restart);
-      navigator.geolocation.clearWatch(id);
+      stop();
     };
   }, [gpsTry]);
 
