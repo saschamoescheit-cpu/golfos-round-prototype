@@ -34,6 +34,8 @@ export interface FlightPlayer {
   name: string;
   playingHandicap: number | null;
   tee?: string;
+  /** a planned tournament: the handicap index – the host works the playing handicap out again after a change */
+  hcpIndex?: number | null;
 }
 export interface Flight {
   id: string;
@@ -55,6 +57,8 @@ export interface Flight {
   /** the phone that set the flight up – its players come from there */
   by?: string;
   finishedAt?: string | null;
+  /** a planned tournament: the flight's tee time, "HH:MM" on the course (Sascha 01.11.2026) */
+  teeTime?: string;
 }
 export interface RoundEvent {
   kind: 'round-event';
@@ -136,7 +140,9 @@ export function defaultMarkers(ids: string[]): Record<string, string> {
 }
 
 const framePlayers = (round: Pick<Round, 'players'>): FlightPlayer[] => round.players.map((p) => ({ id: p.id, name: p.name, playingHandicap: p.playingHandicap, ...(p.tee ? { tee: p.tee } : {}) }));
-const sameFrame = (a: FlightPlayer[], b: FlightPlayer[]): boolean => JSON.stringify(a) === JSON.stringify(b);
+// what a round knows of its players (a planned tournament's handicap index stays with the plan)
+const framed = (ps: FlightPlayer[]) => ps.map((p) => ({ id: p.id, name: p.name, playingHandicap: p.playingHandicap, ...(p.tee ? { tee: p.tee } : {}) }));
+const sameFrame = (a: FlightPlayer[], b: FlightPlayer[]): boolean => JSON.stringify(framed(a)) === JSON.stringify(framed(b));
 
 /** The round's flight for the event: its players (or teams), scores, and the phone that set it up. */
 export function flightOf(round: Round, id: string, name: string, phone: string, tournament: boolean, who: string): Flight {
@@ -783,16 +789,19 @@ async function changeFlight(code: string, fid: string, tournament: boolean, chan
 
 export interface PlanFlight {
   name?: string;
+  /** "HH:MM" on the course */
+  teeTime?: string;
   /** in scramble and foursomes the teams */
-  players: { name: string; playingHandicap: number | null; tee?: string | null }[];
+  players: { name: string; playingHandicap: number | null; tee?: string | null; hcpIndex?: number | null }[];
   /** markers[player] = who marks him, by the players' places "p1", "p2" … – missing: in pairs (1 ↔ 2, 3 ↔ 4) */
   markers?: Record<string, string>;
 }
 const planFlight = (pf: PlanFlight, holes: number, by: string, id = newId()): Flight => {
-  const players: FlightPlayer[] = pf.players.map((p, k) => ({ id: `p${k + 1}`, name: p.name, playingHandicap: p.playingHandicap, ...(p.tee ? { tee: p.tee } : {}) }));
+  const players: FlightPlayer[] = pf.players.map((p, k) => ({ id: `p${k + 1}`, name: p.name, playingHandicap: p.playingHandicap, ...(p.tee ? { tee: p.tee } : {}), ...(p.hcpIndex != null ? { hcpIndex: p.hcpIndex } : {}) }));
   return {
     id,
     name: pf.name?.trim() || players.map((p) => p.name).join(' · '),
+    ...(pf.teeTime ? { teeTime: pf.teeTime } : {}),
     players,
     scores: Object.fromEntries(players.map((p) => [p.id, nulls(holes)])),
     marks: {},
@@ -879,7 +888,7 @@ export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<
     const done = await changeFlight(code, fid, true, (f) => {
       if (!want) return f && f.players.length ? { ...f, players: [], markers: {} } : null;
       const players = want.players;
-      const next: Flight = { ...(f ?? want), name: want.name, players, markers: want.markers, scores: Object.fromEntries(players.map((p) => [p.id, f?.scores[p.id] ?? nulls(ev.holes.length)])) };
+      const next: Flight = { ...(f ?? want), name: want.name, players, markers: want.markers, ...(want.teeTime ? { teeTime: want.teeTime } : {}), scores: Object.fromEntries(players.map((p) => [p.id, f?.scores[p.id] ?? nulls(ev.holes.length)])) };
       return f && JSON.stringify(f) === JSON.stringify(next) ? null : next;
     });
     if (!done) return null;

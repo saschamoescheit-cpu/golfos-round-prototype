@@ -350,7 +350,7 @@ describe('a tournament planned in Games, played in Rounds (Sascha 01.11.2026)', 
     plannedEvent({
       name: 'Herbstpreis', date: '2026-11-06', course, holes, loopOrder: ['A'], format: { mode: 'single', scoring: 'stableford' },
       flights: [
-        { players: [{ name: 'Sascha', playingHandicap: 12 }, { name: 'Cedric', playingHandicap: 20 }] },
+        { teeTime: '09:20', players: [{ name: 'Sascha', playingHandicap: 12, hcpIndex: 11.8 }, { name: 'Cedric', playingHandicap: 20, hcpIndex: 19.6 }] },
         { players: [{ name: 'Ben', playingHandicap: 8 }, { name: 'Max', playingHandicap: 15 }, { name: 'Erik', playingHandicap: 30 }] },
       ],
     });
@@ -358,7 +358,8 @@ describe('a tournament planned in Games, played in Rounds (Sascha 01.11.2026)', 
     const ev = plan();
     expect(ev).toMatchObject({ kind: 'round-event', tournament: true, planned: true, date: '2026-11-06', name: 'Herbstpreis' });
     const [f1, f2] = Object.values(ev.flights);
-    expect(f1.players.map((p) => [p.id, p.name])).toEqual([['p1', 'Sascha'], ['p2', 'Cedric']]);
+    expect(f1.players.map((p) => [p.id, p.name, p.hcpIndex])).toEqual([['p1', 'Sascha', 11.8], ['p2', 'Cedric', 19.6]]);
+    expect(f1.teeTime).toBe('09:20');
     expect(f1.markers).toEqual({ p1: 'p2', p2: 'p1' });
     expect(Object.keys(f2.markers!)).toHaveLength(3);
     expect(f1.scores.p1).toEqual([null, null, null]);
@@ -373,6 +374,10 @@ describe('a tournament planned in Games, played in Rounds (Sascha 01.11.2026)', 
     expect(cedric.shared!.roles).toEqual({ p1: 'mark', p2: 'own' });
     expect(ev.flights[fid].players.map((p) => p.name)).toEqual(['Sascha', 'Cedric']);
     expect(ev.flights[fid].phones!['ph-cedric'].player).toBe('p2');
+    // the next exchange: nothing new (the plan's handicap index is no change of the players)
+    const before = cedric;
+    ({ r: cedric } = exchange(ev, cedric, 'Cedric'));
+    expect(cedric.players).toBe(before.players);
   });
   it('the host adds a flight later', () => {
     const ev = plan();
