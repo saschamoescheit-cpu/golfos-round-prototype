@@ -110,9 +110,12 @@ if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-s
 await H.getByRole('button', { name: 'Neuer Wett-Pool' }).click();
 await H.fill('#pool-name', 'USA 2026');
 await H.getByRole('textbox', { name: 'Spieler 2' }).fill('Chris');
+// laid out as "Neues Spiel": a card per player, "+ Spieler hinzufügen"
+await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.getByRole('textbox', { name: 'Spieler 3' }).fill('Erik');
-await H.getByRole('button', { name: '+ Spieler' }).click();
+await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.getByRole('textbox', { name: 'Spieler 4' }).fill('Cedric');
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-setup.png', fullPage: true });
 await H.getByRole('button', { name: 'Pool anlegen' }).click();
 await H.waitForTimeout(1200);
 ok((await H.locator('.pool-player').count()) === 4 && (await H.locator('.topbar h1').innerText()).includes('USA 2026'), 'pool set up: USA 2026 with 4 players');

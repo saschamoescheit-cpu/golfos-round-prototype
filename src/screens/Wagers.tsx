@@ -5,6 +5,7 @@ import { loadProfile, shownName } from '../lib/profile';
 import { joinLink } from '../lib/sharedgame';
 import { money, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
+import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
 import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, earlierGroups, fromEarlier, fromLibrary, progressText, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { changePool, createPool, earlierBets, forgetPool, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
@@ -61,9 +62,9 @@ export function StartBetCard(props: { canShare: boolean; onNew: () => void; onLi
     void syncPools(); // a phone emptied or new: the pools come back from the server
   }, []);
   return (
+    <>
     <section className="card play-card" aria-label={tr('Start a bet', 'Wette starten')}>
       <strong className="play-course">{tr('Start a new bet', 'Neue Wette starten')}</strong>
-      <span className="muted small">{tr('Everyone his own targets – birdies in a row, greens, the score … judged from the rounds in Rounds.', 'Jeder seine eigenen Ziele – Birdies in Folge, Grüns, Ergebnis … ausgewertet aus den Runden in Rounds.')}</span>
       {props.canShare ? (
         <button type="button" className="btn-secondary" onClick={props.onNew}>
           {tr('New pool of bets', 'Neuer Wett-Pool')}
@@ -71,15 +72,18 @@ export function StartBetCard(props: { canShare: boolean; onNew: () => void; onLi
       ) : (
         <span className="muted small">{tr('Sign in to set up bets: Profile → "On all your devices".', 'Für Wetten anmelden: Profil → „Auf allen Geräten“.')}</span>
       )}
-      {running > 0 && (
-        <button type="button" className="list-item" onClick={props.onList}>
-          <span className="grow">
-            <span className="title">{running === 1 ? tr('1 pool of bets running', '1 Wett-Pool läuft') : tr(`${running} pools of bets running`, `${running} Wett-Pools laufen`)}</span>
-          </span>
-          <span aria-hidden="true">›</span>
-        </button>
-      )}
     </section>
+    {running > 0 && (
+      <button type="button" className="list-item" onClick={props.onList}>
+        <span className="grow">
+          <span className="title">{tr('Follow the bets', 'Wetten verfolgen')}</span>
+          <span className="muted small">{running === 1 ? tr('1 pool of bets running', '1 Wett-Pool läuft') : tr(`${running} pools of bets running`, `${running} Wett-Pools laufen`)}</span>
+        </span>
+        <span className="count-badge">{running}</span>
+        <span aria-hidden="true">›</span>
+      </button>
+    )}
+    </>
   );
 }
 
@@ -214,48 +218,69 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
   const [name, setName] = useState(tr('Bets', 'Wetten'));
   const [from, setFrom] = useState(dayOf(today));
   const [to, setTo] = useState(dayOf(new Date(today.getTime() + 7 * 864e5)));
-  const [names, setNames] = useState<string[]>([shownName(loadProfile()) || tr('Me', 'Ich'), '', '']);
+  const [names, setNames] = useState<{ id: string; name: string }[]>(() => [{ id: newId(), name: shownName(loadProfile()) || tr('Me', 'Ich') }, { id: newId(), name: '' }]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const ok = !!names[0].trim() && from <= to;
+  const ok = !!names[0].name.trim() && from <= to;
+  // laid out as "New game" (Sascha 01.11.2026: "Games and the bets like Rounds"): titles over the parts, a card per
+  // player with ✕, "+ Add player", the friends as chips
   return (
     <main className="screen">
-      <TopBar title={tr('New pool of bets', 'Neuer Wett-Pool')} onBack={props.onBack} backLabel={tr('Games', 'Spiele')} />
-      <section className="card play-card">
-        <div className="field">
-          <label htmlFor="pool-name">{tr('Name', 'Name')}</label>
-          <input id="pool-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={tr('USA 2026', 'USA 2026')} />
-        </div>
-        <div className="pool-dates">
+      <TopBar title={tr('New pool of bets', 'Neuer Wett-Pool')} onBack={props.onBack} backLabel={tr('Back', 'Zurück')} />
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Pool of bets', 'Wett-Pool')}</span>
+        <div className="card">
           <div className="field">
-            <label htmlFor="pool-from">{tr('From', 'Von')}</label>
-            <input id="pool-from" type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="pool-to">{tr('To', 'Bis')}</label>
-            <input id="pool-to" type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} />
+            <label htmlFor="pool-name">{tr('Name', 'Name')}</label>
+            <input id="pool-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={tr('USA 2026', 'USA 2026')} />
           </div>
         </div>
-        <span className="muted small">{tr('Rounds of these days count.', 'Es zählen die Runden dieser Tage.')}</span>
       </section>
-      <section className="card play-card">
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Days', 'Zeitraum')}</span>
+        <div className="card setup-part">
+          <div className="pool-dates">
+            <div className="field">
+              <label htmlFor="pool-from">{tr('From', 'Von')}</label>
+              <input id="pool-from" type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="pool-to">{tr('To', 'Bis')}</label>
+              <input id="pool-to" type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+          </div>
+          <span className="muted small">{tr('Rounds of these days count.', 'Es zählen die Runden dieser Tage.')}</span>
+        </div>
+      </section>
+      <section className="setup-part">
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
-        <span className="muted small">{tr('The first name is you. The others join with the code – or add themselves.', 'Der erste Name bist du. Die anderen treten mit dem Code bei – oder tragen sich selbst ein.')}</span>
-        {names.map((n, k) => (
-          <input
-            key={k}
-            className="input"
-            aria-label={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
-            placeholder={k === 0 ? tr('You', 'Du') : tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
-            value={n}
-            onChange={(e) => setNames(names.map((x, j) => (j === k ? e.target.value : x)))}
-          />
+        {names.map((p, k) => (
+          <div key={p.id} className="card player-row pool-player-row">
+            <div className="field">
+              <label htmlFor={`pool-player-${p.id}`}>{tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}</label>
+              <input id={`pool-player-${p.id}`} className="input" value={p.name} placeholder={k === 0 ? tr('You', 'Du') : ''} onChange={(e) => setNames(names.map((x) => (x.id === p.id ? { ...x, name: e.target.value } : x)))} />
+            </div>
+            {k > 0 && (
+              <button type="button" className="icon-btn player-remove" aria-label={tr(`Remove ${p.name || 'player'}`, `${p.name || 'Spieler'} entfernen`)} onClick={() => setNames(names.filter((x) => x.id !== p.id))}>
+                ✕
+              </button>
+            )}
+          </div>
         ))}
+        {/* a friend takes the first empty row, else a new one – as in "New game" */}
+        <FriendChips
+          taken={names.map((p) => p.name)}
+          onAdd={(fr) => {
+            const k = names.findIndex((p, j) => j > 0 && !p.name.trim());
+            setNames(k > 0 ? names.map((p, j) => (j === k ? { ...p, name: fr.name } : p)) : [...names, { id: newId(), name: fr.name }]);
+          }}
+        />
         {names.length < 12 && (
-          <button type="button" className="btn-secondary" onClick={() => setNames([...names, ''])}>
-            {tr('+ Player', '+ Spieler')}
+          <button type="button" className="btn-secondary" onClick={() => setNames([...names, { id: newId(), name: '' }])}>
+            {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
+        <span className="muted small">{tr('The first is you. The others join with the code – or add themselves.', 'Der Erste bist du. Die anderen treten mit dem Code bei – oder tragen sich selbst ein.')}</span>
       </section>
       {msg && (
         <span className="small bad-text" role="alert">
@@ -268,8 +293,12 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
         disabled={busy || !ok}
         onClick={async () => {
           setBusy(true);
-          const account = shownName(loadProfile()) || names[0].trim();
-          const players = names.map((n) => n.trim()).filter((n, k) => k === 0 || n).map((n, k) => ({ id: newId(), name: n, ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(myAccount() ? { uid: myAccount()! } : {}) } } : {}) }));
+          const account = shownName(loadProfile()) || names[0].name.trim();
+          const uid = myAccount();
+          const players = names
+            .map((p) => ({ ...p, name: p.name.trim() }))
+            .filter((p, k) => k === 0 || p.name)
+            .map((p, k) => ({ id: p.id, name: p.name, ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } } : {}) }));
           const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {} };
           const e = await createPool(pool, players[0].id);
           setBusy(false);
@@ -996,7 +1025,7 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
               </div>
             ))}
             <button type="button" className="btn-secondary" onClick={() => setPlayers([...players, { id: newId(), name: '' }])}>
-              {tr('+ Player', '+ Spieler')}
+              {tr('+ Add player', '+ Spieler hinzufügen')}
             </button>
             <span className="muted small">{tr('A player who joined or has bets stays – delete his bets first.', 'Wer beigetreten ist oder Wetten hat, bleibt – erst seine Wetten löschen.')}</span>
             <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, players: players.map((p) => ({ ...p, name: p.name.trim() })) })}>
