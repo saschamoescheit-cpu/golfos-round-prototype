@@ -122,7 +122,8 @@ export function DrillPlayer(props: {
   streak?: number;
   onDone: (d: DrillDone) => void;
   onMenu: () => void;
-  onSkip: () => void;
+  /** on to the next drill – only when the training has several (none for a single drill) */
+  onSkip?: () => void;
   /** finish the training now (asks first: pause for later or finish) */
   onEnd: () => void;
 }) {
@@ -587,9 +588,15 @@ export function DrillPlayer(props: {
           <button type="button" className="btn-primary" onClick={() => setAttempt((a) => a + 1)}>
             {tr('Try again', 'Nochmal versuchen')}
           </button>
-          <button type="button" className="btn-secondary" onClick={props.onSkip}>
-            {tr('Skip the drill', 'Übung überspringen')}
-          </button>
+          {props.onSkip ? (
+            <button type="button" className="btn-secondary" onClick={props.onSkip}>
+              {tr('Skip the drill', 'Übung überspringen')}
+            </button>
+          ) : (
+            <button type="button" className="btn-secondary" onClick={props.onEnd}>
+              {tr('Finish', 'Beenden')}
+            </button>
+          )}
         </div>
       </section>
     );
@@ -737,7 +744,7 @@ export function DrillPlayer(props: {
       <PlayActions
         className="mob-camera-actions"
         buttons={[
-          { act: 'skip', label: tr('Skip', 'Überspringen'), aria: tr('Skip this drill – on to the next', 'Diese Übung überspringen – weiter zur nächsten'), onClick: props.onSkip },
+          !!props.onSkip && { act: 'skip', label: tr('Skip', 'Überspringen'), aria: tr('Skip this drill – on to the next', 'Diese Übung überspringen – weiter zur nächsten'), onClick: props.onSkip },
           { act: 'pause', label: tr('Pause', 'Pause'), onClick: props.onMenu },
           { act: 'end', label: tr('Finish', 'Beenden'), aria: tr('Finish the training', 'Training beenden'), onClick: props.onEnd },
         ]}
