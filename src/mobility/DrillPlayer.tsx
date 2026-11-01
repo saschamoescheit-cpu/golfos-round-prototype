@@ -10,7 +10,7 @@ import { CUES, CUE_SHORT, FormCheck, RepCounter, gainSpeech, SELF_NAMED, SIGNALS
 import { isClean, type DrillDone, type DrillSet } from './sessions';
 import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
-import { beep, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow, speechMs } from './CameraTest';
+import { beep, countWord, DONE_SAY, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow, NOW_DO, speechMs } from './CameraTest';
 import { logFrame, logItem, logResult } from './motionlog';
 import { FitVoice, fitOf, fitScreen, fitSpeech, type Fit } from './framing';
 
@@ -268,12 +268,14 @@ export function DrillPlayer(props: {
         if (!fake && isSpeaking() && performance.now() - t0 < 6000) return later(waitSpeech, 150);
         let n = 3;
         setCount(n);
-        beep(660);
+        beep(660, 90);
+        say(countWord(n));
         const step = () => {
           n--;
           if (n > 0) {
             setCount(n);
-            beep(660);
+            beep(660, 90);
+            say(countWord(n));
             later(step, 1000);
           } else startSet();
         };
@@ -299,7 +301,7 @@ export function DrillPlayer(props: {
       fakeT0 = setT0;
       go('run');
       beep(1180, 180);
-      say(holdMode ? (plan.signal === 'oneLeg' ? tr('Lift the foot – hold.', 'Fuß heben – halten.') : tr('Hold.', 'Halten.')) : tr('Go.', 'Los.'));
+      say(`${NOW_DO()} ${holdMode ? (plan.signal === 'oneLeg' ? tr('Lift the foot – hold.', 'Fuß heben – halten.') : tr('Hold.', 'Halten.')) : ''}`);
       setLive((x) => ({ ...x, reps: 0, held: 0, best: null, progress: 0 }));
     };
 
@@ -338,7 +340,7 @@ export function DrillPlayer(props: {
       const best = vals.length && plan.signal ? (SIGNALS[plan.signal].better === 'up' ? Math.max(...vals) : Math.min(...vals)) : null;
       // the value, and the gain over the last time when it is a clear one ("4 degrees further than last time")
       const gain = best != null && plan.signal && props.previous != null ? gainSpeech(plan.signal, SIGNALS[plan.signal].better === 'up' ? best - props.previous : props.previous - best, tr) : null;
-      say(best != null && plan.signal ? `${tr('Done', 'Fertig')}. ${signalValueText(plan.signal, best, tr)}.${gain ? ` ${gain}.` : ''}` : tr('Done.', 'Fertig.'));
+      say(best != null && plan.signal ? `${DONE_SAY()} ${signalValueText(plan.signal, best, tr)}.${gain ? ` ${gain}.` : ''}` : DONE_SAY());
       setAuto(4);
     };
 

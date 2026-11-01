@@ -319,3 +319,4 @@
 .mob-physio-phase.rest, .mob-physio-phase.switch { color: #e8b931; }
 .mob-physio-clock { font-size: 64px; line-height: 1; }
 .mob-physio-per, .mob-physio-days { flex-wrap: wrap; overflow: visible; }
+.mob-today-alt { align-self: center; min-height: 44px; }

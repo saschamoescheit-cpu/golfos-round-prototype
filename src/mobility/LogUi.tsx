@@ -2,7 +2,7 @@
 // card to share the log at its end. See motionlog.ts.
 import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
-import { currentLog, isLogging, logFile, setLogging, shareFile } from './motionlog';
+import { clearKept, currentLog, isLogging, keptLog, logFile, setLogging, shareFile, type MotionLog } from './motionlog';
 
 /** The switch in a setup – keep a motion log (only the body points) – and the privacy line that goes with it. */
 export function LogSwitch() {
@@ -17,7 +17,7 @@ export function LogSwitch() {
         <button type="button" className="drawer-row" role="switch" aria-checked={on} onClick={flip}>
           <span className="switch-label">
             <span>{tr('Keep a motion log', 'Bewegungsprotokoll mitschreiben')}</span>
-            <span className="muted small">{tr('only the body points, no picture – to check the measuring; you share it at the end', 'nur die Körperpunkte, kein Bild – zum Prüfen der Messung; du teilst es am Ende')}</span>
+            <span className="muted small">{tr('only the body points, no picture – the last 20 stay on this phone to check the measuring; you share them', 'nur die Körperpunkte, kein Bild – die letzten 20 bleiben auf diesem Handy zum Prüfen der Messung; du teilst sie')}</span>
           </span>
           <span className={`drawer-switch${on ? ' on' : ''}`} aria-hidden="true" />
         </button>
@@ -68,6 +68,61 @@ export function LogShare() {
         }}
       >
         {tr('Share the motion log', 'Bewegungsprotokoll teilen')}
+      </button>
+    </section>
+  );
+}
+
+/** The motion logs kept on this phone (the last 20 camera parts): share them as one file, or delete them. */
+export function KeptLogs() {
+  const [log, setLog] = useState<MotionLog | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [state, setState] = useState<'' | 'shared' | 'downloaded' | 'cancelled' | 'deleted'>('');
+  useEffect(() => {
+    let on = true;
+    const load = () =>
+      void keptLog().then(async (l) => {
+        if (!on) return;
+        setLog(l);
+        setFile(l ? await logFile(l) : null);
+      });
+    load();
+    window.addEventListener('golfos:motionlog', load);
+    return () => {
+      on = false;
+      window.removeEventListener('golfos:motionlog', load);
+    };
+  }, []);
+  if (!log) return null;
+  const n = log.items.length;
+  return (
+    <section className="card mob-log-share mob-log-kept">
+      <strong>{tr('Motion logs', 'Bewegungsprotokolle')}</strong>
+      <span className="muted small">
+        {tr(`The last ${n} camera ${n === 1 ? 'part' : 'parts'} on this phone – body points only, no picture. Share them when a measurement looked wrong.`, `Die letzten ${n} Kamera-Durchgänge auf diesem Handy – nur Körperpunkte, kein Bild. Teile sie, wenn eine Messung komisch war.`)}
+      </span>
+      {state === 'shared' || state === 'downloaded' ? (
+        <span className="small good-text">{state === 'shared' ? tr('Shared – thank you.', 'Geteilt – danke.') : tr('Saved in your downloads.', 'In deinen Downloads gespeichert.')}</span>
+      ) : null}
+      <button
+        type="button"
+        className="btn-secondary mob-log-kept-share"
+        disabled={!file}
+        onClick={async () => {
+          if (file) setState(await shareFile(file));
+        }}
+      >
+        {tr('Share the motion logs', 'Bewegungsprotokolle teilen')}
+      </button>
+      <button
+        type="button"
+        className="link-btn mob-log-kept-clear"
+        onClick={async () => {
+          await clearKept();
+          setState('deleted');
+        }}
+      >
+        {tr('Delete them from this phone', 'Vom Handy löschen')}
       </button>
     </section>
   );

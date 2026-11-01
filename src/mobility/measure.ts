@@ -72,8 +72,12 @@ export const P = {
   rEl: 14,
   lWr: 15,
   rWr: 16,
+  lPinky: 17,
+  rPinky: 18,
   lIdx: 19,
   rIdx: 20,
+  lThumb: 21,
+  rThumb: 22,
   lHip: 23,
   rHip: 24,
   lKn: 25,
@@ -89,6 +93,8 @@ export const P = {
 /** The skeleton lines drawn over the video. */
 export const BONES: [number, number][] = [
   [11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 29], [29, 31], [27, 31], [28, 30], [30, 32], [28, 32], [7, 0], [8, 0], [15, 19], [16, 20],
+  // the hand: wrist–pinky–index and wrist–thumb (the forearm and wrist tests, 01.11.2026)
+  [15, 17], [16, 18], [17, 19], [18, 20], [15, 21], [16, 22],
 ];
 
 // ---------- limits (REVIEW(golf): Chris) ----------
@@ -114,6 +120,32 @@ export const LIMITS = {
   squat: { depth: 0, depthFail: -20, heel: 0.2, arms: 30 },
   /** toe touch: fingers reach the toes (≤ 2 cm above), ≤ 10 cm limited; knees straight (≥ 160°) */
   toeTouch: { pass: 2, limited: 10, knee: 160 },
+  /** pelvic tilt (side view, golf posture): the hip angle (shoulder–hip–knee) opens and closes with the tilt – ≥ 5° each
+   *  way = a clear tilt, ≥ 2.5° = a small one; the shoulders may move ≤ 12 % of the trunk length ("the chest stays still");
+   *  shaking = the jitter of the hip angle (its bend from picture to picture) while flattening ≥ 2 × the jitter at rest,
+   *  ≥ 1.8 × the jitter while hollowing and ≥ 2.5° (the pose model alone shakes the hip angle by 1–2° from picture to
+   *  picture – σ 0.25 % of the picture, the unit tests). Not a pelvic angle: the
+   *  pose model has no point on the pelvis (01.11.2026). REVIEW(golf) */
+  pelvicTilt: { clear: 5, small: 2.5, chest: 0.12, shake: 2, shakeHollow: 1.8, shakeMin: 2.5 },
+  /** forearm rotation (both hands, front view): the whole turn from palm down to palm up – TPI > 80° each way = 160°;
+   *  ≥ 150° pass (the hand points of the pose model are coarse), ≥ 110° limited; one way < 55° (from a thumbs-up start) =
+   *  clearly less. REVIEW(golf) */
+  forearm: { pass: 150, limited: 110, oneWay: 55, elbow: 0.35 },
+  /** wrist hinge (side view, fist thumb up): radial ≥ 20°, ulnar ≥ 30° (literature: radial 20–25°, ulnar 30–40°); half of
+   *  it = clearly less. `gain`: the pose model's hand point follows a hinge only partly (01.11.2026, the TPI video: the
+   *  physio's "normal both" measured about 20° radial and 17° ulnar on the picture). REVIEW(golf) */
+  wristHinge: { radial: 20, ulnar: 30, gain: 1.5 },
+  /** the start of a wrist test counts as "the hand in line" when it was still (spread ≤ 15°) and the hand line within 10°
+   *  of the forearm (both on the picture, before the gain; a held first way read 15–20°) – only then each way is judged, else the whole range */
+  wristStart: { spread: 15, off: 10 },
+  /** wrist flexion/extension (side view, forearm level, palm down): ≥ 60° each way (TPI normal), ≥ 40° limited. `gain`: the
+   *  hand point of the pose model follows a wrist bend only by about a third (01.11.2026, the TPI video: the physio's
+   *  "normal, ≥ 60°" measured about 20° each way on the picture). REVIEW(golf) */
+  wristFlex: { pass: 60, limited: 40, gain: 3 },
+  /** reach, roll and lift (kneeling, chest on the thighs, side view): the straight arm lifts off the floor – ≥ 30° above
+   *  where it lay = ear height (the sketch of the test: from 17° below level to 17° above), ≥ 10° limited (off the floor);
+   *  the elbow stays straight (≥ 150°). Not checked on a video yet (01.11.2026). REVIEW(golf) */
+  reachRollLift: { pass: 30, limited: 10, elbow: 150 },
 };
 
 // ---------- geometry ----------
@@ -151,11 +183,17 @@ export function nearSide(f: Frame): Side {
 }
 export const S = (side: Side) =>
   side === 'left'
-    ? { sh: P.lSh, el: P.lEl, wr: P.lWr, idx: P.lIdx, hip: P.lHip, kn: P.lKn, an: P.lAn, heel: P.lHeel, toe: P.lToe }
-    : { sh: P.rSh, el: P.rEl, wr: P.rWr, idx: P.rIdx, hip: P.rHip, kn: P.rKn, an: P.rAn, heel: P.rHeel, toe: P.rToe };
+    ? { sh: P.lSh, el: P.lEl, wr: P.lWr, idx: P.lIdx, pinky: P.lPinky, thumb: P.lThumb, ear: P.lEar, hip: P.lHip, kn: P.lKn, an: P.lAn, heel: P.lHeel, toe: P.lToe }
+    : { sh: P.rSh, el: P.rEl, wr: P.rWr, idx: P.rIdx, pinky: P.rPinky, thumb: P.rThumb, ear: P.rEar, hip: P.rHip, kn: P.rKn, an: P.rAn, heel: P.rHeel, toe: P.rToe };
 const other = (s: Side): Side => (s === 'left' ? 'right' : 'left');
 /** the arm the camera sees better (shoulder, elbow and wrist) */
 const armSide = (f: Frame): Side => (vis(f, P.lSh) + vis(f, P.lEl) + vis(f, P.lWr) >= vis(f, P.rSh) + vis(f, P.rEl) + vis(f, P.rWr) ? 'left' : 'right');
+
+/** an angle difference brought into -180..180° */
+const wrap = (a: number) => ((((a + 180) % 360) + 360) % 360) - 180;
+/** the direction of a picture vector, counter-clockwise from the right, image up = 90° */
+const dirDeg = (d: V) => deg(Math.atan2(-d[1], d[0]));
+const mid2 = (a: V, b: V): V => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
 
 /** Smoothing over the last few pictures (a median: one wrong point does not count). */
 class Roll {
@@ -196,6 +234,35 @@ class Held {
   }
 }
 
+/** An angle that swings both ways (a forearm, a wrist, a pelvis): smoothed (median of 5, a turn past ±180° kept whole)
+ *  and its highest and lowest position held for 0.3 s – one wild point never makes the range. */
+class Swing {
+  private roll = new Roll(5);
+  private hiH = new Held(300);
+  private loH = new Held(300);
+  private last: number | null = null;
+  hi = -Infinity;
+  lo = Infinity;
+  /** when the range grew last (ms) */
+  tGrew = 0;
+  /** unwrap = false: the angle stays in -180..180 (a point that runs round the wrong way must not add a whole turn) */
+  constructor(private unwrap = true) {}
+  push(a: number, t: number): number {
+    const u = this.last == null || !this.unwrap ? a : this.last + wrap(a - this.last);
+    const v = this.roll.push(u);
+    this.last = v;
+    const hi = this.hiH.push(v, t);
+    const lo = -this.loH.push(-v, t);
+    if (hi > this.hi + 1 || lo < this.lo - 1) this.tGrew = t;
+    this.hi = Math.max(this.hi, hi);
+    this.lo = Math.min(this.lo, lo);
+    return v;
+  }
+  get range() {
+    return Number.isFinite(this.hi) ? this.hi - this.lo : 0;
+  }
+}
+
 // ---------- framing: is everything the test needs in the picture? ----------
 const FRONT_NEED: Partial<Record<MetricKind, number[]>> = {
   trunkRotation: [P.lSh, P.rSh, P.nose],
@@ -203,6 +270,8 @@ const FRONT_NEED: Partial<Record<MetricKind, number[]>> = {
   lowerQuarter: [P.lSh, P.rSh, P.lHip, P.rHip, P.lAn, P.rAn],
   balance: [P.lHip, P.rHip, P.lKn, P.rKn, P.lAn, P.rAn],
   neck: [P.nose, P.lEar, P.rEar, P.lSh, P.rSh],
+  // both forearms towards the phone: the shoulders, elbows and both hands (wrist, pinky, index, thumb)
+  forearm: [P.lSh, P.rSh, P.lEl, P.rEl, P.lWr, P.rWr, P.lPinky, P.rPinky, P.lIdx, P.rIdx, P.lThumb, P.rThumb],
 };
 const SIDE_NEED: Partial<Record<MetricKind, (keyof ReturnType<typeof S>)[]>> = {
   squat: ['sh', 'wr', 'hip', 'kn', 'an', 'heel', 'toe'],
@@ -210,6 +279,12 @@ const SIDE_NEED: Partial<Record<MetricKind, (keyof ReturnType<typeof S>)[]>> = {
   bridge: ['sh', 'hip', 'kn', 'an'],
   lat: ['sh', 'el', 'wr', 'hip'],
   shoulder9090: ['sh', 'el', 'wr', 'hip'],
+  pelvicTilt: ['sh', 'hip', 'kn', 'an'],
+  // kneeling, the arm forward: the shoulder, the whole arm and the hip of the side towards the phone
+  reachRollLift: ['sh', 'el', 'wr', 'hip', 'kn'],
+  // the arm towards the phone and its hand (the hand line wrist → between pinky and index)
+  wristHinge: ['el', 'wr', 'pinky', 'idx'],
+  wristFlex: ['el', 'wr', 'pinky', 'idx'],
 };
 export const inFrame = (f: Frame, i: number) => {
   const l = f.lm[i];
@@ -975,6 +1050,539 @@ class ShoulderAnalyzer implements Analyzer {
 }
 
 /**
+ * Pelvic tilt (side view, golf posture, arms crossed): the pelvis tilts forward (hollow back) and back (flat back), the
+ * chest stays still. The pose model has no point on the pelvis – what the camera sees is the hip point moving back and
+ * forth under the still shoulders: the hip angle shoulder–hip–knee closes with the hollow back and opens with the flat
+ * back (its change from the posture at the start is the value, both ways together). The physio also looks at how smooth
+ * it is ("shake and bake" while flattening, 29.10.2026): the jitter of the hip angle while flattening against the jitter
+ * standing still. Not a measured pelvic angle – a proxy, REVIEW(golf).
+ */
+class PelvicTiltAnalyzer implements Analyzer {
+  readonly kind = 'pelvicTilt' as const;
+  readonly unit = '°' as const;
+  private side: Side | null = null;
+  private cal: { a: number; sh: V; trunk: number; lean: number }[] = [];
+  private a0 = 0;
+  private sh0: V = [0, 0];
+  private trunk = 1;
+  private swing = new Swing();
+  private chestRoll = new Roll(5);
+  private chest = 0;
+  /** the last two raw hip angles (for the jitter) */
+  private prev: number[] = [];
+  private calJit: number[] = [];
+  private flatJit: number[] = [];
+  private hollowJit: number[] = [];
+  private tryFrom = -1;
+  private lean0 = 0;
+  private outMs = 0;
+  private lastT = -1;
+  private t0 = -1;
+  private done = false;
+  constructor(private ms = 12000) {}
+  focus(): [number, number][] {
+    const s = S(this.side ?? 'left');
+    return [[s.sh, s.hip], [s.hip, s.kn]];
+  }
+  private hipAngle(f: Frame, s: ReturnType<typeof S>) {
+    return jointAngle(px(f, s.sh), px(f, s.hip), px(f, s.kn));
+  }
+  /** how far the trunk leans forward from upright (°) */
+  private lean(f: Frame, s: ReturnType<typeof S>) {
+    const d = sub(px(f, s.sh), px(f, s.hip));
+    return deg(Math.atan2(Math.abs(d[0]), -d[1]));
+  }
+  push(f: Frame): Live {
+    if (this.done) return { value: null, best: this.best(), phase: 'done' };
+    this.side ??= nearSide(f);
+    const s = S(this.side);
+    if (this.tryFrom < 0) this.tryFrom = f.t;
+    const dt = this.lastT < 0 ? 0 : Math.min(200, f.t - this.lastT);
+    this.lastT = f.t;
+    if ([s.sh, s.hip, s.kn, s.an].some((i) => vis(f, i) < 0.5)) return { value: null, best: null, phase: this.t0 < 0 ? 'calibrate' : 'move' };
+    const raw = this.hipAngle(f, s);
+    const lean = this.lean(f, s);
+    // the shoulder against the ankle: the phone stands still, the feet too – what the shoulder moves, the chest moved
+    const sh = sub(px(f, s.sh), px(f, s.an));
+    // the jitter: the bend of the hip angle from picture to picture (a steady movement has none, a shaking one a lot)
+    const p = this.prev;
+    const jit = p.length === 2 ? Math.abs(raw - 2 * p[1] + p[0]) : 0;
+    this.prev = [...p, raw].slice(-2);
+    if (this.t0 < 0) {
+      // the start: in golf posture (the trunk leans forward 15° or more) and still – getting into the posture is not a tilt
+      // (01.11.2026, the TPI video: the first pictures were the player bending forward into the posture, 24° "tilt")
+      if (lean < 15) {
+        this.cal = [];
+        this.calJit = [];
+        return { value: null, best: null, phase: 'calibrate' };
+      }
+      this.cal.push({ a: raw, sh, trunk: dist(px(f, s.sh), px(f, s.hip)), lean });
+      if (this.cal.length > 2) this.calJit.push(jit);
+      if (this.cal.length > CAL_FRAMES) {
+        this.cal.shift();
+        this.calJit.shift();
+      }
+      const as = this.cal.map((c) => c.a);
+      const still = Math.max(...as) - Math.min(...as) <= 4;
+      // (after 8 s the start is taken as it is – the test must not wait for ever)
+      if (this.cal.length === CAL_FRAMES && (still || f.t - this.tryFrom > 8000)) {
+        this.a0 = median(as);
+        this.sh0 = [median(this.cal.map((c) => c.sh[0])), median(this.cal.map((c) => c.sh[1]))];
+        this.trunk = Math.max(1, median(this.cal.map((c) => c.trunk)));
+        this.lean0 = median(this.cal.map((c) => c.lean));
+        this.t0 = f.t;
+        return { value: 0, best: 0, phase: 'move', cue: 'go' };
+      }
+      return { value: null, best: null, phase: 'calibrate' };
+    }
+    const lim = LIMITS.pelvicTilt;
+    let v: number | null = null;
+    // still in golf posture? Standing up (the trunk upright) opens the hip angle far more than a tilt – not counted
+    // (01.11.2026, the TPI video: the player pushed the hips forward to upright between the tilts, the hip angle 35–50°)
+    if (lean >= Math.max(12, this.lean0 - 15)) {
+      // + = the hip angle opens (flat back), − = it closes (hollow back)
+      v = this.swing.push(raw - this.a0, f.t);
+      const chest = this.chestRoll.push(dist(sh, this.sh0) / this.trunk);
+      if (Math.abs(v) >= lim.small) this.chest = Math.max(this.chest, chest);
+      if (v >= lim.small) this.flatJit.push(jit);
+      if (v <= -lim.small) this.hollowJit.push(jit);
+    } else this.outMs += dt;
+    if (f.t - this.t0 > this.ms) {
+      this.done = true;
+      return { value: v, best: this.best(), phase: 'done', cue: 'done' };
+    }
+    return { value: v, best: this.best(), phase: 'move', hold: (f.t - this.t0) / this.ms };
+  }
+  private ways() {
+    return { hollow: Math.max(0, -this.swing.lo), flat: Math.max(0, this.swing.hi) };
+  }
+  private best() {
+    const w = this.ways();
+    return w.hollow + w.flat;
+  }
+  /** the jitter while flattening against the jitter standing still and while hollowing: shaking ("shake and bake" – the
+   *  TPI form asks for it while flattening; the pose model shakes too, the same in every phase) */
+  shaky() {
+    const lim = LIMITS.pelvicTilt;
+    if (this.flatJit.length < 4) return false;
+    const rest = Math.max(0.3, median(this.calJit));
+    const flat = median(this.flatJit);
+    const hollow = this.hollowJit.length >= 4 ? median(this.hollowJit) : 0;
+    return flat >= lim.shakeMin && flat >= lim.shake * rest && flat >= lim.shakeHollow * hollow;
+  }
+  finish(): Outcome | null {
+    if (this.t0 < 0 || !Number.isFinite(this.swing.hi)) return null;
+    const lim = LIMITS.pelvicTilt;
+    const { hollow, flat } = this.ways();
+    const notes: Text[] = [];
+    const bothClear = hollow >= lim.clear && flat >= lim.clear;
+    const bothSome = hollow >= lim.small && flat >= lim.small;
+    const chestStill = this.chest <= lim.chest;
+    const shaky = bothSome && this.shaky();
+    let grade: Grade;
+    if (!bothSome) {
+      if (hollow < lim.small && flat < lim.small) {
+        grade = 'fail';
+        notes.push(L('The pelvis hardly tilts', 'Das Becken kippt kaum'));
+      } else {
+        // one way only: limited – with the chest moving along, the pelvis did not tilt on its own
+        grade = chestStill ? 'limited' : 'fail';
+        notes.push(hollow < lim.small ? L('Hollowing the back does not work', 'Ins Hohlkreuz kippen klappt nicht') : L('Flattening the back does not work', 'Den Rücken flach machen klappt nicht'));
+      }
+    } else grade = bothClear && chestStill && !shaky ? 'pass' : 'limited';
+    if (shaky) notes.push(L('It shakes while flattening the back', 'Es zittert beim Flachmachen des Rückens'));
+    if (!chestStill) notes.push(L('The chest moves along', 'Die Brust bewegt sich mit'));
+    // standing up between the tilts: those moments were not measured
+    if (this.outMs >= 1000) notes.push(L('Stay in golf posture – standing up is not a tilt', 'Bleib in der Golfhaltung – Aufrichten ist kein Kippen'));
+    const checks = [
+      check('hollow', 'Tilts forward – hollow back', 'Kippt nach vorn – Hohlkreuz', hollow >= lim.clear),
+      check('flat', 'Tilts back – flat back', 'Kippt nach hinten – flacher Rücken', flat >= lim.clear),
+      check('smooth', 'Smooth, without shaking', 'Flüssig, ohne Zittern', !shaky),
+      check('chestStill', 'The chest stays still', 'Die Brust bleibt ruhig', chestStill),
+    ];
+    return { value: Math.round(hollow + flat), grade, notes, checks };
+  }
+}
+
+/**
+ * Forearm rotation (front view, both hands at once): elbows at the sides bent 90°, the forearms point at the phone, thumbs
+ * up to start. Seen along the forearm, the hand turns in the picture like a clock hand: the line wrist → thumb points up
+ * with the thumb up, inwards with the palm down (pronation) and outwards with the palm up (supination). The value is half
+ * the whole turn of the weaker hand ("about X° each way") – the whole turn needs no start position; how it splits into the
+ * two ways comes from the thumbs-up start (and only counts when the start was thumbs up). The pose model's thumb point is
+ * coarse (01.11.2026, the TPI video: palm down read 110–130° from up, palm up 40–55° – together about 170°, the physio:
+ * normal > 80° both ways).
+ */
+class ForearmAnalyzer implements Analyzer {
+  readonly kind = 'forearm' as const;
+  readonly unit = '°' as const;
+  private cal: Record<Side, number[]> = { left: [], right: [] };
+  private calEl: Record<Side, number[]> = { left: [], right: [] };
+  private calW: number[] = [];
+  private a0: Record<Side, number> = { left: 0, right: 0 };
+  private el0: Record<Side, number> = { left: 0, right: 0 };
+  private w0 = 1;
+  private calSteady = false;
+  // (no unwrapping: a hand turns less than a whole turn, a thumb point running round must not add one)
+  private swing: Record<Side, Swing> = { left: new Swing(false), right: new Swing(false) };
+  private elRoll: Record<Side, Roll> = { left: new Roll(5), right: new Roll(5) };
+  private elDrift = 0;
+  private t0 = -1;
+  private done = false;
+  constructor(private ms = 15000) {}
+  focus(): [number, number][] {
+    return [[P.lWr, P.lThumb], [P.rWr, P.rThumb], [P.lEl, P.lWr], [P.rEl, P.rWr]];
+  }
+  /** the hand's turn: wrist → thumb from picture-up, + = outwards (supination), − = inwards (pronation); the player's left
+   *  hand is on the right of the (not mirrored) picture */
+  private angle(f: Frame, side: Side): number | null {
+    const s = S(side);
+    if (vis(f, s.wr) < 0.5 || vis(f, s.thumb) < 0.5) return null;
+    const d = sub(px(f, s.thumb), px(f, s.wr));
+    if (Math.hypot(d[0], d[1]) < 2) return null;
+    const out = side === 'left' ? 1 : -1;
+    const a = deg(Math.atan2(out * d[0], -d[1]));
+    // the line pinky → index turns with the hand too: a thumb point pointing the other way is a wrong point (01.11.2026,
+    // the TPI video: turning from palm down to palm up the thumb point ran round through "down" for 0.6 s – the hand line
+    // stayed where the hand was; the two agree within 60° otherwise)
+    if (vis(f, s.pinky) >= 0.5 && vis(f, s.idx) >= 0.5) {
+      const h = sub(px(f, s.idx), px(f, s.pinky));
+      if (Math.hypot(h[0], h[1]) >= 2 && Math.abs(wrap(a - deg(Math.atan2(out * h[0], -h[1])))) > 90) return null;
+    }
+    return a;
+  }
+  /** the elbow sideways from its shoulder (px, + = outwards) */
+  private elbowOut(f: Frame, side: Side) {
+    const s = S(side);
+    return (side === 'left' ? 1 : -1) * (px(f, s.el)[0] - px(f, s.sh)[0]);
+  }
+  push(f: Frame): Live {
+    if (this.done) return { value: null, best: this.best(), phase: 'done' };
+    const a = { left: this.angle(f, 'left'), right: this.angle(f, 'right') };
+    if (this.t0 < 0) {
+      if (a.left == null || a.right == null) return { value: null, best: null, phase: 'calibrate' };
+      for (const s of ['left', 'right'] as Side[]) {
+        this.cal[s].push(a[s]!);
+        this.calEl[s].push(this.elbowOut(f, s));
+      }
+      this.calW.push(width(f, P.lSh, P.rSh));
+      if (this.cal.left.length === CAL_FRAMES) {
+        let steady = true;
+        for (const s of ['left', 'right'] as Side[]) {
+          // (around the median: a wrap at ±180° does not count as a spread)
+          const m = median(this.cal[s]);
+          this.a0[s] = m;
+          this.el0[s] = median(this.calEl[s]);
+          const spread = Math.max(...this.cal[s].map((x) => Math.abs(wrap(x - m))));
+          // the thumbs up: still, and roughly up in the picture (the forearm points at the phone)
+          if (spread > 25 || Math.abs(m) > 60) steady = false;
+        }
+        this.calSteady = steady;
+        this.w0 = Math.max(1, median(this.calW));
+        this.t0 = f.t;
+        return { value: 0, best: 0, phase: 'move', cue: 'go' };
+      }
+      return { value: null, best: null, phase: 'calibrate' };
+    }
+    let now: number | null = null;
+    for (const s of ['left', 'right'] as Side[]) {
+      const x = a[s];
+      if (x == null) continue;
+      const v = this.swing[s].push(x, f.t);
+      now = Math.max(now ?? 0, Math.abs(wrap(v - this.a0[s])));
+      if (inFrame(f, S(s).el) && inFrame(f, S(s).sh)) this.elDrift = Math.max(this.elDrift, this.elRoll[s].push(Math.abs(this.elbowOut(f, s) - this.el0[s]) / this.w0));
+    }
+    const lim = LIMITS.forearm;
+    const best = this.best();
+    const grew = Math.max(this.swing.left.tGrew, this.swing.right.tGrew, this.t0);
+    // finished early only when both hands reached the goal and turn no further for 3 s – else the time runs out (01.11.2026,
+    // the TPI videos: the first way held for a few seconds must not end the test before the other way)
+    const still = best * 2 >= lim.pass && f.t - grew > 3000;
+    if (still || f.t - this.t0 > this.ms) {
+      this.done = true;
+      return { value: now, best, phase: 'done', cue: 'done' };
+    }
+    return { value: now, best, phase: 'move' };
+  }
+  /** half the whole turn of the weaker hand */
+  private best() {
+    return Math.min(this.swing.left.range, this.swing.right.range) / 2;
+  }
+  /** the two ways of one hand from the thumbs-up start: pronation (palm down), supination (palm up) */
+  ways(side: Side) {
+    const sw = this.swing[side];
+    return { pro: this.a0[side] - sw.lo, sup: sw.hi - this.a0[side] };
+  }
+  finish(): Outcome | null {
+    if (this.t0 < 0) return null;
+    const lim = LIMITS.forearm;
+    const arc = { left: this.swing.left.range, right: this.swing.right.range };
+    const weak = Math.min(arc.left, arc.right);
+    if (weak < 20) return null;
+    const notes: Text[] = [];
+    let grade: Grade = weak >= lim.pass ? 'pass' : weak >= lim.limited ? 'limited' : 'fail';
+    if (grade !== 'pass') {
+      const h = (x: number) => Math.round(x / 2);
+      notes.push(L(`Left about ${h(arc.left)}° each way, right about ${h(arc.right)}°`, `Links etwa ${h(arc.left)}° pro Seite, rechts etwa ${h(arc.right)}°`));
+    }
+    // one way clearly less – judged only from a thumbs-up start
+    if (this.calSteady) {
+      for (const s of ['left', 'right'] as Side[]) {
+        const w = this.ways(s);
+        if (Math.min(w.pro, w.sup) < lim.oneWay && Math.max(w.pro, w.sup) >= 75) {
+          const l = s === 'left';
+          notes.push(
+            w.pro < w.sup
+              ? L(`${l ? 'Left' : 'Right'}: the palm does not turn down fully`, `${l ? 'Links' : 'Rechts'}: die Handfläche dreht nicht ganz nach unten`)
+              : L(`${l ? 'Left' : 'Right'}: the palm does not turn up fully`, `${l ? 'Links' : 'Rechts'}: die Handfläche dreht nicht ganz nach oben`),
+          );
+          if (grade === 'pass') grade = 'limited';
+        }
+      }
+    }
+    const elbows = this.elDrift <= lim.elbow;
+    if (!elbows) {
+      notes.push(L('The elbows leave the sides – the shoulder turns along', 'Die Ellbogen gehen vom Körper weg – die Schulter dreht mit'));
+      if (grade === 'pass') grade = 'limited';
+    }
+    const checks = [
+      check('left', 'The left forearm turns about 80° each way', 'Der linke Unterarm dreht etwa 80° pro Seite', arc.left >= lim.pass),
+      check('right', 'The right forearm turns about 80° each way', 'Der rechte Unterarm dreht etwa 80° pro Seite', arc.right >= lim.pass),
+      check('elbows', 'The elbows stay at the sides', 'Die Ellbogen bleiben am Körper', elbows),
+    ];
+    return { value: Math.round(weak / 2), grade, notes, checks };
+  }
+}
+
+/**
+ * The wrist bent up and down against the forearm (side view, the arm towards the phone): the forearm is the line elbow →
+ * wrist, the hand the line wrist → between pinky and index (the knuckles of a fist). + = the hand up in the picture.
+ * Wrist hinge: fist thumb up – up = radial (thumb side), down = ulnar. Wrist bend: forearm level, palm down – up =
+ * extension, down = flexion. Each way from the hand in line at the start; the pose model's hand point follows only part of
+ * the bend (`gain`, from the TPI videos of 29.10.2026 – one player, REVIEW(golf)).
+ */
+class WristAnalyzer implements Analyzer {
+  readonly unit = '°' as const;
+  private hand: Side | null = null;
+  private cal: Record<Side, number[]> = { left: [], right: [] };
+  private a0 = 0;
+  /** the start was still with the hand in line: each way can be judged */
+  steady = false;
+  private swing = new Swing();
+  private t0 = -1;
+  private done = false;
+  constructor(readonly kind: 'wristHinge' | 'wristFlex', private ms = 20000) {}
+  private get gain() {
+    return this.kind === 'wristHinge' ? LIMITS.wristHinge.gain : LIMITS.wristFlex.gain;
+  }
+  /** the goal of each way (°): up, down */
+  private get goal(): [number, number] {
+    return this.kind === 'wristHinge' ? [LIMITS.wristHinge.radial, LIMITS.wristHinge.ulnar] : [LIMITS.wristFlex.pass, LIMITS.wristFlex.pass];
+  }
+  focus(): [number, number][] {
+    const s = S(this.hand ?? 'left');
+    return [[s.el, s.wr], [s.wr, s.idx], [s.wr, s.pinky]];
+  }
+  /** the hand against the forearm in the picture (°, + = up) – null when the hand is not seen or the forearm points at
+   *  the phone (then up and down are not in the picture) */
+  angle(f: Frame, side: Side): number | null {
+    const s = S(side);
+    if ([s.el, s.wr, s.pinky, s.idx].some((i) => vis(f, i) < 0.5)) return null;
+    const wr = px(f, s.wr);
+    const fa = sub(wr, px(f, s.el));
+    const hand = sub(mid2(px(f, s.pinky), px(f, s.idx)), wr);
+    const lf = len(fa);
+    const lh = len(hand);
+    if (lh < 2 || lf < 1.2 * lh || Math.abs(fa[0]) < 0.4 * lf) return null;
+    // the forearm points left or right in the picture: up is the other turning sense
+    return (fa[0] < 0 ? -1 : 1) * wrap(dirDeg(hand) - dirDeg(fa));
+  }
+  push(f: Frame): Live {
+    if (this.done) return { value: null, best: this.best(), phase: 'done' };
+    if (this.t0 < 0) {
+      // the hand towards the phone: the one seen better (the far one is hidden behind the body)
+      const seen = (x: Side) => {
+        const s = S(x);
+        return vis(f, s.el) + vis(f, s.wr) + vis(f, s.pinky) + vis(f, s.idx);
+      };
+      const side: Side = seen('left') >= seen('right') ? 'left' : 'right';
+      const a = this.angle(f, side);
+      if (a == null) return { value: null, best: null, phase: 'calibrate' };
+      this.cal[side].push(a);
+      if (this.cal[side].length === CAL_FRAMES) {
+        this.hand = side;
+        this.a0 = median(this.cal[side]);
+        const st = LIMITS.wristStart;
+        this.steady = Math.max(...this.cal[side].map((x) => Math.abs(x - this.a0))) <= st.spread && Math.abs(this.a0) <= st.off;
+        this.t0 = f.t;
+        return { value: 0, best: 0, phase: 'move', cue: 'go' };
+      }
+      return { value: null, best: null, phase: 'calibrate' };
+    }
+    const a = this.angle(f, this.hand!);
+    if (a == null) return { value: null, best: this.best(), phase: 'move' };
+    const v = (this.swing.push(a, f.t) - this.a0) * this.gain;
+    const [gu, gd] = this.goal;
+    // finished early only when the goal is reached (up and down together, from a still start each way half of its goal)
+    // and the hand goes no further for 2.5 s – else the time runs out (01.11.2026, the TPI videos: the first way held for
+    // seconds while the physio checked it must not end the test before the other way)
+    const { up, down } = this.ways();
+    const both = !this.steady || (up >= gu / 2 && down >= gd / 2);
+    const still = both && this.range() >= gu + gd && f.t - Math.max(this.swing.tGrew, this.t0) > 2500;
+    if (still || f.t - this.t0 > this.ms) {
+      this.done = true;
+      return { value: v, best: this.best(), phase: 'done', cue: 'done' };
+    }
+    return { value: v, best: this.best(), phase: 'move' };
+  }
+  /** up and down together (°, with the gain) – needs no start position */
+  range() {
+    return this.swing.range * this.gain;
+  }
+  /** each way from the start (°, with the gain) – only meaningful from a start with the hand in line (`steady`) */
+  ways() {
+    if (!Number.isFinite(this.swing.hi)) return { up: 0, down: 0 };
+    return { up: Math.max(0, (this.swing.hi - this.a0) * this.gain), down: Math.max(0, (this.a0 - this.swing.lo) * this.gain) };
+  }
+  /** hinge: up and down together; bend: about this much each way (half of both together) */
+  private best() {
+    return this.kind === 'wristHinge' ? this.range() : this.range() / 2;
+  }
+  finish(): Outcome | null {
+    if (this.t0 < 0) return null;
+    const range = this.range();
+    if (range < 5) return null;
+    const [gu, gd] = this.goal;
+    const hinge = this.kind === 'wristHinge';
+    // graded on up and down together – it needs no start position, and the hand point is too coarse for a start a few
+    // degrees off (with the gain of the bend, 10° on the picture are 30°): hinge 50° (20 + 30), bend 120° (60 each way);
+    // limited from half (hinge) or 2 × 40° (bend)
+    const goal = gu + gd;
+    const limited = hinge ? goal / 2 : 2 * LIMITS.wristFlex.limited;
+    let grade: Grade = range >= goal ? 'pass' : range >= limited ? 'limited' : 'fail';
+    const r = Math.round;
+    const notes: Text[] = [];
+    // one way clearly less – only from a still start with the hand in line: the weaker way under 60 % of its goal while
+    // the other reaches its goal (the self check: hinge 10° up / 35° down, bend 70° / 35°)
+    let oneWay = false;
+    if (this.steady) {
+      const { up, down } = this.ways();
+      const ru = up / gu;
+      const rd = down / gd;
+      if (Math.min(ru, rd) < 0.6 && Math.max(ru, rd) >= 1) {
+        oneWay = true;
+        notes.push(
+          hinge
+            ? ru < rd
+              ? L(`Hinging up (thumb side) is clearly less: ${r(up)}°`, `Nach oben (Daumenseite) deutlich weniger: ${r(up)}°`)
+              : L(`Hinging down is clearly less: ${r(down)}°`, `Nach unten deutlich weniger: ${r(down)}°`)
+            : ru < rd
+              ? L(`Bending up (back of the hand) is clearly less: ${r(up)}°`, `Nach oben (Handrücken) deutlich weniger: ${r(up)}°`)
+              : L(`Bending down is clearly less: ${r(down)}°`, `Nach unten deutlich weniger: ${r(down)}°`),
+        );
+        if (grade === 'pass') grade = 'limited';
+      }
+    }
+    if (grade === 'fail') notes.push(L('The wrist is stiff both ways', 'Das Handgelenk ist in beide Richtungen steif'));
+    const checks = hinge
+      ? [check('range', `Hinges ${goal}° up and down together (about ${gu}° up, ${gd}° down)`, `Winkelt ${goal}° nach oben und unten zusammen (etwa ${gu}° hoch, ${gd}° runter)`, range >= goal), check('bothWays', 'Both ways work', 'Beide Richtungen gehen', !oneWay)]
+      : [check('range', `Bends about ${gu}° each way`, `Beugt etwa ${gu}° in jede Richtung`, range >= goal), check('bothWays', 'Both ways work', 'Beide Richtungen gehen', !oneWay)];
+    return { value: r(this.best()), grade, notes, checks };
+  }
+}
+
+/**
+ * Reach, roll and lift (kneeling, sitting back on the heels, chest on the thighs, forehead down; side view): one straight
+ * arm lies forward on the floor, thumb up, and lifts as high as it can. The lift is the turn of the line shoulder → wrist
+ * from where the arm lay at the start; the arm that lifts is measured (lying side-on, the pose model mixes up left and
+ * right). Not checked on a video yet (01.11.2026) – REVIEW(golf).
+ */
+class ReachRollLiftAnalyzer implements Analyzer {
+  readonly kind = 'reachRollLift' as const;
+  readonly unit = '°' as const;
+  private cal: Record<Side, number[]> = { left: [], right: [] };
+  private a0: Record<Side, number> = { left: 0, right: 0 };
+  private roll: Record<Side, Roll> = { left: new Roll(5), right: new Roll(5) };
+  private held: Record<Side, Held> = { left: new Held(300), right: new Held(300) };
+  private elbowRoll = new Roll(7);
+  private arm: Side = 'left';
+  private best = 0;
+  private elbowAtBest = 180;
+  private tBest = 0;
+  private lowSince = -1;
+  private t0 = -1;
+  private done = false;
+  constructor(private ms = 12000) {}
+  focus(): [number, number][] {
+    const s = S(this.arm);
+    return [[s.sh, s.el], [s.el, s.wr]];
+  }
+  /** the arm's direction in the picture, + = up – measured the same way whichever way the player faces */
+  private elevation(f: Frame, side: Side): number | null {
+    const s = S(side);
+    if (vis(f, s.sh) < 0.5 || vis(f, s.wr) < 0.5) return null;
+    const d = sub(px(f, s.wr), px(f, s.sh));
+    if (len(d) < 5) return null;
+    return deg(Math.atan2(-d[1], Math.abs(d[0])));
+  }
+  push(f: Frame): Live {
+    if (this.done) return { value: null, best: this.best, phase: 'done' };
+    const e = { left: this.elevation(f, 'left'), right: this.elevation(f, 'right') };
+    if (this.t0 < 0) {
+      if (e.left == null && e.right == null) return { value: null, best: null, phase: 'calibrate' };
+      for (const s of ['left', 'right'] as Side[]) if (e[s] != null) this.cal[s].push(e[s]!);
+      if (Math.max(this.cal.left.length, this.cal.right.length) >= CAL_FRAMES) {
+        for (const s of ['left', 'right'] as Side[]) this.a0[s] = this.cal[s].length ? median(this.cal[s]) : 0;
+        this.t0 = f.t;
+        this.tBest = f.t;
+        return { value: 0, best: 0, phase: 'move', cue: 'go' };
+      }
+      return { value: null, best: null, phase: 'calibrate' };
+    }
+    let now: number | null = null;
+    for (const s of ['left', 'right'] as Side[]) {
+      if (e[s] == null || !this.cal[s].length) continue;
+      const lift = this.roll[s].push(e[s]! - this.a0[s]);
+      const top = this.held[s].push(lift, f.t);
+      if (now == null || lift > now) now = lift;
+      if (top > this.best + 0.5) {
+        this.best = top;
+        this.arm = s;
+        this.tBest = f.t;
+        const a = S(s);
+        this.elbowAtBest = this.elbowRoll.push(jointAngle(px(f, a.sh), px(f, a.el), px(f, a.wr)));
+      }
+    }
+    const lim = LIMITS.reachRollLift;
+    // finished: the arm down again for 0.6 s, or held at its top for 2.5 s, or the time is up
+    if (this.best >= lim.limited && now != null && now < this.best - 15) {
+      if (this.lowSince < 0) this.lowSince = f.t;
+    } else this.lowSince = -1;
+    const down = this.lowSince >= 0 && f.t - this.lowSince >= 600;
+    const still = this.best >= lim.limited && f.t - this.tBest > 2500;
+    if (down || still || f.t - this.t0 > this.ms) {
+      this.done = true;
+      return { value: now, best: this.best, phase: 'done', cue: 'done' };
+    }
+    return { value: now, best: this.best, phase: 'move' };
+  }
+  finish(): Outcome | null {
+    if (this.t0 < 0) return null;
+    const lim = LIMITS.reachRollLift;
+    const notes: Text[] = [];
+    let grade: Grade = this.best >= lim.pass ? 'pass' : this.best >= lim.limited ? 'limited' : 'fail';
+    if (grade === 'fail') notes.push(L('The arm does not come off the floor', 'Der Arm hebt nicht vom Boden ab'));
+    const straight = this.elbowAtBest >= lim.elbow;
+    if (!straight && this.best >= lim.limited) {
+      notes.push(L('The elbow bends', 'Der Ellbogen beugt sich'));
+      if (grade === 'pass') grade = 'limited';
+    }
+    const checks = [check('lift', 'The arm lifts to ear height', 'Der Arm hebt bis auf Ohrhöhe', this.best >= lim.pass), check('elbow', 'The arm stays straight', 'Der Arm bleibt gestreckt', straight)];
+    return { value: Math.max(0, Math.round(this.best)), grade, notes, checks };
+  }
+}
+
+/**
  * The analyser of a test. `side`: the direction to turn (trunk, neck), the standing leg (balance, lower quarter),
  * the stretched leg (bridge) or the arm towards the camera (90/90).
  */
@@ -1003,6 +1611,15 @@ export function makeAnalyzer(kind: MetricKind, side: Side = 'left', opts: { noAr
       return new LatAnalyzer();
     case 'shoulder9090':
       return new ShoulderAnalyzer(side);
+    case 'pelvicTilt':
+      return new PelvicTiltAnalyzer();
+    case 'forearm':
+      return new ForearmAnalyzer();
+    case 'wristHinge':
+    case 'wristFlex':
+      return new WristAnalyzer(kind);
+    case 'reachRollLift':
+      return new ReachRollLiftAnalyzer();
   }
 }
 
@@ -1020,6 +1637,15 @@ export function valueText(kind: MetricKind, v: number | null, tr: (en: string, d
       return `${n(v)} s`;
     case 'shoulder9090':
       return v <= LIMITS.shoulder.pass ? tr('parallel to the spine', 'parallel zur Wirbelsäule') : tr(`${v}° short of the spine line`, `${v}° vor der Rückenlinie`);
+    case 'forearm':
+    case 'wristFlex':
+      return tr(`about ${v}° each way`, `etwa ${v}° pro Richtung`);
+    case 'wristHinge':
+      return tr(`${v}° up and down together`, `${v}° nach oben und unten zusammen`);
+    case 'pelvicTilt':
+      return tr(`hip angle moves ${v}°`, `Hüftwinkel bewegt sich ${v}°`);
+    case 'reachRollLift':
+      return tr(`the arm lifts ${v}°`, `der Arm hebt ${v}°`);
     default:
       return `${v}°`;
   }

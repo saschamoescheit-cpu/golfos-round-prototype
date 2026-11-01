@@ -80,6 +80,17 @@ ok(/3 Übungen · 0:32 Min\./.test(sum), `the routine with its time (${sum.split
 await p.locator('.mob-physio-ex-head').nth(1).click();
 ok((await p.locator('.mob-physio-sets tbody tr').count()) === 2 && /Für: Brücke/.test(await p.locator('.mob-physio-ex-body').innerText()), 'an exercise opens: its sets and what it is for');
 
+// daily: today is a training day – the start page's "training today" is the routine, Agility's plan a tap away
+await p.locator('.mob-physio-per button').filter({ hasText: 'täglich' }).click();
+await p.locator('.topbar .icon-btn').first().click();
+await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
+await p.locator('.mob-today').waitFor({ timeout: 5000 }).catch(() => {});
+const today = await p.locator('.mob-today').innerText().catch(() => '');
+ok(/Testroutine/.test(today) && /Routine starten/.test(today) && /Stattdessen Agility-Plan/.test(today), `a training day: today's training is the routine (${today.replace(/\n/g, ' · ').slice(0, 120)})`);
+await p.locator('.tabbar button').filter({ hasText: 'Übungen' }).click();
+await p.locator('.mob-physio-open').click();
+await p.locator('.mob-physio').waitFor({ timeout: 5000 });
+
 // how often a week: 3×, then fixed days set the count
 await p.locator('.mob-physio-per button').filter({ hasText: '3×' }).click();
 ok((await p.locator('.mob-physio-per button[aria-pressed="true"]').innerText()) === '3×', 'three times a week chosen');

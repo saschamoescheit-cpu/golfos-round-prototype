@@ -20,7 +20,7 @@ import { loadPose } from '../mobility/pose';
 import { cameraOn, speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
 import { PhoneSetup, TopTurn } from '../mobility/pictures';
-import { LogShare, LogSwitch } from '../mobility/LogUi';
+import { KeptLogs, LogShare, LogSwitch } from '../mobility/LogUi';
 import { startLog } from '../mobility/motionlog';
 import { DrillSession, doneText } from '../mobility/DrillSession';
 import { cap } from '../mobility/DrillPlayer';
@@ -37,7 +37,7 @@ import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
 import type { Area, Grade, Measurement, Screening, Side, SquatCause, TestDef, TestId, TestResult } from '../mobility/types';
 import '../training/training.css';
 import { PhysioCard, PhysioRun, PhysioView, importPlan } from '../mobility/PhysioPlan';
-import { loadPhysio } from '../mobility/physio';
+import { dueToday, loadPhysio, routineSec, weekCount } from '../mobility/physio';
 import '../mobility/mobility.css';
 
 // the 3D video of a test (three.js, loaded with the first test page)
@@ -317,6 +317,30 @@ function TodayCard(props: { nav: Nav }) {
   const days = daysThisWeek();
   const today = localDay();
   const doneToday = loadSessions().some((x) => x.finishedAt && localDay(x.startedAt) === today);
+  // a training day of the physio's routine (Sascha 1.11.2026): the routine is today's training, Agility's plan stays a tap away
+  const physio = loadPhysio();
+  if (physio && !paused && dueToday(physio)) {
+    const goal = physio.schedule?.perWeek;
+    return (
+      <section className="card mob-today mob-today-physio">
+        <span className="eyebrow">{tr('Your training today', 'Dein Training heute')}</span>
+        <strong>
+          {physio.routine.name} · {tr(`about ${Math.round(routineSec(physio) / 60)} min`, `etwa ${Math.round(routineSec(physio) / 60)} Min.`)}
+        </strong>
+        <span className="muted small">
+          {[tr('Your physio plan', 'Dein Physio-Plan'), tr(`${physio.routine.exercises.length} exercises`, `${physio.routine.exercises.length} Übungen`), goal ? tr(`this week ${weekCount(physio.log)} of ${goal}`, `diese Woche ${weekCount(physio.log)} von ${goal}`) : ''].filter(Boolean).join(' · ')}
+        </span>
+        <button type="button" className="btn-primary mob-today-start" onClick={() => props.nav.push({ name: 'physio-run' })}>
+          {tr('Start the routine', 'Routine starten')}
+        </button>
+        {planDrills.length > 0 && (
+          <button type="button" className="link-btn mob-today-alt" onClick={() => props.nav.train(planSession())}>
+            {tr(`Agility's plan instead (${planMinutes} min)`, `Stattdessen Agility-Plan (${planMinutes} Min.)`)}
+          </button>
+        )}
+      </section>
+    );
+  }
   if (!planDrills.length) return null;
   return (
     <section className="card mob-today">
@@ -659,7 +683,7 @@ function TestBrief(props: { test: TestDef; side: Side | null; noPicture?: boolea
       {/* the drawing with the numbered details the text is about (the self checks show theirs as the choices) */}
       {!props.noPicture && <TestPicture test={test} />}
       {top}
-      {test.mode === 'camera' && <PhoneSetup view={test.view ?? 'front'} height={test.metric === 'bridge' ? 'floor' : test.metric === 'trunkRotation' || test.metric === 'lat' ? 'knee' : 'hip'} />}
+      {test.mode === 'camera' && <PhoneSetup view={test.view ?? 'front'} height={test.metric === 'bridge' || test.metric === 'reachRollLift' ? 'floor' : test.metric === 'trunkRotation' || test.metric === 'lat' ? 'knee' : test.metric === 'forearm' || test.metric === 'wristHinge' || test.metric === 'wristFlex' ? 'chest' : 'hip'} />}
       <VideoCard v={test.video} />
       <VideoNote />
     </>
@@ -2107,6 +2131,7 @@ function HistoryTab(props: { nav: Nav }) {
         <button type="button" className="btn-primary" onClick={() => props.nav.toTab('test')}>
           {tr('To the screening', 'Zum Screening')}
         </button>
+        <KeptLogs />
       </section>
     );
   const full = list.filter((s) => s.kind !== 'single' && Object.keys(s.results).length).reverse();
@@ -2153,6 +2178,7 @@ function HistoryTab(props: { nav: Nav }) {
           );
         })}
       </div>
+      <KeptLogs />
     </>
   );
 }

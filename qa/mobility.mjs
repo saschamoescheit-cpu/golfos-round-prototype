@@ -297,7 +297,7 @@ ok((await p.locator('.mob-bar-track b').count()) >= 1, 'the values over time on 
 await shot('test-history');
 await p.locator('.topbar .icon-btn').first().click();
 
-// ---------- a single self check ----------
+// ---------- a single test judged by oneself (every test is a camera test since 1.11.2026; "Judge it myself" stays) ----------
 await tab('Screening');
 await p.locator('.mob-test-row').filter({ hasText: 'Handgelenk anwinkeln' }).click();
 await p.waitForTimeout(300);
@@ -305,6 +305,9 @@ const tt = await p.locator('.tr-tabs [role="tab"]').allInnerTexts();
 ok(tt.join('|') === 'Ablauf|Ergebnisse|Übungen', `test page tabs: ${tt.join(' · ')}`);
 await shot('test-page');
 await p.getByRole('button', { name: 'Test starten' }).click();
+await p.waitForTimeout(300);
+ok(await p.locator('.mob-start-coach').isVisible(), 'the wrist test starts with the camera now');
+await p.getByRole('button', { name: 'Selbst einschätzen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.mob-option:not(.mob-pain)').count()) === 3, 'self check offers three pictures');
 ok(await p.locator('.mob-pain').isVisible(), 'self check offers "It hurts" (pain is its own result)');
@@ -320,6 +323,7 @@ await p.locator('.topbar .icon-btn').first().click();
 // ---------- pain: its own result, no drills for it ----------
 await p.locator('.mob-test-row').filter({ hasText: 'Handgelenk beugen' }).click();
 await p.getByRole('button', { name: 'Test starten' }).click();
+await p.getByRole('button', { name: 'Selbst einschätzen' }).click();
 await p.locator('.mob-pain').click();
 await p.waitForTimeout(500);
 await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();

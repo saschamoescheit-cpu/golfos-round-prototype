@@ -1,8 +1,10 @@
 // The motion log (Sascha 19.10.2026: the measuring has only been checked with synthetic players): when switched on in
 // the setup of a training or a screening, its camera parts record the body points they saw – no picture, no video,
 // only the 33 points – with what the app counted, measured and said. Shared as one file at the end, it lets the
-// counting, the values and the cues be checked and tuned on a real body (qa/replay.ts). Kept in memory only, until the
-// next start: nothing is stored or sent by itself.
+// counting, the values and the cues be checked and tuned on a real body (qa/replay.ts). Nothing is sent by itself.
+// Since 1.11.2026 on by default and kept (Sascha: "shouldn't it always be recorded in the background for you?"): every
+// camera part that ended is kept on this phone (IndexedDB, the last 20), so a run that went wrong can be shared
+// afterwards – "Motion logs" in the history.
 import type { Lm } from './measure';
 import type { DrillCoach } from './drillcoach';
 import type { MetricKind, Side } from './types';
@@ -11,16 +13,15 @@ const KEY = 'golfos.mobility.motionlog.v1';
 
 export function isLogging(): boolean {
   try {
-    return localStorage.getItem(KEY) === '1';
+    return localStorage.getItem(KEY) !== '0';
   } catch {
-    return false;
+    return true;
   }
 }
 
 export function setLogging(on: boolean): void {
   try {
-    if (on) localStorage.setItem(KEY, '1');
-    else localStorage.removeItem(KEY);
+    localStorage.setItem(KEY, on ? '1' : '0');
   } catch {
     /* no storage */
   }
@@ -102,7 +103,67 @@ export function logFrame(t: number, p: LogFrame['p'], s: number, lm: Lm[] | null
 }
 
 export function logResult(result: unknown): void {
-  if (cur) cur.result = result;
+  if (!cur) return;
+  cur.result = result;
+  if (cur.frames.some((x) => x.p === 'r')) void keep(cur);
+}
+
+// ---------- the parts kept on this phone ----------
+
+const DB = 'golfos-motionlog';
+const STORE = 'parts';
+const KEEP = 20;
+function db(): Promise<IDBDatabase | null> {
+  return new Promise((ok) => {
+    try {
+      const r = indexedDB.open(DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(STORE, { keyPath: 'id' });
+      r.onsuccess = () => ok(r.result);
+      r.onerror = () => ok(null);
+    } catch {
+      ok(null);
+    }
+  });
+}
+const all = (d: IDBDatabase): Promise<(LogItem & { id: string })[]> =>
+  new Promise((ok) => {
+    const r = d.transaction(STORE).objectStore(STORE).getAll();
+    r.onsuccess = () => ok((r.result as (LogItem & { id: string })[]).sort((a, b) => a.at.localeCompare(b.at)));
+    r.onerror = () => ok([]);
+  });
+/** a camera part that ended: kept, the oldest beyond the last 20 dropped */
+async function keep(item: LogItem): Promise<void> {
+  const d = await db();
+  if (!d) return;
+  const id = `${item.at}|${keyOf(item)}`;
+  const tx = d.transaction(STORE, 'readwrite');
+  tx.objectStore(STORE).put({ ...JSON.parse(JSON.stringify(item)), id });
+  await new Promise((ok) => (tx.oncomplete = tx.onerror = ok));
+  const list = await all(d);
+  if (list.length > KEEP) {
+    const t2 = d.transaction(STORE, 'readwrite');
+    for (const x of list.slice(0, list.length - KEEP)) t2.objectStore(STORE).delete(x.id);
+    await new Promise((ok) => (t2.oncomplete = t2.onerror = ok));
+  }
+  d.close();
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('golfos:motionlog'));
+}
+/** the parts kept on this phone, oldest first, as one log */
+export async function keptLog(): Promise<MotionLog | null> {
+  const d = await db();
+  if (!d) return null;
+  const items = (await all(d)).map(({ id: _id, ...x }) => x as LogItem);
+  d.close();
+  return items.length ? { v: 1, startedAt: items[0].at, device: navigator.userAgent, items } : null;
+}
+export async function clearKept(): Promise<void> {
+  const d = await db();
+  if (!d) return;
+  const tx = d.transaction(STORE, 'readwrite');
+  tx.objectStore(STORE).clear();
+  await new Promise((ok) => (tx.oncomplete = tx.onerror = ok));
+  d.close();
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('golfos:motionlog'));
 }
 
 /** the log, when it holds a part that ran */

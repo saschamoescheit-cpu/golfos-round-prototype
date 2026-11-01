@@ -45,9 +45,12 @@ await p.waitForTimeout(800);
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-today-start').click();
 
-// the setup: the switch, off at first; on, the privacy line says what is written down
+// the setup: the switch, on by default (1.11.2026: "always recorded in the background"); off it says nothing is
+// recorded, on again it says only the body points are written down
 const sw = p.locator('.mob-log-switch .drawer-row');
-ok((await sw.getAttribute('aria-checked')) === 'false', 'the setup has the switch "Bewegungsprotokoll mitschreiben", off');
+ok((await sw.getAttribute('aria-checked')) === 'true', 'the setup has the switch "Bewegungsprotokoll mitschreiben", on by default');
+await sw.click();
+ok((await sw.getAttribute('aria-checked')) === 'false' && /nichts wird aufgenommen/.test(await p.locator('.mob-private').innerText()), 'switched off: nothing is recorded');
 await sw.click();
 const priv = await p.locator('.mob-private').innerText();
 ok((await sw.getAttribute('aria-checked')) === 'true' && /Nur die Körperpunkte/.test(priv), `switched on, the setup says only the body points are written down (${priv})`);
@@ -108,6 +111,18 @@ if (d2) {
   const same = rep.filter((x) => x.app != null && x.replay != null && Math.abs(x.app - x.replay) <= Math.max(1, Math.abs(x.app) * 0.03));
   ok(rep.length >= 6 && same.length === rep.filter((x) => x.app != null).length && same.length >= 6, `the replay measures the tests as the phone did (${rep.map((x) => `${x.test.id}${x.test.side ? ' ' + x.test.side[0] : ''} ${x.app == null ? '–' : Math.round(x.app * 10) / 10}/${x.replay == null ? '–' : Math.round(x.replay * 10) / 10}`).join(', ')})`);
 } else ok(false, 'the screening log is a file');
+
+// the camera parts stay on the phone: the history offers them as one file, up to the last 20
+await p.locator('.tabbar button').filter({ hasText: 'Verlauf' }).click();
+await p.locator('.mob-log-kept').waitFor({ timeout: 10000 }).catch(() => {});
+const kept = await p.locator('.mob-log-kept').innerText().catch(() => '');
+const keptN = Number(/letzten (\d+) Kamera/.exec(kept)?.[1] ?? 0);
+ok(keptN >= 6 && keptN <= 20, `the history keeps the last camera parts on the phone (${keptN})`);
+const [d3] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), p.locator('.mob-log-kept-share').click()]);
+ok(!!d3 && /agility-protokoll/.test(d3?.suggestedFilename() ?? ''), `the kept parts are shared as one file (${d3?.suggestedFilename() ?? 'none'})`);
+await p.locator('.mob-log-kept-clear').click();
+await p.locator('.mob-log-kept').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+ok(!(await p.locator('.mob-log-kept').count()), 'deleted from the phone: the card is gone');
 
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''}`);
 await b.close();

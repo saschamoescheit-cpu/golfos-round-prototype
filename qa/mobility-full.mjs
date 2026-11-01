@@ -39,7 +39,7 @@ let stuck = '';
 let lastChange = Date.now();
 let lastTag = '';
 let retestHeld = false;
-while (Date.now() - t0 < 420000) {
+while (Date.now() - t0 < 540000) {
   if (await p.locator('.mob-feel, .mob-ankle, .mob-self, .mob-summary').first().isVisible().catch(() => false)) break;
   const tag = await p.locator('.mob-side-tag').innerText().catch(() => '');
   const status = await p.locator('.mob-status').innerText().catch(() => '');
@@ -98,7 +98,7 @@ const tested = Object.keys(sc?.results ?? {}).length;
 ok(tested === 15, `${tested} of 15 tests saved`);
 ok(!sc?.ask, 'no open question is left in the finished screening');
 const cam = Object.values(sc?.results ?? {}).reduce((n, r) => n + ['left', 'right', 'both'].filter((k) => r[k]?.source === 'camera').length, 0);
-ok(cam === 16, `${cam} of 16 camera steps measured by themselves (10 tests, 6 with both sides)`);
+ok(cam === 24, `${cam} of 24 camera steps measured by themselves (15 tests, 9 with both sides)`);
 ok(taps <= 1 + 1 + 5 + 1 + 2 + (retestHeld ? 2 : 0), `${taps} taps for the whole full screening (start, the bridge question, 5 self checks, pause + resume${level === 'stiff' ? ', knee to wall' : ''})`);
 ok(await p.locator('.mob-summary').isVisible(), 'the result opens at the end');
 // repeat later: an earlier screening with less movement → the history says what changed per area
