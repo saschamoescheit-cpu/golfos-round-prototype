@@ -16,6 +16,7 @@ import type { Clip } from '../mobility/anim3d/scene';
 import type { Coach } from '../mobility/CameraTest';
 import { CameraTest, isFakeCamera, sideText, unlockAudio, CheckList } from '../mobility/CameraTest';
 import { cameraWish } from '../mobility/livecam';
+import { NOT_TESTED, TPI_FORMS } from '../mobility/tpiform';
 import { loadPose } from '../mobility/pose';
 import { cameraOn, speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
@@ -53,7 +54,7 @@ export type MobilityTab = 'test' | 'result' | 'drills' | 'history' | 'profile';
 
 type View =
   | { name: 'tab'; tab: MobilityTab }
-  | { name: 'test'; id: TestId }
+  | { name: 'test'; id: TestId; tab?: 'how' | 'result' | 'drills' }
   | { name: 'run'; id: string }
   | { name: 'screening'; id: string }
   | { name: 'drill'; id: string }
@@ -224,7 +225,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
         <ScreeningPlay
           screening={s}
           onPause={() => toTab('test')}
-          onFinished={(done) => (done.kind === 'single' ? setStack([{ name: 'tab', tab: 'test' }, { name: 'test', id: done.tests[0] }]) : setStack([{ name: 'tab', tab: 'result' }]))}
+          onFinished={(done) => (done.kind === 'single' ? setStack([{ name: 'tab', tab: 'test' }, { name: 'test', id: done.tests[0], tab: Object.keys(done.results).length ? 'result' : 'how' }]) : setStack([{ name: 'tab', tab: 'result' }]))}
           onDelete={() => {
             deleteScreening(s.id, kindName(s.kind));
             toTab('test');
@@ -256,7 +257,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
   const root = stack[0].name === 'tab' ? stack[0].tab : 'test';
   return (
     <div className="tr-with-menu">
-      {view.name === 'test' && <TestView id={view.id} nav={nav} />}
+      {view.name === 'test' && <TestView key={`${view.id}-${view.tab ?? ''}`} id={view.id} tab={view.tab} nav={nav} />}
       {view.name === 'screening' && <ScreeningView id={view.id} nav={nav} />}
       {view.name === 'drill' && <DrillView id={view.id} nav={nav} />}
       {view.name === 'pattern' && <PatternView id={view.id} nav={nav} />}
@@ -485,9 +486,9 @@ function TestTab(props: { nav: Nav }) {
 }
 
 /** One test: how it works, the results so far and the drills – in tabs, not one long page. */
-function TestView(props: { id: TestId; nav: Nav }) {
+function TestView(props: { id: TestId; nav: Nav; tab?: 'how' | 'result' | 'drills' }) {
   const test = testById(props.id);
-  const [tab, setTab] = useState<'how' | 'result' | 'drills'>('how');
+  const [tab, setTab] = useState<'how' | 'result' | 'drills'>(props.tab ?? 'how');
   const all = loadScreenings();
   const history = all
     .map((s) => ({ s, r: s.results[props.id] }))
@@ -515,6 +516,7 @@ function TestView(props: { id: TestId; nav: Nav }) {
       {tab === 'how' && <TestBrief test={test} side={null} />}
       {tab === 'result' && (
         <section className="tr-block">
+          <TestRating test={test} r={history[0]?.r} at={history[0]?.s} />
           {history.length === 0 ? (
             !trained.length && <p className="muted">{tr('Not tested yet.', 'Noch nicht getestet.')}</p>
           ) : (
@@ -554,6 +556,72 @@ function TestView(props: { id: TestId; nav: Nav }) {
         </button>
       </div>
     </main>
+  );
+}
+
+/** The rating of the last time as the TPI app shows a test (Sascha 1.11.2026): what it tells, the light per side
+ *  with the value, the pro's benchmark and the golf goal. */
+function TestRating(props: { test: TestDef; r: TestResult | undefined; at?: Screening }) {
+  const ls = lightsOf(props.test, props.r);
+  const word = (l: Light) => (l === 'green' ? tr('good', 'gut') : l === 'yellow' ? tr('limited', 'eingeschränkt') : l === 'red' ? tr('poor', 'schlecht') : tr('not tested', 'nicht getestet'));
+  const m = (side: Side | null) => (side ? props.r?.[side] : props.r?.both ?? props.r?.left ?? props.r?.right);
+  return (
+    <section className="card mob-rating">
+      <p className="small">{t(props.test.why)}</p>
+      {props.r && (
+        <div className="mob-rating-sides">
+          {ls.map((x) => (
+            <span key={x.side ?? 'both'} className={`mob-rating-side ${x.light}`}>
+              <i className={`mob-dot ${x.light}`} />
+              <span>
+                <b>{x.side ? sideName(x.side).replace(/^./, (c) => c.toUpperCase()) : tr('Result', 'Ergebnis')}</b> · {word(x.light)}
+                {m(x.side)?.value != null && props.test.metric ? ` · ${valueText(props.test.metric, m(x.side)!.value, tr)}` : ''}
+                {m(x.side)?.source === 'physio' ? tr(' · physio', ' · Physio') : m(x.side)?.source === 'self' ? tr(' · self-judged', ' · selbst eingeschätzt') : ''}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
+      <span className="small">
+        <b>{tr('Pro benchmark: ', 'Profi-Richtwert: ')}</b>
+        {t(props.test.pro)}
+      </span>
+      <span className="small muted">
+        <b>{tr('Golf goal: ', 'Golf-Ziel: ')}</b>
+        {t(props.test.target)}
+      </span>
+      {props.r && <TpiForm test={props.test} r={props.r} />}
+    </section>
+  );
+}
+
+/** The TPI form of the test – every question with all its answers, the one for this result marked; nothing to change
+ *  (Sascha 1.11.2026: "not editable, but all theoretical choices visible"). */
+function TpiForm(props: { test: TestDef; r: TestResult }) {
+  const qs = TPI_FORMS[props.test.id];
+  if (!qs) return null;
+  return (
+    <div className="mob-tpi" aria-label={tr('Rating as on the TPI form', 'Bewertung wie im TPI-Formular')}>
+      <strong className="mob-tpi-head">{tr('Rating as on the TPI form', 'Bewertung wie im TPI-Formular')}</strong>
+      {qs.map((q, i) => {
+        const pick = q.pick(props.r);
+        const opts = [{ label: NOT_TESTED, grade: undefined }, ...q.options];
+        const chosen = pick == null ? 0 : pick + 1;
+        return (
+          <div key={i} className="mob-tpi-q">
+            <span className="small mob-tpi-question">{t(q.q)}</span>
+            <ul className="mob-tpi-options">
+              {opts.map((o, j) => (
+                <li key={j} className={`mob-tpi-opt${j === chosen ? ` on ${o.grade ?? 'none'}` : ''}`} aria-current={j === chosen ? 'true' : undefined}>
+                  <i aria-hidden="true" />
+                  <span>{t(o.label)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1418,7 +1486,6 @@ function ResultTab(props: { nav: Nav }) {
         </span>
       </section>
       <LogShare />
-      <GoalCard />
       <div className="segmented tr-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'body'} aria-pressed={tab === 'body'} onClick={() => setTab('body')}>
           {tr('Your body', 'Dein Körper')}
@@ -1433,6 +1500,7 @@ function ResultTab(props: { nav: Nav }) {
         <BodyResult results={results} nav={props.nav} />
       )}
       <TrainNext nav={props.nav} />
+      <GoalCard />
     </>
   );
 }
@@ -1477,6 +1545,11 @@ function TrainNext(props: { nav: Nav }) {
   );
 }
 
+const pctLevel = (score: number): 'high' | 'moderate' | 'low' => (score >= 0.66 ? 'high' : score >= 0.33 ? 'moderate' : 'low');
+/** how likely the pattern is, 0 … 1: the share of its tests that did not pass, weighed by how many of them were done
+ *  (two tests of five that failed are less sure than five of five) */
+const likelihood = (r: PatternResult) => r.score * (0.5 + (0.5 * r.covered[0]) / Math.max(1, r.covered[1]));
+
 function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<typeof likelyMisses>; nav: Nav }) {
   if (!props.patterns.length)
     return (
@@ -1499,12 +1572,21 @@ function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<type
       </section>
       <section className="tr-block">
         <h2>{tr('Swing patterns your body tends to', 'Schwungmuster, die dein Körper begünstigt')}</h2>
-        {props.patterns.map((r) => (
+        <p className="muted small">{tr('How likely each is from your tests – as the TPI app\'s "body swing connection".', 'Wie wahrscheinlich jedes ist, aus deinen Tests – wie die „Body Swing Connection“ der TPI-App.')}</p>
+        {[...props.patterns].sort((a, b) => likelihood(b) - likelihood(a)).map((r) => (
           <button key={r.pattern.id} type="button" className="mob-pattern" onClick={() => props.nav.push({ name: 'pattern', id: r.pattern.id })}>
             <SketchThumb sketch={r.pattern.sketch} />
             <span className="grow">
-              <span className={`mob-level ${r.level}`}>{r.level === 'likely' ? tr('likely', 'wahrscheinlich') : tr('possible', 'möglich')}</span>
               <strong>{t(r.pattern.name)}</strong>
+              {/* how likely, as the TPI app's "body swing connection" shows it: a bar, high from 66 %, moderate from 33 % */}
+              <span className="mob-pct-row">
+                <span className={`mob-pct ${pctLevel(likelihood(r))}`} aria-hidden="true">
+                  <i style={{ width: `${Math.round(likelihood(r) * 100)}%` }} />
+                </span>
+                <b className={`mob-pct-label ${pctLevel(likelihood(r))}`}>
+                  {Math.round(likelihood(r) * 100)} % · {pctLevel(likelihood(r)) === 'high' ? tr('high', 'hoch') : pctLevel(likelihood(r)) === 'moderate' ? tr('moderate', 'mittel') : tr('low', 'niedrig')}
+                </b>
+              </span>
               <span className="muted small">
                 {tr('from', 'aus')}: {r.causes.map((c) => t(testById(c.test).name)).join(', ')}
               </span>
@@ -1582,7 +1664,73 @@ function PatternView(props: { id: string; nav: Nav }) {
   );
 }
 
+/** The traffic light of a measurement as the TPI form has it (Sascha 1.11.2026: "rated per test as in the original
+ *  TPI – visible in the app"): pass green, limited yellow, fail or pain red. */
+type Light = 'green' | 'yellow' | 'red' | 'none';
+const lightOf = (m: Measurement | undefined): Light => (!m ? 'none' : m.pain || m.grade === 'fail' ? 'red' : m.grade === 'limited' ? 'yellow' : 'green');
+const LIGHT_RANK: Record<Light, number> = { red: 0, yellow: 1, green: 2, none: 3 };
+/** the lights of a test: one, or left and right */
+const lightsOf = (test: TestDef, r: TestResult | undefined): { side: Side | null; light: Light }[] =>
+  test.sides ? (['left', 'right'] as Side[]).map((side) => ({ side, light: lightOf(r?.[side]) })) : [{ side: null, light: lightOf(r?.both ?? r?.left ?? r?.right) }];
+const worstLight = (test: TestDef, r: TestResult | undefined): Light => lightsOf(test, r).reduce<Light>((w, x) => (LIGHT_RANK[x.light] < LIGHT_RANK[w] ? x.light : w), 'none');
+
+function Lights(props: { test: TestDef; r: TestResult | undefined }) {
+  const ls = lightsOf(props.test, props.r);
+  const name = (l: Light) => (l === 'green' ? tr('good', 'gut') : l === 'yellow' ? tr('limited', 'eingeschränkt') : l === 'red' ? tr('poor', 'schlecht') : tr('not tested', 'nicht getestet'));
+  return (
+    <span className="mob-lights" role="img" aria-label={ls.map((x) => (x.side ? `${sideName(x.side)} ${name(x.light)}` : name(x.light))).join(', ')}>
+      {ls.map((x, i) => (
+        <span key={i} className="mob-light-wrap">
+          <i className={`mob-dot ${x.light}`} />
+          {x.side && <small>{x.side === 'left' ? 'L' : 'R'}</small>}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** All tests at a glance, worst first – the overview of the TPI app, clearer (Sascha 1.11.2026) – or by body area. */
 function BodyResult(props: { results: Partial<Record<TestId, TestResult>>; nav: Nav }) {
+  const [by, setBy] = useState<'light' | 'area'>('light');
+  const counts = (['red', 'yellow', 'green'] as Light[]).map((l) => TESTS.filter((x) => props.results[x.id] && worstLight(x, props.results[x.id]) === l).length);
+  const order = [...TESTS].sort((a, b) => LIGHT_RANK[worstLight(a, props.results[a.id])] - LIGHT_RANK[worstLight(b, props.results[b.id])]);
+  const row = (test: TestDef) => (
+    <button key={test.id} type="button" className={`list-item mob-test-row mob-light-row${props.results[test.id] ? '' : ' untested'}`} onClick={() => props.nav.push({ name: 'test', id: test.id, tab: 'result' })}>
+      <Lights test={test} r={props.results[test.id]} />
+      <span className="grow">
+        <span className="title">{t(test.name)}</span>
+        <span className="muted small">{resultText(test, props.results[test.id])}</span>
+      </span>
+      <span aria-hidden="true">›</span>
+    </button>
+  );
+  return (
+    <>
+      <section className="card mob-light-sum" aria-label={tr('The tests by their rating', 'Die Tests nach Bewertung')}>
+        <span className="mob-light-count red">
+          <i className="mob-dot red" /> {counts[0]} {tr('poor', 'schlecht')}
+        </span>
+        <span className="mob-light-count yellow">
+          <i className="mob-dot yellow" /> {counts[1]} {tr('limited', 'eingeschränkt')}
+        </span>
+        <span className="mob-light-count green">
+          <i className="mob-dot green" /> {counts[2]} {tr('good', 'gut')}
+        </span>
+      </section>
+      <div className="chip-row mob-sort" role="group" aria-label={tr('Order', 'Sortierung')}>
+        <button type="button" aria-pressed={by === 'light'} onClick={() => setBy('light')}>
+          {tr('By rating', 'Nach Bewertung')}
+        </button>
+        <button type="button" aria-pressed={by === 'area'} onClick={() => setBy('area')}>
+          {tr('By body area', 'Nach Körperbereich')}
+        </button>
+      </div>
+      {by === 'light' ? <div className="list mob-light-list">{order.map(row)}</div> : <BodyAreas results={props.results} nav={props.nav} />}
+    </>
+  );
+}
+
+function BodyAreas(props: { results: Partial<Record<TestId, TestResult>>; nav: Nav }) {
   const areas = pillar(TESTS, props.results, loadGoal());
   return (
     <>

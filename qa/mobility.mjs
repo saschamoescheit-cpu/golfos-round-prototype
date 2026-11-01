@@ -193,14 +193,20 @@ const ring = await p.locator('.mob-score-ring').getAttribute('aria-label').catch
 const scoreText = await p.locator('.mob-score').innerText().catch(() => '');
 const sc = Number(/^(\d+) von 100$/.exec(ring ?? '')?.[1] ?? NaN);
 ok(sc >= 0 && sc < 100 && /Deine Beweglichkeit/.test(scoreText) && /100 = alle Werte am Ziel für Handicap 10/.test(scoreText), `the overall value: ${sc} / 100 for the goal (${scoreText.split('\n').slice(2, 3).join('')})`);
-ok((await p.locator('.mob-area-head .mob-levelbar').count()) >= 4, 'each measured area shows its bar with the line of the goal');
+// the TPI overview (Sascha 1.11.2026): every test as a traffic light, worst first, the counts on top
+const lights = await p.locator('.mob-light-row .mob-lights').evaluateAll((xs) => xs.map((x) => [...x.querySelectorAll('.mob-dot')].map((d) => d.classList[1]).join('/')));
+const rank = (l) => (l.includes('red') ? 0 : l.includes('yellow') ? 1 : l.includes('green') ? 2 : 3);
+ok(lights.length === 15 && lights.every((l, i) => i === 0 || rank(lights[i - 1]) <= rank(l)), `all 15 tests as lights, worst first (${lights.join(' ')})`);
+ok(/schlecht/.test(await p.locator('.mob-light-sum').innerText()), 'the counts of red, yellow and green on top');
+await p.locator('.mob-sort button').filter({ hasText: 'Nach Körperbereich' }).click();
+ok((await p.locator('.mob-area-head .mob-levelbar').count()) >= 4, 'by body area: each measured area shows its bar with the line of the goal');
 ok((await p.locator('.mob-test-row .mob-levelbar').count()) >= 6, 'each measured test shows its value on a scale');
 await shot('result-body');
 const nextStep = await p.locator('.mob-train-next').innerText().catch(() => '');ok(/Nächster Schritt/i.test(nextStep) && /Jetzt trainieren/.test(nextStep), 'after the result: the training as the next step, one tap');
 await p.locator('.segmented button').filter({ hasText: 'Dein Schwung' }).click();
 const patterns = await p.locator('.mob-pattern').count();
 ok(patterns >= 3, `${patterns} swing patterns for the stiff player`);
-ok((await p.locator('.mob-level.likely').count()) >= 1, 'at least one pattern is likely');
+ok((await p.locator('.mob-pct-label.high').count()) >= 1, 'at least one pattern is likely (a high bar, as the TPI app shows it)');
 ok(await p.locator('.mob-pattern').filter({ hasText: 'Frühes Aufrichten' }).isVisible(), 'early extension is found (squat, bridge failed)');
 ok((await p.locator('.mob-miss').count()) >= 3, 'misses in player language');
 await shot('result-swing');
@@ -214,9 +220,20 @@ await shot('pattern');
 await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.segmented button').filter({ hasText: 'Dein Körper' }).click();
 await p.waitForTimeout(300);
-ok((await p.locator('.mob-test-row').count()) === 15, 'body result lists all 15 tests by area');
+ok((await p.locator('.mob-test-row').count()) === 15, 'body result lists all 15 tests');
 ok((await p.locator('.mob-test-row.untested').count()) === 9, 'the 9 tests not in the quick check are marked untested');
 ok(await p.getByText('Ursache: Sprunggelenke').first().isVisible(), 'the deep squat names its cause (ankles)');
+// a test's results: the rating with the pro's benchmark and the TPI form – all answers, the one that fits marked
+await p.locator('.mob-sort button').filter({ hasText: 'Nach Bewertung' }).click();
+await p.locator('.mob-light-row').filter({ hasText: 'Tiefe Kniebeuge' }).click();
+await p.locator('.mob-rating').waitFor({ timeout: 5000 }).catch(() => {});
+const rating = await p.locator('.mob-rating').innerText().catch(() => '');
+const marked = await p.locator('.mob-tpi-opt.on').allInnerTexts();
+const all = await p.locator('.mob-tpi-opt').count();
+ok(/Profi-Richtwert/.test(rating) && /Bewertung wie im TPI-Formular/.test(rating), 'the test shows the pro benchmark and the TPI form');
+ok(marked.length === 2 && all >= 9 && /Kniebeuge mit Armen unten|Eingeschränkte Kniebeuge/.test(marked[0]), `the squat's answers marked, all others shown (${marked.join(' | ')}; ${all} answers)`);
+await shot('test-rating');
+await p.locator('.topbar .icon-btn').first().click();
 
 // ---------- drills → Training ----------
 await tab('Übungen');
@@ -347,6 +364,8 @@ const singleActs = await p.locator('.mob-camera-actions .drawer-action').evaluat
 ok(!singleActs.includes('skip') && singleActs.includes('end'), `a single test has no Skip, a Finish (${singleActs.join(' ')})`);
 // left side, saved by itself, the right side starts by itself, saved by itself, back on the test page
 await p.locator('.tr-tabs').waitFor({ timeout: 90000 }).catch(() => {});
+// done: the test's page opens on its results – time to look at them (Sascha 1.11.2026)
+ok((await p.locator('.tr-tabs [role="tab"][aria-selected="true"]').innerText().catch(() => '')) === 'Ergebnisse', 'after a single test its page opens on the results');
 await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
 const neckRes = await p.locator('.list-item .title').first().innerText().catch(() => '');
 ok(/links .*rechts/.test(neckRes), 'hands-free: both sides measured and saved without a tap (' + neckRes + ')');

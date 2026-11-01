@@ -341,7 +341,8 @@ export function DrillPlayer(props: {
       // the value, and the gain over the last time when it is a clear one ("4 degrees further than last time")
       const gain = best != null && plan.signal && props.previous != null ? gainSpeech(plan.signal, SIGNALS[plan.signal].better === 'up' ? best - props.previous : props.previous - best, tr) : null;
       say(best != null && plan.signal ? `${DONE_SAY()} ${signalValueText(plan.signal, best, tr)}.${gain ? ` ${gain}.` : ''}` : DONE_SAY());
-      setAuto(4);
+      // the result stays 10 s (Sascha 1.11.2026: "gone at once")
+      setAuto(fake ? 4 : 10);
     };
 
     const tick = () => {

@@ -197,6 +197,9 @@ const CUE_TEXT = (kind: MetricKind, cue: Cue): string | null => {
 
 /** Seconds until a result is saved by itself (the player does not have to walk to the phone). */
 const AUTO_SAVE_S = 6;
+/** trainer mode: the result stays this long before it is saved and the next test begins (Sascha 1.11.2026: 4 s were
+ *  "gone at once – no time to look at it"; after a single test its page opens on the results) */
+const COACH_SAVE_S = 10;
 /** trainer mode: a movement not recognised is tried again by itself this often, after this many seconds */
 const COACH_RETRIES = 2;
 const COACH_RETRY_S = 5;
@@ -391,7 +394,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       if (out) {
         // the value, no grade (Sascha 18.10.2026: measuring, not grading)
         say(`${DONE_SAY()} ${valueText(kind, out.value, tr)}.`);
-        setAuto(props.coach ? 4 : AUTO_SAVE_S);
+        setAuto(props.coach ? (fake ? 4 : COACH_SAVE_S) : AUTO_SAVE_S);
       } else if (props.coach && missesRef.current < COACH_RETRIES) {
         // the player is 2.5–3 m away (or lying on the floor): try again by itself, twice, before asking for a tap
         missesRef.current++;

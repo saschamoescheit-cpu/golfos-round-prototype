@@ -66,6 +66,8 @@ export interface TestDef {
   steps: L[];
   /** the goal in words, e.g. "45° or more per side" */
   target: L;
+  /** what a tour professional reaches (Sascha 1.11.2026: "benchmarks – what are the values of a pro golfer") */
+  pro: L;
   /** the test position (with the detail that matters) */
   sketch: Sketch;
   /** self checks: the pictures to choose from */
