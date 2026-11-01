@@ -7,7 +7,7 @@ import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } fr
 // service worker (public/push-sw.js) shows what arrives and opens the app at the right place.
 // On the iPhone this works only for the app added to the home screen (iOS 16.4 and later) – the profile says so.
 
-export type PushKind = 'rounds' | 'games' | 'weather';
+export type PushKind = 'rounds' | 'games' | 'weather' | 'agility';
 export type PushKinds = Record<PushKind, boolean>;
 export interface PushState {
   on: boolean;
@@ -18,7 +18,7 @@ export interface PushState {
 const KEY = 'golfos.push.v1'; // this phone only – every phone subscribes for itself; its kinds: what the server was told
 // which notifications the player wants – the same on all his devices (Sascha 29.10.2026), synced as a setting
 const KINDS = 'golfos.pushkinds.v1';
-const ALL_ON: PushKinds = { rounds: true, games: true, weather: true };
+const ALL_ON: PushKinds = { rounds: true, games: true, weather: true, agility: true };
 const fn = () => `${SUPABASE_URL}/functions/v1/golfos-push`;
 
 function phoneState(): PushState | null {
@@ -192,12 +192,13 @@ export function pushAsked(to: { code?: string; ref?: string }): void {
 }
 
 /** Where a tapped notification leads: "#review=<round>", "#sign", "#games" (read once, then removed). */
-export function takePushTarget(): { review?: string; sign?: boolean; games?: boolean; pool?: string } | null {
+export function takePushTarget(): { review?: string; sign?: boolean; games?: boolean; pool?: string; agility?: boolean } | null {
   const h = location.hash;
-  let out: { review?: string; sign?: boolean; games?: boolean; pool?: string } | null = null;
+  let out: { review?: string; sign?: boolean; games?: boolean; pool?: string; agility?: boolean } | null = null;
   if (h.startsWith('#review=')) out = { review: decodeURIComponent(h.slice(8)) };
   else if (h === '#sign') out = { sign: true };
   else if (h === '#games') out = { games: true };
+  else if (h === '#agility') out = { agility: true }; // a training day of the physio's routine: Agility's drills
   else if (h.startsWith('#pool=')) out = { pool: decodeURIComponent(h.slice(6)).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) }; // a bet made: its pool in Games
   if (out) history.replaceState(null, '', location.pathname + location.search);
   return out;

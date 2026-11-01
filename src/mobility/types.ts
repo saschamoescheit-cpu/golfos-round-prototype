@@ -91,7 +91,8 @@ export interface Measurement {
   /** the measured value in the unit of the metric (°, s, cm) – null for a self check */
   value: number | null;
   grade: Grade;
-  source: 'camera' | 'self';
+  /** physio = taken over from the physio's screening (TPI report, imported) */
+  source: 'camera' | 'self' | 'physio';
   /** checks that did not hold (e.g. "the heels come up") – English/German */
   notes?: L[];
   /** the criteria of the test, each met or not (camera tests, from 31.10.2026) */
@@ -130,6 +131,8 @@ export interface Screening {
   results: Partial<Record<TestId, TestResult>>;
   /** tests the player skipped */
   skipped?: TestId[];
+  /** taken over from a screening elsewhere ("TPI Level 1 Screen" of the physio) */
+  from?: string;
   /** the questions still to ask after the camera part (kept across a pause) */
   ask?: ('feel' | 'ankle')[];
 }

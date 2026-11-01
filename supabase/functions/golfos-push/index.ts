@@ -272,6 +272,54 @@ export function roundsToRemind(rows: { id: string; data: RoundData }[], sent: Se
     .sort((a, b) => b.finishedAt.localeCompare(a.finishedAt));
 }
 
+/** The physio's routine (Agility, Sascha 1.11.2026: "how often a week I set myself – a push can remind me"). */
+export interface PhysioData {
+  routine?: { name?: string; exercises?: { sets?: { reps: number; repSec: number; restSec: number }[]; perSide?: boolean }[] };
+  schedule?: { perWeek?: number; days?: number[]; remind?: string | null };
+  log?: { at: string }[];
+}
+/** The day on the phone's clock: its date, weekday (0 = Monday) and minute of the day. */
+export function localDay(tz: string | null | undefined, at: Date): { date: string; weekday: number; minute: number } {
+  const parts = (() => {
+    try {
+      return new Intl.DateTimeFormat('en-GB', { timeZone: tz || 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+    } catch {
+      return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+    }
+  })();
+  const p = (t: string) => parts.find((x) => x.type === t)?.value ?? '';
+  return { date: `${p('year')}-${p('month')}-${p('day')}`, weekday: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(p('weekday')), minute: Number(p('hour')) * 60 + Number(p('minute')) };
+}
+/** Remind now: a reminder time set and reached (until 22:00), today not trained yet, and a training day – one of the
+ *  chosen days, or (no days chosen) fewer sessions this week than wanted. */
+export function physioDue(d: PhysioData, tz: string | null | undefined, now: Date): boolean {
+  const s = d.schedule;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s?.remind ?? '');
+  if (!s || !m) return false;
+  const today = localDay(tz, now);
+  const at = Number(m[1]) * 60 + Number(m[2]);
+  if (today.minute < at || today.minute >= 22 * 60) return false;
+  const days = (d.log ?? []).map((e) => localDay(tz, new Date(e.at)));
+  if (days.some((x) => x.date === today.date)) return false;
+  if (s.days?.length) return s.days.includes(today.weekday);
+  // this week (Monday on): days with a session
+  const monday = new Date(now.getTime() - today.weekday * 864e5 - today.minute * 6e4);
+  const from = localDay(tz, monday).date;
+  const week = new Set(days.filter((x) => x.date >= from && x.date <= today.date).map((x) => x.date)).size;
+  return week < (s.perWeek ?? 0);
+}
+export function physioNote(d: PhysioData, lang?: string | null): Note {
+  const sec = (d.routine?.exercises ?? []).reduce((n, e) => n + (e.sets ?? []).reduce((k, s) => k + s.reps * s.repSec + s.restSec, 0) * (e.perSide ? 2 : 1), 0);
+  const min = Math.round(sec / 60);
+  const name = d.routine?.name ?? 'Routine';
+  return {
+    title: T(lang, 'Training day', 'Trainingstag'),
+    body: T(lang, `Your physio routine "${name}" is due today${min ? ` – about ${min} min` : ''}.`, `Heute ist deine Physio-Routine „${name}“ dran${min ? ` – etwa ${min} Min.` : '.'}`),
+    tag: 'golfos-agility',
+    url: './#agility',
+  };
+}
+
 /** Thunderstorm in the next hour: weather codes 95, 96, 99 (WMO) in the hourly forecast. */
 export const stormAhead = (codes: (number | null)[]): boolean => codes.slice(0, 2).some((c) => c != null && c >= 95);
 
@@ -282,7 +330,7 @@ interface Sub {
   user_id: string;
   p256dh: string;
   auth: string;
-  kinds: { rounds?: boolean; games?: boolean; weather?: boolean } | null;
+  kinds: { rounds?: boolean; games?: boolean; weather?: boolean; agility?: boolean } | null;
   tz: string | null;
   lang: string | null;
   round_at: { lat: number; lng: number; course: string; until: string; since: string } | null;
@@ -364,7 +412,7 @@ async function caller(req: Request): Promise<string | null> {
 const SUB_FIELDS = 'endpoint,user_id,p256dh,auth,kinds,tz,lang,round_at';
 const subsOf = (users: string[]) => db().get<Sub[]>(`golfos_push?select=${SUB_FIELDS}&user_id=in.(${users.join(',')})`);
 
-async function tick(now = new Date()): Promise<{ rounds: number; storms: number }> {
+async function tick(now = new Date()): Promise<{ rounds: number; storms: number; physio: number }> {
   const d = db();
   const subs = await d.get<Sub[]>(`golfos_push?select=${SUB_FIELDS}`);
   let rounds = 0;
@@ -407,7 +455,23 @@ async function tick(now = new Date()): Promise<{ rounds: number; storms: number 
     await d.insertIgnore('golfos_push_sent', [{ user_id: s.user_id, key }]);
     storms++;
   }
-  return { rounds, storms };
+  // the physio's routine on a training day (Agility): once a day at the time the player chose
+  let physio = 0;
+  const trainers = new Map<string, Sub[]>();
+  for (const s of subs) if (s.kinds?.agility !== false) trainers.set(s.user_id, [...(trainers.get(s.user_id) ?? []), s]);
+  for (const [user, mine] of trainers) {
+    const plans = await d.get<{ id: string; data: PhysioData }[]>(`golfos_items?select=id,data&user_id=eq.${user}&kind=eq.mobility-physio&deleted=eq.false`);
+    for (const plan of plans) {
+      if (!physioDue(plan.data, mine[0].tz, now)) continue;
+      const key = `physio:${plan.id}:${localDay(mine[0].tz, now).date}`;
+      const done = await d.get<unknown[]>(`golfos_push_sent?select=key&user_id=eq.${user}&key=eq.${encodeURIComponent(key)}`);
+      if (done.length) continue;
+      for (const s of mine) await send(s, physioNote(plan.data, s.lang), 6 * 3600);
+      await d.insertIgnore('golfos_push_sent', [{ user_id: user, key }]);
+      physio++;
+    }
+  }
+  return { rounds, storms, physio };
 }
 
 export async function handle(req: Request): Promise<Response> {

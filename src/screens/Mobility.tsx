@@ -36,6 +36,8 @@ import { hasPain, leadSide, previousMeasurement, likelyMisses, latestResults, MI
 import { FULL, QUICK, TESTS, TestPicture, testById } from '../mobility/tests';
 import type { Area, Grade, Measurement, Screening, Side, SquatCause, TestDef, TestId, TestResult } from '../mobility/types';
 import '../training/training.css';
+import { PhysioCard, PhysioRun, PhysioView, importPlan } from '../mobility/PhysioPlan';
+import { loadPhysio } from '../mobility/physio';
 import '../mobility/mobility.css';
 
 // the 3D video of a test (three.js, loaded with the first test page)
@@ -57,7 +59,9 @@ type View =
   | { name: 'drill'; id: string }
   | { name: 'pattern'; id: string }
   | { name: 'train'; session: TrainSession }
-  | { name: 'warmup' };
+  | { name: 'warmup' }
+  | { name: 'physio' }
+  | { name: 'physio-run' };
 
 const t = (l: L): string => tr(l.en, l.de);
 
@@ -94,6 +98,7 @@ const AREAS: Area[] = ['hips', 'spine', 'shoulders', 'stability', 'legs', 'neck'
 const playerHand = (): 'right' | 'left' => (isLeftHanded() ? 'left' : 'right');
 const sideName = (s: Side) => (s === 'left' ? tr('left', 'links') : tr('right', 'rechts'));
 const dateText = (iso: string) => new Date(iso).toLocaleDateString(tr('en-GB', 'de-DE'), { day: 'numeric', month: 'short', year: 'numeric' });
+const screeningName = (s: Screening) => s.from ?? kindName(s.kind);
 const kindName = (k: Screening['kind']) => (k === 'quick' ? tr('Quick check', 'Kurz-Check') : k === 'full' ? tr('Full screen', 'Komplettes Screening') : tr('Single test', 'Einzeltest'));
 
 function useMobilityTick(): number {
@@ -119,7 +124,7 @@ const CAUSE_SHORT: Record<SquatCause, L> = {
 /** The value of a result in words – both sides for sided tests ("left 48° · right 39°"). */
 function resultText(test: TestDef, r: TestResult | undefined): string {
   if (!r) return tr('not tested yet', 'noch nicht getestet');
-  const one = (m: Measurement) => (m.pain ? tr('pain', 'Schmerz') : m.source === 'self' ? tr('self-judged', 'selbst eingeschätzt') : test.metric ? valueText(test.metric, m.value, tr) + (m.cause ? ` · ${t(CAUSE_SHORT[m.cause])}` : '') : '');
+  const one = (m: Measurement) => (m.pain ? tr('pain', 'Schmerz') : m.source === 'self' ? tr('self-judged', 'selbst eingeschätzt') : m.source === 'physio' ? tr('physio', 'Physio') : test.metric ? valueText(test.metric, m.value, tr) + (m.cause ? ` · ${t(CAUSE_SHORT[m.cause])}` : '') : '');
   if (r.both) return `${one(r.both)}`;
   const text = (['left', 'right'] as Side[])
     .filter((s) => r[s])
@@ -199,6 +204,18 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
   if (view.name === 'train')
     return <DrillSession session={view.session} onPause={back} onFinished={back} />;
   if (view.name === 'warmup') return <RangeWarmup warmup={buildWarmup(pillarPlan(loadMinutes()).areas)} onClose={back} />;
+  if (view.name === 'physio-run' || view.name === 'physio') {
+    const plan = loadPhysio();
+    // (removed on another device meanwhile)
+    if (!plan)
+      return (
+        <main className="screen training mobility">
+          <TopBar title={tr('My physio plan', 'Mein Physio-Plan')} onBack={back} />
+        </main>
+      );
+    if (view.name === 'physio-run') return <PhysioRun plan={plan} onClose={back} />;
+    return <PhysioView plan={plan} onBack={back} onRun={() => push({ name: 'physio-run' })} onRetest={() => toTab('test')} />;
+  }
 
   if (view.name === 'run') {
     const s = screeningById(view.id);
@@ -486,7 +503,7 @@ function TestView(props: { id: TestId; nav: Nav }) {
                     <span className="grow">
                       <span className="title">{resultText(test, r)}</span>
                       <span className="muted small">
-                        {dateText(s.createdAt)} · {kindName(s.kind)}
+                        {dateText(s.createdAt)} · {screeningName(s)}
                       </span>
                     </span>
                     <ResultMark r={r} test={test} small />
@@ -1738,17 +1755,26 @@ function DrillsTab(props: { nav: Nav }) {
   const { results, keep, drillsFor, focus, rest, planDrills, planMinutes, planSession, day } = pillarPlan(minutes);
   const pain = TESTS.filter((x) => hasPain(results[x.id]));
   const paused = openSession();
+  // the physio's plan first (Sascha 1.11.2026) – or where to import it
+  const physio = <PhysioCard plan={loadPhysio()} onOpen={() => props.nav.push({ name: 'physio' })} onRun={() => props.nav.push({ name: 'physio-run' })} onImport={(p) => {
+    importPlan(p);
+    props.nav.push({ name: 'physio' });
+  }} />;
   if (!Object.keys(results).length)
     return (
+      <>
+      {physio}
       <section className="tr-block mob-empty">
         <p>{tr('The drills follow from your screening.', 'Die Übungen ergeben sich aus deinem Screening.')}</p>
         <button type="button" className="btn-primary" onClick={() => props.nav.toTab('test')}>
           {tr('To the screening', 'Zum Screening')}
         </button>
       </section>
+      </>
     );
   return (
     <>
+      {physio}
       <GoalCard />
       {paused && (
         <section className="card mob-open mob-train-open">
@@ -2114,7 +2140,7 @@ function HistoryTab(props: { nav: Nav }) {
             <button key={s.id} type="button" className="list-item" onClick={() => props.nav.push({ name: 'screening', id: s.id })}>
               <span className="grow">
                 <span className="title">
-                  {kindName(s.kind)}
+                  {screeningName(s)}
                   {s.kind === 'single' && s.tests[0] ? ` · ${t(testById(s.tests[0]).name)}` : ''} {!s.finishedAt && s.kind !== 'single' && <PausedMark />}
                 </span>
                 <span className="muted small">
@@ -2206,7 +2232,7 @@ function ScreeningView(props: { id: string; nav: Nav }) {
   return (
     <main className="screen training mobility">
       <TopBar
-        title={kindName(s.kind)}
+        title={screeningName(s)}
         onBack={props.nav.back}
         right={
           <button

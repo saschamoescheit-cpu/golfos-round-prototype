@@ -271,3 +271,51 @@
 .mob-stage.fit-ok::after { border-color: #9bc53d; }
 .mob-stage.fit-bad .mob-status { background: rgba(150, 38, 28, 0.88); }
 .mob-stage.fit-ok .mob-status { background: rgba(58, 104, 18, 0.9); }
+
+/* my physio plan (Sascha 1.11.2026): the card on the drills tab, the plan's tabs, the guided routine */
+.mob-physio-card, .mob-physio-sum, .mob-physio-plan, .mob-physio-weeks, .mob-physio-retest, .mob-physio-import { display: flex; flex-direction: column; gap: 8px; }
+.mob-physio-head { display: flex; align-items: flex-start; gap: 10px; }
+.mob-physio-head .grow { display: flex; flex-direction: column; gap: 2px; }
+.mob-physio-due { flex: none; padding: 4px 10px; border-radius: 999px; background: var(--brand); color: #fff; font: 700 13px var(--display); }
+.mob-physio-actions { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+.mob-physio-error { color: var(--bad); }
+.mob-physio-ex { display: block; padding: 0; }
+.mob-physio-ex-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px; border: 0; background: none; color: inherit; text-align: left; font: inherit; }
+.mob-physio-ex-head .grow { display: flex; flex-direction: column; gap: 2px; }
+.mob-physio-ex-body { padding: 0 12px 12px 54px; display: flex; flex-direction: column; gap: 6px; }
+.mob-physio-ex-body ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.mob-physio-ex-body p { margin: 0; }
+.mob-physio-sets { border-collapse: collapse; width: 100%; max-width: 320px; }
+.mob-physio-sets th, .mob-physio-sets td { padding: 4px 6px; text-align: center; border-bottom: 1px solid var(--line); }
+.mob-physio-sets th { color: var(--text-2); font-weight: 600; }
+.mob-physio-remind { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mob-physio-remind input { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 16px var(--body); }
+.mob-physio-bars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; height: 96px; }
+.mob-physio-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 100%; }
+.mob-physio-bar i { display: block; width: 100%; min-height: 3px; border-radius: 6px 6px 2px 2px; background: var(--line-strong); }
+.mob-physio-bar.met i { background: var(--brand); }
+.mob-physio-bar small { color: var(--text-2); font-size: 12px; }
+.mob-physio-retest.due { border: 2px solid var(--brand); }
+.mob-light { flex: none; width: 14px; height: 14px; border-radius: 50%; }
+.mob-light.red { background: #e5544b; }
+.mob-light.yellow { background: #e8b931; }
+.mob-light.green { background: #7fb236; }
+.mob-physio-tests .list-item, .mob-physio-log .list-item { display: flex; align-items: center; gap: 10px; }
+.mob-physio-fault { display: flex; align-items: center; gap: 10px; }
+.mob-physio-fault .grow { display: flex; flex-direction: column; gap: 6px; }
+.mob-physio-meter { display: block; height: 8px; border-radius: 4px; background: var(--surface-2, rgba(255, 255, 255, 0.12)); overflow: hidden; }
+.mob-physio-meter i { display: block; height: 100%; border-radius: 4px; }
+.mob-physio-meter.high i { background: #e5544b; }
+.mob-physio-meter.moderate i { background: #e8b931; }
+.mob-physio-meter.low i { background: #7fb236; }
+.mob-physio-level { flex: none; font: 700 13px var(--display); }
+.mob-physio-level.high { color: #e5544b; }
+.mob-physio-level.moderate { color: #c99a12; }
+.mob-physio-level.low { color: #6a9a2b; }
+.mob-physio-manage { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.mob-physio-save { display: flex; flex-direction: column; gap: 8px; }
+.mob-physio-info { padding: 16px; flex: 1; overflow-y: auto; color: #fff; }
+.mob-physio-phase { font: 700 20px var(--display); color: var(--brand); }
+.mob-physio-phase.rest, .mob-physio-phase.switch { color: #e8b931; }
+.mob-physio-clock { font-size: 64px; line-height: 1; }
+.mob-physio-per, .mob-physio-days { flex-wrap: wrap; overflow: visible; }

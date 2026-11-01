@@ -259,6 +259,12 @@ export function App() {
         setModule('games');
         return;
       }
+      // a training day of the physio's routine (Agility, 1.11.2026): its drills tab with the plan on top
+      if (t.agility) {
+        setMobilityTab('drills');
+        setModule('mobility');
+        return;
+      }
       setModule('rounds');
       const r = t.review ? loadRounds().find((x) => x.id === t.review) : undefined;
       if (r && r.signedAt) setScreen({ name: 'scorecard', round: r, back: ROUNDS }); // signed meanwhile on another device
