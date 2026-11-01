@@ -1161,6 +1161,11 @@ button.tile:disabled { opacity: 1; }
 .tour-chip.lifted { opacity: 0.35; }
 .tour-ghost { position: fixed; z-index: 50; transform: translate(-50%, -60%); pointer-events: none; display: inline-flex; align-items: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
 .tour-here { min-height: 44px; }
+.tour-flight-tools { display: flex; align-items: center; gap: 8px; }
+.tour-count { font-weight: 600; }
+.tour-unplaced { border: 1px dashed var(--line-strong); background: transparent; }
+.tour-flight-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.tour-flight-add > :only-child { grid-column: 1 / -1; }
 .tour-markers { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
 .tour-howto { display: flex; flex-direction: column; gap: 4px; }
 .tour-special { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 10px; }

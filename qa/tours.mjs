@@ -131,12 +131,31 @@ for (const n of ['Chris', 'Erik', 'Cedric']) {
   await H.locator('input[id^="hcp-"]').last().fill('0');
 }
 await H.locator('input[id^="hcp-"]').first().fill('0');
-await H.getByRole('group', { name: 'Anzahl Flights' }).getByRole('button', { name: '2', exact: true }).click();
-const fl = (k) => H.locator('.tour-flight').nth(k);
+const fl = (k) => H.locator('.tour-flight:not(.tour-unplaced)').nth(k);
 const chips = async (k) => (await fl(k).locator('.tour-chip').allInnerTexts()).join(',');
-ok((await chips(0)) === 'Sascha,Chris' && (await chips(1)) === 'Erik,Cedric', 'two flights: Sascha and Chris, Erik and Cedric');
+// Sascha 01.11.2026: "create flights, then add players to a flight; a flight has at most four"
+ok((await H.locator('.tour-flight:not(.tour-unplaced)').count()) === 1 && (await chips(0)) === 'Sascha,Chris,Erik,Cedric' && (await H.getByRole('group', { name: 'Anzahl Flights' }).count()) === 0, 'the players go into flight 1 while it has room – no number of flights to pick');
+ok((await fl(0).locator('.tour-count').innerText()) === '4/4', 'flight 1: four of at most four');
+// a fifth player: flight 1 is full – he waits under "Noch ohne Flight"
+await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
+await H.locator('input[id^="name-"]').last().fill('Dave');
+const unplaced = H.locator('.tour-unplaced');
+ok((await unplaced.locator('.tour-chip').allInnerTexts()).join(',') === 'Dave' && (await H.getByText('Noch ohne Flight: Dave').isVisible()), 'a fifth player: not in a flight – flight 1 is full');
+await unplaced.locator('.tour-chip', { hasText: 'Dave' }).click();
+ok((await fl(0).getByRole('button', { name: 'Dave hinzufügen' }).count()) === 0 && (await fl(0).getByText('Voll – vier Spieler.').isVisible()), 'flight 1 full: Dave cannot be added');
+await unplaced.locator('.tour-chip', { hasText: 'Dave' }).click();
+await H.getByRole('button', { name: 'Dave entfernen' }).click();
+ok((await H.locator('.tour-unplaced').count()) === 0, 'Dave taken out again: nobody without a flight');
+// a second flight, created, then Erik and Cedric added to it
+await H.getByRole('button', { name: '+ Flight' }).click();
+ok((await chips(1)) === '' && (await fl(1).getByText('Noch kein Spieler.').isVisible()), 'flight 2 created – empty');
+for (const n of ['Erik', 'Cedric']) {
+  await fl(0).locator('.tour-chip', { hasText: n }).click();
+  await fl(1).getByRole('button', { name: `${n} hinzufügen` }).click();
+}
+ok((await chips(0)) === 'Sascha,Chris' && (await chips(1)) === 'Erik,Cedric', 'tapped, then "hinzufügen": Erik and Cedric in flight 2');
 ok((await fl(0).locator('.tour-markers').innerText()).includes('Sascha ↔ Chris') && (await fl(0).locator('select').count()) === 1, 'the markers one line per flight ("Sascha ↔ Chris"), no dropdown per player');
-// Sascha 01.11.2026: "drag and drop" – Cedric dragged into flight 1
+// and dragged: Cedric into flight 1
 {
   await fl(0).evaluate((e) => e.scrollIntoView({ block: 'start' }));
   await H.waitForTimeout(300);
@@ -154,10 +173,9 @@ ok(/zählt/.test(ring) && ring.split('zählt').length - 1 === 3, `three in a fli
 await fl(0).getByRole('button', { name: 'Andere Paarung' }).click();
 ok((await fl(0).locator('.tour-markers').innerText()) !== ring, 'other pairing: the ring the other way');
 ok(await H.getByText('Jeder Flight braucht mindestens zwei Spieler').isVisible(), 'flight 2 with Erik alone: told, no tournament like this');
-// and back by tapping: Cedric, then "here" on flight 2
 await fl(0).locator('.tour-chip', { hasText: 'Cedric' }).click();
-await fl(1).getByRole('button', { name: 'Cedric hierher' }).click();
-ok((await chips(0)) === 'Sascha,Chris' && (await chips(1)) === 'Erik,Cedric', 'tapped, then "hierher": Cedric back in flight 2');
+await fl(1).getByRole('button', { name: 'Cedric hinzufügen' }).click();
+ok((await chips(0)) === 'Sascha,Chris' && (await chips(1)) === 'Erik,Cedric', 'Cedric back in flight 2');
 ok((await fl(0).locator('.tour-markers').innerText()).includes('Sascha ↔ Chris') && (await fl(1).locator('.tour-markers').innerText()).includes('Erik ↔ Cedric'), 'the pairs again');
 ok((await fl(0).locator('select').first().inputValue()) === '09:00' && (await fl(1).locator('select').first().inputValue()) === '09:10', 'tee times: 09:00, then 10 minutes on');
 const options = await H.locator('#tour-first option').allInnerTexts();
