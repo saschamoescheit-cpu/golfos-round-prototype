@@ -347,6 +347,8 @@ const singleActs = await p.locator('.mob-camera-actions .drawer-action').evaluat
 ok(!singleActs.includes('skip') && singleActs.includes('end'), `a single test has no Skip, a Finish (${singleActs.join(' ')})`);
 // left side, saved by itself, the right side starts by itself, saved by itself, back on the test page
 await p.locator('.tr-tabs').waitFor({ timeout: 90000 }).catch(() => {});
+// done: the test's page opens on its results – time to look at them (Sascha 1.11.2026)
+ok((await p.locator('.tr-tabs [role="tab"][aria-selected="true"]').innerText().catch(() => '')) === 'Ergebnisse', 'after a single test its page opens on the results');
 await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Ergebnisse' }).click();
 const neckRes = await p.locator('.list-item .title').first().innerText().catch(() => '');
 ok(/links .*rechts/.test(neckRes), 'hands-free: both sides measured and saved without a tap (' + neckRes + ')');

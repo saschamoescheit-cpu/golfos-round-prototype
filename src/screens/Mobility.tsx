@@ -53,7 +53,7 @@ export type MobilityTab = 'test' | 'result' | 'drills' | 'history' | 'profile';
 
 type View =
   | { name: 'tab'; tab: MobilityTab }
-  | { name: 'test'; id: TestId }
+  | { name: 'test'; id: TestId; tab?: 'how' | 'result' | 'drills' }
   | { name: 'run'; id: string }
   | { name: 'screening'; id: string }
   | { name: 'drill'; id: string }
@@ -224,7 +224,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
         <ScreeningPlay
           screening={s}
           onPause={() => toTab('test')}
-          onFinished={(done) => (done.kind === 'single' ? setStack([{ name: 'tab', tab: 'test' }, { name: 'test', id: done.tests[0] }]) : setStack([{ name: 'tab', tab: 'result' }]))}
+          onFinished={(done) => (done.kind === 'single' ? setStack([{ name: 'tab', tab: 'test' }, { name: 'test', id: done.tests[0], tab: Object.keys(done.results).length ? 'result' : 'how' }]) : setStack([{ name: 'tab', tab: 'result' }]))}
           onDelete={() => {
             deleteScreening(s.id, kindName(s.kind));
             toTab('test');
@@ -256,7 +256,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
   const root = stack[0].name === 'tab' ? stack[0].tab : 'test';
   return (
     <div className="tr-with-menu">
-      {view.name === 'test' && <TestView id={view.id} nav={nav} />}
+      {view.name === 'test' && <TestView key={`${view.id}-${view.tab ?? ''}`} id={view.id} tab={view.tab} nav={nav} />}
       {view.name === 'screening' && <ScreeningView id={view.id} nav={nav} />}
       {view.name === 'drill' && <DrillView id={view.id} nav={nav} />}
       {view.name === 'pattern' && <PatternView id={view.id} nav={nav} />}
@@ -485,9 +485,9 @@ function TestTab(props: { nav: Nav }) {
 }
 
 /** One test: how it works, the results so far and the drills – in tabs, not one long page. */
-function TestView(props: { id: TestId; nav: Nav }) {
+function TestView(props: { id: TestId; nav: Nav; tab?: 'how' | 'result' | 'drills' }) {
   const test = testById(props.id);
-  const [tab, setTab] = useState<'how' | 'result' | 'drills'>('how');
+  const [tab, setTab] = useState<'how' | 'result' | 'drills'>(props.tab ?? 'how');
   const all = loadScreenings();
   const history = all
     .map((s) => ({ s, r: s.results[props.id] }))
