@@ -471,8 +471,11 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
     const w = canvas.clientWidth || 340;
     const h = canvas.clientHeight || 255;
     renderer.setSize(w, h, false);
+    const was = camera.aspect;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // a new shape (the trainer's demo goes from the whole screen to the corner): the golfer framed anew
+    if (Math.abs(was - camera.aspect) > 0.01) placeCamera();
   };
 
   // render only while on screen (battery)

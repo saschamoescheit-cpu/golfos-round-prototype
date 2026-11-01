@@ -90,6 +90,9 @@ let demoShot = false;
 let lastPaint = 0;
 let liveShot = false;
 let resultShot = false;
+let fullChecked = false;
+let fullOk = false;
+let fullWhat = '';
 let autoText = '';
 const t0 = Date.now();
 while (Date.now() - t0 < 240000) {
@@ -106,6 +109,15 @@ while (Date.now() - t0 < 240000) {
     if (!demoShot) {
       demoShot = true;
       await shot('coach-demo');
+    }
+  }
+  // the demo and the camera on the whole screen (Sascha 1.11.2026): the camera fills the phone, the demo the picture
+  if (!fullChecked && (await p.locator('.mob-camera').isVisible().catch(() => false))) {
+    const r = await p.evaluate(() => { const c = document.querySelector('.mob-camera')?.getBoundingClientRect(); const st = document.querySelector('.mob-stage')?.getBoundingClientRect(); const d = document.querySelector('.mob-demo.big')?.getBoundingClientRect(); return c && st ? { cw: c.width, ch: c.height, sh: st.height, dh: d ? d.height : null, vw: innerWidth, vh: innerHeight } : null; }).catch(() => null);
+    if (r && r.dh != null) {
+      fullChecked = true;
+      fullOk = Math.abs(r.cw - r.vw) < 2 && Math.abs(r.ch - r.vh) < 2 && r.sh > r.vh * 0.8 && Math.abs(r.dh - r.sh) < 2;
+      fullWhat = JSON.stringify(r);
     }
   }
   // the small 3D golfer over the camera is drawn (measured now and then, the best count kept)
@@ -132,6 +144,7 @@ while (Date.now() - t0 < 240000) {
 for (const x of await p.evaluate(() => window.__intros ?? []).catch(() => [])) intros.add(x);
 console.log('   intros:', [...intros].join(' | '));
 ok(demoSeen && demoDrawn > 12, `the 3D golfer shows each test over the camera first (${demoDrawn} colours)`);
+ok(fullOk, `the demo and the camera fill the whole screen (${fullWhat})`);
 ok(intros.size >= 9, `${intros.size} tests and sides shown and measured without a tap (6 tests, 3 with both sides, + the squat retest)`);
 ok([...intros].some((x) => /Nachtest/.test(x)), 'the deep squat missed: the retest with the hands behind the head runs by itself');
 ok(/\(\d\)/.test(autoText), `the result saves itself after a countdown (${autoText})`);
@@ -226,7 +239,8 @@ await p.locator('.tr-tabs [role="tab"]').filter({ hasText: 'Anleitung' }).click(
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'a drill has its picture');
 await p.locator('.mob-3d canvas').waitFor({ timeout: 30000 }).catch(() => {});
 ok(await p.locator('.mob-3d canvas').isVisible(), 'the drill shows its 3D video');
-ok(await p.waitForFunction(() => (document.querySelector('.mob-3d-step')?.textContent ?? '').length > 5, null, { timeout: 10000 }).then(() => true, () => false), 'the drill video names the step');
+// no step line below the video, a voice reads the steps (Sascha 1.11.2026)
+ok(!(await p.locator('.mob-3d-step').count()) && (await p.locator('.mob-3d[data-said]').count()) === 1 && (await p.locator('.mob-3d-voice[aria-pressed="true"]').isVisible()), 'the drill video reads its steps aloud (loudspeaker on), no step line below');
 await shot('drill');
 await p.locator('.topbar .icon-btn').first().click();
 // the guided session with the camera comes first (qa/mobility-train.mjs runs it), the plan for Training second
@@ -265,7 +279,13 @@ await p.waitForTimeout(2500);
 ok(await p.locator('.tr-sketch svg').first().isVisible(), 'the test shows its picture');
 ok((await p.locator('.tr-video').count()) >= 1, 'the test shows its video');
 ok(await p.locator('.mob-3d canvas').isVisible(), 'the test shows its 3D video');
-ok(await p.waitForFunction(() => (document.querySelector('.mob-3d-step')?.textContent ?? '').length > 5, null, { timeout: 10000 }).then(() => true, () => false), 'the 3D video names the step of the moment');
+ok(!(await p.locator('.mob-3d-step').count()) && (await p.locator('.mob-3d[data-said]').count()) === 1, 'the 3D video of the test reads its steps aloud, no step line below');
+// the loudspeaker switches the voice off – remembered for the next video
+const saidBefore = Number(await p.locator('.mob-3d[data-said]').getAttribute('data-said'));
+await p.locator('.mob-3d-voice').click();
+ok((await p.locator('.mob-3d-voice').getAttribute('aria-pressed')) === 'false' && (await p.evaluate(() => localStorage.getItem('golfos.mobility.voice'))) === 'off', 'the loudspeaker switches the voice off (remembered)');
+await p.locator('.mob-3d-voice').click();
+ok(Number(await p.locator('.mob-3d[data-said]').getAttribute('data-said')) === saidBefore + 1, 'switched on again it reads from the beginning');
 ok(await p.locator('.mob-3d-play').isVisible(), 'play/pause is the round symbol in the picture');
 const painted = await p.evaluate(() => { const c = document.querySelector('.mob-3d canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; });
 ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');

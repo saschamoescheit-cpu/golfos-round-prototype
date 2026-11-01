@@ -10,6 +10,7 @@ import type { Side } from './types';
 import type { Clip } from './anim3d/scene';
 import { beep, fakeLevel, fakeSpeed, isPhoneSlow, markPhoneSlow } from './CameraTest';
 import { logFrame, logItem, logResult } from './motionlog';
+import { FitVoice, fitOf, fitScreen, fitSpeech, type Fit } from './framing';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -135,7 +136,7 @@ export function DrillPlayer(props: {
   };
   const [setIdx, setSetIdx] = useState(0);
   const [count, setCount] = useState(3);
-  const [live, setLive] = useState<{ reps: number; held: number; value: number | null; best: number | null; progress: number; seen: boolean; away?: boolean; missing: number; turned?: boolean; people?: number }>({ reps: 0, held: 0, value: null, best: null, progress: 0, seen: false, missing: 0 });
+  const [live, setLive] = useState<{ reps: number; held: number; value: number | null; best: number | null; progress: number; seen: boolean; away?: boolean; missing: number; turned?: boolean; people?: number; fit?: Fit }>({ reps: 0, held: 0, value: null, best: null, progress: 0, seen: false, missing: 0 });
   const doneRef = useRef<DrillSet[]>([]);
   const [auto, setAuto] = useState<number | null>(null);
   // the form cue on screen (3 s): what the app just said
@@ -204,7 +205,7 @@ export function DrillPlayer(props: {
     }
     let framedSince = -1;
     let frameT0 = 0;
-    let lastHint = 0;
+    const fitVoice = new FitVoice();
     let lastUi = 0;
     let lastDetect = 0;
     let rateT0 = performance.now();
@@ -242,18 +243,20 @@ export function DrillPlayer(props: {
     };
 
     /** the body is there and turned the way the drill wants (floor drills: only the body) */
-    const placed = (f: Frame | null): { framed: boolean; missing: number; turned: boolean } => {
-      if (!f) return { framed: false, missing: 99, turned: true };
-      const missing = sig ? sig.missing(f).length : [11, 12, 23, 24].filter((i) => (f.lm[i]?.v ?? 1) < 0.5).length;
+    const placed = (f: Frame | null): { framed: boolean; missing: number; turned: boolean; fit: Fit } => {
+      if (!f) return { framed: false, missing: 99, turned: true, fit: 'none' };
+      const idx = sig ? sig.missing(f) : [11, 12, 23, 24].filter((i) => (f.lm[i]?.v ?? 1) < 0.5);
       const turned = !!fake || plan.view === 'floor' || facingOf(f) === plan.view;
-      return { framed: missing === 0 && turned, missing, turned };
+      return { framed: idx.length === 0 && turned, missing: idx.length, turned, fit: fitOf(f, idx, turned) };
     };
 
     const startCountdown = () => {
       go('count');
       form = plan.signal ? new FormCheck(plan.signal) : plan.watch ? new FormCheck(plan.watch) : null;
       const side = sets[k];
-      say(side ? (k === 0 || sets[k - 1] !== side ? tr(`The ${sideWord(side)}.`, `Die ${sideWord(side)}.`) : '') : '');
+      const sideSay = side ? (k === 0 || sets[k - 1] !== side ? tr(`The ${sideWord(side)}.`, `Die ${sideWord(side)}.`) : '') : '';
+      if (k === 0) beep(980, 120);
+      say(k === 0 ? `${fitSpeech('ok', null, tr)} ${sideSay}` : sideSay);
       const t0 = performance.now();
       const waitSpeech = () => {
         if (!fake && isSpeaking() && performance.now() - t0 < 6000) return later(waitSpeech, 150);
@@ -382,11 +385,9 @@ export function DrillPlayer(props: {
         } else framedSince = -1;
         // never stuck: after 15 s with the body in the picture it starts anyway (floor drills seen from odd angles)
         if (phaseRef.current === 'frame' && f && now - frameT0 > 15000) startCountdown();
-        if (phaseRef.current === 'frame' && now - lastHint > 7000 && now - frameT0 > 2500) {
-          lastHint = now;
-          if (f && pl.missing === 0 && !pl.turned) say(plan.view === 'side' ? tr('Turn side-on to the phone.', 'Dreh dich seitlich zum Handy.') : tr('Turn face-on to the phone.', 'Dreh dich frontal zum Handy.'));
-          else if (f && pl.missing > 0) say(tr('Step back – the whole body in the picture.', 'Weiter zurück – der ganze Körper ins Bild.'));
-        }
+        // what is missing, once it lasts (not over the "now you" sentence)
+        const hint = phaseRef.current === 'frame' && now - frameT0 > 1000 ? fitVoice.push(pl.fit, now) : null;
+        if (hint && (fake || !isSpeaking())) say(fitSpeech(hint, plan.view, tr));
       }
       if (ph === 'count' && sig && f) sig.calibrate(f);
       if (ph === 'count' && form && f) form.calibrate(f);
@@ -480,7 +481,7 @@ export function DrillPlayer(props: {
       }
       if (now - lastUi > 100) {
         lastUi = now;
-        setLive({ reps, held, value, best: plan.signal === 'oneLeg' ? held / 1000 : signal?.countOnly ? null : holdMode ? holdBest : (counter?.best ?? null), progress: holdMode ? Math.min(1, held / ((plan.hold ?? 20) * 1000)) : counter ? counter.progress(value) : Math.min(1, reps / (plan.reps ?? 10)), seen: !!f, away: lostSince >= 0 && now - lostSince > 500, missing: pl.missing, turned: pl.turned, people });
+        setLive({ reps, held, value, best: plan.signal === 'oneLeg' ? held / 1000 : signal?.countOnly ? null : holdMode ? holdBest : (counter?.best ?? null), progress: holdMode ? Math.min(1, held / ((plan.hold ?? 20) * 1000)) : counter ? counter.progress(value) : Math.min(1, reps / (plan.reps ?? 10)), seen: !!f, away: lostSince >= 0 && now - lostSince > 500, missing: pl.missing, turned: pl.turned, people, fit: pl.fit });
       }
     };
 
@@ -678,15 +679,11 @@ export function DrillPlayer(props: {
       : phase === 'demo'
         ? tr('Watch', 'Schau zu')
         : phase === 'frame'
-          ? !live.seen
-            ? tr('Step into the picture', 'Stell dich ins Bild')
-            : live.missing
-              ? tr('Step back – the whole body in the picture', 'Weiter zurück – der ganze Körper ins Bild')
-              : live.turned === false
-                ? plan.view === 'side'
-                  ? tr('Turn side-on to the phone', 'Dreh dich seitlich zum Handy')
-                  : tr('Turn face-on to the phone', 'Dreh dich frontal zum Handy')
-                : tr('Get ready …', 'Bereit machen …')
+          ? live.fit && live.fit !== 'ok'
+            ? fitScreen(live.fit, plan.view, tr)
+            : !live.seen
+              ? tr('Step into the picture', 'Stell dich ins Bild')
+              : `${fitScreen('ok', null, tr)} – ${tr('get ready …', 'bereit machen …')}`
           : phase === 'count'
             ? String(count)
             : phase === 'run' && live.away
@@ -707,7 +704,7 @@ export function DrillPlayer(props: {
             </Suspense>
           </div>
         )}
-        <div className={`mob-stage${!fake ? ' mirror' : ''}`} style={{ aspectRatio: ratio }}>
+        <div className={`mob-stage${!fake ? ' mirror' : ''}${phase === 'frame' && live.fit ? (live.fit === 'ok' ? ' fit-ok' : ' fit-bad') : ''}`} style={{ aspectRatio: ratio }}>
           {!fake && <video ref={videoRef} playsInline muted />}
           <canvas ref={canvasRef} aria-hidden="true" />
           {status && <div className={`mob-status${phase === 'count' ? ' big' : ''}`}>{status}</div>}

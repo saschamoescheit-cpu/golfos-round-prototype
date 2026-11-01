@@ -118,11 +118,6 @@
 .mob-3d { margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .mob-3d-stage { position: relative; border-radius: 14px; overflow: hidden; background: #cfe6f5; aspect-ratio: 4 / 3; }
 .mob-3d-stage canvas { display: block; width: 100%; height: 100%; }
-.mob-3d-step {
-  display: flex; gap: 10px; align-items: center; min-height: 48px; padding: 8px 12px; border-radius: 12px; background: var(--surface);
-  color: var(--text); font: 600 15px var(--body);
-}
-.mob-3d-no { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--brand); color: #0e1418; display: inline-flex; align-items: center; justify-content: center; font: 700 12px var(--body); }
 .mob-3d-controls { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; align-items: center; gap: 6px; }
 .mob-3d-controls .grow { flex: 1; }
 .mob-3d-controls .chip, .mob-3d-controls .icon-btn { min-height: 44px; padding: 0 12px; background: rgba(14, 20, 24, 0.62); border-color: transparent; color: #ffffff; }
@@ -149,6 +144,9 @@
 /* play / pause: a round symbol bottom right in the picture, CI green (as in Training) */
 .mob-3d-play { position: absolute; right: 10px; bottom: 10px; width: 48px; height: 48px; border-radius: 50%; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--brand); color: #0e1418; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); cursor: pointer; }
 .mob-3d.compact .mob-3d-stage { border-radius: 12px; }
+/* the voice: a loudspeaker bottom left in the picture, CI green while it is on (Sascha 1.11.2026) */
+.mob-3d-voice { position: absolute; left: 10px; bottom: 10px; width: 48px; height: 48px; border-radius: 50%; border: 0; display: inline-flex; align-items: center; justify-content: center; background: rgba(14, 20, 24, 0.62); color: #ffffff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); cursor: pointer; }
+.mob-3d-voice[aria-pressed="true"] { background: var(--brand); color: #0e1418; }
 
 /* trainer mode: the 3D golfer over the camera – big while it shows the test, then small top right */
 .mob-stage-wrap { position: relative; }
@@ -256,3 +254,18 @@
 .mob-checks li { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; }
 .mob-check-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--display); background: var(--surface-2, rgba(255, 255, 255, 0.12)); color: var(--text-2); }
 .mob-checks li.ok .mob-check-mark { background: var(--brand); color: #ffffff; }
+
+/* the camera on the whole screen (Sascha 1.11.2026): first the 3D golfer shows the drill over the whole screen, then
+   the player sees himself as large as the phone allows; the buttons stay below the picture so they never cover the
+   feet. Red frame: something is not in the picture (the words say what), green: recognised. */
+.mob-camera { position: fixed; inset: 0; z-index: 70; gap: 0; background: #000; padding-top: env(safe-area-inset-top, 0px); }
+.mob-camera .mob-stage-wrap { flex: 1; min-height: 0; }
+.mob-camera .mob-stage { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; aspect-ratio: auto !important; border-radius: 0; }
+.mob-camera .mob-camera-actions { padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: #000; }
+.mob-camera .mob-private { padding: 6px 12px 0; color: rgba(255, 255, 255, 0.7); }
+.mob-camera .mob-demo.big { top: 0; right: 0; width: 100%; height: 100%; border-radius: 0; box-shadow: none; }
+.mob-camera .mob-demo.big .mob-3d, .mob-camera .mob-demo.big .mob-3d-stage { height: 100%; aspect-ratio: auto; border-radius: 0; }
+.mob-stage.fit-bad::after, .mob-stage.fit-ok::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border: 6px solid rgba(255, 107, 94, 0.9); }
+.mob-stage.fit-ok::after { border-color: #9bc53d; }
+.mob-stage.fit-bad .mob-status { background: rgba(150, 38, 28, 0.88); }
+.mob-stage.fit-ok .mob-status { background: rgba(58, 104, 18, 0.9); }

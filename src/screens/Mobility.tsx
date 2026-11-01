@@ -9,7 +9,7 @@ import { drillById } from '../training/content';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { VideoCard, VideoNote } from '../training/ui';
 import { saveOwnPlan, trainingId } from '../training/store';
-import type { Drill, L } from '../training/types';
+import { L, type Drill } from '../training/types';
 import { DRILL_CLIPS, RETEST_CLIPS } from '../mobility/anim3d/drills';
 import { CLIPS } from '../mobility/anim3d/clips';
 import type { Clip } from '../mobility/anim3d/scene';
@@ -613,7 +613,7 @@ function TestBrief(props: { test: TestDef; side: Side | null; noPicture?: boolea
   return (
     <>
       <Suspense fallback={<div className="mob-3d-wait" />}>
-        <Anim3D test={test.id} />
+        <Anim3D test={test.id} say={[t(test.setup), ...test.steps.map(t)]} />
       </Suspense>
       <section className="card tr-section">
         <p className="mob-why">{t(test.why)}</p>
@@ -744,18 +744,23 @@ function CoachSetup(props: { screening: Screening; single: boolean; onStart: () 
   );
 }
 
+const ANKLE_STEPS = [
+  L('Toes a hand width (10 cm) from the wall, kneel on the other knee.', 'Zehen eine Handbreit (10 cm) vor der Wand, auf das andere Knie knien.'),
+  L('Push the knee forward to the wall – the heel stays down. Then the other leg.', 'Das Knie nach vorn zur Wand schieben – die Ferse bleibt unten. Dann das andere Bein.'),
+];
+
 /** The heels came up: the knee-to-wall test tells whether the ankles are the limit (TPI: 10 cm, heel down). */
 function AnkleCheck(props: { onPick: (ok: boolean) => void }) {
   return (
     <section className="tr-block mob-self mob-ankle">
       <Suspense fallback={<div className="mob-3d-wait" />}>
-        <Anim3D clip={DRILL_CLIPS['mob-ankle-wall']} />
+        <Anim3D clip={DRILL_CLIPS['mob-ankle-wall']} say={[ANKLE_STEPS[0], ANKLE_STEPS[1]].map(t)} />
       </Suspense>
       <section className="card tr-section">
         <h2>{tr('Knee to the wall', 'Knie zur Wand')}</h2>
         <ol className="tr-steps">
-          <li>{tr('Toes a hand width (10 cm) from the wall, kneel on the other knee.', 'Zehen eine Handbreit (10 cm) vor der Wand, auf das andere Knie knien.')}</li>
-          <li>{tr('Push the knee forward to the wall – the heel stays down. Then the other leg.', 'Das Knie nach vorn zur Wand schieben – die Ferse bleibt unten. Dann das andere Bein.')}</li>
+          <li>{t(ANKLE_STEPS[0])}</li>
+          <li>{t(ANKLE_STEPS[1])}</li>
         </ol>
       </section>
       <h2>{tr('Which one is you?', 'Was passt zu dir?')}</h2>
@@ -1986,7 +1991,7 @@ function DrillHow(props: { d: Drill }) {
     <>
       {clip && (
         <Suspense fallback={<div className="mob-3d-wait" />}>
-          <Anim3D clip={clip} />
+          <Anim3D clip={clip} say={[t(d.setup), ...d.steps.map(t)]} />
         </Suspense>
       )}
       {!clip && d.sketch && <SketchView sketch={d.sketch} label={t(d.name)} />}

@@ -7,6 +7,7 @@ import type { Check, Grade, Measurement, MetricKind, Side, TestDef } from './typ
 import type { Clip } from './anim3d/scene';
 import { loadGoal, position, targetPos, targetValue } from './profile';
 import { logFrame, logItem, logResult } from './motionlog';
+import { FitVoice, fitOf, fitScreen, fitSpeech, type Fit } from './framing';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -230,7 +231,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
   const [count, setCount] = useState(3);
   // trainer mode: how often this test was not recognised and tried again by itself
   const missesRef = useRef(0);
-  const [live, setLive] = useState<{ value: number | null; best: number | null; hold?: number; missing: number; seen: boolean; calibrating?: boolean; people?: number; turned?: boolean }>({ value: null, best: null, missing: 0, seen: false });
+  const [live, setLive] = useState<{ value: number | null; best: number | null; hold?: number; missing: number; seen: boolean; calibrating?: boolean; people?: number; turned?: boolean; fit?: Fit }>({ value: null, best: null, missing: 0, seen: false });
   const [outcome, setOutcome] = useState<Outcome | null | undefined>(undefined);
   const finishRef = useRef<(() => void) | null>(null);
   const [shot, setShot] = useState<string | null>(null);
@@ -352,7 +353,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       go('result');
       if (out) {
         // the value, no grade (Sascha 18.10.2026: measuring, not grading)
-        say(`${valueText(kind, out.value, tr)}.`);
+        say(`${tr('Done', 'Fertig')}. ${valueText(kind, out.value, tr)}.`);
         setAuto(props.coach ? 4 : AUTO_SAVE_S);
       } else if (props.coach && missesRef.current < COACH_RETRIES) {
         // the player is 2.5–3 m away (or lying on the floor): try again by itself, twice, before asking for a tap
@@ -411,11 +412,13 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       }
       const t = fakeScript ? (now - fakeT0) * speed : now;
       const f: Frame | null = lm ? { lm, w, h, t } : null;
-      const missing = f ? missingPoints(kind, f).length : 99;
+      const missIdx = f ? missingPoints(kind, f) : [];
+      const missing = f ? missIdx.length : 99;
       const want = kind === 'bridge' ? null : (props.test.view ?? null);
       const facingNow = f ? facingOf(f) : null;
       const turned = !want || facingNow === want;
       const framed = !!f && missing === 0 && turned;
+      const fit = fitOf(f, missIdx, turned);
       draw(lm, w, h, framed || phaseRef.current === 'run');
       const ph = phaseRef.current;
       if (ph === 'frame') {
@@ -423,21 +426,20 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           if (framedSince < 0) framedSince = now;
           if (now - framedSince > (fake ? 300 : 1000)) startCountdown();
         } else framedSince = -1;
-        // spoken help, at most every 7 s: turn the right way, or step back
-        const wrong = !!f && missing === 0 && !turned;
-        wrongSince = wrong ? (wrongSince < 0 ? now : wrongSince) : -1;
-        missSince = f && missing > 0 ? (missSince < 0 ? now : missSince) : -1;
-        if (now - lastHint > 7000) {
-          if (wrongSince >= 0 && now - wrongSince > 1500) {
-            lastHint = now;
-            say(want === 'side' ? tr('Turn side-on to the phone.', 'Dreh dich seitlich zum Handy.') : tr('Turn face-on to the phone.', 'Dreh dich frontal zum Handy.'));
-          } else if (missSince >= 0 && now - missSince > 5000) {
-            lastHint = now;
-            say(tr('Step back – the whole body in the picture.', 'Weiter zurück – der ganze Körper ins Bild.'));
-          }
-        }
+        // spoken help: what is missing, once it lasts (not while the first sentence is still being said)
+        const hint = fitVoice.push(fit, now);
+        if (hint && (fake || !isSpeaking())) say(fitSpeech(hint, want, tr));
       }
       let runLog: { v?: number | null; cue?: string } = {};
+      // out of the picture while measuring: once, after 1.5 s
+      if (ph === 'run') {
+        lostSince = f ? -1 : lostSince < 0 ? now : lostSince;
+        if (!f && !spokeLost && now - lostSince > 1500) {
+          spokeLost = true;
+          say(tr('Come back into the picture.', 'Komm zurück ins Bild.'));
+        }
+        if (f) spokeLost = false;
+      }
       if (ph === 'run' && f && analyzer) {
         const l = analyzer.push(f);
         runLog = { v: l.value == null ? null : Math.round(l.value * 10) / 10, ...(l.cue ? { cue: l.cue } : {}) };
@@ -468,7 +470,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
         }
       } else if (now - lastUi > 150 && ph !== 'result') {
         lastUi = now;
-        setLive((x) => ({ ...x, missing, seen: !!f, people, turned }));
+        setLive((x) => ({ ...x, missing, seen: !!f, people, turned, fit }));
       }
       // (the time the measuring saw: the synthetic player's own clock in the QA)
       if (ph === 'frame' || ph === 'count' || ph === 'run') logFrame(fakeScript ? t : t - logT0, ph === 'frame' ? 'f' : ph === 'count' ? 'c' : 'r', 0, lm, w, h, ph === 'run' ? runLog : {});
@@ -479,14 +481,15 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
     let rateT0 = performance.now();
     let rateN = 0;
     let demoTimer = 0;
-    let wrongSince = -1;
-    let missSince = -1;
-    let lastHint = 0;
+    const fitVoice = new FitVoice();
+    let lostSince = -1;
+    let spokeLost = false;
     const startCountdown = () => {
       go('count');
       analyzer = makeAnalyzer(kind, sideParam, { noArms: props.variant === 'handsBehind' });
       const instruction = `${props.variant === 'handsBehind' ? tr('Hands behind the head.', 'Hände hinter den Kopf.') : sideText(kind, props.side)} ${CALIBRATES.includes(kind) ? tr('Look at the phone and hold still.', 'Schau zum Handy und halte still.') : ''}`;
-      say(instruction);
+      beep(980, 120);
+      say(`${fitSpeech('ok', null, tr)} ${instruction}`);
       // wait for the sentence (max 6 s), then 3 – 2 – 1
       const t0 = performance.now();
       const waitSpeech = () => {
@@ -754,15 +757,11 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       : phase === 'demo'
         ? tr('Watch', 'Schau zu')
       : phase === 'frame'
-        ? !live.seen
-          ? tr('Step into the picture', 'Stell dich ins Bild')
-          : live.missing
-            ? tr('Step back – the whole body in the picture', 'Weiter zurück – der ganze Körper ins Bild')
-            : live.turned === false
-              ? props.test.view === 'side'
-                ? tr('Turn side-on to the phone', 'Dreh dich seitlich zum Handy')
-                : tr('Turn face-on to the phone', 'Dreh dich frontal zum Handy')
-              : tr('Hold still …', 'Still halten …')
+        ? live.fit && live.fit !== 'ok'
+          ? fitScreen(live.fit, props.test.view, tr)
+          : !live.seen
+            ? tr('Step into the picture', 'Stell dich ins Bild')
+            : `${fitScreen('ok', null, tr)} – ${tr('hold still …', 'still halten …')}`
         : phase === 'count'
           ? String(count)
           : phase === 'result'
@@ -785,7 +784,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
           </Suspense>
         </div>
       )}
-      <div className={`mob-stage${facing === 'user' && !fake && !fakeImage() ? ' mirror' : ''}`} style={{ aspectRatio: ratio }}>
+      <div className={`mob-stage${facing === 'user' && !fake && !fakeImage() ? ' mirror' : ''}${phase === 'frame' && live.fit ? (live.fit === 'ok' ? ' fit-ok' : ' fit-bad') : ''}`} style={{ aspectRatio: ratio }}>
         {!fake && <video ref={videoRef} playsInline muted />}
         <canvas ref={canvasRef} aria-hidden="true" />
         {status && <div className={`mob-status${phase === 'count' ? ' big' : ''}`}>{status}</div>}
