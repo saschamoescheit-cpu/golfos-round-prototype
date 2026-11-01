@@ -3,7 +3,7 @@
 // the round is set up, with the flight partners", "in a team event one keeps the team's score, the others cannot
 // overwrite it – if Sascha's battery is empty Cedric goes on"): three phones. Sascha sets up a scramble round (Sascha &
 // Ben), makes it a tournament and gets the code in the setup; Ben joins the same team with the link before the start;
-// Max starts a flight of his own (Max & Simon). Sascha keeps the team's card, Ben's phone shows it without steppers and
+// Max is let in (no flight of his own – tournaments are planned in Games). Sascha keeps the team's card, Ben's phone shows it without steppers and
 // takes it over; then Ben's scores reach Sascha's phone. The leaderboard ranks both teams. Supabase is simulated in
 // this script (the table golfos_shared_games, with its write rule "only if nobody wrote in between"), the app is real.
 // Usage: node qa/shareround.mjs [url]
@@ -42,13 +42,12 @@ await H.locator('.pick-option strong').getByText('Scramble', { exact: true }).cl
 const card = H.locator('.invite-card');
 await card.waitFor({ timeout: 10000 });
 ok(await card.isVisible() && /^Mitspieler einladen/.test(await card.innerText()), 'setup: "Mitspieler einladen" with the players, before the start');
-await card.getByRole('switch', { name: /Turnier über mehrere Flights/ }).click();
-await card.locator('#event-name').fill('Scramble Samstag');
 await card.getByRole('button', { name: 'Code erzeugen' }).click();
 await H.waitForTimeout(800);
 const code = (await card.locator('.join-code').innerText()).trim();
 ok(/^[A-Z0-9]{6}$/.test(code) && (await card.locator('.qr-box svg').count()) === 1, `setup: code ${code} with a QR code`);
-ok(event()?.kind === 'round-event' && event().tournament && event().name === 'Scramble Samstag', 'server: the event, a tournament with its name');
+// (no tournament made here any more – they are planned in Games since 01.11.2026: qa/plannedtourney.mjs)
+
 const f1 = Object.values(event().flights)[0];
 ok(f1.players.length === 1 && f1.players[0].name === 'Sascha & Ben', `server: flight 1 – the team "${f1.players.map((p) => p.name).join()}"`);
 ok(Object.values(f1.phones ?? {}).map((p) => p.name).join() === 'Sascha', 'server: Sascha\'s phone in the flight – it keeps the card');
@@ -105,7 +104,7 @@ await M.getByRole('button', { name: 'Runde beitreten' }).click();
 const nearRow = mj.locator('.near-round');
 await nearRow.first().waitFor({ timeout: 10000 }).catch(() => {});
 const nearText = (await nearRow.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
-ok(nearText.length === 1 && /Scramble Samstag · Scramble/.test(nearText[0]) && /\b(9\d|10\d) m\b/.test(nearText[0]), `Max: "In der Nähe" – ${nearText.join(' | ') || 'nothing'}`);
+ok(nearText.length === 1 && /Runde von Sascha · Scramble/.test(nearText[0]) && /\b(9\d|10\d) m\b/.test(nearText[0]), `Max: "In der Nähe" – ${nearText.join(' | ') || 'nothing'}`);
 await nearRow.first().click();
 // the host must let him in (Sascha 29.10.2026): Max waits, Sascha's phone – on the hole map – asks
 await mj.getByText('Anfrage an Sascha gesendet').waitFor({ timeout: 8000 }).catch(() => {});
@@ -115,16 +114,13 @@ await ask.waitFor({ timeout: 12000 }).catch(() => {});
 ok(await ask.isVisible(), 'Sascha, on the hole map: "Max möchte deiner Runde beitreten"');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/round-join-ask.png' });
 await ask.getByRole('button', { name: 'Zulassen' }).click();
-await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).waitFor({ timeout: 10000 }).catch(() => {});
-ok(await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).isVisible(), 'Max: let in – the round opens on his phone');
+await mj.getByText('Wer bist du?').waitFor({ timeout: 10000 }).catch(() => {});
+ok(await mj.getByText('Wer bist du?').isVisible(), 'Max: let in - the round opens on his phone (who is he in the flight?)');
+ok((await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).count()) === 0, 'Max: no flight of his own - a round on the course is no tournament');
 ok(pushes.some((x) => x.action === 'asked' && x.ref && x.from === 'Max'), 'push: the host hears that Max asks (nearby)');
 ok((await ask.count()) === 0, 'Sascha: the request gone once answered');
-await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).click();
-ok((await mj.getByRole('textbox', { name: 'Spieler 1', exact: true }).inputValue()) === 'Max', 'Max: his own flight – his name first, from the profile');
-await mj.getByRole('textbox', { name: 'Spieler 2', exact: true }).fill('Simon');
-await mj.getByRole('button', { name: 'Flight starten' }).click();
-await M.locator('.map-hole-no').waitFor({ timeout: 30000 });
-ok(Object.keys(event().flights).length === 2 && Object.values(event().flights).some((f) => f.players[0]?.name === 'Max & Simon'), 'server: the second flight – the team "Max & Simon"');
+await mj.getByRole('button', { name: 'Schließen' }).click();
+ok(Object.keys(event().flights).length === 1, 'server: still the one flight');
 
 // ---------- Tom, a stranger on the course: asks, Sascha declines ----------
 const fourth = await phone('Tom');
@@ -139,7 +135,7 @@ await askT.waitFor({ timeout: 12000 }).catch(() => {});
 await askT.getByRole('button', { name: 'Ablehnen' }).click();
 await tj.getByText('Sascha hat den Beitritt abgelehnt').waitFor({ timeout: 10000 }).catch(() => {});
 ok(await tj.getByText('Sascha hat den Beitritt abgelehnt').isVisible(), 'Tom: declined – "Sascha hat den Beitritt abgelehnt"');
-ok(Object.keys(event().flights).length === 2 && ![...shared.values()][0].members.includes('Tom'), 'server: Tom not in the event');
+ok(Object.keys(event().flights).length === 1 && ![...shared.values()][0].members.includes('Tom'), 'server: Tom not in the event');
 await fourth.p.context().close();
 
 // ---------- scores: one keeps the team's card ----------
@@ -152,7 +148,6 @@ const enter = async (p, clicks) => {
   await p.waitForTimeout(500);
 };
 await enter(H, 1); // Sascha's phone: par on hole 1
-await enter(M, 2); // Max: bogey
 await H.waitForTimeout(12000);
 const g1 = await round(G);
 ok(g1.entries.me[0].strokes != null && g1.entries.me[0].strokes === (await round(H)).entries.me[0].strokes, `Ben's phone: the team's score from Sascha's phone (${g1.entries.me[0].strokes})`);
@@ -185,19 +180,10 @@ await H.waitForTimeout(300);
 ok(/Ben führt die Scorecard des Teams/.test(await H.locator('.score-panel').innerText()), 'Sascha: now Ben keeps the card – Sascha can take it back');
 await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
 
-// ---------- the live leaderboard ----------
-await H.locator('.hole-bar-handle').click();
-await H.locator('.hole-drawer').getByRole('button', { name: 'Leaderboard · Turnier' }).click();
-await H.waitForTimeout(400);
-const board = H.locator('.event-board');
-const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
-ok(rows.length === 2 && /Sascha & Ben/.test(rows[0]) && /Max & Simon/.test(rows[1]), `leaderboard of the tournament: ${rows.join(' | ')}`);
-ok(/Turnier · 2 Flights/.test(await board.innerText()), 'leaderboard: "Turnier · 2 Flights"');
-ok((await board.locator('li.lb-mine').count()) === 1 && /Sascha & Ben/.test(await board.locator('li.lb-mine').innerText()), 'leaderboard: the own team marked');
-if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/round-leaderboard.png' });
-// a tournament: each flight in its own row (Sascha 30.10.2026: "12 phones must not slow each other down")
+// (the live leaderboard of a tournament: qa/plannedtourney.mjs – one team alone has none)
+// one flight: in the event's row (a tournament's flights each in a row of their own – qa/plannedtourney.mjs)
 const own = [...shared.values()].filter((r) => r.event_code === code);
-ok(own.length === 2 && own.every((r) => r.game.kind === 'round-flight') && flightReads() > 0, `server: the tournament's two flights in rows of their own (${own.map((r) => r.game.flight.name).join(' | ')})`);
+ok(own.length === 0, "server: a round of one flight stays in the event's row");
 console.log(`(writes refused because another phone wrote in between: ${refused()})`);
 ok(host.errs.length === 0 && guest.errs.length === 0 && third.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs, ...third.errs].slice(0, 2).join(' | ')}`);
 await b.close();

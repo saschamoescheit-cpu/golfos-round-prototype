@@ -15,43 +15,13 @@ const ok = (cond, what) => {
 const sim = sharedServer(b, url);
 const host = await sim.phone('Sascha');
 const H = host.p;
-await H.getByRole('button', { name: 'Neue Runde' }).click();
-await H.waitForTimeout(1200);
-await H.fill('#course-search', 'Hetzenhof');
-await H.waitForTimeout(2000);
-await H.locator('button.list-item').first().click();
-await H.getByText('Runde starten').waitFor({ timeout: 30000 });
-await H.getByRole('button', { name: /A · 9 Löcher/ }).click();
-await H.locator('input[id^="name-"]').first().fill('Sascha');
-await H.locator('input[id^="hcp-"]').first().fill('10');
-await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
-await H.locator('input[id^="name-"]').last().fill('Ben');
-await H.locator('input[id^="hcp-"]').last().fill('54'); // 9 holes: half – still above 18
-const card = H.locator('.invite-card');
-await card.waitFor({ timeout: 10000 });
-await card.getByRole('switch', { name: /Turnier über mehrere Flights/ }).click();
-await card.locator('#event-name').fill('Clubturnier');
-await card.getByRole('button', { name: 'A bis 18 · B', exact: true }).click();
-await card.getByRole('button', { name: 'Code erzeugen' }).click();
-await card.locator('.join-code').waitFor({ timeout: 8000 });
-const code = (await card.locator('.join-code').innerText()).trim();
+// (planned in Games since 01.11.2026 – the plan made by the app's own code: Sascha & Ben, and Max's flight)
+const code = await sim.plan(H, { name: 'Clubturnier', classes: [18], flights: [{ players: [{ name: 'Sascha', playingHandicap: 5 }, { name: 'Ben', playingHandicap: 27 }] }, { players: [{ name: 'Max', playingHandicap: null }] }] });
 ok(JSON.stringify(sim.event()?.classes) === '[18]', `server: the tournament's classes (${JSON.stringify(sim.event()?.classes)})`);
-await H.getByRole('button', { name: 'Runde starten' }).click();
-await H.locator('.map-hole-no').waitFor({ timeout: 30000 });
-
-// Max: asks with the code, let in, a flight of his own
+await sim.joinPlanned(H, code);
 const max = await sim.phone('Max');
 const M = max.p;
-await M.getByRole('button', { name: 'Runde beitreten' }).click();
-const mj = M.getByRole('dialog', { name: 'Runde beitreten' });
-await mj.getByRole('textbox', { name: 'Code der Runde' }).fill(code);
-await mj.getByRole('button', { name: 'Beitreten', exact: true }).click();
-const ask = H.getByRole('alertdialog', { name: 'Max möchte beitreten' });
-await ask.waitFor({ timeout: 15000 });
-await ask.getByRole('button', { name: 'Zulassen' }).click();
-await mj.getByRole('button', { name: 'Eigenen Flight anlegen' }).click({ timeout: 15000 });
-await mj.getByRole('button', { name: 'Flight starten' }).click();
-await M.locator('.map-hole-no').waitFor({ timeout: 30000 });
+await sim.joinPlanned(M, code);
 
 // hole 1: Sascha 5, Ben 6 (on Sascha's phone – no phone of his), Max 4
 const block = (p, name) => p.locator('.score-player').filter({ has: p.locator('.score-player-head strong', { hasText: new RegExp(`^${name}$`) }) });

@@ -49,7 +49,10 @@ export function sharedServer(b, url, o = {}) {
       const { join_code } = body();
       const row = shared.get(join_code);
       if (!row) return json(200, null);
-      if (!o.old && row.game.kind === 'round-event' && row.owner !== uid && !row.members.includes(uid)) return json(200, { kind: 'ask-host' });
+      if (row.event_code) return json(200, null); // a flight's row: only through its event
+      // a tournament planned in Games (01.11.2026): the code is the host's invitation – in at once, unless called off
+      if (row.game.planned && row.game.deletedAt) return json(200, row.game);
+      if (!o.old && row.game.kind === 'round-event' && !row.game.planned && row.owner !== uid && !row.members.includes(uid)) return json(200, { kind: 'ask-host' });
       if (row.owner !== uid && !row.members.includes(uid)) row.members.push(uid);
       return json(200, row.game);
     }
@@ -91,6 +94,12 @@ export function sharedServer(b, url, o = {}) {
       const inEvent = (ev) => !!shared.get(ev) && (shared.get(ev).owner === uid || shared.get(ev).members.includes(uid));
       const mine = row && (row.event_code ? inEvent(row.event_code) : row.owner === uid || row.members.includes(uid));
       const evCode = (u.searchParams.get('event_code') ?? '').replace(/^eq\./, '');
+      // the planned tournaments of a day this account may read (Rounds' start page)
+      if (req.method() === 'GET' && u.searchParams.has('game->>planned')) {
+        const day = (u.searchParams.get('game->>date') ?? '').replace(/^eq\./, '');
+        const rows = [...shared.entries()].filter(([, r]) => !r.event_code && r.game.planned && (!day || r.game.date === day) && (r.owner === uid || r.members.includes(uid)));
+        return json(200, rows.map(([c, r]) => ({ code: c, game: r.game })));
+      }
       if (req.method() === 'GET' && u.searchParams.has('event_code')) {
         if (o.noSplit) return json(400, { code: '42703', message: 'column golfos_shared_games.event_code does not exist' });
         flightReads++;
@@ -159,5 +168,37 @@ export function sharedServer(b, url, o = {}) {
     const own = [...shared.values()].filter((r) => r.event_code === code).map((r) => r.game.flight);
     return { ...row.game, flights: { ...row.game.flights, ...Object.fromEntries(own.map((f) => [f.id, f])) } };
   };
-  return { shared, pushes, phone, round, event, refused: () => refused, flightReads: () => flightReads };
+  /**
+   * A tournament planned ahead as Games does it (Sascha 01.11.2026: "planned in Games, played in Rounds") – through the
+   * app's own code on the host's page: plannedEvent + publishPlannedEvent. `option` picks the holes by the loop option's
+   * label (/A · 9/, /Kurzplatz/); `date` defaults to today on the phone. The code.
+   */
+  async function plan(p, o) {
+    return p.evaluate(async (o) => {
+      const sr = await import('/src/lib/sharedround.ts');
+      const { searchBundled, loadCourse } = await import('/src/lib/courses.ts');
+      const { loopOptions, buildRoundHoles } = await import('/src/lib/loops.ts');
+      const summary = searchBundled(o.course ?? 'Hetzenhof')[0];
+      const course = await loadCourse(summary);
+      const opt = loopOptions(course.holes).find((x) => new RegExp(o.option ?? 'A · 9').test(x.label)) ?? loopOptions(course.holes)[0];
+      const ev = sr.plannedEvent({
+        name: o.name,
+        date: o.date ?? sr.localDay(),
+        course: summary,
+        holes: buildRoundHoles(course.holes, opt),
+        loopOrder: opt.loops,
+        format: o.format ?? { mode: 'single', scoring: 'net', allowance: 100 },
+        ...(o.classes ? { classes: o.classes } : {}),
+        flights: o.flights,
+      });
+      return sr.publishPlannedEvent(ev);
+    }, o);
+  }
+  /** A phone joins a planned tournament by its link on the day: its own name in the plan – in at once, the hole map. */
+  async function joinPlanned(p, code) {
+    await p.goto('about:blank');
+    await p.goto(url + '#round=' + code);
+    await p.locator('.map-hole-no').waitFor({ timeout: 30000 });
+  }
+  return { shared, pushes, phone, round, event, plan, joinPlanned, refused: () => refused, flightReads: () => flightReads };
 }

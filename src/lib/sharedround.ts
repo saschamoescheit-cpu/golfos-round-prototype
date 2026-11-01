@@ -459,7 +459,7 @@ export function eventBoard(ev: RoundEvent): Board {
   const fmt = ev.format ?? DEFAULT_FORMAT;
   const players: Player[] = [];
   const entries: Round['entries'] = {};
-  for (const f of Object.values(ev.flights)) {
+  for (const f of liveFlights(ev)) {
     for (const p of f.players) {
       const id = `${f.id}/${p.id}`;
       players.push({ id, name: p.name, playingHandicap: p.playingHandicap, isMe: false });
@@ -502,7 +502,7 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
   const players: Player[] = [];
   const entries: Round['entries'] = {};
   const meta: Record<string, { flight: string; cls: string; signed: boolean }> = {};
-  for (const f of Object.values(ev.flights)) {
+  for (const f of liveFlights(ev)) {
     for (const p of f.players) {
       const id = `${f.id}/${p.id}`;
       players.push({ id, name: p.name, playingHandicap: p.playingHandicap, isMe: false });
@@ -564,7 +564,7 @@ export function standingsCsv(ev: RoundEvent, gross = false): string {
 }
 /** A tournament's flights as they stand: holes played, and when a phone of the flight was last heard of. */
 export function flightStatus(ev: RoundEvent, now = Date.now()): { id: string; name: string; thru: number; quietMin: number | null; finished: boolean }[] {
-  return Object.values(ev.flights).map((f) => {
+  return liveFlights(ev).map((f) => {
     const thru = Math.max(0, ...f.players.map((p) => ev.holes.filter((_, i) => scoreAt(f, p.id, i) != null).length));
     const last = Math.max(0, ...Object.values(f.phones ?? {}).map((ph) => new Date(ph.seen ?? ph.at).getTime()));
     return { id: f.id, name: f.name, thru, quietMin: last ? Math.floor((now - last) / 60000) : null, finished: !!f.finishedAt || thru === ev.holes.length };
@@ -881,8 +881,10 @@ export async function publishPlannedEvent(ev: RoundEvent): Promise<string | null
 export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<RoundEvent | null> {
   const { flights, ...frame } = ev;
   const written = await update(code, (now) => ({ ...now, ...frame, flights: now.flights }));
-  if (!written) return null;
-  const ids = new Set([...Object.keys(written.flights), ...Object.keys(flights)]);
+  // every flight as it stands – its own rows too (a flight added after the plan lives only there)
+  const now = written ? await refreshEvent(code) : null;
+  if (!now) return null;
+  const ids = new Set([...Object.keys(now.flights), ...Object.keys(flights)]);
   for (const fid of ids) {
     const want = flights[fid];
     const done = await changeFlight(code, fid, true, (f) => {
@@ -894,6 +896,40 @@ export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<
     if (!done) return null;
   }
   return refreshEvent(code);
+}
+
+/** The flights that play – a flight the host took out of the plan keeps its row, empty (updatePlannedEvent). */
+export const liveFlights = (ev: RoundEvent): Flight[] => Object.values(ev.flights).filter((f) => f.players.length > 0);
+
+/** Today on this phone, "YYYY-MM-DD". */
+export const localDay = (d = new Date()): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+/** A planned tournament before its day: joined already, played only on the day. */
+export const plannedAhead = (ev: RoundEvent, today = localDay()): boolean => !!ev.planned && !!ev.date && ev.date > today;
+/** The flight a name plays in (a team's name holds it with " & ") – for "your flight · 09:20". */
+export function flightOfName(ev: RoundEvent, name: string): Flight | null {
+  const me = name.trim().toLowerCase();
+  if (!me) return null;
+  const hits = liveFlights(ev).filter((f) => f.players.some((p) => p.name.toLowerCase().split(' & ').includes(me)));
+  return hits.length === 1 ? hits[0] : null;
+}
+
+/** This account's planned tournaments on their day – Rounds shows them from 00:01 (Sascha 01.11.2026): the ones it
+ *  planned and the ones it joined by code or link; called off ones not. */
+export async function tournamentsToday(): Promise<{ code: string; ev: RoundEvent }[]> {
+  const h = await headers();
+  if (!h) return [];
+  try {
+    const r = await fetch(`${table()}?select=code,game&event_code=is.null&game->>planned=eq.true&game->>date=eq.${localDay()}`, { headers: h });
+    if (!r.ok) return [];
+    const out: { code: string; ev: RoundEvent }[] = [];
+    for (const row of (await r.json()) as { code: string; game: unknown }[]) {
+      if (!isEvent(row.game) || row.game.deletedAt) continue;
+      out.push({ code: row.code, ev: (await refreshEvent(row.code)) ?? row.game });
+    }
+    return out;
+  } catch {
+    return [];
+  }
 }
 
 /** A tournament's new flight goes into the event (its own row, the event marked a tournament). */

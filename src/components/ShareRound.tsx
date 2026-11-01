@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightStatus, joinEvent, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent } from '../lib/sharedround';
+import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, joinEvent, liveFlights, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
 import { loadProfile, saveProfile, shownName } from '../lib/profile';
 import { loadSession, signIn, signInAnonymously } from '../lib/sync';
 import { inviteByName, pushAsked } from '../lib/push';
-import { tr } from '../lib/i18n';
+import { getLang, tr } from '../lib/i18n';
 import { Qr } from './ShareGame';
+
+/** A planned tournament's day: "Fr., 6.11." */
+export const dayText = (d: string): string => new Date(`${d}T12:00:00`).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
 import { Avatar } from './Avatar';
 
 // Invite to a round and join one (Sascha 29.10.2026): the flight partners on their own phones – each keeps his own
@@ -41,16 +44,13 @@ function here(): Promise<{ lat: number; lon: number } | null> {
 }
 
 /**
- * The invitation: before the code the choice "tournament" (with its name), then the code, the QR code and "share the
+ * The invitation: the code, the QR code and "share the
  * link". `round` is the round – or, in the setup, the round as it would start now (its players and holes go to the
  * event; what changes before the start follows with the first exchange).
  */
 export function InvitePanel(props: { round: Round; onShared: (r: Round) => void; compact?: boolean }) {
   const shared = props.round.shared;
-  const [tournament, setTournament] = useState(false);
-  // a tournament's net classes by playing handicap (Sascha's concept 30.10.2026)
-  const [classes, setClasses] = useState<number[]>([]);
-  const [name, setName] = useState(() => `${props.round.courseName} · ${new Date(props.round.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
+  const [name] = useState(() => `${props.round.courseName} · ${new Date(props.round.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   // the round shown to signed-in phones nearby (Sascha 29.10.2026) – here, or (no GPS) on the course
@@ -84,22 +84,15 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
         <span className="muted small">
           {team
             ? tr(
-                'Your flight on their own phones (signed in with Google): one of the team keeps the card – another can take it over. Several flights: a tournament with a live leaderboard.',
-                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Mehrere Flights: ein Turnier mit Live-Leaderboard.',
+                'Your flight on their own phones (signed in with Google): one of the team keeps the card – another can take it over. Tournaments are planned under Games → Tournaments.',
+                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Turniere werden unter Games → Turniere geplant.',
               )
             : tr(
-                'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others live; with a marker also a partner\'s. Several flights: a tournament with a live leaderboard.',
-                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen live; mit Zähler auch den eines Mitspielers. Mehrere Flights: ein Turnier mit Live-Leaderboard.',
+                'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others live; with a marker also a partner\'s. Tournaments are planned under Games → Tournaments.',
+                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen live; mit Zähler auch den eines Mitspielers. Turniere werden unter Games → Turniere geplant.',
               )}
         </span>
         <div className="drawer-list settings-switches">
-          <button type="button" className="drawer-row" role="switch" aria-checked={tournament} onClick={() => setTournament(!tournament)}>
-            <span className="switch-label">
-              <span>{tr('Tournament over several flights', 'Turnier über mehrere Flights')}</span>
-              <span className="muted small">{tr('Other flights join with the code and start their own flight; everyone marks a partner', 'Weitere Flights treten mit dem Code bei und legen ihren eigenen Flight an; jeder zählt einen Mitspieler')}</span>
-            </span>
-            <span className={`drawer-switch${tournament ? ' on' : ''}`} aria-hidden="true" />
-          </button>
           <button type="button" className="drawer-row" role="switch" aria-checked={near} onClick={() => setNear(!near)}>
             <span className="switch-label">
               <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
@@ -108,27 +101,13 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
             <span className={`drawer-switch${near ? ' on' : ''}`} aria-hidden="true" />
           </button>
         </div>
-        {tournament && (
-          <div className="field">
-            <label htmlFor="event-name">{tr('Name of the tournament', 'Name des Turniers')}</label>
-            <input id="event-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
-            <span className="muted small">{tr('Net classes by playing handicap', 'Netto-Klassen nach Spielvorgabe')}</span>
-            <div className="chip-set">
-              {([[], [18], [12, 24]] as number[][]).map((c) => (
-                <button key={c.join()} type="button" className={`chip${classes.join() === c.join() ? ' on' : ''}`} aria-pressed={classes.join() === c.join()} onClick={() => setClasses(c)}>
-                  {!c.length ? tr('None', 'Keine') : c.length === 1 ? tr(`A up to ${c[0]} · B`, `A bis ${c[0]} · B`) : tr(`A up to ${c[0]} · B up to ${c[1]} · C`, `A bis ${c[0]} · B bis ${c[1]} · C`)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         <button
           type="button"
           className="btn-primary"
           disabled={busy}
           onClick={async () => {
             setBusy(true);
-            const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament, who: myName(), ...(tournament && classes.length ? { classes } : {}) });
+            const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament: false, who: myName() });
             setBusy(false);
             if (r) {
               props.onShared(r);
@@ -228,7 +207,15 @@ type NewPlayer = { name: string; hcp: string };
 /** A code being joined when the player went off to sign in with Google: Play opens it again on the way back. */
 export const PENDING_JOIN = 'golfos.join.pending';
 
-export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) => void; onClose: () => void; /** a game's code: join it in Games */ onGameCode?: (code: string) => void }) {
+export function JoinRoundSheet(props: {
+  initial?: string;
+  onJoined: (r: Round) => void;
+  onClose: () => void;
+  /** a game's code: join it in Games */
+  onGameCode?: (code: string) => void;
+  /** a planned tournament joined before its day: on to Games → Tournaments */
+  onTours?: () => void;
+}) {
   const [code, setCode] = useState(cleanCode(props.initial ?? ''));
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -344,7 +331,7 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
     setBusy(tr('Loading the course …', 'Lade den Platz …'));
     await loadCourse(e.course).catch(() => null); // offline: the round still plays, the map as far as the phone has it
   };
-  const flights = ev ? Object.values(ev.flights) : [];
+  const flights = ev ? liveFlights(ev) : [];
   const team = isTeamMode(ev?.format?.mode);
   const join = async (e: RoundEvent, f: Flight, pid: string) => {
     await ready(e);
@@ -362,7 +349,7 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
     return hits.length === 1 ? hits[0] : null;
   };
   useEffect(() => {
-    if (!ev || own || busy) return;
+    if (!ev || own || busy || plannedAhead(ev) || ev.deletedAt) return; // a planned tournament: on its day, not called off
     const hit = mine(ev);
     if (hit) {
       void join(ev, hit.f, hit.pid);
@@ -484,7 +471,27 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
             )}
           </>
         )}
-        {ev && !own && (
+        {/* a tournament planned in Games (Sascha 01.11.2026): called off – or joined before its day, played on the day */}
+        {ev?.planned && ev.deletedAt && (
+          <span className="small bad-text" role="alert">
+            {tr('The host has called this tournament off.', 'Der Gastgeber hat dieses Turnier abgesagt.')}
+          </span>
+        )}
+        {ev?.planned && !ev.deletedAt && plannedAhead(ev) && (
+          <div className="join-wait" role="status">
+            <strong>{tr("You're in", 'Du bist dabei')}</strong>
+            <span>
+              {[ev.name, dayText(ev.date!), ev.course.name, ((f) => (f ? tr(`your flight${f.teeTime ? ` ${f.teeTime}` : ''}`, `dein Flight${f.teeTime ? ` ${f.teeTime}` : ''}`) : ''))(flightOfName(ev, who()))].filter(Boolean).join(' · ')}
+            </span>
+            <span className="muted small">{tr('On the day of the tournament it is in Rounds from 00:01 – before that under Games → Tournaments.', 'Am Turniertag ab 00:01 in Rounds – vorab unter Games → Turniere.')}</span>
+            {props.onTours && (
+              <button type="button" className="btn-secondary" onClick={props.onTours}>
+                {tr('To the tournaments', 'Zu den Turnieren')}
+              </button>
+            )}
+          </div>
+        )}
+        {ev && !own && !(ev.planned && (ev.deletedAt || plannedAhead(ev))) && (
           <>
             <span className="muted small">{ev.course.name}</span>
             {awaitName.current > 0 && !mine(ev) && (
@@ -494,7 +501,9 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
             )}
             {flights.map((f) => (
               <div className="field" key={f.id}>
-                <label>{flights.length > 1 ? tr(`Flight ${f.name} – who are you?`, `Flight ${f.name} – wer bist du?`) : tr('Who are you?', 'Wer bist du?')}</label>
+                <label>
+                  {flights.length > 1 ? tr(`Flight ${f.name}${f.teeTime ? ` · ${f.teeTime}` : ''} – who are you?`, `Flight ${f.name}${f.teeTime ? ` · ${f.teeTime}` : ''} – wer bist du?`) : tr('Who are you?', 'Wer bist du?')}
+                </label>
                 <div className="chip-set">
                   {f.players.map((p) => {
                     // already on a phone: a single player is taken; a team's second phone joins it (and can take the card over)
@@ -517,7 +526,8 @@ export function JoinRoundSheet(props: { initial?: string; onJoined: (r: Round) =
                 </div>
               </div>
             ))}
-            {ev.tournament && (
+            {/* a planned tournament: its flights come from the plan */}
+            {ev.tournament && !ev.planned && (
               <button type="button" className="btn-secondary" onClick={() => setOwn([{ name: shownName(loadProfile()), hcp: '' }, { name: '', hcp: '' }])}>
                 {tr('Start a flight of my own', 'Eigenen Flight anlegen')}
               </button>
@@ -589,7 +599,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
   if (!ev) return null;
   const b = eventStandings(ev, { gross, cls });
   const mine = new Set((ev.flights[props.myFlight]?.players ?? []).map((p) => `${props.myFlight}/${p.id}`));
-  const flights = Object.keys(ev.flights).length;
+  const flights = liveFlights(ev).length;
   const net = (ev.format?.allowance ?? 100) > 0;
   const classes = ev.classes?.length ? CLASS_LETTERS.slice(0, ev.classes.length + 1) : [];
   const diff = (key: string): string | null => {

@@ -14,44 +14,22 @@ const ok = (cond, what) => {
   if (!cond) fails++;
 };
 // a server without the SQL of 30.10.2026: the tournament's flights stay in the event's row
-const { phone, event, shared } = sharedServer(b, url, { noSplit: true });
+const { phone, event, shared, plan, joinPlanned } = sharedServer(b, url, { noSplit: true });
 const flight = () => Object.values(event().flights)[0];
 
 // Sascha: a stroke play round with Cedric, a tournament – the code in the setup
+// (tournaments are planned in Games since 01.11.2026 – the plan made by the app's own code, then both join by link)
 const host = await phone('Sascha');
 const H = host.p;
-await H.getByRole('button', { name: 'Neue Runde' }).click();
-await H.waitForTimeout(1200);
-await H.fill('#course-search', 'Hetzenhof');
-await H.waitForTimeout(2000);
-await H.locator('button.list-item').first().click();
-await H.getByText('Runde starten').waitFor({ timeout: 30000 });
-await H.getByRole('button', { name: /A · 9 Löcher/ }).click();
-await H.locator('input[id^="name-"]').first().fill('Sascha');
-await H.locator('input[id^="hcp-"]').first().fill('10');
-await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
-await H.locator('input[id^="name-"]').last().fill('Cedric');
-await H.locator('input[id^="hcp-"]').last().fill('18');
-const card = H.locator('.invite-card');
-await card.getByRole('switch', { name: /Turnier über mehrere Flights/ }).click();
-await card.getByRole('button', { name: 'Code erzeugen' }).click();
-await H.waitForTimeout(800);
-const code = (await card.locator('.join-code').innerText()).trim();
+const code = await plan(H, { name: 'Hetzenhof', format: { mode: 'single', scoring: 'net', allowance: 100 }, flights: [{ players: [{ name: 'Sascha', playingHandicap: 5 }, { name: 'Cedric', playingHandicap: 9 }] }] });
 const ids = flight().players.map((p) => p.id);
 ok(ids.length === 2 && flight().markers?.[ids[0]] === ids[1] && flight().markers?.[ids[1]] === ids[0], 'server: Sascha and Cedric mark each other');
-await H.getByRole('button', { name: 'Runde starten' }).click();
-await H.locator('.map-hole-no').waitFor({ timeout: 30000 });
+await joinPlanned(H, code);
 
-// Cedric joins as Cedric
+// Cedric joins as Cedric – his name is in the flight: in at once
 const guest = await phone('Cedric');
 const G = guest.p;
-await G.goto('about:blank');
-await G.goto(url + '#round=' + code);
-// Sascha lets him in on the hole map; Cedric's name is in the flight – in at once
-const ask = H.getByRole('alertdialog', { name: 'Cedric möchte beitreten' });
-await ask.waitFor({ timeout: 15000 });
-await ask.getByRole('button', { name: 'Zulassen' }).click();
-await G.locator('.map-hole-no').waitFor({ timeout: 30000 });
+await joinPlanned(G, code);
 await G.waitForTimeout(6000); // both phones in the flight
 
 const block = (p, name) => p.locator('.score-player').filter({ has: p.locator('.score-player-head strong', { hasText: new RegExp(`^${name}$`) }) });

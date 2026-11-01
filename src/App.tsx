@@ -392,6 +392,11 @@ export function App() {
                 setScreen({ name: 'hole', round });
               }}
               onJoinGame={joinGameByCode}
+              // a planned tournament joined before its day: Games → Tournaments (its tab "tours")
+              onTours={() => {
+                setGamesTab('tours' as string as GamesTab);
+                setModule('games');
+              }}
               onContinue={(round) => setScreen({ name: 'hole', round })}
               onEnd={(round) => {
                 const done = finishRound(round, isTeamRound(round));

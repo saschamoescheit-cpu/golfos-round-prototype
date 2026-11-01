@@ -6,6 +6,8 @@ import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { TopTools } from '../components/TopTools';
 import { JoinRoundSheet, PENDING_JOIN } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
+import { flightOfName, tournamentsToday, type RoundEvent } from '../lib/sharedround';
+import { loadProfile, shownName } from '../lib/profile';
 
 // Tab "Play" (Sascha 14.10.2026): start a round, or carry on with, finish or cancel the one in progress.
 // "Continue round" only shows while a started round was neither finished nor cancelled.
@@ -22,6 +24,8 @@ export function PlayTab(props: {
   onAbort: (r: Round) => void;
   onSign: () => void;
   onModules: () => void;
+  /** a planned tournament joined before its day: Games → Tournaments */
+  onTours?: () => void;
   /** A paused course preview: continue or end it. */
   preview?: Round | null;
   onPreview?: (r: Round) => void;
@@ -53,6 +57,16 @@ export function PlayTab(props: {
     sharingAvailable().then(setCanShare);
     if (location.hash.startsWith('#round=')) history.replaceState(null, '', location.pathname + location.search);
   }, []);
+  // the planned tournaments of the day (Sascha 01.11.2026: "planned in Games, played in Rounds – on the day from 00:01")
+  const [today, setToday] = useState<{ code: string; ev: RoundEvent }[]>([]);
+  useEffect(() => {
+    if (!canShare) return;
+    const look = () => document.visibilityState === 'visible' && void tournamentsToday().then(setToday);
+    look();
+    document.addEventListener('visibilitychange', look);
+    return () => document.removeEventListener('visibilitychange', look);
+  }, [canShare]);
+  const tournaments = today.filter((t) => !props.rounds.some((r) => r.shared?.code === t.code));
 
   return (
     <>
@@ -149,6 +163,20 @@ export function PlayTab(props: {
         </section>
       )}
 
+      {tournaments.map(({ code, ev }) => {
+        const f = flightOfName(ev, shownName(loadProfile()));
+        return (
+          <section key={code} className="card play-card" aria-label={tr(`Tournament ${ev.name}`, `Turnier ${ev.name}`)}>
+            <span className="eyebrow">{tr('Tournament today', 'Turnier heute')}</span>
+            <div className="play-course">{ev.name}</div>
+            <span className="muted small">{[ev.course.name, f ? tr(`your flight${f.teeTime ? ` · ${f.teeTime}` : ''}`, `Dein Flight${f.teeTime ? ` · ${f.teeTime}` : ''}`) : null].filter(Boolean).join(' · ')}</span>
+            <button type="button" className={open ? 'btn-secondary' : 'btn-primary'} onClick={() => setJoin(code)}>
+              {tr('Take part', 'Teilnehmen')}
+            </button>
+          </section>
+        );
+      })}
+
       <section className="card play-card">
         <strong className="play-course">{tr('Start a new round', 'Neue Runde starten')}</strong>
         <button type="button" className={open ? 'btn-secondary' : 'btn-primary'} onClick={props.onNewRound}>
@@ -171,6 +199,13 @@ export function PlayTab(props: {
               setJoin(null);
               props.onJoined(r);
             }}
+            onTours={
+              props.onTours &&
+              (() => {
+                setJoin(null);
+                props.onTours!();
+              })
+            }
             onGameCode={
               props.onJoinGame &&
               ((c) => {
