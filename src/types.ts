@@ -238,4 +238,12 @@ export interface Round {
 }
 
 /** One hole's score as shared between phones: strokes, picked up, or nothing yet (null). */
-export type SharedCell = { s: number | null; p?: true } | null;
+export type SharedCell = { s: number | null; p?: true; d?: CellDetail } | null;
+/** A hole's details beside the score (Sascha 01.11.2026: "the marker enters everything for the player he marks"): putts,
+ *  tee shot, sand shots, penalty strokes – absent when none was entered. */
+export interface CellDetail {
+  pu?: number | null;
+  fw?: FairwayResult | null;
+  sa?: number;
+  pe?: number;
+}

@@ -312,3 +312,34 @@ describe('a tournament: the card signed and locked', () => {
     expect(eventStandings(ev).rows.find((r) => r.key === 'f1/me')?.signed).toBe(true);
   });
 });
+describe('the marker enters everything for the player he marks (Sascha 01.11.2026)', () => {
+  const detail = (r: Round, pid: string, i: number, d: Partial<Round['entries'][string][number]>): Round => ({ ...r, entries: { ...r.entries, [pid]: r.entries[pid].map((e, k) => (k === i ? { ...e, ...d } : e)) } });
+  it('his putts, sand, penalties and tee shot go with the count – the score compared alone', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }], 'single', true));
+    sascha = detail(sascha, 'c', 0, { strokes: 5, putts: 2, sandShots: 1, penalties: 0, fairway: 'left' });
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(ev.flights.f1.marks!.c[0]).toEqual({ s: 5, d: { pu: 2, sa: 1, fw: 'left' } });
+    // Cedric's own 5 with 3 putts: the same score – no difference to sign off, the details are each one's own
+    let cedric = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-cedric', 'Cedric');
+    cedric = detail(cedric, 'c', 0, { strokes: 5, putts: 3 });
+    ({ ev, r: cedric } = exchange(ev, cedric, 'Cedric'));
+    expect(differences(ev.flights.f1, 'c')).toEqual([]);
+    // only the putts changed by the marker: that goes to the server too
+    sascha = detail(sascha, 'c', 0, { putts: 1 });
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(ev.flights.f1.marks!.c[0]).toEqual({ s: 5, d: { pu: 1, sa: 1, fw: 'left' } });
+    // details changed elsewhere (the marker on the website, then in the app): they come to this phone with the count
+    ev = { ...ev, flights: { ...ev.flights, f1: { ...ev.flights.f1, marks: { ...ev.flights.f1.marks, c: [{ s: 5, d: { pu: 2, pe: 1 } }, null, null] } } } };
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.entries.c[0]).toMatchObject({ strokes: 5, putts: 2, penalties: 1, sandShots: 0, greensideBunker: false, fairway: null });
+  });
+  it('a count without details (an older app) leaves the details here alone', () => {
+    let { ev, r: sascha } = host(round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Cedric' }], 'single', true));
+    sascha = detail(sascha, 'c', 0, { strokes: 4, putts: 2 });
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    ev = { ...ev, flights: { ...ev.flights, f1: { ...ev.flights.f1, marks: { ...ev.flights.f1.marks, c: [{ s: 4, d: { pu: 2 } }, { s: 3 }, null] } } } };
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.entries.c[1]).toMatchObject({ strokes: 3, putts: null });
+    expect(sascha.entries.c[0]).toMatchObject({ strokes: 4, putts: 2 });
+  });
+});

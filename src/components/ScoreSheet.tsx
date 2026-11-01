@@ -1,5 +1,5 @@
 import type { HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
-import { cellOf, sameCell } from '../lib/sharedround';
+import { cellOf, sameScore } from '../lib/sharedround';
 import { formatToPar } from './ui';
 import { drivesShort, type TexasDrives } from '../lib/games';
 import { FairwayPicker } from './FairwayPicker';
@@ -51,7 +51,7 @@ function Stepper(props: { label: string; sub?: string; extra?: JSX.Element; valu
  *  marker's – flagged when both are in and differ (Sascha 29.10.2026: "the player counts himself and a partner"). */
 function OtherCount(props: { label: string; cell: SharedCell; mine: SharedCell }) {
   const text = (c: SharedCell) => (c == null ? '–' : c.p ? tr('picked up', 'aufgehoben') : String(c.s ?? '–'));
-  const differs = props.cell != null && props.mine != null && !sameCell(props.cell, props.mine);
+  const differs = props.cell != null && props.mine != null && !sameScore(props.cell, props.mine);
   return (
     <span className={`other-count${differs ? ' differs' : ''}`} role={differs ? 'alert' : undefined}>
       {props.label}: <strong>{text(props.cell)}</strong>
@@ -128,6 +128,8 @@ export function ScoreSheet(props: {
   /** a round on several phones (Sascha 29.10.2026), per player: kept on another phone (its owner's name – shown, not
    *  changed here), the team's card to take over, and in a tournament the other count beside this one */
   shared?: Record<string, { keptBy: string | null; takeOver?: () => void; other?: { label: string; cell: SharedCell }; /** signed by player and marker */ locked?: boolean }>;
+  /** the players entered in full besides the main player – the one this phone marks (01.11.2026) */
+  details?: (playerId: string) => boolean;
   /** Texas scramble (Sascha's concept 30.10.2026), per team: whose drive – the counts so far and who gets tight */
   texas?: Record<string, TexasDrives | null>;
 }) {
@@ -144,6 +146,9 @@ export function ScoreSheet(props: {
       </div>
       {props.players.map((p) => {
         const e = props.entries[p.id];
+        // everything – putts, sand, penalties, tee shot – for the main player and the player this phone marks (Sascha
+        // 01.11.2026: "for the player he marks just the same"); placing the putts only for the main player
+        const full = !props.team && (p.isMe || !!props.details?.(p.id));
         const toPar = props.toPar[p.id];
         const strokes = e.pickedUp ? null : e.strokes;
         const facts = holeFacts(e, h.par);
@@ -153,19 +158,19 @@ export function ScoreSheet(props: {
           let n = { ...e, ...patch };
           // fewer strokes: the putts follow (Sascha 18.10.2026: "a birdie on a par 3 cannot have 2 putts") – a 2 with
           // 2 putts set before becomes a 2 with 1 putt instead of jumping back to 3
-          if (p.isMe && !props.team && 'strokes' in patch && n.strokes != null && !n.pickedUp && n.putts != null && n.strokes < minStrokes(n)) {
+          if (full && 'strokes' in patch && n.strokes != null && !n.pickedUp && n.putts != null && n.strokes < minStrokes(n)) {
             const putts = Math.max(0, n.strokes - minStrokes({ ...n, putts: 0 }));
             patch = { ...patch, putts, ...(n.puttsAt && putts !== n.puttsAt.balls.length ? { puttsAt: undefined } : {}) };
             n = { ...n, putts };
           }
           // the score holds the putts and penalty strokes: it rises with them when they would not fit any more
-          if (p.isMe && !props.team && n.strokes != null && !n.pickedUp && n.strokes < minStrokes(n)) {
+          if (full && n.strokes != null && !n.pickedUp && n.strokes < minStrokes(n)) {
             patch = { ...patch, strokes: minStrokes(n) };
             n = { ...n, strokes: minStrokes(n) };
           }
           const f = holeFacts(n, h.par);
           // sand shots tell the round statistics the ball was in a (greenside) bunker – sand saves come from there
-          props.onChange(p.id, p.isMe ? { ...patch, upAndDown: f.gir == null ? null : f.upDown, greensideBunker: (n.sandShots ?? 0) > 0 } : patch);
+          props.onChange(p.id, full ? { ...patch, upAndDown: f.gir == null ? null : f.upDown, greensideBunker: (n.sandShots ?? 0) > 0 } : patch);
         };
         const penaltySub =
           (e.penalties ?? 0) > 0 ? tr(`incl. ${e.penalties} penalty ${e.penalties === 1 ? 'stroke' : 'strokes'}`, `inkl. ${e.penalties} ${e.penalties === 1 ? 'Strafschlag' : 'Strafschläge'}`) : tr('incl. penalty strokes', 'inkl. Strafschläge');
@@ -218,21 +223,21 @@ export function ScoreSheet(props: {
                 label={props.team ? tr('Team strokes', 'Team-Schläge') : tr('Strokes', 'Schläge')}
                 sub={props.team ? undefined : penaltySub}
                 value={strokes}
-                start={Math.max(h.par || 4, p.isMe && !props.team ? minStrokes(e) : 1)}
-                min={p.isMe && !props.team ? offGreen : 1}
+                start={Math.max(h.par || 4, full ? minStrokes(e) : 1)}
+                min={full ? offGreen : 1}
                 hint={strokes != null && h.par > 0 ? scoreName(strokes - h.par) : null}
                 onChange={(v) => set({ strokes: v, pickedUp: false })}
               />
             )}
             {sh?.other && <OtherCount label={sh.other.label} cell={sh.other.cell} mine={cellOf(e)} />}
             {props.team && props.texas?.[p.id] && <TexasPick t={props.texas[p.id]!} picked={e.drive} onPick={(k) => set({ drive: e.drive === k ? undefined : k })} />}
-            {p.isMe && !e.pickedUp && !props.team && (
+            {full && !e.pickedUp && (
               <>
                 <Stepper
                   label="Putts"
                   sub={e.puttsAt ? tr('placed on the green ✓', 'auf dem Grün gesetzt ✓') : undefined}
                   extra={
-                    props.canPlacePutts && e.putts != null && e.putts > 0 ? (
+                    props.canPlacePutts && p.isMe && e.putts != null && e.putts > 0 ? (
                       <button type="button" className="pencil" aria-label={tr('Place the putts on the green', 'Putts auf dem Grün setzen')} onClick={props.onPlacePutts}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                           <path d="M4 20h4L19 9l-4-4L4 16z" />

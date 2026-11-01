@@ -64,6 +64,12 @@ await H.waitForTimeout(300);
 ok((await H.locator('.score-player.kept-elsewhere').count()) === 0, 'Sascha: steppers for himself and for Cedric (he marks him)');
 await plus(H, 'Sascha', 1);
 await plus(H, 'Cedric', 2);
+// the player he marks in full (Sascha 01.11.2026): putts, sand shots, penalties – placing the putts only for himself
+const rows = async (name) => (await block(H, name).locator('.stepper-label').allInnerTexts()).map((x) => x.trim());
+const cRows = await rows('Cedric');
+ok(['Putts', 'Sand Shots', 'Strafschläge'].every((x) => cRows.some((r) => r.startsWith(x))), `Sascha enters Cedric's hole in full (${cRows.join(', ')})`);
+await block(H, 'Cedric').getByRole('button', { name: /Putts plus eins/ }).click();
+ok((await block(H, 'Cedric').getByRole('button', { name: 'Putts auf dem Grün setzen' }).count()) === 0, "no putt editor for Cedric's putts");
 await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
 await G.locator('.map-score').click();
 await G.waitForTimeout(300);

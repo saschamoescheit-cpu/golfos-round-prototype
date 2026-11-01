@@ -1663,6 +1663,7 @@ export function HoleScreen(props: {
             team={isTeamRound(round)}
             texas={round.format?.minDrives ? Object.fromEntries(round.players.map((p) => [p.id, texasDrives(round, p.id, i)])) : undefined}
             pickUp={pickUpAllowed(round, !!props.game)}
+            details={(pid) => views[pid]?.role === 'mark'}
             shared={Object.fromEntries(
               Object.entries(views).map(([pid, v]) => [
                 pid,

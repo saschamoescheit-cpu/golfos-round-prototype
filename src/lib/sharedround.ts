@@ -1,4 +1,4 @@
-import type { CourseSummary, HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
+import type { CellDetail, CourseSummary, HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
 import { emptyEntry } from './scoring';
 import { newId } from './storage';
 import { DEFAULT_FORMAT, formatOf, holeScoresOf, isTeamMode, leaderboard, teamHandicap, type Board } from './games';
@@ -83,9 +83,34 @@ export type RoundShare = NonNullable<Round['shared']>;
  *  his own phone or the team's keeper writes it), or keeps it with the others (free – a player without a phone). */
 export type Role = 'own' | 'mark' | 'view' | 'free';
 
-export const cellOf = (e: HoleEntry | undefined): Cell => (!e ? null : e.pickedUp ? { s: e.strokes ?? null, p: true } : e.strokes != null ? { s: e.strokes } : null);
-export const sameCell = (a: Cell | undefined, b: Cell | undefined): boolean => (a?.s ?? null) === (b?.s ?? null) && !!a?.p === !!b?.p;
-const withCell = (e: HoleEntry, c: Cell): HoleEntry => ({ ...e, strokes: c?.s ?? null, pickedUp: !!c?.p });
+/** A hole's details (putts, tee shot, sand, penalties) as they go with the score – the marker's count of a player has
+ *  them too (Sascha 01.11.2026); undefined when none was entered. */
+export function detailOf(e: HoleEntry): CellDetail | undefined {
+  const d: CellDetail = {};
+  if (e.putts != null) d.pu = e.putts;
+  if (e.fairway) d.fw = e.fairway;
+  if (e.sandShots) d.sa = e.sandShots;
+  if (e.penalties) d.pe = e.penalties;
+  return Object.keys(d).length ? d : undefined;
+}
+export const cellOf = (e: HoleEntry | undefined): Cell => {
+  if (!e || (!e.pickedUp && e.strokes == null)) return null;
+  const d = detailOf(e);
+  return { s: e.strokes ?? null, ...(e.pickedUp ? { p: true as const } : {}), ...(d ? { d } : {}) };
+};
+/** The same score – strokes and picked up (the counts compared in a tournament). */
+export const sameScore = (a: Cell | undefined, b: Cell | undefined): boolean => (a?.s ?? null) === (b?.s ?? null) && !!a?.p === !!b?.p;
+const sameDetail = (a: CellDetail | undefined, b: CellDetail | undefined): boolean =>
+  (a?.pu ?? null) === (b?.pu ?? null) && (a?.fw ?? null) === (b?.fw ?? null) && (a?.sa ?? 0) === (b?.sa ?? 0) && (a?.pe ?? 0) === (b?.pe ?? 0);
+/** The same cell – the score and its details (what goes to the other phones). */
+export const sameCell = (a: Cell | undefined, b: Cell | undefined): boolean => sameScore(a, b) && sameDetail(a?.d, b?.d);
+const withCell = (e: HoleEntry, c: Cell): HoleEntry => ({
+  ...e,
+  strokes: c?.s ?? null,
+  pickedUp: !!c?.p,
+  // the details only when they came along – a phone with an older app sends the score alone
+  ...(c?.d ? { putts: c.d.pu ?? null, fairway: c.d.fw ?? null, sandShots: c.d.sa ?? 0, penalties: c.d.pe ?? 0, greensideBunker: (c.d.sa ?? 0) > 0 } : {}),
+});
 const nulls = (n: number): Cell[] => Array.from({ length: n }, () => null);
 const isTeamEvent = (f: Round['format'] | undefined): boolean => isTeamMode(f?.mode);
 /** Does every player mark a partner: in a tournament always; a round of single balls when chosen (Sascha 30.10.2026:
@@ -413,7 +438,7 @@ const scoreAt = (f: Flight, pid: string, i: number): Cell => f.scores[pid]?.[i] 
 export function differences(f: Flight, pid: string): number[] {
   const own = f.scores[pid] ?? [];
   const mark = f.marks?.[pid] ?? [];
-  return own.map((c, i) => (c != null && mark[i] != null && !sameCell(c, mark[i]) ? i : -1)).filter((i) => i >= 0);
+  return own.map((c, i) => (c != null && mark[i] != null && !sameScore(c, mark[i]) ? i : -1)).filter((i) => i >= 0);
 }
 
 /** The live leaderboard of all flights: every player (or team) of every flight, as the round's own board ranks them
