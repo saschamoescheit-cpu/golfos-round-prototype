@@ -162,6 +162,7 @@ export interface BetWager {
   net?: boolean;
   scope?: string;
   text?: string;
+  parts?: { front: number; back: number; total: number };
 }
 const COUNTS = ['birdies', 'pars', 'greens', 'fairways', 'oneputts', 'updowns', 'eagles', 'holeInOne'];
 export function betLabel(w: BetWager, lang?: string | null): string {
@@ -201,6 +202,10 @@ export function betLabel(w: BetWager, lang?: string | null): string {
       return n === 0 ? T(lang, `No penalty stroke ${on}`, `Kein Strafschlag ${on}`) : T(lang, `At most ${n} penalty strokes ${on}`, `Höchstens ${n} Strafschläge ${on}`);
     case 'score':
       return `${par} ${w.net ? T(lang, 'net', 'netto') : T(lang, 'gross', 'brutto')}${w.holes === 9 ? T(lang, ' on 9', ' auf 9') : ''}`;
+    case 'nassau': {
+      const p = w.parts ?? { front: 0, back: 0, total: 0 };
+      return `${p.front}+${p.back}+${p.total} ${w.net ? T(lang, 'net', 'netto') : T(lang, 'gross', 'brutto')}`;
+    }
     default:
       return String(w.text ?? '').trim().slice(0, 80) || T(lang, 'Free bet', 'Freie Wette');
   }

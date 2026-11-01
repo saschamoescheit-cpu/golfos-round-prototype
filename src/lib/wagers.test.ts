@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, balances, isPool, earlierGroups, fromEarlier, fromLibrary, judge, progressText, stateOf, wagerLabel, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { LIBRARY, balances, isPool, earlierGroups, fromEarlier, fromLibrary, judge, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -191,6 +191,67 @@ describe('a pool written on 01.11.2026 stays readable', () => {
     expect(judge(pool.wagers[2], pool, [round(par(-1).map((s, i) => (i < 5 ? s : PARS[i])))]).done).toBe(true);
   });
 });
+
+// "5+5+10" (Sascha 01.11.2026: "stroke play over 18 – the better score on the first nine wins the 5 dollars, the same on
+// the second nine, and then who wins over 18; a tie wins nothing"; gross or net, every round or one; in dollars)
+describe('5+5+10 – front, back, 18', () => {
+  const players = [
+    { id: 's', name: 'Sascha' },
+    { id: 'c', name: 'Chris' },
+    { id: 'e', name: 'Erik' },
+  ];
+  const duelPool = { from: '2026-11-04', to: '2026-11-12', players };
+  const duel = (patch: Partial<Wager> = {}): Wager => ({ id: 'd1', player: 's', opponent: 'c', kind: 'nassau', target: 0, stake: 0, payout: 'opponent', attempts: 'any', parts: { front: 5, back: 5, total: 10 }, ...patch });
+  const entries = (scores: number[]) => scores.map((s) => ({ ...emptyEntry(), strokes: s }));
+  // Sascha's round with Chris in his flight
+  const together = (mine: number[], his: number[], o: { day?: string; hcp?: number[]; counted?: [boolean, boolean]; name?: string } = {}): PlayedRound => ({
+    ...round(mine, { day: o.day, counted: o.counted?.[0] ?? true }),
+    received: o.hcp ? o.hcp.slice() : PARS.map(() => 0),
+    others: [{ name: o.name ?? 'Chris', entries: entries(his), hcp: null, received: PARS.map(() => 0), counted: o.counted?.[1] ?? true }],
+  });
+  it('front won, back lost, 18 tied: +5 −5 ±0', () => {
+    const me = par();
+    const him = par();
+    me[0] -= 1; // Sascha one better on the front
+    him[10] -= 1; // Chris one better on the back
+    const p = judge(duel(), duelPool, [together(me, him)]);
+    expect(p.duels).toEqual([{ day: '2026-11-05', course: 'Bethpage', front: 1, back: -1, total: 0 }]);
+    expect(p.amount).toBe(0);
+    him[11] -= 1; // Chris two better on the back: he wins the back and the 18
+    expect(judge(duel(), duelPool, [together(me, him)]).amount).toBe(5 - 5 - 10);
+  });
+  it('every round together adds up; only the round of one day; a round without him does not count', () => {
+    const me = par(-1); // Sascha better everywhere: +20 per round
+    const r1 = together(me, par(), { day: '2026-11-05' });
+    const r2 = together(me, par(), { day: '2026-11-06' });
+    const alone = { ...round(me, { day: '2026-11-07' }), others: [] };
+    expect(judge(duel(), duelPool, [r1, r2, alone]).amount).toBe(40);
+    expect(judge(duel({ attempts: 'day', day: '2026-11-06' }), duelPool, [r1, r2]).amount).toBe(20);
+    expect(judge(duel(), duelPool, [together(me, par(), { name: 'chris m.' })]).amount).toBe(20); // first name found
+  });
+  it('net: the strokes received on the holes; with marker only cards signed by both; a nine not complete is no result', () => {
+    const me = par(1); // Sascha bogey everywhere, gets a stroke on every hole: net par
+    const him = par(); // Chris par everywhere, no strokes
+    expect(judge(duel(), duelPool, [together(me, him)]).amount).toBe(-20);
+    expect(judge(duel({ net: true }), duelPool, [together(me, him, { hcp: PARS.map(() => 1) })]).amount).toBe(0);
+    expect(judge(duel({ counted: true }), duelPool, [together(par(-1), him, { counted: [true, false] })]).duels).toEqual([]);
+    const open = par(-1) as (number | null)[];
+    open[12] = null;
+    const p = judge(duel(), duelPool, [together(open as number[], him)]);
+    expect([p.duels![0].front, p.duels![0].back, p.duels![0].total, p.amount]).toEqual([1, null, null, 5]);
+  });
+  it('settled between the two – in dollars; open until its day or the trip is over', () => {
+    const pool: WagerPool = { kind: 'wager-pool', id: 'p', name: 'USA', ...duelPool, createdAt: '', currency: 'USD', wagers: [duel()], progress: { d1: { best: null, done: false, rounds: 1, amount: -10, duels: [], at: '' } } };
+    expect(balances(pool, '2026-11-08')).toEqual({ s: -10, c: 10, e: 0 });
+    expect(stateOf(pool.wagers[0], pool, '2026-11-08')).toBe('open');
+    expect(stateOf(pool.wagers[0], pool, '2026-11-13')).toBe('done');
+    setLang('de');
+    expect(wagerLabel(duel())).toBe('5+5+10 brutto');
+    expect(wagerRules(duel(), pool)).toBe('gegen Chris · vorne 5 $ · hinten 5 $ · gesamt 10 $ · jede gemeinsame Runde');
+    expect(wagerRules(w({}) as Wager, pool)).toMatch(/^20 \$ · nur bei Erfolg/);
+  });
+});
+const w = (patch: Partial<Wager>): Wager => ({ id: 'w', player: 's', kind: 'birdieRun', target: 3, stake: 20, payout: 'success', attempts: 'any', ...patch });
 
 describe('who pays whom', () => {
   const full = (wagers: Wager[], progress: WagerPool['progress'], o: Partial<WagerPool> = {}): WagerPool => ({
