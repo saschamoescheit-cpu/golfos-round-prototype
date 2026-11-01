@@ -38,7 +38,32 @@ function savePools(list: PoolEntry[]): void {
 function keep(code: string, pool: WagerPool, me?: string): void {
   const list = loadPools();
   const old = list.find((e) => e.code === code);
-  savePools([{ code, me: me ?? old?.me ?? '', pool }, ...list.filter((e) => e.code !== code)]);
+  const mine = me || old?.me || meIn(code);
+  if (mine) rememberMe(code, mine);
+  savePools([{ code, me: mine, pool }, ...list.filter((e) => e.code !== code)]);
+}
+
+// Who this account is in each pool – synced between its devices (lib/sync.ts, kind 'pool-me'): a new phone or the app
+// knows it without asking, also for a pool joined before the account was kept in "joined". Only the code and the
+// player's id – the pool itself always comes from the shared table.
+const ME = 'golfos.pools.me.v1';
+function meList(): { code: string; me: string }[] {
+  try {
+    const x = JSON.parse(localStorage.getItem(ME) ?? '[]');
+    return Array.isArray(x) ? x.filter((e) => e && typeof e.code === 'string' && typeof e.me === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+const meIn = (code: string): string => meList().find((e) => e.code === code)?.me ?? '';
+function rememberMe(code: string, me: string): void {
+  const list = meList();
+  if (list.some((e) => e.code === code && e.me === me)) return;
+  try {
+    localStorage.setItem(ME, JSON.stringify([...list.filter((e) => e.code !== code), { code, me }]));
+  } catch {
+    /* asked "who are you?" again on another device */
+  }
 }
 /** Leaves a pool on this phone (it stays on the server) – and does not fetch it again (deleted for good from the bin). */
 export function forgetPool(code: string): void {
@@ -91,7 +116,8 @@ export async function syncPools(): Promise<boolean> {
     for (const row of rows) {
       if (!row?.code || !isPool(row.game) || hidden.has(row.code)) continue;
       const old = list.find((e) => e.code === row.code);
-      const mine = old?.me || (me ? (row.game.players.find((p) => p.joined?.uid === me)?.id ?? '') : '');
+      const mine = old?.me || meIn(row.code) || (me ? (row.game.players.find((p) => p.joined?.uid === me)?.id ?? '') : '');
+      if (mine) rememberMe(row.code, mine); // also for a pool unchanged – to the account's other devices
       if (old && old.me === mine && JSON.stringify(old.pool) === JSON.stringify(row.game)) continue;
       const entry = { code: row.code, me: mine, pool: row.game };
       const at = list.findIndex((e) => e.code === row.code);

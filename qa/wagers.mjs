@@ -241,7 +241,7 @@ ok(/5 von 13 Wetten entschieden/.test(settle), '5 of 13 bets decided (the −5s 
 
 // Sascha 01.11.2026: "the bets must never vanish" – the phone's list emptied (Safari clears a web app's storage after a
 // week unused; a new phone has none): the menu "Wetten" fetches the pool from the server, Sascha is himself again
-await H.evaluate(() => localStorage.removeItem('golfos.pools.v1'));
+await H.evaluate(() => { localStorage.removeItem('golfos.pools.v1'); localStorage.removeItem('golfos.pools.me.v1'); }); // a new phone: neither
 await H.reload();
 await H.waitForTimeout(1500);
 await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
