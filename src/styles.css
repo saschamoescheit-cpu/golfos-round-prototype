@@ -1180,6 +1180,12 @@ button.tile:disabled { opacity: 1; }
 .bin-actions { display: flex; gap: 8px; flex-basis: 100%; justify-content: flex-end; }
 .bin-actions .btn-secondary { min-height: 40px; padding: 0 12px; width: auto; }
 .bin-actions .bin-x { padding: 0 14px; }
+/* several at once: the bar above the list, a tick per row */
+.bin-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.bin-bar .btn-secondary { min-height: 40px; padding: 0 12px; width: auto; }
+.bin-bar .grow { flex-basis: 100%; text-align: right; }
+.bin-pick { cursor: pointer; }
+.bin-check { width: 22px; height: 22px; margin: 0; flex: none; accent-color: var(--brand); }
 
 /* Games: read the rules aloud; the highest stake typed in */
 .read-rules { align-self: flex-start; width: 52px; min-height: 48px; padding: 0; margin-top: 4px; display: grid; place-items: center; }

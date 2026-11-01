@@ -17,9 +17,27 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
   const [ownOpen, setOpen] = useState(false);
   const open = props.open ?? ownOpen;
   const [purging, setPurging] = useState<string | null>(null);
+  // several or all at once (Sascha 01.11.2026): "Select", tick them, delete for good – again only after a second tap
+  const [pickingOn, setPicking] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [confirmMany, setConfirmMany] = useState(false);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   if (!props.items.length) return null;
   const day = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
+  const picking = pickingOn && props.items.length > 1; // one left: its own ✕ is enough
+  const chosen = props.items.filter((t) => picked.has(t.id)).map((t) => t.id);
+  const all = chosen.length === props.items.length;
+  const endPicking = () => {
+    setPicking(false);
+    setPicked(new Set());
+    setConfirmMany(false);
+  };
+  const toggle = (id: string) => {
+    const next = new Set(picked);
+    if (!next.delete(id)) next.add(id);
+    setPicked(next);
+    setConfirmMany(false);
+  };
   return (
     <>
       {props.open == null ? (
@@ -29,10 +47,64 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
       ) : (
         open && <h2 className="bin-title">{props.title}</h2>
       )}
+      {open && props.items.length > 1 && (
+        <div className="bin-bar">
+          {!picking ? (
+            <button type="button" className="btn-secondary" onClick={() => setPicking(true)}>
+              {tr('Select', 'Auswählen')}
+            </button>
+          ) : confirmMany ? (
+            <>
+              <span className="muted small grow">{tr(`Delete ${chosen.length} for good? This cannot be undone.`, `${chosen.length} endgültig löschen? Das lässt sich nicht rückgängig machen.`)}</span>
+              <button type="button" className="btn-secondary" onClick={() => setConfirmMany(false)}>
+                {tr('Keep', 'Behalten')}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-danger"
+                onClick={() => {
+                  chosen.forEach((id) => props.onPurge(id));
+                  endPicking();
+                }}
+              >
+                {tr('Delete for good', 'Endgültig löschen')}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                aria-label={all ? tr('Select none', 'Keine auswählen') : tr('Select all', 'Alle auswählen')}
+                onClick={() => setPicked(all ? new Set() : new Set(props.items.map((t) => t.id)))}
+              >
+                {all ? tr('None', 'Keine') : tr('All', 'Alle')}
+              </button>
+              <button type="button" className="btn-secondary" onClick={endPicking}>
+                {tr('Cancel', 'Abbrechen')}
+              </button>
+              <button type="button" className="btn-secondary btn-danger" disabled={!chosen.length} onClick={() => setConfirmMany(true)}>
+                {tr(`Delete ${chosen.length}`, `${chosen.length} löschen`)}
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {open && (
         <ul className="list">
           {props.items.map((t) => (
-            <li key={t.id} className="list-item bin-item">
+            // while picking the whole row ticks it – a big target with gloves on the course
+            <li key={t.id} className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'} onClick={picking ? () => toggle(t.id) : undefined}>
+              {picking && (
+                <input
+                  type="checkbox"
+                  className="bin-check"
+                  checked={picked.has(t.id)}
+                  aria-label={`${t.title}, ${day(t.date)}`}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => toggle(t.id)}
+                />
+              )}
               <span className="round-date">
                 <strong>{day(t.date)}</strong>
                 <span className="muted small">{new Date(t.date).getFullYear()}</span>
@@ -41,7 +113,7 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
                 <span className="title">{t.title}</span>
                 <span className="muted small">{`${t.meta} · ${tr('deleted', 'gelöscht')} ${day(t.deletedAt)}`}</span>
               </span>
-              {purging === t.id ? (
+              {picking ? null : purging === t.id ? (
                 <span className="bin-actions">
                   <button type="button" className="btn-secondary" onClick={() => setPurging(null)}>
                     {tr('Keep', 'Behalten')}

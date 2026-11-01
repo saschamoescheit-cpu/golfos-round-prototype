@@ -127,6 +127,58 @@ ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ??
 const empty = p.locator('.tile').filter({ hasText: 'gelöscht' });
 ok((await empty.innerText()).replace(/\s+/g, ' ').trim() === '0 gelöscht' && (await empty.isDisabled()), 'bin tile stays when empty: "0 gelöscht", not tappable');
 
+// several at once (Sascha 01.11.2026): select, tick, delete for good after a second tap; "Alle auswählen"
+const binN = () => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length);
+const fill = (n) =>
+  p.evaluate(async ([rid, n]) => {
+    const S = await import('/src/lib/storage.ts');
+    const r0 = S.loadRounds().find((r) => r.id === rid + '-kept');
+    for (let k = 0; k < n; k++) {
+      const nid = `${rid}-many${k}-${Date.now()}`;
+      S.saveRound({ ...r0, id: nid });
+      S.deleteRound(nid, true);
+    }
+  }, [id, n]);
+const openBin = async () => {
+  await p.goto(url);
+  await p.waitForTimeout(1500);
+  await p.locator('.tabbar button', { hasText: 'Runden' }).click();
+  await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
+  await p.waitForTimeout(300);
+};
+await fill(3);
+await openBin();
+ok((await binN()) === 3 && (await p.locator('li.bin-item').count()) === 3, 'three rounds in the bin');
+await p.getByRole('button', { name: 'Auswählen', exact: true }).click();
+ok((await p.locator('.bin-check').count()) === 3 && !(await p.getByRole('button', { name: 'Wiederherstellen' }).first().isVisible().catch(() => false)), 'select: a tick per row, no single buttons');
+ok(await p.getByRole('button', { name: '0 löschen' }).isDisabled(), 'nothing ticked: "0 löschen" not tappable');
+await p.locator('.bin-check').nth(0).check();
+await p.locator('li.bin-item').nth(1).locator('.grow').click(); // the row itself ticks it too
+ok((await p.locator('.bin-check:checked').count()) === 2, 'ticked by box and by row');
+await p.getByRole('button', { name: '2 löschen' }).click();
+await p.waitForTimeout(200);
+ok((await binN()) === 3 && (await p.getByText('2 endgültig löschen?').isVisible()), '"2 löschen" alone deletes nothing – it asks');
+await p.getByRole('button', { name: 'Behalten' }).click();
+ok((await binN()) === 3 && (await p.locator('.bin-check:checked').count()) === 2, '"Behalten": nothing gone, still ticked');
+await p.getByRole('button', { name: '2 löschen' }).click();
+await p.locator('.bin-bar').getByRole('button', { name: 'Endgültig löschen' }).click();
+await p.waitForTimeout(400);
+ok((await binN()) === 1 && (await p.locator('li.bin-item').count()) === 1 && (await p.locator('.bin-check').count()) === 0, 'two deleted for good, one left with its own buttons');
+ok((await p.locator('.bin-bar').count()) === 0, 'one left: no "Auswählen"');
+await fill(3);
+await openBin();
+await p.getByRole('button', { name: 'Auswählen', exact: true }).click();
+await p.getByRole('button', { name: 'Alle auswählen' }).click();
+ok((await p.locator('.bin-check:checked').count()) === 4 && (await p.getByRole('button', { name: 'Keine auswählen' }).isVisible()), '"Alle auswählen" ticks all four');
+if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/bin-many.png' });
+await p.getByRole('button', { name: '4 löschen' }).click();
+await p.locator('.bin-bar').getByRole('button', { name: 'Endgültig löschen' }).click();
+await p.waitForTimeout(400);
+ok((await binN()) === 0, 'all deleted for good');
+const many = p.locator('.tile').filter({ hasText: 'gelöscht' });
+ok((await many.innerText()).replace(/\s+/g, ' ').trim() === '0 gelöscht', 'bin tile back at 0');
+ok(await p.evaluate((rid) => JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').some((r) => r.id === rid + '-kept'), id), 'the round in the list untouched');
+
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
