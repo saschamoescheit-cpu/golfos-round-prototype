@@ -78,6 +78,12 @@ const SILENCE = (() => {
   b.fill(128, 44);
   return 'data:audio/wav;base64,' + btoa(String.fromCharCode(...b));
 })();
+/** The countdown aloud (Sascha 1.11.2026: "a voice counts down, then says 'now do the exercise', at the end 'exercise
+ *  finished' – and when it has to be repeated, that too"). */
+export const countWord = (n: number): string => tr(['One', 'Two', 'Three'][n - 1] ?? String(n), ['Eins', 'Zwei', 'Drei'][n - 1] ?? String(n));
+export const NOW_DO = () => tr('Now do the exercise.', 'Jetzt Übung ausführen.');
+export const DONE_SAY = () => tr('Exercise finished.', 'Übung beendet.');
+export const REPEAT_SAY = () => tr('Repeat the exercise.', 'Übung wiederholen.');
 /** About how long a sentence takes aloud (13 letters a second, a little more for the start). */
 export const speechMs = (text: string): number => Math.min(45000, 2500 + text.length * 75);
 /** Call in the tap that starts the camera: iOS only plays sound after a tap. */
@@ -361,14 +367,14 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       go('result');
       if (out) {
         // the value, no grade (Sascha 18.10.2026: measuring, not grading)
-        say(`${tr('Done', 'Fertig')}. ${valueText(kind, out.value, tr)}.`);
+        say(`${DONE_SAY()} ${valueText(kind, out.value, tr)}.`);
         setAuto(props.coach ? 4 : AUTO_SAVE_S);
       } else if (props.coach && missesRef.current < COACH_RETRIES) {
         // the player is 2.5–3 m away (or lying on the floor): try again by itself, twice, before asking for a tap
         missesRef.current++;
-        say(tr('Not recognised. Again in a moment – the whole body in the picture, a little slower.', 'Nicht erkannt. Gleich nochmal – der ganze Körper ins Bild, etwas langsamer.'));
+        say(`${REPEAT_SAY()} ${tr('Not recognised – again in a moment: the whole body in the picture, a little slower.', 'Nicht erkannt – gleich nochmal: der ganze Körper ins Bild, etwas langsamer.')}`);
         setAuto(COACH_RETRY_S);
-      } else say(props.coach ? tr('Not recognised. Please come to the phone.', 'Nicht erkannt. Bitte komm kurz ans Handy.') : tr('Not recognised. Please try again.', 'Nicht erkannt. Bitte nochmal.'));
+      } else say(`${REPEAT_SAY()} ${props.coach ? tr('Not recognised – please come to the phone.', 'Nicht erkannt – bitte komm kurz ans Handy.') : tr('Not recognised – please try again.', 'Nicht erkannt – bitte nochmal starten.')}`);
       // the camera goes off with the result (a new attempt starts it again)
       stopped = true;
       cancelAnimationFrame(raf);
@@ -451,7 +457,7 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
       if (ph === 'run' && f && analyzer) {
         const l = analyzer.push(f);
         runLog = { v: l.value == null ? null : Math.round(l.value * 10) / 10, ...(l.cue ? { cue: l.cue } : {}) };
-        if (l.cue) say(l.cue === 'go' && CALIBRATES.includes(kind) ? CUE_TEXT(kind, 'go') : l.cue === 'go' ? null : CUE_TEXT(kind, l.cue));
+        if (l.cue) say(l.cue === 'go' && CALIBRATES.includes(kind) ? `${NOW_DO()} ${CUE_TEXT(kind, 'go') ?? ''}` : l.cue === 'go' ? null : l.cue === 'done' ? null : CUE_TEXT(kind, l.cue));
         if (l.cue === 'go' || l.cue === 'eyes' || l.cue === 'hold') beep(l.cue === 'go' ? 1180 : 760, 180);
         // the seconds of a hold, every 5 s
         if (l.phase === 'hold' && l.value != null) {
@@ -508,21 +514,24 @@ export function CameraTest(props: { test: TestDef; side: Side | null; previous?:
         }
         let n = 3;
         setCount(n);
-        beep(660);
+        beep(660, 90);
+        say(countWord(n));
         const step = () => {
           if (stopped) return;
           n--;
           if (n > 0) {
             setCount(n);
-            beep(660);
+            beep(660, 90);
+            say(countWord(n));
             countTimer = window.setTimeout(step, fake ? 100 : 1000);
           } else {
             if (fakeScript) fakeT0 = performance.now();
             go('run');
+            // a test that first measures the player standing still says "now" when it is ready (its "go" cue)
             if (!CALIBRATES.includes(kind)) {
-              say(CUE_TEXT(kind, 'go') ?? tr('Go.', 'Los.'));
+              say(`${NOW_DO()} ${CUE_TEXT(kind, 'go') ?? ''}`);
               beep(1180, 180);
-            }
+            } else say(tr('Hold still.', 'Stillhalten.'));
           }
         };
         countTimer = window.setTimeout(step, fake ? 100 : 1000);
