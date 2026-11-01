@@ -15,6 +15,7 @@ import { CLIPS } from '../mobility/anim3d/clips';
 import type { Clip } from '../mobility/anim3d/scene';
 import type { Coach } from '../mobility/CameraTest';
 import { CameraTest, isFakeCamera, sideText, unlockAudio, CheckList } from '../mobility/CameraTest';
+import { cameraWish } from '../mobility/livecam';
 import { loadPose } from '../mobility/pose';
 import { cameraOn, speak } from '../lib/caddietalk';
 import { NOTE_HEELS, valueText } from '../mobility/measure';
@@ -935,7 +936,7 @@ function ScreeningPlay(props: { screening: Screening; onPause: () => void; onFin
     // the camera is opened here, in the tap (iPhone), and stays on for all camera tests
     if (!isFakeCamera() && navigator.mediaDevices?.getUserMedia)
       navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false })
+        .getUserMedia(cameraWish())
         .then((st) => {
           streamRef.current = st;
           cameraOn(st);

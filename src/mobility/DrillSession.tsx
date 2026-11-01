@@ -7,6 +7,7 @@ import { SketchThumb } from '../training/Sketch';
 import type { Drill } from '../training/types';
 import { DRILL_CLIPS } from './anim3d/drills';
 import { isFakeCamera, unlockAudio } from './CameraTest';
+import { cameraWish } from './livecam';
 import { coachOf, gainSpeech, progressed, SELF_NAMED, SIGNALS, signalValueText, WATCH_FOCUS } from './drillcoach';
 import { withSets } from './dayplan';
 import { DrillPlayer, cap, cueText } from './DrillPlayer';
@@ -102,7 +103,7 @@ export function DrillSession(props: { session: TrainSession; onPause: () => void
     if (streamRef.current?.active) return setStage('drill');
     if (!isFakeCamera() && navigator.mediaDevices?.getUserMedia)
       navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }, audio: false })
+        .getUserMedia(cameraWish())
         .then((st) => {
           streamRef.current = st;
           cameraOn(st);
