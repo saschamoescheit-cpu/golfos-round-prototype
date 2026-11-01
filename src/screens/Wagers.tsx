@@ -67,7 +67,7 @@ export function StartBetCard(props: { canShare: boolean; onNew: () => void; onLi
       <strong className="play-course">{tr('Start a new bet', 'Neue Wette starten')}</strong>
       {props.canShare ? (
         <button type="button" className="btn-secondary" onClick={props.onNew}>
-          {tr('New pool of bets', 'Neuer Wett-Pool')}
+          {tr('New bet', 'Neue Wette')}
         </button>
       ) : (
         <span className="muted small">{tr('Sign in to set up bets: Profile → "On all your devices".', 'Für Wetten anmelden: Profil → „Auf allen Geräten“.')}</span>
@@ -137,7 +137,7 @@ export function BetsTab(props: { canShare: boolean; onOpen: (code: string) => vo
       {props.canShare ? (
         <section className="card play-card">
           <button type="button" className="btn-primary" onClick={props.onNew}>
-            {tr('New pool of bets', 'Neuer Wett-Pool')}
+            {tr('New bet', 'Neue Wette')}
           </button>
           <button type="button" className="btn-secondary" onClick={props.onJoin}>
             {tr('Join a pool of bets', 'Wett-Pool beitreten')}
@@ -227,7 +227,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
   // player with ✕, "+ Add player", the friends as chips
   return (
     <main className="screen">
-      <TopBar title={tr('New pool of bets', 'Neuer Wett-Pool')} onBack={props.onBack} backLabel={tr('Back', 'Zurück')} />
+      <TopBar title={tr('New bet', 'Neue Wette')} onBack={props.onBack} backLabel={tr('Back', 'Zurück')} />
       <section className="setup-part">
         <span className="eyebrow">{tr('Pool of bets', 'Wett-Pool')}</span>
         <div className="card">

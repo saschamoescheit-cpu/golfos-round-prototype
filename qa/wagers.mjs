@@ -115,7 +115,7 @@ ok((await H.getByRole('button', { name: '1 $', exact: true }).count()) === 1 && 
 await H.getByRole('button', { name: 'Zurück', exact: true }).click();
 await H.waitForTimeout(500);
 // ---------- Sascha: a pool of bets, four players ----------
-await H.getByRole('button', { name: 'Neuer Wett-Pool' }).click();
+await H.getByRole('button', { name: 'Neue Wette' }).click();
 await H.fill('#pool-name', 'USA 2026');
 await H.getByRole('textbox', { name: 'Spieler 2' }).fill('Chris');
 // laid out as "Neues Spiel": a card per player, "+ Spieler hinzufügen"
