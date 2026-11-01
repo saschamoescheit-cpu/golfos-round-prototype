@@ -1153,8 +1153,21 @@ button.tile:disabled { opacity: 1; }
 .tour-tee { font: 700 18px var(--display); font-variant-numeric: tabular-nums; }
 .tour-flight-player { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .tour-flight-player .grow { flex: 1 1 120px; min-width: 0; }
-.tour-flight-player .select-wrap { flex: 1 1 140px; min-width: 0; }
+/* the flights' players as chips to drag (Sascha 01.11.2026) */
+.tour-flight.drop-target { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand) inset; }
+.tour-chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 44px; align-items: center; }
+.tour-chip { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 16px var(--body); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.tour-chip.on { border-color: var(--brand); background: var(--brand); color: #fff; }
+.tour-chip.lifted { opacity: 0.35; }
+.tour-ghost { position: fixed; z-index: 50; transform: translate(-50%, -60%); pointer-events: none; display: inline-flex; align-items: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.tour-here { min-height: 44px; }
+.tour-markers { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
 .tour-howto { display: flex; flex-direction: column; gap: 4px; }
+.tour-special { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 10px; }
+.tour-special .grow { min-width: 0; }
+.tour-special .select-wrap { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+.tour-special-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.tour-special-board { display: flex; flex-direction: column; gap: 4px; }
 
 /* the balance on "Games" below the tiles (Sascha 01.11.2026) */
 .balance { display: flex; flex-direction: column; gap: 10px; }

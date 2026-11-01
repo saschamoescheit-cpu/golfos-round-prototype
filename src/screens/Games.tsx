@@ -345,7 +345,7 @@ function GamesTabs(props: {
   const running = props.games.filter((g) => !g.finishedAt);
   const today = dayOf(new Date());
   const betsRunning = usePools().some((e) => isLive(e, today)); // the dot on "Bets", as on "Play" for a game running
-  const tourToday = useTours().some((e) => tourState(e, today) === 'today'); // the dot on "Tournaments" on its day
+  const toursAhead = useTours().some((e) => ['planned', 'today'].includes(tourState(e, today))); // the dot on "Tournaments": one to come
   // join a friend's game (code or the QR link #join=CODE) – shown once signed in and the shared table exists
   const [canShare, setCanShare] = useState<boolean | null>(null); // null: still asking
   const [joinOpen, setJoinOpen] = useState<string | null>(() => (location.hash.startsWith('#join=') ? location.hash.slice(6) : null));
@@ -400,8 +400,8 @@ function GamesTabs(props: {
             )}
           </section>
           {/* start a bet beside starting a game – the bets themselves are kept in the menu "Bets" (Sascha 01.11.2026) */}
-          <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} onList={() => props.onTab('bets')} />
-          <TourStartCard canShare={!!canShare} onNew={props.onNewTour} onList={() => props.onTab('tours')} />
+          <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} />
+          <TourStartCard canShare={!!canShare} onNew={props.onNewTour} />
           {confirmCount > 0 && (
             <button type="button" className="list-item" onClick={() => openList('confirm')}>
               <span className="grow">
@@ -480,7 +480,7 @@ function GamesTabs(props: {
           { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
           { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
           { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON, dot: betsRunning },
-          { id: 'tours' as GamesTab, label: tr('Tournaments', 'Turniere'), icon: TOURS_ICON, dot: tourToday },
+          { id: 'tours' as GamesTab, label: tr('Tournaments', 'Turniere'), icon: TOURS_ICON, dot: toursAhead },
           { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
         ]}
         current={props.tab}

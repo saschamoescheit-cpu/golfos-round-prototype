@@ -12,6 +12,7 @@ import { scoringName, type Scoring } from '../lib/games';
 import { eventStandings, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, type RoundEvent } from '../lib/sharedround';
 import { changeTour, createTour, forgetTour, isPlanned, isTourHost, keepTour, loadTours, syncTours, tourState, type PlannedEvent, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
+import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
@@ -59,36 +60,22 @@ const teeTimeOf = (f: unknown): string => ((f as { teeTime?: string }).teeTime ?
 
 // ---------- the start page and the menu ----------
 
-/** On "Play": plan a tournament; the ones to come one tap away. */
-export function TourStartCard(props: { canShare: boolean; onNew: () => void; onList: () => void }) {
-  const today = dayOf(new Date());
-  const coming = useTours().filter((e) => ['planned', 'today'].includes(tourState(e, today))).length;
+/** On "Play": plan a tournament – following them is in the menu "Tournaments" (its dot shows those to come). */
+export function TourStartCard(props: { canShare: boolean; onNew: () => void }) {
   useEffect(() => {
     void syncTours();
   }, []);
   return (
-    <>
-      <section className="card play-card" aria-label={tr('Plan a tournament', 'Turnier planen')}>
-        <strong className="play-course">{tr('Plan a new tournament', 'Neues Turnier planen')}</strong>
-        {props.canShare ? (
-          <button type="button" className="btn-secondary" onClick={props.onNew}>
-            {tr('New tournament', 'Neues Turnier')}
-          </button>
-        ) : (
-          <span className="muted small">{tr('Sign in to plan tournaments: Profile → "On all your devices".', 'Für Turniere anmelden: Profil → „Auf allen Geräten“.')}</span>
-        )}
-      </section>
-      {coming > 0 && (
-        <button type="button" className="list-item" onClick={props.onList}>
-          <span className="grow">
-            <span className="title">{tr('Tournaments ahead', 'Anstehende Turniere')}</span>
-            <span className="muted small">{coming === 1 ? tr('1 tournament planned', '1 Turnier geplant') : tr(`${coming} tournaments planned`, `${coming} Turniere geplant`)}</span>
-          </span>
-          <span className="count-badge">{coming}</span>
-          <span aria-hidden="true">›</span>
+    <section className="card play-card" aria-label={tr('Plan a tournament', 'Turnier planen')}>
+      <strong className="play-course">{tr('Plan a new tournament', 'Neues Turnier planen')}</strong>
+      {props.canShare ? (
+        <button type="button" className="btn-secondary" onClick={props.onNew}>
+          {tr('New tournament', 'Neues Turnier')}
         </button>
+      ) : (
+        <span className="muted small">{tr('Sign in to plan tournaments: Profile → "On all your devices".', 'Für Turniere anmelden: Profil → „Auf allen Geräten“.')}</span>
       )}
-    </>
+    </section>
   );
 }
 
@@ -223,6 +210,8 @@ export interface TourDraft {
   times: string[];
   first: string;
   gap: number;
+  /** the special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional") */
+  specials: Special[];
 }
 
 /** The common tee times: every 5 minutes from 6 to 18 o'clock (Sascha 01.11.2026: "the usual choice of times"). */
@@ -274,6 +263,7 @@ export function newTourDraft(): TourDraft {
     times: ['09:00'],
     first: '09:00',
     gap: 10,
+    specials: [],
   };
 }
 
@@ -312,6 +302,7 @@ export function draftOf(e: TourEntry): TourDraft {
     times,
     first: times[0] ?? '09:00',
     gap: 10,
+    specials: ev.specials ?? [],
   };
 }
 
@@ -400,6 +391,10 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           ),
         }
       : fresh;
+    // the special prizes on holes the course still has
+    const specials = d.specials.filter((s) => s.hole < holes.length);
+    if (specials.length) ev.specials = specials;
+    else delete ev.specials;
     const code = d.code ? ((await changeTour(d.code, ev)) ? d.code : null) : await createTour(ev);
     setBusy(false);
     if (code) props.onSaved(code);
@@ -536,60 +531,70 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
             </div>
           </div>
         </div>
-        {Array.from({ length: d.flights }, (_, f) => (
-          <section key={f} className="card tour-flight" aria-label={`Flight ${f + 1}`}>
-            <div className="tour-flight-head">
-              <h2>Flight {f + 1}</h2>
-              <div className="select-wrap tour-time">
-                <select
-                  className="input"
-                  aria-label={tr(`Tee time of flight ${f + 1}`, `Startzeit Flight ${f + 1}`)}
-                  value={d.times[f] ?? d.first}
-                  onChange={(e) => set({ times: Array.from({ length: d.flights }, (_, i) => (i === f ? e.target.value : (d.times[i] ?? addMinutes(d.first, i * d.gap)))) })}
-                >
-                  {TEE_TIMES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {!flight(f).length && <span className="muted small">{tr('Nobody in this flight yet.', 'Noch niemand in diesem Flight.')}</span>}
-            {flight(f).map((p) => {
-              const k = d.players.indexOf(p);
-              const mates = flight(f).filter((x) => x.id !== p.id);
-              return (
-                <div key={p.id} className="tour-flight-player">
-                  <strong className="grow">{label(p, k)}</strong>
-                  {d.flights > 1 && (
-                    <div className="select-wrap">
-                      <select className="input" aria-label={tr(`Flight of ${label(p, k)}`, `Flight von ${label(p, k)}`)} value={p.flight} onChange={(e) => set({ players: d.players.map((x) => (x.id === p.id ? { ...x, flight: Number(e.target.value) } : x)) })}>
-                        {Array.from({ length: d.flights }, (_, i) => (
-                          <option key={i} value={i}>
-                            Flight {i + 1}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  {mates.length > 0 && (
-                    <div className="select-wrap">
-                      <select className="input" aria-label={tr(`Marker of ${label(p, k)}`, `Zähler von ${label(p, k)}`)} value={markers[p.id] ?? ''} onChange={(e) => set({ markers: { ...d.markers, ...markers, [p.id]: e.target.value } })}>
-                        {mates.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {tr(`marked by ${label(m, d.players.indexOf(m))}`, `Zähler: ${label(m, d.players.indexOf(m))}`)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </section>
-        ))}
+        <FlightBoard
+          players={d.players}
+          flights={d.flights}
+          times={Array.from({ length: d.flights }, (_, i) => d.times[i] ?? addMinutes(d.first, i * d.gap))}
+          markers={markers}
+          label={(p) => label(p, d.players.indexOf(p))}
+          onMove={(id, to) => set({ players: d.players.map((x) => (x.id === id ? { ...x, flight: to } : x)) })}
+          onTime={(fi, t) => set({ times: Array.from({ length: d.flights }, (_, i) => (i === fi ? t : (d.times[i] ?? addMinutes(d.first, i * d.gap)))) })}
+          onMarkers={(m) => set({ markers: { ...d.markers, ...markers, ...m } })}
+        />
         {small && <span className="small bad-text">{tr('Every flight needs at least two players – they mark each other.', 'Jeder Flight braucht mindestens zwei Spieler – sie zählen sich gegenseitig.')}</span>}
+      </section>
+
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Special prizes (optional)', 'Sonderwertungen (optional)')}</span>
+        {d.specials.map((s, k) => (
+          <div key={s.id} className="card tour-special">
+            <strong className="grow">{specialName(s.kind)}</strong>
+            <div className="select-wrap">
+              <select
+                className="input"
+                aria-label={tr(`Hole of ${specialName(s.kind)}`, `Loch für ${specialName(s.kind)}`)}
+                value={s.hole}
+                onChange={(e) => set({ specials: d.specials.map((x, j) => (j === k ? { ...x, hole: Number(e.target.value) } : x)) })}
+              >
+                {holesFor(s.kind, holes).map((i) => (
+                  <option key={i} value={i}>
+                    {tr(`Hole ${holes[i].label} · par ${holes[i].par ?? '–'}`, `Loch ${holes[i].label} · Par ${holes[i].par ?? '–'}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button type="button" className="icon-btn" aria-label={tr(`Remove ${specialName(s.kind)}`, `${specialName(s.kind)} entfernen`)} onClick={() => set({ specials: d.specials.filter((_, j) => j !== k) })}>
+              ✕
+            </button>
+          </div>
+        ))}
+        {holes.length > 0 ? (
+          <div className="tour-special-add">
+            {(['longDrive', 'nearestPin'] as SpecialKind[]).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  const free = holesFor(kind, holes).filter((i) => !d.specials.some((x) => x.hole === i));
+                  set({ specials: [...d.specials, { id: newId(), kind, hole: free[0] ?? holesFor(kind, holes)[0] }] });
+                }}
+              >
+                + {specialName(kind)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="muted small">{tr('Choose the course first.', 'Zuerst den Platz wählen.')}</span>
+        )}
+        {d.specials.length > 0 && (
+          <span className="muted small">
+            {tr(
+              'On the day the players enter their figure at the hole in Rounds – Nearest to the Pin the distance to the hole, Long Drive the length from the tee (GPS suggests it; only a ball in the fairway counts).',
+              'Am Turniertag tragen die Spieler am Loch in Rounds ein – Nearest to the Pin den Abstand zur Fahne, Long Drive die Weite vom Abschlag (GPS schlägt sie vor; nur ein Ball im Fairway zählt).',
+            )}
+          </span>
+        )}
       </section>
 
       {msg && (
@@ -604,6 +609,165 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         </button>
       </div>
     </main>
+  );
+}
+
+/** Who may mark whom in a flight, each way once: pairs (with four: 1–2/3–4, 1–3/2–4, 1–4/2–3), with an odd number a
+ *  ring one way or the other. markers[player] = who marks him. */
+export function pairings(ids: string[]): Record<string, string>[] {
+  const n = ids.length;
+  if (n < 2) return [{}];
+  if (n % 2 === 1)
+    return [Object.fromEntries(ids.map((id, k) => [id, ids[(k + n - 1) % n]])), Object.fromEntries(ids.map((id, k) => [id, ids[(k + 1) % n]]))];
+  return ids.slice(1).map((partner) => {
+    const rest = ids.filter((x) => x !== ids[0] && x !== partner);
+    const m: Record<string, string> = { [ids[0]]: partner, [partner]: ids[0] };
+    for (let k = 0; k + 1 < rest.length; k += 2) {
+      m[rest[k]] = rest[k + 1];
+      m[rest[k + 1]] = rest[k];
+    }
+    return m;
+  });
+}
+
+/** The flights as cards with their players as chips (Sascha 01.11.2026: "the flights' usability is not good – drag and
+ *  drop"): a chip is dragged onto another flight – or tapped, then "here" on the flight it goes to; who marks whom is
+ *  one line under each flight, "other pairing" changes it. */
+function FlightBoard(props: {
+  players: TourPlayer[];
+  flights: number;
+  times: string[];
+  markers: Record<string, string>;
+  label: (p: TourPlayer) => string;
+  onMove: (id: string, flight: number) => void;
+  onTime: (flight: number, t: string) => void;
+  onMarkers: (m: Record<string, string>) => void;
+}) {
+  const [drag, setDrag] = useState<{ id: string; x0: number; y0: number; x: number; y: number; moved: boolean; over: number | null } | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const flightAt = (x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y)?.closest('[data-flight]') as HTMLElement | null;
+    return el ? Number(el.dataset.flight) : null;
+  };
+  const byId = (id: string) => props.players.find((p) => p.id === id);
+  const name = (id: string) => {
+    const p = byId(id);
+    return p ? props.label(p) : '?';
+  };
+  const dragged = drag?.moved ? byId(drag.id) : null;
+  // dragged near the top or the bottom of the screen: the page scrolls along – the flights lie one below the other
+  const dragY = drag?.moved ? drag.y : null;
+  useEffect(() => {
+    if (dragY == null) return;
+    const edge = 90;
+    const step = dragY < edge ? -14 : dragY > window.innerHeight - edge ? 14 : 0;
+    if (!step) return;
+    const t = window.setInterval(() => window.scrollBy(0, step), 16);
+    return () => window.clearInterval(t);
+  }, [dragY]);
+  return (
+    <>
+      {Array.from({ length: props.flights }, (_, f) => {
+        const ps = props.players.filter((p) => p.flight === f);
+        const ids = ps.map((p) => p.id);
+        const options = pairings(ids);
+        const now = options.findIndex((o) => ids.every((id) => o[id] === props.markers[id]));
+        // who marks whom: "Sascha ↔ Chris" when they mark each other, else "Erik marks Cedric"
+        const lines: string[] = [];
+        for (const id of ids) {
+          const m = props.markers[id];
+          if (!m) continue;
+          if (props.markers[m] === id) {
+            if (ids.indexOf(m) > ids.indexOf(id)) lines.push(`${name(id)} ↔ ${name(m)}`);
+          } else lines.push(tr(`${name(m)} marks ${name(id)}`, `${name(m)} zählt ${name(id)}`));
+        }
+        const target = drag?.moved && drag.over === f && byId(drag.id)?.flight !== f;
+        const pick = picked ? byId(picked) : null;
+        return (
+          <section key={f} className={`card tour-flight${target ? ' drop-target' : ''}`} aria-label={`Flight ${f + 1}`} data-flight={f}>
+            <div className="tour-flight-head">
+              <h2>Flight {f + 1}</h2>
+              <div className="select-wrap tour-time">
+                <select className="input" aria-label={tr(`Tee time of flight ${f + 1}`, `Startzeit Flight ${f + 1}`)} value={props.times[f]} onChange={(e) => props.onTime(f, e.target.value)}>
+                  {TEE_TIMES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="tour-chips">
+              {ps.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`tour-chip${picked === p.id ? ' on' : ''}${drag?.moved && drag.id === p.id ? ' lifted' : ''}`}
+                  aria-pressed={picked === p.id}
+                  aria-label={tr(`${props.label(p)} – drag to another flight, or tap`, `${props.label(p)} – in einen anderen Flight ziehen oder antippen`)}
+                  onPointerDown={(e) => {
+                    if (props.flights < 2) return;
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    setDrag({ id: p.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, over: f });
+                  }}
+                  onPointerMove={(e) => {
+                    if (!drag || drag.id !== p.id) return;
+                    const moved = drag.moved || Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 8;
+                    setDrag({ ...drag, x: e.clientX, y: e.clientY, moved, over: moved ? flightAt(e.clientX, e.clientY) : drag.over });
+                  }}
+                  onPointerUp={(e) => {
+                    if (!drag || drag.id !== p.id) return;
+                    if (drag.moved) {
+                      const to = flightAt(e.clientX, e.clientY);
+                      if (to != null && to !== p.flight) props.onMove(p.id, to);
+                      setPicked(null);
+                    } else setPicked(picked === p.id ? null : p.id);
+                    setDrag(null);
+                  }}
+                  onPointerCancel={() => setDrag(null)}
+                  onClick={(e) => {
+                    if (e.detail === 0) setPicked(picked === p.id ? null : p.id); // the keyboard
+                  }}
+                >
+                  {props.label(p)}
+                </button>
+              ))}
+              {!ps.length && <span className="muted small">{tr('Nobody in this flight yet.', 'Noch niemand in diesem Flight.')}</span>}
+            </div>
+            {pick && pick.flight !== f && (
+              <button
+                type="button"
+                className="btn-secondary tour-here"
+                onClick={() => {
+                  props.onMove(pick.id, f);
+                  setPicked(null);
+                }}
+              >
+                {tr(`Move ${props.label(pick)} here`, `${props.label(pick)} hierher`)}
+              </button>
+            )}
+            {lines.length > 0 && (
+              <div className="tour-markers">
+                <span className="muted small">
+                  {tr('Markers', 'Zähler')}: {lines.join(' · ')}
+                </span>
+                {options.length > 1 && (
+                  <button type="button" className="link-btn small" onClick={() => props.onMarkers(options[(now + 1) % options.length])}>
+                    {tr('Other pairing', 'Andere Paarung')}
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        );
+      })}
+      {props.flights > 1 && <span className="muted small">{tr('Drag a player onto another flight – or tap him, then "here".', 'Spieler in einen anderen Flight ziehen – oder antippen, dann „hierher“.')}</span>}
+      {dragged && drag && (
+        <span className="tour-chip tour-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden="true">
+          {props.label(dragged)}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -714,6 +878,29 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
           </ul>
         </section>
       )}
+      {(ev.specials ?? []).length > 0 &&
+        specialBoard(live ?? ev).map(({ special, rows }) => (
+          <section key={special.id} className="card tour-special-board" aria-label={specialName(special.kind)}>
+            <span className="eyebrow">
+              {specialName(special.kind)} · {tr(`hole ${ev.holes[special.hole]?.label ?? special.hole + 1}`, `Loch ${ev.holes[special.hole]?.label ?? special.hole + 1}`)}
+            </span>
+            {rows.length ? (
+              <ul className="game-pays">
+                {rows.map((r, k) => (
+                  <li key={`${r.flight}/${r.player}`}>
+                    <span>
+                      {`${k + 1} · `}
+                      {r.name}
+                    </span>
+                    <strong>{metres(r.m, special.kind)}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="muted small">{started ? tr('No entry yet.', 'Noch kein Eintrag.') : tr('Entered at the hole on the day.', 'Wird am Turniertag am Loch eingetragen.')}</span>
+            )}
+          </section>
+        ))}
       {flightsOf(ev).map((f, k) => (
         <section key={f.id} className="card tour-flight" aria-label={`Flight ${k + 1}`}>
           <div className="tour-flight-head">

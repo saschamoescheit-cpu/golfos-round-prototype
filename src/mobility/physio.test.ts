@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { dueToday, exerciseSec, faultLevel, parsePlan, retestDue, routineSec, runSteps, toScreening, weekCount, weekStart, weeksOf, type PhysioPlan } from './physio';
+import { compareRetest, dueToday, exerciseSec, faultLevel, parsePlan, retestDue, routineSec, runSteps, toScreening, weekCount, weekStart, weeksOf, type PhysioPlan } from './physio';
+import type { Grade, Measurement } from './types';
 
 // a made-up plan in the shape of the file (no player's data)
 const FILE = {
@@ -96,5 +97,37 @@ describe('the physio plan', () => {
     expect(retestDue(p, null, new Date('2026-11-20T12:00:00')).due).toBe(false);
     expect(retestDue(p, null, new Date('2026-11-27T12:00:00'))).toMatchObject({ due: true, sessions: 9 });
     expect(retestDue(p, '2026-11-08T08:00:00', new Date('2026-11-27T12:00:00')).due).toBe(false);
+  });
+
+  it('before and after: each test of the physio against the newest of the app since, per side', () => {
+    const p = { ...plan(), log: Array.from({ length: 12 }, (_, i) => ({ id: `${i}`, at: `2026-11-${String(i + 2).padStart(2, '0')}T08:00:00`, done: 4, of: 4, min: 10, how: 'guided' as const })) };
+    const physio = toScreening(p, 'ph')!;
+    const m = (grade: Grade, at: string, more: Partial<Measurement> = {}): Measurement => ({ value: 1, grade, source: 'camera', at, ...more });
+    const early = { id: 'a', kind: 'full' as const, tests: [], createdAt: '2026-10-20T10:00:00', finishedAt: '2026-10-20T10:00:00', current: 0, hand: 'right' as const, results: { 'toe-touch': { both: m('pass', '2026-10-20T10:00:00') } } };
+    const retest = {
+      ...early,
+      id: 'b',
+      createdAt: '2026-12-01T10:00:00',
+      results: {
+        'toe-touch': { both: m('limited', '2026-12-01T10:00:00') },
+        'single-leg': { left: m('limited', '2026-12-01T10:05:00'), right: m('fail', '2026-12-01T10:06:00') },
+        'neck': { both: m('pass', '2026-12-01T10:07:00', { pain: true }) },
+      },
+    };
+    const c = compareRetest(p, [physio, early, retest]);
+    const row = (id: string) => c.rows.find((r) => r.test === id)!;
+    // a measurement before the physio's screen does not count; red → yellow is better
+    expect(row('toe-touch')).toMatchObject({ change: 'better', sides: [{ side: null, before: 'red', after: 'yellow' }] });
+    expect(row('single-leg').change).toBe('mixed');
+    expect(row('single-leg').sides).toEqual([
+      { side: 'left', before: 'red', after: 'yellow' },
+      { side: 'right', before: 'yellow', after: 'red' },
+    ]);
+    // pain is red, whatever the value
+    expect(row('neck').change).toBe('worse');
+    expect(row('neck').sides.map((x) => x.after)).toEqual(['red', 'red']);
+    expect(row('setup-posture')?.change ?? 'open').toBe('open');
+    expect(c).toMatchObject({ at: '2026-12-01T10:07:00', days: 32, sessions: 12 });
+    expect(compareRetest(p, [physio]).rows.every((r) => r.change === 'open')).toBe(true);
   });
 });

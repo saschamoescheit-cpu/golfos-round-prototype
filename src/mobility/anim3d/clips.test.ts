@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { PHYSIO_CLIPS } from '../physio';
 import { CLIPS } from './clips';
+import type { TestId } from '../types';
 import { sample } from './scene';
 import { FULL, TESTS } from '../tests';
 import { DRILL_CLIPS } from './drills';
@@ -41,8 +43,12 @@ describe('3D drill videos', () => {
     for (const id of used) expect(DRILL_CLIPS[id], id).toBeTruthy();
   });
 
-  it('every video belongs to a drill of Agility', () => {
-    for (const id of Object.keys(DRILL_CLIPS)) expect(drillById(id), id).toBeTruthy();
+  it('every video belongs to a drill of Agility (or shows an exercise of a physio routine)', () => {
+    for (const id of Object.keys(DRILL_CLIPS)) if (!id.startsWith('phys-')) expect(drillById(id), id).toBeTruthy();
+  });
+
+  it('every exercise of the physio routines Agility knows has its video', () => {
+    for (const [name, id] of Object.entries(PHYSIO_CLIPS)) expect(DRILL_CLIPS[id] ?? CLIPS[id as TestId], name).toBeTruthy();
   });
 
   it('keys in time order, every step in both languages, the loop closes, the pose (and place) at the end is the start', () => {

@@ -1,6 +1,7 @@
 import { publishPlannedEvent, updatePlannedEvent, type RoundEvent } from './sharedround';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { myAccount } from './wagerstore';
+import type { Special } from './specials';
 
 // The tournaments planned in Games (Sascha 01.11.2026: "I could set up the tournaments for the USA now, put the flights
 // together and choose the markers, and send the invitations once everyone has the app – in the USA everything is
@@ -8,8 +9,9 @@ import { myAccount } from './wagerstore';
 // in the table of the shared games. Rounds shows it to the invited and plays it on the day; here the host plans it,
 // changes it, deletes it – and everyone in it sees it, with the result once played. Only the host changes it.
 
-/** A tournament set up ahead: the day it is played; deleted only marked (the bin brings it back). */
-export type PlannedEvent = RoundEvent & { date: string; planned: true; deletedAt?: string | null };
+/** A tournament set up ahead: the day it is played; deleted only marked (the bin brings it back); its special prizes
+ *  (Long Drive, Nearest to the Pin – lib/specials.ts). */
+export type PlannedEvent = RoundEvent & { date: string; planned: true; deletedAt?: string | null; specials?: Special[] };
 
 export interface TourEntry {
   code: string;

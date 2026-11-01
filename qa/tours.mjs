@@ -133,11 +133,44 @@ for (const n of ['Chris', 'Erik', 'Cedric']) {
 await H.locator('input[id^="hcp-"]').first().fill('0');
 await H.getByRole('group', { name: 'Anzahl Flights' }).getByRole('button', { name: '2', exact: true }).click();
 const fl = (k) => H.locator('.tour-flight').nth(k);
-ok((await fl(0).locator('.tour-flight-player strong').allInnerTexts()).join(',') === 'Sascha,Chris' && (await fl(1).locator('.tour-flight-player strong').allInnerTexts()).join(',') === 'Erik,Cedric', 'two flights: Sascha and Chris, Erik and Cedric');
+const chips = async (k) => (await fl(k).locator('.tour-chip').allInnerTexts()).join(',');
+ok((await chips(0)) === 'Sascha,Chris' && (await chips(1)) === 'Erik,Cedric', 'two flights: Sascha and Chris, Erik and Cedric');
+ok((await fl(0).locator('.tour-markers').innerText()).includes('Sascha ↔ Chris') && (await fl(0).locator('select').count()) === 1, 'the markers one line per flight ("Sascha ↔ Chris"), no dropdown per player');
+// Sascha 01.11.2026: "drag and drop" – Cedric dragged into flight 1
+{
+  await fl(0).evaluate((e) => e.scrollIntoView({ block: 'start' }));
+  await H.waitForTimeout(300);
+  const from = await fl(1).locator('.tour-chip', { hasText: 'Cedric' }).boundingBox();
+  const to = await fl(0).locator('.tour-chips').boundingBox();
+  await H.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await H.mouse.down();
+  await H.mouse.move(from.x + from.width / 2, from.y - 20, { steps: 4 });
+  await H.mouse.move(to.x + to.width - 10, to.y + to.height / 2, { steps: 10 });
+  await H.mouse.up();
+}
+ok((await chips(0)) === 'Sascha,Chris,Cedric' && (await chips(1)) === 'Erik', `dragged: Cedric into flight 1 (${await chips(0)} | ${await chips(1)})`);
+const ring = await fl(0).locator('.tour-markers').innerText();
+ok(/zählt/.test(ring) && ring.split('zählt').length - 1 === 3, `three in a flight: a ring, each one marked (${ring.replace(/\s+/g, ' ')})`);
+await fl(0).getByRole('button', { name: 'Andere Paarung' }).click();
+ok((await fl(0).locator('.tour-markers').innerText()) !== ring, 'other pairing: the ring the other way');
+ok(await H.getByText('Jeder Flight braucht mindestens zwei Spieler').isVisible(), 'flight 2 with Erik alone: told, no tournament like this');
+// and back by tapping: Cedric, then "here" on flight 2
+await fl(0).locator('.tour-chip', { hasText: 'Cedric' }).click();
+await fl(1).getByRole('button', { name: 'Cedric hierher' }).click();
+ok((await chips(0)) === 'Sascha,Chris' && (await chips(1)) === 'Erik,Cedric', 'tapped, then "hierher": Cedric back in flight 2');
+ok((await fl(0).locator('.tour-markers').innerText()).includes('Sascha ↔ Chris') && (await fl(1).locator('.tour-markers').innerText()).includes('Erik ↔ Cedric'), 'the pairs again');
 ok((await fl(0).locator('select').first().inputValue()) === '09:00' && (await fl(1).locator('select').first().inputValue()) === '09:10', 'tee times: 09:00, then 10 minutes on');
 const options = await H.locator('#tour-first option').allInnerTexts();
 ok(options[0] === '06:00' && options.includes('07:35') && options.at(-1) === '18:00', `the usual tee times: every 5 minutes, ${options[0]}–${options.at(-1)}`);
 await fl(1).getByRole('combobox', { name: 'Startzeit Flight 2' }).selectOption('09:20');
+// special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional"): Nearest to the Pin on a par 3
+await H.getByRole('button', { name: '+ Long Drive' }).click();
+await H.getByRole('button', { name: '+ Nearest to the Pin' }).click();
+const ntpHole = await H.getByRole('combobox', { name: 'Loch für Nearest to the Pin' }).locator('option:checked').innerText();
+const ntpPars = await H.getByRole('combobox', { name: 'Loch für Nearest to the Pin' }).locator('option').allInnerTexts();
+ok(/Par 3$/.test(ntpHole) && ntpPars.every((t) => /Par 3$/.test(t)), `Nearest to the Pin: only par 3s offered (${ntpHole}, ${ntpPars.length} holes)`);
+const ldPars = await H.getByRole('combobox', { name: 'Loch für Long Drive' }).locator('option').allInnerTexts();
+ok(ldPars.length > 0 && ldPars.every((t) => /Par [45]$/.test(t)), `Long Drive: par 4s and 5s (${ldPars.length} holes)`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-setup.png', fullPage: true });
 await H.getByRole('button', { name: 'Turnier anlegen' }).click();
 await H.waitForTimeout(2500);
@@ -147,6 +180,10 @@ ok(!!ev && ev.planned === true && ev.tournament === true && ev.name === 'USA Tag
 const fs1 = code ? flightsOf(code) : [];
 const byTime = [...fs1].sort((x, y) => x.teeTime.localeCompare(y.teeTime));
 ok(fs1.length === 2 && byTime[0].teeTime === '09:00' && byTime[1].teeTime === '09:20', `server: a row per flight with its tee time (${fs1.map((f) => f.teeTime).join(', ')})`);
+const specials = ev?.specials ?? [];
+const ld = specials.find((s) => s.kind === 'longDrive');
+const ntp = specials.find((s) => s.kind === 'nearestPin');
+ok(specials.length === 2 && ev.holes[ntp.hole].par === 3 && ev.holes[ld.hole].par >= 4, `server: the two special prizes on their holes (LD ${ld && ev.holes[ld.hole].label}, NTP ${ntp && ev.holes[ntp.hole].label})`);
 ok(byTime[0].players.map((p) => p.name).join(',') === 'Sascha,Chris' && byTime[0].markers.p1 === 'p2' && byTime[0].markers.p2 === 'p1' && byTime[0].players.every((p) => p.hcpIndex === 0), 'server: flight 1 Sascha and Chris, marking each other, the HCP kept');
 ok((await H.locator('.topbar h1').innerText()).includes('USA Tag 1') && (await H.locator('.tour-tee').allInnerTexts()).join(',') === '09:00,09:20', 'the tournament page: the flights with their tee times');
 ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Zähler: Sascha').count()) === 1, 'the tournament page: who marks whom');
@@ -162,6 +199,10 @@ const put = (f, scores) => {
 };
 put(byTime[0], { p1: [4, 4, 4], p2: [3, 4, 4] }); // Sascha 12, Chris 11
 put(byTime[1], { p1: [5, 5, 5], p2: [4, 5, 4] }); // Erik 15, Cedric 13
+// the special prizes as the players enter them at the hole (each flight's row): Erik's long drive in the rough
+const at = new Date().toISOString();
+shared.get(byTime[0].code).game.flight.specials = { [ld.id]: { p1: { m: 251, fairway: true, at }, p2: { m: 238, fairway: true, at } }, [ntp.id]: { p2: { m: 3.4, at } } };
+shared.get(byTime[1].code).game.flight.specials = { [ld.id]: { p1: { m: 275, fairway: false, at } }, [ntp.id]: { p2: { m: 1.8, at } } };
 await H.goto('about:blank');
 await H.goto(url);
 await H.waitForTimeout(1500);
@@ -174,6 +215,10 @@ const board = H.locator('.card').filter({ has: H.locator('.game-pays') }).first(
 const rows = (await board.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/^Live-Rangliste/i.test(await board.locator('.eyebrow').innerText()), 'the leaderboard is named "Live-Rangliste" while it is played');
 ok(rows.length === 4 && /Chris/.test(rows[0]) && /Erik/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Chris first, Erik last, all "nach 3" (${rows.join(' | ')})`);
+const ldRows = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+const ntpRows = (await H.getByRole('region', { name: 'Nearest to the Pin' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+ok(ldRows.length === 2 && /Sascha.*251 m/.test(ldRows[0]) && /Chris.*238 m/.test(ldRows[1]), `Long Drive: longest in the fairway first, Erik's 275 m in the rough not ranked (${ldRows.join(' | ')})`);
+ok(ntpRows.length === 2 && /Cedric.*1,8 m/.test(ntpRows[0]) && /Chris.*3,4 m/.test(ntpRows[1]), `Nearest to the Pin: nearest first (${ntpRows.join(' | ')})`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-page.png', fullPage: true });
 
 // ---------- Chris: in by the code – sees it, cannot change it ----------

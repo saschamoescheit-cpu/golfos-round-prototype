@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { facingOf, LIMITS, makeAnalyzer, missingPoints, nearSide, NOTE_CRAMP, NOTE_HEELS, NOTE_HELD, P, pickMainPerson, type Frame, type Lm } from './measure';
-import { forearmBody, forearmScript, frames, frontBody, keys, put, reachBody, reachScript, script, SYNTH_H, SYNTH_W, tiltScript, wristBody, wristScript } from './synth';
+import { forearmBody, forearmScript, frames, frontBody, keys, put, reachBody, reachScript, script, SYNTH_H, SYNTH_W, tiltBody, tiltScript, wristBody, wristScript } from './synth';
 import type { MetricKind, Side } from './types';
 
 const run = (kind: MetricKind, side: Side, level: 'good' | 'stiff') => {
@@ -352,6 +352,13 @@ describe('pelvic tilt (side view, golf posture)', () => {
     expect(out!.checks.find((c) => c.id === 'chestStill')!.ok).toBe(false);
     expect(out!.grade).not.toBe('pass');
   });
+  it('the tracking slipping to someone close by for a moment is no tilt and no moving chest', () => {
+    // 0.3 s on another body: the shoulder 200 px off, the hip 150 px (the TPI video: the physio beside the player)
+    const at = (t: number) => (t >= 4500 && t < 4800 ? tiltBody(150, 200) : tiltScript(30, 30)(t));
+    const { out } = runFrames('pelvicTilt', at, 20000);
+    expect(out!.grade).toBe('pass');
+    expect(out!.checks.every((c) => c.ok)).toBe(true);
+  });
   it('waits for a still golf posture before it starts – bending into it is no tilt', () => {
     // standing upright first (the shoulder above the hip), then bending forward into the posture
     const at = (t: number) => {
@@ -363,6 +370,16 @@ describe('pelvic tilt (side view, golf posture)', () => {
       return lm;
     };
     expect(runFrames('pelvicTilt', at, 22000).out!.grade).toBe('pass');
+  });
+});
+
+describe('lower quarter rotation (front view, on one leg)', () => {
+  it('a full turn to one side only is not a pass – the goal is each direction', () => {
+    const turn = keys([[0, 0], [1000, 0], [2500, 70], [4000, 70], [5500, 0]]);
+    const { out } = runFrames('lowerQuarter', (t) => frontBody({ pelvis: turn(t), trunk: turn(t), lift: 'right' }), 13000);
+    expect(out!.grade).toBe('limited');
+    expect(out!.checks.filter((c) => c.ok)).toHaveLength(1);
+    expect(out!.notes.some((n) => /Only one direction/.test(n.en))).toBe(true);
   });
 });
 

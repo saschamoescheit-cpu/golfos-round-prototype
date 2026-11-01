@@ -70,10 +70,12 @@ async function toCache(f: File): Promise<string> {
  *  screen stays on while any lock is held. */
 function wakeLock(): { request: (type: 'screen') => Promise<{ release: () => Promise<void>; addEventListener: () => void }> } {
   let held = 0;
-  const plugin = async () => (await import('@capacitor-community/keep-awake')).KeepAwake;
+  // the module, not the plugin: a Capacitor plugin answers every name, also "then" – awaited it never resolves (the
+  // screen then locked during the camera tests, 01.11.2026)
+  const plugin = () => import('@capacitor-community/keep-awake');
   return {
     request: async () => {
-      await (await plugin()).keepAwake();
+      await (await plugin()).KeepAwake.keepAwake();
       held += 1;
       let released = false;
       return {
@@ -81,7 +83,7 @@ function wakeLock(): { request: (type: 'screen') => Promise<{ release: () => Pro
           if (released) return;
           released = true;
           held -= 1;
-          if (held === 0) await (await plugin()).allowSleep();
+          if (held === 0) await (await plugin()).KeepAwake.allowSleep();
         },
         addEventListener: () => undefined, // iOS never takes it away by itself
       };

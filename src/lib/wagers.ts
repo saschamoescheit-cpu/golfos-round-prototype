@@ -1,6 +1,6 @@
-import type { HoleEntry, Round } from '../types';
+import type { HoleEntry, Round, SharedCell } from '../types';
 import { isTeamRound } from './games';
-import { greenInRegulation, handicapStrokes, stablefordPoints } from './scoring';
+import { emptyEntry, greenInRegulation, handicapStrokes, stablefordPoints } from './scoring';
 import { tr } from './i18n';
 import { currencySymbol, money } from './gameforms';
 
@@ -117,6 +117,8 @@ export interface Progress {
    *  (1 he, −1 the opponent, 0 tied, null not complete) */
   amount?: number;
   duels?: { day: string; course: string; front: number | null; back: number | null; total: number | null }[];
+  /** a bet "with marker": holes of the counted rounds where the marker's figures differ from the player's own */
+  differ?: number;
   at: string;
 }
 
@@ -172,17 +174,43 @@ export interface PlayedRound {
   received?: number[];
   /** with a marker, the card signed by player and marker */
   counted: boolean;
+  /** with a marker: each hole as the marker entered it (score, putts, tee shot, sand, penalties) – what a bet "with
+   *  marker" counts (Sascha 01.11.2026: "as in a tournament") */
+  marked?: (HoleEntry | undefined)[];
+  /** the holes where the marker's figures differ from the player's own */
+  differ?: number[];
   /** the others of his flight in that round – for "5+5+10" against one of them */
-  others?: { name: string; entries: (HoleEntry | undefined)[]; hcp: number | null; received: number[]; counted: boolean }[];
+  others?: { name: string; entries: (HoleEntry | undefined)[]; hcp: number | null; received: number[]; counted: boolean; marked?: (HoleEntry | undefined)[] }[];
 }
 
+/** A hole as the marker entered it: his score and – when they came along – his putts, tee shot, sand shots and penalty
+ *  strokes; what he did not enter stays as the player's own. Not marked: the player's own. */
+export function markedEntry(own: HoleEntry | undefined, c: SharedCell | undefined): HoleEntry | undefined {
+  if (!c) return own;
+  const e = own ?? emptyEntry();
+  return { ...e, strokes: c.s ?? null, pickedUp: !!c.p, ...(c.d ? { putts: c.d.pu ?? null, fairway: c.d.fw ?? null, sandShots: c.d.sa ?? 0, penalties: c.d.pe ?? 0 } : {}) };
+}
+const sameFigures = (a: HoleEntry | undefined, b: HoleEntry | undefined): boolean =>
+  (a?.strokes ?? null) === (b?.strokes ?? null) && !!a?.pickedUp === !!b?.pickedUp && (a?.putts ?? null) === (b?.putts ?? null) && (a?.fairway ?? null) === (b?.fairway ?? null) && (a?.sandShots ?? 0) === (b?.sandShots ?? 0) && (a?.penalties ?? 0) === (b?.penalties ?? 0);
+/** The round as a bet "with marker" sees it: the marker's figures for the player and for the others of the flight. */
+const asMarked = (r: PlayedRound): PlayedRound => (r.marked || r.others?.some((o) => o.marked) ? { ...r, entries: r.marked ?? r.entries, others: r.others?.map((o) => (o.marked ? { ...o, entries: o.marked } : o)) } : r);
+
 /** The player's rounds for the bets: his own rounds on this phone (not a preview, not a team's card), oldest first. */
-export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) => boolean): PlayedRound[] {
+export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) => boolean, marks?: (r: Round, pid: string) => SharedCell[] | null | undefined): PlayedRound[] {
   return rounds
     .filter((r) => !r.preview && !isTeamRound(r) && r.players.some((p) => p.isMe))
     .map((r) => {
       const me = r.players.find((p) => p.isMe)!;
+      // the marker's count of each player, as the event has it (a round with a marker)
+      const markedOf = (pid: string) => {
+        const m = marks?.(r, pid);
+        return m && m.some(Boolean) ? r.holes.map((_, i) => markedEntry(r.entries[pid]?.[i], m[i])) : undefined;
+      };
+      const mine = markedOf(me.id);
+      const differ = mine ? r.holes.map((_, i) => i).filter((i) => !sameFigures(r.entries[me.id]?.[i], mine[i])) : [];
       return {
+        ...(mine ? { marked: mine } : {}),
+        ...(differ.length ? { differ } : {}),
         id: r.id,
         day: dayOf(r.createdAt),
         course: r.courseName,
@@ -193,7 +221,10 @@ export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) =
         counted: counted(r, me.id),
         others: r.players
           .filter((p) => !p.isMe)
-          .map((p) => ({ name: p.name, entries: r.holes.map((_, i) => r.entries[p.id]?.[i]), hcp: p.playingHandicap ?? null, received: handicapStrokes(r.holes, p.playingHandicap ?? null), counted: counted(r, p.id) })),
+          .map((p) => {
+            const marked = markedOf(p.id);
+            return { name: p.name, entries: r.holes.map((_, i) => r.entries[p.id]?.[i]), hcp: p.playingHandicap ?? null, received: handicapStrokes(r.holes, p.playingHandicap ?? null), counted: counted(r, p.id), ...(marked ? { marked } : {}) };
+          }),
         at: r.createdAt,
       };
     })
@@ -373,7 +404,9 @@ function judgeDuel(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players?: 
 }
 
 /** A bet judged from the player's rounds: the rounds of the period (of its day), counted ones only when it asks. */
-export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players?: PoolPlayer[] }, rounds: PlayedRound[], now = new Date().toISOString()): Progress {
+export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players?: PoolPlayer[] }, played: PlayedRound[], now = new Date().toISOString()): Progress {
+  // "with marker": the marker's figures count, as in a tournament (Sascha 01.11.2026)
+  const rounds = w.counted ? played.map(asMarked) : played;
   if (shapeOf(w.kind) === 'duel') return judgeDuel(w, pool, rounds, now);
   const inTime = rounds.filter((r) => r.day >= pool.from && r.day <= pool.to && (w.attempts !== 'day' || r.day === w.day));
   const counting = w.counted ? inTime.filter((r) => r.counted) : inTime;
@@ -381,7 +414,8 @@ export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players
   const all = w.counted ? bestOf(w, inTime).best : b.best;
   const better = all != null && (b.best == null || (lower(w) ? all < b.best : all > b.best));
   const done = reached(w, b.best);
-  return { best: b.best, ...(better ? { pending: all } : {}), done, ...(done && b.where ? { where: b.where } : {}), rounds: counting.length, at: now };
+  const differ = w.counted ? counting.reduce((n, r) => n + (r.differ?.length ?? 0), 0) : 0;
+  return { best: b.best, ...(better ? { pending: all } : {}), done, ...(done && b.where ? { where: b.where } : {}), rounds: counting.length, ...(differ ? { differ } : {}), at: now };
 }
 
 /** Did the judgement change (not only its time)? */
@@ -524,7 +558,9 @@ export function progressText(w: Wager, p: Progress | undefined, currency?: 'EUR'
   }
   const shape = shapeOf(w.kind);
   const show = (v: number): string => (shape === 'score' ? fmtPar(v) : String(v));
-  const pend = p?.pending != null ? tr(` · ${show(p.pending)} not signed yet`, ` · ${show(p.pending)} noch nicht unterschrieben`) : '';
+  const pend =
+    (p?.pending != null ? tr(` · ${show(p.pending)} not signed yet`, ` · ${show(p.pending)} noch nicht unterschrieben`) : '') +
+    (p?.differ ? tr(` · the marker counted ${p.differ === 1 ? '1 hole' : `${p.differ} holes`} differently – his figures count`, ` · der Zähler hat ${p.differ === 1 ? '1 Loch' : `${p.differ} Löcher`} anders gezählt – seine Zahlen zählen`) : '');
   if (!p || p.best == null) return (p?.pending != null ? tr('no counted round yet', 'noch keine gezählte Runde') : tr('no complete round yet', 'noch keine passende Runde')) + pend;
   if (shape === 'count' && w.scope === 'trip') return tr(`so far ${p.best} (target ${w.target})`, `bisher ${p.best} (Ziel ${w.target})`) + pend;
   if (shape === 'run') return tr(`best ${p.best} (target ${w.target})`, `bestes ${p.best} (Ziel ${w.target})`) + pend;

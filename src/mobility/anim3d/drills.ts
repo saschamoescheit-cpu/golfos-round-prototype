@@ -357,6 +357,17 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(5.8, P(HOOK, { tip: -90 })),
     ],
   },
+  // ---------- exercises of a physio's routine (TPI names, PhysioPlan.tsx) ----------
+  'phys-glute-squeeze': {
+    view: 'side',
+    views: ['side', 'angle'],
+    props: ['mat'],
+    keys: [
+      k(0, P({ ...HOOK, shoulderL: [20, 0, 18], shoulderR: [20, 0, -18], elbowL: [-40, 0, 0], elbowR: [-40, 0, 0] }, { tip: -90 }), L('On your back, hands on the glutes', 'Rückenlage, Hände aufs Gesäß')),
+      k(2.0, P({ ...HOOK, shoulderL: [20, 0, 18], shoulderR: [20, 0, -18], elbowL: [-40, 0, 0], elbowR: [-40, 0, 0] }, { tip: -90 }), L('Squeeze one glute – not the hamstrings', 'Einen Gesäßmuskel anspannen – nicht die hinteren Oberschenkel')),
+      k(4.0, P({ ...HOOK, shoulderL: [20, 0, 18], shoulderR: [20, 0, -18], elbowL: [-40, 0, 0], elbowR: [-40, 0, 0] }, { tip: -90 }), L('Hold 5 s, then the other side, then both', '5 s halten, dann die andere Seite, dann beide')),
+    ],
+  },
   'mob-prone-y': {
     view: 'side',
     views: ['side', 'angle', 'front'],
