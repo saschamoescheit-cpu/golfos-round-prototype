@@ -7,7 +7,7 @@ import { currencySymbol, money, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
-import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, inPool, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
 import { SignedIcon } from '../components/SignedIcon';
@@ -1200,6 +1200,128 @@ export function WagerSheet(props: {
               </div>
             )}
           </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/**
+ * Bets for one round, from Rounds (Sascha 01.11.2026: "a round played on the spur of the moment – a bet or several for
+ * it at once"): the pools this round counts for – or a new pool for just this round with the flight's players – then a
+ * player's library. players[0] is this phone's player. Rounds opens it from the round setup and the hole drawer.
+ */
+export function RoundBetsSheet(props: { date: string; course: { id: string; name: string }; players: { name: string; hcp?: number | null }[]; onClose: () => void }) {
+  const pools = usePools().filter((e) => !e.pool.deletedAt && !e.pool.finishedAt && inPool({ day: props.date, course: props.course.name, courseId: props.course.id }, e.pool));
+  const [open, setOpen] = useState<string | null>(null); // a pool's code
+  const [lib, setLib] = useState<string | null>(null); // a player of it
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    void syncPools();
+  }, []);
+  const entry = pools.find((e) => e.code === open) ?? null;
+  const day = `${props.date.slice(8, 10)}.${props.date.slice(5, 7)}.`;
+  const create = async () => {
+    setBusy(true);
+    setMsg(null);
+    const account = shownName(loadProfile()) || props.players[0]?.name || tr('Me', 'Ich');
+    const uid = myAccount();
+    const players: PoolPlayer[] = props.players
+      .filter((p) => p.name.trim())
+      .map((p, k) => ({ id: newId(), name: p.name.trim(), ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } } : {}) }));
+    if (!players.length) players.push({ id: newId(), name: account, joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } });
+    const pool: WagerPool = {
+      kind: 'wager-pool',
+      id: newId(),
+      name: `${props.course.name} · ${day}`,
+      from: props.date,
+      to: props.date,
+      createdAt: new Date().toISOString(),
+      players,
+      wagers: [],
+      progress: {},
+      currency: 'EUR',
+      rounds: [{ id: newId(), day: props.date, course: props.course.name, courseId: props.course.id }],
+    };
+    const e = await createPool(pool, players[0].id);
+    setBusy(false);
+    if (e) setOpen(e.code);
+    else setMsg(NO_NET());
+  };
+  if (entry && lib)
+    return (
+      <LibrarySheet
+        pool={entry.pool}
+        player={lib}
+        onClose={() => setLib(null)}
+        onAdd={async (ws) => {
+          const ok = await changePool(entry.code, (p) => ({ ...p, wagers: [...p.wagers, ...ws] }));
+          if (!ok) return setMsg(NO_NET());
+          rememberBets(entry.pool, ws);
+          setLib(null);
+          void reportWagers();
+        }}
+      />
+    );
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet wager-sheet" role="dialog" aria-label={tr('Bets for this round', 'Wetten für diese Runde')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Bets for this round', 'Wetten für diese Runde')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <span className="muted small">
+          {props.course.name} · {day}
+        </span>
+        {entry ? (
+          <>
+            <strong>{entry.pool.name}</strong>
+            {isHost(entry) ? (
+              <>
+                <span className="muted small">{tr('Whose bets?', 'Wessen Wetten?')}</span>
+                <div className="chip-set">
+                  {entry.pool.players.map((p) => (
+                    <button key={p.id} type="button" className="chip" onClick={() => setLib(p.id)}>
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+                <span className="muted small">
+                  {tr(`${entry.pool.wagers.length} bets in it · code ${entry.code} – the others join in Games`, `${entry.pool.wagers.length} Wetten darin · Code ${entry.code} – die anderen treten in Games bei`)}
+                </span>
+              </>
+            ) : (
+              <span className="muted small">{tr('Only whoever set up the pool adds bets to it.', 'Wetten legt nur an, wer den Pool angelegt hat.')}</span>
+            )}
+            <button type="button" className="btn-secondary" onClick={() => setOpen(null)}>
+              {tr('Back', 'Zurück')}
+            </button>
+          </>
+        ) : (
+          <>
+            {pools.length > 0 && <span className="eyebrow">{tr('This round counts for', 'Diese Runde zählt für')}</span>}
+            {pools.map((e) => (
+              <button key={e.code} type="button" className="list-item" onClick={() => setOpen(e.code)}>
+                <span className="grow">
+                  <span className="title">{e.pool.name}</span>
+                  <span className="muted small">{tr(`${e.pool.players.length} players · ${e.pool.wagers.length} bets`, `${e.pool.players.length} Spieler · ${e.pool.wagers.length} Wetten`)}</span>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+            <button type="button" className={pools.length ? 'btn-secondary' : 'btn-primary'} disabled={busy} onClick={() => void create()}>
+              {busy ? tr('Creating …', 'Erzeuge …') : tr('New bet for this round', 'Neue Wette für diese Runde')}
+            </button>
+            <span className="muted small">{tr('A pool of its own for this round, with the players of the flight.', 'Ein eigener Pool für diese Runde, mit den Spielern des Flights.')}</span>
+          </>
+        )}
+        {msg && (
+          <span className="small bad-text" role="alert">
+            {msg}
+          </span>
         )}
       </section>
     </div>
