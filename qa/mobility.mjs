@@ -283,9 +283,10 @@ ok(!(await p.locator('.mob-3d-step').count()) && (await p.locator('.mob-3d[data-
 // the loudspeaker switches the voice off – remembered for the next video
 const saidBefore = Number(await p.locator('.mob-3d[data-said]').getAttribute('data-said'));
 await p.locator('.mob-3d-voice').click();
+await p.locator('.mob-3d-voice[aria-pressed="false"]').waitFor({ timeout: 5000 }).catch(() => {});
 ok((await p.locator('.mob-3d-voice').getAttribute('aria-pressed')) === 'false' && (await p.evaluate(() => localStorage.getItem('golfos.mobility.voice'))) === 'off', 'the loudspeaker switches the voice off (remembered)');
 await p.locator('.mob-3d-voice').click();
-ok(Number(await p.locator('.mob-3d[data-said]').getAttribute('data-said')) === saidBefore + 1, 'switched on again it reads from the beginning');
+ok(await p.waitForFunction((n) => Number(document.querySelector('.mob-3d[data-said]')?.getAttribute('data-said')) === n + 1, saidBefore, { timeout: 5000 }).then(() => true, () => false), 'switched on again it reads from the beginning');
 ok(await p.locator('.mob-3d-play').isVisible(), 'play/pause is the round symbol in the picture');
 const painted = await p.evaluate(() => { const c = document.querySelector('.mob-3d canvas'); if (!c) return 0; const x = document.createElement('canvas'); x.width = 40; x.height = 30; const g = x.getContext('2d'); g.drawImage(c, 0, 0, 40, 30); const d = g.getImageData(0, 0, 40, 30).data; const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] >> 4 << 8 | d[i + 1] >> 4 << 4 | d[i + 2] >> 4); return seen.size; });
 ok(painted > 12, 'the 3D video is drawn (' + painted + ' colours)');
