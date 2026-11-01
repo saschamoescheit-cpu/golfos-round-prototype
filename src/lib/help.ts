@@ -27,6 +27,9 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'launch', title: () => tr('Launch monitor', 'Launch-Monitor'), about: () => tr('Import a session, the range page, range shots in the stats', 'Sitzung importieren, die Range-Seite, Range-Schläge in der Statistik'), length: '1:02' },
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz'), length: '1:06' },
+  // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
+  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, 5+5+10, inviting, the settlement', 'Ein Pool über die Reise, die Bibliothek, 5+5+10, einladen, die Abrechnung'), length: '1:05' },
+  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('Flights by drag and drop, markers, tee times, special prizes, live leaderboard', 'Flights per Ziehen, Zähler, Startzeiten, Sonderwertungen, Live-Rangliste'), length: '1:09' },
 ];
 /** The whole tour in one video. */
 export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:05' };
@@ -323,7 +326,7 @@ export const FAQ: FaqTopic[] = [
             'Yes: Games → menu "Bets" (or "New bet" on the start page) – a name, the days, the players; the pencil at the top changes or deletes the pool – only for whoever set it up: the invited see the bets, their phones report theirs. Then "+ Bets" at a player opens his library: tick the bets (in a row, in one round at least or at most, the score, on the whole trip, or a free bet in words) and set the numbers; once there are bets, "Set up before" offers them as templates. Stake, payout, attempts and how it counts are adjustable – tap a bet. Invite with the code; everyone plays his rounds in Rounds and his phone reports his bets. "With marker": only rounds where a flight partner marked him and both signed the card. The settlement says who pays whom.',
             'Ja: Games → Menü „Wetten“ (oder auf der Startseite „Neue Wette“) – Name, Tage, Spieler; der Stift oben ändert oder löscht den Pool – nur für den, der ihn angelegt hat: die Eingeladenen sehen die Wetten, ihr Handy meldet ihre. Dann „+ Wetten“ beim Spieler öffnet seine Bibliothek: Wetten ankreuzen (in Folge, in einer Runde mindestens oder höchstens, Ergebnis, auf der ganzen Reise oder eine freie Wette in Worten) und die Zahlen einstellen; gibt es schon Wetten, bietet „Schon angelegt“ sie als Vorlage an. Einsatz, Auszahlung, Versuche und Zählweise sind einstellbar – Wette antippen. Mit dem Code einladen; jeder spielt seine Runden in Rounds, sein Handy meldet seine Wetten. „Mit Zähler“: nur Runden, in denen ihn ein Flightpartner gezählt hat und beide die Karte unterschrieben haben. Die Abrechnung sagt, wer wem zahlt.',
           ),
-        video: 'games',
+        video: 'wagers',
       },
       {
         // Sascha 01.11.2026: tournaments planned in Games, played in Rounds
@@ -333,7 +336,7 @@ export const FAQ: FaqTopic[] = [
             'Yes: Games → "New tournament" on the start page – the name, the day, the course and the format (net, gross or Stableford, net classes if you like), the players with their HCP. Choose how many flights: the players are shared out, the markers paired; change each one\'s flight and marker, set the first tee time and the interval – every flight\'s time can be changed. Invite with the code or link: whoever has it is in. On the day the tournament shows in Rounds from 00:01 – "take part", pick yourself, play; the live leaderboard runs in Rounds and on the tournament\'s page under Games → Tournaments. Only whoever set it up changes or deletes it.',
             'Ja: Games → auf der Startseite „Neues Turnier“ – Name, Tag, Platz und Spielform (netto, brutto oder Stableford, auf Wunsch Netto-Klassen), die Spieler mit HCP. Anzahl der Flights wählen: Die Spieler werden verteilt, die Zähler paarweise gesetzt; Flight und Zähler je Spieler änderbar, erste Startzeit und Abstand wählen – jede Startzeit lässt sich einzeln ändern. Mit Code oder Link einladen: Wer ihn hat, ist dabei. Am Turniertag steht das Turnier ab 00:01 in Rounds – „teilnehmen“, sich wählen, spielen; die Live-Rangliste läuft in Rounds und auf der Turnierseite unter Games → Turniere. Ändern oder löschen kann nur, wer es angelegt hat.',
           ),
-        video: 'games',
+        video: 'tours',
       },
     ],
   },

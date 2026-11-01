@@ -405,7 +405,8 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
   };
   // bets made that this phone has not announced yet (Sascha: "a message to all when one made it")
   const fresh = pool.wagers.filter((w) => stateOf(w, pool, today) === 'done' && !seen.has(w.id));
-  const pays = transfers(balances(pool, today));
+  const bal = balances(pool, today);
+  const pays = transfers(bal);
   const settled = pool.wagers.filter((w) => stateOf(w, pool, today) !== 'open').length;
   return (
     <main className="screen pool-screen">
@@ -516,24 +517,7 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
           {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
         </button>
       )}
-      <section className="card">
-        <span className="eyebrow">{tr('Settlement', 'Abrechnung')}</span>
-        {pays.length ? (
-          <ul className="game-pays">
-            {pays.map((t) => (
-              <li key={`${t.from}-${t.to}`}>
-                <span>
-                  {name(t.from)} → {name(t.to)}
-                </span>
-                <strong>{money(t.amount, currencySymbol(pool.currency))}</strong>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span className="muted small">{tr('Nobody owes anything yet.', 'Noch schuldet niemand etwas.')}</span>
-        )}
-        <span className="muted small">{tr(`${settled} of ${pool.wagers.length} bets decided.`, `${settled} von ${pool.wagers.length} Wetten entschieden.`)}</span>
-      </section>
+      <Settlement pool={pool} bal={bal} pays={pays} settled={settled} me={entry.me} name={name} />
       <details className="card">
         <summary>{tr('How the bets are counted', 'So werden die Wetten gezählt')}</summary>
         <p className="small">
@@ -643,6 +627,63 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
         </div>
       )}
     </main>
+  );
+}
+
+/** The settlement of a pool (Sascha 01.11.2026: "the settlement must look quite different – with zero euros too"): how
+ *  far the bets are decided, where each player stands – from the start, at 0 – and who pays whom. */
+function Settlement(props: { pool: WagerPool; bal: Record<string, number>; pays: { from: string; to: string; amount: number }[]; settled: number; me: string; name: (id?: string) => string }) {
+  const { pool, bal } = props;
+  const sym = currencySymbol(pool.currency);
+  const n = pool.wagers.length;
+  const rows = [...pool.players].sort((a, b) => (bal[b.id] ?? 0) - (bal[a.id] ?? 0));
+  const most = Math.max(1, ...rows.map((p) => Math.abs(bal[p.id] ?? 0)));
+  const signed = (v: number) => (Math.abs(v) < 0.005 ? money(0, sym) : `${v > 0 ? '+' : '−'}${money(Math.abs(v), sym)}`);
+  return (
+    <section className="card pool-settle" aria-label={tr('Settlement', 'Abrechnung')}>
+      <div className="pool-settle-head">
+        <h2>{tr('Settlement', 'Abrechnung')}</h2>
+        <span className="muted small">{tr(`${props.settled} of ${n} bets decided`, `${props.settled} von ${n} Wetten entschieden`)}</span>
+      </div>
+      <div className="pool-progress" role="progressbar" aria-label={tr('Bets decided', 'Wetten entschieden')} aria-valuemin={0} aria-valuemax={n} aria-valuenow={props.settled}>
+        <i style={{ width: `${n ? (props.settled / n) * 100 : 0}%` }} />
+      </div>
+      <ul className="pool-standing" aria-label={tr('Where everyone stands', 'Stand je Spieler')}>
+        {rows.map((p) => {
+          const v = bal[p.id] ?? 0;
+          const w = `${(Math.abs(v) / most) * 50}%`;
+          return (
+            <li key={p.id}>
+              <span className="pool-standing-name">
+                {p.name}
+                {p.id === props.me && <span className="muted small"> · {tr('you', 'du')}</span>}
+              </span>
+              <span className="pool-bar" aria-hidden="true">
+                {Math.abs(v) >= 0.005 && <i className={v > 0 ? 'up' : 'down'} style={v > 0 ? { left: '50%', width: w } : { right: '50%', width: w }} />}
+              </span>
+              <strong className={v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted'}>{signed(v)}</strong>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="pool-pays-block">
+        <span className="eyebrow">{tr('Who pays whom', 'Wer zahlt wem')}</span>
+        {props.pays.length ? (
+          <ul className="pool-pays">
+            {props.pays.map((t) => (
+              <li key={`${t.from}-${t.to}`}>
+                <span>
+                  {props.name(t.from)} → {props.name(t.to)}
+                </span>
+                <strong>{money(t.amount, sym)}</strong>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span className="muted small">{tr('Nothing to pay yet – once bets are decided, it says here who pays whom.', 'Noch nichts zu zahlen – sobald Wetten entschieden sind, steht hier, wer wem wie viel zahlt.')}</span>
+        )}
+      </div>
+    </section>
   );
 }
 
