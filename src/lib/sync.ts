@@ -45,6 +45,8 @@ const SETTINGS = [
   'golfos.testmode.v1', 'golfos.sun.v1', 'golfos.spread.v1', 'golfos.mapview.v1', 'golfos.imagery.v1',
   'golfos.tip.shots.v1', 'golfos.help.subs.v1', 'golfos.pushkinds.v1', 'golfos.stats.range.v1', 'golfos.ratings.v1',
   'golfos.training.reviewmode.v1', 'golfos.training.review.v1', 'golfos.training.bpm.v1', 'golfos.training.swingtempo.v1', 'golfos.mobility.minutes.v1',
+  // the drills opened last (Sascha 01.11.2026: "everything kept in the profile" – the app starts where the website was)
+  'golfos.training.recent.v1',
   // the bets: made ones already announced, pools deleted for good on this account
   'golfos.pools.seen.v1', 'golfos.pools.hidden.v1',
 ];
