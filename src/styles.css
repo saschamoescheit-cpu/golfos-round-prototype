@@ -1142,6 +1142,20 @@ button.tile:disabled { opacity: 1; }
 
 /* friends to add with a tap; the Games balance */
 .friend-chips { display: flex; flex-direction: column; gap: 6px; }
+/* tournaments planned in Games (Sascha 01.11.2026): flights with tee times and markers */
+.tile-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tour-times { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.tour-times .field { min-width: 0; }
+.tour-flight { display: flex; flex-direction: column; gap: 8px; }
+.tour-flight-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-flight-head h2 { margin: 0; font-size: 18px; }
+.tour-time { width: 110px; flex-shrink: 0; }
+.tour-tee { font: 700 18px var(--display); font-variant-numeric: tabular-nums; }
+.tour-flight-player { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tour-flight-player .grow { flex: 1 1 120px; min-width: 0; }
+.tour-flight-player .select-wrap { flex: 1 1 140px; min-width: 0; }
+.tour-howto { display: flex; flex-direction: column; gap: 4px; }
+
 /* the balance on "Games" below the tiles (Sascha 01.11.2026) */
 .balance { display: flex; flex-direction: column; gap: 10px; }
 .balance-title { margin: 6px 0 0; font: 700 20px var(--display); }

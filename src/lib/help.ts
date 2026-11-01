@@ -325,6 +325,16 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'games',
       },
+      {
+        // Sascha 01.11.2026: tournaments planned in Games, played in Rounds
+        q: () => tr('Can I plan a tournament ahead – flights, markers, tee times?', 'Kann ich ein Turnier vorab planen – Flights, Zähler, Startzeiten?'),
+        a: () =>
+          tr(
+            'Yes: Games → "New tournament" on the start page – the name, the day, the course and the format (net, gross or Stableford, net classes if you like), the players with their HCP. Choose how many flights: the players are shared out, the markers paired; change each one\'s flight and marker, set the first tee time and the interval – every flight\'s time can be changed. Invite with the code or link: whoever has it is in. On the day the tournament shows in Rounds from 00:01 – "take part", pick yourself, play; the live leaderboard runs in Rounds and on the tournament\'s page under Games → Tournaments. Only whoever set it up changes or deletes it.',
+            'Ja: Games → auf der Startseite „Neues Turnier“ – Name, Tag, Platz und Spielform (netto, brutto oder Stableford, auf Wunsch Netto-Klassen), die Spieler mit HCP. Anzahl der Flights wählen: Die Spieler werden verteilt, die Zähler paarweise gesetzt; Flight und Zähler je Spieler änderbar, erste Startzeit und Abstand wählen – jede Startzeit lässt sich einzeln ändern. Mit Code oder Link einladen: Wer ihn hat, ist dabei. Am Turniertag steht das Turnier ab 00:01 in Rounds – „teilnehmen“, sich wählen, spielen; die Live-Rangliste läuft in Rounds und auf der Turnierseite unter Games → Turniere. Ändern oder löschen kann nur, wer es angelegt hat.',
+          ),
+        video: 'games',
+      },
     ],
   },
   {
