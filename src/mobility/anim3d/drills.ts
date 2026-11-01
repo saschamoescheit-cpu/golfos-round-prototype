@@ -368,6 +368,43 @@ export const DRILL_CLIPS: Record<string, Clip> = {
       k(4.0, P({ ...HOOK, shoulderL: [20, 0, 18], shoulderR: [20, 0, -18], elbowL: [-40, 0, 0], elbowR: [-40, 0, 0] }, { tip: -90 }), L('Hold 5 s, then the other side, then both', '5 s halten, dann die andere Seite, dann beide')),
     ],
   },
+  'phys-hip-drops': {
+    view: 'angle',
+    views: ['angle', 'above', 'side'],
+    props: ['mat'],
+    keys: [
+      k(0, P({ ...HOOK, hipL: [-49, 0, 14], hipR: [-49, 0, -14] }, { tip: -90 }), L('On your back, feet wider than the shoulders', 'Rückenlage, Füße weiter als schulterbreit')),
+      k(1.0, P({ ...HOOK, hipL: [-49, 0, 14], hipR: [-49, 0, -14] }, { tip: -90 })),
+      k(2.4, P({ ...HOOK, pelvis: [0, -32, 0], spine: [0, 32, 0], hipL: [-49, 0, -4], hipR: [-49, 0, -14] }, { tip: -90 }), L('Both knees sink to the right – the back stays down', 'Beide Knie nach rechts sinken lassen – der Rücken bleibt unten')),
+      k(3.2, P({ ...HOOK, pelvis: [0, -32, 0], spine: [0, 32, 0], hipL: [-49, 0, -4], hipR: [-49, 0, -14] }, { tip: -90 })),
+      k(4.6, P({ ...HOOK, pelvis: [0, 32, 0], spine: [0, -32, 0], hipL: [-49, 0, 14], hipR: [-49, 0, 4] }, { tip: -90 }), L('… then to the left', '… dann nach links')),
+      k(5.4, P({ ...HOOK, pelvis: [0, 32, 0], spine: [0, -32, 0], hipL: [-49, 0, 14], hipR: [-49, 0, 4] }, { tip: -90 })),
+      k(6.8, P({ ...HOOK, hipL: [-49, 0, 14], hipR: [-49, 0, -14] }, { tip: -90 })),
+    ],
+  },
+  'phys-leg-swings': {
+    view: 'side',
+    views: ['side', 'angle', 'front'],
+    ground: true,
+    keys: [
+      k(0, stand({ shoulderL: [-25, 0, 10], shoulderR: [-25, 0, -10], elbowL: [-30, 0, 0], elbowR: [-30, 0, 0] }), L('Hold the band, stand on the left leg', 'Band halten, auf dem linken Bein stehen')),
+      k(1.0, stand({ shoulderL: [-25, 0, 10], shoulderR: [-25, 0, -10], elbowL: [-30, 0, 0], elbowR: [-30, 0, 0], hipR: [-45, 0, -2], kneeR: [15, 0, 0] }), L('Swing the right leg forward …', 'Das rechte Bein nach vorn schwingen …')),
+      k(2.0, stand({ shoulderL: [-25, 0, 10], shoulderR: [-25, 0, -10], elbowL: [-30, 0, 0], elbowR: [-30, 0, 0], hipR: [25, 0, -2], kneeR: [20, 0, 0] }), L('… and back – the balance on the standing leg', '… und zurück – das Gleichgewicht auf dem Standbein')),
+      k(3.0, stand({ shoulderL: [-25, 0, 10], shoulderR: [-25, 0, -10], elbowL: [-30, 0, 0], elbowR: [-30, 0, 0] })),
+    ],
+  },
+  'phys-hip-wipers': {
+    view: 'front',
+    views: ['front', 'angle', 'above'],
+    ground: 'all',
+    props: ['mat'],
+    keys: [
+      k(0, P({ ...HANDS_BACK, hipL: [-90, 0, 14], hipR: [-90, 0, -14], kneeL: [0, 0, 0], kneeR: [0, 0, 0] }, OPEN), L('Long sitting, feet apart, hands behind you', 'Langsitz, Füße auseinander, Hände hinter dir')),
+      k(1.2, P({ ...HANDS_BACK, hipL: [-90, 0, 14], hipR: [-90, 60, -14], kneeL: [0, 0, 0], kneeR: [0, 0, 0] }, OPEN), L('Turn the right thigh in …', 'Den rechten Oberschenkel nach innen drehen …')),
+      k(2.4, P({ ...HANDS_BACK, hipL: [-90, 0, 14], hipR: [-90, -60, -14], kneeL: [0, 0, 0], kneeR: [0, 0, 0] }, OPEN), L('… and out – the pelvis tilted back, the back flat', '… und nach außen – Becken nach hinten gekippt, Rücken flach')),
+      k(3.6, P({ ...HANDS_BACK, hipL: [-90, 0, 14], hipR: [-90, 0, -14], kneeL: [0, 0, 0], kneeR: [0, 0, 0] }, OPEN)),
+    ],
+  },
   'mob-prone-y': {
     view: 'side',
     views: ['side', 'angle', 'front'],

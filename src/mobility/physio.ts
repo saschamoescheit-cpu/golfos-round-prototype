@@ -126,6 +126,12 @@ export const PHYSIO_CLIPS: Record<string, string> = {
   'cats and dogs': 'mob-cat-camel',
   'pelvic powerhouse': 'pelvic-rotation',
   'pelvic powerhouse supported': 'pelvic-rotation',
+  'hip drops': 'phys-hip-drops',
+  'hip windshield wipers – long sitting': 'phys-hip-wipers',
+  'hip windshield wipers - long sitting': 'phys-hip-wipers',
+  'hip windshield wipers': 'phys-hip-wipers',
+  'dynamic leg swings with pattern assistance': 'phys-leg-swings',
+  'dynamic leg swings': 'phys-leg-swings',
 };
 export const clipIdOf = (e: PhysioExercise): string | undefined => e.clip ?? PHYSIO_CLIPS[e.name.trim().toLowerCase().replace(/\s+/g, ' ')];
 
