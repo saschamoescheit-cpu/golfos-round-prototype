@@ -1976,3 +1976,7 @@ button.tile:disabled { opacity: 1; }
 
 /* a series of planned tournaments (01.11.2026): its rounds on the code that joins it */
 .series-rounds { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+
+/* the tournaments planned for later days on the start page of Rounds (02.11.2026) */
+.planned-tours { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.planned-tours li { display: grid; gap: 2px; }

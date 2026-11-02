@@ -11,6 +11,7 @@ import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
 import { SpecialsAtHole } from '../components/Specials';
 import { RoundBetsSheet } from './Wagers';
+import { betLinked } from '../lib/betlinked';
 import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
@@ -535,6 +536,8 @@ export function HoleScreen(props: {
   // the round on several phones (Sascha 29.10.2026): invite the flight, or other flights to a tournament
   const [inviteOpen, setInviteOpen] = useState(false);
   const [betsOpen, setBetsOpen] = useState(false);
+  // a bet counts this round: the marked player in detail too (Sascha 02.11.2026) – looked at when the sheet opens
+  const withBets = useMemo(() => !round.preview && betLinked(round), [round.id, scoreSheet, betsOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const [canShareRound, setCanShareRound] = useState(false);
   useEffect(() => {
     if (!round.preview && !props.game) void sharingAvailable().then(setCanShareRound);
@@ -1645,7 +1648,10 @@ export function HoleScreen(props: {
             team={isTeamRound(round)}
             texas={round.format?.minDrives ? Object.fromEntries(round.players.map((p) => [p.id, texasDrives(round, p.id, i)])) : undefined}
             pickUp={pickUpAllowed(round, !!props.game)}
-            details={(pid) => views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer)}
+            // in detail: the one this phone marks (or, as scorer, everyone) when a bet counts the round; else the score with
+            // penalty strokes (Sascha 02.11.2026)
+            details={(pid) => withBets && (views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer))}
+            penalties={(pid) => pid !== me.id && views[pid]?.role !== 'view'}
             shared={Object.fromEntries(
               Object.entries(views).map(([pid, v]) => [
                 pid,

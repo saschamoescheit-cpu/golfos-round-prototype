@@ -29,6 +29,7 @@ import { SignedIcon } from '../components/SignedIcon';
 import { CheckShotsIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
 import { profileIndex } from '../lib/profile';
 import { roundWeatherText } from '../lib/weather';
+import { betLinked } from '../lib/betlinked';
 
 export function Scorecard(props: {
   round: Round;
@@ -284,7 +285,8 @@ export function Scorecard(props: {
             canPlacePutts={false}
             team={isTeamRound(round)}
             pickUp={pickUpAllowed(round)}
-            details={(pid) => round.shared?.roles?.[pid] === 'mark' || round.shared?.roles?.[pid] === 'free'}
+            details={(pid) => betLinked(round) && (round.shared?.roles?.[pid] === 'mark' || round.shared?.roles?.[pid] === 'free')}
+            penalties={(pid) => !round.players.find((p) => p.id === pid)?.isMe && round.shared?.roles?.[pid] !== 'view'}
             onChange={(pid, patch) =>
               props.onChange({ ...round, entries: { ...round.entries, [pid]: round.entries[pid].map((e, k) => (k === editHole ? { ...e, ...patch } : e)) } })
             }

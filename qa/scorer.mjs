@@ -51,20 +51,20 @@ await G.locator('.map-hole-no').waitFor({ timeout: 30000 });
 await G.waitForTimeout(6000);
 
 const block = (p, name) => p.locator('.score-player').filter({ has: p.locator('.score-player-head strong', { hasText: new RegExp(`^${name}$`) }) });
-// Chris: steppers for both, in full (putts) – no putt editor for Sascha's
+// Chris: steppers for both – no bet counts the round: Sascha's with score and penalty strokes (02.11.2026)
 await G.locator('.map-score').click();
 await G.waitForTimeout(300);
 ok((await G.locator('.score-player.kept-elsewhere').count()) === 0, "Chris: steppers for Sascha's and his own card");
 const rows = (await block(G, 'Sascha').locator('.stepper-label').allInnerTexts()).map((x) => x.trim());
-ok(rows.some((r) => r.startsWith('Putts')) && rows.some((r) => r.startsWith('Strafschläge')), `Chris enters Sascha's hole in full (${rows.map((r) => r.split('\n')[0]).join(', ')})`);
+ok(!rows.some((r) => r.startsWith('Putts')) && rows.some((r) => r.startsWith('Strafschläge')), `Chris enters Sascha's score with penalty strokes (${rows.map((r) => r.split('\n')[0]).join(', ')})`);
 await block(G, 'Sascha').getByRole('button', { name: /Schläge plus eins/ }).click();
-await block(G, 'Sascha').getByRole('button', { name: /Putts plus eins/ }).click();
+await block(G, 'Sascha').getByRole('button', { name: /Strafschläge plus eins/ }).click();
 await block(G, 'Chris').getByRole('button', { name: /Schläge plus eins/ }).click();
 await block(G, 'Chris').getByRole('button', { name: /Schläge plus eins/ }).click();
 await G.getByRole('button', { name: 'Zurück zur Karte' }).click();
 await G.waitForTimeout(12000);
 const f = flight();
-ok(f.scores[chrisId]?.[0]?.s != null && f.scores[Object.keys(f.scores).find((k) => k !== chrisId)]?.[0]?.d?.pu != null, `server: both cards from Chris's phone, Sascha's with putts (${JSON.stringify(f.scores).slice(0, 120)})`);
+ok(f.scores[chrisId]?.[0]?.s != null && f.scores[Object.keys(f.scores).find((k) => k !== chrisId)]?.[0]?.d?.pe === 1, `server: both cards from Chris's phone, Sascha's with a penalty stroke (${JSON.stringify(f.scores).slice(0, 120)})`);
 
 // Sascha: only sees them
 await H.locator('.map-score').click();
