@@ -3,7 +3,7 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned, markerOf, type Cell } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { dayOf, isPool, judge, playedRounds, sameProgress, type EarlierBet, type PoolPlayer, type Wager, type WagerPool } from './wagers';
+import { dayOf, isPool, judge, playedRounds, sameProgress, shapeOf, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
 
 // The pools of bets on this phone and on the server (Sascha 01.11.2026). A pool lives in the table of the shared games
@@ -249,6 +249,19 @@ export function markerCount(r: Round, pid: string): Cell[] | null {
   return f.scorer && f.scorer !== pid ? (f.scores?.[pid] ?? null) : (f.marks?.[pid] ?? null);
 }
 
+/** Another player's round judged on this phone only with his whole card – a partner's few holes would undercount him. */
+const wholeCard = (r: PlayedRound): boolean => r.entries.every((x) => !!x && (x.pickedUp || x.strokes != null));
+/** Another player's bet: this phone's judgement only when it knows more – more rounds, or a better result from as many
+ *  (his own phone may have reported from rounds this one does not have). His own phone's always. */
+function takes(w: Wager, me: string, old: Progress | undefined, now: Progress): boolean {
+  if (w.player === me || !old) return true;
+  if (shapeOf(w.kind) === 'duel') return (now.duels?.length ?? 0) > (old.duels?.length ?? 0);
+  if (now.rounds !== old.rounds) return now.rounds > old.rounds;
+  if (now.done !== old.done) return now.done;
+  if (now.pending != null && old.pending == null) return true;
+  return JSON.stringify(now.best) !== JSON.stringify(old.best) && now.best != null && (old.best == null || (['score', 'sum', 'most'].includes(shapeOf(w.kind)) ? now.best < old.best : now.best > old.best));
+}
+
 let running: Promise<void> | null = null;
 /**
  * Judges the bets of this phone's owner in every pool from his rounds and reports what changed (Sascha 01.11.2026:
@@ -260,11 +273,20 @@ export function reportWagers(): Promise<void> {
     try {
       const pools = loadPools().filter((e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt);
       if (!pools.length || !(await headers())) return;
-      const rounds = playedRounds(loadRounds(), countedRound, markerCount);
+      const all = loadRounds();
+      const rounds = playedRounds(all, countedRound, markerCount);
       for (const e of pools) {
-        const mine = e.pool.wagers.filter((w) => w.player === e.me && w.kind !== 'free');
-        const fresh = Object.fromEntries(mine.map((w) => [w.id, judge(w, e.pool, rounds)]));
-        if (mine.every((w) => sameProgress(e.pool.progress[w.id], fresh[w.id]))) continue;
+        // whose bets this phone judges: its owner's – the host's phone also the others', from the rounds on it with their
+        // whole card (Sascha 02.11.2026: "one phone for all"); the server takes those only from the host
+        const host = isHost(e);
+        const roundsOf = new Map<string, PlayedRound[]>([[e.me, rounds]]);
+        if (host)
+          for (const p of e.pool.players)
+            if (p.id !== e.me) roundsOf.set(p.id, playedRounds(all, countedRound, markerCount, p.name).filter(wholeCard));
+        const judged = (w: Wager) => roundsOf.has(w.player) && w.kind !== 'free';
+        const mine = e.pool.wagers.filter(judged);
+        const fresh = Object.fromEntries(mine.map((w) => [w.id, judge(w, e.pool, roundsOf.get(w.player)!)]));
+        if (mine.every((w) => sameProgress(e.pool.progress[w.id], fresh[w.id]) || !takes(w, e.me, e.pool.progress[w.id], fresh[w.id]))) continue;
         let made: string[] = []; // bets made with this report – everyone in the pool hears of it (push)
         const written = await changePool(e.code, (p) => {
           let changed = false;
@@ -275,9 +297,9 @@ export function reportWagers(): Promise<void> {
           const uid = myAccount();
           const stamp = !!uid && p.players.some((x) => x.id === e.me && x.joined && !x.joined.uid);
           const players = stamp ? p.players.map((x) => (x.id === e.me && x.joined && !x.joined.uid ? { ...x, joined: { ...x.joined, uid: uid! } } : x)) : p.players;
-          for (const w of p.wagers.filter((x) => x.player === e.me && x.kind !== 'free')) {
-            const now = judge(w, p, rounds); // the bet as it is on the server (changed meanwhile, maybe)
-            if (sameProgress(progress[w.id], now)) continue;
+          for (const w of p.wagers.filter(judged)) {
+            const now = judge(w, p, roundsOf.get(w.player)!); // the bet as it is on the server (changed meanwhile, maybe)
+            if (sameProgress(progress[w.id], now) || !takes(w, e.me, progress[w.id], now)) continue;
             if (now.done && !progress[w.id]?.done && !progress[w.id]?.manual) made.push(w.id);
             progress[w.id] = { ...now, ...(progress[w.id]?.manual ? { manual: progress[w.id].manual } : {}) };
             changed = true;

@@ -174,6 +174,15 @@ export interface WagerPool {
 // field renamed or dropped, a block (kind) never removed. wagers.test.ts reads a pool as written on 01.11.2026.
 export const isPool = (x: unknown): x is WagerPool => !!x && (x as WagerPool).kind === 'wager-pool' && Array.isArray((x as WagerPool).wagers);
 
+/** The bets that need the details of a hole – putts, the tee shot, sand (Sascha 02.11.2026: "GIR, 3-putts, up and down
+ *  need the detail entry; birdies, to par and so on only the strokes incl. penalty strokes"). */
+const DETAIL_KINDS: WagerKind[] = ['greens', 'fairways', 'oneputts', 'updowns', 'putts', 'threeputts'];
+export const needsDetails = (w: Pick<Wager, 'kind'>): boolean => DETAIL_KINDS.includes(w.kind);
+/** Does a round need the detail entry for a pool: a bet of it that needs details and counts this round. */
+export function poolNeedsDetails(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'> & { rounds?: PoolRound[] }, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean {
+  return pool.wagers.some((w) => needsDetails(w) && inPool(r, pool, w));
+}
+
 /** A day as YYYY-MM-DD in local time. */
 export const dayOf = (d: Date | string): string => {
   const x = typeof d === 'string' ? new Date(d) : d;
@@ -217,12 +226,14 @@ const sameFigures = (a: HoleEntry | undefined, b: HoleEntry | undefined): boolea
 /** The round as a bet "with marker" sees it: the marker's figures for the player and for the others of the flight. */
 const asMarked = (r: PlayedRound): PlayedRound => (r.marked || r.others?.some((o) => o.marked) ? { ...r, entries: r.marked ?? r.entries, others: r.others?.map((o) => (o.marked ? { ...o, entries: o.marked } : o)) } : r);
 
-/** The player's rounds for the bets: his own rounds on this phone (not a preview, not a team's card), oldest first. */
-export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) => boolean, marks?: (r: Round, pid: string) => SharedCell[] | null | undefined): PlayedRound[] {
+/** The player's rounds for the bets: his own rounds on this phone (not a preview, not a team's card), oldest first.
+ *  `who`: another player's, by his name – on the phone that played for all (Sascha 02.11.2026: "one phone for all"). */
+export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) => boolean, marks?: (r: Round, pid: string) => SharedCell[] | null | undefined, who?: string): PlayedRound[] {
+  const pick = (r: Round) => (who == null ? r.players.find((p) => p.isMe) : r.players.find((p) => sameName(p.name, who)));
   return rounds
-    .filter((r) => !r.preview && !isTeamRound(r) && r.players.some((p) => p.isMe))
+    .filter((r) => !r.preview && !isTeamRound(r) && !!pick(r))
     .map((r) => {
-      const me = r.players.find((p) => p.isMe)!;
+      const me = pick(r)!;
       // the marker's count of each player, as the event has it (a round with a marker)
       const markedOf = (pid: string) => {
         const m = marks?.(r, pid);
@@ -243,7 +254,7 @@ export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) =
         received: handicapStrokes(r.holes, me.playingHandicap ?? null),
         counted: counted(r, me.id),
         others: r.players
-          .filter((p) => !p.isMe)
+          .filter((p) => p.id !== me.id)
           .map((p) => {
             const marked = markedOf(p.id);
             return { name: p.name, entries: r.holes.map((_, i) => r.entries[p.id]?.[i]), hcp: p.playingHandicap ?? null, received: handicapStrokes(r.holes, p.playingHandicap ?? null), counted: counted(r, p.id), ...(marked ? { marked } : {}) };
@@ -418,7 +429,7 @@ function bestOf(w: Wager, rs: PlayedRound[]): { best: number | null; where?: str
 
 const reached = (w: Wager, best: number | null): boolean => best != null && (lower(w) ? best <= w.target : best >= w.target);
 
-const sameName = (a: string, b: string): boolean => {
+export const sameName = (a: string, b: string): boolean => {
   const x = a.trim().toLowerCase();
   const y = b.trim().toLowerCase();
   return !!x && !!y && (x === y || x.split(/\s+/)[0] === y.split(/\s+/)[0]);
@@ -483,6 +494,11 @@ export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players
   return { best: b.best, ...(better ? { pending: all } : {}), done, ...(done && b.where ? { where: b.where } : {}), rounds: counting.length, ...(differ ? { differ } : {}), at: now };
 }
 
+/** Made in a round not signed yet (or played without a marker) – the result shown as provisional (Sascha 02.11.2026:
+ *  "even with marker a result must come out, also when the marker has not signed"). */
+export const provisional = (w: Wager, p: Progress | undefined): boolean =>
+  w.kind !== 'free' && shapeOf(w.kind) !== 'duel' && !p?.done && !p?.manual && p?.pending != null && reached(w, p.pending);
+
 /** Did the judgement change (not only its time)? */
 export const sameProgress = (a: Progress | undefined, b: Progress): boolean => !!a && JSON.stringify({ ...a, at: '', manual: undefined }) === JSON.stringify({ ...b, at: '', manual: undefined });
 
@@ -504,8 +520,8 @@ export function stateOf(w: Wager, pool: WagerPool, today = dayOf(new Date())): W
   return over ? 'missed' : 'open';
 }
 
-/** Each player's balance from the bets made or missed (€). */
-export function balances(pool: WagerPool, today?: string): Record<string, number> {
+/** Each player's balance from the bets made or missed (€) – `withProvisional`: a bet made in a round not signed yet as made. */
+export function balances(pool: WagerPool, today?: string, withProvisional = false): Record<string, number> {
   const money: Record<string, number> = Object.fromEntries(pool.players.map((p) => [p.id, 0]));
   const add = (id: string, v: number) => (money[id] = (money[id] ?? 0) + v);
   for (const w of pool.wagers) {
@@ -518,7 +534,7 @@ export function balances(pool: WagerPool, today?: string): Record<string, number
       }
       continue;
     }
-    const st = stateOf(w, pool, today);
+    const st = withProvisional && provisional(w, pool.progress[w.id]) ? 'done' : stateOf(w, pool, today);
     if (st === 'open' || !(w.stake > 0)) continue;
     const others = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
     if (st === 'missed' && w.payout === 'success') continue;

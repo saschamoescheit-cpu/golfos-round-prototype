@@ -1190,6 +1190,7 @@ button.tile:disabled { opacity: 1; }
 .bet-cell { display: inline-block; min-width: 46px; padding: 3px 6px; border-radius: 8px; background: var(--surface-2); font: 700 14px var(--body); }
 .bet-cell + .bet-cell { margin-left: 4px; }
 .bet-cell.done { background: var(--brand); color: #fff; }
+.bet-cell.provisional { box-shadow: inset 0 0 0 2px var(--brand); }
 .bet-cell.missed { color: var(--muted); text-decoration: line-through; }
 .bet-cell small { display: block; font: 600 11px var(--body); color: var(--muted); text-decoration: none; }
 .bet-cell.done small { color: inherit; opacity: 0.85; }
