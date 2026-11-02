@@ -102,9 +102,9 @@ jobs:
         run: npm run build
       - if: steps.ready.outputs.go == 'true'
         run: npx cap sync ios
-      # archived unsigned: signing for development needs a registered iPhone, and the team has none (02.11.2026) – the
-      # export below signs it for the App Store with the cloud-managed distribution certificate
-      - name: Archive (unsigned – signed on export)
+      # signed while archived – for development, so the team needs one registered iPhone (02.11.2026: archived unsigned,
+      # the export did not sign it: "Invalid Signature"); the export signs it again for the App Store, by Apple's cloud
+      - name: Archive, signed by Apple's cloud with the key
         if: steps.ready.outputs.go == 'true'
         run: |
           mkdir -p "$RUNNER_TEMP/keys"
@@ -114,7 +114,6 @@ jobs:
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
             "${AUTH[@]}" archive > "$RUNNER_TEMP/archive.log" 2>&1 || { tail -n 60 "$RUNNER_TEMP/archive.log"; { grep -E "error:|error |fatal|failed|Failed|XCTAssert|No profiles|No Account|provisioning|Signing" "$RUNNER_TEMP/archive.log" > "$RUNNER_TEMP/archive.log.err" || true; [ -s "$RUNNER_TEMP/archive.log.err" ] || tail -n 15 "$RUNNER_TEMP/archive.log" > "$RUNNER_TEMP/archive.log.err"; head -25 "$RUNNER_TEMP/archive.log.err" | while IFS= read -r l; do echo "::error::$l"; done; exit 1; } }
           tail -n 20 "$RUNNER_TEMP/archive.log"
       - name: Upload to TestFlight
