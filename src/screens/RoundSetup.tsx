@@ -218,7 +218,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       entries,
       currentHole: 0,
       // on several phones: with a marker, when chosen (Sascha 30.10.2026 – by default everyone keeps only his own)
-      format: withMarker && !isTeamMode(shownFormat.mode) ? { ...shownFormat, marker: true } : shownFormat,
+      format: isTeamMode(shownFormat.mode) || counting === 'own' ? shownFormat : counting === 'marker' ? { ...shownFormat, marker: true } : { ...shownFormat, scorer: [...others.map((o) => o.id), 'me'].includes(scorerId) ? scorerId : 'me' },
       kind,
       ...(tee ? { tee } : {}),
       ...(rating ? { rating: { cr: rating.cr, slope: rating.slope } } : {}),
@@ -229,13 +229,15 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // the flight partners on their own phones (Sascha 29.10.2026: "invite where the round is set up, with the flight
   // partners – not only once it has begun"): the code made here, the round starts with it
   const [share, setShare] = useState<Round['shared'] | null>(null);
-  const [withMarker, setWithMarker] = useState(false);
+  // who enters the scores on several phones: everyone his own, with a marker, or one player for all (02.11.2026)
+  const [counting, setCounting] = useState<'own' | 'marker' | 'scorer'>('own');
+  const [scorerId, setScorerId] = useState('me');
   const [bets, setBets] = useState(false);
   const [canShare, setCanShare] = useState<boolean | null>(null);
   useEffect(() => {
     void sharingAvailable().then(setCanShare);
   }, []);
-  const invitable = useMemo(() => (canShare ? draft() : null), [canShare, share, me, others, format, optionId, kind, withMarker]); // eslint-disable-line react-hooks/exhaustive-deps
+  const invitable = useMemo(() => (canShare ? draft() : null), [canShare, share, me, others, format, optionId, kind, counting, scorerId]); // eslint-disable-line react-hooks/exhaustive-deps
   // let in and not in the list yet (Sascha 30.10.2026: scanned, asked, let in – no typing for the host): he becomes a
   // player here, with the handicap index from his profile; the joining phone finds its name and is in
   useEffect(() => {
@@ -348,15 +350,39 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         {invitable && (
           <div className="card invite-card" aria-label={tr('Invite players', 'Mitspieler einladen')}>
             <strong>{share?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</strong>
+            {/* who enters the scores (Sascha 30.10. / 02.11.2026): everyone his own – with a marker – or one player for all */}
             {!isTeamMode(shownFormat.mode) && (
-              <div className="drawer-list settings-switches">
-                <button type="button" className="drawer-row" role="switch" aria-checked={withMarker} onClick={() => setWithMarker(!withMarker)}>
-                  <span className="switch-label">
-                    <span>{tr('Play with a marker', 'Mit Zähler spielen')}</span>
-                    <span className="muted small">{withMarker ? tr('Everyone enters his own score and his partner\'s – a difference shows', 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt') : tr('Off: everyone enters only his own score and sees the others', 'Aus: Jeder trägt nur seinen eigenen Score ein und sieht die anderen')}</span>
-                  </span>
-                  <span className={`drawer-switch${withMarker ? ' on' : ''}`} aria-hidden="true" />
-                </button>
+              <div className="field" role="group" aria-label={tr('Who enters the scores', 'Wer erfasst die Scores')}>
+                <span className="muted small">{tr('Who enters the scores', 'Wer erfasst die Scores')}</span>
+                <div className="chip-set">
+                  {(
+                    [
+                      ['own', tr('Everyone his own', 'Jeder seinen eigenen')],
+                      ['marker', tr('With a marker', 'Mit Zähler')],
+                      ['scorer', tr('One for all', 'Einer für alle')],
+                    ] as const
+                  ).map(([v, label]) => (
+                    <button key={v} type="button" className={`chip${counting === v ? ' on' : ''}`} aria-pressed={counting === v} onClick={() => setCounting(v)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span className="muted small">
+                  {counting === 'marker'
+                    ? tr("Everyone enters his own score and his partner's – a difference shows", 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt')
+                    : counting === 'scorer'
+                      ? tr('One player enters every score – putts, sand, penalties too; the others see it live', 'Ein Spieler trägt alle Scores ein – auch Putts, Sand, Strafschläge; die anderen sehen alles live')
+                      : tr('Everyone enters only his own score and sees the others', 'Jeder trägt nur seinen eigenen Score ein und sieht die anderen')}
+                </span>
+                {counting === 'scorer' && (
+                  <div className="chip-set" role="group" aria-label={tr('Scorer', 'Schreiber')}>
+                    {[{ id: 'me', name: me.name.trim() || tr('Me', 'Ich') }, ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`) }))].map((p) => (
+                      <button key={p.id} type="button" className={`chip${scorerId === p.id ? ' on' : ''}`} aria-pressed={scorerId === p.id} onClick={() => setScorerId(p.id)}>
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact />

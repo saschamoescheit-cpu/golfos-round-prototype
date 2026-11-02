@@ -49,6 +49,9 @@ export interface Flight {
   marks?: Record<string, Cell[]>;
   /** a tournament: who marks whom – markers[player] = the player who marks him */
   markers?: Record<string, string>;
+  /** one player keeps the score of all (Sascha 02.11.2026: "Chris enters it for everyone") – his phone writes every
+   *  player's card, the others only see it; he signs as everyone's marker */
+  scorer?: string;
   /** the phones playing in the flight: which player (or team) each one is */
   phones?: Record<string, { player: string; name: string; at: string; /** last heard of (every two minutes at most) */ seen?: string; /** the account playing on it (the tee time reminder of its flight – 01.11.2026) */ uid?: string }>;
   /** scramble and foursomes: the phone keeping the team's card (missing: the team's first phone) */
@@ -164,6 +167,7 @@ export function flightOf(round: Round, id: string, name: string, phone: string, 
     players: framePlayers(round),
     scores: scoresOf(round),
     ...(marksIn(round.format, tournament) ? { marks: {}, markers: defaultMarkers(round.players.map((p) => p.id)) } : {}),
+    ...(round.format?.scorer && round.players.some((p) => p.id === round.format!.scorer) ? { scorer: round.format.scorer } : {}),
     phones: me ? { [phone]: { player: me, name: who, at: new Date().toISOString(), ...account() } } : {},
     by: phone,
     finishedAt: round.finishedAt,
@@ -209,8 +213,13 @@ export function writerOf(f: Flight, player: string, team: boolean): string | nul
   return ph[0]?.[0] ?? null;
 }
 
+/** Who signs a player's card as his marker: with a scorer, the scorer (his own card: his marker as usual). */
+export const markerOf = (f: Flight, pid: string): string | undefined => (f.scorer && pid !== f.scorer ? f.scorer : f.markers?.[pid]);
+
 export function roleOf(f: Flight, player: string, phone: string, team: boolean, marking: boolean): Role {
   if (isSigned(f, player)) return 'view'; // signed by player and marker: nobody changes it any more
+  // one player keeps the score of all: his phone writes every card, the others only show them
+  if (f.scorer) return writerOf(f, f.scorer, team) === phone ? (player === f.scorer ? 'own' : 'free') : 'view';
   const w = writerOf(f, player, team);
   if (w === phone) return 'own';
   // marking (marksIn): every player marks a partner (Sascha 29.10.2026, testing with Cedric: "Sascha keeps his own
@@ -226,13 +235,13 @@ export function roleOf(f: Flight, player: string, phone: string, team: boolean, 
 /** Signed by the player and by his marker (a player without a marker: by himself) – locked. */
 export function isSigned(f: Flight, pid: string): boolean {
   const s = f.signed?.[pid];
-  return !!s?.player && (!!s.marker || !f.markers?.[pid]);
+  return !!s?.player && (!!s.marker || !markerOf(f, pid));
 }
 /** May the card be signed now: every hole with the own score and the marker's count, none differing. */
 export function signable(f: Flight, pid: string, holes: number): { ok: true } | { ok: false; missing: number[]; differ: number[] } {
   const own = f.scores[pid] ?? [];
   const mark = f.marks?.[pid] ?? [];
-  const marked = !!f.markers?.[pid];
+  const marked = !f.scorer && !!f.markers?.[pid]; // with a scorer there is one count only
   const missing = Array.from({ length: holes }, (_, i) => i).filter((i) => own[i] == null || (marked && mark[i] == null));
   const differ = differences(f, pid);
   return missing.length || differ.length ? { ok: false, missing, differ } : { ok: true };
@@ -290,7 +299,7 @@ export function shareView(round: Round, f: Flight | undefined, tournament: boole
       const w = writerOf(f, p.id, team);
       const marker = f.markers?.[p.id];
       const other =
-        !marking || !marker
+        !marking || !marker || f.scorer
           ? null
           : role === 'own'
             ? { label: `${nameOf(marker)} (${tr('marker', 'Zähler')})`, cells: f.marks?.[p.id] ?? [] }
@@ -333,6 +342,13 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
     // a flight from before every round was marked (29.10.2026, evening): its markers now
     if (!sameFrame(f.players, framePlayers(round)) || (marking && !f.markers)) {
       f = { ...f, players: framePlayers(round), ...(marking ? { markers: defaultMarkers(round.players.map((p) => p.id)) } : {}) };
+      changedHere = true;
+    }
+    // the scorer chosen in the setup after the code was made (02.11.2026) – only the phone that set the flight up
+    const scorer = round.format?.scorer && round.players.some((p) => p.id === round.format!.scorer) ? round.format.scorer : undefined;
+    if (f.by === phone && (f.scorer ?? undefined) !== scorer) {
+      const { scorer: _old, ...rest } = f;
+      f = scorer ? { ...rest, scorer } : rest;
       changedHere = true;
     }
   } else if (!sameFrame(f.players, framePlayers(round))) {
@@ -819,6 +835,8 @@ export interface PlanFlight {
   players: { name: string; playingHandicap: number | null; tee?: string | null; hcpIndex?: number | null }[];
   /** markers[player] = who marks him, by the players' places "p1", "p2" … – missing: in pairs (1 ↔ 2, 3 ↔ 4) */
   markers?: Record<string, string>;
+  /** one player keeps the score of all, by his place ("p2") – Sascha 02.11.2026 */
+  scorer?: string;
 }
 const planFlight = (pf: PlanFlight, holes: number, by: string, id = newId()): Flight => {
   const players: FlightPlayer[] = pf.players.map((p, k) => ({ id: `p${k + 1}`, name: p.name, playingHandicap: p.playingHandicap, ...(p.tee ? { tee: p.tee } : {}), ...(p.hcpIndex != null ? { hcpIndex: p.hcpIndex } : {}) }));
@@ -830,6 +848,7 @@ const planFlight = (pf: PlanFlight, holes: number, by: string, id = newId()): Fl
     scores: Object.fromEntries(players.map((p) => [p.id, nulls(holes)])),
     marks: {},
     markers: pf.markers ?? defaultMarkers(players.map((p) => p.id)),
+    ...(pf.scorer && players.some((p) => p.id === pf.scorer) ? { scorer: pf.scorer } : {}),
     phones: {},
     by,
     finishedAt: null,
@@ -917,7 +936,7 @@ export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<
     const done = await changeFlight(code, fid, true, (f) => {
       if (!want) return f && f.players.length ? { ...f, players: [], markers: {} } : null;
       const players = want.players;
-      const next: Flight = { ...(f ?? want), name: want.name, players, markers: want.markers, ...(want.teeTime ? { teeTime: want.teeTime } : {}), scores: Object.fromEntries(players.map((p) => [p.id, f?.scores[p.id] ?? nulls(ev.holes.length)])) };
+      const next: Flight = { ...(f ?? want), name: want.name, players, markers: want.markers, scorer: want.scorer, ...(want.teeTime ? { teeTime: want.teeTime } : {}), scores: Object.fromEntries(players.map((p) => [p.id, f?.scores[p.id] ?? nulls(ev.holes.length)])) };
       return f && JSON.stringify(f) === JSON.stringify(next) ? null : next;
     });
     if (!done) return null;

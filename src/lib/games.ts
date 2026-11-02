@@ -20,6 +20,9 @@ export interface RoundFormat {
   allowance?: number; // handicap allowance in % (100 = full)
   /** on several phones, single balls: everyone also marks a partner (Sascha 30.10.2026 – chosen, by default not) */
   marker?: boolean;
+  /** on several phones: one player keeps the score of all (Sascha 02.11.2026 – "Chris enters it for everyone"); his
+   *  player id – the others' phones only show it */
+  scorer?: string;
   /** Texas scramble: every player's drive used at least this often (0 / missing: an ordinary scramble) */
   minDrives?: number;
 }

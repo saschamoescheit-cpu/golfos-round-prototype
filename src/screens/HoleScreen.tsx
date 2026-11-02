@@ -811,7 +811,8 @@ export function HoleScreen(props: {
   /** a hole still wanting a score from this phone: its own (unless kept elsewhere) – and the partner it marks (Sascha
    *  29.10.2026: "Sascha keeps his own score and, as marker, Cedric's") */
   const scoreToAsk = (k: number): boolean =>
-    [...(myScoreElsewhere ? [] : [me.id]), ...round.players.filter((p) => views[p.id]?.role === 'mark').map((p) => p.id)].some((pid) => {
+    // (a scorer: every player's – 02.11.2026)
+    [...(myScoreElsewhere ? [] : [me.id]), ...round.players.filter((p) => views[p.id]?.role === 'mark' || (views[p.id]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer)).map((p) => p.id)].some((pid) => {
       const e = round.entries[pid]?.[k];
       return !!e && e.strokes == null && !e.pickedUp;
     });
@@ -1644,7 +1645,7 @@ export function HoleScreen(props: {
             team={isTeamRound(round)}
             texas={round.format?.minDrives ? Object.fromEntries(round.players.map((p) => [p.id, texasDrives(round, p.id, i)])) : undefined}
             pickUp={pickUpAllowed(round, !!props.game)}
-            details={(pid) => views[pid]?.role === 'mark'}
+            details={(pid) => views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer)}
             shared={Object.fromEntries(
               Object.entries(views).map(([pid, v]) => [
                 pid,
