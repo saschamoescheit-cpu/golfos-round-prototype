@@ -302,6 +302,18 @@ const HCP: SettingDef = {
   ],
   default: '100',
 };
+// How the scores are entered (Sascha 02.11.2026: "choose whether the scores are entered with details or just the strokes
+// per hole – for skins the strokes incl. penalty strokes are enough"): the hole map's score entry follows it.
+export const ENTRY: SettingDef = {
+  key: 'entry',
+  label: () => tr('Score entry', 'Erfassung'),
+  type: 'choice',
+  options: [
+    { value: 'strokes', label: () => tr('Strokes only (incl. penalties)', 'Nur Schläge (inkl. Strafschläge)') },
+    { value: 'details', label: () => tr('With details (putts, tee shot, sand)', 'Mit Details (Putts, Abschlag, Sand)') },
+  ],
+  default: 'strokes',
+};
 // Money that does not get out of hand: press (the last one doubles the stake), a cap for the stake, a loss limit.
 const DOUBLE: SettingDef[] = [
   { key: 'double', label: () => tr('Press: the last may double the stake', 'Press: der Letzte darf den Einsatz verdoppeln'), type: 'bool', default: false },
@@ -964,6 +976,7 @@ const WITH_HCP: FormId[] = ['skins', 'nassau', 'wolf', 'chicago', 'vegas', 'sixe
 const WITH_DOUBLE: FormId[] = ['skins', 'wolf', 'chicago', 'bbb', 'vegas', 'sixes', 'dots', 'stableford', 'rabbit', 'acey'];
 for (const f of FORMS) {
   if (WITH_HCP.includes(f.id)) f.settings.unshift(HCP);
+  f.settings.push(ENTRY);
   // Chicago is played with the press as a rule (Sascha's concept)
   if (WITH_DOUBLE.includes(f.id)) f.settings.push(...(f.id === 'chicago' ? [{ ...DOUBLE[0], default: true }, ...DOUBLE.slice(1)] : DOUBLE));
 }
