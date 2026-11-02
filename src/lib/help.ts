@@ -26,7 +26,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   // the launch monitor (night run 27./28.10.2026): a session into the bag, its own page, the range in the stats
   { id: 'launch', title: () => tr('Launch monitor', 'Launch-Monitor'), about: () => tr('Import a session, the range page, range shots in the stats', 'Sitzung importieren, die Range-Seite, Range-Schläge in der Statistik'), length: '1:02' },
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
-  { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz'), length: '1:08' },
+  { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance, swipe to delete', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz, Löschen per Wischen'), length: '1:16' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
   { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, Runde starten, der Stand, die Abrechnung'), length: '1:24' },
   { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('Flights with their tee times, players assigned, markers, special prizes, live leaderboard', 'Flights mit Startzeit, Spieler zuordnen, Zähler, Sonderwertungen, Live-Rangliste'), length: '1:21' },
