@@ -91,10 +91,22 @@ function wakeLock(): { request: (type: 'screen') => Promise<{ release: () => Pro
   };
 }
 
-/** Opens the Google sign-in in the system's browser sheet – Google refuses its sign-in inside an app's web view. */
-export async function openSignIn(url: string): Promise<void> {
-  const { Browser } = await import('@capacitor/browser');
-  await Browser.open({ url, presentationStyle: 'popover' });
+/** GolfOS' own plugin (native-plugins/shot-listener, WebAuthPlugin): Apple's sign-in sheet for web logins. */
+const WebAuth = registerPlugin<{ start(o: { url: string; scheme: string }): Promise<{ url: string }> }>('WebAuth');
+
+/** The Google sign-in in Apple's sign-in sheet (ASWebAuthenticationSession) – Google refuses its sign-in inside an
+ *  app's web view, and the plain browser sheet stayed white when Google sent the player back to the app (iPad,
+ *  02.11.2026). The address the sheet came back with (…://auth#access_token=…), or null when the player closed it. */
+export async function openSignIn(url: string): Promise<string | null> {
+  try {
+    return (await WebAuth.start({ url, scheme: AUTH_BACK.split(':')[0] })).url;
+  } catch (e) {
+    if ((e as { code?: string })?.code === 'CANCELLED') return null;
+    // an app from before the sign-in sheet: the browser sheet, back by the app's link (onAppLink)
+    const { Browser } = await import('@capacitor/browser');
+    await Browser.open({ url, presentationStyle: 'fullscreen' });
+    return null;
+  }
 }
 
 /** A position as the browser's watch hands it out – the round's code reads these fields only. */
