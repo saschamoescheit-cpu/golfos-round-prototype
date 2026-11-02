@@ -37,7 +37,7 @@ async function setup(phone, others = []) {
   }
   const card = H.locator('.invite-card');
   await card.waitFor({ timeout: 10000 });
-  ok((await card.getByRole('switch', { name: /Mit Zähler spielen/ }).getAttribute('aria-checked')) === 'false', 'setup: "Mit Zähler spielen" off by default – everyone keeps only his own');
+  ok((await card.getByRole('button', { name: 'Jeder seinen eigenen', exact: true }).getAttribute('aria-pressed')) === 'true', 'setup: "Jeder seinen eigenen" by default – everyone keeps only his own');
   await card.getByRole('button', { name: 'Code erzeugen' }).click();
   await card.locator('.join-code').waitFor({ timeout: 8000 });
   return { H, code: (await card.locator('.join-code').innerText()).trim() };

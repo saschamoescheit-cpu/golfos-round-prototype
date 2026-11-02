@@ -38,7 +38,7 @@ async function setup(players, o = {}) {
   }
   const card = H.locator('.invite-card');
   await card.waitFor({ timeout: 10000 });
-  if (o.marker) await card.getByRole('switch', { name: /Mit Zähler spielen/ }).click();
+  if (o.marker) await card.getByRole('button', { name: 'Mit Zähler', exact: true }).click(); // ("Wer erfasst die Scores", 02.11.2026)
   await card.getByRole('button', { name: 'Code erzeugen' }).click();
   await card.locator('.join-code').waitFor({ timeout: 8000 });
   return { host, H, card, code: (await card.locator('.join-code').innerText()).trim() };
