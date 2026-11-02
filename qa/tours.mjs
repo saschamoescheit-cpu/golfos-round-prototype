@@ -212,6 +212,15 @@ ok((await H.locator('.topbar h1').innerText()).includes('USA Tag 1') && (await H
 ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Zähler: Sascha').count()) === 1, 'the tournament page: who marks whom');
 await H.getByRole('button', { name: new RegExp(`Mitspieler einladen · Code ${code}`) }).click();
 ok((await H.locator('.qr-box svg').count()) === 1 && (await H.locator('.join-code').innerText()).trim() === code, 'invite: code and QR code');
+// Sascha 02.11.2026: "sending the invitation by WhatsApp does not work for tournaments" – the text and the link apart,
+// no title, as the invitations of a round and of a pool (the iPhone's share sheet hands WhatsApp the link)
+await H.evaluate(() => {
+  window.__shared = null;
+  Object.defineProperty(navigator, 'share', { configurable: true, value: async (d) => void (window.__shared = d) });
+});
+await H.getByRole('dialog', { name: 'Mitspieler einladen' }).getByRole('button', { name: 'Einladung senden' }).click();
+const sent = await H.evaluate(() => window.__shared);
+ok(!!sent && !('title' in sent) && new RegExp(`#round=${code}$`).test(sent.url ?? '') && /^Turnier „USA Tag 1“ am .+ mit Code \w{6} beitreten$/.test(sent.text ?? ''), `invite: text and link apart, no title (${JSON.stringify(sent)})`);
 await H.getByRole('dialog', { name: 'Mitspieler einladen' }).getByRole('button', { name: 'Schließen' }).click();
 
 // ---------- the scores come in (as Rounds writes them on the day): the leaderboard ----------

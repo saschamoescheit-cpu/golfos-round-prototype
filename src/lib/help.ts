@@ -28,7 +28,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz'), length: '1:06' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
-  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, 5+5+10, inviting, the settlement', 'Ein Pool über die Reise, die Bibliothek, 5+5+10, einladen, die Abrechnung'), length: '1:18' },
+  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, the rounds that count, the standing, inviting, the settlement', 'Ein Pool über die Reise, die Bibliothek, die Runden, der Stand, einladen, die Abrechnung'), length: '1:11' },
   { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('Flights with their tee times, players assigned, markers, special prizes, live leaderboard', 'Flights mit Startzeit, Spieler zuordnen, Zähler, Sonderwertungen, Live-Rangliste'), length: '1:19' },
 ];
 /** The whole tour in one video. */
@@ -295,8 +295,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Which games are there?', 'Welche Spiele gibt es?'),
         a: () =>
           tr(
-            'Skins, Wolf, Nassau, Las Vegas, Chicago, match play and more – each explains its rules, to read or to listen to. A star keeps your favourites on top.',
-            'Skins, Wolf, Nassau, Las Vegas, Chicago, Lochspiel und mehr – jedes erklärt seine Regeln, zum Lesen oder Vorlesen. Mit dem Stern stehen deine Lieblingsspiele oben.',
+            'Skins, Wolf, Nassau, 5+5+10, Las Vegas, Chicago, match play and more – each explains its rules, to read or to listen to. A star keeps your favourites on top.',
+            'Skins, Wolf, Nassau, 5+5+10, Las Vegas, Chicago, Lochspiel und mehr – jedes erklärt seine Regeln, zum Lesen oder Vorlesen. Mit dem Stern stehen deine Lieblingsspiele oben.',
           ),
         video: 'games',
       },

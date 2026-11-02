@@ -1,11 +1,11 @@
 import { dec, tr } from './i18n';
 
 // The "Games" module (Sascha 15.10.2026): side games among friends as a product of its own, not tied to the round
-// analysis – skins, Nassau, wolf, Chicago, Bingo Bango Bongo, Las Vegas, sixes, snake, dots, Stableford and match
-// play duels. Each form has its rules ("Ausgestaltung"), its settings and, where needed, what is entered per hole
+// analysis – skins, Nassau, wolf, Chicago, Bingo Bango Bongo, Las Vegas, sixes, snake, dots, Stableford, match play
+// duels and 5+5+10. Each form has its rules ("Ausgestaltung"), its settings and, where needed, what is entered per hole
 // besides the strokes. Results in points; with a stake per point the settlement in euros.
 
-export type FormId = 'skins' | 'nassau' | 'wolf' | 'chicago' | 'bbb' | 'vegas' | 'sixes' | 'snake' | 'dots' | 'stableford' | 'match' | 'hammer' | 'rabbit' | 'acey';
+export type FormId = 'skins' | 'nassau' | 'wolf' | 'chicago' | 'bbb' | 'vegas' | 'sixes' | 'snake' | 'dots' | 'stableford' | 'match' | 'hammer' | 'rabbit' | 'acey' | 'fivefiveten';
 
 export interface GameHole {
   label: string;
@@ -897,10 +897,70 @@ export const FORMS: FormDef[] = [
       return { rows: rank(g.players.map((p) => ({ id: p.id, name: p.name, points: pts[p.id], value: `${pts[p.id] >= 0 ? '+' : ''}${pts[p.id]}` }))), money };
     },
   },
+  {
+    // Sascha 02.11.2026: "5+5+10 is no bet but a game – to choose under Games" (stroke play, as his group plays it)
+    id: 'fivefiveten',
+    hcpFor: () => '0',
+    name: () => '5+5+10',
+    short: () => tr('Stroke play, everyone against everyone: front nine, back nine and the 18 – each its own stake.', 'Zählspiel jeder gegen jeden: vorne, hinten und über 18 – jedes mit eigenem Einsatz.'),
+    rules: () => [
+      tr('Stroke play: the strokes of each nine and of the whole round are added up.', 'Zählspiel: Die Schläge jeder Neun und der ganzen Runde werden zusammengezählt.'),
+      tr('Everyone against everyone: in every pair the better score on the front nine wins the front stake (5), the same on the back nine (5), and over 18 the total stake (10).', 'Jeder gegen jeden: In jeder Paarung gewinnt der bessere Score vorne den Einsatz für vorne (5), ebenso hinten (5) und über 18 den Einsatz für gesamt (10).'),
+      tr('A tie wins nothing. A nine counts once both have played all its holes.', 'Gleichstand gewinnt nichts. Eine Neun zählt, sobald beide alle ihre Löcher gespielt haben.'),
+      tr('Gross by default – with a handicap share net, the strokes received on each hole.', 'Standard brutto – mit Vorgabe-Anteil netto, mit den Vorgabeschlägen je Loch.'),
+    ],
+    players: [2, 4],
+    settings: [
+      { key: 'front', label: () => tr('Front nine', 'Vorne (9)'), type: 'stake', default: 5 },
+      { key: 'back', label: () => tr('Back nine', 'Hinten (9)'), type: 'stake', default: 5 },
+      { key: 'total', label: () => tr('All 18', 'Gesamt (18)'), type: 'stake', default: 10 },
+    ],
+    standing: (g) => {
+      const half = g.holes.length >= 18 ? 9 : Math.ceil(g.holes.length / 2);
+      const parts = [
+        { key: 'front', label: tr('front', 'vorne'), from: 0, to: half },
+        { key: 'back', label: tr('back', 'hinten'), from: half, to: g.holes.length },
+        { key: 'total', label: tr('18', 'gesamt'), from: 0, to: g.holes.length },
+      ].filter((p) => p.to > p.from);
+      // a part's score – null until every hole of it is played
+      const sum = (pid: string, from: number, to: number): number | null => {
+        let s = 0;
+        for (let i = from; i < to; i++) {
+          const v = net(g, pid, i);
+          if (v == null) return null;
+          s += v;
+        }
+        return s;
+      };
+      const money: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
+      const lines: string[] = [];
+      for (const a of g.players)
+        for (const b of g.players) {
+          if (a.id >= b.id) continue;
+          const said = parts.map((p) => {
+            const x = sum(a.id, p.from, p.to);
+            const y = sum(b.id, p.from, p.to);
+            if (x == null || y == null) return `${p.label} –`;
+            if (x === y) return `${p.label} =`;
+            const win = x < y ? a : b;
+            const v = Number(g.settings[p.key] ?? 0);
+            money[win.id] += v;
+            money[win === a ? b.id : a.id] -= v;
+            return `${p.label} ${win.name}`;
+          });
+          lines.push(`${a.name}–${b.name}: ${said.join(', ')}`);
+        }
+      return {
+        rows: rank(g.players.map((p) => ({ id: p.id, name: p.name, points: money[p.id], value: euro(money[p.id]) }))),
+        status: lines.join(' · '),
+        money,
+      };
+    },
+  },
 ];
 
 // handicap and press for the forms where they make sense (no loss limit – Sascha 15.10.2026)
-const WITH_HCP: FormId[] = ['skins', 'nassau', 'wolf', 'chicago', 'vegas', 'sixes', 'stableford', 'match', 'hammer', 'rabbit', 'acey'];
+const WITH_HCP: FormId[] = ['skins', 'nassau', 'wolf', 'chicago', 'vegas', 'sixes', 'stableford', 'match', 'hammer', 'rabbit', 'acey', 'fivefiveten'];
 const WITH_DOUBLE: FormId[] = ['skins', 'wolf', 'chicago', 'bbb', 'vegas', 'sixes', 'dots', 'stableford', 'rabbit', 'acey'];
 for (const f of FORMS) {
   if (WITH_HCP.includes(f.id)) f.settings.unshift(HCP);

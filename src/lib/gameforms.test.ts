@@ -63,6 +63,40 @@ describe('Nassau', () => {
   });
 });
 
+// Sascha 02.11.2026: "5+5+10 is no bet but a game" – stroke play, everyone against everyone, front 5, back 5, 18 10
+describe('5+5+10', () => {
+  const nine = (front: (number | null)[], back: (number | null)[]) => [...front, ...back];
+  it('front, back and the 18 each go to the better score – stakes 5, 5, 10', () => {
+    const a = nine(Array(9).fill(4), [5, 5, 5, 4, 4, 4, 4, 4, 5]); // 36 + 40 = 76
+    const b = nine([4, 4, 4, 4, 5, 4, 5, 4, 4], Array(9).fill(4).map((v, i) => (i === 0 ? 3 : v))); // 38 + 35 = 73
+    const st = formDef('fivefiveten').standing(game('fivefiveten', [a, b], { allowance: '0' }));
+    expect(st.money).toEqual({ p0: 5 - 5 - 10, p1: -5 + 5 + 10 });
+    expect(st.status).toBe('P0–P1: front P0, back P1, 18 P1');
+  });
+  it('a tie wins nothing; a nine not played to its end does not count yet', () => {
+    const a = nine(Array(9).fill(4), [4, 4, 4, null, null, null, null, null, null]);
+    const b = nine(Array(9).fill(4), [3, 4, 4, null, null, null, null, null, null]);
+    const st = formDef('fivefiveten').standing(game('fivefiveten', [a, b], { allowance: '0' }));
+    expect(st.money).toEqual({ p0: 0, p1: 0 });
+    expect(st.status).toBe('P0–P1: front =, back –, 18 –');
+  });
+  it('everyone against everyone: each pair settles on its own, the money adds up to zero', () => {
+    const s = (front: number, back: number) => nine(Array(9).fill(4).map((v, i) => (i === 0 ? v + front : v)), Array(9).fill(4).map((v, i) => (i === 0 ? v + back : v)));
+    const st = formDef('fivefiveten').standing(game('fivefiveten', [s(0, 1), s(1, 0), s(2, 2)], { allowance: '0' }));
+    // P0–P1: front P0, back P1, 18 tied → 0; P0–P2 and P1–P2: all three to P0 / P1 → 20 each
+    expect(st.money).toEqual({ p0: 20, p1: 20, p2: -40 });
+    expect(Object.values(st.money!).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+  it('net with a handicap share: the strokes received on each hole', () => {
+    const a = Array(18).fill(5); // 90 gross, 10 strokes received → 80 net
+    const b = Array(18).fill(4).map((v, i) => (i < 6 ? 5 : v)); // 78 gross, scratch
+    const gross = formDef('fivefiveten').standing(game('fivefiveten', [a, b], { allowance: '0' }, [10, 0]));
+    const netted = formDef('fivefiveten').standing(game('fivefiveten', [a, b], { allowance: '100' }, [18, 0]));
+    expect(gross.money).toEqual({ p0: -20, p1: 20 });
+    expect(netted.money!.p0).toBeGreaterThan(0); // 90 − 18 = 72 against 78
+  });
+});
+
 describe('wolf', () => {
   it('lone wolf wins 2 points from each other player', () => {
     const g = game('wolf', [[3], [4], [4], [4]]);
