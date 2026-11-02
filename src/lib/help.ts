@@ -353,6 +353,16 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'profile',
       },
+      // friends linked by their accounts (Sascha 02.11.2026)
+      {
+        q: () => tr("How does a friend's handicap stay up to date?", 'Wie bleibt das HCP meiner Freunde aktuell?'),
+        a: () =>
+          tr(
+            'Link them: Friends → "My friend code" – let your friend scan the QR code ("Scan QR code" on his phone) or send him the invitation, e.g. by WhatsApp; he accepts. Then name, handicap, home club and photo come from his profile, and you both see each other. The chain marks a linked friend, the pen one typed by hand – you can still add friends by hand. Linking needs an account (Google or user name).',
+            'Verknüpfe sie: Freunde → „Mein Freundes-Code“ – dein Freund scannt den QR-Code („QR-Code scannen“ auf seinem Handy) oder du schickst ihm die Einladung, z. B. per WhatsApp; er nimmt an. Dann kommen Name, HCP, Heimatclub und Bild aus seinem Profil, und ihr seht euch gegenseitig. Die Kette zeigt verknüpfte Freunde, der Stift von Hand angelegte – Freunde von Hand anlegen geht weiterhin. Zum Verknüpfen braucht es ein Konto (Google oder Benutzername).',
+          ),
+        video: 'profile',
+      },
       {
         q: () => tr('Which notifications are there?', 'Welche Mitteilungen gibt es?'),
         a: () => tr('A round not checked yet, games on several phones, a bet made, your tee time about 45 minutes ahead, a thunderstorm on the course. Profile → Notifications.', 'Runde noch nicht geprüft, Spiele auf mehreren Handys, eine geschaffte Wette, deine Startzeit etwa 45 Minuten vorher, Gewitter auf dem Platz. Profil → Mitteilungen.'),

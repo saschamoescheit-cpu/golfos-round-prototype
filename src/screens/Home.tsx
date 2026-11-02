@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { tr } from '../lib/i18n';
-import { loadFriends, saveFriends, type Friend } from '../lib/friends';
-import { newId } from '../lib/storage';
+import { loadFriends, type Friend } from '../lib/friends';
+import { Friends } from '../components/Friends';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { PausedIcon } from '../components/PausedIcon';
@@ -30,7 +30,7 @@ export function Home(props: {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
       {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} betsRunning={props.betsRunning ?? []} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
-      {props.tab === 'friends' && <Friends />}
+      {props.tab === 'friends' && <Friends onSignIn={() => props.onTab('profile')} />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
         items={[
@@ -178,38 +178,6 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
 }
 
 /** The people you play with – Rounds and Games offer them when setting up. */
-function Friends() {
-  const [list, setList] = useState<Friend[]>(loadFriends);
-  const store = (next: Friend[]) => {
-    setList(next);
-    saveFriends(next.filter((f) => f.name.trim() || f.hcp.trim()));
-  };
-  const set = (id: string, patch: Partial<Friend>) => store(list.map((f) => (f.id === id ? { ...f, ...patch } : f)));
-  return (
-    <>
-      <h1 className="tab-title">{tr('Friends', 'Freunde')}</h1>
-      {list.map((f) => (
-        <div key={f.id} className="card game-player-row">
-          <div className="field">
-            <label htmlFor={`fname-${f.id}`}>Name</label>
-            <input id={`fname-${f.id}`} className="input" value={f.name} onChange={(e) => set(f.id, { name: e.target.value })} />
-          </div>
-          <div className="field">
-            <label htmlFor={`fhcp-${f.id}`}>Handicap</label>
-            <input id={`fhcp-${f.id}`} className="input" inputMode="decimal" value={f.hcp} onChange={(e) => set(f.id, { hcp: e.target.value })} />
-          </div>
-          <button type="button" className="icon-btn" aria-label={tr(`Remove ${f.name || 'friend'}`, `${f.name || 'Freund'} entfernen`)} onClick={() => store(list.filter((x) => x.id !== f.id))} style={{ marginBottom: 3 }}>
-            ✕
-          </button>
-        </div>
-      ))}
-      <button type="button" className="btn-secondary" onClick={() => setList([...list, { id: newId(), name: '', hcp: '' }])}>
-        {tr('+ Add friend', '+ Freund hinzufügen')}
-      </button>
-    </>
-  );
-}
-
 /** Friends not yet in the flight, as chips to add with one tap (round and game setup). */
 export function FriendChips(props: { taken: string[]; onAdd: (f: Friend) => void }) {
   const free = loadFriends().filter((f) => f.name.trim() && !props.taken.some((n) => n.trim().toLowerCase() === f.name.trim().toLowerCase()));

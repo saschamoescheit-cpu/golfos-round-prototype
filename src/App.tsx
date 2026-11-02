@@ -7,6 +7,7 @@ import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
 import { finishSignIn, liveConnect, syncNow, syncSoon, watchChanges } from './lib/sync';
 import { isNative, onAppLink } from './lib/native';
+import { codeFromText, setPendingAsk, startFriendLinks } from './lib/friendlinks';
 import { PlayTab, RoundsTopBar } from './screens/Play';
 import { RoundsTab, roundsToSign, type RoundsFilter } from './screens/Rounds';
 import { RecordTab } from './screens/Record';
@@ -81,6 +82,8 @@ function roundInPlay(rounds: Round[]): Round | undefined {
 }
 
 // After a crash the player can ask for the start page instead of the round (read once per page load).
+/** A friend's invitation opened (#friend=<code>), read once at the start (the app clears the address then). */
+const FRIEND_LINK = location.hash.startsWith('#friend=') ? codeFromText(location.hash) : null;
 const SKIP_RESUME = (() => {
   try {
     const skip = sessionStorage.getItem(NO_RESUME) != null;
@@ -174,8 +177,16 @@ export function App() {
   // Two modules (Sascha 15.10.2026): "Rounds" (round and analysis) and "Games" (side games) – chosen when the app
   // opens; a round in play reopens straight on its hole, a reload stays in the module of this tab.
   // a join link opens Games – a round's (#round=) Rounds
-  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' || location.hash.startsWith('#round=') ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : sessionModule()));
-  const [homeTab, setHomeTab] = useState<HomeTab>('start');
+  const [module, setModuleState] = useState<AppModule | null>(() => (screen.name === 'hole' || location.hash.startsWith('#round=') ? 'rounds' : location.hash.startsWith('#join=') ? 'games' : FRIEND_LINK ? null : sessionModule()));
+  // a friend's invitation (#friend=, Sascha 02.11.2026: "a friend request by WhatsApp"): the friends tab asks to accept
+  const [homeTab, setHomeTab] = useState<HomeTab>(() => {
+    if (!FRIEND_LINK) return 'start';
+    if (location.hash.startsWith('#friend=')) {
+      setPendingAsk(FRIEND_LINK);
+      history.replaceState(null, '', `${location.pathname}${location.search}`);
+    }
+    return 'friends';
+  });
   const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(undefined);
   const [trainingTab, setTrainingTab] = useState<TrainingTab | undefined>(undefined);
   const [mobilityTab, setMobilityTab] = useState<MobilityTab | undefined>(undefined);
@@ -225,7 +236,19 @@ export function App() {
     watchChanges();
     finishSignIn().finally(() => syncNow());
     // the iOS app back from Google by its own link: keep the tokens, then start again as the website does after Google
-    if (isNative()) void onAppLink((url) => void finishSignIn(url).then((s) => s && location.reload()));
+    // … or opened by a friend's link (de.moescheit.golfos://friend/<code>): the friends tab asks to accept
+    if (isNative())
+      void onAppLink((url) => {
+        const friend = url.includes('://friend/') ? codeFromText(url) : null;
+        if (friend) {
+          setPendingAsk(friend);
+          setModule(null);
+          setHomeTab('friends');
+          return;
+        }
+        void finishSignIn(url).then((s) => s && location.reload());
+      });
+    startFriendLinks(); // the own friend card after each sync, the friends' cards every few minutes
     // back to the app: fetch what the other devices changed; leaving it (another tab, the phone locked): send ours
     const onShow = () => {
       syncNow();

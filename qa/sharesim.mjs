@@ -23,6 +23,10 @@ export function sharedServer(b, url, o = {}) {
   let refused = 0; // writes refused because another phone wrote in between
   let anon = 0;
   let flightReads = 0;
+  // friends linked by their accounts (supabase/golfos-friends.sql, 02.11.2026): uid → card, and the links both ways
+  const cards = new Map();
+  const links = new Set(); // "a|b"
+  let codes = 0;
   const askRow = (code, row, uid, who, hcp) => {
     if (row.owner === uid || row.members.includes(uid)) return { state: 'ok', code };
     if (row.requests[uid]) return { state: row.requests[uid].state };
@@ -36,6 +40,42 @@ export function sharedServer(b, url, o = {}) {
     const uid = accountOf((req.headers()['authorization'] ?? '').replace(/^Bearer /, '')); // each phone its account
     const body = () => JSON.parse(req.postData() ?? '{}');
     if (u.pathname.endsWith('/golfos_items')) return json(200, []);
+    if (u.pathname.endsWith('/rpc/golfos_friend_card_save')) {
+      if (!uid) return json(401, { message: 'not_signed_in' });
+      const a = body();
+      const old = cards.get(uid);
+      cards.set(uid, { user_id: uid, code: old?.code ?? `FC${String(++codes).padStart(10, '0')}`, first_name: a.p_first, last_name: a.p_last, hcp_index: a.p_hcp, home_club: a.p_club, photo: a.p_photo });
+      return json(200, cards.get(uid).code);
+    }
+    if (u.pathname.endsWith('/rpc/golfos_friend_new_code')) {
+      const c = cards.get(uid);
+      if (!c) return json(200, null);
+      c.code = `FC${String(++codes).padStart(10, '0')}`;
+      return json(200, c.code);
+    }
+    if (u.pathname.endsWith('/rpc/golfos_friend_preview')) {
+      const c = [...cards.values()].find((x) => x.code === String(body().p_code).trim().toUpperCase());
+      return json(200, c ? [{ first_name: c.first_name, last_name: c.last_name, home_club: c.home_club, photo: c.photo, is_me: c.user_id === uid, is_friend: links.has(`${uid}|${c.user_id}`) }] : []);
+    }
+    if (u.pathname.endsWith('/rpc/golfos_friend_add')) {
+      if (!uid) return json(401, { message: 'not_signed_in' });
+      const c = [...cards.values()].find((x) => x.code === String(body().p_code).trim().toUpperCase());
+      if (!c) return json(400, { message: 'unknown_code' });
+      if (c.user_id === uid) return json(400, { message: 'own_code' });
+      links.add(`${uid}|${c.user_id}`).add(`${c.user_id}|${uid}`);
+      return json(200, c.user_id);
+    }
+    if (u.pathname.endsWith('/rpc/golfos_friend_remove')) {
+      const p = body().p_friend;
+      links.delete(`${uid}|${p}`);
+      links.delete(`${p}|${uid}`);
+      return json(204, null);
+    }
+    if (u.pathname.endsWith('/golfos_friend_cards')) {
+      // the row rule: one's own card and the friends' ones
+      const not = (u.searchParams.get('user_id') ?? '').replace(/^neq\./, '');
+      return json(200, [...cards.values()].filter((c) => (c.user_id === uid || links.has(`${uid}|${c.user_id}`)) && c.user_id !== not).map(({ code, ...c }) => c)); // eslint-disable-line no-unused-vars
+    }
     // an account without Google: its token is its name
     if (u.pathname.endsWith('/auth/v1/signup')) {
       if (o.noAnonymous) return json(422, { error_code: 'anonymous_provider_disabled' });
@@ -237,5 +277,5 @@ export function sharedServer(b, url, o = {}) {
     shared.set(code, { game: { kind: 'tour-series', id: code.toLowerCase(), name, createdAt: new Date().toISOString(), rounds, ...(o2.deletedAt ? { deletedAt: o2.deletedAt } : {}) }, updated_at: new Date().toISOString(), owner, members: [], requests: {} });
     return code;
   }
-  return { shared, pushes, phone, round, event, plan, joinPlanned, series, refused: () => refused, flightReads: () => flightReads };
+  return { cards, links, shared, pushes, phone, round, event, plan, joinPlanned, series, refused: () => refused, flightReads: () => flightReads };
 }

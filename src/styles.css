@@ -2020,3 +2020,28 @@ button.tile:disabled { opacity: 1; }
 .pool-standing li > .pool-ledger { grid-column: 1 / -1; list-style: none; margin: -4px 0 4px; padding: 0 0 0 10px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 .pool-ledger li { display: flex !important; gap: 8px; align-items: baseline; }
 .pool-ledger .grow { flex: 1; min-width: 0; color: var(--muted); }
+
+
+/* Friends (Sascha 02.11.2026): the own friend code as a QR code, the friends linked by their accounts and the ones typed
+   by hand side by side – a chain or a pen tells them apart */
+.friend-code { display: flex; flex-direction: column; gap: 10px; }
+.friend-code-text { align-self: center; font: 700 20px var(--display); letter-spacing: 0.12em; }
+.friend-code-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.friend-code-actions > * { flex: 1 1 140px; }
+.friend-code-type { display: flex; gap: 8px; }
+.friend-code-type .input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.08em; }
+.friend-code .link-btn { align-self: flex-start; text-align: left; }
+.friend-linked { display: flex; align-items: center; gap: 12px; }
+.friend-linked .grow { flex: 1; min-width: 0; }
+.friend-remove { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.friend-typed { grid-template-columns: auto 1fr 110px auto; }
+.friend-typed .friend-kind { margin-bottom: 14px; }
+.friend-kind { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line-strong); vertical-align: middle; }
+.friend-kind.linked { background: var(--brand-soft); color: var(--brand-text); border-color: transparent; }
+.friend-legend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.friend-legend .friend-kind { width: 20px; height: 20px; }
+.friend-ask { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.friend-ask p { margin: 4px 0; }
+.qr-scan { position: relative; width: 100%; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: #000; }
+.qr-scan video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qr-scan-frame { position: absolute; inset: 18%; border: 3px solid #fff; border-radius: 16px; box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35); }
