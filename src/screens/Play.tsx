@@ -6,7 +6,7 @@ import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { TopTools } from '../components/TopTools';
 import { JoinRoundSheet, PENDING_JOIN } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
-import { flightOfName, localDay, tournamentsAhead, type RoundEvent } from '../lib/sharedround';
+import { flightOfName, localDay, tournamentOver, tournamentsAhead, type RoundEvent } from '../lib/sharedround';
 import { dayText } from '../components/ShareRound';
 import { loadProfile, shownName } from '../lib/profile';
 
@@ -65,9 +65,15 @@ export function PlayTab(props: {
     const look = () => document.visibilityState === 'visible' && void tournamentsAhead().then(setToday);
     look();
     document.addEventListener('visibilitychange', look);
-    return () => document.removeEventListener('visibilitychange', look);
+    // the app left open: an expired tournament goes by itself too
+    const t = window.setInterval(look, 5 * 60 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', look);
+      window.clearInterval(t);
+    };
   }, [canShare]);
-  const tournaments = today.filter((t) => t.ev.date === localDay() && !props.rounds.some((r) => r.shared?.code === t.code));
+  // over – the own flight or all finished, or long after the last tee time – it goes again (Sascha 02.11.2026)
+  const tournaments = today.filter((t) => t.ev.date === localDay() && !props.rounds.some((r) => r.shared?.code === t.code) && !tournamentOver(t.ev, shownName(loadProfile())));
   // the ones planned for a later day (Sascha 02.11.2026: "already planned tournaments should show under Rounds")
   const ahead = today.filter((t) => t.ev.date !== localDay());
 

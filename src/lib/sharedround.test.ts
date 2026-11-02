@@ -453,3 +453,37 @@ describe("a player's own analysis beside the scorer's card (Sascha 02.11.2026)",
     expect(sascha.entries.me[0]).toMatchObject({ strokes: 6, penalties: 1, putts: 2, fairway: 'hit' });
   });
 });
+
+import { tournamentOver } from './sharedround';
+describe('an expired tournament goes from the start page (Sascha 02.11.2026)', () => {
+  const plan = () =>
+    plannedEvent({
+      name: 'Herbstpreis', date: '2026-11-06', course, holes, loopOrder: ['A'], format: { mode: 'single', scoring: 'stableford' },
+      flights: [
+        { teeTime: '09:20', players: [{ name: 'Sascha', playingHandicap: 12 }, { name: 'Cedric', playingHandicap: 20 }] },
+        { teeTime: '10:00', players: [{ name: 'Ben', playingHandicap: 8 }, { name: 'Max', playingHandicap: 15 }] },
+      ],
+    });
+  const at = (hhmm: string, day = 6) => new Date(2026, 10, day, Number(hhmm.slice(0, 2)), Number(hhmm.slice(3)));
+  it('on its day, before and during play: shown', () => {
+    expect(tournamentOver(plan(), 'Sascha', at('00:01'))).toBe(false);
+    expect(tournamentOver(plan(), 'Sascha', at('14:30'))).toBe(false);
+  });
+  it('his own flight finished: over for him – not yet for the other flight', () => {
+    const ev = plan();
+    const [f1] = Object.values(ev.flights);
+    f1.finishedAt = '2026-11-06T13:40:00Z';
+    expect(tournamentOver(ev, 'Sascha', at('13:45'))).toBe(true);
+    expect(tournamentOver(ev, 'Ben', at('13:45'))).toBe(false);
+  });
+  it('every flight finished: over for all, the host too', () => {
+    const ev = plan();
+    for (const f of Object.values(ev.flights)) f.finishedAt = '2026-11-06T14:00:00Z';
+    expect(tournamentOver(ev, 'Gast', at('14:05'))).toBe(true);
+  });
+  it('six hours after the last tee time (nobody finished on the app), and the next day', () => {
+    expect(tournamentOver(plan(), 'Sascha', at('16:01'))).toBe(true);
+    expect(tournamentOver(plan(), 'Sascha', at('15:59'))).toBe(false);
+    expect(tournamentOver(plan(), 'Sascha', at('08:00', 7))).toBe(true);
+  });
+});

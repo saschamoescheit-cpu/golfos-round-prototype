@@ -6,7 +6,8 @@
 // 3 · a series called off: said so, nobody joins
 // Usage: node qa/tourseries.mjs [url]
 import { webkit } from 'playwright';
-import { sharedServer } from './sharesim.mjs';
+import { sharedServer, teeSoon } from './sharesim.mjs';
+const [T1, T2] = [teeSoon(30), teeSoon(40)]; // later today, whatever the hour
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -23,8 +24,8 @@ const day = (n) =>
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, n);
 const flights = [
-  { teeTime: '09:20', players: [{ name: 'Sascha', playingHandicap: 4 }, { name: 'Erik', playingHandicap: 8 }] },
-  { teeTime: '09:30', players: [{ name: 'Chris', playingHandicap: 6 }, { name: 'Cedric', playingHandicap: 5 }] },
+  { teeTime: T1, players: [{ name: 'Sascha', playingHandicap: 4 }, { name: 'Erik', playingHandicap: 8 }] },
+  { teeTime: T2, players: [{ name: 'Chris', playingHandicap: 6 }, { name: 'Cedric', playingHandicap: 5 }] },
 ];
 const r1 = await sim.plan(H, { name: 'USA Tag 1', date: await day(0), flights });
 const r2 = await sim.plan(H, { name: 'USA Tag 2', date: await day(2), flights });
@@ -40,7 +41,7 @@ await box.waitFor({ timeout: 15000 }).catch(() => {});
 await E.waitForTimeout(1500); // the flight of round 1 read
 const t = (await box.innerText().catch(() => '')).replace(/\s+/g, ' ');
 ok(/Du bist dabei: USA-Serie/.test(t) && /2 Runden/.test(t), `the series: "${t.slice(0, 160)}"`);
-ok(/dein Flight in Runde 1 09:20/.test(t), 'his flight in round 1 with its tee time');
+ok(t.includes(`dein Flight in Runde 1 ${T1}`), 'his flight in round 1 with its tee time');
 ok((t.match(/Golfclub Hetzenhof/g) ?? []).length === 2, 'both rounds with their day and course');
 ok([code, r1, r2].every((c) => sim.shared.get(c).members.includes('Erik')), 'Erik is in the series and in both rounds – no asking');
 ok(await box.getByRole('button', { name: 'Heute teilnehmen' }).isVisible(), 'a round today: "Heute teilnehmen"');
@@ -60,7 +61,7 @@ await C.getByRole('button', { name: 'Schließen' }).click();
 await C.reload();
 const card = C.getByRole('region', { name: 'Turnier USA Tag 1' });
 await card.waitFor({ timeout: 15000 }).catch(() => {});
-ok(/Dein Flight · 09:30/.test((await card.innerText().catch(() => '')).replace(/\s+/g, ' ')), 'Chris: the card of round 1 on the start page – "Dein Flight · 09:30"');
+ok(new RegExp(`Dein Flight · ${T2}`).test((await card.innerText().catch(() => '')).replace(/\s+/g, ' ')), 'Chris: the card of round 1 on the start page – "Dein Flight · 09:30"');
 ok((await C.getByRole('region', { name: 'Turnier USA Tag 2' }).count()) === 0, 'round 2 not before its day');
 
 // 3 · called off

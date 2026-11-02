@@ -1876,8 +1876,9 @@ export function HoleScreen(props: {
               <span className="shot-wrap">
             {/* the ball's spot by hand, at the ball: the truth for the shot detection – on the map for every round, not
                   in the profile, below the tools on its own (Sascha 17.10.2026); the GPS detection runs as always, both kept */}
-              {/* always bottom right; with the caddie open it is simply not there (Sascha 21.10.2026: it lay over the tools) */}
-              {!round.preview && !props.game && !caddieShown && (
+              {/* always bottom right; with the caddie open it is simply not there (Sascha 21.10.2026: it lay over the tools);
+                  only on the website, for testing – the iOS app finds the shots by itself (Sascha 02.11.2026) */}
+              {!round.preview && !props.game && !caddieShown && !isNative() && (
                 <button
                   type="button"
                   className="map-shot-btn"

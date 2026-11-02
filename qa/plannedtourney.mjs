@@ -9,7 +9,8 @@
 // (signing by player and marker in a planned tournament: qa/sharesign.mjs)
 // Usage: node qa/plannedtourney.mjs [url]
 import { webkit } from 'playwright';
-import { sharedServer } from './sharesim.mjs';
+import { sharedServer, teeSoon } from './sharesim.mjs';
+const [T1, T2] = [teeSoon(30), teeSoon(40)]; // later today, whatever the hour
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -27,13 +28,13 @@ const code = await sim.plan(P('Sascha'), {
   name: 'Herbstpreis',
   classes: [18],
   flights: [
-    { teeTime: '09:00', players: [{ name: 'Sascha', playingHandicap: 5 }, { name: 'Cedric', playingHandicap: 24 }] },
-    { teeTime: '09:10', players: [{ name: 'Ben', playingHandicap: 12 }, { name: 'Max', playingHandicap: 30 }] },
+    { teeTime: T1, players: [{ name: 'Sascha', playingHandicap: 5 }, { name: 'Cedric', playingHandicap: 24 }] },
+    { teeTime: T2, players: [{ name: 'Ben', playingHandicap: 12 }, { name: 'Max', playingHandicap: 30 }] },
   ],
 });
 ok(/^[A-Z0-9]{6}$/.test(code ?? ''), `the plan on the server: code ${code}`);
 const flights = Object.values(sim.event().flights);
-ok(flights.length === 2 && flights.every((f) => f.players.length === 2) && flights.map((f) => f.teeTime).join() === '09:00,09:10', 'two flights of two, with their tee times');
+ok(flights.length === 2 && flights.every((f) => f.players.length === 2) && flights.map((f) => f.teeTime).join() === `${T1},${T2}`, 'two flights of two, with their tee times');
 
 // 1 · Erik, a week ahead: next Saturday's tournament by link
 const later = await P('Sascha').evaluate(() => {
@@ -90,7 +91,7 @@ for (const name of ['Sascha', 'Cedric']) {
   const c = p.getByRole('region', { name: 'Turnier Herbstpreis' });
   await c.waitFor({ timeout: 15000 }).catch(() => {});
   const t = (await c.innerText().catch(() => '')).replace(/\s+/g, ' ');
-  ok(/turnier heute/i.test(t) && /Dein Flight · 09:00/.test(t), `${name}: the card "${t.slice(0, 90)}"`);
+  ok(/turnier heute/i.test(t) && t.includes(`Dein Flight · ${T1}`), `${name}: the card "${t.slice(0, 90)}"`);
   await c.getByRole('button', { name: 'Teilnehmen' }).click();
   await p.locator('.map-hole-no').waitFor({ timeout: 30000 });
 }
@@ -149,7 +150,7 @@ await P('Sascha').waitForTimeout(12000);
 const after = (await board('Sascha')).rows;
 ok(after.join() !== before && after.some((r) => /Ben.*nach 2/.test(r)), `Sascha's board follows the other flight: ${after.join(' | ')}`);
 const status = (await (await board('Sascha')).bd.locator('.flight-status').innerText().catch(() => '')).replace(/\s+/g, ' ');
-ok(/09:00|Sascha · Cedric/.test(status) && /Ben · Max/.test(status), `the flights as they stand: "${status}"`);
+ok((status.includes(T1) || /Sascha · Cedric/.test(status)) && /Ben · Max/.test(status), `the flights as they stand: "${status}"`);
 
 // 4 · the host takes a flight out of the plan (an empty row stays) – in no list; a tournament called off joins nobody
 await P('Sascha').evaluate(async (code) => {
