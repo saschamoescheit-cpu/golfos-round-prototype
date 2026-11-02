@@ -257,6 +257,26 @@ await p.waitForTimeout(300);
 await tab('Üben');
 await tab('Verlauf');
 ok((await sessionsBlock().locator('.list-item').count()) === 1, 'session restored by undo');
+// the tiles as on Rounds/Games (Sascha 02.11.2026): a mark on each, one filter at a time, "deleted" always there
+const tile = (label) => p.locator('.tile-row .tile').filter({ has: p.getByText(label, { exact: true }) });
+ok((await p.locator('.tile-row .tile .tile-mark svg').count()) === 4, 'progress: four tiles, each with its mark');
+ok(await tile('gelöscht').isDisabled(), 'progress: "deleted" is there with 0 and cannot be tapped');
+await tile('Einheiten').click();
+ok((await sessionsBlock().isVisible()) && !(await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'tile "sessions" shows only the sessions');
+await tile('Ergebnisse').click();
+ok(!(await sessionsBlock().isVisible()) && (await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'tile "results" shows only the results – one tile at a time');
+await tile('Ergebnisse').click();
+ok((await sessionsBlock().isVisible()) && (await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'second tap: everything again');
+await sessionsBlock().locator('.list-item').first().click();
+await p.getByRole('button', { name: 'Einheit löschen' }).click();
+await p.waitForTimeout(200);
+await tab('Üben');
+await tab('Verlauf');
+await tile('gelöscht').click();
+ok((await p.getByRole('heading', { name: 'Gelöschte Einheiten' }).isVisible()) && !(await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'tile "deleted" shows only the bin');
+await p.getByRole('button', { name: 'Wiederherstellen' }).click();
+await p.waitForTimeout(200);
+ok((await sessionsBlock().locator('.list-item').count()) === 1 && (await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'restored from the bin: the whole page again');
 
 // favourites as a session needs two favourites: add the Tiger drill too
 await tab('Wissen');
