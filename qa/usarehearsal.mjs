@@ -5,7 +5,10 @@
 // 3 · played with markers – the marker enters his partner in full (putts …) – the live leaderboard on every phone
 // 4 · the cards signed by player and marker, the leaderboard says so; the marker's counts with their details on the
 //     server (what the bets "with marker" judge from)
-// 5 · the bets (Games adds them here: the pool, 5+5+10 in $, judged by themselves, the pushes, the settlement)
+// 5 · the bets: the pool "USA 2026" in $ tied to the tournament's round, joined by its link (only the host changes it);
+//     5+5+10 Sascha–Chris and Erik–Cedric, pars in a row "with marker" – judged by each phone from its signed round,
+//     the push for a bet made, the settlement
+// 18 holes, as over there – the 5+5+10 needs front and back nine.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/usarehearsal.mjs [url]
 import { webkit } from 'playwright';
 import { sharedServer } from './sharesim.mjs';
@@ -26,7 +29,7 @@ const PARTNER = { Sascha: 'Chris', Chris: 'Sascha', Erik: 'Cedric', Cedric: 'Eri
 // ---------- 1 · planned (in Games), joined ahead ----------
 const code = await sim.plan(P('Sascha'), {
   name: 'USA Tag 1',
-  option: 'A · 9',
+  option: 'A \\+ B · 18',
   format: { mode: 'single', scoring: 'net', allowance: 100 },
   flights: [
     { teeTime: '09:20', players: [{ name: 'Sascha', playingHandicap: 4 }, { name: 'Chris', playingHandicap: 6 }] },
@@ -39,6 +42,68 @@ ok(/^[A-Z0-9]{6}$/.test(code ?? ''), `the tournament planned: ${code}`);
 // the link sent ahead: the others are in (a planned tournament asks nobody)
 for (const n of ['Chris', 'Erik', 'Cedric']) if (!sim.shared.get(code).members.includes(n)) sim.shared.get(code).members.push(n);
 // ===== BETS (Games): the pool "USA 2026" with 5+5+10 in $ – set up here, before the day =====
+// Sascha sets it up through the app's own code, as Games does (createPool – qa/wagers.mjs drives those screens): tied to
+// the tournament's round, 5+5+10 Sascha–Chris and Erik–Cedric (gross, with marker), 5 pars in a row for Sascha and 4
+// for Chris (20 $ each, paid when made)
+const tourRow = sim.shared.get(code).game;
+const ID = { Sascha: 'pl-s', Chris: 'pl-c', Erik: 'pl-e', Cedric: 'pl-k' };
+// a phone sent to another page: what it was still fetching is cancelled – WebKit calls that "access control checks"
+const away = async (n, go) => {
+  const before = phones[n].errs.length;
+  await go();
+  const after = phones[n].errs.splice(before);
+  phones[n].errs.push(...after.filter((e) => !/supabase\.co\/\S* due to access control checks/.test(e)));
+};
+const poolCode = await P('Sascha').evaluate(
+  async ({ code, course, ID }) => {
+    const ws = await import('/src/lib/wagerstore.ts');
+    const { dayOf } = await import('/src/lib/wagers.ts');
+    const day = dayOf(new Date());
+    const duel = { stake: 0, payout: 'opponent', attempts: 'round', round: 'r1', counted: true, target: 0, parts: { front: 5, back: 5, total: 10 }, kind: 'nassau', by: 'Sascha' };
+    const run = { stake: 20, payout: 'success', attempts: 'any', counted: true, kind: 'parRun', by: 'Sascha' };
+    const pool = {
+      kind: 'wager-pool',
+      id: 'usa-2026',
+      name: 'USA 2026',
+      from: day,
+      to: day,
+      createdAt: new Date().toISOString(),
+      currency: 'USD',
+      players: Object.entries(ID).map(([name, id]) => ({ id, name })),
+      rounds: [{ id: 'r1', day, course: course.name, courseId: course.id, tour: code }],
+      wagers: [
+        { ...duel, id: 'w-sc', player: ID.Sascha, opponent: ID.Chris },
+        { ...duel, id: 'w-ek', player: ID.Erik, opponent: ID.Cedric },
+        { ...run, id: 'w-s5', player: ID.Sascha, target: 5 },
+        { ...run, id: 'w-c4', player: ID.Chris, target: 4 },
+      ],
+      progress: {},
+    };
+    return (await ws.createPool(pool, ID.Sascha))?.code ?? null;
+  },
+  { code, course: { id: tourRow.course.id, name: tourRow.course.name }, ID },
+);
+ok(/^[A-Z0-9]{6}$/.test(poolCode ?? '') && sim.shared.get(poolCode)?.owner === 'Sascha', `the pool "USA 2026" on the server, Sascha its host: ${poolCode}`);
+// the others: the pool's link – "who are you?" – themselves; they see the bets, only the host changes them
+for (const n of ['Chris', 'Erik', 'Cedric']) {
+  const p = P(n);
+  await away(n, async () => {
+    await p.goto('about:blank');
+    await p.goto(url + '#join=' + poolCode);
+  });
+  const d = p.getByRole('dialog', { name: 'Spiel beitreten' });
+  await d.getByText('Wetten „USA 2026“ – wer bist du?').waitFor({ timeout: 15000 }).catch(() => {});
+  await d.getByRole('button', { name: n, exact: true }).click();
+  await p.locator('.topbar h1', { hasText: 'USA 2026' }).waitFor({ timeout: 15000 }).catch(() => {});
+  const head = await p.locator('.topbar h1').innerText().catch(() => '');
+  const guest = (await p.getByText('Nur wer den Pool angelegt hat, ändert die Wetten').isVisible().catch(() => false)) && (await p.getByRole('button', { name: 'Pool bearbeiten' }).count()) === 0 && (await p.locator('button.pool-wager').count()) === 0;
+  ok(/USA 2026/.test(head) && guest, `${n}: joined by the link, in the pool – sees the bets, changes none (only the host)`);
+  // back to Rounds for the day
+  await p.evaluate(() => sessionStorage.setItem('golfos.module', 'rounds'));
+  await away(n, () => p.goto(url));
+}
+const joined = sim.shared.get(poolCode).game.players;
+ok(['Chris', 'Erik', 'Cedric'].every((n) => joined.find((x) => x.id === ID[n])?.joined?.uid === n), `the server: each joined as himself, with his account (${joined.map((x) => `${x.name}:${x.joined?.uid ?? '–'}`).join(' ')})`);
 
 // ---------- 2 · the day: the card on every phone ----------
 for (const n of NAMES) {
@@ -84,8 +149,14 @@ ok(/führend: Cedric 251 m/.test(hintNow) && /deins 245 m/.test(hintNow), `Sasch
 // ---------- 3 · played with markers ----------
 const block = (p, name) => p.locator('.score-player').filter({ has: p.locator('.score-player-head strong', { hasText: new RegExp(`^${name}$`) }) });
 const holes = (await sim.round(P('Sascha'))).holes.length;
-// own score: par + 0/1 by player and hole; the marker's count the same – on hole 1 also his partner's putts
-const extra = { Sascha: [0, 1, 0, 0, 1, 0, 0, 0, 1], Chris: [1, 0, 0, 1, 0, 0, 1, 0, 0], Erik: [0, 0, 1, 0, 0, 1, 0, 1, 0], Cedric: [1, 1, 0, 0, 0, 0, 0, 0, 1] };
+// own score: par + 0/1 by player and hole; the marker's count the same – on hole 1 also his partner's putts. Gross:
+// Sascha +3/+1 (pars on 14–18: 5 in a row), Chris +3/+3 (3 at most), Erik +3/+2, Cedric +3/+1
+const extra = {
+  Sascha: [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+  Chris: [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0],
+  Erik: [0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+  Cedric: [1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+};
 const enterHole = async (n, i) => {
   const p = P(n);
   await p.locator('.map-score').click();
@@ -137,10 +208,46 @@ const all = Object.values(ev.flights).flatMap((f) => f.players.map((pl) => ({ f,
 ok(all.length === 4 && all.every(({ f, pl }) => f.signed?.[pl.id]?.player && f.signed?.[pl.id]?.marker), `server: all four cards signed by player and marker`);
 ok(all.every(({ f, pl }) => (f.marks?.[pl.id] ?? []).filter((c) => c?.s != null).length === holes && f.marks[pl.id][0]?.d?.pu != null), "server: every marker's count – all holes, hole 1 with the partner's putts (what the bets with marker judge from)");
 const final = (await board('Sascha')).rows;
-ok(final.length === 4 && final.every((r) => /F|nach 9/.test(r)), `the leaderboard as it ended: ${final.join(' | ')}`);
+ok(final.length === 4 && final.every((r) => /F|nach 18/.test(r)), `the leaderboard as it ended: ${final.join(' | ')}`);
 ok(/unterschrieben/.test(await P('Sascha').locator('.event-board').innerText()), 'the leaderboard: "unterschrieben"');
 
 // ===== BETS (Games): judged by themselves from the signed rounds, the pushes, the settlement =====
+// each phone opens the pool: it judges its owner's bets from his signed round – the marker's figures – and reports them
+const openPool = async (n) => {
+  const p = P(n);
+  // the round left for Games (as by the start page from the hole map: paused, not ended)
+  await p.evaluate(() => {
+    const r = JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').find((x) => !x.finishedAt);
+    if (r) sessionStorage.setItem('golfos.paused', r.id);
+    sessionStorage.setItem('golfos.module', 'games');
+  });
+  await away(n, async () => {
+    await p.goto('about:blank');
+    await p.goto(url);
+  });
+  await p.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
+  await p.locator('.list-item').filter({ hasText: 'USA 2026' }).first().click();
+  await p.locator('.topbar h1', { hasText: 'USA 2026' }).waitFor({ timeout: 15000 });
+};
+for (const n of NAMES) await openPool(n);
+await P('Sascha').waitForTimeout(6000);
+const pg = sim.shared.get(poolCode).game.progress;
+const duelOf = (id) => (pg[id]?.duels ?? []).map((d) => [d.front, d.back, d.total].join('/')).join(' ');
+ok(pg['w-sc']?.amount === 15 && duelOf('w-sc') === '0/1/1', `5+5+10 Sascha–Chris (Sascha's phone): front tied, back and 18 Sascha → +15 $ (${pg['w-sc']?.amount} · ${duelOf('w-sc')})`);
+ok(pg['w-ek']?.amount === -15 && duelOf('w-ek') === '0/-1/-1', `5+5+10 Erik–Cedric (Erik's phone): front tied, back and 18 Cedric → Erik −15 $ (${pg['w-ek']?.amount} · ${duelOf('w-ek')})`);
+// hole 1: Chris entered Sascha's putts, Sascha did not – the one hole the marker counted "differently"; his figures count
+ok(pg['w-s5']?.done === true && pg['w-s5'].best === 5 && pg['w-s5'].rounds === 1 && pg['w-s5'].differ === 1, `Sascha: 5 pars in a row (14–18) made – a counted round, the marker's figures (his putts on hole 1: 1 hole "differs") (${JSON.stringify(pg['w-s5'] ?? null).slice(0, 120)})`);
+ok(pg['w-c4']?.done === false && pg['w-c4'].best === 3 && pg['w-c4'].rounds === 1, `Chris (his phone): 3 pars in a row of 4 – open (${pg['w-c4']?.best})`);
+const betPushes = sim.pushes.filter((x) => x.action === 'bet' && x.code === poolCode);
+ok(betPushes.length === 1 && betPushes[0].wager === 'w-s5' && betPushes[0].from === 'Sascha', `push "Wette geschafft": once, for Sascha's run, from his phone (${betPushes.map((x) => `${x.from}:${x.wager}`).join(' ')})`);
+// the settlement on the host's phone: Sascha +15 +3 × 20, Chris −15 −20, Erik −15 −20, Cedric +15 −20
+await openPool('Sascha');
+const H = P('Sascha');
+await H.locator('.pool-settle').waitFor({ timeout: 10000 });
+const settle = (await H.locator('.pool-settle').innerText()).replace(/\s+/g, ' ');
+ok(/Chris → Sascha 35 \$/.test(settle) && /Erik → Sascha 35 \$/.test(settle) && /Cedric → Sascha 5 \$/.test(settle), `the settlement: "${settle.slice(0, 220)}"`);
+const standing = (await H.locator('.pool-standings').innerText().catch(() => '')).replace(/\s+/g, ' ');
+ok(/Sascha/.test(standing) && /Chris/.test(standing) && /Erik/.test(standing) && /Cedric/.test(standing), `the standing at the top: "${standing.slice(0, 160)}"`);
 
 const errs = Object.entries(phones).flatMap(([n, x]) => x.errs.map((e) => `${n}: ${e}`));
 ok(errs.length === 0, `no page errors ${errs.slice(0, 3).join(' | ')}`);
