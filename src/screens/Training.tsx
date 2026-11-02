@@ -13,6 +13,7 @@ import { PLANS } from '../training/content/plans';
 import { adviceFromRounds } from '../training/recommend';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { PausedIcon } from '../components/PausedIcon';
+import { DeletedIcon } from '../components/RoundIcons';
 import { RulesBook } from '../components/RulesBook';
 import { RULES_OF_GOLF } from '../data/rulesOfGolf';
 import { Metronome } from '../training/Metronome';
@@ -117,6 +118,29 @@ const ICONS = {
       <path d="M3 4h2l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 8H6" />
       <circle cx="9.5" cy="20" r="1.3" />
       <circle cx="17.5" cy="20" r="1.3" />
+    </svg>
+  ),
+};
+
+// the marks of the tiles on "Progress", drawn like those over the rounds list (RoundIcons)
+const LOG_ICONS = {
+  // a session: the stopwatch of the "Practice" tab
+  sessions: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l3 2M9 2h6" />
+    </svg>
+  ),
+  month: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M8 3v4M16 3v4" />
+    </svg>
+  ),
+  // results: bars going up
+  results: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 20h16M7 20v-5M12 20V9M17 20V4" />
     </svg>
   ),
 };
@@ -703,10 +727,13 @@ function LogTab(props: { nav: Nav }) {
   const log = loadLog();
   const sessions = loadSessions().filter((s) => s.finishedAt);
   const trash = loadSessionTrash();
-  const [binOpen, setBinOpen] = useState(false);
+  // the page filtered by one tile at a time, as Rounds and Games (Sascha 02.11.2026: "look and logic as everywhere else")
+  const [filter, setFilter] = useState<'sessions' | 'results' | 'bin' | null>(null);
+  const pick = (f: 'sessions' | 'results' | 'bin') => setFilter(filter === f ? null : f);
+  const shows = (f: 'sessions' | 'results') => filter == null || filter === f;
   useEffect(() => {
-    if (!trash.length) setBinOpen(false);
-  }, [trash.length]);
+    if ((filter === 'bin' && !trash.length) || (filter === 'sessions' && !sessions.length) || (filter === 'results' && !log.length)) setFilter(null); // emptied: all again
+  }, [trash.length, sessions.length, log.length]);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   const band = bandOf(playerHcp());
   const month = new Date().toISOString().slice(0, 7);
@@ -727,39 +754,50 @@ function LogTab(props: { nav: Nav }) {
     <>
       <h1 className="tab-title">{tr('Progress', 'Verlauf')}</h1>
       <div className="tile-row">
-        <div className="tile">
-          <span className="tile-num">{sessions.length}</span>
+        <button type="button" className="tile" aria-pressed={filter === 'sessions'} disabled={!sessions.length} onClick={() => pick('sessions')}>
+          <span className="tile-head">
+            <span className="tile-num">{sessions.length}</span>
+            <span className="tile-mark">{LOG_ICONS.sessions}</span>
+          </span>
           <span className="muted small">{tr('sessions', 'Einheiten')}</span>
-        </div>
+        </button>
+        {/* counts only – a white mark, as "holes" on the rounds page */}
         <div className="tile">
-          <span className="tile-num">{drillsMonth}</span>
+          <span className="tile-head">
+            <span className="tile-num">{drillsMonth}</span>
+            <span className="tile-mark">{LOG_ICONS.month}</span>
+          </span>
           <span className="muted small">{tr('this month', 'diesen Monat')}</span>
         </div>
-        <div className="tile">
-          <span className="tile-num">{log.length}</span>
+        <button type="button" className="tile" aria-pressed={filter === 'results'} disabled={!log.length} onClick={() => pick('results')}>
+          <span className="tile-head">
+            <span className="tile-num">{log.length}</span>
+            <span className="tile-mark">{LOG_ICONS.results}</span>
+          </span>
           <span className="muted small">{tr('results', 'Ergebnisse')}</span>
-        </div>
-        {/* deleted sessions as the fourth tile – like the rounds page */}
-        {trash.length > 0 && (
-          <button type="button" className="tile" aria-pressed={binOpen} onClick={() => setBinOpen(!binOpen)}>
+        </button>
+        {/* deleted sessions – always there, with 0 and white when the bin is empty, as on the rounds page */}
+        <button type="button" className="tile" aria-pressed={filter === 'bin'} disabled={!trash.length} onClick={() => pick('bin')}>
+          <span className="tile-head">
             <span className="tile-num">{trash.length}</span>
-            <span className="muted small">{tr('deleted', 'gelöscht')}</span>
-          </button>
-        )}
+            <span className="tile-mark"><DeletedIcon /></span>
+          </span>
+          <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+        </button>
       </div>
       <Bin
-        open={binOpen}
+        open={filter === 'bin'}
         title={tr('Deleted sessions', 'Gelöschte Einheiten')}
         items={trash.map((x) => ({ id: x.session.id, date: x.session.createdAt, title: x.session.name, meta: `${x.session.items.length} ${tr('drills', 'Übungen')}`, deletedAt: x.deletedAt }))}
         onRestore={(id) => restoreSession(id)}
         onPurge={(id) => purgeSession(id)}
       />
-      {!log.length && !sessions.length && (
+      {filter == null && !log.length && !sessions.length && (
         <p className="muted">
           {tr('Your results appear here: start a plan or open a drill and enter your score.', 'Hier erscheinen deine Ergebnisse: Starte einen Plan oder öffne eine Übung und trag dein Ergebnis ein.')}
         </p>
       )}
-      {withGoal.length > 0 && (
+      {shows('results') && withGoal.length > 0 && (
         <section className="card tr-goals">
           <div className="row">
             <strong>{tr(`Goals for ${bandName(band)}`, `Ziele für ${bandName(band)}`)}</strong>
@@ -778,7 +816,7 @@ function LogTab(props: { nav: Nav }) {
           </span>
         </section>
       )}
-      {perTopic.length > 1 && (
+      {shows('results') && perTopic.length > 1 && (
         <FactChart
           chart={{
             kind: 'bars',
@@ -788,7 +826,7 @@ function LogTab(props: { nav: Nav }) {
           }}
         />
       )}
-      {drillIds.length > 0 && (
+      {shows('results') && drillIds.length > 0 && (
         <section className="tr-block">
           <h2>{tr('Your drills', 'Deine Übungen')}</h2>
           <ul className="list">
@@ -826,8 +864,8 @@ function LogTab(props: { nav: Nav }) {
           </ul>
         </section>
       )}
-      {log.length > 0 && <RecentResults log={log} nav={props.nav} band={band} />}
-      {sessions.length > 0 && (
+      {shows('results') && log.length > 0 && <RecentResults log={log} nav={props.nav} band={band} />}
+      {shows('sessions') && sessions.length > 0 && (
         <section className="tr-block">
           <h2>{tr('Sessions', 'Einheiten')}</h2>
           <ul className="list">
