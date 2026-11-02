@@ -803,7 +803,8 @@ function Standings(props: { pool: WagerPool; today: string; me: string }) {
       </div>
       {rows.length > 0 && (
         <div className="matrix-wrap">
-          <table className="bet-matrix">
+          {/* four players fit the phone's width – more than four: scrolled sideways (Sascha 02.11.2026) */}
+          <table className="bet-matrix" style={players.length > 4 ? { minWidth: 96 + players.length * 72 } : undefined}>
             <thead>
               <tr>
                 <th scope="col" />

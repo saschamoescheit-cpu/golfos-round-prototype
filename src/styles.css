@@ -1174,12 +1174,17 @@ button.tile:disabled { opacity: 1; }
 /* the live standing of a pool: the blocks down, the players across (Sascha 01.11.2026) */
 .pool-standings { display: flex; flex-direction: column; gap: 10px; }
 .matrix-wrap { overflow-x: auto; margin: 0 -4px; }
-.bet-matrix { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.bet-matrix th, .bet-matrix td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--line); vertical-align: middle; }
-.bet-matrix thead th { font: 700 14px var(--body); color: var(--muted); white-space: nowrap; }
+.bet-matrix { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.bet-matrix th, .bet-matrix td { padding: 6px 2px; text-align: center; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.bet-matrix thead th { font: 700 13px var(--body); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bet-matrix thead th:first-child { width: 28%; }
 .bet-matrix thead th.me { color: var(--text); }
-.bet-matrix tbody th { text-align: left; font: 600 13px var(--body); color: var(--muted); max-width: 120px; }
+.bet-matrix tbody th { text-align: left; font: 600 12px/1.3 var(--body); color: var(--muted); overflow-wrap: anywhere; hyphens: auto; padding-right: 4px; }
 .bet-matrix td { white-space: nowrap; }
+/* a player's bets in a cell: one below the other, as wide as the column */
+.bet-matrix td .bet-cell { display: block; min-width: 0; padding: 4px 2px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+.bet-matrix td .bet-cell + .bet-cell { margin: 4px 0 0; }
+.bet-matrix td .bet-cell small { font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
 .bet-matrix-made td, .bet-matrix-made th { border-bottom: 0; }
 .bet-cell { display: inline-block; min-width: 46px; padding: 3px 6px; border-radius: 8px; background: var(--surface-2); font: 700 14px var(--body); }
 .bet-cell + .bet-cell { margin-left: 4px; }

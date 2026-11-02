@@ -263,6 +263,7 @@ ok(/5 von 13 Wetten entschieden/.test(settle), '5 of 13 bets decided (the −5s 
 const duelRow = (await H.locator('.pool-standings .bet-matrix tr').filter({ hasText: '5+5+10' }).first().innerText()).replace(/\s+/g, ' ');
 ok(/\+10 \$ 3 Gegner/.test(duelRow) && /−10 \$ 3 Gegner/.test(duelRow), `matrix: each player's 5+5+10s in one cell – Chris +10 $, Erik −10 $, against 3 each (${duelRow})`);
 const freeBets = H.locator('.pool-standings').getByRole('group', { name: 'Freie Wetten' });
+ok(await H.locator('.pool-standings .matrix-wrap').evaluate((e) => e.scrollWidth <= e.clientWidth + 1), 'four players: the matrix fits the phone – nothing cut off, no scrolling (Sascha 02.11.2026: only with more than four)');
 ok((await freeBets.getByText('Freie Wetten – entscheidet der Host').isVisible()) && (await freeBets.locator('li').count()) === 1 && (await freeBets.innerText()).includes('Längster Drive an Loch 7'), 'below the matrix: only the free bets, under their heading');
 
 // Sascha 01.11.2026: "the bets must never vanish" – the phone's list emptied (Safari clears a web app's storage after a
