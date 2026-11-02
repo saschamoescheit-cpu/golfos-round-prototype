@@ -153,11 +153,17 @@ const extra = {
   Erik: [0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
   Cedric: [1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0],
 };
+const partnerDetails = {};
 const enterHole = async (n, i) => {
   const p = P(n);
   await p.locator('.map-score').click();
   for (const who of [n, PARTNER[n]]) for (let k = 0; k <= extra[who][i]; k++) await block(p, who).getByRole('button', { name: /Schläge plus eins/ }).click();
-  if (i === 0) await block(p, PARTNER[n]).getByRole('button', { name: /Putts plus eins/ }).click();
+  // the partner in detail only when a bet of the pool needs it (Sascha 02.11.2026) – else score and penalty strokes
+  if (i === 0) {
+    const putts = block(p, PARTNER[n]).getByRole('button', { name: /Putts plus eins/ });
+    partnerDetails[n] = (await putts.count()) > 0;
+    if (partnerDetails[n]) await putts.click();
+  }
   if (i < holes - 1) await p.getByRole('button', { name: 'Nächstes Loch' }).last().click();
   else await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
   await p.waitForTimeout(250);
@@ -202,7 +208,8 @@ await P('Sascha').waitForTimeout(12000);
 const ev = sim.event();
 const all = Object.values(ev.flights).flatMap((f) => f.players.map((pl) => ({ f, pl })));
 ok(all.length === 4 && all.every(({ f, pl }) => f.signed?.[pl.id]?.player && f.signed?.[pl.id]?.marker), `server: all four cards signed by player and marker`);
-ok(all.every(({ f, pl }) => (f.marks?.[pl.id] ?? []).filter((c) => c?.s != null).length === holes && f.marks[pl.id][0]?.d?.pu != null), "server: every marker's count – all holes, hole 1 with the partner's putts (what the bets with marker judge from)");
+const detailed = Object.values(partnerDetails).every(Boolean);
+ok(all.every(({ f, pl }) => (f.marks?.[pl.id] ?? []).filter((c) => c?.s != null).length === holes && (f.marks[pl.id][0]?.d?.pu != null) === detailed), `server: every marker's count – all holes; the partner's putts ${detailed ? 'there (a bet of the pool needs details)' : 'not asked (the pool bets on the score only)'}`);
 const final = (await board('Sascha')).rows;
 ok(final.length === 4 && final.every((r) => /F|nach 18/.test(r)), `the leaderboard as it ended: ${final.join(' | ')}`);
 ok(/unterschrieben/.test(await P('Sascha').locator('.event-board').innerText()), 'the leaderboard: "unterschrieben"');
