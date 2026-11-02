@@ -89,10 +89,16 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
                 'Your flight on their own phones (signed in with Google): one of the team keeps the card – another can take it over. Tournaments are planned under Games → Tournaments.',
                 'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Turniere werden unter Games → Turniere geplant.',
               )
-            : tr(
-                'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others live; with a marker also a partner\'s. Tournaments are planned under Games → Tournaments.',
-                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen live; mit Zähler auch den eines Mitspielers. Turniere werden unter Games → Turniere geplant.',
-              )}
+            : props.compact
+              ? // in the setup the score entry has its own section (Sascha 02.11.2026)
+                tr(
+                  'Your flight on their own phones (signed in with Google): everyone sees the scores live – who enters them, you choose under "Score entry". Tournaments are planned under Games → Tournaments.',
+                  'Dein Flight auf den eigenen Handys (mit Google angemeldet): Alle sehen die Scores live – wer sie erfasst, legst du unter „Score-Erfassung“ fest. Turniere werden unter Games → Turniere geplant.',
+                )
+              : tr(
+                  'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others live; with a marker also a partner\'s. Tournaments are planned under Games → Tournaments.',
+                  'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen live; mit Zähler auch den eines Mitspielers. Turniere werden unter Games → Turniere geplant.',
+                )}
         </span>
         <div className="drawer-list settings-switches">
           <button type="button" className="drawer-row" role="switch" aria-checked={near} onClick={() => setNear(!near)}>

@@ -1,5 +1,5 @@
 // QA (Sascha 02.11.2026: "it must also be possible that one person – e.g. Chris – enters the score for all players"):
-// in the round setup "Wer erfasst die Scores: Einer für alle · Chris"; Chris joins on his phone and enters every card in
+// in the round setup "Score-Erfassung: Einer für alle · Schreiber Chris"; Chris joins on his phone and enters every card in
 // full (putts too), Sascha's phone only shows them. Supabase is simulated (qa/sharesim.mjs), the app is real.
 // Usage: node qa/scorer.mjs [url]
 import { webkit } from 'playwright';
@@ -28,9 +28,12 @@ await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.locator('input[id^="name-"]').last().fill('Chris');
 const card = H.locator('.invite-card');
 await card.waitFor({ timeout: 10000 });
-await card.getByRole('button', { name: 'Einer für alle' }).click();
-await card.getByRole('group', { name: 'Schreiber' }).getByRole('button', { name: 'Chris' }).click();
-ok(/Ein Spieler trägt alle Scores ein/.test(await card.innerText()), 'setup: "Einer für alle" – Chris chosen');
+// "Score-Erfassung" – its own section, chosen like the format (Sascha 02.11.2026): the way, then the scorer
+ok(/Jeder seinen eigenen/.test(await H.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).innerText()), 'setup: "Jeder seinen eigenen" by default');
+await H.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click();
+await H.getByRole('dialog', { name: 'Wer erfasst die Scores' }).locator('.pick-option strong').getByText('Einer für alle', { exact: true }).click();
+await H.getByRole('dialog', { name: 'Schreiber wählen' }).locator('.pick-option strong').getByText('Chris', { exact: true }).click();
+ok(/Chris/.test(await H.locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()) && (await H.getByText('Ein Spieler trägt alle Scores ein').isVisible()), 'setup: "Einer für alle" – Chris chosen');
 await card.getByRole('button', { name: 'Code erzeugen' }).click();
 await card.locator('.join-code').waitFor({ timeout: 8000 });
 const code = (await card.locator('.join-code').innerText()).trim();

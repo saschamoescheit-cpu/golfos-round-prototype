@@ -50,6 +50,13 @@ function loadRemembered(): Remembered | null {
   }
 }
 
+// who enters the scores on several phones (Sascha 30.10. / 02.11.2026) – "everyone his own" by default
+const ENTRY = [
+  ['own', () => tr('Everyone his own', 'Jeder seinen eigenen'), () => tr('Everyone enters only his own score and sees the others', 'Jeder trägt nur seinen eigenen Score ein und sieht die anderen')],
+  ['marker', () => tr('With a marker', 'Mit Zähler'), () => tr("Everyone enters his own score and his partner's – a difference shows", 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt')],
+  ['scorer', () => tr('One for all', 'Einer für alle'), () => tr('One player enters every score; the others see it live and keep their own analysis on their phones', 'Ein Spieler trägt alle Scores ein; die anderen sehen alles live und führen auf ihrem Handy ihre eigene Analyse')],
+] as const;
+
 export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[]; tee: string | null }; onBack: () => void; onStart: (r: Round) => void; onBook: (holes: RoundHole[], tee: string | null, playing: number | null) => void }) {
   const options = useMemo(() => loopOptions(props.course.holes), [props.course]);
   // back from the preview or the birdie book: the loops chosen before
@@ -98,7 +105,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   const tee = me.tee; // my tee: the lengths, the caddie, the round's course rating
   // Game mode, scoring and handicap allowance, chosen as in Hole19 (Sascha 14.10.2026): three rows, each opens a list
   const [format, setFormat] = useState<RoundFormat>(DEFAULT_FORMAT);
-  const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance' | 'drives'>(null);
+  const [picker, setPicker] = useState<null | 'mode' | 'scoring' | 'allowance' | 'drives' | 'entry' | 'scorer'>(null);
   // the allowance chosen by hand stays; else the WHS value of the format (Sascha's concept 30.10.2026)
   const [allowanceSet, setAllowanceSet] = useState(false);
   // the kind of round – the first row of the format block, chosen like the game mode (Sascha 15.10.2026)
@@ -230,6 +237,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // who enters the scores on several phones: everyone his own, with a marker, or one player for all (02.11.2026)
   const [counting, setCounting] = useState<'own' | 'marker' | 'scorer'>('own');
   const [scorerId, setScorerId] = useState('me');
+  const scorers = [{ id: 'me', name: me.name.trim() || tr('Me', 'Ich') }, ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`) }))];
   const [canShare, setCanShare] = useState<boolean | null>(null);
   useEffect(() => {
     void sharingAvailable().then(setCanShare);
@@ -313,8 +321,20 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         )}
       </section>
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      </section>
+      {(holes.length === 18 || nine) && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* where the playing handicap comes from – once for all players, between the holes and the players (Sascha
+              02.11.2026); missing or wrong: typed from the club's scorecard, kept for this course, these loops and this tee */}
+          <RatingLine
+            rating={rating}
+            nine={nine}
+            onSave={(v) => {
+              saveOwnRating(props.course.id, teeKey, holes, v);
+              setRatingsSeen((n) => n + 1);
+            }}
+          />
+        </section>
+      )}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
@@ -342,70 +362,6 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
-        {/* the flight on their own phones – or a tournament over several flights (Sascha 29.10.2026); every round, social
-            or competition, any format ("not only scramble or a tournament") */}
-        {invitable && (
-          <div className="card invite-card" aria-label={tr('Invite players', 'Mitspieler einladen')}>
-            <strong>{share?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</strong>
-            {/* who enters the scores (Sascha 30.10. / 02.11.2026): everyone his own – with a marker – or one player for all */}
-            {!isTeamMode(shownFormat.mode) && (
-              <div className="field" role="group" aria-label={tr('Who enters the scores', 'Wer erfasst die Scores')}>
-                <span className="muted small">{tr('Who enters the scores', 'Wer erfasst die Scores')}</span>
-                <div className="chip-set">
-                  {(
-                    [
-                      ['own', tr('Everyone his own', 'Jeder seinen eigenen')],
-                      ['marker', tr('With a marker', 'Mit Zähler')],
-                      ['scorer', tr('One for all', 'Einer für alle')],
-                    ] as const
-                  ).map(([v, label]) => (
-                    <button key={v} type="button" className={`chip${counting === v ? ' on' : ''}`} aria-pressed={counting === v} onClick={() => setCounting(v)}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <span className="muted small">
-                  {counting === 'marker'
-                    ? tr("Everyone enters his own score and his partner's – a difference shows", 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt')
-                    : counting === 'scorer'
-                      ? tr('One player enters every score – putts, sand, penalties too; the others see it live', 'Ein Spieler trägt alle Scores ein – auch Putts, Sand, Strafschläge; die anderen sehen alles live')
-                      : tr('Everyone enters only his own score and sees the others', 'Jeder trägt nur seinen eigenen Score ein und sieht die anderen')}
-                </span>
-                {counting === 'scorer' && (
-                  <div className="chip-set" role="group" aria-label={tr('Scorer', 'Schreiber')}>
-                    {[{ id: 'me', name: me.name.trim() || tr('Me', 'Ich') }, ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`) }))].map((p) => (
-                      <button key={p.id} type="button" className={`chip${scorerId === p.id ? ' on' : ''}`} aria-pressed={scorerId === p.id} onClick={() => setScorerId(p.id)}>
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact />
-          </div>
-        )}
-        {canShare === false && (
-          <span className="muted small">
-            {sharingMissing() === 'server'
-              ? tr('Inviting is not set up on the server yet: run the SQL "golfos-shared-games" once in Supabase, then open the app again.', 'Einladen ist auf dem Server noch nicht eingerichtet: das SQL „golfos-shared-games“ einmal in Supabase ausführen, dann die App neu öffnen.')
-              : sharingMissing() === 'offline'
-                ? tr('Inviting needs a connection – no connection right now.', 'Einladen braucht eine Verbindung – gerade keine Verbindung.')
-                : tr('To invite your flight to their own phones: sign in with Google (Profile → "On all your devices").', 'Flightpartner auf ihre eigenen Handys einladen: mit Google anmelden (Profil → „Auf allen Geräten“).')}
-          </span>
-        )}
-        {/* where the playing handicap comes from – once for all players; missing or wrong: typed from the club's
-            scorecard, kept for this course, these loops and this tee */}
-        {(holes.length === 18 || nine) && (
-          <RatingLine
-            rating={rating}
-            nine={nine}
-            onSave={(v) => {
-              saveOwnRating(props.course.id, teeKey, holes, v);
-              setRatingsSeen((n) => n + 1);
-            }}
-          />
-        )}
         {/* the caddie picks clubs by the player's carries – without them it uses standard ones */}
         {!hasCarries && (
           <p className="small good-text" style={{ margin: 0 }}>
@@ -416,6 +372,28 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           </p>
         )}
       </section>
+
+      {/* the flight on their own phones – or a tournament over several flights (Sascha 29.10.2026); every round, social
+          or competition, any format ("not only scramble or a tournament"); its own section (Sascha 02.11.2026) */}
+      {canShare !== null && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span className="eyebrow">{share?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</span>
+          {invitable && (
+            <div className="card invite-card" aria-label={tr('Invite players', 'Mitspieler einladen')}>
+              <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact />
+            </div>
+          )}
+          {canShare === false && (
+            <span className="muted small">
+              {sharingMissing() === 'server'
+                ? tr('Inviting is not set up on the server yet: run the SQL "golfos-shared-games" once in Supabase, then open the app again.', 'Einladen ist auf dem Server noch nicht eingerichtet: das SQL „golfos-shared-games“ einmal in Supabase ausführen, dann die App neu öffnen.')
+                : sharingMissing() === 'offline'
+                  ? tr('Inviting needs a connection – no connection right now.', 'Einladen braucht eine Verbindung – gerade keine Verbindung.')
+                  : tr('To invite your flight to their own phones: sign in with Google (Profile → "On all your devices").', 'Flightpartner auf ihre eigenen Handys einladen: mit Google anmelden (Profil → „Auf allen Geräten“).')}
+            </span>
+          )}
+        </section>
+      )}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Format', 'Format')}</span>
@@ -457,11 +435,34 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         )}
         {isTeamMode(format.mode) && <span className="muted small">{tr('Team rounds do not count for your own stats.', 'Team-Runden zählen nicht für deine eigene Statistik.')}</span>}
       </section>
+
+      {/* who enters the scores on several phones (Sascha 30.10. / 02.11.2026): its own section, chosen like the format –
+          everyone his own (the default), with a marker, or one player for all */}
+      {invitable && !isTeamMode(shownFormat.mode) && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+          <div className="settings-list">
+            <button type="button" className="settings-row" onClick={() => setPicker('entry')}>
+              <span>{tr('Who enters', 'Wer erfasst')}</span>
+              <span className="settings-value">{ENTRY.find(([v]) => v === counting)![1]()}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+            {counting === 'scorer' && (
+              <button type="button" className="settings-row" onClick={() => setPicker('scorer')}>
+                <span>{tr('Scorer', 'Schreiber')}</span>
+                <span className="settings-value">{scorers.find((p) => p.id === scorerId)?.name ?? scorers[0].name}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            )}
+          </div>
+          <span className="muted small">{ENTRY.find(([v]) => v === counting)![2]()}</span>
+        </section>
+      )}
       {picker && (
         <div className="sheet-backdrop" onClick={() => setPicker(null)}>
-          <section className="sheet" role="dialog" aria-label={picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : picker === 'drives' ? tr('Texas scramble', 'Texas Scramble') : tr('Handicap allowance', 'HCP-Vorgabe')} onClick={(e) => e.stopPropagation()}>
+          <section className="sheet" role="dialog" aria-label={picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : picker === 'drives' ? tr('Texas scramble', 'Texas Scramble') : picker === 'entry' ? tr('Who enters the scores', 'Wer erfasst die Scores') : picker === 'scorer' ? tr('Choose the scorer', 'Schreiber wählen') : tr('Handicap allowance', 'HCP-Vorgabe')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
-              <strong>{picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : picker === 'drives' ? tr('Texas scramble', 'Texas Scramble') : tr('Handicap allowance', 'HCP-Vorgabe')}</strong>
+              <strong>{picker === 'mode' ? tr('Choose game mode', 'Spielmodus wählen') : picker === 'scoring' ? tr('Choose scoring', 'Zählmodus wählen') : picker === 'drives' ? tr('Texas scramble', 'Texas Scramble') : picker === 'entry' ? tr('Who enters the scores', 'Wer erfasst die Scores') : picker === 'scorer' ? tr('Choose the scorer', 'Schreiber wählen') : tr('Handicap allowance', 'HCP-Vorgabe')}</strong>
               <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPicker(null)}>
                 ✕
               </button>
@@ -514,6 +515,25 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
                       </span>
                     </span>
                     {allowance === v && <span className="pick-check" aria-hidden="true">✓</span>}
+                  </button>
+                ))}
+              {picker === 'entry' &&
+                ENTRY.map(([v, name, text]) => (
+                  <button key={v} type="button" className="pick-option" aria-pressed={counting === v} onClick={() => { setCounting(v); setPicker(v === 'scorer' ? 'scorer' : null); }}>
+                    <span className="grow">
+                      <strong>{name()}</strong>
+                      <span className="muted small">{text()}</span>
+                    </span>
+                    {counting === v && <span className="pick-check" aria-hidden="true">✓</span>}
+                  </button>
+                ))}
+              {picker === 'scorer' &&
+                scorers.map((p) => (
+                  <button key={p.id} type="button" className="pick-option" aria-pressed={scorerId === p.id} onClick={() => { setScorerId(p.id); setPicker(null); }}>
+                    <span className="grow">
+                      <strong>{p.name}</strong>
+                    </span>
+                    {scorerId === p.id && <span className="pick-check" aria-hidden="true">✓</span>}
                   </button>
                 ))}
               {picker === 'drives' &&

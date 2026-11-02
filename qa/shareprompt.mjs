@@ -32,7 +32,7 @@ await H.locator('input[id^="hcp-"]').last().fill('18');
 const card = H.locator('.invite-card');
 await card.waitFor({ timeout: 10000 });
 // with a marker – chosen (Sascha 30.10.2026: by default everyone keeps only his own)
-await card.getByRole('button', { name: 'Mit Zähler', exact: true }).click(); // ("Wer erfasst die Scores", 02.11.2026)
+{ await H.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click(); await H.locator('.pick-option strong').getByText('Mit Zähler', { exact: true }).click(); } // ("Score-Erfassung", 02.11.2026)
 await card.getByRole('button', { name: 'Code erzeugen' }).click();
 await card.locator('.join-code').waitFor({ timeout: 8000 });
 const code = (await card.locator('.join-code').innerText()).trim();
