@@ -1,73 +1,81 @@
 WEBVTT
 
 1
-00:00:00.009 --> 00:00:04.899 line:-2
+00:00:00.007 --> 00:00:04.897 line:-2
 Turniere plant ihr vorab in Games – mit Flights, Zählern und Startzeiten.
 
 1-2
-00:00:04.949 --> 00:00:07.449 line:-2
+00:00:04.947 --> 00:00:07.448 line:-2
 Gespielt wird am Turniertag in Rounds.
 
 2
-00:00:07.549 --> 00:00:11.539 line:-2
+00:00:07.548 --> 00:00:11.505 line:-2
 Tippe auf „Neues Turnier“: Name und Tag, dann der Platz.
 
 3
-00:00:11.639 --> 00:00:17.275 line:-2
+00:00:11.605 --> 00:00:17.239 line:-2
 Die Spielform – netto, brutto oder Stableford – und auf Wunsch Netto-Klassen.
 
 4
-00:00:17.375 --> 00:00:19.025 line:-2
+00:00:17.339 --> 00:00:18.989 line:-2
 Dann die Spieler mit Handicap.
 
 4-2
-00:00:19.075 --> 00:00:22.615 line:-2
+00:00:19.039 --> 00:00:22.575 line:-2
 Die Vorgabe rechnet die App aus Course Rating und Slope.
 
 5
-00:00:22.715 --> 00:00:24.425 line:-2
-Wähle die Zahl der Flights:
+00:00:22.675 --> 00:00:25.645 line:-2
+Die Spieler kommen in den ersten Flight – höchstens vier.
 
 5-2
-00:00:24.475 --> 00:00:28.234 line:-2
-Die App verteilt die Spieler und setzt die Zähler paarweise.
+00:00:25.695 --> 00:00:28.026 line:-2
+Mit „+ Flight“ legst du weitere an.
 
 6
-00:00:28.334 --> 00:00:31.064 line:-2
-Einen Spieler ziehst du einfach in einen anderen Flight –
+00:00:28.126 --> 00:00:32.316 line:-2
+Spieler antippen und beim Flight „hinzufügen“ – oder einfach hinüberziehen.
 
 6-2
-00:00:31.114 --> 00:00:33.177 line:-2
-oder tippst ihn an und dann „hierher“.
+00:00:32.366 --> 00:00:34.956 line:-2
+Wer wen zählt, legt die App fest.
 
 7
-00:00:33.277 --> 00:00:37.890 line:-2
+00:00:35.056 --> 00:00:39.672 line:-2
 Erste Startzeit und Abstand – jede Startzeit lässt sich einzeln ändern.
 
 8
-00:00:37.990 --> 00:00:39.500 line:-2
+00:00:39.772 --> 00:00:41.282 line:-2
 Auf Wunsch Sonderwertungen:
 
 8-2
-00:00:39.550 --> 00:00:43.471 line:-2
+00:00:41.332 --> 00:00:45.260 line:-2
 Long Drive und Nearest to the Pin, jeweils auf einem Loch.
 
 9
-00:00:43.571 --> 00:00:48.079 line:-2
+00:00:45.360 --> 00:00:49.864 line:-2
 „Turnier anlegen“ – mit Code oder Link ladet ihr die Mitspieler ein.
 
 10
-00:00:48.179 --> 00:00:51.149 line:-2
+00:00:49.964 --> 00:00:52.934 line:-2
 Am Turniertag steht das Turnier ab null Uhr eins in Rounds:
 
 10-2
-00:00:51.199 --> 00:00:56.924 line:-2
+00:00:52.984 --> 00:00:58.693 line:-2
 teilnehmen, sich wählen, spielen. Die Zähler tragen für ihren Spieler alles mit ein.
 
 11
-00:00:57.024 --> 00:01:04.092 line:-2
+00:00:58.793 --> 00:01:05.811 line:-2
 Hier und in Rounds läuft die Live-Rangliste – dazu die Sonderwertungen.
 
 12
-00:01:04.192 --> 00:01:09.093 line:-2
+00:01:05.911 --> 00:01:09.918 line:-2
 Ändern oder löschen kann das Turnier nur, wer es angelegt hat.
+
+13
+00:01:10.018 --> 00:01:13.228 line:-2
+Mehrere Turniere fasst du zu einer Turnierserie zusammen –
+
+13-2
+00:01:13.278 --> 00:01:18.156 line:-2
+mit Gesamtwertung über alle Runden und einem Code für alle.

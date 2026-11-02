@@ -28,8 +28,8 @@ export const HELP_VIDEOS: HelpVideo[] = [
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz'), length: '1:06' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
-  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, 5+5+10, inviting, the settlement', 'Ein Pool über die Reise, die Bibliothek, 5+5+10, einladen, die Abrechnung'), length: '1:05' },
-  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('Flights by drag and drop, markers, tee times, special prizes, live leaderboard', 'Flights per Ziehen, Zähler, Startzeiten, Sonderwertungen, Live-Rangliste'), length: '1:09' },
+  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, 5+5+10, inviting, the settlement', 'Ein Pool über die Reise, die Bibliothek, 5+5+10, einladen, die Abrechnung'), length: '1:18' },
+  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('Flights by drag and drop, markers, tee times, special prizes, live leaderboard', 'Flights per Ziehen, Zähler, Startzeiten, Sonderwertungen, Live-Rangliste'), length: '1:18' },
 ];
 /** The whole tour in one video. */
 export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:05' };
