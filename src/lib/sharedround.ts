@@ -975,17 +975,24 @@ export function flightOfName(ev: RoundEvent, name: string): Flight | null {
 /** This account's planned tournaments on their day – Rounds shows them from 00:01 (Sascha 01.11.2026): the ones it
  *  planned and the ones it joined by code or link; called off ones not. */
 export async function tournamentsToday(): Promise<{ code: string; ev: RoundEvent }[]> {
+  return (await tournamentsAhead()).filter((t) => t.ev.date === localDay());
+}
+
+/** This account's planned tournaments from today on, soonest first – Rounds shows them ahead too (Sascha 02.11.2026:
+ *  "tournaments already planned should show under Rounds"); called off ones not. */
+export async function tournamentsAhead(): Promise<{ code: string; ev: RoundEvent }[]> {
   const h = await headers();
   if (!h) return [];
   try {
-    const r = await fetch(`${table()}?select=code,game&event_code=is.null&game->>planned=eq.true&game->>date=eq.${localDay()}`, { headers: h });
+    const r = await fetch(`${table()}?select=code,game&event_code=is.null&game->>planned=eq.true&game->>date=gte.${localDay()}`, { headers: h });
     if (!r.ok) return [];
     const out: { code: string; ev: RoundEvent }[] = [];
     for (const row of (await r.json()) as { code: string; game: unknown }[]) {
       if (!isEvent(row.game) || row.game.deletedAt) continue;
-      out.push({ code: row.code, ev: (await refreshEvent(row.code)) ?? row.game });
+      // today's with its flights as they stand (who is on which phone); the later ones as planned
+      out.push({ code: row.code, ev: row.game.date === localDay() ? ((await refreshEvent(row.code)) ?? row.game) : row.game });
     }
-    return out;
+    return out.sort((a, b) => (a.ev.date ?? '').localeCompare(b.ev.date ?? ''));
   } catch {
     return [];
   }

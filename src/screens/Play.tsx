@@ -6,7 +6,8 @@ import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { TopTools } from '../components/TopTools';
 import { JoinRoundSheet, PENDING_JOIN } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
-import { flightOfName, tournamentsToday, type RoundEvent } from '../lib/sharedround';
+import { flightOfName, localDay, tournamentsAhead, type RoundEvent } from '../lib/sharedround';
+import { dayText } from '../components/ShareRound';
 import { loadProfile, shownName } from '../lib/profile';
 
 // Tab "Play" (Sascha 14.10.2026): start a round, or carry on with, finish or cancel the one in progress.
@@ -61,12 +62,14 @@ export function PlayTab(props: {
   const [today, setToday] = useState<{ code: string; ev: RoundEvent }[]>([]);
   useEffect(() => {
     if (!canShare) return;
-    const look = () => document.visibilityState === 'visible' && void tournamentsToday().then(setToday);
+    const look = () => document.visibilityState === 'visible' && void tournamentsAhead().then(setToday);
     look();
     document.addEventListener('visibilitychange', look);
     return () => document.removeEventListener('visibilitychange', look);
   }, [canShare]);
-  const tournaments = today.filter((t) => !props.rounds.some((r) => r.shared?.code === t.code));
+  const tournaments = today.filter((t) => t.ev.date === localDay() && !props.rounds.some((r) => r.shared?.code === t.code));
+  // the ones planned for a later day (Sascha 02.11.2026: "already planned tournaments should show under Rounds")
+  const ahead = today.filter((t) => t.ev.date !== localDay());
 
   return (
     <>
@@ -189,6 +192,28 @@ export function PlayTab(props: {
           </button>
         )}
       </section>
+
+      {/* the tournaments planned for later days – each with its day, course and the own flight; on its day it is the card
+          above with "Teilnehmen" */}
+      {ahead.length > 0 && (
+        <section className="card play-card" aria-label={tr('Planned tournaments', 'Geplante Turniere')}>
+          <span className="eyebrow">{tr('Planned tournaments', 'Geplante Turniere')}</span>
+          <ul className="planned-tours">
+            {ahead.map(({ code, ev }) => {
+              const f = flightOfName(ev, shownName(loadProfile()));
+              return (
+                <li key={code}>
+                  <strong>{ev.name}</strong>
+                  <span className="muted small">
+                    {[dayText(ev.date!), ev.course.name, f ? tr(`your flight${f.teeTime ? ` ${f.teeTime}` : ''}`, `dein Flight${f.teeTime ? ` ${f.teeTime}` : ''}`) : null].filter(Boolean).join(' · ')}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <span className="muted small">{tr('On the day of the tournament: "Take part" here from 00:01.', 'Am Turniertag ab 00:01 hier mit „Teilnehmen“.')}</span>
+        </section>
+      )}
       {join != null &&
         canShare != null &&
         (canJoin ? (
