@@ -391,3 +391,44 @@ describe('a tournament planned in Games, played in Rounds (Sascha 01.11.2026)', 
     expect(playingHandicapFor('osm:way/none', h18, 'yellow', '')).toBeNull();
   });
 });
+import { markerOf } from './sharedround';
+describe('one player keeps the score of all (Sascha 02.11.2026: "Chris enters it for everyone")', () => {
+  const withScorer = () => {
+    const r = round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Chris' }, { id: 'e', name: 'Erik' }]);
+    return { ...r, format: { ...r.format!, scorer: 'c' } };
+  };
+  const set = (r: Round, pid: string, i: number, d: Partial<Round['entries'][string][number]>): Round => ({ ...r, entries: { ...r.entries, [pid]: r.entries[pid].map((e, k) => (k === i ? { ...e, ...d } : e)) } });
+  it("Chris's phone writes every card in full, the others only see it", () => {
+    let { ev, r: sascha } = host(withScorer());
+    expect(ev.flights.f1.scorer).toBe('c');
+    let chris = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-chris', 'Chris');
+    ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(chris.shared!.roles).toEqual({ me: 'free', c: 'own', e: 'free' });
+    expect(sascha.shared!.roles).toEqual({ me: 'view', c: 'view', e: 'view' });
+    chris = set(chris, 'me', 0, { strokes: 5, putts: 2 });
+    chris = set(chris, 'e', 0, { strokes: 6, putts: 3, sandShots: 1 });
+    chris = set(chris, 'c', 0, { strokes: 4 });
+    ({ ev, r: chris } = exchange(ev, chris));
+    // Sascha types his own 3 – not taken, Chris keeps the cards
+    sascha = set(sascha, 'me', 0, { strokes: 3 });
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(ev.flights.f1.scores.me[0]).toEqual({ s: 5, d: { pu: 2 } });
+    expect(ev.flights.f1.scores.e[0]).toEqual({ s: 6, d: { pu: 3, sa: 1 } });
+    expect(strokes(sascha, 'me')[0]).toBe(5);
+    expect(ev.flights.f1.marks ?? {}).toEqual({});
+  });
+  it('the cards: signed by each player and by Chris as everyone\'s marker – no second count needed', () => {
+    let { ev } = host(withScorer());
+    let chris = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-chris', 'Chris');
+    for (const pid of ['me', 'c', 'e']) for (let i = 0; i < 3; i++) chris = set(chris, pid, i, { strokes: 4 });
+    ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
+    const f = ev.flights.f1;
+    expect(markerOf(f, 'me')).toBe('c');
+    expect(markerOf(f, 'e')).toBe('c');
+    expect(signable(f, 'me', 3)).toEqual({ ok: true });
+    const signed = { ...f, signed: { me: { player: 'x', marker: 'y' } } };
+    expect(isSigned(signed, 'me')).toBe(true);
+    expect(isSigned({ ...f, signed: { me: { player: 'x' } } }, 'me')).toBe(false);
+  });
+});

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
+import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -795,9 +795,10 @@ export function SignCard(props: { round: Round }) {
     };
   }, [s?.code]); // eslint-disable-line react-hooks/exhaustive-deps
   const f = s && ev?.flights[s.flight];
-  if (!s || !f || !f.markers) return null;
+  if (!s || !f || (!f.markers && !f.scorer)) return null;
   const me = props.round.players.find((p) => p.isMe);
-  const marked = props.round.players.filter((p) => !p.isMe && s.roles?.[p.id] === 'mark');
+  // the cards this phone signs as marker – the scorer signs everyone's (02.11.2026)
+  const marked = props.round.players.filter((p) => !p.isMe && !!me && markerOf(f, p.id) === me.id);
   const cards: { pid: string; name: string; as: 'player' | 'marker' }[] = [
     ...(me ? [{ pid: me.id, name: me.name, as: 'player' as const }] : []),
     ...marked.map((p) => ({ pid: p.id, name: p.name, as: 'marker' as const })),
@@ -819,7 +820,7 @@ export function SignCard(props: { round: Round }) {
         return (
           <div key={c.pid + c.as} className="sign-row">
             <span className="grow">
-              <strong>{c.as === 'player' ? tr('Your card', 'Deine Karte') : tr(`As marker of ${c.name}`, `Als Zähler von ${c.name}`)}</strong>
+              <strong>{c.as === 'player' ? tr('Your card', 'Deine Karte') : f.scorer === me?.id ? tr(`As scorer of ${c.name}`, `Als Schreiber von ${c.name}`) : tr(`As marker of ${c.name}`, `Als Zähler von ${c.name}`)}</strong>
               <span className="muted small">
                 {locked
                   ? tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
