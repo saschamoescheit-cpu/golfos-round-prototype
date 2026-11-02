@@ -3,6 +3,11 @@
 // Usage: node games.mjs <app url>
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+// a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
+const pickSetting = async (page, label, option) => {
+  await page.locator('.settings-row').filter({ hasText: label }).first().click();
+  await page.getByRole('dialog', { name: label }).locator('.pick-option').filter({ hasText: option }).first().click();
+};
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -253,14 +258,19 @@ await p.getByRole('button', { name: '+ Ben' }).click();
 // Chicago needs four: four rows from the start (Sascha 17.10.2026)
 ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('button', { name: '+ Spieler hinzufügen' }).count()) === 0, 'Chicago: four player rows straight away');
 // the house rules in one row of switches, all on (Sascha 20.10.2026: Eagle −10, "summarise them sensibly")
+// – a row whose sheet holds the switches (02.11.2026: rows like Format)
 {
-  const house = p.locator('.game-setting').filter({ hasText: 'Hausregeln' });
-  const chips = await house.locator('.chip').allInnerTexts();
-  const on = await house.locator('.chip.on').count();
-  ok((await house.count()) === 1 && chips.join('|') === 'Höchstens 9|Birdie −5|Eagle −10' && on === 3, `Chicago: house rules in one row, all on (${chips.join(' · ')})`);
-  await house.getByRole('button', { name: 'Eagle −10' }).click();
-  ok((await house.locator('.chip.on').count()) === 2, 'a tap switches a house rule off');
-  await house.getByRole('button', { name: 'Eagle −10' }).click();
+  const row = p.locator('.settings-row').filter({ hasText: 'Hausregeln' });
+  const text = (await row.innerText()).replace(/\s+/g, ' ');
+  ok((await row.count()) === 1 && /Höchstens 9, Birdie −5, Eagle −10/.test(text), `Chicago: house rules in one row, all on (${text})`);
+  await row.click();
+  const sheet = p.getByRole('dialog', { name: 'Hausregeln' });
+  const on = () => sheet.locator('[role="switch"][aria-checked="true"]').count();
+  ok((await sheet.getByRole('switch').count()) === 3 && (await on()) === 3, 'the sheet: three switches, all on');
+  await sheet.getByRole('switch', { name: 'Eagle −10' }).click();
+  ok((await on()) === 2, 'a tap switches a house rule off');
+  await sheet.getByRole('switch', { name: 'Eagle −10' }).click();
+  await sheet.getByRole('button', { name: 'Fertig' }).click();
 }
 await p.locator('.game-player-row').nth(2).locator('input').first().fill('Chris');
 await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna');
@@ -268,10 +278,14 @@ await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna')
 ok((await p.locator('.game-player-row').nth(1).locator('input').nth(1).inputValue()) === '12,4' && /^\d+$/.test(await p.locator('.game-player-row').nth(1).locator('.playing-hcp').innerText()), 'friend Ben added with one tap: HCP 12,4, the playing handicap follows');
 ok((await p.locator('.game-player-row').count()) === 4, 'the friend took the empty row (then two more players)');
 await course();
-await p.locator('.game-setting').filter({ hasText: 'Vorgabe (WHS)' }).getByRole('button', { name: 'Ohne (brutto)' }).click();
-ok((await p.locator('.game-setting').filter({ hasText: 'Press:' }).locator('.chip.on').innerText()) === 'Ja', 'Chicago: press is on by default');
-// the highest stake: the doubling chain of 0,10 € up to 6,40 €, higher steps typed in and checked (Sascha 15.10.2026)
-const cap = p.locator('.game-setting').filter({ hasText: 'Höchsteinsatz' });
+await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
+ok((await p.getByRole('switch', { name: /^Press/ }).getAttribute('aria-checked')) === 'true', 'Chicago: press is on by default (a switch)');
+// the highest stake: the doubling chain of 0,10 € up to 6,40 €, higher steps typed in and checked (Sascha 15.10.2026) –
+// a row, its picker in the sheet
+const capRow = p.locator('.settings-row').filter({ hasText: 'Höchsteinsatz' });
+const capLabel = (await capRow.locator('span').first().innerText()).trim();
+await capRow.click();
+const cap = p.getByRole('dialog', { name: capLabel });
 const capChips = (await cap.locator('.chip').allInnerTexts()).join('|');
 ok(capChips === '0,20 €|0,40 €|0,80 €|1,60 €|3,20 €|6,40 €|höher …|ohne Limit', `cap chips, "ohne Limit" last: ${capChips}`);
 await cap.getByRole('button', { name: 'höher …' }).click();
@@ -286,11 +300,17 @@ await cap.getByRole('button', { name: 'Übernehmen' }).click();
 ok((await cap.locator('.chip.on').innerText()) === '12,80 €' && (await cap.innerText()).includes('7× verdoppelt'), '12,80 € taken (7 doublings)');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/games-cap.png', fullPage: true });
 await cap.getByRole('button', { name: '1,60 €' }).click();
-const presses = p.locator('.game-setting').filter({ hasText: 'Erlaubte Pressen' });
-ok((await presses.locator('.chip.on').innerText()) === '4×', 'highest stake 1,60 € = 4× pressing');
+await cap.getByRole('button', { name: 'Fertig' }).click();
+const pressRow = p.locator('.settings-row').filter({ hasText: 'Erlaubte Pressen' });
+ok(/4×/.test(await pressRow.innerText()), 'highest stake 1,60 € = 4× pressing');
+await pressRow.click();
+const presses = p.getByRole('dialog', { name: 'Erlaubte Pressen' });
 await presses.getByRole('button', { name: '2×' }).click();
-ok((await cap.locator('.chip.on').innerText()) === '0,40 €', '2× pressing = highest stake 0,40 €');
+await presses.getByRole('button', { name: 'Fertig' }).click();
+ok(/0,40 €/.test(await capRow.innerText()), '2× pressing = highest stake 0,40 €');
+await capRow.click();
 await cap.getByRole('button', { name: '1,60 €' }).click();
+await cap.getByRole('button', { name: 'Fertig' }).click();
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(4500);
 await scores([[1, 1]]); // Ben bogey

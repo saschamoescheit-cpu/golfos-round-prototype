@@ -10,6 +10,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mockNet } from './netmock.mjs';
+// a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
+const pickSetting = async (page, label, option) => {
+  await page.locator('.settings-row').filter({ hasText: label }).first().click();
+  await page.getByRole('dialog', { name: label }).locator('.pick-option').filter({ hasText: option }).first().click();
+};
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 // the rules as the app has them, bundled for node
@@ -105,8 +110,14 @@ const CHI = [
   [0, 1, 0, 1], [1, 0, 2, -1], [0, 0, 1, 1], [2, 1, 0, 0], [-1, 1, 1, 2], [0, 2, 0, 1], [1, 1, 1, 0], [0, -1, 2, 1], [1, 0, 0, 0],
 ];
 await setup('Chicago', ['Ich', 'Ben', 'Chris', 'Anna']);
-await p.locator('.game-setting').filter({ hasText: 'Vorgabe (WHS)' }).getByRole('button', { name: 'Ohne (brutto)' }).click();
-await p.locator('.game-setting').filter({ hasText: 'Höchsteinsatz' }).getByRole('button', { name: '1,60 €' }).click();
+await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
+{
+  const capRow = p.locator('.settings-row').filter({ hasText: 'Höchsteinsatz' });
+  const capLabel = (await capRow.locator('span').first().innerText()).trim();
+  await capRow.click();
+  await p.getByRole('dialog', { name: capLabel }).getByRole('button', { name: '1,60 €' }).click();
+  await p.getByRole('dialog', { name: capLabel }).getByRole('button', { name: 'Fertig' }).click();
+}
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(4500);
 const nHoles = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1'))[0].holes.length);

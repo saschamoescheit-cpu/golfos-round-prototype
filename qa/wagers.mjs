@@ -8,6 +8,11 @@
 // Usage: node qa/wagers.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+// a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
+const pickSetting = async (page, label, option) => {
+  await page.locator('.settings-row').filter({ hasText: label }).first().click();
+  await page.getByRole('dialog', { name: label }).locator('.pick-option').filter({ hasText: option }).first().click();
+};
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -70,7 +75,7 @@ async function phone(name, seed) {
   });
   const p = await ctx.newPage();
   const errs = [];
-  p.on('pageerror', (e) => { if (!/golfos_items.*access control/.test(e.message)) errs.push(e.message); });
+  p.on('pageerror', (e) => { if (!/golfos_(?:items|friend_\w+).*access control/.test(e.message)) errs.push(e.message); });
   await p.goto(url);
   await p.waitForTimeout(1200);
   await p.evaluate(({ name, seed }) => {
@@ -117,9 +122,9 @@ if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-s
 // a game in dollars (Sascha 01.11.2026: "besides the euro the dollar to choose") – the stakes in dollars
 await H.getByRole('button', { name: 'Neues Spiel' }).click();
 await H.waitForTimeout(600);
-ok((await H.getByRole('button', { name: 'Euro (€)' }).getAttribute('aria-pressed')) === 'true' && (await H.getByRole('button', { name: '1 €', exact: true }).count()) === 1, 'new game: euro by default, stakes in €');
-await H.getByRole('button', { name: 'Dollar ($)' }).click();
-ok((await H.getByRole('button', { name: '1 $', exact: true }).count()) === 1 && (await H.getByRole('button', { name: '1 €', exact: true }).count()) === 0, 'new game: dollar chosen – the stakes in $');
+ok(/Euro \(€\)/.test(await H.locator('.settings-row').filter({ hasText: 'Währung' }).innerText()) && /1 €/.test(await H.locator('.settings-row').filter({ hasText: 'Einsatz' }).first().innerText()), 'new game: euro by default, stakes in €');
+await pickSetting(H, 'Währung', 'Dollar ($)');
+ok(/1 \$/.test(await H.locator('.settings-row').filter({ hasText: 'Einsatz' }).first().innerText()), 'new game: dollar chosen – the stakes in $');
 await H.getByRole('button', { name: 'Zurück', exact: true }).click();
 await H.waitForTimeout(500);
 // ---------- Sascha: a pool of bets, four players ----------

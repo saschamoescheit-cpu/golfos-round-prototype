@@ -88,6 +88,32 @@ export function ChoiceRow<T>(props: { label: string; title?: string; options: Ch
   );
 }
 
+/** A row whose sheet holds its own picker (a stake with "other …", a cap) – closed with "Fertig". */
+export function SheetRow(props: { label: string; value: ReactNode; title?: string; children: ReactNode; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <SettingsRow label={props.label} value={props.value} onClick={() => setOpen(true)} disabled={props.disabled} />
+      {open && (
+        <div className="sheet-backdrop" onClick={() => setOpen(false)}>
+          <section className="sheet" role="dialog" aria-label={props.title ?? props.label} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{props.title ?? props.label}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(false)}>
+                ✕
+              </button>
+            </div>
+            {props.children}
+            <button type="button" className="btn-primary" onClick={() => setOpen(false)}>
+              {tr('Done', 'Fertig')}
+            </button>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
+
 /** "Mo., 2. Nov. 2026" – a day as people read it, not "2026-11-02". */
 export function dayText(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -119,17 +145,21 @@ export function TimeRow(props: { label: string; value: string; onChange: (hhmm: 
   );
 }
 
-/** A yes/no as a switch with what it means (as "In der Nähe anzeigen"). */
-export function ToggleRow(props: { label: string; text?: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean }) {
-  return (
-    <div className="drawer-list settings-switches">
-      <button type="button" className="drawer-row" role="switch" aria-checked={props.on} disabled={props.disabled} onClick={() => props.onChange(!props.on)}>
-        <span className="switch-label">
-          <span>{props.label}</span>
-          {props.text && <span className="muted small">{props.text}</span>}
-        </span>
-        <span className={`drawer-switch${props.on ? ' on' : ''}`} aria-hidden="true" />
-      </button>
-    </div>
+/** Several switches in one box. */
+export function ToggleList(props: { children: ReactNode }) {
+  return <div className="drawer-list settings-switches">{props.children}</div>;
+}
+
+/** A yes/no as a switch with what it means (as "In der Nähe anzeigen"); `inList` inside a ToggleList. */
+export function ToggleRow(props: { label: string; text?: string; on: boolean; onChange: (on: boolean) => void; disabled?: boolean; inList?: boolean }) {
+  const row = (
+    <button type="button" className="drawer-row" role="switch" aria-checked={props.on} disabled={props.disabled} onClick={() => props.onChange(!props.on)}>
+      <span className="switch-label">
+        <span>{props.label}</span>
+        {props.text && <span className="muted small">{props.text}</span>}
+      </span>
+      <span className={`drawer-switch${props.on ? ' on' : ''}`} aria-hidden="true" />
+    </button>
   );
+  return props.inList ? row : <ToggleList>{row}</ToggleList>;
 }

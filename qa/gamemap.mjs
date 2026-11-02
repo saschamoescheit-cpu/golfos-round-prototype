@@ -3,6 +3,11 @@
 // settle like a round.  Usage: SHOTS=<dir> node qa/gamemap.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+// a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
+const pickSetting = async (page, label, option) => {
+  await page.locator('.settings-row').filter({ hasText: label }).first().click();
+  await page.getByRole('dialog', { name: label }).locator('.pick-option').filter({ hasText: option }).first().click();
+};
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
@@ -41,7 +46,7 @@ for (const [k, n] of [[1, 'Ben'], [2, 'Chris'], [3, 'Anna']]) {
   if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click(); // Chicago starts with four rows
   await p.locator('.game-player-row').nth(k).locator('input').first().fill(n);
 }
-await p.locator('.game-setting').filter({ hasText: 'Vorgabe (WHS)' }).getByRole('button', { name: 'Ohne (brutto)' }).click();
+await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(6000);
 ok((await p.locator('.hole-bar').count()) === 1 && (await p.locator('.maplibregl-canvas').count()) === 1, 'the game opens on the GPS map with the hole bar');

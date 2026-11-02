@@ -81,8 +81,9 @@ for (const c of cases) {
   while ((await p.locator('.game-player-row').count()) > c.n) await p.locator('.game-player-row').last().getByRole('button', { name: /entfernen|Entfernen/ }).click();
   // presses on where the form has them
   if (c.double) {
-    const row = p.locator('.game-setting').filter({ hasText: 'Press' }).first();
-    if (await row.count()) await row.getByRole('button', { name: 'Ja', exact: true }).click().catch(() => {});
+    // press on: a switch (02.11.2026)
+    const sw = p.getByRole('switch', { name: /^Press/ }).first();
+    if ((await sw.count()) && (await sw.getAttribute('aria-checked')) !== 'true') await sw.click().catch(() => {});
   }
   await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
   await p.fill('#course-search', 'Hetzenhof');
