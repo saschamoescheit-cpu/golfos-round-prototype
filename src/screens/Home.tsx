@@ -60,18 +60,18 @@ function PausedMark() {
 function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; betsRunning: string[]; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
   return (
     <>
+      {/* GOLFOS only top left, the claim small below it (Sascha 02.11.2026: "saves a lot of room") – the claim the
+          same in both languages (15.10.2026) */}
       <div className="topbar">
-        <span className="brand">
-          GOLF<span>OS</span>
+        <span className="brand-stack">
+          <span className="brand">
+            GOLF<span>OS</span>
+          </span>
+          <span className="muted brand-claim">unlock every part of your golf game</span>
         </span>
         <TopTools />
       </div>
       <div className="home-hero">
-      <div className="brand module-brand">
-        GOLF<span>OS</span>
-      </div>
-      {/* the GolfOS claim (Sascha 15.10.2026), the same in both languages */}
-      <p className="muted module-claim">unlock every part of your golf game</p>
       <button type="button" className="module-card" onClick={() => props.onPick('rounds')}>
         <span className="module-icon" aria-hidden="true">
           {props.toCheck > 0 && <i className="tabbar-dot module-dot" />}

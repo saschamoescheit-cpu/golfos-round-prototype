@@ -125,7 +125,8 @@ export function HoleScreen(props: {
     entry?: 'strokes' | 'details';
     /** every player in detail (a pool's round whose bets need the details of all – Sascha 02.11.2026) */
     detailsAll?: boolean;
-    /** a bet on the greens or the putts: every player's putts before the next hole (Sascha 02.11.2026) – Rounds blocks it */
+    /** the putts of every player before the next hole – a bet on greens or putts counts them (Sascha 02.11.2026: "the
+     *  putts a must; the next hole only once all putts are entered") */
     puttsRequired?: boolean;
   };
   /** Course preview: the birdie book of the course, back to this hole afterwards. */
@@ -156,6 +157,14 @@ export function HoleScreen(props: {
    *  Back to an earlier hole writes nothing either: the hole left is not played yet (Sascha 22.10.2026: back to a hole
    *  to correct its score, then forward again – the score sheet no longer opened, the unplayed hole had got par). */
   const goTo = (target: number, byGps = false, base: Round = round) => {
+    // a bet counts the putts: on only with every player's putts (the GPS moving on is not held – its sheet asks anyway)
+    const lacking = props.game?.puttsRequired && !byGps && target > i && !isTeamRound(base) ? base.players.filter((p) => { const e = base.entries[p.id]?.[i]; return !e?.pickedUp && e?.putts == null; }) : [];
+    if (lacking.length) {
+      setPuttsMissing(lacking.map((p) => p.name));
+      setScoreSheet('next');
+      return;
+    }
+    setPuttsMissing(null);
     setDetected(null);
     // a hole gone back to asks for its score again on the way forward (Sascha 27.10.2026)
     if (target < i) revisit.current.add(target);
@@ -494,6 +503,7 @@ export function HoleScreen(props: {
   // Lie of the ball for the next shot, set by the player; valid for this spot only (sig of hole + 25 m step).
   // score after the hole over the map (Hole19); 'next': opened by "→" without a score – done = on to the next hole
   const [scoreSheet, setScoreSheet] = useState<false | 'score' | 'next'>(false);
+  const [puttsMissing, setPuttsMissing] = useState<string[] | null>(null); // who still lacks putts (props.game.puttsRequired)
   // the hole the GPS found while this one still needs its score – reached after the score sheet
   const [pendingHole, setPendingHole] = useState<number | null>(null);
   const onAfterScore = (entered: boolean) => {
@@ -1657,6 +1667,7 @@ export function HoleScreen(props: {
             // penalty strokes (Sascha 02.11.2026)
             entry={props.game?.entry}
             everyone={!!props.game?.detailsAll}
+            notice={puttsMissing?.length ? tr(`Putts missing for ${puttsMissing.join(', ')} – a bet counts them; then on to the next hole.`, `Putts fehlen bei ${puttsMissing.join(', ')} – eine Wette zählt sie; dann geht es zum nächsten Loch.`) : undefined}
             analysis={(pid) => pid === me.id && views[pid]?.role === 'view' && !!shareEvent?.flights[round.shared!.flight]?.scorer}
             details={(pid) => withBets && (views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer))}
             shared={Object.fromEntries(
@@ -1674,6 +1685,7 @@ export function HoleScreen(props: {
             onPlacePutts={() => setPuttEditor(true)}
             onClose={() => {
               setScoreSheet(false);
+              setPuttsMissing(null);
               if (pendingHole != null) onAfterScore(myEntry.strokes != null || !!myEntry.pickedUp);
             }}
           />

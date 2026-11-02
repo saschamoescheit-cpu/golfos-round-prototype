@@ -139,6 +139,8 @@ export function ScoreSheet(props: {
   analysis?: (playerId: string) => boolean;
   /** Texas scramble (Sascha's concept 30.10.2026), per team: whose drive – the counts so far and who gets tight */
   texas?: Record<string, TexasDrives | null>;
+  /** what holds the next hole up (putts missing while a bet counts them – 02.11.2026) */
+  notice?: string;
 }) {
   const h = props.hole;
   return (
@@ -151,6 +153,11 @@ export function ScoreSheet(props: {
           ✕
         </button>
       </div>
+      {props.notice && (
+        <p className="notice score-notice" role="alert">
+          {props.notice}
+        </p>
+      )}
       {props.players.map((p) => {
         const e = props.entries[p.id];
         // everything – putts, sand, penalties, tee shot – for the main player and the player this phone marks (Sascha
