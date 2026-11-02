@@ -7,7 +7,7 @@ import { currencySymbol, money, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
-import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, poolCounted, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
@@ -116,7 +116,7 @@ function PoolRow(props: { e: PoolEntry; today: string; onOpen: () => void }) {
  *  vanish"): a phone without them – emptied, new – gets them back here. */
 export function BetsTab(props: { onOpen: (code: string) => void }) {
   const all = usePools();
-  const [filter, setFilter] = useState<'running' | 'over' | 'bin' | null>(null);
+  const [filter, setFilter] = useState<'running' | 'made' | 'over' | 'bin' | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
     void syncPools();
@@ -134,8 +134,10 @@ export function BetsTab(props: { onOpen: (code: string) => void }) {
     if (ok) window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'pool', id: e.code, label: e.pool.name, undo: () => void restorePool(e.code) } }));
     return ok;
   };
-  const pick = (f: 'running' | 'over' | 'bin') => setFilter(filter === f ? null : f);
-  const shown = filter === 'running' ? running : filter === 'over' ? over : pools;
+  const pick = (f: 'running' | 'made' | 'over' | 'bin') => setFilter(filter === f ? null : f);
+  // "made": the running pools with a bet made in them (Sascha 02.11.2026: "the tile has a number but cannot be tapped")
+  const withMade = running.filter((e) => e.pool.wagers.some((w) => stateOf(w, e.pool, today) === 'done'));
+  const shown = filter === 'running' ? running : filter === 'made' ? withMade : filter === 'over' ? over : pools;
   return (
     <>
       <h1 className="tab-title">{tr('Bets', 'Wetten')}</h1>
@@ -148,7 +150,7 @@ export function BetsTab(props: { onOpen: (code: string) => void }) {
           </span>
           <span className="muted small">{tr('running', 'laufend')}</span>
         </button>
-        <div className="tile">
+        <button type="button" className="tile" aria-pressed={filter === 'made'} disabled={!made} onClick={() => pick('made')}>
           <span className="tile-head">
             <span className="tile-num">{made}</span>
             <span className="tile-mark">
@@ -156,7 +158,7 @@ export function BetsTab(props: { onOpen: (code: string) => void }) {
             </span>
           </span>
           <span className="muted small">{tr('bets made', 'geschafft')}</span>
-        </div>
+        </button>
         <button type="button" className="tile" aria-pressed={filter === 'over'} disabled={!over.length} onClick={() => pick('over')}>
           <span className="tile-head">
             <span className="tile-num">{over.length}</span>
@@ -677,7 +679,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
           {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
         </button>
       )}
-      <Settlement pool={pool} bal={bal} pays={pays} settled={settled} pending={pending} me={entry.me} name={name} />
+      <Settlement pool={pool} bal={bal} lines={ledger(pool, today, true)} pays={pays} settled={settled} pending={pending} me={entry.me} name={name} />
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}
@@ -936,7 +938,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string })
 
 /** The settlement of a pool (Sascha 01.11.2026: "the settlement must look quite different – with zero euros too"): how
  *  far the bets are decided, where each player stands – from the start, at 0 – and who pays whom. */
-function Settlement(props: { pool: WagerPool; bal: Record<string, number>; pays: { from: string; to: string; amount: number }[]; settled: number; pending: number; me: string; name: (id?: string) => string }) {
+function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; pays: { from: string; to: string; amount: number }[]; settled: number; pending: number; me: string; name: (id?: string) => string }) {
   const { pool, bal } = props;
   const sym = currencySymbol(pool.currency);
   const n = pool.wagers.length;
@@ -969,6 +971,20 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; pays:
                 {Math.abs(v) >= 0.005 && <i className={v > 0 ? 'up' : 'down'} style={v > 0 ? { left: '50%', width: w } : { right: '50%', width: w }} />}
               </span>
               <strong className={v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted'}>{signed(v)}</strong>
+              {/* each bet on its own – what it brought or cost (Sascha 02.11.2026: "0 € – but I made my bet") */}
+              {(props.lines[p.id] ?? []).length > 0 && (
+                <ul className="pool-ledger">
+                  {(props.lines[p.id] ?? []).map((l) => (
+                    <li key={l.w.id}>
+                      <span className="grow">
+                        {l.w.player === p.id ? wagerLabel(l.w) : `${props.name(l.w.player)}: ${wagerLabel(l.w)}`}
+                        {l.provisional && <span className="muted"> · {tr('provisional', 'vorläufig')}</span>}
+                      </span>
+                      <span className={l.amount > 0 ? 'good-text' : l.amount < 0 ? 'bad-text' : 'muted'}>{signed(l.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           );
         })}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, balances, poolCounted, withCounted, needsDetails, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -404,5 +404,25 @@ describe('with marker for the whole pool', () => {
     expect(poolCounted(p)).toBe(false);
     expect(poolCounted(pool(undefined, [true, true]))).toBe(true);
     expect(poolCounted(pool(undefined, []))).toBe(true);
+  });
+});
+
+// each bet on its own (Sascha 02.11.2026: "two single bets – 20 € from Chris for the one I made")
+describe('the settlement bet by bet', () => {
+  it('nets a bet made by each to 0 – and says so line by line', () => {
+    const base = { stake: 20, payout: 'success', attempts: 'any' } as const;
+    const pool: WagerPool = {
+      kind: 'wager-pool', id: 'x', name: 'Test', from: '2026-11-02', to: '2026-11-02', createdAt: '', players: [{ id: 's', name: 'Sascha' }, { id: 'c', name: 'Chris' }],
+      wagers: [
+        { ...base, id: 'a', player: 's', kind: 'birdieRun', target: 2 },
+        { ...base, id: 'b', player: 's', kind: 'parRun', target: 9 },
+        { ...base, id: 'g', player: 'c', kind: 'greens', target: 13 },
+      ],
+      progress: { a: { best: 2, done: true, rounds: 1, at: '' }, b: { best: 4, done: false, rounds: 1, at: '' }, g: { best: 13, done: true, rounds: 1, at: '' } },
+    };
+    const l = ledger(pool, '2026-11-02');
+    expect(l.s.map((x) => [x.w.id, x.amount])).toEqual([['a', 20], ['g', -20]]);
+    expect(l.c.map((x) => [x.w.id, x.amount])).toEqual([['a', -20], ['g', 20]]);
+    expect(balances(pool, '2026-11-02')).toEqual({ s: 0, c: 0 });
   });
 });
