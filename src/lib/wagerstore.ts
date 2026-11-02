@@ -3,8 +3,9 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned, markerOf, type Cell } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { dayOf, isPool, judge, lower, playedRounds, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { dayOf, isPool, judge, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
+import { roundsInPlay } from './poolround';
 
 // The pools of bets on this phone and on the server (Sascha 01.11.2026). A pool lives in the table of the shared games
 // (golfos_shared_games, JSON kind 'wager-pool', a 6-letter code as a game) – no new table. Every change is a function
@@ -249,8 +250,14 @@ export function markerCount(r: Round, pid: string): Cell[] | null {
   return f.scorer && f.scorer !== pid ? (f.scores?.[pid] ?? null) : (f.marks?.[pid] ?? null);
 }
 
-/** Another player's round judged on this phone only with his whole card – a partner's few holes would undercount him. */
-const wholeCard = (r: PlayedRound): boolean => r.entries.every((x) => !!x && (x.pickedUp || x.strokes != null));
+/** Another player's round judged on this phone only where it kept his card as far as its owner's – this phone played
+ *  for him; a partner's few holes would undercount him. */
+function keptFor(r: Round, name: string): boolean {
+  const him = r.players.find((p) => sameName(p.name, name));
+  const me = r.players.find((p) => p.isMe);
+  const n = (id?: string) => (id ? (r.entries[id] ?? []).filter((x) => x && (x.pickedUp || x.strokes != null)).length : 0);
+  return !!him && !!me && him.id !== me.id && n(him.id) > 0 && n(him.id) >= n(me.id);
+}
 /** Another player's bet: this phone's judgement only when it knows more – more rounds, or a better result from as many
  *  (his own phone may have reported from rounds this one does not have). His own phone's always. */
 function takes(w: Wager, me: string, old: Progress | undefined, now: Progress): boolean {
@@ -273,7 +280,9 @@ export function reportWagers(): Promise<void> {
     try {
       const pools = loadPools().filter((e) => e.me && !e.pool.finishedAt && !e.pool.deletedAt);
       if (!pools.length || !(await headers())) return;
-      const all = loadRounds();
+      // the rounds of Rounds, and those in play from a pool (judged live – Sascha 02.11.2026)
+      const kept = loadRounds();
+      const all = [...kept, ...roundsInPlay().filter((r) => !kept.some((k) => k.id === r.id))];
       const rounds = playedRounds(all, countedRound, markerCount);
       for (const e of pools) {
         // whose bets this phone judges: its owner's – the host's phone also the others', from the rounds on it with their
@@ -282,7 +291,7 @@ export function reportWagers(): Promise<void> {
         const roundsOf = new Map<string, PlayedRound[]>([[e.me, rounds]]);
         if (host)
           for (const p of e.pool.players)
-            if (p.id !== e.me) roundsOf.set(p.id, playedRounds(all, countedRound, markerCount, p.name).filter(wholeCard));
+            if (p.id !== e.me) roundsOf.set(p.id, playedRounds(all.filter((r) => keptFor(r, p.name)), countedRound, markerCount, p.name));
         const judged = (w: Wager) => roundsOf.has(w.player) && w.kind !== 'free';
         const mine = e.pool.wagers.filter(judged);
         const fresh = Object.fromEntries(mine.map((w) => [w.id, judge(w, e.pool, roundsOf.get(w.player)!)]));

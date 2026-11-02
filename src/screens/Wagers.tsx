@@ -8,6 +8,7 @@ import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
 import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
 import { SignedIcon } from '../components/SignedIcon';
@@ -447,7 +448,7 @@ function StateBadge(props: { state: WagerState; provisional?: boolean }) {
   return <span className="badge warn">{tr('Open', 'Offen')}</span>;
 }
 
-export function PoolScreen(props: { code: string; onBack: () => void }) {
+export function PoolScreen(props: { code: string; onBack: () => void; onRound?: (code: string) => void }) {
   const pools = usePools();
   const entry = pools.find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | 'invite' | 'finish' | 'pool'>(null);
@@ -562,6 +563,12 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
         </section>
       )}
       <Standings pool={pool} today={today} me={entry.me} />
+      {/* the round right from the bets (Sascha 02.11.2026: "else again through Rounds, the players set up again") */}
+      {entry.me && !pool.finishedAt && props.onRound && (
+        <button type="button" className="btn-primary" onClick={() => props.onRound!(props.code)}>
+          {poolRoundOf(props.code) ? tr('Continue the round', 'Runde fortsetzen') : tr('Start the round', 'Runde starten')}
+        </button>
+      )}
       {fresh.length > 0 && (
         <section className="card pool-made" role="status">
           <span className="eyebrow">{tr('Made it', 'Geschafft')}</span>
@@ -763,7 +770,7 @@ const rowName = (w: Wager) => {
  *  stand – a nice matrix"; 02.11.2026: "every bet from the round analysis in the matrix, below only the free bets, with
  *  a heading"): the blocks down, the players across, each cell the best against the target – made green, missed struck
  *  through; a bet against one player says against whom, a "5+5+10" stands with both, each with his money. */
-function Standings(props: { pool: WagerPool; today: string; me: string }) {
+export function Standings(props: { pool: WagerPool; today: string; me: string }) {
   const { pool } = props;
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
   const grid = pool.wagers.filter((w) => w.kind !== 'free');

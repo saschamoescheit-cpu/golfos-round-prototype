@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
-import type { Course } from '../types';
+import type { Course, Round } from '../types';
 import { getLang, tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { isLady, shownName, loadProfile } from '../lib/profile';
-import { loadGeometry, newId } from '../lib/storage';
+import { loadCachedCourse, loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
 import { setCurrency, currencySymbol, type Currency } from '../lib/gameforms';
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, pairShare, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
@@ -26,7 +26,9 @@ import { CoursePicker } from './CoursePicker';
 import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
 import { SeriesScreen, TOURS_ICON, TourScreen, TourSetup, TourStartCard, ToursTab, newTourDraft, useTours, type TourDraft } from './Tournaments';
 import { tourState } from '../lib/tourstore';
-import { isLive } from '../lib/wagerstore';
+import { isLive, loadPools } from '../lib/wagerstore';
+import { keepPoolRound, poolRoundOf } from '../lib/poolround';
+import { PoolRoundPlay, PoolRoundSetup } from './PoolRound';
 import { balances, dayOf } from '../lib/wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
@@ -49,7 +51,10 @@ type View =
   | { name: 'tourSetup'; draft: TourDraft; back: View }
   | { name: 'tourCourse'; draft: TourDraft; back: View }
   | { name: 'tour'; code: string }
-  | { name: 'series'; code: string };
+  | { name: 'series'; code: string }
+  | { name: 'poolRoundSetup'; code: string; course: Course | null }
+  | { name: 'poolRoundCourse'; code: string }
+  | { name: 'poolRound'; code: string; round: Round };
 
 interface DraftPlayer {
   id: string;
@@ -266,10 +271,45 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
       return (
         <PoolScreen
           code={view.code}
+          onRound={(code) => {
+            const running = poolRoundOf(code);
+            if (running) return setView({ name: 'poolRound', code, round: running });
+            // the course of the pool's round today, when it has one and it is on this phone
+            const p = loadPools().find((e) => e.code === code)?.pool;
+            const today = p?.rounds?.find((x) => x.day === dayOf(new Date()) && x.courseId);
+            setView({ name: 'poolRoundSetup', code, course: today?.courseId ? loadCachedCourse(today.courseId) : null });
+          }}
           onBack={() => {
             setView({ name: 'tab', tab: 'bets' });
             props.onTabChange?.('bets');
           }}
+        />
+      );
+    // a round from the bets, played on the map here (Sascha 02.11.2026)
+    case 'poolRoundSetup':
+      return (
+        <PoolRoundSetup
+          code={view.code}
+          course={view.course}
+          onCourse={() => setView({ name: 'poolRoundCourse', code: view.code })}
+          onBack={() => setView({ name: 'pool', code: view.code })}
+          onStart={(round) => {
+            keepPoolRound(view.code, round);
+            setView({ name: 'poolRound', code: view.code, round });
+          }}
+        />
+      );
+    case 'poolRoundCourse':
+      return <CoursePicker onBack={() => setView({ name: 'poolRoundSetup', code: view.code, course: null })} onPicked={(course) => setView({ name: 'poolRoundSetup', code: view.code, course })} />;
+    case 'poolRound':
+      return (
+        <PoolRoundPlay
+          code={view.code}
+          round={view.round}
+          onChange={(round) => setView({ name: 'poolRound', code: view.code, round })}
+          onPause={() => setView({ name: 'pool', code: view.code })}
+          onDone={() => setView({ name: 'pool', code: view.code })}
+          onOpenBag={props.onOpenBag}
         />
       );
     // tournaments planned here, played in Rounds (Sascha 01.11.2026)
