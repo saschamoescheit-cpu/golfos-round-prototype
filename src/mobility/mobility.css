@@ -289,8 +289,6 @@
 .mob-physio-sets { border-collapse: collapse; width: 100%; max-width: 320px; }
 .mob-physio-sets th, .mob-physio-sets td { padding: 4px 6px; text-align: center; border-bottom: 1px solid var(--line); }
 .mob-physio-sets th { color: var(--text-2); font-weight: 600; }
-.mob-physio-remind { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.mob-physio-remind input { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 16px var(--body); }
 .mob-physio-bars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; height: 96px; }
 .mob-physio-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 100%; }
 .mob-physio-bar i { display: block; width: 100%; min-height: 3px; border-radius: 6px 6px 2px 2px; background: var(--line-strong); }

@@ -87,7 +87,9 @@ ok(!(await p.locator('.mob-physio-ex-body .mob-3d').count()), 'an exercise witho
 await p.locator('.mob-physio-ex-head').nth(0).click();
 
 // daily: today is a training day – the start page's "training today" is the routine, Agility's plan a tap away
-await p.locator('.mob-physio-per button').filter({ hasText: 'täglich' }).click();
+// how often a week: a row with its sheet (docs/DESIGN.md)
+await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Wie oft pro Woche' }).click();
+await p.locator('.sheet .pick-option').filter({ hasText: "täglich" }).click();
 await p.locator('.topbar .icon-btn').first().click();
 await p.locator('.tabbar button').filter({ hasText: 'Screening' }).click();
 await p.locator('.mob-today').waitFor({ timeout: 5000 }).catch(() => {});
@@ -98,11 +100,14 @@ await p.locator('.mob-physio-open').click();
 await p.locator('.mob-physio').waitFor({ timeout: 5000 });
 
 // how often a week: 3×, then fixed days set the count
-await p.locator('.mob-physio-per button').filter({ hasText: '3×' }).click();
-ok((await p.locator('.mob-physio-per button[aria-pressed="true"]').innerText()) === '3×', 'three times a week chosen');
+await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Wie oft pro Woche' }).click();
+await p.locator('.sheet .pick-option').filter({ hasText: "3×" }).click();
+ok((await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Wie oft pro Woche' }).locator('.settings-value').innerText()) === '3×', 'three times a week chosen');
 for (const d of ['Mo', 'Mi', 'Fr', 'So']) await p.locator('.mob-physio-days button').filter({ hasText: d }).click();
-ok((await p.locator('.mob-physio-per button[aria-pressed="true"]').innerText()) === '4×' && (await p.locator('.mob-physio-days button[aria-pressed="true"]').count()) === 4, 'four days chosen: four a week');
-await p.locator('.mob-physio-remind input').fill('18:30');
+ok((await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Wie oft pro Woche' }).locator('.settings-value').innerText()) === '4×' && (await p.locator('.mob-physio-days button[aria-pressed="true"]').count()) === 4, 'four days chosen: four a week');
+// the reminder: a switch, then the time as a row
+await p.locator('.mob-physio-plan [role="switch"]').click();
+await p.locator('.mob-physio-plan .date-row-input').fill('18:30');
 await p.waitForTimeout(200);
 const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.physio.v1'))[0].schedule);
 ok(stored.perWeek === 4 && stored.days.join() === '0,2,4,6' && stored.remind === '18:30', `the week and the reminder kept in the account (${JSON.stringify(stored)})`);

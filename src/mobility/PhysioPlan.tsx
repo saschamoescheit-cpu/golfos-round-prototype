@@ -3,6 +3,7 @@ import { tr } from '../lib/i18n';
 import { speak, stopSpeaking } from '../lib/caddietalk';
 import { PlayActions } from '../components/PlayActions';
 import { TopBar } from '../components/ui';
+import { ChoiceRow, SettingsList, TimeRow, ToggleRow } from '../components/Settings';
 import { beep, fakeSpeed, speechMs, unlockAudio } from './CameraTest';
 import {
   clipIdOf,
@@ -308,15 +309,21 @@ function ScheduleCard(props: { p: PhysioPlan; onChange: (p: PhysioPlan) => void 
     props.onChange(setSchedule(props.p, merged));
   };
   return (
-    <section className="card mob-physio-plan">
-      <strong>{tr('How often a week', 'Wie oft pro Woche')}</strong>
-      <div className="chip-row mob-physio-per" role="group" aria-label={tr('Sessions a week', 'Einheiten pro Woche')}>
-        {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-          <button key={n} type="button" aria-pressed={props.p.schedule?.perWeek === n} onClick={() => set({ perWeek: n, days: (s.days ?? []).length === n ? s.days : [] })}>
-            {n === 7 ? tr('daily', 'täglich') : `${n}×`}
-          </button>
-        ))}
-      </div>
+    <section className="mob-physio-plan">
+      {/* as the settings of a round (docs/DESIGN.md): seven counts are a row with its sheet, the reminder a switch */}
+      <span className="eyebrow">{tr('Your week', 'Deine Woche')}</span>
+      <SettingsList>
+        <ChoiceRow<number | null>
+          label={tr('How often a week', 'Wie oft pro Woche')}
+          options={[1, 2, 3, 4, 5, 6, 7].map((n) => ({
+            value: n,
+            name: n === 7 ? tr('daily', 'täglich') : `${n}×`,
+            text: n === 7 ? tr('Every day', 'Jeden Tag') : n === 1 ? tr('Once a week', 'Einmal pro Woche') : tr(`On ${n} days of the week`, `An ${n} Tagen der Woche`),
+          }))}
+          value={props.p.schedule?.perWeek ?? null}
+          onChange={(n) => n != null && set({ perWeek: n, days: (s.days ?? []).length === n ? s.days : [] })}
+        />
+      </SettingsList>
       <span className="muted small">{tr('On fixed days (optional):', 'An festen Tagen (optional):')}</span>
       <div className="chip-row mob-physio-days" role="group" aria-label={tr('Training days', 'Trainingstage')}>
         {DAYS().map((d, i) => (
@@ -330,15 +337,17 @@ function ScheduleCard(props: { p: PhysioPlan; onChange: (p: PhysioPlan) => void 
           </button>
         ))}
       </div>
-      <label className="mob-physio-remind">
-        <span>{tr('Reminder on training days', 'Erinnerung an Trainingstagen')}</span>
-        <input type="time" value={s.remind ?? ''} onChange={(e) => set({ remind: e.target.value || null })} aria-label={tr('Reminder time', 'Uhrzeit der Erinnerung')} />
-      </label>
-      <span className="muted small">
-        {s.remind
-          ? tr('A push at this time on a training day you have not trained yet (notifications on in the profile).', 'Eine Push-Mitteilung zu dieser Uhrzeit an einem Trainingstag, an dem du noch nicht trainiert hast (Mitteilungen im Profil einschalten).')
-          : tr('No reminder.', 'Keine Erinnerung.')}
-      </span>
+      <ToggleRow
+        label={tr('Reminder on training days', 'Erinnerung an Trainingstagen')}
+        text={tr('A push on a training day you have not trained yet (notifications on in the profile).', 'Eine Push-Mitteilung an einem Trainingstag, an dem du noch nicht trainiert hast (Mitteilungen im Profil einschalten).')}
+        on={!!s.remind}
+        onChange={(on) => set({ remind: on ? '18:00' : null })}
+      />
+      {s.remind && (
+        <SettingsList>
+          <TimeRow label={tr('Reminder time', 'Uhrzeit der Erinnerung')} value={s.remind} onChange={(v) => set({ remind: v || null })} />
+        </SettingsList>
+      )}
     </section>
   );
 }

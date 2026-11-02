@@ -182,7 +182,11 @@ ok(await p.locator('.mob-summary').isVisible(), 'the result opens after the scre
 const glyphs = await p.evaluate(() => (document.querySelector('main')?.textContent ?? '').match(/[✓✕]|[Bb]estanden/g)?.length ?? 0);
 ok(glyphs === 0, `no grades in the result (${glyphs} ✓/✕/"bestanden")`);
 ok(await p.getByText('Was ist dein Ziel?').isVisible(), 'the result asks for the goal');
-await p.locator('.mob-goal .chip').filter({ hasText: /^10$/ }).click();
+// the goal handicap: a row with its sheet, as "Format" in the round setup (docs/DESIGN.md)
+await p.locator('.mob-goal .settings-row').filter({ hasText: 'Ziel-Handicap' }).click();
+ok((await p.locator('.sheet .pick-option').count()) === 7 && /Einstellig in Reichweite/.test(await p.locator('.sheet').innerText()), 'the goal handicap opens its sheet: seven goals, each with what it means');
+await p.locator('.sheet .pick-option').filter({ hasText: /^10/ }).click();
+ok(/Ziel-Handicap\s*10/.test(await p.locator('.mob-goal .settings-row').innerText()), 'the row shows the goal chosen');
 await p.locator('.mob-goal .chip').filter({ hasText: 'Mehr Länge' }).click();
 await shot('goal');
 await p.getByRole('button', { name: 'Ziel speichern' }).click();

@@ -6,6 +6,7 @@ import { TopTools } from '../components/TopTools';
 import { TopBar } from '../components/ui';
 import { SwipeRow } from '../components/SwipeRow';
 import { PausedIcon } from '../components/PausedIcon';
+import { ChoiceRow, SettingsList } from '../components/Settings';
 import { drillById } from '../training/content';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { VideoCard, VideoNote } from '../training/ui';
@@ -2071,6 +2072,17 @@ function DrillsTab(props: { nav: Nav }) {
   );
 }
 
+/** what a goal handicap means, one line in its sheet */
+const GOAL_TEXT: Record<number, () => string> = {
+  36: () => tr('Getting started – moving freely enough for a whole round', 'Einstieg – beweglich genug für eine ganze Runde'),
+  28: () => tr('Leisure golfer – a repeatable swing', 'Freizeitgolfer – ein wiederholbarer Schwung'),
+  20: () => tr('Solid club player', 'Solider Clubspieler'),
+  15: () => tr('Good club player – full turn, stable on one leg', 'Guter Clubspieler – volle Drehung, stabil auf einem Bein'),
+  10: () => tr('Single figures in reach', 'Einstellig in Reichweite'),
+  5: () => tr('Strong amateur', 'Starker Amateur'),
+  0: () => tr('Team level – every value at the target', 'Mannschaftsniveau – jeder Wert am Ziel'),
+};
+
 /**
  * The goal (Sascha 18.10.2026: "from the analysis ask for the player's goals, e.g. the handicap"): the handicap to
  * reach and what matters most – it sets the line on every bar and the order of the pillar.
@@ -2103,14 +2115,15 @@ function GoalCard() {
         {now != null ? tr(`Your handicap now: ${String(now).replace('-', '+')}. `, `Dein Handicap jetzt: ${String(now).replace('.', ',').replace('-', '+')}. `) : ''}
         {tr('The values you need follow from it.', 'Daraus ergibt sich, welche Werte du brauchst.')}
       </span>
-      <span className="small">{tr('Handicap to reach', 'Ziel-Handicap')}</span>
-      <div className="chip-set">
-        {GOAL_STEPS.map((h) => (
-          <button key={h} type="button" className={`chip${hcp === h ? ' on' : ''}`} aria-pressed={hcp === h} onClick={() => setHcp(h)}>
-            {hcpName(h)}
-          </button>
-        ))}
-      </div>
+      {/* seven values: a row with its sheet, as "Format" in the round setup (docs/DESIGN.md) */}
+      <SettingsList>
+        <ChoiceRow<number | null>
+          label={tr('Handicap to reach', 'Ziel-Handicap')}
+          options={GOAL_STEPS.map((h) => ({ value: h, name: hcpName(h), text: GOAL_TEXT[h]?.() }))}
+          value={hcp}
+          onChange={setHcp}
+        />
+      </SettingsList>
       <span className="small">{tr('What matters most to you (optional)', 'Was dir wichtig ist (optional)')}</span>
       <div className="chip-set">
         {(Object.keys(FOCUS_NAMES) as Focus[]).map((f) => (
