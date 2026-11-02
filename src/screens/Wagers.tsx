@@ -13,7 +13,6 @@ import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool,
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { SignedIcon } from '../components/SignedIcon';
-import { BetMissedIcon, BetOpenIcon } from '../components/BetIcons';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet } from '../lib/push';
 import { loadSeries, loadTours } from '../lib/tourstore';
@@ -227,7 +226,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
   const [to, setTo] = useState(dayOf(new Date(today.getTime() + 7 * 864e5)));
   const [names, setNames] = useState<{ id: string; name: string }[]>(() => [{ id: newId(), name: shownName(loadProfile()) || tr('Me', 'Ich') }, { id: newId(), name: '' }]);
   const [currency, setCurrencyOf] = useState<'EUR' | 'USD'>('EUR');
-  const [counted, setCounted] = useState(true); // "with marker" by default, as in a tournament (Sascha 01.11.2026)
+  const [counted, setCounted] = useState(false); // off by default (Sascha 02.11.2026: "the switch off by default")
   const [rounds, setRounds] = useState<PoolRound[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -850,29 +849,6 @@ export function Standings(props: { pool: WagerPool; today: string; me: string })
   const players = pool.players.filter((p) => pool.wagers.some((w) => w.player === p.id || w.opponent === p.id));
   if (!pool.wagers.length) return null;
   const state = (w: Wager) => stateOf(w, pool, props.today);
-  // a mark per bet of the player instead of a count (Sascha 02.11.2026): made (the seal), made but not signed yet (the
-  // seal, amber), open (a target), over and missed (struck through)
-  const Marks = (q: { id: string }) => {
-    const own = pool.wagers.filter((w) => w.player === q.id && shapeOf(w.kind) !== 'duel');
-    if (!own.length) return <span className="muted">–</span>;
-    const of = (w: Wager) => (state(w) === 'done' ? 'done' : provisional(w, pool.progress[w.id]) ? 'provisional' : state(w) === 'missed' ? 'missed' : 'open');
-    const n = (k: string) => own.filter((w) => of(w) === k).length;
-    const said = [
-      n('done') && tr(`${n('done')} made`, `${n('done')} geschafft`),
-      n('provisional') && tr(`${n('provisional')} provisional`, `${n('provisional')} vorläufig`),
-      n('open') && tr(`${n('open')} open`, `${n('open')} offen`),
-      n('missed') && tr(`${n('missed')} missed`, `${n('missed')} verpasst`),
-    ].filter(Boolean).join(', ');
-    return (
-      <span className="bet-marks" role="img" aria-label={said} title={said}>
-        {own.map((w) => (
-          <span key={w.id} className={`bet-mark ${of(w)}`}>
-            {of(w) === 'done' || of(w) === 'provisional' ? <SignedIcon size={20} /> : of(w) === 'missed' ? <BetMissedIcon size={20} /> : <BetOpenIcon size={20} />}
-          </span>
-        ))}
-      </span>
-    );
-  };
   return (
     <section className="card pool-standings" aria-label={tr('Standing of the bets', 'Stand der Wetten')}>
       <div className="pool-settle-head">
@@ -904,14 +880,6 @@ export function Standings(props: { pool: WagerPool; today: string; me: string })
                   ))}
                 </tr>
               ))}
-              <tr className="bet-matrix-made">
-                <th scope="row">{tr('Made', 'Geschafft')}</th>
-                {players.map((p) => (
-                  <td key={p.id}>
-                    <Marks id={p.id} />
-                  </td>
-                ))}
-              </tr>
             </tbody>
           </table>
         </div>
@@ -1619,8 +1587,8 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
             {/* what is what (Sascha 02.11.2026: "where is the difference between a free bet, my bets and the library?") */}
             <span className="muted small lib-explain">
               {tr(
-                'Built by you from blocks (what counts, at least or at most, which holes) – the app judges them and keeps them for every pool. Below: ready-made bets, judged by the app too; only the free bet in words is decided by the host.',
-                'Von dir aus Bausteinen gebaut (was zählt, mindestens oder höchstens, welche Löcher) – die App wertet sie aus und bietet sie in jedem Pool wieder an. Darunter: fertige Wetten, ebenfalls automatisch ausgewertet; nur die freie Wette in Worten entscheidet der Host.',
+                'Built by you from blocks (what counts, at least or at most, which holes) – e.g. "at least 2 birdies on the par 3s" or "no three-putt on the back nine". The app judges them and keeps them for every pool. Below: ready-made bets, judged by the app too; only the free bet in words is decided by the host.',
+                'Von dir aus Bausteinen gebaut (was zählt, mindestens oder höchstens, welche Löcher) – z. B. „Mindestens 2 Birdies auf den Par 3s“ oder „Kein Drei-Putt auf der hinteren 9“. Die App wertet sie aus und bietet sie in jedem Pool wieder an. Darunter: fertige Wetten, ebenfalls automatisch ausgewertet; nur die freie Wette in Worten entscheidet der Host.',
               )}
             </span>
             {mine.map((b) => {

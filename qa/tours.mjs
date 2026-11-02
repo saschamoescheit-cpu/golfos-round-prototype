@@ -210,6 +210,32 @@ await dragTo('Chris', fl(1));
 ok((await names(0)) === 'Sascha' && (await names(1)) === 'Chris,Erik,Cedric', `Chris dragged by his grip onto flight 2 (${await names(0)} | ${await names(1)})`);
 await dragTo('Chris', fl(0));
 ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'and dragged back onto flight 1');
+// on the iPhone (Sascha 02.11.2026: "does not work yet"): the whole row held a moment lifts the player; moved at once it
+// only scrolls
+const holdTo = async (who, target, wait) => {
+  const row = H.locator('.tour-flight-player').filter({ has: H.locator('strong', { hasText: new RegExp(`^${who}$`) }) }).locator('strong');
+  await row.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  await H.waitForTimeout(200);
+  const a = await row.boundingBox();
+  const x0 = a.x + 10;
+  const y0 = a.y + a.height / 2;
+  await H.mouse.move(x0, y0);
+  await H.mouse.down();
+  await H.waitForTimeout(wait);
+  // the target read again once lifted (the drop zone "Noch ohne Flight" may have appeared)
+  const b = await target.boundingBox();
+  const x1 = b.x + 60;
+  const y1 = b.y + 30;
+  for (let i = 1; i <= 12; i++) await H.mouse.move(x0 + ((x1 - x0) * i) / 12, y0 + ((y1 - y0) * i) / 12);
+  await H.mouse.up();
+  await H.waitForTimeout(300);
+};
+await holdTo('Erik', fl(0), 0);
+ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'the row moved at once: nothing lifted – a scroll');
+await holdTo('Erik', fl(0), 500);
+ok((await names(0)) === 'Sascha,Chris,Erik' && (await names(1)) === 'Cedric', `the row held a moment: Erik lifted and dropped on flight 1 (${await names(0)} | ${await names(1)})`);
+await holdTo('Erik', fl(1), 500);
+ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'and held back onto flight 2');
 // special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional"): Nearest to the Pin on a par 3
 await H.getByRole('button', { name: '+ Long Drive' }).click();
 await H.getByRole('button', { name: '+ Nearest to the Pin' }).click();

@@ -125,6 +125,8 @@ export function HoleScreen(props: {
     entry?: 'strokes' | 'details';
     /** every player in detail (a pool's round whose bets need the details of all – Sascha 02.11.2026) */
     detailsAll?: boolean;
+    /** a bet on the greens or the putts: every player's putts before the next hole (Sascha 02.11.2026) – Rounds blocks it */
+    puttsRequired?: boolean;
   };
   /** Course preview: the birdie book of the course, back to this hole afterwards. */
   onBook?: () => void;

@@ -20,6 +20,9 @@ import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 // Rounds, the players set up again"): the course (the pool's round of the day, if it has one), the loop, the pool's
 // players with their handicap – then played on the map as a game in Games; the bets judged live from it.
 
+const PUTT_KINDS: string[] = ['greens', 'putts', 'oneputts', 'threeputts', 'updowns'];
+const PUTT_METRICS: string[] = ['putts', 'onePutt', 'threePutt', 'green', 'upDown', 'sandSave'];
+
 const HoleScreen = lazy(() => import('./HoleScreen').then((m) => ({ default: m.HoleScreen })));
 
 interface Who {
@@ -186,6 +189,9 @@ export function PoolRoundPlay(props: { code: string; round: Round; onChange: (r:
   const line = [tr(`${made} made`, `${made} geschafft`), prov ? tr(`${prov} provisional`, `${prov} vorläufig`) : ''].filter(Boolean).join(' · ');
   // the score entry the bets need (Sascha 02.11.2026: "birdies, to par: the strokes incl. penalty strokes; GIR, 3-putts,
   // up and down: the details")
+  // a bet on the greens or the putts: the putts of every player before the next hole (Sascha 02.11.2026: "then the putts a
+  // must – the next hole only once all are in"; Rounds blocks it in the hole screen)
+  const puttsRequired = pool.wagers.some((w) => PUTT_KINDS.includes(w.kind) || (w.kind === 'custom' && PUTT_METRICS.includes(w.metric ?? '')));
   const scoreEntry = poolNeedsDetails(pool, { day: dayOf(r.createdAt), course: r.courseName, courseId: r.courseId }) ? ('details' as const) : ('strokes' as const);
   const change = (nr: Round) => {
     if (done.current) return; // finished: a late change does not bring it back
@@ -215,7 +221,7 @@ export function PoolRoundPlay(props: { code: string; round: Round; onChange: (r:
           }}
           onShowScorecard={(nr, finishing) => (finishing ? finish(nr) : setSheet(true))}
           onOpenBag={props.onOpenBag}
-          game={{ name: tr(`Bets · ${pool.name}`, `Wetten · ${pool.name}`), line, onOpen: () => setSheet(true), onInvite: null, shared: null, entry: scoreEntry, detailsAll: scoreEntry === 'details' }}
+          game={{ name: tr(`Bets · ${pool.name}`, `Wetten · ${pool.name}`), line, onOpen: () => setSheet(true), onInvite: null, shared: null, entry: scoreEntry, detailsAll: scoreEntry === 'details', puttsRequired }}
         />
       </Suspense>
       {sheet && (
