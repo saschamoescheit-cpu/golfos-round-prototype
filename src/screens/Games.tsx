@@ -19,6 +19,7 @@ import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { FriendChips } from './Home';
 import { ChoiceRow, SettingsList, SheetRow, ToggleList, ToggleRow } from '../components/Settings';
+import { StakePicker } from '../components/StakePicker';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { courseTees, defaultTee, profileTee } from '../data/tees';
 import { inUsa } from '../lib/weather';
@@ -109,7 +110,6 @@ const winnerOf = (rows: { name: string; points: number }[]): string | null => {
   return top.length ? top.map((r) => r.name).join(' & ') : null;
 };
 
-const STAKES = [0, 0.1, 0.2, 0.5, 1, 2, 5, 10];
 const defaults = (f: FormDef) => Object.fromEntries(f.settings.map((s) => [s.key, s.default]));
 
 /** The WHS recommendation for the form and the number of players, unless the player chose the share himself. */
@@ -1686,55 +1686,6 @@ function HammerCard(props: { game: Game; hole: number; onChange: (x: Partial<Hol
 
 /** The highest stake (Sascha 15.10.2026): the steps of the doubling chain up to 6,40 € as chips, "no cap", and a field
  *  for higher steps (12,80 €, 25,60 € …) that only takes a step of the chain. */
-/** The stake: the usual amounts as chips, any other typed in (Sascha 16.10.2026: "bei den Einsätzen überall eine
- *  manuelle Eingabe – analog Chicago"). */
-function StakePicker(props: { value: number; onChange: (v: number) => void }) {
-  const custom = props.value > 0 && !STAKES.includes(props.value);
-  const [typing, setTyping] = useState(false);
-  const [text, setText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const take = () => {
-    const v = Number(text.replace(/[€$]/g, '').replace(/\s/g, '').replace(',', '.'));
-    if (!text.trim() || !Number.isFinite(v) || v <= 0) return setError(tr('Type an amount, e.g. 3', 'Gib einen Betrag ein, z. B. 3'));
-    if (v > 1000) return setError(tr(`At most ${money(1000)}.`, `Höchstens ${money(1000)}.`));
-    setError(null);
-    setTyping(false);
-    props.onChange(Math.round(v * 100) / 100);
-  };
-  return (
-    <>
-      <div className="chip-set">
-        {STAKES.map((v) => (
-          <button key={v} type="button" className={`chip${!typing && props.value === v ? ' on' : ''}`} aria-pressed={props.value === v} onClick={() => { setTyping(false); setError(null); props.onChange(v); }}>
-            {v ? money(v) : tr('none', 'ohne')}
-          </button>
-        ))}
-        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(/ [€$]$/, '') : ''); }}>
-          {custom && !typing ? money(props.value) : tr('other …', 'anderer …')}
-        </button>
-      </div>
-      {typing && (
-        <div className="cap-input">
-          <input
-            className="input"
-            inputMode="decimal"
-            autoFocus
-            aria-label={tr('Stake in euros', 'Einsatz in Euro')}
-            placeholder="3"
-            value={text}
-            onChange={(e) => { setText(e.target.value); setError(null); }}
-            onKeyDown={(e) => e.key === 'Enter' && take()}
-          />
-          <button type="button" className="btn-secondary" onClick={take}>
-            {tr('Use', 'Übernehmen')}
-          </button>
-        </div>
-      )}
-      {error && <span className="small bad-text" role="alert">{error}</span>}
-    </>
-  );
-}
-
 function CapPicker(props: { stake: number; value: number; onChange: (v: number) => void }) {
   const chain = capChain(props.stake);
   const custom = props.value > 0 && !chain.some((c) => Math.abs(c - props.value) < 0.005);
