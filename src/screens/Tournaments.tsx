@@ -9,7 +9,7 @@ import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib
 import { fetchShared } from '../lib/sharedratings';
 import { isLady, loadProfile, shownName } from '../lib/profile';
 import { scoringName, type Scoring } from '../lib/games';
-import { eventStandings, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, type RoundEvent } from '../lib/sharedround';
+import { eventStandings, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
 import { addToSeries, changeTour, createSeries, createTour, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
@@ -467,7 +467,8 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
   const teeChoices = d.course && offered ? teeChoicesFor(d.course.id, rholes, offered.tees) : [];
   const label = (p: TourPlayer, k: number) => p.name.trim() || tr(`Player ${k + 1}`, `Spieler ${k + 1}`);
   const flight = (f: number) => d.players.filter((p) => p.flight === f);
-  const markers = Object.assign({}, ...Array.from({ length: d.flights }, (_, f) => markersOf(flight(f).map((p) => p.id), d.markers))) as Record<string, string>;
+  // who marks whom: set by the app – pairs in the flight, three in a ring (Sascha 01.11.2026: "need not be configured")
+  const markers = Object.assign({}, ...Array.from({ length: d.flights }, (_, f) => markersOf(flight(f).map((p) => p.id), {}))) as Record<string, string>;
   const setPlayers = (players: TourPlayer[]) => set({ players });
   const timesFor = (k: number) => Array.from({ length: k }, (_, i) => d.times[i] ?? addMinutes(d.first, i * d.gap));
   const lastWithRoom = () => (d.flights > 0 && flight(d.flights - 1).length < FLIGHT_MAX ? d.flights - 1 : null);
@@ -674,11 +675,9 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           players={d.players}
           flights={d.flights}
           times={timesFor(d.flights)}
-          markers={markers}
           label={(p) => label(p, d.players.indexOf(p))}
           onMove={(id, to) => set({ players: d.players.map((x) => (x.id === id ? { ...x, flight: to } : x)) })}
           onTime={(fi, t) => set({ times: timesFor(d.flights).map((x, i) => (i === fi ? t : x)) })}
-          onMarkers={(m) => set({ markers: { ...d.markers, ...markers, ...m } })}
           onAddFlight={addFlight}
           onRemoveFlight={removeFlight}
           onAuto={auto}
@@ -781,11 +780,9 @@ function FlightBoard(props: {
   players: TourPlayer[];
   flights: number;
   times: string[];
-  markers: Record<string, string>;
   label: (p: TourPlayer) => string;
   onMove: (id: string, flight: number | null) => void;
   onTime: (flight: number, t: string) => void;
-  onMarkers: (m: Record<string, string>) => void;
   onAddFlight: () => void;
   onRemoveFlight: (flight: number) => void;
   onAuto: () => void;
@@ -798,10 +795,6 @@ function FlightBoard(props: {
     return el ? Number(el.dataset.flight) : null;
   };
   const byId = (id: string) => props.players.find((p) => p.id === id);
-  const name = (id: string) => {
-    const p = byId(id);
-    return p ? props.label(p) : '?';
-  };
   const inFlight = (f: number) => props.players.filter((p) => p.flight === f);
   const room = (f: number) => inFlight(f).length < FLIGHT_MAX;
   const unplaced = props.players.filter((p) => p.flight == null || p.flight >= props.flights);
@@ -870,18 +863,6 @@ function FlightBoard(props: {
       )}
       {Array.from({ length: props.flights }, (_, f) => {
         const ps = inFlight(f);
-        const ids = ps.map((p) => p.id);
-        const options = pairings(ids);
-        const now = options.findIndex((o) => ids.every((id) => o[id] === props.markers[id]));
-        // who marks whom: "Sascha ↔ Chris" when they mark each other, else "Erik marks Cedric"
-        const lines: string[] = [];
-        for (const id of ids) {
-          const m = props.markers[id];
-          if (!m) continue;
-          if (props.markers[m] === id) {
-            if (ids.indexOf(m) > ids.indexOf(id)) lines.push(`${name(id)} ↔ ${name(m)}`);
-          } else lines.push(tr(`${name(m)} marks ${name(id)}`, `${name(m)} zählt ${name(id)}`));
-        }
         const target = drag?.moved && drag.over === f && byId(drag.id)?.flight !== f && room(f);
         const full = !room(f);
         return (
@@ -920,18 +901,6 @@ function FlightBoard(props: {
               </button>
             )}
             {pick && pick.flight !== f && full && <span className="muted small">{tr('Full – four players.', 'Voll – vier Spieler.')}</span>}
-            {lines.length > 0 && (
-              <div className="tour-markers">
-                <span className="muted small">
-                  {tr('Markers', 'Zähler')}: {lines.join(' · ')}
-                </span>
-                {options.length > 1 && (
-                  <button type="button" className="link-btn small" onClick={() => props.onMarkers(options[(now + 1) % options.length])}>
-                    {tr('Other pairing', 'Andere Paarung')}
-                  </button>
-                )}
-              </div>
-            )}
           </section>
         );
       })}
@@ -951,6 +920,48 @@ function FlightBoard(props: {
         </span>
       )}
     </>
+  );
+}
+
+/** The host's correction of a special prize: whose entry, how far – or the entry taken away. */
+function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid: string, pid: string, m: number | null, fairway: boolean) => void; onClose: () => void }) {
+  const players = flightsOf(props.ev).flatMap((f) => f.players.map((p) => ({ fid: f.id, pid: p.id, name: p.name, key: `${f.id}/${p.id}` })));
+  const [who, setWho] = useState(players[0]?.key ?? '');
+  const [m, setM] = useState('');
+  const [fairway, setFairway] = useState(true);
+  const one = players.find((p) => p.key === who);
+  const value = Number(m.replace(',', '.'));
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet" role="dialog" aria-label={tr('Correct an entry', 'Eintrag korrigieren')} onClick={(e) => e.stopPropagation()}>
+        <strong>{specialName(props.special.kind)}</strong>
+        <div className="select-wrap">
+          <select className="input" aria-label={tr('Player', 'Spieler')} value={who} onChange={(e) => setWho(e.target.value)}>
+            {players.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="special-m">{props.special.kind === 'nearestPin' ? tr('Distance to the hole (m)', 'Abstand zur Fahne (m)') : tr('Length from the tee (m)', 'Weite vom Abschlag (m)')}</label>
+          <input id="special-m" className="input" inputMode="decimal" value={m} onChange={(e) => setM(e.target.value)} />
+        </div>
+        {props.special.kind === 'longDrive' && (
+          <label className="list-item series-pick">
+            <input type="checkbox" checked={fairway} onChange={(e) => setFairway(e.target.checked)} />
+            <span className="grow">{tr('In the fairway', 'Im Fairway')}</span>
+          </label>
+        )}
+        <button type="button" className="btn-primary" disabled={!one || !(value > 0)} onClick={() => one && props.onSave(one.fid, one.pid, value, fairway)}>
+          {tr('Save', 'Speichern')}
+        </button>
+        <button type="button" className="btn-secondary btn-danger" disabled={!one} onClick={() => one && props.onSave(one.fid, one.pid, null, fairway)}>
+          {tr('Take the entry away', 'Eintrag entfernen')}
+        </button>
+      </section>
+    </div>
   );
 }
 
@@ -1163,6 +1174,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
   const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [live, setLive] = useState<RoundEvent | null>(null);
+  const [fix, setFix] = useState<Special | null>(null);
   const today = dayOf(new Date());
   // the tournament with its flights as they are on the server (each flight has its own row) – and on its day and
   // after, every 30 s for the leaderboard
@@ -1295,8 +1307,26 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
             ) : (
               <span className="muted small">{started ? tr('No entry yet.', 'Noch kein Eintrag.') : tr('Entered at the hole on the day.', 'Wird am Turniertag am Loch eingetragen.')}</span>
             )}
+            {host && started && live && (
+              <button type="button" className="link-btn small" onClick={() => setFix(special)}>
+                {tr('Correct an entry', 'Eintrag korrigieren')}
+              </button>
+            )}
           </section>
         ))}
+      {fix && live && (
+        <SpecialFixSheet
+          special={fix}
+          ev={live}
+          onClose={() => setFix(null)}
+          onSave={async (fid, pid, m, fairway) => {
+            const r = await setSpecial(props.code, fid, fix.id, pid, m == null ? null : { m, ...(fix.kind === 'longDrive' ? { fairway } : {}), at: new Date().toISOString(), by: 'host' });
+            if (r) setLive(r);
+            else setMsg(NO_NET());
+            setFix(null);
+          }}
+        />
+      )}
       {flightsOf(ev).map((f, k) => (
         <section key={f.id} className="card tour-flight" aria-label={`Flight ${k + 1}`}>
           <div className="tour-flight-head">
