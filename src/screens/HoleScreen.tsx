@@ -10,6 +10,7 @@ import { autoShot, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
 import { SpecialsAtHole } from '../components/Specials';
+import { RoundBetsSheet } from './Wagers';
 import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
 import { loadCachedCourse, loadGeometry, loadImagery, loadLive, loadRounds, loadOfflineStamp, loadUnit, saveHoleCorrection, saveHoleLine, saveLive, saveOfflineStamp } from '../lib/storage';
@@ -36,7 +37,7 @@ import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
 import { PocketMode, pocketTestOn } from '../components/PocketMode';
 import { RoundInviteSheet } from '../components/ShareRound';
-import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
+import { cachedEvent, differences, exchangeRound, localDay, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
 import { sharingAvailable } from '../lib/sharedgame';
 import { courseStats } from '../lib/history';
@@ -547,6 +548,7 @@ export function HoleScreen(props: {
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
   // the round on several phones (Sascha 29.10.2026): invite the flight, or other flights to a tournament
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [betsOpen, setBetsOpen] = useState(false);
   const [canShareRound, setCanShareRound] = useState(false);
   useEffect(() => {
     if (!round.preview && !props.game) void sharingAvailable().then(setCanShareRound);
@@ -1686,6 +1688,14 @@ export function HoleScreen(props: {
         )}
         {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
         {inviteOpen && <RoundInviteSheet round={round} onShared={(r) => props.onChange(r)} onClose={() => setInviteOpen(false)} />}
+        {betsOpen && (
+          <RoundBetsSheet
+            date={localDay(new Date(round.createdAt))}
+            course={{ id: round.courseId, name: round.courseName }}
+            players={[me, ...round.players.filter((p) => p.id !== me.id)].map((p) => ({ name: p.name, hcp: p.playingHandicap }))}
+            onClose={() => setBetsOpen(false)}
+          />
+        )}
         {drawerOpen && (
           <HoleDrawer
             round={round}
@@ -1711,8 +1721,14 @@ export function HoleScreen(props: {
             extraRows={
               props.game?.onInvite
                 ? [{ label: props.game.shared ? tr(`Players' phones · code ${props.game.shared}`, `Handys der Mitspieler · Code ${props.game.shared}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); props.game!.onInvite!(); } }]
-                : !props.game && !round.preview && (round.shared || canShareRound)
-                  ? [{ label: round.shared ? tr(`${round.shared.tournament ? 'Tournament' : "Players' phones"} · code ${round.shared.code}`, `${round.shared.tournament ? 'Turnier' : 'Handys der Mitspieler'} · Code ${round.shared.code}`) : tr('Invite players · tournament', 'Mitspieler einladen · Turnier'), onClick: () => { setDrawerOpen(false); setInviteOpen(true); } }]
+                : !props.game && !round.preview
+                  ? [
+                      ...(round.shared || canShareRound
+                        ? [{ label: round.shared ? tr(`${round.shared.tournament ? 'Tournament' : "Players' phones"} · code ${round.shared.code}`, `${round.shared.tournament ? 'Turnier' : 'Handys der Mitspieler'} · Code ${round.shared.code}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); setInviteOpen(true); } }]
+                        : []),
+                      // bets for this round (Sascha 01.11.2026) – Games' sheet: the pools it counts for, or a new one
+                      ...(canShareRound || round.shared ? [{ label: tr('Bets for this round', 'Wetten für diese Runde'), onClick: () => { setDrawerOpen(false); setBetsOpen(true); } }] : []),
+                    ]
                   : undefined
             }
             preview={round.preview}

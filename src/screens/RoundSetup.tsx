@@ -18,6 +18,8 @@ import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type RoundFormat } from '../lib/games';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { InvitePanel } from '../components/ShareRound';
+import { RoundBetsSheet } from './Wagers';
+import { localDay } from '../lib/sharedround';
 
 const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
@@ -228,6 +230,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // partners – not only once it has begun"): the code made here, the round starts with it
   const [share, setShare] = useState<Round['shared'] | null>(null);
   const [withMarker, setWithMarker] = useState(false);
+  const [bets, setBets] = useState(false);
   const [canShare, setCanShare] = useState<boolean | null>(null);
   useEffect(() => {
     void sharingAvailable().then(setCanShare);
@@ -358,6 +361,21 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             )}
             <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact />
           </div>
+        )}
+        {/* bets for this round (Sascha 01.11.2026: "start a round and make one or more bets for it at the same time") –
+            the pools it counts for, or a new one with these players (Games' sheet) */}
+        {canShare && (
+          <button type="button" className="btn-secondary" onClick={() => setBets(true)}>
+            {tr('Bets for this round', 'Wetten für diese Runde')}
+          </button>
+        )}
+        {bets && (
+          <RoundBetsSheet
+            date={localDay()}
+            course={{ id: props.course.id, name: props.course.name }}
+            players={[me, ...others].map((p, i) => ({ name: p.name.trim() || (i === 0 ? tr('Me', 'Ich') : tr(`Player ${i + 1}`, `Spieler ${i + 1}`)), hcp: parseIndex(p.index) }))}
+            onClose={() => setBets(false)}
+          />
         )}
         {canShare === false && (
           <span className="muted small">
