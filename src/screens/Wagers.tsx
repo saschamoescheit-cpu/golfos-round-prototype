@@ -1167,7 +1167,7 @@ export function WagerSheet(props: {
           <Chips<string> label={tr('Whose bet', 'Wessen Wette')} value={w.player} onChange={(v) => v && set({ player: v, ...(w.opponent === v ? { opponent: undefined } : {}) })} options={pool.players.map((p) => ({ value: p.id, label: p.name }))} />
         </Field>
         <Field label={tr('What', 'Was')}>
-          <Chips<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => v && setW({ ...w, kind: v, target: startOf(v), ...(shapeOf(v) !== 'count' ? { scope: undefined } : {}), ...(shapeOf(v) === 'duel' ? { payout: 'opponent' as const, parts: w.parts ?? { front: 5, back: 5, total: 10 } } : {}) })} options={KINDS.map((x) => ({ value: x.kind, label: x.name() }))} />
+          <Chips<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => v && setW({ ...w, kind: v, target: startOf(v), ...(shapeOf(v) !== 'count' ? { scope: undefined } : {}), ...(shapeOf(v) === 'duel' ? { payout: 'opponent' as const, parts: w.parts ?? { front: 5, back: 5, total: 10 } } : {}) })} options={KINDS.filter((x) => shapeOf(x.kind) !== 'duel' || x.kind === w.kind).map((x) => ({ value: x.kind, label: x.name() }))} />
         </Field>
         {shapeOf(w.kind) === 'duel' ? (
           <DuelFields pool={pool} w={w} set={set} />
@@ -1356,29 +1356,17 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
   const [picked, setPicked] = useState<Record<string, number>>({}); // library entry → its number
   const [text, setText] = useState(''); // the free bet in words
   const [base, setBase] = useState<Wager>(() => ({ ...newWager(pool, props.player), player: props.player }));
-  const earlier = useMemo(() => earlierGroups(earlierBets()), []);
+  // a "5+5+10" set up before is no template – it is a game in Games now (Sascha 02.11.2026)
+  const earlier = useMemo(() => earlierGroups(earlierBets().filter((b) => shapeOf(b.wager.kind) !== 'duel')), []);
   const [tab, setTab] = useState<'library' | 'earlier'>('library');
   const [taken, setTaken] = useState<Set<string>>(new Set()); // earlier bets ticked: "group|index"
-  // "5+5+10" (Sascha 01.11.2026: "everyone may bet against everyone"): against the players chosen, or every pair of the pool
-  const [duel, setDuel] = useState<{ parts: { front: number; back: number; total: number }; net: boolean; everyone: boolean; against: string[] }>(() => ({ parts: { front: 5, back: 5, total: 10 }, net: false, everyone: false, against: pool.players.filter((p) => p.id !== props.player).map((p) => p.id) }));
   const name = pool.players.find((p) => p.id === player)?.name ?? '';
-  const paired = (a: string, b: string, more: Wager[] = []) => [...pool.wagers, ...more].some((x) => shapeOf(x.kind) === 'duel' && ((x.player === a && x.opponent === b) || (x.player === b && x.opponent === a)));
-  /** The pairs "5+5+10" adds – none twice (A against B is B against A). */
-  const duelPairs = (): [string, string][] => {
-    const ids = pool.players.map((p) => p.id);
-    const all: [string, string][] = duel.everyone ? ids.flatMap((a, i) => ids.slice(i + 1).map((b) => [a, b] as [string, string])) : duel.against.filter((o) => o !== player).map((o) => [player, o] as [string, string]);
-    return all.filter(([a, b]) => !paired(a, b));
-  };
-  const pickPlayer = (id: string) => {
-    setPlayer(id);
-    setDuel({ ...duel, against: pool.players.filter((p) => p.id !== id).map((p) => p.id) });
-  };
+  const pickPlayer = (id: string) => setPlayer(id);
   const toggle = (id: string, start: number) => setPicked((x) => (id in x ? Object.fromEntries(Object.entries(x).filter(([k]) => k !== id)) : { ...x, [id]: start }));
   const lib = LIBRARY.filter((b) => b.id in picked);
   const ticked = earlier.flatMap((g, gi) => g.wagers.filter((_, wi) => taken.has(`${gi}|${wi}`)));
-  const duels = 'nassau' in picked ? duelPairs() : [];
-  const n = lib.filter((b) => shapeOf(b.kind) !== 'duel').length + duels.length + ticked.length;
-  const ok = n > 0 && (!('free' in picked) || !!text.trim()) && (base.payout !== 'opponent' || (!!base.opponent && base.opponent !== player) || lib.every((b) => shapeOf(b.kind) === 'duel'));
+  const n = lib.length + ticked.length;
+  const ok = n > 0 && (!('free' in picked) || !!text.trim()) && (base.payout !== 'opponent' || (!!base.opponent && base.opponent !== player));
   const flip = (keys: string[], on: boolean) => {
     const s = new Set(taken);
     keys.forEach((k) => (on ? s.add(k) : s.delete(k)));
@@ -1386,13 +1374,11 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
   };
   const add = () => {
     const { id: _i, kind: _k, target: _t, ...rest } = base;
-    const nassau = LIBRARY.find((b) => b.kind === 'nassau')!;
     props.onAdd([
-      ...lib.filter((b) => shapeOf(b.kind) !== 'duel').map((b) => {
+      ...lib.map((b) => {
         const w = fromLibrary(b, { ...rest, player }, picked[b.id], newId(), text);
         return shapeOf(w.kind) === 'sum' && props.pool.rounds?.length ? { ...w, rounds: props.pool.rounds.length } : w;
       }),
-      ...duels.map(([a, o]) => ({ ...fromLibrary(nassau, { ...rest, player: a }, 0, newId()), opponent: o, parts: duel.parts, net: duel.net, stake: 0 })),
       ...ticked.map((w) => fromEarlier(w, player, pool, newId())),
     ]);
   };
@@ -1436,41 +1422,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
                         <span className="muted small">{b.hint()}</span>
                       </span>
                     </button>
-                    {on && shapeOf(b.kind) === 'duel' && (
-                      <div className="lib-duel">
-                        <DuelStakes parts={duel.parts} sym={currencySymbol(pool.currency)} onChange={(parts) => setDuel({ ...duel, parts })} />
-                        <Chips<'gross' | 'net'>
-                          label={tr('Score', 'Ergebnis')}
-                          value={duel.net ? 'net' : 'gross'}
-                          onChange={(v) => v && setDuel({ ...duel, net: v === 'net' })}
-                          options={[
-                            { value: 'gross', label: tr('Gross', 'Brutto') },
-                            { value: 'net', label: tr('Net', 'Netto') },
-                          ]}
-                        />
-                        <Switch on={duel.everyone} label={tr('Everyone against everyone in the pool', 'Jeder gegen jeden im Pool')} hint={tr('Every pair once – those already there are left out', 'Jede Paarung einmal – schon vorhandene bleiben weg')} onChange={(on) => setDuel({ ...duel, everyone: on })} />
-                        {!duel.everyone && (
-                          <div className="chip-row wrap chips-field" role="group" aria-label={tr(`${name} against`, `${name} gegen`)}>
-                            {pool.players
-                              .filter((p) => p.id !== player)
-                              .map((p) => {
-                                const sel = duel.against.includes(p.id);
-                                return (
-                                  <button key={p.id} type="button" aria-pressed={sel} disabled={paired(player, p.id)} onClick={() => setDuel({ ...duel, against: sel ? duel.against.filter((x) => x !== p.id) : [...duel.against, p.id] })}>
-                                    {p.name}
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        )}
-                        <span className="muted small">
-                          {duels.length
-                            ? duels.map(([a, o]) => `${pool.players.find((p) => p.id === a)?.name} – ${pool.players.find((p) => p.id === o)?.name}`).join(' · ')
-                            : tr('Every pair is set up already.', 'Alle Paarungen sind schon angelegt.')}
-                        </span>
-                      </div>
-                    )}
-                    {on && b.kind !== 'free' && shapeOf(b.kind) !== 'duel' && <Stepper compact label={b.name()} value={picked[b.id]} min={k.min} onChange={(v) => setPicked({ ...picked, [b.id]: v })} />}
+                    {on && b.kind !== 'free' && <Stepper compact label={b.name()} value={picked[b.id]} min={k.min} onChange={(v) => setPicked({ ...picked, [b.id]: v })} />}
                     {on && b.kind === 'free' && (
                       <input className="input" aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('Longest drive on hole 7', 'Längster Drive an Loch 7')} value={text} onChange={(e) => setText(e.target.value)} />
                     )}
@@ -1514,7 +1466,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
         {lib.length > 0 && (
           <>
             <span className="eyebrow">{tr('For the bets from the library', 'Für die Wetten aus der Bibliothek')}</span>
-            <PayFields pool={pool} w={{ ...base, player, kind: lib.every((b) => b.kind === 'free') ? 'free' : lib.every((b) => shapeOf(b.kind) === 'duel') ? 'nassau' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
+            <PayFields pool={pool} w={{ ...base, player, kind: lib.every((b) => b.kind === 'free') ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
           </>
         )}
         <span className="muted small">{tr('Each bet can be changed afterwards – tap it.', 'Jede Wette lässt sich danach ändern – antippen.')}</span>

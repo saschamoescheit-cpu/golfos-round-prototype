@@ -697,10 +697,11 @@ export const LIBRARY_GROUPS: { group: LibraryBet['group']; name: () => string }[
   { group: 'round', name: () => tr('In one round – at least', 'In einer Runde – mindestens') },
   { group: 'roundMost', name: () => tr('In one round – at most', 'In einer Runde – höchstens') },
   { group: 'score', name: () => tr('Score of a round', 'Ergebnis einer Runde') },
-  { group: 'duel', name: () => tr('Against each other', 'Gegeneinander') },
   { group: 'trip', name: () => tr('On the whole trip', 'Auf der ganzen Reise') },
   { group: 'own', name: () => tr('Your own', 'Eigene') },
 ];
+// "5+5+10" is a game in Games now (Sascha 02.11.2026: "no bet but a game") – not offered here any more; the kind
+// 'nassau' stays readable for the pools that have it.
 export const LIBRARY: LibraryBet[] = [
   { id: 'birdieRun', group: 'runs', kind: 'birdieRun', start: 2, name: () => tr('Birdies in a row', 'Birdies in Folge'), hint: () => tr('Birdie or better on holes one after the other', 'Birdie oder besser auf Löchern hintereinander') },
   { id: 'parRun', group: 'runs', kind: 'parRun', start: 8, name: () => tr('Pars in a row', 'Pars in Folge'), hint: () => tr('Par or better – no bogey in between', 'Par oder besser – kein Bogey dazwischen') },
@@ -718,7 +719,6 @@ export const LIBRARY: LibraryBet[] = [
   { id: 'penalties', group: 'roundMost', kind: 'penalties', start: 0, name: () => tr('Penalty strokes', 'Strafschläge'), hint: () => tr('Water, out of bounds, unplayable', 'Wasser, Aus, unspielbar') },
   { id: 'scoreGross', group: 'score', kind: 'score', start: 10, name: () => tr('Gross to par', 'Brutto zu Par'), hint: () => tr('e.g. +2: at most 2 over par', 'z. B. +2: höchstens 2 über Par') },
   { id: 'scoreNet', group: 'score', kind: 'score', patch: { net: true }, start: 0, name: () => tr('Net to par', 'Netto zu Par'), hint: () => tr('Minus his playing handicap – 0: play to his handicap', 'Minus Spielvorgabe – 0: die Vorgabe spielen') },
-  { id: 'nassau', group: 'duel', kind: 'nassau', patch: { payout: 'opponent', parts: { front: 5, back: 5, total: 10 } }, start: 0, name: () => tr('5+5+10 – front, back, 18', '5+5+10 – vorne, hinten, gesamt'), hint: () => tr('Against each chosen player: the better score on the front nine, the back nine and the 18 wins its stake – a tie wins nothing', 'Gegen jeden gewählten Spieler: der bessere Score vorne, hinten und über 18 gewinnt den Einsatz – Gleichstand gewinnt nichts') },
   { id: 'birdiesTrip', group: 'trip', kind: 'birdies', patch: { scope: 'trip' }, start: 10, name: () => tr('Birdies on the trip', 'Birdies auf der Reise'), hint: () => tr('All rounds added up', 'Alle Runden zusammen') },
   { id: 'parsTrip', group: 'trip', kind: 'pars', patch: { scope: 'trip' }, start: 40, name: () => tr('Pars on the trip', 'Pars auf der Reise'), hint: () => tr('Par or better, all rounds added up', 'Par oder besser, alle Runden zusammen') },
   { id: 'eaglesTrip', group: 'trip', kind: 'eagles', patch: { scope: 'trip' }, start: 1, name: () => tr('Eagle on the trip', 'Eagle auf der Reise'), hint: () => tr('In any round', 'In irgendeiner Runde') },

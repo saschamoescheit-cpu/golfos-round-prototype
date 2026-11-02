@@ -177,22 +177,12 @@ await libC.getByRole('button', { name: '1 Wette für Cedric anlegen' }).click();
 await H.waitForTimeout(1000);
 const cedric = await H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Cedric$/ }) }).locator('.pool-wager .title').allInnerTexts();
 ok(cedric.length === 1 && cedric[0] === '−5 brutto', `Cedric took Chris's −5 as a template: ${cedric.join(' · ')}`);
-// "5+5+10" (Sascha 01.11.2026: "everyone may bet against everyone – 5 $ front, 5 $ back, 10 $ total"): every pair once
+// Sascha 02.11.2026: "5+5+10 is no bet but a game – to choose under Games": not in the library any more
 await H.getByRole('button', { name: 'Wetten für Sascha hinzufügen' }).click();
 const libS = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
-await libS.getByRole('button', { name: /^5\+5\+10/ }).click();
-await libS.getByRole('switch', { name: /Jeder gegen jeden im Pool/ }).click();
-if (process.env.SHOTS) await libS.screenshot({ path: process.env.SHOTS + '/wagers-nassau.png' });
-await libS.getByRole('button', { name: '6 Wetten für Sascha anlegen' }).click();
-await H.waitForTimeout(1000);
-const duels = shared.get(code).game.wagers.filter((w) => w.kind === 'nassau');
-ok(duels.length === 6 && duels.every((w) => w.parts.front === 5 && w.parts.back === 5 && w.parts.total === 10), `5+5+10: six pairs, 5 $ + 5 $ + 10 $ (${duels.length})`);
-await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
-const libC2 = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
-await libC2.getByRole('button', { name: /^5\+5\+10/ }).click();
-ok(await libC2.getByText('Alle Paarungen sind schon angelegt.').isVisible(), '5+5+10: a pair is not set up twice');
-await libC2.getByRole('button', { name: 'Schließen' }).click();
-ok(shared.get(code).game.wagers.length === 13, `the server has the 13 bets (${shared.get(code).game.wagers.length})`);
+ok((await libS.getByRole('button', { name: /5\+5\+10/ }).count()) === 0 && (await libS.getByText('Gegeneinander').count()) === 0, '5+5+10 not in the bets library – a game in Games');
+await libS.getByRole('button', { name: 'Schließen' }).click();
+ok(shared.get(code).game.wagers.length === 7, `the server has the 7 bets (${shared.get(code).game.wagers.length})`);
 
 // invite: the code with a QR code
 await H.getByRole('button', { name: new RegExp(`Mitspieler einladen · Code ${code}`) }).click();
@@ -251,17 +241,9 @@ await H.getByRole('group', { name: 'Entschieden' }).getByRole('button', { name: 
 await H.waitForTimeout(1200);
 const settle = (await H.locator('.card').filter({ hasText: 'Abrechnung' }).innerText()).replace(/\s+/g, ' ');
 // Chris 4 × 20 € from each of three = +240; Erik's free bet +60; Sascha and Cedric −100, Erik −20, Chris +220
-// Chris against Erik in his round: front Chris (−3), back Erik (Chris +1), 18 Chris (−2) → +5 −5 +10 = +10 $ for Chris
-const chrisErik = H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Chris$/ }) }).locator('.pool-wager').filter({ hasText: 'gegen Erik' });
-ok((await chrisErik.locator('.badge').innerText()).trim() === '+10 $' && /zuletzt: vorne ✓ hinten ✗ gesamt ✓/.test(await chrisErik.innerText()), `5+5+10 Chris – Erik: +10 $, front ✓ back ✗ 18 ✓ (${(await chrisErik.innerText()).replace(/\s+/g, ' ')})`);
-// the same duel on Erik's card, from his side
-const erikChris = H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Erik$/ }) }).locator('.pool-wager').filter({ hasText: 'gegen Chris' });
-ok((await erikChris.locator('.badge').innerText()).trim() === '−10 $' && /zuletzt: vorne ✗ hinten ✓ gesamt ✗/.test(await erikChris.innerText()), `5+5+10 on Erik's card: −10 $, front ✗ back ✓ 18 ✗`);
-ok(/Sascha → Chris 100 \$/.test(settle) && /Cedric → Chris 100 \$/.test(settle) && /Erik → Chris 30 \$/.test(settle), `settlement in dollars, with the 5+5+10: ${settle.slice(0, 140)}`);
-ok(/5 von 13 Wetten entschieden/.test(settle), '5 of 13 bets decided (the −5s open, the 5+5+10s run until the trip ends)');
+ok(/Sascha → Chris 100 \$/.test(settle) && /Cedric → Chris 100 \$/.test(settle) && /Erik → Chris 20 \$/.test(settle), `settlement in dollars: ${settle.slice(0, 140)}`);
+ok(/5 von 7 Wetten entschieden/.test(settle), '5 of 7 bets decided (the −5s open)');
 // Sascha 02.11.2026: "every bet from the round analysis in the matrix – below only the free bets, with a heading"
-const duelRow = (await H.locator('.pool-standings .bet-matrix tr').filter({ hasText: '5+5+10' }).first().innerText()).replace(/\s+/g, ' ');
-ok(/\+10 \$ 3 Gegner/.test(duelRow) && /−10 \$ 3 Gegner/.test(duelRow), `matrix: each player's 5+5+10s in one cell – Chris +10 $, Erik −10 $, against 3 each (${duelRow})`);
 const freeBets = H.locator('.pool-standings').getByRole('group', { name: 'Freie Wetten' });
 ok(await H.locator('.pool-standings .matrix-wrap').evaluate((e) => e.scrollWidth <= e.clientWidth + 1), 'four players: the matrix fits the phone – nothing cut off, no scrolling (Sascha 02.11.2026: only with more than four)');
 ok((await freeBets.getByText('Freie Wetten – entscheidet der Host').isVisible()) && (await freeBets.locator('li').count()) === 1 && (await freeBets.innerText()).includes('Längster Drive an Loch 7'), 'below the matrix: only the free bets, under their heading');
@@ -275,7 +257,7 @@ await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
 await H.waitForTimeout(1500);
 ok((await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) === 1, 'storage emptied: the pool comes back from the server');
 const back = await H.evaluate(() => JSON.parse(localStorage.getItem('golfos.pools.v1') ?? '[]'));
-ok(back.length === 1 && back[0].me === shared.get(code).game.players.find((p) => p.name === 'Sascha').id && back[0].pool.wagers.length === 13, 'storage emptied: Sascha found again by his account, all 13 bets there');
+ok(back.length === 1 && back[0].me === shared.get(code).game.players.find((p) => p.name === 'Sascha').id && back[0].pool.wagers.length === 7, 'storage emptied: Sascha found again by his account, all 7 bets there');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-tab-tiles.png' });
 const erikFree = shared.get(code).game.wagers.find((w) => w.kind === 'free').id;
 ok(pushes.some((x) => x.phone === 'Sascha' && x.body.action === 'bet' && x.body.wager === erikFree), "push: Erik's free bet decided as made – Sascha's phone told of it");
@@ -305,7 +287,7 @@ await H.getByRole('button', { name: 'Wette löschen' }).click();
 ok(await H.getByText('„Längster Drive an Loch 7“ löschen – für alle im Pool?').isVisible(), 'delete a bet: asked first');
 await H.getByRole('button', { name: 'Behalten' }).click();
 await H.getByRole('dialog', { name: 'Wette' }).getByRole('button', { name: 'Schließen' }).click();
-ok(shared.get(code).game.wagers.length === 13, '"Behalten": the bet is kept');
+ok(shared.get(code).game.wagers.length === 7, '"Behalten": the bet is kept');
 
 // change the pool: rename it, add a player; Chris (joined, bets) cannot be removed, Dave can
 await H.goto('about:blank');
@@ -320,7 +302,7 @@ ok((await ed.getByRole('button', { name: 'Chris entfernen' }).count()) === 0, 'e
 await ed.getByRole('button', { name: 'Speichern' }).click();
 await H.waitForTimeout(1200);
 const after = shared.get(code).game;
-ok(after.name === 'USA 2026 Florida' && after.players.map((p) => p.name).join(',') === 'Sascha,Chris,Erik,Cedric,Dave' && after.wagers.length === 13, `edit: renamed, Dave added, the bets kept (${after.players.map((p) => p.name).join(', ')})`);
+ok(after.name === 'USA 2026 Florida' && after.players.map((p) => p.name).join(',') === 'Sascha,Chris,Erik,Cedric,Dave' && after.wagers.length === 7, `edit: renamed, Dave added, the bets kept (${after.players.map((p) => p.name).join(', ')})`);
 // delete the pool – for everyone: gone from the menu here, on Chris's phone it says so
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 await H.getByRole('dialog', { name: 'Pool bearbeiten' }).getByRole('button', { name: 'Pool löschen' }).click();
@@ -335,7 +317,7 @@ ok((await G.getByText(/Dieser Wett-Pool wurde gelöscht/).isVisible()) && (await
 await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await H.getByRole('button', { name: 'Wiederherstellen' }).click();
 await H.waitForTimeout(1500);
-ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 13, 'restored from the bin: back for everyone, all 13 bets');
+ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 7, 'restored from the bin: back for everyone, all 7 bets');
 await H.locator('.tile').filter({ hasText: 'laufend' }).click();
 ok((await H.locator('.list-item').filter({ hasText: 'USA 2026 Florida' }).count()) === 1, 'restored: in the list again');
 

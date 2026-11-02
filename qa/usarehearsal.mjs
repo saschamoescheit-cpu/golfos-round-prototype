@@ -6,9 +6,9 @@
 // 4 · the cards signed by player and marker, the leaderboard says so; the marker's counts with their details on the
 //     server (what the bets "with marker" judge from)
 // 5 · the bets: the pool "USA 2026" in $ tied to the tournament's round, joined by its link (only the host changes it);
-//     5+5+10 Sascha–Chris and Erik–Cedric, pars in a row "with marker" – judged by each phone from its signed round,
-//     the push for a bet made, the settlement
-// 18 holes, as over there – the 5+5+10 needs front and back nine.
+//     pars in a row "with marker" – judged by each phone from its signed round, the push for a bet made, the
+//     settlement (5+5+10 is a game in Games, not a bet – Sascha 02.11.2026)
+// 18 holes, as over there.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/usarehearsal.mjs [url]
 import { webkit } from 'playwright';
 import { sharedServer } from './sharesim.mjs';
@@ -41,10 +41,9 @@ const code = await sim.plan(P('Sascha'), {
 ok(/^[A-Z0-9]{6}$/.test(code ?? ''), `the tournament planned: ${code}`);
 // the link sent ahead: the others are in (a planned tournament asks nobody)
 for (const n of ['Chris', 'Erik', 'Cedric']) if (!sim.shared.get(code).members.includes(n)) sim.shared.get(code).members.push(n);
-// ===== BETS (Games): the pool "USA 2026" with 5+5+10 in $ – set up here, before the day =====
+// ===== BETS (Games): the pool "USA 2026" in $ – set up here, before the day =====
 // Sascha sets it up through the app's own code, as Games does (createPool – qa/wagers.mjs drives those screens): tied to
-// the tournament's round, 5+5+10 Sascha–Chris and Erik–Cedric (gross, with marker), 5 pars in a row for Sascha and 4
-// for Chris (20 $ each, paid when made)
+// the tournament's round, 5 pars in a row for Sascha and 4 for Chris (with marker, 20 $ each, paid when made)
 const tourRow = sim.shared.get(code).game;
 const ID = { Sascha: 'pl-s', Chris: 'pl-c', Erik: 'pl-e', Cedric: 'pl-k' };
 // a phone sent to another page: what it was still fetching is cancelled – WebKit calls that "access control checks"
@@ -59,7 +58,6 @@ const poolCode = await P('Sascha').evaluate(
     const ws = await import('/src/lib/wagerstore.ts');
     const { dayOf } = await import('/src/lib/wagers.ts');
     const day = dayOf(new Date());
-    const duel = { stake: 0, payout: 'opponent', attempts: 'round', round: 'r1', counted: true, target: 0, parts: { front: 5, back: 5, total: 10 }, kind: 'nassau', by: 'Sascha' };
     const run = { stake: 20, payout: 'success', attempts: 'any', counted: true, kind: 'parRun', by: 'Sascha' };
     const pool = {
       kind: 'wager-pool',
@@ -72,8 +70,6 @@ const poolCode = await P('Sascha').evaluate(
       players: Object.entries(ID).map(([name, id]) => ({ id, name })),
       rounds: [{ id: 'r1', day, course: course.name, courseId: course.id, tour: code }],
       wagers: [
-        { ...duel, id: 'w-sc', player: ID.Sascha, opponent: ID.Chris },
-        { ...duel, id: 'w-ek', player: ID.Erik, opponent: ID.Cedric },
         { ...run, id: 'w-s5', player: ID.Sascha, target: 5 },
         { ...run, id: 'w-c4', player: ID.Chris, target: 4 },
       ],
@@ -232,22 +228,19 @@ const openPool = async (n) => {
 for (const n of NAMES) await openPool(n);
 await P('Sascha').waitForTimeout(6000);
 const pg = sim.shared.get(poolCode).game.progress;
-const duelOf = (id) => (pg[id]?.duels ?? []).map((d) => [d.front, d.back, d.total].join('/')).join(' ');
-ok(pg['w-sc']?.amount === 15 && duelOf('w-sc') === '0/1/1', `5+5+10 Sascha–Chris (Sascha's phone): front tied, back and 18 Sascha → +15 $ (${pg['w-sc']?.amount} · ${duelOf('w-sc')})`);
-ok(pg['w-ek']?.amount === -15 && duelOf('w-ek') === '0/-1/-1', `5+5+10 Erik–Cedric (Erik's phone): front tied, back and 18 Cedric → Erik −15 $ (${pg['w-ek']?.amount} · ${duelOf('w-ek')})`);
 // hole 1: Chris entered Sascha's putts, Sascha did not – the one hole the marker counted "differently"; his figures count
 ok(pg['w-s5']?.done === true && pg['w-s5'].best === 5 && pg['w-s5'].rounds === 1 && pg['w-s5'].differ === 1, `Sascha: 5 pars in a row (14–18) made – a counted round, the marker's figures (his putts on hole 1: 1 hole "differs") (${JSON.stringify(pg['w-s5'] ?? null).slice(0, 120)})`);
 ok(pg['w-c4']?.done === false && pg['w-c4'].best === 3 && pg['w-c4'].rounds === 1, `Chris (his phone): 3 pars in a row of 4 – open (${pg['w-c4']?.best})`);
 const betPushes = sim.pushes.filter((x) => x.action === 'bet' && x.code === poolCode);
 ok(betPushes.length === 1 && betPushes[0].wager === 'w-s5' && betPushes[0].from === 'Sascha', `push "Wette geschafft": once, for Sascha's run, from his phone (${betPushes.map((x) => `${x.from}:${x.wager}`).join(' ')})`);
-// the settlement on the host's phone: Sascha +15 +3 × 20, Chris −15 −20, Erik −15 −20, Cedric +15 −20
+// the settlement on the host's phone: Sascha +3 × 20, the others −20 each
 await openPool('Sascha');
 const H = P('Sascha');
 await H.locator('.pool-settle').waitFor({ timeout: 10000 });
 const settle = (await H.locator('.pool-settle').innerText()).replace(/\s+/g, ' ');
-ok(/Chris → Sascha 35 \$/.test(settle) && /Erik → Sascha 35 \$/.test(settle) && /Cedric → Sascha 5 \$/.test(settle), `the settlement: "${settle.slice(0, 220)}"`);
+ok(/Chris → Sascha 20 \$/.test(settle) && /Erik → Sascha 20 \$/.test(settle) && /Cedric → Sascha 20 \$/.test(settle), `the settlement: "${settle.slice(0, 220)}"`);
 const standing = (await H.locator('.pool-standings').innerText().catch(() => '')).replace(/\s+/g, ' ');
-ok(/Sascha/.test(standing) && /Chris/.test(standing) && /Erik/.test(standing) && /Cedric/.test(standing), `the standing at the top: "${standing.slice(0, 160)}"`);
+ok(standing.includes('Sascha Chris Pars in Folge 5/5 3/4'), `the standing at the top – those with bets, Sascha made, Chris 3 of 4: "${standing.slice(0, 160)}"`);
 
 const errs = Object.entries(phones).flatMap(([n, x]) => x.errs.map((e) => `${n}: ${e}`));
 ok(errs.length === 0, `no page errors ${errs.slice(0, 3).join(' | ')}`);

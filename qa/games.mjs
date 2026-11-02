@@ -69,6 +69,8 @@ const CASES = [
   ['Hammer', 4],
   ['Rabbit', 3],
   ['Acey Deucey', 4],
+  // Sascha 02.11.2026: "5+5+10 is no bet but a game – to choose under Games"
+  ['5+5+10', 3],
 ];
 // a game needs a course (Sascha 15.10.2026) – Hetzenhof for every game
 const course = async () => {
@@ -109,7 +111,7 @@ let firstCase = true;
 for (const [form, n] of CASES) {
   await p.getByRole('button', { name: 'Neues Spiel' }).click();
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
-  await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${form.replace(/[()]/g, '\\$&')}$`) }) }).click();
+  await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${form.replace(/[()+]/g, '\\$&')}$`) }) }).click();
   for (let k = 2; k <= n; k++) {
     if ((await p.locator('.game-player-row').count()) < k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
     await p.fill(`.game-player-row:nth-of-type(${k}) input >> nth=0`, `S${k}`).catch(async () => {

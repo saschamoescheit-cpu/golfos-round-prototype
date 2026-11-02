@@ -1361,7 +1361,9 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
 
 function TourInviteSheet(props: { code: string; name: string; date: string; onClose: () => void }) {
   const url = roundJoinLink(props.code);
-  const text = tr(`Tournament "${props.name}" on ${longDate(props.date)} in GolfOS – join with code ${props.code}: ${url}`, `Turnier „${props.name}“ am ${longDate(props.date)} in GolfOS – mit Code ${props.code} beitreten: ${url}`);
+  // the text and the link apart, no title – as the invitations of a round and of a pool (Sascha 02.11.2026: WhatsApp
+  // did not take the tournament's: the link inside the text, with a title)
+  const text = tr(`Tournament "${props.name}" on ${longDate(props.date)} in GolfOS – join with code ${props.code}`, `Turnier „${props.name}“ am ${longDate(props.date)} in GolfOS – mit Code ${props.code} beitreten`);
   const [done, setDone] = useState<string | null>(null);
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
@@ -1382,9 +1384,9 @@ function TourInviteSheet(props: { code: string; name: string; date: string; onCl
           className="btn-primary"
           onClick={async () => {
             try {
-              if (navigator.share) await navigator.share({ title: props.name, text });
+              if (navigator.share) await navigator.share({ text, url });
               else {
-                await navigator.clipboard.writeText(text);
+                await navigator.clipboard.writeText(`${text}: ${url}`);
                 setDone(tr('Copied', 'Kopiert'));
               }
             } catch {
