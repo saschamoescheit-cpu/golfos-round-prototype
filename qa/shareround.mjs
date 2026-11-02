@@ -41,7 +41,7 @@ await H.locator('.pick-option strong').getByText('Scramble', { exact: true }).cl
 // the invitation in the setup, with the flight partners – before the round begins (Sascha 29.10.2026)
 const card = H.locator('.invite-card');
 await card.waitFor({ timeout: 10000 });
-ok(await card.isVisible() && /^Mitspieler einladen/.test(await card.innerText()), 'setup: "Mitspieler einladen" with the players, before the start');
+ok(await card.isVisible() && (await H.locator('.eyebrow').getByText('Mitspieler einladen', { exact: true }).isVisible()), 'setup: "Mitspieler einladen" – its own section, before the start');
 await card.getByRole('button', { name: 'Code erzeugen' }).click();
 await H.waitForTimeout(800);
 const code = (await card.locator('.join-code').innerText()).trim();
