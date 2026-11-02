@@ -35,7 +35,6 @@ import { addTestEvent, speechText } from '../lib/testlog';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
-import { PocketMode, pocketTestOn } from '../components/PocketMode';
 import { RoundInviteSheet } from '../components/ShareRound';
 import { cachedEvent, differences, exchangeRound, localDay, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
@@ -217,20 +216,7 @@ export function HoleScreen(props: {
   // a strong hint for the shot detection – and the hole is looked up again.
   const reopened = useRef(true);
   const visibleAt = useRef(Date.now());
-  // pocket mode – a test again (Sascha 28.10.2026): the screen stays awake but black, the GPS keeps recording and the
-  // microphone listening; nothing is drawn meanwhile (battery). Leaving it is like unlocking the phone.
-  const pocketTest = useMemo(() => pocketTestOn() && !round.preview, []);
-  const [pocket, setPocket] = useState(false);
-  const pocketRef = useRef(false);
-  pocketRef.current = pocket;
   const lastFix = useRef<{ pos: LngLat; accuracy: number; t: number; still?: boolean } | null>(null);
-  const leavePocket = () => {
-    setPocket(false);
-    detectArmed.current = true; // the hole the player is on now (and the score of the last one, if missing)
-    reopened.current = true; // the next fresh fix: "phone out at the ball" for the shot detection
-    visibleAt.current = Date.now();
-    if (lastFix.current) showFix({ ...lastFix.current });
-  };
   const [gpsError, setGpsError] = useState<string | null>(null);
   // Targets, pin and the marked ball survive a reload (iOS may drop the page while the phone is in the pocket).
   const [live, setLive] = useState(() => loadLive(round.id));
@@ -274,8 +260,8 @@ export function HoleScreen(props: {
         feedFix({ pos: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy, t: p.timestamp });
         const was = shownFix.current;
         lastFix.current = fix;
-        // in pocket mode nothing is drawn – the fixes only go into the track
-        if (!pocketRef.current && (!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still)) showFix(fix);
+        // only a real change is drawn – every fix goes into the track
+        if ((!was || distanceM(was.pos, fix.pos) >= 1 || Math.abs(was.accuracy - fix.accuracy) >= 3 || fix.t - was.t >= 3000 || was.still !== fix.still)) showFix(fix);
         // Every round keeps the GPS track (while the app is open, raw fixes): automatic shot length, shot detection.
         // only a fresh fix: right after unlocking, iOS may first hand out the old position (where the phone was put away)
         const open = reopened.current && p.coords.accuracy <= 30 && p.timestamp >= visibleAt.current - 2000;
@@ -907,7 +893,6 @@ export function HoleScreen(props: {
     micNow.current = v;
     setMicState(v);
   };
-  const [micRestarts, setMicRestarts] = useState(0);
   const micEverOn = useRef(false); // allowed once on this screen – only then it is opened again by itself (no asking over and over)
   const stopListen = useRef<Listening | null>(null);
   const holeRef = useRef(i);
@@ -946,9 +931,9 @@ export function HoleScreen(props: {
   const starting = useRef(false); // the microphone is being opened (the iPhone may be asking for it)
   const onChangeNow = useRef(props.onChange); // opened by itself at the start: a crack saved with today's handler
   onChangeNow.current = props.onChange;
-  // the test protocol (Sascha 30.10.2026, for the tournament): what the microphone, pocket mode, the app and the read-
+  // the test protocol (Sascha 30.10.2026, for the tournament): what the microphone, the app and the read-
   // aloud really did – kept with the round while a test switch is on, shown on the scorecard
-  const testing = soundTest || pocketTest;
+  const testing = soundTest;
   const logTest = (what: TestEvent['what'], text?: string) => {
     if (!testing) return;
     latestRound.current = addTestEvent(latestRound.current, what, text); // two in one moment: both kept
@@ -963,7 +948,7 @@ export function HoleScreen(props: {
     const onVis = () => {
       if (document.visibilityState === 'hidden') {
         hiddenAt = Date.now();
-        logTestRef.current('app-hidden', pocketRef.current ? tr('in pocket mode', 'im Taschenmodus') : undefined);
+        logTestRef.current('app-hidden');
       } else if (hiddenAt != null) {
         logTestRef.current('app-back', tr(`after ${Math.round((Date.now() - hiddenAt) / 1000)} s`, `nach ${Math.round((Date.now() - hiddenAt) / 1000)} s`));
         hiddenAt = null;
@@ -976,12 +961,6 @@ export function HoleScreen(props: {
       off();
     };
   }, []);
-  const pocketSeen = useRef(false);
-  useEffect(() => {
-    if (!pocket && !pocketSeen.current) return;
-    pocketSeen.current = true;
-    logTestRef.current(pocket ? 'pocket-on' : 'pocket-off');
-  }, [pocket]);
   const toggleListen = async () => {
     if (stopListen.current) {
       stopListen.current();
@@ -993,7 +972,7 @@ export function HoleScreen(props: {
     starting.current = true;
     try {
       stopListen.current = await listen((hit) => {
-        // the newest fix, not the one on the screen: in pocket mode the screen is not redrawn (28.10.2026). The app hears
+        // the newest fix, not the one on the screen (28.10.2026). The app hears
         // with the phone locked and may hand the crack over later: where the track was at the crack's time
         const pl = (isNative() ? fixAt(loadTrack(round.id), hit.t) : null) ?? lastFix.current ?? playerRef.current;
         const time = new Date(hit.t).toLocaleTimeString(getLang() === 'de' ? 'de-DE' : undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -1002,7 +981,7 @@ export function HoleScreen(props: {
           return;
         }
         // walked on to the next hole in the pocket: the hole where the crack was heard
-        const hole = pocketRef.current ? (detectHole(pl.pos, allMaps, holeRef.current) ?? holeRef.current) : holeRef.current;
+        const hole = isNative() ? (detectHole(pl.pos, allMaps, holeRef.current) ?? holeRef.current) : holeRef.current;
         const r = latestRound.current;
         // kept as the latest at once: a protocol line in the same moment must not drop the crack
         latestRound.current = { ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] };
@@ -1090,7 +1069,6 @@ export function HoleScreen(props: {
       stopListen.current?.();
       stopListen.current = null;
       restarted = true;
-      setMicRestarts((n) => n + 1);
       void toggleListenRef.current();
     }, 1000);
     return () => {
@@ -1884,17 +1862,6 @@ export function HoleScreen(props: {
             </button>
             <span className="grow" />
             <div className="map-tools-stack">
-              {/* pocket mode – a test (Sascha 28.10.2026): the screen black instead of locked; on its own above "shot
-                  here", out of the tool bar (29.10.2026) */}
-              {pocketTest && (
-                <button type="button" className="map-btn round tool" aria-label={tr('Pocket mode: screen black, GPS keeps recording (test)', 'Taschenmodus: Bildschirm schwarz, GPS zeichnet weiter auf (Test)')} title={tr('Pocket mode (test)', 'Taschenmodus (Test)')} onClick={() => setPocket(true)}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M5 4h14v8a7 7 0 0 1-14 0z" />
-                    <path d="M5 8h14" />
-                    <circle cx="12" cy="13" r="1.6" fill="currentColor" stroke="none" />
-                  </svg>
-                </button>
-              )}
               {camByHand && (
                 <button type="button" className="map-btn round tool" aria-label={tr('Centre the map again', 'Karte wieder zentrieren')} title={tr('Centre', 'Zentrieren')} onClick={() => setRecenter((n) => n + 1)}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
@@ -2246,7 +2213,6 @@ export function HoleScreen(props: {
           )}
         </div>
         {sheetEl}
-        {pocket && <PocketMode roundId={round.id} onExit={leavePocket} mic={soundTest ? mic : undefined} micRestarts={micRestarts} cracks={(round.soundShots ?? []).length} lastCrack={round.soundShots?.length ? Math.max(...round.soundShots.map((x) => x.t)) : null} />}
       </main>
     );
   }
