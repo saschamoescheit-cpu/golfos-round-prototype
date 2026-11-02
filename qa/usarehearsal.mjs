@@ -228,8 +228,8 @@ const openPool = async (n) => {
 for (const n of NAMES) await openPool(n);
 await P('Sascha').waitForTimeout(6000);
 const pg = sim.shared.get(poolCode).game.progress;
-// hole 1: Chris entered Sascha's putts, Sascha did not – the one hole the marker counted "differently"; his figures count
-ok(pg['w-s5']?.done === true && pg['w-s5'].best === 5 && pg['w-s5'].rounds === 1 && pg['w-s5'].differ === 1, `Sascha: 5 pars in a row (14–18) made – a counted round, the marker's figures (his putts on hole 1: 1 hole "differs") (${JSON.stringify(pg['w-s5'] ?? null).slice(0, 120)})`);
+// the marker's figures count; this pool bets on the score only – by Sascha's rule (02.11.2026) the marker enters no putts
+ok(pg['w-s5']?.done === true && pg['w-s5'].best === 5 && pg['w-s5'].rounds === 1, `Sascha: 5 pars in a row (14–18) made – a counted round, the marker's figures (${JSON.stringify(pg['w-s5'] ?? null).slice(0, 120)})`);
 ok(pg['w-c4']?.done === false && pg['w-c4'].best === 3 && pg['w-c4'].rounds === 1, `Chris (his phone): 3 pars in a row of 4 – open (${pg['w-c4']?.best})`);
 const betPushes = sim.pushes.filter((x) => x.action === 'bet' && x.code === poolCode);
 ok(betPushes.length === 1 && betPushes[0].wager === 'w-s5' && betPushes[0].from === 'Sascha', `push "Wette geschafft": once, for Sascha's run, from his phone (${betPushes.map((x) => `${x.from}:${x.wager}`).join(' ')})`);
