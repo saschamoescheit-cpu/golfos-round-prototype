@@ -5,6 +5,7 @@ import { loadProfile, fullName } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { TopBar } from '../components/ui';
+import { SwipeRow } from '../components/SwipeRow';
 import { Bin } from '../components/Bin';
 import { CATEGORIES, DRILLS, catById, drillById, drillsOf } from '../training/content';
 import { GEAR, gearById, gearForDrill } from '../training/content/gear';
@@ -832,6 +833,8 @@ function LogTab(props: { nav: Nav }) {
           <ul className="list">
             {sessions.map((s) => (
               <li key={s.id}>
+                {/* swiped away as a mail (Sascha 02.11.2026) – into the bin, "Undo" brings it back */}
+                <SwipeRow label={s.name} onDelete={() => deleteSession(s.id)}>
                 <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'done', id: s.id })}>
                   <span className="round-date">
                     <strong>{new Date(s.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
@@ -849,6 +852,7 @@ function LogTab(props: { nav: Nav }) {
                   </span>
                   <span aria-hidden="true">›</span>
                 </button>
+                </SwipeRow>
               </li>
             ))}
           </ul>

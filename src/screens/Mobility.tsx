@@ -4,6 +4,7 @@ import { isLeftHanded } from '../lib/profile';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
 import { TopTools } from '../components/TopTools';
 import { TopBar } from '../components/ui';
+import { SwipeRow } from '../components/SwipeRow';
 import { PausedIcon } from '../components/PausedIcon';
 import { drillById } from '../training/content';
 import { SketchThumb, SketchView } from '../training/Sketch';
@@ -2310,7 +2311,9 @@ function HistoryTab(props: { nav: Nav }) {
         {list.map((s) => {
           const n = Object.keys(s.results).length;
           return (
-            <button key={s.id} type="button" className="list-item" onClick={() => props.nav.push({ name: 'screening', id: s.id })}>
+            // swiped away as a mail (Sascha 02.11.2026) – into the bin, "Undo" brings it back
+            <SwipeRow key={s.id} label={screeningName(s)} onDelete={() => deleteScreening(s.id, `${kindName(s.kind)} · ${dateText(s.createdAt)}`)}>
+            <button type="button" className="list-item" onClick={() => props.nav.push({ name: 'screening', id: s.id })}>
               <span className="grow">
                 <span className="title">
                   {screeningName(s)}
@@ -2323,6 +2326,7 @@ function HistoryTab(props: { nav: Nav }) {
               </span>
               <span aria-hidden="true">›</span>
             </button>
+            </SwipeRow>
           );
         })}
       </div>

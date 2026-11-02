@@ -130,12 +130,11 @@ export function ScoreSheet(props: {
   shared?: Record<string, { keptBy: string | null; takeOver?: () => void; other?: { label: string; cell: SharedCell }; /** signed by player and marker */ locked?: boolean }>;
   /** the players entered in full besides the main player – the one this phone marks (01.11.2026) */
   details?: (playerId: string) => boolean;
-  /** the other players entered with their penalty strokes beside the score (Sascha 02.11.2026: "the marker's and the
-   *  others' only the score with penalty strokes") */
-  penalties?: (playerId: string) => boolean;
   /** what is entered (Sascha 02.11.2026, a game in Games: "only the strokes per hole, or with details"): 'strokes' –
    *  everyone, the main player too, the score with penalty strokes; 'details' (default) – as above */
   entry?: 'strokes' | 'details';
+  /** every player entered in full – a round from a pool whose bets need the details of all (a GIR bet, 02.11.2026) */
+  everyone?: boolean;
   /** the own card kept by a scorer: its own analysis beside it – putts, sand, tee shot – on this phone only (02.11.2026) */
   analysis?: (playerId: string) => boolean;
   /** Texas scramble (Sascha's concept 30.10.2026), per team: whose drive – the counts so far and who gets tight */
@@ -156,7 +155,7 @@ export function ScoreSheet(props: {
         const e = props.entries[p.id];
         // everything – putts, sand, penalties, tee shot – for the main player and the player this phone marks (Sascha
         // 01.11.2026: "for the player he marks just the same"); placing the putts only for the main player
-        const full = !props.team && props.entry !== 'strokes' && (p.isMe || !!props.details?.(p.id));
+        const full = !props.team && props.entry !== 'strokes' && (p.isMe || !!props.everyone || !!props.details?.(p.id));
         const toPar = props.toPar[p.id];
         const strokes = e.pickedUp ? null : e.strokes;
         const facts = holeFacts(e, h.par);
@@ -313,10 +312,8 @@ export function ScoreSheet(props: {
                 </div>
               </>
             )}
-            {/* score and penalty strokes only – the others when no bet counts the round (02.11.2026) */}
-            {!full && !props.team && !e.pickedUp && (props.entry === 'strokes' || props.penalties?.(p.id)) && (
-              <Stepper label={tr('Penalty strokes', 'Strafschläge')} value={e.penalties ? e.penalties : null} start={1} max={9} onChange={(v) => set({ penalties: v ?? 0 })} />
-            )}
+            {/* not entered in full: the strokes incl. penalty strokes, nothing besides (Sascha 02.11.2026: "the penalty
+                strokes apart are not needed") */}
           </div>
         );
       })}

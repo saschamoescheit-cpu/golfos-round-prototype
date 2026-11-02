@@ -46,7 +46,7 @@ await plus(H, 'Cedric', 2);
 // only when a bet is coupled); his own card in full
 const rows = async (name) => (await block(H, name).locator('.stepper-label').allInnerTexts()).map((x) => x.trim());
 const cRows = await rows('Cedric');
-ok(cRows.some((r) => r.startsWith('Strafschläge')) && !cRows.some((r) => /^(Putts|Sand Shots)/.test(r)), `Cedric without a bet: score and penalty strokes (${cRows.map((r) => r.split(String.fromCharCode(10))[0]).join(', ')})`);
+ok(!cRows.some((r) => /^(Putts|Sand Shots|Strafschläge)/.test(r)), `Cedric without a bet: the strokes incl. penalty strokes only (${cRows.map((r) => r.split(String.fromCharCode(10))[0]).join(', ')})`);
 const sRows = await rows('Sascha');
 ok(['Putts', 'Sand Shots', 'Strafschläge'].every((x) => sRows.some((r) => r.startsWith(x))), 'his own card in full');
 await H.getByRole('button', { name: 'Zurück zur Karte' }).click();

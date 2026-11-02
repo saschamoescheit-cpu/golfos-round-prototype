@@ -3,7 +3,7 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned, markerOf, type Cell } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { dayOf, isPool, judge, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { dayOf, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
 import { roundsInPlay } from './poolround';
 
@@ -158,7 +158,8 @@ async function headers(): Promise<Record<string, string> | null> {
 }
 
 /** A new pool on the server; this phone's owner is `me`. The entry, or null (no connection). */
-export async function createPool(pool: WagerPool, me: string): Promise<PoolEntry | null> {
+export async function createPool(made: WagerPool, me: string): Promise<PoolEntry | null> {
+  const pool = withCounted(made);
   const h = await headers();
   if (!h) return null;
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -193,7 +194,8 @@ export async function changePool(code: string, change: (p: WagerPool) => WagerPo
       const rows = (await r.json()) as { game: unknown; updated_at?: string | null; owner?: string }[];
       if (!rows.length || !isPool(rows[0].game)) return null;
       const owner = rows[0].owner;
-      const next = change(rows[0].game);
+      const changed = change(rows[0].game);
+      const next = changed && withCounted(changed);
       if (!next) {
         keep(code, rows[0].game, undefined, owner);
         return rows[0].game;

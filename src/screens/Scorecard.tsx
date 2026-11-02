@@ -286,7 +286,6 @@ export function Scorecard(props: {
             team={isTeamRound(round)}
             pickUp={pickUpAllowed(round)}
             details={(pid) => betLinked(round) && (round.shared?.roles?.[pid] === 'mark' || round.shared?.roles?.[pid] === 'free')}
-            penalties={(pid) => !round.players.find((p) => p.id === pid)?.isMe && round.shared?.roles?.[pid] !== 'view'}
             onChange={(pid, patch) =>
               props.onChange({ ...round, entries: { ...round.entries, [pid]: round.entries[pid].map((e, k) => (k === editHole ? { ...e, ...patch } : e)) } })
             }
