@@ -12,14 +12,14 @@ import { loadProfile, shownName } from '../lib/profile';
 // we need the invitation of the flight's players as in Rounds"): the same texts, a link looks the game up at once, a
 // round's code goes on to Rounds, and the exchange loses nothing (lib/sharedgame.ts).
 
-export function Qr(props: { text: string }) {
+export function Qr(props: { text: string; label?: string }) {
   const svg = useMemo(() => {
     const q = qrcode(0, 'M');
     q.addData(props.text);
     q.make();
     return q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
   }, [props.text]);
-  return <div className="qr-box" aria-label={tr('QR code to join', 'QR-Code zum Beitreten')} dangerouslySetInnerHTML={{ __html: svg }} />;
+  return <div className="qr-box" aria-label={props.label ?? tr('QR code to join', 'QR-Code zum Beitreten')} dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
 /**
