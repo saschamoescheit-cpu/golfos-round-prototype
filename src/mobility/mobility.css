@@ -97,6 +97,7 @@
 /* a hint, not a warning (measuring, not grading): strong but neutral, never red */
 .mob-level.likely { background: var(--text); color: var(--bg); }
 .mob-level.possible { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line-strong); }
+.mob-level.low { background: transparent; color: var(--text-2); border: 1px solid var(--line); }
 
 .mob-empty { align-items: stretch; text-align: center; }
 .mob-drill-head { display: flex; align-items: center; gap: 10px; }
