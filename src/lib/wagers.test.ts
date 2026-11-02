@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, balances, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { LIBRARY, balances, needsDetails, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -304,5 +304,45 @@ describe('who pays whom', () => {
     expect(stateOf(p.wagers[0], p, '2026-11-11')).toBe('missed');
     const q = full([bet({ id: 'a', kind: 'free', text: 'Longest drive' })], { a: { best: null, done: false, rounds: 0, at: '', manual: { done: true, by: 'erik' } } });
     expect(stateOf(q.wagers[0], q, '2026-11-08')).toBe('done');
+  });
+});
+
+// Sascha 02.11.2026: "even with marker a result must come out at the end, also when the marker has not signed"
+describe('a result before the card is signed', () => {
+  it('made in a round not signed yet: provisional – shown, and counted in the settlement only when asked', () => {
+    const s = par();
+    s[3] = 4;
+    s[4] = 3;
+    s[5] = 3; // three birdies in a row
+    const w = bet({ kind: 'birdieRun', target: 3, counted: true });
+    const p = judge(w, pool, [round(s, { counted: false })]);
+    expect(p.done).toBe(false);
+    expect(p.pending).toBe(3);
+    expect(provisional(w, p)).toBe(true);
+    const pl: WagerPool = { kind: 'wager-pool', id: 'p', name: 'P', from: pool.from, to: pool.to, createdAt: '', players: [{ id: 'chris', name: 'Chris' }, { id: 'erik', name: 'Erik' }], wagers: [w], progress: { [w.id]: p } };
+    expect(balances(pl, '2026-11-05')).toEqual({ chris: 0, erik: 0 });
+    expect(balances(pl, '2026-11-05', true)).toEqual({ chris: 20, erik: -20 });
+  });
+  it('not made, or signed: nothing provisional', () => {
+    const w = bet({ kind: 'birdieRun', target: 3, counted: true });
+    expect(provisional(w, judge(w, pool, [round(par(), { counted: false })]))).toBe(false);
+    const s = par();
+    s[3] = 4;
+    s[4] = 3;
+    s[5] = 3;
+    expect(provisional(w, judge(w, pool, [round(s)]))).toBe(false);
+  });
+});
+
+// Sascha 02.11.2026: "for bets only on the score the strokes incl. penalty strokes; GIR, 3-putts, up and down the details"
+describe('which bets need the details of a hole', () => {
+  it('greens, fairways, putts, one-putts, three-putts, up & downs – not birdies, pars, runs, the score, penalty strokes', () => {
+    expect(['greens', 'fairways', 'putts', 'oneputts', 'threeputts', 'updowns'].every((k) => needsDetails({ kind: k as Wager['kind'] }))).toBe(true);
+    expect(['birdies', 'pars', 'birdieRun', 'parRun', 'score', 'scoreSum', 'stableford', 'penalties', 'doubles', 'free'].some((k) => needsDetails({ kind: k as Wager['kind'] }))).toBe(false);
+  });
+  it('a pool needs them for a round when such a bet counts that round', () => {
+    const p = { from: '2026-11-05', to: '2026-11-06', wagers: [bet({ kind: 'birdies' }), bet({ id: 'g', kind: 'greens', attempts: 'day', day: '2026-11-06' })] };
+    expect(poolNeedsDetails(p, { day: '2026-11-05', course: 'Bethpage' })).toBe(false);
+    expect(poolNeedsDetails(p, { day: '2026-11-06', course: 'Bethpage' })).toBe(true);
   });
 });

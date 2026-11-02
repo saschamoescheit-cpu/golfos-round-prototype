@@ -321,6 +321,30 @@ ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 7
 await H.locator('.tile').filter({ hasText: 'laufend' }).click();
 ok((await H.locator('.list-item').filter({ hasText: 'USA 2026 Florida' }).count()) === 1, 'restored: in the list again');
 
+// one for all (Sascha 02.11.2026: "a person, e.g. Chris, enters the score for all players"): a round with a scorer
+// counts "with marker" – the scorer's figures, as he entered them, signed by player and scorer
+const scored = await H.evaluate(async ({ round, event }) => {
+  const ws = await import('/src/lib/wagerstore.ts');
+  const ev = { ...event, flights: { f1: { ...event.flights.f1, scorer: 'p2', markers: { me: 'p2', p2: 'me' }, marks: {}, scores: { me: event.flights.f1.marks.me } } } };
+  localStorage.setItem('golfos.event.v1.EVT234', JSON.stringify(ev));
+  const r = { ...round, shared: { code: 'EVT234', flight: 'f1', base: {} } };
+  const cells = ws.markerCount(r, 'me');
+  return { counted: ws.countedRound(r, 'me'), cells: cells?.length ?? 0, putts4: cells?.[3]?.d?.pu ?? null };
+}, { round: chrisRound, event });
+ok(scored.counted && scored.cells === 18 && scored.putts4 === 2, `a round with a scorer counts "with marker" – the scorer's count (${JSON.stringify(scored)})`);
+
+// one phone for all (Sascha 02.11.2026: "we played a round on one phone – nothing was judged"): the host's phone
+// judges Cedric's bet too, from the round on it with Cedric's whole card – not signed: provisional
+const cedricBet = shared.get(code).game.wagers.find((w) => w.player === shared.get(code).game.players.find((p) => p.name === 'Cedric').id);
+await H.evaluate(({ round }) => {
+  const r = { ...round, id: 'r-one-phone', shared: undefined, players: [{ id: 'me', name: 'Sascha', playingHandicap: 4, isMe: true }, { id: 'c', name: 'Cedric', playingHandicap: 8, isMe: false }], entries: { me: round.entries.p2, c: round.entries.me } };
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify([r]));
+}, { round: chrisRound });
+await H.locator('.list-item').filter({ hasText: 'USA 2026 Florida' }).click();
+await H.waitForTimeout(4000);
+const cp = shared.get(code).game.progress[cedricBet.id];
+ok(cp?.pending === -2 && cp.done === false, `one phone for all: the host's phone judged Cedric's −5 from his card – −2, provisional (${JSON.stringify(cp)})`);
+
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

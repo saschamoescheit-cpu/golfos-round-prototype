@@ -1139,6 +1139,7 @@ button.tile:disabled { opacity: 1; }
 .tile-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .tour-flight { display: flex; flex-direction: column; gap: 8px; }
 .tour-flight-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-scorer { color: var(--brand-text); font-weight: 600; }
 .tour-flight-head h2 { margin: 0; font-size: 18px; display: flex; align-items: baseline; gap: 10px; }
 .tour-tee { font: 700 18px var(--display); font-variant-numeric: tabular-nums; }
 .tour-flight-player { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -1189,6 +1190,7 @@ button.tile:disabled { opacity: 1; }
 .bet-cell { display: inline-block; min-width: 46px; padding: 3px 6px; border-radius: 8px; background: var(--surface-2); font: 700 14px var(--body); }
 .bet-cell + .bet-cell { margin-left: 4px; }
 .bet-cell.done { background: var(--brand); color: #fff; }
+.bet-cell.provisional { box-shadow: inset 0 0 0 2px var(--brand); }
 .bet-cell.missed { color: var(--muted); text-decoration: line-through; }
 .bet-cell small { display: block; font: 600 11px var(--body); color: var(--muted); text-decoration: none; }
 .bet-cell.done small { color: inherit; opacity: 0.85; }

@@ -7,7 +7,7 @@ import { currencySymbol, money, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
-import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, inPool, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, inPool, provisional, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
 import { SignedIcon } from '../components/SignedIcon';
@@ -439,9 +439,11 @@ function DuelBadge(props: { amount: number; played: boolean; sym: string }) {
   return <span className={`badge ${v > 0 ? 'ok' : v < 0 ? 'bad' : 'warn'}`}>{`${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(v, props.sym)}`}</span>;
 }
 
-function StateBadge(props: { state: WagerState }) {
+function StateBadge(props: { state: WagerState; provisional?: boolean }) {
   if (props.state === 'done') return <span className="badge ok">{tr('Made', 'Geschafft')}</span>;
   if (props.state === 'missed') return <span className="badge bad">{tr('Missed', 'Verloren')}</span>;
+  // made in a round not signed yet (Sascha 02.11.2026: "a result even when the marker has not signed")
+  if (props.provisional) return <span className="badge warn">{tr('Made · provisional', 'Geschafft · vorläufig')}</span>;
   return <span className="badge warn">{tr('Open', 'Offen')}</span>;
 }
 
@@ -520,9 +522,10 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
   };
   // bets made that this phone has not announced yet (Sascha: "a message to all when one made it")
   const fresh = pool.wagers.filter((w) => stateOf(w, pool, today) === 'done' && !seen.has(w.id));
-  const bal = balances(pool, today);
+  const bal = balances(pool, today, true);
   const pays = transfers(bal);
   const settled = pool.wagers.filter((w) => stateOf(w, pool, today) !== 'open').length;
+  const pending = pool.wagers.filter((w) => stateOf(w, pool, today) === 'open' && provisional(w, pool.progress[w.id])).length;
   return (
     <main className="screen pool-screen">
       <TopBar
@@ -606,7 +609,7 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
                     <span className="muted small">{wagerRules(shown, pool)}</span>
                     {w.kind !== 'free' && <span className="small">{progressText(shown, prog, pool.currency)}</span>}
                   </span>
-                  {shapeOf(w.kind) === 'duel' ? <DuelBadge amount={prog?.amount ?? 0} played={!!prog?.duels?.length} sym={currencySymbol(pool.currency)} /> : <StateBadge state={stateOf(w, pool, today)} />}
+                  {shapeOf(w.kind) === 'duel' ? <DuelBadge amount={prog?.amount ?? 0} played={!!prog?.duels?.length} sym={currencySymbol(pool.currency)} /> : <StateBadge state={stateOf(w, pool, today)} provisional={provisional(shown, prog)} />}
                 </>
               );
               // the host taps a bet to change, decide or delete it; the others only see it
@@ -633,7 +636,7 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
           {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
         </button>
       )}
-      <Settlement pool={pool} bal={bal} pays={pays} settled={settled} me={entry.me} name={name} />
+      <Settlement pool={pool} bal={bal} pays={pays} settled={settled} pending={pending} me={entry.me} name={name} />
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}
@@ -737,12 +740,14 @@ export function PoolScreen(props: { code: string; onBack: () => void }) {
   );
 }
 
-/** What a bet's standing shows in a cell: the best against the target – "2/3", "+3/−5", "7/10". */
+/** What a bet's standing shows in a cell: the best against the target – "2/3", "+3/−5", "7/10"; a round not signed
+ *  yet with a better figure: that one (shown as provisional). */
 function cellOf(w: Wager, p: Progress | undefined): string {
   const shape = shapeOf(w.kind);
   const par = (n: number) => (n === 0 ? 'E' : n > 0 ? `+${n}` : `−${-n}`);
   const v = (n: number) => (shape === 'score' || shape === 'sum' ? par(n) : String(n));
-  return `${p?.best == null ? '–' : v(p.best)}/${v(w.target)}`;
+  const best = p?.pending ?? p?.best;
+  return `${best == null ? '–' : v(best)}/${v(w.target)}`;
 }
 /** The row a bet goes into: the same block, the same counting (birdies on 18, the whole trip, gross, 6 rounds …). */
 const rowKey = (w: Wager) => [w.kind, w.scope ?? '', w.holes ?? 18, w.net ? 'net' : '', w.orBetter === false ? 'exact' : '', w.rounds ?? '', w.parts ? `${w.parts.front}+${w.parts.back}+${w.parts.total}` : ''].join('|');
@@ -785,8 +790,9 @@ function Standings(props: { pool: WagerPool; today: string; me: string }) {
   };
   const cell = ({ w }: { w: Wager; against: boolean }) => {
     return (
-      <span key={w.id} className={`bet-cell ${state(w)}`} title={wagerLabel(w)}>
+      <span key={w.id} className={`bet-cell ${state(w)}${provisional(w, pool.progress[w.id]) ? ' provisional' : ''}`} title={wagerLabel(w)}>
         {cellOf(w, pool.progress[w.id])}
+        {pool.progress[w.id]?.pending != null && <small>{tr('provisional', 'vorläufig')}</small>}
         {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
       </span>
     );
@@ -861,7 +867,7 @@ function Standings(props: { pool: WagerPool; today: string; me: string }) {
 
 /** The settlement of a pool (Sascha 01.11.2026: "the settlement must look quite different – with zero euros too"): how
  *  far the bets are decided, where each player stands – from the start, at 0 – and who pays whom. */
-function Settlement(props: { pool: WagerPool; bal: Record<string, number>; pays: { from: string; to: string; amount: number }[]; settled: number; me: string; name: (id?: string) => string }) {
+function Settlement(props: { pool: WagerPool; bal: Record<string, number>; pays: { from: string; to: string; amount: number }[]; settled: number; pending: number; me: string; name: (id?: string) => string }) {
   const { pool, bal } = props;
   const sym = currencySymbol(pool.currency);
   const n = pool.wagers.length;
@@ -872,7 +878,10 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; pays:
     <section className="card pool-settle" aria-label={tr('Settlement', 'Abrechnung')}>
       <div className="pool-settle-head">
         <h2>{tr('Settlement', 'Abrechnung')}</h2>
-        <span className="muted small">{tr(`${props.settled} of ${n} bets decided`, `${props.settled} von ${n} Wetten entschieden`)}</span>
+        <span className="muted small">
+          {tr(`${props.settled} of ${n} bets decided`, `${props.settled} von ${n} Wetten entschieden`)}
+          {props.pending > 0 && tr(` · ${props.pending} provisional`, ` · ${props.pending} vorläufig`)}
+        </span>
       </div>
       <div className="pool-progress" role="progressbar" aria-label={tr('Bets decided', 'Wetten entschieden')} aria-valuemin={0} aria-valuemax={n} aria-valuenow={props.settled}>
         <i style={{ width: `${n ? (props.settled / n) * 100 : 0}%` }} />
