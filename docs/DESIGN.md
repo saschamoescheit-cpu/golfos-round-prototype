@@ -30,6 +30,8 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
 | 2–4 short values without explanation, chosen often while playing | `chip-set` chips are fine | Tee filter, quick stakes |
 | Several at once from a short known set | multi-select chips (as the iOS alarm's days) | Wochentage Mo–So, "Was dir wichtig ist" |
 | A rating with one tap | the scale itself | Gefühl 1–5 |
+| A filter over a list (shows more or fewer rows, nothing is set) | filter chips above the list | Niveau, Ort, Sortieren, Zeitraum der Statistik |
+| Who you are / pick a name from the players | name chips | "wer bist du?" beim Beitreten |
 | A row whose choice needs its own picker (typed amount, a chain of steps) | `SheetRow` – the picker in the sheet, "Fertig" | Einsatz je Skin, Höchsteinsatz, Erlaubte Pressen |
 | Several switches belonging together | `SheetRow` summarising them, `ToggleList` + `ToggleRow inList` inside | Hausregeln |
 
