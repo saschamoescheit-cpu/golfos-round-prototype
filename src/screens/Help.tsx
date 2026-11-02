@@ -47,7 +47,10 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
   const byId = (id: string) => (id === HELP_TOUR.id ? HELP_TOUR : HELP_VIDEOS.find((v) => v.id === id) ?? HELP_TOUR);
   // opened in Games, its own video and questions come first (night 25./26.10.2026 – before them eight Rounds videos)
   const inGames = sessionModule() === 'games';
-  const videos = [HELP_TOUR, ...HELP_VIDEOS].sort((a, b) => (inGames ? Number(b.id === 'games') - Number(a.id === 'games') : 0));
+  // in Games its own videos first: playing games, bets, tournaments (01.11.2026)
+  const own = (id: string) => (inGames ? ['games', 'wagers', 'tours'].indexOf(id) : -1);
+  const rank = (id: string) => (own(id) < 0 ? 99 : own(id));
+  const videos = [HELP_TOUR, ...HELP_VIDEOS].sort((a, b) => rank(a.id) - rank(b.id));
   const topics = [...FAQ].sort((a, b) => (inGames ? Number(b.id === 'games') - Number(a.id === 'games') : 0));
   return (
     <main className="screen help">

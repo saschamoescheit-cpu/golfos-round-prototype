@@ -829,7 +829,9 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
       </main>
     );
   }
-  const board = live && started ? eventStandings(live) : null;
+  // the leaderboard once a score is in – before, its rows would be dashes only
+  const standings = live && started ? eventStandings(live) : null;
+  const board = standings?.rows.some((r) => r.thru > 0) ? standings : null;
   return (
     <main className="screen tour-screen">
       <TopBar

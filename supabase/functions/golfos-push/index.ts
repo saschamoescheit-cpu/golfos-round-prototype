@@ -7,6 +7,7 @@
 // - games on several phones: a fellow player joined your game; a game ended
 // - bets in Games: a player of the pool made a bet – to everyone in the pool (Sascha 01.11.2026)
 // - a thunderstorm while a round is played: the forecast for the course, checked every 15 minutes
+// - a tournament planned in Games: the tee time of your flight, about 45 minutes before (Sascha 01.11.2026)
 // - the iOS app's phones get the same as Apple's notifications (APNs, see "Apple's notifications" below – 01.11.2026)
 //
 // Web Push as the standards say – the message encrypted for the phone (RFC 8291, aes128gcm), the sender signed
@@ -164,6 +165,7 @@ export interface BetWager {
   scope?: string;
   text?: string;
   parts?: { front: number; back: number; total: number };
+  rounds?: number;
 }
 const COUNTS = ['birdies', 'pars', 'greens', 'fairways', 'oneputts', 'updowns', 'eagles', 'holeInOne'];
 export function betLabel(w: BetWager, lang?: string | null): string {
@@ -203,6 +205,8 @@ export function betLabel(w: BetWager, lang?: string | null): string {
       return n === 0 ? T(lang, `No penalty stroke ${on}`, `Kein Strafschlag ${on}`) : T(lang, `At most ${n} penalty strokes ${on}`, `Höchstens ${n} Strafschläge ${on}`);
     case 'score':
       return `${par} ${w.net ? T(lang, 'net', 'netto') : T(lang, 'gross', 'brutto')}${w.holes === 9 ? T(lang, ' on 9', ' auf 9') : ''}`;
+    case 'scoreSum':
+      return `${par} ${w.net ? T(lang, 'net', 'netto') : T(lang, 'gross', 'brutto')} ${T(lang, `in ${w.rounds ?? 6} rounds`, `in ${w.rounds ?? 6} Runden`)}`;
     case 'nassau': {
       const p = w.parts ?? { front: 0, back: 0, total: 0 };
       return `${p.front}+${p.back}+${p.total} ${w.net ? T(lang, 'net', 'netto') : T(lang, 'gross', 'brutto')}`;
@@ -318,6 +322,43 @@ export function physioNote(d: PhysioData, lang?: string | null): Note {
     body: T(lang, `Your physio routine "${name}" is due today${min ? ` – about ${min} min` : ''}.`, `Heute ist deine Physio-Routine „${name}“ dran${min ? ` – etwa ${min} Min.` : '.'}`),
     tag: 'golfos-agility',
     url: './#agility',
+  };
+}
+
+/** A tournament planned in Games and its flights' rows, as the table has them. */
+export interface TeeFlight {
+  id: string;
+  name?: string;
+  teeTime?: string;
+  players?: { id: string; name: string }[];
+  /** the phones playing in the flight – with the account that took it (Rounds, "which player am I") */
+  phones?: Record<string, { player: string; uid?: string }>;
+}
+/** The tee time for an account: its own flight's (a phone of it took a place there), else the first of the day. */
+export function teeTimeFor(user: string, flights: TeeFlight[]): { time: string; own: boolean; flight?: TeeFlight } | null {
+  const timed = flights.filter((f) => f.players?.length && /^\d{1,2}:\d{2}$/.test(f.teeTime ?? '')).sort((a, b) => a.teeTime!.padStart(5, '0').localeCompare(b.teeTime!.padStart(5, '0')));
+  if (!timed.length) return null;
+  const own = timed.find((f) => Object.values(f.phones ?? {}).some((p) => p.uid === user));
+  return own ? { time: own.teeTime!, own: true, flight: own } : { time: timed[0].teeTime!, own: false };
+}
+/** Remind now: the tournament's day on the phone's clock, more than 30 and at most 60 minutes before the tee time –
+ *  the timer runs every 15 minutes, so it comes about 45 minutes ahead. The minutes left, or null. */
+export function teeDue(date: string, time: string, tz: string | null | undefined, now: Date): number | null {
+  const d = localDay(tz, now);
+  if (d.date !== date) return null;
+  const [h, m] = time.split(':').map(Number);
+  const left = h * 60 + m - d.minute;
+  return left > 30 && left <= 60 ? left : null;
+}
+export function teeNote(o: { name: string; course?: string; time: string; left: number; own: boolean; flight?: string }, lang?: string | null): Note {
+  const min = Math.max(5, Math.round(o.left / 5) * 5);
+  return {
+    title: T(lang, `${o.name} · tee time ${o.time}`, `${o.name} · Startzeit ${o.time}`),
+    body: o.own
+      ? T(lang, `Your flight${o.flight ? ` (${o.flight})` : ''} tees off in about ${min} min${o.course ? ` · ${o.course}` : ''}.`, `Dein Flight${o.flight ? ` (${o.flight})` : ''} startet in etwa ${min} Min.${o.course ? ` · ${o.course}` : ''}`)
+      : T(lang, `The first flight tees off in about ${min} min${o.course ? ` · ${o.course}` : ''} – take part in Rounds.`, `Der erste Flight startet in etwa ${min} Min.${o.course ? ` · ${o.course}` : ''} – in Rounds teilnehmen.`),
+    tag: `golfos-tee-${o.name}`.slice(0, 64),
+    url: './#rounds',
   };
 }
 
@@ -464,7 +505,7 @@ async function caller(req: Request): Promise<string | null> {
 const SUB_FIELDS = 'endpoint,user_id,p256dh,auth,kinds,tz,lang,round_at';
 const subsOf = (users: string[]) => db().get<Sub[]>(`golfos_push?select=${SUB_FIELDS}&user_id=in.(${users.join(',')})`);
 
-async function tick(now = new Date()): Promise<{ rounds: number; storms: number; physio: number }> {
+async function tick(now = new Date()): Promise<{ rounds: number; storms: number; physio: number; tees: number }> {
   const d = db();
   const subs = await d.get<Sub[]>(`golfos_push?select=${SUB_FIELDS}`);
   let rounds = 0;
@@ -523,7 +564,32 @@ async function tick(now = new Date()): Promise<{ rounds: number; storms: number;
       physio++;
     }
   }
-  return { rounds, storms, physio };
+  // the tee time of a tournament planned in Games: about 45 minutes before, once per account and tournament
+  let tees = 0;
+  const days = [-1, 0, 1].map((k) => new Date(now.getTime() + k * 864e5).toISOString().slice(0, 10));
+  const planned = await d.get<{ code: string; owner: string; members: string[]; game: { name?: string; date?: string; deletedAt?: string | null; course?: { name?: string } } }[]>(
+    `golfos_shared_games?select=code,owner,members,game&event_code=is.null&game->>planned=eq.true&game->>date=in.(${days.join(',')})`,
+  );
+  for (const ev of planned) {
+    if (ev.game.deletedAt || !ev.game.date) continue;
+    const rows = await d.get<{ game: { flight?: TeeFlight } }[]>(`golfos_shared_games?select=game&event_code=eq.${encodeURIComponent(ev.code)}`);
+    const flights = rows.map((r) => r.game?.flight).filter((x): x is TeeFlight => !!x);
+    const byUser = new Map<string, Sub[]>();
+    for (const s of await subsOf([...new Set([ev.owner, ...(ev.members ?? [])])])) if (s.kinds?.games !== false) byUser.set(s.user_id, [...(byUser.get(s.user_id) ?? []), s]);
+    for (const [user, mine] of byUser) {
+      const tee = teeTimeFor(user, flights);
+      const left = tee && teeDue(ev.game.date, tee.time, mine[0].tz, now);
+      if (!tee || left == null) continue;
+      const key = `tee:${ev.code}`;
+      const done = await d.get<unknown[]>(`golfos_push_sent?select=key&user_id=eq.${user}&key=eq.${encodeURIComponent(key)}`);
+      if (done.length) continue;
+      const flight = tee.flight?.players?.map((p) => p.name).join(' · ');
+      for (const s of mine) await send(s, teeNote({ name: String(ev.game.name ?? 'GolfOS').slice(0, 60), course: ev.game.course?.name, time: tee.time, left, own: tee.own, flight }, s.lang), 3600, 'high');
+      await d.insertIgnore('golfos_push_sent', [{ user_id: user, key }]);
+      tees++;
+    }
+  }
+  return { rounds, storms, physio, tees };
 }
 
 export async function handle(req: Request): Promise<Response> {
