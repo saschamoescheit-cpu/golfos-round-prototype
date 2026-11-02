@@ -60,6 +60,8 @@ const p3 = pars.indexOf(3);
 const block = (name) => H.locator('.score-player').filter({ has: H.locator('.score-player-head strong', { hasText: new RegExp(`^${name}$`) }) });
 for (let i = 0; i < pars.length; i++) {
   await H.locator('.map-score').click();
+  // bets on the score only: the strokes incl. penalty strokes – no putts asked (Sascha 02.11.2026)
+  if (i === 0) ok((await block('Sascha').getByRole('button', { name: /Putts plus eins/ }).count()) === 0 && (await block('Sascha').getByRole('button', { name: /Schläge plus eins/ }).count()) === 1, 'score-only bets: strokes (incl. penalties), no putts asked');
   for (const n of ['Sascha', 'Chris', 'Erik']) {
     await block(n).getByRole('button', { name: /Schläge plus eins/ }).click(); // par
     if ((n === 'Sascha' && i < 2) || (n === 'Erik' && i === p3)) await block(n).getByRole('button', { name: /Schläge minus eins/ }).click();

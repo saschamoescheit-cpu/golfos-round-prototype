@@ -112,7 +112,7 @@ export function GameOnMap(props: {
           onAbort={() => props.onDelete(g)}
           onShowScorecard={(nr, finishing) => (finishing ? props.onFinish(withRound(g, { ...nr, finishedAt: new Date().toISOString() })) : setSheet('card'))}
           onOpenBag={props.onOpenBag}
-          game={{ name: f.name(), line, teams, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null }}
+          game={{ name: f.name(), line, teams, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null, entry: g.settings.entry === 'strokes' ? 'strokes' : 'details' }}
         />
       </Suspense>
       {invite && <InviteSheet game={g} onShared={props.onChange} onClose={() => setInvite(false)} />}

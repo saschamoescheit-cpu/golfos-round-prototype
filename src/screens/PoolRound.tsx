@@ -9,7 +9,7 @@ import { parseIndex, playingHandicapFor } from '../lib/handicap';
 import { isLady, loadProfile } from '../lib/profile';
 import { loadFriends } from '../lib/friends';
 import { emptyEntry } from '../lib/scoring';
-import { dayOf, provisional, sameName, stateOf } from '../lib/wagers';
+import { dayOf, poolNeedsDetails, provisional, sameName, stateOf } from '../lib/wagers';
 import { loadPools, reportWagers } from '../lib/wagerstore';
 import { dropPoolRound, finishPoolRound, keepPoolRound } from '../lib/poolround';
 import { TopBar } from '../components/ui';
@@ -152,6 +152,9 @@ export function PoolRoundPlay(props: { code: string; round: Round; onChange: (r:
   const made = pool.wagers.filter((w) => stateOf(w, pool, today) === 'done').length;
   const prov = pool.wagers.filter((w) => stateOf(w, pool, today) === 'open' && provisional(w, pool.progress[w.id])).length;
   const line = [tr(`${made} made`, `${made} geschafft`), prov ? tr(`${prov} provisional`, `${prov} vorläufig`) : ''].filter(Boolean).join(' · ');
+  // the score entry the bets need (Sascha 02.11.2026: "birdies, to par: the strokes incl. penalty strokes; GIR, 3-putts,
+  // up and down: the details")
+  const scoreEntry = poolNeedsDetails(pool, { day: dayOf(r.createdAt), course: r.courseName, courseId: r.courseId }) ? ('details' as const) : ('strokes' as const);
   const change = (nr: Round) => {
     if (done.current) return; // finished: a late change does not bring it back
     keepPoolRound(props.code, nr);
@@ -180,7 +183,7 @@ export function PoolRoundPlay(props: { code: string; round: Round; onChange: (r:
           }}
           onShowScorecard={(nr, finishing) => (finishing ? finish(nr) : setSheet(true))}
           onOpenBag={props.onOpenBag}
-          game={{ name: tr(`Bets · ${pool.name}`, `Wetten · ${pool.name}`), line, onOpen: () => setSheet(true), onInvite: null, shared: null }}
+          game={{ name: tr(`Bets · ${pool.name}`, `Wetten · ${pool.name}`), line, onOpen: () => setSheet(true), onInvite: null, shared: null, entry: scoreEntry }}
         />
       </Suspense>
       {sheet && (
