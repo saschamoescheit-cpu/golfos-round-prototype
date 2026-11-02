@@ -70,6 +70,20 @@ describe('sync between devices', () => {
     await syncOnce(phone, srv, phoneClock);
     expect(JSON.parse(phone.get('golfos.profile.v1')!).hcpIndex).toBe('7.8');
   });
+  it('a round from a pool in play and the own bets reach the other device; finished, the round in play goes (Sascha 02.11.2026)', async () => {
+    const srv = server();
+    const round = { id: 'pr-1', holes: [{ par: 4 }], entries: {}, players: [] };
+    const phone = device({ 'golfos.poolrounds.v1': [{ code: 'ABC123', round }], 'golfos.mybets.v1': [{ id: 'm1', bet: { metric: 'birdie', compare: 'min', where: 'par3', target: 2 } }] });
+    const app = device();
+    await syncOnce(phone, srv, clock);
+    await syncOnce(app, srv, clock);
+    expect(JSON.parse(app.get('golfos.poolrounds.v1')!)[0].round.id).toBe('pr-1');
+    expect(JSON.parse(app.get('golfos.mybets.v1')!)[0].bet.where).toBe('par3');
+    phone.set('golfos.poolrounds.v1', '[]');
+    await syncOnce(phone, srv, clock);
+    await syncOnce(app, srv, clock);
+    expect(JSON.parse(app.get('golfos.poolrounds.v1')!)).toEqual([]);
+  });
   it('every setting of the app reaches the other device – switched on and off (Sascha 29.10.2026)', async () => {
     const srv = server();
     const phone = device({

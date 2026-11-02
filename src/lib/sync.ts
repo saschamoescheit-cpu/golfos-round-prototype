@@ -96,6 +96,11 @@ const LISTS = [
   // set up on this account's phones, the templates
   { kind: 'pool-me', key: 'golfos.pools.me.v1', idOf: (x: { code: string }) => x.code },
   { kind: 'bet-template', key: 'golfos.wagerhistory.v1', idOf: (x: { from: string; wager: { id: string } }) => `${x.from}|${x.wager.id}` },
+  // a round from a pool in play (Sascha 02.11.2026: "everything kept in the profile") – not lost when the phone changes
+  // or from the website to the app; finished, it is a round of Rounds (synced as 'round') and gone from here
+  { kind: 'pool-round', key: 'golfos.poolrounds.v1', idOf: (x: { round: { id: string } }) => x.round.id },
+  // the own bets kept for the library ("Meine Wetten")
+  { kind: 'my-bet', key: 'golfos.mybets.v1', idOf: (x: { id: string }) => x.id },
 ] as const;
 
 type Meta = Record<string, { hash: string; at: string }>; // per "kind|id": what was in sync last time
