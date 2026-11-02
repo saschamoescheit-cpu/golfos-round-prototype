@@ -57,9 +57,29 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(800);
-// the start page of the app: the Agility tile says the training is waiting
-const tile = await p.locator('.module-card').filter({ hasText: 'Agility' }).innerText();
-ok(/Dein Training heute wartet/.test(tile), `the Agility tile on the start page: the training is waiting (${tile.replace(/\n/g, ' · ')})`);
+// the start page of the app: a screening alone is no plan – no training waiting (Sascha 02.11.2026)
+const agilityTile = () => p.locator('.module-card').filter({ hasText: 'Agility' }).innerText();
+const bare = await agilityTile();
+ok(!/wartet/.test(bare), `the Agility tile without a plan: no training waiting (${bare.replace(/\n/g, ' · ')})`);
+// a physio plan with its week: waiting on a training day, quiet on another one
+const physioWeek = async (days) => {
+  await p.evaluate((days) => {
+    const at = '2026-10-29T10:00:00Z';
+    const plan = { id: 'pp', source: 'TPI', screenedAt: at, tests: [], faults: [], routine: { name: 'R', exercises: [] }, importedAt: at, schedule: { perWeek: 3, days } };
+    localStorage.setItem('golfos.mobility.physio.v1', JSON.stringify([plan]));
+  }, days);
+  await p.reload();
+  await p.waitForTimeout(800);
+  return agilityTile();
+};
+const wd = await p.evaluate(() => (new Date().getDay() + 6) % 7);
+const off = await physioWeek([(wd + 1) % 7]);
+ok(!/wartet/.test(off), `the Agility tile on a day off of the physio plan: nothing waiting (${off.replace(/\n/g, ' · ')})`);
+const tile = await physioWeek([wd]);
+ok(/Dein Training heute wartet/.test(tile), `the Agility tile on a training day: the training is waiting (${tile.replace(/\n/g, ' · ')})`);
+await p.evaluate(() => localStorage.removeItem('golfos.mobility.physio.v1'));
+await p.reload();
+await p.waitForTimeout(800);
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 // the start tab: the training of the day, one tap away
 await p.locator('.mob-today').waitFor({ timeout: 10000 }).catch(() => {});

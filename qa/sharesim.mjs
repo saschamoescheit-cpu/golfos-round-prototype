@@ -17,6 +17,14 @@ const accountOf = (t) => {
   }
 };
 
+/** A tee time later today, "HH:MM" (Rounds hides a tournament six hours after its last tee time – 02.11.2026): the
+ *  tests run at any hour. */
+export const teeSoon = (min) => {
+  const d = new Date(Date.now() + min * 60000);
+  if (d.getDate() !== new Date().getDate()) return '23:59';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
 export function sharedServer(b, url, o = {}) {
   const shared = new Map(); // code → { game, updated_at, owner, members, requests, near }
   const pushes = []; // { action, code, ref, from }

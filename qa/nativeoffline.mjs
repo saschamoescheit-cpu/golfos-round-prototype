@@ -71,6 +71,8 @@ const stored = () =>
 // 1 · saved for offline
 const done = await p.waitForFunction(() => /Karte offline gespeichert ✓/.test(document.body.innerText), null, { timeout: 120000 }).then(() => true, () => false);
 ok(done, '"Karte offline gespeichert ✓" in the app');
+// the shots found by the app itself – no "Schlag hier" button in the app, only on the website for testing (Sascha 02.11.2026)
+ok((await p.locator('.map-shot-btn').count()) === 0 && (await p.locator('.map-hole-no').count()) > 0, 'the app: no "Schlag hier" button on the hole map');
 const s1 = await stored();
 ok(s1.n > 50, `the aerial tiles are in the app's store (${s1.n})`);
 ok(s1.types.every((t) => t.startsWith('image/')), `only pictures (${s1.types.join(', ')})`);

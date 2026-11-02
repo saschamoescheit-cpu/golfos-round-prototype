@@ -11,7 +11,8 @@
 // 18 holes, as over there.
 // Supabase is simulated (qa/sharesim.mjs), the app is real. Usage: node qa/usarehearsal.mjs [url]
 import { webkit } from 'playwright';
-import { sharedServer } from './sharesim.mjs';
+import { sharedServer, teeSoon } from './sharesim.mjs';
+const [T1, T2] = [teeSoon(30), teeSoon(40)]; // later today, whatever the hour
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -32,8 +33,8 @@ const code = await sim.plan(P('Sascha'), {
   option: 'A \\+ B · 18',
   format: { mode: 'single', scoring: 'net', allowance: 100 },
   flights: [
-    { teeTime: '09:20', players: [{ name: 'Sascha', playingHandicap: 4 }, { name: 'Chris', playingHandicap: 6 }] },
-    { teeTime: '09:30', players: [{ name: 'Erik', playingHandicap: 8 }, { name: 'Cedric', playingHandicap: 5 }] },
+    { teeTime: T1, players: [{ name: 'Sascha', playingHandicap: 4 }, { name: 'Chris', playingHandicap: 6 }] },
+    { teeTime: T2, players: [{ name: 'Erik', playingHandicap: 8 }, { name: 'Cedric', playingHandicap: 5 }] },
   ],
   // the special prizes: Long Drive on the first hole, Nearest to the Pin on the first par 3
   specials: [{ id: 'ld', kind: 'longDrive', hole: 0 }, { id: 'ntp', kind: 'nearestPin' }],
@@ -108,7 +109,7 @@ for (const n of NAMES) {
   const c = p.getByRole('region', { name: 'Turnier USA Tag 1' });
   await c.waitFor({ timeout: 15000 }).catch(() => {});
   const t = (await c.innerText().catch(() => '')).replace(/\s+/g, ' ');
-  ok(new RegExp(`Dein Flight · ${['Sascha', 'Chris'].includes(n) ? '09:20' : '09:30'}`).test(t), `${n}: "${t.slice(0, 80)}"`);
+  ok(new RegExp(`Dein Flight · ${['Sascha', 'Chris'].includes(n) ? T1 : T2}`).test(t), `${n}: "${t.slice(0, 80)}"`);
   await c.getByRole('button', { name: 'Teilnehmen' }).click();
   await p.locator('.map-hole-no').waitFor({ timeout: 30000 });
 }
