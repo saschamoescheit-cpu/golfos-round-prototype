@@ -5,7 +5,7 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { ensureGeometry, geometryReady, loadGeometry, newId } from '../lib/storage';
 import { courseTees, defaultTee, profileTee } from '../data/tees';
 import { inUsa } from '../lib/weather';
-import { parseIndex, playingHandicapFor, ratingFor } from '../lib/handicap';
+import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib/handicap';
 import { isLady, loadProfile } from '../lib/profile';
 import { loadFriends } from '../lib/friends';
 import { emptyEntry } from '../lib/scoring';
@@ -14,7 +14,7 @@ import { loadPools, reportWagers } from '../lib/wagerstore';
 import { dropPoolRound, finishPoolRound, keepPoolRound } from '../lib/poolround';
 import { TopBar } from '../components/ui';
 import { Standings } from './Wagers';
-import { PlayerRow, teeChoicesFor } from './RoundSetup';
+import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 
 // A round started from a pool of bets (Sascha 02.11.2026: "start the round right from the bet – else again through
 // Rounds, the players set up again"): the course (the pool's round of the day, if it has one), the loop, the pool's
@@ -48,6 +48,7 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
     const me = ps.find((p) => p.id === entry?.me);
     return [...(me ? [me] : []), ...ps.filter((p) => p !== me)].map((p) => ({ id: p.id, name: p.name, hcp: p === me ? (prof.hcpIndex ?? '') : (friends.find((f) => sameName(f.name, p.name))?.hcp ?? ''), on: true }));
   });
+  const [, setRatingsSeen] = useState(0);
   if (!pool || !entry) return null;
   const offered = course ? courseTees(course.id, loadGeometry(course.id).teeColours) : null;
   const lady = isLady();
@@ -107,6 +108,17 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
           </div>
         )}
       </section>
+      {/* course rating and slope over the players, as in Rounds */}
+      {course && (holes.length === 18 || nine) && playing[0] && (
+        <RatingLine
+          rating={ratingOf(playing.find((p) => p.id === entry.me) ?? playing[0])}
+          nine={nine}
+          onSave={(v) => {
+            saveOwnRating(course.id, teeOf(playing.find((p) => p.id === entry.me) ?? playing[0]) ?? '–', holes, v);
+            setRatingsSeen((k) => k + 1);
+          }}
+        />
+      )}
       <section className="setup-part">
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
         {playing.map((p, k) => (

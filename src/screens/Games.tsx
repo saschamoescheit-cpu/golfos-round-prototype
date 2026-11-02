@@ -458,7 +458,7 @@ function GamesTabs(props: {
           </section>
           {/* start a bet beside starting a game – the bets themselves are kept in the menu "Bets" (Sascha 01.11.2026) */}
           <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} />
-          <TourStartCard canShare={!!canShare} onNew={props.onNewTour} />
+          <TourStartCard canShare={!!canShare} onNew={props.onNewTour} onJoin={() => setJoinOpen('')} />
           {confirmCount > 0 && (
             <button type="button" className="list-item" onClick={() => openList('confirm')}>
               <span className="grow">

@@ -679,31 +679,52 @@ export function stateOf(w: Wager, pool: WagerPool, today = dayOf(new Date())): W
   return over ? 'missed' : 'open';
 }
 
-/** Each player's balance from the bets made or missed (€) – `withProvisional`: a bet made in a round not signed yet as made. */
-export function balances(pool: WagerPool, today?: string, withProvisional = false): Record<string, number> {
-  const money: Record<string, number> = Object.fromEntries(pool.players.map((p) => [p.id, 0]));
-  const add = (id: string, v: number) => (money[id] = (money[id] ?? 0) + v);
+/** One bet's money for one player: what it brought him (+) or cost him (−) – the settlement's lines. */
+export interface LedgerLine {
+  w: Wager;
+  amount: number;
+  /** made only in a round not signed yet */
+  provisional: boolean;
+}
+
+/** Every bet decided, per player, what it brought or cost him – each bet on its own (Sascha 02.11.2026: "two single
+ *  bets: 20 € from Chris for the one I made"); the balance is their sum. */
+export function ledger(pool: WagerPool, today?: string, withProvisional = false): Record<string, LedgerLine[]> {
+  const out: Record<string, LedgerLine[]> = Object.fromEntries(pool.players.map((p) => [p.id, []]));
+  const add = (id: string, w: Wager, amount: number, prov: boolean) => {
+    const list = (out[id] ??= []);
+    const line = list.find((l) => l.w.id === w.id);
+    if (line) line.amount += amount;
+    else list.push({ w, amount, provisional: prov });
+  };
   for (const w of pool.wagers) {
     if (shapeOf(w.kind) === 'duel') {
       // "5+5+10": what the rounds played so far settled, between the two
       const v = pool.progress[w.id]?.amount ?? 0;
       if (w.opponent && w.opponent !== w.player && v) {
-        add(w.player, v);
-        add(w.opponent, -v);
+        add(w.player, w, v, false);
+        add(w.opponent, w, -v, false);
       }
       continue;
     }
-    const st = withProvisional && provisional(w, pool.progress[w.id]) ? 'done' : stateOf(w, pool, today);
+    const prov = withProvisional && provisional(w, pool.progress[w.id]);
+    const st = prov ? 'done' : stateOf(w, pool, today);
     if (st === 'open' || !(w.stake > 0)) continue;
     const others = w.payout === 'opponent' ? (w.opponent && w.opponent !== w.player ? [w.opponent] : []) : pool.players.map((p) => p.id).filter((id) => id !== w.player);
     if (st === 'missed' && w.payout === 'success') continue;
     const sign = st === 'done' ? 1 : -1;
     for (const o of others) {
-      add(w.player, sign * w.stake);
-      add(o, -sign * w.stake);
+      add(w.player, w, sign * w.stake, prov);
+      add(o, w, -sign * w.stake, prov);
     }
   }
-  return money;
+  return out;
+}
+
+/** Each player's balance from the bets made or missed (€) – `withProvisional`: a bet made in a round not signed yet as made. */
+export function balances(pool: WagerPool, today?: string, withProvisional = false): Record<string, number> {
+  const lines = ledger(pool, today, withProvisional);
+  return Object.fromEntries(pool.players.map((p) => [p.id, (lines[p.id] ?? []).reduce((n, l) => n + l.amount, 0)]));
 }
 
 // ---------- words ----------

@@ -2016,6 +2016,10 @@ button.tile:disabled { opacity: 1; }
 .trip-add { display: flex; flex-direction: column; gap: 12px; }
 .trip-day-row { position: relative; cursor: pointer; }
 .trip-day-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
+/* the settlement: each bet decided under its player, + or − (Sascha 02.11.2026) */
+.pool-standing li > .pool-ledger { grid-column: 1 / -1; list-style: none; margin: -4px 0 4px; padding: 0 0 0 10px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.pool-ledger li { display: flex !important; gap: 8px; align-items: baseline; }
+.pool-ledger .grow { flex: 1; min-width: 0; color: var(--muted); }
 
 
 /* Friends (Sascha 02.11.2026): the own friend code as a QR code, the friends linked by their accounts and the ones typed
