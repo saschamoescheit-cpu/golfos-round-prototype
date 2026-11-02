@@ -11,7 +11,8 @@ import { loadFriends } from '../lib/friends';
 import { emptyEntry } from '../lib/scoring';
 import { dayOf, poolNeedsDetails, provisional, sameName, stateOf } from '../lib/wagers';
 import { loadPools, reportWagers } from '../lib/wagerstore';
-import { dropPoolRound, finishPoolRound, keepPoolRound } from '../lib/poolround';
+import { dropPoolRound, finishPoolRound, keepPoolRound, poolRoundEntry, setPoolRoundEntry } from '../lib/poolround';
+import { ChoiceRow, SettingsList } from '../components/Settings';
 import { TopBar } from '../components/ui';
 import { Standings } from './Wagers';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
@@ -52,7 +53,11 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
     return [...(me ? [me] : []), ...ps.filter((p) => p !== me)].map((p) => ({ id: p.id, name: p.name, hcp: p === me ? (prof.hcpIndex ?? '') : (friends.find((f) => sameName(f.name, p.name))?.hcp ?? ''), on: true }));
   });
   const [, setRatingsSeen] = useState(0);
+  // the score entry, as "Score-Erfassung" in "Neue Runde": what the bets need set, the details always possible
+  const [chosenEntry, setChosenEntry] = useState<'strokes' | 'details' | null>(null);
   if (!pool || !entry) return null;
+  const needsDetails = !!course && poolNeedsDetails(pool, { day: dayOf(new Date()), course: course.name, courseId: course.id });
+  const scoreEntry: 'strokes' | 'details' = needsDetails ? 'details' : (chosenEntry ?? 'strokes');
   const offered = course ? courseTees(course.id, loadGeometry(course.id).teeColours) : null;
   const lady = isLady();
   const startTee = offered ? defaultTee(offered.tees) : null;
@@ -73,8 +78,9 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
       const tee = teeOf(p) ?? undefined;
       return { id: p.id, name: p.name, playingHandicap: parseIndex(p.hcp) == null ? null : playingHandicapFor(course.id, holes, tee ?? '–', p.hcp, mine && lady), isMe: mine, ...(tee ? { tee } : {}) };
     });
+    const id = `pr-${newId()}`;
     props.onStart({
-      id: `pr-${newId()}`,
+      id,
       createdAt: new Date().toISOString(),
       finishedAt: null,
       courseId: course.id,
@@ -86,6 +92,7 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
       entries: Object.fromEntries(players.map((p) => [p.id, holes.map(() => emptyEntry())])),
       currentHole: 0,
     });
+    setPoolRoundEntry(id, scoreEntry); // kept beside the round the moment it is kept
   };
   return (
     <main className="screen">
@@ -100,7 +107,10 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
             <span aria-hidden="true">›</span>
           </button>
         </div>
-        {course && options.length > 1 && (
+      </section>
+      {course && options.length > 1 && (
+        <section className="setup-part">
+          <span className="eyebrow">{tr('Holes', 'Löcher')}</span>
           <div className="choice-grid">
             {options.map((o) => (
               <button key={o.id} type="button" className="choice choice-loop" aria-pressed={o.id === option?.id} onClick={() => setOptionId(o.id)}>
@@ -109,8 +119,8 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
               </button>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
       {/* course rating and slope over the players, as in Rounds */}
       {course && (holes.length === 18 || nine) && playing[0] && (
         <RatingLine
@@ -153,6 +163,26 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
         )}
         <span className="muted small">{tr('Who plays with you on this phone – you enter their scores too.', 'Wer mit dir spielt – du erfasst ihre Scores auf diesem Handy mit.')}</span>
       </section>
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+        <SettingsList>
+          <ChoiceRow<'strokes' | 'details'>
+            label={tr('Entry', 'Erfassung')}
+            disabled={needsDetails}
+            value={scoreEntry}
+            onChange={setChosenEntry}
+            options={[
+              { value: 'strokes', name: tr('Strokes only (incl. penalties)', 'Nur Schläge (inkl. Strafschläge)'), text: tr('Enough for bets on the score – birdies, pars, to par.', 'Reicht für Wetten auf den Score – Birdies, Pars, zu Par.') },
+              { value: 'details', name: tr('With details', 'Mit Details'), text: tr('Putts, tee shot, sand – for every player.', 'Putts, Abschlag, Sand – für jeden Spieler.') },
+            ]}
+          />
+        </SettingsList>
+        <span className="muted small">
+          {needsDetails
+            ? tr('A bet of the pool counts greens, putts or fairways – every player with details, the putts a must.', 'Eine Wette des Pools zählt Grüns, Putts oder Fairways – jeder Spieler mit Details, die Putts sind Pflicht.')
+            : tr('Set by the bets of the pool – the details only if you want them.', 'Von den Wetten des Pools vorgegeben – Details nur, wenn du sie willst.')}
+        </span>
+      </section>
       <span className="spacer" />
       <div className="sticky-cta">
         <button type="button" className="btn-primary" disabled={!ok} onClick={start}>
@@ -192,7 +222,7 @@ export function PoolRoundPlay(props: { code: string; round: Round; onChange: (r:
   // a bet on the greens or the putts: the putts of every player before the next hole (Sascha 02.11.2026: "then the putts a
   // must – the next hole only once all are in"; Rounds blocks it in the hole screen)
   const puttsRequired = pool.wagers.some((w) => PUTT_KINDS.includes(w.kind) || (w.kind === 'custom' && PUTT_METRICS.includes(w.metric ?? '')));
-  const scoreEntry = poolNeedsDetails(pool, { day: dayOf(r.createdAt), course: r.courseName, courseId: r.courseId }) ? ('details' as const) : ('strokes' as const);
+  const scoreEntry = poolNeedsDetails(pool, { day: dayOf(r.createdAt), course: r.courseName, courseId: r.courseId }) ? ('details' as const) : (poolRoundEntry(r.id) ?? 'strokes');
   const change = (nr: Round) => {
     if (done.current) return; // finished: a late change does not bring it back
     keepPoolRound(props.code, nr);

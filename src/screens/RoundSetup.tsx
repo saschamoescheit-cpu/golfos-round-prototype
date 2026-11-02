@@ -696,7 +696,8 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
           </section>
         </div>
       )}
-      {player.index.trim() !== '' && props.playing == null && (
+      {/* only a HCP that is no number – not one waiting for the course (a round from a pool, 02.11.2026) */}
+      {player.index.trim() !== '' && parseIndex(player.index) == null && (
         <span className="bad-text small player-note" role="alert">
           {tr('Please enter the HCP as a number, e.g. 18.4 or +1.2', 'Bitte das HCP als Zahl eingeben, z. B. 18,4 oder +1,2')}
         </span>

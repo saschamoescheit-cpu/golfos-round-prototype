@@ -19,6 +19,7 @@ import { TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
+import { DateRow, SettingsList, TimeRow } from '../components/Settings';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 
 // Tournaments in Games (Sascha 01.11.2026: "tournaments can be planned ahead just like bets – set them up for the USA
@@ -603,11 +604,11 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
             <label htmlFor="tour-name">{tr('Name', 'Name')}</label>
             <input id="tour-name" className="input" placeholder={tr('USA day 1', 'USA Tag 1')} value={d.name} onChange={(e) => set({ name: e.target.value })} />
           </div>
-          <div className="field">
-            <label htmlFor="tour-date">{tr('Day', 'Tag')}</label>
-            <input id="tour-date" type="date" className="input" value={d.date} onChange={(e) => set({ date: e.target.value })} />
-          </div>
         </div>
+        {/* the day as a row – the phone's picker, never a bare 2026-11-02 (docs/DESIGN.md) */}
+        <SettingsList>
+          <DateRow id="tour-date" label={tr('Day', 'Tag')} value={d.date} onChange={(v) => set({ date: v })} />
+        </SettingsList>
       </section>
 
       <section className="setup-part">
@@ -1084,10 +1085,9 @@ function FlightSheet(props: { n: number; time: string; chosen: string[]; scorer:
             ✕
           </button>
         </div>
-        <div className="field">
-          <label htmlFor="flight-time">{tr('Tee time', 'Startzeit')}</label>
-          <input id="flight-time" type="time" step={60} className="input" value={time} onChange={(e) => e.target.value && setTime(e.target.value)} />
-        </div>
+        <SettingsList>
+          <TimeRow id="flight-time" label={tr('Tee time', 'Startzeit')} value={time} onChange={(v) => v && setTime(v)} />
+        </SettingsList>
         <div className="field">
           <label>
             {tr('Players', 'Spieler')} <span className="muted small">{ids.length}/{FLIGHT_MAX}</span>

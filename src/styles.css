@@ -1168,10 +1168,7 @@ button.tile:disabled { opacity: 1; }
 .tour-special-board { display: flex; flex-direction: column; gap: 4px; }
 /* the settlement of a pool: the title, the payments, the bets decided – one below the other */
 /* the rounds of the trip in a pool (Sascha 01.11.2026) */
-.trip-round { display: flex; align-items: center; gap: 10px; }
-.trip-round .grow { flex: 1; min-width: 0; }
 .trip-tours { display: flex; flex-direction: column; gap: 6px; }
-.trip-add-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 /* the live standing of a pool: the blocks down, the players across (Sascha 01.11.2026) */
 .pool-standings { display: flex; flex-direction: column; gap: 10px; }
 .matrix-wrap { overflow-x: auto; margin: 0 -4px; }
@@ -1933,8 +1930,6 @@ button.tile:disabled { opacity: 1; }
 .lb-signed { display: block; font-size: 11px; color: var(--brand-text); }
 
 /* Bets in Games (Sascha 01.11.2026): a pool over a trip, each player's targets with the standing */
-.pool-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pool-dates > .field { min-width: 0; }
 /* a date on the iPhone (Sascha 01.11.2026): Safari gives it its own width and centres the day – here it fills its
    column, starts left and is as high as every other field (Safari ignores min-height on it) */
 .input[type='date'], .input[type='time'] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; height: 50px; line-height: 48px; text-align: left; }
@@ -2008,8 +2003,6 @@ button.tile:disabled { opacity: 1; }
 .bet-matrix tbody tr:not(.bet-matrix-made) > th { padding-top: 10px; }
 /* a round of a pool added as a game is set up (Sascha 02.11.2026): the course and the day as rows */
 .trip-add { display: flex; flex-direction: column; gap: 12px; }
-.trip-day-row { position: relative; cursor: pointer; }
-.trip-day-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
 /* the settlement: each bet decided under its player, + or − (Sascha 02.11.2026) */
 .pool-standing li > .pool-ledger { grid-column: 1 / -1; list-style: none; margin: -4px 0 4px; padding: 0 0 0 10px; border-left: 2px solid var(--line); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 .pool-ledger li { display: flex !important; gap: 8px; align-items: baseline; }
@@ -2046,3 +2039,12 @@ button.tile:disabled { opacity: 1; }
 /* the shared settings (components/Settings.tsx, 02.11.2026): a day as a row – the native date picker over it */
 .date-row { position: relative; }
 .date-row-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
+
+/* an empty box of rows not drawn (a bet kind without settings, 02.11.2026) */
+.settings-list:empty { display: none; }
+.pool-invite { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.pool-invite .btn-secondary { align-self: stretch; }
+.pool-invite .qr-box { width: 180px; max-width: 60%; }
+.pool-invite .qr-box svg { width: 100%; height: auto; }
+/* rows inside a sheet stand out from it (the bet sheet, 02.11.2026) */
+.sheet .settings-list { background: var(--surface-2); }

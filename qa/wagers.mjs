@@ -132,7 +132,12 @@ await H.getByRole('textbox', { name: 'Spieler 3' }).fill('Erik');
 await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.getByRole('textbox', { name: 'Spieler 4' }).fill('Cedric');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-setup.png', fullPage: true });
-await H.getByRole('group', { name: 'Währung' }).getByRole('button', { name: 'Dollar ($)' }).click(); // the trip: in dollars
+// a choice as a row with its sheet (docs/DESIGN.md, 02.11.2026): the row, then the option
+const choose = async (label, option, inside = H) => {
+  await inside.locator('.settings-row').filter({ hasText: label }).first().click();
+  await H.getByRole('dialog', { name: label }).getByRole('button', { name: new RegExp(`^${option.replace(/[()$]/g, (c) => '\\' + c)}`) }).click();
+};
+await choose('Währung', 'Dollar ($)'); // the trip: in dollars
 // "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker
 await H.getByRole('switch', { name: /Mit Zähler/ }).click();
 await H.getByRole('button', { name: 'Pool anlegen' }).click();
@@ -187,9 +192,9 @@ await libS.getByRole('button', { name: 'Schließen' }).click();
 ok(shared.get(code).game.wagers.length === 7, `the server has the 7 bets (${shared.get(code).game.wagers.length})`);
 
 // invite: the code with a QR code
-await H.getByRole('button', { name: new RegExp(`Mitspieler einladen · Code ${code}`) }).click();
-ok((await H.locator('.qr-box svg').count()) === 1 && (await H.locator('.join-code').innerText()).trim() === code, 'invite: code and QR code');
-await H.getByRole('dialog', { name: 'Mitspieler einladen' }).getByRole('button', { name: 'Schließen' }).click();
+// a section of its own, as in the round setup (02.11.2026)
+const invite = H.getByRole('region', { name: 'Mitspieler einladen' });
+ok((await invite.locator('.qr-box svg').count()) === 1 && (await invite.locator('.join-code').innerText()).trim() === code && (await invite.getByRole('button', { name: 'Einladung senden' }).count()) === 1, 'invite: its own section – code, QR code, "Einladung senden"');
 
 // ---------- Chris: joins with the link, picks himself – his phone judges his bets from his signed round ----------
 const guest = await phone('Chris', { 'golfos.rounds.v1': [chrisRound], 'golfos.event.v1.EVT234': event });
@@ -239,7 +244,7 @@ await H.waitForTimeout(2000);
 const hChris = H.locator('.pool-player').filter({ has: H.locator('h2', { hasText: /^Chris$/ }) });
 ok((await hChris.locator('.badge').allInnerTexts()).filter((x) => x === 'Geschafft').length === 4, "Sascha sees Chris's 4 bets made");
 await H.locator('.pool-wager').filter({ hasText: 'Längster Drive an Loch 7' }).click();
-await H.getByRole('group', { name: 'Entschieden' }).getByRole('button', { name: 'Geschafft' }).click();
+await choose('Entschieden', 'Geschafft');
 await H.waitForTimeout(1200);
 const settle = (await H.locator('.card').filter({ hasText: 'Abrechnung' }).innerText()).replace(/\s+/g, ' ');
 // Chris 4 × 20 € from each of three = +240; Erik's free bet +60; Sascha and Cedric −100, Erik −20, Chris +220
@@ -352,7 +357,7 @@ await H.getByRole('button', { name: 'Wetten für Sascha hinzufügen' }).click();
 const libO = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
 await libO.getByRole('button', { name: '+ Eigene Wette bauen', exact: true }).click();
 const build = H.getByRole('dialog', { name: 'Eigene Wette bauen' });
-await build.getByRole('button', { name: 'Par 3s', exact: true }).click();
+await choose('Wo', 'Par 3s', build);
 ok((await build.locator('.custom-preview').innerText()) === 'Mindestens 2 Birdies auf den Par 3s' && (await build.getByText('Die Schläge inkl. Strafschläge genügen.').isVisible()), 'own bet: built in words – no details needed');
 await build.getByRole('button', { name: 'In „Meine Wetten“ speichern' }).click();
 ok((await libO.locator('.lib-row.on').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: in "Meine Wetten", ticked');

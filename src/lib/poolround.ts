@@ -11,6 +11,8 @@ export interface PoolRoundEntry {
   /** the pool's code */
   code: string;
   round: Round;
+  /** the score entry chosen when it was started (02.11.2026) – unset: what the pool's bets need */
+  entry?: 'strokes' | 'details';
 }
 
 export function loadPoolRounds(): PoolRoundEntry[] {
@@ -32,8 +34,14 @@ function save(list: PoolRoundEntry[]): void {
 /** The round of a pool in play on this phone. */
 export const poolRoundOf = (code: string): Round | null => loadPoolRounds().find((e) => e.code === code && !e.round.finishedAt)?.round ?? null;
 export function keepPoolRound(code: string, round: Round): void {
-  save([{ code, round }, ...loadPoolRounds().filter((e) => e.round.id !== round.id)]);
+  const was = loadPoolRounds().find((e) => e.round.id === round.id);
+  save([{ code, round, ...(was?.entry ? { entry: was.entry } : {}) }, ...loadPoolRounds().filter((e) => e.round.id !== round.id)]);
 }
+/** The score entry of a round of a pool, chosen in its setup. */
+export function setPoolRoundEntry(id: string, entry: 'strokes' | 'details'): void {
+  save(loadPoolRounds().map((e) => (e.round.id === id ? { ...e, entry } : e)));
+}
+export const poolRoundEntry = (id: string): 'strokes' | 'details' | undefined => loadPoolRounds().find((e) => e.round.id === id)?.entry;
 export function dropPoolRound(id: string): void {
   save(loadPoolRounds().filter((e) => e.round.id !== id));
 }
