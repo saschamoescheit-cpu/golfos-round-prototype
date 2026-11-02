@@ -52,7 +52,7 @@ export function TestLogCard(props: { round: Round }) {
   return (
     <section className="card testlog" aria-label={tr('Test protocol', 'Testprotokoll')}>
       <strong>{tr('Test protocol', 'Testprotokoll')}</strong>
-      <span className="muted small">{tr('What the microphone, GPS, pocket mode and the read-aloud really did on the course.', 'Was Mikrofon, GPS, Taschenmodus und Vorlesen auf dem Platz wirklich gemacht haben.')}</span>
+      <span className="muted small">{tr('What the microphone, GPS and the read-aloud really did on the course.', 'Was Mikrofon, GPS und Vorlesen auf dem Platz wirklich gemacht haben.')}</span>
 
       {sounds.length > 0 && rows.length > 0 && (
         <table className="testlog-table">
