@@ -377,6 +377,17 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
         if (!sameCell(local, there)) changedHere = true;
         return local;
       }
+      // a scorer keeps the cards – this player's own analysis stays on his phone (Sascha 02.11.2026: "each player can
+      // still do his round analysis on his phone"): the scorer's strokes and penalties, his own putts, sand, tee shot
+      if (role === 'view' && p.id === me && f.scorer) {
+        if (!sameScore(there, local) || (there?.d?.pe ?? 0) !== (local?.d?.pe ?? 0)) {
+          const own = list[i] ?? emptyEntry();
+          const w = withCell(own, there);
+          list[i] = { ...w, penalties: there?.d?.pe ?? 0, putts: own.putts, fairway: own.fairway, sandShots: own.sandShots, greensideBunker: own.greensideBunker, upAndDown: own.upAndDown, ...(own.puttsAt ? { puttsAt: own.puttsAt } : {}) };
+          changedThere = true;
+        }
+        return there;
+      }
       if (!sameCell(there, local)) {
         list[i] = withCell(list[i] ?? emptyEntry(), there);
         changedThere = true;

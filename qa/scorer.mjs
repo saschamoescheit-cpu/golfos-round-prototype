@@ -72,6 +72,15 @@ await H.waitForTimeout(400);
 const kept = await H.locator('.score-player.kept-elsewhere').count();
 ok(kept === 2 && (await H.locator('.score-player').getByRole('button', { name: /Schläge plus eins/ }).count()) === 0, `Sascha: both cards shown, nothing to change (${kept} kept elsewhere)`);
 ok(/Chris erfasst/.test(await H.locator('.score-panel').innerText()), 'Sascha: "Chris erfasst …" on the cards');
+// his own analysis beside it (Sascha 02.11.2026): putts on his phone only – the scorer's count stays the score
+const mine = H.getByRole('group', { name: 'Meine Analyse' });
+ok(await mine.isVisible(), 'Sascha: "Meine Analyse" under his card');
+await mine.getByRole('button', { name: /Putts plus eins/ }).click();
+await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
+await H.waitForTimeout(12000);
+const sr = await (async () => H.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((r) => !r.finishedAt)))();
+ok(sr.entries.me[0].putts === 2 && sr.entries.me[0].strokes === f.scores.me[0].s, `Sascha's phone: his 2 putts kept, the score Chris's (${sr.entries.me[0].strokes})`);
+ok(flight().scores.me[0]?.d?.pu == null, "the flight: nothing of Sascha's analysis");
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

@@ -133,6 +133,11 @@ export function ScoreSheet(props: {
   /** the other players entered with their penalty strokes beside the score (Sascha 02.11.2026: "the marker's and the
    *  others' only the score with penalty strokes") */
   penalties?: (playerId: string) => boolean;
+  /** what is entered (Sascha 02.11.2026, a game in Games: "only the strokes per hole, or with details"): 'strokes' –
+   *  everyone, the main player too, the score with penalty strokes; 'details' (default) – as above */
+  entry?: 'strokes' | 'details';
+  /** the own card kept by a scorer: its own analysis beside it – putts, sand, tee shot – on this phone only (02.11.2026) */
+  analysis?: (playerId: string) => boolean;
   /** Texas scramble (Sascha's concept 30.10.2026), per team: whose drive – the counts so far and who gets tight */
   texas?: Record<string, TexasDrives | null>;
 }) {
@@ -151,7 +156,7 @@ export function ScoreSheet(props: {
         const e = props.entries[p.id];
         // everything – putts, sand, penalties, tee shot – for the main player and the player this phone marks (Sascha
         // 01.11.2026: "for the player he marks just the same"); placing the putts only for the main player
-        const full = !props.team && (p.isMe || !!props.details?.(p.id));
+        const full = !props.team && props.entry !== 'strokes' && (p.isMe || !!props.details?.(p.id));
         const toPar = props.toPar[p.id];
         const strokes = e.pickedUp ? null : e.strokes;
         const facts = holeFacts(e, h.par);
@@ -178,6 +183,12 @@ export function ScoreSheet(props: {
         const penaltySub =
           (e.penalties ?? 0) > 0 ? tr(`incl. ${e.penalties} penalty ${e.penalties === 1 ? 'stroke' : 'strokes'}`, `inkl. ${e.penalties} ${e.penalties === 1 ? 'Strafschlag' : 'Strafschläge'}`) : tr('incl. penalty strokes', 'inkl. Strafschläge');
         const sh = props.shared?.[p.id];
+        // the own analysis: the facts follow from it, nothing goes to the scorer's count
+        const analyse = (patch: Partial<HoleEntry>) => {
+          const n = { ...e, ...patch };
+          const f = holeFacts(n, h.par);
+          props.onChange(p.id, { ...patch, upAndDown: f.gir == null ? null : f.upDown, greensideBunker: (n.sandShots ?? 0) > 0 });
+        };
         // kept on another phone: shown, not changed here – the team's card can be taken over
         if (sh?.keptBy != null)
           return (
@@ -203,6 +214,36 @@ export function ScoreSheet(props: {
                 </button>
               )}
               {sh.other && <OtherCount label={sh.other.label} cell={sh.other.cell} mine={cellOf(e)} />}
+              {/* a scorer keeps the card – the own analysis beside it, on this phone only (Sascha 02.11.2026) */}
+              {props.analysis?.(p.id) && !e.pickedUp && (
+                <div className="own-analysis" role="group" aria-label={tr('My analysis', 'Meine Analyse')}>
+                  <span className="muted small">{tr('My analysis – only on your phone, the scorer\'s count stays the score', 'Meine Analyse – nur auf deinem Handy, die Zählung des Schreibers bleibt der Score')}</span>
+                  <Stepper
+                    label="Putts"
+                    extra={
+                      props.canPlacePutts && e.putts != null && e.putts > 0 ? (
+                        <button type="button" className="pencil" aria-label={tr('Place the putts on the green', 'Putts auf dem Grün setzen')} onClick={props.onPlacePutts}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M4 20h4L19 9l-4-4L4 16z" />
+                            <path d="M13.5 6.5l4 4" />
+                          </svg>
+                        </button>
+                      ) : undefined
+                    }
+                    value={e.putts}
+                    start={2}
+                    max={9}
+                    onChange={(v) => analyse({ putts: v, ...(e.puttsAt && v !== e.puttsAt.balls.length ? { puttsAt: undefined } : {}) })}
+                  />
+                  <Stepper label="Sand Shots" value={e.sandShots ? e.sandShots : null} start={1} max={9} onChange={(v) => analyse({ sandShots: v ?? 0 })} />
+                  {h.par >= 4 && (
+                    <div className="stepper-row">
+                      <span className="stepper-label">{tr('Tee shot', 'Abschlag')}</span>
+                      <FairwayPicker value={e.fairway} onChange={(v) => analyse({ fairway: v })} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         return (
@@ -273,7 +314,7 @@ export function ScoreSheet(props: {
               </>
             )}
             {/* score and penalty strokes only – the others when no bet counts the round (02.11.2026) */}
-            {!full && !props.team && !e.pickedUp && props.penalties?.(p.id) && (
+            {!full && !props.team && !e.pickedUp && (props.entry === 'strokes' || props.penalties?.(p.id)) && (
               <Stepper label={tr('Penalty strokes', 'Strafschläge')} value={e.penalties ? e.penalties : null} start={1} max={9} onChange={(v) => set({ penalties: v ?? 0 })} />
             )}
           </div>
