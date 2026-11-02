@@ -344,11 +344,15 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
     .filter((x) => x.add.length > 0);
   const sorted = [...props.rounds].sort((a, b) => a.day.localeCompare(b.day));
   const last = sorted[sorted.length - 1]?.day;
+  const nextDay = () => (last && last < props.to ? dayOf(new Date(new Date(`${last}T12:00:00`).getTime() + 864e5)) : props.from);
   if (picking && adding)
     return (
       <div className="full-overlay">
         <CoursePicker
-          onBack={() => setPicking(false)}
+          onBack={() => {
+            setPicking(false);
+            if (!adding.course) setAdding(null); // backed out before a course: nothing to add
+          }}
           onPicked={(c) => {
             setAdding({ ...adding, course: { id: c.id, name: c.name } });
             setPicking(false);
@@ -397,38 +401,50 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           </div>
         </div>
       )}
-      {adding ? (
-        <div className="card setup-part">
-          <div className="field">
-            <label htmlFor="trip-day">{tr('Day', 'Tag')}</label>
-            <input id="trip-day" type="date" className="input" min={props.from} max={props.to} value={adding.day} onChange={(e) => setAdding({ ...adding, day: e.target.value })} />
+      {/* a round added as a game or a round is set up (Sascha 02.11.2026: "as in Games and Rounds"): "+ Runde" opens
+          the courses, then the course and the day as rows, the button below */}
+      {adding?.course ? (
+        <div className="card trip-add" role="group" aria-label={tr('New round', 'Neue Runde')}>
+          <div className="sheet-head">
+            <strong>{tr('New round', 'Neue Runde')}</strong>
+            <button type="button" className="icon-btn" aria-label={tr('Cancel', 'Abbrechen')} onClick={() => setAdding(null)}>
+              ✕
+            </button>
           </div>
           <div className="settings-list">
             <button type="button" className="settings-row" onClick={() => setPicking(true)}>
               <span>{tr('Course', 'Platz')}</span>
-              <span className={`settings-value${adding.course ? '' : ' good-text'}`}>{adding.course?.name ?? tr('Choose a course', 'Platz wählen')}</span>
+              <span className="settings-value">{adding.course.name}</span>
               <span aria-hidden="true">›</span>
             </button>
+            <label className="settings-row trip-day-row" htmlFor="trip-day">
+              <span>{tr('Day', 'Tag')}</span>
+              <span className="settings-value">{roundLabel({ id: '', day: adding.day, course: '' }).replace(/ · $/, '')}</span>
+              <span aria-hidden="true">›</span>
+              <input id="trip-day" type="date" className="trip-day-input" aria-label={tr('Day', 'Tag')} min={props.from} max={props.to} value={adding.day} onChange={(e) => e.target.value && setAdding({ ...adding, day: e.target.value })} />
+            </label>
           </div>
-          <div className="trip-add-actions">
-            <button type="button" className="btn-secondary" onClick={() => setAdding(null)}>
-              {tr('Cancel', 'Abbrechen')}
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={!adding.course || adding.day < props.from || adding.day > props.to}
-              onClick={() => {
-                props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id }]);
-                setAdding(null);
-              }}
-            >
-              {tr('Add the round', 'Runde hinzufügen')}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={adding.day < props.from || adding.day > props.to}
+            onClick={() => {
+              props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id }]);
+              setAdding(null);
+            }}
+          >
+            {tr('Add the round', 'Runde hinzufügen')}
+          </button>
         </div>
       ) : (
-        <button type="button" className="btn-secondary" onClick={() => setAdding({ day: last && last < props.to ? dayOf(new Date(new Date(`${last}T12:00:00`).getTime() + 864e5)) : props.from })}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => {
+            setAdding({ day: nextDay() });
+            setPicking(true);
+          }}
+        >
           {tr('+ Round', '+ Runde')}
         </button>
       )}
