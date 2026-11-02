@@ -51,10 +51,13 @@ jobs:
         with:
           xcode-version: latest-stable
       - if: steps.changed.outputs.go == 'true'
-        run: swift test --package-path native-plugins/shot-listener
+        # the errors as annotations – readable without signing in to GitHub (the log needs a login)
+        run: swift test --package-path native-plugins/shot-listener > "$RUNNER_TEMP/swift.log" 2>&1 || { grep -E "error:|error |fatal|failed|Failed|XCTAssert|No profiles|No Account|provisioning|Signing" "$RUNNER_TEMP/swift.log" > "$RUNNER_TEMP/swift.log.err" || true; [ -s "$RUNNER_TEMP/swift.log.err" ] || tail -n 15 "$RUNNER_TEMP/swift.log" > "$RUNNER_TEMP/swift.log.err"; head -25 "$RUNNER_TEMP/swift.log.err" | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+      - if: always() && steps.changed.outputs.go == 'true'
+        run: tail -n 80 "$RUNNER_TEMP/swift.log" || true
 
+  # the app is built on its own – the detector's tests run beside it and say what fails
   testflight:
-    needs: detector
     # a push to main only tests the detector; the app is built by hand, from app-release and at night
     if: github.event_name != 'push' || github.ref_name == 'app-release'
     runs-on: macos-15
@@ -109,8 +112,8 @@ jobs:
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
-            "${AUTH[@]}" archive | tail -n 60
-          test "${PIPESTATUS[0]}" -eq 0
+            "${AUTH[@]}" archive > "$RUNNER_TEMP/archive.log" 2>&1 || { tail -n 60 "$RUNNER_TEMP/archive.log"; { grep -E "error:|error |fatal|failed|Failed|XCTAssert|No profiles|No Account|provisioning|Signing" "$RUNNER_TEMP/archive.log" > "$RUNNER_TEMP/archive.log.err" || true; [ -s "$RUNNER_TEMP/archive.log.err" ] || tail -n 15 "$RUNNER_TEMP/archive.log" > "$RUNNER_TEMP/archive.log.err"; head -25 "$RUNNER_TEMP/archive.log.err" | while IFS= read -r l; do echo "::error::$l"; done; exit 1; } }
+          tail -n 20 "$RUNNER_TEMP/archive.log"
       - name: Upload to TestFlight
         if: steps.ready.outputs.go == 'true'
         run: |
@@ -130,8 +133,8 @@ jobs:
           EOF
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
             -exportPath "$RUNNER_TEMP/export" -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tail -n 40
-          test "${PIPESTATUS[0]}" -eq 0
+            -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" > "$RUNNER_TEMP/export.log" 2>&1 || { tail -n 40 "$RUNNER_TEMP/export.log"; { grep -E "error:|error |fatal|failed|Failed|XCTAssert|No profiles|No Account|provisioning|Signing" "$RUNNER_TEMP/export.log" > "$RUNNER_TEMP/export.log.err" || true; [ -s "$RUNNER_TEMP/export.log.err" ] || tail -n 15 "$RUNNER_TEMP/export.log" > "$RUNNER_TEMP/export.log.err"; head -25 "$RUNNER_TEMP/export.log.err" | while IFS= read -r l; do echo "::error::$l"; done; exit 1; } }
+          tail -n 20 "$RUNNER_TEMP/export.log"
           echo "::notice::Build $GITHUB_RUN_NUMBER uploaded – in TestFlight after Apple's processing (about 10–30 min)."
       - name: Remove the key
         if: always()
