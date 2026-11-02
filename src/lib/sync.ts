@@ -412,7 +412,11 @@ const saveSession = (s: Session | null) => (s ? browserStore.set(AUTH, JSON.stri
 export function signIn(): void {
   const back = isNative() ? AUTH_BACK : location.origin + location.pathname;
   const url = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(back)}`;
-  if (isNative()) void openSignIn(url);
+  // the app: Apple's sign-in sheet hands the way back over itself – signed in, the page starts again with the account
+  if (isNative())
+    void openSignIn(url).then(async (back) => {
+      if (back && (await finishSignIn(back))) location.reload();
+    });
   else location.href = url;
 }
 export function signOut(): void {
