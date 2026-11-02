@@ -91,6 +91,45 @@ await H.waitForTimeout(2000);
 const kept = await H.evaluate(() => ({ rounds: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').filter((r) => r.finishedAt).length, inPlay: JSON.parse(localStorage.getItem('golfos.poolrounds.v1') ?? '[]').length }));
 ok(kept.rounds === 1 && kept.inPlay === 0, `finished: the round in the round analysis, none in play (${JSON.stringify(kept)})`);
 ok((await H.getByRole('button', { name: 'Runde starten' }).count()) === 1, 'the pool offers a new round');
+// a bet on the greens: the putts a must (Sascha 02.11.2026: "the next hole only once all putts are entered")
+const gir = await H.evaluate(async () => {
+  const ws = await import('/src/lib/wagerstore.ts');
+  const { dayOf } = await import('/src/lib/wagers.ts');
+  const day = dayOf(new Date());
+  const pool = {
+    kind: 'wager-pool', id: 'gir', name: 'Grüns', from: day, to: day, createdAt: new Date().toISOString(), currency: 'EUR',
+    players: [{ id: 'ps', name: 'Sascha' }, { id: 'pc', name: 'Chris' }],
+    wagers: [{ stake: 10, payout: 'success', attempts: 'any', by: 'Sascha', id: 'g', player: 'pc', kind: 'greens', target: 5 }],
+    progress: {},
+  };
+  return (await ws.createPool(pool, 'ps'))?.code ?? null;
+});
+await H.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
+await H.reload();
+await H.waitForTimeout(1500);
+await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
+await H.locator('.list-item').filter({ hasText: 'Grüns' }).first().click();
+await H.getByRole('button', { name: 'Runde starten' }).click();
+await H.getByRole('button', { name: /Platz wählen|Golfclub/ }).first().click();
+await H.fill('#course-search', 'Hetzenhof');
+await H.waitForTimeout(2000);
+await H.locator('button.list-item').first().click();
+await H.locator('.choice-loop').filter({ hasText: /^As*9 Löcher/ }).first().click();
+ok((await H.locator('.settings-row').filter({ hasText: 'Erfassung' }).first().isDisabled()) && (await H.getByText(/jeder Spieler mit Details, die Putts sind Pflicht/).isVisible()), 'a greens bet: the score entry "Mit Details", fixed by the bets – said why');
+await H.getByRole('button', { name: 'Runde starten' }).last().click();
+await H.locator('.map-hole-no').waitFor({ timeout: 30000 });
+await H.locator('.map-score').click();
+for (const n of ['Sascha', 'Chris']) await block(n).getByRole('button', { name: /Schläge plus eins/ }).click();
+await H.getByRole('button', { name: 'Nächstes Loch' }).last().click();
+await H.waitForTimeout(400);
+ok((await H.getByText(/Putts fehlen bei/).count()) >= 1 && (await H.getByRole('dialog', { name: 'Score an diesem Loch' }).count()) === 1, `the putts missing: not on to the next hole – "${(await H.getByText(/Putts fehlen bei/).first().innerText().catch(() => '–')).slice(0, 60)}"`);
+for (const n of ['Sascha', 'Chris']) await block(n).getByRole('button', { name: /Putts plus eins/ }).click();
+const before = await H.locator('.map-hole-no').first().innerText();
+await H.getByRole('button', { name: 'Nächstes Loch' }).last().click();
+await H.waitForTimeout(500);
+const after = await H.locator('.map-hole-no').first().innerText();
+ok(after !== before, `all putts in: on to the next hole (${before.slice(0, 12)} → ${after.slice(0, 12)})`);
+ok(!!gir, `the greens pool: ${gir}`);
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
