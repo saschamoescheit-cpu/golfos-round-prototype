@@ -112,19 +112,30 @@ const mobilityPaused = (): boolean => {
 };
 /**
  * The guided training of the mobility module on the start page (read without loading the module): paused, done today,
- * or waiting (a screening was done, so there is a plan).
+ * or waiting – only on a training day the player set (Sascha 02.11.2026: "a training is shown although I made no
+ * plan"; a screening alone is no plan, and Agility's day plan has no days – the physio plan's week has).
  */
 const mobilityToday = (): 'paused' | 'done' | 'today' | undefined => {
   try {
     const sessions = JSON.parse(localStorage.getItem('golfos.mobility.sessions.v1') ?? '[]') as { startedAt: string; finishedAt: string | null; done: unknown[] }[];
+    const plans = JSON.parse(localStorage.getItem('golfos.mobility.physio.v1') ?? '[]') as { screenedAt: string; schedule?: { perWeek: number; days?: number[] }; log?: { at: string }[] }[];
     // the day on the player's clock (a training at 00:30 belongs to the new day)
     const day = (at: string | number) => new Date(at).toDateString();
     const today = day(Date.now());
     // paused today (one paused on an earlier day does not hold up today's training)
     if (sessions.some((s) => !s.finishedAt && s.done.length > 0 && day(s.startedAt) === today)) return 'paused';
     if (sessions.some((s) => s.finishedAt && day(s.startedAt) === today)) return 'done';
-    const screenings = JSON.parse(localStorage.getItem('golfos.mobility.v1') ?? '[]') as { finishedAt: string | null; results: object }[];
-    return screenings.some((s) => s.finishedAt && Object.keys(s.results ?? {}).length) ? 'today' : undefined;
+    // the newest physio plan (as loadPhysio) and its week – the same rule as dueToday in mobility/physio.ts
+    const plan = [...plans].sort((a, b) => b.screenedAt.localeCompare(a.screenedAt))[0];
+    const s = plan?.schedule;
+    if (!plan || !s) return undefined;
+    const log = plan.log ?? [];
+    if (log.some((e) => day(e.at) === today)) return 'done';
+    const now = new Date();
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
+    if (s.days?.length) return s.days.includes((now.getDay() + 6) % 7) ? 'today' : undefined;
+    const week = new Set(log.filter((e) => Date.parse(e.at) >= monday && Date.parse(e.at) <= now.getTime()).map((e) => day(e.at))).size;
+    return week < s.perWeek ? 'today' : undefined;
   } catch {
     return undefined;
   }
