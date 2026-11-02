@@ -1,6 +1,6 @@
 import type { Round } from '../types';
 import { loadRounds, newId } from './storage';
-import { cachedEvent, isSigned, type Cell } from './sharedround';
+import { cachedEvent, isSigned, markerOf, type Cell } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { dayOf, isPool, judge, playedRounds, sameProgress, type EarlierBet, type PoolPlayer, type Wager, type WagerPool } from './wagers';
@@ -232,18 +232,21 @@ export async function joinPool(code: string, who: { id: string } | { name: strin
 
 // ---------- the bets judged on this phone ----------
 
-/** Does a round count for a "counted" bet: a marker marked him and both signed the card (lib/sharedround.ts). */
+/** Does a round count for a "counted" bet: a marker marked him – or the flight's scorer (Sascha 02.11.2026: "one
+ *  person enters the score for all") – and both signed the card (lib/sharedround.ts). */
 export function countedRound(r: Round, pid: string): boolean {
   if (!r.shared) return false;
   const f = cachedEvent(r.shared.code)?.flights[r.shared.flight];
-  return !!f && !!f.markers?.[pid] && isSigned(f, pid);
+  return !!f && !!markerOf(f, pid) && isSigned(f, pid);
 }
 
 /** The marker's count of a player in a round with a marker, as the event has it (his flight's row): each hole's score
- *  and details – what a bet "with marker" counts. */
+ *  and details – what a bet "with marker" counts. With a scorer there is one count only: the scorer's, in the scores. */
 export function markerCount(r: Round, pid: string): Cell[] | null {
   if (!r.shared) return null;
-  return cachedEvent(r.shared.code)?.flights[r.shared.flight]?.marks?.[pid] ?? null;
+  const f = cachedEvent(r.shared.code)?.flights[r.shared.flight];
+  if (!f) return null;
+  return f.scorer && f.scorer !== pid ? (f.scores?.[pid] ?? null) : (f.marks?.[pid] ?? null);
 }
 
 let running: Promise<void> | null = null;

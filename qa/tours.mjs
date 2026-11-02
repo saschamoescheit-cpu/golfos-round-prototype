@@ -185,6 +185,13 @@ await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
 await sheet.getByRole('button', { name: 'Cedric', exact: true }).click();
 await sheet.getByRole('button', { name: 'Speichern' }).click();
 ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'Cedric back in flight 2');
+// one for all (Sascha 02.11.2026: "a person enters the score for all"): Cedric keeps flight 2's score
+await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
+ok((await sheet.getByRole('group', { name: 'Wer erfasst die Scores' }).locator('[aria-pressed="true"]').innerText()) === 'Jeder mit Zähler', 'who enters the scores: everyone with a marker, as before');
+await sheet.getByRole('button', { name: 'Cedric für alle' }).click();
+await sheet.getByRole('button', { name: 'Speichern' }).click();
+const f2 = (await fl(1).innerText()).replace(/\s+/g, ' ');
+ok(/Cedric erfasst die Scores für alle/.test(f2) && /Erik · Zähler: Cedric/.test(f2) && /Cedric · Zähler: Erik/.test(f2), `flight 2: Cedric for all – Erik's marker, his own card Erik's (${f2})`);
 ok((await H.locator('#tour-first, #tour-gap, .tour-chip').count()) === 0 && (await H.getByText('Abstand', { exact: true }).count()) === 0, 'no first tee time, no interval, nothing to drag – each flight its own time to the minute');
 // special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional"): Nearest to the Pin on a par 3
 await H.getByRole('button', { name: '+ Long Drive' }).click();
@@ -202,6 +209,7 @@ const ev = code && shared.get(code).game;
 ok(!!ev && ev.planned === true && ev.tournament === true && ev.name === 'USA Tag 1' && ev.date === new Date().toLocaleDateString('sv-SE') && ev.course?.name, `server: the planned tournament (${code}, ${ev?.date}, ${ev?.course?.name})`);
 const fs1 = code ? flightsOf(code) : [];
 const byTime = [...fs1].sort((x, y) => x.teeTime.localeCompare(y.teeTime));
+ok(byTime[1]?.scorer === byTime[1]?.players.find((p) => p.name === 'Cedric')?.id && !byTime[0]?.scorer, `server: flight 2 with Cedric as scorer, flight 1 without (${byTime.map((f) => f.scorer ?? '–').join(', ')})`);
 ok(fs1.length === 2 && byTime[0].teeTime === '12:08' && byTime[1].teeTime === '12:16', `server: a row per flight with its tee time (${fs1.map((f) => f.teeTime).join(', ')})`);
 const specials = ev?.specials ?? [];
 const ld = specials.find((s) => s.kind === 'longDrive');
@@ -210,6 +218,7 @@ ok(specials.length === 2 && ev.holes[ntp.hole].par === 3 && ev.holes[ld.hole].pa
 ok(byTime[0].players.map((p) => p.name).join(',') === 'Sascha,Chris' && byTime[0].markers.p1 === 'p2' && byTime[0].markers.p2 === 'p1' && byTime[0].players.every((p) => p.hcpIndex === 0), 'server: flight 1 Sascha and Chris, marking each other, the HCP kept');
 ok((await H.locator('.topbar h1').innerText()).includes('USA Tag 1') && (await H.locator('.tour-tee').allInnerTexts()).join(',') === '12:08,12:16', 'the tournament page: the flights with their tee times');
 ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Zähler: Sascha').count()) === 1, 'the tournament page: who marks whom');
+ok((await H.getByText('Cedric erfasst die Scores für alle').count()) === 1 && (await H.getByText('Zähler: Cedric').count()) === 1, 'the tournament page: Cedric keeps the score of flight 2');
 await H.getByRole('button', { name: new RegExp(`Mitspieler einladen · Code ${code}`) }).click();
 ok((await H.locator('.qr-box svg').count()) === 1 && (await H.locator('.join-code').innerText()).trim() === code, 'invite: code and QR code');
 // Sascha 02.11.2026: "sending the invitation by WhatsApp does not work for tournaments" – the text and the link apart,

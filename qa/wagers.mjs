@@ -321,6 +321,18 @@ ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 7
 await H.locator('.tile').filter({ hasText: 'laufend' }).click();
 ok((await H.locator('.list-item').filter({ hasText: 'USA 2026 Florida' }).count()) === 1, 'restored: in the list again');
 
+// one for all (Sascha 02.11.2026: "a person, e.g. Chris, enters the score for all players"): a round with a scorer
+// counts "with marker" – the scorer's figures, as he entered them, signed by player and scorer
+const scored = await H.evaluate(async ({ round, event }) => {
+  const ws = await import('/src/lib/wagerstore.ts');
+  const ev = { ...event, flights: { f1: { ...event.flights.f1, scorer: 'p2', markers: { me: 'p2', p2: 'me' }, marks: {}, scores: { me: event.flights.f1.marks.me } } } };
+  localStorage.setItem('golfos.event.v1.EVT234', JSON.stringify(ev));
+  const r = { ...round, shared: { code: 'EVT234', flight: 'f1', base: {} } };
+  const cells = ws.markerCount(r, 'me');
+  return { counted: ws.countedRound(r, 'me'), cells: cells?.length ?? 0, putts4: cells?.[3]?.d?.pu ?? null };
+}, { round: chrisRound, event });
+ok(scored.counted && scored.cells === 18 && scored.putts4 === 2, `a round with a scorer counts "with marker" – the scorer's count (${JSON.stringify(scored)})`);
+
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
