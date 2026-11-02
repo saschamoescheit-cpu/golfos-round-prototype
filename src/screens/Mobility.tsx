@@ -1496,7 +1496,7 @@ function ResultTab(props: { nav: Nav }) {
         </button>
       </div>
       {tab === 'swing' ? (
-        <SwingResult patterns={patterns} misses={misses} nav={props.nav} />
+        <SwingResult patterns={patterns} misses={misses} tested={tested.length} nav={props.nav} />
       ) : (
         <BodyResult results={results} nav={props.nav} />
       )}
@@ -1546,12 +1546,24 @@ function TrainNext(props: { nav: Nav }) {
   );
 }
 
-const pctLevel = (score: number): 'high' | 'moderate' | 'low' => (score >= 0.66 ? 'high' : score >= 0.33 ? 'moderate' : 'low');
-/** how likely the pattern is, 0 … 1: the share of its tests that did not pass, weighed by how many of them were done
- *  (two tests of five that failed are less sure than five of five) */
-const likelihood = (r: PatternResult) => r.score * (0.5 + (0.5 * r.covered[0]) / Math.max(1, r.covered[1]));
+const pctLevel = (score: number): 'high' | 'moderate' | 'low' => (Math.round(score * 100) >= 66 ? 'high' : Math.round(score * 100) >= 33 ? 'moderate' : 'low');
+/** how likely the pattern is, 0 … 1 (reckoned as the TPI app does, mobility/swing.ts) */
+const likelihood = (r: PatternResult) => r.score;
 
-function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<typeof likelyMisses>; nav: Nav }) {
+function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<typeof likelyMisses>; tested: number; nav: Nav }) {
+  // with few tests most patterns stay unknown (Sascha 02.11.2026: two tests showed only the hollow back, the TPI app 15)
+  const few = props.tested < TESTS.length - 3 && (
+    <section className="card tr-section mob-swing-few">
+      <strong>{tr(`Only ${props.tested} of ${TESTS.length} tests so far`, `Erst ${props.tested} von ${TESTS.length} Tests`)}</strong>
+      <span className="muted small">
+        {tr('A swing pattern shows once enough of its tests are done. The full screening shows all of them – or import the TPI screen of your physio under Drills → My physio plan.', 'Ein Schwungmuster erscheint, sobald genug seiner Tests gemacht sind. Das volle Screening zeigt alle – oder importiere das TPI-Screening deines Physios unter Übungen → Mein Physio-Plan.')}
+      </span>
+      <button type="button" className="btn-secondary" onClick={() => props.nav.toTab('test')}>
+        {tr('To the screening', 'Zum Screening')}
+      </button>
+    </section>
+  );
+  if (!props.patterns.length && few) return few;
   if (!props.patterns.length)
     return (
       <section className="card tr-section">
@@ -1561,6 +1573,8 @@ function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<type
     );
   return (
     <>
+      {few}
+      {props.misses.length > 0 && (
       <section className="tr-block">
         <h2>{tr('Misses your body tends to', 'Fehlschläge, die dein Körper begünstigt')}</h2>
         <div className="chip-set mob-misses">
@@ -1571,6 +1585,7 @@ function SwingResult(props: { patterns: PatternResult[]; misses: ReturnType<type
           ))}
         </div>
       </section>
+      )}
       <section className="tr-block">
         <h2>{tr('Swing patterns your body tends to', 'Schwungmuster, die dein Körper begünstigt')}</h2>
         <p className="muted small">{tr('How likely each is from your tests – as the TPI app\'s "body swing connection".', 'Wie wahrscheinlich jedes ist, aus deinen Tests – wie die „Body Swing Connection“ der TPI-App.')}</p>
@@ -1614,7 +1629,7 @@ function PatternView(props: { id: string; nav: Nav }) {
       <TopBar title={t(p.name)} onBack={props.nav.back} />
       <SketchView sketch={p.sketch} label={t(p.name)} />
       <section className="card tr-section">
-        <span className={`mob-level ${r.level}`}>{r.level === 'likely' ? tr('likely', 'wahrscheinlich') : tr('possible', 'möglich')}</span>
+        <span className={`mob-level ${r.level}`}>{Math.round(r.score * 100)} % · {r.level === 'likely' ? tr('likely', 'wahrscheinlich') : r.level === 'possible' ? tr('possible', 'möglich') : tr('unlikely', 'eher nicht')}</span>
         <p>{t(p.what)}</p>
         <p className="muted">{t(p.why)}</p>
         <div className="chip-set">

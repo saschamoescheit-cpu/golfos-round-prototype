@@ -3,10 +3,12 @@ import type { Sketch, SideItem } from '../training/types';
 import type { Grade, Measurement, Screening, Side, TestId, TestResult } from './types';
 
 // The body–swing connection (TPI): a body that cannot do a movement makes the swing find another way – and those
-// ways are predictable. Every swing pattern below lists the tests that point to it, with a weight (3 = the main
-// cause, 1 = a contributing one) and, for sided tests, which side matters (lead = the side towards the target: the
+// ways are predictable. Every swing pattern below lists the tests that point to it, with a strength (0.7 = the main
+// cause, 0.2 = a contributing one) and, for sided tests, which side matters (lead = the side towards the target: the
 // left for a right-hander). From the results: how likely the pattern is, and the misses it brings, in player language.
-// Sources: TPI body–swing connection (mytpi.com, seminar notes); weights REVIEW(golf) – Chris.
+// The 15 characteristics of the TPI app's "body swing connection"; the strengths set (02.11.2026) so that a physio's
+// TPI level 1 screen gives about the percentages the TPI app shows for it (within 5 points for all 15).
+// Sources: TPI body–swing connection (mytpi.com, seminar notes, the TPI app); strengths REVIEW(golf) – Chris.
 
 export type PatternId =
   | 'early-extension'
@@ -20,7 +22,11 @@ export type PatternId =
   | 'casting'
   | 'chicken-wing'
   | 'scooping'
-  | 's-posture';
+  | 's-posture'
+  | 'c-posture'
+  | 'reverse-pivot'
+  | 'hiking'
+  | 'flying-elbow';
 
 export type Miss = 'slice' | 'hook' | 'push' | 'pull' | 'fat' | 'thin' | 'shank' | 'short' | 'high' | 'back';
 
@@ -39,7 +45,8 @@ export const MISS_NAMES: Record<Miss, L> = {
 
 interface Link {
   test: TestId;
-  w: 1 | 2 | 3;
+  /** how strongly a failed test points to the pattern, 0 … 1 (a limited one counts half) */
+  c: number;
   /** which side of a sided test counts (none = the worse of both) */
   side?: 'lead' | 'trail';
 }
@@ -70,7 +77,7 @@ export const PATTERNS: Pattern[] = [
     what: L('In the downswing the hips move towards the ball and the body stands up – the arms have no room.', 'Im Abschwung schiebt die Hüfte zum Ball und der Körper richtet sich auf – die Arme haben keinen Platz mehr.'),
     why: L('Hips that cannot turn or bend deep enough, or weak glutes, push the pelvis forward.', 'Eine Hüfte, die nicht tief genug beugen oder drehen kann, oder ein schwaches Gesäß schieben das Becken nach vorn.'),
     misses: ['push', 'hook', 'thin', 'shank'],
-    links: [{ test: 'deep-squat', w: 3 }, { test: 'bridge', w: 2 }, { test: 'pelvic-rotation', w: 2 }, { test: 'pelvic-tilt', w: 2 }, { test: 'lower-quarter', w: 2, side: 'lead' }, { test: 'toe-touch', w: 1 }],
+    links: [{ test: 'deep-squat', c: 0.7 }, { test: 'bridge', c: 0.7 }, { test: 'lower-quarter', c: 0.6, side: 'lead' }, { test: 'pelvic-rotation', c: 0.6 }, { test: 'toe-touch', c: 0.5 }, { test: 'pelvic-tilt', c: 0.5 }],
     sketch: scene([
       { k: 'figure', at: at(1.0), pose: 'address', club: 'iron' },
       { k: 'figure', at: at(2.1), pose: 'address', club: 'iron', standUp: true },
@@ -85,7 +92,7 @@ export const PATTERNS: Pattern[] = [
     what: L('The angles of the address get lost in the swing – the body moves up and down.', 'Die Winkel der Ansprechhaltung gehen im Schwung verloren – der Körper geht hoch und runter.'),
     why: L('Stiff hips, hamstrings, upper back or lats – the body finds room by changing its posture.', 'Steife Hüfte, hintere Oberschenkel, oberer Rücken oder Latissimus – der Körper schafft sich Platz, indem er die Haltung ändert.'),
     misses: ['fat', 'thin', 'shank'],
-    links: [{ test: 'deep-squat', w: 2 }, { test: 'toe-touch', w: 2 }, { test: 'lat', w: 2 }, { test: 'seated-rotation', w: 1 }, { test: 'shoulder-9090', w: 1, side: 'trail' }, { test: 'single-leg', w: 1 }, { test: 'bridge', w: 1 }, { test: 'neck', w: 1 }],
+    links: [{ test: 'toe-touch', c: 0.7 }, { test: 'lower-quarter', c: 0.5 }, { test: 'bridge', c: 0.5 }, { test: 'single-leg', c: 0.4 }, { test: 'neck', c: 0.4 }, { test: 'deep-squat', c: 0.3 }, { test: 'lat', c: 0.3 }, { test: 'seated-rotation', c: 0.2 }, { test: 'shoulder-9090', c: 0.2, side: 'trail' }],
     sketch: scene([
       { k: 'figure', at: at(1.0), pose: 'address', club: 'iron' },
       { k: 'figure', at: at(2.1), pose: 'top', club: 'iron', standUp: true },
@@ -99,7 +106,7 @@ export const PATTERNS: Pattern[] = [
     what: L('The downswing starts with the shoulders and arms – the club comes from outside across the ball.', 'Der Abschwung beginnt mit Schultern und Armen – der Schläger kommt von außen über den Ball.'),
     why: L('The hips cannot lead on their own, so the upper body starts the downswing.', 'Die Hüfte kann nicht allein führen, also startet der Oberkörper den Abschwung.'),
     misses: ['slice', 'pull'],
-    links: [{ test: 'pelvic-rotation', w: 3 }, { test: 'seated-rotation', w: 2 }, { test: 'shoulder-9090', w: 2, side: 'trail' }, { test: 'lower-quarter', w: 2, side: 'lead' }, { test: 'lat', w: 1 }, { test: 'single-leg', w: 1 }],
+    links: [{ test: 'pelvic-rotation', c: 0.6 }, { test: 'seated-rotation', c: 0.5 }, { test: 'shoulder-9090', c: 0.4, side: 'trail' }, { test: 'lower-quarter', c: 0.3, side: 'lead' }, { test: 'lat', c: 0.2 }],
     sketch: scene([
       { k: 'figure', at: at(1.4), pose: 'top', club: 'iron' },
       { k: 'flight', pts: [[2.25, 1.75], [2.05, 1.1], [1.95, 0.25]], dashed: true },
@@ -114,7 +121,7 @@ export const PATTERNS: Pattern[] = [
     what: L('In the backswing the hips slide away from the target instead of turning.', 'Im Rückschwung schiebt die Hüfte vom Ziel weg, statt zu drehen.'),
     why: L('The trail hip cannot rotate inwards or the balance is weak – the body moves sideways.', 'Die hintere Hüfte kann nicht nach innen drehen oder das Gleichgewicht fehlt – der Körper weicht zur Seite aus.'),
     misses: ['fat', 'thin', 'push'],
-    links: [{ test: 'lower-quarter', w: 3, side: 'trail' }, { test: 'single-leg', w: 2, side: 'trail' }, { test: 'seated-rotation', w: 1 }, { test: 'pelvic-rotation', w: 1 }],
+    links: [{ test: 'lower-quarter', c: 0.6, side: 'trail' }, { test: 'single-leg', c: 0.4, side: 'trail' }, { test: 'pelvic-rotation', c: 0.3 }, { test: 'seated-rotation', c: 0.2 }],
     sketch: scene([
       { k: 'figure', at: at(1.5), pose: 'frontTop', shift: -0.12 },
       { k: 'line', from: [1.5 - 0.21, G0], to: [1.5 - 0.21, G0 + 1.9], dashed: true },
@@ -128,7 +135,7 @@ export const PATTERNS: Pattern[] = [
     what: L('In the downswing the hips slide towards the target instead of turning open.', 'Im Abschwung schiebt die Hüfte zum Ziel, statt sich aufzudrehen.'),
     why: L('The lead hip cannot rotate inwards or the balance on the lead leg is weak.', 'Die vordere Hüfte kann nicht nach innen drehen oder das Gleichgewicht auf dem vorderen Bein fehlt.'),
     misses: ['push', 'hook'],
-    links: [{ test: 'lower-quarter', w: 3, side: 'lead' }, { test: 'single-leg', w: 2, side: 'lead' }, { test: 'bridge', w: 1 }, { test: 'pelvic-rotation', w: 1 }],
+    links: [{ test: 'lower-quarter', c: 0.5, side: 'lead' }, { test: 'single-leg', c: 0.3, side: 'lead' }, { test: 'bridge', c: 0.2 }],
     sketch: scene([
       { k: 'figure', at: at(1.5), pose: 'impact', shift: 0.12 },
       { k: 'line', from: [1.5 + 0.21, G0], to: [1.5 + 0.21, G0 + 1.9], dashed: true },
@@ -141,7 +148,7 @@ export const PATTERNS: Pattern[] = [
     what: L('At the top the upper body leans towards the target instead of behind the ball.', 'Am Top lehnt der Oberkörper zum Ziel statt hinter den Ball.'),
     why: L('Not enough turn in the upper back, the trail hip or the lats – the body bends instead of turning.', 'Zu wenig Drehung im oberen Rücken, der hinteren Hüfte oder Latissimus – der Körper biegt sich statt zu drehen.'),
     misses: ['slice', 'pull', 'back'],
-    links: [{ test: 'seated-rotation', w: 3 }, { test: 'lat', w: 2 }, { test: 'neck', w: 2 }, { test: 'lower-quarter', w: 1, side: 'trail' }, { test: 'single-leg', w: 1 }],
+    links: [{ test: 'seated-rotation', c: 0.5 }, { test: 'lat', c: 0.4 }, { test: 'bridge', c: 0.3 }, { test: 'neck', c: 0.2 }, { test: 'lower-quarter', c: 0.2, side: 'trail' }],
     sketch: scene([
       { k: 'figure', at: at(1.5), pose: 'frontTop', joints: { head: [0.1, 1.54], neck: [0.08, 1.41], leadShoulder: [0.18, 1.36], trailShoulder: [-0.06, 1.41], leadElbow: [-0.06, 1.46], trailElbow: [-0.24, 1.3], hands: [-0.28, 1.6], clubHead: [0.55, 1.78], pelvis: [-0.06, 0.92], leadHip: [0.05, 0.92], trailHip: [-0.17, 0.92] } },
       { k: 'line', from: [1.5 - 0.06, G0 + 0.92], to: [1.5 - 0.06, G0 + 1.75], dashed: true },
@@ -155,7 +162,7 @@ export const PATTERNS: Pattern[] = [
     what: L('The shoulders turn level instead of tilting – the club swings flat around the body.', 'Die Schultern drehen waagrecht statt geneigt – der Schläger schwingt flach um den Körper.'),
     why: L('Stiff lats and upper back keep the shoulders from tilting.', 'Ein verkürzter Latissimus und ein steifer oberer Rücken lassen die Schultern nicht neigen.'),
     misses: ['hook', 'push', 'fat'],
-    links: [{ test: 'lat', w: 2 }, { test: 'reach-roll-lift', w: 2 }, { test: 'shoulder-9090', w: 1 }, { test: 'seated-rotation', w: 1 }, { test: 'pelvic-tilt', w: 1 }],
+    links: [{ test: 'lat', c: 0.5 }, { test: 'reach-roll-lift', c: 0.5 }, { test: 'pelvic-tilt', c: 0.3 }, { test: 'seated-rotation', c: 0.3 }, { test: 'neck', c: 0.2 }, { test: 'shoulder-9090', c: 0.2 }],
     sketch: scene([
       { k: 'figure', at: at(1.4), pose: 'top', club: 'iron', joints: { leadShoulder: [0.22, 1.37], trailShoulder: [0.1, 1.37], leadElbow: [0.02, 1.36], trailElbow: [-0.14, 1.28], hands: [-0.22, 1.44], clubHead: [-0.72, 1.66] } },
       { k: 'line', from: [1.4 - 0.25, G0 + 1.37], to: [1.4 + 0.6, G0 + 1.37], dashed: true },
@@ -169,7 +176,7 @@ export const PATTERNS: Pattern[] = [
     what: L('Through impact the weight stays on the trail foot.', 'Durch den Treffmoment bleibt das Gewicht auf dem hinteren Fuß.'),
     why: L('Poor balance on the lead leg or a lead hip that cannot turn – the body does not trust the lead side.', 'Schlechtes Gleichgewicht auf dem vorderen Bein oder eine vordere Hüfte, die nicht dreht – der Körper traut der vorderen Seite nicht.'),
     misses: ['fat', 'thin', 'high'],
-    links: [{ test: 'single-leg', w: 2, side: 'lead' }, { test: 'lower-quarter', w: 2, side: 'lead' }, { test: 'bridge', w: 1 }],
+    links: [{ test: 'single-leg', c: 0.4, side: 'lead' }, { test: 'lower-quarter', c: 0.35, side: 'lead' }, { test: 'bridge', c: 0.2 }],
     sketch: scene([
       { k: 'figure', at: at(1.5), pose: 'impact', shift: -0.1 },
       { k: 'callout', on: 'trailKnee', t: L('the weight hangs on the trail foot', 'das Gewicht hängt auf dem hinteren Fuß'), at: [0.4, 0.8] },
@@ -181,7 +188,7 @@ export const PATTERNS: Pattern[] = [
     what: L('The wrist angle is thrown away early in the downswing – the speed is gone before the ball.', 'Der Winkel im Handgelenk wird früh im Abschwung geworfen – das Tempo ist vor dem Ball verbraucht.'),
     why: L('Stiff wrists or forearms, or a lower body that does not lead.', 'Steife Handgelenke oder Unterarme, oder ein Unterkörper, der nicht führt.'),
     misses: ['fat', 'thin', 'slice', 'short'],
-    links: [{ test: 'wrist-hinge', w: 3 }, { test: 'forearm', w: 2 }, { test: 'wrist-flex', w: 1 }, { test: 'pelvic-rotation', w: 1 }],
+    links: [{ test: 'wrist-hinge', c: 0.5 }, { test: 'pelvic-rotation', c: 0.5 }, { test: 'forearm', c: 0.3 }, { test: 'bridge', c: 0.3 }, { test: 'wrist-flex', c: 0.2 }, { test: 'single-leg', c: 0.1, side: 'lead' }],
     sketch: scene([
       { k: 'figure', at: at(1.5), pose: 'pump', scoop: true },
       { k: 'callout', on: 'hands', t: L('the wrist angle is gone early', 'der Handgelenkswinkel ist früh weg'), at: [2.6, 1.4] },
@@ -194,7 +201,7 @@ export const PATTERNS: Pattern[] = [
     what: L('After impact the lead elbow bends and points away – the face stays open.', 'Nach dem Treffmoment knickt der vordere Ellbogen ein – die Schlagfläche bleibt offen.'),
     why: L('The lead shoulder cannot turn out, or the forearms cannot rotate.', 'Die vordere Schulter kann nicht nach außen drehen oder die Unterarme drehen nicht.'),
     misses: ['slice', 'thin', 'push'],
-    links: [{ test: 'shoulder-9090', w: 2, side: 'lead' }, { test: 'forearm', w: 2 }, { test: 'wrist-flex', w: 1 }, { test: 'lat', w: 1 }],
+    links: [{ test: 'shoulder-9090', c: 0.5, side: 'lead' }, { test: 'pelvic-rotation', c: 0.5 }, { test: 'forearm', c: 0.4 }, { test: 'lower-quarter', c: 0.3, side: 'lead' }, { test: 'wrist-flex', c: 0.2 }, { test: 'lat', c: 0.2 }, { test: 'bridge', c: 0.1 }],
     sketch: scene([
       { k: 'figure', at: at(1.5), pose: 'halfThrough', joints: { leadElbow: [0.42, 1.12] } },
       { k: 'callout', on: 'leadElbow', t: L('the lead elbow bends and points away', 'der vordere Ellbogen knickt ein'), at: [2.6, 1.0] },
@@ -206,7 +213,7 @@ export const PATTERNS: Pattern[] = [
     what: L('The hands stop and the wrists flip to help the ball up – the clubhead passes the hands.', 'Die Hände stoppen und die Handgelenke klappen ab, um den Ball hochzuhelfen – der Schlägerkopf überholt die Hände.'),
     why: L('Stiff wrists (bowing), weak balance on the lead side or weight that stays back.', 'Steife Handgelenke (beugen), wenig Gleichgewicht auf der vorderen Seite oder Gewicht hinten.'),
     misses: ['thin', 'fat', 'high', 'short'],
-    links: [{ test: 'wrist-flex', w: 3 }, { test: 'wrist-hinge', w: 1 }, { test: 'single-leg', w: 1, side: 'lead' }, { test: 'bridge', w: 1 }],
+    links: [{ test: 'wrist-flex', c: 0.6 }, { test: 'single-leg', c: 0.3, side: 'lead' }, { test: 'bridge', c: 0.3 }, { test: 'wrist-hinge', c: 0.2 }],
     sketch: scene([
       { k: 'figure', at: at(1.5), pose: 'impact', scoop: true },
       { k: 'callout', on: 'hands', t: L('the hands behind the clubhead', 'die Hände hinter dem Schlägerkopf'), at: [2.6, 1.3] },
@@ -219,10 +226,60 @@ export const PATTERNS: Pattern[] = [
     what: L('At address the low back is arched – the core cannot work, the back is loaded.', 'Beim Ansprechen ist der untere Rücken hohl – der Rumpf kann nicht arbeiten, der Rücken wird belastet.'),
     why: L('Poor control of the pelvis, weak glutes and core, tight lats.', 'Wenig Kontrolle über das Becken, schwaches Gesäß und schwacher Rumpf, verkürzter Latissimus.'),
     misses: ['back', 'thin'],
-    links: [{ test: 'pelvic-tilt', w: 3 }, { test: 'bridge', w: 2 }, { test: 'lat', w: 1 }],
+    links: [{ test: 'pelvic-tilt', c: 0.7 }, { test: 'bridge', c: 0.5 }, { test: 'pelvic-rotation', c: 0.4 }, { test: 'lat', c: 0.3 }],
     sketch: scene([
       { k: 'figure', at: at(1.4), pose: 'address', club: 'iron' },
       { k: 'callout', on: 'pelvis', t: L('the low back arched', 'der untere Rücken hohl'), at: [0.3, 1.2] },
+    ]),
+  },
+  {
+    id: 'c-posture',
+    name: L('Round back (C-posture)', 'Runder Rücken (C-Haltung)'),
+    what: L('At address the upper back is rounded and the shoulders hang forward – the turn has no room.', 'Beim Ansprechen ist der obere Rücken rund und die Schultern hängen nach vorn – die Drehung hat keinen Platz.'),
+    why: L('Stiff hamstrings, a stiff upper back or neck, tight lats – the body bends from the back instead of the hips.', 'Steife hintere Oberschenkel, ein steifer oberer Rücken oder Hals, verkürzter Latissimus – der Körper beugt aus dem Rücken statt aus der Hüfte.'),
+    misses: ['short', 'slice', 'thin'],
+    links: [{ test: 'toe-touch', c: 0.5 }, { test: 'neck', c: 0.4 }, { test: 'seated-rotation', c: 0.4 }, { test: 'lat', c: 0.3 }, { test: 'reach-roll-lift', c: 0.3 }],
+    sketch: scene([
+      { k: 'figure', at: at(1.4), pose: 'address', club: 'iron' },
+      { k: 'callout', on: 'neck', t: L('the upper back rounded', 'der obere Rücken rund'), at: [0.3, 1.9] },
+      { k: 'callout', on: 'leadShoulder', t: L('the shoulders hang forward', 'die Schultern hängen nach vorn'), at: [2.7, 1.6] },
+    ]),
+  },
+  {
+    id: 'reverse-pivot',
+    name: L('Weight to the target in the backswing (reverse pivot)', 'Gewicht im Rückschwung vorn (Reverse Pivot)'),
+    what: L('At the top the weight is on the lead foot, in the downswing it goes back – the opposite of a good swing.', 'Am Top ist das Gewicht auf dem vorderen Fuß, im Abschwung geht es nach hinten – umgekehrt wie im guten Schwung.'),
+    why: L('The trail hip cannot turn in or the trail leg is not stable – the body cannot load the trail side.', 'Die hintere Hüfte kann nicht nach innen drehen oder das hintere Bein ist nicht stabil – der Körper kann die hintere Seite nicht belasten.'),
+    misses: ['slice', 'fat', 'thin', 'short'],
+    links: [{ test: 'lower-quarter', c: 0.4, side: 'trail' }, { test: 'single-leg', c: 0.3, side: 'trail' }, { test: 'seated-rotation', c: 0.3 }, { test: 'bridge', c: 0.2 }],
+    sketch: scene([
+      { k: 'figure', at: at(1.5), pose: 'frontTop', shift: 0.12 },
+      { k: 'line', from: [1.5 + 0.21, G0], to: [1.5 + 0.21, G0 + 1.9], dashed: true },
+      { k: 'callout', on: 'pelvis', t: L('at the top the weight is on the lead foot', 'am Top ist das Gewicht auf dem vorderen Fuß'), at: [2.6, 1.1] },
+    ], L('Face-on at the top: the body over the lead foot.', 'Von vorn am Top: der Körper über dem vorderen Fuß.')),
+  },
+  {
+    id: 'hiking',
+    name: L('Trail hip stays up (hiking)', 'Hintere Hüfte bleibt oben (Hiking)'),
+    what: L('From the top into the downswing the trail hip stays high or goes up, the pelvis moves forward – a cousin of standing up.', 'Vom Top in den Abschwung bleibt die hintere Hüfte hoch oder geht nach oben, das Becken schiebt nach vorn – ein Verwandter des frühen Aufrichtens.'),
+    why: L('The pelvis cannot turn on its own or the core does not hold it – the hip lifts instead of turning.', 'Das Becken kann nicht allein drehen oder der Rumpf hält es nicht – die Hüfte hebt sich statt zu drehen.'),
+    misses: ['thin', 'push', 'back'],
+    links: [{ test: 'pelvic-rotation', c: 0.5 }, { test: 'bridge', c: 0.3 }, { test: 'lower-quarter', c: 0.3, side: 'trail' }, { test: 'seated-rotation', c: 0.2 }],
+    sketch: scene([
+      { k: 'figure', at: at(1.5), pose: 'impact' },
+      { k: 'callout', on: 'trailHip', t: L('the trail hip stays up', 'die hintere Hüfte bleibt oben'), at: [0.4, 1.3] },
+    ]),
+  },
+  {
+    id: 'flying-elbow',
+    name: L('Flying trail elbow', 'Abstehender hinterer Ellbogen (Flying Elbow)'),
+    what: L('At the top the trail elbow points away from the body instead of down.', 'Am Top zeigt der hintere Ellbogen vom Körper weg statt nach unten.'),
+    why: L('The trail shoulder cannot turn out far enough, or tight lats and a stiff upper back – the arm lifts instead.', 'Die hintere Schulter kann nicht weit genug nach außen drehen, oder ein verkürzter Latissimus und ein steifer oberer Rücken – der Arm hebt sich stattdessen.'),
+    misses: ['slice', 'pull'],
+    links: [{ test: 'shoulder-9090', c: 0.6, side: 'trail' }, { test: 'lat', c: 0.4 }, { test: 'seated-rotation', c: 0.2 }],
+    sketch: scene([
+      { k: 'figure', at: at(1.5), pose: 'frontTop', joints: { trailElbow: [-0.6, 1.42] } },
+      { k: 'callout', on: 'trailElbow', t: L('the trail elbow points away', 'der hintere Ellbogen steht ab'), at: [0.35, 1.9] },
     ]),
   },
 ];
@@ -280,6 +337,22 @@ export const PLAY_NOW: Record<PatternId, L[]> = {
     L('At address, roll the pelvis under a little (belt buckle up) – the low back is flat, not hollow.', 'Beim Ansprechen das Becken leicht einrollen (Gürtelschnalle nach oben) – der untere Rücken ist flach, nicht hohl.'),
     L('Knees a little more bent, the weight over the balls of the feet.', 'Die Knie etwas mehr gebeugt, das Gewicht über den Fußballen.'),
   ],
+  'c-posture': [
+    L('Bend from the hips, not the back: hold a club along your spine – it touches head, upper back and seat.', 'Aus der Hüfte beugen, nicht aus dem Rücken: einen Schläger am Rücken halten – er berührt Kopf, oberen Rücken und Gesäß.'),
+    L('Chest up a little, the arms hang loose below the shoulders.', 'Die Brust etwas heben, die Arme hängen locker unter den Schultern.'),
+  ],
+  'reverse-pivot': [
+    L('Turn the trail foot out 20–30° – the trail hip can turn and take the weight.', 'Den hinteren Fuß 20–30° ausdrehen – die hintere Hüfte kann drehen und das Gewicht nehmen.'),
+    L('A shorter backswing: stop where you still feel the trail foot carrying.', 'Kürzer ausholen: dort stoppen, wo du den hinteren Fuß noch tragen spürst.'),
+  ],
+  hiking: [
+    L('Start the downswing by turning the lead hip back – feel the trail hip go down and round, not up.', 'Den Abschwung mit dem Zurückdrehen der vorderen Hüfte starten – die hintere Hüfte geht runter und herum, nicht hoch.'),
+    L('Keep the trail knee flexed a moment longer.', 'Das hintere Knie einen Moment länger gebeugt lassen.'),
+  ],
+  'flying-elbow': [
+    L('Swing back only as far as the trail elbow still points to the ground.', 'Nur so weit ausholen, wie der hintere Ellbogen noch zum Boden zeigt.'),
+    L('A towel under the trail arm in practice swings keeps the elbow close.', 'Ein Handtuch unter dem hinteren Arm bei Probeschwüngen hält den Ellbogen nah.'),
+  ],
 };
 
 // ---------- results ----------
@@ -325,53 +398,59 @@ export function testGrade(r: TestResult | undefined): Grade | null {
 
 export interface PatternResult {
   pattern: Pattern;
-  /** 0..1: the weighted share of the linked tests that did not pass */
+  /** 0..1: how likely the pattern is (as the percentage of the TPI app) */
   score: number;
-  level: 'likely' | 'possible';
+  /** high from 66 %, moderate from 33 % (as the TPI app labels it) */
+  level: 'likely' | 'possible' | 'low';
   /** the tests that point to it (failed or limited), with their grade */
   causes: { test: TestId; grade: Grade; side?: 'lead' | 'trail' }[];
   /** linked tests done / all linked */
   covered: [number, number];
 }
 
+/** every swing has some of every pattern – the TPI app's floor (its lowest pattern with all links green: 15 %) */
+export const PATTERN_BASE = 0.15;
+
 /**
- * The swing patterns the body points to, most likely first. Shown only when enough of the linked tests were done (at
- * least 30 % of their weight). Likely: a third of the weight of the done tests did not pass, with a clear fail, and the
- * lost weight is 3 or more (a main cause, or two contributing ones); possible: some limitation.
+ * The swing patterns the body points to, most likely first – reckoned as the TPI app does (02.11.2026): every test
+ * that did not pass makes the pattern more likely on its own (a failed main cause alone: about 66–75 %), passed tests take
+ * nothing away – p = 1 − (1 − base) · Π (1 − c · bad), bad 1 for a fail, ½ for a limited one. Shown when at least one
+ * linked test did not pass and enough of them were done (35 % of the strength – a test not done counts as passed, so
+ * with few the value is too low).
  */
 export function swingPatterns(results: Partial<Record<TestId, TestResult>>, hand: 'right' | 'left'): PatternResult[] {
   const out: PatternResult[] = [];
   for (const p of PATTERNS) {
-    const all = p.links.reduce((sum, l) => sum + l.w, 0);
+    const all = p.links.reduce((sum, l) => sum + l.c, 0);
     let total = 0;
-    let lost = 0;
+    let keep = 1 - PATTERN_BASE;
     let done = 0;
-    let anyFail = false;
     const causes: PatternResult['causes'] = [];
     for (const l of p.links) {
       const m = measurementFor(results[l.test], l.side, hand);
       // pain says nothing about mobility – the test does not count until it is pain-free
       if (!m || m.pain) continue;
       done++;
-      total += l.w;
-      lost += l.w * SCORE[m.grade];
+      total += l.c;
+      keep *= 1 - l.c * SCORE[m.grade];
       if (m.grade !== 'pass') causes.push({ test: l.test, grade: m.grade, side: l.side });
-      if (m.grade === 'fail') anyFail = true;
     }
-    if (!total || !causes.length || total / all < 0.3) continue;
-    const score = lost / total;
-    const level = score >= 1 / 3 && anyFail && lost >= 3 ? 'likely' : score >= 0.15 && lost >= 1 ? 'possible' : null;
-    if (!level) continue;
+    if (!causes.length || total / all < 0.35 - 1e-9) continue;
+    const score = 1 - keep;
+    const pct = Math.round(score * 100);
+    const level = pct >= 66 ? 'likely' : pct >= 33 ? 'possible' : 'low';
     causes.sort((a, b) => SCORE[b.grade] - SCORE[a.grade]);
     out.push({ pattern: p, score, level, causes, covered: [done, p.links.length] });
   }
-  return out.sort((a, b) => (a.level === b.level ? b.score - a.score : a.level === 'likely' ? -1 : 1));
+  return out.sort((a, b) => b.score - a.score);
 }
 
-/** The misses the body points to, most likely first (from the likely patterns, then the possible ones). */
+/** The misses the body points to, most likely first (from the likely patterns, then the possible ones – a low one
+ *  brings none). */
 export function likelyMisses(patterns: PatternResult[]): { miss: Miss; from: PatternId[] }[] {
   const by = new Map<Miss, { w: number; from: PatternId[] }>();
   for (const r of patterns) {
+    if (r.level === 'low') continue;
     for (const m of r.pattern.misses) {
       const e = by.get(m) ?? { w: 0, from: [] };
       e.w += r.score * (r.level === 'likely' ? 2 : 1);

@@ -55,6 +55,31 @@ describe('body–swing connection', () => {
     expect(lh.find((p) => p.pattern.id === 'sway')).toBeUndefined();
   });
 
+  it('as the TPI app: every failed test adds on its own, a passed one takes nothing away, 15 % is the floor', () => {
+    const p = (r: Partial<Record<TestId, TestResult>>, id: string) => swingPatterns(r, 'right').find((x) => x.pattern.id === id);
+    // a failed main cause alone: likely, with all its other tests passed
+    const fe = p({ ...all('pass'), 'shoulder-9090': { left: m('pass'), right: m('fail') } }, 'flying-elbow');
+    expect(fe?.level).toBe('likely');
+    expect(fe!.score).toBeCloseTo(1 - 0.85 * 0.4, 5);
+    // a second failed test raises it, a limited one counts half
+    const one = p({ ...all('pass'), bridge: { both: m('fail') } }, 'early-extension')!.score;
+    const two = p({ ...all('pass'), bridge: { both: m('fail') }, 'toe-touch': { both: m('fail') } }, 'early-extension')!.score;
+    const half = p({ ...all('pass'), bridge: { both: m('fail') }, 'toe-touch': { both: m('limited') } }, 'early-extension')!.score;
+    expect(two).toBeGreaterThan(half);
+    expect(half).toBeGreaterThan(one);
+    // the same failed test with the other tests not done gives the same value (passed ones do not lower it)
+    expect(p({ 'deep-squat': { both: m('pass') }, bridge: { both: m('fail') } }, 'early-extension')!.score).toBeCloseTo(one, 5);
+    // a limited minor cause alone: shown, but low – and it brings no misses
+    const low = swingPatterns({ ...all('pass'), 'wrist-flex': { both: m('limited') } }, 'right').filter((x) => x.pattern.id === 'casting');
+    expect(low[0]?.level).toBe('low');
+    expect(likelyMisses(low)).toEqual([]);
+  });
+
+  it('the 15 characteristics of the TPI app (casting and scooping apart)', () => {
+    expect(PATTERNS).toHaveLength(16);
+    expect(PATTERNS.map((p) => p.id)).toEqual(expect.arrayContaining(['c-posture', 'reverse-pivot', 'hiking', 'flying-elbow']));
+  });
+
   it('a test without sides counts for both links', () => {
     expect(measurementFor({ both: m('fail') }, 'lead', 'right')?.grade).toBe('fail');
     expect(measurementFor({ left: m('pass'), right: m('limited') }, undefined, 'right')?.grade).toBe('limited');

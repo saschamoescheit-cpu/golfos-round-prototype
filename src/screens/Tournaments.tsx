@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import type { Course, CourseSummary } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
@@ -385,7 +385,8 @@ const SCORINGS = (): { v: Scoring; name: string; text: string }[] => [
 ];
 /** On the tournament's page: gross, net (the full handicap) or Stableford – no percentage (Sascha 02.11.2026). */
 const tourScoring = (s: Scoring) => (s === 'stableford' ? 'Stableford' : s === 'net' ? tr('Stroke play net', 'Zählspiel netto') : tr('Stroke play gross', 'Zählspiel brutto'));
-const classesName = (c: number[]) => (!c.length ? tr('None', 'Keine') : c.length === 1 ? tr(`A up to ${c[0]} · B`, `A bis ${c[0]} · B`) : tr(`A up to ${c[0]} · B up to ${c[1]} · C`, `A bis ${c[0]} · B bis ${c[1]} · C`));
+// the number of classes first (Sascha 02.11.2026: "rather three net classes than two" – the three were there, not seen)
+const classesName = (c: number[]) => (!c.length ? tr('None', 'Keine') : c.length === 1 ? tr(`2 classes · A up to ${c[0]} · B`, `2 Klassen · A bis ${c[0]} · B`) : tr(`3 classes · A up to ${c[0]} · B up to ${c[1]} · C`, `3 Klassen · A bis ${c[0]} · B bis ${c[1]} · C`));
 
 export function dealFlights<T extends { flight: number | null }>(players: T[], k: number): T[] {
   const sizes = Array.from({ length: k }, (_, i) => Math.floor(players.length / k) + (i < players.length % k ? 1 : 0));
@@ -661,7 +662,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
             <div className="pick-list">
               {pick === 'scoring' &&
                 SCORINGS().map((x) => (
-                  <button key={x.v} type="button" className="pick-option" aria-pressed={d.scoring === x.v} onClick={() => { set({ scoring: x.v, ...(x.v === 'stroke' ? { classes: [] } : {}) }); setPick(null); }}>
+                  <button key={x.v} type="button" className="pick-option" aria-pressed={d.scoring === x.v} onClick={() => { set({ scoring: x.v, ...(x.v === 'stroke' ? { classes: [] } : d.scoring === 'stroke' && !d.classes.length ? { classes: [12, 24] } : {}) }); setPick(null); }}>
                     <span className="grow">
                       <strong>{x.name}</strong>
                       <span className="muted small">{x.text}</span>
@@ -844,7 +845,24 @@ function FlightBoard(props: {
   // drag and drop (Sascha 02.11.2026: "move the players between the flights by drag and drop"): a player taken by his
   // grip (the page still scrolls everywhere else) or, not in a flight yet, by his chip; dropped on a flight with room or
   // on "not in a flight yet". "Ändern" stays for the tee time, the scorer – and for VoiceOver.
-  const [drag, setDrag] = useState<{ id: string; x0: number; y0: number; x: number; y: number; moved: boolean; over: number | null } | null>(null);
+// on the iPhone (Sascha 02.11.2026: "does not work yet"): a player also lifted by holding his row (as iOS lists do), the
+  // state read from a ref – the events come faster than React draws –, the page kept still while one is lifted
+  type Drag = { id: string; x0: number; y0: number; x: number; y: number; moved: boolean; armed: boolean; over: number | null };
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const live = useRef<Drag | null>(null);
+  const holdTimer = useRef<number | undefined>(undefined);
+  const put = (d: Drag | null) => {
+    live.current = d;
+    setDrag(d);
+  };
+  const lifted = !!drag?.armed;
+  useEffect(() => {
+    if (!lifted) return;
+    const still = (e: TouchEvent) => e.preventDefault();
+    document.addEventListener('touchmove', still, { passive: false });
+    return () => document.removeEventListener('touchmove', still);
+  }, [lifted]);
+  useEffect(() => () => window.clearTimeout(holdTimer.current), []);
   const flightAt = (x: number, y: number): number | null => {
     const el = document.elementFromPoint(x, y)?.closest('[data-flight]') as HTMLElement | null;
     return el ? Number(el.dataset.flight) : null;
@@ -865,30 +883,83 @@ function FlightBoard(props: {
     const t = window.setInterval(() => window.scrollBy(0, step), 16);
     return () => window.clearInterval(t);
   }, [dragY]);
-  const grab = (p: TourPlayer) => ({
+  // once lifted the finger is followed on the window – not on the row, which may lose the pointer while the board is
+  // drawn anew (the iPhone: the drag stopped after its first move)
+  const follow = useRef<(() => void) | null>(null);
+  const lift = (id: string) => {
+    follow.current?.();
+    const move = (e: PointerEvent) => {
+      const d = live.current;
+      if (!d || d.id !== id) return;
+      const moved = d.moved || Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 6;
+      put({ ...d, x: e.clientX, y: e.clientY, moved, over: moved ? flightAt(e.clientX, e.clientY) : null });
+    };
+    const up = (e: PointerEvent) => {
+      const d = live.current;
+      stop();
+      if (!d || d.id !== id) return;
+      const over = d.moved ? flightAt(e.clientX, e.clientY) : null;
+      if (fits(over, id)) onMove.current(id, over === -1 ? null : over);
+      put(null);
+    };
+    const cancel = () => {
+      stop();
+      put(null);
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+      follow.current = null;
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+    follow.current = stop;
+  };
+  const onMove = useRef(props.onMove);
+  onMove.current = props.onMove;
+  useEffect(() => () => follow.current?.(), []);
+  // `hold`: the whole row – lifted after a moment's hold, a move before that scrolls the page as ever; else (the grip, a
+  // chip) lifted at once
+  const grab = (p: TourPlayer, hold = false) => ({
     onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
       if (e.button !== 0) return;
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } catch {
-        /* the pointer gone */
+      if (hold && (e.target as HTMLElement).closest('.tour-grip, button, input')) return;
+      // no text selection, no native drag of the row (the mouse held still lost the moves); a touch still scrolls
+      e.preventDefault();
+      window.clearTimeout(holdTimer.current);
+      put({ id: p.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, armed: !hold, over: null });
+      if (!hold) {
+        lift(p.id);
+        return;
       }
-      setDrag({ id: p.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, over: null });
+      holdTimer.current = window.setTimeout(() => {
+        const d = live.current;
+        if (!d || d.id !== p.id || d.armed) return;
+        put({ ...d, armed: true, moved: true, over: flightAt(d.x, d.y) });
+        lift(p.id);
+        navigator.vibrate?.(15);
+      }, 350);
     },
+    // before the hold: a move is a scroll, the hold given up
     onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
-      if (!drag || drag.id !== p.id) return;
-      const moved = drag.moved || Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 6;
-      setDrag({ ...drag, x: e.clientX, y: e.clientY, moved, over: moved ? flightAt(e.clientX, e.clientY) : null });
+      const d = live.current;
+      if (!hold || !d || d.id !== p.id || d.armed) return;
+      if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) {
+        window.clearTimeout(holdTimer.current);
+        put(null);
+      } else live.current = { ...d, x: e.clientX, y: e.clientY };
     },
-    onPointerUp: (e: React.PointerEvent<HTMLElement>) => {
-      if (!drag || drag.id !== p.id) return;
-      const over = drag.moved ? flightAt(e.clientX, e.clientY) : null;
-      if (fits(over, p.id)) props.onMove(p.id, over === -1 ? null : over);
-      setDrag(null);
+    onPointerUp: () => {
+      const d = live.current;
+      if (hold && d && d.id === p.id && !d.armed) {
+        window.clearTimeout(holdTimer.current);
+        put(null);
+      }
     },
-    onPointerCancel: () => setDrag(null),
   });
-  const dragged = drag?.moved ? byId(drag.id) : null;
+  const dragged = drag?.armed && drag.moved ? byId(drag.id) : null;
   const target = (f: number) => !!dragged && drag?.over === f && fits(f, dragged.id);
   return (
     <>
@@ -911,7 +982,7 @@ function FlightBoard(props: {
               const m = byId(scorer && p.id !== scorer.id ? scorer.id : (props.markers[p.id] ?? ''));
               const ph = props.playing(p);
               return (
-                <div key={p.id} className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`}>
+                <div key={p.id} className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`} {...grab(p, true)}>
                   <span className="grow">
                     <strong>{props.label(p)}</strong>
                     {m && <span className="muted small"> · {tr(`marked by ${props.label(m)}`, `Zähler: ${props.label(m)}`)}</span>}

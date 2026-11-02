@@ -138,6 +138,8 @@ await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.getByRole('textbox', { name: 'Spieler 4' }).fill('Cedric');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-setup.png', fullPage: true });
 await H.getByRole('group', { name: 'Währung' }).getByRole('button', { name: 'Dollar ($)' }).click(); // the trip: in dollars
+// "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker
+await H.getByRole('switch', { name: /Mit Zähler/ }).click();
 await H.getByRole('button', { name: 'Pool anlegen' }).click();
 await H.waitForTimeout(1200);
 ok((await H.locator('.pool-player').count()) === 4 && (await H.locator('.topbar h1').innerText()).includes('USA 2026'), 'pool set up: USA 2026 with 4 players');

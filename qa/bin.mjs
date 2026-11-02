@@ -104,7 +104,7 @@ ok((await toggle.innerText()).replace(/\s+/g, ' ').trim() === '1 gelöscht', 'Ro
 await toggle.click();
 await p.waitForTimeout(300);
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/bin.png' });
-ok((await p.locator('ul.list button.list-item').count()) === 0 && (await p.locator('li.bin-item').count()) === 1, 'the bin tile shows only the deleted rounds, no others below');
+ok((await p.locator('ul.list button.list-item').count()) === 0 && (await p.locator('.bin-item').count()) === 1, 'the bin tile shows only the deleted rounds, no others below');
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(600);
 const back = await p.evaluate((rid) => ({ round: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').some((r) => r.id === rid), track: localStorage.getItem('golfos.track.v1.' + rid) != null, bin: JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length }), id);
@@ -148,12 +148,12 @@ const openBin = async () => {
 };
 await fill(3);
 await openBin();
-ok((await binN()) === 3 && (await p.locator('li.bin-item').count()) === 3, 'three rounds in the bin');
+ok((await binN()) === 3 && (await p.locator('.bin-item').count()) === 3, 'three rounds in the bin');
 await p.getByRole('button', { name: 'Auswählen', exact: true }).click();
 ok((await p.locator('.bin-check').count()) === 3 && !(await p.getByRole('button', { name: 'Wiederherstellen' }).first().isVisible().catch(() => false)), 'select: a tick per row, no single buttons');
 ok(await p.getByRole('button', { name: '0 löschen' }).isDisabled(), 'nothing ticked: "0 löschen" not tappable');
 await p.locator('.bin-check').nth(0).check();
-await p.locator('li.bin-item').nth(1).locator('.grow').click(); // the row itself ticks it too
+await p.locator('.bin-item').nth(1).locator('.grow').click(); // the row itself ticks it too
 ok((await p.locator('.bin-check:checked').count()) === 2, 'ticked by box and by row');
 await p.getByRole('button', { name: '2 löschen' }).click();
 await p.waitForTimeout(200);
@@ -163,7 +163,7 @@ ok((await binN()) === 3 && (await p.locator('.bin-check:checked').count()) === 2
 await p.getByRole('button', { name: '2 löschen' }).click();
 await p.locator('.bin-bar').getByRole('button', { name: 'Endgültig löschen' }).click();
 await p.waitForTimeout(400);
-ok((await binN()) === 1 && (await p.locator('li.bin-item').count()) === 1 && (await p.locator('.bin-check').count()) === 0, 'two deleted for good, one left with its own buttons');
+ok((await binN()) === 1 && (await p.locator('.bin-item').count()) === 1 && (await p.locator('.bin-check').count()) === 0, 'two deleted for good, one left with its own buttons');
 ok((await p.locator('.bin-bar').count()) === 0, 'one left: no "Auswählen"');
 await fill(3);
 await openBin();

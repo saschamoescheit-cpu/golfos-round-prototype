@@ -1999,12 +1999,6 @@ button.tile:disabled { opacity: 1; }
 }
 .swipe-bin > span { width: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .swipe-bin-text { font-size: 12px; font-weight: 600; }
-/* the standing's last row: a mark per bet instead of a count (Sascha 02.11.2026) */
-.bet-marks { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 4px; vertical-align: middle; }
-.bet-mark { display: inline-flex; color: var(--muted); }
-.bet-mark.done { color: var(--brand); }
-.bet-mark.provisional { color: var(--brand); opacity: 0.55; } /* made, not signed yet – no yellow anywhere */
-.bet-mark.missed { opacity: 0.6; }
 /* the flights' players dragged by their grip (Sascha 02.11.2026) – the page scrolls everywhere else */
 .tour-grip { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: -8px -10px -8px 0; color: var(--muted); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .tour-flight-player.lifted { opacity: 0.35; }
@@ -2045,6 +2039,8 @@ button.tile:disabled { opacity: 1; }
 .qr-scan { position: relative; width: 100%; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: #000; }
 .qr-scan video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .qr-scan-frame { position: absolute; inset: 18%; border: 3px solid #fff; border-radius: 16px; box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35); }
+/* a player's row held to lift him (Sascha 02.11.2026, the iPhone) – no text selection or callout under the finger */
+.tour-flight-player { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .score-notice { margin: 0 0 10px; }
 
 /* the shared settings (components/Settings.tsx, 02.11.2026): a day as a row – the native date picker over it */

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getLang, tr } from '../lib/i18n';
+import { SwipeRow } from './SwipeRow';
 
 // The bin of deleted rounds and games (Sascha 15.10.2026) – the same in both modules: folded under the list,
 // "Restore" with one tap, "Delete for good" only after a second tap.
@@ -92,9 +93,10 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
       )}
       {open && (
         <ul className="list">
-          {props.items.map((t) => (
+          {props.items.map((t) => {
             // while picking the whole row ticks it – a big target with gloves on the course
-            <li key={t.id} className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'} onClick={picking ? () => toggle(t.id) : undefined}>
+            const row = (
+            <div className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'} onClick={picking ? () => toggle(t.id) : undefined}>
               {picking && (
                 <input
                   type="checkbox"
@@ -139,8 +141,20 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
                   </button>
                 </span>
               )}
-            </li>
-          ))}
+            </div>
+            );
+            // swiped as everywhere else (Sascha 02.11.2026: "in the tile 'deleted' it does not work yet") – here for good,
+            // so it asks first, as the ✕ does
+            return (
+              <li key={t.id}>
+                {picking ? row : (
+                  <SwipeRow label={t.title} onDelete={() => setPurging(t.id)}>
+                    {row}
+                  </SwipeRow>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </>
