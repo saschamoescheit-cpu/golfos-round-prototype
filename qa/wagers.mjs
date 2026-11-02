@@ -259,6 +259,11 @@ const erikChris = H.locator('.pool-player').filter({ has: H.locator('h2', { hasT
 ok((await erikChris.locator('.badge').innerText()).trim() === '−10 $' && /zuletzt: vorne ✗ hinten ✓ gesamt ✗/.test(await erikChris.innerText()), `5+5+10 on Erik's card: −10 $, front ✗ back ✓ 18 ✗`);
 ok(/Sascha → Chris 100 \$/.test(settle) && /Cedric → Chris 100 \$/.test(settle) && /Erik → Chris 30 \$/.test(settle), `settlement in dollars, with the 5+5+10: ${settle.slice(0, 140)}`);
 ok(/5 von 13 Wetten entschieden/.test(settle), '5 of 13 bets decided (the −5s open, the 5+5+10s run until the trip ends)');
+// Sascha 02.11.2026: "every bet from the round analysis in the matrix – below only the free bets, with a heading"
+const duelRow = (await H.locator('.pool-standings .bet-matrix tr').filter({ hasText: '5+5+10' }).first().innerText()).replace(/\s+/g, ' ');
+ok(/\+10 \$ 3 Gegner/.test(duelRow) && /−10 \$ 3 Gegner/.test(duelRow), `matrix: each player's 5+5+10s in one cell – Chris +10 $, Erik −10 $, against 3 each (${duelRow})`);
+const freeBets = H.locator('.pool-standings').getByRole('group', { name: 'Freie Wetten' });
+ok((await freeBets.getByText('Freie Wetten – entscheidet der Host').isVisible()) && (await freeBets.locator('li').count()) === 1 && (await freeBets.innerText()).includes('Längster Drive an Loch 7'), 'below the matrix: only the free bets, under their heading');
 
 // Sascha 01.11.2026: "the bets must never vanish" – the phone's list emptied (Safari clears a web app's storage after a
 // week unused; a new phone has none): the menu "Wetten" fetches the pool from the server, Sascha is himself again

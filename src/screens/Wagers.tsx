@@ -744,24 +744,53 @@ function cellOf(w: Wager, p: Progress | undefined): string {
   const v = (n: number) => (shape === 'score' || shape === 'sum' ? par(n) : String(n));
   return `${p?.best == null ? '–' : v(p.best)}/${v(w.target)}`;
 }
-/** The row a bet goes into: the same block, the same counting (birdies on 18, the whole trip, gross …). */
-const rowKey = (w: Wager) => [w.kind, w.scope ?? '', w.holes ?? 18, w.net ? 'net' : '', w.orBetter === false ? 'exact' : ''].join('|');
-const rowName = (w: Wager) => wagerLabel(w).replace(/^[+−-]?\d+\s*/, '').replace(/^(.)/, (c) => c.toUpperCase()) || wagerLabel(w);
+/** The row a bet goes into: the same block, the same counting (birdies on 18, the whole trip, gross, 6 rounds …). */
+const rowKey = (w: Wager) => [w.kind, w.scope ?? '', w.holes ?? 18, w.net ? 'net' : '', w.orBetter === false ? 'exact' : '', w.rounds ?? '', w.parts ? `${w.parts.front}+${w.parts.back}+${w.parts.total}` : ''].join('|');
+const rowName = (w: Wager) => {
+  if (shapeOf(w.kind) === 'duel') return wagerLabel(w); // "5+5+10 brutto"
+  const rest = wagerLabel(w).replace(/^[+−-]?\d+\s*/, '');
+  // the score's rows: "Ergebnis brutto", "Ergebnis brutto in 6 Runden"
+  if (shapeOf(w.kind) === 'score' || shapeOf(w.kind) === 'sum') return `${tr('Score', 'Ergebnis')} ${rest}`;
+  return rest.replace(/^(.)/, (c) => c.toUpperCase()) || wagerLabel(w);
+};
 
 /** The live standing of a pool (Sascha 01.11.2026: "a kind of live leaderboard of the bets running and where they
- *  stand – a nice matrix"): the blocks down, the players across, each cell the best against the target – made green,
- *  missed struck through; the bets against one player and the free ones below, one line each. */
+ *  stand – a nice matrix"; 02.11.2026: "every bet from the round analysis in the matrix, below only the free bets, with
+ *  a heading"): the blocks down, the players across, each cell the best against the target – made green, missed struck
+ *  through; a bet against one player says against whom, a "5+5+10" stands with both, each with his money. */
 function Standings(props: { pool: WagerPool; today: string; me: string }) {
   const { pool } = props;
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
-  const grid = pool.wagers.filter((w) => shapeOf(w.kind) !== 'duel' && w.kind !== 'free' && w.payout !== 'opponent');
-  const lines = pool.wagers.filter((w) => !grid.includes(w));
-  const rows: { key: string; name: string; cells: Record<string, Wager[]> }[] = [];
+  const grid = pool.wagers.filter((w) => w.kind !== 'free');
+  const lines = pool.wagers.filter((w) => w.kind === 'free');
+  const rows: { key: string; name: string; cells: Record<string, { w: Wager; against: boolean }[]> }[] = [];
   for (const w of grid) {
     let r = rows.find((x) => x.key === rowKey(w));
     if (!r) rows.push((r = { key: rowKey(w), name: rowName(w), cells: {} }));
-    (r.cells[w.player] ??= []).push(w);
+    (r.cells[w.player] ??= []).push({ w, against: false });
+    // "5+5+10": the opponent's side too – what he won or lost
+    if (shapeOf(w.kind) === 'duel' && w.opponent && w.opponent !== w.player) (r.cells[w.opponent] ??= []).push({ w, against: true });
   }
+  // a player's "5+5+10"s in one cell: his money from all of them – against one: whom, against several: how many
+  const duels = (cs: { w: Wager; against: boolean }[]) => {
+    if (!cs.length) return null;
+    const amount = cs.reduce((sum, { w, against }) => sum + (pool.progress[w.id]?.amount ?? 0) * (against ? -1 : 1), 0);
+    const vs = cs.map(({ w, against }) => name(against ? w.player : w.opponent));
+    return (
+      <span className={`bet-cell duel${amount > 0 ? ' up' : amount < 0 ? ' down' : ''}`} title={vs.join(', ')}>
+        {amount ? `${amount > 0 ? '+' : '−'}${money(Math.abs(amount), currencySymbol(pool.currency))}` : '±0'}
+        <small>{vs.length === 1 ? tr(`vs ${vs[0]}`, `gg. ${vs[0]}`) : tr(`${vs.length} opponents`, `${vs.length} Gegner`)}</small>
+      </span>
+    );
+  };
+  const cell = ({ w }: { w: Wager; against: boolean }) => {
+    return (
+      <span key={w.id} className={`bet-cell ${state(w)}`} title={wagerLabel(w)}>
+        {cellOf(w, pool.progress[w.id])}
+        {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
+      </span>
+    );
+  };
   const players = pool.players.filter((p) => pool.wagers.some((w) => w.player === p.id || w.opponent === p.id));
   if (!pool.wagers.length) return null;
   const state = (w: Wager) => stateOf(w, pool, props.today);
@@ -791,11 +820,7 @@ function Standings(props: { pool: WagerPool; today: string; me: string }) {
                   <th scope="row">{r.name}</th>
                   {players.map((p) => (
                     <td key={p.id}>
-                      {(r.cells[p.id] ?? []).map((w) => (
-                        <span key={w.id} className={`bet-cell ${state(w)}`} title={wagerLabel(w)}>
-                          {cellOf(w, pool.progress[w.id])}
-                        </span>
-                      ))}
+                      {r.key.startsWith('nassau|') ? duels(r.cells[p.id] ?? []) : (r.cells[p.id] ?? []).map(cell)}
                     </td>
                   ))}
                 </tr>
@@ -813,27 +838,21 @@ function Standings(props: { pool: WagerPool; today: string; me: string }) {
         </div>
       )}
       {lines.length > 0 && (
-        <ul className="bet-lines">
-          {lines.map((w) => {
-            const p = pool.progress[w.id];
-            const duel = shapeOf(w.kind) === 'duel';
-            const amount = p?.amount ?? 0;
-            return (
+        <div className="bet-free" aria-label={tr('Free bets', 'Freie Wetten')} role="group">
+          <span className="eyebrow">{tr('Free bets – decided by the host', 'Freie Wetten – entscheidet der Host')}</span>
+          <ul className="bet-lines">
+            {lines.map((w) => (
               <li key={w.id}>
                 <span className="grow">
                   <strong>{name(w.player)}</strong>
                   {w.opponent && <span className="muted"> {tr('vs', 'gegen')} {name(w.opponent)}</span>}
                   <span className="muted small"> · {wagerLabel(w)}</span>
                 </span>
-                {duel ? (
-                  <strong className={amount > 0 ? 'good-text' : amount < 0 ? 'bad-text' : 'muted'}>{amount ? `${amount > 0 ? '+' : '−'}${money(Math.abs(amount), currencySymbol(pool.currency))}` : '±0'}</strong>
-                ) : (
-                  <span className={`bet-cell ${state(w)}`}>{w.kind === 'free' ? (state(w) === 'done' ? '✓' : state(w) === 'missed' ? '✗' : '…') : cellOf(w, p)}</span>
-                )}
+                <span className={`bet-cell ${state(w)}`}>{state(w) === 'done' ? '✓' : state(w) === 'missed' ? '✗' : '…'}</span>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );
