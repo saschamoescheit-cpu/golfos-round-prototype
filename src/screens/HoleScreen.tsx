@@ -10,7 +10,6 @@ import { autoShot, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
 import { SpecialsAtHole } from '../components/Specials';
-import { RoundBetsSheet } from './Wagers';
 import { betLinked } from '../lib/betlinked';
 import { ShotHereIcon } from '../components/RoundIcons';
 import { recordCaddie } from '../lib/caddielog';
@@ -37,7 +36,7 @@ import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCa
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
 import { RoundInviteSheet } from '../components/ShareRound';
-import { cachedEvent, differences, exchangeRound, localDay, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
+import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
 import { sharingAvailable } from '../lib/sharedgame';
 import { courseStats } from '../lib/history';
@@ -121,6 +120,9 @@ export function HoleScreen(props: {
     shared: string | null;
     /** the two sides on this hole – shown as two coloured teams (Sascha 16.10.2026: the teams "go under") */
     teams?: [{ name: string; me: boolean }[], { name: string; me: boolean }[]] | null;
+    /** what the game enters (Sascha 02.11.2026: "only the strokes per hole – or with details"): 'strokes' – everyone the
+     *  score with penalty strokes; 'details' (default) – the own card in full */
+    entry?: 'strokes' | 'details';
   };
   /** Course preview: the birdie book of the course, back to this hole afterwards. */
   onBook?: () => void;
@@ -535,9 +537,8 @@ export function HoleScreen(props: {
   const [boardOpen, setBoardOpen] = useState(false); // live leaderboard of the flight
   // the round on several phones (Sascha 29.10.2026): invite the flight, or other flights to a tournament
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [betsOpen, setBetsOpen] = useState(false);
   // a bet counts this round: the marked player in detail too (Sascha 02.11.2026) – looked at when the sheet opens
-  const withBets = useMemo(() => !round.preview && betLinked(round), [round.id, scoreSheet, betsOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const withBets = useMemo(() => !round.preview && betLinked(round), [round.id, scoreSheet]); // eslint-disable-line react-hooks/exhaustive-deps
   const [canShareRound, setCanShareRound] = useState(false);
   useEffect(() => {
     if (!round.preview && !props.game) void sharingAvailable().then(setCanShareRound);
@@ -1650,6 +1651,8 @@ export function HoleScreen(props: {
             pickUp={pickUpAllowed(round, !!props.game)}
             // in detail: the one this phone marks (or, as scorer, everyone) when a bet counts the round; else the score with
             // penalty strokes (Sascha 02.11.2026)
+            entry={props.game?.entry}
+            analysis={(pid) => pid === me.id && views[pid]?.role === 'view' && !!shareEvent?.flights[round.shared!.flight]?.scorer}
             details={(pid) => withBets && (views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer))}
             penalties={(pid) => pid !== me.id && views[pid]?.role !== 'view'}
             shared={Object.fromEntries(
@@ -1673,14 +1676,6 @@ export function HoleScreen(props: {
         )}
         {boardOpen && <LeaderboardSheet round={round} onClose={() => setBoardOpen(false)} />}
         {inviteOpen && <RoundInviteSheet round={round} onShared={(r) => props.onChange(r)} onClose={() => setInviteOpen(false)} />}
-        {betsOpen && (
-          <RoundBetsSheet
-            date={localDay(new Date(round.createdAt))}
-            course={{ id: round.courseId, name: round.courseName }}
-            players={[me, ...round.players.filter((p) => p.id !== me.id)].map((p) => ({ name: p.name, hcp: p.playingHandicap }))}
-            onClose={() => setBetsOpen(false)}
-          />
-        )}
         {drawerOpen && (
           <HoleDrawer
             round={round}
@@ -1711,8 +1706,6 @@ export function HoleScreen(props: {
                       ...(round.shared || canShareRound
                         ? [{ label: round.shared ? tr(`${round.shared.tournament ? 'Tournament' : "Players' phones"} · code ${round.shared.code}`, `${round.shared.tournament ? 'Turnier' : 'Handys der Mitspieler'} · Code ${round.shared.code}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); setInviteOpen(true); } }]
                         : []),
-                      // bets for this round (Sascha 01.11.2026) – Games' sheet: the pools it counts for, or a new one
-                      ...(canShareRound || round.shared ? [{ label: tr('Bets for this round', 'Wetten für diese Runde'), onClick: () => { setDrawerOpen(false); setBetsOpen(true); } }] : []),
                     ]
                   : undefined
             }

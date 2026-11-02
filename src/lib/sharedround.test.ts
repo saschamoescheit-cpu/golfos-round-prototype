@@ -432,3 +432,24 @@ describe('one player keeps the score of all (Sascha 02.11.2026: "Chris enters it
     expect(isSigned({ ...f, signed: { me: { player: 'x' } } }, 'me')).toBe(false);
   });
 });
+
+describe("a player's own analysis beside the scorer's card (Sascha 02.11.2026)", () => {
+  it('his putts stay on his phone, the strokes and penalties are the scorer\'s – nothing of it goes to the flight', () => {
+    const r0 = round([{ id: 'me', name: 'Sascha' }, { id: 'c', name: 'Chris' }]);
+    let { ev, r: sascha } = host({ ...r0, format: { ...r0.format!, scorer: 'c' } });
+    let chris = roundFromEvent(ev, 'f1', 'c', 'ABCDEF', 'ph-chris', 'Chris');
+    ({ ev, r: chris } = exchange(ev, chris, 'Chris'));
+    chris = { ...chris, entries: { ...chris.entries, me: chris.entries.me.map((e, k) => (k === 0 ? { ...e, strokes: 5, penalties: 1 } : e)) } };
+    ({ ev, r: chris } = exchange(ev, chris));
+    // Sascha's own analysis: 2 putts, a fairway – on his phone
+    sascha = { ...sascha, entries: { ...sascha.entries, me: sascha.entries.me.map((e, k) => (k === 0 ? { ...e, putts: 2, fairway: 'hit' as const } : e)) } };
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.entries.me[0]).toMatchObject({ strokes: 5, penalties: 1, putts: 2, fairway: 'hit' });
+    expect(ev.flights.f1.scores.me[0]).toEqual({ s: 5, d: { pe: 1 } });
+    // the scorer corrects the score: it comes over, the analysis stays
+    chris = { ...chris, entries: { ...chris.entries, me: chris.entries.me.map((e, k) => (k === 0 ? { ...e, strokes: 6 } : e)) } };
+    ({ ev, r: chris } = exchange(ev, chris));
+    ({ ev, r: sascha } = exchange(ev, sascha));
+    expect(sascha.entries.me[0]).toMatchObject({ strokes: 6, penalties: 1, putts: 2, fairway: 'hit' });
+  });
+});
