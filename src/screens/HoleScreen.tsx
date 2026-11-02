@@ -123,6 +123,8 @@ export function HoleScreen(props: {
     /** what the game enters (Sascha 02.11.2026: "only the strokes per hole – or with details"): 'strokes' – everyone the
      *  score with penalty strokes; 'details' (default) – the own card in full */
     entry?: 'strokes' | 'details';
+    /** every player in detail (a pool's round whose bets need the details of all – Sascha 02.11.2026) */
+    detailsAll?: boolean;
   };
   /** Course preview: the birdie book of the course, back to this hole afterwards. */
   onBook?: () => void;
@@ -1652,9 +1654,9 @@ export function HoleScreen(props: {
             // in detail: the one this phone marks (or, as scorer, everyone) when a bet counts the round; else the score with
             // penalty strokes (Sascha 02.11.2026)
             entry={props.game?.entry}
+            everyone={!!props.game?.detailsAll}
             analysis={(pid) => pid === me.id && views[pid]?.role === 'view' && !!shareEvent?.flights[round.shared!.flight]?.scorer}
             details={(pid) => withBets && (views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer))}
-            penalties={(pid) => pid !== me.id && views[pid]?.role !== 'view'}
             shared={Object.fromEntries(
               Object.entries(views).map(([pid, v]) => [
                 pid,

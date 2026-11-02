@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, balances, needsDetails, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { LIBRARY, balances, poolCounted, withCounted, needsDetails, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -383,5 +383,26 @@ describe('an own bet, built', () => {
     expect(wagerLabel(w)).toBe('Höchstens +2 zu Par auf der vorderen 9');
     expect(judge(w, pool, [round(f)])).toMatchObject({ best: 3, done: false });
     expect(needsDetails(w)).toBe(false);
+  });
+});
+
+// "with marker" for the whole pool (Sascha 02.11.2026: "one bet with, another without a marker makes no sense")
+describe('with marker for the whole pool', () => {
+  const base = { stake: 10, payout: 'success', attempts: 'any', player: 'p1' } as const;
+  const pool = (counted?: boolean, flags: (boolean | undefined)[] = [true, false]): WagerPool => ({
+    kind: 'wager-pool', id: 'x', name: 'X', from: '2026-11-02', to: '2026-11-02', createdAt: '', players: [{ id: 'p1', name: 'A' }], progress: {},
+    wagers: flags.map((c, k) => ({ ...base, id: `w${k}`, kind: 'birdies', target: 2, ...(c == null ? {} : { counted: c }) })),
+    ...(counted == null ? {} : { counted }),
+  });
+  it('carries the pool’s setting to every bet', () => {
+    expect(withCounted(pool(true)).wagers.map((w) => w.counted)).toEqual([true, true]);
+    expect(withCounted(pool(false)).wagers.map((w) => w.counted)).toEqual([false, false]);
+  });
+  it('leaves a pool from before (no setting) as it was', () => {
+    const p = pool();
+    expect(withCounted(p)).toBe(p);
+    expect(poolCounted(p)).toBe(false);
+    expect(poolCounted(pool(undefined, [true, true]))).toBe(true);
+    expect(poolCounted(pool(undefined, []))).toBe(true);
   });
 });

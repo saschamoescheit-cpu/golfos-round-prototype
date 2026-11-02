@@ -183,7 +183,7 @@ export function PoolRoundPlay(props: { code: string; round: Round; onChange: (r:
           }}
           onShowScorecard={(nr, finishing) => (finishing ? finish(nr) : setSheet(true))}
           onOpenBag={props.onOpenBag}
-          game={{ name: tr(`Bets · ${pool.name}`, `Wetten · ${pool.name}`), line, onOpen: () => setSheet(true), onInvite: null, shared: null, entry: scoreEntry }}
+          game={{ name: tr(`Bets · ${pool.name}`, `Wetten · ${pool.name}`), line, onOpen: () => setSheet(true), onInvite: null, shared: null, entry: scoreEntry, detailsAll: scoreEntry === 'details' }}
         />
       </Suspense>
       {sheet && (

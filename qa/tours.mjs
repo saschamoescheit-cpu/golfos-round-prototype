@@ -146,7 +146,7 @@ await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.locator('input[id^="name-"]').last().fill('Dave');
 // Sascha 02.11.2026: "create a flight with its tee time, then assign people to it; flight 2 or 3 only offers those not
 // in a flight yet; easy to change afterwards; show who marks whom – as on the tournament's page"
-ok((await H.locator('.tour-flight:not(.tour-unplaced)').count()) === 0 && (await H.locator('.tour-unplaced').innerText()).includes('Sascha, Chris, Erik, Cedric, Dave'), 'no flight yet: all five "Noch ohne Flight"');
+ok((await H.locator('.tour-flight:not(.tour-unplaced)').count()) === 0 && (await H.locator('.tour-unplaced .tour-chip').allInnerTexts()).join(',') === 'Sascha,Chris,Erik,Cedric,Dave', 'no flight yet: all five "Noch ohne Flight"');
 await H.getByRole('button', { name: '+ Flight' }).click();
 ok((await sheet.getByLabel('Startzeit').inputValue()) === '09:00' && (await sheet.getByRole('button', { name: 'Flight anlegen' }).isDisabled()), 'flight 1: its tee time (09:00), then its players – none chosen yet');
 await sheet.getByLabel('Startzeit').fill('12:08');
@@ -192,7 +192,24 @@ await sheet.getByRole('button', { name: 'Cedric für alle' }).click();
 await sheet.getByRole('button', { name: 'Speichern' }).click();
 const f2 = (await fl(1).innerText()).replace(/\s+/g, ' ');
 ok(/Cedric erfasst die Scores für alle/.test(f2) && /Erik · Zähler: Cedric/.test(f2) && /Cedric · Zähler: Erik/.test(f2), `flight 2: Cedric for all – Erik's marker, his own card Erik's (${f2})`);
-ok((await H.locator('#tour-first, #tour-gap, .tour-chip').count()) === 0 && (await H.getByText('Abstand', { exact: true }).count()) === 0, 'no first tee time, no interval, nothing to drag – each flight its own time to the minute');
+ok((await H.locator('#tour-first, #tour-gap').count()) === 0 && (await H.getByText('Abstand', { exact: true }).count()) === 0, 'no first tee time, no interval – each flight its own time to the minute');
+// drag and drop (Sascha 02.11.2026: "move the players between the flights by drag and drop"): Chris by his grip onto
+// flight 2 – Cedric was its scorer, Chris joins; then back, and a full flight takes nobody
+const dragTo = async (who, target) => {
+  const grip = H.locator('.tour-flight-player').filter({ has: H.locator('strong', { hasText: new RegExp(`^${who}$`) }) }).locator('.tour-grip');
+  await grip.scrollIntoViewIfNeeded();
+  const a = await grip.boundingBox();
+  const b = await target.boundingBox();
+  await H.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await H.mouse.down();
+  for (let i = 1; i <= 10; i++) await H.mouse.move(a.x + a.width / 2 + ((b.x + b.width / 2 - a.x - a.width / 2) * i) / 10, a.y + a.height / 2 + ((b.y + 30 - a.y - a.height / 2) * i) / 10);
+  await H.mouse.up();
+  await H.waitForTimeout(300);
+};
+await dragTo('Chris', fl(1));
+ok((await names(0)) === 'Sascha' && (await names(1)) === 'Chris,Erik,Cedric', `Chris dragged by his grip onto flight 2 (${await names(0)} | ${await names(1)})`);
+await dragTo('Chris', fl(0));
+ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'and dragged back onto flight 1');
 // special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional"): Nearest to the Pin on a par 3
 await H.getByRole('button', { name: '+ Long Drive' }).click();
 await H.getByRole('button', { name: '+ Nearest to the Pin' }).click();

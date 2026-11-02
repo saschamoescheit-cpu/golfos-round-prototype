@@ -309,7 +309,18 @@ export interface WagerPool {
   currency?: 'EUR' | 'USD';
   /** the rounds of the trip – set: only rounds on these days on these courses count (02.11.2026) */
   rounds?: PoolRound[];
+  /** "with marker" for the whole pool (Sascha 02.11.2026: "one bet with, another without a marker makes no sense") –
+   *  set: every bet of the pool follows it (withCounted); unset (pools from before): each bet as it was set */
+  counted?: boolean;
 }
+
+/** The pool's "with marker" carried to each of its bets – the judging reads the bet's own flag. */
+export function withCounted(p: WagerPool): WagerPool {
+  if (p.counted == null || p.wagers.every((w) => !!w.counted === p.counted)) return p;
+  return { ...p, wagers: p.wagers.map((w) => (!!w.counted === p.counted ? w : { ...w, counted: p.counted })) };
+}
+/** "With marker" as the pool shows it: its own setting, or for a pool from before when all its bets have it. */
+export const poolCounted = (p: WagerPool): boolean => p.counted ?? (p.wagers.length ? p.wagers.every((w) => !!w.counted) : true);
 
 // The pools live on the server (Sascha 01.11.2026: "I have set up the bets now – they must never vanish with updates,
 // changes and so on"): what is read there must stay readable by every later version – new fields only optional, no
@@ -869,7 +880,7 @@ export const LIBRARY_GROUPS: { group: LibraryBet['group']; name: () => string }[
   { group: 'roundMost', name: () => tr('In one round – at most', 'In einer Runde – höchstens') },
   { group: 'score', name: () => tr('Score of a round', 'Ergebnis einer Runde') },
   { group: 'trip', name: () => tr('On the whole trip', 'Auf der ganzen Reise') },
-  { group: 'own', name: () => tr('Your own', 'Eigene') },
+  { group: 'own', name: () => tr('In words – decided by the host', 'In Worten – entscheidet der Host') },
 ];
 // "5+5+10" is a game in Games now (Sascha 02.11.2026: "no bet but a game") – not offered here any more; the kind
 // 'nassau' stays readable for the pools that have it.

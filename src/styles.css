@@ -2005,3 +2005,10 @@ button.tile:disabled { opacity: 1; }
 .bet-mark.done { color: var(--brand); }
 .bet-mark.provisional { color: var(--brand); opacity: 0.55; } /* made, not signed yet – no yellow anywhere */
 .bet-mark.missed { opacity: 0.6; }
+/* the flights' players dragged by their grip (Sascha 02.11.2026) – the page scrolls everywhere else */
+.tour-grip { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: -8px -10px -8px 0; color: var(--muted); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.tour-flight-player.lifted { opacity: 0.35; }
+.tour-flight.drop-full { opacity: 0.55; }
+/* a row's name and every cell at the height of its first bet (Sascha 02.11.2026: "always at the height of the first line") */
+.bet-matrix tbody tr:not(.bet-matrix-made) > th, .bet-matrix tbody tr:not(.bet-matrix-made) > td { vertical-align: top; }
+.bet-matrix tbody tr:not(.bet-matrix-made) > th { padding-top: 10px; }
