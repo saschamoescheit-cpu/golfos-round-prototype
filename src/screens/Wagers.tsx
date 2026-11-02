@@ -70,7 +70,8 @@ export function StartBetCard(props: { canShare: boolean; onNew: () => void; onJo
       <strong className="play-course">{tr('Start a new bet', 'Neue Wette starten')}</strong>
       {props.canShare ? (
         <>
-          <button type="button" className="btn-secondary" onClick={props.onNew}>
+          {/* green as "Neues Spiel" (Sascha 02.11.2026) */}
+          <button type="button" className="btn-primary" onClick={props.onNew}>
             {tr('New bet', 'Neue Wette')}
           </button>
           <button type="button" className="btn-secondary" onClick={props.onJoin}>

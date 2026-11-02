@@ -72,7 +72,7 @@ const teeTimeOf = (f: unknown): string => ((f as { teeTime?: string }).teeTime ?
 // ---------- the start page and the menu ----------
 
 /** On "Play": plan a tournament – following them is in the menu "Tournaments" (its dot shows those to come). */
-export function TourStartCard(props: { canShare: boolean; onNew: () => void }) {
+export function TourStartCard(props: { canShare: boolean; onNew: () => void; onJoin: () => void }) {
   useEffect(() => {
     void syncTours();
   }, []);
@@ -80,9 +80,15 @@ export function TourStartCard(props: { canShare: boolean; onNew: () => void }) {
     <section className="card play-card" aria-label={tr('Plan a tournament', 'Turnier planen')}>
       <strong className="play-course">{tr('Plan a new tournament', 'Neues Turnier planen')}</strong>
       {props.canShare ? (
-        <button type="button" className="btn-secondary" onClick={props.onNew}>
-          {tr('New tournament', 'Neues Turnier')}
-        </button>
+        // as a new game and a new bet (Sascha 02.11.2026): green, and "join" below
+        <>
+          <button type="button" className="btn-primary" onClick={props.onNew}>
+            {tr('New tournament', 'Neues Turnier')}
+          </button>
+          <button type="button" className="btn-secondary" onClick={props.onJoin}>
+            {tr('Join a tournament', 'Turnier beitreten')}
+          </button>
+        </>
       ) : (
         <span className="muted small">{tr('Sign in to plan tournaments: Profile → "On all your devices".', 'Für Turniere anmelden: Profil → „Auf allen Geräten“.')}</span>
       )}
