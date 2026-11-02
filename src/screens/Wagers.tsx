@@ -3,7 +3,7 @@ import { tr } from '../lib/i18n';
 import { newId } from '../lib/storage';
 import { loadProfile, shownName } from '../lib/profile';
 import { joinLink } from '../lib/sharedgame';
-import { currencySymbol, money, transfers } from '../lib/gameforms';
+import { currencySymbol, money, setCurrency, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
@@ -11,7 +11,8 @@ import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, pool
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, SettingsList, SettingsRow, ToggleRow, dayText } from '../components/Settings';
+import { ChoiceRow, DateRow, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
+import { StakePicker } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
@@ -115,7 +116,7 @@ function PoolRow(props: { e: PoolEntry; today: string; onOpen: () => void }) {
  *  list of the rounds and of the games: the tiles at the top (Sascha: "as on Rounds and Games"), the list, the bin
  *  with "restore"; a new bet and joining one start on "Play". The pools come from the server too ("they must never
  *  vanish"): a phone without them – emptied, new – gets them back here. */
-export function BetsTab(props: { onOpen: (code: string) => void }) {
+export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette" right from the empty list (Rounds' review 02.11.2026) */ onNew?: () => void }) {
   const all = usePools();
   const [filter, setFilter] = useState<'running' | 'made' | 'over' | 'bin' | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -212,7 +213,14 @@ export function BetsTab(props: { onOpen: (code: string) => void }) {
             ))}
           </ul>
         ) : (
-          <p className="muted">{tr('No bets yet – "New bet" is on "Play".', 'Noch keine Wetten – „Neue Wette“ unter „Spielen“.')}</p>
+          <>
+            <p className="muted">{tr('No bets yet.', 'Noch keine Wetten.')}</p>
+            {props.onNew && (
+              <button type="button" className="btn-secondary" onClick={props.onNew}>
+                {tr('New bet', 'Neue Wette')}
+              </button>
+            )}
+          </>
         ))}
     </>
   );
@@ -1109,17 +1117,17 @@ function CustomBetSheet(props: { onDone: (b: MyBet) => void; onClose: () => void
 function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wager>) => void }) {
   const { pool, w, set } = props;
   const sym = currencySymbol(pool.currency);
+  setCurrency(pool.currency); // the stake picker's amounts in the pool's money
   const duel = shapeOf(w.kind) === 'duel';
   return (
     <>
-      {!duel && (
-      <>
-      <Field label={tr(`Stake (${sym})`, `Einsatz (${sym})`)}>
-        <input className="input" inputMode="decimal" aria-label={tr('Stake', 'Einsatz')} value={String(w.stake)} onChange={(e) => set({ stake: Math.max(0, Number(e.target.value.replace(',', '.')) || 0) })} />
-      </Field>
-      </>
-      )}
       <SettingsList>
+        {/* the stake as a game's (Rounds 02.11.2026: the shared StakePicker) – a bet's larger amounts */}
+        {!duel && (
+          <SheetRow label={tr('Stake', 'Einsatz')} value={money(w.stake, sym)}>
+            <StakePicker stakes={[5, 10, 20, 50, 100]} value={w.stake} onChange={(v) => set({ stake: v })} />
+          </SheetRow>
+        )}
         {!duel && (
           <Pick<Payout>
             label={tr('Paid', 'Auszahlung')}

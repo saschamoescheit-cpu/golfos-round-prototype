@@ -208,7 +208,7 @@ function SeriesSheet(props: { tours: TourEntry[]; onDone: (code: string) => void
   );
 }
 
-export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: (code: string) => void }) {
+export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: (code: string) => void; /** "Neues Turnier" right from the empty list */ onNew?: () => void }) {
   const all = useTours();
   const series = useSeries().filter((s) => !s.series.deletedAt);
   const [making, setMaking] = useState(false);
@@ -307,7 +307,14 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
               ))}
           </ul>
         ) : (
-          <p className="muted">{tr('No tournaments yet – "New tournament" is on "Play".', 'Noch keine Turniere – „Neues Turnier“ unter „Spielen“.')}</p>
+          <>
+            <p className="muted">{tr('No tournaments yet.', 'Noch keine Turniere.')}</p>
+            {props.onNew && (
+              <button type="button" className="btn-secondary" onClick={props.onNew}>
+                {tr('New tournament', 'Neues Turnier')}
+              </button>
+            )}
+          </>
         ))}
       {filter !== 'bin' && groupable.length >= 2 && (
         <button type="button" className="btn-secondary" onClick={() => setMaking(true)}>

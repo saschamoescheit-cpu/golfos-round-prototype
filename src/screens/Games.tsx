@@ -511,8 +511,8 @@ function GamesTabs(props: {
               )}
             </>
           )}
-      {props.tab === 'bets' && <BetsTab onOpen={props.onOpenPool} />}
-      {props.tab === 'tours' && <ToursTab onOpen={props.onOpenTour} onOpenSeries={props.onOpenSeries} />}
+      {props.tab === 'bets' && <BetsTab onOpen={props.onOpenPool} onNew={props.onNewPool} />}
+      {props.tab === 'tours' && <ToursTab onOpen={props.onOpenTour} onOpenSeries={props.onOpenSeries} onNew={props.onNewTour} />}
       {props.tab === 'games' && (
         <>
           <h1 className="tab-title">{tr('Games', 'Spiele')}</h1>
