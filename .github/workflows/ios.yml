@@ -18,7 +18,6 @@ name: iOS app to TestFlight
 on:
   push:
     branches: [app-release, main]
-    paths-ignore: ['**.md']
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
