@@ -2012,6 +2012,11 @@ button.tile:disabled { opacity: 1; }
 /* a row's name and every cell at the height of its first bet (Sascha 02.11.2026: "always at the height of the first line") */
 .bet-matrix tbody tr:not(.bet-matrix-made) > th, .bet-matrix tbody tr:not(.bet-matrix-made) > td { vertical-align: top; }
 .bet-matrix tbody tr:not(.bet-matrix-made) > th { padding-top: 10px; }
+/* a round of a pool added as a game is set up (Sascha 02.11.2026): the course and the day as rows */
+.trip-add { display: flex; flex-direction: column; gap: 12px; }
+.trip-day-row { position: relative; cursor: pointer; }
+.trip-day-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
+
 
 /* Friends (Sascha 02.11.2026): the own friend code as a QR code, the friends linked by their accounts and the ones typed
    by hand side by side – a chain or a pen tells them apart */

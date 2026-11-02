@@ -44,8 +44,14 @@ await H.locator('.tabbar button').filter({ hasText: 'Wetten' }).click();
 await H.locator('.list-item').filter({ hasText: 'Heute' }).first().click();
 await H.getByRole('button', { name: 'Runde starten' }).click();
 ok(await H.getByRole('heading', { name: 'Runde starten' }).isVisible(), 'the pool: "Runde starten" – right from the bets');
-const hcps = await H.locator('.pool-round-player input').evaluateAll((xs) => xs.map((x) => x.value));
-ok((await H.locator('.pool-round-player .chip').allInnerTexts()).join('|') === 'Sascha · du|Chris|Erik' && hcps[0] === '10' && hcps[1] === '6,2', `its players – you first, the handicaps from the profile and the friends (${hcps.join(', ')})`);
+// a row per player as in Rounds (Sascha 02.11.2026): name (the pool's, not typed), tee, HCP, playing handicap
+const hcps = await H.locator('.pool-round-player input[id^="hcp-"]').evaluateAll((xs) => xs.map((x) => x.value));
+const pnames = await H.locator('.pool-round-player input[id^="name-"]').evaluateAll((xs) => xs.map((x) => x.value + (x.readOnly ? '' : ' (typed)')));
+ok(pnames.join('|') === 'Sascha|Chris|Erik' && hcps[0] === '10' && hcps[1] === '6,2', `its players as in Rounds – you first, the names fixed, the handicaps from the profile and the friends (${pnames.join(', ')}; ${hcps.join(', ')})`);
+await H.getByRole('button', { name: 'Erik entfernen' }).click();
+ok((await H.locator('.pool-round-player').count()) === 2, 'Erik taken out of this round');
+await H.getByRole('button', { name: '+ Erik' }).click();
+ok((await H.locator('.pool-round-player').count()) === 3, 'and back with "+ Erik"');
 await H.getByRole('button', { name: /Platz wählen/ }).click();
 await H.fill('#course-search', 'Hetzenhof');
 await H.waitForTimeout(2000);

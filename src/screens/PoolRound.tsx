@@ -5,7 +5,7 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { ensureGeometry, geometryReady, loadGeometry, newId } from '../lib/storage';
 import { courseTees, defaultTee, profileTee } from '../data/tees';
 import { inUsa } from '../lib/weather';
-import { parseIndex, playingHandicapFor } from '../lib/handicap';
+import { parseIndex, playingHandicapFor, ratingFor } from '../lib/handicap';
 import { isLady, loadProfile } from '../lib/profile';
 import { loadFriends } from '../lib/friends';
 import { emptyEntry } from '../lib/scoring';
@@ -14,6 +14,7 @@ import { loadPools, reportWagers } from '../lib/wagerstore';
 import { dropPoolRound, finishPoolRound, keepPoolRound } from '../lib/poolround';
 import { TopBar } from '../components/ui';
 import { Standings } from './Wagers';
+import { PlayerRow, teeChoicesFor } from './RoundSetup';
 
 // A round started from a pool of bets (Sascha 02.11.2026: "start the round right from the bet – else again through
 // Rounds, the players set up again"): the course (the pool's round of the day, if it has one), the loop, the pool's
@@ -26,6 +27,8 @@ interface Who {
   name: string;
   hcp: string;
   on: boolean;
+  /** his tee – unset: the own tee for this phone's owner, the course's default for the others */
+  tee?: string | null;
 }
 
 export function PoolRoundSetup(props: { code: string; course: Course | null; onCourse: () => void; onBack: () => void; onStart: (r: Round) => void }) {
@@ -51,12 +54,19 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
   const startTee = offered ? defaultTee(offered.tees) : null;
   const myTee = offered && course ? (profileTee(offered, loadProfile().tee, course.id, inUsa([course.lon, course.lat])) ?? defaultTee(offered.tees, lady)) : null;
   const playing = who.filter((p) => p.on);
+  // the players as in Rounds (Sascha 02.11.2026: "the players and the flight look different from Rounds"): a row each
+  // with name, tee, HCP and playing handicap; the pool's names stay as they are – the bets know them by them
+  const teeOf = (p: Who) => (p.tee && offered?.tees.includes(p.tee) ? p.tee : p.id === entry.me ? myTee : startTee);
+  const nine = holes.length === 9;
+  const teeChoices = course && offered ? teeChoicesFor(course.id, holes, offered.tees) : [];
+  const ratingOf = (p: Who) => (course && (holes.length === 18 || nine) ? ratingFor(course.id, teeOf(p) ?? '–', holes, p.id === entry.me && lady) : null);
+  const playingOf = (p: Who) => (course && parseIndex(p.hcp) != null ? playingHandicapFor(course.id, holes, teeOf(p) ?? '–', p.hcp, p.id === entry.me && lady) : null);
   const ok = !!course && holes.length > 0 && playing.length > 0 && playing.some((p) => p.id === entry.me);
   const start = () => {
     if (!course || !ok) return;
     const players = playing.map((p) => {
       const mine = p.id === entry.me;
-      const tee = (mine ? myTee : startTee) ?? undefined;
+      const tee = teeOf(p) ?? undefined;
       return { id: p.id, name: p.name, playingHandicap: parseIndex(p.hcp) == null ? null : playingHandicapFor(course.id, holes, tee ?? '–', p.hcp, mine && lady), isMe: mine, ...(tee ? { tee } : {}) };
     });
     props.onStart({
@@ -99,23 +109,33 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
       </section>
       <section className="setup-part">
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
-        {who.map((p) => (
-          <div key={p.id} className="card pool-round-player">
-            <button type="button" className={`chip${p.on ? ' on' : ''}`} aria-pressed={p.on} disabled={p.id === entry.me} onClick={() => setWho(who.map((x) => (x.id === p.id ? { ...x, on: !x.on } : x)))}>
-              {p.name}
-              {p.id === entry.me ? tr(' · you', ' · du') : ''}
-            </button>
-            <input
-              className="input"
-              inputMode="decimal"
-              aria-label={tr(`Handicap of ${p.name}`, `Handicap von ${p.name}`)}
-              placeholder="HCP"
-              value={p.hcp}
-              disabled={!p.on}
-              onChange={(e) => setWho(who.map((x) => (x.id === p.id ? { ...x, hcp: e.target.value } : x)))}
-            />
-          </div>
+        {playing.map((p, k) => (
+          <PlayerRow
+            key={p.id}
+            className="game-player-row pool-round-player"
+            player={{ id: `pr${p.id}`, name: p.name, index: p.hcp, handicap: '', tee: teeOf(p) }}
+            nameLabel={p.id === entry.me ? tr('You', 'Du') : tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
+            nameFixed
+            rating={ratingOf(p)}
+            playing={playingOf(p)}
+            nine={nine}
+            tees={teeChoices.length ? teeChoices : undefined}
+            onChange={(np) => setWho(who.map((x) => (x.id === p.id ? { ...x, hcp: np.index, tee: np.tee } : x)))}
+            onRemove={p.id === entry.me ? undefined : () => setWho(who.map((x) => (x.id === p.id ? { ...x, on: false } : x)))}
+          />
         ))}
+        {/* those of the pool not playing this round: back with a tap, as the friends in Rounds */}
+        {who.some((p) => !p.on) && (
+          <div className="chip-set" role="group" aria-label={tr('More players of the pool', 'Weitere Spieler des Pools')}>
+            {who
+              .filter((p) => !p.on)
+              .map((p) => (
+                <button key={p.id} type="button" className="chip" onClick={() => setWho(who.map((x) => (x.id === p.id ? { ...x, on: true } : x)))}>
+                  + {p.name}
+                </button>
+              ))}
+          </div>
+        )}
         <span className="muted small">{tr('Who plays with you on this phone – you enter their scores too.', 'Wer mit dir spielt – du erfasst ihre Scores auf diesem Handy mit.')}</span>
       </section>
       <span className="spacer" />
