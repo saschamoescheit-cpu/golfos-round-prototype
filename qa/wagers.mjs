@@ -345,6 +345,23 @@ await H.waitForTimeout(4000);
 const cp = shared.get(code).game.progress[cedricBet.id];
 ok(cp?.pending === -2 && cp.done === false, `one phone for all: the host's phone judged Cedric's −5 from his card – −2, provisional (${JSON.stringify(cp)})`);
 
+// an own bet, built (Sascha 02.11.2026: "own bets configured so that the app judges them – in the library again and again")
+await H.getByRole('button', { name: 'Wetten für Sascha hinzufügen' }).click();
+const libO = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
+await libO.getByRole('button', { name: '+ Eigene Wette bauen', exact: true }).click();
+const build = H.getByRole('dialog', { name: 'Eigene Wette bauen' });
+await build.getByRole('button', { name: 'Par 3s', exact: true }).click();
+ok((await build.locator('.custom-preview').innerText()) === 'Mindestens 2 Birdies auf den Par 3s' && (await build.getByText('Die Schläge inkl. Strafschläge genügen.').isVisible()), 'own bet: built in words – no details needed');
+await build.getByRole('button', { name: 'In „Meine Wetten“ speichern' }).click();
+ok((await libO.locator('.lib-row.on').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: in "Meine Wetten", ticked');
+await libO.getByRole('button', { name: '1 Wette für Sascha anlegen' }).click();
+await H.waitForTimeout(1500);
+const ownBet = shared.get(code).game.wagers.find((w) => w.kind === 'custom');
+ok(!!ownBet && ownBet.metric === 'birdie' && ownBet.where === 'par3' && ownBet.target === 2 && ownBet.text === 'Mindestens 2 Birdies auf den Par 3s', `own bet on the server, with its words for the push (${JSON.stringify(ownBet ?? null).slice(0, 160)})`);
+await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
+ok((await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).locator('.lib-row').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: offered again under "Meine Wetten"');
+await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', { name: 'Schließen' }).click();
+
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

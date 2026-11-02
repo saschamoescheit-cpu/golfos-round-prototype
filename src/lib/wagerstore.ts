@@ -3,7 +3,7 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned, markerOf, type Cell } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { dayOf, isPool, judge, playedRounds, sameProgress, shapeOf, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { dayOf, isPool, judge, lower, playedRounds, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
 
 // The pools of bets on this phone and on the server (Sascha 01.11.2026). A pool lives in the table of the shared games
@@ -259,7 +259,7 @@ function takes(w: Wager, me: string, old: Progress | undefined, now: Progress): 
   if (now.rounds !== old.rounds) return now.rounds > old.rounds;
   if (now.done !== old.done) return now.done;
   if (now.pending != null && old.pending == null) return true;
-  return JSON.stringify(now.best) !== JSON.stringify(old.best) && now.best != null && (old.best == null || (['score', 'sum', 'most'].includes(shapeOf(w.kind)) ? now.best < old.best : now.best > old.best));
+  return JSON.stringify(now.best) !== JSON.stringify(old.best) && now.best != null && (old.best == null || (lower(w) ? now.best < old.best : now.best > old.best));
 }
 
 let running: Promise<void> | null = null;
@@ -315,6 +315,40 @@ export function reportWagers(): Promise<void> {
     }
   })();
   return running;
+}
+
+// ---------- own bets for the library (Sascha 02.11.2026: "in the library to pick again and again") ----------
+
+const MINE = 'golfos.mybets.v1';
+/** An own bet kept on this phone: how it is built and its number. */
+export type MyBet = { id: string; bet: Pick<Wager, 'metric' | 'compare' | 'where' | 'holesOf' | 'run' | 'target'> };
+export function loadMyBets(): MyBet[] {
+  try {
+    const x = JSON.parse(localStorage.getItem(MINE) ?? '[]');
+    return Array.isArray(x) ? x.filter((b) => b && typeof b.id === 'string' && b.bet && b.bet.metric) : [];
+  } catch {
+    return [];
+  }
+}
+/** Keeps an own bet in "Meine Wetten" – once (the same built bet with another number replaces it). */
+export function keepMyBet(bet: MyBet['bet'], id = String(Date.now())): MyBet {
+  const key = (b: MyBet['bet']) => wagerLabel({ id: '', player: '', kind: 'custom', stake: 0, payout: 'success', attempts: 'any', ...b, target: 0 });
+  const list = loadMyBets();
+  const same = list.find((b) => key(b.bet) === key(bet));
+  const kept: MyBet = { id: same?.id ?? id, bet };
+  try {
+    localStorage.setItem(MINE, JSON.stringify([kept, ...list.filter((b) => b.id !== kept.id)].slice(0, 100)));
+  } catch {
+    /* storage full – the bet itself is in the pool */
+  }
+  return kept;
+}
+export function forgetMyBet(id: string): void {
+  try {
+    localStorage.setItem(MINE, JSON.stringify(loadMyBets().filter((b) => b.id !== id)));
+  } catch {
+    /* kept */
+  }
 }
 
 // ---------- bets set up before, as templates (Sascha 01.11.2026) ----------

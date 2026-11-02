@@ -7,8 +7,8 @@ import { currencySymbol, money, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { Qr } from '../components/ShareGame';
-import { KINDS, LIBRARY, LIBRARY_GROUPS, balances, dayOf, inPool, provisional, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
-import { changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
@@ -950,6 +950,87 @@ function Field(props: { label: string; children: React.ReactNode }) {
   );
 }
 
+/** An own bet, built (Sascha 02.11.2026): what is counted, at least or at most, the number, on which holes, in a row. */
+function CustomFields(props: { w: Wager; set: (patch: Partial<Wager>) => void }) {
+  const { w, set } = props;
+  const m = metricOf(w.metric);
+  const [holes, setHoles] = useState((w.holesOf ?? []).join(', '));
+  return (
+    <>
+      <Field label={tr('What counts', 'Was zählt')}>
+        <Chips<Metric>
+          label={tr('What counts', 'Was zählt')}
+          value={m.id}
+          onChange={(v) => v && set({ metric: v, ...(metricOf(v).sum ? { run: false } : {}), ...(v === 'strokes' ? { compare: 'max' as const, target: Math.min(w.target, 5) } : {}) })}
+          options={METRICS.map((x) => ({ value: x.id, label: x.one() }))}
+        />
+      </Field>
+      {m.id !== 'strokes' && !w.run && (
+        <Field label={tr('Condition', 'Bedingung')}>
+          <Chips<'min' | 'max'>
+            label={tr('Condition', 'Bedingung')}
+            value={w.compare ?? 'min'}
+            onChange={(v) => v && set({ compare: v })}
+            options={[
+              { value: 'min', label: tr('At least', 'Mindestens') },
+              { value: 'max', label: tr('At most', 'Höchstens') },
+            ]}
+          />
+        </Field>
+      )}
+      <Field label={m.id === 'strokes' ? tr('To par, at most', 'Zu Par, höchstens') : tr('Number', 'Zahl')}>
+        <Stepper label={tr('Number', 'Zahl')} value={w.target} min={m.id === 'strokes' ? -18 : 0} onChange={(v) => set({ target: v })} />
+      </Field>
+      <Field label={tr('Where', 'Wo')}>
+        <Chips<Where> label={tr('Where', 'Wo')} value={w.where ?? 'all'} onChange={(v) => v && set({ where: v })} options={WHERES.map((x) => ({ value: x.id, label: x.name() }))} />
+        {w.where === 'holes' && (
+          <input
+            className="input"
+            inputMode="numeric"
+            aria-label={tr('The holes', 'Die Löcher')}
+            placeholder={tr('e.g. 7, 12', 'z. B. 7, 12')}
+            value={holes}
+            onChange={(e) => {
+              setHoles(e.target.value);
+              set({ holesOf: [...new Set(e.target.value.split(/[^0-9]+/).map(Number).filter((n) => n >= 1 && n <= 36))] });
+            }}
+          />
+        )}
+      </Field>
+      {!m.sum && <Switch on={!!w.run} label={tr('In a row', 'In Folge')} hint={tr('Holes one after the other', 'Löcher hintereinander')} onChange={(on) => set({ run: on, ...(on ? { compare: 'min' as const } : {}) })} />}
+      <span className="muted small">
+        {m.details ? tr('Needs the detail entry (putts, tee shot, sand) – the app asks for it where this bet counts.', 'Braucht die Detailerfassung (Putts, Abschlag, Sand) – die App fragt sie ab, wo diese Wette zählt.') : tr('The strokes incl. penalty strokes are enough.', 'Die Schläge inkl. Strafschläge genügen.')}
+      </span>
+    </>
+  );
+}
+const CUSTOM_START: Partial<Wager> = { metric: 'birdie', compare: 'min', where: 'all', target: 2, run: false };
+/** An own bet as it is kept for the library – and back. */
+const myBetOf = (w: Wager): MyBet['bet'] => ({ metric: w.metric ?? 'birdie', compare: w.compare ?? 'min', where: w.where ?? 'all', holesOf: w.where === 'holes' ? (w.holesOf ?? []) : undefined, run: !!w.run, target: w.target });
+
+/** "+ Eigene Wette bauen" in the library: built, kept in "Meine Wetten". */
+function CustomBetSheet(props: { onDone: (b: MyBet) => void; onClose: () => void }) {
+  const [w, setW] = useState<Wager>({ id: 'x', player: '', kind: 'custom', stake: 0, payout: 'success', attempts: 'any', target: 2, ...CUSTOM_START });
+  const ok = w.where !== 'holes' || !!w.holesOf?.length;
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet wager-sheet" role="dialog" aria-label={tr('Build an own bet', 'Eigene Wette bauen')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Build an own bet', 'Eigene Wette bauen')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <CustomFields w={w} set={(patch) => setW({ ...w, ...patch })} />
+        <strong className="custom-preview">{wagerLabel(w)}</strong>
+        <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onDone(keepMyBet(myBetOf(w)))}>
+          {tr('Keep in "My bets"', 'In „Meine Wetten“ speichern')}
+        </button>
+      </section>
+    </div>
+  );
+}
+
 /** Stake, payout and attempts – the same for one bet and for the template. */
 function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wager>) => void }) {
   const { pool, w, set } = props;
@@ -1162,7 +1243,12 @@ export function WagerSheet(props: {
   const set = (patch: Partial<Wager>) => setW({ ...w, ...patch });
   const k = KINDS.find((x) => x.kind === w.kind)!;
   const manual = props.wager ? pool.progress[props.wager.id]?.manual : undefined;
-  const ok = (w.kind !== 'free' || !!w.text?.trim()) && (w.payout !== 'opponent' || (!!w.opponent && w.opponent !== w.player));
+  const ok = (w.kind !== 'free' || !!w.text?.trim()) && (w.kind !== 'custom' || w.where !== 'holes' || !!w.holesOf?.length) && (w.payout !== 'opponent' || (!!w.opponent && w.opponent !== w.player));
+  // an own bet: its words for the push (the server says them as it is), and kept in "Meine Wetten"
+  const save = () => {
+    if (w.kind === 'custom') keepMyBet(myBetOf(w));
+    props.onSave(w.kind === 'custom' ? { ...w, text: wagerLabel(w) } : w);
+  };
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet wager-sheet" role="dialog" aria-label={props.wager ? tr('Bet', 'Wette') : tr('New bet', 'Neue Wette')} onClick={(e) => e.stopPropagation()}>
@@ -1176,10 +1262,12 @@ export function WagerSheet(props: {
           <Chips<string> label={tr('Whose bet', 'Wessen Wette')} value={w.player} onChange={(v) => v && set({ player: v, ...(w.opponent === v ? { opponent: undefined } : {}) })} options={pool.players.map((p) => ({ value: p.id, label: p.name }))} />
         </Field>
         <Field label={tr('What', 'Was')}>
-          <Chips<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => v && setW({ ...w, kind: v, target: startOf(v), ...(shapeOf(v) !== 'count' ? { scope: undefined } : {}), ...(shapeOf(v) === 'duel' ? { payout: 'opponent' as const, parts: w.parts ?? { front: 5, back: 5, total: 10 } } : {}) })} options={KINDS.filter((x) => shapeOf(x.kind) !== 'duel' || x.kind === w.kind).map((x) => ({ value: x.kind, label: x.name() }))} />
+          <Chips<WagerKind> label={tr('What', 'Was')} value={w.kind} onChange={(v) => v && setW({ ...w, kind: v, target: v === 'custom' ? 2 : startOf(v), ...(v === 'custom' ? CUSTOM_START : {}), ...(shapeOf(v) !== 'count' ? { scope: undefined } : {}), ...(shapeOf(v) === 'duel' ? { payout: 'opponent' as const, parts: w.parts ?? { front: 5, back: 5, total: 10 } } : {}) })} options={KINDS.filter((x) => shapeOf(x.kind) !== 'duel' || x.kind === w.kind).map((x) => ({ value: x.kind, label: x.name() }))} />
         </Field>
         {shapeOf(w.kind) === 'duel' ? (
           <DuelFields pool={pool} w={w} set={set} />
+        ) : w.kind === 'custom' ? (
+          <CustomFields w={w} set={set} />
         ) : w.kind === 'free' ? (
           <Field label={tr('The bet in words', 'Die Wette in Worten')}>
             <input className="input" aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('Longest drive on hole 7', 'Längster Drive an Loch 7')} value={w.text ?? ''} onChange={(e) => set({ text: e.target.value })} />
@@ -1191,7 +1279,7 @@ export function WagerSheet(props: {
         )}
         <CountFields w={w} set={set} />
         <PayFields pool={pool} w={w} set={set} />
-        <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave(w)}>
+        <button type="button" className="btn-primary" disabled={!ok} onClick={save}>
           {props.wager ? tr('Save', 'Speichern') : tr('Add the bet', 'Wette anlegen')}
         </button>
         {props.wager && (
@@ -1369,12 +1457,15 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
   const earlier = useMemo(() => earlierGroups(earlierBets().filter((b) => shapeOf(b.wager.kind) !== 'duel')), []);
   const [tab, setTab] = useState<'library' | 'earlier'>('library');
   const [taken, setTaken] = useState<Set<string>>(new Set()); // earlier bets ticked: "group|index"
+  const [mine, setMine] = useState<MyBet[]>(loadMyBets); // own bets kept (Sascha 02.11.2026)
+  const [building, setBuilding] = useState(false);
   const name = pool.players.find((p) => p.id === player)?.name ?? '';
   const pickPlayer = (id: string) => setPlayer(id);
   const toggle = (id: string, start: number) => setPicked((x) => (id in x ? Object.fromEntries(Object.entries(x).filter(([k]) => k !== id)) : { ...x, [id]: start }));
   const lib = LIBRARY.filter((b) => b.id in picked);
   const ticked = earlier.flatMap((g, gi) => g.wagers.filter((_, wi) => taken.has(`${gi}|${wi}`)));
-  const n = lib.length + ticked.length;
+  const myPicked = mine.filter((b) => `my:${b.id}` in picked);
+  const n = lib.length + ticked.length + myPicked.length;
   const ok = n > 0 && (!('free' in picked) || !!text.trim()) && (base.payout !== 'opponent' || (!!base.opponent && base.opponent !== player));
   const flip = (keys: string[], on: boolean) => {
     const s = new Set(taken);
@@ -1389,6 +1480,10 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
         return shapeOf(w.kind) === 'sum' && props.pool.rounds?.length ? { ...w, rounds: props.pool.rounds.length } : w;
       }),
       ...ticked.map((w) => fromEarlier(w, player, pool, newId())),
+      ...myPicked.map((b) => {
+        const w: Wager = { ...rest, player, ...b.bet, kind: 'custom', target: picked[`my:${b.id}`], id: newId() };
+        return { ...w, text: wagerLabel(w) };
+      }),
     ]);
   };
   return (
@@ -1411,6 +1506,56 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
               { value: 'library', label: tr('Library', 'Bibliothek') },
               { value: 'earlier', label: tr('Set up before', 'Schon angelegt') },
             ]}
+          />
+        )}
+        {tab === 'library' && (
+          <div className="lib-group">
+            <span className="eyebrow">{tr('My bets', 'Meine Wetten')}</span>
+            {mine.map((b) => {
+              const key = `my:${b.id}`;
+              const on = key in picked;
+              const w: Wager = { id: b.id, player, kind: 'custom', stake: 0, payout: 'success', attempts: 'any', ...b.bet, target: on ? picked[key] : b.bet.target };
+              return (
+                <div key={b.id} className={`lib-row${on ? ' on' : ''}`}>
+                  <button type="button" className="lib-pick" aria-pressed={on} onClick={() => toggle(key, b.bet.target)}>
+                    <span className="lib-check" aria-hidden="true">
+                      {on ? '✓' : ''}
+                    </span>
+                    <span className="grow">
+                      <span className="title">{wagerLabel(w)}</span>
+                      <span className="muted small">{metricOf(b.bet.metric).details ? tr('with the details of the holes', 'mit Detailerfassung') : tr('from the strokes', 'aus den Schlägen')}</span>
+                    </span>
+                  </button>
+                  {on && <Stepper compact label={wagerLabel(w)} value={picked[key]} min={b.bet.metric === 'strokes' ? -18 : 0} onChange={(v) => setPicked({ ...picked, [key]: v })} />}
+                  {!on && (
+                    <button
+                      type="button"
+                      className="icon-btn small"
+                      aria-label={tr(`Remove "${wagerLabel(w)}" from my bets`, `„${wagerLabel(w)}“ aus Meine Wetten entfernen`)}
+                      onClick={() => {
+                        forgetMyBet(b.id);
+                        setMine(loadMyBets());
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <button type="button" className="btn-secondary" onClick={() => setBuilding(true)}>
+              {tr('+ Build an own bet', '+ Eigene Wette bauen')}
+            </button>
+          </div>
+        )}
+        {building && (
+          <CustomBetSheet
+            onClose={() => setBuilding(false)}
+            onDone={(b) => {
+              setMine(loadMyBets());
+              setPicked((x) => ({ ...x, [`my:${b.id}`]: b.bet.target }));
+              setBuilding(false);
+            }}
           />
         )}
         {tab === 'library' &&
@@ -1472,7 +1617,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
               </div>
             );
           })}
-        {lib.length > 0 && (
+        {lib.length + myPicked.length > 0 && (
           <>
             <span className="eyebrow">{tr('For the bets from the library', 'Für die Wetten aus der Bibliothek')}</span>
             <PayFields pool={pool} w={{ ...base, player, kind: lib.every((b) => b.kind === 'free') ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />

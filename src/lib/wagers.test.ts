@@ -346,3 +346,42 @@ describe('which bets need the details of a hole', () => {
     expect(poolNeedsDetails(p, { day: '2026-11-06', course: 'Bethpage' })).toBe(true);
   });
 });
+
+// Sascha 02.11.2026: "own bets configured so that they are judged from the score entry – and in the library again"
+describe('an own bet, built', () => {
+  const own = (patch: Partial<Wager>): Wager => bet({ kind: 'custom', metric: 'birdie', compare: 'min', where: 'all', target: 2, ...patch });
+  it('at least 2 birdies on the par 3s – in words and judged', () => {
+    setLang('de');
+    const s = par();
+    s[2] = 2; // birdie on the par 3 hole 3
+    s[6] = 2; // and on hole 7
+    s[0] = 3; // a birdie on a par 4: not on a par 3
+    const w = own({ where: 'par3' });
+    expect(wagerLabel(w)).toBe('Mindestens 2 Birdies auf den Par 3s');
+    expect(judge(w, pool, [round(s)])).toMatchObject({ best: 2, done: true });
+    expect(judge(own({ where: 'par3', target: 3 }), pool, [round(s)]).done).toBe(false);
+  });
+  it('no three-putt on hole 7: needs the details, judged from the putts', () => {
+    setLang('de');
+    const w = own({ metric: 'threePutt', compare: 'max', where: 'holes', holesOf: [7], target: 0 });
+    expect(wagerLabel(w)).toBe('Kein Drei-Putt auf Loch 7');
+    expect(needsDetails(w)).toBe(true);
+    expect(judge(w, pool, [round(par(), { putts: PARS.map((_, i) => (i === 6 ? 3 : 2)) })]).done).toBe(false);
+    expect(judge(w, pool, [round(par(), { putts: PARS.map(() => 2) })]).done).toBe(true);
+    expect(judge(w, pool, [round(par())]).best).toBeNull(); // no putts entered: cannot be told
+  });
+  it('pars in a row on the back nine; at most +2 to par on the front nine', () => {
+    setLang('de');
+    const s = par();
+    s[9] = 5; // bogey on 10 – then 8 pars
+    expect(judge(own({ metric: 'par', run: true, where: 'back', target: 8 }), pool, [round(s)])).toMatchObject({ best: 8, done: true });
+    const f = par();
+    f[0] = 5;
+    f[1] = 5;
+    f[2] = 4; // +3 on the front
+    const w = own({ metric: 'strokes', compare: 'max', where: 'front', target: 2 });
+    expect(wagerLabel(w)).toBe('Höchstens +2 zu Par auf der vorderen 9');
+    expect(judge(w, pool, [round(f)])).toMatchObject({ best: 3, done: false });
+    expect(needsDetails(w)).toBe(false);
+  });
+});

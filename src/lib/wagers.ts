@@ -34,12 +34,13 @@ export type WagerKind =
   | 'score'
   | 'scoreSum'
   | 'nassau'
+  | 'custom'
   | 'free';
 /** run: N holes in a row; count: at least N holes (in a round, or on the whole trip); most: at most N in a complete
  *  round; points: at least N Stableford points in a round; score: the score to par at most N; duel: against one player,
  *  front nine, back nine and the 18 each won by the better score ("5+5+10"); sum: the score to par of several rounds
  *  added up – at most N over N rounds (Sascha 01.11.2026: "Cedric bet Chris 50 $ he plays the six rounds at most 108 over par"). */
-type Shape = 'run' | 'count' | 'most' | 'points' | 'score' | 'sum' | 'duel' | 'free';
+type Shape = 'run' | 'count' | 'most' | 'points' | 'score' | 'sum' | 'duel' | 'custom' | 'free';
 const SHAPE: Record<WagerKind, Shape> = {
   birdieRun: 'run',
   parRun: 'run',
@@ -59,6 +60,7 @@ const SHAPE: Record<WagerKind, Shape> = {
   score: 'score',
   scoreSum: 'sum',
   nassau: 'duel',
+  custom: 'custom',
   free: 'free',
 };
 export const shapeOf = (k: WagerKind): Shape => SHAPE[k] ?? 'free';
@@ -106,6 +108,146 @@ export interface Wager {
   parts?: { front: number; back: number; total: number };
   /** who set it up (a name) */
   by?: string;
+  /** custom (an own bet, built – Sascha 02.11.2026): what is counted on each hole */
+  metric?: Metric;
+  /** custom: at least (default) or at most */
+  compare?: 'min' | 'max';
+  /** custom: on which holes – the round, a nine, the par 3s/4s/5s, or the holes listed */
+  where?: Where;
+  /** custom, where 'holes': the holes by their number in the round (1–18) */
+  holesOf?: number[];
+  /** custom: in a row */
+  run?: boolean;
+}
+
+// ---------- own bets, built (Sascha 02.11.2026) ----------
+
+export type Metric = 'birdie' | 'par' | 'bogey' | 'double' | 'eagle' | 'strokes' | 'penalties' | 'putts' | 'onePutt' | 'threePutt' | 'green' | 'fairway' | 'upDown' | 'sandSave';
+export type Where = 'all' | 'front' | 'back' | 'par3' | 'par4' | 'par5' | 'holes';
+/** What an own bet can count: a hole that is one (count, in a row) – or a figure added up (sum); `details`: needs the
+ *  detail entry (putts, tee shot, sand). */
+export const METRICS: { id: Metric; one: () => string; many: () => string; none: () => string; sum?: boolean; details?: boolean }[] = [
+  { id: 'birdie', one: () => 'Birdie', many: () => 'Birdies', none: () => tr('No birdie', 'Kein Birdie') },
+  { id: 'par', one: () => tr('Par or better', 'Par oder besser'), many: () => tr('pars or better', 'Pars oder besser'), none: () => tr('No par', 'Kein Par') },
+  { id: 'bogey', one: () => 'Bogey', many: () => 'Bogeys', none: () => tr('No bogey', 'Kein Bogey') },
+  { id: 'double', one: () => tr('Double bogey or worse', 'Doppelbogey oder schlechter'), many: () => tr('double bogeys or worse', 'Doppelbogeys oder schlechter'), none: () => tr('No double bogey', 'Kein Doppelbogey') },
+  { id: 'eagle', one: () => 'Eagle', many: () => 'Eagles', none: () => tr('No eagle', 'Kein Eagle') },
+  { id: 'strokes', one: () => tr('Score to par', 'Ergebnis zu Par'), many: () => tr('to par', 'zu Par'), none: () => tr('Even par', 'Par gespielt'), sum: true },
+  { id: 'penalties', one: () => tr('Penalty stroke', 'Strafschlag'), many: () => tr('penalty strokes', 'Strafschläge'), none: () => tr('No penalty stroke', 'Kein Strafschlag'), sum: true },
+  { id: 'putts', one: () => 'Putt', many: () => 'Putts', none: () => tr('No putt', 'Kein Putt'), sum: true, details: true },
+  { id: 'onePutt', one: () => tr('One-putt', 'Ein-Putt'), many: () => tr('one-putts', 'Ein-Putts'), none: () => tr('No one-putt', 'Kein Ein-Putt'), details: true },
+  { id: 'threePutt', one: () => tr('Three-putt', 'Drei-Putt'), many: () => tr('three-putts', 'Drei-Putts'), none: () => tr('No three-putt', 'Kein Drei-Putt'), details: true },
+  { id: 'green', one: () => tr('Green in regulation', 'Grün in Regulation'), many: () => tr('greens in regulation', 'Grüns in Regulation'), none: () => tr('No green in regulation', 'Kein Grün in Regulation'), details: true },
+  { id: 'fairway', one: () => tr('Fairway hit', 'Fairway getroffen'), many: () => tr('fairways hit', 'Fairways getroffen'), none: () => tr('No fairway', 'Kein Fairway'), details: true },
+  { id: 'upDown', one: () => 'Up & Down', many: () => 'Up & Downs', none: () => tr('No up & down', 'Kein Up & Down'), details: true },
+  { id: 'sandSave', one: () => 'Sand Save', many: () => 'Sand Saves', none: () => tr('No sand save', 'Kein Sand Save'), details: true },
+];
+export const metricOf = (m?: Metric) => METRICS.find((x) => x.id === m) ?? METRICS[0];
+export const WHERES: { id: Where; name: () => string }[] = [
+  { id: 'all', name: () => tr('In the round', 'In der Runde') },
+  { id: 'front', name: () => tr('Front nine', 'Vordere 9') },
+  { id: 'back', name: () => tr('Back nine', 'Hintere 9') },
+  { id: 'par3', name: () => tr('Par 3s', 'Par 3s') },
+  { id: 'par4', name: () => tr('Par 4s', 'Par 4s') },
+  { id: 'par5', name: () => tr('Par 5s', 'Par 5s') },
+  { id: 'holes', name: () => tr('Certain holes', 'Bestimmte Löcher') },
+];
+/** The holes of a round an own bet counts on (their index). */
+function holesFor(w: Wager, pars: number[]): number[] {
+  const all = pars.map((_, i) => i);
+  const half = pars.length >= 18 ? 9 : Math.ceil(pars.length / 2);
+  switch (w.where ?? 'all') {
+    case 'front':
+      return all.filter((i) => i < half);
+    case 'back':
+      return all.filter((i) => i >= half);
+    case 'par3':
+      return all.filter((i) => pars[i] === 3);
+    case 'par4':
+      return all.filter((i) => pars[i] === 4);
+    case 'par5':
+      return all.filter((i) => pars[i] === 5);
+    case 'holes':
+      return all.filter((i) => (w.holesOf ?? []).includes(i + 1));
+    default:
+      return all;
+  }
+}
+/** An own bet's figure on a hole: 1/0 for a hole that is one (or not), the number for a figure added up; null: not known. */
+function holeFigure(m: Metric, e: HoleEntry | undefined, par: number): number | null {
+  if (!e) return null;
+  const s = e.pickedUp ? null : e.strokes;
+  switch (m) {
+    case 'birdie':
+      return s == null ? (e.pickedUp ? 0 : null) : s <= par - 1 ? 1 : 0;
+    case 'par':
+      return s == null ? (e.pickedUp ? 0 : null) : s <= par ? 1 : 0;
+    case 'bogey':
+      return s == null ? (e.pickedUp ? 0 : null) : s === par + 1 ? 1 : 0;
+    case 'double':
+      return e.pickedUp ? 1 : s == null ? null : s >= par + 2 ? 1 : 0;
+    case 'eagle':
+      return s == null ? (e.pickedUp ? 0 : null) : s <= par - 2 ? 1 : 0;
+    case 'strokes':
+      return s == null ? null : s - par;
+    case 'penalties':
+      return s == null && !e.pickedUp ? null : (e.penalties ?? 0);
+    case 'putts':
+      return e.pickedUp || e.putts == null ? null : e.putts;
+    case 'onePutt':
+      return e.putts == null ? null : e.putts === 1 ? 1 : 0;
+    case 'threePutt':
+      return e.putts == null ? null : e.putts >= 3 ? 1 : 0;
+    case 'green': {
+      const g = greenInRegulation(e, par);
+      return g == null ? null : g ? 1 : 0;
+    }
+    case 'fairway':
+      return e.fairway == null ? null : e.fairway === 'hit' ? 1 : 0;
+    case 'upDown':
+      return e.upAndDown == null ? (s == null ? null : 0) : e.upAndDown ? 1 : 0;
+    case 'sandSave':
+      return s == null && !e.pickedUp ? null : e.greensideBunker && e.upAndDown === true ? 1 : 0;
+  }
+}
+/** An own bet in one round: the holes counted, the figure added up, or the longest run – null when it cannot be told
+ *  yet (an "at most" or a figure added up needs every hole of it). */
+function customValue(w: Wager, r: Pick<PlayedRound, 'pars' | 'entries'>): number | null {
+  const m = metricOf(w.metric);
+  const sel = holesFor(w, r.pars);
+  if (!sel.length) return null;
+  const v = sel.map((i) => holeFigure(m.id, r.entries[i], r.pars[i]));
+  if (w.run && !m.sum) {
+    let run = 0;
+    let best = 0;
+    for (const x of v) {
+      run = x === 1 ? run + 1 : 0;
+      best = Math.max(best, run);
+    }
+    return best;
+  }
+  if ((m.sum || w.compare === 'max') && v.some((x) => x == null)) return null;
+  return v.reduce<number>((a, x) => a + (x ?? 0), 0);
+}
+/** "At least 2 birdies on the par 3s", "At most 1 three-putt on hole 7", "3 pars or better in a row". */
+function customLabel(w: Wager): string {
+  const m = metricOf(w.metric);
+  const n = w.target;
+  const holes = w.holesOf ?? [];
+  const on: Record<Where, string> = {
+    all: '',
+    front: tr(' on the front nine', ' auf der vorderen 9'),
+    back: tr(' on the back nine', ' auf der hinteren 9'),
+    par3: tr(' on the par 3s', ' auf den Par 3s'),
+    par4: tr(' on the par 4s', ' auf den Par 4s'),
+    par5: tr(' on the par 5s', ' auf den Par 5s'),
+    holes: holes.length ? tr(` on hole${holes.length > 1 ? 's' : ''} ${holes.join(', ')}`, ` auf Loch ${holes.join(', ')}`) : '',
+  };
+  const where = on[w.where ?? 'all'];
+  if (m.id === 'strokes') return `${tr('At most', 'Höchstens')} ${fmtPar(n)} ${m.many()}${where}`;
+  if (w.run && !m.sum) return `${n} ${n === 1 ? m.one() : m.many()} ${tr('in a row', 'in Folge')}${where}`;
+  if (w.compare === 'max') return n === 0 ? `${m.none()}${where}` : `${tr('At most', 'Höchstens')} ${n} ${n === 1 ? m.one() : m.many()}${where}`;
+  return `${tr('At least', 'Mindestens')} ${n} ${n === 1 ? m.one() : m.many()}${where}`;
 }
 
 export interface Progress {
@@ -177,7 +319,7 @@ export const isPool = (x: unknown): x is WagerPool => !!x && (x as WagerPool).ki
 /** The bets that need the details of a hole – putts, the tee shot, sand (Sascha 02.11.2026: "GIR, 3-putts, up and down
  *  need the detail entry; birdies, to par and so on only the strokes incl. penalty strokes"). */
 const DETAIL_KINDS: WagerKind[] = ['greens', 'fairways', 'oneputts', 'updowns', 'putts', 'threeputts'];
-export const needsDetails = (w: Pick<Wager, 'kind'>): boolean => DETAIL_KINDS.includes(w.kind);
+export const needsDetails = (w: Pick<Wager, 'kind' | 'metric'>): boolean => DETAIL_KINDS.includes(w.kind) || (w.kind === 'custom' && !!metricOf(w.metric).details);
 /** Does a round need the detail entry for a pool: a bet of it that needs details and counts this round. */
 export function poolNeedsDetails(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'> & { rounds?: PoolRound[] }, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean {
   return pool.wagers.some((w) => needsDetails(w) && inPool(r, pool, w));
@@ -341,7 +483,8 @@ export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>, pool
 }
 
 const whereOf = (r: PlayedRound) => `${r.course} · ${r.day.slice(8, 10)}.${r.day.slice(5, 7)}.`;
-const lower = (w: Wager): boolean => shapeOf(w.kind) === 'most' || shapeOf(w.kind) === 'score' || shapeOf(w.kind) === 'sum';
+/** Is the lower figure the better one: "at most" bets, the score – an own bet "at most" or on the score to par. */
+export const lower = (w: Wager): boolean => shapeOf(w.kind) === 'most' || shapeOf(w.kind) === 'score' || shapeOf(w.kind) === 'sum' || (shapeOf(w.kind) === 'custom' && (w.compare === 'max' || w.metric === 'strokes'));
 
 /** The best of a bet over some rounds: the longest run, the most (or the fewest) in a round, the total of the trip. */
 function bestOf(w: Wager, rs: PlayedRound[]): { best: number | null; where?: string; used?: number } {
@@ -375,7 +518,12 @@ function bestOf(w: Wager, rs: PlayedRound[]): { best: number | null; where?: str
       at = r;
     }
   };
-  if (shape === 'run') {
+  if (shape === 'custom') {
+    for (const r of rs) {
+      const v = customValue(w, r);
+      if (v != null) take(v, r);
+    }
+  } else if (shape === 'run') {
     let run = 0;
     take(0);
     for (const r of rs) {
@@ -595,6 +743,8 @@ export function wagerLabel(w: Wager): string {
       const p = w.parts ?? { front: 0, back: 0, total: 0 };
       return `${p.front}+${p.back}+${p.total} ${w.net ? tr('net', 'netto') : tr('gross', 'brutto')}`;
     }
+    case 'custom':
+      return customLabel(w);
     case 'free':
       return w.text?.trim() || tr('Free bet', 'Freie Wette');
   }
@@ -668,6 +818,10 @@ export function progressText(w: Wager, p: Progress | undefined, currency?: 'EUR'
   if (!p || p.best == null) return (p?.pending != null ? tr('no counted round yet', 'noch keine gezählte Runde') : tr('no complete round yet', 'noch keine passende Runde')) + pend;
   if (shape === 'count' && w.scope === 'trip') return tr(`so far ${p.best} (target ${w.target})`, `bisher ${p.best} (Ziel ${w.target})`) + pend;
   if (shape === 'run') return tr(`best ${p.best} (target ${w.target})`, `bestes ${p.best} (Ziel ${w.target})`) + pend;
+  if (shape === 'custom') {
+    const v = (x: number) => (w.metric === 'strokes' ? fmtPar(x) : String(x));
+    return tr(`best round ${v(p.best)} (target ${lower(w) ? 'at most' : 'at least'} ${v(w.target)})`, `beste Runde ${v(p.best)} (Ziel ${lower(w) ? 'höchstens' : 'mindestens'} ${v(w.target)})`) + pend;
+  }
   if (shape === 'most') return tr(`best round ${p.best} (target at most ${w.target})`, `beste Runde ${p.best} (Ziel höchstens ${w.target})`) + pend;
   return tr(`best round ${show(p.best)} (target ${show(w.target)})`, `beste Runde ${show(p.best)} (Ziel ${show(w.target)})`) + pend;
 }
@@ -692,6 +846,7 @@ export const KINDS: { kind: WagerKind; name: () => string; number: () => string;
   { kind: 'score', name: () => tr('Score to par', 'Ergebnis zu Par'), number: () => tr('To par (−5, +2 …)', 'Zu Par (−5, +2 …)'), min: -30 },
   { kind: 'scoreSum', name: () => tr('Score over several rounds', 'Ergebnis über mehrere Runden'), number: () => tr('To par, all rounds added up', 'Zu Par, alle Runden zusammen'), min: -60 },
   { kind: 'nassau', name: () => tr('Front · back · 18 (5+5+10)', 'Vorne · hinten · gesamt (5+5+10)'), number: () => '', min: 0 },
+  { kind: 'custom', name: () => tr('Own bet', 'Eigene Wette'), number: () => tr('Number', 'Zahl'), min: -18 },
   { kind: 'free', name: () => tr('Free bet', 'Freie Wette'), number: () => '', min: 0 },
 ];
 
@@ -740,7 +895,7 @@ export const LIBRARY: LibraryBet[] = [
   { id: 'eaglesTrip', group: 'trip', kind: 'eagles', patch: { scope: 'trip' }, start: 1, name: () => tr('Eagle on the trip', 'Eagle auf der Reise'), hint: () => tr('In any round', 'In irgendeiner Runde') },
   { id: 'scoreSum', group: 'trip', kind: 'scoreSum', patch: { rounds: 6 }, start: 100, name: () => tr('Gross over several rounds', 'Brutto über mehrere Runden'), hint: () => tr('The strokes over par of all rounds added up – e.g. +108 in 6 rounds', 'Die Schläge über Par aller Runden zusammengezählt – z. B. +108 in 6 Runden') },
   { id: 'holeInOne', group: 'trip', kind: 'holeInOne', patch: { scope: 'trip' }, start: 1, name: () => tr('Hole-in-one', 'Hole-in-One'), hint: () => tr('In any round', 'In irgendeiner Runde') },
-  { id: 'free', group: 'own', kind: 'free', start: 0, name: () => tr('Free bet', 'Freie Wette'), hint: () => tr('In words – decided by hand (longest drive, nearest the pin …)', 'In Worten – von Hand entschieden (längster Drive, nächster zur Fahne …)') },
+  { id: 'free', group: 'own', kind: 'free', start: 0, name: () => tr('Free bet', 'Freie Wette'), hint: () => tr('In words – what the app cannot measure, decided by the host (longest drive …); an own bet it judges: "+ Build an own bet"', 'In Worten – was die App nicht messen kann, entscheidet der Host (längster Drive …); eine eigene Wette, die sie auswertet: „+ Eigene Wette bauen“') },
 ];
 
 /** A bet from the library for a player: the number chosen, the stake and the rest as set. */
