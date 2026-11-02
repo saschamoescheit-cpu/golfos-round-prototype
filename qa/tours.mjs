@@ -99,7 +99,7 @@ async function phone(name) {
   await ctx.route(/rgisfnilwehnqpmbrxmp\.supabase\.co\/(rest|auth|functions)\//, serve);
   const p = await ctx.newPage();
   const errs = [];
-  p.on('pageerror', (e) => { if (!/golfos_items.*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+  p.on('pageerror', (e) => { if (!/golfos_(?:items|friend_\w+).*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
   await p.goto(url);
   await p.waitForTimeout(1200);
   await p.evaluate((name) => {

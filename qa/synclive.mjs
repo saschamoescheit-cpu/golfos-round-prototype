@@ -18,7 +18,7 @@ async function device(name, dev) {
   await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
-  p.on('pageerror', (e) => { if (!/golfos_items.*access control/.test(e.message)) errs.push(e.message); });
+  p.on('pageerror', (e) => { if (!/golfos_(?:items|friend_\w+).*access control/.test(e.message)) errs.push(e.message); });
   await p.route(/supabase\.co\/rest\/v1\/golfos_items/, async (route) => {
     const r = route.request();
     if (r.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });

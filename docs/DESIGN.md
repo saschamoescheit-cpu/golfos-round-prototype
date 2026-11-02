@@ -28,6 +28,12 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
 | Yes / no with a sentence what it means | `ToggleRow` (switch) | In der Nähe anzeigen, Mit Zähler, Übertrag |
 | Course | `SettingsRow` "Platz ›" opening the course search of "Neue Runde" | every setup |
 | 2–4 short values without explanation, chosen often while playing | `chip-set` chips are fine | Tee filter, quick stakes |
+| Several at once from a short known set | multi-select chips (as the iOS alarm's days) | Wochentage Mo–So, "Was dir wichtig ist" |
+| A rating with one tap | the scale itself | Gefühl 1–5 |
+| A filter over a list (shows more or fewer rows, nothing is set) | filter chips above the list | Niveau, Ort, Sortieren, Zeitraum der Statistik |
+| Who you are / pick a name from the players | name chips | "wer bist du?" beim Beitreten |
+| A row whose choice needs its own picker (typed amount, a chain of steps) | `SheetRow` – the picker in the sheet, "Fertig" | Einsatz je Skin, Höchsteinsatz, Erlaubte Pressen |
+| Several switches belonging together | `SheetRow` summarising them, `ToggleList` + `ToggleRow inList` inside | Hausregeln |
 
 Chips with five or more values, or with values that need explaining, become a row with a sheet. A sheet shows each
 option with one line of what it means and ✓ at the chosen one.
