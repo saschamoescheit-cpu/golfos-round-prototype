@@ -18,6 +18,7 @@ import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
 import { Bin } from '../components/Bin';
+import { SwipeRow } from '../components/SwipeRow';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 
 // Tournaments in Games (Sascha 01.11.2026: "tournaments can be planned ahead just like bets – set them up for the USA
@@ -218,6 +219,13 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
   const planned = live.filter((e) => tourState(e, today) !== 'played');
   const played = live.filter((e) => tourState(e, today) === 'played');
   const pick = (f: 'planned' | 'played' | 'bin') => setFilter(filter === f ? null : f);
+  // a tournament swiped away: marked deleted for everyone, as from its page – "Undo" for a moment, then the bin
+  const removeTour = async (e: TourEntry): Promise<boolean> => {
+    const ok = await changeTour(e.code, { ...e.ev, deletedAt: new Date().toISOString() });
+    setMsg(ok ? null : NO_NET());
+    if (ok) window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'tour', id: e.code, label: e.ev.name, undo: () => void changeTour(e.code, { ...e.ev, deletedAt: null }) } }));
+    return ok;
+  };
   const shown = filter === 'planned' ? planned : filter === 'played' ? [...played].reverse() : [...planned, ...[...played].reverse()];
   return (
     <>
@@ -280,7 +288,14 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
               .filter((e) => filter || single(e))
               .map((e) => (
                 <li key={e.code}>
-                  <TourRow e={e} onOpen={() => props.onOpen(e.code)} />
+                  {/* swiped away as a mail (Sascha 02.11.2026) – only the host deletes, marked for everyone, "Undo" or the bin brings it back */}
+                  {isTourHost(e) ? (
+                    <SwipeRow label={e.ev.name} onDelete={() => removeTour(e)}>
+                      <TourRow e={e} onOpen={() => props.onOpen(e.code)} />
+                    </SwipeRow>
+                  ) : (
+                    <TourRow e={e} onOpen={() => props.onOpen(e.code)} />
+                  )}
                 </li>
               ))}
           </ul>

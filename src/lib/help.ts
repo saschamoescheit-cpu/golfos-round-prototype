@@ -364,6 +364,15 @@ export const FAQ: FaqTopic[] = [
         video: 'profile',
       },
       {
+        q: () => tr('How do I delete a round, a game or a bet?', 'Wie lösche ich eine Runde, ein Spiel oder eine Wette?'),
+        a: () =>
+          tr(
+            'Swipe it to the left in its list, as an e-mail: the red bin shows – tap it. Swiped all the way across it goes at once. It goes into the bin: "Undo" right away, later "Restore" under the tile "deleted". A pool of bets or a tournament only its host deletes – for everyone. The same for training sessions and screenings.',
+            'In der Liste nach links wischen, wie eine E-Mail: Der rote Mülleimer erscheint – antippen. Ganz durchgewischt ist es sofort weg. Es landet im Papierkorb: gleich „Rückgängig“, später „Wiederherstellen“ unter der Kachel „gelöscht“. Einen Wett-Pool oder ein Turnier löscht nur, wer es angelegt hat – für alle. Genauso bei Trainingseinheiten und Screenings.',
+          ),
+        video: 'games',
+      },
+      {
         q: () => tr('How do I delete my account?', 'Wie lösche ich mein Konto?'),
         a: () => tr('At the very bottom of the profile. The data on your phone stay.', 'Ganz unten im Profil. Die Daten auf deinem Handy bleiben.'),
         video: 'profile',

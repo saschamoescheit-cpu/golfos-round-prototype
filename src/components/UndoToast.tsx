@@ -7,7 +7,8 @@ import { tr } from '../lib/i18n';
 
 // "Round deleted · Undo" for 8 seconds after the player deleted a round or a game (Sascha 15.10.2026: one tap to
 // delete, no second question – a slip can still be undone; later from the bin).
-type Deleted = { kind: 'round' | 'game' | 'training' | 'mobility'; id: string; label: string };
+// A pool or a tournament (marked deleted on the server) brings its own way back.
+type Deleted = { kind: 'round' | 'game' | 'training' | 'mobility' | 'pool' | 'tour'; id: string; label: string; undo?: () => void };
 
 export function UndoToast() {
   const [shown, setShown] = useState<Deleted | null>(null);
@@ -28,13 +29,14 @@ export function UndoToast() {
   return (
     <div className="undo-toast" role="status">
       <span>
-        {shown.kind === 'game' ? tr('Game deleted', 'Spiel gelöscht') : shown.kind === 'training' ? tr('Session deleted', 'Einheit gelöscht') : shown.kind === 'mobility' ? tr('Screening deleted', 'Screening gelöscht') : tr('Round deleted', 'Runde gelöscht')}
+        {shown.kind === 'pool' ? tr('Bet deleted', 'Wette gelöscht') : shown.kind === 'tour' ? tr('Tournament deleted', 'Turnier gelöscht') : shown.kind === 'game' ? tr('Game deleted', 'Spiel gelöscht') : shown.kind === 'training' ? tr('Session deleted', 'Einheit gelöscht') : shown.kind === 'mobility' ? tr('Screening deleted', 'Screening gelöscht') : tr('Round deleted', 'Runde gelöscht')}
         {shown.label ? <span className="muted"> · {shown.label}</span> : null}
       </span>
       <button
         type="button"
         onClick={() => {
-          if (shown.kind === 'game') restoreGame(shown.id);
+          if (shown.undo) shown.undo();
+          else if (shown.kind === 'game') restoreGame(shown.id);
           else if (shown.kind === 'training') restoreSession(shown.id);
           else if (shown.kind === 'mobility') restoreScreening(shown.id);
           else restoreRound(shown.id);

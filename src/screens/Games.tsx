@@ -10,6 +10,7 @@ import { setCurrency, currencySymbol, type Currency } from '../lib/gameforms';
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, pairShare, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
 import { Bin } from '../components/Bin';
+import { SwipeRow } from '../components/SwipeRow';
 import { InviteSheet, JoinSheet, useGameExchange } from '../components/ShareGame';
 import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
 import { pushGame } from '../lib/push';
@@ -551,6 +552,10 @@ function GamesTabs(props: {
 
 function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: string }) {
   const locale = undefined;
+  const remove = (g: Game) => {
+    deleteGame(g.id);
+    window.dispatchEvent(new Event('golfos:games-changed'));
+  };
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {props.title && <span className="eyebrow">{props.title}</span>}
@@ -607,26 +612,30 @@ function GameList(props: { games: Game[]; onOpen: (g: Game) => void; title?: str
               </span>
             </button>
           );
+          // swiped away as a mail (Sascha 02.11.2026) – into the bin, "Undo" brings it back
           return g.finishedAt ? (
-            <li key={g.id}>{row}</li>
+            <li key={g.id}>
+              <SwipeRow label={`${f.name()} ${g.courseName}`} onDelete={() => remove(g)}>
+                {row}
+              </SwipeRow>
+            </li>
           ) : (
             // carry on (tap the row) or delete – into the bin, "Undo" brings it back – as a paused round
-            <li key={g.id} className="paused-row">
+            <li key={g.id}>
+              <SwipeRow className="paused-row" label={`${f.name()} ${g.courseName}`} onDelete={() => remove(g)}>
               {row}
               <button
                 type="button"
                 className="icon-btn paused-delete"
                 aria-label={tr(`Delete the paused game at ${g.courseName}`, `Pausiertes Spiel ${g.courseName} löschen`)}
                 title={tr('Delete', 'Löschen')}
-                onClick={() => {
-                  deleteGame(g.id);
-                  window.dispatchEvent(new Event('golfos:games-changed'));
-                }}
+                onClick={() => remove(g)}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
                 </svg>
               </button>
+              </SwipeRow>
             </li>
           );
         })}

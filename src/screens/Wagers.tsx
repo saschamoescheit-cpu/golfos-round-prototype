@@ -11,7 +11,9 @@ import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, dayOf, inPoo
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
+import { SwipeRow } from '../components/SwipeRow';
 import { SignedIcon } from '../components/SignedIcon';
+import { BetMissedIcon, BetOpenIcon } from '../components/BetIcons';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet } from '../lib/push';
 import { loadSeries, loadTours } from '../lib/tourstore';
@@ -125,6 +127,13 @@ export function BetsTab(props: { onOpen: (code: string) => void }) {
   const running = pools.filter((e) => live(e, today));
   const over = pools.filter((e) => !live(e, today));
   const made = running.reduce((n, e) => n + e.pool.wagers.filter((w) => stateOf(w, e.pool, today) === 'done').length, 0);
+  // a pool swiped away: marked deleted for everyone, as from its sheet – "Undo" for a moment, then the bin
+  const removePool = async (e: PoolEntry): Promise<boolean> => {
+    const ok = !!(await changePool(e.code, (p) => ({ ...p, deletedAt: new Date().toISOString() })));
+    setMsg(ok ? null : NO_NET());
+    if (ok) window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'pool', id: e.code, label: e.pool.name, undo: () => void restorePool(e.code) } }));
+    return ok;
+  };
   const pick = (f: 'running' | 'over' | 'bin') => setFilter(filter === f ? null : f);
   const shown = filter === 'running' ? running : filter === 'over' ? over : pools;
   return (
@@ -188,7 +197,14 @@ export function BetsTab(props: { onOpen: (code: string) => void }) {
           <ul className="list">
             {shown.map((e) => (
               <li key={e.code}>
-                <PoolRow e={e} today={today} onOpen={() => props.onOpen(e.code)} />
+                {/* swiped away as a mail (Sascha 02.11.2026) – only the host deletes, marked for everyone, "Undo" or the bin brings it back */}
+                {isHost(e) ? (
+                  <SwipeRow label={e.pool.name} onDelete={() => removePool(e)}>
+                    <PoolRow e={e} today={today} onOpen={() => props.onOpen(e.code)} />
+                  </SwipeRow>
+                ) : (
+                  <PoolRow e={e} today={today} onOpen={() => props.onOpen(e.code)} />
+                )}
               </li>
             ))}
           </ul>
@@ -807,7 +823,29 @@ export function Standings(props: { pool: WagerPool; today: string; me: string })
   const players = pool.players.filter((p) => pool.wagers.some((w) => w.player === p.id || w.opponent === p.id));
   if (!pool.wagers.length) return null;
   const state = (w: Wager) => stateOf(w, pool, props.today);
-  const made = (id: string) => pool.wagers.filter((w) => w.player === id && state(w) === 'done' && shapeOf(w.kind) !== 'duel').length;
+  // a mark per bet of the player instead of a count (Sascha 02.11.2026): made (the seal), made but not signed yet (the
+  // seal, amber), open (a target), over and missed (struck through)
+  const Marks = (q: { id: string }) => {
+    const own = pool.wagers.filter((w) => w.player === q.id && shapeOf(w.kind) !== 'duel');
+    if (!own.length) return <span className="muted">–</span>;
+    const of = (w: Wager) => (state(w) === 'done' ? 'done' : provisional(w, pool.progress[w.id]) ? 'provisional' : state(w) === 'missed' ? 'missed' : 'open');
+    const n = (k: string) => own.filter((w) => of(w) === k).length;
+    const said = [
+      n('done') && tr(`${n('done')} made`, `${n('done')} geschafft`),
+      n('provisional') && tr(`${n('provisional')} provisional`, `${n('provisional')} vorläufig`),
+      n('open') && tr(`${n('open')} open`, `${n('open')} offen`),
+      n('missed') && tr(`${n('missed')} missed`, `${n('missed')} verpasst`),
+    ].filter(Boolean).join(', ');
+    return (
+      <span className="bet-marks" role="img" aria-label={said} title={said}>
+        {own.map((w) => (
+          <span key={w.id} className={`bet-mark ${of(w)}`}>
+            {of(w) === 'done' || of(w) === 'provisional' ? <SignedIcon size={20} /> : of(w) === 'missed' ? <BetMissedIcon size={20} /> : <BetOpenIcon size={20} />}
+          </span>
+        ))}
+      </span>
+    );
+  };
   return (
     <section className="card pool-standings" aria-label={tr('Standing of the bets', 'Stand der Wetten')}>
       <div className="pool-settle-head">
@@ -843,7 +881,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string })
                 <th scope="row">{tr('Made', 'Geschafft')}</th>
                 {players.map((p) => (
                   <td key={p.id}>
-                    <strong>{made(p.id)}</strong>
+                    <Marks id={p.id} />
                   </td>
                 ))}
               </tr>

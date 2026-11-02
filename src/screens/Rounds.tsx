@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { deleteRound, loadTrash, purgeRound, restoreRound } from '../lib/storage';
 import { Bin } from '../components/Bin';
+import { SwipeRow } from '../components/SwipeRow';
 import type { Round } from '../types';
 import { checksShots, playerTotals } from '../lib/scoring';
 import { formatToPar } from '../components/ui';
@@ -48,6 +49,11 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
   const holes = finished.reduce((n, r) => n + r.holes.length, 0);
   // the bin (Sascha 15.10.2026): deleted rounds come back with one tap; only the player empties it
   const [trash, setTrash] = useState(loadTrash);
+  // into the bin, "Undo" brings it back – the paused round's bin and a row swiped away (Sascha 02.11.2026)
+  const remove = (r: Round) => {
+    deleteRound(r.id, true);
+    window.dispatchEvent(new Event('golfos:rounds-changed'));
+  };
   useEffect(() => setTrash(loadTrash()), [props.rounds]);
   const binOpen = filter === 'bin';
   useEffect(() => {
@@ -130,7 +136,8 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
             const me = mine(r);
             const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
             return (
-              <li key={r.id} className="paused-row">
+              <li key={r.id}>
+                <SwipeRow className="paused-row" label={r.courseName} onDelete={() => remove(r)}>
                 <button type="button" className="list-item" aria-label={tr(`${r.courseName}, paused – continue`, `${r.courseName}, pausiert – fortsetzen`)} onClick={() => props.onContinue(r)}>
                   <span className="round-date">
                     <strong>{new Date(r.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
@@ -157,14 +164,14 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                   aria-label={tr(`Delete the paused round at ${r.courseName}`, `Pausierte Runde ${r.courseName} löschen`)}
                   title={tr('Delete', 'Löschen')}
                   onClick={() => {
-                    deleteRound(r.id, true);
-                    window.dispatchEvent(new Event('golfos:rounds-changed'));
+                    remove(r);
                   }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
                   </svg>
                 </button>
+                </SwipeRow>
               </li>
             );
           })}
@@ -180,6 +187,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
             const t = playerTotals(r.holes, r.entries[me.id], me.playingHandicap);
             return (
               <li key={r.id}>
+                <SwipeRow label={r.courseName} onDelete={() => remove(r)}>
                 <button type="button" className="list-item" onClick={() => props.onOpen(r)}>
                   <span className="round-date">
                     <strong>{new Date(r.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</strong>
@@ -213,6 +221,7 @@ export function RoundsTab(props: { rounds: Round[]; onOpen: (r: Round) => void; 
                     </span>
                   </span>
                 </button>
+                </SwipeRow>
               </li>
             );
           })}

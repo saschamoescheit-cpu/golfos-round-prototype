@@ -1988,3 +1988,20 @@ button.tile:disabled { opacity: 1; }
 
 /* the own analysis beside a scorer's card (02.11.2026) */
 .own-analysis { display: grid; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+
+/* swiped away as a mail (Sascha 02.11.2026): the row slides left over the red bin */
+.swipe { position: relative; overflow: hidden; border-radius: 12px; }
+.swipe-front { position: relative; touch-action: pan-y; transition: transform 0.2s ease; }
+.swipe-front.dragging { transition: none; }
+.swipe-bin {
+  position: absolute; inset: 0; display: flex; justify-content: flex-end; align-items: stretch;
+  border: 0; border-radius: 12px; padding: 0; background: var(--bad); color: #fff;
+}
+.swipe-bin > span { width: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.swipe-bin-text { font-size: 12px; font-weight: 600; }
+/* the standing's last row: a mark per bet instead of a count (Sascha 02.11.2026) */
+.bet-marks { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 4px; vertical-align: middle; }
+.bet-mark { display: inline-flex; color: var(--muted); }
+.bet-mark.done { color: var(--brand); }
+.bet-mark.provisional { color: var(--brand); opacity: 0.55; } /* made, not signed yet – no yellow anywhere */
+.bet-mark.missed { opacity: 0.6; }
