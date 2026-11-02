@@ -119,10 +119,11 @@ export function sharedServer(b, url, o = {}) {
         const kind = (u.searchParams.get('game->>kind') ?? '').replace(/^eq\./, '');
         return json(200, [...shared.entries()].filter(([, r]) => !r.event_code && r.game.kind === kind && (r.owner === uid || r.members.includes(uid))).map(([c, r]) => ({ code: c, game: r.game, owner: r.owner, updated_at: r.updated_at })));
       }
-      // the planned tournaments of a day this account may read (Rounds' start page)
+      // the planned tournaments this account may read (Rounds' start page) – of a day (eq.) or from a day on (gte.)
       if (req.method() === 'GET' && u.searchParams.has('game->>planned')) {
-        const day = (u.searchParams.get('game->>date') ?? '').replace(/^eq\./, '');
-        const rows = [...shared.entries()].filter(([, r]) => !r.event_code && r.game.planned && (!day || r.game.date === day) && (r.owner === uid || r.members.includes(uid)));
+        const [, op, day] = /^(eq|gte)\.(.*)$/.exec(u.searchParams.get('game->>date') ?? '') ?? [];
+        const fits = (d) => !day || (op === 'gte' ? d >= day : d === day);
+        const rows = [...shared.entries()].filter(([, r]) => !r.event_code && r.game.planned && fits(r.game.date ?? '') && (r.owner === uid || r.members.includes(uid)));
         return json(200, rows.map(([c, r]) => ({ code: c, game: r.game })));
       }
       if (req.method() === 'GET' && u.searchParams.has('event_code')) {

@@ -52,7 +52,13 @@ ok(await E.getByRole('button', { name: 'Zu den Turnieren' }).isVisible().catch((
 ok(!(await E.locator('.map-hole-no').isVisible().catch(() => false)), 'ahead: no round started');
 ok(sim.shared.get(code2).members.includes('Erik'), 'ahead: Erik is in (a member at once, no asking)');
 await E.getByRole('button', { name: 'Schließen' }).click();
-ok((await E.getByRole('region', { name: /Turnier Wintercup/ }).count()) === 0, 'ahead: no card on the start page before the day');
+ok((await E.getByRole('region', { name: /Turnier Wintercup/ }).count()) === 0, 'ahead: no "Teilnehmen" card before the day');
+// (Sascha 02.11.2026: "tournaments already planned should show under Rounds") – listed with day, course, own flight
+await E.reload();
+const planned = E.getByRole('region', { name: 'Geplante Turniere' });
+await planned.waitFor({ timeout: 15000 }).catch(() => {});
+const pt = (await planned.innerText().catch(() => '')).replace(/\s+/g, ' ');
+ok(/Wintercup/.test(pt) && /Golfclub Hetzenhof/.test(pt) && /dein Flight 10:30/.test(pt), `ahead: under "Geplante Turniere" on the start page – "${pt.slice(0, 120)}"`);
 
 // 2 · the day: Ben by the card on the start page, the others by the link
 const B = P('Ben');

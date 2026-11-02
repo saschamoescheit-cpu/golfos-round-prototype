@@ -130,6 +130,9 @@ export function ScoreSheet(props: {
   shared?: Record<string, { keptBy: string | null; takeOver?: () => void; other?: { label: string; cell: SharedCell }; /** signed by player and marker */ locked?: boolean }>;
   /** the players entered in full besides the main player – the one this phone marks (01.11.2026) */
   details?: (playerId: string) => boolean;
+  /** the other players entered with their penalty strokes beside the score (Sascha 02.11.2026: "the marker's and the
+   *  others' only the score with penalty strokes") */
+  penalties?: (playerId: string) => boolean;
   /** Texas scramble (Sascha's concept 30.10.2026), per team: whose drive – the counts so far and who gets tight */
   texas?: Record<string, TexasDrives | null>;
 }) {
@@ -268,6 +271,10 @@ export function ScoreSheet(props: {
                   <span className={`chip fact${facts.upDown ? ' on' : ''}`}>Up & Down</span>
                 </div>
               </>
+            )}
+            {/* score and penalty strokes only – the others when no bet counts the round (02.11.2026) */}
+            {!full && !props.team && !e.pickedUp && props.penalties?.(p.id) && (
+              <Stepper label={tr('Penalty strokes', 'Strafschläge')} value={e.penalties ? e.penalties : null} start={1} max={9} onChange={(v) => set({ penalties: v ?? 0 })} />
             )}
           </div>
         );
