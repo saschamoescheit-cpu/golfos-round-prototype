@@ -7,6 +7,7 @@
 #   ASC_ISSUER_ID   the issuer id above the keys there
 #   ASC_KEY_P8      the whole content of the downloaded AuthKey_….p8 file
 #   APPLE_TEAM_ID   the team id (developer.apple.com/account → Membership details)
+#   DIST_KEY_PEM    optional: a private RSA key – its distribution certificate is kept at Apple (ios/ci/signing.rb)
 #
 # When (01.11.2026, the app's code is in main – one code for the website and the app):
 #   - by hand: "Run workflow"
@@ -24,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: ios-${{ github.ref }}-${{ github.event_name }}
@@ -69,6 +71,7 @@ jobs:
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -82,6 +85,11 @@ jobs:
             echo "go=false" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event_name }}" = "schedule" ] && [ -z "$(git log --since='24 hours ago' --format=%h)" ]; then
             echo "::notice::main unchanged since yesterday – no new build."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          # at night: the app in main was built already in the evening (by hand or app-release; changes only to the
+          # build's own files don't count) – no second build and no second mail from Apple
+          elif [ "${{ github.event_name }}" = "schedule" ] && LAST=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ios.yml/runs?status=success&per_page=30" -q '[.workflow_runs[] | select(.event != "push" or .head_branch == "app-release")][0].head_sha' 2>/dev/null) && [ -n "$LAST" ] && git diff --quiet "$LAST" HEAD -- . ':!.github' ':!ios/ci' 2>/dev/null; then
+            echo "::notice::the app in main is built already (${LAST:0:7}) – no new build."
             echo "go=false" >> "$GITHUB_OUTPUT"
           else
             echo "go=true" >> "$GITHUB_OUTPUT"
@@ -106,12 +114,14 @@ jobs:
         run: npx cap sync ios
       # Signed for the App Store from the start (02.11.2026: signed for development and handed to Apple's cloud to sign
       # again on export, the upload said "Invalid Signature"): this build's own Apple Distribution certificate and App
-      # Store profile, made with the API key in a keychain of its own – removed at Apple again at the end.
+      # Store profile, made with the API key in a keychain of its own – removed at Apple again at the end. With the
+      # secret DIST_KEY_PEM the certificate is a lasting one and stays (no "revoked" mail from Apple per build).
       - name: Signing for the App Store
         id: signing
         if: steps.ready.outputs.go == 'true'
         env:
           ASC_KEY_PATH: ${{ runner.temp }}/keys/AuthKey.p8
+          DIST_KEY_PEM: ${{ secrets.DIST_KEY_PEM }}
         run: |
           mkdir -p "$RUNNER_TEMP/keys" "$RUNNER_TEMP/signing"
           printf '%s' "$ASC_KEY_P8" > "$ASC_KEY_PATH"
@@ -119,6 +129,7 @@ jobs:
           export PROFILE_NAME=$(sed -n 's/^PROFILE_NAME=//p' "$RUNNER_TEMP/signing/out.txt")
           PROFILE_UUID=$(sed -n 's/^PROFILE_UUID=//p' "$RUNNER_TEMP/signing/out.txt")
           echo "profile=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
+          sed -n 's/^CERTIFICATE=//p' "$RUNNER_TEMP/signing/out.txt" | while IFS= read -r l; do echo "::notice::certificate: $l"; done
           KC="$RUNNER_TEMP/signing/build.keychain-db"
           KCPW=$(openssl rand -hex 16)
           security create-keychain -p "$KCPW" "$KC"
