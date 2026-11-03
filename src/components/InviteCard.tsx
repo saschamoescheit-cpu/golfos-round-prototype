@@ -101,10 +101,10 @@ export function InviteIcon(props: { kind: InviteAction['icon'] | 'renew' }) {
 
 /** Share a link with the phone's share sheet (WhatsApp, messages …); without one (a PC) copied. Returns a line to show. */
 export async function shareLink(text: string, url: string): Promise<string | null> {
-  const nav = navigator as Navigator & { share?: (d: { title?: string; text: string; url: string }) => Promise<void> };
+  const nav = navigator as Navigator & { share?: (d: { text: string; url: string }) => Promise<void> };
   try {
     if (nav.share) {
-      await nav.share({ title: 'GolfOS', text, url });
+      await nav.share({ text, url }); // no title: WhatsApp drops the link with one (Sascha 02.11.2026)
       return null;
     }
     await navigator.clipboard.writeText(`${text} ${url}`);

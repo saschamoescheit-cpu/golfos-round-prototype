@@ -59,7 +59,7 @@ export function Friends(props: { onSignIn: () => void }) {
     const url = friendLink(code);
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'GolfOS', text, url });
+        await navigator.share({ text, url }); // no title: WhatsApp drops the link with one (02.11.2026)
         return;
       }
     } catch (e) {
