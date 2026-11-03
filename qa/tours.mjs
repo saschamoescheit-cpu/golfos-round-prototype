@@ -371,18 +371,18 @@ ok(byTime[0].players.map((p) => p.name).join(',') === 'Sascha,Chris' && byTime[0
 ok((await H.locator('.topbar h1').innerText()).includes('USA Tag 1') && (await H.locator('.tour-tee').allInnerTexts()).join(',') === '12:08,12:16', 'the tournament page: the flights with their tee times');
 ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Zähler: Sascha').count()) === 1, 'the tournament page: who marks whom');
 ok((await H.getByText('Cedric erfasst die Scores für alle').count()) === 1 && (await H.getByText('Zähler: Cedric').count()) === 1, 'the tournament page: Cedric keeps the score of flight 2');
-await H.getByRole('button', { name: new RegExp(`Mitspieler einladen · Code ${code}`) }).click();
-ok((await H.locator('.qr-box svg').count()) === 1 && (await H.locator('.join-code').innerText()).trim() === code, 'invite: code and QR code');
+// the QR code at once, the one look of every invitation (Sascha 03.11.2026: "identical everywhere, as under Friends")
+const tinv = H.getByRole('region', { name: 'Mitspieler einladen' });
+ok((await tinv.locator('.qr-box svg').count()) === 1 && (await tinv.locator('.join-code').innerText()).trim() === code && (await tinv.locator('.qr-action').count()) === 2, 'invite: its own section – QR code and code at once, "Einladen" and "Link kopieren"');
 // Sascha 02.11.2026: "sending the invitation by WhatsApp does not work for tournaments" – the text and the link apart,
 // no title, as the invitations of a round and of a pool (the iPhone's share sheet hands WhatsApp the link)
 await H.evaluate(() => {
   window.__shared = null;
   Object.defineProperty(navigator, 'share', { configurable: true, value: async (d) => void (window.__shared = d) });
 });
-await H.getByRole('dialog', { name: 'Mitspieler einladen' }).getByRole('button', { name: 'Einladung senden' }).click();
+await tinv.getByRole('button', { name: 'Einladung senden' }).click();
 const sent = await H.evaluate(() => window.__shared);
 ok(!!sent && !('title' in sent) && new RegExp(`#round=${code}$`).test(sent.url ?? '') && /^Turnier „USA Tag 1“ am .+ mit Code \w{6} beitreten$/.test(sent.text ?? ''), `invite: text and link apart, no title (${JSON.stringify(sent)})`);
-await H.getByRole('dialog', { name: 'Mitspieler einladen' }).getByRole('button', { name: 'Schließen' }).click();
 
 // ---------- the scores come in (as Rounds writes them on the day): the leaderboard ----------
 const put = (f, scores) => {
