@@ -2053,3 +2053,6 @@ button.tile:disabled { opacity: 1; }
 .paid-mark { min-height: 34px; padding: 4px 12px; font-size: 14px; }
 .paid-undo { width: 34px; height: 34px; font-size: 16px; }
 .paid-state { display: block; }
+
+/* the flight board: a wrapper only for its touch listener (03.11.2026) – the flights stay in the page's column */
+.tour-board { display: contents; }

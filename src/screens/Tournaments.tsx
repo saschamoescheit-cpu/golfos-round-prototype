@@ -928,11 +928,91 @@ function FlightBoard(props: {
   const onMove = useRef(props.onMove);
   onMove.current = props.onMove;
   useEffect(() => () => follow.current?.(), []);
+  // The finger on the iPhone by its own touch events, as the shots in the round's review (Sascha 03.11.2026: "in the
+  // review it works well – here not"): Safari gives up a pointer (pointercancel) the moment it thinks of scrolling, so
+  // the pointer events above are for the mouse and the pen only. The grip or a chip takes the player at once and keeps
+  // the page still; a row is lifted after a moment held still, a move before that scrolls as ever.
+  const board = useRef<HTMLDivElement>(null);
+  const touchLift = (id: string, x: number, y: number) => {
+    put({ id, x0: x, y0: y, x, y, moved: false, armed: true, over: null });
+    navigator.vibrate?.(15);
+    let last = { x, y };
+    const move = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+      const t = e.touches[0];
+      const d = live.current;
+      if (!t || !d || d.id !== id) return;
+      last = { x: t.clientX, y: t.clientY };
+      const moved = d.moved || Math.hypot(t.clientX - d.x0, t.clientY - d.y0) > 6;
+      put({ ...d, x: t.clientX, y: t.clientY, moved, over: moved ? flightAt(t.clientX, t.clientY) : null });
+    };
+    // the iPhone may end a touch twice (touchend and touchcancel): the drop counts once
+    let ended = false;
+    const up = () => {
+      if (ended) return;
+      ended = true;
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
+      window.removeEventListener('touchcancel', up);
+      const d = live.current;
+      if (d && d.id === id && d.moved) {
+        const over = flightAt(last.x, last.y);
+        if (fits(over, id)) onMove.current(id, over === -1 ? null : over);
+      }
+      put(null);
+    };
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up);
+    window.addEventListener('touchcancel', up);
+  };
+  const touchLiftRef = useRef(touchLift);
+  touchLiftRef.current = touchLift;
+  useEffect(() => {
+    const el = board.current;
+    if (!el) return;
+    const start = (ev: TouchEvent) => {
+      const t = ev.target as HTMLElement;
+      const at = t.closest('[data-drag-id]') as HTMLElement | null;
+      const t0 = ev.touches[0];
+      if (!at || !t0 || t.closest('button, input')) return;
+      const id = at.dataset.dragId!;
+      if (at.dataset.dragHold == null) {
+        // the grip, a chip: at once
+        ev.preventDefault();
+        touchLiftRef.current(id, t0.clientX, t0.clientY);
+        return;
+      }
+      let x = t0.clientX;
+      let y = t0.clientY;
+      const follow = (e: TouchEvent) => {
+        const f = e.touches[0];
+        if (!f) return;
+        x = f.clientX;
+        y = f.clientY;
+        if (Math.hypot(f.clientX - t0.clientX, f.clientY - t0.clientY) > 8) cancel(); // moved first: a scroll
+      };
+      const cancel = () => {
+        window.clearTimeout(timer);
+        window.removeEventListener('touchmove', follow);
+        window.removeEventListener('touchend', cancel);
+        window.removeEventListener('touchcancel', cancel);
+      };
+      const timer = window.setTimeout(() => {
+        cancel();
+        touchLiftRef.current(id, x, y);
+      }, 400);
+      window.addEventListener('touchmove', follow, { passive: true });
+      window.addEventListener('touchend', cancel);
+      window.addEventListener('touchcancel', cancel);
+    };
+    el.addEventListener('touchstart', start, { passive: false });
+    return () => el.removeEventListener('touchstart', start);
+  }, []);
   // `hold`: the whole row – lifted after a moment's hold, a move before that scrolls the page as ever; else (the grip, a
   // chip) lifted at once
   const grab = (p: TourPlayer, hold = false) => ({
     onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || e.pointerType === 'touch') return; // a finger: by its touch events, above
       if (hold && (e.target as HTMLElement).closest('.tour-grip, button, input')) return;
       // no text selection, no native drag of the row (the mouse held still lost the moves); a touch still scrolls
       e.preventDefault();
@@ -952,6 +1032,7 @@ function FlightBoard(props: {
     },
     // before the hold: a move is a scroll, the hold given up
     onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
+      if (e.pointerType === 'touch') return;
       const d = live.current;
       if (!hold || !d || d.id !== p.id || d.armed) return;
       if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) {
@@ -970,7 +1051,7 @@ function FlightBoard(props: {
   const dragged = drag?.armed && drag.moved ? byId(drag.id) : null;
   const target = (f: number) => !!dragged && drag?.over === f && fits(f, dragged.id);
   return (
-    <>
+    <div ref={board} className="tour-board">
       {Array.from({ length: props.flights }, (_, f) => {
         const ps = inFlight(f);
         const scorer = ps.find((p) => p.scorer);
@@ -990,13 +1071,13 @@ function FlightBoard(props: {
               const m = byId(scorer && p.id !== scorer.id ? scorer.id : (props.markers[p.id] ?? ''));
               const ph = props.playing(p);
               return (
-                <div key={p.id} className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`} {...grab(p, true)}>
+                <div key={p.id} className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} data-drag-hold="" {...grab(p, true)}>
                   <span className="grow">
                     <strong>{props.label(p)}</strong>
                     {m && <span className="muted small"> · {tr(`marked by ${props.label(m)}`, `Zähler: ${props.label(m)}`)}</span>}
                   </span>
                   <span className="muted small">{ph == null ? '' : tr(`PH ${ph}`, `SV ${ph}`)}</span>
-                  <span className="tour-grip" aria-hidden="true" title={tr('Drag to another flight', 'Auf einen anderen Flight ziehen')} {...grab(p)}>
+                  <span className="tour-grip" data-drag-id={p.id} aria-hidden="true" title={tr('Drag to another flight', 'Auf einen anderen Flight ziehen')} {...grab(p)}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <circle cx="9" cy="6" r="1.6" />
                       <circle cx="15" cy="6" r="1.6" />
@@ -1026,7 +1107,7 @@ function FlightBoard(props: {
           {unplaced.length > 0 ? (
             <div className="tour-chips">
               {unplaced.map((p) => (
-                <span key={p.id} className={`tour-chip${dragged?.id === p.id ? ' lifted' : ''}`} {...grab(p)}>
+                <span key={p.id} className={`tour-chip${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} {...grab(p)}>
                   {props.label(p)}
                 </span>
               ))}
@@ -1068,7 +1149,7 @@ function FlightBoard(props: {
           onClose={() => setOpen(null)}
         />
       )}
-    </>
+    </div>
   );
 }
 
