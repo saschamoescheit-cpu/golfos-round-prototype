@@ -119,6 +119,8 @@ const flightsOf = (code) => [...shared.entries()].filter(([, r]) => r.event_code
 // ---------- Sascha plans the tournament ----------
 const host = await phone('Sascha');
 const H = host.p;
+// a linked friend – invited from the tournament's page with a tap (Sascha 03.11.2026)
+await H.evaluate(() => localStorage.setItem('golfos.friends.v1', JSON.stringify([{ id: 'f-ben', name: 'Ben', hcp: '', uid: 'u-Ben' }])));
 // Tournaments a module of their own, below Games & Bets (Sascha 03.11.2026)
 ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Planen|Turniere|Profil' && (await H.locator('.module-tag').textContent()) === 'Tournaments', `the module Tournaments: ${(await H.locator('.tabbar button').allInnerTexts()).join(' · ')}`);
 ok(await H.getByText('Neues Turnier planen').isVisible() && (await H.getByRole('button', { name: 'Neue Wette' }).count()) === 0, 'its start page: "Neues Turnier planen", no bets');
@@ -403,6 +405,7 @@ ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Z�
 ok((await H.getByText('Cedric erfasst die Scores für alle').count()) === 1 && (await H.getByText('Zähler: Cedric').count()) === 1, 'the tournament page: Cedric keeps the score of flight 2');
 // the QR code at once, the one look of every invitation (Sascha 03.11.2026: "identical everywhere, as under Friends")
 const tinv = H.getByRole('region', { name: 'Mitspieler einladen' });
+ok((await tinv.getByRole('button', { name: 'Ben einladen' }).count()) === 1, 'invite: the linked friend Ben with "Einladen" below the QR code');
 ok((await tinv.locator('.qr-box svg').count()) === 1 && (await tinv.locator('.join-code').innerText()).trim().replace(/-/g, '') === code && (await tinv.locator('.qr-action').count()) === 2, 'invite: its own section – QR code and code at once, "Einladen" and "Link kopieren"');
 // Sascha 02.11.2026: "sending the invitation by WhatsApp does not work for tournaments" – the text and the link apart,
 // no title, as the invitations of a round and of a pool (the iPhone's share sheet hands WhatsApp the link)

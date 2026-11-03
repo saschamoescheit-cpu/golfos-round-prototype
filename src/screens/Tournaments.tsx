@@ -17,7 +17,7 @@ import { holesFor, metres, specialBoard, specialName, type Special, type Special
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
-import { copyLink, InviteCard, shareLink } from '../components/InviteCard';
+import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow } from '../components/Settings';
@@ -1951,6 +1951,8 @@ function TourInvite(props: { code: string; name: string; date: string }) {
           ]}
         />
         {msg && <span className="muted small">{msg}</span>}
+        {/* linked friends invited with a tap (Sascha 03.11.2026) – the tournament's or the series' code */}
+        <FriendInvite code={props.code} />
       </div>
     </section>
   );

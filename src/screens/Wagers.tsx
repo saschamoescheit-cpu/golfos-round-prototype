@@ -10,7 +10,7 @@ import { PrizeRow } from '../components/PrizeRow';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
-import { copyLink, InviteCard, shareLink } from '../components/InviteCard';
+import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, afterPayments, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
@@ -1796,6 +1796,8 @@ function PoolInvite(props: { code: string; name: string }) {
         ]}
       />
       {msg && <span className="muted small">{msg}</span>}
+      {/* linked friends invited with a tap (Sascha 03.11.2026: "for every 'invite players' in the whole app") */}
+      <FriendInvite code={props.code} />
     </div>
   );
 }
