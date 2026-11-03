@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { afterPayments, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -424,5 +424,13 @@ describe('the settlement bet by bet', () => {
     expect(l.s.map((x) => [x.w.id, x.amount])).toEqual([['a', 20], ['g', -20]]);
     expect(l.c.map((x) => [x.w.id, x.amount])).toEqual([['a', -20], ['g', 20]]);
     expect(balances(pool, '2026-11-02')).toEqual({ s: 0, c: 0 });
+  });
+});
+
+describe('payments (03.11.2026)', () => {
+  it('a payment is off the debts – what is open follows', () => {
+    const bal = { a: -40, b: 30, c: 10 };
+    expect(afterPayments(bal, [{ id: 'p', from: 'a', to: 'b', amount: 30, paidAt: 'x' }])).toEqual({ a: -10, b: 0, c: 10 });
+    expect(afterPayments(bal, undefined)).toEqual(bal);
   });
 });

@@ -3,7 +3,7 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned, markerOf, type Cell } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { dayOf, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { afterPayments, balances, dayOf, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
 import { roundsInPlay } from './poolround';
 
@@ -387,4 +387,24 @@ export function earlierBets(): EarlierBet[] {
     /* nothing kept */
   }
   return [...fromPools, ...kept];
+}
+
+/** My balance in every pool on this phone, for the "Bilanz" (Sascha 03.11.2026: the balances of the games and the bets in
+ *  one place): what I won or lost (provisional results counted, as in the settlement) and what of it is still open once
+ *  the payments marked are off – positive: owed to me, negative: I owe. Deleted pools left out; the latest first. */
+export function myPoolBalances(today = dayOf(new Date())): { code: string; name: string; running: boolean; amount: number; open: number; currency: 'EUR' | 'USD' }[] {
+  return loadPools()
+    .filter((e) => !e.pool.deletedAt && e.me && e.pool.players.some((p) => p.id === e.me))
+    .sort((a, b) => b.pool.from.localeCompare(a.pool.from))
+    .map((e) => {
+      const bal = balances(e.pool, today, true);
+      return {
+        code: e.code,
+        name: e.pool.name,
+        running: isLive(e, today),
+        amount: Math.round((bal[e.me] ?? 0) * 100) / 100,
+        open: Math.round((afterPayments(bal, e.pool.payments)[e.me] ?? 0) * 100) / 100,
+        currency: e.pool.currency ?? 'EUR',
+      };
+    });
 }
