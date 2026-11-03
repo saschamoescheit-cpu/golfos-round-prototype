@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
-import { newId } from '../lib/storage';
+import { loadCachedCourse, newId } from '../lib/storage';
+import { buildRoundHoles, loopOptions } from '../lib/loops';
+import type { Course } from '../types';
 import { loadProfile, shownName } from '../lib/profile';
 import { joinLink } from '../lib/sharedgame';
 import { money, transfers } from '../lib/gameforms';
@@ -348,7 +350,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
  *  in our case; even tied to the tournaments"): each its day and course – picked here, or taken from a tournament planned
  *  in Games (and linked to it). Set, only rounds on these days on these courses count. */
 function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onChange: (r: PoolRound[]) => void }) {
-  const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string }; src?: PoolRound['src'] } | null>(null);
+  const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string }; src?: PoolRound['src']; holes?: string; holesName?: string } | null>(null);
   const [picking, setPicking] = useState(false);
   const [editing, setEditing] = useState<string | null>(null); // a round's id
   const tours = loadTours().filter((e) => !e.ev.deletedAt && e.ev.date >= props.from && e.ev.date <= props.to && !props.rounds.some((r) => r.tour === e.code));
@@ -370,7 +372,7 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           }}
           onPicked={(c) => {
             // the course's place kept with the round – another phone loads it from there (03.11.2026)
-            setAdding({ ...adding, course: { id: c.id, name: c.name }, src: { id: c.id, source: c.source, name: c.name, lat: c.lat, lon: c.lon, ...(c.bbox ? { bbox: c.bbox } : {}) } });
+            setAdding({ ...adding, course: { id: c.id, name: c.name }, src: { id: c.id, source: c.source, name: c.name, lat: c.lat, lon: c.lon, ...(c.bbox ? { bbox: c.bbox } : {}) }, holes: undefined, holesName: undefined });
             setPicking(false);
           }}
         />
@@ -383,7 +385,7 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           The last row adds one as "Platz · Platz wählen ›" in "Neue Runde" / "Neues Spiel" (Sascha 03.11.2026) */}
       <SettingsList label={tr('The rounds', 'Die Runden')}>
         {sorted.map((r) => (
-          <SettingsRow key={r.id} label={dayText(r.day)} value={r.tour ? `${r.course} · ${tr('tournament', 'Turnier')}` : r.course} onClick={() => setEditing(r.id)} />
+          <SettingsRow key={r.id} label={dayText(r.day)} value={r.tour ? `${r.course} · ${tr('tournament', 'Turnier')}` : r.holesName ? `${r.course} · ${r.holesName}` : r.course} onClick={() => setEditing(r.id)} />
         ))}
         {!adding?.course && (
           <SettingsRow
@@ -411,6 +413,9 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
               {!r.tour && (
                 <SettingsList>
                   <DateRow label={tr('Day', 'Tag')} min={props.from} max={props.to} value={r.day} onChange={(d) => props.onChange(props.rounds.map((x) => (x.id === r.id ? { ...x, day: d } : x)))} />
+                  {r.courseId && loadCachedCourse(r.courseId) && (
+                    <HolesRow course={loadCachedCourse(r.courseId)!} value={r.holes} onChange={(holes, holesName) => props.onChange(props.rounds.map((x) => (x.id === r.id ? { ...x, holes, holesName } : x)))} />
+                  )}
                 </SettingsList>
               )}
               {r.tour && <span className="muted small">{tr('From a tournament planned – its day comes from there.', 'Aus einem geplanten Turnier – der Tag kommt von dort.')}</span>}
@@ -468,13 +473,14 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           <SettingsList>
             <SettingsRow label={tr('Course', 'Platz')} value={adding.course.name} onClick={() => setPicking(true)} />
             <DateRow id="trip-day" label={tr('Day', 'Tag')} min={props.from} max={props.to} value={adding.day} onChange={(d) => setAdding({ ...adding, day: d })} />
+            {loadCachedCourse(adding.course.id) && <HolesRow course={loadCachedCourse(adding.course.id)!} value={adding.holes} onChange={(holes, holesName) => setAdding({ ...adding, holes, holesName })} />}
           </SettingsList>
           <button
             type="button"
             className="btn-primary"
             disabled={adding.day < props.from || adding.day > props.to}
             onClick={() => {
-              props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id, ...(adding.src ? { src: adding.src } : {}) }]);
+              props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id, ...(adding.src ? { src: adding.src } : {}), ...(adding.holes ? { holes: adding.holes, holesName: adding.holesName } : {}) }]);
               setAdding(null);
             }}
           >
@@ -488,6 +494,20 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           : tr('Without rounds every round of the days counts.', 'Ohne Runden zählt jede Runde im Zeitraum.')}
       </span>
     </section>
+  );
+}
+
+/** "Löcher" of a pool's round (Sascha 03.11.2026: "twice 9 holes today, the bets only for the A course"): every round of
+ *  the day on the course, or one – "A · 9 Löcher", "A + B · 18 Löcher". */
+function HolesRow(props: { course: Course; value?: string; onChange: (holes: string | undefined, name: string | undefined) => void }) {
+  const opts = loopOptions(props.course.holes).map((o) => ({ value: buildRoundHoles(props.course.holes, o).map((h) => h.label).join(), name: o.label }));
+  return (
+    <ChoiceRow<string>
+      label={tr('Holes', 'Löcher')}
+      value={props.value ?? ''}
+      onChange={(v) => props.onChange(v || undefined, v ? opts.find((o) => o.value === v)?.name : undefined)}
+      options={[{ value: '', name: tr('Every round of the day', 'Alle Runden des Tages'), text: tr('Each round that day on this course counts', 'Jede Runde an dem Tag auf dem Platz zählt') }, ...opts]}
+    />
   );
 }
 

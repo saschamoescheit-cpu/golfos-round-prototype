@@ -292,6 +292,10 @@ export interface PoolRound {
   courseId?: string;
   /** a tournament planned in Games */
   tour?: string;
+  /** one round of the day only (Sascha 03.11.2026: "twice 9 holes today – the bets only for the A course"): its holes'
+   *  labels joined ("1A,2A,…") and its name ("A · 9 Löcher"); unset: every round of the day on the course */
+  holes?: string;
+  holesName?: string;
   /** where the course is (Sascha 03.11.2026: "a course chosen for the bet – asked again at 'Runde starten'"): a phone
    *  without it in its cache loads it from here */
   src?: { id: string; source: import('../types').CourseSummary['source']; name: string; lat: number; lon: number; bbox?: [number, number, number, number] };
@@ -415,6 +419,8 @@ export interface PlayedRound {
   marked?: (HoleEntry | undefined)[];
   /** the holes where the marker's figures differ from the player's own */
   differ?: number[];
+  /** the round's holes, their labels joined ("1A,2A,…") – which round of a day a pool's round means */
+  holeKey?: string;
   /** the others of his flight in that round – for "5+5+10" against one of them */
   others?: { name: string; entries: (HoleEntry | undefined)[]; hcp: number | null; received: number[]; counted: boolean; marked?: (HoleEntry | undefined)[] }[];
 }
@@ -453,6 +459,7 @@ export function playedRounds(rounds: Round[], counted: (r: Round, pid: string) =
         id: r.id,
         day: dayOf(r.createdAt),
         course: r.courseName,
+        holeKey: r.holes.map((h) => h.label).join(),
         pars: r.holes.map((h) => h.par),
         entries: r.holes.map((_, i) => r.entries[me.id]?.[i]),
         hcp: me.playingHandicap ?? null,
@@ -530,11 +537,11 @@ function parts(r: PlayedRound, holes: 18 | 9): { pars: number[]; entries: (HoleE
 
 /** A round of the trip's on a played round: its day, and its course (by id, else by name). */
 const sameCourse = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-export const onRound = (x: PoolRound, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean =>
-  x.day === r.day && (!x.course || (x.courseId && r.courseId ? x.courseId === r.courseId : sameCourse(x.course, r.course)));
+export const onRound = (x: PoolRound, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }): boolean =>
+  x.day === r.day && (!x.course || (x.courseId && r.courseId ? x.courseId === r.courseId : sameCourse(x.course, r.course))) && (!x.holes || !r.holeKey || x.holes === r.holeKey);
 /** Does a played round count for a bet of the pool: in the period; with rounds of the trip set, one of them; a bet of
  *  one round only on that one; one of one day only on that day. */
-export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round'>): boolean {
+export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round'>): boolean {
   if (r.day < pool.from || r.day > pool.to) return false;
   const rounds = pool.rounds ?? [];
   if (w?.attempts === 'round') {
@@ -842,7 +849,7 @@ export function roundLabel(x: PoolRound): string {
   } catch {
     /* without the weekday */
   }
-  return `${wd ? `${wd} ` : ''}${x.day.slice(8, 10)}.${x.day.slice(5, 7)}.${x.course ? ` · ${x.course}` : ''}`;
+  return `${wd ? `${wd} ` : ''}${x.day.slice(8, 10)}.${x.day.slice(5, 7)}.${x.course ? ` · ${x.course}` : ''}${x.holesName ? ` · ${x.holesName}` : ''}`;
 }
 
 /** How it is counted and paid, in a line. */

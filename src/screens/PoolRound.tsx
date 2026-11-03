@@ -10,7 +10,7 @@ import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib
 import { isLady, loadProfile } from '../lib/profile';
 import { loadFriends } from '../lib/friends';
 import { emptyEntry } from '../lib/scoring';
-import { dayOf, poolNeeds18, poolNeedsDetails, provisional, sameName, stateOf } from '../lib/wagers';
+import { dayOf, onRound, poolNeeds18, poolNeedsDetails, provisional, sameName, stateOf } from '../lib/wagers';
 import { loadPools, reportWagers } from '../lib/wagerstore';
 import { dropPoolRound, finishPoolRound, keepPoolRound, poolRoundEntry, setPoolRoundEntry } from '../lib/poolround';
 import { ChoiceRow, SettingsList } from '../components/Settings';
@@ -44,8 +44,11 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
   // a 5+5+10 in this round: the 18-hole combinations only
   const only18 = !!pool && !!course && poolNeeds18(pool, { day: dayOf(new Date()), course: course.name, courseId: course.id });
   const options = useMemo(() => (course ? loopOptions(course.holes).filter((o) => !only18 || buildRoundHoles(course.holes, o).length === 18) : []), [course, only18]);
-  const [optionId, setOptionId] = useState(options[0]?.id ?? '');
-  useEffect(() => setOptionId(options[0]?.id ?? ''), [options]);
+  // the pool's round today on one set of holes ("A · 9 Löcher", Sascha 03.11.2026): those chosen at once
+  const want = course ? pool?.rounds?.find((x) => x.holes && onRound(x, { day: dayOf(new Date()), course: course.name, courseId: course.id }))?.holes : undefined;
+  const first = (course && want ? options.find((o) => buildRoundHoles(course.holes, o).map((h) => h.label).join() === want) : undefined) ?? options[0];
+  const [optionId, setOptionId] = useState(first?.id ?? '');
+  useEffect(() => setOptionId(first?.id ?? ''), [options]); // eslint-disable-line react-hooks/exhaustive-deps
   const option = options.find((o) => o.id === optionId) ?? options[0];
   const holes = course && option ? buildRoundHoles(course.holes, option) : [];
   // the pool's players – this phone's owner first; the handicap from the profile, a friend of the same name

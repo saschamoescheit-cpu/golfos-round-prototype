@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterPayments, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { afterPayments, inPool, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -446,5 +446,18 @@ describe('payments (03.11.2026)', () => {
     const bal = { a: -40, b: 30, c: 10 };
     expect(afterPayments(bal, [{ id: 'p', from: 'a', to: 'b', amount: 30, paidAt: 'x' }])).toEqual({ a: -10, b: 0, c: 10 });
     expect(afterPayments(bal, undefined)).toEqual(bal);
+  });
+});
+
+// Sascha 03.11.2026: "twice 9 holes today – the bets only for the A course on Hetzenhof"
+describe('a pool round on one set of holes', () => {
+  const pool = { from: '2026-11-03', to: '2026-11-03', rounds: [{ id: 'r', day: '2026-11-03', course: 'Hetzenhof', courseId: 'osm:h', holes: '1A,2A,3A,4A,5A,6A,7A,8A,9A', holesName: 'A · 9 Löcher' }] };
+  it('the A course counts, the B course that day not', () => {
+    expect(inPool({ day: '2026-11-03', course: 'Hetzenhof', courseId: 'osm:h', holeKey: '1A,2A,3A,4A,5A,6A,7A,8A,9A' }, pool)).toBe(true);
+    expect(inPool({ day: '2026-11-03', course: 'Hetzenhof', courseId: 'osm:h', holeKey: '1B,2B,3B,4B,5B,6B,7B,8B,9B' }, pool)).toBe(false);
+  });
+  it('without holes set: every round of the day', () => {
+    const all = { ...pool, rounds: [{ ...pool.rounds[0], holes: undefined }] };
+    expect(inPool({ day: '2026-11-03', course: 'Hetzenhof', courseId: 'osm:h', holeKey: '1B,2B' }, all)).toBe(true);
   });
 });

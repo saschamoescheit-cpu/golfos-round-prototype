@@ -152,6 +152,22 @@ await H.getByRole('textbox', { name: 'HCP' }).nth(1).fill('12,4');
   const look = await row.locator('.settings-value').evaluate((e) => [getComputedStyle(e).color, e.classList.contains('need')]);
   const grey = await H.evaluate(() => { const s = document.createElement('span'); s.className = 'settings-value'; document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; });
   ok(!look[1] && look[0] === grey, `rounds: "Platz wählen" grey – the course of a pool optional (${look[0]} vs ${grey})`);
+  // one round of the day only (Sascha 03.11.2026: "twice 9 holes – the bets only for the A course"): "Löcher"
+  await row.click();
+  await H.fill('#course-search', 'Hetzenhof');
+  await H.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
+  await H.locator('.trip-rounds .settings-row').filter({ hasText: 'Löcher' }).waitFor({ timeout: 30000 });
+  await trip.locator('.settings-row').filter({ hasText: 'Löcher' }).click();
+  const hs = H.getByRole('dialog', { name: 'Löcher' });
+  const names = (await hs.locator('.pick-option strong').allInnerTexts()).join('|');
+  ok(/^Alle Runden des Tages\|/.test(names) && /A · 9 Löcher/.test(names), `rounds: "Löcher" – every round of the day or one (${names})`);
+  await hs.locator('.pick-option').filter({ hasText: /^A · 9 Löcher/ }).first().click();
+  await trip.getByRole('button', { name: 'Runde hinzufügen' }).click();
+  const added = await trip.locator('.settings-row').first().innerText();
+  ok(/Hetzenhof · A · 9 Löcher/.test(added), `rounds: the round on the A course only (${added.replace(/\s+/g, ' ')})`);
+  // removed again – the rest of the test counts every round
+  await trip.locator('.settings-row').first().click();
+  await H.getByRole('button', { name: 'Runde entfernen' }).click();
 }
 // a choice as a row with its sheet (docs/DESIGN.md, 02.11.2026): the row, then the option
 const choose = async (label, option, inside = H) => {
