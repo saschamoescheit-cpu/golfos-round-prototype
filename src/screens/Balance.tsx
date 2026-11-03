@@ -6,8 +6,8 @@ import { loadGames, saveGame } from '../lib/gamestore';
 import { exchange } from '../lib/sharedgame';
 import { newId } from '../lib/storage';
 import { changePool, isLive, loadPools } from '../lib/wagerstore';
-import { dayOf } from '../lib/wagers';
-import { isMoney, paidWord } from '../lib/prize';
+import { balances, dayOf } from '../lib/wagers';
+import { isMoney, paidWord, prizeOf, prizeSym } from '../lib/prize';
 import { pushPaid } from '../lib/push';
 import { usePools } from './Wagers';
 import { loadProfile, shownName } from '../lib/profile';
@@ -104,7 +104,18 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
     const top = topRows(st.rows).map((r) => r.id);
     if (top.includes(me.id) || (top.length === 1 && top[0] === 'A')) wins++;
   }
-  for (const p of ps) for (const i of p.items.filter((x) => x.kind === 'game')) total[i.sym] = (total[i.sym] ?? 0) + i.amount;
+  // won and lost apart, the money their result (Sascha 03.11.2026: "tiles Gewinn and Verlust beside Geld") – each game
+  // and each pool as it came out for me
+  const gain: Record<string, number> = {};
+  const loss: Record<string, number> = {};
+  const book = (sym: string, v: number) => {
+    if (Math.abs(v) < 0.005) return;
+    total[sym] = (total[sym] ?? 0) + v;
+    if (v > 0) gain[sym] = (gain[sym] ?? 0) + v;
+    else loss[sym] = (loss[sym] ?? 0) + v;
+  };
+  for (const g of done) book(prizeSym(prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize })), standingOf(g).money?.[meIn(g).id] ?? 0);
+  for (const e of pools) book(prizeSym(prizeOf(e.pool)), balances(e.pool, today, true)[e.me] ?? 0);
   const owe = ps.filter((p) => Object.values(sums(p.items, (i) => i.open)).some((v) => v < -0.004));
   const owed = ps.filter((p) => Object.values(sums(p.items, (i) => i.open)).some((v) => v > 0.004));
   // paid by him, not confirmed by me yet – and paid by me, not confirmed by him
@@ -132,7 +143,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
         </p>
       )}
       {done.length > 0 && (
-        <section className="card balance-totals">
+        <section className="card balance-totals" aria-label={tr('Totals', 'Summen')}>
           <div>
             <strong>{done.length}</strong>
             <span className="muted small">{tr('games', 'Spiele')}</span>
@@ -140,6 +151,22 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
           <div>
             <strong>{wins}</strong>
             <span className="muted small">{tr('wins', 'Siege')}</span>
+          </div>
+          <div>
+            <strong>{pools.length}</strong>
+            <span className="muted small">{tr('bets', 'Wetten')}</span>
+          </div>
+          <div>
+            <strong className="good-text">
+              <Amounts m={gain} plain />
+            </strong>
+            <span className="muted small">{tr('won', 'Gewinn')}</span>
+          </div>
+          <div>
+            <strong className="bad-text">
+              <Amounts m={Object.fromEntries(Object.entries(loss).map(([k, v]) => [k, -v]))} plain />
+            </strong>
+            <span className="muted small">{tr('lost', 'Verlust')}</span>
           </div>
           <div>
             <strong>
@@ -311,7 +338,16 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onS
                 {dm(i.day)} · {i.title}
                 <span className="muted small paid-state">
                   {i.detail ?? (i.kind === 'pool' ? tr('Bets', 'Wetten') : tr('Game', 'Spiel'))}
-                  {Math.abs(i.open) < 0.005 ? ` · ${tr('settled', 'erledigt')}` : Math.abs(i.open - i.amount) > 0.004 ? ` · ${tr('open', 'offen')} ${money(Math.abs(i.open), i.sym)}` : ''}
+                  {' · '}
+                  {/* paid in green, not paid in red (Sascha 03.11.2026) */}
+                  {Math.abs(i.open) < 0.005 ? (
+                    <span className="good-text">{isMoney(i.prize) ? tr('paid', 'bezahlt') : tr('redeemed', 'eingelöst')}</span>
+                  ) : (
+                    <span className="bad-text">
+                      {isMoney(i.prize) ? tr('not paid', 'nicht bezahlt') : tr('not redeemed', 'nicht eingelöst')}
+                      {Math.abs(i.open - i.amount) > 0.004 ? ` · ${tr('open', 'offen')} ${money(Math.abs(i.open), i.sym)}` : ''}
+                    </span>
+                  )}
                 </span>
               </span>
               <strong className={cls(i.amount)}>{formatEuro(i.amount, i.sym)}</strong>
@@ -333,7 +369,15 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onS
                   <span className="grow">
                     {x.from === i.me ? tr(`You to ${p.name}`, `Du an ${p.name}`) : tr(`${p.name} to you`, `${p.name} an dich`)}
                     <span className="muted small paid-state">
-                      {i.title} · {x.receivedAt ? `${tr('received', 'erhalten')} ${dm(x.receivedAt.slice(0, 10))}` : `${tr('paid', 'bezahlt')} ${x.paidAt ? dm(x.paidAt.slice(0, 10)) : ''} – ${x.from === i.me ? tr(`${p.name} has not confirmed yet`, `${p.name} bestätigt noch`) : tr('confirm it', 'bitte bestätigen')}`}
+                      {i.title} ·{' '}
+                      {x.receivedAt ? (
+                        <span className="good-text">{`${tr('received', 'erhalten')} ${dm(x.receivedAt.slice(0, 10))}`}</span>
+                      ) : (
+                        <>
+                          <span className="good-text">{`${tr('paid', 'bezahlt')} ${x.paidAt ? dm(x.paidAt.slice(0, 10)) : ''}`}</span>
+                          {` – ${x.from === i.me ? tr(`${p.name} has not confirmed yet`, `${p.name} bestätigt noch`) : tr('confirm it', 'bitte bestätigen')}`}
+                        </>
+                      )}
                     </span>
                   </span>
                   <strong className={x.receivedAt ? 'good-text' : undefined}>{money(x.amount, i.sym)}</strong>
