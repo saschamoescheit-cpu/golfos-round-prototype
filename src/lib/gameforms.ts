@@ -52,6 +52,10 @@ export interface Game {
   stamps?: Record<string, string>;
   /** Played on the GPS map (Sascha 16.10.2026): the round behind the game – map, caddie, score entry. */
   round?: import('../types').Round;
+  /** What was paid between its players (Sascha 03.11.2026: "mark that I paid Cedric – he confirms") – lib/gamepay. */
+  payments?: import('./gamepay').GamePayment[];
+  /** What is played for, when not money (lib/prize) – unset: money in settings.currency. */
+  prize?: import('./prize').Prize;
 }
 
 export interface SettingDef {

@@ -6,8 +6,8 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { isLady, shownName, loadProfile } from '../lib/profile';
 import { loadCachedCourse, loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
-import { setCurrency, currencySymbol, type Currency } from '../lib/gameforms';
-import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, pairShare, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
+import { setCurrency, type Currency } from '../lib/gameforms';
+import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
@@ -29,12 +29,13 @@ import { CoursePicker } from './CoursePicker';
 import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
 import { SeriesScreen, TOURS_ICON, TourScreen, TourSetup, TourStartCard, ToursTab, newTourDraft, useTours, type TourDraft } from './Tournaments';
 import { tourState } from '../lib/tourstore';
-import { isLive, loadPools, myPoolBalances } from '../lib/wagerstore';
+import { isLive, loadPools } from '../lib/wagerstore';
 import { keepPoolRound, poolRoundOf } from '../lib/poolround';
 import { PoolRoundPlay, PoolRoundSetup } from './PoolRound';
 import { dayOf } from '../lib/wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
+import { Balance } from './Balance';
 import { PausedIcon } from '../components/PausedIcon';
 import { DeletedIcon, HolesIcon, PlayedIcon, ToSignIcon } from '../components/RoundIcons';
 
@@ -563,7 +564,7 @@ function GamesTabs(props: {
       {props.tab === 'balance' && (
         <>
           <h1 className="tab-title">{tr('Balance', 'Bilanz')}</h1>
-          <Balance games={props.games} inTab />
+          <Balance games={props.games} inTab onOpenPool={props.onOpenPool} />
         </>
       )}
       {props.tab === 'profile' && props.profile}
@@ -757,125 +758,6 @@ function RunningGame(props: { game: Game; onContinue: () => void; onFinish: () =
 }
 
 /** Your balance over all finished games: wins, money, and against whom (player 1 is you). */
-/** The balance – on "Games" below the tiles (Sascha 01.11.2026: "the balance into Games"): the confirmed games, against
- *  each friend, and where this account stands in each pool of bets. */
-function Balance(props: { games: Game[]; /** the menu "Bilanz": its own title above, a word when there is nothing yet */ inTab?: boolean }) {
-  const done = props.games.filter((g) => g.finishedAt && g.signedAt);
-  const unconfirmed = props.games.filter((g) => g.finishedAt && !g.signedAt).length;
-  const today = dayOf(new Date());
-  usePools(); // read again when a pool changes
-  const pools = myPoolBalances(today);
-  let wins = 0;
-  // euros and dollars apart (Sascha 01.11.2026: a game in dollars in the USA)
-  const money: Record<string, number> = {};
-  const add = (m: Record<string, number>, g: Game, v: number) => (m[currencySymbol(g.settings.currency)] = (m[currencySymbol(g.settings.currency)] ?? 0) + v);
-  // head to head per friend (Sascha 15.10.2026): games, who finished ahead, money
-  const vs = new Map<string, { name: string; games: number; money: Record<string, number>; won: number; lost: number }>();
-  for (const g of done) {
-    const me = g.players.find((p) => p.id === g.shared?.me) ?? g.players[0]; // a joined game: the player chosen on joining
-    const st = standingOf(g);
-    const top = topRows(st.rows).map((r) => r.id);
-    // a team game's rows are the sides (A = player 1's side) or every player
-    if (top.includes(me.id) || (top.length === 1 && top[0] === 'A')) wins++;
-    add(money, g, st.money?.[me.id] ?? 0);
-    for (const p of g.players.filter((x) => x.id !== me.id)) {
-      const key = p.name.trim().toLowerCase();
-      const row = vs.get(key) ?? { name: p.name, games: 0, money: {}, won: 0, lost: 0 };
-      row.games++;
-      const mine = st.rows.find((r) => r.id === me.id)?.points;
-      const his = st.rows.find((r) => r.id === p.id)?.points;
-      if (mine != null && his != null && mine !== his) {
-        if (mine > his) row.won++;
-        else row.lost++;
-      }
-      if (st.money) add(row.money, g, pairShare(st.money, me.id, p.id));
-      vs.set(key, row);
-    }
-  }
-  const cls = (v: number) => (v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted');
-  // "+12 € · −5 $" – one amount per currency played in
-  const amounts = (m: Record<string, number>) => {
-    const parts = Object.entries(m).filter(([, v]) => Math.abs(v) > 0.004);
-    return parts.length ? parts.map(([sym, v]) => <span key={sym} className={cls(v)}>{formatEuro(v, sym)}</span>).reduce<ReactNode[]>((a, x, k) => (k ? [...a, ' · ', x] : [x]), []) : <span className="muted">{formatEuro(0, '€')}</span>;
-  };
-  if (!done.length && !unconfirmed && !pools.length)
-    return props.inTab ? <p className="muted">{tr('No confirmed games or bets yet – they show here once played.', 'Noch keine bestätigten Spiele oder Wetten – sie erscheinen hier, sobald gespielt.')}</p> : null;
-  return (
-    <section className="balance" aria-label={tr('Balance', 'Bilanz')}>
-      {!props.inTab && <h2 className="balance-title">{tr('Balance', 'Bilanz')}</h2>}
-      {unconfirmed > 0 && (
-        <p className="notice" style={{ margin: 0 }}>
-          {tr(
-            `${unconfirmed} finished ${unconfirmed === 1 ? 'game is' : 'games are'} not confirmed yet – they count once you confirm the result.`,
-            `${unconfirmed} beendete${unconfirmed === 1 ? 's Spiel ist' : ' Spiele sind'} noch nicht bestätigt – sie zählen, sobald du das Ergebnis bestätigst.`,
-          )}
-        </p>
-      )}
-      {done.length > 0 && (
-        <>
-          <section className="card balance-totals">
-            <div>
-              <strong>{done.length}</strong>
-              <span className="muted small">{tr('games', 'Spiele')}</span>
-            </div>
-            <div>
-              <strong>{wins}</strong>
-              <span className="muted small">{tr('wins', 'Siege')}</span>
-            </div>
-            <div>
-              <strong>{amounts(money)}</strong>
-              <span className="muted small">{tr('money', 'Geld')}</span>
-            </div>
-          </section>
-          <section className="card">
-            <span className="eyebrow">{tr('Against your friends', 'Gegen deine Mitspieler')}</span>
-            <ul className="game-pays">
-              {[...vs.values()]
-                .sort((a, b) => b.games - a.games)
-                .map((r) => (
-                  <li key={r.name}>
-                    <span>
-                      {r.name}{' '}
-                      <span className="muted small">
-                        · {r.games} {r.games === 1 ? tr('game', 'Spiel') : tr('games', 'Spiele')} · {tr(`${r.won}× ahead · ${r.lost}× behind`, `${r.won}× vorne · ${r.lost}× hinten`)}
-                      </span>
-                    </span>
-                    <strong>{amounts(r.money)}</strong>
-                  </li>
-                ))}
-            </ul>
-          </section>
-        </>
-      )}
-      {pools.length > 0 && (
-        <section className="card">
-          <span className="eyebrow">{tr('Bets', 'Wetten')}</span>
-          <ul className="game-pays bet-pays">
-            {pools.map((e) => {
-              const v = e.amount;
-              const sym = currencySymbol(e.currency);
-              // what is still open after the payments marked (+ owed to me, − I owe)
-              const open = Math.abs(e.open) > 0.004 && Math.abs(e.open - v) > 0.004 ? tr(` · open ${formatEuro(e.open, sym)}`, ` · offen ${formatEuro(e.open, sym)}`) : '';
-              return (
-                <li key={e.code}>
-                  <span>
-                    {e.name}{' '}
-                    <span className="muted small">
-                      · {e.running ? tr('running', 'läuft') : tr('finished', 'beendet')}
-                      {open}
-                    </span>
-                  </span>
-                  <strong className={v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted'}>{formatEuro(v, sym)}</strong>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-    </section>
-  );
-}
-
 /** The rules of a game form as a voice reads them: signs in words (Sascha 15.10.2026: "nobody has to read out the
  *  rules – all four players listen"). */
 export function rulesSpoken(f: FormDef): string {

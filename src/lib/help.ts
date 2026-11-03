@@ -301,6 +301,24 @@ export const FAQ: FaqTopic[] = [
         video: 'games',
       },
       {
+        q: () => tr('How do I see what I owe – and mark it paid?', 'Wie sehe ich, was ich schulde – und markiere es als bezahlt?'),
+        a: () =>
+          tr(
+            'Games & Bets → "Balance": "Open amounts" shows what you owe and what you are owed. Tap a player: each game and pool between you, how it stood, together. "Paid" when you paid him – he sees it and confirms with "Received"; "Received" books out what someone gave you. ↺ takes a payment back.',
+            'Games & Bets → „Bilanz“: Unter „Offene Beträge“ steht, was du schuldest und was dir geschuldet wird. Tippe auf einen Mitspieler: jedes Spiel und jede Wette zwischen euch, wie es stand, zusammen. „Bezahlt“, wenn du ihm gezahlt hast – er sieht es und bestätigt mit „Erhalten“; mit „Erhalten“ buchst du aus, was dir jemand gegeben hat. ↺ nimmt eine Zahlung zurück.',
+          ),
+        video: 'games',
+      },
+      {
+        q: () => tr('Can we play for drinks instead of money?', 'Können wir auch um Getränke statt um Geld spielen?'),
+        a: () =>
+          tr(
+            'Yes, in the bets: "Played for" – euro, dollar, drinks, a meal, cleaning the clubs, or your own stake typed. A thing is counted: "2 × drink", "Cedric owes Sascha".',
+            'Ja, bei den Wetten: „Worum wird gespielt“ – Euro, Dollar, Getränke, Essen, Schläger putzen oder ein eigener Einsatz. Dann wird gezählt: „2 × Getränk“, „Cedric schuldet Sascha“.',
+          ),
+        video: 'wagers',
+      },
+      {
         q: () => tr('How is it settled?', 'Wie wird abgerechnet?'),
         a: () =>
           tr(

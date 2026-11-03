@@ -2127,3 +2127,14 @@ button.tile:disabled { opacity: 1; }
 .invite-friend .grow { flex: 1; min-width: 0; }
 .invite-friend > button { flex: none; width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; }
 .sc-status.game-confirmed { flex-direction: row; align-items: center; gap: 12px; cursor: default; }
+
+/* the balance (03.11.2026): open amounts, the players tapped for their details, each pool on its own */
+.balance-open { display: flex; flex-direction: column; gap: 8px; }
+.balance-open .link-row { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; }
+.balance-people li { display: block; }
+.balance-person { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 4px 0; color: inherit; font: inherit; text-align: left; }
+.balance-person .grow { flex: 1; min-width: 0; }
+.balance-pool-head { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; }
+.balance-pool-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.balance-pool-head:disabled { opacity: 1; }
+.balance-sum { display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--line); font-weight: 600; }
