@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode } from '../lib/sharedgame';
-import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -675,7 +675,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
   const mine = new Set((ev.flights[props.myFlight]?.players ?? []).map((p) => `${props.myFlight}/${p.id}`));
   const flights = liveFlights(ev).length;
   const net = (ev.format?.allowance ?? 100) > 0;
-  const classes = ev.classes?.length ? CLASS_LETTERS.slice(0, ev.classes.length + 1) : [];
+  const classes = ev.classes?.length ? CLASS_NAMES.slice(0, ev.classes.length + 1) : [];
   const diff = (key: string): string | null => {
     const [fid, pid] = key.split('/');
     const f = ev.flights[fid];
@@ -787,7 +787,6 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
     </section>
   );
 }
-const CLASS_LETTERS = ['A', 'B', 'C', 'D'];
 
 /**
  * Handing the card in (Sascha's concept 30.10.2026: "player and marker confirm – then it is locked"): on the scorecard

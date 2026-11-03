@@ -177,6 +177,17 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
   await H.getByRole('dialog', { name: 'Klasse C bis' }).getByRole('button', { name: 'bis 26', exact: true }).click();
   await cs.getByRole('button', { name: '4 Klassen übernehmen' }).click();
   ok(/4 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 9 · B bis 18 · C bis 26 · D bis 54', { exact: true }).count()) === 1, `classes: own taken – ${await row.innerText()}`);
+  // more than four (Sascha 03.11.2026: "freely configurable"): "+ Klasse" up to ten, A to J – not taken
+  await row.click();
+  // each new class a step on, its limit then chosen: D 30, E 34 … I 50, J up to 54
+  for (let i = 3; i < 9; i++) {
+    await cs.getByRole('button', { name: '+ Klasse' }).click();
+    await ownRows.nth(i).click();
+    await H.getByRole('dialog', { name: `Klasse ${'ABCDEFGHIJ'[i]} bis` }).getByRole('button', { name: `bis ${26 + 4 * (i - 2)}`, exact: true }).click();
+  }
+  const ten = (await ownRows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
+  ok(ten.length === 10 && ten[9] === 'Klasse J bis 54' && (await cs.getByRole('button', { name: '+ Klasse' }).count()) === 0 && (await cs.getByRole('button', { name: '10 Klassen übernehmen' }).count()) === 1, `classes: up to ten – ${ten.join(' | ')}`);
+  await cs.getByRole('button', { name: 'Schließen' }).click();
   // back to brutto for the rest of the test
   await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
   await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Brutto/ }).click();

@@ -529,7 +529,8 @@ export interface Standing {
   /** the card signed by player and marker */
   signed: boolean;
 }
-const CLASS_NAMES = ['A', 'B', 'C', 'D'];
+/** the names of the net classes, A to J (Sascha 03.11.2026: "there can be more than four – freely configurable") */
+export const CLASS_NAMES = 'ABCDEFGHIJ'.split('');
 /** The class of a playing handicap: limits [18] – A up to 18, B above; [12, 24] – A, B, C. */
 export const classOf = (hcp: number | null, limits: number[] | undefined): string => (!limits?.length ? '' : CLASS_NAMES[limits.filter((l) => (hcp ?? 54) > l).length] ?? '');
 /** Countback sums of a player's hole values: the last 9, 6, 3, 1 holes (fewer holes: as many as there are). */
