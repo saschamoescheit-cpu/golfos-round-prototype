@@ -363,6 +363,12 @@ export function poolNeedsDetails(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'>
   return pool.wagers.some((w) => needsDetails(w) && inPool(r, pool, w));
 }
 
+/** A "5+5+10" in this round: it needs both nines, so only the 18-hole combinations (Sascha 03.11.2026: "9-hole rounds make
+ *  no sense for 5+5+10"). */
+export function poolNeeds18(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'> & { rounds?: PoolRound[] }, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean {
+  return pool.wagers.some((w) => shapeOf(w.kind) === 'duel' && inPool(r, pool, w));
+}
+
 /** A day as YYYY-MM-DD in local time. */
 export const dayOf = (d: Date | string): string => {
   const x = typeof d === 'string' ? new Date(d) : d;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterPayments, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { afterPayments, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -344,6 +344,11 @@ describe('which bets need the details of a hole', () => {
     const p = { from: '2026-11-05', to: '2026-11-06', wagers: [bet({ kind: 'birdies' }), bet({ id: 'g', kind: 'greens', attempts: 'day', day: '2026-11-06' })] };
     expect(poolNeedsDetails(p, { day: '2026-11-05', course: 'Bethpage' })).toBe(false);
     expect(poolNeedsDetails(p, { day: '2026-11-06', course: 'Bethpage' })).toBe(true);
+  });
+  it('a 5+5+10 that round: only 18 holes (03.11.2026)', () => {
+    const p = { from: '2026-11-05', to: '2026-11-06', wagers: [bet({ kind: 'birdies' }), bet({ id: 'n', kind: 'nassau', attempts: 'day', day: '2026-11-06' })] };
+    expect(poolNeeds18(p, { day: '2026-11-05', course: 'Bethpage' })).toBe(false);
+    expect(poolNeeds18(p, { day: '2026-11-06', course: 'Bethpage' })).toBe(true);
   });
 });
 

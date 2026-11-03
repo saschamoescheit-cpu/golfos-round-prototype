@@ -9,7 +9,7 @@ import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib
 import { isLady, loadProfile } from '../lib/profile';
 import { loadFriends } from '../lib/friends';
 import { emptyEntry } from '../lib/scoring';
-import { dayOf, poolNeedsDetails, provisional, sameName, stateOf } from '../lib/wagers';
+import { dayOf, poolNeeds18, poolNeedsDetails, provisional, sameName, stateOf } from '../lib/wagers';
 import { loadPools, reportWagers } from '../lib/wagerstore';
 import { dropPoolRound, finishPoolRound, keepPoolRound, poolRoundEntry, setPoolRoundEntry } from '../lib/poolround';
 import { ChoiceRow, SettingsList } from '../components/Settings';
@@ -39,7 +39,9 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
   const entry = loadPools().find((e) => e.code === props.code);
   const pool = entry?.pool;
   const course = props.course;
-  const options = useMemo(() => (course ? loopOptions(course.holes) : []), [course]);
+  // a 5+5+10 in this round: the 18-hole combinations only
+  const only18 = !!pool && !!course && poolNeeds18(pool, { day: dayOf(new Date()), course: course.name, courseId: course.id });
+  const options = useMemo(() => (course ? loopOptions(course.holes).filter((o) => !only18 || buildRoundHoles(course.holes, o).length === 18) : []), [course, only18]);
   const [optionId, setOptionId] = useState(options[0]?.id ?? '');
   useEffect(() => setOptionId(options[0]?.id ?? ''), [options]);
   const option = options.find((o) => o.id === optionId) ?? options[0];

@@ -33,7 +33,8 @@ export function PaidMarks(props: {
             return (
               <li key={`${t.from}-${t.to}`}>
                 <span className="grow">
-                  {props.name(t.from)} → {props.name(t.to)}
+                  {/* "Cedric zahlt an Sascha" (Sascha 03.11.2026), not an arrow */}
+                  {tr(`${props.name(t.from)} pays ${props.name(t.to)}`, `${props.name(t.from)} zahlt an ${props.name(t.to)}`)}
                 </span>
                 <strong>{money(t.amount, props.sym)}</strong>
                 {as && (
@@ -64,7 +65,7 @@ export function PaidMarks(props: {
             {[...props.payments].reverse().map((p) => (
               <li key={p.id}>
                 <span className="grow">
-                  {props.name(p.from)} → {props.name(p.to)}
+                  {tr(`${props.name(p.from)} to ${props.name(p.to)}`, `${props.name(p.from)} an ${props.name(p.to)}`)}
                   <span className="muted small paid-state">
                     {p.receivedAt
                       ? `${tr('received', 'erhalten')} ${day(p.receivedAt)}`
@@ -78,7 +79,7 @@ export function PaidMarks(props: {
                   </button>
                 )}
                 {(mine(p.from) || mine(p.to)) && (
-                  <button type="button" className="icon-btn paid-undo" aria-label={tr(`Take back: ${props.name(p.from)} → ${props.name(p.to)}`, `Zurücknehmen: ${props.name(p.from)} → ${props.name(p.to)}`)} onClick={() => props.onUndo(p.id)}>
+                  <button type="button" className="icon-btn paid-undo" aria-label={tr(`Take back: ${props.name(p.from)} to ${props.name(p.to)}`, `Zurücknehmen: ${props.name(p.from)} an ${props.name(p.to)}`)} onClick={() => props.onUndo(p.id)}>
                     ↺
                   </button>
                 )}
