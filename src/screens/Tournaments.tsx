@@ -18,6 +18,7 @@ import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
+import { ActionBar } from '../components/ActionBar';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow } from '../components/Settings';
@@ -531,16 +532,10 @@ function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; o
             onClose={() => setEditing(null)}
           >
             {own.length > 1 && (
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => {
-                  setOwn(own.filter((_, j) => j !== editing));
-                  setEditing(null);
-                }}
-              >
-                {tr(`Remove class ${LETTERS[editing]}`, `Klasse ${LETTERS[editing]} entfernen`)}
-              </button>
+              <ActionBar
+                label={tr('This class', 'Diese Klasse')}
+                actions={[{ label: tr(`Remove class ${LETTERS[editing]}`, `Klasse ${LETTERS[editing]} entfernen`), icon: 'delete', danger: true, onClick: () => { setOwn(own.filter((_, j) => j !== editing)); setEditing(null); } }]}
+              />
             )}
           </PickSheet>
         )}
@@ -767,31 +762,6 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
             <input id="tour-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={d.name} onChange={(e) => set({ name: e.target.value })} />
           </div>
         </div>
-        {/* the day as a row – the phone's picker, never a bare 2026-11-02 (docs/DESIGN.md) */}
-        <SettingsList>
-          <DateRow id="tour-date" label={tr('Day', 'Tag')} value={d.date} onChange={(v) => set({ date: v })} />
-        </SettingsList>
-      </section>
-
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Course', 'Platz')}</span>
-        <div className="settings-list">
-          <button type="button" className="settings-row" onClick={props.onCourse}>
-            <span>{tr('Course', 'Platz')}</span>
-            <span className={`settings-value${d.course || d.base ? '' : ' need'}`}>{d.course?.name ?? d.base?.course.name ?? tr('Choose a course', 'Platz wählen')}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-        </div>
-        {d.course && options.length > 1 && (
-          <div className="choice-grid">
-            {options.map((o) => (
-              <button key={o.id} type="button" className="choice choice-loop" aria-pressed={o.id === option?.id} onClick={() => set({ optionId: o.id })}>
-                <strong>{o.label.split(' · ')[0]}</strong>
-                {o.label.includes(' · ') && <span className="small muted">{o.label.split(' · ').slice(1).join(' · ')}</span>}
-              </button>
-            ))}
-          </div>
-        )}
       </section>
 
       {/* the format as a round's in Rounds (Sascha 02.11.2026: "gross, or with the handicaps – no 95 %; shown as the
@@ -851,6 +821,45 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
       )}
 
       <section className="setup-part">
+        <span className="eyebrow">{tr('Course', 'Platz')}</span>
+        <div className="settings-list">
+          <button type="button" className="settings-row" onClick={props.onCourse}>
+            <span>{tr('Course', 'Platz')}</span>
+            <span className={`settings-value${d.course || d.base ? '' : ' need'}`}>{d.course?.name ?? d.base?.course.name ?? tr('Choose a course', 'Platz wählen')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+        {d.course && options.length > 1 && (
+          <div className="choice-grid">
+            {options.map((o) => (
+              <button key={o.id} type="button" className="choice choice-loop" aria-pressed={o.id === option?.id} onClick={() => set({ optionId: o.id })}>
+                <strong>{o.label.split(' · ')[0]}</strong>
+                {o.label.includes(' · ') && <span className="small muted">{o.label.split(' · ').slice(1).join(' · ')}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {courseId && (holes.length === 18 || nine) && (
+          <RatingLine
+            rating={d.players[0] ? ratingOf(d.players[0], 0) : null}
+            nine={nine}
+            onSave={(v) => {
+              saveOwnRating(courseId, teeOf(d.players[0], 0) ?? '–', holes, v);
+              setRatingsSeen((k) => k + 1);
+            }}
+          />
+        )}
+      </section>
+
+      {/* Was → Wo → Wann → Wer (Sascha 03.11.2026: the same order in every setup, docs/DESIGN.md) */}
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Date', 'Datum')}</span>
+        <SettingsList>
+          <DateRow id="tour-date" label={tr('Day', 'Tag')} value={d.date} onChange={(v) => set({ date: v })} />
+        </SettingsList>
+      </section>
+
+      <section className="setup-part">
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
         {d.players.map((p, k) => (
           <PlayerRow
@@ -867,16 +876,6 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
             onRemove={d.players.length > 1 ? () => setPlayers(d.players.filter((x) => x.id !== p.id)) : undefined}
           />
         ))}
-        {courseId && (holes.length === 18 || nine) && (
-          <RatingLine
-            rating={d.players[0] ? ratingOf(d.players[0], 0) : null}
-            nine={nine}
-            onSave={(v) => {
-              saveOwnRating(courseId, teeOf(d.players[0], 0) ?? '–', holes, v);
-              setRatingsSeen((k) => k + 1);
-            }}
-          />
-        )}
         <FriendChips taken={d.players.map((p) => p.name)} onAdd={(fr) => setPlayers([...d.players, newPlayer(fr.name, fr.hcp)])} />
         <button type="button" className="btn-secondary" onClick={() => setPlayers([...d.players, newPlayer('', '')])}>
           {tr('+ Add player', '+ Spieler hinzufügen')}
@@ -1429,14 +1428,11 @@ function FlightSheet(props: { n: number; time: string; chosen: string[]; scorer:
             {ids.length >= FLIGHT_MAX ? tr('Full – four players.', 'Voll – vier Spieler.') : tr('Only players not in a flight yet are offered. Who marks whom, the app sets.', 'Angeboten werden nur Spieler ohne Flight. Wer wen zählt, legt die App fest.')}
           </span>
         </div>
+        {/* the actions as a bar, the main button last (Sascha 03.11.2026: docs/DESIGN.md) */}
+        {props.onRemove && <ActionBar label={`Flight ${props.n}`} actions={[{ label: tr(`Remove flight ${props.n}`, `Flight ${props.n} entfernen`), icon: 'delete', danger: true, onClick: props.onRemove }]} />}
         <button type="button" className="btn-primary" disabled={!ids.length} onClick={() => props.onSave(time, ids, props.scorer && ids.includes(props.scorer) ? props.scorer : null)}>
           {props.onRemove ? tr('Save', 'Speichern') : tr('Create flight', 'Flight anlegen')}
         </button>
-        {props.onRemove && (
-          <button type="button" className="btn-secondary btn-danger" onClick={props.onRemove}>
-            {tr(`Remove flight ${props.n}`, `Flight ${props.n} entfernen`)}
-          </button>
-        )}
       </section>
     </div>
   );
@@ -1473,11 +1469,9 @@ function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid
             <span className="grow">{tr('In the fairway', 'Im Fairway')}</span>
           </label>
         )}
+        <ActionBar label={tr('This entry', 'Dieser Eintrag')} actions={[{ label: tr('Take the entry away', 'Eintrag entfernen'), icon: 'delete', danger: true, disabled: !one, onClick: () => one && props.onSave(one.fid, one.pid, null, fairway) }]} />
         <button type="button" className="btn-primary" disabled={!one || !(value > 0)} onClick={() => one && props.onSave(one.fid, one.pid, value, fairway)}>
           {tr('Save', 'Speichern')}
-        </button>
-        <button type="button" className="btn-secondary btn-danger" disabled={!one} onClick={() => one && props.onSave(one.fid, one.pid, null, fairway)}>
-          {tr('Take the entry away', 'Eintrag entfernen')}
         </button>
       </section>
     </div>
@@ -1690,11 +1684,8 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
           {msg}
         </span>
       )}
-      {host && (
-        <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet('dissolve')}>
-          {tr('Undo the series', 'Serie auflösen')}
-        </button>
-      )}
+      {/* the actions one bar of icons, as everywhere (Sascha 03.11.2026: docs/DESIGN.md) – the red one last */}
+      {host && <ActionBar label={tr('This series', 'Diese Serie')} actions={[{ label: tr('Undo the series', 'Serie auflösen'), icon: 'dissolve', danger: true, onClick: () => setSheet('dissolve') }]} />}
       {sheet === 'rename' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet" role="dialog" aria-label={tr('Rename the series', 'Serie umbenennen')} onClick={(e) => e.stopPropagation()}>
@@ -1996,11 +1987,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
           {msg}
         </span>
       )}
-      {host && (
-        <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet('delete')}>
-          {tr('Delete the tournament', 'Turnier löschen')}
-        </button>
-      )}
+      {host && <ActionBar label={tr('This tournament', 'Dieses Turnier')} actions={[{ label: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('delete') }]} />}
       {sheet === 'delete' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet" role="dialog" aria-label={tr('Delete the tournament', 'Turnier löschen')} onClick={(e) => e.stopPropagation()}>
