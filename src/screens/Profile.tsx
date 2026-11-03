@@ -18,7 +18,6 @@ import { STANDARD_TEES, TEE_COLOURS, teeName } from '../data/tees';
 import { groupForHandicap, GROUPS } from '../lib/sg';
 import { deleteAccount, loadSession, signOut } from '../lib/sync';
 import { shareBackup } from '../lib/backup';
-import { setSoundTest, soundTestOn } from '../lib/impact';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
@@ -30,7 +29,6 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [help, setHelp] = useState<HelpTab | null>(null);
   const [sgPick, setSgPick] = useState(false);
   const [teePick, setTeePick] = useState(false);
-  const [soundTest, setSoundTestState] = useState(soundTestOn);
   const photoInput = useRef<HTMLInputElement>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
@@ -270,27 +268,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
             ]}
           />
         </div>
-        {/* a test (Sascha 18.10.2026), above the strokes gained comparison – a slider as every on/off (23.10.2026): the
-            microphone listens for the strike while the hole map is open – nothing recorded */}
-        <div className="drawer-list settings-switches">
-          <button
-            type="button"
-            className="drawer-row"
-            role="switch"
-            aria-checked={soundTest}
-            onClick={() => {
-              setSoundTest(!soundTest);
-              setSoundTestState(!soundTest);
-            }}
-          >
-            <span className="switch-label">
-              <span>{tr('Shot by sound (test)', 'Schlag per Ton (Test)')}</span>
-              <span className="muted small">{tr('Hears the strike during the round · this device only', 'Hört während der Runde den Treffmoment · nur auf diesem Gerät')}</span>
-            </span>
-            <span className={`drawer-switch${soundTest ? ' on' : ''}`} aria-hidden="true" />
-          </button>
-          {/* (the pocket mode switch is gone – Sascha 02.11.2026: the iOS app records with the phone locked) */}
-        </div>
+        {/* (the switch "Schlag per Ton (Test)" is gone – Sascha 03.11.2026: the iOS app hears the shots by itself) */}
         {/* the group strokes gained is measured against – by default the next better one to the index (Sascha 17.10.2026);
             a row like the home club, the choice in a sheet like the game form (Sascha: "it does not look like the rest") */}
         <div className="field">

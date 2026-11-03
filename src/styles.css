@@ -1300,7 +1300,12 @@ button.tile:disabled { opacity: 1; }
 .bag-row.full .bag-tracked { justify-content: flex-start; flex-wrap: wrap; }
 .bag-row.edit { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 10px; align-items: center; }
 .bag-row.edit .bag-input .input { width: 64px; }
-.pitch-grid { display: grid; grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr); column-gap: 10px; row-gap: 8px; align-items: center; }
+.pitch-grid { display: grid; grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr); column-gap: 10px; row-gap: 10px; align-items: start; }
+/* the club and its full carry on the line of the fields, whatever is below a field (03.11.2026) */
+.pitch-row > strong, .pitch-row > .muted { line-height: 44px; white-space: nowrap; }
+.pitch-row > .muted { text-align: center; }
+.pitch-use { display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: 30px; padding: 0 8px; border-radius: 15px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--brand-text); font: inherit; font-size: 12.5px; white-space: nowrap; cursor: pointer; }
+.pitch-use svg { width: 14px; height: 14px; flex: none; }
 .pitch-row { display: contents; }
 .pitch-h { text-align: center; }
 .pitch-cell { display: flex; flex-direction: column; gap: 3px; }

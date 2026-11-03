@@ -154,8 +154,10 @@ export async function listen(onImpact: (i: Impact) => void): Promise<Listening> 
   return Object.assign(stop, { alive, health, why, wake });
 }
 
-const KEY = 'golfos.soundtest.v1';
-/** The test switch in the profile (Golf → "Shot by sound (test)"). */
+// The shot by sound runs in the iOS app by itself (Sascha 03.11.2026: "the switch goes – in the native app the automatic
+// shot detection has to work"); on the website only for the tests (this flag, no switch any more – v2: the website's
+// switch of before no longer counts)
+const KEY = 'golfos.soundtest.v2';
 export function soundTestOn(): boolean {
   try {
     return localStorage.getItem(KEY) === '1';
