@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useTop } from '../components/useTop';
 import type { Course, Round } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
@@ -36,6 +37,7 @@ interface Who {
 }
 
 export function PoolRoundSetup(props: { code: string; course: Course | null; onCourse: () => void; onBack: () => void; onStart: (r: Round) => void }) {
+  useTop();
   const entry = loadPools().find((e) => e.code === props.code);
   const pool = entry?.pool;
   const course = props.course;

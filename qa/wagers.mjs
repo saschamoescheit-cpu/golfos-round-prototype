@@ -158,12 +158,25 @@ const choose = async (label, option, inside = H) => {
   await inside.locator('.settings-row').filter({ hasText: label }).first().click();
   await H.getByRole('dialog', { name: label }).getByRole('button', { name: new RegExp(`^${option.replace(/[()$]/g, (c) => '\\' + c)}`) }).click();
 };
-await choose('Währung', 'Dollar ($)'); // the trip: in dollars
+// what is played for (Sascha 03.11.2026: "drinks, a meal, cleaning the clubs – and one's own"): the fixed choice, one's own typed
+{
+  await H.locator('.settings-row').filter({ hasText: 'Worum wird gespielt' }).click();
+  const ps = H.getByRole('dialog', { name: 'Worum wird gespielt' });
+  const names = (await ps.locator('.pick-option strong').allInnerTexts()).join('|');
+  ok(names === 'Euro (€)|Dollar ($)|Getränke|Essen|Schläger putzen|Eigener Einsatz …', `played for: ${names}`);
+  await ps.getByRole('button', { name: /^Eigener Einsatz/ }).click();
+  await ps.getByRole('textbox', { name: 'Worum gespielt wird' }).fill('Bier-Runde');
+  await ps.getByRole('button', { name: 'Übernehmen' }).click();
+  ok(/Bier-Runde/.test(await H.locator('.settings-row').filter({ hasText: 'Worum wird gespielt' }).innerText()), 'played for: one\'s own – "Bier-Runde"');
+}
+await choose('Worum wird gespielt', 'Dollar ($)'); // the trip: in dollars
 // "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker
 await H.getByRole('switch', { name: /Mit Zähler/ }).click();
 await H.getByRole('button', { name: 'Pool anlegen' }).click();
 await H.waitForTimeout(1200);
 ok((await H.locator('.pool-player').count()) === 4 && (await H.locator('.topbar h1').innerText()).includes('USA 2026'), 'pool set up: USA 2026 with 4 players');
+// the pool's page starts at its top, not where the setup was scrolled to (Sascha 03.11.2026: "the QR code at the bottom")
+ok((await H.evaluate(() => window.scrollY)) === 0, `pool set up: its page at the top (${await H.evaluate(() => window.scrollY)})`);
 const code = [...shared.keys()][0];
 ok(shared.get(code).game.players[1].hcp === '12,4' && shared.get(code).game.players[2].hcp === undefined, 'the HCP typed is kept with the pool (Chris 12,4; Erik none)');
 ok(/^[A-Z0-9]{6}$/.test(code ?? '') && shared.get(code).game.kind === 'wager-pool', `the pool on the server, code ${code}`);

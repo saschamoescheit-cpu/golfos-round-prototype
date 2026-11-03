@@ -499,7 +499,7 @@ export const FORMS: FormDef[] = [
       tr('The two scores of a team make a two-digit number, the lower one first: 6 and 5 = 56, 3 and 3 = 33.', 'Die zwei Schläge eines Teams ergeben eine zweistellige Zahl, der kleinere vorn: 6 und 5 = 56, 3 und 3 = 33.'),
       tr(
         'Highest score 9 (if chosen): a 10 counts as 9. And a team without a par always puts the higher score first: bogey and double = 65, bogey and 10 = 95.',
-        'Höchstes Ergebnis 9 (wenn gewählt): eine 10 zählt als 9. Und ein Team ohne Par stellt immer die höhere Zahl vorn: Bogey und Doppel-Bogey = 65, Bogey und 10 = 95.',
+        'Höchstes Ergebnis 9 (wenn gewählt): eine 10 zählt als 9. Und ein Team ohne Par stellt immer die höhere Zahl vorn: Bogey und Double Bogey = 65, Bogey und 10 = 95.',
       ),
       tr('Without that: a score of 10 or more goes first: 10 and 4 = 104 (not 410).', 'Ohne diese Regel kommt eine 10 oder mehr nach vorn: 10 und 4 = 104 (nicht 410).'),
       tr(

@@ -144,7 +144,7 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
         <span><span className="mark eagle" aria-hidden="true" /> Eagle</span>
         <span><span className="mark birdie" aria-hidden="true" /> Birdie</span>
         <span><span className="mark bogey" aria-hidden="true" /> Bogey</span>
-        <span><span className="mark double" aria-hidden="true" /> {tr('Double bogey', 'Doppelbogey')}</span>
+        <span><span className="mark double" aria-hidden="true" /> {tr('Double bogey', 'Double Bogey')}</span>
         <span><span className="mark triple" aria-hidden="true" /> {tr('Triple bogey+', 'Triple-Bogey+')}</span>
         <span><span className="hcp-dot">•</span> {tr('handicap stroke', 'Vorgabeschlag')}</span>
         {round.players.some((p) => round.entries[p.id].some((e) => e.pickedUp)) && <span>* {tr('picked up', 'aufgehoben')}</span>}

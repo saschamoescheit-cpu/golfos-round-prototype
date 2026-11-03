@@ -1,6 +1,7 @@
 import { tr } from '../lib/i18n';
 import { money } from '../lib/gameforms';
 import type { Payment } from '../lib/wagers';
+import { isMoney, MONEY_EUR, oweText, paidWord, type Prize } from '../lib/prize';
 
 type Transfer = { from: string; to: string; amount: number };
 
@@ -15,6 +16,8 @@ export function PaidMarks(props: {
   payments: Payment[];
   name: (id: string) => string;
   sym: string;
+  /** what is played for: "zahlt an" / "schuldet", "Bezahlt" / "Eingelöst" (03.11.2026) */
+  prize?: Prize;
   me?: string;
   anyone?: boolean;
   onMark: (t: Transfer, as: 'paid' | 'received') => void;
@@ -22,9 +25,10 @@ export function PaidMarks(props: {
   onUndo: (id: string) => void;
 }) {
   const mine = (id: string) => !!props.anyone || id === props.me;
+  const prize = props.prize ?? MONEY_EUR;
   return (
     <div className="pool-pays-block">
-      <span className="eyebrow">{tr('Who pays whom', 'Wer zahlt wem')}</span>
+      <span className="eyebrow">{isMoney(prize) ? tr('Who pays whom', 'Wer zahlt wem') : tr('Who owes whom', 'Wer schuldet wem')}</span>
       {props.open.length ? (
         <ul className="pool-pays">
           {props.open.map((t) => {
@@ -34,7 +38,7 @@ export function PaidMarks(props: {
               <li key={`${t.from}-${t.to}`}>
                 <span className="grow">
                   {/* "Cedric zahlt an Sascha" (Sascha 03.11.2026), not an arrow */}
-                  {tr(`${props.name(t.from)} pays ${props.name(t.to)}`, `${props.name(t.from)} zahlt an ${props.name(t.to)}`)}
+                  {oweText(props.name(t.from), props.name(t.to), props.prize ?? MONEY_EUR)}
                 </span>
                 <strong>{money(t.amount, props.sym)}</strong>
                 {as && (
@@ -44,7 +48,7 @@ export function PaidMarks(props: {
                     aria-label={as === 'received' ? tr(`Received ${money(t.amount, props.sym)} from ${props.name(t.from)}`, `${money(t.amount, props.sym)} von ${props.name(t.from)} erhalten`) : tr(`${props.name(t.from)} paid ${money(t.amount, props.sym)} to ${props.name(t.to)}`, `${props.name(t.from)} hat ${money(t.amount, props.sym)} an ${props.name(t.to)} bezahlt`)}
                     onClick={() => props.onMark(t, as)}
                   >
-                    {as === 'received' ? tr('Received', 'Erhalten') : tr('Paid', 'Bezahlt')}
+                    {as === 'received' ? tr('Received', 'Erhalten') : paidWord(prize)}
                   </button>
                 )}
               </li>
@@ -54,14 +58,14 @@ export function PaidMarks(props: {
       ) : (
         <span className="muted small">
           {props.payments.length
-            ? tr('All paid.', 'Alles bezahlt.')
+            ? isMoney(prize) ? tr('All paid.', 'Alles bezahlt.') : tr('All redeemed.', 'Alles eingelöst.')
             : tr('Nothing to pay yet – once bets are decided, it says here who pays whom.', 'Noch nichts zu zahlen – sobald Wetten entschieden sind, steht hier, wer wem wie viel zahlt.')}
         </span>
       )}
       {props.payments.length > 0 && (
         <>
-          <span className="eyebrow">{tr('Paid', 'Bezahlt')}</span>
-          <ul className="pool-pays paid-list" aria-label={tr('Paid', 'Bezahlt')}>
+          <span className="eyebrow">{paidWord(prize)}</span>
+          <ul className="pool-pays paid-list" aria-label={paidWord(prize)}>
             {[...props.payments].reverse().map((p) => (
               <li key={p.id}>
                 <span className="grow">
@@ -69,7 +73,7 @@ export function PaidMarks(props: {
                   <span className="muted small paid-state">
                     {p.receivedAt
                       ? `${tr('received', 'erhalten')} ${day(p.receivedAt)}`
-                      : `${tr('paid', 'bezahlt')} ${day(p.paidAt)} – ${tr(`${props.name(p.to)} has not confirmed yet`, `${props.name(p.to)} bestätigt noch`)}`}
+                      : `${paidWord(prize).toLowerCase()} ${day(p.paidAt)} – ${tr(`${props.name(p.to)} has not confirmed yet`, `${props.name(p.to)} bestätigt noch`)}`}
                   </span>
                 </span>
                 <strong className={p.receivedAt ? 'good-text' : undefined}>{money(p.amount, props.sym)}</strong>

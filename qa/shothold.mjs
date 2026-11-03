@@ -1,5 +1,5 @@
 // QA (Sascha 22.10.2026): in "Schläge prüfen" a shot held down on the map is removed – with "Undo" for a few seconds; a
-// short tap and moving it work as before. The hole's score line keeps "Doppelbogey" clear of the putts.
+// short tap and moving it work as before. The hole's score line keeps "Double Bogey" clear of the putts.
 // Usage: node qa/shothold.mjs [url]
 import { webkit, devices } from 'playwright';
 import { readFileSync } from 'node:fs';

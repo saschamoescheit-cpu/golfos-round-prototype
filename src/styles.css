@@ -1677,7 +1677,7 @@ button.tile:disabled { opacity: 1; }
 
 /* a shot on the map held down to remove it: no text selection or callout on the iPhone (Sascha 22.10.2026) */
 .holdable { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-/* the hole's score in the shot check: a long name ("Doppelbogey") takes the room it needs, never over the putts */
+/* the hole's score in the shot check: a long name ("Double Bogey") takes the room it needs, never over the putts */
 .review-score .sc-hero-main { grid-auto-columns: auto; justify-content: space-between; column-gap: 14px; }
 .review-score .sc-mid { overflow-wrap: anywhere; }
 

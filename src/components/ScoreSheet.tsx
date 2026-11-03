@@ -61,7 +61,7 @@ function OtherCount(props: { label: string; cell: SharedCell; mine: SharedCell }
 }
 
 export const scoreName = (d: number): string =>
-  d <= -3 ? 'Albatross' : d === -2 ? 'Eagle' : d === -1 ? 'Birdie' : d === 0 ? 'Par' : d === 1 ? 'Bogey' : d === 2 ? tr('Double bogey', 'Doppelbogey') : `+${d}`;
+  d <= -3 ? 'Albatross' : d === -2 ? 'Eagle' : d === -1 ? 'Birdie' : d === 0 ? 'Par' : d === 1 ? 'Bogey' : d === 2 ? 'Double Bogey' : d === 3 ? 'Triple Bogey' : `+${d}`; // Sascha 03.11.2026: Double Bogey, Triple Bogey, then +4 …
 
 /**
  * The fewest strokes the other numbers allow: the putts, each penalty stroke with the shot that went into the water or

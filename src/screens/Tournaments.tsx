@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { useTop } from '../components/useTop';
 import type { Course, CourseSummary } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
@@ -356,7 +357,6 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
           </section>
         ) : (
           <>
-            <p className="muted">{tr('No tournaments yet.', 'Noch keine Turniere.')}</p>
             {props.onNew && (
               <button type="button" className="btn-secondary" onClick={props.onNew}>
                 {tr('New tournament', 'Neues Turnier')}
@@ -627,6 +627,7 @@ export function draftOf(e: TourEntry): TourDraft {
 }
 
 export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) => void; onBack: () => void; onCourse: () => void; onSaved: (code: string) => void }) {
+  useTop();
   const d = props.draft;
   const set = (patch: Partial<TourDraft>) => props.onChange({ ...d, ...patch });
   const [busy, setBusy] = useState(false);
@@ -1510,6 +1511,7 @@ export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; row
 }
 
 export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void }) {
+  useTop(props.code);
   const entry = useSeries().find((e) => e.code === props.code);
   const tours = useTours();
   const [evs, setEvs] = useState<RoundEvent[]>([]);
@@ -1686,6 +1688,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
 // ---------- one tournament ----------
 
 export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d: TourDraft) => void; onOpenSeries?: (code: string) => void }) {
+  useTop(props.code);
   const entry = useTours().find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
   const [msg, setMsg] = useState<string | null>(null);
