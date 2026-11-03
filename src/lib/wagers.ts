@@ -2,8 +2,8 @@ import type { HoleEntry, Round, SharedCell } from '../types';
 import { isTeamRound } from './games';
 import { emptyEntry, greenInRegulation, handicapStrokes, stablefordPoints } from './scoring';
 import { tr } from './i18n';
-import { currencySymbol, money } from './gameforms';
-import { prizeOf, prizeSym, type Prize } from './prize';
+import { currencySymbol, money, transfers } from './gameforms';
+import { isNone, prizeOf, prizeSym, whoOf, type Prize } from './prize';
 
 // Bets over a trip (Sascha 01.11.2026: "in America we have bets running – every player his own targets, 20 € each:
 // Chris 3 birdies in a row, 12 pars in a row, 5 birdies on 18, 16 greens, −5 …; it must be possible to set up
@@ -349,6 +349,35 @@ export function afterPayments(bal: Record<string, number>, payments: Payment[] |
     out[p.to] = (out[p.to] ?? 0) - p.amount;
   }
   return out;
+}
+
+/** Who gives what to whom in a pool (Sascha 03.11.2026: "does the loser pay the meal for all the others, or only for
+ *  the winner?"): counted per bet – the fewest transfers that settle the balances; the loser (last, several when level)
+ *  one each to all the others or to the winner; without a stake nothing. */
+export function poolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'prize'>, bal: Record<string, number>): { from: string; to: string; amount: number }[] {
+  const p = prizeOf(pool);
+  if (isNone(p)) return [];
+  const who = whoOf(p);
+  if (who === 'each') return transfers(bal);
+  const ids = pool.players.map((x) => x.id);
+  const v = (id: string) => Math.round((bal[id] ?? 0) * 100) / 100;
+  const lo = Math.min(...ids.map(v));
+  const hi = Math.max(...ids.map(v));
+  if (hi - lo < 0.005) return [];
+  const losers = ids.filter((id) => v(id) === lo);
+  const to = who === 'loserAll' ? ids.filter((id) => !losers.includes(id)) : ids.filter((id) => v(id) === hi);
+  return losers.flatMap((l) => to.map((t) => ({ from: l, to: t, amount: 1 })));
+}
+
+/** What is still to give after the payments: counted per bet as ever (the balances once paid); the loser's ones each
+ *  less what he gave that one. */
+export function openPoolTransfers(pool: Pick<WagerPool, 'players' | 'currency' | 'prize' | 'payments'>, bal: Record<string, number>): { from: string; to: string; amount: number }[] {
+  const p = prizeOf(pool);
+  if (isNone(p)) return [];
+  if (whoOf(p) === 'each') return transfers(afterPayments(bal, pool.payments));
+  return poolTransfers(pool, bal)
+    .map((t) => ({ ...t, amount: t.amount - (pool.payments ?? []).filter((x) => x.from === t.from && x.to === t.to).reduce((s, x) => s + x.amount, 0) }))
+    .filter((t) => t.amount > 0.004);
 }
 
 /** The pool's "with marker" carried to each of its bets – the judging reads the bet's own flag. */

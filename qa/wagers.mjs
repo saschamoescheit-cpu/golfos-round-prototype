@@ -174,18 +174,29 @@ const choose = async (label, option, inside = H) => {
   await inside.locator('.settings-row').filter({ hasText: label }).first().click();
   await H.getByRole('dialog', { name: label }).getByRole('button', { name: new RegExp(`^${option.replace(/[()$]/g, (c) => '\\' + c)}`) }).click();
 };
-// what is played for (Sascha 03.11.2026: "drinks, a meal, cleaning the clubs – and one's own"): the fixed choice, one's own typed
+// what is played for (Sascha 03.11.2026): no value until chosen – green, "Pool anlegen" waits; Geld, the things, one's
+// own, Ohne Einsatz – then the currency, or who buys for whom
 {
-  await H.locator('.settings-row').filter({ hasText: 'Worum wird gespielt' }).click();
+  const row = H.locator('.settings-row').filter({ hasText: 'Worum wird gespielt' });
+  ok(/Bitte wählen/.test(await row.innerText()) && (await row.locator('.settings-value.need').count()) === 1 && (await H.getByRole('button', { name: 'Pool anlegen' }).isDisabled()), 'played for: none chosen – green, required');
+  await row.click();
   const ps = H.getByRole('dialog', { name: 'Worum wird gespielt' });
   const names = (await ps.locator('.pick-option strong').allInnerTexts()).join('|');
-  ok(names === 'Euro (€)|Dollar ($)|Getränke|Essen|Schläger putzen|Eigener Einsatz …', `played for: ${names}`);
+  ok(names === 'Geld|Getränke|Essen|Schläger putzen|Eigener Einsatz …|Ohne Einsatz', `played for: ${names}`);
   await ps.getByRole('button', { name: /^Eigener Einsatz/ }).click();
-  await ps.getByRole('textbox', { name: 'Worum gespielt wird' }).fill('Bier-Runde');
-  await ps.getByRole('button', { name: 'Übernehmen' }).click();
-  ok(/Bier-Runde/.test(await H.locator('.settings-row').filter({ hasText: 'Worum wird gespielt' }).innerText()), 'played for: one\'s own – "Bier-Runde"');
+  const lab = H.getByRole('dialog', { name: 'Eigener Einsatz' });
+  await lab.getByRole('textbox', { name: 'Worum gespielt wird' }).fill('Bier-Runde');
+  await lab.getByRole('button', { name: 'Weiter' }).click();
+  const who = H.getByRole('dialog', { name: 'Wer gibt wem aus' });
+  ok((await who.locator('.pick-option strong').allInnerTexts()).join('|') === 'Je verlorene Wette|Der Verlierer für alle|Der Verlierer für den Sieger', 'played for: a thing – who buys for whom, the second step');
+  await who.getByRole('button', { name: /^Der Verlierer für alle/ }).click();
+  ok(/Bier-Runde · Der Verlierer für alle/.test(await row.innerText()), `played for: one's own – "${(await row.innerText()).replace(/\s+/g, ' ')}"`);
+  // the trip: money, in dollars – the currency the second step
+  await row.click();
+  await ps.getByRole('button', { name: /^Geld/ }).click();
+  await H.getByRole('dialog', { name: 'Geld – die Währung' }).getByRole('button', { name: /^Dollar/ }).click();
+  ok(/Geld · Dollar/.test(await row.innerText()), 'played for: money – dollar chosen in the second step');
 }
-await choose('Worum wird gespielt', 'Dollar ($)'); // the trip: in dollars
 // "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker
 await H.getByRole('switch', { name: /Mit Zähler/ }).click();
 await H.getByRole('button', { name: 'Pool anlegen' }).click();

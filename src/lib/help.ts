@@ -28,7 +28,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   // the Games module (night 25./26.10.2026 – Sascha tests Games next); not part of the Rounds tour
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance, swipe to delete', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz, Löschen per Wischen'), length: '1:15' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
-  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, Runde starten, der Stand, die Abrechnung'), length: '1:26' },
+  { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, Runde starten, der Stand, die Abrechnung'), length: '1:28' },
   { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('Flights with their tee times, players moved, markers, special prizes, live leaderboard', 'Flights mit Startzeit, Spieler verschieben, Zähler, Sonderwertungen, Live-Rangliste'), length: '1:24' },
 ];
 /** The whole tour in one video. */
@@ -313,8 +313,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Can we play for drinks instead of money?', 'Können wir auch um Getränke statt um Geld spielen?'),
         a: () =>
           tr(
-            'Yes, in the bets: "Played for" – euro, dollar, drinks, a meal, cleaning the clubs, or your own stake typed. A thing is counted: "2 × drink", "Cedric owes Sascha".',
-            'Ja, bei den Wetten: „Worum wird gespielt“ – Euro, Dollar, Getränke, Essen, Schläger putzen oder ein eigener Einsatz. Dann wird gezählt: „2 × Getränk“, „Cedric schuldet Sascha“.',
+            'Yes, in the bets: "Played for" – money (then euro or dollar), drinks, a meal, cleaning the clubs, your own stake typed – or no stake, for the honour. For a thing you choose who buys for whom: counted per bet lost ("2 × drink"), the loser for all, or the loser for the winner.',
+            'Ja, bei den Wetten: „Worum wird gespielt“ – Geld (dann Euro oder Dollar), Getränke, Essen, Schläger putzen, ein eigener Einsatz oder ohne Einsatz, um die Ehre. Bei einem Ding wählst du, wer wem ausgibt: je verlorene Wette gezählt („2 × Getränk“), der Verlierer für alle oder der Verlierer für den Sieger.',
           ),
         video: 'wagers',
       },
