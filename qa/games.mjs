@@ -248,7 +248,7 @@ ok(/Spiele/.test(bal) && /Siege/.test(bal) && /S2/.test(bal) && /\d+× vorne · 
 {
   const eur = (t) => Number(t.replace(/[−–]/g, '-').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
   const total = eur(await p.locator('.balance-totals strong').nth(2).innerText());
-  const per = await p.locator('.game-pays li > strong').allInnerTexts();
+  const per = await p.locator('.balance-people li strong').allInnerTexts();
   const sum = per.reduce((s, t) => s + eur(t), 0);
   ok(per.length > 0 && Math.abs(sum - total) <= 0.01 * per.length * 3, `balance: per friend ${per.join(' ')} adds up to ${total} €`);
 }
