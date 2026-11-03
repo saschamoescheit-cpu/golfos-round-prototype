@@ -15,12 +15,13 @@ export function SettingsList(props: { children: ReactNode; label?: string }) {
   );
 }
 
-/** One row: "Label · value ›" – tapped, it opens what it stands for. */
-export function SettingsRow(props: { label: ReactNode; value?: ReactNode; onClick: () => void; disabled?: boolean }) {
+/** One row: "Label · value ›" – tapped, it opens what it stands for. `need`: a required choice not made yet – its value
+ *  ("Platz wählen") in green, the one look of a required field in the app (Sascha 03.11.2026); an optional one stays grey. */
+export function SettingsRow(props: { label: ReactNode; value?: ReactNode; onClick: () => void; disabled?: boolean; need?: boolean }) {
   return (
     <button type="button" className="settings-row" onClick={props.onClick} disabled={props.disabled}>
       <span>{props.label}</span>
-      {props.value != null && <span className="settings-value">{props.value}</span>}
+      {props.value != null && <span className={`settings-value${props.need ? ' need' : ''}`}>{props.value}</span>}
       <span aria-hidden="true">›</span>
     </button>
   );
@@ -65,13 +66,14 @@ export function PickSheet<T>(props: { title: string; options: Choice<T>[]; curre
   );
 }
 
-/** A row with its own sheet of choices – the usual case: a choice of several, each with what it means. */
-export function ChoiceRow<T>(props: { label: string; title?: string; options: Choice<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean }) {
+/** A row with its own sheet of choices – the usual case: a choice of several, each with what it means. `prompt`: a
+ *  required choice – shown in green ("Gegner wählen") while none is made. */
+export function ChoiceRow<T>(props: { label: string; title?: string; options: Choice<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean; prompt?: string }) {
   const [open, setOpen] = useState(false);
   const current = props.options.find((o) => o.value === props.value);
   return (
     <>
-      <SettingsRow label={props.label} value={current?.name ?? '–'} onClick={() => setOpen(true)} disabled={props.disabled} />
+      <SettingsRow label={props.label} value={current?.name ?? props.prompt ?? '–'} need={!current && !!props.prompt} onClick={() => setOpen(true)} disabled={props.disabled} />
       {open && (
         <PickSheet
           title={props.title ?? props.label}

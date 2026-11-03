@@ -1002,7 +1002,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         <div className="settings-list">
           <button type="button" className="settings-row" onClick={props.onCourse}>
             <span>{tr('Course', 'Platz')}</span>
-            <span className={`settings-value${d.course ? '' : ' good-text'}`}>{d.course?.name ?? tr('Choose a course', 'Platz wählen')}</span>
+            <span className={`settings-value${d.course ? '' : ' need'}`}>{d.course?.name ?? tr('Choose a course', 'Platz wählen')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>
@@ -1026,7 +1026,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         <div className="settings-list">
           <button type="button" className="settings-row" onClick={() => setPicker(true)}>
             <span>{tr('Form', 'Spielform')}</span>
-            <span className={`settings-value${chosen ? '' : ' good-text'}`}>{chosen ? f.name() : tr('Choose a game form', 'Spielform wählen')}</span>
+            <span className={`settings-value${chosen ? '' : ' need'}`}>{chosen ? f.name() : tr('Choose a game form', 'Spielform wählen')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>

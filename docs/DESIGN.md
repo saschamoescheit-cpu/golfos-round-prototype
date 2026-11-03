@@ -38,6 +38,11 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
 Chips with five or more values, or with values that need explaining, become a row with a sheet. A sheet shows each
 option with one line of what it means and ✓ at the chosen one.
 
+**Required, not filled yet – green** (Sascha 03.11.2026): a required choice not made shows its prompt in green
+("Platz wählen", "Spielform wählen", "Gegner wählen") – `SettingsRow need`, `ChoiceRow prompt`, or `settings-value need`.
+A required text field gets `required` and an instruction or "z. B. …" as its placeholder ("Name eingeben"); the
+placeholder then shows green. **Optional stays grey** – the rounds of a bet pool, the course there: no `need`.
+
 ## Players
 
 - Players always as `PlayerRow` (name · Tee · HCP · Vorgabe), the friends as `FriendChips` above "+ Spieler

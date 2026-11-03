@@ -9,7 +9,7 @@ import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib
 import { fetchShared } from '../lib/sharedratings';
 import { isLady, loadProfile, shownName } from '../lib/profile';
 import { type Scoring } from '../lib/games';
-import { eventStandings, markerOf, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, eventStandings, markerOf, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
 import { addToSeries, changeTour, createSeries, createTour, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
@@ -169,7 +169,7 @@ function SeriesSheet(props: { tours: TourEntry[]; onDone: (code: string) => void
         </div>
         <div className="field">
           <label htmlFor="series-name">{tr('Name of the series', 'Name der Serie')}</label>
-          <input id="series-name" className="input" placeholder={tr('Golf trip 2026', 'Golfreise 2026')} value={name} onChange={(e) => setName(e.target.value)} />
+          <input id="series-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <span className="eyebrow">{tr('Its rounds', 'Ihre Runden')}</span>
         {props.tours.map((e) => (
@@ -399,17 +399,17 @@ const tourScoring = (s: Scoring) => (s === 'stableford' ? 'Stableford' : s === '
 // the number of classes first (Sascha 02.11.2026: "rather three net classes than two" – the three were there, not seen);
 // the last class up to 54 (Sascha 03.11.2026: "C up to 54") – the limits kept are the ones before it, as ever
 const CLASS_TOP = 54;
-const LETTERS = 'ABCD';
+const LETTERS = CLASS_NAMES; // A to J – as many classes as wanted, up to ten (Sascha 03.11.2026)
 const classLimits = (c: number[]) => [...c.map((x, i) => `${LETTERS[i]} ${tr('up to', 'bis')} ${x}`), `${LETTERS[c.length]} ${tr('up to', 'bis')} ${CLASS_TOP}`].join(' · ');
 const classesName = (c: number[]) => (!c.length ? tr('None', 'Keine') : `${tr(`${c.length + 1} classes`, `${c.length + 1} Klassen`)} · ${classLimits(c)}`);
 const CLASS_PRESETS: number[][] = [[], [18], [12, 24]];
 const isPreset = (c: number[]) => CLASS_PRESETS.some((p) => p.join() === c.join());
 
-/** "Netto-Klassen" (Sascha 03.11.2026): none, 2 or 3 – or "Eigene": two to four classes, each its limit, the last up to
+/** "Netto-Klassen" (Sascha 03.11.2026): none, 2 or 3 – or "Eigene": two to ten classes, each its limit, the last up to
  *  54. The limits rise from class to class. */
 function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; onClose: () => void }) {
   // "Eigene" as rows (Sascha 03.11.2026: "the look and the setting up of 'Eigene' do not please me yet"): a row per
-  // class "Klasse A · bis 9 ›", its limit from a list as every other choice; "+ Klasse" up to four, the last up to 54
+  // class "Klasse A · bis 9 ›", its limit from a list as every other choice; "+ Klasse" up to ten (Sascha 03.11.2026: "more than four"), the last up to 54
   const [own, setOwn] = useState<number[] | null>(props.value.length && !isPreset(props.value) ? props.value : null);
   const [editing, setEditing] = useState<number | null>(null);
   const lo = (i: number) => (own && i ? own[i - 1] + 1 : 1);
@@ -420,10 +420,11 @@ function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; o
     requestAnimationFrame(() => document.querySelector('.sheet .pick-option[aria-pressed="true"]')?.scrollIntoView({ block: 'center' }));
   }, [editing]);
   const add = () => {
-    if (!own || own.length >= 3) return;
+    if (!own || own.length >= LETTERS.length - 1) return;
     const last = own[own.length - 1];
     if (last >= CLASS_TOP - 1) return;
-    setOwn([...own, Math.round((last + CLASS_TOP) / 2)]);
+    // the next limit about a step on (as 9 · 18 · 26), at most half the room left – each one chosen after
+    setOwn([...own, last + Math.max(1, Math.min(9, Math.round((CLASS_TOP - last) / 2)))]);
   };
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
@@ -448,7 +449,7 @@ function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; o
             <button type="button" className="pick-option" aria-pressed={false} onClick={() => setOwn(props.value.length && !isPreset(props.value) ? props.value : [9, 18, 26])}>
               <span className="grow">
                 <strong>{tr('Own …', 'Eigene …')}</strong>
-                <span className="muted small">{tr('Two to four classes, each with its limit.', 'Zwei bis vier Klassen, jede mit ihrer Grenze.')}</span>
+                <span className="muted small">{tr('Two to ten classes, each with its limit.', 'Zwei bis zehn Klassen, jede mit ihrer Grenze.')}</span>
               </span>
               <span aria-hidden="true">›</span>
             </button>
@@ -462,7 +463,7 @@ function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; o
               <SettingsRow label={tr(`Class ${LETTERS[own.length]}`, `Klasse ${LETTERS[own.length]}`)} value={tr(`up to ${CLASS_TOP}`, `bis ${CLASS_TOP}`)} onClick={() => undefined} disabled />
             </SettingsList>
             <span className="muted small">{tr('By playing handicap. The last class takes everyone up to 54.', 'Nach Spielvorgabe. Die letzte Klasse nimmt alle bis 54.')}</span>
-            {own.length < 3 && own[own.length - 1] < CLASS_TOP - 1 && (
+            {own.length < LETTERS.length - 1 && own[own.length - 1] < CLASS_TOP - 1 && (
               <button type="button" className="btn-secondary" onClick={add}>
                 {tr('+ Class', '+ Klasse')}
               </button>
@@ -719,7 +720,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         <div className="card setup-part">
           <div className="field">
             <label htmlFor="tour-name">{tr('Name', 'Name')}</label>
-            <input id="tour-name" className="input" placeholder={tr('USA day 1', 'USA Tag 1')} value={d.name} onChange={(e) => set({ name: e.target.value })} />
+            <input id="tour-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={d.name} onChange={(e) => set({ name: e.target.value })} />
           </div>
         </div>
         {/* the day as a row – the phone's picker, never a bare 2026-11-02 (docs/DESIGN.md) */}
@@ -733,7 +734,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         <div className="settings-list">
           <button type="button" className="settings-row" onClick={props.onCourse}>
             <span>{tr('Course', 'Platz')}</span>
-            <span className={`settings-value${d.course || d.base ? '' : ' good-text'}`}>{d.course?.name ?? d.base?.course.name ?? tr('Choose a course', 'Platz wählen')}</span>
+            <span className={`settings-value${d.course || d.base ? '' : ' need'}`}>{d.course?.name ?? d.base?.course.name ?? tr('Choose a course', 'Platz wählen')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>
@@ -811,6 +812,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           <PlayerRow
             key={p.id}
             className="game-player-row"
+            nameNeeded
             player={{ id: `t${p.id}`, name: p.name, index: p.hcp, handicap: '', tee: teeOf(p, k) }}
             nameLabel={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
             rating={ratingOf(p, k)}

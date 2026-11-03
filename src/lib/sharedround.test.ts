@@ -274,6 +274,9 @@ describe('a tournament: the standings', () => {
     expect(classOf(12, [12])).toBe('A');
     expect(classOf(12.5, [12, 24])).toBe('B');
     expect(classOf(null, [12, 24])).toBe('C');
+    // more than four classes (03.11.2026): six, the last E … F up to 54
+    expect(classOf(30, [6, 12, 18, 24, 28])).toBe('F');
+    expect(classOf(19, [6, 12, 18, 24, 28])).toBe('D');
   });
   it('the results as CSV: place, player, flight, class, score, holes', () => {
     const csv = standingsCsv(event({ a: [4, 4, 4], b: [5, 5, 5] }, { a: 3, b: 30 }, { allowance: 0, classes: [18] }), true);

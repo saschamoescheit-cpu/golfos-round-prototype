@@ -104,7 +104,7 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
         <div className="settings-list">
           <button type="button" className="settings-row" onClick={props.onCourse}>
             <span>{tr('Course', 'Platz')}</span>
-            <span className={`settings-value${course ? '' : ' good-text'}`}>{course?.name ?? tr('Choose a course', 'Platz wählen')}</span>
+            <span className={`settings-value${course ? '' : ' need'}`}>{course?.name ?? tr('Choose a course', 'Platz wählen')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>

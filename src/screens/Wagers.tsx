@@ -384,7 +384,7 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
         {!adding?.course && (
           <SettingsRow
             label={sorted.length ? tr('Another round', 'Weitere Runde') : tr('Course', 'Platz')}
-            value={<span className="good-text">{tr('Choose a course', 'Platz wählen')}</span>}
+            value={tr('Choose a course', 'Platz wählen')}
             onClick={() => {
               setAdding({ day: nextDay() });
               setPicking(true);
@@ -1016,8 +1016,8 @@ function Field(props: { label: string; children: React.ReactNode }) {
 
 /** A choice as a row with its sheet, where the bets had chip groups (Sascha 02.11.2026: "as Format in the round
  *  settings" – docs/DESIGN.md); inside a `SettingsList`. */
-function Pick<T>(props: { label: string; value: T | null | undefined; onChange: (v: T) => void; options: { value: T; label: string; text?: string }[] }) {
-  return <ChoiceRow<T> label={props.label} options={props.options.map((o) => ({ value: o.value, name: o.label, text: o.text }))} value={props.value as T} onChange={props.onChange} />;
+function Pick<T>(props: { label: string; value: T | null | undefined; onChange: (v: T) => void; options: { value: T; label: string; text?: string }[]; prompt?: string }) {
+  return <ChoiceRow<T> label={props.label} options={props.options.map((o) => ({ value: o.value, name: o.label, text: o.text }))} value={props.value as T} onChange={props.onChange} prompt={props.prompt} />;
 }
 
 /** An own bet, built (Sascha 02.11.2026): what is counted, at least or at most, the number, on which holes, in a row. */
@@ -1058,6 +1058,7 @@ function CustomFields(props: { w: Wager; set: (patch: Partial<Wager>) => void })
           <input
             className="input"
             inputMode="numeric"
+            required
             aria-label={tr('The holes', 'Die Löcher')}
             placeholder={tr('e.g. 7, 12', 'z. B. 7, 12')}
             value={holes}
@@ -1127,7 +1128,7 @@ function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wage
           />
         )}
         {w.payout === 'opponent' && !duel && (
-          <Pick<string> label={tr('Against', 'Gegen')} value={w.opponent ?? null} onChange={(v) => set({ opponent: v })} options={pool.players.filter((p) => p.id !== w.player).map((p) => ({ value: p.id, label: p.name }))} />
+          <Pick<string> label={tr('Against', 'Gegen')} prompt={tr('Choose an opponent', 'Gegner wählen')} value={w.opponent ?? null} onChange={(v) => set({ opponent: v })} options={pool.players.filter((p) => p.id !== w.player).map((p) => ({ value: p.id, label: p.name }))} />
         )}
         {/* with the rounds of the trip: every round or one of them (Sascha 01.11.2026) – without, every round or one day */}
         {w.kind !== 'free' && (
@@ -1159,7 +1160,7 @@ function DuelFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wag
   return (
     <>
       <SettingsList>
-        <Pick<string> label={tr('Against', 'Gegen')} value={w.opponent ?? null} onChange={(v) => set({ opponent: v })} options={pool.players.filter((x) => x.id !== w.player).map((x) => ({ value: x.id, label: x.name }))} />
+        <Pick<string> label={tr('Against', 'Gegen')} prompt={tr('Choose an opponent', 'Gegner wählen')} value={w.opponent ?? null} onChange={(v) => set({ opponent: v })} options={pool.players.filter((x) => x.id !== w.player).map((x) => ({ value: x.id, label: x.name }))} />
         <Pick<'gross' | 'net'>
           label={tr('Score', 'Ergebnis')}
           value={w.net ? 'net' : 'gross'}
@@ -1296,7 +1297,7 @@ export function WagerSheet(props: {
   const set = (patch: Partial<Wager>) => setW({ ...w, ...patch });
   const k = KINDS.find((x) => x.kind === w.kind)!;
   const manual = props.wager ? pool.progress[props.wager.id]?.manual : undefined;
-  const ok = (w.kind !== 'free' || !!w.text?.trim()) && (w.kind !== 'custom' || w.where !== 'holes' || !!w.holesOf?.length) && (w.payout !== 'opponent' || (!!w.opponent && w.opponent !== w.player));
+  const ok = (w.kind !== 'free' || !!w.text?.trim()) && (w.kind !== 'custom' || w.where !== 'holes' || !!w.holesOf?.length) && (w.payout !== 'opponent' || (!!w.opponent && w.opponent !== w.player)) && (shapeOf(w.kind) !== 'duel' || (!!w.opponent && w.opponent !== w.player));
   // an own bet: its words for the push (the server says them as it is), and kept in "Eigene Wetten"
   const save = () => {
     if (w.kind === 'custom') keepMyBet(myBetOf(w));
@@ -1323,7 +1324,7 @@ export function WagerSheet(props: {
           <CustomFields w={w} set={set} />
         ) : w.kind === 'free' ? (
           <Field label={tr('The bet in words', 'Die Wette in Worten')}>
-            <input className="input" aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('Longest drive on hole 7', 'Längster Drive an Loch 7')} value={w.text ?? ''} onChange={(e) => set({ text: e.target.value })} />
+            <input className="input" required aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('e.g. longest drive on hole 7', 'z. B. Längster Drive an Loch 7')} value={w.text ?? ''} onChange={(e) => set({ text: e.target.value })} />
           </Field>
         ) : (
           <Field label={k.number()}>
@@ -1650,7 +1651,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
                     </button>
                     {on && b.kind !== 'free' && <Stepper compact label={b.name()} value={picked[b.id]} min={k.min} onChange={(v) => setPicked({ ...picked, [b.id]: v })} />}
                     {on && b.kind === 'free' && (
-                      <input className="input" aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('Longest drive on hole 7', 'Längster Drive an Loch 7')} value={text} onChange={(e) => setText(e.target.value)} />
+                      <input className="input" required aria-label={tr('The bet in words', 'Die Wette in Worten')} placeholder={tr('e.g. longest drive on hole 7', 'z. B. Längster Drive an Loch 7')} value={text} onChange={(e) => setText(e.target.value)} />
                     )}
                   </div>
                 );

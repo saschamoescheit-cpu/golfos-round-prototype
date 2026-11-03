@@ -634,7 +634,7 @@ export function teeChoicesFor(courseId: string, holes: RoundHole[], ids: string[
   });
 }
 
-export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean; tees?: TeeChoice[]; className?: string; /** the name not to be typed – a pool's player, the bets know him by it (Games, 02.11.2026) */ nameFixed?: boolean }) {
+export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlayer) => void; onRemove?: () => void; nameLabel: string; rating: TeeRating | null; playing: number | null; nine?: boolean; tees?: TeeChoice[]; className?: string; /** the name not to be typed – a pool's player, the bets know him by it (Games, 02.11.2026) */ nameFixed?: boolean; /** the name required – "Name eingeben" in green while empty */ nameNeeded?: boolean }) {
   const { player } = props;
   const [teeOpen, setTeeOpen] = useState(false);
   const myTee = props.tees?.find((t) => t.id === player.tee);
@@ -644,7 +644,7 @@ export function PlayerRow(props: { player: DraftPlayer; onChange: (p: DraftPlaye
     <div className={`card player-row${props.className ? ' ' + props.className : ''}`}>
       <div className="field">
         <label htmlFor={`name-${player.id}`}>{props.nameLabel}</label>
-        <input id={`name-${player.id}`} className="input" value={player.name} readOnly={props.nameFixed} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
+        <input id={`name-${player.id}`} className="input" value={player.name} readOnly={props.nameFixed} required={props.nameNeeded} placeholder={props.nameNeeded ? tr('Enter a name', 'Name eingeben') : undefined} onChange={(e) => props.onChange({ ...player, name: e.target.value })} />
       </div>
       {/* the tee: its colour, a tap chooses it */}
       <div className="field">
