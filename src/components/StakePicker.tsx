@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { tr } from '../lib/i18n';
 import { money } from '../lib/gameforms';
+import { PickSheet, SettingsRow } from './Settings';
 
 // The stake picker of Games (a stake per hole, a skin …), shared (02.11.2026: "one look everywhere" – a bet's stake
 // the same as a game's): the usual amounts as chips in a SheetRow's sheet, "other …" typed in and checked.
@@ -52,6 +53,82 @@ export function StakePicker(props: { value: number; onChange: (v: number) => voi
         </div>
       )}
       {error && <span className="small bad-text" role="alert">{error}</span>}
+    </>
+  );
+}
+
+/** The stake as a row with its list (Sascha 03.11.2026: "the stake's sheet looks other than the other menus" – the
+ *  amounts as the options of "Vorgabe", the chosen one ticked; "Anderer Betrag …" typed in below). One tap picks and
+ *  closes, as every other row. */
+export function StakeRow(props: { label: string; value: number; onChange: (v: number) => void; stakes?: number[]; disabled?: boolean }) {
+  const stakes = props.stakes ?? STAKES;
+  const [open, setOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const custom = props.value > 0 && !stakes.includes(props.value);
+  const OTHER = -1;
+  const close = () => {
+    setOpen(false);
+    setTyping(false);
+    setError(null);
+  };
+  const take = () => {
+    const v = Number(text.replace(/[€$]/g, '').replace(/\s/g, '').replace(',', '.'));
+    if (!text.trim() || !Number.isFinite(v) || v <= 0) return setError(tr('Type an amount, e.g. 3', 'Gib einen Betrag ein, z. B. 3'));
+    if (v > 1000) return setError(tr(`At most ${money(1000)}.`, `Höchstens ${money(1000)}.`));
+    props.onChange(Math.round(v * 100) / 100);
+    close();
+  };
+  return (
+    <>
+      <SettingsRow label={props.label} value={props.value ? money(props.value) : tr('none', 'ohne')} onClick={() => setOpen(true)} disabled={props.disabled} />
+      {open && (
+        <PickSheet<number>
+          title={props.label}
+          current={typing || custom ? OTHER : props.value}
+          options={[
+            ...stakes.map((v) => ({ value: v, name: v ? money(v) : tr('None', 'Ohne') })),
+            { value: OTHER, name: custom ? tr(`Other amount: ${money(props.value)}`, `Anderer Betrag: ${money(props.value)}`) : tr('Other amount …', 'Anderer Betrag …') },
+          ]}
+          onPick={(v) => {
+            if (v === OTHER) {
+              setTyping(true);
+              setText(custom ? money(props.value).replace(/ [€$]$/, '') : '');
+              return;
+            }
+            props.onChange(v);
+            close();
+          }}
+          onClose={close}
+        >
+          {typing && (
+            <div className="cap-input">
+              <input
+                className="input"
+                inputMode="decimal"
+                autoFocus
+                aria-label={tr('The amount', 'Der Betrag')}
+                placeholder="3"
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setError(null);
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && take()}
+              />
+              <button type="button" className="btn-secondary" onClick={take}>
+                {tr('Use', 'Übernehmen')}
+              </button>
+            </div>
+          )}
+          {error && (
+            <span className="small bad-text" role="alert">
+              {error}
+            </span>
+          )}
+        </PickSheet>
+      )}
     </>
   );
 }

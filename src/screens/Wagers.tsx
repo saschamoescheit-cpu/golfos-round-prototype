@@ -12,8 +12,8 @@ import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, afterPayments, balance
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
-import { StakePicker } from '../components/StakePicker';
+import { ChoiceRow, DateRow, SettingsList, SettingsRow, ToggleRow, dayText } from '../components/Settings';
+import { StakeRow } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
 import { PaidMarks } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
@@ -1105,7 +1105,6 @@ function CustomBetSheet(props: { onDone: (b: MyBet) => void; onClose: () => void
 /** Stake, payout and attempts – the same for one bet and for the template. */
 function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wager>) => void }) {
   const { pool, w, set } = props;
-  const sym = currencySymbol(pool.currency);
   setCurrency(pool.currency); // the stake picker's amounts in the pool's money
   const duel = shapeOf(w.kind) === 'duel';
   return (
@@ -1113,9 +1112,7 @@ function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wage
       <SettingsList>
         {/* the stake as a game's (Rounds 02.11.2026: the shared StakePicker) – a bet's larger amounts */}
         {!duel && (
-          <SheetRow label={tr('Stake', 'Einsatz')} value={money(w.stake, sym)}>
-            <StakePicker stakes={[5, 10, 20, 50, 100]} value={w.stake} onChange={(v) => set({ stake: v })} />
-          </SheetRow>
+          <StakeRow label={tr('Stake', 'Einsatz')} stakes={[5, 10, 20, 50, 100]} value={w.stake} onChange={(v) => set({ stake: v })} />
         )}
         {!duel && (
           <Pick<Payout>
