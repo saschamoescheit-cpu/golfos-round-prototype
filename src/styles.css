@@ -943,6 +943,10 @@ button.tile:disabled { opacity: 1; }
 /* a row stays one line (Sascha 03.11.2026: "the hint texts spoil the look"): the value a little smaller, cut with … – the
    sheet behind it shows it whole */
 .settings-value { text-align: right; color: var(--muted); font-weight: 500; font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a required field not filled yet – green, as "Platz wählen" (Sascha 03.11.2026); an optional one stays grey */
+.settings-value.need { color: var(--brand-text); }
+.input:required::placeholder { color: var(--brand-text); opacity: 1; }
+:root[data-theme='sun'] .settings-value.need, :root[data-theme='sun'] .input:required::placeholder { color: #2f5a00; }
 .pick-list { display: flex; flex-direction: column; gap: 6px; }
 .pick-option {
   display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);

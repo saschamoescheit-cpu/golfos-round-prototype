@@ -169,7 +169,7 @@ function SeriesSheet(props: { tours: TourEntry[]; onDone: (code: string) => void
         </div>
         <div className="field">
           <label htmlFor="series-name">{tr('Name of the series', 'Name der Serie')}</label>
-          <input id="series-name" className="input" placeholder={tr('Golf trip 2026', 'Golfreise 2026')} value={name} onChange={(e) => setName(e.target.value)} />
+          <input id="series-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <span className="eyebrow">{tr('Its rounds', 'Ihre Runden')}</span>
         {props.tours.map((e) => (
@@ -719,7 +719,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         <div className="card setup-part">
           <div className="field">
             <label htmlFor="tour-name">{tr('Name', 'Name')}</label>
-            <input id="tour-name" className="input" placeholder={tr('USA day 1', 'USA Tag 1')} value={d.name} onChange={(e) => set({ name: e.target.value })} />
+            <input id="tour-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={d.name} onChange={(e) => set({ name: e.target.value })} />
           </div>
         </div>
         {/* the day as a row – the phone's picker, never a bare 2026-11-02 (docs/DESIGN.md) */}
@@ -733,7 +733,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         <div className="settings-list">
           <button type="button" className="settings-row" onClick={props.onCourse}>
             <span>{tr('Course', 'Platz')}</span>
-            <span className={`settings-value${d.course || d.base ? '' : ' good-text'}`}>{d.course?.name ?? d.base?.course.name ?? tr('Choose a course', 'Platz wählen')}</span>
+            <span className={`settings-value${d.course || d.base ? '' : ' need'}`}>{d.course?.name ?? d.base?.course.name ?? tr('Choose a course', 'Platz wählen')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>
@@ -811,6 +811,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           <PlayerRow
             key={p.id}
             className="game-player-row"
+            nameNeeded
             player={{ id: `t${p.id}`, name: p.name, index: p.hcp, handicap: '', tee: teeOf(p, k) }}
             nameLabel={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
             rating={ratingOf(p, k)}

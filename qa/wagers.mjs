@@ -148,6 +148,10 @@ await H.getByRole('textbox', { name: 'HCP' }).nth(1).fill('12,4');
   const trip = H.locator('.trip-rounds');
   const row = trip.locator('.settings-row');
   ok((await row.count()) === 1 && /Platz\s*Platz wählen/.test(await row.innerText()) && (await trip.getByRole('button', { name: '+ Runde' }).count()) === 0, `rounds: a row "Platz · Platz wählen" (${(await row.allInnerTexts()).join(' | ')})`);
+  // green only what is required (Sascha 03.11.2026) – the rounds of a pool are optional: grey as every value
+  const look = await row.locator('.settings-value').evaluate((e) => [getComputedStyle(e).color, e.classList.contains('need')]);
+  const grey = await H.evaluate(() => { const s = document.createElement('span'); s.className = 'settings-value'; document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; });
+  ok(!look[1] && look[0] === grey, `rounds: "Platz wählen" grey – the course of a pool optional (${look[0]} vs ${grey})`);
 }
 // a choice as a row with its sheet (docs/DESIGN.md, 02.11.2026): the row, then the option
 const choose = async (label, option, inside = H) => {
