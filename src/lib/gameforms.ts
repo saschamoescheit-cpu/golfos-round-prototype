@@ -76,6 +76,13 @@ export interface Standing {
   rows: StandingRow[];
   status?: string; // a line on top, e.g. "Front 9: Anna 2 up"
   money?: Record<string, number>; // + wins / − pays, in euros
+  /** how the standing came about (Sascha 03.11.2026: "more details – how the total is made up"): per pair its nines
+   *  (5+5+10), per hole played its result (Chicago, newest first) */
+  details?: StandingDetail[];
+}
+export interface StandingDetail {
+  title: string;
+  lines: { label: string; text: string; value?: string }[];
 }
 export interface FormDef {
   id: FormId;
@@ -539,20 +546,33 @@ export const FORMS: FormDef[] = [
     ],
     standing: (g) => {
       const pts: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
-      g.holes.forEach((_, i) => {
+      const names = (ids: string[]) => ids.map((id) => name(g, id)).join(' & ');
+      // every hole played: the two numbers, who won it, by how much and for what money (Sascha 03.11.2026: "a history of
+      // the holes played, so one sees how the standing is made up") – newest first
+      const history: StandingDetail = { title: tr('Hole by hole', 'Verlauf'), lines: [] };
+      g.holes.forEach((h, i) => {
         if (!played(g, i)) return;
         const [A, B] = chicagoTeams(g, i);
-        const d = teamNumber(g, B, i, A) - teamNumber(g, A, i, B); // + the first team is lower
+        const nb = teamNumber(g, B, i, A);
+        const na = teamNumber(g, A, i, B);
+        const d = nb - na; // + the first team is lower
         for (const id of A) pts[id] += d;
         for (const id of B) pts[id] -= d;
+        const pressed = (g.presses ?? []).filter((x) => x.hole === i).length;
+        const win = d > 0 ? A : B;
+        history.lines.unshift({
+          label: tr(`Hole ${h.label}`, `Loch ${h.label}`),
+          text: `${names(A)} ${na} – ${names(B)} ${nb}${pressed ? tr(` · pressed${pressed > 1 ? ` ×${pressed}` : ''}`, ` · gepresst${pressed > 1 ? ` ×${pressed}` : ''}`) : ''}`,
+          value: d === 0 ? tr('tied', 'gleich') : `${names(win)} +${dec(Math.abs(d))}${stakeAt(g, i) > 0 ? ` · ${money(Math.abs(d) * stakeAt(g, i))}` : ''}`,
+        });
       });
       const cur = Math.min(g.current, g.holes.length - 1);
       const [A, B] = chicagoTeams(g, cur);
-      const names = (ids: string[]) => ids.map((id) => name(g, id)).join(' & ');
       return {
         rows: rank(g.players.map((p) => ({ id: p.id, name: p.name, points: pts[p.id], value: `${pts[p.id] > 0 ? '+' : ''}${dec(pts[p.id])}` }))),
         status: !g.finishedAt ? tr(`Hole ${g.holes[cur].label}: ${names(A)} vs ${names(B)}`, `Loch ${g.holes[cur].label}: ${names(A)} gegen ${names(B)}`) : undefined,
         money: Object.fromEntries(g.players.map((p) => [p.id, pts[p.id] * stake(g)])),
+        details: history.lines.length ? [history] : undefined,
       };
     },
   },
@@ -946,26 +966,40 @@ export const FORMS: FormDef[] = [
       };
       const money: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
       const lines: string[] = [];
+      const details: StandingDetail[] = [];
+      const partName = (key: string) => (key === 'front' ? tr('Front 9', 'Front 9') : key === 'back' ? tr('Back 9', 'Back 9') : tr('Total', 'Gesamt'));
       for (const a of g.players)
         for (const b of g.players) {
           if (a.id >= b.id) continue;
+          const detail: StandingDetail = { title: `${a.name} – ${b.name}`, lines: [] };
           const said = parts.map((p) => {
             const x = sum(a.id, p.from, p.to);
             const y = sum(b.id, p.from, p.to);
-            if (x == null || y == null) return `${p.label} –`;
-            if (x === y) return `${p.label} =`;
+            const label = parts.length === 3 ? partName(p.key) : p.label;
+            if (x == null || y == null) {
+              detail.lines.push({ label, text: tr('still open', 'noch offen') });
+              return `${p.label} –`;
+            }
+            const text = `${a.name} ${x} – ${b.name} ${y}`;
+            if (x === y) {
+              detail.lines.push({ label, text, value: tr('tied', 'gleich') });
+              return `${p.label} =`;
+            }
             const win = x < y ? a : b;
             const v = Number(g.settings[p.key] ?? 0);
             money[win.id] += v;
             money[win === a ? b.id : a.id] -= v;
+            detail.lines.push({ label, text, value: `${win.name} ${euro(v)}` });
             return `${p.label} ${win.name}`;
           });
           lines.push(`${a.name}–${b.name}: ${said.join(', ')}`);
+          details.push(detail);
         }
       return {
         rows: rank(g.players.map((p) => ({ id: p.id, name: p.name, points: money[p.id], value: euro(money[p.id]) }))),
         status: lines.join(' · '),
         money,
+        details,
       };
     },
   },

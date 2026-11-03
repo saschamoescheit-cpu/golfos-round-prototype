@@ -791,7 +791,7 @@ export function wagerLabel(w: Wager): string {
     case 'threeputts':
       return n === 0 ? tr(`No three-putt ${on}`, `Kein Drei-Putt ${on}`) : tr(`At most ${n} three-putts ${on}`, `Höchstens ${n} Drei-Putts ${on}`);
     case 'doubles':
-      return n === 0 ? tr(`No double bogey ${on}`, `Kein Doppelbogey ${on}`) : tr(`At most ${n} double bogeys ${on}`, `Höchstens ${n} Doppelbogeys ${on}`);
+      return n === 0 ? tr(`No double bogey ${on}`, `Kein Double Bogey ${on}`) : tr(`At most ${n} double bogeys ${on}`, `Höchstens ${n} Double Bogeys ${on}`);
     case 'penalties':
       return n === 0 ? tr(`No penalty stroke ${on}`, `Kein Strafschlag ${on}`) : tr(`At most ${n} penalty strokes ${on}`, `Höchstens ${n} Strafschläge ${on}`);
     case 'score':

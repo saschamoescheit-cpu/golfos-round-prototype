@@ -20,12 +20,14 @@ export function RoundInviteHost() {
       const found = await roundInvites(joined);
       if (!gone) setInv((now) => now ?? found[0] ?? null);
     };
-    void look();
+    // a moment after the app opened – not in the middle of its loading
+    const first = window.setTimeout(() => void look(), 2500);
     const t = window.setInterval(() => void look(), 30000);
     document.addEventListener('visibilitychange', look);
     window.addEventListener('golfos:synced', look);
     return () => {
       gone = true;
+      window.clearTimeout(first);
       window.clearInterval(t);
       document.removeEventListener('visibilitychange', look);
       window.removeEventListener('golfos:synced', look);

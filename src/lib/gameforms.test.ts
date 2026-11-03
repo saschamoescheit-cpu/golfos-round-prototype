@@ -72,6 +72,17 @@ describe('5+5+10', () => {
     const st = formDef('fivefiveten').standing(game('fivefiveten', [a, b], { allowance: '0' }));
     expect(st.money).toEqual({ p0: 5 - 5 - 10, p1: -5 + 5 + 10 });
     expect(st.status).toBe('P0–P1: front P0, back P1, 18 P1');
+    // the details per pair (Sascha 03.11.2026): each nine and the total with both scores and who won what
+    expect(st.details).toEqual([
+      {
+        title: 'P0 – P1',
+        lines: [
+          { label: 'Front 9', text: 'P0 36 – P1 38', value: 'P0 +5 €' },
+          { label: 'Back 9', text: 'P0 40 – P1 35', value: 'P1 +5 €' },
+          { label: 'Total', text: 'P0 76 – P1 73', value: 'P1 +10 €' },
+        ],
+      },
+    ]);
   });
   it('a tie wins nothing; a nine not played to its end does not count yet', () => {
     const a = nine(Array(9).fill(4), [4, 4, 4, null, null, null, null, null, null]);
