@@ -828,14 +828,15 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
   );
 }
 
-/** What a bet's standing shows in a cell: the best against the target – "2/3", "+3/−5", "7/10"; a round not signed
+/** What a bet's standing shows in a cell: the target, then the best – "3/2", "−5/+3", "10/7"; a round not signed
  *  yet with a better figure: that one (shown as provisional). */
 function cellOf(w: Wager, p: Progress | undefined): string {
   const shape = shapeOf(w.kind);
   const par = (n: number) => (n === 0 ? 'E' : n > 0 ? `+${n}` : `−${-n}`);
   const v = (n: number) => (shape === 'score' || shape === 'sum' ? par(n) : String(n));
   const best = p?.pending ?? p?.best;
-  return `${best == null ? '–' : v(best)}/${v(w.target)}`;
+  // the target first, then the best (Sascha 03.11.2026: "8/9, not 9/8")
+  return `${v(w.target)}/${best == null ? '–' : v(best)}`;
 }
 /** The row a bet goes into: the same block, the same counting (birdies on 18, the whole trip, gross, 6 rounds …). */
 const rowKey = (w: Wager) => [w.kind, w.scope ?? '', w.holes ?? 18, w.net ? 'net' : '', w.orBetter === false ? 'exact' : '', w.rounds ?? '', w.parts ? `${w.parts.front}+${w.parts.back}+${w.parts.total}` : ''].join('|');
