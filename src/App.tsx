@@ -163,6 +163,8 @@ function saveScreen(s: Screen): void {
   }
 }
 function savedScreen(rounds: Round[]): Screen | null {
+  // only while Rounds is the module of this tab (reloaded in Games, Games opens)
+  if (sessionModule() !== 'rounds') return null;
   try {
     const v = JSON.parse(sessionStorage.getItem(SCREEN) ?? 'null') as SavedScreen | null;
     const r = v && 'id' in v ? rounds.find((x) => x.id === v.id) : undefined;

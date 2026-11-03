@@ -178,7 +178,9 @@ export function GamesApp(props: {
   // every page of Games opens at its top (Sascha 03.11.2026: "a new pool showed its QR code below – I had to scroll up; the
   // dialogs always start at the top"): the app scrolls on its own pages only, Games keeps its views itself
   const viewKey = view.name === 'tab' ? `tab-${view.tab}` : 'code' in view ? `${view.name}-${view.code}` : 'game' in view ? `${view.name}-${view.game.id}` : view.name;
-  useEffect(() => window.scrollTo(0, 0), [viewKey]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [viewKey]);
   // the money on screen in the currency of the game shown (euro or dollar – Sascha 01.11.2026)
   setCurrency(view.name === 'play' || view.name === 'result' ? view.game.settings.currency : view.name === 'setup' || view.name === 'course' ? view.draft.settings.currency : undefined);
   switch (view.name) {
