@@ -9,3 +9,4 @@ __pycache__/
 public/mediapipe/
 qa/fixtures/
 qa/gate-flaky.log
+gamesweep/

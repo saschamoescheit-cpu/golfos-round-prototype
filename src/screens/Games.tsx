@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactN
 import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
 import type { Course, Round } from '../types';
 import { ScoreTable } from '../components/ScoreTable';
+import { loadFriends } from '../lib/friends';
+import { Avatar } from '../components/Avatar';
 import { emptyEntry } from '../lib/scoring';
 import { getLang, tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
@@ -1524,18 +1526,68 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
       {st.details?.map((d) => (
         <details key={d.title} className="game-details" open>
           <summary>{d.title}</summary>
-          <ul>
-            {/* two lines a row (Sascha 03.11.2026: "better laid out"): what and its result, below it the scores */}
-            {d.lines.map((l, k) => (
-              <li key={k}>
-                <span className="game-details-top">
-                  <span className="game-details-label">{l.label}</span>
-                  {l.value && <strong className={/^(gleich|tied)$/.test(l.value) ? 'muted' : undefined}>{l.value}</strong>}
-                </span>
-                <span className="game-details-text">{l.text}</span>
-              </li>
-            ))}
-          </ul>
+          {/* a team game hole by hole as a table (Sascha 03.11.2026: "still not clear"): the pairs by short names, the
+              winning number green, the result with its money below, pressed as a small badge; the names once below */}
+          {d.lines.some((l) => l.row) ? (
+            <>
+              <table className="game-hist">
+                <thead>
+                  <tr>
+                    <th>{tr('Hole', 'Loch')}</th>
+                    <th>{tr('Pairs', 'Paarung')}</th>
+                    <th>{tr('Numbers', 'Zahlen')}</th>
+                    <th>{tr('Result', 'Ergebnis')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.lines.map((l, k) =>
+                    l.row ? (
+                      <tr key={k}>
+                        <td className="game-hist-hole">
+                          {l.row.hole}
+                          {l.row.pressed > 0 && <span className="game-hist-press">{l.row.pressed > 1 ? `P×${l.row.pressed}` : 'P'}</span>}
+                        </td>
+                        <td className="game-hist-pairs">
+                          <span className={l.row.win === 'a' ? 'won' : undefined}>{l.row.a}</span>
+                          <span className="muted"> – </span>
+                          <span className={l.row.win === 'b' ? 'won' : undefined}>{l.row.b}</span>
+                        </td>
+                        <td className="game-hist-nums">
+                          <span className={l.row.win === 'a' ? 'won' : undefined}>{l.row.na}</span>
+                          <span className="muted"> : </span>
+                          <span className={l.row.win === 'b' ? 'won' : undefined}>{l.row.nb}</span>
+                        </td>
+                        <td className="game-hist-res">
+                          {l.row.win ? (
+                            <>
+                              <strong>+{l.row.pts}</strong>
+                              {l.row.amount && <small>{l.row.amount}</small>}
+                            </>
+                          ) : (
+                            <span className="muted">{tr('tied', 'gleich')}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ) : null,
+                  )}
+                </tbody>
+              </table>
+              {d.legend && <span className="muted small game-hist-legend">{d.legend} · {tr('P = pressed', 'P = gepresst')}</span>}
+            </>
+          ) : (
+            <ul>
+              {/* two lines a row (Sascha 03.11.2026: "better laid out"): what and its result, below it the scores */}
+              {d.lines.map((l, k) => (
+                <li key={k}>
+                  <span className="game-details-top">
+                    <span className="game-details-label">{l.label}</span>
+                    {l.value && <strong className={/^(gleich|tied)$/.test(l.value) ? 'muted' : undefined}>{l.value}</strong>}
+                  </span>
+                  <span className="game-details-text">{l.text}</span>
+                </li>
+              ))}
+            </ul>
+            )}
         </details>
       ))}
     </section>
@@ -1549,6 +1601,16 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
   const pays = gameTransfers(g, st.money);
   const prize = gamePrize(g);
   const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
+  // the leaders' faces: oneself, or a linked friend (his photo and name from his profile); a guest without
+  const leaders = winnerOf(st.rows) ? st.rows.filter((r) => r.points === st.rows[0].points) : [];
+  const friends = loadFriends();
+  const faces = leaders
+    .map((r) => {
+      if (r.id === 'me') return { name: r.name, me: true as boolean, photo: undefined as string | undefined };
+      const fr = friends.find((x) => x.uid && (x.name.trim() === r.name.trim() || (x.fullName ?? '').trim() === r.name.trim()));
+      return fr ? { name: fr.fullName || fr.name, me: false, photo: fr.photo } : null;
+    })
+    .filter((x): x is { name: string; me: boolean; photo: string | undefined } => !!x);
   // confirm the result like a scorecard (Sascha 16.10.2026: as signing a round) – only confirmed games count. As on a
   // round: confirmed it stands on top, to confirm it follows the result, the settlement and the scores (after checking them)
   // confirmed: one line as a signed round's (Sascha 03.11.2026: "much too big – at most as a signed round")
@@ -1594,10 +1656,20 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
         {g.courseName} · {new Date(g.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined)} · {holesPlayed(g)}/{g.holes.length} {tr('holes', 'Löcher')}
       </span>
       {g.signedAt && confirmCard}
-      <section className="card game-winner">
-        <span className="eyebrow">{winnerOf(st.rows) ? tr('Winner', 'Sieger') : tr('Result', 'Ergebnis')}</span>
-        <strong>{winnerOf(st.rows) ?? tr('Tied', 'Unentschieden')}</strong>
-        <span className="muted">{winnerOf(st.rows) ? st.rows[0].value : st.status}</span>
+      {/* the winner with his photo – oneself or a linked friend, his name from his profile (Sascha 03.11.2026) */}
+      <section className={`card game-winner${faces.length ? ' with-faces' : ''}`}>
+        {faces.length > 0 && (
+          <span className="game-winner-faces" aria-hidden="true">
+            {faces.map((x) => (
+              <Avatar key={x.name} name={x.name} me={x.me} photo={x.photo} size={56} />
+            ))}
+          </span>
+        )}
+        <span className="game-winner-text">
+          <span className="eyebrow">{winnerOf(st.rows) ? tr('Winner', 'Sieger') : tr('Result', 'Ergebnis')}</span>
+          <strong>{faces.length === 1 && leaders.length === 1 ? faces[0].name : (winnerOf(st.rows) ?? tr('Tied', 'Unentschieden'))}</strong>
+          <span className="muted">{winnerOf(st.rows) ? st.rows[0].value : st.status}</span>
+        </span>
       </section>
       <StandingCard game={g} final />
       {pays.length > 0 && (
@@ -1617,14 +1689,9 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
       <ScoreGrid game={g} />
       {!g.signedAt && confirmCard}
       <span className="spacer" />
-      <ShareResult game={g} />
-      <button type="button" className="btn-secondary" onClick={props.onReopen}>
-        {tr('Correct scores', 'Scores korrigieren')}
-      </button>
-      {/* as a round's scorecard: one tap – "Undo" and the bin bring it back (Sascha 15.10.2026) */}
-      <button type="button" className="btn-secondary btn-danger" onClick={props.onDelete}>
-        {tr('Delete game', 'Spiel löschen')}
-      </button>
+      {/* side by side, each with its icon, as elsewhere in the app (Sascha 03.11.2026); deleting as a round's scorecard: one tap –
+          "Undo" and the bin bring it back (15.10.2026) */}
+      <ShareResult game={g} onReopen={props.onReopen} onDelete={props.onDelete} />
     </main>
   );
 }
@@ -1917,7 +1984,7 @@ function ChicagoHoleResult(props: { game: Game; hole: number }) {
 }
 
 /** Share the result and who pays whom (WhatsApp, Messages …); without the share sheet it is copied. */
-function ShareResult(props: { game: Game }) {
+function ShareResult(props: { game: Game; onReopen: () => void; onDelete: () => void }) {
   const [done, setDone] = useState<string | null>(null);
   const share = async () => {
     const text = standingText(props.game, false);
@@ -1935,13 +2002,33 @@ function ShareResult(props: { game: Game }) {
   };
   return (
     <>
-      <button type="button" className="btn-secondary share-btn" onClick={share}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 3v12M7 8l5-5 5 5" />
-          <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
-        </svg>
-        {tr('Share result', 'Ergebnis teilen')}
-      </button>
+      <div className="qr-actions result-actions">
+        <button type="button" className="qr-action" aria-label={tr('Share result', 'Ergebnis teilen')} onClick={share}>
+          <span className="qr-action-icon primary">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" />
+              <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
+            </svg>
+          </span>
+          <span className="small">{tr('Share', 'Teilen')}</span>
+        </button>
+        <button type="button" className="qr-action" aria-label={tr('Correct scores', 'Scores korrigieren')} onClick={props.onReopen}>
+          <span className="qr-action-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
+            </svg>
+          </span>
+          <span className="small">{tr('Correct', 'Korrigieren')}</span>
+        </button>
+        <button type="button" className="qr-action danger" aria-label={tr('Delete game', 'Spiel löschen')} onClick={props.onDelete}>
+          <span className="qr-action-icon danger">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+            </svg>
+          </span>
+          <span className="small">{tr('Delete', 'Löschen')}</span>
+        </button>
+      </div>
       {done && <span className="muted small">{done}</span>}
     </>
   );

@@ -2185,3 +2185,25 @@ button.tile:disabled { opacity: 1; }
 .balance-done { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
 /* the words of a sign card take their own height in its column (03.11.2026: "Ergebnis bestätigen" had a big gap) */
 .sign-card:not(.sc-status) > .grow { flex: none; }
+/* a team game hole by hole as a table (03.11.2026) */
+.game-hist { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.game-hist th { text-align: left; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.game-hist td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.game-hist th:last-child, .game-hist td:last-child { text-align: right; }
+.game-hist-hole { font-weight: 600; white-space: nowrap; }
+.game-hist-press { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 6px; font-size: 10.5px; font-weight: 700; line-height: 16px; background: var(--brand-soft); color: var(--brand-text); vertical-align: 1px; }
+.game-hist-pairs, .game-hist-nums { white-space: nowrap; }
+.game-hist .won { color: var(--brand-text); font-weight: 700; }
+.game-hist-res strong { display: block; font-weight: 700; }
+.game-hist-res small { display: block; color: var(--text-2); font-size: 12px; }
+.game-hist-legend { display: block; margin-top: 6px; }
+/* the winner with his photo (03.11.2026) */
+.game-winner.with-faces { flex-direction: row; align-items: center; gap: 14px; }
+.game-winner-faces { display: flex; flex: none; }
+.game-winner-faces .avatar + .avatar { margin-left: -14px; }
+.game-winner-faces .avatar { border: 2px solid var(--surface); }
+.game-winner-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* a game result's actions side by side with their icons (03.11.2026); deleting red */
+.result-actions { margin-top: 8px; }
+.qr-action.danger { color: var(--bad); }
+.qr-action-icon.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 55%, transparent); }
