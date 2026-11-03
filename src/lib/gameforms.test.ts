@@ -77,8 +77,8 @@ describe('5+5+10', () => {
       {
         title: 'P0 – P1',
         lines: [
-          { label: 'Front 9', text: 'P0 36 – P1 38', value: 'P0 +5 €' },
-          { label: 'Back 9', text: 'P0 40 – P1 35', value: 'P1 +5 €' },
+          { label: 'Holes 1–9', text: 'P0 36 – P1 38', value: 'P0 +5 €' },
+          { label: 'Holes 10–18', text: 'P0 40 – P1 35', value: 'P1 +5 €' },
           { label: 'Total', text: 'P0 76 – P1 73', value: 'P1 +10 €' },
         ],
       },
