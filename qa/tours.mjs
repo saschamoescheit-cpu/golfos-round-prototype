@@ -524,11 +524,11 @@ await H.waitForTimeout(1200);
 // series and single tournaments each a category with its icon; making a series a row of its list (Sascha 03.11.2026)
 {
   const heads = (await H.locator('.tour-cat-head').allInnerTexts()).map((t) => t.trim().toUpperCase());
-  const make = H.locator('.tour-cat[aria-label="Turnierserien"] .tour-make-series');
-  ok(heads.join('|') === 'TURNIERSERIEN|EINZELNE TURNIERE' && (await H.locator('.tour-cat-head svg').count()) === 2 && (await make.count()) === 1 && (await H.locator('.btn-secondary', { hasText: 'Turnierserie' }).count()) === 0, `the list: categories ${heads.join(' · ')}, "Zusammenfassen" a row of the series`);
+  const make = H.locator('.tour-cat[aria-label="Einzelne Turniere"] .btn-secondary.tour-make-series');
+  ok(heads.join('|') === 'EINZELNE TURNIERE' && (await H.locator('.tour-cat-head svg').count()) === 1 && (await make.count()) === 1 && /Turnierserie erstellen/.test(await make.innerText()), `the list: categories ${heads.join(' · ')}, "Zusammenfassen" a row of the series`);
   if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-list.png', fullPage: true });
 }
-await H.getByRole('button', { name: /Zu einer Turnierserie zusammenfassen/ }).click();
+await H.getByRole('button', { name: 'Turnierserie erstellen' }).click();
 const ss = H.getByRole('dialog', { name: 'Turnierserie zusammenstellen' });
 await ss.locator('#series-name').fill('USA 2026');
 await ss.locator('label', { hasText: 'USA Tag 2' }).click();
@@ -555,6 +555,13 @@ if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screensho
 await H.getByRole('button', { name: 'Turniere' }).first().click();
 await H.waitForTimeout(800);
 ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 2' }).count()) === 0, 'the list: the series once, its rounds inside');
+// a tile's filter keeps the categories (Sascha 03.11.2026: "after a tile the overview did not come back")
+await H.locator('.tile').filter({ hasText: 'geplant' }).click();
+await H.waitForTimeout(300);
+ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.tour-cat-head').filter({ hasText: /Turnierserien/i }).count()) === 1, 'tile "geplant": the series still shown, in its category');
+await H.locator('.tile').filter({ hasText: 'geplant' }).click();
+await H.waitForTimeout(300);
+ok((await H.locator('.tour-series-row').count()) === 1, 'tile "geplant" again: the whole overview');
 // Chris: in with the series' code – a member of every round
 await G.evaluate(async (c) => {
   const a = JSON.parse(localStorage.getItem('golfos.auth.v1'));
