@@ -595,7 +595,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
         backLabel={tr('Bets', 'Wetten')}
         right={
           host ? (
-            <button type="button" className="icon-btn" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={() => setSheet('pool')}>
+            <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={() => setSheet('pool')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 20h4L19 9l-4-4L4 16z" />
                 <path d="M13.5 6.5l4 4" />
@@ -1571,7 +1571,6 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
           <div className="lib-group lib-settings">
             <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
             <PayFields pool={pool} w={{ ...base, player, kind: lib.length > 0 && lib.every((b) => b.kind === 'free') && !myPicked.length ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
-            <span className="muted small">{tr('For the bets ticked below – each can be changed afterwards, tap it.', 'Für die Wetten, die du unten ankreuzt – jede lässt sich danach ändern, antippen.')}</span>
           </div>
         )}
         {tab === 'own' && (
