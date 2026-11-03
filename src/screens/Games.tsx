@@ -1041,28 +1041,52 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         )}
       </section>
 
+      {/* Worum – what is played for, then the stakes (docs/DESIGN.md: Was → Wo → Wer → Worum → Einstellungen, Sascha 03.11.2026) */}
+      {chosen && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span className="eyebrow">{tr('Played for', 'Worum')}</span>
+          <SettingsList>
+            {/* what is played for – money (euro or dollar), drinks, a meal, cleaning the clubs, one's own, or nothing; to choose,
+                the same row as the bets' (Sascha 03.11.2026: "no trouble for gambling – always other stakes too, and none") */}
+            <PrizeRow
+              value={prize}
+              onChange={(p) => {
+                // the stakes follow: a thing counted 1 to 5, back to money the form's own
+                const next: Record<string, number | boolean | string> = { ...d.settings, ...(isMoney(p) ? { currency: p.currency } : {}) };
+                for (const st of f.settings.filter((x) => x.type === 'stake')) {
+                  if (!isMoney(p) && !isNone(p)) next[st.key] = Math.min(5, Math.max(1, Math.round(Number(next[st.key] ?? 1))));
+                  else if (isMoney(p) && prize && !isMoney(prize)) next[st.key] = st.default as number;
+                }
+                set({ prize: p, settings: next });
+              }}
+            />
+            {!none &&
+              f.settings
+                .filter((s) => s.type === 'stake' && (!s.when || s.when(d.settings)))
+                .map((s) => (
+                  <StakeRow
+                    key={s.key}
+                    label={s.label()}
+                    value={Number(d.settings[s.key] ?? 0)}
+                    // a thing counted: 1 to 5 ("2 × Getränk")
+                    sym={prize && !isMoney(prize) ? prizeSym(prize) : undefined}
+                    stakes={prize && !isMoney(prize) ? [1, 2, 3, 4, 5] : undefined}
+                    // a new start stake: the cap moves to a step of its doubling chain
+                    onChange={(v) => set({ settings: { ...d.settings, [s.key]: v, ...(s.key === 'stake' && Number(d.settings.maxStake) > 0 ? { maxStake: String(snapCap(v, Number(d.settings.maxStake))) } : {}) } })}
+                  />
+                ))}
+          </SettingsList>
+        </section>
+      )}
+
       {/* the settings as rows with a sheet, like "Format" in the round setup (Sascha 02.11.2026: "Rounds and Games are the
           base – not everything as tabs"); a yes/no as a switch; see docs/DESIGN.md */}
       {chosen && (
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
         <SettingsList>
-          {/* what is played for – money (euro or dollar), drinks, a meal, cleaning the clubs, one's own, or nothing; to choose,
-              the same row as the bets' (Sascha 03.11.2026: "no trouble for gambling – always other stakes too, and none") */}
-          <PrizeRow
-            value={prize}
-            onChange={(p) => {
-              // the stakes follow: a thing counted 1 to 5, back to money the form's own
-              const next: Record<string, number | boolean | string> = { ...d.settings, ...(isMoney(p) ? { currency: p.currency } : {}) };
-              for (const st of f.settings.filter((x) => x.type === 'stake')) {
-                if (!isMoney(p) && !isNone(p)) next[st.key] = Math.min(5, Math.max(1, Math.round(Number(next[st.key] ?? 1))));
-                else if (isMoney(p) && prize && !isMoney(prize)) next[st.key] = st.default as number;
-              }
-              set({ prize: p, settings: next });
-            }}
-          />
           {f.settings
-            .filter((s) => s.group !== 'house' && s.type !== 'bool' && s.type !== 'cap' && s.type !== 'presses' && !(none && s.type === 'stake') && (!s.when || s.when(d.settings)))
+            .filter((s) => s.group !== 'house' && s.type !== 'bool' && s.type !== 'cap' && s.type !== 'presses' && s.type !== 'stake' && (!s.when || s.when(d.settings)))
             .map((s) =>
               s.type === 'choice' ? (
                 <ChoiceRow
@@ -1687,11 +1711,11 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
         </section>
       )}
       <ScoreGrid game={g} />
-      {!g.signedAt && confirmCard}
       <span className="spacer" />
-      {/* side by side, each with its icon, as elsewhere in the app (Sascha 03.11.2026); deleting as a round's scorecard: one tap –
-          "Undo" and the bin bring it back (15.10.2026) */}
+      {/* the action bar as on a round's scorecard (docs/DESIGN.md, Sascha 03.11.2026) – deleting red, last; one tap, "Undo" and
+          the bin bring it back (15.10.2026) – then the one main button: confirming */}
       <ShareResult game={g} onReopen={props.onReopen} onDelete={props.onDelete} />
+      {!g.signedAt && confirmCard}
     </main>
   );
 }
@@ -2002,31 +2026,25 @@ function ShareResult(props: { game: Game; onReopen: () => void; onDelete: () => 
   };
   return (
     <>
-      <div className="qr-actions result-actions">
-        <button type="button" className="qr-action" aria-label={tr('Share result', 'Ergebnis teilen')} onClick={share}>
-          <span className="qr-action-icon primary">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <div className="sc-actions" role="group" aria-label={tr('This game', 'Dieses Spiel')}>
+        <button type="button" className="sc-action" aria-label={tr('Share result', 'Ergebnis teilen')} onClick={share}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" />
               <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
             </svg>
-          </span>
-          <span className="small">{tr('Share', 'Teilen')}</span>
+          <span>{tr('Share', 'Teilen')}</span>
         </button>
-        <button type="button" className="qr-action" aria-label={tr('Correct scores', 'Scores korrigieren')} onClick={props.onReopen}>
-          <span className="qr-action-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <button type="button" className="sc-action" aria-label={tr('Correct scores', 'Scores korrigieren')} onClick={props.onReopen}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
             </svg>
-          </span>
-          <span className="small">{tr('Correct', 'Korrigieren')}</span>
+          <span>{tr('Correct', 'Korrigieren')}</span>
         </button>
-        <button type="button" className="qr-action danger" aria-label={tr('Delete game', 'Spiel löschen')} onClick={props.onDelete}>
-          <span className="qr-action-icon danger">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <button type="button" className="sc-action danger" aria-label={tr('Delete game', 'Spiel löschen')} onClick={props.onDelete}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
             </svg>
-          </span>
-          <span className="small">{tr('Delete', 'Löschen')}</span>
+          <span>{tr('Delete', 'Löschen')}</span>
         </button>
       </div>
       {done && <span className="muted small">{done}</span>}

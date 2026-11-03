@@ -316,6 +316,48 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         </div>
       )}
 
+      {/* Was → Wo → Wer (docs/DESIGN.md, Sascha 03.11.2026: the same order in every setup) – the format first, then the course */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span className="eyebrow">{tr('Format', 'Format')}</span>
+        <div className="settings-list">
+          {/* the kind of round first, in the format block (Sascha 15.10.2026) */}
+          <button type="button" className="settings-row" onClick={() => setKindOpen(true)}>
+            <span>{tr('Kind of round', 'Rundenart')}</span>
+            <span className="settings-value">{kindName(kind)}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          <button type="button" className="settings-row" onClick={() => setPicker('mode')}>
+            <span>{tr('Mode', 'Modus')}</span>
+            <span className="settings-value">{fmt.name()}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          <button type="button" className="settings-row" onClick={() => setPicker('scoring')}>
+            <span>Scoring</span>
+            <span className="settings-value">{format.scoring === 'stableford' ? 'Stableford' : tr('Stroke play', 'Zählspiel')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          <button type="button" className="settings-row" onClick={() => setPicker('allowance')}>
+            <span>{tr('Handicap allowance', 'HCP-Vorgabe')}</span>
+            <span className="settings-value">{allowance > 0 ? `${allowance} %` : tr('0 % (gross)', '0 % (brutto)')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          {/* Texas scramble (Sascha's concept 30.10.2026): every player's drive used at least so often */}
+          {format.mode === 'scramble' && (
+            <button type="button" className="settings-row" onClick={() => setPicker('drives')}>
+              <span>{tr('Texas: drives per player', 'Texas: Drives je Spieler')}</span>
+              <span className="settings-value">{format.minDrives ? tr(`at least ${format.minDrives}`, `mindestens ${format.minDrives}`) : tr('free', 'frei')}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+          )}
+        </div>
+        {!fits && (
+          <p className="small good-text" style={{ margin: 0 }}>
+            {tr(`${fmt.name()} needs ${fmt.need()} – you have ${playerCount}. Add players below or choose another mode.`, `${fmt.name()} braucht ${fmt.need()} – ihr seid ${playerCount}. Füge unten Spieler hinzu oder wähle einen anderen Modus.`)}
+          </p>
+        )}
+        {isTeamMode(format.mode) && <span className="muted small">{tr('Team rounds do not count for your own stats.', 'Team-Runden zählen nicht für deine eigene Statistik.')}</span>}
+      </section>
+
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Holes', 'Löcher')}</span>
         <div className="choice-grid">
@@ -433,47 +475,6 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           <span className="muted small">{ENTRY.find(([v]) => v === counting)![2]()}</span>
         </section>
       )}
-
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <span className="eyebrow">{tr('Format', 'Format')}</span>
-        <div className="settings-list">
-          {/* the kind of round first, in the format block (Sascha 15.10.2026) */}
-          <button type="button" className="settings-row" onClick={() => setKindOpen(true)}>
-            <span>{tr('Kind of round', 'Rundenart')}</span>
-            <span className="settings-value">{kindName(kind)}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-          <button type="button" className="settings-row" onClick={() => setPicker('mode')}>
-            <span>{tr('Mode', 'Modus')}</span>
-            <span className="settings-value">{fmt.name()}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-          <button type="button" className="settings-row" onClick={() => setPicker('scoring')}>
-            <span>Scoring</span>
-            <span className="settings-value">{format.scoring === 'stableford' ? 'Stableford' : tr('Stroke play', 'Zählspiel')}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-          <button type="button" className="settings-row" onClick={() => setPicker('allowance')}>
-            <span>{tr('Handicap allowance', 'HCP-Vorgabe')}</span>
-            <span className="settings-value">{allowance > 0 ? `${allowance} %` : tr('0 % (gross)', '0 % (brutto)')}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-          {/* Texas scramble (Sascha's concept 30.10.2026): every player's drive used at least so often */}
-          {format.mode === 'scramble' && (
-            <button type="button" className="settings-row" onClick={() => setPicker('drives')}>
-              <span>{tr('Texas: drives per player', 'Texas: Drives je Spieler')}</span>
-              <span className="settings-value">{format.minDrives ? tr(`at least ${format.minDrives}`, `mindestens ${format.minDrives}`) : tr('free', 'frei')}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-          )}
-        </div>
-        {!fits && (
-          <p className="small good-text" style={{ margin: 0 }}>
-            {tr(`${fmt.name()} needs ${fmt.need()} – you have ${playerCount}. Add players below or choose another mode.`, `${fmt.name()} braucht ${fmt.need()} – ihr seid ${playerCount}. Füge oben Spieler hinzu oder wähle einen anderen Modus.`)}
-          </p>
-        )}
-        {isTeamMode(format.mode) && <span className="muted small">{tr('Team rounds do not count for your own stats.', 'Team-Runden zählen nicht für deine eigene Statistik.')}</span>}
-      </section>
 
       {picker && (
         <div className="sheet-backdrop" onClick={() => setPicker(null)}>
