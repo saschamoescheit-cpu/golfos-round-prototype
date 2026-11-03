@@ -249,6 +249,7 @@ const sessionsBlock = () => p.locator('.tr-block').filter({ has: p.getByRole('he
 ok((await sessionsBlock().locator('.list-item').count()) === 1, 'finished session in the list');
 // delete with undo
 await sessionsBlock().locator('.list-item').first().click();
+{ const acts = (await p.locator('.sc-actions:visible .sc-action').allTextContents()).map((x) => x.trim()).join('|'); ok(acts === 'Wiederholen|Löschen' && (await p.locator('.sc-actions:visible .sc-action').last().getAttribute('class')).includes('danger'), `session page: one action bar, Löschen red and last (${acts})`); }
 await p.getByRole('button', { name: 'Einheit löschen' }).click();
 await p.waitForTimeout(200);
 ok(await p.getByText('Einheit gelöscht').isVisible(), 'undo toast after deleting');
@@ -285,7 +286,9 @@ await p.locator('.tr-search input').fill('Tiger');
 await p.locator('.tr-search input').press('Enter');
 await p.locator('.tr-drill-row .list-item').filter({ hasText: 'Tiger' }).first().click();
 await p.locator('.tr-fav').click();
-await p.getByRole('button', { name: '+ Zu meiner eigenen Einheit' }).click();
+// one usability (Sascha 03.11.2026): the TopBar keeps no tool but the pen, the drill's actions are one bar
+{ const acts = (await p.locator('.sc-actions:visible .sc-action').allTextContents()).map((x) => x.trim()).join('|'); const tools = await p.locator('.topbar:visible .icon-btn').count(); ok(tools === 1 && acts === 'Favorit|Zur Einheit', `drill page: no tool in the TopBar but back, actions bar Favorit · Zur Einheit (${tools} · ${acts})`); }
+await p.getByRole('button', { name: 'Zu meiner eigenen Einheit hinzufügen' }).click();
 ok((await p.locator('.tr-plan-list li').count()) === 1, 'drill page adds the drill to an own session');
 await tab('Üben');
 ok(await p.getByRole('button', { name: /Favoriten üben/ }).isVisible(), 'favourites can be practised as a session');
@@ -298,6 +301,10 @@ await p.locator('.tr-add').nth(3).click();
 await p.getByRole('button', { name: 'Plan speichern' }).click();
 await p.waitForTimeout(200);
 ok((await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).locator('.list-item').count()) === 1, 'own plan saved');
+await p.locator('.tr-block').filter({ hasText: 'Meine Pläne' }).locator('.list-item').first().click();
+await p.waitForTimeout(200);
+{ const pens = await p.locator('.topbar:visible .edit-btn').count(); const del = await p.locator('.sc-actions:visible .sc-action.danger').allTextContents(); del.forEach((x, k) => (del[k] = x.trim())); ok(pens === 1 && del.join() === 'Löschen', `own plan: the green pen to edit, Löschen in the bar (${pens} · ${del})`); }
+await back();
 
 // shop
 await tab('Shop');
