@@ -39,6 +39,8 @@ import { TESTS } from './tests';
 import { CLIPS } from './anim3d/clips';
 import { DRILL_CLIPS } from './anim3d/drills';
 import type { TestId } from './types';
+import { DeletedIcon } from '../components/RoundIcons';
+import { ImportIcon } from './icons';
 
 const Anim3D = lazy(() => import('./Anim3D'));
 
@@ -118,16 +120,41 @@ export function PhysioCard(props: { plan: PhysioPlan | undefined; onOpen: () => 
   );
 }
 
-/** The file from the physio's results (made from the TPI app's report) – read, checked, kept in the account. */
-export function PhysioImport(props: { onImport: (p: PhysioPlan) => void; compact?: boolean; replace?: boolean }) {
+/** The file from the physio's results (made from the TPI app's report) – read, checked, kept in the account: the
+ * picker's opener, its hidden input and what went wrong. */
+function usePlanFile(onImport: (p: PhysioPlan) => void) {
   const [error, setError] = useState<string | null>(null);
-  const input = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLInputElement>(null);
   const read = async (f: File) => {
     const p = parsePlan(await f.text());
     if ('error' in p) return setError(tr(`This file is no physio plan (${p.error}).`, `Diese Datei ist kein Physio-Plan (${p.error}).`));
     setError(null);
-    props.onImport(p);
+    onImport(p);
   };
+  const input = (
+    <input
+      ref={ref}
+      type="file"
+      accept="application/json,.json"
+      hidden
+      aria-label={tr('Physio plan file', 'Datei des Physio-Plans')}
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        if (f) void read(f);
+        e.target.value = '';
+      }}
+    />
+  );
+  const message = error && (
+    <span className="small mob-physio-error" role="alert">
+      {error}
+    </span>
+  );
+  return { open: () => ref.current?.click(), input, message };
+}
+
+export function PhysioImport(props: { onImport: (p: PhysioPlan) => void; compact?: boolean }) {
+  const file = usePlanFile(props.onImport);
   return (
     <section className={props.compact ? 'card mob-physio-import' : 'mob-physio-import'}>
       {props.compact && (
@@ -135,26 +162,11 @@ export function PhysioImport(props: { onImport: (p: PhysioPlan) => void; compact
           {tr('Screened by a physio (e.g. TPI)? Import the plan – results, swing characteristics and your routine.', 'Beim Physio gescreent (z. B. TPI)? Importiere den Plan – Ergebnisse, Schwungmuster und deine Routine.')}
         </span>
       )}
-      <button type="button" className="btn-secondary" onClick={() => input.current?.click()}>
-        {props.replace ? tr('Import a new plan', 'Neuen Plan importieren') : tr('Import the physio plan', 'Physio-Plan importieren')}
+      <button type="button" className="btn-secondary" onClick={file.open}>
+        {tr('Import the physio plan', 'Physio-Plan importieren')}
       </button>
-      <input
-        ref={input}
-        type="file"
-        accept="application/json,.json"
-        hidden
-        aria-label={tr('Physio plan file', 'Datei des Physio-Plans')}
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void read(f);
-          e.target.value = '';
-        }}
-      />
-      {error && (
-        <span className="small mob-physio-error" role="alert">
-          {error}
-        </span>
-      )}
+      {file.input}
+      {file.message}
     </section>
   );
 }
@@ -176,9 +188,30 @@ export function PhysioView(props: { plan: PhysioPlan; onBack: () => void; onRun:
   const [tab, setTab] = useState<Tab>('routine');
   const [p, setP] = useState(props.plan);
   useEffect(() => setP(props.plan), [props.plan]);
+  const file = usePlanFile((n) => setP(importPlan({ ...n, schedule: p.schedule, log: p.log })));
+  const week = weekCount(p.log);
+  const goal = p.schedule?.perWeek;
+  // as every detail screen (docs/DESIGN.md): TopBar → the line under it → the status card → the content → the action
+  // bar → the main button
   return (
     <main className="screen training mobility mob-physio">
       <TopBar title={tr('My physio plan', 'Mein Physio-Plan')} onBack={props.onBack} />
+      <span className="muted small mob-sub">
+        {p.source} · {dateText(p.screenedAt)}
+      </span>
+      <section className="card mob-physio-status">
+        <div className="mob-physio-head">
+          <span className="grow">
+            <strong>{p.routine.name}</strong>
+            <span className="muted small">
+              {tr(`${p.routine.exercises.length} exercises · ${clock(routineSec(p))} min`, `${p.routine.exercises.length} Übungen · ${clock(routineSec(p))} Min.`)}
+              {' · '}
+              {goal ? tr(`this week ${week} of ${goal}`, `diese Woche ${week} von ${goal}`) : tr(`this week ${week}×`, `diese Woche ${week}×`)}
+            </span>
+          </span>
+          {dueToday(p) && <span className="mob-physio-due">{tr('Today', 'Heute dran')}</span>}
+        </div>
+      </section>
       <div className="segmented tr-tabs" role="tablist">
         {(
           [
@@ -197,20 +230,31 @@ export function PhysioView(props: { plan: PhysioPlan; onBack: () => void; onRun:
       {tab === 'diary' && <DiaryTab p={p} onChange={setP} />}
       {tab === 'results' && <ResultsTab p={p} onRetest={props.onRetest} />}
       {tab === 'swing' && <SwingTab p={p} />}
-      <section className="tr-block mob-physio-manage">
-        <PhysioImport replace onImport={(n) => setP(importPlan({ ...n, schedule: p.schedule, log: p.log }))} />
+      {/* the plan's actions as one bar – a new plan, Entfernen red and last (Sascha 03.11.2026) */}
+      <div className="sc-actions mob-physio-manage" role="group" aria-label={tr('This plan', 'Dieser Plan')}>
+        <button type="button" className="sc-action mob-physio-new" aria-label={tr('Import a new plan', 'Neuen Plan importieren')} onClick={file.open}>
+          <ImportIcon />
+          <span>{tr('New plan', 'Neuer Plan')}</span>
+        </button>
         <button
           type="button"
-          className="btn-secondary btn-danger"
+          className="sc-action danger mob-physio-remove"
+          aria-label={tr('Remove the plan', 'Plan entfernen')}
           onClick={() => {
             if (!window.confirm(tr('Remove the physio plan from this account? The diary goes with it; the screening made from it stays.', 'Den Physio-Plan aus dem Konto entfernen? Das Tagebuch geht mit; das daraus gemachte Screening bleibt.'))) return;
             removePhysio(p.id);
             props.onBack();
           }}
         >
-          {tr('Remove the plan', 'Plan entfernen')}
+          <DeletedIcon size={22} />
+          <span>{tr('Remove', 'Entfernen')}</span>
         </button>
-      </section>
+      </div>
+      {file.input}
+      {file.message}
+      <button type="button" className="btn-primary mob-physio-start" onClick={props.onRun}>
+        {tr('Start the routine', 'Routine starten')}
+      </button>
     </main>
   );
 }
@@ -220,15 +264,6 @@ function RoutineTab(props: { p: PhysioPlan; onRun: () => void; onChange: (p: Phy
   const [open, setOpen] = useState<number | null>(null);
   return (
     <>
-      <section className="card mob-physio-sum">
-        <strong>{p.routine.name}</strong>
-        <span className="muted small">
-          {tr(`${p.routine.exercises.length} exercises · ${clock(routineSec(p))} min · from ${p.source}`, `${p.routine.exercises.length} Übungen · ${clock(routineSec(p))} Min. · von ${p.source}`)}
-        </span>
-        <button type="button" className="btn-primary mob-physio-start" onClick={props.onRun}>
-          {tr('Start the routine', 'Routine starten')}
-        </button>
-      </section>
       <ScheduleCard p={p} onChange={props.onChange} />
       <div className="list mob-physio-list" aria-label={tr('The exercises', 'Die Übungen')}>
         {p.routine.exercises.map((e, i) => (
@@ -433,7 +468,8 @@ function ResultsTab(props: { p: PhysioPlan; onRetest: () => void }) {
             ? tr(`${re.days} days and ${re.sessions} sessions since – test again and see what changed.`, `${re.days} Tage und ${re.sessions} Einheiten seitdem – teste erneut und sieh, was sich verändert hat.`)
             : tr(`After about 4 weeks and 8 sessions (now ${re.days} days, ${re.sessions} sessions). The result compares with the physio's.`, `Nach etwa 4 Wochen und 8 Einheiten (jetzt ${re.days} Tage, ${re.sessions} Einheiten). Das Ergebnis vergleicht mit dem des Physios.`)}
         </span>
-        <button type="button" className={re.due ? 'btn-primary' : 'btn-secondary'} onClick={props.onRetest}>
+        {/* the screen's one main button is "Routine starten" at the bottom */}
+        <button type="button" className="btn-secondary" onClick={props.onRetest}>
           {tr('To the screening', 'Zum Screening')}
         </button>
       </section>

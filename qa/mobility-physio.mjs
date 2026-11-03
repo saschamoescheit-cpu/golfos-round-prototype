@@ -75,7 +75,7 @@ ok(await p.locator('.mob-physio').isVisible(), 'imported: the plan opens');
 await shot('physio-routine');
 
 // the routine: 3 exercises, the time as the physio app counts it, a dosage table
-const sum = await p.locator('.mob-physio-sum').first().innerText();
+const sum = await p.locator('.mob-physio-status').innerText();
 ok(/3 Übungen · 0:32 Min\./.test(sum), `the routine with its time (${sum.split('\n')[1]})`);
 await p.locator('.mob-physio-ex-head').nth(1).click();
 ok((await p.locator('.mob-physio-sets tbody tr').count()) === 2 && /Für: Brücke/.test(await p.locator('.mob-physio-ex-body').innerText()), 'an exercise opens: its sets and what it is for');
@@ -138,7 +138,11 @@ await shot('physio-swing');
 
 // the guided routine to the end
 await p.locator('.mob-physio .tr-tabs button').filter({ hasText: 'Routine' }).click();
-await p.locator('.mob-physio-sum .mob-physio-start').click();
+// as every detail screen: the action bar (a new plan, Entfernen red and last), the main button below it
+const pacts = (await p.locator('.mob-physio-manage .sc-action').allInnerTexts()).map((x) => x.trim());
+ok(pacts.join(' | ') === 'Neuer Plan | Entfernen' && (await p.locator('.mob-physio-manage .sc-action').last().evaluate((b) => b.classList.contains('danger'))), `the plan's actions as one bar (${pacts.join(' | ')})`);
+ok((await p.locator('.mob-physio .btn-primary').count()) === 1 && (await p.locator('.mob-physio > .btn-primary').evaluate((b) => !b.nextElementSibling)), 'one main button, at the bottom: Routine starten');
+await p.locator('.mob-physio > .mob-physio-start').click();
 await p.locator('.mob-physio-run').waitFor({ timeout: 5000 });
 const acts = await p.locator('.mob-physio-run .drawer-action').evaluateAll((bs) => bs.map((x) => x.classList[1]).join(' '));
 ok(acts === 'skip pause end', `the routine's buttons: Skip, Pause, Finish (${acts})`);

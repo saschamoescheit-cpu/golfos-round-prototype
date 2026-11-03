@@ -191,7 +191,7 @@ await p.locator('.mob-goal .chip').filter({ hasText: 'Mehr Länge' }).click();
 await shot('goal');
 await p.getByRole('button', { name: 'Ziel speichern' }).click();
 const goalText = await p.locator('.mob-goal').innerText().catch(() => '');
-ok(/Dein Ziel: Handicap 10/.test(goalText) && /Mehr Länge/.test(goalText), `the goal is saved (${goalText.replace(/\s+/g, ' ')})`);
+ok(/Dein Ziel/i.test(goalText) && /Handicap 10/.test(goalText) && /Mehr Länge/.test(goalText) && (await p.locator('.mob-goal .settings-row').count()) === 1, `the goal is saved, a row to change it (${goalText.replace(/\s+/g, ' ')})`);
 // the overall value (Sascha 19.10.2026): one number 0 … 100 against the goal, as a ring at the top of the result
 const ring = await p.locator('.mob-score-ring').getAttribute('aria-label').catch(() => '');
 const scoreText = await p.locator('.mob-score').innerText().catch(() => '');
@@ -282,11 +282,20 @@ await p.locator('.mob-start').first().waitFor();
 // ---------- history: delete with undo ----------
 await tab('Verlauf');
 ok((await p.locator('.list-item').count()) === 1, 'one screening in the history');
+// one design (docs/DESIGN.md, Sascha 03.11.2026): the title, the tiles at the top as Rounds – the bin the last one
+ok((await p.locator('.tab-title').innerText()) === 'Verlauf' && (await p.locator('.tab-title + .tile-row .tile').count()) === 4, 'the history: its title, then four tiles as on the rounds page');
+ok(/gelöscht/.test(await p.locator('.tile-row .tile').last().innerText()) && (await p.locator('.tile-row .tile').last().isDisabled()), 'the bin tile last, empty and white');
 await shot('history');
 await p.locator('.list-item').first().click();
-await p.locator('.topbar .icon-btn').last().click();
+// the screening: TopBar without a tool, the line under it, the status card, the action bar – Löschen red and last
+ok(!(await p.locator('.topbar .icon-btn').nth(1).count()) && (await p.locator('.mob-screening-status').isVisible()), 'the screening: no bin in the TopBar, a status card');
+const sacts = (await p.locator('.mob-screening-actions .sc-action').allInnerTexts()).map((x) => x.trim());
+ok(sacts.join(' | ') === 'Wiederholen | Löschen' && (await p.locator('.mob-screening-actions .sc-action').last().evaluate((b) => b.classList.contains('danger'))), `its actions as one bar (${sacts.join(' | ')}), Löschen red`);
+await shot('screening');
+await p.locator('.mob-screening-actions .sc-action.danger').click();
 await p.waitForTimeout(300);
 ok(await p.locator('.undo-toast').isVisible(), 'delete shows "Undo"');
+ok((await p.locator('.tile-row .tile').last().innerText()).startsWith('1'), 'the deleted screening counts on the bin tile');
 await p.locator('.undo-toast button').click();
 await p.waitForTimeout(300);
 await tab('Verlauf');
