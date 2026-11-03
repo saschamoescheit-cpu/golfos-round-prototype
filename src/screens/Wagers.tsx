@@ -7,7 +7,7 @@ import { currencySymbol, money, setCurrency, transfers } from '../lib/gameforms'
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
-import { Qr } from '../components/ShareGame';
+import { copyLink, InviteCard } from '../components/InviteCard';
 import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, afterPayments, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
@@ -1784,32 +1784,40 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
   );
 }
 
+/** Shares text and link apart and without a title – WhatsApp drops the link of a share with a title (Sascha
+ *  02.11.2026); no share sheet: the link copied. */
+const shareBare = async (text: string, url: string): Promise<string | null> => {
+  const nav = navigator as Navigator & { share?: (d: { text: string; url: string }) => Promise<void> };
+  try {
+    if (nav.share) {
+      await nav.share({ text, url });
+      return null;
+    }
+    await navigator.clipboard.writeText(`${text} ${url}`);
+    return tr('Link copied.', 'Link kopiert.');
+  } catch {
+    return null; // closed by the player
+  }
+};
+
 function PoolInvite(props: { code: string; name: string }) {
+  // the one look of every QR code in the app (Sascha 03.11.2026: "identical everywhere, as under Friends")
   const [msg, setMsg] = useState<string | null>(null);
   const url = joinLink(props.code);
-  const share = async () => {
-    const nav = navigator as Navigator & { share?: (d: { text: string; url: string }) => Promise<void> };
-    const text = tr(`Join our bets "${props.name}" – code ${props.code}`, `Mach mit bei unseren Wetten „${props.name}“ – Code ${props.code}`);
-    try {
-      if (nav.share) await nav.share({ text, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        setMsg(tr('Link copied.', 'Link kopiert.'));
-      }
-    } catch {
-      /* cancelled */
-    }
-  };
+  const text = tr(`Join our bets "${props.name}" – code ${props.code}`, `Mach mit bei unseren Wetten „${props.name}“ – Code ${props.code}`);
   return (
     <div className="card invite-card pool-invite">
-      <Qr text={url} />
-      <strong className="join-code" aria-label={tr(`Code ${props.code}`, `Code ${props.code}`)}>
-        {props.code}
-      </strong>
-      <span className="muted small">{tr('Scan, or in Games type the code under "Join a bet" – then pick who you are.', 'Scannen oder in Games den Code unter „Wette beitreten“ eingeben – dann wählen, wer man ist.')}</span>
-      <button type="button" className="btn-secondary" onClick={share}>
-        {tr('Send the invitation', 'Einladung senden')}
-      </button>
+      <InviteCard
+        link={url}
+        code={props.code}
+        codeClass="join-code"
+        codeLabel={tr(`Code ${props.code}`, `Code ${props.code}`)}
+        hint={tr('Scan, or in Games type the code under "Join a bet" – then pick who you are.', 'Scannen oder in Games den Code unter „Wette beitreten“ eingeben – dann wählen, wer man ist.')}
+        actions={[
+          { label: tr('Invite', 'Einladen'), aria: tr('Send the invitation', 'Einladung senden'), icon: 'share', primary: true, onClick: () => void shareBare(text, url).then(setMsg) },
+          { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(url).then(setMsg) },
+        ]}
+      />
       {msg && <span className="muted small">{msg}</span>}
     </div>
   );

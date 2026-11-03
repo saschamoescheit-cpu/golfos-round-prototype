@@ -16,7 +16,7 @@ import { holesFor, metres, specialBoard, specialName, type Special, type Special
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
-import { Qr } from '../components/ShareGame';
+import { copyLink, InviteCard } from '../components/InviteCard';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow } from '../components/Settings';
@@ -1574,11 +1574,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
           {tr('+ Round', '+ Runde')}
         </button>
       )}
-      {host && (
-        <button type="button" className="btn-secondary" onClick={() => setSheet('invite')}>
-          {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
-        </button>
-      )}
+      {host && <TourInvite code={props.code} name={s.name} date={s.rounds[0]?.date ?? today} />}
       {!host && <span className="muted small">{tr('Only whoever set up the series changes it.', 'Nur wer die Serie angelegt hat, ändert sie.')}</span>}
       {msg && (
         <span className="small bad-text" role="alert">
@@ -1590,7 +1586,6 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
           {tr('Undo the series', 'Serie auflösen')}
         </button>
       )}
-      {sheet === 'invite' && <TourInviteSheet code={props.code} name={s.name} date={s.rounds[0]?.date ?? today} onClose={() => setSheet(null)} />}
       {sheet === 'rename' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet" role="dialog" aria-label={tr('Rename the series', 'Serie umbenennen')} onClick={(e) => e.stopPropagation()}>
@@ -1823,11 +1818,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
           })}
         </section>
       ))}
-      {host && (
-        <button type="button" className="btn-secondary" onClick={() => setSheet('invite')}>
-          {tr(`Invite players · code ${props.code}`, `Mitspieler einladen · Code ${props.code}`)}
-        </button>
-      )}
+      {host && <TourInvite code={props.code} name={ev.name} date={ev.date} />}
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}
@@ -1838,7 +1829,6 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
           {tr('Delete the tournament', 'Turnier löschen')}
         </button>
       )}
-      {sheet === 'invite' && <TourInviteSheet code={props.code} name={ev.name} date={ev.date} onClose={() => setSheet(null)} />}
       {sheet === 'delete' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet" role="dialog" aria-label={tr('Delete the tournament', 'Turnier löschen')} onClick={(e) => e.stopPropagation()}>
@@ -1865,45 +1855,47 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
   );
 }
 
-function TourInviteSheet(props: { code: string; name: string; date: string; onClose: () => void }) {
+/** Shares text and link apart and without a title – WhatsApp drops the link of a share with a title (Sascha
+ *  02.11.2026); no share sheet: the link copied. */
+const shareBare = async (text: string, url: string): Promise<string | null> => {
+  const nav = navigator as Navigator & { share?: (d: { text: string; url: string }) => Promise<void> };
+  try {
+    if (nav.share) {
+      await nav.share({ text, url });
+      return null;
+    }
+    await navigator.clipboard.writeText(`${text} ${url}`);
+    return tr('Link copied.', 'Link kopiert.');
+  } catch {
+    return null; // closed by the player
+  }
+};
+
+/** "Mitspieler einladen" of a tournament or a series: a section of its own with the QR code at once – the one look of
+ *  every invitation in the app (Sascha 03.11.2026: "the QR code identical everywhere, as under Friends"). */
+function TourInvite(props: { code: string; name: string; date: string }) {
   const url = roundJoinLink(props.code);
   // the text and the link apart, no title – as the invitations of a round and of a pool (Sascha 02.11.2026: WhatsApp
   // did not take the tournament's: the link inside the text, with a title)
   const text = tr(`Tournament "${props.name}" on ${longDate(props.date)} in GolfOS – join with code ${props.code}`, `Turnier „${props.name}“ am ${longDate(props.date)} in GolfOS – mit Code ${props.code} beitreten`);
-  const [done, setDone] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   return (
-    <div className="sheet-backdrop" onClick={props.onClose}>
-      <section className="sheet" role="dialog" aria-label={tr('Invite players', 'Mitspieler einladen')} onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <strong>{tr('Invite players', 'Mitspieler einladen')}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
-            ✕
-          </button>
-        </div>
-        <span className="muted small">{tr('With the link or the code everyone sees the tournament in Rounds and takes part on its day.', 'Mit dem Link oder dem Code sieht jeder das Turnier in Rounds und nimmt am Turniertag teil.')}</span>
-        <div className="qr-box">
-          <Qr text={url} />
-        </div>
-        <strong className="join-code">{props.code}</strong>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={async () => {
-            try {
-              if (navigator.share) await navigator.share({ text, url });
-              else {
-                await navigator.clipboard.writeText(`${text}: ${url}`);
-                setDone(tr('Copied', 'Kopiert'));
-              }
-            } catch {
-              /* the sheet closed without sharing */
-            }
-          }}
-        >
-          {tr('Send the invitation', 'Einladung senden')}
-        </button>
-        {done && <span className="small good-text">{done}</span>}
-      </section>
-    </div>
+    <section className="setup-part" aria-label={tr('Invite players', 'Mitspieler einladen')}>
+      <span className="eyebrow">{tr('Invite players', 'Mitspieler einladen')}</span>
+      <div className="card invite-card tour-invite">
+        <InviteCard
+          link={url}
+          code={props.code}
+          codeClass="join-code"
+          codeLabel={tr(`Code ${props.code}`, `Code ${props.code}`)}
+          hint={tr('With the link or the code everyone sees the tournament in Rounds and takes part on its day.', 'Mit dem Link oder dem Code sieht jeder das Turnier in Rounds und nimmt am Turniertag teil.')}
+          actions={[
+            { label: tr('Invite', 'Einladen'), aria: tr('Send the invitation', 'Einladung senden'), icon: 'share', primary: true, onClick: () => void shareBare(text, url).then(setMsg) },
+            { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(url).then(setMsg) },
+          ]}
+        />
+        {msg && <span className="muted small">{msg}</span>}
+      </div>
+    </section>
   );
 }
