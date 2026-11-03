@@ -99,7 +99,7 @@ const gir = await H.evaluate(async () => {
   const pool = {
     kind: 'wager-pool', id: 'gir', name: 'Grüns', from: day, to: day, createdAt: new Date().toISOString(), currency: 'EUR',
     players: [{ id: 'ps', name: 'Sascha' }, { id: 'pc', name: 'Chris' }],
-    wagers: [{ stake: 10, payout: 'success', attempts: 'any', by: 'Sascha', id: 'g', player: 'pc', kind: 'greens', target: 5 }],
+    wagers: [{ stake: 10, payout: 'success', attempts: 'any', by: 'Sascha', id: 'g', player: 'pc', kind: 'greens', target: 5, holes: 9 }],
     progress: {},
   };
   return (await ws.createPool(pool, 'ps'))?.code ?? null;

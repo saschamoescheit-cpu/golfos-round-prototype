@@ -11,13 +11,13 @@ export const strategy: Category = {
   short: L('Play your shot pattern, avoid the big number – save strokes without a new swing.', 'Mit deiner Streuung spielen, die großen Zahlen vermeiden – Schläge sparen ohne neuen Schwung.'),
   intro: L(
     'Course management is the fastest way to lower your score – it costs no new technique. The idea is simple: every player has a shot pattern (dispersion) – no two balls land in the same spot. Aim so that the whole pattern avoids the costly trouble (out of bounds, water, deep bunkers), and accept a miss on the safe side. Most double bogeys do not come from bad swings but from bad decisions.',
-    'Course Management ist der schnellste Weg zu einem besseren Score – es kostet keine neue Technik. Die Idee ist einfach: Jeder Spieler hat eine Streuung – keine zwei Bälle landen an derselben Stelle. Ziele so, dass die ganze Streuung die teure Gefahr (Aus, Wasser, tiefe Bunker) vermeidet, und akzeptiere einen Fehler auf der sicheren Seite. Die meisten Doppelbogeys entstehen nicht aus schlechten Schwüngen, sondern aus schlechten Entscheidungen.',
+    'Course Management ist der schnellste Weg zu einem besseren Score – es kostet keine neue Technik. Die Idee ist einfach: Jeder Spieler hat eine Streuung – keine zwei Bälle landen an derselben Stelle. Ziele so, dass die ganze Streuung die teure Gefahr (Aus, Wasser, tiefe Bunker) vermeidet, und akzeptiere einen Fehler auf der sicheren Seite. Die meisten Double Bogeys entstehen nicht aus schlechten Schwüngen, sondern aus schlechten Entscheidungen.',
   ),
   facts: [
     L('An average 15-handicap driver dispersion is about 50–60 m wide; a 150 m iron shot lands in an area of about 30 × 35 m.', 'Die Driver-Streuung eines durchschnittlichen Handicap-15-Spielers ist etwa 50–60 m breit; ein 150-m-Eisenschlag landet in einer Fläche von etwa 30 × 35 m.'),
     L('A penalty (water, out of bounds) costs on average about 1.5–2 strokes, a fairway bunker about 0.5, the rough about 0.3 (Broadie, strokes gained).', 'Ein Strafschlag (Wasser, Aus) kostet im Schnitt etwa 1,5–2 Schläge, ein Fairwaybunker etwa 0,5, das Rough etwa 0,3 (Broadie, Strokes Gained).'),
     L('DECADE (Scott Fawcett): tour players aim at the flag only when it is tucked away from trouble and they are close; otherwise at the centre of the green or the safe side.', 'DECADE (Scott Fawcett): Tour-Spieler zielen nur auf die Fahne, wenn sie weg von der Gefahr steckt und sie nah dran sind; sonst auf die Grünmitte oder die sichere Seite.'),
-    L('A handicap 18 player who makes no double bogey plays around 85 – the “bogey plan”.', 'Ein Handicap-18-Spieler ohne Doppelbogey spielt um die 85 – der „Bogey-Plan“.'),
+    L('A handicap 18 player who makes no double bogey plays around 85 – the “bogey plan”.', 'Ein Handicap-18-Spieler ohne Double Bogey spielt um die 85 – der „Bogey-Plan“.'),
   ],
   sections: [
     {
@@ -67,7 +67,7 @@ export const strategy: Category = {
       text: [
         L(
           'Add your handicap strokes to the course par: with playing handicap 18 every hole is a par 5 on a par 4. Plan each hole for your par – then a bogey is a par, and the double bogeys disappear. In Rounds the stroke dots on the hole bar show where you get a stroke.',
-          'Rechne deine Vorgabeschläge zum Platz-Par: Mit Spielvorgabe 18 ist jedes Par 4 für dich ein Par 5. Plane jedes Loch für dein Par – dann ist ein Bogey ein Par, und die Doppelbogeys verschwinden. In Rounds zeigen die Punkte in der Lochleiste, wo du einen Vorgabeschlag bekommst.',
+          'Rechne deine Vorgabeschläge zum Platz-Par: Mit Spielvorgabe 18 ist jedes Par 4 für dich ein Par 5. Plane jedes Loch für dein Par – dann ist ein Bogey ein Par, und die Double Bogeys verschwinden. In Rounds zeigen die Punkte in der Lochleiste, wo du einen Vorgabeschlag bekommst.',
         ),
       ],
     },
@@ -175,7 +175,7 @@ export const strategyDrills: Drill[] = [
     cat: 'strategy',
     also: ['mental'],
     name: L('The bogey plan', 'Der Bogey-Plan'),
-    goal: L('Play every hole for your personal par – no double bogeys.', 'Jedes Loch auf dein persönliches Par spielen – keine Doppelbogeys.'),
+    goal: L('Play every hole for your personal par – no double bogeys.', 'Jedes Loch auf dein persönliches Par spielen – keine Double Bogeys.'),
     level: 1,
     minutes: 120,
     place: 'course',
@@ -183,9 +183,9 @@ export const strategyDrills: Drill[] = [
     steps: [
       L('On stroke holes: plan three shots to the green, no risk.', 'Auf Vorgabelöchern: drei Schläge bis aufs Grün planen, kein Risiko.'),
       L('After a bad shot: back into play, accept the bogey.', 'Nach einem schlechten Schlag: zurück ins Spiel, das Bogey akzeptieren.'),
-      L('Count the holes without double bogey or worse.', 'Zähle die Löcher ohne Doppelbogey oder schlechter.'),
+      L('Count the holes without double bogey or worse.', 'Zähle die Löcher ohne Double Bogey oder schlechter.'),
     ],
-    scoring: { kind: 'made', of: 18, unit: L('holes without double bogey', 'Löcher ohne Doppelbogey') },
+    scoring: { kind: 'made', of: 18, unit: L('holes without double bogey', 'Löcher ohne Double Bogey') },
     targets: { high: 11, mid: 14, low: 16 },
   },
   {

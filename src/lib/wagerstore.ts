@@ -5,6 +5,7 @@ import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { afterPayments, balances, dayOf, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
+import { prizeOf, prizeSym, type Prize } from './prize';
 import { roundsInPlay } from './poolround';
 
 // The pools of bets on this phone and on the server (Sascha 01.11.2026). A pool lives in the table of the shared games
@@ -392,7 +393,7 @@ export function earlierBets(): EarlierBet[] {
 /** My balance in every pool on this phone, for the "Bilanz" (Sascha 03.11.2026: the balances of the games and the bets in
  *  one place): what I won or lost (provisional results counted, as in the settlement) and what of it is still open once
  *  the payments marked are off – positive: owed to me, negative: I owe. Deleted pools left out; the latest first. */
-export function myPoolBalances(today = dayOf(new Date())): { code: string; name: string; running: boolean; amount: number; open: number; currency: 'EUR' | 'USD' }[] {
+export function myPoolBalances(today = dayOf(new Date())): { code: string; name: string; running: boolean; amount: number; open: number; currency: 'EUR' | 'USD'; sym: string; prize: Prize }[] {
   return loadPools()
     .filter((e) => !e.pool.deletedAt && e.me && e.pool.players.some((p) => p.id === e.me))
     .sort((a, b) => b.pool.from.localeCompare(a.pool.from))
@@ -405,6 +406,9 @@ export function myPoolBalances(today = dayOf(new Date())): { code: string; name:
         amount: Math.round((bal[e.me] ?? 0) * 100) / 100,
         open: Math.round((afterPayments(bal, e.pool.payments)[e.me] ?? 0) * 100) / 100,
         currency: e.pool.currency ?? 'EUR',
+        // what is played for (03.11.2026): "€", "$" – or "× Getränk"; the Bilanz adds up per sym
+        sym: prizeSym(prizeOf(e.pool)),
+        prize: prizeOf(e.pool),
       };
     });
 }

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
+import { useTop } from '../components/useTop';
 import type { Course, CourseSummary } from '../types';
 import { tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
@@ -16,7 +17,7 @@ import { holesFor, metres, specialBoard, specialName, type Special, type Special
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
-import { copyLink, InviteCard, shareLink } from '../components/InviteCard';
+import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow } from '../components/Settings';
@@ -356,7 +357,6 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
           </section>
         ) : (
           <>
-            <p className="muted">{tr('No tournaments yet.', 'Noch keine Turniere.')}</p>
             {props.onNew && (
               <button type="button" className="btn-secondary" onClick={props.onNew}>
                 {tr('New tournament', 'Neues Turnier')}
@@ -627,6 +627,7 @@ export function draftOf(e: TourEntry): TourDraft {
 }
 
 export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) => void; onBack: () => void; onCourse: () => void; onSaved: (code: string) => void }) {
+  useTop();
   const d = props.draft;
   const set = (patch: Partial<TourDraft>) => props.onChange({ ...d, ...patch });
   const [busy, setBusy] = useState(false);
@@ -1486,34 +1487,79 @@ function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid
   );
 }
 
+/** The live leaderboard of a tournament and of a series (Sascha 03.11.2026: "a live leaderboard for single tournaments
+ *  and for series"): always there – before the start every player with "–", while played "● LIVE", "nach 9", "F". */
+function LiveBoard(props: { label: string; title: string; live: boolean; rows: { key: string; pos: string; name: string; sub?: string; value: string; thru: string }[]; note?: string; chips?: ReactNode }) {
+  return (
+    <section className="card tour-live" aria-label={props.label}>
+      <div className="tour-live-head">
+        <span className="eyebrow">{props.title}</span>
+        {props.live && (
+          <span className="tour-live-badge">
+            <i aria-hidden="true" />
+            LIVE
+          </span>
+        )}
+      </div>
+      {props.chips}
+      <ol className="lb-rows tour-lb">
+        {props.rows.map((r) => (
+          <li key={r.key}>
+            <span className="lb-rank">{r.pos}</span>
+            <span className="lb-name">
+              {r.name}
+              {r.sub && <span className="muted small tour-lb-sub">{r.sub}</span>}
+            </span>
+            <span className="lb-value">{r.value}</span>
+            <span className="lb-thru muted small">{r.thru}</span>
+          </li>
+        ))}
+      </ol>
+      {props.note && <span className="muted small">{props.note}</span>}
+    </section>
+  );
+}
+const clock = (d: Date) => d.toLocaleTimeString(tr('en-GB', 'de-DE'), { hour: '2-digit', minute: '2-digit' });
+
 // ---------- a tournament series ----------
 
 /** The total of a series (Sascha 01.11.2026: "the sum of all rounds"): each player's results of the rounds played added
  *  up – to par, or Stableford points – with the rounds counted. Players are the same by name. */
-export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; rows: { name: string; sum: number; rounds: number; pos: string }[] } {
-  const by = new Map<string, { name: string; sum: number; rounds: number }>();
+export interface SeriesPart {
+  /** the round's place in the series, 0 = round 1 */
+  k: number;
+  sort: number;
+  thru: number;
+  finished: boolean;
+}
+export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; rows: { name: string; sum: number; rounds: number; pos: string; parts: SeriesPart[] }[] } {
+  const by = new Map<string, { name: string; sum: number; rounds: number; parts: SeriesPart[] }>();
   let hb = false;
-  for (const ev of evs) {
+  evs.forEach((ev, k) => {
     const st = eventStandings(ev);
     hb = st.higherBetter;
     for (const r of st.rows) {
       if (r.sort == null || !r.thru) continue;
-      const k = r.name.trim().toLowerCase();
-      const x = by.get(k) ?? { name: r.name, sum: 0, rounds: 0 };
+      const key = r.name.trim().toLowerCase();
+      const x = by.get(key) ?? { name: r.name, sum: 0, rounds: 0, parts: [] };
       x.sum += r.sort;
       x.rounds++;
-      by.set(k, x);
+      // what each round added (Sascha 03.11.2026: "a live leaderboard for the series too") – a running one with its holes
+      x.parts.push({ k, sort: r.sort, thru: r.thru, finished: r.finished });
+      by.set(key, x);
     }
-  }
+  });
   const rows = [...by.values()].sort((a, b) => (hb ? b.sum - a.sum : a.sum - b.sum));
   return { higherBetter: hb, rows: rows.map((x) => ({ ...x, pos: `${rows.filter((y) => y.sum === x.sum).length > 1 ? 'T' : ''}${rows.findIndex((y) => y.sum === x.sum) + 1}` })) };
 }
 
 export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void }) {
+  useTop(props.code);
   const entry = useSeries().find((e) => e.code === props.code);
   const tours = useTours();
   const [evs, setEvs] = useState<RoundEvent[]>([]);
   const [sheet, setSheet] = useState<null | 'invite' | 'rename' | 'dissolve'>(null);
+  const [at, setAt] = useState<Date | null>(null);
   const [name, setName] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const today = dayOf(new Date());
@@ -1525,7 +1571,12 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
   useEffect(() => {
     if (!codes) return;
     let alive = true;
-    const tick = () => void Promise.all(codes.split(',').map((c) => refreshEvent(c))).then((xs) => alive && setEvs(xs.filter((x): x is RoundEvent => !!x)));
+    const tick = () =>
+      void Promise.all(codes.split(',').map((c) => refreshEvent(c))).then((xs) => {
+        if (!alive) return;
+        setEvs(xs.filter((x): x is RoundEvent => !!x));
+        setAt(new Date());
+      });
     tick();
     const t = window.setInterval(tick, 30000);
     return () => {
@@ -1575,23 +1626,34 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
         {tr('Tournament series', 'Turnierserie')} · {s.rounds.length} {tr('rounds', 'Runden')}
         {s.rounds.length ? ` · ${dm(s.rounds[0].date)}–${dm(s.rounds[s.rounds.length - 1].date)}` : ''}
       </span>
-      <section className="card tour-total" aria-label={tr('Total standing', 'Gesamtwertung')}>
-        <span className="eyebrow">{tr('Total standing – all rounds added up', 'Gesamtwertung – alle Runden zusammen')}</span>
-        {total.rows.length ? (
-          <ul className="game-pays">
-            {total.rows.map((r) => (
-              <li key={r.name}>
-                <span>
-                  {r.pos} · {r.name} <span className="muted small">· {tr(`${r.rounds} ${r.rounds === 1 ? 'round' : 'rounds'}`, `${r.rounds} ${r.rounds === 1 ? 'Runde' : 'Runden'}`)}</span>
-                </span>
-                <strong>{fmtSum(r.sum)}</strong>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span className="muted small">{tr('Shows once the first round is played.', 'Erscheint, sobald die erste Runde gespielt ist.')}</span>
-        )}
-      </section>
+      {/* the total live (Sascha 03.11.2026): each player, what every round added – a running one "nach 9" */}
+      <LiveBoard
+        label={tr('Total standing', 'Gesamtwertung')}
+        title={tr('Live leaderboard · all rounds', 'Live-Leaderboard · alle Runden')}
+        live={total.rows.some((r) => r.parts.some((p) => !p.finished))}
+        rows={
+          total.rows.length
+            ? total.rows.map((r) => {
+                const now = r.parts.find((p) => !p.finished);
+                return {
+                  key: r.name,
+                  pos: r.pos,
+                  name: r.name,
+                  sub: r.parts.map((p) => `R${p.k + 1} ${fmtSum(p.sort)}${p.finished ? '' : tr(` (thru ${p.thru})`, ` (nach ${p.thru})`)}`).join(' · '),
+                  value: fmtSum(r.sum),
+                  thru: now ? tr(`thru ${now.thru}`, `nach ${now.thru}`) : tr(`${r.rounds} ${r.rounds === 1 ? 'round' : 'rounds'}`, `${r.rounds} ${r.rounds === 1 ? 'Runde' : 'Runden'}`),
+                };
+              })
+            : [...new Set(evs.flatMap((e) => flightsOf(e).flatMap((f) => f.players.map((p) => p.name))))].map((n) => ({ key: n, pos: '–', name: n, value: '–', thru: '' }))
+        }
+        note={
+          total.rows.length
+            ? at
+              ? tr(`Updated ${clock(at)} – every 30 seconds.`, `Aktualisiert ${clock(at)} – alle 30 Sekunden.`)
+              : undefined
+            : tr('Starts with the first round – then live, every 30 seconds.', 'Startet mit der ersten Runde – dann live, alle 30 Sekunden.')
+        }
+      />
       <span className="eyebrow">{tr('Rounds', 'Runden')}</span>
       <ul className="list">
         {s.rounds.map((r, k) => (
@@ -1686,11 +1748,16 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
 // ---------- one tournament ----------
 
 export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d: TourDraft) => void; onOpenSeries?: (code: string) => void }) {
+  useTop(props.code);
   const entry = useTours().find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [live, setLive] = useState<RoundEvent | null>(null);
   const [fix, setFix] = useState<Special | null>(null);
+  const [at, setAt] = useState<Date | null>(null);
+  // the leaderboard's view: net or gross, all or one class
+  const [gross, setGross] = useState(false);
+  const [cls, setCls] = useState<string | null>(null);
   const today = dayOf(new Date());
   // the tournament with its flights as they are on the server (each flight has its own row) – and on its day and
   // after, every 30 s for the leaderboard
@@ -1701,6 +1768,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
       void refreshEvent(props.code).then((ev) => {
         if (!alive || !ev) return;
         setLive(ev);
+        setAt(new Date());
         if (isPlanned(ev)) keepTour(props.code, ev);
       });
     if (!entry) void syncTours();
@@ -1742,9 +1810,12 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
       </main>
     );
   }
-  // the leaderboard once a score is in – before, its rows would be dashes only
-  const standings = live && started ? eventStandings(live) : null;
-  const board = standings?.rows.some((r) => r.thru > 0) ? standings : null;
+  // the leaderboard always (Sascha 03.11.2026: "a live leaderboard") – before the first score every player with "–"
+  const standings = eventStandings(live ?? ev, { gross, cls });
+  const played = started && standings.rows.some((r) => r.thru > 0);
+  const done = played && standings.rows.every((r) => r.finished);
+  const net = (ev.format?.scoring ?? 'net') !== 'stroke';
+  const classes = ev.classes?.length ? CLASS_NAMES.slice(0, ev.classes.length + 1) : [];
   return (
     <main className="screen tour-screen">
       <TopBar
@@ -1785,22 +1856,57 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
           )}
         </span>
       </section>
-      {board && board.rows.length > 0 && (
-        <section className="card">
-          <span className="eyebrow">
-            {board.rows.every((r) => r.finished) ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Rangliste')} · {tourScoring(fmt.scoring)}
-          </span>
-          <ul className="game-pays">
-            {board.rows.map((r) => (
-              <li key={r.key}>
-                <span>
-                  {r.pos} · {r.name} <span className="muted small">{r.finished ? '' : r.thru ? tr(`· after ${r.thru}`, `· nach ${r.thru}`) : ''}</span>
-                </span>
-                <strong>{r.value}</strong>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {standings.rows.length > 0 && (
+        <LiveBoard
+          label={tr('Live leaderboard', 'Live-Leaderboard')}
+          title={`${done ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Leaderboard')} · ${gross ? tr('Gross', 'Brutto') : tourScoring(fmt.scoring)}`}
+          live={played && !done}
+          chips={
+            played && (net || classes.length > 0) ? (
+              <div className="chip-set lb-filters">
+                {net && (
+                  <>
+                    <button type="button" className={`chip${!gross ? ' on' : ''}`} aria-pressed={!gross} onClick={() => setGross(false)}>
+                      {fmt.scoring === 'stableford' ? 'Stableford' : tr('Net', 'Netto')}
+                    </button>
+                    <button type="button" className={`chip${gross ? ' on' : ''}`} aria-pressed={gross} onClick={() => setGross(true)}>
+                      {tr('Gross', 'Brutto')}
+                    </button>
+                  </>
+                )}
+                {classes.length > 0 && (
+                  <>
+                    <button type="button" className={`chip${cls == null ? ' on' : ''}`} aria-pressed={cls == null} onClick={() => setCls(null)}>
+                      {tr('All', 'Alle')}
+                    </button>
+                    {classes.map((c) => (
+                      <button key={c} type="button" className={`chip${cls === c ? ' on' : ''}`} aria-pressed={cls === c} onClick={() => setCls(c)}>
+                        {tr(`Class ${c}`, `Klasse ${c}`)}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            ) : undefined
+          }
+          rows={standings.rows.map((r) => ({
+            key: r.key,
+            pos: played ? r.pos : '–',
+            name: r.name,
+            ...(classes.length && r.cls ? { sub: tr(`Class ${r.cls}`, `Klasse ${r.cls}`) } : {}),
+            value: played && r.thru ? r.value : '–',
+            thru: r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
+          }))}
+          note={
+            !started
+              ? tr(`Starts on ${longDate(ev.date)} – then live, every 30 seconds.`, `Startet am ${longDate(ev.date)} – dann live, alle 30 Sekunden.`)
+              : !played
+                ? tr('Live as soon as the first score is in.', 'Live, sobald der erste Score eingetragen ist.')
+                : !done && at
+                  ? tr(`Updated ${clock(at)} – every 30 seconds.`, `Aktualisiert ${clock(at)} – alle 30 Sekunden.`)
+                  : undefined
+          }
+        />
       )}
       {(ev.specials ?? []).length > 0 &&
         specialBoard(live ?? ev).map(({ special, rows }) => (
@@ -1948,6 +2054,8 @@ function TourInvite(props: { code: string; name: string; date: string }) {
           ]}
         />
         {msg && <span className="muted small">{msg}</span>}
+        {/* linked friends invited with a tap (Sascha 03.11.2026) – the tournament's or the series' code */}
+        <FriendInvite code={props.code} />
       </div>
     </section>
   );

@@ -1669,7 +1669,7 @@ button.tile:disabled { opacity: 1; }
 
 /* a shot on the map held down to remove it: no text selection or callout on the iPhone (Sascha 22.10.2026) */
 .holdable { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-/* the hole's score in the shot check: a long name ("Doppelbogey") takes the room it needs, never over the putts */
+/* the hole's score in the shot check: a long name ("Double Bogey") takes the room it needs, never over the putts */
 .review-score .sc-hero-main { grid-auto-columns: auto; justify-content: space-between; column-gap: 14px; }
 .review-score .sc-mid { overflow-wrap: anywhere; }
 
@@ -2132,6 +2132,17 @@ button.tile:disabled { opacity: 1; }
 .invite-friend .grow { flex: 1; min-width: 0; }
 .invite-friend > button { flex: none; width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; }
 .sc-status.game-confirmed { flex-direction: row; align-items: center; gap: 12px; cursor: default; }
+
+/* the balance (03.11.2026): open amounts, the players tapped for their details, each pool on its own */
+.balance-open { display: flex; flex-direction: column; gap: 8px; }
+.balance-open .link-row { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; }
+.balance-people li { display: block; }
+.balance-person { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 4px 0; color: inherit; font: inherit; text-align: left; }
+.balance-person .grow { flex: 1; min-width: 0; }
+.balance-pool-head { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; }
+.balance-pool-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.balance-pool-head:disabled { opacity: 1; }
+.balance-sum { display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--line); font-weight: 600; }
 /* how a game's standing came about (03.11.2026): per pair its nines, hole by hole */
 .game-details { border-top: 1px solid var(--line); padding-top: 8px; }
 .game-details > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 4px 0; }
@@ -2141,3 +2152,13 @@ button.tile:disabled { opacity: 1; }
 .game-details li strong { white-space: nowrap; font-weight: 600; }
 .game-details-label { flex: none; min-width: 64px; color: var(--muted, var(--text-2)); font-size: 13px; }
 .game-grid .game-grid-sum { font-weight: 700; background: var(--surface-2); }
+
+/* the live leaderboard of a tournament and of a series (03.11.2026) */
+.tour-live { display: flex; flex-direction: column; gap: 10px; }
+.tour-live-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tour-live-badge { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--body); letter-spacing: .08em; color: var(--bad, #e5484d); }
+.tour-live-badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad, #e5484d); animation: tour-live 1.4s ease-in-out infinite; }
+@keyframes tour-live { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .tour-live-badge i { animation: none; } }
+.tour-lb .lb-name { white-space: normal; display: flex; flex-direction: column; }
+.tour-lb-sub { display: block; font-weight: 400; }

@@ -3,6 +3,7 @@ import { isTeamRound } from './games';
 import { emptyEntry, greenInRegulation, handicapStrokes, stablefordPoints } from './scoring';
 import { tr } from './i18n';
 import { currencySymbol, money } from './gameforms';
+import { prizeOf, prizeSym, type Prize } from './prize';
 
 // Bets over a trip (Sascha 01.11.2026: "in America we have bets running – every player his own targets, 20 € each:
 // Chris 3 birdies in a row, 12 pars in a row, 5 birdies on 18, 16 greens, −5 …; it must be possible to set up
@@ -130,7 +131,7 @@ export const METRICS: { id: Metric; one: () => string; many: () => string; none:
   { id: 'birdie', one: () => 'Birdie', many: () => 'Birdies', none: () => tr('No birdie', 'Kein Birdie') },
   { id: 'par', one: () => tr('Par or better', 'Par oder besser'), many: () => tr('pars or better', 'Pars oder besser'), none: () => tr('No par', 'Kein Par') },
   { id: 'bogey', one: () => 'Bogey', many: () => 'Bogeys', none: () => tr('No bogey', 'Kein Bogey') },
-  { id: 'double', one: () => tr('Double bogey or worse', 'Doppelbogey oder schlechter'), many: () => tr('double bogeys or worse', 'Doppelbogeys oder schlechter'), none: () => tr('No double bogey', 'Kein Doppelbogey') },
+  { id: 'double', one: () => tr('Double bogey or worse', 'Double Bogey oder schlechter'), many: () => tr('double bogeys or worse', 'Double Bogeys oder schlechter'), none: () => tr('No double bogey', 'Kein Double Bogey') },
   { id: 'eagle', one: () => 'Eagle', many: () => 'Eagles', none: () => tr('No eagle', 'Kein Eagle') },
   { id: 'strokes', one: () => tr('Score to par', 'Ergebnis zu Par'), many: () => tr('to par', 'zu Par'), none: () => tr('Even par', 'Par gespielt'), sum: true },
   { id: 'penalties', one: () => tr('Penalty stroke', 'Strafschlag'), many: () => tr('penalty strokes', 'Strafschläge'), none: () => tr('No penalty stroke', 'Kein Strafschlag'), sum: true },
@@ -310,6 +311,8 @@ export interface WagerPool {
   progress: Record<string, Progress>;
   /** the pool's money: euro (default) or dollar (Sascha 01.11.2026) */
   currency?: 'EUR' | 'USD';
+  /** what is played for (Sascha 03.11.2026: "drinks, a meal, cleaning the clubs – or one's own"); unset: money in `currency` */
+  prize?: Prize;
   /** the rounds of the trip – set: only rounds on these days on these courses count (02.11.2026) */
   rounds?: PoolRound[];
   /** "with marker" for the whole pool (Sascha 02.11.2026: "one bet with, another without a marker makes no sense") –
@@ -361,6 +364,25 @@ export const needsDetails = (w: Pick<Wager, 'kind' | 'metric'>): boolean => DETA
 /** Does a round need the detail entry for a pool: a bet of it that needs details and counts this round. */
 export function poolNeedsDetails(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'> & { rounds?: PoolRound[] }, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean {
   return pool.wagers.some((w) => needsDetails(w) && inPool(r, pool, w));
+}
+
+/** Can the bet only be made on 18 holes (Sascha 03.11.2026: "12 greens in regulation, and a 9-hole round could be started –
+ *  that makes no sense; the bets' settings checked against the round's"): a 5+5+10, a bet on 18 (a count, at most N,
+ *  points, the score), the score of several rounds, a run or an own bet asking for more than nine. A count on the
+ *  whole trip, a run up to nine, a bet on 9: a nine will do. */
+export function needs18(w: Pick<Wager, 'kind' | 'holes' | 'scope' | 'target' | 'where' | 'acrossRounds'>): boolean {
+  const shape = shapeOf(w.kind);
+  if (shape === 'duel' || shape === 'sum') return true;
+  if (shape === 'free') return false;
+  if (shape === 'run') return w.target > 9 && !w.acrossRounds;
+  if (shape === 'custom') return (w.where ?? 'all') === 'all' && w.target > 9;
+  if (shape === 'count' && w.scope === 'trip') return false;
+  return (w.holes ?? 18) === 18;
+}
+
+/** A bet in this round that needs 18 holes – the round then offers only the 18-hole combinations. */
+export function poolNeeds18(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'> & { rounds?: PoolRound[] }, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean {
+  return pool.wagers.some((w) => needs18(w) && inPool(r, pool, w));
 }
 
 /** A day as YYYY-MM-DD in local time. */
@@ -821,9 +843,9 @@ export function roundLabel(x: PoolRound): string {
 }
 
 /** How it is counted and paid, in a line. */
-export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency'> & { rounds?: PoolRound[] }): string {
+export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency' | 'prize'> & { rounds?: PoolRound[] }): string {
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
-  const sym = currencySymbol(pool.currency);
+  const sym = prizeSym(prizeOf(pool));
   const one = w.attempts === 'round' ? pool.rounds?.find((x) => x.id === w.round) : undefined;
   if (shapeOf(w.kind) === 'duel') {
     const p = w.parts ?? { front: 0, back: 0, total: 0 };
@@ -852,11 +874,11 @@ export function wagerRules(w: Wager, pool: Pick<WagerPool, 'players' | 'currency
 }
 
 /** The standing of a bet in words: "best 2 (target 3)", "best round +3 (target −5)", "so far 7 (target 10)". */
-export function progressText(w: Wager, p: Progress | undefined, currency?: 'EUR' | 'USD'): string {
+export function progressText(w: Wager, p: Progress | undefined, currency?: 'EUR' | 'USD' | Prize): string {
   if (w.kind === 'free') return '';
   if (shapeOf(w.kind) === 'duel') {
     if (!p?.duels?.length) return tr('no round together yet', 'noch keine gemeinsame Runde');
-    const sign = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(v, currencySymbol(currency))}`;
+    const sign = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(v, typeof currency === 'object' ? prizeSym(currency) : currencySymbol(currency))}`;
     const mark = (v: number | null) => (v == null ? '–' : v > 0 ? '✓' : v < 0 ? '✗' : '=');
     const last = p.duels[p.duels.length - 1];
     return tr(
@@ -900,7 +922,7 @@ export const KINDS: { kind: WagerKind; name: () => string; number: () => string;
   { kind: 'stableford', name: () => tr('Stableford points', 'Stableford-Punkte'), number: () => tr('Points', 'Punkte'), min: 1 },
   { kind: 'putts', name: () => tr('At most putts', 'Höchstens Putts'), number: () => tr('Putts at most', 'Höchstens Putts'), min: 0 },
   { kind: 'threeputts', name: () => tr('At most three-putts', 'Höchstens Drei-Putts'), number: () => tr('Three-putts at most', 'Höchstens Drei-Putts'), min: 0 },
-  { kind: 'doubles', name: () => tr('At most double bogeys', 'Höchstens Doppelbogeys'), number: () => tr('Double bogeys at most', 'Höchstens Doppelbogeys'), min: 0 },
+  { kind: 'doubles', name: () => tr('At most double bogeys', 'Höchstens Double Bogeys'), number: () => tr('Double bogeys at most', 'Höchstens Double Bogeys'), min: 0 },
   { kind: 'penalties', name: () => tr('At most penalty strokes', 'Höchstens Strafschläge'), number: () => tr('Penalty strokes at most', 'Höchstens Strafschläge'), min: 0 },
   { kind: 'score', name: () => tr('Score to par', 'Ergebnis zu Par'), number: () => tr('To par (−5, +2 …)', 'Zu Par (−5, +2 …)'), min: -30 },
   { kind: 'scoreSum', name: () => tr('Score over several rounds', 'Ergebnis über mehrere Runden'), number: () => tr('To par, all rounds added up', 'Zu Par, alle Runden zusammen'), min: -60 },
@@ -945,7 +967,7 @@ export const LIBRARY: LibraryBet[] = [
   { id: 'stableford', group: 'round', kind: 'stableford', start: 36, name: () => tr('Stableford points', 'Stableford-Punkte'), hint: () => tr('With his playing handicap', 'Mit seiner Spielvorgabe') },
   { id: 'putts', group: 'roundMost', kind: 'putts', start: 32, name: () => tr('Putts', 'Putts'), hint: () => tr('At most this many putts in a round', 'Höchstens so viele Putts in einer Runde') },
   { id: 'threeputts', group: 'roundMost', kind: 'threeputts', start: 0, name: () => tr('Three-putts', 'Drei-Putts'), hint: () => tr('0 = not a single three-putt', '0 = kein einziger Drei-Putt') },
-  { id: 'doubles', group: 'roundMost', kind: 'doubles', start: 1, name: () => tr('Double bogeys', 'Doppelbogeys'), hint: () => tr('Double bogey or worse (or picked up)', 'Doppelbogey oder schlechter (auch aufgehoben)') },
+  { id: 'doubles', group: 'roundMost', kind: 'doubles', start: 1, name: () => tr('Double bogeys', 'Double Bogeys'), hint: () => tr('Double bogey or worse (or picked up)', 'Double Bogey oder schlechter (auch aufgehoben)') },
   { id: 'penalties', group: 'roundMost', kind: 'penalties', start: 0, name: () => tr('Penalty strokes', 'Strafschläge'), hint: () => tr('Water, out of bounds, unplayable', 'Wasser, Aus, unspielbar') },
   { id: 'scoreGross', group: 'score', kind: 'score', start: 10, name: () => tr('Gross to par', 'Brutto zu Par'), hint: () => tr('e.g. +2: at most 2 over par', 'z. B. +2: höchstens 2 über Par') },
   { id: 'scoreNet', group: 'score', kind: 'score', patch: { net: true }, start: 0, name: () => tr('Net to par', 'Netto zu Par'), hint: () => tr('Minus his playing handicap – 0: play to his handicap', 'Minus Spielvorgabe – 0: die Vorgabe spielen') },

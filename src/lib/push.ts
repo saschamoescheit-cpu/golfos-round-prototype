@@ -187,6 +187,13 @@ export function pushBet(code: string, wager: string): void {
   void call({ action: 'bet', code, wager }).catch(() => null);
 }
 
+/** Paid or received in the balance (Sascha 03.11.2026: "he gets told that I booked the payment out – and confirms"):
+ *  the others of the game or the pool hear of it. */
+export function pushPaid(code: string, as: 'paid' | 'received', who: string, to: string, amount: string): void {
+  if (!loadSession() || !syncConfigured()) return;
+  void call({ action: 'paid', code, as, who, to, amount }).catch(() => null);
+}
+
 /** A shared game: this phone joined it, or the game ended – the others hear of it. */
 export function pushGame(action: 'joined' | 'finished', code: string): void {
   if (!loadSession() || !syncConfigured()) return;

@@ -408,7 +408,7 @@ const SCENES: Record<string, () => JSX.Element> = {
   // 21 – Stableford
   stableford: () => (
     <Frame label="Stableford" bg="#24333c">
-      {[tr('Double bogey+', 'Doppelbogey+') + ' 0', 'Bogey 1', 'Par 2', 'Birdie 3', 'Eagle 4'].map((t, i) => (
+      {[tr('Double bogey+', 'Double Bogey+') + ' 0', 'Bogey 1', 'Par 2', 'Birdie 3', 'Eagle 4'].map((t, i) => (
         <g key={t}>
           <rect x={30 + i * 56} y={130 - i * 20} width="46" height={20 + i * 20} rx="6" fill={i >= 2 ? C.brand : '#56656e'} />
           <Label x={53 + i * 56} y={170} t={t.split(' ').pop()!} />

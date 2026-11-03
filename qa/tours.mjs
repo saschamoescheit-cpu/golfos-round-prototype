@@ -119,6 +119,8 @@ const flightsOf = (code) => [...shared.entries()].filter(([, r]) => r.event_code
 // ---------- Sascha plans the tournament ----------
 const host = await phone('Sascha');
 const H = host.p;
+// a linked friend – invited from the tournament's page with a tap (Sascha 03.11.2026)
+await H.evaluate(() => localStorage.setItem('golfos.friends.v1', JSON.stringify([{ id: 'f-ben', name: 'Ben', hcp: '', uid: 'u-Ben' }])));
 // Tournaments a module of their own, below Games & Bets (Sascha 03.11.2026)
 ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Planen|Turniere|Profil' && (await H.locator('.module-tag').textContent()) === 'Tournaments', `the module Tournaments: ${(await H.locator('.tabbar button').allInnerTexts()).join(' · ')}`);
 ok(await H.getByText('Neues Turnier planen').isVisible() && (await H.getByRole('button', { name: 'Neue Wette' }).count()) === 0, 'its start page: "Neues Turnier planen", no bets');
@@ -403,6 +405,7 @@ ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Z�
 ok((await H.getByText('Cedric erfasst die Scores für alle').count()) === 1 && (await H.getByText('Zähler: Cedric').count()) === 1, 'the tournament page: Cedric keeps the score of flight 2');
 // the QR code at once, the one look of every invitation (Sascha 03.11.2026: "identical everywhere, as under Friends")
 const tinv = H.getByRole('region', { name: 'Mitspieler einladen' });
+ok((await tinv.getByRole('button', { name: 'Ben einladen' }).count()) === 1, 'invite: the linked friend Ben with "Einladen" below the QR code');
 ok((await tinv.locator('.qr-box svg').count()) === 1 && (await tinv.locator('.join-code').innerText()).trim().replace(/-/g, '') === code && (await tinv.locator('.qr-action').count()) === 2, 'invite: its own section – QR code and code at once, "Einladen" and "Link kopieren"');
 // Sascha 02.11.2026: "sending the invitation by WhatsApp does not work for tournaments" – the text and the link apart,
 // no title, as the invitations of a round and of a pool (the iPhone's share sheet hands WhatsApp the link)
@@ -434,9 +437,11 @@ await H.waitForTimeout(800);
 ok((await H.locator('.tab-title + .tile-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 1, 'menu "Turniere": the tiles at the top, the tournament in the list');
 await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
 await H.waitForTimeout(2500);
-const board = H.locator('.card').filter({ has: H.locator('.game-pays') }).first();
-const rows = (await board.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(/^Live-Rangliste/i.test(await board.locator('.eyebrow').innerText()), 'the leaderboard is named "Live-Rangliste" while it is played');
+// the live leaderboard (Sascha 03.11.2026): its name, "LIVE" while played, each player "nach 3"
+const board = H.getByRole('region', { name: 'Live-Leaderboard' });
+const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && /Aktualisiert \d\d:\d\d/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
+if (process.env.SHOTS) await board.screenshot({ path: process.env.SHOTS + '/tours-live.png' });
 ok(rows.length === 4 && /Chris/.test(rows[0]) && /Erik/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Chris first, Erik last, all "nach 3" (${rows.join(' | ')})`);
 const ldRows = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 const ntpRows = (await H.getByRole('region', { name: 'Nearest to the Pin' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
@@ -535,7 +540,9 @@ const srow = scode && shared.get(scode).game;
 ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() === `${code},TOUR22` && shared.get(code).game.series?.code === scode && shared.get('TOUR22').game.series?.code === scode, `server: the series ${scode} with its two rounds, each pointing to it`);
 ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
 const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(total.length === 4 && /Chris/.test(total[0]) && total.every((t) => /1 Runde/.test(t)), `the total standing: the round played added up (${total.join(' | ')})`);
+// live: round 1 running (3 holes) – each player what it added, "nach 3", the LIVE mark
+ok(total.length === 4 && /Chris/.test(total[0]) && total.every((t) => /R1 .*\(nach 3\)/.test(t) && /nach 3$/.test(t.trim())) && (await H.locator('[aria-label="Gesamtwertung"] .tour-live-badge').count()) === 1, `the total live: round 1 running added up (${total.join(' | ')})`);
+if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screenshot({ path: process.env.SHOTS + '/tours-series-live.png' });
 // the pencil green as every pencil (Sascha 03.11.2026); the total's head a line of its own
 {
   const pen = await H.getByRole('button', { name: 'Serie umbenennen' }).evaluate((e) => getComputedStyle(e).backgroundColor);

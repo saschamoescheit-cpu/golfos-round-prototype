@@ -31,7 +31,7 @@ export function StakePicker(props: { value: number; onChange: (v: number) => voi
             {v ? money(v) : tr('none', 'ohne')}
           </button>
         ))}
-        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? money(props.value).replace(/ [€$]$/, '') : ''); }}>
+        <button type="button" className={`chip${typing || custom ? ' on' : ''}`} aria-pressed={typing || custom} onClick={() => { setTyping(true); setText(custom ? String(props.value).replace('.', tr('.', ',')) : ''); }}>
           {custom && !typing ? money(props.value) : tr('other …', 'anderer …')}
         </button>
       </div>
@@ -60,7 +60,9 @@ export function StakePicker(props: { value: number; onChange: (v: number) => voi
 /** The stake as a row with its list (Sascha 03.11.2026: "the stake's sheet looks other than the other menus" – the
  *  amounts as the options of "Vorgabe", the chosen one ticked; "Anderer Betrag …" typed in below). One tap picks and
  *  closes, as every other row. */
-export function StakeRow(props: { label: string; value: number; onChange: (v: number) => void; stakes?: number[]; disabled?: boolean }) {
+export function StakeRow(props: { label: string; value: number; onChange: (v: number) => void; stakes?: number[]; disabled?: boolean; /** "$" or "× Getränk" – not money: counted (03.11.2026) */ sym?: string }) {
+  const count = !!props.sym && props.sym.startsWith('×');
+  const m = (v: number) => money(v, props.sym);
   const stakes = props.stakes ?? STAKES;
   const [open, setOpen] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -75,21 +77,23 @@ export function StakeRow(props: { label: string; value: number; onChange: (v: nu
   };
   const take = () => {
     const v = Number(text.replace(/[€$]/g, '').replace(/\s/g, '').replace(',', '.'));
-    if (!text.trim() || !Number.isFinite(v) || v <= 0) return setError(tr('Type an amount, e.g. 3', 'Gib einen Betrag ein, z. B. 3'));
-    if (v > 1000) return setError(tr(`At most ${money(1000)}.`, `Höchstens ${money(1000)}.`));
-    props.onChange(Math.round(v * 100) / 100);
+    if (!text.trim() || !Number.isFinite(v) || v <= 0) return setError(count ? tr('Type a number, e.g. 2', 'Gib eine Anzahl ein, z. B. 2') : tr('Type an amount, e.g. 3', 'Gib einen Betrag ein, z. B. 3'));
+    if (v > (count ? 20 : 1000)) return setError(tr(`At most ${m(count ? 20 : 1000)}.`, `Höchstens ${m(count ? 20 : 1000)}.`));
+    props.onChange(count ? Math.round(v) : Math.round(v * 100) / 100);
     close();
   };
   return (
     <>
-      <SettingsRow label={props.label} value={props.value ? money(props.value) : tr('none', 'ohne')} onClick={() => setOpen(true)} disabled={props.disabled} />
+      <SettingsRow label={props.label} value={props.value ? m(props.value) : tr('none', 'ohne')} onClick={() => setOpen(true)} disabled={props.disabled} />
       {open && (
         <PickSheet<number>
           title={props.label}
           current={typing || custom ? OTHER : props.value}
           options={[
-            ...stakes.map((v) => ({ value: v, name: v ? money(v) : tr('None', 'Ohne') })),
-            { value: OTHER, name: custom ? tr(`Other amount: ${money(props.value)}`, `Anderer Betrag: ${money(props.value)}`) : tr('Other amount …', 'Anderer Betrag …') },
+            ...stakes.map((v) => ({ value: v, name: v ? m(v) : tr('None', 'Ohne') })),
+            count
+              ? { value: OTHER, name: custom ? tr(`Other number: ${m(props.value)}`, `Andere Anzahl: ${m(props.value)}`) : tr('Other number …', 'Andere Anzahl …') }
+              : { value: OTHER, name: custom ? tr(`Other amount: ${m(props.value)}`, `Anderer Betrag: ${m(props.value)}`) : tr('Other amount …', 'Anderer Betrag …') },
           ]}
           onPick={(v) => {
             if (v === OTHER) {
@@ -106,9 +110,9 @@ export function StakeRow(props: { label: string; value: number; onChange: (v: nu
             <div className="cap-input">
               <input
                 className="input"
-                inputMode="decimal"
+                inputMode={count ? 'numeric' : 'decimal'}
                 autoFocus
-                aria-label={tr('The amount', 'Der Betrag')}
+                aria-label={count ? tr('The number', 'Die Anzahl') : tr('The amount', 'Der Betrag')}
                 placeholder="3"
                 value={text}
                 onChange={(e) => {

@@ -1,3 +1,4 @@
+import { mergePayments } from './gamepay';
 import type { Game } from './gameforms';
 import { emptyEntry } from './scoring';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
@@ -56,6 +57,8 @@ export function mergeGames(local: Game, remote: Game): Game {
     presses,
     stamps,
     finishedAt: local.finishedAt ?? remote.finishedAt ?? null,
+    // the payments of both phones (Sascha 03.11.2026: paid on one phone, confirmed on the other)
+    ...(local.payments?.length || remote.payments?.length ? { payments: mergePayments(local.payments, remote.payments) } : {}),
   };
 }
 

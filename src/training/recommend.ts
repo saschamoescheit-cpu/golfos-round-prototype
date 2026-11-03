@@ -118,7 +118,7 @@ export function adviceFromRounds(rounds: Round[]): Advice[] {
   }
 
   // 4. penalties → strategy, many double bogeys → strategy + mental
-  if (a.scoreMix.doublePlus >= 25) add({ cat: 'strategy', why: tr(`${a.scoreMix.doublePlus}% of holes double bogey or worse`, `${a.scoreMix.doublePlus} % der Löcher Doppelbogey oder schlechter`), drills: ['safe-target', 'bogey-plan', 'nine-hole-plan'], weight: (a.scoreMix.doublePlus - 20) / 15 });
+  if (a.scoreMix.doublePlus >= 25) add({ cat: 'strategy', why: tr(`${a.scoreMix.doublePlus}% of holes double bogey or worse`, `${a.scoreMix.doublePlus} % der Löcher Double Bogey oder schlechter`), drills: ['safe-target', 'bogey-plan', 'nine-hole-plan'], weight: (a.scoreMix.doublePlus - 20) / 15 });
 
   return out.sort((x, y) => y.weight - x.weight).slice(0, 4);
 }

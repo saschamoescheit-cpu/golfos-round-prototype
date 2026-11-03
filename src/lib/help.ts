@@ -29,7 +29,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance, swipe to delete', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz, Löschen per Wischen'), length: '1:15' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
   { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, Runde starten, der Stand, die Abrechnung'), length: '1:26' },
-  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('Flights with their tee times, players moved, markers, special prizes, live leaderboard', 'Flights mit Startzeit, Spieler verschieben, Zähler, Sonderwertungen, Live-Rangliste'), length: '1:25' },
+  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('Flights with their tee times, players moved, markers, special prizes, live leaderboard', 'Flights mit Startzeit, Spieler verschieben, Zähler, Sonderwertungen, Live-Rangliste'), length: '1:24' },
 ];
 /** The whole tour in one video. */
 export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:05' };
@@ -299,6 +299,24 @@ export const FAQ: FaqTopic[] = [
             'Skins, Wolf, Nassau, 5+5+10, Las Vegas, Chicago, Lochspiel und mehr – jedes erklärt seine Regeln, zum Lesen oder Vorlesen. Mit dem Stern stehen deine Lieblingsspiele oben.',
           ),
         video: 'games',
+      },
+      {
+        q: () => tr('How do I see what I owe – and mark it paid?', 'Wie sehe ich, was ich schulde – und markiere es als bezahlt?'),
+        a: () =>
+          tr(
+            'Games & Bets → "Balance": "Open amounts" shows what you owe and what you are owed. Tap a player: each game and pool between you, how it stood, together. "Paid" when you paid him – he sees it and confirms with "Received"; "Received" books out what someone gave you. ↺ takes a payment back.',
+            'Games & Bets → „Bilanz“: Unter „Offene Beträge“ steht, was du schuldest und was dir geschuldet wird. Tippe auf einen Mitspieler: jedes Spiel und jede Wette zwischen euch, wie es stand, zusammen. „Bezahlt“, wenn du ihm gezahlt hast – er sieht es und bestätigt mit „Erhalten“; mit „Erhalten“ buchst du aus, was dir jemand gegeben hat. ↺ nimmt eine Zahlung zurück.',
+          ),
+        video: 'games',
+      },
+      {
+        q: () => tr('Can we play for drinks instead of money?', 'Können wir auch um Getränke statt um Geld spielen?'),
+        a: () =>
+          tr(
+            'Yes, in the bets: "Played for" – euro, dollar, drinks, a meal, cleaning the clubs, or your own stake typed. A thing is counted: "2 × drink", "Cedric owes Sascha".',
+            'Ja, bei den Wetten: „Worum wird gespielt“ – Euro, Dollar, Getränke, Essen, Schläger putzen oder ein eigener Einsatz. Dann wird gezählt: „2 × Getränk“, „Cedric schuldet Sascha“.',
+          ),
+        video: 'wagers',
       },
       {
         q: () => tr('How is it settled?', 'Wie wird abgerechnet?'),

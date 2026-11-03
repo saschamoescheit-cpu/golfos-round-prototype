@@ -139,6 +139,17 @@ export const askedNote = (who: string, course: string, lang?: string | null): No
   url: './#rounds',
 });
 
+/** Paid or received in the balance (Sascha 03.11.2026: "he gets told that I booked the payment out – and confirms"). */
+export const paidNote = (who: string, to: string, amount: string, as: 'paid' | 'received', code: string, lang?: string | null): Note => ({
+  title: as === 'paid' ? T(lang, `${who || 'A player'} paid`, `${who || 'Ein Spieler'} hat bezahlt`) : T(lang, `${who || 'A player'} got it`, `${who || 'Ein Spieler'} hat es erhalten`),
+  body:
+    as === 'paid'
+      ? T(lang, `${amount} to ${to || 'you'} – confirm it under Games › Balance.`, `${amount} an ${to || 'dich'} – bitte unter Games › Bilanz bestätigen.`)
+      : T(lang, `${amount} from ${to || 'you'} – marked received.`, `${amount} von ${to || 'dir'} – als erhalten markiert.`),
+  tag: `golfos-paid-${code}`,
+  url: './#games',
+});
+
 /** The host invites a player by his GolfOS user name (Sascha 30.10.2026): a tap and he is in. */
 /** A friend request accepted (Sascha 03.11.2026: "as on Instagram – a push that we are GolfOS friends now"). */
 export const friendNote = (who: string, lang?: string | null): Note => ({
@@ -708,6 +719,19 @@ export async function handle(req: Request): Promise<Response> {
         if (await send(s, askedNote(String(asked.name ?? '').slice(0, 60), g.game?.course?.name ?? 'GolfOS', s.lang), 3600, 'high')) n++;
       }
       await d.insertIgnore('golfos_push_sent', [{ user_id: g.owner, key }]);
+      return json({ ok: true, sent: n });
+    }
+    // paid or received in the balance: the others of the game or the pool hear of it – only a member tells
+    if (action === 'paid') {
+      const code = String(body.code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      const as = body.as === 'received' ? 'received' : 'paid';
+      const who = String(body.who ?? '').slice(0, 60);
+      const to = String(body.to ?? '').slice(0, 60);
+      const amount = String(body.amount ?? '').slice(0, 40);
+      const [g] = await d.get<{ owner: string; members: string[] }[]>(`golfos_shared_games?select=owner,members&code=eq.${code}`);
+      if (!g || (g.owner !== user && !g.members.includes(user))) return json({ error: 'not in this game' }, 403);
+      let n = 0;
+      for (const s of await subsOf([...new Set([g.owner, ...g.members])].filter((u) => u !== user))) if (s.kinds?.games !== false && (await send(s, paidNote(who, to, amount, as, code, s.lang), 24 * 3600, 'high'))) n++;
       return json({ ok: true, sent: n });
     }
     // the host (or a member) invites a player by his user name: let in at once (he becomes a member), told by push
