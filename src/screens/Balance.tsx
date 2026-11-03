@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { tr } from '../lib/i18n';
 import { formatEuro, money, standingOf, type Game } from '../lib/gameforms';
 import { dm, meIn, people, sums, topRows, waiting, type GamePayment, type Item, type Person } from '../lib/gamepay';
@@ -32,6 +32,48 @@ function Amounts(props: { m: Record<string, number>; plain?: boolean }) {
     </>
   );
 }
+
+// the marks of the tiles – as the tiles of Rounds and Games (Sascha 03.11.2026: "the tiles have no icons of their own")
+const tileIcon = (d: ReactNode) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {d}
+  </svg>
+);
+const TILE_ICONS = {
+  // the controller of "Spielen"
+  games: tileIcon(
+    <>
+      <rect x="2.5" y="7" width="19" height="11" rx="3.5" />
+      <path d="M7.5 10.5v4M5.5 12.5h4" />
+      <circle cx="15.5" cy="11.5" r="0.6" fill="currentColor" />
+      <circle cx="18" cy="14" r="0.6" fill="currentColor" />
+    </>,
+  ),
+  // the trophy
+  wins: tileIcon(
+    <>
+      <path d="M8 4h8v5a4 4 0 0 1-8 0z" />
+      <path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4" />
+    </>,
+  ),
+  // the ticket of "Wetten"
+  bets: tileIcon(
+    <>
+      <path d="M3.5 7.5a1 1 0 0 1 1-1h15a1 1 0 0 1 1 1v2.2a2.3 2.3 0 0 0 0 4.6v2.2a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-2.2a2.3 2.3 0 0 0 0-4.6z" />
+      <path d="M15 6.5v11" strokeDasharray="1.6 2" />
+    </>,
+  ),
+  // up, down
+  won: tileIcon(<path d="M3 17l6-6 4 4 8-8M15 7h6v6" />),
+  lost: tileIcon(<path d="M3 7l6 6 4-4 8 8M15 17h6v-6" />),
+  // the coins of "Bilanz"
+  money: tileIcon(
+    <>
+      <ellipse cx="12" cy="6.5" rx="7" ry="2.8" />
+      <path d="M5 6.5v5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-5M5 11.5v5c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-5" />
+    </>,
+  ),
+};
 
 const now = () => new Date().toISOString();
 
@@ -147,35 +189,47 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
         </button>
       )}
       {done.length > 0 && (
-        <section className="card balance-totals" aria-label={tr('Totals', 'Summen')}>
-          <div>
-            <strong>{done.length}</strong>
+        <section className="tile-row tile-row-3 balance-totals" aria-label={tr('Totals', 'Summen')}>
+          <div className="tile">
+            <span className="tile-head">
+              <strong className="tile-num">{done.length}</strong>
+              <span className="tile-mark">{TILE_ICONS.games}</span>
+            </span>
             <span className="muted small">{tr('games', 'Spiele')}</span>
           </div>
-          <div>
-            <strong>{wins}</strong>
+          <div className="tile">
+            <span className="tile-head">
+              <strong className="tile-num">{wins}</strong>
+              <span className="tile-mark">{TILE_ICONS.wins}</span>
+            </span>
             <span className="muted small">{tr('wins', 'Siege')}</span>
           </div>
-          <div>
-            <strong>{pools.length}</strong>
+          <div className="tile">
+            <span className="tile-head">
+              <strong className="tile-num">{pools.length}</strong>
+              <span className="tile-mark">{TILE_ICONS.bets}</span>
+            </span>
             <span className="muted small">{tr('bets', 'Wetten')}</span>
           </div>
-          <div>
-            <strong className="good-text">
-              <Amounts m={gain} plain />
-            </strong>
+          <div className="tile">
+            <span className="tile-head">
+              <strong className="tile-num good-text"><Amounts m={gain} plain /></strong>
+              <span className="tile-mark">{TILE_ICONS.won}</span>
+            </span>
             <span className="muted small">{tr('won', 'Gewinn')}</span>
           </div>
-          <div>
-            <strong className="bad-text">
-              <Amounts m={Object.fromEntries(Object.entries(loss).map(([k, v]) => [k, -v]))} plain />
-            </strong>
+          <div className="tile">
+            <span className="tile-head">
+              <strong className="tile-num bad-text"><Amounts m={Object.fromEntries(Object.entries(loss).map(([k, v]) => [k, -v]))} plain /></strong>
+              <span className="tile-mark">{TILE_ICONS.lost}</span>
+            </span>
             <span className="muted small">{tr('lost', 'Verlust')}</span>
           </div>
-          <div>
-            <strong>
-              <Amounts m={total} />
-            </strong>
+          <div className="tile">
+            <span className="tile-head">
+              <strong className="tile-num"><Amounts m={total} /></strong>
+              <span className="tile-mark">{TILE_ICONS.money}</span>
+            </span>
             <span className="muted small">{tr('money', 'Geld')}</span>
           </div>
         </section>
@@ -334,29 +388,34 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onS
             ✕
           </button>
         </div>
+        {/* clearer (Sascha 03.11.2026: "this sheet has to show its contents more clearly"): each game or bet a block – its
+            name, the day and course, the score; the amount and its state on the right; the payments below with their own state */}
         <span className="eyebrow">{tr('How it adds up', 'Wie es sich zusammensetzt')}</span>
-        <ul className="pool-pays balance-items" aria-label={tr('Games and bets', 'Spiele und Wetten')}>
-          {p.items.map((i) => (
-            <li key={`${i.kind}:${i.ref}`}>
-              <span className="grow">
-                {dm(i.day)} · {i.title}
-                <span className="muted small paid-state">
-                  {i.detail ?? (i.kind === 'pool' ? tr('Bets', 'Wetten') : tr('Game', 'Spiel'))}
-                  {' · '}
+        <ul className="balance-items" aria-label={tr('Games and bets', 'Spiele und Wetten')}>
+          {p.items.map((i) => {
+            const [head, ...rest] = i.title.split(' · ');
+            const done = Math.abs(i.open) < 0.005;
+            return (
+              <li key={`${i.kind}:${i.ref}`}>
+                <span className="grow">
+                  <strong>{head}</strong>
+                  <span className="muted small">{[dm(i.day), ...(rest.length ? rest : [i.kind === 'pool' ? tr('Bets', 'Wetten') : tr('Game', 'Spiel')])].join(' · ')}</span>
+                  {i.detail && <span className="muted small">{i.detail}</span>}
+                </span>
+                <span className="balance-item-end">
+                  <strong className={cls(i.amount)}>{formatEuro(i.amount, i.sym)}</strong>
                   {/* paid in green, not paid in red (Sascha 03.11.2026) */}
-                  {Math.abs(i.open) < 0.005 ? (
-                    <span className="good-text">{isMoney(i.prize) ? tr('paid', 'bezahlt') : tr('redeemed', 'eingelöst')}</span>
+                  {done ? (
+                    <span className="small good-text">{isMoney(i.prize) ? tr('paid', 'bezahlt') : tr('redeemed', 'eingelöst')}</span>
                   ) : (
-                    <span className="bad-text">
-                      {isMoney(i.prize) ? tr('not paid', 'nicht bezahlt') : tr('not redeemed', 'nicht eingelöst')}
-                      {Math.abs(i.open - i.amount) > 0.004 ? ` · ${tr('open', 'offen')} ${money(Math.abs(i.open), i.sym)}` : ''}
+                    <span className="small bad-text">
+                      {Math.abs(i.open - i.amount) > 0.004 ? `${tr('open', 'offen')} ${money(Math.abs(i.open), i.sym)}` : isMoney(i.prize) ? tr('not paid', 'nicht bezahlt') : tr('not redeemed', 'nicht eingelöst')}
                     </span>
                   )}
                 </span>
-              </span>
-              <strong className={cls(i.amount)}>{formatEuro(i.amount, i.sym)}</strong>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
         <div className="balance-sum">
           <span>{tr('Together', 'Zusammen')}</span>
@@ -366,25 +425,22 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onS
         </div>
         {pays.length > 0 && (
           <>
-            <span className="eyebrow">{tr('Paid', 'Bezahlt')}</span>
-            <ul className="pool-pays paid-list">
+            <span className="eyebrow">{tr('Payments', 'Zahlungen')}</span>
+            <ul className="balance-items paid-list" aria-label={tr('Payments', 'Zahlungen')}>
               {pays.map(({ i, x }) => (
                 <li key={x.id}>
                   <span className="grow">
-                    {x.from === i.me ? tr(`You to ${p.name}`, `Du an ${p.name}`) : tr(`${p.name} to you`, `${p.name} an dich`)}
-                    <span className="muted small paid-state">
-                      {i.title} ·{' '}
-                      {x.receivedAt ? (
-                        <span className="good-text">{`${tr('received', 'erhalten')} ${dm(x.receivedAt.slice(0, 10))}`}</span>
-                      ) : (
-                        <>
-                          <span className="good-text">{`${tr('paid', 'bezahlt')} ${x.paidAt ? dm(x.paidAt.slice(0, 10)) : ''}`}</span>
-                          {` – ${x.from === i.me ? tr(`${p.name} has not confirmed yet`, `${p.name} bestätigt noch`) : tr('confirm it', 'bitte bestätigen')}`}
-                        </>
-                      )}
-                    </span>
+                    <strong>{x.from === i.me ? tr(`You to ${p.name}`, `Du an ${p.name}`) : tr(`${p.name} to you`, `${p.name} an dich`)}</strong>
+                    <span className="muted small">{[x.paidAt ? dm(x.paidAt.slice(0, 10)) : x.receivedAt ? dm(x.receivedAt.slice(0, 10)) : null, i.title.split(' · ')[0]].filter(Boolean).join(' · ')}</span>
+                    {x.receivedAt ? (
+                      <span className="small good-text">{x.from === i.me ? tr(`Confirmed by ${p.name}`, `Von ${p.name} bestätigt`) : tr('Received', 'Erhalten')}</span>
+                    ) : (
+                      <span className="small warn-text">{x.from === i.me ? tr(`${p.name} has not confirmed yet`, `${p.name} bestätigt noch`) : tr('Please confirm', 'Bitte bestätigen')}</span>
+                    )}
                   </span>
-                  <strong className={x.receivedAt ? 'good-text' : undefined}>{money(x.amount, i.sym)}</strong>
+                  <span className="balance-item-end">
+                    <strong>{money(x.amount, i.sym)}</strong>
+                  </span>
                   <button type="button" className="icon-btn paid-undo" disabled={props.busy} aria-label={tr('Take back', 'Zurücknehmen')} onClick={() => props.onUndo(i, x)}>
                     ↺
                   </button>
@@ -405,7 +461,12 @@ function PersonSheet(props: { p: Person; busy: boolean; onClose: () => void; onS
             <Amounts m={Object.fromEntries(Object.entries(left).filter(([, v]) => v > 0))} plain />
           </button>
         )}
-        {!iOwe && !heOwes && <span className="muted small">{tr('All settled between you.', 'Zwischen euch ist alles erledigt.')}</span>}
+        {!iOwe && !heOwes && (
+          <p className="balance-done">
+            <span aria-hidden="true">✓</span>
+            {pays.some(({ i, x }) => !x.receivedAt && x.from === i.me) ? tr(`All paid – ${p.name} still confirms.`, `Alles bezahlt – ${p.name} bestätigt noch.`) : tr('All settled between you.', 'Zwischen euch ist alles erledigt.')}
+          </p>
+        )}
       </section>
     </div>
   );

@@ -1,11 +1,11 @@
 import { tr } from './i18n';
-import { formDef, pairShare, standingOf, type Game } from './gameforms';
+import { formDef, standingOf, transfers, type Game } from './gameforms';
 import { balances, openPoolTransfers, poolTransfers, type Payment, type WagerPool } from './wagers';
-import { prizeOf, prizeSym, type Prize } from './prize';
+import { isNone, prizeOf, prizeSym, whoOf, type Prize } from './prize';
 
 // The balance against each player, and what is paid (Sascha 03.11.2026: "in the balance the details – which games, how
 // they stood, how the −35 € add up; mark that I paid Cedric, he gets told and confirms; an overview of what I am still
-// owed, and booking it out when someone gave me the money"). A game's money is settled pair by pair (pairShare); a
+// owed, and booking it out when someone gave me the money"). A game's money is settled pair by pair (as the game result: gameTransfers); a
 // pool's by its transfers. A payment is kept in the game (shared with its phones) or in the pool.
 
 /** A payment in a game: as a pool's, and taken back with a mark (two phones merge their copies – a removed one would
@@ -72,6 +72,24 @@ export const topRows = <R extends { points: number }>(rows: R[]): R[] => {
 export const meIn = (g: Game) => g.players.find((p) => p.id === g.shared?.me) ?? g.players[0];
 
 /** Every other player I played or bet with: the confirmed games and the pools, each with what it came to. */
+/** What a game is played for – a game from before: money in its currency. */
+export const gamePrize = (g: Game): Prize => prizeOf({ prize: g.prize, currency: g.settings.currency as string });
+/** Who gives whom what (Sascha 03.11.2026): money and things counted pair by pair as before; a thing "the loser for all" –
+ *  the last (all when tied) one to each of the others; "for the winner" – to the first; without a stake nothing. */
+export function gameTransfers(g: Game, m: Record<string, number> | undefined): { from: string; to: string; amount: number }[] {
+  const p = gamePrize(g);
+  if (!m || isNone(p)) return [];
+  const who = whoOf(p);
+  if (who === 'each') return transfers(m);
+  const v = (id: string) => m[id] ?? 0;
+  const lo = Math.min(...g.players.map((x) => v(x.id)));
+  const hi = Math.max(...g.players.map((x) => v(x.id)));
+  if (hi - lo < 0.001) return [];
+  const losers = g.players.filter((x) => Math.abs(v(x.id) - lo) < 0.001);
+  const to = who === 'loserAll' ? g.players.filter((x) => !losers.includes(x)) : g.players.filter((x) => Math.abs(v(x.id) - hi) < 0.001);
+  return losers.flatMap((l) => to.map((o) => ({ from: l.id, to: o.id, amount: 1 })));
+}
+
 export function people(games: Game[], pools: { code: string; me: string; pool: WagerPool }[], today: string): Person[] {
   const map = new Map<string, Person>();
   const person = (name: string) => {
@@ -83,7 +101,9 @@ export function people(games: Game[], pools: { code: string; me: string; pool: W
   for (const g of games.filter((x) => x.finishedAt && x.signedAt)) {
     const me = meIn(g);
     const st = standingOf(g);
-    const prize = prizeOf({ currency: String(g.settings.currency ?? 'EUR'), prize: g.prize });
+    const prize = gamePrize(g);
+    // what the game result says – who gives whom (Sascha 03.11.2026: the Bilanz as the result)
+    const ts = st.money ? gameTransfers(g, st.money) : [];
     for (const o of g.players.filter((x) => x.id !== me.id)) {
       const p = person(o.name);
       p.games++;
@@ -94,7 +114,7 @@ export function people(games: Game[], pools: { code: string; me: string; pool: W
         else p.lost++;
       }
       if (!st.money) continue;
-      const amount = round2(pairShare(st.money, me.id, o.id));
+      const amount = round2(ts.reduce((s, t) => s + (t.from === o.id && t.to === me.id ? t.amount : t.from === me.id && t.to === o.id ? -t.amount : 0), 0));
       const pays = livePayments(g.payments).filter((x) => (x.from === me.id && x.to === o.id) || (x.from === o.id && x.to === me.id));
       const open = round2(amount - pays.reduce((s, x) => s + (x.from === o.id ? x.amount : -x.amount), 0));
       if (Math.abs(amount) < 0.005 && !pays.length) continue;
