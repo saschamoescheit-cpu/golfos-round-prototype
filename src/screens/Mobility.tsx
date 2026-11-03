@@ -6,7 +6,10 @@ import { TopTools } from '../components/TopTools';
 import { TopBar } from '../components/ui';
 import { SwipeRow } from '../components/SwipeRow';
 import { PausedIcon } from '../components/PausedIcon';
-import { ChoiceRow, SettingsList } from '../components/Settings';
+import { DeletedIcon } from '../components/RoundIcons';
+import { Bin } from '../components/Bin';
+import { RepeatIcon } from '../mobility/icons';
+import { ChoiceRow, SettingsList, SettingsRow } from '../components/Settings';
 import { drillById } from '../training/content';
 import { SketchThumb, SketchView } from '../training/Sketch';
 import { VideoCard, VideoNote } from '../training/ui';
@@ -32,7 +35,7 @@ import { buildDayPlan, DAY_MINUTES, drillTime, type DayPlan } from '../mobility/
 import { buildWarmup } from '../mobility/rangewarmup';
 import { RangeWarmup, warmupFor, warmupMinutes } from '../mobility/WarmupPlayer';
 import { coachOf, DRILL_COACH, SIGNALS, signalValueText, WATCH_FOCUS } from '../mobility/drillcoach';
-import { deleteScreening, discardEmpty, loadScreenings, newScreening, saveScreening, screeningById, withResult } from '../mobility/store';
+import { deleteScreening, discardEmpty, loadScreeningTrash, loadScreenings, newScreening, purgeScreening, restoreScreening, saveScreening, screeningById, withResult } from '../mobility/store';
 import { FOCUS_NAMES, GOAL_STEPS, loadGoal, measurePos, mobilityScore, pillar, saveGoal, targetPos, targetValue, testPos, type AreaState, type Focus, type MobilityGoal } from '../mobility/profile';
 import { profileIndex } from '../lib/profile';
 import { hasPain, leadSide, previousMeasurement, likelyMisses, latestResults, MISS_NAMES, PLAY_NOW, swingPatterns, type PatternResult } from '../mobility/swing';
@@ -248,6 +251,7 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
           </button>
           <TopTools />
         </div>
+        {view.tab !== 'profile' && <h1 className="tab-title">{TAB_TITLES[view.tab]()}</h1>}
         {view.tab === 'test' && <TestTab nav={nav} />}
         {view.tab === 'result' && <ResultTab nav={nav} />}
         {view.tab === 'drills' && <DrillsTab nav={nav} />}
@@ -267,6 +271,13 @@ export function MobilityApp(props: { onModules: () => void; profile: ReactNode; 
     </div>
   );
 }
+
+const TAB_TITLES: Record<Exclude<MobilityTab, 'profile'>, () => string> = {
+  test: () => 'Screening',
+  result: () => tr('Result', 'Ergebnis'),
+  drills: () => tr('Drills', 'Übungen'),
+  history: () => tr('History', 'Verlauf'),
+};
 
 interface Nav {
   push: (v: View) => void;
@@ -2096,16 +2107,12 @@ function GoalCard() {
   const hcpName = (h: number) => (h === 0 ? 'Scratch' : String(h));
   if (goal && !edit)
     return (
-      <section className="card mob-goal">
-        <span className="grow">
-          <strong>
-            {tr('Your goal', 'Dein Ziel')}: {goal.hcp === 0 ? 'Scratch' : tr(`handicap ${goal.hcp}`, `Handicap ${goal.hcp}`)}
-          </strong>
-          <span className="muted small">{goal.focus.length ? goal.focus.map((f) => t(FOCUS_NAMES[f])).join(' · ') : tr('no focus set', 'ohne Schwerpunkt')}</span>
-        </span>
-        <button type="button" className="btn-secondary" onClick={() => setEdit(true)}>
-          {tr('Change', 'Ändern')}
-        </button>
+      // a setting as a row with ›, as in the round setup (docs/DESIGN.md) – no "Ändern" button
+      <section className="mob-goal">
+        <span className="eyebrow">{tr('Your goal', 'Dein Ziel')}</span>
+        <SettingsList>
+          <SettingsRow label={goal.hcp === 0 ? 'Scratch' : tr(`Handicap ${goal.hcp}`, `Handicap ${goal.hcp}`)} value={goal.focus.length ? goal.focus.map((f) => t(FOCUS_NAMES[f])).join(' · ') : tr('no focus', 'ohne Schwerpunkt')} onClick={() => setEdit(true)} />
+        </SettingsList>
       </section>
     );
   return (
@@ -2299,10 +2306,74 @@ function ChangeCard(props: { list: Screening[] }) {
   );
 }
 
+type HistoryFilter = 'done' | 'paused' | 'training' | 'bin';
+
 function HistoryTab(props: { nav: Nav }) {
   const list = loadScreenings();
-  if (!list.length)
+  const trash = loadScreeningTrash();
+  const trained = loadSessions().filter((s) => s.done.length);
+  const isPaused = (s: Screening) => !s.finishedAt && s.kind !== 'single';
+  const paused = list.filter(isPaused);
+  const done = list.filter((s) => !isPaused(s));
+  const [filter, setFilter] = useState<HistoryFilter | null>(null);
+  const pick = (x: HistoryFilter) => setFilter(filter === x ? null : x);
+  // a tile's rows all gone: everything again
+  useEffect(() => {
+    if ((filter === 'bin' && !trash.length) || (filter === 'paused' && !paused.length) || (filter === 'done' && !done.length) || (filter === 'training' && !trained.length)) setFilter(null);
+  }, [trash.length, paused.length, done.length, trained.length]);
+  const tiles = (
+    <div className="tile-row mob-history-tiles">
+      <button type="button" className="tile" aria-pressed={filter === 'done'} disabled={!done.length} onClick={() => pick('done')}>
+        <span className="tile-head">
+          <span className="tile-num">{done.length}</span>
+          <span className="tile-mark">{ICONS.test}</span>
+        </span>
+        <span className="muted small">{tr('screenings', 'Screenings')}</span>
+      </button>
+      <button type="button" className="tile" aria-pressed={filter === 'paused'} disabled={!paused.length} onClick={() => pick('paused')}>
+        <span className="tile-head">
+          <span className={`tile-num${paused.length ? ' good-text' : ''}`}>{paused.length}</span>
+          <span className="tile-mark">
+            <PausedIcon />
+          </span>
+        </span>
+        <span className="muted small">{tr('paused', 'pausiert')}</span>
+      </button>
+      {/* the guided sessions – as the tile of Training's Verlauf */}
+      <button type="button" className="tile" aria-pressed={filter === 'training'} disabled={!trained.length} onClick={() => pick('training')}>
+        <span className="tile-head">
+          <span className="tile-num">{trained.length}</span>
+          <span className="tile-mark">{ICONS.drills}</span>
+        </span>
+        <span className="muted small">{tr('sessions', 'Einheiten')}</span>
+      </button>
+      {/* deleted screenings – always there, with 0 and white when the bin is empty, as on the rounds page */}
+      <button type="button" className="tile" aria-pressed={filter === 'bin'} disabled={!trash.length} onClick={() => pick('bin')}>
+        <span className="tile-head">
+          <span className="tile-num">{trash.length}</span>
+          <span className="tile-mark">
+            <DeletedIcon />
+          </span>
+        </span>
+        <span className="muted small">{tr('deleted', 'gelöscht')}</span>
+      </button>
+    </div>
+  );
+  const bin = (
+    <Bin
+      open={filter === 'bin'}
+      title={tr('Deleted screenings', 'Gelöschte Screenings')}
+      items={trash.map((x) => ({ id: x.screening.id, date: x.screening.createdAt, title: screeningName(x.screening), meta: tr(`${Object.keys(x.screening.results).length} tests measured`, `${Object.keys(x.screening.results).length} Tests gemessen`), deletedAt: x.deletedAt }))}
+      onRestore={(id) => restoreScreening(id)}
+      onPurge={(id) => purgeScreening(id)}
+    />
+  );
+  if (!list.length && !trained.length)
     return (
+      <>
+      {tiles}
+      {bin}
+      {filter !== 'bin' && (
       <section className="tr-block mob-empty">
         <p>{tr('Your screenings appear here – repeat one every few weeks to see the progress.', 'Hier erscheinen deine Screenings – wiederhole eins alle paar Wochen, um den Fortschritt zu sehen.')}</p>
         <button type="button" className="btn-primary" onClick={() => props.nav.toTab('test')}>
@@ -2310,15 +2381,20 @@ function HistoryTab(props: { nav: Nav }) {
         </button>
         <KeptLogs />
       </section>
+      )}
+      </>
     );
   const full = list.filter((s) => s.kind !== 'single' && Object.keys(s.results).length).reverse();
+  const rows = filter === 'done' ? done : filter === 'paused' ? paused : list;
   const goal = loadGoal();
   return (
     <>
-      <ChangeCard list={list} />
-      <TrainProgress />
-      <TrainHistory />
-      {full.length >= 2 && (
+      {tiles}
+      {bin}
+      {filter == null && <ChangeCard list={list} />}
+      {(filter == null || filter === 'training') && <TrainProgress />}
+      {(filter == null || filter === 'training') && <TrainHistory />}
+      {filter == null && full.length >= 2 && (
         <figure className="mob-chart" aria-label={tr('Your mobility per screening', 'Deine Beweglichkeit je Screening')}>
           <div className="mob-bars">
             {full.slice(-8).map((s, i, shown) => {
@@ -2335,8 +2411,9 @@ function HistoryTab(props: { nav: Nav }) {
           <figcaption className="muted small">{tr(`Your mobility per screening (100 = every value at the goal for handicap ${goal?.hcp ?? 10})`, `Deine Beweglichkeit je Screening (100 = alle Werte am Ziel für Handicap ${goal?.hcp ?? 10})`)}</figcaption>
         </figure>
       )}
+      {filter !== 'training' && filter !== 'bin' && (
       <div className="list">
-        {list.map((s) => {
+        {rows.map((s) => {
           const n = Object.keys(s.results).length;
           return (
             // swiped away as a mail (Sascha 02.11.2026) – into the bin, "Undo" brings it back
@@ -2358,7 +2435,8 @@ function HistoryTab(props: { nav: Nav }) {
           );
         })}
       </div>
-      <KeptLogs />
+      )}
+      {filter == null && <KeptLogs />}
     </>
   );
 }
@@ -2435,30 +2513,27 @@ function TrainHistory() {
 function ScreeningView(props: { id: string; nav: Nav }) {
   const s = screeningById(props.id);
   if (!s) return null;
+  const paused = !s.finishedAt && s.kind !== 'single';
+  const n = Object.keys(s.results).length;
+  const score = s.kind !== 'single' ? mobilityScore(TESTS, s.results, loadGoal()) : null;
   return (
     <main className="screen training mobility">
-      <TopBar
-        title={screeningName(s)}
-        onBack={props.nav.back}
-        right={
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={tr('Delete screening', 'Screening löschen')}
-            onClick={() => {
-              deleteScreening(s.id, `${kindName(s.kind)} · ${dateText(s.createdAt)}`);
-              props.nav.back();
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
-            </svg>
-          </button>
-        }
-      />
-      <span className="eyebrow">
-        {dateText(s.createdAt)} · {s.hand === 'right' ? tr('right-handed', 'Rechtshänder') : tr('left-handed', 'Linkshänder')}
+      <TopBar title={screeningName(s)} onBack={props.nav.back} />
+      <span className="muted small mob-sub">
+        {[dateText(s.createdAt), s.kind === 'single' ? t(testById(s.tests[0]).name) : s.from ? kindName(s.kind) : '', s.hand === 'right' ? tr('right-handed', 'Rechtshänder') : tr('left-handed', 'Linkshänder')].filter(Boolean).join(' · ')}
       </span>
+      <section className="card mob-screening-status">
+        <span className="grow">
+          <strong>
+            {paused ? tr('Paused', 'Pausiert') : tr('Finished', 'Abgeschlossen')} {paused && <PausedMark />}
+          </strong>
+          <span className="muted small">
+            {tr(`${n} of ${s.tests.length} tests measured`, `${n} von ${s.tests.length} Tests gemessen`)}
+            {score ? ` · ${tr('mobility', 'Beweglichkeit')} ${score.score} / 100` : ''}
+          </span>
+        </span>
+      </section>
+      <span className="eyebrow">{tr('Tests', 'Tests')}</span>
       <div className="list">
         {s.tests.map((id) => {
           const test = testById(id);
@@ -2474,7 +2549,33 @@ function ScreeningView(props: { id: string; nav: Nav }) {
           );
         })}
       </div>
-      {!s.finishedAt && s.kind !== 'single' && (
+      {/* its actions as one bar, as the scorecard of Rounds – Löschen red and last (docs/DESIGN.md) */}
+      <div className="sc-actions mob-screening-actions" role="group" aria-label={tr('This screening', 'Dieses Screening')}>
+        <button
+          type="button"
+          className="sc-action"
+          onClick={() => {
+            const again = newScreening(s.kind, s.kind === 'single' ? s.tests : s.kind === 'quick' ? QUICK : FULL);
+            saveScreening(again);
+            props.nav.run(again);
+          }}
+        >
+          <RepeatIcon />
+          <span>{tr('Repeat', 'Wiederholen')}</span>
+        </button>
+        <button
+          type="button"
+          className="sc-action danger"
+          onClick={() => {
+            deleteScreening(s.id, `${kindName(s.kind)} · ${dateText(s.createdAt)}`);
+            props.nav.back();
+          }}
+        >
+          <DeletedIcon size={22} />
+          <span>{tr('Delete', 'Löschen')}</span>
+        </button>
+      </div>
+      {paused && (
         <div className="sticky-cta">
           <button type="button" className="btn-primary" onClick={() => props.nav.run(s)}>
             {tr('Continue', 'Fortsetzen')}

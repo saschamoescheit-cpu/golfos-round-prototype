@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { clearKept, currentLog, isLogging, keptLog, logFile, setLogging, shareFile, type MotionLog } from './motionlog';
+import { DeletedIcon } from '../components/RoundIcons';
+import { ShareIcon } from './icons';
 
 /** The switch in a setup – keep a motion log (only the body points) – and the privacy line that goes with it. */
 export function LogSwitch() {
@@ -59,15 +61,18 @@ export function LogShare() {
       {state === 'shared' || state === 'downloaded' ? (
         <span className="small good-text">{state === 'shared' ? tr('Shared – thank you.', 'Geteilt – danke.') : tr('Saved in your downloads.', 'In deinen Downloads gespeichert.')}</span>
       ) : null}
+      {/* Teilen as everywhere: the share symbol and the word (docs/DESIGN.md, Sascha 03.11.2026) */}
       <button
         type="button"
-        className="btn-secondary mob-log-share-btn"
+        className="btn-secondary btn-icon mob-log-share-btn"
+        aria-label={tr('Share the motion log', 'Bewegungsprotokoll teilen')}
         disabled={!file}
         onClick={async () => {
           if (file) setState(await shareFile(file));
         }}
       >
-        {tr('Share the motion log', 'Bewegungsprotokoll teilen')}
+        <ShareIcon size={20} />
+        <span>{tr('Share', 'Teilen')}</span>
       </button>
     </section>
   );
@@ -104,26 +109,25 @@ export function KeptLogs() {
       {state === 'shared' || state === 'downloaded' ? (
         <span className="small good-text">{state === 'shared' ? tr('Shared – thank you.', 'Geteilt – danke.') : tr('Saved in your downloads.', 'In deinen Downloads gespeichert.')}</span>
       ) : null}
-      <button
-        type="button"
-        className="btn-secondary mob-log-kept-share"
-        disabled={!file}
-        onClick={async () => {
-          if (file) setState(await shareFile(file));
-        }}
-      >
-        {tr('Share the motion logs', 'Bewegungsprotokolle teilen')}
-      </button>
-      <button
-        type="button"
-        className="link-btn mob-log-kept-clear"
-        onClick={async () => {
-          await clearKept();
-          setState('deleted');
-        }}
-      >
-        {tr('Delete them from this phone', 'Vom Handy löschen')}
-      </button>
+      {/* the actions as one bar – Teilen, Löschen red and last (docs/DESIGN.md) */}
+      <div className="sc-actions" role="group" aria-label={tr('Motion logs', 'Bewegungsprotokolle')}>
+        <button type="button" className="sc-action mob-log-kept-share" aria-label={tr('Share the motion logs', 'Bewegungsprotokolle teilen')} disabled={!file} onClick={async () => file && setState(await shareFile(file))}>
+          <ShareIcon />
+          <span>{tr('Share', 'Teilen')}</span>
+        </button>
+        <button
+          type="button"
+          className="sc-action danger mob-log-kept-clear"
+          aria-label={tr('Delete them from this phone', 'Vom Handy löschen')}
+          onClick={async () => {
+            await clearKept();
+            setState('deleted');
+          }}
+        >
+          <DeletedIcon size={22} />
+          <span>{tr('Delete', 'Löschen')}</span>
+        </button>
+      </div>
     </section>
   );
 }
