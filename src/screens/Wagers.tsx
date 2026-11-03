@@ -15,7 +15,7 @@ import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, afterPayments, balance
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, SettingsList, SettingsRow, ToggleRow, dayText } from '../components/Settings';
+import { ChoiceRow, DateRow, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
 import { PaidMarks } from '../components/PaidMarks';
@@ -685,14 +685,22 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
           onUndo={(id) => pay((ps) => ps.filter((x) => x.id !== id))}
         />
       </Settlement>
-      {host && (
+      {host && (pool.finishedAt || pool.players.every((p) => p.joined || p.id === entry.me) ? (
+        // everyone in, or the pool over (Sascha 03.11.2026: "why 'invite players' when I open a bet from the balance?"):
+        // a row only – tapped, the invitation as a sheet (one more joining late)
+        <SettingsList>
+          <SheetRow label={tr('Invite players', 'Mitspieler einladen')} value={pool.finishedAt ? tr('finished', 'beendet') : tr('everyone in', 'alle dabei')}>
+            <PoolInvite code={props.code} name={pool.name} />
+          </SheetRow>
+        </SettingsList>
+      ) : (
         // a section of its own, as "Mitspieler einladen" in the round setup (docs/DESIGN.md); below the settlement,
         // right before "Runde starten" (Sascha 03.11.2026)
         <section className="setup-part" aria-label={tr('Invite players', 'Mitspieler einladen')}>
           <span className="eyebrow">{tr('Invite players', 'Mitspieler einladen')}</span>
           <PoolInvite code={props.code} name={pool.name} />
         </section>
-      )}
+      ))}
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}
