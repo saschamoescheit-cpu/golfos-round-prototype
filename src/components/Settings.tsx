@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { tr } from '../lib/i18n';
 
 // The settings of a setup, one look everywhere (Sascha 02.11.2026: "Rounds and Games are the base – not everything
@@ -121,27 +121,179 @@ export function dayText(iso: string): string {
   return new Date(y, m - 1, d).toLocaleDateString(tr('en-GB', 'de-DE'), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** A day as a row: the phone's own date picker opens on a tap (iOS and Android alike). */
+const isoOf = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+const todayIso = () => {
+  const n = new Date();
+  return isoOf(n.getFullYear(), n.getMonth(), n.getDate());
+};
+
+/** A day as a row, its sheet a month in the look of GolfOS (Sascha 03.11.2026: "the date and time pickers in the design of
+ *  GolfOS, in the whole app" – not the phone's wheel): ‹ month ›, the weekdays Mo–So, today ringed, the day chosen green;
+ *  one tap picks it and closes. */
 export function DateRow(props: { label: string; value: string; onChange: (iso: string) => void; min?: string; max?: string; id?: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <label className="settings-row date-row">
-      <span>{props.label}</span>
-      <span className="settings-value">{dayText(props.value)}</span>
-      <span aria-hidden="true">›</span>
-      <input id={props.id} type="date" className="date-row-input" aria-label={props.label} min={props.min} max={props.max} value={props.value} onChange={(e) => e.target.value && props.onChange(e.target.value)} />
-    </label>
+    <>
+      <button type="button" id={props.id} className="settings-row" onClick={() => setOpen(true)}>
+        <span>{props.label}</span>
+        <span className="settings-value">{dayText(props.value)}</span>
+        <span aria-hidden="true">›</span>
+      </button>
+      {open && (
+        <DateSheet
+          title={props.label}
+          value={props.value}
+          min={props.min}
+          max={props.max}
+          onPick={(iso) => {
+            props.onChange(iso);
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
-/** A time of day as a row ("Startzeit · 09:20 ›"): the phone's time picker. */
-export function TimeRow(props: { label: string; value: string; onChange: (hhmm: string) => void; id?: string }) {
+function DateSheet(props: { title: string; value: string; min?: string; max?: string; onPick: (iso: string) => void; onClose: () => void }) {
+  const start = /^\d{4}-\d{2}-\d{2}$/.test(props.value) ? props.value : todayIso();
+  const [month, setMonth] = useState(() => ({ y: Number(start.slice(0, 4)), m: Number(start.slice(5, 7)) - 1 }));
+  const locale = tr('en-GB', 'de-DE');
+  const first = new Date(month.y, month.m, 1);
+  const days = new Date(month.y, month.m + 1, 0).getDate();
+  const lead = (first.getDay() + 6) % 7; // Monday first
+  const today = todayIso();
+  const out = (iso: string) => (!!props.min && iso < props.min) || (!!props.max && iso > props.max);
+  const step = (k: number) => setMonth(({ y, m }) => ({ y: y + Math.floor((m + k) / 12), m: (((m + k) % 12) + 12) % 12 }));
+  const weekdays = Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'short' }).replace('.', ''));
   return (
-    <label className="settings-row date-row">
-      <span>{props.label}</span>
-      <span className="settings-value">{props.value || '–'}</span>
-      <span aria-hidden="true">›</span>
-      <input id={props.id} type="time" className="date-row-input" aria-label={props.label} value={props.value} onChange={(e) => props.onChange(e.target.value)} />
-    </label>
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet date-sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{props.title}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="date-month">
+          <button type="button" className="icon-btn" aria-label={tr('Month before', 'Monat davor')} onClick={() => step(-1)}>
+            ‹
+          </button>
+          <strong>{first.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Next month', 'Nächster Monat')} onClick={() => step(1)}>
+            ›
+          </button>
+        </div>
+        <div className="date-grid" role="grid">
+          {weekdays.map((w) => (
+            <span key={w} className="date-weekday muted small" aria-hidden="true">
+              {w}
+            </span>
+          ))}
+          {Array.from({ length: lead }, (_, i) => (
+            <span key={`l${i}`} />
+          ))}
+          {Array.from({ length: days }, (_, i) => {
+            const iso = isoOf(month.y, month.m, i + 1);
+            return (
+              <button
+                key={iso}
+                type="button"
+                className={`date-day${iso === props.value ? ' on' : ''}${iso === today ? ' today' : ''}`}
+                aria-pressed={iso === props.value}
+                aria-label={dayText(iso)}
+                disabled={out(iso)}
+                onClick={() => props.onPick(iso)}
+              >
+                {i + 1}
+              </button>
+            );
+          })}
+        </div>
+        {!out(today) && today !== props.value && (
+          <button type="button" className="btn-secondary" onClick={() => props.onPick(today)}>
+            {tr('Today', 'Heute')}
+          </button>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/** A time of day as a row ("Startzeit · 09:20 ›"), its sheet in the look of GolfOS (03.11.2026): the hours and the minutes as
+ *  two columns to tap – to the minute (a tee time 12:08) – and "Fertig". */
+export function TimeRow(props: { label: string; value: string; onChange: (hhmm: string) => void; id?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" id={props.id} className="settings-row" onClick={() => setOpen(true)}>
+        <span>{props.label}</span>
+        <span className="settings-value">{props.value || '–'}</span>
+        <span aria-hidden="true">›</span>
+      </button>
+      {open && (
+        <TimeSheet
+          title={props.label}
+          value={props.value}
+          onDone={(v) => {
+            props.onChange(v);
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function TimeSheet(props: { title: string; value: string; onDone: (hhmm: string) => void; onClose: () => void }) {
+  const [h0, m0] = /^\d{1,2}:\d{2}$/.test(props.value) ? props.value.split(':').map(Number) : [9, 0];
+  const [h, setH] = useState(h0);
+  const [m, setM] = useState(m0);
+  const two = (n: number) => String(n).padStart(2, '0');
+  const hours = useRef<HTMLDivElement>(null);
+  const mins = useRef<HTMLDivElement>(null);
+  // the chosen ones in view when the sheet opens
+  useEffect(() => {
+    for (const box of [hours.current, mins.current]) {
+      const on = box?.querySelector<HTMLElement>('[aria-pressed="true"]');
+      if (box && on) box.scrollTop = on.offsetTop - box.clientHeight / 2 + on.clientHeight / 2;
+    }
+  }, []);
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet time-sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{props.title}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <strong className="time-shown" aria-live="polite">
+          {two(h)}:{two(m)}
+        </strong>
+        <div className="time-cols">
+          <div className="time-col" ref={hours} role="group" aria-label={tr('Hour', 'Stunde')}>
+            {Array.from({ length: 24 }, (_, k) => (
+              <button key={k} type="button" className={`time-cell${k === h ? ' on' : ''}`} aria-pressed={k === h} onClick={() => setH(k)}>
+                {two(k)}
+              </button>
+            ))}
+          </div>
+          <div className="time-col" ref={mins} role="group" aria-label={tr('Minute', 'Minute')}>
+            {Array.from({ length: 60 }, (_, k) => (
+              <button key={k} type="button" className={`time-cell${k === m ? ' on' : ''}`} aria-pressed={k === m} onClick={() => setM(k)}>
+                {two(k)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button type="button" className="btn-primary" onClick={() => props.onDone(`${two(h)}:${two(m)}`)}>
+          {tr('Done', 'Fertig')}
+        </button>
+      </section>
+    </div>
   );
 }
 

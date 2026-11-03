@@ -107,7 +107,14 @@ for (const d of ['Mo', 'Mi', 'Fr', 'So']) await p.locator('.mob-physio-days butt
 ok((await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Wie oft pro Woche' }).locator('.settings-value').innerText()) === '4×' && (await p.locator('.mob-physio-days button[aria-pressed="true"]').count()) === 4, 'four days chosen: four a week');
 // the reminder: a switch, then the time as a row
 await p.locator('.mob-physio-plan [role="switch"]').click();
-await p.locator('.mob-physio-plan .date-row-input').fill('18:30');
+// the time: its sheet in the look of GolfOS (03.11.2026)
+await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Uhrzeit der Erinnerung' }).click();
+{
+  const t = p.getByRole('dialog', { name: 'Uhrzeit der Erinnerung' });
+  await t.getByRole('group', { name: 'Stunde' }).getByRole('button', { name: '18', exact: true }).click();
+  await t.getByRole('group', { name: 'Minute' }).getByRole('button', { name: '30', exact: true }).click();
+  await t.getByRole('button', { name: 'Fertig' }).click();
+}
 await p.waitForTimeout(200);
 const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.physio.v1'))[0].schedule);
 ok(stored.perWeek === 4 && stored.days.join() === '0,2,4,6' && stored.remind === '18:30', `the week and the reminder kept in the account (${JSON.stringify(stored)})`);
