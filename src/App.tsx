@@ -29,6 +29,7 @@ import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
 import { exchangeRound } from './lib/sharedround';
 import { reportWagers, runningPools } from './lib/wagerstore';
+import { toursSoon } from './lib/tourstore';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -199,6 +200,7 @@ export function App() {
     return 'friends';
   });
   const [gamesTab, setGamesTab] = useState<GamesTab | undefined>(undefined);
+  const [toursTab, setToursTab] = useState<GamesTab | undefined>(undefined); // the module "Tournaments" (03.11.2026)
   const [trainingTab, setTrainingTab] = useState<TrainingTab | undefined>(undefined);
   const [mobilityTab, setMobilityTab] = useState<MobilityTab | undefined>(undefined);
   // the bag and the caddie settings opened from the profile of the start page or of Games
@@ -344,11 +346,13 @@ export function App() {
         gameOpen={loadGames().some((g) => !g.finishedAt)}
         gamesToConfirm={loadGames().filter((g) => g.finishedAt && !g.signedAt).length}
         betsRunning={runningPools().map((e) => e.pool.name)}
+        tours={toursSoon()}
         trainingOpen={trainingPaused()}
         mobilityOpen={mobilityPaused()}
         mobilityToday={mobilityToday()}
         onPick={(m) => {
           if (m === 'games') setGamesTab(undefined);
+          if (m === 'tournaments') setToursTab(undefined);
           if (m === 'training') setTrainingTab(undefined);
           if (m === 'mobility') setMobilityTab(undefined);
           setModule(m);
@@ -356,6 +360,8 @@ export function App() {
         profile={profile}
       />
     );
+  // the tournaments a module of their own (Sascha 03.11.2026) – the same screens of a tournament as before
+  if (module === 'tournaments') return <GamesApp kind="tours" onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={toursTab} onTabChange={setToursTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
   if (module === 'games') return <GamesApp onModules={() => setModule(null)} profile={profile} profileDot={profileDot} tab={gamesTab} onTabChange={setGamesTab} onOpenBag={(part) => setBagFrom({ part })} onJoinRound={joinRoundByCode} />;
   if (module === 'mobility')
     return (
@@ -426,10 +432,10 @@ export function App() {
                 setScreen({ name: 'hole', round });
               }}
               onJoinGame={joinGameByCode}
-              // a planned tournament joined before its day: Games → Tournaments (its tab "tours")
+              // a planned tournament joined before its day: the module Tournaments, its list
               onTours={() => {
-                setGamesTab('tours');
-                setModule('games');
+                setToursTab('tours');
+                setModule('tournaments');
               }}
               onContinue={(round) => setScreen({ name: 'hole', round })}
               onEnd={(round) => {

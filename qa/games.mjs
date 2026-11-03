@@ -33,7 +33,7 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(800);
-ok((await p.locator('.module-card').count()) === 4, 'app opens on the module choice (Rounds, Games, Training, Mobility)');
+ok((await p.locator('.module-card').count()) === 5, 'app opens on the module choice (Rounds, Games & Bets, Tournaments, Training, Agility)');
 // the start page's menu: start, friends, profile (Sascha 15.10.2026)
 const tabs = await p.locator('.tabbar button').allInnerTexts();
 ok(tabs.join('|') === 'Start|Freunde|Profil', `start page menu: ${tabs.join(' · ')}`);
@@ -48,7 +48,7 @@ await p.locator('.module-card').filter({ hasText: 'Games' }).click();
 await p.waitForTimeout(300);
 ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'Games start page');
 const gtabs = await p.locator('.tabbar button').allInnerTexts();
-ok(gtabs.join('|') === 'Spielen|Spiele|Wetten|Turniere|Profil', `Games menu without "Regeln", with "Wetten" and "Turniere", the balance on "Spiele": ${gtabs.join(' · ')}`);
+ok(gtabs.join('|') === 'Spielen|Spiele|Wetten|Profil', `Games & Bets menu without "Regeln", with "Wetten" (the tournaments a module of their own since 03.11.2026), the balance on "Spiele": ${gtabs.join(' · ')}`);
 await p.reload();
 await p.waitForTimeout(800);
 ok(await p.getByRole('heading', { name: 'Spiel starten' }).isVisible(), 'a reload stays in Games');
@@ -189,6 +189,7 @@ await p.getByRole('button', { name: 'Spiel löschen' }).click();
 await p.locator('.tabbar').getByRole('button', { name: 'Spiele', exact: true }).click();
 ok((await p.locator('.tile').filter({ hasText: 'gelöscht' }).innerText()).replace(/\s+/g, ' ').trim() === '1 gelöscht', 'games list: tile "1 gelöscht" as in Rounds');
 await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
+await p.locator('.bin-item').first().click();
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(300);
 ok((await p.locator('.list-item').count()) === CASES.length && (await p.locator('.tile').filter({ hasText: 'gelöscht' }).isDisabled()), 'restored from the bin – the tile stays with 0');

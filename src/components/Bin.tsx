@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { getLang, tr } from '../lib/i18n';
+import { DeletedIcon } from './RoundIcons';
 import { SwipeRow } from './SwipeRow';
 
-// The bin of deleted rounds and games (Sascha 15.10.2026) – the same in both modules: folded under the list,
-// "Restore" with one tap, "Delete for good" only after a second tap.
+// The bin of deleted rounds and games (Sascha 15.10.2026) – the same in every module: folded under the list,
+// "Restore" with one tap, "Delete for good" only after a second tap. Since 03.11.2026 (Sascha: "the deleted rounds look
+// just like played or signed ones – no two buttons under each round") a row as in the list, with the bin mark; a tap
+// opens its sheet (Restore · Delete for good), swiped left it asks "Delete for good?" in the same sheet.
 
 export interface BinItem {
   id: string;
@@ -17,7 +20,8 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
   // `open` given: the list is opened from outside (the tile on the rounds page) – no own toggle
   const [ownOpen, setOpen] = useState(false);
   const open = props.open ?? ownOpen;
-  const [purging, setPurging] = useState<string | null>(null);
+  // the sheet of one deleted row: its choices, or (purge) the question "for good?"
+  const [sheet, setSheet] = useState<{ id: string; purge: boolean } | null>(null);
   // several or all at once (Sascha 01.11.2026): "Select", tick them, delete for good – again only after a second tap
   const [pickingOn, setPicking] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -96,59 +100,40 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
           {props.items.map((t) => {
             // while picking the whole row ticks it – a big target with gloves on the course
             const row = (
-            <div className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'} onClick={picking ? () => toggle(t.id) : undefined}>
-              {picking && (
-                <input
-                  type="checkbox"
-                  className="bin-check"
-                  checked={picked.has(t.id)}
-                  aria-label={`${t.title}, ${day(t.date)}`}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={() => toggle(t.id)}
-                />
-              )}
-              <span className="round-date">
-                <strong>{day(t.date)}</strong>
-                <span className="muted small">{new Date(t.date).getFullYear()}</span>
-              </span>
-              <span className="grow">
-                <span className="title">{t.title}</span>
-                <span className="muted small">{`${t.meta} · ${tr('deleted', 'gelöscht')} ${day(t.deletedAt)}`}</span>
-              </span>
-              {picking ? null : purging === t.id ? (
-                <span className="bin-actions">
-                  <button type="button" className="btn-secondary" onClick={() => setPurging(null)}>
-                    {tr('Keep', 'Behalten')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-danger"
-                    onClick={() => {
-                      props.onPurge(t.id);
-                      setPurging(null);
-                    }}
-                  >
-                    {tr('Delete for good', 'Endgültig löschen')}
-                  </button>
+              <button type="button" className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'} onClick={() => (picking ? toggle(t.id) : setSheet({ id: t.id, purge: false }))}>
+                {picking && (
+                  <input
+                    type="checkbox"
+                    className="bin-check"
+                    checked={picked.has(t.id)}
+                    aria-label={`${t.title}, ${day(t.date)}`}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => toggle(t.id)}
+                  />
+                )}
+                <span className="round-date">
+                  <strong>{day(t.date)}</strong>
+                  <span className="muted small">{new Date(t.date).getFullYear()}</span>
                 </span>
-              ) : (
-                <span className="bin-actions">
-                  <button type="button" className="btn-secondary" onClick={() => props.onRestore(t.id)}>
-                    {tr('Restore', 'Wiederherstellen')}
-                  </button>
-                  <button type="button" className="btn-secondary bin-x" aria-label={tr('Delete for good', 'Endgültig löschen')} onClick={() => setPurging(t.id)}>
-                    ✕
-                  </button>
+                <span className="grow">
+                  <span className="title with-mark">
+                    <span className="title-text">{t.title}</span>
+                    {/* the mark of the tile "deleted", as a played or signed round carries its own */}
+                    <span className="signed-mark" role="img" aria-label={tr('deleted', 'gelöscht')} title={tr('deleted', 'gelöscht')}>
+                      <DeletedIcon size={16} />
+                    </span>
+                  </span>
+                  <span className="muted small">{`${t.meta} · ${tr('deleted', 'gelöscht')} ${day(t.deletedAt)}`}</span>
                 </span>
-              )}
-            </div>
+                {!picking && <span aria-hidden="true">›</span>}
+              </button>
             );
             // swiped as everywhere else (Sascha 02.11.2026: "in the tile 'deleted' it does not work yet") – here for good,
             // so it asks first, as the ✕ does
             return (
               <li key={t.id}>
                 {picking ? row : (
-                  <SwipeRow label={t.title} onDelete={() => setPurging(t.id)}>
+                  <SwipeRow label={t.title} onDelete={() => { setSheet({ id: t.id, purge: true }); return false; }}>
                     {row}
                   </SwipeRow>
                 )}
@@ -157,6 +142,51 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
           })}
         </ul>
       )}
+      {open && sheet && props.items.some((t) => t.id === sheet.id) && (() => {
+        const t = props.items.find((x) => x.id === sheet.id)!;
+        return (
+          <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+            <section className="sheet" role="dialog" aria-label={t.title} onClick={(e) => e.stopPropagation()}>
+              <strong>{t.title}</strong>
+              <span className="muted small">{`${day(t.date)} · ${t.meta} · ${tr('deleted', 'gelöscht')} ${day(t.deletedAt)}`}</span>
+              {sheet.purge ? (
+                <>
+                  <span className="muted">{tr('Delete for good? This cannot be undone.', 'Endgültig löschen? Das lässt sich nicht rückgängig machen.')}</span>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-danger"
+                    onClick={() => {
+                      props.onPurge(t.id);
+                      setSheet(null);
+                    }}
+                  >
+                    {tr('Delete for good', 'Endgültig löschen')}
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
+                    {tr('Keep', 'Behalten')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => {
+                      props.onRestore(t.id);
+                      setSheet(null);
+                    }}
+                  >
+                    {tr('Restore', 'Wiederherstellen')}
+                  </button>
+                  <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet({ id: t.id, purge: true })}>
+                    {tr('Delete for good', 'Endgültig löschen')}
+                  </button>
+                </>
+              )}
+            </section>
+          </div>
+        );
+      })()}
     </>
   );
 }

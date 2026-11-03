@@ -51,7 +51,7 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(800);
-ok((await p.locator('.module-card').count()) === 4, 'four modules on the start page');
+ok((await p.locator('.module-card').count()) === 5, 'five modules on the start page (Tournaments since 03.11.2026)');
 ok(await p.locator('.module-card').filter({ hasText: 'Agility' }).isVisible(), 'the module card says "Agility" (not TPI)');
 ok((await p.getByText('TPI').count()) === 0, 'no "TPI" on the start page');
 await shot('start');

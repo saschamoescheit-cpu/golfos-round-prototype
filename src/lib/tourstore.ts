@@ -2,6 +2,7 @@ import { publishPlannedEvent, refreshEvent, updatePlannedEvent, type RoundEvent 
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { myAccount } from './wagerstore';
+import { dayOf } from './wagers';
 import type { Special } from './specials';
 
 // The tournaments planned in Games (Sascha 01.11.2026: "I could set up the tournaments for the USA now, put the flights
@@ -103,6 +104,13 @@ export const isTourHost = (e: TourEntry): boolean => !!e.owner && e.owner === my
 /** Still to come (or today), played, deleted. */
 export const tourState = (e: TourEntry, today: string): 'planned' | 'today' | 'played' | 'deleted' =>
   e.ev.deletedAt ? 'deleted' : e.ev.date > today ? 'planned' : e.ev.date === today ? 'today' : 'played';
+
+/** For the module card on the start page (03.11.2026): the names of today's tournaments and how many are planned after today. */
+export function toursSoon(now = new Date()): { today: string[]; planned: number } {
+  const today = dayOf(now);
+  const live = loadTours();
+  return { today: live.filter((e) => tourState(e, today) === 'today').map((e) => e.ev.name), planned: live.filter((e) => tourState(e, today) === 'planned').length };
+}
 
 const table = () => `${SUPABASE_URL}/rest/v1/golfos_shared_games`;
 async function headers(): Promise<Record<string, string> | null> {

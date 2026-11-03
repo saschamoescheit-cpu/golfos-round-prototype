@@ -108,7 +108,7 @@ async function phone(name) {
     localStorage.setItem('golfos.intro.v1', '1');
     localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: name, lastName: '', hcpIndex: '0', homeClub: '' }));
     localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: `h.${btoa(JSON.stringify({ sub: 'u-' + name }))}.s`, refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: `${name}@test`, name }));
-    sessionStorage.setItem('golfos.module', 'games');
+    sessionStorage.setItem('golfos.module', 'tournaments'); // a module of its own since 03.11.2026
   }, name);
   await p.reload();
   await p.waitForTimeout(1500);
@@ -119,8 +119,16 @@ const flightsOf = (code) => [...shared.entries()].filter(([, r]) => r.event_code
 // ---------- Sascha plans the tournament ----------
 const host = await phone('Sascha');
 const H = host.p;
-ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Turniere|Profil', `Games menu with "Turniere": ${(await H.locator('.tabbar button').allInnerTexts()).join(' · ')}`);
-ok(await H.getByText('Neues Turnier planen').isVisible(), 'start page: "Neues Turnier planen" beside a new game and a new bet');
+// Tournaments a module of their own, below Games & Bets (Sascha 03.11.2026)
+ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Planen|Turniere|Profil' && (await H.locator('.module-tag').textContent()) === 'Tournaments', `the module Tournaments: ${(await H.locator('.tabbar button').allInnerTexts()).join(' · ')}`);
+ok(await H.getByText('Neues Turnier planen').isVisible() && (await H.getByRole('button', { name: 'Neue Wette' }).count()) === 0, 'its start page: "Neues Turnier planen", no bets');
+await H.locator('.module-switch').click();
+const cards = (await H.locator('.module-card strong').allInnerTexts()).join('|');
+ok(cards === 'Rounds|Games & Bets|Tournaments|Training|Agility', `the start page: ${cards}`);
+await H.locator('.module-card').filter({ hasText: 'Games & Bets' }).click();
+ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Profil' && (await H.getByText('Neues Turnier planen').count()) === 0, 'Games & Bets: no tournaments any more');
+await H.locator('.module-switch').click();
+await H.locator('.module-card').filter({ hasText: 'Tournaments' }).click();
 await H.getByRole('button', { name: 'Neues Turnier', exact: true }).click();
 await H.waitForTimeout(500);
 await H.fill('#tour-name', 'USA Tag 1');
@@ -349,6 +357,7 @@ await H.getByRole('button', { name: 'Für alle löschen' }).click();
 await H.waitForTimeout(1500);
 ok(!!shared.get(code).game.deletedAt && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 0, 'deleted: marked for everyone, gone from the list');
 await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
+await H.locator('.bin-item').first().click();
 await H.getByRole('button', { name: 'Wiederherstellen' }).click();
 await H.waitForTimeout(1500);
 ok(!shared.get(code).game.deletedAt, 'restored from the bin');

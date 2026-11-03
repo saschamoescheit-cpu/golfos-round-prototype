@@ -86,18 +86,18 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
         <span className="muted small">
           {team
             ? tr(
-                'Your flight on their own phones (signed in with Google): one of the team keeps the card – another can take it over. Tournaments are planned under Games → Tournaments.',
-                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Turniere werden unter Games → Turniere geplant.',
+                'Your flight on their own phones (signed in with Google): one of the team keeps the card – another can take it over. Tournaments are planned under Tournaments.',
+                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Turniere werden unter Tournaments geplant.',
               )
             : props.compact
               ? // in the setup the score entry has its own section (Sascha 02.11.2026)
                 tr(
-                  'Your flight on their own phones (signed in with Google): everyone sees the scores live – who enters them, you choose under "Score entry". Tournaments are planned under Games → Tournaments.',
-                  'Dein Flight auf den eigenen Handys (mit Google angemeldet): Alle sehen die Scores live – wer sie erfasst, legst du unter „Score-Erfassung“ fest. Turniere werden unter Games → Turniere geplant.',
+                  'Your flight on their own phones (signed in with Google): everyone sees the scores live – who enters them, you choose under "Score entry". Tournaments are planned under Tournaments.',
+                  'Dein Flight auf den eigenen Handys (mit Google angemeldet): Alle sehen die Scores live – wer sie erfasst, legst du unter „Score-Erfassung“ fest. Turniere werden unter Tournaments geplant.',
                 )
               : tr(
-                  'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others live; with a marker also a partner\'s. Tournaments are planned under Games → Tournaments.',
-                  'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen live; mit Zähler auch den eines Mitspielers. Turniere werden unter Games → Turniere geplant.',
+                  'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others live; with a marker also a partner\'s. Tournaments are planned under Tournaments.',
+                  'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen live; mit Zähler auch den eines Mitspielers. Turniere werden unter Tournaments geplant.',
                 )}
         </span>
         <div className="drawer-list settings-switches">
@@ -221,7 +221,7 @@ export function JoinRoundSheet(props: {
   onClose: () => void;
   /** a game's code: join it in Games */
   onGameCode?: (code: string) => void;
-  /** a planned tournament joined before its day: on to Games → Tournaments */
+  /** a planned tournament joined before its day: on to the module Tournaments */
   onTours?: () => void;
 }) {
   const [code, setCode] = useState(cleanCode(props.initial ?? ''));
@@ -525,7 +525,7 @@ export function JoinRoundSheet(props: {
                   {tr('Take part today', 'Heute teilnehmen')}
                 </button>
               ) : (
-                <span className="muted small">{tr('On each day of the series it is in Rounds from 00:01 – before that under Games → Tournaments.', 'An jedem Spieltag ab 00:01 in Rounds – vorab unter Games → Turniere.')}</span>
+                <span className="muted small">{tr('On each day of the series it is in Rounds from 00:01 – before that under Tournaments.', 'An jedem Spieltag ab 00:01 in Rounds – vorab unter Tournaments.')}</span>
               ))(series.rounds.find((r) => r.date === localDay()))}
             {props.onTours && (
               <button type="button" className="btn-secondary" onClick={props.onTours}>
@@ -546,7 +546,7 @@ export function JoinRoundSheet(props: {
             <span>
               {[ev.name, dayText(ev.date!), ev.course.name, ((f) => (f ? tr(`your flight${f.teeTime ? ` ${f.teeTime}` : ''}`, `dein Flight${f.teeTime ? ` ${f.teeTime}` : ''}`) : ''))(flightOfName(ev, who()))].filter(Boolean).join(' · ')}
             </span>
-            <span className="muted small">{tr('On the day of the tournament it is in Rounds from 00:01 – before that under Games → Tournaments.', 'Am Turniertag ab 00:01 in Rounds – vorab unter Games → Turniere.')}</span>
+            <span className="muted small">{tr('On the day of the tournament it is in Rounds from 00:01 – before that under Tournaments.', 'Am Turniertag ab 00:01 in Rounds – vorab unter Tournaments.')}</span>
             {props.onTours && (
               <button type="button" className="btn-secondary" onClick={props.onTours}>
                 {tr('To the tournaments', 'Zu den Turnieren')}

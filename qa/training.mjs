@@ -34,7 +34,7 @@ await p.evaluate(() => {
 });
 await p.reload();
 await p.waitForTimeout(800);
-ok((await p.locator('.module-card').count()) === 4, 'four modules on the start page');
+ok((await p.locator('.module-card').count()) === 5, 'five modules on the start page (Tournaments since 03.11.2026)');
 await p.locator('.module-card').filter({ hasText: 'Training' }).click();
 await p.waitForTimeout(800);
 await p.getByRole('heading', { name: 'Wissen' }).waitFor({ timeout: 20000 }).catch(() => {});
@@ -274,6 +274,7 @@ await tab('Üben');
 await tab('Verlauf');
 await tile('gelöscht').click();
 ok((await p.getByRole('heading', { name: 'Gelöschte Einheiten' }).isVisible()) && !(await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'tile "deleted" shows only the bin');
+await p.locator('.bin-item').first().click();
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(200);
 ok((await sessionsBlock().locator('.list-item').count()) === 1 && (await p.getByRole('heading', { name: 'Deine Übungen' }).isVisible()), 'restored from the bin: the whole page again');

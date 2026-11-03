@@ -104,7 +104,10 @@ ok((await toggle.innerText()).replace(/\s+/g, ' ').trim() === '1 gelöscht', 'Ro
 await toggle.click();
 await p.waitForTimeout(300);
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/bin.png' });
-ok((await p.locator('ul.list button.list-item').count()) === 0 && (await p.locator('.bin-item').count()) === 1, 'the bin tile shows only the deleted rounds, no others below');
+ok((await p.locator('ul.list button.list-item:not(.bin-item)').count()) === 0 && (await p.locator('.bin-item').count()) === 1, 'the bin tile shows only the deleted rounds, no others below');
+// the row as a played one (03.11.2026), a tap opens its sheet
+ok((await p.locator('.bin-item .bin-actions').count()) === 0 && (await p.locator('.bin-item [aria-label="gelöscht"]').count()) === 1, 'the deleted row as a round row: the bin mark, no buttons below it');
+await p.locator('.bin-item').first().click();
 await p.getByRole('button', { name: 'Wiederherstellen' }).click();
 await p.waitForTimeout(600);
 const back = await p.evaluate((rid) => ({ round: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').some((r) => r.id === rid), track: localStorage.getItem('golfos.track.v1.' + rid) != null, bin: JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length }), id);
@@ -117,9 +120,10 @@ await p.goto(url);
 await p.waitForTimeout(1500);
 await p.locator('.tabbar button', { hasText: 'Runden' }).click();
 await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
-await p.getByRole('button', { name: 'Endgültig löschen' }).click();
+await p.locator('.bin-item').first().click();
+await p.getByRole('dialog').getByRole('button', { name: 'Endgültig löschen' }).click();
 await p.waitForTimeout(200);
-ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 1, 'the ✕ alone deletes nothing');
+ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 1, 'one tap on "Endgültig löschen" deletes nothing – it asks');
 await p.getByRole('button', { name: 'Endgültig löschen' }).last().click();
 await p.waitForTimeout(400);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 0, 'deleted for good after confirming');

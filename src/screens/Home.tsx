@@ -19,17 +19,18 @@ export function Home(props: {
   /** finished games whose result is not confirmed yet – the task shown on the Games card, as on Rounds */
   gamesToConfirm?: number;
   betsRunning?: string[]; // the names of the pools of bets running
+  tours?: { today: string[]; planned: number }; // the tournaments of today (names) and how many are planned after it
   toCheck: number; // finished rounds to check & sign (the same number as the rounds tile)
   profileDot: boolean; // carries to take over into the bag
   trainingOpen: boolean; // a practice session is paused
-  onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void;
+  onPick: (m: 'rounds' | 'games' | 'tournaments' | 'training' | 'mobility') => void;
   profile: ReactNode;
   mobilityOpen?: boolean; // a screening is paused
   mobilityToday?: 'paused' | 'done' | 'today'; // the guided training of the day
 }) {
   return (
     <main className={`screen with-tabs${props.tab === 'start' ? ' module-chooser' : ''}`}>
-      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} betsRunning={props.betsRunning ?? []} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
+      {props.tab === 'start' && <ModuleCards roundOpen={props.roundOpen} gameOpen={props.gameOpen} gamesToConfirm={props.gamesToConfirm ?? 0} betsRunning={props.betsRunning ?? []} tours={props.tours} trainingOpen={props.trainingOpen} mobilityOpen={props.mobilityOpen} mobilityToday={props.mobilityToday} toCheck={props.toCheck} onPick={props.onPick} />}
       {props.tab === 'friends' && <Friends onSignIn={() => props.onTab('profile')} />}
       {props.tab === 'profile' && props.profile}
       <MenuBar
@@ -57,7 +58,7 @@ function PausedMark() {
   );
 }
 
-function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; betsRunning: string[]; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'training' | 'mobility') => void }) {
+function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConfirm: number; betsRunning: string[]; tours?: { today: string[]; planned: number }; trainingOpen: boolean; mobilityOpen?: boolean; mobilityToday?: 'paused' | 'done' | 'today'; toCheck: number; onPick: (m: 'rounds' | 'games' | 'tournaments' | 'training' | 'mobility') => void }) {
   return (
     <>
       {/* GOLFOS only top left, the claim small below it (Sascha 02.11.2026: "saves a lot of room") – the claim the
@@ -102,7 +103,8 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
           </svg>
         </span>
         <span className="grow">
-          <strong>Games</strong>
+          {/* "Games & Bets" (Sascha 03.11.2026: clearer that games and bets are together here) */}
+          <strong>Games &amp; Bets</strong>
           {/* as on Rounds: only what is still to do – the results to confirm; a paused game is no task here (Sascha 25.10.2026) */}
           {props.gamesToConfirm > 0 && (
             <span className="small module-todo">
@@ -114,6 +116,28 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
             <span className="small module-live">
               {props.betsRunning.length === 1 ? tr(`Bets running: ${props.betsRunning[0]}`, `Wetten laufen: ${props.betsRunning[0]}`) : tr(`${props.betsRunning.length} pools of bets running`, `${props.betsRunning.length} Wett-Pools laufen`)}
             </span>
+          )}
+        </span>
+        <span aria-hidden="true">›</span>
+      </button>
+      {/* the tournaments a module of their own, below Games & Bets (Sascha 03.11.2026) – planned here, played in Rounds */}
+      <button type="button" className="module-card" onClick={() => props.onPick('tournaments')}>
+        <span className="module-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
+            <path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4M17 6h2.5a2.5 2.5 0 0 1-2.6 4" />
+            <path d="M12 14v3M8.5 20h7M9.5 17h5v3h-5z" />
+          </svg>
+        </span>
+        <span className="grow">
+          <strong>Tournaments</strong>
+          {props.tours && props.tours.today.length > 0 && (
+            <span className="small module-live">
+              {props.tours.today.length === 1 ? tr(`Today: ${props.tours.today[0]}`, `Heute: ${props.tours.today[0]}`) : tr(`${props.tours.today.length} tournaments today`, `${props.tours.today.length} Turniere heute`)}
+            </span>
+          )}
+          {props.tours && !props.tours.today.length && props.tours.planned > 0 && (
+            <span className="small muted">{props.tours.planned === 1 ? tr('1 tournament planned', '1 Turnier geplant') : tr(`${props.tours.planned} tournaments planned`, `${props.tours.planned} Turniere geplant`)}</span>
           )}
         </span>
         <span aria-hidden="true">›</span>

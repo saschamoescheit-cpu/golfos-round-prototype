@@ -1256,7 +1256,7 @@ button.tile:disabled { opacity: 1; }
 
 /* Rounds: the bin of deleted rounds */
 .bin-toggle { align-self: flex-start; margin-top: 8px; }
-.bin-item { cursor: default; flex-wrap: wrap; }
+.bin-item { cursor: pointer; }
 .bin-actions { display: flex; gap: 8px; flex-basis: 100%; justify-content: flex-end; }
 .bin-actions .btn-secondary { min-height: 40px; padding: 0 12px; width: auto; }
 .bin-actions .bin-x { padding: 0 14px; }

@@ -131,16 +131,22 @@ function newDraft(form: FormId = 'skins'): Draft {
   return withWhs({ form, course: null, optionId: '', players: atLeast([me], formDef(form).players[0]), settings: defaults(formDef(form)) });
 }
 
-export function GamesApp(props: { onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void; /** a round's code under "Join a game": on to Rounds */ onJoinRound?: (code: string) => void }) {
+export function GamesApp(props: {
+  /** 'games' – "Games & Bets": games and pools of bets; 'tours' – "Tournaments", a module of its own (Sascha
+   *  03.11.2026: "the tournaments out of Games, their own menu item below Games") – the same screens of a tournament */
+  kind?: 'games' | 'tours';
+  onModules: () => void; profile: ReactNode; profileDot?: boolean; tab?: GamesTab; onTabChange?: (t: GamesTab) => void; onOpenBag?: (part: 'bag' | 'caddie') => void; /** a round's code under "Join a game": on to Rounds */ onJoinRound?: (code: string) => void }) {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
   const [view, setView] = useState<View>(() => {
+    if (props.kind === 'tours') return { name: 'tab', tab: props.tab ?? 'play' };
     const pool = takeOpenPool(); // a push about a bet made: its pool
     if (pool) return { name: 'pool', code: pool };
     return running[0] && !props.tab && !location.hash.startsWith('#join=') ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' };
   });
   // the push tapped while Games is open already
   useEffect(() => {
+    if (props.kind === 'tours') return;
     const open = () => {
       const pool = takeOpenPool();
       if (pool) setView({ name: 'pool', code: pool });
@@ -171,6 +177,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
     case 'tab':
       return (
         <GamesTabs
+          kind={props.kind ?? 'games'}
           tab={view.tab}
           games={games}
           profile={props.profile}
@@ -382,6 +389,7 @@ export function GamesApp(props: { onModules: () => void; profile: ReactNode; pro
 // ---------- the module's tabs (Sascha 15.10.2026: a menu at the bottom as in Rounds) ----------
 
 function GamesTabs(props: {
+  kind: 'games' | 'tours';
   tab: GamesTab;
   games: Game[];
   profile: ReactNode;
@@ -432,13 +440,29 @@ function GamesTabs(props: {
             <span className="brand">
               GOLF<span>OS</span>
             </span>
-            <span className="module-tag">Games</span>
+            <span className="module-tag">{props.kind === 'tours' ? 'Tournaments' : 'Games & Bets'}</span>
             <span aria-hidden="true">⇄</span>
           </button>
           <TopTools />
         </div>
       )}
-      {props.tab === 'play' && (
+      {/* Tournaments (03.11.2026): plan one or join – the list of them in the menu "Tournaments", played in Rounds */}
+      {props.kind === 'tours' && props.tab === 'play' && (
+        <>
+          <h1 className="tab-title">{tr('Plan a tournament', 'Turnier planen')}</h1>
+          <TourStartCard canShare={!!canShare} onNew={props.onNewTour} onJoin={() => setJoinOpen('')} />
+          {toursAhead && (
+            <button type="button" className="list-item" onClick={() => props.onTab('tours')}>
+              <span className="grow">
+                <span className="title">{tr('Tournaments to come', 'Anstehende Turniere')}</span>
+                <span className="muted small">{tr('Today and planned – flights, tee times, leaderboard', 'Heute und geplant – Flights, Startzeiten, Rangliste')}</span>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+          )}
+        </>
+      )}
+      {props.kind === 'games' && props.tab === 'play' && (
         <>
           <h1 className="tab-title">{tr('Play a game', 'Spiel starten')}</h1>
           {/* the game in progress as the round in progress on Rounds (Sascha 25.10.2026: Rounds is the pattern) */}
@@ -459,7 +483,6 @@ function GamesTabs(props: {
           </section>
           {/* start a bet beside starting a game – the bets themselves are kept in the menu "Bets" (Sascha 01.11.2026) */}
           <StartBetCard canShare={!!canShare} onNew={props.onNewPool} onJoin={() => setJoinOpen('')} />
-          <TourStartCard canShare={!!canShare} onNew={props.onNewTour} onJoin={() => setJoinOpen('')} />
           {confirmCount > 0 && (
             <button type="button" className="list-item" onClick={() => openList('confirm')}>
               <span className="grow">
@@ -534,13 +557,20 @@ function GamesTabs(props: {
       )}
       {props.tab === 'profile' && props.profile}
       <MenuBar
-        items={[
-          { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
-          { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
-          { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON, dot: betsRunning },
-          { id: 'tours' as GamesTab, label: tr('Tournaments', 'Turniere'), icon: TOURS_ICON, dot: toursAhead },
-          { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
-        ]}
+        items={
+          props.kind === 'tours'
+            ? [
+                { id: 'play' as GamesTab, label: tr('Plan', 'Planen'), icon: MENU_ICONS.game },
+                { id: 'tours' as GamesTab, label: tr('Tournaments', 'Turniere'), icon: TOURS_ICON, dot: toursAhead },
+                { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
+              ]
+            : [
+                { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
+                { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
+                { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON, dot: betsRunning },
+                { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
+              ]
+        }
         current={props.tab}
         onPick={(t) => {
           setFilter(null); // the menu shows all again
