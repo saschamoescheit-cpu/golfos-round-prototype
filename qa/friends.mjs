@@ -5,7 +5,7 @@
 // removing ends it for both. Supabase is simulated (qa/sharesim.mjs), the app is real.
 // Usage: node qa/friends.mjs [url]
 import { webkit } from 'playwright';
-import { sharedServer } from './sharesim.mjs';
+import { sharedServer, tokenOf } from './sharesim.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -76,7 +76,7 @@ ok(kept?.hcp === '9,5' && !!kept.uid, 'Chris: the friend for the flight with HCP
 const ben = await phone('Ben');
 const B = ben.p;
 await friendsTab(B);
-await B.getByRole('button', { name: 'Code eingeben' }).click();
+await B.getByRole('button', { name: 'Code eingeben' }).click(); // an icon, the field in its sheet (03.11.2026)
 await B.getByLabel('Code deines Freundes').fill(code.replace(/(.{4})/g, '$1 ').toLowerCase());
 await B.getByRole('button', { name: 'Los' }).click();
 const bask = B.getByRole('dialog', { name: 'Freundschaftsanfrage' });
@@ -103,6 +103,25 @@ await gask.waitFor({ timeout: 15000 });
 await gask.getByText(/melde dich zuerst an/).waitFor({ timeout: 10000 }).catch(() => null);
 ok(/melde dich zuerst an/.test(await gask.innerText()) && (await gask.getByRole('button', { name: 'Annehmen' }).count()) === 0, 'guest: "sign in first" – no accepting without an account');
 ok((await G.evaluate(() => localStorage.getItem('golfos.friendask.v1'))) === code, 'guest: the request waits for the sign-in');
+// Chris's way (03.11.2026: "he opened the invitation, signed in – then nothing happened"): "Anmelden" leads to the profile;
+// signed in, the app starts anew on the start page – the request is there again, on any screen, and he accepts
+await gask.getByRole('button', { name: 'Anmelden' }).click();
+await G.waitForTimeout(400);
+ok((await G.getByRole('navigation', { name: 'Menü' }).getByRole('button', { name: 'Profil' }).getAttribute('aria-current')) === 'page' || (await G.getByText('Auf allen Geräten').count()) > 0, 'guest: "Anmelden" opens the profile');
+await G.evaluate((token) => {
+  localStorage.setItem('golfos.profile.v1', JSON.stringify({ firstName: 'Gast', lastName: '', hcpIndex: '30', homeClub: '' }));
+  localStorage.setItem('golfos.auth.v1', JSON.stringify({ access_token: token, refresh_token: 'y', expires_at: Math.floor(Date.now() / 1000) + 3600, email: 'gast@test', name: 'Gast' }));
+  sessionStorage.setItem('golfos.module', 'rounds');
+}, tokenOf('Gast'));
+await G.goto('about:blank');
+await G.goto(url);
+const gask2 = G.getByRole('dialog', { name: 'Freundschaftsanfrage' });
+await gask2.getByRole('button', { name: 'Annehmen' }).waitFor({ timeout: 15000 }).catch(() => null);
+ok((await gask2.getByRole('button', { name: 'Annehmen' }).count()) === 1, 'signed in, in Rounds: the request is there again, "Annehmen"');
+await gask2.getByRole('button', { name: 'Annehmen' }).click();
+await gask2.getByText(/seid befreundet/).waitFor({ timeout: 10000 }).catch(() => null);
+ok(/du stehst jetzt auch in der Liste von Sascha/.test(await gask2.innerText()), 'accepted: friends both ways, said so');
+await gask2.getByRole('button', { name: 'Schließen' }).click();
 
 // own code: no request to oneself
 await S.goto('about:blank');

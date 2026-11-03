@@ -19,18 +19,17 @@ export function Friends(props: { onSignIn: () => void }) {
   const [scan, setScan] = useState(false);
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState('');
-  const [ask, setAsk] = useState<string | null>(pendingAsk);
   const [problem, setProblem] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [renewing, setRenewing] = useState(false);
+  const [typedProblem, setTypedProblem] = useState<string | null>(null);
   const linkable = canLink();
 
   useEffect(() => {
     const again = () => setList(loadFriends());
-    const asked = () => setAsk(pendingAsk());
     window.addEventListener('golfos:friends-changed', again);
     window.addEventListener('golfos:pulled', again);
-    window.addEventListener('golfos:friend-ask', asked);
     if (linkable) {
       void publishCard()
         .then((c) => c && setCode(c))
@@ -40,7 +39,6 @@ export function Friends(props: { onSignIn: () => void }) {
     return () => {
       window.removeEventListener('golfos:friends-changed', again);
       window.removeEventListener('golfos:pulled', again);
-      window.removeEventListener('golfos:friend-ask', asked);
     };
   }, [linkable]);
 
@@ -78,6 +76,7 @@ export function Friends(props: { onSignIn: () => void }) {
     setScan(false);
     setTyping(false);
     setTyped('');
+    setTypedProblem(null);
     setPendingAsk(c);
     return true;
   };
@@ -87,14 +86,17 @@ export function Friends(props: { onSignIn: () => void }) {
       <h1 className="tab-title">{tr('Friends', 'Freunde')}</h1>
 
       {linkable ? (
+        // the own code as with PayPal: the QR code to scan, below it what one does with it – each an icon with its word
+        // (Sascha 03.11.2026: "the QR code area, the buttons and the text links: nicer with icons")
         <div className="card friend-code" aria-label={tr('My friend code', 'Mein Freundes-Code')}>
-          <strong>{tr('My friend code', 'Mein Freundes-Code')}</strong>
-          <span className="muted small">
-            {tr(
-              'Let a friend scan it – or send the invitation, e.g. by WhatsApp. Once he accepts, his handicap, home club and photo come from his profile, always up to date.',
-              'Lass ihn scannen – oder schick die Einladung, z. B. per WhatsApp. Sobald dein Freund annimmt, kommen HCP, Heimatclub und Bild aus seinem Profil – immer aktuell.',
+          <div className="friend-code-head">
+            <strong>{tr('My friend code', 'Mein Freundes-Code')}</strong>
+            {code && (
+              <button type="button" className="icon-btn friend-renew" aria-label={tr('New code', 'Neuer Code')} title={tr('New code', 'Neuer Code')} onClick={() => setRenewing(true)}>
+                <FriendIcon kind="renew" />
+              </button>
             )}
-          </span>
+          </div>
           {code ? (
             <>
               <Qr text={friendLink(code)} label={tr('My friend code as a QR code', 'Mein Freundes-Code als QR-Code')} />
@@ -103,46 +105,31 @@ export function Friends(props: { onSignIn: () => void }) {
           ) : (
             <span className="muted small">{problem ?? tr('Making your code …', 'Dein Code wird erstellt …')}</span>
           )}
-          <div className="friend-code-actions">
-            <button type="button" className="btn-primary" disabled={!code} onClick={() => void invite()}>
-              {tr('Send invitation', 'Einladung senden')}
+          <span className="muted small friend-code-hint">
+            {tr('Your friend scans it or gets your invitation – once he accepts, you are friends with each other.', 'Dein Freund scannt ihn oder bekommt deine Einladung – sobald er annimmt, seid ihr gegenseitig befreundet.')}
+          </span>
+          <div className="friend-actions">
+            <button type="button" className="friend-action" aria-label={tr('Send invitation', 'Einladung senden')} disabled={!code} onClick={() => void invite()}>
+              <span className="friend-action-icon primary">
+                <FriendIcon kind="share" />
+              </span>
+              <span className="small">{tr('Invite', 'Einladen')}</span>
             </button>
-            <button type="button" className="btn-secondary" onClick={() => setScan(true)}>
-              {tr('Scan QR code', 'QR-Code scannen')}
+            <button type="button" className="friend-action" aria-label={tr('Scan QR code', 'QR-Code scannen')} onClick={() => setScan(true)}>
+              <span className="friend-action-icon">
+                <FriendIcon kind="scan" />
+              </span>
+              <span className="small">{tr('Scan', 'Scannen')}</span>
+            </button>
+            <button type="button" className="friend-action" aria-label={tr('Type a code', 'Code eingeben')} onClick={() => setTyping(true)}>
+              <span className="friend-action-icon">
+                <FriendIcon kind="type" />
+              </span>
+              <span className="small">{tr('Type code', 'Code eingeben')}</span>
             </button>
           </div>
           {sent && <span className="muted small">{sent}</span>}
-          {typing ? (
-            <form
-              className="friend-code-type"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!take(typed)) setProblem(tr('That is not a friend code (12 characters).', 'Das ist kein Freundes-Code (12 Zeichen).'));
-              }}
-            >
-              <input className="input" aria-label={tr("Your friend's code", 'Code deines Freundes')} placeholder="A1B2 C3D4 E5F6" value={typed} onChange={(e) => setTyped(e.target.value)} autoCapitalize="characters" />
-              <button type="submit" className="btn-secondary">
-                {tr('Go', 'Los')}
-              </button>
-            </form>
-          ) : (
-            <button type="button" className="link-btn small" onClick={() => setTyping(true)}>
-              {tr('Type a code', 'Code eingeben')}
-            </button>
-          )}
-          {code && (
-            <button
-              type="button"
-              className="link-btn small muted"
-              onClick={() => {
-                void renewFriendCode()
-                  .then(setCode)
-                  .catch(() => setProblem(tr('No connection – try again later.', 'Keine Verbindung – später nochmal.')));
-              }}
-            >
-              {tr('New code (the old QR code and links stop working)', 'Neuer Code (alter QR-Code und Links gelten nicht mehr)')}
-            </button>
-          )}
+          {problem && code && <span className="small good-text">{problem}</span>}
         </div>
       ) : (
         <div className="card friend-code">
@@ -226,8 +213,97 @@ export function Friends(props: { onSignIn: () => void }) {
       </button>
 
       {scan && <QrScan title={tr('Scan QR code', 'QR-Code scannen')} onText={take} onClose={() => setScan(false)} />}
-      {ask && <FriendAsk code={ask} onSignIn={props.onSignIn} />}
+      {typing && (
+        <div className="sheet-backdrop" onClick={() => setTyping(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('Type a code', 'Code eingeben')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Type a code', 'Code eingeben')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setTyping(false)}>
+                ✕
+              </button>
+            </div>
+            <span className="muted small">{tr("The 12 characters under your friend's QR code.", 'Die 12 Zeichen unter dem QR-Code deines Freundes.')}</span>
+            <form
+              className="friend-code-type"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!take(typed)) setTypedProblem(tr('That is not a friend code (12 characters).', 'Das ist kein Freundes-Code (12 Zeichen).'));
+              }}
+            >
+              <input className="input" autoFocus aria-label={tr("Your friend's code", 'Code deines Freundes')} placeholder="A1B2 C3D4 E5F6" value={typed} onChange={(e) => setTyped(e.target.value)} autoCapitalize="characters" />
+              <button type="submit" className="btn-primary">
+                {tr('Go', 'Los')}
+              </button>
+            </form>
+            {typedProblem && <span className="small good-text">{typedProblem}</span>}
+          </section>
+        </div>
+      )}
+      {renewing && (
+        <div className="sheet-backdrop" onClick={() => setRenewing(false)}>
+          <section className="sheet" role="dialog" aria-label={tr('New code', 'Neuer Code')} onClick={(e) => e.stopPropagation()}>
+            <strong>{tr('A new friend code?', 'Neuer Freundes-Code?')}</strong>
+            <span className="muted">{tr('Your old QR code and the invitations sent stop working. Your friends stay.', 'Dein alter QR-Code und verschickte Einladungen gelten dann nicht mehr. Deine Freunde bleiben.')}</span>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setRenewing(false);
+                void renewFriendCode()
+                  .then(setCode)
+                  .catch(() => setProblem(tr('No connection – try again later.', 'Keine Verbindung – später nochmal.')));
+              }}
+            >
+              {tr('Make a new code', 'Neuen Code erstellen')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setRenewing(false)}>
+              {tr('Keep the code', 'Code behalten')}
+            </button>
+          </section>
+        </div>
+      )}
     </>
+  );
+}
+
+/** A friend's request on every screen of the app (03.11.2026: Chris opened the invitation, signed in first – and then
+ *  "nothing happened": the request waited only in the friends tab). Shown wherever one is, until accepted or closed. */
+export function FriendAskHost() {
+  const [ask, setAsk] = useState<string | null>(pendingAsk);
+  useEffect(() => {
+    const asked = () => setAsk(pendingAsk());
+    window.addEventListener('golfos:friend-ask', asked);
+    return () => window.removeEventListener('golfos:friend-ask', asked);
+  }, []);
+  return ask ? <FriendAsk key={ask} code={ask} onSignIn={() => window.dispatchEvent(new Event('golfos:open-profile'))} /> : null;
+}
+
+/** The icons of the friend code card. */
+function FriendIcon(props: { kind: 'share' | 'scan' | 'type' | 'renew' }) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {props.kind === 'share' ? (
+        <>
+          <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" />
+          <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
+        </>
+      ) : props.kind === 'scan' ? (
+        <>
+          <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+          <path d="M4 12h16" />
+        </>
+      ) : props.kind === 'type' ? (
+        <>
+          <rect x="3" y="6" width="18" height="12" rx="2" />
+          <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" />
+        </>
+      ) : (
+        <>
+          <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+          <path d="M20 4v7h-7" />
+        </>
+      )}
+    </svg>
   );
 }
 
@@ -282,7 +358,7 @@ function FriendAsk(props: { code: string; onSignIn: () => void }) {
             {who.is_me ? (
               <p className="muted">{tr('That is your own code.', 'Das ist dein eigener Code.')}</p>
             ) : who.is_friend || state === 'done' ? (
-              <p className="good-text">{tr(`You and ${name} are friends ✓`, `Du und ${name} seid befreundet ✓`)}</p>
+              <p className="good-text">{tr(`You and ${name} are friends ✓ – you are in ${name}'s list too.`, `Du und ${name} seid befreundet ✓ – du stehst jetzt auch in der Liste von ${name}.`)}</p>
             ) : (
               <>
                 <p>{tr(`${name} would like to be your friend. You both see each other's name, handicap, home club and photo.`, `${name} möchte mit dir befreundet sein. Ihr seht dann gegenseitig Name, HCP, Heimatclub und Bild.`)}</p>

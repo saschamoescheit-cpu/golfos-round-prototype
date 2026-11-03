@@ -12,9 +12,14 @@ export function watchForUpdates(): void {
   const hadController = !!sw.controller; // the first install takes control too – that is no new version
   let fresh = false;
   let askedAt = Date.now();
+  const openedAt = Date.now();
+  const byLink = /^#(friend|join|round|pool)=/.test(location.hash); // read before the app clears the address
   sw.addEventListener('controllerchange', () => {
     if (!hadController) return;
     fresh = true;
+    // just opened (a link from WhatsApp – an invitation, a round, a pool): at once onto the new version, nothing was
+    // done yet (03.11.2026: Chris's invitation opened the version cached days before, which did not know it)
+    if (byLink && Date.now() - openedAt < 20_000) location.reload();
     if (document.visibilityState === 'hidden') location.reload();
   });
   document.addEventListener('visibilitychange', () => {

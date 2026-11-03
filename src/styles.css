@@ -2012,11 +2012,19 @@ button.tile:disabled { opacity: 1; }
    by hand side by side – a chain or a pen tells them apart */
 .friend-code { display: flex; flex-direction: column; gap: 10px; }
 .friend-code-text { align-self: center; font: 700 20px var(--display); letter-spacing: 0.12em; }
-.friend-code-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.friend-code-actions > * { flex: 1 1 140px; }
+/* the card as with PayPal (03.11.2026): the QR code in the middle, what one does with it as three icons with a word */
+.friend-code { align-items: stretch; }
+.friend-code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.friend-renew { color: var(--text-2); }
+
+.friend-code-hint { text-align: center; }
+.friend-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+.friend-action { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 2px; background: none; border: 0; color: var(--text); font: inherit; cursor: pointer; min-height: 44px; }
+.friend-action:disabled { opacity: 0.45; cursor: default; }
+.friend-action-icon { width: 54px; height: 54px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-strong); }
+.friend-action-icon.primary { background: var(--brand); color: #fff; border-color: transparent; }
 .friend-code-type { display: flex; gap: 8px; }
 .friend-code-type .input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.08em; }
-.friend-code .link-btn { align-self: flex-start; text-align: left; }
 .friend-linked { display: flex; align-items: center; gap: 12px; }
 .friend-linked .grow { flex: 1; min-width: 0; }
 .friend-remove { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
@@ -2053,3 +2061,4 @@ button.tile:disabled { opacity: 1; }
 .paid-mark { min-height: 34px; padding: 4px 12px; font-size: 14px; }
 .paid-undo { width: 34px; height: 34px; font-size: 16px; }
 .paid-state { display: block; }
+.friend-code .qr-box { width: min(200px, 56vw); }

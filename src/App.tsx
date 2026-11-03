@@ -262,6 +262,12 @@ export function App() {
         void finishSignIn(url).then((s) => s && location.reload());
       });
     startFriendLinks(); // the own friend card after each sync, the friends' cards every few minutes
+    // a friend's request asks to sign in first (03.11.2026: it shows on every screen): the profile of the start page
+    const toProfile = () => {
+      setModule(null);
+      setHomeTab('profile');
+    };
+    window.addEventListener('golfos:open-profile', toProfile);
     // back to the app: fetch what the other devices changed; leaving it (another tab, the phone locked): send ours
     const onShow = () => {
       syncNow();
@@ -272,6 +278,7 @@ export function App() {
     const t = window.setInterval(() => document.visibilityState === 'visible' && syncNow(), 20 * 1000);
     return () => {
       document.removeEventListener('visibilitychange', onShow);
+      window.removeEventListener('golfos:open-profile', toProfile);
       window.clearInterval(t);
     };
   }, []);
