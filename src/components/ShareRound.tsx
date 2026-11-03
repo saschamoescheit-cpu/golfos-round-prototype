@@ -10,6 +10,7 @@ import { loadSession, signIn, signInAnonymously } from '../lib/sync';
 import { pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
 import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
+import { SettingsList, SheetRow } from './Settings';
 import { ScanCodeButton } from './QrScan';
 
 /** A planned tournament's day: "Fr., 6.11." */
@@ -58,6 +59,15 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
   const [msg, setMsg] = useState<string | null>(null);
   // the round shown to signed-in phones nearby (Sascha 29.10.2026) – here, or (no GPS) on the course; asked by the switch under the code
   const [nearState, setNearState] = useState<'here' | 'course' | 'failed' | null>(null);
+  // everyone in with a phone of his own: the block folds to one row (docs/DESIGN.md, Sascha 03.11.2026)
+  const [liveEv, setLiveEv] = useState(() => (shared ? cachedEvent(shared.code) : null));
+  useEffect(() => {
+    if (!shared) return;
+    const on = () => setLiveEv(cachedEvent(shared.code));
+    on();
+    window.addEventListener('golfos:event-changed', on);
+    return () => window.removeEventListener('golfos:event-changed', on);
+  }, [shared?.code]); // eslint-disable-line react-hooks/exhaustive-deps
   const putNearby = async (code: string) => {
     const pos = await here();
     const course = courseSummary(props.round);
@@ -110,7 +120,9 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
         ]}
       />
     );
-  return (
+  const flight = liveEv?.flights[shared.flight];
+  const allIn = !!flight && flight.players.length > 1 && flight.players.every((pl) => Object.values(flight.phones ?? {}).some((ph) => ph.player === pl.id));
+  const block = (
     <>
       <InviteCard
         link={roundJoinLink(shared.code)}
@@ -155,6 +167,15 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
       <FriendInvite code={shared.code} only={props.round.players.filter((p) => !p.isMe).map((p) => p.name)} />
       {msg && <span className="muted small">{msg}</span>}
     </>
+  );
+  return allIn ? (
+    <SettingsList>
+      <SheetRow label={tr('Invite players', 'Mitspieler einladen')} value={tr('Everyone in ✓', 'Alle dabei ✓')}>
+        {block}
+      </SheetRow>
+    </SettingsList>
+  ) : (
+    block
   );
 }
 

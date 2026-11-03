@@ -594,15 +594,24 @@ export function HoleScreen(props: {
           </button>
         </div>
         {exitConfirm === null && (
+          // the action bar (docs/DESIGN.md, Sascha 03.11.2026) – cancelling red and last – then the one main button: finishing
           <div className="sheet-actions">
-            <button type="button" className="btn-secondary" onClick={props.onExit}>
-              {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
-            </button>
+            <div className="sc-actions" role="group" aria-label={props.game ? tr('This game', 'Dieses Spiel') : tr('This round', 'Diese Runde')}>
+                <button type="button" className="sc-action" aria-label={tr('Pause – continue later', 'Pausieren – später fortsetzen')} onClick={props.onExit}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 5v14M15 5v14" />
+                  </svg>
+                  <span>{tr('Pause', 'Pausieren')}</span>
+                </button>
+                  <button type="button" className="sc-action danger" aria-label={props.game ? tr('Cancel game', 'Spiel abbrechen') : tr('Cancel round', 'Runde abbrechen')} onClick={() => props.onAbort(round)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                  </svg>
+                  <span>{tr('Cancel', 'Abbrechen')}</span>
+                </button>
+              </div>
             <button type="button" className="btn-primary" onClick={() => setExitConfirm('end')}>
               {props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')}
-            </button>
-            <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
-              {props.game ? tr('Cancel game', 'Spiel abbrechen') : tr('Cancel round', 'Runde abbrechen')}
             </button>
           </div>
         )}
@@ -617,14 +626,22 @@ export function HoleScreen(props: {
                 : (props.game ? tr('Finish the game and settle?', 'Spiel beenden und abrechnen?') : tr('Finish and save the round?', 'Runde beenden und speichern?'))}
             </span>
             <div className="sheet-actions">
+              <div className="sc-actions" role="group" aria-label={tr('Or', 'Oder')}>
+                <button type="button" className="sc-action" aria-label={tr('Back', 'Zurück')} onClick={() => setExitConfirm(null)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+                  </svg>
+                  <span>{tr('Back', 'Zurück')}</span>
+                </button>
+                  <button type="button" className="sc-action danger" aria-label={props.game ? tr('Delete game', 'Spiel löschen') : tr('Delete round', 'Runde löschen')} onClick={() => props.onAbort(round)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                  </svg>
+                  <span>{tr('Delete', 'Löschen')}</span>
+                </button>
+                </div>
               <button type="button" className="btn-primary" onClick={() => props.onEnd(round)}>
                 {tr('Save & finish', 'Speichern & beenden')}
-              </button>
-              <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(round)}>
-                {props.game ? tr('Delete game', 'Spiel löschen') : tr('Delete round', 'Runde löschen')}
-              </button>
-              <button type="button" className="btn-secondary" onClick={() => setExitConfirm(null)}>
-                {tr('Back', 'Zurück')}
               </button>
             </div>
           </>

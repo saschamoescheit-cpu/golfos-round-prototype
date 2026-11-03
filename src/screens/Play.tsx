@@ -123,17 +123,26 @@ export function PlayTab(props: {
           </span>
           {confirm === null && (
             <>
+              {/* the action bar as on the scorecard (docs/DESIGN.md, Sascha 03.11.2026) – cancelling red and last – then the one
+                  main button */}
+              <div className="sc-actions" role="group" aria-label={tr('This round', 'Diese Runde')}>
+                <button type="button" className="sc-action" aria-label={tr('Finish round', 'Runde beenden')} onClick={() => setConfirm('end')}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 21V4" />
+                    <path d="M5 4h11l-2 4 2 4H5" />
+                  </svg>
+                  <span>{tr('Finish', 'Beenden')}</span>
+                </button>
+                <button type="button" className="sc-action danger" aria-label={tr('Cancel round', 'Runde abbrechen')} onClick={() => props.onAbort(open)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                  </svg>
+                  <span>{tr('Cancel', 'Abbrechen')}</span>
+                </button>
+              </div>
               <button type="button" className="btn-primary" onClick={() => props.onContinue(open)}>
                 {tr('Continue round', 'Runde fortsetzen')}
               </button>
-              <div className="play-actions">
-                <button type="button" className="btn-secondary" onClick={() => setConfirm('end')}>
-                  {tr('Finish round', 'Runde beenden')}
-                </button>
-                <button type="button" className="btn-secondary btn-danger" onClick={() => props.onAbort(open)}>
-                  {tr('Cancel round', 'Runde abbrechen')}
-                </button>
-              </div>
             </>
           )}
           {confirm === 'end' && (

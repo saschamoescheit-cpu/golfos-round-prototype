@@ -748,17 +748,25 @@ function RunningGame(props: { game: Game; onContinue: () => void; onFinish: () =
       </span>
       {confirm === null && (
         <>
+          {/* the action bar as on a round's card (docs/DESIGN.md) – cancelling red and last – then the one main button */}
+          <div className="sc-actions" role="group" aria-label={tr('This game', 'Dieses Spiel')}>
+            <button type="button" className="sc-action" aria-label={tr('Finish game', 'Spiel beenden')} onClick={() => setConfirm('end')}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 21V4" />
+                <path d="M5 4h11l-2 4 2 4H5" />
+              </svg>
+              <span>{tr('Finish', 'Beenden')}</span>
+            </button>
+            <button type="button" className="sc-action danger" aria-label={tr('Cancel game', 'Spiel abbrechen')} onClick={() => setConfirm('abort')}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+              </svg>
+              <span>{tr('Cancel', 'Abbrechen')}</span>
+            </button>
+          </div>
           <button type="button" className="btn-primary" onClick={props.onContinue}>
             {tr('Continue game', 'Spiel fortsetzen')}
           </button>
-          <div className="play-actions">
-            <button type="button" className="btn-secondary" onClick={() => setConfirm('end')}>
-              {tr('Finish game', 'Spiel beenden')}
-            </button>
-            <button type="button" className="btn-secondary btn-danger" onClick={() => setConfirm('abort')}>
-              {tr('Cancel game', 'Spiel abbrechen')}
-            </button>
-          </div>
         </>
       )}
       {confirm === 'end' && (
@@ -1421,15 +1429,24 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
               </button>
             </div>
             {exit === 'menu' ? (
+              // the action bar (docs/DESIGN.md) – cancelling red and last – then the one main button: finishing
               <div className="sheet-actions">
-                <button type="button" className="btn-secondary" onClick={props.onBack}>
-                  {tr('Pause – continue later', 'Pausieren – später fortsetzen')}
-                </button>
+                <div className="sc-actions" role="group" aria-label={tr('This game', 'Dieses Spiel')}>
+                  <button type="button" className="sc-action" aria-label={tr('Pause – continue later', 'Pausieren – später fortsetzen')} onClick={props.onBack}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M9 5v14M15 5v14" />
+                    </svg>
+                    <span>{tr('Pause', 'Pausieren')}</span>
+                  </button>
+                  <button type="button" className="sc-action danger" aria-label={tr('Cancel game', 'Spiel abbrechen')} onClick={() => props.onDelete(g)}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                    </svg>
+                    <span>{tr('Cancel', 'Abbrechen')}</span>
+                  </button>
+                </div>
                 <button type="button" className="btn-primary" onClick={() => setExit('end')}>
                   {tr('Finish game', 'Spiel beenden')}
-                </button>
-                <button type="button" className="btn-secondary btn-danger" onClick={() => props.onDelete(g)}>
-                  {tr('Cancel game', 'Spiel abbrechen')}
                 </button>
               </div>
             ) : (
@@ -1439,14 +1456,22 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
                   {st.status ? ` ${st.status}` : ''}
                 </span>
                 <div className="sheet-actions">
+                  <div className="sc-actions" role="group" aria-label={tr('Or', 'Oder')}>
+                    <button type="button" className="sc-action" aria-label={tr('Back to the game', 'Zurück zum Spiel')} onClick={() => setExit(null)}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+                      </svg>
+                      <span>{tr('Back', 'Zurück')}</span>
+                    </button>
+                    <button type="button" className="sc-action danger" aria-label={tr('Delete game', 'Spiel löschen')} onClick={() => props.onDelete(g)}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                      </svg>
+                      <span>{tr('Delete', 'Löschen')}</span>
+                    </button>
+                  </div>
                   <button type="button" className="btn-primary" onClick={() => props.onFinish(g)}>
                     {tr('Finish & settle', 'Beenden & abrechnen')}
-                  </button>
-                  <button type="button" className="btn-secondary btn-danger" onClick={() => props.onDelete(g)}>
-                    {tr('Delete game', 'Spiel löschen')}
-                  </button>
-                  <button type="button" className="btn-secondary" onClick={() => setExit(null)}>
-                    {tr('Back to the game', 'Zurück zum Spiel')}
                   </button>
                 </div>
               </>

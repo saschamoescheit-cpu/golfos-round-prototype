@@ -107,7 +107,8 @@ ok((await card.count()) === 1, 'start page: "Laufendes Spiel" as "Laufende Runde
 const ctext = (await card.innerText()).replace(/\s+/g, ' ');
 ok(/Skins/.test(ctext) && /Golfclub Hetzenhof/.test(ctext) && /Loch 3A · 3 von 18/.test(ctext) && /begonnen/.test(ctext), `card: form, course, hole, start (${ctext.slice(0, 90)})`);
 const btns = (await card.getByRole('button').allInnerTexts()).map((s) => s.trim());
-ok(btns.join('|') === 'Spiel fortsetzen|Spiel beenden|Spiel abbrechen', `buttons as on Rounds: ${btns.join(' · ')}`);
+// the action bar (Beenden, Abbrechen red) and then the one main button, as the round's card (docs/DESIGN.md, 03.11.2026)
+ok(btns.join('|') === 'Beenden|Abbrechen|Spiel fortsetzen' && (await card.locator('.sc-action.danger').count()) === 1, `buttons as on Rounds: ${btns.join(' · ')}`);
 ok((await card.getByRole('button', { name: 'Spiel fortsetzen' }).getAttribute('class')).includes('btn-primary'), '"Spiel fortsetzen" is the main button');
 ok((await p.getByRole('button', { name: 'Neues Spiel' }).getAttribute('class')).includes('btn-secondary'), '"Neues Spiel" second while a game waits');
 await card.getByRole('button', { name: 'Spiel fortsetzen' }).click();
