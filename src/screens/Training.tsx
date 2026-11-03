@@ -145,6 +145,64 @@ const LOG_ICONS = {
   ),
 };
 
+// the marks of the action bar (.sc-actions) – drawn as those of the scorecard of Rounds (Sascha 03.11.2026: one usability everywhere)
+const actIcon = (d: ReactNode) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {d}
+  </svg>
+);
+const ACT_ICONS = {
+  share: actIcon(
+    <>
+      <path d="M12 15V3M8 7l4-4 4 4" />
+      <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
+    </>,
+  ),
+  file: actIcon(
+    <>
+      <path d="M12 3v12M8 11l4 4 4-4" />
+      <path d="M5 21h14" />
+    </>,
+  ),
+  delete: actIcon(<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />),
+  repeat: actIcon(
+    <>
+      <path d="M17 2l3 3-3 3" />
+      <path d="M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3" />
+      <path d="M20 13v2a4 4 0 0 1-4 4H4" />
+    </>,
+  ),
+  add: actIcon(
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M12 8v8M8 12h8" />
+    </>,
+  ),
+  save: actIcon(
+    <>
+      <path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
+      <path d="M8 4v5h7V4M8 20v-6h8v6" />
+    </>,
+  ),
+  star: (on: boolean) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  ),
+};
+
+/** the green pen of the TopBar – the one tool on its right, to edit (as a pool or a tournament) */
+function EditPen(props: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="icon-btn edit-btn" aria-label={props.label} onClick={props.onClick}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 20h4L19 9l-4-4L4 16z" />
+        <path d="M13.5 6.5l4 4" />
+      </svg>
+    </button>
+  );
+}
+
 /** Plan items with existing drills only. */
 const planItems = (p: { items: { drill: string; minutes: number }[] }) => p.items.filter((i) => drillById(i.drill));
 const planMinutes = (p: { items: { drill: string; minutes: number }[] }) => planItems(p).reduce((s, i) => s + i.minutes, 0);
@@ -1362,15 +1420,7 @@ function DrillView(props: { id: string; nav: Nav }) {
   const tab: DrillTab = tabs.some((x) => x.id === tabState) ? tabState : 'learn';
   return (
     <main className="screen training">
-      <TopBar
-        title={t(d.name)}
-        onBack={props.nav.back}
-        right={
-          <button type="button" className={`icon-btn tr-fav${fav ? ' on' : ''}`} aria-pressed={fav} aria-label={fav ? tr('Remove from favourites', 'Aus Favoriten entfernen') : tr('Add to favourites', 'Zu Favoriten')} onClick={() => toggleFav(d.id)}>
-            {fav ? '★' : '☆'}
-          </button>
-        }
-      />
+      <TopBar title={t(d.name)} onBack={props.nav.back} />
       <p className="tr-goal">{t(d.goal)}</p>
       <div className="chip-set facts">
         <span className="chip fact">{levelName(d.level)}</span>
@@ -1447,20 +1497,6 @@ function DrillView(props: { id: string; nav: Nav }) {
               )}
             </section>
           )}
-          <div className="tr-actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                const own = loadOwnPlans();
-                // the newest own plan gets the drill; without one a new plan starts with it
-                const base: OwnPlan = own[0] ?? { id: trainingId(), name: tr('My session', 'Meine Einheit'), items: [], createdAt: new Date().toISOString() };
-                props.nav.push({ name: 'builder', plan: base.items.some((i) => i.drill === d.id) ? base : { ...base, items: [...base.items, { drill: d.id, minutes: d.minutes }] } });
-              }}
-            >
-              {tr('+ Add to my own session', '+ Zu meiner eigenen Einheit hinzufügen')}
-            </button>
-          </div>
           <Sources list={d.sources} />
         </>
       )}
@@ -1632,6 +1668,27 @@ function DrillView(props: { id: string; nav: Nav }) {
         </>
       )}
 
+      {/* the drill's actions in one bar as on the scorecard of Rounds – the TopBar keeps no tool but the pen (Sascha 03.11.2026) */}
+      <div className="sc-actions" role="group" aria-label={t(d.name)}>
+        <button type="button" className={`sc-action tr-fav${fav ? ' on' : ''}`} aria-pressed={fav} aria-label={fav ? tr('Remove from favourites', 'Aus Favoriten entfernen') : tr('Add to favourites', 'Zu Favoriten')} onClick={() => toggleFav(d.id)}>
+          {ACT_ICONS.star(fav)}
+          <span>{tr('Favourite', 'Favorit')}</span>
+        </button>
+        <button
+          type="button"
+          className="sc-action"
+          aria-label={tr('Add to my own session', 'Zu meiner eigenen Einheit hinzufügen')}
+          onClick={() => {
+            const own = loadOwnPlans();
+            // the newest own plan gets the drill; without one a new plan starts with it
+            const base: OwnPlan = own[0] ?? { id: trainingId(), name: tr('My session', 'Meine Einheit'), items: [], createdAt: new Date().toISOString() };
+            props.nav.push({ name: 'builder', plan: base.items.some((i) => i.drill === d.id) ? base : { ...base, items: [...base.items, { drill: d.id, minutes: d.minutes }] } });
+          }}
+        >
+          {ACT_ICONS.add}
+          <span>{tr('To my session', 'Zur Einheit')}</span>
+        </button>
+      </div>
       <TopicRow id={d.cat} nav={props.nav} />
       <ReviewBar itemKey={drillKey(d.id)} />
       {reviewOn() && (
@@ -1829,12 +1886,17 @@ function ReviewView(props: { nav: Nav }) {
       )}
       <section className="card tr-section">
         <h2>{tr('Share the list', 'Liste teilen')}</h2>
-        <button type="button" className="btn-primary" onClick={() => void share()} disabled={!done.length}>
-          {tr('Share list', 'Liste teilen')}
-        </button>
-        <button type="button" className="btn-secondary" onClick={download} disabled={!done.length}>
-          {tr('Save as file (.md)', 'Als Datei speichern (.md)')}
-        </button>
+        {/* Teilen always the same – the share mark and "Teilen" in the action bar (Sascha 03.11.2026) */}
+        <div className="sc-actions" role="group" aria-label={tr('The list', 'Die Liste')}>
+          <button type="button" className="sc-action" onClick={() => void share()} disabled={!done.length}>
+            {ACT_ICONS.share}
+            <span>{tr('Share', 'Teilen')}</span>
+          </button>
+          <button type="button" className="sc-action" aria-label={tr('Save as file (.md)', 'Als Datei speichern (.md)')} onClick={download} disabled={!done.length}>
+            {ACT_ICONS.file}
+            <span>{tr('As file', 'Als Datei')}</span>
+          </button>
+        </div>
         {shared && <span className="muted small" role="status">{shared}</span>}
       </section>
     </main>
@@ -1851,7 +1913,7 @@ function PlanView(props: { plan: Plan | OwnPlan; own?: boolean; nav: Nav }) {
   const items = planItems(p);
   return (
     <main className="screen training">
-      <TopBar title={name} onBack={props.nav.back} />
+      <TopBar title={name} onBack={props.nav.back} right={isOwn ? <EditPen label={tr('Edit plan', 'Plan bearbeiten')} onClick={() => props.nav.push({ name: 'builder', plan: p as OwnPlan })} /> : undefined} />
       {'about' in p && <p className="muted">{t(p.about)}</p>}
       {week ? (
         week.map((day, k) => (
@@ -1887,29 +1949,29 @@ function PlanView(props: { plan: Plan | OwnPlan; own?: boolean; nav: Nav }) {
               ))}
             </ol>
           </section>
+          {/* own plan: edited with the pen above; its actions in one bar, then the main button (Sascha 03.11.2026) */}
+          {isOwn && (
+            <div className="sc-actions" role="group" aria-label={tr('This plan', 'Dieser Plan')}>
+              <button
+                type="button"
+                className="sc-action danger"
+                aria-label={tr('Delete plan', 'Plan löschen')}
+                onClick={() => {
+                  removeOwnPlan(p.id);
+                  props.nav.back();
+                }}
+              >
+                {ACT_ICONS.delete}
+                <span>{tr('Delete', 'Löschen')}</span>
+              </button>
+            </div>
+          )}
           {/* the main action right after the drills, as on the rounds page */}
           <button type="button" className="btn-primary" disabled={!items.length} onClick={() => props.nav.start(newSession(name, items, p.id))}>
             {tr('Start session', 'Einheit starten')}
           </button>
           {!props.own && <ReviewBar itemKey={planKey(p.id)} />}
           <GearForPlan items={items} nav={props.nav} />
-          {isOwn && (
-            <div className="tr-actions">
-              <button type="button" className="btn-secondary" onClick={() => props.nav.push({ name: 'builder', plan: p as OwnPlan })}>
-                {tr('Edit plan', 'Plan bearbeiten')}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => {
-                  removeOwnPlan(p.id);
-                  props.nav.back();
-                }}
-              >
-                {tr('Delete plan', 'Plan löschen')}
-              </button>
-            </div>
-          )}
         </>
       )}
     </main>
@@ -1949,7 +2011,7 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
       <TopBar title={tr('Own session', 'Eigene Einheit')} onBack={props.nav.back} />
       <div className="field">
         <label htmlFor="tr-plan-name">{tr('Name', 'Name')}</label>
-        <input id="tr-plan-name" className="input" value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} />
+        <input id="tr-plan-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} />
       </div>
       <section className="card tr-section">
         <div className="row">
@@ -1980,30 +2042,33 @@ function Builder(props: { plan: OwnPlan; nav: Nav }) {
           ))}
         </ol>
         {/* the start at the end of the plan, after its settings – never floating (Sascha 17.10.2026 evening) */}
-        <div className="tr-actions">
+        {/* its other action in the action bar, then the one main button (Sascha 03.11.2026) */}
+        <div className="sc-actions" role="group" aria-label={tr('This plan', 'Dieser Plan')}>
           <button
             type="button"
-            className="btn-primary"
-            disabled={!p.items.length}
-            onClick={() => {
-              saveOwnPlan(p);
-              props.nav.start(newSession(p.name, p.items, p.id));
-            }}
-          >
-            {tr('Save & start', 'Speichern & starten')}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            disabled={!p.items.length}
+            className="sc-action"
+            aria-label={tr('Save plan', 'Plan speichern')}
+            disabled={!p.items.length || !p.name.trim()}
             onClick={() => {
               saveOwnPlan(p);
               props.nav.toTab('train');
             }}
           >
-            {tr('Save plan', 'Plan speichern')}
+            {ACT_ICONS.save}
+            <span>{tr('Save', 'Speichern')}</span>
           </button>
         </div>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!p.items.length || !p.name.trim()}
+          onClick={() => {
+            saveOwnPlan(p);
+            props.nav.start(newSession(p.name, p.items, p.id));
+          }}
+        >
+          {tr('Save & start', 'Speichern & starten')}
+        </button>
       </section>
       <h2>{tr('Add drills', 'Übungen hinzufügen')}</h2>
       <input className="input" type="search" placeholder={tr('Search', 'Suchen')} aria-label={tr('Search drills', 'Übungen suchen')} value={q} onChange={(e) => setQ(e.target.value)} />
@@ -2422,9 +2487,17 @@ function SessionResult(props: { id: string; nav: Nav }) {
   if (!s) return null;
   const band = bandOf(playerHcp());
   const goals = sessionGoals(s, band);
+  const locale = getLang() === 'de' ? 'de-DE' : undefined;
+  const minutes = s.items.filter((i) => i.done).reduce((n, i) => n + i.minutes, 0);
   return (
     <main className="screen training">
       <TopBar title={s.name} onBack={props.nav.back} />
+      {/* the line under the TopBar, as on a pool or a round: the day · the minutes trained */}
+      <span className="muted small">
+        {new Date(s.createdAt).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+        {minutes ? ` · ${minutes} min` : ''}
+        {!s.finishedAt ? ` · ${tr('paused', 'pausiert')}` : ''}
+      </span>
       <div className="tile-row">
         <div className="tile">
           <span className="tile-num">{s.items.filter((i) => i.done).length}/{s.items.length}</span>
@@ -2465,20 +2538,24 @@ function SessionResult(props: { id: string; nav: Nav }) {
           );
         })}
       </ul>
+      {/* the session's actions in one bar as on the scorecard of Rounds – Löschen red, last (Sascha 03.11.2026) */}
       {s.finishedAt && (
-        <div className="tr-actions">
-          <button type="button" className="btn-secondary" onClick={() => props.nav.start(newSession(s.name, s.items.map((i) => ({ drill: i.drill, minutes: i.minutes })), s.planId))}>
-            {tr('Repeat this session', 'Einheit wiederholen')}
+        <div className="sc-actions" role="group" aria-label={tr('This session', 'Diese Einheit')}>
+          <button type="button" className="sc-action" onClick={() => props.nav.start(newSession(s.name, s.items.map((i) => ({ drill: i.drill, minutes: i.minutes })), s.planId))}>
+            {ACT_ICONS.repeat}
+            <span>{tr('Repeat', 'Wiederholen')}</span>
           </button>
           <button
             type="button"
-            className="btn-secondary btn-danger"
+            className="sc-action danger"
+            aria-label={tr('Delete session', 'Einheit löschen')}
             onClick={() => {
               deleteSession(s.id);
               props.nav.toTab('log');
             }}
           >
-            {tr('Delete session', 'Einheit löschen')}
+            {ACT_ICONS.delete}
+            <span>{tr('Delete', 'Löschen')}</span>
           </button>
         </div>
       )}

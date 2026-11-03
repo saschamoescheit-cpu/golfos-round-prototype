@@ -58,8 +58,9 @@
 .tr-review { padding: 8px 12px; border-radius: 10px; border: 1px dashed var(--brand); color: var(--brand-text); }
 .tr-needs { display: flex; flex-direction: column; gap: 6px; }
 .tr-variants p + p { margin-top: 4px; }
-.tr-fav { font-size: 22px; color: var(--muted); }
-.tr-fav.on { color: var(--brand-text); border-color: var(--brand); }
+.sc-action.tr-fav svg { color: var(--muted); }
+.sc-action.tr-fav.on svg { color: var(--brand-text); }
+.sc-action.tr-fav.on { border-color: var(--brand); }
 
 .tr-sketch { margin: 0; display: flex; flex-direction: column; gap: 6px; }
 .tr-sketch svg { max-height: 360px; }
