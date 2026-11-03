@@ -488,15 +488,6 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
 
 // ---------- the pool ----------
 
-const SEEN = 'golfos.pools.seen.v1'; // bets made that this phone has already announced
-const seenSet = (): Set<string> => {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(SEEN) ?? '[]') as string[]);
-  } catch {
-    return new Set();
-  }
-};
-
 /** A "5+5+10" from the opponent's side: what one won the other lost, front, back and 18 turned round. */
 const mirrored = (p: Progress | undefined): Progress | undefined =>
   p && { ...p, amount: -(p.amount ?? 0), duels: p.duels?.map((d) => ({ ...d, front: d.front == null ? null : -d.front || 0, back: d.back == null ? null : -d.back || 0, total: d.total == null ? null : -d.total || 0 })) };
@@ -521,7 +512,6 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
   const entry = pools.find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | 'invite' | 'finish' | 'pool'>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [seen, setSeen] = useState(seenSet);
   // not on this phone yet (a push tapped on another phone of the same account): fetched from the server
   const [lookup, setLookup] = useState<'busy' | 'none' | null>(null);
   useEffect(() => {
@@ -589,8 +579,6 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
     if (!r) setMsg(NO_NET());
     return !!r;
   };
-  // bets made that this phone has not announced yet (Sascha: "a message to all when one made it")
-  const fresh = pool.wagers.filter((w) => stateOf(w, pool, today) === 'done' && !seen.has(w.id));
   const bal = balances(pool, today, true);
   const pays = transfers(bal);
   const settled = pool.wagers.filter((w) => stateOf(w, pool, today) !== 'open').length;
@@ -632,32 +620,6 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
         </section>
       )}
       <Standings pool={pool} today={today} me={entry.me} />
-      {fresh.length > 0 && (
-        <section className="card pool-made" role="status">
-          <span className="eyebrow">{tr('Made it', 'Geschafft')}</span>
-          {fresh.map((w) => (
-            <strong key={w.id}>
-              {name(w.player)}: {wagerLabel(w)}
-              {pool.progress[w.id]?.where ? <span className="muted small"> · {pool.progress[w.id].where}</span> : null}
-            </strong>
-          ))}
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              const s = new Set([...seen, ...fresh.map((w) => w.id)]);
-              try {
-                localStorage.setItem(SEEN, JSON.stringify([...s]));
-              } catch {
-                /* shown again next time */
-              }
-              setSeen(s);
-            }}
-          >
-            OK
-          </button>
-        </section>
-      )}
       {pool.players.map((p) => {
         // his own bets – and a "5+5+10" against him, seen from his side (Erik sees he is 10 $ behind Chris)
         const ws = pool.wagers

@@ -229,8 +229,8 @@ ok(await G.getByText('Wetten „USA 2026“ – wer bist du?').isVisible(), 'Chr
 await G.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Chris', exact: true }).click();
 await G.waitForTimeout(3000);
 ok((await G.locator('.topbar h1').innerText()).includes('USA 2026'), 'Chris: in the pool');
-const made = await G.locator('.pool-made').innerText().catch(() => '');
-ok(/Chris: 2 Birdies in Folge/.test(made) && /Bethpage Black/.test(made), `Chris: "made it" shown – ${made.replace(/\s+/g, ' ').slice(0, 120)}`);
+// no box "Geschafft" with "OK" – the standing and the badges say it (Sascha 03.11.2026)
+ok((await G.locator('.pool-made').count()) === 0 && (await G.getByRole('button', { name: 'OK', exact: true }).count()) === 0, 'Chris: no "made it" box to dismiss');
 const gChris = G.locator('.pool-player').filter({ has: G.locator('h2', { hasText: /^Chris$/ }) });
 const badges = await gChris.locator('.pool-wager').filter({ hasNotText: 'gegen ' }).locator('.badge').allInnerTexts(); // the 5+5+10 rows show money
 ok(badges.filter((x) => x === 'Geschafft').length === 4 && badges.filter((x) => x === 'Offen').length === 1, `Chris: 4 made, the −5 open (${badges.join(', ')})`);
