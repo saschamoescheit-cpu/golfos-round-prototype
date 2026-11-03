@@ -2032,6 +2032,7 @@ button.tile:disabled { opacity: 1; }
 .friend-action-icon.primary { background: var(--brand); color: #fff; border-color: transparent; }
 .friend-code-type { display: flex; gap: 8px; }
 .friend-code-type .input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.08em; }
+.friend-code-type > button { flex: none; width: auto; padding: 0 22px; }
 .friend-linked { display: flex; align-items: center; gap: 12px; }
 .friend-linked .grow { flex: 1; min-width: 0; }
 .friend-remove { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }

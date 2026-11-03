@@ -3,6 +3,7 @@ import { loadFriends, mergeCards, saveFriends, type FriendCard } from './friends
 import { newId } from './storage';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured, userId } from './sync';
 import { AUTH_BACK, WEB_HOME } from './native';
+import { reportError } from './errorlog';
 
 // Friends linked by their accounts (Sascha 02.11.2026: "everyone keeps his handicap in his profile – friends should
 // come from their accounts"; "a QR code of one's own as with PayPal, and an invitation by WhatsApp"). The server
@@ -146,12 +147,18 @@ export async function friendPreview(code: string): Promise<FriendPreview | null>
   return rows?.[0] ?? null;
 }
 
-/** Accept: both are friends now; his card comes into the list. */
+/** Accept: both are friends now; his card comes into the list – checked (03.11.2026: Sascha accepted Cedric's
+ *  invitation, and neither saw the other): only "you are friends" once he is really in the list; else an error. */
 export async function acceptFriend(code: string): Promise<void> {
-  await publishCard(); // he reads mine as I read his
-  await rpc<string>('golfos_friend_add', { p_code: code });
+  await publishCard(true); // he reads mine as I read his – sent anew, so his phone surely finds it
+  const friend = await rpc<string>('golfos_friend_add', { p_code: code });
   // the request stays until its sheet is closed: it says "you are friends" first
-  await refreshFriends();
+  for (let k = 0; k < 3; k++) {
+    if ((await refreshFriends()) && (!friend || loadFriends().some((f) => f.uid === friend))) return;
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  reportError('promise', new Error(`friend added, not in the list (${friend ? 'uid' : 'no uid'})`));
+  throw new Error('not_listed');
 }
 
 /** Remove the link – for both; he leaves the list. */
@@ -167,10 +174,17 @@ let started = false;
 export function startFriendLinks(): void {
   if (started) return;
   started = true;
+  // back on screen (WhatsApp, the other app): a friend may have accepted meanwhile
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && canLink()) {
+      lastRefresh = Date.now();
+      void refreshFriends();
+    }
+  });
   window.addEventListener('golfos:synced', () => {
     if (!canLink()) return;
     void publishCard().catch(() => null);
-    if (Date.now() - lastRefresh > 5 * 60 * 1000) {
+    if (Date.now() - lastRefresh > 60 * 1000) {
       lastRefresh = Date.now();
       void refreshFriends();
     }

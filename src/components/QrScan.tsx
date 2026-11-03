@@ -3,10 +3,13 @@ import { tr } from '../lib/i18n';
 
 type Decode = (data: Uint8ClampedArray, width: number, height: number, o?: { inversionAttempts?: string }) => { data: string } | null;
 
-/** jsQR, loaded only when scanning (src/vendor – it sets self.jsQR). */
+/** jsQR, loaded only when scanning (src/vendor). The dev server runs it as a script (it sets self.jsQR), the built app
+ *  as a module (its default export) – 03.11.2026: on the phone it found neither and said "no camera". */
 async function decoder(): Promise<Decode> {
-  await import('../vendor/jsqr.js');
-  return (self as unknown as { jsQR: Decode }).jsQR;
+  const m = (await import('../vendor/jsqr.js')) as { default?: Decode };
+  const d = typeof m.default === 'function' ? m.default : (self as unknown as { jsQR?: Decode }).jsQR;
+  if (typeof d !== 'function') throw new Error('decoder');
+  return d;
 }
 
 /**
@@ -28,9 +31,10 @@ export function QrScan(props: { title: string; onText: (text: string) => boolean
     void (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('none');
-        const [decode, s] = await Promise.all([decoder(), navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })]);
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
         stream = s;
         if (done) return s.getTracks().forEach((t) => t.stop());
+        const decode = await decoder();
         const v = video.current!;
         v.srcObject = s;
         await v.play().catch(() => null);
@@ -56,11 +60,15 @@ export function QrScan(props: { title: string; onText: (text: string) => boolean
         };
         look();
       } catch (e) {
+        stream?.getTracks().forEach((t) => t.stop());
+        stream = null;
         const denied = /denied|NotAllowed|Permission/i.test(String((e as Error)?.name ?? '') + String((e as Error)?.message ?? ''));
         setProblem(
           denied
             ? tr('The camera is not allowed – allow it in the settings, or type the code.', 'Die Kamera ist nicht erlaubt – in den Einstellungen erlauben oder den Code eingeben.')
-            : tr('No camera here – type the code instead.', 'Keine Kamera verfügbar – gib den Code ein.'),
+            : (e as Error)?.message === 'decoder'
+              ? tr('The scanner could not start – type the code instead.', 'Der Scanner startet nicht – gib den Code ein.')
+              : tr('No camera here – type the code instead.', 'Keine Kamera verfügbar – gib den Code ein.'),
         );
       }
     })();

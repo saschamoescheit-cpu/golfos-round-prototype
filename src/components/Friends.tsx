@@ -280,6 +280,7 @@ function KindMark(props: { linked?: boolean }) {
 function FriendAsk(props: { code: string; onSignIn: () => void }) {
   const [who, setWho] = useState<FriendPreview | null | undefined>(undefined);
   const [state, setState] = useState<'ask' | 'busy' | 'done' | 'failed'>('ask');
+  const [failed, setFailed] = useState('');
   useEffect(() => {
     void friendPreview(props.code)
       .then(setWho)
@@ -321,7 +322,18 @@ function FriendAsk(props: { code: string; onSignIn: () => void }) {
                       setState('busy');
                       void acceptFriend(props.code)
                         .then(() => setState('done'))
-                        .catch(() => setState('failed'));
+                        .catch((e) => {
+                          setFailed(
+                            (e as Error)?.message === 'unknown_code'
+                              ? tr('This code is no longer valid – ask for a new invitation.', 'Dieser Code gilt nicht mehr – lass dir eine neue Einladung schicken.')
+                              : (e as Error)?.message === 'not_signed_in'
+                                ? tr('Sign in first (Profile), then open the invitation again.', 'Melde dich zuerst an (Profil) und öffne die Einladung dann noch einmal.')
+                                : (e as Error)?.message === 'not_listed'
+                                  ? tr('Accepted – but the friend does not show yet. Open "Friends" again in a moment.', 'Angenommen – aber der Freund erscheint noch nicht. Öffne „Freunde“ gleich noch einmal.')
+                                  : tr('That did not work – check the connection and try again.', 'Das hat nicht geklappt – Verbindung prüfen und nochmal.'),
+                          );
+                          setState('failed');
+                        });
                     }}
                   >
                     {tr('Accept', 'Annehmen')}
@@ -334,7 +346,7 @@ function FriendAsk(props: { code: string; onSignIn: () => void }) {
                     </button>
                   </>
                 )}
-                {state === 'failed' && <span className="small good-text">{tr('That did not work – check the connection and try again.', 'Das hat nicht geklappt – Verbindung prüfen und nochmal.')}</span>}
+                {state === 'failed' && <span className="small good-text">{failed}</span>}
                 {/* the website on an iPhone with the app: open the request there */}
                 {!isNative() && /iPhone|iPad/.test(navigator.userAgent) && (
                   <a className="link-btn small" href={appFriendLink(props.code)}>
