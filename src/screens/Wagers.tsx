@@ -6,14 +6,16 @@ import { joinLink } from '../lib/sharedgame';
 import { currencySymbol, money, setCurrency, transfers } from '../lib/gameforms';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
+import { PlayerRow } from './RoundSetup';
 import { Qr } from '../components/ShareGame';
-import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, afterPayments, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
-import { StakePicker } from '../components/StakePicker';
+import { ChoiceRow, DateRow, SettingsList, SettingsRow, ToggleRow, dayText } from '../components/Settings';
+import { StakeRow } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
+import { PaidMarks } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet } from '../lib/push';
@@ -228,12 +230,29 @@ export function BetsTab(props: { onOpen: (code: string) => void; /** "Neue Wette
 
 // ---------- a new pool ----------
 
+/** A player of the pool as in "Runde starten" / "Neue Runde" (Sascha 03.11.2026): PlayerRow – name, tee, HCP, the playing
+ *  handicap; no course yet, so tee and playing handicap stay "–". The first is you. */
+function PoolPlayerRow(props: { player: { id: string; name: string; hcp?: string }; k: number; onChange: (p: { name: string; hcp: string }) => void; onRemove?: () => void }) {
+  const { player, k } = props;
+  return (
+    <PlayerRow
+      player={{ id: `pool-${player.id}`, name: player.name, index: player.hcp ?? '', handicap: '', tee: null }}
+      nameLabel={k === 0 ? tr('You', 'Du') : tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
+      rating={null}
+      playing={null}
+      onChange={(np) => props.onChange({ name: np.name, hcp: np.index })}
+      onRemove={props.onRemove}
+    />
+  );
+}
+
+
 export function PoolSetup(props: { onBack: () => void; onCreated: (code: string) => void }) {
   const today = new Date();
   const [name, setName] = useState(tr('Bets', 'Wetten'));
   const [from, setFrom] = useState(dayOf(today));
   const [to, setTo] = useState(dayOf(new Date(today.getTime() + 7 * 864e5)));
-  const [names, setNames] = useState<{ id: string; name: string }[]>(() => [{ id: newId(), name: shownName(loadProfile()) || tr('Me', 'Ich') }, { id: newId(), name: '' }]);
+  const [names, setNames] = useState<{ id: string; name: string; hcp: string }[]>(() => [{ id: newId(), name: shownName(loadProfile()) || tr('Me', 'Ich'), hcp: loadProfile().hcpIndex ?? '' }, { id: newId(), name: '', hcp: '' }]);
   const [currency, setCurrencyOf] = useState<'EUR' | 'USD'>('EUR');
   const [counted, setCounted] = useState(false); // off by default (Sascha 02.11.2026: "the switch off by default")
   const [rounds, setRounds] = useState<PoolRound[]>([]);
@@ -265,29 +284,21 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
       <TripRounds from={from} to={to} rounds={rounds} onChange={setRounds} />
       <section className="setup-part">
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
+        {/* each player as in "Runde starten" (Sascha 03.11.2026): name, tee, HCP, playing handicap – tee and playing
+            handicap follow once a round has its course */}
         {names.map((p, k) => (
-          <div key={p.id} className="card player-row pool-player-row">
-            <div className="field">
-              <label htmlFor={`pool-player-${p.id}`}>{tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}</label>
-              <input id={`pool-player-${p.id}`} className="input" value={p.name} placeholder={k === 0 ? tr('You', 'Du') : ''} onChange={(e) => setNames(names.map((x) => (x.id === p.id ? { ...x, name: e.target.value } : x)))} />
-            </div>
-            {k > 0 && (
-              <button type="button" className="icon-btn player-remove" aria-label={tr(`Remove ${p.name || 'player'}`, `${p.name || 'Spieler'} entfernen`)} onClick={() => setNames(names.filter((x) => x.id !== p.id))}>
-                ✕
-              </button>
-            )}
-          </div>
+          <PoolPlayerRow key={p.id} player={p} k={k} onChange={(np) => setNames(names.map((x) => (x.id === p.id ? { ...x, ...np } : x)))} onRemove={k > 0 ? () => setNames(names.filter((x) => x.id !== p.id)) : undefined} />
         ))}
         {/* a friend takes the first empty row, else a new one – as in "New game" */}
         <FriendChips
           taken={names.map((p) => p.name)}
           onAdd={(fr) => {
             const k = names.findIndex((p, j) => j > 0 && !p.name.trim());
-            setNames(k > 0 ? names.map((p, j) => (j === k ? { ...p, name: fr.name } : p)) : [...names, { id: newId(), name: fr.name }]);
+            setNames(k > 0 ? names.map((p, j) => (j === k ? { ...p, name: fr.name, hcp: fr.hcp } : p)) : [...names, { id: newId(), name: fr.name, hcp: fr.hcp }]);
           }}
         />
         {names.length < 12 && (
-          <button type="button" className="btn-secondary" onClick={() => setNames([...names, { id: newId(), name: '' }])}>
+          <button type="button" className="btn-secondary" onClick={() => setNames([...names, { id: newId(), name: '', hcp: '' }])}>
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
@@ -316,7 +327,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
           const players = names
             .map((p) => ({ ...p, name: p.name.trim() }))
             .filter((p, k) => k === 0 || p.name)
-            .map((p, k) => ({ id: p.id, name: p.name, ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } } : {}) }));
+            .map((p, k) => ({ id: p.id, name: p.name, ...(p.hcp.trim() ? { hcp: p.hcp.trim() } : {}), ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } } : {}) }));
           const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {}, currency, counted, ...(rounds.length ? { rounds } : {}) };
           const e = await createPool(pool, players[0].id);
           setBusy(false);
@@ -364,14 +375,23 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
   return (
     <section className="setup-part trip-rounds" aria-label={tr('Rounds', 'Runden')}>
       <span className="eyebrow">{tr('Rounds (optional)', 'Runden (optional)')}</span>
-      {/* each round a row as the settings of a setup (docs/DESIGN.md); tapped: its day changed or the round removed */}
-      {sorted.length > 0 && (
-        <SettingsList label={tr('The rounds', 'Die Runden')}>
-          {sorted.map((r) => (
-            <SettingsRow key={r.id} label={dayText(r.day)} value={r.tour ? `${r.course} · ${tr('tournament', 'Turnier')}` : r.course} onClick={() => setEditing(r.id)} />
-          ))}
-        </SettingsList>
-      )}
+      {/* each round a row as the settings of a setup (docs/DESIGN.md); tapped: its day changed or the round removed.
+          The last row adds one as "Platz · Platz wählen ›" in "Neue Runde" / "Neues Spiel" (Sascha 03.11.2026) */}
+      <SettingsList label={tr('The rounds', 'Die Runden')}>
+        {sorted.map((r) => (
+          <SettingsRow key={r.id} label={dayText(r.day)} value={r.tour ? `${r.course} · ${tr('tournament', 'Turnier')}` : r.course} onClick={() => setEditing(r.id)} />
+        ))}
+        {!adding?.course && (
+          <SettingsRow
+            label={sorted.length ? tr('Another round', 'Weitere Runde') : tr('Course', 'Platz')}
+            value={<span className="good-text">{tr('Choose a course', 'Platz wählen')}</span>}
+            onClick={() => {
+              setAdding({ day: nextDay() });
+              setPicking(true);
+            }}
+          />
+        )}
+      </SettingsList>
       {editing && (() => {
         const r = props.rounds.find((x) => x.id === editing);
         if (!r) return null;
@@ -431,9 +451,9 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           </div>
         </div>
       )}
-      {/* a round added as a game or a round is set up (Sascha 02.11.2026: "as in Games and Rounds"): "+ Runde" opens
+      {/* a round added as a game or a round is set up (Sascha 02.11.2026: "as in Games and Rounds"): "Platz wählen" opens
           the courses, then the course and the day as rows, the button below */}
-      {adding?.course ? (
+      {adding?.course && (
         <div className="card trip-add" role="group" aria-label={tr('New round', 'Neue Runde')}>
           <div className="sheet-head">
             <strong>{tr('New round', 'Neue Runde')}</strong>
@@ -457,17 +477,6 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
             {tr('Add the round', 'Runde hinzufügen')}
           </button>
         </div>
-      ) : (
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => {
-            setAdding({ day: nextDay() });
-            setPicking(true);
-          }}
-        >
-          {tr('+ Round', '+ Runde')}
-        </button>
       )}
       <span className="muted small">
         {props.rounds.length
@@ -479,15 +488,6 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
 }
 
 // ---------- the pool ----------
-
-const SEEN = 'golfos.pools.seen.v1'; // bets made that this phone has already announced
-const seenSet = (): Set<string> => {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(SEEN) ?? '[]') as string[]);
-  } catch {
-    return new Set();
-  }
-};
 
 /** A "5+5+10" from the opponent's side: what one won the other lost, front, back and 18 turned round. */
 const mirrored = (p: Progress | undefined): Progress | undefined =>
@@ -513,7 +513,6 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
   const entry = pools.find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | 'invite' | 'finish' | 'pool'>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [seen, setSeen] = useState(seenSet);
   // not on this phone yet (a push tapped on another phone of the same account): fetched from the server
   const [lookup, setLookup] = useState<'busy' | 'none' | null>(null);
   useEffect(() => {
@@ -581,10 +580,11 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
     if (!r) setMsg(NO_NET());
     return !!r;
   };
-  // bets made that this phone has not announced yet (Sascha: "a message to all when one made it")
-  const fresh = pool.wagers.filter((w) => stateOf(w, pool, today) === 'done' && !seen.has(w.id));
   const bal = balances(pool, today, true);
-  const pays = transfers(bal);
+  const pays = transfers(afterPayments(bal, pool.payments)); // what is still to pay, once the payments are off
+  // the payments (Sascha 03.11.2026): the payer says he paid, the receiver that he got it
+  const pay = (fn: (ps: Payment[]) => Payment[]) => void change((p) => ({ ...p, payments: fn(p.payments ?? []) }));
+  const now = () => new Date().toISOString();
   const settled = pool.wagers.filter((w) => stateOf(w, pool, today) !== 'open').length;
   const pending = pool.wagers.filter((w) => stateOf(w, pool, today) === 'open' && provisional(w, pool.progress[w.id])).length;
   return (
@@ -624,32 +624,6 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
         </section>
       )}
       <Standings pool={pool} today={today} me={entry.me} />
-      {fresh.length > 0 && (
-        <section className="card pool-made" role="status">
-          <span className="eyebrow">{tr('Made it', 'Geschafft')}</span>
-          {fresh.map((w) => (
-            <strong key={w.id}>
-              {name(w.player)}: {wagerLabel(w)}
-              {pool.progress[w.id]?.where ? <span className="muted small"> · {pool.progress[w.id].where}</span> : null}
-            </strong>
-          ))}
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              const s = new Set([...seen, ...fresh.map((w) => w.id)]);
-              try {
-                localStorage.setItem(SEEN, JSON.stringify([...s]));
-              } catch {
-                /* shown again next time */
-              }
-              setSeen(s);
-            }}
-          >
-            OK
-          </button>
-        </section>
-      )}
       {pool.players.map((p) => {
         // his own bets – and a "5+5+10" against him, seen from his side (Erik sees he is 10 $ behind Chris)
         const ws = pool.wagers
@@ -693,14 +667,27 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
           </section>
         );
       })}
+      <Settlement pool={pool} bal={bal} lines={ledger(pool, today, true)} settled={settled} pending={pending} me={entry.me} name={name}>
+        <PaidMarks
+          open={pays}
+          payments={pool.payments ?? []}
+          name={(id) => name(id)}
+          sym={currencySymbol(pool.currency)}
+          me={entry.me}
+          anyone={host}
+          onMark={(t, as) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }) }])}
+          onConfirm={(id) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now() } : x)))}
+          onUndo={(id) => pay((ps) => ps.filter((x) => x.id !== id))}
+        />
+      </Settlement>
       {host && (
-        // a section of its own, as "Mitspieler einladen" in the round setup (docs/DESIGN.md)
+        // a section of its own, as "Mitspieler einladen" in the round setup (docs/DESIGN.md); below the settlement,
+        // right before "Runde starten" (Sascha 03.11.2026)
         <section className="setup-part" aria-label={tr('Invite players', 'Mitspieler einladen')}>
           <span className="eyebrow">{tr('Invite players', 'Mitspieler einladen')}</span>
           <PoolInvite code={props.code} name={pool.name} />
         </section>
       )}
-      <Settlement pool={pool} bal={bal} lines={ledger(pool, today, true)} pays={pays} settled={settled} pending={pending} me={entry.me} name={name} />
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}
@@ -711,6 +698,22 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
         <button type="button" className="btn-primary" onClick={() => props.onRound!(props.code)}>
           {poolRoundOf(props.code) ? tr('Continue the round', 'Runde fortsetzen') : tr('Start the round', 'Runde starten')}
         </button>
+      )}
+      {/* only set up, finished later (Sascha 03.11.2026: "the bets set up only saved, finished at a later time"):
+          every change is on the server the moment it is made – "Speichern" checks it is there and goes back */}
+      {host && !pool.finishedAt && (
+        <>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={async () => {
+              if (await change(() => null)) props.onBack();
+            }}
+          >
+            {tr('Save', 'Speichern')}
+          </button>
+          <span className="muted small">{tr('Every change is saved at once – change the bets any time later.', 'Jede Änderung ist sofort gespeichert – die Wetten lassen sich jederzeit weiter bearbeiten.')}</span>
+        </>
       )}
       {host && !pool.finishedAt && (
         <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet('finish')}>
@@ -927,7 +930,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string })
 
 /** The settlement of a pool (Sascha 01.11.2026: "the settlement must look quite different – with zero euros too"): how
  *  far the bets are decided, where each player stands – from the start, at 0 – and who pays whom. */
-function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; pays: { from: string; to: string; amount: number }[]; settled: number; pending: number; me: string; name: (id?: string) => string }) {
+function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; settled: number; pending: number; me: string; name: (id?: string) => string; children?: React.ReactNode }) {
   const { pool, bal } = props;
   const sym = currencySymbol(pool.currency);
   const n = pool.wagers.length;
@@ -978,23 +981,8 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
           );
         })}
       </ul>
-      <div className="pool-pays-block">
-        <span className="eyebrow">{tr('Who pays whom', 'Wer zahlt wem')}</span>
-        {props.pays.length ? (
-          <ul className="pool-pays">
-            {props.pays.map((t) => (
-              <li key={`${t.from}-${t.to}`}>
-                <span>
-                  {props.name(t.from)} → {props.name(t.to)}
-                </span>
-                <strong>{money(t.amount, sym)}</strong>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span className="muted small">{tr('Nothing to pay yet – once bets are decided, it says here who pays whom.', 'Noch nichts zu zahlen – sobald Wetten entschieden sind, steht hier, wer wem wie viel zahlt.')}</span>
-        )}
-      </div>
+      {/* "Wer zahlt wem" with what was paid – PaidMarks */}
+      {props.children}
     </section>
   );
 }
@@ -1058,6 +1046,8 @@ function CustomFields(props: { w: Wager; set: (patch: Partial<Wager>) => void })
           />
         )}
         <Pick<Where> label={tr('Where', 'Wo')} value={w.where ?? 'all'} onChange={(v) => set({ where: v })} options={WHERES.map((x) => ({ value: x.id, label: x.name() }))} />
+        {/* with the others of the bet (Sascha 03.11.2026: "these settings all belong together") */}
+        {!m.sum && <ToggleRow inList on={!!w.run} label={tr('In a row', 'In Folge')} text={tr('Holes one after the other', 'Löcher hintereinander')} onChange={(on) => set({ run: on, ...(on ? { compare: 'min' as const } : {}) })} />}
       </SettingsList>
       <Field label={m.id === 'strokes' ? tr('To par, at most', 'Zu Par, höchstens') : tr('Number', 'Zahl')}>
         <Stepper label={tr('Number', 'Zahl')} value={w.target} min={m.id === 'strokes' ? -18 : 0} onChange={(v) => set({ target: v })} />
@@ -1079,7 +1069,6 @@ function CustomFields(props: { w: Wager; set: (patch: Partial<Wager>) => void })
         )}
       </Field>
       )}
-      {!m.sum && <ToggleRow on={!!w.run} label={tr('In a row', 'In Folge')} text={tr('Holes one after the other', 'Löcher hintereinander')} onChange={(on) => set({ run: on, ...(on ? { compare: 'min' as const } : {}) })} />}
       <span className="muted small">
         {m.details ? tr('Needs the detail entry (putts, tee shot, sand) – the app asks for it where this bet counts.', 'Braucht die Detailerfassung (Putts, Abschlag, Sand) – die App fragt sie ab, wo diese Wette zählt.') : tr('The strokes incl. penalty strokes are enough.', 'Die Schläge inkl. Strafschläge genügen.')}
       </span>
@@ -1116,7 +1105,6 @@ function CustomBetSheet(props: { onDone: (b: MyBet) => void; onClose: () => void
 /** Stake, payout and attempts – the same for one bet and for the template. */
 function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wager>) => void }) {
   const { pool, w, set } = props;
-  const sym = currencySymbol(pool.currency);
   setCurrency(pool.currency); // the stake picker's amounts in the pool's money
   const duel = shapeOf(w.kind) === 'duel';
   return (
@@ -1124,9 +1112,7 @@ function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wage
       <SettingsList>
         {/* the stake as a game's (Rounds 02.11.2026: the shared StakePicker) – a bet's larger amounts */}
         {!duel && (
-          <SheetRow label={tr('Stake', 'Einsatz')} value={money(w.stake, sym)}>
-            <StakePicker stakes={[5, 10, 20, 50, 100]} value={w.stake} onChange={(v) => set({ stake: v })} />
-          </SheetRow>
+          <StakeRow label={tr('Stake', 'Einsatz')} stakes={[5, 10, 20, 50, 100]} value={w.stake} onChange={(v) => set({ stake: v })} />
         )}
         {!duel && (
           <Pick<Payout>
@@ -1582,6 +1568,14 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
             ]}
           />
         )}
+        {/* the settings first, as in a setup (Sascha 03.11.2026: "not under the catalogue – as settings at the very top") */}
+        {(tab === 'library' || lib.length + myPicked.length > 0) && (
+          <div className="lib-group lib-settings">
+            <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+            <PayFields pool={pool} w={{ ...base, player, kind: lib.length > 0 && lib.every((b) => b.kind === 'free') && !myPicked.length ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
+            <span className="muted small">{tr('For the bets ticked below – each can be changed afterwards, tap it.', 'Für die Wetten, die du unten ankreuzt – jede lässt sich danach ändern, antippen.')}</span>
+          </div>
+        )}
         {tab === 'library' && (
           <div className="lib-group">
             <span className="eyebrow">{tr('My bets', 'Meine Wetten')}</span>
@@ -1698,13 +1692,6 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
               </div>
             );
           })}
-        {lib.length + myPicked.length > 0 && (
-          <>
-            <span className="eyebrow">{tr('For the bets from the library', 'Für die Wetten aus der Bibliothek')}</span>
-            <PayFields pool={pool} w={{ ...base, player, kind: lib.every((b) => b.kind === 'free') ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
-          </>
-        )}
-        <span className="muted small">{tr('Each bet can be changed afterwards – tap it.', 'Jede Wette lässt sich danach ändern – antippen.')}</span>
         <button type="button" className="btn-primary" disabled={!ok} onClick={add}>
           {n === 1 ? tr(`Add 1 bet for ${name}`, `1 Wette für ${name} anlegen`) : tr(`Add ${n} bets for ${name}`, `${n} Wetten für ${name} anlegen`)}
         </button>
@@ -1765,14 +1752,7 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
             <TripRounds from={from} to={to} rounds={rounds} onChange={setRounds} />
             <span className="eyebrow">{tr('Players', 'Spieler')}</span>
             {players.map((p, k) => (
-              <div className="pool-edit-player" key={p.id}>
-                <input className="input" aria-label={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)} value={p.name} onChange={(e) => setPlayers(players.map((x) => (x.id === p.id ? { ...x, name: e.target.value } : x)))} />
-                {!keeps(p) && (
-                  <button type="button" className="icon-btn" aria-label={tr(`Remove ${p.name}`, `${p.name} entfernen`)} onClick={() => setPlayers(players.filter((x) => x.id !== p.id))}>
-                    ✕
-                  </button>
-                )}
-              </div>
+              <PoolPlayerRow key={p.id} player={p} k={k} onChange={(np) => setPlayers(players.map((x) => (x.id === p.id ? { ...x, name: np.name, ...(np.hcp.trim() ? { hcp: np.hcp } : { hcp: undefined }) } : x)))} onRemove={!keeps(p) ? () => setPlayers(players.filter((x) => x.id !== p.id)) : undefined} />
             ))}
             <button type="button" className="btn-secondary" onClick={() => setPlayers([...players, { id: newId(), name: '' }])}>
               {tr('+ Add player', '+ Spieler hinzufügen')}
@@ -1783,7 +1763,7 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
               <CurrencyRow value={currency} onChange={setCur} />
             </SettingsList>
             <CountedSwitch on={counted} onChange={setCounted} />
-            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, currency, rounds, counted, players: players.map((p) => ({ ...p, name: p.name.trim() })) })}>
+            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, currency, rounds, counted, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
               {tr('Save', 'Speichern')}
             </button>
             <button type="button" className="btn-secondary btn-danger" onClick={() => setDel(true)}>

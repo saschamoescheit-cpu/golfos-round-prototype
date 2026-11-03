@@ -1939,7 +1939,6 @@ button.tile:disabled { opacity: 1; }
 .pool-player-head h2 { margin: 0; font-size: 18px; }
 .pool-wager { align-items: center; gap: 10px; }
 .pool-wager .grow > span { white-space: normal; }
-.pool-made { display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 0 0 2px var(--brand); }
 .wager-sheet { gap: 10px; }
 /* a long sheet scrolls – its parts keep their height instead of being squeezed over each other */
 .wager-sheet > *, .lib-group > * { flex-shrink: 0; }
@@ -2048,3 +2047,9 @@ button.tile:disabled { opacity: 1; }
 .pool-invite .qr-box svg { width: 100%; height: auto; }
 /* rows inside a sheet stand out from it (the bet sheet, 02.11.2026) */
 .sheet .settings-list { background: var(--surface-2); }
+/* the payments of the settlement (03.11.2026): "Bezahlt" / "Erhalten" at the transfer */
+.pool-pays li { align-items: center; }
+.pool-pays li .grow { flex: 1; min-width: 0; }
+.paid-mark { min-height: 34px; padding: 4px 12px; font-size: 14px; }
+.paid-undo { width: 34px; height: 34px; font-size: 16px; }
+.paid-state { display: block; }

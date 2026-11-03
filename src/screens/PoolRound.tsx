@@ -50,7 +50,8 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
     const prof = loadProfile();
     const ps = pool?.players ?? [];
     const me = ps.find((p) => p.id === entry?.me);
-    return [...(me ? [me] : []), ...ps.filter((p) => p !== me)].map((p) => ({ id: p.id, name: p.name, hcp: p === me ? (prof.hcpIndex ?? '') : (friends.find((f) => sameName(f.name, p.name))?.hcp ?? ''), on: true }));
+    // the HCP typed in the pool's setup counts for the others (03.11.2026); yours always the profile's
+    return [...(me ? [me] : []), ...ps.filter((p) => p !== me)].map((p) => ({ id: p.id, name: p.name, hcp: p === me ? (prof.hcpIndex || p.hcp || '') : (p.hcp?.trim() || friends.find((f) => sameName(f.name, p.name))?.hcp || ''), on: true }));
   });
   const [, setRatingsSeen] = useState(0);
   // the score entry, as "Score-Erfassung" in "Neue Runde": what the bets need set, the details always possible

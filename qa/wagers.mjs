@@ -140,6 +140,15 @@ await H.getByRole('textbox', { name: 'Spieler 3' }).fill('Erik');
 await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.getByRole('textbox', { name: 'Spieler 4' }).fill('Cedric');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-setup.png', fullPage: true });
+// the players as in "Runde starten" (Sascha 03.11.2026): name, tee, HCP, playing handicap – "Du" first
+ok((await H.locator('.player-row').count()) === 4 && (await H.getByRole('textbox', { name: 'HCP' }).count()) === 4 && (await H.getByRole('textbox', { name: 'Du' }).count()) === 1, 'players: rows as in "Runde starten" – "Du", tee, HCP, playing handicap');
+await H.getByRole('textbox', { name: 'HCP' }).nth(1).fill('12,4');
+// a round added as the course in "Neues Spiel": a row "Platz · Platz wählen ›", no "+ Runde" button (Sascha 03.11.2026)
+{
+  const trip = H.locator('.trip-rounds');
+  const row = trip.locator('.settings-row');
+  ok((await row.count()) === 1 && /Platz\s*Platz wählen/.test(await row.innerText()) && (await trip.getByRole('button', { name: '+ Runde' }).count()) === 0, `rounds: a row "Platz · Platz wählen" (${(await row.allInnerTexts()).join(' | ')})`);
+}
 // a choice as a row with its sheet (docs/DESIGN.md, 02.11.2026): the row, then the option
 const choose = async (label, option, inside = H) => {
   await inside.locator('.settings-row').filter({ hasText: label }).first().click();
@@ -152,6 +161,7 @@ await H.getByRole('button', { name: 'Pool anlegen' }).click();
 await H.waitForTimeout(1200);
 ok((await H.locator('.pool-player').count()) === 4 && (await H.locator('.topbar h1').innerText()).includes('USA 2026'), 'pool set up: USA 2026 with 4 players');
 const code = [...shared.keys()][0];
+ok(shared.get(code).game.players[1].hcp === '12,4' && shared.get(code).game.players[2].hcp === undefined, 'the HCP typed is kept with the pool (Chris 12,4; Erik none)');
 ok(/^[A-Z0-9]{6}$/.test(code ?? '') && shared.get(code).game.kind === 'wager-pool', `the pool on the server, code ${code}`);
 
 // Chris's bets from his library (Sascha 01.11.2026: "per person a library to pick single bets from"): five of them,
@@ -202,6 +212,14 @@ ok(shared.get(code).game.wagers.length === 7, `the server has the 7 bets (${shar
 // invite: the code with a QR code
 // a section of its own, as in the round setup (02.11.2026)
 const invite = H.getByRole('region', { name: 'Mitspieler einladen' });
+{
+  // below the settlement, right before "Runde starten" (Sascha 03.11.2026)
+  const top = async (l) => (await l.boundingBox())?.y ?? -1;
+  const yS = await top(H.locator('.card').filter({ hasText: 'Abrechnung' }).first());
+  const yI = await top(invite);
+  const yR = await top(H.getByRole('button', { name: 'Runde starten' }));
+  ok(yS >= 0 && yS < yI && (yR < 0 || yI < yR), `invite: below the settlement, before "Runde starten" (${Math.round(yS)} < ${Math.round(yI)} < ${Math.round(yR)})`);
+}
 ok((await invite.locator('.qr-box svg').count()) === 1 && (await invite.locator('.join-code').innerText()).trim() === code && (await invite.getByRole('button', { name: 'Einladung senden' }).count()) === 1, 'invite: its own section – code, QR code, "Einladung senden"');
 
 // ---------- Chris: joins with the link, picks himself – his phone judges his bets from his signed round ----------
@@ -214,8 +232,8 @@ ok(await G.getByText('Wetten „USA 2026“ – wer bist du?').isVisible(), 'Chr
 await G.getByRole('dialog', { name: 'Spiel beitreten' }).getByRole('button', { name: 'Chris', exact: true }).click();
 await G.waitForTimeout(3000);
 ok((await G.locator('.topbar h1').innerText()).includes('USA 2026'), 'Chris: in the pool');
-const made = await G.locator('.pool-made').innerText().catch(() => '');
-ok(/Chris: 2 Birdies in Folge/.test(made) && /Bethpage Black/.test(made), `Chris: "made it" shown – ${made.replace(/\s+/g, ' ').slice(0, 120)}`);
+// no box "Geschafft" with "OK" – the standing and the badges say it (Sascha 03.11.2026)
+ok((await G.locator('.pool-made').count()) === 0 && (await G.getByRole('button', { name: 'OK', exact: true }).count()) === 0, 'Chris: no "made it" box to dismiss');
 const gChris = G.locator('.pool-player').filter({ has: G.locator('h2', { hasText: /^Chris$/ }) });
 const badges = await gChris.locator('.pool-wager').filter({ hasNotText: 'gegen ' }).locator('.badge').allInnerTexts(); // the 5+5+10 rows show money
 ok(badges.filter((x) => x === 'Geschafft').length === 4 && badges.filter((x) => x === 'Offen').length === 1, `Chris: 4 made, the −5 open (${badges.join(', ')})`);
@@ -365,7 +383,7 @@ await H.getByRole('button', { name: 'Wetten für Sascha hinzufügen' }).click();
 const libO = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
 await libO.getByRole('button', { name: '+ Eigene Wette bauen', exact: true }).click();
 const build = H.getByRole('dialog', { name: 'Eigene Wette bauen' });
-await choose('Wo', 'Par 3s', build);
+await choose('Wo', 'Par 3s', build); if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-build.png' });
 ok((await build.locator('.custom-preview').innerText()) === 'Mindestens 2 Birdies auf den Par 3s' && (await build.getByText('Die Schläge inkl. Strafschläge genügen.').isVisible()), 'own bet: built in words – no details needed');
 await build.getByRole('button', { name: 'In „Meine Wetten“ speichern' }).click();
 ok((await libO.locator('.lib-row.on').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: in "Meine Wetten", ticked');
@@ -376,6 +394,39 @@ ok(!!ownBet && ownBet.metric === 'birdie' && ownBet.where === 'par3' && ownBet.t
 await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
 ok((await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).locator('.lib-row').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: offered again under "Meine Wetten"');
 await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', { name: 'Schließen' }).click();
+
+// paid and received (Sascha 03.11.2026: "everyone sees whether he paid his debts or received them")
+{
+  const open = H.locator('.pool-pays:not(.paid-list) > li');
+  const before = await open.count();
+  const first = (await open.first().innerText()).replace(/\s+/g, ' ');
+  ok(before > 0 && (await open.first().locator('.paid-mark').count()) === 1, `payments: the host marks a transfer (${first})`);
+  await open.first().locator('.paid-mark').click();
+  await H.waitForTimeout(1500);
+  const ps = shared.get(code).game.payments ?? [];
+  const paid = H.getByRole('list', { name: 'Bezahlt' }).locator('li');
+  ok(ps.length === 1 && ps[0].amount > 0 && (ps[0].paidAt || ps[0].receivedAt) && (await open.count()) === before - 1 && (await paid.count()) === 1, `payments: kept on the server, off the open ones, under "Bezahlt" (${JSON.stringify(ps)})`);
+  if (process.env.SHOTS) await H.locator('.pool-settle').screenshot({ path: process.env.SHOTS + '/wagers-paid.png' });
+  if (!ps[0]?.receivedAt) {
+    await paid.first().locator('.paid-mark').click();
+    await H.waitForTimeout(1500);
+    ok(!!shared.get(code).game.payments?.[0]?.receivedAt && /erhalten/.test(await paid.first().innerText()), 'payments: the receiver confirms – received');
+  }
+  await paid.first().getByRole('button', { name: /^Zurücknehmen/ }).click();
+  await H.waitForTimeout(1500);
+  ok((shared.get(code).game.payments ?? []).length === 0 && (await open.count()) === before, 'payments: taken back – open again');
+}
+// only saved, finished later (Sascha 03.11.2026): "Speichern" between "Runde starten" and "Pool beenden" – back to the bets
+{
+  const top = async (l) => (await l.boundingBox())?.y ?? -1;
+  const save = H.getByRole('button', { name: 'Speichern', exact: true });
+  const [yR, yV, yE] = [await top(H.getByRole('button', { name: /Runde (starten|fortsetzen)/ })), await top(save), await top(H.getByRole('button', { name: 'Pool beenden' }))];
+  ok(yR >= 0 && yR < yV && yV < yE, `save: between "Runde starten" and "Pool beenden" (${Math.round(yR)} < ${Math.round(yV)} < ${Math.round(yE)})`);
+  const n = shared.get(code).game.wagers.length;
+  await save.click();
+  await H.waitForTimeout(1200);
+  ok((await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) >= 1 && shared.get(code).game.wagers.length === n, 'save: back to the bets, the pool with all its bets');
+}
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
