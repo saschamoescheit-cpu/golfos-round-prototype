@@ -138,6 +138,26 @@ await H.waitForTimeout(2000);
 await H.locator('button.list-item').first().click();
 await H.locator('#tour-name').waitFor({ timeout: 30000 });
 ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the course: the name kept');
+// net classes (Sascha 03.11.2026): the last class up to 54, and "Eigene" – two to four classes with their limits
+{
+  await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
+  await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Netto/ }).click();
+  const row = H.locator('.settings-row').filter({ hasText: 'Netto-Klassen' });
+  const cs = H.getByRole('dialog', { name: 'Netto-Klassen' });
+  await row.click();
+  ok((await cs.getByText('2 Klassen · A bis 18 · B bis 54').count()) === 1, 'classes: 2 – "B bis 54"');
+  await cs.getByRole('button', { name: /^3 Klassen/ }).click();
+  ok(/3 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 12 · B bis 24 · C bis 54', { exact: true }).count()) === 1, `classes: 3 – "A bis 12 · B bis 24 · C bis 54" (${(await row.innerText()).replace(/\s+/g, ' ')})`);
+  await row.click();
+  await cs.getByRole('button', { name: /^Eigene/ }).click();
+  await cs.getByRole('button', { name: 'Anzahl Klassen plus eins' }).click(); // 4 classes
+  ok((await cs.locator('.class-own .field').count()) === 4, 'classes: own – four classes, three limits to set');
+  await cs.getByRole('button', { name: 'Übernehmen' }).click();
+  ok(/4 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 9 · B bis 18 · C bis 26 · D bis 54', { exact: true }).count()) === 1, `classes: own taken – ${await row.innerText()}`);
+  // back to brutto for the rest of the test
+  await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
+  await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Brutto/ }).click();
+}
 for (const n of ['Chris', 'Erik', 'Cedric']) {
   await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
   await H.locator('input[id^="name-"]').last().fill(n);
