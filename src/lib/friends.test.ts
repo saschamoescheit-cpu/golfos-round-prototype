@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mergeCards, type Friend, type FriendCard } from './friends';
-import { codeFromText, spacedCode } from './friendlinks';
+import { codeFromText } from './friendlinks';
+import { showCode } from './sharedgame';
 
 const card = (user_id: string, first: string, hcp: string, more: Partial<FriendCard> = {}): FriendCard => ({ user_id, first_name: first, last_name: '', hcp_index: hcp, home_club: '', photo: null, ...more });
 let n = 0;
@@ -47,7 +48,13 @@ describe('friend codes from a scan or typed', () => {
     expect(codeFromText('https://saschamoescheit-cpu.github.io/golfos-round-prototype/#round=ABC123')).toBeNull();
     expect(codeFromText('hello')).toBeNull();
   });
-  it('spaced in fours to read out', () => {
-    expect(spacedCode('A1B2C3D4E5F6')).toBe('A1B2 C3D4 E5F6');
+  it('6 digits (03.11.2026): typed 123-456, 123 456 or 123456; shown 123-456', () => {
+    expect(codeFromText('318-407')).toBe('318407');
+    expect(codeFromText(' 318 407 ')).toBe('318407');
+    expect(codeFromText('318407')).toBe('318407');
+    expect(codeFromText('https://saschamoescheit-cpu.github.io/golfos-round-prototype/#friend=318407')).toBe('318407');
+    expect(codeFromText('31840')).toBeNull();
+    expect(codeFromText('https://saschamoescheit-cpu.github.io/golfos-round-prototype/#round=318407')).toBeNull();
+    expect(showCode('318407')).toBe('318-407');
   });
 });

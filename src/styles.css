@@ -993,19 +993,6 @@ button.tile:disabled { opacity: 1; }
 
 /* scorecard: finish the round – save / check the shots / delete */
 /* The test protocol on the scorecard (Sascha 30.10.2026) */
-.testlog { display: flex; flex-direction: column; gap: 8px; }
-.testlog > strong { font: 600 17px var(--display); }
-.testlog-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
-.testlog-table th { text-align: right; font-weight: 600; color: var(--muted); font-size: 12px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
-.testlog-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); }
-.testlog-table th:first-child, .testlog-table td:first-child { text-align: left; }
-.testlog-sum td { font-weight: 600; border-bottom: none; }
-.testlog-summary, .testlog-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-.testlog-lines { font-size: 13px; gap: 6px; }
-.testlog-lines li { display: flex; gap: 10px; }
-.testlog-time { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
-.testlog .bad { color: var(--bad); }
-.testlog .bad .muted, .testlog .bad .testlog-time { color: inherit; opacity: 0.8; }
 .finish-card { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--brand); }
 .finish-card strong { font: 600 17px var(--display); }
 .finish-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -1941,9 +1928,16 @@ button.tile:disabled { opacity: 1; }
 .flight-status { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 /* the card handed in (Sascha's concept 30.10.2026) */
 .sign-card { display: flex; flex-direction: column; gap: 10px; }
-.sign-row { display: flex; align-items: center; gap: 10px; }
-.sign-row .grow { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.sign-row button { flex: none; width: auto; padding: 0 16px; min-height: 44px; }
+/* the words above, the button across below (03.11.2026: the text squeezed beside the button) */
+.sign-row { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+.sign-row + .sign-row { padding-top: 12px; border-top: 1px solid var(--line); }
+.sign-row .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sign-row > .btn-primary { width: 100%; min-height: 48px; }
+.sign-differ { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip.diff-chip { color: var(--bad); border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+/* a hole whose counts differ on the scorecard: the hole number and the cell red */
+.sc th.diff, .sc th.diff .sc-hole { color: var(--bad); }
+.sc td.diff { box-shadow: inset 0 0 0 2px var(--bad); border-radius: 8px; }
 .lb-signed { display: block; font-size: 11px; color: var(--brand-text); }
 
 /* Bets in Games (Sascha 01.11.2026): a pool over a trip, each player's targets with the standing */
@@ -2047,8 +2041,7 @@ button.tile:disabled { opacity: 1; }
 .friend-code-type > button { flex: none; width: auto; padding: 0 22px; }
 .friend-linked { display: flex; align-items: center; gap: 12px; }
 .friend-linked .grow { flex: 1; min-width: 0; }
-.friend-remove { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.friend-typed { grid-template-columns: auto 1fr 110px auto; }
+.friend-typed { grid-template-columns: auto 1fr 110px; }
 .friend-typed .friend-kind { margin-bottom: 14px; }
 .friend-kind { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line-strong); vertical-align: middle; }
 .friend-kind.linked { background: var(--brand-soft); color: var(--brand-text); border-color: transparent; }
@@ -2127,3 +2120,10 @@ button.tile:disabled { opacity: 1; }
 .tour-total { display: flex; flex-direction: column; gap: 8px; }
 .tour-flight-done { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
 .friends-group { margin-top: 10px; }
+.scan-code-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+/* the linked friends in a round's invitation, each with "Einladen" (03.11.2026) */
+.invite-friends { display: flex; flex-direction: column; gap: 8px; }
+.invite-friend { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); }
+.invite-friend .grow { flex: 1; min-width: 0; }
+.invite-friend > button { flex: none; width: auto; min-height: 40px; padding: 0 16px; font-size: 15px; }
+.sc-status.game-confirmed { flex-direction: row; align-items: center; gap: 12px; cursor: default; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanCode, guestRound, isGame, mergeGames, newCode, onWire, settleGame, stamp } from './sharedgame';
+import { cleanCode, guestRound, isGame, mergeGames, newCode, onWire, settleGame, showCode, stamp } from './sharedgame';
 import { roundForGame } from '../screens/GameOnMap';
 import type { Game } from './gameforms';
 
@@ -46,9 +46,11 @@ describe('a game on two phones', () => {
     expect(m.presses).toEqual([{ hole: 1, by: 'b' }, { hole: 2, by: 'me' }]);
     expect(m.finishedAt).toBe('2026-10-16T10:00:00Z');
   });
-  it('codes: six letters without 0/O and 1/I; typed codes are cleaned', () => {
-    const c = newCode();
-    expect(c).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
+  it('codes: six digits, shown 123-456; typed codes are cleaned (a letter code from before too)', () => {
+    expect(newCode()).toMatch(/^\d{6}$/);
+    expect(showCode('042917')).toBe('042-917');
+    expect(showCode('A1B2C3D4E5F6')).toBe('A1B2-C3D4-E5F6');
+    expect(cleanCode(' 042-917 ')).toBe('042917');
     expect(cleanCode(' k7p-4qx ')).toBe('K7P4QX');
   });
 });

@@ -150,6 +150,30 @@ const Waiting = () => (
 const HOME: Screen = { name: 'tab', tab: 'play' };
 const ROUNDS: Screen = { name: 'tab', tab: 'rounds' };
 
+// A reload stays on its page (Sascha 03.11.2026: the scorecard at the end of a round, reloaded, jumped back to hole 18's
+// map): a round's scorecard or its check kept for the session of this tab; any other page as before.
+const SCREEN = 'golfos.screen.v1';
+type SavedScreen = { name: 'scorecard' | 'review'; id: string } | { name: 'other' };
+function saveScreen(s: Screen): void {
+  const v: SavedScreen = s.name === 'scorecard' || s.name === 'review' ? { name: s.name, id: s.round.id } : { name: 'other' };
+  try {
+    sessionStorage.setItem(SCREEN, JSON.stringify(v));
+  } catch {
+    /* storage blocked */
+  }
+}
+function savedScreen(rounds: Round[]): Screen | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(SCREEN) ?? 'null') as SavedScreen | null;
+    const r = v && 'id' in v ? rounds.find((x) => x.id === v.id) : undefined;
+    if (r && v?.name === 'scorecard') return { name: 'scorecard', round: r, back: ROUNDS };
+    if (r && v?.name === 'review') return { name: 'review', round: r };
+  } catch {
+    /* nothing kept */
+  }
+  return null;
+}
+
 export function App() {
   // rounds left open for more than a day are tidied up first (finished with their scores, or deleted when empty)
   // a paused course preview (Sascha 15.10.2026: "pause" as in a round) – this tab only, never among the rounds
@@ -176,12 +200,15 @@ export function App() {
   });
   const [screen, setScreen] = useState<Screen>(() => {
     if (location.hash.startsWith('#round=')) return HOME; // a round's join link: Rounds' start page asks to join
+    const kept = savedScreen(rounds);
+    if (kept) return kept;
     const r = SKIP_RESUME ? undefined : roundInPlay(rounds);
     if (r && r.id === pausedRound) return HOME;
     return r ? { name: 'hole', round: r } : HOME;
   });
   // a new screen starts at its top (Sascha 20.10.2026: "Schläge prüfen" from the bottom of the scorecard opened at the
   // bottom, empty while it loaded) – the hole map keeps its own place
+  useEffect(() => saveScreen(screen), [screen]);
   const screenKey = screen.name === 'tab' ? `tab-${screen.tab}` : screen.name;
   useEffect(() => {
     if (screen.name !== 'hole') window.scrollTo(0, 0);
@@ -268,6 +295,15 @@ export function App() {
       setHomeTab('profile');
     };
     window.addEventListener('golfos:open-profile', toProfile);
+    // a friend's invitation to a round, answered "Join" (03.11.2026): Rounds' "Join a round" with its code
+    const toJoin = (e: Event) => joinRoundByCode(String((e as CustomEvent<string>).detail));
+    window.addEventListener('golfos:join-round', toJoin);
+    // a game or a pool of bets: Games' "Join a game" – opened afresh, so it reads the code
+    const toJoinGame = (e: Event) => {
+      setModule(null);
+      window.setTimeout(() => joinGameByCode(String((e as CustomEvent<string>).detail)), 0);
+    };
+    window.addEventListener('golfos:join-game', toJoinGame);
     // back to the app: fetch what the other devices changed; leaving it (another tab, the phone locked): send ours
     const onShow = () => {
       syncNow();
@@ -279,6 +315,8 @@ export function App() {
     return () => {
       document.removeEventListener('visibilitychange', onShow);
       window.removeEventListener('golfos:open-profile', toProfile);
+      window.removeEventListener('golfos:join-round', toJoin);
+      window.removeEventListener('golfos:join-game', toJoinGame);
       window.clearInterval(t);
     };
   }, []);

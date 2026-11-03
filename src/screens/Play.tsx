@@ -54,6 +54,15 @@ export function PlayTab(props: {
   });
   // joining needs no account (Sascha 30.10.2026): the name is enough – only a server without sharing stops it
   const canJoin = canShare === true || (canShare === false && sharingMissing() === 'signin');
+  // a friend's invitation answered while Rounds is open already (03.11.2026)
+  useEffect(() => {
+    const on = (e: Event) => {
+      setJoin(String((e as CustomEvent<string>).detail));
+      setTimeout(() => location.hash.startsWith('#round=') && history.replaceState(null, '', location.pathname + location.search), 0);
+    };
+    window.addEventListener('golfos:join-round', on);
+    return () => window.removeEventListener('golfos:join-round', on);
+  }, []);
   useEffect(() => {
     sharingAvailable().then(setCanShare);
     if (location.hash.startsWith('#round=')) history.replaceState(null, '', location.pathname + location.search);
@@ -225,6 +234,7 @@ export function PlayTab(props: {
         canShare != null &&
         (canJoin ? (
           <JoinRoundSheet
+            key={join}
             initial={join}
             onClose={() => setJoin(null)}
             onJoined={(r) => {

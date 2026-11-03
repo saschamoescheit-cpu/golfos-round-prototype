@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import qrcode from 'qrcode-generator';
 import type { Game } from '../lib/gameforms';
-import { cleanCode, exchange, joinGame, joinLink, settleGame, shareGame, guestRound } from '../lib/sharedgame';
+import { cleanCode, exchange, joinGame, showCode, joinLink, settleGame, shareGame, guestRound } from '../lib/sharedgame';
 import { tr } from '../lib/i18n';
 import { isPool, type WagerPool } from '../lib/wagers';
 import { joinPool } from '../lib/wagerstore';
 import { loadProfile, shownName } from '../lib/profile';
-import { copyLink, InviteCard, shareLink } from './InviteCard';
+import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
+import { ScanCodeButton } from './QrScan';
 
 // Invite and join (Sascha 15.10.2026: "join the game by a code or a QR code"): the host shows the code and the QR
 // code, the others scan it with the phone camera or type the code. Since 29.10.2026 as in Rounds (Sascha: "in Games
@@ -118,6 +119,7 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
                 { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(joinLink(code)).then(setMsg) },
               ]}
             />
+            <FriendInvite code={code} />
           </>
         )}
         {msg && <span className="muted small">{msg}</span>}
@@ -177,11 +179,10 @@ export function JoinSheet(props: {
           <>
             <input
               className="input join-input"
-              value={code}
-              inputMode="text"
-              autoCapitalize="characters"
+              value={showCode(code)}
+              inputMode="numeric"
               autoComplete="off"
-              placeholder="K7P4QX"
+              placeholder="123-456"
               aria-label={tr('Code of the game', 'Code des Spiels')}
               onChange={(e) => {
                 setCode(cleanCode(e.target.value));
@@ -191,6 +192,14 @@ export function JoinSheet(props: {
             <button type="button" className="btn-primary" disabled={busy || code.length !== 6} onClick={() => void find()}>
               {busy ? tr('Joining …', 'Trete bei …') : tr('Join', 'Beitreten')}
             </button>
+            <ScanCodeButton
+              disabled={busy}
+              onCode={(c) => {
+                setCode(c);
+                setMsg(null);
+                void find(c);
+              }}
+            />
           </>
         )}
         {found && (

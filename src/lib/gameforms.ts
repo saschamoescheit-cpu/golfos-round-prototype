@@ -973,7 +973,9 @@ export const FORMS: FormDef[] = [
 
 // handicap and press for the forms where they make sense (no loss limit – Sascha 15.10.2026)
 const WITH_HCP: FormId[] = ['skins', 'nassau', 'wolf', 'chicago', 'vegas', 'sixes', 'stableford', 'match', 'hammer', 'rabbit', 'acey', 'fivefiveten'];
-const WITH_DOUBLE: FormId[] = ['skins', 'wolf', 'chicago', 'bbb', 'vegas', 'sixes', 'dots', 'stableford', 'rabbit', 'acey'];
+// the press only where one presses – the matches side against side (Sascha 03.11.2026: "Skins and the like have no
+// pressing – no press setting there"); Nassau has its own automatic press
+const WITH_DOUBLE: FormId[] = ['wolf', 'chicago', 'vegas', 'sixes'];
 for (const f of FORMS) {
   if (WITH_HCP.includes(f.id)) f.settings.unshift(HCP);
   f.settings.push(ENTRY);

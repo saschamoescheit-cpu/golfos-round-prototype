@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
-import { cleanCode } from '../lib/sharedgame';
-import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
+import { cleanCode, showCode } from '../lib/sharedgame';
+import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -9,7 +9,8 @@ import { loadProfile, saveProfile, shownName } from '../lib/profile';
 import { loadSession, signIn, signInAnonymously } from '../lib/sync';
 import { inviteByName, pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
-import { copyLink, InviteCard, shareLink } from './InviteCard';
+import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
+import { ScanCodeButton } from './QrScan';
 
 /** A planned tournament's day: "Fr., 6.11." */
 export const dayText = (d: string): string => new Date(`${d}T12:00:00`).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
@@ -163,6 +164,7 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
               : tr('Not shown nearby – the code and the QR code work as ever.', 'In der Nähe nicht sichtbar – Code und QR-Code gehen wie gewohnt.')}
         </span>
       )}
+      <FriendInvite code={shared.code} />
       <InviteByName code={shared.code} />
       {msg && <span className="muted small">{msg}</span>}
     </>
@@ -470,11 +472,10 @@ export function JoinRoundSheet(props: {
           <>
             <input
               className="input join-input"
-              value={code}
-              inputMode="text"
-              autoCapitalize="characters"
+              value={showCode(code)}
+              inputMode="numeric"
               autoComplete="off"
-              placeholder="K7P4QX"
+              placeholder="123-456"
               aria-label={tr('Code of the round', 'Code der Runde')}
               onChange={(e) => {
                 setCode(cleanCode(e.target.value));
@@ -484,6 +485,14 @@ export function JoinRoundSheet(props: {
             <button type="button" className="btn-primary" disabled={busy != null || code.length !== 6 || (nameField && !name.trim())} onClick={() => void find()}>
               {busy ?? tr('Join', 'Beitreten')}
             </button>
+            <ScanCodeButton
+              disabled={busy != null || (nameField && !name.trim())}
+              onCode={(c) => {
+                setCode(c);
+                setMsg(null);
+                void find(c);
+              }}
+            />
             {needGoogle && (
               <button
                 type="button"
@@ -793,23 +802,63 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
  * of a round with a marker, the own card to sign as the player and the partner's as his marker – once every hole has
  * both counts and none differs. Signed by both, the score is locked on every phone.
  */
-export function SignCard(props: { round: Round }) {
+/** The holes where the own count and the marker's differ, per player (the scorecard marks them red – Sascha 03.11.2026). */
+export function useDiffers(round: Round): Record<string, number[]> {
+  const s = round.shared;
+  const [ev, setEv] = useState(() => (s ? cachedEvent(s.code) : null));
+  useEffect(() => {
+    if (!s) return;
+    const on = () => setEv(cachedEvent(s.code));
+    on();
+    window.addEventListener('golfos:event-changed', on);
+    return () => window.removeEventListener('golfos:event-changed', on);
+  }, [s?.code]); // eslint-disable-line react-hooks/exhaustive-deps
+  const f = s && ev?.flights[s.flight];
+  if (!f || f.scorer || !f.markers) return {};
+  return Object.fromEntries(round.players.map((p) => [p.id, differences(f, p.id)]).filter(([, d]) => (d as number[]).length));
+}
+
+export function SignCard(props: { round: Round; onHole?: (index: number) => void; onChange?: (r: Round) => void }) {
   const s = props.round.shared;
   const [ev, setEv] = useState(() => (s ? cachedEvent(s.code) : null));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const latest = useRef(props.round);
+  latest.current = props.round;
+  const change = useRef(props.onChange);
+  change.current = props.onChange;
   useEffect(() => {
     if (!s) return;
     const on = () => setEv(cachedEvent(s.code));
     window.addEventListener('golfos:event-changed', on);
-    // away from the hole map (no exchange there): the partner's signature read every few seconds
-    const t = window.setInterval(() => document.visibilityState === 'visible' && void refreshEvent(s.code), 5000);
-    void refreshEvent(s.code);
+    // away from the hole map the scores are exchanged here too, every few seconds (Sascha 03.11.2026: all scores the
+    // same, and still "open: 18" – the last hole and the corrections on the scorecard never left the phone); the
+    // partner's signature comes with it
+    let going = false;
+    const tick = async () => {
+      if (going || document.visibilityState !== 'visible') return;
+      going = true;
+      const sent = latest.current;
+      const got = change.current ? await exchangeRound(sent, myName()).finally(() => (going = false)) : await refreshEvent(s.code).finally(() => (going = false));
+      if (!got || !change.current || !('players' in got)) return;
+      const next = settle(latest.current, sent, got);
+      if (JSON.stringify(next) !== JSON.stringify(latest.current)) change.current(next);
+    };
+    void tick();
+    const t = window.setInterval(() => void tick(), 5000);
     return () => {
       window.removeEventListener('golfos:event-changed', on);
       window.clearInterval(t);
     };
   }, [s?.code]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a score corrected on the card: to the others at once
+  const sentRef = useRef('');
+  useEffect(() => {
+    if (!s || !props.onChange) return;
+    const key = JSON.stringify(props.round.entries);
+    if (sentRef.current && sentRef.current !== key) void exchangeRound(props.round, myName());
+    sentRef.current = key;
+  }, [props.round.entries]); // eslint-disable-line react-hooks/exhaustive-deps
   const f = s && ev?.flights[s.flight];
   if (!s || !f || (!f.markers && !f.scorer)) return null;
   const me = props.round.players.find((p) => p.isMe);
@@ -819,7 +868,8 @@ export function SignCard(props: { round: Round }) {
     ...(me ? [{ pid: me.id, name: me.name, as: 'player' as const }] : []),
     ...marked.map((p) => ({ pid: p.id, name: p.name, as: 'marker' as const })),
   ];
-  const label = (i: number) => ev!.holes[i]?.label ?? String(i + 1);
+  // the hole as the scorecard shows it ("2", not "2 Kurzplatz")
+  const label = (i: number) => props.round.holes[i]?.label ?? ev!.holes[i]?.label ?? String(i + 1);
   const sign = async (pid: string, as: 'player' | 'marker') => {
     setBusy(true);
     const ok = await signCard(props.round, pid, as);
@@ -834,10 +884,11 @@ export function SignCard(props: { round: Round }) {
         const locked = isSigned(f, c.pid);
         const can = signable(f, c.pid, ev!.holes.length);
         return (
+          // the words above, the button below across the card (Sascha 03.11.2026: the text was squeezed into a column beside it)
           <div key={c.pid + c.as} className="sign-row">
             <span className="grow">
               <strong>{c.as === 'player' ? tr('Your card', 'Deine Karte') : f.scorer === me?.id ? tr(`As scorer of ${c.name}`, `Als Schreiber von ${c.name}`) : tr(`As marker of ${c.name}`, `Als Zähler von ${c.name}`)}</strong>
-              <span className="muted small">
+              <span className={`small ${!locked && !done && !can.ok && can.differ.length ? 'bad-text' : 'muted'}`}>
                 {locked
                   ? tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
                   : done
@@ -847,10 +898,20 @@ export function SignCard(props: { round: Round }) {
                     : can.ok
                       ? tr('All holes agree – ready to sign', 'Alle Löcher stimmen überein – bereit zum Unterschreiben')
                       : can.differ.length
-                        ? tr(`Counts differ on ${can.differ.map(label).join(', ')} – agree first`, `Zählung weicht ab auf ${can.differ.map(label).join(', ')} – erst abstimmen`)
+                        ? tr('The counts differ – agree them first, then sign:', 'Die Zählung weicht ab – erst abstimmen, dann unterschreiben:')
                         : tr(`Still open: ${can.missing.map(label).join(', ')}`, `Noch offen: ${can.missing.map(label).join(', ')}`)}
               </span>
             </span>
+            {/* every hole that differs: a tap opens it (Sascha 03.11.2026: "jump into the holes from here") */}
+            {!locked && !done && !can.ok && can.differ.length > 0 && (
+              <span className="chip-set sign-differ">
+                {can.differ.map((i) => (
+                  <button key={i} type="button" className="chip diff-chip" disabled={!props.onHole} aria-label={tr(`Hole ${label(i)} differs – open it`, `Loch ${label(i)} weicht ab – öffnen`)} onClick={() => props.onHole?.(i)}>
+                    {tr(`Hole ${label(i)}`, `Loch ${label(i)}`)}
+                  </button>
+                ))}
+              </span>
+            )}
             {!done && !locked && (
               <button type="button" className="btn-primary" disabled={busy || !can.ok} onClick={() => void sign(c.pid, c.as)}>
                 {tr('Sign', 'Unterschreiben')}

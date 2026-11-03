@@ -12,9 +12,20 @@ import { linkBase } from './native';
 // Needs the table golfos_shared_games (SQL in features/021-games-modul/feature.md, Nachtrag I); without it the
 // buttons stay hidden.
 
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I
-export const newCode = (rand = Math.random): string => Array.from({ length: 6 }, () => ALPHABET[Math.floor(rand() * ALPHABET.length)]).join('');
+// 6 digits, shown 123-456 (Sascha 03.11.2026: "only digits, XXX-XXX"); the letter codes made before still join
+export const newCode = (rand = Math.random): string => Array.from({ length: 6 }, () => String(Math.floor(rand() * 10))).join('');
 export const cleanCode = (s: string): string => s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+/** The code from a scanned QR code: a round's, game's, pool's link (#round= / #join= / #pool=) or the code itself. */
+export function joinCodeFrom(text: string): string | null {
+  const t = text.trim();
+  const m = /[#&](?:round|join|pool)=([0-9A-Za-z]{6})(?![0-9A-Za-z])/.exec(t) ?? /^([0-9A-Za-z]{3}[\s-]?[0-9A-Za-z]{3})$/.exec(t);
+  return m ? cleanCode(m[1]) : null;
+}
+/** Every code as it is shown and typed: 123-456 (a friend code from before: XXXX-XXXX-XXXX). */
+export const showCode = (code: string): string => {
+  const c = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return c.length > 6 ? c.replace(/(.{4})(?=.)/g, '$1-') : c.replace(/^(.{3})(?=.)/, '$1-');
+};
 
 /** The time stamp of a score (s:player:hole), a hole's extras (x:hole) – set when the player enters it. */
 export function stamp(g: Game, key: string, at = new Date().toISOString()): Game {
