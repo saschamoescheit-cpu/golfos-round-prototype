@@ -164,6 +164,7 @@ for (const n of ['Chris', 'Erik', 'Cedric']) {
   await H.locator('input[id^="hcp-"]').last().fill('0');
 }
 await H.locator('input[id^="hcp-"]').first().fill('0');
+if (process.env.SHOTS) { await H.locator('.tour-unplaced').scrollIntoViewIfNeeded(); await H.screenshot({ path: process.env.SHOTS + '/tours-unplaced.png' }); }
 const fl = (k) => H.locator('.tour-flight:not(.tour-unplaced)').nth(k);
 const names = async (k) => (await fl(k).locator('.tour-flight-player strong').allInnerTexts()).join(',');
 const sheet = H.getByRole('dialog', { name: /^Flight \d$/ });

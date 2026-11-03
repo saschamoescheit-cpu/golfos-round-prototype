@@ -1182,6 +1182,14 @@ function FlightBoard(props: {
             <div className="tour-chips">
               {unplaced.map((p) => (
                 <span key={p.id} className={`tour-chip${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} {...grab(p)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="9" cy="6" r="1.6" />
+                    <circle cx="15" cy="6" r="1.6" />
+                    <circle cx="9" cy="12" r="1.6" />
+                    <circle cx="15" cy="12" r="1.6" />
+                    <circle cx="9" cy="18" r="1.6" />
+                    <circle cx="15" cy="18" r="1.6" />
+                  </svg>
                   {props.label(p)}
                 </span>
               ))}
