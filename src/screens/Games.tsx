@@ -12,9 +12,10 @@ import { loadCachedCourse, loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
 import { setMoneySym, type Currency } from '../lib/gameforms';
 import { currencySymbol } from '../lib/gameforms';
-import { isMoney, isNone, oweText, prizeAmount, prizeOf, prizeSym, whoOf, type Prize } from '../lib/prize';
+import { isMoney, isNone, oweText, prizeAmount, prizeSym, type Prize } from '../lib/prize';
 import { PrizeRow } from '../components/PrizeRow';
-import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
+import { gamePrize, gameTransfers } from '../lib/gamepay';
+import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
@@ -2222,21 +2223,4 @@ export function HoleExtras(props: { game: Game; hole: number; onChange: (patch: 
   );
 }
 
-/** What a game is played for – a game from before: money in its currency. */
-export const gamePrize = (g: Game): Prize => prizeOf({ prize: g.prize, currency: g.settings.currency as string });
 const gameSym = (g: Game): string => prizeSym(gamePrize(g));
-/** Who gives whom what (Sascha 03.11.2026): money and things counted pair by pair as before; a thing "the loser for all" –
- *  the last (all when tied) one to each of the others; "for the winner" – to the first; without a stake nothing. */
-export function gameTransfers(g: Game, m: Record<string, number> | undefined): { from: string; to: string; amount: number }[] {
-  const p = gamePrize(g);
-  if (!m || isNone(p)) return [];
-  const who = whoOf(p);
-  if (who === 'each') return transfers(m);
-  const v = (id: string) => m[id] ?? 0;
-  const lo = Math.min(...g.players.map((x) => v(x.id)));
-  const hi = Math.max(...g.players.map((x) => v(x.id)));
-  if (hi - lo < 0.001) return [];
-  const losers = g.players.filter((x) => Math.abs(v(x.id) - lo) < 0.001);
-  const to = who === 'loserAll' ? g.players.filter((x) => !losers.includes(x)) : g.players.filter((x) => Math.abs(v(x.id) - hi) < 0.001);
-  return losers.flatMap((l) => to.map((o) => ({ from: l.id, to: o.id, amount: 1 })));
-}

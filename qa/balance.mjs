@@ -72,7 +72,7 @@ if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/balance.
 await p.getByRole('button', { name: 'Cedric – die Details' }).click();
 const sheet = p.getByRole('dialog', { name: 'Cedric' });
 const items = (await sheet.getByRole('list', { name: 'Spiele und Wetten' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(items.length === 2 && items.some((t) => /01\.11\. · Skins · Hetzenhof.*−5 €/.test(t)) && items.some((t) => /02\.11\. · Skins · Hetzenhof.*−30 €/.test(t)), `Cedric: the two games with their amounts (${items.join(' | ')})`);
+ok(items.length === 2 && items.some((t) => /Skins 01\.11\. · Hetzenhof.*−5 €/.test(t)) && items.some((t) => /Skins 02\.11\. · Hetzenhof.*−30 €/.test(t)), `Cedric: the two games with their amounts (${items.join(' | ')})`);
 ok(/Zusammen −35 €/.test(await txt(sheet.locator('.balance-sum'))), 'Cedric: together −35 €');
 if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/balance-person.png' });
 await sheet.getByRole('button', { name: /^Bezahlt – 35 €/ }).click();
@@ -80,7 +80,7 @@ await p.waitForTimeout(500);
 const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1')).map((g) => ({ id: g.id, payments: g.payments ?? [] })));
 const paidSum = stored.filter((g) => g.id !== 'g3').flatMap((g) => g.payments).reduce((s, x) => s + (x.from === 'p0' && x.paidAt && !x.receivedAt ? x.amount : 0), 0);
 ok(paidSum === 35, `paid: payments from Sascha to Cedric in both games, 35 € (${JSON.stringify(stored)})`);
-ok((await sheet.getByText('Cedric bestätigt noch').count()) === 2 && (await sheet.getByRole('button', { name: /^Bezahlt – / }).count()) === 0, 'paid: Cedric still confirms, nothing left to pay');
+ok((await sheet.locator('.paid-list').getByText('Cedric bestätigt noch').count()) === 2 && /Alles bezahlt – Cedric bestätigt noch/.test(await txt(sheet.locator('.balance-done'))) && (await sheet.getByRole('button', { name: /^Bezahlt – / }).count()) === 0, 'paid: Cedric still confirms, nothing left to pay');
 ok((await oweRows.count()) === 0, 'paid: "Du schuldest" empty');
 // taken back: open again
 await sheet.getByRole('button', { name: 'Zurücknehmen' }).first().click();
