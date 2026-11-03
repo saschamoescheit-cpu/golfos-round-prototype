@@ -7,7 +7,7 @@ import { loadCaddieSettings, loadCarryBag, loadUnit, saveCaddieSettings, saveCar
 import { Segmented, TopBar } from '../components/ui';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { clubCode, tr } from '../lib/i18n';
-import { loadPartials, savePartials, suggestedPartial, trackedPartials, WEDGES, type Partials } from '../lib/partials';
+import { loadPartials, savePartials, suggestedPartial, WEDGES, type Partials } from '../lib/partials';
 import { DEFAULT_LOFTS, loadBagStyle, saveBagStyle, withLoft, type BagStyle } from '../lib/bagstyle';
 import { statRounds } from '../lib/signing';
 import { LaunchImport } from '../components/LaunchImport';
@@ -89,7 +89,6 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
     saveBagStyle(next);
   };
   const fullOf = (club: Club) => toM(Number(bag[club])) || catalogEntry(club).carry; // metres
-  const trackedP = trackedPartials(props.rounds, inBag.map((c) => ({ club: c, carry: fullOf(c) })), partials);
   // Only believable carries count (20–400 m); empty or odd values fall back to the standard for that club.
   const valid = (v: string) => toM(Number(v)) >= 20 && toM(Number(v)) <= 400;
   const persist = (next: Record<string, string>, clubs: Club[] = inBag) => {
@@ -360,8 +359,6 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                   <strong className="bag-code" role="cell">{withLoft(clubCode(c), c, style)}</strong>
                   <span className="muted" role="cell">{toU(fullOf(c))}</span>
                   {(['threeQ', 'half'] as const).map((sw) => {
-                    const t = trackedP.get(`${c}|${sw}`);
-                    const own = partials[c]?.[sw];
                     return (
                       <span key={sw} className="pitch-cell" role="cell">
                         <input
@@ -376,23 +373,7 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                             setPartial(c, sw, v === '' ? '' : String(toM(Number(v))));
                           }}
                         />
-                        {t && Math.abs((own ?? suggestedPartial(fullOf(c), sw)) - t.carry) >= 4 && (
-                          // the tracked carry as one small pill under the field – a tap takes it (Sascha 03.11.2026: the words
-                          // and the round button beside them broke the rows)
-                          <button
-                            type="button"
-                            className="pitch-use"
-                            aria-label={tr(`Use tracked ${toU(t.carry)} ${uL}`, `Gemessene ${toU(t.carry)} ${uL} übernehmen`)}
-                            title={tr('Use', 'Übernehmen')}
-                            onClick={() => {
-                              setPartial(c, sw, String(t.carry));
-                              setPText({ ...pText, [`${c}|${sw}`]: String(toU(t.carry)) });
-                            }}
-                          >
-                            <UseIcon />
-                            <span>{tr(`tracked ${toU(t.carry)}`, `gemessen ${toU(t.carry)}`)}</span>
-                          </button>
-                        )}
+                        {/* no tracked swings under the pitches (Sascha 03.11.2026) – the carries are typed */}
                       </span>
                     );
                   })}
