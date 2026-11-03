@@ -86,7 +86,30 @@ export interface Standing {
 }
 export interface StandingDetail {
   title: string;
-  lines: { label: string; text: string; value?: string }[];
+  lines: { label: string; text: string; value?: string; row?: HoleRow }[];
+  /** the short names of a table's rows, once: "Sa Sascha · Ch Christopher …" */
+  legend?: string;
+}
+/** A hole of a team game as a table row (Sascha 03.11.2026: "the history not clear yet"): the hole, the two pairs by short
+ *  names, their numbers, who won it by how much, for what, pressed. */
+export interface HoleRow {
+  hole: string;
+  a: string;
+  b: string;
+  na: number;
+  nb: number;
+  win: 'a' | 'b' | null;
+  pts: string;
+  amount: string | null;
+  pressed: number;
+}
+/** Short names, unique: two letters, more where two would be the same (Christopher, Cedric → Chr, Ced). */
+export function shortNames(names: { id: string; name: string }[]): Record<string, string> {
+  for (let n = 2; n <= 6; n++) {
+    const m = Object.fromEntries(names.map((p) => [p.id, p.name.trim().slice(0, n) || '?']));
+    if (new Set(Object.values(m)).size === names.length) return m;
+  }
+  return Object.fromEntries(names.map((p, k) => [p.id, p.name.trim() || String(k + 1)]));
 }
 export interface FormDef {
   id: FormId;
@@ -557,7 +580,8 @@ export const FORMS: FormDef[] = [
       const names = (ids: string[]) => ids.map((id) => name(g, id)).join(' & ');
       // every hole played: the two numbers, who won it, by how much and for what money (Sascha 03.11.2026: "a history of
       // the holes played, so one sees how the standing is made up") – newest first
-      const history: StandingDetail = { title: tr('Hole by hole', 'Verlauf'), lines: [] };
+      const short = shortNames(g.players);
+      const history: StandingDetail = { title: tr('Hole by hole', 'Verlauf'), lines: [], legend: g.players.map((p) => `${short[p.id]} ${p.name}`).join(' · ') };
       g.holes.forEach((h, i) => {
         if (!played(g, i)) return;
         const [A, B] = chicagoTeams(g, i);
@@ -568,7 +592,9 @@ export const FORMS: FormDef[] = [
         for (const id of B) pts[id] -= d;
         const pressed = (g.presses ?? []).filter((x) => x.hole === i).length;
         const win = d > 0 ? A : B;
+        const amount = d !== 0 && stakeAt(g, i) > 0 ? money(Math.abs(d) * stakeAt(g, i)) : null;
         history.lines.unshift({
+          row: { hole: h.label, a: A.map((id) => short[id]).join('+'), b: B.map((id) => short[id]).join('+'), na, nb, win: d > 0 ? 'a' : d < 0 ? 'b' : null, pts: dec(Math.abs(d)), amount, pressed },
           label: tr(`Hole ${h.label}`, `Loch ${h.label}`) + (pressed ? tr(` · pressed${pressed > 1 ? ` ×${pressed}` : ''}`, ` · gepresst${pressed > 1 ? ` ×${pressed}` : ''}`) : ''),
           text: `${names(A)} ${na} – ${names(B)} ${nb}`,
           value: d === 0 ? tr('tied', 'gleich') : `${names(win)} +${dec(Math.abs(d))}${stakeAt(g, i) > 0 ? ` · ${money(Math.abs(d) * stakeAt(g, i))}` : ''}`,
