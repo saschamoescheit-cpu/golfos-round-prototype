@@ -19,7 +19,7 @@ import { Stepper, TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
-import { DateRow, SettingsList, TimeRow } from '../components/Settings';
+import { ChoiceRow, DateRow, PickSheet, SettingsList, TimeRow } from '../components/Settings';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 
 // Tournaments in Games (Sascha 01.11.2026: "tournaments can be planned ahead just like bets – set them up for the USA
@@ -369,6 +369,9 @@ export interface TourDraft {
   times: string[];
   /** the special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional") */
   specials: Special[];
+  /** "Score-Erfassung" of the tournament (Sascha 03.11.2026: "not under a flight's 'Ändern' – in the tournament's
+   *  settings, as a round's"): one player per flight keeps the score of all – the one flagged, else the first */
+  oneScorer?: boolean;
 }
 
 /** A new flight starts this many minutes after the one before – then set to the minute (Sascha 02.11.2026: "we play
@@ -525,6 +528,7 @@ export function draftOf(e: TourEntry): TourDraft {
   const option = options.find((o) => o.loops.join() === ev.loopOrder.join() && buildRoundHoles(course!.holes, o).length === ev.holes.length);
   const times = flights.map((f) => teeTimeOf(f) || FIRST_TEE);
   return {
+    ...(flights.some((f) => f.scorer) ? { oneScorer: true } : {}),
     code: e.code,
     base: ev,
     name: ev.name,
@@ -626,8 +630,8 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           return { name: label(p, k), playingHandicap: playingOf(p, k), hcpIndex: parseIndex(p.hcp), ...(tee ? { tee } : {}) };
         }),
         markers: Object.fromEntries(ps.map((p) => [pid(p.id), pid(markers[p.id])])),
-        // one for all: his place in the flight ("p2")
-        ...(ps.some((p) => p.scorer) ? { scorer: pid(ps.find((p) => p.scorer)!.id) } : {}),
+        // one for all: his place in the flight ("p2") – the one flagged, else the flight's first
+        ...(d.oneScorer && ps.length ? { scorer: pid((ps.find((p) => p.scorer) ?? ps[0]).id) } : {}),
       };
     });
     const fresh = plannedEvent({
@@ -812,9 +816,29 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           onRemoveFlight={removeFlight}
           onAuto={auto}
           onMove={(id, f) => set({ players: d.players.map(({ scorer: _s, ...p }) => (p.id === id ? { ...p, flight: f } : _s ? { ...p, scorer: _s } : p)) })}
+          oneScorer={!!d.oneScorer}
+          onScorer={(f, id) => set({ players: d.players.map(({ scorer: _s, ...p }) => (p.flight === f ? (p.id === id ? { ...p, scorer: true } : p) : _s ? { ...p, scorer: _s } : p)) })}
         />
         {small && <span className="small bad-text">{tr('Every flight needs at least two players – they mark each other.', 'Jeder Flight braucht mindestens zwei Spieler – sie zählen sich gegenseitig.')}</span>}
         {big && <span className="small bad-text">{tr('A flight has at most four players.', 'Ein Flight hat höchstens vier Spieler.')}</span>}
+      </section>
+
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+        <SettingsList>
+          <ChoiceRow<'own' | 'one'>
+            label={tr('Who enters', 'Wer erfasst')}
+            value={d.oneScorer ? 'one' : 'own'}
+            onChange={(v) => set({ oneScorer: v === 'one' })}
+            options={[
+              { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('On his own phone – a flight partner marks him.', 'Auf seinem Handy – ein Flightpartner zählt mit.') },
+              { value: 'one', name: tr('One per flight', 'Einer je Flight'), text: tr('One player keeps the score of his whole flight and marks everyone.', 'Ein Spieler erfasst die Scores seines ganzen Flights und zählt alle.') },
+            ]}
+          />
+        </SettingsList>
+        <span className="muted small">
+          {d.oneScorer ? tr('Who it is: the row "Scorer" in each flight.', 'Wer es ist: die Zeile „Schreiber“ im Flight.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
+        </span>
       </section>
 
       <section className="setup-part">
@@ -919,8 +943,14 @@ function FlightBoard(props: {
   onAuto: () => void;
   /** a player dragged onto another flight (null: back to "not in a flight yet") */
   onMove: (id: string, flight: number | null) => void;
+  /** one scorer per flight (the tournament's "Score-Erfassung") – each flight its row "Schreiber" */
+  oneScorer: boolean;
+  onScorer: (flight: number, id: string) => void;
 }) {
   const [open, setOpen] = useState<number | 'new' | null>(null);
+  // a tap on a player: where to – the sure way beside dragging (Sascha 03.11.2026: "on the iPhone it still does not work")
+  const [moving, setMoving] = useState<string | null>(null);
+  const dropped = useRef(0); // the click after a drop opens nothing
   const inFlight = (f: number) => props.players.filter((p) => p.flight === f);
   const unplaced = props.players.filter((p) => p.flight == null || p.flight >= props.flights);
   const byId = (id: string) => props.players.find((p) => p.id === id);
@@ -981,6 +1011,7 @@ function FlightBoard(props: {
       stop();
       if (!d || d.id !== id) return;
       const over = d.moved ? flightAt(e.clientX, e.clientY) : null;
+      if (d.moved) dropped.current = Date.now();
       if (fits(over, id)) onMove.current(id, over === -1 ? null : over);
       put(null);
     };
@@ -1030,6 +1061,7 @@ function FlightBoard(props: {
       window.removeEventListener('touchcancel', up);
       const d = live.current;
       if (d && d.id === id && d.moved) {
+        dropped.current = Date.now();
         const over = flightAt(last.x, last.y);
         if (fits(over, id)) onMove.current(id, over === -1 ? null : over);
       }
@@ -1111,6 +1143,7 @@ function FlightBoard(props: {
       if (!hold || !d || d.id !== p.id || d.armed) return;
       if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) {
         window.clearTimeout(holdTimer.current);
+        dropped.current = Date.now(); // a move: no tap either
         put(null);
       } else live.current = { ...d, x: e.clientX, y: e.clientY };
     },
@@ -1128,7 +1161,7 @@ function FlightBoard(props: {
     <div ref={board} className="tour-board">
       {Array.from({ length: props.flights }, (_, f) => {
         const ps = inFlight(f);
-        const scorer = ps.find((p) => p.scorer);
+        const scorer = props.oneScorer ? (ps.find((p) => p.scorer) ?? ps[0]) : undefined;
         return (
           <section key={f} className={`card tour-flight${target(f) ? ' drop-target' : ''}${dragged && from(dragged.id) !== f && !room(f) ? ' drop-full' : ''}`} aria-label={`Flight ${f + 1}`} data-flight={f}>
             <div className="tour-flight-head">
@@ -1139,13 +1172,34 @@ function FlightBoard(props: {
                 {tr('Change', 'Ändern')}
               </button>
             </div>
-            {scorer && <span className="small tour-scorer">{tr(`${props.label(scorer)} keeps the score of all`, `${props.label(scorer)} erfasst die Scores für alle`)}</span>}
+            {scorer && ps.length > 1 && (
+              <SettingsList>
+                <ChoiceRow<string>
+                  label={tr('Scorer', 'Schreiber')}
+                  title={tr(`Scorer of flight ${f + 1}`, `Schreiber in Flight ${f + 1}`)}
+                  value={scorer.id}
+                  onChange={(id) => props.onScorer(f, id)}
+                  options={ps.map((p) => ({ value: p.id, name: props.label(p), text: tr('Enters the scores of the flight, marks everyone.', 'Erfasst die Scores des Flights, zählt alle.') }))}
+                />
+              </SettingsList>
+            )}
             {ps.map((p) => {
               // with a scorer he signs every other card as marker; his own: his marker as usual (lib/sharedround markerOf)
               const m = byId(scorer && p.id !== scorer.id ? scorer.id : (props.markers[p.id] ?? ''));
               const ph = props.playing(p);
               return (
-                <div key={p.id} className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} data-drag-hold="" {...grab(p, true)}>
+                <div
+                  key={p.id}
+                  className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`}
+                  data-drag-id={p.id}
+                  data-drag-hold=""
+                  role="button"
+                  tabIndex={0}
+                  aria-label={tr(`Move ${props.label(p)}`, `${props.label(p)} verschieben`)}
+                  onClick={() => Date.now() - dropped.current > 500 && setMoving(p.id)}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setMoving(p.id)}
+                  {...grab(p, true)}
+                >
                   <span className="grow">
                     <strong>{props.label(p)}</strong>
                     {m && <span className="muted small"> · {tr(`marked by ${props.label(m)}`, `Zähler: ${props.label(m)}`)}</span>}
@@ -1181,7 +1235,7 @@ function FlightBoard(props: {
           {unplaced.length > 0 ? (
             <div className="tour-chips">
               {unplaced.map((p) => (
-                <span key={p.id} className={`tour-chip${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} {...grab(p)}>
+                <span key={p.id} className={`tour-chip${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} role="button" tabIndex={0} aria-label={tr(`Move ${props.label(p)}`, `${props.label(p)} verschieben`)} onClick={() => Date.now() - dropped.current > 500 && setMoving(p.id)} {...grab(p)}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <circle cx="9" cy="6" r="1.6" />
                     <circle cx="15" cy="6" r="1.6" />
@@ -1208,6 +1262,23 @@ function FlightBoard(props: {
       <button type="button" className="btn-secondary" disabled={!unplaced.length} onClick={() => setOpen('new')}>
         {tr('+ Flight', '+ Flight')}
       </button>
+      {moving && byId(moving) && (
+        <PickSheet<number>
+          title={tr(`Move ${props.label(byId(moving)!)}`, `${props.label(byId(moving)!)} verschieben`)}
+          current={from(moving)}
+          options={[
+            ...Array.from({ length: props.flights }, (_, f) => f)
+              .filter((f) => f === from(moving) || room(f))
+              .map((f) => ({ value: f, name: `Flight ${f + 1} · ${props.times[f]}`, text: inFlight(f).map(props.label).join(', ') || tr('No player yet', 'Noch kein Spieler') })),
+            { value: -1, name: tr('Not in a flight yet', 'Noch ohne Flight') },
+          ]}
+          onPick={(f) => {
+            if (f !== from(moving)) props.onMove(moving, f === -1 ? null : f);
+            setMoving(null);
+          }}
+          onClose={() => setMoving(null)}
+        />
+      )}
       {open != null && (
         <FlightSheet
           n={open === 'new' ? props.flights + 1 : open + 1}
@@ -1239,13 +1310,9 @@ function FlightBoard(props: {
 function FlightSheet(props: { n: number; time: string; chosen: string[]; scorer: string | null; offered: TourPlayer[]; label: (p: TourPlayer) => string; onSave: (time: string, ids: string[], scorer: string | null) => void; onRemove?: () => void; onClose: () => void }) {
   const [time, setTime] = useState(props.time);
   const [ids, setIds] = useState<string[]>(props.chosen);
-  // who enters the scores (Sascha 02.11.2026): everyone with a marker (null), or one player for all
-  const [scorer, setScorer] = useState<string | null>(props.scorer);
   const toggle = (id: string) => {
-    if (ids.includes(id) && scorer === id) setScorer(null);
     setIds((x) => (x.includes(id) ? x.filter((y) => y !== id) : x.length < FLIGHT_MAX ? [...x, id] : x));
   };
-  const chosen = props.offered.filter((p) => ids.includes(p.id));
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet tour-flight-sheet" role="dialog" aria-label={`Flight ${props.n}`} onClick={(e) => e.stopPropagation()}>
@@ -1280,27 +1347,7 @@ function FlightSheet(props: { n: number; time: string; chosen: string[]; scorer:
             {ids.length >= FLIGHT_MAX ? tr('Full – four players.', 'Voll – vier Spieler.') : tr('Only players not in a flight yet are offered. Who marks whom, the app sets.', 'Angeboten werden nur Spieler ohne Flight. Wer wen zählt, legt die App fest.')}
           </span>
         </div>
-        {ids.length >= 2 && (
-          <div className="field">
-            <label>{tr('Who enters the scores?', 'Wer erfasst die Scores?')}</label>
-            <div className="chip-set" role="group" aria-label={tr('Who enters the scores', 'Wer erfasst die Scores')}>
-              <button type="button" className={`chip${scorer == null ? ' on' : ''}`} aria-pressed={scorer == null} onClick={() => setScorer(null)}>
-                {tr('Everyone, with a marker', 'Jeder mit Zähler')}
-              </button>
-              {chosen.map((p) => (
-                <button key={p.id} type="button" className={`chip${scorer === p.id ? ' on' : ''}`} aria-pressed={scorer === p.id} onClick={() => setScorer(p.id)}>
-                  {tr(`${props.label(p)} for all`, `${props.label(p)} für alle`)}
-                </button>
-              ))}
-            </div>
-            <span className="muted small">
-              {scorer
-                ? tr('He enters everything for everyone – strokes, putts, sand, penalties, tee shot – and is everyone\'s marker.', 'Er erfasst alles für alle – Schläge, Putts, Sand, Strafschläge, Abschlag – und ist für alle der Zähler.')
-                : tr('Everyone enters his own score; his marker counts him too.', 'Jeder erfasst seinen eigenen Score, sein Zähler zählt ihn mit.')}
-            </span>
-          </div>
-        )}
-        <button type="button" className="btn-primary" disabled={!ids.length} onClick={() => props.onSave(time, ids, scorer && ids.includes(scorer) ? scorer : null)}>
+        <button type="button" className="btn-primary" disabled={!ids.length} onClick={() => props.onSave(time, ids, props.scorer && ids.includes(props.scorer) ? props.scorer : null)}>
           {props.onRemove ? tr('Save', 'Speichern') : tr('Create flight', 'Flight anlegen')}
         </button>
         {props.onRemove && (
@@ -1627,7 +1674,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
         backLabel={tr('Tournaments', 'Turniere')}
         right={
           host ? (
-            <button type="button" className="icon-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => props.onEdit(draftOf(entry))}>
+            <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => props.onEdit(draftOf(entry))}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 20h4L19 9l-4-4L4 16z" />
                 <path d="M13.5 6.5l4 4" />

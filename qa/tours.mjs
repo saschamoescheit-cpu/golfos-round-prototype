@@ -224,13 +224,20 @@ await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
 await sheet.getByRole('button', { name: 'Cedric', exact: true }).click();
 await sheet.getByRole('button', { name: 'Speichern' }).click();
 ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'Cedric back in flight 2');
-// one for all (Sascha 02.11.2026: "a person enters the score for all"): Cedric keeps flight 2's score
+// one for all (Sascha 02.11.2026: "a person enters the score for all"): Cedric keeps flight 2's score – set in the
+// tournament's "Score-Erfassung", as a round's, not under a flight's "Ändern" (Sascha 03.11.2026)
 await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
-ok((await sheet.getByRole('group', { name: 'Wer erfasst die Scores' }).locator('[aria-pressed="true"]').innerText()) === 'Jeder mit Zähler', 'who enters the scores: everyone with a marker, as before');
-await sheet.getByRole('button', { name: 'Cedric für alle' }).click();
-await sheet.getByRole('button', { name: 'Speichern' }).click();
+ok((await sheet.getByText('Wer erfasst die Scores?').count()) === 0, 'the flight sheet: no scorer any more');
+await sheet.getByRole('button', { name: 'Schließen' }).click();
+const who = H.locator('.settings-row').filter({ hasText: 'Wer erfasst' });
+ok(/Jeder seinen eigenen/.test(await who.innerText()), 'Score-Erfassung: "Jeder seinen eigenen" by default');
+await who.click();
+await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer je Flight/ }).click();
+ok(/Erik/.test(await fl(1).locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()), 'one per flight: the flight\'s first is its scorer, a row "Schreiber"');
+await fl(1).locator('.settings-row').filter({ hasText: 'Schreiber' }).click();
+await H.getByRole('dialog', { name: 'Schreiber in Flight 2' }).getByRole('button', { name: /^Cedric/ }).click();
 const f2 = (await fl(1).innerText()).replace(/\s+/g, ' ');
-ok(/Cedric erfasst die Scores für alle/.test(f2) && /Erik · Zähler: Cedric/.test(f2) && /Cedric · Zähler: Erik/.test(f2), `flight 2: Cedric for all – Erik's marker, his own card Erik's (${f2})`);
+ok(/Schreiber Cedric/.test(f2) && /Erik · Zähler: Cedric/.test(f2) && /Cedric · Zähler: Erik/.test(f2), `flight 2: Cedric for all – Erik's marker, his own card Erik's (${f2})`);
 ok((await H.locator('#tour-first, #tour-gap').count()) === 0 && (await H.getByText('Abstand', { exact: true }).count()) === 0, 'no first tee time, no interval – each flight its own time to the minute');
 // drag and drop (Sascha 02.11.2026: "move the players between the flights by drag and drop"): Chris by his grip onto
 // flight 2 – Cedric was its scorer, Chris joins; then back, and a full flight takes nobody
@@ -253,7 +260,8 @@ ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'a
 // only scrolls
 const holdTo = async (who, target, wait) => {
   const row = H.locator('.tour-flight-player').filter({ has: H.locator('strong', { hasText: new RegExp(`^${who}$`) }) }).locator('strong');
-  await row.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  // the row low on the screen, the flight above in view – away from the edges that scroll the page along
+  await row.evaluate((e) => window.scrollBy(0, e.getBoundingClientRect().top - window.innerHeight * 0.68));
   await H.waitForTimeout(200);
   const a = await row.boundingBox();
   const x0 = a.x + 10;
@@ -316,6 +324,15 @@ await touchTo('Chris', fl(0), { wait: 600 });
 ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', `finger: Chris's row held, back onto flight 1 (${await names(0)} | ${await names(1)})`);
 await touchTo('Erik', fl(0));
 ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'finger: the row moved at once – a scroll, nobody moved');
+// a tap: where to – the sure way beside dragging (Sascha 03.11.2026)
+await fl(1).locator('.tour-flight-player strong', { hasText: /^Erik$/ }).click();
+const mv = H.getByRole('dialog', { name: 'Erik verschieben' });
+ok((await mv.locator('.pick-option').count()) === 3 && /Flight 1 · 12:08/.test(await mv.innerText()), 'tap: the flights and "Noch ohne Flight" offered');
+await mv.getByRole('button', { name: /^Flight 1/ }).click();
+ok((await names(0)) === 'Sascha,Chris,Erik' && (await names(1)) === 'Cedric', `tap: Erik into flight 1 (${await names(0)} | ${await names(1)})`);
+await fl(0).locator('.tour-flight-player strong', { hasText: /^Erik$/ }).click();
+await H.getByRole('dialog', { name: 'Erik verschieben' }).getByRole('button', { name: /^Flight 2/ }).click();
+ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'tap: and back into flight 2');
 // special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional"): Nearest to the Pin on a par 3
 await H.getByRole('button', { name: '+ Long Drive' }).click();
 await H.getByRole('button', { name: '+ Nearest to the Pin' }).click();
@@ -332,7 +349,7 @@ const ev = code && shared.get(code).game;
 ok(!!ev && ev.planned === true && ev.tournament === true && ev.name === 'USA Tag 1' && ev.date === new Date().toLocaleDateString('sv-SE') && ev.course?.name, `server: the planned tournament (${code}, ${ev?.date}, ${ev?.course?.name})`);
 const fs1 = code ? flightsOf(code) : [];
 const byTime = [...fs1].sort((x, y) => x.teeTime.localeCompare(y.teeTime));
-ok(byTime[1]?.scorer === byTime[1]?.players.find((p) => p.name === 'Cedric')?.id && !byTime[0]?.scorer, `server: flight 2 with Cedric as scorer, flight 1 without (${byTime.map((f) => f.scorer ?? '–').join(', ')})`);
+ok(byTime[1]?.scorer === byTime[1]?.players.find((p) => p.name === 'Cedric')?.id && byTime[0]?.scorer === byTime[0]?.players[0]?.id, `server: one per flight – Cedric in flight 2, flight 1 its first (${byTime.map((f) => f.scorer ?? '–').join(', ')})`);
 ok(fs1.length === 2 && byTime[0].teeTime === '12:08' && byTime[1].teeTime === '12:16', `server: a row per flight with its tee time (${fs1.map((f) => f.teeTime).join(', ')})`);
 const specials = ev?.specials ?? [];
 const ld = specials.find((s) => s.kind === 'longDrive');
