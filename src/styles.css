@@ -2125,4 +2125,5 @@ button.tile:disabled { opacity: 1; }
 .sc-empty { background: var(--brand); color: #fff; border-color: transparent; }
 /* the series' total: its head a line of its own above the standing */
 .tour-total { display: flex; flex-direction: column; gap: 8px; }
+.tour-flight-done { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
 .friends-group { margin-top: 10px; }

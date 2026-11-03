@@ -452,6 +452,21 @@ await H.waitForTimeout(1500);
 const ld2 = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/Erik.*280 m/.test(ld2[0] ?? '') && shared.get(byTime[1].code).game.flight.specials[ld.id].p1.by === 'host', `the host's correction: Erik 280 m in the fairway leads (${ld2.join(' | ')})`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-page.png', fullPage: true });
+// a flight ended by mistake (Sascha 03.11.2026: "Cedric ended the round by accident – then he did not get in any more"):
+// the host opens it again, its scores kept
+shared.get(byTime[1].code).game.flight.finishedAt = new Date().toISOString();
+await H.getByRole('button', { name: 'Turniere' }).first().click();
+await H.waitForTimeout(600);
+await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
+await H.waitForTimeout(2500);
+{
+  const f2 = H.locator('section.tour-flight[aria-label="Flight 2"]');
+  ok((await f2.getByText('Beendet', { exact: true }).count()) === 1 && (await H.locator('section.tour-flight[aria-label="Flight 1"]').getByText('Beendet', { exact: true }).count()) === 0, 'a flight ended: "Beendet" at it, the host may open it again');
+  await f2.getByRole('button', { name: 'Flight wieder öffnen' }).click();
+  await H.waitForTimeout(1500);
+  const fl2 = shared.get(byTime[1].code).game.flight;
+  ok(fl2.finishedAt == null && fl2.scores.p1.filter(Boolean).length === 3 && (await f2.getByText('Beendet', { exact: true }).count()) === 0, `flight 2 open again, its scores kept (${fl2.finishedAt})`);
+}
 
 // ---------- Chris: in by the code – sees it, cannot change it ----------
 shared.get(code).members.push('u-Chris'); // joined with the link in Rounds (golfos_join_game: a planned one at once)

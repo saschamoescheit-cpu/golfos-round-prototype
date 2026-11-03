@@ -9,7 +9,7 @@ import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib
 import { fetchShared } from '../lib/sharedratings';
 import { isLady, loadProfile, shownName } from '../lib/profile';
 import { type Scoring } from '../lib/games';
-import { CLASS_NAMES, eventStandings, markerOf, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, eventStandings, markerOf, plannedEvent, plannedFlight, refreshEvent, reopenFlight, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
 import { addToSeries, changeTour, createSeries, createTour, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
@@ -1866,6 +1866,25 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
               </div>
             );
           })}
+          {/* ended by mistake (Sascha 03.11.2026: Cedric could not get in again): the host opens it again, the scores kept */}
+          {live?.flights[f.id]?.finishedAt && (
+            <div className="tour-flight-done">
+              <span className="muted small">{tr('Finished', 'Beendet')}</span>
+              {host && (
+                <button
+                  type="button"
+                  className="link-btn small"
+                  onClick={async () => {
+                    const r = await reopenFlight(props.code, f.id);
+                    if (r) setLive(r);
+                    setMsg(r ? null : NO_NET());
+                  }}
+                >
+                  {tr('Open the flight again', 'Flight wieder öffnen')}
+                </button>
+              )}
+            </div>
+          )}
         </section>
       ))}
       {host && <TourInvite code={props.code} name={ev.name} date={ev.date} />}

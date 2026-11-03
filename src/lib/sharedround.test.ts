@@ -495,4 +495,10 @@ describe('an expired tournament goes from the start page (Sascha 02.11.2026)', (
     expect(tournamentOver(plan(), 'Sascha', at('15:59'))).toBe(false);
     expect(tournamentOver(plan(), 'Sascha', at('08:00', 7))).toBe(true);
   });
+  it('set up after its tee time (03.11.2026: "Durchfall Open" at four, 09:00 left): the six hours from then', () => {
+    const ev = { ...plan(), createdAt: at('15:50').toISOString() };
+    expect(tournamentOver(ev, 'Sascha', at('16:01'))).toBe(false);
+    expect(tournamentOver(ev, 'Sascha', at('21:40'))).toBe(false);
+    expect(tournamentOver(ev, 'Sascha', at('21:51'))).toBe(true);
+  });
 });

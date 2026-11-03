@@ -993,6 +993,12 @@ export function setSpecial(code: string, fid: string, sid: string, pid: string, 
   });
 }
 
+/** A flight ended by mistake opened again by the host (Sascha 03.11.2026: "Cedric ended the round by accident – then he
+ *  did not get in any more"): finished no more, its scores kept – its players take part again. The event, or null. */
+export function reopenFlight(code: string, fid: string): Promise<RoundEvent | null> {
+  return changeFlight(code, fid, true, (f) => (f?.finishedAt ? { ...f, finishedAt: null } : null));
+}
+
 /** The flights that play – a flight the host took out of the plan keeps its row, empty (updatePlannedEvent). */
 export const liveFlights = (ev: RoundEvent): Flight[] => Object.values(ev.flights).filter((f) => f.players.length > 0);
 
@@ -1021,7 +1027,10 @@ export function tournamentOver(ev: RoundEvent, name: string, now = new Date()): 
     const [h, m] = last.split(':').map(Number);
     const tee = new Date(now);
     tee.setHours(h, m, 0, 0);
-    if (now.getTime() - tee.getTime() > 6 * 3600 * 1000) return true;
+    // set up after its tee time (Sascha 03.11.2026: "planned for today at four, 09:00 left as it was – Cedric could take
+    // part, I could not"): the six hours from when it was set up
+    const from = Math.max(tee.getTime(), new Date(ev.createdAt).getTime() || 0);
+    if (now.getTime() - from > 6 * 3600 * 1000) return true;
   }
   return false;
 }
