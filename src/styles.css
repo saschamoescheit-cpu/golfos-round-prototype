@@ -1957,6 +1957,8 @@ button.tile:disabled { opacity: 1; }
 .btn-danger-fill { background: var(--bad); color: #fff; }
 /* the library of a person: tick a bet, its number beside it */
 .lib-group { display: flex; flex-direction: column; gap: 6px; }
+/* the library's categories set apart (Sascha 03.11.2026: "more room between the categories") */
+.lib-group + .lib-group { margin-top: 18px; }
 .lib-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .lib-from { font-size: 15px; }
 .lib-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 12px; padding: 8px 10px; }
@@ -2046,6 +2048,20 @@ button.tile:disabled { opacity: 1; }
 .score-notice { margin: 0 0 10px; }
 
 /* the shared settings (components/Settings.tsx, 02.11.2026): a day as a row – the native date picker over it */
+/* the date and time sheets in the look of GolfOS (03.11.2026) – a month to tap, hours and minutes in two columns */
+.date-month { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.date-month strong { font: 700 17px var(--display); text-transform: capitalize; }
+.date-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.date-weekday { text-align: center; padding: 4px 0; text-transform: capitalize; }
+.date-day { aspect-ratio: 1; min-height: 40px; border-radius: 50%; border: 0; background: none; color: var(--text); font: 600 16px var(--body); cursor: pointer; }
+.date-day.today { box-shadow: inset 0 0 0 1.5px var(--brand); }
+.date-day.on { background: var(--brand); color: #fff; box-shadow: none; }
+.date-day:disabled { opacity: 0.3; cursor: default; }
+.time-shown { align-self: center; font: 700 40px var(--display); letter-spacing: 0.04em; }
+.time-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.time-col { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; padding: 4px; background: var(--surface-2); border-radius: 14px; overscroll-behavior: contain; }
+.time-cell { min-height: 44px; border: 0; border-radius: 10px; background: none; color: var(--text); font: 600 18px var(--body); cursor: pointer; flex: none; }
+.time-cell.on { background: var(--brand); color: #fff; }
 .date-row { position: relative; }
 .date-row-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
 
@@ -2064,3 +2080,6 @@ button.tile:disabled { opacity: 1; }
 .paid-undo { width: 34px; height: 34px; font-size: 16px; }
 .paid-state { display: block; }
 .friend-code .qr-box { width: min(200px, 56vw); }
+
+/* the flight board: a wrapper only for its touch listener (03.11.2026) – the flights stay in the page's column */
+.tour-board { display: contents; }

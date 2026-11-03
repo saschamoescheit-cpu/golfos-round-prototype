@@ -168,7 +168,8 @@ ok(/^[A-Z0-9]{6}$/.test(code ?? '') && shared.get(code).game.kind === 'wager-poo
 // the score −5
 await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
 const lib = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
-ok((await lib.getByRole('group', { name: 'Auswählen aus' }).count()) === 0, 'library: no "set up before" while there are no bets yet');
+// three tabs, no player to switch to (Sascha 03.11.2026): "Bibliothek · Eigene Wetten" – "Schon angelegt" once there are bets
+ok(JSON.stringify(await lib.getByRole('group', { name: 'Auswählen aus' }).getByRole('button').allInnerTexts()) === '["Bibliothek","Eigene Wetten"]' && (await lib.getByRole('group', { name: 'Wessen Wetten' }).count()) === 0, 'library: "Bibliothek · Eigene Wetten", no player tabs, no "set up before" yet');
 ok((await lib.locator('.lib-row').count()) >= 20, `library: ${await lib.locator('.lib-row').count()} bets to pick from`);
 for (const name of [/^Birdies in Folge/, /^Pars in Folge/, /^Birdies Birdie oder besser/, /^Grüns getroffen/, /^Brutto zu Par/]) await lib.getByRole('button', { name }).click();
 const minus = lib.getByRole('group', { name: 'Brutto zu Par' }).getByRole('button', { name: /minus eins/ });
@@ -382,18 +383,21 @@ ok(cp?.pending === -2 && cp.done === false, `one phone for all: the host's phone
 // an own bet, built (Sascha 02.11.2026: "own bets configured so that the app judges them – in the library again and again")
 await H.getByRole('button', { name: 'Wetten für Sascha hinzufügen' }).click();
 const libO = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
+ok(JSON.stringify(await libO.getByRole('group', { name: 'Auswählen aus' }).getByRole('button').allInnerTexts()) === '["Bibliothek","Eigene Wetten","Schon angelegt"]', 'library: "Eigene Wetten" between "Bibliothek" and "Schon angelegt"');
+await libO.getByRole('group', { name: 'Auswählen aus' }).getByRole('button', { name: 'Eigene Wetten' }).click();
 await libO.getByRole('button', { name: '+ Eigene Wette bauen', exact: true }).click();
 const build = H.getByRole('dialog', { name: 'Eigene Wette bauen' });
 await choose('Wo', 'Par 3s', build); if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-build.png' });
 ok((await build.locator('.custom-preview').innerText()) === 'Mindestens 2 Birdies auf den Par 3s' && (await build.getByText('Die Schläge inkl. Strafschläge genügen.').isVisible()), 'own bet: built in words – no details needed');
-await build.getByRole('button', { name: 'In „Meine Wetten“ speichern' }).click();
-ok((await libO.locator('.lib-row.on').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: in "Meine Wetten", ticked');
+await build.getByRole('button', { name: 'In „Eigene Wetten“ speichern' }).click();
+ok((await libO.locator('.lib-row.on').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: in "Eigene Wetten", ticked');
 await libO.getByRole('button', { name: '1 Wette für Sascha anlegen' }).click();
 await H.waitForTimeout(1500);
 const ownBet = shared.get(code).game.wagers.find((w) => w.kind === 'custom');
 ok(!!ownBet && ownBet.metric === 'birdie' && ownBet.where === 'par3' && ownBet.target === 2 && ownBet.text === 'Mindestens 2 Birdies auf den Par 3s', `own bet on the server, with its words for the push (${JSON.stringify(ownBet ?? null).slice(0, 160)})`);
 await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
-ok((await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).locator('.lib-row').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: offered again under "Meine Wetten"');
+await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('group', { name: 'Auswählen aus' }).getByRole('button', { name: 'Eigene Wetten' }).click();
+ok((await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).locator('.lib-row').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: offered again under "Eigene Wetten"');
 await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', { name: 'Schließen' }).click();
 
 // paid and received (Sascha 03.11.2026: "everyone sees whether he paid his debts or received them")

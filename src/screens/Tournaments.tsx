@@ -15,7 +15,7 @@ import { dayOf } from '../lib/wagers';
 import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
-import { TopBar } from '../components/ui';
+import { Stepper, TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
@@ -393,8 +393,80 @@ const SCORINGS = (): { v: Scoring; name: string; text: string }[] => [
 ];
 /** On the tournament's page: gross, net (the full handicap) or Stableford – no percentage (Sascha 02.11.2026). */
 const tourScoring = (s: Scoring) => (s === 'stableford' ? 'Stableford' : s === 'net' ? tr('Stroke play net', 'Zählspiel netto') : tr('Stroke play gross', 'Zählspiel brutto'));
-// the number of classes first (Sascha 02.11.2026: "rather three net classes than two" – the three were there, not seen)
-const classesName = (c: number[]) => (!c.length ? tr('None', 'Keine') : c.length === 1 ? tr(`2 classes · A up to ${c[0]} · B`, `2 Klassen · A bis ${c[0]} · B`) : tr(`3 classes · A up to ${c[0]} · B up to ${c[1]} · C`, `3 Klassen · A bis ${c[0]} · B bis ${c[1]} · C`));
+// the number of classes first (Sascha 02.11.2026: "rather three net classes than two" – the three were there, not seen);
+// the last class up to 54 (Sascha 03.11.2026: "C up to 54") – the limits kept are the ones before it, as ever
+const CLASS_TOP = 54;
+const LETTERS = 'ABCD';
+const classLimits = (c: number[]) => [...c.map((x, i) => `${LETTERS[i]} ${tr('up to', 'bis')} ${x}`), `${LETTERS[c.length]} ${tr('up to', 'bis')} ${CLASS_TOP}`].join(' · ');
+const classesName = (c: number[]) => (!c.length ? tr('None', 'Keine') : `${tr(`${c.length + 1} classes`, `${c.length + 1} Klassen`)} · ${classLimits(c)}`);
+const CLASS_PRESETS: number[][] = [[], [18], [12, 24]];
+const isPreset = (c: number[]) => CLASS_PRESETS.some((p) => p.join() === c.join());
+
+/** "Netto-Klassen" (Sascha 03.11.2026): none, 2 or 3 – or "Eigene": two to four classes, each its limit, the last up to
+ *  54. The limits rise from class to class. */
+function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; onClose: () => void }) {
+  const [own, setOwn] = useState<number[] | null>(props.value.length && !isPreset(props.value) ? props.value : null);
+  const count = (n: number) => {
+    // two to four classes: n − 1 limits, spread evenly below 54 where there were none
+    const k = Math.max(1, Math.min(3, n - 1));
+    const step = Math.round(CLASS_TOP / (k + 1));
+    setOwn(Array.from({ length: k }, (_, i) => own?.[i] ?? step * (i + 1)));
+  };
+  const setLimit = (i: number, v: number) => {
+    if (!own) return;
+    const lo = i ? own[i - 1] + 1 : 0;
+    const hi = i < own.length - 1 ? own[i + 1] - 1 : CLASS_TOP - 1;
+    setOwn(own.map((x, j) => (j === i ? Math.max(lo, Math.min(hi, v)) : x)));
+  };
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet" role="dialog" aria-label={tr('Net classes', 'Netto-Klassen')} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr('Net classes', 'Netto-Klassen')}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="pick-list">
+          {CLASS_PRESETS.map((c) => (
+            <button key={c.join()} type="button" className="pick-option" aria-pressed={!own && props.value.join() === c.join()} onClick={() => props.onPick(c)}>
+              <span className="grow">
+                <strong>{classesName(c)}</strong>
+                <span className="muted small">{!c.length ? tr('One ranking for all.', 'Eine Wertung für alle.') : tr('A ranking per class, by playing handicap.', 'Eine Wertung je Klasse, nach Spielvorgabe.')}</span>
+              </span>
+              {!own && props.value.join() === c.join() && <span className="pick-check" aria-hidden="true">✓</span>}
+            </button>
+          ))}
+          <button type="button" className="pick-option" aria-pressed={!!own} onClick={() => !own && setOwn(props.value.length && !isPreset(props.value) ? props.value : [9, 18, 26])}>
+            <span className="grow">
+              <strong>{tr('Own', 'Eigene')}</strong>
+              <span className="muted small">{own ? classLimits(own) : tr('Two to four classes, each with its limit.', 'Zwei bis vier Klassen, jede mit ihrer Grenze.')}</span>
+            </span>
+            {own && <span className="pick-check" aria-hidden="true">✓</span>}
+          </button>
+        </div>
+        {own && (
+          <div className="class-own">
+            <div className="field">
+              <span className="field-label">{tr('Classes', 'Klassen')}</span>
+              <Stepper label={tr('Number of classes', 'Anzahl Klassen')} value={own.length + 1} min={2} onChange={(n) => count(Math.min(4, n))} />
+            </div>
+            {own.map((x, i) => (
+              <div className="field" key={i}>
+                <span className="field-label">{tr(`${LETTERS[i]} up to playing handicap`, `${LETTERS[i]} bis Spielvorgabe`)}</span>
+                <Stepper label={tr(`Class ${LETTERS[i]} up to`, `Klasse ${LETTERS[i]} bis`)} value={x} min={i ? own[i - 1] + 1 : 0} onChange={(v) => setLimit(i, v)} />
+              </div>
+            ))}
+            <span className="muted small">{tr(`${LETTERS[own.length]} up to ${CLASS_TOP}.`, `${LETTERS[own.length]} bis ${CLASS_TOP}.`)}</span>
+            <button type="button" className="btn-primary" onClick={() => props.onPick(own)}>
+              {tr('Use', 'Übernehmen')}
+            </button>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
 
 export function dealFlights<T extends { flight: number | null }>(players: T[], k: number): T[] {
   const sizes = Array.from({ length: k }, (_, i) => Math.floor(players.length / k) + (i < players.length % k ? 1 : 0));
@@ -652,13 +724,25 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           {d.scoring !== 'stroke' && (
             <button type="button" className="settings-row" onClick={() => setPick('classes')}>
               <span>{tr('Net classes', 'Netto-Klassen')}</span>
-              <span className="settings-value">{classesName(d.classes)}</span>
+              <span className="settings-value">{d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')}</span>
               <span aria-hidden="true">›</span>
             </button>
           )}
         </div>
+        {/* the limits under the list – the row stays one line (four classes are long) */}
+        {d.scoring !== 'stroke' && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
       </section>
-      {pick && (
+      {pick === 'classes' && (
+        <ClassesSheet
+          value={d.classes}
+          onPick={(c) => {
+            set({ classes: c });
+            setPick(null);
+          }}
+          onClose={() => setPick(null)}
+        />
+      )}
+      {pick === 'scoring' && (
         <div className="sheet-backdrop" onClick={() => setPick(null)}>
           <section className="sheet" role="dialog" aria-label={pick === 'scoring' ? tr('Choose the scoring', 'Wertung wählen') : tr('Net classes', 'Netto-Klassen')} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
@@ -676,16 +760,6 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
                       <span className="muted small">{x.text}</span>
                     </span>
                     {d.scoring === x.v && <span className="pick-check" aria-hidden="true">✓</span>}
-                  </button>
-                ))}
-              {pick === 'classes' &&
-                ([[], [18], [12, 24]] as number[][]).map((c) => (
-                  <button key={c.join()} type="button" className="pick-option" aria-pressed={d.classes.join() === c.join()} onClick={() => { set({ classes: c }); setPick(null); }}>
-                    <span className="grow">
-                      <strong>{classesName(c)}</strong>
-                      <span className="muted small">{!c.length ? tr('One ranking for all.', 'Eine Wertung für alle.') : tr('A ranking per class, by playing handicap.', 'Eine Wertung je Klasse, nach Spielvorgabe.')}</span>
-                    </span>
-                    {d.classes.join() === c.join() && <span className="pick-check" aria-hidden="true">✓</span>}
                   </button>
                 ))}
             </div>
@@ -928,11 +1002,91 @@ function FlightBoard(props: {
   const onMove = useRef(props.onMove);
   onMove.current = props.onMove;
   useEffect(() => () => follow.current?.(), []);
+  // The finger on the iPhone by its own touch events, as the shots in the round's review (Sascha 03.11.2026: "in the
+  // review it works well – here not"): Safari gives up a pointer (pointercancel) the moment it thinks of scrolling, so
+  // the pointer events above are for the mouse and the pen only. The grip or a chip takes the player at once and keeps
+  // the page still; a row is lifted after a moment held still, a move before that scrolls as ever.
+  const board = useRef<HTMLDivElement>(null);
+  const touchLift = (id: string, x: number, y: number) => {
+    put({ id, x0: x, y0: y, x, y, moved: false, armed: true, over: null });
+    navigator.vibrate?.(15);
+    let last = { x, y };
+    const move = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+      const t = e.touches[0];
+      const d = live.current;
+      if (!t || !d || d.id !== id) return;
+      last = { x: t.clientX, y: t.clientY };
+      const moved = d.moved || Math.hypot(t.clientX - d.x0, t.clientY - d.y0) > 6;
+      put({ ...d, x: t.clientX, y: t.clientY, moved, over: moved ? flightAt(t.clientX, t.clientY) : null });
+    };
+    // the iPhone may end a touch twice (touchend and touchcancel): the drop counts once
+    let ended = false;
+    const up = () => {
+      if (ended) return;
+      ended = true;
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
+      window.removeEventListener('touchcancel', up);
+      const d = live.current;
+      if (d && d.id === id && d.moved) {
+        const over = flightAt(last.x, last.y);
+        if (fits(over, id)) onMove.current(id, over === -1 ? null : over);
+      }
+      put(null);
+    };
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up);
+    window.addEventListener('touchcancel', up);
+  };
+  const touchLiftRef = useRef(touchLift);
+  touchLiftRef.current = touchLift;
+  useEffect(() => {
+    const el = board.current;
+    if (!el) return;
+    const start = (ev: TouchEvent) => {
+      const t = ev.target as HTMLElement;
+      const at = t.closest('[data-drag-id]') as HTMLElement | null;
+      const t0 = ev.touches[0];
+      if (!at || !t0 || t.closest('button, input')) return;
+      const id = at.dataset.dragId!;
+      if (at.dataset.dragHold == null) {
+        // the grip, a chip: at once
+        ev.preventDefault();
+        touchLiftRef.current(id, t0.clientX, t0.clientY);
+        return;
+      }
+      let x = t0.clientX;
+      let y = t0.clientY;
+      const follow = (e: TouchEvent) => {
+        const f = e.touches[0];
+        if (!f) return;
+        x = f.clientX;
+        y = f.clientY;
+        if (Math.hypot(f.clientX - t0.clientX, f.clientY - t0.clientY) > 8) cancel(); // moved first: a scroll
+      };
+      const cancel = () => {
+        window.clearTimeout(timer);
+        window.removeEventListener('touchmove', follow);
+        window.removeEventListener('touchend', cancel);
+        window.removeEventListener('touchcancel', cancel);
+      };
+      const timer = window.setTimeout(() => {
+        cancel();
+        touchLiftRef.current(id, x, y);
+      }, 400);
+      window.addEventListener('touchmove', follow, { passive: true });
+      window.addEventListener('touchend', cancel);
+      window.addEventListener('touchcancel', cancel);
+    };
+    el.addEventListener('touchstart', start, { passive: false });
+    return () => el.removeEventListener('touchstart', start);
+  }, []);
   // `hold`: the whole row – lifted after a moment's hold, a move before that scrolls the page as ever; else (the grip, a
   // chip) lifted at once
   const grab = (p: TourPlayer, hold = false) => ({
     onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || e.pointerType === 'touch') return; // a finger: by its touch events, above
       if (hold && (e.target as HTMLElement).closest('.tour-grip, button, input')) return;
       // no text selection, no native drag of the row (the mouse held still lost the moves); a touch still scrolls
       e.preventDefault();
@@ -952,6 +1106,7 @@ function FlightBoard(props: {
     },
     // before the hold: a move is a scroll, the hold given up
     onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
+      if (e.pointerType === 'touch') return;
       const d = live.current;
       if (!hold || !d || d.id !== p.id || d.armed) return;
       if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) {
@@ -970,7 +1125,7 @@ function FlightBoard(props: {
   const dragged = drag?.armed && drag.moved ? byId(drag.id) : null;
   const target = (f: number) => !!dragged && drag?.over === f && fits(f, dragged.id);
   return (
-    <>
+    <div ref={board} className="tour-board">
       {Array.from({ length: props.flights }, (_, f) => {
         const ps = inFlight(f);
         const scorer = ps.find((p) => p.scorer);
@@ -990,13 +1145,13 @@ function FlightBoard(props: {
               const m = byId(scorer && p.id !== scorer.id ? scorer.id : (props.markers[p.id] ?? ''));
               const ph = props.playing(p);
               return (
-                <div key={p.id} className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`} {...grab(p, true)}>
+                <div key={p.id} className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} data-drag-hold="" {...grab(p, true)}>
                   <span className="grow">
                     <strong>{props.label(p)}</strong>
                     {m && <span className="muted small"> · {tr(`marked by ${props.label(m)}`, `Zähler: ${props.label(m)}`)}</span>}
                   </span>
                   <span className="muted small">{ph == null ? '' : tr(`PH ${ph}`, `SV ${ph}`)}</span>
-                  <span className="tour-grip" aria-hidden="true" title={tr('Drag to another flight', 'Auf einen anderen Flight ziehen')} {...grab(p)}>
+                  <span className="tour-grip" data-drag-id={p.id} aria-hidden="true" title={tr('Drag to another flight', 'Auf einen anderen Flight ziehen')} {...grab(p)}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <circle cx="9" cy="6" r="1.6" />
                       <circle cx="15" cy="6" r="1.6" />
@@ -1026,7 +1181,7 @@ function FlightBoard(props: {
           {unplaced.length > 0 ? (
             <div className="tour-chips">
               {unplaced.map((p) => (
-                <span key={p.id} className={`tour-chip${dragged?.id === p.id ? ' lifted' : ''}`} {...grab(p)}>
+                <span key={p.id} className={`tour-chip${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} {...grab(p)}>
                   {props.label(p)}
                 </span>
               ))}
@@ -1068,7 +1223,7 @@ function FlightBoard(props: {
           onClose={() => setOpen(null)}
         />
       )}
-    </>
+    </div>
   );
 }
 

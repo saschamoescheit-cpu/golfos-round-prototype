@@ -138,6 +138,26 @@ await H.waitForTimeout(2000);
 await H.locator('button.list-item').first().click();
 await H.locator('#tour-name').waitFor({ timeout: 30000 });
 ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the course: the name kept');
+// net classes (Sascha 03.11.2026): the last class up to 54, and "Eigene" – two to four classes with their limits
+{
+  await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
+  await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Netto/ }).click();
+  const row = H.locator('.settings-row').filter({ hasText: 'Netto-Klassen' });
+  const cs = H.getByRole('dialog', { name: 'Netto-Klassen' });
+  await row.click();
+  ok((await cs.getByText('2 Klassen · A bis 18 · B bis 54').count()) === 1, 'classes: 2 – "B bis 54"');
+  await cs.getByRole('button', { name: /^3 Klassen/ }).click();
+  ok(/3 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 12 · B bis 24 · C bis 54', { exact: true }).count()) === 1, `classes: 3 – "A bis 12 · B bis 24 · C bis 54" (${(await row.innerText()).replace(/\s+/g, ' ')})`);
+  await row.click();
+  await cs.getByRole('button', { name: /^Eigene/ }).click();
+  await cs.getByRole('button', { name: 'Anzahl Klassen plus eins' }).click(); // 4 classes
+  ok((await cs.locator('.class-own .field').count()) === 4, 'classes: own – four classes, three limits to set');
+  await cs.getByRole('button', { name: 'Übernehmen' }).click();
+  ok(/4 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 9 · B bis 18 · C bis 26 · D bis 54', { exact: true }).count()) === 1, `classes: own taken – ${await row.innerText()}`);
+  // back to brutto for the rest of the test
+  await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
+  await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Brutto/ }).click();
+}
 for (const n of ['Chris', 'Erik', 'Cedric']) {
   await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
   await H.locator('input[id^="name-"]').last().fill(n);
@@ -244,6 +264,47 @@ await holdTo('Erik', fl(0), 500);
 ok((await names(0)) === 'Sascha,Chris,Erik' && (await names(1)) === 'Cedric', `the row held a moment: Erik lifted and dropped on flight 1 (${await names(0)} | ${await names(1)})`);
 await holdTo('Erik', fl(1), 500);
 ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'and held back onto flight 2');
+// the finger (Sascha 03.11.2026: "still does not work on the iPhone – in the round's review it does"): real touch
+// events, as the iPhone sends them (this WebKit has no touch input to drive – dispatched on the element under the
+// finger, as Safari does) – the grip at once, the row after a hold, a move first only scrolls
+const touch = (type, x, y) =>
+  H.evaluate(
+    ([type, x, y]) => {
+      const el = document.elementFromPoint(x, y) ?? document.body;
+      const ev = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(ev, 'touches', { value: type === 'touchend' ? [] : [{ identifier: 1, clientX: x, clientY: y, target: el }] });
+      // Safari sends a touch's moves and its end to the element it began on
+      (type === 'touchstart' ? el : (window.__touchEl ?? el)).dispatchEvent(ev);
+      if (type === 'touchstart') window.__touchEl = el;
+    },
+    [type, x, y],
+  );
+const touchTo = async (who, target, { grip = false, wait = 0 } = {}) => {
+  const row = H.locator('.tour-flight-player').filter({ has: H.locator('strong', { hasText: new RegExp(`^${who}$`) }) });
+  const el = grip ? row.locator('.tour-grip') : row.locator('strong');
+  await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  await H.waitForTimeout(200);
+  const a = await el.boundingBox();
+  const x0 = a.x + (grip ? a.width / 2 : 10);
+  const y0 = a.y + a.height / 2;
+  await touch('touchstart', x0, y0);
+  await H.waitForTimeout(wait);
+  const b = await target.boundingBox();
+  const x1 = b.x + 60;
+  const y1 = b.y + 30;
+  for (let i = 1; i <= 12; i++) {
+    await touch('touchmove', x0 + ((x1 - x0) * i) / 12, y0 + ((y1 - y0) * i) / 12);
+    await H.waitForTimeout(16);
+  }
+  await touch('touchend', x1, y1);
+  await H.waitForTimeout(300);
+};
+await touchTo('Chris', fl(1), { grip: true });
+ok((await names(0)) === 'Sascha' && (await names(1)) === 'Chris,Erik,Cedric', `finger: Chris by his grip onto flight 2 (${await names(0)} | ${await names(1)})`);
+await touchTo('Chris', fl(0), { wait: 600 });
+ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', `finger: Chris's row held, back onto flight 1 (${await names(0)} | ${await names(1)})`);
+await touchTo('Erik', fl(0));
+ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'finger: the row moved at once – a scroll, nobody moved');
 // special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional"): Nearest to the Pin on a par 3
 await H.getByRole('button', { name: '+ Long Drive' }).click();
 await H.getByRole('button', { name: '+ Nearest to the Pin' }).click();
