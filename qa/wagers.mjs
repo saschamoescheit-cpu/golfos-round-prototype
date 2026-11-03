@@ -8,6 +8,7 @@
 // Usage: node qa/wagers.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 // a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
 const pickSetting = async (page, label, option) => {
   await page.locator('.settings-row').filter({ hasText: label }).first().click();
@@ -125,8 +126,9 @@ await H.getByRole('button', { name: 'Neues Spiel' }).click();
 await H.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await H.locator('.pick-option').filter({ has: H.locator('strong', { hasText: /^Skins$/ }) }).click();
 await H.waitForTimeout(600);
-ok(/Euro \(€\)/.test(await H.locator('.settings-row').filter({ hasText: 'Währung' }).innerText()) && /1 €/.test(await H.locator('.settings-row').filter({ hasText: 'Einsatz' }).first().innerText()), 'new game: euro by default, stakes in €');
-await pickSetting(H, 'Währung', 'Dollar ($)');
+// "Worum wird gespielt" instead of the currency (03.11.2026): to choose – money, then euro or dollar
+ok(/Bitte wählen/.test(await H.locator('.settings-row').filter({ hasText: 'Worum wird gespielt' }).innerText()), 'new game: "Worum wird gespielt" to choose, no default');
+await pickPrize(H, 'Geld', 'Dollar ($)');
 ok(/1 \$/.test(await H.locator('.settings-row').filter({ hasText: 'Einsatz' }).first().innerText()), 'new game: dollar chosen – the stakes in $');
 await H.getByRole('button', { name: 'Zurück', exact: true }).click();
 await H.waitForTimeout(500);

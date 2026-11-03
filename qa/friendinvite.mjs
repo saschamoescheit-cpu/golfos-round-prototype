@@ -67,7 +67,7 @@ async function run(o) {
   await H.waitForTimeout(800);
   ok(shared.get(code)?.members.includes('Cedric') && !!shared.get(code)?.requests.Cedric?.invited, 'server: Cedric let in, marked invited');
   if (!o.oldPush) ok(pushes.some((x) => x.action === 'invite' && x.friend === 'Cedric' && x.code === code), 'push: the invitation to Cedric (by his account)');
-  else ok(/öffnet er GolfOS/.test(await friends.innerText()), 'the function from before: let in by the host\'s phone – "öffnet er GolfOS, ist die Anfrage da"');
+  else ok(/Push-Funktion auf dem Server ist nicht aktuell/.test(await friends.innerText()), 'the function from before: let in by the host\'s phone – "öffnet er GolfOS, ist die Anfrage da"');
 
   // Cedric's app, open: asked straight away
   await C.reload();

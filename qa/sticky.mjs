@@ -44,7 +44,7 @@ const inView = async (name, where) => {
   ok(r && r.y >= 0 && r.y + r.height <= vh, `${where}: reachable at the end`);
   if (shots) await p.screenshot({ path: `${shots}/sticky-${where}.png` });
 };
-const toModule = async (m) => { await p.evaluate((m) => { sessionStorage.setItem('golfos.module', m); sessionStorage.removeItem('golfos.screen.v1'); }, m); // a module's start page (a reload keeps a scorecard open since 03.11.2026) await p.reload(); await p.waitForTimeout(1500); };
+const toModule = async (m) => { await p.evaluate((m) => { sessionStorage.setItem('golfos.module', m); sessionStorage.removeItem('golfos.screen.v1'); }, m); /* a module's start page – a reload keeps a scorecard open since 03.11.2026 */ await p.reload(); await p.waitForTimeout(1500); };
 await toModule('rounds');
 await p.getByRole('button', { name: 'Neue Runde' }).click();
 await p.fill('#course-search', 'Hetzenhof');

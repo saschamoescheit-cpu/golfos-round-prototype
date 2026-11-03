@@ -113,15 +113,16 @@ const me = (): string => shownName(loadProfile()) || tr('a player', 'ein Spieler
  *  for every 'invite players' in the whole app"): let in at once, a push on his phone – and his app, open, asks him
  *  straight away. Below the InviteCard of a round, tournament, series, game or pool of bets – `code` its code. */
 export function FriendInvite(props: { code: string; /** only these – the flight's players by name (Sascha 03.11.2026: "only the linked friends I added to the flight") */ only?: string[] }) {
-  const [state, setState] = useState<Record<string, 'busy' | 'sent' | 'silent' | 'failed'>>({});
+  const [state, setState] = useState<Record<string, 'busy' | 'sent' | 'silent' | 'old' | 'failed'>>({});
   const wanted = props.only?.map((n) => n.trim().toLowerCase()).filter(Boolean);
   const friends = canLink() ? loadFriends().filter((f) => f.uid && (!wanted || wanted.includes(f.name.trim().toLowerCase()) || wanted.includes((f.fullName ?? '').trim().toLowerCase()))) : [];
   if (!friends.length) return null;
   const go = async (uid: string, name: string) => {
     setState((x) => ({ ...x, [uid]: 'busy' }));
     let r: 'sent' | 'silent' | 'old' | null = await inviteFriend(props.code, uid, name, me());
-    if (r === 'old') r = (await letInvited(props.code, uid, name, me())) ? 'silent' : null;
-    setState((x) => ({ ...x, [uid]: r === 'sent' || r === 'silent' ? r : 'failed' }));
+    // the function on the server from before: the host's phone lets him in – without a push (said so, 03.11.2026)
+    if (r === 'old') r = (await letInvited(props.code, uid, name, me())) ? 'old' : null;
+    setState((x) => ({ ...x, [uid]: r === 'sent' || r === 'silent' || r === 'old' ? r : 'failed' }));
   };
   const said = friends
     .map((f) => {
@@ -130,7 +131,10 @@ export function FriendInvite(props: { code: string; /** only these – the fligh
       return st === 'sent'
         ? tr(`${n} gets a notification – one tap and he is in.`, `${n} bekommt eine Mitteilung – mit einem Tipp ist er dabei.`)
         : st === 'silent'
-          ? tr(`${n} is invited – when he opens GolfOS, the request is there.`, `${n} ist eingeladen – öffnet er GolfOS, ist die Anfrage da.`)
+          ? // no phone of his with notifications on (Sascha 03.11.2026: "Cedric got no push") – which case it is, said
+            tr(`${n} is invited – but has no notifications on (his Profile → Notifications). When he opens GolfOS, the request is there.`, `${n} ist eingeladen – hat aber auf seinem Handy keine Mitteilungen an (bei ihm Profil → Mitteilungen). Öffnet er GolfOS, ist die Anfrage da.`)
+          : st === 'old'
+            ? tr(`${n} is invited – without a push: the push function on the server is not up to date. When he opens GolfOS, the request is there.`, `${n} ist eingeladen – ohne Push: die Push-Funktion auf dem Server ist nicht aktuell. Öffnet er GolfOS, ist die Anfrage da.`)
           : st === 'failed'
             ? tr(`${n}: no connection – try again.`, `${n}: keine Verbindung – nochmal versuchen.`)
             : null;
@@ -141,7 +145,7 @@ export function FriendInvite(props: { code: string; /** only these – the fligh
       <span className="eyebrow">{tr('Invite linked friends', 'Verknüpfte Freunde einladen')}</span>
       {friends.map((f) => {
         const st = state[f.uid!];
-        const done = st === 'sent' || st === 'silent';
+        const done = st === 'sent' || st === 'silent' || st === 'old';
         return (
           <div key={f.uid} className="invite-friend">
             <Avatar name={f.name} photo={f.photo} size={32} />
