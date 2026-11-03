@@ -1079,7 +1079,7 @@ const CUSTOM_START: Partial<Wager> = { metric: 'birdie', compare: 'min', where: 
 /** An own bet as it is kept for the library – and back. */
 const myBetOf = (w: Wager): MyBet['bet'] => ({ metric: w.metric ?? 'birdie', compare: w.compare ?? 'min', where: w.where ?? 'all', holesOf: w.where === 'holes' ? (w.holesOf ?? []) : undefined, run: !!w.run, target: w.target });
 
-/** "+ Eigene Wette bauen" in the library: built, kept in "Meine Wetten". */
+/** "+ Eigene Wette bauen" in the library: built, kept in "Eigene Wetten". */
 function CustomBetSheet(props: { onDone: (b: MyBet) => void; onClose: () => void }) {
   const [w, setW] = useState<Wager>({ id: 'x', player: '', kind: 'custom', stake: 0, payout: 'success', attempts: 'any', target: 2, ...CUSTOM_START });
   const ok = w.where !== 'holes' || !!w.holesOf?.length;
@@ -1095,7 +1095,7 @@ function CustomBetSheet(props: { onDone: (b: MyBet) => void; onClose: () => void
         <CustomFields w={w} set={(patch) => setW({ ...w, ...patch })} />
         <strong className="custom-preview">{wagerLabel(w)}</strong>
         <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onDone(keepMyBet(myBetOf(w)))}>
-          {tr('Keep in "My bets"', 'In „Meine Wetten“ speichern')}
+          {tr('Keep in "Own bets"', 'In „Eigene Wetten“ speichern')}
         </button>
       </section>
     </div>
@@ -1297,7 +1297,7 @@ export function WagerSheet(props: {
   const k = KINDS.find((x) => x.kind === w.kind)!;
   const manual = props.wager ? pool.progress[props.wager.id]?.manual : undefined;
   const ok = (w.kind !== 'free' || !!w.text?.trim()) && (w.kind !== 'custom' || w.where !== 'holes' || !!w.holesOf?.length) && (w.payout !== 'opponent' || (!!w.opponent && w.opponent !== w.player));
-  // an own bet: its words for the push (the server says them as it is), and kept in "Meine Wetten"
+  // an own bet: its words for the push (the server says them as it is), and kept in "Eigene Wetten"
   const save = () => {
     if (w.kind === 'custom') keepMyBet(myBetOf(w));
     props.onSave(w.kind === 'custom' ? { ...w, text: wagerLabel(w) } : w);
@@ -1509,18 +1509,18 @@ export function RoundBetsSheet(props: { date: string; course: { id: string; name
  *  from those as templates too"): tick the bets, set each one's number, the stake and the rest for all of them. */
 export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (ws: Wager[]) => void; onClose: () => void }) {
   const { pool } = props;
-  const [player, setPlayer] = useState(props.player);
+  const player = props.player; // the player's own library – no switching to another here (Sascha 03.11.2026)
   const [picked, setPicked] = useState<Record<string, number>>({}); // library entry → its number
   const [text, setText] = useState(''); // the free bet in words
   const [base, setBase] = useState<Wager>(() => ({ ...newWager(pool, props.player), player: props.player }));
   // a "5+5+10" set up before is no template – it is a game in Games now (Sascha 02.11.2026)
   const earlier = useMemo(() => earlierGroups(earlierBets().filter((b) => shapeOf(b.wager.kind) !== 'duel')), []);
-  const [tab, setTab] = useState<'library' | 'earlier'>('library');
+  // three tabs (Sascha 03.11.2026: "Eigene Wetten" between "Bibliothek" and "Schon angelegt")
+  const [tab, setTab] = useState<'library' | 'own' | 'earlier'>('library');
   const [taken, setTaken] = useState<Set<string>>(new Set()); // earlier bets ticked: "group|index"
   const [mine, setMine] = useState<MyBet[]>(loadMyBets); // own bets kept (Sascha 02.11.2026)
   const [building, setBuilding] = useState(false);
   const name = pool.players.find((p) => p.id === player)?.name ?? '';
-  const pickPlayer = (id: string) => setPlayer(id);
   const toggle = (id: string, start: number) => setPicked((x) => (id in x ? Object.fromEntries(Object.entries(x).filter(([k]) => k !== id)) : { ...x, [id]: start }));
   const lib = LIBRARY.filter((b) => b.id in picked);
   const ticked = earlier.flatMap((g, gi) => g.wagers.filter((_, wi) => taken.has(`${gi}|${wi}`)));
@@ -1555,35 +1555,33 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
             ✕
           </button>
         </div>
-        <Chips<string> label={tr('Whose bets', 'Wessen Wetten')} value={player} onChange={(v) => v && pickPlayer(v)} options={pool.players.map((p) => ({ value: p.id, label: p.name }))} />
         {/* bets set up before as templates – only once there are any (Sascha 01.11.2026) */}
-        {earlier.length > 0 && (
-          <Segmented<'library' | 'earlier'>
-            label={tr('Choose from', 'Auswählen aus')}
-            value={tab}
-            onChange={(v) => v && setTab(v)}
-            options={[
-              { value: 'library', label: tr('Library', 'Bibliothek') },
-              { value: 'earlier', label: tr('Set up before', 'Schon angelegt') },
-            ]}
-          />
-        )}
+        <Segmented<'library' | 'own' | 'earlier'>
+          label={tr('Choose from', 'Auswählen aus')}
+          value={tab}
+          onChange={(v) => v && setTab(v)}
+          options={[
+            { value: 'library', label: tr('Library', 'Bibliothek') },
+            { value: 'own', label: tr('Own bets', 'Eigene Wetten') },
+            ...(earlier.length > 0 ? [{ value: 'earlier' as const, label: tr('Set up before', 'Schon angelegt') }] : []),
+          ]}
+        />
         {/* the settings first, as in a setup (Sascha 03.11.2026: "not under the catalogue – as settings at the very top") */}
-        {(tab === 'library' || lib.length + myPicked.length > 0) && (
+        {(tab !== 'earlier' || lib.length + myPicked.length > 0) && (
           <div className="lib-group lib-settings">
             <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
             <PayFields pool={pool} w={{ ...base, player, kind: lib.length > 0 && lib.every((b) => b.kind === 'free') && !myPicked.length ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
             <span className="muted small">{tr('For the bets ticked below – each can be changed afterwards, tap it.', 'Für die Wetten, die du unten ankreuzt – jede lässt sich danach ändern, antippen.')}</span>
           </div>
         )}
-        {tab === 'library' && (
+        {tab === 'own' && (
           <div className="lib-group">
-            <span className="eyebrow">{tr('My bets', 'Meine Wetten')}</span>
+            <span className="eyebrow">{tr('Own bets', 'Eigene Wetten')}</span>
             {/* what is what (Sascha 02.11.2026: "where is the difference between a free bet, my bets and the library?") */}
             <span className="muted small lib-explain">
               {tr(
-                'Built by you from blocks (what counts, at least or at most, which holes) – e.g. "at least 2 birdies on the par 3s" or "no three-putt on the back nine". The app judges them and keeps them for every pool. Below: ready-made bets, judged by the app too; only the free bet in words is decided by the host.',
-                'Von dir aus Bausteinen gebaut (was zählt, mindestens oder höchstens, welche Löcher) – z. B. „Mindestens 2 Birdies auf den Par 3s“ oder „Kein Drei-Putt auf der hinteren 9“. Die App wertet sie aus und bietet sie in jedem Pool wieder an. Darunter: fertige Wetten, ebenfalls automatisch ausgewertet; nur die freie Wette in Worten entscheidet der Host.',
+                'Built by you from blocks (what counts, at least or at most, which holes) – e.g. "at least 2 birdies on the par 3s" or "no three-putt on the back nine". The app judges them and keeps them for every pool. Under "Library": ready-made bets, judged by the app too; only the free bet in words is decided by the host.',
+                'Von dir aus Bausteinen gebaut (was zählt, mindestens oder höchstens, welche Löcher) – z. B. „Mindestens 2 Birdies auf den Par 3s“ oder „Kein Drei-Putt auf der hinteren 9“. Die App wertet sie aus und bietet sie in jedem Pool wieder an. Unter „Bibliothek“: fertige Wetten, ebenfalls automatisch ausgewertet; nur die freie Wette in Worten entscheidet der Host.',
               )}
             </span>
             {mine.map((b) => {
@@ -1606,7 +1604,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
                     <button
                       type="button"
                       className="icon-btn small"
-                      aria-label={tr(`Remove "${wagerLabel(w)}" from my bets`, `„${wagerLabel(w)}“ aus Meine Wetten entfernen`)}
+                      aria-label={tr(`Remove "${wagerLabel(w)}" from own bets`, `„${wagerLabel(w)}“ aus Eigene Wetten entfernen`)}
                       onClick={() => {
                         forgetMyBet(b.id);
                         setMine(loadMyBets());

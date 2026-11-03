@@ -1955,6 +1955,8 @@ button.tile:disabled { opacity: 1; }
 .btn-danger-fill { background: var(--bad); color: #fff; }
 /* the library of a person: tick a bet, its number beside it */
 .lib-group { display: flex; flex-direction: column; gap: 6px; }
+/* the library's categories set apart (Sascha 03.11.2026: "more room between the categories") */
+.lib-group + .lib-group { margin-top: 18px; }
 .lib-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .lib-from { font-size: 15px; }
 .lib-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 12px; padding: 8px 10px; }
