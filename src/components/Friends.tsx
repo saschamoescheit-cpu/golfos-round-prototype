@@ -252,7 +252,29 @@ export function FriendAskHost() {
     window.addEventListener('golfos:friend-ask', asked);
     return () => window.removeEventListener('golfos:friend-ask', asked);
   }, []);
-  return ask ? <FriendAsk key={ask} code={ask} onSignIn={() => window.dispatchEvent(new Event('golfos:open-profile'))} /> : null;
+  // he accepted one's invitation (Sascha 03.11.2026: "as on Instagram – a notice that we are GolfOS friends now")
+  const [joined, setJoined] = useState<string[]>([]);
+  useEffect(() => {
+    const on = (e: Event) => setJoined((x) => [...x, String((e as CustomEvent<string>).detail)]);
+    window.addEventListener('golfos:friend-new', on);
+    return () => window.removeEventListener('golfos:friend-new', on);
+  }, []);
+  if (ask) return <FriendAsk key={ask} code={ask} onSignIn={() => window.dispatchEvent(new Event('golfos:open-profile'))} />;
+  if (!joined.length) return null;
+  const close = () => setJoined((x) => x.slice(1));
+  return (
+    <div className="sheet-backdrop" onClick={close}>
+      <section className="sheet" role="dialog" aria-label={tr('New friend', 'Neuer Freund')} onClick={(e) => e.stopPropagation()}>
+        <div className="friend-ask">
+          <strong>{tr(`${joined[0]} accepted your friend request`, `${joined[0]} hat deine Freundschaftsanfrage angenommen`)}</strong>
+          <p className="good-text">{tr('You are GolfOS friends now ✓ – name, handicap, home club and photo come from each other\'s profile.', 'Ihr seid jetzt GolfOS-Freunde ✓ – Name, HCP, Heimatclub und Bild kommen gegenseitig aus dem Profil.')}</p>
+          <button type="button" className="btn-primary" onClick={close}>
+            {tr('Great', 'Prima')}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 /** What is typed into "Code eingeben": digits as 123-456 while typing; a code of the 12 characters from before as it is. */

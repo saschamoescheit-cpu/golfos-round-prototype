@@ -13,7 +13,7 @@ const ok = (cond, what) => {
   console.log(`${cond ? '✓' : '✗'} ${what}`);
   if (!cond) fails++;
 };
-const { phone, cards, links } = sharedServer(b, url);
+const { phone, cards, links, pushes } = sharedServer(b, url);
 
 /** The start page's friends tab (out of the module the phone opened in). */
 async function friendsTab(p) {
@@ -59,8 +59,18 @@ await ask.getByRole('button', { name: 'Schließen' }).click();
 await C.waitForTimeout(500);
 ok(/HCP 10/.test(await row(C, 'Sascha').innerText()) && (await row(C, 'Sascha').locator(linkedMark).count()) === 1, "Chris: Sascha linked – HCP 10 from Sascha's profile, with the chain");
 
+// Sascha hears that Chris accepted (Sascha 03.11.2026: "as on Instagram – a notice that we are GolfOS friends now"): a push,
+// and his app says so once
+ok(pushes.some((x) => x.action === 'friend-accepted' && x.from === 'Chris'), 'push: Sascha is told that Chris accepted');
+await S.evaluate(() => sessionStorage.removeItem('golfos.module'));
+await S.reload();
+const told = S.getByRole('dialog', { name: 'Neuer Freund' });
+await told.waitFor({ timeout: 15000 }).catch(() => null);
+ok(/Chris hat deine Freundschaftsanfrage angenommen/.test(await told.innerText().catch(() => '')) && /GolfOS-Freunde/.test(await told.innerText().catch(() => '')), 'Sascha: "Chris hat deine Freundschaftsanfrage angenommen – ihr seid jetzt GolfOS-Freunde"');
+await told.getByRole('button', { name: 'Prima' }).click().catch(() => null);
 // Sascha: his Chris typed by hand is the linked one now – one Chris, HCP from Chris's profile
 await friendsTab(S);
+ok((await S.getByRole('dialog', { name: 'Neuer Freund' }).count()) === 0, 'told once only');
 ok((await S.locator('.friend-typed').count()) === 0 && (await row(S, 'Chris').count()) === 1 && /HCP 10/.test(await row(S, 'Chris').innerText()), 'Sascha: Chris typed by hand became the linked one (HCP 10 from his profile, not 20)');
 
 // Sascha changes his handicap in his profile: Chris sees it

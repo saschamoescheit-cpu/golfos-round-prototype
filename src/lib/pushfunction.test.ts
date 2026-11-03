@@ -265,6 +265,22 @@ describe('the push function, end to end against a copy of the database', () => {
     expect((await tim.inbox()).slice(m)[0]).toMatchObject({ title: 'Einladung zu Wetten', url: './#join=POO234' });
   });
 
+  it('a friend request accepted: the one who sent it is told once – only between friends (Sascha 03.11.2026)', async () => {
+    const tim = await phone('https://fcm.googleapis.com/fcm/send/tim-friend-ok');
+    const timId = '44444444-4444-4444-8444-444444444444';
+    await post({ action: 'subscribe', subscription: tim.subscription, lang: 'de' }, 'token-tim');
+    tables.golfos_push = (tables.golfos_push ?? []).map((s) => (s.user_id === 'u-tim' ? { ...s, user_id: timId } : s));
+    tables.golfos_friend_links = [{ user_id: 'u-max', friend_id: timId }, { user_id: timId, friend_id: 'u-max' }];
+    const n = (await tim.inbox()).length;
+    expect(await (await post({ action: 'friend-accepted', friend: timId, who: 'Max' }, 'token-max')).json()).toMatchObject({ ok: true });
+    await post({ action: 'friend-accepted', friend: timId, who: 'Max' }, 'token-max'); // again: said once
+    const heard = (await tim.inbox()).slice(n);
+    expect(heard).toEqual([expect.objectContaining({ title: 'Neuer GolfOS-Freund' })]);
+    expect(heard[0].body).toContain('Max hat deine Freundschaftsanfrage angenommen');
+    // no friends: refused
+    expect((await post({ action: 'friend-accepted', friend: timId, who: 'Sascha' }, 'token-sascha')).status).toBe(403);
+  });
+
   it('bets: a bet made – everyone in the pool hears of it once, not the phone that told; only when it is made (Sascha 01.11.2026)', async () => {
     const max = await phone('https://fcm.googleapis.com/fcm/send/max-bets');
     const tim = await phone('https://fcm.googleapis.com/fcm/send/tim-bets');
