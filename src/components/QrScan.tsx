@@ -192,15 +192,13 @@ export function QrScan(props: {
             <span className="qr-scan-frame" aria-hidden="true" />
           </div>
         )}
-        <span className="muted small">
-          {wrong
-            ? (props.wrong ?? tr('That is not a GolfOS friend code.', 'Das ist kein GolfOS-Freundes-Code.'))
-            : (props.hint ?? tr("Hold the camera over your friend's QR code (Friends → My friend code).", 'Halte die Kamera auf den QR-Code deines Freundes (Freunde → Mein Freundes-Code).'))}
-        </span>
-        {/* the phone's own camera: always works, also where the live picture does not (the iPhone app) */}
+        {/* no hint under the camera (Sascha 03.11.2026) – only when a code is not the one wanted */}
+        {wrong && <span className="small good-text">{props.wrong ?? tr('That is not a GolfOS friend code.', 'Das ist kein GolfOS-Freundes-Code.')}</span>}
+        {/* the phone's own camera: always works, also where the live picture does not (the iPhone app) – a round shutter
+            as the iPhone's camera has, green (Sascha 03.11.2026) */}
         <input ref={photo} type="file" accept="image/*" capture="environment" hidden aria-label={tr('Photo of the QR code', 'Foto vom QR-Code')} onChange={(e) => void fromPhoto(e.target.files?.[0]).finally(() => (e.target.value = ''))} />
-        <button type="button" className={problem ? 'btn-primary' : 'btn-secondary'} onClick={() => photo.current?.click()}>
-          {tr('Take a photo of the code', 'Foto vom Code aufnehmen')}
+        <button type="button" className="qr-shutter" aria-label={tr('Take a photo of the code', 'Foto vom Code aufnehmen')} title={tr('Photo', 'Foto')} onClick={() => photo.current?.click()}>
+          <span aria-hidden="true" />
         </button>
         {photoNote && <span className="small good-text">{photoNote}</span>}
       </section>
@@ -217,17 +215,21 @@ export function ScanCodeButton(props: { onCode: (code: string) => void; disabled
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="btn-secondary scan-code-btn" disabled={props.disabled} onClick={() => setOpen(true)}>
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
-          <path d="M4 12h16" />
-        </svg>
-        {tr('Scan QR code', 'QR-Code scannen')}
-      </button>
+      {/* a round icon with its word, as under Friends (Sascha 03.11.2026: "the same way as the others") */}
+      <div className="qr-actions">
+        <button type="button" className="qr-action" aria-label={tr('Scan QR code', 'QR-Code scannen')} disabled={props.disabled} onClick={() => setOpen(true)}>
+          <span className="qr-action-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+              <path d="M4 12h16" />
+            </svg>
+          </span>
+          <span className="small">{tr('Scan', 'Scannen')}</span>
+        </button>
+      </div>
       {open && (
         <QrScan
           title={tr('Scan QR code', 'QR-Code scannen')}
-          hint={tr('Hold the camera over the QR code of the round or the game (on the host\'s phone).', 'Halte die Kamera auf den QR-Code der Runde oder des Spiels (auf dem Handy des Gastgebers).')}
           wrong={tr('That is not a GolfOS code.', 'Das ist kein GolfOS-Code.')}
           onText={(text) => {
             if (/#friend=|:\/\/friend\//.test(text)) {

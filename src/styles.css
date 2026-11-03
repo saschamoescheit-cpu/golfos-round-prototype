@@ -2162,3 +2162,7 @@ button.tile:disabled { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .tour-live-badge i { animation: none; } }
 .tour-lb .lb-name { white-space: normal; display: flex; flex-direction: column; }
 .tour-lb-sub { display: block; font-weight: 400; }
+/* the scanner's photo: a round shutter as on the iPhone's camera, green (03.11.2026) */
+.qr-shutter { align-self: center; width: 72px; height: 72px; min-height: 0; padding: 0; border-radius: 50%; border: 4px solid var(--text); background: transparent; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.qr-shutter > span { width: 54px; height: 54px; border-radius: 50%; background: var(--brand); }
+.qr-shutter:active > span { transform: scale(0.92); }
