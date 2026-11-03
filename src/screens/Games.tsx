@@ -577,7 +577,17 @@ function GamesTabs(props: {
       {props.tab === 'balance' && (
         <>
           <h1 className="tab-title">{tr('Balance', 'Bilanz')}</h1>
-          <Balance games={props.games} inTab onOpenPool={props.onOpenPool} />
+          <Balance
+            games={props.games}
+            inTab
+            onOpenPool={props.onOpenPool}
+            onConfirm={(gs) => {
+              // the notice tapped (Sascha 03.11.2026): one game to confirm opens, several – "Spiele", those to confirm
+              if (gs.length === 1) return props.onOpen(gs[0]);
+              setFilter('confirm');
+              props.onTab('games');
+            }}
+          />
         </>
       )}
       {props.tab === 'profile' && props.profile}

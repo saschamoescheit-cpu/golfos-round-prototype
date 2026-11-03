@@ -42,6 +42,7 @@ const games = [
   game('g1', '2026-11-01', 'Cedric', [5, 5, 5, 5, 5, 4, 4, 4, 4], [4, 4, 4, 4, 4, 4, 4, 4, 4], 1), // Cedric 5 skins: −5 €
   game('g2', '2026-11-02', 'Cedric', [5, 5, 5, 5, 5, 5, 4, 4, 4], [4, 4, 4, 4, 4, 4, 4, 4, 4], 5), // Cedric 6 skins × 5: −30 €
   game('g3', '2026-11-03', 'Erik', [3, 3, 4, 4, 4, 4, 4, 4, 4], [4, 4, 4, 4, 4, 4, 4, 4, 4], 1), // Sascha 2 skins: +2 €
+  { ...game('g4', '2026-11-03', 'Erik', [4, 4, 4, 4, 4, 4, 4, 4, 4], [5, 4, 4, 4, 4, 4, 4, 4, 4], 1), signedAt: null }, // finished, not confirmed
 ];
 
 await p.goto(url);
@@ -93,6 +94,10 @@ await p.waitForTimeout(500);
 const g3 = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1')).find((g) => g.id === 'g3'));
 ok(g3.payments?.length === 1 && g3.payments[0].from === 'p1' && g3.payments[0].amount === 2 && !!g3.payments[0].receivedAt, 'received: Erik\'s 2 € booked out');
 ok((await owedRows.count()) === 0, 'received: "Dir geschuldet" empty');
+// the notice of a game not confirmed tapped (Sascha 03.11.2026: "nothing happens"): that game opens to confirm
+await p.locator('.balance-notice').click();
+await p.waitForTimeout(600);
+ok((await p.getByText('Ergebnis bestätigen').count()) >= 1, 'the notice tapped: the game to confirm opens');
 ok(errs.length === 0, `no page errors ${errs.join(' | ')}`);
 await b.close();
 console.log(bad ? `${bad} FAILED` : 'all passed');

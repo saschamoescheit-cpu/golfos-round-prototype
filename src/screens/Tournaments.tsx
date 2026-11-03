@@ -252,6 +252,9 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
     return ok;
   };
   const shown = filter === 'planned' ? planned : filter === 'played' ? [...played].reverse() : [...planned, ...[...played].reverse()];
+  const shownCodes = new Set(shown.map((e) => e.code));
+  const shownSeries = filter ? series.filter((s) => s.series.rounds.some((r) => shownCodes.has(r.code))) : series;
+  const shownSingle = shown.filter(single);
   return (
     <>
       <h1 className="tab-title">{tr('Tournaments', 'Turniere')}</h1>
@@ -300,47 +303,34 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
         </span>
       )}
       {/* the series and the single tournaments each a category of its own, with its icon (Sascha 03.11.2026: "at a
-          glance clearer") – a filter by the tiles shows every tournament of it in one list */}
-      {filter !== 'bin' && !filter && (series.length > 0 || groupable.length >= 2) && (
+          glance clearer") – with a tile's filter too: its series (one of their rounds in it) and its single ones
+          (Sascha 03.11.2026: "after a tile the overview did not come back") */}
+      {filter !== 'bin' && shownSeries.length > 0 && (
         <section className="tour-cat" aria-label={tr('Tournament series', 'Turnierserien')}>
           <span className="eyebrow tour-cat-head">
             {SERIES_ICON}
             {tr('Tournament series', 'Turnierserien')}
           </span>
           <ul className="list">
-            {series.map((s) => (
+            {shownSeries.map((s) => (
               <li key={s.code}>
                 <SeriesRow s={s} onOpen={() => props.onOpenSeries(s.code)} />
               </li>
             ))}
-            {/* making one a row of the list, not a button below it (Sascha 03.11.2026: "visually different") */}
-            {groupable.length >= 2 && (
-              <li>
-                <button type="button" className="list-item tour-make-series" onClick={() => setMaking(true)}>
-                  <span className="tour-make-mark">{SERIES_ADD_ICON}</span>
-                  <span className="grow">
-                    <span className="title">{tr('Make a tournament series', 'Zu einer Turnierserie zusammenfassen')}</span>
-                    <span className="muted small">{tr('Several tournaments added up – one ranking, one code', 'Mehrere Turniere addiert – eine Wertung, ein Code')}</span>
-                  </span>
-                  <span className="muted" aria-hidden="true">›</span>
-                </button>
-              </li>
-            )}
           </ul>
         </section>
       )}
       {filter !== 'bin' &&
-        (shown.length ? (
+        (shownSingle.length || (!filter && groupable.length >= 2) ? (
           <section className="tour-cat" aria-label={tr('Single tournaments', 'Einzelne Turniere')}>
-          {!filter && (series.length > 0 || groupable.length >= 2) && (
+          {(shownSeries.length > 0 || groupable.length >= 2) && (
             <span className="eyebrow tour-cat-head">
               {TOURS_ICON}
               {tr('Single tournaments', 'Einzelne Turniere')}
             </span>
           )}
           <ul className="list">
-            {shown
-              .filter((e) => filter || single(e))
+            {shownSingle
               .map((e) => (
                 <li key={e.code}>
                   {/* swiped away as a mail (Sascha 02.11.2026) – only the host deletes, marked for everyone, "Undo" or the bin brings it back */}
@@ -354,6 +344,13 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
                 </li>
               ))}
           </ul>
+          {/* "Turnierserie erstellen" below the single ones, a button over the full width (Sascha 03.11.2026: design B) */}
+          {!filter && groupable.length >= 2 && (
+            <button type="button" className="btn-secondary tour-make-series" onClick={() => setMaking(true)}>
+              {SERIES_ADD_ICON}
+              {tr('Create a tournament series', 'Turnierserie erstellen')}
+            </button>
+          )}
           </section>
         ) : (
           <>

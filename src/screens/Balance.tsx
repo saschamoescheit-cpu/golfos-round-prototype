@@ -67,7 +67,7 @@ async function settle(i: Item, as: 'paid' | 'received', him: string): Promise<bo
   return ok;
 }
 
-export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (code: string) => void }) {
+export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (code: string) => void; /** the games still to confirm, tapped */ onConfirm?: (gs: Game[]) => void }) {
   usePools(); // read again when a pool changes
   const [, setTick] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
@@ -75,7 +75,8 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   const today = dayOf(new Date());
   const pools = loadPools().filter((e) => !e.pool.deletedAt && e.me && e.pool.players.some((p) => p.id === e.me));
   const done = props.games.filter((g) => g.finishedAt && g.signedAt);
-  const unconfirmed = props.games.filter((g) => g.finishedAt && !g.signedAt).length;
+  const toSign = props.games.filter((g) => g.finishedAt && !g.signedAt);
+  const unconfirmed = toSign.length;
   const ps = people(props.games, pools, today);
   // the shared games' payments from the other phones when the balance opens (he marked it paid, or confirmed)
   useEffect(() => {
@@ -135,12 +136,15 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
     <section className="balance" aria-label={tr('Balance', 'Bilanz')}>
       {!props.inTab && <h2 className="balance-title">{tr('Balance', 'Bilanz')}</h2>}
       {unconfirmed > 0 && (
-        <p className="notice" style={{ margin: 0 }}>
-          {tr(
-            `${unconfirmed} finished ${unconfirmed === 1 ? 'game is' : 'games are'} not confirmed yet – they count once you confirm the result.`,
-            `${unconfirmed} beendete${unconfirmed === 1 ? 's Spiel ist' : ' Spiele sind'} noch nicht bestätigt – sie zählen, sobald du das Ergebnis bestätigst.`,
-          )}
-        </p>
+        <button type="button" className="notice balance-notice" onClick={() => props.onConfirm?.(toSign)} disabled={!props.onConfirm}>
+          <span className="grow">
+            {unconfirmed === 1
+              ? tr('1 finished game is not confirmed yet – it counts once you confirm it.', '1 beendetes Spiel ist noch nicht bestätigt – es zählt, sobald du es bestätigst.')
+              : tr(`${unconfirmed} finished games are not confirmed yet – they count once you confirm them.`, `${unconfirmed} beendete Spiele sind noch nicht bestätigt – sie zählen, sobald du sie bestätigst.`)}
+            <strong className="balance-notice-go">{unconfirmed === 1 ? tr('Confirm now', 'Jetzt bestätigen') : tr('Show them', 'Anzeigen')}</strong>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
       )}
       {done.length > 0 && (
         <section className="card balance-totals" aria-label={tr('Totals', 'Summen')}>

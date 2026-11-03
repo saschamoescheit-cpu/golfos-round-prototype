@@ -82,9 +82,10 @@ h2 { margin: 0; font: 600 17px var(--display); }
 .tour-cat + .tour-cat { margin-top: 10px; }
 .tour-cat-head { display: flex; align-items: center; gap: 8px; }
 .tour-cat-head svg { width: 18px; height: 18px; color: var(--brand-text); flex: none; }
-.tour-make-series { background: transparent; border: 1.5px dashed var(--line, #2a3a36); }
+.btn-secondary.tour-make-series { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 8px; } /* design B (03.11.2026) */
+.tour-make-series svg { width: 20px; height: 20px; color: var(--brand-text); flex: none; }
 .tour-make-mark { width: 44px; display: flex; justify-content: center; color: var(--brand-text); }
-.tour-make-series .title { color: var(--brand-text); white-space: normal; }
+
 
 .input {
   width: 100%; min-height: 50px; border-radius: 12px; border: 1px solid var(--line-strong);
@@ -2162,11 +2163,18 @@ button.tile:disabled { opacity: 1; }
 .tour-live-badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad, #e5484d); animation: tour-live 1.4s ease-in-out infinite; }
 @keyframes tour-live { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .tour-live-badge i { animation: none; } }
-.tour-lb .lb-name { white-space: normal; display: flex; flex-direction: column; }
+.tour-lb .lb-name { white-space: normal; display: flex; flex-direction: column; align-items: flex-start; text-align: left; } /* names left, one under the other (03.11.2026) */
 .tour-lb-sub { display: block; font-weight: 400; }
 /* the scanner's photo: a round shutter as on the iPhone's camera, green (03.11.2026) */
 .qr-shutter { align-self: center; width: 72px; height: 72px; min-height: 0; padding: 0; border-radius: 50%; border: 4px solid var(--text); background: transparent; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .qr-shutter > span { width: 54px; height: 54px; border-radius: 50%; background: var(--brand); }
 .qr-shutter:active > span { transform: scale(0.92); }
+
+/* the balance: its notice a button to the games to confirm; the tiles one line each (03.11.2026) */
+.balance-notice { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; text-align: left; font: inherit; color: var(--brand-text); font-size: 14px; cursor: pointer; margin: 0; }
+.balance-notice .grow { flex: 1; min-width: 0; }
+.balance-notice-go { display: block; margin-top: 4px; }
+.balance-totals strong { white-space: nowrap; font-size: clamp(17px, 5.4vw, 24px); }
+.balance-totals { padding-left: 10px; padding-right: 10px; }
 /* the words of a sign card take their own height in its column (03.11.2026: "Ergebnis bestätigen" had a big gap) */
 .sign-card:not(.sc-status) > .grow { flex: none; }
