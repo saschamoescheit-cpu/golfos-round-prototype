@@ -2148,10 +2148,12 @@ button.tile:disabled { opacity: 1; }
 .game-details { border-top: 1px solid var(--line); padding-top: 8px; }
 .game-details > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 4px 0; }
 .game-details ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.game-details li { display: flex; align-items: baseline; gap: 8px; font-size: 14px; }
-.game-details li .grow { flex: 1; min-width: 0; color: var(--text-2); }
-.game-details li strong { white-space: nowrap; font-weight: 600; }
-.game-details-label { flex: none; min-width: 64px; color: var(--muted, var(--text-2)); font-size: 13px; }
+.game-details ul { gap: 4px; }
+.game-details li { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); }
+.game-details-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 14.5px; }
+.game-details-label { font-weight: 600; }
+.game-details-top strong { text-align: right; font-weight: 600; }
+.game-details-text { font-size: 13px; color: var(--text-2); }
 .game-grid .game-grid-sum { font-weight: 700; background: var(--surface-2); }
 
 /* the live leaderboard of a tournament and of a series (03.11.2026) */
@@ -2174,3 +2176,5 @@ button.tile:disabled { opacity: 1; }
 .balance-notice-go { display: block; margin-top: 4px; }
 .balance-totals strong { white-space: nowrap; font-size: clamp(17px, 5.4vw, 24px); }
 .balance-totals { padding-left: 10px; padding-right: 10px; }
+/* the words of a sign card take their own height in its column (03.11.2026: "Ergebnis bestätigen" had a big gap) */
+.sign-card:not(.sc-status) > .grow { flex: none; }

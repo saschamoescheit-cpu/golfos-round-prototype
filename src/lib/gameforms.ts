@@ -565,8 +565,8 @@ export const FORMS: FormDef[] = [
         const pressed = (g.presses ?? []).filter((x) => x.hole === i).length;
         const win = d > 0 ? A : B;
         history.lines.unshift({
-          label: tr(`Hole ${h.label}`, `Loch ${h.label}`),
-          text: `${names(A)} ${na} – ${names(B)} ${nb}${pressed ? tr(` · pressed${pressed > 1 ? ` ×${pressed}` : ''}`, ` · gepresst${pressed > 1 ? ` ×${pressed}` : ''}`) : ''}`,
+          label: tr(`Hole ${h.label}`, `Loch ${h.label}`) + (pressed ? tr(` · pressed${pressed > 1 ? ` ×${pressed}` : ''}`, ` · gepresst${pressed > 1 ? ` ×${pressed}` : ''}`) : ''),
+          text: `${names(A)} ${na} – ${names(B)} ${nb}`,
           value: d === 0 ? tr('tied', 'gleich') : `${names(win)} +${dec(Math.abs(d))}${stakeAt(g, i) > 0 ? ` · ${money(Math.abs(d) * stakeAt(g, i))}` : ''}`,
         });
       });
@@ -971,7 +971,9 @@ export const FORMS: FormDef[] = [
       const money: Record<string, number> = Object.fromEntries(g.players.map((p) => [p.id, 0]));
       const lines: string[] = [];
       const details: StandingDetail[] = [];
-      const partName = (key: string) => (key === 'front' ? tr('Front 9', 'Front 9') : key === 'back' ? tr('Back 9', 'Back 9') : tr('Total', 'Gesamt'));
+      // the holes by their labels – "Loch 1–9", "Loch 1A–9B" on loops (Sascha 03.11.2026: holes, not front and back)
+      const span = (from: number, to: number) => `${g.holes[from].label}–${g.holes[to - 1].label}`;
+      const partOf = (p: { key: string; from: number; to: number }) => (p.key === 'total' ? tr('Total', 'Gesamt') : tr(`Holes ${span(p.from, p.to)}`, `Loch ${span(p.from, p.to)}`));
       for (const a of g.players)
         for (const b of g.players) {
           if (a.id >= b.id) continue;
@@ -979,7 +981,7 @@ export const FORMS: FormDef[] = [
           const said = parts.map((p) => {
             const x = sum(a.id, p.from, p.to);
             const y = sum(b.id, p.from, p.to);
-            const label = parts.length === 3 ? partName(p.key) : p.label;
+            const label = partOf(p);
             if (x == null || y == null) {
               detail.lines.push({ label, text: tr('still open', 'noch offen') });
               return `${p.label} –`;

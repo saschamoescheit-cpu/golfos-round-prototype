@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
 import type { Course, Round } from '../types';
+import { ScoreTable } from '../components/ScoreTable';
+import { emptyEntry } from '../lib/scoring';
 import { getLang, tr } from '../lib/i18n';
 import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { isLady, shownName, loadProfile } from '../lib/profile';
@@ -1480,7 +1482,8 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
       </ol>
       {hasMoney && (
         <div className="game-money">
-          {g.players.map((p) => (
+          {/* in the order of the ranking, 1 to 4 from left to right (Sascha 03.11.2026) */}
+          {st.rows.map((r) => g.players.find((p) => p.id === r.id)!).filter(Boolean).map((p) => (
             <span key={p.id} className={st.money![p.id] > 0 ? 'good-text' : st.money![p.id] < 0 ? 'bad-text' : 'muted'}>
               {p.name} {formatEuro(st.money![p.id])}
             </span>
@@ -1492,11 +1495,14 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
         <details key={d.title} className="game-details" open>
           <summary>{d.title}</summary>
           <ul>
+            {/* two lines a row (Sascha 03.11.2026: "better laid out"): what and its result, below it the scores */}
             {d.lines.map((l, k) => (
               <li key={k}>
-                <span className="game-details-label">{l.label}</span>
-                <span className="grow">{l.text}</span>
-                {l.value && <strong>{l.value}</strong>}
+                <span className="game-details-top">
+                  <span className="game-details-label">{l.label}</span>
+                  {l.value && <strong className={/^(gleich|tied)$/.test(l.value) ? 'muted' : undefined}>{l.value}</strong>}
+                </span>
+                <span className="game-details-text">{l.text}</span>
               </li>
             ))}
           </ul>
@@ -1592,63 +1598,23 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
   );
 }
 
+/** The scores as a scorecard of Rounds (Sascha 03.11.2026: "like the other scorecards in Rounds, with the legend"): the
+ *  same table – per nine its block, Out / In, the golf marks and the legend; the game's holes and scores. */
 export function ScoreGrid(props: { game: Game }) {
   const g = props.game;
-  // 18 holes: Out after the 9th, In after the 18th, then the total (Sascha 03.11.2026: 5+5+10 is played by the nines)
-  const nines = g.holes.length === 18;
-  const sumOf = (xs: (number | null)[], from: number, to: number) => xs.slice(from, to).reduce<number>((a, v) => a + (v ?? 0), 0);
-  const cells = <T,>(each: (k: number) => T, out: () => T, inn: () => T): T[] =>
-    nines ? [...Array.from({ length: 9 }, (_, k) => each(k)), out(), ...Array.from({ length: 9 }, (_, k) => each(k + 9)), inn()] : g.holes.map((_, k) => each(k));
+  const round = {
+    ...(g.round ?? {}),
+    courseId: g.round?.courseId ?? '',
+    tee: g.round?.tee ?? null,
+    holes: g.holes.map((h, i) => ({ index: i, label: h.label, loop: '', number: i + 1, par: h.par, strokeIndex: h.si || i + 1 })),
+    players: g.players.map((p) => ({ id: p.id, name: p.name, playingHandicap: null, isMe: p.id === 'me' })),
+    entries: Object.fromEntries(g.players.map((p) => [p.id, g.holes.map((_, i) => ({ ...emptyEntry(), strokes: g.scores[p.id]?.[i] ?? null }))])),
+  } as unknown as Round;
   return (
-    <section className="card game-grid-card">
+    <div className="game-grid-card">
       <span className="eyebrow">{tr('Scores', 'Scores')}</span>
-      <div className="game-grid-scroll">
-        <table className="game-grid">
-          <thead>
-            <tr>
-              <th />
-              {cells(
-                (k) => <th key={g.holes[k].label}>{g.holes[k].label}</th>,
-                () => <th key="out" className="game-grid-sum">Out</th>,
-                () => <th key="in" className="game-grid-sum">In</th>,
-              )}
-              <th>Σ</th>
-            </tr>
-            <tr className="muted">
-              <th>Par</th>
-              {cells(
-                (k) => <td key={g.holes[k].label}>{g.holes[k].par || '–'}</td>,
-                () => <td key="out" className="game-grid-sum">{sumOf(g.holes.map((h) => h.par), 0, 9)}</td>,
-                () => <td key="in" className="game-grid-sum">{sumOf(g.holes.map((h) => h.par), 9, 18)}</td>,
-              )}
-              <td>{g.holes.reduce((s, h) => s + h.par, 0)}</td>
-            </tr>
-          </thead>
-          <tbody>
-            {g.players.map((p) => (
-              <tr key={p.id}>
-                <th>{p.name}</th>
-                {cells(
-                  (k) => {
-                    const s = g.scores[p.id][k];
-                    return (
-                      <td key={k} className={s == null ? 'muted' : s < g.holes[k].par ? 'good-text' : ''}>
-                        {s ?? '–'}
-                      </td>
-                    );
-                  },
-                  () => <td key="out" className="game-grid-sum">{sumOf(g.scores[p.id], 0, 9) || '–'}</td>,
-                  () => <td key="in" className="game-grid-sum">{sumOf(g.scores[p.id], 9, 18) || '–'}</td>,
-                )}
-                <td>
-                  <strong>{g.scores[p.id].reduce<number>((a, s) => a + (s ?? 0), 0)}</strong>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <ScoreTable round={round} />
+    </div>
   );
 }
 
