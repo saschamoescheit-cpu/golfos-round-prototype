@@ -38,6 +38,23 @@ export const TOURS_ICON = (
   </svg>
 );
 
+/** A series: tournaments stacked – the cup with two behind it (Sascha 03.11.2026: "icons would be good"). */
+export const SERIES_ICON = (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 5h8v4a4 4 0 0 1-8 0z" />
+    <path d="M13 13v3M10 20h6M10.5 16h5v4h-5z" />
+    <path d="M5.5 8.5v1.5a3.5 3.5 0 0 0 2.2 3.2M3 11.5v.5a3 3 0 0 0 2 2.8" />
+  </svg>
+);
+/** "Zu einer Turnierserie zusammenfassen": the stack with a plus. */
+const SERIES_ADD_ICON = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="7" width="13" height="13" rx="2.5" />
+    <path d="M7 3.5h10.5A3 3 0 0 1 20.5 6.5V17" />
+    <path d="M9.5 10.5v6M6.5 13.5h6" />
+  </svg>
+);
+
 export function useSeries(): SeriesEntry[] {
   const [list, setList] = useState(loadSeries);
   useEffect(() => {
@@ -281,16 +298,46 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
           {msg}
         </span>
       )}
+      {/* the series and the single tournaments each a category of its own, with its icon (Sascha 03.11.2026: "at a
+          glance clearer") – a filter by the tiles shows every tournament of it in one list */}
+      {filter !== 'bin' && !filter && (series.length > 0 || groupable.length >= 2) && (
+        <section className="tour-cat" aria-label={tr('Tournament series', 'Turnierserien')}>
+          <span className="eyebrow tour-cat-head">
+            {SERIES_ICON}
+            {tr('Tournament series', 'Turnierserien')}
+          </span>
+          <ul className="list">
+            {series.map((s) => (
+              <li key={s.code}>
+                <SeriesRow s={s} onOpen={() => props.onOpenSeries(s.code)} />
+              </li>
+            ))}
+            {/* making one a row of the list, not a button below it (Sascha 03.11.2026: "visually different") */}
+            {groupable.length >= 2 && (
+              <li>
+                <button type="button" className="list-item tour-make-series" onClick={() => setMaking(true)}>
+                  <span className="tour-make-mark">{SERIES_ADD_ICON}</span>
+                  <span className="grow">
+                    <span className="title">{tr('Make a tournament series', 'Zu einer Turnierserie zusammenfassen')}</span>
+                    <span className="muted small">{tr('Several tournaments added up – one ranking, one code', 'Mehrere Turniere addiert – eine Wertung, ein Code')}</span>
+                  </span>
+                  <span className="muted" aria-hidden="true">›</span>
+                </button>
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
       {filter !== 'bin' &&
         (shown.length ? (
+          <section className="tour-cat" aria-label={tr('Single tournaments', 'Einzelne Turniere')}>
+          {!filter && (series.length > 0 || groupable.length >= 2) && (
+            <span className="eyebrow tour-cat-head">
+              {TOURS_ICON}
+              {tr('Single tournaments', 'Einzelne Turniere')}
+            </span>
+          )}
           <ul className="list">
-            {/* a series once (its rounds inside), then the single tournaments */}
-            {!filter &&
-              series.map((s) => (
-                <li key={s.code}>
-                  <SeriesRow s={s} onOpen={() => props.onOpenSeries(s.code)} />
-                </li>
-              ))}
             {shown
               .filter((e) => filter || single(e))
               .map((e) => (
@@ -306,6 +353,7 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
                 </li>
               ))}
           </ul>
+          </section>
         ) : (
           <>
             <p className="muted">{tr('No tournaments yet.', 'Noch keine Turniere.')}</p>
@@ -316,11 +364,6 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
             )}
           </>
         ))}
-      {filter !== 'bin' && groupable.length >= 2 && (
-        <button type="button" className="btn-secondary" onClick={() => setMaking(true)}>
-          {tr('Make a tournament series', 'Zu einer Turnierserie zusammenfassen')}
-        </button>
-      )}
       {making && (
         <SeriesSheet
           tours={[...groupable].sort((a, b) => a.ev.date.localeCompare(b.ev.date))}
@@ -1513,7 +1556,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
           host ? (
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn edit-btn"
               aria-label={tr('Rename the series', 'Serie umbenennen')}
               onClick={() => {
                 setName(s.name);
@@ -1532,7 +1575,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
         {tr('Tournament series', 'Turnierserie')} · {s.rounds.length} {tr('rounds', 'Runden')}
         {s.rounds.length ? ` · ${dm(s.rounds[0].date)}–${dm(s.rounds[s.rounds.length - 1].date)}` : ''}
       </span>
-      <section className="card" aria-label={tr('Total standing', 'Gesamtwertung')}>
+      <section className="card tour-total" aria-label={tr('Total standing', 'Gesamtwertung')}>
         <span className="eyebrow">{tr('Total standing – all rounds added up', 'Gesamtwertung – alle Runden zusammen')}</span>
         {total.rows.length ? (
           <ul className="game-pays">

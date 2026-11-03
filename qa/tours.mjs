@@ -501,7 +501,14 @@ await H.goto(url);
 await H.waitForTimeout(1500);
 await H.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
 await H.waitForTimeout(1200);
-await H.getByRole('button', { name: 'Zu einer Turnierserie zusammenfassen' }).click();
+// series and single tournaments each a category with its icon; making a series a row of its list (Sascha 03.11.2026)
+{
+  const heads = (await H.locator('.tour-cat-head').allInnerTexts()).map((t) => t.trim().toUpperCase());
+  const make = H.locator('.tour-cat[aria-label="Turnierserien"] .tour-make-series');
+  ok(heads.join('|') === 'TURNIERSERIEN|EINZELNE TURNIERE' && (await H.locator('.tour-cat-head svg').count()) === 2 && (await make.count()) === 1 && (await H.locator('.btn-secondary', { hasText: 'Turnierserie' }).count()) === 0, `the list: categories ${heads.join(' · ')}, "Zusammenfassen" a row of the series`);
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-list.png', fullPage: true });
+}
+await H.getByRole('button', { name: /Zu einer Turnierserie zusammenfassen/ }).click();
 const ss = H.getByRole('dialog', { name: 'Turnierserie zusammenstellen' });
 await ss.locator('#series-name').fill('USA 2026');
 await ss.locator('label', { hasText: 'USA Tag 2' }).click();
@@ -514,6 +521,15 @@ ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() =
 ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
 const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(total.length === 4 && /Chris/.test(total[0]) && total.every((t) => /1 Runde/.test(t)), `the total standing: the round played added up (${total.join(' | ')})`);
+// the pencil green as every pencil (Sascha 03.11.2026); the total's head a line of its own
+{
+  const pen = await H.getByRole('button', { name: 'Serie umbenennen' }).evaluate((e) => getComputedStyle(e).backgroundColor);
+  const brand = await H.evaluate(() => { const s = document.createElement('span'); s.style.color = 'var(--brand)'; document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; });
+  const head = await H.locator('[aria-label="Gesamtwertung"] .eyebrow').boundingBox();
+  const next = await H.locator('[aria-label="Gesamtwertung"] > :nth-child(2)').boundingBox();
+  ok(pen === brand && next.y >= head.y + head.height - 1, `the series: its pencil green (${pen} vs ${brand}), the total below its head`);
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-series.png' });
+}
 await H.getByRole('button', { name: 'Turniere' }).first().click();
 await H.waitForTimeout(800);
 ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 2' }).count()) === 0, 'the list: the series once, its rounds inside');
