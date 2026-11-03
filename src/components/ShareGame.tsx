@@ -71,15 +71,28 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
     const g = await shareGame(props.game);
     setBusy(false);
     if (g) props.onShared(g);
-    else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+    else setMsg(tr('No connection – it is tried again by itself.', 'Keine Verbindung – es wird gleich von selbst noch einmal versucht.'));
+    return !!g;
   };
-  // the code made as the sheet opens (Sascha 03.11.2026: "the QR code at once, without a click") – "Code erzeugen" only
-  // when that failed
-  const tried = useRef(false);
+  // the code made as the sheet opens – no "Code erzeugen" anywhere (Sascha 03.11.2026); without a connection again every few seconds
+  // once per sheet (React's test run mounts twice – two codes otherwise), again only after a failure, while it is open
+  const started = useRef(false);
+  const alive = useRef(true);
+  const retry = useRef(0);
   useEffect(() => {
-    if (code || tried.current) return;
-    tried.current = true;
-    void create();
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      window.clearTimeout(retry.current);
+    };
+  }, []);
+  useEffect(() => {
+    if (code || started.current) return;
+    started.current = true;
+    const go = async () => {
+      if (!(await create()) && alive.current) retry.current = window.setTimeout(() => void go(), 8000);
+    };
+    void go();
   }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
@@ -91,21 +104,16 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
           </button>
         </div>
         {!code ? (
-          <>
-            <span className="muted">
-              {tr(
-                'Your flight on other phones: everyone enters the scores, everyone sees them and the standing (signed in with Google).',
-                'Dein Flight auf weiteren Handys: Jeder trägt ein, jeder sieht die Scores und den Stand (mit Google angemeldet).',
-              )}
-            </span>
-            {busy ? (
-              <span className="muted small">{tr('Making the code …', 'Code wird erstellt …')}</span>
-            ) : (
-              <button type="button" className="btn-primary" onClick={() => void create()}>
-                {tr('Create a code', 'Code erzeugen')}
-              </button>
-            )}
-          </>
+          // while the code is made: the same card, waiting
+          <InviteCard
+            link={null}
+            code={null}
+            waiting={busy || !msg ? tr('Making the code …', 'Code wird erstellt …') : msg}
+            actions={[
+              { label: tr('Invite', 'Einladen'), aria: tr('Share the link', 'Link teilen'), icon: 'share', primary: true, disabled: true, onClick: () => undefined },
+              { label: tr('Copy link', 'Link kopieren'), icon: 'copy', disabled: true, onClick: () => undefined },
+            ]}
+          />
         ) : (
           <>
             <InviteCard

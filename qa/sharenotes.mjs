@@ -109,20 +109,10 @@ const plus = async (p, name, n) => {
   ok((await G.locator('.score-player.kept-elsewhere').count()) === 0 && (await G.locator('.score-player').first().getByRole('button', { name: /Schläge plus eins/ }).count()) === 1, 'Cedric: one tap – he keeps the card now');
 }
 
-// ---------- invited by user name: in with the link, no asking ----------
+// ---------- no inviting by user name any more (Sascha 03.11.2026: "not needed" – linked friends are invited with a tap) ----------
 {
-  const { H, card, code } = await setup(['Ben']);
-  await card.getByLabel('Oder per GolfOS-Benutzername einladen').fill('ben.k');
-  await card.getByRole('button', { name: 'Einladen', exact: true }).click();
-  await card.getByText('Eingeladen – ben.k bekommt eine Mitteilung').waitFor({ timeout: 8000 }).catch(() => {});
-  ok(await card.getByText('Eingeladen – ben.k bekommt eine Mitteilung').isVisible(), 'Sascha: "Eingeladen – ben.k bekommt eine Mitteilung …"');
-  ok(sim.shared.get(code).members.includes('Ben'), 'server: Ben let in by the invitation');
-  await card.getByLabel('Oder per GolfOS-Benutzername einladen').fill('nobody');
-  await card.getByRole('button', { name: 'Einladen', exact: true }).click();
-  await card.getByText('Kein GolfOS-Konto').waitFor({ timeout: 8000 }).catch(() => {});
-  ok(await card.getByText('Kein GolfOS-Konto mit dem Benutzernamen „nobody“').isVisible(), 'Sascha: an unknown user name is said');
-  const g = await join('Ben', code); // no host prompt
-  ok((await sim.round(g.p))?.players.find((p) => p.isMe)?.name === 'Ben' && (await H.getByRole('alertdialog').count()) === 0, 'Ben: the link – in the round at once, Sascha not asked');
+  const { card } = await setup(['Ben']);
+  ok((await card.getByLabel('Oder per GolfOS-Benutzername einladen').count()) === 0, 'the invitation: no field for a GolfOS user name');
 }
 
 ok(errs.flat().length === 0, `no page errors ${errs.flat().slice(0, 2).join(' | ')}`);

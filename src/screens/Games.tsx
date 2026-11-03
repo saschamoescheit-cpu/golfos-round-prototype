@@ -898,7 +898,19 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
     <main className="screen">
       <TopBar title={tr('New game', 'Neues Spiel')} onBack={props.onBack} />
 
-      {/* the course first, then the form (Sascha 17.10.2026: "the course goes under otherwise") */}
+      {/* the form first, then the course (Sascha 03.11.2026: "the form decides what the course offers – 5+5+10 only 18
+          holes") */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span className="eyebrow">{tr('Game form', 'Spielform')}</span>
+        <div className="settings-list">
+          <button type="button" className="settings-row" onClick={() => setPicker(true)}>
+            <span>{tr('Form', 'Spielform')}</span>
+            <span className={`settings-value${chosen ? '' : ' need'}`}>{chosen ? f.name() : tr('Choose a game form', 'Spielform wählen')}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+      </section>
+
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Course', 'Platz')}</span>
         <div className="settings-list">
@@ -923,21 +935,12 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         )}
       </section>
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <span className="eyebrow">{tr('Game form', 'Spielform')}</span>
-        <div className="settings-list">
-          <button type="button" className="settings-row" onClick={() => setPicker(true)}>
-            <span>{tr('Form', 'Spielform')}</span>
-            <span className={`settings-value${chosen ? '' : ' need'}`}>{chosen ? f.name() : tr('Choose a game form', 'Spielform wählen')}</span>
-            <span aria-hidden="true">›</span>
-          </button>
+      {/* its rules under the course – so the course stays in view (17.10.2026) */}
+      {chosen && (
+        <div className="card">
+          <FormRules form={f} />
         </div>
-        {chosen && (
-          <div className="card">
-            <FormRules form={f} />
-          </div>
-        )}
-      </section>
+      )}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">

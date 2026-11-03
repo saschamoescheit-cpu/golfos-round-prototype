@@ -22,7 +22,8 @@ async function run(o) {
   const card = (uid, first, hcp) => ({ user_id: uid, code: String(318400 + cards.size), first_name: first, last_name: '', hcp_index: hcp, home_club: '', photo: null });
   cards.set('Sascha', card('Sascha', 'Sascha', '10'));
   cards.set('Cedric', card('Cedric', 'Cedric', '13'));
-  links.add('Sascha|Cedric').add('Cedric|Sascha');
+  cards.set('Chris', card('Chris', 'Chris', '20'));
+  links.add('Sascha|Cedric').add('Cedric|Sascha').add('Sascha|Chris').add('Chris|Sascha');
 
   const host = await phone('Sascha');
   const H = host.p;
@@ -58,6 +59,8 @@ async function run(o) {
   const code = (await inviteCard.locator('.join-code').innerText()).trim().replace(/-/g, '');
   const friends = H.locator('.invite-friends');
   ok((await friends.count()) === 1 && (await friends.getByRole('button', { name: 'Cedric einladen' }).count()) === 1, 'the invitation: "Verknüpfte Freunde einladen" – Cedric with "Einladen"');
+  // only the friends in the flight (Sascha 03.11.2026): Chris is linked, but not one of the players
+  ok((await friends.getByRole('button', { name: 'Chris einladen' }).count()) === 0, 'Chris, linked but not in the flight: not offered');
   await friends.getByRole('button', { name: 'Cedric einladen' }).click();
   await friends.locator('button', { hasText: 'Eingeladen ✓' }).waitFor({ timeout: 10000 }).catch(() => {});
   ok((await friends.locator('button', { hasText: 'Eingeladen ✓' }).count()) === 1, `one tap: "Eingeladen ✓" (${(await friends.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(-90)})`);

@@ -112,9 +112,10 @@ const me = (): string => shownName(loadProfile()) || tr('a player', 'ein Spieler
 /** The linked friends (Friends, by their accounts) invited with a tap (Sascha 03.11.2026: "invite linked friends directly –
  *  for every 'invite players' in the whole app"): let in at once, a push on his phone – and his app, open, asks him
  *  straight away. Below the InviteCard of a round, tournament, series, game or pool of bets – `code` its code. */
-export function FriendInvite(props: { code: string }) {
+export function FriendInvite(props: { code: string; /** only these – the flight's players by name (Sascha 03.11.2026: "only the linked friends I added to the flight") */ only?: string[] }) {
   const [state, setState] = useState<Record<string, 'busy' | 'sent' | 'silent' | 'failed'>>({});
-  const friends = canLink() ? loadFriends().filter((f) => f.uid) : [];
+  const wanted = props.only?.map((n) => n.trim().toLowerCase()).filter(Boolean);
+  const friends = canLink() ? loadFriends().filter((f) => f.uid && (!wanted || wanted.includes(f.name.trim().toLowerCase()) || wanted.includes((f.fullName ?? '').trim().toLowerCase()))) : [];
   if (!friends.length) return null;
   const go = async (uid: string, name: string) => {
     setState((x) => ({ ...x, [uid]: 'busy' }));

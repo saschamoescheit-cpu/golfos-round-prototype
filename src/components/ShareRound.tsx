@@ -7,7 +7,7 @@ import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
 import { loadProfile, saveProfile, shownName } from '../lib/profile';
 import { loadSession, signIn, signInAnonymously } from '../lib/sync';
-import { inviteByName, pushAsked } from '../lib/push';
+import { pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
 import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
 import { ScanCodeButton } from './QrScan';
@@ -56,10 +56,8 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
   const [name] = useState(() => `${props.round.courseName} · ${new Date(props.round.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  // the round shown to signed-in phones nearby (Sascha 29.10.2026) – here, or (no GPS) on the course
-  const [near, setNear] = useState(!props.auto);
+  // the round shown to signed-in phones nearby (Sascha 29.10.2026) – here, or (no GPS) on the course; asked by the switch under the code
   const [nearState, setNearState] = useState<'here' | 'course' | 'failed' | null>(null);
-  const team = isTeamMode(props.round.format?.mode);
   const putNearby = async (code: string) => {
     const pos = await here();
     const course = courseSummary(props.round);
@@ -70,57 +68,47 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
     setBusy(true);
     const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament: false, who: myName() });
     setBusy(false);
-    if (r) {
-      props.onShared(r);
-      if (near && r.shared) void putNearby(r.shared.code);
-    } else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+    if (r) props.onShared(r);
+    else setMsg(tr('No connection – it is tried again by itself.', 'Keine Verbindung – es wird gleich von selbst noch einmal versucht.'));
+    return !!r;
   };
-  // the code made by itself, once – "Code erzeugen" stays for when that failed (no connection)
-  const tried = useRef(false);
+  // the code made by itself – no "Code erzeugen" anywhere (Sascha 03.11.2026); without a connection tried again every few seconds
+  // once per sheet (React's test run mounts twice – two codes otherwise), again only after a failure, while it is open
+  const started = useRef(false);
+  const alive = useRef(true);
+  const retry = useRef(0);
   useEffect(() => {
-    if (!props.auto || shared || tried.current) return;
-    tried.current = true;
-    void create();
-  }, [props.auto, shared]); // eslint-disable-line react-hooks/exhaustive-deps
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      window.clearTimeout(retry.current);
+    };
+  }, []);
+  useEffect(() => {
+    if (shared || started.current) return;
+    started.current = true;
+    const go = async () => {
+      if (!(await create()) && alive.current) retry.current = window.setTimeout(() => void go(), 8000);
+    };
+    void go();
+  }, [shared]); // eslint-disable-line react-hooks/exhaustive-deps
   const share = async () => {
     if (!shared) return;
     const text = shared.tournament ? tr(`Join the tournament – code ${shared.code}`, `Spiel im Turnier mit – Code ${shared.code}`) : tr(`Join my round – code ${shared.code}`, `Spiel in meiner Runde mit – Code ${shared.code}`);
     setMsg(await shareLink(text, roundJoinLink(shared.code)));
   };
+  // while the code is made: the same card, waiting (as the friend code)
   if (!shared)
     return (
-      <>
-        <span className="muted small">
-          {team
-            ? tr(
-                'Your flight on their own phones (signed in with Google): one of the team keeps the card – another can take it over. Tournaments are planned under Tournaments.',
-                'Dein Flight auf den eigenen Handys (mit Google angemeldet): Einer des Teams führt die Scorecard – ein anderer kann sie übernehmen. Turniere werden unter Tournaments geplant.',
-              )
-            : props.compact
-              ? // in the setup the score entry has its own section (Sascha 02.11.2026)
-                tr(
-                  'Your flight on their own phones (signed in with Google): everyone sees the scores live – who enters them, you choose under "Score entry". Tournaments are planned under Tournaments.',
-                  'Dein Flight auf den eigenen Handys (mit Google angemeldet): Alle sehen die Scores live – wer sie erfasst, legst du unter „Score-Erfassung“ fest. Turniere werden unter Tournaments geplant.',
-                )
-              : tr(
-                  'Your flight on their own phones (signed in with Google): everyone keeps his own score – strokes, putts, penalties – and sees the others live; with a marker also a partner\'s. Tournaments are planned under Tournaments.',
-                  'Dein Flight auf den eigenen Handys (mit Google angemeldet): Jeder erfasst seinen eigenen Score – Schläge, Putts, Strafschläge – und sieht die anderen live; mit Zähler auch den eines Mitspielers. Turniere werden unter Tournaments geplant.',
-                )}
-        </span>
-        <div className="drawer-list settings-switches">
-          <button type="button" className="drawer-row" role="switch" aria-checked={near} onClick={() => setNear(!near)}>
-            <span className="switch-label">
-              <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
-              <span className="muted small">{tr(`Signed-in players within about 300 m see the round under "Join a round" and ask with a tap – you let each one in. For ${NEARBY_HOURS} hours`, `Angemeldete Spieler im Umkreis von etwa 300 m sehen die Runde unter „Runde beitreten“ und fragen mit einem Tipp an – du bestätigst jeden. ${NEARBY_HOURS} Stunden lang`)}</span>
-            </span>
-            <span className={`drawer-switch${near ? ' on' : ''}`} aria-hidden="true" />
-          </button>
-        </div>
-        <button type="button" className="btn-primary" disabled={busy} onClick={() => void create()}>
-          {busy ? tr('Creating …', 'Erzeuge …') : tr('Create a code', 'Code erzeugen')}
-        </button>
-        {msg && <span className="muted small">{msg}</span>}
-      </>
+      <InviteCard
+        link={null}
+        code={null}
+        waiting={busy || !msg ? tr('Making the code …', 'Code wird erstellt …') : msg}
+        actions={[
+          { label: tr('Invite', 'Einladen'), aria: tr('Share the link', 'Link teilen'), icon: 'share', primary: true, disabled: true, onClick: () => undefined },
+          { label: tr('Copy link', 'Link kopieren'), icon: 'copy', disabled: true, onClick: () => undefined },
+        ]}
+      />
     );
   return (
     <>
@@ -164,49 +152,13 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
               : tr('Not shown nearby – the code and the QR code work as ever.', 'In der Nähe nicht sichtbar – Code und QR-Code gehen wie gewohnt.')}
         </span>
       )}
-      <FriendInvite code={shared.code} />
-      <InviteByName code={shared.code} />
+      <FriendInvite code={shared.code} only={props.round.players.filter((p) => !p.isMe).map((p) => p.name)} />
       {msg && <span className="muted small">{msg}</span>}
     </>
   );
 }
 
-/** A player with a GolfOS account invited by his user name (Sascha 30.10.2026): a push, a tap – he is in, no asking. */
-function InviteByName(props: { code: string }) {
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [said, setSaid] = useState<string | null>(null);
-  const go = async () => {
-    setBusy(true);
-    const r = await inviteByName(props.code, name, myName());
-    setBusy(false);
-    const n = name.trim().replace(/^@/, '');
-    setSaid(
-      r === 'sent'
-        ? tr(`Invited – ${n} gets a notification and is in with a tap.`, `Eingeladen – ${n} bekommt eine Mitteilung und ist mit einem Tipp dabei.`)
-        : r === 'silent'
-          ? tr(`Invited – ${n} has notifications off: send him the link, he is in at once.`, `Eingeladen – ${n} hat Mitteilungen aus: schick ihm den Link, er ist sofort drin.`)
-          : r === 'unknown'
-            ? tr(`No GolfOS account with the user name "${n}".`, `Kein GolfOS-Konto mit dem Benutzernamen „${n}“.`)
-            : r === 'not-set-up'
-              ? tr('Inviting by user name is not set up on the server yet – share the link instead.', 'Einladen per Benutzername ist auf dem Server noch nicht eingerichtet – teile den Link.')
-              : tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'),
-    );
-    if (r === 'sent' || r === 'silent') setName('');
-  };
-  return (
-    <div className="field invite-name">
-      <label htmlFor="invite-name">{tr('Or invite by GolfOS user name', 'Oder per GolfOS-Benutzername einladen')}</label>
-      <div className="invite-name-row">
-        <input id="invite-name" className="input" value={name} autoCapitalize="none" autoComplete="off" placeholder="cedric.m" onChange={(e) => { setName(e.target.value); setSaid(null); }} />
-        <button type="button" className="btn-secondary" disabled={busy || name.trim().length < 3} onClick={() => void go()}>
-          {busy ? '…' : tr('Invite', 'Einladen')}
-        </button>
-      </div>
-      {said && <span className="muted small" role="status">{said}</span>}
-    </div>
-  );
-}
+// (inviting by GolfOS user name is gone – Sascha 03.11.2026: "not needed"; linked friends are invited with a tap)
 
 export function RoundInviteSheet(props: { round: Round; onShared: (r: Round) => void; onClose: () => void }) {
   return (

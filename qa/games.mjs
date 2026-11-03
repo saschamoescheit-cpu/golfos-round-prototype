@@ -128,7 +128,8 @@ for (const [form, n] of CASES) {
     ok(await p.getByRole('button', { name: 'Spiel starten' }).isDisabled(), 'no start without a course');
     ok((await p.getByText('Wähle zuerst den Platz').count()) === 0, 'no green hint – the course stands first');
     const order = await p.locator('main .eyebrow').allInnerTexts();
-    ok(order[0] === 'PLATZ' || /^Platz$/i.test(order[0]), `the course above the game form (${order.slice(0, 2).join(' · ')})`);
+    // the form first, then the course (Sascha 03.11.2026: the form decides which holes the course offers)
+    ok(/^Spielform$/i.test(order[0]) && /^Platz$/i.test(order[1]), `the game form above the course (${order.slice(0, 2).join(' · ')})`);
     const rules = await p.locator('main .card').filter({ has: p.locator('.game-rules') }).first().evaluate((c) => [...c.children].map((x) => x.className));
     ok(/read-rules/.test(rules[0]) && /game-rules/.test(rules[1]), 'the speaker before the rules');
     firstCase = false;
