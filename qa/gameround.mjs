@@ -115,8 +115,7 @@ await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
   const capRow = p.locator('.settings-row').filter({ hasText: 'Höchsteinsatz' });
   const capLabel = (await capRow.locator('span').first().innerText()).trim();
   await capRow.click();
-  await p.getByRole('dialog', { name: capLabel }).getByRole('button', { name: '1,60 €' }).click();
-  await p.getByRole('dialog', { name: capLabel }).getByRole('button', { name: 'Fertig' }).click();
+  await p.getByRole('dialog', { name: capLabel }).locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^1,60 €$/ }) }).click();
 }
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(4500);
