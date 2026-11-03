@@ -8,13 +8,14 @@ import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { Qr } from '../components/ShareGame';
-import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, afterPayments, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
 import { ChoiceRow, DateRow, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
 import { StakePicker } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
+import { PaidMarks } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet } from '../lib/push';
@@ -580,7 +581,10 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
     return !!r;
   };
   const bal = balances(pool, today, true);
-  const pays = transfers(bal);
+  const pays = transfers(afterPayments(bal, pool.payments)); // what is still to pay, once the payments are off
+  // the payments (Sascha 03.11.2026): the payer says he paid, the receiver that he got it
+  const pay = (fn: (ps: Payment[]) => Payment[]) => void change((p) => ({ ...p, payments: fn(p.payments ?? []) }));
+  const now = () => new Date().toISOString();
   const settled = pool.wagers.filter((w) => stateOf(w, pool, today) !== 'open').length;
   const pending = pool.wagers.filter((w) => stateOf(w, pool, today) === 'open' && provisional(w, pool.progress[w.id])).length;
   return (
@@ -663,7 +667,19 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
           </section>
         );
       })}
-      <Settlement pool={pool} bal={bal} lines={ledger(pool, today, true)} pays={pays} settled={settled} pending={pending} me={entry.me} name={name} />
+      <Settlement pool={pool} bal={bal} lines={ledger(pool, today, true)} settled={settled} pending={pending} me={entry.me} name={name}>
+        <PaidMarks
+          open={pays}
+          payments={pool.payments ?? []}
+          name={(id) => name(id)}
+          sym={currencySymbol(pool.currency)}
+          me={entry.me}
+          anyone={host}
+          onMark={(t, as) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }) }])}
+          onConfirm={(id) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now() } : x)))}
+          onUndo={(id) => pay((ps) => ps.filter((x) => x.id !== id))}
+        />
+      </Settlement>
       {host && (
         // a section of its own, as "Mitspieler einladen" in the round setup (docs/DESIGN.md); below the settlement,
         // right before "Runde starten" (Sascha 03.11.2026)
@@ -914,7 +930,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string })
 
 /** The settlement of a pool (Sascha 01.11.2026: "the settlement must look quite different – with zero euros too"): how
  *  far the bets are decided, where each player stands – from the start, at 0 – and who pays whom. */
-function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; pays: { from: string; to: string; amount: number }[]; settled: number; pending: number; me: string; name: (id?: string) => string }) {
+function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines: Record<string, LedgerLine[]>; settled: number; pending: number; me: string; name: (id?: string) => string; children?: React.ReactNode }) {
   const { pool, bal } = props;
   const sym = currencySymbol(pool.currency);
   const n = pool.wagers.length;
@@ -965,23 +981,8 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
           );
         })}
       </ul>
-      <div className="pool-pays-block">
-        <span className="eyebrow">{tr('Who pays whom', 'Wer zahlt wem')}</span>
-        {props.pays.length ? (
-          <ul className="pool-pays">
-            {props.pays.map((t) => (
-              <li key={`${t.from}-${t.to}`}>
-                <span>
-                  {props.name(t.from)} → {props.name(t.to)}
-                </span>
-                <strong>{money(t.amount, sym)}</strong>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span className="muted small">{tr('Nothing to pay yet – once bets are decided, it says here who pays whom.', 'Noch nichts zu zahlen – sobald Wetten entschieden sind, steht hier, wer wem wie viel zahlt.')}</span>
-        )}
-      </div>
+      {/* "Wer zahlt wem" with what was paid – PaidMarks */}
+      {props.children}
     </section>
   );
 }
@@ -1045,6 +1046,8 @@ function CustomFields(props: { w: Wager; set: (patch: Partial<Wager>) => void })
           />
         )}
         <Pick<Where> label={tr('Where', 'Wo')} value={w.where ?? 'all'} onChange={(v) => set({ where: v })} options={WHERES.map((x) => ({ value: x.id, label: x.name() }))} />
+        {/* with the others of the bet (Sascha 03.11.2026: "these settings all belong together") */}
+        {!m.sum && <ToggleRow inList on={!!w.run} label={tr('In a row', 'In Folge')} text={tr('Holes one after the other', 'Löcher hintereinander')} onChange={(on) => set({ run: on, ...(on ? { compare: 'min' as const } : {}) })} />}
       </SettingsList>
       <Field label={m.id === 'strokes' ? tr('To par, at most', 'Zu Par, höchstens') : tr('Number', 'Zahl')}>
         <Stepper label={tr('Number', 'Zahl')} value={w.target} min={m.id === 'strokes' ? -18 : 0} onChange={(v) => set({ target: v })} />
@@ -1066,7 +1069,6 @@ function CustomFields(props: { w: Wager; set: (patch: Partial<Wager>) => void })
         )}
       </Field>
       )}
-      {!m.sum && <ToggleRow on={!!w.run} label={tr('In a row', 'In Folge')} text={tr('Holes one after the other', 'Löcher hintereinander')} onChange={(on) => set({ run: on, ...(on ? { compare: 'min' as const } : {}) })} />}
       <span className="muted small">
         {m.details ? tr('Needs the detail entry (putts, tee shot, sand) – the app asks for it where this bet counts.', 'Braucht die Detailerfassung (Putts, Abschlag, Sand) – die App fragt sie ab, wo diese Wette zählt.') : tr('The strokes incl. penalty strokes are enough.', 'Die Schläge inkl. Strafschläge genügen.')}
       </span>
@@ -1569,6 +1571,14 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
             ]}
           />
         )}
+        {/* the settings first, as in a setup (Sascha 03.11.2026: "not under the catalogue – as settings at the very top") */}
+        {(tab === 'library' || lib.length + myPicked.length > 0) && (
+          <div className="lib-group lib-settings">
+            <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+            <PayFields pool={pool} w={{ ...base, player, kind: lib.length > 0 && lib.every((b) => b.kind === 'free') && !myPicked.length ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
+            <span className="muted small">{tr('For the bets ticked below – each can be changed afterwards, tap it.', 'Für die Wetten, die du unten ankreuzt – jede lässt sich danach ändern, antippen.')}</span>
+          </div>
+        )}
         {tab === 'library' && (
           <div className="lib-group">
             <span className="eyebrow">{tr('My bets', 'Meine Wetten')}</span>
@@ -1685,13 +1695,6 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
               </div>
             );
           })}
-        {lib.length + myPicked.length > 0 && (
-          <>
-            <span className="eyebrow">{tr('For the bets from the library', 'Für die Wetten aus der Bibliothek')}</span>
-            <PayFields pool={pool} w={{ ...base, player, kind: lib.every((b) => b.kind === 'free') ? 'free' : 'birdies' }} set={(patch) => setBase({ ...base, ...patch })} />
-          </>
-        )}
-        <span className="muted small">{tr('Each bet can be changed afterwards – tap it.', 'Jede Wette lässt sich danach ändern – antippen.')}</span>
         <button type="button" className="btn-primary" disabled={!ok} onClick={add}>
           {n === 1 ? tr(`Add 1 bet for ${name}`, `1 Wette für ${name} anlegen`) : tr(`Add ${n} bets for ${name}`, `${n} Wetten für ${name} anlegen`)}
         </button>

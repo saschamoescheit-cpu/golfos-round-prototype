@@ -380,7 +380,7 @@ await H.getByRole('button', { name: 'Wetten für Sascha hinzufügen' }).click();
 const libO = H.getByRole('dialog', { name: 'Wetten-Bibliothek' });
 await libO.getByRole('button', { name: '+ Eigene Wette bauen', exact: true }).click();
 const build = H.getByRole('dialog', { name: 'Eigene Wette bauen' });
-await choose('Wo', 'Par 3s', build);
+await choose('Wo', 'Par 3s', build); if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-build.png' });
 ok((await build.locator('.custom-preview').innerText()) === 'Mindestens 2 Birdies auf den Par 3s' && (await build.getByText('Die Schläge inkl. Strafschläge genügen.').isVisible()), 'own bet: built in words – no details needed');
 await build.getByRole('button', { name: 'In „Meine Wetten“ speichern' }).click();
 ok((await libO.locator('.lib-row.on').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: in "Meine Wetten", ticked');
@@ -392,6 +392,27 @@ await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
 ok((await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).locator('.lib-row').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: offered again under "Meine Wetten"');
 await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', { name: 'Schließen' }).click();
 
+// paid and received (Sascha 03.11.2026: "everyone sees whether he paid his debts or received them")
+{
+  const open = H.locator('.pool-pays:not(.paid-list) > li');
+  const before = await open.count();
+  const first = (await open.first().innerText()).replace(/\s+/g, ' ');
+  ok(before > 0 && (await open.first().locator('.paid-mark').count()) === 1, `payments: the host marks a transfer (${first})`);
+  await open.first().locator('.paid-mark').click();
+  await H.waitForTimeout(1500);
+  const ps = shared.get(code).game.payments ?? [];
+  const paid = H.getByRole('list', { name: 'Bezahlt' }).locator('li');
+  ok(ps.length === 1 && ps[0].amount > 0 && (ps[0].paidAt || ps[0].receivedAt) && (await open.count()) === before - 1 && (await paid.count()) === 1, `payments: kept on the server, off the open ones, under "Bezahlt" (${JSON.stringify(ps)})`);
+  if (process.env.SHOTS) await H.locator('.pool-settle').screenshot({ path: process.env.SHOTS + '/wagers-paid.png' });
+  if (!ps[0]?.receivedAt) {
+    await paid.first().locator('.paid-mark').click();
+    await H.waitForTimeout(1500);
+    ok(!!shared.get(code).game.payments?.[0]?.receivedAt && /erhalten/.test(await paid.first().innerText()), 'payments: the receiver confirms – received');
+  }
+  await paid.first().getByRole('button', { name: /^Zurücknehmen/ }).click();
+  await H.waitForTimeout(1500);
+  ok((shared.get(code).game.payments ?? []).length === 0 && (await open.count()) === before, 'payments: taken back – open again');
+}
 // only saved, finished later (Sascha 03.11.2026): "Speichern" between "Runde starten" and "Pool beenden" – back to the bets
 {
   const top = async (l) => (await l.boundingBox())?.y ?? -1;

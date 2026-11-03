@@ -2047,3 +2047,9 @@ button.tile:disabled { opacity: 1; }
 .pool-invite .qr-box svg { width: 100%; height: auto; }
 /* rows inside a sheet stand out from it (the bet sheet, 02.11.2026) */
 .sheet .settings-list { background: var(--surface-2); }
+/* the payments of the settlement (03.11.2026): "Bezahlt" / "Erhalten" at the transfer */
+.pool-pays li { align-items: center; }
+.pool-pays li .grow { flex: 1; min-width: 0; }
+.paid-mark { min-height: 34px; padding: 4px 12px; font-size: 14px; }
+.paid-undo { width: 34px; height: 34px; font-size: 16px; }
+.paid-state { display: block; }

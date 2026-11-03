@@ -20,6 +20,9 @@ export function SwipeRow(props: {
   /** false: the row could not be deleted (no network …) – it slides back */
   onDelete: () => void | boolean | Promise<void | boolean>;
   className?: string;
+  /** the delete only asks first (the bin: for good) – swiped all the way the row does not fly off, it opens the
+   *  question and stays (Sascha 03.11.2026: "it jumps back") */
+  asks?: boolean;
 }) {
   const [id] = useState(() => ++seq);
   const [off, setOffState] = useState(0);
@@ -34,6 +37,32 @@ export function SwipeRow(props: {
   const drag = useRef<{ x: number; y: number; from: number; axis: 'x' | 'y' | null; pointer: number } | null>(null);
   const swallow = useRef(false); // the click after a swipe (or the tap closing an open row) opens nothing
   const alive = useRef(true);
+  // iOS: once the move is sideways the page must not take it over – else Safari cancels the pointer and the row
+  // snaps back (Sascha 03.11.2026: "it does not stay so that the bin could be tapped"); a native listener, as React's
+  // touch listeners are passive
+  useEffect(() => {
+    const el = front.current;
+    if (!el) return;
+    let x0 = 0;
+    let y0 = 0;
+    const start = (e: TouchEvent) => {
+      x0 = e.touches[0]?.clientX ?? 0;
+      y0 = e.touches[0]?.clientY ?? 0;
+    };
+    const move = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t || x0 < EDGE || drag.current?.axis === 'y') return;
+      const dx = t.clientX - x0;
+      const dy = t.clientY - y0;
+      if (drag.current?.axis === 'x' || (Math.abs(dx) > 4 && Math.abs(dx) > Math.abs(dy))) e.preventDefault();
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+    };
+  }, []);
   useEffect(() => {
     alive.current = true;
     // one row open at a time, as in Mail
@@ -51,6 +80,12 @@ export function SwipeRow(props: {
 
   const width = () => front.current?.offsetWidth ?? 320;
   const remove = async () => {
+    if (props.asks) {
+      // it asks: back in place, the question opens
+      setOff(0);
+      void props.onDelete();
+      return;
+    }
     setOff(-width());
     await new Promise((r) => setTimeout(r, 180));
     try {
@@ -70,7 +105,7 @@ export function SwipeRow(props: {
     swallow.current = true; // a drag either way is no tap
     if (d.axis === 'y') return;
     if (-at.current > width() * 0.55) void remove();
-    else if (-at.current > SHOWN / 2) {
+    else if (-at.current > SHOWN / 3) {
       setOff(-SHOWN);
       window.dispatchEvent(new CustomEvent('golfos:swipe', { detail: id }));
     } else setOff(0);

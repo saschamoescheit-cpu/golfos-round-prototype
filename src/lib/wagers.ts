@@ -315,6 +315,30 @@ export interface WagerPool {
   /** "with marker" for the whole pool (Sascha 02.11.2026: "one bet with, another without a marker makes no sense") –
    *  set: every bet of the pool follows it (withCounted); unset (pools from before): each bet as it was set */
   counted?: boolean;
+  /** what was paid of the settlement (Sascha 03.11.2026: "everyone sees whether he paid his debts or received them") */
+  payments?: Payment[];
+}
+
+/** A payment of the settlement, between two players: the payer says he paid, the receiver that he got it – either
+ *  first. It is off the debts the moment one of them marks it. Shared by the pools and the games. */
+export interface Payment {
+  id: string;
+  from: string;
+  to: string;
+  amount: number;
+  paidAt?: string;
+  receivedAt?: string;
+}
+
+/** The balances once the payments are off: what the payer paid he owes no more, what the receiver got he is owed no
+ *  more – the open transfers follow from them. */
+export function afterPayments(bal: Record<string, number>, payments: Payment[] | undefined): Record<string, number> {
+  const out = { ...bal };
+  for (const p of payments ?? []) {
+    out[p.from] = (out[p.from] ?? 0) + p.amount;
+    out[p.to] = (out[p.to] ?? 0) - p.amount;
+  }
+  return out;
 }
 
 /** The pool's "with marker" carried to each of its bets – the judging reads the bet's own flag. */

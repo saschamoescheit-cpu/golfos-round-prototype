@@ -196,13 +196,14 @@ declare
   p jsonb;
   q jsonb;
   k text;
+  pay jsonb;
 begin
   if o->>'kind' is distinct from 'wager-pool' then return new; end if;
   if auth.uid() is null or auth.uid() = old.owner then return new; end if; -- the host (or the server itself)
   if new.owner is distinct from old.owner or new.code is distinct from old.code then
     raise exception 'only the host changes the pool' using errcode = '42501';
   end if;
-  if (n - 'progress' - 'players') is distinct from (o - 'progress' - 'players') then
+  if (n - 'progress' - 'players' - 'payments') is distinct from (o - 'progress' - 'players' - 'payments') then
     raise exception 'only the host changes the pool' using errcode = '42501';
   end if;
   -- the players: each one as before, but for joining
@@ -242,6 +243,21 @@ begin
       where w->>'id' = k and w->>'kind' <> 'free' and pl->>'id' = w->>'player' and pl->'joined'->>'uid' = me
     ) then
       raise exception 'a phone reports only its own bets' using errcode = '42501';
+    end if;
+  end loop;
+  -- the payments of the settlement (03.11.2026): a phone marks, confirms or takes back only what it paid or received
+  for pay in
+    select x from jsonb_array_elements(coalesce(n->'payments', '[]'::jsonb)) x
+    where not exists (select 1 from jsonb_array_elements(coalesce(o->'payments', '[]'::jsonb)) y where y = x)
+    union all
+    select y from jsonb_array_elements(coalesce(o->'payments', '[]'::jsonb)) y
+    where not exists (select 1 from jsonb_array_elements(coalesce(n->'payments', '[]'::jsonb)) x where x = y)
+  loop
+    if not exists (
+      select 1 from jsonb_array_elements(n->'players') pl
+      where pl->'joined'->>'uid' = me and pl->>'id' in (pay->>'from', pay->>'to')
+    ) then
+      raise exception 'a phone marks only its own payments' using errcode = '42501';
     end if;
   end loop;
   return new;
