@@ -15,11 +15,11 @@ import { dayOf } from '../lib/wagers';
 import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
-import { Stepper, TopBar } from '../components/ui';
+import { TopBar } from '../components/ui';
 import { Qr } from '../components/ShareGame';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
-import { ChoiceRow, DateRow, PickSheet, SettingsList, TimeRow } from '../components/Settings';
+import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow } from '../components/Settings';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 
 // Tournaments in Games (Sascha 01.11.2026: "tournaments can be planned ahead just like bets – set them up for the USA
@@ -408,63 +408,97 @@ const isPreset = (c: number[]) => CLASS_PRESETS.some((p) => p.join() === c.join(
 /** "Netto-Klassen" (Sascha 03.11.2026): none, 2 or 3 – or "Eigene": two to four classes, each its limit, the last up to
  *  54. The limits rise from class to class. */
 function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; onClose: () => void }) {
+  // "Eigene" as rows (Sascha 03.11.2026: "the look and the setting up of 'Eigene' do not please me yet"): a row per
+  // class "Klasse A · bis 9 ›", its limit from a list as every other choice; "+ Klasse" up to four, the last up to 54
   const [own, setOwn] = useState<number[] | null>(props.value.length && !isPreset(props.value) ? props.value : null);
-  const count = (n: number) => {
-    // two to four classes: n − 1 limits, spread evenly below 54 where there were none
-    const k = Math.max(1, Math.min(3, n - 1));
-    const step = Math.round(CLASS_TOP / (k + 1));
-    setOwn(Array.from({ length: k }, (_, i) => own?.[i] ?? step * (i + 1)));
-  };
-  const setLimit = (i: number, v: number) => {
-    if (!own) return;
-    const lo = i ? own[i - 1] + 1 : 0;
-    const hi = i < own.length - 1 ? own[i + 1] - 1 : CLASS_TOP - 1;
-    setOwn(own.map((x, j) => (j === i ? Math.max(lo, Math.min(hi, v)) : x)));
+  const [editing, setEditing] = useState<number | null>(null);
+  const lo = (i: number) => (own && i ? own[i - 1] + 1 : 1);
+  const hi = (i: number) => (own && i < own.length - 1 ? own[i + 1] - 1 : CLASS_TOP - 1);
+  // the list opens at the limit set
+  useEffect(() => {
+    if (editing == null) return;
+    requestAnimationFrame(() => document.querySelector('.sheet .pick-option[aria-pressed="true"]')?.scrollIntoView({ block: 'center' }));
+  }, [editing]);
+  const add = () => {
+    if (!own || own.length >= 3) return;
+    const last = own[own.length - 1];
+    if (last >= CLASS_TOP - 1) return;
+    setOwn([...own, Math.round((last + CLASS_TOP) / 2)]);
   };
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet" role="dialog" aria-label={tr('Net classes', 'Netto-Klassen')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <strong>{tr('Net classes', 'Netto-Klassen')}</strong>
+          <strong>{own ? tr('Own classes', 'Eigene Klassen') : tr('Net classes', 'Netto-Klassen')}</strong>
           <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
             ✕
           </button>
         </div>
-        <div className="pick-list">
-          {CLASS_PRESETS.map((c) => (
-            <button key={c.join()} type="button" className="pick-option" aria-pressed={!own && props.value.join() === c.join()} onClick={() => props.onPick(c)}>
-              <span className="grow">
-                <strong>{classesName(c)}</strong>
-                <span className="muted small">{!c.length ? tr('One ranking for all.', 'Eine Wertung für alle.') : tr('A ranking per class, by playing handicap.', 'Eine Wertung je Klasse, nach Spielvorgabe.')}</span>
-              </span>
-              {!own && props.value.join() === c.join() && <span className="pick-check" aria-hidden="true">✓</span>}
-            </button>
-          ))}
-          <button type="button" className="pick-option" aria-pressed={!!own} onClick={() => !own && setOwn(props.value.length && !isPreset(props.value) ? props.value : [9, 18, 26])}>
-            <span className="grow">
-              <strong>{tr('Own', 'Eigene')}</strong>
-              <span className="muted small">{own ? classLimits(own) : tr('Two to four classes, each with its limit.', 'Zwei bis vier Klassen, jede mit ihrer Grenze.')}</span>
-            </span>
-            {own && <span className="pick-check" aria-hidden="true">✓</span>}
-          </button>
-        </div>
-        {own && (
-          <div className="class-own">
-            <div className="field">
-              <span className="field-label">{tr('Classes', 'Klassen')}</span>
-              <Stepper label={tr('Number of classes', 'Anzahl Klassen')} value={own.length + 1} min={2} onChange={(n) => count(Math.min(4, n))} />
-            </div>
-            {own.map((x, i) => (
-              <div className="field" key={i}>
-                <span className="field-label">{tr(`${LETTERS[i]} up to playing handicap`, `${LETTERS[i]} bis Spielvorgabe`)}</span>
-                <Stepper label={tr(`Class ${LETTERS[i]} up to`, `Klasse ${LETTERS[i]} bis`)} value={x} min={i ? own[i - 1] + 1 : 0} onChange={(v) => setLimit(i, v)} />
-              </div>
+        {!own ? (
+          <div className="pick-list">
+            {CLASS_PRESETS.map((c) => (
+              <button key={c.join()} type="button" className="pick-option" aria-pressed={props.value.join() === c.join()} onClick={() => props.onPick(c)}>
+                <span className="grow">
+                  <strong>{classesName(c)}</strong>
+                  <span className="muted small">{!c.length ? tr('One ranking for all.', 'Eine Wertung für alle.') : tr('A ranking per class, by playing handicap.', 'Eine Wertung je Klasse, nach Spielvorgabe.')}</span>
+                </span>
+                {props.value.join() === c.join() && <span className="pick-check" aria-hidden="true">✓</span>}
+              </button>
             ))}
-            <span className="muted small">{tr(`${LETTERS[own.length]} up to ${CLASS_TOP}.`, `${LETTERS[own.length]} bis ${CLASS_TOP}.`)}</span>
-            <button type="button" className="btn-primary" onClick={() => props.onPick(own)}>
-              {tr('Use', 'Übernehmen')}
+            <button type="button" className="pick-option" aria-pressed={false} onClick={() => setOwn(props.value.length && !isPreset(props.value) ? props.value : [9, 18, 26])}>
+              <span className="grow">
+                <strong>{tr('Own …', 'Eigene …')}</strong>
+                <span className="muted small">{tr('Two to four classes, each with its limit.', 'Zwei bis vier Klassen, jede mit ihrer Grenze.')}</span>
+              </span>
+              <span aria-hidden="true">›</span>
             </button>
           </div>
+        ) : (
+          <>
+            <SettingsList label={tr('The classes', 'Die Klassen')}>
+              {own.map((x, i) => (
+                <SettingsRow key={i} label={tr(`Class ${LETTERS[i]}`, `Klasse ${LETTERS[i]}`)} value={tr(`up to ${x}`, `bis ${x}`)} onClick={() => setEditing(i)} />
+              ))}
+              <SettingsRow label={tr(`Class ${LETTERS[own.length]}`, `Klasse ${LETTERS[own.length]}`)} value={tr(`up to ${CLASS_TOP}`, `bis ${CLASS_TOP}`)} onClick={() => undefined} disabled />
+            </SettingsList>
+            <span className="muted small">{tr('By playing handicap. The last class takes everyone up to 54.', 'Nach Spielvorgabe. Die letzte Klasse nimmt alle bis 54.')}</span>
+            {own.length < 3 && own[own.length - 1] < CLASS_TOP - 1 && (
+              <button type="button" className="btn-secondary" onClick={add}>
+                {tr('+ Class', '+ Klasse')}
+              </button>
+            )}
+            <button type="button" className="btn-primary" onClick={() => props.onPick(own)}>
+              {tr(`Use ${own.length + 1} classes`, `${own.length + 1} Klassen übernehmen`)}
+            </button>
+            <button type="button" className="link-btn small" onClick={() => setOwn(null)}>
+              {tr('Back to the presets', 'Zurück zu den Vorlagen')}
+            </button>
+          </>
+        )}
+        {own && editing != null && (
+          <PickSheet<number>
+            title={tr(`Class ${LETTERS[editing]} up to`, `Klasse ${LETTERS[editing]} bis`)}
+            current={own[editing]}
+            options={Array.from({ length: hi(editing) - lo(editing) + 1 }, (_, k) => lo(editing) + k).map((v) => ({ value: v, name: tr(`up to ${v}`, `bis ${v}`) }))}
+            onPick={(v) => {
+              setOwn(own.map((x, j) => (j === editing ? v : x)));
+              setEditing(null);
+            }}
+            onClose={() => setEditing(null)}
+          >
+            {own.length > 1 && (
+              <button
+                type="button"
+                className="btn-secondary btn-danger"
+                onClick={() => {
+                  setOwn(own.filter((_, j) => j !== editing));
+                  setEditing(null);
+                }}
+              >
+                {tr(`Remove class ${LETTERS[editing]}`, `Klasse ${LETTERS[editing]} entfernen`)}
+              </button>
+            )}
+          </PickSheet>
         )}
       </section>
     </div>

@@ -149,10 +149,22 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
   await cs.getByRole('button', { name: /^3 Klassen/ }).click();
   ok(/3 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 12 · B bis 24 · C bis 54', { exact: true }).count()) === 1, `classes: 3 – "A bis 12 · B bis 24 · C bis 54" (${(await row.innerText()).replace(/\s+/g, ' ')})`);
   await row.click();
+  // "Eigene" as rows (Sascha 03.11.2026): a row per class, its limit from a list, "+ Klasse", the last up to 54
   await cs.getByRole('button', { name: /^Eigene/ }).click();
-  await cs.getByRole('button', { name: 'Anzahl Klassen plus eins' }).click(); // 4 classes
-  ok((await cs.locator('.class-own .field').count()) === 4, 'classes: own – four classes, three limits to set');
-  await cs.getByRole('button', { name: 'Übernehmen' }).click();
+  const ownRows = H.getByRole('dialog', { name: 'Netto-Klassen' }).getByRole('group', { name: 'Die Klassen' }).locator('.settings-row');
+  ok(JSON.stringify((await ownRows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim())) === '["Klasse A bis 9","Klasse B bis 18","Klasse C bis 26","Klasse D bis 54"]', `classes: own – a row per class (${(await ownRows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ')).join(' | ')})`);
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-classes.png' });
+  await ownRows.nth(1).click();
+  const lim = H.getByRole('dialog', { name: 'Klasse B bis' });
+  ok((await lim.locator('.pick-option').first().innerText()).trim() === 'bis 10' && (await lim.locator('.pick-option').last().innerText()).trim() === 'bis 25', 'classes: B between A and C – 10 to 25');
+  await lim.getByRole('button', { name: 'Klasse B entfernen' }).click();
+  ok((await ownRows.count()) === 3 && (await cs.getByRole('button', { name: '+ Klasse' }).count()) === 1, 'classes: B removed – three classes, "+ Klasse" again');
+  await cs.getByRole('button', { name: '+ Klasse' }).click();
+  await ownRows.nth(1).click();
+  await H.getByRole('dialog', { name: 'Klasse B bis' }).getByRole('button', { name: 'bis 18', exact: true }).click();
+  await ownRows.nth(2).click();
+  await H.getByRole('dialog', { name: 'Klasse C bis' }).getByRole('button', { name: 'bis 26', exact: true }).click();
+  await cs.getByRole('button', { name: '4 Klassen übernehmen' }).click();
   ok(/4 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 9 · B bis 18 · C bis 26 · D bis 54', { exact: true }).count()) === 1, `classes: own taken – ${await row.innerText()}`);
   // back to brutto for the rest of the test
   await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
