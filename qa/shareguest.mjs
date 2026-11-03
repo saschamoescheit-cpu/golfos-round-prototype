@@ -78,8 +78,13 @@ async function guestAsks(phone, name, code) {
   ok((await H.getByRole('dialog', { name: 'Beitrittsanfragen' }).count()) === 0, 'Sascha: "Alle zulassen" – the overview closes');
   const names = await H.locator('input[id^="name-"]').evaluateAll((xs) => xs.map((x) => x.value));
   ok(names.join() === 'Sascha,Tom,Lisa', `Sascha's setup: both in his flight without typing (${names.join()})`);
-  await tom.sheet.getByText('Du bist zugelassen').waitFor({ timeout: 10000 }).catch(() => {});
-  ok(await tom.sheet.getByText('Du bist zugelassen').isVisible().catch(() => false), 'Tom: "Du bist zugelassen – der Gastgeber trägt dich gleich ein"');
+  // let in: "Du bist zugelassen" while the host's phone adds his name – or, when that came first, straight on without
+  // the note (a race, not a fault: 03.11.2026 it failed every second run when the host's phone was the quicker)
+  const told = tom.sheet.getByText('Du bist zugelassen');
+  for (let k = 0; k < 20 && !(await told.isVisible().catch(() => false)) && (await tom.sheet.isVisible().catch(() => false)) && !(await tom.sheet.getByText(/wer bist du/i).count()); k++) await tom.G.waitForTimeout(500);
+  const toldNow = await told.isVisible().catch(() => false);
+  const onAlready = !(await tom.sheet.isVisible().catch(() => false));
+  ok(toldNow || onAlready, `Tom: "Du bist zugelassen – der Gastgeber trägt dich gleich ein" (or straight on: ${onAlready})`);
   if (process.env.SHOTS) await tom.G.screenshot({ path: process.env.SHOTS + '/join-guest-wait.png' });
   await H.getByRole('button', { name: 'Runde starten' }).click();
   await H.locator('.map-hole-no').waitFor({ timeout: 30000 });

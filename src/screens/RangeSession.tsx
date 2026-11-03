@@ -74,9 +74,15 @@ export function RangeSession(props: { session: LmSession; bag: { club: Club; car
           </div>
         </section>
       ) : (
-        <button type="button" className="btn-secondary btn-danger" onClick={() => setDeleting(true)}>
-          {tr('Delete session', 'Sitzung löschen')}
-        </button>
+        // the action bar as everywhere (docs/DESIGN.md, 03.11.2026): deleting a red icon button, not a full-width text one
+        <div className="sc-actions" role="group" aria-label={tr('Actions', 'Aktionen')}>
+          <button type="button" className="sc-action danger" aria-label={tr('Delete session', 'Sitzung löschen')} onClick={() => setDeleting(true)}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+            </svg>
+            <span>{tr('Delete', 'Löschen')}</span>
+          </button>
+        </div>
       )}
     </main>
   );
