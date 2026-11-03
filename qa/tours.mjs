@@ -264,9 +264,17 @@ await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
 ok((await sheet.getByText('Wer erfasst die Scores?').count()) === 0, 'the flight sheet: no scorer any more');
 await sheet.getByRole('button', { name: 'Schließen' }).click();
 const who = H.locator('.settings-row').filter({ hasText: 'Wer erfasst' });
-ok(/Jeder seinen eigenen/.test(await who.innerText()), 'Score-Erfassung: "Jeder seinen eigenen" by default');
+// the three choices of a round (Sascha 03.11.2026: "with a marker missing – as in Rounds"), "Mit Zähler" the default
+ok(/Mit Zähler/.test(await who.innerText()) && /Zähler: /.test(await fl(1).innerText()), `Score-Erfassung: "Mit Zähler" by default, the markers shown (${(await who.innerText()).replace(/\s+/g, ' ')})`);
 await who.click();
-await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer je Flight/ }).click();
+{
+  const opts = (await H.getByRole('dialog', { name: 'Wer erfasst' }).locator('.pick-option strong').allInnerTexts()).join('|');
+  ok(opts === 'Jeder seinen eigenen|Mit Zähler|Einer für alle', `Score-Erfassung: the choices of Rounds – ${opts}`);
+}
+await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Jeder seinen eigenen/ }).click();
+ok(!/Zähler: /.test(await fl(0).innerText() + (await fl(1).innerText())) && (await H.getByText('Jeder unterschreibt seine Karte selbst.').count()) === 1, 'everyone his own: no markers in the flights');
+await who.click();
+await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
 ok(/Erik/.test(await fl(1).locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()), 'one per flight: the flight\'s first is its scorer, a row "Schreiber"');
 await fl(1).locator('.settings-row').filter({ hasText: 'Schreiber' }).click();
 await H.getByRole('dialog', { name: 'Schreiber in Flight 2' }).getByRole('button', { name: /^Cedric/ }).click();
@@ -444,6 +452,21 @@ await H.waitForTimeout(1500);
 const ld2 = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/Erik.*280 m/.test(ld2[0] ?? '') && shared.get(byTime[1].code).game.flight.specials[ld.id].p1.by === 'host', `the host's correction: Erik 280 m in the fairway leads (${ld2.join(' | ')})`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-page.png', fullPage: true });
+// a flight ended by mistake (Sascha 03.11.2026: "Cedric ended the round by accident – then he did not get in any more"):
+// the host opens it again, its scores kept
+shared.get(byTime[1].code).game.flight.finishedAt = new Date().toISOString();
+await H.getByRole('button', { name: 'Turniere' }).first().click();
+await H.waitForTimeout(600);
+await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
+await H.waitForTimeout(2500);
+{
+  const f2 = H.locator('section.tour-flight[aria-label="Flight 2"]');
+  ok((await f2.getByText('Beendet', { exact: true }).count()) === 1 && (await H.locator('section.tour-flight[aria-label="Flight 1"]').getByText('Beendet', { exact: true }).count()) === 0, 'a flight ended: "Beendet" at it, the host may open it again');
+  await f2.getByRole('button', { name: 'Flight wieder öffnen' }).click();
+  await H.waitForTimeout(1500);
+  const fl2 = shared.get(byTime[1].code).game.flight;
+  ok(fl2.finishedAt == null && fl2.scores.p1.filter(Boolean).length === 3 && (await f2.getByText('Beendet', { exact: true }).count()) === 0, `flight 2 open again, its scores kept (${fl2.finishedAt})`);
+}
 
 // ---------- Chris: in by the code – sees it, cannot change it ----------
 shared.get(code).members.push('u-Chris'); // joined with the link in Rounds (golfos_join_game: a planned one at once)
@@ -493,7 +516,14 @@ await H.goto(url);
 await H.waitForTimeout(1500);
 await H.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
 await H.waitForTimeout(1200);
-await H.getByRole('button', { name: 'Zu einer Turnierserie zusammenfassen' }).click();
+// series and single tournaments each a category with its icon; making a series a row of its list (Sascha 03.11.2026)
+{
+  const heads = (await H.locator('.tour-cat-head').allInnerTexts()).map((t) => t.trim().toUpperCase());
+  const make = H.locator('.tour-cat[aria-label="Turnierserien"] .tour-make-series');
+  ok(heads.join('|') === 'TURNIERSERIEN|EINZELNE TURNIERE' && (await H.locator('.tour-cat-head svg').count()) === 2 && (await make.count()) === 1 && (await H.locator('.btn-secondary', { hasText: 'Turnierserie' }).count()) === 0, `the list: categories ${heads.join(' · ')}, "Zusammenfassen" a row of the series`);
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-list.png', fullPage: true });
+}
+await H.getByRole('button', { name: /Zu einer Turnierserie zusammenfassen/ }).click();
 const ss = H.getByRole('dialog', { name: 'Turnierserie zusammenstellen' });
 await ss.locator('#series-name').fill('USA 2026');
 await ss.locator('label', { hasText: 'USA Tag 2' }).click();
@@ -506,6 +536,15 @@ ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() =
 ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
 const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(total.length === 4 && /Chris/.test(total[0]) && total.every((t) => /1 Runde/.test(t)), `the total standing: the round played added up (${total.join(' | ')})`);
+// the pencil green as every pencil (Sascha 03.11.2026); the total's head a line of its own
+{
+  const pen = await H.getByRole('button', { name: 'Serie umbenennen' }).evaluate((e) => getComputedStyle(e).backgroundColor);
+  const brand = await H.evaluate(() => { const s = document.createElement('span'); s.style.color = 'var(--brand)'; document.body.append(s); const c = getComputedStyle(s).color; s.remove(); return c; });
+  const head = await H.locator('[aria-label="Gesamtwertung"] .eyebrow').boundingBox();
+  const next = await H.locator('[aria-label="Gesamtwertung"] > :nth-child(2)').boundingBox();
+  ok(pen === brand && next.y >= head.y + head.height - 1, `the series: its pencil green (${pen} vs ${brand}), the total below its head`);
+  if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-series.png' });
+}
 await H.getByRole('button', { name: 'Turniere' }).first().click();
 await H.waitForTimeout(800);
 ok((await H.locator('.tour-series-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 2' }).count()) === 0, 'the list: the series once, its rounds inside');

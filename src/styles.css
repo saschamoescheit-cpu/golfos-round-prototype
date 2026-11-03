@@ -77,6 +77,14 @@ h2 { margin: 0; font: 600 17px var(--display); }
 }
 .list-item .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .list-item .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the tournaments' categories – series, single – each its head with its icon (03.11.2026) */
+.tour-cat { display: flex; flex-direction: column; gap: 8px; }
+.tour-cat + .tour-cat { margin-top: 10px; }
+.tour-cat-head { display: flex; align-items: center; gap: 8px; }
+.tour-cat-head svg { width: 18px; height: 18px; color: var(--brand-text); flex: none; }
+.tour-make-series { background: transparent; border: 1.5px dashed var(--line, #2a3a36); }
+.tour-make-mark { width: 44px; display: flex; justify-content: center; color: var(--brand-text); }
+.tour-make-series .title { color: var(--brand-text); white-space: normal; }
 
 .input {
   width: 100%; min-height: 50px; border-radius: 12px; border: 1px solid var(--line-strong);
@@ -2104,6 +2112,13 @@ button.tile:disabled { opacity: 1; }
 .qr-action-icon.primary { background: var(--brand); color: #fff; border-color: transparent; }
 /* the pencil to edit, everywhere green and filled (Sascha 03.11.2026: "else it goes under") */
 .icon-btn.edit-btn, .review-list .icon-btn.row-edit { background: var(--brand); color: #fff; border-color: transparent; }
+/* every pencil the same – filled green, a white pencil (Sascha 03.11.2026: "everywhere green, not otherwise in between"):
+   the score's and the putts' pencil on the card and in the review, an empty hole's on the scorecard */
+.pencil, .review-score .pencil { background: var(--brand); color: #fff; border-color: transparent; }
+.sc-empty { background: var(--brand); color: #fff; border-color: transparent; }
+/* the series' total: its head a line of its own above the standing */
+.tour-total { display: flex; flex-direction: column; gap: 8px; }
+.tour-flight-done { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
 .friends-group { margin-top: 10px; }
 .scan-code-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 /* the linked friends in a round's invitation, each with "Einladen" (03.11.2026) */

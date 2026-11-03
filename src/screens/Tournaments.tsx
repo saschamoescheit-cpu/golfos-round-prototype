@@ -9,7 +9,7 @@ import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib
 import { fetchShared } from '../lib/sharedratings';
 import { isLady, loadProfile, shownName } from '../lib/profile';
 import { type Scoring } from '../lib/games';
-import { CLASS_NAMES, eventStandings, markerOf, plannedEvent, plannedFlight, refreshEvent, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, eventStandings, markerOf, plannedEvent, plannedFlight, refreshEvent, reopenFlight, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
 import { addToSeries, changeTour, createSeries, createTour, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
@@ -35,6 +35,23 @@ export const TOURS_ICON = (
     <path d="M7 4h10v5a5 5 0 0 1-10 0z" />
     <path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4M17 6h2.5a2.5 2.5 0 0 1-2.6 4" />
     <path d="M12 14v3M8.5 20h7M9.5 17h5v3h-5z" />
+  </svg>
+);
+
+/** A series: tournaments stacked – the cup with two behind it (Sascha 03.11.2026: "icons would be good"). */
+export const SERIES_ICON = (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 5h8v4a4 4 0 0 1-8 0z" />
+    <path d="M13 13v3M10 20h6M10.5 16h5v4h-5z" />
+    <path d="M5.5 8.5v1.5a3.5 3.5 0 0 0 2.2 3.2M3 11.5v.5a3 3 0 0 0 2 2.8" />
+  </svg>
+);
+/** "Zu einer Turnierserie zusammenfassen": the stack with a plus. */
+const SERIES_ADD_ICON = (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="7" width="13" height="13" rx="2.5" />
+    <path d="M7 3.5h10.5A3 3 0 0 1 20.5 6.5V17" />
+    <path d="M9.5 10.5v6M6.5 13.5h6" />
   </svg>
 );
 
@@ -281,16 +298,46 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
           {msg}
         </span>
       )}
+      {/* the series and the single tournaments each a category of its own, with its icon (Sascha 03.11.2026: "at a
+          glance clearer") – a filter by the tiles shows every tournament of it in one list */}
+      {filter !== 'bin' && !filter && (series.length > 0 || groupable.length >= 2) && (
+        <section className="tour-cat" aria-label={tr('Tournament series', 'Turnierserien')}>
+          <span className="eyebrow tour-cat-head">
+            {SERIES_ICON}
+            {tr('Tournament series', 'Turnierserien')}
+          </span>
+          <ul className="list">
+            {series.map((s) => (
+              <li key={s.code}>
+                <SeriesRow s={s} onOpen={() => props.onOpenSeries(s.code)} />
+              </li>
+            ))}
+            {/* making one a row of the list, not a button below it (Sascha 03.11.2026: "visually different") */}
+            {groupable.length >= 2 && (
+              <li>
+                <button type="button" className="list-item tour-make-series" onClick={() => setMaking(true)}>
+                  <span className="tour-make-mark">{SERIES_ADD_ICON}</span>
+                  <span className="grow">
+                    <span className="title">{tr('Make a tournament series', 'Zu einer Turnierserie zusammenfassen')}</span>
+                    <span className="muted small">{tr('Several tournaments added up – one ranking, one code', 'Mehrere Turniere addiert – eine Wertung, ein Code')}</span>
+                  </span>
+                  <span className="muted" aria-hidden="true">›</span>
+                </button>
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
       {filter !== 'bin' &&
         (shown.length ? (
+          <section className="tour-cat" aria-label={tr('Single tournaments', 'Einzelne Turniere')}>
+          {!filter && (series.length > 0 || groupable.length >= 2) && (
+            <span className="eyebrow tour-cat-head">
+              {TOURS_ICON}
+              {tr('Single tournaments', 'Einzelne Turniere')}
+            </span>
+          )}
           <ul className="list">
-            {/* a series once (its rounds inside), then the single tournaments */}
-            {!filter &&
-              series.map((s) => (
-                <li key={s.code}>
-                  <SeriesRow s={s} onOpen={() => props.onOpenSeries(s.code)} />
-                </li>
-              ))}
             {shown
               .filter((e) => filter || single(e))
               .map((e) => (
@@ -306,6 +353,7 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
                 </li>
               ))}
           </ul>
+          </section>
         ) : (
           <>
             <p className="muted">{tr('No tournaments yet.', 'Noch keine Turniere.')}</p>
@@ -316,11 +364,6 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
             )}
           </>
         ))}
-      {filter !== 'bin' && groupable.length >= 2 && (
-        <button type="button" className="btn-secondary" onClick={() => setMaking(true)}>
-          {tr('Make a tournament series', 'Zu einer Turnierserie zusammenfassen')}
-        </button>
-      )}
       {making && (
         <SeriesSheet
           tours={[...groupable].sort((a, b) => a.ev.date.localeCompare(b.ev.date))}
@@ -372,6 +415,9 @@ export interface TourDraft {
   /** "Score-Erfassung" of the tournament (Sascha 03.11.2026: "not under a flight's 'Ändern' – in the tournament's
    *  settings, as a round's"): one player per flight keeps the score of all – the one flagged, else the first */
   oneScorer?: boolean;
+  /** "Jeder seinen eigenen" (Sascha 03.11.2026: "the choices of Rounds – with a marker missing"): nobody marks, each
+   *  signs his own card; else every player marks a partner ("Mit Zähler", the default) */
+  ownOnly?: boolean;
 }
 
 /** A new flight starts this many minutes after the one before – then set to the minute (Sascha 02.11.2026: "we play
@@ -563,7 +609,7 @@ export function draftOf(e: TourEntry): TourDraft {
   const option = options.find((o) => o.loops.join() === ev.loopOrder.join() && buildRoundHoles(course!.holes, o).length === ev.holes.length);
   const times = flights.map((f) => teeTimeOf(f) || FIRST_TEE);
   return {
-    ...(flights.some((f) => f.scorer) ? { oneScorer: true } : {}),
+    ...(flights.some((f) => f.scorer) ? { oneScorer: true } : ev.format?.marker === false ? { ownOnly: true } : {}),
     code: e.code,
     base: ev,
     name: ev.name,
@@ -664,7 +710,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           const tee = teeOf(p, k);
           return { name: label(p, k), playingHandicap: playingOf(p, k), hcpIndex: parseIndex(p.hcp), ...(tee ? { tee } : {}) };
         }),
-        markers: Object.fromEntries(ps.map((p) => [pid(p.id), pid(markers[p.id])])),
+        markers: d.ownOnly && !d.oneScorer ? {} : Object.fromEntries(ps.map((p) => [pid(p.id), pid(markers[p.id])])),
         // one for all: his place in the flight ("p2") – the one flagged, else the flight's first
         ...(d.oneScorer && ps.length ? { scorer: pid((ps.find((p) => p.scorer) ?? ps[0]).id) } : {}),
       };
@@ -675,7 +721,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
       course: summary,
       holes,
       loopOrder: option?.loops ?? d.base!.loopOrder,
-      format: { mode: 'single', scoring: d.scoring, allowance: 100 }, // the full handicap – gross ignores it (02.11.2026)
+      format: { mode: 'single', scoring: d.scoring, allowance: 100, ...(d.ownOnly && !d.oneScorer ? { marker: false } : {}) }, // the full handicap – gross ignores it (02.11.2026)
       ...(myTee ? { tee: myTee } : {}),
       roundKind: 'tournament',
       ...(d.classes.length ? { classes: d.classes } : {}),
@@ -845,7 +891,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           players={d.players}
           flights={d.flights}
           times={timesFor(d.flights + 1)}
-          markers={markers}
+          markers={d.ownOnly && !d.oneScorer ? {} : markers}
           label={(p) => label(p, d.players.indexOf(p))}
           playing={(p) => playingOf(p, d.players.indexOf(p))}
           onSave={saveFlight}
@@ -862,18 +908,20 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
       <section className="setup-part">
         <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
         <SettingsList>
-          <ChoiceRow<'own' | 'one'>
+          {/* the three choices of a round (RoundSetup ENTRY – Sascha 03.11.2026: "with a marker, as in Rounds") */}
+          <ChoiceRow<'own' | 'marker' | 'one'>
             label={tr('Who enters', 'Wer erfasst')}
-            value={d.oneScorer ? 'one' : 'own'}
-            onChange={(v) => set({ oneScorer: v === 'one' })}
+            value={d.oneScorer ? 'one' : d.ownOnly ? 'own' : 'marker'}
+            onChange={(v) => set({ oneScorer: v === 'one', ownOnly: v === 'own' })}
             options={[
-              { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('On his own phone – a flight partner marks him.', 'Auf seinem Handy – ein Flightpartner zählt mit.') },
-              { value: 'one', name: tr('One per flight', 'Einer je Flight'), text: tr('One player keeps the score of his whole flight and marks everyone.', 'Ein Spieler erfasst die Scores seines ganzen Flights und zählt alle.') },
+              { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('Everyone enters only his own score and sees the others – nobody marks.', 'Jeder trägt nur seinen eigenen Score ein und sieht die anderen – ohne Zähler.') },
+              { value: 'marker', name: tr('With a marker', 'Mit Zähler'), text: tr("Everyone enters his own score and his partner's – a difference shows.", 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt.') },
+              { value: 'one', name: tr('One for all', 'Einer für alle'), text: tr('One player per flight keeps the score of all and marks everyone.', 'Ein Spieler je Flight erfasst die Scores aller und zählt alle.') },
             ]}
           />
         </SettingsList>
         <span className="muted small">
-          {d.oneScorer ? tr('Who it is: the row "Scorer" in each flight.', 'Wer es ist: die Zeile „Schreiber“ im Flight.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
+          {d.oneScorer ? tr('Who it is: the row "Scorer" in each flight.', 'Wer es ist: die Zeile „Schreiber“ im Flight.') : d.ownOnly ? tr('Each signs his own card.', 'Jeder unterschreibt seine Karte selbst.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
         </span>
       </section>
 
@@ -1508,7 +1556,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
           host ? (
             <button
               type="button"
-              className="icon-btn"
+              className="icon-btn edit-btn"
               aria-label={tr('Rename the series', 'Serie umbenennen')}
               onClick={() => {
                 setName(s.name);
@@ -1527,7 +1575,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
         {tr('Tournament series', 'Turnierserie')} · {s.rounds.length} {tr('rounds', 'Runden')}
         {s.rounds.length ? ` · ${dm(s.rounds[0].date)}–${dm(s.rounds[s.rounds.length - 1].date)}` : ''}
       </span>
-      <section className="card" aria-label={tr('Total standing', 'Gesamtwertung')}>
+      <section className="card tour-total" aria-label={tr('Total standing', 'Gesamtwertung')}>
         <span className="eyebrow">{tr('Total standing – all rounds added up', 'Gesamtwertung – alle Runden zusammen')}</span>
         {total.rows.length ? (
           <ul className="game-pays">
@@ -1818,6 +1866,25 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
               </div>
             );
           })}
+          {/* ended by mistake (Sascha 03.11.2026: Cedric could not get in again): the host opens it again, the scores kept */}
+          {live?.flights[f.id]?.finishedAt && (
+            <div className="tour-flight-done">
+              <span className="muted small">{tr('Finished', 'Beendet')}</span>
+              {host && (
+                <button
+                  type="button"
+                  className="link-btn small"
+                  onClick={async () => {
+                    const r = await reopenFlight(props.code, f.id);
+                    if (r) setLive(r);
+                    setMsg(r ? null : NO_NET());
+                  }}
+                >
+                  {tr('Open the flight again', 'Flight wieder öffnen')}
+                </button>
+              )}
+            </div>
+          )}
         </section>
       ))}
       {host && <TourInvite code={props.code} name={ev.name} date={ev.date} />}

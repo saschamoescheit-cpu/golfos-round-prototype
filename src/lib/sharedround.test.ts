@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Round } from '../types';
 import { emptyEntry } from './scoring';
-import { classOf, defaultMarkers, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
+import { classOf, defaultMarkers, marksIn, differences, eventBoard, eventOf, eventStandings, isSigned, mergeFlight, newFlightRound, quietKeeper, roundFromEvent, settle, shareView, signable, standingsCsv, type RoundEvent } from './sharedround';
 
 // A round on several phones (Sascha 29.10.2026): the flight partners on their own phones – everyone keeps his own
 // score, a team's card one phone of the team (another can take it over), in a tournament everyone also marks a partner.
@@ -278,6 +278,12 @@ describe('a tournament: the standings', () => {
     expect(classOf(30, [6, 12, 18, 24, 28])).toBe('F');
     expect(classOf(19, [6, 12, 18, 24, 28])).toBe('D');
   });
+  it('a tournament marks unless "everyone his own" (marker: false, 03.11.2026)', () => {
+    expect(marksIn({ mode: 'single', scoring: 'net' }, true)).toBe(true);
+    expect(marksIn({ mode: 'single', scoring: 'net', marker: false }, true)).toBe(false);
+    expect(marksIn({ mode: 'single', scoring: 'net' }, false)).toBe(false);
+    expect(marksIn({ mode: 'single', scoring: 'net', marker: true }, false)).toBe(true);
+  });
   it('the results as CSV: place, player, flight, class, score, holes', () => {
     const csv = standingsCsv(event({ a: [4, 4, 4], b: [5, 5, 5] }, { a: 3, b: 30 }, { allowance: 0, classes: [18] }), true);
     const lines = csv.split('\n');
@@ -488,5 +494,11 @@ describe('an expired tournament goes from the start page (Sascha 02.11.2026)', (
     expect(tournamentOver(plan(), 'Sascha', at('16:01'))).toBe(true);
     expect(tournamentOver(plan(), 'Sascha', at('15:59'))).toBe(false);
     expect(tournamentOver(plan(), 'Sascha', at('08:00', 7))).toBe(true);
+  });
+  it('set up after its tee time (03.11.2026: "Durchfall Open" at four, 09:00 left): the six hours from then', () => {
+    const ev = { ...plan(), createdAt: at('15:50').toISOString() };
+    expect(tournamentOver(ev, 'Sascha', at('16:01'))).toBe(false);
+    expect(tournamentOver(ev, 'Sascha', at('21:40'))).toBe(false);
+    expect(tournamentOver(ev, 'Sascha', at('21:51'))).toBe(true);
   });
 });

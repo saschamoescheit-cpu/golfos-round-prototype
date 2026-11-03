@@ -82,7 +82,8 @@ export function PlayTab(props: {
     };
   }, [canShare]);
   // over – the own flight or all finished, or long after the last tee time – it goes again (Sascha 02.11.2026)
-  const tournaments = today.filter((t) => t.ev.date === localDay() && !props.rounds.some((r) => r.shared?.code === t.code) && !tournamentOver(t.ev, shownName(loadProfile())));
+  // a round of it ended by mistake does not hold it back – its flight opened again by the host, it is offered again (03.11.2026)
+  const tournaments = today.filter((t) => t.ev.date === localDay() && !props.rounds.some((r) => r.shared?.code === t.code && !r.finishedAt) && !tournamentOver(t.ev, shownName(loadProfile())));
   // the ones planned for a later day (Sascha 02.11.2026: "already planned tournaments should show under Rounds")
   const ahead = today.filter((t) => t.ev.date !== localDay());
 

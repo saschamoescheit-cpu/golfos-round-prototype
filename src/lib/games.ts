@@ -18,7 +18,8 @@ export interface RoundFormat {
   scoring: Scoring;
   matchplay?: boolean; // teams play hole by hole against each other ('match' = singles match play)
   allowance?: number; // handicap allowance in % (100 = full)
-  /** on several phones, single balls: everyone also marks a partner (Sascha 30.10.2026 – chosen, by default not) */
+  /** on several phones, single balls: everyone also marks a partner (Sascha 30.10.2026 – chosen, by default not); a
+   *  tournament marks by default – `false` there: everyone only his own (Sascha 03.11.2026: "as in Rounds") */
   marker?: boolean;
   /** on several phones: one player keeps the score of all (Sascha 02.11.2026 – "Chris enters it for everyone"); his
    *  player id – the others' phones only show it */

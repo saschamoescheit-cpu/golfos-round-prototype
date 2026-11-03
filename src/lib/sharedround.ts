@@ -137,9 +137,10 @@ const withCell = (e: HoleEntry, c: Cell): HoleEntry => ({
 });
 const nulls = (n: number): Cell[] => Array.from({ length: n }, () => null);
 const isTeamEvent = (f: Round['format'] | undefined): boolean => isTeamMode(f?.mode);
-/** Does every player mark a partner: in a tournament always; a round of single balls when chosen (Sascha 30.10.2026:
- *  "it must be selectable whether one only enters one's own score or plays with a marker" – by default his own). */
-export const marksIn = (f: Round['format'] | undefined, tournament: boolean): boolean => tournament || (!isTeamEvent(f) && !!f?.marker);
+/** Does every player mark a partner: in a tournament unless it says "everyone his own" (marker: false – Sascha 03.11.2026:
+ *  "the choices as in Rounds"); a round of single balls when chosen (Sascha 30.10.2026: "it must be selectable whether
+ *  one only enters one's own score or plays with a marker" – by default his own). */
+export const marksIn = (f: Round['format'] | undefined, tournament: boolean): boolean => (tournament && f?.marker !== false) || (!isTeamEvent(f) && !!f?.marker);
 
 /** The flight's scores in a round: per player, per hole. */
 export function scoresOf(round: Round): Record<string, Cell[]> {
@@ -992,6 +993,12 @@ export function setSpecial(code: string, fid: string, sid: string, pid: string, 
   });
 }
 
+/** A flight ended by mistake opened again by the host (Sascha 03.11.2026: "Cedric ended the round by accident – then he
+ *  did not get in any more"): finished no more, its scores kept – its players take part again. The event, or null. */
+export function reopenFlight(code: string, fid: string): Promise<RoundEvent | null> {
+  return changeFlight(code, fid, true, (f) => (f?.finishedAt ? { ...f, finishedAt: null } : null));
+}
+
 /** The flights that play – a flight the host took out of the plan keeps its row, empty (updatePlannedEvent). */
 export const liveFlights = (ev: RoundEvent): Flight[] => Object.values(ev.flights).filter((f) => f.players.length > 0);
 
@@ -1020,7 +1027,10 @@ export function tournamentOver(ev: RoundEvent, name: string, now = new Date()): 
     const [h, m] = last.split(':').map(Number);
     const tee = new Date(now);
     tee.setHours(h, m, 0, 0);
-    if (now.getTime() - tee.getTime() > 6 * 3600 * 1000) return true;
+    // set up after its tee time (Sascha 03.11.2026: "planned for today at four, 09:00 left as it was – Cedric could take
+    // part, I could not"): the six hours from when it was set up
+    const from = Math.max(tee.getTime(), new Date(ev.createdAt).getTime() || 0);
+    if (now.getTime() - from > 6 * 3600 * 1000) return true;
   }
   return false;
 }
