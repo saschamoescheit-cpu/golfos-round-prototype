@@ -133,7 +133,7 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
             return (
               <li key={t.id}>
                 {picking ? row : (
-                  <SwipeRow label={t.title} onDelete={() => { setSheet({ id: t.id, purge: true }); return false; }}>
+                  <SwipeRow asks label={t.title} onDelete={() => setSheet({ id: t.id, purge: true })}>
                     {row}
                   </SwipeRow>
                 )}
