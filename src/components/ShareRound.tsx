@@ -9,8 +9,7 @@ import { loadProfile, saveProfile, shownName } from '../lib/profile';
 import { loadSession, signIn, signInAnonymously } from '../lib/sync';
 import { inviteByName, pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
-import { Qr } from './ShareGame';
-import { ShareIcon } from './ShareIcon';
+import { copyLink, InviteCard, shareLink } from './InviteCard';
 
 /** A planned tournament's day: "Fr., 6.11." */
 export const dayText = (d: string): string => new Date(`${d}T12:00:00`).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
@@ -57,7 +56,7 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   // the round shown to signed-in phones nearby (Sascha 29.10.2026) – here, or (no GPS) on the course
-  const [near, setNear] = useState(true);
+  const [near, setNear] = useState(!props.auto);
   const [nearState, setNearState] = useState<'here' | 'course' | 'failed' | null>(null);
   const team = isTeamMode(props.round.format?.mode);
   const putNearby = async (code: string) => {
@@ -84,18 +83,8 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
   }, [props.auto, shared]); // eslint-disable-line react-hooks/exhaustive-deps
   const share = async () => {
     if (!shared) return;
-    const url = roundJoinLink(shared.code);
-    const nav = navigator as Navigator & { share?: (d: { text: string; url: string }) => Promise<void> };
     const text = shared.tournament ? tr(`Join the tournament – code ${shared.code}`, `Spiel im Turnier mit – Code ${shared.code}`) : tr(`Join my round – code ${shared.code}`, `Spiel in meiner Runde mit – Code ${shared.code}`);
-    try {
-      if (nav.share) await nav.share({ text, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        setMsg(tr('Link copied.', 'Link kopiert.'));
-      }
-    } catch {
-      /* cancelled */
-    }
+    setMsg(await shareLink(text, roundJoinLink(shared.code)));
   };
   if (!shared)
     return (
@@ -134,22 +123,37 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
     );
   return (
     <>
-      <Qr text={roundJoinLink(shared.code)} />
-      {/* the code, sharing beside it as an icon – the phone's share sheet offers WhatsApp, Mail, copying … */}
-      <div className="join-code-row">
-        <strong className="join-code" aria-label={tr(`Code ${shared.code}`, `Code ${shared.code}`)}>
-          {shared.code}
-        </strong>
-        <button type="button" className="icon-btn share-btn" aria-label={tr('Share the link', 'Link teilen')} title={tr('Share the link', 'Link teilen')} onClick={share}>
-          <ShareIcon />
-        </button>
-      </div>
-      <span className="muted small">
-        {shared.tournament
-          ? tr('Scan, or type the code under "Join a round" – no account needed. You let each one in; another flight starts its own.', 'Scannen oder Code unter „Runde beitreten“ eingeben – ohne Konto. Du bestätigst jeden; ein anderer Flight legt seinen eigenen an.')
-          : tr('Scan, or type the code under "Join a round" – no account needed. You let each one in, and he is in the round.', 'Scannen oder Code unter „Runde beitreten“ eingeben – ohne Konto. Du bestätigst jeden, dann ist er in der Runde.')}
-        {props.compact ? tr(' They can join now already; what you change here goes with the start.', ' Sie können schon jetzt beitreten; was du hier noch änderst, geht beim Start mit.') : ''}
-      </span>
+      <InviteCard
+        link={roundJoinLink(shared.code)}
+        code={shared.code}
+        codeClass="join-code"
+        codeLabel={tr(`Code ${shared.code}`, `Code ${shared.code}`)}
+        hint={
+          <>
+            {shared.tournament
+              ? tr('Scan, or type the code under "Join a round" – no account needed. You let each one in; another flight starts its own.', 'Scannen oder Code unter „Runde beitreten“ eingeben – ohne Konto. Du bestätigst jeden; ein anderer Flight legt seinen eigenen an.')
+              : tr('Scan, or type the code under "Join a round" – no account needed. You let each one in, and he is in the round.', 'Scannen oder Code unter „Runde beitreten“ eingeben – ohne Konto. Du bestätigst jeden, dann ist er in der Runde.')}
+            {props.compact ? tr(' What you change here goes with the start.', ' Was du hier noch änderst, geht beim Start mit.') : ''}
+          </>
+        }
+        actions={[
+          { label: tr('Invite', 'Einladen'), aria: tr('Share the link', 'Link teilen'), icon: 'share', primary: true, onClick: () => void share() },
+          { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(roundJoinLink(shared.code)).then(setMsg) },
+        ]}
+      >
+        {/* shown to players nearby: asked here, not by itself (03.11.2026 – the code is made at once now) */}
+        {!nearState && (
+          <div className="drawer-list settings-switches">
+            <button type="button" className="drawer-row" role="switch" aria-checked={false} onClick={() => void putNearby(shared.code)}>
+              <span className="switch-label">
+                <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
+                <span className="muted small">{tr(`Signed-in players within about 300 m see the round under "Join a round" and ask with a tap – you let each one in. For ${NEARBY_HOURS} hours`, `Angemeldete Spieler im Umkreis von etwa 300 m sehen die Runde unter „Runde beitreten“ und fragen mit einem Tipp an – du bestätigst jeden. ${NEARBY_HOURS} Stunden lang`)}</span>
+              </span>
+              <span className="drawer-switch" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </InviteCard>
       {nearState && (
         <span className={`small ${nearState === 'failed' ? 'muted' : 'near-state'}`}>
           {nearState === 'here'

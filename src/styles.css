@@ -2092,3 +2092,18 @@ button.tile:disabled { opacity: 1; }
 /* the round's code with sharing beside it as an icon (03.11.2026) */
 .join-code-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .share-btn { color: var(--brand-text); }
+
+/* every QR code as the friend code's card (Sascha 03.11.2026: "identical everywhere"): components/InviteCard.tsx */
+.invite-qr { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+.invite-qr .qr-box { width: min(200px, 56vw); }
+.invite-qr-code { align-self: center; font: 700 20px var(--display); letter-spacing: 0.12em; }
+.invite-qr-code.join-code { font-size: 28px; letter-spacing: 0.18em; }
+.invite-qr-hint, .invite-qr-waiting { text-align: center; }
+.qr-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; margin-top: 4px; }
+.qr-action { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 2px; background: none; border: 0; color: var(--text); font: inherit; cursor: pointer; min-height: 44px; }
+.qr-action:disabled { opacity: 0.45; cursor: default; }
+.qr-action-icon { width: 54px; height: 54px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-strong); }
+.qr-action-icon.primary { background: var(--brand); color: #fff; border-color: transparent; }
+/* the pencil to edit, everywhere green and filled (Sascha 03.11.2026: "else it goes under") */
+.icon-btn.edit-btn, .review-list .icon-btn.row-edit { background: var(--brand); color: #fff; border-color: transparent; }
+.friends-group { margin-top: 10px; }

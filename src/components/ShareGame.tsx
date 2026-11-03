@@ -6,6 +6,7 @@ import { tr } from '../lib/i18n';
 import { isPool, type WagerPool } from '../lib/wagers';
 import { joinPool } from '../lib/wagerstore';
 import { loadProfile, shownName } from '../lib/profile';
+import { copyLink, InviteCard, shareLink } from './InviteCard';
 
 // Invite and join (Sascha 15.10.2026: "join the game by a code or a QR code"): the host shows the code and the QR
 // code, the others scan it with the phone camera or type the code. Since 29.10.2026 as in Rounds (Sascha: "in Games
@@ -62,18 +63,23 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
   const code = props.game.shared?.code ?? null;
   const share = async () => {
     if (!code) return;
-    const url = joinLink(code);
-    const nav = navigator as Navigator & { share?: (d: { text: string; url: string }) => Promise<void> };
-    try {
-      if (nav.share) await nav.share({ text: tr(`Join my game – code ${code}`, `Tritt meinem Spiel bei – Code ${code}`), url });
-      else {
-        await navigator.clipboard.writeText(url);
-        setMsg(tr('Link copied.', 'Link kopiert.'));
-      }
-    } catch {
-      /* cancelled */
-    }
+    setMsg(await shareLink(tr(`Join my game – code ${code}`, `Tritt meinem Spiel bei – Code ${code}`), joinLink(code)));
   };
+  const create = async () => {
+    setBusy(true);
+    const g = await shareGame(props.game);
+    setBusy(false);
+    if (g) props.onShared(g);
+    else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+  };
+  // the code made as the sheet opens (Sascha 03.11.2026: "the QR code at once, without a click") – "Code erzeugen" only
+  // when that failed
+  const tried = useRef(false);
+  useEffect(() => {
+    if (code || tried.current) return;
+    tried.current = true;
+    void create();
+  }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
       <section className="sheet invite-sheet" role="dialog" aria-label={tr('Invite players', 'Mitspieler einladen')} onClick={(e) => e.stopPropagation()}>
@@ -91,31 +97,27 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
                 'Dein Flight auf weiteren Handys: Jeder trägt ein, jeder sieht die Scores und den Stand (mit Google angemeldet).',
               )}
             </span>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                const g = await shareGame(props.game);
-                setBusy(false);
-                if (g) props.onShared(g);
-                else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
-              }}
-            >
-              {busy ? tr('Creating …', 'Erzeuge …') : tr('Create a code', 'Code erzeugen')}
-            </button>
+            {busy ? (
+              <span className="muted small">{tr('Making the code …', 'Code wird erstellt …')}</span>
+            ) : (
+              <button type="button" className="btn-primary" onClick={() => void create()}>
+                {tr('Create a code', 'Code erzeugen')}
+              </button>
+            )}
           </>
         ) : (
           <>
-            <Qr text={joinLink(code)} />
-            <strong className="join-code" aria-label={tr(`Code ${code}`, `Code ${code}`)}>
-              {code}
-            </strong>
-            <span className="muted small">{tr('Scan, or type the code under "Join a game" – then pick who you are.', 'Scannen oder Code unter „Spiel beitreten“ eingeben – dann wählen, wer man ist.')}</span>
-            <button type="button" className="btn-secondary" onClick={share}>
-              {tr('Share the link', 'Link teilen')}
-            </button>
+            <InviteCard
+              link={joinLink(code)}
+              code={code}
+              codeClass="join-code"
+              codeLabel={tr(`Code ${code}`, `Code ${code}`)}
+              hint={tr('Scan, or type the code under "Join a game" – then pick who you are.', 'Scannen oder Code unter „Spiel beitreten“ eingeben – dann wählen, wer man ist.')}
+              actions={[
+                { label: tr('Invite', 'Einladen'), aria: tr('Share the link', 'Link teilen'), icon: 'share', primary: true, onClick: () => void share() },
+                { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(joinLink(code)).then(setMsg) },
+              ]}
+            />
           </>
         )}
         {msg && <span className="muted small">{msg}</span>}

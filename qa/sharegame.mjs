@@ -92,7 +92,8 @@ await H.getByRole('button', { name: 'Spiel starten' }).click();
 await H.waitForTimeout(4500);
 await H.locator('.hole-bar-handle').click();
 await H.locator('.hole-drawer').getByRole('button', { name: 'Mitspieler einladen' }).click();
-await H.getByRole('button', { name: 'Code erzeugen' }).click();
+await H.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself as the sheet opens (03.11.2026)
+await H.locator('.join-code').waitFor({ timeout: 8000 });
 await H.waitForTimeout(800);
 const code = (await H.locator('.join-code').innerText()).trim();
 ok(/^[A-Z0-9]{6}$/.test(code) && (await H.locator('.qr-box svg').count()) === 1, `host: code ${code} with a QR code`);

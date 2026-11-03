@@ -17,7 +17,8 @@ import type { TeeRating } from '../data/ratings';
 import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type RoundFormat } from '../lib/games';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
-import { InvitePanel } from '../components/ShareRound';
+import { InvitePanel, myName } from '../components/ShareRound';
+import { startShared } from '../lib/sharedround';
 
 const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
@@ -189,8 +190,15 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       /* ignore */
     }
     const r = draft(preview, planning);
-    // invited in the setup: the round is the event's (the preview of the course stays on this phone)
-    if (r) props.onStart(share && !preview ? { ...r, shared: share } : r);
+    if (!r) return;
+    // invited in the setup: the round is the event's (the preview of the course stays on this phone) – the event takes
+    // the round as it starts now (players, format, scorer changed after the code was made), at most 4 s, then on
+    if (share && !preview) {
+      setStarting(true);
+      void Promise.race([startShared({ ...r, shared: share }, myName()), new Promise<Round>((ok) => setTimeout(() => ok({ ...r, shared: share }), 4000))]).then(props.onStart);
+      return;
+    }
+    props.onStart(r);
   };
   /** The round as it would start now – for the start, and for the invitation made before it. */
   const draft = (preview = false, planning = false): Round | null => {
@@ -234,6 +242,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // the flight partners on their own phones (Sascha 29.10.2026: "invite where the round is set up, with the flight
   // partners – not only once it has begun"): the code made here, the round starts with it
   const [share, setShare] = useState<Round['shared'] | null>(null);
+  const [starting, setStarting] = useState(false); // a shared round: its event takes the start
   // who enters the scores on several phones: everyone his own, with a marker, or one player for all (02.11.2026)
   const [counting, setCounting] = useState<'own' | 'marker' | 'scorer'>('own');
   const [scorerId, setScorerId] = useState('me');
@@ -243,6 +252,13 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
     void sharingAvailable().then(setCanShare);
   }, []);
   const invitable = useMemo(() => (canShare ? draft() : null), [canShare, share, me, others, format, optionId, kind, counting, scorerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the code is made as the section shows (03.11.2026): what changes after it – players, format, scorer – goes to the
+  // event at once (a moment after the last change), so a partner joining before the start finds the flight as it is
+  useEffect(() => {
+    if (!share || !invitable || share.tournament) return;
+    const t = window.setTimeout(() => void startShared({ ...invitable, shared: share }, myName()), 1500);
+    return () => window.clearTimeout(t);
+  }, [invitable, share?.code]); // eslint-disable-line react-hooks/exhaustive-deps
   // let in and not in the list yet (Sascha 30.10.2026: scanned, asked, let in – no typing for the host): he becomes a
   // player here, with the handicap index from his profile; the joining phone finds its name and is in
   useEffect(() => {
@@ -380,7 +396,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
           <span className="eyebrow">{share?.tournament ? tr('Tournament', 'Turnier') : tr('Invite players', 'Mitspieler einladen')}</span>
           {invitable && (
             <div className="card invite-card" aria-label={tr('Invite players', 'Mitspieler einladen')}>
-              <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact />
+              <InvitePanel round={{ ...invitable, ...(share ? { shared: share } : {}) }} onShared={(r) => setShare(r.shared ?? null)} compact auto />
             </div>
           )}
           {canShare === false && (
@@ -569,8 +585,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         {planned > 0 ? <span className="muted small"> · {planned === holes.length ? tr(`all ${planned} holes planned`, `alle ${planned} Löcher geplant`) : tr(`${planned} of ${holes.length} holes planned`, `${planned} von ${holes.length} Löchern geplant`)}</span> : null}
       </button>
       <div className="sticky-cta">
-        <button type="button" className="btn-primary" onClick={() => begin()} disabled={!option || !fits}>
-          {tr('Start round', 'Runde starten')}
+        <button type="button" className="btn-primary" onClick={() => begin()} disabled={!option || !fits || starting}>
+          {starting ? tr('Starting …', 'Startet …') : tr('Start round', 'Runde starten')}
         </button>
       </div>
       {askHcp && (

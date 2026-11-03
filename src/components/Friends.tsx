@@ -6,7 +6,7 @@ import { loadProfile, shownName } from '../lib/profile';
 import { newId } from '../lib/storage';
 import { isNative } from '../lib/native';
 import { Avatar } from './Avatar';
-import { Qr } from './ShareGame';
+import { InviteCard, InviteIcon } from './InviteCard';
 import { QrScan } from './QrScan';
 
 // The friends tab (Sascha 15.10. / 02.11.2026): the own friend code (QR as with PayPal, an invitation by WhatsApp),
@@ -93,41 +93,23 @@ export function Friends(props: { onSignIn: () => void }) {
             <strong>{tr('My friend code', 'Mein Freundes-Code')}</strong>
             {code && (
               <button type="button" className="icon-btn friend-renew" aria-label={tr('New code', 'Neuer Code')} title={tr('New code', 'Neuer Code')} onClick={() => setRenewing(true)}>
-                <FriendIcon kind="renew" />
+                <InviteIcon kind="renew" />
               </button>
             )}
           </div>
-          {code ? (
-            <>
-              <Qr text={friendLink(code)} label={tr('My friend code as a QR code', 'Mein Freundes-Code als QR-Code')} />
-              <span className="friend-code-text">{spacedCode(code)}</span>
-            </>
-          ) : (
-            <span className="muted small">{problem ?? tr('Making your code …', 'Dein Code wird erstellt …')}</span>
-          )}
-          <span className="muted small friend-code-hint">
-            {tr('Your friend scans it or gets your invitation – once he accepts, you are friends with each other.', 'Dein Freund scannt ihn oder bekommt deine Einladung – sobald er annimmt, seid ihr gegenseitig befreundet.')}
-          </span>
-          <div className="friend-actions">
-            <button type="button" className="friend-action" aria-label={tr('Send invitation', 'Einladung senden')} disabled={!code} onClick={() => void invite()}>
-              <span className="friend-action-icon primary">
-                <FriendIcon kind="share" />
-              </span>
-              <span className="small">{tr('Invite', 'Einladen')}</span>
-            </button>
-            <button type="button" className="friend-action" aria-label={tr('Scan QR code', 'QR-Code scannen')} onClick={() => setScan(true)}>
-              <span className="friend-action-icon">
-                <FriendIcon kind="scan" />
-              </span>
-              <span className="small">{tr('Scan', 'Scannen')}</span>
-            </button>
-            <button type="button" className="friend-action" aria-label={tr('Type a code', 'Code eingeben')} onClick={() => setTyping(true)}>
-              <span className="friend-action-icon">
-                <FriendIcon kind="type" />
-              </span>
-              <span className="small">{tr('Type code', 'Code eingeben')}</span>
-            </button>
-          </div>
+          <InviteCard
+            link={code ? friendLink(code) : null}
+            code={code ? spacedCode(code) : null}
+            codeClass="friend-code-text"
+            qrLabel={tr('My friend code as a QR code', 'Mein Freundes-Code als QR-Code')}
+            waiting={problem ?? tr('Making your code …', 'Dein Code wird erstellt …')}
+            hint={tr('Your friend scans it or gets your invitation – once he accepts, you are friends with each other.', 'Dein Freund scannt ihn oder bekommt deine Einladung – sobald er annimmt, seid ihr gegenseitig befreundet.')}
+            actions={[
+              { label: tr('Invite', 'Einladen'), aria: tr('Send invitation', 'Einladung senden'), icon: 'share', primary: true, disabled: !code, onClick: () => void invite() },
+              { label: tr('Scan', 'Scannen'), aria: tr('Scan QR code', 'QR-Code scannen'), icon: 'scan', onClick: () => setScan(true) },
+              { label: tr('Type code', 'Code eingeben'), aria: tr('Type a code', 'Code eingeben'), icon: 'type', onClick: () => setTyping(true) },
+            ]}
+          />
           {sent && <span className="muted small">{sent}</span>}
           {problem && code && <span className="small good-text">{problem}</span>}
         </div>
@@ -146,9 +128,10 @@ export function Friends(props: { onSignIn: () => void }) {
         </div>
       )}
 
-      {/* one list, linked and typed by hand side by side – a symbol tells them apart (Sascha 02.11.2026) */}
-      {list.length > 0 && <span className="eyebrow">{tr('My friends', 'Meine Freunde')}</span>}
-      {list.map((f) =>
+      {/* two groups (Sascha 03.11.2026): the linked friends always on top, those typed by hand below – each with its mark */}
+      {list.some((f) => f.uid) && <span className="eyebrow">{tr('Linked friends', 'Verknüpfte Freunde')}</span>}
+      {[...list.filter((f) => f.uid), ...list.filter((f) => !f.uid)].map((f, k, all) => [
+        !f.uid && (k === 0 || all[k - 1].uid) ? <span key="typed-eyebrow" className="eyebrow friends-group">{tr('Typed by hand', 'Von Hand angelegt')}</span> : null,
         f.uid ? (
           <div key={f.id} className="card friend-linked">
             <KindMark linked />
@@ -197,12 +180,8 @@ export function Friends(props: { onSignIn: () => void }) {
             </button>
           </div>
         ),
-      )}
-      {list.length > 0 && (
-        <span className="muted small friend-legend">
-          <KindMark linked /> {tr('linked – from his profile', 'verknüpft – aus seinem Profil')} · <KindMark /> {tr('typed by hand', 'von Hand angelegt')}
-        </span>
-      )}
+      ])}
+      {!typedByHand.length && <span className="eyebrow friends-group">{tr('Typed by hand', 'Von Hand angelegt')}</span>}
       {linkable && typedByHand.some((f) => f.name.trim()) && (
         <span className="muted small">
           {tr('Send them your invitation: once accepted, the friend typed by hand becomes the linked one.', 'Schick ihnen deine Einladung: Sobald sie annehmen, wird aus dem von Hand angelegten Freund der verknüpfte.')}
@@ -276,35 +255,6 @@ export function FriendAskHost() {
     return () => window.removeEventListener('golfos:friend-ask', asked);
   }, []);
   return ask ? <FriendAsk key={ask} code={ask} onSignIn={() => window.dispatchEvent(new Event('golfos:open-profile'))} /> : null;
-}
-
-/** The icons of the friend code card. */
-function FriendIcon(props: { kind: 'share' | 'scan' | 'type' | 'renew' }) {
-  return (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {props.kind === 'share' ? (
-        <>
-          <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" />
-          <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
-        </>
-      ) : props.kind === 'scan' ? (
-        <>
-          <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
-          <path d="M4 12h16" />
-        </>
-      ) : props.kind === 'type' ? (
-        <>
-          <rect x="3" y="6" width="18" height="12" rx="2" />
-          <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" />
-        </>
-      ) : (
-        <>
-          <path d="M20 11a8 8 0 1 0-2.3 5.7" />
-          <path d="M20 4v7h-7" />
-        </>
-      )}
-    </svg>
-  );
 }
 
 /** The symbol of a friend: linked by his account (a chain) or typed by hand (a pen). */

@@ -123,10 +123,25 @@ await p.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await p.locator('.bin-item').first().click();
 await p.getByRole('dialog').getByRole('button', { name: 'Endgültig löschen' }).click();
 await p.waitForTimeout(200);
-ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 1, 'one tap on "Endgültig löschen" deletes nothing – it asks');
-await p.getByRole('button', { name: 'Endgültig löschen' }).last().click();
-await p.waitForTimeout(400);
-ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length)) === 0, 'deleted for good after confirming');
+// no question (Sascha 03.11.2026) – gone from the list at once, "Rückgängig" in the toast brings it back
+const trashN = () => p.evaluate(() => JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]').length);
+ok((await p.locator('.undo-toast').innerText()).includes('Endgültig gelöscht') && (await p.locator('.bin-item').count()) === 0, 'deleted for good: no question, the toast "Endgültig gelöscht · Rückgängig"');
+await p.locator('.undo-toast').getByRole('button', { name: 'Rückgängig' }).click();
+await p.waitForTimeout(9000);
+ok((await trashN()) === 1 && (await p.locator('.bin-item').count()) === 1, '"Rückgängig": back in the bin, still there after the toast');
+// swiped all the way: the same, without the sheet
+await p.locator('.bin-item').first().evaluate((el) => {
+  const r = el.getBoundingClientRect();
+  const y = r.top + r.height / 2;
+  const fire = (type, x) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: x, clientY: y, isPrimary: true }));
+  fire('pointerdown', r.right - 10);
+  for (let x = r.right - 20; x > r.left - 40; x -= 30) fire('pointermove', x);
+  fire('pointerup', r.left - 40);
+});
+await p.waitForTimeout(600);
+ok((await p.locator('.bin-item').count()) === 0 && (await p.locator('.undo-toast').innerText()).includes('Endgültig gelöscht'), 'swiped across: gone at once, with "Rückgängig"');
+await p.waitForTimeout(9000);
+ok((await trashN()) === 0, 'deleted for good once the toast is gone');
 // the tile stays, 0 and disabled like 'pausiert' (Sascha 23.10.2026)
 const empty = p.locator('.tile').filter({ hasText: 'gelöscht' });
 ok((await empty.innerText()).replace(/\s+/g, ' ').trim() === '0 gelöscht' && (await empty.isDisabled()), 'bin tile stays when empty: "0 gelöscht", not tappable');

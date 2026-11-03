@@ -6,7 +6,8 @@ import { SwipeRow } from './SwipeRow';
 // The bin of deleted rounds and games (Sascha 15.10.2026) – the same in every module: folded under the list,
 // "Restore" with one tap, "Delete for good" only after a second tap. Since 03.11.2026 (Sascha: "the deleted rounds look
 // just like played or signed ones – no two buttons under each round") a row as in the list, with the bin mark; a tap
-// opens its sheet (Restore · Delete for good), swiped left it asks "Delete for good?" in the same sheet.
+// opens its sheet (Restore · Delete for good). Deleting for good – swiped away or from the sheet – asks nothing; "Undo" in
+// the toast below brings it back for a few seconds, only then it is gone (Sascha 03.11.2026).
 
 export interface BinItem {
   id: string;
@@ -16,22 +17,48 @@ export interface BinItem {
   deletedAt: string;
 }
 
+const UNDO_MS = 8000; // as long as the toast shows "Undo"
+
 export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: string) => void; onPurge: (id: string) => void; open?: boolean }) {
   // `open` given: the list is opened from outside (the tile on the rounds page) – no own toggle
   const [ownOpen, setOpen] = useState(false);
   const open = props.open ?? ownOpen;
-  // the sheet of one deleted row: its choices, or (purge) the question "for good?"
-  const [sheet, setSheet] = useState<{ id: string; purge: boolean } | null>(null);
+  // the sheet of one deleted row: restore or delete for good
+  const [sheet, setSheet] = useState<{ id: string } | null>(null);
+  // deleted for good a moment ago: hidden, gone for real after the toast (UNDO_MS) – "Undo" shows it again
+  const [going, setGoing] = useState<Set<string>>(new Set());
+  const purgeLater = (t: BinItem) => {
+    setGoing((g) => new Set(g).add(t.id));
+    const timer = window.setTimeout(() => props.onPurge(t.id), UNDO_MS);
+    window.dispatchEvent(
+      new CustomEvent('golfos:deleted', {
+        detail: {
+          kind: 'purged',
+          id: t.id,
+          label: t.title,
+          undo: () => {
+            window.clearTimeout(timer);
+            setGoing((g) => {
+              const n = new Set(g);
+              n.delete(t.id);
+              return n;
+            });
+          },
+        },
+      }),
+    );
+  };
+  const items = props.items.filter((t) => !going.has(t.id));
   // several or all at once (Sascha 01.11.2026): "Select", tick them, delete for good – again only after a second tap
   const [pickingOn, setPicking] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [confirmMany, setConfirmMany] = useState(false);
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
-  if (!props.items.length) return null;
+  if (!items.length) return null;
   const day = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
-  const picking = pickingOn && props.items.length > 1; // one left: its own ✕ is enough
-  const chosen = props.items.filter((t) => picked.has(t.id)).map((t) => t.id);
-  const all = chosen.length === props.items.length;
+  const picking = pickingOn && items.length > 1; // one left: its own ✕ is enough
+  const chosen = items.filter((t) => picked.has(t.id)).map((t) => t.id);
+  const all = chosen.length === items.length;
   const endPicking = () => {
     setPicking(false);
     setPicked(new Set());
@@ -47,12 +74,12 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
     <>
       {props.open == null ? (
         <button type="button" className="toggle bin-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? '▾' : '▸'} {props.title} ({props.items.length})
+          {open ? '▾' : '▸'} {props.title} ({items.length})
         </button>
       ) : (
         open && <h2 className="bin-title">{props.title}</h2>
       )}
-      {open && props.items.length > 1 && (
+      {open && items.length > 1 && (
         <div className="bin-bar">
           {!picking ? (
             <button type="button" className="btn-secondary" onClick={() => setPicking(true)}>
@@ -81,7 +108,7 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
                 type="button"
                 className="btn-secondary"
                 aria-label={all ? tr('Select none', 'Keine auswählen') : tr('Select all', 'Alle auswählen')}
-                onClick={() => setPicked(all ? new Set() : new Set(props.items.map((t) => t.id)))}
+                onClick={() => setPicked(all ? new Set() : new Set(items.map((t) => t.id)))}
               >
                 {all ? tr('None', 'Keine') : tr('All', 'Alle')}
               </button>
@@ -97,10 +124,10 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
       )}
       {open && (
         <ul className="list">
-          {props.items.map((t) => {
+          {items.map((t) => {
             // while picking the whole row ticks it – a big target with gloves on the course
             const row = (
-              <button type="button" className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'} onClick={() => (picking ? toggle(t.id) : setSheet({ id: t.id, purge: false }))}>
+              <button type="button" className={picking ? 'list-item bin-item bin-pick' : 'list-item bin-item'} onClick={() => (picking ? toggle(t.id) : setSheet({ id: t.id }))}>
                 {picking && (
                   <input
                     type="checkbox"
@@ -133,7 +160,7 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
             return (
               <li key={t.id}>
                 {picking ? row : (
-                  <SwipeRow asks label={t.title} onDelete={() => setSheet({ id: t.id, purge: true })}>
+                  <SwipeRow label={t.title} onDelete={() => purgeLater(t)}>
                     {row}
                   </SwipeRow>
                 )}
@@ -142,47 +169,33 @@ export function Bin(props: { title: string; items: BinItem[]; onRestore: (id: st
           })}
         </ul>
       )}
-      {open && sheet && props.items.some((t) => t.id === sheet.id) && (() => {
-        const t = props.items.find((x) => x.id === sheet.id)!;
+      {open && sheet && items.some((t) => t.id === sheet.id) && (() => {
+        const t = items.find((x) => x.id === sheet.id)!;
         return (
           <div className="sheet-backdrop" onClick={() => setSheet(null)}>
             <section className="sheet" role="dialog" aria-label={t.title} onClick={(e) => e.stopPropagation()}>
               <strong>{t.title}</strong>
               <span className="muted small">{`${day(t.date)} · ${t.meta} · ${tr('deleted', 'gelöscht')} ${day(t.deletedAt)}`}</span>
-              {sheet.purge ? (
-                <>
-                  <span className="muted">{tr('Delete for good? This cannot be undone.', 'Endgültig löschen? Das lässt sich nicht rückgängig machen.')}</span>
-                  <button
-                    type="button"
-                    className="btn-secondary btn-danger"
-                    onClick={() => {
-                      props.onPurge(t.id);
-                      setSheet(null);
-                    }}
-                  >
-                    {tr('Delete for good', 'Endgültig löschen')}
-                  </button>
-                  <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
-                    {tr('Keep', 'Behalten')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => {
-                      props.onRestore(t.id);
-                      setSheet(null);
-                    }}
-                  >
-                    {tr('Restore', 'Wiederherstellen')}
-                  </button>
-                  <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet({ id: t.id, purge: true })}>
-                    {tr('Delete for good', 'Endgültig löschen')}
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  props.onRestore(t.id);
+                  setSheet(null);
+                }}
+              >
+                {tr('Restore', 'Wiederherstellen')}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-danger"
+                onClick={() => {
+                  setSheet(null);
+                  purgeLater(t);
+                }}
+              >
+                {tr('Delete for good', 'Endgültig löschen')}
+              </button>
             </section>
           </div>
         );

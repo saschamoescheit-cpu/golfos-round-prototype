@@ -662,6 +662,29 @@ export async function shareRound(round: Round, course: CourseSummary, o: { name:
   return null;
 }
 
+/**
+ * A round invited in its setup, started now (03.11.2026: the code is made as soon as the setup opens – Sascha: "the QR
+ * code at once, without a click"; what was changed after it must reach the others): the event takes the round as it
+ * starts – holes, format, its players, the scorer and the markers; the phones that joined meanwhile stay. The round
+ * with its roles anew; as it was when offline (the code and the QR code still work, the exchange follows).
+ */
+export async function startShared(round: Round, who: string): Promise<Round> {
+  const s = round.shared;
+  if (!s?.phone || s.tournament) return round;
+  const fresh = flightOf(round, s.flight, flightName(round), s.phone, false, who);
+  const ev = await update(s.code, (e) => {
+    const old = e.flights[s.flight];
+    // the scores entered by a joined phone already stay (none yet as a rule – nobody plays before the start)
+    const scores = old ? Object.fromEntries(Object.entries(fresh.scores).map(([pid, cells]) => [pid, old.scores?.[pid] ?? cells])) : fresh.scores;
+    return { ...e, ...eventFrame(round), flights: { ...e.flights, [s.flight]: { ...fresh, scores, phones: { ...fresh.phones, ...(old?.phones ?? {}) } } } }; // the phones as they joined – the host's first (he keeps a team's card)
+  });
+  const f = ev?.flights[s.flight];
+  if (!f) return round;
+  keepEvent(s.code, ev!);
+  const roles = Object.fromEntries(round.players.map((p) => [p.id, roleOf(f, p.id, s.phone!, isTeamEvent(round.format), marksIn(round.format, false))]));
+  return { ...round, shared: { ...s, roles, base: f.scores } };
+}
+
 /** A series of planned tournaments (Sascha 01.11.2026: "several tournaments as a series, one code for all"): its
  *  rounds as the series' row shows them – the events themselves are the truth (Games keeps this list in step). */
 export interface TourSeries {
@@ -1085,6 +1108,11 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
   let out = m.round;
   if (ev.by !== share.phone && ev.holes.map((h) => h.label).join() !== out.holes.map((h) => h.label).join() && !Object.values(out.entries).some((l) => l.some((e) => e.strokes != null || e.pickedUp))) {
     out = { ...out, ...eventFrame({ ...out, ...pickFrame(ev) }), entries: Object.fromEntries(out.players.map((p) => [p.id, ev.holes.map(() => emptyEntry())])) };
+  }
+  // … and the format changed after this phone joined (03.11.2026: the code is made as the setup opens – the host picks
+  // scramble or the scorer after it): taken over while nothing is entered yet
+  else if (ev.by !== share.phone && JSON.stringify(ev.format ?? null) !== JSON.stringify(out.format ?? null) && !Object.values(out.entries).some((l) => l.some((e) => e.strokes != null || e.pickedUp))) {
+    out = { ...out, ...(ev.format ? { format: ev.format } : {}), ...(ev.roundKind ? { kind: ev.roundKind } : {}) };
   }
   return { ...out, shared: { ...share, tournament: ev.tournament, base: m.base, roles: m.roles } };
 }

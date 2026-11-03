@@ -46,6 +46,9 @@ await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 
 await H.waitForTimeout(800);
 const code = (await card.locator('.join-code').innerText()).trim();
 ok(/^[A-Z0-9]{6}$/.test(code) && (await card.locator('.qr-box svg').count()) === 1, `setup: code ${code} with a QR code`);
+// made by itself (03.11.2026): shown nearby only when asked – the switch under the code; the setup goes to the server a moment after each change
+await card.getByRole('switch', { name: /In der Nähe anzeigen/ }).click();
+await H.waitForTimeout(2500);
 // (no tournament made here any more – they are planned in Games since 01.11.2026: qa/plannedtourney.mjs)
 
 const f1 = Object.values(event().flights)[0];
