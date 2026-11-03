@@ -292,6 +292,9 @@ export interface PoolRound {
   courseId?: string;
   /** a tournament planned in Games */
   tour?: string;
+  /** where the course is (Sascha 03.11.2026: "a course chosen for the bet – asked again at 'Runde starten'"): a phone
+   *  without it in its cache loads it from here */
+  src?: { id: string; source: import('../types').CourseSummary['source']; name: string; lat: number; lon: number; bbox?: [number, number, number, number] };
 }
 
 export interface WagerPool {

@@ -343,9 +343,13 @@ ok(shared.get(code).game.wagers.length === 7, '"Behalten": the bet is kept');
 // change the pool: rename it, add a player; Chris (joined, bets) cannot be removed, Dave can
 await H.goto('about:blank');
 await H.goto(url + '#pool=' + code);
-await H.waitForTimeout(2500);
+await H.waitForTimeout(800);
+// a friend for the friends' chips in the change (Sascha 03.11.2026: "my friends to pick right away")
+await H.evaluate(() => localStorage.setItem('golfos.friends.v1', JSON.stringify([{ id: 'f-ben', name: 'Ben', hcp: '8,1' }])));
+await H.waitForTimeout(1700);
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 const ed = H.getByRole('dialog', { name: 'Pool bearbeiten' });
+ok((await ed.locator('.friend-chips').getByRole('button', { name: '+ Ben' }).count()) === 1, 'edit: the friends to add with a tap (+ Ben)');
 await ed.locator('#pool-edit-name').fill('USA 2026 Florida');
 await ed.getByRole('button', { name: '+ Spieler' }).click();
 await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');

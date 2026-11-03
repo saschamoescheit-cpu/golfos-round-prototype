@@ -26,6 +26,7 @@ import { inUsa } from '../lib/weather';
 import { courseHandicap, parseIndex, ratingFor, saveOwnRating } from '../lib/handicap';
 import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
+import { loadCourse } from '../lib/courses';
 import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
 import { SeriesScreen, TOURS_ICON, TourScreen, TourSetup, TourStartCard, ToursTab, newTourDraft, useTours, type TourDraft } from './Tournaments';
 import { tourState } from '../lib/tourstore';
@@ -297,7 +298,14 @@ export function GamesApp(props: {
             // the course of the pool's round today, when it has one and it is on this phone
             const p = loadPools().find((e) => e.code === code)?.pool;
             const today = p?.rounds?.find((x) => x.day === dayOf(new Date()) && x.courseId);
-            setView({ name: 'poolRoundSetup', code, course: today?.courseId ? loadCachedCourse(today.courseId) : null });
+            const cached = today?.courseId ? loadCachedCourse(today.courseId) : null;
+            setView({ name: 'poolRoundSetup', code, course: cached });
+            // not on this phone (the pool set up on another – Sascha 03.11.2026: "the course chosen for the bet, asked again"):
+            // loaded from where the round keeps it
+            if (!cached && today?.src)
+              void loadCourse(today.src)
+                .then((c) => c.holes.length && setView((v) => (v.name === 'poolRoundSetup' && v.code === code && !v.course ? { ...v, course: c } : v)))
+                .catch(() => null);
           }}
           onBack={() => {
             setView({ name: 'tab', tab: 'bets' });

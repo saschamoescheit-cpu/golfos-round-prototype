@@ -348,7 +348,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
  *  in our case; even tied to the tournaments"): each its day and course – picked here, or taken from a tournament planned
  *  in Games (and linked to it). Set, only rounds on these days on these courses count. */
 function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onChange: (r: PoolRound[]) => void }) {
-  const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string } } | null>(null);
+  const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string }; src?: PoolRound['src'] } | null>(null);
   const [picking, setPicking] = useState(false);
   const [editing, setEditing] = useState<string | null>(null); // a round's id
   const tours = loadTours().filter((e) => !e.ev.deletedAt && e.ev.date >= props.from && e.ev.date <= props.to && !props.rounds.some((r) => r.tour === e.code));
@@ -369,7 +369,8 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
             if (!adding.course) setAdding(null); // backed out before a course: nothing to add
           }}
           onPicked={(c) => {
-            setAdding({ ...adding, course: { id: c.id, name: c.name } });
+            // the course's place kept with the round – another phone loads it from there (03.11.2026)
+            setAdding({ ...adding, course: { id: c.id, name: c.name }, src: { id: c.id, source: c.source, name: c.name, lat: c.lat, lon: c.lon, ...(c.bbox ? { bbox: c.bbox } : {}) } });
             setPicking(false);
           }}
         />
@@ -446,7 +447,7 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
                 key={e.code}
                 type="button"
                 className="chip"
-                onClick={() => props.onChange([...props.rounds, { id: newId(), day: e.ev.date, course: e.ev.course.name, courseId: e.ev.course.id, tour: e.code }])}
+                onClick={() => props.onChange([...props.rounds, { id: newId(), day: e.ev.date, course: e.ev.course.name, courseId: e.ev.course.id, tour: e.code, src: e.ev.course }])}
               >
                 + {e.ev.name} · {e.ev.date.slice(8, 10)}.{e.ev.date.slice(5, 7)}.
               </button>
@@ -473,7 +474,7 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
             className="btn-primary"
             disabled={adding.day < props.from || adding.day > props.to}
             onClick={() => {
-              props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id }]);
+              props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id, ...(adding.src ? { src: adding.src } : {}) }]);
               setAdding(null);
             }}
           >
@@ -1752,6 +1753,14 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
             {players.map((p, k) => (
               <PoolPlayerRow key={p.id} player={p} k={k} onChange={(np) => setPlayers(players.map((x) => (x.id === p.id ? { ...x, name: np.name, ...(np.hcp.trim() ? { hcp: np.hcp } : { hcp: undefined }) } : x)))} onRemove={!keeps(p) ? () => setPlayers(players.filter((x) => x.id !== p.id)) : undefined} />
             ))}
+            {/* your friends with a tap, as when setting the pool up (Sascha 03.11.2026) – an empty row first */}
+            <FriendChips
+              taken={players.map((p) => p.name)}
+              onAdd={(fr) => {
+                const k = players.findIndex((p) => !p.name.trim());
+                setPlayers(k >= 0 ? players.map((p, j) => (j === k ? { ...p, name: fr.name, ...(fr.hcp ? { hcp: fr.hcp } : {}) } : p)) : [...players, { id: newId(), name: fr.name, ...(fr.hcp ? { hcp: fr.hcp } : {}) }]);
+              }}
+            />
             <button type="button" className="btn-secondary" onClick={() => setPlayers([...players, { id: newId(), name: '' }])}>
               {tr('+ Add player', '+ Spieler hinzufügen')}
             </button>
