@@ -116,7 +116,7 @@ const event = {
 const host = await phone('Sascha');
 const H = host.p;
 // Sascha 01.11.2026: the bets a menu of their own – on the start page "start a game" and "start a bet"
-ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Profil', 'the menu has "Wetten" (the tournaments a module of their own since 03.11.2026)');
+ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Bilanz|Profil', 'the menu has "Wetten" (the tournaments a module of their own since 03.11.2026)');
 ok((await H.getByText('Neues Spiel starten').isVisible()) && (await H.getByText('Neue Wette starten').isVisible()), 'start page: "Neues Spiel starten" and "Neue Wette starten"');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-start.png' });
 // a game in dollars (Sascha 01.11.2026: "besides the euro the dollar to choose") – the stakes in dollars

@@ -126,7 +126,7 @@ await H.locator('.module-switch').click();
 const cards = (await H.locator('.module-card strong').allInnerTexts()).join('|');
 ok(cards === 'Rounds|Games & Bets|Tournaments|Training|Agility', `the start page: ${cards}`);
 await H.locator('.module-card').filter({ hasText: 'Games & Bets' }).click();
-ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Profil' && (await H.getByText('Neues Turnier planen').count()) === 0, 'Games & Bets: no tournaments any more');
+ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Bilanz|Profil' && (await H.getByText('Neues Turnier planen').count()) === 0, 'Games & Bets: no tournaments any more');
 await H.locator('.module-switch').click();
 await H.locator('.module-card').filter({ hasText: 'Tournaments' }).click();
 await H.getByRole('button', { name: 'Neues Turnier', exact: true }).click();

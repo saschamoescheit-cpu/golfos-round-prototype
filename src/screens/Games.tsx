@@ -29,10 +29,10 @@ import { CoursePicker } from './CoursePicker';
 import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
 import { SeriesScreen, TOURS_ICON, TourScreen, TourSetup, TourStartCard, ToursTab, newTourDraft, useTours, type TourDraft } from './Tournaments';
 import { tourState } from '../lib/tourstore';
-import { isLive, loadPools } from '../lib/wagerstore';
+import { isLive, loadPools, myPoolBalances } from '../lib/wagerstore';
 import { keepPoolRound, poolRoundOf } from '../lib/poolround';
 import { PoolRoundPlay, PoolRoundSetup } from './PoolRound';
-import { balances, dayOf } from '../lib/wagers';
+import { dayOf } from '../lib/wagers';
 import { GameOnMap, roundForGame } from './GameOnMap';
 import { SignedIcon } from '../components/SignedIcon';
 import { PausedIcon } from '../components/PausedIcon';
@@ -42,7 +42,7 @@ import { DeletedIcon, HolesIcon, PlayedIcon, ToSignIcon } from '../components/Ro
 // players, enter the strokes hole by hole (plus what the form needs, e.g. the wolf's partner), and see the standing and
 // who pays whom. Not linked to the round analysis yet; a side game next to a round may follow later.
 
-export type GamesTab = 'play' | 'games' | 'bets' | 'tours' | 'profile';
+export type GamesTab = 'play' | 'games' | 'bets' | 'balance' | 'tours' | 'profile';
 type View =
   | { name: 'tab'; tab: GamesTab }
   | { name: 'setup'; draft: Draft }
@@ -551,12 +551,19 @@ function GamesTabs(props: {
             onRestore={restoreGame}
             onPurge={purgeGame}
           />
-          {!binOpen && !filter && <Balance games={props.games} />}
           {props.games.length ? (
             !binOpen && <GameList games={props.games.filter((g) => (filter === 'confirm' ? g.finishedAt && !g.signedAt : filter === 'running' ? !g.finishedAt : filter === 'played' ? g.finishedAt : filter === 'confirmed' ? g.finishedAt && g.signedAt : true))} onOpen={props.onOpen} />
           ) : (
             <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>
           )}
+        </>
+      )}
+      {/* the balance a menu of its own – the games' and the bets' (Sascha 03.11.2026: "make Bilanz another menu item,
+          with the balances of the games and of the bets") */}
+      {props.tab === 'balance' && (
+        <>
+          <h1 className="tab-title">{tr('Balance', 'Bilanz')}</h1>
+          <Balance games={props.games} inTab />
         </>
       )}
       {props.tab === 'profile' && props.profile}
@@ -572,6 +579,7 @@ function GamesTabs(props: {
                 { id: 'play' as GamesTab, label: tr('Play', 'Spielen'), icon: MENU_ICONS.game, dot: running.length > 0 },
                 { id: 'games' as GamesTab, label: tr('Games', 'Spiele'), icon: MENU_ICONS.list },
                 { id: 'bets' as GamesTab, label: tr('Bets', 'Wetten'), icon: BETS_ICON, dot: betsRunning },
+                { id: 'balance' as GamesTab, label: tr('Balance', 'Bilanz'), icon: MENU_ICONS.balance },
                 { id: 'profile' as GamesTab, label: tr('Profile', 'Profil'), icon: MENU_ICONS.profile, dot: props.profileDot },
               ]
         }
@@ -751,11 +759,12 @@ function RunningGame(props: { game: Game; onContinue: () => void; onFinish: () =
 /** Your balance over all finished games: wins, money, and against whom (player 1 is you). */
 /** The balance – on "Games" below the tiles (Sascha 01.11.2026: "the balance into Games"): the confirmed games, against
  *  each friend, and where this account stands in each pool of bets. */
-function Balance(props: { games: Game[] }) {
+function Balance(props: { games: Game[]; /** the menu "Bilanz": its own title above, a word when there is nothing yet */ inTab?: boolean }) {
   const done = props.games.filter((g) => g.finishedAt && g.signedAt);
   const unconfirmed = props.games.filter((g) => g.finishedAt && !g.signedAt).length;
   const today = dayOf(new Date());
-  const pools = usePools().filter((e) => !e.pool.deletedAt && e.me);
+  usePools(); // read again when a pool changes
+  const pools = myPoolBalances(today);
   let wins = 0;
   // euros and dollars apart (Sascha 01.11.2026: a game in dollars in the USA)
   const money: Record<string, number> = {};
@@ -789,10 +798,11 @@ function Balance(props: { games: Game[] }) {
     const parts = Object.entries(m).filter(([, v]) => Math.abs(v) > 0.004);
     return parts.length ? parts.map(([sym, v]) => <span key={sym} className={cls(v)}>{formatEuro(v, sym)}</span>).reduce<ReactNode[]>((a, x, k) => (k ? [...a, ' · ', x] : [x]), []) : <span className="muted">{formatEuro(0, '€')}</span>;
   };
-  if (!done.length && !unconfirmed && !pools.length) return null;
+  if (!done.length && !unconfirmed && !pools.length)
+    return props.inTab ? <p className="muted">{tr('No confirmed games or bets yet – they show here once played.', 'Noch keine bestätigten Spiele oder Wetten – sie erscheinen hier, sobald gespielt.')}</p> : null;
   return (
     <section className="balance" aria-label={tr('Balance', 'Bilanz')}>
-      <h2 className="balance-title">{tr('Balance', 'Bilanz')}</h2>
+      {!props.inTab && <h2 className="balance-title">{tr('Balance', 'Bilanz')}</h2>}
       {unconfirmed > 0 && (
         <p className="notice" style={{ margin: 0 }}>
           {tr(
@@ -842,14 +852,20 @@ function Balance(props: { games: Game[] }) {
           <span className="eyebrow">{tr('Bets', 'Wetten')}</span>
           <ul className="game-pays bet-pays">
             {pools.map((e) => {
-              const v = balances(e.pool, today)[e.me] ?? 0;
-              const running = isLive(e, today);
+              const v = e.amount;
+              const sym = currencySymbol(e.currency);
+              // what is still open after the payments marked (+ owed to me, − I owe)
+              const open = Math.abs(e.open) > 0.004 && Math.abs(e.open - v) > 0.004 ? tr(` · open ${formatEuro(e.open, sym)}`, ` · offen ${formatEuro(e.open, sym)}`) : '';
               return (
                 <li key={e.code}>
                   <span>
-                    {e.pool.name} <span className="muted small">· {running ? tr('running', 'läuft') : tr('finished', 'beendet')}</span>
+                    {e.name}{' '}
+                    <span className="muted small">
+                      · {e.running ? tr('running', 'läuft') : tr('finished', 'beendet')}
+                      {open}
+                    </span>
                   </span>
-                  <strong className={v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted'}>{formatEuro(v, currencySymbol(e.pool.currency))}</strong>
+                  <strong className={v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted'}>{formatEuro(v, sym)}</strong>
                 </li>
               );
             })}
