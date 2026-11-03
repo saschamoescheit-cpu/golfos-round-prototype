@@ -68,6 +68,10 @@ export function restoreScreening(id: string): boolean {
   write(TRASH, loadScreeningTrash().filter((x) => x.screening.id !== id));
   return true;
 }
+/** Out of the bin for good (the bin's own "Undo" came before). */
+export function purgeScreening(id: string): void {
+  write(TRASH, loadScreeningTrash().filter((x) => x.screening.id !== id));
+}
 
 /** A screening without any result (a single test left before it was done) – nothing of the player's is lost. */
 export function discardEmpty(id: string): void {

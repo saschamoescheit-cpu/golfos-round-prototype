@@ -55,7 +55,7 @@ await small('Thema (Putten)');
 await p.locator('.tr-drill-row .list-item').first().click();
 await p.waitForTimeout(400);
 await small('Übung');
-await p.locator('.tr-actions .btn-secondary').first().click();
+await p.locator('.sc-action').filter({ hasText: 'Zur Einheit' }).click();
 await p.waitForTimeout(600);
 await small('Eigene Einheit');
 await p.getByRole('button', { name: /Speichern & starten/ }).click();

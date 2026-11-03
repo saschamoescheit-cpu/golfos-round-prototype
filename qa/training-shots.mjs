@@ -39,7 +39,7 @@ await p.locator('.tr-drill-row .list-item').first().click();
 await p.waitForTimeout(400);
 await shot('03-drill', true);
 // a drill goes into the own session (plan builder), from there the session starts
-await p.locator('.tr-actions .btn-secondary').first().click();
+await p.locator('.sc-action').filter({ hasText: 'Zur Einheit' }).click();
 await p.waitForTimeout(600);
 await shot('04-builder');
 await p.getByRole('button', { name: /Save & start|Speichern & starten/ }).click();

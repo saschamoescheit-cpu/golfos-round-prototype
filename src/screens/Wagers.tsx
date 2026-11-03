@@ -13,6 +13,7 @@ import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
+import { ActionBar } from '../components/ActionBar';
 import { openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
@@ -310,12 +311,16 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
         )}
         <span className="muted small">{tr('The first is you. The others join with the code – or add themselves.', 'Der Erste bist du. Die anderen treten mit dem Code bei – oder tragen sich selbst ein.')}</span>
       </section>
+      {/* Wer → Score-Erfassung → Worum, as Neue Runde and Neues Turnier (Sascha 03.11.2026: one order everywhere) */}
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+        <CountedSwitch on={counted} onChange={setCounted} />
+      </section>
       <section className="setup-part">
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
         <SettingsList>
           <PrizeRow value={prize} onChange={setPrize} />
         </SettingsList>
-        <CountedSwitch on={counted} onChange={setCounted} />
       </section>
       {msg && (
         <span className="small bad-text" role="alert">
@@ -421,16 +426,10 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
                 </SettingsList>
               )}
               {r.tour && <span className="muted small">{tr('From a tournament planned – its day comes from there.', 'Aus einem geplanten Turnier – der Tag kommt von dort.')}</span>}
-              <button
-                type="button"
-                className="btn-secondary btn-danger"
-                onClick={() => {
-                  props.onChange(props.rounds.filter((x) => x.id !== r.id));
-                  setEditing(null);
-                }}
-              >
-                {tr('Remove the round', 'Runde entfernen')}
-              </button>
+              <ActionBar
+                label={tr('This round', 'Diese Runde')}
+                actions={[{ label: tr('Remove the round', 'Runde entfernen'), icon: 'delete', danger: true, onClick: () => { props.onChange(props.rounds.filter((x) => x.id !== r.id)); setEditing(null); } }]}
+              />
             </section>
           </div>
         );
@@ -731,31 +730,24 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
           {msg}
         </span>
       )}
-      {/* the round right from the bets, at the bottom as everywhere in the app (Sascha 02.11.2026: "else again through Rounds, the players set up again"; "at the very bottom") */}
-      {entry.me && !pool.finishedAt && props.onRound && (
-        <button type="button" className="btn-primary" onClick={() => props.onRound!(props.code)}>
-          {poolRoundOf(props.code) ? tr('Continue the round', 'Runde fortsetzen') : tr('Start the round', 'Runde starten')}
-        </button>
-      )}
-      {/* only set up, finished later (Sascha 03.11.2026: "the bets set up only saved, finished at a later time"):
-          every change is on the server the moment it is made – "Speichern" checks it is there and goes back */}
+      {/* the pool's actions one bar of icons, as everywhere (Sascha 03.11.2026: docs/DESIGN.md) – Speichern (every change
+          is on the server the moment it is made: it checks it is there and goes back), Pool beenden red, last */}
       {host && !pool.finishedAt && (
         <>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={async () => {
-              if (await change(() => null)) props.onBack();
-            }}
-          >
-            {tr('Save', 'Speichern')}
-          </button>
+          <ActionBar
+            label={tr('This pool', 'Dieser Pool')}
+            actions={[
+              { label: tr('Save', 'Speichern'), icon: 'save', onClick: async () => void ((await change(() => null)) && props.onBack()) },
+              { label: tr('Finish the pool', 'Pool beenden'), icon: 'finish', danger: true, onClick: () => setSheet('finish') },
+            ]}
+          />
           <span className="muted small">{tr('Every change is saved at once – change the bets any time later.', 'Jede Änderung ist sofort gespeichert – die Wetten lassen sich jederzeit weiter bearbeiten.')}</span>
         </>
       )}
-      {host && !pool.finishedAt && (
-        <button type="button" className="btn-secondary btn-danger" onClick={() => setSheet('finish')}>
-          {tr('Finish the pool', 'Pool beenden')}
+      {/* the round right from the bets, the one main button at the very bottom (Sascha 02.11.2026) */}
+      {entry.me && !pool.finishedAt && props.onRound && (
+        <button type="button" className="btn-primary" onClick={() => props.onRound!(props.code)}>
+          {poolRoundOf(props.code) ? tr('Continue the round', 'Runde fortsetzen') : tr('Start the round', 'Runde starten')}
         </button>
       )}
       {sheet && typeof sheet === 'object' && 'edit' in sheet && (
@@ -1395,15 +1387,11 @@ export function WagerSheet(props: {
             )}
           </>
         )}
-        <button type="button" className="btn-primary" disabled={!ok} onClick={save}>
-          {props.wager ? tr('Save', 'Speichern') : tr('Add the bet', 'Wette anlegen')}
-        </button>
+        {/* the actions as a bar, the main button last (Sascha 03.11.2026: docs/DESIGN.md) */}
         {props.wager && (
           <>
             {!asking ? (
-              <button type="button" className="btn-secondary btn-danger" onClick={() => setAsking(true)}>
-                {tr('Delete the bet', 'Wette löschen')}
-              </button>
+              <ActionBar label={tr('This bet', 'Diese Wette')} actions={[{ label: tr('Delete the bet', 'Wette löschen'), icon: 'delete', danger: true, onClick: () => setAsking(true) }]} />
             ) : (
               <div className="play-confirm" role="group" aria-label={tr('Delete the bet?', 'Wette löschen?')}>
                 <span>{tr(`Delete "${wagerLabel(props.wager)}" – for everyone in the pool?`, `„${wagerLabel(props.wager)}“ löschen – für alle im Pool?`)}</span>
@@ -1419,6 +1407,9 @@ export function WagerSheet(props: {
             )}
           </>
         )}
+        <button type="button" className="btn-primary" disabled={!ok} onClick={save}>
+          {props.wager ? tr('Save', 'Speichern') : tr('Add the bet', 'Wette anlegen')}
+        </button>
       </section>
     </div>
   );
@@ -1790,16 +1781,16 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
               {tr('+ Add player', '+ Spieler hinzufügen')}
             </button>
             <span className="muted small">{tr('A player who joined or has bets stays – delete his bets first.', 'Wer beigetreten ist oder Wetten hat, bleibt – erst seine Wetten löschen.')}</span>
+            {/* the order of "Neue Wette" (Sascha 03.11.2026: one order everywhere) */}
+            <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+            <CountedSwitch on={counted} onChange={setCounted} />
             <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
             <SettingsList>
               <PrizeRow value={prize} onChange={setPrize} />
             </SettingsList>
-            <CountedSwitch on={counted} onChange={setCounted} />
+            <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Delete the pool', 'Pool löschen'), icon: 'delete', danger: true, onClick: () => setDel(true) }]} />
             <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, counted, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
               {tr('Save', 'Speichern')}
-            </button>
-            <button type="button" className="btn-secondary btn-danger" onClick={() => setDel(true)}>
-              {tr('Delete the pool', 'Pool löschen')}
             </button>
           </>
         ) : (

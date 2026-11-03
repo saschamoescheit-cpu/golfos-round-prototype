@@ -471,12 +471,15 @@ await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', {
   await H.waitForTimeout(1500);
   ok((shared.get(code).game.payments ?? []).length === 0 && (await open.count()) === before, 'payments: taken back – open again');
 }
-// only saved, finished later (Sascha 03.11.2026): "Speichern" between "Runde starten" and "Pool beenden" – back to the bets
+// only saved, finished later (Sascha 03.11.2026): "Speichern" in the action bar – back to the bets
 {
   const top = async (l) => (await l.boundingBox())?.y ?? -1;
   const save = H.getByRole('button', { name: 'Speichern', exact: true });
-  const [yR, yV, yE] = [await top(H.getByRole('button', { name: /Runde (starten|fortsetzen)/ })), await top(save), await top(H.getByRole('button', { name: 'Pool beenden' }))];
-  ok(yR >= 0 && yR < yV && yV < yE, `save: between "Runde starten" and "Pool beenden" (${Math.round(yR)} < ${Math.round(yV)} < ${Math.round(yE)})`);
+  // one bar of icons (Sascha 03.11.2026: docs/DESIGN.md): Speichern, Pool beenden red and last – then "Runde starten"
+  const left = async (l) => (await l.boundingBox())?.x ?? -1;
+  const end = H.getByRole('button', { name: 'Pool beenden' });
+  const [yR, yV, yE] = [await top(H.getByRole('button', { name: /Runde (starten|fortsetzen)/ })), await top(save), await top(end)];
+  ok(yV >= 0 && Math.abs(yV - yE) < 2 && (await left(save)) < (await left(end)) && yR > yV && (await end.getAttribute('class')).includes('danger'), `save: one action bar – Speichern, Pool beenden (red, last); "Runde starten" below (${Math.round(yV)} = ${Math.round(yE)} < ${Math.round(yR)})`);
   const n = shared.get(code).game.wagers.length;
   await save.click();
   await H.waitForTimeout(1200);

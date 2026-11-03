@@ -36,6 +36,10 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
 - **Same content, same place**: a detail screen is always – TopBar → the line under it (Platz · Tag · Löcher) → the
   status card (läuft / bestätigt / signiert) → the result / content → the action bar → the main button. A result
   always: Sieger → Ergebnis → Verlauf → Abrechnung → Scores (Scorekarte with legend) → actions.
+- **A sheet** (edit a pool, a bet, a flight, an entry): its rows in the setup's order, then the action bar (Löschen /
+  Entfernen red), the main button (Speichern) last. All bars with `ActionBar` (components/ActionBar.tsx) – one icon per
+  meaning (share, edit, save, finish, reopen, dissolve, delete).
+- A pool's planned rounds lie in its days: there *Zeitraum* comes before *Runden (Platz)* – the one exception to Wo → Wann.
 - The start page: GOLFOS top left with the claim small below; no big logo in the middle.
 
 ## Choices – rows, not tabs
@@ -66,7 +70,9 @@ placeholder then shows green. **Optional stays grey** – the rounds of a bet po
 
 "Mitspieler einladen" (round, game, pool, tournament) is one block, everywhere in this order (Sascha 03.11.2026):
 **QR code → the code (to type) → "Link teilen" → the linked friends** (`FriendInvite`, a tap sends the invitation).
-It sits right below the players (*Wer*). When everyone has joined or it is over, it shrinks to one `SheetRow`
+In a setup it sits right below the players (*Wer*); on a detail screen (pool, tournament, series) below the content,
+right before the action bar and the main button (Sascha 03.11.2026: "below the settlement, right before Runde starten").
+When everyone has joined or it is over, it shrinks to one `SheetRow`
 "Mitspieler einladen ›"; opened from the Bilanz it is not shown.
 
 ## Players
