@@ -16,7 +16,7 @@ import { holesFor, metres, specialBoard, specialName, type Special, type Special
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
-import { copyLink, InviteCard } from '../components/InviteCard';
+import { copyLink, InviteCard, shareLink } from '../components/InviteCard';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow } from '../components/Settings';
@@ -1855,22 +1855,6 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
   );
 }
 
-/** Shares text and link apart and without a title – WhatsApp drops the link of a share with a title (Sascha
- *  02.11.2026); no share sheet: the link copied. */
-const shareBare = async (text: string, url: string): Promise<string | null> => {
-  const nav = navigator as Navigator & { share?: (d: { text: string; url: string }) => Promise<void> };
-  try {
-    if (nav.share) {
-      await nav.share({ text, url });
-      return null;
-    }
-    await navigator.clipboard.writeText(`${text} ${url}`);
-    return tr('Link copied.', 'Link kopiert.');
-  } catch {
-    return null; // closed by the player
-  }
-};
-
 /** "Mitspieler einladen" of a tournament or a series: a section of its own with the QR code at once – the one look of
  *  every invitation in the app (Sascha 03.11.2026: "the QR code identical everywhere, as under Friends"). */
 function TourInvite(props: { code: string; name: string; date: string }) {
@@ -1890,7 +1874,7 @@ function TourInvite(props: { code: string; name: string; date: string }) {
           codeLabel={tr(`Code ${props.code}`, `Code ${props.code}`)}
           hint={tr('With the link or the code everyone sees the tournament in Rounds and takes part on its day.', 'Mit dem Link oder dem Code sieht jeder das Turnier in Rounds und nimmt am Turniertag teil.')}
           actions={[
-            { label: tr('Invite', 'Einladen'), aria: tr('Send the invitation', 'Einladung senden'), icon: 'share', primary: true, onClick: () => void shareBare(text, url).then(setMsg) },
+            { label: tr('Invite', 'Einladen'), aria: tr('Send the invitation', 'Einladung senden'), icon: 'share', primary: true, onClick: () => void shareLink(text, url).then(setMsg) },
             { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(url).then(setMsg) },
           ]}
         />
