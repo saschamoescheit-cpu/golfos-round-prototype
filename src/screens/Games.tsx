@@ -176,6 +176,12 @@ export function GamesApp(props: {
     setGames(loadGames());
   };
 
+  // every page of Games opens at its top (Sascha 03.11.2026: "a new pool showed its QR code below – I had to scroll up; the
+  // dialogs always start at the top"): the app scrolls on its own pages only, Games keeps its views itself
+  const viewKey = view.name === 'tab' ? `tab-${view.tab}` : 'code' in view ? `${view.name}-${view.code}` : 'game' in view ? `${view.name}-${view.game.id}` : view.name;
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [viewKey]);
   // the money on screen in the currency of the game shown (euro or dollar – Sascha 01.11.2026)
   setCurrency(view.name === 'play' || view.name === 'result' ? view.game.settings.currency : view.name === 'setup' || view.name === 'course' ? view.draft.settings.currency : undefined);
   switch (view.name) {
@@ -552,11 +558,8 @@ function GamesTabs(props: {
             onRestore={restoreGame}
             onPurge={purgeGame}
           />
-          {props.games.length ? (
-            !binOpen && <GameList games={props.games.filter((g) => (filter === 'confirm' ? g.finishedAt && !g.signedAt : filter === 'running' ? !g.finishedAt : filter === 'played' ? g.finishedAt : filter === 'confirmed' ? g.finishedAt && g.signedAt : true))} onOpen={props.onOpen} />
-          ) : (
-            <p className="muted">{tr('No games yet.', 'Noch keine Spiele.')}</p>
-          )}
+          {/* no "no games yet" (Sascha 03.11.2026) – the tiles say it */}
+          {props.games.length > 0 && !binOpen && <GameList games={props.games.filter((g) => (filter === 'confirm' ? g.finishedAt && !g.signedAt : filter === 'running' ? !g.finishedAt : filter === 'played' ? g.finishedAt : filter === 'confirmed' ? g.finishedAt && g.signedAt : true))} onOpen={props.onOpen} />}
         </>
       )}
       {/* the balance a menu of its own – the games' and the bets' (Sascha 03.11.2026: "make Bilanz another menu item,
@@ -808,7 +811,14 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const [picker, setPicker] = useState(false);
   const [favs, setFavs] = useState(loadFormFavs);
   const byName = [...FORMS].sort((a, b) => a.name().localeCompare(b.name(), getLang()));
-  const options = useMemo(() => (d.course ? loopOptions(d.course.holes) : []), [d.course]);
+  // front nine, back nine and the total: only the 18-hole combinations (Sascha 03.11.2026: "9 holes make no sense for 5+5+10")
+  const needs18 = d.form === 'fivefiveten' || d.form === 'nassau';
+  const options = useMemo(() => {
+    if (!d.course) return [];
+    const all = loopOptions(d.course.holes);
+    const full = needs18 ? all.filter((o) => buildRoundHoles(d.course!.holes, o).length === 18) : all;
+    return full.length ? full : all;
+  }, [d.course, needs18]);
   // the tees the course offers – as in the round setup
   const offered = useMemo(() => (d.course ? courseTees(d.course.id, loadGeometry(d.course.id).teeColours) : null), [d.course]);
   const option = options.find((o) => o.id === d.optionId) ?? options[0];
@@ -1459,6 +1469,21 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
           ))}
         </div>
       )}
+      {/* how it came about – per pair its nines (5+5+10), hole by hole (Chicago), Sascha 03.11.2026 */}
+      {st.details?.map((d) => (
+        <details key={d.title} className="game-details" open>
+          <summary>{d.title}</summary>
+          <ul>
+            {d.lines.map((l, k) => (
+              <li key={k}>
+                <span className="game-details-label">{l.label}</span>
+                <span className="grow">{l.text}</span>
+                {l.value && <strong>{l.value}</strong>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
     </section>
   );
 }
@@ -1551,6 +1576,11 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
 
 export function ScoreGrid(props: { game: Game }) {
   const g = props.game;
+  // 18 holes: Out after the 9th, In after the 18th, then the total (Sascha 03.11.2026: 5+5+10 is played by the nines)
+  const nines = g.holes.length === 18;
+  const sumOf = (xs: (number | null)[], from: number, to: number) => xs.slice(from, to).reduce<number>((a, v) => a + (v ?? 0), 0);
+  const cells = <T,>(each: (k: number) => T, out: () => T, inn: () => T): T[] =>
+    nines ? [...Array.from({ length: 9 }, (_, k) => each(k)), out(), ...Array.from({ length: 9 }, (_, k) => each(k + 9)), inn()] : g.holes.map((_, k) => each(k));
   return (
     <section className="card game-grid-card">
       <span className="eyebrow">{tr('Scores', 'Scores')}</span>
@@ -1559,16 +1589,20 @@ export function ScoreGrid(props: { game: Game }) {
           <thead>
             <tr>
               <th />
-              {g.holes.map((h) => (
-                <th key={h.label}>{h.label}</th>
-              ))}
+              {cells(
+                (k) => <th key={g.holes[k].label}>{g.holes[k].label}</th>,
+                () => <th key="out" className="game-grid-sum">Out</th>,
+                () => <th key="in" className="game-grid-sum">In</th>,
+              )}
               <th>Σ</th>
             </tr>
             <tr className="muted">
               <th>Par</th>
-              {g.holes.map((h) => (
-                <td key={h.label}>{h.par || '–'}</td>
-              ))}
+              {cells(
+                (k) => <td key={g.holes[k].label}>{g.holes[k].par || '–'}</td>,
+                () => <td key="out" className="game-grid-sum">{sumOf(g.holes.map((h) => h.par), 0, 9)}</td>,
+                () => <td key="in" className="game-grid-sum">{sumOf(g.holes.map((h) => h.par), 9, 18)}</td>,
+              )}
               <td>{g.holes.reduce((s, h) => s + h.par, 0)}</td>
             </tr>
           </thead>
@@ -1576,11 +1610,18 @@ export function ScoreGrid(props: { game: Game }) {
             {g.players.map((p) => (
               <tr key={p.id}>
                 <th>{p.name}</th>
-                {g.scores[p.id].map((s, k) => (
-                  <td key={k} className={s == null ? 'muted' : s < g.holes[k].par ? 'good-text' : ''}>
-                    {s ?? '–'}
-                  </td>
-                ))}
+                {cells(
+                  (k) => {
+                    const s = g.scores[p.id][k];
+                    return (
+                      <td key={k} className={s == null ? 'muted' : s < g.holes[k].par ? 'good-text' : ''}>
+                        {s ?? '–'}
+                      </td>
+                    );
+                  },
+                  () => <td key="out" className="game-grid-sum">{sumOf(g.scores[p.id], 0, 9) || '–'}</td>,
+                  () => <td key="in" className="game-grid-sum">{sumOf(g.scores[p.id], 9, 18) || '–'}</td>,
+                )}
                 <td>
                   <strong>{g.scores[p.id].reduce<number>((a, s) => a + (s ?? 0), 0)}</strong>
                 </td>

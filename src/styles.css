@@ -2138,3 +2138,12 @@ button.tile:disabled { opacity: 1; }
 .balance-pool-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .balance-pool-head:disabled { opacity: 1; }
 .balance-sum { display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--line); font-weight: 600; }
+/* how a game's standing came about (03.11.2026): per pair its nines, hole by hole */
+.game-details { border-top: 1px solid var(--line); padding-top: 8px; }
+.game-details > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 4px 0; }
+.game-details ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.game-details li { display: flex; align-items: baseline; gap: 8px; font-size: 14px; }
+.game-details li .grow { flex: 1; min-width: 0; color: var(--text-2); }
+.game-details li strong { white-space: nowrap; font-weight: 600; }
+.game-details-label { flex: none; min-width: 64px; color: var(--muted, var(--text-2)); font-size: 13px; }
+.game-grid .game-grid-sum { font-weight: 700; background: var(--surface-2); }

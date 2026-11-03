@@ -216,7 +216,7 @@ export function betLabel(w: BetWager, lang?: string | null): string {
     case 'threeputts':
       return n === 0 ? T(lang, `No three-putt ${on}`, `Kein Drei-Putt ${on}`) : T(lang, `At most ${n} three-putts ${on}`, `Höchstens ${n} Drei-Putts ${on}`);
     case 'doubles':
-      return n === 0 ? T(lang, `No double bogey ${on}`, `Kein Doppelbogey ${on}`) : T(lang, `At most ${n} double bogeys ${on}`, `Höchstens ${n} Doppelbogeys ${on}`);
+      return n === 0 ? T(lang, `No double bogey ${on}`, `Kein Double Bogey ${on}`) : T(lang, `At most ${n} double bogeys ${on}`, `Höchstens ${n} Double Bogeys ${on}`);
     case 'penalties':
       return n === 0 ? T(lang, `No penalty stroke ${on}`, `Kein Strafschlag ${on}`) : T(lang, `At most ${n} penalty strokes ${on}`, `Höchstens ${n} Strafschläge ${on}`);
     case 'score':
