@@ -1001,7 +1001,7 @@ button.tile:disabled { opacity: 1; }
 .stepper-label { display: flex; flex-direction: column; line-height: 1.2; }
 .stepper-label small { font: 500 11px var(--body); }
 .finish-actions > .btn-danger:nth-child(3) { grid-column: 1 / -1; }
-.topbar-version { text-align: center; font-size: 11px; white-space: nowrap; }
+.topbar-version { display: flex; flex-direction: column; align-items: center; line-height: 1.2; text-align: center; font-size: 11px; white-space: nowrap; }
 .score-sheet .stepper-label small { color: var(--muted); }
 .hole-bar-dots { margin-left: 4px; color: var(--brand-text); font-style: normal; letter-spacing: 1px; font-weight: 700; }
 
@@ -2083,3 +2083,9 @@ button.tile:disabled { opacity: 1; }
 
 /* the flight board: a wrapper only for its touch listener (03.11.2026) – the flights stay in the page's column */
 .tour-board { display: contents; }
+
+/* the start page: more room between the header and the module cards (Sascha 03.11.2026: "luftiger") */
+.module-chooser .home-hero { padding-top: 22px; }
+/* the round's code with sharing beside it as an icon (03.11.2026) */
+.join-code-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.share-btn { color: var(--brand-text); }

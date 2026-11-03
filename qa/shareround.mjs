@@ -42,7 +42,7 @@ await H.locator('.pick-option strong').getByText('Scramble', { exact: true }).cl
 const card = H.locator('.invite-card');
 await card.waitFor({ timeout: 10000 });
 ok(await card.isVisible() && (await H.locator('.eyebrow').getByText('Mitspieler einladen', { exact: true }).isVisible()), 'setup: "Mitspieler einladen" – its own section, before the start');
-await card.getByRole('button', { name: 'Code erzeugen' }).click();
+await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself once a partner is in the flight (03.11.2026)
 await H.waitForTimeout(800);
 const code = (await card.locator('.join-code').innerText()).trim();
 ok(/^[A-Z0-9]{6}$/.test(code) && (await card.locator('.qr-box svg').count()) === 1, `setup: code ${code} with a QR code`);

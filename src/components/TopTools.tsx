@@ -9,9 +9,10 @@ export function TopTools() {
   const locale = getLang() === 'de' ? 'de-DE' : undefined;
   return (
     <>
-      <span className="spacer topbar-version muted" title={__BUILD_TIME__}>
-        <span className="topbar-version-word">Version </span>
-        <span>{new Date(__BUILD_TIME__).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+      {/* two lines – "TT.MM." over "HH:MM" (Sascha 03.11.2026: beside the claim the version looked cramped) */}
+      <span className="spacer topbar-version muted" title={__BUILD_TIME__} aria-label={`Version ${new Date(__BUILD_TIME__).toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}>
+        <span>{new Date(__BUILD_TIME__).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' })}</span>
+        <span>{new Date(__BUILD_TIME__).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</span>
       </span>
       <button
         type="button"

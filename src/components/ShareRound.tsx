@@ -10,6 +10,7 @@ import { loadSession, signIn, signInAnonymously } from '../lib/sync';
 import { inviteByName, pushAsked } from '../lib/push';
 import { getLang, tr } from '../lib/i18n';
 import { Qr } from './ShareGame';
+import { ShareIcon } from './ShareIcon';
 
 /** A planned tournament's day: "Fr., 6.11." */
 export const dayText = (d: string): string => new Date(`${d}T12:00:00`).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
@@ -50,7 +51,7 @@ function here(): Promise<{ lat: number; lon: number } | null> {
  * link". `round` is the round – or, in the setup, the round as it would start now (its players and holes go to the
  * event; what changes before the start follows with the first exchange).
  */
-export function InvitePanel(props: { round: Round; onShared: (r: Round) => void; compact?: boolean }) {
+export function InvitePanel(props: { round: Round; onShared: (r: Round) => void; compact?: boolean; /** make the code by itself (a flight with partners, or the sheet opened in the round) */ auto?: boolean }) {
   const shared = props.round.shared;
   const [name] = useState(() => `${props.round.courseName} · ${new Date(props.round.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
   const [busy, setBusy] = useState(false);
@@ -65,6 +66,22 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
     const at = pos ? { ...pos, radius: 300 } : course.lat || course.lon ? { lat: course.lat, lon: course.lon, radius: 2000 } : null;
     setNearState(at && (await showNearby(code, at, myName())) ? (pos ? 'here' : 'course') : 'failed');
   };
+  const create = async () => {
+    setBusy(true);
+    const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament: false, who: myName() });
+    setBusy(false);
+    if (r) {
+      props.onShared(r);
+      if (near && r.shared) void putNearby(r.shared.code);
+    } else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+  };
+  // the code made by itself, once – "Code erzeugen" stays for when that failed (no connection)
+  const tried = useRef(false);
+  useEffect(() => {
+    if (!props.auto || shared || tried.current) return;
+    tried.current = true;
+    void create();
+  }, [props.auto, shared]); // eslint-disable-line react-hooks/exhaustive-deps
   const share = async () => {
     if (!shared) return;
     const url = roundJoinLink(shared.code);
@@ -109,20 +126,7 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
             <span className={`drawer-switch${near ? ' on' : ''}`} aria-hidden="true" />
           </button>
         </div>
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament: false, who: myName() });
-            setBusy(false);
-            if (r) {
-              props.onShared(r);
-              if (near && r.shared) void putNearby(r.shared.code);
-            } else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
-          }}
-        >
+        <button type="button" className="btn-primary" disabled={busy} onClick={() => void create()}>
           {busy ? tr('Creating …', 'Erzeuge …') : tr('Create a code', 'Code erzeugen')}
         </button>
         {msg && <span className="muted small">{msg}</span>}
@@ -131,9 +135,15 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
   return (
     <>
       <Qr text={roundJoinLink(shared.code)} />
-      <strong className="join-code" aria-label={tr(`Code ${shared.code}`, `Code ${shared.code}`)}>
-        {shared.code}
-      </strong>
+      {/* the code, sharing beside it as an icon – the phone's share sheet offers WhatsApp, Mail, copying … */}
+      <div className="join-code-row">
+        <strong className="join-code" aria-label={tr(`Code ${shared.code}`, `Code ${shared.code}`)}>
+          {shared.code}
+        </strong>
+        <button type="button" className="icon-btn share-btn" aria-label={tr('Share the link', 'Link teilen')} title={tr('Share the link', 'Link teilen')} onClick={share}>
+          <ShareIcon />
+        </button>
+      </div>
       <span className="muted small">
         {shared.tournament
           ? tr('Scan, or type the code under "Join a round" – no account needed. You let each one in; another flight starts its own.', 'Scannen oder Code unter „Runde beitreten“ eingeben – ohne Konto. Du bestätigst jeden; ein anderer Flight legt seinen eigenen an.')
@@ -149,9 +159,6 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
               : tr('Not shown nearby – the code and the QR code work as ever.', 'In der Nähe nicht sichtbar – Code und QR-Code gehen wie gewohnt.')}
         </span>
       )}
-      <button type="button" className="btn-secondary" onClick={share}>
-        {tr('Share the link', 'Link teilen')}
-      </button>
       <InviteByName code={shared.code} />
       {msg && <span className="muted small">{msg}</span>}
     </>
@@ -205,7 +212,7 @@ export function RoundInviteSheet(props: { round: Round; onShared: (r: Round) => 
             ✕
           </button>
         </div>
-        <InvitePanel round={props.round} onShared={props.onShared} />
+        <InvitePanel round={props.round} onShared={props.onShared} auto />
       </section>
     </div>
   );

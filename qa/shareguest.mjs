@@ -38,7 +38,7 @@ async function setup(phone, others = []) {
   const card = H.locator('.invite-card');
   await card.waitFor({ timeout: 10000 });
   ok(/Jeder seinen eigenen/.test(await H.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).innerText()), 'setup: "Score-Erfassung · Jeder seinen eigenen" by default – everyone keeps only his own');
-  await card.getByRole('button', { name: 'Code erzeugen' }).click();
+  await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself once a partner is in the flight (03.11.2026)
   await card.locator('.join-code').waitFor({ timeout: 8000 });
   return { H, code: (await card.locator('.join-code').innerText()).trim() };
 }
