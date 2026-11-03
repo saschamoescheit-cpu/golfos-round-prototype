@@ -372,6 +372,9 @@ export interface TourDraft {
   /** "Score-Erfassung" of the tournament (Sascha 03.11.2026: "not under a flight's 'Ändern' – in the tournament's
    *  settings, as a round's"): one player per flight keeps the score of all – the one flagged, else the first */
   oneScorer?: boolean;
+  /** "Jeder seinen eigenen" (Sascha 03.11.2026: "the choices of Rounds – with a marker missing"): nobody marks, each
+   *  signs his own card; else every player marks a partner ("Mit Zähler", the default) */
+  ownOnly?: boolean;
 }
 
 /** A new flight starts this many minutes after the one before – then set to the minute (Sascha 02.11.2026: "we play
@@ -563,7 +566,7 @@ export function draftOf(e: TourEntry): TourDraft {
   const option = options.find((o) => o.loops.join() === ev.loopOrder.join() && buildRoundHoles(course!.holes, o).length === ev.holes.length);
   const times = flights.map((f) => teeTimeOf(f) || FIRST_TEE);
   return {
-    ...(flights.some((f) => f.scorer) ? { oneScorer: true } : {}),
+    ...(flights.some((f) => f.scorer) ? { oneScorer: true } : ev.format?.marker === false ? { ownOnly: true } : {}),
     code: e.code,
     base: ev,
     name: ev.name,
@@ -664,7 +667,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           const tee = teeOf(p, k);
           return { name: label(p, k), playingHandicap: playingOf(p, k), hcpIndex: parseIndex(p.hcp), ...(tee ? { tee } : {}) };
         }),
-        markers: Object.fromEntries(ps.map((p) => [pid(p.id), pid(markers[p.id])])),
+        markers: d.ownOnly && !d.oneScorer ? {} : Object.fromEntries(ps.map((p) => [pid(p.id), pid(markers[p.id])])),
         // one for all: his place in the flight ("p2") – the one flagged, else the flight's first
         ...(d.oneScorer && ps.length ? { scorer: pid((ps.find((p) => p.scorer) ?? ps[0]).id) } : {}),
       };
@@ -675,7 +678,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
       course: summary,
       holes,
       loopOrder: option?.loops ?? d.base!.loopOrder,
-      format: { mode: 'single', scoring: d.scoring, allowance: 100 }, // the full handicap – gross ignores it (02.11.2026)
+      format: { mode: 'single', scoring: d.scoring, allowance: 100, ...(d.ownOnly && !d.oneScorer ? { marker: false } : {}) }, // the full handicap – gross ignores it (02.11.2026)
       ...(myTee ? { tee: myTee } : {}),
       roundKind: 'tournament',
       ...(d.classes.length ? { classes: d.classes } : {}),
@@ -845,7 +848,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
           players={d.players}
           flights={d.flights}
           times={timesFor(d.flights + 1)}
-          markers={markers}
+          markers={d.ownOnly && !d.oneScorer ? {} : markers}
           label={(p) => label(p, d.players.indexOf(p))}
           playing={(p) => playingOf(p, d.players.indexOf(p))}
           onSave={saveFlight}
@@ -862,18 +865,20 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
       <section className="setup-part">
         <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
         <SettingsList>
-          <ChoiceRow<'own' | 'one'>
+          {/* the three choices of a round (RoundSetup ENTRY – Sascha 03.11.2026: "with a marker, as in Rounds") */}
+          <ChoiceRow<'own' | 'marker' | 'one'>
             label={tr('Who enters', 'Wer erfasst')}
-            value={d.oneScorer ? 'one' : 'own'}
-            onChange={(v) => set({ oneScorer: v === 'one' })}
+            value={d.oneScorer ? 'one' : d.ownOnly ? 'own' : 'marker'}
+            onChange={(v) => set({ oneScorer: v === 'one', ownOnly: v === 'own' })}
             options={[
-              { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('On his own phone – a flight partner marks him.', 'Auf seinem Handy – ein Flightpartner zählt mit.') },
-              { value: 'one', name: tr('One per flight', 'Einer je Flight'), text: tr('One player keeps the score of his whole flight and marks everyone.', 'Ein Spieler erfasst die Scores seines ganzen Flights und zählt alle.') },
+              { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('Everyone enters only his own score and sees the others – nobody marks.', 'Jeder trägt nur seinen eigenen Score ein und sieht die anderen – ohne Zähler.') },
+              { value: 'marker', name: tr('With a marker', 'Mit Zähler'), text: tr("Everyone enters his own score and his partner's – a difference shows.", 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt.') },
+              { value: 'one', name: tr('One for all', 'Einer für alle'), text: tr('One player per flight keeps the score of all and marks everyone.', 'Ein Spieler je Flight erfasst die Scores aller und zählt alle.') },
             ]}
           />
         </SettingsList>
         <span className="muted small">
-          {d.oneScorer ? tr('Who it is: the row "Scorer" in each flight.', 'Wer es ist: die Zeile „Schreiber“ im Flight.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
+          {d.oneScorer ? tr('Who it is: the row "Scorer" in each flight.', 'Wer es ist: die Zeile „Schreiber“ im Flight.') : d.ownOnly ? tr('Each signs his own card.', 'Jeder unterschreibt seine Karte selbst.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
         </span>
       </section>
 

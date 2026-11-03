@@ -264,9 +264,17 @@ await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
 ok((await sheet.getByText('Wer erfasst die Scores?').count()) === 0, 'the flight sheet: no scorer any more');
 await sheet.getByRole('button', { name: 'Schließen' }).click();
 const who = H.locator('.settings-row').filter({ hasText: 'Wer erfasst' });
-ok(/Jeder seinen eigenen/.test(await who.innerText()), 'Score-Erfassung: "Jeder seinen eigenen" by default');
+// the three choices of a round (Sascha 03.11.2026: "with a marker missing – as in Rounds"), "Mit Zähler" the default
+ok(/Mit Zähler/.test(await who.innerText()) && /Zähler: /.test(await fl(1).innerText()), `Score-Erfassung: "Mit Zähler" by default, the markers shown (${(await who.innerText()).replace(/\s+/g, ' ')})`);
 await who.click();
-await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer je Flight/ }).click();
+{
+  const opts = (await H.getByRole('dialog', { name: 'Wer erfasst' }).locator('.pick-option strong').allInnerTexts()).join('|');
+  ok(opts === 'Jeder seinen eigenen|Mit Zähler|Einer für alle', `Score-Erfassung: the choices of Rounds – ${opts}`);
+}
+await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Jeder seinen eigenen/ }).click();
+ok(!/Zähler: /.test(await fl(0).innerText() + (await fl(1).innerText())) && (await H.getByText('Jeder unterschreibt seine Karte selbst.').count()) === 1, 'everyone his own: no markers in the flights');
+await who.click();
+await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
 ok(/Erik/.test(await fl(1).locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()), 'one per flight: the flight\'s first is its scorer, a row "Schreiber"');
 await fl(1).locator('.settings-row').filter({ hasText: 'Schreiber' }).click();
 await H.getByRole('dialog', { name: 'Schreiber in Flight 2' }).getByRole('button', { name: /^Cedric/ }).click();

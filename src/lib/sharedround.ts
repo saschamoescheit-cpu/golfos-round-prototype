@@ -137,9 +137,10 @@ const withCell = (e: HoleEntry, c: Cell): HoleEntry => ({
 });
 const nulls = (n: number): Cell[] => Array.from({ length: n }, () => null);
 const isTeamEvent = (f: Round['format'] | undefined): boolean => isTeamMode(f?.mode);
-/** Does every player mark a partner: in a tournament always; a round of single balls when chosen (Sascha 30.10.2026:
- *  "it must be selectable whether one only enters one's own score or plays with a marker" – by default his own). */
-export const marksIn = (f: Round['format'] | undefined, tournament: boolean): boolean => tournament || (!isTeamEvent(f) && !!f?.marker);
+/** Does every player mark a partner: in a tournament unless it says "everyone his own" (marker: false – Sascha 03.11.2026:
+ *  "the choices as in Rounds"); a round of single balls when chosen (Sascha 30.10.2026: "it must be selectable whether
+ *  one only enters one's own score or plays with a marker" – by default his own). */
+export const marksIn = (f: Round['format'] | undefined, tournament: boolean): boolean => (tournament && f?.marker !== false) || (!isTeamEvent(f) && !!f?.marker);
 
 /** The flight's scores in a round: per player, per hole. */
 export function scoresOf(round: Round): Record<string, Cell[]> {
