@@ -5,6 +5,7 @@
 import { webkit, devices } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const out = process.argv[3] ?? 'gamesweep';
@@ -61,6 +62,7 @@ for (const sun of [false, true]) {
   await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
   await p.waitForTimeout(800);
   await shot('wolf-ganz', true);
+  await pickPrize(p);
   await p.getByRole('button', { name: 'Spiel starten' }).click();
   await p.waitForTimeout(4000);
   await shot('karte-start');

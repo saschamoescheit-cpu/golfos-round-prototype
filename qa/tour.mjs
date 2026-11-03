@@ -52,6 +52,7 @@ const tabs = async (prefix) => {
 const toModule = async (name) => {
   await p.evaluate((m) => {
     sessionStorage.setItem('golfos.module', m);
+    sessionStorage.removeItem('golfos.screen.v1'); // a module's start page (a reload keeps a scorecard open since 03.11.2026)
   }, name);
   await p.reload();
   await p.waitForTimeout(1500);

@@ -8,7 +8,10 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { isLady, shownName, loadProfile } from '../lib/profile';
 import { loadCachedCourse, loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
-import { setCurrency, type Currency } from '../lib/gameforms';
+import { setMoneySym, type Currency } from '../lib/gameforms';
+import { currencySymbol } from '../lib/gameforms';
+import { isMoney, isNone, oweText, prizeAmount, prizeOf, prizeSym, whoOf, type Prize } from '../lib/prize';
+import { PrizeRow } from '../components/PrizeRow';
 import { FORMS, chicagoHole, capChain, onChain, snapCap, money, teamsOf, chicagoTeams, stakeCap, allowanceOf, canPress, fitsPlayers, formDef, formatEuro, holesPlayed, playersText, sidesOf, stakeNow, standingOf, strokesOn, transfers, type FormDef, type FormId, type Game, type GameHole, type HoleExtra } from '../lib/gameforms';
 import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreGame, saveGame, toggleFormFav } from '../lib/gamestore';
 import { Bin } from '../components/Bin';
@@ -79,6 +82,8 @@ interface Draft {
   /** false: no game form chosen yet (Sascha 03.11.2026: "Skins always preset – leave it empty, so one has to choose") –
    *  the form's rules and settings show once one is picked, "Spiel starten" waits for it */
   formChosen?: boolean;
+  /** what is played for (Sascha 03.11.2026: "not only money – drinks, a meal …, and without a stake") – none yet: to choose */
+  prize?: Prize | null;
 }
 
 /** The leader – or nobody when the first two are level. */
@@ -96,11 +101,18 @@ export function standingText(g: Game, spoken: boolean): string {
     const place = 1 + st.rows.filter((o) => o.points > r.points).length;
     lines.push(spoken ? `${place}. ${r.name}: ${sign(r.value)}.` : `${place}. ${r.name} ${r.value}`);
   });
-  const pays = st.money ? transfers(st.money) : [];
+  const pays = gameTransfers(g, st.money);
+  const prize = gamePrize(g);
   if (pays.length) {
     const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
     if (!spoken) lines.push(tr('Settlement', 'Abrechnung'));
-    pays.forEach((t) => lines.push(spoken ? tr(`${nm(t.from)} pays ${nm(t.to)} ${money(t.amount)}.`, `${nm(t.from)} zahlt ${money(t.amount)} an ${nm(t.to)}.`) : tr(`${nm(t.from)} pays ${nm(t.to)} ${money(t.amount)}`, `${nm(t.from)} zahlt an ${nm(t.to)} ${money(t.amount)}`)));
+    pays.forEach((t) =>
+      lines.push(
+        spoken && isMoney(prize)
+          ? tr(`${nm(t.from)} pays ${nm(t.to)} ${money(t.amount)}.`, `${nm(t.from)} zahlt ${money(t.amount)} an ${nm(t.to)}.`)
+          : `${oweText(nm(t.from), nm(t.to), prize)} ${prizeAmount(t.amount, prize)}${spoken ? '.' : ''}`,
+      ),
+    );
   }
   return lines.join(spoken ? ' ' : '\n');
 }
@@ -185,8 +197,8 @@ export function GamesApp(props: {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [viewKey]);
-  // the money on screen in the currency of the game shown (euro or dollar – Sascha 01.11.2026)
-  setCurrency(view.name === 'play' || view.name === 'result' ? view.game.settings.currency : view.name === 'setup' || view.name === 'course' ? view.draft.settings.currency : undefined);
+  // the money on screen in what the game shown is played for – euro, dollar, a thing, points (Sascha 01./03.11.2026)
+  setMoneySym(view.name === 'play' || view.name === 'result' ? gameSym(view.game) : view.name === 'setup' || view.name === 'course' ? (view.draft.prize ? prizeSym(view.draft.prize) : currencySymbol(view.draft.settings.currency)) : currencySymbol(undefined));
   switch (view.name) {
     case 'tab':
       return (
@@ -825,7 +837,10 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const d = props.draft;
   // euro or dollar (Sascha 01.11.2026): as chosen – else the dollar on a course in the USA; the stakes shown in it
   const currency: Currency = d.settings.currency === 'USD' || d.settings.currency === 'EUR' ? d.settings.currency : d.course && inUsa([d.course.lon, d.course.lat]) ? 'USD' : 'EUR';
-  setCurrency(currency);
+  // what is played for (Sascha 03.11.2026) – money in its currency, a thing, nothing; the stakes shown in it
+  const prize = d.prize ?? null;
+  setMoneySym(prize ? prizeSym(prize) : currencySymbol(currency));
+  const none = !!prize && isNone(prize);
   const f = formDef(d.form);
   const chosen = d.formChosen !== false; // a draft from before 03.11.2026 had its form
   const [picker, setPicker] = useState(false);
@@ -895,7 +910,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       holes,
       players,
       form: d.form,
-      settings: { ...d.settings, currency },
+      settings: { ...d.settings, currency: prize && isMoney(prize) ? prize.currency : currency },
+      prize: prize ?? undefined,
       scores: Object.fromEntries(players.map((p) => [p.id, holes.map(() => null)])),
       extra: holes.map(() => ({})),
       current: 0,
@@ -1028,15 +1044,22 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
         <SettingsList>
-          {/* euro or dollar (Sascha 01.11.2026) – dollar first on a course in the USA */}
-          <ChoiceRow
-            label={tr('Currency', 'Währung')}
-            options={(['EUR', 'USD'] as Currency[]).map((c) => ({ value: c, name: c === 'EUR' ? tr('Euro (€)', 'Euro (€)') : tr('Dollar ($)', 'Dollar ($)') }))}
-            value={currency}
-            onChange={(c) => set({ settings: { ...d.settings, currency: c } })}
+          {/* what is played for – money (euro or dollar), drinks, a meal, cleaning the clubs, one's own, or nothing; to choose,
+              the same row as the bets' (Sascha 03.11.2026: "no trouble for gambling – always other stakes too, and none") */}
+          <PrizeRow
+            value={prize}
+            onChange={(p) => {
+              // the stakes follow: a thing counted 1 to 5, back to money the form's own
+              const next: Record<string, number | boolean | string> = { ...d.settings, ...(isMoney(p) ? { currency: p.currency } : {}) };
+              for (const st of f.settings.filter((x) => x.type === 'stake')) {
+                if (!isMoney(p) && !isNone(p)) next[st.key] = Math.min(5, Math.max(1, Math.round(Number(next[st.key] ?? 1))));
+                else if (isMoney(p) && prize && !isMoney(prize)) next[st.key] = st.default as number;
+              }
+              set({ prize: p, settings: next });
+            }}
           />
           {f.settings
-            .filter((s) => s.group !== 'house' && s.type !== 'bool' && s.type !== 'cap' && s.type !== 'presses' && (!s.when || s.when(d.settings)))
+            .filter((s) => s.group !== 'house' && s.type !== 'bool' && s.type !== 'cap' && s.type !== 'presses' && !(none && s.type === 'stake') && (!s.when || s.when(d.settings)))
             .map((s) =>
               s.type === 'choice' ? (
                 <ChoiceRow
@@ -1053,6 +1076,9 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                   key={s.key}
                   label={s.label()}
                   value={Number(d.settings[s.key] ?? 0)}
+                  // a thing counted: 1 to 5 ("2 × Getränk")
+                  sym={prize && !isMoney(prize) ? prizeSym(prize) : undefined}
+                  stakes={prize && !isMoney(prize) ? [1, 2, 3, 4, 5] : undefined}
                   // a new start stake: the cap moves to a step of its doubling chain
                   onChange={(v) => set({ settings: { ...d.settings, [s.key]: v, ...(s.key === 'stake' && Number(d.settings.maxStake) > 0 ? { maxStake: String(snapCap(v, Number(d.settings.maxStake))) } : {}) } })}
                 />
@@ -1171,7 +1197,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       <span className="spacer" />
       {/* a game is played on a course (Sascha 15.10.2026): par and stroke index come from it – no start without one */}
       <div className="sticky-cta">
-        <button type="button" className="btn-primary" onClick={start} disabled={!chosen || !fits || !d.course}>
+        <button type="button" className="btn-primary" onClick={start} disabled={!chosen || !fits || !d.course || !prize}>
           {tr('Start game', 'Spiel starten')}
         </button>
       </div>
@@ -1454,7 +1480,7 @@ export function PressCard(props: { game: Game; hole: number; onChange: (g: Game)
 export function StandingCard(props: { game: Game; final?: boolean }) {
   const g = props.game;
   const st = standingOf(g);
-  const hasMoney = st.money && Object.values(st.money).some((v) => Math.abs(v) > 0.001);
+  const hasMoney = !isNone(gamePrize(g)) && st.money && Object.values(st.money).some((v) => Math.abs(v) > 0.001);
   const talking = useSpeaking();
   return (
     <section className="card game-standing" aria-label={tr('Standing', 'Zwischenstand')}>
@@ -1519,7 +1545,8 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
   const g = props.game;
   const f = formDef(g.form);
   const st = standingOf(g);
-  const pays = st.money ? transfers(st.money) : [];
+  const pays = gameTransfers(g, st.money);
+  const prize = gamePrize(g);
   const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
   // confirm the result like a scorecard (Sascha 16.10.2026: as signing a round) – only confirmed games count. As on a
   // round: confirmed it stands on top, to confirm it follows the result, the settlement and the scores (after checking them)
@@ -1578,9 +1605,9 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
           <ul className="game-pays">
             {pays.map((t) => (
               <li key={`${t.from}-${t.to}`}>
-                {/* who pays whom, in words (Sascha 03.11.2026: "Cedric zahlt an Sascha 5 €") */}
-                <span>{tr(`${nm(t.from)} pays ${nm(t.to)}`, `${nm(t.from)} zahlt an ${nm(t.to)}`)}</span>
-                <strong>{money(t.amount)}</strong>
+                {/* who pays whom, in words (Sascha 03.11.2026: "Cedric zahlt an Sascha 5 €" – "Erik gibt Cedric aus 1 × Getränk") */}
+                <span>{oweText(nm(t.from), nm(t.to), prize)}</span>
+                <strong>{prizeAmount(t.amount, prize)}</strong>
               </li>
             ))}
           </ul>
@@ -2106,4 +2133,23 @@ export function HoleExtras(props: { game: Game; hole: number; onChange: (patch: 
         )}
     </>
   );
+}
+
+/** What a game is played for – a game from before: money in its currency. */
+export const gamePrize = (g: Game): Prize => prizeOf({ prize: g.prize, currency: g.settings.currency as string });
+const gameSym = (g: Game): string => prizeSym(gamePrize(g));
+/** Who gives whom what (Sascha 03.11.2026): money and things counted pair by pair as before; a thing "the loser for all" –
+ *  the last (all when tied) one to each of the others; "for the winner" – to the first; without a stake nothing. */
+export function gameTransfers(g: Game, m: Record<string, number> | undefined): { from: string; to: string; amount: number }[] {
+  const p = gamePrize(g);
+  if (!m || isNone(p)) return [];
+  const who = whoOf(p);
+  if (who === 'each') return transfers(m);
+  const v = (id: string) => m[id] ?? 0;
+  const lo = Math.min(...g.players.map((x) => v(x.id)));
+  const hi = Math.max(...g.players.map((x) => v(x.id)));
+  if (hi - lo < 0.001) return [];
+  const losers = g.players.filter((x) => Math.abs(v(x.id) - lo) < 0.001);
+  const to = who === 'loserAll' ? g.players.filter((x) => !losers.includes(x)) : g.players.filter((x) => Math.abs(v(x.id) - hi) < 0.001);
+  return losers.flatMap((l) => to.map((o) => ({ from: l.id, to: o.id, amount: 1 })));
 }

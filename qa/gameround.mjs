@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 // a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
 const pickSetting = async (page, label, option) => {
   await page.locator('.settings-row').filter({ hasText: label }).first().click();
@@ -117,6 +118,7 @@ await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
   await capRow.click();
   await p.getByRole('dialog', { name: capLabel }).locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^1,60 €$/ }) }).click();
 }
+await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(4500);
 const nHoles = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1'))[0].holes.length);
@@ -146,6 +148,7 @@ await p.getByRole('button', { name: 'Spiele' }).click();
 // --- Skins, three players: ties carry the skin to the next hole
 const SK = [[0, 0, 0], [0, 1, -1], [1, 1, 0], [0, 0, 0], [0, 0, 0], [-1, 0, 1], [2, 0, 0], [0, 0, 1], [1, 1, 1]];
 await setup('Skins', ['Ich', 'Ben', 'Chris']);
+await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(4500);
 const nSk = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1')).find((g) => !g.finishedAt).holes.length);

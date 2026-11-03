@@ -4,6 +4,7 @@
 // Usage: SHOTS=<dir> node qa/consistency.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const out = process.env.SHOTS ?? '.';
 const b = await webkit.launch();
@@ -83,6 +84,7 @@ await safe('games', async () => {
   await p.locator('button.list-item').first().click();
   await p.waitForTimeout(800);
   await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
+  await pickPrize(p);
   await p.getByRole('button', { name: 'Spiel starten' }).click();
   await p.waitForTimeout(600);
   await shot('games-hole');

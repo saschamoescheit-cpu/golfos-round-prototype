@@ -5,6 +5,7 @@
 // the results to confirm. Usage: node qa/gamestart.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
@@ -43,6 +44,7 @@ const newGame = async (form) => {
   await p.fill('#course-search', 'Hetzenhof');
   await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
   await p.waitForTimeout(500);
+  await pickPrize(p);
   await p.getByRole('button', { name: 'Spiel starten' }).click();
   await p.locator('.map-score').waitFor({ state: 'attached', timeout: 30000 });
   await p.waitForTimeout(1500);

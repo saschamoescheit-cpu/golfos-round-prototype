@@ -184,6 +184,10 @@ let SYMBOL = '€';
 export function setCurrency(c?: unknown): void {
   SYMBOL = currencySymbol(c);
 }
+/** What is played for, on screen (03.11.2026): "€", "$", "× Getränk", "Pkt." – lib/prize prizeSym. */
+export function setMoneySym(sym: string): void {
+  SYMBOL = sym;
+}
 /** An amount – comma in German, point in English; cents only when there are any; in the currency on screen (or given). */
 export const money = (v: number, sym: string = SYMBOL): string => `${dec(Math.abs(v) % 1 ? Math.abs(v).toFixed(2) : String(Math.abs(v)))} ${sym}`;
 const euro = (v: number, sym?: string) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${money(v, sym)}`;

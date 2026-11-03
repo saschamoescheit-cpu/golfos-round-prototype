@@ -3,6 +3,7 @@
 // Usage: node qa/gamebar.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 let fails = 0;
 const b = await webkit.launch();
@@ -21,6 +22,7 @@ for (const dev of ['iPhone SE', 'iPhone 13']) {
   await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
   await p.fill('#course-search', 'Hetzenhof'); await p.waitForTimeout(2000);
   await p.locator('button.list-item').first().click(); await p.waitForTimeout(800);
+  await pickPrize(p);
   await p.getByRole('button', { name: 'Spiel starten' }).click(); await p.waitForTimeout(4000);
   const tb = await p.locator('.map-toolbar').boundingBox();
   const gb = await p.locator('.game-bar').boundingBox();

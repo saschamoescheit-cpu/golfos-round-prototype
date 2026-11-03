@@ -4,6 +4,7 @@
 import { webkit, devices } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const exp = JSON.parse(readFileSync(new URL('../../_data/golfos-runde-2026-10-16-golfclub-hetzenhof.json', import.meta.url), 'utf-8'));
@@ -37,7 +38,7 @@ const small = async (where) => {
   for (const x of [...new Set(list)]) console.log('  ' + x);
 };
 const toModule = async (m) => {
-  await p.evaluate((m) => sessionStorage.setItem('golfos.module', m), m);
+  await p.evaluate((m) => { sessionStorage.setItem('golfos.module', m); sessionStorage.removeItem('golfos.screen.v1'); }, m); // a module's start page (a reload keeps a scorecard open since 03.11.2026)
   await p.reload();
   await p.waitForTimeout(1500);
 };
@@ -79,6 +80,7 @@ await p.waitForTimeout(2000);
 await p.locator('button.list-item').first().click();
 await p.waitForTimeout(800);
 await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
+await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(5000);
 await small('game on the map');

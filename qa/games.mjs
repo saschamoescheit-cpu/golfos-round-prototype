@@ -3,6 +3,7 @@
 // Usage: node games.mjs <app url>
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 // a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
 const pickSetting = async (page, label, option) => {
   await page.locator('.settings-row').filter({ hasText: label }).first().click();
@@ -135,6 +136,7 @@ for (const [form, n] of CASES) {
     firstCase = false;
   }
   await course();
+  await pickPrize(p);
   const start = p.getByRole('button', { name: 'Spiel starten' });
   ok(await start.isEnabled(), `${form} with ${n}: start possible`);
   await start.click();
@@ -318,6 +320,7 @@ await presses.locator('.pick-option').filter({ has: p.locator('strong', { hasTex
 ok(/0,40 €/.test(await capRow.innerText()), '2× pressing = highest stake 0,40 €');
 await capRow.click();
 await cap.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^1,60 €$/ }) }).click();
+await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(4500);
 await scores([[1, 1]]); // Ben bogey
@@ -350,6 +353,7 @@ await p.waitForTimeout(1500);
 await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Skins$/ }) }).click();
 await p.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
+await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(4500);
 const head = (await p.locator('.hole-bar').innerText()).replace(/\s+/g, ' ');

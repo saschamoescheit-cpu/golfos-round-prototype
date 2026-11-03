@@ -3,6 +3,7 @@
 // settle like a round.  Usage: SHOTS=<dir> node qa/gamemap.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 // a setting is a row with its sheet, like "Format" in the round setup (02.11.2026)
 const pickSetting = async (page, label, option) => {
   await page.locator('.settings-row').filter({ hasText: label }).first().click();
@@ -47,6 +48,7 @@ for (const [k, n] of [[1, 'Ben'], [2, 'Chris'], [3, 'Anna']]) {
   await p.locator('.game-player-row').nth(k).locator('input').first().fill(n);
 }
 await pickSetting(p, 'Vorgabe (WHS)', 'Ohne (brutto)');
+await pickPrize(p);
 await p.getByRole('button', { name: 'Spiel starten' }).click();
 await p.waitForTimeout(6000);
 ok((await p.locator('.hole-bar').count()) === 1 && (await p.locator('.maplibregl-canvas').count()) === 1, 'the game opens on the GPS map with the hole bar');

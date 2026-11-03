@@ -6,6 +6,7 @@
 // Usage: node qa/sharegame.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const b = await webkit.launch();
 let fails = 0;
@@ -88,6 +89,7 @@ await H.waitForTimeout(2000);
 await H.locator('button.list-item').first().click();
 await H.waitForTimeout(800);
 await H.locator('.game-player-row').nth(1).locator('input').first().fill('Ben');
+await pickPrize(H);
 await H.getByRole('button', { name: 'Spiel starten' }).click();
 await H.waitForTimeout(4500);
 await H.locator('.hole-bar-handle').click();

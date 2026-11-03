@@ -7,6 +7,7 @@
 // Usage: node qa/gamesim.mjs [url] [form filter, e.g. "Wolf"]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
+import { pickPrize } from './prize.mjs';
 
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const only = process.argv[3] ?? '';
@@ -90,6 +91,7 @@ for (const c of cases) {
   await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().waitFor({ timeout: 30000 });
   await p.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
   await p.waitForTimeout(600);
+  await pickPrize(p);
   const start = p.getByRole('button', { name: 'Spiel starten' });
   if (!(await start.isEnabled())) {
     ok(false, `${tag}: start not possible`);
