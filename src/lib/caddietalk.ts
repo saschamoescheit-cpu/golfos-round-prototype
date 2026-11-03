@@ -191,6 +191,8 @@ const filming = (): boolean => {
   }
   return false;
 };
+/** Before a camera opens (the QR scanner): the sound back to "auto" – with "playback" set the iPhone gives no picture. */
+export const soundForCamera = (): void => releaseAudio();
 /** A camera of the page starts: the read-aloud no longer switches the phone's sound while it runs. */
 export function cameraOn(s: MediaStream): void {
   cameras.add(s);

@@ -35,6 +35,7 @@ export function sharedServer(b, url, o = {}) {
   const cards = new Map();
   const links = new Set(); // "a|b"
   let codes = 0;
+  const clean = (s) => String(s ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '');
   const askRow = (code, row, uid, who, hcp) => {
     if (row.owner === uid || row.members.includes(uid)) return { state: 'ok', code };
     if (row.requests[uid]) return { state: row.requests[uid].state };
@@ -52,23 +53,24 @@ export function sharedServer(b, url, o = {}) {
       if (!uid) return json(401, { message: 'not_signed_in' });
       const a = body();
       const old = cards.get(uid);
-      cards.set(uid, { user_id: uid, code: old?.code ?? `FC${String(++codes).padStart(10, '0')}`, first_name: a.p_first, last_name: a.p_last, hcp_index: a.p_hcp, home_club: a.p_club, photo: a.p_photo });
+      cards.set(uid, { user_id: uid, code: old?.code ?? String(318400 + ++codes * 7), // 6 digits (03.11.2026)
+        first_name: a.p_first, last_name: a.p_last, hcp_index: a.p_hcp, home_club: a.p_club, photo: a.p_photo });
       return json(200, cards.get(uid).code);
     }
     if (u.pathname.endsWith('/rpc/golfos_friend_new_code')) {
       const c = cards.get(uid);
       if (!c) return json(200, null);
-      c.code = `FC${String(++codes).padStart(10, '0')}`;
+      c.code = String(318400 + ++codes * 7);
       return json(200, c.code);
     }
     if (u.pathname.endsWith('/rpc/golfos_friend_preview')) {
-      const c = [...cards.values()].find((x) => x.code === String(body().p_code).trim().toUpperCase());
+      const c = [...cards.values()].find((x) => x.code === clean(body().p_code));
       return json(200, c ? [{ first_name: c.first_name, last_name: c.last_name, home_club: c.home_club, photo: c.photo, is_me: c.user_id === uid, is_friend: links.has(`${uid}|${c.user_id}`) }] : []);
     }
     if (u.pathname.endsWith('/rpc/golfos_friend_add')) {
       if (!uid) return json(401, { message: 'not_signed_in' });
-      const c = [...cards.values()].find((x) => x.code === String(body().p_code).trim().toUpperCase());
-      if (!c) return json(400, { message: 'unknown_code' });
+      const c = [...cards.values()].find((x) => x.code === clean(body().p_code));
+      if (!c) return json(200, null); // no such code: null, no error (the server counts the try)
       if (c.user_id === uid) return json(400, { message: 'own_code' });
       links.add(`${uid}|${c.user_id}`).add(`${c.user_id}|${uid}`);
       return json(200, c.user_id);

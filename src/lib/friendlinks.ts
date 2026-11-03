@@ -11,7 +11,7 @@ import { reportError } from './errorlog';
 // profile – with a friend code. Who shows his QR code or sends his link agrees; the other accepts – then both are
 // friends and read each other's card. The cards come into the friends list (lib/friends mergeCards).
 
-const CODE = 'golfos.friendcode.v1'; // { uid, code, sent } – this device's copy of the own code and what was sent
+const CODE = 'golfos.friendcode.v2'; // v2 (03.11.2026): read anew once – the codes became 6 digits; // { uid, code, sent } – this device's copy of the own code and what was sent
 const ASK = 'golfos.friendask.v1'; // a friend's code opened by link or scan, until accepted or declined
 const PHOTO_MAX = 290_000; // the server takes up to 300 000 characters
 
@@ -23,14 +23,17 @@ export const friendLink = (code: string): string => `${WEB_HOME}#friend=${code}`
 /** The same for the iOS app (its own scheme): "open in the app" on the website. */
 export const appFriendLink = (code: string): string => `${AUTH_BACK.replace(/auth$/, 'friend')}/${code}`;
 
-/** A friend code from what was scanned or typed: the link (website or app) or the code itself. */
+/** A friend code from what was scanned or typed: the link (website or app) or the code itself – 6 digits as 123-456
+ *  (Sascha 03.11.2026), or the 12 characters from before (the invitations sent then keep working). */
 export function codeFromText(text: string): string | null {
   const t = text.trim();
-  const m = /#friend=([0-9A-Za-z]{6,20})/.exec(t) ?? /:\/\/friend\/([0-9A-Za-z]{6,20})/.exec(t) ?? /^([0-9A-Fa-f]{4}[\s-]?[0-9A-Fa-f]{4}[\s-]?[0-9A-Fa-f]{4})$/.exec(t);
+  const m =
+    /#friend=([0-9A-Za-z]{6,20})/.exec(t) ??
+    /:\/\/friend\/([0-9A-Za-z]{6,20})/.exec(t) ??
+    /^(\d{3}[\s-]?\d{3})$/.exec(t) ??
+    /^([0-9A-Fa-f]{4}[\s-]?[0-9A-Fa-f]{4}[\s-]?[0-9A-Fa-f]{4})$/.exec(t);
   return m ? m[1].replace(/[\s-]/g, '').toUpperCase() : null;
 }
-/** "A1B2 C3D4 E5F6" – to read out or type. */
-export const spacedCode = (code: string): string => code.replace(/(.{4})(?=.)/g, '$1 ');
 
 export const pendingAsk = (): string | null => {
   try {
@@ -58,7 +61,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown>, signedIn = true
     body: JSON.stringify(args),
   });
   const text = await r.text();
-  if (!r.ok) throw new Error(/unknown_code|own_code|not_signed_in/.exec(text)?.[0] ?? `HTTP ${r.status}`);
+  if (!r.ok) throw new Error(/unknown_code|own_code|not_signed_in|too_many/.exec(text)?.[0] ?? `HTTP ${r.status}`);
   return (text ? JSON.parse(text) : null) as T;
 }
 
@@ -151,14 +154,38 @@ export async function friendPreview(code: string): Promise<FriendPreview | null>
  *  invitation, and neither saw the other): only "you are friends" once he is really in the list; else an error. */
 export async function acceptFriend(code: string): Promise<void> {
   await publishCard(true); // he reads mine as I read his – sent anew, so his phone surely finds it
-  const friend = await rpc<string>('golfos_friend_add', { p_code: code });
+  const friend = await rpc<string | null>('golfos_friend_add', { p_code: code });
+  // no such code: the server counts the wrong try (an error would undo the count – too many in an hour: too_many)
+  if (!friend) throw new Error('unknown_code');
   // the request stays until its sheet is closed: it says "you are friends" first
   for (let k = 0; k < 3; k++) {
-    if ((await refreshFriends()) && (!friend || loadFriends().some((f) => f.uid === friend))) return;
+    if ((await refreshFriends()) && loadFriends().some((f) => f.uid === friend)) return;
     await new Promise((r) => setTimeout(r, 1200));
   }
-  reportError('promise', new Error(`friend added, not in the list (${friend ? 'uid' : 'no uid'})`));
+  reportError('promise', new Error('friend added, not in the list'));
   throw new Error('not_listed');
+}
+
+/** Swiped away (Sascha 03.11.2026: "deleting as in the rest of the app"): gone from the list at once, "Undo" for 8 s –
+ *  only then the link ends for both (the server cannot bring it back without a new invitation). */
+const leaving = new Set<string>();
+export const isLeaving = (uid: string): boolean => leaving.has(uid);
+export function unfriendLater(uid: string, label: string, onFail: () => void): void {
+  leaving.add(uid);
+  window.dispatchEvent(new Event('golfos:friends-changed'));
+  const t = window.setTimeout(() => {
+    if (!leaving.delete(uid)) return;
+    void unfriend(uid).catch(() => {
+      window.dispatchEvent(new Event('golfos:friends-changed'));
+      onFail();
+    });
+  }, 8000);
+  const undo = () => {
+    window.clearTimeout(t);
+    leaving.delete(uid);
+    window.dispatchEvent(new Event('golfos:friends-changed'));
+  };
+  window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'friend', id: uid, label, undo } }));
 }
 
 /** Remove the link – for both; he leaves the list. */

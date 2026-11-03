@@ -35,7 +35,7 @@ await card.waitFor({ timeout: 10000 });
 { await H.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click(); await H.locator('.pick-option strong').getByText('Mit Zähler', { exact: true }).click(); } // ("Score-Erfassung", 02.11.2026)
 await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself once a partner is in the flight (03.11.2026)
 await card.locator('.join-code').waitFor({ timeout: 8000 });
-const code = (await card.locator('.join-code').innerText()).trim();
+const code = (await card.locator('.join-code').innerText()).trim().replace(/-/g, '');
 
 // started before Cedric joins (LATE=1) – or after
 const late = !!process.env.LATE;

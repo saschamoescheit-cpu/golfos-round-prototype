@@ -56,6 +56,35 @@ const frame = Buffer.concat([Buffer.from('FRAME\n'), Buffer.from(gray), Buffer.a
 const y4m = path.join(os.tmpdir(), `golfos-qr-${Date.now()}.y4m`);
 fs.writeFileSync(y4m, Buffer.concat([Buffer.from(`YUV4MPEG2 W${W} H${H} F10:1 Ip A1:1 C420jpeg\n`), ...Array(20).fill(frame)]));
 
+// the same QR code as a photo file – for the phone whose camera gives no picture (the iPhone app, 03.11.2026)
+const png = await S.evaluate(async () => {
+  const svg = document.querySelector('.qr-box svg');
+  const img = new Image();
+  img.src = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = 1200;
+  c.height = 1600;
+  const x = c.getContext('2d');
+  x.fillStyle = '#ddd';
+  x.fillRect(0, 0, 1200, 1600);
+  x.fillStyle = '#fff';
+  x.fillRect(250, 450, 700, 700);
+  x.drawImage(img, 300, 500, 600, 600);
+  return c.toDataURL('image/png').split(',')[1];
+});
+const cedric = await phone('Cedric');
+const Cd = cedric.p;
+await friendsTab(Cd);
+await Cd.getByRole('button', { name: 'QR-Code scannen' }).click();
+const cscan = Cd.getByRole('dialog', { name: 'QR-Code scannen' });
+await cscan.locator('.notice').waitFor({ timeout: 12000 }).catch(() => {});
+ok(/Foto vom Code/.test(await cscan.locator('.notice').innerText().catch(() => '')), 'no camera: it says so – and offers the photo');
+await cscan.locator('input[type="file"]').setInputFiles({ name: 'qr.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+const cask = Cd.getByRole('dialog', { name: 'Freundschaftsanfrage' });
+await cask.getByText('Sascha').first().waitFor({ timeout: 10000 }).catch(() => {});
+ok(/Sascha/.test(await cask.innerText().catch(() => '')), 'a photo of the QR code: "Freundschaftsanfrage" from Sascha');
+
 // Ben's phone, its camera filming that picture
 current = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`] });
 const ben = await phone('Ben');
@@ -67,7 +96,7 @@ const scan = B.getByRole('dialog', { name: 'QR-Code scannen' });
 const ask = B.getByRole('dialog', { name: 'Freundschaftsanfrage' });
 await ask.waitFor({ timeout: 15000 }).catch(() => {});
 const problem = await scan.locator('.notice').innerText().catch(() => '');
-ok(!/Keine Kamera|Scanner startet nicht/.test(problem), `the scanner starts – no "no camera" (${problem || 'no notice'})`);
+ok(!/Keine Kamera|startet nicht|startet hier nicht|kein Bild/.test(problem), `the scanner starts – no "no camera" (${problem || 'no notice'})`);
 ok(await ask.isVisible(), 'Ben scanned Sascha\'s QR code: "Freundschaftsanfrage"');
 await ask.getByText('Sascha').first().waitFor({ timeout: 8000 }).catch(() => {});
 ok(/Sascha/.test(await ask.innerText().catch(() => '')), 'the request is from Sascha');

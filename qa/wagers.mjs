@@ -221,7 +221,7 @@ const invite = H.getByRole('region', { name: 'Mitspieler einladen' });
   const yR = await top(H.getByRole('button', { name: 'Runde starten' }));
   ok(yS >= 0 && yS < yI && (yR < 0 || yI < yR), `invite: below the settlement, before "Runde starten" (${Math.round(yS)} < ${Math.round(yI)} < ${Math.round(yR)})`);
 }
-ok((await invite.locator('.qr-box svg').count()) === 1 && (await invite.locator('.join-code').innerText()).trim() === code && (await invite.getByRole('button', { name: 'Einladung senden' }).count()) === 1, 'invite: its own section – code, QR code, "Einladung senden"');
+ok((await invite.locator('.qr-box svg').count()) === 1 && (await invite.locator('.join-code').innerText()).trim().replace(/-/g, '') === code && (await invite.getByRole('button', { name: 'Einladung senden' }).count()) === 1, 'invite: its own section – code, QR code, "Einladung senden"');
 
 // ---------- Chris: joins with the link, picks himself – his phone judges his bets from his signed round ----------
 const guest = await phone('Chris', { 'golfos.rounds.v1': [chrisRound], 'golfos.event.v1.EVT234': event });

@@ -2035,8 +2035,7 @@ button.tile:disabled { opacity: 1; }
 .friend-code-type > button { flex: none; width: auto; padding: 0 22px; }
 .friend-linked { display: flex; align-items: center; gap: 12px; }
 .friend-linked .grow { flex: 1; min-width: 0; }
-.friend-remove { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.friend-typed { grid-template-columns: auto 1fr 110px auto; }
+.friend-typed { grid-template-columns: auto 1fr 110px; }
 .friend-typed .friend-kind { margin-bottom: 14px; }
 .friend-kind { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line-strong); vertical-align: middle; }
 .friend-kind.linked { background: var(--brand-soft); color: var(--brand-text); border-color: transparent; }

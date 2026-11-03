@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { tr } from '../lib/i18n';
 import { Qr } from './ShareGame';
+import { showCode } from '../lib/sharedgame';
 
 // One look for every QR code in the app (Sascha 03.11.2026: "the QR code with the same functions as under Friends –
 // identical everywhere"): the QR code in the middle, the code below it, one line what to do, then what one does with it
@@ -21,7 +22,7 @@ export interface InviteAction {
 export function InviteCard(props: {
   /** the link in the QR code – null: still being made (then `waiting` shows) */
   link: string | null;
-  /** the code as shown under the QR code */
+  /** the code under the QR code – shown 123-456 */
   code: string | null;
   /** the code's own class (tests and older styles read it: "join-code", "friend-code-text") */
   codeClass?: string;
@@ -41,8 +42,8 @@ export function InviteCard(props: {
         <>
           <Qr text={props.link} label={props.qrLabel} />
           {props.code && (
-            <strong className={`invite-qr-code${props.codeClass ? ` ${props.codeClass}` : ''}`} aria-label={props.codeLabel}>
-              {props.code}
+            <strong className={`invite-qr-code${props.codeClass ? ` ${props.codeClass}` : ''}`} aria-label={props.codeLabel} data-code={props.code}>
+              {showCode(props.code)}
             </strong>
           )}
         </>

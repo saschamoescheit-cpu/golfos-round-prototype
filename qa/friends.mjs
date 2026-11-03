@@ -35,8 +35,10 @@ await S.getByRole('button', { name: '+ Freund hinzufügen' }).click();
 await S.locator('input[id^="fname-"]').last().fill('Chris');
 await S.locator('input[id^="fhcp-"]').last().fill('20');
 await S.locator('.friend-code-text').waitFor({ timeout: 10000 });
-const code = (await S.locator('.friend-code-text').innerText()).replace(/\s/g, '');
-ok(/^[0-9A-Z]{12}$/.test(code) && (await S.getByLabel('Mein Freundes-Code als QR-Code').isVisible()), `Sascha: his friend code with its QR code (${code})`);
+const shown = (await S.locator('.friend-code-text').innerText()).trim();
+const code = shown.replace(/-/g, '');
+// 6 digits, shown 123-456 (Sascha 03.11.2026: "12 characters are a lot, only digits")
+ok(/^\d{3}-\d{3}$/.test(shown) && (await S.getByLabel('Mein Freundes-Code als QR-Code').isVisible()), `Sascha: his friend code with its QR code (${code})`);
 ok(cards.get('Sascha')?.hcp_index === '10', 'server: his card from his profile (HCP 10)');
 ok((await S.locator(typedMark).count()) >= 1 && (await S.locator('.friend-typed').count()) === 1, 'Sascha: Chris typed by hand, with the pen');
 ok((await S.getByRole('button', { name: 'Einladung senden' }).isEnabled()) && (await S.getByRole('button', { name: 'QR-Code scannen' }).isVisible()), 'Sascha: "Einladung senden" and "QR-Code scannen"');
@@ -77,13 +79,14 @@ const ben = await phone('Ben');
 const B = ben.p;
 await friendsTab(B);
 await B.getByRole('button', { name: 'Code eingeben' }).click(); // an icon, the field in its sheet (03.11.2026)
-await B.getByLabel('Code deines Freundes').fill(code.replace(/(.{4})/g, '$1 ').toLowerCase());
+await B.getByLabel('Code deines Freundes').fill(`${code.slice(0, 3)} ${code.slice(3)}`);
+ok((await B.getByLabel('Code deines Freundes').inputValue()) === shown, `typed with a space: shown ${shown} as he types`);
 await B.getByRole('button', { name: 'Los' }).click();
 const bask = B.getByRole('dialog', { name: 'Freundschaftsanfrage' });
 await bask.waitFor({ timeout: 10000 });
 await bask.getByRole('button', { name: 'Annehmen' }).click();
 await bask.getByText(/seid befreundet/).waitFor({ timeout: 10000 });
-ok(links.has('Ben|Sascha'), 'Ben: the typed code (small letters, spaced) – friends');
+ok(links.has('Ben|Sascha'), 'Ben: the typed code – friends');
 await bask.getByRole('button', { name: 'Schließen' }).click();
 // the scanner opens (no camera in the test browser: it says so)
 await B.getByRole('button', { name: 'QR-Code scannen' }).click();
@@ -132,13 +135,46 @@ await sask.getByText(/dein eigener Code/).waitFor({ timeout: 10000 }).catch(() =
 ok(/dein eigener Code/.test(await sask.innerText()), 'Sascha: his own code – "Das ist dein eigener Code"');
 await sask.getByRole('button', { name: 'Schließen' }).click();
 
-// Chris removes Sascha: gone for both – on Sascha's phone Chris stays, typed by hand
-await row(C, 'Sascha').getByRole('button', { name: 'Sascha entfernen' }).click();
-await row(C, 'Sascha').getByRole('button', { name: 'Entfernen', exact: true }).click();
-await C.waitForTimeout(1500);
+// Chris swipes Sascha away, as everything in the app (03.11.2026): gone at once, "Rückgängig" brings him back; swiped
+// again and the toast over, the link ends for both – on Sascha's phone Chris stays, typed by hand
+const swipeAway = (p, name) =>
+  p.locator('.swipe').filter({ hasText: name }).first().evaluate((el) => {
+    const f = el.querySelector('.swipe-front');
+    const r = f.getBoundingClientRect();
+    const y = r.top + r.height / 2;
+    const fire = (type, x) => f.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: x, clientY: y, isPrimary: true }));
+    fire('pointerdown', r.right - 10);
+    for (let x = r.right - 20; x > r.left - 40; x -= 30) fire('pointermove', x);
+    fire('pointerup', r.left - 40);
+  });
+await friendsTab(C);
+ok((await row(C, 'Sascha').getByRole('button', { name: /entfernen/ }).count()) === 0, 'Chris: no ✕ on the friend – swiped instead');
+await swipeAway(C, 'Sascha');
+await C.waitForTimeout(600);
+ok((await row(C, 'Sascha').count()) === 0 && /Freund entfernt/.test(await C.locator('.undo-toast').innerText()) && links.has('Chris|Sascha'), 'swiped: gone from the list, "Freund entfernt · Rückgängig", still linked meanwhile');
+await C.locator('.undo-toast').getByRole('button', { name: 'Rückgängig' }).click();
+await C.waitForTimeout(9000);
+ok((await row(C, 'Sascha').count()) === 1 && links.has('Chris|Sascha'), '"Rückgängig": Sascha back, still friends after the toast');
+await swipeAway(C, 'Sascha');
+await C.waitForTimeout(9500);
 ok(!links.has('Chris|Sascha') && !links.has('Sascha|Chris') && (await row(C, 'Sascha').count()) === 0, 'Chris: Sascha removed – for both');
 await friendsTab(S);
 ok((await S.locator('.friend-typed').count()) === 1 && (await S.locator('input[id^="fname-"]').first().inputValue()) === 'Chris', 'Sascha: Chris stays, typed by hand (the pen)');
+// typed by hand: swiped away too, "Rückgängig" brings him back
+await S.locator('.swipe').filter({ has: S.locator('.friend-typed') }).first().evaluate((el) => {
+  const f = el.querySelector('.swipe-front');
+  const r = f.getBoundingClientRect();
+  const y = r.top + 12;
+  const fire = (type, x) => f.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: x, clientY: y, isPrimary: true }));
+  fire('pointerdown', r.right - 10);
+  for (let x = r.right - 20; x > r.left - 40; x -= 30) fire('pointermove', x);
+  fire('pointerup', r.left - 40);
+});
+await S.waitForTimeout(600);
+ok((await S.locator('.friend-typed').count()) === 0 && /Freund entfernt/.test(await S.locator('.undo-toast').innerText()), 'Sascha swipes Chris (typed by hand) away: "Freund entfernt"');
+await S.locator('.undo-toast').getByRole('button', { name: 'Rückgängig' }).click();
+await S.waitForTimeout(400);
+ok((await S.locator('input[id^="fname-"]').first().inputValue().catch(() => '')) === 'Chris', '"Rückgängig": Chris back');
 
 ok([sascha, chris, ben, guest].every((x) => x.errs.length === 0), `no page errors ${[sascha, chris, ben, guest].flatMap((x) => x.errs).slice(0, 2).join(' | ')}`);
 await b.close();

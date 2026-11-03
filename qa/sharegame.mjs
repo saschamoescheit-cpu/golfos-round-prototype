@@ -95,7 +95,7 @@ await H.locator('.hole-drawer').getByRole('button', { name: 'Mitspieler einladen
 await H.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself as the sheet opens (03.11.2026)
 await H.locator('.join-code').waitFor({ timeout: 8000 });
 await H.waitForTimeout(800);
-const code = (await H.locator('.join-code').innerText()).trim();
+const code = (await H.locator('.join-code').innerText()).trim().replace(/-/g, '');
 ok(/^[A-Z0-9]{6}$/.test(code) && (await H.locator('.qr-box svg').count()) === 1, `host: code ${code} with a QR code`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/share-invite.png' });
 await H.getByRole('button', { name: 'Schließen' }).click();

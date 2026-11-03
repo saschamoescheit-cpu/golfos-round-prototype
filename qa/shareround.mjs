@@ -44,8 +44,9 @@ await card.waitFor({ timeout: 10000 });
 ok(await card.isVisible() && (await H.locator('.eyebrow').getByText('Mitspieler einladen', { exact: true }).isVisible()), 'setup: "Mitspieler einladen" – its own section, before the start');
 await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself once a partner is in the flight (03.11.2026)
 await H.waitForTimeout(800);
-const code = (await card.locator('.join-code').innerText()).trim();
-ok(/^[A-Z0-9]{6}$/.test(code) && (await card.locator('.qr-box svg').count()) === 1, `setup: code ${code} with a QR code`);
+const code = (await card.locator('.join-code').innerText()).trim().replace(/-/g, '');
+// 6 digits, shown 123-456 (Sascha 03.11.2026)
+ok(/^\d{6}$/.test(code) && /^\d{3}-\d{3}$/.test((await card.locator('.join-code').innerText()).trim()) && (await card.locator('.qr-box svg').count()) === 1, `setup: code ${code} (6 digits, 123-456) with a QR code`);
 // made by itself (03.11.2026): shown nearby only when asked – the switch under the code; the setup goes to the server a moment after each change
 await card.getByRole('switch', { name: /In der Nähe anzeigen/ }).click();
 await H.waitForTimeout(2500);

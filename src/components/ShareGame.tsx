@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import qrcode from 'qrcode-generator';
 import type { Game } from '../lib/gameforms';
-import { cleanCode, exchange, joinGame, joinLink, settleGame, shareGame, guestRound } from '../lib/sharedgame';
+import { cleanCode, exchange, joinGame, showCode, joinLink, settleGame, shareGame, guestRound } from '../lib/sharedgame';
 import { tr } from '../lib/i18n';
 import { isPool, type WagerPool } from '../lib/wagers';
 import { joinPool } from '../lib/wagerstore';
@@ -177,11 +177,10 @@ export function JoinSheet(props: {
           <>
             <input
               className="input join-input"
-              value={code}
-              inputMode="text"
-              autoCapitalize="characters"
+              value={showCode(code)}
+              inputMode="numeric"
               autoComplete="off"
-              placeholder="K7P4QX"
+              placeholder="123-456"
               aria-label={tr('Code of the game', 'Code des Spiels')}
               onChange={(e) => {
                 setCode(cleanCode(e.target.value));

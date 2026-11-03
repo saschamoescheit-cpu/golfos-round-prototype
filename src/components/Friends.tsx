@@ -1,33 +1,36 @@
 import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
 import { loadFriends, saveFriends, type Friend } from '../lib/friends';
-import { acceptFriend, appFriendLink, canLink, codeFromText, friendLink, friendPreview, myFriendCode, pendingAsk, publishCard, refreshFriends, renewFriendCode, setPendingAsk, spacedCode, unfriend, type FriendPreview } from '../lib/friendlinks';
+import { acceptFriend, appFriendLink, canLink, codeFromText, friendLink, friendPreview, isLeaving, myFriendCode, pendingAsk, publishCard, refreshFriends, renewFriendCode, setPendingAsk, unfriendLater, type FriendPreview } from '../lib/friendlinks';
+import { showCode } from '../lib/sharedgame';
 import { loadProfile, shownName } from '../lib/profile';
 import { newId } from '../lib/storage';
 import { isNative } from '../lib/native';
 import { Avatar } from './Avatar';
 import { InviteCard, InviteIcon } from './InviteCard';
 import { QrScan } from './QrScan';
+import { SwipeRow } from './SwipeRow';
 
 // The friends tab (Sascha 15.10. / 02.11.2026): the own friend code (QR as with PayPal, an invitation by WhatsApp),
 // the friends linked by their accounts – name, handicap, home club and photo from their profiles – and the ones typed
 // by hand as before.
 
 export function Friends(props: { onSignIn: () => void }) {
-  const [list, setList] = useState<Friend[]>(loadFriends);
+  // a friend swiped away stays out while his "Undo" runs
+  const shownFriends = () => loadFriends().filter((f) => !f.uid || !isLeaving(f.uid));
+  const [list, setList] = useState<Friend[]>(shownFriends);
   const [code, setCode] = useState<string | null>(() => (canLink() ? myFriendCode() : null));
   const [scan, setScan] = useState(false);
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
-  const [removing, setRemoving] = useState<string | null>(null);
   const [renewing, setRenewing] = useState(false);
   const [typedProblem, setTypedProblem] = useState<string | null>(null);
   const linkable = canLink();
 
   useEffect(() => {
-    const again = () => setList(loadFriends());
+    const again = () => setList(shownFriends());
     window.addEventListener('golfos:friends-changed', again);
     window.addEventListener('golfos:pulled', again);
     if (linkable) {
@@ -48,6 +51,17 @@ export function Friends(props: { onSignIn: () => void }) {
   };
   const set = (id: string, patch: Partial<Friend>) => store(list.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   const typedByHand = list.filter((f) => !f.uid);
+  // swiped away as everywhere in the app (Sascha 03.11.2026), "Undo" in the toast: typed by hand back in its place
+  const removeTyped = (f: Friend) => {
+    const at = list.findIndex((x) => x.id === f.id);
+    store(list.filter((x) => x.id !== f.id));
+    const undo = () => {
+      const now = loadFriends();
+      saveFriends([...now.slice(0, at), f, ...now.slice(at)]);
+      window.dispatchEvent(new Event('golfos:friends-changed'));
+    };
+    window.dispatchEvent(new CustomEvent('golfos:deleted', { detail: { kind: 'friend', id: f.id, label: f.name.trim(), undo } }));
+  };
 
   const invite = async () => {
     if (!code) return;
@@ -99,7 +113,7 @@ export function Friends(props: { onSignIn: () => void }) {
           </div>
           <InviteCard
             link={code ? friendLink(code) : null}
-            code={code ? spacedCode(code) : null}
+            code={code}
             codeClass="friend-code-text"
             qrLabel={tr('My friend code as a QR code', 'Mein Freundes-Code als QR-Code')}
             waiting={problem ?? tr('Making your code …', 'Dein Code wird erstellt …')}
@@ -133,52 +147,36 @@ export function Friends(props: { onSignIn: () => void }) {
       {[...list.filter((f) => f.uid), ...list.filter((f) => !f.uid)].map((f, k, all) => [
         !f.uid && (k === 0 || all[k - 1].uid) ? <span key="typed-eyebrow" className="eyebrow friends-group">{tr('Typed by hand', 'Von Hand angelegt')}</span> : null,
         f.uid ? (
-          <div key={f.id} className="card friend-linked">
-            <KindMark linked />
-            <Avatar name={f.name} photo={f.photo} size={44} />
-            <span className="grow">
-              <strong>{f.fullName || f.name}</strong>
-              <span className="muted small" style={{ display: 'block' }}>
-                {[f.hcp.trim() ? `HCP ${f.hcp}` : tr('no HCP in his profile', 'kein HCP im Profil'), f.club].filter(Boolean).join(' · ')}
+          <SwipeRow
+            key={f.id}
+            label={f.fullName || f.name}
+            onDelete={() => unfriendLater(f.uid!, f.fullName || f.name, () => setProblem(tr('No connection – the friend stays. Try again later.', 'Keine Verbindung – der Freund bleibt. Später nochmal.')))}
+          >
+            <div className="card friend-linked">
+              <KindMark linked />
+              <Avatar name={f.name} photo={f.photo} size={44} />
+              <span className="grow">
+                <strong>{f.fullName || f.name}</strong>
+                <span className="muted small" style={{ display: 'block' }}>
+                  {[f.hcp.trim() ? `HCP ${f.hcp}` : tr('no HCP in his profile', 'kein HCP im Profil'), f.club].filter(Boolean).join(' · ')}
+                </span>
               </span>
-            </span>
-            {removing === f.uid ? (
-              <span className="friend-remove">
-                <button
-                  type="button"
-                  className="btn-secondary small"
-                  onClick={() => {
-                    setRemoving(null);
-                    void unfriend(f.uid!).catch(() => setProblem(tr('No connection – try again later.', 'Keine Verbindung – später nochmal.')));
-                  }}
-                >
-                  {tr('Remove', 'Entfernen')}
-                </button>
-                <button type="button" className="link-btn small" onClick={() => setRemoving(null)}>
-                  {tr('Keep', 'Behalten')}
-                </button>
-              </span>
-            ) : (
-              <button type="button" className="icon-btn" aria-label={tr(`Remove ${f.name}`, `${f.name} entfernen`)} onClick={() => setRemoving(f.uid!)}>
-                ✕
-              </button>
-            )}
-          </div>
+            </div>
+          </SwipeRow>
         ) : (
-          <div key={f.id} className="card game-player-row friend-typed">
-            <KindMark />
-            <div className="field">
-              <label htmlFor={`fname-${f.id}`}>Name</label>
-              <input id={`fname-${f.id}`} className="input" value={f.name} onChange={(e) => set(f.id, { name: e.target.value })} />
+          <SwipeRow key={f.id} label={f.name.trim() || tr('friend', 'Freund')} onDelete={() => removeTyped(f)}>
+            <div className="card game-player-row friend-typed">
+              <KindMark />
+              <div className="field">
+                <label htmlFor={`fname-${f.id}`}>Name</label>
+                <input id={`fname-${f.id}`} className="input" value={f.name} onChange={(e) => set(f.id, { name: e.target.value })} />
+              </div>
+              <div className="field">
+                <label htmlFor={`fhcp-${f.id}`}>Handicap</label>
+                <input id={`fhcp-${f.id}`} className="input" inputMode="decimal" value={f.hcp} onChange={(e) => set(f.id, { hcp: e.target.value })} />
+              </div>
             </div>
-            <div className="field">
-              <label htmlFor={`fhcp-${f.id}`}>Handicap</label>
-              <input id={`fhcp-${f.id}`} className="input" inputMode="decimal" value={f.hcp} onChange={(e) => set(f.id, { hcp: e.target.value })} />
-            </div>
-            <button type="button" className="icon-btn" aria-label={tr(`Remove ${f.name || 'friend'}`, `${f.name || 'Freund'} entfernen`)} onClick={() => store(list.filter((x) => x.id !== f.id))} style={{ marginBottom: 3 }}>
-              ✕
-            </button>
-          </div>
+          </SwipeRow>
         ),
       ])}
       {!typedByHand.length && <span className="eyebrow friends-group">{tr('Typed by hand', 'Von Hand angelegt')}</span>}
@@ -201,15 +199,15 @@ export function Friends(props: { onSignIn: () => void }) {
                 ✕
               </button>
             </div>
-            <span className="muted small">{tr("The 12 characters under your friend's QR code.", 'Die 12 Zeichen unter dem QR-Code deines Freundes.')}</span>
+            <span className="muted small">{tr("The 6 digits under your friend's QR code.", 'Die 6 Ziffern unter dem QR-Code deines Freundes.')}</span>
             <form
               className="friend-code-type"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!take(typed)) setTypedProblem(tr('That is not a friend code (12 characters).', 'Das ist kein Freundes-Code (12 Zeichen).'));
+                if (!take(typed)) setTypedProblem(tr('That is not a friend code (6 digits).', 'Das ist kein Freundes-Code (6 Ziffern).'));
               }}
             >
-              <input className="input" autoFocus aria-label={tr("Your friend's code", 'Code deines Freundes')} placeholder="A1B2 C3D4 E5F6" value={typed} onChange={(e) => setTyped(e.target.value)} autoCapitalize="characters" />
+              <input className="input" autoFocus aria-label={tr("Your friend's code", 'Code deines Freundes')} placeholder="123-456" inputMode="numeric" autoComplete="off" value={typed} onChange={(e) => setTyped(typedCode(e.target.value))} />
               <button type="submit" className="btn-primary">
                 {tr('Go', 'Los')}
               </button>
@@ -257,6 +255,11 @@ export function FriendAskHost() {
   return ask ? <FriendAsk key={ask} code={ask} onSignIn={() => window.dispatchEvent(new Event('golfos:open-profile'))} /> : null;
 }
 
+/** What is typed into "Code eingeben": digits as 123-456 while typing; a code of the 12 characters from before as it is. */
+function typedCode(v: string): string {
+  return /^[\d\s-]*$/.test(v) ? showCode(v.replace(/\D/g, '').slice(0, 6)) : v;
+}
+
 /** The symbol of a friend: linked by his account (a chain) or typed by hand (a pen). */
 function KindMark(props: { linked?: boolean }) {
   const label = props.linked ? tr('Linked – from his profile', 'Verknüpft – aus seinem Profil') : tr('Typed by hand', 'Von Hand angelegt');
@@ -279,12 +282,16 @@ function KindMark(props: { linked?: boolean }) {
 /** "Sascha would like to be your friend": the one who sent the code – accept, or not. */
 function FriendAsk(props: { code: string; onSignIn: () => void }) {
   const [who, setWho] = useState<FriendPreview | null | undefined>(undefined);
+  const [tooMany, setTooMany] = useState(false);
   const [state, setState] = useState<'ask' | 'busy' | 'done' | 'failed'>('ask');
   const [failed, setFailed] = useState('');
   useEffect(() => {
     void friendPreview(props.code)
       .then(setWho)
-      .catch(() => setWho(null));
+      .catch((e) => {
+        setTooMany((e as Error)?.message === 'too_many');
+        setWho(null);
+      });
   }, [props.code]);
   const close = () => setPendingAsk(null);
   const name = who ? `${who.first_name} ${who.last_name}`.trim() || tr('Someone', 'Jemand') : '';
@@ -299,6 +306,8 @@ function FriendAsk(props: { code: string; onSignIn: () => void }) {
         </div>
         {who === undefined ? (
           <span className="muted">{tr('Looking up the code …', 'Code wird geprüft …')}</span>
+        ) : who === null && tooMany ? (
+          <p className="notice">{tr('Too many wrong codes – try again in an hour.', 'Zu viele falsche Codes – in einer Stunde nochmal.')}</p>
         ) : who === null ? (
           <p className="notice">{tr('This friend code is unknown – maybe a new one was made. Ask for a fresh invitation.', 'Diesen Freundes-Code gibt es nicht – vielleicht wurde ein neuer erstellt. Lass dir eine neue Einladung schicken.')}</p>
         ) : (

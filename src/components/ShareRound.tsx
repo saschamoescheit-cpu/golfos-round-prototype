@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
-import { cleanCode } from '../lib/sharedgame';
+import { cleanCode, showCode } from '../lib/sharedgame';
 import { addFlight, askByCode, askToJoin, cachedEvent, differences, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
@@ -470,11 +470,10 @@ export function JoinRoundSheet(props: {
           <>
             <input
               className="input join-input"
-              value={code}
-              inputMode="text"
-              autoCapitalize="characters"
+              value={showCode(code)}
+              inputMode="numeric"
               autoComplete="off"
-              placeholder="K7P4QX"
+              placeholder="123-456"
               aria-label={tr('Code of the round', 'Code der Runde')}
               onChange={(e) => {
                 setCode(cleanCode(e.target.value));

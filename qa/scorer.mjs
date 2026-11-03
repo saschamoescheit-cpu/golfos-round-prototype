@@ -36,7 +36,7 @@ await H.getByRole('dialog', { name: 'Schreiber wählen' }).locator('.pick-option
 ok(/Chris/.test(await H.locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()) && (await H.getByText('Ein Spieler trägt alle Scores ein').isVisible()), 'setup: "Einer für alle" – Chris chosen');
 await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself once a partner is in the flight (03.11.2026)
 await card.locator('.join-code').waitFor({ timeout: 8000 });
-const code = (await card.locator('.join-code').innerText()).trim();
+const code = (await card.locator('.join-code').innerText()).trim().replace(/-/g, '');
 await H.getByRole('button', { name: 'Runde starten' }).click();
 await H.locator('.map-hole-no').waitFor({ timeout: 30000 });
 const chrisId = flight().players.find((p) => p.name === 'Chris')?.id;
