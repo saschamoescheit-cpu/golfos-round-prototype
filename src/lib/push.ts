@@ -209,6 +209,22 @@ export async function inviteByName(code: string, username: string, who: string):
   }
 }
 
+/** A round: a linked friend invited with a tap (Sascha 03.11.2026) – let in at once, told by push, and his app, open,
+ *  asks him straight away. 'old': the function on the server does not know friends yet (then the host's phone lets him
+ *  in itself – see letInvited). */
+export async function inviteFriend(code: string, friend: string, name: string, who: string): Promise<'sent' | 'silent' | 'old' | null> {
+  if (!loadSession() || !syncConfigured()) return null;
+  try {
+    const r = await call({ action: 'invite', code, friend, name, who });
+    if (r.status === 400) return 'old';
+    if (!r.ok) return null;
+    const j = (await r.json()) as { found?: boolean; sent?: number };
+    return !j.found ? 'old' : (j.sent ?? 0) > 0 ? 'sent' : 'silent';
+  } catch {
+    return null;
+  }
+}
+
 /** A round: this phone asked to join – the host hears of it (Sascha 30.10.2026; the function says it once). */
 export function pushAsked(to: { code?: string; ref?: string }): void {
   if (!loadSession() || !syncConfigured()) return;

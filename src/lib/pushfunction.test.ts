@@ -241,6 +241,30 @@ describe('the push function, end to end against a copy of the database', () => {
     expect((await post({ action: 'invite', code: 'INV234', username: 'max.m' }, 'token-tim')).status).toBe(403);
   });
 
+  it('a round: the host invites a linked friend with a tap – let in, marked invited, told by push; not one who is no friend (Sascha 03.11.2026)', async () => {
+    const tim = await phone('https://fcm.googleapis.com/fcm/send/tim-friend-invite');
+    await post({ action: 'subscribe', subscription: tim.subscription, lang: 'de' }, 'token-tim');
+    const timId = '22222222-2222-4222-8222-222222222222';
+    const maxId = '33333333-3333-4333-8333-333333333333';
+    tables.golfos_push = (tables.golfos_push ?? []).map((s) => (s.user_id === 'u-tim' ? { ...s, user_id: timId } : s));
+    tables.golfos_friend_links = [{ user_id: 'u-sascha', friend_id: timId }, { user_id: timId, friend_id: 'u-sascha' }];
+    tables.golfos_shared_games = [{ code: 'FRI234', owner: 'u-sascha', members: [], near_requests: {}, game: { kind: 'round-event', course: { name: 'Golfclub Hetzenhof' } } }];
+    const n = (await tim.inbox()).length;
+    const r = await (await post({ action: 'invite', code: 'FRI234', friend: timId, name: 'Tim', who: 'Sascha' }, 'token-sascha')).json();
+    expect(r).toMatchObject({ ok: true, found: true });
+    expect(tables.golfos_shared_games[0].members).toEqual([timId]);
+    expect((tables.golfos_shared_games[0].near_requests as Record<string, { state: string; invited: string; name: string }>)[timId]).toMatchObject({ state: 'ok', invited: 'Sascha', name: 'Tim' });
+    expect((await tim.inbox()).slice(n)[0]).toMatchObject({ title: 'Einladung zur Runde', url: './#round=FRI234' });
+    // no friend of his: not found, nobody let in
+    expect(await (await post({ action: 'invite', code: 'FRI234', friend: maxId, who: 'Sascha' }, 'token-sascha')).json()).toMatchObject({ ok: false, found: false });
+    expect(tables.golfos_shared_games[0].members).toEqual([timId]);
+    // a pool of bets too: let in, the push opens Games (#join=)
+    tables.golfos_shared_games.push({ code: 'POO234', owner: 'u-sascha', members: [], near_requests: {}, game: { kind: 'wager-pool', name: 'USA 2026' } });
+    const m = (await tim.inbox()).length;
+    expect(await (await post({ action: 'invite', code: 'POO234', friend: timId, name: 'Tim', who: 'Sascha' }, 'token-sascha')).json()).toMatchObject({ ok: true, found: true });
+    expect((await tim.inbox()).slice(m)[0]).toMatchObject({ title: 'Einladung zu Wetten', url: './#join=POO234' });
+  });
+
   it('bets: a bet made – everyone in the pool hears of it once, not the phone that told; only when it is made (Sascha 01.11.2026)', async () => {
     const max = await phone('https://fcm.googleapis.com/fcm/send/max-bets');
     const tim = await phone('https://fcm.googleapis.com/fcm/send/tim-bets');

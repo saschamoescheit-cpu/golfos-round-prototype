@@ -95,7 +95,7 @@ const check = async (label, plan) => {
   if (st.money) {
     const sum = Object.values(st.money).reduce((a, v) => a + v, 0);
     ok(Math.abs(sum) < 0.011, `${label}: the money adds up to nothing (${sum.toFixed(2)})`);
-    const want = transfers(st.money).map((t) => `${st.rows.find((r) => r.id === t.from)?.name} → ${st.rows.find((r) => r.id === t.to)?.name} ${euro(t.amount)}`);
+    const want = transfers(st.money).map((t) => `${st.rows.find((r) => r.id === t.from)?.name} zahlt an ${st.rows.find((r) => r.id === t.to)?.name} ${euro(t.amount)}`);
     const shown = (await p.locator('.game-pays li').allInnerTexts()).map((x) => x.replace(/\s+/g, ' ').trim());
     // "12 €" or "8,60 €": compared as numbers
     const num = (t) => Number((t.match(/(\d+(?:,\d+)?)\s*€/)?.[1] ?? 'NaN').replace(',', '.'));

@@ -241,7 +241,7 @@ for (const c of cases) {
     const st = G.standingOf(g);
     const nm = (id) => g.players.find((x) => x.id === id)?.name ?? id;
     const sum = Object.values(st.money ?? {}).reduce((a, v) => a + v, 0);
-    return { pays: st.money ? G.transfers(st.money).map((t) => `${nm(t.from)} → ${nm(t.to)} ${G.money(t.amount)}`) : [], sum, top: st.rows[0]?.name };
+    return { pays: st.money ? G.transfers(st.money).map((t) => `${nm(t.from)} zahlt an ${nm(t.to)} ${G.money(t.amount)}`) : [], sum, top: st.rows[0]?.name };
   });
   const winner = (await p.locator('.game-winner strong').innerText().catch(() => '')).trim();
   ok(

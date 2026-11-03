@@ -1272,3 +1272,86 @@ export async function nearbyRounds(lat: number, lon: number): Promise<NearbyRoun
 
 /** The link in the QR code: opens Rounds and asks to join. */
 export const roundJoinLink = (code: string): string => `${linkBase()}#round=${code}`;
+
+// ---------- a linked friend invited with a tap (Sascha 03.11.2026: "invite a friend to a round with one click – a
+// push, or better a request right in the app when it is open, so he joins straight away")
+
+/** The host's phone lets an invited friend in itself – when the function on the server does not know friends yet (no
+ *  push then; his app, open, still asks him). */
+export async function letInvited(code: string, friend: string, name: string, who: string): Promise<boolean> {
+  const h = await headers();
+  if (!h) return false;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}&select=members,near_requests,updated_at`, { headers: h });
+      if (!r.ok) return false;
+      const rows = (await r.json()) as { members: string[]; near_requests: Record<string, unknown> | null; updated_at: string }[];
+      if (!rows.length) return false;
+      const row = rows[0];
+      const members = row.members.includes(friend) ? row.members : [...row.members, friend];
+      const near_requests = { ...(row.near_requests ?? {}), [friend]: { name: name.slice(0, 60), at: new Date().toISOString(), state: 'ok', invited: who || 'GolfOS' } };
+      const w = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}&updated_at=eq.${encodeURIComponent(row.updated_at)}`, {
+        method: 'PATCH',
+        headers: { ...h, Prefer: 'return=representation' },
+        body: JSON.stringify({ members, near_requests, updated_at: new Date().toISOString() }),
+      });
+      if (!w.ok) return false;
+      if (((await w.json()) as unknown[]).length) return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export interface RoundInvite {
+  code: string;
+  who: string;
+  /** the course – or the pool's name */
+  course: string;
+  /** joined in Rounds (a round, a tournament, a series) or in Games (a game, a pool of bets) */
+  kind: 'round' | 'game' | 'pool';
+}
+const INVITES_SEEN = 'golfos.invites.seen.v1';
+const seenInvites = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(INVITES_SEEN) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+};
+/** "Not now" / joined: this invitation is not asked again. */
+export function inviteSeen(code: string): void {
+  try {
+    localStorage.setItem(INVITES_SEEN, JSON.stringify([...seenInvites().filter((c) => c !== code), code].slice(-40)));
+  } catch {
+    /* storage full */
+  }
+}
+/** What this account was invited to in the last 12 hours – a round, a tournament or series, a game, a pool of bets – and
+ *  has not joined on this phone (`joined`: the codes it has), nor answered. */
+export async function roundInvites(joined: string[]): Promise<RoundInvite[]> {
+  const me = userId();
+  const h = await headers();
+  if (!me || !h) return [];
+  try {
+    const fresh = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+    const r = await fetch(`${table()}?select=code,game,near_requests&event_code=is.null&members=cs.%7B${encodeURIComponent(me)}%7D&updated_at=gte.${encodeURIComponent(fresh)}`, { headers: h });
+    if (!r.ok) return [];
+    const rows = (await r.json()) as { code: string; game: { kind?: string; name?: string; courseName?: string; finishedAt?: string | null; deletedAt?: string | null; course?: { name?: string } } | null; near_requests: Record<string, { invited?: string; at?: string }> | null }[];
+    const kindOf = (k?: string): RoundInvite['kind'] => (k === 'wager-pool' ? 'pool' : k === 'round-event' || k === 'tour-series' ? 'round' : 'game');
+    const seen = seenInvites();
+    const since = Date.now() - 12 * 3600 * 1000;
+    return rows
+      .filter((x) => {
+        const inv = x.near_requests?.[me];
+        return !!x.game && x.game.kind !== 'round-flight' && !x.game.deletedAt && !x.game.finishedAt && !!inv?.invited && new Date(inv.at ?? 0).getTime() > since && !joined.includes(x.code) && !seen.includes(x.code);
+      })
+      .map((x) => {
+        const kind = kindOf(x.game?.kind);
+        return { code: x.code, who: x.near_requests![me]!.invited!, kind, course: (kind === 'pool' ? x.game?.name : kind === 'game' ? x.game?.courseName : (x.game?.course?.name ?? x.game?.name)) ?? '' };
+      });
+  } catch {
+    return [];
+  }
+}

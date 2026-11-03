@@ -96,6 +96,15 @@ export function sharedServer(b, url, o = {}) {
       const b = body();
       pushes.push({ ...b, from: uid });
       // invited by user name (o.users: user name → account): let in at once
+      // a linked friend by his account (03.11.2026) – o.oldPush: the function from before, which knows no friends
+      if (b.action === 'invite' && b.friend) {
+        const row = shared.get(b.code);
+        if (o.oldPush || !links.has(`${uid}|${b.friend}`)) return json(200, { ok: false, found: false });
+        if (row && !row.members.includes(b.friend)) row.members.push(b.friend);
+        if (row) row.requests[b.friend] = { name: b.name, state: 'ok', invited: b.who || 'GolfOS', at: new Date().toISOString() };
+        if (row) row.updated_at = new Date().toISOString();
+        return json(200, { ok: true, found: true, sent: 1 });
+      }
       if (b.action === 'invite') {
         const to = o.users?.[String(b.username).toLowerCase()];
         const row = shared.get(b.code);
@@ -176,12 +185,17 @@ export function sharedServer(b, url, o = {}) {
         const rows = [...shared.entries()].filter(([, r]) => !r.event_code && r.game.planned && fits(r.game.date ?? '') && (r.owner === uid || r.members.includes(uid)));
         return json(200, rows.map(([c, r]) => ({ code: c, game: r.game })));
       }
+      // the rounds this account was let into (a friend's invitation, 03.11.2026)
+      if (req.method() === 'GET' && u.searchParams.has('members')) {
+        const who = decodeURIComponent((u.searchParams.get('members') ?? '').replace(/^cs.{|}$/g, ''));
+        return json(200, who !== uid ? [] : [...shared.entries()].filter(([, r]) => !r.event_code && r.members.includes(uid)).map(([c, r]) => ({ code: c, game: r.game, near_requests: r.requests })));
+      }
       if (req.method() === 'GET' && u.searchParams.has('event_code')) {
         if (o.noSplit) return json(400, { code: '42703', message: 'column golfos_shared_games.event_code does not exist' });
         flightReads++;
         return json(200, inEvent(evCode) ? [...shared.values()].filter((r) => r.event_code === evCode).map((r) => ({ game: r.game, updated_at: r.updated_at })) : []);
       }
-      if (req.method() === 'GET' && /near_requests/.test(u.searchParams.get('select') ?? '')) return json(200, mine ? [{ near_requests: row.requests }] : []);
+      if (req.method() === 'GET' && /near_requests/.test(u.searchParams.get('select') ?? '')) return json(200, mine ? [{ near_requests: row.requests, members: [...row.members], updated_at: row.updated_at }] : []);
       if (req.method() === 'GET') return json(200, mine ? [{ game: row.game, updated_at: row.updated_at, owner: row.owner }] : []);
       if (req.method() === 'POST') {
         const r = body();
@@ -198,6 +212,14 @@ export function sharedServer(b, url, o = {}) {
           return json(200, []);
         }
         const b = body();
+        if (b.members) {
+          // the host lets an invited friend in (sharedround letInvited)
+          if (row.owner !== uid) return json(200, []);
+          row.members = b.members;
+          row.requests = b.near_requests ?? row.requests;
+          row.updated_at = b.updated_at;
+          return json(200, [{ code }]);
+        }
         if (b.near_lat != null) {
           row.near = b; // shown nearby – the event itself unchanged
           return json(204, null);

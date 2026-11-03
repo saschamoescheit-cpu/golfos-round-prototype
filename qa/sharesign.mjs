@@ -31,6 +31,8 @@ for (let i = 0; i < holes; i++) {
     await p.locator('.map-score').click();
     await block(p, me).getByRole('button', { name: /Schläge plus eins/ }).click();
     await block(p, other).getByRole('button', { name: /Schläge plus eins/ }).click();
+    // hole 2: Sascha counts Cedric one stroke more than Cedric himself – corrected on the scorecard below
+    if (i === 1 && me === 'Sascha') await block(p, other).getByRole('button', { name: /Schläge plus eins/ }).click();
     if (i < holes - 1) await p.getByRole('button', { name: 'Nächstes Loch' }).last().click();
     else await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
     await p.waitForTimeout(300);
@@ -44,6 +46,21 @@ const openCard = async (p) => {
   return p.locator('.sign-card');
 };
 const hs = await openCard(H);
+// a count that differs (Sascha 03.11.2026): the holes red on the card, a chip per hole that opens it; corrected on the
+// scorecard, it reaches Cedric's phone from there – then both can sign ("all scores the same and still not signable")
+await H.waitForTimeout(1500);
+ok(/weicht ab/.test(await hs.innerText()) && (await hs.getByRole('button', { name: /^Loch 2\b.* weicht ab – öffnen$/ }).count()) === 1, `Sascha: the marker card – "weicht ab", a chip "Loch 2" (${(await hs.innerText()).replace(/\s+/g, ' ').slice(0, 160)})`);
+ok((await H.locator('.sc th.diff').count()) === 1 && (await H.locator('.sc td.diff').count()) >= 1, `the scorecard: hole 2 red (${await H.locator('.sc th.diff').count()} hole, ${await H.locator('.sc td.diff').count()} cells)`);
+const sb = await hs.boundingBox();
+const signBtn = await hs.getByRole('button', { name: 'Unterschreiben' }).first().boundingBox();
+ok(!!sb && !!signBtn && signBtn.width > sb.width * 0.7, `the sign button across the card, the words above it (${Math.round(signBtn?.width ?? 0)} of ${Math.round(sb?.width ?? 0)} px)`);
+await hs.getByRole('button', { name: /^Loch 2\b.* weicht ab – öffnen$/ }).click();
+await H.locator('.score-panel-screen').waitFor({ timeout: 5000 }).catch(() => {});
+ok((await H.locator('.score-panel-screen').count()) === 1, 'the chip opens hole 2 on the scorecard');
+await block(H, 'Cedric').getByRole('button', { name: /Schläge minus eins/ }).click();
+await H.getByRole('button', { name: 'Zurück zur Scorekarte' }).click();
+await H.waitForTimeout(8000);
+ok(/Deine Karte.*bereit zum Unterschreiben/s.test(await hs.innerText()) && !/weicht ab/.test(await hs.innerText()) && (await H.locator('.sc td.diff').count()) === 0, `corrected on the scorecard: everything agrees (${(await hs.innerText()).replace(/\s+/g, ' ').slice(0, 160)})`);
 ok(/Deine Karte.*bereit zum Unterschreiben/s.test(await hs.innerText()) && /Als Zähler von Cedric/.test(await hs.innerText()), `Sascha: "${(await hs.innerText()).replace(/\s+/g, ' ')}"`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/sign-card.png' });
 for (const btn of await hs.getByRole('button', { name: 'Unterschreiben' }).all()) await btn.click();

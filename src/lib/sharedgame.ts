@@ -15,6 +15,12 @@ import { linkBase } from './native';
 // 6 digits, shown 123-456 (Sascha 03.11.2026: "only digits, XXX-XXX"); the letter codes made before still join
 export const newCode = (rand = Math.random): string => Array.from({ length: 6 }, () => String(Math.floor(rand() * 10))).join('');
 export const cleanCode = (s: string): string => s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+/** The code from a scanned QR code: a round's, game's, pool's link (#round= / #join= / #pool=) or the code itself. */
+export function joinCodeFrom(text: string): string | null {
+  const t = text.trim();
+  const m = /[#&](?:round|join|pool)=([0-9A-Za-z]{6})(?![0-9A-Za-z])/.exec(t) ?? /^([0-9A-Za-z]{3}[\s-]?[0-9A-Za-z]{3})$/.exec(t);
+  return m ? cleanCode(m[1]) : null;
+}
 /** Every code as it is shown and typed: 123-456 (a friend code from before: XXXX-XXXX-XXXX). */
 export const showCode = (code: string): string => {
   const c = code.toUpperCase().replace(/[^A-Z0-9]/g, '');

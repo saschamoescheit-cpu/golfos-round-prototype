@@ -96,7 +96,7 @@ export function standingText(g: Game, spoken: boolean): string {
   if (pays.length) {
     const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
     if (!spoken) lines.push(tr('Settlement', 'Abrechnung'));
-    pays.forEach((t) => lines.push(spoken ? tr(`${nm(t.from)} pays ${nm(t.to)} ${money(t.amount)}.`, `${nm(t.from)} zahlt ${money(t.amount)} an ${nm(t.to)}.`) : `${nm(t.from)} → ${nm(t.to)} ${money(t.amount)}`));
+    pays.forEach((t) => lines.push(spoken ? tr(`${nm(t.from)} pays ${nm(t.to)} ${money(t.amount)}.`, `${nm(t.from)} zahlt ${money(t.amount)} an ${nm(t.to)}.`) : tr(`${nm(t.from)} pays ${nm(t.to)} ${money(t.amount)}`, `${nm(t.from)} zahlt an ${nm(t.to)} ${money(t.amount)}`)));
   }
   return lines.join(spoken ? ' ' : '\n');
 }
@@ -1589,19 +1589,19 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
   const nm = (id: string) => g.players.find((p) => p.id === id)?.name ?? id;
   // confirm the result like a scorecard (Sascha 16.10.2026: as signing a round) – only confirmed games count. As on a
   // round: confirmed it stands on top, to confirm it follows the result, the settlement and the scores (after checking them)
+  // confirmed: one line as a signed round's (Sascha 03.11.2026: "much too big – at most as a signed round")
   const confirmCard = (
-    <section className={`card sign-card${g.signedAt ? ' signed' : ''}`} aria-label={tr('Confirmation', 'Bestätigung')}>
+    <section className={g.signedAt ? 'card sign-card sc-status signed game-confirmed' : 'card sign-card'} aria-label={tr('Confirmation', 'Bestätigung')}>
       {g.signedAt ? (
         <>
-          <span className="sign-seal big" aria-hidden="true">
-            <SignedIcon size={34} />
+          <span className="sc-status-icon" aria-hidden="true">
+            <SignedIcon size={22} />
           </span>
           <span className="grow">
             <strong>{tr('Result confirmed', 'Ergebnis bestätigt')}</strong>
-            <span className="muted small" style={{ display: 'block' }}>
-              {new Date(g.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            <span className="muted small">
+              {new Date(g.signedAt).toLocaleString(getLang() === 'de' ? 'de-DE' : undefined, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · {tr('counts in your balance', 'zählt in deiner Bilanz')}
             </span>
-            <span className="muted small" style={{ display: 'block' }}>{tr('Counts in your balance', 'Zählt in deiner Bilanz')}</span>
           </span>
           <button type="button" className="icon-btn" aria-label={tr('Withdraw the confirmation', 'Bestätigung zurücknehmen')} title={tr('Withdraw the confirmation', 'Bestätigung zurücknehmen')} onClick={() => props.onChange({ ...g, signedAt: null })}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1644,9 +1644,8 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
           <ul className="game-pays">
             {pays.map((t) => (
               <li key={`${t.from}-${t.to}`}>
-                <span>
-                  {nm(t.from)} → {nm(t.to)}
-                </span>
+                {/* who pays whom, in words (Sascha 03.11.2026: "Cedric zahlt an Sascha 5 €") */}
+                <span>{tr(`${nm(t.from)} pays ${nm(t.to)}`, `${nm(t.from)} zahlt an ${nm(t.to)}`)}</span>
                 <strong>{money(t.amount)}</strong>
               </li>
             ))}

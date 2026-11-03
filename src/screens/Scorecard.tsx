@@ -8,12 +8,11 @@ import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
-import { EventBoardCard, SignCard } from '../components/ShareRound';
+import { EventBoardCard, SignCard, useDiffers } from '../components/ShareRound';
 import { isTeamRound } from '../lib/games';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
 import { RoundReportCard } from '../components/RoundReportCard';
-import { TestLogCard } from '../components/TestLogCard';
 import { shareScorecard } from '../lib/shareCard';
 import { buildExport, exportFileName, shareExport } from '../lib/roundexport';
 import { loadTrack } from '../lib/track';
@@ -48,6 +47,7 @@ export function Scorecard(props: {
   // on several phones: the players this phone counts as their marker (its entries of them are its counts)
   const marked = round.players.filter((p) => round.shared?.roles?.[p.id] === 'mark').map((p) => p.name);
   const [editHole, setEditHole] = useState<number | null>(null);
+  const differ = useDiffers(round);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const me = round.players.find((p) => p.isMe)!;
   const finished = round.finishedAt != null;
@@ -255,7 +255,7 @@ export function Scorecard(props: {
       {/* the board of all phones as last exchanged – own scores ranked, a marker's differing count flagged; a
           tournament all flights (Sascha 29.10.2026: "a scorecard with both players and their scores") */}
       {round.shared && <EventBoardCard code={round.shared.code} myFlight={round.shared.flight} refresh />}
-      {round.shared && <SignCard round={round} />}
+      {round.shared && <SignCard round={round} onHole={setEditHole} onChange={props.onChange} />}
       {round.players.length > 1 && !round.shared && <LeaderboardCard round={round} />}
       {round.shared && marked.length > 0 && (
         <span className="muted small">
@@ -266,7 +266,7 @@ export function Scorecard(props: {
         </span>
       )}
 
-      <ScoreTable round={round} onHole={setEditHole} />
+      <ScoreTable round={round} onHole={setEditHole} differ={differ} />
 
       {/* a hole tapped on the card (or its pencil, an empty hole): the same score panel as on the course – strokes, putts,
           sand shots, penalties, tee shot (Sascha 20.10.2026: "the same menu as on a round") */}
@@ -300,8 +300,6 @@ export function Scorecard(props: {
 
       {finished && round.signedAt && <RoundReportCard round={round} history={loadRounds()} highlight={props.justSigned} onOpenTraining={props.onOpenTraining} />}
       {finished && <RoundSummaryCard round={round} history={loadRounds()} />}
-      {/* only a round with test data: microphone, GPS, pocket mode, read-aloud (Sascha 30.10.2026) */}
-      {!round.preview && <TestLogCard round={round} />}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h2>{tr('Your stats', 'Deine Statistik')}</h2>

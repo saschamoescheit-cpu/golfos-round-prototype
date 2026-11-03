@@ -13,8 +13,11 @@ const markFor = (gross: number, par: number): Mark => {
   return d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : d === 1 ? 'bogey' : d === 2 ? 'double' : 'triple';
 };
 
-export function ScoreTable(props: { round: Round; onHole?: (index: number) => void }) {
+/** `differ`: per player the holes where his own count and his marker's differ – marked red (Sascha 03.11.2026). */
+export function ScoreTable(props: { round: Round; onHole?: (index: number) => void; differ?: Record<string, number[]> }) {
   const { round } = props;
+  const differs = (pid: string, i: number) => !!props.differ?.[pid]?.includes(i);
+  const holeDiffers = (i: number) => round.players.some((p) => differs(p.id, i));
   const received = Object.fromEntries(round.players.map((p) => [p.id, handicapStrokes(round.holes, p.playingHandicap)]));
   const teeData = TEES[round.courseId];
   const ti = round.tee && teeData ? teeData.tees.indexOf(round.tee) : -1;
@@ -46,7 +49,7 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                 <tr className="holes">
                   <th className="lab">{tr('Hole', 'Loch')}</th>
                   {nine.map((h) => (
-                    <th key={h.index}>
+                    <th key={h.index} className={holeDiffers(h.index) ? 'diff' : undefined}>
                       {props.onHole ? (
                         <button type="button" className="sc-hole" aria-label={tr(`Edit hole ${h.label}`, `Loch ${h.label} bearbeiten`)} onClick={() => props.onHole!(h.index)}>
                           {h.label}
@@ -92,7 +95,7 @@ export function ScoreTable(props: { round: Round; onHole?: (index: number) => vo
                       const g = gross(p.id, h);
                       const extra = received[p.id][h.index];
                       return (
-                        <td key={h.index} className={props.onHole ? 'tap' : undefined} onClick={props.onHole ? () => props.onHole!(h.index) : undefined}>
+                        <td key={h.index} className={[props.onHole ? 'tap' : '', differs(p.id, h.index) ? 'diff' : ''].filter(Boolean).join(' ') || undefined} onClick={props.onHole ? () => props.onHole!(h.index) : undefined}>
                           {g == null ? (
                             props.onHole ? (
                               // an empty hole: a small pencil – a tap enters the score (Sascha 18.10.2026: "how do I add the missing score?")

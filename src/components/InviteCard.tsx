@@ -2,6 +2,13 @@ import type { ReactNode } from 'react';
 import { tr } from '../lib/i18n';
 import { Qr } from './ShareGame';
 import { showCode } from '../lib/sharedgame';
+import { useState } from 'react';
+import { inviteFriend } from '../lib/push';
+import { loadFriends } from '../lib/friends';
+import { canLink } from '../lib/friendlinks';
+import { letInvited } from '../lib/sharedround';
+import { loadProfile, shownName } from '../lib/profile';
+import { Avatar } from './Avatar';
 
 // One look for every QR code in the app (Sascha 03.11.2026: "the QR code with the same functions as under Friends –
 // identical everywhere"): the QR code in the middle, the code below it, one line what to do, then what one does with it
@@ -97,6 +104,62 @@ export function InviteIcon(props: { kind: InviteAction['icon'] | 'renew' }) {
         </>
       )}
     </svg>
+  );
+}
+
+const me = (): string => shownName(loadProfile()) || tr('a player', 'ein Spieler');
+
+/** The linked friends (Friends, by their accounts) invited with a tap (Sascha 03.11.2026: "invite linked friends directly –
+ *  for every 'invite players' in the whole app"): let in at once, a push on his phone – and his app, open, asks him
+ *  straight away. Below the InviteCard of a round, tournament, series, game or pool of bets – `code` its code. */
+export function FriendInvite(props: { code: string }) {
+  const [state, setState] = useState<Record<string, 'busy' | 'sent' | 'silent' | 'failed'>>({});
+  const friends = canLink() ? loadFriends().filter((f) => f.uid) : [];
+  if (!friends.length) return null;
+  const go = async (uid: string, name: string) => {
+    setState((x) => ({ ...x, [uid]: 'busy' }));
+    let r: 'sent' | 'silent' | 'old' | null = await inviteFriend(props.code, uid, name, me());
+    if (r === 'old') r = (await letInvited(props.code, uid, name, me())) ? 'silent' : null;
+    setState((x) => ({ ...x, [uid]: r === 'sent' || r === 'silent' ? r : 'failed' }));
+  };
+  const said = friends
+    .map((f) => {
+      const st = state[f.uid!];
+      const n = f.name;
+      return st === 'sent'
+        ? tr(`${n} gets a notification – one tap and he is in.`, `${n} bekommt eine Mitteilung – mit einem Tipp ist er dabei.`)
+        : st === 'silent'
+          ? tr(`${n} is invited – when he opens GolfOS, the request is there.`, `${n} ist eingeladen – öffnet er GolfOS, ist die Anfrage da.`)
+          : st === 'failed'
+            ? tr(`${n}: no connection – try again.`, `${n}: keine Verbindung – nochmal versuchen.`)
+            : null;
+    })
+    .filter(Boolean);
+  return (
+    <div className="invite-friends" aria-label={tr('Invite linked friends', 'Verknüpfte Freunde einladen')}>
+      <span className="eyebrow">{tr('Invite linked friends', 'Verknüpfte Freunde einladen')}</span>
+      {friends.map((f) => {
+        const st = state[f.uid!];
+        const done = st === 'sent' || st === 'silent';
+        return (
+          <div key={f.uid} className="invite-friend">
+            <Avatar name={f.name} photo={f.photo} size={32} />
+            <span className="grow">
+              <strong>{f.fullName || f.name}</strong>
+              {f.hcp.trim() && <span className="muted small"> · HCP {f.hcp}</span>}
+            </span>
+            <button type="button" className={done ? 'btn-secondary' : 'btn-primary'} disabled={st === 'busy' || done} aria-label={done ? tr(`${f.name} invited`, `${f.name} eingeladen`) : tr(`Invite ${f.name}`, `${f.name} einladen`)} onClick={() => void go(f.uid!, f.fullName || f.name)}>
+              {st === 'busy' ? '…' : done ? tr('Invited ✓', 'Eingeladen ✓') : tr('Invite', 'Einladen')}
+            </button>
+          </div>
+        );
+      })}
+      {said.map((x) => (
+        <span key={x} className="muted small" role="status">
+          {x}
+        </span>
+      ))}
+    </div>
   );
 }
 

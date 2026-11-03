@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { StorageFullToast, UndoToast } from './components/UndoToast';
 import { JoinRequests } from './components/JoinRequests';
 import { FriendAskHost } from './components/Friends';
+import { RoundInviteHost } from './components/RoundInviteHost';
 // Fonts ship with the app (static weights, latin incl. umlauts): same look on every phone, offline on the course,
 // and no request to Google Fonts (privacy).
 import '@fontsource/lexend/latin-500.css';
@@ -40,6 +41,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <App />
       <UndoToast />
       <FriendAskHost />
+      <RoundInviteHost />
       <StorageFullToast />
       <JoinRequests />
     </ErrorBoundary>

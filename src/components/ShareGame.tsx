@@ -6,7 +6,8 @@ import { tr } from '../lib/i18n';
 import { isPool, type WagerPool } from '../lib/wagers';
 import { joinPool } from '../lib/wagerstore';
 import { loadProfile, shownName } from '../lib/profile';
-import { copyLink, InviteCard, shareLink } from './InviteCard';
+import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
+import { ScanCodeButton } from './QrScan';
 
 // Invite and join (Sascha 15.10.2026: "join the game by a code or a QR code"): the host shows the code and the QR
 // code, the others scan it with the phone camera or type the code. Since 29.10.2026 as in Rounds (Sascha: "in Games
@@ -118,6 +119,7 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
                 { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(joinLink(code)).then(setMsg) },
               ]}
             />
+            <FriendInvite code={code} />
           </>
         )}
         {msg && <span className="muted small">{msg}</span>}
@@ -190,6 +192,14 @@ export function JoinSheet(props: {
             <button type="button" className="btn-primary" disabled={busy || code.length !== 6} onClick={() => void find()}>
               {busy ? tr('Joining …', 'Trete bei …') : tr('Join', 'Beitreten')}
             </button>
+            <ScanCodeButton
+              disabled={busy}
+              onCode={(c) => {
+                setCode(c);
+                setMsg(null);
+                void find(c);
+              }}
+            />
           </>
         )}
         {found && (

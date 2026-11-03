@@ -140,11 +140,16 @@ export const askedNote = (who: string, course: string, lang?: string | null): No
 });
 
 /** The host invites a player by his GolfOS user name (Sascha 30.10.2026): a tap and he is in. */
-export const inviteNote = (who: string, course: string, code: string, lang?: string | null): Note => ({
-  title: T(lang, 'Invitation to a round', 'Einladung zur Runde'),
-  body: T(lang, `${who || 'A player'} invites you to his round at ${course} – tap to join.`, `${who || 'Ein Spieler'} lädt dich zu seiner Runde in ${course} ein – tippen zum Beitreten.`),
+export const inviteNote = (who: string, course: string, code: string, lang?: string | null, what: 'round' | 'game' | 'pool' = 'round'): Note => ({
+  title: what === 'pool' ? T(lang, 'Invitation to bets', 'Einladung zu Wetten') : what === 'game' ? T(lang, 'Invitation to a game', 'Einladung zum Spiel') : T(lang, 'Invitation to a round', 'Einladung zur Runde'),
+  body:
+    what === 'pool'
+      ? T(lang, `${who || 'A player'} invites you to his bets "${course}" – tap to join.`, `${who || 'Ein Spieler'} lädt dich zu seinen Wetten „${course}“ ein – tippen zum Beitreten.`)
+      : what === 'game'
+        ? T(lang, `${who || 'A player'} invites you to his game at ${course} – tap to join.`, `${who || 'Ein Spieler'} lädt dich zu seinem Spiel in ${course} ein – tippen zum Beitreten.`)
+        : T(lang, `${who || 'A player'} invites you to his round at ${course} – tap to join.`, `${who || 'Ein Spieler'} lädt dich zu seiner Runde in ${course} ein – tippen zum Beitreten.`),
   tag: `golfos-invite-${code}`,
-  url: `./#round=${code}`,
+  url: what === 'round' ? `./#round=${code}` : `./#join=${code}`,
 });
 
 export const finishedNote = (course: string, lang?: string | null): Note => ({
@@ -702,14 +707,29 @@ export async function handle(req: Request): Promise<Response> {
       const code = String(body.code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
       const name = String(body.username ?? '').trim().toLowerCase().slice(0, 20);
       const who = String(body.who ?? '').slice(0, 60);
-      const [g] = await d.get<{ owner: string; members: string[]; near_requests: Record<string, unknown> | null; game: { kind?: string; course?: { name?: string } } }[]>(`golfos_shared_games?select=owner,members,near_requests,game&code=eq.${code}`);
-      if (!g || g.game?.kind !== 'round-event' || (g.owner !== user && !g.members.includes(user))) return json({ error: 'not in this round' }, 403);
-      const [n] = name ? await d.get<{ user_id: string }[]>(`golfos_names?select=user_id&username=eq.${encodeURIComponent(name)}`) : [];
+      const [g] = await d.get<{ owner: string; members: string[]; near_requests: Record<string, unknown> | null; game: { kind?: string; name?: string; courseName?: string; course?: { name?: string } } }[]>(`golfos_shared_games?select=owner,members,near_requests,game&code=eq.${code}`);
+      // or a linked friend by his account, with a tap (Sascha 03.11.2026) – only one who is the inviter's friend; to a
+      // round, a tournament or its series, a pool of bets or a game
+      const friend = /^[0-9a-f-]{36}$/i.test(String(body.friend ?? '')) ? String(body.friend).toLowerCase() : '';
+      const kind = g?.game?.kind;
+      const what: 'round' | 'game' | 'pool' = kind === 'wager-pool' ? 'pool' : kind === 'round-event' || kind === 'tour-series' ? 'round' : 'game';
+      const allowed = friend ? kind !== 'round-flight' : kind === 'round-event';
+      if (!g || !allowed || (g.owner !== user && !g.members.includes(user))) return json({ error: 'not in this round' }, 403);
+      const place = (what === 'pool' ? g.game?.name : what === 'game' ? g.game?.courseName : g.game?.course?.name ?? g.game?.name) ?? 'GolfOS';
+      const [n] = friend
+        ? (await d.get<{ friend_id: string }[]>(`golfos_friend_links?select=friend_id&user_id=eq.${user}&friend_id=eq.${friend}`)).map((l) => ({ user_id: l.friend_id }))
+        : name
+          ? await d.get<{ user_id: string }[]>(`golfos_names?select=user_id&username=eq.${encodeURIComponent(name)}`)
+          : [];
       if (!n) return json({ ok: false, found: false });
+      // let in at once; "invited" – his app, open, asks him straight away ("Sascha invites you – join")
       if (n.user_id !== g.owner && !g.members.includes(n.user_id))
-        await d.patch(`golfos_shared_games?code=eq.${code}`, { members: [...g.members, n.user_id], near_requests: { ...(g.near_requests ?? {}), [n.user_id]: { name, at: new Date().toISOString(), state: 'ok' } } });
+        await d.patch(`golfos_shared_games?code=eq.${code}`, {
+          members: [...g.members, n.user_id],
+          near_requests: { ...(g.near_requests ?? {}), [n.user_id]: { name: String(body.name ?? name).slice(0, 60), at: new Date().toISOString(), state: 'ok', invited: who || 'GolfOS' } },
+        });
       let sent = 0;
-      for (const s of await subsOf([n.user_id])) if (s.kinds?.games !== false && (await send(s, inviteNote(who, g.game?.course?.name ?? 'GolfOS', code, s.lang), 6 * 3600, 'high'))) sent++;
+      for (const s of await subsOf([n.user_id])) if (s.kinds?.games !== false && (await send(s, inviteNote(who, place, code, s.lang, what), 6 * 3600, 'high'))) sent++;
       return json({ ok: true, found: true, sent });
     }
     return json({ error: 'unknown action' }, 400);

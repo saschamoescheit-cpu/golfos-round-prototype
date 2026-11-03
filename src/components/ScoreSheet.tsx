@@ -158,7 +158,8 @@ export function ScoreSheet(props: {
           {props.notice}
         </p>
       )}
-      {props.players.map((p) => {
+      {/* one's own score always on top, the partners below (Sascha 03.11.2026: Cedric joined his round and saw Sascha first) */}
+      {[...props.players.filter((p) => p.isMe), ...props.players.filter((p) => !p.isMe)].map((p) => {
         const e = props.entries[p.id];
         // everything – putts, sand, penalties, tee shot – for the main player and the player this phone marks (Sascha
         // 01.11.2026: "for the player he marks just the same"); placing the putts only for the main player
