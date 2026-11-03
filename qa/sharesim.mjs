@@ -239,7 +239,7 @@ export function sharedServer(b, url, o = {}) {
     const p = await ctx.newPage();
     const errs = [];
     // the simulated server: WebKit does not route the CORS preflight of the sync – not the app
-    p.on('pageerror', (e) => { if (!/golfos_items.*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+    p.on('pageerror', (e) => { if (!/golfos_items.*access control|golfos_shared_games\?select=code,game,near_requests.*access control|(localhost:\d+|api\.open-meteo\.com|owsproxy\.lgl-bw\.de)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
     await p.goto(url);
     await p.waitForTimeout(1200);
     await p.evaluate(({ name, guest, token }) => {

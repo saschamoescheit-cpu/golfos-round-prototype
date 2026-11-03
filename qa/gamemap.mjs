@@ -85,7 +85,7 @@ ok(await p.getByRole('button', { name: 'Spiel löschen' }).isVisible(), 'finish 
 await p.getByRole('button', { name: /Speichern & beenden/ }).click();
 await p.waitForTimeout(800);
 const res = await p.locator('main').innerText();
-ok(/Abrechnung/i.test(res) && /Ben → Anna/.test(res), 'result with the settlement');
+ok(/Abrechnung/i.test(res) && /Ben zahlt an Anna/.test(res), 'result with the settlement');
 await shot('gamemap-result');
 // the game is in the games list, not among the rounds
 await p.getByRole('button', { name: /Spiele/ }).first().click();
