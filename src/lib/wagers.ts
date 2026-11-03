@@ -366,10 +366,23 @@ export function poolNeedsDetails(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'>
   return pool.wagers.some((w) => needsDetails(w) && inPool(r, pool, w));
 }
 
-/** A "5+5+10" in this round: it needs both nines, so only the 18-hole combinations (Sascha 03.11.2026: "9-hole rounds make
- *  no sense for 5+5+10"). */
+/** Can the bet only be made on 18 holes (Sascha 03.11.2026: "12 greens in regulation, and a 9-hole round could be started –
+ *  that makes no sense; the bets' settings checked against the round's"): a 5+5+10, a bet on 18 (a count, at most N,
+ *  points, the score), the score of several rounds, a run or an own bet asking for more than nine. A count on the
+ *  whole trip, a run up to nine, a bet on 9: a nine will do. */
+export function needs18(w: Pick<Wager, 'kind' | 'holes' | 'scope' | 'target' | 'where' | 'acrossRounds'>): boolean {
+  const shape = shapeOf(w.kind);
+  if (shape === 'duel' || shape === 'sum') return true;
+  if (shape === 'free') return false;
+  if (shape === 'run') return w.target > 9 && !w.acrossRounds;
+  if (shape === 'custom') return (w.where ?? 'all') === 'all' && w.target > 9;
+  if (shape === 'count' && w.scope === 'trip') return false;
+  return (w.holes ?? 18) === 18;
+}
+
+/** A bet in this round that needs 18 holes – the round then offers only the 18-hole combinations. */
 export function poolNeeds18(pool: Pick<WagerPool, 'from' | 'to' | 'wagers'> & { rounds?: PoolRound[] }, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'>): boolean {
-  return pool.wagers.some((w) => shapeOf(w.kind) === 'duel' && inPool(r, pool, w));
+  return pool.wagers.some((w) => needs18(w) && inPool(r, pool, w));
 }
 
 /** A day as YYYY-MM-DD in local time. */

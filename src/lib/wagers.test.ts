@@ -346,9 +346,18 @@ describe('which bets need the details of a hole', () => {
     expect(poolNeedsDetails(p, { day: '2026-11-06', course: 'Bethpage' })).toBe(true);
   });
   it('a 5+5+10 that round: only 18 holes (03.11.2026)', () => {
-    const p = { from: '2026-11-05', to: '2026-11-06', wagers: [bet({ kind: 'birdies' }), bet({ id: 'n', kind: 'nassau', attempts: 'day', day: '2026-11-06' })] };
+    const p = { from: '2026-11-05', to: '2026-11-06', wagers: [bet({ kind: 'birdieRun', target: 2 }), bet({ id: 'n', kind: 'nassau', attempts: 'day', day: '2026-11-06' })] };
     expect(poolNeeds18(p, { day: '2026-11-05', course: 'Bethpage' })).toBe(false);
     expect(poolNeeds18(p, { day: '2026-11-06', course: 'Bethpage' })).toBe(true);
+  });
+  // Sascha 03.11.2026: "2 and 3 birdies in a row, 9 and 12 greens in regulation – and a 9-hole round could be started"
+  it('the bets checked against the round: a bet on 18 holes only 18, a run up to nine or a bet on 9 a nine too', () => {
+    const runs = { from: '2026-11-05', to: '2026-11-06', wagers: [bet({ kind: 'birdieRun', target: 2 }), bet({ id: 'b', kind: 'birdieRun', target: 3 })] };
+    expect(poolNeeds18(runs, { day: '2026-11-05', course: 'Bethpage' })).toBe(false);
+    expect(poolNeeds18({ ...runs, wagers: [...runs.wagers, bet({ id: 'g', kind: 'greens', target: 12 })] }, { day: '2026-11-05', course: 'Bethpage' })).toBe(true);
+    expect(poolNeeds18({ ...runs, wagers: [bet({ id: 'g9', kind: 'greens', target: 5, holes: 9 })] }, { day: '2026-11-05', course: 'Bethpage' })).toBe(false);
+    expect(poolNeeds18({ ...runs, wagers: [bet({ id: 't', kind: 'birdies', target: 10, scope: 'trip' })] }, { day: '2026-11-05', course: 'Bethpage' })).toBe(false);
+    expect(poolNeeds18({ ...runs, wagers: [bet({ id: 'r', kind: 'parRun', target: 10 })] }, { day: '2026-11-05', course: 'Bethpage' })).toBe(true);
   });
 });
 
