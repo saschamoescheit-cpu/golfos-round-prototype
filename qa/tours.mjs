@@ -437,9 +437,11 @@ await H.waitForTimeout(800);
 ok((await H.locator('.tab-title + .tile-row').count()) === 1 && (await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).count()) === 1, 'menu "Turniere": the tiles at the top, the tournament in the list');
 await H.locator('.list-item').filter({ hasText: 'USA Tag 1' }).click();
 await H.waitForTimeout(2500);
-const board = H.locator('.card').filter({ has: H.locator('.game-pays') }).first();
-const rows = (await board.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(/^Live-Rangliste/i.test(await board.locator('.eyebrow').innerText()), 'the leaderboard is named "Live-Rangliste" while it is played');
+// the live leaderboard (Sascha 03.11.2026): its name, "LIVE" while played, each player "nach 3"
+const board = H.getByRole('region', { name: 'Live-Leaderboard' });
+const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
+ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && /Aktualisiert \d\d:\d\d/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
+if (process.env.SHOTS) await board.screenshot({ path: process.env.SHOTS + '/tours-live.png' });
 ok(rows.length === 4 && /Chris/.test(rows[0]) && /Erik/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Chris first, Erik last, all "nach 3" (${rows.join(' | ')})`);
 const ldRows = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 const ntpRows = (await H.getByRole('region', { name: 'Nearest to the Pin' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
@@ -538,7 +540,9 @@ const srow = scode && shared.get(scode).game;
 ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() === `${code},TOUR22` && shared.get(code).game.series?.code === scode && shared.get('TOUR22').game.series?.code === scode, `server: the series ${scode} with its two rounds, each pointing to it`);
 ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
 const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(total.length === 4 && /Chris/.test(total[0]) && total.every((t) => /1 Runde/.test(t)), `the total standing: the round played added up (${total.join(' | ')})`);
+// live: round 1 running (3 holes) – each player what it added, "nach 3", the LIVE mark
+ok(total.length === 4 && /Chris/.test(total[0]) && total.every((t) => /R1 .*\(nach 3\)/.test(t) && /nach 3$/.test(t.trim())) && (await H.locator('[aria-label="Gesamtwertung"] .tour-live-badge').count()) === 1, `the total live: round 1 running added up (${total.join(' | ')})`);
+if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screenshot({ path: process.env.SHOTS + '/tours-series-live.png' });
 // the pencil green as every pencil (Sascha 03.11.2026); the total's head a line of its own
 {
   const pen = await H.getByRole('button', { name: 'Serie umbenennen' }).evaluate((e) => getComputedStyle(e).backgroundColor);

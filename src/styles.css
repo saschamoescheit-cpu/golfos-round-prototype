@@ -2147,3 +2147,13 @@ button.tile:disabled { opacity: 1; }
 .game-details li strong { white-space: nowrap; font-weight: 600; }
 .game-details-label { flex: none; min-width: 64px; color: var(--muted, var(--text-2)); font-size: 13px; }
 .game-grid .game-grid-sum { font-weight: 700; background: var(--surface-2); }
+
+/* the live leaderboard of a tournament and of a series (03.11.2026) */
+.tour-live { display: flex; flex-direction: column; gap: 10px; }
+.tour-live-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tour-live-badge { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--body); letter-spacing: .08em; color: var(--bad, #e5484d); }
+.tour-live-badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad, #e5484d); animation: tour-live 1.4s ease-in-out infinite; }
+@keyframes tour-live { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .tour-live-badge i { animation: none; } }
+.tour-lb .lb-name { white-space: normal; display: flex; flex-direction: column; }
+.tour-lb-sub { display: block; font-weight: 400; }
