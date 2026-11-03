@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterPayments, inPool, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
+import { afterPayments, inPool, openPoolTransfers, poolTransfers, LIBRARY, balances, ledger, poolCounted, withCounted, needsDetails, poolNeeds18, poolNeedsDetails, provisional, isPool, earlierGroups, fromEarlier, fromLibrary, judge, markedEntry, progressText, stateOf, wagerLabel, wagerRules, type PlayedRound, type Wager, type WagerPool } from './wagers';
 import type { HoleEntry } from '../types';
 import { emptyEntry } from './scoring';
 import { setLang } from './i18n';
@@ -459,5 +459,27 @@ describe('a pool round on one set of holes', () => {
   it('without holes set: every round of the day', () => {
     const all = { ...pool, rounds: [{ ...pool.rounds[0], holes: undefined }] };
     expect(inPool({ day: '2026-11-03', course: 'Hetzenhof', courseId: 'osm:h', holeKey: '1B,2B' }, all)).toBe(true);
+  });
+});
+
+// Sascha 03.11.2026: "does the loser pay the meal for all the others, or only for the winner?" – and "without a stake"
+describe('who gives what to whom', () => {
+  const players = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }, { id: 'd', name: 'D' }];
+  const bal = { a: 3, b: 1, c: -2, d: -2 };
+  it('the loser for all: each last one to each of the others, once', () => {
+    const ts = poolTransfers({ players, prize: { kind: 'meal', who: 'loserAll' } }, bal);
+    expect(ts.map((t) => t.from + t.to).sort()).toEqual(['ca', 'cb', 'da', 'db']);
+    expect(ts.every((t) => t.amount === 1)).toBe(true);
+  });
+  it('the loser for the winner', () => {
+    expect(poolTransfers({ players, prize: { kind: 'drinks', who: 'loserWinner' } }, bal).map((t) => t.from + t.to)).toEqual(['ca', 'da']);
+  });
+  it('given: no longer open', () => {
+    const pool = { players, prize: { kind: 'drinks' as const, who: 'loserWinner' as const }, payments: [{ id: 'x', from: 'c', to: 'a', amount: 1, paidAt: 't' }] };
+    expect(openPoolTransfers(pool, bal).map((t) => t.from + t.to)).toEqual(['da']);
+  });
+  it('without a stake: nothing to give; counted per bet: the balances settled', () => {
+    expect(poolTransfers({ players, prize: { kind: 'none' } }, bal)).toEqual([]);
+    expect(poolTransfers({ players, prize: { kind: 'drinks', who: 'each' } }, bal).reduce((s, t) => s + t.amount, 0)).toBe(4);
   });
 });

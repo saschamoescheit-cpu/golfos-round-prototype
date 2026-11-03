@@ -6,14 +6,14 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import type { Course } from '../types';
 import { loadProfile, shownName } from '../lib/profile';
 import { joinLink } from '../lib/sharedgame';
-import { money, transfers } from '../lib/gameforms';
-import { isMoney, prizeOf, prizeStakes, prizeSym, type Prize } from '../lib/prize';
+import { money } from '../lib/gameforms';
+import { isMoney, isNone, prizeOf, prizeStakes, prizeSym, type Prize } from '../lib/prize';
 import { PrizeRow } from '../components/PrizeRow';
 import { Chips, Segmented, Stepper, TopBar } from '../components/ui';
 import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
-import { KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, afterPayments, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
@@ -258,12 +258,13 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
   const [from, setFrom] = useState(dayOf(today));
   const [to, setTo] = useState(dayOf(new Date(today.getTime() + 7 * 864e5)));
   const [names, setNames] = useState<{ id: string; name: string; hcp: string }[]>(() => [{ id: newId(), name: shownName(loadProfile()) || tr('Me', 'Ich'), hcp: loadProfile().hcpIndex ?? '' }, { id: newId(), name: '', hcp: '' }]);
-  const [prize, setPrize] = useState<Prize>({ kind: 'money', currency: 'EUR' });
+  // no value until chosen – a required field (Sascha 03.11.2026)
+  const [prize, setPrize] = useState<Prize | null>(null);
   const [counted, setCounted] = useState(false); // off by default (Sascha 02.11.2026: "the switch off by default")
   const [rounds, setRounds] = useState<PoolRound[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const ok = !!names[0].name.trim() && from <= to;
+  const ok = !!names[0].name.trim() && from <= to && !!prize;
   // laid out as "New game" (Sascha 01.11.2026: "Games and the bets like Rounds"): titles over the parts, a card per
   // player with ✕, "+ Add player", the friends as chips
   return (
@@ -327,6 +328,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
         disabled={busy || !ok}
         onClick={async () => {
           setBusy(true);
+          if (!prize) return;
           const account = shownName(loadProfile()) || names[0].name.trim();
           const uid = myAccount();
           const players = names
@@ -606,7 +608,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
     return !!r;
   };
   const bal = balances(pool, today, true);
-  const pays = transfers(afterPayments(bal, pool.payments)); // what is still to pay, once the payments are off
+  // what is still to give, once the payments are off – counted per bet, or the loser for all / for the winner
+  const pays = openPoolTransfers(pool, bal);
   // the payments (Sascha 03.11.2026): the payer says he paid, the receiver that he got it
   const pay = (fn: (ps: Payment[]) => Payment[]) => void change((p) => ({ ...p, payments: fn(p.payments ?? []) }));
   const now = () => new Date().toISOString();
@@ -693,7 +696,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
         );
       })}
       <Settlement pool={pool} bal={bal} lines={ledger(pool, today, true)} settled={settled} pending={pending} me={entry.me} name={name}>
-        <PaidMarks
+        {!isNone(prizeOf(pool)) && <PaidMarks
           open={pays}
           payments={pool.payments ?? []}
           name={(id) => name(id)}
@@ -704,7 +707,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
           onMark={(t, as) => pay((ps) => [...ps, { id: newId(), ...t, ...(as === 'paid' ? { paidAt: now() } : { receivedAt: now() }) }])}
           onConfirm={(id) => pay((ps) => ps.map((x) => (x.id === id ? { ...x, receivedAt: now() } : x)))}
           onUndo={(id) => pay((ps) => ps.filter((x) => x.id !== id))}
-        />
+        />}
+        {isNone(prizeOf(pool)) && <span className="muted small">{tr('No stake – for the honour: one point a bet won.', 'Ohne Einsatz – um die Ehre: ein Punkt je gewonnene Wette.')}</span>}
       </Settlement>
       {host && (pool.finishedAt || pool.players.every((p) => p.joined || p.id === entry.me) ? (
         // everyone in, or the pool over (Sascha 03.11.2026: "why 'invite players' when I open a bet from the balance?"):
@@ -1148,7 +1152,7 @@ function PayFields(props: { pool: WagerPool; w: Wager; set: (patch: Partial<Wage
     <>
       <SettingsList>
         {/* the stake as a game's (Rounds 02.11.2026: the shared StakePicker) – a bet's larger amounts */}
-        {!duel && (
+        {!duel && !isNone(prizeOf(pool)) && (
           <StakeRow label={tr('Stake', 'Einsatz')} stakes={prizeStakes(prizeOf(pool), [5, 10, 20, 50, 100])} sym={prizeSym(prizeOf(pool))} value={w.stake} onChange={(v) => set({ stake: v })} />
         )}
         {!duel && (
