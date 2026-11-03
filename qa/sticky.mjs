@@ -60,6 +60,9 @@ await p.waitForTimeout(2500);
 await inView(/^Loch .* passt|Runde .*fertig|passt/, 'round-check');
 await toModule('games');
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
+// no game form preset any more (Sascha 03.11.2026) – Skins picked
+await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Skins$/ }) }).click();
 await p.waitForTimeout(600);
 await inView('Spiel starten', 'games-setup');
 ok(errors.length === 0, `no page errors ${errors.join(' | ')}`);

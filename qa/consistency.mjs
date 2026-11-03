@@ -74,6 +74,9 @@ await safe('games', async () => {
   await p.waitForTimeout(800);
   await shot('games-play');
   await p.getByRole('button', { name: 'Neues Spiel' }).click();
+  // no game form preset any more (Sascha 03.11.2026) – Skins picked
+  await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+  await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Skins$/ }) }).click();
   await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
   await p.fill('#course-search', 'Hetzenhof');
   await p.waitForTimeout(2000);

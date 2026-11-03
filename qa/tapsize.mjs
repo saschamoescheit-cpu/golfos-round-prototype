@@ -67,6 +67,9 @@ await small('hole screen');
 await toModule('games');
 await small('games start');
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
+// no game form preset any more (Sascha 03.11.2026) – Skins picked
+await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Skins$/ }) }).click();
 await p.waitForTimeout(600);
 await small('games setup');
 // a game in play on the map: the score sheet, the game sheet, the hole drawer (the same controls as a round)

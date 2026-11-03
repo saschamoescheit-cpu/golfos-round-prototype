@@ -72,6 +72,9 @@ interface Draft {
   players: DraftPlayer[];
   settings: Record<string, number | boolean | string>;
   hcpTouched?: boolean; // the player chose the handicap share himself – no WHS default over it any more
+  /** false: no game form chosen yet (Sascha 03.11.2026: "Skins always preset – leave it empty, so one has to choose") –
+   *  the form's rules and settings show once one is picked, "Spiel starten" waits for it */
+  formChosen?: boolean;
 }
 
 /** The leader – or nobody when the first two are level. */
@@ -125,10 +128,11 @@ function atLeast(players: DraftPlayer[], n: number): DraftPlayer[] {
   return out;
 }
 
-function newDraft(form: FormId = 'skins'): Draft {
+function newDraft(chosen?: FormId): Draft {
   const p = loadProfile();
   const me = { id: 'me', name: shownName(p) || tr('Me', 'Ich'), hcp: p.hcpIndex.trim() };
-  return withWhs({ form, course: null, optionId: '', players: atLeast([me], formDef(form).players[0]), settings: defaults(formDef(form)) });
+  const form = chosen ?? 'skins'; // only a placeholder until a form is picked
+  return withWhs({ form, course: null, optionId: '', players: atLeast([me], formDef(form).players[0]), settings: defaults(formDef(form)), formChosen: !!chosen });
 }
 
 export function GamesApp(props: {
@@ -902,6 +906,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
   const currency: Currency = d.settings.currency === 'USD' || d.settings.currency === 'EUR' ? d.settings.currency : d.course && inUsa([d.course.lon, d.course.lat]) ? 'USD' : 'EUR';
   setCurrency(currency);
   const f = formDef(d.form);
+  const chosen = d.formChosen !== false; // a draft from before 03.11.2026 had its form
   const [picker, setPicker] = useState(false);
   const [favs, setFavs] = useState(loadFormFavs);
   const byName = [...FORMS].sort((a, b) => a.name().localeCompare(b.name(), getLang()));
@@ -1005,18 +1010,21 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         <div className="settings-list">
           <button type="button" className="settings-row" onClick={() => setPicker(true)}>
             <span>{tr('Form', 'Spielform')}</span>
-            <span className="settings-value">{f.name()}</span>
+            <span className={`settings-value${chosen ? '' : ' good-text'}`}>{chosen ? f.name() : tr('Choose a game form', 'Spielform wählen')}</span>
             <span aria-hidden="true">›</span>
           </button>
         </div>
-        <div className="card">
-          <FormRules form={f} />
-        </div>
+        {chosen && (
+          <div className="card">
+            <FormRules form={f} />
+          </div>
+        )}
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">
-          {tr('Players', 'Spieler')} · {playersText(f)}
+          {tr('Players', 'Spieler')}
+          {chosen && ` · ${playersText(f)}`}
         </span>
         {/* name · tee · HCP · playing handicap – the same row as in the round setup (Sascha 21.10.2026) */}
         {d.players.map((p, i) => (
@@ -1060,7 +1068,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
-        {sides && fits && (
+        {chosen && sides && fits && (
           <div className="game-setting">
             <span className="stepper-label">{tr(`Partner of ${label(0)}`, `Partner von ${label(0)}`)}</span>
             <div className="chip-set">
@@ -1075,8 +1083,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             </span>
           </div>
         )}
-        {d.form === 'wolf' && fits && <span className="small">{tr('The wolf rotates in this order.', 'Der Wolf wechselt in dieser Reihenfolge.')}</span>}
-        {!fits && (
+        {chosen && d.form === 'wolf' && fits && <span className="small">{tr('The wolf rotates in this order.', 'Der Wolf wechselt in dieser Reihenfolge.')}</span>}
+        {chosen && !fits && (
           <span className="small good-text">
             {tr(`${f.name()} needs ${playersText(f)} – you are ${n}.`, `${f.name()} braucht ${playersText(f)} – ihr seid ${n}.`)}
           </span>
@@ -1085,6 +1093,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
 
       {/* the settings as rows with a sheet, like "Format" in the round setup (Sascha 02.11.2026: "Rounds and Games are the
           base – not everything as tabs"); a yes/no as a switch; see docs/DESIGN.md */}
+      {chosen && (
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
         <SettingsList>
@@ -1161,6 +1170,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
           </ToggleList>
         )}
       </section>
+      )}
 
       {picker && (
         <div className="sheet-backdrop" onClick={() => setPicker(false)}>
@@ -1188,9 +1198,9 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                           <button
                             type="button"
                             className="pick-option"
-                            aria-pressed={o.id === d.form}
+                            aria-pressed={chosen && o.id === d.form}
                             onClick={() => {
-                              props.onChange(withWhs({ ...d, form: o.id, players: atLeast(d.players, o.players[0]), settings: { ...defaults(o), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
+                              props.onChange(withWhs({ ...d, form: o.id, formChosen: true, players: atLeast(d.players, o.players[0]), settings: { ...defaults(o), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
                               setPicker(false);
                             }}
                           >
@@ -1199,7 +1209,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                               <span className="muted small">{o.short()}</span>
                               <span className="small" style={{ color: 'var(--muted)' }}>{playersText(o)}</span>
                             </span>
-                            {o.id === d.form && <span className="pick-check" aria-hidden="true">✓</span>}
+                            {chosen && o.id === d.form && <span className="pick-check" aria-hidden="true">✓</span>}
                           </button>
                           <button
                             type="button"
@@ -1223,7 +1233,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       <span className="spacer" />
       {/* a game is played on a course (Sascha 15.10.2026): par and stroke index come from it – no start without one */}
       <div className="sticky-cta">
-        <button type="button" className="btn-primary" onClick={start} disabled={!fits || !d.course}>
+        <button type="button" className="btn-primary" onClick={start} disabled={!chosen || !fits || !d.course}>
           {tr('Start game', 'Spiel starten')}
         </button>
       </div>

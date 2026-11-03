@@ -96,6 +96,9 @@ await toModule('games');
 await tabs('games');
 await p.locator('.tabbar button').nth(0).click();
 await p.getByRole('button', { name: 'Neues Spiel' }).click().catch(() => {});
+// no game form preset any more (Sascha 03.11.2026) – Skins picked
+await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Skins$/ }) }).click();
 await shot('games-setup');
 // ---- Training ----
 await toModule('training');

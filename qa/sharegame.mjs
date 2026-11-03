@@ -79,6 +79,9 @@ const guest = await phone('Ben');
 // host: a new game on Hetzenhof with Ben, invite
 const H = host.p;
 await H.getByRole('button', { name: 'Neues Spiel' }).click();
+// no game form preset any more (Sascha 03.11.2026) – Skins picked
+await H.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await H.locator('.pick-option').filter({ has: H.locator('strong', { hasText: /^Skins$/ }) }).click();
 await H.locator('.settings-row').filter({ hasText: 'Platz' }).click();
 await H.fill('#course-search', 'Hetzenhof');
 await H.waitForTimeout(2000);

@@ -116,11 +116,14 @@ const event = {
 const host = await phone('Sascha');
 const H = host.p;
 // Sascha 01.11.2026: the bets a menu of their own – on the start page "start a game" and "start a bet"
-ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Turniere|Profil', 'the menu has "Wetten"');
+ok((await H.locator('.tabbar button').allInnerTexts()).join('|') === 'Spielen|Spiele|Wetten|Profil', 'the menu has "Wetten" (the tournaments a module of their own since 03.11.2026)');
 ok((await H.getByText('Neues Spiel starten').isVisible()) && (await H.getByText('Neue Wette starten').isVisible()), 'start page: "Neues Spiel starten" and "Neue Wette starten"');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-start.png' });
 // a game in dollars (Sascha 01.11.2026: "besides the euro the dollar to choose") – the stakes in dollars
 await H.getByRole('button', { name: 'Neues Spiel' }).click();
+// no game form preset any more (Sascha 03.11.2026) – Skins picked
+await H.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await H.locator('.pick-option').filter({ has: H.locator('strong', { hasText: /^Skins$/ }) }).click();
 await H.waitForTimeout(600);
 ok(/Euro \(€\)/.test(await H.locator('.settings-row').filter({ hasText: 'Währung' }).innerText()) && /1 €/.test(await H.locator('.settings-row').filter({ hasText: 'Einsatz' }).first().innerText()), 'new game: euro by default, stakes in €');
 await pickSetting(H, 'Währung', 'Dollar ($)');

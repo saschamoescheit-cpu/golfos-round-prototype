@@ -50,6 +50,9 @@ await p.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
 await p.reload();
 await check('Games: play');
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
+// no game form preset any more (Sascha 03.11.2026) – Skins picked
+await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Skins$/ }) }).click();
 await check('Games: setup');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

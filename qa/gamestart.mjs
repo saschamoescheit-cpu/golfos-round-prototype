@@ -72,6 +72,10 @@ ok(new Set(top).size === 2 && top.filter((y) => y === top[0]).length === 3, 'thr
 // 1b · course rating and slope in the game setup as in the round setup: shown, typed, the playing handicaps follow
 await tab('Spielen');
 await p.getByRole('button', { name: 'Neues Spiel' }).click();
+ok((await p.locator('.settings-row').filter({ hasText: 'Spielform' }).innerText()).includes('Spielform wählen') && (await p.getByRole('button', { name: 'Spiel starten' }).isDisabled()) && (await p.getByText('Einstellungen', { exact: true }).count()) === 0, 'a new game: no form preset – "Spielform wählen", no settings, "Spiel starten" waits');
+// no game form preset any more (Sascha 03.11.2026) – Skins picked
+await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: /^Skins$/ }) }).click();
 await p.locator('.game-player-row').first().locator('input').nth(1).fill('15,4');
 await p.locator('.settings-row').filter({ hasText: 'Platz' }).click();
 await p.fill('#course-search', 'Hetzenhof');
