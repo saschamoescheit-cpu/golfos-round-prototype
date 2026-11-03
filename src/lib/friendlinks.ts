@@ -1,9 +1,10 @@
-import { loadProfile } from './profile';
-import { loadFriends, mergeCards, saveFriends, type FriendCard } from './friends';
+import { loadProfile, shownName } from './profile';
+import { loadFriends, mergeCards, saveFriends, type Friend, type FriendCard } from './friends';
 import { newId } from './storage';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured, userId } from './sync';
 import { AUTH_BACK, WEB_HOME } from './native';
 import { reportError } from './errorlog';
+import { pushFriendAccepted } from './push';
 
 // Friends linked by their accounts (Sascha 02.11.2026: "everyone keeps his handicap in his profile – friends should
 // come from their accounts"; "a QR code of one's own as with PayPal, and an invitation by WhatsApp"). The server
@@ -126,6 +127,7 @@ export async function refreshFriends(): Promise<boolean> {
     const cards = (await r.json()) as FriendCard[];
     const before = loadFriends();
     const next = mergeCards(before, cards, newId);
+    newFriends(next);
     if (JSON.stringify(next) !== JSON.stringify(before)) {
       saveFriends(next);
       window.dispatchEvent(new Event('golfos:friends-changed'));
@@ -144,6 +146,31 @@ export interface FriendPreview {
   is_me: boolean;
   is_friend: boolean;
 }
+// A friend new in the list – he accepted one's invitation (Sascha 03.11.2026: "I get a notice that the request was accepted
+// and we are GolfOS friends now"): the app says so once. The first look on a phone only notes who is there.
+const KNOWN = 'golfos.friends.known.v1';
+function knownFriends(): string[] | null {
+  try {
+    return JSON.parse(localStorage.getItem(KNOWN) ?? 'null') as string[] | null;
+  } catch {
+    return null;
+  }
+}
+function knowFriends(uids: string[]): void {
+  try {
+    localStorage.setItem(KNOWN, JSON.stringify([...new Set([...(knownFriends() ?? []), ...uids])]));
+  } catch {
+    /* storage full */
+  }
+}
+function newFriends(list: Friend[]): void {
+  const linked = list.filter((f) => f.uid);
+  const known = knownFriends();
+  const fresh = known ? linked.filter((f) => !known.includes(f.uid!)) : [];
+  knowFriends(linked.map((f) => f.uid!));
+  for (const f of fresh) window.dispatchEvent(new CustomEvent('golfos:friend-new', { detail: f.fullName || f.name }));
+}
+
 /** Who sent this code – also before signing in; null: no such code. */
 export async function friendPreview(code: string): Promise<FriendPreview | null> {
   const rows = await rpc<FriendPreview[]>('golfos_friend_preview', { p_code: code }, false);
@@ -157,6 +184,8 @@ export async function acceptFriend(code: string): Promise<void> {
   const friend = await rpc<string | null>('golfos_friend_add', { p_code: code });
   // no such code: the server counts the wrong try (an error would undo the count – too many in an hour: too_many)
   if (!friend) throw new Error('unknown_code');
+  knowFriends([friend]); // the one accepting is told on the sheet – no notice of his own
+  pushFriendAccepted(friend, shownName(loadProfile()) || '');
   // the request stays until its sheet is closed: it says "you are friends" first
   for (let k = 0; k < 3; k++) {
     if ((await refreshFriends()) && loadFriends().some((f) => f.uid === friend)) return;

@@ -151,6 +151,14 @@ export const paidNote = (who: string, to: string, amount: string, as: 'paid' | '
 });
 
 /** The host invites a player by his GolfOS user name (Sascha 30.10.2026): a tap and he is in. */
+/** A friend request accepted (Sascha 03.11.2026: "as on Instagram – a push that we are GolfOS friends now"). */
+export const friendNote = (who: string, lang?: string | null): Note => ({
+  title: T(lang, 'New GolfOS friend', 'Neuer GolfOS-Freund'),
+  body: T(lang, `${who || 'A player'} accepted your friend request – you are GolfOS friends now.`, `${who || 'Ein Spieler'} hat deine Freundschaftsanfrage angenommen – ihr seid jetzt GolfOS-Freunde.`),
+  tag: 'golfos-friend',
+  url: './',
+});
+
 export const inviteNote = (who: string, course: string, code: string, lang?: string | null, what: 'round' | 'game' | 'pool' = 'round'): Note => ({
   title: what === 'pool' ? T(lang, 'Invitation to bets', 'Einladung zu Wetten') : what === 'game' ? T(lang, 'Invitation to a game', 'Einladung zum Spiel') : T(lang, 'Invitation to a round', 'Einladung zur Runde'),
   body:
@@ -755,6 +763,21 @@ export async function handle(req: Request): Promise<Response> {
       let sent = 0;
       for (const s of await subsOf([n.user_id])) if (s.kinds?.games !== false && (await send(s, inviteNote(who, place, code, s.lang, what), 6 * 3600, 'high'))) sent++;
       return json({ ok: true, found: true, sent });
+    }
+    // a friend request accepted: the one who sent it hears of it, once – only when the two are friends
+    if (action === 'friend-accepted') {
+      const friend = /^[0-9a-f-]{36}$/i.test(String(body.friend ?? '')) ? String(body.friend).toLowerCase() : '';
+      if (!friend) return json({ error: 'no friend' }, 400);
+      const linked = await d.get<unknown[]>(`golfos_friend_links?select=friend_id&user_id=eq.${user}&friend_id=eq.${friend}`);
+      if (!linked.length) return json({ error: 'not friends' }, 403);
+      const key = `friend:${user}`;
+      const done = await d.get<unknown[]>(`golfos_push_sent?select=key&user_id=eq.${friend}&key=eq.${encodeURIComponent(key)}`);
+      let sent = 0;
+      if (!done.length) {
+        for (const s of await subsOf([friend])) if (await send(s, friendNote(String(body.who ?? '').slice(0, 60), s.lang))) sent++;
+        await d.insertIgnore('golfos_push_sent', [{ user_id: friend, key }]);
+      }
+      return json({ ok: true, sent });
     }
     return json({ error: 'unknown action' }, 400);
   } catch (e) {

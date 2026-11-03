@@ -232,6 +232,13 @@ export async function inviteFriend(code: string, friend: string, name: string, w
   }
 }
 
+/** A friend request accepted (Sascha 03.11.2026: "as on Instagram – a push that we are GolfOS friends now"): the one who
+ *  sent the invitation hears of it. A function without it answers 400 – nothing then. */
+export function pushFriendAccepted(friend: string, who: string): void {
+  if (!loadSession() || !syncConfigured()) return;
+  void call({ action: 'friend-accepted', friend, who }).catch(() => null);
+}
+
 /** A round: this phone asked to join – the host hears of it (Sascha 30.10.2026; the function says it once). */
 export function pushAsked(to: { code?: string; ref?: string }): void {
   if (!loadSession() || !syncConfigured()) return;

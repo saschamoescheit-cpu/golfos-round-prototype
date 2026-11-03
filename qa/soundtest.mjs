@@ -50,7 +50,7 @@ async function roundOn(soundTest) {
     localStorage.clear();
     localStorage.setItem('golfos.intro.v1', '1');
     localStorage.setItem('golfos.tip.shots.v1', '1');
-    if (on) localStorage.setItem('golfos.soundtest.v1', '1');
+    if (on) localStorage.setItem('golfos.soundtest.v2', '1');
     sessionStorage.setItem('golfos.module', 'rounds');
   }, soundTest);
   await p.reload();

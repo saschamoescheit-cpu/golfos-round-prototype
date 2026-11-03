@@ -377,21 +377,21 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
                           }}
                         />
                         {t && Math.abs((own ?? suggestedPartial(fullOf(c), sw)) - t.carry) >= 4 && (
-                          <span className="pitch-tracked">
-                            <span className="muted small">{tr(`tracked ${toU(t.carry)}`, `gemessen ${toU(t.carry)}`)}</span>
-                            <button
-                              type="button"
-                              className="use-btn small"
-                              aria-label={tr(`Use tracked ${toU(t.carry)} ${uL}`, `Gemessene ${toU(t.carry)} ${uL} übernehmen`)}
-                              title={tr('Use', 'Übernehmen')}
-                              onClick={() => {
-                                setPartial(c, sw, String(t.carry));
-                                setPText({ ...pText, [`${c}|${sw}`]: String(toU(t.carry)) });
-                              }}
-                            >
-                              <UseIcon />
-                            </button>
-                          </span>
+                          // the tracked carry as one small pill under the field – a tap takes it (Sascha 03.11.2026: the words
+                          // and the round button beside them broke the rows)
+                          <button
+                            type="button"
+                            className="pitch-use"
+                            aria-label={tr(`Use tracked ${toU(t.carry)} ${uL}`, `Gemessene ${toU(t.carry)} ${uL} übernehmen`)}
+                            title={tr('Use', 'Übernehmen')}
+                            onClick={() => {
+                              setPartial(c, sw, String(t.carry));
+                              setPText({ ...pText, [`${c}|${sw}`]: String(toU(t.carry)) });
+                            }}
+                          >
+                            <UseIcon />
+                            <span>{tr(`tracked ${toU(t.carry)}`, `gemessen ${toU(t.carry)}`)}</span>
+                          </button>
                         )}
                       </span>
                     );
