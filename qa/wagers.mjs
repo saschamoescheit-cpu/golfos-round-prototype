@@ -137,6 +137,15 @@ await H.getByRole('textbox', { name: 'Spieler 3' }).fill('Erik');
 await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
 await H.getByRole('textbox', { name: 'Spieler 4' }).fill('Cedric');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/wagers-setup.png', fullPage: true });
+// the players as in "Runde starten" (Sascha 03.11.2026): name, tee, HCP, playing handicap – "Du" first
+ok((await H.locator('.player-row').count()) === 4 && (await H.getByRole('textbox', { name: 'HCP' }).count()) === 4 && (await H.getByRole('textbox', { name: 'Du' }).count()) === 1, 'players: rows as in "Runde starten" – "Du", tee, HCP, playing handicap');
+await H.getByRole('textbox', { name: 'HCP' }).nth(1).fill('12,4');
+// a round added as the course in "Neues Spiel": a row "Platz · Platz wählen ›", no "+ Runde" button (Sascha 03.11.2026)
+{
+  const trip = H.locator('.trip-rounds');
+  const row = trip.locator('.settings-row');
+  ok((await row.count()) === 1 && /Platz\s*Platz wählen/.test(await row.innerText()) && (await trip.getByRole('button', { name: '+ Runde' }).count()) === 0, `rounds: a row "Platz · Platz wählen" (${(await row.allInnerTexts()).join(' | ')})`);
+}
 // a choice as a row with its sheet (docs/DESIGN.md, 02.11.2026): the row, then the option
 const choose = async (label, option, inside = H) => {
   await inside.locator('.settings-row').filter({ hasText: label }).first().click();
@@ -149,6 +158,7 @@ await H.getByRole('button', { name: 'Pool anlegen' }).click();
 await H.waitForTimeout(1200);
 ok((await H.locator('.pool-player').count()) === 4 && (await H.locator('.topbar h1').innerText()).includes('USA 2026'), 'pool set up: USA 2026 with 4 players');
 const code = [...shared.keys()][0];
+ok(shared.get(code).game.players[1].hcp === '12,4' && shared.get(code).game.players[2].hcp === undefined, 'the HCP typed is kept with the pool (Chris 12,4; Erik none)');
 ok(/^[A-Z0-9]{6}$/.test(code ?? '') && shared.get(code).game.kind === 'wager-pool', `the pool on the server, code ${code}`);
 
 // Chris's bets from his library (Sascha 01.11.2026: "per person a library to pick single bets from"): five of them,
@@ -199,6 +209,14 @@ ok(shared.get(code).game.wagers.length === 7, `the server has the 7 bets (${shar
 // invite: the code with a QR code
 // a section of its own, as in the round setup (02.11.2026)
 const invite = H.getByRole('region', { name: 'Mitspieler einladen' });
+{
+  // below the settlement, right before "Runde starten" (Sascha 03.11.2026)
+  const top = async (l) => (await l.boundingBox())?.y ?? -1;
+  const yS = await top(H.locator('.card').filter({ hasText: 'Abrechnung' }).first());
+  const yI = await top(invite);
+  const yR = await top(H.getByRole('button', { name: 'Runde starten' }));
+  ok(yS >= 0 && yS < yI && (yR < 0 || yI < yR), `invite: below the settlement, before "Runde starten" (${Math.round(yS)} < ${Math.round(yI)} < ${Math.round(yR)})`);
+}
 ok((await invite.locator('.qr-box svg').count()) === 1 && (await invite.locator('.join-code').innerText()).trim() === code && (await invite.getByRole('button', { name: 'Einladung senden' }).count()) === 1, 'invite: its own section – code, QR code, "Einladung senden"');
 
 // ---------- Chris: joins with the link, picks himself – his phone judges his bets from his signed round ----------
@@ -373,6 +391,18 @@ ok(!!ownBet && ownBet.metric === 'birdie' && ownBet.where === 'par3' && ownBet.t
 await H.getByRole('button', { name: 'Wetten für Chris hinzufügen' }).click();
 ok((await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).locator('.lib-row').filter({ hasText: 'Mindestens 2 Birdies auf den Par 3s' }).count()) === 1, 'own bet: offered again under "Meine Wetten"');
 await H.getByRole('dialog', { name: 'Wetten-Bibliothek' }).getByRole('button', { name: 'Schließen' }).click();
+
+// only saved, finished later (Sascha 03.11.2026): "Speichern" between "Runde starten" and "Pool beenden" – back to the bets
+{
+  const top = async (l) => (await l.boundingBox())?.y ?? -1;
+  const save = H.getByRole('button', { name: 'Speichern', exact: true });
+  const [yR, yV, yE] = [await top(H.getByRole('button', { name: /Runde (starten|fortsetzen)/ })), await top(save), await top(H.getByRole('button', { name: 'Pool beenden' }))];
+  ok(yR >= 0 && yR < yV && yV < yE, `save: between "Runde starten" and "Pool beenden" (${Math.round(yR)} < ${Math.round(yV)} < ${Math.round(yE)})`);
+  const n = shared.get(code).game.wagers.length;
+  await save.click();
+  await H.waitForTimeout(1200);
+  ok((await H.locator('.list-item').filter({ hasText: 'USA 2026' }).count()) >= 1 && shared.get(code).game.wagers.length === n, 'save: back to the bets, the pool with all its bets');
+}
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

@@ -276,6 +276,9 @@ export interface PoolPlayer {
   name: string;
   /** a phone plays as him (the name of the account, when, its account – to find him again on a new phone) */
   joined?: { name: string; at: string; uid?: string };
+  /** the handicap index as typed in the setup (Sascha 03.11.2026: the players as in "Runde starten") – a round started
+   *  from the pool takes it */
+  hcp?: string;
 }
 
 /** A round of the trip (Sascha 01.11.2026: "a bet can be tied to a course and to the day it is played – six rounds"):
