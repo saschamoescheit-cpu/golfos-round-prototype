@@ -70,7 +70,7 @@ for (const c of cases) {
   await p.waitForTimeout(300);
   await p.getByRole('button', { name: 'Neues Spiel' }).click();
   await p.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
-  await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${c.name.replace(/[()]/g, '\\$&')}$`) }) }).click();
+  await p.locator('.pick-option').filter({ has: p.locator('strong', { hasText: new RegExp(`^${c.name.replace(/[()+]/g, '\\$&')}$`) }) }).click(); // "5+5+10": its plus signs too
   // the players: P1 … Pn with a handicap each
   for (let k = 0; k < c.n; k++) {
     if ((await p.locator('.game-player-row').count()) <= k) await p.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
