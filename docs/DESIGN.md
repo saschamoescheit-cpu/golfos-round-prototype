@@ -13,10 +13,29 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
   from it has `TopBar` (‹ back, title, at most one tool on the right – e.g. the pen to edit).
 - **Sections**: `span.eyebrow` above each block (LÖCHER, SPIELER, FORMAT …), never a heading inside a card for the
   same purpose. "(optional)" in the eyebrow when the block may stay empty.
-- **Order of a setup** (as "Neue Runde"): course → holes/day → course rating → players → invite → score entry → format
-  and other settings → the one main button at the bottom.
+- **Order of a setup – everywhere the same** (Sascha 03.11.2026: "it cannot be that the game form comes first in one place
+  and the course first in another"): **Was → Wo → Wann → Wer → Worum → Einstellungen**, then the one main button.
+  - *Was*: the name (tournament, pool) and the game form / format / scoring (Spielform, Format, Wertung, Modus)
+  - *Wo*: Platz, then Löcher / Kombination, Abschlag, Course Rating
+  - *Wann*: Tag / Von–Bis, Startzeit
+  - *Wer*: Spieler (PlayerRow, FriendChips) or Flights, then "Mitspieler einladen", then Wer erfasst / Zähler
+  - *Worum*: Worum wird gespielt, Einsatz (Games, Wetten)
+  - *Einstellungen*: everything else (Vorgabe, Pressen, Hausregeln, Klassen …), the optional ones last
+  Neue Runde, Neues Spiel, Neue Wette, Neues Turnier, Turnierserie and their edit sheets keep this order; a block a
+  screen does not have is left out, never moved.
 - **One main action** per screen: `btn-primary`, full width, at the bottom (Runde starten, Pool anlegen, Turnier
-  anlegen). Other actions `btn-secondary`; destructive ones (Pool beenden, Löschen) red outline, last.
+  anlegen).
+- **The other actions of a screen – one action bar** (Sascha 03.11.2026: "three buttons side by side with icons in one
+  menu, three text-only buttons one under the other elsewhere – that cannot be"): `.sc-actions` with `.sc-action`
+  buttons (the scorecard of Rounds is the reference) – side by side, the same width, the icon over a short word, at most
+  four in a row. Destructive (Löschen, Beenden) `.sc-action danger`, red, always the last on the right. Never a column
+  of full-width text buttons for such actions.
+- **Teilen is always the action "Teilen"** with the share icon in that bar (or the one `btn-secondary` with the icon
+  when a screen has no bar) – never a bare icon in one place and a text button in another. The TopBar's one tool on
+  the right is only the green pen to edit.
+- **Same content, same place**: a detail screen is always – TopBar → the line under it (Platz · Tag · Löcher) → the
+  status card (läuft / bestätigt / signiert) → the result / content → the action bar → the main button. A result
+  always: Sieger → Ergebnis → Verlauf → Abrechnung → Scores (Scorekarte with legend) → actions.
 - The start page: GOLFOS top left with the claim small below; no big logo in the middle.
 
 ## Choices – rows, not tabs
@@ -43,6 +62,13 @@ option with one line of what it means and ✓ at the chosen one.
 A required text field gets `required` and an instruction or "z. B. …" as its placeholder ("Name eingeben"); the
 placeholder then shows green. **Optional stays grey** – the rounds of a bet pool, the course there: no `need`.
 
+## Inviting – always the same block
+
+"Mitspieler einladen" (round, game, pool, tournament) is one block, everywhere in this order (Sascha 03.11.2026):
+**QR code → the code (to type) → "Link teilen" → the linked friends** (`FriendInvite`, a tap sends the invitation).
+It sits right below the players (*Wer*). When everyone has joined or it is over, it shrinks to one `SheetRow`
+"Mitspieler einladen ›"; opened from the Bilanz it is not shown.
+
 ## Players
 
 - Players always as `PlayerRow` (name · Tee · HCP · Vorgabe), the friends as `FriendChips` above "+ Spieler
@@ -63,6 +89,9 @@ placeholder then shows green. **Optional stays grey** – the rounds of a bet po
 - Numbers as people say them: "HCP 12,4", "1 €", days "Mo., 2. Nov.".
 
 ## Always together with a change
+
+- **Check the whole app, not the one screen**: before pushing a change, look for the same kind of element elsewhere
+  (an action bar, an invite block, a setup's order, a result) and make them the same – the older one follows this page.
 
 - **Native app** (iOS, Capacitor): every change works in WKWebView too (no hover-only, no `window.open` without fallback,
   touch targets ≥ 44 px, `touch-action` for swipes). See the memory "GolfOS: always think of the native app".
