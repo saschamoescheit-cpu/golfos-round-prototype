@@ -63,6 +63,9 @@ export interface Flight {
   finishedAt?: string | null;
   /** a planned tournament: the flight's tee time, "HH:MM" on the course (Sascha 01.11.2026) */
   teeTime?: string;
+  /** a planned tournament: the hole the flight starts on, 0-based – 9: tee 10 (Sascha 04.11.2026: "from tees 1 and 10");
+   *  missing: hole 1 */
+  startHole?: number;
   /** the special prizes' entries of the flight's players (lib/specials) */
   specials?: SpecialEntries;
 }
@@ -595,6 +598,28 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
   const title = `${formatOf({ ...fmt, mode: isTeamMode(fmt.mode) ? fmt.mode : 'single', matchplay: false }).name()} · ${gross ? (hb ? tr('Stableford gross', 'Stableford brutto') : tr('gross', 'brutto')) : hb ? tr('Stableford net', 'Stableford netto') : tr('net', 'netto')}`;
   return { title, higherBetter: hb, rows: rows.map(({ _k, ...r }) => r) };
 }
+/** One player's card of an event – key "<flight>/<player>" as in eventStandings (Games' leaderboards, Sascha 04.11.2026:
+ *  "every player's scorecards"): a round of him alone, for the scorecard table. */
+export function eventCard(ev: RoundEvent, key: string): Round | null {
+  const [fid, pid] = key.split('/');
+  const f = ev.flights[fid];
+  const p = f?.players.find((x) => x.id === pid);
+  if (!f || !p) return null;
+  return {
+    id: ev.id + '-' + key,
+    createdAt: ev.createdAt,
+    finishedAt: null,
+    courseId: ev.course.id,
+    courseName: ev.course.name,
+    loopOrder: ev.loopOrder,
+    holes: ev.holes,
+    mode: 'quick',
+    players: [{ id: key, name: p.name, playingHandicap: p.playingHandicap, isMe: true }],
+    entries: { [key]: ev.holes.map((_, i) => withCell(emptyEntry(), scoreAt(f, pid, i))) },
+    currentHole: 0,
+    ...(p.tee ? { tee: p.tee } : {}),
+  };
+}
 /** The results as a list to keep or pass on (CSV, semicolons as a spreadsheet in German takes them). */
 export function standingsCsv(ev: RoundEvent, gross = false): string {
   const s = eventStandings(ev, { gross });
@@ -868,6 +893,8 @@ export interface PlanFlight {
   name?: string;
   /** "HH:MM" on the course */
   teeTime?: string;
+  /** the hole it starts on, 0-based (9: tee 10) */
+  startHole?: number;
   /** in scramble and foursomes the teams */
   players: { name: string; playingHandicap: number | null; tee?: string | null; hcpIndex?: number | null }[];
   /** markers[player] = who marks him, by the players' places "p1", "p2" … – missing: in pairs (1 ↔ 2, 3 ↔ 4) */
@@ -881,6 +908,7 @@ const planFlight = (pf: PlanFlight, holes: number, by: string, id = newId()): Fl
     id,
     name: pf.name?.trim() || players.map((p) => p.name).join(' · '),
     ...(pf.teeTime ? { teeTime: pf.teeTime } : {}),
+    ...(pf.startHole ? { startHole: pf.startHole } : {}),
     players,
     scores: Object.fromEntries(players.map((p) => [p.id, nulls(holes)])),
     marks: {},
@@ -973,7 +1001,7 @@ export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<
     const done = await changeFlight(code, fid, true, (f) => {
       if (!want) return f && f.players.length ? { ...f, players: [], markers: {} } : null;
       const players = want.players;
-      const next: Flight = { ...(f ?? want), name: want.name, players, markers: want.markers, scorer: want.scorer, ...(want.teeTime ? { teeTime: want.teeTime } : {}), scores: Object.fromEntries(players.map((p) => [p.id, f?.scores[p.id] ?? nulls(ev.holes.length)])) };
+      const next: Flight = { ...(f ?? want), name: want.name, players, markers: want.markers, scorer: want.scorer, ...(want.teeTime ? { teeTime: want.teeTime } : {}), startHole: want.startHole ?? 0, scores: Object.fromEntries(players.map((p) => [p.id, f?.scores[p.id] ?? nulls(ev.holes.length)])) };
       return f && JSON.stringify(f) === JSON.stringify(next) ? null : next;
     });
     if (!done) return null;

@@ -4,6 +4,7 @@ import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } fr
 import { myAccount } from './wagerstore';
 import { dayOf } from './wagers';
 import type { Special } from './specials';
+import type { TourDraw } from './tourdraw';
 
 // The tournaments planned in Games (Sascha 01.11.2026: "I could set up the tournaments for the USA now, put the flights
 // together and choose the markers, and send the invitations once everyone has the app – in the USA everything is
@@ -13,7 +14,15 @@ import type { Special } from './specials';
 
 /** A tournament set up ahead: the day it is played; deleted only marked (the bin brings it back); its special prizes
  *  (Long Drive, Nearest to the Pin – lib/specials.ts). */
-export type PlannedEvent = RoundEvent & { date: string; planned: true; deletedAt?: string | null; specials?: Special[]; series?: { code: string; name: string } | null };
+export type PlannedEvent = RoundEvent & {
+  date: string;
+  planned: true;
+  deletedAt?: string | null;
+  specials?: Special[];
+  series?: { code: string; name: string } | null;
+  /** how its flights are drawn (Sascha 04.11.2026) – "by result" waits for the rounds before */
+  draw?: TourDraw;
+};
 
 /** A tournament series (Sascha 01.11.2026: "our golf trip is a tournament series of six tournament rounds"): its own
  *  row with its own code – one code for all its rounds – and a copy of the rounds for showing them (the rounds' events
@@ -33,6 +42,9 @@ export interface TourSeries {
   deletedAt?: string | null;
   /** by date */
   rounds: SeriesRound[];
+  /** one tournament over several rounds (Sascha 04.11.2026: "a tournament over three rounds – or a series of three
+   *  tournaments"): one name, one field, set up together; the cut after a round – the best `top` and ties play on */
+  multi?: { cut?: { after: number; top: number } | null };
 }
 export interface SeriesEntry {
   code: string;
@@ -196,7 +208,7 @@ async function freshTour(code: string): Promise<PlannedEvent | null> {
 
 /** Tournaments set up one by one made a series (Sascha 01.11.2026: "copy six single tournaments into a tournament
  *  series"): the series' row with its own code, and each tournament points to it. Its code, or null. */
-export async function createSeries(name: string, codes: string[]): Promise<string | null> {
+export async function createSeries(name: string, codes: string[], multi?: TourSeries['multi']): Promise<string | null> {
   const h = await headers();
   if (!h) return null;
   const evs: { code: string; ev: PlannedEvent }[] = [];
@@ -205,7 +217,7 @@ export async function createSeries(name: string, codes: string[]): Promise<strin
     if (ev) evs.push({ code: c, ev });
   }
   if (evs.length < 2) return null;
-  const series: TourSeries = { kind: 'tour-series', id: crypto.randomUUID?.() ?? newCode() + Date.now(), name, createdAt: new Date().toISOString(), rounds: evs.map((x) => roundOf(x.code, x.ev)).sort((a, b) => a.date.localeCompare(b.date)) };
+  const series: TourSeries = { kind: 'tour-series', id: crypto.randomUUID?.() ?? newCode() + Date.now(), name, createdAt: new Date().toISOString(), rounds: evs.map((x) => roundOf(x.code, x.ev)).sort((a, b) => a.date.localeCompare(b.date)), ...(multi ? { multi } : {}) };
   for (let attempt = 0; attempt < 4; attempt++) {
     const code = newCode();
     try {
@@ -230,6 +242,15 @@ export async function addToSeries(seriesCode: string, tourCode: string): Promise
   if (!s) return false;
   keepSeries(seriesCode, s.game, s.owner);
   if (ev.series?.code !== seriesCode || ev.series.name !== s.game.name) await changeTour(tourCode, { ...ev, series: { code: seriesCode, name: s.game.name } });
+  return true;
+}
+
+/** A tournament over several rounds changed (Sascha 04.11.2026): its cut – and a round taken out of it (the round
+ *  itself deleted by its own change). */
+export async function changeMulti(code: string, multi: TourSeries['multi'], drop: string[] = []): Promise<boolean> {
+  const s = await changeRow(code, isSeries, (x) => ({ ...x, ...(multi ? { multi } : {}), rounds: x.rounds.filter((r) => !drop.includes(r.code)) }));
+  if (!s) return false;
+  keepSeries(code, s.game, s.owner);
   return true;
 }
 

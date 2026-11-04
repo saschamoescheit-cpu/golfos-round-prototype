@@ -36,7 +36,8 @@ import { fetchShared } from '../lib/sharedratings';
 import { CoursePicker } from './CoursePicker';
 import { loadCourse } from '../lib/courses';
 import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
-import { SeriesScreen, TOURS_ICON, TourScreen, TourSetup, TourStartCard, ToursTab, newTourDraft, useTours, type TourDraft } from './Tournaments';
+import { SeriesScreen, TOURS_ICON, TourScreen, TourStartCard, ToursTab, useTours } from './Tournaments';
+import { TourSetup, newTourDraft, pickCourse, type TourDraft } from './TourPlan';
 import { tourState } from '../lib/tourstore';
 import { isLive, loadPools } from '../lib/wagerstore';
 import { keepPoolRound, poolRoundOf } from '../lib/poolround';
@@ -367,15 +368,16 @@ export function GamesApp(props: {
           draft={view.draft}
           onChange={(draft) => setView({ ...view, draft })}
           onBack={() => setView(view.back)}
-          onCourse={() => setView({ name: 'tourCourse', draft: view.draft, back: view.back })}
-          onSaved={(code) => setView({ name: 'tour', code })}
+          onCourse={(draft) => setView({ name: 'tourCourse', draft, back: view.back })}
+          // a tournament over several rounds: its page is the series'
+          onSaved={(code, series) => setView(series ? { name: 'series', code } : { name: 'tour', code })}
         />
       );
     case 'tourCourse':
       return (
         <CoursePicker
           onBack={() => setView({ name: 'tourSetup', draft: view.draft, back: view.back })}
-          onPicked={(course) => setView({ name: 'tourSetup', draft: { ...view.draft, course, optionId: loopOptions(course.holes)[0]?.id ?? '' }, back: view.back })}
+          onPicked={(course) => setView({ name: 'tourSetup', draft: pickCourse(view.draft, course), back: view.back })}
         />
       );
     case 'tour':
@@ -400,6 +402,7 @@ export function GamesApp(props: {
           }}
           onOpen={(code) => setView({ name: 'tour', code })}
           onAddRound={(draft) => setView({ name: 'tourSetup', draft, back: view })}
+          onEdit={(draft) => setView({ name: 'tourSetup', draft, back: view })}
         />
       );
     case 'result':
