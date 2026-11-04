@@ -328,6 +328,15 @@ export const FAQ: FaqTopic[] = [
         video: 'games',
       },
       {
+        q: () => tr('What is "Press"?', 'Was ist „Press“?'),
+        a: () =>
+          tr(
+            'With "Press (double the stake)" switched on, whoever is last may double the stake during the game – 0,10 € becomes 0,20 €, then 0,40 € … up to the "Highest stake", as often as "Presses allowed" says. In Nassau, "Auto press at 2 down" starts a new bet on its own once a side is two holes down.',
+            'Mit „Press (Einsatz verdoppeln)“ darf der Letzte im Spiel den Einsatz verdoppeln – aus 0,10 € werden 0,20 €, dann 0,40 € … bis zum „Höchsteinsatz“, so oft wie bei „Erlaubte Pressen“ eingestellt. Bei Nassau startet „Auto-Press bei 2 hinten“ von selbst eine neue Wette, sobald eine Seite zwei Löcher hinten liegt.',
+          ),
+        video: 'games',
+      },
+      {
         q: () => tr('Can my friends keep score on their own phones?', 'Können Mitspieler auf ihrem Handy mitzählen?'),
         a: () =>
           tr(

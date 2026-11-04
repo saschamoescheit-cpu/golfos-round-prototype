@@ -354,7 +354,7 @@ export const ENTRY: SettingDef = {
 };
 // Money that does not get out of hand: press (the last one doubles the stake), a cap for the stake, a loss limit.
 const DOUBLE: SettingDef[] = [
-  { key: 'double', label: () => tr('Press: the last may double the stake', 'Press: der Letzte darf den Einsatz verdoppeln'), type: 'bool', default: false },
+  { key: 'double', label: () => tr('Press (double the stake)', 'Press (Einsatz verdoppeln)'), type: 'bool', default: false },
   {
     key: 'maxStake',
     label: () => tr('Highest stake', 'Höchsteinsatz'),
@@ -437,7 +437,7 @@ export const FORMS: FormDef[] = [
     counts: [2, 4],
     settings: [
       { key: 'stake', label: () => tr('Stake per bet', 'Einsatz je Wette'), type: 'stake', default: 5 },
-      { key: 'press', label: () => tr('Automatic press at 2 down', 'Automatischer Press bei 2 hinten'), type: 'bool', default: false },
+      { key: 'press', label: () => tr('Auto press at 2 down', 'Auto-Press bei 2 hinten'), type: 'bool', default: false },
     ],
     standing: (g) => {
       const [A, B] = teamsOf(g);
