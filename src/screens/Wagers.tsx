@@ -355,6 +355,14 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
 /** The rounds of the trip (Sascha 01.11.2026: "a bet can be tied to a course and to the day it is played – six rounds
  *  in our case; even tied to the tournaments"): each its day and course – picked here, or taken from a tournament planned
  *  in Games (and linked to it). Set, only rounds on these days on these courses count. */
+const weekday = (d: string) => {
+  try {
+    return new Date(`${d}T12:00:00`).toLocaleDateString(tr('en-GB', 'de-DE'), { weekday: 'short' }).replace('.', '');
+  } catch {
+    return '';
+  }
+};
+
 function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onChange: (r: PoolRound[]) => void }) {
   const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string }; src?: PoolRound['src']; holes?: string; holesName?: string; allDay?: boolean } | null>(null);
   const [picking, setPicking] = useState(false);
@@ -388,12 +396,35 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
   return (
     <section className="setup-part trip-rounds" aria-label={tr('Rounds', 'Runden')}>
       <span className="eyebrow">{tr('Rounds (optional)', 'Runden (optional)')}</span>
-      {/* each round a row as the settings of a setup (docs/DESIGN.md); tapped: its day changed or the round removed.
-          The last row adds one as "Platz · Platz wählen ›" in "Neue Runde" / "Neues Spiel" (Sascha 03.11.2026) */}
-      <SettingsList label={tr('The rounds', 'Die Runden')}>
-        {sorted.map((r) => (
-          <SettingsRow key={r.id} label={dayText(r.day)} value={r.tour ? `${r.course} · ${tr('tournament', 'Turnier')}` : r.holesName ? `${r.course} · ${r.holesName}` : r.course} onClick={() => setEditing(r.id)} />
-        ))}
+      {/* each round on its own, as the rounds of a series (Sascha 04.11.2026: "a round set up shown on its own – 'Weitere
+          Runde' gets lost"): its day, its course, its holes and what counts; tapped – its day, holes or removed. Below, apart,
+          a round added as "Platz · Platz wählen ›" in "Neue Runde" / "Neues Spiel" (Sascha 03.11.2026) */}
+      {sorted.length > 0 && (
+        <ul className="list" aria-label={tr('The rounds', 'Die Runden')}>
+          {sorted.map((r) => (
+            <li key={r.id}>
+              <button type="button" className="list-item trip-round" onClick={() => setEditing(r.id)}>
+                <span className="round-date">
+                  <strong>{`${r.day.slice(8, 10)}.${r.day.slice(5, 7)}.`}</strong>
+                  <span className="muted small">{weekday(r.day)}</span>
+                </span>
+                <span className="grow">
+                  <span className="title">{r.course}</span>
+                  <span className="muted small one-line">
+                    {r.tour
+                      ? tr('From a tournament planned', 'Aus einem geplanten Turnier')
+                      : r.holes
+                        ? `${(r.holesName ?? '').split(' · ')[0] || tr('Holes chosen', 'Löcher gewählt')} · ${r.allDay ? tr('every round of the day', 'alle Runden des Tages') : tr('this round only', 'nur diese Runde')}`
+                        : tr('Every round of the day', 'Alle Runden des Tages')}
+                  </span>
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <SettingsList label={tr('Add a round', 'Runde hinzufügen')}>
         {!adding?.course && (
           <SettingsRow
             label={sorted.length ? tr('Another round', 'Weitere Runde') : tr('Course', 'Platz')}

@@ -178,10 +178,12 @@ await H.getByRole('textbox', { name: 'HCP' }).nth(1).fill('12,4');
   ok((await grid.locator('.choice').count()) > 2 && (await grid.locator('.choice[aria-pressed="true"]').innerText()).startsWith('A'), 'rounds: "Löcher" tapped – every combination again, A marked');
   await grid.locator('.choice').filter({ has: H.locator('strong', { hasText: /^A$/ }) }).first().click();
   await trip.getByRole('button', { name: 'Runde hinzufügen' }).click();
-  const added = await trip.locator('.settings-row').first().innerText();
-  ok(/Hetzenhof · A · 9 Löcher/.test(added), `rounds: the round on the A course only (${added.replace(/\s+/g, ' ')})`);
+  // the round on its own, as the rounds of a series; "Weitere Runde" apart below (Sascha 04.11.2026)
+  const added = (await trip.locator('.trip-round').first().innerText()).replace(/\s+/g, ' ');
+  ok(/Hetzenhof A · nur diese Runde/.test(added) && /Weitere Runde/.test(await trip.getByRole('group', { name: 'Runde hinzufügen' }).innerText()), `rounds: the round on its own – A, this round only; "Weitere Runde" apart below (${added})`);
+  if (process.env.SHOTS) await trip.screenshot({ path: process.env.SHOTS + '/wagers-trip.png' });
   // removed again – the rest of the test counts every round
-  await trip.locator('.settings-row').first().click();
+  await trip.locator('.trip-round').first().click();
   await H.getByRole('button', { name: 'Runde entfernen' }).click();
 }
 // a choice as a row with its sheet (docs/DESIGN.md, 02.11.2026): the row, then the option

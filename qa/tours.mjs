@@ -337,12 +337,12 @@ await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name:
 ok(!/Zähler: /.test((await fl(0).innerText()) + (await fl(1).innerText())) && (await H.getByText('Jeder unterschreibt seine Karte selbst.').count()) === 0, 'everyone his own: no markers in the flights, no hint under the score entry (04.11.2026)');
 await who.click();
 await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
-const scorers = H.locator('.settings-row').filter({ hasText: 'Schreiber' });
-ok(/Der Erste im Flight/.test(await scorers.innerText()) && (await fl(0).locator('.settings-row').count()) === 0, 'one for all: a row "Schreiber" under "Wer erfasst" – none in the flights');
-await scorers.click();
-await H.getByRole('dialog', { name: 'Schreiber' }).getByRole('button', { name: /^Cedric/ }).click();
-await H.getByRole('dialog', { name: 'Schreiber' }).getByRole('button', { name: 'Fertig' }).click();
-ok(/Cedric/.test(await scorers.innerText()) && /Cedric erfasst die Scores für alle/.test(await fl(1).innerText()) && /Erik erfasst die Scores für alle|Sascha erfasst die Scores für alle/.test(await fl(0).innerText()), `Cedric keeps flight 2's score, flight 1 its first (${(await fl(1).innerText()).replace(/\s+/g, ' ')})`);
+// the scorer chosen in the flight (Sascha 04.11.2026: "the scorer belongs to the flights"), its first at first
+const scorerOf = (k) => fl(k).locator('.settings-row').filter({ hasText: 'Schreiber' });
+ok((await H.locator('.setup-part').filter({ hasText: 'Score-Erfassung' }).locator('.settings-row').filter({ hasText: 'Schreiber' }).count()) === 0 && /Schreiber\s*Chris/.test(await scorerOf(1).innerText()) && !/Wer es ist/.test(await H.locator('.setup-part').filter({ hasText: 'Score-Erfassung' }).innerText()), `one for all: a row "Schreiber" in each flight, its first – none under "Wer erfasst" (${(await scorerOf(1).innerText()).replace(/\s+/g, ' ')})`);
+await scorerOf(1).click();
+await H.getByRole('dialog', { name: 'Schreiber in Flight 2' }).getByRole('button', { name: /^Cedric/ }).click();
+ok(/Schreiber\s*Cedric/.test(await scorerOf(1).innerText()) && /Schreiber\s*(Sascha|Erik)/.test(await scorerOf(0).innerText()), `Cedric keeps flight 2's score, flight 1 its first (${(await fl(1).innerText()).replace(/\s+/g, ' ')})`);
 // the special prizes as rows (Sascha 04.11.2026), the holes ticked in a sheet – Long Drive par 4s and 5s, Nearest to the Pin par 3s
 await H.locator('.settings-row').filter({ hasText: 'Long Drive' }).click();
 {

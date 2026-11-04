@@ -136,6 +136,11 @@ for (const [n, h] of [['Chris', '12,4'], ['Erik', '4'], ['Cedric', '20'], ['Dave
   await H.locator('input[id^="hcp-"]').last().fill(h);
 }
 await H.locator('input[id^="hcp-"]').first().fill('7');
+// a number of one's own (Sascha 04.11.2026): "Andere Anzahl …" typed – 8 rounds; then 3
+await choose('Runden', /^Andere Anzahl/);
+await H.getByRole('textbox', { name: 'Die Anzahl der Runden' }).fill('8');
+await H.getByRole('button', { name: 'Übernehmen' }).click();
+ok(/8 Runden/.test(await setting('Runden').innerText()) && (await H.getByRole('group', { name: 'Die Runden' }).locator('.settings-row').count()) === 8, 'rounds: "Andere Anzahl" – 8 rounds typed, a row each');
 await choose('Runden', /^3 Runden/);
 const roundRows = H.getByRole('group', { name: 'Die Runden' }).locator('.settings-row');
 ok((await roundRows.count()) === 3 && /Golfclub Hetzenhof/.test(await roundRows.nth(2).innerText()), `3 rounds: a row each with its day and course (${(await roundRows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ')).join(' | ')})`);
