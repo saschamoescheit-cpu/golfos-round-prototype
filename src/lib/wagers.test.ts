@@ -483,3 +483,20 @@ describe('who gives what to whom', () => {
     expect(poolTransfers({ players, prize: { kind: 'drinks', who: 'each' } }, bal).reduce((s, t) => s + t.amount, 0)).toBe(4);
   });
 });
+
+describe('a round of the pool: "Gilt für" (Sascha 04.11.2026)', () => {
+  const day = '2026-11-04';
+  const played = (holeKey: string) => ({ day, course: 'Hetzenhof', courseId: 'c1', holeKey });
+  it('only this round: the round on its holes', async () => {
+    const { onRound } = await import('./wagers');
+    const x = { id: 'r', day, course: 'Hetzenhof', courseId: 'c1', holes: '1A,2A', holesName: 'A' };
+    expect(onRound(x, played('1A,2A'))).toBe(true);
+    expect(onRound(x, played('1B,2B'))).toBe(false);
+  });
+  it('every round of the day: the holes only for "Runde starten"', async () => {
+    const { onRound } = await import('./wagers');
+    const x = { id: 'r', day, course: 'Hetzenhof', courseId: 'c1', holes: '1A,2A', holesName: 'A', allDay: true };
+    expect(onRound(x, played('1B,2B'))).toBe(true);
+    expect(onRound({ ...x, day: '2026-11-05' }, played('1A,2A'))).toBe(false);
+  });
+});

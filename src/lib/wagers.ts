@@ -296,6 +296,9 @@ export interface PoolRound {
    *  labels joined ("1A,2A,…") and its name ("A · 9 Löcher"); unset: every round of the day on the course */
   holes?: string;
   holesName?: string;
+  /** "Gilt für · Alle Runden des Tages" (Sascha 04.11.2026): the holes chosen only for "Runde starten" – every round of the
+   *  day on the course counts; unset with holes: only the round on these holes */
+  allDay?: boolean;
   /** where the course is (Sascha 03.11.2026: "a course chosen for the bet – asked again at 'Runde starten'"): a phone
    *  without it in its cache loads it from here */
   src?: { id: string; source: import('../types').CourseSummary['source']; name: string; lat: number; lon: number; bbox?: [number, number, number, number] };
@@ -567,7 +570,7 @@ function parts(r: PlayedRound, holes: 18 | 9): { pars: number[]; entries: (HoleE
 /** A round of the trip's on a played round: its day, and its course (by id, else by name). */
 const sameCourse = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 export const onRound = (x: PoolRound, r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }): boolean =>
-  x.day === r.day && (!x.course || (x.courseId && r.courseId ? x.courseId === r.courseId : sameCourse(x.course, r.course))) && (!x.holes || !r.holeKey || x.holes === r.holeKey);
+  x.day === r.day && (!x.course || (x.courseId && r.courseId ? x.courseId === r.courseId : sameCourse(x.course, r.course))) && (!x.holes || x.allDay || !r.holeKey || x.holes === r.holeKey);
 /** Does a played round count for a bet of the pool: in the period; with rounds of the trip set, one of them; a bet of
  *  one round only on that one; one of one day only on that day. */
 export function inPool(r: Pick<PlayedRound, 'day' | 'course' | 'courseId'> & { holeKey?: string }, pool: Pick<WagerPool, 'from' | 'to'> & { rounds?: PoolRound[] }, w?: Pick<Wager, 'attempts' | 'day' | 'round'>): boolean {
@@ -878,7 +881,7 @@ export function roundLabel(x: PoolRound): string {
   } catch {
     /* without the weekday */
   }
-  return `${wd ? `${wd} ` : ''}${x.day.slice(8, 10)}.${x.day.slice(5, 7)}.${x.course ? ` · ${x.course}` : ''}${x.holesName ? ` · ${x.holesName}` : ''}`;
+  return `${wd ? `${wd} ` : ''}${x.day.slice(8, 10)}.${x.day.slice(5, 7)}.${x.course ? ` · ${x.course}` : ''}${x.holesName && !x.allDay ? ` · ${x.holesName}` : ''}`;
 }
 
 /** How it is counted and paid, in a line. */

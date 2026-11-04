@@ -158,12 +158,25 @@ await H.getByRole('textbox', { name: 'HCP' }).nth(1).fill('12,4');
   await row.click();
   await H.fill('#course-search', 'Hetzenhof');
   await H.locator('button.list-item').filter({ hasText: 'Hetzenhof' }).first().click();
-  await H.locator('.trip-rounds .settings-row').filter({ hasText: 'Löcher' }).waitFor({ timeout: 30000 });
-  await trip.locator('.settings-row').filter({ hasText: 'Löcher' }).click();
-  const hs = H.getByRole('dialog', { name: 'Löcher' });
-  const names = (await hs.locator('.pick-option strong').allInnerTexts()).join('|');
-  ok(/^Alle Runden des Tages\|/.test(names) && /A · 9 Löcher/.test(names), `rounds: "Löcher" – every round of the day or one (${names})`);
-  await hs.locator('.pick-option').filter({ hasText: /^A · 9 Löcher/ }).first().click();
+  // the holes as in "Neue Runde" (Sascha 04.11.2026): the tiles, then summed up in a row; "Gilt für" – this round or the day
+  const grid = trip.getByRole('group', { name: 'Löcher' });
+  await grid.waitFor({ timeout: 30000 });
+  const tiles = (await grid.locator('.choice strong').allInnerTexts()).join('|');
+  ok(/A \+ B/.test(tiles) && /^A$|\|A\|/.test(tiles) && (await trip.locator('.settings-row').filter({ hasText: 'Gilt für' }).count()) === 0, `rounds: the combinations as tiles, no "Gilt für" before (${tiles})`);
+  await grid.locator('.choice').filter({ has: H.locator('strong', { hasText: /^A$/ }) }).first().click();
+  const holesRow = trip.locator('.settings-row').filter({ hasText: 'Löcher' });
+  const valid = trip.locator('.settings-row').filter({ hasText: 'Gilt für' });
+  ok((await grid.count()) === 0 && /Löcher\s*A\s/.test(await holesRow.innerText()) && /Nur diese Runde/.test(await valid.innerText()), `rounds: A chosen – summed up "Löcher · A", "Gilt für · Nur diese Runde" (${(await holesRow.innerText()).replace(/\s+/g, ' ')})`);
+  await valid.click();
+  {
+    const opts = (await H.getByRole('dialog', { name: 'Welche Runden zählen' }).locator('.pick-option strong').allInnerTexts()).join('|');
+    ok(opts === 'Nur diese Runde|Alle Runden des Tages', `"Gilt für": this round or every round of the day (${opts})`);
+    await H.getByRole('dialog', { name: 'Welche Runden zählen' }).getByRole('button', { name: /^Nur diese Runde/ }).click();
+  }
+  // tapped again: all the combinations
+  await holesRow.click();
+  ok((await grid.locator('.choice').count()) > 2 && (await grid.locator('.choice[aria-pressed="true"]').innerText()).startsWith('A'), 'rounds: "Löcher" tapped – every combination again, A marked');
+  await grid.locator('.choice').filter({ has: H.locator('strong', { hasText: /^A$/ }) }).first().click();
   await trip.getByRole('button', { name: 'Runde hinzufügen' }).click();
   const added = await trip.locator('.settings-row').first().innerText();
   ok(/Hetzenhof · A · 9 Löcher/.test(added), `rounds: the round on the A course only (${added.replace(/\s+/g, ' ')})`);

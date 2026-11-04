@@ -356,7 +356,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
  *  in our case; even tied to the tournaments"): each its day and course – picked here, or taken from a tournament planned
  *  in Games (and linked to it). Set, only rounds on these days on these courses count. */
 function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onChange: (r: PoolRound[]) => void }) {
-  const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string }; src?: PoolRound['src']; holes?: string; holesName?: string } | null>(null);
+  const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string }; src?: PoolRound['src']; holes?: string; holesName?: string; allDay?: boolean } | null>(null);
   const [picking, setPicking] = useState(false);
   const [editing, setEditing] = useState<string | null>(null); // a round's id
   const [tourPick, setTourPick] = useState(false);
@@ -421,12 +421,13 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
                 </button>
               </div>
               {!r.tour && (
-                <SettingsList>
-                  <DateRow label={tr('Day', 'Tag')} min={props.from} max={props.to} value={r.day} onChange={(d) => props.onChange(props.rounds.map((x) => (x.id === r.id ? { ...x, day: d } : x)))} />
-                  {r.courseId && loadCachedCourse(r.courseId) && (
-                    <HolesRow course={loadCachedCourse(r.courseId)!} value={r.holes} onChange={(holes, holesName) => props.onChange(props.rounds.map((x) => (x.id === r.id ? { ...x, holes, holesName } : x)))} />
-                  )}
-                </SettingsList>
+                <>
+                  {r.courseId && loadCachedCourse(r.courseId) && <RoundHoles course={loadCachedCourse(r.courseId)!} holes={r.holes} onChange={(h) => props.onChange(props.rounds.map((x) => (x.id === r.id ? { ...x, ...h } : x)))} />}
+                  <SettingsList>
+                    <DateRow label={tr('Day', 'Tag')} min={props.from} max={props.to} value={r.day} onChange={(d) => props.onChange(props.rounds.map((x) => (x.id === r.id ? { ...x, day: d } : x)))} />
+                    {r.holes && <ValidityRow allDay={!!r.allDay} onChange={(allDay) => props.onChange(props.rounds.map((x) => (x.id === r.id ? { ...x, allDay } : x)))} />}
+                  </SettingsList>
+                </>
               )}
               {r.tour && <span className="muted small">{tr('From a tournament planned – its day comes from there.', 'Aus einem geplanten Turnier – der Tag kommt von dort.')}</span>}
               <ActionBar
@@ -467,15 +468,18 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           </div>
           <SettingsList>
             <SettingsRow label={tr('Course', 'Platz')} value={adding.course.name} onClick={() => setPicking(true)} />
+          </SettingsList>
+          {loadCachedCourse(adding.course.id) && <RoundHoles course={loadCachedCourse(adding.course.id)!} holes={adding.holes} onChange={(h) => setAdding({ ...adding, ...h })} />}
+          <SettingsList>
             <DateRow id="trip-day" label={tr('Day', 'Tag')} min={props.from} max={props.to} value={adding.day} onChange={(d) => setAdding({ ...adding, day: d })} />
-            {loadCachedCourse(adding.course.id) && <HolesRow course={loadCachedCourse(adding.course.id)!} value={adding.holes} onChange={(holes, holesName) => setAdding({ ...adding, holes, holesName })} />}
+            {adding.holes && <ValidityRow allDay={!!adding.allDay} onChange={(allDay) => setAdding({ ...adding, allDay })} />}
           </SettingsList>
           <button
             type="button"
             className="btn-primary"
             disabled={adding.day < props.from || adding.day > props.to}
             onClick={() => {
-              props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id, ...(adding.src ? { src: adding.src } : {}), ...(adding.holes ? { holes: adding.holes, holesName: adding.holesName } : {}) }]);
+              props.onChange([...props.rounds, { id: newId(), day: adding.day, course: adding.course!.name, courseId: adding.course!.id, ...(adding.src ? { src: adding.src } : {}), ...(adding.holes ? { holes: adding.holes, holesName: adding.holesName, ...(adding.allDay ? { allDay: true } : {}) } : {}) }]);
               setAdding(null);
             }}
           >
@@ -492,16 +496,56 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
   );
 }
 
-/** "Löcher" of a pool's round (Sascha 03.11.2026: "twice 9 holes today, the bets only for the A course"): every round of
- *  the day on the course, or one – "A · 9 Löcher", "A + B · 18 Löcher". */
-function HolesRow(props: { course: Course; value?: string; onChange: (holes: string | undefined, name: string | undefined) => void }) {
-  const opts = loopOptions(props.course.holes).map((o) => ({ value: buildRoundHoles(props.course.holes, o).map((h) => h.label).join(), name: o.label }));
+/** The holes of a pool's round as in "Neue Runde" (Sascha 04.11.2026: "the combinations shown as in the rest of the app
+ *  once a course is chosen; chosen, summed up – tapped again, all of them"): the tiles, then a row "Löcher · A + B". */
+function RoundHoles(props: { course: Course; holes?: string; onChange: (h: { holes?: string; holesName?: string }) => void }) {
+  const opts = loopOptions(props.course.holes).map((o) => ({ id: o.id, key: buildRoundHoles(props.course.holes, o).map((h) => h.label).join(), label: o.label }));
+  const cur = opts.find((o) => o.key === props.holes);
+  const [open, setOpen] = useState(!cur);
+  // one way round the course only: it is taken
+  useEffect(() => {
+    if (opts.length === 1 && !cur) props.onChange({ holes: opts[0].key, holesName: opts[0].label });
+  }, [props.course.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (opts.length < 2) return null;
+  if (cur && !open)
+    return (
+      <SettingsList>
+        <SettingsRow label={tr('Holes', 'Löcher')} value={cur.label.split(' · ')[0]} onClick={() => setOpen(true)} />
+      </SettingsList>
+    );
   return (
-    <ChoiceRow<string>
-      label={tr('Holes', 'Löcher')}
-      value={props.value ?? ''}
-      onChange={(v) => props.onChange(v || undefined, v ? opts.find((o) => o.value === v)?.name : undefined)}
-      options={[{ value: '', name: tr('Every round of the day', 'Alle Runden des Tages'), text: tr('Each round that day on this course counts', 'Jede Runde an dem Tag auf dem Platz zählt') }, ...opts]}
+    <div className="choice-grid" role="group" aria-label={tr('Holes', 'Löcher')}>
+      {opts.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          className="choice choice-loop"
+          aria-pressed={o.key === props.holes}
+          onClick={() => {
+            props.onChange({ holes: o.key, holesName: o.label });
+            setOpen(false);
+          }}
+        >
+          <strong>{o.label.split(' · ')[0]}</strong>
+          {o.label.includes(' · ') && <span className="small muted">{o.label.split(' · ').slice(1).join(' · ')}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** "Gilt für" (Sascha 04.11.2026: "Gültigkeit der Wette – only this round, or every round of the day"). */
+function ValidityRow(props: { allDay: boolean; onChange: (allDay: boolean) => void }) {
+  return (
+    <ChoiceRow<boolean>
+      label={tr('Counts for', 'Gilt für')}
+      title={tr('Which rounds count', 'Welche Runden zählen')}
+      value={props.allDay}
+      onChange={props.onChange}
+      options={[
+        { value: false, name: tr('This round only', 'Nur diese Runde'), text: tr('Only the round on these holes counts.', 'Nur die Runde auf diesen Löchern zählt.') },
+        { value: true, name: tr('Every round of the day', 'Alle Runden des Tages'), text: tr('Every round that day on this course counts.', 'Jede Runde an dem Tag auf dem Platz zählt.') },
+      ]}
     />
   );
 }
