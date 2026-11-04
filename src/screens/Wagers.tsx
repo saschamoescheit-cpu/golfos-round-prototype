@@ -533,7 +533,7 @@ function StateBadge(props: { state: WagerState; provisional?: boolean }) {
   return <span className="badge warn">{tr('Open', 'Offen')}</span>;
 }
 
-export function PoolScreen(props: { code: string; onBack: () => void; onRound?: (code: string) => void }) {
+export function PoolScreen(props: { code: string; onBack: () => void; /** where back leads, when not to "Wetten" */ backLabel?: string; onRound?: (code: string) => void }) {
   useTop(props.code);
   const pools = usePools();
   const entry = pools.find((e) => e.code === props.code);
@@ -566,7 +566,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
   if (!entry) {
     return (
       <main className="screen">
-        <TopBar title={tr('Bets', 'Wetten')} onBack={props.onBack} backLabel={tr('Bets', 'Wetten')} />
+        <TopBar title={tr('Bets', 'Wetten')} onBack={props.onBack} backLabel={props.backLabel ?? tr('Bets', 'Wetten')} />
         <p className="muted">
           {lookup === 'busy'
             ? tr('Loading the pool …', 'Lade den Pool …')
@@ -581,7 +581,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
   if (pool.deletedAt) {
     return (
       <main className="screen">
-        <TopBar title={pool.name} onBack={props.onBack} backLabel={tr('Bets', 'Wetten')} />
+        <TopBar title={pool.name} onBack={props.onBack} backLabel={props.backLabel ?? tr('Bets', 'Wetten')} />
         <p className="muted">{tr('This pool of bets was deleted. Its bets are kept – it can be restored.', 'Dieser Wett-Pool wurde gelöscht. Seine Wetten sind noch da – er lässt sich wiederherstellen.')}</p>
         {host ? (
           <button type="button" className="btn-secondary" onClick={async () => setMsg((await restorePool(props.code)) ? null : NO_NET())}>
@@ -619,7 +619,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; onRound?: 
       <TopBar
         title={pool.name}
         onBack={props.onBack}
-        backLabel={tr('Bets', 'Wetten')}
+        backLabel={props.backLabel ?? tr('Bets', 'Wetten')}
         right={
           host ? (
             <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the pool', 'Pool bearbeiten')} onClick={() => setSheet('pool')}>

@@ -304,8 +304,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('How do I see what I owe – and mark it paid?', 'Wie sehe ich, was ich schulde – und markiere es als bezahlt?'),
         a: () =>
           tr(
-            'Games & Bets → "Balance": "Open amounts" shows what you owe and what you are owed. Tap a player: each game and pool between you, how it stood, together. "Paid" when you paid him – he sees it and confirms with "Received"; "Received" books out what someone gave you. ↺ takes a payment back.',
-            'Games & Bets → „Bilanz“: Unter „Offene Beträge“ steht, was du schuldest und was dir geschuldet wird. Tippe auf einen Mitspieler: jedes Spiel und jede Wette zwischen euch, wie es stand, zusammen. „Bezahlt“, wenn du ihm gezahlt hast – er sieht es und bestätigt mit „Erhalten“; mit „Erhalten“ buchst du aus, was dir jemand gegeben hat. ↺ nimmt eine Zahlung zurück.',
+            'Games & Bets → "Balance": "Open amounts" shows what you owe and what you are owed. Tap a player: each game and pool between you, how it stood, together. "Paid" when you paid him – he sees it and confirms with "Received"; "Received" books out what someone gave you. ↺ takes a payment back. The tiles on top filter: "wins", "lost" or "bets" tapped shows just those games and bets – tap one to open it, tap the tile again for everything.',
+            'Games & Bets → „Bilanz“: Unter „Offene Beträge“ steht, was du schuldest und was dir geschuldet wird. Tippe auf einen Mitspieler: jedes Spiel und jede Wette zwischen euch, wie es stand, zusammen. „Bezahlt“, wenn du ihm gezahlt hast – er sieht es und bestätigt mit „Erhalten“; mit „Erhalten“ buchst du aus, was dir jemand gegeben hat. ↺ nimmt eine Zahlung zurück. Die Kacheln oben filtern: Tippe auf „Siege“, „Verlust“ oder „Wetten“ – dann stehen nur diese Spiele und Wetten da; ein Tipp öffnet sie, die Kachel noch einmal zeigt wieder alles.',
           ),
         video: 'games',
       },

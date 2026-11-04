@@ -94,6 +94,37 @@ await p.waitForTimeout(500);
 const g3 = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1')).find((g) => g.id === 'g3'));
 ok(g3.payments?.length === 1 && g3.payments[0].from === 'p1' && g3.payments[0].amount === 2 && !!g3.payments[0].receivedAt, 'received: Erik\'s 2 € booked out');
 ok((await owedRows.count()) === 0, 'received: "Dir geschuldet" empty');
+// the tiles filter (Sascha 04.11.2026: "the tiles in Bilanz have no filter"): "Verlust" – the two games lost, the rest away
+const tiles = p.locator('.balance-totals');
+const tileOf = (name) => tiles.locator('button.tile').filter({ hasText: name });
+await tileOf('Verlust').click();
+await p.waitForTimeout(300);
+const listed = async () => (await p.locator('.balance-list li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+let rows = await listed();
+ok((await tileOf('Verlust').getAttribute('aria-pressed')) === 'true' && rows.length === 2 && /^Skins 02\.11\. · Hetzenhof · mit Cedric −30 €/.test(rows[0]) && /^Skins 01\.11\./.test(rows[1]), `Verlust tapped: the two games lost, newest first (${rows.join(' | ')})`);
+ok((await p.locator('.balance-people').count()) === 0 && (await p.getByRole('region', { name: 'Offene Beträge' }).count()) === 0, 'Verlust tapped: only the list');
+// "Siege": one at a time – the game won; tapped, its result; back, the same list
+await tileOf('Siege').click();
+await p.waitForTimeout(300);
+rows = await listed();
+ok(rows.length === 1 && /Hetzenhof · mit Erik \+2 € gewonnen/.test(rows[0]) && (await tileOf('Verlust').getAttribute('aria-pressed')) === 'false', `Siege tapped: the game won (${rows.join(' | ')})`);
+await p.locator('.balance-entry').first().click();
+await p.waitForTimeout(600);
+ok((await p.getByRole('button', { name: 'Bilanz' }).first().count()) === 1 && (await p.locator('.balance-list').count()) === 0, 'a game tapped: its result, back to "Bilanz"');
+await p.getByRole('button', { name: 'Bilanz' }).first().click();
+await p.waitForTimeout(600);
+ok((await tileOf('Siege').getAttribute('aria-pressed')) === 'true' && (await listed()).length === 1, 'back: the Bilanz with "Siege" still chosen');
+await tileOf('Siege').click();
+await p.waitForTimeout(300);
+ok((await p.locator('.balance-list').count()) === 0 && (await p.locator('.balance-people').count()) === 1, 'tapped again: everything again');
+ok((await tiles.locator('button.tile').count()) === 5 && (await tiles.locator('div.tile').filter({ hasText: 'Geld' }).count()) === 1, 'Geld the sum, counts only – the other five filter');
+if (process.env.SHOTS) {
+  await tileOf('Verlust').click();
+  await p.waitForTimeout(300);
+  await p.screenshot({ path: process.env.SHOTS + '/balance-filter.png', fullPage: true });
+  await tileOf('Verlust').click();
+}
+
 // the notice of a game not confirmed tapped (Sascha 03.11.2026: "nothing happens"): that game opens to confirm
 await p.locator('.balance-notice').click();
 await p.waitForTimeout(600);
