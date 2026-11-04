@@ -1,0 +1,21 @@
+# A TestFlight build for the external testers by hand (Sascha 04.11.2026): added to every external group and sent to
+# the beta review – the newest build, or the one given. ios.yml does the same after each build by itself.
+name: asc-distribute
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: 'Build number (empty: the newest)'
+        required: false
+        default: ''
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q pyjwt cryptography
+      - run: python3 ios/ci/asc_distribute.py ${{ inputs.build }} --wait 1800

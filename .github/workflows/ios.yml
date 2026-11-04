@@ -190,3 +190,10 @@ jobs:
           [ -f "$RUNNER_TEMP/signing/ids.json" ] && ruby ios/ci/signing.rb cleanup "$RUNNER_TEMP/signing" || true
           security delete-keychain "$RUNNER_TEMP/signing/build.keychain-db" 2>/dev/null || true
           rm -rf "$RUNNER_TEMP/keys" "$RUNNER_TEMP/signing"
+      # the external testers get it too (Sascha 04.11.2026: "Chris still has the app of 02.11.") – once Apple has
+      # processed it: added to every external group, sent to the beta review (ios/ci/asc_distribute.py, counts only)
+      - name: Give the build to the external testers
+        if: steps.ready.outputs.go == 'true'
+        run: |
+          python3 -m pip install -q pyjwt cryptography 2>/dev/null || python3 -m pip install -q --break-system-packages pyjwt cryptography
+          python3 ios/ci/asc_distribute.py "$GITHUB_RUN_NUMBER" --wait 2400
