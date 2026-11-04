@@ -1,0 +1,65 @@
+WEBVTT
+
+1
+00:00:00.006 --> 00:00:03.636 line:-2
+Ein Turnier über mehrere Tage legst du an wie jedes Turnier:
+
+1-2
+00:00:03.686 --> 00:00:07.643 line:-2
+„Neues Turnier“, ein Name – und unter „Runden“ die Anzahl.
+
+2
+00:00:07.743 --> 00:00:12.313 line:-2
+Unter „Cut“ legst du fest, nach welcher Runde nur die Besten weiterspielen –
+
+2-2
+00:00:12.363 --> 00:00:15.112 line:-2
+wer mit dem Letzten gleichauf liegt, auch.
+
+3
+00:00:15.212 --> 00:00:19.682 line:-2
+Jede Runde hat ihre eigene Zeile: Platz, Lochkombination und Tag.
+
+3-2
+00:00:19.732 --> 00:00:23.584 line:-2
+Neue Runden kommen am Tag danach, auf demselben Platz.
+
+4
+00:00:23.684 --> 00:00:26.802 line:-2
+Die Spieler trägst du einmal für das ganze Turnier ein.
+
+5
+00:00:26.902 --> 00:00:29.472 line:-2
+Die Flights stellt jede Runde selbst ein.
+
+5-2
+00:00:29.522 --> 00:00:32.132 line:-2
+Die Finalrunde wird „Nach Ergebnis“ eingeteilt:
+
+5-3
+00:00:32.182 --> 00:00:35.612 line:-2
+die Schlechtesten zuerst, die Besten im letzten Flight.
+
+6
+00:00:35.712 --> 00:00:38.782 line:-2
+„Turnier anlegen“ – die Turnierseite zeigt die Runden,
+
+6-2
+00:00:38.832 --> 00:00:42.017 line:-2
+den Cut und die Gesamtwertung über alle Runden.
+
+7
+00:00:42.117 --> 00:00:45.067 line:-2
+Sind die Vorrunden gespielt, teilt ein Tipp auf „Flights
+
+7-2
+00:00:45.117 --> 00:00:50.183 line:-2
+nach Ergebnis einteilen“ die Finalrunde ein – nach dem Cut.
+
+8
+00:00:50.283 --> 00:00:55.353 line:-2
+Im Leaderboard öffnet „R1“ bei einem Spieler die Scorekarte dieser Runde –
+
+8-2
+00:00:55.403 --> 00:00:58.069 line:-2
+unter der Linie steht, wer den Cut verpasst hat.

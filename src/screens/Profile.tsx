@@ -9,6 +9,7 @@ import { CoursePicker } from './CoursePicker';
 import { SyncCard } from '../components/SyncCard';
 import { PushCard } from '../components/PushCard';
 import { Help, type HelpTab } from './Help';
+import { HELP_VIDEOS } from '../lib/help';
 import { Avatar } from '../components/Avatar';
 import { PhotoCropper } from '../components/PhotoCropper';
 import { STANDARD_CLUBS } from '../lib/clubs';
@@ -330,7 +331,7 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           <button type="button" className="drawer-row" onClick={() => setHelp('videos')}>
             <span className="switch-label">
               <span>{tr('Videos', 'Videos')}</span>
-              <span className="muted small">{tr('The app in 7 short chapters', 'Die App in 7 kurzen Kapiteln')}</span>
+              <span className="muted small">{tr(`The app in ${HELP_VIDEOS.length} short chapters`, `Die App in ${HELP_VIDEOS.length} kurzen Kapiteln`)}</span>
             </span>
             <span className="drawer-value" aria-hidden="true">›</span>
           </button>
