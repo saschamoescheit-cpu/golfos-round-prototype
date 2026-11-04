@@ -2141,6 +2141,10 @@ button.tile:disabled { opacity: 1; }
 .qr-action-icon.primary { background: var(--brand); color: #fff; border-color: transparent; }
 /* the pencil to edit, everywhere green and filled (Sascha 03.11.2026: "else it goes under") */
 .icon-btn.edit-btn, .review-list .icon-btn.row-edit { background: var(--brand); color: #fff; border-color: transparent; }
+/* a flight's pencil in its head – a little smaller than the page's (04.11.2026) */
+.icon-btn.flight-edit { width: 36px; height: 36px; border-radius: 18px; }
+/* a pool's player: you, joined, not joined yet – an icon (04.11.2026) */
+.join-mark { display: inline-flex; align-items: center; }
 /* every pencil the same – filled green, a white pencil (Sascha 03.11.2026: "everywhere green, not otherwise in between"):
    the score's and the putts' pencil on the card and in the review, an empty hole's on the scorecard */
 .pencil, .review-score .pencil { background: var(--brand); color: #fff; border-color: transparent; }

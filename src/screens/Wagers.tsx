@@ -596,6 +596,34 @@ function DuelBadge(props: { amount: number; played: boolean; sym: string }) {
   return <span className={`badge ${v > 0 ? 'ok' : v < 0 ? 'bad' : 'warn'}`}>{`${v > 0 ? '+' : v < 0 ? '−' : '±'}${money(v, props.sym)}`}</span>;
 }
 
+/** Whether a player is in the pool, as an icon (Sascha 04.11.2026: "you green, not joined red, joined green – icons
+ *  even better"): you – a person, joined – a tick, not joined yet – a clock; the words for VoiceOver and as a tip. */
+function JoinMark(props: { state: 'me' | 'in' | 'out' }) {
+  const label = props.state === 'me' ? tr('you', 'du') : props.state === 'in' ? tr('joined', 'beigetreten') : tr('not joined yet', 'noch nicht beigetreten');
+  return (
+    <span className={`join-mark ${props.state === 'out' ? 'bad-text' : 'good-text'}`} role="img" aria-label={label} title={label}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {props.state === 'me' ? (
+          <>
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+          </>
+        ) : props.state === 'in' ? (
+          <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M8 12.5l2.6 2.6L16 9.5" />
+          </>
+        ) : (
+          <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </>
+        )}
+      </svg>
+    </span>
+  );
+}
+
 function StateBadge(props: { state: WagerState; provisional?: boolean }) {
   if (props.state === 'done') return <span className="badge ok">{tr('Made', 'Geschafft')}</span>;
   if (props.state === 'missed') return <span className="badge bad">{tr('Missed', 'Verloren')}</span>;
@@ -704,7 +732,6 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       />
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
-        {poolCounted(pool) ? ` · ${pool.oneScorer ? tr('one for all', 'einer für alle') : tr('with marker', 'mit Zähler')}` : ''}
         {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
       </span>
       {!host && <span className="muted small">{ONLY_HOST()}</span>}
@@ -731,7 +758,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           <section key={p.id} className="card pool-player" aria-label={p.name}>
             <div className="pool-player-head">
               <h2>{p.name}</h2>
-              <span className="muted small">{p.id === entry.me ? tr('you', 'du') : p.joined ? tr('joined', 'dabei') : tr('not joined yet', 'noch nicht beigetreten')}</span>
+              <JoinMark state={p.id === entry.me ? 'me' : p.joined ? 'in' : 'out'} />
             </div>
             {!ws.length && <span className="muted small">{tr('No bets yet.', 'Noch keine Wetten.')}</span>}
             {/* per person a library to pick single bets from (Sascha 01.11.2026) – below the bets there are */}
@@ -868,15 +895,19 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       {sheet === 'pool' && (
         <PoolEditSheet
           pool={pool}
+          me={entry.me}
           onClose={() => setSheet(null)}
           onSave={async (x) => {
             const ok = await change((p) => {
-              // the players as changed here; one added meanwhile on another phone stays, one with bets now too
-              const keep = (id: string) => p.players.find((q) => q.id === id)?.joined || p.wagers.some((w) => w.player === id || w.opponent === id);
-              const players = [...x.players.map((q) => ({ ...p.players.find((o) => o.id === q.id), ...q })), ...p.players.filter((q) => !x.players.some((y) => y.id === q.id) && (keep(q.id) || !pool.players.some((o) => o.id === q.id)))];
+              // the players as changed here; one added meanwhile on another phone stays; one taken out here goes – with his
+              // bets and the bets against him (Sascha 04.11.2026: "players cannot be deleted")
+              const out = (id: string) => x.removed.includes(id);
+              const players = [...x.players.map((q) => ({ ...p.players.find((o) => o.id === q.id), ...q })), ...p.players.filter((q) => !x.players.some((y) => y.id === q.id) && !out(q.id) && !pool.players.some((o) => o.id === q.id))];
+              const wagers = p.wagers.filter((w) => !out(w.player) && !(w.opponent && out(w.opponent)));
+              const progress = Object.fromEntries(Object.entries(p.progress).filter(([id]) => wagers.some((w) => w.id === id)));
               // what is played for: money keeps `currency` (as phones from before read it), a thing `prize` beside it
               const { prize: _old, ...rest } = p;
-              return { ...rest, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, oneScorer: x.oneScorer, players };
+              return { ...rest, wagers, progress, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, oneScorer: x.oneScorer, players };
             });
             if (ok) {
               setSheet(null);
@@ -1812,7 +1843,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
 /** Change a pool (Sascha 01.11.2026: "setting up, deleting, changing in a menu of its own"): name, days, players – a
  *  player with bets or a phone of his stays (his bets would be lost); or delete the pool for everyone. */
 
-function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; prize: Prize; rounds: PoolRound[]; counted: boolean; oneScorer: boolean }) => void; onDelete: () => void; onClose: () => void }) {
+function PoolEditSheet(props: { pool: WagerPool; me: string; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; removed: string[]; prize: Prize; rounds: PoolRound[]; counted: boolean; oneScorer: boolean }) => void; onDelete: () => void; onClose: () => void }) {
   const { pool } = props;
   const [name, setName] = useState(pool.name);
   const [from, setFrom] = useState(pool.from);
@@ -1823,7 +1854,15 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
   const [poolEntry, setPoolEntry] = useState<ScoreEntry>(entryOf({ counted: poolCounted(pool), oneScorer: pool.oneScorer }));
   const counted = poolEntry !== 'own';
   const [del, setDel] = useState(false);
-  const keeps = (p: PoolPlayer) => !!p.joined || pool.wagers.some((w) => w.player === p.id || w.opponent === p.id);
+  // a player taken out – one who joined or has bets after asking: his bets go with him
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [asking, setAsking] = useState<PoolPlayer | null>(null);
+  const betsOf = (p: PoolPlayer) => pool.wagers.filter((w) => w.player === p.id || w.opponent === p.id).length;
+  const remove = (p: PoolPlayer) => {
+    setPlayers(players.filter((x) => x.id !== p.id));
+    if (pool.players.some((x) => x.id === p.id)) setRemoved([...removed, p.id]);
+    setAsking(null);
+  };
   const ok = !!name.trim() && from <= to && players.length > 0 && players.every((p) => p.name.trim());
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
@@ -1848,7 +1887,7 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
             <TripRounds from={from} to={to} rounds={rounds} onChange={setRounds} />
             <span className="eyebrow">{tr('Players', 'Spieler')}</span>
             {players.map((p, k) => (
-              <PoolPlayerRow key={p.id} player={p} k={k} onChange={(np) => setPlayers(players.map((x) => (x.id === p.id ? { ...x, name: np.name, ...(np.hcp.trim() ? { hcp: np.hcp } : { hcp: undefined }) } : x)))} onRemove={!keeps(p) ? () => setPlayers(players.filter((x) => x.id !== p.id)) : undefined} />
+              <PoolPlayerRow key={p.id} player={p} k={k} onChange={(np) => setPlayers(players.map((x) => (x.id === p.id ? { ...x, name: np.name, ...(np.hcp.trim() ? { hcp: np.hcp } : { hcp: undefined }) } : x)))} onRemove={p.id !== props.me ? () => (p.joined || betsOf(p) ? setAsking(p) : remove(p)) : undefined} />
             ))}
             {/* your friends with a tap, as when setting the pool up (Sascha 03.11.2026) – an empty row first */}
             <FriendChips
@@ -1861,7 +1900,17 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
             <button type="button" className="btn-secondary" onClick={() => setPlayers([...players, { id: newId(), name: '' }])}>
               {tr('+ Add player', '+ Spieler hinzufügen')}
             </button>
-            <span className="muted small">{tr('A player who joined or has bets stays – delete his bets first.', 'Wer beigetreten ist oder Wetten hat, bleibt – erst seine Wetten löschen.')}</span>
+            {asking && (
+              <div className="card pool-remove" role="alertdialog" aria-label={tr(`Remove ${asking.name}?`, `${asking.name} entfernen?`)}>
+                <strong>{tr(`Remove ${asking.name}?`, `${asking.name} entfernen?`)}</strong>
+                <span className="muted small">
+                  {betsOf(asking)
+                    ? tr(`His ${betsOf(asking)} bets go with him – for everyone in the pool.`, `Seine ${betsOf(asking)} ${betsOf(asking) === 1 ? 'Wette geht' : 'Wetten gehen'} mit – für alle im Pool.`)
+                    : tr('He joined – he is out of the pool then.', 'Er ist beigetreten – dann ist er nicht mehr im Pool.')}
+                </span>
+                <ActionBar label={asking.name} actions={[{ label: tr('Keep', 'Behalten'), icon: 'reopen', onClick: () => setAsking(null) }, { label: tr('Remove', 'Entfernen'), icon: 'delete', danger: true, onClick: () => remove(asking) }]} />
+              </div>
+            )}
             {/* the order of "Neue Wette" (Sascha 03.11.2026: one order everywhere) */}
             <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
             <CountedSwitch value={poolEntry} onChange={setPoolEntry} />
@@ -1870,7 +1919,7 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
               <PrizeRow value={prize} onChange={setPrize} />
             </SettingsList>
             <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Delete the pool', 'Pool löschen'), icon: 'delete', danger: true, onClick: () => setDel(true) }]} />
-            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, counted, oneScorer: poolEntry === 'one', players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
+            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, counted, oneScorer: poolEntry === 'one', removed, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
               {tr('Save', 'Speichern')}
             </button>
           </>

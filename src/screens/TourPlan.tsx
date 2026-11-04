@@ -1173,8 +1173,12 @@ function FlightBoard(props: {
                 Flight {f + 1} <strong className="tour-tee">{slot?.time}</strong>
                 {slot?.start ? <span className="muted small">{teeName(slot.start)}</span> : null}
               </h2>
-              <button type="button" className="link-btn small" aria-label={tr(`Change flight ${f + 1}`, `Flight ${f + 1} ändern`)} onClick={() => setOpen(f)}>
-                {tr('Change', 'Ändern')}
+              {/* the pencil as everywhere (Sascha 04.11.2026: "no link 'Ändern' – our pencil") */}
+              <button type="button" className="icon-btn edit-btn flight-edit" aria-label={tr(`Change flight ${f + 1}`, `Flight ${f + 1} ändern`)} onClick={() => setOpen(f)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 20h4L19 9l-4-4L4 16z" />
+                    <path d="M13.5 6.5l4 4" />
+                  </svg>
               </button>
             </div>
             {/* who keeps the score of the flight – chosen here, in the flight (Sascha 04.11.2026) */}

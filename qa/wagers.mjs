@@ -410,7 +410,19 @@ ok((await ed.locator('.friend-chips').getByRole('button', { name: '+ Ben' }).cou
 await ed.locator('#pool-edit-name').fill('USA 2026 Florida');
 await ed.getByRole('button', { name: '+ Spieler' }).click();
 await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');
-ok((await ed.getByRole('button', { name: 'Chris entfernen' }).count()) === 0, 'edit: Chris (joined, with bets) cannot be removed');
+// a player who joined or has bets removed after asking – his bets go with him (Sascha 04.11.2026: "players cannot be
+// deleted"); kept here, the rest of the test counts on him
+await ed.getByRole('button', { name: 'Chris entfernen' }).click();
+{
+  const ask = ed.getByRole('alertdialog', { name: 'Chris entfernen?' });
+  ok((await ask.count()) === 1 && /Wetten gehen mit|Wette geht mit/.test(await ask.innerText()), `edit: Chris (joined, with bets) removable – asked first, his bets go with him (${(await ask.innerText().catch(() => '')).replace(/\s+/g, ' ')})`);
+  await ask.getByRole('button', { name: 'Behalten' }).click();
+  ok((await ed.getByRole('alertdialog').count()) === 0 && (await ed.getByRole('textbox', { name: /Spieler/ }).filter({ hasText: '' }).count()) >= 0, 'edit: "Behalten" – Chris stays');
+}
+await ed.getByRole('button', { name: 'Dave entfernen' }).click();
+ok((await ed.getByRole('alertdialog').count()) === 0 && (await ed.getByRole('textbox', { name: 'Spieler 5' }).count()) === 0, 'edit: Dave (new, no bets) removed at once');
+await ed.getByRole('button', { name: '+ Spieler' }).click();
+await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');
 // "Einer für alle" (Sascha 04.11.2026): kept with the pool, it counts as "Mit Zähler"
 await ed.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click();
 await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
@@ -419,6 +431,19 @@ await H.waitForTimeout(1200);
 const after = shared.get(code).game;
 ok(after.oneScorer === true && after.counted === true, `edit: "Einer für alle" kept – counted as with a marker (${after.oneScorer}, ${after.counted})`);
 ok(after.name === 'USA 2026 Florida' && after.players.map((p) => p.name).join(',') === 'Sascha,Chris,Erik,Cedric,Dave' && after.wagers.length === 7, `edit: renamed, Dave added, the bets kept (${after.players.map((p) => p.name).join(', ')})`);
+// Erik removed with his bets – and the bets against him
+{
+  const erikBets = after.wagers.filter((w) => w.player === after.players.find((p) => p.name === 'Erik').id || w.opponent === after.players.find((p) => p.name === 'Erik').id).length;
+  await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
+  const ed2 = H.getByRole('dialog', { name: 'Pool bearbeiten' });
+  await ed2.getByRole('button', { name: 'Erik entfernen' }).click();
+  const ask = ed2.getByRole('alertdialog', { name: 'Erik entfernen?' });
+  if (await ask.count()) await ask.getByRole('button', { name: 'Entfernen' }).click();
+  await ed2.getByRole('button', { name: 'Speichern' }).click();
+  await H.waitForTimeout(1200);
+  const g = shared.get(code).game;
+  ok(!g.players.some((p) => p.name === 'Erik') && g.wagers.length === 7 - erikBets && Object.keys(g.progress).every((id) => g.wagers.some((w) => w.id === id)), `edit: Erik removed – with his ${erikBets} bets, the others kept (${g.players.map((p) => p.name).join(', ')}; ${g.wagers.length} bets)`);
+}
 // delete the pool – for everyone: gone from the menu here, on Chris's phone it says so
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();
 await H.getByRole('dialog', { name: 'Pool bearbeiten' }).getByRole('button', { name: 'Pool löschen' }).click();
@@ -434,7 +459,7 @@ await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
 await H.locator('.bin-item').first().click(); // the bin's row opens its sheet (03.11.2026)
 await H.getByRole('button', { name: 'Wiederherstellen' }).click();
 await H.waitForTimeout(1500);
-ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 7, 'restored from the bin: back for everyone, all 7 bets');
+ok(!shared.get(code).game.deletedAt && shared.get(code).game.wagers.length === 6, 'restored from the bin: back for everyone, all 6 bets (Erik removed before)');
 await H.locator('.tile').filter({ hasText: 'laufend' }).click();
 ok((await H.locator('.list-item').filter({ hasText: 'USA 2026 Florida' }).count()) === 1, 'restored: in the list again');
 
