@@ -151,7 +151,8 @@ await H.waitForTimeout(2000);
 await H.locator('button.list-item').first().click();
 await H.locator('#tour-name').waitFor({ timeout: 30000 });
 ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the course: the name kept');
-// net classes (Sascha 03.11.2026): the last class up to 54, and "Eigene" – two to four classes with their limits
+// net classes (Sascha 03./04.11.2026): the last class up to 54; "Eigene" a row per class, no hints, a field under the
+// last class adds one
 {
   await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
   await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Netto/ }).click();
@@ -162,129 +163,92 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
   await cs.getByRole('button', { name: /^3 Klassen/ }).click();
   ok(/3 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 12 · B bis 24 · C bis 54', { exact: true }).count()) === 1, `classes: 3 – "A bis 12 · B bis 24 · C bis 54" (${(await row.innerText()).replace(/\s+/g, ' ')})`);
   await row.click();
-  // "Eigene" as rows (Sascha 03.11.2026): a row per class, its limit from a list, "+ Klasse", the last up to 54
   await cs.getByRole('button', { name: /^Eigene/ }).click();
-  const ownRows = H.getByRole('dialog', { name: 'Netto-Klassen' }).getByRole('group', { name: 'Die Klassen' }).locator('.settings-row');
-  ok(JSON.stringify((await ownRows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim())) === '["Klasse A bis 9","Klasse B bis 18","Klasse C bis 26","Klasse D bis 54"]', `classes: own – a row per class (${(await ownRows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ')).join(' | ')})`);
+  const ownRows = cs.getByRole('group', { name: 'Die Klassen' }).locator('button.settings-row');
+  const field = cs.getByRole('textbox', { name: 'Grenze einer weiteren Klasse' });
+  const texts = async () => (await ownRows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
+  ok(JSON.stringify(await texts()) === '["Klasse A bis 9","Klasse B bis 18","Klasse C bis 26","Klasse D bis 54"]' && (await field.count()) === 1, `classes: own – a row per class, a field below (${(await texts()).join(' | ')})`);
+  ok((await cs.getByText(/Nach Spielvorgabe|nimmt alle bis 54/).count()) === 0 && (await cs.getByRole('button', { name: '+ Klasse' }).count()) === 0, 'classes: no hints, no "+ Klasse"');
   if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-classes.png' });
   await ownRows.nth(1).click();
   const lim = H.getByRole('dialog', { name: 'Klasse B bis' });
   ok((await lim.locator('.pick-option').first().innerText()).trim() === 'bis 10' && (await lim.locator('.pick-option').last().innerText()).trim() === 'bis 25', 'classes: B between A and C – 10 to 25');
   await lim.getByRole('button', { name: 'Klasse B entfernen' }).click();
-  ok((await ownRows.count()) === 3 && (await cs.getByRole('button', { name: '+ Klasse' }).count()) === 1, 'classes: B removed – three classes, "+ Klasse" again');
-  await cs.getByRole('button', { name: '+ Klasse' }).click();
-  await ownRows.nth(1).click();
-  await H.getByRole('dialog', { name: 'Klasse B bis' }).getByRole('button', { name: 'bis 18', exact: true }).click();
-  await ownRows.nth(2).click();
-  await H.getByRole('dialog', { name: 'Klasse C bis' }).getByRole('button', { name: 'bis 26', exact: true }).click();
+  ok((await ownRows.count()) === 3, 'classes: B removed – three classes');
+  // typed into the field: 18 joins in its order
+  await field.fill('18');
+  await field.press('Enter');
+  ok(JSON.stringify(await texts()) === '["Klasse A bis 9","Klasse B bis 18","Klasse C bis 26","Klasse D bis 54"]', `classes: 18 typed – B again, in its order (${(await texts()).join(' | ')})`);
   await cs.getByRole('button', { name: '4 Klassen übernehmen' }).click();
   ok(/4 Klassen/.test(await row.innerText()) && (await H.getByText('A bis 9 · B bis 18 · C bis 26 · D bis 54', { exact: true }).count()) === 1, `classes: own taken – ${await row.innerText()}`);
-  // more than four (Sascha 03.11.2026: "freely configurable"): "+ Klasse" up to ten, A to J – not taken
+  // up to ten (A to J): the field gone at ten
   await row.click();
-  // each new class a step on, its limit then chosen: D 30, E 34 … I 50, J up to 54
-  for (let i = 3; i < 9; i++) {
-    await cs.getByRole('button', { name: '+ Klasse' }).click();
-    await ownRows.nth(i).click();
-    await H.getByRole('dialog', { name: `Klasse ${'ABCDEFGHIJ'[i]} bis` }).getByRole('button', { name: `bis ${26 + 4 * (i - 2)}`, exact: true }).click();
+  for (const v of [30, 34, 38, 42, 46, 50]) {
+    await field.fill(String(v));
+    await field.press('Enter');
   }
-  const ten = (await ownRows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
-  ok(ten.length === 10 && ten[9] === 'Klasse J bis 54' && (await cs.getByRole('button', { name: '+ Klasse' }).count()) === 0 && (await cs.getByRole('button', { name: '10 Klassen übernehmen' }).count()) === 1, `classes: up to ten – ${ten.join(' | ')}`);
+  const ten = await texts();
+  ok(ten.length === 10 && ten[9] === 'Klasse J bis 54' && (await field.count()) === 0 && (await cs.getByRole('button', { name: '10 Klassen übernehmen' }).count()) === 1, `classes: up to ten – ${ten.join(' | ')}`);
   await cs.getByRole('button', { name: 'Schließen' }).click();
   // back to brutto for the rest of the test
   await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
   await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Brutto/ }).click();
 }
-for (const n of ['Chris', 'Erik', 'Cedric']) {
+// the order of the setup (Sascha 04.11.2026): Score-Erfassung between the day and the players, the special prizes as
+// rows under them, the flights last
+{
+  const heads = (await H.locator('main.screen > .setup-part > .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase());
+  ok(heads.join('|') === 'TURNIER|SPIELFORM|PLATZ|DATUM|SCORE-ERFASSUNG|SPIELER|SONDERWERTUNGEN (OPTIONAL)|FLIGHTS UND STARTZEITEN', `the order: ${heads.join(' · ')}`);
+}
+for (const n of ['Chris', 'Erik', 'Cedric', 'Dave']) {
   await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
   await H.locator('input[id^="name-"]').last().fill(n);
-  await H.locator('input[id^="hcp-"]').last().fill('0');
+  await H.locator('input[id^="hcp-"]').last().fill(n === 'Dave' ? '' : n === 'Cedric' ? '20' : n === 'Erik' ? '4' : '12,4');
 }
-await H.locator('input[id^="hcp-"]').first().fill('0');
-if (process.env.SHOTS) { await H.locator('.tour-unplaced').scrollIntoViewIfNeeded(); await H.screenshot({ path: process.env.SHOTS + '/tours-unplaced.png' }); }
+await H.locator('input[id^="hcp-"]').first().fill('7');
+await H.waitForTimeout(300);
 const fl = (k) => H.locator('.tour-flight:not(.tour-unplaced)').nth(k);
 const names = async (k) => (await fl(k).locator('.tour-flight-player strong').allInnerTexts()).join(',');
-const sheet = H.getByRole('dialog', { name: /^Flight \d$/ });
-// the tee time: a row, its sheet in the look of GolfOS – hours and minutes to tap (Sascha 03.11.2026)
-const teeShown = () => sheet.locator('.settings-row').filter({ hasText: 'Startzeit' }).locator('.settings-value').innerText();
-const setTee = async (hhmm) => {
-  const [hh, mm] = hhmm.split(':');
-  await sheet.locator('.settings-row').filter({ hasText: 'Startzeit' }).click();
-  const t = H.getByRole('dialog', { name: 'Startzeit' });
-  await t.getByRole('group', { name: 'Stunde' }).getByRole('button', { name: hh, exact: true }).click();
-  await t.getByRole('group', { name: 'Minute' }).getByRole('button', { name: mm, exact: true }).click();
-  await t.getByRole('button', { name: 'Speichern', exact: true }).click();
+const sorted = async (k) => (await fl(k).locator('.tour-flight-player strong').allInnerTexts()).sort().join(',');
+const setting = (label) => H.locator('.settings-row').filter({ hasText: new RegExp(`^${label}`) });
+const choose = async (label, option) => {
+  await setting(label).first().click();
+  await H.locator('.sheet .pick-option').filter({ hasText: option }).first().click();
+  await H.waitForTimeout(200);
 };
-const offered = async () => (await sheet.getByRole('group', { name: 'Spieler des Flights' }).getByRole('button').allInnerTexts()).join(',');
-const pressed = async () => (await sheet.getByRole('group', { name: 'Spieler des Flights' }).locator('[aria-pressed="true"]').allInnerTexts()).join(',');
-// a fifth player
-await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
-await H.locator('input[id^="name-"]').last().fill('Dave');
-// Sascha 02.11.2026: "create a flight with its tee time, then assign people to it; flight 2 or 3 only offers those not
-// in a flight yet; easy to change afterwards; show who marks whom – as on the tournament's page"
-ok((await H.locator('.tour-flight:not(.tour-unplaced)').count()) === 0 && (await H.locator('.tour-unplaced .tour-chip').allInnerTexts()).join(',') === 'Sascha,Chris,Erik,Cedric,Dave', 'no flight yet: all five "Noch ohne Flight"');
-await H.getByRole('button', { name: '+ Flight' }).click();
-ok((await teeShown()) === '09:00' && (await sheet.getByRole('button', { name: 'Flight anlegen' }).isDisabled()), 'flight 1: its tee time (09:00), then its players – none chosen yet');
-await setTee('12:08');
-for (const n of ['Sascha', 'Chris', 'Erik', 'Cedric']) await sheet.getByRole('button', { name: n, exact: true }).click();
-ok((await sheet.getByRole('button', { name: 'Dave', exact: true }).isDisabled()) && (await sheet.getByText('Voll – vier Spieler.').isVisible()), 'four chosen: Dave cannot be added – a flight has at most four');
-for (const n of ['Erik', 'Cedric']) await sheet.getByRole('button', { name: n, exact: true }).click();
-await sheet.getByRole('button', { name: 'Flight anlegen' }).click();
-const f1 = (await fl(0).innerText()).replace(/\s+/g, ' ');
-ok((await names(0)) === 'Sascha,Chris' && (await fl(0).locator('.tour-tee').innerText()) === '12:08', `flight 1: Sascha and Chris at 12:08 (${f1})`);
-ok(/Sascha · Zähler: Chris/.test(f1) && /Chris · Zähler: Sascha/.test(f1), 'who marks whom shown – set by the app, as on the tournament page');
-await H.getByRole('button', { name: '+ Flight' }).click();
-ok((await offered()) === 'Erik,Cedric,Dave' && (await teeShown()) === '12:18', `flight 2: only those not in a flight yet (${await offered()}); its time 10 minutes on, to the minute`);
-await setTee('12:16');
-for (const n of ['Erik', 'Cedric']) await sheet.getByRole('button', { name: n, exact: true }).click();
-await sheet.getByRole('button', { name: 'Flight anlegen' }).click();
-ok((await names(1)) === 'Erik,Cedric' && (await fl(1).locator('.tour-tee').innerText()) === '12:16' && (await H.locator('.tour-unplaced').innerText()).includes('Dave'), 'flight 2: Erik and Cedric at 12:16 – Dave still without a flight');
-ok(await H.getByText('Noch ohne Flight').first().isVisible(), 'Dave: "Noch ohne Flight"');
-await H.getByRole('button', { name: 'Dave entfernen' }).click();
-ok((await H.locator('.tour-unplaced').count()) === 0 && (await H.getByRole('button', { name: '+ Flight' }).isDisabled()), 'Dave taken out: everyone in a flight – "+ Flight" has nobody left to offer');
-// changed afterwards: Cedric out of flight 2, into flight 1 – and back
-await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
-ok((await pressed()) === 'Erik,Cedric' && (await teeShown()) === '12:16', 'flight 2 opened again: its players and its time');
-await sheet.getByRole('button', { name: 'Cedric', exact: true }).click();
-await sheet.getByRole('button', { name: 'Speichern' }).click();
-ok((await names(1)) === 'Erik' && (await H.getByText('Jeder Flight braucht mindestens zwei Spieler').isVisible()) && (await H.locator('.tour-unplaced').innerText()).includes('Cedric'), 'Cedric out of flight 2: Erik alone – told, no tournament like this');
-await H.getByRole('button', { name: 'Flight 1 ändern' }).click();
-ok((await offered()) === 'Sascha,Chris,Cedric', `flight 1 opened: its players and Cedric, who is in none (${await offered()})`);
-await sheet.getByRole('button', { name: 'Cedric', exact: true }).click();
-await sheet.getByRole('button', { name: 'Speichern' }).click();
-const f1b = (await fl(0).innerText()).replace(/\s+/g, ' ');
-ok((await names(0)) === 'Sascha,Chris,Cedric' && (f1b.match(/Zähler: /g) ?? []).length === 3, `three in flight 1: each has a marker, in a ring (${f1b})`);
-await H.getByRole('button', { name: 'Flight 1 ändern' }).click();
-await sheet.getByRole('button', { name: 'Cedric', exact: true }).click();
-await sheet.getByRole('button', { name: 'Speichern' }).click();
-await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
-await sheet.getByRole('button', { name: 'Cedric', exact: true }).click();
-await sheet.getByRole('button', { name: 'Speichern' }).click();
-ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'Cedric back in flight 2');
-// one for all (Sascha 02.11.2026: "a person enters the score for all"): Cedric keeps flight 2's score – set in the
-// tournament's "Score-Erfassung", as a round's, not under a flight's "Ändern" (Sascha 03.11.2026)
-await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
-ok((await sheet.getByText('Wer erfasst die Scores?').count()) === 0, 'the flight sheet: no scorer any more');
-await sheet.getByRole('button', { name: 'Schließen' }).click();
-const who = H.locator('.settings-row').filter({ hasText: 'Wer erfasst' });
-// the three choices of a round (Sascha 03.11.2026: "with a marker missing – as in Rounds"), "Mit Zähler" the default
-ok(/Mit Zähler/.test(await who.innerText()) && /Zähler: /.test(await fl(1).innerText()), `Score-Erfassung: "Mit Zähler" by default, the markers shown (${(await who.innerText()).replace(/\s+/g, ' ')})`);
-await who.click();
+// the draw (Sascha 04.11.2026: "random, by handicap up or down; by result at the final day"): by handicap down at first –
+// Dave without one counts as the highest, the best go out last; 5 players to fours: 3 and 2
+ok(/Nach HCP absteigend/.test(await setting('Einteilung').innerText()) && /4 Spieler/.test(await setting('Spieler je Flight').innerText()) && /09:00/.test(await setting('Erste Startzeit').innerText()) && /8 Min\./.test(await setting('Abstand').innerText()) && /Tee 1/.test(await setting('Start').innerText()), 'flights: by handicap down, fours, 09:00, 8 minutes, tee 1 – each a row');
+ok((await sorted(0)) === 'Cedric,Chris,Dave' && (await sorted(1)) === 'Erik,Sascha' && (await fl(1).locator('.tour-tee').innerText()) === '09:08', `by handicap down: Dave (none), Cedric 20, Chris 12,4 – then Sascha 7, Erik 4 at 09:08 (${await names(0)} | ${await names(1)})`);
+await choose('Einteilung', 'Nach HCP aufsteigend');
+ok((await sorted(0)) === 'Chris,Erik,Sascha' && (await sorted(1)) === 'Cedric,Dave', `by handicap up: the lowest first (${await names(0)} | ${await names(1)})`);
 {
-  const opts = (await H.getByRole('dialog', { name: 'Wer erfasst' }).locator('.pick-option strong').allInnerTexts()).join('|');
-  ok(opts === 'Jeder seinen eigenen|Mit Zähler|Einer für alle', `Score-Erfassung: the choices of Rounds – ${opts}`);
+  const opts = (await (async () => { await setting('Einteilung').click(); const o = await H.locator('.sheet .pick-option strong').allInnerTexts(); await H.getByRole('button', { name: 'Schließen' }).last().click(); return o; })()).join('|');
+  ok(opts === 'Manuell|Zufällig|Nach HCP aufsteigend|Nach HCP absteigend', `the draws of a first round – no "by result" (${opts})`);
 }
-await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Jeder seinen eigenen/ }).click();
-ok(!/Zähler: /.test(await fl(0).innerText() + (await fl(1).innerText())) && (await H.getByText('Jeder unterschreibt seine Karte selbst.').count()) === 1, 'everyone his own: no markers in the flights');
-await who.click();
-await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
-ok(/Erik/.test(await fl(1).locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()), 'one per flight: the flight\'s first is its scorer, a row "Schreiber"');
-await fl(1).locator('.settings-row').filter({ hasText: 'Schreiber' }).click();
-await H.getByRole('dialog', { name: 'Schreiber in Flight 2' }).getByRole('button', { name: /^Cedric/ }).click();
-const f2 = (await fl(1).innerText()).replace(/\s+/g, ' ');
-ok(/Schreiber Cedric/.test(f2) && /Erik · Zähler: Cedric/.test(f2) && /Cedric · Zähler: Erik/.test(f2), `flight 2: Cedric for all – Erik's marker, his own card Erik's (${f2})`);
-ok((await H.locator('#tour-first, #tour-gap').count()) === 0 && (await H.getByText('Abstand', { exact: true }).count()) === 0, 'no first tee time, no interval – each flight its own time to the minute');
-// drag and drop (Sascha 02.11.2026: "move the players between the flights by drag and drop"): Chris by his grip onto
-// flight 2 – Cedric was its scorer, Chris joins; then back, and a full flight takes nobody
+await choose('Einteilung', 'Zufällig');
+ok((await H.locator('.tour-flight-player').count()) === 5 && (await H.getByRole('button', { name: 'Neu auslosen' }).count()) === 1, 'random: everyone in a flight, "Neu auslosen"');
+await choose('Spieler je Flight', '2 Spieler');
+ok((await H.locator('.tour-flight:not(.tour-unplaced)').count()) === 2, 'twos with five players: 3 and 2 – nobody alone');
+// tees 1 and 10: two flights on each time
+await choose('Start', 'Tee 1 und Tee 10');
+ok((await fl(1).locator('.tour-tee').innerText()) === '09:00' && /Tee 10/.test(await fl(1).locator('h2').innerText()), 'tees 1 and 10: flight 2 at 09:00 from tee 10');
+await choose('Start', 'Tee 1');
+// Dave taken out, by handicap up in twos: Sascha 7, Erik 4 | Chris 12,4, Cedric 20; the first tee time 12:08, 8 minutes on
+await H.getByRole('button', { name: 'Dave entfernen' }).click();
+await choose('Einteilung', 'Nach HCP aufsteigend');
+await setting('Erste Startzeit').click();
+{
+  const t = H.getByRole('dialog', { name: 'Erste Startzeit' });
+  await t.getByRole('group', { name: 'Stunde' }).getByRole('button', { name: '12', exact: true }).click();
+  await t.getByRole('group', { name: 'Minute' }).getByRole('button', { name: '08', exact: true }).click();
+  await t.getByRole('button', { name: 'Speichern', exact: true }).click();
+}
+ok((await sorted(0)) === 'Erik,Sascha' && (await sorted(1)) === 'Cedric,Chris' && (await H.locator('.tour-tee').allInnerTexts()).join(',') === '12:08,12:16', `twos by handicap up from 12:08: 12:08 and 12:16 (${await names(0)} | ${await names(1)})`);
+const f1 = (await fl(0).innerText()).replace(/\s+/g, ' ');
+ok(/Sascha · Zähler: Erik/.test(f1) && /Erik · Zähler: Sascha/.test(f1), `who marks whom shown – set by the app (${f1})`);
+if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-setup-flights.png', fullPage: true });
+// by hand (Sascha 02.11.2026: drag and drop): Chris by his grip onto flight 1 – the draw "Manuell" from then on
 const dragTo = async (who, target) => {
   const grip = H.locator('.tour-flight-player').filter({ has: H.locator('strong', { hasText: new RegExp(`^${who}$`) }) }).locator('.tour-grip');
   await grip.scrollIntoViewIfNeeded();
@@ -296,40 +260,13 @@ const dragTo = async (who, target) => {
   await H.mouse.up();
   await H.waitForTimeout(300);
 };
-await dragTo('Chris', fl(1));
-ok((await names(0)) === 'Sascha' && (await names(1)) === 'Chris,Erik,Cedric', `Chris dragged by his grip onto flight 2 (${await names(0)} | ${await names(1)})`);
 await dragTo('Chris', fl(0));
-ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'and dragged back onto flight 1');
-// on the iPhone (Sascha 02.11.2026: "does not work yet"): the whole row held a moment lifts the player; moved at once it
-// only scrolls
-const holdTo = async (who, target, wait) => {
-  const row = H.locator('.tour-flight-player').filter({ has: H.locator('strong', { hasText: new RegExp(`^${who}$`) }) }).locator('strong');
-  // the row low on the screen, the flight above in view – away from the edges that scroll the page along
-  await row.evaluate((e) => window.scrollBy(0, e.getBoundingClientRect().top - window.innerHeight * 0.68));
-  await H.waitForTimeout(200);
-  const a = await row.boundingBox();
-  const x0 = a.x + 10;
-  const y0 = a.y + a.height / 2;
-  await H.mouse.move(x0, y0);
-  await H.mouse.down();
-  await H.waitForTimeout(wait);
-  // the target read again once lifted (the drop zone "Noch ohne Flight" may have appeared)
-  const b = await target.boundingBox();
-  const x1 = b.x + 60;
-  const y1 = b.y + 30;
-  for (let i = 1; i <= 12; i++) await H.mouse.move(x0 + ((x1 - x0) * i) / 12, y0 + ((y1 - y0) * i) / 12);
-  await H.mouse.up();
-  await H.waitForTimeout(300);
-};
-await holdTo('Erik', fl(0), 0);
-ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'the row moved at once: nothing lifted – a scroll');
-await holdTo('Erik', fl(0), 500);
-ok((await names(0)) === 'Sascha,Chris,Erik' && (await names(1)) === 'Cedric', `the row held a moment: Erik lifted and dropped on flight 1 (${await names(0)} | ${await names(1)})`);
-await holdTo('Erik', fl(1), 500);
-ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'and held back onto flight 2');
-// the finger (Sascha 03.11.2026: "still does not work on the iPhone – in the round's review it does"): real touch
-// events, as the iPhone sends them (this WebKit has no touch input to drive – dispatched on the element under the
-// finger, as Safari does) – the grip at once, the row after a hold, a move first only scrolls
+ok((await sorted(0)) === 'Chris,Erik,Sascha' && (await names(1)) === 'Cedric' && /Manuell/.test(await setting('Einteilung').innerText()), `Chris dragged by his grip onto flight 1 – "Manuell" now (${await names(0)} | ${await names(1)})`);
+await dragTo('Chris', fl(1));
+ok((await sorted(0)) === 'Erik,Sascha' && (await sorted(1)) === 'Cedric,Chris', 'and dragged back onto flight 2');
+// the finger (Sascha 04.11.2026: "nothing lifts" on the iPhone): real touch events as Safari sends them – the grip at
+// once, the row after a hold, a move first only scrolls; the board a real box (not display: contents)
+ok((await H.locator('.tour-board').evaluate((e) => getComputedStyle(e).display)) === 'flex', 'the board a real box – the iPhone gives it cancelable touches');
 const touch = (type, x, y) =>
   H.evaluate(
     ([type, x, y]) => {
@@ -352,6 +289,7 @@ const touchTo = async (who, target, { grip = false, wait = 0 } = {}) => {
   const y0 = a.y + a.height / 2;
   await touch('touchstart', x0, y0);
   await H.waitForTimeout(wait);
+  const lifted = await row.evaluate((e) => e.classList.contains('lifted'));
   const b = await target.boundingBox();
   const x1 = b.x + 60;
   const y1 = b.y + 30;
@@ -359,38 +297,76 @@ const touchTo = async (who, target, { grip = false, wait = 0 } = {}) => {
     await touch('touchmove', x0 + ((x1 - x0) * i) / 12, y0 + ((y1 - y0) * i) / 12);
     await H.waitForTimeout(16);
   }
+  const moved = await row.evaluate((e) => e.style.transform);
   await touch('touchend', x1, y1);
   await H.waitForTimeout(300);
+  return { lifted, moved };
 };
-await touchTo('Chris', fl(1), { grip: true });
-ok((await names(0)) === 'Sascha' && (await names(1)) === 'Chris,Erik,Cedric', `finger: Chris by his grip onto flight 2 (${await names(0)} | ${await names(1)})`);
-await touchTo('Chris', fl(0), { wait: 600 });
-ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', `finger: Chris's row held, back onto flight 1 (${await names(0)} | ${await names(1)})`);
-await touchTo('Erik', fl(0));
-ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'finger: the row moved at once – a scroll, nobody moved');
+{
+  const t = await touchTo('Chris', fl(0), { grip: true });
+  ok(t.lifted && /translate/.test(t.moved) && (await sorted(0)) === 'Chris,Erik,Sascha' && (await names(1)) === 'Cedric', `finger: Chris by his grip – lifted at once, the row following the finger, onto flight 1 (${t.moved})`);
+}
+await touchTo('Chris', fl(1), { wait: 450 });
+ok((await sorted(0)) === 'Erik,Sascha' && (await sorted(1)) === 'Cedric,Chris', `finger: Chris's row held, back onto flight 2 (${await names(0)} | ${await names(1)})`);
+await touchTo('Erik', fl(1));
+ok((await sorted(0)) === 'Erik,Sascha' && (await sorted(1)) === 'Cedric,Chris', 'finger: the row moved at once – a scroll, nobody moved');
 // a tap: where to – the sure way beside dragging (Sascha 03.11.2026)
-await fl(1).locator('.tour-flight-player strong', { hasText: /^Erik$/ }).click();
-const mv = H.getByRole('dialog', { name: 'Erik verschieben' });
-ok((await mv.locator('.pick-option').count()) === 3 && /Flight 1 · 12:08/.test(await mv.innerText()), 'tap: the flights and "Noch ohne Flight" offered');
-await mv.getByRole('button', { name: /^Flight 1/ }).click();
-ok((await names(0)) === 'Sascha,Chris,Erik' && (await names(1)) === 'Cedric', `tap: Erik into flight 1 (${await names(0)} | ${await names(1)})`);
 await fl(0).locator('.tour-flight-player strong', { hasText: /^Erik$/ }).click();
-await H.getByRole('dialog', { name: 'Erik verschieben' }).getByRole('button', { name: /^Flight 2/ }).click();
-ok((await names(0)) === 'Sascha,Chris' && (await names(1)) === 'Erik,Cedric', 'tap: and back into flight 2');
-// special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional"): Nearest to the Pin on a par 3
-await H.getByRole('button', { name: '+ Long Drive' }).click();
-await H.getByRole('button', { name: '+ Nearest to the Pin' }).click();
-const ntpHole = await H.getByRole('combobox', { name: 'Loch für Nearest to the Pin' }).locator('option:checked').innerText();
-const ntpPars = await H.getByRole('combobox', { name: 'Loch für Nearest to the Pin' }).locator('option').allInnerTexts();
-ok(/Par 3$/.test(ntpHole) && ntpPars.every((t) => /Par 3$/.test(t)), `Nearest to the Pin: only par 3s offered (${ntpHole}, ${ntpPars.length} holes)`);
-const ldPars = await H.getByRole('combobox', { name: 'Loch für Long Drive' }).locator('option').allInnerTexts();
-ok(ldPars.length > 0 && ldPars.every((t) => /Par [45]$/.test(t)), `Long Drive: par 4s and 5s (${ldPars.length} holes)`);
+const mv = H.getByRole('dialog', { name: 'Erik verschieben' });
+ok((await mv.locator('.pick-option').count()) === 3 && /Flight 2 · 12:16/.test(await mv.innerText()), 'tap: the flights and "Noch ohne Flight" offered');
+await mv.getByRole('button', { name: /^Flight 2/ }).click();
+ok((await names(0)) === 'Sascha' && (await sorted(1)) === 'Cedric,Chris,Erik', `tap: Erik into flight 2 (${await names(0)} | ${await names(1)})`);
+await fl(1).locator('.tour-flight-player strong', { hasText: /^Erik$/ }).click();
+await H.getByRole('dialog', { name: 'Erik verschieben' }).getByRole('button', { name: /^Flight 1/ }).click();
+ok((await sorted(0)) === 'Erik,Sascha' && (await sorted(1)) === 'Cedric,Chris', 'tap: and back into flight 1');
+// a flight's own time and tee: "Ändern"
+const sheet = H.getByRole('dialog', { name: /^Flight \d$/ });
+await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
+ok(/12:16/.test(await sheet.locator('.settings-row').filter({ hasText: 'Startzeit' }).innerText()) && /Tee 1/.test(await sheet.locator('.settings-row').filter({ hasText: 'Start' }).last().innerText()), 'flight 2 opened: its tee time and its tee');
+await sheet.getByRole('button', { name: 'Schließen' }).click();
+// Score-Erfassung (Sascha 03./04.11.2026): "Mit Zähler" the default; "Einer für alle" – who keeps the score chosen there,
+// not in the flights
+const who = H.locator('.settings-row').filter({ hasText: 'Wer erfasst' });
+ok(/Mit Zähler/.test(await who.innerText()), `Score-Erfassung: "Mit Zähler" by default (${(await who.innerText()).replace(/\s+/g, ' ')})`);
+await who.click();
+{
+  const opts = (await H.getByRole('dialog', { name: 'Wer erfasst' }).locator('.pick-option strong').allInnerTexts()).join('|');
+  ok(opts === 'Jeder seinen eigenen|Mit Zähler|Einer für alle', `Score-Erfassung: the choices of Rounds – ${opts}`);
+}
+await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Jeder seinen eigenen/ }).click();
+ok(!/Zähler: /.test((await fl(0).innerText()) + (await fl(1).innerText())) && (await H.getByText('Jeder unterschreibt seine Karte selbst.').count()) === 1, 'everyone his own: no markers in the flights');
+await who.click();
+await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
+const scorers = H.locator('.settings-row').filter({ hasText: 'Schreiber' });
+ok(/Der Erste im Flight/.test(await scorers.innerText()) && (await fl(0).locator('.settings-row').count()) === 0, 'one for all: a row "Schreiber" under "Wer erfasst" – none in the flights');
+await scorers.click();
+await H.getByRole('dialog', { name: 'Schreiber' }).getByRole('button', { name: /^Cedric/ }).click();
+await H.getByRole('dialog', { name: 'Schreiber' }).getByRole('button', { name: 'Fertig' }).click();
+ok(/Cedric/.test(await scorers.innerText()) && /Cedric erfasst die Scores für alle/.test(await fl(1).innerText()) && /Erik erfasst die Scores für alle|Sascha erfasst die Scores für alle/.test(await fl(0).innerText()), `Cedric keeps flight 2's score, flight 1 its first (${(await fl(1).innerText()).replace(/\s+/g, ' ')})`);
+// the special prizes as rows (Sascha 04.11.2026), the holes ticked in a sheet – Long Drive par 4s and 5s, Nearest to the Pin par 3s
+await H.locator('.settings-row').filter({ hasText: 'Long Drive' }).click();
+{
+  const s = H.getByRole('dialog', { name: 'Long Drive' });
+  const pars = (await s.locator('.pick-option .muted').allInnerTexts()).map((t) => t.trim());
+  ok(pars.length > 0 && pars.every((t) => /^Par [45]$/.test(t)), `Long Drive: par 4s and 5s (${pars.length} holes)`);
+  await s.locator('.pick-option').first().click();
+  await s.getByRole('button', { name: 'Fertig' }).click();
+}
+await H.locator('.settings-row').filter({ hasText: 'Nearest to the Pin' }).click();
+{
+  const s = H.getByRole('dialog', { name: 'Nearest to the Pin' });
+  const pars = (await s.locator('.pick-option .muted').allInnerTexts()).map((t) => t.trim());
+  ok(pars.length > 0 && pars.every((t) => t === 'Par 3'), `Nearest to the Pin: only par 3s (${pars.length} holes)`);
+  await s.locator('.pick-option').first().click();
+  await s.getByRole('button', { name: 'Fertig' }).click();
+}
+ok(/Loch \d+/.test(await H.locator('.settings-row').filter({ hasText: 'Long Drive' }).innerText()) && /Loch \d+/.test(await H.locator('.settings-row').filter({ hasText: 'Nearest to the Pin' }).innerText()), 'the special prizes: their holes in the rows');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-setup.png', fullPage: true });
 await H.getByRole('button', { name: 'Turnier anlegen' }).click();
 await H.waitForTimeout(2500);
 const code = [...shared.entries()].find(([, r]) => !r.event_code && r.game.kind === 'round-event')?.[0];
 const ev = code && shared.get(code).game;
-ok(!!ev && ev.planned === true && ev.tournament === true && ev.name === 'USA Tag 1' && ev.date === new Date().toLocaleDateString('sv-SE') && ev.course?.name, `server: the planned tournament (${code}, ${ev?.date}, ${ev?.course?.name})`);
+ok(!!ev && ev.planned === true && ev.tournament === true && ev.name === 'USA Tag 1' && ev.date === new Date().toLocaleDateString('sv-SE') && ev.course?.name && ev.draw?.mode === 'manual', `server: the planned tournament (${code}, ${ev?.date}, ${ev?.course?.name}, draw ${ev?.draw?.mode}, ${ev?.format?.scoring})`);
 const fs1 = code ? flightsOf(code) : [];
 const byTime = [...fs1].sort((x, y) => x.teeTime.localeCompare(y.teeTime));
 ok(byTime[1]?.scorer === byTime[1]?.players.find((p) => p.name === 'Cedric')?.id && byTime[0]?.scorer === byTime[0]?.players[0]?.id, `server: one per flight – Cedric in flight 2, flight 1 its first (${byTime.map((f) => f.scorer ?? '–').join(', ')})`);
@@ -399,7 +375,7 @@ const specials = ev?.specials ?? [];
 const ld = specials.find((s) => s.kind === 'longDrive');
 const ntp = specials.find((s) => s.kind === 'nearestPin');
 ok(specials.length === 2 && ev.holes[ntp.hole].par === 3 && ev.holes[ld.hole].par >= 4, `server: the two special prizes on their holes (LD ${ld && ev.holes[ld.hole].label}, NTP ${ntp && ev.holes[ntp.hole].label})`);
-ok(byTime[0].players.map((p) => p.name).join(',') === 'Sascha,Chris' && byTime[0].markers.p1 === 'p2' && byTime[0].markers.p2 === 'p1' && byTime[0].players.every((p) => p.hcpIndex === 0), 'server: flight 1 Sascha and Chris, marking each other, the HCP kept');
+ok(byTime[0].players.map((p) => p.name).join(',') === 'Sascha,Erik' && byTime[0].markers.p1 === 'p2' && byTime[0].markers.p2 === 'p1' && byTime[0].players[0].hcpIndex === 7, 'server: flight 1 Sascha and Erik, marking each other, the HCP kept');
 ok((await H.locator('.topbar h1').innerText()).includes('USA Tag 1') && (await H.locator('.tour-tee').allInnerTexts()).join(',') === '12:08,12:16', 'the tournament page: the flights with their tee times');
 ok((await H.getByText('Zähler: Chris').count()) === 1 && (await H.getByText('Zähler: Sascha').count()) === 1, 'the tournament page: who marks whom');
 ok((await H.getByText('Cedric erfasst die Scores für alle').count()) === 1 && (await H.getByText('Zähler: Cedric').count()) === 1, 'the tournament page: Cedric keeps the score of flight 2');
@@ -423,9 +399,9 @@ const put = (f, scores) => {
   row.game = { kind: 'round-flight', flight: { ...row.game.flight, scores: Object.fromEntries(Object.entries(scores).map(([pid, ss]) => [pid, row.game.flight.scores[pid].map((_, i) => (ss[i] == null ? null : { s: ss[i] }))])) } };
   row.updated_at = new Date().toISOString();
 };
-put(byTime[0], { p1: [4, 4, 4], p2: [3, 4, 4] }); // Sascha 12, Chris 11
-put(byTime[1], { p1: [5, 5, 5], p2: [4, 5, 4] }); // Erik 15, Cedric 13
-// the special prizes as the players enter them at the hole (each flight's row): Erik's long drive in the rough
+put(byTime[0], { p1: [4, 4, 4], p2: [3, 4, 4] }); // Sascha 12, Erik 11
+put(byTime[1], { p1: [5, 5, 5], p2: [4, 5, 4] }); // Chris 15, Cedric 13
+// the special prizes as the players enter them at the hole (each flight's row): Chris's long drive in the rough
 const at = new Date().toISOString();
 shared.get(byTime[0].code).game.flight.specials = { [ld.id]: { p1: { m: 251, fairway: true, at }, p2: { m: 238, fairway: true, at } }, [ntp.id]: { p2: { m: 3.4, at } } };
 shared.get(byTime[1].code).game.flight.specials = { [ld.id]: { p1: { m: 275, fairway: false, at } }, [ntp.id]: { p2: { m: 1.8, at } } };
@@ -442,20 +418,25 @@ const board = H.getByRole('region', { name: 'Live-Leaderboard' });
 const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && /Aktualisiert \d\d:\d\d/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
 if (process.env.SHOTS) await board.screenshot({ path: process.env.SHOTS + '/tours-live.png' });
-ok(rows.length === 4 && /Chris/.test(rows[0]) && /Erik/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Chris first, Erik last, all "nach 3" (${rows.join(' | ')})`);
+ok(rows.length === 4 && /Erik/.test(rows[0]) && /Chris/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Erik first, Chris last, all "nach 3" (${rows.join(' | ')})`);
+// a player tapped: his scorecard opens below (Sascha 04.11.2026)
+await board.locator('.lb-rows li').first().click();
+ok((await board.locator('.lb-card table.sc').count()) >= 1 && /Erik/.test(await board.locator('.lb-rows li').first().innerText()), 'the leaderboard: Erik tapped – his scorecard below');
+await board.locator('.lb-rows li .lb-name').first().click();
+ok((await board.locator('.lb-card').count()) === 0, 'tapped again: closed');
 const ldRows = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 const ntpRows = (await H.getByRole('region', { name: 'Nearest to the Pin' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(ldRows.length === 2 && /Sascha.*251 m/.test(ldRows[0]) && /Chris.*238 m/.test(ldRows[1]), `Long Drive: longest in the fairway first, Erik's 275 m in the rough not ranked (${ldRows.join(' | ')})`);
-ok(ntpRows.length === 2 && /Cedric.*1,8 m/.test(ntpRows[0]) && /Chris.*3,4 m/.test(ntpRows[1]), `Nearest to the Pin: nearest first (${ntpRows.join(' | ')})`);
-// the host corrects an entry (Sascha 01.11.2026): Erik's long drive measured again – 280 m, in the fairway
+ok(ldRows.length === 2 && /Sascha.*251 m/.test(ldRows[0]) && /Erik.*238 m/.test(ldRows[1]), `Long Drive: longest in the fairway first, Chris's 275 m in the rough not ranked (${ldRows.join(' | ')})`);
+ok(ntpRows.length === 2 && /Cedric.*1,8 m/.test(ntpRows[0]) && /Erik.*3,4 m/.test(ntpRows[1]), `Nearest to the Pin: nearest first (${ntpRows.join(' | ')})`);
+// the host corrects an entry (Sascha 01.11.2026): Chris's long drive measured again – 280 m, in the fairway
 await H.getByRole('region', { name: 'Long Drive' }).getByRole('button', { name: 'Eintrag korrigieren' }).click();
 const fixer = H.getByRole('dialog', { name: 'Eintrag korrigieren' });
-await fixer.getByRole('combobox', { name: 'Spieler' }).selectOption({ label: 'Erik' });
+await fixer.getByRole('combobox', { name: 'Spieler' }).selectOption({ label: 'Chris' });
 await fixer.locator('#special-m').fill('280');
 await fixer.getByRole('button', { name: 'Speichern' }).click();
 await H.waitForTimeout(1500);
 const ld2 = (await H.getByRole('region', { name: 'Long Drive' }).locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
-ok(/Erik.*280 m/.test(ld2[0] ?? '') && shared.get(byTime[1].code).game.flight.specials[ld.id].p1.by === 'host', `the host's correction: Erik 280 m in the fairway leads (${ld2.join(' | ')})`);
+ok(/Chris.*280 m/.test(ld2[0] ?? '') && shared.get(byTime[1].code).game.flight.specials[ld.id].p1.by === 'host', `the host's correction: Chris 280 m in the fairway leads (${ld2.join(' | ')})`);
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/tours-page.png', fullPage: true });
 // a flight ended by mistake (Sascha 03.11.2026: "Cedric ended the round by accident – then he did not get in any more"):
 // the host opens it again, its scores kept
@@ -541,8 +522,16 @@ ok(!!srow && srow.name === 'USA 2026' && srow.rounds.map((r) => r.code).join() =
 ok((await H.locator('.topbar h1').innerText()).includes('USA 2026') && (await H.locator('.list-item').filter({ hasText: 'Runde 2' }).count()) === 1, 'the series page: its rounds in order');
 const total = (await H.locator('[aria-label="Gesamtwertung"] li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 // live: round 1 running (3 holes) – each player what it added, "nach 3", the LIVE mark
-ok(total.length === 4 && /Chris/.test(total[0]) && total.every((t) => /R1 .*\(nach 3\)/.test(t) && /nach 3$/.test(t.trim())) && (await H.locator('[aria-label="Gesamtwertung"] .tour-live-badge').count()) === 1, `the total live: round 1 running added up (${total.join(' | ')})`);
+ok(total.length === 4 && /Erik/.test(total[0]) && total.every((t) => /R1 .*\(nach 3\)/.test(t) && /nach 3$/.test(t.trim())) && (await H.locator('[aria-label="Gesamtwertung"] .tour-live-badge').count()) === 1, `the total live: round 1 running added up (${total.join(' | ')})`);
 if (process.env.SHOTS) await H.locator('[aria-label="Gesamtwertung"]').screenshot({ path: process.env.SHOTS + '/tours-series-live.png' });
+// "R1 +3" tapped: that round's scorecard opens under the player (Sascha 04.11.2026)
+{
+  const tb = H.locator('[aria-label="Gesamtwertung"]');
+  await tb.locator('.lb-parts .chip').first().click();
+  ok((await tb.locator('.lb-card table.sc').count()) >= 1 && (await tb.locator('.lb-parts .chip[aria-pressed="true"]').count()) === 1, 'the total: R1 of the first tapped – his card of round 1 below');
+  await tb.locator('.lb-parts .chip').first().click();
+  ok((await tb.locator('.lb-card').count()) === 0, 'tapped again: closed');
+}
 // the pencil green as every pencil (Sascha 03.11.2026); the total's head a line of its own
 {
   const pen = await H.getByRole('button', { name: 'Serie umbenennen' }).evaluate((e) => getComputedStyle(e).backgroundColor);

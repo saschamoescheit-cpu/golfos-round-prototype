@@ -1153,7 +1153,6 @@ button.tile:disabled { opacity: 1; }
 .tour-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 14px 0 8px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: 600 15px var(--body); line-height: 1; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .tour-chip svg { color: var(--muted); flex-shrink: 0; }
 .tour-chip.on { border-color: var(--brand); background: var(--brand); color: #fff; }
-.tour-chip.lifted { opacity: 0.35; }
 .tour-ghost { position: fixed; z-index: 50; transform: translate(-50%, -60%); pointer-events: none; display: inline-flex; align-items: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
 .tour-here { min-height: 44px; }
 .series-pick { cursor: pointer; }
@@ -2010,7 +2009,6 @@ button.tile:disabled { opacity: 1; }
 .swipe-bin-text { font-size: 12px; font-weight: 600; }
 /* the flights' players dragged by their grip (Sascha 02.11.2026) – the page scrolls everywhere else */
 .tour-grip { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: -8px -10px -8px 0; color: var(--muted); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
-.tour-flight-player.lifted { opacity: 0.35; }
 .tour-flight.drop-full { opacity: 0.55; }
 /* a row's name and every cell at the height of its first bet (Sascha 02.11.2026: "always at the height of the first line") */
 .bet-matrix tbody tr:not(.bet-matrix-made) > th, .bet-matrix tbody tr:not(.bet-matrix-made) > td { vertical-align: top; }
@@ -2093,7 +2091,26 @@ button.tile:disabled { opacity: 1; }
 .friend-code .qr-box { width: min(200px, 56vw); }
 
 /* the flight board: a wrapper only for its touch listener (03.11.2026) – the flights stay in the page's column */
-.tour-board { display: contents; }
+/* the board a real box (04.11.2026): the iPhone gives a cancelable touch only where the element with its listener has
+   a box – with display: contents nothing lifted on Sascha's iPhone */
+.tour-board { display: flex; flex-direction: column; gap: 10px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.tour-board .tour-flight-player, .tour-board .tour-chip { transition: background 0.15s, transform 0.15s; }
+.tour-board .pressing { background: var(--surface-2); transform: scale(0.98); border-radius: 12px; }
+/* the lifted one follows the finger – the flight under it is found through it */
+.tour-board .lifted { position: relative; z-index: 30; pointer-events: none; background: var(--surface-2); border-radius: 12px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4); transition: none; }
+.tour-board.dragging .tour-flight:not(.drop-target) { transition: box-shadow 0.15s; }
+.tour-deal { display: flex; flex-direction: column; gap: 10px; }
+/* the leaderboard: a row opens its scorecard below, a series' row a chip per round (04.11.2026) */
+.lb-rows li.lb-tap { cursor: pointer; }
+.lb-rows li .lb-card { grid-column: 1 / -1; margin-top: 4px; overflow-x: auto; cursor: default; }
+.lb-parts { margin-top: 4px; gap: 6px; }
+.lb-parts .chip { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.lb-rows li.lb-cut { margin-top: 10px; box-shadow: 0 -6px 0 -4px var(--bad); }
+.lb-rows li.lb-out .lb-name, .lb-rows li.lb-out .lb-value { color: var(--text-2); }
+/* own net classes: the field under the last class adds one (04.11.2026) */
+.class-add { cursor: text; }
+.class-add-input { width: 90px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: right; outline: none; }
+.class-add-input::placeholder { color: var(--brand-text); }
 
 /* the start page: more room between the header and the module cards (Sascha 03.11.2026: "luftiger") */
 .module-chooser .home-hero { padding-top: 22px; }

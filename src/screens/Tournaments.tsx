@@ -1,27 +1,20 @@
-import { useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTop } from '../components/useTop';
-import type { Course, CourseSummary } from '../types';
 import { tr } from '../lib/i18n';
-import { buildRoundHoles, loopOptions } from '../lib/loops';
-import { loadCachedCourse, loadGeometry, newId } from '../lib/storage';
-import { courseTees, defaultTee, profileTee } from '../data/tees';
-import { inUsa } from '../lib/weather';
-import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib/handicap';
-import { fetchShared } from '../lib/sharedratings';
-import { isLady, loadProfile, shownName } from '../lib/profile';
 import { type Scoring } from '../lib/games';
-import { CLASS_NAMES, eventStandings, markerOf, plannedEvent, plannedFlight, refreshEvent, reopenFlight, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
-import { addToSeries, changeTour, createSeries, createTour, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
+import { CLASS_NAMES, eventCard, eventStandings, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
+import { changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
-import { holesFor, metres, specialBoard, specialName, type Special, type SpecialKind } from '../lib/specials';
-import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
-import { FriendChips } from './Home';
+import { metres, specialBoard, specialName, type Special } from '../lib/specials';
 import { TopBar } from '../components/ui';
+import { ScoreTable } from '../components/ScoreTable';
+import type { Round } from '../types';
+import { madeCut } from '../lib/tourdraw';
+import { dealRound, draftOf, draftOfMulti, tourScoring, type TourDraft } from './TourPlan';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
-import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow } from '../components/Settings';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 
 // Tournaments in Games (Sascha 01.11.2026: "tournaments can be planned ahead just like bets – set them up for the USA
@@ -154,7 +147,7 @@ function SeriesRow(props: { s: SeriesEntry; onOpen: () => void }) {
       <span className="grow">
         <span className="title">{series.name}</span>
         <span className="muted small one-line">
-          {tr('Series', 'Serie')} · {first && last ? `${dm(first)}–${dm(last)}` : ''} · {[...new Set(series.rounds.map((r) => r.course.name))].join(', ')}
+          {series.multi ? tr(`${series.rounds.length} rounds`, `${series.rounds.length} Runden`) : tr('Series', 'Serie')} · {first && last ? `${dm(first)}–${dm(last)}` : ''} · {[...new Set(series.rounds.map((r) => r.course.name))].join(', ')}
         </span>
       </span>
       <span className="game-row-result">
@@ -254,7 +247,10 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
   };
   const shown = filter === 'planned' ? planned : filter === 'played' ? [...played].reverse() : [...planned, ...[...played].reverse()];
   const shownCodes = new Set(shown.map((e) => e.code));
-  const shownSeries = filter ? series.filter((s) => s.series.rounds.some((r) => shownCodes.has(r.code))) : series;
+  const shownAll = filter ? series.filter((s) => s.series.rounds.some((r) => shownCodes.has(r.code))) : series;
+  // a tournament over several rounds is a tournament (Sascha 04.11.2026) – with the single ones, not the series
+  const shownSeries = shownAll.filter((x) => !x.series.multi);
+  const shownMulti = shownAll.filter((x) => x.series.multi);
   const shownSingle = shown.filter(single);
   return (
     <>
@@ -322,7 +318,7 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
         </section>
       )}
       {filter !== 'bin' &&
-        (shownSingle.length || (!filter && groupable.length >= 2) ? (
+        (shownSingle.length || shownMulti.length || (!filter && groupable.length >= 2) ? (
           <section className="tour-cat" aria-label={tr('Single tournaments', 'Einzelne Turniere')}>
           {(shownSeries.length > 0 || groupable.length >= 2) && (
             <span className="eyebrow tour-cat-head">
@@ -331,6 +327,11 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
             </span>
           )}
           <ul className="list">
+            {shownMulti.map((x) => (
+              <li key={x.code}>
+                <SeriesRow s={x} onOpen={() => props.onOpenSeries(x.code)} />
+              </li>
+            ))}
             {shownSingle
               .map((e) => (
                 <li key={e.code}>
@@ -378,1066 +379,6 @@ export function ToursTab(props: { onOpen: (code: string) => void; onOpenSeries: 
 
 // ---------- planning ----------
 
-export interface TourPlayer {
-  id: string;
-  name: string;
-  hcp: string; // the handicap index as typed
-  tee: string | null;
-  /** the flight: 0, 1, 2 … – null: not in a flight yet */
-  flight: number | null;
-  /** the playing handicap kept from before (a tournament changed later, its index unknown) */
-  fixed?: number | null;
-  /** he keeps the score of his whole flight (Sascha 02.11.2026: "one person enters the score for all") */
-  scorer?: boolean;
-}
-export interface TourDraft {
-  /** set: the tournament changed, not a new one */
-  code?: string;
-  base?: PlannedEvent;
-  /** a new round of this series (its code) */
-  series?: string;
-  name: string;
-  date: string;
-  course: Course | null;
-  optionId: string;
-  scoring: Scoring;
-  classes: number[];
-  players: TourPlayer[];
-  flights: number;
-  /** who marks whom – markers[player] = the player who marks him (draft ids) */
-  markers: Record<string, string>;
-  /** the tee time of each flight, "HH:MM" – to the minute (12:08, 12:16) */
-  times: string[];
-  /** the special prizes (Sascha 01.11.2026: "Long Drive or Nearest to the Pin, optional") */
-  specials: Special[];
-  /** "Score-Erfassung" of the tournament (Sascha 03.11.2026: "not under a flight's 'Ändern' – in the tournament's
-   *  settings, as a round's"): one player per flight keeps the score of all – the one flagged, else the first */
-  oneScorer?: boolean;
-  /** "Jeder seinen eigenen" (Sascha 03.11.2026: "the choices of Rounds – with a marker missing"): nobody marks, each
-   *  signs his own card; else every player marks a partner ("Mit Zähler", the default) */
-  ownOnly?: boolean;
-}
-
-/** A new flight starts this many minutes after the one before – then set to the minute (Sascha 02.11.2026: "we play
- *  12:08 and 12:16 – an interval is not needed when the time can be set exactly"). */
-export const TEE_NEXT = 10;
-export const FIRST_TEE = '09:00';
-export const addMinutes = (t: string, min: number): string => {
-  const [h, m] = t.split(':').map(Number);
-  const x = Math.min(23 * 60 + 59, h * 60 + m + min);
-  return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
-};
-
-/** n players into k flights, as even as can be (7 in 2: 4 and 3), in their order. */
-/** At most four in a flight (Sascha 01.11.2026). */
-export const FLIGHT_MAX = 4;
-
-// the scorings of a tournament (Sascha 02.11.2026: "either gross or with the handicaps") – with the full handicap
-const SCORINGS = (): { v: Scoring; name: string; text: string }[] => [
-  { v: 'stroke', name: tr('Gross', 'Brutto'), text: tr('Stroke play without handicap – the fewest strokes win.', 'Zählspiel ohne Vorgabe – die wenigsten Schläge gewinnen.') },
-  { v: 'net', name: tr('Net', 'Netto'), text: tr('Stroke play with the handicap – the strokes less the playing handicap.', 'Zählspiel mit Vorgabe – die Schläge abzüglich der Spielvorgabe.') },
-  { v: 'stableford', name: 'Stableford', text: tr('Points per hole from the strokes and the handicap – the most points win.', 'Punkte je Loch aus Schlägen und Vorgabe – die meisten Punkte gewinnen.') },
-];
-/** On the tournament's page: gross, net (the full handicap) or Stableford – no percentage (Sascha 02.11.2026). */
-const tourScoring = (s: Scoring) => (s === 'stableford' ? 'Stableford' : s === 'net' ? tr('Stroke play net', 'Zählspiel netto') : tr('Stroke play gross', 'Zählspiel brutto'));
-// the number of classes first (Sascha 02.11.2026: "rather three net classes than two" – the three were there, not seen);
-// the last class up to 54 (Sascha 03.11.2026: "C up to 54") – the limits kept are the ones before it, as ever
-const CLASS_TOP = 54;
-const LETTERS = CLASS_NAMES; // A to J – as many classes as wanted, up to ten (Sascha 03.11.2026)
-const classLimits = (c: number[]) => [...c.map((x, i) => `${LETTERS[i]} ${tr('up to', 'bis')} ${x}`), `${LETTERS[c.length]} ${tr('up to', 'bis')} ${CLASS_TOP}`].join(' · ');
-const classesName = (c: number[]) => (!c.length ? tr('None', 'Keine') : `${tr(`${c.length + 1} classes`, `${c.length + 1} Klassen`)} · ${classLimits(c)}`);
-const CLASS_PRESETS: number[][] = [[], [18], [12, 24]];
-const isPreset = (c: number[]) => CLASS_PRESETS.some((p) => p.join() === c.join());
-
-/** "Netto-Klassen" (Sascha 03.11.2026): none, 2 or 3 – or "Eigene": two to ten classes, each its limit, the last up to
- *  54. The limits rise from class to class. */
-function ClassesSheet(props: { value: number[]; onPick: (c: number[]) => void; onClose: () => void }) {
-  // "Eigene" as rows (Sascha 03.11.2026: "the look and the setting up of 'Eigene' do not please me yet"): a row per
-  // class "Klasse A · bis 9 ›", its limit from a list as every other choice; "+ Klasse" up to ten (Sascha 03.11.2026: "more than four"), the last up to 54
-  const [own, setOwn] = useState<number[] | null>(props.value.length && !isPreset(props.value) ? props.value : null);
-  const [editing, setEditing] = useState<number | null>(null);
-  const lo = (i: number) => (own && i ? own[i - 1] + 1 : 1);
-  const hi = (i: number) => (own && i < own.length - 1 ? own[i + 1] - 1 : CLASS_TOP - 1);
-  // the list opens at the limit set
-  useEffect(() => {
-    if (editing == null) return;
-    requestAnimationFrame(() => document.querySelector('.sheet .pick-option[aria-pressed="true"]')?.scrollIntoView({ block: 'center' }));
-  }, [editing]);
-  const add = () => {
-    if (!own || own.length >= LETTERS.length - 1) return;
-    const last = own[own.length - 1];
-    if (last >= CLASS_TOP - 1) return;
-    // the next limit about a step on (as 9 · 18 · 26), at most half the room left – each one chosen after
-    setOwn([...own, last + Math.max(1, Math.min(9, Math.round((CLASS_TOP - last) / 2)))]);
-  };
-  return (
-    <div className="sheet-backdrop" onClick={props.onClose}>
-      <section className="sheet" role="dialog" aria-label={tr('Net classes', 'Netto-Klassen')} onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <strong>{own ? tr('Own classes', 'Eigene Klassen') : tr('Net classes', 'Netto-Klassen')}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
-            ✕
-          </button>
-        </div>
-        {!own ? (
-          <div className="pick-list">
-            {CLASS_PRESETS.map((c) => (
-              <button key={c.join()} type="button" className="pick-option" aria-pressed={props.value.join() === c.join()} onClick={() => props.onPick(c)}>
-                <span className="grow">
-                  <strong>{classesName(c)}</strong>
-                  <span className="muted small">{!c.length ? tr('One ranking for all.', 'Eine Wertung für alle.') : tr('A ranking per class, by playing handicap.', 'Eine Wertung je Klasse, nach Spielvorgabe.')}</span>
-                </span>
-                {props.value.join() === c.join() && <span className="pick-check" aria-hidden="true">✓</span>}
-              </button>
-            ))}
-            <button type="button" className="pick-option" aria-pressed={false} onClick={() => setOwn(props.value.length && !isPreset(props.value) ? props.value : [9, 18, 26])}>
-              <span className="grow">
-                <strong>{tr('Own …', 'Eigene …')}</strong>
-                <span className="muted small">{tr('Two to ten classes, each with its limit.', 'Zwei bis zehn Klassen, jede mit ihrer Grenze.')}</span>
-              </span>
-              <span aria-hidden="true">›</span>
-            </button>
-          </div>
-        ) : (
-          <>
-            <SettingsList label={tr('The classes', 'Die Klassen')}>
-              {own.map((x, i) => (
-                <SettingsRow key={i} label={tr(`Class ${LETTERS[i]}`, `Klasse ${LETTERS[i]}`)} value={tr(`up to ${x}`, `bis ${x}`)} onClick={() => setEditing(i)} />
-              ))}
-              <SettingsRow label={tr(`Class ${LETTERS[own.length]}`, `Klasse ${LETTERS[own.length]}`)} value={tr(`up to ${CLASS_TOP}`, `bis ${CLASS_TOP}`)} onClick={() => undefined} disabled />
-            </SettingsList>
-            <span className="muted small">{tr('By playing handicap. The last class takes everyone up to 54.', 'Nach Spielvorgabe. Die letzte Klasse nimmt alle bis 54.')}</span>
-            {own.length < LETTERS.length - 1 && own[own.length - 1] < CLASS_TOP - 1 && (
-              <button type="button" className="btn-secondary" onClick={add}>
-                {tr('+ Class', '+ Klasse')}
-              </button>
-            )}
-            <button type="button" className="btn-primary" onClick={() => props.onPick(own)}>
-              {tr(`Use ${own.length + 1} classes`, `${own.length + 1} Klassen übernehmen`)}
-            </button>
-            <button type="button" className="link-btn small" onClick={() => setOwn(null)}>
-              {tr('Back to the presets', 'Zurück zu den Vorlagen')}
-            </button>
-          </>
-        )}
-        {own && editing != null && (
-          <PickSheet<number>
-            title={tr(`Class ${LETTERS[editing]} up to`, `Klasse ${LETTERS[editing]} bis`)}
-            current={own[editing]}
-            options={Array.from({ length: hi(editing) - lo(editing) + 1 }, (_, k) => lo(editing) + k).map((v) => ({ value: v, name: tr(`up to ${v}`, `bis ${v}`) }))}
-            onPick={(v) => {
-              setOwn(own.map((x, j) => (j === editing ? v : x)));
-              setEditing(null);
-            }}
-            onClose={() => setEditing(null)}
-          >
-            {own.length > 1 && (
-              <ActionBar
-                label={tr('This class', 'Diese Klasse')}
-                actions={[{ label: tr(`Remove class ${LETTERS[editing]}`, `Klasse ${LETTERS[editing]} entfernen`), icon: 'delete', danger: true, onClick: () => { setOwn(own.filter((_, j) => j !== editing)); setEditing(null); } }]}
-              />
-            )}
-          </PickSheet>
-        )}
-      </section>
-    </div>
-  );
-}
-
-export function dealFlights<T extends { flight: number | null }>(players: T[], k: number): T[] {
-  const sizes = Array.from({ length: k }, (_, i) => Math.floor(players.length / k) + (i < players.length % k ? 1 : 0));
-  let f = 0;
-  let left = sizes[0] ?? 0;
-  return players.map((p) => {
-    while (left === 0 && f < k - 1) left = sizes[++f];
-    left--;
-    return { ...p, flight: f };
-  });
-}
-
-/** Who marks whom in a flight: as chosen where it still fits, else pairs (1 ↔ 2, 3 ↔ 4), three in a ring. */
-export function markersOf(ids: string[], chosen: Record<string, string>): Record<string, string> {
-  const pairs: Record<string, string> =
-    ids.length < 2 ? {} : ids.length % 2 === 1 ? Object.fromEntries(ids.map((id, k) => [id, ids[(k + ids.length - 1) % ids.length]])) : Object.fromEntries(ids.map((id, k) => [id, ids[k % 2 === 0 ? k + 1 : k - 1]]));
-  return Object.fromEntries(ids.map((id) => [id, chosen[id] && chosen[id] !== id && ids.includes(chosen[id]) ? chosen[id] : pairs[id]]).filter(([, m]) => m));
-}
-
-export function newTourDraft(): TourDraft {
-  const prof = loadProfile();
-  const today = dayOf(new Date());
-  return {
-    name: '',
-    date: today,
-    course: null,
-    optionId: '',
-    scoring: 'net',
-    classes: [],
-    players: [{ id: newId(), name: shownName(prof) || '', hcp: prof.hcpIndex ?? '', tee: null, flight: null }],
-    flights: 0,
-    markers: {},
-    times: [],
-    specials: [],
-  };
-}
-
-/** A tournament to change: its players, flights, markers and times back into a draft. */
-export function draftOf(e: TourEntry): TourDraft {
-  const ev = e.ev;
-  const course = loadCachedCourse(ev.course.id);
-  const flights = flightsOf(ev);
-  const players: TourPlayer[] = [];
-  const markers: Record<string, string> = {};
-  flights.forEach((f, k) => {
-    const ids = new Map<string, string>();
-    for (const p of f.players) {
-      const id = newId();
-      ids.set(p.id, id);
-      const idx = (p as { hcpIndex?: number | null }).hcpIndex;
-      players.push({ id, name: p.name, hcp: idx == null ? '' : String(idx).replace('.', tr('.', ',')), tee: p.tee ?? null, flight: k, fixed: p.playingHandicap, ...(f.scorer === p.id ? { scorer: true } : {}) });
-    }
-    for (const [pl, mk] of Object.entries(f.markers ?? {})) if (ids.has(pl) && ids.has(mk)) markers[ids.get(pl)!] = ids.get(mk)!;
-  });
-  const options = course ? loopOptions(course.holes) : [];
-  const option = options.find((o) => o.loops.join() === ev.loopOrder.join() && buildRoundHoles(course!.holes, o).length === ev.holes.length);
-  const times = flights.map((f) => teeTimeOf(f) || FIRST_TEE);
-  return {
-    ...(flights.some((f) => f.scorer) ? { oneScorer: true } : ev.format?.marker === false ? { ownOnly: true } : {}),
-    code: e.code,
-    base: ev,
-    name: ev.name,
-    date: ev.date,
-    course,
-    optionId: option?.id ?? options[0]?.id ?? '',
-    scoring: ev.format?.scoring ?? 'net',
-    classes: ev.classes ?? [],
-    players,
-    flights: Math.max(1, flights.length),
-    markers,
-    times,
-    specials: ev.specials ?? [],
-  };
-}
-
-export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) => void; onBack: () => void; onCourse: () => void; onSaved: (code: string) => void }) {
-  useTop();
-  const d = props.draft;
-  const set = (patch: Partial<TourDraft>) => props.onChange({ ...d, ...patch });
-  const [busy, setBusy] = useState(false);
-  const [pick, setPick] = useState<'scoring' | 'classes' | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const options = useMemo(() => (d.course ? loopOptions(d.course.holes) : []), [d.course]);
-  const option = options.find((o) => o.id === d.optionId) ?? options[0];
-  const rholes = d.course && option ? buildRoundHoles(d.course.holes, option) : [];
-  const holes = rholes.length ? rholes : (d.base?.holes ?? []);
-  const nine = holes.length === 9;
-  const offered = useMemo(() => (d.course ? courseTees(d.course.id, loadGeometry(d.course.id).teeColours) : null), [d.course]);
-  const lady = isLady();
-  const startTee = offered ? defaultTee(offered.tees) : null;
-  const myTee = offered && d.course ? (profileTee(offered, loadProfile().tee, d.course.id, inUsa([d.course.lon, d.course.lat])) ?? defaultTee(offered.tees, lady)) : null;
-  const teeOf = (p: TourPlayer, k: number) => (p.tee && offered?.tees.includes(p.tee) ? p.tee : k === 0 ? myTee : startTee);
-  const [, setRatingsSeen] = useState(0);
-  useEffect(() => {
-    if (!d.course) return;
-    let alive = true;
-    fetchShared(d.course.id).then(() => alive && setRatingsSeen((k) => k + 1));
-    return () => {
-      alive = false;
-    };
-  }, [d.course?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  const courseId = d.course?.id ?? d.base?.course.id ?? '';
-  const ratingOf = (p: TourPlayer, k: number) => (courseId && (holes.length === 18 || nine) ? ratingFor(courseId, teeOf(p, k) ?? '–', holes, k === 0 && lady) : null);
-  const playingOf = (p: TourPlayer, k: number): number | null => (parseIndex(p.hcp) == null ? (p.fixed ?? null) : playingHandicapFor(courseId, holes, teeOf(p, k) ?? '–', p.hcp, k === 0 && lady));
-  const teeChoices = d.course && offered ? teeChoicesFor(d.course.id, rholes, offered.tees) : [];
-  const label = (p: TourPlayer, k: number) => p.name.trim() || tr(`Player ${k + 1}`, `Spieler ${k + 1}`);
-  const flight = (f: number) => d.players.filter((p) => p.flight === f);
-  // who marks whom: set by the app – pairs in the flight, three in a ring (Sascha 01.11.2026: "need not be configured")
-  const markers = Object.assign({}, ...Array.from({ length: d.flights }, (_, f) => markersOf(flight(f).map((p) => p.id), {}))) as Record<string, string>;
-  const setPlayers = (players: TourPlayer[]) => set({ players });
-  // each flight's time as set; one not set yet: TEE_NEXT minutes after the one before
-  const timesFor = (k: number) => {
-    const out: string[] = [];
-    for (let i = 0; i < k; i++) out.push(d.times[i] || (i ? addMinutes(out[i - 1], TEE_NEXT) : FIRST_TEE));
-    return out;
-  };
-  const newPlayer = (name: string, hcp: string): TourPlayer => ({ id: newId(), name, hcp, tee: null, flight: null });
-  const auto = () => {
-    const k = Math.max(1, Math.ceil(d.players.length / FLIGHT_MAX));
-    set({ flights: k, players: dealFlights(d.players, k).map(({ scorer: _s, ...p }) => p), times: timesFor(k), markers: {} });
-  };
-  // a flight saved from its sheet: its time and its players (a new one at the end)
-  const saveFlight = (fi: number | null, time: string, ids: string[], scorer: string | null) => {
-    const at = fi ?? d.flights;
-    const times = timesFor(d.flights);
-    times[at] = time;
-    set({
-      flights: fi == null ? d.flights + 1 : d.flights,
-      times,
-      players: d.players.map(({ scorer: _s, ...p }) => (ids.includes(p.id) ? { ...p, flight: at, ...(p.id === scorer ? { scorer: true } : {}) } : p.flight === at ? { ...p, flight: null } : _s ? { ...p, scorer: _s } : p)),
-    });
-  };
-  const removeFlight = (fi: number) =>
-    set({
-      flights: d.flights - 1,
-      times: timesFor(d.flights).filter((_, i) => i !== fi),
-      players: d.players.map(({ scorer: _s, ...p }) => (p.flight === fi ? { ...p, flight: null } : p.flight != null && p.flight > fi ? { ...p, flight: p.flight - 1, ...(_s ? { scorer: _s } : {}) } : _s ? { ...p, scorer: _s } : p)),
-    });
-  const unplaced = d.players.filter((p) => p.flight == null || p.flight >= d.flights);
-  const sizes = Array.from({ length: d.flights }, (_, f) => flight(f).length);
-  const small = sizes.some((n) => n < 2);
-  const big = sizes.some((n) => n > FLIGHT_MAX);
-  const ready = !!d.name.trim() && !!d.date && holes.length > 0 && d.players.length >= 2 && d.players.every((p) => p.name.trim()) && d.flights > 0 && !small && !big && !unplaced.length;
-
-  const save = async () => {
-    if (!ready) return;
-    setBusy(true);
-    setMsg(null);
-    const summary: CourseSummary = d.course ? { id: d.course.id, source: d.course.source, name: d.course.name, lat: d.course.lat, lon: d.course.lon, ...(d.course.bbox ? { bbox: d.course.bbox } : {}) } : d.base!.course;
-    const plan = Array.from({ length: d.flights }, (_, f) => {
-      const ps = flight(f);
-      const pid = (id: string) => `p${ps.findIndex((p) => p.id === id) + 1}`;
-      return {
-        name: ps.map((p) => label(p, d.players.indexOf(p))).join(' · '),
-        teeTime: d.times[f],
-        players: ps.map((p) => {
-          const k = d.players.indexOf(p);
-          const tee = teeOf(p, k);
-          return { name: label(p, k), playingHandicap: playingOf(p, k), hcpIndex: parseIndex(p.hcp), ...(tee ? { tee } : {}) };
-        }),
-        markers: d.ownOnly && !d.oneScorer ? {} : Object.fromEntries(ps.map((p) => [pid(p.id), pid(markers[p.id])])),
-        // one for all: his place in the flight ("p2") – the one flagged, else the flight's first
-        ...(d.oneScorer && ps.length ? { scorer: pid((ps.find((p) => p.scorer) ?? ps[0]).id) } : {}),
-      };
-    });
-    const fresh = plannedEvent({
-      name: d.name.trim(),
-      date: d.date,
-      course: summary,
-      holes,
-      loopOrder: option?.loops ?? d.base!.loopOrder,
-      format: { mode: 'single', scoring: d.scoring, allowance: 100, ...(d.ownOnly && !d.oneScorer ? { marker: false } : {}) }, // the full handicap – gross ignores it (02.11.2026)
-      ...(myTee ? { tee: myTee } : {}),
-      roundKind: 'tournament',
-      ...(d.classes.length ? { classes: d.classes } : {}),
-      flights: plan,
-    }) as PlannedEvent;
-    // changed: the flights keep their ids in order – a phone that joined flight 2 is still in flight 2
-    const base = d.base;
-    const ev: PlannedEvent = base
-      ? {
-          ...fresh,
-          id: base.id,
-          createdAt: base.createdAt,
-          ...(base.by ? { by: base.by } : {}),
-          deletedAt: base.deletedAt ?? null,
-          flights: Object.fromEntries(
-            plan.map((pf, f) => {
-              const fl = plannedFlight(base, pf);
-              const id = flightsOf(base)[f]?.id ?? fl.id;
-              return [id, { ...fl, id }];
-            }),
-          ),
-        }
-      : fresh;
-    // the special prizes on holes the course still has
-    const specials = d.specials.filter((s) => s.hole < holes.length);
-    if (specials.length) ev.specials = specials;
-    else delete ev.specials;
-    const code = d.code ? ((await changeTour(d.code, ev)) ? d.code : null) : await createTour(ev);
-    setBusy(false);
-    if (code && d.series) await addToSeries(d.series, code);
-    else if (code && d.base?.series?.code) await addToSeries(d.base.series.code, code); // its day or course in the series' list
-    if (code) props.onSaved(code);
-    else setMsg(NO_NET());
-  };
-
-  return (
-    <main className="screen">
-      <TopBar title={d.code ? tr('Change the tournament', 'Turnier bearbeiten') : tr('New tournament', 'Neues Turnier')} onBack={props.onBack} backLabel={tr('Back', 'Zurück')} />
-
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Tournament', 'Turnier')}</span>
-        <div className="card setup-part">
-          <div className="field">
-            <label htmlFor="tour-name">{tr('Name', 'Name')}</label>
-            <input id="tour-name" className="input" required placeholder={tr('Enter a name', 'Name eingeben')} value={d.name} onChange={(e) => set({ name: e.target.value })} />
-          </div>
-        </div>
-      </section>
-
-      {/* the format as a round's in Rounds (Sascha 02.11.2026: "gross, or with the handicaps – no 95 %; shown as the
-          format of a round") – a row each, a sheet to pick from */}
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Format', 'Spielform')}</span>
-        <div className="settings-list">
-          <button type="button" className="settings-row" onClick={() => setPick('scoring')}>
-            <span>{tr('Scoring', 'Wertung')}</span>
-            <span className="settings-value">{SCORINGS().find((x) => x.v === d.scoring)?.name ?? ''}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-          {d.scoring !== 'stroke' && (
-            <button type="button" className="settings-row" onClick={() => setPick('classes')}>
-              <span>{tr('Net classes', 'Netto-Klassen')}</span>
-              <span className="settings-value">{d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-          )}
-        </div>
-        {/* the limits under the list – the row stays one line (four classes are long) */}
-        {d.scoring !== 'stroke' && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
-      </section>
-      {pick === 'classes' && (
-        <ClassesSheet
-          value={d.classes}
-          onPick={(c) => {
-            set({ classes: c });
-            setPick(null);
-          }}
-          onClose={() => setPick(null)}
-        />
-      )}
-      {pick === 'scoring' && (
-        <div className="sheet-backdrop" onClick={() => setPick(null)}>
-          <section className="sheet" role="dialog" aria-label={pick === 'scoring' ? tr('Choose the scoring', 'Wertung wählen') : tr('Net classes', 'Netto-Klassen')} onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-head">
-              <strong>{pick === 'scoring' ? tr('Choose the scoring', 'Wertung wählen') : tr('Net classes', 'Netto-Klassen')}</strong>
-              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPick(null)}>
-                ✕
-              </button>
-            </div>
-            <div className="pick-list">
-              {pick === 'scoring' &&
-                SCORINGS().map((x) => (
-                  <button key={x.v} type="button" className="pick-option" aria-pressed={d.scoring === x.v} onClick={() => { set({ scoring: x.v, ...(x.v === 'stroke' ? { classes: [] } : d.scoring === 'stroke' && !d.classes.length ? { classes: [12, 24] } : {}) }); setPick(null); }}>
-                    <span className="grow">
-                      <strong>{x.name}</strong>
-                      <span className="muted small">{x.text}</span>
-                    </span>
-                    {d.scoring === x.v && <span className="pick-check" aria-hidden="true">✓</span>}
-                  </button>
-                ))}
-            </div>
-          </section>
-        </div>
-      )}
-
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Course', 'Platz')}</span>
-        <div className="settings-list">
-          <button type="button" className="settings-row" onClick={props.onCourse}>
-            <span>{tr('Course', 'Platz')}</span>
-            <span className={`settings-value${d.course || d.base ? '' : ' need'}`}>{d.course?.name ?? d.base?.course.name ?? tr('Choose a course', 'Platz wählen')}</span>
-            <span aria-hidden="true">›</span>
-          </button>
-        </div>
-        {d.course && options.length > 1 && (
-          <div className="choice-grid">
-            {options.map((o) => (
-              <button key={o.id} type="button" className="choice choice-loop" aria-pressed={o.id === option?.id} onClick={() => set({ optionId: o.id })}>
-                <strong>{o.label.split(' · ')[0]}</strong>
-                {o.label.includes(' · ') && <span className="small muted">{o.label.split(' · ').slice(1).join(' · ')}</span>}
-              </button>
-            ))}
-          </div>
-        )}
-        {courseId && (holes.length === 18 || nine) && (
-          <RatingLine
-            rating={d.players[0] ? ratingOf(d.players[0], 0) : null}
-            nine={nine}
-            onSave={(v) => {
-              saveOwnRating(courseId, teeOf(d.players[0], 0) ?? '–', holes, v);
-              setRatingsSeen((k) => k + 1);
-            }}
-          />
-        )}
-      </section>
-
-      {/* Was → Wo → Wann → Wer (Sascha 03.11.2026: the same order in every setup, docs/DESIGN.md) */}
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Date', 'Datum')}</span>
-        <SettingsList>
-          <DateRow id="tour-date" label={tr('Day', 'Tag')} value={d.date} onChange={(v) => set({ date: v })} />
-        </SettingsList>
-      </section>
-
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Players', 'Spieler')}</span>
-        {d.players.map((p, k) => (
-          <PlayerRow
-            key={p.id}
-            className="game-player-row"
-            nameNeeded
-            player={{ id: `t${p.id}`, name: p.name, index: p.hcp, handicap: '', tee: teeOf(p, k) }}
-            nameLabel={tr(`Player ${k + 1}`, `Spieler ${k + 1}`)}
-            rating={ratingOf(p, k)}
-            playing={playingOf(p, k)}
-            nine={nine}
-            tees={teeChoices.length ? teeChoices : undefined}
-            onChange={(np) => setPlayers(d.players.map((x) => (x.id === p.id ? { ...x, name: np.name, hcp: np.index, tee: np.tee, fixed: np.index !== x.hcp ? null : x.fixed } : x)))}
-            onRemove={d.players.length > 1 ? () => setPlayers(d.players.filter((x) => x.id !== p.id)) : undefined}
-          />
-        ))}
-        <FriendChips taken={d.players.map((p) => p.name)} onAdd={(fr) => setPlayers([...d.players, newPlayer(fr.name, fr.hcp)])} />
-        <button type="button" className="btn-secondary" onClick={() => setPlayers([...d.players, newPlayer('', '')])}>
-          {tr('+ Add player', '+ Spieler hinzufügen')}
-        </button>
-      </section>
-
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Flights and tee times', 'Flights und Startzeiten')}</span>
-        <FlightBoard
-          players={d.players}
-          flights={d.flights}
-          times={timesFor(d.flights + 1)}
-          markers={d.ownOnly && !d.oneScorer ? {} : markers}
-          label={(p) => label(p, d.players.indexOf(p))}
-          playing={(p) => playingOf(p, d.players.indexOf(p))}
-          onSave={saveFlight}
-          onRemoveFlight={removeFlight}
-          onAuto={auto}
-          onMove={(id, f) => set({ players: d.players.map(({ scorer: _s, ...p }) => (p.id === id ? { ...p, flight: f } : _s ? { ...p, scorer: _s } : p)) })}
-          oneScorer={!!d.oneScorer}
-          onScorer={(f, id) => set({ players: d.players.map(({ scorer: _s, ...p }) => (p.flight === f ? (p.id === id ? { ...p, scorer: true } : p) : _s ? { ...p, scorer: _s } : p)) })}
-        />
-        {small && <span className="small bad-text">{tr('Every flight needs at least two players – they mark each other.', 'Jeder Flight braucht mindestens zwei Spieler – sie zählen sich gegenseitig.')}</span>}
-        {big && <span className="small bad-text">{tr('A flight has at most four players.', 'Ein Flight hat höchstens vier Spieler.')}</span>}
-      </section>
-
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
-        <SettingsList>
-          {/* the three choices of a round (RoundSetup ENTRY – Sascha 03.11.2026: "with a marker, as in Rounds") */}
-          <ChoiceRow<'own' | 'marker' | 'one'>
-            label={tr('Who enters', 'Wer erfasst')}
-            value={d.oneScorer ? 'one' : d.ownOnly ? 'own' : 'marker'}
-            onChange={(v) => set({ oneScorer: v === 'one', ownOnly: v === 'own' })}
-            options={[
-              { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('Everyone enters only his own score and sees the others – nobody marks.', 'Jeder trägt nur seinen eigenen Score ein und sieht die anderen – ohne Zähler.') },
-              { value: 'marker', name: tr('With a marker', 'Mit Zähler'), text: tr("Everyone enters his own score and his partner's – a difference shows.", 'Jeder trägt seinen Score und den seines Partners ein – Abweichungen werden angezeigt.') },
-              { value: 'one', name: tr('One for all', 'Einer für alle'), text: tr('One player per flight keeps the score of all and marks everyone.', 'Ein Spieler je Flight erfasst die Scores aller und zählt alle.') },
-            ]}
-          />
-        </SettingsList>
-        <span className="muted small">
-          {d.oneScorer ? tr('Who it is: the row "Scorer" in each flight.', 'Wer es ist: die Zeile „Schreiber“ im Flight.') : d.ownOnly ? tr('Each signs his own card.', 'Jeder unterschreibt seine Karte selbst.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
-        </span>
-      </section>
-
-      <section className="setup-part">
-        <span className="eyebrow">{tr('Special prizes (optional)', 'Sonderwertungen (optional)')}</span>
-        {d.specials.map((s, k) => (
-          <div key={s.id} className="card tour-special">
-            <strong className="grow">{specialName(s.kind)}</strong>
-            <div className="select-wrap">
-              <select
-                className="input"
-                aria-label={tr(`Hole of ${specialName(s.kind)}`, `Loch für ${specialName(s.kind)}`)}
-                value={s.hole}
-                onChange={(e) => set({ specials: d.specials.map((x, j) => (j === k ? { ...x, hole: Number(e.target.value) } : x)) })}
-              >
-                {holesFor(s.kind, holes).map((i) => (
-                  <option key={i} value={i}>
-                    {tr(`Hole ${holes[i].label} · par ${holes[i].par ?? '–'}`, `Loch ${holes[i].label} · Par ${holes[i].par ?? '–'}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button type="button" className="icon-btn" aria-label={tr(`Remove ${specialName(s.kind)}`, `${specialName(s.kind)} entfernen`)} onClick={() => set({ specials: d.specials.filter((_, j) => j !== k) })}>
-              ✕
-            </button>
-          </div>
-        ))}
-        {holes.length > 0 ? (
-          <div className="tour-special-add">
-            {(['longDrive', 'nearestPin'] as SpecialKind[]).map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  const free = holesFor(kind, holes).filter((i) => !d.specials.some((x) => x.hole === i));
-                  set({ specials: [...d.specials, { id: newId(), kind, hole: free[0] ?? holesFor(kind, holes)[0] }] });
-                }}
-              >
-                + {specialName(kind)}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <span className="muted small">{tr('Choose the course first.', 'Zuerst den Platz wählen.')}</span>
-        )}
-        {d.specials.length > 0 && (
-          <span className="muted small">
-            {tr(
-              'On the day the players enter their figure at the hole in Rounds – Nearest to the Pin the distance to the hole, Long Drive the length from the tee (GPS suggests it; only a ball in the fairway counts).',
-              'Am Turniertag tragen die Spieler am Loch in Rounds ein – Nearest to the Pin den Abstand zur Fahne, Long Drive die Weite vom Abschlag (GPS schlägt sie vor; nur ein Ball im Fairway zählt).',
-            )}
-          </span>
-        )}
-      </section>
-
-      {msg && (
-        <span className="small bad-text" role="alert">
-          {msg}
-        </span>
-      )}
-      <span className="spacer" />
-      <div className="sticky-cta">
-        <button type="button" className="btn-primary" disabled={!ready || busy} onClick={() => void save()}>
-          {d.code ? tr('Save', 'Speichern') : tr('Set up the tournament', 'Turnier anlegen')}
-        </button>
-      </div>
-    </main>
-  );
-}
-
-/** Who may mark whom in a flight, each way once: pairs (with four: 1–2/3–4, 1–3/2–4, 1–4/2–3), with an odd number a
- *  ring one way or the other. markers[player] = who marks him. */
-export function pairings(ids: string[]): Record<string, string>[] {
-  const n = ids.length;
-  if (n < 2) return [{}];
-  if (n % 2 === 1)
-    return [Object.fromEntries(ids.map((id, k) => [id, ids[(k + n - 1) % n]])), Object.fromEntries(ids.map((id, k) => [id, ids[(k + 1) % n]]))];
-  return ids.slice(1).map((partner) => {
-    const rest = ids.filter((x) => x !== ids[0] && x !== partner);
-    const m: Record<string, string> = { [ids[0]]: partner, [partner]: ids[0] };
-    for (let k = 0; k + 1 < rest.length; k += 2) {
-      m[rest[k]] = rest[k + 1];
-      m[rest[k + 1]] = rest[k];
-    }
-    return m;
-  });
-}
-
-/** The flights as on the tournament's page (Sascha 02.11.2026: "create a flight with its tee time, then assign people
- *  to it – flight 2 or 3 offers only those not in a flight yet; easy to change afterwards; show who marks whom"): each
- *  flight its time, its players and their markers (set by the app), "Ändern" opens it again; "+ Flight" a new one. */
-function FlightBoard(props: {
-  players: TourPlayer[];
-  flights: number;
-  /** each flight's time – one more: the next new flight's */
-  times: string[];
-  markers: Record<string, string>;
-  label: (p: TourPlayer) => string;
-  playing: (p: TourPlayer) => number | null;
-  onSave: (flight: number | null, time: string, ids: string[], scorer: string | null) => void;
-  onRemoveFlight: (flight: number) => void;
-  onAuto: () => void;
-  /** a player dragged onto another flight (null: back to "not in a flight yet") */
-  onMove: (id: string, flight: number | null) => void;
-  /** one scorer per flight (the tournament's "Score-Erfassung") – each flight its row "Schreiber" */
-  oneScorer: boolean;
-  onScorer: (flight: number, id: string) => void;
-}) {
-  const [open, setOpen] = useState<number | 'new' | null>(null);
-  // a tap on a player: where to – the sure way beside dragging (Sascha 03.11.2026: "on the iPhone it still does not work")
-  const [moving, setMoving] = useState<string | null>(null);
-  const dropped = useRef(0); // the click after a drop opens nothing
-  const inFlight = (f: number) => props.players.filter((p) => p.flight === f);
-  const unplaced = props.players.filter((p) => p.flight == null || p.flight >= props.flights);
-  const byId = (id: string) => props.players.find((p) => p.id === id);
-  // drag and drop (Sascha 02.11.2026: "move the players between the flights by drag and drop"): a player taken by his
-  // grip (the page still scrolls everywhere else) or, not in a flight yet, by his chip; dropped on a flight with room or
-  // on "not in a flight yet". "Ändern" stays for the tee time, the scorer – and for VoiceOver.
-// on the iPhone (Sascha 02.11.2026: "does not work yet"): a player also lifted by holding his row (as iOS lists do), the
-  // state read from a ref – the events come faster than React draws –, the page kept still while one is lifted
-  type Drag = { id: string; x0: number; y0: number; x: number; y: number; moved: boolean; armed: boolean; over: number | null };
-  const [drag, setDrag] = useState<Drag | null>(null);
-  const live = useRef<Drag | null>(null);
-  const holdTimer = useRef<number | undefined>(undefined);
-  const put = (d: Drag | null) => {
-    live.current = d;
-    setDrag(d);
-  };
-  const lifted = !!drag?.armed;
-  useEffect(() => {
-    if (!lifted) return;
-    const still = (e: TouchEvent) => e.preventDefault();
-    document.addEventListener('touchmove', still, { passive: false });
-    return () => document.removeEventListener('touchmove', still);
-  }, [lifted]);
-  useEffect(() => () => window.clearTimeout(holdTimer.current), []);
-  const flightAt = (x: number, y: number): number | null => {
-    const el = document.elementFromPoint(x, y)?.closest('[data-flight]') as HTMLElement | null;
-    return el ? Number(el.dataset.flight) : null;
-  };
-  const room = (f: number) => inFlight(f).length < FLIGHT_MAX;
-  const from = (id: string) => {
-    const p = byId(id);
-    return p && p.flight != null && p.flight < props.flights ? p.flight : -1;
-  };
-  const fits = (f: number | null | undefined, id: string) => f != null && f !== from(id) && (f === -1 || room(f));
-  // dragged near the top or the bottom of the screen: the page scrolls along – the flights lie one below the other
-  const dragY = drag?.moved ? drag.y : null;
-  useEffect(() => {
-    if (dragY == null) return;
-    const edge = 90;
-    const step = dragY < edge ? -14 : dragY > window.innerHeight - edge ? 14 : 0;
-    if (!step) return;
-    const t = window.setInterval(() => window.scrollBy(0, step), 16);
-    return () => window.clearInterval(t);
-  }, [dragY]);
-  // once lifted the finger is followed on the window – not on the row, which may lose the pointer while the board is
-  // drawn anew (the iPhone: the drag stopped after its first move)
-  const follow = useRef<(() => void) | null>(null);
-  const lift = (id: string) => {
-    follow.current?.();
-    const move = (e: PointerEvent) => {
-      const d = live.current;
-      if (!d || d.id !== id) return;
-      const moved = d.moved || Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 6;
-      put({ ...d, x: e.clientX, y: e.clientY, moved, over: moved ? flightAt(e.clientX, e.clientY) : null });
-    };
-    const up = (e: PointerEvent) => {
-      const d = live.current;
-      stop();
-      if (!d || d.id !== id) return;
-      const over = d.moved ? flightAt(e.clientX, e.clientY) : null;
-      if (d.moved) dropped.current = Date.now();
-      if (fits(over, id)) onMove.current(id, over === -1 ? null : over);
-      put(null);
-    };
-    const cancel = () => {
-      stop();
-      put(null);
-    };
-    const stop = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      window.removeEventListener('pointercancel', cancel);
-      follow.current = null;
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', cancel);
-    follow.current = stop;
-  };
-  const onMove = useRef(props.onMove);
-  onMove.current = props.onMove;
-  useEffect(() => () => follow.current?.(), []);
-  // The finger on the iPhone by its own touch events, as the shots in the round's review (Sascha 03.11.2026: "in the
-  // review it works well – here not"): Safari gives up a pointer (pointercancel) the moment it thinks of scrolling, so
-  // the pointer events above are for the mouse and the pen only. The grip or a chip takes the player at once and keeps
-  // the page still; a row is lifted after a moment held still, a move before that scrolls as ever.
-  const board = useRef<HTMLDivElement>(null);
-  const touchLift = (id: string, x: number, y: number) => {
-    put({ id, x0: x, y0: y, x, y, moved: false, armed: true, over: null });
-    navigator.vibrate?.(15);
-    let last = { x, y };
-    const move = (e: TouchEvent) => {
-      if (e.cancelable) e.preventDefault();
-      const t = e.touches[0];
-      const d = live.current;
-      if (!t || !d || d.id !== id) return;
-      last = { x: t.clientX, y: t.clientY };
-      const moved = d.moved || Math.hypot(t.clientX - d.x0, t.clientY - d.y0) > 6;
-      put({ ...d, x: t.clientX, y: t.clientY, moved, over: moved ? flightAt(t.clientX, t.clientY) : null });
-    };
-    // the iPhone may end a touch twice (touchend and touchcancel): the drop counts once
-    let ended = false;
-    const up = () => {
-      if (ended) return;
-      ended = true;
-      window.removeEventListener('touchmove', move);
-      window.removeEventListener('touchend', up);
-      window.removeEventListener('touchcancel', up);
-      const d = live.current;
-      if (d && d.id === id && d.moved) {
-        dropped.current = Date.now();
-        const over = flightAt(last.x, last.y);
-        if (fits(over, id)) onMove.current(id, over === -1 ? null : over);
-      }
-      put(null);
-    };
-    window.addEventListener('touchmove', move, { passive: false });
-    window.addEventListener('touchend', up);
-    window.addEventListener('touchcancel', up);
-  };
-  const touchLiftRef = useRef(touchLift);
-  touchLiftRef.current = touchLift;
-  useEffect(() => {
-    const el = board.current;
-    if (!el) return;
-    const start = (ev: TouchEvent) => {
-      const t = ev.target as HTMLElement;
-      const at = t.closest('[data-drag-id]') as HTMLElement | null;
-      const t0 = ev.touches[0];
-      if (!at || !t0 || t.closest('button, input')) return;
-      const id = at.dataset.dragId!;
-      if (at.dataset.dragHold == null) {
-        // the grip, a chip: at once
-        ev.preventDefault();
-        touchLiftRef.current(id, t0.clientX, t0.clientY);
-        return;
-      }
-      let x = t0.clientX;
-      let y = t0.clientY;
-      const follow = (e: TouchEvent) => {
-        const f = e.touches[0];
-        if (!f) return;
-        x = f.clientX;
-        y = f.clientY;
-        if (Math.hypot(f.clientX - t0.clientX, f.clientY - t0.clientY) > 8) cancel(); // moved first: a scroll
-      };
-      const cancel = () => {
-        window.clearTimeout(timer);
-        window.removeEventListener('touchmove', follow);
-        window.removeEventListener('touchend', cancel);
-        window.removeEventListener('touchcancel', cancel);
-      };
-      const timer = window.setTimeout(() => {
-        cancel();
-        touchLiftRef.current(id, x, y);
-      }, 400);
-      window.addEventListener('touchmove', follow, { passive: true });
-      window.addEventListener('touchend', cancel);
-      window.addEventListener('touchcancel', cancel);
-    };
-    el.addEventListener('touchstart', start, { passive: false });
-    return () => el.removeEventListener('touchstart', start);
-  }, []);
-  // `hold`: the whole row – lifted after a moment's hold, a move before that scrolls the page as ever; else (the grip, a
-  // chip) lifted at once
-  const grab = (p: TourPlayer, hold = false) => ({
-    onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
-      if (e.button !== 0 || e.pointerType === 'touch') return; // a finger: by its touch events, above
-      if (hold && (e.target as HTMLElement).closest('.tour-grip, button, input')) return;
-      // no text selection, no native drag of the row (the mouse held still lost the moves); a touch still scrolls
-      e.preventDefault();
-      window.clearTimeout(holdTimer.current);
-      put({ id: p.id, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, armed: !hold, over: null });
-      if (!hold) {
-        lift(p.id);
-        return;
-      }
-      holdTimer.current = window.setTimeout(() => {
-        const d = live.current;
-        if (!d || d.id !== p.id || d.armed) return;
-        put({ ...d, armed: true, moved: true, over: flightAt(d.x, d.y) });
-        lift(p.id);
-        navigator.vibrate?.(15);
-      }, 350);
-    },
-    // before the hold: a move is a scroll, the hold given up
-    onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
-      if (e.pointerType === 'touch') return;
-      const d = live.current;
-      if (!hold || !d || d.id !== p.id || d.armed) return;
-      if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 10) {
-        window.clearTimeout(holdTimer.current);
-        dropped.current = Date.now(); // a move: no tap either
-        put(null);
-      } else live.current = { ...d, x: e.clientX, y: e.clientY };
-    },
-    onPointerUp: () => {
-      const d = live.current;
-      if (hold && d && d.id === p.id && !d.armed) {
-        window.clearTimeout(holdTimer.current);
-        put(null);
-      }
-    },
-  });
-  const dragged = drag?.armed && drag.moved ? byId(drag.id) : null;
-  const target = (f: number) => !!dragged && drag?.over === f && fits(f, dragged.id);
-  return (
-    <div ref={board} className="tour-board">
-      {Array.from({ length: props.flights }, (_, f) => {
-        const ps = inFlight(f);
-        const scorer = props.oneScorer ? (ps.find((p) => p.scorer) ?? ps[0]) : undefined;
-        return (
-          <section key={f} className={`card tour-flight${target(f) ? ' drop-target' : ''}${dragged && from(dragged.id) !== f && !room(f) ? ' drop-full' : ''}`} aria-label={`Flight ${f + 1}`} data-flight={f}>
-            <div className="tour-flight-head">
-              <h2>
-                Flight {f + 1} <strong className="tour-tee">{props.times[f]}</strong>
-              </h2>
-              <button type="button" className="link-btn small" aria-label={tr(`Change flight ${f + 1}`, `Flight ${f + 1} ändern`)} onClick={() => setOpen(f)}>
-                {tr('Change', 'Ändern')}
-              </button>
-            </div>
-            {scorer && ps.length > 1 && (
-              <SettingsList>
-                <ChoiceRow<string>
-                  label={tr('Scorer', 'Schreiber')}
-                  title={tr(`Scorer of flight ${f + 1}`, `Schreiber in Flight ${f + 1}`)}
-                  value={scorer.id}
-                  onChange={(id) => props.onScorer(f, id)}
-                  options={ps.map((p) => ({ value: p.id, name: props.label(p), text: tr('Enters the scores of the flight, marks everyone.', 'Erfasst die Scores des Flights, zählt alle.') }))}
-                />
-              </SettingsList>
-            )}
-            {ps.map((p) => {
-              // with a scorer he signs every other card as marker; his own: his marker as usual (lib/sharedround markerOf)
-              const m = byId(scorer && p.id !== scorer.id ? scorer.id : (props.markers[p.id] ?? ''));
-              const ph = props.playing(p);
-              return (
-                <div
-                  key={p.id}
-                  className={`tour-flight-player${dragged?.id === p.id ? ' lifted' : ''}`}
-                  data-drag-id={p.id}
-                  data-drag-hold=""
-                  role="button"
-                  tabIndex={0}
-                  aria-label={tr(`Move ${props.label(p)}`, `${props.label(p)} verschieben`)}
-                  onClick={() => Date.now() - dropped.current > 500 && setMoving(p.id)}
-                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setMoving(p.id)}
-                  {...grab(p, true)}
-                >
-                  <span className="grow">
-                    <strong>{props.label(p)}</strong>
-                    {m && <span className="muted small"> · {tr(`marked by ${props.label(m)}`, `Zähler: ${props.label(m)}`)}</span>}
-                  </span>
-                  <span className="muted small">{ph == null ? '' : tr(`PH ${ph}`, `SV ${ph}`)}</span>
-                  <span className="tour-grip" data-drag-id={p.id} aria-hidden="true" title={tr('Drag to another flight', 'Auf einen anderen Flight ziehen')} {...grab(p)}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <circle cx="9" cy="6" r="1.6" />
-                      <circle cx="15" cy="6" r="1.6" />
-                      <circle cx="9" cy="12" r="1.6" />
-                      <circle cx="15" cy="12" r="1.6" />
-                      <circle cx="9" cy="18" r="1.6" />
-                      <circle cx="15" cy="18" r="1.6" />
-                    </svg>
-                  </span>
-                </div>
-              );
-            })}
-            {!ps.length && <span className="muted small">{tr('No player yet – "Change" assigns them.', 'Noch kein Spieler – „Ändern“ ordnet sie zu.')}</span>}
-          </section>
-        );
-      })}
-      {(unplaced.length > 0 || (dragged && from(dragged.id) !== -1)) && (
-        <section className={`card tour-flight tour-unplaced${target(-1) ? ' drop-target' : ''}`} aria-label={tr('Not in a flight yet', 'Noch ohne Flight')} data-flight={-1}>
-          <div className="tour-flight-head">
-            <h2>{tr('Not in a flight yet', 'Noch ohne Flight')}</h2>
-            {props.players.length >= 2 && (
-              <button type="button" className="link-btn small" onClick={props.onAuto}>
-                {tr('Share out', 'Automatisch einteilen')}
-              </button>
-            )}
-          </div>
-          {unplaced.length > 0 ? (
-            <div className="tour-chips">
-              {unplaced.map((p) => (
-                <span key={p.id} className={`tour-chip${dragged?.id === p.id ? ' lifted' : ''}`} data-drag-id={p.id} role="button" tabIndex={0} aria-label={tr(`Move ${props.label(p)}`, `${props.label(p)} verschieben`)} onClick={() => Date.now() - dropped.current > 500 && setMoving(p.id)} {...grab(p)}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <circle cx="9" cy="6" r="1.6" />
-                    <circle cx="15" cy="6" r="1.6" />
-                    <circle cx="9" cy="12" r="1.6" />
-                    <circle cx="15" cy="12" r="1.6" />
-                    <circle cx="9" cy="18" r="1.6" />
-                    <circle cx="15" cy="18" r="1.6" />
-                  </svg>
-                  {props.label(p)}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <span className="muted small">{tr('Drop here: out of the flight', 'Hierher ziehen: aus dem Flight nehmen')}</span>
-          )}
-          {unplaced.length > 0 && props.flights > 0 && <span className="muted small">{tr('Drag a player onto a flight – or "Change" on the flight.', 'Spieler auf einen Flight ziehen – oder beim Flight „Ändern“.')}</span>}
-        </section>
-      )}
-      {dragged && drag && (
-        <span className="tour-chip tour-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden="true">
-          {props.label(dragged)}
-        </span>
-      )}
-      <button type="button" className="btn-secondary" disabled={!unplaced.length} onClick={() => setOpen('new')}>
-        {tr('+ Flight', '+ Flight')}
-      </button>
-      {moving && byId(moving) && (
-        <PickSheet<number>
-          title={tr(`Move ${props.label(byId(moving)!)}`, `${props.label(byId(moving)!)} verschieben`)}
-          current={from(moving)}
-          options={[
-            ...Array.from({ length: props.flights }, (_, f) => f)
-              .filter((f) => f === from(moving) || room(f))
-              .map((f) => ({ value: f, name: `Flight ${f + 1} · ${props.times[f]}`, text: inFlight(f).map(props.label).join(', ') || tr('No player yet', 'Noch kein Spieler') })),
-            { value: -1, name: tr('Not in a flight yet', 'Noch ohne Flight') },
-          ]}
-          onPick={(f) => {
-            if (f !== from(moving)) props.onMove(moving, f === -1 ? null : f);
-            setMoving(null);
-          }}
-          onClose={() => setMoving(null)}
-        />
-      )}
-      {open != null && (
-        <FlightSheet
-          n={open === 'new' ? props.flights + 1 : open + 1}
-          time={props.times[open === 'new' ? props.flights : open]}
-          chosen={open === 'new' ? [] : inFlight(open).map((p) => p.id)}
-          scorer={open === 'new' ? null : (inFlight(open).find((p) => p.scorer)?.id ?? null)}
-          offered={[...(open === 'new' ? [] : inFlight(open)), ...unplaced]}
-          label={props.label}
-          onSave={(time, ids, scorer) => {
-            props.onSave(open === 'new' ? null : open, time, ids, scorer);
-            setOpen(null);
-          }}
-          onRemove={
-            open === 'new'
-              ? undefined
-              : () => {
-                  props.onRemoveFlight(open);
-                  setOpen(null);
-                }
-          }
-          onClose={() => setOpen(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-/** One flight: its tee time to the minute, then its players – those in it and those not in a flight yet, four at most. */
-function FlightSheet(props: { n: number; time: string; chosen: string[]; scorer: string | null; offered: TourPlayer[]; label: (p: TourPlayer) => string; onSave: (time: string, ids: string[], scorer: string | null) => void; onRemove?: () => void; onClose: () => void }) {
-  const [time, setTime] = useState(props.time);
-  const [ids, setIds] = useState<string[]>(props.chosen);
-  const toggle = (id: string) => {
-    setIds((x) => (x.includes(id) ? x.filter((y) => y !== id) : x.length < FLIGHT_MAX ? [...x, id] : x));
-  };
-  return (
-    <div className="sheet-backdrop" onClick={props.onClose}>
-      <section className="sheet tour-flight-sheet" role="dialog" aria-label={`Flight ${props.n}`} onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <strong>Flight {props.n}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
-            ✕
-          </button>
-        </div>
-        <SettingsList>
-          <TimeRow id="flight-time" label={tr('Tee time', 'Startzeit')} value={time} onChange={(v) => v && setTime(v)} />
-        </SettingsList>
-        <div className="field">
-          <label>
-            {tr('Players', 'Spieler')} <span className="muted small">{ids.length}/{FLIGHT_MAX}</span>
-          </label>
-          {props.offered.length ? (
-            <div className="chip-set" role="group" aria-label={tr('Players of the flight', 'Spieler des Flights')}>
-              {props.offered.map((p) => {
-                const on = ids.includes(p.id);
-                return (
-                  <button key={p.id} type="button" className={`chip${on ? ' on' : ''}`} aria-pressed={on} disabled={!on && ids.length >= FLIGHT_MAX} onClick={() => toggle(p.id)}>
-                    {props.label(p)}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <span className="muted small">{tr('Everyone is in a flight.', 'Alle sind schon in einem Flight.')}</span>
-          )}
-          <span className="muted small">
-            {ids.length >= FLIGHT_MAX ? tr('Full – four players.', 'Voll – vier Spieler.') : tr('Only players not in a flight yet are offered. Who marks whom, the app sets.', 'Angeboten werden nur Spieler ohne Flight. Wer wen zählt, legt die App fest.')}
-          </span>
-        </div>
-        {/* the actions as a bar, the main button last (Sascha 03.11.2026: docs/DESIGN.md) */}
-        {props.onRemove && <ActionBar label={`Flight ${props.n}`} actions={[{ label: tr(`Remove flight ${props.n}`, `Flight ${props.n} entfernen`), icon: 'delete', danger: true, onClick: props.onRemove }]} />}
-        <button type="button" className="btn-primary" disabled={!ids.length} onClick={() => props.onSave(time, ids, props.scorer && ids.includes(props.scorer) ? props.scorer : null)}>
-          {props.onRemove ? tr('Save', 'Speichern') : tr('Create flight', 'Flight anlegen')}
-        </button>
-      </section>
-    </div>
-  );
-}
-
 /** The host's correction of a special prize: whose entry, how far – or the entry taken away. */
 function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid: string, pid: string, m: number | null, fairway: boolean) => void; onClose: () => void }) {
   const players = flightsOf(props.ev).flatMap((f) => f.players.map((p) => ({ fid: f.id, pid: p.id, name: p.name, key: `${f.id}/${p.id}` })));
@@ -1480,7 +421,10 @@ function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid
 
 /** The live leaderboard of a tournament and of a series (Sascha 03.11.2026: "a live leaderboard for single tournaments
  *  and for series"): always there – before the start every player with "–", while played "● LIVE", "nach 9", "F". */
-function LiveBoard(props: { label: string; title: string; live: boolean; rows: { key: string; pos: string; name: string; sub?: string; value: string; thru: string }[]; note?: string; chips?: ReactNode }) {
+type BoardRow = { key: string; pos: string; name: string; sub?: string; value: string; thru: string; /** his scorecards – one: the row opens it; several (the rounds): a chip each */ cards?: { label: string; card: () => Round | null }[]; /** the cards as chips even when one (a series: "R1 +3") */ chips?: boolean; out?: boolean };
+function LiveBoard(props: { label: string; title: string; live: boolean; rows: BoardRow[]; note?: string; chips?: ReactNode; cutAfter?: number }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const toggle = (id: string) => setOpen(open === id ? null : id);
   return (
     <section className="card tour-live" aria-label={props.label}>
       <div className="tour-live-head">
@@ -1494,22 +438,53 @@ function LiveBoard(props: { label: string; title: string; live: boolean; rows: {
       </div>
       {props.chips}
       <ol className="lb-rows tour-lb">
-        {props.rows.map((r) => (
-          <li key={r.key}>
-            <span className="lb-rank">{r.pos}</span>
-            <span className="lb-name">
-              {r.name}
-              {r.sub && <span className="muted small tour-lb-sub">{r.sub}</span>}
-            </span>
-            <span className="lb-value">{r.value}</span>
-            <span className="lb-thru muted small">{r.thru}</span>
-          </li>
-        ))}
+        {props.rows.map((r, i) => {
+          const one = r.cards?.length === 1 && !r.chips;
+          const shown = r.cards?.findIndex((_, k) => open === `${r.key}:${k}`) ?? -1;
+          const card = shown >= 0 ? r.cards![shown].card() : null;
+          return (
+            <li key={r.key} className={`${one ? 'lb-tap' : ''}${r.out ? ' lb-out' : ''}${r.out && !props.rows[i - 1]?.out ? ' lb-cut' : ''}`} onClick={one ? () => toggle(`${r.key}:0`) : undefined} aria-expanded={one ? shown === 0 : undefined}>
+              <span className="lb-rank">{r.pos}</span>
+              <span className="lb-name">
+                {r.name}
+                {r.sub && <span className="muted small tour-lb-sub">{r.sub}</span>}
+                {r.cards && !one && r.cards.length > 0 && (
+                  <span className="chip-set lb-parts">
+                    {r.cards.map((c, k) => (
+                      <button key={k} type="button" className={`chip${shown === k ? ' on' : ''}`} aria-pressed={shown === k} aria-label={tr(`${r.name} – scorecard ${c.label}`, `${r.name} – Scorekarte ${c.label}`)} onClick={() => toggle(`${r.key}:${k}`)}>
+                        {c.label}
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </span>
+              <span className="lb-value">{r.value}</span>
+              <span className="lb-thru muted small">{r.thru}</span>
+              {card && (
+                <div className="lb-card" onClick={(e) => e.stopPropagation()}>
+                  <ScoreTable round={card} />
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ol>
+      {props.cutAfter != null && props.rows.some((r) => r.out) && <span className="muted small">{tr(`Below the line: missed the cut after round ${props.cutAfter}.`, `Unter der Linie: Cut nach Runde ${props.cutAfter} verpasst.`)}</span>}
       {props.note && <span className="muted small">{props.note}</span>}
     </section>
   );
 }
+/** A round played out: everyone in it through the last hole. */
+const roundDone = (e: RoundEvent) => {
+  const st = eventStandings(e);
+  return st.rows.length > 0 && st.rows.every((r) => r.finished);
+};
+/** A player's card in a round's event, by his name. */
+const cardByName = (e: RoundEvent | null | undefined, name: string): Round | null => {
+  if (!e) return null;
+  const row = eventStandings(e).rows.find((r) => r.name.trim().toLowerCase() === name.trim().toLowerCase());
+  return row ? eventCard(e, row.key) : null;
+};
 const clock = (d: Date) => d.toLocaleTimeString(tr('en-GB', 'de-DE'), { hour: '2-digit', minute: '2-digit' });
 
 // ---------- a tournament series ----------
@@ -1527,7 +502,7 @@ export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; row
   const by = new Map<string, { name: string; sum: number; rounds: number; parts: SeriesPart[] }>();
   let hb = false;
   evs.forEach((ev, k) => {
-    const st = eventStandings(ev);
+    const st = eventStandings(ev, { gross: (ev.format?.scoring ?? 'net') === 'stroke' });
     hb = st.higherBetter;
     for (const r of st.rows) {
       if (r.sort == null || !r.thru) continue;
@@ -1544,12 +519,13 @@ export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; row
   return { higherBetter: hb, rows: rows.map((x) => ({ ...x, pos: `${rows.filter((y) => y.sum === x.sum).length > 1 ? 'T' : ''}${rows.findIndex((y) => y.sum === x.sum) + 1}` })) };
 }
 
-export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void }) {
+export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void; /** a tournament over several rounds changed as a whole */ onEdit: (d: TourDraft) => void }) {
   useTop(props.code);
   const entry = useSeries().find((e) => e.code === props.code);
   const tours = useTours();
   const [evs, setEvs] = useState<RoundEvent[]>([]);
   const [sheet, setSheet] = useState<null | 'invite' | 'rename' | 'dissolve'>(null);
+  const [dealing, setDealing] = useState<number | null>(null);
   const [at, setAt] = useState<Date | null>(null);
   const [name, setName] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
@@ -1585,7 +561,37 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
   }
   const s = entry.series;
   const host = isSeriesHost(entry);
+  const multi = !!s.multi;
+  const cut = s.multi?.cut ?? null;
+  // the rounds' events in the series' order (the server's, else as kept here)
+  const roundEvs = s.rounds.map((r) => evs.find((e) => tours.find((t) => t.code === r.code)?.ev.id === e.id) ?? tours.find((t) => t.code === r.code)?.ev ?? null);
   const total = seriesStandings(evs.filter((e) => (e as PlannedEvent).date <= today));
+  // the cut (Sascha 04.11.2026): once its rounds are played, the best `top` and ties – the others below the line
+  const cutPlayed = !!cut && roundEvs.slice(0, cut.after).every((e) => e && roundDone(e));
+  const madeIt = cutPlayed ? new Set(madeCut(seriesStandings(roundEvs.slice(0, cut!.after).filter((e): e is RoundEvent => !!e)).rows, cut!.top).map((r) => r.name.trim().toLowerCase())) : null;
+  const out = (name: string) => !!madeIt && !madeIt.has(name.trim().toLowerCase());
+  // a round dealt by result – the host's tap once the rounds before are played (Sascha 04.11.2026: "the final day by result")
+  const toDeal = s.rounds
+    .map((r, k) => ({ r, k, e: tours.find((t) => t.code === r.code) }))
+    .filter(({ k, e }) => k > 0 && e && ((e.ev.draw?.mode ?? 'manual') === 'result' || (cut && k >= cut.after)));
+  const deal = async (k: number) => {
+    const e = tours.find((t) => t.code === s.rounds[k].code);
+    if (!e) return;
+    setDealing(k);
+    const before = seriesStandings(roundEvs.slice(0, k).filter((x): x is RoundEvent => !!x));
+    const results = Object.fromEntries(before.rows.map((x) => [x.name.trim().toLowerCase(), x.sum]));
+    // the round right after the cut: the cut made; one further on: who played the round before
+    const prev = roundEvs[k - 1];
+    const onlyNames = cut && k > cut.after && prev ? flightsOf(prev).flatMap((fl) => fl.players.map((p) => p.name.trim().toLowerCase())) : undefined;
+    const ok = await dealRound(e, results, { higherBetter: before.higherBetter, ...(cut && k === cut.after ? { cutTop: cut.top } : {}), ...(onlyNames ? { onlyNames } : {}) });
+    setDealing(null);
+    setMsg(ok ? null : NO_NET());
+    if (ok) {
+      void syncTours();
+      const fresh = await refreshEvent(e.code);
+      if (fresh) setEvs((xs) => xs.map((x) => (x.id === fresh.id ? fresh : x)));
+    }
+  };
   const fmtSum = (v: number) => (total.higherBetter ? tr(`${v} pts`, `${v} Pkt.`) : v === 0 ? 'Par' : v > 0 ? `+${v}` : `−${-v}`);
   const lastRound = [...s.rounds].reverse().map((r) => tours.find((t) => t.code === r.code)).find(Boolean);
   return (
@@ -1599,8 +605,14 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
             <button
               type="button"
               className="icon-btn edit-btn"
-              aria-label={tr('Rename the series', 'Serie umbenennen')}
+              aria-label={multi ? tr('Change the tournament', 'Turnier bearbeiten') : tr('Rename the series', 'Serie umbenennen')}
               onClick={() => {
+                if (multi) {
+                  // the rounds with their flights as the server has them now (the copy kept here may be older)
+                  const d = draftOfMulti(entry, tours.map((t) => ({ ...t, ev: (evs.find((x) => x.id === t.ev.id && isPlanned(x)) as PlannedEvent | undefined) ?? t.ev })));
+                  if (d) props.onEdit(d);
+                  return;
+                }
                 setName(s.name);
                 setSheet('rename');
               }}
@@ -1614,7 +626,8 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
         }
       />
       <span className="muted small">
-        {tr('Tournament series', 'Turnierserie')} · {s.rounds.length} {tr('rounds', 'Runden')}
+        {multi ? tr('Tournament', 'Turnier') : tr('Tournament series', 'Turnierserie')} · {s.rounds.length} {tr('rounds', 'Runden')}
+        {cut ? ` · ${tr(`cut after round ${cut.after}: the best ${cut.top}`, `Cut nach Runde ${cut.after}: die besten ${cut.top}`)}` : ''}
         {s.rounds.length ? ` · ${dm(s.rounds[0].date)}–${dm(s.rounds[s.rounds.length - 1].date)}` : ''}
       </span>
       {/* the total live (Sascha 03.11.2026): each player, what every round added – a running one "nach 9" */}
@@ -1624,15 +637,17 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
         live={total.rows.some((r) => r.parts.some((p) => !p.finished))}
         rows={
           total.rows.length
-            ? total.rows.map((r) => {
+            ? [...total.rows.filter((r) => !out(r.name)), ...total.rows.filter((r) => out(r.name))].map((r) => {
                 const now = r.parts.find((p) => !p.finished);
                 return {
                   key: r.name,
-                  pos: r.pos,
+                  pos: out(r.name) ? 'CUT' : r.pos,
                   name: r.name,
-                  sub: r.parts.map((p) => `R${p.k + 1} ${fmtSum(p.sort)}${p.finished ? '' : tr(` (thru ${p.thru})`, ` (nach ${p.thru})`)}`).join(' · '),
                   value: fmtSum(r.sum),
                   thru: now ? tr(`thru ${now.thru}`, `nach ${now.thru}`) : tr(`${r.rounds} ${r.rounds === 1 ? 'round' : 'rounds'}`, `${r.rounds} ${r.rounds === 1 ? 'Runde' : 'Runden'}`),
+                  cards: r.parts.map((p) => ({ label: `R${p.k + 1} ${fmtSum(p.sort)}${p.finished ? '' : tr(` (thru ${p.thru})`, ` (nach ${p.thru})`)}`, card: () => cardByName(evs[p.k], r.name) })),
+                  chips: true,
+                  out: out(r.name),
                 };
               })
             : [...new Set(evs.flatMap((e) => flightsOf(e).flatMap((f) => f.players.map((p) => p.name))))].map((n) => ({ key: n, pos: '–', name: n, value: '–', thru: '' }))
@@ -1644,7 +659,29 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
               : undefined
             : tr('Starts with the first round – then live, every 30 seconds.', 'Startet mit der ersten Runde – dann live, alle 30 Sekunden.')
         }
+        cutAfter={cutPlayed ? cut!.after : undefined}
       />
+      {/* the host deals a round by result once the rounds before are played (Sascha 04.11.2026) */}
+      {host &&
+        toDeal.map(({ r, k, e }) => {
+          const ready = roundEvs.slice(0, k).every((x) => x && roundDone(x));
+          const dealt = e!.ev.draw?.dealtAt;
+          return (
+            <section key={r.code} className="card tour-deal" aria-label={tr(`Flights of round ${k + 1}`, `Flights der Runde ${k + 1}`)}>
+              <span className="eyebrow">{tr(`Round ${k + 1} · flights`, `Runde ${k + 1} · Flights`)}</span>
+              <span className="small">
+                {dealt
+                  ? tr(`Dealt by result on ${dm(dealt.slice(0, 10))} – the players see their tee times.`, `Am ${dm(dealt.slice(0, 10))} nach Ergebnis eingeteilt – die Spieler sehen ihre Startzeiten.`)
+                  : ready
+                    ? tr(`Round ${k} is played: deal the flights now – the worst first, the best in the last flight${cut && k === cut.after ? `, after the cut the best ${cut.top}` : ''}.`, `Runde ${k} ist gespielt: Flights jetzt einteilen – die Schlechtesten zuerst, die Besten im letzten Flight${cut && k === cut.after ? `, nach dem Cut die besten ${cut.top}` : ''}.`)
+                    : tr(`Possible once round ${k} is played – until then the flights are provisional.`, `Möglich, sobald Runde ${k} gespielt ist – bis dahin sind die Flights vorläufig.`)}
+              </span>
+              <button type="button" className={dealt ? 'btn-secondary' : 'btn-primary'} disabled={!ready || dealing != null} onClick={() => void deal(k)}>
+                {dealing === k ? tr('Dealing …', 'Teile ein …') : dealt ? tr('Deal again', 'Neu einteilen') : tr('Deal the flights by result', 'Flights nach Ergebnis einteilen')}
+              </button>
+            </section>
+          );
+        })}
       <span className="eyebrow">{tr('Rounds', 'Runden')}</span>
       <ul className="list">
         {s.rounds.map((r, k) => (
@@ -1663,7 +700,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
           </li>
         ))}
       </ul>
-      {host && lastRound && (
+      {host && lastRound && !multi && (
         <button
           type="button"
           className="btn-secondary"
@@ -1671,7 +708,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
             // a new round: the flights, markers and tee times of the last one (Sascha: "taken from round 1, changeable")
             const d = draftOf(lastRound);
             const next = dayOf(new Date(new Date(`${lastRound.ev.date}T12:00:00`).getTime() + 864e5));
-            props.onAddRound({ ...d, code: undefined, base: undefined, series: props.code, date: next, name: `${s.name} · ${tr(`Round ${s.rounds.length + 1}`, `Runde ${s.rounds.length + 1}`)}` });
+            props.onAddRound({ ...d, code: undefined, base: undefined, series: props.code, rounds: d.rounds.map((r) => ({ ...r, code: undefined, base: r.course ? undefined : r.base, date: next })), name: `${s.name} · ${tr(`Round ${s.rounds.length + 1}`, `Runde ${s.rounds.length + 1}`)}` });
           }}
         >
           {tr('+ Round', '+ Runde')}
@@ -1685,7 +722,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
         </span>
       )}
       {/* the actions one bar of icons, as everywhere (Sascha 03.11.2026: docs/DESIGN.md) – the red one last */}
-      {host && <ActionBar label={tr('This series', 'Diese Serie')} actions={[{ label: tr('Undo the series', 'Serie auflösen'), icon: 'dissolve', danger: true, onClick: () => setSheet('dissolve') }]} />}
+      {host && <ActionBar label={multi ? tr('This tournament', 'Dieses Turnier') : tr('This series', 'Diese Serie')} actions={[multi ? { label: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('dissolve') } : { label: tr('Undo the series', 'Serie auflösen'), icon: 'dissolve', danger: true, onClick: () => setSheet('dissolve') }]} />}
       {sheet === 'rename' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet" role="dialog" aria-label={tr('Rename the series', 'Serie umbenennen')} onClick={(e) => e.stopPropagation()}>
@@ -1707,7 +744,35 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
           </section>
         </div>
       )}
-      {sheet === 'dissolve' && (
+      {/* a tournament over rounds deleted for everyone: its rounds marked deleted (the bin brings them back) */}
+      {sheet === 'dissolve' && multi && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <section className="sheet" role="dialog" aria-label={tr('Delete the tournament', 'Turnier löschen')} onClick={(e) => e.stopPropagation()}>
+            <strong>{tr(`Delete "${s.name}" – for everyone?`, `„${s.name}“ löschen – für alle?`)}</strong>
+            <span className="muted">{tr('Its rounds are only marked deleted: the bin of "Tournaments" brings them back.', 'Seine Runden werden nur als gelöscht markiert: Der Papierkorb unter „Turniere“ holt sie zurück.')}</span>
+            <button
+              type="button"
+              className="btn-primary btn-danger-fill"
+              onClick={async () => {
+                let ok = await dissolveSeries(props.code);
+                for (const r of s.rounds) {
+                  const e = loadTours().find((t) => t.code === r.code);
+                  if (ok && e) ok = await changeTour(r.code, { ...e.ev, deletedAt: new Date().toISOString() });
+                }
+                setSheet(null);
+                if (ok) props.onBack();
+                else setMsg(NO_NET());
+              }}
+            >
+              {tr('Delete for everyone', 'Für alle löschen')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => setSheet(null)}>
+              {tr('Cancel', 'Abbrechen')}
+            </button>
+          </section>
+        </div>
+      )}
+      {sheet === 'dissolve' && !multi && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet" role="dialog" aria-label={tr('Undo the series', 'Serie auflösen')} onClick={(e) => e.stopPropagation()}>
             <strong>{tr(`Undo "${s.name}"?`, `„${s.name}“ auflösen?`)}</strong>
@@ -1799,7 +864,8 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
     );
   }
   // the leaderboard always (Sascha 03.11.2026: "a live leaderboard") – before the first score every player with "–"
-  const standings = eventStandings(live ?? ev, { gross, cls });
+  // gross the strokes alone – a gross one planned before 04.11.2026 kept the full handicap
+  const standings = eventStandings(live ?? ev, { gross: gross || (ev.format?.scoring ?? 'net') === 'stroke', cls });
   const played = started && standings.rows.some((r) => r.thru > 0);
   const done = played && standings.rows.every((r) => r.finished);
   const net = (ev.format?.scoring ?? 'net') !== 'stroke';
@@ -1812,7 +878,12 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
         backLabel={tr('Tournaments', 'Turniere')}
         right={
           host ? (
-            <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => props.onEdit(draftOf(entry))}>
+            <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => {
+                // a round of a tournament over rounds: the tournament changed as a whole
+                const m = ev.series?.code ? loadSeries().find((x) => x.code === ev.series!.code && x.series.multi) : undefined;
+                const now = live && isPlanned(live) ? { ...entry, ev: live } : entry;
+                props.onEdit((m && draftOfMulti(m, loadTours().map((t) => (t.code === entry.code ? now : t)))) || draftOf(now));
+              }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 20h4L19 9l-4-4L4 16z" />
                 <path d="M13.5 6.5l4 4" />
@@ -1884,6 +955,8 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
             ...(classes.length && r.cls ? { sub: tr(`Class ${r.cls}`, `Klasse ${r.cls}`) } : {}),
             value: played && r.thru ? r.value : '–',
             thru: r.finished ? 'F' : r.thru ? tr(`thru ${r.thru}`, `nach ${r.thru}`) : '',
+            // tapped: his scorecard opens below (Sascha 04.11.2026)
+            ...(played && r.thru ? { cards: [{ label: '', card: () => eventCard(live ?? ev, r.key) }] } : {}),
           }))}
           note={
             !started
@@ -1937,10 +1010,16 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
           }}
         />
       )}
+      {ev.draw?.mode === 'result' && !ev.draw.dealtAt && (
+        <span className="muted small">{tr('The flights are provisional – dealt by result once the rounds before are played (on the page of the tournament).', 'Die Flights sind vorläufig – nach den Vorrunden werden sie nach Ergebnis eingeteilt (auf der Seite des Turniers).')}</span>
+      )}
       {flightsOf(ev).map((f, k) => (
         <section key={f.id} className="card tour-flight" aria-label={`Flight ${k + 1}`}>
           <div className="tour-flight-head">
-            <h2>Flight {k + 1}</h2>
+            <h2>
+              Flight {k + 1}
+              {f.startHole ? <span className="muted small">{tr('Tee 10', 'Tee 10')}</span> : null}
+            </h2>
             {teeTimeOf(f) && <strong className="tour-tee">{teeTimeOf(f)}</strong>}
           </div>
           {f.scorer && (
