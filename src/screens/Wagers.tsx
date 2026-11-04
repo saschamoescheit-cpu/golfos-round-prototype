@@ -261,7 +261,9 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
   const [names, setNames] = useState<{ id: string; name: string; hcp: string }[]>(() => [{ id: newId(), name: shownName(loadProfile()) || tr('Me', 'Ich'), hcp: loadProfile().hcpIndex ?? '' }, { id: newId(), name: '', hcp: '' }]);
   // no value until chosen – a required field (Sascha 03.11.2026)
   const [prize, setPrize] = useState<Prize | null>(null);
-  const [counted, setCounted] = useState(false); // off by default (Sascha 02.11.2026: "the switch off by default")
+  // "Jeder seinen eigenen" by default (Sascha 02.11.2026: "the switch off by default")
+  const [poolEntry, setPoolEntry] = useState<ScoreEntry>('own');
+  const counted = poolEntry !== 'own';
   const [rounds, setRounds] = useState<PoolRound[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -313,7 +315,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
       {/* Wer → Score-Erfassung → Worum, as Neue Runde and Neues Turnier (Sascha 03.11.2026: one order everywhere) */}
       <section className="setup-part">
         <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
-        <CountedSwitch on={counted} onChange={setCounted} />
+        <CountedSwitch value={poolEntry} onChange={setPoolEntry} />
       </section>
       <section className="setup-part">
         <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
@@ -339,7 +341,7 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
             .map((p) => ({ ...p, name: p.name.trim() }))
             .filter((p, k) => k === 0 || p.name)
             .map((p, k) => ({ id: p.id, name: p.name, ...(p.hcp.trim() ? { hcp: p.hcp.trim() } : {}), ...(k === 0 ? { joined: { name: account, at: new Date().toISOString(), ...(uid ? { uid } : {}) } } : {}) }));
-          const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {}, currency: isMoney(prize) ? prize.currency : 'EUR', ...(isMoney(prize) ? {} : { prize }), counted, ...(rounds.length ? { rounds } : {}) };
+          const pool: WagerPool = { kind: 'wager-pool', id: newId(), name: name.trim() || tr('Bets', 'Wetten'), from, to, createdAt: new Date().toISOString(), players, wagers: [], progress: {}, currency: isMoney(prize) ? prize.currency : 'EUR', ...(isMoney(prize) ? {} : { prize }), counted, ...(poolEntry === 'one' ? { oneScorer: true } : {}), ...(rounds.length ? { rounds } : {}) };
           const e = await createPool(pool, players[0].id);
           setBusy(false);
           if (e) props.onCreated(e.code);
@@ -874,7 +876,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               const players = [...x.players.map((q) => ({ ...p.players.find((o) => o.id === q.id), ...q })), ...p.players.filter((q) => !x.players.some((y) => y.id === q.id) && (keep(q.id) || !pool.players.some((o) => o.id === q.id)))];
               // what is played for: money keeps `currency` (as phones from before read it), a thing `prize` beside it
               const { prize: _old, ...rest } = p;
-              return { ...rest, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, players };
+              return { ...rest, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, oneScorer: x.oneScorer, players };
             });
             if (ok) {
               setSheet(null);
@@ -1092,17 +1094,22 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
 
 /** "Score-Erfassung" of the whole pool (Sascha 02.11.2026) – every bet of it counts so; a row "Wer erfasst ›" with its
  *  sheet, as in "Neue Runde" and "Neues Turnier" (Sascha 04.11.2026: "the score entry as in the rest of the app"). */
-function CountedSwitch(props: { on: boolean; onChange: (on: boolean) => void }) {
+export type ScoreEntry = 'own' | 'marker' | 'one';
+export const entryOf = (p: { counted?: boolean; oneScorer?: boolean }): ScoreEntry => (!p.counted ? 'own' : p.oneScorer ? 'one' : 'marker');
+/** "Wer erfasst" of the whole pool – the three ways of Rounds and the tournaments (Sascha 04.11.2026: "one for all
+ *  missing"); "Mit Zähler" and "Einer für alle" both count only marked, signed rounds. */
+function CountedSwitch(props: { value: ScoreEntry; onChange: (v: ScoreEntry) => void }) {
   return (
     <>
       <SettingsList>
-        <ChoiceRow<'own' | 'marker'>
+        <ChoiceRow<ScoreEntry>
           label={tr('Who enters', 'Wer erfasst')}
-          value={props.on ? 'marker' : 'own'}
-          onChange={(v) => props.onChange(v === 'marker')}
+          value={props.value}
+          onChange={props.onChange}
           options={[
             { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('Every round counts as the player entered it – nobody marks.', 'Jede Runde zählt so, wie der Spieler sie erfasst hat – ohne Zähler.') },
-            { value: 'marker', name: tr('With a marker', 'Mit Zähler'), text: tr('A flight partner marks each player – or one keeps the score of all, as in a tournament.', 'Ein Flightpartner zählt jeden Spieler – oder einer erfasst für alle, wie im Turnier.') },
+            { value: 'marker', name: tr('With a marker', 'Mit Zähler'), text: tr("Everyone enters his own score and his partner's – a round counts once the card is signed.", 'Jeder trägt seinen Score und den seines Partners ein – eine Runde zählt, sobald die Karte unterschrieben ist.') },
+            { value: 'one', name: tr('One for all', 'Einer für alle'), text: tr('One player per flight keeps the score of all and marks everyone.', 'Ein Spieler je Flight erfasst die Scores aller und zählt alle.') },
           ]}
         />
       </SettingsList>
@@ -1805,7 +1812,7 @@ export function LibrarySheet(props: { pool: WagerPool; player: string; onAdd: (w
 /** Change a pool (Sascha 01.11.2026: "setting up, deleting, changing in a menu of its own"): name, days, players – a
  *  player with bets or a phone of his stays (his bets would be lost); or delete the pool for everyone. */
 
-function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; prize: Prize; rounds: PoolRound[]; counted: boolean }) => void; onDelete: () => void; onClose: () => void }) {
+function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string; from: string; to: string; players: PoolPlayer[]; prize: Prize; rounds: PoolRound[]; counted: boolean; oneScorer: boolean }) => void; onDelete: () => void; onClose: () => void }) {
   const { pool } = props;
   const [name, setName] = useState(pool.name);
   const [from, setFrom] = useState(pool.from);
@@ -1813,7 +1820,8 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
   const [players, setPlayers] = useState<PoolPlayer[]>(pool.players);
   const [prize, setPrize] = useState<Prize>(prizeOf(pool));
   const [rounds, setRounds] = useState<PoolRound[]>(pool.rounds ?? []);
-  const [counted, setCounted] = useState(poolCounted(pool));
+  const [poolEntry, setPoolEntry] = useState<ScoreEntry>(entryOf({ counted: poolCounted(pool), oneScorer: pool.oneScorer }));
+  const counted = poolEntry !== 'own';
   const [del, setDel] = useState(false);
   const keeps = (p: PoolPlayer) => !!p.joined || pool.wagers.some((w) => w.player === p.id || w.opponent === p.id);
   const ok = !!name.trim() && from <= to && players.length > 0 && players.every((p) => p.name.trim());
@@ -1856,13 +1864,13 @@ function PoolEditSheet(props: { pool: WagerPool; onSave: (patch: { name: string;
             <span className="muted small">{tr('A player who joined or has bets stays – delete his bets first.', 'Wer beigetreten ist oder Wetten hat, bleibt – erst seine Wetten löschen.')}</span>
             {/* the order of "Neue Wette" (Sascha 03.11.2026: one order everywhere) */}
             <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
-            <CountedSwitch on={counted} onChange={setCounted} />
+            <CountedSwitch value={poolEntry} onChange={setPoolEntry} />
             <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
             <SettingsList>
               <PrizeRow value={prize} onChange={setPrize} />
             </SettingsList>
             <ActionBar label={tr('This pool', 'Dieser Pool')} actions={[{ label: tr('Delete the pool', 'Pool löschen'), icon: 'delete', danger: true, onClick: () => setDel(true) }]} />
-            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, counted, players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
+            <button type="button" className="btn-primary" disabled={!ok} onClick={() => props.onSave({ name: name.trim(), from, to, prize, rounds, counted, oneScorer: poolEntry === 'one', players: players.map(({ hcp, ...p }) => ({ ...p, name: p.name.trim(), ...(hcp?.trim() ? { hcp: hcp.trim() } : {}) })) })}>
               {tr('Save', 'Speichern')}
             </button>
           </>

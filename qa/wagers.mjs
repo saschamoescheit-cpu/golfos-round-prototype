@@ -221,6 +221,11 @@ const choose = async (label, option, inside = H) => {
   ok((await who.count()) === 1 && /Jeder seinen eigenen/.test(await who.innerText()) && (await H.getByRole('switch', { name: /Mit Zähler/ }).count()) === 0, 'score entry: a row "Wer erfasst · Jeder seinen eigenen", no switch');
   ok((await H.getByText(/Der Erste bist du/).count()) === 0, 'players: no hint "Der Erste bist du"');
   await who.click();
+  // the three ways of Rounds and the tournaments (Sascha 04.11.2026: "the bets lack 'Einer für alle'")
+  {
+    const opts = (await H.getByRole('dialog', { name: 'Wer erfasst' }).locator('.pick-option strong').allInnerTexts()).join('|');
+    ok(opts === 'Jeder seinen eigenen|Mit Zähler|Einer für alle', `score entry: the three ways (${opts})`);
+  }
   await H.locator('.pick-option strong').getByText('Mit Zähler', { exact: true }).click();
   ok(/Mit Zähler/.test(await who.innerText()) && !/vorläufig|Für alle Wetten des Pools/.test(await H.locator('.setup-part').filter({ hasText: 'Score-Erfassung' }).innerText()), 'score entry: "Mit Zähler" chosen – no hint under it (04.11.2026)');
 }
@@ -406,9 +411,13 @@ await ed.locator('#pool-edit-name').fill('USA 2026 Florida');
 await ed.getByRole('button', { name: '+ Spieler' }).click();
 await ed.getByRole('textbox', { name: 'Spieler 5' }).fill('Dave');
 ok((await ed.getByRole('button', { name: 'Chris entfernen' }).count()) === 0, 'edit: Chris (joined, with bets) cannot be removed');
+// "Einer für alle" (Sascha 04.11.2026): kept with the pool, it counts as "Mit Zähler"
+await ed.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click();
+await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
 await ed.getByRole('button', { name: 'Speichern' }).click();
 await H.waitForTimeout(1200);
 const after = shared.get(code).game;
+ok(after.oneScorer === true && after.counted === true, `edit: "Einer für alle" kept – counted as with a marker (${after.oneScorer}, ${after.counted})`);
 ok(after.name === 'USA 2026 Florida' && after.players.map((p) => p.name).join(',') === 'Sascha,Chris,Erik,Cedric,Dave' && after.wagers.length === 7, `edit: renamed, Dave added, the bets kept (${after.players.map((p) => p.name).join(', ')})`);
 // delete the pool – for everyone: gone from the menu here, on Chris's phone it says so
 await H.getByRole('button', { name: 'Pool bearbeiten' }).click();

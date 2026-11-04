@@ -328,6 +328,9 @@ export interface WagerPool {
   /** "with marker" for the whole pool (Sascha 02.11.2026: "one bet with, another without a marker makes no sense") –
    *  set: every bet of the pool follows it (withCounted); unset (pools from before): each bet as it was set */
   counted?: boolean;
+  /** "Einer für alle" (Sascha 04.11.2026: "the bets lack 'one for all'"): with a marker, one player per flight keeps the
+   *  score of all and marks everyone – judged as "Mit Zähler" (the scorer is everyone's marker) */
+  oneScorer?: boolean;
   /** what was paid of the settlement (Sascha 03.11.2026: "everyone sees whether he paid his debts or received them") */
   payments?: Payment[];
 }

@@ -1148,6 +1148,12 @@ button.tile:disabled { opacity: 1; }
 /* the flight's players as the rows of a list (Sascha 03.11.2026: "not appealing enough") – a line between them */
 .tour-flight-player { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 48px; padding: 4px 0; border-top: 1px solid var(--line); }
 .tour-flight-player .grow { flex: 1 1 120px; min-width: 0; }
+/* the scorer of a flight a line of the card as its players (Sascha 04.11.2026: "Schreiber does not fit the look yet"): no box
+   of its own, the same edge, height and line; "Schreiber" small, the name as a player's */
+.tour-flight > .settings-list { background: transparent; border-radius: 0; overflow: visible; }
+.tour-flight > .settings-list .settings-row { padding: 4px 0; min-height: 48px; border-top: 1px solid var(--line); border-bottom: 0; }
+.tour-flight > .settings-list .settings-row > :first-child { color: var(--brand-text); font-size: 14px; font-weight: 600; }
+.tour-flight > .settings-list .settings-value { color: var(--text); font-weight: 700; }
 /* the flights' players as chips to drag (Sascha 01.11.2026) */
 .tour-flight.drop-target { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand) inset; }
 .tour-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
