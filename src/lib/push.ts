@@ -15,6 +15,8 @@ export interface PushState {
   on: boolean;
   endpoint?: string;
   kinds: PushKinds;
+  /** the time zone the server was told – its tee time reminder counts in it */
+  tz?: string;
 }
 
 const KEY = 'golfos.push.v1'; // this phone only – every phone subscribes for itself; its kinds: what the server was told
@@ -63,6 +65,36 @@ export function pushKindsFromSync(): void {
     .catch(() => null); // offline: after the next sync
 }
 if (typeof window !== 'undefined') window.addEventListener('golfos:synced', pushKindsFromSync);
+
+/** The phone in another time zone (Sascha 04.11.2026: the USA trip) – the server told again, its tee time reminder 45
+ *  minutes ahead in the time there, not at home; told only at subscribing, so this phone subscribes once more (the
+ *  server says hello). A phone from before that kept none: the zone it is in now, as it was told. */
+const zone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+let telling = false;
+export async function pushTimezone(): Promise<void> {
+  const s = phoneState();
+  if (!s?.on || !s.endpoint || telling || !loadSession()) return;
+  const tz = zone();
+  if (!s.tz) return savePush({ ...loadPush(), tz });
+  if (s.tz === tz) return;
+  telling = true;
+  try {
+    const subscription = isNative()
+      ? { endpoint: s.endpoint, keys: { p256dh: 'apns', auth: 'apns' } }
+      : (await (await navigator.serviceWorker.ready).pushManager.getSubscription())?.toJSON();
+    if (!subscription) return;
+    const r = await call({ action: 'subscribe', subscription, kinds: loadPush().kinds, tz, lang: getLang() });
+    if (r.ok) savePush({ ...loadPush(), tz });
+  } catch {
+    /* no connection – told the next time the app comes up */
+  } finally {
+    telling = false;
+  }
+}
+if (typeof window !== 'undefined') {
+  window.setTimeout(() => void pushTimezone(), 4000);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void pushTimezone());
+}
 
 /** The browser can receive pushes at all (service worker, push manager, notifications). */
 export const pushSupported = (): boolean => typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -116,8 +148,8 @@ export async function enablePush(): Promise<PushState> {
   const old = await reg.pushManager.getSubscription();
   if (old) await old.unsubscribe().catch(() => false); // made with another key (or for another account): new one
   const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(publicKey) });
-  const state: PushState = { on: true, endpoint: sub.endpoint, kinds: loadPush().kinds };
-  const r = await call({ action: 'subscribe', subscription: sub.toJSON(), kinds: state.kinds, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, lang: getLang() });
+  const state: PushState = { on: true, endpoint: sub.endpoint, kinds: loadPush().kinds, tz: zone() };
+  const r = await call({ action: 'subscribe', subscription: sub.toJSON(), kinds: state.kinds, tz: zone(), lang: getLang() });
   if (!r.ok) {
     await sub.unsubscribe().catch(() => false);
     throw new PushError(r.status === 404 ? 'setup' : 'failed', String(r.status));
@@ -136,8 +168,8 @@ async function enableAppPush(): Promise<PushState> {
   }
   if (!token) throw new PushError('denied', 'denied');
   const endpoint = `apns:${token}`;
-  const state: PushState = { on: true, endpoint, kinds: loadPush().kinds };
-  const r = await call({ action: 'subscribe', subscription: { endpoint, keys: { p256dh: 'apns', auth: 'apns' } }, kinds: state.kinds, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, lang: getLang() });
+  const state: PushState = { on: true, endpoint, kinds: loadPush().kinds, tz: zone() };
+  const r = await call({ action: 'subscribe', subscription: { endpoint, keys: { p256dh: 'apns', auth: 'apns' } }, kinds: state.kinds, tz: zone(), lang: getLang() });
   // 400: the function on the server is older than the app (it knows only the browser's subscriptions)
   if (!r.ok) throw new PushError(r.status === 404 || r.status === 400 ? 'setup' : 'failed', String(r.status));
   savePush(state);
