@@ -33,7 +33,9 @@ const NO_NET = () => tr('No connection – try again in a moment.', 'Keine Verbi
 
 /** At most four in a flight (Sascha 01.11.2026). */
 export const FLIGHT_MAX = 4;
-const ROUNDS_MAX = 6;
+/** the rounds to pick at once; more typed (Sascha 04.11.2026: "a number of rounds of one's own") – up to ROUNDS_MAX */
+const ROUNDS_PICK = 6;
+const ROUNDS_MAX = 20;
 
 export interface TourPlayer {
   id: string;
@@ -447,7 +449,9 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
       const r = { ...newRound(nextDay(last.date), { ...last.draw, dealtAt: undefined }), course: last.course, optionId: last.optionId };
       rounds.push(drawRound(r, d.players));
     }
-    if (n > d.rounds.length && n > 1) rounds[n - 1] = drawRound({ ...rounds[n - 1], draw: { ...rounds[n - 1].draw, mode: 'result' } }, d.players);
+    // the last round the final, by result – also when rounds are taken away and the final was by result
+    const finalByResult = n > d.rounds.length || d.rounds[d.rounds.length - 1]?.draw.mode === 'result';
+    if (n > 1 && finalByResult && rounds[n - 1].draw.mode !== 'result') rounds[n - 1] = drawRound({ ...rounds[n - 1], draw: { ...rounds[n - 1].draw, mode: 'result' } }, d.players);
     set({ rounds, ...(d.cut && d.cut.after >= n ? { cut: null } : {}) });
   };
   const problems = (r: RoundDraft) => {
@@ -510,17 +514,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         <SettingsList>
           {/* a new round of a series of single tournaments stays one round */}
           {!d.code && !d.series && (
-            <ChoiceRow<number>
-              label={tr('Rounds', 'Runden')}
-              title={tr('How many rounds', 'Wie viele Runden')}
-              value={d.rounds.length}
-              onChange={setCount}
-              options={Array.from({ length: ROUNDS_MAX }, (_, i) => i + 1).map((n) => ({
-                value: n,
-                name: n === 1 ? tr('1 round', '1 Runde') : tr(`${n} rounds`, `${n} Runden`),
-                text: n === 1 ? tr('One day, one leaderboard.', 'Ein Tag, ein Leaderboard.') : tr('One tournament over several days – each round its course, holes and flights; one total.', 'Ein Turnier über mehrere Tage – jede Runde mit Platz, Löchern und Flights; eine Gesamtwertung.'),
-              }))}
-            />
+            <RoundsRow value={d.rounds.length} onChange={setCount} />
           )}
           <SettingsRow label={tr('Scoring', 'Wertung')} value={SCORINGS().find((x) => x.v === d.scoring)?.name ?? ''} onClick={() => setPick('scoring')} />
           {d.scoring !== 'stroke' && <SettingsRow label={tr('Net classes', 'Netto-Klassen')} value={d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')} onClick={() => setPick('classes')} />}
@@ -704,6 +698,81 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         </button>
       </div>
     </main>
+  );
+}
+
+/** "Runden": 1 to 6 – or "Andere Anzahl …" typed, up to 20 (Sascha 04.11.2026), as "Anderer Betrag …" of a stake. */
+function RoundsRow(props: { value: number; onChange: (n: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const OTHER = -1;
+  const custom = props.value > ROUNDS_PICK;
+  const name = (n: number) => (n === 1 ? tr('1 round', '1 Runde') : tr(`${n} rounds`, `${n} Runden`));
+  const close = () => {
+    setOpen(false);
+    setTyping(false);
+    setError(null);
+  };
+  const take = () => {
+    const n = Number(text.trim());
+    if (!Number.isInteger(n) || n < 1) return setError(tr('Type a number, e.g. 8', 'Gib eine Anzahl ein, z. B. 8'));
+    if (n > ROUNDS_MAX) return setError(tr(`At most ${ROUNDS_MAX} rounds.`, `Höchstens ${ROUNDS_MAX} Runden.`));
+    props.onChange(n);
+    close();
+  };
+  return (
+    <>
+      <SettingsRow label={tr('Rounds', 'Runden')} value={name(props.value)} onClick={() => setOpen(true)} />
+      {open && (
+        <PickSheet<number>
+          title={tr('How many rounds', 'Wie viele Runden')}
+          current={typing || custom ? OTHER : props.value}
+          options={[
+            ...Array.from({ length: ROUNDS_PICK }, (_, i) => i + 1).map((n) => ({ value: n, name: name(n), ...(n === 1 ? { text: tr('One day, one leaderboard.', 'Ein Tag, ein Leaderboard.') } : {}) })),
+            { value: OTHER, name: custom ? tr(`Other number: ${props.value}`, `Andere Anzahl: ${props.value}`) : tr('Other number …', 'Andere Anzahl …') },
+          ]}
+          onPick={(v) => {
+            if (v === OTHER) {
+              setTyping(true);
+              setText(custom ? String(props.value) : '');
+              return;
+            }
+            props.onChange(v);
+            close();
+          }}
+          onClose={close}
+        >
+          {typing && (
+            <div className="cap-input">
+              <input
+                className="input"
+                inputMode="numeric"
+                autoFocus
+                aria-label={tr('The number of rounds', 'Die Anzahl der Runden')}
+                placeholder="8"
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value.replace(/[^0-9]/g, '').slice(0, 2));
+                  setError(null);
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && take()}
+              />
+              <button type="button" className="btn-secondary" onClick={take}>
+                {tr('Use', 'Übernehmen')}
+              </button>
+            </div>
+          )}
+          {error && (
+            <span className="small bad-text" role="alert">
+              {error}
+            </span>
+          )}
+          <span className="muted small">{tr('From 2 rounds: one tournament over several days – each round its course, holes and flights; one total.', 'Ab 2 Runden: ein Turnier über mehrere Tage – jede Runde mit Platz, Löchern und Flights; eine Gesamtwertung.')}</span>
+        </PickSheet>
+      )}
+    </>
   );
 }
 
