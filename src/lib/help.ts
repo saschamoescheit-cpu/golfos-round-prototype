@@ -29,7 +29,7 @@ export const HELP_VIDEOS: HelpVideo[] = [
   { id: 'games', title: () => tr('Playing games', 'Games spielen'), about: () => tr('Format and favourites, players, scores on the map, settling up, balance, swipe to delete', 'Spielform und Favoriten, Mitspieler, Scores auf der Karte, Abrechnung, Bilanz, Löschen per Wischen'), length: '1:22' },
   // bets and tournaments in Games (night run 01./02.11.2026) – their own videos, not part of the Rounds tour
   { id: 'wagers', title: () => tr('Bets', 'Wetten'), about: () => tr('A pool over the trip, the library, own bets, start the round, the standing, the settlement', 'Ein Pool über die Reise, die Bibliothek, eigene Wetten, Runde starten, der Stand, die Abrechnung'), length: '1:28' },
-  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('The draw and the tee times, players moved, several rounds, special prizes, live leaderboard', 'Einteilung und Startzeiten, Spieler verschieben, mehrere Runden, Sonderwertungen, Live-Leaderboard'), length: '1:31' },
+  { id: 'tours', title: () => tr('Tournaments', 'Turniere'), about: () => tr('The draw and the tee times, players moved, several rounds, special prizes, live leaderboard', 'Einteilung und Startzeiten, Spieler verschieben, mehrere Runden, Sonderwertungen, Live-Leaderboard'), length: '1:42' },
 ];
 /** The whole tour in one video. */
 export const HELP_TOUR: HelpVideo = { id: 'tour', title: () => tr('The whole tour', 'Der ganze Rundgang'), about: () => tr('Everything in one video', 'Alles in einem Video'), length: '6:05' };
