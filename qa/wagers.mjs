@@ -199,8 +199,16 @@ const choose = async (label, option, inside = H) => {
   await H.getByRole('dialog', { name: 'Geld – die Währung' }).getByRole('button', { name: /^Dollar/ }).click();
   ok(/Geld · Dollar/.test(await row.innerText()), 'played for: money – dollar chosen in the second step');
 }
-// "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker
-await H.getByRole('switch', { name: /Mit Zähler/ }).click();
+// "with marker" is off by default now (Sascha 02.11.2026) – this pool counts with the marker; chosen as in "Neue Runde":
+// "Wer erfasst ›" and its sheet (Sascha 04.11.2026: "the score entry as in the rest of the app"), no hint "Der Erste bist du"
+{
+  const who = H.locator('.settings-row').filter({ hasText: 'Wer erfasst' });
+  ok((await who.count()) === 1 && /Jeder seinen eigenen/.test(await who.innerText()) && (await H.getByRole('switch', { name: /Mit Zähler/ }).count()) === 0, 'score entry: a row "Wer erfasst · Jeder seinen eigenen", no switch');
+  ok((await H.getByText(/Der Erste bist du/).count()) === 0, 'players: no hint "Der Erste bist du"');
+  await who.click();
+  await H.locator('.pick-option strong').getByText('Mit Zähler', { exact: true }).click();
+  ok(/Mit Zähler/.test(await who.innerText()) && /vorläufig/.test(await H.locator('.setup-part').filter({ hasText: 'Score-Erfassung' }).innerText()), 'score entry: "Mit Zähler" chosen, the hint says provisional');
+}
 await H.getByRole('button', { name: 'Pool anlegen' }).click();
 await H.waitForTimeout(1200);
 ok((await H.locator('.pool-player').count()) === 4 && (await H.locator('.topbar h1').innerText()).includes('USA 2026'), 'pool set up: USA 2026 with 4 players');
