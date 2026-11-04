@@ -1310,6 +1310,11 @@ export function HoleScreen(props: {
         setPlacing(null);
         return;
       }
+      // the caddie open: a tap on the map above it closes it – and only that (Sascha 04.11.2026, on the course)
+      if (caddieShown) {
+        setCaddieOpen(false);
+        return;
+      }
       // Green shown: a tap on the green puts the ball there for the putt read.
       if (greenVisible && grid && mapData.green && (pointInRing(p, mapData.green) || distanceM(p, mapData.greenCenter) < 15) && onThisGreen(grid, p)) {
         setPuttBall({ hole: i, pos: p });

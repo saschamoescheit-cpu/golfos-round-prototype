@@ -61,6 +61,13 @@ await p.mouse.up();
 await p.waitForTimeout(1500);
 const after = await head();
 ok(/Ziel 1/.test(after) && after !== before, `moved short, the caddie plays to it: "${after}"`);
+// a tap on the map above the caddie closes it – the target stays where it is (Sascha 04.11.2026)
+const t0 = await target.boundingBox();
+const vp = p.viewportSize();
+await p.mouse.click(vp.width * 0.35, vp.height * 0.3);
+await p.waitForTimeout(800);
+const t1 = await target.boundingBox();
+ok((await p.locator('.caddie-card').count()) === 0 && (await target.count()) === 1 && !!t0 && !!t1, 'a tap on the map closes the caddie – no new target (the map fits itself to the room)');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 console.log(fails ? `${fails} failed` : 'all passed');
