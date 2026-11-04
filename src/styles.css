@@ -1110,6 +1110,7 @@ button.tile:disabled { opacity: 1; }
 .game-rows li.lead .game-rank { background: var(--brand); color: #fff; }
 .game-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 .game-money { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; font-weight: 600; border-top: 1px solid var(--line); padding-top: 8px; }
+.game-money-4 { display: grid; grid-template-columns: 1fr 1fr; }
 .game-nav { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
 .game-winner { display: flex; flex-direction: column; gap: 2px; }
 .game-winner strong { font: 700 26px var(--display); }

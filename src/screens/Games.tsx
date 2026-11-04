@@ -148,6 +148,13 @@ function atLeast(players: DraftPlayer[], n: number): DraftPlayer[] {
   return out;
 }
 
+/** The stakes of a form played for a thing (Sascha 04.11.2026: "drinks, food – 1×, not 5×; 18 holes for one drink"): 1× – with
+ *  several (vorne, hinten, 18) only the last, the others none. */
+function thingStakes(f: FormDef): Record<string, number> {
+  const stakes = f.settings.filter((x) => x.type === 'stake');
+  return Object.fromEntries(stakes.map((st, k) => [st.key, stakes.length > 1 && k < stakes.length - 1 ? 0 : 1]));
+}
+
 function newDraft(chosen?: FormId): Draft {
   const p = loadProfile();
   const me = { id: 'me', name: shownName(p) || tr('Me', 'Ich'), hcp: p.hcpIndex.trim() };
@@ -1067,12 +1074,11 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
             <PrizeRow
               value={prize}
               onChange={(p) => {
-                // the stakes follow: a thing counted 1 to 5, back to money the form's own
+                // the stakes follow: a thing 1× (Sascha 04.11.2026: "drinks, food – 1×, not 5×"), with front, back and 18 one
+                // drink on the 18 ("18 holes for one drink"); back to money the form's own
                 const next: Record<string, number | boolean | string> = { ...d.settings, ...(isMoney(p) ? { currency: p.currency } : {}) };
-                for (const st of f.settings.filter((x) => x.type === 'stake')) {
-                  if (!isMoney(p) && !isNone(p)) next[st.key] = Math.min(5, Math.max(1, Math.round(Number(next[st.key] ?? 1))));
-                  else if (isMoney(p) && prize && !isMoney(prize)) next[st.key] = st.default as number;
-                }
+                if (!isMoney(p) && !isNone(p)) Object.assign(next, thingStakes(f));
+                else if (isMoney(p) && prize && !isMoney(prize)) for (const st of f.settings.filter((x) => x.type === 'stake')) next[st.key] = st.default as number;
                 set({ prize: p, settings: next });
               }}
             />
@@ -1084,9 +1090,9 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                     key={s.key}
                     label={s.label()}
                     value={Number(d.settings[s.key] ?? 0)}
-                    // a thing counted: 1 to 5 ("2 × Getränk")
+                    // a thing counted: 1 to 5 ("2 × Getränk") – "none" too where there are several (vorne, hinten, 18)
                     sym={prize && !isMoney(prize) ? prizeSym(prize) : undefined}
-                    stakes={prize && !isMoney(prize) ? [1, 2, 3, 4, 5] : undefined}
+                    stakes={prize && !isMoney(prize) ? (f.settings.filter((x) => x.type === 'stake').length > 1 ? [0, 1, 2, 3, 4, 5] : [1, 2, 3, 4, 5]) : undefined}
                     // a new start stake: the cap moves to a step of its doubling chain
                     onChange={(v) => set({ settings: { ...d.settings, [s.key]: v, ...(s.key === 'stake' && Number(d.settings.maxStake) > 0 ? { maxStake: String(snapCap(v, Number(d.settings.maxStake))) } : {}) } })}
                   />
@@ -1121,7 +1127,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                   value={Number(d.settings[s.key] ?? 0)}
                   // a thing counted: 1 to 5 ("2 × Getränk")
                   sym={prize && !isMoney(prize) ? prizeSym(prize) : undefined}
-                  stakes={prize && !isMoney(prize) ? [1, 2, 3, 4, 5] : undefined}
+                  stakes={prize && !isMoney(prize) ? (f.settings.filter((x) => x.type === 'stake').length > 1 ? [0, 1, 2, 3, 4, 5] : [1, 2, 3, 4, 5]) : undefined}
                   // a new start stake: the cap moves to a step of its doubling chain
                   onChange={(v) => set({ settings: { ...d.settings, [s.key]: v, ...(s.key === 'stake' && Number(d.settings.maxStake) > 0 ? { maxStake: String(snapCap(v, Number(d.settings.maxStake))) } : {}) } })}
                 />
@@ -1207,7 +1213,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                             className="pick-option"
                             aria-pressed={chosen && o.id === d.form}
                             onClick={() => {
-                              props.onChange(withWhs({ ...d, form: o.id, formChosen: true, players: atLeast(d.players, o.players[0]), settings: { ...defaults(o), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
+                              props.onChange(withWhs({ ...d, form: o.id, formChosen: true, players: atLeast(d.players, o.players[0]), settings: { ...defaults(o), ...(d.prize && !isMoney(d.prize) && !isNone(d.prize) ? thingStakes(o) : {}), ...(d.settings.partner != null ? { partner: d.settings.partner } : {}) }, hcpTouched: false }));
                               setPicker(false);
                             }}
                           >
@@ -1570,7 +1576,8 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
         ))}
       </ol>
       {hasMoney && (
-        <div className="game-money">
+        // four players in two lines, two each (Sascha 04.11.2026)
+        <div className={`game-money${g.players.length === 4 ? ' game-money-4' : ''}`}>
           {/* in the order of the ranking, 1 to 4 from left to right (Sascha 03.11.2026) */}
           {st.rows.map((r) => g.players.find((p) => p.id === r.id)!).filter(Boolean).map((p) => (
             <span key={p.id} className={st.money![p.id] > 0 ? 'good-text' : st.money![p.id] < 0 ? 'bad-text' : 'muted'}>
