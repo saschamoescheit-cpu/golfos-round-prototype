@@ -1021,13 +1021,13 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
       )}
       {flightsOf(ev).map((f, k) => (
         <section key={f.id} className="card tour-flight" aria-label={`Flight ${k + 1}`}>
-          <div className="tour-flight-head">
+          <div className="tour-flight-head tour-flight-head3">
             <h2>
               Flight {k + 1}
               {f.startHole ? <span className="muted small">{tr('Tee 10', 'Tee 10')}</span> : null}
             </h2>
+            <strong className="tour-tee">{teeTimeOf(f)}</strong>
             <span className="tour-flight-tools">
-              {teeTimeOf(f) && <strong className="tour-tee">{teeTimeOf(f)}</strong>}
               {host && (
                 <button type="button" className="icon-btn edit-btn flight-edit" aria-label={tr(`Change flight ${k + 1}`, `Flight ${k + 1} ändern`)} onClick={() => edit(true)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -1165,6 +1165,9 @@ button.tile:disabled { opacity: 1; }
 .series-pick { cursor: pointer; }
 .series-pick input { width: 22px; height: 22px; accent-color: var(--brand); flex-shrink: 0; }
 .tour-flight-tools { display: flex; align-items: center; gap: 8px; }
+/* "Flight 1 · 09:00 · ✎" – the tee time in the middle (Sascha 04.11.2026) */
+.tour-flight-head3 { display: grid; grid-template-columns: 1fr auto 1fr; }
+.tour-flight-head3 > :last-child { justify-self: end; }
 .tour-count { font-weight: 600; }
 /* a card as the flights – the drop zone shows only while one is dragged (.drop-target) */
 .tour-unplaced .tour-flight-head h2 { font-size: 15px; color: var(--text-2); }

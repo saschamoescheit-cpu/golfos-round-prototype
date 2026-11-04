@@ -1168,11 +1168,12 @@ function FlightBoard(props: {
         const slot = props.slots[f];
         return (
           <section key={f} className={`card tour-flight${target(f) ? ' drop-target' : ''}${dragged && flightOfId(dragged.id) !== f && !room(f) ? ' drop-full' : ''}`} aria-label={`Flight ${f + 1}`} data-flight={f}>
-            <div className="tour-flight-head">
+            <div className="tour-flight-head tour-flight-head3">
               <h2>
-                Flight {f + 1} <strong className="tour-tee">{slot?.time}</strong>
+                Flight {f + 1}
                 {slot?.start ? <span className="muted small">{teeName(slot.start)}</span> : null}
               </h2>
+              <strong className="tour-tee">{slot?.time}</strong>
               {/* the pencil as everywhere (Sascha 04.11.2026: "no link 'Ändern' – our pencil") */}
               <button type="button" className="icon-btn edit-btn flight-edit" aria-label={tr(`Change flight ${f + 1}`, `Flight ${f + 1} ändern`)} onClick={() => setOpen(f)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
