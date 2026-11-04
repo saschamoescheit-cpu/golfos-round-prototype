@@ -49,7 +49,7 @@ export function Help(props: { onBack: () => void; tab?: HelpTab }) {
   const inTours = sessionModule() === 'tournaments'; // the module of its own since 03.11.2026
   const inGames = sessionModule() === 'games' || inTours;
   // in Games its own videos first: playing games, bets (01.11.2026) – in Tournaments the tournaments' video first
-  const own = (id: string) => (inTours ? ['tours', 'games', 'wagers'].indexOf(id) : inGames ? ['games', 'wagers', 'tours'].indexOf(id) : -1);
+  const own = (id: string) => (inTours ? ['tours', 'tourrounds', 'games', 'wagers', 'balance'].indexOf(id) : inGames ? ['games', 'wagers', 'balance', 'tours', 'tourrounds'].indexOf(id) : -1);
   const rank = (id: string) => (own(id) < 0 ? 99 : own(id));
   const videos = [HELP_TOUR, ...HELP_VIDEOS].sort((a, b) => rank(a.id) - rank(b.id));
   const topics = [...FAQ].sort((a, b) => (inGames ? Number(b.id === 'games') - Number(a.id === 'games') : 0));

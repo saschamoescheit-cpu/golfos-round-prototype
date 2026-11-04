@@ -31,16 +31,16 @@ await card.getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1500);
 ok(await p.getByRole('heading', { name: 'Hilfe' }).isVisible(), 'the help page opens');
 const vids = p.locator('.help-video');
-ok((await vids.count()) === 13, `the whole tour and 12 videos – the launch monitor, bets and tournaments too (${await vids.count()})`);
+ok((await vids.count()) === 15, `the whole tour and 14 videos – the launch monitor, bets, tournaments, the balance and a tournament over rounds too (${await vids.count()})`);
 const titles = await p.locator('.help-video strong').allInnerTexts();
-ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto' && titles[9] === 'Launch-Monitor' && titles[10] === 'Games spielen' && titles[11] === 'Wetten' && titles[12] === 'Turniere', `in order: ${titles.join(' · ')}`);
+ok(titles[0] === 'Der ganze Rundgang' && titles[1] === 'Runde starten' && titles[2] === 'Flight & Spielform' && titles[8] === 'Profil & Konto' && titles[9] === 'Launch-Monitor' && titles[10] === 'Games spielen' && titles[11] === 'Wetten' && titles[12] === 'Turniere' && titles[13] === 'Bilanz' && titles[14] === 'Turnier über mehrere Runden', `in order: ${titles.join(' · ')}`);
 // no chapter numbers (Sascha 23.10.2026 evening)
 ok(!/Kapitel/.test(await p.locator('.help-videos').innerText()), 'no "Kapitel" in the list');
 await p.locator('.help-video img').last().scrollIntoViewIfNeeded(); // the pictures load lazily – the last ones once in view
 await p.waitForTimeout(800);
 const posters = await p.locator('.help-video img').evaluateAll((imgs) => imgs.map((i) => i.complete && i.naturalWidth > 100));
-ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/13)`);
-ok((await p.locator('.help-video .help-play').count()) === 13, 'the round play symbol at the bottom right of each picture');
+ok(posters.every(Boolean), `every video with its picture (${posters.filter(Boolean).length}/15)`);
+ok((await p.locator('.help-video .help-play').count()) === 15, 'the round play symbol at the bottom right of each picture');
 // play chapter 3
 await p.getByRole('button', { name: 'Video abspielen: Der Caddie' }).click();
 await p.waitForTimeout(2500);
@@ -107,7 +107,7 @@ await p.waitForTimeout(500);
 await p.locator('section.card').filter({ has: p.getByRole('heading', { name: 'Hilfe' }) }).getByRole('button', { name: /^Videos/ }).click();
 await p.waitForTimeout(1200);
 const gTitles = await p.locator('.help-video strong').allInnerTexts();
-ok(gTitles.length === 13 && gTitles[0] === 'Games spielen' && gTitles[1] === 'Wetten' && gTitles[2] === 'Turniere' && gTitles[3] === 'Der ganze Rundgang' && gTitles[11] === 'Profil & Konto' && gTitles[12] === 'Launch-Monitor', `in Games the Games video first: ${gTitles.slice(0, 3).join(' · ')} …`);
+ok(gTitles.length === 15 && gTitles[0] === 'Games spielen' && gTitles[1] === 'Wetten' && gTitles[2] === 'Bilanz' && gTitles[3] === 'Turniere' && gTitles[4] === 'Turnier über mehrere Runden' && gTitles[5] === 'Der ganze Rundgang' && gTitles[14] === 'Launch-Monitor', `in Games the Games videos first: ${gTitles.slice(0, 5).join(' · ')} …`);
 await p.getByRole('button', { name: 'Häufige Fragen' }).click();
 await p.waitForTimeout(500);
 const gTopics = await p.locator('.help-faq h2').allInnerTexts();
