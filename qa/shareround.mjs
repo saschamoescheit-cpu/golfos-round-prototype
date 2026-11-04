@@ -47,7 +47,7 @@ await H.waitForTimeout(800);
 const code = (await card.locator('.join-code').innerText()).trim().replace(/-/g, '');
 // 6 digits, shown 123-456 (Sascha 03.11.2026)
 ok(/^\d{6}$/.test(code) && /^\d{3}-\d{3}$/.test((await card.locator('.join-code').innerText()).trim()) && (await card.locator('.qr-box svg').count()) === 1, `setup: code ${code} (6 digits, 123-456) with a QR code`);
-// made by itself (03.11.2026): shown nearby only when asked – the switch under the code; the setup goes to the server a moment after each change
+// made by itself (03.11.2026): shown nearby only when asked – the switch above the QR code (04.11.2026); the setup goes to the server a moment after each change
 await card.getByRole('switch', { name: /In der Nähe anzeigen/ }).click();
 await H.waitForTimeout(2500);
 // (no tournament made here any more – they are planned in Games since 01.11.2026: qa/plannedtourney.mjs)
@@ -59,7 +59,7 @@ ok(Object.values(f1.phones ?? {}).map((p) => p.name).join() === 'Sascha', 'serve
 await H.waitForTimeout(1200);
 const near = [...shared.values()][0]?.near;
 ok(near && Math.abs(near.near_lat - 48.7808) < 1e-4 && near.near_radius === 300 && near.near_host === 'Sascha' && near.near_ref?.length >= 20 && new Date(near.near_until) - Date.now() > 1.9 * 3600e3, `server: the round shown nearby – Sascha's position, 300 m, two hours (${JSON.stringify(near ?? null).slice(0, 90)})`);
-ok(/In der Nähe sichtbar/.test(await card.innerText()), 'setup: "In der Nähe sichtbar" under the code');
+ok((await card.getByRole('switch', { name: /In der Nähe anzeigen/ }).getAttribute('aria-checked')) === 'true' && !/Angemeldete Spieler im Umkreis/.test(await card.innerText()), 'setup: "In der Nähe anzeigen" switched on above the QR code – no explanation (04.11.2026)');
 if (process.env.SHOTS) await card.screenshot({ path: process.env.SHOTS + '/round-invite.png' });
 
 // ---------- Ben: the same team, with the link – before Sascha starts ----------

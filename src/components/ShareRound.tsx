@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
-import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, NEARBY_HOURS, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -141,29 +141,25 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
           { label: tr('Invite', 'Einladen'), aria: tr('Share the link', 'Link teilen'), icon: 'share', primary: true, onClick: () => void share() },
           { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(roundJoinLink(shared.code)).then(setMsg) },
         ]}
-      >
-        {/* shown to players nearby: asked here, not by itself (03.11.2026 – the code is made at once now) */}
-        {!nearState && (
-          <div className="drawer-list settings-switches">
-            <button type="button" className="drawer-row" role="switch" aria-checked={false} onClick={() => void putNearby(shared.code)}>
+        top={
+          // shown to players nearby: a switch above the QR code, off by default, no explanation (Sascha 04.11.2026)
+          <div className="drawer-list settings-switches near-switch">
+            <button
+              type="button"
+              className="drawer-row"
+              role="switch"
+              aria-checked={nearState === 'here' || nearState === 'course'}
+              onClick={() => nearState !== 'here' && nearState !== 'course' && void putNearby(shared.code)}
+            >
               <span className="switch-label">
                 <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
-                <span className="muted small">{tr(`Signed-in players within about 300 m see the round under "Join a round" and ask with a tap – you let each one in. For ${NEARBY_HOURS} hours`, `Angemeldete Spieler im Umkreis von etwa 300 m sehen die Runde unter „Runde beitreten“ und fragen mit einem Tipp an – du bestätigst jeden. ${NEARBY_HOURS} Stunden lang`)}</span>
+                {nearState === 'failed' && <span className="muted small">{tr('Not possible right now', 'Gerade nicht möglich')}</span>}
               </span>
-              <span className="drawer-switch" aria-hidden="true" />
+              <span className={`drawer-switch${nearState === 'here' || nearState === 'course' ? ' on' : ''}`} aria-hidden="true" />
             </button>
           </div>
-        )}
-      </InviteCard>
-      {nearState && (
-        <span className={`small ${nearState === 'failed' ? 'muted' : 'near-state'}`}>
-          {nearState === 'here'
-            ? tr(`Shown nearby for ${NEARBY_HOURS} hours – your partners find it under "Join a round"; you let each one in.`, `In der Nähe sichtbar, ${NEARBY_HOURS} Stunden lang – deine Partner finden sie unter „Runde beitreten“, du bestätigst jeden.`)
-            : nearState === 'course'
-              ? tr(`No GPS – shown on the course for ${NEARBY_HOURS} hours.`, `Kein GPS – auf dem Platz sichtbar, ${NEARBY_HOURS} Stunden lang.`)
-              : tr('Not shown nearby – the code and the QR code work as ever.', 'In der Nähe nicht sichtbar – Code und QR-Code gehen wie gewohnt.')}
-        </span>
-      )}
+        }
+      />
       <FriendInvite code={shared.code} only={props.round.players.filter((p) => !p.isMe).map((p) => p.name)} />
       {msg && <span className="muted small">{msg}</span>}
     </>

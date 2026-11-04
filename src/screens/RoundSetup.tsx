@@ -358,6 +358,29 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
         {isTeamMode(format.mode) && <span className="muted small">{tr('Team rounds do not count for your own stats.', 'Team-Runden zählen nicht für deine eigene Statistik.')}</span>}
       </section>
 
+      {/* who enters the scores on several phones (Sascha 30.10. / 02.11.2026), chosen like the format – everyone his own (the
+          default), with a marker, or one player for all; between the format and the holes (Sascha 04.11.2026) */}
+      {invitable && !isTeamMode(shownFormat.mode) && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+          <div className="settings-list">
+            <button type="button" className="settings-row" onClick={() => setPicker('entry')}>
+              <span>{tr('Who enters', 'Wer erfasst')}</span>
+              <span className="settings-value">{ENTRY.find(([v]) => v === counting)![1]()}</span>
+              <span aria-hidden="true">›</span>
+            </button>
+            {counting === 'scorer' && (
+              <button type="button" className="settings-row" onClick={() => setPicker('scorer')}>
+                <span>{tr('Scorer', 'Schreiber')}</span>
+                <span className="settings-value">{scorers.find((p) => p.id === scorerId)?.name ?? scorers[0].name}</span>
+                <span aria-hidden="true">›</span>
+              </button>
+            )}
+          </div>
+          <span className="muted small">{ENTRY.find(([v]) => v === counting)![2]()}</span>
+        </section>
+      )}
+
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="eyebrow">{tr('Holes', 'Löcher')}</span>
         <div className="choice-grid">
@@ -450,29 +473,6 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
                   : tr('To invite your flight to their own phones: sign in with Google (Profile → "On all your devices").', 'Flightpartner auf ihre eigenen Handys einladen: mit Google anmelden (Profil → „Auf allen Geräten“).')}
             </span>
           )}
-        </section>
-      )}
-
-      {/* who enters the scores on several phones (Sascha 30.10. / 02.11.2026): its own section above the format (Sascha 02.11.2026), chosen like the format –
-          everyone his own (the default), with a marker, or one player for all */}
-      {invitable && !isTeamMode(shownFormat.mode) && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
-          <div className="settings-list">
-            <button type="button" className="settings-row" onClick={() => setPicker('entry')}>
-              <span>{tr('Who enters', 'Wer erfasst')}</span>
-              <span className="settings-value">{ENTRY.find(([v]) => v === counting)![1]()}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-            {counting === 'scorer' && (
-              <button type="button" className="settings-row" onClick={() => setPicker('scorer')}>
-                <span>{tr('Scorer', 'Schreiber')}</span>
-                <span className="settings-value">{scorers.find((p) => p.id === scorerId)?.name ?? scorers[0].name}</span>
-                <span aria-hidden="true">›</span>
-              </button>
-            )}
-          </div>
-          <span className="muted small">{ENTRY.find(([v]) => v === counting)![2]()}</span>
         </section>
       )}
 

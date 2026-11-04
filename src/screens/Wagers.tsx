@@ -735,7 +735,6 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               { label: tr('Finish the pool', 'Pool beenden'), icon: 'finish', danger: true, onClick: () => setSheet('finish') },
             ]}
           />
-          <span className="muted small">{tr('Every change is saved at once – change the bets any time later.', 'Jede Änderung ist sofort gespeichert – die Wetten lassen sich jederzeit weiter bearbeiten.')}</span>
         </>
       )}
       {/* the round right from the bets, the one main button at the very bottom (Sascha 02.11.2026) */}

@@ -40,11 +40,14 @@ export function InviteCard(props: {
   /** while the code is made, or why it could not be */
   waiting?: ReactNode;
   actions: InviteAction[];
-  /** below the icons: a switch, inviting by user name … */
+  /** above the QR code: a switch ("In der Nähe anzeigen" – Sascha 04.11.2026: "above the QR code, off by default") */
+  top?: ReactNode;
+  /** below the icons */
   children?: ReactNode;
 }) {
   return (
     <div className="invite-qr">
+      {props.top}
       {props.link ? (
         <>
           <Qr text={props.link} label={props.qrLabel} />

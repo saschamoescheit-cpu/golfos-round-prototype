@@ -21,11 +21,11 @@ export const ACTION_ICONS = {
   ),
   // the green pen
   edit: svg(<path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10zM14 7l3 3" />),
-  // saved: the check in the circle
+  // saving: the disc, as the round save button – not a check (Sascha 04.11.2026: "a save symbol instead of a check, in the whole app")
   save: svg(
     <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M8 12.5l2.6 2.6L16 9.6" />
+      <path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
+      <path d="M8 4v5h7V4M8 20v-6h8v6" />
     </>,
   ),
   // finished: the flag on the green

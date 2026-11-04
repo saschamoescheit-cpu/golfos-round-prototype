@@ -3,6 +3,7 @@ import type { LngLat } from '../types';
 import { bearingDeg, distanceM, keepOnGreen } from '../lib/geo';
 import { move } from '../lib/aimpoint';
 import { dec, tr } from '../lib/i18n';
+import { SaveButton } from './ui';
 
 // Putts on the green right after the hole (Sascha 14.10.2026, as in BeBrassie): drag the flag to where the hole was
 // and one ball per putt to where it lay – e.g. first putt from 5 m, second from 10 cm. The round check then has the
@@ -221,15 +222,13 @@ export function PuttEditor(props: {
   return (
     <div className="sheet-backdrop" onClick={props.onCancel}>
       <section className="sheet putt-editor" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
-        {/* ✕ = leave without saving, ✓ = save (Sascha 14.10.2026) */}
+        {/* ✕ = leave without saving, the round save button = save (Sascha 14.10.2026; the disc, not a check – 04.11.2026) */}
         <div className="sheet-head">
           <button type="button" className="icon-btn" aria-label={tr('Cancel – do not save', 'Abbrechen – nicht speichern')} onClick={props.onCancel}>
             ✕
           </button>
           <strong>{props.title}</strong>
-          <button type="button" className="icon-btn save" aria-label={tr('Save putts', 'Putts speichern')} onClick={() => props.onSave({ pin, balls })}>
-            ✓
-          </button>
+          <SaveButton label={tr('Save putts', 'Putts speichern')} onClick={() => props.onSave({ pin, balls })} />
         </div>
         {/* no explanation, no zoom buttons (Sascha 17.10.2026) – two fingers zoom and move the green */}
         {SHOW_ZOOM_BUTTONS && (
