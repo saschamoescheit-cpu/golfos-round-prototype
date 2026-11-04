@@ -6,7 +6,7 @@ import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } fr
 import { afterPayments, balances, dayOf, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
 import { pushBet } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
-import { roundsInPlay } from './poolround';
+import { poolOfRound, roundsInPlay } from './poolround';
 
 // The pools of bets on this phone and on the server (Sascha 01.11.2026). A pool lives in the table of the shared games
 // (golfos_shared_games, JSON kind 'wager-pool', a 6-letter code as a game) – no new table. Every change is a function
@@ -288,13 +288,17 @@ export function reportWagers(): Promise<void> {
       const all = [...kept, ...roundsInPlay().filter((r) => !kept.some((k) => k.id === r.id))];
       const rounds = playedRounds(all, countedRound, markerCount);
       for (const e of pools) {
+        // "Einer für alle" (Sascha 04.11.2026): a round of this pool, started here – one phone keeps the score of all – counts
+        // as marked once finished; else as ever (a shared flight's marker or scorer signed)
+        const counted = e.pool.oneScorer ? (r: Round, pid: string) => countedRound(r, pid) || (!!r.finishedAt && poolOfRound(r.id) === e.code) : countedRound;
+        const mineRounds = e.pool.oneScorer ? playedRounds(all, counted, markerCount) : rounds;
         // whose bets this phone judges: its owner's – the host's phone also the others', from the rounds on it with their
         // whole card (Sascha 02.11.2026: "one phone for all"); the server takes those only from the host
         const host = isHost(e);
-        const roundsOf = new Map<string, PlayedRound[]>([[e.me, rounds]]);
+        const roundsOf = new Map<string, PlayedRound[]>([[e.me, mineRounds]]);
         if (host)
           for (const p of e.pool.players)
-            if (p.id !== e.me) roundsOf.set(p.id, playedRounds(all.filter((r) => keptFor(r, p.name)), countedRound, markerCount, p.name));
+            if (p.id !== e.me) roundsOf.set(p.id, playedRounds(all.filter((r) => keptFor(r, p.name)), counted, markerCount, p.name));
         const judged = (w: Wager) => roundsOf.has(w.player) && w.kind !== 'free';
         const mine = e.pool.wagers.filter(judged);
         const fresh = Object.fromEntries(mine.map((w) => [w.id, judge(w, e.pool, roundsOf.get(w.player)!)]));

@@ -45,9 +45,29 @@ export const poolRoundEntry = (id: string): 'strokes' | 'details' | undefined =>
 export function dropPoolRound(id: string): void {
   save(loadPoolRounds().filter((e) => e.round.id !== id));
 }
-/** Finished: into the rounds of Rounds (the round analysis), gone from here. */
+/** The rounds of a pool finished on this phone – its round id and the pool's code (Sascha 04.11.2026: "Einer für alle" –
+ *  the phone that started the round keeps the score of all; finished, it counts as marked). */
+const DONE = 'golfos.poolrounds.done.v1';
+function donePoolRounds(): { id: string; code: string }[] {
+  try {
+    const x = JSON.parse(localStorage.getItem(DONE) ?? '[]');
+    return Array.isArray(x) ? x.filter((e) => e && typeof e.id === 'string' && typeof e.code === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+/** The pool a round was started from and finished in on this phone – null: none. */
+export const poolOfRound = (id: string): string | null => donePoolRounds().find((e) => e.id === id)?.code ?? null;
+/** Finished: into the rounds of Rounds (the round analysis), gone from here – which pool it was kept. */
 export function finishPoolRound(round: Round): Round {
   const done = { ...round, finishedAt: round.finishedAt ?? new Date().toISOString() };
+  const code = loadPoolRounds().find((e) => e.round.id === round.id)?.code;
+  if (code)
+    try {
+      localStorage.setItem(DONE, JSON.stringify([{ id: round.id, code }, ...donePoolRounds().filter((e) => e.id !== round.id)].slice(0, 300)));
+    } catch {
+      /* storage full – the round counts as provisional */
+    }
   saveRound(done);
   dropPoolRound(round.id);
   return done;

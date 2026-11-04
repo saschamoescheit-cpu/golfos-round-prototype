@@ -704,7 +704,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
       />
       <span className="muted small">
         {dm(pool.from)}–{dm(pool.to)} · {tr(`${pool.players.length} players · ${pool.wagers.length} bets`, `${pool.players.length} Spieler · ${pool.wagers.length} Wetten`)}
-        {poolCounted(pool) ? ` · ${tr('with marker', 'mit Zähler')}` : ''}
+        {poolCounted(pool) ? ` · ${pool.oneScorer ? tr('one for all', 'einer für alle') : tr('with marker', 'mit Zähler')}` : ''}
         {pool.finishedAt ? ` · ${tr('finished', 'beendet')}` : ''}
       </span>
       {!host && <span className="muted small">{ONLY_HOST()}</span>}

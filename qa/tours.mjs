@@ -474,6 +474,16 @@ ok((await G.locator('.tour-tee').allInnerTexts()).join(',') === '12:08,12:16', '
 
 // ---------- the host changes it: the flights keep their ids ----------
 const ids = fs1.map((f) => f.id).sort().join();
+// "Ändern" at a flight (Sascha 04.11.2026: "the flights, the scorer, the tee time not to change from here"): the change
+// opened at its flights
+await H.getByRole('button', { name: 'Flight 2 ändern' }).click();
+await H.waitForTimeout(900);
+{
+  const at = await H.locator('#tour-flights').evaluate((e) => Math.round(e.getBoundingClientRect().top));
+  ok((await H.locator('.topbar h1').innerText()).includes('Turnier bearbeiten') && at >= -5 && at < 300, `flight "Ändern": the change opened at its flights (top ${at})`);
+}
+await H.getByRole('button', { name: 'Zurück' }).first().click();
+await H.waitForTimeout(800);
 await H.getByRole('button', { name: 'Turnier bearbeiten' }).click();
 await H.waitForTimeout(800);
 await H.fill('#tour-name', 'USA Tag 1 · Bethpage');

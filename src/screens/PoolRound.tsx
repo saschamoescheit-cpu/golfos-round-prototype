@@ -13,7 +13,7 @@ import { emptyEntry } from '../lib/scoring';
 import { dayOf, onRound, poolNeeds18, poolNeedsDetails, provisional, sameName, stateOf } from '../lib/wagers';
 import { loadPools, reportWagers } from '../lib/wagerstore';
 import { dropPoolRound, finishPoolRound, keepPoolRound, poolRoundEntry, setPoolRoundEntry } from '../lib/poolround';
-import { ChoiceRow, SettingsList } from '../components/Settings';
+import { ChoiceRow, SettingsList, SettingsRow } from '../components/Settings';
 import { TopBar } from '../components/ui';
 import { Standings } from './Wagers';
 import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
@@ -174,6 +174,8 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
       <section className="setup-part">
         <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
         <SettingsList>
+          {/* "Einer für alle" (Sascha 04.11.2026: "where do I choose who keeps the score?"): the phone that starts the round */}
+          {pool.oneScorer && <SettingsRow label={tr('Scorer', 'Schreiber')} value={tr('You – on this phone, for all', 'Du – auf diesem Handy für alle')} onClick={() => undefined} disabled />}
           <ChoiceRow<'strokes' | 'details'>
             label={tr('Entry', 'Erfassung')}
             disabled={needsDetails}

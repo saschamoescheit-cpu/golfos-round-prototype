@@ -91,6 +91,18 @@ await H.waitForTimeout(2000);
 const kept = await H.evaluate(() => ({ rounds: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').filter((r) => r.finishedAt).length, inPlay: JSON.parse(localStorage.getItem('golfos.poolrounds.v1') ?? '[]').length }));
 ok(kept.rounds === 1 && kept.inPlay === 0, `finished: the round in the round analysis, none in play (${JSON.stringify(kept)})`);
 ok((await H.getByRole('button', { name: 'Runde starten' }).count()) === 1, 'the pool offers a new round');
+// "Einer für alle" (Sascha 04.11.2026): the phone that started the round kept the score of all – finished, the round
+// counts as marked: Sascha's bet "with marker" made, no longer provisional
+await H.evaluate(async (c) => {
+  const ws = await import('/src/lib/wagerstore.ts');
+  await ws.changePool(c, (p) => ({ ...p, counted: true, oneScorer: true }));
+  await ws.reportWagers();
+}, code);
+await H.waitForTimeout(1500);
+{
+  const pg2 = sim.shared.get(code).game.progress;
+  ok(pg2['w-s']?.done === true, `one for all: the round finished on this phone counts as marked – Sascha's bet made (${JSON.stringify(pg2['w-s'] ?? null)})`);
+}
 // a bet on the greens: the putts a must (Sascha 02.11.2026: "the next hole only once all putts are entered")
 const gir = await H.evaluate(async () => {
   const ws = await import('/src/lib/wagerstore.ts');

@@ -869,6 +869,17 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
   const played = started && standings.rows.some((r) => r.thru > 0);
   const done = played && standings.rows.every((r) => r.finished);
   const net = (ev.format?.scoring ?? 'net') !== 'stroke';
+  // changed: the tournament as a whole (a round of a tournament over rounds: all its rounds) – `flights`: opened at the
+  // flights, a round over rounds on its own page (Sascha 04.11.2026: "the flights, the scorer, the tee time not to change
+  // from here")
+  const edit = (flights: boolean) => {
+    const m = ev.series?.code ? loadSeries().find((x) => x.code === ev.series!.code && x.series.multi) : undefined;
+    const now = live && isPlanned(live) ? { ...entry, ev: live } : entry;
+    const multi = m ? draftOfMulti(m, loadTours().map((t) => (t.code === entry.code ? now : t))) : null;
+    const d = multi ?? draftOf(now);
+    const k = d.rounds.findIndex((r) => r.code === entry.code);
+    props.onEdit(flights ? { ...d, focus: 'flights', ...(multi && k >= 0 ? { open: k } : {}) } : d);
+  };
   const classes = ev.classes?.length ? CLASS_NAMES.slice(0, ev.classes.length + 1) : [];
   return (
     <main className="screen tour-screen">
@@ -878,12 +889,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
         backLabel={tr('Tournaments', 'Turniere')}
         right={
           host ? (
-            <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => {
-                // a round of a tournament over rounds: the tournament changed as a whole
-                const m = ev.series?.code ? loadSeries().find((x) => x.code === ev.series!.code && x.series.multi) : undefined;
-                const now = live && isPlanned(live) ? { ...entry, ev: live } : entry;
-                props.onEdit((m && draftOfMulti(m, loadTours().map((t) => (t.code === entry.code ? now : t)))) || draftOf(now));
-              }}>
+            <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => edit(false)}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 20h4L19 9l-4-4L4 16z" />
                 <path d="M13.5 6.5l4 4" />
@@ -1020,7 +1026,14 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
               Flight {k + 1}
               {f.startHole ? <span className="muted small">{tr('Tee 10', 'Tee 10')}</span> : null}
             </h2>
-            {teeTimeOf(f) && <strong className="tour-tee">{teeTimeOf(f)}</strong>}
+            <span className="tour-flight-tools">
+              {teeTimeOf(f) && <strong className="tour-tee">{teeTimeOf(f)}</strong>}
+              {host && (
+                <button type="button" className="link-btn small" aria-label={tr(`Change flight ${k + 1}`, `Flight ${k + 1} ändern`)} onClick={() => edit(true)}>
+                  {tr('Change', 'Ändern')}
+                </button>
+              )}
+            </span>
           </div>
           {f.scorer && (
             <span className="small tour-scorer">

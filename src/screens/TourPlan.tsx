@@ -93,6 +93,8 @@ export interface TourDraft {
   open?: number;
   /** the round whose course is being chosen */
   at?: number;
+  /** opened at the flights – "Ändern" at a flight of the tournament's page */
+  focus?: 'flights';
 }
 
 // the scorings of a tournament (Sascha 02.11.2026: "either gross or with the handicaps") – with the full handicap
@@ -421,6 +423,14 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
   const d = props.draft;
   useTop(d.open);
   const set = (patch: Partial<TourDraft>) => props.onChange({ ...d, ...patch });
+  useEffect(() => {
+    if (d.focus !== 'flights') return;
+    const t = window.setTimeout(() => {
+      document.getElementById('tour-flights')?.scrollIntoView({ block: 'start' });
+      props.onChange({ ...d, focus: undefined });
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [d.focus, d.open]); // eslint-disable-line react-hooks/exhaustive-deps
   const setRound = (k: number, r: RoundDraft) => set({ rounds: d.rounds.map((x, j) => (j === k ? r : x)) });
   const [busy, setBusy] = useState(false);
   const [pick, setPick] = useState<'scoring' | 'classes' | null>(null);
@@ -865,7 +875,7 @@ function RoundFlights(props: { d: TourDraft; k: number; label: (p: TourPlayer, k
   const afterCut = !!d.cut && k >= d.cut.after;
   const slots = slotsOf(r);
   return (
-    <section className="setup-part">
+    <section className="setup-part" id="tour-flights" aria-label={tr('Flights and tee times', 'Flights und Startzeiten')}>
       <span className="eyebrow">{tr('Flights and tee times', 'Flights und Startzeiten')}</span>
       <SettingsList>
         <ChoiceRow<DrawMode> label={tr('Draw', 'Einteilung')} title={tr('How the flights are drawn', 'Wie eingeteilt wird')} value={r.draw.mode} onChange={(mode) => setDraw({ mode }, mode !== 'manual')} options={modes.map((m) => ({ value: m, name: names[m].name, text: names[m].text }))} />
