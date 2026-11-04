@@ -44,9 +44,6 @@ export interface TourPlayer {
   tee: string | null;
   /** the playing handicap kept from before (a tournament changed later, its index unknown) */
   fixed?: number | null;
-  /** with "Einer für alle": he keeps the score of his flight – in each flight the first one marked, else its first
-   *  player (Sascha 03.11.2026: "chosen under 'Wer erfasst', not in the flights") */
-  scorer?: boolean;
 }
 /** One round of the tournament: its day, course and holes, its draw and flights. */
 export interface RoundDraft {
@@ -67,6 +64,9 @@ export interface RoundDraft {
   starts: (number | null)[];
   /** who plays this round – after the cut only those who made it; missing: everyone */
   field?: string[];
+  /** "Einer für alle": who keeps the score in each flight – the row "Schreiber" in the flight (Sascha 04.11.2026: "the
+   *  scorer belongs to the flights"); missing or moved out: the flight's first */
+  scorers?: Record<number, string>;
 }
 export interface TourDraft {
   /** a single tournament changed */
@@ -160,6 +160,7 @@ function roundOf(ev: PlannedEvent, code: string | undefined, players: TourPlayer
   const course = loadCachedCourse(ev.course.id);
   const flights = flightsOf(ev);
   const flightOf: Record<string, number | null> = {};
+  const scorers: Record<number, string> = {};
   flights.forEach((f, k) => {
     for (const p of f.players) {
       let tp = players.find((x) => keyOf(x.name) === keyOf(p.name));
@@ -168,7 +169,7 @@ function roundOf(ev: PlannedEvent, code: string | undefined, players: TourPlayer
         tp = { id: newId(), name: p.name, hcp: idx == null ? '' : String(idx).replace('.', tr('.', ',')), tee: p.tee ?? null, fixed: p.playingHandicap };
         players.push(tp);
       }
-      if (f.scorer === p.id) tp.scorer = true;
+      if (f.scorer === p.id) scorers[k] = tp.id;
       flightOf[tp.id] = k;
     }
   });
@@ -188,6 +189,7 @@ function roundOf(ev: PlannedEvent, code: string | undefined, players: TourPlayer
     flights: flights.length,
     times: flights.map((f) => teeTimeOf(f)),
     starts: flights.map((f) => (f as { startHole?: number }).startHole ?? null),
+    ...(Object.keys(scorers).length ? { scorers } : {}),
     // dealt after the cut: those in its flights
     ...(ev.draw?.dealtAt ? { field: Object.keys(flightOf) } : {}),
   };
@@ -283,7 +285,7 @@ export function drawRound(r: RoundDraft, players: TourPlayer[], o: { results?: R
   const order = drawOrder(mode, field.map((p) => ({ id: p.id, hcp: parseIndex(p.hcp) ?? p.fixed ?? null })), { results: o.results, higherBetter: o.higherBetter, seed: Date.now() });
   const flightOf = deal(order, r.draw.size);
   const flights = order.length ? Math.max(...Object.values(flightOf)) + 1 : 0;
-  return { ...r, flightOf: Object.fromEntries(players.map((p) => [p.id, flightOf[p.id] ?? null])), flights, times: [], starts: [], ...(only ? { field: field.map((p) => p.id) } : {}) };
+  return { ...r, flightOf: Object.fromEntries(players.map((p) => [p.id, flightOf[p.id] ?? null])), flights, times: [], starts: [], scorers: {}, ...(only ? { field: field.map((p) => p.id) } : {}) };
 }
 
 /** A round of the draft as the event the server keeps. */
@@ -310,7 +312,7 @@ function eventOf(d: TourDraft, k: number, name: string): PlannedEvent | null {
         return { name: label(p), playingHandicap: t.playingOf(p, at), hcpIndex: parseIndex(p.hcp), ...(tee ? { tee } : {}) };
       }),
       markers: d.ownOnly && !d.oneScorer ? {} : Object.fromEntries(ps.map((p) => [pid(p.id), pid(marks[p.id])])),
-      ...(d.oneScorer && ps.length ? { scorer: pid((ps.find((p) => p.scorer) ?? ps[0]).id) } : {}),
+      ...(d.oneScorer && ps.length ? { scorer: pid((ps.find((p) => p.id === r.scorers?.[f]) ?? ps[0]).id) } : {}),
     };
   });
   const fresh = plannedEvent({
@@ -421,7 +423,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
   const set = (patch: Partial<TourDraft>) => props.onChange({ ...d, ...patch });
   const setRound = (k: number, r: RoundDraft) => set({ rounds: d.rounds.map((x, j) => (j === k ? r : x)) });
   const [busy, setBusy] = useState(false);
-  const [pick, setPick] = useState<'scoring' | 'classes' | 'scorers' | null>(null);
+  const [pick, setPick] = useState<'scoring' | 'classes' | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const multi = d.rounds.length > 1;
   const r0 = d.rounds[0];
@@ -600,52 +602,11 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
               { value: 'one', name: tr('One for all', 'Einer für alle'), text: tr('One player per flight keeps the score of all and marks everyone.', 'Ein Spieler je Flight erfasst die Scores aller und zählt alle.') },
             ]}
           />
-          {/* who keeps the score – here, not in the flights (Sascha 03.11.2026) */}
-          {d.oneScorer && (
-            <SettingsRow
-              label={tr('Scorers', 'Schreiber')}
-              value={(() => {
-                const n = d.players.filter((p) => p.scorer).length;
-                return n ? d.players.filter((p) => p.scorer).map((p, k) => label(p, d.players.indexOf(p) ?? k)).join(', ') : tr('First of each flight', 'Der Erste im Flight');
-              })()}
-              onClick={() => setPick('scorers')}
-            />
-          )}
         </SettingsList>
         <span className="muted small">
-          {d.oneScorer ? tr('In each flight the first scorer chosen – else its first player.', 'Je Flight der erste gewählte Schreiber – sonst der Erste im Flight.') : d.ownOnly ? tr('Each signs his own card.', 'Jeder unterschreibt seine Karte selbst.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
+          {d.oneScorer ? tr('Who it is: the row "Scorer" in each flight.', 'Wer es ist: die Zeile „Schreiber“ im Flight.') : d.ownOnly ? tr('Each signs his own card.', 'Jeder unterschreibt seine Karte selbst.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
         </span>
       </section>
-      {pick === 'scorers' && (
-        <div className="sheet-backdrop" onClick={() => setPick(null)}>
-          <section className="sheet" role="dialog" aria-label={tr('Scorers', 'Schreiber')} onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-head">
-              <strong>{tr('Who keeps the score of his flight?', 'Wer erfasst für seinen Flight?')}</strong>
-              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setPick(null)}>
-                ✕
-              </button>
-            </div>
-            <div className="pick-list">
-              {d.players.map((p, k) => (
-                <button key={p.id} type="button" className="pick-option" aria-pressed={!!p.scorer} onClick={() => set({ players: d.players.map((x) => (x.id === p.id ? { ...x, scorer: !x.scorer } : x)) })}>
-                  <span className="grow">
-                    <strong>{label(p, k)}</strong>
-                  </span>
-                  {p.scorer && (
-                    <span className="pick-check" aria-hidden="true">
-                      ✓
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-            <button type="button" className="btn-primary" onClick={() => setPick(null)}>
-              {tr('Done', 'Fertig')}
-            </button>
-          </section>
-        </div>
-      )}
-
       <section className="setup-part">
         <span className="eyebrow">{tr('Players', 'Spieler')}</span>
         {d.players.map((p, k) => (
@@ -947,6 +908,8 @@ function RoundFlights(props: { d: TourDraft; k: number; label: (p: TourPlayer, k
         slots={slots}
         markers={d.ownOnly && !d.oneScorer ? null : (ids) => markersOf(ids)}
         oneScorer={!!d.oneScorer}
+        scorers={r.scorers ?? {}}
+        onScorer={(fi, id) => props.onChange({ ...r, scorers: { ...(r.scorers ?? {}), [fi]: id } })}
         label={(p) => props.label(p, d.players.indexOf(p))}
         playing={(p) => t.playingOf(p, d.players.indexOf(p))}
         nextTime={teeSlots(r.flights + 1, r.draw.first, r.draw.gap, r.draw.twoTees)[r.flights]}
@@ -969,6 +932,7 @@ function RoundFlights(props: { d: TourDraft; k: number; label: (p: TourPlayer, k
             flights: r.flights - 1,
             times: r.times.filter((_, i) => i !== fi),
             starts: r.starts.filter((_, i) => i !== fi),
+            scorers: Object.fromEntries(Object.entries(r.scorers ?? {}).filter(([k]) => Number(k) !== fi).map(([k, id]) => [Number(k) > fi ? Number(k) - 1 : Number(k), id])),
             flightOf: Object.fromEntries(Object.entries(r.flightOf).map(([id, f]) => [id, f === fi ? null : f != null && f > fi ? f - 1 : f])),
           })
         }
@@ -996,6 +960,9 @@ function FlightBoard(props: {
   /** who marks whom in a flight – null: nobody marks */
   markers: ((ids: string[]) => Record<string, string>) | null;
   oneScorer: boolean;
+  /** each flight's scorer chosen ("Einer für alle") – missing: its first */
+  scorers: Record<number, string>;
+  onScorer: (flight: number, id: string) => void;
   label: (p: TourPlayer) => string;
   playing: (p: TourPlayer) => number | null;
   onMove: (id: string, flight: number | null) => void;
@@ -1189,7 +1156,7 @@ function FlightBoard(props: {
       {Array.from({ length: props.flights }, (_, f) => {
         const ps = inFlight(f);
         const marks = props.markers ? props.markers(ps.map((p) => p.id)) : {};
-        const scorer = props.oneScorer ? (ps.find((p) => p.scorer) ?? ps[0]) : undefined;
+        const scorer = props.oneScorer ? (ps.find((p) => p.id === props.scorers[f]) ?? ps[0]) : undefined;
         const slot = props.slots[f];
         return (
           <section key={f} className={`card tour-flight${target(f) ? ' drop-target' : ''}${dragged && flightOfId(dragged.id) !== f && !room(f) ? ' drop-full' : ''}`} aria-label={`Flight ${f + 1}`} data-flight={f}>
@@ -1202,7 +1169,18 @@ function FlightBoard(props: {
                 {tr('Change', 'Ändern')}
               </button>
             </div>
-            {scorer && ps.length > 1 && <span className="small tour-scorer">{tr(`${props.label(scorer)} keeps the score of all`, `${props.label(scorer)} erfasst die Scores für alle`)}</span>}
+            {/* who keeps the score of the flight – chosen here, in the flight (Sascha 04.11.2026) */}
+            {scorer && ps.length > 1 && (
+              <SettingsList>
+                <ChoiceRow<string>
+                  label={tr('Scorer', 'Schreiber')}
+                  title={tr(`Scorer of flight ${f + 1}`, `Schreiber in Flight ${f + 1}`)}
+                  value={scorer.id}
+                  onChange={(id) => props.onScorer(f, id)}
+                  options={ps.map((p) => ({ value: p.id, name: props.label(p), text: tr('Enters the scores of the flight, marks everyone.', 'Erfasst die Scores des Flights, zählt alle.') }))}
+                />
+              </SettingsList>
+            )}
             {ps.map((p) => {
               const m = byId(scorer && p.id !== scorer.id ? scorer.id : (marks[p.id] ?? ''));
               const ph = props.playing(p);
