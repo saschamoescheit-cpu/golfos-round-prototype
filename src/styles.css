@@ -2183,6 +2183,12 @@ button.tile:disabled { opacity: 1; }
 .balance-item-end strong { font-variant-numeric: tabular-nums; font-size: 17px; }
 .balance-sum { padding: 10px 12px 0; }
 .balance-done { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
+/* the tiles filter (04.11.2026): the games and bets behind a tile, each a row to tap */
+.balance-list li { padding: 0; }
+.balance-entry { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 10px 12px; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.balance-entry:disabled { opacity: 1; cursor: default; }
+.balance-entry .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.balance-entry .grow strong { font-weight: 600; }
 /* the words of a sign card take their own height in its column (03.11.2026: "Ergebnis bestätigen" had a big gap) */
 .sign-card:not(.sc-status) > .grow { flex: none; }
 /* a team game hole by hole as a table (03.11.2026) */

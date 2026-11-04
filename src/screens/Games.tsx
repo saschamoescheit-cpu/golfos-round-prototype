@@ -58,9 +58,9 @@ type View =
   | { name: 'setup'; draft: Draft }
   | { name: 'course'; draft: Draft }
   | { name: 'play'; game: Game }
-  | { name: 'result'; game: Game }
+  | { name: 'result'; game: Game; /** the menu it was opened from – back there (the balance) */ back?: GamesTab }
   | { name: 'poolSetup'; back: GamesTab }
-  | { name: 'pool'; code: string }
+  | { name: 'pool'; code: string; back?: GamesTab }
   | { name: 'tourSetup'; draft: TourDraft; back: View }
   | { name: 'tourCourse'; draft: TourDraft; back: View }
   | { name: 'tour'; code: string }
@@ -219,7 +219,7 @@ export function GamesApp(props: {
           onModules={props.onModules}
           onJoinRound={props.onJoinRound}
           onNewPool={() => setView({ name: 'poolSetup', back: view.tab })}
-          onOpenPool={(code) => setView({ name: 'pool', code })}
+          onOpenPool={(code) => setView({ name: 'pool', code, back: view.tab })}
           onNewTour={() => setView({ name: 'tourSetup', draft: newTourDraft(), back: view })}
           onOpenTour={(code) => setView({ name: 'tour', code })}
           onOpenSeries={(code) => setView({ name: 'series', code })}
@@ -228,7 +228,7 @@ export function GamesApp(props: {
             store(g);
             setView({ name: 'play', game: g });
           }}
-          onOpen={(g) => setView(g.finishedAt ? { name: 'result', game: g } : { name: 'play', game: g })}
+          onOpen={(g) => setView(g.finishedAt ? { name: 'result', game: g, back: view.tab === 'balance' ? 'balance' : undefined } : { name: 'play', game: g })}
           onFinish={(g) => {
             const done = { ...g, finishedAt: new Date().toISOString(), ...(g.round ? { round: { ...g.round, finishedAt: new Date().toISOString() } } : {}) };
             if (done.shared) pushGame('finished', done.shared.code); // the others hear of it (push, final list 23.10.2026)
@@ -309,6 +309,7 @@ export function GamesApp(props: {
       return (
         <PoolScreen
           code={view.code}
+          backLabel={view.back === 'balance' ? tr('Balance', 'Bilanz') : undefined}
           onRound={(code) => {
             const running = poolRoundOf(code);
             if (running) return setView({ name: 'poolRound', code, round: running });
@@ -325,8 +326,10 @@ export function GamesApp(props: {
                 .catch(() => null);
           }}
           onBack={() => {
-            setView({ name: 'tab', tab: 'bets' });
-            props.onTabChange?.('bets');
+            // back to the balance when opened there (Sascha 04.11.2026)
+            const back = view.back === 'balance' ? 'balance' : 'bets';
+            setView({ name: 'tab', tab: back });
+            props.onTabChange?.(back);
           }}
         />
       );
@@ -403,7 +406,8 @@ export function GamesApp(props: {
       return (
         <GameResult
           game={view.game}
-          onBack={() => setView({ name: 'tab', tab: 'games' })}
+          backLabel={view.back === 'balance' ? tr('Balance', 'Bilanz') : undefined}
+          onBack={() => setView({ name: 'tab', tab: view.back ?? 'games' })}
           onReopen={() => {
             const g = { ...view.game, finishedAt: null, ...(view.game.round ? { round: { ...view.game.round, finishedAt: null } } : {}) };
             store(g);
@@ -596,6 +600,7 @@ function GamesTabs(props: {
             games={props.games}
             inTab
             onOpenPool={props.onOpenPool}
+            onOpenGame={props.onOpen}
             onConfirm={(gs) => {
               // the notice tapped (Sascha 03.11.2026): one game to confirm opens, several – "Spiele", those to confirm
               if (gs.length === 1) return props.onOpen(gs[0]);
@@ -1643,7 +1648,7 @@ export function StandingCard(props: { game: Game; final?: boolean }) {
   );
 }
 
-function GameResult(props: { game: Game; onBack: () => void; onReopen: () => void; onDelete: () => void; onChange: (g: Game) => void }) {
+function GameResult(props: { game: Game; onBack: () => void; backLabel?: string; onReopen: () => void; onDelete: () => void; onChange: (g: Game) => void }) {
   const g = props.game;
   const f = formDef(g.form);
   const st = standingOf(g);
@@ -1700,7 +1705,7 @@ function GameResult(props: { game: Game; onBack: () => void; onReopen: () => voi
   );
   return (
     <main className="screen">
-      <TopBar title={f.name()} onBack={props.onBack} backLabel={tr('Games', 'Spiele')} />
+      <TopBar title={f.name()} onBack={props.onBack} backLabel={props.backLabel ?? tr('Games', 'Spiele')} />
       <span className="muted small">
         {g.courseName} · {new Date(g.createdAt).toLocaleDateString(getLang() === 'de' ? 'de-DE' : undefined)} · {holesPlayed(g)}/{g.holes.length} {tr('holes', 'Löcher')}
       </span>
