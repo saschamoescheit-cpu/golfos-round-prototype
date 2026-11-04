@@ -1030,8 +1030,19 @@ export function HoleScreen(props: {
           setTestMsg(tr(`Crack heard at ${time} – no GPS`, `Knall gehört um ${time} – kein GPS`));
           return;
         }
-        // walked on to the next hole in the pocket: the hole where the crack was heard
-        const hole = isNative() ? (detectHole(pl.pos, allMaps, holeRef.current, { start: latestRound.current.startHole }) ?? holeRef.current) : holeRef.current;
+        // walked on in the pocket: the hole where the crack was heard – also a hole further on without a score (Sascha
+        // 04.11.2026: holes 1, 2, then 8 and 9 – the app still on 3 put the cracks of 8 and 9 on 3)
+        const lr = latestRound.current;
+        const meP = lr.players.find((p) => p.isMe) ?? lr.players[0];
+        const open = (k: number) => {
+          const e = meP ? lr.entries[meP.id]?.[k] : undefined;
+          return e?.strokes == null && !e?.pickedUp;
+        };
+        // from the hole of the last crack when that one came later in the round (the phone in the pocket, the screen
+        // still on an earlier hole): the shots after the tee shot stay on the hole the tee shot found
+        const last = (lr.soundShots ?? []).at(-1);
+        const base = last && hit.t - last.t < 20 * 60000 && playPos(lr, last.hole) > playPos(lr, holeRef.current) ? last.hole : holeRef.current;
+        const hole = isNative() ? (detectHole(pl.pos, allMaps, base, { start: lr.startHole, open }) ?? base) : holeRef.current;
         const r = latestRound.current;
         // kept as the latest at once: a protocol line in the same moment must not drop the crack
         latestRound.current = { ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] };
