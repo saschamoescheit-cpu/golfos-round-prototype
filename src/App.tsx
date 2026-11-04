@@ -30,6 +30,7 @@ import { pushRound, takePushTarget } from './lib/push';
 import { exchangeRound } from './lib/sharedround';
 import { reportWagers, runningPools } from './lib/wagerstore';
 import { toursSoon } from './lib/tourstore';
+import { isLastHole } from './lib/holeorder';
 
 /** A practice session of the Training module is paused (read without loading the module). */
 const trainingPaused = (): boolean => {
@@ -648,7 +649,7 @@ export function App() {
           }}
           onFinish={(round) => {
             // Finishing on the last hole is leaving it: its untouched score counts as par (quick tracking).
-            const done = round.currentHole === round.holes.length - 1 ? commitParAt(round, round.currentHole) : round;
+            const done = isLastHole(round, round.currentHole) ? commitParAt(round, round.currentHole) : round;
             persist(done);
             setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true }); // then: check the shots or delete
           }}

@@ -446,7 +446,8 @@ export function roundFromEvent(ev: RoundEvent, flightId: string, me: string, cod
     mode: 'detail',
     players,
     entries,
-    currentHole: 0,
+    // a flight off tee 10 (Games: flight.startHole, 9 = tee 10 – 04.11.2026) starts there and plays round to 9
+    ...(() => { const s = (f as Flight & { startHole?: number }).startHole ?? 0; return s > 0 && s < ev.holes.length ? { currentHole: s, startHole: s } : { currentHole: 0 }; })(),
     ...(ev.format ? { format: ev.format } : {}),
     ...(ev.tee ? { tee: ev.tee } : {}),
     ...(ev.rating ? { rating: ev.rating } : {}),

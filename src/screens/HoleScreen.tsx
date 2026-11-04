@@ -61,6 +61,7 @@ import { FairwayPicker } from '../components/FairwayPicker';
 import { HoleDrawer } from '../components/HoleDrawer';
 import { statRounds } from '../lib/signing';
 import { pushRound } from '../lib/push';
+import { isLastHole, lastHole, nextHole, playPos, prevHole } from '../lib/holeorder';
 
 const fairwayName = (f: string) => (f === 'ob' ? tr('out of bounds', 'Aus') : tr(f, ({ left: 'links', hit: 'getroffen', right: 'rechts' } as Record<string, string>)[f] ?? f));
 
@@ -157,8 +158,13 @@ export function HoleScreen(props: {
    *  Back to an earlier hole writes nothing either: the hole left is not played yet (Sascha 22.10.2026: back to a hole
    *  to correct its score, then forward again – the score sheet no longer opened, the unplayed hole had got par). */
   const goTo = (target: number, byGps = false, base: Round = round) => {
+    if (target < 0) return;
+    // forward and back in the order played – off tee 10: 10 … 18, then 1 … 9 (lib/holeorder, 04.11.2026); holes.length: finished
+    const done = target >= round.holes.length;
+    const back = !done && playPos(round, target) < playPos(round, i);
+    const ahead = done || playPos(round, target) > playPos(round, i);
     // a bet counts the putts: on only with every player's putts (the GPS moving on is not held – its sheet asks anyway)
-    const lacking = props.game?.puttsRequired && !byGps && target > i && !isTeamRound(base) ? base.players.filter((p) => { const e = base.entries[p.id]?.[i]; return !e?.pickedUp && e?.putts == null; }) : [];
+    const lacking = props.game?.puttsRequired && !byGps && ahead && !isTeamRound(base) ? base.players.filter((p) => { const e = base.entries[p.id]?.[i]; return !e?.pickedUp && e?.putts == null; }) : [];
     if (lacking.length) {
       setPuttsMissing(lacking.map((p) => p.name));
       setScoreSheet('next');
@@ -167,14 +173,13 @@ export function HoleScreen(props: {
     setPuttsMissing(null);
     setDetected(null);
     // a hole gone back to asks for its score again on the way forward (Sascha 27.10.2026)
-    if (target < i) revisit.current.add(target);
+    if (back) revisit.current.add(target);
     else revisit.current.delete(i); // the hole left forward is done with
-    const committed = byGps || target < i ? base : commitPar(base);
-    if (target >= round.holes.length) {
-      props.onShowScorecard({ ...committed, currentHole: round.holes.length - 1 }, true);
+    const committed = byGps || back ? base : commitPar(base);
+    if (done) {
+      props.onShowScorecard({ ...committed, currentHole: lastHole(round) }, true);
       return;
     }
-    if (target < 0) return;
     props.onChange({ ...committed, currentHole: target });
     setView('map'); // every new hole starts on the map
   };
@@ -523,7 +528,7 @@ export function HoleScreen(props: {
     if (pendingHole != null) return onAfterScore(true);
     const ask = !round.preview && !scoreSheet && (scoreToAsk(i) || (!myScoreElsewhere && revisit.current.has(i)));
     revisit.current.delete(i);
-    if (!ask) return goTo(i + 1);
+    if (!ask) return goTo(nextHole(round, i) ?? round.holes.length);
     if (hasShots) setView('score');
     else setScoreSheet('next');
   };
@@ -1367,8 +1372,9 @@ export function HoleScreen(props: {
       recordCaddie(round.id, i, { t: Date.now(), pos: ball, toPin: Math.round(distanceM(ball, pin)), club: 'Putt', playsLike: Math.round(distanceM(ball, pin)), aim: putt.text, plan: null, warning: null });
     }
     const puttAim = putt && ball ? move(pin, bearingDeg(ball, pin) + 90, putt.aimCm / 100) : null;
-    const prev = i > 0 ? round.entries[me.id][i - 1] : null;
-    const prevHole = i > 0 ? round.holes[i - 1] : null;
+    const before = prevHole(round, i);
+    const prev = before != null ? round.entries[me.id][before] : null;
+    const prevHoleOf = before != null ? round.holes[before] : null;
     const cad = caddieOn && !tournament
       ? caddieAdvice({
           data: mapData,
@@ -1393,7 +1399,7 @@ export function HoleScreen(props: {
           unit,
           coarseHeight: heightAt,
           stableford: me.playingHandicap != null && !round.preview ? { received, shotsSoFar: teeShot ? 0 : (myEntry.detail?.shots.length ?? null) } : null,
-          prev: prev && prevHole ? { toPar: prev.strokes != null ? prev.strokes - prevHole.par : null, pickedUp: !!prev.pickedUp } : null,
+          prev: prev && prevHoleOf ? { toPar: prev.strokes != null ? prev.strokes - prevHoleOf.par : null, pickedUp: !!prev.pickedUp } : null,
           forecast,
           wind: weather ? { gustKmh: weather.gustKmh, windKmh: weather.windKmh, label: windOnHole(weather, bearingDeg(from, pin)).label } : null,
           leave: greenCache.current.leave,
@@ -2170,12 +2176,12 @@ export function HoleScreen(props: {
           )}
           {shotButtons ? (
             <div className="map-nav detail">
-              <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
+              <button type="button" className="map-btn round" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(prevHole(round, i) ?? -1)} disabled={prevHole(round, i) == null}>
                 ←
               </button>
               {holeDone ? (
-                <button type="button" className="map-btn primary" onClick={() => goTo(i + 1)}>
-                  {tr('Done', 'Fertig')} · {myEntry.strokes} → {i === round.holes.length - 1 ? tr('finish', 'beenden') : tr('next', 'weiter')}
+                <button type="button" className="map-btn primary" onClick={() => goTo(nextHole(round, i) ?? round.holes.length)}>
+                  {tr('Done', 'Fertig')} · {myEntry.strokes} → {isLastHole(round, i) ? tr('finish', 'beenden') : tr('next', 'weiter')}
                 </button>
               ) : (
                 <button type="button" className="map-btn primary" onClick={() => (onHole ? openAt('shot', player!.pos) : setPlacing('shot'))}>
@@ -2190,7 +2196,7 @@ export function HoleScreen(props: {
               >
                 {detail.onGreen ? 'Putts' : tr('Green', 'Grün')}
               </button>
-              <button type="button" className="map-btn round primary" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={forward}>
+              <button type="button" className="map-btn round primary" aria-label={isLastHole(round, i) ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={forward}>
                 →
               </button>
             </div>
@@ -2206,7 +2212,7 @@ export function HoleScreen(props: {
             <button type="button" className="hole-bar-handle" aria-label={tr('Open the hole overview', 'Lochübersicht öffnen')} onClick={() => setDrawerOpen(true)}>
               <span />
             </button>
-            <button type="button" className="hole-bar-arrow" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(i - 1)} disabled={i === 0}>
+            <button type="button" className="hole-bar-arrow" aria-label={tr('Previous hole', 'Voriges Loch')} onClick={() => goTo(prevHole(round, i) ?? -1)} disabled={prevHole(round, i) == null}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
             </button>
             <button
@@ -2241,7 +2247,7 @@ export function HoleScreen(props: {
                 </span>
               )}
             </button>
-            <button type="button" className="hole-bar-arrow" aria-label={i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={forward}>
+            <button type="button" className="hole-bar-arrow" aria-label={isLastHole(round, i) ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr('Next hole', 'Nächstes Loch')} onClick={forward}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
@@ -2262,7 +2268,7 @@ export function HoleScreen(props: {
         touchX.current = null;
         if (Math.abs(dx) > 70) {
           if (dx < 0) forward();
-          else goTo(i - 1);
+          else goTo(prevHole(round, i) ?? -1);
         }
       }}
     >
@@ -2288,7 +2294,7 @@ export function HoleScreen(props: {
         }
       />
       <div className="progress" aria-hidden="true">
-        <div style={{ width: `${((i + 1) / round.holes.length) * 100}%` }} />
+        <div style={{ width: `${((playPos(round, i) + 1) / round.holes.length) * 100}%` }} />
       </div>
       {detectedBanner}
 
@@ -2508,11 +2514,11 @@ export function HoleScreen(props: {
 
       <span className="spacer" />
       <div className="nav-bottom">
-        <button type="button" className="btn-secondary" onClick={() => goTo(i - 1)} disabled={i === 0}>
+        <button type="button" className="btn-secondary" onClick={() => goTo(prevHole(round, i) ?? -1)} disabled={prevHole(round, i) == null}>
           {tr('← Back', '← Zurück')}
         </button>
-        <button type="button" className="btn-primary" onClick={() => goTo(i + 1)}>
-          {i === round.holes.length - 1 ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr(`Next · hole ${round.holes[i + 1].label}`, `Weiter · Loch ${round.holes[i + 1].label}`)}
+        <button type="button" className="btn-primary" onClick={() => goTo(nextHole(round, i) ?? round.holes.length)}>
+          {isLastHole(round, i) ? (props.game ? tr('Finish game', 'Spiel beenden') : tr('Finish round', 'Runde beenden')) : tr(`Next · hole ${round.holes[nextHole(round, i) ?? i].label}`, `Weiter · Loch ${round.holes[nextHole(round, i) ?? i].label}`)}
         </button>
       </div>
       {sheetEl}

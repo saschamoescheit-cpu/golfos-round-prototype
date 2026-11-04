@@ -27,6 +27,8 @@ export const teeSoon = (min) => {
 
 export function sharedServer(b, url, o = {}) {
   const shared = new Map(); // code → { game, updated_at, owner, members, requests, near }
+  // the server's clock: the real one – or, for a trip over days (qa/usatrip.mjs, the phones on a fake clock), shifted by o.offset() ms
+  const now = () => new Date(Date.now() + (o.offset?.() ?? 0));
   const pushes = []; // { action, code, ref, from }
   let refused = 0; // writes refused because another phone wrote in between
   let anon = 0;
@@ -39,7 +41,7 @@ export function sharedServer(b, url, o = {}) {
   const askRow = (code, row, uid, who, hcp) => {
     if (row.owner === uid || row.members.includes(uid)) return { state: 'ok', code };
     if (row.requests[uid]) return { state: row.requests[uid].state };
-    row.requests[uid] = { name: who, hcp: hcp ?? '', at: new Date().toISOString(), state: 'asked' };
+    row.requests[uid] = { name: who, hcp: hcp ?? '', at: now().toISOString(), state: 'asked' };
     return { state: 'asked' };
   };
   async function serve(route) {
@@ -101,8 +103,8 @@ export function sharedServer(b, url, o = {}) {
         const row = shared.get(b.code);
         if (o.oldPush || !links.has(`${uid}|${b.friend}`)) return json(200, { ok: false, found: false });
         if (row && !row.members.includes(b.friend)) row.members.push(b.friend);
-        if (row) row.requests[b.friend] = { name: b.name, state: 'ok', invited: b.who || 'GolfOS', at: new Date().toISOString() };
-        if (row) row.updated_at = new Date().toISOString();
+        if (row) row.requests[b.friend] = { name: b.name, state: 'ok', invited: b.who || 'GolfOS', at: now().toISOString() };
+        if (row) row.updated_at = now().toISOString();
         return json(200, { ok: true, found: true, sent: 1 });
       }
       if (b.action === 'invite') {
@@ -144,7 +146,7 @@ export function sharedServer(b, url, o = {}) {
     // asking to join a round nearby
     if (u.pathname.endsWith('/rpc/golfos_request_join')) {
       const { join_ref, who, hcp } = body();
-      const [code, row] = [...shared.entries()].find(([, r]) => r.near?.near_ref === join_ref && new Date(r.near.near_until) > new Date()) ?? [];
+      const [code, row] = [...shared.entries()].find(([, r]) => r.near?.near_ref === join_ref && new Date(r.near.near_until) > now()) ?? [];
       return json(200, row ? askRow(code, row, uid, who, hcp) : { state: 'gone' });
     }
     if (u.pathname.endsWith('/rpc/golfos_answer_join')) {
@@ -160,7 +162,7 @@ export function sharedServer(b, url, o = {}) {
       const { at_lat, at_lon } = body();
       const rad = (d) => (d * Math.PI) / 180;
       const out = [...shared.values()]
-        .filter((r) => r.near && new Date(r.near.near_until) > new Date())
+        .filter((r) => r.near && new Date(r.near.near_until) > now())
         .map((r) => ({ r, d: 6371000 * Math.hypot(rad(r.near.near_lat - at_lat), Math.cos(rad(at_lat)) * rad(r.near.near_lon - at_lon)) }))
         .filter((x) => x.d <= x.r.near.near_radius)
         .map(({ r, d }) => ({ ref: r.near.near_ref, name: r.game.name, course: r.game.course.name, host: r.near.near_host, tournament: !!r.game.tournament, mode: r.game.format?.mode, dist: Math.round(d) }));
@@ -201,7 +203,7 @@ export function sharedServer(b, url, o = {}) {
         const r = body();
         if (shared.has(r.code)) return json(409, { code: '23505' });
         if (r.event_code && (o.noSplit || !inEvent(r.event_code))) return json(o.noSplit ? 400 : 403, { message: 'not in the event' });
-        shared.set(r.code, { game: r.game, updated_at: new Date().toISOString(), owner: uid, members: [], requests: {}, ...(r.event_code ? { event_code: r.event_code } : {}) });
+        shared.set(r.code, { game: r.game, updated_at: now().toISOString(), owner: uid, members: [], requests: {}, ...(r.event_code ? { event_code: r.event_code } : {}) });
         if (r.event_code) return json(201, [{ code: r.code }]);
         return json(201, null);
       }
@@ -306,7 +308,7 @@ export function sharedServer(b, url, o = {}) {
   function series(owner, name, codes, o2 = {}) {
     const code = 'S' + Math.random().toString(36).slice(2, 7).toUpperCase();
     const rounds = codes.map((c) => ({ code: c, date: shared.get(c).game.date, name: shared.get(c).game.name, course: { id: shared.get(c).game.course.id, name: shared.get(c).game.course.name } })).sort((a, b) => a.date.localeCompare(b.date));
-    shared.set(code, { game: { kind: 'tour-series', id: code.toLowerCase(), name, createdAt: new Date().toISOString(), rounds, ...(o2.deletedAt ? { deletedAt: o2.deletedAt } : {}) }, updated_at: new Date().toISOString(), owner, members: [], requests: {} });
+    shared.set(code, { game: { kind: 'tour-series', id: code.toLowerCase(), name, createdAt: now().toISOString(), rounds, ...(o2.deletedAt ? { deletedAt: o2.deletedAt } : {}) }, updated_at: now().toISOString(), owner, members: [], requests: {} });
     return code;
   }
   return { cards, links, shared, pushes, phone, round, event, plan, joinPlanned, series, refused: () => refused, flightReads: () => flightReads };

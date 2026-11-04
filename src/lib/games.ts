@@ -1,6 +1,7 @@
 import type { Round } from '../types';
 import { grossForHole, handicapStrokes, stablefordPoints } from './scoring';
 import { tr } from './i18n';
+import { playPos } from './holeorder';
 
 // Game modes and scoring of a round, chosen as in Hole19 (Sascha 14.10.2026): a list of modes – simple game, better
 // ball, scramble, foursomes, each also as match play, and singles match play – then the scoring (Stableford or stroke
@@ -109,14 +110,14 @@ export interface TexasDrives {
   min: number;
   left: number;
 }
-export function texasDrives(round: Pick<Round, 'format' | 'entries' | 'holes' | 'players'>, team: string, hole: number): TexasDrives | null {
+export function texasDrives(round: Pick<Round, 'format' | 'entries' | 'holes' | 'players' | 'startHole'>, team: string, hole: number): TexasDrives | null {
   const min = round.format?.mode === 'scramble' ? (round.format.minDrives ?? 0) : 0;
   const p = round.players.find((x) => x.id === team);
   if (!min || !p) return null;
   const members = p.name.split(' & ');
   if (members.length < 2) return null;
   const counts = members.map((_, k) => (round.entries[team] ?? []).filter((e, i) => i !== hole && e.drive === k).length);
-  return { members, counts, min, left: round.holes.length - 1 - hole };
+  return { members, counts, min, left: round.holes.length - 1 - playPos(round, hole) };
 }
 /** Who gets tight: still needs as many drives as holes are left, or more (with this hole's pick counted). */
 export function drivesShort(t: TexasDrives, picked: number | undefined): { name: string; need: number }[] {

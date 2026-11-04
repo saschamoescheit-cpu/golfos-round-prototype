@@ -192,6 +192,8 @@ export interface Round {
   /** entries[playerId][holeIndex] */
   entries: Record<string, HoleEntry[]>;
   currentHole: number;
+  /** The hole the round starts on, 0-based – 9: a tournament flight off tee 10 plays 10 … 18, then 1 … 9 (lib/holeorder). */
+  startHole?: number;
   /** Tee colour the player plays from (when the course has tee data). */
   tee?: string;
   /** Course rating and slope the player entered or corrected (else the bundled values for the tee are used). */
