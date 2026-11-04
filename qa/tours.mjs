@@ -334,7 +334,7 @@ await who.click();
   ok(opts === 'Jeder seinen eigenen|Mit Zähler|Einer für alle', `Score-Erfassung: the choices of Rounds – ${opts}`);
 }
 await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Jeder seinen eigenen/ }).click();
-ok(!/Zähler: /.test((await fl(0).innerText()) + (await fl(1).innerText())) && (await H.getByText('Jeder unterschreibt seine Karte selbst.').count()) === 1, 'everyone his own: no markers in the flights');
+ok(!/Zähler: /.test((await fl(0).innerText()) + (await fl(1).innerText())) && (await H.getByText('Jeder unterschreibt seine Karte selbst.').count()) === 0, 'everyone his own: no markers in the flights, no hint under the score entry (04.11.2026)');
 await who.click();
 await H.getByRole('dialog', { name: 'Wer erfasst' }).getByRole('button', { name: /^Einer für alle/ }).click();
 const scorers = H.locator('.settings-row').filter({ hasText: 'Schreiber' });

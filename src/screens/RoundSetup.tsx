@@ -377,7 +377,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
               </button>
             )}
           </div>
-          <span className="muted small">{ENTRY.find(([v]) => v === counting)![2]()}</span>
+          {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
         </section>
       )}
 

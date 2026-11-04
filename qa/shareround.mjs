@@ -60,6 +60,19 @@ await H.waitForTimeout(1200);
 const near = [...shared.values()][0]?.near;
 ok(near && Math.abs(near.near_lat - 48.7808) < 1e-4 && near.near_radius === 300 && near.near_host === 'Sascha' && near.near_ref?.length >= 20 && new Date(near.near_until) - Date.now() > 1.9 * 3600e3, `server: the round shown nearby – Sascha's position, 300 m, two hours (${JSON.stringify(near ?? null).slice(0, 90)})`);
 ok((await card.getByRole('switch', { name: /In der Nähe anzeigen/ }).getAttribute('aria-checked')) === 'true' && !/Angemeldete Spieler im Umkreis/.test(await card.innerText()), 'setup: "In der Nähe anzeigen" switched on above the QR code – no explanation (04.11.2026)');
+// off and on again (Sascha 04.11.2026: "I could switch it on, but not off again"); no box of its own, space to the QR code
+const nearSw = card.getByRole('switch', { name: /In der Nähe anzeigen/ });
+await nearSw.click();
+await H.waitForTimeout(1200);
+ok((await nearSw.getAttribute('aria-checked')) === 'false' && ![...shared.values()][0]?.near, 'setup: "In der Nähe anzeigen" off again – the round no longer shown nearby');
+await nearSw.click();
+await H.waitForTimeout(1500);
+const gapQr = await H.evaluate(() => {
+  const s = document.querySelector('.near-switch');
+  const q = document.querySelector('.invite-card .qr-box');
+  return s && q ? { gap: q.getBoundingClientRect().top - s.getBoundingClientRect().bottom, bg: getComputedStyle(s).backgroundColor, boxed: !!s.closest('.drawer-list') } : null;
+});
+ok((await nearSw.getAttribute('aria-checked')) === 'true' && !![...shared.values()][0]?.near && gapQr && gapQr.gap >= 20 && !gapQr.boxed && /rgba\(0, 0, 0, 0\)|transparent/.test(gapQr.bg), `setup: on again; the switch a line of the invite, no grey box, ${Math.round(gapQr?.gap ?? 0)} px to the QR code`);
 if (process.env.SHOTS) await card.screenshot({ path: process.env.SHOTS + '/round-invite.png' });
 
 // ---------- Ben: the same team, with the link – before Sascha starts ----------

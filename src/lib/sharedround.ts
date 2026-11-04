@@ -1189,10 +1189,46 @@ export async function showNearby(code: string, at: { lat: number; lon: number; r
       headers: { ...h, Prefer: 'return=minimal' },
       body: JSON.stringify({ near_lat: at.lat, near_lon: at.lon, near_radius: Math.round(at.radius), near_host: host, near_until: new Date(until).toISOString(), near_ref: ref }),
     });
-    if (r.ok) keepHosted(code, until);
+    if (r.ok) {
+      keepHosted(code, until);
+      setNearbyUntil(code, until);
+    }
     return r.ok;
   } catch {
     return false;
+  }
+}
+
+/** No longer shown nearby (Sascha 04.11.2026: "I could switch it on, but not off again"). */
+export async function hideNearby(code: string): Promise<boolean> {
+  const h = await headers();
+  if (!h) return false;
+  try {
+    const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}`, {
+      method: 'PATCH',
+      headers: { ...h, Prefer: 'return=minimal' },
+      body: JSON.stringify({ near_lat: null, near_lon: null, near_radius: null, near_host: null, near_until: null, near_ref: null }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+/** Till when this phone shows the round nearby (the switch stays on when the setup opens again). */
+const NEAR_ON = 'golfos.nearon.v1.';
+export function nearbyUntil(code: string): number {
+  try {
+    return Number(localStorage.getItem(NEAR_ON + code) ?? 0);
+  } catch {
+    return 0;
+  }
+}
+export function setNearbyUntil(code: string, until: number): void {
+  try {
+    if (until > Date.now()) localStorage.setItem(NEAR_ON + code, String(until));
+    else localStorage.removeItem(NEAR_ON + code);
+  } catch {
+    /* no storage – the switch starts off */
   }
 }
 

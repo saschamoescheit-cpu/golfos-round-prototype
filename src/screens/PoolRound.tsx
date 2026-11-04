@@ -185,11 +185,10 @@ export function PoolRoundSetup(props: { code: string; course: Course | null; onC
             ]}
           />
         </SettingsList>
-        <span className="muted small">
-          {needsDetails
-            ? tr('A bet of the pool counts greens, putts or fairways – every player with details, the putts a must.', 'Eine Wette des Pools zählt Grüns, Putts oder Fairways – jeder Spieler mit Details, die Putts sind Pflicht.')
-            : tr('Set by the bets of the pool – the details only if you want them.', 'Von den Wetten des Pools vorgegeben – Details nur, wenn du sie willst.')}
-        </span>
+        {/* a hint only when the bets fix the entry – why the row cannot be changed (Sascha 04.11.2026: no other hints) */}
+        {needsDetails && (
+          <span className="muted small">{tr('A bet of the pool counts greens, putts or fairways – every player with details, the putts a must.', 'Eine Wette des Pools zählt Grüns, Putts oder Fairways – jeder Spieler mit Details, die Putts sind Pflicht.')}</span>
+        )}
       </section>
       <span className="spacer" />
       <div className="sticky-cta">

@@ -222,8 +222,8 @@ export function sharedServer(b, url, o = {}) {
           row.updated_at = b.updated_at;
           return json(200, [{ code }]);
         }
-        if (b.near_lat != null) {
-          row.near = b; // shown nearby – the event itself unchanged
+        if ('near_lat' in b) {
+          row.near = b.near_lat != null ? b : null; // shown nearby, or no longer (04.11.2026) – the event itself unchanged
           return json(204, null);
         }
         row.game = b.game;

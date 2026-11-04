@@ -1075,11 +1075,7 @@ function CountedSwitch(props: { on: boolean; onChange: (on: boolean) => void }) 
           ]}
         />
       </SettingsList>
-      <span className="muted small">
-        {props.on
-          ? tr('For all bets of the pool – until the card is signed, a result is provisional.', 'Für alle Wetten des Pools – bis die Karte unterschrieben ist, gilt ein Ergebnis als vorläufig.')
-          : tr('For all bets of the pool.', 'Für alle Wetten des Pools.')}
-      </span>
+      {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
     </>
   );
 }

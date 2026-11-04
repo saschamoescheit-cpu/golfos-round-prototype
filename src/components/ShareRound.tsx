@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
-import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -58,7 +58,7 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   // the round shown to signed-in phones nearby (Sascha 29.10.2026) – here, or (no GPS) on the course; asked by the switch under the code
-  const [nearState, setNearState] = useState<'here' | 'course' | 'failed' | null>(null);
+  const [nearState, setNearState] = useState<'here' | 'course' | 'failed' | 'busy' | null>(() => (shared && nearbyUntil(shared.code) > Date.now() ? 'here' : null));
   // everyone in with a phone of his own: the block folds to one row (docs/DESIGN.md, Sascha 03.11.2026)
   const [liveEv, setLiveEv] = useState(() => (shared ? cachedEvent(shared.code) : null));
   useEffect(() => {
@@ -69,11 +69,20 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
     return () => window.removeEventListener('golfos:event-changed', on);
   }, [shared?.code]); // eslint-disable-line react-hooks/exhaustive-deps
   const putNearby = async (code: string) => {
+    setNearState('busy');
     const pos = await here();
     const course = courseSummary(props.round);
     const at = pos ? { ...pos, radius: 300 } : course.lat || course.lon ? { lat: course.lat, lon: course.lon, radius: 2000 } : null;
     setNearState(at && (await showNearby(code, at, myName())) ? (pos ? 'here' : 'course') : 'failed');
   };
+  // off again (Sascha 04.11.2026)
+  const offNearby = async (code: string) => {
+    setNearState('busy');
+    const ok = await hideNearby(code);
+    if (ok) setNearbyUntil(code, 0);
+    setNearState(ok ? null : 'here');
+  };
+  const nearOn = nearState === 'here' || nearState === 'course';
   const create = async () => {
     setBusy(true);
     const r = await shareRound(props.round, courseSummary(props.round), { name: name.trim() || props.round.courseName, tournament: false, who: myName() });
@@ -142,22 +151,22 @@ export function InvitePanel(props: { round: Round; onShared: (r: Round) => void;
           { label: tr('Copy link', 'Link kopieren'), icon: 'copy', onClick: () => void copyLink(roundJoinLink(shared.code)).then(setMsg) },
         ]}
         top={
-          // shown to players nearby: a switch above the QR code, off by default, no explanation (Sascha 04.11.2026)
-          <div className="drawer-list settings-switches near-switch">
-            <button
-              type="button"
-              className="drawer-row"
-              role="switch"
-              aria-checked={nearState === 'here' || nearState === 'course'}
-              onClick={() => nearState !== 'here' && nearState !== 'course' && void putNearby(shared.code)}
-            >
-              <span className="switch-label">
-                <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
-                {nearState === 'failed' && <span className="muted small">{tr('Not possible right now', 'Gerade nicht möglich')}</span>}
-              </span>
-              <span className={`drawer-switch${nearState === 'here' || nearState === 'course' ? ' on' : ''}`} aria-hidden="true" />
-            </button>
-          </div>
+          // shown to players nearby: a switch above the QR code, off by default, no explanation (Sascha 04.11.2026) – part of
+          // "Mitspieler einladen", no box of its own, space to the QR code; on and off again
+          <button
+            type="button"
+            className="near-switch"
+            role="switch"
+            aria-checked={nearOn}
+            disabled={nearState === 'busy'}
+            onClick={() => void (nearOn ? offNearby(shared.code) : putNearby(shared.code))}
+          >
+            <span className="switch-label">
+              <span>{tr('Show to players nearby', 'In der Nähe anzeigen')}</span>
+              {nearState === 'failed' && <span className="muted small">{tr('Not possible right now', 'Gerade nicht möglich')}</span>}
+            </span>
+            <span className={`drawer-switch${nearOn ? ' on' : ''}`} aria-hidden="true" />
+          </button>
         }
       />
       <FriendInvite code={shared.code} only={props.round.players.filter((p) => !p.isMe).map((p) => p.name)} />

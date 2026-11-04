@@ -618,9 +618,7 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
             />
           )}
         </SettingsList>
-        <span className="muted small">
-          {d.oneScorer ? tr('In each flight the first scorer chosen – else its first player.', 'Je Flight der erste gewählte Schreiber – sonst der Erste im Flight.') : d.ownOnly ? tr('Each signs his own card.', 'Jeder unterschreibt seine Karte selbst.') : tr('Who marks whom, the app sets.', 'Wer wen zählt, legt die App fest.')}
-        </span>
+        {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
       </section>
       {pick === 'scorers' && (
         <div className="sheet-backdrop" onClick={() => setPick(null)}>
