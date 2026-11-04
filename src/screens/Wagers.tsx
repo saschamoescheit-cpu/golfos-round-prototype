@@ -18,7 +18,7 @@ import { openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, bal
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { Bin } from '../components/Bin';
-import { ChoiceRow, DateRow, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
+import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 import { SwipeRow } from '../components/SwipeRow';
 import { PaidMarks } from '../components/PaidMarks';
@@ -309,7 +309,6 @@ export function PoolSetup(props: { onBack: () => void; onCreated: (code: string)
             {tr('+ Add player', '+ Spieler hinzufügen')}
           </button>
         )}
-        <span className="muted small">{tr('The first is you. The others join with the code – or add themselves.', 'Der Erste bist du. Die anderen treten mit dem Code bei – oder tragen sich selbst ein.')}</span>
       </section>
       {/* Wer → Score-Erfassung → Worum, as Neue Runde and Neues Turnier (Sascha 03.11.2026: one order everywhere) */}
       <section className="setup-part">
@@ -360,6 +359,7 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
   const [adding, setAdding] = useState<{ day: string; course?: { id: string; name: string }; src?: PoolRound['src']; holes?: string; holesName?: string } | null>(null);
   const [picking, setPicking] = useState(false);
   const [editing, setEditing] = useState<string | null>(null); // a round's id
+  const [tourPick, setTourPick] = useState(false);
   const tours = loadTours().filter((e) => !e.ev.deletedAt && e.ev.date >= props.from && e.ev.date <= props.to && !props.rounds.some((r) => r.tour === e.code));
   // a tournament series: all its rounds in one tap (Sascha 01.11.2026: "the bets tied to the tournaments")
   const series = loadSeries()
@@ -404,6 +404,9 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
             }}
           />
         )}
+        {!adding?.course && (tours.length > 0 || series.length > 0) && (
+          <SettingsRow label={tr('Tournament', 'Turnier')} value={tr('Choose a tournament', 'Turnier wählen')} onClick={() => setTourPick(true)} />
+        )}
       </SettingsList>
       {editing && (() => {
         const r = props.rounds.find((x) => x.id === editing);
@@ -434,32 +437,23 @@ function TripRounds(props: { from: string; to: string; rounds: PoolRound[]; onCh
           </div>
         );
       })()}
-      {(tours.length > 0 || series.length > 0) && (
-        <div className="trip-tours">
-          <span className="muted small">{tr('From the tournaments planned', 'Aus den geplanten Turnieren')}</span>
-          <div className="chip-set">
-            {series.map((x) => (
-              <button
-                key={x.code}
-                type="button"
-                className="chip"
-                onClick={() => props.onChange([...props.rounds, ...x.add.map((r) => ({ id: newId(), day: r.date, course: r.course.name, courseId: r.course.id, tour: r.code }))])}
-              >
-                + {x.series.name} · {tr(`${x.add.length} rounds`, `${x.add.length} Runden`)}
-              </button>
-            ))}
-            {tours.map((e) => (
-              <button
-                key={e.code}
-                type="button"
-                className="chip"
-                onClick={() => props.onChange([...props.rounds, { id: newId(), day: e.ev.date, course: e.ev.course.name, courseId: e.ev.course.id, tour: e.code, src: e.ev.course }])}
-              >
-                + {e.ev.name} · {e.ev.date.slice(8, 10)}.{e.ev.date.slice(5, 7)}.
-              </button>
-            ))}
-          </div>
-        </div>
+      {tourPick && (
+        <PickSheet<string>
+          title={tr('From a tournament planned', 'Aus geplantem Turnier')}
+          current=""
+          options={[
+            ...series.map((x) => ({ value: `s:${x.code}`, name: x.series.name, text: tr(`Series · ${x.add.length} rounds`, `Serie · ${x.add.length} ${x.add.length === 1 ? 'Runde' : 'Runden'}`) })),
+            ...tours.map((e) => ({ value: `t:${e.code}`, name: e.ev.name, text: `${dayText(e.ev.date)} · ${e.ev.course.name}` })),
+          ]}
+          onPick={(v) => {
+            const x = series.find((y) => `s:${y.code}` === v);
+            const e = tours.find((y) => `t:${y.code}` === v);
+            if (x) props.onChange([...props.rounds, ...x.add.map((r) => ({ id: newId(), day: r.date, course: r.course.name, courseId: r.course.id, tour: r.code }))]);
+            if (e) props.onChange([...props.rounds, { id: newId(), day: e.ev.date, course: e.ev.course.name, courseId: e.ev.course.id, tour: e.code, src: e.ev.course }]);
+            setTourPick(false);
+          }}
+          onClose={() => setTourPick(false)}
+        />
       )}
       {/* a round added as a game or a round is set up (Sascha 02.11.2026: "as in Games and Rounds"): "Platz wählen" opens
           the courses, then the course and the day as rows, the button below */}
@@ -1022,21 +1016,30 @@ function Settlement(props: { pool: WagerPool; bal: Record<string, number>; lines
 
 // ---------- one bet ----------
 
-/** "With marker" for the whole pool (Sascha 02.11.2026) – every bet of it counts so. */
+/** "Score-Erfassung" of the whole pool (Sascha 02.11.2026) – every bet of it counts so; a row "Wer erfasst ›" with its
+ *  sheet, as in "Neue Runde" and "Neues Turnier" (Sascha 04.11.2026: "the score entry as in the rest of the app"). */
 function CountedSwitch(props: { on: boolean; onChange: (on: boolean) => void }) {
   return (
-    <ToggleRow
-      on={props.on}
-      label={tr('With marker – for all bets', 'Mit Zähler – für alle Wetten')}
-      text={tr(
-        'A flight partner marks each player (or one keeps the score of all), as in a tournament; until the card is signed a result is provisional. Off: every round of the player counts as he entered it.',
-        'Ein Flightpartner zählt jeden Spieler (oder einer erfasst für alle), wie im Turnier; bis die Karte unterschrieben ist, gilt ein Ergebnis als vorläufig. Aus: Jede Runde zählt so, wie der Spieler sie erfasst hat.',
-      )}
-      onChange={props.onChange}
-    />
+    <>
+      <SettingsList>
+        <ChoiceRow<'own' | 'marker'>
+          label={tr('Who enters', 'Wer erfasst')}
+          value={props.on ? 'marker' : 'own'}
+          onChange={(v) => props.onChange(v === 'marker')}
+          options={[
+            { value: 'own', name: tr('Everyone his own', 'Jeder seinen eigenen'), text: tr('Every round counts as the player entered it – nobody marks.', 'Jede Runde zählt so, wie der Spieler sie erfasst hat – ohne Zähler.') },
+            { value: 'marker', name: tr('With a marker', 'Mit Zähler'), text: tr('A flight partner marks each player – or one keeps the score of all, as in a tournament.', 'Ein Flightpartner zählt jeden Spieler – oder einer erfasst für alle, wie im Turnier.') },
+          ]}
+        />
+      </SettingsList>
+      <span className="muted small">
+        {props.on
+          ? tr('For all bets of the pool – until the card is signed, a result is provisional.', 'Für alle Wetten des Pools – bis die Karte unterschrieben ist, gilt ein Ergebnis als vorläufig.')
+          : tr('For all bets of the pool.', 'Für alle Wetten des Pools.')}
+      </span>
+    </>
   );
 }
-
 
 function Field(props: { label: string; children: React.ReactNode }) {
   return (
