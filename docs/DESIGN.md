@@ -55,7 +55,7 @@ same kind of screen in Rounds or Games – if they look or behave differently, c
 | A rating with one tap | the scale itself | Gefühl 1–5 |
 | A filter over a list (shows more or fewer rows, nothing is set) | filter chips above the list | Niveau, Ort, Sortieren, Zeitraum der Statistik |
 | Who you are / pick a name from the players | name chips | "wer bist du?" beim Beitreten |
-| A row whose choice needs its own picker (typed amount, a chain of steps) | `SheetRow` – the picker in the sheet, "Fertig" | Einsatz je Skin, Höchsteinsatz, Erlaubte Pressen |
+| A row whose choice needs its own picker (typed amount, a chain of steps) | `SheetRow` – the picker in the sheet, ✕ and the round save button (`SaveButton`, components/ui.tsx – never a "Fertig" button, 04.11.2026) | Einsatz je Skin, Höchsteinsatz, Erlaubte Pressen |
 | Several switches belonging together | `SheetRow` summarising them, `ToggleList` + `ToggleRow inList` inside | Hausregeln |
 
 Chips with five or more values, or with values that need explaining, become a row with a sheet. A sheet shows each

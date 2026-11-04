@@ -113,7 +113,7 @@ await p.locator('.mob-physio-plan .settings-row').filter({ hasText: 'Uhrzeit der
   const t = p.getByRole('dialog', { name: 'Uhrzeit der Erinnerung' });
   await t.getByRole('group', { name: 'Stunde' }).getByRole('button', { name: '18', exact: true }).click();
   await t.getByRole('group', { name: 'Minute' }).getByRole('button', { name: '30', exact: true }).click();
-  await t.getByRole('button', { name: 'Fertig' }).click();
+  await t.getByRole('button', { name: 'Speichern', exact: true }).click();
 }
 await p.waitForTimeout(200);
 const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.mobility.physio.v1'))[0].schedule);

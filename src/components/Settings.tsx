@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { tr } from '../lib/i18n';
+import { SaveButton } from './ui';
 
 // The settings of a setup, one look everywhere (Sascha 02.11.2026: "Rounds and Games are the base – not everything
 // makes sense as tabs, often it is clearer like Format in the round settings"): a list of rows "Label · value ›", each
@@ -101,14 +102,14 @@ export function SheetRow(props: { label: string; value: ReactNode; title?: strin
           <section className="sheet" role="dialog" aria-label={props.title ?? props.label} onClick={(e) => e.stopPropagation()}>
             <div className="sheet-head">
               <strong>{props.title ?? props.label}</strong>
-              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(false)}>
-                ✕
-              </button>
+              <span className="sheet-head-acts">
+                <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setOpen(false)}>
+                  ✕
+                </button>
+                <SaveButton onClick={() => setOpen(false)} />
+              </span>
             </div>
             {props.children}
-            <button type="button" className="btn-primary" onClick={() => setOpen(false)}>
-              {tr('Done', 'Fertig')}
-            </button>
           </section>
         </div>
       )}
@@ -268,9 +269,12 @@ function TimeSheet(props: { title: string; value: string; onDone: (hhmm: string)
       <section className="sheet time-sheet" role="dialog" aria-label={props.title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <strong>{props.title}</strong>
-          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
-            ✕
-          </button>
+          <span className="sheet-head-acts">
+            <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+              ✕
+            </button>
+            <SaveButton onClick={() => props.onDone(`${two(h)}:${two(m)}`)} />
+          </span>
         </div>
         <strong className="time-shown" aria-live="polite">
           {two(h)}:{two(m)}
@@ -291,9 +295,6 @@ function TimeSheet(props: { title: string; value: string; onDone: (hhmm: string)
             ))}
           </div>
         </div>
-        <button type="button" className="btn-primary" onClick={() => props.onDone(`${two(h)}:${two(m)}`)}>
-          {tr('Done', 'Fertig')}
-        </button>
       </section>
     </div>
   );

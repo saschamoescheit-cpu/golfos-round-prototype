@@ -4,7 +4,7 @@ import { clubName, type CarryBag } from '../lib/caddie';
 import { byOrder, catalogEntry, CLUB_CATALOG, MAX_CLUBS, STANDARD_CLUBS, type ClubGroup } from '../lib/clubs';
 import { trackedCarry } from '../lib/stats';
 import { loadCaddieSettings, loadCarryBag, loadUnit, saveCaddieSettings, saveCarryBag, type CaddieSettings } from '../lib/storage';
-import { Segmented, TopBar } from '../components/ui';
+import { SaveButton, Segmented, TopBar } from '../components/ui';
 import { CaddieSettingsFields } from '../components/CaddieSettingsFields';
 import { clubCode, tr } from '../lib/i18n';
 import { loadPartials, savePartials, suggestedPartial, WEDGES, type Partials } from '../lib/partials';
@@ -147,16 +147,15 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
       {count > MAX_CLUBS ? tr(` · a counting round allows ${MAX_CLUBS}`, ` · in einer Wertungsrunde sind ${MAX_CLUBS} erlaubt`) : ''}
     </span>
   );
-  const pencil = (
-    <button type="button" className={`icon-btn bag-edit${editing ? ' on' : ''}`} aria-pressed={editing} aria-label={editing ? tr('Done', 'Fertig') : tr('Edit your bag', 'Bag bearbeiten')} onClick={() => setEditing(!editing)}>
-      {editing ? (
-        tr('Done', 'Fertig')
-      ) : (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 20h4L19 9l-4-4L4 16v4z" />
-          <path d="M14 6l4 4" />
-        </svg>
-      )}
+  // editing ends with the round save button, not a "Fertig" pill (Sascha 04.11.2026)
+  const pencil = editing ? (
+    <SaveButton label={tr('Save your bag', 'Bag speichern')} onClick={() => setEditing(false)} />
+  ) : (
+    <button type="button" className="icon-btn bag-edit" aria-label={tr('Edit your bag', 'Bag bearbeiten')} onClick={() => setEditing(true)}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 20h4L19 9l-4-4L4 16v4z" />
+        <path d="M14 6l4 4" />
+      </svg>
     </button>
   );
 
@@ -315,7 +314,8 @@ function Bag(props: { rounds: Round[]; onBack: () => void }) {
           {toReview > 0 && (
             <button type="button" className="btn-secondary use-all" onClick={() => useTracked(inBag.filter((c) => differs(c)))}>
               <UseIcon />
-              {tr(`Use tracked values for ${toReview} ${toReview === 1 ? 'club' : 'clubs'}`, `Gemessene Werte für ${toReview} Schläger übernehmen`)}
+              {/* one line (Sascha 04.11.2026) */}
+              <span>{tr(`Use ${toReview} tracked ${toReview === 1 ? 'value' : 'values'}`, `${toReview} Messwerte übernehmen`)}</span>
             </button>
           )}
           {note && <p className="small" style={{ margin: 0 }}>{note}</p>}

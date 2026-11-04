@@ -212,7 +212,7 @@ const setTee = async (hhmm) => {
   const t = H.getByRole('dialog', { name: 'Startzeit' });
   await t.getByRole('group', { name: 'Stunde' }).getByRole('button', { name: hh, exact: true }).click();
   await t.getByRole('group', { name: 'Minute' }).getByRole('button', { name: mm, exact: true }).click();
-  await t.getByRole('button', { name: 'Fertig' }).click();
+  await t.getByRole('button', { name: 'Speichern', exact: true }).click();
 };
 const offered = async () => (await sheet.getByRole('group', { name: 'Spieler des Flights' }).getByRole('button').allInnerTexts()).join(',');
 const pressed = async () => (await sheet.getByRole('group', { name: 'Spieler des Flights' }).locator('[aria-pressed="true"]').allInnerTexts()).join(',');

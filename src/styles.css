@@ -1291,8 +1291,8 @@ button.tile:disabled { opacity: 1; }
 
 /* My bag (Sascha 15.10.2026): tabs, short codes, the pencil, pitches as a table */
 .bag-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
-.bag-edit { width: auto; min-width: 44px; padding: 0 12px; font: 700 14px var(--body); }
-.bag-edit.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.bag-edit { font: 700 14px var(--body); }
+
 .bag-code { font: 700 18px var(--display); min-width: 52px; }
 .bag-row.full { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
 .bag-row.full .bag-tracked { justify-content: flex-start; flex-wrap: wrap; }
@@ -2207,3 +2207,12 @@ button.tile:disabled { opacity: 1; }
 .result-actions { margin-top: 8px; }
 .qr-action.danger { color: var(--bad); }
 .qr-action-icon.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 55%, transparent); }
+
+/* saving as a round button with the disc (Sascha 04.11.2026: instead of "Fertig" – everywhere) */
+.icon-btn.save-circle { background: var(--brand); border-color: var(--brand); color: #fff; }
+.icon-btn.save-circle:active { filter: brightness(0.9); }
+.icon-btn.save-circle:disabled { opacity: 0.45; }
+.sheet-head-acts { display: flex; align-items: center; gap: 8px; flex: none; }
+/* the tracked values taken over: one line (04.11.2026) */
+.use-all { white-space: nowrap; }
+.use-all span { overflow: hidden; text-overflow: ellipsis; }

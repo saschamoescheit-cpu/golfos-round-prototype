@@ -278,7 +278,7 @@ ok((await p.locator('.game-player-row').count()) === 4 && (await p.getByRole('bu
   await sheet.getByRole('switch', { name: 'Eagle −10' }).click();
   ok((await on()) === 2, 'a tap switches a house rule off');
   await sheet.getByRole('switch', { name: 'Eagle −10' }).click();
-  await sheet.getByRole('button', { name: 'Fertig' }).click();
+  await sheet.getByRole('button', { name: 'Speichern', exact: true }).click();
 }
 await p.locator('.game-player-row').nth(2).locator('input').first().fill('Chris');
 await p.locator('.game-player-row').nth(3).locator('input').first().fill('Anna');
