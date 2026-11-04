@@ -73,17 +73,16 @@ for (let k = 0; k < 6; k++) {
     format: { mode: 'single', scoring: 'net', allowance: 100 },
     flights: [
       { teeTime: '09:00', players: [{ name: 'Sascha', playingHandicap: 4 }, { name: 'Chris', playingHandicap: 6 }] },
-      { teeTime: tee10 ? '09:00' : '09:10', players: [{ name: 'Erik', playingHandicap: 8 }, { name: 'Cedric', playingHandicap: 5 }] },
+      // tee 10: PlanFlight.startHole (Games, 04.11.2026)
+      { teeTime: tee10 ? '09:00' : '09:10', ...(tee10 ? { startHole: 9 } : {}), players: [{ name: 'Erik', playingHandicap: 8 }, { name: 'Cedric', playingHandicap: 5 }] },
     ],
   });
-  if (tee10) {
-    const f2 = Object.values(sim.shared.get(code).game.flights).find((f) => f.players.some((pl) => pl.name === 'Erik'));
-    f2.startHole = 9; // tee 10 (Games: PlanFlight.startHole – 04.11.2026)
-  }
   codes.push(code);
 }
 ok(codes.every((c) => /^[A-Z0-9]{6}$/.test(c ?? '')), `6 tournaments planned, one a day: ${codes.join(' ')}`);
-const seriesCode = sim.series('Sascha', 'USA 2026', codes);
+ok([3, 4].every((k) => Object.values(sim.shared.get(codes[k]).game.flights).some((f) => f.startHole === 9)), 'rounds 4 and 5: the second flight off tee 10 in the plan');
+// one tournament over the 6 rounds (Games: a series with `multi` – no cut)
+const seriesCode = sim.series('Sascha', 'USA 2026', codes, { multi: { cut: null } });
 // the series' link sent ahead: everyone is in every round (a planned tournament asks nobody – qa/tourseries.mjs)
 for (const c of [seriesCode, ...codes]) for (const n of ['Chris', 'Erik', 'Cedric']) if (!sim.shared.get(c).members.includes(n)) sim.shared.get(c).members.push(n);
 

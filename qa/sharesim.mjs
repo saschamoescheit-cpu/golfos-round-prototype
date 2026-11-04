@@ -308,7 +308,7 @@ export function sharedServer(b, url, o = {}) {
   function series(owner, name, codes, o2 = {}) {
     const code = 'S' + Math.random().toString(36).slice(2, 7).toUpperCase();
     const rounds = codes.map((c) => ({ code: c, date: shared.get(c).game.date, name: shared.get(c).game.name, course: { id: shared.get(c).game.course.id, name: shared.get(c).game.course.name } })).sort((a, b) => a.date.localeCompare(b.date));
-    shared.set(code, { game: { kind: 'tour-series', id: code.toLowerCase(), name, createdAt: now().toISOString(), rounds, ...(o2.deletedAt ? { deletedAt: o2.deletedAt } : {}) }, updated_at: now().toISOString(), owner, members: [], requests: {} });
+    shared.set(code, { game: { kind: 'tour-series', id: code.toLowerCase(), name, createdAt: now().toISOString(), rounds, ...(o2.deletedAt ? { deletedAt: o2.deletedAt } : {}), ...(o2.multi !== undefined ? { multi: o2.multi } : {}) }, updated_at: now().toISOString(), owner, members: [], requests: {} });
     return code;
   }
   return { cards, links, shared, pushes, phone, round, event, plan, joinPlanned, series, refused: () => refused, flightReads: () => flightReads };
