@@ -131,7 +131,24 @@ describe('hole detection after taking the phone out of the pocket', () => {
     }
     expect(detectHole(maps[16]!.tee, maps, 15)).toBe(16); // and on to the 17th tee
   });
+  // Hetzenhof B, holes 1, 2, then 8 and 9 (Sascha 04.11.2026): after 2 the app was on 3 – on the 8th tee it stayed there
+  it('holes left out: on the tee of a hole further on without a score it goes there', () => {
+    const b = Array.from({ length: 9 }, (_, k) => holeMapData(SEED_GEOMETRY['osm:relation/1326323'], 'B', k + 1));
+    const open = (k: number) => k >= 2; // 1B and 2B scored
+    expect(detectHole(b[7]!.tee, b, 2, { open })).toBe(7); // on 3B (left out), standing on the 8th tee
+    expect(detectHole(b[7]!.tee, b, 1, { open })).toBe(7); // still on 2B
+    expect(detectHole(b[7]!.tee, b, 2)).toBeNull(); // without the scores told: only the next three, as before
+    expect(detectHole(b[7]!.tee, b, 2, { open: (k) => k !== 7 })).toBeNull(); // 8B already scored: no jump to it
+    expect(detectHole(mid9(b, 2), b, 2, { open })).toBeNull(); // on 3B's fairway: stays
+  });
+  it('off tee 10: the holes after the last one go round to the first', () => {
+    const maps = Array.from({ length: 9 }, (_, k) => holeMapData(SEED_GEOMETRY['osm:relation/1326323'], 'A', k + 1));
+    // a 9-hole round started on the 6th: 6, 7, 8, 9, 1 … 5 – on the 9th, the 1st tee is next
+    expect(detectHole(maps[0]!.tee, maps, 8, { start: 5 })).toBe(0);
+    expect(detectHole(maps[0]!.tee, maps, 8)).toBeNull(); // from the 1st tee on: the 9th is the last, nothing after it
+  });
 });
+const mid9 = (h: (ReturnType<typeof holeMapData>)[], k: number) => pointAt(h[k]!.line, lineLength(h[k]!.line) / 2);
 
 describe('Son Quint geometry (course guide 2026 + PNOA)', () => {
   const geo = SEED_GEOMETRY['osm:relation/1654444'];

@@ -425,25 +425,38 @@ export function holeMapData(geo: CourseGeometry, loop: string, number: number, c
  * Only looks forward (the next 3 holes), so walking past an earlier hole never jumps back.
  * Returns the index of the hole to switch to, or null to stay on the current hole.
  */
-export function detectHole(pos: LngLat, holes: (HoleMapData | null)[], current: number): number | null {
+export function detectHole(
+  pos: LngLat,
+  holes: (HoleMapData | null)[],
+  current: number,
+  /** `start`: the round's first hole (off tee 10: 9 – played 10 … 18, 1 … 9); `open`: a hole still without a score –
+   *  given, a player on the tee of any such hole further on is taken there (Sascha 04.11.2026: holes 1, 2, then 8 and 9 –
+   *  the app stayed on 3 and he entered 8's score on 3) */
+  opt: { start?: number; open?: (k: number) => boolean } = {},
+): number | null {
   const TEE_M = 25; // standing on a tee
   const ON_HOLE_M = 30; // inside the hole's corridor
   const NEXT_TEE_M = 80; // around a tee: on the way there or still close by
   const CLEARLY_M = 20; // nearer to a later hole's line than to the current one by this much
   const OFF_CUR_M = 50; // and this far off the current hole's line – a wide shot into the neighbouring hole stays on its own hole
+  const n = holes.length;
+  const start = opt.start && opt.start > 0 && opt.start < n ? opt.start : 0;
+  const left = n - 1 - ((current - start + n) % n); // holes still to come in the order played
+  const later = (d: number) => (current + d) % n;
   const cur = holes[current];
-  const next = holes[current + 1];
+  const nextK = left >= 1 ? later(1) : -1;
+  const next = nextK >= 0 ? holes[nextK] : undefined;
   const ahead: number[] = [];
-  for (let k = current + 1; k <= current + 3 && k < holes.length; k++) if (holes[k]) ahead.push(k);
+  for (let d = 1; d <= 3 && d <= left; d++) if (holes[later(d)]) ahead.push(later(d));
   // Holes are played in order: a later hole only when the player is clearly away from the current and the next tee
   // (night run 15./16.10.2026, Son Térmens: the 18th tee lies next to the 16th, the 18th fairway between the 15th
   // green and the 16th tee – the app jumped from 15 to 18 and stayed there).
   const nearNextTee = next != null && distanceM(pos, next.tee) <= NEXT_TEE_M;
   const nearCurTee = cur != null && distanceM(pos, cur.tee) <= NEXT_TEE_M;
   const mayJump = !nearNextTee && !nearCurTee;
-  const allowed = (k: number) => k === current + 1 || mayJump;
+  const allowed = (k: number) => k === nextK || mayJump;
   const inReach = ahead.filter((k) => allowed(k) && distanceM(pos, holes[k]!.tee) <= TEE_M).sort((a, b) => distanceM(pos, holes[a]!.tee) - distanceM(pos, holes[b]!.tee));
-  const onTee = inReach.includes(current + 1) ? current + 1 : inReach[0];
+  const onTee = inReach.includes(nextK) ? nextK : inReach[0];
   if (cur) {
     // standing on the current tee: stay
     const onCurTee = distanceM(pos, cur.tee) <= TEE_M && (onTee == null || distanceM(pos, cur.tee) <= distanceM(pos, holes[onTee]!.tee));
@@ -455,6 +468,17 @@ export function detectHole(pos: LngLat, holes: (HoleMapData | null)[], current: 
   // (Hetzenhof 4A and 5A, Sascha 24.10.2026: his ball 36–43 m beside 4A lay 23–28 m from 5A's line, and the app jumped to
   // 5A in the middle of 4A; his GPS track replayed: no wrong jump left). The next tee still switches at once (above).
   const curLine = cur ? distToLine(pos, cur.line) : Infinity;
+  // holes left out (1, 2, then 8 and 9): on the tee of a hole further on that has no score yet – only on its tee, well
+  // away from the current hole and the next tee, so a tee lying beside the way never pulls the round on
+  if (opt.open && mayJump && curLine > ON_HOLE_M) {
+    const far: number[] = [];
+    for (let d = 4; d <= left; d++) {
+      const k = later(d);
+      if (holes[k] && opt.open(k) && distanceM(pos, holes[k]!.tee) <= TEE_M) far.push(k);
+    }
+    far.sort((a, b) => distanceM(pos, holes[a]!.tee) - distanceM(pos, holes[b]!.tee));
+    if (far.length) return far[0];
+  }
   return ahead.find((k) => allowed(k) && distToLine(pos, holes[k]!.line) <= ON_HOLE_M && curLine > OFF_CUR_M && distToLine(pos, holes[k]!.line) + CLEARLY_M <= curLine) ?? null;
 }
 

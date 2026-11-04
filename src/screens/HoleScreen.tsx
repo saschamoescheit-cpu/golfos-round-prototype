@@ -337,11 +337,19 @@ export function HoleScreen(props: {
   useEffect(() => {
     if (!player || !detectArmed.current || player.accuracy > 30 || setupOpen) return;
     detectArmed.current = false;
-    const k = detectHole(player.pos, allMaps, i);
+    // holes left out: the tee of any later hole without a score takes the round there (Sascha 04.11.2026: 1, 2, 8, 9)
+    const meP = round.players.find((p) => p.isMe) ?? round.players[0];
+    const open = (k: number) => {
+      const e = meP ? round.entries[meP.id]?.[k] : undefined;
+      return e?.strokes == null && !e?.pickedUp;
+    };
+    const k = detectHole(player.pos, allMaps, i, { start: round.startHole, open });
     if (k == null) return;
+    const gap = playPos(round, k) - playPos(round, i);
     // walked on to a later hole without a score for this one (Sascha 16.10.2026: "beim Weiterschalten sollte die
-    // Erfassung des Scores aufklappen"): first this hole's score, then on to the hole the GPS found
-    if (k > i && !round.preview && scoreToAsk(i)) {
+    // Erfassung des Scores aufklappen"): first this hole's score, then on to the hole the GPS found – not when holes
+    // were left out on purpose (more than three on: the ones between are not played)
+    if (gap > 0 && gap <= 3 && !round.preview && scoreToAsk(i)) {
       setPendingHole(k);
       setScoreSheet('next');
       return;
@@ -1023,7 +1031,7 @@ export function HoleScreen(props: {
           return;
         }
         // walked on to the next hole in the pocket: the hole where the crack was heard
-        const hole = isNative() ? (detectHole(pl.pos, allMaps, holeRef.current) ?? holeRef.current) : holeRef.current;
+        const hole = isNative() ? (detectHole(pl.pos, allMaps, holeRef.current, { start: latestRound.current.startHole }) ?? holeRef.current) : holeRef.current;
         const r = latestRound.current;
         // kept as the latest at once: a protocol line in the same moment must not drop the crack
         latestRound.current = { ...r, soundShots: [...(r.soundShots ?? []), { hole, pos: pl.pos, t: hit.t, level: hit.level, acc: Math.round(pl.accuracy) }] };
