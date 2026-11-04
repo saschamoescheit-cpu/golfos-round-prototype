@@ -26,6 +26,8 @@ import { pickUpAllowed, ScoreSheet, scoreName } from '../components/ScoreSheet';
 import { greenWalk } from '../lib/greenwalk';
 import { approachFrom } from '../lib/geo';
 import { holeForTee } from '../lib/teeline';
+import { teeQuestion } from '../lib/teecheck';
+import { teeName } from '../data/tees';
 import { ShotSheet } from '../components/ShotSheet';
 import { Segmented, TopBar, formatToPar } from '../components/ui';
 import { loadCaddieLog, rateCaddie, type CaddieLog } from '../lib/caddielog';
@@ -56,7 +58,9 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   }, [round.courseId]);
   const geometry = useMemo(() => loadGeometry(round.courseId), [round.courseId, geoTick]);
   // the same holes as on the course: from the tee the player played (yellow, red …), not the back tee of the map
-  const maps = useMemo(() => round.holes.map((h) => holeForTee(holeMapData(geometry, h.loop, h.number), round.courseId, h.label, round.tee, geometry.tee)), [geometry, round.holes, round.courseId, round.tee]);
+  // a hole played from another tee (the check asked – 04.11.2026): that tee for this hole
+  const holeTees = round.holes.map((_, i) => round.entries[me.id][i]?.tee ?? '').join('|');
+  const maps = useMemo(() => round.holes.map((h, i) => holeForTee(holeMapData(geometry, h.loop, h.number), round.courseId, h.label, round.entries[me.id][i]?.tee ?? round.tee, geometry.tee)), [geometry, round.holes, round.courseId, round.tee, holeTees]); // eslint-disable-line react-hooks/exhaustive-deps
   const track = useMemo(() => loadTrack(round.id), [round.id]);
   // where the pin was on the course ("Where is the pin today?" or the dragged flag) – else the middle of the green
   const coursePins = useMemo(() => loadLive(round.id).plans, [round.id]);
@@ -656,6 +660,7 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     saveDetail(k, { ...d, shots: teeFirst(shots) });
   };
   const checks = shotChecks(d, data, geometry.boundary);
+  const teeQ = d && d.shots.length && !e.teeAsked && !e.tee && !e.checked ? teeQuestion(d.shots[0].pos, holeMapData(geometry, hole.loop, hole.number), round.courseId, hole.label, round.tee, geometry.tee) : null;
   const sgs = d && !d.shots.some((s) => s.review) && e.strokes != null ? holeSg({ ...d, pin: pin ?? d.pin }, e.putts, hole.par) : null;
   const sgFmt = (v: number) => (v >= 0 ? '+' : '−') + dec(Math.abs(v).toFixed(1));
   /** Two points at one spot are one shot: the later one stays (it is where the ball was hit), the club carried over. */
@@ -1030,6 +1035,40 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
           </div>
         </div>
       ))}
+
+      {/* the first shot not on the chosen tee (Sascha 04.11.2026, 2B from red with yellow chosen): another tee – or a drop? */}
+      {teeQ && d && (
+        <div className="notice review-check" role="status" aria-label={tr('Which tee?', 'Welcher Abschlag?')}>
+          {teeQ.other
+            ? tr(
+                `The first shot is ${teeQ.off} m ahead of the ${teeName(teeQ.chosen)} tee – on the ${teeName(teeQ.other)} tee. Played from there, or dropped after water?`,
+                `Der erste Schlag liegt ${teeQ.off} m vor dem Abschlag ${teeName(teeQ.chosen)} – am Abschlag ${teeName(teeQ.other)}. Von dort gespielt oder nach Wasser gedroppt?`,
+              )
+            : tr(`The first shot is ${teeQ.off} m ahead of the ${teeName(teeQ.chosen)} tee. Dropped after water?`, `Der erste Schlag liegt ${teeQ.off} m vor dem Abschlag ${teeName(teeQ.chosen)}. Nach Wasser gedroppt?`)}
+          <div className="notice-actions">
+            {teeQ.other && (
+              <button type="button" className="btn-secondary" onClick={() => save(k, { tee: teeQ.other!, teeAsked: true })}>
+                {tr(`From ${teeName(teeQ.other)}`, `Von ${teeName(teeQ.other)}`)}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                // the tee shot into the water from the chosen tee, then the drop: the first shot is played from there
+                const [first, ...rest] = d.shots;
+                const shots: Shot[] = [{ pos: teeQ.chosenAt, lie: 'tee', club: first.club, penalty: true, penaltyKind: 'water', missPos: null }, { ...first, club: null, kind: undefined, lie: first.pos && data ? lieAt(first.pos, data, false, true) : first.lie }, ...rest];
+                saveDetail(k, withClubs({ ...d, shots }), undefined, { teeAsked: true });
+              }}
+            >
+              {tr('Dropped (water)', 'Gedroppt (Wasser)')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => save(k, { teeAsked: true })}>
+              {tr('As it is', 'Stimmt so')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* the hole's wind straight away – arrow, strength, gusts, no heading, above "Schläge" right under the map (Sascha 25.10.2026) */}
       {e?.weather && data && (

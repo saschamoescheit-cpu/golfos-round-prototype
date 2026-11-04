@@ -158,6 +158,10 @@ export interface HoleEntry {
   weather?: { tempC: number; windKmh: number; gustKmh?: number; windFromDeg: number };
   /** The player confirmed the hole in the round check ("Loch passt", Sascha 22.10.2026). */
   checked?: boolean;
+  /** Played from another tee than the round's (Sascha 04.11.2026: 2B from red with yellow chosen) – its colour name. */
+  tee?: string;
+  /** The round check asked about the first shot off the chosen tee, and the player answered (lib/teecheck). */
+  teeAsked?: boolean;
   /** How the first putt missed, told after the round when the putts were not placed on the green. */
   firstPuttMiss?: { length: 'short' | 'long' | null; line: 'left' | 'right' | null };
 }
