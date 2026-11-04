@@ -33,7 +33,7 @@ ok(/Jeder seinen eigenen/.test(await H.locator('.settings-row').filter({ hasText
 await H.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click();
 await H.getByRole('dialog', { name: 'Wer erfasst die Scores' }).locator('.pick-option strong').getByText('Einer für alle', { exact: true }).click();
 await H.getByRole('dialog', { name: 'Schreiber wählen' }).locator('.pick-option strong').getByText('Chris', { exact: true }).click();
-ok(/Chris/.test(await H.locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()) && (await H.getByText('Ein Spieler trägt alle Scores ein').isVisible()), 'setup: "Einer für alle" – Chris chosen');
+ok(/Chris/.test(await H.locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()) && (await H.getByText('Ein Spieler trägt alle Scores ein').count()) === 0, 'setup: "Einer für alle" – Chris chosen, no hint under it (04.11.2026)');
 await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself once a partner is in the flight (03.11.2026)
 await card.locator('.join-code').waitFor({ timeout: 8000 });
 const code = (await card.locator('.join-code').innerText()).trim().replace(/-/g, '');

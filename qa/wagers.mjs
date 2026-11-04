@@ -222,7 +222,7 @@ const choose = async (label, option, inside = H) => {
   ok((await H.getByText(/Der Erste bist du/).count()) === 0, 'players: no hint "Der Erste bist du"');
   await who.click();
   await H.locator('.pick-option strong').getByText('Mit Zähler', { exact: true }).click();
-  ok(/Mit Zähler/.test(await who.innerText()) && /vorläufig/.test(await H.locator('.setup-part').filter({ hasText: 'Score-Erfassung' }).innerText()), 'score entry: "Mit Zähler" chosen, the hint says provisional');
+  ok(/Mit Zähler/.test(await who.innerText()) && !/vorläufig|Für alle Wetten des Pools/.test(await H.locator('.setup-part').filter({ hasText: 'Score-Erfassung' }).innerText()), 'score entry: "Mit Zähler" chosen – no hint under it (04.11.2026)');
 }
 await H.getByRole('button', { name: 'Pool anlegen' }).click();
 await H.waitForTimeout(1200);
