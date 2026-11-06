@@ -165,8 +165,13 @@ const openProfile = async (p) => {
   if (reg) {
     const note = { title: 'Runde noch nicht geprüft', body: 'Deine Runde in Golfclub Hetzenhof wartet aufs Prüfen und Signieren.', tag: 'golfos-rounds', url: './#review=qa-done' };
     await cdp.send('ServiceWorker.deliverPushMessage', { origin, registrationId: reg.registrationId, data: JSON.stringify(note) });
-    await p.waitForTimeout(1500);
-    const shown = await p.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => ({ title: n.title, body: n.body, tag: n.tag, url: n.data?.url })));
+    // until it shows, at most 25 s: Edge 156 (laptop, 07.11.2026) hands the test push to the service worker only after
+    // about 15 s – the worker answers at once and shows it then; a fixed 1.5 s saw nothing
+    let shown = [];
+    for (let k = 0; k < 50 && !shown.length; k++) {
+      await p.waitForTimeout(500);
+      shown = await p.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => ({ title: n.title, body: n.body, tag: n.tag, url: n.data?.url })));
+    }
     ok(shown.length === 1 && shown[0].title === note.title && shown[0].body === note.body && shown[0].url === note.url, `the push shown: „${shown[0]?.title}“ – ${shown[0]?.body}`);
   }
 
