@@ -171,10 +171,10 @@ function marker(parent: THREE.Object3D, at: [number, number, number], list: THRE
 }
 
 /** The figure: the soft shapes (default), or the realistic body (Training 19.10.2026) once it is loaded
- *  (rigSkin.ts: loadRealisticBody) – the same skeleton and interface. */
-export function buildRig(opts: { skin?: 'classic' | 'realistic' } = {}): Rig {
+ *  (rigSkin.ts: loadRealisticBody) – the same skeleton and interface. plainArmpits: see applyRealisticSkin. */
+export function buildRig(opts: { skin?: 'classic' | 'realistic'; plainArmpits?: boolean } = {}): Rig {
   const rig = buildClassic();
-  if (opts.skin === 'realistic') applyRealisticSkin(rig);
+  if (opts.skin === 'realistic') applyRealisticSkin(rig, { plainArmpits: opts.plainArmpits });
   return rig;
 }
 

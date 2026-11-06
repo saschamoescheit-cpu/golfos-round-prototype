@@ -89,8 +89,13 @@ function pivotOf(rig: Rig, name: string): THREE.Object3D {
 }
 
 /** Turns a rig into the realistic one (when the body is loaded): the capsules go, the pivots move to the body's joints,
- *  the skin goes on. Returns false when the body is not loaded yet. */
-export function applyRealisticSkin(rig: Rig): boolean {
+ *  the skin goes on. Returns false when the body is not loaded yet.
+ *  plainArmpits (Agility, 06.11.2026): the skin shared by the trunk and an upper arm (armpit, flank, the back of the
+ *  shoulder) keeps the plain blend – with the arms up (hands behind the head, wall angels, the arms overhead) the
+ *  turns blended as turns swung it out in an arc: the chest and the flanks swelled up to 12 cm like a balloon. The body
+ *  has no collarbone to carry part of that lift; Training's swing keeps the dual quaternions there (its arm across the
+ *  chest at the top). */
+export function applyRealisticSkin(rig: Rig, opts: { plainArmpits?: boolean } = {}): boolean {
   if (!body) return false;
   const { meta } = body;
   const F = meta.frames;
@@ -191,7 +196,7 @@ export function applyRealisticSkin(rig: Rig): boolean {
   rig.root.add(mesh);
   rig.root.updateMatrixWorld(true);
   mesh.bind(new THREE.Skeleton(bones, inverses), new THREE.Matrix4());
-  dualQuaternionSkinning(mesh, mats);
+  dualQuaternionSkinning(mesh, mats, !!opts.plainArmpits);
   rig.root.userData.realistic = true;
   return true;
 }
@@ -200,13 +205,16 @@ export function applyRealisticSkin(rig: Rig): boolean {
  *  (the arm across the chest at the top, up in the finish, the twist of the forearm) the skin keeps its volume instead of
  *  collapsing into folds. Each frame the bones' moves (relative to the body, so a mirrored or moved golfer stays the
  *  same) as dual quaternions into a small texture; the vertex shader blends those. */
-function dualQuaternionSkinning(mesh: THREE.SkinnedMesh, mats: THREE.Material[]) {
+function dualQuaternionSkinning(mesh: THREE.SkinnedMesh, mats: THREE.Material[], plainArmpits: boolean) {
   const n = mesh.skeleton.bones.length;
   const data = new Float32Array(n * 2 * 4);
   const tex = new THREE.DataTexture(data, 2, n, THREE.RGBAFormat, THREE.FloatType);
   // the neck and the head keep the plain blend: turned far against the chest, the collar and the neckline fit it better
   const names = mesh.skeleton.bones.map((b) => b.name);
   const plain = new THREE.Vector2(names.indexOf('neck'), names.indexOf('head'));
+  // (plainArmpits: the trunk's bones and the upper arms, for the skin between them)
+  const trunk = new THREE.Vector3(names.indexOf('pelvis'), names.indexOf('spine'), names.indexOf('chest'));
+  const arms = new THREE.Vector3(names.indexOf('shoulderL'), names.indexOf('shoulderR'), plainArmpits ? 1 : 0);
   tex.needsUpdate = true;
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), t = new THREE.Vector3(), sc = new THREE.Vector3();
   let frame = -1;
@@ -229,12 +237,19 @@ function dualQuaternionSkinning(mesh: THREE.SkinnedMesh, mats: THREE.Material[])
   const DQ = /* glsl */ `
 uniform sampler2D dqTexture;
 uniform ivec2 dqPlain;
+uniform ivec3 dqTrunk;
+uniform ivec3 dqArms;
 vec4 dqReal; vec4 dqDual;
-// how much of a vertex follows the neck or the head (those keep the plain blend)
+// how much of a vertex follows the neck or the head (those keep the plain blend) – and, with dqArms.z, how much it is
+// skin shared by the trunk and an upper arm (fully plain at half and half)
 float dqPlainShare(ivec4 idx, vec4 w) {
-  float s = 0.0;
-  for (int k = 0; k < 4; k++) if (idx[k] == dqPlain.x || idx[k] == dqPlain.y) s += w[k];
-  return clamp(s * 2.0, 0.0, 1.0);
+  float s = 0.0, t = 0.0, a = 0.0;
+  for (int k = 0; k < 4; k++) {
+    if (idx[k] == dqPlain.x || idx[k] == dqPlain.y) s += w[k];
+    if (idx[k] == dqTrunk.x || idx[k] == dqTrunk.y || idx[k] == dqTrunk.z) t += w[k];
+    if (idx[k] == dqArms.x || idx[k] == dqArms.y) a += w[k];
+  }
+  return clamp(max(s * 2.0, float(dqArms.z) * 4.0 * t * a), 0.0, 1.0);
 }
 void dqBlend(ivec4 idx, vec4 w) {
   vec4 r0 = texelFetch(dqTexture, ivec2(0, idx.x), 0), d0 = texelFetch(dqTexture, ivec2(1, idx.x), 0);
@@ -258,6 +273,8 @@ vec3 dqMove(vec3 p) { return dqTurn(p) + 2.0 * (dqReal.w * dqDual.xyz - dqDual.w
       before(sh, r);
       sh.uniforms.dqTexture = { value: tex };
       sh.uniforms.dqPlain = { value: plain };
+      sh.uniforms.dqTrunk = { value: trunk };
+      sh.uniforms.dqArms = { value: arms };
       sh.vertexShader = sh.vertexShader
         .replace('#include <skinning_pars_vertex>', `#include <skinning_pars_vertex>\n${DQ}`)
         .replace('#include <skinnormal_vertex>', 'vec3 dqRestN = objectNormal;\n#include <skinnormal_vertex>\ndqBlend(ivec4(skinIndex), skinWeight);\nfloat dqP = dqPlainShare(ivec4(skinIndex), skinWeight);\nobjectNormal = normalize(mix(dqTurn(dqRestN), objectNormal, dqP));')

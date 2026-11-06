@@ -293,7 +293,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
   scene.add(pad);
 
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
-  let rig = buildRig({ skin: skin() });
+  let rig = buildRig({ skin: skin(), plainArmpits: true });
   scene.add(rig.root);
   let propGroup = new THREE.Group();
   scene.add(propGroup);
@@ -398,7 +398,7 @@ export function createViewer(canvas: HTMLCanvasElement, opts: { pixelRatio?: num
     scene.remove(rig.root);
     scene.remove(propGroup);
     if (bar) scene.remove(bar);
-    rig = buildRig({ skin: skin() });
+    rig = buildRig({ skin: skin(), plainArmpits: true });
     scene.add(rig.root);
     floorOffs = clip ? skinFloor(rig, clip) : null;
     shift = clip ? plantShift(rig, clip) : null;
