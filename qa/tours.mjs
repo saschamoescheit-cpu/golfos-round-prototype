@@ -576,6 +576,30 @@ await G.locator('.tour-series-row').click();
 await G.waitForTimeout(1500);
 ok((await G.getByRole('button', { name: 'Serie umbenennen' }).count()) === 0 && (await G.getByRole('button', { name: /Mitspieler einladen/ }).count()) === 0 && (await G.getByText('Nur wer die Serie angelegt hat, ändert sie.').isVisible()), 'Chris: sees the series, cannot change it');
 
+// ---------- deleted for good from the bin: stays gone (Sascha 06.11.2026: "they come back – despite deleting for good") ----------
+shared.set('TOUR33', { game: { ...JSON.parse(JSON.stringify(shared.get('TOUR22').game)), id: 'ev-3', name: 'USA Tag 3', series: undefined, deletedAt: new Date().toISOString() }, updated_at: new Date().toISOString(), owner: 'u-Sascha', members: [] });
+const toursTab = async () => {
+  await H.goto('about:blank');
+  await H.goto(url);
+  await H.waitForTimeout(1500);
+  await H.locator('.tabbar button').filter({ hasText: 'Turniere' }).click();
+  await H.waitForTimeout(2000);
+};
+await toursTab();
+await H.locator('.tile').filter({ hasText: 'gelöscht' }).click();
+await H.waitForTimeout(400);
+ok((await H.locator('.bin-item').filter({ hasText: 'USA Tag 3' }).count()) === 1, 'a deleted tournament from the server: in the bin');
+await H.locator('.bin-item').filter({ hasText: 'USA Tag 3' }).click();
+await H.getByRole('button', { name: 'Endgültig löschen' }).last().click();
+await H.waitForTimeout(9000); // the toast's "Undo" passed
+ok((await H.locator('.bin-item').filter({ hasText: 'USA Tag 3' }).count()) === 0, 'deleted for good: gone from the bin');
+await toursTab(); // the app opened again: the tournaments fetched from the server
+const binTile = H.locator('.tile').filter({ hasText: 'gelöscht' });
+if (!(await binTile.isDisabled())) await binTile.click();
+await H.waitForTimeout(400);
+ok((await H.locator('.bin-item').filter({ hasText: 'USA Tag 3' }).count()) === 0 && (await H.evaluate(() => JSON.parse(localStorage.getItem('golfos.tours.hidden.v1') ?? '[]'))).includes('TOUR33'), 'the app opened again: it stays gone, remembered for the account');
+ok(!!shared.get('TOUR33'), 'on the server it stays (marked deleted for the others) – nothing deleted there');
+
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

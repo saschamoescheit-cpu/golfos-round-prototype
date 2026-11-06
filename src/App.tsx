@@ -49,7 +49,8 @@ type Screen =
   | { name: 'scorecard'; round: Round; back?: Screen; justFinished?: boolean; finishing?: boolean; justSigned?: boolean }
   | { name: 'courseStats'; courseName: string }
   | { name: 'bag'; part: 'bag' | 'caddie'; back?: Screen }
-  | { name: 'review'; round: Round }
+  // the scorecard's way back, kept through the check (Sascha 06.11.2026: "back goes one level back, not to the front")
+  | { name: 'review'; round: Round; back?: Screen }
   | { name: 'book'; course: Course; holes: RoundHole[]; tee: string | null; playing?: number | null; back?: Screen };
 
 // The player left the round on purpose (pause): a reload in this session stays on the start page.
@@ -529,7 +530,7 @@ export function App() {
             round={screen.round}
             onChange={(round) => {
               persist(round);
-              setScreen({ name: 'review', round });
+              setScreen({ name: 'review', round, back: screen.back });
             }}
             // the latest round, also when it was saved in the same click
             onDone={(signIt) =>
@@ -540,7 +541,7 @@ export function App() {
                 const done = signIt && !s.round.signedAt && s.round.capture !== 'score' ? sign(s.round, signIt) : s.round;
                 if (done !== s.round) persist(done);
                 // just signed: the round report on top of the scorecard
-                return { name: 'scorecard', round: done, justSigned: done !== s.round };
+                return { name: 'scorecard', round: done, back: s.back, justSigned: done !== s.round };
               })
             }
           />
@@ -660,7 +661,7 @@ export function App() {
           }}
           onReview={(round) => {
             persist(round);
-            setScreen({ name: 'review', round });
+            setScreen({ name: 'review', round, back: screen.back });
           }}
           onDeleted={() => {
             setRounds(loadRounds());

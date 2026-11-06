@@ -220,6 +220,24 @@ await H.getByRole('button', { name: 'Speichern' }).click();
 await H.waitForTimeout(4000);
 ok(shared.get(scode).game.rounds.map((r) => r.code).join() === rcodes.join() && flightsOf(rcodes[2]).filter((f) => f.players.length).length === 2, 'saved: the same three rounds, round 3 still dealt');
 
+// one level back (Sascha 06.11.2026: "a round of the series opened and back – it jumps right to the front instead of
+// one level back"): the series → its round 2 → "Zurück" → the series again, then the list
+{
+  const title = async () => (await H.locator('.topbar h1').innerText()).replace(/\s+/g, ' ');
+  await H.locator('li .list-item').filter({ hasText: 'Runde 2' }).first().click();
+  await H.waitForTimeout(1500);
+  const onRound = await title();
+  const back = H.locator('.topbar').getByRole('button').first();
+  const label = (await back.getAttribute('aria-label')) ?? (await back.innerText());
+  await back.click();
+  await H.waitForTimeout(1500);
+  const again = await title();
+  ok(/Runde 2/.test(onRound) && /Serie/.test(label) && again.includes('Clubmeisterschaft') && !/Runde 2/.test(again) && (await H.locator('li .list-item').filter({ hasText: 'Runde 2' }).count()) === 1, `round 2 opened from the series, "Zurück" (${label}): the series again (${onRound} → ${again})`);
+  await H.locator('.topbar').getByRole('button').first().click();
+  await H.waitForTimeout(1200);
+  ok((await H.locator('.tour-series-row').filter({ hasText: '3 Runden' }).count()) === 1, 'and once more "Zurück": the list of the tournaments');
+}
+
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 console.log(fails ? `${fails} FAILED` : 'all passed');

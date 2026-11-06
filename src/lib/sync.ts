@@ -50,6 +50,8 @@ const SETTINGS = [
   'golfos.training.recent.v1',
   // the bets: made ones already announced, pools deleted for good on this account
   'golfos.pools.seen.v1', 'golfos.pools.hidden.v1',
+  // the tournaments deleted for good from the bin (Sascha 06.11.2026: "they come back")
+  'golfos.tours.hidden.v1',
 ];
 /** Per device again (Sascha 30.10.2026: "switched on in the profile yesterday, off again today" – off on the other
  *  device came over): shot by sound and pocket mode are the phone's own, as the push switch. Rows of them still on the

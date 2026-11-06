@@ -519,7 +519,7 @@ export function seriesStandings(evs: RoundEvent[]): { higherBetter: boolean; row
   return { higherBetter: hb, rows: rows.map((x) => ({ ...x, pos: `${rows.filter((y) => y.sum === x.sum).length > 1 ? 'T' : ''}${rows.findIndex((y) => y.sum === x.sum) + 1}` })) };
 }
 
-export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void; /** a tournament over several rounds changed as a whole */ onEdit: (d: TourDraft) => void }) {
+export function SeriesScreen(props: { code: string; onBack: () => void; /** where "Zurück" goes, when not the list */ backLabel?: string; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void; /** a tournament over several rounds changed as a whole */ onEdit: (d: TourDraft) => void }) {
   useTop(props.code);
   const entry = useSeries().find((e) => e.code === props.code);
   const tours = useTours();
@@ -554,7 +554,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
   if (!entry) {
     return (
       <main className="screen">
-        <TopBar title={tr('Series', 'Serie')} onBack={props.onBack} backLabel={tr('Tournaments', 'Turniere')} />
+        <TopBar title={tr('Series', 'Serie')} onBack={props.onBack} backLabel={props.backLabel ?? tr('Tournaments', 'Turniere')} />
         <p className="muted">{tr('Loading the series …', 'Lade die Serie …')}</p>
       </main>
     );
@@ -599,7 +599,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
       <TopBar
         title={s.name}
         onBack={props.onBack}
-        backLabel={tr('Tournaments', 'Turniere')}
+        backLabel={props.backLabel ?? tr('Tournaments', 'Turniere')}
         right={
           host ? (
             <button
@@ -800,7 +800,7 @@ export function SeriesScreen(props: { code: string; onBack: () => void; onOpen: 
 
 // ---------- one tournament ----------
 
-export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d: TourDraft) => void; onOpenSeries?: (code: string) => void }) {
+export function TourScreen(props: { code: string; onBack: () => void; /** where "Zurück" goes, when not the list */ backLabel?: string; onEdit: (d: TourDraft) => void; onOpenSeries?: (code: string) => void }) {
   useTop(props.code);
   const entry = useTours().find((e) => e.code === props.code);
   const [sheet, setSheet] = useState<null | 'invite' | 'delete'>(null);
@@ -835,7 +835,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
   if (!entry) {
     return (
       <main className="screen">
-        <TopBar title={tr('Tournament', 'Turnier')} onBack={props.onBack} backLabel={tr('Tournaments', 'Turniere')} />
+        <TopBar title={tr('Tournament', 'Turnier')} onBack={props.onBack} backLabel={props.backLabel ?? tr('Tournaments', 'Turniere')} />
         <p className="muted">{tr('Loading the tournament …', 'Lade das Turnier …')}</p>
       </main>
     );
@@ -846,7 +846,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
   if (ev.deletedAt) {
     return (
       <main className="screen">
-        <TopBar title={ev.name} onBack={props.onBack} backLabel={tr('Tournaments', 'Turniere')} />
+        <TopBar title={ev.name} onBack={props.onBack} backLabel={props.backLabel ?? tr('Tournaments', 'Turniere')} />
         <p className="muted">{tr('This tournament was deleted.', 'Dieses Turnier wurde gelöscht.')}</p>
         {host ? (
           <button type="button" className="btn-secondary" onClick={async () => setMsg((await changeTour(props.code, { ...ev, deletedAt: null })) ? null : NO_NET())}>
@@ -886,7 +886,7 @@ export function TourScreen(props: { code: string; onBack: () => void; onEdit: (d
       <TopBar
         title={ev.name}
         onBack={props.onBack}
-        backLabel={tr('Tournaments', 'Turniere')}
+        backLabel={props.backLabel ?? tr('Tournaments', 'Turniere')}
         right={
           host ? (
             <button type="button" className="icon-btn edit-btn" aria-label={tr('Change the tournament', 'Turnier bearbeiten')} onClick={() => edit(false)}>

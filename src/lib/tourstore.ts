@@ -144,9 +144,10 @@ export async function syncTours(): Promise<boolean> {
     if (!r.ok) return false;
     const rows = (await r.json()) as { code: string; game: unknown; owner?: string }[];
     const list = loadTours();
+    const hidden = hiddenTours();
     let changed = false;
     for (const row of rows) {
-      if (!row?.code || !isPlanned(row.game)) continue;
+      if (!row?.code || !isPlanned(row.game) || hidden.has(row.code)) continue;
       const old = list.find((e) => e.code === row.code);
       if (old && old.owner === row.owner && JSON.stringify(old.ev) === JSON.stringify(row.game)) continue;
       const entry: TourEntry = { code: row.code, ev: row.game, ...(row.owner ? { owner: row.owner } : {}) };
@@ -280,6 +281,24 @@ export async function dissolveSeries(code: string): Promise<boolean> {
 }
 
 /** Gone for good from this phone (it stays on the server, marked deleted). */
+/** Deleted for good from the bin (Sascha 06.11.2026: "deleted for good under 'gelöscht' – they come back"): the server
+ *  keeps the row (marked deleted, for the others), so the code is remembered and the sync no longer brings it back – on
+ *  every device of the account, as the pools (sync.ts). */
 export function forgetTour(code: string): void {
+  try {
+    const hidden = hiddenTours();
+    hidden.add(code);
+    localStorage.setItem(HIDDEN, JSON.stringify([...hidden]));
+  } catch {
+    /* fetched again next time */
+  }
   saveTours(loadTours().filter((e) => e.code !== code));
 }
+const HIDDEN = 'golfos.tours.hidden.v1';
+const hiddenTours = (): Set<string> => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(HIDDEN) ?? '[]') as string[]);
+  } catch {
+    return new Set();
+  }
+};
