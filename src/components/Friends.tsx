@@ -39,7 +39,15 @@ export function Friends(props: { onSignIn: () => void }) {
         .catch(() => setProblem(tr('The friend code needs a connection – try again later.', 'Der Freundes-Code braucht eine Verbindung – später nochmal.')));
       void refreshFriends();
     }
+    // the friend scans the QR code and accepts while this screen is open (Sascha 06.11.2026: "it took very long – going
+    // to Start and back, it was there at once"): asked again every few seconds while open, not only on opening
+    const poll = linkable
+      ? window.setInterval(() => {
+          if (document.visibilityState === 'visible') void refreshFriends();
+        }, 3000)
+      : 0;
     return () => {
+      window.clearInterval(poll);
       window.removeEventListener('golfos:friends-changed', again);
       window.removeEventListener('golfos:pulled', again);
     };

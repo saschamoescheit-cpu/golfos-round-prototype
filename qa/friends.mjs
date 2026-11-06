@@ -62,10 +62,12 @@ ok(/HCP 10/.test(await row(C, 'Sascha').innerText()) && (await row(C, 'Sascha').
 // Sascha hears that Chris accepted (Sascha 03.11.2026: "as on Instagram – a notice that we are GolfOS friends now"): a push,
 // and his app says so once
 ok(pushes.some((x) => x.action === 'friend-accepted' && x.from === 'Chris'), 'push: Sascha is told that Chris accepted');
-await S.evaluate(() => sessionStorage.removeItem('golfos.module'));
-await S.reload();
+// Sascha stays on his friends screen with the QR code (06.11.2026: "it took very long – Start and back, it was there at
+// once"): it comes there by itself within seconds, no reload, no other screen
 const told = S.getByRole('dialog', { name: 'Neuer Freund' });
-await told.waitFor({ timeout: 15000 }).catch(() => null);
+const t0 = Date.now();
+await told.waitFor({ timeout: 8000 }).catch(() => null);
+ok((await told.count()) === 1 && (await S.getByLabel('Mein Freundes-Code als QR-Code').count()) === 1, `Sascha, still on his friends screen: told within seconds (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
 ok(/Chris hat deine Freundschaftsanfrage angenommen/.test(await told.innerText().catch(() => '')) && /GolfOS-Freunde/.test(await told.innerText().catch(() => '')), 'Sascha: "Chris hat deine Freundschaftsanfrage angenommen – ihr seid jetzt GolfOS-Freunde"');
 await told.getByRole('button', { name: 'Prima' }).click().catch(() => null);
 // Sascha: his Chris typed by hand is the linked one now – one Chris, HCP from Chris's profile
