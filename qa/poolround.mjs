@@ -142,6 +142,25 @@ await H.waitForTimeout(500);
 const after = await H.locator('.map-hole-no').first().innerText();
 ok(after !== before, `all putts in: on to the next hole (${before.slice(0, 12)} → ${after.slice(0, 12)})`);
 ok(!!gir, `the greens pool: ${gir}`);
+
+// one level back through the pool's round (Sascha 06.11.2026: "back – it jumps right to the front instead of one level
+// back"): the pool opened from "Bilanz", its round paused – back on the pool, "Zurück" to the balance, not to "Wetten"
+await H.evaluate(() => sessionStorage.setItem('golfos.module', 'games'));
+await H.reload();
+await H.waitForTimeout(1500);
+await H.locator('.tabbar button').filter({ hasText: 'Bilanz' }).click();
+await H.waitForTimeout(800);
+await H.locator('.balance-pool').filter({ hasText: 'Grüns' }).locator('.balance-pool-head').click();
+await H.waitForTimeout(1200);
+await H.getByRole('button', { name: 'Runde fortsetzen' }).click(); // its round still running: straight onto the map
+await H.locator('.map-hole-no').waitFor({ timeout: 30000 });
+await H.locator('.hole-bar-handle').click();
+await H.locator('.drawer-action').filter({ hasText: 'Pausieren' }).click();
+await H.waitForTimeout(1200);
+ok((await H.getByRole('button', { name: 'Runde fortsetzen' }).count()) === 1, 'the round paused: back on the pool');
+await H.locator('.topbar').getByRole('button').first().click();
+await H.waitForTimeout(1000);
+ok((await H.locator('.tabbar button[aria-current="page"], .tabbar button.on, .tabbar button[aria-pressed="true"]').filter({ hasText: 'Bilanz' }).count()) === 1 || (await H.locator('.balance-title, .balance').count()) > 0, `"Zurück" on the pool: the balance again, where it was opened (${(await H.locator('main h1, main h2').first().innerText().catch(() => '–')).trim()})`);
 ok(host.errs.length === 0, `no page errors ${host.errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);
