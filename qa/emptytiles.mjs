@@ -42,7 +42,9 @@ async function look(p) {
 }
 
 async function run(lglBody, label) {
-  const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
+  // without the service worker: once it holds the page (after the reload, a race) the tiles and the weather go past the
+  // test's answers to the real net – a real aerial picture instead of the white or grass tile (07.11.2026, 2 of 3 runs)
+  const ctx = await b.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block', locale: 'de-DE', geolocation: { latitude: 48.781065, longitude: 9.689329, accuracy: 5 }, permissions: ['geolocation'] });
   await mockNet(ctx);
   await ctx.route(/owsproxy\.lgl-bw\.de\/(?!owsproxy\/wcs)/, (r) => r.fulfill({ status: 200, contentType: lglBody.subarray(0, 5).toString() === '<?xml' ? 'text/xml;charset=UTF-8' : 'image/jpeg', headers: { 'Access-Control-Allow-Origin': '*' }, body: lglBody }));
   await ctx.route(/server\.arcgisonline\.com/, (r) => r.fulfill({ status: 200, contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' }, body: GRASS }));
