@@ -35,18 +35,9 @@ export interface Clip {
   dist?: number;
 }
 
-/** the realistic golfer of Training (23.10.2026, for Sascha to judge first): on with ?real3d=1, off with ?real3d=0 – the
- * same switch as Training's swing videos (localStorage golfos.real3d) */
-export function wantRealistic(): boolean {
-  try {
-    const q = new URLSearchParams(location.search).get('real3d');
-    if (q === '1') localStorage.setItem('golfos.real3d', '1');
-    if (q === '0') localStorage.removeItem('golfos.real3d');
-    return localStorage.getItem('golfos.real3d') === '1';
-  } catch {
-    return false;
-  }
-}
+/** the realistic golfer of Training (23.10.2026, for Sascha to judge first) – see realFlag.ts */
+import { wantRealistic } from './realFlag';
+export { wantRealistic };
 const skin = () => (wantRealistic() && realisticBodyReady() ? 'realistic' : 'classic');
 
 /** The lowest point of the realistic golfer's skin (its bones applied; every n-th vertex), or null for the classic one.

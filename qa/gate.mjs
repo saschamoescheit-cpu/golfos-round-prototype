@@ -30,7 +30,9 @@ const only = args.filter((a) => !/^\d+$/.test(a) && !/^https?:/.test(a) && !a.st
 // routes (gate 27.10.2026: 401 from the real server; against the live site and the dev server they pass; par3target fails
 // the same way with the build of the live state 10559e0 – no regression)
 const DEV_ONLY = ['teeswitch', 'bin', 'games', 'gamesim', 'het9', 'rehearsal', 'score', 'synclive', 'syncpush', 'sharegame', 'shareround', 'sharemarker', 'shareprompt', 'shareguest', 'sharenotes', 'sharetourney', 'sharesign', 'plan2d', 'usflorida', 'octettiles', 'par3target', 'ustrip', 'wagers', 'tours', 'nativeoffline', 'plannedtourney', 'usarehearsal', 'tourseries', 'tourrounds', 'scorer', 'poolround', 'swipe', 'friends', 'friendinvite', 'poolwhois'];
-const urlFor = (name) => (/^(offline|push)/.test(name) ? [] : built && !DEV_ONLY.includes(name) ? [built] : base ? [base] : []);
+// (offline… and push… need the built app – with --built that one, not whatever runs on their default :4173: another
+// session may serve another state there, 06.11.2026)
+const urlFor = (name) => (/^(offline|push)/.test(name) ? (built ? [built] : []) : built && !DEV_ONLY.includes(name) ? [built] : base ? [base] : []);
 const TIMES_LOG = new URL('./gate-times.log', import.meta.url);
 // the longest first, so the run ends together
 const SLOW = ['games', 'modes', 'het9', 'training', 'puttzoom', 'score', 'review', 'bin'];
