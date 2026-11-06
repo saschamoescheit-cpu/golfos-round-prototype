@@ -465,14 +465,18 @@ describe("a player's own analysis beside the scorer's card (Sascha 02.11.2026)",
 
 import { tournamentOver } from './sharedround';
 describe('an expired tournament goes from the start page (Sascha 02.11.2026)', () => {
-  const plan = () =>
-    plannedEvent({
+  // set up days before its day – a plan made "now" failed on 06.11.2026 itself: set up after its tee time, the six hours
+  // counted from the real clock
+  const plan = () => ({
+    ...plannedEvent({
       name: 'Herbstpreis', date: '2026-11-06', course, holes, loopOrder: ['A'], format: { mode: 'single', scoring: 'stableford' },
       flights: [
         { teeTime: '09:20', players: [{ name: 'Sascha', playingHandicap: 12 }, { name: 'Cedric', playingHandicap: 20 }] },
         { teeTime: '10:00', players: [{ name: 'Ben', playingHandicap: 8 }, { name: 'Max', playingHandicap: 15 }] },
       ],
-    });
+    }),
+    createdAt: new Date(2026, 10, 1, 12, 0).toISOString(),
+  });
   const at = (hhmm: string, day = 6) => new Date(2026, 10, day, Number(hhmm.slice(0, 2)), Number(hhmm.slice(3)));
   it('on its day, before and during play: shown', () => {
     expect(tournamentOver(plan(), 'Sascha', at('00:01'))).toBe(false);

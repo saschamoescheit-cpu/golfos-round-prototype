@@ -18,9 +18,10 @@ import { loadProfile, shownName } from '../lib/profile';
 
 const cls = (v: number) => (v > 0.004 ? 'good-text' : v < -0.004 ? 'bad-text' : 'muted');
 /** "+12 € · −5 $ · +2 × Getränk" – one amount per currency or thing. */
-function Amounts(props: { m: Record<string, number>; plain?: boolean }) {
+function Amounts(props: { m: Record<string, number>; plain?: boolean; zero?: string }) {
   const parts = Object.entries(props.m).filter(([, v]) => Math.abs(v) > 0.004);
-  if (!parts.length) return <span className="muted">{money(0, '€')}</span>;
+  // nothing yet: 0 in the currency of the pool or game (a $ pool showed "0 €", Sascha 06.11.2026)
+  if (!parts.length) return <span className="muted">{money(0, props.zero ?? '€')}</span>;
   return (
     <>
       {parts.map(([sym, v], k) => (
@@ -191,6 +192,9 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
     })),
   ].sort((a, b) => b.day.localeCompare(a.day));
   const wins = entries.filter((x) => x.won).length;
+  // nothing won or lost yet: 0 in the one currency all games and bets are in (a $ pool only: "0 $")
+  const syms = [...new Set(entries.map((x) => x.sym))];
+  const zero = syms.length === 1 ? syms[0] : undefined;
   const FILTERS: Record<Exclude<BalanceFilter, null>, { title: string; keep: (x: Entry) => boolean }> = {
     games: { title: tr('Your games', 'Deine Spiele'), keep: (x) => x.kind === 'game' },
     wins: { title: tr('Your wins', 'Deine Siege'), keep: (x) => x.won },
@@ -226,6 +230,38 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
   const word = (p: Person, as: 'paid' | 'received') => {
     const things = p.items.some((i) => !isMoney(i.prize));
     return as === 'received' ? tr('Received', 'Erhalten') : things && p.items.every((i) => !isMoney(i.prize)) ? paidWord(p.items[0].prize) : tr('Paid', 'Bezahlt');
+  };
+  /** A pool of bets as its own card – on the page and under the tile "Wetten" alike (Sascha 06.11.2026: "under the
+   *  tapped tile the same as when Bilanz opens"). */
+  const poolCard = (e: (typeof pools)[number]) => {
+    const mineItems = ps.flatMap((p) => p.items.filter((i) => i.kind === 'pool' && i.ref === e.code));
+    const amount = sums(mineItems, (i) => i.amount);
+    const left = sums(mineItems, (i) => i.open);
+    const sym = prizeSym(prizeOf(e.pool));
+    return (
+      <section key={e.code} className="card balance-pool" aria-label={e.pool.name}>
+        <button type="button" className="balance-pool-head" onClick={() => props.onOpenPool?.(e.code)} disabled={!props.onOpenPool}>
+          <span className="grow">
+            <span className="eyebrow">{tr('Bets', 'Wetten')}</span>
+            <strong>{e.pool.name}</strong>
+            <span className="muted small">
+              {isLive(e, today) ? tr('running', 'läuft') : tr('finished', 'beendet')}
+              {Object.keys(left).length > 0 && ' · '}
+              {Object.keys(left).length > 0 && tr('open ', 'offen ')}
+              {Object.keys(left).length > 0 && <Amounts m={left} plain zero={sym} />}
+            </span>
+          </span>
+          <strong>
+            <Amounts m={amount} zero={sym} />
+          </strong>
+          {props.onOpenPool && (
+            <span className="muted" aria-hidden="true">
+              ›
+            </span>
+          )}
+        </button>
+      </section>
+    );
   };
   return (
     <section className="balance" aria-label={tr('Balance', 'Bilanz')}>
@@ -266,14 +302,14 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
           </button>
           <button type="button" className="tile" aria-pressed={filter === 'won'} disabled={!counts.won} onClick={() => pick('won')}>
             <span className="tile-head">
-              <strong className="tile-num good-text"><Amounts m={gain} plain /></strong>
+              <strong className="tile-num good-text"><Amounts m={gain} plain zero={zero} /></strong>
               <span className="tile-mark">{TILE_ICONS.won}</span>
             </span>
             <span className="muted small">{tr('won', 'Gewinn')}</span>
           </button>
           <button type="button" className="tile" aria-pressed={filter === 'lost'} disabled={!counts.lost} onClick={() => pick('lost')}>
             <span className="tile-head">
-              <strong className="tile-num bad-text"><Amounts m={Object.fromEntries(Object.entries(loss).map(([k, v]) => [k, -v]))} plain /></strong>
+              <strong className="tile-num bad-text"><Amounts m={Object.fromEntries(Object.entries(loss).map(([k, v]) => [k, -v]))} plain zero={zero} /></strong>
               <span className="tile-mark">{TILE_ICONS.lost}</span>
             </span>
             <span className="muted small">{tr('lost', 'Verlust')}</span>
@@ -281,7 +317,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
           {/* the sum of all – counts only, a white mark as "Löcher" on the rounds page */}
           <div className="tile">
             <span className="tile-head">
-              <strong className="tile-num"><Amounts m={total} /></strong>
+              <strong className="tile-num"><Amounts m={total} zero={zero} /></strong>
               <span className="tile-mark">{TILE_ICONS.money}</span>
             </span>
             <span className="muted small">{tr('money', 'Geld')}</span>
@@ -290,7 +326,8 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       )}
 
       {/* a tile tapped: the games and bets behind it, each with what it came to for me – a tap opens it */}
-      {filter && (
+      {filter === 'bets' && pools.map(poolCard)}
+      {filter && filter !== 'bets' && (
         <section className="card" aria-label={FILTERS[filter].title}>
           <span className="eyebrow">{FILTERS[filter].title}</span>
           <ul className="balance-items balance-list">
@@ -418,36 +455,7 @@ export function Balance(props: { games: Game[]; inTab?: boolean; onOpenPool?: (c
       )}
 
       {/* each pool of bets on its own (Sascha 03.11.2026: "two pools, not under one heading") */}
-      {!filter &&
-        pools.map((e) => {
-        const mineItems = ps.flatMap((p) => p.items.filter((i) => i.kind === 'pool' && i.ref === e.code));
-        const amount = sums(mineItems, (i) => i.amount);
-        const left = sums(mineItems, (i) => i.open);
-        return (
-          <section key={e.code} className="card balance-pool" aria-label={e.pool.name}>
-            <button type="button" className="balance-pool-head" onClick={() => props.onOpenPool?.(e.code)} disabled={!props.onOpenPool}>
-              <span className="grow">
-                <span className="eyebrow">{tr('Bets', 'Wetten')}</span>
-                <strong>{e.pool.name}</strong>
-                <span className="muted small">
-                  {isLive(e, today) ? tr('running', 'läuft') : tr('finished', 'beendet')}
-                  {Object.keys(left).length > 0 && ' · '}
-                  {Object.keys(left).length > 0 && tr('open ', 'offen ')}
-                  {Object.keys(left).length > 0 && <Amounts m={left} plain />}
-                </span>
-              </span>
-              <strong>
-                <Amounts m={amount} />
-              </strong>
-              {props.onOpenPool && (
-                <span className="muted" aria-hidden="true">
-                  ›
-                </span>
-              )}
-            </button>
-          </section>
-        );
-      })}
+      {!filter && pools.map(poolCard)}
 
       {person && <PersonSheet p={person} busy={busy} onClose={() => setOpen(null)} onSettle={(as) => void settleAll(person, as)} onUndo={async (i, x) => {
         setBusy(true);
