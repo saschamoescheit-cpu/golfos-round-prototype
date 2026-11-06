@@ -62,6 +62,8 @@ await p.evaluate(() => {
   for (const list of Object.values(rs[0].entries)) list.forEach((e) => (e.strokes = 4));
   rs[0].currentHole = rs[0].holes.length - 1;
   localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
+  // entered on this phone: their score entries were open here (a score from elsewhere opens it first, 06.11.2026)
+  localStorage.setItem('golfos.scoreseen.v1.' + rs[0].id, JSON.stringify(rs[0].holes.map((_, k) => k)));
 });
 await p.reload();
 await p.waitForTimeout(2000);

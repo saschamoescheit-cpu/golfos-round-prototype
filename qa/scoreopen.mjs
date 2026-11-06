@@ -78,6 +78,20 @@ ok((await hole()) === '3A' && (await sheet()) === 0, 'a score entered on this ph
 await next();
 await p.waitForTimeout(500);
 ok((await sheet()) === 1 && (await hole()) === '3A', '"→" on 3A without a score opens the score entry');
+// entered here, then the app started anew (iOS in the pocket): "→" goes on – the entry is not asked again
+await p.locator('.score-panel').getByRole('button', { name: 'Schläge plus eins', exact: true }).first().click();
+await p.waitForTimeout(300);
+await p.reload();
+await p.waitForTimeout(1500);
+if (!(await p.locator('.map-hole-no').count())) {
+  const resume = p.getByRole('button', { name: /fortsetzen|Weiterspielen/i }).first();
+  if (await resume.count()) await resume.click();
+  await p.locator('.map-hole-no').waitFor({ timeout: 30000 });
+}
+await p.waitForTimeout(1500);
+await next();
+await p.waitForTimeout(800);
+ok((await hole()) === '4A' && (await sheet()) === 0, `entered on this phone, the app started anew: "→" on to 4A at once (${await hole()})`);
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

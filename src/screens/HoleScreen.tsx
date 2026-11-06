@@ -531,9 +531,24 @@ export function HoleScreen(props: {
   useEffect(() => setScoreSheet(false), [i]); // on to the next hole: the sheet closes, the map shows (Sascha 15.10.2026)
   // the holes whose score entry was open on this phone (Sascha 28.10.2026: "the score entry does not always open when I
   // change hole" – a score from another phone of the game, or one entered on someone else's sheet, counted as done)
-  const scoreSeen = useRef(new Set<number>());
+  // – kept on the phone per round: iOS starts the app anew in the pocket, a score entered here is not asked again
+  const seenKey = `golfos.scoreseen.v1.${round.id}`;
+  const scoreSeen = useRef<Set<number>>(null as unknown as Set<number>);
+  if (!scoreSeen.current) {
+    try {
+      scoreSeen.current = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]') as number[]);
+    } catch {
+      scoreSeen.current = new Set();
+    }
+  }
   useEffect(() => {
-    if (scoreSheet || view === 'score') scoreSeen.current.add(i);
+    if (!(scoreSheet || view === 'score') || scoreSeen.current.has(i)) return;
+    scoreSeen.current.add(i);
+    try {
+      localStorage.setItem(seenKey, JSON.stringify([...scoreSeen.current]));
+    } catch {
+      // storage full – asked once more after a restart
+    }
   }, [scoreSheet, view, i]);
   /** On to the next hole: a hole without a score first opens its score sheet ("→" and the swipe alike) – so does a
    *  hole whose score entry was not open on this phone yet, and a hole gone back to (Sascha 27.10.2026: "back a hole
