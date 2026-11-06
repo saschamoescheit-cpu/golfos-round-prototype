@@ -30,7 +30,7 @@ const code = await H.evaluate(async () => {
   const base = { stake: 20, payout: 'success', attempts: 'any', by: 'Sascha' };
   const pool = {
     kind: 'wager-pool', id: 'usa', name: 'USA-Wetten', from: day, to: day, createdAt: new Date().toISOString(), currency: 'USD',
-    players: [{ id: 'ps', name: 'Sascha' }, { id: 'pc', name: 'Chris' }, { id: 'pe', name: 'Erik' }],
+    players: [{ id: 'ps', name: 'Sascha', joined: { name: 'Sascha', at: new Date().toISOString(), uid: 'Sascha' } }, { id: 'pc', name: 'Chris' }, { id: 'pe', name: 'Erik' }],
     wagers: [
       { ...base, id: 'w-c', player: 'pc', kind: 'parRun', target: 12 },
       { ...base, id: 'w-e', player: 'pe', kind: 'parRun', target: 9 },
@@ -73,7 +73,7 @@ if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/pool-hos
 ok((await cardOf(H, 'Chris').getByRole('button', { name: 'Chris einladen' }).count()) === 1 && (await cardOf(H, 'Sascha').getByRole('button', { name: /einladen/ }).count()) === 0, 'at Chris (made by hand): "Chris einladen" – not at Sascha himself');
 await cardOf(H, 'Chris').getByRole('button', { name: 'Chris einladen' }).click();
 const who = H.getByRole('dialog', { name: 'Wer ist Chris?' });
-ok((await who.getByRole('button', { name: 'Christopher ist Chris' }).count()) === 1, 'the sheet "Wer ist Chris?": Christopher, joined without bets, offered');
+ok((await who.getByRole('button', { name: 'Christopher ist Chris' }).count()) === 1 && (await who.getByRole('button', { name: 'Sascha ist Chris' }).count()) === 0, 'the sheet "Wer ist Chris?": Christopher, joined without bets, offered – not Sascha himself (no bets either)');
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/pool-whois.png' });
 await who.getByRole('button', { name: 'Christopher ist Chris' }).click();
 await H.waitForTimeout(2000);

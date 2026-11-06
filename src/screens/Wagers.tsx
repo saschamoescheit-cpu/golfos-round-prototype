@@ -605,12 +605,12 @@ function DuelBadge(props: { amount: number; played: boolean; sym: string }) {
 /** "Who is Chris?" (Sascha 06.11.2026: "invite Erik Hausotter right at Erik"; "Chris made by hand, Christopher joined –
  *  twice; let me edit Chris"): the host gives a player made by hand his phone – a player who joined on his own as a
  *  new one (then that one goes), or a linked friend invited right at him (his phone takes this player on opening). */
-function WhoIsSheet(props: { code: string; pool: WagerPool; player: PoolPlayer; onClose: () => void }) {
+function WhoIsSheet(props: { code: string; pool: WagerPool; player: PoolPlayer; /** this phone's player – never offered as another */ me: string; onClose: () => void }) {
   const { pool, player } = props;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const joined = new Set(pool.players.map((p) => p.joined?.uid).filter(Boolean));
-  const twins = pool.players.filter((p) => p.id !== player.id && canLinkInto(pool, p));
+  const twins = pool.players.filter((p) => p.id !== player.id && p.id !== props.me && p.joined?.uid !== myAccount() && canLinkInto(pool, p));
   const friends = canLink() ? loadFriends().filter((f) => f.uid && !joined.has(f.uid)) : [];
   const link = async (from: PoolPlayer) => {
     setBusy(true);
@@ -1025,7 +1025,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
         />
       )}
       {sheet && typeof sheet === 'object' && 'whois' in sheet && pool.players.some((x) => x.id === sheet.whois) && (
-        <WhoIsSheet code={props.code} pool={pool} player={pool.players.find((x) => x.id === sheet.whois)!} onClose={() => setSheet(null)} />
+        <WhoIsSheet code={props.code} pool={pool} player={pool.players.find((x) => x.id === sheet.whois)!} me={entry.me} onClose={() => setSheet(null)} />
       )}
       {sheet === 'finish' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
