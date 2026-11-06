@@ -137,22 +137,19 @@ export const RETEST_CLIPS = {
 
 /**
  * Sitting 90/90 on the floor: the front leg's thigh forward with the shin across in front, the back leg's thigh out to
- * the side with the shin back (hip twisted about the thigh, knees 90°). Left front, the right one mirrored.
+ * the side with the shin back (hip twisted about the thigh, knees 90°). Left front.
  */
 const SIT_9090_L: J = { hipL: [-90, 90, 0], kneeL: [90, 0, 0], hipR: [0, 0, -90], kneeR: [90, 0, 0] };
-const SIT_9090_R: J = { hipR: [-90, -90, 0], kneeR: [90, 0, 0], hipL: [0, 0, 90], kneeL: [90, 0, 0] };
-/** sitting with both knees up, feet flat apart (between the two sides of the switch) */
-const SIT_KNEES_UP: J = { hipL: [-135, 0, 22], hipR: [-135, 0, -22], kneeL: [89, 0, 0], kneeR: [89, 0, 0], ankleL: [35, 0, 0], ankleR: [35, 0, 0] };
-/** halfway between two positions (each angle) – a key between them, fitted so the body stays where it should */
-const mid = (a: J, b: J, extra: J = {}): J => {
-  const out: J = {};
-  for (const id of new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof J>) {
-    const x = a[id] ?? [0, 0, 0];
-    const y = b[id] ?? [0, 0, 0];
-    out[id] = [(x[0] + y[0]) / 2, (x[1] + y[1]) / 2, (x[2] + y[2]) / 2];
-  }
-  return { ...out, ...extra };
-};
+/** the 90/90 switch with the feet where they stand (fitted on the realistic golfer 6.11.2026 – before, the legs were
+ * mirrored with the body facing forward and the feet slid 80 cm over the mat): in between both knees up, the feet wide;
+ * on each side the body turns over the front shin, both knees down */
+const SWITCH_MID: J = { hipL: [-143, -26, -25], hipR: [-143, 26, 25], kneeL: [95, 0, 0], kneeR: [95, 0, 0], ankleL: [42, 0, 0], ankleR: [42, 0, 0] };
+const SWITCH_L: J = { hipL: [-91, 89, 0], kneeL: [78, 0, 0], hipR: [-51, 0, -90], kneeR: [103, 0, 0] };
+const SWITCH_R: J = { hipR: [-91, -89, 0], kneeR: [78, 0, 0], hipL: [-51, 0, 90], kneeL: [103, 0, 0] };
+const SWITCH_TURN = 59;
+/** halfway, the seat down and the feet in their place */
+const SWITCH_HALF_L: J = { hipL: [-132, 4, -60], kneeL: [89, 0, 0], hipR: [-103, 72, -8], kneeR: [100, 0, 0], ankleL: [21, 0, 0], ankleR: [21, 0, 0] };
+const SWITCH_HALF_R: J = { hipR: [-132, -4, 60], kneeR: [89, 0, 0], hipL: [-103, -72, 8], kneeL: [100, 0, 0], ankleL: [21, 0, 0], ankleR: [21, 0, 0] };
 /** open hands (flat on the floor) */
 const OPEN = { gripL: 0, gripR: 0 };
 /** the hands behind on the floor, fingers back, leaning back a little */
@@ -254,18 +251,17 @@ export const DRILL_CLIPS: Record<string, Clip> = {
     ground: 'all',
     props: ['mat'],
     keys: [
-      k(0, P({ ...SIT_9090_L, ...ARMS_CROSSED }), L('Sit 90/90: the left leg in front, the right one to the side', 'Sitz 90/90: das linke Bein vorn, das rechte seitlich')),
-      k(1.2, P({ ...SIT_9090_L, ...ARMS_CROSSED })),
-      // (the seat stays on the floor through the switch: the legs turn in the hips – keys between, fitted)
-      k(1.9, P({ ...mid(SIT_9090_L, SIT_KNEES_UP, { hipL: [-148, 34, 11], hipR: [-103, 24, -56], kneeL: [80, 0, 0], kneeR: [80, 0, 0] }), ...ARMS_CROSSED })),
-      k(2.6, P({ ...SIT_KNEES_UP, ...ARMS_CROSSED }), L('Turn both knees to the other side without the hands – sit tall', 'Beide Knie ohne Hände zur anderen Seite drehen – aufrecht sitzen')),
-      k(3.3, P({ ...mid(SIT_KNEES_UP, SIT_9090_R, { hipL: [-101, -24, 56], hipR: [-146, -29, -11], kneeL: [73, 0, 0], kneeR: [73, 0, 0] }), ...ARMS_CROSSED })),
-      k(4.0, P({ ...SIT_9090_R, ...ARMS_CROSSED })),
-      k(5.0, P({ ...SIT_9090_R, ...ARMS_CROSSED }), L('… and back – 10 switches, slowly', '… und zurück – 10 Wechsel, langsam')),
-      k(5.7, P({ ...mid(SIT_9090_R, SIT_KNEES_UP, { hipL: [-101, -24, 56], hipR: [-146, -29, -11], kneeL: [73, 0, 0], kneeR: [73, 0, 0] }), ...ARMS_CROSSED })),
-      k(6.4, P({ ...SIT_KNEES_UP, ...ARMS_CROSSED })),
-      k(7.1, P({ ...mid(SIT_KNEES_UP, SIT_9090_L, { hipL: [-148, 34, 11], hipR: [-103, 24, -56], kneeL: [80, 0, 0], kneeR: [80, 0, 0] }), ...ARMS_CROSSED })),
-      k(7.8, P({ ...SIT_9090_L, ...ARMS_CROSSED })),
+      k(0, P({ ...SWITCH_L, ...ARMS_CROSSED }, { turn: SWITCH_TURN }), L('Sit 90/90: the left leg in front, the right one to the side', 'Sitz 90/90: das linke Bein vorn, das rechte seitlich')),
+      k(1.2, P({ ...SWITCH_L, ...ARMS_CROSSED }, { turn: SWITCH_TURN })),
+      k(1.9, P({ ...SWITCH_HALF_L, ...ARMS_CROSSED }, { turn: 22 })),
+      k(2.6, P({ ...SWITCH_MID, ...ARMS_CROSSED }), L('Turn both knees to the other side without the hands – sit tall', 'Beide Knie ohne Hände zur anderen Seite drehen – aufrecht sitzen')),
+      k(3.3, P({ ...SWITCH_HALF_R, ...ARMS_CROSSED }, { turn: -22 })),
+      k(4.0, P({ ...SWITCH_R, ...ARMS_CROSSED }, { turn: -SWITCH_TURN })),
+      k(5.0, P({ ...SWITCH_R, ...ARMS_CROSSED }, { turn: -SWITCH_TURN }), L('… and back – 10 switches, slowly', '… und zurück – 10 Wechsel, langsam')),
+      k(5.7, P({ ...SWITCH_HALF_R, ...ARMS_CROSSED }, { turn: -22 })),
+      k(6.4, P({ ...SWITCH_MID, ...ARMS_CROSSED })),
+      k(7.1, P({ ...SWITCH_HALF_L, ...ARMS_CROSSED }, { turn: 22 })),
+      k(7.8, P({ ...SWITCH_L, ...ARMS_CROSSED }, { turn: SWITCH_TURN })),
     ],
   },
   'mob-hip-ir': {
