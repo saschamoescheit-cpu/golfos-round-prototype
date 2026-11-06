@@ -463,8 +463,10 @@ export function DrillPlayer(props: {
               beep(980, 90);
               if (reps < target) say(String(reps));
             }
-            // not one rep seen after about two and a half: the app counts along in the tempo (it never stays at 0)
-            if (counter.reps === 0 && elapsed > tempo * 2.5 + (fake ? 0 : 3000)) {
+            // not one rep seen after about two and a half: the app counts along in the tempo (it never stays at 0) – for the
+            // synthetic player of the QA two and a half of its reps (0.8 s each on the clock; at its speed 8 the tempo's 7.5 s
+            // were 0.94 s, and under load its first rep came too late: "I count along" instead of the camera, 06.11.2026)
+            if (counter.reps === 0 && elapsed > Math.max(tempo, fake ? 800 * sp : 0) * 2.5 + (fake ? 0 : 3000)) {
               paced = true;
               pacedFrom = elapsed;
               say(tr('I count along.', 'Ich zähle mit.'));
