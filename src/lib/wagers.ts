@@ -277,6 +277,9 @@ export interface PoolPlayer {
   name: string;
   /** a phone plays as him (the name of the account, when, its account – to find him again on a new phone) */
   joined?: { name: string; at: string; uid?: string };
+  /** invited by the host right at him (Sascha 06.11.2026: "invite Erik Hausotter right at Erik"): the linked friend's
+   *  account – his phone takes this player on opening the pool, no "who are you?", no second player */
+  invited?: { uid: string; name: string; at: string };
   /** the handicap index as typed in the setup (Sascha 03.11.2026: the players as in "Runde starten") – a round started
    *  from the pool takes it */
   hcp?: string;

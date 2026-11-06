@@ -1965,6 +1965,8 @@ button.tile:disabled { opacity: 1; }
 /* a long sheet scrolls – its parts keep their height instead of being squeezed over each other */
 .wager-sheet > *, .lib-group > * { flex-shrink: 0; }
 .pool-add { align-self: flex-start; min-height: 40px; padding: 0 16px; }
+/* the host invites right at a player (06.11.2026) – a small row under the name, icon and word */
+.pool-whois { align-self: flex-start; min-height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; }
 .pool-edit-player { display: flex; align-items: center; gap: 8px; }
 .setup-part { display: flex; flex-direction: column; gap: 10px; }
 /* 5+5+10: the three stakes side by side, the opponents below */

@@ -46,11 +46,57 @@ function savePools(list: PoolEntry[]): void {
 function keep(code: string, pool: WagerPool, me?: string, owner?: string): void {
   const list = loadPools();
   const old = list.find((e) => e.code === code);
-  const mine = me || old?.me || meIn(code);
+  const mine = meOf(pool, me || old?.me || meIn(code), myAccount());
   if (mine) rememberMe(code, mine);
   const host = owner ?? old?.owner;
   savePools([{ code, me: mine, pool, ...(host ? { owner: host } : {}) }, ...list.filter((e) => e.code !== code)]);
+  claimInvited(code, pool, mine);
 }
+
+/** Who this phone is in the pool: the player kept – while he is still in it (the host linked him into another, Sascha
+ *  06.11.2026: "Chris made by hand, Christopher joined – twice") –, else the player of this account, else the one the
+ *  host invited this account as. '' – asked "who are you?". */
+export function meOf(pool: WagerPool, kept: string | undefined, uid: string | null): string {
+  if (kept && pool.players.some((p) => p.id === kept)) return kept;
+  if (!uid) return '';
+  return pool.players.find((p) => p.joined?.uid === uid)?.id ?? pool.players.find((p) => p.invited?.uid === uid && !p.joined?.uid)?.id ?? '';
+}
+/** Invited right at a player: this phone takes him – "joined" by its own account, as the server lets a phone do. */
+const claiming = new Set<string>();
+function claimInvited(code: string, pool: WagerPool, me: string): void {
+  const uid = myAccount();
+  const p = pool.players.find((x) => x.id === me);
+  if (!uid || !p || p.joined?.uid || p.invited?.uid !== uid || claiming.has(code)) return;
+  claiming.add(code);
+  void joinPool(code, { id: me }, p.invited.name || p.name).finally(() => claiming.delete(code));
+}
+
+/** The host invites a linked friend right at a player (Sascha 06.11.2026) – kept on the player; the push goes as for
+ *  the pool (InviteCard). The pool as written, or null. */
+export const invitePlayer = (code: string, pid: string, friend: { uid: string; name: string }): Promise<WagerPool | null> =>
+  changePool(code, (p) => ({ ...p, players: p.players.map((x) => (x.id === pid ? { ...x, invited: { uid: friend.uid, name: friend.name, at: new Date().toISOString() } } : x)) }));
+
+/** A player who joined on his own phone as a new one, without bets, is the one the host made by hand (Sascha
+ *  06.11.2026: "I made Chris by hand – now we are friends he is in twice; let me edit Chris"): the host gives `target`
+ *  his account and takes `from` out. Only a player without bets or payments is taken out. */
+export const canLinkInto = (pool: WagerPool, from: PoolPlayer): boolean =>
+  !!from.joined?.uid && !pool.wagers.some((w) => w.player === from.id || w.opponent === from.id) && !(pool.payments ?? []).some((x) => x.from === from.id || x.to === from.id);
+export const linkPlayer = (code: string, target: string, from: string): Promise<WagerPool | null> =>
+  changePool(code, (p) => {
+    const src = p.players.find((x) => x.id === from);
+    if (!src || !canLinkInto(p, src) || !p.players.some((x) => x.id === target)) return null;
+    return {
+      ...p,
+      players: p.players
+        .filter((x) => x.id !== from)
+        .map((x) => {
+          if (x.id !== target) return x;
+          const { invited: _invited, ...rest } = x;
+          void _invited;
+          return { ...rest, joined: src.joined, ...(!x.hcp && src.hcp ? { hcp: src.hcp } : {}) };
+        }),
+    };
+  });
 
 // Who this account is in each pool – synced between its devices (lib/sync.ts, kind 'pool-me'): a new phone or the app
 // knows it without asking, also for a pool joined before the account was kept in "joined". Only the code and the
@@ -130,7 +176,9 @@ export async function syncPools(): Promise<boolean> {
     for (const row of rows) {
       if (!row?.code || !isPool(row.game) || hidden.has(row.code)) continue;
       const old = list.find((e) => e.code === row.code);
-      const mine = old?.me || meIn(row.code) || (me ? (row.game.players.find((p) => p.joined?.uid === me)?.id ?? '') : '');
+      // the player kept while he is still in the pool – else found by the account or the invitation (linked by the host)
+      const mine = meOf(row.game, old?.me || meIn(row.code), me);
+      claimInvited(row.code, row.game, mine);
       if (mine) rememberMe(row.code, mine); // also for a pool unchanged – to the account's other devices
       if (old && old.me === mine && old.owner === row.owner && JSON.stringify(old.pool) === JSON.stringify(row.game)) continue;
       const entry: PoolEntry = { code: row.code, me: mine, pool: row.game, ...(row.owner ? { owner: row.owner } : {}) };

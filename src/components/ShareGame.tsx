@@ -4,7 +4,7 @@ import type { Game } from '../lib/gameforms';
 import { cleanCode, exchange, joinGame, showCode, joinLink, settleGame, shareGame, guestRound } from '../lib/sharedgame';
 import { tr } from '../lib/i18n';
 import { isPool, type WagerPool } from '../lib/wagers';
-import { joinPool } from '../lib/wagerstore';
+import { joinPool, meOf, myAccount } from '../lib/wagerstore';
 import { loadProfile, shownName } from '../lib/profile';
 import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
 import { ScanCodeButton } from './QrScan';
@@ -163,7 +163,13 @@ export function JoinSheet(props: {
     setBusy(true);
     const g = await joinGame(c);
     setBusy(false);
-    if (isPool(g)) setPool(g);
+    if (isPool(g)) {
+      // this account is a player in it already – joined, or invited right at him by the host (Sascha 06.11.2026:
+      // "Christopher joined as a new player – now he is in twice"): in as him, no "who are you?"
+      const mine = meOf(g, undefined, myAccount());
+      if (mine) return void enterPool({ id: mine });
+      setPool(g);
+    }
     else if (g === 'round' && props.onRoundCode) props.onRoundCode(cleanCode(c));
     else if (g === 'round') setMsg(tr('This code is a round – join it under Rounds.', 'Dieser Code ist eine Runde – die unter Rounds beitreten.'));
     else if (g === 'none') setMsg(tr('No game with this code – check the code.', 'Kein Spiel mit diesem Code – Code prüfen.'));

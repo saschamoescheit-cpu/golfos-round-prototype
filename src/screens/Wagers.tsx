@@ -16,7 +16,11 @@ import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/Inv
 import { ActionBar } from '../components/ActionBar';
 import { openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
-import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, changePool, createPool, earlierBets, forgetPool, isHost, isLive, joinPool, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
+import { loadFriends } from '../lib/friends';
+import { canLink } from '../lib/friendlinks';
+import { inviteFriend } from '../lib/push';
+import { Avatar } from '../components/Avatar';
 import { Bin } from '../components/Bin';
 import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, SheetRow, ToggleRow, dayText } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
@@ -598,6 +602,95 @@ function DuelBadge(props: { amount: number; played: boolean; sym: string }) {
 
 /** Whether a player is in the pool, as an icon (Sascha 04.11.2026: "you green, not joined red, joined green – icons
  *  even better"): you – a person, joined – a tick, not joined yet – a clock; the words for VoiceOver and as a tip. */
+/** "Who is Chris?" (Sascha 06.11.2026: "invite Erik Hausotter right at Erik"; "Chris made by hand, Christopher joined –
+ *  twice; let me edit Chris"): the host gives a player made by hand his phone – a player who joined on his own as a
+ *  new one (then that one goes), or a linked friend invited right at him (his phone takes this player on opening). */
+function WhoIsSheet(props: { code: string; pool: WagerPool; player: PoolPlayer; onClose: () => void }) {
+  const { pool, player } = props;
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const joined = new Set(pool.players.map((p) => p.joined?.uid).filter(Boolean));
+  const twins = pool.players.filter((p) => p.id !== player.id && canLinkInto(pool, p));
+  const friends = canLink() ? loadFriends().filter((f) => f.uid && !joined.has(f.uid)) : [];
+  const link = async (from: PoolPlayer) => {
+    setBusy(true);
+    const r = await linkPlayer(props.code, player.id, from.id);
+    setBusy(false);
+    if (r) props.onClose();
+    else setMsg(NO_NET());
+  };
+  const invite = async (uid: string, fname: string) => {
+    setBusy(true);
+    const r = await invitePlayer(props.code, player.id, { uid, name: fname });
+    const sent = r ? await inviteFriend(props.code, uid, fname, shownName(loadProfile()) || tr('a player', 'ein Spieler')) : null;
+    setBusy(false);
+    if (!r) return setMsg(NO_NET());
+    setMsg(
+      sent === 'sent'
+        ? tr(`${fname} gets a notification – on opening, his phone is ${player.name}.`, `${fname} bekommt eine Mitteilung – öffnet er den Pool, ist sein Handy ${player.name}.`)
+        : tr(`${fname} is invited as ${player.name} – when he opens GolfOS, the request is there.`, `${fname} ist als ${player.name} eingeladen – öffnet er GolfOS, ist die Anfrage da.`),
+    );
+  };
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet" role="dialog" aria-label={tr(`Who is ${player.name}?`, `Wer ist ${player.name}?`)} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr(`Who is ${player.name}?`, `Wer ist ${player.name}?`)}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        {player.invited && !player.joined?.uid && <span className="muted small">{tr(`Invited: ${player.invited.name} – not in yet.`, `Eingeladen: ${player.invited.name} – noch nicht dabei.`)}</span>}
+        {twins.length > 0 && (
+          <div className="invite-friends" aria-label={tr('In the pool already', 'Schon im Pool')}>
+            <span className="eyebrow">{tr('In the pool already', 'Schon im Pool')}</span>
+            <span className="muted small">{tr(`Joined on his phone as a new player – his phone becomes ${player.name}, with all bets; the second one goes.`, `Auf seinem Handy als neuer Spieler beigetreten – sein Handy wird ${player.name}, mit allen Wetten; der zweite fällt weg.`)}</span>
+            {twins.map((t) => (
+              <div key={t.id} className="invite-friend">
+                <Avatar name={t.name} size={32} />
+                <span className="grow">
+                  <strong>{t.name}</strong>
+                  <span className="muted small"> · {tr('no bets', 'ohne Wetten')}</span>
+                </span>
+                <button type="button" className="btn-primary" disabled={busy} aria-label={tr(`${t.name} is ${player.name}`, `${t.name} ist ${player.name}`)} onClick={() => void link(t)}>
+                  {tr(`Is ${player.name}`, `Ist ${player.name}`)}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {friends.length > 0 && (
+          <div className="invite-friends" aria-label={tr('Invite a linked friend', 'Verknüpften Freund einladen')}>
+            <span className="eyebrow">{tr('Invite a linked friend', 'Verknüpften Freund einladen')}</span>
+            {friends.map((f) => {
+              const fname = f.fullName || f.name;
+              const asHim = player.invited?.uid === f.uid;
+              return (
+                <div key={f.uid} className="invite-friend">
+                  <Avatar name={f.name} photo={f.photo} size={32} />
+                  <span className="grow">
+                    <strong>{fname}</strong>
+                    {f.hcp.trim() && <span className="muted small"> · HCP {f.hcp}</span>}
+                  </span>
+                  <button type="button" className={asHim ? 'btn-secondary' : 'btn-primary'} disabled={busy} aria-label={tr(`Invite ${f.name} as ${player.name}`, `${f.name} als ${player.name} einladen`)} onClick={() => void invite(f.uid!, fname)}>
+                    {asHim ? tr('Again', 'Nochmal') : tr('Invite', 'Einladen')}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {!twins.length && !friends.length && <span className="muted">{tr('No linked friend and nobody joined without bets – invite with the QR code or the link below.', 'Kein verknüpfter Freund und niemand ohne Wetten beigetreten – einladen mit dem QR-Code oder dem Link unten.')}</span>}
+        {msg && (
+          <span className="muted small" role="status">
+            {msg}
+          </span>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function JoinMark(props: { state: 'me' | 'in' | 'out' }) {
   const label = props.state === 'me' ? tr('you', 'du') : props.state === 'in' ? tr('joined', 'beigetreten') : tr('not joined yet', 'noch nicht beigetreten');
   return (
@@ -636,7 +729,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
   useTop(props.code);
   const pools = usePools();
   const entry = pools.find((e) => e.code === props.code);
-  const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | 'invite' | 'finish' | 'pool'>(null);
+  const [sheet, setSheet] = useState<null | { edit: Wager | null } | { library: string } | { whois: string } | 'invite' | 'finish' | 'pool'>(null);
   const [msg, setMsg] = useState<string | null>(null);
   // not on this phone yet (a push tapped on another phone of the same account): fetched from the server
   const [lookup, setLookup] = useState<'busy' | 'none' | null>(null);
@@ -760,6 +853,17 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               <h2>{p.name}</h2>
               <JoinMark state={p.id === entry.me ? 'me' : p.joined ? 'in' : 'out'} />
             </div>
+            {/* the host invites right at a player not on a phone yet – or gives him the one who joined as a new player */}
+            {host && !p.joined?.uid && p.id !== entry.me && (
+              <button type="button" className="btn-secondary pool-whois" aria-label={tr(`Invite ${p.name}`, `${p.name} einladen`)} onClick={() => setSheet({ whois: p.id })}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="10" cy="8" r="4" />
+                  <path d="M3 21c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+                  <path d="M19 8v6M16 11h6" />
+                </svg>
+                {p.invited ? tr(`Invited: ${p.invited.name}`, `Eingeladen: ${p.invited.name}`) : tr(`Invite ${p.name}`, `${p.name} einladen`)}
+              </button>
+            )}
             {!ws.length && <span className="muted small">{tr('No bets yet.', 'Noch keine Wetten.')}</span>}
             {/* per person a library to pick single bets from (Sascha 01.11.2026) – below the bets there are */}
             {ws.map(({ w, shown, prog }) => {
@@ -919,6 +1023,9 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
             if (await change((p) => ({ ...p, deletedAt: new Date().toISOString() }))) props.onBack();
           }}
         />
+      )}
+      {sheet && typeof sheet === 'object' && 'whois' in sheet && pool.players.some((x) => x.id === sheet.whois) && (
+        <WhoIsSheet code={props.code} pool={pool} player={pool.players.find((x) => x.id === sheet.whois)!} onClose={() => setSheet(null)} />
       )}
       {sheet === 'finish' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
