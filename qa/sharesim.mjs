@@ -198,6 +198,8 @@ export function sharedServer(b, url, o = {}) {
         return json(200, inEvent(evCode) ? [...shared.values()].filter((r) => r.event_code === evCode).map((r) => ({ game: r.game, updated_at: r.updated_at })) : []);
       }
       if (req.method() === 'GET' && /near_requests/.test(u.searchParams.get('select') ?? '')) return json(200, mine ? [{ near_requests: row.requests, members: [...row.members], updated_at: row.updated_at }] : []);
+      // who is in (the invite list's "Dabei ✓", 06.11.2026)
+      if (req.method() === 'GET' && u.searchParams.get('select') === 'members') return json(200, mine ? [{ members: [...row.members] }] : []);
       if (req.method() === 'GET') return json(200, mine ? [{ game: row.game, updated_at: row.updated_at, owner: row.owner }] : []);
       if (req.method() === 'POST') {
         const r = body();

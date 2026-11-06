@@ -1352,6 +1352,21 @@ export const roundJoinLink = (code: string): string => `${linkBase()}#round=${co
 // ---------- a linked friend invited with a tap (Sascha 03.11.2026: "invite a friend to a round with one click – a
 // push, or better a request right in the app when it is open, so he joins straight away")
 
+/** The accounts already in a round, tournament, series, game or pool (Sascha 06.11.2026: "Christopher invited and in –
+ *  at mine it still says 'Einladen'") – null when it cannot be asked (offline, not signed in). */
+export async function rowMembers(code: string): Promise<string[] | null> {
+  const h = await headers();
+  if (!h) return null;
+  try {
+    const r = await fetch(`${table()}?code=eq.${encodeURIComponent(code)}&select=members`, { headers: h });
+    if (!r.ok) return null;
+    const rows = (await r.json()) as { members?: string[] | null }[];
+    return rows.length ? (rows[0].members ?? []) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The host's phone lets an invited friend in itself – when the function on the server does not know friends yet (no
  *  push then; his app, open, still asks him). */
 export async function letInvited(code: string, friend: string, name: string, who: string): Promise<boolean> {

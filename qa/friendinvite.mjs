@@ -80,6 +80,11 @@ async function run(o) {
   const cr = await round(C).catch(() => null);
   ok(cr?.shared?.code === code && cr.players.find((p) => p.isMe)?.name === 'Cedric', `Cedric: in the round at once, as himself (${cr?.players.map((p) => `${p.name}${p.isMe ? '*' : ''}`).join(', ') ?? 'no round'})`);
   ok(!pushes.some((x) => x.action === 'asked' && x.from === 'Cedric'), 'no asking the host – invited is let in');
+  // Sascha's invitation again (Sascha 06.11.2026: "Christopher is in – at mine it still says 'Einladen'"): the app shown
+  // again, the list asks the server – Cedric "Dabei ✓"
+  await H.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await friends.locator('button', { hasText: 'Dabei ✓' }).waitFor({ timeout: 8000 }).catch(() => {});
+  ok((await friends.getByRole('button', { name: 'Cedric ist dabei' }).count()) === 1 && (await friends.getByRole('button', { name: 'Cedric ist dabei' }).isDisabled()), `Sascha's invitation: Cedric "Dabei ✓", no "Einladen" any more (${(await friends.innerText().catch(() => '')).replace(/\s+/g, ' ').slice(-60)})`);
   // his own score on top
   await C.locator('.map-score').click().catch(() => {});
   await C.locator('.score-player').first().waitFor({ timeout: 8000 }).catch(() => {});

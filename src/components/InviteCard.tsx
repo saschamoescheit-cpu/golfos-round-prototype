@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 import { tr } from '../lib/i18n';
 import { Qr } from './ShareGame';
 import { showCode } from '../lib/sharedgame';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { inviteFriend } from '../lib/push';
 import { loadFriends } from '../lib/friends';
 import { canLink } from '../lib/friendlinks';
-import { letInvited } from '../lib/sharedround';
+import { letInvited, rowMembers } from '../lib/sharedround';
 import { loadProfile, shownName } from '../lib/profile';
 import { Avatar } from './Avatar';
 
@@ -119,6 +119,20 @@ export function FriendInvite(props: { code: string; /** only these – the fligh
   const [state, setState] = useState<Record<string, 'busy' | 'sent' | 'silent' | 'old' | 'failed'>>({});
   const wanted = props.only?.map((n) => n.trim().toLowerCase()).filter(Boolean);
   const friends = canLink() ? loadFriends().filter((f) => f.uid && (!wanted || wanted.includes(f.name.trim().toLowerCase()) || wanted.includes((f.fullName ?? '').trim().toLowerCase()))) : [];
+  // who is in already – from the server, on opening and when the page shows again (Sascha 06.11.2026: "Christopher is
+  // in – at mine it still says 'Einladen'")
+  const [members, setMembers] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const look = () => void rowMembers(props.code).then((m) => alive && m && setMembers(m));
+    look();
+    const onShow = () => document.visibilityState === 'visible' && look();
+    document.addEventListener('visibilitychange', onShow);
+    return () => {
+      alive = false;
+      document.removeEventListener('visibilitychange', onShow);
+    };
+  }, [props.code]);
   if (!friends.length) return null;
   const go = async (uid: string, name: string) => {
     setState((x) => ({ ...x, [uid]: 'busy' }));
@@ -148,7 +162,9 @@ export function FriendInvite(props: { code: string; /** only these – the fligh
       <span className="eyebrow">{tr('Invite linked friends', 'Verknüpfte Freunde einladen')}</span>
       {friends.map((f) => {
         const st = state[f.uid!];
-        const done = st === 'sent' || st === 'silent' || st === 'old';
+        // in already (on the server): "Dabei ✓" – an invitation tapped just now: "Eingeladen ✓" until the next look
+        const isIn = members.includes(f.uid!) && st !== 'busy';
+        const done = isIn || st === 'sent' || st === 'silent' || st === 'old';
         return (
           <div key={f.uid} className="invite-friend">
             <Avatar name={f.name} photo={f.photo} size={32} />
@@ -156,8 +172,8 @@ export function FriendInvite(props: { code: string; /** only these – the fligh
               <strong>{f.fullName || f.name}</strong>
               {f.hcp.trim() && <span className="muted small"> · HCP {f.hcp}</span>}
             </span>
-            <button type="button" className={done ? 'btn-secondary' : 'btn-primary'} disabled={st === 'busy' || done} aria-label={done ? tr(`${f.name} invited`, `${f.name} eingeladen`) : tr(`Invite ${f.name}`, `${f.name} einladen`)} onClick={() => void go(f.uid!, f.fullName || f.name)}>
-              {st === 'busy' ? '…' : done ? tr('Invited ✓', 'Eingeladen ✓') : tr('Invite', 'Einladen')}
+            <button type="button" className={done ? 'btn-secondary' : 'btn-primary'} disabled={st === 'busy' || done} aria-label={isIn ? tr(`${f.name} is in`, `${f.name} ist dabei`) : done ? tr(`${f.name} invited`, `${f.name} eingeladen`) : tr(`Invite ${f.name}`, `${f.name} einladen`)} onClick={() => void go(f.uid!, f.fullName || f.name)}>
+              {st === 'busy' ? '…' : isIn ? tr('In ✓', 'Dabei ✓') : done ? tr('Invited ✓', 'Eingeladen ✓') : tr('Invite', 'Einladen')}
             </button>
           </div>
         );
