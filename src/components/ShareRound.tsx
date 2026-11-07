@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
-import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -347,8 +347,15 @@ export function JoinRoundSheet(props: {
   const team = isTeamMode(ev?.format?.mode);
   const join = async (e: RoundEvent, f: Flight, pid: string) => {
     await ready(e);
+    // his flight ended (a round finished, by him or another phone of it): taking part again opens it again (07.11.2026)
+    let ev2 = e;
+    if (f.finishedAt) {
+      setBusy(tr('Opening the flight again …', 'Flight wird wieder geöffnet …'));
+      ev2 = (await reopenFlight(code, f.id)) ?? e;
+    }
     setBusy(null);
-    props.onJoined(roundFromEvent(e, f.id, pid, code, newId(), who()));
+    const f2 = ev2.flights[f.id] ?? f;
+    props.onJoined(roundFromEvent(ev2, f2.id, pid, code, newId(), who()));
   };
   // the own name in the flight: in at once – no "who are you?" (Sascha 30.10.2026: "not many taps"); let in just now
   // and not there yet: the host's phone adds it in a moment, looked for a little while
@@ -356,7 +363,8 @@ export function JoinRoundSheet(props: {
     const me = who().toLowerCase();
     const t = isTeamMode(e.format?.mode);
     const hits = Object.values(e.flights).flatMap((f) =>
-      f.players.filter((p) => (t ? p.name.toLowerCase().split(' & ').includes(me) : p.name.toLowerCase() === me && writerOf(f, p.id, false) == null)).map((p) => ({ f, pid: p.id })),
+      // a single player: free – or on an earlier phone of his own (joined before, the round ended: 07.11.2026)
+      f.players.filter((p) => (t ? p.name.toLowerCase().split(' & ').includes(me) : p.name.toLowerCase() === me && (writerOf(f, p.id, false) == null || samePerson(f.phones?.[writerOf(f, p.id, false)!], who())))).map((p) => ({ f, pid: p.id })),
     );
     return hits.length === 1 ? hits[0] : null;
   };
@@ -569,14 +577,16 @@ export function JoinRoundSheet(props: {
                   {f.players.map((p) => {
                     // already on a phone: a single player is taken; a team's second phone joins it (and can take the card over)
                     const w = writerOf(f, p.id, team);
-                    const on = w ? (f.phones?.[w]?.name ?? '') : '';
+                    // an earlier phone of his own (joined before): his again, not taken (07.11.2026)
+                    const own = w != null && samePerson(f.phones?.[w], who());
+                    const on = w && !own ? (f.phones?.[w]?.name ?? '') : '';
                     return (
                       <button
                         key={p.id}
                         type="button"
                         className="chip join-chip"
                         // a single player already on his phone is his – nobody else takes his score over by a tap
-                        disabled={busy != null || (!team && w != null)}
+                        disabled={busy != null || (!team && w != null && !own)}
                         onClick={() => void join(ev, f, p.id)}
                       >
                         <span>{p.name}</span>

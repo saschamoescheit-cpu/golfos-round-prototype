@@ -227,6 +227,16 @@ export function writerOf(f: Flight, player: string, team: boolean): string | nul
   return ph[0]?.[0] ?? null;
 }
 
+/** A phone in the flight that is this person's (Sascha 07.11.2026: "after ending the round I could not get back in"):
+ *  the same account, or – without one – the same name. Each joining makes a new phone, so the old one still holds the
+ *  player; his own player stays his. */
+export function samePerson(entry: { uid?: string; name?: string } | undefined, name: string): boolean {
+  if (!entry) return false;
+  const uid = userId();
+  if (uid && entry.uid) return entry.uid === uid;
+  return !!name.trim() && (entry.name ?? '').trim().toLowerCase() === name.trim().toLowerCase();
+}
+
 /** Who signs a player's card as his marker: with a scorer, the scorer (his own card: his marker as usual). */
 export const markerOf = (f: Flight, pid: string): string | undefined => (f.scorer && pid !== f.scorer ? f.scorer : f.markers?.[pid]);
 
@@ -1081,11 +1091,25 @@ export function flightOfName(ev: RoundEvent, name: string): Flight | null {
 /** A tournament that is over for this player (Sascha 02.11.2026: "an expired tournament must go from the start page
  *  again"): its day gone, his own flight finished, every flight finished – or six hours after the last tee time. */
 export function tournamentOver(ev: RoundEvent, name: string, now = new Date()): boolean {
-  const today = localDay(now);
-  if (ev.date && ev.date < today) return true;
   const flights = liveFlights(ev);
   if (flightOfName(ev, name)?.finishedAt) return true;
   if (flights.length > 0 && flights.every((f) => f.finishedAt)) return true;
+  return playOver(ev, now);
+}
+
+/** Back into a tournament (Sascha 07.11.2026, on the course: "some ended the round and could not get back in –
+ *  finished and taking part again must work"): on its day his own flight finished – offered
+ *  as "Wieder teilnehmen"; joining opens the flight again. */
+export function canRejoin(ev: RoundEvent, name: string, now = new Date()): boolean {
+  if (ev.deletedAt || (ev.date && ev.date !== localDay(now))) return false;
+  return !!flightOfName(ev, name)?.finishedAt; // the whole day – ended by mistake at any hour
+}
+
+/** The day is gone, or six hours after the last tee time (from when it was set up, set up later). */
+function playOver(ev: RoundEvent, now: Date): boolean {
+  const today = localDay(now);
+  if (ev.date && ev.date < today) return true;
+  const flights = liveFlights(ev);
   const last = flights.map((f) => f.teeTime ?? '').filter((t) => /^\d{1,2}:\d{2}$/.test(t)).sort((a, b) => a.padStart(5, '0').localeCompare(b.padStart(5, '0'))).pop();
   if (ev.date === today && last) {
     const [h, m] = last.split(':').map(Number);

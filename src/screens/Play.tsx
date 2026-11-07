@@ -6,7 +6,7 @@ import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { TopTools } from '../components/TopTools';
 import { JoinRoundSheet, PENDING_JOIN } from '../components/ShareRound';
 import { roundsToSign } from './Rounds';
-import { flightOfName, localDay, tournamentOver, tournamentsAhead, type RoundEvent } from '../lib/sharedround';
+import { canRejoin, flightOfName, localDay, tournamentOver, tournamentsAhead, type RoundEvent } from '../lib/sharedround';
 import { dayText } from '../components/ShareRound';
 import { loadProfile, shownName } from '../lib/profile';
 
@@ -83,7 +83,7 @@ export function PlayTab(props: {
   }, [canShare]);
   // over – the own flight or all finished, or long after the last tee time – it goes again (Sascha 02.11.2026)
   // a round of it ended by mistake does not hold it back – its flight opened again by the host, it is offered again (03.11.2026)
-  const tournaments = today.filter((t) => t.ev.date === localDay() && !props.rounds.some((r) => r.shared?.code === t.code && !r.finishedAt) && !tournamentOver(t.ev, shownName(loadProfile())));
+  const tournaments = today.filter((t) => t.ev.date === localDay() && !props.rounds.some((r) => r.shared?.code === t.code && !r.finishedAt) && (!tournamentOver(t.ev, shownName(loadProfile())) || canRejoin(t.ev, shownName(loadProfile()))));
   // the ones planned for a later day (Sascha 02.11.2026: "already planned tournaments should show under Rounds")
   const ahead = today.filter((t) => t.ev.date !== localDay());
 
@@ -193,13 +193,15 @@ export function PlayTab(props: {
 
       {tournaments.map(({ code, ev }) => {
         const f = flightOfName(ev, shownName(loadProfile()));
+        // his flight ended (by mistake, or another phone of it) – back in with a tap (07.11.2026)
+        const again = !!f?.finishedAt;
         return (
           <section key={code} className="card play-card" aria-label={tr(`Tournament ${ev.name}`, `Turnier ${ev.name}`)}>
             <span className="eyebrow">{tr('Tournament today', 'Turnier heute')}</span>
             <div className="play-course">{ev.name}</div>
-            <span className="muted small">{[ev.course.name, f ? tr(`your flight${f.teeTime ? ` · ${f.teeTime}` : ''}`, `Dein Flight${f.teeTime ? ` · ${f.teeTime}` : ''}`) : null].filter(Boolean).join(' · ')}</span>
+            <span className="muted small">{[ev.course.name, f ? tr(`your flight${f.teeTime ? ` · ${f.teeTime}` : ''}`, `Dein Flight${f.teeTime ? ` · ${f.teeTime}` : ''}`) : null, again ? tr('ended', 'beendet') : null].filter(Boolean).join(' · ')}</span>
             <button type="button" className={open ? 'btn-secondary' : 'btn-primary'} onClick={() => setJoin(code)}>
-              {tr('Take part', 'Teilnehmen')}
+              {again ? tr('Take part again', 'Wieder teilnehmen') : tr('Take part', 'Teilnehmen')}
             </button>
           </section>
         );
