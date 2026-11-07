@@ -137,7 +137,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
             </span>
           )}
           {props.tours && !props.tours.today.length && props.tours.planned > 0 && (
-            <span className="small muted">{props.tours.planned === 1 ? tr('1 tournament planned', '1 Turnier geplant') : tr(`${props.tours.planned} tournaments planned`, `${props.tours.planned} Turniere geplant`)}</span>
+            <span className="small module-live">{props.tours.planned === 1 ? tr('1 tournament planned', '1 Turnier geplant') : tr(`${props.tours.planned} tournaments planned`, `${props.tours.planned} Turniere geplant`)}</span>
           )}
         </span>
         <span aria-hidden="true">›</span>
