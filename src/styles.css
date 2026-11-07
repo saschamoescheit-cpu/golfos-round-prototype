@@ -1174,7 +1174,7 @@ button.tile:disabled { opacity: 1; }
 .tour-flight-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .tour-flight-add > :only-child { grid-column: 1 / -1; }
 .tour-markers { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
-.tour-howto { display: flex; flex-direction: column; gap: 4px; }
+/* .tour-howto: "Am Turniertag" – a KeyHint now (07.11.2026), the look of .next-round-card */
 .tour-special { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 10px; }
 .tour-special .grow { min-width: 0; }
 .tour-special .select-wrap { grid-column: 1 / -1; grid-row: 2; min-width: 0; }

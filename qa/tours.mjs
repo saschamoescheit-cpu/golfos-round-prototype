@@ -418,6 +418,19 @@ const board = H.getByRole('region', { name: 'Live-Leaderboard' });
 const rows = (await board.locator('.lb-rows li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
 ok(/^Live-Leaderboard/i.test(await board.locator('.eyebrow').innerText()) && (await board.locator('.tour-live-badge').isVisible()) && /Aktualisiert \d\d:\d\d/.test(await board.innerText()), 'the leaderboard: "Live-Leaderboard", LIVE, the time of the last update');
 if (process.env.SHOTS) await board.screenshot({ path: process.env.SHOTS + '/tours-live.png' });
+// "Am Turniertag" one of the most important hints (Sascha 07.11.2026): green as "Tipp für die nächste Runde" – the
+// green card, the heading as a heading, the text bold
+const dayHint = H.locator('section.key-hint').filter({ hasText: 'Am Turniertag' });
+const dayLook = await dayHint.evaluate((el) => {
+  const probe = document.createElement('span');
+  probe.style.background = 'var(--brand-soft)';
+  document.body.appendChild(probe);
+  const green = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  const s = getComputedStyle(el);
+  return { bg: s.backgroundColor, green, border: s.borderTopWidth, h2: el.querySelector('h2')?.textContent ?? '', weight: getComputedStyle(el.querySelector('p') ?? el).fontWeight };
+}).catch(() => null);
+ok(!!dayLook && dayLook.bg === dayLook.green && dayLook.border === '1px' && dayLook.h2 === 'Am Turniertag' && Number(dayLook.weight) >= 600, `"Am Turniertag" as "Tipp für die nächste Runde": green card, heading, bold text (${JSON.stringify(dayLook)})`);
 ok(rows.length === 4 && /Erik/.test(rows[0]) && /Chris/.test(rows[3]) && rows.every((r) => /nach 3/.test(r)), `the leaderboard on its day: Erik first, Chris last, all "nach 3" (${rows.join(' | ')})`);
 // a player tapped: his scorecard opens below (Sascha 04.11.2026)
 await board.locator('.lb-rows li').first().click();

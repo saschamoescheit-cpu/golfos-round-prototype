@@ -1,4 +1,5 @@
 import { Component, useMemo, useState, type ReactNode } from 'react';
+import { KeyHint } from './KeyHint';
 import { SpeakerIcon, useSpeaking } from './SpeakerIcon';
 import type { Round } from '../types';
 import { roundSummary } from '../lib/summary';
@@ -78,10 +79,7 @@ function SummaryBody(props: { round: Round; history: Round[] }) {
       )}
     </section>
     {tip && (
-      <section className="card stats-card next-round-card">
-        <h2>{tr('Tip for the next round', 'Tipp für die nächste Runde')}</h2>
-        <p className="next-round">{tip.charAt(0).toUpperCase() + tip.slice(1)}</p>
-      </section>
+      <KeyHint title={tr('Tip for the next round', 'Tipp für die nächste Runde')}>{tip.charAt(0).toUpperCase() + tip.slice(1)}</KeyHint>
     )}
     </>
   );

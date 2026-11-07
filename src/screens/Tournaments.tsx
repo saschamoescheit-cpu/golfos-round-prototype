@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { KeyHint } from '../components/KeyHint';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
@@ -912,15 +913,13 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           <span aria-hidden="true">›</span>
         </button>
       )}
-      <section className="card tour-howto">
-        <span className="eyebrow">{tr('On the day', 'Am Turniertag')}</span>
-        <span className="small">
-          {tr(
-            'Open Rounds – "Tournament · take part" is on its start page. One tap sets up your flight with its players, markers and course.',
-            'Rounds öffnen – auf der Startseite steht „Turnier · teilnehmen“. Ein Tipp richtet deinen Flight mit Mitspielern, Zählern und Platz ein.',
-          )}
-        </span>
-      </section>
+      {/* one of the most important hints: green as "Tipp für die nächste Runde" (Sascha 07.11.2026) */}
+      <KeyHint title={tr('On the day', 'Am Turniertag')} className="tour-howto">
+        {tr(
+          'Open Rounds – "Tournament · take part" is on its start page. One tap sets up your flight with its players, markers and course.',
+          'Rounds öffnen – auf der Startseite steht „Turnier · teilnehmen“. Ein Tipp richtet deinen Flight mit Mitspielern, Zählern und Platz ein.',
+        )}
+      </KeyHint>
       {standings.rows.length > 0 && (
         <LiveBoard
           label={tr('Live leaderboard', 'Live-Leaderboard')}
