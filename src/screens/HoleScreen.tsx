@@ -229,6 +229,11 @@ export function HoleScreen(props: {
   const [imageryPref, setImageryPref] = useState<ImageryId | null>(loadImagery);
   const [player, setPlayer] = useState<{ pos: LngLat; accuracy: number; still?: boolean } | null>(null);
   const detectArmed = useRef(true); // the next good fix may move the round to the hole the player is on
+  // the hole by GPS while open (07.11.2026): the last look, the hole found once, a move by GPS, a hole chosen by hand
+  const lastLook = useRef(0);
+  const seenOnce = useRef<number | null>(null);
+  const byGps = useRef(false);
+  const manualAt = useRef(0);
   // Battery: iOS delivers a fix about every second. The screen (map, caddie, labels) is only redrawn when the player
   // moved (≥ 1 m), the accuracy changed or 3 s passed – standing still at the ball redraws rarely.
   // Accuracy: the shown position is filtered – averaged while standing at the ball, the newest fix while walking.
@@ -339,8 +344,32 @@ export function HoleScreen(props: {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
+  // the hole by GPS while the app stays open too (Sascha 07.11.2026: "automatic hole changes by GPS would be good") –
+  // before only at the start and when the phone came out of the pocket: every 15 s a look, a new hole only when it is
+  // found twice in a row (a ball beside the hole does not pull the round on); a hole chosen by hand is left alone for
+  // three minutes
+  // a look every 15 s also while standing still (the position may not change on a tee)
+  const [gpsTick, setGpsTick] = useState(0);
   useEffect(() => {
-    if (!player || !detectArmed.current || player.accuracy > 30 || setupOpen) return;
+    const t = window.setInterval(() => document.visibilityState === 'visible' && setGpsTick((x) => x + 1), 15000);
+    return () => window.clearInterval(t);
+  }, []);
+  // a hole changed – by the GPS or by hand (the hole the round opened on is neither; the strict mode runs this twice)
+  const shownHole = useRef(i);
+  useEffect(() => {
+    if (shownHole.current === i) return;
+    shownHole.current = i;
+    if (byGps.current) byGps.current = false;
+    else manualAt.current = Date.now();
+  }, [i]);
+  useEffect(() => {
+    if (!player || player.accuracy > 30 || setupOpen) return;
+    const armed = detectArmed.current;
+    if (!armed) {
+      const now = Date.now();
+      if (scoreSheet || now - lastLook.current < 15000 || now - manualAt.current < 3 * 60000) return;
+      lastLook.current = now;
+    }
     detectArmed.current = false;
     // holes left out: the tee of any later hole without a score takes the round there (Sascha 04.11.2026: 1, 2, 8, 9)
     const meP = round.players.find((p) => p.isMe) ?? round.players[0];
@@ -349,7 +378,17 @@ export function HoleScreen(props: {
       return e?.strokes == null && !e?.pickedUp;
     };
     const k = detectHole(player.pos, allMaps, i, { start: round.startHole, open });
-    if (k == null) return;
+    if (k == null) {
+      seenOnce.current = null;
+      return;
+    }
+    // while open: the same hole twice in a row before moving on
+    if (!armed && seenOnce.current !== k) {
+      seenOnce.current = k;
+      return;
+    }
+    seenOnce.current = null;
+    byGps.current = true;
     const gap = playPos(round, k) - playPos(round, i);
     // walked on to a later hole without a score for this one (Sascha 16.10.2026: "beim Weiterschalten sollte die
     // Erfassung des Scores aufklappen"): first this hole's score, then on to the hole the GPS found – not when holes
@@ -362,7 +401,7 @@ export function HoleScreen(props: {
     goTo(k, true);
     setDetected({ from: i, to: k });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [player]);
+  }, [player, gpsTick]);
 
   const course = loadCachedCourse(round.courseId);
   const courseCenter: LngLat = course ? [course.lon, course.lat] : (mapData?.greenCenter ?? player?.pos ?? [0, 0]);
