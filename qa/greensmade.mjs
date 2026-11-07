@@ -16,8 +16,9 @@ for (const name of COURSES) {
   await mockNet(ctx);
   const p = await ctx.newPage();
   const errs = [];
-  // a map tile a state's server sent without its CORS header (a hiccup there): one tile missing, no fault of the app
-  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|gds-srv\.hessen\.de|wms\.nrw\.de|lgln\.niedersachsen\.de|geobasis-bb\.de|geoservices\.bayern\.de|geodienste\.sachsen\.de|arcgisonline\.com)\/\S* due to access control/.test(e.message)) errs.push(e.message); });
+  // a map tile a state's server sent without its CORS header (a hiccup there): one tile missing, no fault of the app –
+  // Baden-Württemberg's LGL too (07.11.2026, Nippenburg); and the service worker script cut off by a reload, as elsewhere
+  p.on('pageerror', (e) => { if (!/(localhost:\d+|api\.open-meteo\.com|gds-srv\.hessen\.de|wms\.nrw\.de|lgln\.niedersachsen\.de|geobasis-bb\.de|geoservices\.bayern\.de|geodienste\.sachsen\.de|owsproxy\.lgl-bw\.de|arcgisonline\.com)\/\S* due to access control|sw\.js load failed/.test(e.message)) errs.push(e.message); });
   let dem = 0;
   p.on('request', (r) => { if (/wcs\.nrw\.de|owsproxy\.lgl-bw\.de\/owsproxy\/wcs|elevation\.nationalmap\.gov|geoservices\.lgln|inspire-hessen\.de|isk\.geobasis-bb\.de\/ows\/dgm_wcs|geodaten-mv\.de|\/dem\/(by|rp|sn)\/[\w-]+\.json/.test(r.url())) dem++; });
   await p.goto(url);
