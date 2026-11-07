@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Round } from '../types';
 import { ensureGeometry, geometryReady } from '../lib/storage';
 import { formDef, holeTeams, standingOf, type Game, type HoleExtra } from '../lib/gameforms';
-import { sharingAvailable, stamp } from '../lib/sharedgame';
+import { keptBy, sharingAvailable, stamp } from '../lib/sharedgame';
 import { InviteSheet, useGameExchange } from '../components/ShareGame';
 import { emptyEntry } from '../lib/scoring';
 import { tr } from '../lib/i18n';
@@ -112,7 +112,7 @@ export function GameOnMap(props: {
           onAbort={() => props.onDelete(g)}
           onShowScorecard={(nr, finishing) => (finishing ? props.onFinish(withRound(g, { ...nr, finishedAt: new Date().toISOString() })) : setSheet('card'))}
           onOpenBag={props.onOpenBag}
-          game={{ name: f.name(), line, teams, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null, entry: g.settings.entry === 'strokes' ? 'strokes' : 'details' }}
+          game={{ name: f.name(), line, teams, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null, entry: g.settings.entry === 'strokes' ? 'strokes' : 'details', keptBy: keptBy(g) }}
         />
       </Suspense>
       {invite && <InviteSheet game={g} onShared={props.onChange} onClose={() => setInvite(false)} />}

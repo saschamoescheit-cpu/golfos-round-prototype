@@ -221,7 +221,7 @@ export function JoinSheet(props: {
             <label>{tr(`${found.courseName} – who are you?`, `${found.courseName} – wer bist du?`)}</label>
             <div className="chip-set">
               {found.players.map((p) => (
-                <button key={p.id} type="button" className="chip" onClick={() => props.onJoined(guestRound({ ...found, shared: { code: found.shared!.code, me: p.id } }, p.id))}>
+                <button key={p.id} type="button" className="chip" onClick={() => props.onJoined(guestRound({ ...found, claims: { ...found.claims, [p.id]: new Date().toISOString() }, shared: { code: found.shared!.code, me: p.id } }, p.id))}>
                   {p.name}
                 </button>
               ))}

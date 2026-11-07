@@ -10,7 +10,7 @@ import { buildRoundHoles, loopOptions } from '../lib/loops';
 import { isLady, shownName, loadProfile } from '../lib/profile';
 import { loadCachedCourse, loadGeometry, newId } from '../lib/storage';
 import { isSpeaking, onSpeaking, stopSpeaking, toggleSpeak } from '../lib/caddietalk';
-import { setMoneySym, type Currency } from '../lib/gameforms';
+import { defaultWho, setMoneySym, WHO, type Currency, type ScoreWho } from '../lib/gameforms';
 import { currencySymbol } from '../lib/gameforms';
 import { isMoney, isNone, oweText, prizeAmount, prizeSym, type Prize } from '../lib/prize';
 import { PrizeRow } from '../components/PrizeRow';
@@ -20,7 +20,7 @@ import { deleteGame, loadFormFavs, loadGames, loadGameTrash, purgeGame, restoreG
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { InviteSheet, JoinSheet, useGameExchange } from '../components/ShareGame';
-import { exchange, sharingAvailable, stamp } from '../lib/sharedgame';
+import { exchange, keptBy, sharingAvailable, stamp } from '../lib/sharedgame';
 import { pushGame } from '../lib/push';
 import { TopBar } from '../components/ui';
 import { MENU_ICONS, MenuBar } from '../components/TabBar';
@@ -91,6 +91,9 @@ interface Draft {
   formChosen?: boolean;
   /** what is played for (Sascha 03.11.2026: "not only money – drinks, a meal …, and without a stake") – none yet: to choose */
   prize?: Prize | null;
+  /** who enters the scores on several phones – missing: the form's default (Sascha 07.11.2026) */
+  who?: ScoreWho;
+  scorer?: string;
 }
 
 /** The leader – or nobody when the first two are level. */
@@ -984,6 +987,8 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       scores: Object.fromEntries(players.map((p) => [p.id, holes.map(() => null)])),
       extra: holes.map(() => ({})),
       current: 0,
+      who: d.who ?? defaultWho(d.form),
+      ...((d.who ?? defaultWho(d.form)) === 'one' && d.scorer && players.some((p) => p.id === d.scorer) ? { scorer: d.scorer } : {}),
     };
     // played on the GPS map like a round (Sascha 16.10.2026)
     props.onStart(d.course && option ? { ...g, round: roundForGame(g, d.course, buildRoundHoles(d.course.holes, option), option.loops) } : g);
@@ -1035,6 +1040,31 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
         <div className="card">
           <FormRules form={f} />
         </div>
+      )}
+
+      {/* how the scores are entered on several phones (Sascha 07.11.2026: "show how the score entry is done – the
+          defaults by the game"), as "Score-Erfassung" in Rounds */}
+      {chosen && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span className="eyebrow">{tr('Score entry', 'Score-Erfassung')}</span>
+          <SettingsList>
+            <ChoiceRow<ScoreWho>
+              label={tr('Who enters', 'Wer erfasst')}
+              title={tr('Who enters the scores', 'Wer erfasst die Scores')}
+              value={d.who ?? defaultWho(d.form)}
+              onChange={(who) => set({ who })}
+              options={WHO.map((w) => ({ value: w.v, name: w.name(), text: w.text() }))}
+            />
+            {(d.who ?? defaultWho(d.form)) === 'one' && (
+              <ChoiceRow<string>
+                label={tr('Scorer', 'Schreiber')}
+                value={d.players.some((p) => p.id === d.scorer) ? d.scorer! : (d.players[0]?.id ?? '')}
+                onChange={(scorer) => set({ scorer })}
+                options={d.players.map((p, k) => ({ value: p.id, name: label(k) }))}
+              />
+            )}
+          </SettingsList>
+        </section>
       )}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1341,7 +1371,9 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
   useGameExchange(g, props.onChange);
   const setPar = (par: number) => props.onChange({ ...g, holes: g.holes.map((h, k) => (k === i ? { ...h, par } : h)) });
   const go = (k: number) => props.onChange({ ...g, current: Math.max(0, Math.min(g.holes.length - 1, k)) });
-  const allPar = () => props.onChange({ ...g, scores: Object.fromEntries(g.players.map((p) => [p.id, g.scores[p.id].map((s, k) => (k === i && s == null ? hole.par || 4 : s))])) });
+  // "Jeder seinen eigenen" / "Einer für alle" (07.11.2026): what another phone enters stays its own
+  const kept = keptBy(g);
+  const allPar = () => props.onChange({ ...g, scores: Object.fromEntries(g.players.map((p) => [p.id, g.scores[p.id].map((s, k) => (k === i && s == null && !kept[p.id] ? hole.par || 4 : s))])) });
   const par = hole.par || 4;
 
   return (
@@ -1379,6 +1411,16 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
         {g.players.map((p) => {
           const v = g.scores[p.id][i];
           const strokes = strokesOn(g, p)[i];
+          if (kept[p.id] != null)
+            return (
+              <div key={p.id} className="stepper-row kept-elsewhere">
+                <span className="stepper-label">
+                  {p.name}
+                  <span className="muted small">{kept[p.id] === p.name ? tr('enters his own score', 'trägt seinen Score selbst ein') : tr(`${kept[p.id]} enters it`, `${kept[p.id]} trägt ein`)}</span>
+                </span>
+                <strong className="stepper-value" aria-label={tr(`Score ${p.name}`, `Score ${p.name}`)}>{v ?? '–'}</strong>
+              </div>
+            );
           return (
             <div key={p.id} className="stepper-row">
               <span className="stepper-label">
@@ -1399,7 +1441,7 @@ function GamePlay(props: { game: Game; onChange: (g: Game) => void; onBack: () =
             </div>
           );
         })}
-        {g.players.some((p) => g.scores[p.id][i] == null) && (
+        {g.players.some((p) => g.scores[p.id][i] == null && !kept[p.id]) && (
           <button type="button" className="chip" onClick={allPar}>
             {tr('Par for the rest', 'Par für alle übrigen')}
           </button>

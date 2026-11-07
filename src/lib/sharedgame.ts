@@ -1,5 +1,5 @@
 import { mergePayments } from './gamepay';
-import type { Game } from './gameforms';
+import { defaultWho, type Game, type ScoreWho } from './gameforms';
 import { emptyEntry } from './scoring';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { pushGame } from './push';
@@ -57,9 +57,28 @@ export function mergeGames(local: Game, remote: Game): Game {
     presses,
     stamps,
     finishedAt: local.finishedAt ?? remote.finishedAt ?? null,
+    // the players the phones play – from both (Sascha 07.11.2026: "Jeder seinen eigenen")
+    ...(local.claims || remote.claims ? { claims: { ...remote.claims, ...local.claims } } : {}),
     // the payments of both phones (Sascha 03.11.2026: paid on one phone, confirmed on the other)
     ...(local.payments?.length || remote.payments?.length ? { payments: mergePayments(local.payments, remote.payments) } : {}),
   };
+}
+
+/** Who enters the scores (Sascha 07.11.2026): as set, else the game's default. */
+export const whoOf = (g: Pick<Game, 'who' | 'form'>): ScoreWho => g.who ?? defaultWho(g.form);
+/** The scores this phone does not enter in a shared game – the player, the name of who does: "Jeder seinen eigenen" –
+ *  the players other phones play; "Einer für alle" – every player but on the scorer's phone. One phone alone: none. */
+export function keptBy(g: Game): Record<string, string> {
+  if (!g.shared || !g.players.length) return {};
+  const me = g.shared.me ?? g.players[0].id; // the one who set it up plays the first player
+  const who = whoOf(g);
+  if (who === 'all') return {};
+  if (who === 'one') {
+    const scorer = g.players.find((p) => p.id === g.scorer) ?? g.players[0];
+    return scorer.id === me ? {} : Object.fromEntries(g.players.map((p) => [p.id, scorer.name]));
+  }
+  const played = new Set([g.players[0].id, ...Object.keys(g.claims ?? {})]);
+  return Object.fromEntries(g.players.filter((p) => p.id !== me && played.has(p.id)).map((p) => [p.id, p.name]));
 }
 
 /** What goes to the server: a game on the map sends only its round's frame (course, holes) – the GPS track, shots

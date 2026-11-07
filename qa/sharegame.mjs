@@ -83,6 +83,14 @@ await H.getByRole('button', { name: 'Neues Spiel' }).click();
 // no game form preset any more (Sascha 03.11.2026) – Skins picked
 await H.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await H.locator('.pick-option').filter({ has: H.locator('strong', { hasText: /^Skins$/ }) }).click();
+// how the scores are entered (Sascha 07.11.2026), by the game: Skins – everyone his own; Wolf – one for all
+const whoRow = H.locator('.settings-row').filter({ hasText: /^Wer erfasst/ });
+ok(/Jeder seinen eigenen/.test(await whoRow.innerText()) && (await H.locator('.eyebrow', { hasText: /^Score-Erfassung$/ }).count()) === 1, `host: "Score-Erfassung · Wer erfasst" – Skins: ${(await whoRow.innerText()).replace(/\s+/g, ' ')}`);
+await H.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await H.locator('.pick-option').filter({ has: H.locator('strong', { hasText: /^Wolf$/ }) }).click();
+ok(/Einer für alle/.test(await whoRow.innerText()) && (await H.locator('.settings-row').filter({ hasText: /^Schreiber/ }).count()) === 1, `Wolf: one for all, with its scorer (${(await whoRow.innerText()).replace(/\s+/g, ' ')})`);
+await H.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
+await H.locator('.pick-option').filter({ has: H.locator('strong', { hasText: /^Skins$/ }) }).click();
 await H.locator('.settings-row').filter({ hasText: 'Platz' }).click();
 await H.fill('#course-search', 'Hetzenhof');
 await H.waitForTimeout(2000);
@@ -132,13 +140,22 @@ const vals = async (p) => {
   await p.locator('.map-score').click();
   await p.waitForTimeout(300);
   const v = [];
-  for (const n of ['Sascha', 'Ben']) v.push((await block(p, n).locator('.stepper-value').first().innerText()).trim().split(/\s+/)[0]);
+  for (const n of ['Sascha', 'Ben']) v.push((await block(p, n).locator('.stepper-value, .kept-value').first().innerText()).trim().split(/\s+/)[0]);
   await p.getByRole('button', { name: 'Zurück zur Karte' }).click();
   return v.join(',');
 };
 const hv = await vals(H);
 const gv = await vals(G);
 ok(hv === '4,5', `host sees both scores: ${hv}`);
+// "Jeder seinen eigenen": the other phone's player is shown, not changed here – on both phones
+await H.locator('.map-score').click();
+await H.waitForTimeout(300);
+ok((await block(H, 'Ben').locator('.kept-value').count()) === 1 && (await block(H, 'Ben').getByRole('button', { name: /Schläge plus eins/ }).count()) === 0 && (await block(H, 'Sascha').getByRole('button', { name: /Schläge plus eins/ }).count()) === 1, 'host: Ben\'s score his own phone\'s – shown, no steppers; his own with them');
+await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
+await G.locator('.map-score').click();
+await G.waitForTimeout(300);
+ok((await block(G, 'Sascha').locator('.kept-value').count()) === 1 && (await block(G, 'Ben').getByRole('button', { name: /Schläge plus eins/ }).count()) === 1, 'guest: Sascha\'s score the host\'s phone\'s – his own with steppers');
+await G.getByRole('button', { name: 'Zurück zur Karte' }).click();
 ok(gv === '4,5', `guest sees both scores: ${gv}`);
 ok((await G.evaluate(() => JSON.parse(localStorage.getItem('golfos.games.v1'))[0].shared.me)) !== 'me', 'guest: Ben is his own player (not player 1)');
 

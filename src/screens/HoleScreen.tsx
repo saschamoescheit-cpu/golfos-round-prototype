@@ -124,6 +124,8 @@ export function HoleScreen(props: {
     /** what the game enters (Sascha 02.11.2026: "only the strokes per hole – or with details"): 'strokes' – everyone the
      *  score with penalty strokes; 'details' (default) – the own card in full */
     entry?: 'strokes' | 'details';
+    /** a shared game (Sascha 07.11.2026): the scores another phone enters – the player, the name of who does */
+    keptBy?: Record<string, string>;
     /** every player in detail (a pool's round whose bets need the details of all – Sascha 02.11.2026) */
     detailsAll?: boolean;
     /** the putts of every player before the next hole – a bet on greens or putts counts them (Sascha 02.11.2026: "the
@@ -879,7 +881,7 @@ export function HoleScreen(props: {
   }, [shareCode]);
   const views = useMemo(() => (round.shared ? shareView(round, shareEvent?.flights[round.shared.flight], !!shareEvent?.tournament) : {}), [round, shareEvent]);
   /** this phone does not keep its own score (the team's card is kept on another phone): no score asked on the way on */
-  const myScoreElsewhere = views[me.id]?.role === 'view';
+  const myScoreElsewhere = views[me.id]?.role === 'view' || props.game?.keptBy?.[me.id] != null;
   /** a hole still wanting a score from this phone: its own (unless kept elsewhere) – and the partner it marks (Sascha
    *  29.10.2026: "Sascha keeps his own score and, as marker, Cedric's") */
   const scoreToAsk = (k: number): boolean =>
@@ -1742,17 +1744,20 @@ export function HoleScreen(props: {
             notice={puttsMissing?.length ? tr(`Putts missing for ${puttsMissing.join(', ')} – a bet counts them; then on to the next hole.`, `Putts fehlen bei ${puttsMissing.join(', ')} – eine Wette zählt sie; dann geht es zum nächsten Loch.`) : undefined}
             analysis={(pid) => pid === me.id && views[pid]?.role === 'view' && !!shareEvent?.flights[round.shared!.flight]?.scorer}
             details={(pid) => withBets && (views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer))}
-            shared={Object.fromEntries(
-              Object.entries(views).map(([pid, v]) => [
-                pid,
-                {
-                  keptBy: v.role === 'view' ? (v.keptBy ?? '') : null,
-                  takeOver: v.canTakeOver ? () => void takeTheCard(pid) : undefined,
-                  other: v.other ? { label: v.other.label, cell: v.other.cells[i] ?? null } : undefined,
-                  locked: v.locked,
-                },
-              ]),
-            )}
+            shared={{
+              ...Object.fromEntries(Object.entries(props.game?.keptBy ?? {}).map(([pid, by]) => [pid, { keptBy: by }])),
+              ...Object.fromEntries(
+                Object.entries(views).map(([pid, v]) => [
+                  pid,
+                  {
+                    keptBy: v.role === 'view' ? (v.keptBy ?? '') : null,
+                    takeOver: v.canTakeOver ? () => void takeTheCard(pid) : undefined,
+                    other: v.other ? { label: v.other.label, cell: v.other.cells[i] ?? null } : undefined,
+                    locked: v.locked,
+                  },
+                ]),
+              ),
+            }}
             onChange={update}
             onPlacePutts={() => setPuttEditor(true)}
             onClose={() => {

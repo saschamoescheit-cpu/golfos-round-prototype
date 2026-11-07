@@ -48,6 +48,12 @@ export interface Game {
   presses?: { hole: number; by: string }[];
   /** Shared with other phones (sharedgame.ts): the join code, and on a joined phone which player this phone's owner is. */
   shared?: { code: string; me?: string };
+  /** who enters the scores on several phones (Sascha 07.11.2026) – missing: the form's default (defaultWho) */
+  who?: ScoreWho;
+  /** "Einer für alle": the player whose phone enters every score – missing: the first (the one who set it up) */
+  scorer?: string;
+  /** the players a phone plays (joined as) – when: "Jeder seinen eigenen" leaves the others' scores to their phones */
+  claims?: Record<string, string>;
   /** When a score (s:player:hole) or a hole's extras (x:hole) were entered – merging two phones keeps the later. */
   stamps?: Record<string, string>;
   /** Played on the GPS map (Sascha 16.10.2026): the round behind the game – map, caddie, score entry. */
@@ -57,6 +63,17 @@ export interface Game {
   /** What is played for, when not money (lib/prize) – unset: money in settings.currency. */
   prize?: import('./prize').Prize;
 }
+
+/** Who enters the scores when the game is on several phones (Sascha 07.11.2026): everyone his own (a player without a
+ *  phone by anyone), one for all (one card – the games with something to note on every hole), or everyone everything. */
+export type ScoreWho = 'own' | 'one' | 'all';
+const ONE_CARD: FormId[] = ['wolf', 'hammer', 'bbb', 'dots', 'snake'];
+export const defaultWho = (f: FormId): ScoreWho => (ONE_CARD.includes(f) ? 'one' : 'own');
+export const WHO: { v: ScoreWho; name: () => string; text: () => string }[] = [
+  { v: 'own', name: () => tr('Everyone his own', 'Jeder seinen eigenen'), text: () => tr("Every phone enters its own player's score; a player without a phone, any phone.", 'Jedes Handy trägt den Score seines Spielers ein; einen Spieler ohne Handy jedes Handy.') },
+  { v: 'one', name: () => tr('One for all', 'Einer für alle'), text: () => tr('One player enters every score – the others see the card and the standing.', 'Ein Spieler trägt alle Scores ein – die anderen sehen Karte und Stand.') },
+  { v: 'all', name: () => tr('Everyone everything', 'Alle für alle'), text: () => tr('Every phone may enter every score – the later entry counts.', 'Jedes Handy darf jeden Score eintragen – der spätere Eintrag zählt.') },
+];
 
 export interface SettingDef {
   key: string;
