@@ -49,6 +49,47 @@ ok(/Bunker (links|rechts|mittig): \d+ m bis · \d+ m drüber/.test(text), 'the p
 ok((await card.getByRole('button', { name: 'Regeln', exact: true }).count()) === 1 && (await card.getByRole('button', { name: 'Lochnotizen' }).count()) === 1, 'rules and hole notes stay');
 ok(await card.locator('.caddie-actions button').evaluateAll((bs) => bs.every((b) => b.scrollWidth <= b.clientWidth + 1)), 'the buttons read in full');
 if (S) await card.screenshot({ path: S + '/tournament-caddie.png' });
+
+// an internal tournament with "Alle Funktionen" (Sascha 07.11.2026: "we play internal tournaments and want to use
+// everything"): the same round – wind, the caddie's advice and the green slopes are back
+await p.evaluate(() => {
+  const rs = JSON.parse(localStorage.getItem('golfos.rounds.v1'));
+  rs[0].format = { ...(rs[0].format ?? { mode: 'single', scoring: 'net', allowance: 100 }), aids: true };
+  localStorage.setItem('golfos.rounds.v1', JSON.stringify(rs));
+});
+await p.reload();
+await p.waitForTimeout(6000);
+ok((await p.locator('.map-weather').count()) === 1, 'all functions: wind and weather on the map');
+ok((await p.getByRole('button', { name: /Grün-Neigung/ }).count()) === 1, 'all functions: the green slope tool');
+if (!(await p.locator('.caddie-card').count())) await p.getByRole('button', { name: /Caddie zeigen/ }).click();
+await p.waitForTimeout(600);
+ok((await p.locator('.caddie-card.tournament').count()) === 0 && (await p.locator('.caddie-card').count()) === 1, 'all functions: the full caddie, not the tournament one');
+
+// the switch in the setup of Rounds: only with "Turnier", off to start with, into the round's format
+await p.evaluate(() => {
+  localStorage.removeItem('golfos.rounds.v1');
+  sessionStorage.setItem('golfos.module', 'rounds');
+});
+await p.reload();
+await p.waitForTimeout(1200);
+await p.getByRole('button', { name: 'Neue Runde' }).click();
+await p.waitForTimeout(1500);
+await p.fill('#course-search', 'Hetzenhof');
+await p.waitForTimeout(2000);
+await p.locator('button.list-item').first().click();
+await p.getByText('Runde starten').waitFor({ timeout: 30000 });
+const aids = p.getByRole('switch', { name: /Alle Funktionen/ });
+ok((await aids.count()) === 0, 'a round with friends: no switch');
+await p.locator('.settings-row').filter({ hasText: 'Rundenart' }).click();
+await p.locator('.sheet .pick-option').filter({ hasText: /^Turnier/ }).click();
+ok((await aids.count()) === 1 && (await aids.getAttribute('aria-checked')) === 'false', 'Rundenart Turnier: "Alle Funktionen", off (Rule 4.3)');
+await aids.click();
+await p.getByRole('button', { name: /A · 9 Löcher/ }).click();
+await p.getByText('Runde starten').click();
+await p.waitForTimeout(4000);
+const started = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0]);
+ok(started.kind === 'tournament' && started.format?.aids === true, `the round started: a tournament with every function (${started.kind}, ${JSON.stringify(started.format)})`);
+ok((await p.locator('.map-weather').count()) === 1, 'and on its hole the wind');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

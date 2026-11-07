@@ -36,6 +36,10 @@ await H.locator('.sheet .pick-option').filter({ hasText: /^Vierer/ }).first().cl
 await H.waitForTimeout(200);
 ok(/Vierer/.test(await row('Modus').innerText()) && /100 %/.test(await row('HCP-Vorgabe').innerText()), `Vierer: the team handicap carries the share – 100 % (${(await row('HCP-Vorgabe').innerText()).replace(/\s+/g, ' ')})`);
 ok((await H.getByText(/Spieler 1 & 2 und 3 & 4 als Team mit einem Ball/).count()) === 1, 'how the teams come about, under the format');
+// an internal tournament (Sascha 07.11.2026): every function – the switch under the format, off to start with
+const aids = H.getByRole('switch', { name: /Alle Funktionen/ });
+ok((await aids.count()) === 1 && (await aids.getAttribute('aria-checked')) === 'false', '"Alle Funktionen" under the format, off (Rule 4.3)');
+await aids.click();
 await H.locator('input[id^="hcp-"]').first().fill('10');
 for (const [n, h] of [['Erik', '4'], ['Cedric', '20'], ['Christopher', '0']]) {
   await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
@@ -47,7 +51,7 @@ await H.getByRole('button', { name: 'Turnier anlegen' }).click();
 await H.waitForTimeout(2500);
 const code = [...sim.shared.entries()].find(([, r]) => !r.event_code && r.game?.name === 'Vierer-Cup')?.[0];
 const ev = code ? sim.event() : null;
-ok(ev?.format?.mode === 'foursome' && ev.format.allowance === 100 && ev.roundKind === 'tournament', `on the server: Vierer, 100 %, a tournament (${JSON.stringify(ev?.format)} ${ev?.roundKind})`);
+ok(ev?.format?.mode === 'foursome' && ev.format.allowance === 100 && ev.format.aids === true && ev.roundKind === 'tournament', `on the server: Vierer, 100 %, a tournament (${JSON.stringify(ev?.format)} ${ev?.roundKind})`);
 const fl = ev ? Object.values(ev.flights).filter((f) => f.players.length) : [];
 const teams = fl.flatMap((f) => f.players);
 ok(fl.length === 1 && teams.length === 2 && teams.every((t) => / & /.test(t.name) && t.members?.length === 2), `one flight, two teams of two: ${teams.map((t) => `${t.name} (${t.playingHandicap})`).join(' · ')}`);
@@ -60,14 +64,14 @@ ok(/Vierer · Zählspiel netto/.test(await H.locator('main').innerText()), 'the 
 await H.getByRole('button', { name: 'Turnier bearbeiten' }).click();
 await H.waitForTimeout(800);
 const names = await H.locator('input[id^="name-"]').evaluateAll((xs) => xs.map((x) => x.value));
-ok(names.length === 4 && ['Sascha', 'Erik', 'Cedric', 'Christopher'].every((n) => names.includes(n)) && /Vierer/.test(await row('Modus').innerText()), `changed: the four players one by one, the mode kept (${names.join(', ')})`);
+ok(names.length === 4 && ['Sascha', 'Erik', 'Cedric', 'Christopher'].every((n) => names.includes(n)) && /Vierer/.test(await row('Modus').innerText()) && (await aids.getAttribute('aria-checked')) === 'true', `changed: the four players one by one, the mode kept (${names.join(', ')})`);
 
 // ---------- on the day: a phone joins by its name – its team ----------
 const erik = await sim.phone('Erik');
 await sim.joinPlanned(erik.p, code);
 const r = await sim.round(erik.p);
 const mine = r?.players.find((p) => p.isMe);
-ok(r?.format?.mode === 'foursome' && r.players.length === 2 && / & /.test(mine?.name ?? '') && /Erik/.test(mine?.name ?? ''), `Erik on the day: Rounds plays his team (${r?.players.map((p) => `${p.name}${p.isMe ? ' – me' : ''}`).join(' · ')})`);
+ok(r?.format?.mode === 'foursome' && r.format.aids === true && r.kind === 'tournament' && r.players.length === 2 && / & /.test(mine?.name ?? '') && /Erik/.test(mine?.name ?? ''), `Erik on the day: Rounds plays his team (${r?.players.map((p) => `${p.name}${p.isMe ? ' – me' : ''}`).join(' · ')})`);
 
 // ---------- a Better Ball: each pair one row on the leaderboard ----------
 const bb = await sim.plan(H, {

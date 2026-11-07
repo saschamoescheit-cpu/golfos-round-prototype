@@ -18,6 +18,7 @@ import { isLady, shownName, loadProfile, saveProfile } from '../lib/profile';
 import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type RoundFormat } from '../lib/games';
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { InvitePanel, myName } from '../components/ShareRound';
+import { ToggleRow } from '../components/Settings';
 import { startShared } from '../lib/sharedround';
 
 const ME_KEY = 'golfos.me.v1';
@@ -350,6 +351,8 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
             </button>
           )}
         </div>
+        {/* a tournament: the aids of Rule 4.3 off – or all of them, an internal one (Sascha 07.11.2026) */}
+        {kind === 'tournament' && <ToggleRow label={tr('All functions', 'Alle Funktionen')} text={tr('An internal tournament: wind, caddie and green slopes as in any round. In an official tournament Rule 4.3 forbids them – then leave it off.', 'Internes Turnier: Wind, Caddie und Grün-Slopes wie in jeder Runde. Im offiziellen Turnier verbietet Regel 4.3 sie – dann aus lassen.')} on={!!format.aids} onChange={(on) => setFormat({ ...format, aids: on || undefined })} />}
         {!fits && (
           <p className="small good-text" style={{ margin: 0 }}>
             {tr(`${fmt.name()} needs ${fmt.need()} – you have ${playerCount}. Add players below or choose another mode.`, `${fmt.name()} braucht ${fmt.need()} – ihr seid ${playerCount}. Füge unten Spieler hinzu oder wähle einen anderen Modus.`)}

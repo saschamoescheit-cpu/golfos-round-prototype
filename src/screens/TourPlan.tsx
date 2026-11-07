@@ -21,7 +21,7 @@ import { PlayerRow, RatingLine, teeChoicesFor } from './RoundSetup';
 import { FriendChips } from './Home';
 import { TopBar } from '../components/ui';
 import { ActionBar } from '../components/ActionBar';
-import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow } from '../components/Settings';
+import { ChoiceRow, DateRow, PickSheet, SettingsList, SettingsRow, TimeRow, ToggleRow } from '../components/Settings';
 
 // Planning a tournament (Sascha 01.11.2026, rebuilt 04.11.2026: "the whole of 'Flights und Startzeiten' rebuilt – a
 // random draw, by handicap up or down, at the final day by result; a tournament over three rounds, each its own day and
@@ -86,6 +86,8 @@ export interface TourDraft {
   allowanceSet?: boolean;
   /** Texas scramble: each player's drive at least so often */
   minDrives?: number;
+  /** an internal tournament: every function – wind, caddie, green slopes (Sascha 07.11.2026) */
+  aids?: boolean;
   scoring: Scoring;
   classes: number[];
   players: TourPlayer[];
@@ -251,6 +253,7 @@ export function draftOf(e: TourEntry): TourDraft {
     allowance: ev.format?.allowance ?? (ev.format?.scoring === 'stroke' ? 0 : 100),
     allowanceSet: true,
     ...(ev.format?.minDrives ? { minDrives: ev.format.minDrives } : {}),
+    ...(ev.format?.aids ? { aids: true } : {}),
     scoring: ev.format?.scoring ?? 'net',
     classes: ev.classes ?? [],
     players,
@@ -275,6 +278,7 @@ export function draftOfMulti(s: SeriesEntry, tours: TourEntry[]): TourDraft | nu
     allowance: first.format?.allowance ?? (first.format?.scoring === 'stroke' ? 0 : 100),
     allowanceSet: true,
     ...(first.format?.minDrives ? { minDrives: first.format.minDrives } : {}),
+    ...(first.format?.aids ? { aids: true } : {}),
     scoring: first.format?.scoring ?? 'net',
     classes: first.classes ?? [],
     players,
@@ -389,6 +393,7 @@ function eventOf(d: TourDraft, k: number, name: string): PlannedEvent | null {
       scoring: d.scoring,
       allowance: d.scoring === 'stroke' ? 0 : (d.allowance ?? 100),
       ...(mode === 'scramble' && d.minDrives ? { minDrives: d.minDrives } : {}),
+      ...(d.aids ? { aids: true } : {}),
       ...(d.ownOnly && !d.oneScorer ? { marker: false } : {}),
     },
     ...(t.myTee ? { tee: t.myTee } : {}),
@@ -659,6 +664,8 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         </SettingsList>
         {/* the limits under the list – the row stays one line */}
         {d.scoring !== 'stroke' && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
+        {/* the aids of Rule 4.3 – off in a tournament, on in an internal one (Sascha 07.11.2026) */}
+        {(d.kind ?? 'tournament') === 'tournament' && <ToggleRow label={tr('All functions', 'Alle Funktionen')} text={tr('An internal tournament: wind, caddie and green slopes as in any round. In an official tournament Rule 4.3 forbids them – then leave it off.', 'Internes Turnier: Wind, Caddie und Grün-Slopes wie in jeder Runde. Im offiziellen Turnier verbietet Regel 4.3 sie – dann aus lassen.')} on={!!d.aids} onChange={(on) => set({ aids: on || undefined })} />}
         {/* how the teams come about – in every flight */}
         {(d.mode ?? 'single') !== 'single' && <span className="muted small">{teamsText(d.mode ?? 'single')}</span>}
       </section>

@@ -486,9 +486,11 @@ export function HoleScreen(props: {
   const caddieOn = useMemo(() => loadCaddieSettings().caddie, []);
   // a tournament (Rule 4.3): no wind, no caddie advice, no green slopes – distances and the player's own notes only
   // (Sascha 18.10.2026)
-  const tournament = round.kind === 'tournament';
+  // … unless the tournament is an internal one with every function (Sascha 07.11.2026: "we play internal tournaments
+  // and want to use everything") – set in its format
+  const tournament = round.kind === 'tournament' && !round.format?.aids;
   useMemo(() => setGreenSpeed(loadCaddieSettings().greenSpeed), []); // putt reads at the chosen green speed
-  const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope && round.kind !== 'tournament', []);
+  const greenSlopeOn = useMemo(() => loadCaddieSettings().greenSlope && !tournament, []);
   // Green slope: automatic from 120 m before the green (Sascha, 13.10.2026), or any time with the "Green" button.
   // null = automatic; true/false = the player switched it on or off on this hole.
   const [showGreen, setShowGreen] = useState<boolean | null>(null);

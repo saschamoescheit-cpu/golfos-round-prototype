@@ -228,7 +228,7 @@ export const FAQ: FaqTopic[] = [
       },
       {
         q: () => tr('And in a tournament?', 'Und im Turnier?'),
-        a: () => tr('Round type "Tournament": no advice (Rule 4.3) – only your notes and the distances.', 'Rundenart „Turnier“: keine Ratschläge (Regel 4.3) – nur deine Notizen und die Entfernungen.'),
+        a: () => tr('Round type "Tournament": no advice (Rule 4.3) – only your notes and the distances. An internal tournament: switch on "All functions" under the format (in the round setup or when planning the tournament) – wind, caddie and green slopes as in any round, for everyone in it.', 'Rundenart „Turnier“: keine Ratschläge (Regel 4.3) – nur deine Notizen und die Entfernungen. Internes Turnier: unter dem Format „Alle Funktionen“ einschalten (beim Einrichten der Runde oder beim Planen des Turniers) – Wind, Caddie und Grün-Slopes wie in jeder Runde, für alle im Turnier.'),
         video: 'start',
       },
     ],

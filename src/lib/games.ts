@@ -27,6 +27,9 @@ export interface RoundFormat {
   scorer?: string;
   /** Texas scramble: every player's drive used at least this often (0 / missing: an ordinary scramble) */
   minDrives?: number;
+  /** a tournament with every function – wind, caddie, green slopes (an internal one, Sascha 07.11.2026); missing: Rule
+   *  4.3, distances and the own notes only */
+  aids?: boolean;
 }
 export const DEFAULT_FORMAT: RoundFormat = { mode: 'single', scoring: 'net', allowance: 100 };
 
