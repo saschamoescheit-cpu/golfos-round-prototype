@@ -8,6 +8,7 @@ import { authToken, SUPABASE_KEY, SUPABASE_URL, userId } from './sync';
 import { tr } from './i18n';
 import { linkBase } from './native';
 import type { Special, SpecialEntries, SpecialEntry } from './specials';
+import { pushSigned, pushSpecial } from './push';
 
 // A round on several phones (Sascha 29.10.2026: "invite to a round – on Saturday we play in the same scramble team, but
 // it must also be possible to set up a kind of tournament over several flights, with a live leaderboard").
@@ -258,7 +259,10 @@ export async function signCard(round: Round, pid: string, as: 'player' | 'marker
   const ev = await changeFlight(s.code, s.flight, !!s.tournament, (f) =>
     !f || f.signed?.[pid]?.[as] || !signable(f, pid, round.holes.length).ok ? null : { ...f, signed: { ...f.signed, [pid]: { ...f.signed?.[pid], [as]: at } } },
   );
-  return !!ev?.flights[s.flight]?.signed?.[pid]?.[as];
+  const ok = !!ev?.flights[s.flight]?.signed?.[pid]?.[as];
+  // signed as the player: his marker is asked to countersign; as the marker: the player hears it is in (07.11.2026)
+  if (ok && s.tournament) pushSigned(s.code, s.flight, pid, as);
+  return ok;
 }
 
 /** A phone tells the flight it is still there at most this often (a write of its own otherwise only with a score). */
@@ -1011,7 +1015,13 @@ export async function updatePlannedEvent(code: string, ev: RoundEvent): Promise<
 
 /** A special prize's entry of a player – by his phone at the hole, or the host's correction from Games; null takes it
  *  back. Written into the flight's own row, as the scores. The event as written, or null (no connection). */
-export function setSpecial(code: string, fid: string, sid: string, pid: string, entry: SpecialEntry | null): Promise<RoundEvent | null> {
+export async function setSpecial(code: string, fid: string, sid: string, pid: string, entry: SpecialEntry | null): Promise<RoundEvent | null> {
+  const ev = await writeSpecial(code, fid, sid, pid, entry);
+  // a new best? the server works it out – everyone in the tournament hears of it (their own switch, 07.11.2026)
+  if (ev && entry) pushSpecial(code, sid);
+  return ev;
+}
+function writeSpecial(code: string, fid: string, sid: string, pid: string, entry: SpecialEntry | null): Promise<RoundEvent | null> {
   return changeFlight(code, fid, true, (f) => {
     if (!f) return null;
     const now = { ...(f.specials?.[sid] ?? {}) };
@@ -1154,6 +1164,8 @@ export async function exchangeRound(round: Round, who = ''): Promise<Round | nul
   else if (ev.by !== share.phone && JSON.stringify(ev.format ?? null) !== JSON.stringify(out.format ?? null) && !Object.values(out.entries).some((l) => l.some((e) => e.strokes != null || e.pickedUp))) {
     out = { ...out, ...(ev.format ? { format: ev.format } : {}), ...(ev.roundKind ? { kind: ev.roundKind } : {}) };
   }
+  // the flight ended here – every flight in: the tournament's result is told (lib/tourstore, Sascha 07.11.2026)
+  if (ev.tournament && round.finishedAt && liveFlights(ev).every((f) => f.finishedAt)) window.dispatchEvent(new CustomEvent('golfos:event-in', { detail: { code: share.code, ev } }));
   return { ...out, shared: { ...share, tournament: ev.tournament, base: m.base, roles: m.roles } };
 }
 const pickFrame = (e: RoundEvent): Partial<Round> => ({ loopOrder: e.loopOrder, holes: e.holes, format: e.format, tee: e.tee, rating: e.rating, kind: e.roundKind });

@@ -3,8 +3,8 @@ import { loadRounds, newId } from './storage';
 import { cachedEvent, isSigned, markerOf, type Cell } from './sharedround';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
-import { afterPayments, balances, dayOf, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
-import { pushBet } from './push';
+import { afterPayments, balances, dayOf, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
+import { pushBet, pushSettle } from './push';
 import { prizeOf, prizeSym, type Prize } from './prize';
 import { poolOfRound, roundsInPlay } from './poolround';
 
@@ -188,10 +188,41 @@ export async function syncPools(): Promise<boolean> {
       changed = true;
     }
     if (changed) savePools(list);
+    tellSettlements(list);
     return true;
   } catch {
     return false;
   }
+}
+
+const SETTLE_TOLD = 'golfos.settlepush.v1';
+/** Pools over – finished by hand, or their last day gone: what is still to give goes to the server (the app judges the
+ *  bets), which sends every player the settlement once and, a day later, to who still has to pay what is open (Sascha
+ *  07.11.2026). From this phone at most every six hours per pool, for ten days after its end. */
+export function tellSettlements(list: PoolEntry[], now = Date.now()): string[] {
+  const today = dayOf(new Date(now));
+  let told: Record<string, number> = {};
+  try {
+    told = JSON.parse(localStorage.getItem(SETTLE_TOLD) ?? '{}') as Record<string, number>;
+  } catch {
+    /* told again */
+  }
+  const sent: string[] = [];
+  for (const e of list) {
+    if (!e.me || e.pool.deletedAt || isLive(e, today)) continue;
+    const end = e.pool.finishedAt ? Date.parse(e.pool.finishedAt) : Date.parse(`${e.pool.to}T23:59:59`);
+    if (!(now - end < 10 * 864e5) || now - (told[e.code] ?? 0) < 6 * 3600e3) continue;
+    pushSettle(e.code, openPoolTransfers(e.pool, balances(e.pool, today, true)), prizeSym(prizeOf(e.pool)));
+    told[e.code] = now;
+    sent.push(e.code);
+  }
+  if (sent.length)
+    try {
+      localStorage.setItem(SETTLE_TOLD, JSON.stringify(told));
+    } catch {
+      /* storage full */
+    }
+  return sent;
 }
 
 /** A pool deleted by mistake comes back – for everyone (it was only marked deleted). */

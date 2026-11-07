@@ -9,7 +9,7 @@ import { dropNativePush, isNative, nativePushToken } from './native';
 // On the iPhone this works only for the app added to the home screen (iOS 16.4 and later) – the profile says so. The
 // iOS app gets Apple's notifications instead (01.11.2026): the same switches, the same function, its phone as "apns:…".
 
-export type PushKind = 'rounds' | 'games' | 'weather' | 'agility';
+export type PushKind = 'rounds' | 'games' | 'weather' | 'agility' | 'specials';
 export type PushKinds = Record<PushKind, boolean>;
 export interface PushState {
   on: boolean;
@@ -22,7 +22,7 @@ export interface PushState {
 const KEY = 'golfos.push.v1'; // this phone only – every phone subscribes for itself; its kinds: what the server was told
 // which notifications the player wants – the same on all his devices (Sascha 29.10.2026), synced as a setting
 const KINDS = 'golfos.pushkinds.v1';
-const ALL_ON: PushKinds = { rounds: true, games: true, weather: true, agility: true };
+const ALL_ON: PushKinds = { rounds: true, games: true, weather: true, agility: true, specials: true };
 const fn = () => `${SUPABASE_URL}/functions/v1/golfos-push`;
 
 function phoneState(): PushState | null {
@@ -277,15 +277,43 @@ export function pushAsked(to: { code?: string; ref?: string }): void {
   void call({ action: 'asked', ...to }).catch(() => null);
 }
 
+// ---------- tournaments, cards, bets, settlement, special prizes (Sascha 07.11.2026: "please build 1–6") ----------
+// The server checks each against the table (only the host changes a tournament, only a phone of it tells) and sends
+// every one once; a function on the server from before answers 400 – nothing then.
+const tell = (body: Record<string, unknown>): void => {
+  if (!loadSession() || !syncConfigured()) return;
+  void call(body).catch(() => null);
+};
+/** 1 · the host changed the tournament: per player (by name, lower case) what changed for him, and for all. */
+export const pushTourChanged = (code: string, changes: Record<string, string>, general: string): void => tell({ action: 'tour-changed', code, changes, general });
+/** 2 · every flight is in: the standing (and the series' total) – the server says it once to each. */
+export async function pushTourResult(code: string, o: { rows: { name: string; pos: string; sort: number | null }[]; hb: boolean; series?: { rows: { name: string; pos: string; sort: number | null }[]; hb: boolean } | null }): Promise<boolean> {
+  if (!loadSession() || !syncConfigured()) return false;
+  try {
+    return (await call({ action: 'tour-result', code, ...o })).ok;
+  } catch {
+    return false;
+  }
+}
+/** 3 · a card signed – as the player (his marker is asked) or as the marker (the player hears it is in). */
+export const pushSigned = (code: string, flight: string, player: string, as: 'player' | 'marker'): void => tell({ action: 'signed', code, flight, player, as });
+/** 4 · new bets in a pool: the player and the one it is against hear of it. */
+export const pushWagers = (code: string, wagers: string[]): void => tell({ action: 'wager-new', code, wagers });
+/** 5 · a pool over: the open transfers (the app judges the bets) – the settlement, and a day later what is open. */
+export const pushSettle = (code: string, transfers: { from: string; to: string; amount: number }[], sym: string): void => tell({ action: 'settle', code, transfers, sym });
+/** 6 · a special prize's entry – the server works out whether it is a new best. */
+export const pushSpecial = (code: string, special: string): void => tell({ action: 'special', code, special });
+
 /** Where a tapped notification leads: "#review=<round>", "#sign", "#games" (read once, then removed). */
-export function takePushTarget(): { review?: string; sign?: boolean; games?: boolean; pool?: string; agility?: boolean } | null {
+export function takePushTarget(): { review?: string; sign?: boolean; games?: boolean; pool?: string; agility?: boolean; tour?: string } | null {
   const h = location.hash;
-  let out: { review?: string; sign?: boolean; games?: boolean; pool?: string; agility?: boolean } | null = null;
+  let out: { review?: string; sign?: boolean; games?: boolean; pool?: string; agility?: boolean; tour?: string } | null = null;
   if (h.startsWith('#review=')) out = { review: decodeURIComponent(h.slice(8)) };
   else if (h === '#sign') out = { sign: true };
   else if (h === '#games') out = { games: true };
   else if (h === '#agility') out = { agility: true }; // a training day of the physio's routine: Agility's drills
   else if (h.startsWith('#pool=')) out = { pool: decodeURIComponent(h.slice(6)).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) }; // a bet made: its pool in Games
+  else if (h.startsWith('#tour=')) out = { tour: decodeURIComponent(h.slice(6)).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) }; // a tournament changed, its result, a special prize
   if (out) history.replaceState(null, '', location.pathname + location.search);
   return out;
 }

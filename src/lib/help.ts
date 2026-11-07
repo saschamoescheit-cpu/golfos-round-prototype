@@ -405,7 +405,7 @@ export const FAQ: FaqTopic[] = [
       },
       {
         q: () => tr('Which notifications are there?', 'Welche Mitteilungen gibt es?'),
-        a: () => tr('A round not checked yet, games on several phones, a bet made, your tee time about 45 minutes ahead, a thunderstorm on the course. Profile → Notifications.', 'Runde noch nicht geprüft, Spiele auf mehreren Handys, eine geschaffte Wette, deine Startzeit etwa 45 Minuten vorher, Gewitter auf dem Platz. Profil → Mitteilungen.'),
+        a: () => tr('A round not checked yet, a tournament card to countersign or countersigned, games on several phones, a new bet with you, a bet made, the settlement when a pool is over (and a day later what is still to pay), your tee time about 45 minutes ahead, a tournament changed by the host, its result once every flight is in, a new best at Nearest to the Pin or Long Drive (its own switch), a thunderstorm on the course. Profile → Notifications.', 'Runde noch nicht geprüft, Turnierkarte gegenzeichnen oder gegengezeichnet, Spiele auf mehreren Handys, neue Wette mit dir, eine geschaffte Wette, die Abrechnung, wenn ein Pool vorbei ist (und einen Tag später, was noch offen ist), deine Startzeit etwa 45 Minuten vorher, Turnier vom Host geändert, der Endstand, sobald alle Flights im Ziel sind, ein neuer Bester bei Nearest to the Pin oder Long Drive (eigener Schalter), Gewitter auf dem Platz. Profil → Mitteilungen.'),
         video: 'profile',
       },
       {

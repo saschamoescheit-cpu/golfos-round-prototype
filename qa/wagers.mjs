@@ -255,6 +255,9 @@ const chrisCard = H.locator('.pool-player').filter({ has: H.locator('h2', { hasT
 const rows = await chrisCard.locator('.pool-wager .title').allInnerTexts();
 ok(rows.length === 5 && rows.includes('2 Birdies in Folge') && rows.includes('9 Grüns auf 18') && rows.includes('−5 brutto'), `Chris's five bets: ${rows.join(' · ')}`);
 ok((await chrisCard.locator('.pool-wager').first().innerText()).includes('20 $ · nur bei Erfolg · mit Zähler'), 'the rules in the row: 20 $, paid when made, with marker');
+// the new bets told to the push function (Sascha 07.11.2026: "a new bet with you") – the five of Chris in one call
+const newBets = pushes.filter((x) => x.phone === 'Sascha' && x.body.action === 'wager-new');
+ok(newBets.length === 1 && newBets[0].body.wagers?.length === 5 && /^[A-Z0-9]{6}$/.test(newBets[0].body.code ?? ''), `push: the five new bets told at once (${JSON.stringify(newBets.map((x) => x.body.wagers?.length))})`);
 
 // a free bet for Erik – from his library
 await H.getByRole('button', { name: 'Wetten für Erik hinzufügen' }).click();

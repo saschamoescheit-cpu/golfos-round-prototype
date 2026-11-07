@@ -9,6 +9,10 @@
 // - a thunderstorm while a round is played: the forecast for the course, checked every 15 minutes
 // - a tournament planned in Games: the tee time of your flight, about 45 minutes before (Sascha 01.11.2026)
 // - the iOS app's phones get the same as Apple's notifications (APNs, see "Apple's notifications" below – 01.11.2026)
+// - (Sascha 07.11.2026) a tournament changed by the host (one's flight, tee time, marker; the day, the course, called
+//   off); its result once every flight is in (the series' total too); a card to countersign / countersigned; a new bet
+//   for one or against one; a pool's settlement when it is over and a day later what is still to pay; a special
+//   prize's new best (its own switch "specials")
 //
 // Web Push as the standards say – the message encrypted for the phone (RFC 8291, aes128gcm), the sender signed
 // (VAPID, RFC 8292) – with the Web Crypto of the platform, no library. The key pair of the sender is made by the function
@@ -267,6 +271,142 @@ export const helloNote = (lang?: string | null): Note => ({
   url: './',
 });
 
+// ---------- tournaments, cards, bets, the settlement, special prizes (Sascha 07.11.2026: "please build 1–6") ----------
+
+/** "+3", "Par", "−2" – or Stableford points. */
+export function scoreText(v: number | null | undefined, hb: boolean, lang?: string | null): string {
+  if (v == null || !Number.isFinite(v)) return '–';
+  if (hb) return T(lang, `${v} pts`, `${v} Pkt.`);
+  return v === 0 ? 'Par' : v > 0 ? `+${v}` : `−${-v}`;
+}
+/** "20 $", "12,50 €" – a number of the settlement in the pool's money. */
+export function amountText(v: number, sym: string, lang?: string | null): string {
+  const a = Math.abs(v);
+  const s = a % 1 ? a.toFixed(2) : String(a);
+  return `${lang === 'en' ? s : s.replace('.', ',')} ${sym}`;
+}
+/** "2,3 m" (Nearest to the Pin), "245 m" (Long Drive) – as the app shows it. */
+export function metresText(m: number, kind: string, lang?: string | null): string {
+  const v = kind === 'nearestPin' ? Math.round(m * 10) / 10 : Math.round(m);
+  return `${lang === 'en' ? String(v) : String(v).replace('.', ',')} m`;
+}
+
+/** 1 · the host changed the tournament: the player's own flight, tee time or marker – or the day, the course, called off. */
+export const tourChangedNote = (name: string, text: string, code: string, lang?: string | null): Note => ({
+  title: T(lang, `${name} · changed`, `${name} · geändert`),
+  body: text.replace(/^./, (c) => c.toUpperCase()),
+  tag: `golfos-tourchg-${code}`,
+  url: `./#tour=${code}`,
+});
+
+/** 2 · the last flight is in: the winner and one's own place – in a series the total after this round too. */
+export interface ResultRow {
+  name: string;
+  pos: string;
+  sort: number | null;
+}
+export function tourResultNote(o: { name: string; code: string; rows: ResultRow[]; hb: boolean; mine: ResultRow | null; series?: { rows: ResultRow[]; hb: boolean; mine: ResultRow | null } | null }, lang?: string | null): Note {
+  const first = o.rows.filter((r) => r.pos.replace(/^T/, '') === '1');
+  const won = first.length ? `${T(lang, first.length > 1 ? 'Winners' : 'Winner', 'Sieger')}: ${first.map((r) => r.name).join(', ')} (${scoreText(first[0].sort, o.hb, lang)})` : '';
+  const me = o.mine ? (o.mine.pos.replace(/^T/, '') === '1' ? T(lang, 'you won ✓', 'du hast gewonnen ✓') : T(lang, `you: place ${o.mine.pos} (${scoreText(o.mine.sort, o.hb, lang)})`, `du: Platz ${o.mine.pos} (${scoreText(o.mine.sort, o.hb, lang)})`)) : '';
+  const s = o.series;
+  const lead = s?.rows.find((r) => r.pos.replace(/^T/, '') === '1');
+  const total = s && lead ? T(lang, `Total: ${lead.name} leads (${scoreText(lead.sort, s.hb, lang)})${s.mine && s.mine.name !== lead.name ? `, you ${s.mine.pos}` : ''}`, `Gesamt: ${lead.name} führt (${scoreText(lead.sort, s.hb, lang)})${s.mine && s.mine.name !== lead.name ? `, du Platz ${s.mine.pos}` : ''}`) : '';
+  return {
+    title: T(lang, `${o.name} · final result`, `${o.name} · Endstand`),
+    body: [won, me, total].filter(Boolean).join(' · ') || T(lang, 'Every flight is in – the result is in Tournaments.', 'Alle Flights sind im Ziel – der Endstand steht unter Tournaments.'),
+    tag: `golfos-result-${o.code}`,
+    url: `./#tour=${o.code}`,
+  };
+}
+
+/** 3 · a card of the tournament: the player signed – his marker is asked to countersign; the marker signed – the
+ *  player hears his card is in. */
+export const signNote = (as: 'player' | 'marker', who: string, lang?: string | null): Note =>
+  as === 'player'
+    ? {
+        title: T(lang, 'Please countersign', 'Bitte gegenzeichnen'),
+        body: T(lang, `${who || 'Your player'} signed his card – check it and countersign as his marker.`, `${who || 'Dein Spieler'} hat seine Karte signiert – prüfe sie und zeichne als Zähler gegen.`),
+        tag: `golfos-sign-${who}`.slice(0, 64),
+        url: './#sign',
+      }
+    : {
+        title: T(lang, 'Card countersigned ✓', 'Karte gegengezeichnet ✓'),
+        body: T(lang, `${who || 'Your marker'} countersigned your card – it is handed in.`, `${who || 'Dein Zähler'} hat deine Karte gegengezeichnet – sie ist eingereicht.`),
+        tag: 'golfos-signed',
+        url: './#sign',
+      };
+
+/** 4 · a new bet with one: his own target, or one against him. */
+export const wagerNewNote = (o: { pool: string; code: string; labels: string[]; against: string | null; by: string }, lang?: string | null): Note => ({
+  title: o.against
+    ? T(lang, `${o.against} bets against you`, `${o.against} wettet gegen dich`)
+    : o.labels.length > 1
+      ? T(lang, `${o.labels.length} new bets for you`, `${o.labels.length} neue Wetten für dich`)
+      : T(lang, 'A new bet for you', 'Neue Wette für dich'),
+  body: [o.labels.slice(0, 3).join(', ') + (o.labels.length > 3 ? ' …' : ''), o.by && !o.against ? T(lang, `by ${o.by}`, `von ${o.by}`) : '', o.pool].filter(Boolean).join(' · '),
+  tag: `golfos-wager-${o.code}`,
+  url: `./#pool=${o.code}`,
+});
+
+/** 5 · the pool is over: what one pays and gets – once; a day later what is still to pay. */
+export interface Transfer {
+  from: string;
+  to: string;
+  amount: number;
+}
+export function settleNote(o: { pool: string; code: string; me: string; names: Record<string, string>; transfers: Transfer[]; sym: string; remind: boolean }, lang?: string | null): Note | null {
+  const pay = o.transfers.filter((t) => t.from === o.me);
+  const get = o.transfers.filter((t) => t.to === o.me);
+  const nm = (id: string) => o.names[id] || '?';
+  const lines = [
+    ...pay.map((t) => T(lang, `you pay ${amountText(t.amount, o.sym, lang)} to ${nm(t.to)}`, `du zahlst ${amountText(t.amount, o.sym, lang)} an ${nm(t.to)}`)),
+    ...(o.remind ? [] : get.map((t) => T(lang, `you get ${amountText(t.amount, o.sym, lang)} from ${nm(t.from)}`, `du bekommst ${amountText(t.amount, o.sym, lang)} von ${nm(t.from)}`))),
+  ];
+  if (!lines.length) return null;
+  return {
+    title: o.remind ? T(lang, `Still open · ${o.pool}`, `Noch offen · ${o.pool}`) : T(lang, `Settlement · ${o.pool}`, `Abrechnung · ${o.pool}`),
+    body: lines.join(' · ').replace(/^./, (c) => c.toUpperCase()) + (o.remind ? T(lang, ' – mark it paid under Games › Balance.', ' – als bezahlt markieren unter Games › Bilanz.') : ''),
+    tag: `golfos-settle-${o.code}`,
+    url: `./#pool=${o.code}`,
+  };
+}
+
+/** 6 · a special prize has a new best (its own switch – some find it too much). */
+export const specialNote = (o: { kind: string; hole: string; name: string; m: number; tour: string; code: string }, lang?: string | null): Note => ({
+  title: T(lang, `New ${o.kind === 'nearestPin' ? 'Nearest to the Pin' : 'Long Drive'} · hole ${o.hole}`, `Neuer ${o.kind === 'nearestPin' ? 'Nearest to the Pin' : 'Long Drive'} · Loch ${o.hole}`),
+  body: `${o.name}: ${metresText(o.m, o.kind, lang)} · ${o.tour}`,
+  tag: `golfos-special-${o.code}-${o.kind}-${o.hole}`.slice(0, 64),
+  url: `./#tour=${o.code}`,
+});
+
+/** Who of the players an account is: by the names it goes by (its friend card's first and full name, the name it gave
+ *  joining) – one player only, else nobody (two Chris in the field). Team names "Sascha & Ben" count each. */
+export function playerByName<P extends { name: string }>(names: (string | null | undefined)[], players: P[]): P | null {
+  const keys = new Set(names.map((n) => String(n ?? '').trim().toLowerCase()).filter(Boolean));
+  if (!keys.size) return null;
+  const hits = players.filter((p) => p.name.toLowerCase().split(' & ').some((n) => keys.has(n.trim())));
+  return hits.length === 1 ? hits[0] : null;
+}
+
+/** The best entry of a special prize over the flights – nearest to the hole, longest in the fairway; as the app. */
+export interface SpecialFlight {
+  id: string;
+  players?: { id: string; name: string }[];
+  specials?: Record<string, Record<string, { m: number | null; fairway?: boolean; at: string }>>;
+}
+export function specialLeader(kind: string, sid: string, flights: SpecialFlight[]): { player: string; name: string; m: number } | null {
+  const rows: { player: string; name: string; m: number; at: string }[] = [];
+  for (const f of flights)
+    for (const [pid, e] of Object.entries(f.specials?.[sid] ?? {})) {
+      const p = f.players?.find((x) => x.id === pid);
+      if (!p || e?.m == null || !(e.m > 0) || (kind === 'longDrive' && e.fairway === false)) continue;
+      rows.push({ player: `${f.id}/${pid}`, name: p.name, m: e.m, at: e.at });
+    }
+  rows.sort((a, b) => (kind === 'nearestPin' ? a.m - b.m : b.m - a.m) || a.at.localeCompare(b.at));
+  return rows[0] ? { player: rows[0].player, name: rows[0].name, m: rows[0].m } : null;
+}
+
 // ---------- when to send ----------
 
 /** The hour on the phone's clock (its time zone), 0–23. */
@@ -396,7 +536,7 @@ interface Sub {
   user_id: string;
   p256dh: string;
   auth: string;
-  kinds: { rounds?: boolean; games?: boolean; weather?: boolean; agility?: boolean } | null;
+  kinds: { rounds?: boolean; games?: boolean; weather?: boolean; agility?: boolean; specials?: boolean } | null;
   tz: string | null;
   lang: string | null;
   round_at: { lat: number; lng: number; course: string; until: string; since: string } | null;
@@ -527,7 +667,68 @@ async function caller(req: Request): Promise<string | null> {
 }
 
 const SUB_FIELDS = 'endpoint,user_id,p256dh,auth,kinds,tz,lang,round_at';
-const subsOf = (users: string[]) => db().get<Sub[]>(`golfos_push?select=${SUB_FIELDS}&user_id=in.(${users.join(',')})`);
+const subsOf = (users: string[]) => (users.length ? db().get<Sub[]>(`golfos_push?select=${SUB_FIELDS}&user_id=in.(${users.join(',')})`) : Promise.resolve([] as Sub[]));
+const codeOf = (v: unknown) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+const wasSent = async (user: string, key: string) => (await db().get<unknown[]>(`golfos_push_sent?select=key&user_id=eq.${user}&key=eq.${encodeURIComponent(key)}`)).length > 0;
+
+/** A tournament's row and its flights as their own rows have them (a flight emptied by the host left out). */
+interface EvFlight extends SpecialFlight {
+  name?: string;
+  phones?: Record<string, { player: string; name?: string; uid?: string }>;
+  markers?: Record<string, string>;
+  scorer?: string;
+  signed?: Record<string, { player?: string; marker?: string }>;
+  finishedAt?: string | null;
+}
+interface EvGame {
+  kind?: string;
+  name?: string;
+  tournament?: boolean;
+  planned?: boolean;
+  date?: string;
+  deletedAt?: string | null;
+  holes?: { label: string }[];
+  specials?: { id: string; kind: string; hole: number }[];
+  flights?: Record<string, EvFlight>;
+}
+interface EvRow {
+  owner: string;
+  members: string[];
+  near: Record<string, { name?: string }>;
+  game: EvGame;
+  flights: EvFlight[];
+}
+async function eventRow(code: string): Promise<EvRow | null> {
+  const d = db();
+  const [row] = await d.get<{ owner: string; members: string[] | null; near_requests: Record<string, { name?: string }> | null; game: EvGame }[]>(`golfos_shared_games?select=owner,members,near_requests,game&code=eq.${code}`);
+  if (!row || row.game?.kind !== 'round-event') return null;
+  const own = await d.get<{ game: { flight?: EvFlight } }[]>(`golfos_shared_games?select=game&event_code=eq.${encodeURIComponent(code)}`).catch(() => []);
+  const byId = new Map(Object.values(row.game.flights ?? {}).map((f) => [f.id, f] as const));
+  for (const r of own) if (r.game?.flight?.id) byId.set(r.game.flight.id, r.game.flight);
+  return { owner: row.owner, members: row.members ?? [], near: row.near_requests ?? {}, game: row.game, flights: [...byId.values()].filter((f) => f.players?.length) };
+}
+/** Which player of the tournament each account is: the phone it plays on – else by its names. */
+async function playersOf(users: string[], ev: EvRow): Promise<Map<string, { flight: EvFlight; player: { id: string; name: string } }>> {
+  const cards = users.length
+    ? await db().get<{ user_id: string; first_name?: string | null; last_name?: string | null }[]>(`golfos_friend_cards?select=user_id,first_name,last_name&user_id=in.(${users.join(',')})`).catch(() => [])
+    : [];
+  const all = ev.flights.flatMap((f) => (f.players ?? []).map((p) => ({ flight: f, player: p, name: p.name })));
+  const out = new Map<string, { flight: EvFlight; player: { id: string; name: string } }>();
+  for (const u of users) {
+    const phone = ev.flights.flatMap((f) => Object.values(f.phones ?? {}).filter((x) => x.uid === u).map((x) => ({ f, x })))[0];
+    const p = phone?.f.players?.find((y) => y.id === phone.x.player);
+    if (phone && p) {
+      out.set(u, { flight: phone.f, player: p });
+      continue;
+    }
+    const c = cards.find((x) => x.user_id === u);
+    const hit = playerByName([c?.first_name, [c?.first_name, c?.last_name].filter(Boolean).join(' '), ev.near[u]?.name], all);
+    if (hit) out.set(u, { flight: hit.flight, player: hit.player });
+  }
+  return out;
+}
+const cleanRows = (v: unknown): ResultRow[] =>
+  (Array.isArray(v) ? v : []).slice(0, 200).map((r) => ({ name: String(r?.name ?? '').slice(0, 60), pos: String(r?.pos ?? '–').slice(0, 5), sort: Number.isFinite(r?.sort) ? Number(r.sort) : null })).filter((r) => r.name);
 
 async function tick(now = new Date()): Promise<{ rounds: number; storms: number; physio: number; tees: number }> {
   const d = db();
@@ -778,6 +979,185 @@ export async function handle(req: Request): Promise<Response> {
         await d.insertIgnore('golfos_push_sent', [{ user_id: friend, key }]);
       }
       return json({ ok: true, sent });
+    }
+    // 1 · the host changed a planned tournament: each player in it hears what changed for him (his flight, tee time,
+    // marker) – or, for all, the day, the course, called off. Only the host tells; only those in the tournament hear.
+    if (action === 'tour-changed') {
+      const code = codeOf(body.code);
+      const ev = await eventRow(code);
+      if (!ev || !ev.game.planned || ev.owner !== user) return json({ error: 'not your tournament' }, 403);
+      const changes = (body.changes && typeof body.changes === 'object' ? body.changes : {}) as Record<string, unknown>;
+      const general = String(body.general ?? '').slice(0, 200);
+      const to = [...new Set(ev.members)].filter((u) => u !== user);
+      const who = await playersOf(to, ev);
+      const name = String(ev.game.name ?? 'GolfOS').slice(0, 60);
+      let n = 0;
+      for (const s of await subsOf(to)) {
+        if (s.kinds?.games === false) continue;
+        const p = who.get(s.user_id)?.player;
+        const own = p ? String(changes[p.name.trim().toLowerCase()] ?? '').slice(0, 200) : '';
+        const text = [own, general].filter(Boolean).join(' · ');
+        if (text && (await send(s, tourChangedNote(name, text, code, s.lang), 24 * 3600, 'high'))) n++;
+      }
+      return json({ ok: true, sent: n });
+    }
+    // 2 · every flight of a tournament is in: the result to everyone in it, once – the winner and one's own place
+    if (action === 'tour-result') {
+      const code = codeOf(body.code);
+      const ev = await eventRow(code);
+      if (!ev || (ev.owner !== user && !ev.members.includes(user))) return json({ error: 'not in this tournament' }, 403);
+      if (!ev.flights.length || !ev.flights.every((f) => f.finishedAt)) return json({ error: 'not over' }, 409);
+      const rows = cleanRows(body.rows);
+      const ser = body.series && typeof body.series === 'object' ? (body.series as Record<string, unknown>) : null;
+      const srows = ser ? cleanRows(ser.rows) : [];
+      const key = `tour-result:${code}`;
+      const to = [...new Set([ev.owner, ...ev.members])];
+      const who = await playersOf(to, ev);
+      const name = String(ev.game.name ?? 'GolfOS').slice(0, 60);
+      const rowOf = (list: ResultRow[], u: string) => {
+        const p = who.get(u)?.player;
+        return p ? (list.find((r) => r.name.trim().toLowerCase() === p.name.trim().toLowerCase()) ?? null) : null;
+      };
+      let n = 0;
+      for (const s of await subsOf(to)) {
+        if (s.kinds?.games === false || (await wasSent(s.user_id, key))) continue;
+        const note = tourResultNote({ name, code, rows, hb: !!body.hb, mine: rowOf(rows, s.user_id), series: ser && srows.length ? { rows: srows, hb: !!ser.hb, mine: rowOf(srows, s.user_id) } : null }, s.lang);
+        if (await send(s, note, 24 * 3600)) n++;
+      }
+      await d.insertIgnore('golfos_push_sent', to.map((u) => ({ user_id: u, key })));
+      return json({ ok: true, sent: n });
+    }
+    // 3 · a card signed: the player – his marker is asked to countersign; the marker – the player hears it is in. As the
+    // flight's row has it (only a phone of the tournament tells).
+    if (action === 'signed') {
+      const code = codeOf(body.code);
+      const fid = String(body.flight ?? '').slice(0, 64);
+      const pid = String(body.player ?? '').slice(0, 64);
+      const as = body.as === 'marker' ? 'marker' : 'player';
+      const ev = await eventRow(code);
+      if (!ev || (ev.owner !== user && !ev.members.includes(user))) return json({ error: 'not in this tournament' }, 403);
+      const f = ev.flights.find((x) => x.id === fid);
+      const s0 = f?.signed?.[pid];
+      if (!f || !s0?.[as]) return json({ error: 'not signed' }, 409);
+      const marker = f.scorer && pid !== f.scorer ? f.scorer : f.markers?.[pid];
+      // the one to tell: the marker (his card waits for him) – or the player (his marker signed)
+      const target = as === 'player' ? (s0.marker ? undefined : marker) : pid;
+      if (!target) return json({ ok: true, sent: 0 });
+      const uids = [...new Set(Object.values(f.phones ?? {}).filter((x) => x.player === target && x.uid && x.uid !== user).map((x) => x.uid!))];
+      const nameOf = (id: string | undefined) => f.players?.find((x) => x.id === id)?.name ?? '';
+      const who = as === 'player' ? nameOf(pid) : nameOf(marker);
+      const key = `signed:${code}:${fid}:${pid}:${as}`;
+      let n = 0;
+      for (const s of await subsOf(uids)) {
+        if (s.kinds?.rounds === false || (await wasSent(s.user_id, key))) continue;
+        if (await send(s, signNote(as, who, s.lang), 12 * 3600, 'high')) n++;
+      }
+      if (uids.length) await d.insertIgnore('golfos_push_sent', uids.map((u) => ({ user_id: u, key })));
+      return json({ ok: true, sent: n });
+    }
+    // 4 · new bets in a pool: the player whose target it is, and the one it is against, hear of it – once per bet
+    if (action === 'wager-new') {
+      const code = codeOf(body.code);
+      const ids = (Array.isArray(body.wagers) ? body.wagers : []).slice(0, 30).map((x) => String(x).replace(/[^A-Za-z0-9-]/g, '').slice(0, 64));
+      type Pool = { kind?: string; name?: string; players?: { id: string; name: string; joined?: { uid?: string } }[]; wagers?: (BetWager & { opponent?: string; by?: string })[] };
+      const [g] = await d.get<{ owner: string; members: string[]; game: Pool }[]>(`golfos_shared_games?select=owner,members,game&code=eq.${code}`);
+      if (!g || g.game?.kind !== 'wager-pool' || (g.owner !== user && !g.members.includes(user))) return json({ error: 'not in this pool' }, 403);
+      const players = g.game.players ?? [];
+      const uidOf = (pid?: string) => players.find((p) => p.id === pid)?.joined?.uid;
+      const nameOf = (pid?: string) => players.find((p) => p.id === pid)?.name ?? '';
+      // per account: its own new targets, and the bets against it (each with the one who bets)
+      const mine = new Map<string, { own: BetWager[]; against: { w: BetWager; by: string }[]; by: string }>();
+      for (const w of (g.game.wagers ?? []).filter((x) => ids.includes(x.id))) {
+        const pu = uidOf(w.player);
+        if (pu && pu !== user) {
+          const m = mine.get(pu) ?? { own: [], against: [], by: String(w.by ?? '') };
+          m.own.push(w);
+          mine.set(pu, m);
+        }
+        const ou = w.opponent ? uidOf(w.opponent) : undefined;
+        if (ou && ou !== user && ou !== pu) {
+          const m = mine.get(ou) ?? { own: [], against: [], by: '' };
+          m.against.push({ w, by: nameOf(w.player) });
+          mine.set(ou, m);
+        }
+      }
+      const pool = String(g.game.name ?? 'GolfOS').slice(0, 60);
+      let n = 0;
+      for (const s of await subsOf([...mine.keys()])) {
+        if (s.kinds?.games === false) continue;
+        const m = mine.get(s.user_id)!;
+        const fresh = async (list: BetWager[]) => {
+          const out: BetWager[] = [];
+          for (const w of list) if (!(await wasSent(s.user_id, `wager-new:${code}:${w.id}`))) out.push(w);
+          return out;
+        };
+        const own = await fresh(m.own);
+        const against = (await fresh(m.against.map((x) => x.w))).map((w) => m.against.find((x) => x.w.id === w.id)!);
+        if (own.length && (await send(s, wagerNewNote({ pool, code, labels: own.map((w) => betLabel(w, s.lang)), against: null, by: m.by }, s.lang), 24 * 3600))) n++;
+        for (const by of [...new Set(against.map((x) => x.by))])
+          if (await send(s, wagerNewNote({ pool, code, labels: against.filter((x) => x.by === by).map((x) => betLabel(x.w, s.lang)), against: by || '?', by: '' }, s.lang), 24 * 3600)) n++;
+      }
+      const rows = [...mine.entries()].flatMap(([u, m]) => [...m.own, ...m.against.map((x) => x.w)].map((w) => ({ user_id: u, key: `wager-new:${code}:${w.id}` })));
+      await d.insertIgnore('golfos_push_sent', rows);
+      return json({ ok: true, sent: n });
+    }
+    // 5 · a pool over: the settlement to every player in it, once – and a day later, to who still has to pay, what is
+    // open. The amounts are the app's (the judging of the bets lives there); only a phone of the pool tells.
+    if (action === 'settle') {
+      const code = codeOf(body.code);
+      type Pool = { kind?: string; name?: string; to?: string; finishedAt?: string | null; deletedAt?: string | null; players?: { id: string; name: string; joined?: { uid?: string } }[] };
+      const [g] = await d.get<{ owner: string; members: string[]; game: Pool }[]>(`golfos_shared_games?select=owner,members,game&code=eq.${code}`);
+      if (!g || g.game?.kind !== 'wager-pool' || (g.owner !== user && !g.members.includes(user))) return json({ error: 'not in this pool' }, 403);
+      const now = Date.now();
+      // over: finished by hand, or its last day gone where it ends first (UTC+14 – the app asks once its own day is over)
+      const endAt = g.game.finishedAt ? Date.parse(g.game.finishedAt) : g.game.to ? Date.parse(`${g.game.to}T10:00:00Z`) : NaN;
+      if (g.game.deletedAt || !(endAt <= now)) return json({ error: 'not over' }, 409);
+      const players = g.game.players ?? [];
+      const ids = new Set(players.map((p) => p.id));
+      const transfers: Transfer[] = (Array.isArray(body.transfers) ? body.transfers : [])
+        .slice(0, 100)
+        .map((t) => ({ from: String(t?.from ?? ''), to: String(t?.to ?? ''), amount: Math.round(Number(t?.amount) * 100) / 100 }))
+        .filter((t) => ids.has(t.from) && ids.has(t.to) && t.from !== t.to && t.amount > 0 && t.amount < 1e6);
+      const sym = String(body.sym ?? '€').slice(0, 12);
+      const names = Object.fromEntries(players.map((p) => [p.id, p.name]));
+      const pool = String(g.game.name ?? 'GolfOS').slice(0, 60);
+      let n = 0;
+      for (const p of players) {
+        const u = p.joined?.uid;
+        if (!u) continue;
+        const first = await d.get<{ sent_at: string }[]>(`golfos_push_sent?select=sent_at&user_id=eq.${u}&key=eq.${encodeURIComponent(`settle:${code}`)}`);
+        const remind = first.length > 0;
+        // the reminder: a day after the settlement, once, only with something still to pay
+        if (remind && (now - Date.parse(first[0].sent_at) < 24 * 3600e3 || (await wasSent(u, `settle-remind:${code}`)))) continue;
+        for (const s of await subsOf([u])) {
+          if (s.kinds?.games === false) continue;
+          const note = settleNote({ pool, code, me: p.id, names, transfers, sym, remind }, s.lang);
+          if (note && (await send(s, note, 24 * 3600))) n++;
+        }
+        if (!remind) await d.insertIgnore('golfos_push_sent', [{ user_id: u, key: `settle:${code}` }]);
+        else if (transfers.some((t) => t.from === p.id)) await d.insertIgnore('golfos_push_sent', [{ user_id: u, key: `settle-remind:${code}` }]);
+      }
+      return json({ ok: true, sent: n });
+    }
+    // 6 · a special prize's entry: a new best – to everyone in the tournament (their own switch), once per best
+    if (action === 'special') {
+      const code = codeOf(body.code);
+      const sid = String(body.special ?? '').slice(0, 64);
+      const ev = await eventRow(code);
+      if (!ev || (ev.owner !== user && !ev.members.includes(user))) return json({ error: 'not in this tournament' }, 403);
+      const sp = ev.game.specials?.find((x) => x.id === sid);
+      const lead = sp ? specialLeader(sp.kind, sp.id, ev.flights) : null;
+      if (!sp || !lead) return json({ ok: true, sent: 0 });
+      const key = `special:${code}:${sid}:${lead.player}:${lead.m}`.slice(0, 200);
+      const to = [...new Set([ev.owner, ...ev.members])].filter((u) => u !== user);
+      const hole = ev.game.holes?.[sp.hole]?.label ?? String(sp.hole + 1);
+      let n = 0;
+      for (const s of await subsOf(to)) {
+        if (s.kinds?.specials === false || (await wasSent(s.user_id, key))) continue;
+        if (await send(s, specialNote({ kind: sp.kind, hole, name: lead.name, m: lead.m, tour: String(ev.game.name ?? 'GolfOS').slice(0, 60), code }, s.lang), 6 * 3600)) n++;
+      }
+      if (to.length) await d.insertIgnore('golfos_push_sent', to.map((u) => ({ user_id: u, key })));
+      return json({ ok: true, sent: n });
     }
     return json({ error: 'unknown action' }, 400);
   } catch (e) {

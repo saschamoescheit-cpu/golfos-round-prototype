@@ -38,7 +38,7 @@ import { loadCourse } from '../lib/courses';
 import { BETS_ICON, BetsTab, PoolScreen, PoolSetup, StartBetCard, takeOpenPool, usePools } from './Wagers';
 import { SeriesScreen, TOURS_ICON, TourScreen, TourStartCard, ToursTab, useTours } from './Tournaments';
 import { TourSetup, newTourDraft, pickCourse, type TourDraft } from './TourPlan';
-import { tourState } from '../lib/tourstore';
+import { loadSeries, tourState } from '../lib/tourstore';
 import { isLive, loadPools } from '../lib/wagerstore';
 import { keepPoolRound, poolRoundOf } from '../lib/poolround';
 import { PoolRoundPlay, PoolRoundSetup } from './PoolRound';
@@ -165,6 +165,19 @@ function newDraft(chosen?: FormId): Draft {
   return withWhs({ form, course: null, optionId: '', players: atLeast([me], formDef(form).players[0]), settings: defaults(formDef(form)), formChosen: !!chosen });
 }
 
+/** A tournament opened by a tapped push (read once): its code – a series' code opens the series. */
+function takeOpenTour(keep = false): string | null {
+  try {
+    const code = sessionStorage.getItem('golfos.openTour');
+    if (code && !keep) sessionStorage.removeItem('golfos.openTour');
+    return code;
+  } catch {
+    return null;
+  }
+}
+const tourView = (code: string): View =>
+  loadSeries().some((e) => e.code === code) ? { name: 'series', code, back: { name: 'tab', tab: 'tours' } } : { name: 'tour', code, back: { name: 'tab', tab: 'tours' } };
+
 export function GamesApp(props: {
   /** 'games' – "Games & Bets": games and pools of bets; 'tours' – "Tournaments", a module of its own (Sascha
    *  03.11.2026: "the tournaments out of Games, their own menu item below Games") – the same screens of a tournament */
@@ -173,12 +186,28 @@ export function GamesApp(props: {
   const [games, setGames] = useState<Game[]>(loadGames);
   const running = games.filter((g) => !g.finishedAt);
   const [view, setView] = useState<View>(() => {
-    if (props.kind === 'tours') return { name: 'tab', tab: props.tab ?? 'play' };
+    if (props.kind === 'tours') {
+      // a push about a tournament (changed, its result, a special prize – 07.11.2026): only read here – the first look may
+      // run twice (React's strict mode), it is taken once the screen is there
+      const tour = takeOpenTour(true);
+      if (tour) return tourView(tour);
+      return { name: 'tab', tab: props.tab ?? 'play' };
+    }
     const pool = takeOpenPool(); // a push about a bet made: its pool
     if (pool) return { name: 'pool', code: pool };
     return running[0] && !props.tab && !location.hash.startsWith('#join=') ? { name: 'play', game: running[0] } : { name: 'tab', tab: props.tab ?? 'play' };
   });
   // the push tapped while Games is open already
+  useEffect(() => {
+    if (props.kind !== 'tours') return;
+    takeOpenTour(); // read by the first look
+    const open = () => {
+      const tour = takeOpenTour();
+      if (tour) setView(tourView(tour));
+    };
+    window.addEventListener('golfos:open-tour', open);
+    return () => window.removeEventListener('golfos:open-tour', open);
+  }, []);
   useEffect(() => {
     if (props.kind === 'tours') return;
     const open = () => {

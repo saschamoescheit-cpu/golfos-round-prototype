@@ -28,7 +28,7 @@ import { SwipeRow } from '../components/SwipeRow';
 import { PaidMarks } from '../components/PaidMarks';
 import { SignedIcon } from '../components/SignedIcon';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
-import { pushBet } from '../lib/push';
+import { pushBet, pushWagers } from '../lib/push';
 import { loadSeries, loadTours } from '../lib/tourstore';
 import { CoursePicker } from './CoursePicker';
 
@@ -990,6 +990,7 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           onAdd={async (ws) => {
             if (await change((p) => ({ ...p, wagers: [...p.wagers, ...ws] }))) {
               rememberBets(pool, ws);
+              pushWagers(props.code, ws.map((w) => w.id)); // the player and the one it is against hear of it (07.11.2026)
               setSheet(null);
               void reportWagers();
             }
@@ -1686,6 +1687,7 @@ export function RoundBetsSheet(props: { date: string; course: { id: string; name
           const ok = await changePool(entry.code, (p) => ({ ...p, wagers: [...p.wagers, ...ws] }));
           if (!ok) return setMsg(NO_NET());
           rememberBets(entry.pool, ws);
+          pushWagers(entry.code, ws.map((w) => w.id));
           setLib(null);
           void reportWagers();
         }}

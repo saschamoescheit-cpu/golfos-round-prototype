@@ -29,7 +29,7 @@ import { sign, statRounds, unsignedRounds } from './lib/signing';
 import { pushRound, takePushTarget } from './lib/push';
 import { exchangeRound } from './lib/sharedround';
 import { reportWagers, runningPools } from './lib/wagerstore';
-import { toursSoon } from './lib/tourstore';
+import { startTourPush, toursSoon } from './lib/tourstore';
 import { isLastHole } from './lib/holeorder';
 
 /** A practice session of the Training module is paused (read without loading the module). */
@@ -293,6 +293,7 @@ export function App() {
         void finishSignIn(url).then((s) => s && location.reload());
       });
     startFriendLinks(); // the own friend card after each sync, the friends' cards every few minutes
+    startTourPush(); // a tournament's result told once every flight is in (07.11.2026)
     // a friend's request asks to sign in first (03.11.2026: it shows on every screen): the profile of the start page
     const toProfile = () => {
       setModule(null);
@@ -345,6 +346,18 @@ export function App() {
       if (t.games) {
         setGamesTab(undefined);
         setModule('games');
+        return;
+      }
+      // a tournament changed, its result, a special prize (07.11.2026): Tournaments opens it
+      if (t.tour) {
+        try {
+          sessionStorage.setItem('golfos.openTour', t.tour);
+        } catch {
+          /* Tournaments opens on its list */
+        }
+        setToursTab('tours');
+        setModule('tournaments');
+        window.dispatchEvent(new Event('golfos:open-tour'));
         return;
       }
       // a training day of the physio's routine (Agility, 1.11.2026): its drills tab with the plan on top

@@ -5,6 +5,8 @@ import { myAccount } from './wagerstore';
 import { dayOf } from './wagers';
 import type { Special } from './specials';
 import type { TourDraw } from './tourdraw';
+import { tellTourResult, tourChanges } from './tourpush';
+import { pushTourChanged } from './push';
 
 // The tournaments planned in Games (Sascha 01.11.2026: "I could set up the tournaments for the USA now, put the flights
 // together and choose the markers, and send the invitations once everyone has the app – in the USA everything is
@@ -174,9 +176,31 @@ export async function createTour(ev: PlannedEvent): Promise<string | null> {
 /** The host changes the tournament: name, day, players, flights, markers – or deletes it (only marked) and brings it
  *  back. True when the server took it; the tournament kept as the server has it now. */
 export async function changeTour(code: string, ev: PlannedEvent): Promise<boolean> {
+  const before = loadTours().find((e) => e.code === code)?.ev;
   const written = await updatePlannedEvent(code, ev);
   if (written) keepTour(code, isPlanned(written) ? written : ev);
+  // the players hear what changed for them (Sascha 07.11.2026) – the flight, the tee time, the marker; the day, the
+  // course, called off
+  if (written && before) {
+    const c = tourChanges(before, isPlanned(written) ? written : ev);
+    if (c.general || Object.keys(c.changes).length) pushTourChanged(code, c.changes, c.general);
+  }
   return !!written;
+}
+
+let resultsHeard = false;
+/** Every flight of a tournament in (a phone ended its flight, or the tournament's page saw it): the result to everyone
+ *  in it (Sascha 07.11.2026) – in a series with the total of the rounds played so far. */
+export function startTourPush(): void {
+  if (resultsHeard) return;
+  resultsHeard = true;
+  window.addEventListener('golfos:event-in', (e) => {
+    const { code, ev } = (e as CustomEvent<{ code: string; ev: RoundEvent }>).detail;
+    const ser = (ev as PlannedEvent).series;
+    const rounds = ser ? loadSeries().find((x) => x.code === ser.code)?.series.rounds : undefined;
+    const today = dayOf(new Date());
+    void tellTourResult(code, ev, rounds ? async () => (await Promise.all(rounds.filter((r) => r.date <= today).map((r) => refreshEvent(r.code)))).filter((x): x is RoundEvent => !!x) : undefined);
+  });
 }
 
 /** A row of the table changed by `change` – only if nobody wrote in between (else read again, up to four times). */

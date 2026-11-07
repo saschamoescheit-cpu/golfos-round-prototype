@@ -70,6 +70,10 @@ await H.waitForTimeout(12000);
 const f = Object.values(sim.event().flights)[0];
 const ids = f.players.map((p) => p.id);
 ok(ids.every((id) => f.signed?.[id]?.player && f.signed?.[id]?.marker), `server: both cards signed by player and marker (${JSON.stringify(f.signed ?? {}).slice(0, 120)})`);
+// the pushes of a signed card (Sascha 07.11.2026): as the player – his marker is asked to countersign; as the marker –
+// the player hears it is in. Each phone tells the function which card, the server reads the rest from the flight row.
+const signedCalls = sim.pushes.filter((x) => x.action === 'signed' && x.code === code && x.flight === f.id);
+ok(ids.every((id) => signedCalls.some((x) => x.player === id && x.as === 'player') && signedCalls.some((x) => x.player === id && x.as === 'marker')), `push: each card told signed as player and as marker (${signedCalls.map((x) => `${x.from}:${x.as}`).join(', ')})`);
 ok(/abgegeben, gesperrt/.test(await hs.innerText()), `Sascha: "${(await hs.innerText()).replace(/\s+/g, ' ')}"`);
 ok(/✓ unterschrieben/.test(await H.locator('.event-board').innerText()), 'the leaderboard: "✓ unterschrieben"');
 // locked: the score panel shows it, no steppers
