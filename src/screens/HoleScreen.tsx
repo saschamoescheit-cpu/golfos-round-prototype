@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { ownDetailsOn, setOwnDetails } from '../lib/owndetails';
 import { Avatar } from '../components/Avatar';
 import { loadStrategy, savePlannedHole, type CourseStrategy } from '../lib/strategy';
 import type { Club, DetailEntry, HoleEntry, LngLat, Round, TestEvent } from '../types';
@@ -126,6 +127,8 @@ export function HoleScreen(props: {
     entry?: 'strokes' | 'details';
     /** a shared game (Sascha 07.11.2026): the scores another phone enters – the player, the name of who does */
     keptBy?: Record<string, string>;
+    /** "Einer für alle": the players who also enter their own details (by name – 07.11.2026) */
+    ownDetails?: string[];
     /** every player in detail (a pool's round whose bets need the details of all – Sascha 02.11.2026) */
     detailsAll?: boolean;
     /** the putts of every player before the next hole – a bet on greens or putts counts them (Sascha 02.11.2026: "the
@@ -882,9 +885,19 @@ export function HoleScreen(props: {
   const views = useMemo(() => (round.shared ? shareView(round, shareEvent?.flights[round.shared.flight], !!shareEvent?.tournament) : {}), [round, shareEvent]);
   /** this phone does not keep its own score (the team's card is kept on another phone): no score asked on the way on */
   const myScoreElsewhere = views[me.id]?.role === 'view' || props.game?.keptBy?.[me.id] != null;
+  // a scorer keeps the card (Sascha 07.11.2026): this phone may still enter its own details – set per player in the
+  // setup, changed here on the phone; then the score entry asks on every hole for them
+  const ownEligible = (views[me.id]?.role === 'view' && !!shareEvent?.flights[round.shared!.flight]?.scorer) || props.game?.keptBy?.[me.id] != null;
+  const [ownOn, setOwnOn] = useState(() => ownDetailsOn(round.id, me.name, round.format?.ownDetails ?? props.game?.ownDetails));
+  const ownEmpty = (k: number): boolean => {
+    const e = round.entries[me.id]?.[k];
+    return !!e && !e.pickedUp && e.putts == null && e.fairway == null && !e.sandShots;
+  };
   /** a hole still wanting a score from this phone: its own (unless kept elsewhere) – and the partner it marks (Sascha
    *  29.10.2026: "Sascha keeps his own score and, as marker, Cedric's") */
   const scoreToAsk = (k: number): boolean =>
+    // the own details, wanted: once on a hole where none are entered yet
+    (ownEligible && ownOn && ownEmpty(k) && !scoreSeen.current.has(k)) ||
     // (a scorer: every player's – 02.11.2026)
     [...(myScoreElsewhere ? [] : [me.id]), ...round.players.filter((p) => views[p.id]?.role === 'mark' || (views[p.id]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer)).map((p) => p.id)].some((pid) => {
       const e = round.entries[pid]?.[k];
@@ -1742,7 +1755,12 @@ export function HoleScreen(props: {
             entry={props.game?.entry}
             everyone={!!props.game?.detailsAll}
             notice={puttsMissing?.length ? tr(`Putts missing for ${puttsMissing.join(', ')} – a bet counts them; then on to the next hole.`, `Putts fehlen bei ${puttsMissing.join(', ')} – eine Wette zählt sie; dann geht es zum nächsten Loch.`) : undefined}
-            analysis={(pid) => pid === me.id && views[pid]?.role === 'view' && !!shareEvent?.flights[round.shared!.flight]?.scorer}
+            analysis={(pid) => pid === me.id && ownEligible}
+            analysisOn={ownOn}
+            onAnalysis={(on) => {
+              setOwnDetails(round.id, on);
+              setOwnOn(on);
+            }}
             details={(pid) => withBets && (views[pid]?.role === 'mark' || (views[pid]?.role === 'free' && !!shareEvent?.flights[round.shared!.flight]?.scorer))}
             shared={{
               ...Object.fromEntries(Object.entries(props.game?.keptBy ?? {}).map(([pid, by]) => [pid, { keptBy: by }])),

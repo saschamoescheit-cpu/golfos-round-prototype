@@ -34,6 +34,16 @@ await H.locator('.settings-row').filter({ hasText: 'Wer erfasst' }).click();
 await H.getByRole('dialog', { name: 'Wer erfasst die Scores' }).locator('.pick-option strong').getByText('Einer für alle', { exact: true }).click();
 await H.getByRole('dialog', { name: 'Schreiber wählen' }).locator('.pick-option strong').getByText('Chris', { exact: true }).click();
 ok(/Chris/.test(await H.locator('.settings-row').filter({ hasText: 'Schreiber' }).innerText()) && (await H.getByText('Ein Spieler trägt alle Scores ein').count()) === 0, 'setup: "Einer für alle" – Chris chosen, no hint under it (04.11.2026)');
+// "Eigene Detailerfassung" (Sascha 07.11.2026: "Chris enters the score for all, Moritz and Sascha still their own"):
+// per player, the scorer not offered
+const ownRow = H.locator('.settings-row').filter({ hasText: 'Eigene Detailerfassung' });
+ok(/Niemand/.test(await ownRow.innerText()), 'setup: "Eigene Detailerfassung · Niemand" to start with');
+await ownRow.click();
+const ownSheet = H.getByRole('dialog', { name: 'Eigene Detailerfassung' });
+ok((await ownSheet.getByRole('switch').count()) === 1 && (await ownSheet.getByRole('switch', { name: /Chris/ }).count()) === 0, 'its sheet: a switch per player – not for the scorer Chris');
+await ownSheet.getByRole('switch', { name: /Sascha/ }).click();
+await ownSheet.getByRole('button', { name: 'Fertig' }).click();
+ok(/Sascha/.test(await ownRow.innerText()), `setup: "Eigene Detailerfassung · Sascha" (${(await ownRow.innerText()).replace(/\s+/g, ' ')})`);
 await card.getByRole('button', { name: 'Code erzeugen' }).click({ timeout: 3000 }).catch(() => {}); // made by itself once a partner is in the flight (03.11.2026)
 await card.locator('.join-code').waitFor({ timeout: 8000 });
 const code = (await card.locator('.join-code').innerText()).trim().replace(/-/g, '');
@@ -41,6 +51,7 @@ await H.getByRole('button', { name: 'Runde starten' }).click();
 await H.locator('.map-hole-no').waitFor({ timeout: 30000 });
 const chrisId = flight().players.find((p) => p.name === 'Chris')?.id;
 ok(!!chrisId && flight().scorer === chrisId, `server: the flight's scorer is Chris (${flight().scorer})`);
+ok(JSON.stringify(event().format?.ownDetails) === '["sascha"]', `server: Sascha enters his own details (${JSON.stringify(event().format?.ownDetails)})`);
 
 // Chris by the link, let in by Sascha
 const guest = await phone('Chris');
@@ -84,6 +95,27 @@ await H.waitForTimeout(12000);
 const sr = await (async () => H.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1')).find((r) => !r.finishedAt)))();
 ok(sr.entries.me[0].putts === 2 && sr.entries.me[0].strokes === f.scores.me[0].s, `Sascha's phone: his 2 putts kept, the score Chris's (${sr.entries.me[0].strokes})`);
 ok(flight().scores.me[0]?.d?.pu == null, "the flight: nothing of Sascha's analysis");
+
+// his own details on (set in the setup): "→" opens the score entry on the next hole for them – then he switches it
+// off on his phone, and "→" goes on as for the others
+await H.getByRole('button', { name: 'Nächstes Loch' }).click();
+await H.waitForTimeout(800);
+await H.getByRole('button', { name: 'Nächstes Loch' }).click().catch(() => {});
+await H.waitForTimeout(800);
+const openOn2 = await H.locator('.score-panel').count();
+const hole2 = (await H.locator('.map-hole-no').innerText()).trim();
+ok(openOn2 === 1 && (await H.getByRole('group', { name: 'Meine Analyse' }).count()) === 1, `own details on: on ${hole2} the score entry opens for them`);
+const sw = H.getByRole('switch', { name: /Eigene Detailerfassung/ });
+ok((await sw.getAttribute('aria-checked')) === 'true', 'the switch on his card: on (from the setup)');
+await sw.click();
+await H.waitForTimeout(300);
+ok((await H.getByRole('group', { name: 'Meine Analyse' }).count()) === 0, 'switched off on his phone: "Meine Analyse" gone');
+await H.getByRole('button', { name: 'Zurück zur Karte' }).click();
+await H.waitForTimeout(400);
+await H.getByRole('button', { name: 'Nächstes Loch' }).click();
+await H.waitForTimeout(900);
+ok((await H.locator('.score-panel').count()) === 0 && (await H.locator('.map-hole-no').innerText()).trim() !== hole2, `off: "→" goes on at once (${(await H.locator('.map-hole-no').innerText()).trim()})`);
+ok(await H.evaluate(() => Object.values(JSON.parse(localStorage.getItem('golfos.owndetails.v1') ?? '{}')).includes(false)), 'his choice kept on his phone, for this round');
 
 ok(host.errs.length === 0 && guest.errs.length === 0, `no page errors ${[...host.errs, ...guest.errs].slice(0, 2).join(' | ')}`);
 await b.close();

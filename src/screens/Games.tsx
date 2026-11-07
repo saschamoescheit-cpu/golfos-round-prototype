@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { SpeakerIcon, useSpeaking } from '../components/SpeakerIcon';
 import type { Course, Round } from '../types';
 import { ScoreTable } from '../components/ScoreTable';
@@ -94,6 +95,8 @@ interface Draft {
   /** who enters the scores on several phones – missing: the form's default (Sascha 07.11.2026) */
   who?: ScoreWho;
   scorer?: string;
+  /** "Einer für alle": who still enters his own details on the map (07.11.2026) */
+  ownDetails?: string[];
 }
 
 /** The leader – or nobody when the first two are level. */
@@ -989,6 +992,7 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
       current: 0,
       who: d.who ?? defaultWho(d.form),
       ...((d.who ?? defaultWho(d.form)) === 'one' && d.scorer && players.some((p) => p.id === d.scorer) ? { scorer: d.scorer } : {}),
+      ...((d.who ?? defaultWho(d.form)) === 'one' && d.ownDetails?.length ? { ownDetails: d.ownDetails } : {}),
     };
     // played on the GPS map like a round (Sascha 16.10.2026)
     props.onStart(d.course && option ? { ...g, round: roundForGame(g, d.course, buildRoundHoles(d.course.holes, option), option.loops) } : g);
@@ -1061,6 +1065,13 @@ function GameSetup(props: { draft: Draft; onChange: (d: Draft) => void; onBack: 
                 value={d.players.some((p) => p.id === d.scorer) ? d.scorer! : (d.players[0]?.id ?? '')}
                 onChange={(scorer) => set({ scorer })}
                 options={d.players.map((p, k) => ({ value: p.id, name: label(k) }))}
+              />
+            )}
+            {(d.who ?? defaultWho(d.form)) === 'one' && (
+              <OwnDetailsRow
+                names={d.players.map((p, k) => ({ p, k })).filter(({ p }) => p.id !== (d.players.some((x) => x.id === d.scorer) ? d.scorer : d.players[0]?.id)).map(({ k }) => label(k))}
+                value={d.ownDetails ?? []}
+                onChange={(ownDetails) => set({ ownDetails })}
               />
             )}
           </SettingsList>

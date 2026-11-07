@@ -54,6 +54,8 @@ export interface Game {
   scorer?: string;
   /** the players a phone plays (joined as) – when: "Jeder seinen eigenen" leaves the others' scores to their phones */
   claims?: Record<string, string>;
+  /** "Einer für alle": the players who also enter their own details on the map (by name, lower case – 07.11.2026) */
+  ownDetails?: string[];
   /** When a score (s:player:hole) or a hole's extras (x:hole) were entered – merging two phones keeps the later. */
   stamps?: Record<string, string>;
   /** Played on the GPS map (Sascha 16.10.2026): the round behind the game – map, caddie, score entry. */

@@ -30,6 +30,9 @@ export interface RoundFormat {
   /** a tournament with every function – wind, caddie, green slopes (an internal one, Sascha 07.11.2026); missing: Rule
    *  4.3, distances and the own notes only */
   aids?: boolean;
+  /** with a scorer: the players who also enter their own details for their analysis – by name, lower case (lib/owndetails,
+   *  Sascha 07.11.2026) */
+  ownDetails?: string[];
 }
 export const DEFAULT_FORMAT: RoundFormat = { mode: 'single', scoring: 'net', allowance: 100 };
 

@@ -88,7 +88,7 @@ const whoRow = H.locator('.settings-row').filter({ hasText: /^Wer erfasst/ });
 ok(/Jeder seinen eigenen/.test(await whoRow.innerText()) && (await H.locator('.eyebrow', { hasText: /^Score-Erfassung$/ }).count()) === 1, `host: "Score-Erfassung · Wer erfasst" – Skins: ${(await whoRow.innerText()).replace(/\s+/g, ' ')}`);
 await H.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await H.locator('.pick-option').filter({ has: H.locator('strong', { hasText: /^Wolf$/ }) }).click();
-ok(/Einer für alle/.test(await whoRow.innerText()) && (await H.locator('.settings-row').filter({ hasText: /^Schreiber/ }).count()) === 1, `Wolf: one for all, with its scorer (${(await whoRow.innerText()).replace(/\s+/g, ' ')})`);
+ok(/Einer für alle/.test(await whoRow.innerText()) && (await H.locator('.settings-row').filter({ hasText: /^Schreiber/ }).count()) === 1 && (await H.locator('.settings-row').filter({ hasText: /^Eigene Detailerfassung/ }).count()) === 1, `Wolf: one for all, with its scorer (${(await whoRow.innerText()).replace(/\s+/g, ' ')})`);
 await H.locator('.settings-row').filter({ hasText: 'Spielform' }).click();
 await H.locator('.pick-option').filter({ has: H.locator('strong', { hasText: /^Skins$/ }) }).click();
 await H.locator('.settings-row').filter({ hasText: 'Platz' }).click();

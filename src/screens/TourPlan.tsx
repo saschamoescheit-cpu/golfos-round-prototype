@@ -11,6 +11,7 @@ import { fetchShared } from '../lib/sharedratings';
 import { isLady, loadProfile, shownName } from '../lib/profile';
 import { FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type GameMode, type Scoring } from '../lib/games';
 import { ROUND_KINDS, type RoundKind } from '../lib/roundkind';
+import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { CLASS_NAMES, plannedEvent, plannedFlight, type RoundEvent } from '../lib/sharedround';
 import type { RoundHole } from '../types';
 import { addToSeries, changeMulti, changeTour, createSeries, createTour, loadSeries, loadTours, renameSeries, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
@@ -88,6 +89,8 @@ export interface TourDraft {
   minDrives?: number;
   /** an internal tournament: every function – wind, caddie, green slopes (Sascha 07.11.2026) */
   aids?: boolean;
+  /** "Einer für alle": the players who also enter their own details (by name, lower case – 07.11.2026) */
+  ownDetails?: string[];
   scoring: Scoring;
   classes: number[];
   players: TourPlayer[];
@@ -254,6 +257,7 @@ export function draftOf(e: TourEntry): TourDraft {
     allowanceSet: true,
     ...(ev.format?.minDrives ? { minDrives: ev.format.minDrives } : {}),
     ...(ev.format?.aids ? { aids: true } : {}),
+    ...(ev.format?.ownDetails?.length ? { ownDetails: ev.format.ownDetails } : {}),
     scoring: ev.format?.scoring ?? 'net',
     classes: ev.classes ?? [],
     players,
@@ -279,6 +283,7 @@ export function draftOfMulti(s: SeriesEntry, tours: TourEntry[]): TourDraft | nu
     allowanceSet: true,
     ...(first.format?.minDrives ? { minDrives: first.format.minDrives } : {}),
     ...(first.format?.aids ? { aids: true } : {}),
+    ...(first.format?.ownDetails?.length ? { ownDetails: first.format.ownDetails } : {}),
     scoring: first.format?.scoring ?? 'net',
     classes: first.classes ?? [],
     players,
@@ -394,6 +399,7 @@ function eventOf(d: TourDraft, k: number, name: string): PlannedEvent | null {
       allowance: d.scoring === 'stroke' ? 0 : (d.allowance ?? 100),
       ...(mode === 'scramble' && d.minDrives ? { minDrives: d.minDrives } : {}),
       ...(d.aids ? { aids: true } : {}),
+      ...(d.oneScorer && d.ownDetails?.length ? { ownDetails: d.ownDetails } : {}),
       ...(d.ownOnly && !d.oneScorer ? { marker: false } : {}),
     },
     ...(t.myTee ? { tee: t.myTee } : {}),
@@ -715,6 +721,8 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
               { value: 'one', name: tr('One for all', 'Einer für alle'), text: tr('One player per flight keeps the score of all and marks everyone.', 'Ein Spieler je Flight erfasst die Scores aller und zählt alle.') },
             ]}
           />
+          {/* the players who still enter their own details besides the scorer's card (07.11.2026) */}
+          {d.oneScorer && <OwnDetailsRow names={d.players.map((p) => p.name)} value={d.ownDetails ?? []} onChange={(ownDetails) => set({ ownDetails })} />}
         </SettingsList>
         {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
       </section>

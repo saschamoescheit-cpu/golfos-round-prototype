@@ -19,6 +19,7 @@ import { DEFAULT_FORMAT, FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, w
 import { sharingAvailable, sharingMissing } from '../lib/sharedgame';
 import { InvitePanel, myName } from '../components/ShareRound';
 import { ToggleRow } from '../components/Settings';
+import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { startShared } from '../lib/sharedround';
 
 const ME_KEY = 'golfos.me.v1';
@@ -232,7 +233,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
       entries,
       currentHole: 0,
       // on several phones: with a marker, when chosen (Sascha 30.10.2026 – by default everyone keeps only his own)
-      format: isTeamMode(shownFormat.mode) || counting === 'own' ? shownFormat : counting === 'marker' ? { ...shownFormat, marker: true } : { ...shownFormat, scorer: [...others.map((o) => o.id), 'me'].includes(scorerId) ? scorerId : 'me' },
+      format: isTeamMode(shownFormat.mode) || counting === 'own' ? shownFormat : counting === 'marker' ? { ...shownFormat, marker: true } : { ...shownFormat, scorer: [...others.map((o) => o.id), 'me'].includes(scorerId) ? scorerId : 'me', ...(ownDetails.length ? { ownDetails } : {}) },
       kind,
       ...(tee ? { tee } : {}),
       ...(rating ? { rating: { cr: rating.cr, slope: rating.slope } } : {}),
@@ -247,12 +248,14 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
   // who enters the scores on several phones: everyone his own, with a marker, or one player for all (02.11.2026)
   const [counting, setCounting] = useState<'own' | 'marker' | 'scorer'>('own');
   const [scorerId, setScorerId] = useState('me');
+  // "Eigene Detailerfassung" (07.11.2026): who still enters his own details besides the scorer's card
+  const [ownDetails, setOwnDetailsList] = useState<string[]>([]);
   const scorers = [{ id: 'me', name: me.name.trim() || tr('Me', 'Ich') }, ...others.map((o, i) => ({ id: o.id, name: o.name.trim() || tr(`Player ${i + 2}`, `Spieler ${i + 2}`) }))];
   const [canShare, setCanShare] = useState<boolean | null>(null);
   useEffect(() => {
     void sharingAvailable().then(setCanShare);
   }, []);
-  const invitable = useMemo(() => (canShare ? draft() : null), [canShare, share, me, others, format, optionId, kind, counting, scorerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const invitable = useMemo(() => (canShare ? draft() : null), [canShare, share, me, others, format, optionId, kind, counting, scorerId, ownDetails]); // eslint-disable-line react-hooks/exhaustive-deps
   // the code is made as the section shows (03.11.2026): what changes after it – players, format, scorer – goes to the
   // event at once (a moment after the last change), so a partner joining before the start finds the flight as it is
   useEffect(() => {
@@ -379,6 +382,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
                 <span aria-hidden="true">›</span>
               </button>
             )}
+            {counting === 'scorer' && <OwnDetailsRow names={scorers.filter((p) => p.id !== (scorers.some((x) => x.id === scorerId) ? scorerId : 'me')).map((p) => p.name)} value={ownDetails} onChange={setOwnDetailsList} />}
           </div>
           {/* no hint under it (Sascha 04.11.2026) – what each way means is in its sheet */}
         </section>

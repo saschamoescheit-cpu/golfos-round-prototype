@@ -1,4 +1,5 @@
 import type { HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
+import { ToggleRow } from './Settings';
 import { cellOf, sameScore } from '../lib/sharedround';
 import { formatToPar } from './ui';
 import { drivesShort, type TexasDrives } from '../lib/games';
@@ -137,6 +138,9 @@ export function ScoreSheet(props: {
   everyone?: boolean;
   /** the own card kept by a scorer: its own analysis beside it – putts, sand, tee shot – on this phone only (02.11.2026) */
   analysis?: (playerId: string) => boolean;
+  /** the own details on (Sascha 07.11.2026: "set per person") – and the phone's switch for it; without: shown as before */
+  analysisOn?: boolean;
+  onAnalysis?: (on: boolean) => void;
   /** Texas scramble (Sascha's concept 30.10.2026), per team: whose drive – the counts so far and who gets tight */
   texas?: Record<string, TexasDrives | null>;
   /** what holds the next hole up (putts missing while a bet counts them – 02.11.2026) */
@@ -222,7 +226,15 @@ export function ScoreSheet(props: {
               )}
               {sh.other && <OtherCount label={sh.other.label} cell={sh.other.cell} mine={cellOf(e)} />}
               {/* a scorer keeps the card – the own analysis beside it, on this phone only (Sascha 02.11.2026) */}
-              {props.analysis?.(p.id) && !e.pickedUp && (
+              {props.analysis?.(p.id) && props.onAnalysis && (
+                <ToggleRow
+                  label={tr('Own details', 'Eigene Detailerfassung')}
+                  text={tr('Putts, tee shot and sand for your own analysis – asked on every hole', 'Putts, Abschlag und Sand für deine eigene Auswertung – auf jedem Loch gefragt')}
+                  on={!!props.analysisOn}
+                  onChange={props.onAnalysis}
+                />
+              )}
+              {props.analysis?.(p.id) && (props.analysisOn || !props.onAnalysis) && !e.pickedUp && (
                 <div className="own-analysis" role="group" aria-label={tr('My analysis', 'Meine Analyse')}>
                   <span className="muted small">{tr('My analysis – only on your phone, the scorer\'s count stays the score', 'Meine Analyse – nur auf deinem Handy, die Zählung des Schreibers bleibt der Score')}</span>
                   <Stepper

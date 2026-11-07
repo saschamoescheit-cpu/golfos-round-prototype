@@ -228,7 +228,7 @@ export interface Round {
    *  really did during the round – shown on the scorecard (components/TestLogCard.tsx). The last 150. */
   testLog?: TestEvent[];
   /** Game mode and scoring (as in Hole19); missing = everyone for himself, stroke play gross. */
-  format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome' | 'greensome' | 'chapman'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number; marker?: boolean; scorer?: string; minDrives?: number; /** a tournament with every aid – wind, caddie, green slopes (an internal one, Sascha 07.11.2026) */ aids?: boolean };
+  format?: { mode: 'single' | 'match' | 'fourball' | 'scramble' | 'foursome' | 'greensome' | 'chapman'; scoring: 'stroke' | 'net' | 'stableford'; matchplay?: boolean; allowance?: number; marker?: boolean; scorer?: string; minDrives?: number; /** with a scorer: the players who also enter their own details (by name, lower case – 07.11.2026) */ ownDetails?: string[]; /** a tournament with every aid – wind, caddie, green slopes (an internal one, Sascha 07.11.2026) */ aids?: boolean };
   /** Played on several phones (Sascha 29.10.2026, lib/sharedround.ts): the event's code, this round's flight, and the
    *  flight's scores as last exchanged (what changed here, what elsewhere). */
   shared?: {

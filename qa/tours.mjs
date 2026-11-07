@@ -356,6 +356,16 @@ ok((await H.locator('.setup-part').filter({ hasText: 'Score-Erfassung' }).locato
 await scorerOf(1).click();
 await H.getByRole('dialog', { name: 'Schreiber in Flight 2' }).getByRole('button', { name: /^Cedric/ }).click();
 ok(/Schreiber\s*Cedric/.test(await scorerOf(1).innerText()) && /Schreiber\s*(Sascha|Erik)/.test(await scorerOf(0).innerText()), `Cedric keeps flight 2's score, flight 1 its first (${(await fl(1).innerText()).replace(/\s+/g, ' ')})`);
+// "Eigene Detailerfassung" under "Einer für alle" (Sascha 07.11.2026: "for Games and tournaments too"): a switch per player
+{
+  const row = H.locator('.settings-row').filter({ hasText: 'Eigene Detailerfassung' });
+  ok((await row.count()) === 1 && /Niemand/.test(await row.innerText()), 'Einer für alle: "Eigene Detailerfassung · Niemand"');
+  await row.click();
+  const s = H.getByRole('dialog', { name: 'Eigene Detailerfassung' });
+  await s.getByRole('switch', { name: /^Erik/ }).click();
+  await s.getByRole('button', { name: 'Fertig' }).click();
+  ok(/Erik/.test(await row.innerText()), `Erik enters his own details too (${(await row.innerText()).replace(/\s+/g, ' ')})`);
+}
 // the special prizes as rows (Sascha 04.11.2026), the holes ticked in a sheet – Long Drive par 4s and 5s, Nearest to the Pin par 3s
 await H.locator('.settings-row').filter({ hasText: 'Long Drive' }).click();
 {
