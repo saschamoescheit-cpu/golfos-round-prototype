@@ -9,7 +9,8 @@ import { inUsa } from '../lib/weather';
 import { parseIndex, playingHandicapFor, ratingFor, saveOwnRating } from '../lib/handicap';
 import { fetchShared } from '../lib/sharedratings';
 import { isLady, loadProfile, shownName } from '../lib/profile';
-import { type Scoring } from '../lib/games';
+import { FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type GameMode, type Scoring } from '../lib/games';
+import { ROUND_KINDS, type RoundKind } from '../lib/roundkind';
 import { CLASS_NAMES, plannedEvent, plannedFlight, type RoundEvent } from '../lib/sharedround';
 import type { RoundHole } from '../types';
 import { addToSeries, changeMulti, changeTour, createSeries, createTour, loadSeries, loadTours, renameSeries, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
@@ -77,6 +78,14 @@ export interface TourDraft {
   /** a new round of this series (a series of single tournaments) */
   series?: string;
   name: string;
+  /** the format as in Rounds (Sascha 07.11.2026: "the whole block Format – Rundenart, Modus, Scoring, HCP-Vorgabe") */
+  kind?: RoundKind;
+  mode?: GameMode;
+  /** the handicap allowance, % – 0 gross; chosen by hand: kept when the mode or the kind changes */
+  allowance?: number;
+  allowanceSet?: boolean;
+  /** Texas scramble: each player's drive at least so often */
+  minDrives?: number;
   scoring: Scoring;
   classes: number[];
   players: TourPlayer[];
@@ -103,8 +112,31 @@ export const SCORINGS = (): { v: Scoring; name: string; text: string }[] => [
   { v: 'net', name: tr('Net', 'Netto'), text: tr('Stroke play with the handicap – the strokes less the playing handicap.', 'Zählspiel mit Vorgabe – die Schläge abzüglich der Spielvorgabe.') },
   { v: 'stableford', name: 'Stableford', text: tr('Points per hole from the strokes and the handicap – the most points win.', 'Punkte je Loch aus Schlägen und Vorgabe – die meisten Punkte gewinnen.') },
 ];
-/** On the tournament's page: gross, net (the full handicap) or Stableford – no percentage (Sascha 02.11.2026). */
-export const tourScoring = (s: Scoring) => (s === 'stableford' ? 'Stableford' : s === 'net' ? tr('Stroke play net', 'Zählspiel netto') : tr('Stroke play gross', 'Zählspiel brutto'));
+/** The modes of a tournament (Sascha 07.11.2026: "every mode") – as in Rounds, without match play (one leaderboard of
+ *  the whole field ranks strokes or points). */
+export const TOUR_MODES = () => FORMATS.filter((o) => !o.matchplay && o.mode !== 'match');
+/** The handicap allowances, as in Rounds. */
+const ALLOWANCES = (): [number, string][] => [
+  [100, tr('Full handicap – usual for single play.', 'Volle Vorgabe – üblich im Einzel.')],
+  [95, tr('WHS recommendation for single stroke play and Stableford in a competition.', 'WHS-Empfehlung für Einzel-Zählspiel und Stableford im Wettspiel.')],
+  [90, tr('WHS recommendation for four-ball match play.', 'WHS-Empfehlung für Better Ball im Lochspiel.')],
+  [85, tr('WHS recommendation for four-ball stroke play.', 'WHS-Empfehlung für Better Ball im Zählspiel.')],
+  [75, tr('Share of the playing handicap that counts.', 'Anteil der Spielvorgabe, der zählt.')],
+  [50, tr('Share of the playing handicap that counts.', 'Anteil der Spielvorgabe, der zählt.')],
+  [0, tr('Gross – strokes only, no handicap.', 'Brutto – nur Schläge, ohne Vorgabe.')],
+];
+/** How the teams of a mode come about in each flight. */
+export const teamsText = (m: GameMode): string =>
+  m === 'fourball'
+    ? tr('In every flight players 1 & 2 and 3 & 4 are a team – everyone plays his own ball, the better score counts on each hole.', 'In jedem Flight sind Spieler 1 & 2 und 3 & 4 ein Team – jeder spielt seinen Ball, an jedem Loch zählt das bessere Ergebnis.')
+    : tr('In every flight players 1 & 2 and 3 & 4 play as a team with one ball (two or three in a flight: one team) – with the team handicap.', 'In jedem Flight spielen Spieler 1 & 2 und 3 & 4 als Team mit einem Ball (zu zweit oder dritt: ein Team) – mit Team-Vorgabe.');
+/** The format in one line on the tournament's page: "Better Ball · Zählspiel netto (85 %)". */
+export const tourFormat = (f: { mode?: GameMode; scoring?: Scoring; allowance?: number } | undefined): string => {
+  const s = f?.scoring ?? 'net';
+  const a = s === 'stroke' ? 0 : (f?.allowance ?? 100);
+  const sc = s === 'stableford' ? `Stableford${a === 0 ? tr(' gross', ' brutto') : a !== 100 ? ` (${a} %)` : ''}` : a === 0 ? tr('Stroke play gross', 'Zählspiel brutto') : a === 100 ? tr('Stroke play net', 'Zählspiel netto') : tr(`Stroke play net (${a} %)`, `Zählspiel netto (${a} %)`);
+  return f?.mode && f.mode !== 'single' ? `${formatOf({ mode: f.mode, scoring: s, matchplay: false }).name()} · ${sc}` : sc;
+};
 
 // the net classes (Sascha 02./03.11.2026): none, 2 or 3 – or own ones, the last up to 54
 const CLASS_TOP = 54;
@@ -149,6 +181,9 @@ export function newTourDraft(): TourDraft {
   const prof = loadProfile();
   return {
     name: '',
+    kind: 'tournament',
+    mode: 'single',
+    allowance: whsAllowance('single', false, true),
     scoring: 'net',
     classes: [],
     players: [{ id: newId(), name: shownName(prof) || '', hcp: prof.hcpIndex ?? '', tee: null }],
@@ -164,15 +199,19 @@ function roundOf(ev: PlannedEvent, code: string | undefined, players: TourPlayer
   const flightOf: Record<string, number | null> = {};
   const scorers: Record<number, string> = {};
   flights.forEach((f, k) => {
-    for (const p of f.players) {
-      let tp = players.find((x) => keyOf(x.name) === keyOf(p.name));
-      if (!tp) {
-        const idx = (p as { hcpIndex?: number | null }).hcpIndex;
-        tp = { id: newId(), name: p.name, hcp: idx == null ? '' : String(idx).replace('.', tr('.', ',')), tee: p.tee ?? null, fixed: p.playingHandicap };
-        players.push(tp);
-      }
-      if (f.scorer === p.id) scorers[k] = tp.id;
-      flightOf[tp.id] = k;
+    for (const fp of f.players) {
+      // a team (scramble, foursomes …): its players one by one, as they were planned
+      const one = fp.members?.length ? fp.members.map((m) => ({ ...m, tee: m.tee ?? undefined })) : [fp];
+      one.forEach((p, j) => {
+        let tp = players.find((x) => keyOf(x.name) === keyOf(p.name));
+        if (!tp) {
+          const idx = (p as { hcpIndex?: number | null }).hcpIndex;
+          tp = { id: newId(), name: p.name, hcp: idx == null ? '' : String(idx).replace('.', tr('.', ',')), tee: p.tee ?? null, fixed: p.playingHandicap };
+          players.push(tp);
+        }
+        if (f.scorer === fp.id && j === 0) scorers[k] = tp.id;
+        flightOf[tp.id] = k;
+      });
     }
   });
   const options = course ? loopOptions(course.holes) : [];
@@ -207,6 +246,11 @@ export function draftOf(e: TourEntry): TourDraft {
     code: e.code,
     base: ev,
     name: ev.name,
+    kind: ev.roundKind ?? 'tournament',
+    mode: ev.format?.mode ?? 'single',
+    allowance: ev.format?.allowance ?? (ev.format?.scoring === 'stroke' ? 0 : 100),
+    allowanceSet: true,
+    ...(ev.format?.minDrives ? { minDrives: ev.format.minDrives } : {}),
     scoring: ev.format?.scoring ?? 'net',
     classes: ev.classes ?? [],
     players,
@@ -226,6 +270,11 @@ export function draftOfMulti(s: SeriesEntry, tours: TourEntry[]): TourDraft | nu
     ...(flightsOf(first).some((f) => f.scorer) ? { oneScorer: true } : first.format?.marker === false ? { ownOnly: true } : {}),
     multi: s.code,
     name: s.series.name,
+    kind: first.roundKind ?? 'tournament',
+    mode: first.format?.mode ?? 'single',
+    allowance: first.format?.allowance ?? (first.format?.scoring === 'stroke' ? 0 : 100),
+    allowanceSet: true,
+    ...(first.format?.minDrives ? { minDrives: first.format.minDrives } : {}),
     scoring: first.format?.scoring ?? 'net',
     classes: first.classes ?? [],
     players,
@@ -300,20 +349,29 @@ function eventOf(d: TourDraft, k: number, name: string): PlannedEvent | null {
   if (!summary) return null;
   const slots = slotsOf(r);
   const label = (p: TourPlayer) => p.name.trim();
+  const mode = d.mode ?? 'single';
   const plan = Array.from({ length: r.flights }, (_, f) => {
     const ps = d.players.filter((p) => r.flightOf[p.id] === f && (!r.field || r.field.includes(p.id)));
-    const pid = (id: string) => `p${ps.findIndex((p) => p.id === id) + 1}`;
-    const marks = markersOf(ps.map((p) => p.id));
+    const one = (p: TourPlayer) => {
+      const at = d.players.indexOf(p);
+      const tee = t.teeOf(p, at);
+      return { name: label(p), playingHandicap: t.playingOf(p, at), hcpIndex: parseIndex(p.hcp), ...(tee ? { tee } : {}) };
+    };
+    // scramble, foursomes, greensome, Chapman (Sascha 07.11.2026): one ball per team – players 1 & 2 and 3 & 4 of the
+    // flight (two or three: one team), with the team's handicap; Rounds plays the teams as its players
+    const sides = isTeamMode(mode) ? teamsOf(mode, ps.length).map((k) => k.map((j) => ps[j])) : ps.map((p) => [p]);
+    const pid = (id: string) => `p${sides.findIndex((s) => s.some((p) => p.id === id)) + 1}`;
+    const marks = markersOf(sides.map((s) => s[0].id));
     return {
       name: ps.map(label).join(' · '),
       teeTime: slots[f].time,
       ...(slots[f].start ? { startHole: slots[f].start } : {}),
-      players: ps.map((p) => {
-        const at = d.players.indexOf(p);
-        const tee = t.teeOf(p, at);
-        return { name: label(p), playingHandicap: t.playingOf(p, at), hcpIndex: parseIndex(p.hcp), ...(tee ? { tee } : {}) };
+      players: sides.map((s) => {
+        if (s.length === 1) return one(s[0]);
+        const members = s.map(one);
+        return { name: members.map((m) => m.name).join(' & '), playingHandicap: teamHandicap(mode, members.map((m) => m.playingHandicap)), hcpIndex: null, members };
       }),
-      markers: d.ownOnly && !d.oneScorer ? {} : Object.fromEntries(ps.map((p) => [pid(p.id), pid(marks[p.id])])),
+      markers: d.ownOnly && !d.oneScorer ? {} : Object.fromEntries(sides.map((s) => [pid(s[0].id), pid(marks[s[0].id])])),
       ...(d.oneScorer && ps.length ? { scorer: pid((ps.find((p) => p.id === r.scorers?.[f]) ?? ps[0]).id) } : {}),
     };
   });
@@ -325,9 +383,16 @@ function eventOf(d: TourDraft, k: number, name: string): PlannedEvent | null {
     loopOrder: option?.loops ?? loopOrder,
     // gross without any handicap: allowance 0 – the leaderboard counts the strokes (Sascha 04.11.2026: a gross tournament
     // was ranked net), else the full handicap
-    format: { mode: 'single', scoring: d.scoring, allowance: d.scoring === 'stroke' ? 0 : 100, ...(d.ownOnly && !d.oneScorer ? { marker: false } : {}) },
+    format: {
+      mode,
+      matchplay: false,
+      scoring: d.scoring,
+      allowance: d.scoring === 'stroke' ? 0 : (d.allowance ?? 100),
+      ...(mode === 'scramble' && d.minDrives ? { minDrives: d.minDrives } : {}),
+      ...(d.ownOnly && !d.oneScorer ? { marker: false } : {}),
+    },
     ...(t.myTee ? { tee: t.myTee } : {}),
-    roundKind: 'tournament',
+    roundKind: d.kind ?? 'tournament',
     ...(d.classes.length ? { classes: d.classes } : {}),
     flights: plan,
   }) as PlannedEvent;
@@ -423,6 +488,9 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
   const d = props.draft;
   useTop(d.open);
   const set = (patch: Partial<TourDraft>) => props.onChange({ ...d, ...patch });
+  // gross drops the net classes, net from gross starts with two (as the scoring's sheet did); an allowance chosen goes with it
+  const setScoring = (v: Scoring, allowance?: number) =>
+    set({ scoring: v, ...(v === 'stroke' ? { classes: [] } : d.scoring === 'stroke' && !d.classes.length ? { classes: [12, 24] } : {}), ...(allowance != null ? { allowance, allowanceSet: true } : {}) });
   useEffect(() => {
     if (d.focus !== 'flights') return;
     const t = window.setTimeout(() => {
@@ -522,13 +590,51 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
 
       {/* Was: the rounds, the scoring, the classes, the cut – each a row with its sheet, as the format of a round */}
       <section className="setup-part">
-        <span className="eyebrow">{tr('Format', 'Spielform')}</span>
+        <span className="eyebrow">{tr('Format', 'Format')}</span>
         <SettingsList>
+          {/* as in Rounds (Sascha 07.11.2026: "the whole block Format – Rundenart with Turnier, and every other setting") */}
+          <ChoiceRow<RoundKind>
+            label={tr('Kind of round', 'Rundenart')}
+            value={d.kind ?? 'tournament'}
+            onChange={(kind) => set({ kind, ...(d.allowanceSet ? {} : { allowance: whsAllowance(d.mode ?? 'single', false, kind === 'tournament') }) })}
+            options={ROUND_KINDS.map((k) => ({ value: k.id, name: k.name(), text: k.text() }))}
+          />
+          <ChoiceRow<GameMode>
+            label={tr('Mode', 'Modus')}
+            title={tr('Choose game mode', 'Spielmodus wählen')}
+            value={d.mode ?? 'single'}
+            onChange={(mode) => set({ mode, ...(d.allowanceSet ? {} : { allowance: whsAllowance(mode, false, (d.kind ?? 'tournament') === 'tournament') }), ...(mode === 'scramble' ? {} : { minDrives: undefined }) })}
+            options={TOUR_MODES().map((o) => ({ value: o.mode, name: o.name(), text: o.text() }))}
+          />
+          <ChoiceRow<'stroke' | 'stableford'>
+            label="Scoring"
+            title={tr('Choose scoring', 'Zählmodus wählen')}
+            value={d.scoring === 'stableford' ? 'stableford' : 'stroke'}
+            onChange={(v) => setScoring(v === 'stableford' ? 'stableford' : (d.allowance ?? 100) === 0 ? 'stroke' : 'net')}
+            options={[
+              { value: 'stroke', name: tr('Stroke play', 'Zählspiel'), text: tr('The fewest strokes over the whole round win (net with the handicap allowance).', 'Die wenigsten Schläge über die ganze Runde gewinnen (netto mit der HCP-Vorgabe).') },
+              { value: 'stableford', name: 'Stableford', text: tr('Collect points on every hole from your strokes and handicap – most points win.', 'Auf jedem Loch Punkte sammeln, aus deinen Schlägen und deiner Vorgabe – die meisten Punkte gewinnen.') },
+            ]}
+          />
+          <ChoiceRow<number>
+            label={tr('Handicap allowance', 'HCP-Vorgabe')}
+            value={d.scoring === 'stroke' ? 0 : (d.allowance ?? 100)}
+            onChange={(v) => (d.scoring === 'stableford' ? set({ allowance: v, allowanceSet: true }) : setScoring(v === 0 ? 'stroke' : 'net', v))}
+            options={ALLOWANCES().map(([v, text]) => ({ value: v, name: v > 0 ? `${v} %` : tr('0 % (gross)', '0 % (brutto)'), text }))}
+          />
+          {(d.mode ?? 'single') === 'scramble' && (
+            <ChoiceRow<number>
+              label={tr('Texas: drives per player', 'Texas: Drives je Spieler')}
+              title={tr('Texas scramble', 'Texas Scramble')}
+              value={d.minDrives ?? 0}
+              onChange={(v) => set({ minDrives: v || undefined })}
+              options={[0, 2, 3, 4, 6].map((v) => ({ value: v, name: v ? tr(`at least ${v}`, `mindestens ${v}`) : tr('free', 'frei'), text: v ? tr(`Each player's drive is played at least ${v} times.`, `Der Drive jedes Spielers wird mindestens ${v}-mal gespielt.`) : tr('Any drive, as the team likes.', 'Beliebige Drives, wie das Team will.') }))}
+            />
+          )}
           {/* a new round of a series of single tournaments stays one round */}
           {!d.code && !d.series && (
             <RoundsRow value={d.rounds.length} onChange={setCount} />
           )}
-          <SettingsRow label={tr('Scoring', 'Wertung')} value={SCORINGS().find((x) => x.v === d.scoring)?.name ?? ''} onClick={() => setPick('scoring')} />
           {d.scoring !== 'stroke' && <SettingsRow label={tr('Net classes', 'Netto-Klassen')} value={d.classes.length ? tr(`${d.classes.length + 1} classes`, `${d.classes.length + 1} Klassen`) : tr('None', 'Keine')} onClick={() => setPick('classes')} />}
           {multi && (
             <ChoiceRow<number>
@@ -553,24 +659,14 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
         </SettingsList>
         {/* the limits under the list – the row stays one line */}
         {d.scoring !== 'stroke' && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
+        {/* how the teams come about – in every flight */}
+        {(d.mode ?? 'single') !== 'single' && <span className="muted small">{teamsText(d.mode ?? 'single')}</span>}
       </section>
       {pick === 'classes' && (
         <ClassesSheet
           value={d.classes}
           onPick={(c) => {
             set({ classes: c });
-            setPick(null);
-          }}
-          onClose={() => setPick(null)}
-        />
-      )}
-      {pick === 'scoring' && (
-        <PickSheet<Scoring>
-          title={tr('Choose the scoring', 'Wertung wählen')}
-          current={d.scoring}
-          options={SCORINGS().map((x) => ({ value: x.v, name: x.name, text: x.text }))}
-          onPick={(v) => {
-            set({ scoring: v, ...(v === 'stroke' ? { classes: [] } : d.scoring === 'stroke' && !d.classes.length ? { classes: [12, 24] } : {}) });
             setPick(null);
           }}
           onClose={() => setPick(null)}

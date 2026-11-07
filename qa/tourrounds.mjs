@@ -123,13 +123,13 @@ await H.fill('#course-search', 'Hetzenhof');
 await H.waitForTimeout(2000);
 await H.locator('button.list-item').first().click();
 await H.locator('#tour-name').waitFor({ timeout: 30000 });
-const setting = (label) => H.locator('.settings-row').filter({ hasText: new RegExp(`^${label}`) });
+const setting = (label) => H.locator('.settings-row').filter({ hasText: new RegExp(`^${label}(?![a-zäöü])`) }); // "Runden", not "Rundenart"
 const choose = async (label, option) => {
   await setting(label).first().click();
   await H.locator('.sheet .pick-option').filter({ hasText: option }).first().click();
   await H.waitForTimeout(200);
 };
-await choose('Wertung', /^Brutto/);
+await choose('HCP-Vorgabe', /^0 %/); // gross (07.11.2026: the format as in Rounds)
 for (const [n, h] of [['Chris', '12,4'], ['Erik', '4'], ['Cedric', '20'], ['Dave', '8']]) {
   await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();
   await H.locator('input[id^="name-"]').last().fill(n);

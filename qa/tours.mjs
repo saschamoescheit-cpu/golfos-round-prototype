@@ -153,9 +153,22 @@ await H.locator('#tour-name').waitFor({ timeout: 30000 });
 ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the course: the name kept');
 // net classes (Sascha 03./04.11.2026): the last class up to 54; "Eigene" a row per class, no hints, a field under the
 // last class adds one
+// the block Format as in Rounds (Sascha 07.11.2026): Rundenart (Turnier), Modus, Scoring, HCP-Vorgabe – a tournament's
+// WHS allowance to start with, 95 %
 {
-  await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
-  await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Netto/ }).click();
+  const rows = (await H.locator('.setup-part').filter({ has: H.locator('.eyebrow', { hasText: /^Format$/ }) }).locator('.settings-row').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(' ›', '').trim());
+  ok(rows.slice(0, 4).join(' | ') === 'Rundenart Turnier | Modus Einfaches Spiel | Scoring Zählspiel | HCP-Vorgabe 95 %', `Format: ${rows.join(' | ')}`);
+  await H.locator('.settings-row').filter({ hasText: /^Modus/ }).click();
+  const modes = (await H.locator('.sheet .pick-option strong').allInnerTexts()).join(', ');
+  ok(/Einfaches Spiel/.test(modes) && /Better Ball/.test(modes) && /Scramble/.test(modes) && /Vierer/.test(modes) && !/Lochspiel/.test(modes), `the modes – no match play in a field: ${modes}`);
+  await H.locator('.sheet .pick-option').filter({ hasText: 'Better Ball' }).first().click();
+  ok(/HCP-Vorgabe 85 %/.test((await H.locator('.settings-row').filter({ hasText: /^HCP-Vorgabe/ }).innerText()).replace(/\s+/g, ' ')) && (await H.getByText(/Spieler 1 & 2 und 3 & 4 ein Team/).count()) === 1, 'Better Ball: 85 % (WHS), how the teams come about');
+  await H.locator('.settings-row').filter({ hasText: /^Modus/ }).click();
+  await H.locator('.sheet .pick-option').filter({ hasText: 'Einfaches Spiel' }).first().click();
+}
+{
+  await H.locator('.settings-row').filter({ hasText: /^HCP-Vorgabe/ }).click();
+  await H.locator('.sheet .pick-option').filter({ hasText: /^100 %/ }).first().click();
   const row = H.locator('.settings-row').filter({ hasText: 'Netto-Klassen' });
   const cs = H.getByRole('dialog', { name: 'Netto-Klassen' });
   await row.click();
@@ -191,14 +204,14 @@ ok((await H.locator('#tour-name').inputValue()) === 'USA Tag 1', 'back from the 
   ok(ten.length === 10 && ten[9] === 'Klasse J bis 54' && (await field.count()) === 0 && (await cs.getByRole('button', { name: '10 Klassen übernehmen' }).count()) === 1, `classes: up to ten – ${ten.join(' | ')}`);
   await cs.getByRole('button', { name: 'Schließen' }).click();
   // back to brutto for the rest of the test
-  await H.locator('.settings-row').filter({ hasText: 'Wertung' }).first().click();
-  await H.getByRole('dialog', { name: 'Wertung wählen' }).getByRole('button', { name: /^Brutto/ }).click();
+  await H.locator('.settings-row').filter({ hasText: /^HCP-Vorgabe/ }).click();
+  await H.locator('.sheet .pick-option').filter({ hasText: /^0 %/ }).first().click();
 }
 // the order of the setup (Sascha 04.11.2026): Score-Erfassung between the day and the players, the special prizes as
 // rows under them, the flights last
 {
   const heads = (await H.locator('main.screen > .setup-part > .eyebrow').allInnerTexts()).map((t) => t.trim().toUpperCase());
-  ok(heads.join('|') === 'TURNIER|SPIELFORM|PLATZ|DATUM|SCORE-ERFASSUNG|SPIELER|SONDERWERTUNGEN (OPTIONAL)|FLIGHTS UND STARTZEITEN', `the order: ${heads.join(' · ')}`);
+  ok(heads.join('|') === 'TURNIER|FORMAT|PLATZ|DATUM|SCORE-ERFASSUNG|SPIELER|SONDERWERTUNGEN (OPTIONAL)|FLIGHTS UND STARTZEITEN', `the order: ${heads.join(' · ')}`);
 }
 for (const n of ['Chris', 'Erik', 'Cedric', 'Dave']) {
   await H.getByRole('button', { name: '+ Spieler hinzufügen' }).click();

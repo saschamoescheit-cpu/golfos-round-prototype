@@ -1,7 +1,7 @@
 import type { CellDetail, CourseSummary, HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
 import { emptyEntry } from './scoring';
 import { newId } from './storage';
-import { DEFAULT_FORMAT, formatOf, holeScoresOf, isTeamMode, leaderboard, teamHandicap, type Board } from './games';
+import { DEFAULT_FORMAT, formatOf, holeScoresOf, isTeamMode, leaderboard, teamHandicap, teamsOf, type Board } from './games';
 import { cleanCode, isGame, newCode } from './sharedgame';
 import { isPool } from './wagers';
 import { authToken, SUPABASE_KEY, SUPABASE_URL, userId } from './sync';
@@ -38,6 +38,15 @@ export interface FlightPlayer {
   tee?: string;
   /** a planned tournament: the handicap index – the host works the playing handicap out again after a change */
   hcpIndex?: number | null;
+  /** a planned tournament played as teams (scramble, foursomes, greensome, Chapman – Sascha 07.11.2026): the team's
+   *  players, so the plan reads them back one by one */
+  members?: TeamMember[];
+}
+export interface TeamMember {
+  name: string;
+  playingHandicap: number | null;
+  hcpIndex?: number | null;
+  tee?: string | null;
 }
 export interface Flight {
   id: string;
@@ -562,13 +571,29 @@ export function eventStandings(ev: RoundEvent, o: { gross?: boolean; cls?: strin
   const hb = fmt.scoring === 'stableford';
   const gross = !!o.gross || (fmt.allowance ?? 100) === 0;
   const n = ev.holes.length;
-  const all = players
-    .filter((p) => !o.cls || meta[p.id].cls === o.cls)
-    .map((p) => {
-      const per = holeScoresOf(round, p.id, fmt, gross);
-      const xs = per.filter((v): v is number => v != null);
-      return { p, per, sort: xs.length ? xs.reduce((s, v) => s + v, 0) : null, thru: xs.length, cb: countbackOf(per) };
-    });
+  const single = players.filter((p) => !o.cls || meta[p.id].cls === o.cls).map((p) => ({ p, per: holeScoresOf(round, p.id, fmt, gross) }));
+  // Better Ball (Sascha 07.11.2026: every mode in a tournament): each flight's pairs – players 1 & 2, 3 & 4 – rank as
+  // one; on every hole the better of the two counts
+  const sides =
+    fmt.mode !== 'fourball'
+      ? single
+      : liveFlights(ev).flatMap((f) =>
+          teamsOf('fourball', f.players.length).flatMap((team) => {
+            const members = team.map((k) => single.find((x) => x.p.id === `${f.id}/${f.players[k].id}`)).filter((x): x is (typeof single)[number] => !!x);
+            if (!members.length) return [];
+            const per = ev.holes.map((_, i) => {
+              const vs = members.map((m) => m.per[i]).filter((v): v is number => v != null);
+              return vs.length ? (hb ? Math.max(...vs) : Math.min(...vs)) : null;
+            });
+            const id = members[0].p.id;
+            meta[id] = { ...meta[id], signed: members.every((m) => meta[m.p.id].signed) };
+            return [{ p: { ...members[0].p, name: members.map((m) => m.p.name).join(' & ') }, per }];
+          }),
+        );
+  const all = sides.map(({ p, per }) => {
+    const xs = per.filter((v): v is number => v != null);
+    return { p, per, sort: xs.length ? xs.reduce((s, v) => s + v, 0) : null, thru: xs.length, cb: countbackOf(per) };
+  });
   const better = (a: number, b: number) => (hb ? b - a : a - b);
   const everyoneIn = all.length > 0 && all.every((x) => x.thru === n);
   const cmp = (a: (typeof all)[number], b: (typeof all)[number]): number => {
@@ -900,14 +925,14 @@ export interface PlanFlight {
   /** the hole it starts on, 0-based (9: tee 10) */
   startHole?: number;
   /** in scramble and foursomes the teams */
-  players: { name: string; playingHandicap: number | null; tee?: string | null; hcpIndex?: number | null }[];
+  players: { name: string; playingHandicap: number | null; tee?: string | null; hcpIndex?: number | null; members?: TeamMember[] }[];
   /** markers[player] = who marks him, by the players' places "p1", "p2" … – missing: in pairs (1 ↔ 2, 3 ↔ 4) */
   markers?: Record<string, string>;
   /** one player keeps the score of all, by his place ("p2") – Sascha 02.11.2026 */
   scorer?: string;
 }
 const planFlight = (pf: PlanFlight, holes: number, by: string, id = newId()): Flight => {
-  const players: FlightPlayer[] = pf.players.map((p, k) => ({ id: `p${k + 1}`, name: p.name, playingHandicap: p.playingHandicap, ...(p.tee ? { tee: p.tee } : {}), ...(p.hcpIndex != null ? { hcpIndex: p.hcpIndex } : {}) }));
+  const players: FlightPlayer[] = pf.players.map((p, k) => ({ id: `p${k + 1}`, name: p.name, playingHandicap: p.playingHandicap, ...(p.tee ? { tee: p.tee } : {}), ...(p.hcpIndex != null ? { hcpIndex: p.hcpIndex } : {}), ...(p.members?.length ? { members: p.members } : {}) }));
   return {
     id,
     name: pf.name?.trim() || players.map((p) => p.name).join(' · '),

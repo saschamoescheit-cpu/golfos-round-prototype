@@ -12,7 +12,7 @@ import { TopBar } from '../components/ui';
 import { ScoreTable } from '../components/ScoreTable';
 import type { Round } from '../types';
 import { madeCut } from '../lib/tourdraw';
-import { dealRound, draftOf, draftOfMulti, tourScoring, type TourDraft } from './TourPlan';
+import { dealRound, draftOf, draftOfMulti, tourFormat, type TourDraft } from './TourPlan';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
 import { Bin } from '../components/Bin';
@@ -876,7 +876,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
         }
       />
       <span className="muted small">
-        {longDate(ev.date)} · {ev.course.name} · {tourScoring(fmt.scoring)}
+        {longDate(ev.date)} · {ev.course.name} · {tourFormat(fmt)}
         {ev.classes?.length ? ` · ${tr(`${ev.classes.length + 1} classes`, `${ev.classes.length + 1} Klassen`)}` : ''}
       </span>
       {!host && <span className="muted small">{tr('Only whoever set up the tournament changes it.', 'Nur wer das Turnier angelegt hat, ändert es.')}</span>}
@@ -899,7 +899,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
       {standings.rows.length > 0 && (
         <LiveBoard
           label={tr('Live leaderboard', 'Live-Leaderboard')}
-          title={`${done ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Leaderboard')} · ${gross ? tr('Gross', 'Brutto') : tourScoring(fmt.scoring)}`}
+          title={`${done ? tr('Result', 'Ergebnis') : tr('Live leaderboard', 'Live-Leaderboard')} · ${gross ? tr('Gross', 'Brutto') : tourFormat(fmt)}`}
           live={played && !done}
           chips={
             played && (net || classes.length > 0) ? (
