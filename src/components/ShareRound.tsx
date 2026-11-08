@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
-import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson } from '../lib/sharedround';
+import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
 import { loadCourse } from '../lib/courses';
@@ -359,13 +359,11 @@ export function JoinRoundSheet(props: {
   };
   // the own name in the flight: in at once – no "who are you?" (Sascha 30.10.2026: "not many taps"); let in just now
   // and not there yet: the host's phone adds it in a moment, looked for a little while
+  // every player has his own profile (Sascha 08.11.2026: "such questions must not come"): his name is his place – on
+  // another phone or not; the newest phone of a player keeps his score
   const mine = (e: RoundEvent): { f: Flight; pid: string } | null => {
-    const me = who().toLowerCase();
     const t = isTeamMode(e.format?.mode);
-    const hits = Object.values(e.flights).flatMap((f) =>
-      // a single player: free – or on an earlier phone of his own (joined before, the round ended: 07.11.2026)
-      f.players.filter((p) => (t ? p.name.toLowerCase().split(' & ').includes(me) : p.name.toLowerCase() === me && (writerOf(f, p.id, false) == null || samePerson(f.phones?.[writerOf(f, p.id, false)!], who())))).map((p) => ({ f, pid: p.id })),
-    );
+    const hits = liveFlights(e).flatMap((f) => f.players.filter((p) => nameIs(p.name, who(), t)).map((p) => ({ f, pid: p.id })));
     return hits.length === 1 ? hits[0] : null;
   };
   useEffect(() => {
@@ -578,7 +576,7 @@ export function JoinRoundSheet(props: {
                     // already on a phone: a single player is taken; a team's second phone joins it (and can take the card over)
                     const w = writerOf(f, p.id, team);
                     // an earlier phone of his own (joined before): his again, not taken (07.11.2026)
-                    const own = w != null && samePerson(f.phones?.[w], who());
+                    const own = (w != null && samePerson(f.phones?.[w], who())) || (!team && nameIs(p.name, who()));
                     const on = w && !own ? (f.phones?.[w]?.name ?? '') : '';
                     return (
                       <button

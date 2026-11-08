@@ -222,7 +222,7 @@ function eventFrame(round: Round): Pick<RoundEvent, 'loopOrder' | 'holes' | 'for
 export function writerOf(f: Flight, player: string, team: boolean): string | null {
   if (team && f.keeper?.[player] && f.phones?.[f.keeper[player]]) return f.keeper[player];
   const ph = Object.entries(f.phones ?? {})
-    .filter(([, v]) => v.player === player)
+    .filter(([, v]) => v.player === player && !misplaced(f, v, team))
     .sort((a, b) => (team ? a[1].at.localeCompare(b[1].at) : b[1].at.localeCompare(a[1].at)));
   return ph[0]?.[0] ?? null;
 }
@@ -235,6 +235,26 @@ export function samePerson(entry: { uid?: string; name?: string } | undefined, n
   const uid = userId();
   if (uid && entry.uid) return entry.uid === uid;
   return !!name.trim() && (entry.name ?? '').trim().toLowerCase() === name.trim().toLowerCase();
+}
+
+const plainName = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+/** Is this player (a team: one of its names) the person of this name? The same name – accents and case aside – or the
+ *  same first name when one of the two is only a first name ("Cedric" in the plan, "Cedric Weber" in the profile). */
+export function nameIs(player: string, who: string, team = false): boolean {
+  const w = plainName(who);
+  if (!w) return false;
+  return (team ? player.split(' & ') : [player]).some((n) => {
+    const x = plainName(n);
+    return !!x && (x === w || ((!x.includes(' ') || !w.includes(' ')) && x.split(' ')[0] === w.split(' ')[0]));
+  });
+}
+/** A phone that holds a player not its own (Sascha 08.11.2026, on the course: Cedric's place "on Sascha's phone" – the
+ *  plan changed after joining, its places moved): its person is another player of the flight – not counted. */
+function misplaced(f: Flight, v: { player: string; name?: string }, team: boolean): boolean {
+  const who = v.name ?? '';
+  const held = f.players.find((p) => p.id === v.player);
+  if (!who.trim() || !held || nameIs(held.name, who, team)) return false;
+  return f.players.some((p) => p.id !== v.player && nameIs(p.name, who, team));
 }
 
 /** Who signs a player's card as his marker: with a scorer, the scorer (his own card: his marker as usual). */
@@ -354,8 +374,22 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
   let f: Flight = remote ?? flightOf(round, share.flight, flightName(round), phone, tournament, who);
   const marking = marksIn(round.format, tournament);
   // this phone in the flight: which player (or team) it is
-  const me = round.players.find((p) => p.isMe)?.id;
-  if (me && !f.phones?.[phone]) {
+  let me = round.players.find((p) => p.isMe)?.id;
+  // the plan changed after joining and its places moved (Sascha 08.11.2026: Cedric's place "on Sascha's phone"): a
+  // phone that took its players from the plan goes back to its person's own player
+  let moved = false;
+  if (f.by && f.by !== phone && who.trim()) {
+    const now = f.players.find((p) => p.id === me);
+    const named = f.players.filter((p) => nameIs(p.name, who, team));
+    if (named.length === 1 && named[0].id !== me && !(now && nameIs(now.name, who, team))) {
+      me = named[0].id;
+      moved = true;
+    }
+  }
+  if (me && f.phones?.[phone] && f.phones[phone].player !== me) {
+    f = { ...f, phones: { ...f.phones, [phone]: { ...f.phones[phone], player: me, at: new Date().toISOString() } } };
+    changedHere = true;
+  } else if (me && !f.phones?.[phone]) {
     f = { ...f, phones: { ...f.phones, [phone]: { player: me, name: who, at: new Date().toISOString(), ...account() } } };
     changedHere = true;
   } else if (me && f.phones?.[phone] && Date.now() - new Date(f.phones[phone].seen ?? f.phones[phone].at).getTime() > SEEN_EVERY) {
@@ -378,7 +412,7 @@ export function mergeFlight(round: Round, remote: Flight | undefined, tournament
       f = scorer ? { ...rest, scorer } : rest;
       changedHere = true;
     }
-  } else if (!sameFrame(f.players, framePlayers(round))) {
+  } else if (moved || !sameFrame(f.players, framePlayers(round))) {
     players = f.players.map((p) => ({ id: p.id, name: p.name, playingHandicap: p.playingHandicap, isMe: p.id === me, ...(p.tee ? { tee: p.tee } : {}) }));
     changedThere = true;
   }
@@ -1082,9 +1116,8 @@ export const localDay = (d = new Date()): string => `${d.getFullYear()}-${String
 export const plannedAhead = (ev: RoundEvent, today = localDay()): boolean => !!ev.planned && !!ev.date && ev.date > today;
 /** The flight a name plays in (a team's name holds it with " & ") – for "your flight · 09:20". */
 export function flightOfName(ev: RoundEvent, name: string): Flight | null {
-  const me = name.trim().toLowerCase();
-  if (!me) return null;
-  const hits = liveFlights(ev).filter((f) => f.players.some((p) => p.name.toLowerCase().split(' & ').includes(me)));
+  if (!name.trim()) return null;
+  const hits = liveFlights(ev).filter((f) => f.players.some((p) => nameIs(p.name, name, true)));
   return hits.length === 1 ? hits[0] : null;
 }
 
