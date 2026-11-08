@@ -19,6 +19,7 @@ import { STANDARD_TEES, TEE_COLOURS, teeName } from '../data/tees';
 import { groupForHandicap, GROUPS } from '../lib/sg';
 import { deleteAccount, loadSession, signOut } from '../lib/sync';
 import { shareBackup } from '../lib/backup';
+import { shareWatchSamples, watchSamples } from '../lib/watch';
 
 // Tab "Profile" (Sascha 14.10.2026, instead of BeBrassie's "More"): personal data, settings, the bag with
 // distances and the caddie – everything the player sets once and the app keeps (the backup gave way to the sync).
@@ -36,6 +37,11 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
   const [cropping, setCropping] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
   const [session, setSession] = useState(loadSession);
+  // the swings the Apple Watch recorded (only in the app)
+  const [swings, setSwings] = useState({ count: 0, uri: '' });
+  useEffect(() => {
+    void watchSamples().then(setSwings);
+  }, []);
   useEffect(() => {
     const on = () => {
       const a = document.activeElement;
@@ -368,6 +374,19 @@ export function ProfileTab(props: { rounds: Round[]; onBag: () => void; onCaddie
           </button>
           <p className="data-text muted small">{tr('Rounds, games, profile, bag and settings as one file.', 'Runden, Spiele, Profil, Bag und Einstellungen als eine Datei.')}</p>
         </div>
+        {/* the Apple Watch's swings recorded (08.11.2026) – to tune the shot detection; only in the app, once there are some */}
+        {swings.count > 0 && (
+          <div className="data-row">
+            <button type="button" className="sc-action" onClick={() => void shareWatchSamples(swings.uri).catch(() => undefined)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="3" />
+                <path d="M9 6l1-3h4l1 3M9 18l1 3h4l1-3M12 9.5V12l1.5 1.5" />
+              </svg>
+              <span>{tr('Watch', 'Uhr')}</span>
+            </button>
+            <p className="data-text muted small">{tr(`Your Apple Watch's ${swings.count} swings as a file – to tune the shot detection.`, `Die ${swings.count} Schwünge deiner Apple Watch als Datei – zum Feinjustieren der Schlagerkennung.`)}</p>
+          </div>
+        )}
       </section>
       {/* delete the account: its own place, the button alone, apart from "your data" (Sascha 23.10.2026) – signed in only,
           asked once more; the data on this phone stay */}

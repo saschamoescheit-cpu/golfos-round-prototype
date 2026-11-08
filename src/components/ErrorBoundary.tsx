@@ -62,8 +62,9 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
           className="btn-secondary btn-danger"
           onClick={() => {
             if (!confirm(tr('Delete all rounds and settings on this phone? Save a backup first if you want to keep them.', 'Alle Runden und Einstellungen auf diesem Handy löschen? Sichere sie vorher, wenn du sie behalten willst.'))) return;
-            Object.keys(localStorage)
-              .filter((k) => k.startsWith('golfos.'))
+            // by key() – the GPS tracks and maps in the big store are listed there too (08.11.2026)
+            Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
+              .filter((k): k is string => !!k && k.startsWith('golfos.'))
               .forEach((k) => localStorage.removeItem(k));
             location.reload();
           }}

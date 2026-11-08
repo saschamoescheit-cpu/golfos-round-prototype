@@ -35,10 +35,11 @@ await p.locator('button.list-item').first().waitFor({ timeout: 30000 });
 ok(/Hubbelrath/.test(await p.locator('button.list-item').first().innerText()), 'found without Photon (the second course database)');
 await p.locator('button.list-item').first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 60000 });
-const state = await p.evaluate(() => ({
-  geo: Object.keys(localStorage).filter((k) => k.startsWith('golfos.geo.v1.')),
-  course: Object.keys(localStorage).filter((k) => k.startsWith('golfos.course.v1.')),
-}));
+// the keys by key() – the map copies live in the big store since 08.11.2026 (Object.keys lists localStorage only)
+const state = await p.evaluate(() => {
+  const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
+  return { geo: keys.filter((k) => k.startsWith('golfos.geo.v1.')), course: keys.filter((k) => k.startsWith('golfos.course.v1.')) };
+});
 ok(state.geo.some((k) => /osm:(way|relation)\//.test(k)), `the OSM course at its place – with its map (${state.geo.join(', ') || 'no map'})`);
 await p.getByText('Runde starten').click();
 await p.locator('.map-hole-no').first().waitFor({ timeout: 30000 });

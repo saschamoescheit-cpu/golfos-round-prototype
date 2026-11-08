@@ -1,6 +1,8 @@
-// QA: the phone's storage is full of course maps looked at before (Safari: about 5 MB per site; one map from
-// OpenStreetMap takes 0.2–0.4 MB). A new course and a new round must still be saved – old map copies make room, the
-// rounds and GPS tracks stay. A course whose map copy went fetches the map again (night check 22.10.2026).
+// QA: course maps looked at before fill what Safari keeps in localStorage (about 5 MB per site; one map from
+// OpenStreetMap takes 0.2–0.4 MB). Since 08.11.2026 (Eric, Moritz, Sascha: "storage full" right after opening the app)
+// the maps and GPS tracks live in the big store (IndexedDB): 14 maps of 0.4 MB are kept without trouble, nothing has to
+// make room, a new course and a new round are saved, the old round and its track stay. A course whose map copy went
+// fetches the map again (night check 22.10.2026).
 // Usage: node qa/storagefull.mjs [url]
 import { webkit, devices } from 'playwright';
 import { mockNet } from './netmock.mjs';
@@ -19,6 +21,8 @@ const ok = (cond, what) => {
 };
 const OLD = { id: 'old1', courseId: 'osm:way/1', courseName: 'Alter Platz', createdAt: '2026-09-01T10:00:00.000Z', finishedAt: '2026-09-01T14:00:00.000Z', holes: [], entries: {}, players: [] };
 await p.goto(url);
+// the app started (the big store opened before it draws)
+await p.waitForFunction(() => (document.getElementById('root')?.childElementCount ?? 0) > 0);
 await p.evaluate((OLD) => {
   localStorage.clear();
   localStorage.setItem('golfos.intro.v1', '1');
@@ -42,10 +46,19 @@ const filled = await p.evaluate(() => {
     }
   }
   let n = 0;
-  for (let i = 0; i < localStorage.length; i++) n += localStorage.getItem(localStorage.key(i)).length;
-  return { n, maps: Object.keys(localStorage).filter((k) => k.startsWith('golfos.geo.v1.')).length };
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    keys.push(k);
+    n += localStorage.getItem(k).length;
+  }
+  return { n, maps: keys.filter((k) => k.startsWith('golfos.geo.v1.')).length };
 });
-ok(filled.n > 5000000, `storage full (${(filled.n / 1e6).toFixed(2)} million characters, ${filled.maps} old maps)`);
+// more than localStorage holds – all of it there (the big store)
+ok(filled.n > 5000000 && filled.maps === 54, `6 MB of old maps kept – more than localStorage holds (${(filled.n / 1e6).toFixed(2)} million characters, ${filled.maps} maps)`);
+// 6.5 MB written in one go: a moment for the database (maps come one by one on a phone; the track written just before
+// survives even an instant reload – checked below)
+await p.waitForTimeout(3000);
 await p.reload();
 await p.waitForTimeout(1200);
 await p.getByRole('button', { name: 'Neue Runde' }).click();
@@ -53,9 +66,11 @@ await p.fill('#course-search', 'Frielinghausen');
 await p.waitForTimeout(3000);
 await p.locator('button.list-item').first().click();
 await p.getByText('Runde starten').waitFor({ timeout: 45000 });
-const geoOf = () => p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('golfos.geo.v1.') && !/osm:way\/9\d+$/.test(k)));
+// the keys by key() – the maps in the big store are listed there (not by Object.keys)
+const keysOf = () => p.evaluate(() => Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)));
+const geoOf = async () => (await keysOf()).filter((k) => k.startsWith('golfos.geo.v1.') && !/osm:way\/9\d+$/.test(k));
 const fr = await geoOf();
-ok(fr.length === 1, `the new course's map saved – old copies made room (${fr.join(', ') || 'none'})`);
+ok(fr.length === 1, `the new course's map saved (${fr.join(', ') || 'none'})`);
 await p.getByRole('button', { name: 'Runde starten' }).click();
 await p.waitForTimeout(4000);
 await p.reload();
@@ -63,11 +78,11 @@ await p.waitForTimeout(1500);
 const kept = await p.evaluate(() => ({
   rounds: JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').map((r) => r.courseName),
   track: JSON.parse(localStorage.getItem('golfos.track.v1.old1') ?? '[]').length,
-  dummies: Object.keys(localStorage).filter((k) => /osm:way\/9\d+$/.test(k)).length,
+  dummies: Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).filter((k) => /osm:way\/9\d+$/.test(k)).length,
 }));
 ok(kept.rounds.length === 2 && /Frielinghausen/.test(kept.rounds[0]), `the new round saved, the old one kept (${kept.rounds.join(' · ')})`);
 ok(kept.track === 3000, `the old round's GPS track untouched (${kept.track} points)`);
-ok(kept.dummies < filled.maps, `only map copies made room (${filled.maps - kept.dummies} of ${filled.maps} old maps)`);
+ok(kept.dummies === filled.maps, `nothing had to make room – the old maps all kept (${kept.dummies} of ${filled.maps})`);
 // a course whose map copy went: the map comes again when the course is picked
 if (fr[0]) await p.evaluate((k) => localStorage.removeItem(k), fr[0]);
 await p.evaluate(() => {
@@ -98,7 +113,7 @@ await p.waitForTimeout(1000);
 await p.getByRole('button', { name: /Schläge prüfen/ }).first().click();
 for (let k = 0; k < 30 && (await geoOf()).length === 0; k++) await p.waitForTimeout(500);
 ok((await geoOf()).length === 1, 'a round looked at later: its course map fetched again');
-ok((await p.getByText(/Speicher auf dem Handy voll/).count()) === 0, 'no "storage full" note – there was room to make');
+ok((await p.getByText(/Speicher (auf dem Handy|der App) (ist )?voll/).count()) === 0, 'no "storage full" note');
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();
 process.exit(fails ? 1 : 0);

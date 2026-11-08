@@ -21,6 +21,7 @@ import './styles.css';
 import { applyTheme } from './lib/theme';
 import { reloadForNewVersion } from './lib/staleChunk';
 import { guardStorage } from './lib/storageguard';
+import { cancelBigStore, openBigStore } from './lib/bigstore';
 import { startErrorLog } from './lib/errorlog';
 import { watchForUpdates } from './lib/appupdate';
 import { installNativeShims } from './lib/native';
@@ -35,7 +36,19 @@ window.addEventListener('vite:preloadError', (e) => {
   if (reloadForNewVersion()) e.preventDefault();
 });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// the GPS tracks and course maps in the big store (IndexedDB) before the app reads anything (Sascha 08.11.2026: "storage
+// full" right after opening the app); without it – or if it does not answer within 4 s – the app starts as before
+const bigStore = Promise.race([
+  openBigStore().catch(() => false),
+  new Promise<boolean>((ok) =>
+    setTimeout(() => {
+      cancelBigStore(); // too late: this session without it, never switched in halfway
+      ok(false);
+    }, 4000),
+  ),
+]);
+void bigStore.then(() =>
+  ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />
@@ -46,4 +59,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <JoinRequests />
     </ErrorBoundary>
   </React.StrictMode>,
+  ),
 );

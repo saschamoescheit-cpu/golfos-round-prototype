@@ -1,3 +1,5 @@
+import { decodeTrack, encodeTrack, type Row } from './trackcodec';
+
 // The big data off the small device storage (Sascha 08.11.2026: "storage full" on Eric's, Moritz' and Sascha's phones
 // right after opening the app – "such messages should not come at all"). Safari and the app's web view keep about
 // 5 MB in localStorage, but far more in IndexedDB. The GPS tracks, the course map copies, the course details and the
@@ -9,7 +11,7 @@
 
 /** the keys kept in the big store – data that is large and grows (all else stays in localStorage) */
 export const BIG_PREFIXES = ['golfos.track.v1.', 'golfos.geo.v1.', 'golfos.course.v1.', 'golfos.elevation.v1'];
-export const isBig = (key: string): boolean => BIG_PREFIXES.some((p) => key.startsWith(p));
+export const isBig = (key: string): boolean => typeof key === 'string' && BIG_PREFIXES.some((p) => key.startsWith(p));
 
 /** where the big data lies – IndexedDB in the app, a map in the tests */
 export interface BigBackend {
@@ -21,6 +23,11 @@ export interface BigBackend {
 const mem = new Map<string, string>();
 let backend: BigBackend | null = null;
 let on = false;
+let cancelled = false;
+/** the app started without the big store (it did not answer in time): it is not switched in later this session */
+export function cancelBigStore(): void {
+  cancelled = true;
+}
 const dirty = new Map<string, string | null>(); // waiting to be written (null: to be removed)
 let timer: ReturnType<typeof setTimeout> | null = null;
 let writing: Promise<void> = Promise.resolve();
@@ -35,9 +42,11 @@ export function bigStoreSize(): number {
   return n;
 }
 
+/** written at once – each write starts its own transaction right inside setItem, in the order of the writes (IndexedDB
+ *  keeps it). Started at once, the browser finishes it also when the page goes right after (a reload, iOS ending the
+ *  app) – queued behind an await it would not even begin (QA storagefull, 08.11.2026: the track gone after a reload). */
 function schedule(): void {
-  if (timer) return;
-  timer = setTimeout(() => void flushBig(), 400);
+  void flushBig();
 }
 
 /** writes what changed to the big store now (the app goes to the background, a test waits for it) */
@@ -55,24 +64,36 @@ export function flushBig(): Promise<void> {
     else puts.push([k, v]);
   }
   dirty.clear();
-  writing = writing
-    .then(async () => {
-      if (puts.length) await b.put(puts);
-      if (dels.length) await b.del(dels);
-    })
+  const started: Promise<void>[] = [];
+  try {
+    if (puts.length) started.push(b.put(puts));
+    if (dels.length) started.push(b.del(dels));
+  } catch (e) {
+    started.push(Promise.reject(e));
+  }
+  const done = Promise.all(started)
+    .then(() => undefined)
     .catch(() => {
       // not written (the database went away): kept in memory, tried again with the next change
       for (const [k, v] of puts) if (!dirty.has(k)) dirty.set(k, v);
       for (const k of dels) if (!dirty.has(k)) dirty.set(k, null);
     });
+  writing = Promise.all([writing, done]).then(() => undefined);
   return writing;
 }
 
-/** a GPS track found twice (in localStorage and in the big store): the one with more points – a session without the
- *  big store may have begun the track again */
+/** a key found twice (in localStorage and in the big store – a session without the big store wrote it again): a GPS
+ *  track is both put together, fix by fix (that session may have begun it again); anything else is the one written last
+ *  – localStorage's */
 function newer(key: string, fromLocal: string, fromBig: string): string {
-  if (key.startsWith('golfos.track.v1.')) return fromLocal.length >= fromBig.length ? fromLocal : fromBig;
-  return fromLocal;
+  if (!key.startsWith('golfos.track.v1.')) return fromLocal;
+  try {
+    const byTime = new Map<number, Row>();
+    for (const r of [...decodeTrack(fromBig), ...decodeTrack(fromLocal)]) byTime.set(r[0], r);
+    return encodeTrack([...byTime.values()].sort((a, b) => a[0] - b[0]));
+  } catch {
+    return fromLocal.length >= fromBig.length ? fromLocal : fromBig;
+  }
 }
 
 interface Raw {
@@ -96,6 +117,7 @@ export async function openBigStore(b: BigBackend | null = indexedBackend(), stor
   } catch {
     return false;
   }
+  if (cancelled) return false;
   const proto = Object.getPrototypeOf(store) as Storage;
   const lengthDesc = Object.getOwnPropertyDescriptor(proto, 'length');
   const raw: Raw = {
@@ -124,6 +146,10 @@ export async function openBigStore(b: BigBackend | null = indexedBackend(), stor
       mem.clear();
       return false; // nothing moved, localStorage as before
     }
+    if (cancelled) {
+      mem.clear();
+      return false; // copied but still in localStorage – the next start takes the right one (newer)
+    }
     for (const [k, v] of moving) {
       mem.set(k, v);
       raw.removeItem.call(store, k);
@@ -133,11 +159,14 @@ export async function openBigStore(b: BigBackend | null = indexedBackend(), stor
   on = true;
   const local = (s: Storage) => s === store;
   const bigKeys = () => [...mem.keys()];
-  proto.getItem = function (this: Storage, k: string) {
+  // keys as the browser takes them: any value as text (getItem(null) reads "null")
+  proto.getItem = function (this: Storage, key: string) {
+    const k = String(key);
     if (local(this) && isBig(k)) return mem.get(k) ?? null;
     return raw.getItem.call(this, k);
   };
-  proto.setItem = function (this: Storage, k: string, v: string) {
+  proto.setItem = function (this: Storage, key: string, v: string) {
+    const k = String(key);
     if (local(this) && isBig(k)) {
       const s = String(v);
       mem.set(k, s);
@@ -147,7 +176,8 @@ export async function openBigStore(b: BigBackend | null = indexedBackend(), stor
     }
     return raw.setItem.call(this, k, v);
   };
-  proto.removeItem = function (this: Storage, k: string) {
+  proto.removeItem = function (this: Storage, key: string) {
+    const k = String(key);
     if (local(this) && isBig(k)) {
       if (mem.delete(k)) {
         dirty.set(k, null);
@@ -207,11 +237,15 @@ const STORE = 'kv';
 export function indexedBackend(): BigBackend | null {
   if (typeof indexedDB === 'undefined') return null;
   let opened: Promise<IDBDatabase> | null = null;
+  let ready: IDBDatabase | null = null;
   const db = () =>
     (opened ??= new Promise<IDBDatabase>((ok, fail) => {
       const r = indexedDB.open(DB, 1);
       r.onupgradeneeded = () => r.result.createObjectStore(STORE);
-      r.onsuccess = () => ok(r.result);
+      r.onsuccess = () => {
+        ready = r.result;
+        ok(r.result);
+      };
       r.onerror = () => fail(r.error);
       r.onblocked = () => fail(new Error('blocked'));
     }));
@@ -238,25 +272,23 @@ export function indexedBackend(): BigBackend | null {
         t.onerror = () => fail(t.error);
       });
     },
-    put: async (entries) => {
-      const d = await db();
-      const t = d.transaction(STORE, 'readwrite');
-      const s = t.objectStore(STORE);
-      for (const [k, v] of entries) s.put(v, k);
-      await done(t);
-    },
-    del: async (keys) => {
-      const d = await db();
-      const t = d.transaction(STORE, 'readwrite');
-      const s = t.objectStore(STORE);
-      for (const k of keys) s.delete(k);
-      await done(t);
-    },
+    // the transaction begun right away once the database is open (no await before it – see schedule)
+    put: (entries) => write((s) => entries.forEach(([k, v]) => s.put(v, k))),
+    del: (keys) => write((s) => keys.forEach((k) => s.delete(k))),
   };
+  function write(fill: (s: IDBObjectStore) => void): Promise<void> {
+    const run = (d: IDBDatabase) => {
+      const t = d.transaction(STORE, 'readwrite');
+      fill(t.objectStore(STORE));
+      return done(t);
+    };
+    return ready ? run(ready) : db().then(run);
+  }
 }
 
 /** for the tests: back to the start */
 export function resetBigStoreForTests(): void {
+  cancelled = false;
   mem.clear();
   dirty.clear();
   backend = null;

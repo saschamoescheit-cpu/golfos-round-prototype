@@ -1,3 +1,4 @@
+import { bigStoreOn, isBig } from './bigstore';
 // Storage full (Safari keeps about 5 MB per site): a course map copy that can be loaded again makes room – the one
 // used longest ago first, never the map of a course with a round still being played and never the key being written.
 // Rounds, GPS tracks, plans, notes and everything the player entered are never removed (night check 22.10.2026: one
@@ -22,6 +23,15 @@ export function holdGeometry(courseId: string): () => void {
 }
 
 let raw: ((this: Storage, key: string, value: string) => void) | null = null;
+
+/** the newest value of each key the device would not take (the sync rescues rounds and games to the server) */
+const refused = new Map<string, string>();
+/** what the device refused for this key, the newest – taken once */
+export function takeRefused(key: string): string | null {
+  const v = refused.get(key) ?? null;
+  refused.delete(key);
+  return v;
+}
 
 const store = (): Storage | null => {
   try {
@@ -81,7 +91,8 @@ export function makeRoom(keep: string): boolean {
   const courses: string[] = [];
   for (let i = 0; i < s.length; i++) {
     const k = s.key(i);
-    if (!k || k === keep) continue;
+    // in the big store (IndexedDB) they take no room here – removing them would only lose them
+    if (!k || k === keep || (bigStoreOn() && isBig(k))) continue;
     if (k.startsWith(GEO) && !playing.has(k)) spare.push(k);
     else if (k.startsWith(COURSE) && !playing.has(GEO + k.slice(COURSE.length))) courses.push(k);
   }
@@ -92,7 +103,7 @@ export function makeRoom(keep: string): boolean {
   }
   // no map copy left (Sascha 08.11.2026, Eric: "storage full" with not one round on the phone): what is loaded again
   // from the net at any time – the heights, the weather, the course details of courses not played now, logs
-  const cache = CACHES.find((k) => k !== keep && s.getItem(k) != null);
+  const cache = CACHES.find((k) => k !== keep && !(bigStoreOn() && isBig(k)) && s.getItem(k) != null);
   if (cache) {
     s.removeItem(cache);
     return true;
@@ -125,6 +136,7 @@ export function guardStorage(): void {
           // still too little room: the next map
         }
       }
+      refused.set(key, value);
       try {
         globalThis.dispatchEvent?.(new CustomEvent('golfos:storagefull', { detail: key }));
       } catch {

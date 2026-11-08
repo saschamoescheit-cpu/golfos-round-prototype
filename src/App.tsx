@@ -6,7 +6,7 @@ import { endWatchRound } from './lib/watch';
 import { isTeamRound } from './lib/games';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
-import { finishSignIn, liveConnect, syncNow, syncSoon, watchChanges } from './lib/sync';
+import { finishSignIn, liveConnect, syncNow, syncSoon, watchChanges, watchRefusedWrites } from './lib/sync';
 import { isNative, onAppLink } from './lib/native';
 import { codeFromText, setPendingAsk, startFriendLinks } from './lib/friendlinks';
 import { PlayTab, RoundsTopBar } from './screens/Play';
@@ -279,6 +279,7 @@ export function App() {
   // minutes and shortly after a change – only when signed in and online
   useEffect(() => {
     watchChanges();
+    watchRefusedWrites(); // the storage full: rounds and games rescued to the server (08.11.2026)
     finishSignIn().finally(() => syncNow());
     // the iOS app back from Google by its own link: keep the tokens, then start again as the website does after Google
     // … or opened by a friend's link (de.moescheit.golfos://friend/<code>): the friends tab asks to accept

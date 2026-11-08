@@ -53,6 +53,8 @@ export function UndoToast() {
  *  losing what was just entered without a word. */
 export function StorageFullToast() {
   const [shown, setShown] = useState(false);
+  // what was refused went to the server (sync rescueRefused): it is safe, also when the app is closed
+  const [rescued, setRescued] = useState(false);
   useEffect(() => {
     let once = false;
     const on = () => {
@@ -60,8 +62,13 @@ export function StorageFullToast() {
       once = true;
       setShown(true);
     };
+    const safe = () => setRescued(true);
     window.addEventListener('golfos:storagefull', on);
-    return () => window.removeEventListener('golfos:storagefull', on);
+    window.addEventListener('golfos:rescued', safe);
+    return () => {
+      window.removeEventListener('golfos:storagefull', on);
+      window.removeEventListener('golfos:rescued', safe);
+    };
   }, []);
   if (!shown) return null;
   // the bin only when there is something in it (Sascha 08.11.2026: Eric had not one round – "I don't understand it")
@@ -74,10 +81,12 @@ export function StorageFullToast() {
   return (
     <div className="undo-toast" role="alert">
       <span>
-        {tr(
-          "The app's storage on this phone is full – what you just entered is still there, but only while the app stays open. Please don't close the app.",
-          'Der Speicher der App ist voll – deine letzten Eingaben sind noch da, aber nur, solange die App offen bleibt. Bitte die App jetzt nicht schließen.',
-        )}
+        {rescued
+          ? tr("The app's storage on this phone is full – what you entered is saved in your account and comes back by itself.", 'Der Speicher der App ist voll – deine Eingaben sind in deinem Konto gesichert und kommen von selbst zurück.')
+          : tr(
+              "The app's storage on this phone is full – what you just entered is still there, but only while the app stays open. Please don't close the app.",
+              'Der Speicher der App ist voll – deine letzten Eingaben sind noch da, aber nur, solange die App offen bleibt. Bitte die App jetzt nicht schließen.',
+            )}
         {binUsed ? ' ' + tr('Deleting rounds from the bin for good makes room.', 'Runden im Papierkorb endgültig löschen schafft Platz.') : ''}
       </span>
       <button type="button" onClick={() => setShown(false)}>

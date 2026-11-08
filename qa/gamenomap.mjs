@@ -108,17 +108,20 @@ if (onSetup) {
   ok((await p.getByText(/Wo ist der Abschlag/).count()) === 0 && (await p.locator('.map-hole-no').count()) > 0 && !/Einrichten/.test(await p.locator('.map-hole-no').innerText()), 'saved with the storage full: the hole is on the map');
 }
 
-// the storage guard: the map of a course with a game being played never makes room
+// the storage guard: the map of a course with a game being played never makes room – since 08.11.2026 the maps live in
+// the big store (IndexedDB) and take no room in localStorage: none is removed (the 12-hour rule for localStorage without
+// the big store: storageguard.test)
 const kept = await p.evaluate(async () => {
   const G = await import('/src/lib/storageguard.ts');
+  const B = await import('/src/lib/bigstore.ts');
   const gs = JSON.parse(localStorage.getItem('golfos.games.v1'));
   const g = gs.find((x) => !x.finishedAt);
   localStorage.setItem('golfos.geo.v1.' + g.round.courseId, '{"holes":[],"green":[],"tee":[],"bunker":[],"fairway":[],"water":[]}');
   localStorage.setItem('golfos.geo.v1.osm:way/1', '{}');
   while (G.makeRoom('x')) {}
-  return { game: localStorage.getItem('golfos.geo.v1.' + g.round.courseId) != null, other: localStorage.getItem('golfos.geo.v1.osm:way/1') != null };
+  return { big: B.bigStoreOn(), game: localStorage.getItem('golfos.geo.v1.' + g.round.courseId) != null, other: localStorage.getItem('golfos.geo.v1.osm:way/1') != null };
 });
-ok(kept.game && !kept.other, `storage full: the game's course map stays, another goes (${JSON.stringify(kept)})`);
+ok(kept.big && kept.game && kept.other, `storage full: the course maps in the big store – the game's map stays, none is removed (${JSON.stringify(kept)})`);
 
 ok(errs.length === 0, `no page errors ${errs.slice(0, 2).join(' | ')}`);
 await b.close();

@@ -191,6 +191,9 @@ export function HoleScreen(props: {
     setView('map'); // every new hole starts on the map
   };
 
+  const goToRef = useRef(goTo);
+  goToRef.current = goTo;
+
   const fixHole = (patch: { par?: number; strokeIndex?: number }) => {
     const holes = round.holes.slice();
     holes[i] = { ...hole, ...patch };
@@ -1258,15 +1261,21 @@ export function HoleScreen(props: {
       const json = watchRound(round, allMaps, unit === 'yd' ? 'yd' : 'm', getLang());
       void sendRound(json, holeRef.current, !started).then((ok) => {
         if (!ok || started) return;
+        setTestMsg(props.game ? tr('Apple Watch connected – the distances are on it', 'Apple Watch verbunden – die Entfernungen sind auf der Uhr') : tr('Apple Watch connected – it counts your shots', 'Apple Watch verbunden – sie zählt deine Schläge'));
         try {
           sessionStorage.setItem(key, '1');
         } catch {
           /* this time only */
         }
       });
-      if (props.game) return;
       stop = onWatch((it) => {
         const r = latestRound.current;
+        // the hole changed on the watch by hand (in the last minute): the phone goes along – as by GPS, no par written
+        if (it.kind === 'hole') {
+          if (Date.now() - it.t < 60000 && it.hole !== holeRef.current && it.hole >= 0 && it.hole < r.holes.length) goToRef.current(it.hole, true, r);
+          return;
+        }
+        if (props.game) return; // a game counts no shots
         if (it.kind === 'remove') {
           const next = removeWatchShot(r, it.id);
           if (next !== r) {

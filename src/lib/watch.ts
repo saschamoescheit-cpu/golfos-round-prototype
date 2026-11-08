@@ -33,6 +33,7 @@ interface WatchLinkPlugin {
   end(): Promise<void>;
   take(): Promise<{ items: WatchItem[] }>;
   forget(o: { round: string }): Promise<void>;
+  samples(): Promise<{ count: number; uri: string }>;
   addListener(event: 'watch', fn: (it: WatchItem) => void): Promise<PluginListenerHandle>;
 }
 // a plugin proxy answers every name, also "then" – never awaited or returned itself (see native.ts)
@@ -154,4 +155,21 @@ export function onWatch(fn: (it: WatchItem) => void): () => void {
     document.removeEventListener('visibilitychange', catchUp);
     void handle?.remove();
   };
+}
+
+/** The watch's recordings of the swings (and the turns that were no swing), kept on the iPhone in a file – to tune the
+ *  shot detection from real swings (Sascha 08.11.2026). count 0: none (or not the app). */
+export async function watchSamples(): Promise<{ count: number; uri: string }> {
+  if (!isNative()) return { count: 0, uri: '' };
+  try {
+    return await Link.samples();
+  } catch {
+    return { count: 0, uri: '' }; // an app from before the recordings
+  }
+}
+
+/** The recordings into the share sheet (AirDrop, mail, files). */
+export async function shareWatchSamples(uri: string): Promise<void> {
+  const { Share } = await import('@capacitor/share');
+  await Share.share({ title: 'GolfOS – Apple Watch', files: [uri] });
 }

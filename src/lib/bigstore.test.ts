@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { flushBig, isBig, openBigStore, resetBigStoreForTests, type BigBackend } from './bigstore';
+import { decodeTrack, encodeTrack } from './trackcodec';
 
 // The big data in IndexedDB instead of the 5 MB of localStorage (Sascha 08.11.2026: "storage full" right after opening
 // the app). A storage like the browser's – its methods on the prototype – and a backend in memory.
@@ -112,12 +113,20 @@ describe('the big store', () => {
     expect(ls.getItem('golfos.track.v1.r2')).toHaveLength(5000);
   });
 
-  it('a track in both places: the one with more points stays', async () => {
+  it('a track in both places (a session without the big store began it again): put together, fix by fix', async () => {
     const b = new MemBackend();
-    b.data.set('golfos.track.v1.r1', 'long'.repeat(100));
-    ls.setItem('golfos.track.v1.r1', 'short');
+    b.data.set('golfos.track.v1.r1', encodeTrack([[1000, 9.69, 48.78, 4], [2000, 9.6901, 48.78, 4]]));
+    ls.setItem('golfos.track.v1.r1', encodeTrack([[2000, 9.6901, 48.78, 4], [3000, 9.6902, 48.78, 5]]));
     await openBigStore(b, S());
-    expect(ls.getItem('golfos.track.v1.r1')).toBe('long'.repeat(100));
+    expect(decodeTrack(ls.getItem('golfos.track.v1.r1')).map((r) => r[0])).toEqual([1000, 2000, 3000]);
+    expect(decodeTrack(b.data.get('golfos.track.v1.r1')!).map((r) => r[0])).toEqual([1000, 2000, 3000]);
+  });
+  it('anything else in both places: the one written last (localStorage)', async () => {
+    const b = new MemBackend();
+    b.data.set('golfos.geo.v1.c', 'old');
+    ls.setItem('golfos.geo.v1.c', 'new');
+    await openBigStore(b, S());
+    expect(ls.getItem('golfos.geo.v1.c')).toBe('new');
   });
 
   it('no database: nothing moves, nothing is lost', async () => {

@@ -1,6 +1,7 @@
 import { SUPABASE_KEY, SUPABASE_URL, loadSession, syncConfigured } from './sync';
 import { isStaleChunk } from './staleChunk';
 import { isNative } from './native';
+import { bigStoreOn, bigStoreSize, isBig } from './bigstore';
 
 // App errors reported by themselves (final list, Sascha 22.10.2026 – the test in the USA): what went wrong, where in the
 // app, which version and phone – never a round, a position or a name of a course. Only from the live app (not the
@@ -94,7 +95,7 @@ export function startErrorLog(): void {
       let total = 0;
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (!k) continue;
+        if (!k || (bigStoreOn() && isBig(k))) continue; // in IndexedDB – no room taken here
         const n = k.length + (localStorage.getItem(k)?.length ?? 0);
         total += n;
         sizes.push([k, n]);
@@ -102,7 +103,7 @@ export function startErrorLog(): void {
       sizes.sort((a, b) => b[1] - a[1]);
       const kb = (n: number) => `${Math.round(n / 1024)}k`;
       const top = sizes.slice(0, 10).map(([k, n]) => `${k} ${kb(n)}`).join(', ');
-      reportError('error', new Error(`storage full writing ${String((ev as CustomEvent).detail)} – ${sizes.length} keys, ${kb(total)} chars: ${top}`));
+      reportError('error', new Error(`storage full writing ${String((ev as CustomEvent).detail)} – ${sizes.length} keys, ${kb(total)} chars (big store ${bigStoreOn() ? kb(bigStoreSize()) : 'off'}): ${top}`));
     } catch {
       // nothing to tell
     }

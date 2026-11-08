@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { packets, signChanges, syncOnce, type LocalStore, type Remote, type Row } from './sync';
+import { packets, rescueRefused, signChanges, syncOnce, type LocalStore, type Remote, type Row } from './sync';
 
 // Two devices and one server, all in memory: what Sascha does with iPhone, iPad and PC.
 
@@ -353,5 +353,37 @@ describe('the main device synced last', () => {
     await syncOnce(phone, srv, clock);
     await syncOnce(pc, srv, clock);
     expect(JSON.parse(pc.get('golfos.bag.v1')!)[0].carry).toBe(235);
+  });
+});
+
+// Sascha 08.11.2026, Eric: the storage full – "what can we do so that what Eric entered is not lost?"
+describe('a round the full device would not take', () => {
+  it('goes to the server at once – only what changed – and comes back down by the next sync', async () => {
+    const srv = server();
+    const phone = device({ 'golfos.rounds.v1': [round('r1', [4, 5]), round('r2', [3])] });
+    await syncOnce(phone, srv, clock);
+    // the app holds hole 3 of r1, the device refused to keep it
+    const refused = JSON.stringify([round('r1', [4, 5, 6]), round('r2', [3])]);
+    expect(await rescueRefused('golfos.rounds.v1', refused, srv, phone)).toBe(1);
+    expect((srv.rows.get('round|r1')!.data as { entries: { me: unknown[] } }).entries.me).toHaveLength(3);
+    // the app was closed; opened again (room once more), the sync brings the rescued round down – nothing lost
+    await syncOnce(phone, srv, clock);
+    expect(rounds(phone).find((r) => r.id === 'r1')!.entries.me.map((e) => e.strokes)).toEqual([4, 5, 6]);
+  });
+  it('the sync stops before reloading while the device still refuses – the screen keeps what it shows', async () => {
+    const srv = server();
+    const phone = device({ 'golfos.rounds.v1': [round('r1', [4])] });
+    await syncOnce(phone, srv, clock);
+    await rescueRefused('golfos.rounds.v1', JSON.stringify([round('r1', [4, 5])]), srv, phone);
+    const full = { ...phone, set: (k: string, v: string) => { if (k === 'golfos.rounds.v1') throw new Error('QuotaExceededError'); phone.set(k, v); } };
+    await expect(syncOnce(full, srv, clock)).rejects.toThrow();
+    expect(rounds(phone)[0].entries.me).toHaveLength(1); // the device unchanged – the app keeps its newer copy on screen
+  });
+  it('a key that is no list of the sync, or nothing changed: nothing sent', async () => {
+    const srv = server();
+    const phone = device({ 'golfos.rounds.v1': [round('r1', [4])] });
+    expect(await rescueRefused('golfos.track.v1.r1', '[]', srv, phone)).toBe(0);
+    expect(await rescueRefused('golfos.rounds.v1', JSON.stringify([round('r1', [4])]), srv, phone)).toBe(0);
+    expect(srv.rows.size).toBe(0);
   });
 });

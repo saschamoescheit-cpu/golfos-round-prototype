@@ -1,6 +1,7 @@
 import { loadProfile, saveProfile } from './profile';
 import { tr } from './i18n';
 import { AUTH_BACK, isNative, openSignIn } from './native';
+import { takeRefused } from './storageguard';
 
 // Sync between the player's devices (feature 013, Sascha 15.10.2026: "iPhone, iPad and PC should show the same").
 // Offline first: the app keeps saving to the device as before; with a Google login and a network the data is
@@ -765,6 +766,75 @@ export function syncNow(): Promise<SyncResult | null> {
     }
   })();
   return running;
+}
+
+/**
+ * A write the device refused – its storage full (Sascha 08.11.2026, Eric: "what can we do so that what Eric entered is
+ * not lost?"): the entries of the list (rounds, games, Training …) that differ from what the device holds go to the
+ * server at once, as the app holds them. Once there is room the next sync brings them down; while there is none that
+ * sync stops before anything is reloaded, so the screen keeps them. Waits for a sync that is running (it must not send
+ * the older copy after this one). The rows sent – 0: not signed in, offline, nothing to rescue.
+ */
+export async function rescueRefused(key: string, value: string, remote?: Remote, store: LocalStore = browserStore): Promise<number> {
+  const list = LISTS.find((l) => l.key === key);
+  if (!list) return 0;
+  const idOf = list.idOf as (x: unknown) => string;
+  const items = parse<unknown[]>(value, []);
+  if (!Array.isArray(items) || !items.length) return 0;
+  const held = new Map<string, string>();
+  for (const x of parse<unknown[]>(store.get(key), [])) {
+    const id = idOf(x);
+    if (id) held.set(id, JSON.stringify(x));
+  }
+  const changed = items.filter((x) => {
+    const id = idOf(x);
+    return !!id && held.get(id) !== JSON.stringify(x);
+  });
+  if (!changed.length) return 0;
+  let r = remote;
+  if (!r) {
+    if (!syncConfigured() || !loadSession() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return 0;
+    if (running) await running.catch(() => null);
+    const t = await authToken();
+    if (!t) return 0;
+    r = supabaseRemote(t);
+  }
+  const at = new Date().toISOString();
+  const rows: Row[] = changed.map((x) => ({ kind: list.kind, id: idOf(x), data: x, updated_at: at, deleted: false }));
+  try {
+    const failed = (await r.upsert(rows)) ?? [];
+    return rows.length - failed.length;
+  } catch {
+    return 0;
+  }
+}
+
+let rescueTimer = 0;
+/** The device's storage full: rounds and games rescued to the server a few seconds later (one rescue for a burst of
+ *  writes – every tap writes again); says so ("golfos:rescued") when something went up. */
+let refusedWatched = false;
+export function watchRefusedWrites(): void {
+  if (typeof window === 'undefined' || refusedWatched) return;
+  refusedWatched = true;
+  const waiting = new Set<string>();
+  window.addEventListener('golfos:storagefull', (e) => {
+    const key = String((e as CustomEvent).detail ?? '');
+    if (!LISTS.some((l) => l.key === key)) return;
+    waiting.add(key);
+    window.clearTimeout(rescueTimer);
+    rescueTimer = window.setTimeout(() => {
+      const keys = [...waiting];
+      waiting.clear();
+      void (async () => {
+        let sent = 0;
+        for (const k of keys) {
+          const v = takeRefused(k);
+          if (v != null) sent += await rescueRefused(k, v);
+        }
+        if (sent) window.dispatchEvent(new CustomEvent('golfos:rescued', { detail: sent }));
+      })();
+    }, 3000);
+  });
 }
 
 let soon = 0;
