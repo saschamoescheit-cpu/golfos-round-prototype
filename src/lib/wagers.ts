@@ -269,7 +269,29 @@ export interface Progress {
   duels?: { day: string; course: string; front: number | null; back: number | null; total: number | null }[];
   /** a bet "with marker": holes of the counted rounds where the marker's figures differ from the player's own */
   differ?: number;
+  /** each round of the pool's days on its own – a bet holds for one round, the standing per round (Sascha 08.11.2026:
+   *  "an overview over all rounds for a total, and then per round"); counted: signed (or a bet without marker) */
+  perRound?: RoundResult[];
   at: string;
+}
+export interface RoundResult {
+  day: string;
+  course: string;
+  value: number | null;
+  counted: boolean;
+}
+
+/** A bet in each round on its own: the round's figure – the best of it when one round shows twice (two phones). */
+export function perRoundOf(w: Wager, inTime: PlayedRound[]): RoundResult[] {
+  const out: RoundResult[] = [];
+  for (const r of inTime) {
+    const value = bestOf(w, [r]).best;
+    const counted = !w.counted || r.counted;
+    const same = out.find((x) => x.day === r.day && x.course === r.course);
+    if (!same) out.push({ day: r.day, course: r.course, value, counted });
+    else if (value != null && (same.value == null || (lower(w) ? value < same.value : value > same.value))) Object.assign(same, { value, counted });
+  }
+  return out.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
 }
 
 export interface PoolPlayer {
@@ -683,7 +705,7 @@ function bestOf(w: Wager, rs: PlayedRound[]): { best: number | null; where?: str
   return { best, where: found && whereOf(found) };
 }
 
-const reached = (w: Wager, best: number | null): boolean => best != null && (lower(w) ? best <= w.target : best >= w.target);
+export const reached = (w: Wager, best: number | null): boolean => best != null && (lower(w) ? best <= w.target : best >= w.target);
 
 export const sameName = (a: string, b: string): boolean => {
   const x = a.trim().toLowerCase();
@@ -738,16 +760,18 @@ export function judge(w: Wager, pool: Pick<WagerPool, 'from' | 'to'> & { players
   const counting = w.counted ? inTime.filter((r) => r.counted) : inTime;
   const b = bestOf(w, counting);
   const differ = w.counted ? counting.reduce((n, r) => n + (r.differ?.length ?? 0), 0) : 0;
+  const per = perRoundOf(w, inTime);
+  const perRound = per.length ? { perRound: per } : {};
   if (shapeOf(w.kind) === 'sum') {
     // made once its rounds are played and the total is at most the target
     const used = b.used ?? 0;
     const done = used >= (w.rounds ?? 6) && reached(w, b.best);
-    return { best: b.best, done, rounds: used, ...(differ ? { differ } : {}), at: now };
+    return { best: b.best, done, rounds: used, ...(differ ? { differ } : {}), ...perRound, at: now };
   }
   const all = w.counted ? bestOf(w, inTime).best : b.best;
   const better = all != null && (b.best == null || (lower(w) ? all < b.best : all > b.best));
   const done = reached(w, b.best);
-  return { best: b.best, ...(better ? { pending: all } : {}), done, ...(done && b.where ? { where: b.where } : {}), rounds: counting.length, ...(differ ? { differ } : {}), at: now };
+  return { best: b.best, ...(better ? { pending: all } : {}), done, ...(done && b.where ? { where: b.where } : {}), rounds: counting.length, ...(differ ? { differ } : {}), ...perRound, at: now };
 }
 
 /** Made in a round not signed yet (or played without a marker) – the result shown as provisional (Sascha 02.11.2026:

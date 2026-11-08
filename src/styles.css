@@ -900,6 +900,9 @@ button.tile:disabled { opacity: 1; }
 .stepper-value small { font: 700 10px var(--body); color: var(--brand-text); letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; }
 .stepper-value.empty { color: var(--muted); }
 .chip-set { display: flex; gap: 6px; flex-wrap: wrap; }
+/* the pool's standing: Gesamt, then each round (Sascha 08.11.2026) – a long course name cut, the day stays */
+.bet-rounds { margin-bottom: 10px; }
+.bet-rounds .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip-set.facts .chip { flex: 1 1 auto; max-width: max-content; text-align: center; } /* a pill on its own line keeps its size */
 .score-sheet .chip-set.facts .chip { flex: 1; max-width: none; } /* the hole facts in the score sheet: one row, evenly */
 .chip {

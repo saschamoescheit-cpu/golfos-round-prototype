@@ -387,6 +387,16 @@ export const FAQ: FaqTopic[] = [
         video: 'wagers',
       },
       {
+        // Sascha 08.11.2026, USA: a bet holds for one round – the standing in total and per round; the tournaments count
+        q: () => tr('Where do I see what each of us did in one round – and do the tournaments count?', 'Wo sehe ich, was jeder in einer Runde geschafft hat – und zählen die Turniere?'),
+        a: () =>
+          tr(
+            'Every bet holds for one round. In the pool, "Standing" shows "Total" – the best round of each – and a chip per round (day and course): tapped, each one’s figure in that round. A tournament on the pool’s days counts for everyone who played in it – also the scores the host entered afterwards ("Enter scores" in the tournament), they count like a signed card. Where a phone has the round itself, its card counts with putts and greens; scores entered afterwards have strokes only.',
+            'Jede Wette gilt für eine Runde. Im Pool zeigt „Stand“ „Gesamt“ – die beste Runde jedes Spielers – und einen Chip je Runde (Tag und Platz): angetippt steht da, was jeder in dieser Runde geschafft hat. Ein Turnier in den Tagen des Pools zählt für jeden, der darin gespielt hat – auch die Scores, die der Host nachträglich eingetragen hat („Scores eintragen“ im Turnier), sie zählen wie eine unterschriebene Karte. Hat ein Handy die Runde selbst, zählt seine Karte mit Putts und Grüns; nachgetragene Scores haben nur Schläge.',
+          ),
+        video: 'wagers',
+      },
+      {
         // Sascha 01.11.2026: tournaments planned in Games, played in Rounds
         q: () => tr('Can I plan a tournament ahead – flights, markers, tee times?', 'Kann ich ein Turnier vorab planen – Flights, Zähler, Startzeiten?'),
         a: () =>

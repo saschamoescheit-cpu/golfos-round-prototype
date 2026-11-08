@@ -1,6 +1,7 @@
 import type { Round } from '../types';
 import { loadRounds, newId } from './storage';
-import { cachedEvent, isSigned, markerOf, type Cell } from './sharedround';
+import { cachedEvent, isSigned, markerOf, nameIs, refreshEvent, roundFromEvent, type Cell, type RoundEvent } from './sharedround';
+import { loadTours } from './tourstore';
 import { newCode } from './sharedgame';
 import { authToken, loadSession, SUPABASE_KEY, SUPABASE_URL, syncConfigured } from './sync';
 import { afterPayments, balances, dayOf, openPoolTransfers, isPool, judge, withCounted, lower, playedRounds, sameName, sameProgress, shapeOf, wagerLabel, type EarlierBet, type PlayedRound, type PoolPlayer, type Progress, type Wager, type WagerPool } from './wagers';
@@ -320,7 +321,56 @@ export async function joinPool(code: string, who: { id: string } | { name: strin
 export function countedRound(r: Round, pid: string): boolean {
   if (!r.shared) return false;
   const f = cachedEvent(r.shared.code)?.flights[r.shared.flight];
-  return !!f && !!markerOf(f, pid) && isSigned(f, pid);
+  // entered afterwards by the host ("Scores eintragen"): counts like a signed card (Sascha 08.11.2026: "count fully")
+  return !!f && (!!f.entered?.[pid] || (!!markerOf(f, pid) && isSigned(f, pid)));
+}
+
+// ---------- the tournaments' scores in the bets (Sascha 08.11.2026: Erik's "2/1" and nothing for the others – the
+// rounds on the phones were missing after the app failed; the scores entered afterwards must count too) ----------
+
+/** Which player of a flight is this pool player: the same account on a phone that played him, else the same name (or
+ *  first name), else one name the beginning of the other ("Chris" – "Christopher") when only one player fits. */
+export function flightPlayerOf(ev: RoundEvent, p: Pick<PoolPlayer, 'name' | 'joined' | 'invited'>): { flight: string; player: string } | null {
+  const uid = p.joined?.uid ?? p.invited?.uid;
+  const flights = Object.values(ev.flights).filter((f) => f.players.length);
+  if (uid)
+    for (const f of flights) {
+      const ph = Object.values(f.phones ?? {}).find((x) => x.uid === uid && f.players.some((y) => y.id === x.player));
+      if (ph) return { flight: f.id, player: ph.player };
+    }
+  const all = flights.flatMap((f) => f.players.map((x) => ({ flight: f.id, player: x.id, name: x.name })));
+  const same = all.filter((x) => sameName(x.name, p.name) || nameIs(x.name, p.name));
+  if (same.length === 1) return { flight: same[0].flight, player: same[0].player };
+  if (same.length > 1) return null;
+  const first = (s: string) => s.trim().toLowerCase().split(/\s+/)[0] ?? '';
+  const a = first(p.name);
+  const begins = a.length >= 4 ? all.filter((x) => { const b = first(x.name); return b.length >= 4 && (b.startsWith(a) || a.startsWith(b)); }) : [];
+  return begins.length === 1 ? { flight: begins[0].flight, player: begins[0].player } : null;
+}
+
+/** A tournament's flight as a round of one pool player – his card as the flight row has it, on the tournament's day. */
+export function tourRoundOf(ev: RoundEvent, code: string, day: string, p: Pick<PoolPlayer, 'name' | 'joined' | 'invited'>, today = dayOf(new Date())): Round | null {
+  if (day > today) return null;
+  const at = flightPlayerOf(ev, p);
+  if (!at) return null;
+  const r = roundFromEvent(ev, at.flight, at.player, code);
+  if (!(r.entries[at.player] ?? []).some((e) => e.pickedUp || e.strokes != null)) return null;
+  const f = ev.flights[at.flight];
+  return { ...r, id: `tour-${code}-${at.flight}-${at.player}`, createdAt: `${day}T12:00:00`, finishedAt: f.finishedAt ?? (day < today ? `${day}T23:00:00` : null) };
+}
+
+/** The tournaments of the pool's days on this phone, read fresh – what their flights hold counts for the bets. */
+async function poolTours(pools: PoolEntry[]): Promise<{ code: string; day: string; ev: RoundEvent }[]> {
+  const from = pools.reduce((m, e) => (e.pool.from < m ? e.pool.from : m), '9999');
+  const to = pools.reduce((m, e) => (e.pool.to > m ? e.pool.to : m), '0000');
+  const today = dayOf(new Date());
+  const out: { code: string; day: string; ev: RoundEvent }[] = [];
+  for (const t of loadTours()) {
+    if (t.ev.deletedAt || t.ev.date < from || t.ev.date > to || t.ev.date > today) continue;
+    const ev = (await refreshEvent(t.code).catch(() => null)) ?? cachedEvent(t.code);
+    if (ev) out.push({ code: t.code, day: t.ev.date, ev });
+  }
+  return out;
 }
 
 /** The marker's count of a player in a round with a marker, as the event has it (his flight's row): each hole's score
@@ -365,19 +415,30 @@ export function reportWagers(): Promise<void> {
       // the rounds of Rounds, and those in play from a pool (judged live – Sascha 02.11.2026)
       const kept = loadRounds();
       const all = [...kept, ...roundsInPlay().filter((r) => !kept.some((k) => k.id === r.id))];
-      const rounds = playedRounds(all, countedRound, markerCount);
+      // the tournaments of the pools' days: a player's flight counts where this phone has no round of that tournament
+      // for him (the round on his phone has his details – putts, greens – the flight row only what came along)
+      const tours = await poolTours(pools);
+      const fromTours = (rs: Round[], p: Pick<PoolPlayer, 'name' | 'joined' | 'invited'>): Round[] =>
+        tours.map((t) => (rs.some((r) => r.shared?.code === t.code) ? null : tourRoundOf(t.ev, t.code, t.day, p))).filter((r): r is Round => !!r);
       for (const e of pools) {
+        const meP = e.pool.players.find((x) => x.id === e.me);
+        const allMine = meP ? [...all, ...fromTours(all, meP)] : all;
+        const rounds = playedRounds(allMine, countedRound, markerCount);
         // "Einer für alle" (Sascha 04.11.2026): a round of this pool, started here – one phone keeps the score of all – counts
         // as marked once finished; else as ever (a shared flight's marker or scorer signed)
         const counted = e.pool.oneScorer ? (r: Round, pid: string) => countedRound(r, pid) || (!!r.finishedAt && poolOfRound(r.id) === e.code) : countedRound;
-        const mineRounds = e.pool.oneScorer ? playedRounds(all, counted, markerCount) : rounds;
+        const mineRounds = e.pool.oneScorer ? playedRounds(allMine, counted, markerCount) : rounds;
         // whose bets this phone judges: its owner's – the host's phone also the others', from the rounds on it with their
         // whole card (Sascha 02.11.2026: "one phone for all"); the server takes those only from the host
         const host = isHost(e);
         const roundsOf = new Map<string, PlayedRound[]>([[e.me, mineRounds]]);
         if (host)
           for (const p of e.pool.players)
-            if (p.id !== e.me) roundsOf.set(p.id, playedRounds(all.filter((r) => keptFor(r, p.name)), counted, markerCount, p.name));
+            if (p.id !== e.me) {
+              const his = all.filter((r) => keptFor(r, p.name));
+              // his tournament flights too – the scores entered afterwards by the host count for him (Sascha 08.11.2026)
+              roundsOf.set(p.id, [...playedRounds(his, counted, markerCount, p.name), ...playedRounds(fromTours(his, p), counted, markerCount)]);
+            }
         const judged = (w: Wager) => roundsOf.has(w.player) && w.kind !== 'free';
         const mine = e.pool.wagers.filter(judged);
         const fresh = Object.fromEntries(mine.map((w) => [w.id, judge(w, e.pool, roundsOf.get(w.player)!)]));

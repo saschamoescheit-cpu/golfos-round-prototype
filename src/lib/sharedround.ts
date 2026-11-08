@@ -68,6 +68,9 @@ export interface Flight {
   keeper?: Record<string, string>;
   /** a tournament: the card signed – by the player and by his marker (when) */
   signed?: Record<string, { player?: string; marker?: string }>;
+  /** the host entered a player's scores afterwards ("Scores eintragen", when) – they count as a signed card for the
+   *  bets (Sascha 08.11.2026: "count fully") */
+  entered?: Record<string, string>;
   /** the phone that set the flight up – its players come from there */
   by?: string;
   finishedAt?: string | null;
@@ -1120,14 +1123,19 @@ export function withScores(f: Flight, typed: Record<string, (number | null)[]>):
     });
   const scores = { ...f.scores };
   const marks = { ...(f.marks ?? {}) };
+  const entered = { ...(f.entered ?? {}) };
+  const now = new Date().toISOString();
   for (const [pid, vals] of Object.entries(typed)) {
     if (!f.players.some((p) => p.id === pid)) continue;
     scores[pid] = put(f.scores[pid], vals);
     if (f.marks?.[pid]) marks[pid] = put(f.marks[pid], vals);
+    // entered by the host: counted for the bets as a signed card (Sascha 08.11.2026)
+    if (vals.some((v) => v != null)) entered[pid] = now;
   }
-  return { ...f, scores, ...(f.marks ? { marks } : {}) };
+  return { ...f, scores, ...(f.marks ? { marks } : {}), ...(Object.keys(entered).length ? { entered } : {}) };
 }
-/** The host's scores of a flight written into its row (the leaderboard, the series, the bets read them). The event, or null. */
+/** The host's scores of a flight written into its row (the leaderboard, the series, the spectators – and the bets, from
+ *  the tournaments in a pool's days: lib/wagerstore tourRounds). The event, or null. */
 export function writeScores(code: string, fid: string, typed: Record<string, (number | null)[]>): Promise<RoundEvent | null> {
   return changeFlight(code, fid, true, (f) => (f ? withScores(f, typed) : null));
 }

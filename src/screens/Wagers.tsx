@@ -14,7 +14,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { forgetMyBet, keepMyBet, loadMyBets, type MyBet, canLinkInto, changePool, createPool, earlierBets, forgetPool, invitePlayer, isHost, isLive, joinPool, linkPlayer, loadPools, myAccount, refreshPool, rememberBets, reportWagers, restorePool, syncPools, type PoolEntry } from '../lib/wagerstore';
 import { loadFriends } from '../lib/friends';
@@ -1059,14 +1059,27 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
 /** What a bet's standing shows in a cell: the target, then the best – "3/2", "−5/+3", "10/7"; a round not signed
  *  yet with a better figure: that one (shown as provisional). */
 export function cellOf(w: Wager, p: Progress | undefined): string {
+  return figuresOf(w, p?.pending ?? p?.best ?? null);
+}
+/** The target, then a figure: "3/2", "−5/+3" – none yet, also a count of 0, a dash (Sascha 08.11.2026: "instead of the
+ *  0 I'd prefer the dash"); a score's 0 is "E" and stays. */
+export function figuresOf(w: Wager, n: number | null): string {
   const shape = shapeOf(w.kind);
-  const par = (n: number) => (n === 0 ? 'E' : n > 0 ? `+${n}` : `−${-n}`);
-  const v = (n: number) => (shape === 'score' || shape === 'sum' ? par(n) : String(n));
-  const best = p?.pending ?? p?.best;
-  // the target first, then the best (Sascha 03.11.2026: "8/9, not 9/8"); none yet – also a count of 0 – a dash
-  // (Sascha 08.11.2026: "instead of the 0 I'd prefer the dash"); a score's 0 is "E" and stays
-  const none = best == null || (best === 0 && shape !== 'score' && shape !== 'sum');
-  return `${v(w.target)}/${none ? '–' : v(best)}`;
+  const par = (x: number) => (x === 0 ? 'E' : x > 0 ? `+${x}` : `−${-x}`);
+  const v = (x: number) => (shape === 'score' || shape === 'sum' ? par(x) : String(x));
+  // the target first (Sascha 03.11.2026: "8/9, not 9/8")
+  const none = n == null || (n === 0 && shape !== 'score' && shape !== 'sum');
+  return `${v(w.target)}/${none ? '–' : v(n)}`;
+}
+/** The rounds of a pool's standing – from every bet's rounds, by day and course, oldest first. */
+export function standingRounds(pool: Pick<WagerPool, 'progress'>): { key: string; day: string; course: string }[] {
+  const seen = new Map<string, { key: string; day: string; course: string }>();
+  for (const p of Object.values(pool.progress ?? {}))
+    for (const r of [...(p?.perRound ?? []), ...(p?.duels ?? [])]) {
+      const key = `${r.day}|${r.course}`;
+      if (!seen.has(key)) seen.set(key, { key, day: r.day, course: r.course });
+    }
+  return [...seen.values()].sort((a, b) => (a.key < b.key ? -1 : 1));
 }
 /** The row a bet goes into: the same block, the same counting (birdies on 18, the whole trip, gross, 6 rounds …). */
 const rowKey = (w: Wager) => [w.kind, w.scope ?? '', w.holes ?? 18, w.net ? 'net' : '', w.orBetter === false ? 'exact' : '', w.rounds ?? '', w.parts ? `${w.parts.front}+${w.parts.back}+${w.parts.total}` : ''].join('|');
@@ -1084,6 +1097,11 @@ const rowName = (w: Wager) => {
  *  through; a bet against one player says against whom, a "5+5+10" stands with both, each with his money. */
 export function Standings(props: { pool: WagerPool; today: string; me: string; /** spectators without the money: a "5+5+10" only who is ahead */ noMoney?: boolean }) {
   const { pool } = props;
+  // "Gesamt" (null) or one round (Sascha 08.11.2026: "a bet holds for one round – an overview over all rounds for a
+  // total, and then per round")
+  const [shown, setShown] = useState<string | null>(null);
+  const roundsShown = standingRounds(pool);
+  const one = roundsShown.find((r) => r.key === shown) ?? null;
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
   const grid = pool.wagers.filter((w) => w.kind !== 'free');
   const lines = pool.wagers.filter((w) => w.kind === 'free');
@@ -1116,6 +1134,30 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
       </span>
     );
   };
+  // one round: each bet as it went in that round – made green, else its figure; no figure from that round: a dash
+  const roundCell = ({ w }: { w: Wager; against: boolean }) => {
+    const r = pool.progress[w.id]?.perRound?.find((x) => `${x.day}|${x.course}` === one!.key);
+    const made = !!r && reached(w, r.value);
+    return (
+      <span key={w.id} className={`bet-cell ${made ? 'done' : 'open'}${made && !r!.counted ? ' provisional' : ''}`} title={wagerLabel(w)}>
+        {figuresOf(w, r?.value ?? null)}
+        {made && !r!.counted && <small>{tr('provisional', 'vorläufig')}</small>}
+        {w.payout === 'opponent' && w.opponent && <small>{tr(`vs ${name(w.opponent)}`, `gg. ${name(w.opponent)}`)}</small>}
+      </span>
+    );
+  };
+  // a "5+5+10" in one round: who won it (front, back and total in that round)
+  const roundDuels = (cs: { w: Wager; against: boolean }[]) =>
+    cs.map(({ w, against }) => {
+      const d = pool.progress[w.id]?.duels?.find((x) => `${x.day}|${x.course}` === one!.key);
+      const t = d?.total == null ? null : d.total * (against ? -1 : 1);
+      return (
+        <span key={w.id + String(against)} className={`bet-cell duel${t != null && t > 0 ? ' up' : t != null && t < 0 ? ' down' : ''}`}>
+          {t == null ? '–' : t > 0 ? tr('won', 'gewonnen') : t < 0 ? tr('lost', 'verloren') : tr('halved', 'geteilt')}
+          <small>{tr(`vs ${name(against ? w.player : w.opponent)}`, `gg. ${name(against ? w.player : w.opponent)}`)}</small>
+        </span>
+      );
+    });
   const players = pool.players.filter((p) => pool.wagers.some((w) => w.player === p.id || w.opponent === p.id));
   if (!pool.wagers.length) return null;
   const state = (w: Wager) => stateOf(w, pool, props.today);
@@ -1125,6 +1167,19 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
         <h2>{tr('Standing', 'Stand')}</h2>
         <span className="muted small">{tr('live from the rounds', 'live aus den Runden')}</span>
       </div>
+      {/* the total, then each round – as the series' rounds (Sascha 08.11.2026) */}
+      {rows.length > 0 && roundsShown.length > 0 && (
+        <div className="chip-set bet-rounds" role="group" aria-label={tr('Rounds', 'Runden')}>
+          <button type="button" className={`chip${!one ? ' on' : ''}`} aria-pressed={!one} onClick={() => setShown(null)}>
+            {tr('Total', 'Gesamt')}
+          </button>
+          {roundsShown.map((r) => (
+            <button key={r.key} type="button" className={`chip${one?.key === r.key ? ' on' : ''}`} aria-pressed={one?.key === r.key} onClick={() => setShown(r.key)}>
+              {`${r.day.slice(8, 10)}.${r.day.slice(5, 7)}. ${r.course}`}
+            </button>
+          ))}
+        </div>
+      )}
       {rows.length > 0 && (
         <div className="matrix-wrap">
           {/* four players fit the phone's width – more than four: scrolled sideways (Sascha 02.11.2026) */}
@@ -1145,7 +1200,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string; /
                   <th scope="row">{r.name}</th>
                   {players.map((p) => (
                     <td key={p.id}>
-                      {r.key.startsWith('nassau|') ? duels(r.cells[p.id] ?? []) : (r.cells[p.id] ?? []).map(cell)}
+                      {one ? (r.key.startsWith('nassau|') ? roundDuels(r.cells[p.id] ?? []) : (r.cells[p.id] ?? []).map(roundCell)) : r.key.startsWith('nassau|') ? duels(r.cells[p.id] ?? []) : (r.cells[p.id] ?? []).map(cell)}
                     </td>
                   ))}
                 </tr>
