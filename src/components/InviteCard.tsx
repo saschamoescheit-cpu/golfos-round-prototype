@@ -19,7 +19,7 @@ export interface InviteAction {
   label: string;
   /** what a screen reader says (and tests find): "Einladung senden" for "Einladen" */
   aria?: string;
-  icon: 'share' | 'scan' | 'type' | 'copy';
+  icon: 'share' | 'scan' | 'type' | 'copy' | 'link' | 'renew';
   /** the main one, green: inviting */
   primary?: boolean;
   disabled?: boolean;
@@ -77,7 +77,7 @@ export function InviteCard(props: {
 }
 
 /** The icons of the QR cards (and the friend code's "new code"). */
-export function InviteIcon(props: { kind: InviteAction['icon'] | 'renew' }) {
+export function InviteIcon(props: { kind: InviteAction['icon'] }) {
   return (
     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {props.kind === 'share' ? (
@@ -94,6 +94,12 @@ export function InviteIcon(props: { kind: InviteAction['icon'] | 'renew' }) {
         <>
           <rect x="3" y="6" width="18" height="12" rx="2" />
           <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" />
+        </>
+      ) : props.kind === 'link' ? (
+        // a link (Sascha 08.11.2026: "the link with an icon for a link in the GolfOS design")
+        <>
+          <path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.6 6" />
+          <path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.6-1.6" />
         </>
       ) : props.kind === 'copy' ? (
         <>

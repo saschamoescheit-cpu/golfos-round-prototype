@@ -31,6 +31,7 @@ import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
 import { pushBet, pushWagers } from '../lib/push';
 import { loadSeries, loadTours } from '../lib/tourstore';
 import { CoursePicker } from './CoursePicker';
+import { LiveShare } from '../components/LiveShare';
 
 // Bets in Games (Sascha 01.11.2026: "in America we have bets running – it must be possible to set up individual bets in
 // Games, everything selectable and adjustable, invite people to the bets, and the flight counts each other as in a real
@@ -927,6 +928,8 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
           <PoolInvite code={props.code} name={pool.name} />
         </section>
       ))}
+      {/* the standing for people outside (Sascha 08.11.2026) – the money only when switched on */}
+      {!pool.deletedAt && <LiveShare code={props.code} name={pool.name} money />}
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}
@@ -1077,7 +1080,7 @@ const rowName = (w: Wager) => {
  *  stand – a nice matrix"; 02.11.2026: "every bet from the round analysis in the matrix, below only the free bets, with
  *  a heading"): the blocks down, the players across, each cell the best against the target – made green, missed struck
  *  through; a bet against one player says against whom, a "5+5+10" stands with both, each with his money. */
-export function Standings(props: { pool: WagerPool; today: string; me: string }) {
+export function Standings(props: { pool: WagerPool; today: string; me: string; /** spectators without the money: a "5+5+10" only who is ahead */ noMoney?: boolean }) {
   const { pool } = props;
   const name = (id?: string) => pool.players.find((p) => p.id === id)?.name ?? '?';
   const grid = pool.wagers.filter((w) => w.kind !== 'free');
@@ -1097,7 +1100,7 @@ export function Standings(props: { pool: WagerPool; today: string; me: string })
     const vs = cs.map(({ w, against }) => name(against ? w.player : w.opponent));
     return (
       <span className={`bet-cell duel${amount > 0 ? ' up' : amount < 0 ? ' down' : ''}`} title={vs.join(', ')}>
-        {amount ? `${amount > 0 ? '+' : '−'}${money(Math.abs(amount), prizeSym(prizeOf(pool)))}` : '±0'}
+        {props.noMoney ? (amount > 0 ? tr('ahead', 'vorn') : amount < 0 ? tr('behind', 'hinten') : tr('level', 'gleich')) : amount ? `${amount > 0 ? '+' : '−'}${money(Math.abs(amount), prizeSym(prizeOf(pool)))}` : '±0'}
         <small>{vs.length === 1 ? tr(`vs ${vs[0]}`, `gg. ${vs[0]}`) : tr(`${vs.length} opponents`, `${vs.length} Gegner`)}</small>
       </span>
     );

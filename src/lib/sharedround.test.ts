@@ -506,3 +506,23 @@ describe('an expired tournament goes from the start page (Sascha 02.11.2026)', (
     expect(tournamentOver(ev, 'Sascha', at('21:51'))).toBe(true);
   });
 });
+
+// Sascha 08.11.2026: "we also need to enter yesterday's scores afterwards" – the host's scores of a flight
+describe('scores entered afterwards', () => {
+  it('are the card: the own score and the marker\'s count, details kept where the strokes stay', async () => {
+    const { withScores } = await import('./sharedround');
+    const f = {
+      id: 'f1', name: 'Flight', by: 'x', finishedAt: '2026-11-07T20:00:00Z',
+      players: [{ id: 'p1', name: 'Sascha', playingHandicap: 7 }, { id: 'p2', name: 'Cedric', playingHandicap: 13 }],
+      scores: { p1: [{ s: 4, d: { pu: 2 } }, { s: 5 }, null], p2: [null, null, null] },
+      marks: { p1: [{ s: 5 }, null, null] },
+    } as unknown as import('./sharedround').Flight;
+    const g = withScores(f, { p1: [4, 6, 3], p2: [5, null, 4], ghost: [1, 1, 1] });
+    expect(g.scores.p1).toEqual([{ s: 4, d: { pu: 2 } }, { s: 6 }, { s: 3 }]);
+    expect(g.scores.p2).toEqual([{ s: 5 }, null, { s: 4 }]);
+    expect(g.marks?.p1).toEqual([{ s: 4 }, { s: 6 }, { s: 3 }]); // no "marker differs" left
+    expect(g.marks?.p2).toBeUndefined();
+    expect('ghost' in g.scores).toBe(false);
+    expect(g.finishedAt).toBe(f.finishedAt);
+  });
+});

@@ -406,6 +406,16 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'tourrounds',
       },
+      {
+        // Sascha 08.11.2026 (USA): "the live leaderboard for people outside – with the scorecards and the course"
+        q: () => tr('Can friends at home follow the leaderboard?', 'Können Freunde zu Hause das Leaderboard verfolgen?'),
+        a: () =>
+          tr(
+            'Yes – a tournament, a series, a game or a pool of bets: under "Spectators" switch on "Live leaderboard to watch" (in a tournament whoever set it up, in games and bets every player) and share the link. It opens in any browser, without the app and without an account: the leaderboard live every 20 seconds, a player tapped shows his scorecard, "Course" every hole on the aerial image with the scores on it. Joining is not possible with it. The money of a game or pool only shows when "Show amounts" is on. Switched off – or "New link" – the old link no longer opens.',
+            'Ja – Turnier, Serie, Spiel oder Wett-Pool: unter „Zuschauer“ „Live-Leaderboard zum Zuschauen“ einschalten (im Turnier, wer es angelegt hat, in Games und Wetten jeder Spieler) und den Link teilen. Er öffnet in jedem Browser, ohne App und ohne Konto: das Leaderboard live alle 20 Sekunden, ein Spieler angetippt zeigt seine Scorekarte, „Platz“ jedes Loch im Luftbild mit den Scores daran. Mitspielen geht damit nicht. Das Geld eines Spiels oder Pools steht nur da, wenn „Beträge zeigen“ an ist. Ausgeschaltet – oder „Neuer Link“ – öffnet der alte Link nicht mehr.',
+          ),
+        video: 'tours',
+      },
     ],
   },
   {

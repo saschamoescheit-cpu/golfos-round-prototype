@@ -1107,6 +1107,31 @@ export function reopenFlight(code: string, fid: string): Promise<RoundEvent | nu
   return changeFlight(code, fid, true, (f) => (f?.finishedAt ? { ...f, finishedAt: null } : null));
 }
 
+/** A flight's scores entered afterwards by the host (Sascha 08.11.2026: "we also need to enter yesterday's scores
+ *  afterwards"): the strokes of each player per hole – null clears a hole. They are the card: the player's own and, where
+ *  a marker counted, his count too (no "marker differs" left behind); the details of a hole kept while its strokes stay.
+ *  Pure – for the tests and for writeScores. */
+export function withScores(f: Flight, typed: Record<string, (number | null)[]>): Flight {
+  const put = (row: Cell[] | undefined, vals: (number | null)[]): Cell[] =>
+    vals.map((v, i) => {
+      const old = row?.[i] ?? null;
+      if (v == null) return null;
+      return old && old.s === v ? old : { s: v, ...(old?.d ? { d: old.d } : {}) };
+    });
+  const scores = { ...f.scores };
+  const marks = { ...(f.marks ?? {}) };
+  for (const [pid, vals] of Object.entries(typed)) {
+    if (!f.players.some((p) => p.id === pid)) continue;
+    scores[pid] = put(f.scores[pid], vals);
+    if (f.marks?.[pid]) marks[pid] = put(f.marks[pid], vals);
+  }
+  return { ...f, scores, ...(f.marks ? { marks } : {}) };
+}
+/** The host's scores of a flight written into its row (the leaderboard, the series, the bets read them). The event, or null. */
+export function writeScores(code: string, fid: string, typed: Record<string, (number | null)[]>): Promise<RoundEvent | null> {
+  return changeFlight(code, fid, true, (f) => (f ? withScores(f, typed) : null));
+}
+
 /** The flights that play – a flight the host took out of the plan keeps its row, empty (updatePlannedEvent). */
 export const liveFlights = (ev: RoundEvent): Flight[] => Object.values(ev.flights).filter((f) => f.players.length > 0);
 

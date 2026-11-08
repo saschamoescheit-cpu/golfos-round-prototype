@@ -12,7 +12,7 @@ import { isLady, loadProfile, shownName } from '../lib/profile';
 import { FORMATS, formatOf, isTeamMode, teamHandicap, teamsOf, whsAllowance, type GameMode, type Scoring } from '../lib/games';
 import { ROUND_KINDS, type RoundKind } from '../lib/roundkind';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
-import { CLASS_NAMES, plannedEvent, plannedFlight, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, plannedEvent, plannedFlight, type Flight, type RoundEvent } from '../lib/sharedround';
 import type { RoundHole } from '../types';
 import { addToSeries, changeMulti, changeTour, createSeries, createTour, loadSeries, loadTours, renameSeries, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
@@ -160,7 +160,15 @@ const DRAW_NAMES = (): Record<DrawMode, { name: string; text: string }> => ({
 });
 export const drawName = (m: DrawMode) => DRAW_NAMES()[m].name;
 
-const flightsOf = (ev: RoundEvent) => Object.values(ev.flights).filter((f) => f.players.length);
+/** the flights by their tee time (Sascha 08.11.2026: "Flight 1 at 11:48, Flight 2 at 11:40 makes no sense") – the earliest
+ *  is flight 1, tee 1 before tee 10 at the same time; without times as they were planned */
+const byTee = (a: Flight, b: Flight): number => {
+  const ta = (a as { teeTime?: string }).teeTime || '99:99';
+  const tb = (b as { teeTime?: string }).teeTime || '99:99';
+  return ta !== tb ? ta.localeCompare(tb) : (a.startHole ?? 0) - (b.startHole ?? 0);
+};
+// the same order on the tournament's page and here: plan flight k is the k-th by tee time (its id kept on saving)
+const flightsOf = (ev: RoundEvent) => Object.values(ev.flights).filter((f) => f.players.length).sort(byTee);
 const teeTimeOf = (f: unknown): string => ((f as { teeTime?: string }).teeTime ?? '');
 const keyOf = (name: string) => name.trim().toLowerCase();
 /** "Mi. 04.11." – a round's day in one short line */

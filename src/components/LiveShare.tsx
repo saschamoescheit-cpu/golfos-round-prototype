@@ -1,0 +1,95 @@
+import { useEffect, useState } from 'react';
+import { tr } from '../lib/i18n';
+import { liveLink, liveState, setLive, type LiveState } from '../lib/live';
+import { copyLink, InviteCard, shareLink } from './InviteCard';
+import { ToggleRow } from './Settings';
+
+// "Zuschauer" (Sascha 08.11.2026, USA: "the live leaderboard also for people outside the tournament – the same for
+// games and bets"): a block of its own below "Mitspieler einladen", the same in a tournament, a series, a game and a
+// pool. The main switch right of the heading (as the notifications, 23.10.2026); on: the link as every QR card in the
+// app – no code under it, it is not for joining; a pool or a game: "Beträge zeigen", off by default (Sascha's choice).
+
+export function LiveShare(props: {
+  /** the join code of the tournament, series, game or pool (its row) */
+  code: string;
+  /** its name, for the shared text */
+  name: string;
+  /** offer "Beträge zeigen" (a pool, a game) */
+  money?: boolean;
+}) {
+  const [st, setSt] = useState<LiveState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void liveState(props.code).then((s) => alive && (s ? setSt(s) : setFailed(true)));
+    return () => {
+      alive = false;
+    };
+  }, [props.code]);
+  const change = async (on: boolean, money: boolean, renew = false) => {
+    setBusy(true);
+    setMsg(null);
+    const s = await setLive(props.code, on, money, renew);
+    setBusy(false);
+    if (s) {
+      setSt(s);
+      setFailed(false);
+      if (renew) setMsg(tr('New link – the old one no longer opens.', 'Neuer Link – der alte öffnet nicht mehr.'));
+    } else setMsg(tr('No connection – try again in a moment.', 'Keine Verbindung – gleich noch einmal versuchen.'));
+  };
+  const on = !!st?.live;
+  const url = st?.live ? liveLink(st.live) : null;
+  const text = tr(`"${props.name}" live – the leaderboard, no app needed`, `„${props.name}“ live – das Leaderboard, ohne App`);
+  return (
+    <section className="setup-part live-share" aria-label={tr('Spectators', 'Zuschauer')}>
+      <span className="eyebrow">{tr('Spectators', 'Zuschauer')}</span>
+      <div className="card invite-card">
+        <div className="card-head">
+          <h2>{tr('Live leaderboard to watch', 'Live-Leaderboard zum Zuschauen')}</h2>
+          <button
+            type="button"
+            className="switch-btn"
+            role="switch"
+            aria-checked={on}
+            aria-label={tr('Live leaderboard for spectators', 'Live-Leaderboard für Zuschauer')}
+            disabled={busy || (!st && !failed)}
+            onClick={() => void change(!on, st?.money ?? false)}
+          >
+            <span className={`drawer-switch${on ? ' on' : ''}`} aria-hidden="true" />
+          </button>
+        </div>
+        {!on && (
+          <span className="muted small">
+            {tr('A link for anyone not playing: the leaderboard only, live, in the browser – no app, no account. Joining is not possible with it.', 'Ein Link für alle, die nicht mitspielen: nur das Leaderboard, live, im Browser – ohne App und ohne Konto. Mitspielen geht damit nicht.')}
+          </span>
+        )}
+        {failed && !st && <span className="muted small">{tr('Not possible right now – the server is not ready for it yet.', 'Gerade nicht möglich – der Server ist dafür noch nicht bereit.')}</span>}
+        {on && url && (
+          <InviteCard
+            link={url}
+            code={null}
+            qrLabel={tr('QR code to watch', 'QR-Code zum Zuschauen')}
+            hint={tr('Only to watch – switched off, the link no longer opens.', 'Nur zum Zuschauen – ausgeschaltet öffnet der Link nicht mehr.')}
+            actions={[
+              { label: tr('Share', 'Teilen'), aria: tr('Share the live link', 'Live-Link teilen'), icon: 'share', primary: true, onClick: () => void shareLink(text, url).then(setMsg) },
+              { label: tr('Copy link', 'Link kopieren'), aria: tr('Copy the live link', 'Live-Link kopieren'), icon: 'link', onClick: () => void copyLink(url).then(setMsg) },
+              { label: tr('New link', 'Neuer Link'), aria: tr('Make a new live link', 'Neuen Live-Link erstellen'), icon: 'renew', disabled: busy, onClick: () => void change(true, st?.money ?? false, true) },
+            ]}
+          />
+        )}
+        {on && props.money && (
+          <ToggleRow
+            label={tr('Show amounts', 'Beträge zeigen')}
+            text={tr('Stakes and who is up – off: only the bets and where they stand', 'Einsätze und wer vorn liegt – aus: nur die Wetten und ihr Stand')}
+            on={!!st?.money}
+            disabled={busy}
+            onChange={(m) => void change(true, m)}
+          />
+        )}
+        {msg && <span className="muted small">{msg}</span>}
+      </div>
+    </section>
+  );
+}

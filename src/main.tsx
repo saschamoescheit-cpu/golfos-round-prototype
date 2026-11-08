@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -25,6 +25,7 @@ import { cancelBigStore, openBigStore } from './lib/bigstore';
 import { startErrorLog } from './lib/errorlog';
 import { watchForUpdates } from './lib/appupdate';
 import { installNativeShims } from './lib/native';
+import { liveCodeOf } from './lib/live';
 
 applyTheme(); // sun mode before the first paint
 installNativeShims(); // the iOS app: its share sheet for sharing and downloads (01.11.2026)
@@ -48,7 +49,23 @@ const bigStore = Promise.race([
     }, 8000),
   ),
 ]);
+// a spectator's link (#live=…, Sascha 08.11.2026): the leaderboard alone – none of the app around it, no account, no
+// sync, no intro; only looking
+const LIVE = liveCodeOf(location.hash);
+const LiveScreen = lazy(() => import('./screens/LiveView').then((m) => ({ default: m.LiveScreen })));
+if (LIVE) {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <LiveScreen code={LIVE} />
+        </Suspense>
+      </ErrorBoundary>
+    </React.StrictMode>,
+  );
+}
 void bigStore.then(() =>
+  !LIVE &&
   ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

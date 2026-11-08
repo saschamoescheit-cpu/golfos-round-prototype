@@ -4,7 +4,7 @@ import { KeyHint } from '../components/KeyHint';
 import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
-import { CLASS_NAMES, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
+import { CLASS_NAMES, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, writeScores, type Flight, type RoundEvent } from '../lib/sharedround';
 import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
@@ -15,6 +15,7 @@ import { madeCut } from '../lib/tourdraw';
 import { dealRound, draftOf, draftOfMulti, tourFormat, type TourDraft } from './TourPlan';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
+import { LiveShare } from '../components/LiveShare';
 import { Bin } from '../components/Bin';
 import { SwipeRow } from '../components/SwipeRow';
 import { DeletedIcon, PlayedIcon } from '../components/RoundIcons';
@@ -81,7 +82,14 @@ const longDate = (d: string) => {
   }
 };
 const playersOf = (ev: RoundEvent) => Object.values(ev.flights).flatMap((f) => f.players);
-const flightsOf = (ev: RoundEvent) => Object.values(ev.flights).filter((f) => f.players.length);
+/** the flights by their tee time (Sascha 08.11.2026: "Flight 1 at 11:48, Flight 2 at 11:40 makes no sense") – the earliest
+ *  is flight 1, tee 1 before tee 10 at the same time; without times as they were planned */
+const byTee = (a: Flight, b: Flight): number => {
+  const ta = (a as { teeTime?: string }).teeTime || '99:99';
+  const tb = (b as { teeTime?: string }).teeTime || '99:99';
+  return ta !== tb ? ta.localeCompare(tb) : (a.startHole ?? 0) - (b.startHole ?? 0);
+};
+const flightsOf = (ev: RoundEvent) => Object.values(ev.flights).filter((f) => f.players.length).sort(byTee);
 const teeTimeOf = (f: unknown): string => ((f as { teeTime?: string }).teeTime ?? '');
 
 // ---------- the start page and the menu ----------
@@ -421,10 +429,92 @@ function SpecialFixSheet(props: { special: Special; ev: RoundEvent; onSave: (fid
   );
 }
 
+/** A flight's scores entered afterwards by the host (Sascha 08.11.2026: "we also need to enter yesterday's scores
+ *  afterwards"): its players one at a time, every hole a box with its par – the strokes typed, the total below. Saved,
+ *  they are the card on every phone, in the leaderboard, the series and the bets. */
+function ScoresSheet(props: { ev: RoundEvent; flight: Flight; n: number; onSave: (typed: Record<string, (number | null)[]>) => Promise<boolean>; onClose: () => void }) {
+  const { ev, flight } = props;
+  const [typed, setTyped] = useState<Record<string, (number | null)[]>>(() => Object.fromEntries(flight.players.map((p) => [p.id, ev.holes.map((_, i) => flight.scores[p.id]?.[i]?.s ?? null)])));
+  const [who, setWho] = useState(flight.players[0]?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const row = typed[who] ?? [];
+  const set = (i: number, v: string) => {
+    const n = v.trim() === '' ? null : Math.round(Number(v.replace(',', '.')));
+    setTyped((t) => ({ ...t, [who]: (t[who] ?? []).map((x, k) => (k === i ? (n != null && n >= 1 && n <= 20 ? n : null) : x)) }));
+  };
+  const total = row.reduce<number>((s, v) => s + (v ?? 0), 0);
+  const filled = row.filter((v) => v != null).length;
+  const par = ev.holes.reduce<number>((s, h, i) => s + (row[i] != null ? (h.par ?? 0) : 0), 0);
+  return (
+    <div className="sheet-backdrop" onClick={props.onClose}>
+      <section className="sheet tour-scores-sheet" role="dialog" aria-label={tr(`Scores of flight ${props.n}`, `Scores von Flight ${props.n}`)} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head">
+          <strong>{tr(`Scores · flight ${props.n}`, `Scores · Flight ${props.n}`)}</strong>
+          <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
+            ✕
+          </button>
+        </div>
+        <div className="chip-set" role="group" aria-label={tr('Player', 'Spieler')}>
+          {flight.players.map((p) => {
+            const n = (typed[p.id] ?? []).filter((v) => v != null).length;
+            return (
+              <button key={p.id} type="button" className={`chip${who === p.id ? ' on' : ''}`} aria-pressed={who === p.id} onClick={() => setWho(p.id)}>
+                {p.name} · {n}/{ev.holes.length}
+              </button>
+            );
+          })}
+        </div>
+        <div className="tour-scores-grid">
+          {ev.holes.map((h, i) => (
+            <label key={i} className="tour-score-box">
+              <span className="small">
+                <strong>{h.label}</strong> <span className="muted">Par {h.par ?? '–'}</span>
+              </span>
+              <input
+                className="input"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-label={tr(`Hole ${h.label}`, `Loch ${h.label}`)}
+                value={row[i] ?? ''}
+                onChange={(e) => set(i, e.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+        <span className="muted small">
+          {filled
+            ? tr(`${filled} of ${ev.holes.length} holes · ${total} strokes · ${total - par === 0 ? 'level' : total - par > 0 ? `+${total - par}` : total - par} to par`, `${filled} von ${ev.holes.length} Löchern · ${total} Schläge · ${total - par === 0 ? 'Par' : total - par > 0 ? `+${total - par}` : `−${par - total}`}`)
+            : tr('No hole yet.', 'Noch kein Loch.')}
+        </span>
+        {msg && (
+          <span className="small bad-text" role="alert">
+            {msg}
+          </span>
+        )}
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            const ok = await props.onSave(typed);
+            setBusy(false);
+            if (ok) props.onClose();
+            else setMsg(NO_NET());
+          }}
+        >
+          {busy ? tr('Saving …', 'Speichere …') : tr('Save the scores', 'Scores speichern')}
+        </button>
+      </section>
+    </div>
+  );
+}
+
 /** The live leaderboard of a tournament and of a series (Sascha 03.11.2026: "a live leaderboard for single tournaments
  *  and for series"): always there – before the start every player with "–", while played "● LIVE", "nach 9", "F". */
 type BoardRow = { key: string; pos: string; name: string; sub?: string; value: string; thru: string; /** his scorecards – one: the row opens it; several (the rounds): a chip each */ cards?: { label: string; card: () => Round | null }[]; /** the cards as chips even when one (a series: "R1 +3") */ chips?: boolean; out?: boolean };
-function LiveBoard(props: { label: string; title: string; live: boolean; rows: BoardRow[]; note?: string; chips?: ReactNode; cutAfter?: number }) {
+export function LiveBoard(props: { label: string; title: string; live: boolean; rows: BoardRow[]; note?: string; chips?: ReactNode; cutAfter?: number }) {
   const [open, setOpen] = useState<string | null>(null);
   const toggle = (id: string) => setOpen(open === id ? null : id);
   return (
@@ -702,6 +792,8 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
         </button>
       )}
       {host && <TourInvite code={props.code} name={s.name} date={s.rounds[0]?.date ?? today} />}
+      {/* the live leaderboard for people outside (Sascha 08.11.2026) */}
+      {host && <LiveShare code={props.code} name={s.name} />}
       {!host && <span className="muted small">{tr('Only whoever set up the series changes it.', 'Nur wer die Serie angelegt hat, ändert sie.')}</span>}
       {msg && (
         <span className="small bad-text" role="alert">
@@ -847,6 +939,7 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
   const [msg, setMsg] = useState<string | null>(null);
   const [live, setLive] = useState<RoundEvent | null>(null);
   const [fix, setFix] = useState<Special | null>(null);
+  const [scoring, setScoring] = useState<string | null>(null); // the flight whose scores the host enters
   const [at, setAt] = useState<Date | null>(null);
   // the leaderboard's view: net or gross, all or one class
   const [gross, setGross] = useState(false);
@@ -1095,6 +1188,12 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
               </div>
             );
           })}
+          {/* the scores entered afterwards by the host (Sascha 08.11.2026: "yesterday's scores afterwards") – from the day on */}
+          {host && started && (
+            <button type="button" className="btn-secondary tour-scores-btn" onClick={() => setScoring(f.id)}>
+              {tr('Enter scores', 'Scores eintragen')}
+            </button>
+          )}
           {/* ended by mistake (Sascha 03.11.2026: Cedric could not get in again): the host opens it again, the scores kept */}
           {live?.flights[f.id]?.finishedAt && (
             <div className="tour-flight-done">
@@ -1116,7 +1215,22 @@ export function TourScreen(props: { code: string; onBack: () => void; /** where 
           )}
         </section>
       ))}
+      {scoring && (live ?? ev).flights[scoring] && (
+        <ScoresSheet
+          ev={live ?? ev}
+          flight={(live ?? ev).flights[scoring]}
+          n={flightsOf(live ?? ev).findIndex((x) => x.id === scoring) + 1}
+          onClose={() => setScoring(null)}
+          onSave={async (typed) => {
+            const r = await writeScores(props.code, scoring, typed);
+            if (r) setLive(r);
+            return !!r;
+          }}
+        />
+      )}
       {host && <TourInvite code={props.code} name={ev.name} date={ev.date} />}
+      {/* the live leaderboard for people outside (Sascha 08.11.2026) */}
+      {host && <LiveShare code={props.code} name={ev.name} />}
       {msg && (
         <span className="small bad-text" role="alert">
           {msg}

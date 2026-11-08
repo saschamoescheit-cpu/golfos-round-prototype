@@ -8,6 +8,7 @@ import { joinPool, meOf, myAccount } from '../lib/wagerstore';
 import { loadProfile, shownName } from '../lib/profile';
 import { copyLink, FriendInvite, InviteCard, shareLink } from './InviteCard';
 import { ScanCodeButton } from './QrScan';
+import { LiveShare } from './LiveShare';
 
 // Invite and join (Sascha 15.10.2026: "join the game by a code or a QR code"): the host shows the code and the QR
 // code, the others scan it with the phone camera or type the code. Since 29.10.2026 as in Rounds (Sascha: "in Games
@@ -128,6 +129,8 @@ export function InviteSheet(props: { game: Game; onShared: (g: Game) => void; on
               ]}
             />
             <FriendInvite code={code} />
+            {/* the standing for people outside (Sascha 08.11.2026) – the money only when switched on */}
+            <LiveShare code={code} name={props.game.courseName} money />
           </>
         )}
         {msg && <span className="muted small">{msg}</span>}

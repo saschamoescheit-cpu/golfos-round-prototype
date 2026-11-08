@@ -117,6 +117,55 @@ export function sharedServer(b, url, o = {}) {
       }
       return json(200, { ok: true, sent: 1 });
     }
+    // the live leaderboard for spectators (supabase/golfos-live.sql, 08.11.2026): a watch code per row, cut down as there
+    if (u.pathname.endsWith('/rpc/golfos_live_set') || u.pathname.endsWith('/rpc/golfos_live_state')) {
+      const a = body();
+      const row = shared.get(clean(a.row_code));
+      if (!row || row.event_code || !uid || !(row.owner === uid || row.members.includes(uid))) return json(200, null);
+      if (u.pathname.endsWith('/rpc/golfos_live_state')) return json(200, { live: row.live ?? null, money: !!row.liveMoney });
+      if (!a.turn_on) {
+        row.live = null;
+        row.liveMoney = false;
+        return json(200, '');
+      }
+      if (!row.live || a.renew) row.live = Array.from({ length: 24 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('');
+      row.liveMoney = !!a.money;
+      return json(200, row.live);
+    }
+    if (u.pathname.endsWith('/rpc/golfos_live')) {
+      const c = String(body().live_code ?? '');
+      const hit = c.length >= 16 ? [...shared.entries()].find(([, r]) => r.live === c && !r.event_code) : null;
+      if (!hit || hit[1].game.deletedAt) return json(200, null);
+      const [code, row] = hit;
+      const strip = (f) => { const { phones, keeper, by, ...rest } = f; return rest; }; // eslint-disable-line no-unused-vars
+      const eventOf = (ec) => {
+        const r = shared.get(ec);
+        if (!r || r.game.kind !== 'round-event') return null;
+        const own = [...shared.values()].filter((x) => x.event_code === ec).map((x) => x.game.flight);
+        const fl = { ...r.game.flights, ...Object.fromEntries(own.map((f) => [f.id, f])) };
+        const { by, ...g } = r.game; // eslint-disable-line no-unused-vars
+        return { ...g, flights: Object.fromEntries(Object.entries(fl).map(([k, f]) => [k, strip(f)])) };
+      };
+      const g = row.game;
+      const at = now().toISOString();
+      if (g.kind === 'round-event') return json(200, { kind: 'event', event: eventOf(code), at });
+      if (g.kind === 'tour-series') return json(200, { kind: 'series', series: g, events: [...g.rounds].sort((x, y) => x.date.localeCompare(y.date)).map((r) => eventOf(r.code)), at });
+      if (g.kind === 'wager-pool') {
+        const { payments, ...p } = g; // eslint-disable-line no-unused-vars
+        p.players = g.players.map(({ joined, invited, ...x }) => x); // eslint-disable-line no-unused-vars
+        if (!row.liveMoney) {
+          p.wagers = g.wagers.map(({ stake, parts, ...w }) => w); // eslint-disable-line no-unused-vars
+          p.progress = Object.fromEntries(Object.entries(g.progress ?? {}).map(([k, v]) => [k, typeof v.amount === 'number' ? { ...v, amount: Math.sign(v.amount) } : v]));
+        }
+        return json(200, { kind: 'pool', pool: p, money: !!row.liveMoney, at });
+      }
+      if (!g.kind && Array.isArray(g.players) && g.scores) {
+        const { payments, claims, stamps, round, shared: sh, ownDetails, ...gm } = g; // eslint-disable-line no-unused-vars
+        if (!row.liveMoney && gm.settings) gm.settings = Object.fromEntries(Object.entries(gm.settings).map(([k, v]) => [k, ['stake', 'front', 'back', 'total', 'maxStake'].includes(k) ? 0 : v]));
+        return json(200, { kind: 'game', game: gm, money: !!row.liveMoney, at });
+      }
+      return json(200, null);
+    }
     if (u.pathname.endsWith('/rpc/golfos_join_game')) {
       const { join_code } = body();
       const row = shared.get(join_code);
@@ -313,5 +362,5 @@ export function sharedServer(b, url, o = {}) {
     shared.set(code, { game: { kind: 'tour-series', id: code.toLowerCase(), name, createdAt: now().toISOString(), rounds, ...(o2.deletedAt ? { deletedAt: o2.deletedAt } : {}), ...(o2.multi !== undefined ? { multi: o2.multi } : {}) }, updated_at: now().toISOString(), owner, members: [], requests: {} });
     return code;
   }
-  return { cards, links, shared, pushes, phone, round, event, plan, joinPlanned, series, refused: () => refused, flightReads: () => flightReads };
+  return { cards, links, shared, pushes, phone, round, event, plan, joinPlanned, series, serve, refused: () => refused, flightReads: () => flightReads };
 }

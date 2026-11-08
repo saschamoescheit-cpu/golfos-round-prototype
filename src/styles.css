@@ -2257,3 +2257,23 @@ button.tile:disabled { opacity: 1; }
 /* the tracked values taken over: one line (04.11.2026) */
 .use-all { white-space: nowrap; }
 .use-all span { overflow: hidden; text-overflow: ellipsis; }
+
+/* the spectators' page (#live=…, Sascha 08.11.2026): the leaderboard alone, no menu – the tabs, the course hole by hole */
+.live-screen { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+.live-screen h1 { margin: 0; text-wrap: balance; }
+.live-note { text-align: center; }
+.live-course { display: grid; gap: 10px; }
+.live-hole-head { display: flex; align-items: center; gap: 8px; }
+.live-hole-head .grow { flex: 1; min-width: 0; text-align: center; }
+.live-map { height: 52vh; }
+.live-hole-scores { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px 14px; }
+.live-hole-scores li { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+.live-hole-chips .chip { min-width: 40px; justify-content: center; }
+.live-round-chips { margin-top: 2px; }
+.live-share .card-head h2 { font-size: 1rem; }
+/* the host enters a flight's scores afterwards (Sascha 08.11.2026): a box per hole, three or more to a row */
+.tour-scores-sheet { display: grid; gap: 12px; }
+.tour-scores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.tour-score-box { display: grid; gap: 4px; }
+.tour-score-box .input { text-align: center; font-size: 1.15rem; font-variant-numeric: tabular-nums; padding: 8px 4px; }
+.tour-scores-btn { margin-top: 4px; }
