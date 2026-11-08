@@ -27,6 +27,10 @@ on:
         description: 'Only compile the app and the watch app (no signing, no TestFlight)'
         type: boolean
         default: false
+      status_only:
+        description: 'Only say how the TestFlight builds stand for the testers (counts, no names)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -93,9 +97,25 @@ jobs:
         run: swift test --package-path native-plugins/shot-listener > "$RUNNER_TEMP/swift.log" 2>&1 || { grep -E "error:|failed|XCTAssert" "$RUNNER_TEMP/swift.log" | head -25 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
 
   # the app is built on its own – the detector's tests run beside it and say what fails
+  # how the builds stand for the testers (Sascha 08.11.2026: "do the external group all have the current version?") –
+  # ios/ci/asc_status.py, counts only
+  status:
+    if: github.event_name == 'workflow_dispatch' && inputs.status_only == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 -m pip install -q pyjwt cryptography
+          python3 ios/ci/asc_status.py
+
   testflight:
     # a push to main only tests the detector; the app is built by hand, from app-release and at night
-    if: (github.event_name != 'push' || github.ref_name == 'app-release') && inputs.compile_only != true
+    if: (github.event_name != 'push' || github.ref_name == 'app-release') && inputs.compile_only != true && inputs.status_only != true
     runs-on: macos-15-intel
     timeout-minutes: 60
     env:
