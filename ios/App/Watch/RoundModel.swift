@@ -15,6 +15,20 @@ struct WatchHole: Codable {
     let tee: [Double]
     let center: [Double]
     let green: [[Double]]?
+    /// the hole drawn (Sascha 08.11.2026) – absent from an older iPhone app
+    let map: WatchMap?
+}
+
+/// the hole as a picture (src/lib/watch.ts watchMap): metres from the tee, [right, forward], the green straight up;
+/// `b` is the turn – the bearing tee → green in degrees from north
+struct WatchMap: Codable {
+    let b: Double
+    let line: [[Double]]
+    let green: [[Double]]?
+    let fairways: [[[Double]]]
+    let bunkers: [[[Double]]]
+    let water: [[[Double]]]
+    let tees: [[[Double]]]
 }
 
 struct WatchRound: Codable {
@@ -123,6 +137,17 @@ final class RoundModel: NSObject, ObservableObject {
     var currentHole: WatchHole? {
         guard let r = round, hole >= 0, hole < r.holes.count else { return nil }
         return r.holes[hole]
+    }
+
+    /// where the player stands in the hole's picture: metres [right, forward] from the tee, the green straight up – as
+    /// the iPhone turned the hole (WatchMap.b); nil without GPS or a picture
+    var spotInMap: [Double]? {
+        guard let h = currentHole, let m = h.map, let p = location, h.tee.count >= 2 else { return nil }
+        let lat0 = h.tee[1] * Double.pi / 180
+        let e = (p.coordinate.longitude - h.tee[0]) * 111320 * cos(lat0)
+        let n = (p.coordinate.latitude - h.tee[1]) * 110540
+        let b = m.b * Double.pi / 180
+        return [e * cos(b) - n * sin(b), e * sin(b) + n * cos(b)]
     }
 
     /// front, centre, back of the green from where the player stands (front/back nil without a green outline)

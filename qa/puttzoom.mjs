@@ -186,6 +186,28 @@ ok(/^Fahne: [\d,]+ (cm|m) (von vorne|bis hinten) · [\d,]+ (cm|m) vom Rand (link
   const pg2 = await ed.locator('.putt-pin circle').nth(1).boundingBox();
   ok(vbA === vbB && Math.hypot(pg2.x - pg.x, pg2.y - pg.y) > 5 && (await width()) < w0 * 0.95, `zoomed in, a finger beside the flag moves the flag, the green stays (view ${(await width()).toFixed(1)} m)${vbA === vbB ? '' : ` · view moved ${vbA} → ${vbB}`}${Math.hypot(pg2.x - pg.x, pg2.y - pg.y) > 5 ? '' : ` · flag moved only ${Math.hypot(pg2.x - pg.x, pg2.y - pg.y).toFixed(1)} px`}${(await width()) < w0 * 0.95 ? '' : ` · not zoomed (${w0.toFixed(1)} m before)`}`);
   ok(/^Fahne/.test(ro) && /vom Rand/.test(ro), `while dragging the flag: its spot on the green too ("${ro}")`);
+  // a pinch whose second finger lifts beside the green (Sascha 08.11.2026: "after zooming in I could not place the flag
+  // and the putts any more"): its lifting never reached the green – the next single finger must still drag the flag
+  await ed.locator('svg.putt-green').evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const ev = (type, id, primary, x, y, on = el) => on.dispatchEvent(new PointerEvent(type, { pointerId: id, isPrimary: primary, pointerType: 'touch', clientX: x, clientY: y, bubbles: true }));
+    ev('pointerdown', 91, true, r.left + 8, r.top + 8);
+    ev('pointerdown', 92, false, r.right - 8, r.bottom - 8);
+    ev('pointermove', 92, false, r.right - 4, r.bottom - 4);
+    ev('pointerup', 91, true, r.left + 8, r.top + 8);
+    ev('pointerup', 92, false, r.right + 40, r.bottom + 40, document.body); // lifted beside the green
+  });
+  await p.waitForTimeout(300);
+  const pa = await ed.locator('.putt-pin circle').nth(1).boundingBox();
+  const vb1 = await ed.locator('svg.putt-green').getAttribute('viewBox');
+  await p.mouse.move(pa.x + pa.width / 2, pa.y + pa.height / 2);
+  await p.mouse.down();
+  await p.mouse.move(pa.x + pa.width / 2 + 30, pa.y + pa.height / 2 - 20, { steps: 6 });
+  await p.mouse.up();
+  const pb = await ed.locator('.putt-pin circle').nth(1).boundingBox();
+  const vb2 = await ed.locator('svg.putt-green').getAttribute('viewBox');
+  // the flag moved – and not because the view zoomed or moved under it (the stale finger made it a pinch)
+  ok(vb1 === vb2 && Math.hypot(pb.x - pa.x, pb.y - pa.y) > 5, `after a pinch lifted beside the green: the flag moves, the view stays (${Math.hypot(pb.x - pa.x, pb.y - pa.y).toFixed(1)} px${vb1 === vb2 ? '' : ` · view ${vb1} → ${vb2}`})`);
   await wheel(300, 20);
   await p.waitForTimeout(300);
 }

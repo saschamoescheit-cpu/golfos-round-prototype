@@ -49,6 +49,50 @@ function thin(ring: LngLat[], n: number): LngLat[] {
 }
 const r6 = (p: LngLat): LngLat => [Math.round(p[0] * 1e6) / 1e6, Math.round(p[1] * 1e6) / 1e6];
 
+/** The hole drawn on the watch (Sascha 08.11.2026: "the hole's picture on the watch beside the score and the
+ *  distances"): in metres from the tee, turned so the green is straight up – [right, forward], whole metres. `b` is the
+ *  turn (the bearing tee → green, degrees from north) – the watch puts its own place into the same picture with it.
+ *  Kept small for the watch: few points per shape, the most of each kind near the line. */
+export interface WatchMap {
+  b: number;
+  line: [number, number][];
+  green: [number, number][] | null;
+  fairways: [number, number][][];
+  bunkers: [number, number][][];
+  water: [number, number][][];
+  tees: [number, number][][];
+}
+export function watchMap(m: HoleMapData, center: LngLat): WatchMap {
+  const [lon0, lat0] = m.tee;
+  const kx = 111320 * Math.cos((lat0 * Math.PI) / 180);
+  const ky = 110540;
+  const en = (p: LngLat): [number, number] => [(p[0] - lon0) * kx, (p[1] - lat0) * ky];
+  const [ce, cn] = en(center);
+  const b = Math.atan2(ce, cn); // from north, clockwise
+  const [sb, cb] = [Math.sin(b), Math.cos(b)];
+  const local = (p: LngLat): [number, number] => {
+    const [e, n] = en(p);
+    return [Math.round(e * cb - n * sb), Math.round(e * sb + n * cb)];
+  };
+  const ring = (r: LngLat[], n: number) => thin(r, n).map(local);
+  // the shapes nearest the playing line first – the watch gets the few that matter
+  const near = (rs: LngLat[][], most: number, n: number) =>
+    rs
+      .map((r) => ({ r, d: Math.min(...r.map((q) => Math.min(...m.line.map((l) => distanceM(q, l))))) }))
+      .sort((x, y) => x.d - y.d)
+      .slice(0, most)
+      .map((x) => ring(x.r, n));
+  return {
+    b: Math.round(((b * 180) / Math.PI) * 10) / 10,
+    line: thin(m.line, 10).map(local),
+    green: m.green ? ring(m.green, 20) : null,
+    fairways: near(m.fairways, 3, 14),
+    bunkers: near(m.bunkers, 6, 8),
+    water: near(m.water, 3, 12),
+    tees: near(m.tees, 2, 6),
+  };
+}
+
 /** What the watch gets of a round: per hole its label, par, tee, the middle of the green (or the pin) and its outline. */
 export function watchRound(round: Round, maps: (HoleMapData | null)[], unit: 'm' | 'yd', lang: string, pins: (LngLat | null)[] = []) {
   return {
@@ -65,6 +109,7 @@ export function watchRound(round: Round, maps: (HoleMapData | null)[], unit: 'm'
         tee: r6(m.tee),
         center: r6(pins[k] ?? m.greenCenter),
         green: m.green ? thin(m.green, 24).map(r6) : null,
+        map: watchMap(m, pins[k] ?? m.greenCenter),
       };
     }),
   };

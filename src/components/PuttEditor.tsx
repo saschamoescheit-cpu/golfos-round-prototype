@@ -130,15 +130,24 @@ export function PuttEditor(props: {
     return best;
   };
   const down = (ev: React.PointerEvent) => {
+    // a new touch on its own (no other finger down): a finger of the zoom before whose lifting went elsewhere is gone –
+    // kept, it made every later finger the second of a pinch and nothing could be dragged any more (Sascha 08.11.2026:
+    // "after zooming in I could not place the flag and the putts any more")
+    if (ev.isPrimary) touches.current.clear();
     touches.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    // every finger followed to its lifting, also when it lifts beside the green
+    try {
+      svg.current?.setPointerCapture?.(ev.pointerId);
+    } catch {
+      /* a pointer the browser no longer knows */
+    }
     if (touches.current.size === 1) {
       const what = nearest(ev.clientX, ev.clientY);
       if (what != null) {
         ev.preventDefault();
         drag.current = what;
         grab.current = { x: ev.clientX, y: ev.clientY, at: toXY(what === 'pin' ? pin : balls[what]) };
-        setActive(what);
-        svg.current?.setPointerCapture?.(ev.pointerId);
+        setActive(what); // the finger followed already (captured above)
         return;
       }
     }
@@ -270,6 +279,7 @@ export function PuttEditor(props: {
           onPointerMove={pointer}
           onPointerUp={lift}
           onPointerCancel={lift}
+          onLostPointerCapture={lift}
           onWheel={(e) => zoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15)}
           role="img"
           aria-label={tr('Green with flag and balls', 'Grün mit Fahne und Bällen')}

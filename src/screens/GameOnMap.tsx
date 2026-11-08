@@ -101,6 +101,14 @@ export function GameOnMap(props: {
   const leadText = lead && lead.points !== 0 ? `${lead.name} ${lead.value}` : '';
   const line = teams ? [tr(`Hole ${r.holes[i]?.label ?? ''}`, `Loch ${r.holes[i]?.label ?? ''}`), leadText].filter(Boolean).join(' · ') : (st.status ?? (lead ? `${lead.name} ${lead.value}` : ''));
   const setExtra = (patch: Partial<HoleExtra>) => props.onChange(stamp({ ...g, extra: g.extra.map((e, k) => (k === i ? { ...e, ...patch } : e)) }, `x:${i}`));
+  // the form's input on this hole also in the score entry (Sascha 08.11.2026: "the game's details are not in the score
+  // entry") – the same as in the game's sheet, which keeps it for before the hole (a wolf's partner, a press)
+  const gameExtras = (
+    <>
+      <HoleExtras game={g} hole={i} onChange={setExtra} />
+      {g.settings.double && Number(g.settings.stake) > 0 && <PressCard game={g} hole={i} onChange={props.onChange} />}
+    </>
+  );
   return (
     <>
       <Suspense fallback={<main className="screen" />}>
@@ -112,7 +120,7 @@ export function GameOnMap(props: {
           onAbort={() => props.onDelete(g)}
           onShowScorecard={(nr, finishing) => (finishing ? props.onFinish(withRound(g, { ...nr, finishedAt: new Date().toISOString() })) : setSheet('card'))}
           onOpenBag={props.onOpenBag}
-          game={{ name: f.name(), line, teams, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null, entry: g.settings.entry === 'strokes' ? 'strokes' : 'details', keptBy: keptBy(g), ownDetails: g.ownDetails }}
+          game={{ name: f.name(), line, teams, onOpen: () => setSheet('game'), onInvite: canShare ? () => setInvite(true) : null, shared: g.shared?.code ?? null, entry: g.settings.entry === 'strokes' ? 'strokes' : 'details', keptBy: keptBy(g), ownDetails: g.ownDetails, extras: gameExtras }}
         />
       </Suspense>
       {invite && <InviteSheet game={g} onShared={props.onChange} onClose={() => setInvite(false)} />}

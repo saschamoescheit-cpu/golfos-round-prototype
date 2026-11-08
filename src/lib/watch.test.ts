@@ -67,3 +67,33 @@ describe('a swing from the watch', () => {
     expect(removeWatchShot(r, 'nope')).toBe(r);
   });
 });
+
+// Sascha 08.11.2026: "the hole's picture on the watch beside the score and the distances"
+describe('the hole drawn on the watch', () => {
+  it('in metres from the tee, the green straight up', async () => {
+    const { watchMap } = await import('./watch');
+    // a hole running north-east: the green 300 m away at 45°
+    const d = 300 / Math.SQRT2;
+    const h: HoleMapData = { ...hole, line: [at(0, 0), at(d, d)], greenCenter: at(d, d), green: [at(d - 10, d), at(d, d + 10), at(d + 10, d), at(d, d - 10)] };
+    const m = watchMap(h, h.greenCenter);
+    expect(Math.round(m.b)).toBe(45);
+    const end = m.line[m.line.length - 1];
+    expect(Math.abs(end[0])).toBeLessThanOrEqual(1); // straight ahead
+    expect(end[1]).toBeGreaterThan(295);
+    expect(end[1]).toBeLessThan(305);
+    expect(m.line[0]).toEqual([0, 0]);
+  });
+  it('small enough for the watch: 18 holes of Hetzenhof under 40 kB', async () => {
+    const { SEED_GEOMETRY } = await import('../data/seedGeometry');
+    const { holeMapData } = await import('./geo');
+    const geo = SEED_GEOMETRY['osm:relation/1326323'];
+    const maps = ['A', 'B'].flatMap((loop) => [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => holeMapData(geo, loop, n)));
+    const r18 = { ...round, holes: maps.map((_, k) => ({ label: String(k + 1), par: 4 })) } as unknown as Round;
+    const w = watchRound(r18, maps, 'm', 'de');
+    const json = JSON.stringify(w);
+    expect(w.holes.filter((x) => x?.map).length).toBeGreaterThan(12);
+    expect(json.length).toBeLessThan(40000);
+    const first = w.holes.find((x) => x?.map)!;
+    expect(first.map!.fairways.length + first.map!.bunkers.length + (first.map!.green ? 1 : 0)).toBeGreaterThan(0);
+  });
+});

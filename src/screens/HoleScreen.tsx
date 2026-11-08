@@ -136,6 +136,8 @@ export function HoleScreen(props: {
     /** the putts of every player before the next hole – a bet on greens or putts counts them (Sascha 02.11.2026: "the
      *  putts a must; the next hole only once all putts are entered") */
     puttsRequired?: boolean;
+    /** what the game's form needs on this hole, in the score entry (Sascha 08.11.2026) */
+    extras?: import('react').ReactNode;
   };
   /** Course preview: the birdie book of the course, back to this hole afterwards. */
   onBook?: () => void;
@@ -1906,6 +1908,7 @@ export function HoleScreen(props: {
             // penalty strokes (Sascha 02.11.2026)
             entry={props.game?.entry}
             everyone={!!props.game?.detailsAll}
+            extras={props.game?.extras}
             notice={puttsMissing?.length ? tr(`Putts missing for ${puttsMissing.join(', ')} – a bet counts them; then on to the next hole.`, `Putts fehlen bei ${puttsMissing.join(', ')} – eine Wette zählt sie; dann geht es zum nächsten Loch.`) : undefined}
             analysis={(pid) => pid === me.id && ownEligible}
             analysisOn={ownOn}

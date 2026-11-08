@@ -124,8 +124,8 @@ export const FAQ: FaqTopic[] = [
         q: () => tr('Can I use my Apple Watch?', 'Kann ich meine Apple Watch nutzen?'),
         a: () =>
           tr(
-            'Yes, in the iPhone app with an Apple Watch Series 8 or later (older ones work too, without feeling the ball). Install GolfOS on the watch (Watch app on the iPhone → GolfOS → Install). When you start a round, the watch app opens with a golf workout: it shows the hole and the distances to the front, middle and back of the green from where you stand, and it feels every swing – each one is a shot of the round at the watch\'s place, also when the phone lies in the cart. Practice swings at the same spot count once. A wrong one: tap the arrow on the watch to take it back; + notes a shot by hand. Putts come from the score.',
-            'Ja, in der iPhone-App mit einer Apple Watch ab Series 8 (ältere gehen auch, spüren aber den Ball nicht). GolfOS auf der Uhr installieren (Watch-App auf dem iPhone → GolfOS → Installieren). Beim Start einer Runde öffnet sich die Uhr-App mit einem Golf-Training: Sie zeigt das Loch und die Entfernungen bis Grün vorne, Mitte und hinten von deinem Standort – und spürt jeden Schwung. Jeder wird ein Schlag der Runde an der Stelle der Uhr, auch wenn das Handy im Cart liegt. Probeschwünge an derselben Stelle zählen einmal. Einer zu viel: auf der Uhr den Pfeil tippen und er ist weg; + erfasst einen Schlag von Hand. Putts kommen aus dem Score.',
+            'Yes, in the iPhone app with an Apple Watch Series 8 or later (older ones work too, without feeling the ball). Install GolfOS on the watch (Watch app on the iPhone → GolfOS → Install). When you start a round, the watch app opens with a golf workout: it shows the hole and the distances to the front, middle and back of the green from where you stand, and it feels every swing – each one is a shot of the round at the watch\'s place, also when the phone lies in the cart. Practice swings at the same spot count once. A wrong one: tap the arrow on the watch to take it back; + notes a shot by hand. Putts come from the score. Swiped up: the hole as a picture – fairways, bunkers, water, the green and where you stand, the distance over it.',
+            'Ja, in der iPhone-App mit einer Apple Watch ab Series 8 (ältere gehen auch, spüren aber den Ball nicht). GolfOS auf der Uhr installieren (Watch-App auf dem iPhone → GolfOS → Installieren). Beim Start einer Runde öffnet sich die Uhr-App mit einem Golf-Training: Sie zeigt das Loch und die Entfernungen bis Grün vorne, Mitte und hinten von deinem Standort – und spürt jeden Schwung. Jeder wird ein Schlag der Runde an der Stelle der Uhr, auch wenn das Handy im Cart liegt. Probeschwünge an derselben Stelle zählen einmal. Einer zu viel: auf der Uhr den Pfeil tippen und er ist weg; + erfasst einen Schlag von Hand. Putts kommen aus dem Score. Nach oben gewischt: das Loch als Bild – Fairways, Bunker, Wasser, Grün und dein Standort, die Entfernung darüber.',
           ),
         video: 'start',
       },
@@ -318,6 +318,16 @@ export const FAQ: FaqTopic[] = [
           tr(
             'Skins, Wolf, Nassau, 5+5+10, Las Vegas, Chicago, match play and more – each explains its rules, to read or to listen to. A star keeps your favourites on top.',
             'Skins, Wolf, Nassau, 5+5+10, Las Vegas, Chicago, Lochspiel und mehr – jedes erklärt seine Regeln, zum Lesen oder Vorlesen. Mit dem Stern stehen deine Lieblingsspiele oben.',
+          ),
+        video: 'games',
+      },
+      {
+        // Sascha 08.11.2026: "the game's details belong into the score entry"
+        q: () => tr('Where do I enter the wolf’s partner, Bingo Bango Bongo or a press?', 'Wo trage ich Wolf-Partner, Bingo Bango Bongo oder Press ein?'),
+        a: () =>
+          tr(
+            'Right with the score: playing on the map, tap the hole’s score – below the players’ strokes "The game on this hole" asks what the game needs (the wolf’s partner, Bingo, Bango, Bongo, hammer, press …). The bar above the hole bar shows the same with the standing and the rules – for what is decided before the hole.',
+            'Direkt beim Score: Auf der Karte den Score des Lochs antippen – unter den Schlägen der Spieler fragt „Das Spiel an diesem Loch“, was das Spiel braucht (Wolf-Partner, Bingo, Bango, Bongo, Hammer, Press …). Die Leiste über der Lochleiste zeigt dasselbe mit Stand und Regeln – für das, was vor dem Loch entschieden wird.',
           ),
         video: 'games',
       },

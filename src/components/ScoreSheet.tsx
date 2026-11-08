@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { HoleEntry, Player, Round, RoundHole, SharedCell } from '../types';
 import { ToggleRow } from './Settings';
 import { cellOf, sameScore } from '../lib/sharedround';
@@ -145,6 +146,9 @@ export function ScoreSheet(props: {
   texas?: Record<string, TexasDrives | null>;
   /** what holds the next hole up (putts missing while a bet counts them – 02.11.2026) */
   notice?: string;
+  /** a game on the map (Sascha 08.11.2026: "the game's details belong into the score entry"): what its form needs on the
+   *  hole – wolf partner, bingo bango bongo, hammer, press … – below the scores */
+  extras?: ReactNode;
 }) {
   const h = props.hole;
   return (
@@ -337,6 +341,11 @@ export function ScoreSheet(props: {
           </div>
         );
       })}
+      {props.extras && (
+        <div className="score-extras" role="group" aria-label={tr('The game on this hole', 'Das Spiel an diesem Loch')}>
+          {props.extras}
+        </div>
+      )}
     </section>
   );
 }
