@@ -37,14 +37,15 @@ window.addEventListener('vite:preloadError', (e) => {
 });
 
 // the GPS tracks and course maps in the big store (IndexedDB) before the app reads anything (Sascha 08.11.2026: "storage
-// full" right after opening the app); without it – or if it does not answer within 4 s – the app starts as before
+// full" right after opening the app); without it – or if it does not answer within 8 s (a phone busy, a big store of
+// many rounds) – the app starts as before, with nothing lost
 const bigStore = Promise.race([
   openBigStore().catch(() => false),
   new Promise<boolean>((ok) =>
     setTimeout(() => {
       cancelBigStore(); // too late: this session without it, never switched in halfway
       ok(false);
-    }, 4000),
+    }, 8000),
   ),
 ]);
 void bigStore.then(() =>
