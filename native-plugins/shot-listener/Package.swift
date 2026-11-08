@@ -15,6 +15,8 @@ let package = Package(
     ],
     targets: [
         .target(name: "ShotCore", path: "ios/Sources/ShotCore"),
+        // the swing on the wrist – the watch app (ios/App/Watch) builds this file in; here only for its tests (08.11.2026)
+        .target(name: "SwingCore", path: "ios/Sources/SwingCore"),
         .target(
             name: "ShotListenerPlugin",
             // Capacitor only for the phone: on the Mac that runs the tests the plugin is empty (#if os(iOS))
@@ -24,6 +26,6 @@ let package = Package(
                 .product(name: "Cordova", package: "capacitor-swift-pm", condition: .when(platforms: [.iOS]))
             ],
             path: "ios/Sources/ShotListenerPlugin"),
-        .testTarget(name: "ShotCoreTests", dependencies: ["ShotCore"], path: "ios/Tests/ShotCoreTests")
+        .testTarget(name: "ShotCoreTests", dependencies: ["ShotCore", "SwingCore"], path: "ios/Tests/ShotCoreTests")
     ]
 )

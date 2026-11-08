@@ -64,13 +64,21 @@ export function StorageFullToast() {
     return () => window.removeEventListener('golfos:storagefull', on);
   }, []);
   if (!shown) return null;
+  // the bin only when there is something in it (Sascha 08.11.2026: Eric had not one round – "I don't understand it")
+  let binUsed = false;
+  try {
+    binUsed = ((JSON.parse(localStorage.getItem('golfos.trash.v1') ?? '[]') as unknown[]) ?? []).length > 0;
+  } catch {
+    binUsed = false;
+  }
   return (
     <div className="undo-toast" role="alert">
       <span>
         {tr(
-          'Storage on this phone is full – the latest entries are kept only while the app stays open. Deleting rounds from the bin for good makes room.',
-          'Speicher auf dem Handy voll – das Neueste bleibt nur, solange die App offen ist. Runden im Papierkorb endgültig löschen schafft Platz.',
+          "The app's storage on this phone is full – what you just entered is still there, but only while the app stays open. Please don't close the app.",
+          'Der Speicher der App ist voll – deine letzten Eingaben sind noch da, aber nur, solange die App offen bleibt. Bitte die App jetzt nicht schließen.',
         )}
+        {binUsed ? ' ' + tr('Deleting rounds from the bin for good makes room.', 'Runden im Papierkorb endgültig löschen schafft Platz.') : ''}
       </span>
       <button type="button" onClick={() => setShown(false)}>
         OK

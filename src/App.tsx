@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round, RoundHole } from './types';
 import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCachedCourse, loadCarryBag, loadRounds, saveRound } from './lib/storage';
 import { commitParAt, finishRound } from './lib/scoring';
+import { endWatchRound } from './lib/watch';
 import { isTeamRound } from './lib/games';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
@@ -501,6 +502,7 @@ export function App() {
               }}
               onContinue={(round) => setScreen({ name: 'hole', round })}
               onEnd={(round) => {
+                endWatchRound(); // the watch ends its workout (08.11.2026)
                 const done = finishRound(round, isTeamRound(round));
                 persist(done);
                 setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
@@ -621,7 +623,8 @@ export function App() {
               setScreen(HOME);
             }}
             onEnd={(round) => {
-              const done = finishRound(round, isTeamRound(round));
+              endWatchRound(); // the watch ends its workout (08.11.2026)
+                const done = finishRound(round, isTeamRound(round));
               persist(done);
               setScreen({ name: 'scorecard', round: done, back: ROUNDS, justFinished: true });
             }}

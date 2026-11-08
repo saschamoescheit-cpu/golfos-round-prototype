@@ -17,6 +17,7 @@ require 'json'
 require 'time'
 
 BUNDLE = 'de.moescheit.golfos'
+WATCH_BUNDLE = 'de.moescheit.golfos.watchkitapp'
 mode, dir = ARGV
 abort('usage: signing.rb setup|cleanup <dir>') unless %w[setup cleanup].include?(mode) && dir
 
@@ -50,6 +51,17 @@ if mode == 'setup'
   end
   puts "CERTIFICATE=#{lasting ? 'kept' : 'this build'}"
   bundle = Spaceship::ConnectAPI::BundleId.find(BUNDLE) or abort("no App ID #{BUNDLE} – register it first")
+  # the Apple Watch app (08.11.2026): its own App ID, registered here the first time; HealthKit on both – the iPhone
+  # starts the watch's golf workout, the watch runs it (the swings are felt only during one)
+  watch = Spaceship::ConnectAPI::BundleId.find(WATCH_BUNDLE) ||
+          Spaceship::ConnectAPI::BundleId.create(name: 'GolfOS Watch', platform: Spaceship::ConnectAPI::Platform::IOS, identifier: WATCH_BUNDLE)
+  [bundle, watch].each do |b|
+    has = b.get_capabilities.any? { |c| c.capability_type == Spaceship::ConnectAPI::BundleIdCapability::Type::HEALTHKIT }
+    b.create_capability(Spaceship::ConnectAPI::BundleIdCapability::Type::HEALTHKIT) unless has
+    puts "HEALTHKIT=#{b.identifier} #{has ? 'on' : 'switched on'}"
+  rescue StandardError => e
+    puts "HEALTHKIT=#{b.identifier} failed: #{e.message}"
+  end
   name = "GolfOS GitHub #{ENV.fetch('GITHUB_RUN_NUMBER', Time.now.to_i)}"
   profile = Spaceship::ConnectAPI::Profile.create(
     name: name,
@@ -57,17 +69,27 @@ if mode == 'setup'
     bundle_id_id: bundle.id,
     certificate_ids: [cert.id]
   )
+  watch_name = "#{name} Watch"
+  watch_profile = Spaceship::ConnectAPI::Profile.create(
+    name: watch_name,
+    profile_type: Spaceship::ConnectAPI::Profile::ProfileType::IOS_APP_STORE,
+    bundle_id_id: watch.id,
+    certificate_ids: [cert.id]
+  )
 
   File.write(File.join(dir, 'key.pem'), key.to_pem)
   File.binwrite(File.join(dir, 'cert.cer'), Base64.decode64(cert.certificate_content))
   File.binwrite(File.join(dir, 'profile.mobileprovision'), Base64.decode64(profile.profile_content))
-  File.write(File.join(dir, 'ids.json'), JSON.generate(certificate: lasting ? nil : cert.id, profile: profile.id))
+  File.binwrite(File.join(dir, 'watch.mobileprovision'), Base64.decode64(watch_profile.profile_content))
+  File.write(File.join(dir, 'ids.json'), JSON.generate(certificate: lasting ? nil : cert.id, profile: profile.id, watch_profile: watch_profile.id))
   puts "PROFILE_NAME=#{name}"
   puts "PROFILE_UUID=#{profile.uuid}"
+  puts "WATCH_PROFILE_NAME=#{watch_name}"
+  puts "WATCH_PROFILE_UUID=#{watch_profile.uuid}"
 else
   ids = JSON.parse(File.read(File.join(dir, 'ids.json')))
-  begin
-    Spaceship::ConnectAPI::Profile.get(profile_id: ids['profile'])&.delete!
+  [ids['profile'], ids['watch_profile']].compact.each do |pid|
+    Spaceship::ConnectAPI::Profile.get(profile_id: pid)&.delete!
   rescue StandardError => e
     warn "profile not removed: #{e.message}"
   end

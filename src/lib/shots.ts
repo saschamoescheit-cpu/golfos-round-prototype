@@ -71,6 +71,14 @@ export function onGreenAt(pos: LngLat, data: HoleMapData): boolean {
 }
 
 /** Club suggestion: driver on the first shot of par 4/5, otherwise the club whose distance fits the remaining distance best. */
+/** A spot on (one of) the hole's tees – a forward or back tee too. The first shot noted elsewhere is no tee shot (Sascha
+ *  08.11.2026: the phone in the cart, the first shot noted 80 m before the green – it was taken for the tee shot with
+ *  the driver). */
+export function atTheTee(pos: LngLat, data: HoleMapData): boolean {
+  if (distanceM(pos, data.tee) <= 60) return true;
+  return data.tees.some((r) => pointInRing(pos, r) || distToLine(pos, r) <= 15);
+}
+
 export function suggestClub(par: number, isFirstShot: boolean, toPinM: number, bag = BAG): Club {
   if (isFirstShot && par >= 4 && toPinM > 230) return 'Dr';
   const fit = bag.filter((b) => b.club !== 'Dr').map((b) => ({ b, d: Math.abs(b.m - toPinM) }));

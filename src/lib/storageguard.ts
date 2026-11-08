@@ -7,6 +7,13 @@ export const GEO = 'golfos.geo.v1.';
 const USED = 'golfos.geoused.v1';
 const ROUNDS = 'golfos.rounds.v1';
 const GAMES = 'golfos.games.v1';
+/** the course details from the course databases – loaded again when the course is opened */
+const COURSE = 'golfos.course.v1.';
+/** how long an unfinished round or game counts as played now */
+const RECENT_MS = 12 * 3600 * 1000;
+/** caches and logs loaded again or not needed – they go after the map copies (heights, weather, unsent error reports,
+ *  the motion log of Mobility) */
+const CACHES = ['golfos.elevation.v1', 'golfos.forecast.v1', 'golfos.weather.v1', 'golfos.errorqueue.v1', 'golfos.mobility.motionlog.v1'];
 /** Courses whose map is on screen now (the hole screen open) – never made room with, whatever plays on them. */
 const busy = new Set<string>();
 export function holdGeometry(courseId: string): () => void {
@@ -50,9 +57,14 @@ export function makeRoom(keep: string): boolean {
   const s = store();
   if (!s) return false;
   const playing = new Set<string>();
+  const used = usedMap(s);
+  // a round or game not finished protects its map only while it is played – its course used in the last 12 hours
+  // (Sascha 08.11.2026, Eric and Moritz: "storage full" right after opening the app – every unfinished game of the trip
+  // held its map, so none could go)
+  const recent = (courseId: string) => Date.now() - (used[courseId] ?? 0) < RECENT_MS;
   try {
     const rounds = JSON.parse(s.getItem(ROUNDS) ?? '[]') as { courseId: string; finishedAt: string | null }[];
-    for (const r of rounds) if (!r.finishedAt) playing.add(GEO + r.courseId);
+    for (const r of rounds) if (!r.finishedAt && recent(r.courseId)) playing.add(GEO + r.courseId);
   } catch {
     // unreadable rounds: no map is protected by them, the key being written still is
   }
@@ -60,21 +72,37 @@ export function makeRoom(keep: string): boolean {
   // of a 5+5+10 – "we had to tap tee and greens")
   try {
     const games = JSON.parse(s.getItem(GAMES) ?? '[]') as { finishedAt: string | null; round?: { courseId?: string } }[];
-    for (const g of games) if (!g.finishedAt && g.round?.courseId) playing.add(GEO + g.round.courseId);
+    for (const g of games) if (!g.finishedAt && g.round?.courseId && recent(g.round.courseId)) playing.add(GEO + g.round.courseId);
   } catch {
     // unreadable games: as above
   }
   for (const id of busy) playing.add(GEO + id);
   const spare: string[] = [];
+  const courses: string[] = [];
   for (let i = 0; i < s.length; i++) {
     const k = s.key(i);
-    if (k && k.startsWith(GEO) && k !== keep && !playing.has(k)) spare.push(k);
+    if (!k || k === keep) continue;
+    if (k.startsWith(GEO) && !playing.has(k)) spare.push(k);
+    else if (k.startsWith(COURSE) && !playing.has(GEO + k.slice(COURSE.length))) courses.push(k);
   }
-  if (spare.length === 0) return false;
-  const used = usedMap(s);
-  spare.sort((a, b) => (used[a.slice(GEO.length)] ?? 0) - (used[b.slice(GEO.length)] ?? 0));
-  s.removeItem(spare[0]);
-  return true;
+  if (spare.length) {
+    spare.sort((a, b) => (used[a.slice(GEO.length)] ?? 0) - (used[b.slice(GEO.length)] ?? 0));
+    s.removeItem(spare[0]);
+    return true;
+  }
+  // no map copy left (Sascha 08.11.2026, Eric: "storage full" with not one round on the phone): what is loaded again
+  // from the net at any time – the heights, the weather, the course details of courses not played now, logs
+  const cache = CACHES.find((k) => k !== keep && s.getItem(k) != null);
+  if (cache) {
+    s.removeItem(cache);
+    return true;
+  }
+  if (courses.length) {
+    courses.sort((a, b) => (used[a.slice(COURSE.length)] ?? 0) - (used[b.slice(COURSE.length)] ?? 0));
+    s.removeItem(courses[0]);
+    return true;
+  }
+  return false;
 }
 
 /** Every write to the device storage (all modules): when full, make room and try again; if nothing may go, tell the

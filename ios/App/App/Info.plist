@@ -43,6 +43,10 @@
 	<string>GolfOS misst während deiner Runde die Entfernungen zum Grün und zeichnet deine Schläge auf – auch wenn das Handy gesperrt in der Tasche steckt.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>GolfOS zeigt dir die Entfernungen zum Grün, findet Plätze in deiner Nähe und zeichnet deine Schläge während der Runde auf.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>GolfOS startet auf deiner Apple Watch das Golf-Training, während dem die Uhr deine Schläge erkennt.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>GolfOS speichert deine Runde als Golf-Training in Health.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>GolfOS hört während der Runde auf das Treffgeräusch deines Schlägers, um Schläge automatisch zu erkennen, und nimmt deine gesprochenen Fragen an den Caddie an. Es werden keine Tonaufnahmen gespeichert.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

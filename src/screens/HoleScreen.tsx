@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { ownDetailsOn, setOwnDetails } from '../lib/owndetails';
 import { Avatar } from '../components/Avatar';
 import { loadStrategy, savePlannedHole, type CourseStrategy } from '../lib/strategy';
-import type { Club, DetailEntry, HoleEntry, LngLat, Round, TestEvent } from '../types';
-import { deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
+import type { Club, DetailEntry, HoleEntry, LngLat, Round, Shot, TestEvent } from '../types';
+import { atTheTee, deriveFromShots, emptyDetail, shotsComplete, firstPuttM, lieAt, lieName, onGreenAt, shotLengths, suggestClub } from '../lib/shots';
 import { GreenSheet, ShotSheet } from '../components/ShotSheet';
 import { commitParAt, emptyEntry, greenInRegulation, handicapStrokes, playerTotals, playing18 } from '../lib/scoring';
 import { playerBag } from '../lib/stats';
-import { autoShot, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
+import { autoShot, clubForLength, fixAt, loadTrack, recordFix, teeSpot } from '../lib/track';
 import { feedFix, PositionFilter, sampleFix } from '../lib/gpsfilter';
 import { isNative, watchPosition } from '../lib/native';
 import { SpecialsAtHole } from '../components/Specials';
@@ -36,6 +36,7 @@ import { addTestEvent, speechText } from '../lib/testlog';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
+import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
 import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
@@ -1236,6 +1237,73 @@ export function HoleScreen(props: {
       window.clearInterval(watch);
     };
   }, []);
+  // the Apple Watch (Sascha 08.11.2026: "the shot detection by the watch – the phone often lies in the cart"): the round
+  // goes to the watch, its workout starts once per round; every swing it feels comes back with the watch's place and
+  // is a "shot here" of the round (rounds only – a game counts no shots)
+  const [watchOn, setWatchOn] = useState(false);
+  useEffect(() => {
+    if (!isNative() || round.preview) return;
+    let gone = false;
+    let stop = () => undefined as void;
+    void watchReady().then((ready) => {
+      if (!ready || gone) return;
+      setWatchOn(true);
+      const key = `golfos.watch.started.${round.id}`;
+      let started = false;
+      try {
+        started = sessionStorage.getItem(key) === '1' || localStorage.getItem(key) === '1';
+      } catch {
+        /* asked again – harmless */
+      }
+      const json = watchRound(round, allMaps, unit === 'yd' ? 'yd' : 'm', getLang());
+      void sendRound(json, holeRef.current, !started).then((ok) => {
+        if (!ok || started) return;
+        try {
+          sessionStorage.setItem(key, '1');
+        } catch {
+          /* this time only */
+        }
+      });
+      if (props.game) return;
+      stop = onWatch((it) => {
+        const r = latestRound.current;
+        if (it.kind === 'remove') {
+          const next = removeWatchShot(r, it.id);
+          if (next !== r) {
+            latestRound.current = next;
+            onChangeNow.current(next);
+          }
+          return;
+        }
+        if (it.kind !== 'shot' || it.shot.round !== r.id) return;
+        const s = it.shot;
+        const fb = fixAt(loadTrack(r.id), s.t);
+        const pos: LngLat | null = s.lng != null && s.lat != null ? [s.lng, s.lat] : (fb?.pos ?? null);
+        const meP = r.players.find((p) => p.isMe) ?? r.players[0];
+        const open = (k: number) => {
+          const e = meP ? r.entries[meP.id]?.[k] : undefined;
+          return e?.strokes == null && !e?.pickedUp;
+        };
+        const base = s.hole >= 0 && s.hole < r.holes.length ? s.hole : holeRef.current;
+        const hole = pos ? (detectHole(pos, allMaps, base, { start: r.startHole, open }) ?? base) : base;
+        const next = addWatchShot(r, s, hole, fb);
+        if (next === r) return;
+        latestRound.current = next;
+        onChangeNow.current(next);
+        const n = (next.manualShots ?? []).filter((x) => x.hole === hole).length;
+        const label = r.holes[hole]?.label ?? String(hole + 1);
+        setTestMsg(tr(`Shot ${n} on ${label} – from the watch`, `Schlag ${n} an ${label} – von der Uhr`));
+      });
+    });
+    return () => {
+      gone = true;
+      stop();
+    };
+  }, [round.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the hole on the screen to the watch
+  useEffect(() => {
+    if (watchOn) sendHole(i);
+  }, [i, watchOn]);
   useEffect(() => {
     if (!testMsg) return;
     const t = setTimeout(() => setTestMsg(null), 6000);
@@ -1284,11 +1352,18 @@ export function HoleScreen(props: {
     const existing = editing ? detail.shots[sheet.index!] : null;
     const pos = existing ? existing.pos : sheet.pos;
     const toPin = pos && pinPos ? distanceM(pos, pinPos) : null;
+    // the first shot is the tee shot only at the tee (Sascha 08.11.2026: the phone in the cart, the first shot noted
+    // 80 m before the green got the tee and the driver): noted further on, the tee shot was missed – it is added from
+    // the tee with the club for its length, and this one is shot 2 with the club for its distance
+    const teeMissing = !editing && detail.shots.length === 0 && !!pos && !!mapData && !atTheTee(pos, mapData);
+    const teeShot = (): Shot[] => (teeMissing && pos && mapData ? [{ pos: mapData.tee, lie: 'tee', club: clubForLength(distanceM(mapData.tee, pos), (hole.par || 4) >= 4, bag), penalty: false }] : []);
+    const nShown = teeMissing ? 2 : n;
+    const isTeeShot = nShown === 1;
     sheetEl = (
       <ShotSheet
-        title={tr(`Shot ${n}`, `Schlag ${n}`) + (toPin != null ? tr(` · ${fmtU(toPin)} ${unit} to pin`, ` · ${fmtU(toPin)} ${unit} zur Fahne`) : '')}
-        lie={existing?.lie ?? (pos && mapData ? lieAt(pos, mapData, n === 1) : n === 1 ? 'tee' : 'fairway')}
-        club={existing ? existing.club : suggestClub(hole.par || 4, n === 1, toPin ?? (hole.par >= 4 ? 300 : 150), bag)}
+        title={tr(`Shot ${nShown}`, `Schlag ${nShown}`) + (toPin != null ? tr(` · ${fmtU(toPin)} ${unit} to pin`, ` · ${fmtU(toPin)} ${unit} zur Fahne`) : '')}
+        lie={existing?.lie ?? (pos && mapData ? lieAt(pos, mapData, isTeeShot) : isTeeShot ? 'tee' : 'fairway')}
+        club={existing ? existing.club : suggestClub(hole.par || 4, isTeeShot, toPin ?? (hole.par >= 4 ? 300 : 150), bag)}
         bag={bag}
         penalty={existing?.penalty ?? false}
         penaltyKind={existing?.penaltyKind}
@@ -1299,8 +1374,8 @@ export function HoleScreen(props: {
         onSave={(v) => {
           const shots = detail.shots.slice();
           if (editing) shots[sheet.index!] = { ...shots[sheet.index!], ...v };
-          else shots.push({ pos: sheet.pos, ...v });
-          confirmSaved(tr(`Shot ${n}${v.club ? ' · ' + clubCode(v.club) : ''} saved`, `Schlag ${n}${v.club ? ' · ' + clubCode(v.club) : ''} gespeichert`));
+          else shots.push(...teeShot(), { pos: sheet.pos, ...v });
+          confirmSaved(tr(`Shot ${nShown}${v.club ? ' · ' + clubCode(v.club) : ''} saved`, `Schlag ${nShown}${v.club ? ' · ' + clubCode(v.club) : ''} gespeichert`));
           saveDetail({ ...detail, shots });
           setSheet(null);
         }}
@@ -1310,7 +1385,7 @@ export function HoleScreen(props: {
             ? undefined
             : () => {
                 confirmSaved(tr('Holed out – saved', 'Eingelocht – gespeichert'));
-                saveDetail({ ...detail, shots: [...detail.shots, { pos: sheet.pos, lie: pos && mapData ? lieAt(pos, mapData, n === 1) : 'fairway', club: null, penalty: false }], holedOut: true, onGreen: null, pin: pinPos }, 0);
+                saveDetail({ ...detail, shots: [...detail.shots, ...teeShot(), { pos: sheet.pos, lie: pos && mapData ? lieAt(pos, mapData, isTeeShot) : 'fairway', club: null, penalty: false }], holedOut: true, onGreen: null, pin: pinPos }, 0);
                 setSheet(null);
               }
         }
@@ -2225,7 +2300,7 @@ export function HoleScreen(props: {
           {removeShot != null && round.manualShots?.[removeShot] && !scoreSheet && (
             <div className="test-shot-row">
               <span className="map-hint detected" role="status">
-                <span>{tr(`Shot ${(round.manualShots ?? []).slice(0, removeShot + 1).filter((x) => x.hole === i).length} noted by hand`, `Schlag ${(round.manualShots ?? []).slice(0, removeShot + 1).filter((x) => x.hole === i).length} (von Hand erfasst)`)}</span>
+                <span>{round.manualShots[removeShot].watch ? tr(`Shot ${(round.manualShots ?? []).slice(0, removeShot + 1).filter((x) => x.hole === i).length} from the watch`, `Schlag ${(round.manualShots ?? []).slice(0, removeShot + 1).filter((x) => x.hole === i).length} (von der Uhr)`) : tr(`Shot ${(round.manualShots ?? []).slice(0, removeShot + 1).filter((x) => x.hole === i).length} noted by hand`, `Schlag ${(round.manualShots ?? []).slice(0, removeShot + 1).filter((x) => x.hole === i).length} (von Hand erfasst)`)}</span>
                 <button
                   type="button"
                   className="btn-ghost danger"

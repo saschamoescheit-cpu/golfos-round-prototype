@@ -86,6 +86,27 @@ export function reportError(kind: ErrorRow['kind'], e: unknown): void {
 export function startErrorLog(): void {
   addEventListener('error', (ev) => reportError('error', ev.error ?? ev.message));
   addEventListener('unhandledrejection', (ev) => reportError('promise', ev.reason));
+  // the device storage full (Sascha 08.11.2026, Eric: "storage full" with not one round on the phone): what takes the
+  // room – the biggest keys and their size, never their content
+  addEventListener('golfos:storagefull', (ev) => {
+    try {
+      const sizes: [string, number][] = [];
+      let total = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        const n = k.length + (localStorage.getItem(k)?.length ?? 0);
+        total += n;
+        sizes.push([k, n]);
+      }
+      sizes.sort((a, b) => b[1] - a[1]);
+      const kb = (n: number) => `${Math.round(n / 1024)}k`;
+      const top = sizes.slice(0, 10).map(([k, n]) => `${k} ${kb(n)}`).join(', ');
+      reportError('error', new Error(`storage full writing ${String((ev as CustomEvent).detail)} – ${sizes.length} keys, ${kb(total)} chars: ${top}`));
+    } catch {
+      // nothing to tell
+    }
+  });
   if (!live()) return;
   try {
     const q: ErrorRow[] = JSON.parse(localStorage.getItem(QUEUE) ?? '[]');

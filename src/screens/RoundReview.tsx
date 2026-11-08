@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ShotHereIcon } from '../components/RoundIcons';
 import type { DetailEntry, HoleEntry, LngLat, Round, Shot } from '../types';
 import { bearingDeg, distanceM, distToLine, holeMapData, pointInRing, profileAlong, type HoleMapData } from '../lib/geo';
-import { deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
+import { atTheTee, deriveFromShots, emptyDetail, firstPuttM, KINDS, lieAt, lieName, shotLengths, shotOdd, suggestKind } from '../lib/shots';
 import { clubForLength, detectWithScore, findStops, loadTrack, splitRound, teeSpot, type TrackPoint } from '../lib/track';
 import { loadCachedCourse, loadCarryBag, loadGeometry, loadImagery, loadLive, loadRounds, loadUnit } from '../lib/storage';
 import { loadHoleNotes, saveHoleNote } from '../lib/holenotes';
@@ -480,9 +480,16 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
   };
   const addTeeShot = () => {
     if (!data || !d) return;
-    // The first shot was the tee shot dragged to where the ball lay: its club goes with the tee shot.
+    // The first shot was the tee shot dragged to where the ball lay (or noted as the tee shot away from the tee): its
+    // club goes with the tee shot. The shot itself is played from where it lies – with the club for its distance
+    // (Sascha 08.11.2026: it kept "tee" and the driver for 77 m into the green).
     const [first, ...rest] = d.shots;
-    const shots: Shot[] = [{ pos: teeSpot(part, data) ?? data.tee, lie: 'tee', club: first.club, penalty: false }, { ...first, club: null, kind: undefined }, ...rest];
+    const forTee = first.lie === 'tee' || !first.club;
+    const shots: Shot[] = [
+      { pos: teeSpot(part, data) ?? data.tee, lie: 'tee', club: forTee ? first.club : null, penalty: false },
+      { ...first, club: forTee ? null : first.club, kind: undefined, lie: first.pos ? lieFor(first.pos, 1, data) : first.lie },
+      ...rest,
+    ];
     saveDetail(k, withClubs({ ...d, shots }));
   };
   /** Label of a shot while it is dragged: how far from the spot before, how far to the next spot (or the pin). */
@@ -588,6 +595,18 @@ export function RoundReview(props: { round: Round; onChange: (r: Round) => void;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A later shot standing as a tee shot away from the tee (noted on the course before the tee shot was there – Sascha
+  // 08.11.2026: "tee" and the driver for 77 m into the green): its lie from the map, the club for its distance. A
+  // second ball from the same spot (a replay) stays.
+  useEffect(() => {
+    if (!d || !data) return;
+    const falseTee = (s: Shot, n: number) => n > 0 && s.lie === 'tee' && !!s.pos && !atTheTee(s.pos, data) && !(d.shots[n - 1].pos && distanceM(d.shots[n - 1].pos!, s.pos) <= 10);
+    if (!d.shots.some(falseTee)) return;
+    const shots = d.shots.map((s, n) => (falseTee(s, n) ? { ...s, lie: lieFor(s.pos!, n, data), club: s.club === 'Dr' ? null : s.club, kind: undefined } : s));
+    saveDetail(k, withClubs({ ...d, shots }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [k, d, data]);
 
   // Holes other than this one not confirmed yet ("Loch passt", Sascha 22.10.2026) – or with shots still marked for
   // checking. A hole without a score (not played) needs nothing.

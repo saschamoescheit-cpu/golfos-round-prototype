@@ -221,7 +221,20 @@ export interface Round {
    *  (Sascha 28.10.2026: a round "jumped to signed" – the trace says where from). The last 10. */
   signLog?: { at: string; how: 'check' | 'confirm' | 'status' | 'withdraw'; device: string }[];
   /** Test mode: where the player said his ball lay, by hand on the course – the truth for the shot detection. */
-  manualShots?: { hole: number; pos: LngLat; t: number; acc: number; /** moved on the map to the exact spot */ placed?: boolean }[];
+  manualShots?: {
+    hole: number;
+    pos: LngLat;
+    t: number;
+    acc: number;
+    /** moved on the map to the exact spot */
+    placed?: boolean;
+    /** felt by the Apple Watch (08.11.2026): the watch's id of the swing – its place is the watch's GPS */
+    watch?: string;
+    /** the watch felt the ball (not a practice swing) */
+    hit?: boolean;
+    /** practice swings at the same spot, taken into this one */
+    also?: string[];
+  }[];
   /** Test (Sascha 18.10.2026): the cracks the microphone heard – when, where, how loud; kept apart from the detection */
   soundShots?: { hole: number; pos: LngLat; t: number; level: number; acc: number }[];
   /** Test protocol (Sascha 30.10.2026, for the tournament on 31.10.): what the microphone, pocket mode and the read-aloud

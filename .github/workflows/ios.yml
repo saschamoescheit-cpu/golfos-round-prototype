@@ -22,6 +22,11 @@ on:
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      compile_only:
+        description: 'Only compile the app and the watch app (no signing, no TestFlight)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,10 +65,37 @@ jobs:
       - if: always() && steps.changed.outputs.go == 'true'
         run: tail -n 80 "$RUNNER_TEMP/swift.log" || true
 
+  # compiled only – the iPhone app with the watch app, unsigned (08.11.2026: the watch app is built without a Mac at
+  # hand; this says whether it compiles before a TestFlight build is spent on it)
+  compile:
+    if: github.event_name == 'workflow_dispatch' && inputs.compile_only == true
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Build the app and the watch app
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build > "$RUNNER_TEMP/build.log" 2>&1 || { grep -E "error:|fatal" "$RUNNER_TEMP/build.log" | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done; tail -n 40 "$RUNNER_TEMP/build.log"; exit 1; }
+          tail -n 5 "$RUNNER_TEMP/build.log"
+          find ~/Library/Developer/Xcode/DerivedData -path '*Release-iphoneos/App.app/Watch/GolfOSWatch.app' -maxdepth 6 | head -1 | while IFS= read -r l; do echo "::notice::watch app inside: $l"; done
+      - name: The swing detector's tests
+        run: swift test --package-path native-plugins/shot-listener > "$RUNNER_TEMP/swift.log" 2>&1 || { grep -E "error:|failed|XCTAssert" "$RUNNER_TEMP/swift.log" | head -25 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+
   # the app is built on its own – the detector's tests run beside it and say what fails
   testflight:
     # a push to main only tests the detector; the app is built by hand, from app-release and at night
-    if: github.event_name != 'push' || github.ref_name == 'app-release'
+    if: (github.event_name != 'push' || github.ref_name == 'app-release') && inputs.compile_only != true
     runs-on: macos-15-intel
     timeout-minutes: 60
     env:
@@ -128,7 +160,12 @@ jobs:
           ruby ios/ci/signing.rb setup "$RUNNER_TEMP/signing" > "$RUNNER_TEMP/signing/out.txt" || { cat "$RUNNER_TEMP/signing/out.txt"; echo "::error::No certificate or profile from Apple – see the log"; exit 1; }
           export PROFILE_NAME=$(sed -n 's/^PROFILE_NAME=//p' "$RUNNER_TEMP/signing/out.txt")
           PROFILE_UUID=$(sed -n 's/^PROFILE_UUID=//p' "$RUNNER_TEMP/signing/out.txt")
+          # the Apple Watch app (08.11.2026) – signed with its own profile
+          export WATCH_PROFILE_NAME=$(sed -n 's/^WATCH_PROFILE_NAME=//p' "$RUNNER_TEMP/signing/out.txt")
+          WATCH_PROFILE_UUID=$(sed -n 's/^WATCH_PROFILE_UUID=//p' "$RUNNER_TEMP/signing/out.txt")
           echo "profile=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
+          echo "watchprofile=$WATCH_PROFILE_NAME" >> "$GITHUB_OUTPUT"
+          sed -n 's/^HEALTHKIT=//p' "$RUNNER_TEMP/signing/out.txt" | while IFS= read -r l; do echo "::notice::HealthKit: $l"; done
           sed -n 's/^CERTIFICATE=//p' "$RUNNER_TEMP/signing/out.txt" | while IFS= read -r l; do echo "::notice::certificate: $l"; done
           KC="$RUNNER_TEMP/signing/build.keychain-db"
           KCPW=$(openssl rand -hex 16)
@@ -142,8 +179,10 @@ jobs:
           security find-identity -v -p codesigning "$KC" | head -3 | while IFS= read -r l; do echo "::notice::identity: $l"; done
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$RUNNER_TEMP/signing/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          cp "$RUNNER_TEMP/signing/watch.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$WATCH_PROFILE_UUID.mobileprovision"
           # only the app's Release build signs by hand (the Swift packages sign nothing); push for the App Store
           perl -0pi -e 's/(504EC3181FED79650016851F \/\* Release \*\/ = \{.*?)CODE_SIGN_STYLE = Automatic;/${1}CODE_SIGN_STYLE = Manual;\n\t\t\t\tCODE_SIGN_IDENTITY = "Apple Distribution";\n\t\t\t\tDEVELOPMENT_TEAM = $ENV{APPLE_TEAM_ID};\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "$ENV{PROFILE_NAME}";/s' ios/App/App.xcodeproj/project.pbxproj
+          perl -0pi -e 's/(A1B2C3D4E5F6A7B8C9D00034 \/\* Release \*\/ = \{.*?)CODE_SIGN_STYLE = Automatic;/${1}CODE_SIGN_STYLE = Manual;\n\t\t\t\tCODE_SIGN_IDENTITY = "Apple Distribution";\n\t\t\t\tDEVELOPMENT_TEAM = $ENV{APPLE_TEAM_ID};\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "$ENV{WATCH_PROFILE_NAME}";/s' ios/App/App.xcodeproj/project.pbxproj
           sed -i '' 's|<string>development</string>|<string>production</string>|' ios/App/App/App.entitlements
           grep -c 'CODE_SIGN_STYLE = Manual' ios/App/App.xcodeproj/project.pbxproj | while IFS= read -r l; do echo "::notice::manual signing in $l configuration(s), profile \"$PROFILE_NAME\""; done
       - name: Archive
@@ -172,6 +211,7 @@ jobs:
             <key>provisioningProfiles</key>
             <dict>
               <key>de.moescheit.golfos</key><string>${{ steps.signing.outputs.profile }}</string>
+              <key>de.moescheit.golfos.watchkitapp</key><string>${{ steps.signing.outputs.watchprofile }}</string>
             </dict>
             <key>manageAppVersionAndBuildNumber</key><false/>
           </dict>

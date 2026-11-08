@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { deriveFromShots, emptyDetail, firstPuttM, lieAt, shotLengths, suggestClub } from './shots';
+import { atTheTee, deriveFromShots, emptyDetail, firstPuttM, lieAt, shotLengths, suggestClub } from './shots';
+import { clubForLength } from './track';
 import type { HoleMapData } from './geo';
 import type { DetailEntry, LngLat, Ring } from '../types';
 
@@ -83,5 +84,22 @@ describe('impossible shots are seen (Sascha 21.10.2026: a drive of 330325 m)', (
     expect(shotOdd(d([{ pos: at(0, 0), club: '7i', lie: 'tee' }]), 0)).toBe(true); // 400 m with a 7-iron
     expect(shotOdd(d([{ pos: at(0, 0), club: 'Dr', lie: 'tee' }, { pos: at(0, 230), club: '8i', lie: 'fairway' }]), 0)).toBe(false);
     expect(shotLengths(d([{ pos: at(0, 0), club: 'Dr', lie: 'tee' }, { pos: at(0, 330000), club: '7i', lie: 'fairway' }]))[0]).toBeNull();
+  });
+});
+
+// Sascha 08.11.2026: the phone in the cart, the first shot noted 80 m before the green was taken for the tee shot
+describe('the first shot noted away from the tee', () => {
+  it('is no tee shot – a forward tee still is', () => {
+    expect(atTheTee(at(0, 0), hole)).toBe(true);
+    expect(atTheTee(at(0, 45), hole)).toBe(true);
+    expect(atTheTee(at(0, 283), hole)).toBe(false);
+    expect(atTheTee(at(0, 120), { ...hole, tees: [sq(0, 110, 8)] })).toBe(true);
+  });
+  it('gets the club for its distance, the missing tee shot the driver', () => {
+    const pos = at(0, 283);
+    expect(suggestClub(4, false, 77)).not.toBe('Dr');
+    expect(lieAt(pos, hole, false)).toBe('fairway');
+    expect(clubForLength(283, true)).toBe('Dr');
+    expect(clubForLength(77, false)).not.toBe('Dr');
   });
 });

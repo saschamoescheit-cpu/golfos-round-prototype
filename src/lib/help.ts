@@ -121,6 +121,15 @@ export const FAQ: FaqTopic[] = [
         video: 'start',
       },
       {
+        q: () => tr('Can I use my Apple Watch?', 'Kann ich meine Apple Watch nutzen?'),
+        a: () =>
+          tr(
+            'Yes, in the iPhone app with an Apple Watch Series 8 or later (older ones work too, without feeling the ball). Install GolfOS on the watch (Watch app on the iPhone → GolfOS → Install). When you start a round, the watch app opens with a golf workout: it shows the hole and the distances to the front, middle and back of the green from where you stand, and it feels every swing – each one is a shot of the round at the watch\'s place, also when the phone lies in the cart. Practice swings at the same spot count once. A wrong one: tap the arrow on the watch to take it back; + notes a shot by hand. Putts come from the score.',
+            'Ja, in der iPhone-App mit einer Apple Watch ab Series 8 (ältere gehen auch, spüren aber den Ball nicht). GolfOS auf der Uhr installieren (Watch-App auf dem iPhone → GolfOS → Installieren). Beim Start einer Runde öffnet sich die Uhr-App mit einem Golf-Training: Sie zeigt das Loch und die Entfernungen bis Grün vorne, Mitte und hinten von deinem Standort – und spürt jeden Schwung. Jeder wird ein Schlag der Runde an der Stelle der Uhr, auch wenn das Handy im Cart liegt. Probeschwünge an derselben Stelle zählen einmal. Einer zu viel: auf der Uhr den Pfeil tippen und er ist weg; + erfasst einen Schlag von Hand. Putts kommen aus dem Score.',
+          ),
+        video: 'start',
+      },
+      {
         q: () => tr('How do I put GolfOS on the home screen?', 'Wie lege ich GolfOS auf den Home-Bildschirm?'),
         a: () =>
           isNative()
