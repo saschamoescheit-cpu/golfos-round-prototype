@@ -510,6 +510,14 @@ table.sc { width: 100%; border-collapse: collapse; table-layout: fixed; font-var
 .sc-legend .mark.double { margin: 0 4px; } /* room for the outer square */
 table.sc tr > td.lab, table.sc tr > th.lab { padding-left: 10px; }
 .sc .hcp-dots { top: -6px; right: -4px; font-size: 13px; }
+/* the marks as wide as the hole's column allows (Sascha 08.11.2026: the series' leaderboard card – about 21 px a hole,
+   the 24 px marks and the double bogey's outer square ran into each other): never wider than the column, the double
+   bogey with its outer square inside it too */
+.sc td .mark { width: clamp(15px, calc(100% - 3px), 24px); height: auto; aspect-ratio: 1 / 1; }
+.sc td .mark.double { width: clamp(16px, calc(100% - 6px), 24px); box-shadow: 0 0 0 1px var(--surface), 0 0 0 2.5px #ff8a7f; font-size: 13px; }
+:root[data-theme='sun'] .sc td .mark.double { box-shadow: 0 0 0 1px var(--surface), 0 0 0 2.5px #c2362b; }
+/* the card in a leaderboard row: the row's padding given to the table – more room per hole */
+.lb-rows li .lb-card { margin-inline: -6px; }
 /* History (feature 012): trend chart, personal bests, course stats */
 .trend-chart { display: block; width: 100%; height: auto; }
 .trend-chart .tick { font: 500 10px var(--body); fill: var(--muted); }

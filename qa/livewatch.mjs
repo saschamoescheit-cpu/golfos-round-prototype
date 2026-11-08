@@ -88,6 +88,24 @@ ok((await V.getByRole('button', { name: /CSV/ }).count()) === 0, 'no download of
 await V.locator('.lb-rows li').filter({ hasText: 'Erik' }).first().click();
 await V.waitForTimeout(500);
 ok((await V.locator('.lb-card').count()) === 1 && /Erik|Loch|Par/.test(await V.locator('.lb-card').innerText()), 'Erik tapped: his scorecard opens');
+// its marks inside their hole's column, the double bogey's outer square too (Sascha 08.11.2026: "the scorecards are
+// not clean yet" – in the narrow card the circles and squares ran into each other)
+const fit = await V.locator('.lb-card').evaluate((card) => {
+  const out = [];
+  for (const kind of ['birdie', 'bogey', 'double']) {
+    for (const m of card.querySelectorAll('td .mark')) {
+      const was = m.className;
+      m.className = `mark ${kind}`;
+      const r = m.getBoundingClientRect();
+      const td = m.closest('td').getBoundingClientRect();
+      const ring = kind === 'double' ? 3 : 0;
+      if (r.left - ring < td.left - 0.5 || r.right + ring > td.right + 0.5) out.push(`${kind} ${Math.round(r.width + 2 * ring)} in ${Math.round(td.width)}`);
+      m.className = was;
+    }
+  }
+  return { bad: out, col: Math.round(card.querySelector('tr.score td:nth-child(2)')?.getBoundingClientRect().width ?? 0) };
+});
+ok(fit.bad.length === 0, `the card's marks inside their columns (${fit.col} px a hole${fit.bad.length ? ': ' + fit.bad.slice(0, 3).join(', ') : ''})`);
 // the course: its holes on the aerial image, the scores on each
 await V.getByRole('tab', { name: 'Platz' }).click();
 await V.locator('.live-course').waitFor({ timeout: 20000 }).catch(() => {});
