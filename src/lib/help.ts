@@ -112,6 +112,15 @@ export const FAQ: FaqTopic[] = [
         video: 'start',
       },
       {
+        q: () => tr('A hole has no map – what now?', 'Ein Loch hat keine Karte – was tun?'),
+        a: () =>
+          tr(
+            'Tap the tee and then the green on the aerial photo and save – the hole is there from then on. Or "Enter score only": every hole without a map then opens on the score entry for the rest of the round; "Set up the hole" at the top still draws one in.',
+            'Abschlag und dann Grün auf dem Luftbild antippen und speichern – ab dann ist das Loch da. Oder „Nur Score eintragen“: Für den Rest der Runde öffnet jedes Loch ohne Karte gleich die Score-Eingabe; „Loch einrichten“ oben zeichnet trotzdem eins ein.',
+          ),
+        video: 'start',
+      },
+      {
         q: () => tr('How do I put GolfOS on the home screen?', 'Wie lege ich GolfOS auf den Home-Bildschirm?'),
         a: () =>
           isNative()

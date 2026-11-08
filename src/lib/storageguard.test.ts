@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { GEO, guardStorage, makeRoom, touchGeometry } from './storageguard';
+import { GEO, guardStorage, holdGeometry, makeRoom, touchGeometry } from './storageguard';
 
 // a device storage with Safari's kind of limit, small enough for a test
 class FakeStorage {
@@ -55,6 +55,20 @@ describe('storage full', () => {
     expect(ls.getItem(GEO + 'c')).not.toBeNull();
     expect(ls.getItem('golfos.track.v1.r1')).not.toBeNull();
     expect(makeRoom('x')).toBe(false);
+  });
+  it('never the map of a game being played (Games, Celebration 08.11.2026) or of the map on screen', () => {
+    ls.setItem('golfos.games.v1', JSON.stringify([{ id: 'g1', finishedAt: null, round: { courseId: 'cel' } }, { id: 'g0', finishedAt: '2026-11-07', round: { courseId: 'old' } }]));
+    ls.setItem(GEO + 'cel', 'x'.repeat(200));
+    ls.setItem(GEO + 'old', 'x'.repeat(200));
+    ls.setItem(GEO + 'seen', 'x'.repeat(200));
+    const free = holdGeometry('seen');
+    while (makeRoom('x'));
+    expect(ls.getItem(GEO + 'cel')).not.toBeNull();
+    expect(ls.getItem(GEO + 'seen')).not.toBeNull();
+    expect(ls.getItem(GEO + 'old')).toBeNull();
+    free();
+    expect(makeRoom('x')).toBe(true);
+    expect(ls.getItem(GEO + 'seen')).toBeNull();
   });
   it('a write that fits is not touched', () => {
     ls.setItem(GEO + 'a', 'x'.repeat(100));

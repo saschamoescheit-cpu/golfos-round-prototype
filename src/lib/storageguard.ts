@@ -6,6 +6,13 @@
 export const GEO = 'golfos.geo.v1.';
 const USED = 'golfos.geoused.v1';
 const ROUNDS = 'golfos.rounds.v1';
+const GAMES = 'golfos.games.v1';
+/** Courses whose map is on screen now (the hole screen open) – never made room with, whatever plays on them. */
+const busy = new Set<string>();
+export function holdGeometry(courseId: string): () => void {
+  busy.add(courseId);
+  return () => busy.delete(courseId);
+}
 
 let raw: ((this: Storage, key: string, value: string) => void) | null = null;
 
@@ -42,13 +49,22 @@ export function touchGeometry(courseId: string): void {
 export function makeRoom(keep: string): boolean {
   const s = store();
   if (!s) return false;
-  let playing = new Set<string>();
+  const playing = new Set<string>();
   try {
     const rounds = JSON.parse(s.getItem(ROUNDS) ?? '[]') as { courseId: string; finishedAt: string | null }[];
-    playing = new Set(rounds.filter((r) => !r.finishedAt).map((r) => GEO + r.courseId));
+    for (const r of rounds) if (!r.finishedAt) playing.add(GEO + r.courseId);
   } catch {
     // unreadable rounds: no map is protected by them, the key being written still is
   }
+  // a game on the map (Games) carries its own round (Sascha 08.11.2026, Celebration: the course map went in the middle
+  // of a 5+5+10 – "we had to tap tee and greens")
+  try {
+    const games = JSON.parse(s.getItem(GAMES) ?? '[]') as { finishedAt: string | null; round?: { courseId?: string } }[];
+    for (const g of games) if (!g.finishedAt && g.round?.courseId) playing.add(GEO + g.round.courseId);
+  } catch {
+    // unreadable games: as above
+  }
+  for (const id of busy) playing.add(GEO + id);
   const spare: string[] = [];
   for (let i = 0; i < s.length; i++) {
     const k = s.key(i);

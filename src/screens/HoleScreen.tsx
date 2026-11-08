@@ -47,6 +47,7 @@ import { caddieAdvice, teeAimFor } from '../lib/caddieplan';
 import { move } from '../lib/aimpoint';
 import { clubSpread, spreadShape } from '../lib/spread';
 import { loadCaddieSettings, loadCarryBag, newId } from '../lib/storage';
+import { holdGeometry } from '../lib/storageguard';
 import { woodsOf, landmarksOf, alongLine, lineLength, pointAt, bearingDeg, detectHole, distanceM, distToLine, formatDistance, greenFrontBack, holeMapData, pointInRing, type Unit, approachFrom } from '../lib/geo';
 import { Segmented, Stepper, TopBar, formatToPar } from '../components/ui';
 import { HoleMap } from '../components/HoleMap';
@@ -217,6 +218,26 @@ export function HoleScreen(props: {
   // The map is the main view. A hole without a hole line opens the set-up on the map (Sascha 10.10.2026).
   const [view, setView] = useState<'map' | 'score'>('map');
   const [setupOpen, setSetupOpen] = useState(false);
+  // "Nur Score eintragen" once (Sascha 08.11.2026, Celebration: the set-up came on every hole): the holes without a map
+  // open on the score entry for the rest of the round – "Loch einrichten" up top still sets one up
+  const scoreOnlyKey = `golfos.scoreonly.${round.id}`;
+  const [scoreOnly, setScoreOnlyState] = useState(() => {
+    try {
+      return sessionStorage.getItem(scoreOnlyKey) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setScoreOnly = (on: boolean) => {
+    setScoreOnlyState(on);
+    try {
+      sessionStorage.setItem(scoreOnlyKey, on ? '1' : '0');
+    } catch {
+      /* private mode */
+    }
+  };
+  // the course map on screen: it never makes room while the storage is full, whatever plays on it (a game, a bet)
+  useEffect(() => holdGeometry(round.courseId), [round.courseId]);
   const [editHole, setEditHole] = useState(false);
   const [unit] = useState<Unit>(loadUnit);
   // the player's record per hole from earlier rounds here (course book, feature 012)
@@ -1315,7 +1336,7 @@ export function HoleScreen(props: {
     );
   }
 
-  if (setupOpen || (view === 'map' && !mapData)) {
+  if (setupOpen || (view === 'map' && !mapData && !scoreOnly)) {
     const nearCourse = player != null && distanceM(player.pos, courseCenter) < 5000;
     return (
       <HoleSetup
@@ -1332,7 +1353,15 @@ export function HoleScreen(props: {
           setSetupOpen(false);
           if (!mapData) setView('score');
         }}
-        onScoreOnly={mapData ? undefined : () => setView('score')}
+        onScoreOnly={
+          mapData
+            ? undefined
+            : () => {
+                setSetupOpen(false);
+                setView('score');
+                setScoreOnly(true);
+              }
+        }
         onSave={(line) => {
           saveHoleLine(round.courseId, hole.loop, hole.number, line);
           setGeoVersion((v) => v + 1);
@@ -2388,7 +2417,7 @@ export function HoleScreen(props: {
         backLabel={tr('Leave round', 'Runde verlassen')}
         right={
           <>
-            <button type="button" className="icon-btn" aria-label={mapData ? tr('Hole map', 'Karte') : tr('Set up the hole', 'Loch einrichten')} onClick={() => setView('map')}>
+            <button type="button" className="icon-btn" aria-label={mapData ? tr('Hole map', 'Karte') : tr('Set up the hole', 'Loch einrichten')} onClick={() => (mapData ? setView('map') : setSetupOpen(true))}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" />
                 <path d="M9 4v14M15 6v14" />

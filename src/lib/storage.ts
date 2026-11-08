@@ -132,12 +132,19 @@ export function saveHoleCorrection(courseId: string, loop: string, number: numbe
 const LINES = 'golfos.holelines.v2.';
 
 /** Hole lines the player set up on the course (tee → green), keyed "loop#number". */
+// The storage full (Sascha 08.11.2026, Celebration: "we had to tap tee and greens – later that did not work either"):
+// what could not be written stays in memory for this session – the hole set up is there, the map does not go.
+const linesKept = new Map<string, Record<string, LngLat[]>>();
+const geoKept = new Map<string, CourseGeometry>();
+
 export function loadHoleLines(courseId: string): Record<string, LngLat[]> {
-  return read<Record<string, LngLat[]>>(LINES + courseId, {});
+  return { ...read<Record<string, LngLat[]>>(LINES + courseId, {}), ...(linesKept.get(courseId) ?? {}) };
 }
 
 export function saveHoleLine(courseId: string, loop: string, number: number, line: LngLat[]): void {
-  write(LINES + courseId, { ...loadHoleLines(courseId), [`${loop}#${number}`]: line });
+  const all = { ...loadHoleLines(courseId), [`${loop}#${number}`]: line };
+  if (write(LINES + courseId, all)) linesKept.delete(courseId);
+  else linesKept.set(courseId, all);
 }
 
 function holeLabel(loop: string, number: number): string {
@@ -168,9 +175,10 @@ export async function ensureGeometry(courseId: string): Promise<void> {
 export function loadGeometry(courseId: string): CourseGeometry {
   touchGeometry(courseId); // used now – a map not used for long makes room first when the storage is full
   // holes mapped as areas become playing lines – for every part of the app that reads the course (22.10.2026)
-  let base: CourseGeometry = holesAsLines(
-    seeds.get(courseId) ?? read<CourseGeometry | null>(GEO + courseId, null) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] },
-  );
+  const stored = seeds.get(courseId) ?? read<CourseGeometry | null>(GEO + courseId, null);
+  // read once this session: kept, should the copy go to make room (or never have fitted)
+  if (stored && !seeds.has(courseId)) geoKept.set(courseId, stored);
+  let base: CourseGeometry = holesAsLines(stored ?? geoKept.get(courseId) ?? { holes: [], green: [], tee: [], bunker: [], fairway: [], water: [] });
   // no holes in the map, but worked out for this course (Hawks Landing, 27.10.2026): those, with par and stroke index
   if (!base.holes.length && COURSE_LINES[courseId]) {
     const card = CARDS[courseId] ?? [];
@@ -187,6 +195,7 @@ export function loadGeometry(courseId: string): CourseGeometry {
 }
 
 export function saveGeometry(courseId: string, geometry: CourseGeometry): void {
+  geoKept.set(courseId, geometry);
   if (write(GEO + courseId, geometry)) touchGeometry(courseId);
 }
 
