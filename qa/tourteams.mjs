@@ -38,7 +38,9 @@ ok(/Vierer/.test(await row('Modus').innerText()) && /100 %/.test(await row('HCP-
 ok((await H.getByText(/Spieler 1 & 2 und 3 & 4 als Team mit einem Ball/).count()) === 1, 'how the teams come about, under the format');
 // an internal tournament (Sascha 07.11.2026): every function – the switch under the format, off to start with
 const aids = H.getByRole('switch', { name: /Alle Funktionen/ });
-ok((await aids.count()) === 1 && (await aids.getAttribute('aria-checked')) === 'false', '"Alle Funktionen" under the format, off (Rule 4.3)');
+ok((await aids.count()) === 1 && (await aids.getAttribute('aria-checked')) === 'false', '"Alle Funktionen" in the format, off (Rule 4.3)');
+// a row of the format list (Sascha 08.11.2026)
+ok((await H.locator('.settings-list').filter({ hasText: 'Rundenart' }).getByRole('switch', { name: /Alle Funktionen/ }).count()) === 1, '"Alle Funktionen" is a row of the format list');
 await aids.click();
 await H.locator('input[id^="hcp-"]').first().fill('10');
 for (const [n, h] of [['Erik', '4'], ['Cedric', '20'], ['Christopher', '0']]) {

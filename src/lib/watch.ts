@@ -24,7 +24,34 @@ export interface WatchShot {
   hit: boolean;
   manual: boolean;
 }
-export type WatchItem = { kind: 'shot'; shot: WatchShot } | { kind: 'remove'; id: string } | { kind: 'hole'; hole: number; t: number };
+/** 'hole': `round` and the watch's own `t` from the watch app of 08.11.2026 on – before, `t` is when it reached the phone */
+export type WatchItem = { kind: 'shot'; shot: WatchShot } | { kind: 'remove'; id: string } | { kind: 'hole'; hole: number; t: number; round?: string };
+
+/** A hole changed on the watch – for this round, and in the last minute? (Sascha 08.11.2026: Erik's new round jumped to
+ *  the hole the watch still showed of the round he had deleted) */
+export function watchHoleFor(it: { hole: number; t: number; round?: string }, roundId: string, holes: number, now = Date.now()): boolean {
+  if (it.round != null && it.round !== roundId) return false;
+  return now - it.t < 60000 && it.hole >= 0 && it.hole < holes;
+}
+
+// the round last sent to the watch – when it is gone or over, the watch is told (however it ended: finished, given up,
+// deleted, on another phone)
+const SENT = 'golfos.watch.round';
+const sentId = (): string | null => {
+  try {
+    return localStorage.getItem(SENT);
+  } catch {
+    return null;
+  }
+};
+const setSent = (id: string | null) => {
+  try {
+    if (id) localStorage.setItem(SENT, id);
+    else localStorage.removeItem(SENT);
+  } catch {
+    /* this visit only */
+  }
+};
 
 interface WatchLinkPlugin {
   status(): Promise<{ supported: boolean; paired: boolean; installed: boolean; reachable: boolean }>;
@@ -166,6 +193,7 @@ export async function watchReady(): Promise<boolean> {
 export async function sendRound(json: ReturnType<typeof watchRound>, hole: number, start: boolean): Promise<boolean> {
   try {
     if (start) await Link.forget({ round: json.id });
+    setSent(json.id);
     const r = await Link.round({ json: JSON.stringify(json), hole, start });
     return r.started;
   } catch {
@@ -179,7 +207,24 @@ export function sendHole(hole: number): void {
 
 /** The round is over: the watch ends its workout. */
 export function endWatchRound(): void {
+  setSent(null);
   if (isNative()) void Link.end().catch(() => undefined);
+}
+
+/** The rounds changed: the round on the watch no longer there or over – the watch ends it too (Sascha 08.11.2026: "Erik
+ *  saves or deletes the round on the phone, on the watch it is still there"). True when the watch was told. */
+export function endWatchRoundIfGone(rounds: { id: string; finishedAt: string | null }[]): boolean {
+  const id = sentId();
+  if (!id || rounds.some((r) => r.id === id && !r.finishedAt)) return false;
+  endWatchRound();
+  // brought back (the delete undone): the watch app and its workout start again
+  try {
+    sessionStorage.removeItem(`golfos.watch.started.${id}`);
+    localStorage.removeItem(`golfos.watch.started.${id}`);
+  } catch {
+    /* nothing kept */
+  }
+  return true;
 }
 
 /** What the watch sends, as it comes and – after the page slept – all kept so far. Returns the stop. */

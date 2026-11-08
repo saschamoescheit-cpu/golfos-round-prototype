@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { addWatchShot, removeWatchShot, watchRound, type WatchShot } from './watch';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { addWatchShot, endWatchRoundIfGone, removeWatchShot, watchHoleFor, watchRound, type WatchShot } from './watch';
 import type { HoleMapData } from './geo';
 import type { LngLat, Round } from '../types';
 
@@ -95,5 +95,35 @@ describe('the hole drawn on the watch', () => {
     expect(json.length).toBeLessThan(40000);
     const first = w.holes.find((x) => x?.map)!;
     expect(first.map!.fairways.length + first.map!.bunkers.length + (first.map!.green ? 1 : 0)).toBeGreaterThan(0);
+  });
+});
+
+// Sascha 08.11.2026: "Erik saves or deletes the round on the phone, on the watch it is still there – opening the app
+// again, he is on the hole the watch still shows"
+describe('the round on the watch and on the phone', () => {
+  const mem = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+  };
+  afterEach(() => vi.unstubAllGlobals());
+  it('a hole changed on the watch moves only its own round, and only within a minute of the watch’s time', () => {
+    const now = 1_000_000;
+    expect(watchHoleFor({ hole: 4, t: now - 5000, round: 'r1' }, 'r1', 18, now)).toBe(true);
+    expect(watchHoleFor({ hole: 4, t: now - 5000, round: 'old' }, 'r1', 18, now)).toBe(false);
+    expect(watchHoleFor({ hole: 4, t: now - 120000, round: 'r1' }, 'r1', 18, now)).toBe(false);
+    expect(watchHoleFor({ hole: 20, t: now, round: 'r1' }, 'r1', 18, now)).toBe(false);
+    expect(watchHoleFor({ hole: 4, t: now - 5000 }, 'r1', 18, now)).toBe(true); // an older watch app: no round
+  });
+  it('the round sent to the watch deleted or finished: the watch is told once – while it runs, not', () => {
+    vi.stubGlobal('localStorage', mem());
+    vi.stubGlobal('sessionStorage', mem());
+    localStorage.setItem('golfos.watch.round', 'r1');
+    localStorage.setItem('golfos.watch.started.r1', '1');
+    expect(endWatchRoundIfGone([{ id: 'r1', finishedAt: null }])).toBe(false);
+    expect(endWatchRoundIfGone([{ id: 'r1', finishedAt: '2026-11-08T17:00:00Z' }])).toBe(true);
+    expect(localStorage.getItem('golfos.watch.started.r1')).toBeNull(); // brought back: its workout starts again
+    expect(endWatchRoundIfGone([])).toBe(false); // told already
+    localStorage.setItem('golfos.watch.round', 'r2');
+    expect(endWatchRoundIfGone([{ id: 'r1', finishedAt: null }])).toBe(true); // deleted
   });
 });

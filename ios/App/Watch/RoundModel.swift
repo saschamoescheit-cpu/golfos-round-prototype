@@ -173,7 +173,8 @@ final class RoundModel: NSObject, ObservableObject {
         let n = r.holes.count
         hole = ((hole + by) % n + n) % n
         holeByHand = Date()
-        send(["hole": hole])
+        // with its round and the watch's time (Sascha 08.11.2026: a hole of a round long gone moved Erik's new round)
+        send(["hole": hole, "round": r.id, "t": Date().timeIntervalSince1970 * 1000])
         persist()
     }
 

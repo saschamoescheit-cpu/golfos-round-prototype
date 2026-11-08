@@ -65,6 +65,14 @@ ok(/Deine Karte.*bereit zum Unterschreiben/s.test(await hs.innerText()) && /Als 
 if (process.env.SHOTS) await H.screenshot({ path: process.env.SHOTS + '/sign-card.png' });
 for (const btn of await hs.getByRole('button', { name: 'Unterschreiben' }).all()) await btn.click();
 const gs = await openCard(G);
+// Sascha signed first (Sascha 08.11.2026: "Erik signed, but it does not sync to me" – it did, the row only said "ready
+// to sign"): Cedric's rows say so – his own card "Dein Zähler hat unterschrieben", Sascha's "Sascha hat unterschrieben"
+await gs.getByText(/Sascha hat unterschrieben – jetzt du/).waitFor({ timeout: 15000 }).catch(() => {});
+const gtext = (await gs.innerText()).replace(/\s+/g, ' ');
+ok(/Deine Karte Dein Zähler hat unterschrieben – jetzt du/.test(gtext) && /Als Zähler von Sascha Sascha hat unterschrieben – jetzt du/.test(gtext), `Cedric: the other's signature said ("${gtext.slice(0, 200)}")`);
+// no empty space in the rows (the same screenshot: each row 180 px tall from an older flex rule)
+const rowHeights = await gs.locator('.sign-row .grow').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+ok(rowHeights.length >= 2 && rowHeights.every((h) => h < 90), `the rows' words without empty space (${rowHeights.join(', ')} px)`);
 for (const btn of await gs.getByRole('button', { name: 'Unterschreiben' }).all()) await btn.click();
 await H.waitForTimeout(12000);
 const f = Object.values(sim.event().flights)[0];

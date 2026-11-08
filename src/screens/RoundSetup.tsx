@@ -353,9 +353,9 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
               <span aria-hidden="true">›</span>
             </button>
           )}
+          {/* a tournament: the aids of Rule 4.3 off – or all of them, an internal one (Sascha 07.11.2026); a row of the format (Sascha 08.11.2026) */}
+          {kind === 'tournament' && <ToggleRow inList label={tr('All functions', 'Alle Funktionen')} text={tr('Wind, caddie and green slopes in an internal tournament – Rule 4.3 forbids them in an official one.', 'Wind, Caddie und Grün-Slopes im internen Turnier – im offiziellen verbietet sie Regel 4.3.')} on={!!format.aids} onChange={(on) => setFormat({ ...format, aids: on || undefined })} />}
         </div>
-        {/* a tournament: the aids of Rule 4.3 off – or all of them, an internal one (Sascha 07.11.2026) */}
-        {kind === 'tournament' && <ToggleRow label={tr('All functions', 'Alle Funktionen')} text={tr('An internal tournament: wind, caddie and green slopes as in any round. In an official tournament Rule 4.3 forbids them – then leave it off.', 'Internes Turnier: Wind, Caddie und Grün-Slopes wie in jeder Runde. Im offiziellen Turnier verbietet Regel 4.3 sie – dann aus lassen.')} on={!!format.aids} onChange={(on) => setFormat({ ...format, aids: on || undefined })} />}
         {!fits && (
           <p className="small good-text" style={{ margin: 0 }}>
             {tr(`${fmt.name()} needs ${fmt.need()} – you have ${playerCount}. Add players below or choose another mode.`, `${fmt.name()} braucht ${fmt.need()} – ihr seid ${playerCount}. Füge unten Spieler hinzu oder wähle einen anderen Modus.`)}

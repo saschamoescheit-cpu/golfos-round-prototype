@@ -116,6 +116,22 @@ ok(holes.at(-1) === 1, `and tells the watch its hole (${holes.join(',')})`);
 await p.evaluate(() => window.__watchSend({ kind: 'hole', hole: 4, t: Date.now() - 10 * 60000 }));
 await p.waitForTimeout(800);
 ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].currentHole)) === 1, 'a hole change from 10 minutes ago: left alone');
+// a hole of another round (Sascha 08.11.2026: Erik's new round jumped to the hole of the round the watch still showed)
+await p.evaluate(() => window.__watchSend({ kind: 'hole', hole: 3, t: Date.now(), round: 'an-old-round' }));
+await p.waitForTimeout(800);
+ok((await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1'))[0].currentHole)) === 1, 'a hole change of another round: left alone');
+
+// 6 · the round deleted on the phone (Sascha 08.11.2026: "on the watch it is still there"): the watch is told
+const endedBefore = await p.evaluate(() => window.__watch.ended);
+await p.locator('.hole-bar-handle').click();
+await p.locator('.hole-drawer').getByRole('button', { name: 'Runde beenden' }).click();
+await p.getByRole('button', { name: /^Runde (löschen|abbrechen)$/ }).first().click();
+const sure = p.getByRole('button', { name: /^Runde löschen$/ });
+if (await sure.count()) await sure.last().click();
+await p.waitForTimeout(1500);
+const gone = await p.evaluate(() => JSON.parse(localStorage.getItem('golfos.rounds.v1') ?? '[]').length);
+const ended = await p.evaluate(() => window.__watch.ended);
+ok(gone === 0 && ended > endedBefore, `deleted on the phone: the watch ends it too (${gone} rounds, end ${endedBefore} → ${ended})`);
 ok(errs.length === 0, `no page errors${errs.length ? ': ' + errs.join(' / ') : ''}`);
 await b.close();
 process.exit(bad ? 1 : 0);

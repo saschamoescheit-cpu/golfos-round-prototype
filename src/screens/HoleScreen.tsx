@@ -36,7 +36,7 @@ import { addTestEvent, speechText } from '../lib/testlog';
 import { CaddieCard, NotesSheet, TournamentCaddie } from '../components/CaddieCard';
 import { hazardsAhead, holeBook } from '../lib/holebook';
 import { listen, soundTestOn, type Listening } from '../lib/impact';
-import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, watchReady, watchRound } from '../lib/watch';
+import { addWatchShot, onWatch, removeWatchShot, sendHole, sendRound, watchHoleFor, watchReady, watchRound } from '../lib/watch';
 import { RoundInviteSheet } from '../components/ShareRound';
 import { cachedEvent, differences, exchangeRound, quietKeeper, settle, shareView, takeOver } from '../lib/sharedround';
 import { myName } from '../components/ShareRound';
@@ -1274,7 +1274,7 @@ export function HoleScreen(props: {
         const r = latestRound.current;
         // the hole changed on the watch by hand (in the last minute): the phone goes along – as by GPS, no par written
         if (it.kind === 'hole') {
-          if (Date.now() - it.t < 60000 && it.hole !== holeRef.current && it.hole >= 0 && it.hole < r.holes.length) goToRef.current(it.hole, true, r);
+          if (it.hole !== holeRef.current && watchHoleFor(it, r.id, r.holes.length)) goToRef.current(it.hole, true, r);
           return;
         }
         if (props.game) return; // a game counts no shots

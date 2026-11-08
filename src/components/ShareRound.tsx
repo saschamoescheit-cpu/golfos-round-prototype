@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CourseSummary, Round } from '../types';
 import { cleanCode, showCode } from '../lib/sharedgame';
+import { shareView, type ShareView } from '../lib/sharedround';
 import { addFlight, CLASS_NAMES, askByCode, askToJoin, cachedEvent, differences, exchangeRound, settle, eventStandings, flightOfName, flightStatus, isSeries, joinEvent, markerOf, liveFlights, localDay, plannedAhead, nearbyRounds, hideNearby, nearbyUntil, setNearbyUntil, newFlightRound, roundFromEvent, refreshEvent, roundJoinLink, shareRound, showNearby, signable, signCard, isSigned, standingsCsv, writerOf, type Flight, type NearbyRound, type RoundEvent, type TourSeries, reopenFlight, samePerson, nameIs } from '../lib/sharedround';
 import { isTeamMode, modeName, type GameMode } from '../lib/games';
 import { loadCachedCourse, newId } from '../lib/storage';
@@ -789,7 +790,7 @@ export function EventBoardCard(props: { code: string; myFlight: string; /** away
  * both counts and none differs. Signed by both, the score is locked on every phone.
  */
 /** The holes where the own count and the marker's differ, per player (the scorecard marks them red – Sascha 03.11.2026). */
-export function useDiffers(round: Round): Record<string, number[]> {
+function useSharedEvent(round: Round) {
   const s = round.shared;
   const [ev, setEv] = useState(() => (s ? cachedEvent(s.code) : null));
   useEffect(() => {
@@ -799,6 +800,20 @@ export function useDiffers(round: Round): Record<string, number[]> {
     window.addEventListener('golfos:event-changed', on);
     return () => window.removeEventListener('golfos:event-changed', on);
   }, [s?.code]); // eslint-disable-line react-hooks/exhaustive-deps
+  return ev;
+}
+
+/** For a score panel away from the hole map (the scorecard's): per player what this phone may do – as on the course
+ *  (Sascha 08.11.2026, "Jeder seinen eigenen": a hole opened on Erik's scorecard showed steppers for everyone). */
+export function useShareViews(round: Round): Record<string, ShareView> {
+  const ev = useSharedEvent(round);
+  const s = round.shared;
+  return s && ev ? shareView(round, ev.flights[s.flight], !!ev.tournament) : {};
+}
+
+export function useDiffers(round: Round): Record<string, number[]> {
+  const s = round.shared;
+  const ev = useSharedEvent(round);
   const f = s && ev?.flights[s.flight];
   if (!f || f.scorer || !f.markers) return {};
   return Object.fromEntries(round.players.map((p) => [p.id, differences(f, p.id)]).filter(([, d]) => (d as number[]).length));
@@ -869,13 +884,22 @@ export function SignCard(props: { round: Round; onHole?: (index: number) => void
         const done = f.signed?.[c.pid]?.[c.as];
         const locked = isSigned(f, c.pid);
         const can = signable(f, c.pid, ev!.holes.length);
+        // the other one signed already – said, so it is clear the own signature is all that is missing (Sascha
+        // 08.11.2026: "Erik signed, but it does not sync to me" – it did, the row only said "ready to sign")
+        const theirs = !locked && !done && can.ok && !!f.signed?.[c.pid]?.[c.as === 'player' ? 'marker' : 'player'];
         return (
           // the words above, the button below across the card (Sascha 03.11.2026: the text was squeezed into a column beside it)
           <div key={c.pid + c.as} className="sign-row">
             <span className="grow">
               <strong>{c.as === 'player' ? tr('Your card', 'Deine Karte') : f.scorer === me?.id ? tr(`As scorer of ${c.name}`, `Als Schreiber von ${c.name}`) : tr(`As marker of ${c.name}`, `Als Zähler von ${c.name}`)}</strong>
-              <span className={`small ${!locked && !done && !can.ok && can.differ.length ? 'bad-text' : 'muted'}`}>
-                {locked
+              <span className={`small ${!locked && !done && !can.ok && can.differ.length ? 'bad-text' : theirs ? 'good-text' : 'muted'}`}>
+                {theirs
+                  ? c.as === 'player'
+                    ? f.scorer
+                      ? tr('Your scorer signed – now you', 'Dein Schreiber hat unterschrieben – jetzt du')
+                      : tr('Your marker signed – now you', 'Dein Zähler hat unterschrieben – jetzt du')
+                    : tr(`${c.name} signed – now you`, `${c.name} hat unterschrieben – jetzt du`)
+                  : locked
                   ? tr('Signed by player and marker – handed in, locked', 'Von Spieler und Zähler unterschrieben – abgegeben, gesperrt')
                   : done
                     ? c.as === 'player'

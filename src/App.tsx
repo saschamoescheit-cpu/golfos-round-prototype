@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Course, Round, RoundHole } from './types';
 import { closeStaleRounds, deleteRound, ensureGeometry, geometryReady, loadCachedCourse, loadCarryBag, loadRounds, saveRound } from './lib/storage';
 import { commitParAt, finishRound } from './lib/scoring';
-import { endWatchRound } from './lib/watch';
+import { endWatchRound, endWatchRoundIfGone } from './lib/watch';
 import { isTeamRound } from './lib/games';
 import { carryToReview } from './lib/stats';
 import { restoreLostRounds } from './lib/restore';
@@ -255,6 +255,12 @@ export function App() {
     setGamesTab(undefined);
     setModule('games');
   };
+
+  // the round on the Apple Watch gone or over, however (finished, given up, deleted, synced): the watch ends it too
+  // (Sascha 08.11.2026: "Erik deletes the round on the phone – on the watch it is still there")
+  useEffect(() => {
+    endWatchRoundIfGone(rounds);
+  }, [rounds]);
 
   // "Undo" after a delete brings the round back: show it again
   useEffect(() => {

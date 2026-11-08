@@ -8,7 +8,7 @@ import { TopBar, formatToPar } from '../components/ui';
 import { SgCard } from '../components/SgCard';
 import { ScoreTable } from '../components/ScoreTable';
 import { LeaderboardCard } from '../components/Leaderboard';
-import { EventBoardCard, SignCard, useDiffers } from '../components/ShareRound';
+import { EventBoardCard, SignCard, useDiffers, useShareViews } from '../components/ShareRound';
 import { isTeamRound } from '../lib/games';
 import { pickUpAllowed, ScoreSheet } from '../components/ScoreSheet';
 import { RoundSummaryCard } from '../components/RoundSummaryCard';
@@ -48,6 +48,8 @@ export function Scorecard(props: {
   const marked = round.players.filter((p) => round.shared?.roles?.[p.id] === 'mark').map((p) => p.name);
   const [editHole, setEditHole] = useState<number | null>(null);
   const differ = useDiffers(round);
+  // a shared round: who keeps which score – the others' shown, not changed here, as on the course (Sascha 08.11.2026)
+  const views = useShareViews(round);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const me = round.players.find((p) => p.isMe)!;
   const finished = round.finishedAt != null;
@@ -286,6 +288,12 @@ export function Scorecard(props: {
             team={isTeamRound(round)}
             pickUp={pickUpAllowed(round)}
             details={(pid) => betLinked(round) && (round.shared?.roles?.[pid] === 'mark' || round.shared?.roles?.[pid] === 'free')}
+            shared={Object.fromEntries(
+              Object.entries(views).map(([pid, v]) => [
+                pid,
+                { keptBy: v.role === 'view' ? (v.keptBy ?? '') : null, other: v.other ? { label: v.other.label, cell: v.other.cells[editHole] ?? null } : undefined, locked: v.locked },
+              ]),
+            )}
             onChange={(pid, patch) =>
               props.onChange({ ...round, entries: { ...round.entries, [pid]: round.entries[pid].map((e, k) => (k === editHole ? { ...e, ...patch } : e)) } })
             }

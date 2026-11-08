@@ -172,7 +172,10 @@ public class WatchLinkPlugin: CAPPlugin, CAPBridgedPlugin, WCSessionDelegate {
         } else if let id = info["remove"] as? String {
             item = ["kind": "remove", "id": id]
         } else if let h = info["hole"] as? Int {
-            item = ["kind": "hole", "hole": h, "t": Date().timeIntervalSince1970 * 1000]
+            // the watch's own time and round (an older watch app: the time it came, no round)
+            var it: [String: Any] = ["kind": "hole", "hole": h, "t": (info["t"] as? Double) ?? Date().timeIntervalSince1970 * 1000]
+            if let r = info["round"] as? String { it["round"] = r }
+            item = it
         }
         guard let it = item else { return }
         lock.lock()

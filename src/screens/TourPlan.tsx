@@ -675,11 +675,11 @@ export function TourSetup(props: { draft: TourDraft; onChange: (d: TourDraft) =>
               options={[4, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60].map((n) => ({ value: n, name: tr(`The best ${n}`, `Die besten ${n}`), text: tr('And everyone level with the last of them.', 'Und alle, die mit dem Letzten gleichauf liegen.') }))}
             />
           )}
+          {/* the aids of Rule 4.3 – off in a tournament, on in an internal one (Sascha 07.11.2026); a row of the format (Sascha 08.11.2026) */}
+          {(d.kind ?? 'tournament') === 'tournament' && <ToggleRow inList label={tr('All functions', 'Alle Funktionen')} text={tr('Wind, caddie and green slopes in an internal tournament – Rule 4.3 forbids them in an official one.', 'Wind, Caddie und Grün-Slopes im internen Turnier – im offiziellen verbietet sie Regel 4.3.')} on={!!d.aids} onChange={(on) => set({ aids: on || undefined })} />}
         </SettingsList>
         {/* the limits under the list – the row stays one line */}
         {d.scoring !== 'stroke' && d.classes.length > 0 && <span className="muted small">{classLimits(d.classes)}</span>}
-        {/* the aids of Rule 4.3 – off in a tournament, on in an internal one (Sascha 07.11.2026) */}
-        {(d.kind ?? 'tournament') === 'tournament' && <ToggleRow label={tr('All functions', 'Alle Funktionen')} text={tr('An internal tournament: wind, caddie and green slopes as in any round. In an official tournament Rule 4.3 forbids them – then leave it off.', 'Internes Turnier: Wind, Caddie und Grün-Slopes wie in jeder Runde. Im offiziellen Turnier verbietet Regel 4.3 sie – dann aus lassen.')} on={!!d.aids} onChange={(on) => set({ aids: on || undefined })} />}
         {/* how the teams come about – in every flight */}
         {(d.mode ?? 'single') !== 'single' && <span className="muted small">{teamsText(d.mode ?? 'single')}</span>}
       </section>
