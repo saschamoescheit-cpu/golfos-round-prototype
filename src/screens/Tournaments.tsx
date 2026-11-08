@@ -5,7 +5,7 @@ import { useTop } from '../components/useTop';
 import { tr } from '../lib/i18n';
 import { type Scoring } from '../lib/games';
 import { CLASS_NAMES, eventCard, eventStandings, liveFlights, markerOf, refreshEvent, reopenFlight, roundJoinLink, setSpecial, type RoundEvent } from '../lib/sharedround';
-import { changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
+import { adoptIntoSeries, changeTour, createSeries, dissolveSeries, forgetTour, isPlanned, isSeriesHost, isTourHost, keepTour, loadSeries, loadTours, renameSeries, syncTours, tourState, type PlannedEvent, type SeriesEntry, type TourEntry } from '../lib/tourstore';
 import { dayOf } from '../lib/wagers';
 import { metres, specialBoard, specialName, type Special } from '../lib/specials';
 import { TopBar } from '../components/ui';
@@ -496,11 +496,13 @@ export { seriesStandings, type SeriesPart } from '../lib/seriesstandings';
 
 export function SeriesScreen(props: { code: string; onBack: () => void; /** where "Zurück" goes, when not the list */ backLabel?: string; onOpen: (code: string) => void; onAddRound: (d: TourDraft) => void; /** a tournament over several rounds changed as a whole */ onEdit: (d: TourDraft) => void }) {
   useTop(props.code);
-  const entry = useSeries().find((e) => e.code === props.code);
+  const allSeries = useSeries();
+  const entry = allSeries.find((e) => e.code === props.code);
   const tours = useTours();
   const [evs, setEvs] = useState<RoundEvent[]>([]);
-  const [sheet, setSheet] = useState<null | 'invite' | 'rename' | 'dissolve'>(null);
+  const [sheet, setSheet] = useState<null | 'invite' | 'rename' | 'dissolve' | 'adopt'>(null);
   const [dealing, setDealing] = useState<number | null>(null);
+  const [adopting, setAdopting] = useState<string | null>(null);
   const [at, setAt] = useState<Date | null>(null);
   const [name, setName] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
@@ -567,6 +569,9 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
       if (fresh) setEvs((xs) => xs.map((x) => (x.id === fresh.id ? fresh : x)));
     }
   };
+  // the tournaments that can be taken in: set up on their own (in no live series), not deleted, not in this one
+  const inSeries = new Set(allSeries.filter((x) => !x.series.deletedAt).flatMap((x) => x.series.rounds.map((r) => r.code)));
+  const adoptable = tours.filter((t) => !t.ev.deletedAt && !inSeries.has(t.code) && !s.rounds.some((r) => r.code === t.code)).sort((a, b) => b.ev.date.localeCompare(a.ev.date));
   const fmtSum = (v: number) => (total.higherBetter ? tr(`${v} pts`, `${v} Pkt.`) : v === 0 ? 'Par' : v > 0 ? `+${v}` : `−${-v}`);
   const lastRound = [...s.rounds].reverse().map((r) => tours.find((t) => t.code === r.code)).find(Boolean);
   return (
@@ -689,6 +694,13 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
           {tr('+ Round', '+ Runde')}
         </button>
       )}
+      {/* a tournament set up on its own – played already too – taken in afterwards (Sascha 08.11.2026: "yesterday's
+          Celebration into The Orlando Invitational, with its scores and the leaderboard") */}
+      {host && adoptable.length > 0 && (
+        <button type="button" className="btn-secondary" onClick={() => setSheet('adopt')}>
+          {multi ? tr('Take in a tournament as a round', 'Turnier als Runde aufnehmen') : tr('Take in a tournament', 'Vorhandenes Turnier aufnehmen')}
+        </button>
+      )}
       {host && <TourInvite code={props.code} name={s.name} date={s.rounds[0]?.date ?? today} />}
       {!host && <span className="muted small">{tr('Only whoever set up the series changes it.', 'Nur wer die Serie angelegt hat, ändert sie.')}</span>}
       {msg && (
@@ -698,6 +710,59 @@ export function SeriesScreen(props: { code: string; onBack: () => void; /** wher
       )}
       {/* the actions one bar of icons, as everywhere (Sascha 03.11.2026: docs/DESIGN.md) – the red one last */}
       {host && <ActionBar label={multi ? tr('This tournament', 'Dieses Turnier') : tr('This series', 'Diese Serie')} actions={[multi ? { label: tr('Delete the tournament', 'Turnier löschen'), icon: 'delete', danger: true, onClick: () => setSheet('dissolve') } : { label: tr('Undo the series', 'Serie auflösen'), icon: 'dissolve', danger: true, onClick: () => setSheet('dissolve') }]} />}
+      {sheet === 'adopt' && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <section className="sheet wager-sheet" role="dialog" aria-label={tr('Take in a tournament', 'Turnier aufnehmen')} onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-head">
+              <strong>{tr('Take in a tournament', 'Turnier aufnehmen')}</strong>
+              <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={() => setSheet(null)}>
+                ✕
+              </button>
+            </div>
+            <ul className="list">
+              {adoptable.map((e) => (
+                <li key={e.code}>
+                  <button
+                    type="button"
+                    className="list-item"
+                    disabled={adopting != null}
+                    onClick={async () => {
+                      setAdopting(e.code);
+                      const ok = await adoptIntoSeries(props.code, e.code);
+                      setAdopting(null);
+                      if (!ok) return setMsg(NO_NET());
+                      setSheet(null);
+                      setMsg(null);
+                      void syncTours();
+                    }}
+                  >
+                    <span className="round-date">
+                      <strong>{dm(e.ev.date)}</strong>
+                      <span className="muted small">{e.ev.date < today ? tr('played', 'gespielt') : e.ev.date === today ? tr('today', 'heute') : tr('planned', 'geplant')}</span>
+                    </span>
+                    <span className="grow">
+                      <span className="title">{e.ev.name}</span>
+                      <span className="muted small one-line">{e.ev.course.name}</span>
+                    </span>
+                    <span aria-hidden="true">{adopting === e.code ? '…' : '›'}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <span className="muted small">
+              {tr(
+                'The tournament stays as it is – code, flights, scores. The series counts it in its total by the players’ names; a cut stays after the same round.',
+                'Das Turnier bleibt, wie es ist – Code, Flights, Scores. Die Serie zählt es über die Namen der Spieler in die Gesamtwertung; ein Cut bleibt nach derselben Runde.',
+              )}
+            </span>
+            {msg && (
+              <span className="small bad-text" role="alert">
+                {msg}
+              </span>
+            )}
+          </section>
+        </div>
+      )}
       {sheet === 'rename' && (
         <div className="sheet-backdrop" onClick={() => setSheet(null)}>
           <section className="sheet" role="dialog" aria-label={tr('Rename the series', 'Serie umbenennen')} onClick={(e) => e.stopPropagation()}>

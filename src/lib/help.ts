@@ -396,6 +396,16 @@ export const FAQ: FaqTopic[] = [
           ),
         video: 'tourrounds',
       },
+      {
+        // Sascha 08.11.2026 (USA): "yesterday's tournament afterwards into the series – with its scores and the leaderboard"
+        q: () => tr('Can a tournament already played join a series afterwards?', 'Kann ein schon gespieltes Turnier nachträglich in eine Serie?'),
+        a: () =>
+          tr(
+            'Yes. Open the series (or the tournament over several rounds) – whoever set it up taps "Take in a tournament" ("Take in a tournament as a round") and picks it: played, today or planned. It stays as it is – code, flights, scores – and counts in the total from then on, by the players\' names (write them the same in both). A cut stays after the same round as set. For the bets: in the pool "Edit" → "From" on that day, then add the tournament (or the whole series) under "Rounds".',
+            'Ja. Die Serie (oder das Turnier über mehrere Runden) öffnen – wer sie angelegt hat, tippt „Vorhandenes Turnier aufnehmen“ („Turnier als Runde aufnehmen“) und wählt es: gespielt, heute oder geplant. Es bleibt, wie es ist – Code, Flights, Scores – und zählt ab dann in der Gesamtwertung mit, über die Namen der Spieler (in beiden gleich schreiben). Ein Cut bleibt nach derselben Runde wie eingestellt. Für die Wetten: im Pool „Bearbeiten“ → „Von“ auf diesen Tag, dann unter „Runden“ das Turnier (oder die ganze Serie) hinzufügen.',
+          ),
+        video: 'tourrounds',
+      },
     ],
   },
   {

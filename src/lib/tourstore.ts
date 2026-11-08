@@ -270,6 +270,29 @@ export async function addToSeries(seriesCode: string, tourCode: string): Promise
   return true;
 }
 
+/** The cut of a tournament over several rounds once a round is taken in on `date` (Sascha 08.11.2026: yesterday's
+ *  tournament into the series that starts on Monday): a round before the cut moves it one on – it stays after the same
+ *  round as set; the rounds taken in count in the total. */
+export function cutAfterAdding(s: Pick<TourSeries, 'rounds' | 'multi'>, date: string): NonNullable<TourSeries['multi']>['cut'] | undefined {
+  const cut = s.multi?.cut;
+  if (!cut) return undefined;
+  const at = s.rounds.filter((r) => r.date <= date).length; // the new round's place (same day: after the ones there)
+  return at < cut.after ? { ...cut, after: cut.after + 1 } : cut;
+}
+
+/** A tournament already set up – played already too (Sascha 08.11.2026: "integrate yesterday's tournament afterwards,
+ *  with its scores and the live leaderboard") – taken into a series: its scores stay where they are, the series counts
+ *  them in its total; a cut stays after the same round. */
+export async function adoptIntoSeries(seriesCode: string, tourCode: string): Promise<boolean> {
+  const before = loadSeries().find((e) => e.code === seriesCode)?.series;
+  const ev = await freshTour(tourCode);
+  if (!ev) return false;
+  const cut = before ? cutAfterAdding(before, ev.date) : undefined;
+  if (!(await addToSeries(seriesCode, tourCode))) return false;
+  if (before?.multi && cut && cut !== before.multi.cut) await changeMulti(seriesCode, { ...before.multi, cut });
+  return true;
+}
+
 /** A tournament over several rounds changed (Sascha 04.11.2026): its cut – and a round taken out of it (the round
  *  itself deleted by its own change). */
 export async function changeMulti(code: string, multi: TourSeries['multi'], drop: string[] = []): Promise<boolean> {
