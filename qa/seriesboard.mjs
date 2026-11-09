@@ -66,12 +66,12 @@ await H.waitForTimeout(6000); // the reads of opening done
 const before = reads;
 await H.waitForTimeout(32000);
 ok(reads === before, `no reading every 30 s before the first round is live (${reads - before} reads)`);
-// a round live (today, 30 minutes before its tee time gone): read every 30 s
-const r0 = await sim.plan(H, { name: 'Kissimmee Bay', date: day(0), flights: flights.map((f) => ({ ...f, teeTime: '00:05' })) });
-const live = sim.series('Sascha', 'Live Series', [r0]);
 // the slow reads still on the way finished before the route goes (else the simulated server answers a handled one)
 await H.waitForTimeout(4500);
 await H.unroute(/supabase\.co\/rest\/v1\/golfos_shared_games/);
+// a round live (today, 30 minutes before its tee time gone): read every 30 s
+const r0 = await sim.plan(H, { name: 'Kissimmee Bay', date: day(0), flights: flights.map((f) => ({ ...f, teeTime: '00:05' })) });
+const live = sim.series('Sascha', 'Live Series', [r0]);
 let liveReads = 0;
 await H.route(/supabase\.co\/rest\/v1\/golfos_shared_games/, async (route) => {
   if (route.request().url().includes(`code=eq.${r0}&`)) liveReads++;
