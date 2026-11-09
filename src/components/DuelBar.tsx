@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { tr } from '../lib/i18n';
-import { dayOf, fromCards, progressOf, type Progress } from '../lib/wagers';
+import { dayOf, duelLiveText, flipDuel, fromCards, progressOf, type Progress } from '../lib/wagers';
 import { loadPools, refreshPool, type PoolEntry } from '../lib/wagerstore';
 import { money } from '../lib/gameforms';
 import { prizeOf, prizeSym } from '../lib/prize';
@@ -32,16 +32,16 @@ export function duelsToday(pools: PoolEntry[], today = dayOf(new Date())): Live[
   return out;
 }
 const flip = (p: Progress | undefined): Progress | undefined =>
-  p && { ...p, amount: -(p.amount ?? 0), duels: p.duels?.map((d) => ({ ...d, front: d.front == null ? null : -d.front || 0, back: d.back == null ? null : -d.back || 0, total: d.total == null ? null : -d.total || 0, ...(d.lead != null ? { lead: -d.lead || 0 } : {}) })) };
+  p && { ...p, amount: -(p.amount ?? 0), duels: p.duels?.map(flipDuel) };
 
-/** One duel in a few words: "1 up after 10", "all square after 4", "+10 $" once it is over, "not started" before. */
+/** One duel in a few words: "Front 9: 1 vorn nach 6", "Front 9 verloren · Back 9: 1 vorn nach 15 · 18: 2 hinten", "+10 $" once it
+ *  is over, "not started" before. */
 export function duelLine(x: Pick<Live, 'p' | 'sym'>, today = dayOf(new Date())): string {
   const d = x.p?.duels?.find((y) => y.day === today) ?? x.p?.duels?.[x.p.duels.length - 1];
   if (!d) return tr('not started', 'noch nicht gestartet');
   if (d.total != null) return `${(x.p?.amount ?? 0) > 0 ? '+' : (x.p?.amount ?? 0) < 0 ? '−' : '±'}${money(Math.abs(x.p?.amount ?? 0), x.sym)}`;
   if (!d.thru) return tr('not started', 'noch nicht gestartet');
-  const lead = d.lead ?? 0;
-  return lead > 0 ? tr(`${lead} up after ${d.thru}`, `${lead} vorn nach ${d.thru}`) : lead < 0 ? tr(`${-lead} down after ${d.thru}`, `${-lead} hinten nach ${d.thru}`) : tr(`all square after ${d.thru}`, `gleichauf nach ${d.thru}`);
+  return duelLiveText(d);
 }
 
 /** The bar on the hole – nothing without a duel today. */

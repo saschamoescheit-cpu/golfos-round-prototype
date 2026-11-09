@@ -15,7 +15,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, flipDuel, editedPlayer, isPool, restake, perRoundBet, lower, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type RoundResult, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -595,7 +595,7 @@ function ValidityRow(props: { allDay: boolean; onChange: (allDay: boolean) => vo
 
 /** A "5+5+10" from the opponent's side: what one won the other lost, front, back and 18 turned round. */
 const mirrored = (p: Progress | undefined): Progress | undefined =>
-  p && { ...p, amount: -(p.amount ?? 0), duels: p.duels?.map((d) => ({ ...d, front: d.front == null ? null : -d.front || 0, back: d.back == null ? null : -d.back || 0, total: d.total == null ? null : -d.total || 0, ...(d.lead != null ? { lead: -d.lead || 0 } : {}) })) };
+  p && { ...p, amount: -(p.amount ?? 0), duels: p.duels?.map(flipDuel) };
 
 /** "5+5+10": what the player stands at against his opponent – won (green), lost (red), level or not played yet. */
 function DuelBadge(props: { amount: number; played: boolean; sym: string }) {

@@ -280,7 +280,10 @@ export interface Progress {
   /** "5+5+10": what the player won (+) or lost (−) against his opponent so far, and per round who won front, back, total
    *  (1 he, −1 the opponent, 0 tied, null not complete) */
   amount?: number;
-  duels?: { day: string; course: string; front: number | null; back: number | null; total: number | null; /** during the round: the holes both played, and his lead in strokes over them (+ ahead) */ thru?: number; lead?: number }[];
+  duels?: { day: string; course: string; front: number | null; back: number | null; total: number | null; /** during the round: the holes both played, and his lead in strokes over them (+ ahead) */ thru?: number; lead?: number;
+    /** front and back nine each on its own (Sascha 09.11.2026 on the course: "on the back nine the front's standing makes no
+     *  sense"): his lead over the holes both played in it, how many, and the last of them (its number) */
+    nines?: { lead: number; thru: number; last: number }[] }[];
   /** a bet "with marker": holes of the counted rounds where the marker's figures differ from the player's own */
   differ?: number;
   /** each round of the pool's days on its own – a bet holds for one round, the standing per round (Sascha 08.11.2026:
@@ -916,18 +919,54 @@ export function judgeDuelCards(w: Wager, pool: Pick<WagerPool, 'from' | 'to' | '
     };
     let thru = 0;
     let lead = 0;
+    const nines = [0, 1].map(() => ({ lead: 0, thru: 0, last: 0 }));
     for (let i = 0; i < 18; i++) {
       const x = a.strokes[i];
       const y = b.strokes[i];
       if (x == null || y == null) continue;
+      const by = y - (net ? (b.received[i] ?? 0) : 0) - (x - (net ? (a.received[i] ?? 0) : 0));
       thru++;
-      lead += y - (net ? (b.received[i] ?? 0) : 0) - (x - (net ? (a.received[i] ?? 0) : 0));
+      lead += by;
+      const n = nines[i < 9 ? 0 : 1];
+      n.thru++;
+      n.lead += by;
+      n.last = i + 1;
     }
     amount += (d.front ?? 0) * parts.front + (d.back ?? 0) * parts.back + (d.total ?? 0) * parts.total;
-    duels.push(d.total == null && thru ? { ...d, thru, lead } : d);
+    duels.push(d.total == null && thru ? { ...d, thru, lead, nines } : d);
   }
   duels.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
   return { best: null, done: false, rounds: duels.length, amount, duels, at: now };
+}
+
+type DuelDay = NonNullable<Progress['duels']>[number];
+/** A duel's standing the other way round – the opponent's side. */
+export const flipDuel = (d: DuelDay): DuelDay => ({
+  ...d,
+  front: d.front == null ? null : -d.front || 0,
+  back: d.back == null ? null : -d.back || 0,
+  total: d.total == null ? null : -d.total || 0,
+  ...(d.lead != null ? { lead: -d.lead || 0 } : {}),
+  ...(d.nines ? { nines: d.nines.map((n) => ({ ...n, lead: -n.lead || 0 })) } : {}),
+});
+
+/** A duel while it is played, the front and the back nine each on its own and the 18 (Sascha 09.11.2026 on the 15th:
+ *  "the standing on the back nine makes no sense – it was the front's"): "Front 9 verloren · Back 9: 1 vorn nach 15 ·
+ *  18: 2 hinten"; a nine over says won/lost/halved. */
+export function duelLiveText(d: DuelDay): string {
+  const by = (lead: number) => (lead > 0 ? tr(`${lead} up`, `${lead} vorn`) : lead < 0 ? tr(`${-lead} down`, `${-lead} hinten`) : tr('all square', 'gleichauf'));
+  const after = (lead: number, n: number) => `${by(lead)} ${tr('after', 'nach')} ${n}`;
+  if (!d.nines) return after(d.lead ?? 0, d.thru ?? 0);
+  const res = (v: number) => (v > 0 ? tr('won', 'gewonnen') : v < 0 ? tr('lost', 'verloren') : tr('halved', 'geteilt'));
+  const [f, b] = d.nines;
+  const out: string[] = [];
+  if (d.front != null) out.push(`Front 9 ${res(d.front)}`);
+  else if (f.thru) out.push(`Front 9: ${after(f.lead, f.last)}`);
+  if (d.back != null) out.push(`Back 9 ${res(d.back)}`);
+  else if (b.thru) out.push(`Back 9: ${after(b.lead, b.last)}`);
+  // the 18 once the back nine is on
+  if (b.thru) out.push(`18: ${by(d.lead ?? 0)}`);
+  return out.join(' · ');
 }
 
 /** A bet's standing: a duel challenged from the cards (nothing while it waits for its answer), else as reported. */
@@ -1252,7 +1291,7 @@ export function progressText(w: Wager, p: Progress | undefined, currency?: 'EUR'
     // while it is played (Sascha 09.11.2026): the strokes ahead or behind after the holes both have
     const live =
       last.total == null && last.thru
-        ? tr(` · live: ${last.lead! > 0 ? `${last.lead} up` : last.lead! < 0 ? `${-last.lead!} down` : 'all square'} after ${last.thru}`, ` · live: ${last.lead! > 0 ? `${last.lead} vorn` : last.lead! < 0 ? `${-last.lead!} hinten` : 'gleichauf'} nach ${last.thru}`)
+        ? ` · live: ${duelLiveText(last)}`
         : '';
     return tr(
       `${p.duels.length} ${p.duels.length === 1 ? 'round' : 'rounds'} · ${sign(p.amount ?? 0)} · last: front ${mark(last.front)} back ${mark(last.back)} 18 ${mark(last.total)}`,
