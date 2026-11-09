@@ -1954,9 +1954,11 @@ export function HoleScreen(props: {
         {inviteOpen && <RoundInviteSheet round={round} onShared={(r) => props.onChange(r)} onClose={() => setInviteOpen(false)} />}
         {sideBetOpen && (
           <SideBetSheet
+            roundId={round.id}
             preset={{
               day: poolDay(round.createdAt),
-              players: round.players.filter((p) => !p.isMe && p.name.trim()).map((p) => ({ name: p.name.trim() })),
+              players: round.players.filter((p) => !p.isMe && p.name.trim()).map((p) => ({ name: p.name.trim(), playing: p.playingHandicap ?? null })),
+              me: { playing: round.players.find((p) => p.isMe)?.playingHandicap ?? null },
               ...(round.shared?.tournament ? { on: { code: round.shared.code, name: round.courseName, course: round.courseName } } : {}),
             }}
             onClose={() => setSideBetOpen(false)}
@@ -1991,7 +1993,7 @@ export function HoleScreen(props: {
                   ? [
                       // a side bet in the round – in a tournament too (Sascha 10.11.2026: "in the menu by the code, the bag
                       // and the caddie")
-                      { label: tr('Side bet · 5+5+10', 'Sidebet · 5+5+10'), onClick: () => { setDrawerOpen(false); setSideBetOpen(true); } },
+                      { label: tr('Side bet', 'Sidebet'), onClick: () => { setDrawerOpen(false); setSideBetOpen(true); } },
                       ...(round.shared || canShareRound
                         ? [{ label: round.shared ? tr(`${round.shared.tournament ? 'Tournament' : "Players' phones"} · code ${round.shared.code}`, `${round.shared.tournament ? 'Turnier' : 'Handys der Mitspieler'} · Code ${round.shared.code}`) : tr('Invite players', 'Mitspieler einladen'), onClick: () => { setDrawerOpen(false); setInviteOpen(true); } }]
                         : []),

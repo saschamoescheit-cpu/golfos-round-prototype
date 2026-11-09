@@ -22,6 +22,7 @@ import { ToggleRow } from '../components/Settings';
 import { OwnDetailsRow } from '../components/OwnDetailsRow';
 import { startShared } from '../lib/sharedround';
 import { SideBetRow } from './Duels';
+import { bindSideGames } from '../lib/sidegames';
 
 const ME_KEY = 'golfos.me.v1';
 // Name and handicap index come from the profile when it is filled in (profile tab).
@@ -194,6 +195,7 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
     }
     const r = draft(preview, planning);
     if (!r) return;
+    if (!preview) bindSideGames(r.id); // the side games set up here are this round's (Sascha 10.11.2026)
     // invited in the setup: the round is the event's (the preview of the course stays on this phone) – the event takes
     // the round as it starts now (players, format, scorer changed after the code was made), at most 4 s, then on
     if (share && !preview) {
@@ -465,7 +467,12 @@ export function RoundSetup(props: { course: Course; from?: { holes: RoundHole[];
 
       {/* a side bet: 5+5+10 against the flight's players, friends or anyone (Sascha 10.11.2026: "between the players and
           the invitation") – into the pool of bets of the day */}
-      <SideBetRow preset={{ players: others.filter((o) => o.name.trim()).map((o) => ({ name: o.name.trim(), ...(o.index.trim() ? { hcp: o.index.trim() } : {}) })) }} />
+      <SideBetRow
+        preset={{
+          players: others.filter((o) => o.name.trim()).map((o) => ({ name: o.name.trim(), ...(o.index.trim() ? { hcp: o.index.trim() } : {}), playing: playingHandicap(o) })),
+          me: { playing: playingHandicap(me) },
+        }}
+      />
 
       {/* the flight on their own phones – or a tournament over several flights (Sascha 29.10.2026); every round, social
           or competition, any format ("not only scramble or a tournament"); its own section (Sascha 02.11.2026) */}

@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import { duelPoolsOn, refreshPool, reportWagers, type PoolEntry } from '../lib/wagerstore';
 import { dayOf, withDuels } from '../lib/wagers';
 import { Standings } from '../screens/Wagers';
+import { StandingCard } from '../screens/Games';
+import { sideGamesOf, sideGameView } from '../lib/sidegames';
 
 // Live leaderboard of the flight (Sascha 14.10.2026): everyone entered on this phone, after every hole.
 
@@ -43,7 +45,15 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void }) {
   // overview of the bets too"): a tab "Wetten" when a pool of the day has bets
   const day = dayOf(props.round.createdAt);
   const [pools, setPools] = useState(() => poolsOfDay(day));
+  // the side games of this round (Skins, Nassau … – judged from its strokes)
+  const [sides, setSides] = useState(() => sideGamesOf(props.round.id));
+  useEffect(() => {
+    const on = () => setSides(sideGamesOf(props.round.id));
+    window.addEventListener('golfos:sidegames-changed', on);
+    return () => window.removeEventListener('golfos:sidegames-changed', on);
+  }, [props.round.id]);
   const [tab, setTab] = useState<'board' | 'bets'>('board');
+  const anyBets = pools.length > 0 || sides.length > 0;
   useEffect(() => {
     if (tab !== 'bets') return;
     let alive = true;
@@ -68,7 +78,7 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void }) {
             ✕
           </button>
         </div>
-        {pools.length > 0 && (
+        {anyBets && (
           <div className="chip-set board-tabs" role="group" aria-label={tr('Show', 'Anzeigen')}>
             <button type="button" className={`chip${tab === 'board' ? ' on' : ''}`} aria-pressed={tab === 'board'} onClick={() => setTab('board')}>
               {tr('Leaderboard', 'Leaderboard')}
@@ -78,13 +88,24 @@ export function LeaderboardSheet(props: { round: Round; onClose: () => void }) {
             </button>
           </div>
         )}
-        {tab === 'bets' && pools.length > 0 ? (
-          pools.map((e) => (
-            <div key={e.code} className="board-pool">
-              {pools.length > 1 && <span className="eyebrow">{e.pool.name}</span>}
-              <Standings pool={withDuels(e.pool)} today={day} me={e.me} />
-            </div>
-          ))
+        {tab === 'bets' && anyBets ? (
+          <>
+            {sides.map((s) => {
+              const g = sideGameView(s, props.round);
+              return (
+                <div key={s.id} className="board-pool">
+                  <span className="eyebrow">{`${tr('Side bet', 'Sidebet')} · ${g.players.map((p) => p.name).join(', ')}`}</span>
+                  <StandingCard game={g} />
+                </div>
+              );
+            })}
+            {pools.map((e) => (
+              <div key={e.code} className="board-pool">
+                {pools.length > 1 && <span className="eyebrow">{e.pool.name}</span>}
+                <Standings pool={withDuels(e.pool)} today={day} me={e.me} />
+              </div>
+            ))}
+          </>
         ) : (
           <>
             {/* on several phones (Sascha 29.10.2026): everyone's own score live – this phone's entries of the others

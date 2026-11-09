@@ -7,7 +7,9 @@ import { loadTours } from '../lib/tourstore';
 import { loadFriends } from '../lib/friends';
 import { inviteFriend, pushWagers } from '../lib/push';
 import { prizeOf, prizeStakes, prizeSym } from '../lib/prize';
-import { currencySymbol, money } from '../lib/gameforms';
+import { currencySymbol, fitsPlayers, formDef, money, playersText, type FormDef, type FormId } from '../lib/gameforms';
+import { addSideGame, NEXT_ROUND, SIDE_FORMS, sideGamesOf } from '../lib/sidegames';
+import { newId } from '../lib/storage';
 import { ChoiceRow, DateRow, SettingsList, SettingsRow, ToggleList, ToggleRow, dayText } from '../components/Settings';
 import { StakeRow } from '../components/StakePicker';
 
@@ -364,34 +366,123 @@ export function DuelMark(props: { state: 'accepted' | 'open' | 'declined' }) {
 export const myDuelsOn = (day: string): { e: PoolEntry; w: Wager }[] =>
   duelPoolsOn(day).flatMap((e) => e.pool.wagers.filter((w) => !!w.challenge && w.kind === 'nassau' && w.day === day && w.challenge.state !== 'declined' && (w.player === e.me || w.opponent === e.me)).map((w) => ({ e, w })));
 
-type SideBetPreset = { day?: string; on?: Wager['on']; players?: { name: string; hcp?: string }[] };
-/** The side bet's sheet: the duel's setup with the round's day, its players and its tournament. */
-export function SideBetSheet(props: { preset: SideBetPreset; onClose: () => void }) {
+type SideBetPreset = { day?: string; on?: Wager['on']; players?: { name: string; hcp?: string; playing?: number | null }[]; me?: { playing?: number | null } };
+/** The side bet's sheet (Sascha 10.11.2026: "choose the game form first"): the form – 5+5+10 a duel (also across
+ *  flights, into a pool), the others a game judged from the round's strokes – then its setup. */
+export function SideBetSheet(props: { preset: SideBetPreset; /** the round it belongs to – unset: the round being set up */ roundId?: string; onClose: () => void }) {
+  const [form, setForm] = useState<FormId>('fivefiveten');
   return (
     <div className="sheet-backdrop" onClick={props.onClose}>
-      <section className="sheet sidebet-sheet" role="dialog" aria-label={tr('Side bet · 5+5+10', 'Sidebet · 5+5+10')} onClick={(e) => e.stopPropagation()}>
+      <section className="sheet sidebet-sheet" role="dialog" aria-label={tr('Side bet', 'Sidebet')} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <strong>{tr('Side bet · 5+5+10', 'Sidebet · 5+5+10')}</strong>
+          <strong>{tr('Side bet', 'Sidebet')}</strong>
           <button type="button" className="icon-btn" aria-label={tr('Close', 'Schließen')} onClick={props.onClose}>
             ✕
           </button>
         </div>
-        <DuelSetup preset={props.preset} onDone={() => props.onClose()} />
+        <section className="setup-part">
+          <span className="eyebrow">{tr('Game form', 'Spielform')}</span>
+          <SettingsList>
+            <ChoiceRow<FormId>
+              label={tr('Game form', 'Spielform')}
+              title={tr('Choose a game form', 'Spielform wählen')}
+              value={form}
+              onChange={setForm}
+              options={SIDE_FORMS.map((id) => ({ value: id, name: formDef(id).name(), text: formDef(id).short() }))}
+            />
+          </SettingsList>
+        </section>
+        {form === 'fivefiveten' ? <DuelSetup preset={props.preset} onDone={() => props.onClose()} /> : <SideGameSetup key={form} form={form} preset={props.preset} roundId={props.roundId} onDone={props.onClose} />}
       </section>
     </div>
   );
 }
-/** "Sidebet" in the round's setup: one row – the day's duels or "hinzufügen" –, its sheet the duel's setup. */
+
+/** A side game's setup: who plays (the round's players, the own one too), the stakes and the form's choices – "Starten"
+ *  keeps it beside the round; its standing in the round's leaderboard, tab "Wetten". */
+function SideGameSetup(props: { form: FormId; preset: SideBetPreset; roundId?: string; onDone: () => void }) {
+  const f = formDef(props.form);
+  const meName = shownName(loadProfile()) || tr('Me', 'Ich');
+  const people = [{ name: meName, playing: props.preset.me?.playing ?? null }, ...(props.preset.players ?? []).filter((p) => p.name.trim() && !sameName(p.name, meName)).map((p) => ({ name: p.name.trim(), playing: p.playing ?? (p.hcp != null && p.hcp.trim() !== '' && Number.isFinite(Number(p.hcp.replace(',', '.'))) ? Math.round(Number(p.hcp.replace(',', '.'))) : null) }))];
+  const [chosen, setChosen] = useState<string[]>(() => people.map((p) => p.name));
+  const [settings, setSettings] = useState<Record<string, number | boolean | string>>(() => {
+    const currency = loadPools().find((e) => !e.pool.deletedAt)?.pool.currency ?? 'EUR';
+    return { ...Object.fromEntries(f.settings.map((s) => [s.key, s.default])), currency };
+  });
+  const sym = currencySymbol(settings.currency);
+  const n = chosen.length;
+  const fits = fitsPlayers(f, n);
+  const go = () => {
+    addSideGame({
+      id: newId(),
+      round: props.roundId ?? NEXT_ROUND,
+      form: props.form,
+      players: people.filter((p) => chosen.includes(p.name)).map((p, k) => ({ id: `p${k + 1}`, name: p.name, hcp: p.playing })),
+      settings,
+      createdAt: new Date().toISOString(),
+    });
+    props.onDone();
+  };
+  return (
+    <>
+      <div className="card">
+        <FormRulesText form={f} />
+      </div>
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Players', 'Spieler')}</span>
+        <ToggleList>
+          {people.map((p) => (
+            <ToggleRow key={p.name} inList label={p.name} text={p.playing != null ? tr(`Playing handicap ${p.playing}`, `Spielvorgabe ${p.playing}`) : undefined} on={chosen.includes(p.name)} onChange={(v) => setChosen(v ? [...new Set([...chosen, p.name])] : chosen.filter((x) => x !== p.name))} />
+          ))}
+        </ToggleList>
+        {!fits && <span className="small bad-text">{tr(`${f.name()} needs ${playersText(f)} – ${n} chosen.`, `${f.name()} braucht ${playersText(f)} – ${n} gewählt.`)}</span>}
+      </section>
+      <section className="setup-part">
+        <span className="eyebrow">{tr('Settings', 'Einstellungen')}</span>
+        <SettingsList>
+          {f.settings
+            .filter((s) => (s.type === 'stake' || s.type === 'choice') && (!s.when || s.when(settings)))
+            .map((s) =>
+              s.type === 'stake' ? (
+                <StakeRow key={s.key} label={s.label()} value={Number(settings[s.key] ?? 0)} sym={sym} onChange={(v) => setSettings({ ...settings, [s.key]: v })} />
+              ) : (
+                <ChoiceRow<string> key={s.key} label={s.label()} value={String(settings[s.key])} onChange={(v) => setSettings({ ...settings, [s.key]: v })} options={s.options!.map((o) => ({ value: o.value, name: o.label() }))} />
+              ),
+            )}
+        </SettingsList>
+      </section>
+      {/* at the end, after the settings – not floating (docs/DESIGN.md) */}
+      <button type="button" className="btn-primary" disabled={!fits} onClick={go}>
+        {tr(`Start ${f.name()}`, `${f.name()} starten`)}
+      </button>
+    </>
+  );
+}
+/** A form's rules as a list (the side game's sheet – the same words as in Games). */
+function FormRulesText(props: { form: FormDef }) {
+  return (
+    <ul className="game-rules">
+      {props.form.rules().map((r, k) => (
+        <li key={k}>{r}</li>
+      ))}
+    </ul>
+  );
+}
+
+/** "Sidebet" in the round's setup: one row – the day's duels and the round's side games, or "hinzufügen" –, its sheet the
+ *  form, then its setup. */
 export function SideBetRow(props: { preset: SideBetPreset }) {
   const [open, setOpen] = useState(false);
   const [, setTick] = useState(0);
   const day = props.preset.day ?? dayOf(new Date());
-  const n = myDuelsOn(day).length;
+  const duels = myDuelsOn(day).length;
+  const games = sideGamesOf(NEXT_ROUND).map((s) => formDef(s.form).name());
+  const value = [duels ? (duels === 1 ? tr('1 duel 5+5+10', '1 Duell 5+5+10') : tr(`${duels} duels 5+5+10`, `${duels} Duelle 5+5+10`)) : '', ...games].filter(Boolean).join(', ');
   return (
     <section className="setup-part">
       <span className="eyebrow">{tr('Side bet', 'Sidebet')}</span>
       <SettingsList>
-        <SettingsRow label="5+5+10" value={n ? (n === 1 ? tr('1 duel today', '1 Duell heute') : tr(`${n} duels today`, `${n} Duelle heute`)) : tr('Add', 'Hinzufügen')} onClick={() => setOpen(true)} />
+        <SettingsRow label={tr('Side bet', 'Sidebet')} value={value || tr('Add', 'Hinzufügen')} onClick={() => setOpen(true)} />
       </SettingsList>
       {open && (
         <SideBetSheet
