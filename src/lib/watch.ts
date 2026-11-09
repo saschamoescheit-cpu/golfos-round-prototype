@@ -25,6 +25,9 @@ export interface WatchShot {
   manual: boolean;
   /** the crack of the hit heard on the wrist (Sascha 09.11.2026) */
   sound?: boolean;
+  /** the watch's fastest GPS speed in the seconds up to the swing, m/s (watch app from 10.11.2026 on) – the watch itself
+   *  sends no swing faster than 2.5 m/s (driving in the cart, Sascha 10.11.2026: "bumps counted as shots") */
+  spd?: number | null;
 }
 /** 'hole': `round` and the watch's own `t` from the watch app of 08.11.2026 on – before, `t` is when it reached the phone */
 export type WatchItem =

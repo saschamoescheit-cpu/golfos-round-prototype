@@ -63,6 +63,8 @@ struct WatchShot: Codable {
     let manual: Bool
     /// the crack heard at its moment (absent from a watch app before 09.11.2026)
     let sound: Bool?
+    /// the watch's fastest GPS speed in the seconds up to the swing, m/s (absent before 10.11.2026; nil: no speed known)
+    var spd: Double? = nil
 }
 
 final class RoundModel: NSObject, ObservableObject {
@@ -94,6 +96,8 @@ final class RoundModel: NSObject, ObservableObject {
     private var trackBuf: [[Double]] = []
     private var trackLast: [Double]?
     private var trackSent = Date()
+    /// the GPS speed of the last seconds: [ms, m/s] – a swing while the cart drives is a bump, not a shot (Sascha 10.11.2026)
+    private var speeds: [(t: Double, v: Double)] = []
 
     // MARK: start
 
@@ -259,8 +263,25 @@ final class RoundModel: NSObject, ObservableObject {
         return Geo.distance([alng, alat], [blng, blat]) <= 12
     }
 
+    /// the fastest the watch moved from 6 s before a moment to it, m/s – nil when the GPS gave no speed then
+    private func speed(before t: Double) -> Double? {
+        let around = speeds.filter { $0.t >= t - 6000 && $0.t <= t + 1000 }
+        return around.isEmpty ? nil : around.map { $0.v }.max()
+    }
+
+    /// driving in the cart (Sascha 10.11.2026: "bumps on the cart path are counted as shots"): faster than walking –
+    /// 9 km/h – in the seconds of the swing; a player stands still at the ball
+    private func driving(at t: Double) -> Bool {
+        guard let v = speed(before: t) else { return false }
+        return v > 2.5
+    }
+
     fileprivate func felt(_ swings: [Swing]) {
         for s in swings {
+            if driving(at: s.t * 1000) {
+                recordSwing(s, counted: false, shot: nil, heard: false)
+                continue
+            }
             let heard = ear.crack(near: s.t * 1000)
             let id = add(t: s.t * 1000, peak: s.peak, jolt: s.jolt, full: s.full, hit: s.hit || heard, manual: false, sound: heard)
             recordSwing(s, counted: true, shot: id, heard: heard)
@@ -273,7 +294,7 @@ final class RoundModel: NSObject, ObservableObject {
             // the sound may come a moment after the motion's batch: look again shortly
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                 guard let self = self else { return }
-                if s.peak >= SwingParams.start && self.ear.crack(near: s.t * 1000) {
+                if s.peak >= SwingParams.start && !self.driving(at: s.t * 1000) && self.ear.crack(near: s.t * 1000) {
                     let id = self.add(t: s.t * 1000, peak: s.peak, jolt: s.jolt, full: false, hit: true, manual: false, sound: true)
                     self.recordSwing(s, counted: true, shot: id, heard: true)
                 } else {
@@ -320,7 +341,8 @@ final class RoundModel: NSObject, ObservableObject {
             acc = (p.horizontalAccuracy * 10).rounded() / 10
         }
         let id = "\(r.id)-w\(Int(t))-\(seq)"
-        let shot = WatchShot(id: id, round: r.id, hole: hole, t: t.rounded(), lng: lng, lat: lat, acc: acc, peak: peak, jolt: jolt, full: full, hit: hit, manual: manual, sound: sound)
+        var shot = WatchShot(id: id, round: r.id, hole: hole, t: t.rounded(), lng: lng, lat: lat, acc: acc, peak: peak, jolt: jolt, full: full, hit: hit, manual: manual, sound: sound)
+        if !manual, let v = speed(before: t) { shot.spd = (v * 10).rounded() / 10 }
         shots.append(shot)
         if let data = try? JSONEncoder().encode(shot), let json = String(data: data, encoding: .utf8) {
             send(["shot": json])
@@ -533,6 +555,12 @@ extension RoundModel: CLLocationManagerDelegate {
             self.location = p
             self.autoHole(p)
             for q in good { self.keepFix(q) }
+            // the speeds of the last half minute (a negative speed: not known)
+            for q in locs where q.speed >= 0 {
+                self.speeds.append((t: (q.timestamp.timeIntervalSince1970 * 1000).rounded(), v: q.speed))
+            }
+            let keep = Date().timeIntervalSince1970 * 1000 - 30_000
+            self.speeds.removeAll { $0.t < keep }
         }
     }
 
