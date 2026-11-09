@@ -1018,6 +1018,14 @@ export function ledger(pool: WagerPool, today?: string, withProvisional = false)
   return out;
 }
 
+/** The stakes when what is played for changes between money and not money (audit 09.11.2026: 20 $ became "20 ×
+ *  Getränk"): 20 in money, 1 of a thing or a point; a 5+5+10's parts 5/5/10 or 1/1/2 – a part set to none stays none. */
+export function restake(wagers: Wager[], wasMoney: boolean, nowMoney: boolean): Wager[] {
+  if (wasMoney === nowMoney) return wagers;
+  const v = (x: number, money: number, thing: number) => (x > 0 ? (nowMoney ? money : thing) : x);
+  return wagers.map((w) => ({ ...w, stake: v(w.stake, 20, 1), ...(w.parts ? { parts: { front: v(w.parts.front, 5, 1), back: v(w.parts.back, 5, 1), total: v(w.parts.total, 10, 2) } } : {}) }));
+}
+
 /** A pool's player as edited over the one on the server: his joining and invitation kept, a field emptied here empty
  *  there too (Sascha 09.11.2026: what is taken away must not come back) – the HCP. */
 export function editedPlayer(old: PoolPlayer | undefined, edited: PoolPlayer): PoolPlayer {

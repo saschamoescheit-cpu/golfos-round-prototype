@@ -15,7 +15,7 @@ import { FriendChips } from './Home';
 import { PlayerRow } from './RoundSetup';
 import { copyLink, FriendInvite, InviteCard, shareLink } from '../components/InviteCard';
 import { ActionBar } from '../components/ActionBar';
-import { duelWaits, editedPlayer, isPool, perRoundBet, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
+import { duelWaits, editedPlayer, isPool, restake, perRoundBet, tally, withDuels, openPoolTransfers, KINDS, LIBRARY, LIBRARY_GROUPS, METRICS, WHERES, balances, ledger, poolCounted, type Payment, type LedgerLine, dayOf, inPool, metricOf, provisional, reached, type Metric, type Where, earlierGroups, fromEarlier, fromLibrary, progressText, roundLabel, shapeOf, stateOf, wagerLabel, wagerRules, type Payout, type PoolPlayer, type PoolRound, type Progress, type Wager, type WagerKind, type WagerPool, type WagerState } from '../lib/wagers';
 import { poolRoundOf } from '../lib/poolround';
 import { tourState } from '../lib/tourstore';
 import { Challenges, DuelMark } from './Duels';
@@ -1088,7 +1088,10 @@ export function PoolScreen(props: { code: string; onBack: () => void; /** where 
               const progress = Object.fromEntries(Object.entries(p.progress).filter(([id]) => wagers.some((w) => w.id === id)));
               // what is played for: money keeps `currency` (as phones from before read it), a thing `prize` beside it
               const { prize: _old, ...rest } = p;
-              return { ...rest, wagers, progress, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, oneScorer: x.oneScorer, players };
+              // what is played for changed between money and not money (audit 09.11.2026: 20 $ became "20 × Getränk"): the
+              // stakes start again – 20 in money, 1 of a thing or a point; the 5+5+10's parts alike (5/5/10 or 1/1/2)
+              const restaked = restake(wagers, isMoney(prizeOf(p)), isMoney(x.prize));
+              return { ...rest, wagers: restaked, progress, name: x.name, from: x.from, to: x.to, currency: isMoney(x.prize) ? x.prize.currency : (p.currency ?? 'EUR'), ...(isMoney(x.prize) ? {} : { prize: x.prize }), rounds: x.rounds, counted: x.counted, oneScorer: x.oneScorer, players };
             });
             if (ok) {
               setSheet(null);

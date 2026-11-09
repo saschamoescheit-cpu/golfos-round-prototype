@@ -36,3 +36,18 @@ describe('net classes only with a net scoring', () => {
     expect(netClasses({ format: { scoring: 'stableford' } })).toEqual([]);
   });
 });
+
+describe("a pool's prize changed between money and not money", () => {
+  it('the stakes start again: 20 $ → 1 drink, the 5+5+10 5/5/10 → 1/1/2 (a part set to none stays none); back to money 20 and 5/5/10', async () => {
+    const { restake } = await import('./wagers');
+    const ws = [
+      { id: 'a', player: 'c', kind: 'birdieRun', target: 3, stake: 20, payout: 'success', attempts: 'any' },
+      { id: 'd', player: 'c', opponent: 's', kind: 'nassau', target: 0, stake: 0, payout: 'opponent', attempts: 'day', parts: { front: 0, back: 5, total: 10 } },
+    ] as Parameters<typeof restake>[0];
+    const drinks = restake(ws, true, false);
+    expect(drinks.map((w) => w.stake)).toEqual([1, 0]);
+    expect(drinks[1].parts).toEqual({ front: 0, back: 1, total: 2 });
+    expect(restake(drinks, false, true)[1].parts).toEqual({ front: 0, back: 5, total: 10 });
+    expect(restake(ws, true, true)).toBe(ws);
+  });
+});
