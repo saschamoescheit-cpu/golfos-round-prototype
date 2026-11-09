@@ -152,7 +152,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
           </svg>
         </span>
         <span className="grow">
-          <strong>Training</strong>
+          <strong>Training (Beta)</strong>
           {props.trainingOpen && (
             <span className="small module-live">
               {tr('A session is paused', 'Eine Einheit ist pausiert')}
@@ -171,7 +171,7 @@ function ModuleCards(props: { roundOpen: boolean; gameOpen: boolean; gamesToConf
           </svg>
         </span>
         <span className="grow">
-          <strong>Agility</strong>
+          <strong>Agility (Beta)</strong>
           {props.mobilityOpen && (
             <span className="small module-live">
               {tr('A screening is paused', 'Ein Screening ist pausiert')}

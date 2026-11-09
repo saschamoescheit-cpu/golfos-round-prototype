@@ -54,6 +54,8 @@ await p.waitForTimeout(800);
 ok((await p.locator('.module-card').count()) === 5, 'five modules on the start page (Tournaments since 03.11.2026)');
 ok(await p.locator('.module-card').filter({ hasText: 'Agility' }).isVisible(), 'the module card says "Agility" (not TPI)');
 ok((await p.getByText('TPI').count()) === 0, 'no "TPI" on the start page');
+// Sascha 09.11.2026: both learning modules are marked as beta on the start page
+for (const m of ['Training', 'Agility']) ok((await p.locator('.module-card strong').filter({ hasText: m }).first().textContent())?.trim() === `${m} (Beta)`, `the module card says "${m} (Beta)"`);
 await shot('start');
 await p.locator('.module-card').filter({ hasText: 'Agility' }).click();
 await p.locator('.mob-start').first().waitFor({ timeout: 20000 });
